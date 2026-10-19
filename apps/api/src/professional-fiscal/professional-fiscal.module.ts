@@ -5,13 +5,14 @@ import { AuthModule } from "../auth/auth.module";
 import { AuditLogModule } from "../audit-log/audit-log.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { AdminModule } from "../admin/admin.module";
-import { ProfessionalFiscalController, AdminProfessionalFiscalController } from "./professional-fiscal.controller";
+import { ProfessionalFiscalController, AdminProfessionalFiscalController, PayoutIbanController } from "./professional-fiscal.controller";
+import { PayoutAccountService } from "./payout-account.service";
 import { ProfessionalFiscalService } from "./professional-fiscal.service";
 
 @Module({
   imports: [AuthModule, AuditLogModule, NotificationsModule, AdminModule, ProfessionalVerificationModule, TaxIdCheckModule],
-  controllers: [ProfessionalFiscalController, AdminProfessionalFiscalController],
-  providers: [ProfessionalFiscalService],
+  controllers: [ProfessionalFiscalController, AdminProfessionalFiscalController, PayoutIbanController],
+  providers: [ProfessionalFiscalService, PayoutAccountService],
   exports: [ProfessionalFiscalService],
 })
 export class ProfessionalFiscalModule {}

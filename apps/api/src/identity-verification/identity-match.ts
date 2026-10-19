@@ -28,9 +28,9 @@ function sameNames(a: string | null, b: string | null): boolean {
 
 /**
  * Il documento appartiene alla persona dei dati fiscali? (docs/CHANGELOG.md
- * §246) Prima il codice fiscale stampato sulla CIE, poi nome, cognome e data
+ * §253) Prima il codice fiscale stampato sulla CIE, poi nome, cognome e data
  * di nascita. Quello che non torna torna al professionista con il motivo,
- * che corregge e riprova da solo (§248, nessun admin).
+ * che corregge e riprova da solo (§255, nessun admin).
  */
 export function matchDocumentToFiscal(document: DocumentPerson | null, expected: ExpectedPerson): { matched: boolean; reason: string | null } {
   if (!document) return { matched: false, reason: "Non siamo riusciti a leggere i dati del documento: rifai la verifica con una foto più nitida, con buona luce e senza riflessi." };

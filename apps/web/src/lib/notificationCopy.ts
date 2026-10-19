@@ -49,12 +49,15 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   ACCOUNT_REACTIVATED: { icon: "✅", message: "Il tuo account è di nuovo attivo." },
   // Verifica manuale del profilo (docs/CHANGELOG.md §200).
   STRIPE_ACCOUNT_ACTIVE: { icon: "✅", message: "Stripe ha verificato la tua identità: ora puoi offrire l'acconto online nei preventivi." },
+  DAC7_DATA_REMINDER: { icon: "🧾", message: "Mancano dei dati per la comunicazione al fisco di gennaio: completali entro dicembre." },
+  PAYOUT_IBAN_MISMATCH: { icon: "⚠️", message: "L'IBAN non corrisponde al conto su Stripe: controllalo." },
+  DAC7_ANNUAL_NOTICE: { icon: "🧾", message: "Abbiamo inviato al fisco i tuoi compensi dell'anno (DAC7)." },
   STRIPE_ACCOUNT_RESTRICTED: { icon: "⚠️", message: "Stripe ha sospeso i pagamenti online sul tuo account: completa i dati in Dati fiscali e pagamenti." },
   PROFILE_VERIFIED: { icon: "✅", message: "Identità verificata: ora mostri il badge Verificato e puoi inviare preventivi." },
   PROFILE_VERIFICATION_REMOVED: { icon: "⚠️", message: "Abbiamo tolto il badge Verificato dal tuo profilo: rifai la verifica dell'identità." },
-  // Verifica fiscale e d'identità (docs/CHANGELOG.md §246).
+  // Verifica fiscale e d'identità (docs/CHANGELOG.md §253).
   IDENTITY_VERIFICATION_DECLINED: { icon: "🪪", message: "La verifica dell'identità non è andata a buon fine: puoi riprovare subito." },
-  // Verifica in attesa ripresa e promemoria (§249).
+  // Verifica in attesa ripresa e promemoria (§256).
   IDENTITY_VERIFICATION_READY: { icon: "🪪", message: "La verifica dell'identità è di nuovo disponibile: riprendi da dove eri." },
   IDENTITY_VERIFICATION_REMINDER: { icon: "🪪", message: "Ti manca la verifica dell'identità per inviare preventivi: bastano 2 minuti." },
   TAX_ID_INVALID: { icon: "⚠️", message: "Non riusciamo a verificare il codice fiscale o la partita IVA: controllali nei dati fiscali." },
@@ -73,9 +76,12 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   JOB_BALANCE_PAID: { icon: "💳", message: "Il cliente ha pagato il saldo online: riceverai l'accredito alla sua conferma o entro 7 giorni." },
   JOB_BALANCE_DUE: { icon: "💳", message: "Il lavoro è chiuso: paga il saldo online per completare il pagamento." },
   JOB_BALANCE_UNPAID: { icon: "⚠️", message: "Il saldo di un lavoro non risulta pagato: pagalo ora o contattaci." },
-  JOB_PAYOUT_SENT: { icon: "✅", message: "Abbiamo accreditato il pagamento di un lavoro sul tuo conto Stripe." },
+  JOB_PAYOUT_SENT: { icon: "✅", message: "Pagamento sbloccato: il bonifico è in arrivo." },
+  JOB_PAYOUT_FAILED: { icon: "🏦", message: "Un bonifico non è arrivato alla tua banca: controlla i dati bancari." },
   JOB_PAYOUT_ACCOUNT_NEEDED: { icon: "🏦", message: "Hai un pagamento online da ricevere: attiva i pagamenti in Dati fiscali e pagamenti." },
   JOB_STRIPE_DISPUTE: { icon: "⚠️", message: "Un cliente ha contestato in banca un pagamento online: l'accredito è sospeso finché la banca non decide." },
+  ADMIN_JOB_PAYMENT_LONG_HOLD: { icon: "⏳", message: "Un pagamento online è bloccato da quasi 90 giorni: decidi se sbloccarlo o rimborsare." },
+  ADMIN_DAC7_NEEDS_CORRECTION: { icon: "⚠️", message: "DAC7: importi cambiati dopo l'invio, l'anno va corretto." },
   ADMIN_STRIPE_DISPUTE: { icon: "⚠️", message: "Contestazione in banca su un pagamento: rispondi con le prove dalla Dashboard Stripe." },
   ADMIN_JOB_BALANCE_UNPAID: { icon: "⚠️", message: "Un cliente non ha pagato il saldo di un lavoro entro 7 giorni." },
   // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §190).
@@ -83,7 +89,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   JOB_AUTO_CONFIRMED: { icon: "✅", message: "Un lavoro è stato considerato terminato: non ci hai segnalato problemi in tempo." },
   JOB_CLOSE_REMINDER: { icon: "⏳", message: "Il cliente ha confermato un lavoro terminato: segnalalo anche tu con l'importo finale." },
   JOB_CLOSE_EXPIRED: { icon: "⚠️", message: "Non hai segnato come terminato in tempo un lavoro confermato dal cliente." },
-  ADMIN_JOB_NOT_CLOSED: { icon: "⚠️", message: "Un professionista non ha chiuso un lavoro pagato online: soldi ancora in custodia." },
+  ADMIN_JOB_NOT_CLOSED: { icon: "⚠️", message: "Un professionista non ha chiuso un lavoro pagato online: soldi ancora bloccati." },
   JOB_ISSUE_SANCTION: { icon: "⛔", message: "Una segnalazione accolta comporta una misura sul tuo profilo: tocca per i dettagli." },
   JOB_ISSUE_RESOLVED: { icon: "⚖️", message: "C'è una decisione su una segnalazione di un lavoro: tocca per leggerla." },
   // Abbonamento a livelli (docs/CHANGELOG.md §161).

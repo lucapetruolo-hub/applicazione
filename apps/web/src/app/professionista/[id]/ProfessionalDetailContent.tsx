@@ -67,7 +67,13 @@ function reviewTimeAgo(iso: string): string {
   return new Date(iso).toLocaleDateString("it-IT", { month: "short", year: "numeric" });
 }
 
-export function ProfessionalDetailContent({ professional }: { professional: ProfessionalDetail }) {
+/**
+ * `preview`: anteprima del proprio profilo in "Profilo pubblico"
+ * (docs/CHANGELOG.md §252). Si vede come la vede un cliente, ma senza le sue
+ * azioni (salva, condividi, segnala, richiedi preventivo) e senza contare la
+ * visita.
+ */
+export function ProfessionalDetailContent({ professional, preview = false }: { professional: ProfessionalDetail; preview?: boolean }) {
   const { user, token, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
   const [isSaved, setIsSaved] = useState(false);
@@ -77,7 +83,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
   // Si aspetta la sessione così il server riconosce il titolare che guarda
   // il proprio profilo e non la conta. Mai bloccante: errori ignorati.
   useEffect(() => {
-    if (isAuthLoading) return;
+    if (isAuthLoading || preview) return;
     const key = `profile_view:${professional.id}`;
     try {
       if (window.sessionStorage.getItem(key)) return;
@@ -86,7 +92,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
       // sessionStorage non disponibile: si conta comunque una volta per montaggio.
     }
     apiClient.recordProfileView(professional.id, token ?? undefined).catch(() => undefined);
-  }, [isAuthLoading, professional.id, token]);
+  }, [isAuthLoading, preview, professional.id, token]);
   const [isSaving, setIsSaving] = useState(false);
   const [agenda, setAgenda] = useState<ProfessionalAgenda | null>(null);
   const [lightbox, setLightbox] = useState<{ photos: string[]; index: number } | null>(null);
@@ -296,7 +302,10 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
             d'ora. Un solo blocco coeso invece di elementi sparsi. */}
         <Surface gap="$4">
         <XStack gap="$3" alignItems="flex-start">
-          <XStack gap="$3" alignItems="flex-start" flex={1} minWidth={0}>
+          {/* Su telefono il nome va sotto la foto: accanto restava una
+              colonna stretta, con il nome spezzato su più righe
+              (docs/CHANGELOG.md §252). */}
+          <XStack gap="$3" alignItems="flex-start" flex={1} minWidth={0} $xs={{ flexDirection: "column" }}>
             <YStack
               cursor={professional.imageUrl ? "pointer" : undefined}
               onPress={() => {
@@ -401,6 +410,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
             navigator.share). */}
         {/* Solo icone, con la descrizione al passaggio del mouse (richiesta
             esplicita dell'utente, docs/CHANGELOG.md §206). */}
+        {preview ? null : (
         <XStack gap="$2" alignItems="center">
           {/* Cuoricino visibile anche a chi non è entrato (docs/CHANGELOG.md
               §208): prima compariva solo a un cliente già entrato, e per
@@ -424,6 +434,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
             </IconActionButton>
           ) : null}
         </XStack>
+        )}
 
         {professional.subTags.length > 0 ? (
           <XStack flexWrap="wrap" gap="$2">
@@ -739,7 +750,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                           justifyContent="center"
                           paddingVertical={3}
                         >
-                          <Link href={href} style={{ textDecoration: "none" }}>
+                          <Link href={href} style={{ textDecoration: "none", pointerEvents: preview ? "none" : undefined }} tabIndex={preview ? -1 : undefined}>
                             <XStack paddingHorizontal={6} $xs={{ paddingHorizontal: 4 }} paddingVertical={4} borderRadius="$10" backgroundColor={brand.cianografiaVelo}>
                               <Text fontFamily="$mono" fontSize={10.5} $xs={{ fontSize: 9.5 }} letterSpacing={-0.3} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
                                 {range}
@@ -796,9 +807,10 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
         {professional.acceptingRequests ? (
           <Link
             href={`/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&nomeProfessionista=${encodeURIComponent(professional.businessName)}&fotoProfessionista=${encodeURIComponent(professional.imageUrl ?? "")}`}
-            style={{ textDecoration: "none", alignSelf: "flex-start" }}
+            style={{ textDecoration: "none", alignSelf: "flex-start", pointerEvents: preview ? "none" : undefined }}
+            tabIndex={preview ? -1 : undefined}
           >
-            <Button variant="primary">{`Richiedi un preventivo a ${professional.businessName}`}</Button>
+            <Button variant="primary" tabIndex={preview ? -1 : undefined}>{`Richiedi un preventivo a ${professional.businessName}`}</Button>
           </Link>
         ) : (
           <Surface gap="$2">
@@ -806,7 +818,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
               Al momento non accetta nuove richieste
             </Text>
             <Text color={brand.grafite70}>Puoi chiedere un preventivo ad altri professionisti della stessa categoria nella tua zona.</Text>
-            <Link href={`/cerca/${professional.categorySlug}`} style={{ textDecoration: "none", alignSelf: "flex-start" }}>
+            <Link href={`/cerca/${professional.categorySlug}`} style={{ textDecoration: "none", alignSelf: "flex-start", pointerEvents: preview ? "none" : undefined }} tabIndex={preview ? -1 : undefined}>
               <Button variant="secondary">{`Cerca altri: ${professional.categoryLabel}`}</Button>
             </Link>
           </Surface>
@@ -887,7 +899,7 @@ export function ProfessionalDetailContent({ professional }: { professional: Prof
                       · {reviewTimeAgo(review.createdAt)}
                     </Text>
                   </XStack>
-                  {user ? (
+                  {user && !preview ? (
                     <XStack
                       alignItems="center"
                       gap={4}

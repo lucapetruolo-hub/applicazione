@@ -11,7 +11,7 @@ import { onlinePaymentsEnabled } from "../job-payments/online-payments-enabled";
  * Stripe" (`stripeVerified`).
  *
  * Codice fiscale e P.IVA risultati inesistenti con il controllo Openapi
- * (§246) tolgono il profilo dalla ricerca finché non si correggono.
+ * (§253) tolgono il profilo dalla ricerca finché non si correggono.
  *
  * Come la pausa dell'abbonamento (§162) vale solo con i pagamenti attivi su
  * questo ambiente (`STRIPE_SECRET_KEY`), cioè dal lancio. I profili
@@ -28,7 +28,7 @@ export function publicVisibilityWhere(): Prisma.ProfessionalProfileWhereInput {
     OR: [
       { isDemo: true },
       // Codice fiscale o P.IVA inesistenti all'Agenzia delle Entrate (Openapi,
-      // docs/CHANGELOG.md §246): fuori finché non si correggono. Un controllo
+      // docs/CHANGELOG.md §253): fuori finché non si correggono. Un controllo
       // ancora in corso o non riuscito non blocca.
       { fiscalProfile: { is: { fiscalDataCompleteAt: { not: null }, taxIdChecks: { none: { status: "INVALID" } } } } },
     ],

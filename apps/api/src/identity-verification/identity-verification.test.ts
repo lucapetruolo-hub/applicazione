@@ -5,7 +5,7 @@ import { matchDocumentToFiscal } from "./identity-match";
 import { identityVerificationNeeded } from "./identity-provider-env";
 import { IdentityVerificationService, STANDBY_PROVIDER_STATUS, expectedPerson, reminderDue } from "./identity-verification.service";
 
-/** Verifica di documento e selfie con Didit (docs/CHANGELOG.md §246). */
+/** Verifica di documento e selfie con Didit (docs/CHANGELOG.md §253). */
 describe("Didit", () => {
   const secret = "whsec_prova";
   const provider = new DiditIdentityProvider("key", "workflow", secret);
@@ -135,7 +135,7 @@ describe("esito applicato", () => {
   });
 });
 
-describe("servizio di verifica che non risponde (§249)", () => {
+describe("servizio di verifica che non risponde (§256)", () => {
   const fiscal = { entityType: "PRIVATE_INDIVIDUAL", fiscalFirstName: "Mario", fiscalLastName: "Rossi", dateOfBirth: new Date("1980-01-01"), fiscalCodiceFiscale: "RSSMRA80A01H501U", fiscalDataCompleteAt: new Date(), fiscalDeclarationAcceptedAt: new Date(), foreignTin: null, businessName: null, vatNumber: null, registeredStreet: "Via Roma 1", registeredCity: "Milano", registeredPostalCode: "20100", taxIdChecks: [], representative: null };
 
   function build(createSession: () => Promise<{ sessionId: string; url: string }>) {
@@ -198,7 +198,7 @@ describe("servizio di verifica che non risponde (§249)", () => {
   });
 });
 
-describe("promemoria a chi non ha fatto la verifica (§249)", () => {
+describe("promemoria a chi non ha fatto la verifica (§256)", () => {
   const day = 24 * 60 * 60_000;
   const now = new Date("2026-10-20T10:00:00Z");
   const ago = (days: number) => new Date(now.getTime() - days * day);

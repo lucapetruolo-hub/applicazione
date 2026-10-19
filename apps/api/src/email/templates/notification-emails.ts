@@ -6,6 +6,8 @@ import {
   JOB_ISSUE_PRO_REPLY_HOURS,
   JOB_ISSUE_SANCTION_LABEL,
   BAD_WORK_REPORT_DAYS,
+  ONLINE_LONG_HOLD_ALERT_DAYS,
+  ONLINE_MAX_HOLD_DAYS,
   asScheduleChange,
   formatItalianUntil,
   moderationActionOwnerText,
@@ -17,7 +19,7 @@ import {
   type JobIssueType,
   type ModerationAction,
 } from "@professionisti/shared";
-import { frontendUrl } from "../email-brand";
+import { EMAIL_BRAND, frontendUrl } from "../email-brand";
 import type { EmailContent } from "../email-layout";
 import { descriptionDetail, formatAppointment, formatAppointmentTime, formatDay, formatDeadline, formatEur } from "../email-format";
 
@@ -631,7 +633,7 @@ const BUILDERS: Record<string, Builder> = {
     title: "Acconto pagato",
     paragraphs: [
       `Il cliente ha pagato online l'acconto per il lavoro **${job(ctx)}**.`,
-      "Resta in custodia fino alla chiusura del lavoro e ti arriva insieme al saldo.",
+      "Lo ricevi in banca quando il cliente conferma il lavoro.",
     ],
     details: proJobDetails(ctx, typeof payload.amountEurCents === "number" ? [{ label: "Acconto", value: formatEur(payload.amountEurCents) }] : []),
     cta: proRequests("Apri il lavoro"),
@@ -643,7 +645,7 @@ const BUILDERS: Record<string, Builder> = {
     title: "Saldo pagato",
     paragraphs: [
       `Il cliente ha pagato online il saldo per il lavoro **${job(ctx)}**.`,
-      "Riceverai l'accredito quando il cliente conferma che è tutto a posto, o comunque entro 7 giorni.",
+      "Lo ricevi in banca quando il cliente conferma il lavoro.",
     ],
     details: typeof payload.amountEurCents === "number" ? [{ label: "Saldo", value: formatEur(payload.amountEurCents) }] : undefined,
     cta: proRequests("Apri il lavoro"),
@@ -655,7 +657,7 @@ const BUILDERS: Record<string, Builder> = {
     title: "Paga il saldo",
     paragraphs: [
       `**${pro(ctx)}** ha chiuso il lavoro per **${job(ctx)}**. Paga il saldo online per completare il pagamento.`,
-      "Teniamo i soldi in custodia: arrivano al professionista quando confermi che è tutto a posto, o comunque dopo 7 giorni.",
+      "Il professionista riceve i soldi quando confermi il lavoro.",
     ],
     details: typeof payload.amountEurCents === "number" ? [{ label: "Saldo da pagare", value: formatEur(payload.amountEurCents) }] : undefined,
     cta: { label: "Paga il saldo", url: `${frontendUrl()}/le-mie-richieste` },
@@ -672,16 +674,30 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: { label: "Paga il saldo", url: `${frontendUrl()}/le-mie-richieste` },
   }),
+  // Soldi sbloccati sul conto Stripe del professionista (§249): parte il bonifico.
   JOB_PAYOUT_SENT: (payload, ctx) => ({
     kind: "notification",
-    subject: `Ti abbiamo accreditato ${formatEur(payload.amountEurCents) || "un pagamento"}`,
+    subject: `Pagamento sbloccato: ${formatEur(payload.amountEurCents) || "un bonifico"} in arrivo`,
     greeting: ctx.name,
-    title: "Pagamento accreditato",
+    title: "Pagamento sbloccato",
     paragraphs: [
-      `Abbiamo accreditato sul tuo conto Stripe il pagamento del lavoro per **${job(ctx)}**, già al netto della commissione e dei costi di pagamento.`,
+      `Abbiamo sbloccato il pagamento del lavoro per **${job(ctx)}**, già al netto della commissione e del costo della carta.`,
+      "Il bonifico arriva in banca in pochi giorni lavorativi.",
     ],
-    details: typeof payload.amountEurCents === "number" ? [{ label: "Accredito", value: formatEur(payload.amountEurCents) }] : undefined,
-    cta: { label: "Vedi i pagamenti", url: `${frontendUrl()}/dashboard/fiscale` },
+    details: typeof payload.amountEurCents === "number" ? [{ label: "Bonifico", value: formatEur(payload.amountEurCents) }] : undefined,
+    cta: proRequests("Apri il lavoro"),
+  }),
+  JOB_PAYOUT_FAILED: (payload, ctx) => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: "Il bonifico verso la tua banca non è riuscito",
+    greeting: ctx.name,
+    title: "Bonifico non riuscito",
+    paragraphs: [
+      `Il bonifico${typeof payload.amountEurCents === "number" ? ` di ${formatEur(payload.amountEurCents)}` : ""} per il lavoro **${job(ctx)}** non è arrivato alla tua banca. I soldi sono al sicuro sul tuo conto Stripe.`,
+      "Controlla il conto bancario: il bonifico riparte da solo.",
+    ],
+    cta: { label: "Controlla i dati bancari", url: `${frontendUrl()}/dashboard/fiscale` },
   }),
   JOB_PAYOUT_ACCOUNT_NEEDED: (_payload, ctx) => ({
     kind: "notification",
@@ -746,7 +762,7 @@ const BUILDERS: Record<string, Builder> = {
     tone: "urgent",
     subject: "Lavoro pagato online non chiuso dal professionista",
     title: "Lavoro non chiuso",
-    paragraphs: [`Il cliente ha confermato un lavoro pagato online, ma il professionista non l'ha chiuso entro ${BAD_WORK_REPORT_DAYS} giorni: i soldi sono ancora in custodia.`],
+    paragraphs: [`Il cliente ha confermato un lavoro pagato online, ma il professionista non l'ha chiuso entro ${BAD_WORK_REPORT_DAYS} giorni: i soldi sono ancora bloccati.`],
     cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin` },
   }),
   JOB_STRIPE_DISPUTE: (payload, ctx) => ({
@@ -771,6 +787,25 @@ const BUILDERS: Record<string, Builder> = {
       payload.alreadyReleased ? "I soldi erano già passati al professionista: decidi se recuperarli." : "Se riguarda un lavoro, l'accredito al professionista resta sospeso finché la banca non decide.",
     ],
     cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin/pagamenti` },
+  }),
+  ADMIN_JOB_PAYMENT_LONG_HOLD: (payload) => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: "Pagamento online bloccato da quasi 90 giorni",
+    title: "Pagamento bloccato da troppo tempo",
+    paragraphs: [
+      `Un pagamento online è bloccato da ${typeof payload.days === "number" ? payload.days : ONLINE_LONG_HOLD_ALERT_DAYS} giorni. Dopo ${ONLINE_MAX_HOLD_DAYS} giorni Stripe lo manda comunque in banca al professionista.`,
+      "Decidi prima se sbloccarlo o rimborsare il cliente.",
+    ],
+    cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin/pagamenti` },
+  }),
+  ADMIN_DAC7_NEEDS_CORRECTION: (payload) => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: `DAC7 ${typeof payload.year === "number" ? payload.year : ""}: importi cambiati dopo l'invio`,
+    title: "DAC7 da correggere",
+    paragraphs: ["Dopo l'invio all'Agenzia delle Entrate alcuni importi sono cambiati (rimborso o lavoro riaperto). Usa \"Correggi\" sull'anno, poi esporta e invia la correzione."],
+    cta: { label: "Apri Finanza e DAC7", url: `${frontendUrl()}/admin/finanza` },
   }),
   ADMIN_JOB_BALANCE_UNPAID: () => ({
     kind: "notification",
@@ -881,6 +916,43 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: { label: "Vai ai dati fiscali e pagamenti", url: `${frontendUrl()}/dashboard/fiscale` },
   }),
+  // Avviso annuale DAC7 (docs/CHANGELOG.md §246): obbligatorio per legge.
+  DAC7_ANNUAL_NOTICE: (payload, ctx) => {
+    const year = typeof payload.year === "number" ? payload.year : null;
+    const corrected = payload.corrected === true;
+    return {
+      kind: "account",
+      subject: corrected ? `Abbiamo corretto i dati DAC7 ${year ?? ""} comunicati al fisco` : `I tuoi dati DAC7 ${year ?? ""} comunicati al fisco`,
+      greeting: ctx.name,
+      title: corrected ? "Dati DAC7 corretti" : "Comunicazione DAC7 inviata",
+      paragraphs: [
+        `${corrected ? "Abbiamo corretto" : "Abbiamo inviato"} al fisco i compensi${year ? ` del ${year}` : ""} che hai ricevuto su ${EMAIL_BRAND.name}, come chiede la legge (DAC7). Il dettaglio è nel Riepilogo DAC7.`,
+      ],
+      details: typeof payload.totalEurCents === "number" ? [{ label: "Compensi comunicati", value: formatEur(payload.totalEurCents) }] : undefined,
+      cta: { label: "Apri il Riepilogo DAC7", url: `${frontendUrl()}/dashboard/fiscale/dac7` },
+    };
+  },
+  // Promemoria di novembre (docs/CHANGELOG.md §247).
+  DAC7_DATA_REMINDER: (payload, ctx) => {
+    const year = typeof payload.year === "number" ? payload.year : null;
+    const missing = [payload.missingFiscalData === true ? "i dati fiscali" : null, payload.missingIban === true ? "l'IBAN dei pagamenti online" : null].filter(Boolean).join(" e ");
+    return {
+      kind: "account",
+      subject: `Completa ${missing || "i tuoi dati"} entro dicembre`,
+      greeting: ctx.name,
+      title: "Mancano dei dati per il fisco",
+      paragraphs: [`A gennaio comunichiamo al fisco i compensi${year ? ` del ${year}` : ""} (DAC7): completa ${missing || "i tuoi dati"} entro dicembre.`],
+      cta: { label: "Completa i dati", url: `${frontendUrl()}/dashboard/fiscale` },
+    };
+  },
+  PAYOUT_IBAN_MISMATCH: (_payload, ctx) => ({
+    kind: "account",
+    subject: "L'IBAN non corrisponde al conto su Stripe",
+    greeting: ctx.name,
+    title: "Controlla l'IBAN",
+    paragraphs: ["Le ultime 4 cifre dell'IBAN che ci hai dato non sono quelle del conto indicato a Stripe. Correggilo in Dati fiscali e pagamenti."],
+    cta: { label: "Controlla l'IBAN", url: `${frontendUrl()}/dashboard/fiscale` },
+  }),
   STRIPE_ACCOUNT_RESTRICTED: (_payload, ctx) => ({
     kind: "account",
     subject: "Stripe ha sospeso i pagamenti online sul tuo account",
@@ -907,7 +979,7 @@ const BUILDERS: Record<string, Builder> = {
       cta: { label: "Rifai la verifica", url: `${frontendUrl()}/dashboard/verifica-identita` },
     };
   },
-  // Verifica fiscale e d'identità (docs/CHANGELOG.md §246).
+  // Verifica fiscale e d'identità (docs/CHANGELOG.md §253).
   IDENTITY_VERIFICATION_DECLINED: (payload, ctx) => {
     const reason = str(payload.reason);
     return {
@@ -922,7 +994,7 @@ const BUILDERS: Record<string, Builder> = {
       cta: { label: "Riprova la verifica", url: `${frontendUrl()}/dashboard/verifica-identita` },
     };
   },
-  // Verifica in attesa ripresa e promemoria (§249).
+  // Verifica in attesa ripresa e promemoria (§256).
   IDENTITY_VERIFICATION_READY: (_payload, ctx) => ({
     kind: "account",
     subject: "Puoi continuare la verifica dell'identità",

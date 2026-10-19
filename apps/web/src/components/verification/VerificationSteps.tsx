@@ -17,7 +17,7 @@ const TONE: Record<StepTone, { color: string; background: string; label: string 
 
 type Step = { icon: IconName; title: string; tone: StepTone; text: string; extra?: ReactNode; action?: { href: string; label: string } };
 
-/** I tre passi in parole semplici (titoli senza nomi di enti, §247), con lo stato di ciascuno (docs/CHANGELOG.md §246). */
+/** I tre passi in parole semplici (titoli senza nomi di enti, §254), con lo stato di ciascuno (docs/CHANGELOG.md §253). */
 export function verificationSteps(status: MyVerificationStatus, here: "fiscale" | "verifica"): Step[] {
   const fiscalHref = "/dashboard/fiscale";
   const step1: Step = status.fiscalDataComplete

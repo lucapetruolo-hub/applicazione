@@ -28,7 +28,7 @@ export async function viesLookup(vatNumber: string, fetchImpl: typeof fetch = fe
 
 /**
  * Prima VIES (gratis), poi il fornitore a pagamento solo se VIES non conferma
- * (decisione dell'utente, docs/CHANGELOG.md §247): non valida, lenta o che non
+ * (decisione dell'utente, docs/CHANGELOG.md §254): non valida, lenta o che non
  * risponde. Il codice fiscale va sempre al fornitore a pagamento: VIES non lo
  * controlla.
  */

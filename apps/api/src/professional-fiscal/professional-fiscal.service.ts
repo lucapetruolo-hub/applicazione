@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException, Optional } from "@nestjs/common";
 import Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
 import {
@@ -15,6 +15,7 @@ import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalVerificationService } from "../professional-verification/professional-verification.service";
 import { TaxIdCheckService } from "../tax-id-check/tax-id-check.service";
 import { readStripeConnectStatus } from "./stripe-connect-status";
+import { PayoutAccountService } from "./payout-account.service";
 
 const FISCAL_FIELDS = [
   "entityType",
@@ -55,12 +56,15 @@ const FISCAL_FIELDS = [
 export class ProfessionalFiscalService {
   private readonly stripe: Stripe | null;
 
+  private readonly logger = new Logger(ProfessionalFiscalService.name);
+
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly auditLogService: AuditLogService,
     private readonly professionalVerificationService: ProfessionalVerificationService,
     private readonly notificationsService: NotificationsService,
     private readonly taxIdCheckService: TaxIdCheckService,
+    @Optional() private readonly payoutAccountService?: PayoutAccountService,
   ) {
     this.stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
   }
@@ -107,7 +111,7 @@ export class ProfessionalFiscalService {
       include: { representative: true },
     });
 
-    // Stessi controlli del browser anche qui (docs/CHANGELOG.md §246): forma
+    // Stessi controlli del browser anche qui (docs/CHANGELOG.md §253): forma
     // di codice fiscale e P.IVA e coerenza del codice fiscale con nome,
     // cognome e data di nascita. Prima una chiamata diretta all'API li saltava.
     const fieldErrors = fiscalFieldErrors({
@@ -174,7 +178,7 @@ export class ProfessionalFiscalService {
     }
 
     // Badge "Verificato": documento e selfie valgono per la persona dei dati
-    // fiscali di allora (docs/CHANGELOG.md §246). Se cambia la persona (nome,
+    // fiscali di allora (docs/CHANGELOG.md §253). Se cambia la persona (nome,
     // cognome, data di nascita, codice fiscale, tipo o legale rappresentante)
     // la verifica va rifatta; la sola P.IVA la ricontrolla Openapi qui sotto.
     const personChanged =
@@ -229,7 +233,7 @@ export class ProfessionalFiscalService {
     }
 
     // Codice fiscale e P.IVA all'Agenzia delle Entrate / Registro Imprese
-    // (Openapi, §246): subito, e solo per i dati nuovi o cambiati.
+    // (Openapi, §253): subito, e solo per i dati nuovi o cambiati.
     await this.taxIdCheckService.syncForFiscalProfile(fiscalProfile.id, userId);
 
     return this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId }, include: { representative: true, taxIdChecks: true } });
@@ -270,7 +274,9 @@ export class ProfessionalFiscalService {
    * `type: "express"` che Stripe considera superato: configurazione
    * "destinatario" (riceve i trasferimenti dalla piattaforma, non incassa
    * carte), Dashboard Express, commissioni Stripe e perdite a carico della
-   * piattaforma (schema "separate charges and transfers" con custodia).
+   * piattaforma. I pagamenti dei lavori si addebitano "a destinazione" sul
+   * suo conto con i bonifici verso la banca in manuale (docs/CHANGELOG.md
+   * §249, impostati da OnlineMoneyService al primo pagamento).
    * Prima di creare il primo account va accettata la responsabilità delle
    * perdite nella Dashboard Stripe (Impostazioni Connect → profilo piattaforma).
    */
@@ -348,6 +354,10 @@ export class ProfessionalFiscalService {
     if (!this.stripe) return;
     const status = await readStripeConnectStatus(this.stripe, stripeAccountId);
     await this.syncStripeConnectStatus(stripeAccountId, status.transfersActive, status.transfersActive, status.requirements);
+    // IBAN per la DAC7 di nuovo confrontato col conto su Stripe (§247): mai bloccante.
+    await this.payoutAccountService?.recheckForStripeAccount(stripeAccountId).catch((err: unknown) => {
+      this.logger.warn(`IBAN non ricontrollato per ${stripeAccountId}: ${err instanceof Error ? err.message : String(err)}`);
+    });
   }
 
   /** Aggiorna lo stato Stripe Connect dal webhook `account.updated`. */

@@ -19,7 +19,7 @@ const POINTS = [
     comingSoon: false,
   },
   {
-    text: "Pagamento online protetto: acconto subito e saldo a lavoro finito, teniamo noi i soldi finché non confermi il lavoro",
+    text: "Pagamento online protetto: acconto subito e saldo a lavoro finito, i soldi restano bloccati finché non confermi il lavoro",
     comingSoon: false,
     online: true,
   },
@@ -46,7 +46,7 @@ const POINTS = [
  * §9/§88) portano il badge "In arrivo" — stesso pattern già in uso in
  * `ProCtaSection.tsx` (`comingSoon`), riusato qui invece di inventarne uno
  * nuovo. Pagamento online protetto e assistenza attivi dal §168 (decisione
- * dell'utente: pagamento online con Stripe, acconto e saldo in custodia,
+ * dell'utente: pagamento online con Stripe, acconto e saldo bloccati fino alla conferma,
  * rimborso sulle segnalazioni accolte). "Mediazione in caso di controversia" è stata rimossa del tutto,
  * non solo marcata "in arrivo": non esiste alcuna infrastruttura, nemmeno
  * allo stadio di bozza, per una promessa specifica come questa.

@@ -79,7 +79,7 @@ function readPath(value: unknown, path: string[]): unknown {
 /**
  * Il fornitore configurato su questo ambiente, o `null` se mancano le chiavi
  * (nessun controllo, nessun blocco). La partita IVA passa prima da VIES
- * (gratis) e arriva a Openapi solo se VIES non la conferma (§247).
+ * (gratis) e arriva a Openapi solo se VIES non la conferma (§254).
  */
 export function taxIdProviderFromEnv(): TaxIdProvider | null {
   const risk = process.env.OPENAPI_TOKEN_RISK?.trim() || null;

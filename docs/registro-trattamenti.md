@@ -199,7 +199,7 @@
   la promozione del primissimo admin è protetta da un codice segreto solo
   in variabile d'ambiente (`ADMIN_BOOTSTRAP_SECRET`), mai committato.
 
-## 9-bis. Verifica fiscale e d'identità dei professionisti (docs/CHANGELOG.md §246)
+## 9-bis. Verifica fiscale e d'identità dei professionisti (docs/CHANGELOG.md §253)
 
 - **Finalità**: sapere che dietro un profilo c'è la persona (o l'azienda)
   dei dati fiscali, prima che compaia nelle ricerche e prima che invii
@@ -215,7 +215,7 @@
   rifiuto, data del consenso (`identity_verifications`). Immagini del
   documento e selfie restano a Didit: il sito non le riceve.
 - **Decisione automatizzata**: l'esito Didit sblocca l'invio dei preventivi;
-  il professionista riceve il motivo e la rifà da solo; su sua richiesta scritta una persona la rivede (art. 22 GDPR, §248).
+  il professionista riceve il motivo e la rifà da solo; su sua richiesta scritta una persona la rivede (art. 22 GDPR, §255).
 - **Conservazione**: esiti finché l'account esiste; immagini presso Didit
   secondo i tempi concordati nel DPA [DA VERIFICARE].
 - **Prima del lancio**: valutazione d'impatto (DPIA, art. 35) per il dato

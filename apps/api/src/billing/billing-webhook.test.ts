@@ -14,7 +14,7 @@ function buildService() {
     payment: { create: vi.fn() },
     visibilityBoost: { create: vi.fn() },
   };
-  const jobPaymentsService = { handleManoviaCheckoutCompleted: vi.fn(), handleStripeDispute: vi.fn().mockResolvedValue(true), notifyFinanceAdmins: vi.fn() };
+  const jobPaymentsService = { handleManoviaCheckoutCompleted: vi.fn(), handleStripeDispute: vi.fn().mockResolvedValue(true), notifyFinanceAdmins: vi.fn(), retryPayoutsForAccount: vi.fn(), handlePayoutEvent: vi.fn() };
   const professionalFiscalService = { refreshStripeConnectStatus: vi.fn() };
   const service = new BillingService(prisma as never, jobPaymentsService as never, {} as never, professionalFiscalService as never, {} as never);
   const boostEvent = {
@@ -107,6 +107,32 @@ describe("BillingService.handleWebhookEvent", () => {
 
     await expect(service.handleWebhookEvent(Buffer.from("{}"), "sig")).resolves.toEqual({ received: true });
     expect(professionalFiscalService.refreshStripeConnectStatus).toHaveBeenCalledWith("acct_1");
+  });
+
+  it("passa ai pagamenti dei lavori l'esito di un bonifico dal conto del professionista", async () => {
+    const { service, stripe, jobPaymentsService } = buildService();
+    const payout = { id: "po_1", status: "failed", amount: 5000, metadata: { jobPaymentId: "jp-1" } };
+    stripe.webhooks.constructEvent.mockReturnValue({ id: "evt_7", type: "payout.failed", account: "acct_1", data: { object: payout } });
+
+    await service.handleWebhookEvent(Buffer.from("{}"), "sig");
+    expect(jobPaymentsService.handlePayoutEvent).toHaveBeenCalledWith(payout);
+  });
+
+  it("quando i soldi del professionista diventano disponibili fa partire subito i bonifici in attesa", async () => {
+    const { service, stripe, jobPaymentsService } = buildService();
+    stripe.webhooks.constructEvent.mockReturnValue({ id: "evt_8", type: "balance.available", account: "acct_1", data: { object: {} } });
+
+    await service.handleWebhookEvent(Buffer.from("{}"), "sig");
+    expect(jobPaymentsService.retryPayoutsForAccount).toHaveBeenCalledWith("acct_1", { skipFailed: true });
+  });
+
+  it("quando il professionista cambia il conto bancario su Stripe rilegge il conto e riprova i bonifici", async () => {
+    const { service, stripe, professionalFiscalService, jobPaymentsService } = buildService();
+    stripe.webhooks.constructEvent.mockReturnValue({ id: "evt_9", type: "account.external_account.updated", account: "acct_1", data: { object: { id: "ba_1" } } });
+
+    await service.handleWebhookEvent(Buffer.from("{}"), "sig");
+    expect(professionalFiscalService.refreshStripeConnectStatus).toHaveBeenCalledWith("acct_1");
+    expect(jobPaymentsService.retryPayoutsForAccount).toHaveBeenCalledWith("acct_1");
   });
 
   it("risponde 400 se la firma non corrisponde a nessuna chiave", async () => {

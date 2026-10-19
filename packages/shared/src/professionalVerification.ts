@@ -42,7 +42,7 @@ export type ProfessionalVerificationRow = {
   verifiedAt: string | null;
   verifiedByName: string | null;
   verificationNote: string | null;
-  /** Ultima verifica di documento e selfie (Didit, docs/CHANGELOG.md §246). */
+  /** Ultima verifica di documento e selfie (Didit, docs/CHANGELOG.md §253). */
   identity: {
     id: string;
     status: "STARTED" | "PROCESSING" | "APPROVED" | "NEEDS_REVIEW" | "DECLINED" | "EXPIRED";

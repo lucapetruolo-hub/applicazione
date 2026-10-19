@@ -27,6 +27,7 @@ import type {
   GuidedRequestUpdateInput,
   MyAvailability,
   MyProfessionalProfile,
+  MyProfilePreview,
   OpenDisputeInput,
   ProfessionalAgenda,
   ProfessionalAvailableSlot,
@@ -48,6 +49,9 @@ import type {
   ReviewInput,
   SetDac7RuleInput,
   PlatformDac7SettingsInput,
+  PayoutIbanInput,
+  PayoutIbanStripeCheck,
+  Dac7YearSummary,
   SetFiscalVerificationInput,
   TimelineUpdateInput,
   UpdateAccountInput,
@@ -77,6 +81,7 @@ import type {
   CloseGeneralRequestsInput,
   ProfileInviteLink,
   ProfileInvitePreview,
+  ProfessionalPayoutTotals,
 } from "@professionisti/shared";
 
 export type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW";
@@ -681,7 +686,7 @@ export type ProfessionalFiscalProfile = {
   stripePayoutsEnabled: boolean;
   stripeRequirementsStatus: string | null;
   representative: { firstName: string; lastName: string; codiceFiscale: string | null; role: string | null } | null;
-  /** Controlli all'Agenzia delle Entrate / Registro Imprese (Openapi, docs/CHANGELOG.md §246). */
+  /** Controlli all'Agenzia delle Entrate / Registro Imprese (Openapi, docs/CHANGELOG.md §253). */
   taxIdChecks?: TaxIdCheckView[];
 };
 
@@ -722,6 +727,8 @@ export type Dac7ReportingPeriod = {
   reportVersion: number;
   generatedAt: string | null;
   submittedAt: string | null;
+  /** Importi cambiati dopo l'invio: da correggere (docs/CHANGELOG.md §247). */
+  needsCorrectionAt: string | null;
 };
 
 export type Dac7Record = {
@@ -730,7 +737,23 @@ export type Dac7Record = {
   considerationEurCents: number;
   numberOfTransactions: number;
   feesWithheldEurCents: number;
+  /** Di cui pagati direttamente e online (docs/CHANGELOG.md §246). */
+  directConsiderationEurCents: number;
+  onlineConsiderationEurCents: number;
   missingFiscalData: boolean;
+  sellerNotifiedAt: string | null;
+  /** Solo nel dettaglio admin (docs/CHANGELOG.md §247). */
+  businessName?: string;
+  missingIban?: boolean;
+};
+
+/** IBAN per la DAC7, sempre mascherato (docs/CHANGELOG.md §246). */
+export type PayoutIbanView = {
+  maskedIban: string;
+  holderName: string;
+  stripeCheck: PayoutIbanStripeCheck | null;
+  stripeCheckedAt: string | null;
+  updatedAt: string;
 };
 
 export type PlatformDac7Settings = {
@@ -1168,6 +1191,10 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     getMyProfessionalProfile: (token: string) =>
       request<MyProfessionalProfile | null>("/professionals/me", { headers: { Authorization: `Bearer ${token}` } }),
 
+    /** Il proprio profilo come lo vedono i clienti, anche se non è ancora pubblico. */
+    getMyProfilePreview: (token: string) =>
+      request<MyProfilePreview | null>("/professionals/me/preview", { headers: { Authorization: `Bearer ${token}` } }),
+
     upsertMyProfessionalProfile: (token: string, input: ProfessionalProfileSelfInput) =>
       request<MyProfessionalProfile>("/professionals/me", {
         method: "PUT",
@@ -1552,13 +1579,13 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         `/admin/professional-verifications/${encodeURIComponent(professionalProfileId)}/verify`,
         { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) },
       ),
-    /** "Ricontrolla ora": rifà subito la verifica di codice fiscale e partita IVA (docs/CHANGELOG.md §247). */
+    /** "Ricontrolla ora": rifà subito la verifica di codice fiscale e partita IVA (docs/CHANGELOG.md §254). */
     adminRecheckTaxIds: (token: string, professionalProfileId: string) =>
       request<TaxIdCheckView[]>(`/admin/professional-verifications/${encodeURIComponent(professionalProfileId)}/tax-recheck`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       }),
-    /** Stato dei tre passi: dati fiscali, controllo Agenzia delle Entrate, documento e selfie (docs/CHANGELOG.md §246). */
+    /** Stato dei tre passi: dati fiscali, controllo Agenzia delle Entrate, documento e selfie (docs/CHANGELOG.md §253). */
     myVerificationStatus: (token: string) =>
       request<MyVerificationStatus>("/professionals/me/verification", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
     /** Avvia la verifica di documento e selfie: torna il link della pagina del fornitore. */
@@ -1829,6 +1856,15 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     createStripeDashboardLink: (token: string) =>
       request<{ url: string }>("/professionals/me/fiscal-profile/stripe-dashboard", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
+    myPayoutIban: (token: string) =>
+      request<PayoutIbanView | null>("/professionals/me/payout-iban", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    saveMyPayoutIban: (token: string, input: PayoutIbanInput) =>
+      request<PayoutIbanView>("/professionals/me/payout-iban", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
+    myDac7Summary: (token: string) =>
+      request<{ years: Dac7YearSummary[]; maskedIban: string | null }>("/professionals/me/dac7", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
     adminFiscalProfile: (token: string, professionalProfileId: string) =>
       request<AdminFiscalView>(`/admin/professionals/${professionalProfileId}/fiscal`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
@@ -1838,6 +1874,10 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
       }),
+
+    /** Pagamenti online del professionista per stato del bonifico (docs/CHANGELOG.md §249). */
+    professionalPayoutSummary: (token: string) =>
+      request<ProfessionalPayoutTotals>("/professionals/me/online-payments/summary", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     bookingJobPayment: (token: string, bookingId: string) =>
       request<JobPayment | null>(`/bookings/${bookingId}/job-payment`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
@@ -1928,6 +1968,9 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
 
     adminMarkDac7Submitted: (token: string, id: string) =>
       request<Dac7ReportingPeriod>(`/admin/dac7/periods/${id}/mark-submitted`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+
+    adminNotifyDac7Sellers: (token: string, id: string) =>
+      request<{ sent: number }>(`/admin/dac7/periods/${id}/notify-sellers`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
     adminCorrectDac7Period: (token: string, id: string) =>
       request<Dac7ReportingPeriod>(`/admin/dac7/periods/${id}/correct`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),

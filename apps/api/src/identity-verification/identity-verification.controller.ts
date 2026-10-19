@@ -8,7 +8,7 @@ import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
 import { IdentityVerificationService } from "./identity-verification.service";
 import { TaxIdCheckService, toTaxIdCheckView } from "../tax-id-check/tax-id-check.service";
 
-/** Verifica fiscale e d'identità del professionista (docs/CHANGELOG.md §246). */
+/** Verifica fiscale e d'identità del professionista (docs/CHANGELOG.md §253). */
 @Controller("professionals/me/verification")
 export class IdentityVerificationController {
   constructor(private readonly identityVerificationService: IdentityVerificationService) {}
@@ -46,7 +46,7 @@ export class IdentityVerificationWebhookController {
 export class AdminIdentityVerificationController {
   constructor(private readonly taxIdCheckService: TaxIdCheckService) {}
 
-  /** "Ricontrolla ora": rifà subito la verifica di codice fiscale e partita IVA (§247). */
+  /** "Ricontrolla ora": rifà subito la verifica di codice fiscale e partita IVA (§254). */
   @RequireAdminScope("MODERATION")
   @Post(":id/tax-recheck")
   async recheckTaxIds(@Req() req: AuthenticatedRequest, @Param("id") id: string) {

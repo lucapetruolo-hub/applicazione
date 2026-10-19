@@ -52,6 +52,9 @@ import {
   Coins,
   Shield,
   ShieldCheck,
+  Lock,
+  LockOpen,
+  Landmark,
   CreditCard,
   Paperclip,
   Archive,
@@ -70,9 +73,7 @@ import {
   ScanFace,
   Sun,
   Smartphone,
-  Landmark,
   TriangleAlert,
-  Lock,
   ArrowRight,
 } from "lucide-react";
 
@@ -125,6 +126,9 @@ export const ICONS = {
   coins: Coins,
   shield: Shield,
   "shield-check": ShieldCheck,
+  lock: Lock,
+  "lock-open": LockOpen,
+  landmark: Landmark,
   "credit-card": CreditCard,
   paperclip: Paperclip,
   archive: Archive,
@@ -140,14 +144,12 @@ export const ICONS = {
   briefcase: Briefcase,
   "arrow-right": ArrowRight,
   "building-2": Building2,
-  // Verifica fiscale e d'identità (docs/CHANGELOG.md §246).
+  // Verifica fiscale e d'identità (docs/CHANGELOG.md §253).
   "id-card": IdCard,
   "scan-face": ScanFace,
   sun: Sun,
   smartphone: Smartphone,
-  landmark: Landmark,
   "triangle-alert": TriangleAlert,
-  lock: Lock,
 } as const;
 
 export type IconName = keyof typeof ICONS;

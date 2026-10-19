@@ -339,7 +339,7 @@ model ProfessionalProfile {
   feeRules               PlatformFeeRule[]
   revenueEntries         ManoviaRevenue[]
   dac7Records            Dac7Record[]
-  // Verifica di documento e selfie (Didit, docs/CHANGELOG.md §246): un tentativo per riga.
+  // Verifica di documento e selfie (Didit, docs/CHANGELOG.md §253): un tentativo per riga.
   identityVerifications  IdentityVerification[]
 
   @@index([categoryId, city])
@@ -1042,6 +1042,11 @@ model Booking {
   // Quando il professionista ha segnato il lavoro come terminato: parte da
   // qui la finestra per segnalare un lavoro fatto male (docs/CHANGELOG.md §164).
   professionalCompletedAt         DateTime?
+  // Dichiarazione del professionista sull'importo a "lavoro terminato"
+  // (DAC7, docs/CHANGELOG.md §246): data e versione del testo accettato,
+  // testo diverso per privato e partita IVA (`completionDeclaration`).
+  completionDeclarationAcceptedAt DateTime?
+  completionDeclarationVersion    String?
   // Conferma del cliente che il lavoro è davvero terminato dal suo lato —
   // richiesta esplicita dell'utente ("servono i completed da entrambi").
   // Indipendente da `status` (che resta COMPLETED solo grazie
@@ -1599,19 +1604,23 @@ model ProfessionalFiscalProfile {
   fiscalDataCompleteAt DateTime?
 
   // --- Stripe Connect (onboarding per i pagamenti MANOVIA-mediati) ---
-  stripeConnectAccountId   String? @unique
-  stripeChargesEnabled     Boolean @default(false)
-  stripePayoutsEnabled     Boolean @default(false)
+  stripeConnectAccountId   String?   @unique
+  stripeChargesEnabled     Boolean   @default(false)
+  stripePayoutsEnabled     Boolean   @default(false)
   stripeRequirementsStatus String? // riassunto testuale dei requisiti mancanti restituiti da Stripe
+  // Bonifici verso la banca impostati in manuale su Stripe (docs/CHANGELOG.md §249):
+  // i soldi dei lavori restano bloccati sul suo conto Stripe fino allo sblocco.
+  stripeManualPayoutsAt    DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  professionalProfile ProfessionalProfile   @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+  professionalProfile ProfessionalProfile        @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
   representative      FiscalRepresentative?
   // Controllo di codice fiscale e partita IVA all'Agenzia delle Entrate e al
-  // Registro Imprese (Openapi, docs/CHANGELOG.md §246).
+  // Registro Imprese (Openapi, docs/CHANGELOG.md §253).
   taxIdChecks         TaxIdCheck[]
+  payoutAccount       ProfessionalPayoutAccount?
 
   @@map("professional_fiscal_profiles")
 }
@@ -1635,7 +1644,7 @@ model FiscalRepresentative {
   @@map("fiscal_representatives")
 }
 
-// --- Verifica fiscale e d'identità (docs/CHANGELOG.md §246) -----------------
+// --- Verifica fiscale e d'identità (docs/CHANGELOG.md §253) -----------------
 // Decisioni dell'utente del 14/10/2026: profilo pubblico dopo i dati fiscali
 // e il controllo con Openapi; documento e selfie (Didit) obbligatori prima di
 // inviare preventivi; Didit al posto della verifica manuale, l'admin guarda
@@ -1717,6 +1726,30 @@ model IdentityVerification {
   @@map("identity_verifications")
 }
 
+// IBAN del conto su cui il professionista riceve i pagamenti online
+// (DAC7, docs/CHANGELOG.md §246): chiesto solo a chi attiva i pagamenti
+// online. Tabella a parte perché non finisca per sbaglio nelle risposte che
+// leggono i dati fiscali: l'IBAN intero è solo cifrato (AES-256-GCM, chiave
+// `FISCAL_DATA_KEY`) e si legge in chiaro solo per il file DAC7.
+model ProfessionalPayoutAccount {
+  id              String    @id @default(uuid())
+  fiscalProfileId String    @unique
+  ibanEncrypted   String
+  ibanCountry     String
+  ibanLast4       String
+  holderName      String
+  // Confronto con il conto indicato a Stripe (paese e ultime 4 cifre):
+  // MATCH, MISMATCH o UNAVAILABLE (Stripe non risponde o non ha ancora il conto).
+  stripeCheck     String?
+  stripeCheckedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  fiscalProfile ProfessionalFiscalProfile @relation(fields: [fiscalProfileId], references: [id], onDelete: Cascade)
+
+  @@map("professional_payout_accounts")
+}
+
 enum JobPaymentMethod {
   MANOVIA // Pagamento mediato dalla piattaforma (Stripe Connect, commissione trattenuta automaticamente)
   DIRECT // Pagamento diretto fuori piattaforma — commissione zero, ma il lavoro resta comunque tracciato (mai eliminato)
@@ -1789,6 +1822,27 @@ model JobPayment {
   stripeDisputeId        String?   @unique
   stripeDisputeStatus    String?
   stripeDisputedAt       DateTime?
+
+  // --- Soldi bloccati sul conto Stripe del professionista (docs/CHANGELOG.md §249) ---
+  // Acconto e saldo addebitati "a destinazione" sul conto del professionista
+  // (`stripeDestinationAccountId`; null = vecchio modello, soldi in custodia
+  // sulla piattaforma e trasferimento allo sblocco). La piattaforma trattiene
+  // commissione e costo della carta come application fee
+  // (`applicationFeeEurCents`, quanto ne tiene ancora: il conguaglio si
+  // restituisce al professionista). I bonifici verso la sua banca sono
+  // manuali: partono solo allo sblocco (`payoutPendingEurCents` finché i
+  // soldi non sono disponibili su Stripe, poi `payoutSentEurCents`).
+  stripeDestinationAccountId String?
+  applicationFeeEurCents     Int       @default(0)
+  payoutPendingEurCents      Int       @default(0)
+  payoutSentEurCents         Int       @default(0)
+  stripePayoutId             String?
+  payoutSentAt               DateTime?
+  payoutPaidAt               DateTime?
+  payoutFailedAt             DateTime?
+  payoutFailureMessage       String?
+  /// Avviso al team Finanza: soldi bloccati da più di 80 giorni (Stripe li paga comunque dopo 90, docs/CHANGELOG.md §249).
+  longHoldAlertedAt          DateTime?
 
   // --- DIRECT (auto-dichiarazione + conferma cliente) ---
   directReportedAt   DateTime?
@@ -1887,16 +1941,19 @@ enum Dac7ReportingStatus {
 // incrementa ad ogni correzione dopo un SUBMITTED/REJECTED — mai
 // sovrascritto in place (richiesta esplicita della specifica).
 model Dac7ReportingPeriod {
-  id            String              @id @default(uuid())
-  year          Int
-  quarter       Int? // 1-4, null = aggregato annuale
-  status        Dac7ReportingStatus @default(OPEN)
-  reportVersion Int                 @default(1)
-  generatedAt   DateTime?
-  submittedAt   DateTime?
-  exportFileUrl String?
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
+  id                String              @id @default(uuid())
+  year              Int
+  quarter           Int? // 1-4, null = aggregato annuale
+  status            Dac7ReportingStatus @default(OPEN)
+  reportVersion     Int                 @default(1)
+  generatedAt       DateTime?
+  submittedAt       DateTime?
+  exportFileUrl     String?
+  // Importi cambiati dopo l'invio (rimborso, lavoro riaperto): da correggere
+  // (docs/CHANGELOG.md §247). Si azzera con la correzione.
+  needsCorrectionAt DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
 
   records Dac7Record[]
 
@@ -1912,15 +1969,20 @@ model Dac7ReportingPeriod {
 // prima dell'invio — mai bloccare la sola raccolta dati per un dato
 // fiscale incompleto.
 model Dac7Record {
-  id                    String   @id @default(uuid())
-  reportingPeriodId     String
-  professionalProfileId String
-  considerationEurCents Int      @default(0)
-  numberOfTransactions  Int      @default(0)
-  feesWithheldEurCents  Int      @default(0)
-  missingFiscalData     Boolean  @default(false)
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                          String    @id @default(uuid())
+  reportingPeriodId           String
+  professionalProfileId       String
+  considerationEurCents       Int       @default(0)
+  numberOfTransactions        Int       @default(0)
+  feesWithheldEurCents        Int       @default(0)
+  // Di cui pagati direttamente al professionista e online (docs/CHANGELOG.md §246).
+  directConsiderationEurCents Int       @default(0)
+  onlineConsiderationEurCents Int       @default(0)
+  missingFiscalData           Boolean   @default(false)
+  // Avviso annuale al professionista con i dati comunicati (solo sulle righe dell'anno).
+  sellerNotifiedAt            DateTime?
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
 
   reportingPeriod     Dac7ReportingPeriod @relation(fields: [reportingPeriodId], references: [id], onDelete: Cascade)
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)

@@ -18804,7 +18804,344 @@ impronta salvata, scambio con un link nuovo, stesso errore in tutti i casi).
 Provato nel browser da telefono e computer: richiesta, codice sbagliato,
 codice giusto, nuova password, accesso con la nuova password.
 
-## 246. Verifica fiscale e d'identità dei professionisti (Openapi + Didit)
+## 250. Durata del codice accanto al conto alla rovescia
+
+**Richiesta esplicita dell'utente** (15/10/2026): "1 minuto sembra troppo poco
+per validare la mail, facciamoli 2 minuti". Il minuto era solo l'attesa prima
+di poter chiedere un nuovo codice (il codice vale 15 minuti), ma la schermata
+non lo diceva e il conto alla rovescia sembrava una scadenza.
+
+**Decisione:** proposta all'utente con una scheda: si resta a 60 secondi di
+attesa (allungarla fa aspettare di più chi non riceve l'email) e
+`EmailCodeForm` mostra sopra il conto alla rovescia "Il codice vale ancora N
+minuti." (dalla validità vera, `emailCodeValidForSeconds`), con il conto alla
+rovescia riscritto in "Non arriva? Puoi chiederne un altro tra 0:57".
+
+**Verifica:** tipi e lint; schermata del codice provata nel browser da
+telefono e computer.
+
+## 251. Correzione dell'email: il codice compare sull'indirizzo nuovo
+
+**Segnalazione di Luca** (19/10/2026): dopo "Email sbagliata? Correggila" e
+l'indirizzo giusto, il popup successivo mostrava ancora quello vecchio. Il
+server mandava il codice a quello nuovo, ma la schermata di registrazione
+conservava l'indirizzo di partenza.
+
+**Correzione:** `EmailCodeForm` passa il nuovo indirizzo a `onEmailChanged`, e
+la registrazione lo salva nello stato del passo del codice. Gli altri punti
+d'uso (conferma in `/conferma-email`, riquadro cliente) leggono già l'account
+aggiornato.
+
+**Verifica:** typecheck ed eslint puliti; da provare nel browser sul
+registrati dopo la correzione.
+## 246. DAC7: dichiarazione a "lavoro terminato", diretti e online, IBAN, avviso annuale
+
+**Richiesta esplicita dell'utente** (14/10/2026, thread "Verifica
+professionisti e DAC7", piano in
+`/mnt/project-files/analisi/verifica-professionisti-dac7-piano.md`): fase 6
+del flusso (dichiarazione sull'importo, diretti separati dagli online per
+trimestre), IBAN solo per chi incassa online (decisione D4), avviso annuale.
+Il cliente non conferma l'importo dei lavori pagati in diretto.
+
+**Decisioni**:
+- "Lavoro terminato" chiede una spunta obbligatoria con il totale scritto
+  dentro: "Dichiaro sotto la mia esclusiva responsabilità che l'importo
+  indicato corrisponde a quanto effettivamente percepito, o da percepire...".
+  Privato: "ricevuta per prestazione occasionale"; partita IVA e azienda:
+  "fattura o altro documento fiscale"; senza dati fiscali il testo originale.
+  Salvate data e versione (`Booking.completionDeclarationAcceptedAt/Version`,
+  `completionDeclaration` in `packages/shared/src/dac7.ts`); il server
+  rifiuta una versione diversa da quella del tipo fiscale.
+- DAC7 (`dac7Entries`): il diretto conta quando il professionista dichiara
+  l'importo (prima solo dopo la conferma del cliente), l'online quando i
+  soldi passano al professionista, l'acconto online con saldo diretto si
+  divide nelle due parti (prima il saldo diretto mancava). Il trimestre si
+  decide da queste date, non più dall'ultima modifica del pagamento. Nuove
+  colonne `Dac7Record.directConsiderationEurCents`/`onlineConsiderationEurCents`;
+  chi non ha più importi torna a zero; l'export annuale ricalcola prima i
+  trimestri (il giro notturno lasciava fuori l'ultimo giorno di ognuno);
+  `missingFiscalData` guarda i dati compilati, non più la verifica manuale.
+  Nel file: commissioni per trimestre (`Fees`) e IBAN (`FinancialIdentifier`),
+  tag da verificare sul tracciato ufficiale come il ramo Entity.
+- IBAN (`ProfessionalPayoutAccount`, tabella a parte): chiesto in Dati
+  fiscali e pagamenti solo a chi ha avviato i pagamenti online, controllo
+  mod-97 e lunghezza del paese, salvato cifrato (AES-256-GCM, chiave
+  `FISCAL_DATA_KEY` su Render, ricade su `JWT_SECRET`), mostrato solo
+  mascherato, confrontato con paese e ultime 4 cifre del conto su Stripe
+  (`readStripeBankAccounts`, ricontrollato all'apertura della pagina). Un
+  esito diverso non blocca i pagamenti: lo segnala.
+- Avviso annuale: "Segna come inviato" sull'anno manda a ogni professionista
+  `DAC7_ANNUAL_NOTICE` (sito ed email, "Account e sicurezza", non si spegne),
+  rimandabile dall'admin dopo una correzione. Pagina
+  `/dashboard/fiscale/dac7` con i trimestri, diretti e online, commissioni,
+  stato dell'invio e IBAN comunicato.
+
+Da far vedere al commercialista: testo della dichiarazione; IBAN intero o
+ultime 4 cifre.
+
+**Verifica**: `dac7/dac7-entries.test.ts` (date e parti DAC7, IBAN,
+confronto con Stripe, testi, cifratura). Prova in locale su database vero:
+dichiarazione mancante o di versione sbagliata rifiutata, lavoro chiuso con
+versione salvata, IBAN sbagliato rifiutato e giusto salvato cifrato, export
+annuale con diretti/online/commissioni/IBAN, avviso partito a "Segna come
+inviato". Test, tipi e lint di `apps/api` e `apps/web` verdi.
+
+## 247. DAC7: testi ridotti al minimo e quattro migliorie
+
+**Richiesta di Luca (15/10/2026)**: la dichiarazione a "lavoro terminato" è
+troppo lunga e aggressiva; basta accettarla premendo "Conferma", con una frase
+semplice e un "Scopri di più" per il testo completo. Anche le altre
+spiegazioni vanno ridotte al minimo (i termini sono già stati accettati). Poi
+fare le quattro migliorie proposte.
+
+**Testi**:
+- "Lavoro terminato": niente più casella da spuntare. Sopra il pulsante una
+  riga ("Confermando dichiari che 120,00 € è l'importo che ricevi per questo
+  lavoro. Scopri di più"); il testo completo (invariato, stessa versione) si
+  apre sotto. Premere "Conferma" vale come accettazione, salvata con data e
+  versione come prima.
+- Nuovo `apps/web/src/components/LearnMore.tsx` ("Scopri di più" che apre il
+  dettaglio sul posto), usato anche da IBAN e Riepilogo DAC7.
+- IBAN, Riepilogo DAC7, email e notifica dell'avviso annuale, testo admin:
+  una riga ciascuno, il resto dietro "Scopri di più" o tolto.
+
+**Migliorie**:
+1. Rimborsi dopo l'accredito: `dac7Entries` conta l'online al netto attuale
+   (ridotto dal rimborso, PR #76 decrementa `netAmountEurCents`), nel
+   trimestre dell'accredito; online rimborsato del tutto = nessun importo
+   online, resta l'eventuale saldo diretto. Ogni notte (2:00)
+   `checkSubmittedYears` confronta gli anni già comunicati con i dati di oggi:
+   se cambiano, l'anno è segnato "Da correggere" (`needsCorrectionAt`,
+   migrazione `20261015100000_dac7_needs_correction`) e la Finanza riceve
+   `ADMIN_DAC7_NEEDS_CORRECTION`. "Correggi" sull'anno ricalcola anche i
+   trimestri; il nuovo "Segna come inviato" rimanda l'avviso a tutti come
+   "dati corretti".
+2. IBAN ricontrollato con Stripe al webhook `account.updated`
+   (`PayoutAccountService.recheckForStripeAccount`); se diventa diverso, il
+   professionista riceve `PAYOUT_IBAN_MISMATCH`.
+3. Admin Finanza: nel dettaglio di un periodo nome del professionista, "dati
+   fiscali mancanti" e "IBAN mancante"; il dettaglio non restituisce più
+   tutti i dati fiscali (`getPeriodForAdmin`).
+4. Promemoria del 1° novembre (`sendYearEndReminders`, `DAC7_DATA_REMINDER`)
+   a chi ha compensi nell'anno ma senza dati fiscali o senza IBAN dei
+   pagamenti online.
+
+**Verifica**: test API (357), tipi di api e web; in locale su database vero:
+rimborso simulato dopo l'invio → anno segnato e Finanza avvisata una volta,
+correzione → versione 2 e segno tolto, dettaglio admin con nome, promemoria a
+un professionista senza dati fiscali.
+
+## 248. Registrazione: caselle mancanti in rosso, categoria principale dorata
+
+**Richiesta esplicita dell'utente** (15/10/2026): "se clicca su registrati
+senza aver spuntato le due caselle illuminagliele di rosso in modo che
+capisce che deve selezionarle, poi la prima categoria che seleziona rendiamola
+più speciale, ad esempio con un bordo che si illumina dorato animato".
+
+**Decisioni e modifiche:**
+- "Registrati" del professionista non è più disattivato finché non si
+  spuntano privacy/termini e maggiore età: premendolo senza spunte le caselle
+  mancanti diventano rosse (bordo e sfondo `urgenza`/`urgenzaVelo`) con una
+  breve scossa, la pagina scorre fino alla prima mancante e sotto compare
+  "Spunta le due caselle per continuare." (o "Spunta anche questa casella"
+  se ne manca una). Spuntandola il rosso sparisce subito. Prima il pulsante
+  era solo sbiadito e non si capiva perché non rispondeva.
+- `ConsentCheckbox` ha le prop `invalid` e `id` (usate solo in
+  registrazione; `/completa-profilo` ha lo stesso componente, invariato
+  nel comportamento).
+- `CategoryMultiPicker`: la categoria principale (la prima scelta) ha un
+  bordo dorato di 2px con un riflesso che gira piano e un alone leggero
+  (`.category-chip-primary` in `globals.css`, `@property --gold-angle`),
+  testo e stellina in `brand.ottoneScuro` (nuovo token, `#8A5A00`, leggibile
+  sul chiaro). Anche "Principale:" sotto le scelte è dorato. Togliendo la
+  principale, l'oro passa alla successiva. Vale ovunque si usa il componente
+  (registrazione, `/dashboard/profilo`, `/admin/professionisti`), per
+  coerenza. Con "riduci movimento" il bordo resta dorato ma fermo.
+- Al conteggio "Scegline fino a 3" si aggiunge "La prima è la principale.".
+
+**Verifica:** typecheck ed eslint puliti; build di produzione e foto con
+Playwright a 390px e 1280px (bordo che gira, caselle rosse con una o due
+mancanti, oro che passa alla successiva togliendo la prima).
+
+**Migliorie approvate dall'utente** (19/10/2026, "effettua le 2 migliorie"):
+lo stesso comportamento delle caselle rosse anche in `/completa-profilo`
+(link d'invito dell'operatore, pulsante "Scegli la password ed entra") e nel
+popup del consenso dopo l'accesso con Google (`GoogleConsentModal`, che ora
+usa il `ConsentCheckbox` condiviso invece di una sua copia). Provati con
+Playwright a 390px e 1280px.
+
+## 249. Soldi dei pagamenti online bloccati sul conto Stripe del professionista
+
+**Richiesta esplicita dell'utente** (14/10/2026, thread "Verifica
+professionisti e DAC7"): "Scelgo di bloccare i soldi dal Professionista" (opzione B
+del piano `analisi/verifica-professionisti-dac7-piano.md` §6): i soldi
+pagati online non devono restare in custodia sul conto della piattaforma.
+Prima del lancio si passerà a un account Stripe vero; sviluppo e prove
+sull'ambiente di prova.
+
+**Decisione**:
+- Acconto e saldo si addebitano "a destinazione" sul conto Stripe del
+  professionista (destination charges: `transfer_data.destination`), con
+  la trattenuta della piattaforma come application fee: commissione del 5%
+  più il costo massimo della carta (3,25% + €0,25,
+  `onlineApplicationFeeHoldEurCents`), perché il costo reale si conosce
+  solo dopo il pagamento. Appena Stripe lo dà, la differenza torna al
+  professionista (rimborso dell'application fee); allo sblocco si fa il
+  conguaglio con la commissione sull'importo finale.
+- Prima del primo pagamento il sito mette in manuale i bonifici del conto
+  del professionista verso la sua banca (`balanceSettings`,
+  `stripeManualPayoutsAt`). Se non ci riesce, o il conto non può ricevere
+  soldi, il pagamento non parte: meglio un errore chiaro che soldi non
+  bloccati.
+- Sblocco come prima (conferma del cliente, o 7 giorni dalla chiusura,
+  niente segnalazioni o contestazioni aperte): niente più trasferimento,
+  parte il bonifico (`payouts.create` sul conto del professionista). Il
+  bonifico parte solo se sul conto ci sono soldi disponibili senza toccare
+  quelli ancora bloccati per altri lavori; altrimenti si riprova ogni ora
+  (`payoutPendingEurCents`). Esito dal webhook Connect `payout.paid` /
+  `payout.failed` / `payout.canceled`: se la banca rifiuta, i soldi tornano
+  sul conto Stripe, il professionista riceve `JOB_PAYOUT_FAILED` e si
+  riprova ogni giorno o appena aggiorna il conto (`account.updated`).
+- Rimborsi prima dello sblocco ripresi dal suo conto (`reverse_transfer`);
+  la trattenuta che supera quanto resta pagato torna al professionista, così
+  il suo conto non va mai in negativo (con un rimborso totale il costo della
+  carta resta a carico della piattaforma, come prima). Dopo lo sblocco si
+  riprende al massimo quanto ricevuto. Contestazione in banca persa con i
+  soldi ancora bloccati: la cifra si riprende dal suo conto.
+- I pagamenti registrati prima di questa modifica
+  (`stripeDestinationAccountId` vuoto) restano sul vecchio modello fino
+  alla fine, saldo compreso.
+- Stato del pagamento rifatto per cliente e professionista
+  (`JobPaymentStatus`): titolo con lo stato, passaggi Pagato → Bloccato →
+  Sbloccato (→ In banca per il professionista), importi in colonna, una sola
+  azione (pagare, o "Controlla i dati bancari" se il bonifico non riesce).
+  Testi aggiornati in Termini (punto 5), email, avvisi, pagina pagamenti per
+  i professionisti e Dati fiscali e pagamenti.
+
+**Limite**: per le regole di Stripe i soldi non restano bloccati oltre 90
+giorni dal pagamento (un acconto versato mesi prima del lavoro passa al
+professionista anche senza conferma); scritto nei Termini. Se una regola di
+commissione in admin supera il 5% + costo carta, la differenza resta a
+carico della piattaforma (scritto nei log).
+
+**Verifica**: `job-payments/destination-charges.test.ts` (trattenuta,
+bonifici manuali prima del primo pagamento, conguaglio della carta, bonifico
+una volta sola e mai con i soldi bloccati di altri lavori, bonifico
+rifiutato, sblocco con conguaglio, rimborso totale), webhook dei bonifici in
+`billing-webhook.test.ts`; i test del vecchio modello restano verdi.
+
+**Seguito (15/10/2026, richieste dell'utente)**:
+- *Scritte al minimo*: "la dichiarazione [...] è troppo lunga ed aggressiva
+  [...] controlla tutte le diciture e rendile al minimo indispensabile",
+  "con una frase semplice con un tasto a fianco con scritto 'scopri di più'".
+  Ogni stato del pagamento ha una frase sola più "Scopri di più" (cliente →
+  `/termini#pagamenti`, nuova ancora di `LegalPage`; professionista →
+  `/per-professionisti/pagamenti`); tolta la frase sulla sospensione
+  dell'account dal saldo non pagato e il messaggio tecnico di Stripe dal
+  bonifico non riuscito; scelta del pagamento, Dati fiscali, email e avvisi
+  accorciati. Termini e pagina pagamenti restano completi: sono il "Scopri
+  di più".
+- *Migliorie approvate* ("effettua le 3 migliorie tranne l'ultima"):
+  avviso al team Finanza per un pagamento ancora bloccato 80 giorni dopo il
+  primo pagamento (`ADMIN_JOB_PAYMENT_LONG_HOLD`, una volta sola,
+  `JobPayment.longHoldAlertedAt`, migrazione
+  `20261015090000_job_payments_long_hold_alert`), perché dopo 90 Stripe paga
+  comunque; riepilogo "Bloccati / Sbloccati / In arrivo in banca / Arrivati
+  in banca" in Dati fiscali e pagamenti (`PayoutSummary`,
+  `GET /professionals/me/online-payments/summary`, compare solo con
+  pagamenti online); bonifico subito al webhook Connect `balance.available`
+  invece che al giro orario (solo i bonifici in attesa, non quelli
+  rifiutati dalla banca, che aspettano i dati bancari corretti). Scartata
+  dall'utente la commissione minima per i lavori piccoli.
+- *Verifica*: test di avviso (una volta sola), nuovo tentativo con
+  `skipFailed`, webhook `balance.available` e totali per stato.
+- *Riquadro pagamenti in Dati fiscali* (richiesta dell'utente: "il riquadro
+  'pagamenti tramite professionisti' appesantisce [...] lasciargli un banner
+  con una scritta semplice del tipo 'attiva i pagamenti online'"): finché i
+  pagamenti non sono attivi è un banner con una frase ("Fatti pagare un
+  acconto online prima ancora di iniziare il lavoro."), "Scopri di più" e un
+  pulsante; dopo l'attivazione mostra "Attivi", i totali dei bonifici e
+  "Apri il conto Stripe" (`OnlinePaymentsCard`, con `children` per quanto
+  serve solo a pagamenti attivi, es. il conto bancario dei bonifici).
+- *Conto bancario cambiato su Stripe*: i webhook Connect
+  `account.external_account.created/updated` rileggono lo stato del conto
+  del professionista e riprovano i bonifici in sospeso (serve anche al
+  ricontrollo dell'IBAN del thread DAC7).
+
+## 250. IBAN come primo passo di "Attiva i pagamenti online"
+
+- *Richiesta dell'utente* (thread Stripe, 15/10/2026): "non è un'unica
+  procedura l'attivazione dei pagamenti online che porta alla registrazione
+  del conto Stripe? non possiamo unificare le due voci?", poi "Tenerlo, ma
+  dentro 'Attiva': un solo passo con l'IBAN scritto prima di andare su
+  Stripe". Rimandato all'unione di §249 (`OnlinePaymentsCard`).
+- *Decisione*: in Dati fiscali e pagamenti non c'è più un riquadro IBAN a
+  parte. "Attiva" apre, dentro lo stesso banner, il modulo "Il conto su cui
+  ricevi i pagamenti" (IBAN e titolare, "Scopri di più" sul perché);
+  "Continua su Stripe" salva l'IBAN e porta subito su Stripe. Chi ha già
+  l'IBAN va dritto su Stripe; se Stripe non risponde il passo si chiude e
+  "Attiva" riprova senza richiederlo. A pagamenti attivi l'IBAN resta
+  dentro il riquadro "Pagamenti online" (mascherato, "Cambia IBAN",
+  confronto con Stripe); chi li aveva attivati prima senza IBAN lo trova lì
+  da compilare.
+- *Server*: `PUT /professionals/me/payout-iban` non chiede più l'account
+  Stripe (crea il profilo fiscale se manca, come fa l'attivazione); il
+  confronto con Stripe resta "Da confrontare" finché il conto non c'è, poi
+  si aggiorna col ricontrollo di §247 e i webhook del conto di §249.
+- *Domanda per il commercialista*: se per la DAC7 basta il dato di Stripe,
+  il passo si toglie (domanda 1 di
+  `analisi/domande-commercialista-avvocato.md`).
+- *Verifica*: in locale, banner → "Attiva" → modulo → "Continua su Stripe"
+  salva l'IBAN (cifrato, `UNAVAILABLE`) e chiama l'attivazione Stripe;
+  riquadro a pagamenti attivi con l'IBAN mascherato, telefono e computer.
+- *Migliorie* ("effettua le due migliorie"): "Annulla" accanto a
+  "Continua su Stripe" anche sul telefono. Mandare l'IBAN anche a Stripe,
+  per non farlo riscrivere, non è possibile: Stripe lascia creare o cambiare
+  il conto bancario dalla piattaforma solo per account senza Dashboard
+  Express (docs.stripe.com/connect/payouts-bank-accounts), e i nostri la
+  usano per "Apri il conto Stripe". Il testo del passo lo dice già ("Poi
+  completi l'attivazione su Stripe, con lo stesso conto").
+
+## 252. "Profilo e visibilità" si apre sull'anteprima; pacchetti di visibilità in fondo a "Oggi"
+
+**Richiesta dell'utente:** togliere la scheda "Aumenta la tua visibilità"
+da "Profilo e visibilità" e metterla in fondo alla pagina Oggi, lasciando
+solo "Boost locale" e "Storia di successo", più belle da vedere. Aprendo
+"Profilo e visibilità" si vede prima un'anteprima di come i clienti vedono
+il profilo, senza poter modificare; "Modifica profilo" apre il modulo di
+sempre.
+
+**Decisione:**
+- `BoostSection` in fondo a `/dashboard`: due schede (verde per il Boost,
+  oro per la Storia) con icona, una riga di descrizione, due vantaggi e il
+  prezzo; stato "In arrivo" come prima (acquisti non attivi). Tolto il
+  "Badge reputazione".
+- `/dashboard/profilo` parte dall'anteprima quando il profilo esiste ed è
+  confermato: stato "Visibile ai clienti" (o perché non lo è, con il link
+  per rimediare), badge Verificato e la pagina pubblica vera
+  (`ProfessionalDetailContent` con `preview`: niente salva/condividi/
+  segnala, orari e "Richiedi un preventivo" non cliccabili, visita non
+  contata). "Modifica profilo" apre il modulo; "Torna all'anteprima" con
+  modifiche non salvate chiede se salvarle; dopo il salvataggio si torna
+  all'anteprima aggiornata invece che alla Home. Senza profilo, o con un
+  profilo da confermare, si parte dal modulo come prima.
+- API `GET /professionals/me/preview`: gli stessi dati della pagina
+  pubblica anche se il profilo non è ancora pubblico, con il motivo
+  (`PUBLIC`, `FISCAL_DATA_MISSING`, `NOT_CONFIRMED`, `SUSPENDED`).
+
+**Verifica:** `tsc` su api e web, `next build`; Playwright a 390px e 1366px
+(anteprima, modulo, Oggi) con un'API finta.
+
+**Migliorie approvate dall'utente (stessa PR):**
+- Il riquadro "Il tuo profilo è verificato" sopra l'anteprima diventa un
+  badge accanto allo stato: "Verificato", "Verifica richiesta" oppure il
+  pulsante "Richiedi il badge Verificato".
+- Pagina del profilo (pubblica e anteprima): su telefono il nome va sotto
+  la foto invece di restare in una colonna stretta accanto.
+- Voce di menu e titolo: "Profilo e visibilità" diventa "Profilo
+  pubblico" (i pacchetti di visibilità ora stanno in "Oggi").
+
+## 253. Verifica fiscale e d'identità dei professionisti (Openapi + Didit)
 
 **Richiesta esplicita dell'utente** (14/10/2026): implementare il flusso in
 7 fasi discusso con un'altra IA (registrazione, codice email, dati fiscali,
@@ -18852,9 +19189,9 @@ webhook, abbinamento documento-dati fiscali, blocco preventivi, filtro di
 visibilità), tipi e lint di `apps/api` e `apps/web` verdi; schermate da
 telefono e computer in `/mnt/project-files/anteprime/verifica-identita/`.
 
-## 247. Partita IVA prima con VIES, testi più leggeri, "Ricontrolla ora"
+## 254. Partita IVA prima con VIES, testi più leggeri, "Ricontrolla ora"
 
-**Richiesta esplicita dell'utente** (15/10/2026), sulla PR di §246: "aggiungi
+**Richiesta esplicita dell'utente** (15/10/2026), sulla PR di §253: "aggiungi
 prima il controllo vies, e se lento o non risp o da negativo facciamo
 controllo subito con openapi"; non usare "controllo all'Agenzia delle
 Entrate" nella verifica perché "potrebbe intimorire"; fare le migliorie 2
@@ -18881,7 +19218,7 @@ negativa o giù (Openapi chiamato), CF sempre a Openapi e lettura della
 risposta VIES; risposta reale di VIES
 controllata. Tipi, lint e test di `apps/api` e `apps/web` verdi.
 
-## 248. Nessun caso dubbio all'admin; niente Openapi sul legale rappresentante
+## 255. Nessun caso dubbio all'admin; niente Openapi sul legale rappresentante
 
 **Richiesta esplicita dell'utente** (15/10/2026): "non voglio che l'admin
 controlli i casi dubbi, se non passa con i controlli automatici [...]
@@ -18904,14 +19241,14 @@ controlli gratuiti, senza Openapi.
   all'admin.
 - Codice fiscale del legale rappresentante: solo forma e coerenza con nome e
   cognome (gratis); la persona la conferma il documento. Tolti il tipo
-  `REPRESENTATIVE_CODICE_FISCALE` e la sua migrazione di §247, mai applicata
+  `REPRESENTATIVE_CODICE_FISCALE` e la sua migrazione di §254, mai applicata
   (PR non ancora unita).
 
 **Verifica**: test aggiornati (documento che non coincide → da rifare con
 avviso; "In Review" → da rifare; CF del rappresentante non va a Openapi).
 Tipi, lint e test di tutto il monorepo verdi.
 
-## 249. Verifica in attesa se il servizio non risponde; promemoria a chi non l'ha fatta
+## 256. Verifica in attesa se il servizio non risponde; promemoria a chi non l'ha fatta
 
 **Richiesta esplicita dell'utente** (15/10/2026): "se didit non funziona lo
 mettiamo in standby fino a che non viene elaborato il documento e verrà
@@ -18941,7 +19278,7 @@ non ha ancora fatto la verifica dopo qualche giorno.
 con avviso, nessun tentativo in più riprovando a mano; regole del
 promemoria). Tipi, lint e test di tutto il monorepo.
 
-## 250. Un token Openapi per servizio
+## 257. Un token Openapi per servizio
 
 **Richiesta esplicita dell'utente** (19/10/2026, configurazione su Render):
 nella console Openapi i token si creano uno per servizio (uno per il codice
@@ -18953,3 +19290,13 @@ Se manca quello di un servizio, il controllo di quel servizio è saltato e non
 blocca nulla, come prima.
 
 **Verifica**: test del provider Openapi e typecheck dell'API verdi.
+
+## 258. Unione con la base aggiornata: profilo e fiscale
+
+**Richiesta esplicita dell'utente** (19/10/2026): "unisci", ma la PR era in conflitto con la base dopo le ultime modifiche a profilo, DAC7 e IBAN.
+
+**Decisione presa**: la base ha vinto sul profilo (`applyProfile`, badge "Verificato" accanto allo stato, menu "Profilo pubblico"). Il bottone "Richiedi il badge Verificato" è stato tolto: con Didit la verifica la fa il professionista da solo, quindi al suo posto c'è un link a "Verifica la tua identità". L'endpoint `/professionals/me/verification-request` resta sul server e da decidere se toglierlo.
+
+**Motivo**: la richiesta manuale contraddice "nessun admin sui casi dubbi" (§255).
+
+**Verifica**: migrazioni applicate da zero su PostgreSQL 16 senza differenze con lo schema; `prisma validate`, typecheck, lint e test dell'API verdi. Le icone `lock` e `landmark` erano definite due volte dopo l'unione e sono state tenute una sola volta.

@@ -1,5 +1,15 @@
 import type { JobIssueSummary } from "./jobIssues";
 import type { JobPaymentChoice, JobPaymentSummary } from "./onlinePayments";
+import type { ProfessionalDetail } from "./professionals";
+/**
+ * Anteprima del proprio profilo pubblico (docs/CHANGELOG.md §252): gli stessi
+ * dati della pagina pubblica e se i clienti la vedono già, o perché no.
+ */
+export type MyProfilePreview = {
+  profile: ProfessionalDetail;
+  visibility: "PUBLIC" | "FISCAL_DATA_MISSING" | "NOT_CONFIRMED" | "SUSPENDED";
+};
+
 /** Profilo professionista gestito dal titolare (creazione/modifica in dashboard). */
 export type MyProfessionalProfile = {
   id: string;
@@ -7,7 +17,7 @@ export type MyProfessionalProfile = {
   defaultPaymentOffer: { paymentOptions: JobPaymentChoice[]; depositPercent: number };
   /** Verifica su Stripe completata: può offrire l'acconto online e ha il badge (docs/CHANGELOG.md §241). */
   stripeVerified: boolean;
-  /** Deve ancora verificare l'identità (documento e selfie) prima di inviare preventivi (docs/CHANGELOG.md §246). */
+  /** Deve ancora verificare l'identità (documento e selfie) prima di inviare preventivi (docs/CHANGELOG.md §253). */
   identityVerificationNeeded: boolean;
   businessName: string;
   /** Categoria principale (la prima di `categorySlugs`). */

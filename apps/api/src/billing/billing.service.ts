@@ -463,8 +463,8 @@ export class BillingService {
 
       // Pagamento del lavoro (acconto o saldo, docs/CHANGELOG.md §168) —
       // distinto dai casi sopra, dove è il professionista che paga Manovia:
-      // qui il cliente paga il lavoro, i soldi restano in custodia e la
-      // commissione si trattiene trasferendo meno al professionista.
+      // qui il cliente paga il lavoro, i soldi restano bloccati sul conto
+      // Stripe del professionista e la commissione è la trattenuta (§249).
       if (metadata.kind === "quote_deposit") {
         await this.bookingsService.confirmQuoteDeposit(session);
       }
@@ -504,6 +504,28 @@ export class BillingService {
     if (event.type === "account.updated") {
       const account = event.data.object as Stripe.Account;
       await this.professionalFiscalService.refreshStripeConnectStatus(account.id);
+      // Dati bancari sistemati dopo un bonifico non riuscito: si riprova subito (§249).
+      await this.jobPaymentsService.retryPayoutsForAccount(account.id);
+    }
+
+    // Il professionista ha aggiunto o cambiato il conto bancario su Stripe
+    // (§249): si rilegge lo stato del conto e si riprovano i bonifici in sospeso.
+    if ((event.type === "account.external_account.created" || event.type === "account.external_account.updated") && event.account) {
+      await this.professionalFiscalService.refreshStripeConnectStatus(event.account);
+      await this.jobPaymentsService.retryPayoutsForAccount(event.account);
+    }
+
+    // Bonifico dal conto Stripe del professionista alla sua banca (docs/CHANGELOG.md
+    // §249): arriva dall'endpoint Connect, come `account.updated`.
+    if (event.type === "payout.paid" || event.type === "payout.failed" || event.type === "payout.canceled") {
+      await this.jobPaymentsService.handlePayoutEvent(event.data.object as Stripe.Payout);
+    }
+
+    // Soldi del professionista diventati disponibili su Stripe (docs/CHANGELOG.md
+    // §249): i bonifici già sbloccati partono subito invece che al giro orario.
+    // I bonifici non riusciti aspettano invece che sistemi i dati bancari.
+    if (event.type === "balance.available" && event.account) {
+      await this.jobPaymentsService.retryPayoutsForAccount(event.account, { skipFailed: true });
     }
 
     // Contestazione in banca (chargeback, docs/CHANGELOG.md §236).

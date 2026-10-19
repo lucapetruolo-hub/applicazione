@@ -14,6 +14,7 @@ import { CardButton } from "@/components/CardButton";
 import { SkeletonSummaryRow } from "@/components/Skeleton";
 import { SubscriptionPauseBanner } from "@/components/SubscriptionPauseBanner";
 import { IssueSanctionBanner } from "@/components/IssueSanctionBanner";
+import { BoostSection } from "@/components/BoostSection";
 
 /**
  * Home "Oggi" del professionista (docs/CHANGELOG.md §147, decisione esplicita
@@ -21,7 +22,7 @@ import { IssueSanctionBanner } from "@/components/IssueSanctionBanner";
  * richieste (quello vive in "Richieste e lavori"). In cima le richieste da
  * rispondere con la scadenza — in un mercato locale vince chi risponde per
  * primo (CLAUDE.md §8) — poi gli appuntamenti di oggi e domani, poi i propri
- * numeri rispetto alla zona. Modelli: Thumbtack Pro/Angi Pro per i lead,
+ * numeri rispetto alla zona, in fondo i pacchetti di visibilità. Modelli: Thumbtack Pro/Angi Pro per i lead,
  * Fresha/Treatwell per la giornata.
  */
 export default function DashboardTodayPage() {
@@ -216,6 +217,9 @@ export default function DashboardTodayPage() {
         </TodaySection>
 
         {insights ? <Suggestion insights={insights} /> : null}
+
+        {/* Pacchetti di visibilità in fondo alla pagina (docs/CHANGELOG.md §252). */}
+        <BoostSection />
       </YStack>
     </YStack>
   );
