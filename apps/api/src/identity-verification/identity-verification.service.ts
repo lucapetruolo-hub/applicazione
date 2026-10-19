@@ -13,6 +13,7 @@ import { AuditLogService } from "../audit-log/audit-log.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalVerificationService } from "../professional-verification/professional-verification.service";
 import { publicVisibilityMissing } from "../professional-fiscal/public-visibility";
+import { onlinePaymentsEnabled } from "../job-payments/online-payments-enabled";
 import { toTaxIdCheckView } from "../tax-id-check/tax-id-check.service";
 import { IdentityProviderError, type IdentityDecision, type IdentityProvider } from "./identity-provider";
 import { identityProviderFromEnv, identityVerificationNeeded } from "./identity-provider-env";
@@ -37,6 +38,23 @@ const REMINDER_FIRST_AFTER_DAYS = 3;
 const REMINDER_AGAIN_AFTER_DAYS = 7;
 const MAX_REMINDERS = 2;
 const DAY_MS = 24 * 60 * 60_000;
+/** Email "Completa il profilo": dal giorno dopo la creazione del profilo, finché ha meno di 3 giorni. */
+const SETUP_REMINDER_AFTER_DAYS = 1;
+const SETUP_REMINDER_UNTIL_DAYS = 3;
+
+export type ProfileSetupItem = "SEARCH" | "QUOTES" | "ONLINE_PAYMENTS";
+
+/**
+ * Cosa manca ancora, nello stesso ordine di "Completa il profilo" in Oggi
+ * (docs/CHANGELOG.md §260). I pagamenti online contano solo dove sono attivi.
+ */
+export function profileSetupMissing(status: Pick<MyVerificationStatus, "publicVisible" | "canSendQuotes">, stripeVerified: boolean, paymentsOn: boolean): ProfileSetupItem[] {
+  const missing: ProfileSetupItem[] = [];
+  if (!status.publicVisible) missing.push("SEARCH");
+  if (!status.canSendQuotes) missing.push("QUOTES");
+  if (paymentsOn && !stripeVerified) missing.push("ONLINE_PAYMENTS");
+  return missing;
+}
 
 export const isStandby = (row: Pick<IdentityVerification, "status" | "providerStatus" | "sessionUrl"> | null): boolean =>
   !!row && row.status === "STARTED" && row.providerStatus === STANDBY_PROVIDER_STATUS && !row.sessionUrl;
@@ -304,6 +322,35 @@ export class IdentityVerificationService {
       });
       if (!reminderDue({ profileCreatedAt: profile.createdAt, sent: sent.length, lastSentAt: sent[0]?.createdAt ?? null, now })) continue;
       await this.notificationsService.notify(profile.userId, "IDENTITY_VERIFICATION_REMINDER", {});
+    }
+  }
+
+  /**
+   * Email "Completa il profilo" il giorno dopo l'iscrizione (decisione
+   * dell'utente, docs/CHANGELOG.md §260): una volta sola e solo se manca
+   * ancora qualcosa. I profili più vecchi di 3 giorni non la ricevono.
+   */
+  @Cron("0 11 * * *", { timeZone: "Europe/Rome" })
+  async remindProfileSetup(now: Date = new Date()): Promise<void> {
+    const profiles = await this.prisma.professionalProfile.findMany({
+      where: {
+        isDemo: false,
+        deletedAt: null,
+        invitePendingAt: null,
+        suspendedAt: null,
+        user: { suspendedAt: null },
+        createdAt: { lte: new Date(now.getTime() - SETUP_REMINDER_AFTER_DAYS * DAY_MS), gt: new Date(now.getTime() - SETUP_REMINDER_UNTIL_DAYS * DAY_MS) },
+      },
+      select: { id: true, userId: true, isDemo: true, verified: true, fiscalProfile: { include: FISCAL_INCLUDE } },
+      take: 200,
+    });
+    for (const profile of profiles) {
+      const already = await this.prisma.notification.count({ where: { userId: profile.userId, type: "PROFILE_SETUP_REMINDER" } });
+      if (already > 0) continue;
+      const status = this.buildStatus(profile, await this.latest(profile.id));
+      const missing = profileSetupMissing(status, !!profile.fiscalProfile?.stripePayoutsEnabled, onlinePaymentsEnabled());
+      if (missing.length === 0) continue;
+      await this.notificationsService.notify(profile.userId, "PROFILE_SETUP_REMINDER", { missing });
     }
   }
 

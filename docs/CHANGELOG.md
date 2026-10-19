@@ -19315,3 +19315,13 @@ blocca nulla, come prima.
 **Nota**: oggi senza documento e selfie il profilo resta nelle ricerche, sono bloccati solo i preventivi (§253): le scritte dicono esattamente questo. Togliere dalla ricerca chi non ha fatto documento e selfie è da confermare con l'utente.
 
 **Verifica**: typecheck e lint del web verdi; schermate da telefono e computer in `/mnt/project-files/anteprime/verifica-identita/` (`oggi-completa-profilo-*`, `profilo-da-completare-*`, `dati-fiscali-tipo-registrazione-*`).
+
+## 260. Email "Completa il profilo" il giorno dopo l'iscrizione
+
+**Richiesta esplicita dell'utente** (19/10/2026): "effettua la seconda miglioria, ma solo nel caso manchi ancora qualche punto" (la miglioria proposta in §259: un'email il giorno dopo l'iscrizione con le cose da fare).
+
+**Decisione presa**: ogni giorno alle 11 (ora italiana) `IdentityVerificationService.remindProfileSetup` guarda i profili creati da 1 a 3 giorni prima, non dimostrativi né sospesi né in attesa di conferma, e manda una volta sola la notifica `PROFILE_SETUP_REMINDER` (sito + email, argomento "Account e sicurezza") solo se manca ancora almeno uno dei tre punti di "Completa il profilo": comparire nelle ricerche, rispondere ai preventivi, ricevere pagamenti online (quest'ultimo solo dove i pagamenti online sono attivi). L'email elenca solo i punti mancanti e porta a Oggi. I profili più vecchi di 3 giorni al momento del rilascio non la ricevono.
+
+**Motivo**: chi si iscrive e si ferma a metà sa subito cosa gli manca, senza email inutili a chi ha già finito.
+
+**Verifica**: test di `profileSetupMissing`; typecheck, lint e test dell'API verdi (412).

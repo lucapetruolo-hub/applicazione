@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { DiditIdentityProvider, canonicalJson, diditDecision } from "./didit.provider";
 import { matchDocumentToFiscal } from "./identity-match";
 import { identityVerificationNeeded } from "./identity-provider-env";
-import { IdentityVerificationService, STANDBY_PROVIDER_STATUS, expectedPerson, reminderDue } from "./identity-verification.service";
+import { IdentityVerificationService, STANDBY_PROVIDER_STATUS, expectedPerson, profileSetupMissing, reminderDue } from "./identity-verification.service";
 
 /** Verifica di documento e selfie con Didit (docs/CHANGELOG.md §253). */
 describe("Didit", () => {
@@ -209,5 +209,13 @@ describe("promemoria a chi non ha fatto la verifica (§256)", () => {
     expect(reminderDue({ profileCreatedAt: ago(8), sent: 1, lastSentAt: ago(5), now })).toBe(false);
     expect(reminderDue({ profileCreatedAt: ago(10), sent: 1, lastSentAt: ago(7), now })).toBe(true);
     expect(reminderDue({ profileCreatedAt: ago(30), sent: 2, lastSentAt: ago(20), now })).toBe(false);
+  });
+});
+
+describe("email \"Completa il profilo\" (§260)", () => {
+  it("elenca solo quello che manca, i pagamenti online solo dove sono attivi", () => {
+    expect(profileSetupMissing({ publicVisible: false, canSendQuotes: false }, false, true)).toEqual(["SEARCH", "QUOTES", "ONLINE_PAYMENTS"]);
+    expect(profileSetupMissing({ publicVisible: true, canSendQuotes: false }, false, false)).toEqual(["QUOTES"]);
+    expect(profileSetupMissing({ publicVisible: true, canSendQuotes: true }, true, true)).toEqual([]);
   });
 });
