@@ -616,7 +616,7 @@ export default function DashboardProfiloPage() {
           <XStack justifyContent="space-between" alignItems="flex-end" gap="$3" flexWrap="wrap">
             <YStack gap="$1" flex={1} minWidth={220}>
               <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
-                Profilo e visibilità
+                Profilo pubblico
               </Text>
               <Text color={brand.grafite70}>Così ti vedono i clienti su {BRAND.name}.</Text>
             </YStack>
@@ -646,6 +646,29 @@ export default function DashboardProfiloPage() {
             <div className={`profile-visibility is-${visibilityStatus.tone}`}>
               <span className="profile-visibility-dot" aria-hidden="true" />
               <span className="profile-visibility-text">{visibilityStatus.label}</span>
+              {/* Badge Verificato in breve accanto allo stato (docs/CHANGELOG.md §249). */}
+              {verified ? (
+                <span className="profile-verify-chip is-verified" title="Documento d'identità e dati fiscali controllati da noi">
+                  <Icon name="badge-check" size={14} strokeWidth={2} color={brand.verificato} />
+                  Verificato
+                </span>
+              ) : verificationRequestedAt ? (
+                <span className="profile-verify-chip" title="Ti ricontattiamo per controllare documento d'identità e partita IVA o codice fiscale">
+                  <Icon name="clock" size={14} strokeWidth={2} color={brand.grafite70} />
+                  Verifica richiesta
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  className="profile-verify-chip is-action"
+                  disabled={requestingVerification}
+                  title="Controlliamo un tuo documento d'identità e la partita IVA o il codice fiscale"
+                  onClick={() => void requestVerification()}
+                >
+                  <Icon name="badge-check" size={14} strokeWidth={2} color={brand.cianografiaScuro} />
+                  {requestingVerification ? "Invio…" : "Richiedi il badge Verificato"}
+                </button>
+              )}
               {preview.visibility === "PUBLIC" ? (
                 <Link href={`/professionista/${preview.profile.id}`} target="_blank" className="profile-visibility-link">
                   Apri la pagina pubblica ↗
@@ -661,33 +684,7 @@ export default function DashboardProfiloPage() {
               ) : null}
             </div>
           ) : null}
-
-          {isFirstProfileSave ? null : (
-            <Surface gap="$2">
-              <XStack alignItems="center" gap="$2">
-                <Icon name="badge-check" size={18} color={verified ? brand.verificato : brand.grafite70} strokeWidth={2} />
-                <Text fontWeight="700" color={brand.grafite}>
-                  {verified ? "Il tuo profilo è verificato" : "Badge Verificato"}
-                </Text>
-              </XStack>
-              <Text color={brand.grafite70}>
-                {verified
-                  ? "Abbiamo controllato il tuo documento d'identità e i tuoi dati fiscali: nella ricerca e sulla tua pagina compari con il badge Verificato."
-                  : verificationRequestedAt
-                    ? `Richiesta inviata il ${new Date(verificationRequestedAt).toLocaleDateString("it-IT")}: ti ricontattiamo per controllare un tuo documento d'identità e la partita IVA (o il codice fiscale).`
-                    : "Il badge lo assegniamo noi dopo aver controllato un tuo documento d'identità e la partita IVA (o il codice fiscale). Chiedilo qui sotto: ti ricontattiamo per il controllo."}
-              </Text>
-              {verified || verificationRequestedAt ? null : (
-                <XStack>
-                  <Button size="$3" disabled={requestingVerification} onPress={() => void requestVerification()}>
-                    {requestingVerification ? "Invio…" : "Richiedi la verifica"}
-                  </Button>
-                </XStack>
-              )}
-              {verificationRequestError ? <Text color={brand.urgenza}>{verificationRequestError}</Text> : null}
-            </Surface>
-          )}
-
+          {verificationRequestError ? <Text color={brand.urgenza}>{verificationRequestError}</Text> : null}
 
           <div className="profile-preview-frame">
             <div className="profile-preview-bar">
@@ -731,7 +728,7 @@ export default function DashboardProfiloPage() {
             </button>
           )}
           <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
-            {isFirstProfileSave ? "Profilo e visibilità" : "Modifica profilo"}
+            {isFirstProfileSave ? "Profilo pubblico" : "Modifica profilo"}
           </Text>
           <Text color={brand.grafite70}>
             Queste informazioni sono visibili pubblicamente su {BRAND.name} e determinano in quali ricerche

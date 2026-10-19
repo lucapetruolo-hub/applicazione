@@ -18969,3 +18969,12 @@ sempre.
 
 **Verifica:** `tsc` su api e web, `next build`; Playwright a 390px e 1366px
 (anteprima, modulo, Oggi) con un'API finta.
+
+**Migliorie approvate dall'utente (stessa PR):**
+- Il riquadro "Il tuo profilo è verificato" sopra l'anteprima diventa un
+  badge accanto allo stato: "Verificato", "Verifica richiesta" oppure il
+  pulsante "Richiedi il badge Verificato".
+- Pagina del profilo (pubblica e anteprima): su telefono il nome va sotto
+  la foto invece di restare in una colonna stretta accanto.
+- Voce di menu e titolo: "Profilo e visibilità" diventa "Profilo
+  pubblico" (i pacchetti di visibilità ora stanno in "Oggi").

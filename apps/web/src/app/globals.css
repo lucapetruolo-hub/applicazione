@@ -770,7 +770,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
     margin-left: auto;
   }
 }
-/* "Profilo e visibilità": anteprima del profilo pubblico (docs/CHANGELOG.md §249). */
+/* "Profilo pubblico": anteprima del profilo pubblico (docs/CHANGELOG.md §249). */
 .profile-preview-frame {
   border-radius: 22px;
   background: #fdefe1;
@@ -843,8 +843,39 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
 .profile-visibility-text {
   font-weight: 700;
   color: #2b2420;
-  flex: 1;
-  min-width: 0;
+}
+.profile-visibility .profile-visibility-link {
+  margin-left: auto;
+}
+.profile-verify-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f6f1ea;
+  color: #6e6459;
+  border: 1px solid transparent;
+}
+.profile-verify-chip.is-verified {
+  background: #e6efe3;
+  color: #3d6b3e;
+}
+.profile-verify-chip.is-action {
+  background: #ffffff;
+  border-color: #189a63;
+  color: #0e7a4c;
+  cursor: pointer;
+}
+.profile-verify-chip.is-action:hover {
+  background: #dcf3e7;
+}
+.profile-verify-chip.is-action:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 .profile-visibility-link {
   font: inherit;

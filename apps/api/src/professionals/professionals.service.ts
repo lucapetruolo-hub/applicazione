@@ -427,7 +427,7 @@ export class ProfessionalsService {
   }
 
   /**
-   * Anteprima del proprio profilo pubblico in "Profilo e visibilità"
+   * Anteprima del proprio profilo pubblico in "Profilo pubblico"
    * (docs/CHANGELOG.md §249): gli stessi dati della pagina pubblica, anche
    * quando il profilo non è ancora visibile ai clienti, con il motivo.
    */
