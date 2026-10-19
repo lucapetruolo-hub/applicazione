@@ -21,3 +21,4 @@ export * from "./generalRequests";
 export * from "./phoneCountries";
 export * from "./requestDeadline";
 export * from "./fiscalCompleteness";
+export * from "./dac7";

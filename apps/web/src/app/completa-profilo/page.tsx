@@ -38,6 +38,10 @@ function CompletaProfiloForm() {
   const [declaredAdult, setDeclaredAdult] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Pulsante sempre premibile: senza spunte le caselle diventano rosse
+  // (docs/CHANGELOG.md §248, come in /registrati).
+  const [consentAttempt, setConsentAttempt] = useState(0);
+  const canSubmitConsent = acceptedLegalTerms && declaredAdult;
 
   useEffect(() => {
     if (!code) {
@@ -52,6 +56,13 @@ function CompletaProfiloForm() {
 
   async function handleSubmit() {
     setError(null);
+    if (!canSubmitConsent) {
+      setConsentAttempt((n) => n + 1);
+      const firstMissing = document.getElementById(acceptedLegalTerms ? "consenso-eta" : "consenso-termini");
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      firstMissing?.scrollIntoView({ block: "center", behavior: reduceMotion ? "auto" : "smooth" });
+      return;
+    }
     if (password !== confirmPassword) {
       setError("Le due password non coincidono.");
       return;
@@ -131,8 +142,13 @@ function CompletaProfiloForm() {
                 accessibilityLabel="Conferma password"
                 onSubmitEditing={handleSubmit}
               />
-              <YStack gap="$2">
-                <ConsentCheckbox checked={acceptedLegalTerms} onToggle={() => setAcceptedLegalTerms((v) => !v)}>
+              <YStack key={consentAttempt} gap="$2">
+                <ConsentCheckbox
+                  id="consenso-termini"
+                  checked={acceptedLegalTerms}
+                  invalid={consentAttempt > 0}
+                  onToggle={() => setAcceptedLegalTerms((v) => !v)}
+                >
                   Ho letto e accetto la{" "}
                   <Link href="/privacy" target="_blank" style={{ textDecoration: "underline", color: brand.cianografia }}>
                     Privacy Policy
@@ -143,9 +159,14 @@ function CompletaProfiloForm() {
                   </Link>
                   .
                 </ConsentCheckbox>
-                <ConsentCheckbox checked={declaredAdult} onToggle={() => setDeclaredAdult((v) => !v)}>
+                <ConsentCheckbox id="consenso-eta" checked={declaredAdult} invalid={consentAttempt > 0} onToggle={() => setDeclaredAdult((v) => !v)}>
                   Dichiaro di avere almeno 18 anni.
                 </ConsentCheckbox>
+                {consentAttempt > 0 && !canSubmitConsent ? (
+                  <Text role="alert" fontSize="$2" color={brand.urgenza} fontWeight="600">
+                    {acceptedLegalTerms || declaredAdult ? "Spunta anche questa casella per continuare." : "Spunta le due caselle per continuare."}
+                  </Text>
+                ) : null}
               </YStack>
               {error ? (
                 <Text color={brand.urgenza} fontSize="$3">
@@ -155,8 +176,8 @@ function CompletaProfiloForm() {
               <Button
                 variant="primary"
                 onPress={handleSubmit}
-                disabled={isSubmitting || !acceptedLegalTerms || !declaredAdult}
-                opacity={isSubmitting || !acceptedLegalTerms || !declaredAdult ? 0.6 : 1}
+                disabled={isSubmitting}
+                opacity={isSubmitting ? 0.6 : 1}
               >
                 {isSubmitting ? "Un momento..." : "Scegli la password ed entra"}
               </Button>

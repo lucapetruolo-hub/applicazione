@@ -2528,3 +2528,45 @@ a.admin-kpi:hover {
   outline-offset: 2px;
   border-radius: 6px;
 }
+
+/* Registrazione del professionista (docs/CHANGELOG.md §248, richiesta
+   dell'utente). Categoria principale: bordo dorato che gira piano attorno
+   alla scelta, con un alone leggero. Caselle obbligatorie non spuntate:
+   riga rossa con una scossa breve. Con "riduci movimento" restano fermi. */
+@property --gold-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+.category-chip-primary {
+  /* 2px invece di 1px, con -1px di margine: stessa misura delle altre. */
+  border-width: 2px !important;
+  margin: -1px;
+  border-color: transparent !important;
+  background:
+    linear-gradient(#fff8e6, #fff8e6) padding-box,
+    conic-gradient(from var(--gold-angle), #c8961f, #c8961f 55%, #f6d77e 68%, #fffbea 75%, #f6d77e 82%, #c8961f) border-box !important;
+  box-shadow: 0 0 0 3px rgba(217, 164, 65, 0.16);
+  animation:
+    gold-spin 3.2s linear infinite,
+    gold-glow 2.4s ease-in-out infinite;
+}
+@keyframes gold-spin {
+  to {
+    --gold-angle: 360deg;
+  }
+}
+@keyframes gold-glow {
+  50% {
+    box-shadow: 0 0 0 4px rgba(217, 164, 65, 0.28), 0 2px 12px rgba(217, 164, 65, 0.3);
+  }
+}
+.consent-invalid {
+  animation: email-code-shake 0.3s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .category-chip-primary,
+  .consent-invalid {
+    animation: none;
+  }
+}

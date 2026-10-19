@@ -22,7 +22,7 @@ function loadOnlinePayments(): Promise<boolean> {
  * Il pagamento online dei lavori è attivo? (docs/CHANGELOG.md §170)
  * Lo decide il server (chiave Stripe presente). Finché la risposta non
  * arriva, o se il server non risponde, vale `false`: il sito non promette mai
- * custodia dei soldi e rimborsi che non può dare.
+ * blocco dei soldi e rimborsi che non può dare.
  */
 export function useOnlinePayments(): boolean {
   const [enabled, setEnabled] = useState(false);

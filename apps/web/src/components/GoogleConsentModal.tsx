@@ -1,38 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
-
-/**
- * Casella di spunta compatta per le due dichiarazioni obbligatorie — stessa
- * resa già duplicata in /registrati e InlineAuthGate (componente piccolo,
- * non vale introdurre una dipendenza tra i file solo per questo), qui una
- * terza copia per lo stesso motivo: questo popup è montato da entrambi.
- */
-function ConsentCheckbox({ checked, onToggle, children }: { checked: boolean; onToggle: () => void; children: React.ReactNode }) {
-  return (
-    <XStack alignItems="flex-start" gap="$2" cursor="pointer" onPress={onToggle} accessibilityRole="checkbox" accessibilityState={{ checked }}>
-      <YStack
-        width={18}
-        height={18}
-        marginTop={2}
-        borderRadius="$1"
-        borderWidth={2}
-        borderColor={checked ? brand.cianografia : brand.filetto}
-        backgroundColor={checked ? brand.cianografia : brand.calce}
-        alignItems="center"
-        justifyContent="center"
-        flexShrink={0}
-      >
-        {checked ? <Icon name="check" size={12} strokeWidth={2.5} color="white" /> : null}
-      </YStack>
-      <Text fontSize="$2" color={brand.grafite70} lineHeight={18}>
-        {children}
-      </Text>
-    </XStack>
-  );
-}
+import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { ConsentCheckbox } from "./ConsentCheckbox";
 
 /**
  * Popup mostrato subito dopo aver ottenuto le credenziali da Google —
@@ -76,6 +47,17 @@ export function GoogleConsentModal({
   }, [onCancel]);
 
   const canConfirm = acceptedLegalTerms && declaredAdult;
+  // "Accetta e continua" resta premibile: senza spunte le caselle mancanti
+  // diventano rosse (docs/CHANGELOG.md §248, come in /registrati).
+  const [attempt, setAttempt] = useState(0);
+
+  function handleConfirm() {
+    if (!canConfirm) {
+      setAttempt((n) => n + 1);
+      return;
+    }
+    onConfirm();
+  }
 
   return (
     <div
@@ -108,8 +90,8 @@ export function GoogleConsentModal({
             </Text>
           </YStack>
 
-          <YStack gap="$3">
-            <ConsentCheckbox checked={acceptedLegalTerms} onToggle={onToggleLegalTerms}>
+          <YStack key={attempt} gap="$3">
+            <ConsentCheckbox checked={acceptedLegalTerms} invalid={attempt > 0} onToggle={onToggleLegalTerms}>
               Ho letto e accetto la{" "}
               <Link href="/privacy" target="_blank" style={{ textDecoration: "underline", color: brand.cianografiaScuro }}>
                 Privacy Policy
@@ -120,9 +102,14 @@ export function GoogleConsentModal({
               </Link>
               .
             </ConsentCheckbox>
-            <ConsentCheckbox checked={declaredAdult} onToggle={onToggleDeclaredAdult}>
+            <ConsentCheckbox checked={declaredAdult} invalid={attempt > 0} onToggle={onToggleDeclaredAdult}>
               Dichiaro di avere almeno 18 anni.
             </ConsentCheckbox>
+            {attempt > 0 && !canConfirm ? (
+              <Text role="alert" fontSize="$2" color={brand.urgenza} fontWeight="600">
+                {acceptedLegalTerms || declaredAdult ? "Spunta anche questa casella per continuare." : "Spunta le due caselle per continuare."}
+              </Text>
+            ) : null}
           </YStack>
 
           {error ? (
@@ -135,7 +122,7 @@ export function GoogleConsentModal({
             <Button variant="secondary" flex={1} onPress={onCancel} disabled={isSubmitting}>
               Annulla
             </Button>
-            <Button variant="primary" flex={1} onPress={onConfirm} disabled={!canConfirm || isSubmitting} opacity={!canConfirm || isSubmitting ? 0.6 : 1}>
+            <Button variant="primary" flex={1} onPress={handleConfirm} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
               {isSubmitting ? "Un momento..." : "Accetta e continua"}
             </Button>
           </XStack>

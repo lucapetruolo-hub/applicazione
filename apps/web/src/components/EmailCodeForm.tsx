@@ -47,7 +47,7 @@ export function EmailCodeForm({
   onVerified: (email: string) => void;
   /** Solo dove cambiare l'email manda subito un nuovo codice (account professionista). */
   allowChangeEmail?: boolean;
-  /** Riceve il nuovo indirizzo, che il genitore mostra al posto del vecchio (§247). */
+  /** Riceve il nuovo indirizzo, che il genitore mostra al posto del vecchio (§251). */
   onEmailChanged?: (newEmail: string) => void;
   /** Controllo del codice diverso dalla conferma email (es. recupero password). */
   submitCode?: (code: string) => Promise<void>;
@@ -290,7 +290,7 @@ export function EmailCodeForm({
 
       <YStack gap="$2" alignItems="center">
         {/* La durata accanto al conto alla rovescia: senza, il minuto di
-            attesa per un nuovo invio sembrava la scadenza del codice (§246). */}
+            attesa per un nuovo invio sembrava la scadenza del codice (§250). */}
         {!expired && state !== "done" ? (
           <Text fontSize="$3" color={brand.grafite70} textAlign="center">
             Il codice vale ancora {validMinutes === 1 ? "1 minuto" : `${validMinutes} minuti`}.

@@ -4,16 +4,24 @@ import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { PlatformFeeRulesService } from "../platform-fee-rules/platform-fee-rules.service";
-import { onlineDepositEurCents, onlineTargetEurCents, paymentChoiceIsOnline, type JobPaymentChoice } from "@professionisti/shared";
+import {
+  onlineDepositEurCents,
+  onlineTargetEurCents,
+  paymentChoiceIsOnline,
+  professionalPayoutTotals,
+  toJobPaymentSummary,
+  type JobPaymentChoice,
+  type ProfessionalPayoutTotals,
+} from "@professionisti/shared";
 import { OnlineMoneyService } from "./online-money.service";
 
 /**
  * Pagamento del lavoro (JobPayment) — CLAUDE.md §88, docs/CHANGELOG.md §168.
  * Distinto da BillingService (pagamenti del PROFESSIONISTA verso Manovia:
  * abbonamento, boost). Il cliente sceglie il metodo accettando il
- * preventivo: online (MANOVIA: acconto del 20% subito, saldo a lavoro
- * chiuso, soldi in custodia e poi accreditati al professionista meno costo
- * Stripe e commissione, vedi OnlineMoneyService) o diretto (DIRECT:
+ * preventivo: online (MANOVIA: acconto subito, saldo a lavoro chiuso, soldi
+ * bloccati sul conto Stripe del professionista e sbloccati alla conferma,
+ * meno costo Stripe e commissione, vedi OnlineMoneyService) o diretto (DIRECT:
  * importo dichiarato dal professionista a lavoro chiuso e confermato dal
  * cliente, nessun movimento sul sito). Prenotazioni senza scelta (es.
  * dall'agenda) restano DIRECT.
@@ -186,6 +194,16 @@ export class JobPaymentsService {
     return this.onlineMoneyService.handleStripeDispute(dispute);
   }
 
+  /** Bonifico dal conto Stripe del professionista arrivato o non riuscito (§249). */
+  handlePayoutEvent(payout: Stripe.Payout): Promise<void> {
+    return this.onlineMoneyService.handlePayoutEvent(payout);
+  }
+
+  /** Conto Stripe del professionista aggiornato: riprova i bonifici in sospeso (§249). */
+  retryPayoutsForAccount(accountId: string, options: { skipFailed?: boolean } = {}): Promise<void> {
+    return this.onlineMoneyService.retryPayoutsForAccount(accountId, options);
+  }
+
   /** Avviso agli admin Finanza per un evento Stripe che non riguarda un lavoro. */
   notifyFinanceAdmins(type: string, payload: Record<string, unknown>): Promise<void> {
     return this.onlineMoneyService.notifyFinanceAdmins(type, payload);
@@ -244,5 +262,27 @@ export class JobPaymentsService {
       })),
       jobPaymentsByStatus: jobPaymentsByStatus.map((r) => ({ status: r.status, count: r._count._all })),
     };
+  }
+
+  /**
+   * Riepilogo dei pagamenti online del professionista per stato del bonifico
+   * (bloccati, in preparazione, in arrivo, arrivati in banca), in Dati fiscali
+   * e pagamenti (docs/CHANGELOG.md §249).
+   */
+  async professionalPayoutSummary(userId: string): Promise<ProfessionalPayoutTotals> {
+    const bookings = await this.prisma.booking.findMany({
+      where: { professionalProfile: { userId }, jobPayment: { paymentMethod: "MANOVIA" } },
+      select: { finalAmountEurCents: true, jobPayment: true },
+    });
+    return professionalPayoutTotals(
+      bookings.map((booking) => {
+        const summary = toJobPaymentSummary(booking.jobPayment, booking.finalAmountEurCents, true);
+        // Vecchio modello (trasferimento allo sblocco): Stripe ha già pagato da solo.
+        if (summary && booking.jobPayment?.releasedAt && !booking.jobPayment.stripeDestinationAccountId && summary.payoutStatus === "SENT") {
+          summary.payoutStatus = "PAID";
+        }
+        return summary;
+      }),
+    );
   }
 }
