@@ -169,7 +169,7 @@ export function PayoutIbanCard({
               Non riusciamo a leggere l&apos;IBAN salvato: riprova più tardi.
             </Text>
           ) : null}
-          <XStack gap="$2" flexWrap="wrap">
+          <XStack gap="$2" alignItems="center" flexWrap={isStep ? "nowrap" : "wrap"}>
             <Button variant="primary" onPress={handleSave} disabled={working} opacity={working ? 0.6 : 1}>
               {working ? "Attendere..." : isStep ? "Continua su Stripe" : "Salva IBAN"}
             </Button>

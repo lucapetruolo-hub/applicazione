@@ -19064,3 +19064,10 @@ rifiutato, sblocco con conguaglio, rimborso totale), webhook dei bonifici in
 - *Verifica*: in locale, banner → "Attiva" → modulo → "Continua su Stripe"
   salva l'IBAN (cifrato, `UNAVAILABLE`) e chiama l'attivazione Stripe;
   riquadro a pagamenti attivi con l'IBAN mascherato, telefono e computer.
+- *Migliorie* ("effettua le due migliorie"): "Annulla" accanto a
+  "Continua su Stripe" anche sul telefono. Mandare l'IBAN anche a Stripe,
+  per non farlo riscrivere, non è possibile: Stripe lascia creare o cambiare
+  il conto bancario dalla piattaforma solo per account senza Dashboard
+  Express (docs.stripe.com/connect/payouts-bank-accounts), e i nostri la
+  usano per "Apri il conto Stripe". Il testo del passo lo dice già ("Poi
+  completi l'attivazione su Stripe, con lo stesso conto").
