@@ -19,7 +19,7 @@ const TILES: Array<{ key: keyof Omit<ProfessionalPayoutTotals, "hasFailed">; lab
 
 /**
  * Riepilogo dei pagamenti online del professionista (docs/CHANGELOG.md
- * §243): quanto è bloccato in attesa della conferma dei clienti, quanto è
+ * §248): quanto è bloccato in attesa della conferma dei clienti, quanto è
  * sbloccato, in arrivo e già arrivato in banca, al netto di commissione e
  * costo della carta. Non compare finché non ha ricevuto pagamenti online.
  */

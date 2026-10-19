@@ -7,6 +7,7 @@ import { Button, Field, Icon, Surface, Section, Text, XStack, YStack, brand, Bad
 import type { ProfessionalFiscalProfile, FiscalVerificationStatus } from "@professionisti/api-client";
 import { BRAND, checkFiscalId, fiscalDataMissing, professionalFiscalProfileSchema } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
+import { PayoutIbanCard } from "@/components/PayoutIbanCard";
 import { useAuth } from "@/lib/AuthContext";
 import { OnlinePaymentsCard } from "@/components/OnlinePaymentsCard";
 
@@ -86,16 +87,16 @@ function DashboardFiscaleContent() {
   const { user, token, isLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  // Categoria scelta nella schermata precedente (/dashboard/tipo-attivita,
-  // subito dopo la registrazione) — arriva qui via query param, mai già
-  // salvata: un account appena creato non ha ancora un ProfessionalProfile
+  // Tipo scelto in registrazione (o via ?entityType= dai vecchi link a
+  // /dashboard/tipo-attivita), mai già salvato: un account appena creato non ha ancora un ProfessionalProfile
   // (creato solo al primo salvataggio di /dashboard/profilo), quindi
   // ProfessionalFiscalProfile — che vi si aggancia 1:1 — non può esistere
   // prima di allora. Il picker qui sotto arriva solo PRE-selezionato
   // (stato locale, non ancora persistito); il salvataggio vero avviene solo
   // al click su "Salva dati fiscali", quando il messaggio d'errore guida
   // esplicitamente verso /dashboard/profilo se non ancora completato.
-  const prefillEntityType = searchParams.get("entityType");
+  // Senza parametro vale il tipo scelto in registrazione (docs/CHANGELOG.md §243).
+  const prefillEntityType = searchParams.get("entityType") ?? user?.signupEntityType ?? null;
   const [prefillApplied, setPrefillApplied] = useState(false);
 
   const [profile, setProfile] = useState<ProfessionalFiscalProfile | null | undefined>(undefined);
@@ -616,6 +617,36 @@ function DashboardFiscaleContent() {
           onActivate={handleStripeConnect}
           onOpenStripe={handleStripeDashboard}
         />
+        {/* IBAN per la DAC7, solo per chi ha avviato i pagamenti online (docs/CHANGELOG.md §246). */}
+        {profile?.stripeConnectAccountId && token ? (
+          <PayoutIbanCard
+            token={token}
+            defaultHolderName={
+              profile.entityType === "BUSINESS"
+                ? (profile.businessName ?? "")
+                : [profile.fiscalFirstName, profile.fiscalLastName].filter(Boolean).join(" ")
+            }
+          />
+        ) : null}
+
+        {/* Riepilogo di quanto comunichiamo al fisco (docs/CHANGELOG.md §246). */}
+        <Link href="/dashboard/fiscale/dac7" style={{ textDecoration: "none" }}>
+          <Surface padding="$4" hoverStyle={{ backgroundColor: brand.gesso }} cursor="pointer">
+            <XStack alignItems="center" gap="$3">
+              <YStack flex={1} gap="$1">
+                <Text fontSize={15} fontWeight="700" color={brand.grafite}>
+                  Riepilogo DAC7
+                </Text>
+                <Text fontSize={13} color={brand.grafite70}>
+                  I compensi che comunichiamo ogni anno al fisco.
+                </Text>
+              </YStack>
+              <Text fontSize={20} color={brand.cianografiaScuro} aria-hidden>
+                →
+              </Text>
+            </XStack>
+          </Surface>
+        </Link>
       </YStack>
     </Section>
   );

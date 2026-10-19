@@ -40,6 +40,7 @@ export type {
   Dac7ReportingStatus,
   Dac7ReportingPeriod,
   Dac7Record,
+  PayoutIbanView,
   PlatformDac7Settings,
   AdminFinanceSummary,
   // "Statistiche" / Revenue Analytics (CLAUDE.md §99).

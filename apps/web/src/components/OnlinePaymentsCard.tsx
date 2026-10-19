@@ -7,7 +7,7 @@ import { PayoutSummary } from "@/components/PayoutSummary";
 
 /**
  * Pagamenti online in fondo a Dati fiscali e pagamenti (docs/CHANGELOG.md
- * §243, richiesta dell'utente: "non appesantire la pagina"). Finché non sono
+ * §248, richiesta dell'utente: "non appesantire la pagina"). Finché non sono
  * attivi è solo un banner con una frase e un pulsante; dopo l'attivazione
  * mostra lo stato, i totali dei bonifici e l'accesso a Stripe. `children`
  * compare solo a pagamenti attivi (es. il conto bancario dei bonifici).

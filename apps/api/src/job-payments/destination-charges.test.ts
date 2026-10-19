@@ -4,7 +4,7 @@ import { OnlineMoneyService } from "./online-money.service";
 
 /**
  * Soldi bloccati sul conto Stripe del professionista (docs/CHANGELOG.md
- * §243): addebito a destinazione con trattenuta, bonifici manuali sbloccati
+ * §248): addebito a destinazione con trattenuta, bonifici manuali sbloccati
  * dal sito, rimborsi ripresi dal suo conto. Ogni chiamata a Stripe è finta e
  * controllata, perché un errore qui vuol dire soldi non bloccati, bonifici
  * doppi o un conto del professionista in negativo.

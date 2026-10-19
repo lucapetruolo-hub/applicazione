@@ -118,7 +118,7 @@ function professionalView(payment: JobPaymentSummary): View {
       step: 1,
     };
   }
-  // Sbloccato: dov'è il bonifico verso la banca (docs/CHANGELOG.md §243).
+  // Sbloccato: dov'è il bonifico verso la banca (docs/CHANGELOG.md §248).
   const unpaid = payment.balanceUnpaid ? " Del saldo mancante ci occupiamo noi." : "";
   switch (payment.payoutStatus) {
     case "FAILED":
@@ -174,7 +174,7 @@ function AmountRow({ label, value, strong, muted }: { label: string; value: stri
 }
 
 /**
- * Pagamento di un lavoro (docs/CHANGELOG.md §168, §243). Online: stato in
+ * Pagamento di un lavoro (docs/CHANGELOG.md §168, §248). Online: stato in
  * evidenza (cosa succede ai soldi adesso), passaggi pagato → bloccato →
  * sbloccato, importi e una sola azione quando serve (pagare, o sistemare i
  * dati bancari se il bonifico non riesce). Col pagamento diretto solo il

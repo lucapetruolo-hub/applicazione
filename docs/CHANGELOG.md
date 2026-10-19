@@ -18693,7 +18693,215 @@ base (pulsanti con freccia, promemoria): le voci di questa PR passano da
 (attivazione, sospensione, nessun avviso senza cambio). Test, tipi e lint di
 `apps/api` e `apps/web` verdi.
 
-## 243. Soldi dei pagamenti online bloccati sul conto Stripe del professionista
+## 243. Registrazione del professionista con il tipo e codice di conferma via email
+
+**Richiesta esplicita dell'utente** (14/10/2026, thread "Registrazione con
+i tre tipi e codice email", primo dei quattro nati dal piano
+`analisi/verifica-professionisti-dac7-piano.md`, fasi 1 e 2): scegliere
+alla registrazione se si lavora come privato, con Partita IVA o come
+azienda (decisione D1 = tre tipi) e confermare l'email con un codice di 6
+cifre, con Resend già integrato (niente SendGrid).
+
+**Decisione**:
+- Nuovo passo "Come lavori?" in `/registrati` (Passo 2 di 4) con tre
+  schede, il tipo nell'URL (`?tipo=privato|partita-iva|azienda`, così il
+  tasto indietro funziona) e un riepilogo con "Cambia" in cima al modulo.
+  Obbligatorio anche con Google (`NO_ENTITY_TYPE_MESSAGE`). Salvato in
+  `User.signupEntityType`, come le categorie (§217): precompila
+  `/dashboard/fiscale`, dove resta modificabile. Un nuovo account va quindi
+  dritto a `/dashboard/profilo`, non più a `/dashboard/tipo-attivita` (la
+  pagina resta, raggiungibile da Abbonamento).
+- Codice di 6 cifre **nella stessa email del link** (oggetto "123456 è il
+  tuo codice per …", così si legge già dalla notifica): valido 15 minuti,
+  al massimo 5 tentativi (contati prima del confronto, con `updateMany`
+  condizionato), nuovo invio dopo 60 secondi (controllato sul server,
+  `emailCodeSentAt`; `/auth/me` dà `emailCodeResendInSeconds`). Si salva
+  solo l'impronta SHA-256 legata all'account. Il link resta valido 48 ore:
+  da computer è più comodo il codice, da telefono anche il pulsante.
+- `EmailCodeForm` (`apps/web`): un solo `<input>` vero (incolla,
+  riempimento automatico `one-time-code`, tastiera numerica) sotto sei
+  caselle disegnate, invio automatico alla sesta cifra, errore con i
+  tentativi rimasti, spunta verde all'esito, conto alla rovescia per il
+  nuovo codice, "Email sbagliata? Correggila" (manda subito un codice al
+  nuovo indirizzo). Usato in tre punti: subito dopo la registrazione
+  (Passo 4 di 4), in `/conferma-email` senza `token` (dalla barra in alto
+  "Inserisci il codice") e nel riquadro facoltativo del cliente in
+  `/account`.
+- Chi entra con Google salta il codice (email già verificata da Google).
+- Finché `EMAIL_VERIFICATION_REQUIRED` è spenta (dominio Resend non ancora
+  verificato), la schermata del codice offre "Lo faccio dopo": altrimenti
+  chi prova il sito resterebbe bloccato su un'email che non gli arriva.
+- Checklist di lancio: Openapi e Didit da intestare all'azienda (6ter),
+  bonifici manuali sull'account Stripe vero (6quater), prova del codice da
+  telefono (23).
+
+**Verifica**: `auth/email-verification.test.ts` (codice nell'oggetto e nel
+testo, impronta, scadenza, tentativi, 60 secondi, tipo salvato),
+`auth/google-name.test.ts` (tipo obbligatorio con Google),
+`common/profile-categories.test.ts`. Migrazione provata su Postgres locale
+(`migrate deploy` + `migrate diff` senza differenze). Percorso completo
+provato nel browser da telefono e computer: scelta del tipo, registrazione,
+codice sbagliato, codice giusto, Dati fiscali precompilati.
+
+## 244. Codice di conferma: scaduto, chiesto due volte, "Lavoro occasionale"
+
+**Richiesta esplicita dell'utente** (15/10/2026, sul thread della PR #78):
+"effettua le migliorie; dalla scheda come lavori, elimina la dicitura sotto
+privato, senza partita iva e inserisci solo "lavoro occasionale"".
+
+**Decisioni e modifiche:**
+- "Come lavori?": sotto "Privato, senza Partita IVA" ora c'è solo
+  "Lavoro occasionale" (titolo della scheda invariato).
+- Codice scaduto: `/auth/me` restituisce `emailCodeValidForSeconds`
+  (`emailCodeValidFor` in `auth.service.ts`: 0 se scaduto, mai mandato o
+  con i tentativi finiti). `EmailCodeForm` ne chiede subito uno nuovo se
+  arriva con un codice che non vale più ("Il codice di prima era scaduto: te
+  ne abbiamo mandato uno nuovo."), e se scade con la pagina aperta disattiva
+  le caselle (tratteggiate) e mette in primo piano "Mandami un nuovo codice".
+- Riquadro del cliente in /account: se il codice è stato mandato da meno di
+  60 secondi, invece di "Invio non riuscito" apre il campo per scriverlo; per
+  gli altri errori mostra il messaggio vero del server.
+- `/dashboard/tipo-attivita` tolta: il tipo si sceglie in registrazione.
+  L'indirizzo rimanda a `/dashboard/fiscale` (con `?entityType=` se c'era)
+  per i link già salvati; il link in Abbonamento porta a `/dashboard/profilo`.
+
+**Verifica:** 354 test API verdi (nuovi casi per `emailCodeValidFor`),
+typecheck ed eslint puliti. Provato nel browser: codice scaduto all'arrivo
+(nuovo codice mandato e valido sul database), codice che scade a pagina
+aperta (orologio simulato), secondo clic del cliente entro 60 secondi,
+vecchio indirizzo che rimanda ai Dati fiscali.
+
+## 245. Codice di 6 cifre anche per "Password dimenticata"
+
+**Richiesta esplicita dell'utente** (15/10/2026, thread della PR #78):
+"effettua le migliorie", sulla miglioria proposta di usare il codice anche
+nel recupero password.
+
+**Decisioni e modifiche:**
+- L'email "Reimposta la tua password" porta, oltre al pulsante (60 minuti),
+  un codice di 6 cifre (15 minuti) anche nell'oggetto: "482913 è il codice
+  per reimpostare la password". Serve quando l'email si legge sul telefono e
+  la password si cambia dal computer.
+- Nuovi campi `User.passwordResetCodeHash`/`passwordResetCodeExpiresAt`/
+  `passwordResetCodeAttempts` (migrazione `20261015100000_password_reset_code`),
+  distinti dal codice di conferma email: un codice non vale per l'altro.
+- `POST /auth/password-reset/code` (`{ email, code }`, 10/min): al massimo 5
+  tentativi per codice, contati prima del confronto. Se il codice è giusto
+  annulla codice e link dell'email e restituisce un link nuovo, con cui il
+  sito apre la solita pagina `/reimposta-password`. Ogni errore (codice
+  sbagliato, scaduto, tentativi finiti, indirizzo sconosciuto) dà lo stesso
+  messaggio, per non far capire se un account esiste.
+- `/password-dimenticata`: dopo l'invio mostra le stesse caselle del codice
+  di conferma (`EmailCodeForm`, ora con `submitCode` e `onRequestNewCode`).
+  Un nuovo codice si chiede rifacendo la richiesta, per passare di nuovo dal
+  controllo anti-bot.
+- Registrazione con tipo e codice nell'app per telefono: rimandata, l'app
+  non ha ancora accesso né registrazione (stessa scelta fatta per la verifica
+  d'identità).
+
+**Verifica:** test API (`auth/password-reset.test.ts`: codice nell'oggetto,
+impronta salvata, scambio con un link nuovo, stesso errore in tutti i casi).
+Provato nel browser da telefono e computer: richiesta, codice sbagliato,
+codice giusto, nuova password, accesso con la nuova password.
+
+## 246. DAC7: dichiarazione a "lavoro terminato", diretti e online, IBAN, avviso annuale
+
+**Richiesta esplicita dell'utente** (14/10/2026, thread "Verifica
+professionisti e DAC7", piano in
+`/mnt/project-files/analisi/verifica-professionisti-dac7-piano.md`): fase 6
+del flusso (dichiarazione sull'importo, diretti separati dagli online per
+trimestre), IBAN solo per chi incassa online (decisione D4), avviso annuale.
+Il cliente non conferma l'importo dei lavori pagati in diretto.
+
+**Decisioni**:
+- "Lavoro terminato" chiede una spunta obbligatoria con il totale scritto
+  dentro: "Dichiaro sotto la mia esclusiva responsabilità che l'importo
+  indicato corrisponde a quanto effettivamente percepito, o da percepire...".
+  Privato: "ricevuta per prestazione occasionale"; partita IVA e azienda:
+  "fattura o altro documento fiscale"; senza dati fiscali il testo originale.
+  Salvate data e versione (`Booking.completionDeclarationAcceptedAt/Version`,
+  `completionDeclaration` in `packages/shared/src/dac7.ts`); il server
+  rifiuta una versione diversa da quella del tipo fiscale.
+- DAC7 (`dac7Entries`): il diretto conta quando il professionista dichiara
+  l'importo (prima solo dopo la conferma del cliente), l'online quando i
+  soldi passano al professionista, l'acconto online con saldo diretto si
+  divide nelle due parti (prima il saldo diretto mancava). Il trimestre si
+  decide da queste date, non più dall'ultima modifica del pagamento. Nuove
+  colonne `Dac7Record.directConsiderationEurCents`/`onlineConsiderationEurCents`;
+  chi non ha più importi torna a zero; l'export annuale ricalcola prima i
+  trimestri (il giro notturno lasciava fuori l'ultimo giorno di ognuno);
+  `missingFiscalData` guarda i dati compilati, non più la verifica manuale.
+  Nel file: commissioni per trimestre (`Fees`) e IBAN (`FinancialIdentifier`),
+  tag da verificare sul tracciato ufficiale come il ramo Entity.
+- IBAN (`ProfessionalPayoutAccount`, tabella a parte): chiesto in Dati
+  fiscali e pagamenti solo a chi ha avviato i pagamenti online, controllo
+  mod-97 e lunghezza del paese, salvato cifrato (AES-256-GCM, chiave
+  `FISCAL_DATA_KEY` su Render, ricade su `JWT_SECRET`), mostrato solo
+  mascherato, confrontato con paese e ultime 4 cifre del conto su Stripe
+  (`readStripeBankAccounts`, ricontrollato all'apertura della pagina). Un
+  esito diverso non blocca i pagamenti: lo segnala.
+- Avviso annuale: "Segna come inviato" sull'anno manda a ogni professionista
+  `DAC7_ANNUAL_NOTICE` (sito ed email, "Account e sicurezza", non si spegne),
+  rimandabile dall'admin dopo una correzione. Pagina
+  `/dashboard/fiscale/dac7` con i trimestri, diretti e online, commissioni,
+  stato dell'invio e IBAN comunicato.
+
+Da far vedere al commercialista: testo della dichiarazione; IBAN intero o
+ultime 4 cifre.
+
+**Verifica**: `dac7/dac7-entries.test.ts` (date e parti DAC7, IBAN,
+confronto con Stripe, testi, cifratura). Prova in locale su database vero:
+dichiarazione mancante o di versione sbagliata rifiutata, lavoro chiuso con
+versione salvata, IBAN sbagliato rifiutato e giusto salvato cifrato, export
+annuale con diretti/online/commissioni/IBAN, avviso partito a "Segna come
+inviato". Test, tipi e lint di `apps/api` e `apps/web` verdi.
+
+## 247. DAC7: testi ridotti al minimo e quattro migliorie
+
+**Richiesta di Luca (15/10/2026)**: la dichiarazione a "lavoro terminato" è
+troppo lunga e aggressiva; basta accettarla premendo "Conferma", con una frase
+semplice e un "Scopri di più" per il testo completo. Anche le altre
+spiegazioni vanno ridotte al minimo (i termini sono già stati accettati). Poi
+fare le quattro migliorie proposte.
+
+**Testi**:
+- "Lavoro terminato": niente più casella da spuntare. Sopra il pulsante una
+  riga ("Confermando dichiari che 120,00 € è l'importo che ricevi per questo
+  lavoro. Scopri di più"); il testo completo (invariato, stessa versione) si
+  apre sotto. Premere "Conferma" vale come accettazione, salvata con data e
+  versione come prima.
+- Nuovo `apps/web/src/components/LearnMore.tsx` ("Scopri di più" che apre il
+  dettaglio sul posto), usato anche da IBAN e Riepilogo DAC7.
+- IBAN, Riepilogo DAC7, email e notifica dell'avviso annuale, testo admin:
+  una riga ciascuno, il resto dietro "Scopri di più" o tolto.
+
+**Migliorie**:
+1. Rimborsi dopo l'accredito: `dac7Entries` conta l'online al netto attuale
+   (ridotto dal rimborso, PR #76 decrementa `netAmountEurCents`), nel
+   trimestre dell'accredito; online rimborsato del tutto = nessun importo
+   online, resta l'eventuale saldo diretto. Ogni notte (2:00)
+   `checkSubmittedYears` confronta gli anni già comunicati con i dati di oggi:
+   se cambiano, l'anno è segnato "Da correggere" (`needsCorrectionAt`,
+   migrazione `20261015100000_dac7_needs_correction`) e la Finanza riceve
+   `ADMIN_DAC7_NEEDS_CORRECTION`. "Correggi" sull'anno ricalcola anche i
+   trimestri; il nuovo "Segna come inviato" rimanda l'avviso a tutti come
+   "dati corretti".
+2. IBAN ricontrollato con Stripe al webhook `account.updated`
+   (`PayoutAccountService.recheckForStripeAccount`); se diventa diverso, il
+   professionista riceve `PAYOUT_IBAN_MISMATCH`.
+3. Admin Finanza: nel dettaglio di un periodo nome del professionista, "dati
+   fiscali mancanti" e "IBAN mancante"; il dettaglio non restituisce più
+   tutti i dati fiscali (`getPeriodForAdmin`).
+4. Promemoria del 1° novembre (`sendYearEndReminders`, `DAC7_DATA_REMINDER`)
+   a chi ha compensi nell'anno ma senza dati fiscali o senza IBAN dei
+   pagamenti online.
+
+**Verifica**: test API (357), tipi di api e web; in locale su database vero:
+rimborso simulato dopo l'invio → anno segnato e Finanza avvisata una volta,
+correzione → versione 2 e segno tolto, dettaglio admin con nome, promemoria a
+un professionista senza dati fiscali.
+
+## 248. Soldi dei pagamenti online bloccati sul conto Stripe del professionista
 
 **Richiesta esplicita dell'utente** (14/10/2026, thread "Verifica
 professionisti e DAC7"): "Scelgo di bloccare i soldi dal Professionista" (opzione B

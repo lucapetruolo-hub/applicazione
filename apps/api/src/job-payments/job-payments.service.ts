@@ -194,12 +194,12 @@ export class JobPaymentsService {
     return this.onlineMoneyService.handleStripeDispute(dispute);
   }
 
-  /** Bonifico dal conto Stripe del professionista arrivato o non riuscito (§243). */
+  /** Bonifico dal conto Stripe del professionista arrivato o non riuscito (§248). */
   handlePayoutEvent(payout: Stripe.Payout): Promise<void> {
     return this.onlineMoneyService.handlePayoutEvent(payout);
   }
 
-  /** Conto Stripe del professionista aggiornato: riprova i bonifici in sospeso (§243). */
+  /** Conto Stripe del professionista aggiornato: riprova i bonifici in sospeso (§248). */
   retryPayoutsForAccount(accountId: string, options: { skipFailed?: boolean } = {}): Promise<void> {
     return this.onlineMoneyService.retryPayoutsForAccount(accountId, options);
   }
@@ -267,7 +267,7 @@ export class JobPaymentsService {
   /**
    * Riepilogo dei pagamenti online del professionista per stato del bonifico
    * (bloccati, in preparazione, in arrivo, arrivati in banca), in Dati fiscali
-   * e pagamenti (docs/CHANGELOG.md §243).
+   * e pagamenti (docs/CHANGELOG.md §248).
    */
   async professionalPayoutSummary(userId: string): Promise<ProfessionalPayoutTotals> {
     const bookings = await this.prisma.booking.findMany({

@@ -53,7 +53,7 @@ export class JobPaymentsController {
   }
 }
 
-/** Pagamenti online ricevuti dal professionista, per stato del bonifico (docs/CHANGELOG.md §243). */
+/** Pagamenti online ricevuti dal professionista, per stato del bonifico (docs/CHANGELOG.md §248). */
 @Controller("professionals/me/online-payments")
 export class ProfessionalOnlinePaymentsController {
   constructor(private readonly jobPaymentsService: JobPaymentsService) {}

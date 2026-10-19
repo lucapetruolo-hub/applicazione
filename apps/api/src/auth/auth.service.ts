@@ -1,9 +1,9 @@
-import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, Optional, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, Inject, Injectable, NotFoundException, Optional, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import * as bcrypt from "bcryptjs";
 import { OAuth2Client } from "google-auth-library";
-import { LEGAL_CONSENT_VERSION, NO_CATEGORY_MESSAGE, type EmailStatus } from "@professionisti/shared";
+import { EMAIL_CODE_LENGTH, LEGAL_CONSENT_VERSION, NO_CATEGORY_MESSAGE, NO_ENTITY_TYPE_MESSAGE, type EmailStatus, type ProfessionalEntityTypeValue } from "@professionisti/shared";
 import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
@@ -27,10 +27,49 @@ const BCRYPT_SALT_ROUNDS = 10;
 const EMAIL_TOKEN_HOURS = 48;
 /** Validità del link per reimpostare la password (docs/CHANGELOG.md §185). */
 const PASSWORD_RESET_MINUTES = 60;
+/** Stesso messaggio per ogni errore del codice: non dice se l'account esiste (§245). */
+const PASSWORD_RESET_CODE_ERROR = "Codice non corretto o scaduto. Controlla l'ultima email ricevuta oppure chiedine uno nuovo.";
+/** Codice di 6 cifre nella stessa email del link (docs/CHANGELOG.md §243). */
+export const EMAIL_CODE_MINUTES = 15;
+export const EMAIL_CODE_MAX_ATTEMPTS = 5;
+export const EMAIL_CODE_RESEND_SECONDS = 60;
 
 function hashEmailToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
+
+/** Impronta del codice legata all'account: lo stesso codice su due account dà due impronte diverse. */
+function hashEmailCode(userId: string, code: string): string {
+  return createHash("sha256").update(`${userId}:${code}`).digest("hex");
+}
+
+/** Secondi che mancano prima di poter chiedere un nuovo codice (0 = subito). */
+export function emailCodeResendWait(sentAt: Date | null, now = new Date()): number {
+  if (!sentAt) return 0;
+  return Math.max(0, Math.ceil((sentAt.getTime() + EMAIL_CODE_RESEND_SECONDS * 1000 - now.getTime()) / 1000));
+}
+
+/**
+ * Secondi di validità che restano al codice in corso (0 = nessun codice
+ * valido: mai mandato, scaduto o tentativi finiti). Il sito lo usa per dire
+ * subito che il codice è scaduto invece di farlo scoprire al primo errore.
+ */
+export function emailCodeValidFor(
+  user: { emailCodeHash: string | null; emailCodeExpiresAt: Date | null; emailCodeAttempts: number },
+  now = new Date(),
+): number {
+  if (!user.emailCodeHash || !user.emailCodeExpiresAt || user.emailCodeAttempts >= EMAIL_CODE_MAX_ATTEMPTS) return 0;
+  return Math.max(0, Math.floor((user.emailCodeExpiresAt.getTime() - now.getTime()) / 1000));
+}
+
+/** Campi da azzerare quando l'email risulta confermata, in qualunque modo. */
+const CLEARED_EMAIL_CHECKS = {
+  emailTokenHash: null,
+  emailTokenExpiresAt: null,
+  emailCodeHash: null,
+  emailCodeExpiresAt: null,
+  emailCodeAttempts: 0,
+} as const;
 
 export type AuthResult = { token: string; isNewUser: boolean };
 
@@ -84,6 +123,7 @@ export class AuthService {
     name?: string,
     role: "CLIENT" | "PROFESSIONAL" = "CLIENT",
     categorySlugs: string[] = [],
+    entityType?: ProfessionalEntityTypeValue,
   ): Promise<AuthResult> {
     const existingUser = await this.prisma.user.findUnique({ where: { email } });
     if (existingUser) {
@@ -107,6 +147,8 @@ export class AuthService {
         // Categorie scelte in registrazione (docs/CHANGELOG.md §217), da 1 a
         // 3 per un professionista: già controllate da `registerSchema`.
         signupCategorySlugs: role === "PROFESSIONAL" ? [...new Set(categorySlugs)] : [],
+        // Privato, P.IVA o azienda (docs/CHANGELOG.md §243): già controllato da `registerSchema`.
+        signupEntityType: role === "PROFESSIONAL" ? (entityType ?? null) : null,
       },
     });
     // Benvenuto (docs/CHANGELOG.md §185). Al professionista contiene anche
@@ -144,6 +186,7 @@ export class AuthService {
     createIfMissing = true,
     legalConsent?: { acceptedLegalTerms: boolean; declaredAdult: boolean },
     categorySlugs: string[] = [],
+    entityType?: ProfessionalEntityTypeValue,
   ): Promise<AuthResult> {
     if (!this.googleClient) {
       throw new BadRequestException("Login con Google non configurato su questo ambiente.");
@@ -183,6 +226,9 @@ export class AuthService {
     }
     // Un nuovo professionista sceglie da 1 a 3 categorie anche con Google
     // (docs/CHANGELOG.md §217); il massimo è già nello schema Zod.
+    if (!existingUser && role === "PROFESSIONAL" && !entityType) {
+      throw new BadRequestException(NO_ENTITY_TYPE_MESSAGE);
+    }
     if (!existingUser && role === "PROFESSIONAL" && categorySlugs.length === 0) {
       throw new BadRequestException(NO_CATEGORY_MESSAGE);
     }
@@ -202,6 +248,7 @@ export class AuthService {
           imageUrl,
           role: role ?? "CLIENT",
           signupCategorySlugs: role === "PROFESSIONAL" ? [...new Set(categorySlugs)] : [],
+          signupEntityType: role === "PROFESSIONAL" ? (entityType ?? null) : null,
           legalConsentAt: new Date(),
           legalConsentVersion: LEGAL_CONSENT_VERSION,
           // Google ha già verificato l'indirizzo: nessun link da confermare.
@@ -231,7 +278,7 @@ export class AuthService {
     if (existingUser && existingUser.role !== "CLIENT" && !existingUser.emailVerifiedAt && existingUser.email === payload.email) {
       await this.prisma.user.update({
         where: { id: existingUser.id },
-        data: { emailVerifiedAt: new Date(), emailTokenHash: null, emailTokenExpiresAt: null, passwordHash: null },
+        data: { emailVerifiedAt: new Date(), ...CLEARED_EMAIL_CHECKS, passwordHash: null },
       });
     }
 
@@ -301,29 +348,49 @@ export class AuthService {
   }
 
   /**
-   * Conferma email (docs/CHANGELOG.md §178): genera un nuovo link (quello
-   * precedente smette di valere) e lo invia. Non blocca mai il chiamante se
-   * l'email non parte: l'utente può farla rispedire.
+   * Conferma email (docs/CHANGELOG.md §178, §243): genera un nuovo link e un
+   * nuovo codice di 6 cifre (quelli precedenti smettono di valere) e li manda
+   * nella stessa email. Non blocca mai il chiamante se l'email non parte:
+   * l'utente può farla rispedire.
    */
   private async sendVerificationEmail(userId: string, email: string, name: string | null, mode: "welcome" | "verify"): Promise<void> {
     const token = randomBytes(32).toString("base64url");
+    const code = randomInt(0, 1_000_000).toString().padStart(6, "0");
+    const now = Date.now();
     await this.prisma.user.update({
       where: { id: userId },
-      data: { emailTokenHash: hashEmailToken(token), emailTokenExpiresAt: new Date(Date.now() + EMAIL_TOKEN_HOURS * 60 * 60 * 1000) },
+      data: {
+        emailTokenHash: hashEmailToken(token),
+        emailTokenExpiresAt: new Date(now + EMAIL_TOKEN_HOURS * 60 * 60 * 1000),
+        emailCodeHash: hashEmailCode(userId, code),
+        emailCodeExpiresAt: new Date(now + EMAIL_CODE_MINUTES * 60 * 1000),
+        emailCodeAttempts: 0,
+        emailCodeSentAt: new Date(now),
+      },
     });
-    const link = `${frontendUrl()}/conferma-email?token=${encodeURIComponent(token)}`;
+    const verify = {
+      link: `${frontendUrl()}/conferma-email?token=${encodeURIComponent(token)}`,
+      hours: EMAIL_TOKEN_HOURS,
+      code,
+      codeMinutes: EMAIL_CODE_MINUTES,
+    };
     await this.emailService.send({
       to: email,
-      ...(mode === "welcome" ? welcomeProfessionalEmail(name, { link, hours: EMAIL_TOKEN_HOURS }) : verifyEmailEmail(name, link, EMAIL_TOKEN_HOURS)),
+      ...(mode === "welcome" ? welcomeProfessionalEmail(name, verify) : verifyEmailEmail(name, verify)),
     });
   }
 
+  /** Nuovo codice e nuovo link, al massimo uno ogni EMAIL_CODE_RESEND_SECONDS secondi. */
   async resendVerificationEmail(userId: string): Promise<{ alreadyVerified: boolean }> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user?.email || user.deletedAt !== null) {
       throw new NotFoundException("Account non trovato.");
     }
     if (user.emailVerifiedAt) return { alreadyVerified: true };
+    const wait = emailCodeResendWait(user.emailCodeSentAt);
+    if (wait > 0) {
+      throw new HttpException(`Ti abbiamo appena mandato un codice. Puoi chiederne un altro tra ${wait} secondi.`, HttpStatus.TOO_MANY_REQUESTS);
+    }
     await this.sendVerificationEmail(user.id, user.email, user.name, "verify");
     return { alreadyVerified: false };
   }
@@ -335,8 +402,45 @@ export class AuthService {
     }
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { emailVerifiedAt: new Date(), emailTokenHash: null, emailTokenExpiresAt: null },
+      data: { emailVerifiedAt: new Date(), ...CLEARED_EMAIL_CHECKS },
     });
+    return { email: user.email };
+  }
+
+  /**
+   * Conferma con il codice di 6 cifre (docs/CHANGELOG.md §243), da account
+   * già entrato: al massimo EMAIL_CODE_MAX_ATTEMPTS tentativi per codice,
+   * contati prima del confronto (anche due richieste insieme non ne
+   * guadagnano uno in più). Esauriti i tentativi o scaduto il codice, serve
+   * un codice nuovo.
+   */
+  async verifyEmailCode(userId: string, code: string): Promise<{ email: string }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user?.email || user.deletedAt !== null) {
+      throw new NotFoundException("Account non trovato.");
+    }
+    if (user.emailVerifiedAt) return { email: user.email };
+    if (!user.emailCodeHash || !user.emailCodeExpiresAt || user.emailCodeExpiresAt < new Date()) {
+      throw new BadRequestException("Il codice è scaduto. Chiedine uno nuovo: arriva in pochi secondi.");
+    }
+    const counted = await this.prisma.user.updateMany({
+      where: { id: userId, emailCodeAttempts: { lt: EMAIL_CODE_MAX_ATTEMPTS } },
+      data: { emailCodeAttempts: { increment: 1 } },
+    });
+    if (counted.count === 0) {
+      throw new BadRequestException("Hai sbagliato il codice troppe volte. Chiedine uno nuovo.");
+    }
+    const expected = Buffer.from(user.emailCodeHash, "hex");
+    const actual = Buffer.from(hashEmailCode(userId, code), "hex");
+    if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
+      const left = EMAIL_CODE_MAX_ATTEMPTS - (user.emailCodeAttempts + 1);
+      throw new BadRequestException(
+        left > 0
+          ? `Codice non corretto. Controlla l'ultima email ricevuta: ${left === 1 ? "ti resta 1 tentativo" : `ti restano ${left} tentativi`}.`
+          : "Codice non corretto. Hai finito i tentativi: chiedi un codice nuovo.",
+      );
+    }
+    await this.prisma.user.update({ where: { id: userId }, data: { emailVerifiedAt: new Date(), ...CLEARED_EMAIL_CHECKS } });
     return { email: user.email };
   }
 
@@ -371,12 +475,66 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user?.email || user.deletedAt !== null) return;
     const token = randomBytes(32).toString("base64url");
+    // Anche un codice da scrivere sul sito (§245): utile quando l'email si
+    // legge sul telefono e la password si cambia dal computer.
+    const code = randomInt(0, 1_000_000).toString().padStart(EMAIL_CODE_LENGTH, "0");
+    const now = Date.now();
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { passwordResetTokenHash: hashEmailToken(token), passwordResetExpiresAt: new Date(Date.now() + PASSWORD_RESET_MINUTES * 60 * 1000) },
+      data: {
+        passwordResetTokenHash: hashEmailToken(token),
+        passwordResetExpiresAt: new Date(now + PASSWORD_RESET_MINUTES * 60 * 1000),
+        passwordResetCodeHash: hashEmailCode(user.id, code),
+        passwordResetCodeExpiresAt: new Date(now + EMAIL_CODE_MINUTES * 60 * 1000),
+        passwordResetCodeAttempts: 0,
+      },
     });
     const link = `${frontendUrl()}/reimposta-password?token=${encodeURIComponent(token)}`;
-    await this.emailService.send({ to: user.email, ...passwordResetEmail(user.name, link, PASSWORD_RESET_MINUTES) });
+    await this.emailService.send({
+      to: user.email,
+      ...passwordResetEmail(user.name, { link, minutes: PASSWORD_RESET_MINUTES, code, codeMinutes: EMAIL_CODE_MINUTES }),
+    });
+  }
+
+  /**
+   * Codice di 6 cifre del recupero password (§245): se è giusto annulla il
+   * codice e il link dell'email e restituisce un link nuovo, con cui il sito
+   * apre la scelta della nuova password. Senza account, per indirizzi
+   * sconosciuti la risposta d'errore è la stessa di un codice sbagliato.
+   * Tentativi contati prima del confronto, come per la conferma email.
+   */
+  async exchangePasswordResetCode(email: string, code: string): Promise<{ token: string }> {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (
+      !user?.email ||
+      user.deletedAt !== null ||
+      !user.passwordResetCodeHash ||
+      !user.passwordResetCodeExpiresAt ||
+      user.passwordResetCodeExpiresAt < new Date()
+    ) {
+      throw new BadRequestException(PASSWORD_RESET_CODE_ERROR);
+    }
+    const counted = await this.prisma.user.updateMany({
+      where: { id: user.id, passwordResetCodeAttempts: { lt: EMAIL_CODE_MAX_ATTEMPTS } },
+      data: { passwordResetCodeAttempts: { increment: 1 } },
+    });
+    const expected = Buffer.from(user.passwordResetCodeHash, "hex");
+    const actual = Buffer.from(hashEmailCode(user.id, code), "hex");
+    if (counted.count === 0 || expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
+      throw new BadRequestException(PASSWORD_RESET_CODE_ERROR);
+    }
+    const token = randomBytes(32).toString("base64url");
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordResetTokenHash: hashEmailToken(token),
+        passwordResetExpiresAt: new Date(Date.now() + PASSWORD_RESET_MINUTES * 60 * 1000),
+        passwordResetCodeHash: null,
+        passwordResetCodeExpiresAt: null,
+        passwordResetCodeAttempts: 0,
+      },
+    });
+    return { token };
   }
 
   /**
@@ -395,9 +553,11 @@ export class AuthService {
         passwordHash,
         passwordResetTokenHash: null,
         passwordResetExpiresAt: null,
+        passwordResetCodeHash: null,
+        passwordResetCodeExpiresAt: null,
+        passwordResetCodeAttempts: 0,
         emailVerifiedAt: user.emailVerifiedAt ?? new Date(),
-        emailTokenHash: null,
-        emailTokenExpiresAt: null,
+        ...CLEARED_EMAIL_CHECKS,
       },
     });
     await this.emailService.send({ to: user.email, ...passwordChangedEmail(user.name) });
@@ -442,11 +602,13 @@ export class AuthService {
         googleId: null,
         passwordHash: null,
         emailTokenHash: null,
+        emailCodeHash: null,
         name: null,
         surname: null,
         birthDate: null,
         imageUrl: null,
         passwordResetTokenHash: null,
+        passwordResetCodeHash: null,
       },
     });
     // Conferma all'indirizzo di prima, già tolto dall'account (docs/CHANGELOG.md §185).

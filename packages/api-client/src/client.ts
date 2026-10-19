@@ -1,5 +1,6 @@
 import type {
   EmailStatus,
+  ProfessionalEntityTypeValue,
   MySubscription,
   SubscriptionTier,
   PROFESSIONAL_CATEGORIES,
@@ -47,6 +48,9 @@ import type {
   ReviewInput,
   SetDac7RuleInput,
   PlatformDac7SettingsInput,
+  PayoutIbanInput,
+  PayoutIbanStripeCheck,
+  Dac7YearSummary,
   SetFiscalVerificationInput,
   TimelineUpdateInput,
   UpdateAccountInput,
@@ -596,6 +600,12 @@ export type CurrentUser = {
   emailVerified: boolean;
   /** Vero quando l'API blocca le azioni principali finché l'email non è confermata. */
   emailVerificationRequired: boolean;
+  /** Secondi prima di poter chiedere un nuovo codice di conferma (docs/CHANGELOG.md §243). */
+  emailCodeResendInSeconds: number;
+  /** Secondi di validità del codice in corso: 0 se scaduto, finito o mai mandato. */
+  emailCodeValidForSeconds: number;
+  /** Privato, P.IVA o azienda scelto in registrazione: precompila /dashboard/fiscale. */
+  signupEntityType: ProfessionalEntityTypeValue | null;
 };
 
 /** Recensione scritta dal cliente a un professionista, vista dal cliente stesso. */
@@ -712,6 +722,8 @@ export type Dac7ReportingPeriod = {
   reportVersion: number;
   generatedAt: string | null;
   submittedAt: string | null;
+  /** Importi cambiati dopo l'invio: da correggere (docs/CHANGELOG.md §247). */
+  needsCorrectionAt: string | null;
 };
 
 export type Dac7Record = {
@@ -720,7 +732,23 @@ export type Dac7Record = {
   considerationEurCents: number;
   numberOfTransactions: number;
   feesWithheldEurCents: number;
+  /** Di cui pagati direttamente e online (docs/CHANGELOG.md §246). */
+  directConsiderationEurCents: number;
+  onlineConsiderationEurCents: number;
   missingFiscalData: boolean;
+  sellerNotifiedAt: string | null;
+  /** Solo nel dettaglio admin (docs/CHANGELOG.md §247). */
+  businessName?: string;
+  missingIban?: boolean;
+};
+
+/** IBAN per la DAC7, sempre mascherato (docs/CHANGELOG.md §246). */
+export type PayoutIbanView = {
+  maskedIban: string;
+  holderName: string;
+  stripeCheck: PayoutIbanStripeCheck | null;
+  stripeCheckedAt: string | null;
+  updatedAt: string;
 };
 
 export type PlatformDac7Settings = {
@@ -842,10 +870,11 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       declaredAdult: boolean,
       turnstileToken?: string,
       categorySlugs?: string[],
+      entityType?: ProfessionalEntityTypeValue,
     ) =>
       request<AuthResult>("/auth/register", {
         method: "POST",
-        body: JSON.stringify({ email, password, name, role, acceptedLegalTerms, declaredAdult, turnstileToken, categorySlugs }),
+        body: JSON.stringify({ email, password, name, role, acceptedLegalTerms, declaredAdult, turnstileToken, categorySlugs, entityType }),
       }),
 
     emailStatus: (email: string) =>
@@ -872,21 +901,34 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       acceptedLegalTerms?: boolean,
       declaredAdult?: boolean,
       categorySlugs?: string[],
+      entityType?: ProfessionalEntityTypeValue,
     ) =>
       request<AuthResult>("/auth/google/verify", {
         method: "POST",
-        body: JSON.stringify({ idToken, role, createIfMissing, acceptedLegalTerms, declaredAdult, categorySlugs }),
+        body: JSON.stringify({ idToken, role, createIfMissing, acceptedLegalTerms, declaredAdult, categorySlugs, entityType }),
       }),
 
     /** Recupero password (docs/CHANGELOG.md §185): risponde sempre `success`, che l'account esista o no. */
     requestPasswordReset: (email: string, turnstileToken?: string) =>
       request<{ success: boolean }>("/auth/password-reset/request", { method: "POST", body: JSON.stringify({ email, turnstileToken }) }),
 
+    /** Codice di 6 cifre della stessa email (§245): se è giusto dà il link per la nuova password. */
+    exchangePasswordResetCode: (email: string, code: string) =>
+      request<{ token: string }>("/auth/password-reset/code", { method: "POST", body: JSON.stringify({ email, code }) }),
+
     confirmPasswordReset: (token: string, password: string) =>
       request<AuthResult>("/auth/password-reset/confirm", { method: "POST", body: JSON.stringify({ token, password }) }),
 
     verifyEmail: (token: string) =>
       request<{ email: string }>("/auth/verify-email", { method: "POST", body: JSON.stringify({ token }) }),
+
+    /** Codice di 6 cifre arrivato con l'email di conferma (docs/CHANGELOG.md §243). */
+    verifyEmailCode: (token: string, code: string) =>
+      request<{ email: string }>("/auth/verify-email/code", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ code }),
+      }),
 
     resendVerificationEmail: (token: string) =>
       request<{ alreadyVerified: boolean }>("/auth/verify-email/resend", {
@@ -1789,6 +1831,15 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     createStripeDashboardLink: (token: string) =>
       request<{ url: string }>("/professionals/me/fiscal-profile/stripe-dashboard", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
+    myPayoutIban: (token: string) =>
+      request<PayoutIbanView | null>("/professionals/me/payout-iban", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    saveMyPayoutIban: (token: string, input: PayoutIbanInput) =>
+      request<PayoutIbanView>("/professionals/me/payout-iban", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
+    myDac7Summary: (token: string) =>
+      request<{ years: Dac7YearSummary[]; maskedIban: string | null }>("/professionals/me/dac7", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
     adminFiscalProfile: (token: string, professionalProfileId: string) =>
       request<AdminFiscalView>(`/admin/professionals/${professionalProfileId}/fiscal`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
@@ -1799,7 +1850,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         body: JSON.stringify(input),
       }),
 
-    /** Pagamenti online del professionista per stato del bonifico (docs/CHANGELOG.md §243). */
+    /** Pagamenti online del professionista per stato del bonifico (docs/CHANGELOG.md §248). */
     professionalPayoutSummary: (token: string) =>
       request<ProfessionalPayoutTotals>("/professionals/me/online-payments/summary", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
@@ -1892,6 +1943,9 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
 
     adminMarkDac7Submitted: (token: string, id: string) =>
       request<Dac7ReportingPeriod>(`/admin/dac7/periods/${id}/mark-submitted`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+
+    adminNotifyDac7Sellers: (token: string, id: string) =>
+      request<{ sent: number }>(`/admin/dac7/periods/${id}/notify-sellers`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
     adminCorrectDac7Period: (token: string, id: string) =>
       request<Dac7ReportingPeriod>(`/admin/dac7/periods/${id}/correct`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),

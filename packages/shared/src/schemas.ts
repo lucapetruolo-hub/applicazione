@@ -19,6 +19,7 @@ export const professionalCategorySlugSchema = z.enum(categorySlugs);
 export const MAX_PROFESSIONAL_CATEGORIES = 3;
 const tooManyCategoriesMessage = `Puoi scegliere al massimo ${MAX_PROFESSIONAL_CATEGORIES} categorie.`;
 export const NO_CATEGORY_MESSAGE = "Scegli almeno una categoria.";
+export const NO_ENTITY_TYPE_MESSAGE = "Scegli se lavori come privato, con Partita IVA o come azienda.";
 export const professionalCategorySlugsSchema = z
   .array(professionalCategorySlugSchema)
   .min(1, NO_CATEGORY_MESSAGE)
@@ -65,6 +66,9 @@ export const googleVerifySchema = z.object({
   // (docs/CHANGELOG.md §217): obbligatorie solo quando la chiamata crea un
   // nuovo account professionista, controllato in `AuthService.verifyGoogleToken`.
   categorySlugs: z.array(professionalCategorySlugSchema).max(MAX_PROFESSIONAL_CATEGORIES, tooManyCategoriesMessage).optional(),
+  // Tipo del professionista (docs/CHANGELOG.md §243), obbligatorio come le
+  // categorie solo quando la chiamata crea un nuovo account professionista.
+  entityType: z.enum(["PRIVATE_INDIVIDUAL", "SOLE_PROPRIETOR", "BUSINESS"]).optional(),
 });
 export type GoogleVerifyInput = z.infer<typeof googleVerifySchema>;
 
@@ -152,7 +156,13 @@ export const registerSchema = emailPasswordSchema.extend({
   // Da 1 a 3 categorie, obbligatorie solo per un professionista
   // (docs/CHANGELOG.md §217): precompilano il suo profilo.
   categorySlugs: z.array(professionalCategorySlugSchema).max(MAX_PROFESSIONAL_CATEGORIES, tooManyCategoriesMessage).optional(),
+  // Privato, P.IVA o azienda (docs/CHANGELOG.md §243): obbligatorio solo per
+  // un professionista, precompila i dati fiscali.
+  entityType: z.enum(["PRIVATE_INDIVIDUAL", "SOLE_PROPRIETOR", "BUSINESS"]).optional(),
 }).superRefine((data, ctx) => {
+  if (data.role === "PROFESSIONAL" && !data.entityType) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: NO_ENTITY_TYPE_MESSAGE, path: ["entityType"] });
+  }
   if (data.role === "PROFESSIONAL" && !data.categorySlugs?.length) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: NO_CATEGORY_MESSAGE, path: ["categorySlugs"] });
   }
@@ -197,6 +207,19 @@ export const verifyEmailSchema = z.object({
 });
 export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
 
+/**
+ * Codice di 6 cifre arrivato con l'email di conferma (docs/CHANGELOG.md
+ * §243): spazi e trattini incollati insieme al codice vengono ignorati.
+ */
+export const EMAIL_CODE_LENGTH = 6;
+export const verifyEmailCodeSchema = z.object({
+  code: z
+    .string()
+    .transform((value) => value.replace(/[\s-]/g, ""))
+    .refine((value) => /^\d{6}$/.test(value), `Il codice è fatto di ${EMAIL_CODE_LENGTH} cifre.`),
+});
+export type VerifyEmailCodeInput = z.infer<typeof verifyEmailCodeSchema>;
+
 /** Recupero password (docs/CHANGELOG.md §185): richiesta del link. */
 export const passwordResetRequestSchema = z.object({
   email: z.string().trim().email("Email non valida"),
@@ -210,6 +233,15 @@ export const passwordResetConfirmSchema = z.object({
   password: z.string().min(8, "La password deve avere almeno 8 caratteri"),
 });
 export type PasswordResetConfirmInput = z.infer<typeof passwordResetConfirmSchema>;
+
+/**
+ * Recupero password con il codice di 6 cifre della stessa email (§245): se è
+ * giusto, il server restituisce un link nuovo per scegliere la password.
+ */
+export const passwordResetCodeSchema = verifyEmailCodeSchema.extend({
+  email: z.string().trim().email("Email non valida"),
+});
+export type PasswordResetCodeInput = z.infer<typeof passwordResetCodeSchema>;
 
 /** Richiesta guidata cliente: foto + poche domande → categoria/prezzo stimato (CLAUDE.md §8). */
 export const guidedRequestSchema = z
@@ -487,6 +519,12 @@ export const completeBookingSchema = z.object({
   note: z.string().trim().max(1000).optional(),
   /** Motivo di voci aggiunte o totale fuori dal preventivo: obbligatorio in quel caso (`completionDeviation`). */
   changeReason: z.string().trim().max(1000).optional(),
+  /**
+   * Versione della dichiarazione sull'importo accettata con la spunta
+   * (`completionDeclaration` in dac7.ts, docs/CHANGELOG.md §246): il server
+   * la confronta con quella del tipo fiscale del professionista.
+   */
+  declarationVersion: z.string({ required_error: "Conferma la dichiarazione sull'importo." }).trim().min(1, "Conferma la dichiarazione sull'importo.").max(60),
 });
 export type CompleteBookingInput = z.infer<typeof completeBookingSchema>;
 

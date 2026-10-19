@@ -35,7 +35,7 @@ export const PROFESSIONAL_NAV: AccountNavGroup[] = [
   {
     title: "La tua attività",
     items: [
-      { href: "/dashboard/profilo", label: "Profilo e visibilità", icon: "user-round", alsoMatches: ["/dashboard/tipo-attivita"] },
+      { href: "/dashboard/profilo", label: "Profilo e visibilità", icon: "user-round" },
       { href: "/dashboard/statistiche", label: "Statistiche", icon: "trending-up" },
       { href: "/dashboard/abbonamento", label: "Abbonamento", icon: "credit-card" },
     ],

@@ -1,17 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { passwordResetRequestSchema } from "@professionisti/shared";
 import { Button, Text, YStack, brand } from "@professionisti/ui";
 import { AuthField } from "@/components/AuthField";
+import { EmailCodeForm } from "@/components/EmailCodeForm";
 import { AuthCard, AuthPageBackground } from "@/components/AuthPageBackground";
 import { apiClient } from "@/lib/apiClient";
 import { TURNSTILE_PENDING_MESSAGE, TurnstileWidget, isTurnstileEnabled } from "@/components/TurnstileWidget";
 
 /**
  * Recupero password (docs/CHANGELOG.md §185): si chiede il link via email.
- * La risposta è sempre la stessa, che l'account esista o no.
+ * La risposta è sempre la stessa, che l'account esista o no. Dal §245 la
+ * stessa email porta anche un codice di 6 cifre da scrivere qui: utile quando
+ * l'email si legge sul telefono e la password si cambia dal computer.
  */
 export function PasswordDimenticataContent() {
   const [email, setEmail] = useState("");
@@ -20,6 +24,8 @@ export function PasswordDimenticataContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileReset, setTurnstileReset] = useState(0);
+  const router = useRouter();
+  const resetToken = useRef<string | null>(null);
 
   async function handleSubmit() {
     setError(null);
@@ -59,22 +65,29 @@ export function PasswordDimenticataContent() {
         </YStack>
 
         {sentTo ? (
-          <YStack gap="$3">
-            <Text color={brand.grafite70}>
-              Se esiste un account con <Text fontWeight="700">{sentTo}</Text>, ti abbiamo mandato un link per scegliere una nuova
-              password. Vale 60 minuti.
-            </Text>
-            <Text color={brand.grafite70} fontSize="$3">
-              Non la trovi? Guarda anche nello spam, oppure{" "}
-              <Text color={brand.cianografiaScuro} fontWeight="600" cursor="pointer" onPress={() => setSentTo(null)} accessibilityRole="button">
-                prova con un altro indirizzo
-              </Text>
-              .
-            </Text>
+          <YStack gap="$4">
+            <EmailCodeForm
+              token=""
+              email={sentTo}
+              initialResendSeconds={60}
+              intro="Se esiste un account, ti abbiamo mandato un codice di"
+              doneLabel="Codice giusto"
+              tip="Non la trovi? Guarda anche in Spam o Promozioni. Puoi anche premere il pulsante nell'email: vale 60 minuti."
+              submitCode={async (code) => {
+                resetToken.current = (await apiClient.exchangePasswordResetCode(sentTo, code)).token;
+              }}
+              onVerified={() => {
+                if (resetToken.current) router.push(`/reimposta-password?token=${encodeURIComponent(resetToken.current)}`);
+              }}
+              onRequestNewCode={() => setSentTo(null)}
+            />
+            <button type="button" className="link-button" onClick={() => setSentTo(null)}>
+              Prova con un altro indirizzo
+            </button>
           </YStack>
         ) : (
           <YStack gap="$4">
-            <Text color={brand.grafite70}>Scrivi l&apos;email del tuo account: ti mandiamo un link per sceglierne una nuova.</Text>
+            <Text color={brand.grafite70}>Scrivi l&apos;email del tuo account: ti mandiamo un codice per sceglierne una nuova.</Text>
             <AuthField
               label="Email"
               value={email}
@@ -94,7 +107,7 @@ export function PasswordDimenticataContent() {
               </Text>
             ) : null}
             <Button variant="primary" onPress={handleSubmit} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
-              {isSubmitting ? "Invio in corso..." : "Mandami il link"}
+              {isSubmitting ? "Invio in corso..." : "Mandami il codice"}
             </Button>
           </YStack>
         )}
