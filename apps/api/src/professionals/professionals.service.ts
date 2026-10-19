@@ -13,6 +13,7 @@ import {
   type DeclineLeadInput,
   type MyAvailability,
   type MyProfessionalProfile,
+  type MyProfilePreview,
   type ProfessionalAgenda,
   type ProfessionalAgendaDay,
   type ProfessionalAvailabilityPreviewDay,
@@ -76,6 +77,17 @@ function mapServices(
     priceMaxEurCents: service.priceMaxEurCents,
   }));
 }
+
+/** Dati letti per la pagina pubblica del professionista e per la sua anteprima in dashboard. */
+const PROFESSIONAL_DETAIL_INCLUDE = {
+  category: true,
+  fiscalProfile: { select: { stripePayoutsEnabled: true, fiscalDataCompleteAt: true, entityType: true } },
+  extraCategories: true,
+  bookings: { include: { review: true } },
+  visibilityBoosts: { where: { status: "ACTIVE" } },
+  services: true,
+  metrics: true,
+} satisfies Prisma.ProfessionalProfileInclude;
 
 @Injectable()
 export class ProfessionalsService {
@@ -405,24 +417,34 @@ export class ProfessionalsService {
   }
 
   async getById(id: string): Promise<ProfessionalDetail> {
-    const profile = await this.prisma.professionalProfile.findUnique({
-      where: { id },
-      include: {
-        category: true,
-        fiscalProfile: { select: { stripePayoutsEnabled: true, fiscalDataCompleteAt: true, entityType: true } },
-        extraCategories: true,
-        bookings: { include: { review: true } },
-        visibilityBoosts: { where: { status: "ACTIVE" } },
-        services: true,
-        metrics: true,
-      },
-    });
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { id }, include: PROFESSIONAL_DETAIL_INCLUDE });
 
     // Senza dati fiscali la pagina non è ancora pubblica (docs/CHANGELOG.md §241).
     if (!profile || profile.deletedAt || profile.suspendedAt || profile.invitePendingAt || publicVisibilityMissing(profile)) {
       throw new NotFoundException("Professionista non trovato.");
     }
+    return this.toProfessionalDetail(profile);
+  }
 
+  /**
+   * Anteprima del proprio profilo pubblico in "Profilo e visibilità"
+   * (docs/CHANGELOG.md §249): gli stessi dati della pagina pubblica, anche
+   * quando il profilo non è ancora visibile ai clienti, con il motivo.
+   */
+  async getMyPreview(userId: string): Promise<MyProfilePreview | null> {
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { userId }, include: PROFESSIONAL_DETAIL_INCLUDE });
+    if (!profile || profile.deletedAt) return null;
+    const visibility: MyProfilePreview["visibility"] = profile.suspendedAt
+      ? "SUSPENDED"
+      : profile.invitePendingAt || profile.profileDeclarationVersion !== PROFILE_DECLARATION_VERSION
+        ? "NOT_CONFIRMED"
+        : publicVisibilityMissing(profile)
+          ? "FISCAL_DATA_MISSING"
+          : "PUBLIC";
+    return { profile: this.toProfessionalDetail(profile), visibility };
+  }
+
+  private toProfessionalDetail(profile: Prisma.ProfessionalProfileGetPayload<{ include: typeof PROFESSIONAL_DETAIL_INCLUDE }>): ProfessionalDetail {
     // Recensioni dei clienti pubbliche subito (docs/CHANGELOG.md §215).
     const reviews = profile.bookings
       .filter((booking) => booking.review !== null && booking.review.hiddenAt === null)

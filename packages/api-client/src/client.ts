@@ -27,6 +27,7 @@ import type {
   GuidedRequestUpdateInput,
   MyAvailability,
   MyProfessionalProfile,
+  MyProfilePreview,
   OpenDisputeInput,
   ProfessionalAgenda,
   ProfessionalAvailableSlot,
@@ -1184,6 +1185,10 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
 
     getMyProfessionalProfile: (token: string) =>
       request<MyProfessionalProfile | null>("/professionals/me", { headers: { Authorization: `Bearer ${token}` } }),
+
+    /** Il proprio profilo come lo vedono i clienti, anche se non è ancora pubblico. */
+    getMyProfilePreview: (token: string) =>
+      request<MyProfilePreview | null>("/professionals/me/preview", { headers: { Authorization: `Bearer ${token}` } }),
 
     upsertMyProfessionalProfile: (token: string, input: ProfessionalProfileSelfInput) =>
       request<MyProfessionalProfile>("/professionals/me", {

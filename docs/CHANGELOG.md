@@ -18939,3 +18939,33 @@ lo stesso comportamento delle caselle rosse anche in `/completa-profilo`
 popup del consenso dopo l'accesso con Google (`GoogleConsentModal`, che ora
 usa il `ConsentCheckbox` condiviso invece di una sua copia). Provati con
 Playwright a 390px e 1280px.
+
+## 249. "Profilo e visibilità" si apre sull'anteprima; pacchetti di visibilità in fondo a "Oggi"
+
+**Richiesta dell'utente:** togliere la scheda "Aumenta la tua visibilità"
+da "Profilo e visibilità" e metterla in fondo alla pagina Oggi, lasciando
+solo "Boost locale" e "Storia di successo", più belle da vedere. Aprendo
+"Profilo e visibilità" si vede prima un'anteprima di come i clienti vedono
+il profilo, senza poter modificare; "Modifica profilo" apre il modulo di
+sempre.
+
+**Decisione:**
+- `BoostSection` in fondo a `/dashboard`: due schede (verde per il Boost,
+  oro per la Storia) con icona, una riga di descrizione, due vantaggi e il
+  prezzo; stato "In arrivo" come prima (acquisti non attivi). Tolto il
+  "Badge reputazione".
+- `/dashboard/profilo` parte dall'anteprima quando il profilo esiste ed è
+  confermato: stato "Visibile ai clienti" (o perché non lo è, con il link
+  per rimediare), badge Verificato e la pagina pubblica vera
+  (`ProfessionalDetailContent` con `preview`: niente salva/condividi/
+  segnala, orari e "Richiedi un preventivo" non cliccabili, visita non
+  contata). "Modifica profilo" apre il modulo; "Torna all'anteprima" con
+  modifiche non salvate chiede se salvarle; dopo il salvataggio si torna
+  all'anteprima aggiornata invece che alla Home. Senza profilo, o con un
+  profilo da confermare, si parte dal modulo come prima.
+- API `GET /professionals/me/preview`: gli stessi dati della pagina
+  pubblica anche se il profilo non è ancora pubblico, con il motivo
+  (`PUBLIC`, `FISCAL_DATA_MISSING`, `NOT_CONFIRMED`, `SUSPENDED`).
+
+**Verifica:** `tsc` su api e web, `next build`; Playwright a 390px e 1366px
+(anteprima, modulo, Oggi) con un'API finta.
