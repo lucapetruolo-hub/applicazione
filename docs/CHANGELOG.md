@@ -19037,3 +19037,30 @@ rifiutato, sblocco con conguaglio, rimborso totale), webhook dei bonifici in
   `account.external_account.created/updated` rileggono lo stato del conto
   del professionista e riprovano i bonifici in sospeso (serve anche al
   ricontrollo dell'IBAN del thread DAC7).
+
+## 250. IBAN come primo passo di "Attiva i pagamenti online"
+
+- *Richiesta dell'utente* (thread Stripe, 15/10/2026): "non è un'unica
+  procedura l'attivazione dei pagamenti online che porta alla registrazione
+  del conto Stripe? non possiamo unificare le due voci?", poi "Tenerlo, ma
+  dentro 'Attiva': un solo passo con l'IBAN scritto prima di andare su
+  Stripe". Rimandato all'unione di §249 (`OnlinePaymentsCard`).
+- *Decisione*: in Dati fiscali e pagamenti non c'è più un riquadro IBAN a
+  parte. "Attiva" apre, dentro lo stesso banner, il modulo "Il conto su cui
+  ricevi i pagamenti" (IBAN e titolare, "Scopri di più" sul perché);
+  "Continua su Stripe" salva l'IBAN e porta subito su Stripe. Chi ha già
+  l'IBAN va dritto su Stripe; se Stripe non risponde il passo si chiude e
+  "Attiva" riprova senza richiederlo. A pagamenti attivi l'IBAN resta
+  dentro il riquadro "Pagamenti online" (mascherato, "Cambia IBAN",
+  confronto con Stripe); chi li aveva attivati prima senza IBAN lo trova lì
+  da compilare.
+- *Server*: `PUT /professionals/me/payout-iban` non chiede più l'account
+  Stripe (crea il profilo fiscale se manca, come fa l'attivazione); il
+  confronto con Stripe resta "Da confrontare" finché il conto non c'è, poi
+  si aggiorna col ricontrollo di §247 e i webhook del conto di §249.
+- *Domanda per il commercialista*: se per la DAC7 basta il dato di Stripe,
+  il passo si toglie (domanda 1 di
+  `analisi/domande-commercialista-avvocato.md`).
+- *Verifica*: in locale, banner → "Attiva" → modulo → "Continua su Stripe"
+  salva l'IBAN (cifrato, `UNAVAILABLE`) e chiama l'attivazione Stripe;
+  riquadro a pagamenti attivi con l'IBAN mascherato, telefono e computer.

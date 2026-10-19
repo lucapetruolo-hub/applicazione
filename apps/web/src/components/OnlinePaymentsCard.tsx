@@ -11,6 +11,8 @@ import { PayoutSummary } from "@/components/PayoutSummary";
  * attivi è solo un banner con una frase e un pulsante; dopo l'attivazione
  * mostra lo stato, i totali dei bonifici e l'accesso a Stripe. `children`
  * compare solo a pagamenti attivi (es. il conto bancario dei bonifici).
+ * `step` è il passo prima di Stripe (l'IBAN, §250): aperto da "Attiva",
+ * prende il posto del pulsante dentro lo stesso banner.
  */
 export function OnlinePaymentsCard({
   active,
@@ -21,6 +23,7 @@ export function OnlinePaymentsCard({
   onActivate,
   onOpenStripe,
   children,
+  step,
 }: {
   /** Stripe ha attivato i pagamenti del professionista. */
   active: boolean;
@@ -33,16 +36,12 @@ export function OnlinePaymentsCard({
   onActivate: () => void;
   onOpenStripe: () => void;
   children?: ReactNode;
+  step?: ReactNode;
 }) {
   if (!active) {
     return (
-      <YStack
-        gap="$3"
-        padding="$4"
-        borderRadius="$4"
-        backgroundColor={brand.cianografiaVelo}
-        $gtXs={{ flexDirection: "row", alignItems: "center" }}
-      >
+      <YStack gap="$3" padding="$4" borderRadius="$4" backgroundColor={brand.cianografiaVelo}>
+      <YStack gap="$3" $gtXs={{ flexDirection: "row", alignItems: "center" }}>
         <XStack gap="$3" flex={1} alignItems="flex-start">
           <YStack width={40} height={40} borderRadius={20} backgroundColor={brand.calce} alignItems="center" justifyContent="center" flexShrink={0}>
             <Icon name="credit-card" size={20} strokeWidth={2.2} color={brand.cianografiaScuro} />
@@ -64,9 +63,17 @@ export function OnlinePaymentsCard({
             ) : null}
           </YStack>
         </XStack>
-        <Button variant="primary" onPress={onActivate} disabled={loading} width="100%" $gtXs={{ width: "auto" }}>
-          {loading ? "Attendere..." : started ? "Continua" : "Attiva"}
-        </Button>
+        {step ? null : (
+          <Button variant="primary" onPress={onActivate} disabled={loading} width="100%" $gtXs={{ width: "auto" }}>
+            {loading ? "Attendere..." : started ? "Continua" : "Attiva"}
+          </Button>
+        )}
+      </YStack>
+      {step ? (
+        <YStack padding="$4" borderRadius="$3" backgroundColor={brand.calce}>
+          {step}
+        </YStack>
+      ) : null}
       </YStack>
     );
   }

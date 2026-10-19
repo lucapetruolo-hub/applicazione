@@ -20,13 +20,34 @@ const CHECK_HINT = {
 } as const;
 
 /**
- * IBAN per la DAC7 (decisione di Luca, docs/CHANGELOG.md §246): solo per chi
- * ha attivato i pagamenti online. Stripe non ci dà l'IBAN in chiaro, ma la
- * comunicazione annuale al fisco lo chiede. Mai mostrato intero dopo il
- * salvataggio: torna solo mascherato, con l'esito del confronto con Stripe.
+ * IBAN per la DAC7 (decisione di Luca, docs/CHANGELOG.md §246): Stripe non ci
+ * dà l'IBAN in chiaro, ma la comunicazione annuale al fisco lo chiede. Mai
+ * mostrato intero dopo il salvataggio: torna solo mascherato, con l'esito del
+ * confronto con Stripe. `variant="step"` è il primo passo di "Attiva i
+ * pagamenti online", prima di andare su Stripe (§250): solo il modulo, e al
+ * salvataggio `onSaved` prosegue.
  */
-export function PayoutIbanCard({ token, defaultHolderName }: { token: string; defaultHolderName: string }) {
-  const [saved, setSaved] = useState<PayoutIbanView | null | undefined>(undefined);
+export function PayoutIbanCard({
+  token,
+  defaultHolderName,
+  variant = "card",
+  initial,
+  onSaved,
+  onCancel,
+  busy = false,
+}: {
+  token: string;
+  defaultHolderName: string;
+  variant?: "card" | "step";
+  /** IBAN già letto dalla pagina: evita una seconda richiesta. */
+  initial?: PayoutIbanView | null;
+  onSaved?: (saved: PayoutIbanView) => void;
+  onCancel?: () => void;
+  /** Il passo successivo (Stripe) sta partendo. */
+  busy?: boolean;
+}) {
+  const isStep = variant === "step";
+  const [saved, setSaved] = useState<PayoutIbanView | null | undefined>(initial);
   const [loadError, setLoadError] = useState(false);
   const [editing, setEditing] = useState(false);
   const [iban, setIban] = useState("");
@@ -37,6 +58,10 @@ export function PayoutIbanCard({ token, defaultHolderName }: { token: string; de
   const [justSaved, setJustSaved] = useState(false);
 
   useEffect(() => {
+    if (initial !== undefined) {
+      if (initial) setHolderName(initial.holderName);
+      return;
+    }
     apiClient
       .myPayoutIban(token)
       .then((data) => {
@@ -47,7 +72,7 @@ export function PayoutIbanCard({ token, defaultHolderName }: { token: string; de
         setSaved(null);
         setLoadError(true);
       });
-  }, [token]);
+  }, [token, initial]);
 
   useEffect(() => {
     if (!saved && !holderName && defaultHolderName) setHolderName(defaultHolderName);
@@ -75,6 +100,7 @@ export function PayoutIbanCard({ token, defaultHolderName }: { token: string; de
       setIban("");
       setIbanTouched(false);
       setJustSaved(true);
+      onSaved?.(result);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Non siamo riusciti a salvare l'IBAN: riprova tra poco.");
     } finally {
@@ -82,15 +108,16 @@ export function PayoutIbanCard({ token, defaultHolderName }: { token: string; de
     }
   }
 
-  const showForm = saved === null || editing;
+  const showForm = isStep || saved === null || editing;
+  const working = saving || busy;
 
   return (
-    <YStack gap="$3" paddingTop="$3" borderTopWidth={1} borderTopColor={brand.filetto}>
+    <YStack gap="$3" {...(isStep ? {} : { paddingTop: "$3", borderTopWidth: 1, borderTopColor: brand.filetto })}>
       <YStack gap="$1">
         <Text fontSize={15} fontWeight="700">
-          IBAN dei pagamenti online
+          {isStep ? "Il conto su cui ricevi i pagamenti" : "IBAN dei pagamenti online"}
         </Text>
-        <LearnMore summary="Lo stesso conto che hai indicato a Stripe.">
+        <LearnMore summary={isStep ? "Poi completi l'attivazione su Stripe, con lo stesso conto." : "Lo stesso conto che hai indicato a Stripe."}>
           <Text fontSize={13} color={brand.grafite70}>
             Per legge (DAC7) comunichiamo ogni anno al fisco i pagamenti online che ricevi e il conto su cui arrivano.
             Stripe non ci mostra l&apos;IBAN, per questo te lo chiediamo.
@@ -101,7 +128,7 @@ export function PayoutIbanCard({ token, defaultHolderName }: { token: string; de
         </LearnMore>
       </YStack>
 
-      {saved === undefined ? (
+      {saved === undefined && !isStep ? (
         <Text fontSize={13} color={brand.grafite70}>
           Caricamento...
         </Text>
@@ -137,16 +164,21 @@ export function PayoutIbanCard({ token, defaultHolderName }: { token: string; de
               {error}
             </Text>
           ) : null}
-          {loadError ? (
+          {loadError && !isStep ? (
             <Text fontSize={13} color={brand.grafite70}>
               Non riusciamo a leggere l&apos;IBAN salvato: riprova più tardi.
             </Text>
           ) : null}
           <XStack gap="$2" flexWrap="wrap">
-            <Button variant="primary" onPress={handleSave} disabled={saving} opacity={saving ? 0.6 : 1}>
-              {saving ? "Salvataggio..." : "Salva IBAN"}
+            <Button variant="primary" onPress={handleSave} disabled={working} opacity={working ? 0.6 : 1}>
+              {working ? "Attendere..." : isStep ? "Continua su Stripe" : "Salva IBAN"}
             </Button>
-            {editing ? (
+            {isStep && onCancel ? (
+              <Button variant="ghost" onPress={onCancel} disabled={working}>
+                Annulla
+              </Button>
+            ) : null}
+            {editing && !isStep ? (
               <Button
                 variant="ghost"
                 onPress={() => {

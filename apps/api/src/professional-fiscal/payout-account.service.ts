@@ -119,10 +119,14 @@ export class PayoutAccountService {
   }
 
   async saveMine(userId: string, input: PayoutIbanInput): Promise<PayoutAccountView> {
-    const fiscal = await this.myFiscalProfile(userId);
-    if (!fiscal?.stripeConnectAccountId) {
-      throw new BadRequestException("L'IBAN serve solo per i pagamenti online: attivali prima con Stripe.");
-    }
+    // Primo passo di "Attiva i pagamenti online", prima di Stripe
+    // (docs/CHANGELOG.md §250): l'account Stripe può non esistere ancora.
+    const fiscal =
+      (await this.myFiscalProfile(userId)) ??
+      (await this.prisma.professionalFiscalProfile.create({
+        data: { professionalProfileId: (await this.prisma.professionalProfile.findUniqueOrThrow({ where: { userId }, select: { id: true } })).id },
+        include: { payoutAccount: true },
+      }));
     const result = checkIban(input.iban);
     if (!result.ok) throw new BadRequestException(result.message);
 
