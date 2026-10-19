@@ -154,6 +154,8 @@ export type ClientBooking = {
 
 export type ClientGuidedRequest = {
   id: string;
+  /** Altre richieste dello stesso invio con più categorie (docs/CHANGELOG.md §253). */
+  sentWith?: { id: string; categoryLabel: string }[];
   categorySlug: string;
   categoryLabel: string;
   description: string;

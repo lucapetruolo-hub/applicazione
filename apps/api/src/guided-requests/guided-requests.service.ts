@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException, Optional } from "@nestjs/common";
 import { GeocodingService } from "../geocoding/geocoding.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
+import { randomUUID } from "node:crypto";
 import { Prisma, type PrismaClient, type ProfessionalProfile } from "@professionisti/database";
 import { findComuneByName, professionalRestrictions, clientPaymentOffer, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
@@ -55,6 +56,11 @@ function respondUntilForEmail(isUrgent: boolean, expiresAt: Date | null): string
   return !isUrgent && expiresAt ? expiresAt.toISOString() : null;
 }
 
+/** "Idraulico, Elettricista e Muratore". */
+function joinItalian(items: string[]): string {
+  return items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} e ${items[items.length - 1]}`;
+}
+
 @Injectable()
 export class GuidedRequestsService {
   private readonly logger = new Logger(GuidedRequestsService.name);
@@ -91,11 +97,22 @@ export class GuidedRequestsService {
       await this.assertGeneralRequestsOpen(category, input.city ?? null, true);
     }
     await this.assertAddressInCity(input);
+    const submissionGroupId = randomUUID();
     const requests: { guidedRequestId: string; matchedProfessionals: number; categorySlug: string }[] = [];
     for (const slug of slugs) {
-      const created = await this.create(clientId, { ...rest, categorySlug: slug as GuidedRequestInput["categorySlug"] }, { checksDone: true });
+      const created = await this.create(clientId, { ...rest, categorySlug: slug as GuidedRequestInput["categorySlug"] }, { checksDone: true, submissionGroupId });
       requests.push({ ...created, categorySlug: slug });
     }
+    // Una sola email di conferma per tutto l'invio, non una per categoria.
+    this.notificationsService.emailRequestSent(clientId, {
+      category: joinItalian(slugs.map((slug) => categories.find((c) => c.slug === slug)!.label)),
+      requestsCount: slugs.length,
+      city: input.city ?? null,
+      isUrgent: input.isUrgent,
+      sentTo: requests.reduce((sum, r) => sum + r.matchedProfessionals, 0),
+      direct: false,
+      description: input.description,
+    });
     return {
       guidedRequestId: requests[0]!.guidedRequestId,
       matchedProfessionals: requests.reduce((sum, r) => sum + r.matchedProfessionals, 0),
@@ -134,12 +151,13 @@ export class GuidedRequestsService {
    * `opts.excludeProfileId`: professionista da escludere dallo smistamento
    * (richiesta rinviata ad altri dopo una mancata presentazione accolta,
    * docs/CHANGELOG.md §167). `opts.checksDone`: zona e indirizzo già
-   * controllati da createForCategories.
+   * controllati da createForCategories, che manda anche una sola email di
+   * conferma per tutto l'invio (`submissionGroupId` valorizzato).
    */
   async create(
     clientId: string,
     input: Omit<GuidedRequestInput, "extraCategorySlugs">,
-    opts: { excludeProfileId?: string; checksDone?: boolean } = {},
+    opts: { excludeProfileId?: string; checksDone?: boolean; submissionGroupId?: string } = {},
   ) {
     let category = await this.prisma.category.findUnique({ where: { slug: input.categorySlug } });
     if (!category) {
@@ -273,6 +291,7 @@ export class GuidedRequestsService {
               forwardAt: targetProfile && input.forwardIfNoReply ? computeDirectForwardAt(input.isUrgent) : null,
               preferredDate: resolvedSlot?.date,
               preferredTimeSlot: resolvedSlot ? input.preferredTimeSlot : undefined,
+              submissionGroupId: opts.submissionGroupId,
             },
           });
         },
@@ -362,7 +381,7 @@ export class GuidedRequestsService {
     }
 
     // Conferma al cliente che la richiesta è partita (docs/CHANGELOG.md §185).
-    this.notificationsService.emailRequestSent(clientId, {
+    if (!opts.submissionGroupId) this.notificationsService.emailRequestSent(clientId, {
       category: category.label,
       city: input.city ?? null,
       isUrgent: input.isUrgent,
@@ -411,6 +430,12 @@ export class GuidedRequestsService {
     });
 
     return requests.map((request) => {
+      // Altre richieste dello stesso invio con più categorie (§253).
+      const sentWith = request.submissionGroupId
+        ? requests
+            .filter((other) => other.id !== request.id && other.submissionGroupId === request.submissionGroupId)
+            .map((other) => ({ id: other.id, categoryLabel: other.category.label }))
+        : [];
       // Il più recente tra l'aggiornamento della richiesta stessa (modifica
       // descrizione/città/foto) e quello di un qualunque preventivo ricevuto
       // (invio/modifica/accettazione/rifiuto) — "ultimo aggiornamento" per
@@ -475,6 +500,7 @@ export class GuidedRequestsService {
             : null,
         createdAt: request.createdAt.toISOString(),
         updatedAt: latestQuoteUpdate.toISOString(),
+        sentWith,
         preferredDate: request.preferredDate?.toISOString().slice(0, 10) ?? null,
         preferredTimeSlot: request.preferredTimeSlot,
         sentTo: request.leads.map((lead) => ({

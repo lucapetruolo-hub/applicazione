@@ -19172,3 +19172,10 @@ differenti per ogni categoria".
 
 **Verifica:** `tsc` su api e web, test dello schema (vitest), Playwright a
 390px e 1280px (scelta categorie e riepilogo).
+
+**Migliorie approvate dall'utente (stessa PR):**
+- Una sola email di conferma al cliente per tutto l'invio ("Richieste
+  inviate: Idraulico ed Elettricista a Roma"), non una per categoria.
+- Le richieste dello stesso invio hanno lo stesso `submissionGroupId`
+  (migrazione `20261019150000_guided_request_submission_group`, colonna
+  facoltativa): in "Le mie richieste" ognuna mostra "Inviata insieme a …".

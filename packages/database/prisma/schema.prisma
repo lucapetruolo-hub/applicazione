@@ -699,6 +699,9 @@ model GuidedRequest {
   preferredDate         DateTime?
   preferredTimeSlot     String?
   professionalProfileId String?
+  // Stesso valore per le richieste nate da un unico invio con più categorie
+  // (docs/CHANGELOG.md §253): il cliente le vede "inviate insieme".
+  submissionGroupId     String?
   // Scadenza della richiesta nel suo complesso (non del singolo Lead, vedi
   // Lead.expiresAt sotto) — oltre questa data, se ancora OPEN/MATCHED senza
   // esito, il job schedulato la chiude (closedReason EXPIRED). Nullable:
