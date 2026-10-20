@@ -289,7 +289,9 @@ const BUILDERS: Record<string, Builder> = {
     title: "Acconto rimborsato",
     paragraphs: [
       `Il preventivo di **${pro(ctx)}** per **${job(ctx)}** non si poteva più confermare quando è arrivato il tuo pagamento: per esempio era cambiato o era stato ritirato.`,
-      "Ti abbiamo rimborsato tutto l'acconto: lo rivedi sulla carta in pochi giorni. Se il preventivo è ancora disponibile puoi accettarlo di nuovo.",
+      payload.refundPending === true
+        ? "Il rimborso di tutto l'acconto è in arrivo: ti scriviamo appena parte verso la carta. Se il preventivo è ancora disponibile puoi accettarlo di nuovo."
+        : "Ti abbiamo rimborsato tutto l'acconto: lo rivedi sulla carta in pochi giorni. Se il preventivo è ancora disponibile puoi accettarlo di nuovo.",
     ],
     details: typeof payload.amountEurCents === "number" ? [{ label: "Rimborso", value: formatEur(payload.amountEurCents) }] : undefined,
     cta: clientRequests(),
@@ -662,6 +664,19 @@ const BUILDERS: Record<string, Builder> = {
     details: typeof payload.amountEurCents === "number" ? [{ label: "Saldo da pagare", value: formatEur(payload.amountEurCents) }] : undefined,
     cta: { label: "Paga il saldo", url: `${frontendUrl()}/le-mie-richieste` },
   }),
+  // Saldo addebitato da solo sulla carta dell'acconto (§267).
+  JOB_BALANCE_AUTO_CHARGED: (payload, ctx) => ({
+    kind: "notification",
+    subject: "Saldo del lavoro pagato",
+    greeting: ctx.name,
+    title: "Saldo pagato",
+    paragraphs: [
+      `**${pro(ctx)}** ha chiuso il lavoro per **${job(ctx)}**: abbiamo addebitato il saldo sulla carta usata per l'acconto.`,
+      "Il professionista riceve i soldi quando confermi il lavoro. Se c'è un problema, segnalalo dalla richiesta.",
+    ],
+    details: typeof payload.amountEurCents === "number" ? [{ label: "Saldo pagato", value: formatEur(payload.amountEurCents) }] : undefined,
+    cta: { label: "Conferma il lavoro", url: `${frontendUrl()}/le-mie-richieste` },
+  }),
   JOB_BALANCE_UNPAID: (_payload, ctx) => ({
     kind: "notification",
     tone: "urgent",
@@ -681,7 +696,10 @@ const BUILDERS: Record<string, Builder> = {
     greeting: ctx.name,
     title: "Pagamento sbloccato",
     paragraphs: [
-      `Abbiamo sbloccato il pagamento del lavoro per **${job(ctx)}**, già al netto della commissione e del costo della carta.`,
+      `Abbiamo sbloccato il pagamento del lavoro per **${job(ctx)}**, già al netto della commissione, del costo della carta e del costo del bonifico.`,
+      ...(typeof payload.debtRecoveredEurCents === "number" && payload.debtRecoveredEurCents > 0
+        ? [`Abbiamo trattenuto ${formatEur(payload.debtRecoveredEurCents)} che dovevi restituire per un lavoro precedente.`]
+        : []),
       "Il bonifico arriva in banca in pochi giorni lavorativi.",
     ],
     details: typeof payload.amountEurCents === "number" ? [{ label: "Bonifico", value: formatEur(payload.amountEurCents) }] : undefined,
@@ -773,9 +791,67 @@ const BUILDERS: Record<string, Builder> = {
     title: "Contestazione in banca",
     paragraphs: [
       `Il cliente del lavoro **${job(ctx)}** ha contestato un pagamento online presso la sua banca.`,
-      "Decide la banca: finché la contestazione è aperta l'accredito resta sospeso. Il nostro team risponde con le prove (preventivo accettato, chat, foto): se hai altro materiale utile, scrivilo nella chat del lavoro.",
+      "Decide la banca: finché la contestazione è aperta la cifra contestata resta sospesa. Il nostro team risponde con le prove (preventivo accettato, chat, foto): se hai altro materiale utile, scrivilo nella chat del lavoro.",
+      "Se la banca dà ragione a te la cifra torna sul tuo conto; se dà ragione al cliente resta a lui.",
     ],
     cta: proRequests("Apri il lavoro"),
+  }),
+  // Cifra da restituire (§267): rimborso o contestazione persa quando i soldi non erano più sul conto.
+  JOB_PAYMENT_DEBT: (payload, ctx) => ({
+    kind: "notification",
+    subject: "Un importo da restituire su un lavoro",
+    greeting: ctx.name,
+    title: "Importo da restituire",
+    paragraphs: [
+      `Per il lavoro **${job(ctx)}** devi restituire ${formatEur(payload.amountEurCents) || "un importo"} (rimborso al cliente o contestazione in banca).`,
+      "Lo tratteniamo dai tuoi prossimi pagamenti online, prima del bonifico. Non devi fare nulla.",
+    ],
+    cta: proRequests("Apri il lavoro"),
+  }),
+  // Rimborso in attesa di fondi sul conto Stripe del professionista (§269).
+  JOB_REFUND_PENDING: (payload, ctx) => ({
+    kind: "notification",
+    subject: "Il tuo rimborso è in arrivo",
+    greeting: ctx.name,
+    title: "Rimborso in arrivo",
+    paragraphs: [
+      `Il rimborso per **${job(ctx)}** è stato chiesto, ma serve qualche giorno in più per completarlo.`,
+      "Non devi fare nulla: ti scriviamo appena parte verso la tua carta.",
+    ],
+    details: typeof payload.amountEurCents === "number" ? [{ label: "Rimborso", value: formatEur(payload.amountEurCents) }] : undefined,
+    cta: clientRequests(),
+  }),
+  JOB_REFUND_COMPLETED: (payload, ctx) => ({
+    kind: "notification",
+    subject: "Rimborso completato",
+    greeting: ctx.name,
+    title: "Rimborso completato",
+    paragraphs: [`Il rimborso per **${job(ctx)}** è partito: lo rivedi sulla carta in pochi giorni.`],
+    details: typeof payload.amountEurCents === "number" ? [{ label: "Rimborso", value: formatEur(payload.amountEurCents) }] : undefined,
+    cta: clientRequests(),
+  }),
+  JOB_REFUND_WAITING_FUNDS: (payload, ctx) => ({
+    kind: "notification",
+    subject: "Un rimborso aspetta fondi sul tuo conto Stripe",
+    greeting: ctx.name,
+    title: "Rimborso in attesa",
+    paragraphs: [
+      `Il rimborso al cliente per **${job(ctx)}** aspetta fondi sul tuo conto Stripe: il saldo disponibile non basta.`,
+      "Parte da solo appena arrivano i prossimi pagamenti. Non devi fare nulla.",
+    ],
+    details: typeof payload.amountEurCents === "number" ? [{ label: "Rimborso", value: formatEur(payload.amountEurCents) }] : undefined,
+    cta: proRequests("Apri il lavoro"),
+  }),
+  ADMIN_JOB_REFUND_FAILED: (payload) => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: "Rimborso al cliente non riuscito",
+    title: "Rimborso non riuscito",
+    paragraphs: [
+      `Un rimborso di ${formatEur(payload.amountEurCents) || "un importo"} rimasto in attesa sul conto del professionista non è riuscito.`,
+      "Controllalo dalla Dashboard Stripe e decidi come rimborsare il cliente.",
+    ],
+    cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin/pagamenti` },
   }),
   ADMIN_STRIPE_DISPUTE: (payload) => ({
     kind: "notification",
@@ -784,7 +860,9 @@ const BUILDERS: Record<string, Builder> = {
     title: "Contestazione in banca",
     paragraphs: [
       `Stato della contestazione: ${DISPUTE_STATUS_LABEL[str(payload.status) ?? ""] ?? "aperta"}. Se serve una risposta, manda le prove dalla Dashboard Stripe prima della scadenza.`,
-      payload.alreadyReleased ? "I soldi erano già passati al professionista: decidi se recuperarli." : "Se riguarda un lavoro, l'accredito al professionista resta sospeso finché la banca non decide.",
+      payload.alreadyReleased
+        ? "I soldi erano già passati al professionista: quello che non si riprende dal suo conto si trattiene dai suoi prossimi pagamenti."
+        : "Se riguarda un lavoro, la cifra si riprende subito dai soldi bloccati del professionista e l'accredito resta sospeso finché la banca non decide.",
     ],
     cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin/pagamenti` },
   }),

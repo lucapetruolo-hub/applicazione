@@ -1132,7 +1132,7 @@ export class AdminService {
    * sono in JobIssueOutcomeService, condiviso con le decisioni automatiche.
    */
   async resolveJobIssue(adminUserId: string, issueId: string, input: ResolveJobIssueInput): Promise<{ id: string; status: string }> {
-    return this.jobIssueOutcomeService.decide(issueId, { decision: input.decision, note: input.note.trim(), byUserId: adminUserId });
+    return this.jobIssueOutcomeService.decide(issueId, { decision: input.decision, note: input.note.trim(), byUserId: adminUserId, refundPercent: input.refundPercent });
   }
 
   /**

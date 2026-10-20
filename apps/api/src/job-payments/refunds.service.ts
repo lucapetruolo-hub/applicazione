@@ -90,7 +90,11 @@ export class RefundsService {
     // se i soldi erano già passati al professionista, la sua quota viene
     // ripresa dal suo conto Stripe (storno del trasferimento).
     if (refund.jobPayment.paymentMethod === "MANOVIA") {
-      await this.onlineMoneyService.refundOnline(refund.jobPaymentId, refund.amountEurCents, refund.reason ?? "Rimborso approvato dalla Finanza.", adminUserId);
+      // Rimborso di una segnalazione accolta passato alla Finanza: colpa del professionista (§267).
+      const issue = await this.prisma.jobIssue.findUnique({ where: { bookingId: refund.jobPayment.bookingId }, select: { status: true } });
+      await this.onlineMoneyService.refundOnline(refund.jobPaymentId, refund.amountEurCents, refund.reason ?? "Rimborso approvato dalla Finanza.", adminUserId, {
+        professionalFault: issue?.status === "UPHELD",
+      });
     }
 
     const processed = await this.prisma.refund.update({

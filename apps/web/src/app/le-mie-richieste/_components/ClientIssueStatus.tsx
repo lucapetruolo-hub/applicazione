@@ -119,6 +119,7 @@ export function ClientIssueStatus({
             note: issue.resolutionNote,
             audience: "client",
             paidOnline: issue.paidOnline,
+            refundPercent: issue.refundPercent,
           })}
         </Text>
       ) : null}

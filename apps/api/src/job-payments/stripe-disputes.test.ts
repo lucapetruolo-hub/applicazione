@@ -80,7 +80,6 @@ describe("Stato dell'account Stripe prima del trasferimento", () => {
     await expect(service.releaseIfDue("jp-1")).resolves.toBe(true);
 
     expect(stripe.v2.core.accounts.retrieve).toHaveBeenCalledWith("acct_1", expect.anything());
-    expect(prisma.professionalFiscalProfile.updateMany).toHaveBeenCalled();
     expect(stripe.transfers.create).toHaveBeenCalledTimes(1);
   });
 

@@ -15,8 +15,9 @@ Accettando il preventivo il cliente sceglie come pagare:
 - **Online con Stripe.**
   - Acconto del 20% dell'importo massimo del preventivo, saldo a lavoro
     chiuso sull'importo finale.
-  - Manovia tiene i soldi e li passa al professionista quando il cliente
-    conferma il lavoro, oppure 7 giorni dopo la chiusura.
+  - Il pagamento avviene sul conto Stripe del professionista, dove i soldi
+    restano bloccati: il sito li sblocca quando il cliente conferma il
+    lavoro, oppure 7 giorni dopo la chiusura. Manovia non li tiene mai.
   - Con una segnalazione aperta i soldi restano fermi.
   - Al professionista arriva l'importo meno il costo Stripe e la
     commissione del 5%.
@@ -87,10 +88,22 @@ Si può fare una sola segnalazione per ogni lavoro.
   - per una mancata presentazione, il cliente può inviare con un tasto la
     stessa richiesta ad altri professionisti della zona, escluso quello che
     non si è presentato;
-  - **lavoro pagato online:** il cliente riceve subito il rimborso di
-    quanto pagato, sul metodo di pagamento usato. Di norma i soldi sono
-    ancora in custodia; se erano già passati al professionista, la sua
-    quota viene ripresa dal suo conto Stripe (storno del trasferimento).
+  - **lavoro pagato online:** il cliente riceve subito, sul metodo di
+    pagamento usato, il rimborso di una parte fissa di quanto pagato,
+    scelta secondo la gravità:
+    1. **100%**: lavoro non fatto o da rifare (sempre per la mancata
+       presentazione e per le segnalazioni accolte automaticamente);
+    2. **50%**: difetti seri;
+    3. **20%**: difetti piccoli.
+
+    Il rimborso è a carico del professionista, compresi la commissione
+    della piattaforma (calcolata sull'importo totale del lavoro) e i costi
+    del pagamento che Stripe non restituisce. Di norma i soldi sono ancora
+    bloccati sul suo conto Stripe e si riprendono da lì; con un rimborso
+    parziale il resto gli viene sbloccato. Se erano già passati a lui,
+    Stripe prende il rimborso dal suo conto Stripe e, se non basta, dal suo
+    conto bancario. Lo stesso vale per le contestazioni presso la banca del
+    cliente.
 - Dopo la decisione, o dopo un accordo in chat, il cliente può lasciare la
   recensione.
 

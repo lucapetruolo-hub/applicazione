@@ -19454,3 +19454,199 @@ differenti per ogni categoria".
 **Decisione presa**: le voci di questo ramo, che erano §259-§264, diventano §260-§265, perché la base aveva già un §259. Nei file della verifica la base aveva cambiato per errore i rimandi da §253 a §259; sono tornati a §253, mentre restano a §259 quelli delle più categorie. Per i file della verifica e del percorso ha vinto questo ramo, e `VerificationSteps.tsx` resta tolto (§262). Il modulo di richiesta ha insieme le più categorie e il campo unico "Indirizzo".
 
 **Verifica**: typecheck di web e API e 426 test dell'API verdi. Il modulo di richiesta è stato provato nel browser, con scelta dell'indirizzo da telefono e computer.
+
+## 267. Rimborso a livelli, costi e contestazioni a carico del professionista
+
+**Richiesta dell'utente (19/10/2026, thread sulle contestazioni Stripe):**
+sulle migliorie proposte nell'analisi dei pagamenti online: rimborso a
+livelli sì; costi a carico del professionista "in percentuale" quando il
+rimborso è colpa sua; i soldi contestati non devono uscire dal nostro conto
+("noi non prendiamo mai i soldi del professionista"); una contestazione
+persa dopo il bonifico va risolta; i costi di Stripe Connect restano al
+professionista; occuparci il meno possibile delle contestazioni.
+
+**Decisioni e motivo:**
+- **Rimborso a tre livelli** sulle segnalazioni accolte di lavori pagati
+  online: 100% (lavoro non fatto o da rifare), 50% (difetti seri), 20%
+  (difetti piccoli), scelto dall'admin nella scheda della segnalazione
+  (`JOB_ISSUE_REFUND_PERCENTS` in `packages/shared/src/jobIssues.ts`).
+  Mancata presentazione e decisioni automatiche: sempre 100%. Salvato in
+  `JobIssue.refundPercent`. Con un rimborso parziale il resto si sblocca al
+  professionista (prima una segnalazione accolta bloccava i soldi per
+  sempre, fino ai 90 giorni di Stripe).
+- **Colpa del professionista** (`refundOnline(..., { professionalFault })`,
+  segnalazione accolta, anche quando il rimborso passa dalla Finanza): la
+  cifra rimborsata e i costi del pagamento che Stripe non restituisce
+  (carta, bonifico) sono suoi, e la commissione già trattenuta resta a noi
+  (decisione dell'utente: la commissione si paga sul totale del lavoro,
+  anche con un rimborso parziale).
+- **Debito del professionista** (`JobPayment.professionalDebtEurCents`):
+  quello che si deve riprendere ma non è più sul suo conto Stripe (rimborso
+  o contestazione persa dopo il bonifico) non si storna più dal conto (lo
+  avrebbe mandato in negativo, cioè a carico nostro) ma si trattiene dai suoi
+  sblocchi successivi, dal debito più vecchio, prima del bonifico. Nuova
+  notifica `JOB_PAYMENT_DEBT` al professionista (argomento "Pagamenti dei
+  lavori").
+- **Contestazione in banca**: con l'addebito a destinazione Stripe prende
+  sempre cifra e commissione (20 €) dal conto della piattaforma
+  all'apertura. Ora, all'evento `charge.dispute.funds_withdrawn`, la cifra
+  si riprende subito dai soldi del lavoro ancora sul conto del
+  professionista (`disputeRecoveredEurCents`); a `funds_reinstated`
+  (vinta) gli torna con un trasferimento (`disputeReturnTransferId`) e lo
+  sblocco riparte. Persa: quello che manca diventa debito; se il motivo è
+  "lavoro non ricevuto" o "non conforme" anche la commissione di Stripe e i
+  costi del pagamento (frode e simili restano a noi).
+- **Costi Stripe Connect a carico del professionista**: 0,25% + 0,10 € per
+  bonifico e 2 € al primo sblocco del mese (`connectFeesEurCents`,
+  `connectMonthlyFeeMonth`), presi prima dalla trattenuta da restituire e,
+  se non basta, stornati dal suo conto.
+- Smart Disputes e funzioni della Dashboard Express (bonifici fatti da sé)
+  sono impostazioni della Dashboard Stripe: nella checklist di lancio.
+
+**Secondo giro (risposta di Luca del 19/10/2026):**
+- **Commissione sul totale, resta a noi**: anche con un rimborso per colpa
+  del professionista la commissione del 5% già trattenuta non si restituisce
+  ed è calcolata sul totale pagato (`releaseIfDue`, `faultCostsEurCents`).
+- **Saldo addebitato da solo sulla carta dell'acconto**: al pagamento
+  dell'acconto online (non con saldo diretto) Stripe salva la carta
+  (`setup_future_usage: "off_session"`, cliente Stripe creato in Checkout,
+  con una riga sotto il tasto "Paga"). Quando il professionista chiude il
+  lavoro senza voci aggiunte e con l'importo finale entro il massimo del
+  preventivo, il saldo si addebita da solo (`chargeSavedCard`, chiave di
+  idempotenza per lavoro e importo); il cliente riceve
+  `JOB_BALANCE_AUTO_CHARGED` ("Saldo pagato", invito a confermare il lavoro).
+  Se l'importo supera il massimo, ci sono voci nuove o la carta viene
+  rifiutata (`balanceAutoChargeFailedAt`) resta il link di pagamento di
+  prima. Il webhook `payment_intent.succeeded` registra il pagamento se la
+  risposta sincrona si perde; la registrazione è unica
+  (`balanceAutoChargedAt`).
+- **Smart Disputes**: Luca lo attiva dalla Dashboard Stripe prima del
+  lancio (checklist).
+- **Bonifici fatti da sé dal professionista**: si possono spegnere perché
+  gli account sono con Dashboard Express (non Standard): checklist.
+
+**Migrazioni:** `20261019170000_refund_levels_professional_costs` (colonne
+facoltative o con default 0), `20261019180000_job_payment_saved_card`
+(cliente e carta salvati, stato dell'addebito automatico).
+
+**Testi:** Termini (punto pagamenti), regolamento delle controversie,
+email e notifiche di sblocco e contestazione, scheda admin.
+
+## 268. Pagamenti dei lavori addebitati direttamente sul conto del professionista
+
+**Richiesta (Luca, 20/10/2026, scheda nel thread "Piano pagamenti Stripe e
+controversie"):** "Pagamento diretto": rimborsi e contestazioni devono
+toccare solo i soldi del professionista, mai quelli della piattaforma.
+Con l'addebito a destinazione (§249) Stripe li prende sempre prima dal
+conto della piattaforma, anche se poi li riprendiamo noi.
+
+**Decisione:** i pagamenti online dei lavori nascono sul conto Stripe
+Express del professionista (direct charges, header `Stripe-Account`). Restano
+bonifici in manuale sbloccati dal sito, commissione del 5% + costo massimo
+della carta come application fee, `fees_collector`/`losses_collector` =
+`application`. Lo stesso giorno Luca ha chiesto se con Stripe Standard si
+possono bloccare i bonifici: no, con la dashboard completa il professionista
+può farsi bonifici manuali da solo (solo un'eccezione del supporto Stripe),
+quindi si resta su Express.
+
+- **Conto del professionista:** nuova configurazione `merchant` con
+  `card_payments` (agli account già creati si aggiunge quando il
+  professionista riapre "Attiva i pagamenti online"); i pagamenti online sono
+  attivi quando `card_payments` è attivo. Impostazioni del saldo:
+  bonifici manuali e `debit_negative_balances` (`stripeNegativeDebitAt`): se
+  rimborsi o contestazioni superano il saldo, Stripe preleva dalla sua banca.
+- **Checkout, acconto e saldo automatico** sul conto del professionista
+  (`stripeAccount` nei metadata), con cliente e carta salvati lì.
+  `JobPayment.stripeDirectCharge` segna il modello; un lavoro iniziato con
+  l'addebito a destinazione finisce così.
+- **Costo della carta:** con l'addebito diretto Stripe lo fa pagare alla
+  piattaforma senza dettaglio per pagamento: si stima dal listino per
+  l'Italia in base alla carta (`estimatedCardFeeEurCents`: europee regolate
+  1,5%, altre europee 2,8%, Regno Unito 2,5%, extra europee 3,15%, + 0,25 €).
+- **Rimborsi:** fatti sul suo conto, Stripe li prende dal suo saldo. Dopo lo
+  sblocco niente più debito per la parte già bonificata: la prende Stripe;
+  se la colpa non è sua gli restituiamo la nostra trattenuta.
+- **Contestazioni:** Stripe prende la cifra dal suo saldo e gliela rimette
+  se si vince; il sito tiene solo il conto. Persa: commissione di Stripe a
+  suo carico solo per "lavoro non ricevuto/non conforme"; per frode la
+  nostra parte gli torna.
+- **Prelievi per debiti e costi Connect:** al posto dello storno dei
+  trasferimenti, prelievo dal suo conto Stripe (account debit) maggiorato
+  dell'1,4% che Stripe fa pagare (`accountDebitGrossEurCents`). Se non riesce
+  resta un debito.
+- **Sblocco:** il bonifico non supera i soldi liberi sul suo conto (tolti
+  quelli degli altri lavori), perché Stripe può aver preso rimborsi o
+  contestazioni dai soldi di altri lavori.
+
+**Migrazione:** `20261020090000_job_payment_direct_charge`.
+
+**Testi:** Termini (pagamento sul conto del professionista, rimborsi e
+contestazioni dal suo conto o dalla sua banca, consenso al prelievo),
+regolamento delle controversie, checklist di lancio (eventi del webhook
+Connect, funzioni Express da lasciare spente, permessi della chiave).
+
+**Verifica:** `vitest` dell'API (448 test, 14 nuovi in
+`direct-charges.test.ts`), `tsc` su API e web, `eslint` sull'API.
+
+## 269. Avviso quando il rimborso aspetta fondi sul conto del professionista
+
+**Richiesta dell'utente (20/10/2026):** "1 miglioria procedi", la prima
+delle migliorie proposte dopo §268: avvisare il cliente quando il rimborso
+resta in attesa perché il saldo Stripe del professionista è vuoto.
+
+**Perché:** con l'addebito diretto (§268) Stripe prende il rimborso dal
+saldo del professionista; se non basta, il rimborso resta `pending` e parte
+da solo appena arrivano fondi. Prima il cliente riceveva "ti abbiamo
+rimborsato" e poi non vedeva nulla sulla carta.
+
+**Cosa fa:**
+- `refundAcrossPayments` e `refundQuoteDeposit` guardano lo stato del
+  rimborso: se è `pending` lo segnano su Stripe (metadata `waitingFunds`,
+  con cliente, richiesta e lavoro) e avvisano il cliente
+  (`JOB_REFUND_PENDING`, "Il tuo rimborso è in arrivo") e il professionista
+  (`JOB_REFUND_WAITING_FUNDS`, "parte appena arrivano i prossimi
+  pagamenti"). Per l'acconto non più confermabile l'email
+  `QUOTE_DEPOSIT_REFUNDED` dice "in arrivo" invece di "rimborsato".
+- Webhook `refund.updated` / `refund.failed` dall'endpoint Connect
+  (`handleRefundUpdated`): rimborso arrivato → `JOB_REFUND_COMPLETED` al
+  cliente; non riuscito o annullato → `ADMIN_JOB_REFUND_FAILED` al team
+  Finanza. Una volta sola: dopo l'avviso il metadata diventa `done` o
+  `failed`.
+- Nessuna migrazione: lo stato vive sul rimborso Stripe.
+- Nuovi tipi nell'argomento "Lavori e appuntamenti" di
+  `packages/shared/src/notifications.ts`, testi in `notificationCopy.ts`,
+  email in `notification-emails.ts`, anteprime in `email-preview.ts`.
+
+**Da fare a mano:** aggiungere `refund.updated` e `refund.failed`
+all'endpoint webhook Connect (checklist di lancio).
+
+**Verifica:** `vitest` dell'API (462 test dopo l'unione, 5 nuovi in
+`direct-charges.test.ts`), `tsc` su API e web, `eslint` sull'API.
+
+**Numerazione:** dopo l'unione con la base aggiornata (che ha aggiunto
+§260-§266) le voci di questa PR sono diventate §267, §268 e §269. I commenti
+delle tre migrazioni citano ancora i vecchi numeri: una migrazione già
+scritta non si modifica.
+
+## 270. "Rimborso in arrivo" anche nella pagina del lavoro
+
+**Richiesta dell'utente (20/10/2026):** "effettua la miglioria 1", la prima
+delle migliorie proposte dopo §269: mostrare il rimborso in attesa anche
+nella pagina della richiesta, non solo nell'avviso.
+
+**Cosa fa:**
+- Nuovo campo `JobPayment.refundWaitingEurCents`: cresce quando un rimborso
+  resta `pending` (§269) e scende quando il webhook `refund.updated` dice
+  che Stripe l'ha completato o che non è riuscito.
+- `JobPaymentSummary.refundWaitingEurCents` per cliente e professionista.
+- Riquadro del pagamento (`JobPaymentStatus`): il cliente vede "Rimborso in
+  arrivo" ("Ti avvisiamo appena parte verso la tua carta") con la riga
+  dell'importo; il professionista vede "Rimborso in attesa" ("il saldo del
+  tuo conto Stripe non basta: parte da solo appena arrivano fondi") e la
+  riga "Di cui in attesa di fondi".
+- Per l'acconto rimborsato su un preventivo non più confermabile non c'è
+  un lavoro: resta l'avviso di §269.
+
+**Migrazione:** `20261020130000_job_payment_refund_waiting`.
+
+**Verifica:** `vitest` dell'API (463 test), `tsc` su API e web, `eslint`.

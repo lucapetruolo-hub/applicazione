@@ -61,7 +61,7 @@ describe("toJobPaymentSummary con saldo diretto", () => {
       50000,
       true,
     );
-    expect(summary).toMatchObject({ method: "ONLINE", balanceDirect: true, balanceDueEurCents: 0, directBalanceEurCents: 40000, appFeeEurCents: 500, payoutEurCents: 9200 });
+    expect(summary).toMatchObject({ method: "ONLINE", balanceDirect: true, balanceDueEurCents: 0, directBalanceEurCents: 40000, appFeeEurCents: 500, payoutEurCents: 9200 - 33 });
   });
 });
 
@@ -121,14 +121,14 @@ describe("OnlineMoneyService con saldo diretto", () => {
     const { service, prisma } = buildService();
     prisma.jobPayment.findUniqueOrThrow.mockResolvedValue({ ...mixedJob(50000), booking: undefined });
 
-    await expect(service.afterCompletion("jp-1", 50000, 500)).resolves.toEqual({ balanceDueEurCents: 0 });
+    await expect(service.afterCompletion("jp-1", 50000, 500)).resolves.toEqual({ balanceDueEurCents: 0, autoChargedEurCents: 0 });
     expect(prisma.jobPayment.update).toHaveBeenCalledWith({ where: { id: "jp-1" }, data: expect.objectContaining({ onlineStage: "PAID", netAmountEurCents: 9200 }) });
   });
 
   it("accredita l'acconto meno costi, senza rimborsi se l'importo finale lo supera", async () => {
     const { service, prisma, stripe } = buildService();
     prisma.jobPayment.findUnique.mockResolvedValue(mixedJob(50000));
-    vi.spyOn(service as never, "transfersActive").mockResolvedValue(true as never);
+    vi.spyOn(service as never, "accountActive").mockResolvedValue(true as never);
 
     await expect(service.releaseIfDue("jp-1")).resolves.toBe(true);
     expect(stripe.refunds.create).not.toHaveBeenCalled();
@@ -139,7 +139,7 @@ describe("OnlineMoneyService con saldo diretto", () => {
     const { service, prisma, stripe } = buildService();
     prisma.jobPayment.findUnique.mockResolvedValue(mixedJob(8000));
     prisma.jobPayment.findUniqueOrThrow.mockResolvedValue(mixedJob(8000));
-    vi.spyOn(service as never, "transfersActive").mockResolvedValue(true as never);
+    vi.spyOn(service as never, "accountActive").mockResolvedValue(true as never);
 
     await service.releaseIfDue("jp-1");
     expect(stripe.refunds.create).toHaveBeenCalledWith(expect.objectContaining({ payment_intent: "pi_dep", amount: 2000 }), expect.anything());

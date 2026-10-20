@@ -43,6 +43,10 @@ const PROFESSIONAL_STEPS = ["Pagato", "Bloccato", "Sbloccato", "In banca"];
 
 function clientView(payment: JobPaymentSummary): View {
   const stage = payment.stage;
+  // Rimborso in attesa di fondi sul conto del professionista (§270): è la cosa che il cliente aspetta.
+  if (payment.refundWaitingEurCents > 0) {
+    return { tone: "blocked", icon: "clock", title: "Rimborso in arrivo", body: "Ti avvisiamo appena parte verso la tua carta.", step: null };
+  }
   const until = payment.releaseDueAt ? formatIssueDeadline(payment.releaseDueAt) : null;
   if (stage === "AWAITING_DEPOSIT") {
     return { tone: "action", icon: "credit-card", title: "Acconto da pagare", body: "Paga l'acconto per confermare il lavoro.", step: 0 };
@@ -88,6 +92,15 @@ function clientView(payment: JobPaymentSummary): View {
 
 function professionalView(payment: JobPaymentSummary): View {
   const stage = payment.stage;
+  if (payment.refundWaitingEurCents > 0) {
+    return {
+      tone: "action",
+      icon: "clock",
+      title: "Rimborso in attesa",
+      body: "Il saldo del tuo conto Stripe non basta: il rimborso al cliente parte da solo appena arrivano fondi.",
+      step: null,
+    };
+  }
   const until = payment.releaseDueAt ? formatIssueDeadline(payment.releaseDueAt) : null;
   if (stage === "AWAITING_DEPOSIT") {
     return { tone: "neutral", icon: "clock", title: "In attesa dell'acconto", body: "Il cliente deve ancora pagare l'acconto.", step: 0 };
@@ -233,10 +246,12 @@ export function JobPaymentStatus({
     if (payment.paidEurCents > 0 && payment.paidEurCents !== payment.depositEurCents) rows.push({ label: "Pagato online", value: eur(payment.paidEurCents) });
     if (payment.balanceDirect && payment.directBalanceEurCents !== null) rows.push({ label: "Saldo diretto al professionista", value: eur(payment.directBalanceEurCents) });
     if (payment.balanceDueEurCents > 0) rows.push({ label: "Da pagare", value: eur(payment.balanceDueEurCents), strong: true });
-    if (payment.refundedEurCents > 0) rows.push({ label: "Rimborsato", value: eur(payment.refundedEurCents) });
+    if (payment.refundWaitingEurCents > 0) rows.push({ label: "Rimborso in arrivo", value: eur(payment.refundWaitingEurCents), strong: true });
+    if (payment.refundedEurCents > payment.refundWaitingEurCents) rows.push({ label: "Rimborsato", value: eur(payment.refundedEurCents - payment.refundWaitingEurCents) });
   } else if (stage !== "AWAITING_DEPOSIT") {
     if (collected > 0 || stage === "REFUNDED") rows.push({ label: "Pagato dal cliente online", value: eur(payment.paidEurCents) });
     if (payment.refundedEurCents > 0) rows.push({ label: "Rimborsato al cliente", value: `−${eur(payment.refundedEurCents)}` });
+    if (payment.refundWaitingEurCents > 0) rows.push({ label: "Di cui in attesa di fondi", value: eur(payment.refundWaitingEurCents), muted: true });
     if (payment.balanceDirect && payment.directBalanceEurCents !== null) rows.push({ label: "Saldo che ti paga direttamente", value: eur(payment.directBalanceEurCents), muted: true });
     if (stage !== "REFUNDED" && payment.payoutEurCents !== undefined) {
       rows.push({ label: `Commissione ${BRAND.name} ${ONLINE_APP_FEE_PERCENT}%`, value: `−${eur(payment.appFeeEurCents ?? 0)}`, muted: true });
