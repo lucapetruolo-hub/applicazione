@@ -5,13 +5,25 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button, Field, Icon, Surface, Section, Text, XStack, YStack, brand, Badge, radiusDoc } from "@professionisti/ui";
 import type { ProfessionalFiscalProfile, FiscalVerificationStatus, PayoutIbanView } from "@professionisti/api-client";
-import { checkFiscalId, findComuneByName, fiscalFieldErrors, professionalFiscalProfileSchema, taxIdCheckMessage, type MyVerificationStatus, type TaxIdKind } from "@professionisti/shared";
+import { birthDateFromCodiceFiscale, checkFiscalId, findComuneByName, isValidCodiceFiscale, fiscalFieldErrors, professionalFiscalProfileSchema, taxIdCheckMessage, type MyVerificationStatus, type TaxIdKind } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { PayoutIbanCard } from "@/components/PayoutIbanCard";
 import { useAuth } from "@/lib/AuthContext";
 import { JourneyProgress, journeyCurrent, setupJourney } from "@/components/verification/SetupJourney";
 import { OnlinePaymentsCard } from "@/components/OnlinePaymentsCard";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
+import { FiscalWhyModal } from "@/components/verification/FiscalWhyModal";
+
+const isPersonType = (type: string) => type === "PRIVATE_INDIVIDUAL" || type === "SOLE_PROPRIETOR";
+
+function birthDateFromCf(value: string | undefined): string | null {
+  const cf = (value ?? "").trim().toUpperCase();
+  return isValidCodiceFiscale(cf) ? birthDateFromCodiceFiscale(cf) : null;
+}
+
+function formatBirthDate(iso: string): string {
+  return new Date(`${iso}T12:00:00Z`).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" });
+}
 
 // Solo le 4 varianti semantiche fisse di Badge (CLAUDE.md §10: "rosso solo
 // su urgenza, verde solo su verificato" — mai un colore libero), non un
@@ -166,6 +178,7 @@ function DashboardFiscaleContent() {
   const [formStep, setFormStep] = useState<1 | 2>(1);
   const [editing, setEditing] = useState(false);
   const [abroad, setAbroad] = useState(false);
+  const [whyOpen, setWhyOpen] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -262,7 +275,7 @@ function DashboardFiscaleContent() {
       fiscalFirstName: fields.fiscalFirstName || undefined,
       fiscalLastName: fields.fiscalLastName || undefined,
       fiscalCodiceFiscale: fields.fiscalCodiceFiscale || undefined,
-      dateOfBirth: fields.dateOfBirth || undefined,
+      dateOfBirth: (isPersonType(entityType) && birthDateFromCf(fields.fiscalCodiceFiscale)) || fields.dateOfBirth || undefined,
       placeOfBirth: fields.placeOfBirth || undefined,
       countryOfBirth: fields.countryOfBirth || undefined,
       businessName: fields.businessName || undefined,
@@ -396,6 +409,12 @@ function DashboardFiscaleContent() {
 
   const adminVerification = VERIFICATION_LABEL[profile?.verificationStatus ?? "UNVERIFIED"];
   const issuingCountry = abroad ? fields.taxResidenceCountry : "IT";
+  // La data di nascita si legge dal codice fiscale italiano (richiesta
+  // dell'utente, docs/CHANGELOG.md §272): si chiede a mano solo a chi
+  // risiede all'estero e non ha un codice fiscale italiano valido.
+  const cfValue = (fields.fiscalCodiceFiscale ?? "").trim().toUpperCase();
+  const cfBirthDate = isValidCodiceFiscale(cfValue) ? birthDateFromCodiceFiscale(cfValue) : null;
+  const askBirthDate = abroad && !cfBirthDate;
   // Controlli in tempo reale, gli stessi che rifà il server al salvataggio
   // (docs/CHANGELOG.md §253): forma, e coerenza del codice fiscale con nome,
   // cognome e data di nascita.
@@ -407,7 +426,7 @@ function DashboardFiscaleContent() {
     fiscalFirstName: fields.fiscalFirstName,
     fiscalLastName: fields.fiscalLastName,
     fiscalCodiceFiscale: fields.fiscalCodiceFiscale,
-    dateOfBirth: /^\d{4}-\d{2}-\d{2}$/.test(fields.dateOfBirth ?? "") ? fields.dateOfBirth : null,
+    dateOfBirth: cfBirthDate ?? (/^\d{4}-\d{2}-\d{2}$/.test(fields.dateOfBirth ?? "") ? fields.dateOfBirth : null),
     vatNumber: fields.vatNumber,
     representative: repFields,
   });
@@ -434,7 +453,7 @@ function DashboardFiscaleContent() {
     if (!filled("fiscalFirstName")) step1Missing.push("Nome");
     if (!filled("fiscalLastName")) step1Missing.push("Cognome");
     if (!filled("fiscalCodiceFiscale") && !(abroad && filled("foreignTin"))) step1Missing.push("Codice fiscale");
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(fields.dateOfBirth ?? "")) step1Missing.push("Data di nascita");
+    if (askBirthDate && !/^\d{4}-\d{2}-\d{2}$/.test(fields.dateOfBirth ?? "")) step1Missing.push("Data di nascita");
     if (entityType === "SOLE_PROPRIETOR" && !filled("vatNumber")) step1Missing.push("Partita IVA");
   } else if (entityType === "BUSINESS") {
     if (!filled("businessName")) step1Missing.push("Ragione sociale");
@@ -483,6 +502,7 @@ function DashboardFiscaleContent() {
 
   return (
     <Section title="Dati fiscali e pagamenti" maxWidth={640}>
+      {whyOpen ? <FiscalWhyModal onClose={() => setWhyOpen(false)} /> : null}
       <YStack gap="$5">
         {steps ? <JourneyProgress steps={steps} here={!showForm && paymentsStep?.state === "current" ? "payments" : "fiscal"} /> : null}
 
@@ -512,9 +532,20 @@ function DashboardFiscaleContent() {
               {formStep === 1 ? (
                 <Text fontSize={14} color={brand.grafite70}>
                   Non li vede nessun cliente.{" "}
-                  <Link href="/dashboard/fiscale/dac7" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
+                  <Text
+                    tag="button"
+                    fontSize={14}
+                    fontWeight="700"
+                    color={brand.cianografiaScuro}
+                    textDecorationLine="underline"
+                    cursor="pointer"
+                    backgroundColor="transparent"
+                    borderWidth={0}
+                    padding={0}
+                    onPress={() => setWhyOpen(true)}
+                  >
                     Perché li chiediamo
-                  </Link>
+                  </Text>
                 </Text>
               ) : null}
             </YStack>
@@ -565,25 +596,32 @@ function DashboardFiscaleContent() {
                       </YStack>
                     </XStack>
                     {cfField}
-                    {/* Calendario del telefono o del browser (docs/CHANGELOG.md §263). */}
-                    <YStack gap="$2">
-                      <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
-                        Data di nascita
+                    {cfBirthDate ? (
+                      <Text fontSize={13} color={brand.grafite70}>
+                        Data di nascita: <Text fontSize={13} fontWeight="700" color={brand.grafite}>{formatBirthDate(cfBirthDate)}</Text> (dal codice fiscale)
                       </Text>
-                      <input
-                        type="date"
-                        aria-label="Data di nascita"
-                        value={fields.dateOfBirth ?? ""}
-                        max={new Date().toISOString().slice(0, 10)}
-                        onChange={(event) => setField("dateOfBirth", event.target.value)}
-                        style={{ ...addressInputStyle, borderColor: liveError("dateOfBirth") ? brand.urgenza : brand.filetto }}
-                      />
-                      {liveError("dateOfBirth") ? (
-                        <Text fontSize={13} color={brand.urgenza}>
-                          {liveError("dateOfBirth")}
+                    ) : null}
+                    {/* Calendario del telefono o del browser (docs/CHANGELOG.md §263). */}
+                    {askBirthDate ? (
+                      <YStack gap="$2">
+                        <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
+                          Data di nascita
                         </Text>
-                      ) : null}
-                    </YStack>
+                        <input
+                          type="date"
+                          aria-label="Data di nascita"
+                          value={fields.dateOfBirth ?? ""}
+                          max={new Date().toISOString().slice(0, 10)}
+                          onChange={(event) => setField("dateOfBirth", event.target.value)}
+                          style={{ ...addressInputStyle, borderColor: liveError("dateOfBirth") ? brand.urgenza : brand.filetto }}
+                        />
+                        {liveError("dateOfBirth") ? (
+                          <Text fontSize={13} color={brand.urgenza}>
+                            {liveError("dateOfBirth")}
+                          </Text>
+                        ) : null}
+                      </YStack>
+                    ) : null}
                     {entityType === "SOLE_PROPRIETOR" ? vatField : null}
                   </>
                 ) : null}

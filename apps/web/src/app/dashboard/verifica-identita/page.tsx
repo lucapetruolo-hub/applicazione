@@ -194,6 +194,11 @@ function ActionPanel({
   onStart: () => void;
 }) {
   const identity = status.identity;
+  // "Inizia la verifica" resta premibile: senza consenso la casella si
+  // illumina in rosso (richiesta dell'utente, docs/CHANGELOG.md §272, come le
+  // caselle della registrazione, §248).
+  const [consentAttempt, setConsentAttempt] = useState(0);
+  const consentMissing = consentAttempt > 0 && !consent;
 
   if (status.verified) {
     return (
@@ -313,21 +318,24 @@ function ActionPanel({
         <Need icon="smartphone">Meglio dal telefono. Dal computer ti mostriamo un codice QR per continuare dal telefono.</Need>
       </YStack>
       <label
+        key={consentAttempt}
+        className={consentMissing ? "consent-invalid" : undefined}
         style={{
           display: "flex",
           alignItems: "flex-start",
           gap: 10,
           padding: 12,
           borderRadius: 12,
-          background: brand.gesso,
+          background: consentMissing ? brand.urgenzaVelo : brand.gesso,
           cursor: "pointer",
-          border: `2px solid ${consent ? brand.cianografia : "transparent"}`,
+          border: `2px solid ${consent ? brand.cianografia : consentMissing ? brand.urgenza : "transparent"}`,
         }}
       >
         <input
           type="checkbox"
           checked={consent}
           onChange={(event) => onConsent(event.target.checked)}
+          aria-invalid={consentMissing || undefined}
           style={{ width: 20, height: 20, marginTop: 1, flexShrink: 0, accentColor: brand.cianografia, cursor: "pointer" }}
         />
         <Text fontSize={13.5} color={brand.grafite} lineHeight={19} flex={1}>
@@ -338,11 +346,16 @@ function ActionPanel({
         </Text>
       </label>
       <YStack gap="$2">
-        <Button variant="primary" alignSelf="flex-start" disabled={!consent || starting || !identity.canStart} onPress={onStart}>
+        <Button
+          variant="primary"
+          alignSelf="flex-start"
+          disabled={starting || !identity.canStart}
+          onPress={() => (consent ? onStart() : setConsentAttempt((n) => n + 1))}
+        >
           {starting ? "Apertura…" : resume ? "Continua la verifica" : retry ? "Riprova la verifica" : "Inizia la verifica"}
         </Button>
-        {!consent ? (
-          <Text fontSize={13} color={brand.grafite70}>
+        {consentMissing ? (
+          <Text fontSize={13} fontWeight="600" color={brand.urgenza} role="alert">
             Spunta il consenso per continuare.
           </Text>
         ) : null}
