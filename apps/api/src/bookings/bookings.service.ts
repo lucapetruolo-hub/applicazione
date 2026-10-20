@@ -163,12 +163,17 @@ export class BookingsService {
       else if ((session.amount_total ?? 0) !== this.quoteDepositEurCents(quote)) refundReason = "Il preventivo è cambiato durante il pagamento.";
     }
     if (!quote || refundReason) {
-      await this.jobPaymentsService.refundQuoteDeposit(paymentIntentId, refundReason ?? "Preventivo non più disponibile.");
       const info = await this.prisma.quote.findUnique({ where: { id: quoteId }, select: { guidedRequestId: true, professionalProfileId: true } });
+      const { pending } = await this.jobPaymentsService.refundQuoteDeposit(paymentIntentId, refundReason ?? "Preventivo non più disponibile.", session.metadata?.stripeAccount ?? null, {
+        clientUserId,
+        guidedRequestId: info?.guidedRequestId ?? null,
+      });
+      // Rimborso in attesa di fondi sul conto del professionista (§269): il cliente lo sa e viene avvisato all'arrivo.
       await this.notificationsService.notify(clientUserId, "QUOTE_DEPOSIT_REFUNDED", {
         guidedRequestId: info?.guidedRequestId ?? null,
         quoteId,
         amountEurCents: session.amount_total ?? 0,
+        ...(pending ? { refundPending: true } : {}),
       });
       if (info) {
         await this.timelineService.log(info.guidedRequestId, info.professionalProfileId, "CLIENT", "L'acconto pagato è stato rimborsato: il preventivo non si poteva più confermare.");
@@ -508,6 +513,9 @@ export class BookingsService {
       grossAmountEurCents: finalAmountEurCents,
       reportedByUserId: professionalUserId,
       alreadyConfirmedByClient: booking.clientConfirmedCompletedAt !== null,
+      // Saldo sulla carta dell'acconto solo dentro il preventivo accettato: niente voci nuove né totale sopra il massimo (§267).
+      autoChargeBalance:
+        !!deviation && deviation.addedItemNames.length === 0 && deviation.direction !== "ABOVE" && deviation.quoteMaxEurCents !== null,
     });
     // Pagamento online (§168): il cliente paga il saldo sull'importo finale.
     if (online && online.balanceDueEurCents > 0) {

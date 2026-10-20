@@ -197,6 +197,27 @@ export function professionalRestrictions(
 }
 
 /**
+ * Quanto si rimborsa al cliente di ciò che ha pagato online quando la
+ * segnalazione è accolta (decisione dell'utente del 19/10/2026,
+ * docs/CHANGELOG.md §267): tre livelli fissi, così casi uguali hanno lo
+ * stesso rimborso. La mancata presentazione e le decisioni automatiche (il
+ * professionista non risponde) rimborsano sempre tutto.
+ */
+export const JOB_ISSUE_REFUND_PERCENTS = [100, 50, 20] as const;
+export type JobIssueRefundPercent = (typeof JOB_ISSUE_REFUND_PERCENTS)[number];
+export const JOB_ISSUE_REFUND_LABEL: Record<JobIssueRefundPercent, string> = {
+  100: "Tutto (100%): lavoro non fatto o da rifare",
+  50: "Metà (50%): difetti seri",
+  20: "Una parte (20%): difetti piccoli",
+};
+
+/** Rimborso di una segnalazione accolta: sempre 100% per la mancata presentazione, altrimenti quello scelto (100% se manca). */
+export function jobIssueRefundPercent(type: JobIssueType, chosen?: number | null): JobIssueRefundPercent {
+  if (type === "NO_SHOW") return 100;
+  return (JOB_ISSUE_REFUND_PERCENTS as readonly number[]).includes(chosen ?? 100) ? ((chosen ?? 100) as JobIssueRefundPercent) : 100;
+}
+
+/**
  * Esiti standard: motivazioni già scritte che l'admin sceglie e può
  * ritoccare, così casi uguali ricevono la stessa decisione.
  */
@@ -259,16 +280,20 @@ export function jobIssueOutcomeText(input: {
   note: string;
   audience: "client" | "professional";
   paidOnline?: boolean;
+  /** Percentuale rimborsata al cliente (§267); 100 se manca. */
+  refundPercent?: number | null;
   /** false dove il ricorso ha già il suo modulo sotto (pannello del professionista). */
   withAppealHint?: boolean;
 }): string {
   const esito = input.decision === "UPHELD" ? "accolta" : "respinta";
   const upheld = input.decision === "UPHELD";
+  const percent = input.refundPercent ?? 100;
+  const quanto = percent >= 100 ? "l'importo del lavoro" : `il ${percent}% di quanto hai pagato`;
   const rimborso =
     upheld && input.paidOnline
       ? input.audience === "client"
-        ? " Avendo pagato sul sito, ti rimborsiamo l'importo del lavoro sul metodo di pagamento usato."
-        : " Il lavoro era stato pagato sul sito: l'importo viene rimborsato al cliente."
+        ? ` Avendo pagato sul sito, ti rimborsiamo ${quanto} sul metodo di pagamento usato.`
+        : ` Il lavoro era stato pagato sul sito: ${percent >= 100 ? "l'importo viene rimborsato" : `il ${percent}% di quanto pagato viene rimborsato`} al cliente e la trattenuta del pagamento (commissione e costo della carta) resta a tuo carico.`
       : "";
   const rimedi =
     input.audience === "professional" && upheld && input.withAppealHint !== false
@@ -304,6 +329,8 @@ export type JobIssueSummary = {
   autoDecision: JobIssueAutoDecision | null;
   /** Lavoro pagato sul sito con Stripe: se la segnalazione è accolta il cliente è rimborsato. */
   paidOnline: boolean;
+  /** Percentuale rimborsata al cliente se accolta (§267), null finché non è decisa. */
+  refundPercent: number | null;
   /** Pagamento online scelto: la segnalazione ha la nostra assistenza. False con il pagamento diretto (§168). */
   assisted: boolean;
   sanction: JobIssueSanction | null;
@@ -373,6 +400,12 @@ export type JobIssueChatOutcomeInput = z.infer<typeof jobIssueChatOutcomeSchema>
 export const resolveJobIssueSchema = z.object({
   decision: z.enum(["UPHELD", "REJECTED"]),
   note: z.string().trim().min(3, "Scrivi la motivazione della decisione.").max(1000),
+  /** Solo se accolta e pagata online: quanto rimborsare (100, 50 o 20%, §267). */
+  refundPercent: z
+    .number()
+    .int()
+    .refine((v) => (JOB_ISSUE_REFUND_PERCENTS as readonly number[]).includes(v), "Il rimborso è del 100, 50 o 20%.")
+    .optional(),
 });
 export type ResolveJobIssueInput = z.infer<typeof resolveJobIssueSchema>;
 
@@ -431,6 +464,8 @@ type IssueRow = {
   infoRespondedAt: Date | null;
   autoDecision: string | null;
   sanction: string | null;
+  /** Assente nelle letture che non lo selezionano: vale 100%. */
+  refundPercent?: number | null;
   appealedAt: Date | null;
   appealText: string | null;
   appealDecision: string | null;
@@ -478,6 +513,7 @@ export function toJobIssueSummary(
     infoRespondedAt: issue.infoRespondedAt?.toISOString() ?? null,
     autoDecision: (issue.autoDecision as JobIssueAutoDecision | null) ?? null,
     paidOnline: !!extra.paidOnline,
+    refundPercent: issue.status === "UPHELD" ? jobIssueRefundPercent(issue.type, issue.refundPercent) : null,
     assisted,
     sanction: (issue.sanction as JobIssueSanction | null) ?? null,
     appealedAt: issue.appealedAt?.toISOString() ?? null,

@@ -73,7 +73,7 @@ export default function HomeContent({
         </FadeInSection>
 
         {/* 4. Professionisti e recensioni. Tolta la lista d'attesa "Arriviamo
-            presto nella tua zona" (decisione di Luca, docs/CHANGELOG.md §267):
+            presto nella tua zona" (decisione di Luca, docs/CHANGELOG.md §271):
             chi non trova nessuno manda lo stesso la richiesta e viene avvisato
             quando arriva un professionista compatibile. Senza profili la
             sezione non compare, invece di restare un titolo vuoto. */}

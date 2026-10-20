@@ -581,7 +581,7 @@ export function ResultsListWithMap({
 
           {/* Senza nessun risultato Filtri, Mappa e ordinamento non servono:
               resta solo il riquadro per inviare lo stesso la richiesta
-              (docs/CHANGELOG.md §267). */}
+              (docs/CHANGELOG.md §271). */}
           {professionals.length === 0 ? null : (
           <XStack alignItems="center" justifyContent="space-between" flexWrap="wrap" gap="$2">
             <XStack alignItems="center" gap="$2" flexWrap="wrap">

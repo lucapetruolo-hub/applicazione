@@ -85,7 +85,7 @@ export function SiteHeader() {
           </Link>
           {isSearchResultsPage ? (
             // Da telefono il menu c'è anche nelle pagine di ricerca: prima
-            // mancava solo qui (docs/CHANGELOG.md §267). Su computer resta
+            // mancava solo qui (docs/CHANGELOG.md §271). Su computer resta
             // nascosto, al suo posto c'è la ricerca compatta al centro.
             <MegaMenu mobileOnly />
           ) : (

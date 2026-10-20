@@ -46,7 +46,7 @@ export function CategoryContent({
     <YStack width="100%" alignItems="center" backgroundColor="transparent">
       {/* Titolo principale (h1) per Google e i lettori di schermo, non
           mostrato: il riquadro in cima ai risultati era stato tolto su
-          richiesta (docs/CHANGELOG.md §267). */}
+          richiesta (docs/CHANGELOG.md §271). */}
       <h1 className="sr-only">{title}</h1>
       <YStack width="100%" maxWidth={1200} paddingHorizontal="$4" paddingVertical="$6">
         <ResultsListWithMap

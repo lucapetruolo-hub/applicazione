@@ -1614,6 +1614,10 @@ model ProfessionalFiscalProfile {
   // Bonifici verso la banca impostati in manuale su Stripe (docs/CHANGELOG.md §249):
   // i soldi dei lavori restano bloccati sul suo conto Stripe fino allo sblocco.
   stripeManualPayoutsAt    DateTime?
+  // Saldo negativo coperto dalla sua banca (`debit_negative_balances`, §268):
+  // se rimborsi o contestazioni superano i soldi sul suo conto Stripe li
+  // preleva dal suo conto bancario, non dalla piattaforma.
+  stripeNegativeDebitAt    DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1835,7 +1839,16 @@ model JobPayment {
   // restituisce al professionista). I bonifici verso la sua banca sono
   // manuali: partono solo allo sblocco (`payoutPendingEurCents` finché i
   // soldi non sono disponibili su Stripe, poi `payoutSentEurCents`).
+  // `stripeDirectCharge` (§268, decisione dell'utente del 20/10/2026): il
+  // pagamento è nato direttamente sul conto del professionista (addebito
+  // diretto, header Stripe-Account): rimborsi e contestazioni Stripe li prende
+  // dal suo saldo, non da quello della piattaforma. False = addebito a
+  // destinazione (§249) o vecchio modello.
+  // `refundWaitingEurCents` (§270): rimborsi chiesti ma in attesa di fondi sul
+  // conto Stripe del professionista; tornano a zero quando Stripe li completa.
   stripeDestinationAccountId String?
+  stripeDirectCharge         Boolean   @default(false)
+  refundWaitingEurCents      Int       @default(0)
   applicationFeeEurCents     Int       @default(0)
   payoutPendingEurCents      Int       @default(0)
   payoutSentEurCents         Int       @default(0)
@@ -1846,6 +1859,31 @@ model JobPayment {
   payoutFailureMessage       String?
   /// Avviso al team Finanza: soldi bloccati da più di 80 giorni (Stripe li paga comunque dopo 90, docs/CHANGELOG.md §249).
   longHoldAlertedAt          DateTime?
+
+  // --- Contestazioni, debiti e costi Stripe a carico del professionista (docs/CHANGELOG.md §267) ---
+  // Cifra che Stripe ha tolto alla piattaforma per una contestazione in banca
+  // e che abbiamo già ripreso dal conto del professionista (storno), più il
+  // trasferimento con cui gliela restituiamo se la contestazione è vinta.
+  disputeRecoveredEurCents   Int       @default(0)
+  disputeReturnTransferId    String?
+  // Quanto il professionista deve ancora alla piattaforma per questo lavoro
+  // (rimborso o contestazione persa per colpa sua quando i soldi erano già
+  // partiti, trattenuta che resta a suo carico): si riprende dai prossimi
+  // lavori sbloccati, prima del bonifico.
+  professionalDebtEurCents   Int       @default(0)
+  // Costi di Stripe Connect ripresi dal professionista allo sblocco: costo
+  // del bonifico e quota mensile dell'account attivo (`connectMonthlyFeeMonth`,
+  // AAAA-MM, al primo sblocco del mese).
+  connectFeesEurCents        Int       @default(0)
+  connectMonthlyFeeMonth     String?
+  // Carta del cliente salvata con l'acconto per addebitare da sola il saldo
+  // alla chiusura del lavoro (docs/CHANGELOG.md §267): cliente Stripe sulla
+  // piattaforma e metodo di pagamento. `balanceAutoChargeFailedAt`: addebito
+  // non riuscito, il cliente paga con il link.
+  clientStripeCustomerId     String?
+  savedPaymentMethodId       String?
+  balanceAutoChargedAt       DateTime?
+  balanceAutoChargeFailedAt  DateTime?
 
   // --- DIRECT (auto-dichiarazione + conferma cliente) ---
   directReportedAt   DateTime?
@@ -2208,6 +2246,9 @@ model JobIssue {
   // Misura applicata al professionista con la decisione "accolta":
   // WARNING, DEMOTED o BLOCKED (vedi ProfessionalProfile.demotedUntil).
   sanction                    String?
+  // Percentuale di quanto pagato online rimborsata al cliente quando la
+  // segnalazione è accolta: 100, 50 o 20 (docs/CHANGELOG.md §267).
+  refundPercent               Int?
   // Ricorso del professionista entro 30 giorni dalla decisione, esaminato
   // da un admin diverso da chi ha deciso. ACCEPTED ribalta la decisione.
   appealText                  String?

@@ -3,6 +3,11 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
 import {
+  accountDebitGrossEurCents,
+  connectFeeMonth,
+  connectFeesForReleaseEurCents,
+  connectPayoutFeeEurCents,
+  estimatedCardFeeEurCents,
   ONLINE_APP_FEE_PERCENT,
   ONLINE_LONG_HOLD_ALERT_DAYS,
   ONLINE_RELEASE_DAYS,
@@ -23,6 +28,13 @@ const OPEN_ISSUE_STATUSES = ["CHAT", "OPEN"];
 // Esiti finali di una contestazione in banca (Stripe Dispute.status).
 const CLOSED_DISPUTE_STATUSES = ["won", "lost", "warning_closed", "prevented"];
 
+// Motivi di contestazione in banca che dipendono dal lavoro (non arrivato o
+// non conforme): persa, anche la commissione di Stripe è a carico del
+// professionista (§267). Frode, doppio addebito e simili restano a noi.
+const PROFESSIONAL_FAULT_DISPUTE_REASONS = ["product_not_received", "product_unacceptable"];
+// Commissione di Stripe su una contestazione se non si legge dall'evento.
+const STRIPE_DISPUTE_FEE_EUR_CENTS = 2000;
+
 // Il bonifico non riuscito si riprova una volta al giorno (dati bancari da sistemare).
 const PAYOUT_RETRY_AFTER_FAILURE_MS = DAY_MS;
 
@@ -30,11 +42,41 @@ const PAYOUT_RETRY_AFTER_FAILURE_MS = DAY_MS;
 type ChargeInfo = {
   fee: number;
   chargeId: string | null;
-  /** Conto Stripe del professionista se l'addebito è "a destinazione" (§249). */
+  /** Conto Stripe del professionista se l'addebito è sul suo conto (a destinazione §249 o diretto §268). */
   destination: string | null;
+  /** Addebito nato direttamente sul conto del professionista (§268). */
+  direct: boolean;
   /** Trattenuta della piattaforma (application fee) sull'addebito. */
   applicationFeeAmount: number;
+  /** Carta salvata per addebitare da sola il saldo (§267), se il cliente l'ha salvata. */
+  savedCard: { customerId: string; paymentMethodId: string } | null;
 };
+
+/**
+ * Salvataggio della carta all'acconto, per addebitare il saldo da solo alla
+ * chiusura del lavoro (decisione dell'utente, §267). Solo quando anche il
+ * saldo si paga online.
+ */
+function saveCardForBalance(enabled: boolean) {
+  if (!enabled) return { session: {}, intent: {} };
+  return {
+    session: {
+      customer_creation: "always" as const,
+      custom_text: { submit: { message: "Il saldo verrà addebitato su questa carta quando il professionista chiude il lavoro, entro l'importo massimo del preventivo." } },
+    },
+    intent: { setup_future_usage: "off_session" as const },
+  };
+}
+
+/** Opzioni Stripe per operare sul conto del professionista (addebito diretto, §268). */
+function onAccount(stripeAccount: string | null | undefined): Stripe.RequestOptions {
+  return stripeAccount ? { stripeAccount } : {};
+}
+
+/** Conto su cui è nato un pagamento del lavoro: quello del professionista con l'addebito diretto, altrimenti la piattaforma. */
+function chargeAccount(jp: { stripeDirectCharge: boolean; stripeDestinationAccountId: string | null }): string | null {
+  return jp.stripeDirectCharge ? jp.stripeDestinationAccountId : null;
+}
 
 function idOf(value: string | { id: string } | null | undefined): string | null {
   if (!value) return null;
@@ -50,21 +92,24 @@ function disputeOpen(jp: { stripeDisputeId: string | null; stripeDisputeStatus: 
 }
 
 /**
- * Soldi dei pagamenti online dei lavori (docs/CHANGELOG.md §168, §249):
- * acconto e saldo pagati dal cliente con Stripe Checkout e addebitati "a
- * destinazione" sul conto Stripe del professionista (destination charges di
- * Stripe Connect), mai in custodia sul conto della piattaforma (decisione
- * dell'utente del 14/10/2026). La piattaforma trattiene commissione e costo
- * della carta come application fee. I bonifici dal conto Stripe del
+ * Soldi dei pagamenti online dei lavori (docs/CHANGELOG.md §168, §249, §268):
+ * acconto e saldo pagati dal cliente con Stripe Checkout e addebitati
+ * direttamente sul conto Stripe del professionista (direct charges di Stripe
+ * Connect, header Stripe-Account, decisione dell'utente del 20/10/2026), mai
+ * in custodia sul conto della piattaforma (decisione del 14/10/2026). Così
+ * Stripe prende rimborsi e contestazioni dal saldo del professionista, non
+ * dal nostro; se va in negativo li preleva dalla sua banca. La piattaforma
+ * trattiene commissione e costo della carta come application fee. I bonifici dal conto Stripe del
  * professionista alla sua banca sono manuali: i soldi restano bloccati lì
  * finché il cliente non conferma il lavoro o per 7 giorni dalla chiusura
  * (Stripe li paga comunque dopo 90 giorni), poi il sito fa partire il
  * bonifico. Rimborsi al cliente (annullamenti, segnalazioni accolte,
  * differenza pagata in più) ripresi dal conto del professionista.
  *
- * I pagamenti registrati prima di §249 (`stripeDestinationAccountId` vuoto)
- * seguono il vecchio modello: custodia sulla piattaforma e trasferimento
- * allo sblocco.
+ * I pagamenti registrati prima seguono il loro modello fino alla fine:
+ * addebito a destinazione (§249, `stripeDirectCharge` false) o, con
+ * `stripeDestinationAccountId` vuoto, custodia sulla piattaforma e
+ * trasferimento allo sblocco.
  *
  * Modulo a parte, senza dipendenze da area admin o regole di commissione:
  * lo usano sia i pagamenti sia le segnalazioni, senza dipendenze circolari.
@@ -141,12 +186,18 @@ export class OnlineMoneyService {
       ? `${this.frontendUrl()}/le-mie-richieste?tab=lavori&open=${booking.quote.guidedRequestId}`
       : `${this.frontendUrl()}/le-mie-richieste?tab=lavori`;
     const suffix = statementSuffix(booking.professionalProfile.businessName);
-    // Un acconto già pagato col vecchio modello (custodia sulla piattaforma)
-    // tiene lo stesso modello anche per il saldo: un lavoro non mescola i due.
+    // Un acconto già pagato con un modello precedente (custodia sulla
+    // piattaforma o addebito a destinazione) tiene lo stesso modello anche
+    // per il saldo: un lavoro non mescola i modelli.
     const legacy = jp.paidEurCents > 0 && !jp.stripeDestinationAccountId;
-    const destination = legacy ? null : await this.destinationAccount(booking.professionalProfileId);
+    const viaDestination = jp.paidEurCents > 0 && !!jp.stripeDestinationAccountId && !jp.stripeDirectCharge;
+    const account = legacy ? null : await this.professionalAccount(booking.professionalProfileId, { direct: !viaDestination });
+    const direct = !!account && !viaDestination;
+    const saveCard = saveCardForBalance(part === "deposit" && !jp.balanceDirect && !!account);
+    const metadata = { kind: "job_payment", part, jobPaymentId: jp.id, bookingId, ...(direct ? { stripeAccount: account } : {}) };
     const session = await this.requireStripe().checkout.sessions.create({
       mode: "payment",
+      ...saveCard.session,
       line_items: [
         {
           price_data: {
@@ -160,16 +211,16 @@ export class OnlineMoneyService {
         },
       ],
       payment_intent_data: {
-        ...(destination ? this.destinationChargeData(destination, amount) : {}),
-        transfer_group: bookingId,
+        ...(direct ? this.directChargeData(amount) : account ? { ...this.destinationChargeData(account, amount), transfer_group: bookingId } : { transfer_group: bookingId }),
+        ...saveCard.intent,
         // Nome del professionista sull'estratto conto del cliente (docs/CHANGELOG.md §238): meno contestazioni "non riconosco l'addebito".
         ...(suffix ? { statement_descriptor_suffix: suffix } : {}),
-        metadata: { kind: "job_payment", part, jobPaymentId: jp.id, bookingId },
+        metadata,
       },
       success_url: `${back}&pagamento=completato`,
       cancel_url: back,
-      metadata: { kind: "job_payment", part, jobPaymentId: jp.id, bookingId },
-    });
+      metadata,
+    }, onAccount(direct ? account : null));
     return { url: session.url };
   }
 
@@ -191,10 +242,13 @@ export class OnlineMoneyService {
   }): Promise<{ url: string | null }> {
     const back = `${this.frontendUrl()}/le-mie-richieste?open=${params.guidedRequestId}`;
     const suffix = statementSuffix(params.businessName);
-    const destination = await this.destinationAccount(params.professionalProfileId);
-    const metadata = { kind: "quote_deposit", quoteId: params.quoteId, clientUserId: params.clientUserId, paymentMethod: params.paymentMethod };
+    const account = await this.professionalAccount(params.professionalProfileId, { direct: true });
+    const metadata = { kind: "quote_deposit", quoteId: params.quoteId, clientUserId: params.clientUserId, paymentMethod: params.paymentMethod, stripeAccount: account };
+    // Col saldo online la carta resta salvata per il saldo (§267); col saldo diretto (MIXED) no.
+    const saveCard = saveCardForBalance(params.paymentMethod === "ONLINE");
     const session = await this.requireStripe().checkout.sessions.create({
       mode: "payment",
+      ...saveCard.session,
       expires_at: Math.floor(Date.now() / 1000) + 60 * 60,
       line_items: [
         {
@@ -207,75 +261,162 @@ export class OnlineMoneyService {
         },
       ],
       payment_intent_data: {
-        ...this.destinationChargeData(destination, params.amountEurCents),
+        ...this.directChargeData(params.amountEurCents),
+        ...saveCard.intent,
         ...(suffix ? { statement_descriptor_suffix: suffix } : {}),
         metadata,
       },
       success_url: `${back}&pagamento=completato`,
       cancel_url: back,
       metadata,
-    });
+    }, onAccount(account));
     return { url: session.url };
   }
 
   /**
    * Conto Stripe del professionista su cui addebitare un pagamento online
-   * (docs/CHANGELOG.md §249): deve poter ricevere i soldi e avere i bonifici
-   * verso la banca in manuale, altrimenti Stripe li manderebbe subito alla
-   * sua banca e non sarebbero più bloccati. Se qualcosa manca il pagamento
-   * non parte: meglio un errore chiaro che soldi non bloccati.
+   * (docs/CHANGELOG.md §249, §268): deve poter accettare le carte (addebito
+   * diretto) o ricevere trasferimenti (saldo di un lavoro iniziato con
+   * l'addebito a destinazione), avere i bonifici verso la banca in manuale,
+   * altrimenti Stripe li manderebbe subito alla sua banca e non sarebbero più
+   * bloccati, e il saldo negativo coperto dalla sua banca. Se qualcosa manca
+   * il pagamento non parte: meglio un errore chiaro che soldi non bloccati.
    */
-  private async destinationAccount(professionalProfileId: string): Promise<string> {
+  private async professionalAccount(professionalProfileId: string, opts: { direct: boolean }): Promise<string> {
     const stripe = this.requireStripe();
     const unavailable = "Il professionista non può ricevere pagamenti online in questo momento. Riprova più tardi o, se il preventivo lo prevede, scegli il pagamento diretto.";
     const fiscal = await this.prisma.professionalFiscalProfile.findUnique({
       where: { professionalProfileId },
-      select: { id: true, stripeConnectAccountId: true, stripePayoutsEnabled: true, stripeManualPayoutsAt: true },
+      select: { id: true, stripeConnectAccountId: true, stripePayoutsEnabled: true, stripeManualPayoutsAt: true, stripeNegativeDebitAt: true },
     });
     const accountId = fiscal?.stripeConnectAccountId;
-    if (!fiscal || !accountId || !(await this.transfersActive(accountId, fiscal.stripePayoutsEnabled))) {
+    if (!fiscal || !accountId || !(await this.accountActive(accountId, fiscal.stripePayoutsEnabled, opts.direct ? "cards" : "transfers"))) {
       throw new BadRequestException(unavailable);
     }
-    if (!fiscal.stripeManualPayoutsAt) {
+    if (!fiscal.stripeManualPayoutsAt || !fiscal.stripeNegativeDebitAt) {
       try {
-        await stripe.balanceSettings.update({ payments: { payouts: { schedule: { interval: "manual" } } } }, { stripeAccount: accountId });
+        await stripe.balanceSettings.update(
+          { payments: { payouts: { schedule: { interval: "manual" } }, debit_negative_balances: true } },
+          { stripeAccount: accountId },
+        );
       } catch (err) {
-        this.logger.error(`Bonifici manuali non impostati per ${accountId}: ${(err as Error).message}`);
+        this.logger.error(`Impostazioni del saldo non salvate per ${accountId}: ${(err as Error).message}`);
         throw new BadRequestException(unavailable);
       }
-      await this.prisma.professionalFiscalProfile.update({ where: { id: fiscal.id }, data: { stripeManualPayoutsAt: new Date() } });
+      const now = new Date();
+      await this.prisma.professionalFiscalProfile.update({
+        where: { id: fiscal.id },
+        data: { stripeManualPayoutsAt: fiscal.stripeManualPayoutsAt ?? now, stripeNegativeDebitAt: now },
+      });
       await this.auditLogService.record({
         entityType: "ProfessionalFiscalProfile",
         entityId: fiscal.id,
         fieldName: "stripeManualPayoutsAt",
-        newValue: "manual",
-        reason: "Bonifici verso la banca in manuale: i soldi dei lavori restano bloccati fino allo sblocco.",
+        newValue: { payouts: "manual", debitNegativeBalances: true },
+        reason: "Bonifici verso la banca in manuale (soldi dei lavori bloccati fino allo sblocco) e saldo negativo coperto dalla sua banca.",
       });
     }
     return accountId;
   }
 
-  /** Addebito a destinazione sul conto del professionista con la trattenuta della piattaforma. */
+  /** Addebito diretto sul conto del professionista con la trattenuta della piattaforma (§268). */
+  private directChargeData(amountEurCents: number) {
+    return { application_fee_amount: onlineApplicationFeeHoldEurCents(amountEurCents) };
+  }
+
+  /** Addebito a destinazione (§249), solo per il saldo dei lavori iniziati così. */
   private destinationChargeData(destination: string, amountEurCents: number) {
     return { transfer_data: { destination }, application_fee_amount: onlineApplicationFeeHoldEurCents(amountEurCents) };
   }
 
-  /** Acconto pagato su un preventivo che non si può più confermare: torna tutto al cliente. */
-  async refundQuoteDeposit(paymentIntentId: string, reason: string): Promise<void> {
+  /**
+   * Acconto pagato su un preventivo che non si può più confermare: torna
+   * tutto al cliente. `stripeAccount`: il conto del professionista su cui è
+   * nato il pagamento (addebito diretto, §268).
+   */
+  async refundQuoteDeposit(
+    paymentIntentId: string,
+    reason: string,
+    stripeAccount?: string | null,
+    notifyTo?: { clientUserId: string; guidedRequestId: string | null },
+  ): Promise<{ pending: boolean }> {
     const stripe = this.requireStripe();
-    const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    const intent = await stripe.paymentIntents.retrieve(paymentIntentId, {}, onAccount(stripeAccount));
     // Addebito sul conto del professionista: si riprende da lì e la
     // piattaforma restituisce anche la sua trattenuta.
     const destination = !!intent.transfer_data?.destination;
-    await stripe.refunds.create(
+    const refund = await stripe.refunds.create(
       {
         payment_intent: paymentIntentId,
-        ...(destination ? { reverse_transfer: true, refund_application_fee: true } : {}),
+        ...(stripeAccount ? { refund_application_fee: true } : destination ? { reverse_transfer: true, refund_application_fee: true } : {}),
         metadata: { reason: reason.slice(0, 450) },
       },
-      { idempotencyKey: `quote-deposit-refund-${paymentIntentId}` },
+      { idempotencyKey: `quote-deposit-refund-${paymentIntentId}`, ...onAccount(stripeAccount) },
     );
     this.logger.warn(`Acconto ${paymentIntentId} rimborsato: ${reason}`);
+    const pending = !!stripeAccount && refund.status === "pending";
+    if (pending && notifyTo) {
+      await this.markRefundWaiting([refund], stripeAccount, { clientUserId: notifyTo.clientUserId, guidedRequestId: notifyTo.guidedRequestId, bookingId: null });
+    }
+    return { pending };
+  }
+
+  /**
+   * Rimborso su un addebito diretto rimasto in attesa (§269): il saldo
+   * Stripe del professionista non basta e Stripe lo completa appena
+   * arrivano i fondi. Si segna sul rimborso chi avvisare, così il webhook
+   * `refund.updated` può dire al cliente che è arrivato.
+   */
+  private async markRefundWaiting(
+    refunds: Stripe.Refund[],
+    stripeAccount: string,
+    who: { clientUserId: string; guidedRequestId: string | null; bookingId: string | null },
+  ): Promise<void> {
+    const stripe = this.requireStripe();
+    for (const refund of refunds) {
+      await stripe.refunds.update(
+        refund.id,
+        {
+          metadata: {
+            waitingFunds: "true",
+            clientUserId: who.clientUserId,
+            ...(who.guidedRequestId ? { guidedRequestId: who.guidedRequestId } : {}),
+            ...(who.bookingId ? { bookingId: who.bookingId } : {}),
+          },
+        },
+        onAccount(stripeAccount),
+      );
+    }
+    this.logger.warn(`Rimborso in attesa di fondi sul conto ${stripeAccount}: ${refunds.map((r) => r.id).join(", ")}`);
+  }
+
+  /**
+   * Webhook `refund.updated` / `refund.failed` dal conto del professionista
+   * (§269): un rimborso rimasto in attesa è arrivato al cliente, oppure non
+   * è riuscito e serve il nostro team. Idempotente: dopo l'avviso il
+   * rimborso non è più segnato come in attesa.
+   */
+  async handleRefundUpdated(refund: Stripe.Refund, stripeAccount: string | null | undefined): Promise<void> {
+    if (!stripeAccount || refund.metadata?.waitingFunds !== "true") return;
+    if (refund.status !== "succeeded" && refund.status !== "failed" && refund.status !== "canceled") return;
+    const ok = refund.status === "succeeded";
+    await this.requireStripe().refunds.update(refund.id, { metadata: { waitingFunds: ok ? "done" : "failed" } }, onAccount(stripeAccount));
+    const jobPaymentId = refund.metadata.jobPaymentId;
+    const jp = jobPaymentId ? await this.prisma.jobPayment.findUnique({ where: { id: jobPaymentId }, select: { refundWaitingEurCents: true } }) : null;
+    if (jobPaymentId && jp) {
+      await this.prisma.jobPayment.update({ where: { id: jobPaymentId }, data: { refundWaitingEurCents: Math.max(0, jp.refundWaitingEurCents - refund.amount) } });
+    }
+    const clientUserId = refund.metadata.clientUserId;
+    const payload = {
+      bookingId: refund.metadata.bookingId ?? null,
+      guidedRequestId: refund.metadata.guidedRequestId ?? null,
+      amountEurCents: refund.amount,
+    };
+    if (ok) {
+      if (clientUserId) await this.notificationsService.notify(clientUserId, "JOB_REFUND_COMPLETED", { ...payload, audience: "CLIENT" });
+      return;
+    }
+    await this.notifyFinanceAdmins("ADMIN_JOB_REFUND_FAILED", payload);
   }
 
   /** Webhook `checkout.session.completed` di un acconto o saldo. Idempotente sul payment intent. */
@@ -294,12 +435,27 @@ export class OnlineMoneyService {
   async recordCheckoutPayment(jobPaymentId: string, part: "deposit" | "balance", session: Stripe.Checkout.Session, opts: { notify: boolean }): Promise<void> {
     const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
     if (!paymentIntentId) return;
+    await this.recordPayment(jobPaymentId, part, paymentIntentId, session.amount_total ?? 0, { ...opts, stripeAccount: session.metadata?.stripeAccount ?? null });
+  }
+
+  /** Registra un acconto o saldo riuscito (da Checkout o addebitato sulla carta salvata). Idempotente sul payment intent. */
+  private async recordPayment(
+    jobPaymentId: string,
+    part: "deposit" | "balance",
+    paymentIntentId: string,
+    amount: number,
+    opts: { notify: boolean; autoCharged?: boolean; stripeAccount?: string | null },
+  ): Promise<void> {
     const jp = await this.prisma.jobPayment.findUnique({ where: { id: jobPaymentId }, include: { booking: true } });
     if (!jp) return;
     if (jp.stripePaymentIntentId === paymentIntentId || jp.balancePaymentIntentId === paymentIntentId) return;
+    // Saldo automatico: lo registrano sia l'addebito sia il webhook, solo il primo che arriva.
+    if (opts.autoCharged) {
+      const claimed = await this.prisma.jobPayment.updateMany({ where: { id: jp.id, balanceAutoChargedAt: null }, data: { balanceAutoChargedAt: new Date() } });
+      if (claimed.count === 0) return;
+    }
 
-    const amount = session.amount_total ?? 0;
-    const charge = await this.chargeOf(paymentIntentId);
+    const charge = await this.chargeOf(paymentIntentId, opts.stripeAccount ?? null);
 
     // Saldo pagato in ritardo, dopo che l'acconto era già passato al
     // professionista: gli giriamo subito anche questa parte.
@@ -321,7 +477,14 @@ export class OnlineMoneyService {
         onlineStage: stage,
         status: "PENDING",
         ...(charge.destination
-          ? { stripeDestinationAccountId: charge.destination, applicationFeeEurCents: jp.applicationFeeEurCents + charge.applicationFeeAmount }
+          ? {
+              stripeDestinationAccountId: charge.destination,
+              applicationFeeEurCents: jp.applicationFeeEurCents + charge.applicationFeeAmount,
+              ...(charge.direct ? { stripeDirectCharge: true } : {}),
+            }
+          : {}),
+        ...(part === "deposit" && charge.savedCard
+          ? { clientStripeCustomerId: charge.savedCard.customerId, savedPaymentMethodId: charge.savedCard.paymentMethodId }
           : {}),
         ...(part === "deposit" ? { stripePaymentIntentId: paymentIntentId, depositPaidAt: new Date() } : { balancePaymentIntentId: paymentIntentId, balancePaidAt: new Date() }),
       },
@@ -336,7 +499,7 @@ export class OnlineMoneyService {
       entityType: "JobPayment",
       entityId: jp.id,
       fieldName: part === "deposit" ? "depositPaidAt" : "balancePaidAt",
-      newValue: { amountEurCents: amount, stripeFeeEurCents: charge.fee, stage, destination: charge.destination, applicationFeeEurCents: charge.applicationFeeAmount },
+      newValue: { amountEurCents: amount, stripeFeeEurCents: charge.fee, stage, destination: charge.destination, direct: charge.direct, applicationFeeEurCents: charge.applicationFeeAmount },
       reason: charge.destination
         ? `${part === "deposit" ? "Acconto" : "Saldo"} pagato online (Stripe), bloccato sul conto del professionista.`
         : `${part === "deposit" ? "Acconto" : "Saldo"} pagato online (Stripe).`,
@@ -369,16 +532,20 @@ export class OnlineMoneyService {
     let payout: number;
     let transfer: Stripe.Transfer | null = null;
     let held = 0;
+    let connectFees = 0;
     if (charge.destination) {
       // I soldi sono già sul conto del professionista: la piattaforma tiene
-      // commissione e costo della carta e il resto parte subito verso la banca.
+      // commissione, costo della carta e costo del bonifico (§267) e il resto
+      // parte subito verso la banca.
       await this.prisma.jobPayment.update({
         where: { id: jp.id },
         data: { balancePaymentIntentId: paymentIntentId, applicationFeeEurCents: { increment: charge.applicationFeeAmount } },
       });
-      const extra = charge.applicationFeeAmount - (appFee + charge.fee);
+      const toBank = Math.max(0, amount - appFee - charge.fee);
+      const extra = charge.applicationFeeAmount - (appFee + charge.fee + connectPayoutFeeEurCents(toBank));
       const returned = extra > 0 ? await this.returnApplicationFee(jp.id, extra, "Conguaglio del saldo pagato in ritardo.") : 0;
       held = charge.applicationFeeAmount - returned;
+      connectFees = Math.max(0, Math.min(connectPayoutFeeEurCents(toBank), held - appFee - charge.fee));
       payout = Math.max(0, amount - held);
     } else {
       payout = Math.max(0, amount - appFee - charge.fee);
@@ -394,7 +561,7 @@ export class OnlineMoneyService {
             )
           : null;
     }
-    const platformFee = charge.destination ? Math.max(0, held - charge.fee) : appFee;
+    const platformFee = charge.destination ? Math.max(0, held - charge.fee - connectFees) : appFee;
     await this.prisma.jobPayment.update({
       where: { id: jp.id },
       data: {
@@ -404,7 +571,7 @@ export class OnlineMoneyService {
         stripeFeeEurCents: { increment: charge.fee },
         platformFeeEurCents: { increment: platformFee },
         netAmountEurCents: { increment: payout },
-        ...(charge.destination ? { payoutPendingEurCents: { increment: payout } } : {}),
+        ...(charge.destination ? { payoutPendingEurCents: { increment: payout }, connectFeesEurCents: { increment: connectFees } } : {}),
         balanceUnpaidAt: null,
       },
     });
@@ -465,28 +632,38 @@ export class OnlineMoneyService {
   }
 
   /**
-   * Costo Stripe reale del pagamento (dalla balance transaction, 0 se non
-   * disponibile), id dell'addebito e, per gli addebiti a destinazione, conto
-   * del professionista e trattenuta della piattaforma.
+   * Costo Stripe del pagamento, id dell'addebito e, per gli addebiti sul
+   * conto del professionista, quel conto e la trattenuta della piattaforma.
+   * Con l'addebito diretto (`stripeAccount`, §268) il costo della carta
+   * Stripe lo fa pagare alla piattaforma senza dettaglio per pagamento: si
+   * stima dal listino in base alla carta. Negli altri casi è quello reale
+   * della balance transaction (0 se non disponibile).
    */
-  private async chargeOf(paymentIntentId: string): Promise<ChargeInfo> {
-    const empty: ChargeInfo = { fee: 0, chargeId: null, destination: null, applicationFeeAmount: 0 };
+  private async chargeOf(paymentIntentId: string, stripeAccount: string | null): Promise<ChargeInfo> {
+    const empty: ChargeInfo = { fee: 0, chargeId: null, destination: null, direct: false, applicationFeeAmount: 0, savedCard: null };
     if (!this.stripe) return empty;
     let pi: Stripe.PaymentIntent;
     try {
-      pi = await this.stripe.paymentIntents.retrieve(paymentIntentId, { expand: ["latest_charge.balance_transaction"] });
+      pi = await this.stripe.paymentIntents.retrieve(paymentIntentId, { expand: ["latest_charge.balance_transaction"] }, onAccount(stripeAccount));
     } catch (err) {
       this.logger.warn(`Costo Stripe non letto per ${paymentIntentId}: ${(err as Error).message}`);
       return empty;
     }
     const charge = pi.latest_charge as Stripe.Charge | null;
     const bt = charge?.balance_transaction as Stripe.BalanceTransaction | null;
-    const destination = idOf(pi.transfer_data?.destination ?? charge?.transfer_data?.destination ?? null);
+    const destination = stripeAccount ?? idOf(pi.transfer_data?.destination ?? charge?.transfer_data?.destination ?? null);
+    const customerId = idOf(pi.customer);
+    const paymentMethodId = idOf(pi.payment_method);
+    const card = charge?.payment_method_details?.card;
     return {
-      fee: bt?.fee ?? 0,
+      fee: stripeAccount
+        ? estimatedCardFeeEurCents(charge?.amount ?? pi.amount, card ? { country: card.country, regulatedStatus: card.regulated_status } : null)
+        : (bt?.fee ?? 0),
       chargeId: charge?.id ?? null,
       destination,
+      direct: !!stripeAccount,
       applicationFeeAmount: destination ? (charge?.application_fee_amount ?? pi.application_fee_amount ?? 0) : 0,
+      savedCard: pi.setup_future_usage === "off_session" && customerId && paymentMethodId ? { customerId, paymentMethodId } : null,
     };
   }
 
@@ -494,7 +671,12 @@ export class OnlineMoneyService {
    * Dopo la chiusura del lavoro (importo finale noto): fase del saldo e data
    * in cui i soldi passano al professionista se il cliente non conferma.
    */
-  async afterCompletion(jobPaymentId: string, finalAmountEurCents: number, appFeeEurCents: number): Promise<{ balanceDueEurCents: number }> {
+  async afterCompletion(
+    jobPaymentId: string,
+    finalAmountEurCents: number,
+    appFeeEurCents: number,
+    opts: { autoCharge?: boolean } = {},
+  ): Promise<{ balanceDueEurCents: number; autoChargedEurCents: number }> {
     const jp = await this.prisma.jobPayment.findUniqueOrThrow({ where: { id: jobPaymentId } });
     // Col saldo diretto (§237) da Stripe passa solo l'acconto: il saldo online è già a zero.
     const onlineTarget = onlineTargetEurCents(finalAmountEurCents, jp);
@@ -509,7 +691,76 @@ export class OnlineMoneyService {
         releaseDueAt: new Date(Date.now() + ONLINE_RELEASE_DAYS * DAY_MS),
       },
     });
-    return { balanceDueEurCents: due };
+    // Saldo addebitato da solo sulla carta salvata con l'acconto (§267):
+    // solo se l'importo finale resta nel preventivo accettato dal cliente.
+    if (due > 0 && opts.autoCharge && (await this.chargeSavedCard(jp.id, due))) return { balanceDueEurCents: 0, autoChargedEurCents: due };
+    return { balanceDueEurCents: due, autoChargedEurCents: 0 };
+  }
+
+  /**
+   * Addebito del saldo sulla carta salvata con l'acconto, senza il cliente
+   * presente (off-session). Se la banca lo rifiuta o chiede di confermare,
+   * il cliente paga con il link come prima. Restituisce true se è riuscito.
+   */
+  private async chargeSavedCard(jobPaymentId: string, amount: number): Promise<boolean> {
+    if (!this.stripe) return false;
+    const jp = await this.prisma.jobPayment.findUniqueOrThrow({
+      where: { id: jobPaymentId },
+      include: { booking: { select: { clientId: true, professionalProfile: { select: { businessName: true } }, quote: { select: { guidedRequestId: true } } } } },
+    });
+    if (!jp.clientStripeCustomerId || !jp.savedPaymentMethodId || !jp.stripeDestinationAccountId || jp.balanceDirect || jp.balancePaymentIntentId) return false;
+    const suffix = statementSuffix(jp.booking.professionalProfile.businessName);
+    // Con l'addebito diretto (§268) cliente e carta stanno sul conto del professionista.
+    const account = chargeAccount(jp);
+    let intent: Stripe.PaymentIntent;
+    try {
+      intent = await this.stripe.paymentIntents.create(
+        {
+          amount,
+          currency: "eur",
+          customer: jp.clientStripeCustomerId,
+          payment_method: jp.savedPaymentMethodId,
+          off_session: true,
+          confirm: true,
+          description: `Saldo del lavoro con ${jp.booking.professionalProfile.businessName}`,
+          ...(account ? this.directChargeData(amount) : { ...this.destinationChargeData(jp.stripeDestinationAccountId, amount), transfer_group: jp.bookingId }),
+          ...(suffix ? { statement_descriptor_suffix: suffix } : {}),
+          metadata: { kind: "job_payment", part: "balance", auto: "true", jobPaymentId: jp.id, bookingId: jp.bookingId, ...(account ? { stripeAccount: account } : {}) },
+        },
+        { idempotencyKey: `job-auto-balance-${jp.id}-${jp.paidEurCents}-${amount}`, ...onAccount(account) },
+      );
+    } catch (err) {
+      this.logger.warn(`Saldo automatico non riuscito per ${jp.id}: ${(err as Error).message}`);
+      await this.prisma.jobPayment.update({ where: { id: jp.id }, data: { balanceAutoChargeFailedAt: new Date() } });
+      return false;
+    }
+    if (intent.status !== "succeeded") {
+      // Pagamento in sospeso o da confermare: il webhook lo registra se riesce, intanto vale il link.
+      if (intent.status !== "processing") await this.prisma.jobPayment.update({ where: { id: jp.id }, data: { balanceAutoChargeFailedAt: new Date() } });
+      return false;
+    }
+    await this.recordPayment(jp.id, "balance", intent.id, intent.amount, { notify: true, autoCharged: true, stripeAccount: account });
+    await this.notificationsService.notify(jp.booking.clientId, "JOB_BALANCE_AUTO_CHARGED", {
+      bookingId: jp.bookingId,
+      guidedRequestId: jp.booking.quote?.guidedRequestId ?? null,
+      amountEurCents: intent.amount,
+      audience: "CLIENT",
+    });
+    return true;
+  }
+
+  /**
+   * Webhook `payment_intent.succeeded` di un saldo addebitato sulla carta
+   * salvata (§267): rete di sicurezza se la registrazione subito dopo
+   * l'addebito non è andata a buon fine. Idempotente.
+   */
+  async handleAutoBalanceSucceeded(intent: Stripe.PaymentIntent): Promise<void> {
+    if (intent.metadata?.kind !== "job_payment" || intent.metadata?.auto !== "true" || !intent.metadata.jobPaymentId) return;
+    await this.recordPayment(intent.metadata.jobPaymentId, "balance", intent.id, intent.amount, {
+      notify: true,
+      autoCharged: true,
+      stripeAccount: intent.metadata.stripeAccount ?? null,
+    });
   }
 
   /**
@@ -525,7 +776,7 @@ export class OnlineMoneyService {
       include: {
         booking: {
           include: {
-            issue: { select: { status: true, appealedAt: true, appealDecision: true } },
+            issue: { select: { status: true, appealedAt: true, appealDecision: true, refundPercent: true } },
             professionalProfile: { select: { id: true, userId: true, fiscalProfile: { select: { stripeConnectAccountId: true, stripePayoutsEnabled: true } } } },
             quote: { select: { guidedRequestId: true } },
           },
@@ -535,7 +786,15 @@ export class OnlineMoneyService {
     if (!jp || jp.paymentMethod !== "MANOVIA" || jp.releasedAt) return false;
     const booking = jp.booking;
     const issue = booking.issue;
-    const issueOpen = !!issue && (OPEN_ISSUE_STATUSES.includes(issue.status) || issue.status === "UPHELD");
+    // Segnalazione accolta con rimborso parziale (§267): eseguito il rimborso,
+    // il resto passa al professionista. Con il rimborso totale o ancora da
+    // eseguire (in mano alla Finanza) i soldi restano bloccati.
+    const partialRefundDone =
+      issue?.status === "UPHELD" &&
+      issue.refundPercent !== null &&
+      issue.refundPercent < 100 &&
+      (await this.prisma.refund.count({ where: { jobPaymentId: jp.id, status: { in: ["REQUESTED", "APPROVED"] } } })) === 0;
+    const issueOpen = !!issue && (OPEN_ISSUE_STATUSES.includes(issue.status) || (issue.status === "UPHELD" && !partialRefundDone));
     const can = onlineCanRelease({
       stage: jp.onlineStage as JobPaymentOnlineStage | null,
       professionalCompletedAt: booking.professionalCompletedAt,
@@ -547,6 +806,8 @@ export class OnlineMoneyService {
     if (!can || booking.finalAmountEurCents === null) return false;
     // Contestazione in banca aperta: i soldi restano bloccati finché la banca non decide.
     if (disputeOpen(jp)) return false;
+    // Contestazione vinta ma cifra non ancora restituita da Stripe: si sblocca al suo ritorno (§267).
+    if (jp.disputeRecoveredEurCents > 0) return false;
 
     // Col vecchio modello i soldi sono sulla piattaforma e serve un conto
     // Stripe attivo per trasferirli. Con l'addebito sul conto del
@@ -554,7 +815,7 @@ export class OnlineMoneyService {
     const destinationModel = !!jp.stripeDestinationAccountId;
     const account = booking.professionalProfile.fiscalProfile;
     if (!destinationModel) {
-      const transfersActive = account?.stripeConnectAccountId ? await this.transfersActive(account.stripeConnectAccountId, account.stripePayoutsEnabled) : false;
+      const transfersActive = account?.stripeConnectAccountId ? await this.accountActive(account.stripeConnectAccountId, account.stripePayoutsEnabled, "transfers") : false;
       if (!account?.stripeConnectAccountId || !transfersActive) {
         // Senza conto Stripe attivo i soldi restano in custodia: lo avvisiamo
         // e riproviamo al giro successivo.
@@ -579,6 +840,9 @@ export class OnlineMoneyService {
       paidEurCents: jp.paidEurCents,
       refundedEurCents: jp.refundedEurCents,
       stripeFeeEurCents: jp.stripeFeeEurCents,
+      // Commissione sul totale del lavoro anche con una parte rimborsata al
+      // cliente (decisione dell'utente, §267); col saldo non pagato solo su
+      // quanto incassato.
       appFeeEurCents: balanceUnpaid
         ? Math.round((jp.platformFeeEurCents * (jp.paidEurCents - jp.refundedEurCents)) / Math.max(1, onlineTarget))
         : jp.platformFeeEurCents,
@@ -595,6 +859,11 @@ export class OnlineMoneyService {
       if (refundToClient > 0) await this.refundAcrossPayments(jp.id, refundToClient, "Differenza tra acconto e importo finale.", { beforeRelease: true });
       let netPayout = payout;
       let transfer: Stripe.Transfer | null = null;
+      let connectFees = 0;
+      let debtRecovered = 0;
+      // Parte già presa da Stripe dal suo saldo per rimborsi o contestazioni di altri lavori (§268).
+      let takenByStripe = 0;
+      let monthlyFeeMonth: string | null = null;
       if (destinationModel) {
         // Il professionista ha già tutto sul suo conto meno la trattenuta: la
         // piattaforma tiene solo commissione e costo della carta e restituisce
@@ -604,9 +873,42 @@ export class OnlineMoneyService {
         const collected = fresh.paidEurCents - fresh.refundedEurCents;
         const keep = Math.max(0, collected - payout);
         const extra = fresh.applicationFeeEurCents - keep;
-        if (extra > 0) await this.returnApplicationFee(jp.id, extra, "Conguaglio allo sblocco.");
-        else if (extra < 0) this.logger.warn(`Trattenuta di ${jp.id} più bassa del dovuto di ${-extra} centesimi.`);
-        netPayout = Math.max(0, collected - Math.min(fresh.applicationFeeEurCents, keep));
+        if (extra < 0) this.logger.warn(`Trattenuta di ${jp.id} più bassa del dovuto di ${-extra} centesimi.`);
+        let gross = Math.max(0, collected - Math.min(fresh.applicationFeeEurCents, keep));
+        // Con l'addebito diretto (§268) Stripe prende rimborsi e
+        // contestazioni dal saldo del professionista anche oltre i soldi del
+        // lavoro interessato, cioè da quelli ancora bloccati per altri: il
+        // bonifico non supera quanto resta davvero sul conto, tolto ciò che
+        // serve agli altri lavori.
+        if (fresh.stripeDirectCharge && fresh.stripeDestinationAccountId) {
+          const free = await this.unreservedBalance(fresh.stripeDestinationAccountId, fresh.id);
+          takenByStripe = Math.max(0, gross - free);
+          gross -= takenByStripe;
+        }
+        // Prima del bonifico si riprendono (§267) quanto il professionista ci
+        // deve per lavori precedenti (rimborsi o contestazioni dopo il
+        // bonifico) e i costi di Stripe Connect: bonifico e quota mensile.
+        const debts = await this.professionalDebts(booking.professionalProfile.id);
+        const debtTake = Math.min(
+          debts.reduce((sum, d) => sum + d.professionalDebtEurCents, 0),
+          gross,
+        );
+        const month = connectFeeMonth(now);
+        const monthlyDone =
+          (await this.prisma.jobPayment.count({ where: { booking: { professionalProfileId: booking.professionalProfile.id }, connectMonthlyFeeMonth: month } })) > 0;
+        const fees = connectFeesForReleaseEurCents(gross - debtTake, !monthlyDone);
+        const toTake = debtTake + fees;
+        // Si tiene prima dalla parte di trattenuta da restituire, poi si
+        // storna dal conto del professionista. Lo storno va prima della
+        // restituzione: se non riesce, nessun soldo si è ancora mosso.
+        const retained = Math.min(Math.max(0, extra), toTake);
+        const reversed = toTake - retained > 0 ? await this.reverseFromProfessional(jp.id, toTake - retained, "release") : 0;
+        if (extra - retained > 0) await this.returnApplicationFee(jp.id, extra - retained, "Conguaglio allo sblocco.");
+        const taken = retained + reversed;
+        connectFees = Math.min(fees, taken);
+        debtRecovered = taken - connectFees;
+        if (!monthlyDone && connectFees > 0) monthlyFeeMonth = month;
+        netPayout = gross - taken;
       } else if (payout > 0) {
         transfer = await stripe.transfers.create(
           { amount: payout, currency: "eur", destination: account!.stripeConnectAccountId!, transfer_group: booking.id },
@@ -614,8 +916,9 @@ export class OnlineMoneyService {
         );
       }
       moneyMoved = true;
+      if (debtRecovered > 0) await this.settleDebts(booking.professionalProfile.id, debtRecovered, jp.id);
       const after = await this.prisma.jobPayment.findUniqueOrThrow({ where: { id: jp.id } });
-      const appFee = after.paidEurCents - after.refundedEurCents - netPayout - after.stripeFeeEurCents;
+      const appFee = after.paidEurCents - after.refundedEurCents - netPayout - after.stripeFeeEurCents - connectFees - debtRecovered - takenByStripe;
       await this.prisma.jobPayment.update({
         where: { id: jp.id },
         data: {
@@ -624,7 +927,8 @@ export class OnlineMoneyService {
           stripeTransferId: transfer?.id ?? null,
           netAmountEurCents: netPayout,
           platformFeeEurCents: Math.max(0, appFee),
-          ...(destinationModel ? { payoutPendingEurCents: netPayout } : {}),
+          ...(destinationModel ? { payoutPendingEurCents: netPayout, connectFeesEurCents: { increment: connectFees } } : {}),
+          ...(monthlyFeeMonth ? { connectMonthlyFeeMonth: monthlyFeeMonth } : {}),
           ...(balanceUnpaid ? { balanceUnpaidAt: now } : {}),
         },
       });
@@ -636,7 +940,17 @@ export class OnlineMoneyService {
         entityId: jp.id,
         fieldName: "onlineStage",
         oldValue: jp.onlineStage,
-        newValue: { stage: "RELEASED", payout: netPayout, refundToClient, balanceUnpaid, transferId: transfer?.id ?? null, destination: jp.stripeDestinationAccountId },
+        newValue: {
+          stage: "RELEASED",
+          payout: netPayout,
+          refundToClient,
+          balanceUnpaid,
+          transferId: transfer?.id ?? null,
+          destination: jp.stripeDestinationAccountId,
+          connectFees,
+          debtRecovered,
+          takenByStripe,
+        },
         reason: balanceUnpaid
           ? "Saldo non pagato entro 7 giorni: al professionista quanto incassato."
           : destinationModel
@@ -648,6 +962,8 @@ export class OnlineMoneyService {
         guidedRequestId: booking.quote?.guidedRequestId ?? null,
         amountEurCents: netPayout,
         balanceUnpaid,
+        connectFeesEurCents: connectFees,
+        debtRecoveredEurCents: debtRecovered,
       });
       if (balanceUnpaid) await this.reportUnpaidBalance(booking.id, booking.clientId, booking.quote?.guidedRequestId ?? null);
       if (destinationModel) await this.sendPayout(jp.id, now).catch((err) => this.logger.warn(`Bonifico rimandato per ${jp.id}: ${(err as Error).message}`));
@@ -681,23 +997,8 @@ export class OnlineMoneyService {
     if (!jp || !accountId || jp.payoutPendingEurCents <= 0) return false;
     const amount = jp.payoutPendingEurCents;
 
-    const balance = await stripe.balance.retrieve({}, { stripeAccount: accountId });
-    const available = eurAmount(balance.available);
-    const incoming = eurAmount(balance.pending);
-    const others = await this.prisma.jobPayment.findMany({
-      where: {
-        stripeDestinationAccountId: accountId,
-        id: { not: jp.id },
-        OR: [{ releasedAt: null, onlineStage: { notIn: ["REFUNDED", "AWAITING_DEPOSIT"] } }, { payoutPendingEurCents: { gt: 0 } }],
-      },
-      select: { releasedAt: true, paidEurCents: true, refundedEurCents: true, applicationFeeEurCents: true, payoutPendingEurCents: true },
-    });
-    // Soldi che devono restare sul conto: quelli ancora bloccati e i bonifici di altri lavori in attesa.
-    const reserved = others.reduce(
-      (sum, o) => sum + (o.releasedAt ? o.payoutPendingEurCents : Math.max(0, o.paidEurCents - o.refundedEurCents - o.applicationFeeEurCents)),
-      0,
-    );
-    if (Math.min(available, available + incoming - reserved) < amount) return false;
+    const funds = await this.accountFunds(accountId, jp.id);
+    if (Math.min(funds.available, funds.free) < amount) return false;
 
     const claimed = await this.prisma.jobPayment.updateMany({ where: { id: jp.id, payoutPendingEurCents: amount }, data: { payoutPendingEurCents: 0 } });
     if (claimed.count === 0) return false;
@@ -742,6 +1043,43 @@ export class OnlineMoneyService {
       reason: "Bonifico verso la banca del professionista partito.",
     });
     return true;
+  }
+
+  /**
+   * Soldi sul conto Stripe del professionista: disponibili ora e liberi,
+   * cioè disponibili più in arrivo meno quelli che devono restare sul conto
+   * per gli altri lavori (ancora bloccati, tolti quelli già presi per una
+   * contestazione in banca, o sbloccati col bonifico in attesa).
+   */
+  private async accountFunds(accountId: string, excludeJobPaymentId: string): Promise<{ available: number; free: number }> {
+    const balance = await this.requireStripe().balance.retrieve({}, { stripeAccount: accountId });
+    const available = eurAmount(balance.available);
+    const incoming = eurAmount(balance.pending);
+    const others = await this.prisma.jobPayment.findMany({
+      where: {
+        stripeDestinationAccountId: accountId,
+        id: { not: excludeJobPaymentId },
+        OR: [{ releasedAt: null, onlineStage: { notIn: ["REFUNDED", "AWAITING_DEPOSIT"] } }, { payoutPendingEurCents: { gt: 0 } }],
+      },
+      select: { releasedAt: true, paidEurCents: true, refundedEurCents: true, applicationFeeEurCents: true, payoutPendingEurCents: true, disputeRecoveredEurCents: true },
+    });
+    const reserved = others.reduce(
+      (sum, o) =>
+        sum +
+        (o.releasedAt ? o.payoutPendingEurCents : Math.max(0, o.paidEurCents - o.refundedEurCents - o.applicationFeeEurCents - o.disputeRecoveredEurCents)),
+      0,
+    );
+    return { available, free: available + incoming - reserved };
+  }
+
+  /** Quanto si può sbloccare per un lavoro senza toccare i soldi degli altri (§268). Se Stripe non risponde, nessun limite. */
+  private async unreservedBalance(accountId: string, jobPaymentId: string): Promise<number> {
+    try {
+      return Math.max(0, (await this.accountFunds(accountId, jobPaymentId)).free);
+    } catch (err) {
+      this.logger.warn(`Saldo Stripe non letto per ${accountId}: ${(err as Error).message}`);
+      return Number.MAX_SAFE_INTEGER;
+    }
   }
 
   /** Webhook `payout.paid` / `payout.failed` / `payout.canceled` dal conto del professionista. */
@@ -799,22 +1137,24 @@ export class OnlineMoneyService {
   }
 
   /**
-   * Prima di ogni trasferimento si rilegge da Stripe se l'account del
-   * professionista può riceverlo (buona pratica Stripe, docs/CHANGELOG.md
-   * §236): il webhook può essere in ritardo o non arrivare. Se Stripe non
-   * risponde vale l'ultimo stato salvato.
+   * Prima di ogni pagamento o trasferimento si rilegge da Stripe se l'account
+   * del professionista può accettare le carte (addebito diretto, §268) o
+   * ricevere trasferimenti (modelli precedenti), buona pratica Stripe
+   * (docs/CHANGELOG.md §236): il webhook può essere in ritardo o non
+   * arrivare. Lo stato salvato è quello delle carte. Se Stripe non risponde
+   * vale l'ultimo stato salvato.
    */
-  private async transfersActive(accountId: string, saved: boolean): Promise<boolean> {
+  private async accountActive(accountId: string, saved: boolean, kind: "cards" | "transfers"): Promise<boolean> {
     if (!this.stripe) return saved;
     try {
       const status = await readStripeConnectStatus(this.stripe, accountId);
-      if (status.transfersActive !== saved) {
+      if (status.cardPaymentsActive !== saved) {
         await this.prisma.professionalFiscalProfile.updateMany({
           where: { stripeConnectAccountId: accountId },
-          data: { stripeChargesEnabled: status.transfersActive, stripePayoutsEnabled: status.transfersActive, stripeRequirementsStatus: status.requirements },
+          data: { stripeChargesEnabled: status.cardPaymentsActive, stripePayoutsEnabled: status.cardPaymentsActive, stripeRequirementsStatus: status.requirements },
         });
       }
-      return status.transfersActive;
+      return kind === "cards" ? status.cardPaymentsActive : status.transfersActive;
     } catch (err) {
       this.logger.warn(`Stato Stripe non letto per ${accountId}: ${(err as Error).message}`);
       return saved;
@@ -862,19 +1202,21 @@ export class OnlineMoneyService {
         ...statusData,
       },
     });
-    // Addebito sul conto del professionista con i soldi ancora bloccati
-    // (§249): la cifra persa si riprende dal suo conto, come per un rimborso.
-    if (lostAmount > 0 && jp.stripeDestinationAccountId && !jp.releasedAt) {
-      await this.recoverFromProfessional(jp.id, lostAmount, `dispute-${dispute.id}`).catch((err) =>
-        this.logger.error(`Contestazione persa ${dispute.id}: recupero dal conto del professionista non riuscito: ${(err as Error).message}`),
-      );
+    // Addebito sul conto del professionista (§249, §267): la cifra persa si
+    // riprende dal suo conto, quello che non c'è più diventa un suo debito.
+    let debtAdded = 0;
+    if (justClosed && jp.stripeDestinationAccountId) {
+      debtAdded = await this.settleClosedDispute(jp, dispute, lostAmount).catch((err) => {
+        this.logger.error(`Contestazione chiusa ${dispute.id}: recupero dal conto del professionista non riuscito: ${(err as Error).message}`);
+        return 0;
+      });
     }
     await this.auditLogService.record({
       entityType: "JobPayment",
       entityId: jp.id,
       fieldName: "stripeDisputeStatus",
       oldValue: jp.stripeDisputeStatus,
-      newValue: { disputeId: dispute.id, status: dispute.status, reason: dispute.reason, amountEurCents: dispute.amount, lostAmount },
+      newValue: { disputeId: dispute.id, status: dispute.status, reason: dispute.reason, amountEurCents: dispute.amount, lostAmount, debtAdded },
       reason: closed ? `Contestazione in banca chiusa: ${dispute.status}.` : "Contestazione aperta dal cliente presso la sua banca.",
     });
 
@@ -886,6 +1228,7 @@ export class OnlineMoneyService {
         amountEurCents: dispute.amount,
         status: dispute.status,
         alreadyReleased: !!jp.releasedAt,
+        debtEurCents: debtAdded,
       };
       await this.notifyFinanceAdmins("ADMIN_STRIPE_DISPUTE", payload);
       await this.notificationsService.notify(jp.booking.professionalProfile.userId, "JOB_STRIPE_DISPUTE", payload);
@@ -893,6 +1236,236 @@ export class OnlineMoneyService {
     // Contestazione vinta: se era il momento, l'accredito parte subito.
     if (justClosed && !lost) await this.releaseIfDue(jp.id).catch(() => false);
     return true;
+  }
+
+  /**
+   * Soldi di una contestazione in banca (webhook
+   * `charge.dispute.funds_withdrawn` / `funds_reinstated`, §267, §268).
+   * Addebito diretto: Stripe prende la cifra dal saldo del professionista e
+   * gliela rimette se si vince; qui si tiene solo il conto di quanto è
+   * uscito dai soldi di questo lavoro. Addebito a destinazione: Stripe prende
+   * cifra e commissione dal conto della piattaforma e la cifra si riprende
+   * subito dai soldi del lavoro ancora bloccati sul conto del professionista,
+   * così non la anticipiamo noi; se si vince torna a lui. Restituisce false
+   * se il pagamento non è di un lavoro.
+   */
+  async handleStripeDisputeFunds(dispute: Stripe.Dispute, kind: "withdrawn" | "reinstated"): Promise<boolean> {
+    if (!(await this.handleStripeDispute(dispute))) return false;
+    const paymentIntentId = typeof dispute.payment_intent === "string" ? dispute.payment_intent : dispute.payment_intent?.id;
+    const jp = await this.prisma.jobPayment.findFirst({ where: { OR: [{ stripePaymentIntentId: paymentIntentId }, { balancePaymentIntentId: paymentIntentId }] } });
+    if (!jp?.stripeDestinationAccountId || !this.stripe) return true;
+
+    if (kind === "withdrawn") {
+      if (jp.disputeRecoveredEurCents > 0 || CLOSED_DISPUTE_STATUSES.includes(dispute.status)) return true;
+      // Solo i soldi ancora sul suo conto per questo lavoro: bloccati o sbloccati ma col bonifico non ancora partito.
+      const frozen = jp.releasedAt ? jp.payoutPendingEurCents : Math.max(0, jp.paidEurCents - jp.refundedEurCents - jp.applicationFeeEurCents);
+      const target = Math.min(dispute.amount, frozen);
+      if (target <= 0) return true;
+      const recovered = jp.stripeDirectCharge ? target : await this.reverseFromProfessional(jp.id, target, `dispute-${dispute.id}`);
+      if (recovered <= 0) return true;
+      await this.prisma.jobPayment.update({
+        where: { id: jp.id },
+        data: { disputeRecoveredEurCents: recovered, ...(jp.releasedAt ? { payoutPendingEurCents: { decrement: recovered } } : {}) },
+      });
+      await this.auditLogService.record({
+        entityType: "JobPayment",
+        entityId: jp.id,
+        fieldName: "disputeRecoveredEurCents",
+        newValue: { disputeId: dispute.id, recovered },
+        reason: jp.stripeDirectCharge
+          ? "Contestazione in banca: Stripe ha preso la cifra dal saldo del professionista."
+          : "Contestazione in banca: cifra ripresa subito dai soldi bloccati del professionista.",
+      });
+      return true;
+    }
+
+    if (jp.stripeDirectCharge) {
+      // Vinta: Stripe rimette tutta la cifra sul suo saldo. Dopo lo sblocco va
+      // tutta nel bonifico, anche la parte presa dai soldi di altri lavori,
+      // che in quel caso hanno avuto un bonifico più basso.
+      if (jp.disputeRecoveredEurCents <= 0 && !jp.releasedAt) return true;
+      const back = jp.releasedAt ? dispute.amount : jp.disputeRecoveredEurCents;
+      const claimed = await this.prisma.jobPayment.updateMany({
+        where: { id: jp.id, disputeReturnTransferId: null },
+        data: { disputeRecoveredEurCents: 0, disputeReturnTransferId: `reinstated-${dispute.id}`, ...(jp.releasedAt ? { payoutPendingEurCents: { increment: back } } : {}) },
+      });
+      if (claimed.count === 0) return true;
+      await this.auditLogService.record({
+        entityType: "JobPayment",
+        entityId: jp.id,
+        fieldName: "disputeRecoveredEurCents",
+        oldValue: jp.disputeRecoveredEurCents,
+        newValue: { disputeId: dispute.id, reinstated: back },
+        reason: "Contestazione in banca vinta: Stripe ha rimesso la cifra sul saldo del professionista.",
+      });
+      if (jp.releasedAt) await this.sendPayout(jp.id).catch((err) => this.logger.warn(`Bonifico rimandato per ${jp.id}: ${(err as Error).message}`));
+      else await this.releaseIfDue(jp.id).catch(() => false);
+      return true;
+    }
+
+    const amount = jp.disputeRecoveredEurCents;
+    if (amount <= 0) return true;
+    // Contestazione vinta: Stripe ha rimesso i soldi sul conto della piattaforma, tornano al professionista.
+    const transfer = await this.stripe.transfers.create(
+      { amount, currency: "eur", destination: jp.stripeDestinationAccountId, transfer_group: jp.bookingId, metadata: { jobPaymentId: jp.id, disputeId: dispute.id } },
+      { idempotencyKey: `job-dispute-return-${dispute.id}` },
+    );
+    await this.prisma.jobPayment.update({
+      where: { id: jp.id },
+      data: { disputeRecoveredEurCents: 0, disputeReturnTransferId: transfer.id, ...(jp.releasedAt ? { payoutPendingEurCents: { increment: amount } } : {}) },
+    });
+    await this.auditLogService.record({
+      entityType: "JobPayment",
+      entityId: jp.id,
+      fieldName: "disputeRecoveredEurCents",
+      oldValue: amount,
+      newValue: { disputeId: dispute.id, transferId: transfer.id },
+      reason: "Contestazione in banca vinta: cifra restituita al professionista.",
+    });
+    if (jp.releasedAt) await this.sendPayout(jp.id).catch((err) => this.logger.warn(`Bonifico rimandato per ${jp.id}: ${(err as Error).message}`));
+    else await this.releaseIfDue(jp.id).catch(() => false);
+    return true;
+  }
+
+  /**
+   * Contestazione chiusa su un addebito sul conto del professionista.
+   * Addebito diretto (§268): persa, Stripe ha già preso la cifra dal suo
+   * saldo; prima dello sblocco la trattenuta in più gli torna, dopo gli torna
+   * la nostra parte (commissione e costi) se la colpa non è sua. Addebito a
+   * destinazione: persa, si riprende
+   * dal conto del professionista la sua parte non ancora ripresa
+   * all'apertura (solo i soldi del lavoro ancora lì) e il resto diventa un
+   * suo debito, recuperato dai lavori successivi (§267); se il motivo
+   * dipende dal lavoro anche commissione di Stripe e costi del pagamento.
+   * Restituisce il debito aggiunto.
+   */
+  private async settleClosedDispute(
+    jp: {
+      id: string;
+      releasedAt: Date | null;
+      disputeRecoveredEurCents: number;
+      netAmountEurCents: number;
+      payoutPendingEurCents: number;
+      paidEurCents: number;
+      refundedEurCents: number;
+      platformFeeEurCents: number;
+      stripeFeeEurCents: number;
+      stripeDirectCharge: boolean;
+    },
+    dispute: Stripe.Dispute,
+    lostAmount: number,
+  ): Promise<number> {
+    if (dispute.status !== "lost") return 0;
+    const early = jp.disputeRecoveredEurCents;
+    const fault = PROFESSIONAL_FAULT_DISPUTE_REASONS.includes(dispute.reason);
+    let debt = 0;
+    if (jp.stripeDirectCharge) {
+      await this.prisma.jobPayment.update({ where: { id: jp.id }, data: { disputeRecoveredEurCents: 0 } });
+      if (!jp.releasedAt) {
+        await this.keepProfessionalBalancePositive(await this.prisma.jobPayment.findUniqueOrThrow({ where: { id: jp.id } }));
+        if (fault) debt += this.faultCostsEurCents(jp, lostAmount);
+      } else {
+        const proShare = Math.min(lostAmount, jp.netAmountEurCents);
+        await this.prisma.jobPayment.update({ where: { id: jp.id }, data: { netAmountEurCents: { decrement: proShare } } });
+        if (!fault && lostAmount > proShare) await this.returnApplicationFee(jp.id, lostAmount - proShare, `Contestazione in banca persa (${dispute.id}): la nostra parte torna al professionista.`);
+      }
+      if (fault) debt += (dispute.balance_transactions ?? []).reduce((sum, bt) => sum + Math.max(0, bt.fee), 0) || STRIPE_DISPUTE_FEE_EUR_CENTS;
+      if (debt > 0) await this.addProfessionalDebt(jp.id, debt, `Contestazione in banca persa (${dispute.id}).`);
+      return debt;
+    }
+    if (!jp.releasedAt) {
+      const rest = Math.max(0, lostAmount - early);
+      const got = rest > 0 ? await this.reverseFromProfessional(jp.id, rest, `dispute-${dispute.id}`) : 0;
+      debt += rest - got;
+      await this.prisma.jobPayment.update({ where: { id: jp.id }, data: { disputeRecoveredEurCents: 0 } });
+      await this.keepProfessionalBalancePositive(await this.prisma.jobPayment.findUniqueOrThrow({ where: { id: jp.id } }));
+    } else {
+      const proShare = Math.max(0, Math.min(lostAmount, jp.netAmountEurCents) - early);
+      const fromPending = Math.min(proShare, jp.payoutPendingEurCents);
+      const got = fromPending > 0 ? await this.reverseFromProfessional(jp.id, fromPending, `dispute-${dispute.id}`) : 0;
+      debt += proShare - got;
+      await this.prisma.jobPayment.update({
+        where: { id: jp.id },
+        data: { disputeRecoveredEurCents: 0, payoutPendingEurCents: { decrement: got }, netAmountEurCents: { decrement: got + early } },
+      });
+    }
+    if (PROFESSIONAL_FAULT_DISPUTE_REASONS.includes(dispute.reason)) {
+      const fee = (dispute.balance_transactions ?? []).reduce((sum, bt) => sum + Math.max(0, bt.fee), 0) || STRIPE_DISPUTE_FEE_EUR_CENTS;
+      debt += fee + this.faultCostsEurCents(jp, lostAmount);
+    }
+    if (debt > 0) await this.addProfessionalDebt(jp.id, debt, `Contestazione in banca persa (${dispute.id}).`);
+    return debt;
+  }
+
+  /**
+   * Quello che la piattaforma rimetterebbe su una cifra rimborsata o persa
+   * (costo della carta e del bonifico che Stripe non restituisce, e la nostra
+   * commissione già trattenuta, che resta a noi: decisione dell'utente,
+   * §267), da mettere a carico del professionista quando è colpa sua.
+   */
+  private faultCostsEurCents(
+    jp: { releasedAt: Date | null; netAmountEurCents: number; paidEurCents: number; refundedEurCents: number; platformFeeEurCents: number; stripeFeeEurCents: number },
+    amount: number,
+  ): number {
+    if (jp.releasedAt) return Math.max(0, amount - Math.min(amount, jp.netAmountEurCents));
+    // Prima dello sblocco commissione e costo della carta li paga già lui
+    // allo sblocco; se tutto torna al cliente lo sblocco non c'è più (e la
+    // trattenuta gli è stata restituita): diventano un suo debito.
+    const heldCommission = Math.round((jp.paidEurCents * ONLINE_APP_FEE_PERCENT) / 100);
+    return jp.refundedEurCents + amount >= jp.paidEurCents ? jp.stripeFeeEurCents + heldCommission : 0;
+  }
+
+  /** Debito del professionista verso la piattaforma, recuperato dai suoi sblocchi successivi (§267). */
+  private async addProfessionalDebt(jobPaymentId: string, amountEurCents: number, reason: string): Promise<void> {
+    if (amountEurCents <= 0) return;
+    const jp = await this.prisma.jobPayment.update({
+      where: { id: jobPaymentId },
+      data: { professionalDebtEurCents: { increment: amountEurCents } },
+      include: { booking: { select: { id: true, professionalProfile: { select: { userId: true } }, quote: { select: { guidedRequestId: true } } } } },
+    });
+    await this.auditLogService.record({
+      entityType: "JobPayment",
+      entityId: jobPaymentId,
+      fieldName: "professionalDebtEurCents",
+      newValue: { added: amountEurCents, total: jp.professionalDebtEurCents },
+      reason,
+    });
+    await this.notificationsService.notify(jp.booking.professionalProfile.userId, "JOB_PAYMENT_DEBT", {
+      bookingId: jp.booking.id,
+      guidedRequestId: jp.booking.quote?.guidedRequestId ?? null,
+      amountEurCents,
+    });
+  }
+
+  /** Debiti ancora aperti del professionista, dal più vecchio. */
+  private professionalDebts(professionalProfileId: string) {
+    return this.prisma.jobPayment.findMany({
+      where: { booking: { professionalProfileId }, professionalDebtEurCents: { gt: 0 } },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, professionalDebtEurCents: true },
+    });
+  }
+
+  /** Segna come pagata una cifra ripresa dallo sblocco di `fromJobPaymentId`, dal debito più vecchio. */
+  private async settleDebts(professionalProfileId: string, amountEurCents: number, fromJobPaymentId: string): Promise<void> {
+    let remaining = amountEurCents;
+    for (const debt of await this.professionalDebts(professionalProfileId)) {
+      if (remaining <= 0) break;
+      const part = Math.min(remaining, debt.professionalDebtEurCents);
+      const done = await this.prisma.jobPayment.updateMany({
+        where: { id: debt.id, professionalDebtEurCents: { gte: part } },
+        data: { professionalDebtEurCents: { decrement: part } },
+      });
+      if (done.count === 0) continue;
+      remaining -= part;
+      await this.auditLogService.record({
+        entityType: "JobPayment",
+        entityId: debt.id,
+        fieldName: "professionalDebtEurCents",
+        newValue: { recovered: part, fromJobPaymentId },
+        reason: "Debito del professionista recuperato dallo sblocco di un altro lavoro.",
+      });
+    }
   }
 
   /** Avviso agli admin Finanza (o senza ruoli specifici / SUPER). */
@@ -986,22 +1559,48 @@ export class OnlineMoneyService {
   /**
    * Rimborso al cliente di un lavoro pagato online. Con l'addebito sul conto
    * del professionista (§249) i soldi si riprendono da lì; se erano già
-   * sbloccati se ne riprende al massimo la sua quota, come quando erano
-   * stati trasferiti col vecchio modello (storno del trasferimento).
+   * sbloccati se ne riprende la sua quota dal bonifico non ancora partito e
+   * il resto diventa un suo debito, trattenuto dai pagamenti successivi
+   * (§267). Col vecchio modello si storna il trasferimento.
+   * `professionalFault` (segnalazione accolta): anche i costi del pagamento
+   * che Stripe non restituisce sono a carico del professionista.
    */
-  async refundOnline(jobPaymentId: string, amountEurCents: number | "ALL", reason: string, byUserId: string | null): Promise<number> {
+  async refundOnline(
+    jobPaymentId: string,
+    amountEurCents: number | "ALL",
+    reason: string,
+    byUserId: string | null,
+    opts: { professionalFault?: boolean } = {},
+  ): Promise<number> {
     const jp = await this.prisma.jobPayment.findUnique({ where: { id: jobPaymentId } });
     if (!jp || jp.paymentMethod !== "MANOVIA") throw new NotFoundException("Nessun pagamento online su questo lavoro.");
     const available = jp.paidEurCents - jp.refundedEurCents;
     const amount = amountEurCents === "ALL" ? available : Math.min(amountEurCents, available);
     if (amount <= 0) return 0;
+    let debt = opts.professionalFault && jp.stripeDestinationAccountId ? this.faultCostsEurCents(jp, amount) : 0;
+    let feeToReturn = 0;
     if (jp.stripeDestinationAccountId) {
-      if (jp.releasedAt && jp.netAmountEurCents > 0) {
-        const recovered = await this.reverseFromProfessional(jp.id, Math.min(amount, jp.netAmountEurCents), `refund-${jp.refundedEurCents}`);
-        // Se il bonifico non era ancora partito, parte solo per quanto resta.
+      if (jp.releasedAt && jp.netAmountEurCents > 0 && jp.stripeDirectCharge) {
+        // Addebito diretto (§268): Stripe prende tutto il rimborso dal suo
+        // saldo, anche la parte che noi abbiamo già trattenuto. Il bonifico
+        // non ancora partito si riduce. Se la colpa è sua quella parte resta
+        // a suo carico; altrimenti gli restituiamo la nostra trattenuta.
+        const proShare = Math.min(amount, jp.netAmountEurCents);
         await this.prisma.jobPayment.update({
           where: { id: jp.id },
-          data: { netAmountEurCents: { decrement: recovered }, payoutPendingEurCents: Math.max(0, jp.payoutPendingEurCents - recovered) },
+          data: { netAmountEurCents: { decrement: proShare }, payoutPendingEurCents: { decrement: Math.min(amount, jp.payoutPendingEurCents) } },
+        });
+        debt = 0;
+        if (!opts.professionalFault) feeToReturn = amount - proShare;
+      } else if (jp.releasedAt && jp.netAmountEurCents > 0) {
+        const proShare = Math.min(amount, jp.netAmountEurCents);
+        const fromPending = Math.min(proShare, jp.payoutPendingEurCents);
+        const recovered = fromPending > 0 ? await this.reverseFromProfessional(jp.id, fromPending, `refund-${jp.refundedEurCents}`) : 0;
+        debt += proShare - recovered;
+        // Il bonifico non ancora partito parte solo per quanto resta.
+        await this.prisma.jobPayment.update({
+          where: { id: jp.id },
+          data: { netAmountEurCents: { decrement: proShare }, payoutPendingEurCents: { decrement: recovered } },
         });
       }
     } else if (jp.stripeTransferId && jp.netAmountEurCents > 0) {
@@ -1012,6 +1611,7 @@ export class OnlineMoneyService {
       );
     }
     await this.refundAcrossPayments(jp.id, amount, reason, { beforeRelease: !jp.releasedAt });
+    if (feeToReturn > 0) await this.returnApplicationFee(jp.id, feeToReturn, `Rimborso al cliente: ${reason}`);
     const after = await this.prisma.jobPayment.findUniqueOrThrow({ where: { id: jp.id } });
     const fullyRefunded = after.refundedEurCents >= after.paidEurCents;
     await this.prisma.jobPayment.update({
@@ -1027,6 +1627,7 @@ export class OnlineMoneyService {
       changedByUserId: byUserId,
       reason,
     });
+    if (debt > 0) await this.addProfessionalDebt(jp.id, debt, `Rimborso al cliente: ${reason}`);
     return amount;
   }
 
@@ -1042,30 +1643,55 @@ export class OnlineMoneyService {
     const stripe = this.requireStripe();
     const jp = await this.prisma.jobPayment.findUniqueOrThrow({ where: { id: jobPaymentId } });
     const fromProfessional = !!jp.stripeDestinationAccountId && opts.beforeRelease;
+    // Addebito diretto (§268): il rimborso si fa sul conto del professionista e Stripe lo prende dal suo saldo.
+    const account = chargeAccount(jp);
+    const waiting: Stripe.Refund[] = [];
     let remaining = amountEurCents;
     for (const pi of [jp.balancePaymentIntentId, jp.stripePaymentIntentId]) {
       if (!pi || remaining <= 0) continue;
-      const intent = await stripe.paymentIntents.retrieve(pi, { expand: ["latest_charge"] });
+      const intent = await stripe.paymentIntents.retrieve(pi, { expand: ["latest_charge"] }, onAccount(account));
       const charge = intent.latest_charge as Stripe.Charge | null;
       const refundable = charge ? charge.amount - charge.amount_refunded : 0;
       const part = Math.min(remaining, refundable);
       if (part <= 0) continue;
       // Chiave legata a quanto già rimborsato: un nuovo tentativo dello stesso
       // rimborso non parte due volte, un rimborso successivo sì.
-      await stripe.refunds.create(
+      const refund = await stripe.refunds.create(
         {
           payment_intent: pi,
           amount: part,
-          ...(fromProfessional && intent.transfer_data?.destination ? { reverse_transfer: true } : {}),
+          ...(fromProfessional && !account && intent.transfer_data?.destination ? { reverse_transfer: true } : {}),
           metadata: { jobPaymentId, reason: reason.slice(0, 450) },
         },
-        { idempotencyKey: `job-refund-${pi}-${charge?.amount_refunded ?? 0}-${part}` },
+        { idempotencyKey: `job-refund-${pi}-${charge?.amount_refunded ?? 0}-${part}`, ...onAccount(account) },
       );
+      if (account && refund.status === "pending") waiting.push(refund);
       remaining -= part;
     }
     const refunded = amountEurCents - remaining;
     const after = await this.prisma.jobPayment.update({ where: { id: jobPaymentId }, data: { refundedEurCents: { increment: refunded } } });
     if (fromProfessional) await this.keepProfessionalBalancePositive(after);
+    if (account && waiting.length > 0) await this.reportRefundWaiting(jobPaymentId, account, waiting);
+  }
+
+  /**
+   * Rimborso rimasto in attesa perché il saldo Stripe del professionista
+   * non basta (addebito diretto, §269): il cliente sa che arriva e quando,
+   * il professionista sa che si chiude coi prossimi fondi.
+   */
+  private async reportRefundWaiting(jobPaymentId: string, account: string, refunds: Stripe.Refund[]): Promise<void> {
+    const jp = await this.prisma.jobPayment.findUniqueOrThrow({
+      where: { id: jobPaymentId },
+      include: { booking: { select: { id: true, clientId: true, quote: { select: { guidedRequestId: true } }, professionalProfile: { select: { userId: true } } } } },
+    });
+    const guidedRequestId = jp.booking.quote?.guidedRequestId ?? null;
+    await this.markRefundWaiting(refunds, account, { clientUserId: jp.booking.clientId, guidedRequestId, bookingId: jp.booking.id });
+    const amountEurCents = refunds.reduce((sum, r) => sum + r.amount, 0);
+    // Mostrato anche nella pagina della richiesta finché Stripe non lo completa (§270).
+    await this.prisma.jobPayment.update({ where: { id: jobPaymentId }, data: { refundWaitingEurCents: { increment: amountEurCents } } });
+    const payload = { bookingId: jp.booking.id, guidedRequestId, amountEurCents };
+    await this.notificationsService.notify(jp.booking.clientId, "JOB_REFUND_PENDING", { ...payload, audience: "CLIENT" });
+    await this.notificationsService.notify(jp.booking.professionalProfile.userId, "JOB_REFUND_WAITING_FUNDS", payload);
   }
 
   /**
@@ -1078,25 +1704,46 @@ export class OnlineMoneyService {
     if (extra > 0) await this.returnApplicationFee(jp.id, extra, "Rimborso al cliente: trattenuta restituita.");
   }
 
-  /** Riprende dal conto del professionista una cifra persa (contestazione), poi sistema la trattenuta. */
-  private async recoverFromProfessional(jobPaymentId: string, amountEurCents: number, tag: string): Promise<void> {
-    await this.reverseFromProfessional(jobPaymentId, amountEurCents, tag);
-    const jp = await this.prisma.jobPayment.findUniqueOrThrow({ where: { id: jobPaymentId } });
-    await this.keepProfessionalBalancePositive(jp);
-  }
-
   /**
-   * Storno dal conto del professionista sui trasferimenti degli addebiti a
-   * destinazione (prima il saldo, poi l'acconto). Restituisce quanto stornato.
+   * Riprende soldi dal conto del professionista verso la piattaforma.
+   * Addebito a destinazione: storno dei trasferimenti (prima il saldo, poi
+   * l'acconto). Addebito diretto (§268): prelievo dal suo saldo Stripe
+   * (account debit), maggiorato del costo Stripe dell'1,4%, a suo carico; se
+   * il saldo non basta non si preleva nulla e la cifra resta un suo debito.
+   * Restituisce quanto ripreso, al netto del costo del prelievo.
    */
   private async reverseFromProfessional(jobPaymentId: string, amountEurCents: number, tag: string): Promise<number> {
     const stripe = this.requireStripe();
     const jp = await this.prisma.jobPayment.findUniqueOrThrow({ where: { id: jobPaymentId } });
+    if (jp.stripeDirectCharge && jp.stripeDestinationAccountId) {
+      if (amountEurCents <= 0) return 0;
+      try {
+        await stripe.charges.create(
+          {
+            amount: accountDebitGrossEurCents(amountEurCents),
+            currency: "eur",
+            source: jp.stripeDestinationAccountId,
+            description: "Costi e somme dovute alla piattaforma per i lavori",
+            metadata: { kind: "job_account_debit", jobPaymentId, tag },
+          },
+          { idempotencyKey: `job-debit-${jp.id}-${tag}-${amountEurCents}` },
+        );
+      } catch (err) {
+        this.logger.warn(`Prelievo dal conto di ${jp.stripeDestinationAccountId} non riuscito (${jp.id}): ${(err as Error).message}`);
+        return 0;
+      }
+      return amountEurCents;
+    }
     let remaining = amountEurCents;
-    for (const pi of [jp.balancePaymentIntentId, jp.stripePaymentIntentId]) {
-      if (!pi || remaining <= 0) continue;
-      const intent = await stripe.paymentIntents.retrieve(pi, { expand: ["latest_charge.transfer"] });
-      const transfer = (intent.latest_charge as Stripe.Charge | null)?.transfer as Stripe.Transfer | null | undefined;
+    // Anche la cifra restituita dopo una contestazione vinta (§267), prima dei due pagamenti.
+    for (const source of [jp.disputeReturnTransferId, jp.balancePaymentIntentId, jp.stripePaymentIntentId]) {
+      if (!source || remaining <= 0) continue;
+      let transfer: Stripe.Transfer | string | null | undefined;
+      if (source === jp.disputeReturnTransferId) transfer = await stripe.transfers.retrieve(source);
+      else {
+        const intent = await stripe.paymentIntents.retrieve(source, { expand: ["latest_charge.transfer"] });
+        transfer = (intent.latest_charge as Stripe.Charge | null)?.transfer;
+      }
       if (!transfer || typeof transfer === "string") continue;
       const part = Math.min(remaining, transfer.amount - transfer.amount_reversed);
       if (part <= 0) continue;
@@ -1121,9 +1768,14 @@ export class OnlineMoneyService {
     let remaining = Math.min(amountEurCents, jp.applicationFeeEurCents);
     for (const pi of [jp.balancePaymentIntentId, jp.stripePaymentIntentId]) {
       if (!pi || remaining <= 0) continue;
-      const intent = await stripe.paymentIntents.retrieve(pi, { expand: ["latest_charge.application_fee"] });
-      const fee = (intent.latest_charge as Stripe.Charge | null)?.application_fee as Stripe.ApplicationFee | null | undefined;
-      if (!fee || typeof fee === "string") continue;
+      // Il pagamento sta sul conto su cui è nato (§268), l'application fee sulla piattaforma.
+      const account = chargeAccount(jp);
+      const intent = account
+        ? await stripe.paymentIntents.retrieve(pi, { expand: ["latest_charge"] }, onAccount(account))
+        : await stripe.paymentIntents.retrieve(pi, { expand: ["latest_charge.application_fee"] });
+      const raw = (intent.latest_charge as Stripe.Charge | null)?.application_fee;
+      const fee = typeof raw === "string" ? await stripe.applicationFees.retrieve(raw) : raw;
+      if (!fee) continue;
       const part = Math.min(remaining, fee.amount - fee.amount_refunded);
       if (part <= 0) continue;
       await stripe.applicationFees.createRefund(

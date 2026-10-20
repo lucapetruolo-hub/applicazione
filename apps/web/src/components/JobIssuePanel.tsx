@@ -108,6 +108,7 @@ export function JobIssuePanel({
                   note: issue.resolutionNote,
                   audience: "professional",
                   paidOnline: issue.paidOnline,
+                  refundPercent: issue.refundPercent,
                   withAppealHint: false,
                 })}
           </Text>

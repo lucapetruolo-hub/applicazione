@@ -132,7 +132,7 @@ export type ProfessionalCardProps = {
   /**
    * Indirizzo del profilo (solo web): il nome diventa un link vero, che si
    * apre in un'altra scheda con Ctrl/Cmd+clic o il tasto centrale e che i
-   * motori di ricerca seguono (docs/CHANGELOG.md §267). Il clic normale
+   * motori di ricerca seguono (docs/CHANGELOG.md §271). Il clic normale
    * resta gestito da `onPress` della card, come prima.
    */
   href?: string;

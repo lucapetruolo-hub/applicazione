@@ -43,7 +43,7 @@ export function CookieBanner() {
   // quanto lui (padding del body) e il browser, scorrendo verso un elemento
   // selezionato con la tastiera, lo tiene sopra il banner (scroll-padding):
   // prima da telefono circa metà dei passaggi col tasto Tab finiva coperta
-  // (regola WCAG 2.2 "focus non coperto", docs/CHANGELOG.md §267).
+  // (regola WCAG 2.2 "focus non coperto", docs/CHANGELOG.md §271).
   useEffect(() => {
     const banner = bannerRef.current;
     if (!visible || !banner) return;

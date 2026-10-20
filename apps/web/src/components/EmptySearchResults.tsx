@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 
 /**
- * Ricerca senza risultati (revisione UX, docs/CHANGELOG.md §267, testo
+ * Ricerca senza risultati (revisione UX, docs/CHANGELOG.md §271, testo
  * deciso da Luca): si può mandare lo stesso la richiesta, che resta aperta
  * e va al primo professionista compatibile che si iscrive; il cliente viene
  * avvisato in quel momento (notifica REQUEST_MATCHED_LATER).

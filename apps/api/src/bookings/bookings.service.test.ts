@@ -27,7 +27,7 @@ function buildService(prismaOverrides: Record<string, unknown> = {}) {
     createAtAcceptance: vi.fn(),
     createQuoteDepositCheckout: vi.fn().mockResolvedValue({ url: "https://checkout.stripe.com/c/pay" }),
     recordQuoteDeposit: vi.fn(),
-    refundQuoteDeposit: vi.fn(),
+    refundQuoteDeposit: vi.fn().mockResolvedValue({ pending: false }),
   };
 
   const service = new BookingsService(
@@ -319,7 +319,7 @@ describe("BookingsService.confirmQuoteDeposit — lavoro confermato solo dopo l'
     await service.confirmQuoteDeposit(session());
 
     expect(prisma.booking.create).not.toHaveBeenCalled();
-    expect(jobPaymentsService.refundQuoteDeposit).toHaveBeenCalledWith("pi_1", expect.any(String));
+    expect(jobPaymentsService.refundQuoteDeposit).toHaveBeenCalledWith("pi_1", expect.any(String), null, { clientUserId: expect.any(String), guidedRequestId: expect.anything() });
     expect(notificationsService.notify).toHaveBeenCalledWith("client-1", "QUOTE_DEPOSIT_REFUNDED", expect.objectContaining({ amountEurCents: 6000 }));
   });
 

@@ -94,7 +94,9 @@ export class JobPaymentsService {
     // lato PRIMA che il professionista completasse (ordine libero, CLAUDE.md
     // §40) — il pagamento diretto nasce già CONFIRMED.
     alreadyConfirmedByClient?: boolean;
-  }): Promise<{ balanceDueEurCents: number } | null> {
+    /** Importo finale dentro il preventivo accettato: il saldo si può addebitare sulla carta salvata (§267). */
+    autoChargeBalance?: boolean;
+  }): Promise<{ balanceDueEurCents: number; autoChargedEurCents: number } | null> {
     const existing = await this.prisma.jobPayment.findUnique({ where: { bookingId: params.bookingId }, include: { booking: true } });
 
     if (existing?.paymentMethod === "MANOVIA") {
@@ -102,7 +104,7 @@ export class JobPaymentsService {
       // Col saldo diretto la commissione vale solo sulla parte pagata online (§237).
       const appFee = this.feeRulesService.computeFee(onlineTargetEurCents(params.grossAmountEurCents, existing), rule);
       if (rule) await this.prisma.jobPayment.update({ where: { id: existing.id }, data: { appliedFeeRuleId: rule.id } });
-      const result = await this.onlineMoneyService.afterCompletion(existing.id, params.grossAmountEurCents, appFee);
+      const result = await this.onlineMoneyService.afterCompletion(existing.id, params.grossAmountEurCents, appFee, { autoCharge: params.autoChargeBalance });
       if (params.alreadyConfirmedByClient) await this.onlineMoneyService.releaseIfDue(existing.id).catch(() => false);
       return result;
     }
@@ -180,8 +182,13 @@ export class JobPaymentsService {
     return this.onlineMoneyService.recordCheckoutPayment(jobPaymentId, "deposit", session, { notify: false });
   }
 
-  refundQuoteDeposit(paymentIntentId: string, reason: string): Promise<void> {
-    return this.onlineMoneyService.refundQuoteDeposit(paymentIntentId, reason);
+  refundQuoteDeposit(
+    paymentIntentId: string,
+    reason: string,
+    stripeAccount?: string | null,
+    notifyTo?: { clientUserId: string; guidedRequestId: string | null },
+  ): Promise<{ pending: boolean }> {
+    return this.onlineMoneyService.refundQuoteDeposit(paymentIntentId, reason, stripeAccount, notifyTo);
   }
 
   /** Gestito dallo stesso webhook Stripe già in uso per BillingService (CLAUDE.md §9). */
@@ -192,6 +199,20 @@ export class JobPaymentsService {
   /** Contestazione in banca (`charge.dispute.*`): false se il pagamento non è di un lavoro. */
   handleStripeDispute(dispute: Stripe.Dispute): Promise<boolean> {
     return this.onlineMoneyService.handleStripeDispute(dispute);
+  }
+
+  /** Soldi di una contestazione tolti o restituiti dalla banca (`charge.dispute.funds_*`, §267). */
+  handleRefundUpdated(refund: Stripe.Refund, stripeAccount: string | null | undefined): Promise<void> {
+    return this.onlineMoneyService.handleRefundUpdated(refund, stripeAccount);
+  }
+
+  handleStripeDisputeFunds(dispute: Stripe.Dispute, kind: "withdrawn" | "reinstated"): Promise<boolean> {
+    return this.onlineMoneyService.handleStripeDisputeFunds(dispute, kind);
+  }
+
+  /** Saldo addebitato sulla carta salvata (`payment_intent.succeeded`, §267). */
+  handleAutoBalanceSucceeded(intent: Stripe.PaymentIntent): Promise<void> {
+    return this.onlineMoneyService.handleAutoBalanceSucceeded(intent);
   }
 
   /** Bonifico dal conto Stripe del professionista arrivato o non riuscito (§249). */

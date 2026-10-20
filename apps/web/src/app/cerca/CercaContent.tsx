@@ -39,7 +39,7 @@ export function CercaContent({
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent">
-      {/* Titolo principale (h1), non mostrato (docs/CHANGELOG.md §267). */}
+      {/* Titolo principale (h1), non mostrato (docs/CHANGELOG.md §271). */}
       <h1 className="sr-only">{title}</h1>
       <YStack width="100%" maxWidth={1200} paddingHorizontal="$4" paddingVertical="$6">
         <ResultsListWithMap

@@ -893,7 +893,7 @@ export class GuidedRequestsService {
       const alreadyReceived = await this.prisma.lead.count({ where: { guidedRequestId: request.id, professionalProfileId: profile.id } });
       if (alreadyReceived > 0) continue;
       // Nessun destinatario finora: il cliente aveva inviato la richiesta
-      // quando in zona non c'era nessuno e va avvisato (docs/CHANGELOG.md §267).
+      // quando in zona non c'era nessuno e va avvisato (docs/CHANGELOG.md §271).
       const isFirstRecipient = (await this.prisma.lead.count({ where: { guidedRequestId: request.id } })) === 0;
 
       const requestComune = findComuneByName(request.city);

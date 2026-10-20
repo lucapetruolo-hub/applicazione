@@ -16,7 +16,7 @@ import { useAuth } from "@/lib/AuthContext";
 /**
  * `mobileOnly`: solo l'hamburger, senza il "Servizi" da computer. Usato nelle
  * pagine di ricerca, dove su computer al suo posto c'è la ricerca compatta,
- * così da telefono il menu c'è in tutte le pagine (docs/CHANGELOG.md §267).
+ * così da telefono il menu c'è in tutte le pagine (docs/CHANGELOG.md §271).
  */
 export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) {
   const [desktopOpen, setDesktopOpen] = useState(false);

@@ -2965,7 +2965,7 @@ a.admin-kpi:hover {
   text-decoration: underline;
 }
 
-/* Link secondari sotto la ricerca in home (docs/CHANGELOG.md §267): area di
+/* Link secondari sotto la ricerca in home (docs/CHANGELOG.md §271): area di
    tocco alta almeno 44px anche se il testo è su una riga sola. */
 .hero-secondary-link {
   display: inline-flex;
@@ -2993,7 +2993,7 @@ a.admin-kpi:hover {
 }
 
 /* Testo letto da Google e dai lettori di schermo ma non mostrato (es. il
-   titolo h1 delle pagine di ricerca, docs/CHANGELOG.md §267). */
+   titolo h1 delle pagine di ricerca, docs/CHANGELOG.md §271). */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -3007,7 +3007,7 @@ a.admin-kpi:hover {
 }
 
 /* Barra della ricerca fatta, da telefono nelle pagine di ricerca
-   (SearchHeader, docs/CHANGELOG.md §267): un tocco riapre il modulo. */
+   (SearchHeader, docs/CHANGELOG.md §271): un tocco riapre il modulo. */
 .search-summary {
   display: flex;
   align-items: center;
@@ -3031,7 +3031,7 @@ a.admin-kpi:hover {
   outline-offset: 2px;
 }
 
-/* Categorie in home da telefono (CategoryStoryRail, docs/CHANGELOG.md §267):
+/* Categorie in home da telefono (CategoryStoryRail, docs/CHANGELOG.md §271):
    griglia a due colonne con le prime sei, le altre con "Mostra tutte". Gli
    !important vincono sugli stili in linea della riga da scorrere
    (CategoryCarousel), che da computer restano com'erano. */

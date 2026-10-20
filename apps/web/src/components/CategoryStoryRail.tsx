@@ -11,7 +11,7 @@ import { CATEGORY_PHOTOS, CATEGORY_PHOTO_FOCUS } from "@/lib/categoryPhotos";
 import { MEGA_MENU_GROUPS, MEGA_MENU_MICRO_DESCRIPTION } from "@/lib/megaMenuGroups";
 
 const ALL = "Tutte";
-/** Categorie mostrate da telefono prima di "Mostra tutte" (docs/CHANGELOG.md §267). */
+/** Categorie mostrate da telefono prima di "Mostra tutte" (docs/CHANGELOG.md §271). */
 const MOBILE_VISIBLE = 6;
 
 /**
@@ -26,7 +26,7 @@ const MOBILE_VISIBLE = 6;
  */
 /**
  * Filtro e "Mostra tutte" condivisi tra la riga e il pulsante, che sta
- * accanto al titolo della sezione (scelta dell'utente, docs/CHANGELOG.md §267).
+ * accanto al titolo della sezione (scelta dell'utente, docs/CHANGELOG.md §271).
  */
 export function useCategoryStoryRail() {
   const [group, setGroup] = useState(ALL);
@@ -78,7 +78,7 @@ export function CategoryStoryRail({ countBySlug, state }: { countBySlug: Map<str
           scorsa a metà su un elenco più corto. */}
       {/* Da telefono griglia a due colonne con le prime sei e "Mostra tutte" accanto al titolo
           (regole CSS in .story-rail, globals.css): la riga da scorrere
-          mostrava una scheda alla volta (revisione UX, docs/CHANGELOG.md §267).
+          mostrava una scheda alla volta (revisione UX, docs/CHANGELOG.md §271).
           Da computer resta la riga da scorrere. */}
       <CategoryCarousel key={group} id={RAIL_ID} className={`story-rail${showAll ? " show-all" : ""}`}>
         {categories.map((c, index) => {

@@ -91,6 +91,7 @@ notification("BOOKING_REOPENED_BY_CLIENT", "Professionista", "Lavori e appuntame
 // Pagamenti
 notification("JOB_DEPOSIT_PAID", "Professionista", "Pagamenti dei lavori", { amountEurCents: 3600 });
 notification("JOB_BALANCE_DUE", "Cliente", "Pagamenti dei lavori", { amountEurCents: 14400 });
+notification("JOB_BALANCE_AUTO_CHARGED", "Cliente", "Pagamenti dei lavori", { amountEurCents: 14400 });
 notification("JOB_BALANCE_PAID", "Professionista", "Pagamenti dei lavori", { amountEurCents: 14400 });
 notification("JOB_BALANCE_UNPAID", "Cliente", "Pagamenti dei lavori");
 notification("JOB_PAYOUT_SENT", "Professionista", "Pagamenti dei lavori", { amountEurCents: 16380 });
@@ -99,7 +100,12 @@ notification("JOB_PAYOUT_FAILED", "Professionista", "Pagamenti dei lavori", { am
 notification("ADMIN_JOB_BALANCE_UNPAID", "Admin", "Pagamenti dei lavori");
 notification("JOB_STRIPE_DISPUTE", "Professionista", "Pagamenti dei lavori");
 notification("ADMIN_STRIPE_DISPUTE", "Admin", "Pagamenti dei lavori");
+notification("JOB_PAYMENT_DEBT", "Professionista", "Pagamenti dei lavori", { amountEurCents: 2650 });
 notification("ADMIN_JOB_PAYMENT_LONG_HOLD", "Admin", "Pagamenti dei lavori");
+notification("JOB_REFUND_PENDING", "Cliente", "Pagamenti dei lavori", { amountEurCents: 3600 });
+notification("JOB_REFUND_COMPLETED", "Cliente", "Pagamenti dei lavori", { amountEurCents: 3600 });
+notification("JOB_REFUND_WAITING_FUNDS", "Professionista", "Pagamenti dei lavori", { amountEurCents: 3600 });
+notification("ADMIN_JOB_REFUND_FAILED", "Admin", "Pagamenti dei lavori", { amountEurCents: 3600 });
 
 // Segnalazioni sul lavoro
 notification("JOB_ISSUE_REPORTED", "Professionista", "Segnalazioni sul lavoro", { issueType: "BAD_WORK", assisted: true });

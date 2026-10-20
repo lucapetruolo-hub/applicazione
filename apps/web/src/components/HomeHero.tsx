@@ -150,7 +150,7 @@ export function HomeHero() {
       </YStack>
 
       {/* Una sola azione principale nel primo schermo, "Cerca" (revisione
-          UX di home e ricerca, docs/CHANGELOG.md §267): preventivo e richiesta
+          UX di home e ricerca, docs/CHANGELOG.md §271): preventivo e richiesta
           urgente restano raggiungibili qui sotto come link, non più come due
           grossi pulsanti accanto a quello dell'intestazione. */}
       <XStack

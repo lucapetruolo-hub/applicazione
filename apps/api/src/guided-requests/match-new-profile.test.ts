@@ -3,7 +3,7 @@ import { findComuneByName } from "@professionisti/shared";
 import { GuidedRequestsService } from "./guided-requests.service";
 
 /**
- * Professionista che si iscrive dopo la richiesta (docs/CHANGELOG.md §267):
+ * Professionista che si iscrive dopo la richiesta (docs/CHANGELOG.md §271):
  * riceve le richieste aperte compatibili e, se è il primo a riceverne una,
  * il cliente viene avvisato con REQUEST_MATCHED_LATER.
  */

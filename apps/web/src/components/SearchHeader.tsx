@@ -21,7 +21,7 @@ export function SearchHeader({
   const router = useRouter();
   // Da telefono il modulo completo occupava tutto il primo schermo e i
   // risultati comparivano solo scorrendo (revisione UX, docs/CHANGELOG.md
-  // §267): parte chiuso, come una barra con la ricerca fatta e "Modifica".
+  // §271): parte chiuso, come una barra con la ricerca fatta e "Modifica".
   const [expanded, setExpanded] = useState(false);
 
   const professionalSuggestions: ProfessionalSuggestion[] = buildSearchSuggestions();

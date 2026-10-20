@@ -31,7 +31,7 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
     professional: { label: "Nuove richieste", description: "Quando un cliente ti chiede un preventivo." },
     client: { label: "Le tue richieste", description: "Conferma dell'invio, un professionista trovato più tardi, e se un professionista rifiuta, la richiesta scade o viene inoltrata ad altri." },
     // REQUEST_SENT: solo email, la conferma al cliente che la richiesta è partita (docs/CHANGELOG.md §185).
-    // REQUEST_MATCHED_LATER: richiesta senza destinatari arrivata al primo professionista iscritto dopo (§267).
+    // REQUEST_MATCHED_LATER: richiesta senza destinatari arrivata al primo professionista iscritto dopo (§271).
     types: ["NEW_LEAD", "LEAD_DECLINED", "GUIDED_REQUEST_EXPIRED", "REQUEST_FORWARDED", "REQUEST_FORWARD_NO_MATCH", "REQUEST_MATCHED_LATER", "REQUEST_SENT"],
     activeChannels: ["inApp", "email"],
   },
@@ -80,6 +80,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "JOB_DEPOSIT_PAID",
       "JOB_BALANCE_PAID",
       "JOB_BALANCE_DUE",
+      // Saldo addebitato da solo sulla carta salvata con l'acconto (docs/CHANGELOG.md §267).
+      "JOB_BALANCE_AUTO_CHARGED",
       "JOB_BALANCE_UNPAID",
       "JOB_PAYOUT_SENT",
       "JOB_PAYOUT_ACCOUNT_NEEDED",
@@ -89,6 +91,13 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       // Contestazione del cliente presso la sua banca (docs/CHANGELOG.md §236).
       "JOB_STRIPE_DISPUTE",
       "ADMIN_STRIPE_DISPUTE",
+      // Cifra da restituire dopo un rimborso o una contestazione persa, ripresa dai pagamenti successivi (docs/CHANGELOG.md §267).
+      "JOB_PAYMENT_DEBT",
+      // Rimborso in attesa di fondi sul conto Stripe del professionista, poi arrivato o non riuscito (docs/CHANGELOG.md §269).
+      "JOB_REFUND_PENDING",
+      "JOB_REFUND_COMPLETED",
+      "JOB_REFUND_WAITING_FUNDS",
+      "ADMIN_JOB_REFUND_FAILED",
       // Anno DAC7 già comunicato con importi cambiati dopo l'invio (docs/CHANGELOG.md §247).
       "ADMIN_DAC7_NEEDS_CORRECTION",
       // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §190).
