@@ -116,10 +116,18 @@ export function ResultsMap({
       : undefined;
   const center = initialPoints[0] ?? fallbackCenter ?? ROME_FALLBACK;
   const initialZoom = initialPoints.length === 1 || (initialPoints.length === 0 && fallbackCenter) ? 12 : 6;
+  // Stessa inquadratura per l'immagine fissa mostrata senza consenso (§264).
+  const staticMarkers = withCoords.map((p) => markerPositions.get(p.id) ?? ([p.latitude, p.longitude] as [number, number]));
+  const staticMap =
+    fallbackCenter && initialPoints.length > 0
+      ? { markers: staticMarkers, center: fallbackCenter }
+      : initialPoints.length >= 2
+        ? { markers: staticMarkers }
+        : { markers: staticMarkers, center, zoom: initialZoom };
 
   return (
     <div className="results-map-container">
-      <GoogleMapGate>
+      <GoogleMapGate staticMap={staticMap}>
         <GoogleMap
           mapId={GOOGLE_MAPS_MAP_ID}
           {...(initialBounds ? { defaultBounds: initialBounds } : { defaultCenter: toLatLng(center), defaultZoom: initialZoom })}

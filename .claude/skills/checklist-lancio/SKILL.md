@@ -40,8 +40,12 @@ produzione):
    - `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` su Vercel — Map ID creato in Google
      Cloud → Gestione mappe (tipo JavaScript, vettoriale), per i segnaposto
      avanzati; senza, si usa `DEMO_MAP_ID`, che è solo di prova (§140);
-   - `GOOGLE_MAPS_API_KEY` su Render — seconda chiave, limitata alla sola
-     Geocoding API;
+   - `GOOGLE_MAPS_API_KEY` su Render — seconda chiave, con Geocoding API,
+     Places API (New) (suggerimenti degli indirizzi, §263) e Maps Static API
+     (immagine fissa della mappa senza consenso, §264);
+   - Client ID OAuth di Google: tra gli "URI di reindirizzamento
+     autorizzati" l'indirizzo `/accesso-google` del dominio definitivo
+     (accesso con Google, §264);
    - impostare un budget/avviso di spesa su Google Cloud.
    Le variabili `NEXT_PUBLIC_*` richiedono un nuovo deploy su Vercel.
 4bis. **Postgres free (Render) scade ogni 30 giorni** — non risolto

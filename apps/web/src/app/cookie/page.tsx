@@ -23,7 +23,7 @@ export default function CookiePage() {
         },
         {
           heading: "3. Cookie di terze parti",
-          body: "Alcuni servizi di Google integrati nel sito possono impostare propri cookie e ricevere dati tecnici di navigazione (es. indirizzo IP): il pulsante di accesso con Google e le mappe dei risultati di ricerca (Google Maps). Li carichiamo solo dopo il tuo consenso, dato con il pulsante \"Accetta\" del banner cookie o con \"Mostra la mappa\"; con \"Rifiuta\" o senza consenso la mappa non viene caricata. Per i dettagli vedi l'informativa privacy di Google (policies.google.com/privacy). Non usiamo cookie pubblicitari né di profilazione di terze parti.",
+          body: "La mappa interattiva dei risultati (Google Maps) può impostare cookie di Google e ricevere dati tecnici di navigazione (es. indirizzo IP). La carichiamo solo dopo il tuo consenso, dato con il pulsante \"Accetta\" del banner cookie o con \"Usa la mappa interattiva\"; senza consenso vedi un'immagine fissa della mappa preparata dal nostro server. L'accesso con Google si fa sulla pagina di Google, che si apre a parte: sul nostro sito non carichiamo nulla di Google. Per i dettagli vedi l'informativa privacy di Google (policies.google.com/privacy). Non usiamo cookie pubblicitari né di profilazione di terze parti.",
         },
         {
           heading: "4. Gestione delle preferenze",

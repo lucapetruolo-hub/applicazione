@@ -1,8 +1,9 @@
 "use client";
 
-import { Component, useEffect, useState, type ErrorInfo, type ReactNode } from "react";
+import { Component, useEffect, useRef, useState, type ErrorInfo, type ReactNode } from "react";
 import { APIProvider } from "@vis.gl/react-google-maps";
 import { MapPin } from "lucide-react";
+import { apiClient } from "@/lib/apiClient";
 import { grantCookieConsent, useCookieConsent } from "@/lib/cookieConsent";
 
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -21,8 +22,9 @@ export const GOOGLE_MAPS_MAP_ID = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? 
  * Unico ingresso a Google Maps nel sito (docs/CHANGELOG.md §133): carica lo
  * script di Google solo se c'è la chiave (`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`)
  * e solo dopo il consenso ai servizi Google del banner cookie — stesso
- * principio già seguito per Google Sign-In. Senza consenso mostra un
- * riquadro con il pulsante per attivare la mappa; senza chiave un messaggio
+ * principio seguito allora per Google Sign-In. Senza consenso mostra
+ * l'immagine fissa (`staticMap`, §264) o un riquadro con il pulsante per
+ * attivare la mappa; senza chiave un messaggio
  * neutro (stesso pattern "non configurato" di Stripe/Cloudinary/Resend).
  */
 /**
@@ -41,7 +43,10 @@ function useGoogleAuthFailure(): boolean {
   return failed;
 }
 
-export function GoogleMapGate({ children }: { children: ReactNode }) {
+/** Cosa mostrare nell'immagine fissa della mappa (docs/CHANGELOG.md §264). */
+export type StaticMapSpec = { markers: [number, number][]; center?: [number, number]; zoom?: number; radiiKm?: number[] };
+
+export function GoogleMapGate({ children, staticMap }: { children: ReactNode; staticMap?: StaticMapSpec }) {
   const consent = useCookieConsent();
   const authFailed = useGoogleAuthFailure();
 
@@ -49,6 +54,7 @@ export function GoogleMapGate({ children }: { children: ReactNode }) {
     return <MapPlaceholder text="Mappa non configurata (manca la chiave Google Maps)." />;
   }
   if (!consent) {
+    if (staticMap) return <StaticMapPreview spec={staticMap} />;
     return (
       <MapPlaceholder text="La mappa è fornita da Google Maps: per mostrarla serve il tuo consenso ai servizi Google.">
         <button type="button" className="map-consent-button" onClick={grantCookieConsent}>
@@ -76,6 +82,101 @@ export function GoogleMapGate({ children }: { children: ReactNode }) {
         {children}
       </APIProvider>
     </MapErrorBoundary>
+  );
+}
+
+/**
+ * Senza consenso ai servizi Google (docs/CHANGELOG.md §264, richiesta
+ * dell'utente): un'immagine fissa della mappa con i segnaposto, preparata dal
+ * nostro server, così si vede subito dove sono i professionisti senza caricare
+ * nulla di Google nel browser. Toccandola si attiva la mappa interattiva
+ * (consenso). Se l'immagine non arriva resta il riquadro con il pulsante.
+ */
+function StaticMapPreview({ spec }: { spec: StaticMapSpec }) {
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState<{ width: number; height: number } | null>(null);
+  const [failed, setFailed] = useState(false);
+  // Il raggio cambia mentre si trascina il cursore: si chiede una nuova
+  // immagine solo quando ci si ferma.
+  const specKey = JSON.stringify(spec);
+  const [shownKey, setShownKey] = useState(specKey);
+  useEffect(() => {
+    const timer = setTimeout(() => setShownKey(specKey), 400);
+    return () => clearTimeout(timer);
+  }, [specKey]);
+
+  useEffect(() => {
+    const box = boxRef.current;
+    if (!box) return;
+    // Google accetta al massimo 640 px per lato (raddoppiati con scale=2): si
+    // riduce mantenendo le proporzioni del riquadro, così nulla viene tagliato.
+    const { width, height } = box.getBoundingClientRect();
+    const ratio = Math.min(1, 640 / Math.max(width, 1), 640 / Math.max(height, 1));
+    setSize({ width: Math.max(100, Math.round(width * ratio)), height: Math.max(100, Math.round(height * ratio)) });
+  }, []);
+
+  if (failed) {
+    return (
+      <MapPlaceholder text="La mappa è fornita da Google Maps: per mostrarla serve il tuo consenso ai servizi Google.">
+        <button type="button" className="map-consent-button" onClick={grantCookieConsent}>
+          Mostra la mappa
+        </button>
+      </MapPlaceholder>
+    );
+  }
+
+  const src = size ? apiClient.staticMapUrl({ ...(JSON.parse(shownKey) as StaticMapSpec), ...size }) : null;
+  return (
+    <div ref={boxRef} className="static-map">
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/no-noninteractive-element-interactions -- immagine del nostro server; onError non è un comando dell'utente
+        <img src={src} alt="Mappa con la posizione dei professionisti" onError={() => setFailed(true)} />
+      ) : null}
+      <button type="button" className="static-map-button" onClick={grantCookieConsent}>
+        <MapPin size={16} strokeWidth={2} aria-hidden />
+        Usa la mappa interattiva
+      </button>
+      <style jsx>{`
+        .static-map {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          min-height: 200px;
+          background: #f5f1ea;
+          overflow: hidden;
+        }
+        .static-map img {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .static-map-button {
+          position: absolute;
+          left: 50%;
+          bottom: 14px;
+          transform: translateX(-50%);
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          white-space: nowrap;
+          background: #ffffff;
+          color: #2b2013;
+          border: 1px solid rgba(43, 32, 19, 0.15);
+          border-radius: 999px;
+          padding: 9px 16px;
+          font-size: 13px;
+          font-weight: 700;
+          font-family: inherit;
+          cursor: pointer;
+          box-shadow: 0 4px 14px rgba(15, 23, 42, 0.18);
+        }
+        .static-map-button:hover {
+          background: #f5f1ea;
+        }
+      `}</style>
+    </div>
   );
 }
 

@@ -19365,3 +19365,16 @@ blocca nulla, come prima.
 **Da fare sul pannello Google Cloud**: abilitare "Places API (New)" sulla chiave server usata su Render.
 
 **Verifica**: test del nuovo servizio; typecheck e lint di web e API, test dell'API verdi; schermate `richiesta-indirizzo-*` in `/mnt/project-files/anteprime/percorso-profilo/`.
+
+## 264. Accesso con Google e mappa senza dover accettare i cookie
+
+**Richiesta esplicita dell'utente** (19-20/10/2026): "si può risolvere in questo modo anche la visualizzazione della mappa di google e la registrazione tramite google e tutto quello che riguarda google, che si procede comunque anche se non si accetta subito i cookie?", poi "effettua tutte le modifiche e migliorie proposte".
+
+**Decisione presa**:
+- **Accesso con Google**: il pulsante non carica più lo script `gsi/client`. Apre la pagina di accesso di Google in una finestra (OpenID Connect, `response_type=id_token` con `nonce` e `state`) che torna su `/accesso-google`; il token arriva al pulsante (messaggio alla pagina che ha aperto la finestra, più `BroadcastChannel` se Google stacca il collegamento tra le due) e segue lo stesso `POST /auth/google/verify` di prima. Il pulsante scarta un token con `nonce` diverso. Se il browser blocca la finestra, Google si apre al posto della pagina e al ritorno il token viene consegnato alla stessa pagina (`sessionStorage`). Nessun client secret: con `id_token` non serve. File: `apps/web/src/components/GoogleSignInButton.tsx`, `apps/web/src/lib/googleSignIn.ts`, `apps/web/src/app/accesso-google/page.tsx`. Supera §214 (richiesta di consenso al tocco del pulsante).
+- **Mappa**: senza consenso, al posto del riquadro "Mostra la mappa", un'immagine fissa con i segnaposto (risultati di ricerca) o con i due raggi (dashboard), preparata dal nostro server (`GET /maps/static`, `apps/api/src/geocoding/static-map.*`, Maps Static API con `GOOGLE_MAPS_API_KEY`, cache di un giorno nel browser) e il pulsante "Usa la mappa interattiva", che dà il consenso e carica la mappa vera. Se l'immagine non arriva resta il riquadro di prima.
+- Banner e Cookie Policy: il consenso ora riguarda solo la mappa interattiva.
+
+**Da fare sul pannello Google Cloud**: nel Client ID OAuth aggiungere `https://applicazione-web.vercel.app/accesso-google` tra gli URI di reindirizzamento autorizzati; abilitare "Maps Static API" sulla chiave server usata su Render.
+
+**Verifica**: test di `static-map`; typecheck e lint di web e API; prova nel browser con una finta pagina di Google (finestra e finestra bloccata, il token arriva al server) e con la mappa senza consenso; schermate `mappa-fissa-*` e `google-attesa-telefono.png` in `/mnt/project-files/anteprime/percorso-profilo/`.

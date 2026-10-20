@@ -1591,6 +1591,26 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       }
       return request<AddressSuggestion[]>(`/address/suggestions?${query.toString()}`, { cache: "no-store" });
     },
+    /**
+     * Indirizzo dell'immagine fissa della mappa preparata dal nostro server
+     * (docs/CHANGELOG.md §264), per chi non ha accettato i servizi Google.
+     */
+    staticMapUrl: (spec: {
+      width: number;
+      height: number;
+      markers: [number, number][];
+      center?: [number, number];
+      zoom?: number;
+      radiiKm?: number[];
+    }) => {
+      const point = ([lat, lng]: [number, number]) => `${lat.toFixed(5)},${lng.toFixed(5)}`;
+      const query = new URLSearchParams({ size: `${Math.round(spec.width)}x${Math.round(spec.height)}` });
+      if (spec.markers.length > 0) query.set("m", spec.markers.slice(0, 60).map(point).join(";"));
+      if (spec.center) query.set("c", point(spec.center));
+      if (spec.zoom !== undefined) query.set("z", String(spec.zoom));
+      if (spec.radiiKm?.length) query.set("r", spec.radiiKm.join(","));
+      return `${baseUrl}/maps/static?${query.toString()}`;
+    },
     /** Dettagli dell'indirizzo scelto: coordinate e pezzi (via, civico, CAP, comune, provincia). */
     addressPlace: (id: string, session: string) =>
       request<AddressPlace>(`/address/place/${encodeURIComponent(id)}?session=${encodeURIComponent(session)}`, { cache: "no-store" }),

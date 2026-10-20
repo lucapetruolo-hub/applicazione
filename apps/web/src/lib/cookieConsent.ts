@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 
 /**
- * Consenso ai servizi Google di terze parti (Google Sign-In e, da
- * docs/CHANGELOG.md §133, Google Maps): unico punto che legge/scrive la
- * scelta fatta nel banner cookie, condiviso da `CookieBanner`,
- * `GoogleSignInButton` e `GoogleMapGate`. Salvato in localStorage, niente
+ * Consenso ai servizi Google di terze parti (dal docs/CHANGELOG.md §264
+ * solo la mappa interattiva Google Maps: l'accesso con Google e i
+ * suggerimenti di indirizzo non caricano più nulla di Google sul sito):
+ * unico punto che legge/scrive la scelta fatta nel banner cookie, condiviso
+ * da `CookieBanner` e `GoogleMapGate`. Salvato in localStorage, niente
  * cookie nostri.
  */
 const COOKIE_CONSENT_KEY = "cookie-consent-v1";
