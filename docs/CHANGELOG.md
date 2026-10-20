@@ -19141,6 +19141,31 @@ sempre.
 - Voce di menu e titolo: "Profilo e visibilità" diventa "Profilo
   pubblico" (i pacchetti di visibilità ora stanno in "Oggi").
 
+## 259. Conferma email da un altro dispositivo: la pagina si aggiorna da sola
+
+**Richiesta (Luca, 19/10/2026):** se il link di conferma viene aperto dal
+telefono, la pagina registrazione sul computer deve passare avanti da sola,
+senza ricaricarla né inserire il codice.
+
+**Decisione:** `EmailCodeForm` controlla ogni 3 secondi `/auth/me` finché
+l'email non risulta confermata (`emailVerified`) e, quando succede, mostra
+"Email confermata" e prosegue come con il codice giusto. Il controllo non
+serve in "Password dimenticata" (che ha il suo codice) ed è fermo una volta
+confermata l'email. Un errore di rete durante il controllo viene ignorato.
+
+**Motivo:** il link nella mail è il percorso più comune su telefono, e
+senza questo la pagina sul computer resta ferma su un codice già inutile.
+
+Quando si torna sulla scheda o sulla finestra il controllo parte subito,
+senza aspettare il giro successivo.
+
+Sul telefono, dopo il link, compare il popup "Email verificata" con il
+pulsante per continuare, invece di una sola riga di testo.
+
+**Verifica:** `apps/web` typecheck pulito. Il popup "Email verificata" sul
+telefono è incluso (vedi sopra).
+
+
 ## 253. Verifica fiscale e d'identità dei professionisti (Openapi + Didit)
 
 **Richiesta esplicita dell'utente** (14/10/2026): implementare il flusso in
@@ -19301,6 +19326,49 @@ blocca nulla, come prima.
 
 **Verifica**: migrazioni applicate da zero su PostgreSQL 16 senza differenze con lo schema; `prisma validate`, typecheck, lint e test dell'API verdi. Le icone `lock` e `landmark` erano definite due volte dopo l'unione e sono state tenute una sola volta.
 
+---
+
+## 259. Richiesta di preventivo con più categorie
+
+**Richiesta dell'utente:** "nella richiesta preventivo, dai la possibilità di
+selezionare più categorie, e poi visualizzale come fossero richieste
+differenti per ogni categoria".
+
+**Decisione:**
+- Nel modulo `/preventivo` (e `/urgente`) le pillole delle categorie si
+  accendono e spengono: fino a 3 (`MAX_REQUEST_CATEGORIES`), arrivati al
+  massimo le altre si attenuano, contatore "2 di 3". Tolto il menu a
+  tendina per telefono (§F2.1): non permette una scelta multipla e le
+  pillole vanno già a capo sugli schermi stretti.
+- All'invio il server crea una `GuidedRequest` separata per ogni
+  categoria, con gli stessi dati (descrizione, foto, indirizzo, urgenza):
+  ognuna arriva ai professionisti della sua categoria, con le sue
+  notifiche ed email, e il cliente la vede come richiesta a sé in "Le mie
+  richieste". Nessuna migrazione.
+- `guidedRequestSchema.extraCategorySlugs` (default `[]`): la prima
+  categoria resta `categorySlug`, così app e chiamate vecchie funzionano
+  come prima. `GuidedRequestsService.createForCategories` controlla tutte
+  le categorie, la zona aperta (§211) e l'indirizzo (§214) prima di crearne
+  una, così non resta mai solo una parte delle richieste.
+- Richiesta a un professionista scelto: resta a una sola categoria
+  (decisione §217), lo schema rifiuta categorie in più.
+- Se le richieste generali sono chiuse in zona per una delle categorie,
+  l'avviso la nomina e offre "Togli <categoria>".
+
+**Verifica:** `tsc` su api e web, test dello schema (vitest), Playwright a
+390px e 1280px (scelta categorie e riepilogo).
+
+**Migliorie approvate dall'utente (stessa PR):**
+- Una sola email di conferma al cliente per tutto l'invio ("Richieste
+  inviate: Idraulico ed Elettricista a Roma"), non una per categoria.
+- Le richieste dello stesso invio hanno lo stesso `submissionGroupId`
+  (migrazione `20261019150000_guided_request_submission_group`, colonna
+  facoltativa): in "Le mie richieste" ognuna mostra "Inviata insieme a …".
+- Profilo pubblico del professionista: le categorie stanno su una riga
+  loro, come pillole con icona, e la città va sotto con l'icona della
+  posizione (prima erano sulla stessa riga, "Idraulico · Elettricista ·
+  Latina").
+
 ## 260. Dati fiscali del tipo scelto alla registrazione; cosa manca, in Profilo pubblico e in Oggi
 
 **Richiesta esplicita dell'utente** (19/10/2026): "lascia solo i dati fiscali in base a quello che ha inserito in fase di registrazione"; "fagli comparire un badge che se non effettua le verifiche non sarà pubblico, altrimenti un qualcosa con le cose ancora da fare per completare il profilo"; nell'anteprima del profilo "un altro pallino con scritto che non può rispondere e un altro che dice non può ricevere pagamenti online"; "la stessa cosa può essere inserita anche in oggi oppure proponi qualcosa di più bello di design".
@@ -19378,3 +19446,11 @@ blocca nulla, come prima.
 **Da fare sul pannello Google Cloud**: nel Client ID OAuth aggiungere `https://applicazione-web.vercel.app/accesso-google` tra gli URI di reindirizzamento autorizzati; abilitare "Maps Static API" sulla chiave server usata su Render.
 
 **Verifica**: test di `static-map`; typecheck e lint di web e API; prova nel browser con una finta pagina di Google (finestra e finestra bloccata, il token arriva al server) e con la mappa senza consenso; schermate `mappa-fissa-*` e `google-attesa-telefono.png` in `/mnt/project-files/anteprime/percorso-profilo/`.
+
+## 266. Unione con la base aggiornata: più categorie e conferma email
+
+**Richiesta esplicita dell'utente** (20/10/2026): "unisci", ma la PR era in conflitto con la base dopo l'unione delle più categorie (§259) e della conferma email da un altro dispositivo.
+
+**Decisione presa**: le voci di questo ramo, che erano §259-§264, diventano §260-§265, perché la base aveva già un §259. Nei file della verifica la base aveva cambiato per errore i rimandi da §253 a §259; sono tornati a §253, mentre restano a §259 quelli delle più categorie. Per i file della verifica e del percorso ha vinto questo ramo, e `VerificationSteps.tsx` resta tolto (§262). Il modulo di richiesta ha insieme le più categorie e il campo unico "Indirizzo".
+
+**Verifica**: typecheck di web e API e 426 test dell'API verdi. Il modulo di richiesta è stato provato nel browser, con scelta dell'indirizzo da telefono e computer.

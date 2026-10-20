@@ -258,6 +258,11 @@ prima del lancio"):
     con una casella Gmail e una Outlook (arrivo in pochi secondi, codice
     visibile nell'anteprima della notifica, niente spam). Finché la variabile
     è spenta, la schermata del codice mostra "Lo faccio dopo".
+    Stato al 19/10/2026: la variabile è su `false` su Render, in attesa del
+    dominio (punto 5bis). Dopo il dominio, prima di riaccenderla, provare anche
+    che la conferma da un altro dispositivo funziona: registrazione dal PC, link
+    aperto dal telefono, la pagina del PC passa avanti da sola e compare il
+    popup "Email verificata" (docs/CHANGELOG.md §259).
 24. **Cloudflare Turnstile anti-bot** (registrazione, recupero password, contatti) — codice fatto
     (docs/CHANGELOG.md §204), resta spento finché non si mettono le chiavi:
     1. Cloudflare (account gratuito) → Turnstile → Add widget, modalità
