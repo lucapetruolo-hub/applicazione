@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { BadRequestException } from "@nestjs/common";
-import { parseStaticMapQuery, staticMapGoogleParams } from "./static-map.service";
+import { StaticMapService, parseStaticMapQuery, staticMapGoogleParams } from "./static-map.service";
 
 describe("immagine fissa della mappa (§264)", () => {
   it("inquadra il luogo cercato insieme ai segnaposto", () => {
@@ -23,5 +23,26 @@ describe("immagine fissa della mappa (§264)", () => {
     expect(() => parseStaticMapQuery({ size: "400x400", m: "abc" })).toThrow(BadRequestException);
     expect(() => parseStaticMapQuery({ size: "400x400" })).toThrow(BadRequestException);
     expect(() => parseStaticMapQuery({ size: "400x400", m: "41.9,12.5", r: "10" })).toThrow(BadRequestException);
+  });
+
+  describe("immagini già preparate", () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      delete process.env.GOOGLE_MAPS_API_KEY;
+    });
+
+    it("chiede a Google una sola volta al giorno la stessa mappa", async () => {
+      process.env.GOOGLE_MAPS_API_KEY = "chiave";
+      const fetchMock = vi.fn(async () => new Response(new Uint8Array([1, 2, 3]), { headers: { "content-type": "image/png" } }));
+      vi.stubGlobal("fetch", fetchMock);
+      const service = new StaticMapService();
+      const input = parseStaticMapQuery({ size: "400x300", m: "41.9,12.5" });
+      await service.image(input, 0);
+      const again = await service.image(input, 60_000);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect([...again.buffer]).toEqual([1, 2, 3]);
+      await service.image(input, 25 * 60 * 60 * 1000);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
   });
 });

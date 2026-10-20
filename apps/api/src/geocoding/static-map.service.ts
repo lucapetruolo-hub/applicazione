@@ -2,6 +2,9 @@ import { BadRequestException, Injectable, Logger, ServiceUnavailableException } 
 
 const TIMEOUT_MS = 5000;
 const MAX_MARKERS = 60;
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+/** Circa 300 immagini da ~100 KB: una trentina di MB al massimo. */
+const CACHE_MAX = 300;
 const PIN_COLOR = "0x189A63";
 /** Raggio richieste standard e urgenti (stessi colori della mappa interattiva). */
 const CIRCLE_STYLES = ["color:0x3D6B3ECC|weight:2|fillcolor:0x3D6B3E1F", "color:0xD9A441CC|weight:2|fillcolor:0xD9A44114"];
@@ -84,11 +87,28 @@ export function staticMapGoogleParams(input: StaticMapInput): URLSearchParams {
 @Injectable()
 export class StaticMapService {
   private readonly logger = new Logger(StaticMapService.name);
+  /**
+   * Immagini già preparate, per un giorno: la stessa ricerca vista da più
+   * persone costa una sola richiesta a Google. In memoria, al massimo
+   * `CACHE_MAX` immagini (le più vecchie escono per prime).
+   */
+  private readonly cache = new Map<string, { buffer: Buffer; contentType: string; expiresAt: number }>();
 
-  async image(input: StaticMapInput): Promise<{ buffer: Buffer; contentType: string }> {
+  async image(input: StaticMapInput, now = Date.now()): Promise<{ buffer: Buffer; contentType: string }> {
     const key = process.env.GOOGLE_MAPS_API_KEY?.trim();
     if (!key) throw new ServiceUnavailableException("Mappa non disponibile.");
     const params = staticMapGoogleParams(input);
+    const cacheKey = params.toString();
+    const cached = this.cache.get(cacheKey);
+    if (cached && cached.expiresAt > now) return cached;
+    if (cached) this.cache.delete(cacheKey);
+    const image = await this.fetchImage(params, key);
+    this.cache.set(cacheKey, { ...image, expiresAt: now + CACHE_TTL_MS });
+    while (this.cache.size > CACHE_MAX) this.cache.delete(this.cache.keys().next().value!);
+    return image;
+  }
+
+  private async fetchImage(params: URLSearchParams, key: string): Promise<{ buffer: Buffer; contentType: string }> {
     params.set("key", key);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
