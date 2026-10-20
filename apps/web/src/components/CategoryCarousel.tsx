@@ -30,7 +30,7 @@ const arrowStyle = {
  * dispositivi touch-only (vedi .category-carousel-arrow in globals.css) dove
  * lo swipe basta.
  */
-export function CategoryCarousel({ children }: { children: ReactNode }) {
+export function CategoryCarousel({ children, className }: { children: ReactNode; className?: string }) {
   const trackRef = useRef<HTMLDivElement>(null);
 
   function scrollByStep(direction: 1 | -1) {
@@ -38,7 +38,7 @@ export function CategoryCarousel({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
+    <div className={className} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
       <div
         className="category-carousel-arrow"
         role="button"

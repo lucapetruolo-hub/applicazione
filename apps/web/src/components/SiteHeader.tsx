@@ -83,7 +83,12 @@ export function SiteHeader() {
               <Logo name={BRAND.name} size={26} variant="mark" />
             </XStack>
           </Link>
-          {isSearchResultsPage ? null : (
+          {isSearchResultsPage ? (
+            // Da telefono il menu c'è anche nelle pagine di ricerca: prima
+            // mancava solo qui (docs/CHANGELOG.md §267). Su computer resta
+            // nascosto, al suo posto c'è la ricerca compatta al centro.
+            <MegaMenu mobileOnly />
+          ) : (
             <XStack alignItems="center" gap="$5">
               <MegaMenu />
               <XStack alignItems="center" gap="$5" display="none" $gtMd={{ display: "flex" }}>

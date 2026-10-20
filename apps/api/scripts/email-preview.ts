@@ -60,6 +60,7 @@ notification("NEW_LEAD", "Professionista", "Richieste", { category: "Idraulico",
 add("new_lead_urgente", "Richieste", "Professionista", renderEmail(notificationEmail("NEW_LEAD", { category: "Idraulico", city: "Milano", isUrgent: true }, forPro)!));
 notification("REQUEST_FORWARDED", "Cliente", "Richieste", { count: 3 });
 notification("REQUEST_FORWARD_NO_MATCH", "Cliente", "Richieste");
+notification("REQUEST_MATCHED_LATER", "Cliente", "Richieste");
 notification("GUIDED_REQUEST_EXPIRED", "Cliente", "Richieste");
 
 // Preventivi e date

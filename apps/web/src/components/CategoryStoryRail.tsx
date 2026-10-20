@@ -11,6 +11,8 @@ import { CATEGORY_PHOTOS, CATEGORY_PHOTO_FOCUS } from "@/lib/categoryPhotos";
 import { MEGA_MENU_GROUPS, MEGA_MENU_MICRO_DESCRIPTION } from "@/lib/megaMenuGroups";
 
 const ALL = "Tutte";
+/** Categorie mostrate da telefono prima di "Mostra tutte" (docs/CHANGELOG.md §267). */
+const MOBILE_VISIBLE = 6;
 
 /**
  * Categorie della homepage come schede verticali con foto grande, da
@@ -24,6 +26,7 @@ const ALL = "Tutte";
  */
 export function CategoryStoryRail({ countBySlug }: { countBySlug: Map<string, number> }) {
   const [group, setGroup] = useState(ALL);
+  const [showAll, setShowAll] = useState(false);
   const slugs = group === ALL ? null : new Set<ProfessionalCategorySlug>(MEGA_MENU_GROUPS.find((g) => g.title === group)?.slugs);
   const categories = PROFESSIONAL_CATEGORIES.filter((c) => !slugs || slugs.has(c.slug));
 
@@ -36,7 +39,10 @@ export function CategoryStoryRail({ countBySlug }: { countBySlug: Map<string, nu
             type="button"
             className="story-filter"
             aria-pressed={group === title}
-            onClick={() => setGroup(title)}
+            onClick={() => {
+              setGroup(title);
+              setShowAll(false);
+            }}
           >
             {title}
           </button>
@@ -45,11 +51,15 @@ export function CategoryStoryRail({ countBySlug }: { countBySlug: Map<string, nu
 
       {/* key: cambiando filtro la riga riparte dall'inizio invece di restare
           scorsa a metà su un elenco più corto. */}
-      <CategoryCarousel key={group}>
-        {categories.map((c) => {
+      {/* Da telefono griglia a due colonne con le prime sei e "Mostra tutte"
+          (regole CSS in .story-rail, globals.css): la riga da scorrere
+          mostrava una scheda alla volta (revisione UX, docs/CHANGELOG.md §267).
+          Da computer resta la riga da scorrere. */}
+      <CategoryCarousel key={group} className={`story-rail${showAll ? " show-all" : ""}`}>
+        {categories.map((c, index) => {
           const photoUrl = CATEGORY_PHOTOS[c.slug];
           return (
-            <Link key={c.slug} href={`/cerca/${c.slug}`} className="story-card">
+            <Link key={c.slug} href={`/cerca/${c.slug}`} className={`story-card${index >= MOBILE_VISIBLE ? " is-extra" : ""}`}>
               {photoUrl ? (
                 <Image
                   src={photoUrl}
@@ -80,6 +90,12 @@ export function CategoryStoryRail({ countBySlug }: { countBySlug: Map<string, nu
           <span style={{ fontSize: 14, opacity: 0.9 }}>Descrivilo, ci pensiamo noi →</span>
         </Link>
       </CategoryCarousel>
+      {categories.length > MOBILE_VISIBLE && !showAll ? (
+        <button type="button" className="story-show-all" onClick={() => setShowAll(true)}>
+          Mostra tutte ({categories.length})
+          <Icon name="chevron-down" size={16} color="currentColor" />
+        </button>
+      ) : null}
     </div>
   );
 }

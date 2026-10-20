@@ -29,9 +29,10 @@ export type NotificationTopicInfo = {
 export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopicInfo> = {
   richieste: {
     professional: { label: "Nuove richieste", description: "Quando un cliente ti chiede un preventivo." },
-    client: { label: "Le tue richieste", description: "Conferma dell'invio, e se un professionista rifiuta, la richiesta scade o viene inoltrata ad altri." },
+    client: { label: "Le tue richieste", description: "Conferma dell'invio, un professionista trovato più tardi, e se un professionista rifiuta, la richiesta scade o viene inoltrata ad altri." },
     // REQUEST_SENT: solo email, la conferma al cliente che la richiesta è partita (docs/CHANGELOG.md §185).
-    types: ["NEW_LEAD", "LEAD_DECLINED", "GUIDED_REQUEST_EXPIRED", "REQUEST_FORWARDED", "REQUEST_FORWARD_NO_MATCH", "REQUEST_SENT"],
+    // REQUEST_MATCHED_LATER: richiesta senza destinatari arrivata al primo professionista iscritto dopo (§267).
+    types: ["NEW_LEAD", "LEAD_DECLINED", "GUIDED_REQUEST_EXPIRED", "REQUEST_FORWARDED", "REQUEST_FORWARD_NO_MATCH", "REQUEST_MATCHED_LATER", "REQUEST_SENT"],
     activeChannels: ["inApp", "email"],
   },
   preventivi: {

@@ -579,6 +579,10 @@ export function ResultsListWithMap({
             </XStack>
           </XStack>
 
+          {/* Senza nessun risultato Filtri, Mappa e ordinamento non servono:
+              resta solo il riquadro per inviare lo stesso la richiesta
+              (docs/CHANGELOG.md §267). */}
+          {professionals.length === 0 ? null : (
           <XStack alignItems="center" justifyContent="space-between" flexWrap="wrap" gap="$2">
             <XStack alignItems="center" gap="$2" flexWrap="wrap">
               <button type="button" className="filters-toggle" onClick={() => setShowFilters((v) => !v)}>
@@ -608,6 +612,7 @@ export function ResultsListWithMap({
               Ordinato per pertinenza
             </button>
           </XStack>
+          )}
           {header}
           {nearestOutsideKm !== null ? (
             <YStack backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="$4" padding="$3">

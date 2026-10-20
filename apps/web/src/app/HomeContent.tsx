@@ -13,7 +13,6 @@ import { PriceEstimatorTool } from "@/components/PriceEstimatorTool";
 import { QualitySection } from "@/components/QualitySection";
 import { QuoteExampleSection } from "@/components/QuoteExampleSection";
 import { RecentReviews } from "@/components/RecentReviews";
-import { ProfessionalsShowcase } from "@/components/ProfessionalsShowcase";
 import { ProCtaSection } from "@/components/ProCtaSection";
 
 export default function HomeContent({
@@ -71,26 +70,30 @@ export default function HomeContent({
           </div>
         </FadeInSection>
 
-        {/* 4. Professionisti e recensioni (o "Arriviamo presto" quando i
-            profili sono ancora pochi). */}
-        <FadeInSection>
-          <Section
-            eyebrow="Professionisti"
-            title="Professionisti della tua zona"
-            titleAccent="della tua zona"
-            maxWidth={1080}
-          >
-            <RecentReviews
-              summary={
-                platformStats?.reviewCount !== undefined && platformStats.averageRating != null
-                  ? { count: platformStats.reviewCount, average: platformStats.averageRating }
-                  : null
-              }
-            />
-            <NewProfilesCarousel professionals={professionals} />
-            <ProfessionalsShowcase professionals={professionals} />
-          </Section>
-        </FadeInSection>
+        {/* 4. Professionisti e recensioni. Tolta la lista d'attesa "Arriviamo
+            presto nella tua zona" (decisione di Luca, docs/CHANGELOG.md §267):
+            chi non trova nessuno manda lo stesso la richiesta e viene avvisato
+            quando arriva un professionista compatibile. Senza profili la
+            sezione non compare, invece di restare un titolo vuoto. */}
+        {professionals.length > 0 ? (
+          <FadeInSection>
+            <Section
+              eyebrow="Professionisti"
+              title="Professionisti della tua zona"
+              titleAccent="della tua zona"
+              maxWidth={1080}
+            >
+              <RecentReviews
+                summary={
+                  platformStats?.reviewCount !== undefined && platformStats.averageRating != null
+                    ? { count: platformStats.reviewCount, average: platformStats.averageRating }
+                    : null
+                }
+              />
+              <NewProfilesCarousel professionals={professionals} />
+            </Section>
+          </FadeInSection>
+        ) : null}
 
         {/* 5. Perché fidarsi: trasparenza e Garanzia Piattaforma. */}
         <FadeInSection>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { COOKIE_CONSENT_ACCEPTED_EVENT, COOKIE_CONSENT_CHANGED_EVENT, denyCookieConsent, grantCookieConsent, hasCookieChoice } from "@/lib/cookieConsent";
 
@@ -22,6 +22,7 @@ const buttonStyle = {
 
 export function CookieBanner() {
   const [visible, setVisible] = useState(false);
+  const bannerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!hasCookieChoice()) setVisible(true);
@@ -37,6 +38,30 @@ export function CookieBanner() {
       window.removeEventListener(COOKIE_CONSENT_ACCEPTED_EVENT, hide);
     };
   }, []);
+
+  // Finché il banner è aperto la pagina lascia in fondo uno spazio alto
+  // quanto lui (padding del body) e il browser, scorrendo verso un elemento
+  // selezionato con la tastiera, lo tiene sopra il banner (scroll-padding):
+  // prima da telefono circa metà dei passaggi col tasto Tab finiva coperta
+  // (regola WCAG 2.2 "focus non coperto", docs/CHANGELOG.md §267).
+  useEffect(() => {
+    const banner = bannerRef.current;
+    if (!visible || !banner) return;
+    const root = document.documentElement;
+    const apply = () => {
+      const height = `${banner.offsetHeight}px`;
+      document.body.style.paddingBottom = height;
+      root.style.scrollPaddingBottom = height;
+    };
+    apply();
+    const observer = new ResizeObserver(apply);
+    observer.observe(banner);
+    return () => {
+      observer.disconnect();
+      document.body.style.paddingBottom = "";
+      root.style.scrollPaddingBottom = "";
+    };
+  }, [visible]);
 
   function accept() {
     // Richiesta esplicita dell'utente ("Verbale di Conformità"): sveglia
@@ -65,6 +90,7 @@ export function CookieBanner() {
     // larghi) e comunque limitata a titolo di garanzia (`maxHeight`) ben
     // sotto la soglia 12-15% del viewport indicata dal rilievo.
     <div
+      ref={bannerRef}
       role="dialog"
       aria-label="Informativa cookie"
       style={{

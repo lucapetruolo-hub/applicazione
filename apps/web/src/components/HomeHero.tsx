@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ALL_ITALIAN_CITY_NAMES } from "@professionisti/shared";
-import { Button, ButtonArrow, Eyebrow, Icon, SearchBar, Text, XStack, YStack, brand, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
+import { Eyebrow, Icon, SearchBar, Text, XStack, YStack, brand, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
 import { buildSearchDestination } from "@/lib/searchNavigation";
 import { buildSearchSuggestions } from "@/lib/searchSuggestions";
 import { navigateWithTransition } from "@/lib/viewTransition";
@@ -74,7 +75,10 @@ export function HomeHero() {
 
         <YStack width="100%" maxWidth={720} alignItems="center" gap="$4" position="relative">
           <Eyebrow tone="dark">👋 Non chiamare a caso. Chiamalo giusto.</Eyebrow>
+          {/* Titolo principale della pagina (h1) per Google e i lettori di schermo. */}
           <Text
+            tag="h1"
+            margin={0}
             fontFamily="$heading"
             fontWeight="600"
             fontSize={38}
@@ -145,30 +149,31 @@ export function HomeHero() {
         </YStack>
       </YStack>
 
-      {/* Fuori dal pannello verde, non più dentro SearchBar (richiesta
-          esplicita dell'utente: "far uscire completamente da quel riquadro
-          verde... metterla appena sotto come due grossi pulsanti") — stesso
-          routing di prima, solo posizione e resa diverse. */}
-      <XStack gap="$3" flexWrap="wrap" justifyContent="center" marginTop="$5" width="100%" maxWidth={1160}>
-        <MagneticButton>
-          <Button variant="primary" onPress={() => router.push("/preventivo")}>
-            <XStack alignItems="center" gap="$2">
-              <Icon name="file-text" size={18} color="white" />
-              <Text color="white" fontWeight="700" fontSize="$4">
-                Richiedi preventivo
-              </Text>
-              <ButtonArrow />
-            </XStack>
-          </Button>
-        </MagneticButton>
-        <Button variant="urgent" onPress={() => router.push("/urgente")}>
-          <XStack alignItems="center" gap="$2">
-            <Icon name="zap" size={18} color="white" />
-            <Text color="white" fontWeight="700" fontSize="$4">
-              Richiesta urgente
-            </Text>
-          </XStack>
-        </Button>
+      {/* Una sola azione principale nel primo schermo, "Cerca" (revisione
+          UX di home e ricerca, docs/CHANGELOG.md §267): preventivo e richiesta
+          urgente restano raggiungibili qui sotto come link, non più come due
+          grossi pulsanti accanto a quello dell'intestazione. */}
+      <XStack
+        columnGap="$3"
+        rowGap={0}
+        flexWrap="wrap"
+        justifyContent="center"
+        alignItems="center"
+        marginTop="$4"
+        width="100%"
+        maxWidth={1160}
+      >
+        {/* Da telefono la domanda va su una riga a sé e i due link sotto, affiancati. */}
+        <Text fontSize="$4" color={brand.grafite70} textAlign="center" $xs={{ width: "100%" }}>
+          Preferisci descrivere il lavoro?
+        </Text>
+        <Link href="/preventivo" className="hero-secondary-link">
+          Richiedi un preventivo
+        </Link>
+        <Link href="/urgente" className="hero-secondary-link hero-secondary-link-urgent">
+          <Icon name="zap" size={15} color={brand.urgenza} />
+          Richiesta urgente
+        </Link>
       </XStack>
     </YStack>
   );
