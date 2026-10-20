@@ -19627,3 +19627,26 @@ all'endpoint webhook Connect (checklist di lancio).
 §260-§266) le voci di questa PR sono diventate §267, §268 e §269. I commenti
 delle tre migrazioni citano ancora i vecchi numeri: una migrazione già
 scritta non si modifica.
+
+## 270. "Rimborso in arrivo" anche nella pagina del lavoro
+
+**Richiesta dell'utente (20/10/2026):** "effettua la miglioria 1", la prima
+delle migliorie proposte dopo §269: mostrare il rimborso in attesa anche
+nella pagina della richiesta, non solo nell'avviso.
+
+**Cosa fa:**
+- Nuovo campo `JobPayment.refundWaitingEurCents`: cresce quando un rimborso
+  resta `pending` (§269) e scende quando il webhook `refund.updated` dice
+  che Stripe l'ha completato o che non è riuscito.
+- `JobPaymentSummary.refundWaitingEurCents` per cliente e professionista.
+- Riquadro del pagamento (`JobPaymentStatus`): il cliente vede "Rimborso in
+  arrivo" ("Ti avvisiamo appena parte verso la tua carta") con la riga
+  dell'importo; il professionista vede "Rimborso in attesa" ("il saldo del
+  tuo conto Stripe non basta: parte da solo appena arrivano fondi") e la
+  riga "Di cui in attesa di fondi".
+- Per l'acconto rimborsato su un preventivo non più confermabile non c'è
+  un lavoro: resta l'avviso di §269.
+
+**Migrazione:** `20261020130000_job_payment_refund_waiting`.
+
+**Verifica:** `vitest` dell'API (463 test), `tsc` su API e web, `eslint`.

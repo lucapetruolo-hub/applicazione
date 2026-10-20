@@ -1844,8 +1844,11 @@ model JobPayment {
   // diretto, header Stripe-Account): rimborsi e contestazioni Stripe li prende
   // dal suo saldo, non da quello della piattaforma. False = addebito a
   // destinazione (§249) o vecchio modello.
+  // `refundWaitingEurCents` (§270): rimborsi chiesti ma in attesa di fondi sul
+  // conto Stripe del professionista; tornano a zero quando Stripe li completa.
   stripeDestinationAccountId String?
   stripeDirectCharge         Boolean   @default(false)
+  refundWaitingEurCents      Int       @default(0)
   applicationFeeEurCents     Int       @default(0)
   payoutPendingEurCents      Int       @default(0)
   payoutSentEurCents         Int       @default(0)

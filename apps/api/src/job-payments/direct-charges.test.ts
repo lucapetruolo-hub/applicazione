@@ -342,6 +342,7 @@ describe("rimborso in attesa di fondi sul conto del professionista (§269)", () 
     );
     expect(notify).toHaveBeenCalledWith("client-1", "JOB_REFUND_PENDING", expect.objectContaining({ amountEurCents: 10000, audience: "CLIENT" }));
     expect(notify).toHaveBeenCalledWith("pro-user-1", "JOB_REFUND_WAITING_FUNDS", expect.objectContaining({ amountEurCents: 10000 }));
+    expect(prisma.jobPayment.update).toHaveBeenCalledWith({ where: { id: "jp-1" }, data: { refundWaitingEurCents: { increment: 10000 } } });
   });
 
   it("un rimborso riuscito subito non avvisa di nulla in più", async () => {
@@ -378,6 +379,18 @@ describe("rimborso in attesa di fondi sul conto del professionista (§269)", () 
     expect(stripe.refunds.update).toHaveBeenCalledWith("re_wait", { metadata: { waitingFunds: "done" } }, { stripeAccount: "acct_1" });
     expect(notify).toHaveBeenCalledTimes(1);
     expect(notify).toHaveBeenCalledWith("client-1", "JOB_REFUND_COMPLETED", { bookingId: "bk-1", guidedRequestId: "gr-1", amountEurCents: 10000, audience: "CLIENT" });
+  });
+
+  it("all'arrivo toglie il rimborso da quelli in attesa del lavoro", async () => {
+    const { service, prisma } = buildService();
+    prisma.jobPayment.findUnique.mockResolvedValue({ refundWaitingEurCents: 10000 });
+
+    await service.handleRefundUpdated(
+      { id: "re_wait", amount: 6000, status: "succeeded", metadata: { waitingFunds: "true", jobPaymentId: "jp-1", clientUserId: "client-1" } } as never,
+      "acct_1",
+    );
+
+    expect(prisma.jobPayment.update).toHaveBeenCalledWith({ where: { id: "jp-1" }, data: { refundWaitingEurCents: 4000 } });
   });
 
   it("se non riesce avvisa il team Finanza", async () => {

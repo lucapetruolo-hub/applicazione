@@ -401,6 +401,11 @@ export class OnlineMoneyService {
     if (refund.status !== "succeeded" && refund.status !== "failed" && refund.status !== "canceled") return;
     const ok = refund.status === "succeeded";
     await this.requireStripe().refunds.update(refund.id, { metadata: { waitingFunds: ok ? "done" : "failed" } }, onAccount(stripeAccount));
+    const jobPaymentId = refund.metadata.jobPaymentId;
+    const jp = jobPaymentId ? await this.prisma.jobPayment.findUnique({ where: { id: jobPaymentId }, select: { refundWaitingEurCents: true } }) : null;
+    if (jobPaymentId && jp) {
+      await this.prisma.jobPayment.update({ where: { id: jobPaymentId }, data: { refundWaitingEurCents: Math.max(0, jp.refundWaitingEurCents - refund.amount) } });
+    }
     const clientUserId = refund.metadata.clientUserId;
     const payload = {
       bookingId: refund.metadata.bookingId ?? null,
@@ -1682,6 +1687,8 @@ export class OnlineMoneyService {
     const guidedRequestId = jp.booking.quote?.guidedRequestId ?? null;
     await this.markRefundWaiting(refunds, account, { clientUserId: jp.booking.clientId, guidedRequestId, bookingId: jp.booking.id });
     const amountEurCents = refunds.reduce((sum, r) => sum + r.amount, 0);
+    // Mostrato anche nella pagina della richiesta finché Stripe non lo completa (§270).
+    await this.prisma.jobPayment.update({ where: { id: jobPaymentId }, data: { refundWaitingEurCents: { increment: amountEurCents } } });
     const payload = { bookingId: jp.booking.id, guidedRequestId, amountEurCents };
     await this.notificationsService.notify(jp.booking.clientId, "JOB_REFUND_PENDING", { ...payload, audience: "CLIENT" });
     await this.notificationsService.notify(jp.booking.professionalProfile.userId, "JOB_REFUND_WAITING_FUNDS", payload);

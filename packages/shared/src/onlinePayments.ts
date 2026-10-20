@@ -285,6 +285,8 @@ export type JobPaymentSummary = {
   depositEurCents: number | null;
   paidEurCents: number;
   refundedEurCents: number;
+  /** Rimborsi chiesti ma in attesa di fondi sul conto Stripe del professionista (§270). */
+  refundWaitingEurCents: number;
   /** Importo finale (null finché il professionista non chiude il lavoro). */
   finalAmountEurCents: number | null;
   balanceDueEurCents: number;
@@ -333,6 +335,7 @@ type JobPaymentRow = {
   releaseDueAt: Date | null;
   releasedAt: Date | null;
   balanceUnpaidAt: Date | null;
+  refundWaitingEurCents?: number;
   stripeDestinationAccountId?: string | null;
   payoutPendingEurCents?: number;
   payoutSentEurCents?: number;
@@ -372,6 +375,7 @@ export function toJobPaymentSummary(
     depositEurCents: jp.depositEurCents,
     paidEurCents: jp.paidEurCents,
     refundedEurCents: jp.refundedEurCents,
+    refundWaitingEurCents: jp.refundWaitingEurCents ?? 0,
     finalAmountEurCents,
     balanceDueEurCents:
       method === "ONLINE" && onlineTarget !== null && stage !== "REFUNDED" && (stage !== "RELEASED" || !!jp.balanceUnpaidAt)
