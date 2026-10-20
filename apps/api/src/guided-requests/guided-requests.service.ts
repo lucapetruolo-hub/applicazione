@@ -892,6 +892,9 @@ export class GuidedRequestsService {
       if (request.serviceMode === "ONLINE" && !profile.remoteAvailable) continue;
       const alreadyReceived = await this.prisma.lead.count({ where: { guidedRequestId: request.id, professionalProfileId: profile.id } });
       if (alreadyReceived > 0) continue;
+      // Nessun destinatario finora: il cliente aveva inviato la richiesta
+      // quando in zona non c'era nessuno e va avvisato (docs/CHANGELOG.md §271).
+      const isFirstRecipient = (await this.prisma.lead.count({ where: { guidedRequestId: request.id } })) === 0;
 
       const requestComune = findComuneByName(request.city);
       if (!requestComune) continue;
@@ -916,6 +919,9 @@ export class GuidedRequestsService {
         isUrgent: request.isUrgent,
         respondUntil: respondUntilForEmail(request.isUrgent, request.expiresAt),
       });
+      if (isFirstRecipient) {
+        await this.notificationsService.notify(request.clientId, "REQUEST_MATCHED_LATER", { guidedRequestId: request.id });
+      }
       // Metriche di affidabilità (CLAUDE.md §15, evento 1).
       await this.professionalMetricsService.recordRequestReceived(profile.id);
       await this.timelineService.log(

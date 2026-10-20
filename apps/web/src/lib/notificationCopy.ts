@@ -26,6 +26,8 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   GUIDED_REQUEST_EXPIRED: { icon: "⏱️", message: "La tua richiesta è scaduta senza risposte." },
   // Richiesta diretta inoltrata ad altri dopo nessuna risposta (docs/CHANGELOG.md §154).
   REQUEST_FORWARDED: { icon: "📨", message: "Il professionista scelto non ha ancora risposto: abbiamo inoltrato la richiesta anche ad altri professionisti simili." },
+  // Richiesta senza destinatari arrivata a un professionista iscritto dopo (docs/CHANGELOG.md §271).
+  REQUEST_MATCHED_LATER: { icon: "🙌", message: "Un professionista compatibile ha ricevuto la tua richiesta." },
   REQUEST_FORWARD_NO_MATCH: { icon: "📭", message: "Il professionista scelto non ha ancora risposto e in zona non ce ne sono altri disponibili per ora." },
   BOOKING_NO_SHOW_REPORTED: { icon: "⚠️", message: "Un cliente ha segnalato che non ti sei presentato a un appuntamento." },
   TIMELINE_MESSAGE_FROM_CLIENT: { icon: "💬", message: "Il cliente ti ha scritto un messaggio." },

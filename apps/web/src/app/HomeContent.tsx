@@ -2,7 +2,7 @@
 
 import type { ProfessionalSearchResult } from "@professionisti/shared";
 import { Section, SectionDensityProvider, YStack } from "@professionisti/ui";
-import { CategoryStoryRail } from "@/components/CategoryStoryRail";
+import { CategoryShowAllButton, CategoryStoryRail, useCategoryStoryRail } from "@/components/CategoryStoryRail";
 import { FadeInSection } from "@/components/FadeInSection";
 import { HomeFaq } from "@/components/HomeFaq";
 import { HomeHero } from "@/components/HomeHero";
@@ -13,7 +13,6 @@ import { PriceEstimatorTool } from "@/components/PriceEstimatorTool";
 import { QualitySection } from "@/components/QualitySection";
 import { QuoteExampleSection } from "@/components/QuoteExampleSection";
 import { RecentReviews } from "@/components/RecentReviews";
-import { ProfessionalsShowcase } from "@/components/ProfessionalsShowcase";
 import { ProCtaSection } from "@/components/ProCtaSection";
 
 export default function HomeContent({
@@ -23,6 +22,7 @@ export default function HomeContent({
   professionals: ProfessionalSearchResult[];
   platformStats: { totalUsers: number; totalProfessionals: number; reviewCount?: number; averageRating?: number | null } | null;
 }) {
+  const categoryRail = useCategoryStoryRail();
   // Conteggio reale per categoria (professionals arriva già filtrato
   // excludeDemo da apps/web/src/app/page.tsx): la riga "N professionisti"
   // sotto ogni categoria è omessa quando il conteggio è 0, mai un numero
@@ -58,9 +58,10 @@ export default function HomeContent({
             eyebrow="Categorie"
             title="Di cosa hai bisogno?"
             titleAccent="bisogno"
+            titleAction={<CategoryShowAllButton state={categoryRail} />}
             maxWidth={1080}
           >
-            <CategoryStoryRail countBySlug={countBySlug} />
+            <CategoryStoryRail countBySlug={countBySlug} state={categoryRail} />
           </Section>
         </FadeInSection>
 
@@ -71,26 +72,30 @@ export default function HomeContent({
           </div>
         </FadeInSection>
 
-        {/* 4. Professionisti e recensioni (o "Arriviamo presto" quando i
-            profili sono ancora pochi). */}
-        <FadeInSection>
-          <Section
-            eyebrow="Professionisti"
-            title="Professionisti della tua zona"
-            titleAccent="della tua zona"
-            maxWidth={1080}
-          >
-            <RecentReviews
-              summary={
-                platformStats?.reviewCount !== undefined && platformStats.averageRating != null
-                  ? { count: platformStats.reviewCount, average: platformStats.averageRating }
-                  : null
-              }
-            />
-            <NewProfilesCarousel professionals={professionals} />
-            <ProfessionalsShowcase professionals={professionals} />
-          </Section>
-        </FadeInSection>
+        {/* 4. Professionisti e recensioni. Tolta la lista d'attesa "Arriviamo
+            presto nella tua zona" (decisione di Luca, docs/CHANGELOG.md §271):
+            chi non trova nessuno manda lo stesso la richiesta e viene avvisato
+            quando arriva un professionista compatibile. Senza profili la
+            sezione non compare, invece di restare un titolo vuoto. */}
+        {professionals.length > 0 ? (
+          <FadeInSection>
+            <Section
+              eyebrow="Professionisti"
+              title="Professionisti della tua zona"
+              titleAccent="della tua zona"
+              maxWidth={1080}
+            >
+              <RecentReviews
+                summary={
+                  platformStats?.reviewCount !== undefined && platformStats.averageRating != null
+                    ? { count: platformStats.reviewCount, average: platformStats.averageRating }
+                    : null
+                }
+              />
+              <NewProfilesCarousel professionals={professionals} />
+            </Section>
+          </FadeInSection>
+        ) : null}
 
         {/* 5. Perché fidarsi: trasparenza e Garanzia Piattaforma. */}
         <FadeInSection>

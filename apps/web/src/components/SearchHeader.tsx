@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ALL_ITALIAN_CITY_NAMES } from "@professionisti/shared";
-import { SearchBar, YStack, brand, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
+import { Icon, SearchBar, Text, XStack, YStack, brand, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
 import { buildSearchDestination } from "@/lib/searchNavigation";
 import { buildSearchSuggestions } from "@/lib/searchSuggestions";
 import { navigateWithTransition } from "@/lib/viewTransition";
@@ -18,6 +19,10 @@ export function SearchHeader({
   initialMode: SearchMode;
 }) {
   const router = useRouter();
+  // Da telefono il modulo completo occupava tutto il primo schermo e i
+  // risultati comparivano solo scorrendo (revisione UX, docs/CHANGELOG.md
+  // §271): parte chiuso, come una barra con la ricerca fatta e "Modifica".
+  const [expanded, setExpanded] = useState(false);
 
   const professionalSuggestions: ProfessionalSuggestion[] = buildSearchSuggestions();
 
@@ -33,11 +38,17 @@ export function SearchHeader({
     // nella cache della sessione: forziamo un refresh esplicito dopo il push
     // (in coda al push, cosi' vale sia per la navigazione nuova sia per una
     // eventuale risposta gia' in cache).
+    setExpanded(false);
     navigateWithTransition(() => {
       router.push(destination);
       router.refresh();
     });
   }
+
+  const what = initialQuery.trim() || "Tutti i professionisti";
+  const where = [initialCity.trim() || (initialMode === "online" ? null : "Ovunque"), initialMode === "online" ? "Online" : "A domicilio"]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     // Nascosto da $gtMd in su (richiesta esplicita dell'utente: "sposta le
@@ -48,22 +59,41 @@ export function SearchHeader({
     <YStack
       width="100%"
       backgroundColor={brand.cianografiaVelo}
-      paddingVertical="$5"
+      paddingVertical={expanded ? "$5" : "$3"}
       paddingHorizontal="$4"
       alignItems="center"
       $gtMd={{ display: "none" }}
     >
       <YStack width="100%" maxWidth={680}>
-        <SearchBar
-          wrapSearchButton={(button) => <MagneticButton>{button}</MagneticButton>}
-          onSearch={handleSearch}
-          initialQuery={initialQuery}
-          initialCity={initialCity}
-          initialMode={initialMode}
-          professionalSuggestions={professionalSuggestions}
-          citySuggestions={ALL_ITALIAN_CITY_NAMES}
-          searchOnModeChange
-        />
+        {expanded ? (
+          <SearchBar
+            wrapSearchButton={(button) => <MagneticButton>{button}</MagneticButton>}
+            onSearch={handleSearch}
+            initialQuery={initialQuery}
+            initialCity={initialCity}
+            initialMode={initialMode}
+            professionalSuggestions={professionalSuggestions}
+            citySuggestions={ALL_ITALIAN_CITY_NAMES}
+            searchOnModeChange
+          />
+        ) : (
+          <button type="button" className="search-summary" onClick={() => setExpanded(true)} aria-label={`Modifica la ricerca: ${what}, ${where}`}>
+            <Icon name="search" size={18} color={brand.cianografiaScuro} />
+            <YStack flex={1} minWidth={0} alignItems="flex-start">
+              <Text fontWeight="700" fontSize="$4" color={brand.grafite} numberOfLines={1}>
+                {what}
+              </Text>
+              <Text fontSize="$3" color={brand.grafite70} numberOfLines={1}>
+                {where}
+              </Text>
+            </YStack>
+            <XStack flexShrink={0}>
+              <Text fontWeight="700" fontSize="$3" color={brand.cianografiaScuro}>
+                Modifica
+              </Text>
+            </XStack>
+          </button>
+        )}
       </YStack>
     </YStack>
   );

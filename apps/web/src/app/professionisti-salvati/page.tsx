@@ -99,11 +99,12 @@ export default function ProfessionistiSalvatiPage() {
                     reviewCount={pro.reviewCount}
                     completedThisMonth={pro.completedThisMonth}
                     verified={pro.verified}
-              stripeVerified={pro.stripeVerified}
+                    stripeVerified={pro.stripeVerified}
                     hasLiabilityInsurance={pro.hasLiabilityInsurance}
                     boosted={pro.boosted}
                     isNewProfile={pro.isNewProfile}
                     services={pro.services}
+                    href={`/professionista/${pro.id}`}
                     onPress={() => router.push(`/professionista/${pro.id}`)}
                     icon={<ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={72} />}
                   />

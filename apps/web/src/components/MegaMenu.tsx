@@ -13,7 +13,12 @@ import { useAuth } from "@/lib/AuthContext";
  * (apps/web): interazione da chrome di navigazione, non un primitivo
  * riutilizzabile su mobile (che ha già la propria navigazione nativa).
  */
-export function MegaMenu() {
+/**
+ * `mobileOnly`: solo l'hamburger, senza il "Servizi" da computer. Usato nelle
+ * pagine di ricerca, dove su computer al suo posto c'è la ricerca compatta,
+ * così da telefono il menu c'è in tutte le pagine (docs/CHANGELOG.md §271).
+ */
+export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) {
   const [desktopOpen, setDesktopOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -52,7 +57,7 @@ export function MegaMenu() {
   return (
     <>
       {/* Desktop */}
-      <div className="mega-desktop" ref={containerRef}>
+      <div className="mega-desktop" ref={containerRef} style={mobileOnly ? { display: "none" } : undefined}>
         <button
           type="button"
           className="mega-trigger"
@@ -112,7 +117,7 @@ export function MegaMenu() {
         <div className="mega-drawer-backdrop" onClick={() => setMobileOpen(false)}>
           <div className="mega-drawer" onClick={(e) => e.stopPropagation()}>
             <div className="mega-drawer-header">
-              <span>Servizi</span>
+              <span>Menu</span>
               <button type="button" aria-label="Chiudi menu" onClick={() => setMobileOpen(false)} className="mega-drawer-close">
                 ×
               </button>

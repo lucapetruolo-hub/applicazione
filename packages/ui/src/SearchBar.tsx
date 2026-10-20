@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { Text, XStack, YStack } from "tamagui";
 import { Autocomplete } from "./Autocomplete";
 import { Button } from "./Button";
@@ -70,6 +70,7 @@ export function SearchBar({
   const [city, setCity] = useState(initialCity);
   const [mode, setMode] = useState<SearchMode>(initialMode);
   const [selectedProfessional, setSelectedProfessional] = useState<ProfessionalSuggestion | undefined>();
+  const fieldId = useId();
 
   if (compact) {
     return (
@@ -214,7 +215,8 @@ export function SearchBar({
         })}
       </XStack>
 
-      <YStack gap="$3" $gtSm={{ flexDirection: "row", alignItems: "flex-start" }}>
+      {/* flex-end: con le etichette sopra i campi, "Cerca" resta allineato ai campi e non alle etichette. */}
+      <YStack gap="$3" $gtSm={{ flexDirection: "row", alignItems: "flex-end" }}>
         <Autocomplete
           items={professionalSuggestions}
           getKey={(item) => item.id}
@@ -222,7 +224,11 @@ export function SearchBar({
           onSelect={handleSelectProfessional}
           value={query}
           onChangeText={handleQueryChange}
-          placeholder={mode === "online" ? "Cosa ti serve? Es. Consulenza idraulico..." : "Cosa cerchi? Es. Idraulico, Elettricista..."}
+          // Etichetta vera sopra il campo ed esempio corto dentro: quello
+          // lungo di prima veniva tagliato ("Es. Idraulico, Elettricis").
+          label="Cosa cerchi"
+          id={`${fieldId}-cosa`}
+          placeholder={mode === "online" ? "Es. consulenza idraulico" : "Es. idraulico"}
           size="$5"
           maxResults={professionalSuggestions.length}
           renderItem={(item) => (
@@ -234,7 +240,7 @@ export function SearchBar({
             </YStack>
           )}
         />
-        <XStack width={1} height={44} backgroundColor={brand.filetto} display="none" $gtSm={{ display: "flex" }} />
+        <XStack width={1} height={44} marginBottom={4} backgroundColor={brand.filetto} display="none" $gtSm={{ display: "flex" }} />
         <Autocomplete
           items={citySuggestions}
           getKey={(item) => item}
@@ -242,7 +248,9 @@ export function SearchBar({
           onSelect={(selectedCity) => setCity(selectedCity)}
           value={city}
           onChangeText={setCity}
-          placeholder={mode === "online" ? "Città (opzionale)" : "Città"}
+          label={mode === "online" ? "Città (facoltativa)" : "Città"}
+          id={`${fieldId}-citta`}
+          placeholder="Es. Milano"
           size="$5"
           minChars={3}
         />

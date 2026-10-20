@@ -201,6 +201,20 @@ const BUILDERS: Record<string, Builder> = {
     cta: { label: "Cerca un professionista", url: `${frontendUrl()}/cerca` },
   }),
 
+  // Richiesta inviata quando in zona non c'era nessuno: si è iscritto un
+  // professionista compatibile e l'ha ricevuta (docs/CHANGELOG.md §271).
+  REQUEST_MATCHED_LATER: (_payload, ctx) => ({
+    kind: "notification",
+    subject: "Un professionista ha ricevuto la tua richiesta",
+    greeting: ctx.name,
+    title: "Abbiamo trovato un professionista",
+    paragraphs: [
+      `Si è iscritto un professionista compatibile con la tua richiesta per **${job(ctx)}** e gliel'abbiamo inviata.`,
+      "Ti scriviamo appena ti manda un preventivo.",
+    ],
+    cta: clientRequests(),
+  }),
+
   // ── Preventivi e date ──────────────────────────────────────────────────
   NEW_QUOTE: (payload, ctx) => {
     // Nuovo preventivo dopo un rifiuto (docs/CHANGELOG.md §188).

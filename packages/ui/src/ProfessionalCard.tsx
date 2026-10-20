@@ -130,6 +130,13 @@ export type ProfessionalCardProps = {
   defaultMode?: "HOME" | "ONLINE";
   onPress?: () => void;
   /**
+   * Indirizzo del profilo (solo web): il nome diventa un link vero, che si
+   * apre in un'altra scheda con Ctrl/Cmd+clic o il tasto centrale e che i
+   * motori di ricerca seguono (docs/CHANGELOG.md §271). Il clic normale
+   * resta gestito da `onPress` della card, come prima.
+   */
+  href?: string;
+  /**
    * Click su una singola cella orario libera: non deve propagare al click
    * della card intera. `endTime`/`mode` inclusi (oltre a data/ora inizio)
    * perché chi consuma il componente porta l'utente direttamente alla
@@ -177,6 +184,7 @@ export function ProfessionalCard({
   availabilityDays = DEFAULT_AGENDA_DAYS,
   defaultMode,
   onPress,
+  href,
   onSlotPress,
   onAgendaPress,
   icon,
@@ -269,7 +277,9 @@ export function ProfessionalCard({
     <Surface
       onPress={onPress}
       cursor={onPress ? "pointer" : undefined}
-      accessibilityRole={onPress ? "button" : undefined}
+      // Con `href` la tastiera e i lettori di schermo arrivano al profilo dal
+      // link del nome: la card non si annuncia anche come pulsante.
+      accessibilityRole={onPress && !href ? "button" : undefined}
       padding="$5"
       hoverStyle={onPress ? { borderColor: brand.cianografia } : undefined}
       pressStyle={onPress ? { borderColor: brand.cianografiaScuro } : undefined}
@@ -289,7 +299,28 @@ export function ProfessionalCard({
           {icon}
           <YStack gap="$2" flex={1} minWidth={0}>
             <XStack alignItems="center" gap="$2" flexWrap="wrap">
-              <Text fontFamily="$heading" fontWeight="800" fontSize={22} lineHeight={26} color={brand.grafite}>
+              <Text
+                fontFamily="$heading"
+                fontWeight="800"
+                fontSize={22}
+                lineHeight={26}
+                color={brand.grafite}
+                {...(href
+                  ? {
+                      tag: "a",
+                      href,
+                      textDecorationLine: "none" as const,
+                      hoverStyle: { textDecorationLine: "underline" as const },
+                      // Clic normale: niente ricarica della pagina, apre il
+                      // profilo `onPress` della card. Con Ctrl/Cmd/Maiusc il
+                      // browser apre un'altra scheda e la card non naviga.
+                      onPress: (e: { metaKey?: boolean; ctrlKey?: boolean; shiftKey?: boolean; preventDefault?: () => void; stopPropagation?: () => void }) => {
+                        if (e.metaKey || e.ctrlKey || e.shiftKey) e.stopPropagation?.();
+                        else e.preventDefault?.();
+                      },
+                    }
+                  : null)}
+              >
                 {businessName}
               </Text>
               {verified ? (

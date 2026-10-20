@@ -2964,3 +2964,126 @@ a.admin-kpi:hover {
 .fiscal-link-button:hover {
   text-decoration: underline;
 }
+
+/* Link secondari sotto la ricerca in home (docs/CHANGELOG.md §271): area di
+   tocco alta almeno 44px anche se il testo è su una riga sola. */
+.hero-secondary-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 4px;
+  font-weight: 700;
+  font-size: 16px;
+  color: #0e7a4c; /* brand.cianografiaScuro */
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+.hero-secondary-link-urgent {
+  color: #c8362b;
+}
+.hero-secondary-link:hover {
+  text-decoration-thickness: 2px;
+}
+.hero-secondary-link:focus-visible {
+  outline: 3px solid #189a63;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Testo letto da Google e dai lettori di schermo ma non mostrato (es. il
+   titolo h1 delle pagine di ricerca, docs/CHANGELOG.md §271). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Barra della ricerca fatta, da telefono nelle pagine di ricerca
+   (SearchHeader, docs/CHANGELOG.md §271): un tocco riapre il modulo. */
+.search-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 18px;
+  border: 1px solid #eadfd3;
+  border-radius: 999px;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  touch-action: manipulation;
+}
+.search-summary:active {
+  background: #faf6f0;
+}
+.search-summary:focus-visible {
+  outline: 3px solid #189a63;
+  outline-offset: 2px;
+}
+
+/* Categorie in home da telefono (CategoryStoryRail, docs/CHANGELOG.md §271):
+   griglia a due colonne con le prime sei, le altre con "Mostra tutte". Gli
+   !important vincono sugli stili in linea della riga da scorrere
+   (CategoryCarousel), che da computer restano com'erano. */
+.story-show-all {
+  display: none;
+}
+@media (max-width: 700px) {
+  .story-rail .category-carousel-track {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    overflow: visible !important;
+    padding-top: 0 !important;
+  }
+  .story-rail .category-carousel-arrow {
+    display: none !important;
+  }
+  .story-rail .story-card {
+    width: auto;
+    height: 200px;
+  }
+  .story-rail .story-card:hover,
+  .story-rail .story-card:focus-visible {
+    transform: none;
+  }
+  .story-rail .story-card-more {
+    display: none;
+  }
+  .story-rail .story-card-other {
+    grid-column: 1 / -1;
+    height: auto;
+    min-height: 112px;
+  }
+  .story-rail:not(.show-all) .story-card.is-extra {
+    display: none;
+  }
+  .story-show-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 44px;
+    padding: 0 4px;
+    border: 0;
+    background: none;
+    color: #0e7a4c;
+    font: inherit;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .story-show-all:focus-visible {
+    outline: 3px solid #189a63;
+    outline-offset: 2px;
+  }
+}

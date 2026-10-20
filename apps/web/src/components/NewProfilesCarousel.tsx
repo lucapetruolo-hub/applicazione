@@ -9,7 +9,7 @@ import { CategoryIcon, CATEGORY_ACCENT } from "./icons/CategoryIcons";
 import { useRevealOnScroll } from "./useRevealOnScroll";
 
 // "Ultimi iscritti" (richiesta esplicita dell'utente): 21 profili, non una
-// vetrina curata — nessuna soglia minima come ProfessionalsShowcase (quella
+// vetrina curata — nessuna soglia minima come la vecchia lista d'attesa (quella
 // esiste per non far sembrare vuota una "vetrina in evidenza", questo è
 // semplicemente l'elenco dei più recenti, corretto anche con pochi profili).
 const VISIBLE_COUNT = 21;

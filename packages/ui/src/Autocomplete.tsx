@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Input, ScrollView, Text, YStack } from "tamagui";
+import { Input, Label, ScrollView, Text, YStack } from "tamagui";
+import { brand } from "./tokens";
 
 export type AutocompleteProps<T> = {
   items: T[];
@@ -16,6 +17,13 @@ export type AutocompleteProps<T> = {
   /** Numero minimo di caratteri digitati prima di mostrare l'elenco (0 = mostra subito, anche a campo vuoto). */
   minChars?: number;
   size?: React.ComponentProps<typeof Input>["size"];
+  /**
+   * Etichetta visibile sopra il campo (regola "input-labels": il solo
+   * segnaposto sparisce mentre si scrive). Serve anche `id`, che lega
+   * l'etichetta al campo. Senza, il segnaposto fa da nome accessibile.
+   */
+  label?: string;
+  id?: string;
 };
 
 /**
@@ -34,6 +42,8 @@ export function Autocomplete<T>({
   maxResults = 30,
   minChars = 0,
   size,
+  label,
+  id,
 }: AutocompleteProps<T>) {
   const [isFocused, setIsFocused] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -102,14 +112,20 @@ export function Autocomplete<T>({
 
   return (
     <YStack position="relative" flex={1} ref={containerRef as never}>
+      {label ? (
+        <Label htmlFor={id} fontSize={13} lineHeight={18} height="auto" fontWeight="600" color={brand.grafite70} paddingLeft="$1" paddingBottom={4}>
+          {label}
+        </Label>
+      ) : null}
       <Input
+        id={id}
         flex={1}
         size={size}
         borderWidth={0}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        accessibilityLabel={placeholder}
+        accessibilityLabel={label ? undefined : placeholder}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setTimeout(() => setIsFocused(false), 150)}
       />

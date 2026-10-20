@@ -1,8 +1,9 @@
 "use client";
 
 import type { PROFESSIONAL_CATEGORIES, ProfessionalSearchResult } from "@professionisti/shared";
-import { Text, XStack, YStack, brand } from "@professionisti/ui";
+import { YStack } from "@professionisti/ui";
 import { CategoryIconBadge } from "@/components/CategoryIconBadge";
+import { EmptySearchResults } from "@/components/EmptySearchResults";
 import { ResultsListWithMap } from "@/components/ResultsListWithMap";
 
 type Category = (typeof PROFESSIONAL_CATEGORIES)[number];
@@ -29,28 +30,24 @@ export function CategoryContent({
   // risultati — la lista parla da sola. Il riquadro resta SOLO quando non
   // c'e' nessun risultato, perche' altrimenti la pagina sarebbe un vuoto
   // muto senza spiegazioni.
+  const title = `${category.label}${online && city ? ` · consulenza online a ${city}` : online ? " · consulenza online" : city ? ` a ${city}` : " vicino a te"}`;
   const header =
     professionals.length > 0 ? null : (
-      <YStack gap="$2" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="$4" padding="$4">
-        <XStack alignItems="center" gap="$3">
-          <CategoryIconBadge slug={category.slug} size={48} />
-          <YStack gap="$1" flex={1} minWidth={0}>
-            <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
-              {category.label}
-              {online && city ? ` · consulenza online a ${city}` : online ? " · consulenza online" : city ? ` a ${city}` : " vicino a te"}
-            </Text>
-            <Text color={brand.grafite70} fontSize="$3">
-              {online
-                ? "Nessun professionista disponibile per consulenza online in questa categoria al momento."
-                : "Nessun professionista trovato per questa zona: prova a cercare in un'altra città o richiedi un preventivo guidato."}
-            </Text>
-          </YStack>
-        </XStack>
-      </YStack>
+      <EmptySearchResults
+        title={title}
+        online={Boolean(online)}
+        categorySlug={category.slug}
+        city={city}
+        icon={<CategoryIconBadge slug={category.slug} size={48} />}
+      />
     );
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent">
+      {/* Titolo principale (h1) per Google e i lettori di schermo, non
+          mostrato: il riquadro in cima ai risultati era stato tolto su
+          richiesta (docs/CHANGELOG.md §271). */}
+      <h1 className="sr-only">{title}</h1>
       <YStack width="100%" maxWidth={1200} paddingHorizontal="$4" paddingVertical="$6">
         <ResultsListWithMap
           professionals={professionals}
