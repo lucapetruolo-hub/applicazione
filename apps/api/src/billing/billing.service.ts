@@ -537,6 +537,11 @@ export class BillingService {
         await this.jobPaymentsService.notifyFinanceAdmins("ADMIN_STRIPE_DISPUTE", { amountEurCents: dispute.amount, status: dispute.status, bookingId: null });
       }
     }
+    // Rimborso rimasto in attesa di fondi sul conto del professionista,
+    // arrivato al cliente o non riuscito (§262): dall'endpoint Connect.
+    if (event.type === "refund.updated" || event.type === "refund.failed") {
+      await this.jobPaymentsService.handleRefundUpdated(event.data.object as Stripe.Refund, event.account);
+    }
     // Saldo addebitato sulla carta salvata con l'acconto (§260).
     if (event.type === "payment_intent.succeeded") {
       await this.jobPaymentsService.handleAutoBalanceSucceeded(event.data.object as Stripe.PaymentIntent);

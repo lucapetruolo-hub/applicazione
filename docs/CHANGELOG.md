@@ -19501,3 +19501,38 @@ Connect, funzioni Express da lasciare spente, permessi della chiave).
 
 **Verifica:** `vitest` dell'API (448 test, 14 nuovi in
 `direct-charges.test.ts`), `tsc` su API e web, `eslint` sull'API.
+
+## 262. Avviso quando il rimborso aspetta fondi sul conto del professionista
+
+**Richiesta dell'utente (20/10/2026):** "1 miglioria procedi", la prima
+delle migliorie proposte dopo §261: avvisare il cliente quando il rimborso
+resta in attesa perché il saldo Stripe del professionista è vuoto.
+
+**Perché:** con l'addebito diretto (§261) Stripe prende il rimborso dal
+saldo del professionista; se non basta, il rimborso resta `pending` e parte
+da solo appena arrivano fondi. Prima il cliente riceveva "ti abbiamo
+rimborsato" e poi non vedeva nulla sulla carta.
+
+**Cosa fa:**
+- `refundAcrossPayments` e `refundQuoteDeposit` guardano lo stato del
+  rimborso: se è `pending` lo segnano su Stripe (metadata `waitingFunds`,
+  con cliente, richiesta e lavoro) e avvisano il cliente
+  (`JOB_REFUND_PENDING`, "Il tuo rimborso è in arrivo") e il professionista
+  (`JOB_REFUND_WAITING_FUNDS`, "parte appena arrivano i prossimi
+  pagamenti"). Per l'acconto non più confermabile l'email
+  `QUOTE_DEPOSIT_REFUNDED` dice "in arrivo" invece di "rimborsato".
+- Webhook `refund.updated` / `refund.failed` dall'endpoint Connect
+  (`handleRefundUpdated`): rimborso arrivato → `JOB_REFUND_COMPLETED` al
+  cliente; non riuscito o annullato → `ADMIN_JOB_REFUND_FAILED` al team
+  Finanza. Una volta sola: dopo l'avviso il metadata diventa `done` o
+  `failed`.
+- Nessuna migrazione: lo stato vive sul rimborso Stripe.
+- Nuovi tipi nell'argomento "Lavori e appuntamenti" di
+  `packages/shared/src/notifications.ts`, testi in `notificationCopy.ts`,
+  email in `notification-emails.ts`, anteprime in `email-preview.ts`.
+
+**Da fare a mano:** aggiungere `refund.updated` e `refund.failed`
+all'endpoint webhook Connect (checklist di lancio).
+
+**Verifica:** `vitest` dell'API (453 test, 5 nuovi in
+`direct-charges.test.ts`), `tsc` su API e web, `eslint` sull'API.

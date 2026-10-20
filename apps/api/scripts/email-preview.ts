@@ -101,6 +101,10 @@ notification("JOB_STRIPE_DISPUTE", "Professionista", "Pagamenti dei lavori");
 notification("ADMIN_STRIPE_DISPUTE", "Admin", "Pagamenti dei lavori");
 notification("JOB_PAYMENT_DEBT", "Professionista", "Pagamenti dei lavori", { amountEurCents: 2650 });
 notification("ADMIN_JOB_PAYMENT_LONG_HOLD", "Admin", "Pagamenti dei lavori");
+notification("JOB_REFUND_PENDING", "Cliente", "Pagamenti dei lavori", { amountEurCents: 3600 });
+notification("JOB_REFUND_COMPLETED", "Cliente", "Pagamenti dei lavori", { amountEurCents: 3600 });
+notification("JOB_REFUND_WAITING_FUNDS", "Professionista", "Pagamenti dei lavori", { amountEurCents: 3600 });
+notification("ADMIN_JOB_REFUND_FAILED", "Admin", "Pagamenti dei lavori", { amountEurCents: 3600 });
 
 // Segnalazioni sul lavoro
 notification("JOB_ISSUE_REPORTED", "Professionista", "Segnalazioni sul lavoro", { issueType: "BAD_WORK", assisted: true });

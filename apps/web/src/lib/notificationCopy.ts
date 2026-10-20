@@ -81,6 +81,11 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   JOB_PAYOUT_FAILED: { icon: "🏦", message: "Un bonifico non è arrivato alla tua banca: controlla i dati bancari." },
   JOB_PAYOUT_ACCOUNT_NEEDED: { icon: "🏦", message: "Hai un pagamento online da ricevere: attiva i pagamenti in Dati fiscali e pagamenti." },
   JOB_STRIPE_DISPUTE: { icon: "⚠️", message: "Un cliente ha contestato in banca un pagamento online: la cifra è sospesa finché la banca non decide." },
+  // Rimborso in attesa di fondi sul conto Stripe del professionista (§262).
+  JOB_REFUND_PENDING: { icon: "↩️", message: "Il tuo rimborso è in arrivo: ti avvisiamo appena parte verso la carta." },
+  JOB_REFUND_COMPLETED: { icon: "↩️", message: "Rimborso completato: lo rivedi sulla carta in pochi giorni." },
+  JOB_REFUND_WAITING_FUNDS: { icon: "💳", message: "Un rimborso al cliente aspetta fondi sul tuo conto Stripe: parte appena arrivano." },
+  ADMIN_JOB_REFUND_FAILED: { icon: "⚠️", message: "Un rimborso al cliente non è riuscito: controllalo dalla Dashboard Stripe." },
   JOB_PAYMENT_DEBT: { icon: "💳", message: "Hai un importo da restituire su un lavoro: lo tratteniamo dai tuoi prossimi pagamenti online." },
   ADMIN_JOB_PAYMENT_LONG_HOLD: { icon: "⏳", message: "Un pagamento online è bloccato da quasi 90 giorni: decidi se sbloccarlo o rimborsare." },
   ADMIN_DAC7_NEEDS_CORRECTION: { icon: "⚠️", message: "DAC7: importi cambiati dopo l'invio, l'anno va corretto." },

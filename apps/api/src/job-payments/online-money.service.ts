@@ -334,13 +334,18 @@ export class OnlineMoneyService {
    * tutto al cliente. `stripeAccount`: il conto del professionista su cui è
    * nato il pagamento (addebito diretto, §261).
    */
-  async refundQuoteDeposit(paymentIntentId: string, reason: string, stripeAccount?: string | null): Promise<void> {
+  async refundQuoteDeposit(
+    paymentIntentId: string,
+    reason: string,
+    stripeAccount?: string | null,
+    notifyTo?: { clientUserId: string; guidedRequestId: string | null },
+  ): Promise<{ pending: boolean }> {
     const stripe = this.requireStripe();
     const intent = await stripe.paymentIntents.retrieve(paymentIntentId, {}, onAccount(stripeAccount));
     // Addebito sul conto del professionista: si riprende da lì e la
     // piattaforma restituisce anche la sua trattenuta.
     const destination = !!intent.transfer_data?.destination;
-    await stripe.refunds.create(
+    const refund = await stripe.refunds.create(
       {
         payment_intent: paymentIntentId,
         ...(stripeAccount ? { refund_application_fee: true } : destination ? { reverse_transfer: true, refund_application_fee: true } : {}),
@@ -349,6 +354,64 @@ export class OnlineMoneyService {
       { idempotencyKey: `quote-deposit-refund-${paymentIntentId}`, ...onAccount(stripeAccount) },
     );
     this.logger.warn(`Acconto ${paymentIntentId} rimborsato: ${reason}`);
+    const pending = !!stripeAccount && refund.status === "pending";
+    if (pending && notifyTo) {
+      await this.markRefundWaiting([refund], stripeAccount, { clientUserId: notifyTo.clientUserId, guidedRequestId: notifyTo.guidedRequestId, bookingId: null });
+    }
+    return { pending };
+  }
+
+  /**
+   * Rimborso su un addebito diretto rimasto in attesa (§262): il saldo
+   * Stripe del professionista non basta e Stripe lo completa appena
+   * arrivano i fondi. Si segna sul rimborso chi avvisare, così il webhook
+   * `refund.updated` può dire al cliente che è arrivato.
+   */
+  private async markRefundWaiting(
+    refunds: Stripe.Refund[],
+    stripeAccount: string,
+    who: { clientUserId: string; guidedRequestId: string | null; bookingId: string | null },
+  ): Promise<void> {
+    const stripe = this.requireStripe();
+    for (const refund of refunds) {
+      await stripe.refunds.update(
+        refund.id,
+        {
+          metadata: {
+            waitingFunds: "true",
+            clientUserId: who.clientUserId,
+            ...(who.guidedRequestId ? { guidedRequestId: who.guidedRequestId } : {}),
+            ...(who.bookingId ? { bookingId: who.bookingId } : {}),
+          },
+        },
+        onAccount(stripeAccount),
+      );
+    }
+    this.logger.warn(`Rimborso in attesa di fondi sul conto ${stripeAccount}: ${refunds.map((r) => r.id).join(", ")}`);
+  }
+
+  /**
+   * Webhook `refund.updated` / `refund.failed` dal conto del professionista
+   * (§262): un rimborso rimasto in attesa è arrivato al cliente, oppure non
+   * è riuscito e serve il nostro team. Idempotente: dopo l'avviso il
+   * rimborso non è più segnato come in attesa.
+   */
+  async handleRefundUpdated(refund: Stripe.Refund, stripeAccount: string | null | undefined): Promise<void> {
+    if (!stripeAccount || refund.metadata?.waitingFunds !== "true") return;
+    if (refund.status !== "succeeded" && refund.status !== "failed" && refund.status !== "canceled") return;
+    const ok = refund.status === "succeeded";
+    await this.requireStripe().refunds.update(refund.id, { metadata: { waitingFunds: ok ? "done" : "failed" } }, onAccount(stripeAccount));
+    const clientUserId = refund.metadata.clientUserId;
+    const payload = {
+      bookingId: refund.metadata.bookingId ?? null,
+      guidedRequestId: refund.metadata.guidedRequestId ?? null,
+      amountEurCents: refund.amount,
+    };
+    if (ok) {
+      if (clientUserId) await this.notificationsService.notify(clientUserId, "JOB_REFUND_COMPLETED", { ...payload, audience: "CLIENT" });
+      return;
+    }
+    await this.notifyFinanceAdmins("ADMIN_JOB_REFUND_FAILED", payload);
   }
 
   /** Webhook `checkout.session.completed` di un acconto o saldo. Idempotente sul payment intent. */
@@ -1577,6 +1640,7 @@ export class OnlineMoneyService {
     const fromProfessional = !!jp.stripeDestinationAccountId && opts.beforeRelease;
     // Addebito diretto (§261): il rimborso si fa sul conto del professionista e Stripe lo prende dal suo saldo.
     const account = chargeAccount(jp);
+    const waiting: Stripe.Refund[] = [];
     let remaining = amountEurCents;
     for (const pi of [jp.balancePaymentIntentId, jp.stripePaymentIntentId]) {
       if (!pi || remaining <= 0) continue;
@@ -1587,7 +1651,7 @@ export class OnlineMoneyService {
       if (part <= 0) continue;
       // Chiave legata a quanto già rimborsato: un nuovo tentativo dello stesso
       // rimborso non parte due volte, un rimborso successivo sì.
-      await stripe.refunds.create(
+      const refund = await stripe.refunds.create(
         {
           payment_intent: pi,
           amount: part,
@@ -1596,11 +1660,31 @@ export class OnlineMoneyService {
         },
         { idempotencyKey: `job-refund-${pi}-${charge?.amount_refunded ?? 0}-${part}`, ...onAccount(account) },
       );
+      if (account && refund.status === "pending") waiting.push(refund);
       remaining -= part;
     }
     const refunded = amountEurCents - remaining;
     const after = await this.prisma.jobPayment.update({ where: { id: jobPaymentId }, data: { refundedEurCents: { increment: refunded } } });
     if (fromProfessional) await this.keepProfessionalBalancePositive(after);
+    if (account && waiting.length > 0) await this.reportRefundWaiting(jobPaymentId, account, waiting);
+  }
+
+  /**
+   * Rimborso rimasto in attesa perché il saldo Stripe del professionista
+   * non basta (addebito diretto, §262): il cliente sa che arriva e quando,
+   * il professionista sa che si chiude coi prossimi fondi.
+   */
+  private async reportRefundWaiting(jobPaymentId: string, account: string, refunds: Stripe.Refund[]): Promise<void> {
+    const jp = await this.prisma.jobPayment.findUniqueOrThrow({
+      where: { id: jobPaymentId },
+      include: { booking: { select: { id: true, clientId: true, quote: { select: { guidedRequestId: true } }, professionalProfile: { select: { userId: true } } } } },
+    });
+    const guidedRequestId = jp.booking.quote?.guidedRequestId ?? null;
+    await this.markRefundWaiting(refunds, account, { clientUserId: jp.booking.clientId, guidedRequestId, bookingId: jp.booking.id });
+    const amountEurCents = refunds.reduce((sum, r) => sum + r.amount, 0);
+    const payload = { bookingId: jp.booking.id, guidedRequestId, amountEurCents };
+    await this.notificationsService.notify(jp.booking.clientId, "JOB_REFUND_PENDING", { ...payload, audience: "CLIENT" });
+    await this.notificationsService.notify(jp.booking.professionalProfile.userId, "JOB_REFUND_WAITING_FUNDS", payload);
   }
 
   /**

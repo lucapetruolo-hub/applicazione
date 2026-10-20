@@ -84,7 +84,9 @@ produzione):
    lavori nascono sul conto del professionista (addebito diretto, §261),
    anche `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
    `checkout.session.async_payment_failed`, `payment_intent.succeeded` e tutti
-   i `charge.dispute.*` elencati sopra,
+   i `charge.dispute.*` elencati sopra, più `refund.updated` e
+   `refund.failed` (rimborso rimasto in attesa di fondi sul conto del
+   professionista, poi arrivato o non riuscito, §262),
    la cui chiave va in `STRIPE_CONNECT_WEBHOOK_SECRET` (docs/CHANGELOG.md §236).
    Se la chiave è limitata (`rk_`) deve avere anche i permessi su
    application fee, bonifici (payouts), saldo e impostazioni del saldo

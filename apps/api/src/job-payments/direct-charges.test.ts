@@ -48,7 +48,7 @@ function buildService() {
     payouts: { create: vi.fn().mockResolvedValue({ id: "po_1" }) },
     transfers: { create: vi.fn(), createReversal: vi.fn(), retrieve: vi.fn() },
     applicationFees: { createRefund: vi.fn(), retrieve: vi.fn().mockResolvedValue({ id: "fee_1", amount: 850, amount_refunded: 175 }) },
-    refunds: { create: vi.fn() },
+    refunds: { create: vi.fn().mockResolvedValue({ id: "re_1", amount: 10000, status: "succeeded" }), update: vi.fn() },
     charges: { create: vi.fn().mockResolvedValue({ id: "py_1" }) },
     paymentIntents: {
       retrieve: vi.fn().mockResolvedValue({ latest_charge: { id: "ch_1", amount: 10000, amount_refunded: 0, application_fee: "fee_1" } }),
@@ -320,5 +320,74 @@ describe("contestazioni in banca con l'addebito diretto", () => {
 
     expect(stripe.applicationFees.createRefund).not.toHaveBeenCalled();
     expect(prisma.jobPayment.update).toHaveBeenCalledWith(expect.objectContaining({ data: { professionalDebtEurCents: { increment: 2000 } } }));
+  });
+});
+
+describe("rimborso in attesa di fondi sul conto del professionista (§262)", () => {
+  it("se il suo saldo non basta avvisa cliente e professionista e segna il rimborso", async () => {
+    const { service, prisma, stripe } = buildService();
+    const job = { ...directJob(), booking: { id: "bk-1", clientId: "client-1", professionalProfile: { userId: "pro-user-1" }, quote: { guidedRequestId: "gr-1" } } };
+    prisma.jobPayment.findUnique.mockResolvedValue(job);
+    prisma.jobPayment.findUniqueOrThrow.mockResolvedValue({ ...job, refundedEurCents: 10000 });
+    prisma.jobPayment.update.mockResolvedValue({ ...job, refundedEurCents: 10000 });
+    stripe.refunds.create.mockResolvedValue({ id: "re_wait", amount: 10000, status: "pending" });
+    const notify = (service as unknown as { notificationsService: { notify: ReturnType<typeof vi.fn> } }).notificationsService.notify;
+
+    await service.refundOnline("jp-1", "ALL", "Annullato dal team.", null);
+
+    expect(stripe.refunds.update).toHaveBeenCalledWith(
+      "re_wait",
+      { metadata: { waitingFunds: "true", clientUserId: "client-1", guidedRequestId: "gr-1", bookingId: "bk-1" } },
+      { stripeAccount: "acct_1" },
+    );
+    expect(notify).toHaveBeenCalledWith("client-1", "JOB_REFUND_PENDING", expect.objectContaining({ amountEurCents: 10000, audience: "CLIENT" }));
+    expect(notify).toHaveBeenCalledWith("pro-user-1", "JOB_REFUND_WAITING_FUNDS", expect.objectContaining({ amountEurCents: 10000 }));
+  });
+
+  it("un rimborso riuscito subito non avvisa di nulla in più", async () => {
+    const { service, prisma, stripe } = buildService();
+    const job = directJob();
+    prisma.jobPayment.findUnique.mockResolvedValue(job);
+    prisma.jobPayment.findUniqueOrThrow.mockResolvedValue({ ...job, refundedEurCents: 10000 });
+    prisma.jobPayment.update.mockResolvedValue({ ...job, refundedEurCents: 10000 });
+
+    await service.refundOnline("jp-1", "ALL", "Annullato dal team.", null);
+
+    expect(stripe.refunds.update).not.toHaveBeenCalled();
+  });
+
+  it("l'acconto rimborsato in attesa lo segnala a chi lo ha pagato", async () => {
+    const { service, stripe } = buildService();
+    stripe.paymentIntents.retrieve.mockResolvedValue({ id: "pi_dep" });
+    stripe.refunds.create.mockResolvedValue({ id: "re_dep", amount: 3600, status: "pending" });
+
+    await expect(service.refundQuoteDeposit("pi_dep", "Preventivo ritirato.", "acct_1", { clientUserId: "client-1", guidedRequestId: "gr-1" })).resolves.toEqual({ pending: true });
+
+    expect(stripe.refunds.update).toHaveBeenCalledWith("re_dep", { metadata: { waitingFunds: "true", clientUserId: "client-1", guidedRequestId: "gr-1" } }, { stripeAccount: "acct_1" });
+  });
+
+  it("all'arrivo avvisa il cliente una volta sola", async () => {
+    const { service, stripe } = buildService();
+    const notify = (service as unknown as { notificationsService: { notify: ReturnType<typeof vi.fn> } }).notificationsService.notify;
+    const refund = { id: "re_wait", amount: 10000, status: "succeeded", metadata: { waitingFunds: "true", clientUserId: "client-1", guidedRequestId: "gr-1", bookingId: "bk-1" } };
+
+    await service.handleRefundUpdated(refund as never, "acct_1");
+    await service.handleRefundUpdated({ ...refund, metadata: { ...refund.metadata, waitingFunds: "done" } } as never, "acct_1");
+    await service.handleRefundUpdated({ ...refund, status: "pending" } as never, "acct_1");
+
+    expect(stripe.refunds.update).toHaveBeenCalledWith("re_wait", { metadata: { waitingFunds: "done" } }, { stripeAccount: "acct_1" });
+    expect(notify).toHaveBeenCalledTimes(1);
+    expect(notify).toHaveBeenCalledWith("client-1", "JOB_REFUND_COMPLETED", { bookingId: "bk-1", guidedRequestId: "gr-1", amountEurCents: 10000, audience: "CLIENT" });
+  });
+
+  it("se non riesce avvisa il team Finanza", async () => {
+    const { service, prisma } = buildService();
+    prisma.user.findMany.mockResolvedValue([{ id: "admin-1", adminRoles: ["FINANCE"] }]);
+    const notify = (service as unknown as { notificationsService: { notify: ReturnType<typeof vi.fn> } }).notificationsService.notify;
+
+    await service.handleRefundUpdated({ id: "re_wait", amount: 10000, status: "failed", metadata: { waitingFunds: "true", clientUserId: "client-1" } } as never, "acct_1");
+
+    expect(notify).toHaveBeenCalledWith("admin-1", "ADMIN_JOB_REFUND_FAILED", expect.objectContaining({ amountEurCents: 10000 }));
+    expect(notify).not.toHaveBeenCalledWith("client-1", expect.anything(), expect.anything());
   });
 });

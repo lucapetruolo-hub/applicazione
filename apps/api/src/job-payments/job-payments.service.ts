@@ -182,8 +182,13 @@ export class JobPaymentsService {
     return this.onlineMoneyService.recordCheckoutPayment(jobPaymentId, "deposit", session, { notify: false });
   }
 
-  refundQuoteDeposit(paymentIntentId: string, reason: string, stripeAccount?: string | null): Promise<void> {
-    return this.onlineMoneyService.refundQuoteDeposit(paymentIntentId, reason, stripeAccount);
+  refundQuoteDeposit(
+    paymentIntentId: string,
+    reason: string,
+    stripeAccount?: string | null,
+    notifyTo?: { clientUserId: string; guidedRequestId: string | null },
+  ): Promise<{ pending: boolean }> {
+    return this.onlineMoneyService.refundQuoteDeposit(paymentIntentId, reason, stripeAccount, notifyTo);
   }
 
   /** Gestito dallo stesso webhook Stripe già in uso per BillingService (CLAUDE.md §9). */
@@ -197,6 +202,10 @@ export class JobPaymentsService {
   }
 
   /** Soldi di una contestazione tolti o restituiti dalla banca (`charge.dispute.funds_*`, §260). */
+  handleRefundUpdated(refund: Stripe.Refund, stripeAccount: string | null | undefined): Promise<void> {
+    return this.onlineMoneyService.handleRefundUpdated(refund, stripeAccount);
+  }
+
   handleStripeDisputeFunds(dispute: Stripe.Dispute, kind: "withdrawn" | "reinstated"): Promise<boolean> {
     return this.onlineMoneyService.handleStripeDisputeFunds(dispute, kind);
   }

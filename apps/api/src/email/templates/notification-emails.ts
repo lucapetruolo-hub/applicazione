@@ -289,7 +289,9 @@ const BUILDERS: Record<string, Builder> = {
     title: "Acconto rimborsato",
     paragraphs: [
       `Il preventivo di **${pro(ctx)}** per **${job(ctx)}** non si poteva più confermare quando è arrivato il tuo pagamento: per esempio era cambiato o era stato ritirato.`,
-      "Ti abbiamo rimborsato tutto l'acconto: lo rivedi sulla carta in pochi giorni. Se il preventivo è ancora disponibile puoi accettarlo di nuovo.",
+      payload.refundPending === true
+        ? "Il rimborso di tutto l'acconto è in arrivo: ti scriviamo appena parte verso la carta. Se il preventivo è ancora disponibile puoi accettarlo di nuovo."
+        : "Ti abbiamo rimborsato tutto l'acconto: lo rivedi sulla carta in pochi giorni. Se il preventivo è ancora disponibile puoi accettarlo di nuovo.",
     ],
     details: typeof payload.amountEurCents === "number" ? [{ label: "Rimborso", value: formatEur(payload.amountEurCents) }] : undefined,
     cta: clientRequests(),
@@ -805,6 +807,51 @@ const BUILDERS: Record<string, Builder> = {
       "Lo tratteniamo dai tuoi prossimi pagamenti online, prima del bonifico. Non devi fare nulla.",
     ],
     cta: proRequests("Apri il lavoro"),
+  }),
+  // Rimborso in attesa di fondi sul conto Stripe del professionista (§262).
+  JOB_REFUND_PENDING: (payload, ctx) => ({
+    kind: "notification",
+    subject: "Il tuo rimborso è in arrivo",
+    greeting: ctx.name,
+    title: "Rimborso in arrivo",
+    paragraphs: [
+      `Il rimborso per **${job(ctx)}** è stato chiesto, ma serve qualche giorno in più per completarlo.`,
+      "Non devi fare nulla: ti scriviamo appena parte verso la tua carta.",
+    ],
+    details: typeof payload.amountEurCents === "number" ? [{ label: "Rimborso", value: formatEur(payload.amountEurCents) }] : undefined,
+    cta: clientRequests(),
+  }),
+  JOB_REFUND_COMPLETED: (payload, ctx) => ({
+    kind: "notification",
+    subject: "Rimborso completato",
+    greeting: ctx.name,
+    title: "Rimborso completato",
+    paragraphs: [`Il rimborso per **${job(ctx)}** è partito: lo rivedi sulla carta in pochi giorni.`],
+    details: typeof payload.amountEurCents === "number" ? [{ label: "Rimborso", value: formatEur(payload.amountEurCents) }] : undefined,
+    cta: clientRequests(),
+  }),
+  JOB_REFUND_WAITING_FUNDS: (payload, ctx) => ({
+    kind: "notification",
+    subject: "Un rimborso aspetta fondi sul tuo conto Stripe",
+    greeting: ctx.name,
+    title: "Rimborso in attesa",
+    paragraphs: [
+      `Il rimborso al cliente per **${job(ctx)}** aspetta fondi sul tuo conto Stripe: il saldo disponibile non basta.`,
+      "Parte da solo appena arrivano i prossimi pagamenti. Non devi fare nulla.",
+    ],
+    details: typeof payload.amountEurCents === "number" ? [{ label: "Rimborso", value: formatEur(payload.amountEurCents) }] : undefined,
+    cta: proRequests("Apri il lavoro"),
+  }),
+  ADMIN_JOB_REFUND_FAILED: (payload) => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: "Rimborso al cliente non riuscito",
+    title: "Rimborso non riuscito",
+    paragraphs: [
+      `Un rimborso di ${formatEur(payload.amountEurCents) || "un importo"} rimasto in attesa sul conto del professionista non è riuscito.`,
+      "Controllalo dalla Dashboard Stripe e decidi come rimborsare il cliente.",
+    ],
+    cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin/pagamenti` },
   }),
   ADMIN_STRIPE_DISPUTE: (payload) => ({
     kind: "notification",

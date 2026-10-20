@@ -131,12 +131,12 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
   // Verifica fiscale e d'identità (docs/CHANGELOG.md §259).
   if (type === "TAX_ID_INVALID") return "/dashboard/fiscale";
   if (type.startsWith("IDENTITY_VERIFICATION_") || type === "PROFILE_VERIFICATION_REMOVED") return "/dashboard/verifica-identita";
-  if (type === "ADMIN_JOB_BALANCE_UNPAID" || type === "ADMIN_JOB_NOT_CLOSED" || type === "ADMIN_STRIPE_DISPUTE" || type === "ADMIN_JOB_PAYMENT_LONG_HOLD") return "/admin/pagamenti";
-  if (type === "JOB_DEPOSIT_PAID" || type === "JOB_BALANCE_PAID" || type === "JOB_PAYOUT_SENT" || type === "JOB_STRIPE_DISPUTE" || type === "JOB_PAYMENT_DEBT") {
+  if (type === "ADMIN_JOB_BALANCE_UNPAID" || type === "ADMIN_JOB_NOT_CLOSED" || type === "ADMIN_STRIPE_DISPUTE" || type === "ADMIN_JOB_PAYMENT_LONG_HOLD" || type === "ADMIN_JOB_REFUND_FAILED") return "/admin/pagamenti";
+  if (type === "JOB_DEPOSIT_PAID" || type === "JOB_BALANCE_PAID" || type === "JOB_PAYOUT_SENT" || type === "JOB_STRIPE_DISPUTE" || type === "JOB_PAYMENT_DEBT" || type === "JOB_REFUND_WAITING_FUNDS") {
     const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
     return guidedRequestId ? `/dashboard/richieste?open=${guidedRequestId}` : "/dashboard/richieste";
   }
-  if (type === "JOB_BALANCE_DUE" || type === "JOB_BALANCE_UNPAID" || type === "JOB_BALANCE_AUTO_CHARGED") {
+  if (type === "JOB_BALANCE_DUE" || type === "JOB_BALANCE_UNPAID" || type === "JOB_BALANCE_AUTO_CHARGED" || type === "JOB_REFUND_PENDING" || type === "JOB_REFUND_COMPLETED") {
     const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
     return guidedRequestId ? `/le-mie-richieste?tab=lavori&open=${guidedRequestId}` : "/le-mie-richieste?tab=lavori";
   }

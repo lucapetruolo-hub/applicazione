@@ -92,6 +92,11 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "ADMIN_STRIPE_DISPUTE",
       // Cifra da restituire dopo un rimborso o una contestazione persa, ripresa dai pagamenti successivi (docs/CHANGELOG.md §260).
       "JOB_PAYMENT_DEBT",
+      // Rimborso in attesa di fondi sul conto Stripe del professionista, poi arrivato o non riuscito (docs/CHANGELOG.md §262).
+      "JOB_REFUND_PENDING",
+      "JOB_REFUND_COMPLETED",
+      "JOB_REFUND_WAITING_FUNDS",
+      "ADMIN_JOB_REFUND_FAILED",
       // Anno DAC7 già comunicato con importi cambiati dopo l'invio (docs/CHANGELOG.md §247).
       "ADMIN_DAC7_NEEDS_CORRECTION",
       // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §190).
