@@ -9,7 +9,7 @@ import { useState } from "react";
  * caso"). Usato da richiesta di preventivo, modifica richiesta e account.
  * Un indirizzo già salvato vale come scelto finché non si cambia; se il
  * servizio dei suggerimenti non risponde (o non è configurato sul server,
- * §263) si accetta il testo libero, per non bloccare nessuno.
+ * §264) si accetta il testo libero, per non bloccare nessuno.
  */
 export function useChosenAddress(initiallyChosen: boolean) {
   const [chosen, setChosen] = useState(initiallyChosen);

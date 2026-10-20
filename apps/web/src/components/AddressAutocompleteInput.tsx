@@ -40,7 +40,7 @@ type Props = {
    * suggerimenti di quel comune e una scelta di un altro comune viene rifiutata.
    */
   restrictToCity?: { name: string; latitude: number; longitude: number } | null;
-  /** Non serve più (§263: suggerimenti senza consenso ai cookie), resta per compatibilità. */
+  /** Non serve più (§264: suggerimenti senza consenso ai cookie), resta per compatibilità. */
   askConsent?: boolean;
   /** Google non risponde: chi rende obbligatoria la scelta deve accettare il testo libero. */
   onServiceUnavailable?: () => void;
@@ -62,7 +62,7 @@ function normalizePlaceName(name: string): string {
  * dell'utente, docs/CHANGELOG.md §141): mentre si scrive propone indirizzi
  * reali in Italia, e scegliendone uno arrivano anche le coordinate esatte e i
  * pezzi dell'indirizzo. I suggerimenti li chiede a Google il nostro server
- * (§263): nel browser non si carica niente di Google, quindi funzionano per
+ * (§264): nel browser non si carica niente di Google, quindi funzionano per
  * tutti senza consenso ai cookie. Se il servizio non risponde resta un
  * normale campo di testo.
  */

@@ -208,7 +208,7 @@ export default function DashboardProfiloPage() {
   const [mode, setMode] = useState<"preview" | "edit">("edit");
   const [preview, setPreview] = useState<MyProfilePreview | null>(null);
   // Cosa manca per comparire nelle ricerche e inviare preventivi (richiesta
-  // dell'utente, docs/CHANGELOG.md §259): i tre passi finché non sono fatti.
+  // dell'utente, docs/CHANGELOG.md §260): i tre passi finché non sono fatti.
   const [verification, setVerification] = useState<MyVerificationStatus | null>(null);
   // "Torna all'anteprima" con modifiche non salvate: stesso popup dei link.
   const [confirmDiscard, setConfirmDiscard] = useState(false);
@@ -660,7 +660,7 @@ export default function DashboardProfiloPage() {
                 ) : null}
               </div>
               {/* Cosa non può ancora fare, un pallino per ciascuno, e un solo
-                  prossimo passo (richieste dell'utente, docs/CHANGELOG.md §259, §261). */}
+                  prossimo passo (richieste dell'utente, docs/CHANGELOG.md §260, §262). */}
               {identityStep && identityStep.state !== "done" ? (
                 <div className="profile-visibility is-warn">
                   <span className="profile-visibility-dot" aria-hidden="true" />

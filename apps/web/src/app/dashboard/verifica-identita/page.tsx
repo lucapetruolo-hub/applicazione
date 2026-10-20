@@ -14,7 +14,7 @@ const POLL_MS = 4000;
 const POLL_LIMIT_MS = 3 * 60_000;
 
 /**
- * Verifica identità (docs/CHANGELOG.md §253, §261): in alto a che passo del
+ * Verifica identità (docs/CHANGELOG.md §253, §262): in alto a che passo del
  * percorso sei, sotto una sola azione alla volta. Documento e selfie si fanno sulla pagina di Didit
  * (dal computer Didit mostra un codice QR per continuare dal telefono); al
  * ritorno questa pagina aspetta l'esito e lo mostra.

@@ -21,7 +21,7 @@ const TIMEOUT_MS = 5000;
 
 /**
  * Suggerimenti di indirizzo chiesti a Google dal nostro server (richiesta
- * dell'utente, docs/CHANGELOG.md §263), al posto della libreria Places nel
+ * dell'utente, docs/CHANGELOG.md §264), al posto della libreria Places nel
  * browser: nessuno script né cookie di Google sul sito, quindi niente
  * consenso da chiedere e suggerimenti per tutti. Places API (New) con la
  * chiave server `GOOGLE_MAPS_API_KEY`; il token di sessione arriva dal

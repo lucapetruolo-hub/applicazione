@@ -26,7 +26,7 @@ export const PAYMENTS_ANCHOR = "/dashboard/fiscale#pagamenti-online";
 
 /**
  * Il percorso per completare il profilo, sempre nello stesso ordine
- * (richiesta dell'utente, docs/CHANGELOG.md §261): dati fiscali → identità →
+ * (richiesta dell'utente, docs/CHANGELOG.md §262): dati fiscali → identità →
  * pagamenti online. Un passo si sblocca solo quando il precedente è fatto (o
  * in verifica), così c'è sempre una sola cosa da fare. La verifica
  * dell'identità sparisce dove non è attiva.

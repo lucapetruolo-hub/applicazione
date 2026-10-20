@@ -161,7 +161,7 @@ function DashboardFiscaleContent() {
   // IBAN per la DAC7, primo passo di "Attiva i pagamenti online" (docs/CHANGELOG.md §250).
   const [payoutIban, setPayoutIban] = useState<PayoutIbanView | null | undefined>(undefined);
   const [ibanStepOpen, setIbanStepOpen] = useState(false);
-  // Modulo in due passi, uno alla volta (docs/CHANGELOG.md §261): 1 i tuoi
+  // Modulo in due passi, uno alla volta (docs/CHANGELOG.md §262): 1 i tuoi
   // dati, 2 l'indirizzo. `editing` riapre il modulo da dati già completi.
   const [formStep, setFormStep] = useState<1 | 2>(1);
   const [editing, setEditing] = useState(false);
@@ -424,7 +424,7 @@ function DashboardFiscaleContent() {
   const hasLiveErrors = liveErrors.length > 0 || !!cfCheck.message || !!pivaCheck.message;
 
   // Solo i dati che servono davvero (richiesta dell'utente, docs/CHANGELOG.md
-  // §261): quelli per la verifica di codice fiscale, P.IVA e identità e quelli
+  // §262): quelli per la verifica di codice fiscale, P.IVA e identità e quelli
   // che la DAC7 chiede per ciascun tipo. Il luogo di nascita serve solo a chi
   // non ha un codice fiscale italiano.
   const filled = (key: string) => (fields[key] ?? "").trim().length > 0;
@@ -446,7 +446,7 @@ function DashboardFiscaleContent() {
   }
   if (abroad && !filled("taxResidenceCountry")) step1Missing.push("Paese");
   const step2Missing = ["registeredStreet", "registeredPostalCode", "registeredCity"].filter((key) => !filled(key));
-  // Provincia in sigla di 2 lettere (richiesta dell'utente, docs/CHANGELOG.md §262).
+  // Provincia in sigla di 2 lettere (richiesta dell'utente, docs/CHANGELOG.md §263).
   if (!abroad && !/^[A-Z]{2}$/.test(fields.registeredProvince ?? "")) step2Missing.push("registeredProvince");
 
   const fiscalComplete = verification?.fiscalDataComplete ?? false;
@@ -565,7 +565,7 @@ function DashboardFiscaleContent() {
                       </YStack>
                     </XStack>
                     {cfField}
-                    {/* Calendario del telefono o del browser (docs/CHANGELOG.md §262). */}
+                    {/* Calendario del telefono o del browser (docs/CHANGELOG.md §263). */}
                     <YStack gap="$2">
                       <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
                         Data di nascita
@@ -681,7 +681,7 @@ function DashboardFiscaleContent() {
                       <Field label="Via o piazza" accessibilityLabel="Via o piazza" value={fields.registeredStreet ?? ""} onChangeText={(v) => setField("registeredStreet", v)} />
                     ) : (
                       // Suggerimenti di Google mentre si scrive: la scelta compila
-                      // anche civico, CAP, comune e provincia (docs/CHANGELOG.md §262).
+                      // anche civico, CAP, comune e provincia (docs/CHANGELOG.md §263).
                       <YStack gap="$2">
                         <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
                           Via o piazza
@@ -870,7 +870,7 @@ function DashboardFiscaleContent() {
             ) : null}
 
             {/* Pagamenti online solo dopo la verifica dell'identità (richiesta
-                dell'utente, docs/CHANGELOG.md §261): prima non servono. */}
+                dell'utente, docs/CHANGELOG.md §262): prima non servono. */}
             <div id="pagamenti-online">
               {paymentsStep?.state === "locked" ? (
                 <XStack gap="$3" alignItems="center" padding="$4" borderRadius="$4" backgroundColor={brand.gesso}>

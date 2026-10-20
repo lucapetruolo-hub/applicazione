@@ -295,7 +295,7 @@ export class Dac7Service implements OnModuleInit {
     registeredProvince?: string | null;
   }): string | null {
     const streetLine = [fp.registeredStreet, fp.registeredHouseNumber].filter(Boolean).join(" ");
-    // Provincia in sigla tra parentesi, come negli indirizzi italiani (docs/CHANGELOG.md §262).
+    // Provincia in sigla tra parentesi, come negli indirizzi italiani (docs/CHANGELOG.md §263).
     const cityLine = [fp.registeredPostalCode, fp.registeredCity, fp.registeredProvince ? `(${fp.registeredProvince})` : null].filter(Boolean).join(" ");
     const combined = [streetLine, cityLine].filter(Boolean).join(", ");
     return combined || null;

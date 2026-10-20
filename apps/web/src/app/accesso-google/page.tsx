@@ -12,7 +12,7 @@ import {
 } from "@/lib/googleSignIn";
 
 /**
- * Ritorno dalla pagina di accesso di Google (docs/CHANGELOG.md §264): il
+ * Ritorno dalla pagina di accesso di Google (docs/CHANGELOG.md §265): il
  * token arriva nel frammento dell'indirizzo (`#id_token=...&state=...`), che
  * non raggiunge mai un server. Se l'accesso è partito in una finestra il
  * token va alla pagina che l'ha aperta e la finestra si chiude; se è partito

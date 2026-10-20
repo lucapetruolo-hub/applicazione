@@ -5,7 +5,7 @@ import { AddressSuggestionsService } from "./address-suggestions.service";
 const SESSION = /^[A-Za-z0-9-]{8,64}$/;
 
 /**
- * Suggerimenti di indirizzo per i moduli del sito (docs/CHANGELOG.md §263).
+ * Suggerimenti di indirizzo per i moduli del sito (docs/CHANGELOG.md §264).
  * Aperti anche a chi non ha fatto l'accesso (richiesta di preventivo), con un
  * limite per IP: chi scrive un indirizzo fa una richiesta ogni pausa di
  * battitura, non ogni lettera.

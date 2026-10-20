@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AddressSuggestionsService, placeFromGoogle } from "./address-suggestions.service";
 
-describe("suggerimenti di indirizzo dal server (§263)", () => {
+describe("suggerimenti di indirizzo dal server (§264)", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     delete process.env.GOOGLE_MAPS_API_KEY;

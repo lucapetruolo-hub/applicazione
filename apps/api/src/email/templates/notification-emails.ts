@@ -1014,7 +1014,7 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: { label: "Fai la verifica", url: `${frontendUrl()}/dashboard/verifica-identita` },
   }),
-  // "Completa il profilo" il giorno dopo l'iscrizione, solo se manca qualcosa (§260).
+  // "Completa il profilo" il giorno dopo l'iscrizione, solo se manca qualcosa (§261).
   PROFILE_SETUP_REMINDER: (payload, ctx) => {
     const missing = Array.isArray(payload.missing) ? payload.missing : [];
     const lines: string[] = [];

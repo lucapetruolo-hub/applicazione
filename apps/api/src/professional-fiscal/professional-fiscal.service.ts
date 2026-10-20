@@ -307,7 +307,7 @@ export class ProfessionalFiscalService {
 
     let stripeAccountId = fiscalProfile?.stripeConnectAccountId;
     // Pagamenti online solo dopo dati fiscali e verifica dell'identità
-    // (richiesta dell'utente, docs/CHANGELOG.md §261). Chi li aveva già
+    // (richiesta dell'utente, docs/CHANGELOG.md §262). Chi li aveva già
     // iniziati prosegue.
     if (!stripeAccountId) {
       if (fiscalDataMissing(fiscalProfile).length > 0) throw new BadRequestException("Completa prima i dati fiscali.");

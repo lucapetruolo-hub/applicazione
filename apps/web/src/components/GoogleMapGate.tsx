@@ -23,7 +23,7 @@ export const GOOGLE_MAPS_MAP_ID = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? 
  * script di Google solo se c'è la chiave (`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`)
  * e solo dopo il consenso ai servizi Google del banner cookie — stesso
  * principio seguito allora per Google Sign-In. Senza consenso mostra
- * l'immagine fissa (`staticMap`, §264) o un riquadro con il pulsante per
+ * l'immagine fissa (`staticMap`, §265) o un riquadro con il pulsante per
  * attivare la mappa; senza chiave un messaggio
  * neutro (stesso pattern "non configurato" di Stripe/Cloudinary/Resend).
  */
@@ -43,7 +43,7 @@ function useGoogleAuthFailure(): boolean {
   return failed;
 }
 
-/** Cosa mostrare nell'immagine fissa della mappa (docs/CHANGELOG.md §264). */
+/** Cosa mostrare nell'immagine fissa della mappa (docs/CHANGELOG.md §265). */
 export type StaticMapSpec = { markers: [number, number][]; center?: [number, number]; zoom?: number; radiiKm?: number[] };
 
 export function GoogleMapGate({ children, staticMap }: { children: ReactNode; staticMap?: StaticMapSpec }) {
@@ -86,7 +86,7 @@ export function GoogleMapGate({ children, staticMap }: { children: ReactNode; st
 }
 
 /**
- * Senza consenso ai servizi Google (docs/CHANGELOG.md §264, richiesta
+ * Senza consenso ai servizi Google (docs/CHANGELOG.md §265, richiesta
  * dell'utente): un'immagine fissa della mappa con i segnaposto, preparata dal
  * nostro server, così si vede subito dove sono i professionisti senza caricare
  * nulla di Google nel browser. Toccandola si attiva la mappa interattiva

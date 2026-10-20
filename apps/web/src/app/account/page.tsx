@@ -570,7 +570,7 @@ export default function AccountPage() {
                 }}
                 onSelect={(selected) => {
                   // Suggerimenti di Google: compila anche gli altri campi (docs/CHANGELOG.md §141, §214),
-                  // città compresa: via e città si scrivono insieme (§263).
+                  // città compresa: via e città si scrivono insieme (§264).
                   const comune = selected.locality ? findComuneByName(selected.locality) : undefined;
                   if (comune || selected.locality) setAddressCity(comune?.name ?? selected.locality ?? "");
                   setStreet(selected.street ?? selected.address);

@@ -80,7 +80,7 @@ export function staticMapGoogleParams(input: StaticMapInput): URLSearchParams {
 
 /**
  * Immagine fissa della mappa preparata dal nostro server (docs/CHANGELOG.md
- * §264): si mostra a chi non ha ancora accettato i servizi Google, senza
+ * §265): si mostra a chi non ha ancora accettato i servizi Google, senza
  * caricare nulla di Google nel browser. Maps Static API con la chiave server
  * `GOOGLE_MAPS_API_KEY`.
  */

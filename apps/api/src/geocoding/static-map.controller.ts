@@ -3,7 +3,7 @@ import { Throttle } from "@nestjs/throttler";
 import type { Response } from "express";
 import { StaticMapService, parseStaticMapQuery } from "./static-map.service";
 
-/** Immagine fissa della mappa per chi non ha accettato i servizi Google (docs/CHANGELOG.md §264). */
+/** Immagine fissa della mappa per chi non ha accettato i servizi Google (docs/CHANGELOG.md §265). */
 @Controller("maps")
 export class StaticMapController {
   constructor(private readonly staticMapService: StaticMapService) {}

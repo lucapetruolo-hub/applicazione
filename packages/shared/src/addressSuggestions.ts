@@ -1,6 +1,6 @@
 /**
  * Suggerimenti di indirizzo chiesti a Google dal nostro server (docs/CHANGELOG.md
- * §263): il browser non carica niente di Google, quindi funzionano per tutti,
+ * §264): il browser non carica niente di Google, quindi funzionano per tutti,
  * senza consenso ai cookie.
  */
 export type AddressSuggestion = { id: string; main: string; secondary: string };

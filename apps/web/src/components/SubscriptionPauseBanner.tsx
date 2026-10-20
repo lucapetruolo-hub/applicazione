@@ -40,7 +40,7 @@ export function upgradeCostText(sub: MySubscription, to: SubscriptionTier): stri
 
 /**
  * `profileStepsElsewhere`: dati fiscali e verifica dell'identità li mostra già
- * "Completa il profilo" (Oggi, docs/CHANGELOG.md §259), qui restano solo
+ * "Completa il profilo" (Oggi, docs/CHANGELOG.md §260), qui restano solo
  * pausa e pagamento.
  */
 export function SubscriptionPauseBanner({ sub, showAction = true, profileStepsElsewhere = false }: { sub: MySubscription; showAction?: boolean; profileStepsElsewhere?: boolean }) {

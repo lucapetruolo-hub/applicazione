@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 /**
- * Consenso ai servizi Google di terze parti (dal docs/CHANGELOG.md §264
+ * Consenso ai servizi Google di terze parti (dal docs/CHANGELOG.md §265
  * solo la mappa interattiva Google Maps: l'accesso con Google e i
  * suggerimenti di indirizzo non caricano più nulla di Google sul sito):
  * unico punto che legge/scrive la scelta fatta nel banner cookie, condiviso

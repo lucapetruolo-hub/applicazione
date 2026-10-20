@@ -1582,7 +1582,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         headers: { Authorization: `Bearer ${token}` },
       }),
     /** Stato dei tre passi: dati fiscali, controllo Agenzia delle Entrate, documento e selfie (docs/CHANGELOG.md §253). */
-    /** Suggerimenti di indirizzo (Italia) chiesti a Google dal nostro server (docs/CHANGELOG.md §263). */
+    /** Suggerimenti di indirizzo (Italia) chiesti a Google dal nostro server (docs/CHANGELOG.md §264). */
     addressSuggestions: (params: { q: string; session: string; latitude?: number; longitude?: number }) => {
       const query = new URLSearchParams({ q: params.q, session: params.session });
       if (params.latitude !== undefined && params.longitude !== undefined) {
@@ -1593,7 +1593,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     },
     /**
      * Indirizzo dell'immagine fissa della mappa preparata dal nostro server
-     * (docs/CHANGELOG.md §264), per chi non ha accettato i servizi Google.
+     * (docs/CHANGELOG.md §265), per chi non ha accettato i servizi Google.
      */
     staticMapUrl: (spec: {
       width: number;

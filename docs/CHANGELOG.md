@@ -19301,7 +19301,7 @@ blocca nulla, come prima.
 
 **Verifica**: migrazioni applicate da zero su PostgreSQL 16 senza differenze con lo schema; `prisma validate`, typecheck, lint e test dell'API verdi. Le icone `lock` e `landmark` erano definite due volte dopo l'unione e sono state tenute una sola volta.
 
-## 259. Dati fiscali del tipo scelto alla registrazione; cosa manca, in Profilo pubblico e in Oggi
+## 260. Dati fiscali del tipo scelto alla registrazione; cosa manca, in Profilo pubblico e in Oggi
 
 **Richiesta esplicita dell'utente** (19/10/2026): "lascia solo i dati fiscali in base a quello che ha inserito in fase di registrazione"; "fagli comparire un badge che se non effettua le verifiche non sarà pubblico, altrimenti un qualcosa con le cose ancora da fare per completare il profilo"; nell'anteprima del profilo "un altro pallino con scritto che non può rispondere e un altro che dice non può ricevere pagamenti online"; "la stessa cosa può essere inserita anche in oggi oppure proponi qualcosa di più bello di design".
 
@@ -19316,9 +19316,9 @@ blocca nulla, come prima.
 
 **Verifica**: typecheck e lint del web verdi; schermate da telefono e computer in `/mnt/project-files/anteprime/verifica-identita/` (`oggi-completa-profilo-*`, `profilo-da-completare-*`, `dati-fiscali-tipo-registrazione-*`).
 
-## 260. Email "Completa il profilo" il giorno dopo l'iscrizione
+## 261. Email "Completa il profilo" il giorno dopo l'iscrizione
 
-**Richiesta esplicita dell'utente** (19/10/2026): "effettua la seconda miglioria, ma solo nel caso manchi ancora qualche punto" (la miglioria proposta in §259: un'email il giorno dopo l'iscrizione con le cose da fare).
+**Richiesta esplicita dell'utente** (19/10/2026): "effettua la seconda miglioria, ma solo nel caso manchi ancora qualche punto" (la miglioria proposta in §260: un'email il giorno dopo l'iscrizione con le cose da fare).
 
 **Decisione presa**: ogni giorno alle 11 (ora italiana) `IdentityVerificationService.remindProfileSetup` guarda i profili creati da 1 a 3 giorni prima, non dimostrativi né sospesi né in attesa di conferma, e manda una volta sola la notifica `PROFILE_SETUP_REMINDER` (sito + email, argomento "Account e sicurezza") solo se manca ancora almeno uno dei tre punti di "Completa il profilo": comparire nelle ricerche, rispondere ai preventivi, ricevere pagamenti online (quest'ultimo solo dove i pagamenti online sono attivi). L'email elenca solo i punti mancanti e porta a Oggi. I profili più vecchi di 3 giorni al momento del rilascio non la ricevono.
 
@@ -19326,25 +19326,25 @@ blocca nulla, come prima.
 
 **Verifica**: test di `profileSetupMissing`; typecheck, lint e test dell'API verdi (412).
 
-## 261. Un solo percorso per completare il profilo; dati fiscali ridotti al necessario
+## 262. Un solo percorso per completare il profilo; dati fiscali ridotti al necessario
 
-**Richiesta esplicita dell'utente** (19/10/2026), guardando le schermate di §259: "non sono chiari i passaggi, c'è confusione, la cosa deve essere più lineare e l'utente deve poter fare una cosa alla volta"; "lascia i dati fiscali da inserire solo quelli che ci servono realmente per i vari controlli e per la DAC7"; "i passaggi più chiari non riguardano solo l'inserimento dei dati fiscali, ma tutta la procedura [...] è inutile anche far attivare all'utente i pagamenti online se non ha ancora effettuato la verifica". Nello stesso giro, le migliorie 1 e 3 proposte dopo §260: secondo promemoria dopo una settimana e passi in attesa segnati in giallo.
+**Richiesta esplicita dell'utente** (19/10/2026), guardando le schermate di §260: "non sono chiari i passaggi, c'è confusione, la cosa deve essere più lineare e l'utente deve poter fare una cosa alla volta"; "lascia i dati fiscali da inserire solo quelli che ci servono realmente per i vari controlli e per la DAC7"; "i passaggi più chiari non riguardano solo l'inserimento dei dati fiscali, ma tutta la procedura [...] è inutile anche far attivare all'utente i pagamenti online se non ha ancora effettuato la verifica". Nello stesso giro, le migliorie 1 e 3 proposte dopo §261: secondo promemoria dopo una settimana e passi in attesa segnati in giallo.
 
 **Decisione presa**:
 - **Un percorso unico** in tre passi sempre nello stesso ordine (`apps/web/src/components/verification/SetupJourney.tsx`, `setupJourney()`): 1 Dati fiscali → 2 Verifica identità → 3 Pagamenti online (facoltativo). Ogni passo è *fatto*, *in verifica* (giallo, orologio), *da fare* (uno solo, con l'unico pulsante) o *dopo* (lucchetto). L'identità si sblocca quando i dati fiscali sono salvati (anche se ancora in verifica), i pagamenti solo a identità verificata; dove la verifica dell'identità non è attiva il passo 2 non c'è.
-- **Oggi**: "Completa il profilo" mostra il percorso completo (sostituisce la scheda di §259). **Profilo pubblico**: i pallini dicono solo cosa non si può ancora fare (senza link sparsi) e in fondo c'è un solo "Prossimo passo" con il suo pulsante; tolto il riquadro "Per completare il profilo". **Dati fiscali** e **Verifica identità**: in cima "Passo N di 3" con la barra del percorso al posto del riquadro "Verifica in 3 passi" (tolto `VerificationSteps`); a identità verificata la pagina propone i pagamenti online come ultimo passo facoltativo.
+- **Oggi**: "Completa il profilo" mostra il percorso completo (sostituisce la scheda di §260). **Profilo pubblico**: i pallini dicono solo cosa non si può ancora fare (senza link sparsi) e in fondo c'è un solo "Prossimo passo" con il suo pulsante; tolto il riquadro "Per completare il profilo". **Dati fiscali** e **Verifica identità**: in cima "Passo N di 3" con la barra del percorso al posto del riquadro "Verifica in 3 passi" (tolto `VerificationSteps`); a identità verificata la pagina propone i pagamenti online come ultimo passo facoltativo.
 - **Dati fiscali in due parti** (1 i tuoi dati, 2 l'indirizzo, con "Avanti"/"Indietro" e la spunta "Confermo che i dati sono corretti" prima di Salva). A dati completi la pagina mostra un riepilogo con "Modifica", il prossimo passo e, solo dopo la verifica dell'identità, i pagamenti online (prima un riquadro col lucchetto).
 - **Solo i campi che servono** (verifica di CF/P.IVA, verifica dell'identità, DAC7): *Privato* nome, cognome, codice fiscale, data di nascita, indirizzo; *Con Partita IVA* gli stessi più la partita IVA; *Azienda* ragione sociale, partita IVA, numero REA, legale rappresentante (nome, cognome, codice fiscale: è lui a fare la verifica dell'identità), sede legale. Tolti dal modulo: luogo e paese di nascita (il codice fiscale li contiene; il luogo resta solo per chi risiede all'estero senza codice fiscale italiano), nome dell'attività e REA per chi ha partita IVA, forma giuridica, codice LEI, ruolo del rappresentante, provincia, stato di rilascio e paesi in sigla ISO (in Italia il paese è sempre IT; "Risiedi fuori dall'Italia?" apre paese, codice fiscale estero e luogo di nascita). I valori già salvati nei campi tolti restano nel database.
 - **Pagamenti online bloccati anche sul server** prima di dati fiscali completi e identità verificata (`createStripeConnectOnboardingLink`); chi li aveva già iniziati prosegue.
-- **Email "Completa il profilo"** (§260): il giorno dopo l'iscrizione e di nuovo dopo una settimana (`setupReminderDue`, mai due a meno di 5 giorni); i pagamenti online compaiono nell'email solo quando il passo è sbloccato.
+- **Email "Completa il profilo"** (§261): il giorno dopo l'iscrizione e di nuovo dopo una settimana (`setupReminderDue`, mai due a meno di 5 giorni); i pagamenti online compaiono nell'email solo quando il passo è sbloccato.
 
 **Motivo**: prima le stesse cose comparivano in tre riquadri diversi con link a passi non ancora possibili; ora c'è sempre una sola cosa da fare e il modulo chiede solo quello che usiamo davvero.
 
 **Verifica**: typecheck e lint di web e API, 413 test dell'API verdi; schermate da telefono e computer in `/mnt/project-files/anteprime/percorso-profilo/`.
 
-## 262. Dati fiscali: calendario, indirizzo con suggerimenti, provincia in sigla
+## 263. Dati fiscali: calendario, indirizzo con suggerimenti, provincia in sigla
 
-**Richiesta esplicita dell'utente** (19/10/2026): "effettua le 3 migliorie, la provincia serve in 2 cifre e vedi se si riesce a ricavare tramite altri inserimenti in automatico" (migliorie proposte dopo §261).
+**Richiesta esplicita dell'utente** (19/10/2026): "effettua le 3 migliorie, la provincia serve in 2 cifre e vedi se si riesce a ricavare tramite altri inserimenti in automatico" (migliorie proposte dopo §262).
 
 **Decisione presa**: in Dati fiscali la data di nascita si sceglie dal calendario del telefono o del browser (campo `date` nativo, niente più "AAAA-MM-GG"). La via usa `AddressAutocompleteInput` come nel profilo (§141): scegliendo un suggerimento si compilano anche civico, CAP, comune e provincia. Torna il campo **Prov.** (sigla di 2 lettere, obbligatoria in Italia), che si compila da solo dal comune (elenco ISTAT `findComuneByName`) o dal suggerimento di Google e resta correggibile. La provincia entra anche nell'indirizzo della DAC7 (`buildAddressFree`, "00183 Roma (RM)"). Chi risiede all'estero ha i campi semplici senza provincia.
 
@@ -19352,21 +19352,21 @@ blocca nulla, come prima.
 
 **Verifica**: typecheck e lint di web e API, 413 test dell'API verdi; schermate `dati-fiscali-*` in `/mnt/project-files/anteprime/percorso-profilo/`.
 
-## 263. Suggerimenti degli indirizzi dal nostro server, senza consenso; via e città in un solo campo
+## 264. Suggerimenti degli indirizzi dal nostro server, senza consenso; via e città in un solo campo
 
 **Richiesta esplicita dell'utente** (19/10/2026): "nella parte a domicilio si può inserire tutto insieme via, città e tutto il resto, non serve inserire prima la città"; poi, sul consenso ai cookie Google: "procedi col campo unico visto che ora funziona sempre"; "vedi dove altro si può implementare questo inserimento dell'indirizzo".
 
 **Decisione presa**:
 - I suggerimenti li chiede a Google il nostro server: `GET /address/suggestions` e `GET /address/place/:id` (`apps/api/src/geocoding/address-suggestions.*`, Places API (New) con la chiave server `GOOGLE_MAPS_API_KEY`, token di sessione dal browser, limite per IP). `AddressAutocompleteInput` non carica più la libreria Google nel browser: niente cookie né consenso, suggerimenti per tutti. Se il server non risponde il campo resta testo libero (`useChosenAddress` non dipende più dalla chiave del browser). Informativa privacy aggiornata.
 - **Richiesta di preventivo a domicilio**: un solo campo "Indirizzo" (via e città insieme); la scelta compila città, civico, CAP e provincia, e il numero civico si chiede a parte solo se manca. Il campo "Città" resta per le richieste online e, se i suggerimenti non funzionano, compaiono i campi separati.
-- **Modifica richiesta** e **Account**: l'indirizzo non è più limitato alla città scelta prima; la scelta compila anche la città. **Dati fiscali** (§262) e **Profilo pubblico** usano già lo stesso campo, ora anche senza consenso.
+- **Modifica richiesta** e **Account**: l'indirizzo non è più limitato alla città scelta prima; la scelta compila anche la città. **Dati fiscali** (§263) e **Profilo pubblico** usano già lo stesso campo, ora anche senza consenso.
 - Supera in parte §214 (indirizzo "solo della città scelta"): resta l'obbligo di sceglierlo dall'elenco, e il controllo lato server via/comune.
 
 **Da fare sul pannello Google Cloud**: abilitare "Places API (New)" sulla chiave server usata su Render.
 
 **Verifica**: test del nuovo servizio; typecheck e lint di web e API, test dell'API verdi; schermate `richiesta-indirizzo-*` in `/mnt/project-files/anteprime/percorso-profilo/`.
 
-## 264. Accesso con Google e mappa senza dover accettare i cookie
+## 265. Accesso con Google e mappa senza dover accettare i cookie
 
 **Richiesta esplicita dell'utente** (19-20/10/2026): "si può risolvere in questo modo anche la visualizzazione della mappa di google e la registrazione tramite google e tutto quello che riguarda google, che si procede comunque anche se non si accetta subito i cookie?", poi "effettua tutte le modifiche e migliorie proposte".
 

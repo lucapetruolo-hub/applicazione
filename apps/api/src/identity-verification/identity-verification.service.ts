@@ -48,13 +48,13 @@ export type ProfileSetupItem = "SEARCH" | "QUOTES" | "ONLINE_PAYMENTS";
 
 /**
  * Cosa manca ancora, nello stesso ordine di "Completa il profilo" in Oggi
- * (docs/CHANGELOG.md §260). I pagamenti online contano solo dove sono attivi.
+ * (docs/CHANGELOG.md §261). I pagamenti online contano solo dove sono attivi.
  */
 export function profileSetupMissing(status: Pick<MyVerificationStatus, "publicVisible" | "canSendQuotes">, stripeVerified: boolean, paymentsOn: boolean): ProfileSetupItem[] {
   const missing: ProfileSetupItem[] = [];
   if (!status.publicVisible) missing.push("SEARCH");
   if (!status.canSendQuotes) missing.push("QUOTES");
-  // I pagamenti online si sbloccano solo dopo la verifica dell'identità (§261).
+  // I pagamenti online si sbloccano solo dopo la verifica dell'identità (§262).
   if (paymentsOn && status.canSendQuotes && !stripeVerified) missing.push("ONLINE_PAYMENTS");
   return missing;
 }
@@ -338,7 +338,7 @@ export class IdentityVerificationService {
 
   /**
    * Email "Completa il profilo" il giorno dopo l'iscrizione (decisione
-   * dell'utente, docs/CHANGELOG.md §260-§261) e di nuovo dopo una settimana,
+   * dell'utente, docs/CHANGELOG.md §261-§262) e di nuovo dopo una settimana,
    * solo se manca ancora qualcosa.
    */
   @Cron("0 11 * * *", { timeZone: "Europe/Rome" })

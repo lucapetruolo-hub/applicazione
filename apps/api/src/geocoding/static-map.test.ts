@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { BadRequestException } from "@nestjs/common";
 import { StaticMapService, parseStaticMapQuery, staticMapGoogleParams } from "./static-map.service";
 
-describe("immagine fissa della mappa (§264)", () => {
+describe("immagine fissa della mappa (§265)", () => {
   it("inquadra il luogo cercato insieme ai segnaposto", () => {
     const params = staticMapGoogleParams(parseStaticMapQuery({ size: "600x400", m: "41.9,12.5;41.95,12.45", c: "41.9028,12.4964" }));
     expect(params.get("size")).toBe("600x400");

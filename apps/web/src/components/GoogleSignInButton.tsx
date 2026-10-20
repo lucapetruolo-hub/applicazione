@@ -40,7 +40,7 @@ function GoogleIcon() {
 /**
  * Pulsante "Continua con Google" (pillola, larghezza piena, icona ufficiale).
  *
- * Dal docs/CHANGELOG.md §264 (richiesta dell'utente: Google senza dover
+ * Dal docs/CHANGELOG.md §265 (richiesta dell'utente: Google senza dover
  * accettare i cookie) non carica più nessuno script di Google sul sito: apre
  * la pagina di accesso di Google in una finestra (OpenID Connect, risposta
  * `id_token` con `nonce`) che torna su `/accesso-google`; da lì il token

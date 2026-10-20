@@ -212,7 +212,7 @@ describe("promemoria a chi non ha fatto la verifica (§256)", () => {
   });
 });
 
-describe("email \"Completa il profilo\" (§260)", () => {
+describe("email \"Completa il profilo\" (§261)", () => {
   it("elenca solo quello che manca, i pagamenti online solo dove sono attivi", () => {
     expect(profileSetupMissing({ publicVisible: false, canSendQuotes: false }, false, true)).toEqual(["SEARCH", "QUOTES"]);
     expect(profileSetupMissing({ publicVisible: true, canSendQuotes: true }, false, true)).toEqual(["ONLINE_PAYMENTS"]);
@@ -220,7 +220,7 @@ describe("email \"Completa il profilo\" (§260)", () => {
     expect(profileSetupMissing({ publicVisible: true, canSendQuotes: true }, true, true)).toEqual([]);
   });
 
-  it("il giorno dopo l'iscrizione e dopo una settimana, mai di più (§261)", () => {
+  it("il giorno dopo l'iscrizione e dopo una settimana, mai di più (§262)", () => {
     const day = 24 * 60 * 60_000;
     const now = new Date("2026-10-20T09:00:00Z");
     const ago = (days: number) => new Date(now.getTime() - days * day);

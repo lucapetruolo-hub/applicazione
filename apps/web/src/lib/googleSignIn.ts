@@ -1,6 +1,6 @@
 /**
  * Accesso con Google senza script di Google sul sito (docs/CHANGELOG.md
- * §264): la pagina di accesso di Google si apre in una finestra e torna su
+ * §265): la pagina di accesso di Google si apre in una finestra e torna su
  * `/accesso-google`, che consegna il token al pulsante (`GoogleSignInButton`).
  */
 

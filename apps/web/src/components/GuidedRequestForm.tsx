@@ -364,7 +364,7 @@ export function GuidedRequestForm({
   const [postalCode, setPostalCode] = useState(searchParams.get("cap") ?? "");
   const [province, setProvince] = useState(searchParams.get("provincia") ?? "");
   // A domicilio un solo campo "Indirizzo" con via e città insieme (richiesta
-  // dell'utente, docs/CHANGELOG.md §263): la scelta compila città, civico, CAP
+  // dell'utente, docs/CHANGELOG.md §264): la scelta compila città, civico, CAP
   // e provincia. Il testo mostrato nel campo è l'indirizzo intero.
   const [addressText, setAddressText] = useState(() => {
     const line = [searchParams.get("via"), searchParams.get("civico")].filter(Boolean).join(" ");
@@ -1149,7 +1149,7 @@ export function GuidedRequestForm({
             ) : (
               <YStack gap="$1">
                 {/* Via e città insieme: la scelta dall'elenco compila città,
-                    civico, CAP e provincia (docs/CHANGELOG.md §141, §214, §263). */}
+                    civico, CAP e provincia (docs/CHANGELOG.md §141, §214, §264). */}
                 <AddressAutocompleteInput
                   value={addressText}
                   onChange={(next) => {

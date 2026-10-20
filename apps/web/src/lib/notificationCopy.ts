@@ -60,7 +60,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   // Verifica in attesa ripresa e promemoria (§256).
   IDENTITY_VERIFICATION_READY: { icon: "🪪", message: "La verifica dell'identità è di nuovo disponibile: riprendi da dove eri." },
   IDENTITY_VERIFICATION_REMINDER: { icon: "🪪", message: "Ti manca la verifica dell'identità per inviare preventivi: bastano 2 minuti." },
-  // "Completa il profilo" il giorno dopo l'iscrizione (§260).
+  // "Completa il profilo" il giorno dopo l'iscrizione (§261).
   PROFILE_SETUP_REMINDER: { icon: "📋", message: "Ti manca poco per completare il profilo: in Oggi trovi il prossimo passo." },
   TAX_ID_INVALID: { icon: "⚠️", message: "Non riusciamo a verificare il codice fiscale o la partita IVA: controllali nei dati fiscali." },
   // Segnalazioni di un problema sul lavoro (docs/CHANGELOG.md §164).
