@@ -1347,6 +1347,78 @@ a.admin-kpi:hover {
   transform: translateY(-2px);
   border-color: #189a63;
 }
+/* Le schede di scelta sono link veri (docs/CHANGELOG.md §272): fuoco da
+   tastiera visibile e risposta al tocco. */
+.auth-role-card-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 16px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.auth-role-card-link:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.auth-role-card-link:active .auth-role-card {
+  transform: scale(0.98);
+  border-color: #189a63;
+}
+
+/* Intestazione dei passi della registrazione (docs/CHANGELOG.md §272):
+   "Indietro" in alto a sinistra, numero del passo a destra, barra sotto. */
+.auth-step-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  margin: -12px -8px 0;
+}
+.auth-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 44px;
+  padding: 0 10px 0 4px;
+  border: none;
+  border-radius: 12px;
+  background: none;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: #2b2420;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.auth-back:hover {
+  background: #fdefe1;
+}
+.auth-back:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 1px;
+}
+.auth-step-count {
+  margin-left: auto;
+  padding-right: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0e7a4c;
+}
+.auth-step-bar {
+  display: flex;
+  gap: 6px;
+}
+.auth-step-bar span {
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: #f0dcc0;
+}
+.auth-step-bar span.is-done {
+  background: #189a63;
+}
 
 /* Tendina "Il mio account" nell'header, a gruppi (docs/CHANGELOG.md §148). */
 .acct-menu {
@@ -1704,7 +1776,7 @@ a.admin-kpi:hover {
   gap: 8px;
 }
 .auth-field-label {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   color: #6e6459;
 }
@@ -1712,7 +1784,8 @@ a.admin-kpi:hover {
   display: flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid #f0dcc0;
+  /* brand.bordoCampo: 3,2:1 su bianco (docs/CHANGELOG.md §272). */
+  border: 1px solid #9c8e7f;
   border-radius: 20px;
   background: #ffffff;
   padding: 0 12px;
@@ -2814,7 +2887,7 @@ a.admin-kpi:hover {
 }
 .email-code-box {
   height: 56px;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #9c8e7f;
   border-radius: 14px;
   background: #ffffff;
   display: flex;

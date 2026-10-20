@@ -329,15 +329,26 @@ export function EmailCodeForm({
       <YStack gap="$2" alignItems="center">
         {/* La durata accanto al conto alla rovescia: senza, il minuto di
             attesa per un nuovo invio sembrava la scadenza del codice (§250). */}
+        {/* Durata e nuovo invio in una riga sola (docs/CHANGELOG.md §272). */}
         {!expired && state !== "done" ? (
           <Text fontSize="$3" color={brand.grafite70} textAlign="center">
-            Il codice vale ancora {validMinutes === 1 ? "1 minuto" : `${validMinutes} minuti`}.
+            Vale ancora {validMinutes === 1 ? "1 minuto" : `${validMinutes} minuti`}
+            {resendIn > 0 ? (
+              <>
+                {" · "}
+                <Text fontSize="$3" color={brand.grafite70} style={{ whiteSpace: "nowrap" }}>
+                  nuovo codice tra {minutes}:{seconds}
+                </Text>
+              </>
+            ) : null}
           </Text>
         ) : null}
         {resendIn > 0 ? (
-          <Text fontSize="$3" color={brand.grafite70} textAlign="center">
-            Non arriva? Puoi chiederne un altro tra {minutes}:{seconds}
-          </Text>
+          expired ? (
+            <Text fontSize="$3" color={brand.grafite70} textAlign="center">
+              Puoi chiederne un altro tra {minutes}:{seconds}
+            </Text>
+          ) : null
         ) : (
           <Button variant={expired ? "primary" : "ghost"} onPress={() => void resend()} disabled={resendState === "sending"} opacity={resendState === "sending" ? 0.6 : 1}>
             {resendState === "sending" ? "Invio..." : "Mandami un nuovo codice"}

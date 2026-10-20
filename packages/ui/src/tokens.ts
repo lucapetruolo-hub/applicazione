@@ -16,6 +16,10 @@ export const brand = {
   // leggerissima per i pochi punti che ne hanno ancora bisogno (es. campi
   // di input).
   filetto: "#F0DCC0",
+  // Bordo dei campi e delle caselle di spunta nelle pagine di accesso e
+  // registrazione (docs/CHANGELOG.md §272): 3,2:1 su bianco, il minimo
+  // perché si veda dove scrivere (il filetto è 1,3:1).
+  bordoCampo: "#9C8E7F",
   cianografia: "#189A63",
   // Verde dei testi verdi piccoli e dei link (5,4:1 su bianco, WCAG AA).
   // Sfondi, hero e pulsanti restano su cianografia (docs/CHANGELOG.md §172,
