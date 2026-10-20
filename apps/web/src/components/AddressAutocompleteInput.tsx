@@ -1,16 +1,21 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
-import { APIProvider, useMapsLibrary } from "@vis.gl/react-google-maps";
-import { GOOGLE_API_PROVIDER_PROPS, HAS_GOOGLE_MAPS_KEY } from "@/components/GoogleMapGate";
-import { grantCookieConsent, useCookieConsent } from "@/lib/cookieConsent";
+import type { AddressSuggestion } from "@professionisti/shared";
+import { apiClient } from "@/lib/apiClient";
+
+type Suggestion = AddressSuggestion;
+
+function newSessionToken(): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `s-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 export type SelectedAddress = {
   /** Indirizzo formattato da Google, senza ", Italia" finale. */
   address: string;
   latitude: number;
   longitude: number;
-  /** Comune (componente "locality" di Google), se presente. */
+  /** Comune ("administrative_area_level_3", altrimenti "locality" di Google), se presente. */
   locality: string | null;
   /** Pezzi dell'indirizzo per i moduli con campi separati (richiesta di preventivo, account). */
   street: string | null;
@@ -35,7 +40,7 @@ type Props = {
    * suggerimenti di quel comune e una scelta di un altro comune viene rifiutata.
    */
   restrictToCity?: { name: string; latitude: number; longitude: number } | null;
-  /** Senza consenso ai servizi Google mostra il pulsante per attivare i suggerimenti (dove la scelta dall'elenco è obbligatoria). */
+  /** Non serve più (§264: suggerimenti senza consenso ai cookie), resta per compatibilità. */
   askConsent?: boolean;
   /** Google non risponde: chi rende obbligatoria la scelta deve accettare il testo libero. */
   onServiceUnavailable?: () => void;
@@ -53,54 +58,15 @@ function normalizePlaceName(name: string): string {
 }
 
 /**
- * Campo indirizzo con i suggerimenti di Google Places (API "New"), richiesta
- * esplicita dell'utente (docs/CHANGELOG.md §141): mentre si scrive propone
- * indirizzi reali in Italia, e scegliendone uno arrivano anche le coordinate
- * esatte, senza più geocodificare lato server. Stesso consenso della mappa
- * (servizi Google, `useCookieConsent`): senza consenso o senza chiave resta
- * un normale campo di testo, come prima.
+ * Campo indirizzo con i suggerimenti di Google Places (richiesta esplicita
+ * dell'utente, docs/CHANGELOG.md §141): mentre si scrive propone indirizzi
+ * reali in Italia, e scegliendone uno arrivano anche le coordinate esatte e i
+ * pezzi dell'indirizzo. I suggerimenti li chiede a Google il nostro server
+ * (§264): nel browser non si carica niente di Google, quindi funzionano per
+ * tutti senza consenso ai cookie. Se il servizio non risponde resta un
+ * normale campo di testo.
  */
-export function AddressAutocompleteInput(props: Props) {
-  const consent = useCookieConsent();
-  if (!HAS_GOOGLE_MAPS_KEY || !consent) {
-    const plain = (
-      <input
-        aria-label={props.placeholder}
-        value={props.value}
-        onChange={(e) => props.onChange(e.target.value)}
-        placeholder={props.placeholder}
-        style={props.style}
-        disabled={props.disabled}
-      />
-    );
-    if (!HAS_GOOGLE_MAPS_KEY || !props.askConsent) return plain;
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {plain}
-        <span style={{ fontSize: 13, color: "#6e6459" }}>
-          L&apos;indirizzo si sceglie dai suggerimenti di Google: serve il tuo consenso ai servizi Google.{" "}
-          <button
-            type="button"
-            onClick={grantCookieConsent}
-            style={{ background: "none", border: "none", padding: 0, color: "inherit", textDecoration: "underline", cursor: "pointer", font: "inherit", fontWeight: 700 }}
-          >
-            Attiva i suggerimenti
-          </button>
-        </span>
-      </div>
-    );
-  }
-  return (
-    <APIProvider {...GOOGLE_API_PROVIDER_PROPS}>
-      <PlacesAddressInput {...props} />
-    </APIProvider>
-  );
-}
-
-type Suggestion = { id: string; main: string; secondary: string; prediction: google.maps.places.PlacePrediction };
-
-function PlacesAddressInput({ value, onChange, onSelect, placeholder, style, biasTowards, restrictToCity, onServiceUnavailable, disabled }: Props) {
-  const places = useMapsLibrary("places");
+export function AddressAutocompleteInput({ value, onChange, onSelect, placeholder, style, biasTowards, restrictToCity, onServiceUnavailable, disabled }: Props) {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [wrongCity, setWrongCity] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -110,7 +76,7 @@ function PlacesAddressInput({ value, onChange, onSelect, placeholder, style, bia
   const typedRef = useRef(false);
   // Un "token di sessione" per ogni ricerca: Google conta una sola sessione
   // (tutte le lettere digitate + la scelta finale) invece di ogni richiesta.
-  const sessionRef = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
+  const sessionRef = useRef<string | null>(null);
   const listboxId = useId();
 
   // Solo le coordinate, non l'oggetto: un oggetto nuovo a ogni render del
@@ -122,7 +88,7 @@ function PlacesAddressInput({ value, onChange, onSelect, placeholder, style, bia
   onServiceUnavailableRef.current = onServiceUnavailable;
 
   useEffect(() => {
-    if (!places || !typedRef.current) return;
+    if (!typedRef.current) return;
     const input = value.trim();
     if (input.length < 3) {
       setSuggestions([]);
@@ -131,35 +97,17 @@ function PlacesAddressInput({ value, onChange, onSelect, placeholder, style, bia
     let cancelled = false;
     const timer = setTimeout(async () => {
       try {
-        sessionRef.current ??= new places.AutocompleteSessionToken();
-        const { suggestions: result } = await places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
+        sessionRef.current ??= newSessionToken();
+        const result = await apiClient.addressSuggestions({
           // Con un comune scelto la ricerca lo aggiunge al testo: "via roma 5" → "via roma 5, Bari".
-          input: cityName ? `${input}, ${cityName}` : input,
-          sessionToken: sessionRef.current,
-          includedRegionCodes: ["it"],
-          // Solo vie e numeri civici, niente negozi o luoghi di interesse.
-          includedPrimaryTypes: ["street_address", "route", "premise", "subpremise"],
-          language: "it",
-          ...(biasLatitude !== undefined && biasLongitude !== undefined
-            ? { locationBias: { center: { lat: biasLatitude, lng: biasLongitude }, radius: cityName ? 15_000 : 30_000 } }
-            : {}),
+          q: cityName ? `${input}, ${cityName}` : input,
+          session: sessionRef.current,
+          latitude: biasLatitude,
+          longitude: biasLongitude,
         });
         if (cancelled) return;
         const wantedCity = cityName ? normalizePlaceName(cityName) : null;
-        setSuggestions(
-          result.flatMap((s) =>
-            s.placePrediction
-              ? [
-                  {
-                    id: s.placePrediction.placeId,
-                    main: s.placePrediction.mainText?.toString() ?? s.placePrediction.text.toString(),
-                    secondary: s.placePrediction.secondaryText?.toString() ?? "",
-                    prediction: s.placePrediction,
-                  },
-                ]
-              : [],
-          ).filter((s) => !wantedCity || normalizePlaceName(s.secondary).includes(wantedCity)),
-        );
+        setSuggestions(result.filter((s) => !wantedCity || normalizePlaceName(s.secondary).includes(wantedCity)));
         setHighlighted(-1);
         setOpen(true);
       } catch {
@@ -169,46 +117,39 @@ function PlacesAddressInput({ value, onChange, onSelect, placeholder, style, bia
           onServiceUnavailableRef.current?.();
         }
       }
-    }, 250);
+    }, 300);
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [places, value, biasLatitude, biasLongitude, cityName]);
+  }, [value, biasLatitude, biasLongitude, cityName]);
 
   async function choose(suggestion: Suggestion) {
     setOpen(false);
     setSuggestions([]);
     typedRef.current = false;
+    const session = sessionRef.current ?? newSessionToken();
+    sessionRef.current = null;
     try {
-      const place = suggestion.prediction.toPlace();
-      await place.fetchFields({ fields: ["formattedAddress", "location", "addressComponents"] });
-      sessionRef.current = null;
-      const location = place.location;
-      const address = (place.formattedAddress ?? `${suggestion.main}, ${suggestion.secondary}`).replace(/, Italia$/, "");
+      const place = await apiClient.addressPlace(suggestion.id, session);
+      const address = place.address || `${suggestion.main}, ${suggestion.secondary}`;
       onChange(address);
-      if (location) {
-        const component = (type: string) => place.addressComponents?.find((c) => c.types.includes(type));
-        // Il comune è "administrative_area_level_3"; "locality" può essere una frazione.
-        const comune = component("administrative_area_level_3")?.longText ?? component("locality")?.longText ?? null;
-        if (cityName && (!comune || normalizePlaceName(comune) !== normalizePlaceName(cityName))) {
-          setWrongCity(comune);
-          return;
-        }
-        setWrongCity(null);
-        onSelect({
-          address,
-          latitude: location.lat(),
-          longitude: location.lng(),
-          locality: component("locality")?.longText ?? null,
-          street: component("route")?.longText ?? null,
-          houseNumber: component("street_number")?.longText ?? null,
-          postalCode: component("postal_code")?.longText ?? null,
-          province: component("administrative_area_level_2")?.shortText ?? null,
-        });
+      if (cityName && (!place.comune || normalizePlaceName(place.comune) !== normalizePlaceName(cityName))) {
+        setWrongCity(place.comune);
+        return;
       }
+      setWrongCity(null);
+      onSelect({
+        address,
+        latitude: place.latitude,
+        longitude: place.longitude,
+        locality: place.comune ?? place.locality,
+        street: place.street,
+        houseNumber: place.houseNumber,
+        postalCode: place.postalCode,
+        province: place.province,
+      });
     } catch {
-      sessionRef.current = null;
       onChange(`${suggestion.main}, ${suggestion.secondary}`);
       onServiceUnavailable?.();
     }

@@ -2,20 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button, Text, XStack, brand } from "@professionisti/ui";
-import { COOKIE_CONSENT_ACCEPTED_EVENT, grantCookieConsent, hasCookieConsent } from "@/lib/cookieConsent";
-
-declare global {
-  interface Window {
-    google?: {
-      accounts: {
-        id: {
-          initialize: (config: { client_id: string; callback: (response: { credential: string }) => void }) => void;
-          renderButton: (parent: HTMLElement, options: Record<string, unknown>) => void;
-        };
-      };
-    };
-  }
-}
+import {
+  GOOGLE_SIGNIN_CHANNEL,
+  GOOGLE_SIGNIN_PENDING_KEY,
+  GOOGLE_SIGNIN_RESULT_KEY,
+  googleSignInUrl,
+  idTokenNonce,
+  type GoogleSignInMessage,
+  type GoogleSignInPending,
+} from "@/lib/googleSignIn";
 
 // Icona ufficiale "G" multicolore di Google (la stessa dei pulsanti "Sign in
 // with Google" del brand kit ufficiale).
@@ -43,175 +38,138 @@ function GoogleIcon() {
 }
 
 /**
- * Pulsante "Continua con Google" con stile custom (pillola, larghezza piena,
- * icona ufficiale) per uniformarsi al resto del form invece di usare la
- * grafica fissa del widget Google. Il widget ufficiale viene comunque
- * renderizzato — fuori schermo — ed è quello che riceve il click reale: solo
- * così il flusso OAuth resta quello genuino di Google (nessun popup finto,
- * niente credenziali gestite da noi).
+ * Pulsante "Continua con Google" (pillola, larghezza piena, icona ufficiale).
  *
- * Richiesta esplicita dell'utente ("Verbale di Conformità" — subordinare lo
- * script Google al consenso cookie): lo script `gsi/client` di Google, unico
- * script di terze parti del sito, non viene più caricato incondizionatamente
- * al mount di questa pagina — solo dopo che il banner cookie (`CookieBanner`)
- * è stato accettato. Se il consenso non c'è ancora, resta in attesa
- * dell'evento `COOKIE_CONSENT_ACCEPTED_EVENT` emesso da quel banner, invece
- * di ripetere qui la stessa logica di lettura del banner.
- *
- * Senza consenso il pulsante non restava muto (docs/CHANGELOG.md §214, bug
- * segnalato dall'utente nella richiesta di preventivo da non loggato, dove
- * il banner cookie resta sotto la finestra di accesso): toccandolo compare
- * la richiesta di consenso ai servizi Google, con "Accetta e continua";
- * dopo il consenso compare direttamente il pulsante originale di Google,
- * così basta un tocco (Google apre la sua finestra solo da un tocco diretto
- * sul suo pulsante).
+ * Dal docs/CHANGELOG.md §265 (richiesta dell'utente: Google senza dover
+ * accettare i cookie) non carica più nessuno script di Google sul sito: apre
+ * la pagina di accesso di Google in una finestra (OpenID Connect, risposta
+ * `id_token` con `nonce`) che torna su `/accesso-google`; da lì il token
+ * arriva a questa pagina e segue lo stesso percorso di prima
+ * (`POST /auth/google/verify`, firma e destinatario controllati dal server).
+ * Così il consenso del banner cookie non serve più. Se il browser blocca la
+ * finestra, la stessa pagina di Google si apre al posto di quella corrente e
+ * al ritorno il token viene consegnato qui (`GOOGLE_SIGNIN_RESULT_KEY`).
  */
 export function GoogleSignInButton({ onCredential, disabled }: { onCredential: (idToken: string) => void; disabled?: boolean }) {
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-  const hiddenContainerRef = useRef<HTMLDivElement>(null);
-  // Funzione sempre aggiornata senza rifare il pulsante Google a ogni render
-  // del genitore (prima veniva reinizializzato a ogni lettera digitata).
+  // Funzione sempre aggiornata senza rifare gli ascoltatori a ogni render del genitore.
   const onCredentialRef = useRef(onCredential);
   onCredentialRef.current = onCredential;
-  const [ready, setReady] = useState(false);
-  const [notice, setNotice] = useState<"consent" | "loading" | null>(null);
-  // Consenso dato da qui: al posto del nostro pulsante si mostra quello originale di Google.
-  const [showOfficial, setShowOfficial] = useState(false);
+  const pendingRef = useRef<GoogleSignInPending | null>(null);
+  const [notice, setNotice] = useState<"waiting" | "error" | null>(null);
 
   useEffect(() => {
-    if (!clientId) return;
-
-    function renderButton() {
-      if (!window.google || !hiddenContainerRef.current) return;
-      window.google.accounts.id.initialize({
-        client_id: clientId!,
-        callback: (response) => onCredentialRef.current(response.credential),
-      });
-      window.google.accounts.id.renderButton(hiddenContainerRef.current, {
-        theme: "outline",
-        size: "large",
-        width: Math.min(400, Math.max(200, hiddenContainerRef.current.offsetWidth || 320)),
-        text: "continue_with",
-        locale: "it",
-        shape: "pill",
-      });
-      setReady(true);
-      // Consenso appena dato o script appena caricato: il primo tocco non ha
-      // potuto aprire Google, si mostra il pulsante originale da toccare.
-      setNotice((current) => {
-        if (current) setShowOfficial(true);
-        return null;
-      });
-    }
-
-    function loadScript() {
-      const scriptId = "google-identity-services";
-      const existing = document.getElementById(scriptId);
-      if (existing) {
-        if (window.google) renderButton();
-        else existing.addEventListener("load", renderButton);
+    function deliver(message: GoogleSignInMessage) {
+      const pending = pendingRef.current;
+      if (!pending || message.state !== pending.state) return;
+      pendingRef.current = null;
+      if (!message.idToken) {
+        setNotice(message.error === "access_denied" ? null : "error");
         return;
       }
-      const script = document.createElement("script");
-      script.id = scriptId;
-      script.src = "https://accounts.google.com/gsi/client";
-      script.async = true;
-      script.defer = true;
-      script.onload = renderButton;
-      document.body.appendChild(script);
+      if (idTokenNonce(message.idToken) !== pending.nonce) {
+        setNotice("error");
+        return;
+      }
+      setNotice(null);
+      onCredentialRef.current(message.idToken);
     }
 
-    if (hasCookieConsent()) {
-      loadScript();
-      return;
+    // Ritorno dalla pagina di Google aperta al posto di questa (finestra bloccata).
+    try {
+      const raw = sessionStorage.getItem(GOOGLE_SIGNIN_RESULT_KEY);
+      if (raw) {
+        const result = JSON.parse(raw) as GoogleSignInMessage & { pending: GoogleSignInPending };
+        if (result.pending.returnTo === window.location.pathname + window.location.search) {
+          sessionStorage.removeItem(GOOGLE_SIGNIN_RESULT_KEY);
+          pendingRef.current = result.pending;
+          deliver(result);
+        }
+      }
+    } catch {
+      // sessionStorage non disponibile: niente da consegnare.
     }
-    function onConsentAccepted() {
-      loadScript();
+
+    function onMessage(event: MessageEvent) {
+      if (event.origin !== window.location.origin) return;
+      const data = event.data as GoogleSignInMessage | undefined;
+      if (data?.type === "google-signin") deliver(data);
     }
-    window.addEventListener(COOKIE_CONSENT_ACCEPTED_EVENT, onConsentAccepted);
-    return () => window.removeEventListener(COOKIE_CONSENT_ACCEPTED_EVENT, onConsentAccepted);
-  }, [clientId]);
+    window.addEventListener("message", onMessage);
+    let channel: BroadcastChannel | null = null;
+    if (typeof BroadcastChannel !== "undefined") {
+      channel = new BroadcastChannel(GOOGLE_SIGNIN_CHANNEL);
+      channel.onmessage = (event: MessageEvent<GoogleSignInMessage>) => {
+        if (event.data?.type === "google-signin") deliver(event.data);
+      };
+    }
+    return () => {
+      window.removeEventListener("message", onMessage);
+      channel?.close();
+    };
+  }, []);
 
   if (!clientId) {
     return null;
   }
 
   function handlePress() {
-    if (disabled) return;
-    if (!hasCookieConsent()) {
-      setNotice("consent");
+    if (disabled || !clientId) return;
+    const random = () => crypto.randomUUID().replace(/-/g, "");
+    const pending: GoogleSignInPending = {
+      state: random(),
+      nonce: random(),
+      returnTo: window.location.pathname + window.location.search,
+    };
+    pendingRef.current = pending;
+    const url = (mode: "popup" | "page") => googleSignInUrl({ clientId, origin: window.location.origin, pending, mode });
+    const width = 480;
+    const height = 640;
+    const left = Math.max(0, window.screenX + (window.outerWidth - width) / 2);
+    const top = Math.max(0, window.screenY + (window.outerHeight - height) / 2);
+    const popup = window.open(url("popup"), "google-signin", `popup,width=${width},height=${height},left=${left},top=${top}`);
+    if (popup) {
+      setNotice("waiting");
       return;
     }
-    const realButton = hiddenContainerRef.current?.querySelector<HTMLElement>('div[role="button"]');
-    if (!ready || !realButton) {
-      setNotice("loading");
-      return;
+    // Finestra bloccata: si va da Google con questa pagina e si torna qui.
+    try {
+      sessionStorage.setItem(GOOGLE_SIGNIN_PENDING_KEY, JSON.stringify(pending));
+    } catch {
+      // senza sessionStorage al ritorno si rientra nella pagina ma senza accesso
     }
-    setNotice(null);
-    realButton.click();
+    window.location.assign(url("page"));
   }
 
   return (
     <>
-      {/* Widget ufficiale Google: fuori dallo schermo riceve il click inoltrato
-          dal nostro pulsante; dopo il consenso dato da qui è visibile. */}
-      <div
-        ref={hiddenContainerRef}
-        style={
-          showOfficial
-            ? {
-                display: "flex",
-                justifyContent: "center",
-                width: "100%",
-                minHeight: 44,
-              }
-            : { position: "fixed", top: -2000, left: -2000, width: 320 }
-        }
-      />
-
-      {showOfficial ? null : (
-        <Button
-          onPress={handlePress}
-          disabled={disabled}
-          opacity={disabled ? 0.5 : 1}
-          cursor={disabled ? "not-allowed" : "pointer"}
-          backgroundColor={brand.gesso}
-          hoverStyle={disabled ? {} : { backgroundColor: brand.filetto }}
-          pressStyle={disabled ? {} : { backgroundColor: brand.filetto }}
-          color={brand.grafite}
-          size="$5"
-          borderRadius={999}
-          width="100%"
-        >
-          <XStack alignItems="center" justifyContent="center" gap="$3">
-            <GoogleIcon />
-            <Text fontSize="$4" fontWeight="600" color={brand.grafite}>
-              Continua con Google
-            </Text>
-          </XStack>
-        </Button>
-      )}
-      {notice === "consent" ? (
-        <Text fontSize="$2" color={brand.grafite70} textAlign="center" role="alert">
-          Per accedere con Google serve il tuo consenso ai servizi Google (lo stesso del banner dei cookie).{" "}
-          <Text
-            accessibilityRole="button"
-            fontSize="$2"
-            fontWeight="700"
-            color={brand.grafite}
-            textDecorationLine="underline"
-            cursor="pointer"
-            onPress={() => {
-              setNotice("loading");
-              grantCookieConsent();
-            }}
-          >
-            Accetta e continua
+      <Button
+        onPress={handlePress}
+        disabled={disabled}
+        opacity={disabled ? 0.5 : 1}
+        cursor={disabled ? "not-allowed" : "pointer"}
+        backgroundColor={brand.gesso}
+        hoverStyle={disabled ? {} : { backgroundColor: brand.filetto }}
+        pressStyle={disabled ? {} : { backgroundColor: brand.filetto }}
+        color={brand.grafite}
+        size="$5"
+        borderRadius={999}
+        width="100%"
+      >
+        <XStack alignItems="center" justifyContent="center" gap="$3">
+          <GoogleIcon />
+          <Text fontSize="$4" fontWeight="600" color={brand.grafite}>
+            Continua con Google
           </Text>
-        </Text>
-      ) : notice === "loading" ? (
+        </XStack>
+      </Button>
+      {notice === "waiting" ? (
         <Text fontSize="$2" color={brand.grafite70} textAlign="center" role="status">
-          Sto collegando Google, un attimo...
+          Continua nella finestra di Google.
+        </Text>
+      ) : notice === "error" ? (
+        <Text fontSize="$2" color={brand.urgenza} textAlign="center" role="alert">
+          Accesso con Google non riuscito. Riprova.
         </Text>
       ) : null}
     </>

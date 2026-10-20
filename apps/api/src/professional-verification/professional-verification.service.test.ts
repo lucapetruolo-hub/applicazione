@@ -34,13 +34,13 @@ describe("ProfessionalVerificationService", () => {
     });
     expect(auditLogService.record).toHaveBeenCalledWith(expect.objectContaining({ entityId: "p-1", newValue: true, changedByUserId: "admin-1" }));
     expect(notificationsService.notify).toHaveBeenCalledWith("u-1", "PROFILE_VERIFIED", {});
-    // Un caso dubbio della verifica automatica si chiude con l'approvazione (§259).
+    // Un caso dubbio della verifica automatica si chiude con l'approvazione (§253).
     expect(prisma.identityVerification.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { professionalProfileId: "p-1", status: "NEEDS_REVIEW" }, data: expect.objectContaining({ status: "APPROVED" }) }),
     );
   });
 
-  it("documento e selfie approvati dal fornitore: badge senza admin (§259)", async () => {
+  it("documento e selfie approvati dal fornitore: badge senza admin (§253)", async () => {
     const { service, prisma, notificationsService } = buildService();
     prisma.professionalProfile.findUnique.mockResolvedValue(activeProfile);
     await service.markVerifiedByProvider("p-1", "didit");

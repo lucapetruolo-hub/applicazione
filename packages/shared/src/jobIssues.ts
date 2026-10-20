@@ -199,7 +199,7 @@ export function professionalRestrictions(
 /**
  * Quanto si rimborsa al cliente di ciò che ha pagato online quando la
  * segnalazione è accolta (decisione dell'utente del 19/10/2026,
- * docs/CHANGELOG.md §260): tre livelli fissi, così casi uguali hanno lo
+ * docs/CHANGELOG.md §267): tre livelli fissi, così casi uguali hanno lo
  * stesso rimborso. La mancata presentazione e le decisioni automatiche (il
  * professionista non risponde) rimborsano sempre tutto.
  */
@@ -280,7 +280,7 @@ export function jobIssueOutcomeText(input: {
   note: string;
   audience: "client" | "professional";
   paidOnline?: boolean;
-  /** Percentuale rimborsata al cliente (§260); 100 se manca. */
+  /** Percentuale rimborsata al cliente (§267); 100 se manca. */
   refundPercent?: number | null;
   /** false dove il ricorso ha già il suo modulo sotto (pannello del professionista). */
   withAppealHint?: boolean;
@@ -329,7 +329,7 @@ export type JobIssueSummary = {
   autoDecision: JobIssueAutoDecision | null;
   /** Lavoro pagato sul sito con Stripe: se la segnalazione è accolta il cliente è rimborsato. */
   paidOnline: boolean;
-  /** Percentuale rimborsata al cliente se accolta (§260), null finché non è decisa. */
+  /** Percentuale rimborsata al cliente se accolta (§267), null finché non è decisa. */
   refundPercent: number | null;
   /** Pagamento online scelto: la segnalazione ha la nostra assistenza. False con il pagamento diretto (§168). */
   assisted: boolean;
@@ -400,7 +400,7 @@ export type JobIssueChatOutcomeInput = z.infer<typeof jobIssueChatOutcomeSchema>
 export const resolveJobIssueSchema = z.object({
   decision: z.enum(["UPHELD", "REJECTED"]),
   note: z.string().trim().min(3, "Scrivi la motivazione della decisione.").max(1000),
-  /** Solo se accolta e pagata online: quanto rimborsare (100, 50 o 20%, §260). */
+  /** Solo se accolta e pagata online: quanto rimborsare (100, 50 o 20%, §267). */
   refundPercent: z
     .number()
     .int()

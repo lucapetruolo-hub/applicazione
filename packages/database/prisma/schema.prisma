@@ -339,7 +339,7 @@ model ProfessionalProfile {
   feeRules               PlatformFeeRule[]
   revenueEntries         ManoviaRevenue[]
   dac7Records            Dac7Record[]
-  // Verifica di documento e selfie (Didit, docs/CHANGELOG.md §259): un tentativo per riga.
+  // Verifica di documento e selfie (Didit, docs/CHANGELOG.md §253): un tentativo per riga.
   identityVerifications  IdentityVerification[]
 
   @@index([categoryId, city])
@@ -1614,7 +1614,7 @@ model ProfessionalFiscalProfile {
   // Bonifici verso la banca impostati in manuale su Stripe (docs/CHANGELOG.md §249):
   // i soldi dei lavori restano bloccati sul suo conto Stripe fino allo sblocco.
   stripeManualPayoutsAt    DateTime?
-  // Saldo negativo coperto dalla sua banca (`debit_negative_balances`, §261):
+  // Saldo negativo coperto dalla sua banca (`debit_negative_balances`, §268):
   // se rimborsi o contestazioni superano i soldi sul suo conto Stripe li
   // preleva dal suo conto bancario, non dalla piattaforma.
   stripeNegativeDebitAt    DateTime?
@@ -1625,7 +1625,7 @@ model ProfessionalFiscalProfile {
   professionalProfile ProfessionalProfile        @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
   representative      FiscalRepresentative?
   // Controllo di codice fiscale e partita IVA all'Agenzia delle Entrate e al
-  // Registro Imprese (Openapi, docs/CHANGELOG.md §259).
+  // Registro Imprese (Openapi, docs/CHANGELOG.md §253).
   taxIdChecks         TaxIdCheck[]
   payoutAccount       ProfessionalPayoutAccount?
 
@@ -1651,7 +1651,7 @@ model FiscalRepresentative {
   @@map("fiscal_representatives")
 }
 
-// --- Verifica fiscale e d'identità (docs/CHANGELOG.md §259) -----------------
+// --- Verifica fiscale e d'identità (docs/CHANGELOG.md §253) -----------------
 // Decisioni dell'utente del 14/10/2026: profilo pubblico dopo i dati fiscali
 // e il controllo con Openapi; documento e selfie (Didit) obbligatori prima di
 // inviare preventivi; Didit al posto della verifica manuale, l'admin guarda
@@ -1839,7 +1839,7 @@ model JobPayment {
   // restituisce al professionista). I bonifici verso la sua banca sono
   // manuali: partono solo allo sblocco (`payoutPendingEurCents` finché i
   // soldi non sono disponibili su Stripe, poi `payoutSentEurCents`).
-  // `stripeDirectCharge` (§261, decisione dell'utente del 20/10/2026): il
+  // `stripeDirectCharge` (§268, decisione dell'utente del 20/10/2026): il
   // pagamento è nato direttamente sul conto del professionista (addebito
   // diretto, header Stripe-Account): rimborsi e contestazioni Stripe li prende
   // dal suo saldo, non da quello della piattaforma. False = addebito a
@@ -1857,7 +1857,7 @@ model JobPayment {
   /// Avviso al team Finanza: soldi bloccati da più di 80 giorni (Stripe li paga comunque dopo 90, docs/CHANGELOG.md §249).
   longHoldAlertedAt          DateTime?
 
-  // --- Contestazioni, debiti e costi Stripe a carico del professionista (docs/CHANGELOG.md §260) ---
+  // --- Contestazioni, debiti e costi Stripe a carico del professionista (docs/CHANGELOG.md §267) ---
   // Cifra che Stripe ha tolto alla piattaforma per una contestazione in banca
   // e che abbiamo già ripreso dal conto del professionista (storno), più il
   // trasferimento con cui gliela restituiamo se la contestazione è vinta.
@@ -1874,7 +1874,7 @@ model JobPayment {
   connectFeesEurCents        Int       @default(0)
   connectMonthlyFeeMonth     String?
   // Carta del cliente salvata con l'acconto per addebitare da sola il saldo
-  // alla chiusura del lavoro (docs/CHANGELOG.md §260): cliente Stripe sulla
+  // alla chiusura del lavoro (docs/CHANGELOG.md §267): cliente Stripe sulla
   // piattaforma e metodo di pagamento. `balanceAutoChargeFailedAt`: addebito
   // non riuscito, il cliente paga con il link.
   clientStripeCustomerId     String?
@@ -2244,7 +2244,7 @@ model JobIssue {
   // WARNING, DEMOTED o BLOCKED (vedi ProfessionalProfile.demotedUntil).
   sanction                    String?
   // Percentuale di quanto pagato online rimborsata al cliente quando la
-  // segnalazione è accolta: 100, 50 o 20 (docs/CHANGELOG.md §260).
+  // segnalazione è accolta: 100, 50 o 20 (docs/CHANGELOG.md §267).
   refundPercent               Int?
   // Ricorso del professionista entro 30 giorni dalla decisione, esaminato
   // da un admin diverso da chi ha deciso. ACCEPTED ribalta la decisione.

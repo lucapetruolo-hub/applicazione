@@ -95,7 +95,7 @@ export class JobIssueOutcomeService {
       note: string;
       byUserId: string | null;
       autoDecision?: JobIssueAutoDecision;
-      /** Rimborso scelto dall'admin (§260); le decisioni automatiche rimborsano tutto. */
+      /** Rimborso scelto dall'admin (§267); le decisioni automatiche rimborsano tutto. */
       refundPercent?: number;
     },
   ): Promise<{ id: string; status: string; sanction: JobIssueSanction | null }> {
@@ -199,7 +199,7 @@ export class JobIssueOutcomeService {
    * Garanzia del pagamento online (decisione dell'utente, §167-§168): se il
    * lavoro è pagato sul sito con Stripe e la segnalazione è accolta, il
    * cliente riceve subito il rimborso del 100, 50 o 20% di quanto pagato
-   * (§260). È colpa del professionista: la cifra e i costi del pagamento che
+   * (§267). È colpa del professionista: la cifra e i costi del pagamento che
    * Stripe non restituisce sono a suo carico (se i soldi erano già passati a
    * lui, quello che non si riprende dal suo conto si trattiene dai suoi
    * pagamenti successivi). Con un rimborso parziale il resto gli viene

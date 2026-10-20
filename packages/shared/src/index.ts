@@ -22,4 +22,5 @@ export * from "./phoneCountries";
 export * from "./requestDeadline";
 export * from "./fiscalCompleteness";
 export * from "./identityVerification";
+export * from "./addressSuggestions";
 export * from "./dac7";

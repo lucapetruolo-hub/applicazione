@@ -1,5 +1,5 @@
 /**
- * Fornitore della verifica di documento e selfie (docs/CHANGELOG.md §259).
+ * Fornitore della verifica di documento e selfie (docs/CHANGELOG.md §253).
  * Oggi Didit; per cambiarlo (es. Stripe Identity) basta un'altra classe con
  * questa forma, scelta in `identityProviderFromEnv`. Il resto del sito parla
  * solo con questa interfaccia.

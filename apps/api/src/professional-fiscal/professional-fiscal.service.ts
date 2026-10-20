@@ -15,6 +15,7 @@ import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalVerificationService } from "../professional-verification/professional-verification.service";
 import { TaxIdCheckService } from "../tax-id-check/tax-id-check.service";
 import { readStripeConnectStatus } from "./stripe-connect-status";
+import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
 import { PayoutAccountService } from "./payout-account.service";
 
 const FISCAL_FIELDS = [
@@ -111,7 +112,7 @@ export class ProfessionalFiscalService {
       include: { representative: true },
     });
 
-    // Stessi controlli del browser anche qui (docs/CHANGELOG.md §259): forma
+    // Stessi controlli del browser anche qui (docs/CHANGELOG.md §253): forma
     // di codice fiscale e P.IVA e coerenza del codice fiscale con nome,
     // cognome e data di nascita. Prima una chiamata diretta all'API li saltava.
     const fieldErrors = fiscalFieldErrors({
@@ -178,7 +179,7 @@ export class ProfessionalFiscalService {
     }
 
     // Badge "Verificato": documento e selfie valgono per la persona dei dati
-    // fiscali di allora (docs/CHANGELOG.md §259). Se cambia la persona (nome,
+    // fiscali di allora (docs/CHANGELOG.md §253). Se cambia la persona (nome,
     // cognome, data di nascita, codice fiscale, tipo o legale rappresentante)
     // la verifica va rifatta; la sola P.IVA la ricontrolla Openapi qui sotto.
     const personChanged =
@@ -233,7 +234,7 @@ export class ProfessionalFiscalService {
     }
 
     // Codice fiscale e P.IVA all'Agenzia delle Entrate / Registro Imprese
-    // (Openapi, §259): subito, e solo per i dati nuovi o cambiati.
+    // (Openapi, §253): subito, e solo per i dati nuovi o cambiati.
     await this.taxIdCheckService.syncForFiscalProfile(fiscalProfile.id, userId);
 
     return this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId }, include: { representative: true, taxIdChecks: true } });
@@ -305,6 +306,13 @@ export class ProfessionalFiscalService {
     let fiscalProfile = await this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId } });
 
     let stripeAccountId = fiscalProfile?.stripeConnectAccountId;
+    // Pagamenti online solo dopo dati fiscali e verifica dell'identità
+    // (richiesta dell'utente, docs/CHANGELOG.md §262). Chi li aveva già
+    // iniziati prosegue.
+    if (!stripeAccountId) {
+      if (fiscalDataMissing(fiscalProfile).length > 0) throw new BadRequestException("Completa prima i dati fiscali.");
+      if (profile && identityVerificationNeeded(profile)) throw new BadRequestException("Prima verifica la tua identità, poi puoi attivare i pagamenti online.");
+    }
     if (!stripeAccountId) {
       const account = await this.stripe.v2.core.accounts.create(
         {
@@ -313,7 +321,7 @@ export class ProfessionalFiscalService {
           dashboard: "express",
           identity: { country: "IT", entity_type: fiscalProfile?.entityType === "BUSINESS" ? "company" : "individual" },
           // Merchant: i pagamenti dei lavori nascono sul suo conto (addebito
-          // diretto, §261); recipient per i pagamenti dei modelli precedenti.
+          // diretto, §268); recipient per i pagamenti dei modelli precedenti.
           configuration: {
             merchant: { capabilities: { card_payments: { requested: true } } },
             recipient: { capabilities: { stripe_balance: { stripe_transfers: { requested: true } } } },
@@ -352,7 +360,7 @@ export class ProfessionalFiscalService {
   }
 
   /**
-   * Account creato prima dell'addebito diretto (§261), solo per ricevere
+   * Account creato prima dell'addebito diretto (§268), solo per ricevere
    * trasferimenti: gli si aggiunge la configurazione merchant per accettare
    * le carte. Stripe chiede i dati che mancano nella stessa verifica.
    */
@@ -372,7 +380,7 @@ export class ProfessionalFiscalService {
   async refreshStripeConnectStatus(stripeAccountId: string): Promise<void> {
     if (!this.stripe) return;
     const status = await readStripeConnectStatus(this.stripe, stripeAccountId);
-    // Pagamenti online attivi quando può accettare le carte (addebito diretto, §261).
+    // Pagamenti online attivi quando può accettare le carte (addebito diretto, §268).
     await this.syncStripeConnectStatus(stripeAccountId, status.cardPaymentsActive, status.cardPaymentsActive, status.requirements);
     // IBAN per la DAC7 di nuovo confrontato col conto su Stripe (§247): mai bloccante.
     await this.payoutAccountService?.recheckForStripeAccount(stripeAccountId).catch((err: unknown) => {

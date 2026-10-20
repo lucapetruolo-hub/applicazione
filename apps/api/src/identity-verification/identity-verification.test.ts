@@ -3,9 +3,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { DiditIdentityProvider, canonicalJson, diditDecision } from "./didit.provider";
 import { matchDocumentToFiscal } from "./identity-match";
 import { identityVerificationNeeded } from "./identity-provider-env";
-import { IdentityVerificationService, STANDBY_PROVIDER_STATUS, expectedPerson, reminderDue } from "./identity-verification.service";
+import { IdentityVerificationService, STANDBY_PROVIDER_STATUS, expectedPerson, profileSetupMissing, reminderDue, setupReminderDue } from "./identity-verification.service";
 
-/** Verifica di documento e selfie con Didit (docs/CHANGELOG.md §259). */
+/** Verifica di documento e selfie con Didit (docs/CHANGELOG.md §253). */
 describe("Didit", () => {
   const secret = "whsec_prova";
   const provider = new DiditIdentityProvider("key", "workflow", secret);
@@ -209,5 +209,27 @@ describe("promemoria a chi non ha fatto la verifica (§256)", () => {
     expect(reminderDue({ profileCreatedAt: ago(8), sent: 1, lastSentAt: ago(5), now })).toBe(false);
     expect(reminderDue({ profileCreatedAt: ago(10), sent: 1, lastSentAt: ago(7), now })).toBe(true);
     expect(reminderDue({ profileCreatedAt: ago(30), sent: 2, lastSentAt: ago(20), now })).toBe(false);
+  });
+});
+
+describe("email \"Completa il profilo\" (§261)", () => {
+  it("elenca solo quello che manca, i pagamenti online solo dove sono attivi", () => {
+    expect(profileSetupMissing({ publicVisible: false, canSendQuotes: false }, false, true)).toEqual(["SEARCH", "QUOTES"]);
+    expect(profileSetupMissing({ publicVisible: true, canSendQuotes: true }, false, true)).toEqual(["ONLINE_PAYMENTS"]);
+    expect(profileSetupMissing({ publicVisible: true, canSendQuotes: false }, false, false)).toEqual(["QUOTES"]);
+    expect(profileSetupMissing({ publicVisible: true, canSendQuotes: true }, true, true)).toEqual([]);
+  });
+
+  it("il giorno dopo l'iscrizione e dopo una settimana, mai di più (§262)", () => {
+    const day = 24 * 60 * 60_000;
+    const now = new Date("2026-10-20T09:00:00Z");
+    const ago = (days: number) => new Date(now.getTime() - days * day);
+    expect(setupReminderDue({ profileCreatedAt: ago(0.5), sent: 0, lastSentAt: null, now })).toBe(false);
+    expect(setupReminderDue({ profileCreatedAt: ago(1), sent: 0, lastSentAt: null, now })).toBe(true);
+    expect(setupReminderDue({ profileCreatedAt: ago(2), sent: 1, lastSentAt: ago(1), now })).toBe(false);
+    expect(setupReminderDue({ profileCreatedAt: ago(5), sent: 1, lastSentAt: ago(4), now })).toBe(false);
+    expect(setupReminderDue({ profileCreatedAt: ago(7), sent: 1, lastSentAt: ago(6), now })).toBe(true);
+    expect(setupReminderDue({ profileCreatedAt: ago(8), sent: 2, lastSentAt: ago(1), now })).toBe(false);
+    expect(setupReminderDue({ profileCreatedAt: ago(12), sent: 1, lastSentAt: ago(11), now })).toBe(false);
   });
 });

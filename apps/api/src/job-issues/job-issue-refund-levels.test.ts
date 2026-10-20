@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { jobIssueRefundPercent } from "@professionisti/shared";
 import { JobIssueOutcomeService } from "./job-issue-outcome.service";
 
-/** Rimborso a livelli delle segnalazioni accolte (docs/CHANGELOG.md §260). */
+/** Rimborso a livelli delle segnalazioni accolte (docs/CHANGELOG.md §267). */
 function buildService(type: "BAD_WORK" | "NO_SHOW") {
   const issue = {
     id: "is-1",
@@ -36,7 +36,7 @@ function buildService(type: "BAD_WORK" | "NO_SHOW") {
   return { service, prisma, onlineMoneyService };
 }
 
-describe("rimborso a livelli (§260)", () => {
+describe("rimborso a livelli (§267)", () => {
   it("la mancata presentazione rimborsa sempre tutto; per gli altri vale la scelta, 100% se manca", () => {
     expect(jobIssueRefundPercent("NO_SHOW", 20)).toBe(100);
     expect(jobIssueRefundPercent("BAD_WORK", 50)).toBe(50);

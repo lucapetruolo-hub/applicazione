@@ -38,7 +38,12 @@ export function upgradeCostText(sub: MySubscription, to: SubscriptionTier): stri
   return "Paghi ora solo la differenza per i giorni che mancano al rinnovo.";
 }
 
-export function SubscriptionPauseBanner({ sub, showAction = true }: { sub: MySubscription; showAction?: boolean }) {
+/**
+ * `profileStepsElsewhere`: dati fiscali e verifica dell'identità li mostra già
+ * "Completa il profilo" (Oggi, docs/CHANGELOG.md §260), qui restano solo
+ * pausa e pagamento.
+ */
+export function SubscriptionPauseBanner({ sub, showAction = true, profileStepsElsewhere = false }: { sub: MySubscription; showAction?: boolean; profileStepsElsewhere?: boolean }) {
   let title: string;
   let body: string;
   let action: string;
@@ -46,7 +51,7 @@ export function SubscriptionPauseBanner({ sub, showAction = true }: { sub: MySub
   let href = "/dashboard/abbonamento#livelli";
 
   // Prima di tutto i dati fiscali: senza, il profilo non è pubblico (docs/CHANGELOG.md §241).
-  if (sub.fiscalDataNeeded) {
+  if (sub.fiscalDataNeeded && !profileStepsElsewhere) {
     title = "Il tuo profilo non è ancora visibile";
     body =
       "Per comparire nelle ricerche e ricevere richieste scegli se sei privato, professionista con partita IVA o azienda e compila (o correggi) i dati fiscali: " +
@@ -70,8 +75,8 @@ export function SubscriptionPauseBanner({ sub, showAction = true }: { sub: MySub
     title = "Abbonamento concluso";
     body = "Rendi di nuovo visibile e operativo il tuo account: finché non scegli un livello il profilo non compare nelle ricerche e non ricevi nuove richieste.";
     action = "Riattiva il tuo account";
-  } else if (sub.identityVerificationNeeded && showAction) {
-    // Documento e selfie prima del primo preventivo (docs/CHANGELOG.md §259).
+  } else if (sub.identityVerificationNeeded && showAction && !profileStepsElsewhere) {
+    // Documento e selfie prima del primo preventivo (docs/CHANGELOG.md §253).
     tone = "warn";
     title = "Verifica la tua identità per inviare preventivi";
     body = "Il tuo profilo è visibile, ma per rispondere ai clienti con un preventivo serve una verifica veloce: un documento e un selfie, circa 2 minuti.";

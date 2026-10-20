@@ -1,0 +1,60 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { AddressSuggestionsService, placeFromGoogle } from "./address-suggestions.service";
+
+describe("suggerimenti di indirizzo dal server (§264)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    delete process.env.GOOGLE_MAPS_API_KEY;
+  });
+
+  it("ricava via, civico, CAP, comune e provincia", () => {
+    const place = placeFromGoogle({
+      formattedAddress: "Via Appia Nuova, 120, 00183 Roma RM, Italia",
+      location: { latitude: 41.88, longitude: 12.51 },
+      addressComponents: [
+        { longText: "120", shortText: "120", types: ["street_number"] },
+        { longText: "Via Appia Nuova", shortText: "Via Appia Nuova", types: ["route"] },
+        { longText: "Roma", shortText: "Roma", types: ["locality", "political"] },
+        { longText: "Roma", shortText: "Roma", types: ["administrative_area_level_3", "political"] },
+        { longText: "Città Metropolitana di Roma Capitale", shortText: "RM", types: ["administrative_area_level_2", "political"] },
+        { longText: "00183", shortText: "00183", types: ["postal_code"] },
+      ],
+    });
+    expect(place).toEqual({
+      address: "Via Appia Nuova, 120, 00183 Roma RM",
+      latitude: 41.88,
+      longitude: 12.51,
+      comune: "Roma",
+      locality: "Roma",
+      street: "Via Appia Nuova",
+      houseNumber: "120",
+      postalCode: "00183",
+      province: "RM",
+    });
+  });
+
+  it("chiede a Google solo indirizzi in Italia e restituisce testo principale e secondario", async () => {
+    process.env.GOOGLE_MAPS_API_KEY = "k";
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        suggestions: [{ placePrediction: { placeId: "abc", structuredFormat: { mainText: { text: "Via Roma, 5" }, secondaryText: { text: "Bari BA" } } } }],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const result = await new AddressSuggestionsService().suggest({ q: "via roma 5", session: "sess-12345" });
+    expect(result).toEqual([{ id: "abc", main: "Via Roma, 5", secondary: "Bari BA" }]);
+    const body = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
+    expect(body.includedRegionCodes).toEqual(["it"]);
+    expect(body.sessionToken).toBe("sess-12345");
+  });
+
+  it("senza chiave o con testo troppo corto non chiama Google", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const service = new AddressSuggestionsService();
+    await expect(service.suggest({ q: "vi", session: "sess-12345" })).resolves.toEqual([]);
+    await expect(service.suggest({ q: "via roma", session: "sess-12345" })).rejects.toThrow("non disponibili");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});

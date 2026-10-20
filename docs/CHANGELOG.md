@@ -19369,7 +19369,93 @@ differenti per ogni categoria".
   posizione (prima erano sulla stessa riga, "Idraulico · Elettricista ·
   Latina").
 
-## 260. Rimborso a livelli, costi e contestazioni a carico del professionista
+## 260. Dati fiscali del tipo scelto alla registrazione; cosa manca, in Profilo pubblico e in Oggi
+
+**Richiesta esplicita dell'utente** (19/10/2026): "lascia solo i dati fiscali in base a quello che ha inserito in fase di registrazione"; "fagli comparire un badge che se non effettua le verifiche non sarà pubblico, altrimenti un qualcosa con le cose ancora da fare per completare il profilo"; nell'anteprima del profilo "un altro pallino con scritto che non può rispondere e un altro che dice non può ricevere pagamenti online"; "la stessa cosa può essere inserita anche in oggi oppure proponi qualcosa di più bello di design".
+
+**Decisione presa**:
+- In "Dati fiscali" il tipo (Privato, Professionista, Azienda) non si sceglie più quando è già noto (quello salvato o quello della registrazione): si vedono il nome del tipo e solo i suoi campi. La scelta resta per gli account senza tipo.
+- In "Profilo pubblico" lo stato sopra l'anteprima diventa un riquadro a righe con un pallino ciascuna: visibilità, "Non puoi rispondere alle richieste di preventivo" (→ Verifica la tua identità), "Non puoi ricevere pagamenti online" (→ Attiva i pagamenti online). Sotto, finché manca qualcosa, i tre passi "Per completare il profilo". Il chip "Verifica la tua identità" accanto allo stato lascia il posto alla riga dei preventivi.
+- In "Oggi" il riquadro "Completa il profilo" (`ProfileReadinessCard`): barra "N di 3 fatto", le tre righe con icona e il bottone del prossimo passo. Sparisce quando è tutto fatto. In Oggi il banner dell'abbonamento non ripete più dati fiscali e verifica dell'identità (`profileStepsElsewhere`).
+
+**Motivo**: un solo colpo d'occhio su cosa il professionista può e non può ancora fare, e il prossimo passo.
+
+**Nota**: oggi senza documento e selfie il profilo resta nelle ricerche, sono bloccati solo i preventivi (§253): le scritte dicono esattamente questo. Togliere dalla ricerca chi non ha fatto documento e selfie è da confermare con l'utente.
+
+**Verifica**: typecheck e lint del web verdi; schermate da telefono e computer in `/mnt/project-files/anteprime/verifica-identita/` (`oggi-completa-profilo-*`, `profilo-da-completare-*`, `dati-fiscali-tipo-registrazione-*`).
+
+## 261. Email "Completa il profilo" il giorno dopo l'iscrizione
+
+**Richiesta esplicita dell'utente** (19/10/2026): "effettua la seconda miglioria, ma solo nel caso manchi ancora qualche punto" (la miglioria proposta in §260: un'email il giorno dopo l'iscrizione con le cose da fare).
+
+**Decisione presa**: ogni giorno alle 11 (ora italiana) `IdentityVerificationService.remindProfileSetup` guarda i profili creati da 1 a 3 giorni prima, non dimostrativi né sospesi né in attesa di conferma, e manda una volta sola la notifica `PROFILE_SETUP_REMINDER` (sito + email, argomento "Account e sicurezza") solo se manca ancora almeno uno dei tre punti di "Completa il profilo": comparire nelle ricerche, rispondere ai preventivi, ricevere pagamenti online (quest'ultimo solo dove i pagamenti online sono attivi). L'email elenca solo i punti mancanti e porta a Oggi. I profili più vecchi di 3 giorni al momento del rilascio non la ricevono.
+
+**Motivo**: chi si iscrive e si ferma a metà sa subito cosa gli manca, senza email inutili a chi ha già finito.
+
+**Verifica**: test di `profileSetupMissing`; typecheck, lint e test dell'API verdi (412).
+
+## 262. Un solo percorso per completare il profilo; dati fiscali ridotti al necessario
+
+**Richiesta esplicita dell'utente** (19/10/2026), guardando le schermate di §260: "non sono chiari i passaggi, c'è confusione, la cosa deve essere più lineare e l'utente deve poter fare una cosa alla volta"; "lascia i dati fiscali da inserire solo quelli che ci servono realmente per i vari controlli e per la DAC7"; "i passaggi più chiari non riguardano solo l'inserimento dei dati fiscali, ma tutta la procedura [...] è inutile anche far attivare all'utente i pagamenti online se non ha ancora effettuato la verifica". Nello stesso giro, le migliorie 1 e 3 proposte dopo §261: secondo promemoria dopo una settimana e passi in attesa segnati in giallo.
+
+**Decisione presa**:
+- **Un percorso unico** in tre passi sempre nello stesso ordine (`apps/web/src/components/verification/SetupJourney.tsx`, `setupJourney()`): 1 Dati fiscali → 2 Verifica identità → 3 Pagamenti online (facoltativo). Ogni passo è *fatto*, *in verifica* (giallo, orologio), *da fare* (uno solo, con l'unico pulsante) o *dopo* (lucchetto). L'identità si sblocca quando i dati fiscali sono salvati (anche se ancora in verifica), i pagamenti solo a identità verificata; dove la verifica dell'identità non è attiva il passo 2 non c'è.
+- **Oggi**: "Completa il profilo" mostra il percorso completo (sostituisce la scheda di §260). **Profilo pubblico**: i pallini dicono solo cosa non si può ancora fare (senza link sparsi) e in fondo c'è un solo "Prossimo passo" con il suo pulsante; tolto il riquadro "Per completare il profilo". **Dati fiscali** e **Verifica identità**: in cima "Passo N di 3" con la barra del percorso al posto del riquadro "Verifica in 3 passi" (tolto `VerificationSteps`); a identità verificata la pagina propone i pagamenti online come ultimo passo facoltativo.
+- **Dati fiscali in due parti** (1 i tuoi dati, 2 l'indirizzo, con "Avanti"/"Indietro" e la spunta "Confermo che i dati sono corretti" prima di Salva). A dati completi la pagina mostra un riepilogo con "Modifica", il prossimo passo e, solo dopo la verifica dell'identità, i pagamenti online (prima un riquadro col lucchetto).
+- **Solo i campi che servono** (verifica di CF/P.IVA, verifica dell'identità, DAC7): *Privato* nome, cognome, codice fiscale, data di nascita, indirizzo; *Con Partita IVA* gli stessi più la partita IVA; *Azienda* ragione sociale, partita IVA, numero REA, legale rappresentante (nome, cognome, codice fiscale: è lui a fare la verifica dell'identità), sede legale. Tolti dal modulo: luogo e paese di nascita (il codice fiscale li contiene; il luogo resta solo per chi risiede all'estero senza codice fiscale italiano), nome dell'attività e REA per chi ha partita IVA, forma giuridica, codice LEI, ruolo del rappresentante, provincia, stato di rilascio e paesi in sigla ISO (in Italia il paese è sempre IT; "Risiedi fuori dall'Italia?" apre paese, codice fiscale estero e luogo di nascita). I valori già salvati nei campi tolti restano nel database.
+- **Pagamenti online bloccati anche sul server** prima di dati fiscali completi e identità verificata (`createStripeConnectOnboardingLink`); chi li aveva già iniziati prosegue.
+- **Email "Completa il profilo"** (§261): il giorno dopo l'iscrizione e di nuovo dopo una settimana (`setupReminderDue`, mai due a meno di 5 giorni); i pagamenti online compaiono nell'email solo quando il passo è sbloccato.
+
+**Motivo**: prima le stesse cose comparivano in tre riquadri diversi con link a passi non ancora possibili; ora c'è sempre una sola cosa da fare e il modulo chiede solo quello che usiamo davvero.
+
+**Verifica**: typecheck e lint di web e API, 413 test dell'API verdi; schermate da telefono e computer in `/mnt/project-files/anteprime/percorso-profilo/`.
+
+## 263. Dati fiscali: calendario, indirizzo con suggerimenti, provincia in sigla
+
+**Richiesta esplicita dell'utente** (19/10/2026): "effettua le 3 migliorie, la provincia serve in 2 cifre e vedi se si riesce a ricavare tramite altri inserimenti in automatico" (migliorie proposte dopo §262).
+
+**Decisione presa**: in Dati fiscali la data di nascita si sceglie dal calendario del telefono o del browser (campo `date` nativo, niente più "AAAA-MM-GG"). La via usa `AddressAutocompleteInput` come nel profilo (§141): scegliendo un suggerimento si compilano anche civico, CAP, comune e provincia. Torna il campo **Prov.** (sigla di 2 lettere, obbligatoria in Italia), che si compila da solo dal comune (elenco ISTAT `findComuneByName`) o dal suggerimento di Google e resta correggibile. La provincia entra anche nell'indirizzo della DAC7 (`buildAddressFree`, "00183 Roma (RM)"). Chi risiede all'estero ha i campi semplici senza provincia.
+
+**Motivo**: meno da scrivere a mano e un indirizzo completo come lo vuole il fisco.
+
+**Verifica**: typecheck e lint di web e API, 413 test dell'API verdi; schermate `dati-fiscali-*` in `/mnt/project-files/anteprime/percorso-profilo/`.
+
+## 264. Suggerimenti degli indirizzi dal nostro server, senza consenso; via e città in un solo campo
+
+**Richiesta esplicita dell'utente** (19/10/2026): "nella parte a domicilio si può inserire tutto insieme via, città e tutto il resto, non serve inserire prima la città"; poi, sul consenso ai cookie Google: "procedi col campo unico visto che ora funziona sempre"; "vedi dove altro si può implementare questo inserimento dell'indirizzo".
+
+**Decisione presa**:
+- I suggerimenti li chiede a Google il nostro server: `GET /address/suggestions` e `GET /address/place/:id` (`apps/api/src/geocoding/address-suggestions.*`, Places API (New) con la chiave server `GOOGLE_MAPS_API_KEY`, token di sessione dal browser, limite per IP). `AddressAutocompleteInput` non carica più la libreria Google nel browser: niente cookie né consenso, suggerimenti per tutti. Se il server non risponde il campo resta testo libero (`useChosenAddress` non dipende più dalla chiave del browser). Informativa privacy aggiornata.
+- **Richiesta di preventivo a domicilio**: un solo campo "Indirizzo" (via e città insieme); la scelta compila città, civico, CAP e provincia, e il numero civico si chiede a parte solo se manca. Il campo "Città" resta per le richieste online e, se i suggerimenti non funzionano, compaiono i campi separati.
+- **Modifica richiesta** e **Account**: l'indirizzo non è più limitato alla città scelta prima; la scelta compila anche la città. **Dati fiscali** (§263) e **Profilo pubblico** usano già lo stesso campo, ora anche senza consenso.
+- Supera in parte §214 (indirizzo "solo della città scelta"): resta l'obbligo di sceglierlo dall'elenco, e il controllo lato server via/comune.
+
+**Da fare sul pannello Google Cloud**: abilitare "Places API (New)" sulla chiave server usata su Render.
+
+**Verifica**: test del nuovo servizio; typecheck e lint di web e API, test dell'API verdi; schermate `richiesta-indirizzo-*` in `/mnt/project-files/anteprime/percorso-profilo/`.
+
+## 265. Accesso con Google e mappa senza dover accettare i cookie
+
+**Richiesta esplicita dell'utente** (19-20/10/2026): "si può risolvere in questo modo anche la visualizzazione della mappa di google e la registrazione tramite google e tutto quello che riguarda google, che si procede comunque anche se non si accetta subito i cookie?", poi "effettua tutte le modifiche e migliorie proposte".
+
+**Decisione presa**:
+- **Accesso con Google**: il pulsante non carica più lo script `gsi/client`. Apre la pagina di accesso di Google in una finestra (OpenID Connect, `response_type=id_token` con `nonce` e `state`) che torna su `/accesso-google`; il token arriva al pulsante (messaggio alla pagina che ha aperto la finestra, più `BroadcastChannel` se Google stacca il collegamento tra le due) e segue lo stesso `POST /auth/google/verify` di prima. Il pulsante scarta un token con `nonce` diverso. Se il browser blocca la finestra, Google si apre al posto della pagina e al ritorno il token viene consegnato alla stessa pagina (`sessionStorage`). Nessun client secret: con `id_token` non serve. File: `apps/web/src/components/GoogleSignInButton.tsx`, `apps/web/src/lib/googleSignIn.ts`, `apps/web/src/app/accesso-google/page.tsx`. Supera §214 (richiesta di consenso al tocco del pulsante).
+- **Mappa**: senza consenso, al posto del riquadro "Mostra la mappa", un'immagine fissa con i segnaposto (risultati di ricerca) o con i due raggi (dashboard), preparata dal nostro server (`GET /maps/static`, `apps/api/src/geocoding/static-map.*`, Maps Static API con `GOOGLE_MAPS_API_KEY`, cache di un giorno nel browser) e il pulsante "Usa la mappa interattiva", che dà il consenso e carica la mappa vera. Su richiesta dell'utente ("miglioria 1 falla") il server conserva in memoria per un giorno le immagini già preparate (al massimo 300), così la stessa mappa vista da più persone costa una sola richiesta a Google. Se l'immagine non arriva resta il riquadro di prima.
+- Banner e Cookie Policy: il consenso ora riguarda solo la mappa interattiva.
+
+**Da fare sul pannello Google Cloud**: nel Client ID OAuth aggiungere `https://applicazione-web.vercel.app/accesso-google` tra gli URI di reindirizzamento autorizzati; abilitare "Maps Static API" sulla chiave server usata su Render.
+
+**Verifica**: test di `static-map`; typecheck e lint di web e API; prova nel browser con una finta pagina di Google (finestra e finestra bloccata, il token arriva al server) e con la mappa senza consenso; schermate `mappa-fissa-*` e `google-attesa-telefono.png` in `/mnt/project-files/anteprime/percorso-profilo/`.
+
+## 266. Unione con la base aggiornata: più categorie e conferma email
+
+**Richiesta esplicita dell'utente** (20/10/2026): "unisci", ma la PR era in conflitto con la base dopo l'unione delle più categorie (§259) e della conferma email da un altro dispositivo.
+
+**Decisione presa**: le voci di questo ramo, che erano §259-§264, diventano §260-§265, perché la base aveva già un §259. Nei file della verifica la base aveva cambiato per errore i rimandi da §253 a §259; sono tornati a §253, mentre restano a §259 quelli delle più categorie. Per i file della verifica e del percorso ha vinto questo ramo, e `VerificationSteps.tsx` resta tolto (§262). Il modulo di richiesta ha insieme le più categorie e il campo unico "Indirizzo".
+
+**Verifica**: typecheck di web e API e 426 test dell'API verdi. Il modulo di richiesta è stato provato nel browser, con scelta dell'indirizzo da telefono e computer.
+
+## 267. Rimborso a livelli, costi e contestazioni a carico del professionista
 
 **Richiesta dell'utente (19/10/2026, thread sulle contestazioni Stripe):**
 sulle migliorie proposte nell'analisi dei pagamenti online: rimborso a
@@ -19446,7 +19532,7 @@ facoltative o con default 0), `20261019180000_job_payment_saved_card`
 **Testi:** Termini (punto pagamenti), regolamento delle controversie,
 email e notifiche di sblocco e contestazione, scheda admin.
 
-## 261. Pagamenti dei lavori addebitati direttamente sul conto del professionista
+## 268. Pagamenti dei lavori addebitati direttamente sul conto del professionista
 
 **Richiesta (Luca, 20/10/2026, scheda nel thread "Piano pagamenti Stripe e
 controversie"):** "Pagamento diretto": rimborsi e contestazioni devono
@@ -19502,13 +19588,13 @@ Connect, funzioni Express da lasciare spente, permessi della chiave).
 **Verifica:** `vitest` dell'API (448 test, 14 nuovi in
 `direct-charges.test.ts`), `tsc` su API e web, `eslint` sull'API.
 
-## 262. Avviso quando il rimborso aspetta fondi sul conto del professionista
+## 269. Avviso quando il rimborso aspetta fondi sul conto del professionista
 
 **Richiesta dell'utente (20/10/2026):** "1 miglioria procedi", la prima
-delle migliorie proposte dopo §261: avvisare il cliente quando il rimborso
+delle migliorie proposte dopo §268: avvisare il cliente quando il rimborso
 resta in attesa perché il saldo Stripe del professionista è vuoto.
 
-**Perché:** con l'addebito diretto (§261) Stripe prende il rimborso dal
+**Perché:** con l'addebito diretto (§268) Stripe prende il rimborso dal
 saldo del professionista; se non basta, il rimborso resta `pending` e parte
 da solo appena arrivano fondi. Prima il cliente riceveva "ti abbiamo
 rimborsato" e poi non vedeva nulla sulla carta.
@@ -19534,5 +19620,10 @@ rimborsato" e poi non vedeva nulla sulla carta.
 **Da fare a mano:** aggiungere `refund.updated` e `refund.failed`
 all'endpoint webhook Connect (checklist di lancio).
 
-**Verifica:** `vitest` dell'API (453 test, 5 nuovi in
+**Verifica:** `vitest` dell'API (462 test dopo l'unione, 5 nuovi in
 `direct-charges.test.ts`), `tsc` su API e web, `eslint` sull'API.
+
+**Numerazione:** dopo l'unione con la base aggiornata (che ha aggiunto
+§260-§266) le voci di questa PR sono diventate §267, §268 e §269. I commenti
+delle tre migrazioni citano ancora i vecchi numeri: una migrazione già
+scritta non si modifica.

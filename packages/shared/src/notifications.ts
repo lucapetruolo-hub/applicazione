@@ -79,7 +79,7 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "JOB_DEPOSIT_PAID",
       "JOB_BALANCE_PAID",
       "JOB_BALANCE_DUE",
-      // Saldo addebitato da solo sulla carta salvata con l'acconto (docs/CHANGELOG.md §260).
+      // Saldo addebitato da solo sulla carta salvata con l'acconto (docs/CHANGELOG.md §267).
       "JOB_BALANCE_AUTO_CHARGED",
       "JOB_BALANCE_UNPAID",
       "JOB_PAYOUT_SENT",
@@ -90,9 +90,9 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       // Contestazione del cliente presso la sua banca (docs/CHANGELOG.md §236).
       "JOB_STRIPE_DISPUTE",
       "ADMIN_STRIPE_DISPUTE",
-      // Cifra da restituire dopo un rimborso o una contestazione persa, ripresa dai pagamenti successivi (docs/CHANGELOG.md §260).
+      // Cifra da restituire dopo un rimborso o una contestazione persa, ripresa dai pagamenti successivi (docs/CHANGELOG.md §267).
       "JOB_PAYMENT_DEBT",
-      // Rimborso in attesa di fondi sul conto Stripe del professionista, poi arrivato o non riuscito (docs/CHANGELOG.md §262).
+      // Rimborso in attesa di fondi sul conto Stripe del professionista, poi arrivato o non riuscito (docs/CHANGELOG.md §269).
       "JOB_REFUND_PENDING",
       "JOB_REFUND_COMPLETED",
       "JOB_REFUND_WAITING_FUNDS",
@@ -140,13 +140,15 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       // Badge "Verificato" assegnato o tolto da un admin (docs/CHANGELOG.md §200).
       "PROFILE_VERIFIED",
       "PROFILE_VERIFICATION_REMOVED",
-      // Verifica fiscale e d'identità (docs/CHANGELOG.md §259): documento e
+      // Verifica fiscale e d'identità (docs/CHANGELOG.md §253): documento e
       // selfie da rifare, codice fiscale o P.IVA risultati inesistenti.
       "IDENTITY_VERIFICATION_DECLINED",
       "TAX_ID_INVALID",
       // Servizio di verifica tornato disponibile, promemoria a chi non l'ha fatta (§256).
       "IDENTITY_VERIFICATION_READY",
       "IDENTITY_VERIFICATION_REMINDER",
+      // "Completa il profilo" il giorno dopo l'iscrizione, solo se manca qualcosa (§261).
+      "PROFILE_SETUP_REMINDER",
       // Account Stripe attivato: acconto online e badge (docs/CHANGELOG.md §241).
       "STRIPE_ACCOUNT_ACTIVE",
       // Account Stripe sospeso: niente acconto online né badge finché non si sistema (§242).

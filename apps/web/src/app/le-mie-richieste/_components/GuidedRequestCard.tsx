@@ -352,21 +352,22 @@ export function GuidedRequestCard({
               chosenAddress.setChosen(false);
             }}
             onSelect={(selected) => {
-              // Suggerimenti di Google: compila anche gli altri campi (docs/CHANGELOG.md §141, §214).
+              // Suggerimenti di Google: compila anche gli altri campi (docs/CHANGELOG.md §141, §214),
+              // città compresa: via e città si scrivono insieme (§264).
+              const comune = selected.locality ? findComuneByName(selected.locality) : undefined;
+              if (comune || selected.locality) setCity(comune?.name ?? selected.locality ?? "");
               setAddress(selected.street ?? selected.address);
               setHouseNumber(selected.houseNumber ?? "");
               if (selected.postalCode) setPostalCode(selected.postalCode);
               if (selected.province) setProvince(selected.province);
               chosenAddress.setChosen(true);
             }}
-            restrictToCity={cityComune ? { name: cityComune.name, latitude: cityComune.lat, longitude: cityComune.lon } : null}
-            askConsent
+            biasTowards={cityComune ? { latitude: cityComune.lat, longitude: cityComune.lon } : null}
             onServiceUnavailable={chosenAddress.markServiceDown}
-            disabled={!cityComune}
-            placeholder={cityComune ? `Via/piazza a ${cityComune.name}` : "Scegli prima la città"}
+            placeholder="Indirizzo, es. Via Roma 5, Bari"
             style={textareaStyle}
           />
-          {chosenAddress.missing && cityComune && address.trim() ? (
+          {chosenAddress.missing && address.trim() ? (
             <Text fontSize="$2" color={brand.grafite70}>
               Scegli l&apos;indirizzo dall&apos;elenco che compare mentre scrivi.
             </Text>

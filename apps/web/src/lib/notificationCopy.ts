@@ -55,11 +55,13 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   STRIPE_ACCOUNT_RESTRICTED: { icon: "⚠️", message: "Stripe ha sospeso i pagamenti online sul tuo account: completa i dati in Dati fiscali e pagamenti." },
   PROFILE_VERIFIED: { icon: "✅", message: "Identità verificata: ora mostri il badge Verificato e puoi inviare preventivi." },
   PROFILE_VERIFICATION_REMOVED: { icon: "⚠️", message: "Abbiamo tolto il badge Verificato dal tuo profilo: rifai la verifica dell'identità." },
-  // Verifica fiscale e d'identità (docs/CHANGELOG.md §259).
+  // Verifica fiscale e d'identità (docs/CHANGELOG.md §253).
   IDENTITY_VERIFICATION_DECLINED: { icon: "🪪", message: "La verifica dell'identità non è andata a buon fine: puoi riprovare subito." },
   // Verifica in attesa ripresa e promemoria (§256).
   IDENTITY_VERIFICATION_READY: { icon: "🪪", message: "La verifica dell'identità è di nuovo disponibile: riprendi da dove eri." },
   IDENTITY_VERIFICATION_REMINDER: { icon: "🪪", message: "Ti manca la verifica dell'identità per inviare preventivi: bastano 2 minuti." },
+  // "Completa il profilo" il giorno dopo l'iscrizione (§261).
+  PROFILE_SETUP_REMINDER: { icon: "📋", message: "Ti manca poco per completare il profilo: in Oggi trovi il prossimo passo." },
   TAX_ID_INVALID: { icon: "⚠️", message: "Non riusciamo a verificare il codice fiscale o la partita IVA: controllali nei dati fiscali." },
   // Segnalazioni di un problema sul lavoro (docs/CHANGELOG.md §164).
   JOB_ISSUE_REPORTED: { icon: "⚠️", message: "Un cliente ha segnalato un problema su un lavoro: rispondigli in chat entro 48 ore per trovare una soluzione." },
@@ -81,7 +83,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   JOB_PAYOUT_FAILED: { icon: "🏦", message: "Un bonifico non è arrivato alla tua banca: controlla i dati bancari." },
   JOB_PAYOUT_ACCOUNT_NEEDED: { icon: "🏦", message: "Hai un pagamento online da ricevere: attiva i pagamenti in Dati fiscali e pagamenti." },
   JOB_STRIPE_DISPUTE: { icon: "⚠️", message: "Un cliente ha contestato in banca un pagamento online: la cifra è sospesa finché la banca non decide." },
-  // Rimborso in attesa di fondi sul conto Stripe del professionista (§262).
+  // Rimborso in attesa di fondi sul conto Stripe del professionista (§269).
   JOB_REFUND_PENDING: { icon: "↩️", message: "Il tuo rimborso è in arrivo: ti avvisiamo appena parte verso la carta." },
   JOB_REFUND_COMPLETED: { icon: "↩️", message: "Rimborso completato: lo rivedi sulla carta in pochi giorni." },
   JOB_REFUND_WAITING_FUNDS: { icon: "💳", message: "Un rimborso al cliente aspetta fondi sul tuo conto Stripe: parte appena arrivano." },

@@ -6,7 +6,7 @@ import { AuditLogService } from "../audit-log/audit-log.service";
 import { NotificationsService } from "../notifications/notifications.service";
 
 /**
- * Badge "Verificato" dei professionisti. Da docs/CHANGELOG.md §259 lo assegna
+ * Badge "Verificato" dei professionisti. Da docs/CHANGELOG.md §253 lo assegna
  * da sola la verifica di documento e selfie (Didit, `markVerifiedByProvider`);
  * all'admin restano i casi dubbi e la verifica manuale di riserva (§200).
  * Ogni cambio finisce nel registro azioni e il professionista riceve un avviso.
@@ -106,7 +106,7 @@ export class ProfessionalVerificationService {
       changedByUserId: adminUserId,
       reason: note || "Documento d'identità e partita IVA/codice fiscale controllati",
     });
-    // Un caso dubbio di Didit approvato da qui (docs/CHANGELOG.md §259).
+    // Un caso dubbio di Didit approvato da qui (docs/CHANGELOG.md §253).
     await this.prisma.identityVerification.updateMany({
       where: { professionalProfileId: profile.id, status: "NEEDS_REVIEW" },
       data: { status: "APPROVED", reviewedByUserId: adminUserId, reviewNote: note || null, decidedAt: now },
@@ -117,7 +117,7 @@ export class ProfessionalVerificationService {
 
   /**
    * Documento e selfie approvati dal fornitore e intestati alla persona dei
-   * dati fiscali (docs/CHANGELOG.md §259): badge "Verificato" senza admin.
+   * dati fiscali (docs/CHANGELOG.md §253): badge "Verificato" senza admin.
    */
   async markVerifiedByProvider(professionalProfileId: string, provider: string): Promise<void> {
     const profile = await this.prisma.professionalProfile.findUnique({ where: { id: professionalProfileId }, select: { id: true, userId: true, verified: true } });

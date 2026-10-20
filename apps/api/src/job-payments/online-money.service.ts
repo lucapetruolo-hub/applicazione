@@ -30,7 +30,7 @@ const CLOSED_DISPUTE_STATUSES = ["won", "lost", "warning_closed", "prevented"];
 
 // Motivi di contestazione in banca che dipendono dal lavoro (non arrivato o
 // non conforme): persa, anche la commissione di Stripe è a carico del
-// professionista (§260). Frode, doppio addebito e simili restano a noi.
+// professionista (§267). Frode, doppio addebito e simili restano a noi.
 const PROFESSIONAL_FAULT_DISPUTE_REASONS = ["product_not_received", "product_unacceptable"];
 // Commissione di Stripe su una contestazione se non si legge dall'evento.
 const STRIPE_DISPUTE_FEE_EUR_CENTS = 2000;
@@ -42,19 +42,19 @@ const PAYOUT_RETRY_AFTER_FAILURE_MS = DAY_MS;
 type ChargeInfo = {
   fee: number;
   chargeId: string | null;
-  /** Conto Stripe del professionista se l'addebito è sul suo conto (a destinazione §249 o diretto §261). */
+  /** Conto Stripe del professionista se l'addebito è sul suo conto (a destinazione §249 o diretto §268). */
   destination: string | null;
-  /** Addebito nato direttamente sul conto del professionista (§261). */
+  /** Addebito nato direttamente sul conto del professionista (§268). */
   direct: boolean;
   /** Trattenuta della piattaforma (application fee) sull'addebito. */
   applicationFeeAmount: number;
-  /** Carta salvata per addebitare da sola il saldo (§260), se il cliente l'ha salvata. */
+  /** Carta salvata per addebitare da sola il saldo (§267), se il cliente l'ha salvata. */
   savedCard: { customerId: string; paymentMethodId: string } | null;
 };
 
 /**
  * Salvataggio della carta all'acconto, per addebitare il saldo da solo alla
- * chiusura del lavoro (decisione dell'utente, §260). Solo quando anche il
+ * chiusura del lavoro (decisione dell'utente, §267). Solo quando anche il
  * saldo si paga online.
  */
 function saveCardForBalance(enabled: boolean) {
@@ -68,7 +68,7 @@ function saveCardForBalance(enabled: boolean) {
   };
 }
 
-/** Opzioni Stripe per operare sul conto del professionista (addebito diretto, §261). */
+/** Opzioni Stripe per operare sul conto del professionista (addebito diretto, §268). */
 function onAccount(stripeAccount: string | null | undefined): Stripe.RequestOptions {
   return stripeAccount ? { stripeAccount } : {};
 }
@@ -92,7 +92,7 @@ function disputeOpen(jp: { stripeDisputeId: string | null; stripeDisputeStatus: 
 }
 
 /**
- * Soldi dei pagamenti online dei lavori (docs/CHANGELOG.md §168, §249, §261):
+ * Soldi dei pagamenti online dei lavori (docs/CHANGELOG.md §168, §249, §268):
  * acconto e saldo pagati dal cliente con Stripe Checkout e addebitati
  * direttamente sul conto Stripe del professionista (direct charges di Stripe
  * Connect, header Stripe-Account, decisione dell'utente del 20/10/2026), mai
@@ -244,7 +244,7 @@ export class OnlineMoneyService {
     const suffix = statementSuffix(params.businessName);
     const account = await this.professionalAccount(params.professionalProfileId, { direct: true });
     const metadata = { kind: "quote_deposit", quoteId: params.quoteId, clientUserId: params.clientUserId, paymentMethod: params.paymentMethod, stripeAccount: account };
-    // Col saldo online la carta resta salvata per il saldo (§260); col saldo diretto (MIXED) no.
+    // Col saldo online la carta resta salvata per il saldo (§267); col saldo diretto (MIXED) no.
     const saveCard = saveCardForBalance(params.paymentMethod === "ONLINE");
     const session = await this.requireStripe().checkout.sessions.create({
       mode: "payment",
@@ -275,7 +275,7 @@ export class OnlineMoneyService {
 
   /**
    * Conto Stripe del professionista su cui addebitare un pagamento online
-   * (docs/CHANGELOG.md §249, §261): deve poter accettare le carte (addebito
+   * (docs/CHANGELOG.md §249, §268): deve poter accettare le carte (addebito
    * diretto) o ricevere trasferimenti (saldo di un lavoro iniziato con
    * l'addebito a destinazione), avere i bonifici verso la banca in manuale,
    * altrimenti Stripe li manderebbe subito alla sua banca e non sarebbero più
@@ -319,7 +319,7 @@ export class OnlineMoneyService {
     return accountId;
   }
 
-  /** Addebito diretto sul conto del professionista con la trattenuta della piattaforma (§261). */
+  /** Addebito diretto sul conto del professionista con la trattenuta della piattaforma (§268). */
   private directChargeData(amountEurCents: number) {
     return { application_fee_amount: onlineApplicationFeeHoldEurCents(amountEurCents) };
   }
@@ -332,7 +332,7 @@ export class OnlineMoneyService {
   /**
    * Acconto pagato su un preventivo che non si può più confermare: torna
    * tutto al cliente. `stripeAccount`: il conto del professionista su cui è
-   * nato il pagamento (addebito diretto, §261).
+   * nato il pagamento (addebito diretto, §268).
    */
   async refundQuoteDeposit(
     paymentIntentId: string,
@@ -362,7 +362,7 @@ export class OnlineMoneyService {
   }
 
   /**
-   * Rimborso su un addebito diretto rimasto in attesa (§262): il saldo
+   * Rimborso su un addebito diretto rimasto in attesa (§269): il saldo
    * Stripe del professionista non basta e Stripe lo completa appena
    * arrivano i fondi. Si segna sul rimborso chi avvisare, così il webhook
    * `refund.updated` può dire al cliente che è arrivato.
@@ -392,7 +392,7 @@ export class OnlineMoneyService {
 
   /**
    * Webhook `refund.updated` / `refund.failed` dal conto del professionista
-   * (§262): un rimborso rimasto in attesa è arrivato al cliente, oppure non
+   * (§269): un rimborso rimasto in attesa è arrivato al cliente, oppure non
    * è riuscito e serve il nostro team. Idempotente: dopo l'avviso il
    * rimborso non è più segnato come in attesa.
    */
@@ -530,7 +530,7 @@ export class OnlineMoneyService {
     let connectFees = 0;
     if (charge.destination) {
       // I soldi sono già sul conto del professionista: la piattaforma tiene
-      // commissione, costo della carta e costo del bonifico (§260) e il resto
+      // commissione, costo della carta e costo del bonifico (§267) e il resto
       // parte subito verso la banca.
       await this.prisma.jobPayment.update({
         where: { id: jp.id },
@@ -629,7 +629,7 @@ export class OnlineMoneyService {
   /**
    * Costo Stripe del pagamento, id dell'addebito e, per gli addebiti sul
    * conto del professionista, quel conto e la trattenuta della piattaforma.
-   * Con l'addebito diretto (`stripeAccount`, §261) il costo della carta
+   * Con l'addebito diretto (`stripeAccount`, §268) il costo della carta
    * Stripe lo fa pagare alla piattaforma senza dettaglio per pagamento: si
    * stima dal listino in base alla carta. Negli altri casi è quello reale
    * della balance transaction (0 se non disponibile).
@@ -686,7 +686,7 @@ export class OnlineMoneyService {
         releaseDueAt: new Date(Date.now() + ONLINE_RELEASE_DAYS * DAY_MS),
       },
     });
-    // Saldo addebitato da solo sulla carta salvata con l'acconto (§260):
+    // Saldo addebitato da solo sulla carta salvata con l'acconto (§267):
     // solo se l'importo finale resta nel preventivo accettato dal cliente.
     if (due > 0 && opts.autoCharge && (await this.chargeSavedCard(jp.id, due))) return { balanceDueEurCents: 0, autoChargedEurCents: due };
     return { balanceDueEurCents: due, autoChargedEurCents: 0 };
@@ -705,7 +705,7 @@ export class OnlineMoneyService {
     });
     if (!jp.clientStripeCustomerId || !jp.savedPaymentMethodId || !jp.stripeDestinationAccountId || jp.balanceDirect || jp.balancePaymentIntentId) return false;
     const suffix = statementSuffix(jp.booking.professionalProfile.businessName);
-    // Con l'addebito diretto (§261) cliente e carta stanno sul conto del professionista.
+    // Con l'addebito diretto (§268) cliente e carta stanno sul conto del professionista.
     const account = chargeAccount(jp);
     let intent: Stripe.PaymentIntent;
     try {
@@ -746,7 +746,7 @@ export class OnlineMoneyService {
 
   /**
    * Webhook `payment_intent.succeeded` di un saldo addebitato sulla carta
-   * salvata (§260): rete di sicurezza se la registrazione subito dopo
+   * salvata (§267): rete di sicurezza se la registrazione subito dopo
    * l'addebito non è andata a buon fine. Idempotente.
    */
   async handleAutoBalanceSucceeded(intent: Stripe.PaymentIntent): Promise<void> {
@@ -781,7 +781,7 @@ export class OnlineMoneyService {
     if (!jp || jp.paymentMethod !== "MANOVIA" || jp.releasedAt) return false;
     const booking = jp.booking;
     const issue = booking.issue;
-    // Segnalazione accolta con rimborso parziale (§260): eseguito il rimborso,
+    // Segnalazione accolta con rimborso parziale (§267): eseguito il rimborso,
     // il resto passa al professionista. Con il rimborso totale o ancora da
     // eseguire (in mano alla Finanza) i soldi restano bloccati.
     const partialRefundDone =
@@ -801,7 +801,7 @@ export class OnlineMoneyService {
     if (!can || booking.finalAmountEurCents === null) return false;
     // Contestazione in banca aperta: i soldi restano bloccati finché la banca non decide.
     if (disputeOpen(jp)) return false;
-    // Contestazione vinta ma cifra non ancora restituita da Stripe: si sblocca al suo ritorno (§260).
+    // Contestazione vinta ma cifra non ancora restituita da Stripe: si sblocca al suo ritorno (§267).
     if (jp.disputeRecoveredEurCents > 0) return false;
 
     // Col vecchio modello i soldi sono sulla piattaforma e serve un conto
@@ -836,7 +836,7 @@ export class OnlineMoneyService {
       refundedEurCents: jp.refundedEurCents,
       stripeFeeEurCents: jp.stripeFeeEurCents,
       // Commissione sul totale del lavoro anche con una parte rimborsata al
-      // cliente (decisione dell'utente, §260); col saldo non pagato solo su
+      // cliente (decisione dell'utente, §267); col saldo non pagato solo su
       // quanto incassato.
       appFeeEurCents: balanceUnpaid
         ? Math.round((jp.platformFeeEurCents * (jp.paidEurCents - jp.refundedEurCents)) / Math.max(1, onlineTarget))
@@ -856,7 +856,7 @@ export class OnlineMoneyService {
       let transfer: Stripe.Transfer | null = null;
       let connectFees = 0;
       let debtRecovered = 0;
-      // Parte già presa da Stripe dal suo saldo per rimborsi o contestazioni di altri lavori (§261).
+      // Parte già presa da Stripe dal suo saldo per rimborsi o contestazioni di altri lavori (§268).
       let takenByStripe = 0;
       let monthlyFeeMonth: string | null = null;
       if (destinationModel) {
@@ -870,7 +870,7 @@ export class OnlineMoneyService {
         const extra = fresh.applicationFeeEurCents - keep;
         if (extra < 0) this.logger.warn(`Trattenuta di ${jp.id} più bassa del dovuto di ${-extra} centesimi.`);
         let gross = Math.max(0, collected - Math.min(fresh.applicationFeeEurCents, keep));
-        // Con l'addebito diretto (§261) Stripe prende rimborsi e
+        // Con l'addebito diretto (§268) Stripe prende rimborsi e
         // contestazioni dal saldo del professionista anche oltre i soldi del
         // lavoro interessato, cioè da quelli ancora bloccati per altri: il
         // bonifico non supera quanto resta davvero sul conto, tolto ciò che
@@ -880,7 +880,7 @@ export class OnlineMoneyService {
           takenByStripe = Math.max(0, gross - free);
           gross -= takenByStripe;
         }
-        // Prima del bonifico si riprendono (§260) quanto il professionista ci
+        // Prima del bonifico si riprendono (§267) quanto il professionista ci
         // deve per lavori precedenti (rimborsi o contestazioni dopo il
         // bonifico) e i costi di Stripe Connect: bonifico e quota mensile.
         const debts = await this.professionalDebts(booking.professionalProfile.id);
@@ -1067,7 +1067,7 @@ export class OnlineMoneyService {
     return { available, free: available + incoming - reserved };
   }
 
-  /** Quanto si può sbloccare per un lavoro senza toccare i soldi degli altri (§261). Se Stripe non risponde, nessun limite. */
+  /** Quanto si può sbloccare per un lavoro senza toccare i soldi degli altri (§268). Se Stripe non risponde, nessun limite. */
   private async unreservedBalance(accountId: string, jobPaymentId: string): Promise<number> {
     try {
       return Math.max(0, (await this.accountFunds(accountId, jobPaymentId)).free);
@@ -1133,7 +1133,7 @@ export class OnlineMoneyService {
 
   /**
    * Prima di ogni pagamento o trasferimento si rilegge da Stripe se l'account
-   * del professionista può accettare le carte (addebito diretto, §261) o
+   * del professionista può accettare le carte (addebito diretto, §268) o
    * ricevere trasferimenti (modelli precedenti), buona pratica Stripe
    * (docs/CHANGELOG.md §236): il webhook può essere in ritardo o non
    * arrivare. Lo stato salvato è quello delle carte. Se Stripe non risponde
@@ -1197,7 +1197,7 @@ export class OnlineMoneyService {
         ...statusData,
       },
     });
-    // Addebito sul conto del professionista (§249, §260): la cifra persa si
+    // Addebito sul conto del professionista (§249, §267): la cifra persa si
     // riprende dal suo conto, quello che non c'è più diventa un suo debito.
     let debtAdded = 0;
     if (justClosed && jp.stripeDestinationAccountId) {
@@ -1235,7 +1235,7 @@ export class OnlineMoneyService {
 
   /**
    * Soldi di una contestazione in banca (webhook
-   * `charge.dispute.funds_withdrawn` / `funds_reinstated`, §260, §261).
+   * `charge.dispute.funds_withdrawn` / `funds_reinstated`, §267, §268).
    * Addebito diretto: Stripe prende la cifra dal saldo del professionista e
    * gliela rimette se si vince; qui si tiene solo il conto di quanto è
    * uscito dai soldi di questo lavoro. Addebito a destinazione: Stripe prende
@@ -1324,13 +1324,13 @@ export class OnlineMoneyService {
 
   /**
    * Contestazione chiusa su un addebito sul conto del professionista.
-   * Addebito diretto (§261): persa, Stripe ha già preso la cifra dal suo
+   * Addebito diretto (§268): persa, Stripe ha già preso la cifra dal suo
    * saldo; prima dello sblocco la trattenuta in più gli torna, dopo gli torna
    * la nostra parte (commissione e costi) se la colpa non è sua. Addebito a
    * destinazione: persa, si riprende
    * dal conto del professionista la sua parte non ancora ripresa
    * all'apertura (solo i soldi del lavoro ancora lì) e il resto diventa un
-   * suo debito, recuperato dai lavori successivi (§260); se il motivo
+   * suo debito, recuperato dai lavori successivi (§267); se il motivo
    * dipende dal lavoro anche commissione di Stripe e costi del pagamento.
    * Restituisce il debito aggiunto.
    */
@@ -1396,7 +1396,7 @@ export class OnlineMoneyService {
    * Quello che la piattaforma rimetterebbe su una cifra rimborsata o persa
    * (costo della carta e del bonifico che Stripe non restituisce, e la nostra
    * commissione già trattenuta, che resta a noi: decisione dell'utente,
-   * §260), da mettere a carico del professionista quando è colpa sua.
+   * §267), da mettere a carico del professionista quando è colpa sua.
    */
   private faultCostsEurCents(
     jp: { releasedAt: Date | null; netAmountEurCents: number; paidEurCents: number; refundedEurCents: number; platformFeeEurCents: number; stripeFeeEurCents: number },
@@ -1410,7 +1410,7 @@ export class OnlineMoneyService {
     return jp.refundedEurCents + amount >= jp.paidEurCents ? jp.stripeFeeEurCents + heldCommission : 0;
   }
 
-  /** Debito del professionista verso la piattaforma, recuperato dai suoi sblocchi successivi (§260). */
+  /** Debito del professionista verso la piattaforma, recuperato dai suoi sblocchi successivi (§267). */
   private async addProfessionalDebt(jobPaymentId: string, amountEurCents: number, reason: string): Promise<void> {
     if (amountEurCents <= 0) return;
     const jp = await this.prisma.jobPayment.update({
@@ -1556,7 +1556,7 @@ export class OnlineMoneyService {
    * del professionista (§249) i soldi si riprendono da lì; se erano già
    * sbloccati se ne riprende la sua quota dal bonifico non ancora partito e
    * il resto diventa un suo debito, trattenuto dai pagamenti successivi
-   * (§260). Col vecchio modello si storna il trasferimento.
+   * (§267). Col vecchio modello si storna il trasferimento.
    * `professionalFault` (segnalazione accolta): anche i costi del pagamento
    * che Stripe non restituisce sono a carico del professionista.
    */
@@ -1576,7 +1576,7 @@ export class OnlineMoneyService {
     let feeToReturn = 0;
     if (jp.stripeDestinationAccountId) {
       if (jp.releasedAt && jp.netAmountEurCents > 0 && jp.stripeDirectCharge) {
-        // Addebito diretto (§261): Stripe prende tutto il rimborso dal suo
+        // Addebito diretto (§268): Stripe prende tutto il rimborso dal suo
         // saldo, anche la parte che noi abbiamo già trattenuto. Il bonifico
         // non ancora partito si riduce. Se la colpa è sua quella parte resta
         // a suo carico; altrimenti gli restituiamo la nostra trattenuta.
@@ -1638,7 +1638,7 @@ export class OnlineMoneyService {
     const stripe = this.requireStripe();
     const jp = await this.prisma.jobPayment.findUniqueOrThrow({ where: { id: jobPaymentId } });
     const fromProfessional = !!jp.stripeDestinationAccountId && opts.beforeRelease;
-    // Addebito diretto (§261): il rimborso si fa sul conto del professionista e Stripe lo prende dal suo saldo.
+    // Addebito diretto (§268): il rimborso si fa sul conto del professionista e Stripe lo prende dal suo saldo.
     const account = chargeAccount(jp);
     const waiting: Stripe.Refund[] = [];
     let remaining = amountEurCents;
@@ -1671,7 +1671,7 @@ export class OnlineMoneyService {
 
   /**
    * Rimborso rimasto in attesa perché il saldo Stripe del professionista
-   * non basta (addebito diretto, §262): il cliente sa che arriva e quando,
+   * non basta (addebito diretto, §269): il cliente sa che arriva e quando,
    * il professionista sa che si chiude coi prossimi fondi.
    */
   private async reportRefundWaiting(jobPaymentId: string, account: string, refunds: Stripe.Refund[]): Promise<void> {
@@ -1700,7 +1700,7 @@ export class OnlineMoneyService {
   /**
    * Riprende soldi dal conto del professionista verso la piattaforma.
    * Addebito a destinazione: storno dei trasferimenti (prima il saldo, poi
-   * l'acconto). Addebito diretto (§261): prelievo dal suo saldo Stripe
+   * l'acconto). Addebito diretto (§268): prelievo dal suo saldo Stripe
    * (account debit), maggiorato del costo Stripe dell'1,4%, a suo carico; se
    * il saldo non basta non si preleva nulla e la cifra resta un suo debito.
    * Restituisce quanto ripreso, al netto del costo del prelievo.
@@ -1728,7 +1728,7 @@ export class OnlineMoneyService {
       return amountEurCents;
     }
     let remaining = amountEurCents;
-    // Anche la cifra restituita dopo una contestazione vinta (§260), prima dei due pagamenti.
+    // Anche la cifra restituita dopo una contestazione vinta (§267), prima dei due pagamenti.
     for (const source of [jp.disputeReturnTransferId, jp.balancePaymentIntentId, jp.stripePaymentIntentId]) {
       if (!source || remaining <= 0) continue;
       let transfer: Stripe.Transfer | string | null | undefined;
@@ -1761,7 +1761,7 @@ export class OnlineMoneyService {
     let remaining = Math.min(amountEurCents, jp.applicationFeeEurCents);
     for (const pi of [jp.balancePaymentIntentId, jp.stripePaymentIntentId]) {
       if (!pi || remaining <= 0) continue;
-      // Il pagamento sta sul conto su cui è nato (§261), l'application fee sulla piattaforma.
+      // Il pagamento sta sul conto su cui è nato (§268), l'application fee sulla piattaforma.
       const account = chargeAccount(jp);
       const intent = account
         ? await stripe.paymentIntents.retrieve(pi, { expand: ["latest_charge"] }, onAccount(account))

@@ -287,9 +287,16 @@ export class Dac7Service implements OnModuleInit {
     }
   }
 
-  private buildAddressFree(fp: { registeredStreet: string | null; registeredHouseNumber: string | null; registeredPostalCode: string | null; registeredCity: string | null }): string | null {
+  private buildAddressFree(fp: {
+    registeredStreet: string | null;
+    registeredHouseNumber: string | null;
+    registeredPostalCode: string | null;
+    registeredCity: string | null;
+    registeredProvince?: string | null;
+  }): string | null {
     const streetLine = [fp.registeredStreet, fp.registeredHouseNumber].filter(Boolean).join(" ");
-    const cityLine = [fp.registeredPostalCode, fp.registeredCity].filter(Boolean).join(" ");
+    // Provincia in sigla tra parentesi, come negli indirizzi italiani (docs/CHANGELOG.md §263).
+    const cityLine = [fp.registeredPostalCode, fp.registeredCity, fp.registeredProvince ? `(${fp.registeredProvince})` : null].filter(Boolean).join(" ");
     const combined = [streetLine, cityLine].filter(Boolean).join(", ");
     return combined || null;
   }

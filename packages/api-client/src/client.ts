@@ -73,6 +73,8 @@ import type {
   ProfessionalVerificationFilter,
   ProfessionalVerificationRow,
   MyVerificationStatus,
+  AddressSuggestion,
+  AddressPlace,
   TaxIdCheckView,
   VerifyProfessionalInput,
   GeneralRequestAvailability,
@@ -688,7 +690,7 @@ export type ProfessionalFiscalProfile = {
   stripePayoutsEnabled: boolean;
   stripeRequirementsStatus: string | null;
   representative: { firstName: string; lastName: string; codiceFiscale: string | null; role: string | null } | null;
-  /** Controlli all'Agenzia delle Entrate / Registro Imprese (Openapi, docs/CHANGELOG.md §259). */
+  /** Controlli all'Agenzia delle Entrate / Registro Imprese (Openapi, docs/CHANGELOG.md §253). */
   taxIdChecks?: TaxIdCheckView[];
 };
 
@@ -1586,7 +1588,39 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       }),
-    /** Stato dei tre passi: dati fiscali, controllo Agenzia delle Entrate, documento e selfie (docs/CHANGELOG.md §259). */
+    /** Suggerimenti di indirizzo (Italia) chiesti a Google dal nostro server (docs/CHANGELOG.md §264). */
+    addressSuggestions: (params: { q: string; session: string; latitude?: number; longitude?: number }) => {
+      const query = new URLSearchParams({ q: params.q, session: params.session });
+      if (params.latitude !== undefined && params.longitude !== undefined) {
+        query.set("lat", String(params.latitude));
+        query.set("lng", String(params.longitude));
+      }
+      return request<AddressSuggestion[]>(`/address/suggestions?${query.toString()}`, { cache: "no-store" });
+    },
+    /**
+     * Indirizzo dell'immagine fissa della mappa preparata dal nostro server
+     * (docs/CHANGELOG.md §265), per chi non ha accettato i servizi Google.
+     */
+    staticMapUrl: (spec: {
+      width: number;
+      height: number;
+      markers: [number, number][];
+      center?: [number, number];
+      zoom?: number;
+      radiiKm?: number[];
+    }) => {
+      const point = ([lat, lng]: [number, number]) => `${lat.toFixed(5)},${lng.toFixed(5)}`;
+      const query = new URLSearchParams({ size: `${Math.round(spec.width)}x${Math.round(spec.height)}` });
+      if (spec.markers.length > 0) query.set("m", spec.markers.slice(0, 60).map(point).join(";"));
+      if (spec.center) query.set("c", point(spec.center));
+      if (spec.zoom !== undefined) query.set("z", String(spec.zoom));
+      if (spec.radiiKm?.length) query.set("r", spec.radiiKm.join(","));
+      return `${baseUrl}/maps/static?${query.toString()}`;
+    },
+    /** Dettagli dell'indirizzo scelto: coordinate e pezzi (via, civico, CAP, comune, provincia). */
+    addressPlace: (id: string, session: string) =>
+      request<AddressPlace>(`/address/place/${encodeURIComponent(id)}?session=${encodeURIComponent(session)}`, { cache: "no-store" }),
+    /** Stato dei tre passi: dati fiscali, controllo Agenzia delle Entrate, documento e selfie (docs/CHANGELOG.md §253). */
     myVerificationStatus: (token: string) =>
       request<MyVerificationStatus>("/professionals/me/verification", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
     /** Avvia la verifica di documento e selfie: torna il link della pagina del fornitore. */

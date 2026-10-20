@@ -110,7 +110,7 @@ export function onlineApplicationFeeHoldEurCents(amountEurCents: number): number
 }
 
 /**
- * Costo della carta stimato dal listino Stripe per l'Italia (§261). Con
+ * Costo della carta stimato dal listino Stripe per l'Italia (§268). Con
  * l'addebito diretto sul conto del professionista Stripe fa pagare il costo
  * della carta alla piattaforma in blocco, senza il dettaglio per pagamento:
  * si stima dal tipo di carta. Carte europee "regolate" (consumatori) 1,5%,
@@ -131,7 +131,7 @@ export function estimatedCardFeeEurCents(amountEurCents: number, card: { country
 }
 
 /**
- * Prelievo dal conto Stripe del professionista (account debit, §261): Stripe
+ * Prelievo dal conto Stripe del professionista (account debit, §268): Stripe
  * fa pagare alla piattaforma l'1,4% di quanto preleva, a carico del
  * professionista. Restituisce quanto prelevare perché alla piattaforma
  * arrivi `amountEurCents`.
@@ -147,7 +147,7 @@ export function accountDebitGrossEurCents(amountEurCents: number): number {
  * (listino Stripe per l'Italia): 0,25% + €0,10 per bonifico e €2 al mese per
  * ogni account che riceve almeno un bonifico in quel mese. Sono a carico del
  * professionista (decisione dell'utente del 19/10/2026, docs/CHANGELOG.md
- * §260) e si riprendono allo sblocco, la quota mensile al primo sblocco del
+ * §267) e si riprendono allo sblocco, la quota mensile al primo sblocco del
  * mese.
  */
 export const CONNECT_PAYOUT_FEE_BASIS_POINTS = 25;
@@ -386,7 +386,7 @@ export function toJobPaymentSummary(
     const appFee = stage === "RELEASED" ? jp.platformFeeEurCents : jp.platformFeeEurCents || Math.round((base * ONLINE_APP_FEE_PERCENT) / 100);
     summary.appFeeEurCents = appFee;
     summary.stripeFeeEurCents = jp.stripeFeeEurCents;
-    // Prima dello sblocco una stima: anche il costo del bonifico è a carico del professionista (§260).
+    // Prima dello sblocco una stima: anche il costo del bonifico è a carico del professionista (§267).
     const estimate = Math.max(0, base - appFee - jp.stripeFeeEurCents);
     summary.payoutEurCents = stage === "RELEASED" ? jp.netAmountEurCents : Math.max(0, estimate - connectPayoutFeeEurCents(estimate));
     summary.payoutStatus = jobPayoutStatus(jp);

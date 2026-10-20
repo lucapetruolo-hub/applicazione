@@ -12,7 +12,7 @@ import {
 } from "./identity-verification.controller";
 import { IdentityVerificationService } from "./identity-verification.service";
 
-/** Documento e selfie con Didit (docs/CHANGELOG.md §259). */
+/** Documento e selfie con Didit (docs/CHANGELOG.md §253). */
 @Module({
   imports: [AuthModule, AdminModule, AuditLogModule, NotificationsModule, ProfessionalVerificationModule, TaxIdCheckModule],
   controllers: [IdentityVerificationController, IdentityVerificationWebhookController, AdminIdentityVerificationController],

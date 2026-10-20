@@ -13,6 +13,7 @@ import { AuditLogService } from "../audit-log/audit-log.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalVerificationService } from "../professional-verification/professional-verification.service";
 import { publicVisibilityMissing } from "../professional-fiscal/public-visibility";
+import { onlinePaymentsEnabled } from "../job-payments/online-payments-enabled";
 import { toTaxIdCheckView } from "../tax-id-check/tax-id-check.service";
 import { IdentityProviderError, type IdentityDecision, type IdentityProvider } from "./identity-provider";
 import { identityProviderFromEnv, identityVerificationNeeded } from "./identity-provider-env";
@@ -37,6 +38,34 @@ const REMINDER_FIRST_AFTER_DAYS = 3;
 const REMINDER_AGAIN_AFTER_DAYS = 7;
 const MAX_REMINDERS = 2;
 const DAY_MS = 24 * 60 * 60_000;
+/** Email "Completa il profilo": il giorno dopo la creazione del profilo, poi dopo una settimana (finestre di 2 giorni). */
+const SETUP_REMINDER_WINDOWS: [number, number][] = [
+  [1, 3],
+  [7, 9],
+];
+
+export type ProfileSetupItem = "SEARCH" | "QUOTES" | "ONLINE_PAYMENTS";
+
+/**
+ * Cosa manca ancora, nello stesso ordine di "Completa il profilo" in Oggi
+ * (docs/CHANGELOG.md §261). I pagamenti online contano solo dove sono attivi.
+ */
+export function profileSetupMissing(status: Pick<MyVerificationStatus, "publicVisible" | "canSendQuotes">, stripeVerified: boolean, paymentsOn: boolean): ProfileSetupItem[] {
+  const missing: ProfileSetupItem[] = [];
+  if (!status.publicVisible) missing.push("SEARCH");
+  if (!status.canSendQuotes) missing.push("QUOTES");
+  // I pagamenti online si sbloccano solo dopo la verifica dell'identità (§262).
+  if (paymentsOn && status.canSendQuotes && !stripeVerified) missing.push("ONLINE_PAYMENTS");
+  return missing;
+}
+
+/** Va mandata l'email "Completa il profilo"? Una nella prima finestra, una nella seconda, mai due a meno di 5 giorni. */
+export function setupReminderDue(input: { profileCreatedAt: Date; sent: number; lastSentAt: Date | null; now: Date }): boolean {
+  const age = (input.now.getTime() - input.profileCreatedAt.getTime()) / DAY_MS;
+  const window = SETUP_REMINDER_WINDOWS.findIndex(([from, to]) => age >= from && age < to);
+  if (window < 0 || input.sent > window) return false;
+  return !input.lastSentAt || input.now.getTime() - input.lastSentAt.getTime() >= 5 * DAY_MS;
+}
 
 export const isStandby = (row: Pick<IdentityVerification, "status" | "providerStatus" | "sessionUrl"> | null): boolean =>
   !!row && row.status === "STARTED" && row.providerStatus === STANDBY_PROVIDER_STATUS && !row.sessionUrl;
@@ -59,7 +88,7 @@ const FISCAL_INCLUDE = { taxIdChecks: true, representative: true } satisfies Pri
 type FiscalWithChecks = Prisma.ProfessionalFiscalProfileGetPayload<{ include: typeof FISCAL_INCLUDE }>;
 
 /**
- * Verifica di documento e selfie (docs/CHANGELOG.md §259, decisioni
+ * Verifica di documento e selfie (docs/CHANGELOG.md §253, decisioni
  * dell'utente del 14/10/2026): obbligatoria prima di inviare preventivi,
  * sostituisce la verifica manuale di /admin/verifiche (nessun caso passa
  * all'admin, §255). Il confronto è con il codice fiscale e i dati fiscali (per le
@@ -304,6 +333,39 @@ export class IdentityVerificationService {
       });
       if (!reminderDue({ profileCreatedAt: profile.createdAt, sent: sent.length, lastSentAt: sent[0]?.createdAt ?? null, now })) continue;
       await this.notificationsService.notify(profile.userId, "IDENTITY_VERIFICATION_REMINDER", {});
+    }
+  }
+
+  /**
+   * Email "Completa il profilo" il giorno dopo l'iscrizione (decisione
+   * dell'utente, docs/CHANGELOG.md §261-§262) e di nuovo dopo una settimana,
+   * solo se manca ancora qualcosa.
+   */
+  @Cron("0 11 * * *", { timeZone: "Europe/Rome" })
+  async remindProfileSetup(now: Date = new Date()): Promise<void> {
+    const profiles = await this.prisma.professionalProfile.findMany({
+      where: {
+        isDemo: false,
+        deletedAt: null,
+        invitePendingAt: null,
+        suspendedAt: null,
+        user: { suspendedAt: null },
+        createdAt: { lte: new Date(now.getTime() - SETUP_REMINDER_WINDOWS[0]![0] * DAY_MS), gt: new Date(now.getTime() - SETUP_REMINDER_WINDOWS[SETUP_REMINDER_WINDOWS.length - 1]![1] * DAY_MS) },
+      },
+      select: { id: true, userId: true, createdAt: true, isDemo: true, verified: true, fiscalProfile: { include: FISCAL_INCLUDE } },
+      take: 200,
+    });
+    for (const profile of profiles) {
+      const sent = await this.prisma.notification.findMany({
+        where: { userId: profile.userId, type: "PROFILE_SETUP_REMINDER" },
+        orderBy: { createdAt: "desc" },
+        select: { createdAt: true },
+      });
+      if (!setupReminderDue({ profileCreatedAt: profile.createdAt, sent: sent.length, lastSentAt: sent[0]?.createdAt ?? null, now })) continue;
+      const status = this.buildStatus(profile, await this.latest(profile.id));
+      const missing = profileSetupMissing(status, !!profile.fiscalProfile?.stripePayoutsEnabled, onlinePaymentsEnabled());
+      if (missing.length === 0) continue;
+      await this.notificationsService.notify(profile.userId, "PROFILE_SETUP_REMINDER", { missing });
     }
   }
 

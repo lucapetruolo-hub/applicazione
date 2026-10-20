@@ -40,8 +40,12 @@ produzione):
    - `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` su Vercel — Map ID creato in Google
      Cloud → Gestione mappe (tipo JavaScript, vettoriale), per i segnaposto
      avanzati; senza, si usa `DEMO_MAP_ID`, che è solo di prova (§140);
-   - `GOOGLE_MAPS_API_KEY` su Render — seconda chiave, limitata alla sola
-     Geocoding API;
+   - `GOOGLE_MAPS_API_KEY` su Render — seconda chiave, con Geocoding API,
+     Places API (New) (suggerimenti degli indirizzi, §264) e Maps Static API
+     (immagine fissa della mappa senza consenso, §265);
+   - Client ID OAuth di Google: tra gli "URI di reindirizzamento
+     autorizzati" l'indirizzo `/accesso-google` del dominio definitivo
+     (accesso con Google, §265);
    - impostare un budget/avviso di spesa su Google Cloud.
    Le variabili `NEXT_PUBLIC_*` richiedono un nuovo deploy su Vercel.
 4bis. **Postgres free (Render) scade ogni 30 giorni** — non risolto
@@ -74,33 +78,33 @@ produzione):
    `charge.dispute.funds_withdrawn`, `charge.dispute.funds_reinstated`:
    cifra contestata ripresa subito dal professionista e restituita se si
    vince, `payment_intent.succeeded`: saldo addebitato da solo sulla carta
-   dell'acconto, docs/CHANGELOG.md §260) e un **secondo
+   dell'acconto, docs/CHANGELOG.md §267) e un **secondo
    endpoint "Connect"** sullo stesso URL `/billing/webhook` con gli eventi
    `account.updated`, `payout.paid`, `payout.failed`, `payout.canceled`
    (bonifici dal conto Stripe del professionista, docs/CHANGELOG.md §249) e
    `balance.available` (bonifico appena i soldi sono disponibili, §249),
    `account.external_account.created` e `account.external_account.updated`
    (conto bancario aggiunto o cambiato su Stripe) e, perché i pagamenti dei
-   lavori nascono sul conto del professionista (addebito diretto, §261),
+   lavori nascono sul conto del professionista (addebito diretto, §268),
    anche `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
    `checkout.session.async_payment_failed`, `payment_intent.succeeded` e tutti
    i `charge.dispute.*` elencati sopra, più `refund.updated` e
    `refund.failed` (rimborso rimasto in attesa di fondi sul conto del
-   professionista, poi arrivato o non riuscito, §262),
+   professionista, poi arrivato o non riuscito, §269),
    la cui chiave va in `STRIPE_CONNECT_WEBHOOK_SECRET` (docs/CHANGELOG.md §236).
    Se la chiave è limitata (`rk_`) deve avere anche i permessi su
    application fee, bonifici (payouts), saldo e impostazioni del saldo
    degli account collegati, Checkout, pagamenti, rimborsi e addebiti
    (charges, per i prelievi dal conto del professionista) sugli account
-   collegati (§261). In Dashboard Stripe prima del primo
+   collegati (§268). In Dashboard Stripe prima del primo
    professionista: accettare la responsabilità delle perdite (Impostazioni
    Connect → profilo piattaforma) e attivare Radar for Platforms. In
    Impostazioni Connect → Dashboard Express → Funzionalità spegnere la
    modifica della pianificazione dei bonifici e i bonifici manuali/istantanei
    da parte dei professionisti: altrimenti potrebbero mandarsi in banca i
-   soldi ancora bloccati (§260). Nella stessa pagina lasciare spenti
+   soldi ancora bloccati (§267). Nella stessa pagina lasciare spenti
    "Rimborsi" e "Gestione contestazioni": rimborsi e contestazioni li
-   gestisce il sito, altrimenti i conti del sito non tornerebbero (§261).
+   gestisce il sito, altrimenti i conti del sito non tornerebbero (§268).
    Il prelievo dal conto del professionista (account debit, 1,4%) richiede
    il suo consenso esplicito: è nei Termini, da far confermare all'avvocato. Attivare Smart Disputes (Impostazioni →
    Contestazioni): Stripe risponde da solo alle contestazioni con le prove,

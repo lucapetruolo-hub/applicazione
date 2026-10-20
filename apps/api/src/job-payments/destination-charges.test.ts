@@ -94,7 +94,7 @@ describe("trattenuta sul pagamento", () => {
 });
 
 describe("OnlineMoneyService.createQuoteDepositCheckout", () => {
-  it("addebita direttamente sul conto del professionista e mette in manuale i suoi bonifici prima del primo pagamento (§261)", async () => {
+  it("addebita direttamente sul conto del professionista e mette in manuale i suoi bonifici prima del primo pagamento (§268)", async () => {
     const { service, prisma, stripe } = buildService();
     prisma.professionalFiscalProfile.findUnique.mockResolvedValue({ id: "fp-1", stripeConnectAccountId: "acct_1", stripePayoutsEnabled: true, stripeManualPayoutsAt: null, stripeNegativeDebitAt: null });
 
@@ -328,7 +328,7 @@ describe("OnlineMoneyService.refundOnline con i soldi sul conto del professionis
   });
 });
 
-describe("OnlineMoneyService.refundOnline per colpa del professionista (§260)", () => {
+describe("OnlineMoneyService.refundOnline per colpa del professionista (§267)", () => {
   it("dopo il bonifico riprende quanto c'è ancora e mette il resto come debito, compresa la nostra commissione", async () => {
     const { service, prisma, stripe, notificationsService } = buildService();
     // Sbloccati 93,25 €, bonifico già partito per 90 €: sul conto ne restano 3,25 €.
@@ -379,7 +379,7 @@ describe("OnlineMoneyService.refundOnline per colpa del professionista (§260)",
   });
 });
 
-describe("OnlineMoneyService.handleStripeDisputeFunds (§260)", () => {
+describe("OnlineMoneyService.handleStripeDisputeFunds (§267)", () => {
   function dispute(overrides: Record<string, unknown> = {}) {
     return { id: "dp_1", payment_intent: "pi_dep", amount: 10000, status: "needs_response", reason: "product_unacceptable", balance_transactions: [], ...overrides } as never;
   }
@@ -435,7 +435,7 @@ describe("OnlineMoneyService.handleStripeDisputeFunds (§260)", () => {
   });
 });
 
-describe("saldo addebitato sulla carta dell'acconto (§260)", () => {
+describe("saldo addebitato sulla carta dell'acconto (§267)", () => {
   it("salva la carta all'acconto solo se anche il saldo si paga online", async () => {
     const { service, prisma, stripe } = buildService();
     prisma.professionalFiscalProfile.findUnique.mockResolvedValue({ id: "fp-1", stripeConnectAccountId: "acct_1", stripePayoutsEnabled: true, stripeManualPayoutsAt: new Date(), stripeNegativeDebitAt: new Date() });

@@ -3,7 +3,7 @@ import type Stripe from "stripe";
 export interface StripeConnectStatus {
   /**
    * L'account può ricevere pagamenti con carta addebitati direttamente su di
-   * lui (`card_payments` della configurazione merchant, §261): è lo stato
+   * lui (`card_payments` della configurazione merchant, §268): è lo stato
    * che rende attivi i pagamenti online del professionista.
    */
   cardPaymentsActive: boolean;
@@ -15,7 +15,7 @@ export interface StripeConnectStatus {
 
 /**
  * Stato dell'account Stripe del professionista letto con le API Accounts v2
- * (docs/CHANGELOG.md §236, §261): con l'addebito diretto conta
+ * (docs/CHANGELOG.md §236, §268): con l'addebito diretto conta
  * `configuration.merchant...card_payments.status`; `stripe_transfers` serve
  * solo ai pagamenti registrati prima (addebito a destinazione o custodia).
  * Si rilegge da Stripe prima di ogni pagamento e quando il professionista

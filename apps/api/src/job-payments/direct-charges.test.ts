@@ -4,7 +4,7 @@ import { OnlineMoneyService } from "./online-money.service";
 
 /**
  * Addebito diretto sul conto Stripe del professionista (docs/CHANGELOG.md
- * §261, decisione dell'utente del 20/10/2026): pagamenti, rimborsi e
+ * §268, decisione dell'utente del 20/10/2026): pagamenti, rimborsi e
  * contestazioni stanno sul suo conto, così Stripe prende rimborsi e
  * contestazioni dal suo saldo e non da quello della piattaforma. Ogni
  * chiamata a Stripe è finta e controllata.
@@ -105,7 +105,7 @@ function toRelease(overrides: Record<string, unknown> = {}) {
   };
 }
 
-describe("costi stimati dal listino Stripe (§261)", () => {
+describe("costi stimati dal listino Stripe (§268)", () => {
   it("stima il costo della carta dal tipo di carta, al massimo quello trattenuto", () => {
     expect(estimatedCardFeeEurCents(10000, { country: "IT", regulatedStatus: "regulated" })).toBe(175);
     expect(estimatedCardFeeEurCents(10000, { country: "DE", regulatedStatus: "unregulated" })).toBe(305);
@@ -323,7 +323,7 @@ describe("contestazioni in banca con l'addebito diretto", () => {
   });
 });
 
-describe("rimborso in attesa di fondi sul conto del professionista (§262)", () => {
+describe("rimborso in attesa di fondi sul conto del professionista (§269)", () => {
   it("se il suo saldo non basta avvisa cliente e professionista e segna il rimborso", async () => {
     const { service, prisma, stripe } = buildService();
     const job = { ...directJob(), booking: { id: "bk-1", clientId: "client-1", professionalProfile: { userId: "pro-user-1" }, quote: { guidedRequestId: "gr-1" } } };

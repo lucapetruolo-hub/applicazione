@@ -94,7 +94,7 @@ export class JobPaymentsService {
     // lato PRIMA che il professionista completasse (ordine libero, CLAUDE.md
     // §40) — il pagamento diretto nasce già CONFIRMED.
     alreadyConfirmedByClient?: boolean;
-    /** Importo finale dentro il preventivo accettato: il saldo si può addebitare sulla carta salvata (§260). */
+    /** Importo finale dentro il preventivo accettato: il saldo si può addebitare sulla carta salvata (§267). */
     autoChargeBalance?: boolean;
   }): Promise<{ balanceDueEurCents: number; autoChargedEurCents: number } | null> {
     const existing = await this.prisma.jobPayment.findUnique({ where: { bookingId: params.bookingId }, include: { booking: true } });
@@ -201,7 +201,7 @@ export class JobPaymentsService {
     return this.onlineMoneyService.handleStripeDispute(dispute);
   }
 
-  /** Soldi di una contestazione tolti o restituiti dalla banca (`charge.dispute.funds_*`, §260). */
+  /** Soldi di una contestazione tolti o restituiti dalla banca (`charge.dispute.funds_*`, §267). */
   handleRefundUpdated(refund: Stripe.Refund, stripeAccount: string | null | undefined): Promise<void> {
     return this.onlineMoneyService.handleRefundUpdated(refund, stripeAccount);
   }
@@ -210,7 +210,7 @@ export class JobPaymentsService {
     return this.onlineMoneyService.handleStripeDisputeFunds(dispute, kind);
   }
 
-  /** Saldo addebitato sulla carta salvata (`payment_intent.succeeded`, §260). */
+  /** Saldo addebitato sulla carta salvata (`payment_intent.succeeded`, §267). */
   handleAutoBalanceSucceeded(intent: Stripe.PaymentIntent): Promise<void> {
     return this.onlineMoneyService.handleAutoBalanceSucceeded(intent);
   }

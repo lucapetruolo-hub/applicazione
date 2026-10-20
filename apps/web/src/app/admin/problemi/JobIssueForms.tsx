@@ -69,7 +69,7 @@ export function DecisionForm({ row, token, onDone }: { row: AdminJobIssue; token
   const [error, setError] = useState<string | null>(null);
   const [asking, setAsking] = useState(false);
   const [question, setQuestion] = useState("");
-  // Rimborso a livelli (§260): solo per il lavoro fatto male pagato online; la mancata presentazione rimborsa sempre tutto.
+  // Rimborso a livelli (§267): solo per il lavoro fatto male pagato online; la mancata presentazione rimborsa sempre tutto.
   const [refundPercent, setRefundPercent] = useState<JobIssueRefundPercent>(100);
   const choosesRefund = row.issue.paidOnline && row.issue.type !== "NO_SHOW";
   const nextCount = row.professional.upheldLast30Days + 1;

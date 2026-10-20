@@ -225,7 +225,12 @@ export function GuidedRequestForm({
     setRecipientPhone((prev) => prev || user.phone || "");
     setStreet((prev) => prev || user.street || "");
     // Indirizzo già salvato nell'account: vale come scelto, finché non si cambia via o città.
-    if (user.street) setAddressVerified(true);
+    if (user.street) {
+      setAddressVerified(true);
+      const line = [user.street, user.houseNumber].filter(Boolean).join(" ");
+      const place = [user.postalCode, user.city].filter(Boolean).join(" ");
+      setAddressText((prev) => prev || [line, place].filter(Boolean).join(", "));
+    }
     setHouseNumber((prev) => prev || user.houseNumber || "");
     setAddressExtra((prev) => prev || user.addressExtra || "");
     setPostalCode((prev) => prev || user.postalCode || "");
@@ -374,6 +379,16 @@ export function GuidedRequestForm({
   const [addressExtra, setAddressExtra] = useState(searchParams.get("interno") ?? "");
   const [postalCode, setPostalCode] = useState(searchParams.get("cap") ?? "");
   const [province, setProvince] = useState(searchParams.get("provincia") ?? "");
+  // A domicilio un solo campo "Indirizzo" con via e città insieme (richiesta
+  // dell'utente, docs/CHANGELOG.md §264): la scelta compila città, civico, CAP
+  // e provincia. Il testo mostrato nel campo è l'indirizzo intero.
+  const [addressText, setAddressText] = useState(() => {
+    const line = [searchParams.get("via"), searchParams.get("civico")].filter(Boolean).join(" ");
+    const place = [searchParams.get("cap"), initialCity].filter(Boolean).join(" ");
+    return line ? [line, place].filter(Boolean).join(", ") : "";
+  });
+  // Indirizzo scelto senza numero civico (es. solo la via): lo si chiede a parte.
+  const [askHouseNumber, setAskHouseNumber] = useState(false);
   const prefilledFromAccountRef = useRef(false);
   // Istantanea dei valori reali dell'account al momento del prefill (non i
   // valori di stato, che ricadono su "" per i campi mancanti) — usata al
@@ -545,9 +560,9 @@ export function GuidedRequestForm({
     // Città, indirizzo e destinatario obbligatori a domicilio: per una
     // consulenza online restano facoltativi (richiesta esplicita dell'utente).
     if (serviceMode === "HOME") {
+      if (chosenAddress.missing) return addressText.trim() ? ADDRESS_NOT_CHOSEN_MESSAGE : "Indica l'indirizzo.";
       if (!city.trim()) return "Indica la città in cui serve l'intervento.";
       if (!street.trim()) return "Indica l'indirizzo.";
-      if (chosenAddress.missing) return ADDRESS_NOT_CHOSEN_MESSAGE;
       if (!recipientName.trim() || !recipientSurname.trim()) return "Indica nome e cognome di chi riceverà il professionista.";
       if (!recipientPhone.trim()) return "Indica un numero di telefono.";
       if (!isPlausiblePhoneNumber(recipientPhone)) return "Controlla il numero di telefono: sembra incompleto o troppo lungo.";
@@ -1058,6 +1073,7 @@ export function GuidedRequestForm({
 
         {step === 2 ? (
           <>
+        {serviceMode === "HOME" && !chosenAddress.serviceDown ? null : (
         <YStack gap="$2">
           <FieldLabel>{cityOptional ? "Città (facoltativa)" : "Città"}</FieldLabel>
           {/* `.guided-city`: stesso fondo bianco degli altri campi (prima grigio, docs/CHANGELOG.md §154). */}
@@ -1091,6 +1107,7 @@ export function GuidedRequestForm({
             </Text>
           ) : null}
         </YStack>
+        )}
 
         {serviceMode === "HOME" ? (
           <YStack gap="$3">
@@ -1116,43 +1133,73 @@ export function GuidedRequestForm({
 
             <PhoneNumberInput value={recipientPhone} onChange={setRecipientPhone} style={fieldInputStyle} />
 
-            <XStack gap="$2" flexWrap="wrap">
-              <YStack flex={2} minWidth={200}>
-                {/* Suggerimenti di Google: scegliendo un indirizzo si compilano
-                    anche civico, CAP, provincia e città (docs/CHANGELOG.md §141). */}
-                {/* Solo indirizzi della città scelta sopra, da scegliere per forza
-                    dall'elenco: civico, CAP e provincia si compilano da soli
-                    (docs/CHANGELOG.md §141, §214). */}
+            {chosenAddress.serviceDown ? (
+              // Suggerimenti non disponibili: campi separati, come prima.
+              <>
+                <XStack gap="$2" flexWrap="wrap">
+                  <YStack flex={2} flexBasis={0} minWidth={180}>
+                    <input aria-label="Via o piazza" value={street} onChange={(e) => setStreet(e.target.value)} placeholder="Via o piazza" style={fieldInputStyle} />
+                  </YStack>
+                  <YStack flex={1} flexBasis={0} minWidth={110}>
+                    <input aria-label="Numero civico" value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} placeholder="Civico" style={fieldInputStyle} />
+                  </YStack>
+                </XStack>
+                <XStack gap="$2" flexWrap="wrap">
+                  <YStack flex={1} flexBasis={0} minWidth={100}>
+                    <input aria-label="CAP" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="CAP" style={fieldInputStyle} />
+                  </YStack>
+                  <YStack flex={1} flexBasis={0} minWidth={100}>
+                    <input
+                      aria-label="Provincia"
+                      value={province}
+                      onChange={(e) => setProvince(e.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2))}
+                      placeholder="Provincia (es. RM)"
+                      style={fieldInputStyle}
+                    />
+                  </YStack>
+                </XStack>
+              </>
+            ) : (
+              <YStack gap="$1">
+                {/* Via e città insieme: la scelta dall'elenco compila città,
+                    civico, CAP e provincia (docs/CHANGELOG.md §141, §214, §264). */}
                 <AddressAutocompleteInput
-                  value={street}
+                  value={addressText}
                   onChange={(next) => {
-                    setStreet(next);
+                    setAddressText(next);
                     setAddressVerified(false);
                   }}
                   onSelect={(selected) => {
+                    const comune = selected.locality ? findComuneByName(selected.locality) : undefined;
                     setStreet(selected.street ?? selected.address);
                     setHouseNumber(selected.houseNumber ?? "");
-                    if (selected.postalCode) setPostalCode(selected.postalCode);
-                    if (selected.province) setProvince(selected.province);
+                    setAskHouseNumber(!selected.houseNumber);
+                    setPostalCode(selected.postalCode ?? "");
+                    setProvince(selected.province ?? comune?.province ?? "");
+                    setCity(comune?.name ?? selected.locality ?? "");
                     setAddressVerified(true);
                   }}
-                  restrictToCity={cityComune ? { name: cityComune.name, latitude: cityComune.lat, longitude: cityComune.lon } : null}
-                  askConsent
+                  biasTowards={cityComune ? { latitude: cityComune.lat, longitude: cityComune.lon } : null}
                   onServiceUnavailable={chosenAddress.markServiceDown}
-                  disabled={!cityComune}
-                  placeholder={cityComune ? `Via/piazza a ${cityComune.name}` : "Scegli prima la città"}
+                  placeholder="Indirizzo, es. Via Roma 5, Bari"
                   style={fieldInputStyle}
                 />
-                {chosenAddress.missing && cityComune && street.trim() ? (
-                  <Text fontSize="$2" color={brand.grafite70} marginTop="$1">
+                {chosenAddress.missing && addressText.trim() ? (
+                  <Text fontSize="$2" color={brand.grafite70}>
                     Scegli l&apos;indirizzo dall&apos;elenco che compare mentre scrivi.
                   </Text>
                 ) : null}
+                {chosenAddress.chosen && (askHouseNumber || !houseNumber.trim()) ? (
+                  <input
+                    aria-label="Numero civico"
+                    value={houseNumber}
+                    onChange={(e) => setHouseNumber(e.target.value)}
+                    placeholder="Numero civico"
+                    style={{ ...fieldInputStyle, maxWidth: 180, marginTop: 6 }}
+                  />
+                ) : null}
               </YStack>
-              <YStack flex={1} minWidth={120}>
-                <input aria-label="Numero civico" value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} placeholder="Numero civico" style={fieldInputStyle} />
-              </YStack>
-            </XStack>
+            )}
 
             <input aria-label="Scala, piano, interno"
               value={addressExtra}
@@ -1160,15 +1207,6 @@ export function GuidedRequestForm({
               placeholder="Scala, piano, interno (facoltativo)"
               style={fieldInputStyle}
             />
-
-            <XStack gap="$2" flexWrap="wrap">
-              <YStack flex={1} minWidth={100}>
-                <input aria-label="CAP" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="CAP" style={fieldInputStyle} />
-              </YStack>
-              <YStack flex={1} minWidth={140}>
-                <input aria-label="Provincia" value={province} onChange={(e) => setProvince(e.target.value)} placeholder="Provincia" style={fieldInputStyle} />
-              </YStack>
-            </XStack>
           </YStack>
         ) : null}
 

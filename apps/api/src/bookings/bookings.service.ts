@@ -168,7 +168,7 @@ export class BookingsService {
         clientUserId,
         guidedRequestId: info?.guidedRequestId ?? null,
       });
-      // Rimborso in attesa di fondi sul conto del professionista (§262): il cliente lo sa e viene avvisato all'arrivo.
+      // Rimborso in attesa di fondi sul conto del professionista (§269): il cliente lo sa e viene avvisato all'arrivo.
       await this.notificationsService.notify(clientUserId, "QUOTE_DEPOSIT_REFUNDED", {
         guidedRequestId: info?.guidedRequestId ?? null,
         quoteId,
@@ -513,7 +513,7 @@ export class BookingsService {
       grossAmountEurCents: finalAmountEurCents,
       reportedByUserId: professionalUserId,
       alreadyConfirmedByClient: booking.clientConfirmedCompletedAt !== null,
-      // Saldo sulla carta dell'acconto solo dentro il preventivo accettato: niente voci nuove né totale sopra il massimo (§260).
+      // Saldo sulla carta dell'acconto solo dentro il preventivo accettato: niente voci nuove né totale sopra il massimo (§267).
       autoChargeBalance:
         !!deviation && deviation.addedItemNames.length === 0 && deviation.direction !== "ABOVE" && deviation.quoteMaxEurCents !== null,
     });

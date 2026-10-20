@@ -65,7 +65,7 @@ describe("pagamento online: acconto, saldo, accredito (§168)", () => {
     };
     const pro = toJobPaymentSummary(jp, 42000, true)!;
     expect(pro.method).toBe("ONLINE");
-    expect(pro.payoutEurCents).toBe(39200 - 108); // meno il costo del bonifico (0,25% + 0,10 €, §260)
+    expect(pro.payoutEurCents).toBe(39200 - 108); // meno il costo del bonifico (0,25% + 0,10 €, §267)
     expect(toJobPaymentSummary(jp, 42000)!.payoutEurCents).toBeUndefined();
   });
 });
