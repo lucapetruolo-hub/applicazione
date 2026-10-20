@@ -163,7 +163,7 @@ export class BookingsService {
       else if ((session.amount_total ?? 0) !== this.quoteDepositEurCents(quote)) refundReason = "Il preventivo è cambiato durante il pagamento.";
     }
     if (!quote || refundReason) {
-      await this.jobPaymentsService.refundQuoteDeposit(paymentIntentId, refundReason ?? "Preventivo non più disponibile.");
+      await this.jobPaymentsService.refundQuoteDeposit(paymentIntentId, refundReason ?? "Preventivo non più disponibile.", session.metadata?.stripeAccount ?? null);
       const info = await this.prisma.quote.findUnique({ where: { id: quoteId }, select: { guidedRequestId: true, professionalProfileId: true } });
       await this.notificationsService.notify(clientUserId, "QUOTE_DEPOSIT_REFUNDED", {
         guidedRequestId: info?.guidedRequestId ?? null,

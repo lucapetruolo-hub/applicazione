@@ -1614,6 +1614,10 @@ model ProfessionalFiscalProfile {
   // Bonifici verso la banca impostati in manuale su Stripe (docs/CHANGELOG.md §249):
   // i soldi dei lavori restano bloccati sul suo conto Stripe fino allo sblocco.
   stripeManualPayoutsAt    DateTime?
+  // Saldo negativo coperto dalla sua banca (`debit_negative_balances`, §261):
+  // se rimborsi o contestazioni superano i soldi sul suo conto Stripe li
+  // preleva dal suo conto bancario, non dalla piattaforma.
+  stripeNegativeDebitAt    DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1835,7 +1839,13 @@ model JobPayment {
   // restituisce al professionista). I bonifici verso la sua banca sono
   // manuali: partono solo allo sblocco (`payoutPendingEurCents` finché i
   // soldi non sono disponibili su Stripe, poi `payoutSentEurCents`).
+  // `stripeDirectCharge` (§261, decisione dell'utente del 20/10/2026): il
+  // pagamento è nato direttamente sul conto del professionista (addebito
+  // diretto, header Stripe-Account): rimborsi e contestazioni Stripe li prende
+  // dal suo saldo, non da quello della piattaforma. False = addebito a
+  // destinazione (§249) o vecchio modello.
   stripeDestinationAccountId String?
+  stripeDirectCharge         Boolean   @default(false)
   applicationFeeEurCents     Int       @default(0)
   payoutPendingEurCents      Int       @default(0)
   payoutSentEurCents         Int       @default(0)

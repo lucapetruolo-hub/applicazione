@@ -19445,3 +19445,59 @@ facoltative o con default 0), `20261019180000_job_payment_saved_card`
 
 **Testi:** Termini (punto pagamenti), regolamento delle controversie,
 email e notifiche di sblocco e contestazione, scheda admin.
+
+## 261. Pagamenti dei lavori addebitati direttamente sul conto del professionista
+
+**Richiesta (Luca, 20/10/2026, scheda nel thread "Piano pagamenti Stripe e
+controversie"):** "Pagamento diretto": rimborsi e contestazioni devono
+toccare solo i soldi del professionista, mai quelli della piattaforma.
+Con l'addebito a destinazione (§249) Stripe li prende sempre prima dal
+conto della piattaforma, anche se poi li riprendiamo noi.
+
+**Decisione:** i pagamenti online dei lavori nascono sul conto Stripe
+Express del professionista (direct charges, header `Stripe-Account`). Restano
+bonifici in manuale sbloccati dal sito, commissione del 5% + costo massimo
+della carta come application fee, `fees_collector`/`losses_collector` =
+`application`. Lo stesso giorno Luca ha chiesto se con Stripe Standard si
+possono bloccare i bonifici: no, con la dashboard completa il professionista
+può farsi bonifici manuali da solo (solo un'eccezione del supporto Stripe),
+quindi si resta su Express.
+
+- **Conto del professionista:** nuova configurazione `merchant` con
+  `card_payments` (agli account già creati si aggiunge quando il
+  professionista riapre "Attiva i pagamenti online"); i pagamenti online sono
+  attivi quando `card_payments` è attivo. Impostazioni del saldo:
+  bonifici manuali e `debit_negative_balances` (`stripeNegativeDebitAt`): se
+  rimborsi o contestazioni superano il saldo, Stripe preleva dalla sua banca.
+- **Checkout, acconto e saldo automatico** sul conto del professionista
+  (`stripeAccount` nei metadata), con cliente e carta salvati lì.
+  `JobPayment.stripeDirectCharge` segna il modello; un lavoro iniziato con
+  l'addebito a destinazione finisce così.
+- **Costo della carta:** con l'addebito diretto Stripe lo fa pagare alla
+  piattaforma senza dettaglio per pagamento: si stima dal listino per
+  l'Italia in base alla carta (`estimatedCardFeeEurCents`: europee regolate
+  1,5%, altre europee 2,8%, Regno Unito 2,5%, extra europee 3,15%, + 0,25 €).
+- **Rimborsi:** fatti sul suo conto, Stripe li prende dal suo saldo. Dopo lo
+  sblocco niente più debito per la parte già bonificata: la prende Stripe;
+  se la colpa non è sua gli restituiamo la nostra trattenuta.
+- **Contestazioni:** Stripe prende la cifra dal suo saldo e gliela rimette
+  se si vince; il sito tiene solo il conto. Persa: commissione di Stripe a
+  suo carico solo per "lavoro non ricevuto/non conforme"; per frode la
+  nostra parte gli torna.
+- **Prelievi per debiti e costi Connect:** al posto dello storno dei
+  trasferimenti, prelievo dal suo conto Stripe (account debit) maggiorato
+  dell'1,4% che Stripe fa pagare (`accountDebitGrossEurCents`). Se non riesce
+  resta un debito.
+- **Sblocco:** il bonifico non supera i soldi liberi sul suo conto (tolti
+  quelli degli altri lavori), perché Stripe può aver preso rimborsi o
+  contestazioni dai soldi di altri lavori.
+
+**Migrazione:** `20261020090000_job_payment_direct_charge`.
+
+**Testi:** Termini (pagamento sul conto del professionista, rimborsi e
+contestazioni dal suo conto o dalla sua banca, consenso al prelievo),
+regolamento delle controversie, checklist di lancio (eventi del webhook
+Connect, funzioni Express da lasciare spente, permessi della chiave).
+
+**Verifica:** `vitest` dell'API (448 test, 14 nuovi in
+`direct-charges.test.ts`), `tsc` su API e web, `eslint` sull'API.

@@ -110,6 +110,39 @@ export function onlineApplicationFeeHoldEurCents(amountEurCents: number): number
 }
 
 /**
+ * Costo della carta stimato dal listino Stripe per l'Italia (§261). Con
+ * l'addebito diretto sul conto del professionista Stripe fa pagare il costo
+ * della carta alla piattaforma in blocco, senza il dettaglio per pagamento:
+ * si stima dal tipo di carta. Carte europee "regolate" (consumatori) 1,5%,
+ * le altre europee (aziendali, premium) 2,8%, del Regno Unito 2,5%, extra
+ * europee 3,15%, sempre più €0,25. Mai oltre la trattenuta provvisoria.
+ */
+const EEA_COUNTRIES = new Set([
+  "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE", "IS", "LI", "NO",
+]);
+export function estimatedCardFeeEurCents(amountEurCents: number, card: { country: string | null; regulatedStatus: string | null } | null): number {
+  if (amountEurCents <= 0) return 0;
+  const country = card?.country?.toUpperCase() ?? null;
+  let basisPoints = ONLINE_CARD_FEE_MAX_BASIS_POINTS;
+  if (country && EEA_COUNTRIES.has(country)) basisPoints = card?.regulatedStatus === "regulated" ? 150 : 280;
+  else if (country === "GB") basisPoints = 250;
+  else if (country) basisPoints = 315;
+  return Math.ceil((amountEurCents * basisPoints) / 10_000) + ONLINE_CARD_FEE_MAX_FIXED_EUR_CENTS;
+}
+
+/**
+ * Prelievo dal conto Stripe del professionista (account debit, §261): Stripe
+ * fa pagare alla piattaforma l'1,4% di quanto preleva, a carico del
+ * professionista. Restituisce quanto prelevare perché alla piattaforma
+ * arrivi `amountEurCents`.
+ */
+export const CONNECT_ACCOUNT_DEBIT_FEE_BASIS_POINTS = 140;
+export function accountDebitGrossEurCents(amountEurCents: number): number {
+  if (amountEurCents <= 0) return 0;
+  return Math.ceil((amountEurCents * 10_000) / (10_000 - CONNECT_ACCOUNT_DEBIT_FEE_BASIS_POINTS));
+}
+
+/**
  * Costi di Stripe Connect per i bonifici verso la banca dei professionisti
  * (listino Stripe per l'Italia): 0,25% + €0,10 per bonifico e €2 al mese per
  * ogni account che riceve almeno un bonifico in quel mese. Sono a carico del

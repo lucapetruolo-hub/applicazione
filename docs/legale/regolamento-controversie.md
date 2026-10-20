@@ -15,8 +15,9 @@ Accettando il preventivo il cliente sceglie come pagare:
 - **Online con Stripe.**
   - Acconto del 20% dell'importo massimo del preventivo, saldo a lavoro
     chiuso sull'importo finale.
-  - Manovia tiene i soldi e li passa al professionista quando il cliente
-    conferma il lavoro, oppure 7 giorni dopo la chiusura.
+  - Il pagamento avviene sul conto Stripe del professionista, dove i soldi
+    restano bloccati: il sito li sblocca quando il cliente conferma il
+    lavoro, oppure 7 giorni dopo la chiusura. Manovia non li tiene mai.
   - Con una segnalazione aperta i soldi restano fermi.
   - Al professionista arriva l'importo meno il costo Stripe e la
     commissione del 5%.
@@ -99,9 +100,10 @@ Si può fare una sola segnalazione per ogni lavoro.
     della piattaforma (calcolata sull'importo totale del lavoro) e i costi
     del pagamento che Stripe non restituisce. Di norma i soldi sono ancora
     bloccati sul suo conto Stripe e si riprendono da lì; con un rimborso
-    parziale il resto gli viene sbloccato. Se erano già passati a lui, quello
-    che non si riprende dal suo conto si trattiene dai suoi pagamenti online
-    successivi.
+    parziale il resto gli viene sbloccato. Se erano già passati a lui,
+    Stripe prende il rimborso dal suo conto Stripe e, se non basta, dal suo
+    conto bancario. Lo stesso vale per le contestazioni presso la banca del
+    cliente.
 - Dopo la decisione, o dopo un accordo in chat, il cliente può lasciare la
   recensione.
 

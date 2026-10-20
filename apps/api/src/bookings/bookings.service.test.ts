@@ -319,7 +319,7 @@ describe("BookingsService.confirmQuoteDeposit — lavoro confermato solo dopo l'
     await service.confirmQuoteDeposit(session());
 
     expect(prisma.booking.create).not.toHaveBeenCalled();
-    expect(jobPaymentsService.refundQuoteDeposit).toHaveBeenCalledWith("pi_1", expect.any(String));
+    expect(jobPaymentsService.refundQuoteDeposit).toHaveBeenCalledWith("pi_1", expect.any(String), null);
     expect(notificationsService.notify).toHaveBeenCalledWith("client-1", "QUOTE_DEPOSIT_REFUNDED", expect.objectContaining({ amountEurCents: 6000 }));
   });
 

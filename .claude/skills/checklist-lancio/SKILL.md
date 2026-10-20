@@ -80,17 +80,27 @@ produzione):
    (bonifici dal conto Stripe del professionista, docs/CHANGELOG.md §249) e
    `balance.available` (bonifico appena i soldi sono disponibili, §249),
    `account.external_account.created` e `account.external_account.updated`
-   (conto bancario aggiunto o cambiato su Stripe),
+   (conto bancario aggiunto o cambiato su Stripe) e, perché i pagamenti dei
+   lavori nascono sul conto del professionista (addebito diretto, §261),
+   anche `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
+   `checkout.session.async_payment_failed`, `payment_intent.succeeded` e tutti
+   i `charge.dispute.*` elencati sopra,
    la cui chiave va in `STRIPE_CONNECT_WEBHOOK_SECRET` (docs/CHANGELOG.md §236).
    Se la chiave è limitata (`rk_`) deve avere anche i permessi su
    application fee, bonifici (payouts), saldo e impostazioni del saldo
-   degli account collegati. In Dashboard Stripe prima del primo
+   degli account collegati, Checkout, pagamenti, rimborsi e addebiti
+   (charges, per i prelievi dal conto del professionista) sugli account
+   collegati (§261). In Dashboard Stripe prima del primo
    professionista: accettare la responsabilità delle perdite (Impostazioni
    Connect → profilo piattaforma) e attivare Radar for Platforms. In
    Impostazioni Connect → Dashboard Express → Funzionalità spegnere la
    modifica della pianificazione dei bonifici e i bonifici manuali/istantanei
    da parte dei professionisti: altrimenti potrebbero mandarsi in banca i
-   soldi ancora bloccati (§260). Attivare Smart Disputes (Impostazioni →
+   soldi ancora bloccati (§260). Nella stessa pagina lasciare spenti
+   "Rimborsi" e "Gestione contestazioni": rimborsi e contestazioni li
+   gestisce il sito, altrimenti i conti del sito non tornerebbero (§261).
+   Il prelievo dal conto del professionista (account debit, 1,4%) richiede
+   il suo consenso esplicito: è nei Termini, da far confermare all'avvocato. Attivare Smart Disputes (Impostazioni →
    Contestazioni): Stripe risponde da solo alle contestazioni con le prove,
    costa il 30% delle contestazioni vinte (deciso da Luca il 19/10/2026: lo
    attiva lui prima del lancio). Salvare la

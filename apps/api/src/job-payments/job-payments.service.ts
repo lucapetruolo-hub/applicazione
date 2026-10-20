@@ -182,8 +182,8 @@ export class JobPaymentsService {
     return this.onlineMoneyService.recordCheckoutPayment(jobPaymentId, "deposit", session, { notify: false });
   }
 
-  refundQuoteDeposit(paymentIntentId: string, reason: string): Promise<void> {
-    return this.onlineMoneyService.refundQuoteDeposit(paymentIntentId, reason);
+  refundQuoteDeposit(paymentIntentId: string, reason: string, stripeAccount?: string | null): Promise<void> {
+    return this.onlineMoneyService.refundQuoteDeposit(paymentIntentId, reason, stripeAccount);
   }
 
   /** Gestito dallo stesso webhook Stripe già in uso per BillingService (CLAUDE.md §9). */

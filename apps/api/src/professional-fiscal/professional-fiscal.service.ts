@@ -312,7 +312,12 @@ export class ProfessionalFiscalService {
           display_name: profile?.businessName ?? undefined,
           dashboard: "express",
           identity: { country: "IT", entity_type: fiscalProfile?.entityType === "BUSINESS" ? "company" : "individual" },
-          configuration: { recipient: { capabilities: { stripe_balance: { stripe_transfers: { requested: true } } } } },
+          // Merchant: i pagamenti dei lavori nascono sul suo conto (addebito
+          // diretto, §261); recipient per i pagamenti dei modelli precedenti.
+          configuration: {
+            merchant: { capabilities: { card_payments: { requested: true } } },
+            recipient: { capabilities: { stripe_balance: { stripe_transfers: { requested: true } } } },
+          },
           defaults: { currency: "eur", locales: ["it-IT"], responsibilities: { fees_collector: "application", losses_collector: "application" } },
           metadata: { professionalProfileId },
         },
@@ -330,14 +335,14 @@ export class ProfessionalFiscalService {
         changedByUserId: userId,
         reason: "Creazione account Stripe Connect.",
       });
-    }
+    } else await this.ensureMerchantConfiguration(stripeAccountId);
 
     const accountLink = await this.stripe.v2.core.accountLinks.create({
       account: stripeAccountId,
       use_case: {
         type: "account_onboarding",
         account_onboarding: {
-          configurations: ["recipient"],
+          configurations: ["merchant", "recipient"],
           refresh_url: `${this.frontendUrl()}/dashboard/fiscale?stripeConnect=refresh`,
           return_url: `${this.frontendUrl()}/dashboard/fiscale?stripeConnect=completato`,
         },
@@ -347,13 +352,28 @@ export class ProfessionalFiscalService {
   }
 
   /**
+   * Account creato prima dell'addebito diretto (§261), solo per ricevere
+   * trasferimenti: gli si aggiunge la configurazione merchant per accettare
+   * le carte. Stripe chiede i dati che mancano nella stessa verifica.
+   */
+  private async ensureMerchantConfiguration(stripeAccountId: string): Promise<void> {
+    if (!this.stripe) return;
+    const account = await this.stripe.v2.core.accounts.retrieve(stripeAccountId, { include: ["configuration.merchant"] });
+    if (account.configuration?.merchant?.capabilities?.card_payments) return;
+    await this.stripe.v2.core.accounts.update(stripeAccountId, {
+      configuration: { merchant: { capabilities: { card_payments: { requested: true } } } },
+    });
+  }
+
+  /**
    * Rilegge da Stripe lo stato dell'account del professionista (webhook
    * `account.updated`, ritorno dalla verifica) e lo salva.
    */
   async refreshStripeConnectStatus(stripeAccountId: string): Promise<void> {
     if (!this.stripe) return;
     const status = await readStripeConnectStatus(this.stripe, stripeAccountId);
-    await this.syncStripeConnectStatus(stripeAccountId, status.transfersActive, status.transfersActive, status.requirements);
+    // Pagamenti online attivi quando può accettare le carte (addebito diretto, §261).
+    await this.syncStripeConnectStatus(stripeAccountId, status.cardPaymentsActive, status.cardPaymentsActive, status.requirements);
     // IBAN per la DAC7 di nuovo confrontato col conto su Stripe (§247): mai bloccante.
     await this.payoutAccountService?.recheckForStripeAccount(stripeAccountId).catch((err: unknown) => {
       this.logger.warn(`IBAN non ricontrollato per ${stripeAccountId}: ${err instanceof Error ? err.message : String(err)}`);

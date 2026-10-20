@@ -31,7 +31,19 @@ function buildService() {
   const auditLogService = { record: vi.fn() };
   const notificationsService = { notify: vi.fn() };
   const stripe = {
-    v2: { core: { accounts: { retrieve: vi.fn().mockResolvedValue({ configuration: { recipient: { capabilities: { stripe_balance: { stripe_transfers: { status: "active" } } } } }, requirements: { entries: [] } }) } } },
+    v2: {
+      core: {
+        accounts: {
+          retrieve: vi.fn().mockResolvedValue({
+            configuration: {
+              merchant: { capabilities: { card_payments: { status: "active" } } },
+              recipient: { capabilities: { stripe_balance: { stripe_transfers: { status: "active" } } } },
+            },
+            requirements: { entries: [] },
+          }),
+        },
+      },
+    },
     balanceSettings: { update: vi.fn() },
     checkout: { sessions: { create: vi.fn().mockResolvedValue({ url: "https://checkout.stripe.test/s" }) } },
     balance: { retrieve: vi.fn() },
@@ -82,16 +94,20 @@ describe("trattenuta sul pagamento", () => {
 });
 
 describe("OnlineMoneyService.createQuoteDepositCheckout", () => {
-  it("addebita sul conto del professionista e mette in manuale i suoi bonifici prima del primo pagamento", async () => {
+  it("addebita direttamente sul conto del professionista e mette in manuale i suoi bonifici prima del primo pagamento (§261)", async () => {
     const { service, prisma, stripe } = buildService();
-    prisma.professionalFiscalProfile.findUnique.mockResolvedValue({ id: "fp-1", stripeConnectAccountId: "acct_1", stripePayoutsEnabled: true, stripeManualPayoutsAt: null });
+    prisma.professionalFiscalProfile.findUnique.mockResolvedValue({ id: "fp-1", stripeConnectAccountId: "acct_1", stripePayoutsEnabled: true, stripeManualPayoutsAt: null, stripeNegativeDebitAt: null });
 
     await service.createQuoteDepositCheckout({ clientUserId: "c-1", quoteId: "q-1", guidedRequestId: "gr-1", paymentMethod: "ONLINE", amountEurCents: 10000, businessName: "Rossi Impianti", professionalProfileId: "pro-1" });
 
-    expect(stripe.balanceSettings.update).toHaveBeenCalledWith({ payments: { payouts: { schedule: { interval: "manual" } } } }, { stripeAccount: "acct_1" });
-    expect(stripe.checkout.sessions.create).toHaveBeenCalledWith(
-      expect.objectContaining({ payment_intent_data: expect.objectContaining({ transfer_data: { destination: "acct_1" }, application_fee_amount: 850 }) }),
+    expect(stripe.balanceSettings.update).toHaveBeenCalledWith(
+      { payments: { payouts: { schedule: { interval: "manual" } }, debit_negative_balances: true } },
+      { stripeAccount: "acct_1" },
     );
+    const [params, options] = stripe.checkout.sessions.create.mock.calls[0]!;
+    expect(options).toEqual({ stripeAccount: "acct_1" });
+    expect(params.payment_intent_data).toMatchObject({ application_fee_amount: 850, metadata: { stripeAccount: "acct_1" } });
+    expect(params.payment_intent_data.transfer_data).toBeUndefined();
   });
 
   it("non fa partire il pagamento se i bonifici non si possono bloccare", async () => {
@@ -422,7 +438,7 @@ describe("OnlineMoneyService.handleStripeDisputeFunds (§260)", () => {
 describe("saldo addebitato sulla carta dell'acconto (§260)", () => {
   it("salva la carta all'acconto solo se anche il saldo si paga online", async () => {
     const { service, prisma, stripe } = buildService();
-    prisma.professionalFiscalProfile.findUnique.mockResolvedValue({ id: "fp-1", stripeConnectAccountId: "acct_1", stripePayoutsEnabled: true, stripeManualPayoutsAt: new Date() });
+    prisma.professionalFiscalProfile.findUnique.mockResolvedValue({ id: "fp-1", stripeConnectAccountId: "acct_1", stripePayoutsEnabled: true, stripeManualPayoutsAt: new Date(), stripeNegativeDebitAt: new Date() });
     const params = { clientUserId: "c-1", quoteId: "q-1", guidedRequestId: "gr-1", amountEurCents: 10000, businessName: "Rossi", professionalProfileId: "pro-1" };
 
     await service.createQuoteDepositCheckout({ ...params, paymentMethod: "ONLINE" });
