@@ -608,6 +608,16 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   align-items: center;
   justify-content: center;
 }
+/* Pallino "da fare" senza numero (es. agenda senza disponibilità). */
+.acct-nav-dot {
+  margin-left: auto;
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: #dc3545;
+  box-shadow: 0 0 0 2px #ffffff;
+}
 .acct-client {
   width: 100%;
 }

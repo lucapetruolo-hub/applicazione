@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
-import { CLIENT_TABS, PROFESSIONAL_NAV, isNavItemActive } from "@/lib/accountMenuItems";
+import { CLIENT_TABS, PROFESSIONAL_NAV, isNavItemActive, navItemNeedsAttention } from "@/lib/accountMenuItems";
 import { accountMenuUnreadCounts } from "@/lib/notificationSections";
 
 /**
@@ -35,7 +35,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
                   <Link key={item.href} href={item.href} className={`acct-nav-link${active ? " is-active" : ""}`} aria-current={active ? "page" : undefined}>
                     <Icon name={item.icon} size={16} color={active ? "#ffffff" : "#6e6459"} />
                     <span>{item.label}</span>
-                    {count > 0 ? <span className="acct-nav-badge">{count > 9 ? "9+" : count}</span> : null}
+                    {count > 0 ? <span className="acct-nav-badge">{count > 9 ? "9+" : count}</span> : navItemNeedsAttention(item, user) ? <span className="acct-nav-dot" role="img" aria-label="Da completare" /> : null}
                   </Link>
                 );
               })}

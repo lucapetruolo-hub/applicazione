@@ -146,6 +146,7 @@ export default function DashboardTodayPage() {
 
         {subscription ? <SubscriptionPauseBanner sub={subscription} profileStepsElsewhere /> : null}
         {token ? <SetupJourneyCard token={token} /> : null}
+        {user.agendaEmpty ? <AgendaEmptyNotice /> : null}
         {restrictions ? <IssueSanctionBanner {...restrictions} /> : null}
 
         <div className="today-kpis">
@@ -315,6 +316,31 @@ function InsightsGrid({ insights }: { insights: ProfessionalInsights }) {
         </div>
       ))}
     </div>
+  );
+}
+
+/** Nessuna disponibilità in agenda: una riga sola, sparisce appena se ne aggiunge una. */
+function AgendaEmptyNotice() {
+  return (
+    <XStack gap="$3" alignItems="center" padding="$4" borderRadius={16} backgroundColor={brand.cianografiaVelo} flexWrap="wrap" role="status">
+      {/* Icona e testo restano sulla stessa riga: su telefono va a capo solo il pulsante. */}
+      <XStack flex={1} minWidth={240} gap="$3" alignItems="center">
+        <YStack width={40} height={40} borderRadius={999} alignItems="center" justifyContent="center" backgroundColor="#FFFFFF" flexShrink={0} aria-hidden>
+          <Icon name="calendar" size={20} color={brand.cianografiaScuro} />
+        </YStack>
+        <YStack flex={1} minWidth={0} gap={2}>
+          <Text fontWeight="800" color={brand.grafite}>
+            Inserisci le tue disponibilità
+          </Text>
+          <Text fontSize={14} color={brand.grafite70}>
+            I clienti vedono quando sei libero e ti prenotano prima.
+          </Text>
+        </YStack>
+      </XStack>
+      <Link href="/dashboard/agenda?tab=disponibilita" style={{ textDecoration: "none" }}>
+        <CardButton>Apri l'agenda</CardButton>
+      </Link>
+    </XStack>
   );
 }
 

@@ -19668,3 +19668,13 @@ nella pagina della richiesta, non solo nell'avviso.
 - **Banner cookie** (`CookieBanner.tsx`): finché è aperto lascia in fondo alla pagina uno spazio alto quanto lui e imposta `scroll-padding-bottom`, così non copre l'elemento selezionato con la tastiera (prima circa 19 passaggi su 40 da telefono).
 
 **Verifica**: typecheck e lint di web, UI e API (nessun nuovo avviso), 466 test dell'API verdi dopo l'unione con la base (numero di sezione passato da 267 a 271, già usati da altre voci) (nuovo `match-new-profile.test.ts`: avviso al cliente solo al primo destinatario, nessun avviso fuori raggio). Link del nome provato nel browser: Ctrl+clic apre un'altra scheda lasciando la ricerca, clic normale e clic sulla scheda aprono il profilo senza ricaricare, il tasto Tab arriva al link. Provato nel browser a 320, 360, 390 e 1366px contro l'API di produzione: nessuno scorrimento orizzontale, h1 presente su home e ricerca, 0 passaggi su 40 coperti dal banner. Foto prima e dopo in `/mnt/project-files/anteprime/revisione-home-ricerca/`.
+
+## 272. Avviso "Inserisci le tue disponibilità" in Oggi e pallino su Agenda
+
+**Richiesta dell'utente**: nella pagina "Oggi" del professionista dire se deve ancora inserire le disponibilità in agenda e lasciare un pallino sul menu di sinistra.
+
+**Decisione**: "senza disponibilità" vuol dire nessuna fascia da oggi in poi (fasce di una data futura o ricorrenti, `date = null`): un professionista con solo fasce passate ha l'agenda pubblica vuota quanto chi non ne ha mai messe. Il calcolo è nell'API (`agendaEmpty` in `/auth/me`, `auth.controller.ts`), così sito e menu leggono lo stesso dato senza una chiamata in più per pagina.
+- **Oggi**: una riga sotto "Completa il profilo" (`AgendaEmptyNotice`, stesso stile del suggerimento in fondo alla pagina), con "Apri l'agenda" che porta direttamente alla scheda Disponibilità (`/dashboard/agenda?tab=disponibilita`). Non è un passo del percorso del §262: quello va in ordine e blocca i passi dopo, l'agenda invece si può fare in qualunque momento e non è obbligatoria.
+- **Pallino** rosso senza numero su "Agenda" nel menu laterale, nella barra scorrevole da telefono e nella tendina "Il mio account" (`navItemNeedsAttention` in `accountMenuItems.ts`, classe `.acct-nav-dot`). Sparisce appena si salva una fascia: l'agenda richiede `/auth/me` solo quando lo stato cambia.
+
+**Verifica**: typecheck web e API. Provato in locale con API e database: `agendaEmpty` vero senza fasce, falso con una fascia futura, di nuovo vero togliendola. Foto prima e dopo (computer e telefono, menu da telefono) in `/mnt/project-files/anteprime/agenda-disponibilita/`.

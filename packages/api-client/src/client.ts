@@ -592,6 +592,8 @@ export type CurrentUser = {
   businessName: string | null;
   /** Immagine profilo pubblica (ProfessionalProfile.imageUrl), null per un account cliente o un professionista senza immagine caricata. */
   businessImageUrl: string | null;
+  /** Professionista senza disponibilità da oggi in poi in agenda: avviso in "Oggi" e pallino su "Agenda". */
+  agendaEmpty?: boolean;
   /**
    * Indirizzo di default dell'account (richiesta esplicita dell'utente:
    * usato per pre-compilare GuidedRequestForm quando si invia una richiesta

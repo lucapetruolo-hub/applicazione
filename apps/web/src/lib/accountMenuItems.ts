@@ -112,3 +112,12 @@ export function isNavItemActive(item: AccountNavItem, pathname: string): boolean
   // `/dashboard` e `/account` solo esatti: le loro sottopagine hanno una voce propria.
   return matches.some((href) => (href === "/dashboard" || href === "/account" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`)));
 }
+
+/**
+ * Pallino "da fare" su una voce, senza numero: oggi solo "Agenda" quando il
+ * professionista non ha disponibilità da oggi in poi (sparisce appena ne
+ * aggiunge una).
+ */
+export function navItemNeedsAttention(item: AccountNavItem, user: { agendaEmpty?: boolean }): boolean {
+  return item.href === "/dashboard/agenda" && Boolean(user.agendaEmpty);
+}
