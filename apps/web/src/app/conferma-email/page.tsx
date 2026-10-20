@@ -126,7 +126,7 @@ function ConfermaEmail() {
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Email verificata"
+          aria-label="Email verificata con successo"
           onClick={() => setPopupOpen(false)}
           style={{
             position: "fixed",
@@ -154,10 +154,7 @@ function ConfermaEmail() {
                 </Text>
               </YStack>
               <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite} textAlign="center">
-                Email verificata
-              </Text>
-              <Text fontSize="$3" color={brand.grafite70} textAlign="center">
-                Puoi tornare al computer: la registrazione va avanti da sola.
+                Email verificata con successo
               </Text>
               <Link
                 href={nextHref}
