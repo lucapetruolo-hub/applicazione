@@ -39,6 +39,18 @@ describe("Didit", () => {
     expect(diditDecision({ status: "In Review" }).outcome).toBe("REVIEW");
     expect(diditDecision({ status: "Abandoned" }).outcome).toBe("EXPIRED");
     expect(diditDecision({ status: "In Progress" }).outcome).toBe("IN_PROGRESS");
+    // Lo stato può arrivare anche in maiuscolo con il trattino basso.
+    expect(diditDecision({ status: "APPROVED" }).outcome).toBe("APPROVED");
+    expect(diditDecision({ status: "IN_REVIEW" }).outcome).toBe("REVIEW");
+  });
+
+  it("legge i codici degli avvisi che spiegano un rifiuto", () => {
+    const decision = diditDecision({
+      status: "Declined",
+      id_verifications: [{ status: "Declined", warnings: [{ risk: "DOCUMENT_EXPIRED", short_description: "Documento scaduto" }] }],
+      face_matches: [{ warnings: [{ risk: "LOW_FACE_MATCH_SIMILARITY" }] }],
+    });
+    expect(decision.warnings).toEqual(["DOCUMENT_EXPIRED", "LOW_FACE_MATCH_SIMILARITY"]);
   });
 });
 
@@ -108,6 +120,7 @@ describe("esito applicato", () => {
       providerStatus: "Approved",
       outcome: "APPROVED",
       person: { firstName: "Mario", lastName: "Rossi", dateOfBirth: "1980-01-01", personalNumber: null },
+      warnings: [],
     });
     expect(updated.status).toBe("APPROVED");
     expect(verification.markVerifiedByProvider).toHaveBeenCalledWith("pp-1", "didit");
@@ -119,6 +132,7 @@ describe("esito applicato", () => {
       providerStatus: "Approved",
       outcome: "APPROVED",
       person: { firstName: "Luigi", lastName: "Bianchi", dateOfBirth: "1985-02-02", personalNumber: null },
+      warnings: [],
     });
     expect(updated.status).toBe("DECLINED");
     expect(updated.reason).toContain("correggilo");
@@ -128,9 +142,9 @@ describe("esito applicato", () => {
 
   it("rifiutata o da rivedere per il fornitore: avviso al professionista, che riprova da solo", async () => {
     const { service, row, notifications } = build();
-    await service.apply(row as never, { providerStatus: "Declined", outcome: "DECLINED", person: null });
+    await service.apply(row as never, { providerStatus: "Declined", outcome: "DECLINED", person: null, warnings: [] });
     expect(notifications.notify).toHaveBeenCalledWith("u-1", "IDENTITY_VERIFICATION_DECLINED", expect.anything());
-    const inReview = await service.apply(row as never, { providerStatus: "In Review", outcome: "REVIEW", person: null });
+    const inReview = await service.apply(row as never, { providerStatus: "In Review", outcome: "REVIEW", person: null, warnings: [] });
     expect(inReview.status).toBe("DECLINED");
   });
 });

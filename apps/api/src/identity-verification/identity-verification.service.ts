@@ -426,6 +426,11 @@ export class IdentityVerificationService {
       }
     }
     if (next.status === row.status && decision.providerStatus === row.providerStatus) return row;
+    // Perché non è andata: i codici degli avvisi del fornitore (mai i dati della persona), per capirlo dai log.
+    const why = decision.warnings.length > 0 ? ` (avvisi: ${decision.warnings.join(", ")})` : "";
+    if (next.status === "DECLINED" && next.status !== row.status) {
+      this.logger.warn(`Verifica ${row.id} non confermata: ${row.provider} ${decision.providerStatus}${why}${decision.outcome === "APPROVED" ? `, ${next.reason}` : ""}`);
+    }
     const decided = next.status === "APPROVED" || next.status === "DECLINED";
     const updated = await this.prisma.identityVerification.update({
       where: { id: row.id },
@@ -438,7 +443,7 @@ export class IdentityVerificationService {
         fieldName: "status",
         oldValue: row.status,
         newValue: next.status,
-        reason: next.reason ?? `Esito ${row.provider}: ${decision.providerStatus}`,
+        reason: `${next.reason ?? `Esito ${row.provider}: ${decision.providerStatus}`}${next.status === "DECLINED" ? ` [${row.provider}: ${decision.providerStatus}${why}]` : ""}`,
       });
       if (next.status === "APPROVED" && !owner.verified) {
         await this.professionalVerificationService.markVerifiedByProvider(owner.id, row.provider);

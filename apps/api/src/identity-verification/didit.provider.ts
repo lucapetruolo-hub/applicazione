@@ -103,21 +103,43 @@ export function canonicalJson(value: unknown): string {
 
 const str = (value: unknown): string | null => (typeof value === "string" && value.trim() ? value.trim() : null);
 
+const OUTCOMES: Record<string, IdentityDecision["outcome"]> = {
+  approved: "APPROVED",
+  declined: "DECLINED",
+  "in review": "REVIEW",
+  abandoned: "EXPIRED",
+  expired: "EXPIRED",
+  "kyc expired": "EXPIRED",
+  "not started": "IN_PROGRESS",
+  "in progress": "IN_PROGRESS",
+  "awaiting user": "IN_PROGRESS",
+  resubmitted: "IN_PROGRESS",
+};
+
+/** Avvisi di Didit (`warnings[]`, a livello di sessione e di ogni controllo): solo i codici, mai i dati della persona. */
+function diditWarnings(body: Record<string, unknown>): string[] {
+  const codes = new Set<string>();
+  const collect = (value: unknown) => {
+    if (!Array.isArray(value)) return;
+    for (const warning of value) {
+      const code = str((warning as Record<string, unknown> | null)?.risk) ?? str((warning as Record<string, unknown> | null)?.short_description);
+      if (code) codes.add(code);
+    }
+  };
+  const decision = (body.decision as Record<string, unknown> | undefined) ?? body;
+  collect(decision.warnings);
+  for (const key of ["id_verifications", "liveness_checks", "face_matches", "id_verification", "liveness", "face_match"]) {
+    const value = decision[key];
+    for (const item of Array.isArray(value) ? value : value ? [value] : []) collect((item as Record<string, unknown>).warnings);
+  }
+  return [...codes].slice(0, 10);
+}
+
 /** Risposta "decision" di Didit → esito per il sito. */
 export function diditDecision(body: Record<string, unknown>): IdentityDecision {
   const providerStatus = str(body.status) ?? "Unknown";
-  const outcome: IdentityDecision["outcome"] =
-    providerStatus === "Approved"
-      ? "APPROVED"
-      : providerStatus === "Declined"
-        ? "DECLINED"
-        : providerStatus === "In Review"
-          ? "REVIEW"
-          : providerStatus === "Abandoned" || providerStatus === "Expired" || providerStatus === "Kyc Expired"
-            ? "EXPIRED"
-            : providerStatus === "Not Started" || providerStatus === "In Progress" || providerStatus === "Awaiting User" || providerStatus === "Resubmitted"
-              ? "IN_PROGRESS"
-              : "PROCESSING";
+  // Didit scrive lo stato a volte "In Review", a volte "IN_REVIEW": si confronta senza maiuscole né trattini bassi.
+  const outcome = OUTCOMES[providerStatus.toLowerCase().replace(/_/g, " ")] ?? "PROCESSING";
   const list = body.id_verifications ?? (body.decision as Record<string, unknown> | undefined)?.id_verifications;
   const single = body.id_verification ?? (body.decision as Record<string, unknown> | undefined)?.id_verification;
   const entry = (Array.isArray(list) ? list[0] : single) as Record<string, unknown> | undefined;
@@ -129,5 +151,5 @@ export function diditDecision(body: Record<string, unknown>): IdentityDecision {
         personalNumber: str(entry.personal_number) ?? str(entry.tax_number),
       }
     : null;
-  return { providerStatus, outcome, person };
+  return { providerStatus, outcome, person, warnings: diditWarnings(body) };
 }

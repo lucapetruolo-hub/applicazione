@@ -20,6 +20,8 @@ export type IdentityDecision = {
   providerStatus: string;
   outcome: "IN_PROGRESS" | "PROCESSING" | "APPROVED" | "DECLINED" | "REVIEW" | "EXPIRED";
   person: DocumentPerson | null;
+  /** Codici degli avvisi del fornitore (es. documento sfocato, volto diverso): spiegano un rifiuto nei log e nel registro azioni. */
+  warnings: string[];
 };
 
 export interface IdentityProvider {

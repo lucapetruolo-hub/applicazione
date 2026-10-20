@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button, Field, Icon, Surface, Section, Text, XStack, YStack, brand, Badge, radiusDoc } from "@professionisti/ui";
 import type { ProfessionalFiscalProfile, FiscalVerificationStatus, PayoutIbanView } from "@professionisti/api-client";
-import { birthDateFromCodiceFiscale, checkFiscalId, findComuneByName, isValidCodiceFiscale, fiscalFieldErrors, professionalFiscalProfileSchema, taxIdCheckMessage, type MyVerificationStatus, type TaxIdKind } from "@professionisti/shared";
+import { birthDateFromCodiceFiscale, birthPlaceFromCodiceFiscale, checkFiscalId, findComuneByName, isValidCodiceFiscale, fiscalFieldErrors, professionalFiscalProfileSchema, sexFromCodiceFiscale, taxIdCheckMessage, type MyVerificationStatus, type TaxIdKind } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { PayoutIbanCard } from "@/components/PayoutIbanCard";
 import { useAuth } from "@/lib/AuthContext";
@@ -415,6 +415,7 @@ function DashboardFiscaleContent() {
   const cfValue = (fields.fiscalCodiceFiscale ?? "").trim().toUpperCase();
   const cfBirthDate = isValidCodiceFiscale(cfValue) ? birthDateFromCodiceFiscale(cfValue) : null;
   const askBirthDate = abroad && !cfBirthDate;
+  const cfBirthPlace = cfBirthDate ? birthPlaceFromCodiceFiscale(cfValue) : null;
   // Controlli in tempo reale, gli stessi che rifà il server al salvataggio
   // (docs/CHANGELOG.md §253): forma, e coerenza del codice fiscale con nome,
   // cognome e data di nascita.
@@ -597,8 +598,18 @@ function DashboardFiscaleContent() {
                     </XStack>
                     {cfField}
                     {cfBirthDate ? (
+                      // Quello che dice il codice fiscale, così chi l'ha scritto vede subito se è il suo (§272).
                       <Text fontSize={13} color={brand.grafite70}>
-                        Data di nascita: <Text fontSize={13} fontWeight="700" color={brand.grafite}>{formatBirthDate(cfBirthDate)}</Text> (dal codice fiscale)
+                        Dal codice fiscale: {sexFromCodiceFiscale(cfValue) === "F" ? "nata" : "nato"} il{" "}
+                        <Text fontSize={13} fontWeight="700" color={brand.grafite}>{formatBirthDate(cfBirthDate)}</Text>
+                        {cfBirthPlace === "abroad" ? (
+                          " all'estero"
+                        ) : cfBirthPlace ? (
+                          <>
+                            {" a "}
+                            <Text fontSize={13} fontWeight="700" color={brand.grafite}>{`${cfBirthPlace.name} (${cfBirthPlace.province})`}</Text>
+                          </>
+                        ) : null}
                       </Text>
                     ) : null}
                     {/* Calendario del telefono o del browser (docs/CHANGELOG.md §263). */}

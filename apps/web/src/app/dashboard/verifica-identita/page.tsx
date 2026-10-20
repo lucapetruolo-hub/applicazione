@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BRAND, biometricConsentText, type MyVerificationStatus } from "@professionisti/shared";
+import { biometricConsentText, type MyVerificationStatus } from "@professionisti/shared";
 import { Button, Icon, Section, Surface, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -339,7 +339,7 @@ function ActionPanel({
           style={{ width: 20, height: 20, marginTop: 1, flexShrink: 0, accentColor: brand.cianografia, cursor: "pointer" }}
         />
         <Text fontSize={13.5} color={brand.grafite} lineHeight={19} flex={1}>
-          {biometricConsentText(BRAND.name)}{" "}
+          {biometricConsentText()}{" "}
           <Link href="/privacy#verifica-identita" target="_blank" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
             Informativa
           </Link>
