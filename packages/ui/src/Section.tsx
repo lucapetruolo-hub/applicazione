@@ -1,5 +1,5 @@
 import { createContext, useContext, type ReactNode } from "react";
-import { H2, H3, Paragraph, Text, YStack } from "tamagui";
+import { H2, H3, Paragraph, Text, XStack, YStack } from "tamagui";
 import { Eyebrow } from "./Eyebrow";
 
 export type SectionTone = "light" | "dark" | "blueprint";
@@ -13,6 +13,8 @@ export type SectionProps = {
    */
   titleAccent?: string;
   lead?: string;
+  /** Comando accanto al titolo, allineato a destra (es. "Mostra tutte"). */
+  titleAction?: ReactNode;
   tone?: SectionTone;
   maxWidth?: number;
   children?: ReactNode;
@@ -117,6 +119,7 @@ export function Section({
   title,
   titleAccent,
   lead,
+  titleAction,
   tone = "light",
   maxWidth = 1200,
   children,
@@ -132,7 +135,20 @@ export function Section({
         {eyebrow && !nested ? (
           <Eyebrow tone={isDark ? "dark" : "light"}>{eyebrow}</Eyebrow>
         ) : null}
-        {title ? (
+        {title && titleAction ? (
+          // Il titolo può andare a capo, il comando resta sulla stessa riga.
+          <XStack alignItems="center" justifyContent="space-between" gap="$3">
+            <YStack flex={1} minWidth={0}>
+              <SectionTitle
+                title={title}
+                accent={titleAccent}
+                isDark={isDark}
+                nested={nested}
+              />
+            </YStack>
+            <YStack flexShrink={0}>{titleAction}</YStack>
+          </XStack>
+        ) : title ? (
           <SectionTitle
             title={title}
             accent={titleAccent}

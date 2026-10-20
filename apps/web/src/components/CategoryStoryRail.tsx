@@ -24,11 +24,36 @@ const MOBILE_VISIBLE = 6;
  * "Disponibile" solo con almeno un professionista reale, mai un numero
  * (stessa regola della vecchia scheda categoria).
  */
-export function CategoryStoryRail({ countBySlug }: { countBySlug: Map<string, number> }) {
+/**
+ * Filtro e "Mostra tutte" condivisi tra la riga e il pulsante, che sta
+ * accanto al titolo della sezione (scelta dell'utente, docs/CHANGELOG.md §267).
+ */
+export function useCategoryStoryRail() {
   const [group, setGroup] = useState(ALL);
   const [showAll, setShowAll] = useState(false);
   const slugs = group === ALL ? null : new Set<ProfessionalCategorySlug>(MEGA_MENU_GROUPS.find((g) => g.title === group)?.slugs);
   const categories = PROFESSIONAL_CATEGORIES.filter((c) => !slugs || slugs.has(c.slug));
+  return { group, setGroup, showAll, setShowAll, categories };
+}
+
+export type CategoryStoryRailState = ReturnType<typeof useCategoryStoryRail>;
+
+/** Solo da telefono (globals.css): da computer le categorie stanno in una riga da scorrere. */
+export function CategoryShowAllButton({ state }: { state: CategoryStoryRailState }) {
+  const { categories, showAll, setShowAll } = state;
+  if (categories.length <= MOBILE_VISIBLE) return null;
+  return (
+    <button type="button" className="story-show-all" aria-expanded={showAll} aria-controls={RAIL_ID} onClick={() => setShowAll(!showAll)}>
+      {showAll ? "Meno" : `Tutte (${categories.length})`}
+      <Icon name={showAll ? "chevron-up" : "chevron-down"} size={16} color="currentColor" />
+    </button>
+  );
+}
+
+const RAIL_ID = "categorie-home";
+
+export function CategoryStoryRail({ countBySlug, state }: { countBySlug: Map<string, number>; state: CategoryStoryRailState }) {
+  const { group, setGroup, showAll, setShowAll, categories } = state;
 
   return (
     <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 18 }}>
@@ -51,11 +76,11 @@ export function CategoryStoryRail({ countBySlug }: { countBySlug: Map<string, nu
 
       {/* key: cambiando filtro la riga riparte dall'inizio invece di restare
           scorsa a metà su un elenco più corto. */}
-      {/* Da telefono griglia a due colonne con le prime sei e "Mostra tutte"
+      {/* Da telefono griglia a due colonne con le prime sei e "Mostra tutte" accanto al titolo
           (regole CSS in .story-rail, globals.css): la riga da scorrere
           mostrava una scheda alla volta (revisione UX, docs/CHANGELOG.md §267).
           Da computer resta la riga da scorrere. */}
-      <CategoryCarousel key={group} className={`story-rail${showAll ? " show-all" : ""}`}>
+      <CategoryCarousel key={group} id={RAIL_ID} className={`story-rail${showAll ? " show-all" : ""}`}>
         {categories.map((c, index) => {
           const photoUrl = CATEGORY_PHOTOS[c.slug];
           return (
@@ -90,12 +115,6 @@ export function CategoryStoryRail({ countBySlug }: { countBySlug: Map<string, nu
           <span style={{ fontSize: 14, opacity: 0.9 }}>Descrivilo, ci pensiamo noi →</span>
         </Link>
       </CategoryCarousel>
-      {categories.length > MOBILE_VISIBLE && !showAll ? (
-        <button type="button" className="story-show-all" onClick={() => setShowAll(true)}>
-          Mostra tutte ({categories.length})
-          <Icon name="chevron-down" size={16} color="currentColor" />
-        </button>
-      ) : null}
     </div>
   );
 }

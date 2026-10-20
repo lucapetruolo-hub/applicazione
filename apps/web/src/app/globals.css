@@ -3070,17 +3070,14 @@ a.admin-kpi:hover {
   .story-show-all {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 6px;
-    align-self: center;
+    gap: 4px;
     min-height: 44px;
-    padding: 0 20px;
-    border: 1px solid #eadfd3;
-    border-radius: 999px;
-    background: #fff;
-    color: #2b2420;
+    padding: 0 4px;
+    border: 0;
+    background: none;
+    color: #0e7a4c;
     font: inherit;
-    font-weight: 600;
+    font-weight: 700;
     font-size: 15px;
     cursor: pointer;
     touch-action: manipulation;

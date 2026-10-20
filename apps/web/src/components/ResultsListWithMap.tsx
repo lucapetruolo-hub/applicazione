@@ -649,6 +649,7 @@ export function ResultsListWithMap({
               // con l'agenda su quel tab (richiesta esplicita dell'utente) —
               // letto da ProfessionalDetailContent via `?modalita=`, stesso
               // parametro già usato per precompilare /preventivo.
+              href={`/professionista/${pro.id}${defaultMode === "ONLINE" ? "?modalita=ONLINE" : ""}`}
               onPress={() =>
                 navigateWithTransition(() =>
                   router.push(`/professionista/${pro.id}${defaultMode === "ONLINE" ? "?modalita=ONLINE" : ""}`),
