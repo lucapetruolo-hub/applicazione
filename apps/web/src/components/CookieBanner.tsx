@@ -28,7 +28,7 @@ export function CookieBanner() {
     // "Preferenze cookie" nel footer riapre il banner per cambiare idea
     // (revoca del consenso, docs/CHANGELOG.md §170).
     const reopen = () => setVisible(true);
-    // Consenso dato da un altro punto ("Mostra la mappa", "Accetta e continua" di Google): il banner sparisce.
+    // Consenso dato da un altro punto ("Usa la mappa interattiva", "Mostra la mappa"): il banner sparisce.
     const hide = () => setVisible(false);
     window.addEventListener(COOKIE_CONSENT_CHANGED_EVENT, reopen);
     window.addEventListener(COOKIE_CONSENT_ACCEPTED_EVENT, hide);
@@ -40,8 +40,8 @@ export function CookieBanner() {
 
   function accept() {
     // Richiesta esplicita dell'utente ("Verbale di Conformità"): sveglia
-    // GoogleSignInButton e le mappe Google, che aspettano il consenso prima
-    // di caricare gli script Google.
+    // le mappe Google, che aspettano il consenso prima di caricare gli
+    // script Google.
     grantCookieConsent();
     setVisible(false);
   }
@@ -92,12 +92,12 @@ export function CookieBanner() {
     >
       <p style={{ flex: "1 1 260px", margin: 0, fontSize: 12.5, lineHeight: 1.4, color: "#2b2420" }}>
         <span className="cookie-text-long">
-          Usiamo solo cookie tecnici necessari al funzionamento del sito e, se lo accetti, servizi Google (mappe e
-          accesso con Google). Nessun cookie pubblicitario o di profilazione. Puoi cambiare idea quando vuoi da
+          Usiamo solo cookie tecnici necessari al funzionamento del sito e, se lo accetti, la mappa
+          interattiva di Google. Nessun cookie pubblicitario o di profilazione. Puoi cambiare idea quando vuoi da
           &quot;Preferenze cookie&quot; in fondo alla pagina.
         </span>
         <span className="cookie-text-short">
-          Solo cookie tecnici e, se accetti, servizi Google (mappe e accesso). Niente pubblicità. Puoi cambiare idea
+          Solo cookie tecnici e, se accetti, la mappa di Google. Niente pubblicità. Puoi cambiare idea
           in fondo alla pagina.
         </span>{" "}
         <Link href="/cookie" style={{ color: "#0e7a4c", fontWeight: 600 }}>

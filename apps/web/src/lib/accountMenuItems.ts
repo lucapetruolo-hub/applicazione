@@ -36,7 +36,7 @@ export const PROFESSIONAL_NAV: AccountNavGroup[] = [
     title: "La tua attività",
     items: [
       { href: "/dashboard/profilo", label: "Profilo pubblico", icon: "user-round" },
-      // Dati fiscali controllati, documento e selfie (docs/CHANGELOG.md §259).
+      // Dati fiscali controllati, documento e selfie (docs/CHANGELOG.md §253).
       { href: "/dashboard/verifica-identita", label: "Verifica identità", icon: "badge-check" },
       { href: "/dashboard/statistiche", label: "Statistiche", icon: "trending-up" },
       { href: "/dashboard/abbonamento", label: "Abbonamento", icon: "credit-card" },

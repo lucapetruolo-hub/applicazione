@@ -15,6 +15,7 @@ import { SkeletonSummaryRow } from "@/components/Skeleton";
 import { SubscriptionPauseBanner } from "@/components/SubscriptionPauseBanner";
 import { IssueSanctionBanner } from "@/components/IssueSanctionBanner";
 import { BoostSection } from "@/components/BoostSection";
+import { SetupJourneyCard } from "@/components/verification/SetupJourney";
 
 /**
  * Home "Oggi" del professionista (docs/CHANGELOG.md §147, decisione esplicita
@@ -143,7 +144,8 @@ export default function DashboardTodayPage() {
 
         {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
-        {subscription ? <SubscriptionPauseBanner sub={subscription} /> : null}
+        {subscription ? <SubscriptionPauseBanner sub={subscription} profileStepsElsewhere /> : null}
+        {token ? <SetupJourneyCard token={token} /> : null}
         {restrictions ? <IssueSanctionBanner {...restrictions} /> : null}
 
         <div className="today-kpis">

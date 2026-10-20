@@ -31,7 +31,9 @@ export function EngagementRadiusMap({ latitude, longitude, engagementRadiusKm, u
   const center = { lat: latitude, lng: longitude };
   return (
     <div style={{ height: 360, width: "100%", borderRadius: 4, overflow: "hidden" }}>
-      <GoogleMapGate>
+      <GoogleMapGate
+        staticMap={{ markers: [[latitude, longitude]], center: [latitude, longitude], zoom: 9, radiiKm: [engagementRadiusKm, urgentEngagementRadiusKm] }}
+      >
         <GoogleMap
           defaultCenter={center}
           // Zoom 9 ≈ 40 km di raggio visibili in 360 px di altezza (il massimo

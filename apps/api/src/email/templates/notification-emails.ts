@@ -979,7 +979,7 @@ const BUILDERS: Record<string, Builder> = {
       cta: { label: "Rifai la verifica", url: `${frontendUrl()}/dashboard/verifica-identita` },
     };
   },
-  // Verifica fiscale e d'identità (docs/CHANGELOG.md §259).
+  // Verifica fiscale e d'identità (docs/CHANGELOG.md §253).
   IDENTITY_VERIFICATION_DECLINED: (payload, ctx) => {
     const reason = str(payload.reason);
     return {
@@ -1014,6 +1014,23 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: { label: "Fai la verifica", url: `${frontendUrl()}/dashboard/verifica-identita` },
   }),
+  // "Completa il profilo" il giorno dopo l'iscrizione, solo se manca qualcosa (§261).
+  PROFILE_SETUP_REMINDER: (payload, ctx) => {
+    const missing = Array.isArray(payload.missing) ? payload.missing : [];
+    const lines: string[] = [];
+    if (missing.includes("SEARCH")) lines.push("**Non compari ancora nelle ricerche**: completa i dati fiscali.");
+    if (missing.includes("QUOTES")) lines.push("**Non puoi ancora rispondere alle richieste di preventivo**: verifica la tua identità con documento e selfie, circa 2 minuti.");
+    if (missing.includes("ONLINE_PAYMENTS")) lines.push("**Non puoi ancora ricevere pagamenti online**: attivali da Dati fiscali e pagamenti.");
+    if (lines.length === 0) lines.push("Ti mancano ancora alcuni passi per comparire nelle ricerche e rispondere ai clienti.");
+    return {
+      kind: "account",
+      subject: "Completa il tuo profilo",
+      greeting: ctx.name,
+      title: "Ti manca poco per iniziare",
+      paragraphs: [...lines, "Trovi tutto in Oggi, con il prossimo passo da fare."],
+      cta: { label: "Completa il profilo", url: `${frontendUrl()}/dashboard` },
+    };
+  },
   TAX_ID_INVALID: (payload, ctx) => {
     const isVat = payload.kind === "PARTITA_IVA";
     return {

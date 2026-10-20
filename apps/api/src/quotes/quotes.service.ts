@@ -105,7 +105,7 @@ export class QuotesService {
     }
 
     // Documento e selfie prima del primo preventivo (decisione dell'utente,
-    // docs/CHANGELOG.md §259): così il cliente non riceve mai un preventivo
+    // docs/CHANGELOG.md §253): così il cliente non riceve mai un preventivo
     // da chi non ha verificato l'identità. Un preventivo già inviato resta
     // modificabile.
     if ((!existingQuote || isResend) && identityVerificationNeeded(professionalProfile)) {

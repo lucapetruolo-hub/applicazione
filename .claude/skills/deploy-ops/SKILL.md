@@ -105,6 +105,10 @@ migrazioni restano anche in `CLAUDE.md`.
   produzione) — più l'origine `https://applicazione-web.vercel.app`
   aggiunta manualmente tra le "Authorized JavaScript origins" del Client
   ID OAuth su Google Cloud Console (altrimenti `Error 400: origin_mismatch`).
+  Dal docs/CHANGELOG.md §265 l'accesso con Google passa dalla pagina di
+  Google: nello stesso Client ID va aggiunto anche
+  `https://applicazione-web.vercel.app/accesso-google` tra gli "URI di
+  reindirizzamento autorizzati" (altrimenti `Error 400: redirect_uri_mismatch`).
 - **Deploy `apps/web` su Vercel — push che non attivano una build**: il
   repository ha un solo branch (`claude/professionisti-platform-architecture-xr9gmn`,
   nessun `main`). Il progetto Vercel (piano Hobby) risultava collegato al

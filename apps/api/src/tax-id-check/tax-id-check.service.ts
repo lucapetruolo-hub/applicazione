@@ -66,7 +66,7 @@ export function toTaxIdCheckView(row: TaxIdCheck): TaxIdCheckView {
 }
 
 /**
- * Verifica di codice fiscale e partita IVA (docs/CHANGELOG.md §259-§254,
+ * Verifica di codice fiscale e partita IVA (docs/CHANGELOG.md §253-§254,
  * decisione dell'utente: profilo pubblico dopo dati fiscali + verifica; la
  * partita IVA prima con VIES, gratis, poi Openapi se VIES non conferma).
  * - Un controllo a pagamento per dato: si ripete solo se il dato cambia.

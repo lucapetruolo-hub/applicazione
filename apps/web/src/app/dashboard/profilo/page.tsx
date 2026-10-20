@@ -16,6 +16,7 @@ import {
   findComuneByName,
   type MyProfessionalProfile,
   type MyProfilePreview,
+  type MyVerificationStatus,
   type ProfessionalCategorySlug,
 } from "@professionisti/shared";
 import { Autocomplete, Button, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
@@ -29,6 +30,7 @@ import { useUnsavedChangesGuard } from "@/lib/useUnsavedChangesGuard";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { CategoryMultiPicker } from "@/components/CategoryMultiPicker";
 import { ProfessionalDetailContent } from "@/app/professionista/[id]/ProfessionalDetailContent";
+import { journeyCurrent, setupJourney } from "@/components/verification/SetupJourney";
 
 const MAX_PORTFOLIO_PHOTOS = 10;
 
@@ -205,6 +207,9 @@ export default function DashboardProfiloPage() {
   // "Modifica profilo". Senza profilo, o da confermare, si parte dal modulo.
   const [mode, setMode] = useState<"preview" | "edit">("edit");
   const [preview, setPreview] = useState<MyProfilePreview | null>(null);
+  // Cosa manca per comparire nelle ricerche e inviare preventivi (richiesta
+  // dell'utente, docs/CHANGELOG.md §260): i tre passi finché non sono fatti.
+  const [verification, setVerification] = useState<MyVerificationStatus | null>(null);
   // "Torna all'anteprima" con modifiche non salvate: stesso popup dei link.
   const [confirmDiscard, setConfirmDiscard] = useState(false);
 
@@ -214,6 +219,10 @@ export default function DashboardProfiloPage() {
       .getMyProfilePreview(token)
       .then(setPreview)
       .catch(() => setPreview(null));
+    apiClient
+      .myVerificationStatus(token)
+      .then(setVerification)
+      .catch(() => setVerification(null));
   }, [token]);
 
   /** Riempie il modulo con i dati salvati (al caricamento e quando si annullano le modifiche). */
@@ -590,6 +599,10 @@ export default function DashboardProfiloPage() {
     .slice(0, 10);
 
   const visibilityStatus = preview ? VISIBILITY_STATUS[preview.visibility] : null;
+  const journey = preview && verification ? setupJourney(verification, !!preview.profile.stripeVerified) : null;
+  const identityStep = journey?.find((step) => step.key === "identity") ?? null;
+  const paymentsStep = journey?.find((step) => step.key === "payments") ?? null;
+  const nextStep = journey ? journeyCurrent(journey) : null;
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4" gap="$5">
@@ -625,33 +638,53 @@ export default function DashboardProfiloPage() {
           ) : null}
 
           {preview && visibilityStatus ? (
-            <div className={`profile-visibility is-${visibilityStatus.tone}`}>
-              <span className="profile-visibility-dot" aria-hidden="true" />
-              <span className="profile-visibility-text">{visibilityStatus.label}</span>
-              {/* Badge Verificato in breve accanto allo stato (docs/CHANGELOG.md §252). */}
-              {verified ? (
-                <span className="profile-verify-chip is-verified" title="Documento d'identità e dati fiscali controllati da noi">
-                  <Icon name="badge-check" size={14} strokeWidth={2} color={brand.verificato} />
-                  Verificato
-                </span>
-              ) : (
-                <Link href="/dashboard/verifica-identita" className="profile-verify-chip is-action">
-                  <Icon name="badge-check" size={14} strokeWidth={2} color={brand.cianografiaScuro} />
-                  Verifica la tua identità
-                </Link>
-              )}
-              {preview.visibility === "PUBLIC" ? (
-                <Link href={`/professionista/${preview.profile.id}`} target="_blank" className="profile-visibility-link">
-                  Apri la pagina pubblica ↗
-                </Link>
-              ) : preview.visibility === "FISCAL_DATA_MISSING" ? (
-                <Link href="/dashboard/fiscale" className="profile-visibility-link">
-                  Completa i dati fiscali →
-                </Link>
-              ) : preview.visibility === "NOT_CONFIRMED" ? (
-                <button type="button" className="profile-visibility-link" onClick={() => setMode("edit")}>
-                  Controlla e salva →
-                </button>
+            <div className="profile-status">
+              <div className={`profile-visibility is-${visibilityStatus.tone}`}>
+                <span className="profile-visibility-dot" aria-hidden="true" />
+                <span className="profile-visibility-text">{visibilityStatus.label}</span>
+                {/* Badge Verificato in breve accanto allo stato (docs/CHANGELOG.md §252). */}
+                {verified ? (
+                  <span className="profile-verify-chip is-verified" title="Documento d'identità e dati fiscali controllati da noi">
+                    <Icon name="badge-check" size={14} strokeWidth={2} color={brand.verificato} />
+                    Verificato
+                  </span>
+                ) : null}
+                {preview.visibility === "PUBLIC" ? (
+                  <Link href={`/professionista/${preview.profile.id}`} target="_blank" className="profile-visibility-link">
+                    Apri la pagina pubblica ↗
+                  </Link>
+                ) : preview.visibility === "NOT_CONFIRMED" ? (
+                  <button type="button" className="profile-visibility-link" onClick={() => setMode("edit")}>
+                    Controlla e salva →
+                  </button>
+                ) : null}
+              </div>
+              {/* Cosa non può ancora fare, un pallino per ciascuno, e un solo
+                  prossimo passo (richieste dell'utente, docs/CHANGELOG.md §260, §262). */}
+              {identityStep && identityStep.state !== "done" ? (
+                <div className="profile-visibility is-warn">
+                  <span className="profile-visibility-dot" aria-hidden="true" />
+                  <span className="profile-visibility-text">
+                    {identityStep.state === "waiting" ? "Identità in verifica: presto potrai rispondere ai preventivi" : "Non puoi ancora rispondere alle richieste di preventivo"}
+                  </span>
+                </div>
+              ) : null}
+              {paymentsStep && paymentsStep.state !== "done" ? (
+                <div className="profile-visibility is-warn">
+                  <span className="profile-visibility-dot" aria-hidden="true" />
+                  <span className="profile-visibility-text">Non puoi ancora ricevere pagamenti online</span>
+                </div>
+              ) : null}
+              {nextStep?.action ? (
+                <div className="profile-status-next">
+                  <span>
+                    <span className="profile-status-next-label">Prossimo passo</span>
+                    <span className="profile-status-next-title">{nextStep.title}</span>
+                  </span>
+                  <Link href={nextStep.action.href} style={{ textDecoration: "none" }}>
+                    <Button variant="primary">{nextStep.action.label}</Button>
+                  </Link>
+                </div>
               ) : null}
             </div>
           ) : null}

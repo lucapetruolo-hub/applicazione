@@ -812,6 +812,129 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   border-radius: 50%;
   background: #f0dcc0;
 }
+/* Avanzamento di "Completa il profilo" in Oggi (docs/CHANGELOG.md §259). */
+.readiness-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: #f0e6da;
+  overflow: hidden;
+}
+.readiness-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #189a63;
+  transition: width 0.3s ease;
+}
+/* Percorso "Completa il profilo" (docs/CHANGELOG.md §261): passi in verticale
+   uniti da una linea, e la barra "Passo N di 3" in cima alle pagine dei passi. */
+.journey {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.journey-step {
+  position: relative;
+  display: flex;
+  gap: 12px;
+}
+.journey-step:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 17px;
+  top: 40px;
+  bottom: 4px;
+  width: 2px;
+  border-radius: 2px;
+  background: #f0e6da;
+}
+.journey-step.is-done:not(:last-child)::before {
+  background: #b9e6cf;
+}
+.journey-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.journey-bar {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.journey-bar-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #6e6459;
+}
+.journey-bar-step:not(:last-child) {
+  flex: 1 1 auto;
+}
+.journey-bar-step span {
+  white-space: nowrap;
+}
+.journey-bar-step:not(:last-child)::after {
+  content: "";
+  flex: 1;
+  min-width: 8px;
+  height: 2px;
+  border-radius: 2px;
+  background: #f0e6da;
+}
+.journey-bar-step.is-here {
+  color: #2b2420;
+}
+@media (max-width: 480px) {
+  .journey-bar-step:not(.is-here) span {
+    display: none;
+  }
+}
+/* Stato del profilo e cosa non può ancora fare: righe in un solo riquadro. */
+.profile-status {
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  background: #ffffff;
+}
+.profile-status .profile-visibility {
+  background: transparent;
+  border-radius: 0;
+}
+.profile-status-next {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding: 14px 16px;
+  border-top: 1px solid #f0e6da;
+}
+.profile-status-next-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6e6459;
+}
+.profile-status-next-title {
+  display: block;
+  font-weight: 800;
+  color: #2b2420;
+}
+.profile-status .profile-visibility + .profile-visibility {
+  border-top: 1px solid #f0e6da;
+}
 .profile-visibility {
   display: flex;
   align-items: center;
@@ -841,6 +964,8 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   box-shadow: 0 0 0 4px #fbeae7;
 }
 .profile-visibility-text {
+  flex: 1 1 0;
+  min-width: 0;
   font-weight: 700;
   color: #2b2420;
 }
@@ -2823,4 +2948,19 @@ a.admin-kpi:hover {
   .consent-invalid {
     animation: none;
   }
+}
+/* Link-pulsante nel modulo dei dati fiscali (Modifica, fuori dall'Italia). */
+.fiscal-link-button {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0e7a4c;
+  cursor: pointer;
+}
+.fiscal-link-button:hover {
+  text-decoration: underline;
 }
