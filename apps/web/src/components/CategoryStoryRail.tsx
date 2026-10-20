@@ -44,7 +44,7 @@ export function CategoryShowAllButton({ state }: { state: CategoryStoryRailState
   if (categories.length <= MOBILE_VISIBLE) return null;
   return (
     <button type="button" className="story-show-all" aria-expanded={showAll} aria-controls={RAIL_ID} onClick={() => setShowAll(!showAll)}>
-      {showAll ? "Meno" : `Tutte (${categories.length})`}
+      {showAll ? "Vedi meno" : `Vedi tutte (${categories.length})`}
       <Icon name={showAll ? "chevron-up" : "chevron-down"} size={16} color="currentColor" />
     </button>
   );
