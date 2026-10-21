@@ -106,6 +106,8 @@ export function AuthField({
       spellcheck: noCorrect ? "false" : null,
       "aria-label": accessibilityLabel ?? null,
       "aria-invalid": error ? "true" : null,
+      // Errore o suggerimento letti insieme al campo (docs/CHANGELOG.md §278).
+      "aria-describedby": nativeID && (error || hint) ? `${nativeID}-msg` : null,
     };
     for (const [name, attrValue] of Object.entries(attrs)) {
       if (attrValue === null) {
@@ -114,7 +116,7 @@ export function AuthField({
         input.setAttribute(name, attrValue);
       }
     }
-  }, [nativeID, type, isEmail, placeholder, autoComplete, autoCapitalize, noCorrect, accessibilityLabel, error]);
+  }, [nativeID, type, isEmail, placeholder, autoComplete, autoCapitalize, noCorrect, accessibilityLabel, error, hint]);
 
   // Valore cambiato dal modulo (es. svuotato): solo la proprietà, niente attributi.
   useEffect(() => {
@@ -131,7 +133,15 @@ export function AuthField({
         <span ref={containerRef} className="auth-field-slot" />
         {rightElement}
       </div>
-      {error ? <span className="auth-field-error">{error}</span> : hint ? <span className="auth-field-hint">{hint}</span> : null}
+      {error ? (
+        <span id={nativeID ? `${nativeID}-msg` : undefined} className="auth-field-error" role="alert">
+          {error}
+        </span>
+      ) : hint ? (
+        <span id={nativeID ? `${nativeID}-msg` : undefined} className="auth-field-hint">
+          {hint}
+        </span>
+      ) : null}
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { AuthCard, AuthPageBackground } from "@/components/AuthPageBackground";
+import { AuthStepHeader } from "@/components/AuthStepHeader";
 
 export default function AccediPage() {
   return (
@@ -33,6 +34,8 @@ function AccediForm() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Errore di un campo (email o password): va sotto quel campo (§279).
+  const [errorField, setErrorField] = useState<"email" | "password" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -43,9 +46,14 @@ function AccediForm() {
 
   async function handleLogin() {
     setError(null);
+    setErrorField(null);
     const result = emailPasswordSchema.safeParse({ email: email.trim(), password });
     if (!result.success) {
-      setError(result.error.issues[0]?.message ?? "Dati non validi.");
+      const issue = result.error.issues[0];
+      setError(issue?.message ?? "Dati non validi.");
+      const field = issue?.path[0] === "password" ? "password" : issue?.path[0] === "email" ? "email" : null;
+      setErrorField(field);
+      if (field) document.getElementById(field === "email" ? "email" : "current-password")?.focus();
       return;
     }
 
@@ -63,6 +71,7 @@ function AccediForm() {
 
   async function handleGoogleCredential(idToken: string) {
     setError(null);
+    setErrorField(null);
     setIsSubmitting(true);
     try {
       // createIfMissing=false: da questa pagina "Accedi con Google" non deve
@@ -88,14 +97,8 @@ function AccediForm() {
   return (
     <AuthPageBackground>
       <AuthCard>
-        <YStack gap="$2">
-          <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografiaScuro}>
-            Accedi
-          </Text>
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
-            Bentornato
-          </Text>
-        </YStack>
+        {/* Stessa intestazione della registrazione (docs/CHANGELOG.md §279). */}
+        <AuthStepHeader icon="lock" title="Bentornato" subtitle="Accedi al tuo account." />
 
         <GoogleSignInButton onCredential={handleGoogleCredential} />
 
@@ -134,6 +137,7 @@ function AccediForm() {
             // salvare la password?" ripetuto.
             nativeID="email"
             accessibilityLabel="Email"
+            error={error && errorField === "email" ? error : undefined}
             onSubmitEditing={handleLogin}
           />
           <AuthField
@@ -155,11 +159,12 @@ function AccediForm() {
             autoComplete="current-password"
             nativeID="current-password"
             accessibilityLabel="Password"
+            error={error && errorField === "password" ? error : undefined}
             onSubmitEditing={handleLogin}
           />
 
-          {error ? (
-            <Text color={brand.urgenza} fontSize="$3">
+          {error && !errorField ? (
+            <Text role="alert" color={brand.urgenza} fontSize="$3">
               {error}
             </Text>
           ) : null}

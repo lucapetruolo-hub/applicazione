@@ -1198,7 +1198,7 @@ a.admin-kpi:hover {
 .admin-input {
   padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #9c8e7f;
   font: inherit;
   font-size: 14px;
   background: #ffffff;
@@ -1357,6 +1357,78 @@ a.admin-kpi:hover {
   transform: translateY(-2px);
   border-color: #189a63;
 }
+/* Le schede di scelta sono link veri (docs/CHANGELOG.md §278): fuoco da
+   tastiera visibile e risposta al tocco. */
+.auth-role-card-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 16px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.auth-role-card-link:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.auth-role-card-link:active .auth-role-card {
+  transform: scale(0.98);
+  border-color: #189a63;
+}
+
+/* Intestazione dei passi della registrazione (docs/CHANGELOG.md §278):
+   "Indietro" in alto a sinistra, numero del passo a destra, barra sotto. */
+.auth-step-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  margin: -12px -8px 0;
+}
+.auth-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 44px;
+  padding: 0 10px 0 4px;
+  border: none;
+  border-radius: 12px;
+  background: none;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: #2b2420;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.auth-back:hover {
+  background: #fdefe1;
+}
+.auth-back:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 1px;
+}
+.auth-step-count {
+  margin-left: auto;
+  padding-right: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0e7a4c;
+}
+.auth-step-bar {
+  display: flex;
+  gap: 6px;
+}
+.auth-step-bar span {
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: #f0dcc0;
+}
+.auth-step-bar span.is-done {
+  background: #189a63;
+}
 
 /* Tendina "Il mio account" nell'header, a gruppi (docs/CHANGELOG.md §148). */
 .acct-menu {
@@ -1509,7 +1581,7 @@ a.admin-kpi:hover {
   font: inherit;
   font-size: 14px;
   padding: 7px 10px;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #9c8e7f;
   border-radius: 10px;
   background: #ffffff;
   color: #2b2420;
@@ -1714,7 +1786,7 @@ a.admin-kpi:hover {
   gap: 8px;
 }
 .auth-field-label {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   color: #6e6459;
 }
@@ -1722,7 +1794,8 @@ a.admin-kpi:hover {
   display: flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid #f0dcc0;
+  /* brand.bordoCampo: 3,2:1 su bianco (docs/CHANGELOG.md §278). */
+  border: 1px solid #9c8e7f;
   border-radius: 20px;
   background: #ffffff;
   padding: 0 12px;
@@ -2824,7 +2897,7 @@ a.admin-kpi:hover {
 }
 .email-code-box {
   height: 56px;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #9c8e7f;
   border-radius: 14px;
   background: #ffffff;
   display: flex;
@@ -2919,42 +2992,102 @@ a.admin-kpi:hover {
 }
 
 /* Registrazione del professionista (docs/CHANGELOG.md §248, richiesta
-   dell'utente). Categoria principale: bordo dorato che gira piano attorno
-   alla scelta, con un alone leggero. Caselle obbligatorie non spuntate:
-   riga rossa con una scossa breve. Con "riduci movimento" restano fermi. */
-@property --gold-angle {
-  syntax: "<angle>";
-  initial-value: 0deg;
-  inherits: false;
+   dell'utente). Caselle obbligatorie non spuntate: riga rossa con una
+   scossa breve. Con "riduci movimento" resta ferma.
+   Scelta dei lavori a tessere (§279, stile A scelto dall'utente al posto
+   del bordo dorato animato): due colonne da telefono, di più dove c'è
+   spazio; spunta verde sulle scelte, "Principale" sotto la prima. */
+.cat-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+  gap: 10px;
 }
-.category-chip-primary {
-  /* 2px invece di 1px, con -1px di margine: stessa misura delle altre. */
-  border-width: 2px !important;
-  margin: -1px;
-  border-color: transparent !important;
-  background:
-    linear-gradient(#fff8e6, #fff8e6) padding-box,
-    conic-gradient(from var(--gold-angle), #c8961f, #c8961f 55%, #f6d77e 68%, #fffbea 75%, #f6d77e 82%, #c8961f) border-box !important;
-  box-shadow: 0 0 0 3px rgba(217, 164, 65, 0.16);
-  animation:
-    gold-spin 3.2s linear infinite,
-    gold-glow 2.4s ease-in-out infinite;
+.cat-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 96px;
+  padding: 12px 8px;
+  border: 1px solid #f0dcc0;
+  border-radius: 16px;
+  background: #ffffff;
+  font: inherit;
+  color: #2b2420;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 0.15s cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-@keyframes gold-spin {
-  to {
-    --gold-angle: 360deg;
-  }
+.cat-tile:hover:not(:disabled) {
+  border-color: #189a63;
 }
-@keyframes gold-glow {
-  50% {
-    box-shadow: 0 0 0 4px rgba(217, 164, 65, 0.28), 0 2px 12px rgba(217, 164, 65, 0.3);
+.cat-tile:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.cat-tile:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.cat-tile.is-on {
+  /* 2px con 1px di padding in meno: la tessera non cambia misura. */
+  border: 2px solid #189a63;
+  padding: 11px 7px;
+  background: #f2fbf6;
+}
+.cat-tile:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.cat-tile-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cat-tile-label {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+}
+.cat-tile-primary {
+  margin-top: -2px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fff3d6;
+  color: #8a5a00;
+  font-size: 11px;
+  font-weight: 700;
+}
+.cat-tile-check {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #189a63;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cat-tile {
+    transition: none;
   }
 }
 .consent-invalid {
   animation: email-code-shake 0.3s ease;
 }
 @media (prefers-reduced-motion: reduce) {
-  .category-chip-primary,
   .consent-invalid {
     animation: none;
   }
@@ -3095,5 +3228,67 @@ a.admin-kpi:hover {
   .story-show-all:focus-visible {
     outline: 3px solid #189a63;
     outline-offset: 2px;
+  }
+}
+
+/* "Servizi più richiesti a [città]" in fondo ai risultati di una categoria
+   (docs/CHANGELOG.md §282): link alle pagine categoria+città, per i
+   clienti e per Google. Pillole che vanno a capo, area di tocco 44px. */
+.popular-services {
+  width: 100%;
+  max-width: 1200px;
+  box-sizing: border-box;
+  padding: 8px 16px 48px;
+}
+.popular-services-title {
+  margin: 0 0 14px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #2b2420;
+  text-wrap: balance;
+}
+.popular-services-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.popular-services-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 16px 6px 6px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #f0dcc0;
+  color: #2b2420;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: border-color 150ms cubic-bezier(0.2, 0.8, 0.2, 1), background-color 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.popular-services-link:hover {
+  border-color: #189a63;
+  background: #f2fbf6;
+}
+.popular-services-link:focus-visible {
+  outline: 2px solid #0e7a4c;
+  outline-offset: 2px;
+}
+.popular-services-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+@media (min-width: 661px) {
+  .popular-services {
+    padding: 8px 24px 64px;
   }
 }

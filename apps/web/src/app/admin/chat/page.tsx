@@ -47,7 +47,7 @@ export default function AdminChatPage() {
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Cerca per cliente, email o professionista"
         aria-label="Cerca chat"
-        style={{ width: "100%", boxSizing: "border-box", padding: "10px 14px", borderRadius: 999, border: `1px solid ${brand.filetto}`, fontSize: 14, marginBottom: 16 }}
+        style={{ width: "100%", boxSizing: "border-box", padding: "10px 14px", borderRadius: 999, border: `1px solid ${brand.bordoCampo}`, fontSize: 14, marginBottom: 16 }}
       />
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       {rows === null && !error ? (

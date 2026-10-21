@@ -25,6 +25,7 @@ import { MediaPreview } from "@/components/MediaPreview";
 import { InlineAuthGate } from "@/components/InlineAuthGate";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { UploadingDots } from "@/components/UploadingDots";
+import { CategoryTiles } from "@/components/CategoryTiles";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
@@ -79,7 +80,7 @@ function pickableSlotLabel(slot: PickableAgendaSlot): string {
 const fieldInputStyle = {
   padding: 12,
   borderRadius: 4,
-  border: `1px solid ${brand.filetto}`,
+  border: `1px solid ${brand.bordoCampo}`,
   fontSize: 15,
   fontFamily: "inherit",
   color: brand.grafite,
@@ -818,43 +819,10 @@ export function GuidedRequestForm({
                 {categorySlugs.length > 0 ? `${categorySlugs.length} di ${MAX_REQUEST_CATEGORIES}` : `Fino a ${MAX_REQUEST_CATEGORIES}`}
               </Text>
             </XStack>
-            {/* Più categorie insieme (docs/CHANGELOG.md §259): ogni pillola si
-                accende e si spegne; arrivati al massimo le altre si
-                attenuano. Il menu a tendina per telefono (F2.1) è stato tolto:
-                non permette una scelta multipla e le pillole vanno a capo
-                anche su schermi stretti. */}
-            <YStack flexDirection="row" flexWrap="wrap" gap="$2" role="group" aria-label="Categorie">
-              {PROFESSIONAL_CATEGORIES.map((category) => {
-                const active = categorySlugs.includes(category.slug);
-                const full = !active && categorySlugs.length >= MAX_REQUEST_CATEGORIES;
-                return (
-                  <XStack
-                    key={category.slug}
-                    alignItems="center"
-                    gap="$2"
-                    paddingHorizontal="$3"
-                    paddingVertical="$2"
-                    borderRadius="$2"
-                    borderWidth={1}
-                    borderColor={active ? brand.cianografia : brand.filetto}
-                    backgroundColor={active ? brand.cianografiaVelo : brand.calce}
-                    opacity={full ? 0.45 : 1}
-                    cursor={full ? "not-allowed" : "pointer"}
-                    onPress={() => !full && toggleCategory(category.slug)}
-                    accessibilityRole="checkbox"
-                    accessibilityState={{ checked: active, disabled: full }}
-                    aria-checked={active}
-                    aria-disabled={full}
-                  >
-                    <Icon name={category.icon} size={15} color={active ? brand.cianografiaScuro : brand.grafite} />
-                    <Text color={active ? brand.cianografiaScuro : brand.grafite} fontWeight="600">
-                      {category.label}
-                    </Text>
-                    {active ? <Icon name="check" size={14} color={brand.cianografiaScuro} /> : null}
-                  </XStack>
-                );
-              })}
-            </YStack>
+            {/* Più categorie insieme (docs/CHANGELOG.md §259), a tessere come
+                nella registrazione del professionista (§279), con le più
+                cercate nella città di partenza prima. */}
+            <CategoryTiles value={categorySlugs} onToggle={toggleCategory} max={MAX_REQUEST_CATEGORIES} city={initialCity} ariaLabel="Categorie" />
             {categorySlugs.length > 1 ? (
               <Text fontSize="$2" color={brand.grafite70}>
                 Riceverai una richiesta separata per ogni categoria.
@@ -950,7 +918,7 @@ export function GuidedRequestForm({
               style={{
                 padding: 12,
                 borderRadius: 4,
-                border: `1px solid ${brand.filetto}`,
+                border: `1px solid ${brand.bordoCampo}`,
                 fontSize: 15,
                 fontFamily: "inherit",
                 backgroundColor: brand.calce,
@@ -977,7 +945,7 @@ export function GuidedRequestForm({
             style={{
               padding: 12,
               borderRadius: 4,
-              border: `1px solid ${brand.filetto}`,
+              border: `1px solid ${brand.bordoCampo}`,
               fontSize: 15,
               fontFamily: "inherit",
               color: brand.grafite,

@@ -74,7 +74,7 @@ const CANDIDATE_LANGUAGES = [
   "Croato",
 ];
 
-const inputStyle = { padding: 12, borderRadius: 4, border: `1px solid ${brand.filetto}`, fontSize: 15, fontFamily: "inherit", color: brand.grafite };
+const inputStyle = { padding: 12, borderRadius: 4, border: `1px solid ${brand.bordoCampo}`, fontSize: 15, fontFamily: "inherit", color: brand.grafite };
 const smallInputStyle = { ...inputStyle, padding: 10, fontSize: 14 };
 
 function FieldLabel({ children }: { children: string }) {
@@ -884,7 +884,7 @@ export default function DashboardProfiloPage() {
           <SectionTitle>Categorie e presentazione</SectionTitle>
 
           <YStack gap="$2">
-            <FieldLabel>Categorie (fino a 3 scelte)</FieldLabel>
+            <FieldLabel>Categorie</FieldLabel>
             <CategoryMultiPicker value={categorySlugs} onChange={setCategorySlugs} />
           </YStack>
 

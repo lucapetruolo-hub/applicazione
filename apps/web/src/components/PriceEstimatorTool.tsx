@@ -78,7 +78,7 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
           style={{
             padding: 14,
             borderRadius: 999,
-            border: `1px solid ${brand.filetto}`,
+            border: `1px solid ${brand.bordoCampo}`,
             fontSize: 15,
             fontFamily: "inherit",
             color: brand.grafite,

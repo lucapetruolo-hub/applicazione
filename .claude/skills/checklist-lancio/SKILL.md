@@ -319,3 +319,12 @@ aperti solo:
     (voce principale di questo problema, in cima alla checklist perché è
     un rischio operativo ricorrente, non solo tecnico).
 
+
+## Da fare dopo il lancio
+
+Cose decise con Luca da non fare prima del lancio, ma da non dimenticare:
+- **"[Servizio] nelle città vicine"** (21/10/2026, docs/CHANGELOG.md §282):
+  nelle pagine categoria+città, link alla stessa categoria nei comuni vicini
+  (es. "Idraulico a Sezze", "Idraulico ad Aprilia"), solo dove c'è almeno un
+  professionista. Aiuta Google nelle ricerche locali; utile quando ci sono
+  professionisti in più comuni.
