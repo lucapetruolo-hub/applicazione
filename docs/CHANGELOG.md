@@ -19727,7 +19727,17 @@ nella pagina della richiesta, non solo nell'avviso.
 
 **Verifica**: `tsc` ed `eslint` dell'API, 479 test (nuovo: mezzanotte di Roma in ora legale, solare, subito dopo mezzanotte e nel giorno del cambio d'ora).
 
-## 277. Design della registrazione
+## 277. Verifica identità di prova: niente dati attesi a Didit
+
+**Richiesta esplicita dell'utente** (21/10/2026, thread "Verifica fiscale e d'identità"): "mi da ancora questo errore sul sito anche se ho impostato didit sandbox true : Il documento non coincide con i dati fiscali: se c'è un errore correggilo scrivendoli come sul documento, poi rifai la verifica."
+
+**Causa**: dal §272 mandiamo a Didit nome e data di nascita attesi (`expected_details`). Nell'ambiente di prova Didit riporta i nomi mandati ma la data resta sempre quella finta (15/06/1990): segnalava `DOB_MISMATCH_WITH_PROVIDED` e rifiutava lui la verifica, prima ancora del nostro confronto (che con `DIDIT_SANDBOX=true` si salta).
+
+**Decisione presa**: con `DIDIT_SANDBOX=true` non si mandano i dati attesi. Con le chiavi vere restano.
+
+**Verifica**: `tsc` ed `eslint` dell'API, 479 test (il test di `createSession` controlla anche che in prova `expected_details` non parta).
+
+## 278. Design della registrazione
 
 **Richiesta esplicita dell'utente** (20/10/2026): "migliora il design da questa pagina in poi" (pagina "Come vuoi registrarti?" e tutti i passi dopo, cliente e professionista). Proposte 11 migliorie con le regole della skill UI/UX Pro Max; Luca: "procedi con le migliorie" (tutte). Foto prima e dopo in `/mnt/project-files/anteprime/registrazione/`.
 
@@ -19747,9 +19757,9 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 
 **Verifica**: typecheck e lint di web. Provato nel browser a 360, 390 e 1440px (sito locale; risposte dell'API simulate per il passo password del cliente e per il codice): nessuno scorrimento orizzontale, titolo "Registrati | Professionisti", h1 presente, scelta col tasto Tab + Invio, "Indietro" e tasto indietro del browser corretti, errore "Le password non coincidono" sotto Conferma password.
 
-## 278. Scelta dei lavori a tessere e altre migliorie di accesso e moduli
+## 279. Scelta dei lavori a tessere e altre migliorie di accesso e moduli
 
-**Richiesta esplicita dell'utente** (21/10/2026): "non mi piace lo stile con cui si scelgono i lavori in fase di registrazione, come si puo migliorare la scelta?" e "poi effettua le 4 migliorie" (quelle proposte dopo §277). Tra tre stili (A tessere con icona colorata, B elenco con caselle, C ricerca + più scelti, foto in `/mnt/project-files/anteprime/scelta-lavori/`) Luca ha scelto "A".
+**Richiesta esplicita dell'utente** (21/10/2026): "non mi piace lo stile con cui si scelgono i lavori in fase di registrazione, come si puo migliorare la scelta?" e "poi effettua le 4 migliorie" (quelle proposte dopo §278). Tra tre stili (A tessere con icona colorata, B elenco con caselle, C ricerca + più scelti, foto in `/mnt/project-files/anteprime/scelta-lavori/`) Luca ha scelto "A".
 
 **Decisione presa**:
 - **Scelta dei lavori a tessere** (`CategoryMultiPicker`, usato in registrazione, `/dashboard/profilo` e `/admin/professionisti`): griglia di tessere (`.cat-tiles`, due colonne da telefono e di più dove c'è spazio) con l'icona colorata della categoria (`CategoryIcon`/`CATEGORY_ACCENT`, le stesse della home), spunta verde sulle scelte, "Principale" sotto la prima, "N su 3" in alto. Sono pulsanti veri (`aria-pressed`, tastiera, risposta al tocco). Tolto il bordo dorato animato di §248. La riga per cambiare la principale resta ("Cambia la principale:").
@@ -19760,20 +19770,20 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 
 **Verifica**: typecheck e lint di web. Provato nel browser a 360, 390 e 1280px: tessere su due colonne da telefono e tre nella scheda da computer, nessuno scorrimento orizzontale, scelta con la barra spaziatrice, titolo "Accedi | Professionisti", "Richiedi preventivo" assente su /accedi e /registrati.
 
-## 279. Tessere nella richiesta di preventivo e lavori più cercati per primi
+## 280. Tessere nella richiesta di preventivo e lavori più cercati per primi
 
-**Richiesta esplicita dell'utente** (21/10/2026): "effettua le 2 migliorie" (proposte dopo §278): le stesse tessere nella scelta delle categorie della richiesta di preventivo e i lavori più cercati in zona per primi.
+**Richiesta esplicita dell'utente** (21/10/2026): "effettua le 2 migliorie" (proposte dopo §279): le stesse tessere nella scelta delle categorie della richiesta di preventivo e i lavori più cercati in zona per primi.
 
 **Decisione presa**:
-- **Tessere condivise** (`apps/web/src/components/CategoryTiles.tsx`): la griglia di §278 esce da `CategoryMultiPicker` e la usa anche `GuidedRequestForm` (fino a `MAX_REQUEST_CATEGORIES`, senza "Principale"; restano "N di 3" e "Riceverai una richiesta separata per ogni categoria.").
+- **Tessere condivise** (`apps/web/src/components/CategoryTiles.tsx`): la griglia di §279 esce da `CategoryMultiPicker` e la usa anche `GuidedRequestForm` (fino a `MAX_REQUEST_CATEGORIES`, senza "Principale"; restano "N di 3" e "Riceverai una richiesta separata per ogni categoria.").
 - **Più cercati per primi**: nuovo `GET /categories/popular?city=` (`CategoriesService.getPopularity`), richieste di preventivo degli ultimi 365 giorni contate per categoria. Con almeno 5 richieste nella città (`MIN_CITY_REQUESTS`) conta solo quella città, altrimenti tutta Italia. Solo conteggi, nessun dato personale. Le categorie senza richieste restano in fondo nell'ordine di sempre.
 - **Mai spostare sotto il dito**: l'ordine si applica una sola volta, solo se arriva entro 2 secondi e prima che sia scelta una categoria; altrimenti resta l'ordine fisso. Nella richiesta usa la città già nota (dall'indirizzo della ricerca o del profilo), in registrazione l'ordine nazionale.
 
 **Verifica**: test di `CategoriesService` (città, ritorno a tutta Italia, categorie tolte ignorate), typecheck di api e web, lint. Provato nel browser a 390 e 1280px con risposte simulate: ordine applicato, chiamata con la città nella richiesta e senza in registrazione, nessuno scorrimento orizzontale.
 
-## 280. Categoria cercata in cima e ricerche nel conteggio dei più cercati
+## 281. Categoria cercata in cima e ricerche nel conteggio dei più cercati
 
-**Richiesta esplicita dell'utente** (21/10/2026): "effettua le due migliorie" (proposte dopo §279): nella richiesta di preventivo la categoria cercata per prima, e contare anche le ricerche oltre alle richieste.
+**Richiesta esplicita dell'utente** (21/10/2026): "effettua le due migliorie" (proposte dopo §280): nella richiesta di preventivo la categoria cercata per prima, e contare anche le ricerche oltre alle richieste.
 
 **Decisione presa**:
 - **Categoria cercata in cima** (`CategoryTiles`): le categorie già scelte all'apertura (nella richiesta quella arrivata dalla ricerca, `?categoria=`; nel profilo quelle del professionista) restano per prime, poi le più cercate. L'ordine dei più cercati ora si blocca al primo tocco invece che alla prima scelta, perché una scelta può esserci già all'apertura.

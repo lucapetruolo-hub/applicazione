@@ -56,10 +56,13 @@ describe("Didit", () => {
   });
 
   it("manda a Didit nome e data attesi, così confronta anche lui", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ session_id: "s1", url: "https://verify.didit.me/s1" }), { status: 201 }));
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response(JSON.stringify({ session_id: "s1", url: "https://verify.didit.me/s1" }), { status: 201 }));
     await provider.createSession({ reference: "pp-1", callbackUrl: "https://x/ritorno", expected: { firstName: "Mario", lastName: "Rossi", dateOfBirth: "1980-01-01" } });
     const sent = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
     expect(sent.expected_details).toEqual({ first_name: "Mario", last_name: "Rossi", date_of_birth: "1980-01-01" });
+    // In prova niente dati attesi: la data finta di Didit farebbe rifiutare tutto.
+    await new DiditIdentityProvider("key", "workflow", secret, true).createSession({ reference: "pp-1", callbackUrl: "https://x/ritorno", expected: { firstName: "Mario", lastName: "Rossi", dateOfBirth: "1980-01-01" } });
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)).expected_details).toBeUndefined();
     fetchMock.mockRestore();
   });
 

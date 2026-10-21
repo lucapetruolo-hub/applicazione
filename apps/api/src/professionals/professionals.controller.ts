@@ -68,7 +68,7 @@ export class ProfessionalsController {
     @Query("track") track?: string,
   ) {
     // La pagina dei risultati chiede di contare la ricerca una volta sola
-    // (`track=1`, docs/CHANGELOG.md §280): serve solo a mettere prima i lavori
+    // (`track=1`, docs/CHANGELOG.md §281): serve solo a mettere prima i lavori
     // più cercati. Un errore qui non deve mai rompere la ricerca.
     if (track === "1" && typeof category === "string" && category) {
       void this.categoriesService.recordSearch(category, typeof city === "string" ? city : undefined).catch(() => undefined);

@@ -106,7 +106,7 @@ export function AuthField({
       spellcheck: noCorrect ? "false" : null,
       "aria-label": accessibilityLabel ?? null,
       "aria-invalid": error ? "true" : null,
-      // Errore o suggerimento letti insieme al campo (docs/CHANGELOG.md §277).
+      // Errore o suggerimento letti insieme al campo (docs/CHANGELOG.md §278).
       "aria-describedby": nativeID && (error || hint) ? `${nativeID}-msg` : null,
     };
     for (const [name, attrValue] of Object.entries(attrs)) {

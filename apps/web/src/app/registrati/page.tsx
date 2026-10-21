@@ -362,7 +362,7 @@ function RegistratiForm() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Campo a cui si riferisce l'errore (docs/CHANGELOG.md §277): il messaggio
+  // Campo a cui si riferisce l'errore (docs/CHANGELOG.md §278): il messaggio
   // va sotto quel campo. Nullo: errore generale, sopra "Registrati".
   const [errorField, setErrorField] = useState<"categories" | "email" | "password" | "confirm" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);

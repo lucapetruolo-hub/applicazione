@@ -5,7 +5,7 @@ import { PRISMA } from "../prisma/prisma.module";
 /** Richieste e ricerche dell'ultimo anno: abbastanza per un ordine stabile, non vecchie di anni. */
 const POPULARITY_WINDOW_DAYS = 365;
 /**
- * Una richiesta di preventivo pesa come 3 ricerche (docs/CHANGELOG.md §280):
+ * Una richiesta di preventivo pesa come 3 ricerche (docs/CHANGELOG.md §281):
  * chi chiede un preventivo vuole davvero quel lavoro, chi cerca a volte guarda
  * soltanto (e ricaricare la pagina conta di nuovo).
  */
@@ -29,7 +29,7 @@ export class CategoriesService {
   constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
 
   /**
-   * Una ricerca per categoria (docs/CHANGELOG.md §280): contatore per giorno
+   * Una ricerca per categoria (docs/CHANGELOG.md §281): contatore per giorno
    * e città, mai la singola ricerca né chi cerca. Una categoria sconosciuta
    * non conta.
    */
@@ -47,7 +47,7 @@ export class CategoriesService {
   }
 
   /**
-   * Quanto è cercata ogni categoria (docs/CHANGELOG.md §279-§280, richiesta
+   * Quanto è cercata ogni categoria (docs/CHANGELOG.md §280-§281, richiesta
    * dell'utente: "i lavori più cercati prima" nella scelta dei lavori):
    * richieste di preventivo × `REQUEST_WEIGHT` + ricerche. Con una città
    * conta solo quella, se arriva a `MIN_CITY_SCORE`; altrimenti tutta la

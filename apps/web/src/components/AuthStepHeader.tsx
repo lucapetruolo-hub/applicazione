@@ -26,7 +26,7 @@ export function AuthIconBadge({ icon }: { icon: IconName }) {
 
 /**
  * Intestazione di ogni passo di registrazione e accesso (docs/CHANGELOG.md
- * §277-§278):
+ * §278-§279):
  * "Indietro" in alto a sinistra dove si può tornare, "Passo N di M" con una
  * barra a segmenti, l'icona del passo e il titolo principale (h1). La prima
  * scelta (cliente o professionista) non ha la barra: il numero di passi

@@ -12,7 +12,7 @@ import { CategoryTiles } from "@/components/CategoryTiles";
  * toccare finché non se ne toglie una.
  *
  * Tessere con l'icona colorata della categoria, le stesse della home
- * (docs/CHANGELOG.md §278, stile A scelto dall'utente al posto delle
+ * (docs/CHANGELOG.md §279, stile A scelto dall'utente al posto delle
  * etichette con il bordo dorato animato di §248): spunta verde sulle
  * scelte, "Principale" sotto il nome della prima, "N su 3" in alto.
  * Tessere in `CategoryTiles`, con i lavori più cercati prima.

@@ -1,4 +1,4 @@
--- Ricerche per categoria, contate per giorno e città (docs/CHANGELOG.md §280).
+-- Ricerche per categoria, contate per giorno e città (docs/CHANGELOG.md §281).
 CREATE TABLE "category_search_days" (
     "categoryId" TEXT NOT NULL,
     "city" TEXT NOT NULL,

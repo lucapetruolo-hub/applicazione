@@ -863,7 +863,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     /** Funzioni attive sul server (docs/CHANGELOG.md §170): oggi solo il pagamento online dei lavori. */
     getFeatures: () => request<{ onlinePayments: boolean }>("/health/features"),
     getCategories: () => request<typeof PROFESSIONAL_CATEGORIES>("/categories"),
-    /** Richieste per categoria, per mettere prima i lavori più cercati (docs/CHANGELOG.md §279). */
+    /** Richieste per categoria, per mettere prima i lavori più cercati (docs/CHANGELOG.md §280). */
     getCategoryPopularity: (city?: string) =>
       request<{ scope: "CITY" | "ALL"; counts: { slug: string; count: number }[] }>(
         `/categories/popular${city ? `?city=${encodeURIComponent(city)}` : ""}`,
@@ -1009,7 +1009,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
       if (params.q) query.set("q", params.q);
       if (params.remote) query.set("remote", "1");
       if (params.excludeDemo) query.set("excludeDemo", "1");
-      // Conta la ricerca per i lavori più cercati (docs/CHANGELOG.md §280): solo dalla pagina dei risultati, una volta.
+      // Conta la ricerca per i lavori più cercati (docs/CHANGELOG.md §281): solo dalla pagina dei risultati, una volta.
       if (params.track) query.set("track", "1");
       const queryString = query.toString();
       // cache: "no-store" esplicito: senza questo, in Next.js il Data Cache

@@ -55,7 +55,7 @@ export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: 
             onAuthenticated={() => onAuthenticated()}
             renderHeader={(step, back) => (
               // Stessa intestazione a passi della registrazione (docs/CHANGELOG.md
-              // §278): "Indietro" torna al campo email, la ✕ chiude il popup.
+              // §279): "Indietro" torna al campo email, la ✕ chiude il popup.
               <YStack gap="$3">
                 <div className="auth-step-top">
                   {back ? (

@@ -10,13 +10,13 @@ import { apiClient } from "@/lib/apiClient";
 const POPULAR_ORDER_TIMEOUT_MS = 2000;
 
 /**
- * Tessere delle categorie con l'icona colorata (docs/CHANGELOG.md §278-§279, stile
+ * Tessere delle categorie con l'icona colorata (docs/CHANGELOG.md §279-§280, stile
  * A scelto dall'utente): scelta dei lavori del professionista
  * (`CategoryMultiPicker`) e categorie della richiesta di preventivo.
  * Pulsanti veri con `aria-pressed`; raggiunto `max` le altre si attenuano.
  *
  * Ordine: in cima le categorie già scelte all'apertura (nella richiesta, la
- * categoria cercata, docs/CHANGELOG.md §280), poi le più cercate nella città
+ * categoria cercata, docs/CHANGELOG.md §281), poi le più cercate nella città
  * indicata o in tutta la piattaforma (`GET /categories/popular`). L'ordine
  * dei più cercati si applica solo se arriva subito e prima di qualsiasi
  * tocco, così le tessere non si spostano sotto il dito; altrimenti resta

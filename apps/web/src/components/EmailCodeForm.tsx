@@ -329,7 +329,7 @@ export function EmailCodeForm({
       <YStack gap="$2" alignItems="center">
         {/* La durata accanto al conto alla rovescia: senza, il minuto di
             attesa per un nuovo invio sembrava la scadenza del codice (§250). */}
-        {/* Durata e nuovo invio in una riga sola (docs/CHANGELOG.md §277). */}
+        {/* Durata e nuovo invio in una riga sola (docs/CHANGELOG.md §278). */}
         {!expired && state !== "done" ? (
           <Text fontSize="$3" color={brand.grafite70} textAlign="center">
             Vale ancora {validMinutes === 1 ? "1 minuto" : `${validMinutes} minuti`}

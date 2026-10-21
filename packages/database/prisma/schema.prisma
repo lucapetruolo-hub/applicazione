@@ -2194,7 +2194,7 @@ model ProfileViewDay {
   @@map("profile_view_days")
 }
 
-// Ricerche per categoria (docs/CHANGELOG.md §280): contatore per giorno e
+// Ricerche per categoria (docs/CHANGELOG.md §281): contatore per giorno e
 // città, mai la singola ricerca né chi cerca. Serve solo a mettere prima i
 // lavori più cercati nella scelta dei lavori. `city` minuscola, "" se la
 // ricerca era senza città.
