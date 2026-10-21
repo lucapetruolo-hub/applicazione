@@ -860,6 +860,11 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     /** Funzioni attive sul server (docs/CHANGELOG.md §170): oggi solo il pagamento online dei lavori. */
     getFeatures: () => request<{ onlinePayments: boolean }>("/health/features"),
     getCategories: () => request<typeof PROFESSIONAL_CATEGORIES>("/categories"),
+    /** Richieste per categoria, per mettere prima i lavori più cercati (docs/CHANGELOG.md §273). */
+    getCategoryPopularity: (city?: string) =>
+      request<{ scope: "CITY" | "ALL"; counts: { slug: string; count: number }[] }>(
+        `/categories/popular${city ? `?city=${encodeURIComponent(city)}` : ""}`,
+      ),
 
     /**
      * URL dello stream SSE in tempo reale (CTO — "socket.io vs websocket vs

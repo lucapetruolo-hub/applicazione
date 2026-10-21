@@ -884,7 +884,7 @@ export default function DashboardProfiloPage() {
           <SectionTitle>Categorie e presentazione</SectionTitle>
 
           <YStack gap="$2">
-            <FieldLabel>Categorie (fino a 3 scelte)</FieldLabel>
+            <FieldLabel>Categorie</FieldLabel>
             <CategoryMultiPicker value={categorySlugs} onChange={setCategorySlugs} />
           </YStack>
 

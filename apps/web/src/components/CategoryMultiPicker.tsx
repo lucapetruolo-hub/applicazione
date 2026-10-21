@@ -2,7 +2,7 @@
 
 import { MAX_PROFESSIONAL_CATEGORIES, PROFESSIONAL_CATEGORIES, type ProfessionalCategorySlug } from "@professionisti/shared";
 import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
-import { CATEGORY_ACCENT, CategoryIcon } from "@/components/icons/CategoryIcons";
+import { CategoryTiles } from "@/components/CategoryTiles";
 
 /**
  * Scelta delle categorie del professionista, da 1 a 3 (docs/CHANGELOG.md
@@ -15,13 +15,17 @@ import { CATEGORY_ACCENT, CategoryIcon } from "@/components/icons/CategoryIcons"
  * (docs/CHANGELOG.md §273, stile A scelto dall'utente al posto delle
  * etichette con il bordo dorato animato di §248): spunta verde sulle
  * scelte, "Principale" sotto il nome della prima, "N su 3" in alto.
+ * Tessere in `CategoryTiles`, con i lavori più cercati prima.
  */
 export function CategoryMultiPicker({
   value,
   onChange,
+  city,
 }: {
   value: ProfessionalCategorySlug[];
   onChange: (next: ProfessionalCategorySlug[]) => void;
+  /** Città del profilo, per mettere prima i lavori più cercati lì. */
+  city?: string;
 }) {
   const isFull = value.length >= MAX_PROFESSIONAL_CATEGORIES;
 
@@ -44,36 +48,7 @@ export function CategoryMultiPicker({
         </Text>
       </XStack>
 
-      <div className="cat-tiles">
-        {PROFESSIONAL_CATEGORIES.map((category) => {
-          const active = value.includes(category.slug);
-          const isPrimary = value[0] === category.slug;
-          const disabled = !active && isFull;
-          const accent = CATEGORY_ACCENT[category.slug];
-          return (
-            <button
-              key={category.slug}
-              type="button"
-              className={`cat-tile${active ? " is-on" : ""}`}
-              onClick={() => toggle(category.slug)}
-              aria-pressed={active}
-              disabled={disabled}
-              aria-label={isPrimary ? `${category.label}, principale` : category.label}
-            >
-              <span className="cat-tile-icon" style={{ background: accent.bg, color: accent.fg }} aria-hidden="true">
-                <CategoryIcon slug={category.slug} size={26} />
-              </span>
-              <span className="cat-tile-label">{category.label}</span>
-              {isPrimary ? <span className="cat-tile-primary">Principale</span> : null}
-              {active ? (
-                <span className="cat-tile-check" aria-hidden="true">
-                  <Icon name="check" size={14} color="white" strokeWidth={3} />
-                </span>
-              ) : null}
-            </button>
-          );
-        })}
-      </div>
+      <CategoryTiles value={value} onToggle={toggle} max={MAX_PROFESSIONAL_CATEGORIES} city={city} showPrimary ariaLabel="Che lavori fai?" />
 
       {value.length > 1 ? (
         <XStack alignItems="center" gap="$2" flexWrap="wrap">

@@ -19701,3 +19701,14 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 - **Niente "Richiedi preventivo" in alto** (migliora 4) in registrazione, accesso, password dimenticata, reimposta password, conferma email e completa profilo (`SiteHeader`, `AUTH_PAGES`).
 
 **Verifica**: typecheck e lint di web. Provato nel browser a 360, 390 e 1280px: tessere su due colonne da telefono e tre nella scheda da computer, nessuno scorrimento orizzontale, scelta con la barra spaziatrice, titolo "Accedi | Professionisti", "Richiedi preventivo" assente su /accedi e /registrati.
+
+## 274. Tessere nella richiesta di preventivo e lavori più cercati per primi
+
+**Richiesta esplicita dell'utente** (21/10/2026): "effettua le 2 migliorie" (proposte dopo §273): le stesse tessere nella scelta delle categorie della richiesta di preventivo e i lavori più cercati in zona per primi.
+
+**Decisione presa**:
+- **Tessere condivise** (`apps/web/src/components/CategoryTiles.tsx`): la griglia di §273 esce da `CategoryMultiPicker` e la usa anche `GuidedRequestForm` (fino a `MAX_REQUEST_CATEGORIES`, senza "Principale"; restano "N di 3" e "Riceverai una richiesta separata per ogni categoria.").
+- **Più cercati per primi**: nuovo `GET /categories/popular?city=` (`CategoriesService.getPopularity`), richieste di preventivo degli ultimi 365 giorni contate per categoria. Con almeno 5 richieste nella città (`MIN_CITY_REQUESTS`) conta solo quella città, altrimenti tutta Italia. Solo conteggi, nessun dato personale. Le categorie senza richieste restano in fondo nell'ordine di sempre.
+- **Mai spostare sotto il dito**: l'ordine si applica una sola volta, solo se arriva entro 2 secondi e prima che sia scelta una categoria; altrimenti resta l'ordine fisso. Nella richiesta usa la città già nota (dall'indirizzo della ricerca o del profilo), in registrazione l'ordine nazionale.
+
+**Verifica**: test di `CategoriesService` (città, ritorno a tutta Italia, categorie tolte ignorate), typecheck di api e web, lint. Provato nel browser a 390 e 1280px con risposte simulate: ordine applicato, chiamata con la città nella richiesta e senza in registrazione, nessuno scorrimento orizzontale.
