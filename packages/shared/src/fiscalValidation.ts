@@ -1,3 +1,4 @@
+import codiciCatastali from "./data/codiciCatastali.json";
 /**
  * Validazione in tempo reale dei documenti fiscali raccolti in
  * `/dashboard/fiscale` (CLAUDE.md §88/§89 — MANOVIA/DAC7). Funzioni pure,
@@ -202,6 +203,33 @@ export function birthDateFromCodiceFiscale(value: string, today: Date = new Date
   // Chi lavora sulla piattaforma ha almeno 18 anni: se nel 2000 sarebbe più giovane, è nato nel 1900.
   const year = 2000 + birth.year2 > today.getUTCFullYear() - 18 ? 1900 + birth.year2 : 2000 + birth.year2;
   return `${year}-${String(birth.month).padStart(2, "0")}-${String(birth.day).padStart(2, "0")}`;
+}
+
+/**
+ * Comune di nascita da un codice fiscale valido (docs/CHANGELOG.md §272):
+ * `{ name, province }` per i comuni di oggi (elenco ISTAT con i codici
+ * catastali), `abroad` per chi è nato all'estero (codice "Z"), `null` per un
+ * comune che non esiste più o un codice non valido.
+ */
+export function birthPlaceFromCodiceFiscale(value: string): { name: string; province: string } | "abroad" | null {
+  const cf = normalize(value);
+  if (!isValidCodiceFiscale(cf)) return null;
+  const code = cf.charAt(11) + cf
+    .slice(12, 15)
+    .split("")
+    .map((char) => OMOCODIA_DIGIT[char] ?? char)
+    .join("");
+  if (code.startsWith("Z")) return "abroad";
+  const entry = (codiciCatastali as Record<string, string>)[code];
+  if (!entry) return null;
+  const [name = "", province = ""] = entry.split("|");
+  return { name, province };
+}
+
+/** "F" o "M" da un codice fiscale valido (il giorno di nascita delle donne è aumentato di 40). */
+export function sexFromCodiceFiscale(value: string): "F" | "M" | null {
+  const birth = codiceFiscaleBirth(value);
+  return birth ? (birth.female ? "F" : "M") : null;
 }
 
 export type FiscalFieldError = { field: string; message: string };

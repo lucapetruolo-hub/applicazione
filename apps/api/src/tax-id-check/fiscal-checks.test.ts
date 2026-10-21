@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { birthDateFromCodiceFiscale, codiceFiscaleMismatches, codiceFiscaleMismatchMessage, fiscalFieldErrors } from "@professionisti/shared";
+import { birthDateFromCodiceFiscale, birthPlaceFromCodiceFiscale, codiceFiscaleMismatches, codiceFiscaleMismatchMessage, fiscalFieldErrors, sexFromCodiceFiscale } from "@professionisti/shared";
 import { nextTaxIdAttempt, wantedTaxIdChecks, MAX_TAX_ID_ATTEMPTS } from "./tax-id-check.service";
 import { partitaIvaOutcome } from "./openapi-tax-id.provider";
 import { ViesFirstTaxIdProvider, viesLookup } from "./vies-tax-id.provider";
@@ -23,6 +23,16 @@ describe("coerenza del codice fiscale con nome, cognome e data di nascita", () =
     expect(birthDateFromCodiceFiscale("RSSMRA80A01H501U")).toBe("1980-01-01");
     expect(birthDateFromCodiceFiscale("VRDGPP75M41F205V")).toBe("1975-08-01");
     expect(birthDateFromCodiceFiscale("non valido")).toBeNull();
+  });
+
+  it("comune di nascita e sesso dal codice fiscale (§272)", () => {
+    expect(birthPlaceFromCodiceFiscale("RSSMRA80A01H501U")).toEqual({ name: "Roma", province: "RM" });
+    // Omocodia anche nel codice del comune.
+    expect(birthPlaceFromCodiceFiscale("RSSMRA80A01H50MM")).toEqual({ name: "Roma", province: "RM" });
+    expect(birthPlaceFromCodiceFiscale("VRDGPP75M41F205V")).toEqual({ name: "Milano", province: "MI" });
+    expect(sexFromCodiceFiscale("RSSMRA80A01H501U")).toBe("M");
+    expect(sexFromCodiceFiscale("VRDGPP75M41F205V")).toBe("F");
+    expect(birthPlaceFromCodiceFiscale("non valido")).toBeNull();
   });
 
   it("sul server gli stessi controlli del browser", () => {
