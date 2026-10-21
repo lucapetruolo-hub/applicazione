@@ -19770,3 +19770,14 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 - **Mai spostare sotto il dito**: l'ordine si applica una sola volta, solo se arriva entro 2 secondi e prima che sia scelta una categoria; altrimenti resta l'ordine fisso. Nella richiesta usa la città già nota (dall'indirizzo della ricerca o del profilo), in registrazione l'ordine nazionale.
 
 **Verifica**: test di `CategoriesService` (città, ritorno a tutta Italia, categorie tolte ignorate), typecheck di api e web, lint. Provato nel browser a 390 e 1280px con risposte simulate: ordine applicato, chiamata con la città nella richiesta e senza in registrazione, nessuno scorrimento orizzontale.
+
+## 280. Categoria cercata in cima e ricerche nel conteggio dei più cercati
+
+**Richiesta esplicita dell'utente** (21/10/2026): "effettua le due migliorie" (proposte dopo §279): nella richiesta di preventivo la categoria cercata per prima, e contare anche le ricerche oltre alle richieste.
+
+**Decisione presa**:
+- **Categoria cercata in cima** (`CategoryTiles`): le categorie già scelte all'apertura (nella richiesta quella arrivata dalla ricerca, `?categoria=`; nel profilo quelle del professionista) restano per prime, poi le più cercate. L'ordine dei più cercati ora si blocca al primo tocco invece che alla prima scelta, perché una scelta può esserci già all'apertura.
+- **Ricerche contate**: nuova tabella `category_search_days` (`CategorySearchDay`, migrazione `20261021140000_category_search_days`), un contatore per categoria, città (minuscola, vuota senza città) e giorno, mai la singola ricerca né chi cerca. La pagina dei risultati di una categoria (`/cerca/[categoria]` e `/cerca/[categoria]/[citta]`) chiede `track=1` solo nella prima delle sue due ricerche; homepage, sitemap e ricerca libera non contano. Il conteggio non blocca mai la ricerca (errori ignorati).
+- **Punteggio** (`CategoriesService.getPopularity`): richieste × 3 (`REQUEST_WEIGHT`: chi chiede un preventivo vuole davvero quel lavoro, chi cerca a volte guarda soltanto o ricarica la pagina) + ricerche, ultimi 365 giorni. La città basta da sola da 15 punti (`MIN_CITY_SCORE`, pari alle 5 richieste di prima), altrimenti tutta Italia.
+
+**Verifica**: test di `CategoriesService` (punteggio, città, ritorno a tutta Italia, conteggio per giorno e città, categoria sconosciuta), migrazione confrontata con `prisma migrate diff`, typecheck di api e web, lint, test api (485). Provato nel browser a 390 e 1280px: con `?categoria=fabbro` Fabbro è la prima tessera, poi i più cercati.
