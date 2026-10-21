@@ -162,7 +162,9 @@ produzione):
    nome personale **solo per le prove**. Prima del lancio: aprirli o
    intestarli all'azienda (fatture all'azienda, accordo DPA con Didit per i
    dati biometrici), generare chiavi nuove e sostituirle su Render; poi
-   revocare quelle di prova.
+   revocare quelle di prova. Con le chiavi vere **togliere `DIDIT_SANDBOX`**
+   da Render (con `true` il confronto tra documento e dati fiscali viene
+   saltato, docs/CHANGELOG.md §272) e mettere `OPENAPI_SANDBOX=false`.
 6quater. **Bonifici manuali dei professionisti sull'account Stripe vero**
    (scelta dell'utente del 14/10/2026: soldi bloccati sul conto Stripe del
    professionista fino alla conferma del cliente, al massimo 90 giorni):

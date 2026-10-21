@@ -38,6 +38,7 @@ import { IdentityVerificationModule } from "./identity-verification/identity-ver
 import { ProfessionalVerificationModule } from "./professional-verification/professional-verification.module";
 import { GeneralRequestsAdminModule } from "./general-requests/general-requests-admin.module";
 import { BookingRemindersModule } from "./booking-reminders/booking-reminders.module";
+import { AgendaRemindersModule } from "./agenda-reminders/agenda-reminders.module";
 
 @Module({
   imports: [
@@ -96,6 +97,7 @@ import { BookingRemindersModule } from "./booking-reminders/booking-reminders.mo
     // Promemoria automatici anti no-show (Resend) — CEO, tattico:
     // "prima di considerare l'MVP davvero completo" (CLAUDE.md §1).
     BookingRemindersModule,
+    AgendaRemindersModule,
     SubscriptionsModule,
     // Profili creati al telefono da un operatore (docs/CHANGELOG.md §170).
     ProfileInvitesModule,

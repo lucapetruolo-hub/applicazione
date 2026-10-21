@@ -34,7 +34,7 @@ export function SiteHeader() {
   // 'servizi' 'come funziona' 'prezzi'" — scoped a `/cerca`/`/cerca/[categoria]`,
   // le uniche due pagine con un banner di ricerca proprio nel corpo.
   const isSearchResultsPage = pathname === "/cerca" || pathname.startsWith("/cerca/");
-  // Registrazione e accesso (docs/CHANGELOG.md §273): niente "Richiedi
+  // Registrazione e accesso (docs/CHANGELOG.md §278): niente "Richiedi
   // preventivo" in alto, l'attenzione resta sul modulo.
   const isAuthPage = AUTH_PAGES.some((page) => pathname === page || pathname.startsWith(`${page}/`));
 

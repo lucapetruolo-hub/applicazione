@@ -17,7 +17,7 @@ export const brand = {
   // di input).
   filetto: "#F0DCC0",
   // Bordo di campi, menu a tendina e caselle di spunta in tutto il sito
-  // (docs/CHANGELOG.md §272-§273): 3,2:1 su bianco, il minimo perché si veda
+  // (docs/CHANGELOG.md §277-§278): 3,2:1 su bianco, il minimo perché si veda
   // dove scrivere (il filetto è 1,3:1). Il filetto resta per i divisori.
   bordoCampo: "#9C8E7F",
   cianografia: "#189A63",

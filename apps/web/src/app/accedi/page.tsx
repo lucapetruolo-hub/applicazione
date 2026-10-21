@@ -34,7 +34,7 @@ function AccediForm() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Errore di un campo (email o password): va sotto quel campo (§273).
+  // Errore di un campo (email o password): va sotto quel campo (§278).
   const [errorField, setErrorField] = useState<"email" | "password" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -97,7 +97,7 @@ function AccediForm() {
   return (
     <AuthPageBackground>
       <AuthCard>
-        {/* Stessa intestazione della registrazione (docs/CHANGELOG.md §273). */}
+        {/* Stessa intestazione della registrazione (docs/CHANGELOG.md §278). */}
         <AuthStepHeader icon="lock" title="Bentornato" subtitle="Accedi al tuo account." />
 
         <GoogleSignInButton onCredential={handleGoogleCredential} />

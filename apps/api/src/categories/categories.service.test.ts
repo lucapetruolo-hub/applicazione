@@ -18,7 +18,7 @@ function buildService(cityGroups: { categoryId: string; n: number }[], allGroups
   return { service: new CategoriesService(prisma as never), prisma };
 }
 
-/** Lavori più cercati prima nella scelta dei lavori (docs/CHANGELOG.md §273). */
+/** Lavori più cercati prima nella scelta dei lavori (docs/CHANGELOG.md §279). */
 describe("CategoriesService.getPopularity", () => {
   it("usa la città quando ha abbastanza richieste, in ordine decrescente", async () => {
     const { service } = buildService(

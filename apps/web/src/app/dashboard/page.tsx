@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { scheduleChangeBetween, type MySubscription, type ProfessionalBooking, type ProfessionalInsights, type ProfessionalLead } from "@professionisti/shared";
+import { AGENDA_LOOKAHEAD_DAYS, scheduleChangeBetween, type AgendaAttention, type MySubscription, type ProfessionalBooking, type ProfessionalInsights, type ProfessionalLead } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -146,6 +146,7 @@ export default function DashboardTodayPage() {
 
         {subscription ? <SubscriptionPauseBanner sub={subscription} profileStepsElsewhere /> : null}
         {token ? <SetupJourneyCard token={token} /> : null}
+        {user.agendaAttention ? <AgendaNotice attention={user.agendaAttention} /> : null}
         {restrictions ? <IssueSanctionBanner {...restrictions} /> : null}
 
         <div className="today-kpis">
@@ -315,6 +316,32 @@ function InsightsGrid({ insights }: { insights: ProfessionalInsights }) {
         </div>
       ))}
     </div>
+  );
+}
+
+/** Agenda vuota o senza disponibilità nei prossimi giorni: una riga sola, sparisce appena se ne aggiunge una. */
+function AgendaNotice({ attention }: { attention: AgendaAttention }) {
+  const empty = attention === "EMPTY";
+  return (
+    <XStack gap="$3" alignItems="center" padding="$4" borderRadius={16} backgroundColor={brand.cianografiaVelo} flexWrap="wrap" role="status">
+      {/* Icona e testo restano sulla stessa riga: su telefono va a capo solo il pulsante. */}
+      <XStack flex={1} minWidth={240} gap="$3" alignItems="center">
+        <YStack width={40} height={40} borderRadius={999} alignItems="center" justifyContent="center" backgroundColor="#FFFFFF" flexShrink={0} aria-hidden>
+          <Icon name="calendar" size={20} color={brand.cianografiaScuro} />
+        </YStack>
+        <YStack flex={1} minWidth={0} gap={2}>
+          <Text fontWeight="800" color={brand.grafite}>
+            {empty ? "Inserisci le tue disponibilità" : "Aggiungi disponibilità per i prossimi giorni"}
+          </Text>
+          <Text fontSize={14} color={brand.grafite70}>
+            {empty ? "I clienti vedono quando sei libero e ti prenotano prima." : `Nei prossimi ${AGENDA_LOOKAHEAD_DAYS} giorni non hai orari liberi in agenda.`}
+          </Text>
+        </YStack>
+      </XStack>
+      <Link href="/dashboard/agenda?tab=disponibilita" style={{ textDecoration: "none" }}>
+        <CardButton>Apri l'agenda</CardButton>
+      </Link>
+    </XStack>
   );
 }
 

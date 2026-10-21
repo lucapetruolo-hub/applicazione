@@ -19,7 +19,7 @@ export class CategoriesService {
 
   /**
    * Quante richieste di preventivo ha ricevuto ogni categoria (docs/CHANGELOG.md
-   * §273, richiesta dell'utente: "i lavori più cercati prima" nella scelta dei
+   * §279, richiesta dell'utente: "i lavori più cercati prima" nella scelta dei
    * lavori). Con una città conta solo quella, se ha almeno
    * `MIN_CITY_REQUESTS` richieste; altrimenti tutta la piattaforma. Solo
    * numeri aggregati, nessun dato delle richieste.

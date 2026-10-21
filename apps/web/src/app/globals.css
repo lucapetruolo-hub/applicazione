@@ -608,6 +608,16 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   align-items: center;
   justify-content: center;
 }
+/* Pallino "da fare" senza numero (es. agenda senza disponibilità). */
+.acct-nav-dot {
+  margin-left: auto;
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: #dc3545;
+  box-shadow: 0 0 0 2px #ffffff;
+}
 .acct-client {
   width: 100%;
 }
@@ -1347,7 +1357,7 @@ a.admin-kpi:hover {
   transform: translateY(-2px);
   border-color: #189a63;
 }
-/* Le schede di scelta sono link veri (docs/CHANGELOG.md §272): fuoco da
+/* Le schede di scelta sono link veri (docs/CHANGELOG.md §277): fuoco da
    tastiera visibile e risposta al tocco. */
 .auth-role-card-link {
   display: block;
@@ -1366,7 +1376,7 @@ a.admin-kpi:hover {
   border-color: #189a63;
 }
 
-/* Intestazione dei passi della registrazione (docs/CHANGELOG.md §272):
+/* Intestazione dei passi della registrazione (docs/CHANGELOG.md §277):
    "Indietro" in alto a sinistra, numero del passo a destra, barra sotto. */
 .auth-step-top {
   display: flex;
@@ -1784,7 +1794,7 @@ a.admin-kpi:hover {
   display: flex;
   align-items: center;
   gap: 8px;
-  /* brand.bordoCampo: 3,2:1 su bianco (docs/CHANGELOG.md §272). */
+  /* brand.bordoCampo: 3,2:1 su bianco (docs/CHANGELOG.md §277). */
   border: 1px solid #9c8e7f;
   border-radius: 20px;
   background: #ffffff;
@@ -2984,7 +2994,7 @@ a.admin-kpi:hover {
 /* Registrazione del professionista (docs/CHANGELOG.md §248, richiesta
    dell'utente). Caselle obbligatorie non spuntate: riga rossa con una
    scossa breve. Con "riduci movimento" resta ferma.
-   Scelta dei lavori a tessere (§273, stile A scelto dall'utente al posto
+   Scelta dei lavori a tessere (§278, stile A scelto dall'utente al posto
    del bordo dorato animato): due colonne da telefono, di più dove c'è
    spazio; spunta verde sulle scelte, "Principale" sotto la prima. */
 .cat-tiles {

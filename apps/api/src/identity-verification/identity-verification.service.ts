@@ -67,6 +67,26 @@ export function setupReminderDue(input: { profileCreatedAt: Date; sent: number; 
   return !input.lastSentAt || input.now.getTime() - input.lastSentAt.getTime() >= 5 * DAY_MS;
 }
 
+const ROME_PARTS = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Rome", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric", hourCycle: "h23" });
+
+/** Ora di Roma meno ora UTC, in millisecondi, in quell'istante (+1 o +2 ore). */
+function romeOffsetMs(at: Date): number {
+  const parts = Object.fromEntries(ROME_PARTS.formatToParts(at).map((p) => [p.type, Number(p.value)]));
+  return Date.UTC(parts.year!, parts.month! - 1, parts.day!, parts.hour!, parts.minute!, parts.second!) - Math.floor(at.getTime() / 1000) * 1000;
+}
+
+/**
+ * Mezzanotte di oggi a Roma: i tentativi "di oggi" si contano dal giorno di
+ * calendario, non dalle ultime 24 ore (segnalazione dell'utente,
+ * docs/CHANGELOG.md §276: 5 tentativi tra ieri e oggi bloccavano già).
+ */
+export function startOfRomeDay(now: Date): Date {
+  const local = new Date(now.getTime() + romeOffsetMs(now));
+  const midnightWall = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate());
+  // Lo scarto di mezzanotte può differire da quello di adesso nei giorni del cambio d'ora.
+  return new Date(midnightWall - romeOffsetMs(new Date(midnightWall - romeOffsetMs(now))));
+}
+
 export const isStandby = (row: Pick<IdentityVerification, "status" | "providerStatus" | "sessionUrl"> | null): boolean =>
   !!row && row.status === "STARTED" && row.providerStatus === STANDBY_PROVIDER_STATUS && !row.sessionUrl;
 
@@ -210,9 +230,9 @@ export class IdentityVerificationService {
     if (latest?.status === "STARTED" && latest.sessionUrl && Date.now() - latest.updatedAt.getTime() < REUSE_SESSION_MS) {
       return { url: latest.sessionUrl, standby: false };
     }
-    const since = new Date(Date.now() - 24 * 60 * 60_000);
-    const attemptsToday = await this.prisma.identityVerification.count({ where: { professionalProfileId: profile.id, createdAt: { gte: since } } });
-    if (attemptsToday >= MAX_IDENTITY_ATTEMPTS_PER_DAY) {
+    const attemptsToday = await this.prisma.identityVerification.count({ where: { professionalProfileId: profile.id, createdAt: { gte: startOfRomeDay(new Date()) } } });
+    // Nelle prove con Didit le verifiche non costano: nessun limite (docs/CHANGELOG.md §276).
+    if (!this.provider.sandbox && attemptsToday >= MAX_IDENTITY_ATTEMPTS_PER_DAY) {
       throw new BadRequestException(`Hai già fatto ${MAX_IDENTITY_ATTEMPTS_PER_DAY} tentativi oggi: riprova domani, oppure scrivici dalla pagina Contatti e ti aiutiamo.`);
     }
     const session = await this.createSession(profile.id);
@@ -241,9 +261,12 @@ export class IdentityVerificationService {
 
   private async createSession(professionalProfileId: string): Promise<{ sessionId: string; url: string } | null> {
     if (!this.provider) return null;
+    const fiscal = await this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId }, include: FISCAL_INCLUDE });
+    const expected = expectedPerson(fiscal);
     try {
       return await this.provider.createSession({
         reference: professionalProfileId,
+        expected: { firstName: expected.firstName, lastName: expected.lastName, dateOfBirth: expected.dateOfBirth },
         callbackUrl: `${this.frontendUrl()}/dashboard/verifica-identita?ritorno=1`,
       });
     } catch (error) {
@@ -411,21 +434,32 @@ export class IdentityVerificationService {
         next = { status: "EXPIRED", reason: "La verifica non è stata completata in tempo: puoi ricominciarla." };
         break;
       case "DECLINED":
-        next = { status: "DECLINED", reason: DECLINED_REASON };
+        next = { status: "DECLINED", reason: decision.reason ?? DECLINED_REASON };
         break;
       // Nessun caso passa all'admin (decisione dell'utente, §255): se il
       // controllo automatico non conferma, il professionista sa cosa
       // correggere e rifà la verifica da solo.
       case "REVIEW":
-        next = { status: "DECLINED", reason: UNCLEAR_REASON };
+        next = { status: "DECLINED", reason: decision.reason ?? UNCLEAR_REASON };
         break;
       case "APPROVED": {
+        // Ambiente di prova di Didit: i dati del documento sono finti, il confronto non avrebbe senso.
+        if (this.provider?.sandbox) {
+          this.logger.warn(`Verifica ${row.id} approvata in prova (DIDIT_SANDBOX): confronto con i dati fiscali saltato.`);
+          next = { status: "APPROVED", reason: null };
+          break;
+        }
         const match = matchDocumentToFiscal(decision.person, expectedPerson(owner.fiscalProfile));
         next = match.matched ? { status: "APPROVED", reason: null } : { status: "DECLINED", reason: match.reason };
         break;
       }
     }
     if (next.status === row.status && decision.providerStatus === row.providerStatus) return row;
+    // Perché non è andata: i codici degli avvisi del fornitore (mai i dati della persona), per capirlo dai log.
+    const why = decision.warnings.length > 0 ? ` (avvisi: ${decision.warnings.join(", ")})` : "";
+    if (next.status === "DECLINED" && next.status !== row.status) {
+      this.logger.warn(`Verifica ${row.id} non confermata: ${row.provider} ${decision.providerStatus}${why}${decision.outcome === "APPROVED" ? `, ${next.reason}` : ""}`);
+    }
     const decided = next.status === "APPROVED" || next.status === "DECLINED";
     const updated = await this.prisma.identityVerification.update({
       where: { id: row.id },
@@ -438,7 +472,7 @@ export class IdentityVerificationService {
         fieldName: "status",
         oldValue: row.status,
         newValue: next.status,
-        reason: next.reason ?? `Esito ${row.provider}: ${decision.providerStatus}`,
+        reason: `${next.reason ?? `Esito ${row.provider}: ${decision.providerStatus}`}${next.status === "DECLINED" ? ` [${row.provider}: ${decision.providerStatus}${why}]` : ""}`,
       });
       if (next.status === "APPROVED" && !owner.verified) {
         await this.professionalVerificationService.markVerifiedByProvider(owner.id, row.provider);

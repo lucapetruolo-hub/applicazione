@@ -19669,7 +19669,65 @@ nella pagina della richiesta, non solo nell'avviso.
 
 **Verifica**: typecheck e lint di web, UI e API (nessun nuovo avviso), 466 test dell'API verdi dopo l'unione con la base (numero di sezione passato da 267 a 271, già usati da altre voci) (nuovo `match-new-profile.test.ts`: avviso al cliente solo al primo destinatario, nessun avviso fuori raggio). Link del nome provato nel browser: Ctrl+clic apre un'altra scheda lasciando la ricerca, clic normale e clic sulla scheda aprono il profilo senza ricaricare, il tasto Tab arriva al link. Provato nel browser a 320, 360, 390 e 1366px contro l'API di produzione: nessuno scorrimento orizzontale, h1 presente su home e ricerca, 0 passaggi su 40 coperti dal banner. Foto prima e dopo in `/mnt/project-files/anteprime/revisione-home-ricerca/`.
 
-## 272. Design della registrazione
+## 272. Dati fiscali e verifica identità: tre ritocchi
+
+**Richiesta esplicita dell'utente** (20/10/2026, thread "Verifica fiscale e d'identità"): "quando nella scheda sta compilando i dati e clicca su "perche lo chiediamo" fagli uscire un popup con la spiegazione in modo che non esce dalla pagina che sta compilando"; "la data di nascita quando si inseriscono i dati fiscali, si puo ricavare anche dal codice fiscale"; "quando clicca su inizia la verifica per didit se non spunta la casella del consenso fagliela illuminare in modo che capisce che deve cliccarla". Poi "effettua le due migliorie" (testo del consenso più corto; sesso e comune di nascita dal codice fiscale) e "la verifica d'identita del documento con didit, da come risultato che non va a buon fine, controlla che non ci siano errori". Il 21/10: "effettua la prima miglioria; poi tramite dashboard didit il controllo e approvato in sandbox quindi non so perche il nostro sito dice che non p andato a buon fine".
+
+**Decisione presa**:
+- **"Perché li chiediamo"** (`/dashboard/fiscale`): non porta più al riepilogo DAC7, apre una finestra sopra il modulo (`FiscalWhyModal.tsx`) con tre righe brevi (controllo di CF e P.IVA, comunicazione annuale DAC7, dati privati), link Privacy e "Ho capito". Esc e tocco fuori chiudono: chi compila non perde quello che ha scritto.
+- **Data di nascita dal codice fiscale**: con un codice fiscale italiano valido la data si ricava (`birthDateFromCodiceFiscale`, già in `packages/shared`) e compare sotto il campo ("Data di nascita: 1 gennaio 1980 (dal codice fiscale)"); il campo data si chiede solo a chi risiede all'estero senza codice fiscale italiano valido. Al salvataggio si invia la data ricavata, così resta coerente col codice fiscale.
+- **Consenso Didit** (`/dashboard/verifica-identita`): "Inizia la verifica" non è più grigio senza la spunta; premendolo il riquadro del consenso si colora di rosso e vibra (classe `.consent-invalid` di §248, ferma con "riduci movimento") e sotto compare "Spunta il consenso per continuare." in rosso. Ogni nuovo tocco ripete l'animazione.
+- **Sesso e comune dal codice fiscale**: sotto il campo ora "Dal codice fiscale: nato il 1 gennaio 1980 a Roma (RM)" ("nata" per le donne, "all'estero" per i codici Z). Nuove `birthPlaceFromCodiceFiscale` e `sexFromCodiceFiscale` in `packages/shared` (omocodia compresa), con i codici catastali dei comuni di oggi presi dall'elenco ISTAT (`data/codiciCatastali.json`); un comune soppresso non mostra il luogo. Servono solo a far vedere subito se il codice è giusto: nulla di nuovo viene salvato.
+- **Consenso Didit più corto**: "Acconsento al confronto del mio volto con la foto del documento, solo per verificare la mia identità." più il link "Informativa"; chi fa la verifica e cosa teniamo restano scritti sotto il pulsante e nell'informativa (punto 8). Versione del consenso `2026-10-20` (registrata a ogni avvio). Da far vedere all'avvocato, come il resto del consenso biometrico.
+- **Didit che non conferma**: nessun errore nel codice che spiega da solo il rifiuto; due ritocchi per capirlo meglio. Lo stato di Didit si confronta senza badare a maiuscole e trattini bassi ("APPROVED", "IN_REVIEW" compaiono negli esempi di Didit e prima finivano in "in attesa"). Si leggono i codici degli avvisi di Didit (`warnings[].risk` su sessione, documento, prova di vita e confronto del volto): quando una verifica non passa finiscono nei log di Render e nel registro azioni, mai i dati della persona.
+- **Causa del rifiuto con Didit di prova**: nell'ambiente di prova Didit non legge davvero il documento, restituisce sempre una persona finta (nata il 15/06/1990, nome "Gustavo Matsumoto" se non gli si mandano i nomi attesi). Didit approvava, ma il nostro confronto con i dati fiscali (§253) trovava nome e data diversi e rifiutava. Nuova variabile `DIDIT_SANDBOX=true` su Render (solo con la chiave di prova): il confronto si salta e nei log resta "approvata in prova". Da togliere al lancio (checklist, punto 6ter).
+- **Nome e data attesi mandati a Didit** (`expected_details` alla creazione della sessione): con le chiavi vere Didit confronta anche lui e segnala le differenze negli avvisi.
+- **Motivo preciso del rifiuto** (miglioria scelta dall'utente): dagli avvisi di Didit una frase breve su cosa rifare (`diditReason`): documento scaduto, foto sfocata, troppa o poca luce, documento non intero o non riconosciuto, fotocopia o schermo, selfie non riuscito o diverso dalla foto, documento o volto già usati per un altro account, dati diversi dai dati fiscali, meno di 18 anni. Senza un avviso riconosciuto resta il messaggio generico. Gli avvisi solo informativi non contano.
+
+**Verifica**: `tsc` ed `eslint` di web e API, 472 test dell'API (nuovi: comune e sesso dal codice fiscale, stato Didit in maiuscolo, codici degli avvisi e motivi, nome e data mandati a Didit, approvazione in prova). Provato nel browser (telefono e computer) con dati finti: data ricavata da `RSSMRA80A01H501U`, finestra aperta sopra il modulo, riquadro del consenso rosso. Foto in `/mnt/project-files/anteprime/dati-fiscali-ritocchi/` (prima: `/mnt/project-files/anteprime/percorso-profilo/`).
+
+## 273. Avviso "Inserisci le tue disponibilità" in Oggi e pallino su Agenda
+
+**Richiesta dell'utente**: nella pagina "Oggi" del professionista dire se deve ancora inserire le disponibilità in agenda e lasciare un pallino sul menu di sinistra.
+
+**Decisione**: "senza disponibilità" vuol dire nessuna fascia da oggi in poi (fasce di una data futura o ricorrenti, `date = null`): un professionista con solo fasce passate ha l'agenda pubblica vuota quanto chi non ne ha mai messe. Il calcolo è nell'API (`agendaEmpty` in `/auth/me`, poi `agendaAttention` dal §274, `auth.controller.ts`), così sito e menu leggono lo stesso dato senza una chiamata in più per pagina.
+- **Oggi**: una riga sotto "Completa il profilo" (`AgendaEmptyNotice`, stesso stile del suggerimento in fondo alla pagina), con "Apri l'agenda" che porta direttamente alla scheda Disponibilità (`/dashboard/agenda?tab=disponibilita`). Non è un passo del percorso del §262: quello va in ordine e blocca i passi dopo, l'agenda invece si può fare in qualunque momento e non è obbligatoria.
+- **Pallino** rosso senza numero su "Agenda" nel menu laterale, nella barra scorrevole da telefono e nella tendina "Il mio account" (`navItemNeedsAttention` in `accountMenuItems.ts`, classe `.acct-nav-dot`). Sparisce appena si salva una fascia: l'agenda richiede `/auth/me` solo quando lo stato cambia.
+
+**Verifica**: typecheck web e API. Provato in locale con API e database: `agendaEmpty` vero senza fasce, falso con una fascia futura, di nuovo vero togliendola. Foto prima e dopo (computer e telefono, menu da telefono) in `/mnt/project-files/anteprime/agenda-disponibilita/`.
+
+## 274. Agenda: pallino sul menu account, disponibilità in esaurimento, email promemoria
+
+**Richiesta dell'utente**: "effettua le 3 migliorie" proposte in §273.
+
+**Decisione**:
+- **Pallino sul menu account** in alto a destra (`AccountMenu.tsx`), quando non ci sono novità da contare: da telefono la voce "Agenda" resta fuori schermo nella barra scorrevole, così si vede da tutto il sito.
+- **Disponibilità in esaurimento**: `agendaAttention` in `packages/shared/src/availability.ts` sostituisce il vecchio `agendaEmpty` e vale `EMPTY` (nessuna fascia da oggi in poi), `RUNNING_LOW` (fasce solo oltre i prossimi `AGENDA_LOOKAHEAD_DAYS` = 7 giorni) o `null`. Una fascia ricorrente copre sempre. Stessa funzione per `/auth/me`, l'agenda (aggiorna l'utente solo se lo stato cambia) e il promemoria. In Oggi il testo diventa "Aggiungi disponibilità per i prossimi giorni / Nei prossimi 7 giorni non hai orari liberi in agenda."; pallino uguale nei due casi.
+- **Email promemoria** `AGENDA_REMINDER` (sito + email, argomento "Lavori e appuntamenti", spegnibile dalle preferenze): `AgendaRemindersService` ogni giorno alle 10 (ora italiana). Agenda vuota: dopo 3 giorni dalla creazione del profilo e di nuovo dopo una settimana, al massimo due volte. In esaurimento: al massimo una ogni 14 giorni. Stessi filtri dello smistamento (niente profili dimostrativi, sospesi, in pausa, eliminati o in attesa di conferma). Porta a `/dashboard/agenda?tab=disponibilita`.
+
+**Verifica**: typecheck web e API, 472 test dell'API verdi (nuovo `agenda-reminders.test.ts`: stati dell'agenda e regole di invio). In locale con API e database: `agendaAttention` `RUNNING_LOW` con una sola fascia tra 9 giorni. Foto in `/mnt/project-files/anteprime/agenda-disponibilita/` (`vuota-*`, `in-esaurimento-*`).
+
+## 275. Pallino anche sui passi del percorso "Completa il profilo"
+
+**Richiesta dell'utente**: "inserisci il pallino anche per quanto riguarda le azioni dei vari controlli come i dati fiscali la verifica identita e pagamento online".
+
+**Decisione**: stesso pallino rosso senza numero del §273 sulla voce del passo da fare adesso: "Dati fiscali e pagamenti" per i dati fiscali e per i pagamenti online, "Verifica identità" per documento e selfie. Solo il passo "da fare" (non quelli bloccati o in verifica), coerente con il percorso a un passo alla volta del §262. Il pallino accanto al nome in alto compare se c'è qualunque voce da fare.
+- `useNavAttention` (`apps/web/src/lib/useNavAttention.ts`) raccoglie agenda e percorso per il menu laterale e la tendina.
+- Il percorso si legge una volta (`useJourneyMenuHrefs` in `SetupJourney.tsx`, riletto cambiando pagina dopo 60 secondi) e si aggiorna da solo con quello mostrato da Oggi, Profilo pubblico, Dati fiscali e Verifica identità, così il pallino sparisce appena il passo è fatto.
+
+**Verifica**: typecheck e lint del web. Provato in locale: su Statistiche (pagina senza percorso) il pallino compare su Agenda, su "Dati fiscali e pagamenti" e accanto al nome. Foto `menu-passi-*` in `/mnt/project-files/anteprime/agenda-disponibilita/`.
+
+## 276. Tentativi di verifica dell'identità contati per giorno
+
+**Richiesta esplicita dell'utente** (21/10/2026, thread "Verifica fiscale e d'identità"): "quando clicco sulla verifica mi dice che ho gia provato 5 verifiche oggi, invece non è vero poichè ho effettuato 5 verifiche in totale fra ieri e oggi, correggi".
+
+**Decisione presa**:
+- Il limite di 5 tentativi al giorno (`MAX_IDENTITY_ATTEMPTS_PER_DAY`) contava le ultime 24 ore, mentre il messaggio dice "oggi" e "riprova domani". Ora conta dalla mezzanotte di Roma (`startOfRomeDay`, con ora legale e solare).
+- Con `DIDIT_SANDBOX=true` (§272) nessun limite: le verifiche di prova non costano.
+
+**Verifica**: `tsc` ed `eslint` dell'API, 479 test (nuovo: mezzanotte di Roma in ora legale, solare, subito dopo mezzanotte e nel giorno del cambio d'ora).
+
+## 277. Design della registrazione
 
 **Richiesta esplicita dell'utente** (20/10/2026): "migliora il design da questa pagina in poi" (pagina "Come vuoi registrarti?" e tutti i passi dopo, cliente e professionista). Proposte 11 migliorie con le regole della skill UI/UX Pro Max; Luca: "procedi con le migliorie" (tutte). Foto prima e dopo in `/mnt/project-files/anteprime/registrazione/`.
 
@@ -19689,9 +19747,9 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 
 **Verifica**: typecheck e lint di web. Provato nel browser a 360, 390 e 1440px (sito locale; risposte dell'API simulate per il passo password del cliente e per il codice): nessuno scorrimento orizzontale, titolo "Registrati | Professionisti", h1 presente, scelta col tasto Tab + Invio, "Indietro" e tasto indietro del browser corretti, errore "Le password non coincidono" sotto Conferma password.
 
-## 273. Scelta dei lavori a tessere e altre migliorie di accesso e moduli
+## 278. Scelta dei lavori a tessere e altre migliorie di accesso e moduli
 
-**Richiesta esplicita dell'utente** (21/10/2026): "non mi piace lo stile con cui si scelgono i lavori in fase di registrazione, come si puo migliorare la scelta?" e "poi effettua le 4 migliorie" (quelle proposte dopo §272). Tra tre stili (A tessere con icona colorata, B elenco con caselle, C ricerca + più scelti, foto in `/mnt/project-files/anteprime/scelta-lavori/`) Luca ha scelto "A".
+**Richiesta esplicita dell'utente** (21/10/2026): "non mi piace lo stile con cui si scelgono i lavori in fase di registrazione, come si puo migliorare la scelta?" e "poi effettua le 4 migliorie" (quelle proposte dopo §277). Tra tre stili (A tessere con icona colorata, B elenco con caselle, C ricerca + più scelti, foto in `/mnt/project-files/anteprime/scelta-lavori/`) Luca ha scelto "A".
 
 **Decisione presa**:
 - **Scelta dei lavori a tessere** (`CategoryMultiPicker`, usato in registrazione, `/dashboard/profilo` e `/admin/professionisti`): griglia di tessere (`.cat-tiles`, due colonne da telefono e di più dove c'è spazio) con l'icona colorata della categoria (`CategoryIcon`/`CATEGORY_ACCENT`, le stesse della home), spunta verde sulle scelte, "Principale" sotto la prima, "N su 3" in alto. Sono pulsanti veri (`aria-pressed`, tastiera, risposta al tocco). Tolto il bordo dorato animato di §248. La riga per cambiare la principale resta ("Cambia la principale:").
@@ -19702,12 +19760,12 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 
 **Verifica**: typecheck e lint di web. Provato nel browser a 360, 390 e 1280px: tessere su due colonne da telefono e tre nella scheda da computer, nessuno scorrimento orizzontale, scelta con la barra spaziatrice, titolo "Accedi | Professionisti", "Richiedi preventivo" assente su /accedi e /registrati.
 
-## 274. Tessere nella richiesta di preventivo e lavori più cercati per primi
+## 279. Tessere nella richiesta di preventivo e lavori più cercati per primi
 
-**Richiesta esplicita dell'utente** (21/10/2026): "effettua le 2 migliorie" (proposte dopo §273): le stesse tessere nella scelta delle categorie della richiesta di preventivo e i lavori più cercati in zona per primi.
+**Richiesta esplicita dell'utente** (21/10/2026): "effettua le 2 migliorie" (proposte dopo §278): le stesse tessere nella scelta delle categorie della richiesta di preventivo e i lavori più cercati in zona per primi.
 
 **Decisione presa**:
-- **Tessere condivise** (`apps/web/src/components/CategoryTiles.tsx`): la griglia di §273 esce da `CategoryMultiPicker` e la usa anche `GuidedRequestForm` (fino a `MAX_REQUEST_CATEGORIES`, senza "Principale"; restano "N di 3" e "Riceverai una richiesta separata per ogni categoria.").
+- **Tessere condivise** (`apps/web/src/components/CategoryTiles.tsx`): la griglia di §278 esce da `CategoryMultiPicker` e la usa anche `GuidedRequestForm` (fino a `MAX_REQUEST_CATEGORIES`, senza "Principale"; restano "N di 3" e "Riceverai una richiesta separata per ogni categoria.").
 - **Più cercati per primi**: nuovo `GET /categories/popular?city=` (`CategoriesService.getPopularity`), richieste di preventivo degli ultimi 365 giorni contate per categoria. Con almeno 5 richieste nella città (`MIN_CITY_REQUESTS`) conta solo quella città, altrimenti tutta Italia. Solo conteggi, nessun dato personale. Le categorie senza richieste restano in fondo nell'ordine di sempre.
 - **Mai spostare sotto il dito**: l'ordine si applica una sola volta, solo se arriva entro 2 secondi e prima che sia scelta una categoria; altrimenti resta l'ordine fisso. Nella richiesta usa la città già nota (dall'indirizzo della ricerca o del profilo), in registrazione l'ordine nazionale.
 

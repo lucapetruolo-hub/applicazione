@@ -55,7 +55,7 @@ export function PasswordDimenticataContent() {
   return (
     <AuthPageBackground>
       <AuthCard>
-        {/* Stessa intestazione della registrazione (docs/CHANGELOG.md §273):
+        {/* Stessa intestazione della registrazione (docs/CHANGELOG.md §278):
             "Indietro" torna all'accesso, o all'email dopo l'invio del codice. */}
         <AuthStepHeader
           icon={sentTo ? "mail" : "key-round"}

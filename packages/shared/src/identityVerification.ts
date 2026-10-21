@@ -12,15 +12,16 @@ import { z } from "zod";
  */
 
 /** Versione del testo di consenso al selfie: cambiandolo si chiede di nuovo. */
-export const BIOMETRIC_CONSENT_VERSION = "2026-10-14";
+export const BIOMETRIC_CONSENT_VERSION = "2026-10-20";
 
-/** Consenso esplicito al trattamento del volto (GDPR art. 9), mostrato accanto al pulsante. */
-export function biometricConsentText(brandName: string): string {
-  return (
-    `Acconsento che Didit, per conto di ${brandName}, confronti il mio volto con la foto del documento d'identità, ` +
-    "al solo scopo di verificare che io sia la persona dei dati fiscali. Foto e selfie restano a Didit e vengono cancellati " +
-    `secondo l'informativa privacy; ${brandName} conserva solo l'esito.`
-  );
+/**
+ * Consenso esplicito al trattamento del volto (GDPR art. 9), mostrato accanto
+ * al pulsante con il link all'informativa. Accorciato a una frase su richiesta
+ * dell'utente (docs/CHANGELOG.md §272): chi fa la verifica (Didit) e cosa
+ * conserviamo (solo l'esito) sono scritti sotto il pulsante e nell'informativa.
+ */
+export function biometricConsentText(): string {
+  return "Acconsento al confronto del mio volto con la foto del documento, solo per verificare la mia identità.";
 }
 
 export const startIdentityVerificationSchema = z.object({

@@ -77,7 +77,7 @@ export function ClientEmailFirstAuth({
   onAuthenticated,
 }: {
   /** Intestazione del passo corrente (titolo, eventuale pulsante di chiusura).
-   * `back` c'è dopo l'email: torna al campo email (docs/CHANGELOG.md §272). */
+   * `back` c'è dopo l'email: torna al campo email (docs/CHANGELOG.md §277). */
   renderHeader: (step: Step, back?: () => void) => ReactNode;
   intro: string;
   firstTimeNote?: string;
@@ -94,7 +94,7 @@ export function ClientEmailFirstAuth({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Campo a cui si riferisce l'errore: il messaggio va sotto quel campo
-  // (docs/CHANGELOG.md §272). Nullo: errore generale, sopra il pulsante.
+  // (docs/CHANGELOG.md §277). Nullo: errore generale, sopra il pulsante.
   const [errorField, setErrorField] = useState<"email" | "password" | "confirm" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);

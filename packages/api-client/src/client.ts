@@ -1,4 +1,5 @@
 import type {
+  AgendaAttention,
   EmailStatus,
   ProfessionalEntityTypeValue,
   MySubscription,
@@ -592,6 +593,8 @@ export type CurrentUser = {
   businessName: string | null;
   /** Immagine profilo pubblica (ProfessionalProfile.imageUrl), null per un account cliente o un professionista senza immagine caricata. */
   businessImageUrl: string | null;
+  /** Agenda vuota o senza disponibilità nei prossimi 7 giorni: avviso in "Oggi" e pallino su "Agenda" (null se va bene). */
+  agendaAttention?: AgendaAttention | null;
   /**
    * Indirizzo di default dell'account (richiesta esplicita dell'utente:
    * usato per pre-compilare GuidedRequestForm quando si invia una richiesta
@@ -860,7 +863,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     /** Funzioni attive sul server (docs/CHANGELOG.md §170): oggi solo il pagamento online dei lavori. */
     getFeatures: () => request<{ onlinePayments: boolean }>("/health/features"),
     getCategories: () => request<typeof PROFESSIONAL_CATEGORIES>("/categories"),
-    /** Richieste per categoria, per mettere prima i lavori più cercati (docs/CHANGELOG.md §273). */
+    /** Richieste per categoria, per mettere prima i lavori più cercati (docs/CHANGELOG.md §279). */
     getCategoryPopularity: (city?: string) =>
       request<{ scope: "CITY" | "ALL"; counts: { slug: string; count: number }[] }>(
         `/categories/popular${city ? `?city=${encodeURIComponent(city)}` : ""}`,

@@ -820,7 +820,7 @@ export function GuidedRequestForm({
               </Text>
             </XStack>
             {/* Più categorie insieme (docs/CHANGELOG.md §259), a tessere come
-                nella registrazione del professionista (§273), con le più
+                nella registrazione del professionista (§278), con le più
                 cercate nella città di partenza prima. */}
             <CategoryTiles value={categorySlugs} onToggle={toggleCategory} max={MAX_REQUEST_CATEGORIES} city={initialCity} ariaLabel="Categorie" />
             {categorySlugs.length > 1 ? (

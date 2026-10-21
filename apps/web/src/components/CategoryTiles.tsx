@@ -10,7 +10,7 @@ import { apiClient } from "@/lib/apiClient";
 const POPULAR_ORDER_TIMEOUT_MS = 2000;
 
 /**
- * Tessere delle categorie con l'icona colorata (docs/CHANGELOG.md §273, stile
+ * Tessere delle categorie con l'icona colorata (docs/CHANGELOG.md §278-§279, stile
  * A scelto dall'utente): scelta dei lavori del professionista
  * (`CategoryMultiPicker`) e categorie della richiesta di preventivo.
  * Pulsanti veri con `aria-pressed`; raggiunto `max` le altre si attenuano.

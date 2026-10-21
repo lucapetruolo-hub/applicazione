@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { ExternalJob, ProfessionalBooking, ProfessionalLead } from "@professionisti/shared";
+import { agendaAttention, type ExternalJob, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -29,7 +29,7 @@ export default function DashboardAgendaPage() {
 }
 
 function DashboardAgendaContent() {
-  const { user, token, isLoading } = useAuth();
+  const { user, token, isLoading, refreshUser } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -37,7 +37,8 @@ function DashboardAgendaContent() {
   // è la vista con l'informazione più urgente al primo sguardo (gli
   // appuntamenti reali), "Disponibilità" è configurazione che si tocca meno
   // spesso una volta impostata.
-  const [activeTab, setActiveTab] = useState<AgendaTab>("prenotazioni");
+  // `?tab=disponibilita` (avviso "agenda vuota" in Oggi) apre subito le disponibilità.
+  const [activeTab, setActiveTab] = useState<AgendaTab>(searchParams.get("tab") === "disponibilita" ? "disponibilita" : "prenotazioni");
 
   const [slots, setSlots] = useState<SlotDraft[]>([]);
   const [exceptionDates, setExceptionDates] = useState<string[]>([]);
@@ -717,6 +718,9 @@ function DashboardAgendaContent() {
       );
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+      // Aggiorna il pallino su "Agenda" nel menu e l'avviso in Oggi.
+      // Stesso criterio dell'API (`agendaAttention` di packages/shared).
+      if ((user?.agendaAttention ?? null) !== agendaAttention(nextSlots)) void refreshUser();
     } catch (err) {
       if (err instanceof Error && err.message.includes("profilo")) {
         setProfileMissing(true);
