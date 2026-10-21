@@ -67,6 +67,26 @@ export function setupReminderDue(input: { profileCreatedAt: Date; sent: number; 
   return !input.lastSentAt || input.now.getTime() - input.lastSentAt.getTime() >= 5 * DAY_MS;
 }
 
+const ROME_PARTS = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Rome", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric", hourCycle: "h23" });
+
+/** Ora di Roma meno ora UTC, in millisecondi, in quell'istante (+1 o +2 ore). */
+function romeOffsetMs(at: Date): number {
+  const parts = Object.fromEntries(ROME_PARTS.formatToParts(at).map((p) => [p.type, Number(p.value)]));
+  return Date.UTC(parts.year!, parts.month! - 1, parts.day!, parts.hour!, parts.minute!, parts.second!) - Math.floor(at.getTime() / 1000) * 1000;
+}
+
+/**
+ * Mezzanotte di oggi a Roma: i tentativi "di oggi" si contano dal giorno di
+ * calendario, non dalle ultime 24 ore (segnalazione dell'utente,
+ * docs/CHANGELOG.md §276: 5 tentativi tra ieri e oggi bloccavano già).
+ */
+export function startOfRomeDay(now: Date): Date {
+  const local = new Date(now.getTime() + romeOffsetMs(now));
+  const midnightWall = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate());
+  // Lo scarto di mezzanotte può differire da quello di adesso nei giorni del cambio d'ora.
+  return new Date(midnightWall - romeOffsetMs(new Date(midnightWall - romeOffsetMs(now))));
+}
+
 export const isStandby = (row: Pick<IdentityVerification, "status" | "providerStatus" | "sessionUrl"> | null): boolean =>
   !!row && row.status === "STARTED" && row.providerStatus === STANDBY_PROVIDER_STATUS && !row.sessionUrl;
 
@@ -210,9 +230,9 @@ export class IdentityVerificationService {
     if (latest?.status === "STARTED" && latest.sessionUrl && Date.now() - latest.updatedAt.getTime() < REUSE_SESSION_MS) {
       return { url: latest.sessionUrl, standby: false };
     }
-    const since = new Date(Date.now() - 24 * 60 * 60_000);
-    const attemptsToday = await this.prisma.identityVerification.count({ where: { professionalProfileId: profile.id, createdAt: { gte: since } } });
-    if (attemptsToday >= MAX_IDENTITY_ATTEMPTS_PER_DAY) {
+    const attemptsToday = await this.prisma.identityVerification.count({ where: { professionalProfileId: profile.id, createdAt: { gte: startOfRomeDay(new Date()) } } });
+    // Nelle prove con Didit le verifiche non costano: nessun limite (docs/CHANGELOG.md §276).
+    if (!this.provider.sandbox && attemptsToday >= MAX_IDENTITY_ATTEMPTS_PER_DAY) {
       throw new BadRequestException(`Hai già fatto ${MAX_IDENTITY_ATTEMPTS_PER_DAY} tentativi oggi: riprova domani, oppure scrivici dalla pagina Contatti e ti aiutiamo.`);
     }
     const session = await this.createSession(profile.id);

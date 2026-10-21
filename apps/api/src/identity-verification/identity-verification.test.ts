@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { DiditIdentityProvider, canonicalJson, diditDecision, diditReason } from "./didit.provider";
 import { matchDocumentToFiscal } from "./identity-match";
 import { identityVerificationNeeded } from "./identity-provider-env";
-import { IdentityVerificationService, STANDBY_PROVIDER_STATUS, expectedPerson, profileSetupMissing, reminderDue, setupReminderDue } from "./identity-verification.service";
+import { IdentityVerificationService, STANDBY_PROVIDER_STATUS, expectedPerson, startOfRomeDay, profileSetupMissing, reminderDue, setupReminderDue } from "./identity-verification.service";
 
 /** Verifica di documento e selfie con Didit (docs/CHANGELOG.md §253). */
 describe("Didit", () => {
@@ -287,5 +287,18 @@ describe("email \"Completa il profilo\" (§261)", () => {
     expect(setupReminderDue({ profileCreatedAt: ago(7), sent: 1, lastSentAt: ago(6), now })).toBe(true);
     expect(setupReminderDue({ profileCreatedAt: ago(8), sent: 2, lastSentAt: ago(1), now })).toBe(false);
     expect(setupReminderDue({ profileCreatedAt: ago(12), sent: 1, lastSentAt: ago(11), now })).toBe(false);
+  });
+});
+
+describe("tentativi del giorno (§276)", () => {
+  it("si contano dalla mezzanotte di Roma, non dalle ultime 24 ore", () => {
+    // Ora legale (UTC+2): le 14:48 del 21 ottobre a Roma.
+    expect(startOfRomeDay(new Date("2026-10-21T12:48:00Z")).toISOString()).toBe("2026-10-20T22:00:00.000Z");
+    // Ora solare (UTC+1).
+    expect(startOfRomeDay(new Date("2026-12-05T08:00:00Z")).toISOString()).toBe("2026-12-04T23:00:00.000Z");
+    // Le 00:30 a Roma sono già il giorno nuovo.
+    expect(startOfRomeDay(new Date("2026-12-04T23:30:00Z")).toISOString()).toBe("2026-12-04T23:00:00.000Z");
+    // Giorno del cambio d'ora (25 ottobre): mezzanotte era ancora in ora legale.
+    expect(startOfRomeDay(new Date("2026-10-25T12:00:00Z")).toISOString()).toBe("2026-10-24T22:00:00.000Z");
   });
 });

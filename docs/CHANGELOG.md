@@ -19716,3 +19716,13 @@ nella pagina della richiesta, non solo nell'avviso.
 - Il percorso si legge una volta (`useJourneyMenuHrefs` in `SetupJourney.tsx`, riletto cambiando pagina dopo 60 secondi) e si aggiorna da solo con quello mostrato da Oggi, Profilo pubblico, Dati fiscali e Verifica identità, così il pallino sparisce appena il passo è fatto.
 
 **Verifica**: typecheck e lint del web. Provato in locale: su Statistiche (pagina senza percorso) il pallino compare su Agenda, su "Dati fiscali e pagamenti" e accanto al nome. Foto `menu-passi-*` in `/mnt/project-files/anteprime/agenda-disponibilita/`.
+
+## 276. Tentativi di verifica dell'identità contati per giorno
+
+**Richiesta esplicita dell'utente** (21/10/2026, thread "Verifica fiscale e d'identità"): "quando clicco sulla verifica mi dice che ho gia provato 5 verifiche oggi, invece non è vero poichè ho effettuato 5 verifiche in totale fra ieri e oggi, correggi".
+
+**Decisione presa**:
+- Il limite di 5 tentativi al giorno (`MAX_IDENTITY_ATTEMPTS_PER_DAY`) contava le ultime 24 ore, mentre il messaggio dice "oggi" e "riprova domani". Ora conta dalla mezzanotte di Roma (`startOfRomeDay`, con ora legale e solare).
+- Con `DIDIT_SANDBOX=true` (§272) nessun limite: le verifiche di prova non costano.
+
+**Verifica**: `tsc` ed `eslint` dell'API, 479 test (nuovo: mezzanotte di Roma in ora legale, solare, subito dopo mezzanotte e nel giorno del cambio d'ora).
