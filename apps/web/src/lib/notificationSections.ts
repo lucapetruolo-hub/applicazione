@@ -132,6 +132,7 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
   // Verifica fiscale e d'identità (docs/CHANGELOG.md §253).
   if (type === "TAX_ID_INVALID") return "/dashboard/fiscale";
   if (type === "PROFILE_SETUP_REMINDER") return "/dashboard";
+  if (type === "AGENDA_REMINDER") return "/dashboard/agenda?tab=disponibilita";
   if (type.startsWith("IDENTITY_VERIFICATION_") || type === "PROFILE_VERIFICATION_REMOVED") return "/dashboard/verifica-identita";
   if (type === "ADMIN_JOB_BALANCE_UNPAID" || type === "ADMIN_JOB_NOT_CLOSED" || type === "ADMIN_STRIPE_DISPUTE" || type === "ADMIN_JOB_PAYMENT_LONG_HOLD" || type === "ADMIN_JOB_REFUND_FAILED") return "/admin/pagamenti";
   if (type === "JOB_DEPOSIT_PAID" || type === "JOB_BALANCE_PAID" || type === "JOB_PAYOUT_SENT" || type === "JOB_STRIPE_DISPUTE" || type === "JOB_PAYMENT_DEBT" || type === "JOB_REFUND_WAITING_FUNDS") {

@@ -1,4 +1,5 @@
 import type {
+  AgendaAttention,
   EmailStatus,
   ProfessionalEntityTypeValue,
   MySubscription,
@@ -592,6 +593,8 @@ export type CurrentUser = {
   businessName: string | null;
   /** Immagine profilo pubblica (ProfessionalProfile.imageUrl), null per un account cliente o un professionista senza immagine caricata. */
   businessImageUrl: string | null;
+  /** Agenda vuota o senza disponibilità nei prossimi 7 giorni: avviso in "Oggi" e pallino su "Agenda" (null se va bene). */
+  agendaAttention?: AgendaAttention | null;
   /**
    * Indirizzo di default dell'account (richiesta esplicita dell'utente:
    * usato per pre-compilare GuidedRequestForm quando si invia una richiesta

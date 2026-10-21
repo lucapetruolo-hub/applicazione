@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { taxIdCheckMessage, type MyVerificationStatus } from "@professionisti/shared";
 import { Button, Icon, Surface, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
+import { useAuth } from "@/lib/AuthContext";
 
 export type JourneyStepKey = "fiscal" | "identity" | "payments";
 export type JourneyStepState = "done" | "waiting" | "current" | "locked";
@@ -117,6 +118,7 @@ const STATE_LABEL: Record<JourneyStepState, string> = { done: "Fatto", waiting: 
 
 /** Il percorso completo, con l'unico pulsante sul passo da fare adesso (Oggi). */
 export function SetupJourneyView({ steps, title = "Completa il profilo" }: { steps: JourneyStep[]; title?: string }) {
+  usePublishJourney(steps);
   const done = steps.filter((step) => step.state === "done").length;
   return (
     <Surface gap="$4" role="status" aria-label={title}>
@@ -174,6 +176,7 @@ export function SetupJourneyView({ steps, title = "Completa il profilo" }: { ste
  * Verifica identità): dove sei nel percorso, senza ripetere i dettagli.
  */
 export function JourneyProgress({ steps, here }: { steps: JourneyStep[]; here: JourneyStepKey }) {
+  usePublishJourney(steps);
   const index = steps.findIndex((step) => step.key === here);
   if (index < 0) return null;
   return (
@@ -218,4 +221,70 @@ export function SetupJourneyCard({ token }: { token: string }) {
   const { steps } = useSetupJourney(token);
   if (!steps || journeyDone(steps)) return null;
   return <SetupJourneyView steps={steps} />;
+}
+
+/**
+ * Pallino sulle voci di menu del passo da fare adesso (docs/CHANGELOG.md
+ * §275, richiesta dell'utente): "Dati fiscali e pagamenti" per i dati fiscali
+ * e i pagamenti online, "Verifica identità" per documento e selfie. Il menu
+ * legge il percorso una volta e lo tiene aggiornato con quello mostrato dalle
+ * pagine dei passi (Oggi, Profilo pubblico, Dati fiscali, Verifica identità),
+ * così il pallino sparisce appena il passo è fatto.
+ */
+const STEP_MENU_HREF: Record<JourneyStepKey, string> = {
+  fiscal: "/dashboard/fiscale",
+  identity: "/dashboard/verifica-identita",
+  payments: "/dashboard/fiscale",
+};
+/** Dopo quanto il menu rilegge il percorso cambiando pagina. */
+const JOURNEY_STALE_MS = 60_000;
+
+let journeyStore: { token: string; hrefs: string[]; at: number } | null = null;
+let journeyLoading: string | null = null;
+const journeyListeners = new Set<() => void>();
+const NO_HREFS: string[] = [];
+
+function publishJourney(token: string, steps: JourneyStep[]) {
+  const hrefs = [...new Set(steps.filter((step) => step.state === "current").map((step) => STEP_MENU_HREF[step.key]))];
+  const same = journeyStore?.token === token && journeyStore.hrefs.join() === hrefs.join();
+  journeyStore = { token, hrefs: same && journeyStore ? journeyStore.hrefs : hrefs, at: Date.now() };
+  if (!same) journeyListeners.forEach((listener) => listener());
+}
+
+function usePublishJourney(steps: JourneyStep[]) {
+  const { token } = useAuth();
+  useEffect(() => {
+    if (token) publishJourney(token, steps);
+  }, [token, steps]);
+}
+
+async function loadJourney(token: string) {
+  if (journeyLoading === token) return;
+  journeyLoading = token;
+  try {
+    const [status, profile] = await Promise.all([apiClient.myVerificationStatus(token), apiClient.getMyProfessionalProfile(token)]);
+    publishJourney(token, setupJourney(status, profile?.stripeVerified ?? false));
+  } catch {
+    // Senza percorso nessun pallino: il menu resta com'era.
+  } finally {
+    journeyLoading = null;
+  }
+}
+
+/** Voci di menu con un passo del percorso da fare adesso (solo professionisti). */
+export function useJourneyMenuHrefs(token: string | null, enabled: boolean, pathname: string): string[] {
+  const hrefs = useSyncExternalStore(
+    (listener) => {
+      journeyListeners.add(listener);
+      return () => journeyListeners.delete(listener);
+    },
+    () => (enabled && token && journeyStore?.token === token ? journeyStore.hrefs : NO_HREFS),
+    () => NO_HREFS,
+  );
+  useEffect(() => {
+    if (!enabled || !token) return;
+    if (journeyStore?.token === token && Date.now() - journeyStore.at < JOURNEY_STALE_MS) return;
+    void loadJourney(token);
+  }, [enabled, token, pathname]);
+  return hrefs;
 }
