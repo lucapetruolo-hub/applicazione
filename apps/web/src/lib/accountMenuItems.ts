@@ -113,11 +113,3 @@ export function isNavItemActive(item: AccountNavItem, pathname: string): boolean
   return matches.some((href) => (href === "/dashboard" || href === "/account" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`)));
 }
 
-/**
- * Pallino "da fare" su una voce, senza numero: oggi solo "Agenda" quando il
- * professionista non ha disponibilità nei prossimi giorni (sparisce appena
- * ne aggiunge una).
- */
-export function navItemNeedsAttention(item: AccountNavItem, user: { agendaAttention?: string | null }): boolean {
-  return item.href === "/dashboard/agenda" && Boolean(user.agendaAttention);
-}

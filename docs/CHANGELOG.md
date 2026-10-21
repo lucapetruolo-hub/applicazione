@@ -19689,3 +19689,13 @@ nella pagina della richiesta, non solo nell'avviso.
 - **Email promemoria** `AGENDA_REMINDER` (sito + email, argomento "Lavori e appuntamenti", spegnibile dalle preferenze): `AgendaRemindersService` ogni giorno alle 10 (ora italiana). Agenda vuota: dopo 3 giorni dalla creazione del profilo e di nuovo dopo una settimana, al massimo due volte. In esaurimento: al massimo una ogni 14 giorni. Stessi filtri dello smistamento (niente profili dimostrativi, sospesi, in pausa, eliminati o in attesa di conferma). Porta a `/dashboard/agenda?tab=disponibilita`.
 
 **Verifica**: typecheck web e API, 472 test dell'API verdi (nuovo `agenda-reminders.test.ts`: stati dell'agenda e regole di invio). In locale con API e database: `agendaAttention` `RUNNING_LOW` con una sola fascia tra 9 giorni. Foto in `/mnt/project-files/anteprime/agenda-disponibilita/` (`vuota-*`, `in-esaurimento-*`).
+
+## 274. Pallino anche sui passi del percorso "Completa il profilo"
+
+**Richiesta dell'utente**: "inserisci il pallino anche per quanto riguarda le azioni dei vari controlli come i dati fiscali la verifica identita e pagamento online".
+
+**Decisione**: stesso pallino rosso senza numero del §272 sulla voce del passo da fare adesso: "Dati fiscali e pagamenti" per i dati fiscali e per i pagamenti online, "Verifica identità" per documento e selfie. Solo il passo "da fare" (non quelli bloccati o in verifica), coerente con il percorso a un passo alla volta del §262. Il pallino accanto al nome in alto compare se c'è qualunque voce da fare.
+- `useNavAttention` (`apps/web/src/lib/useNavAttention.ts`) raccoglie agenda e percorso per il menu laterale e la tendina.
+- Il percorso si legge una volta (`useJourneyMenuHrefs` in `SetupJourney.tsx`, riletto cambiando pagina dopo 60 secondi) e si aggiorna da solo con quello mostrato da Oggi, Profilo pubblico, Dati fiscali e Verifica identità, così il pallino sparisce appena il passo è fatto.
+
+**Verifica**: typecheck e lint del web. Provato in locale: su Statistiche (pagina senza percorso) il pallino compare su Agenda, su "Dati fiscali e pagamenti" e accanto al nome. Foto `menu-passi-*` in `/mnt/project-files/anteprime/agenda-disponibilita/`.

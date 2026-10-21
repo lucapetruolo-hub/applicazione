@@ -5,11 +5,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Avatar, Icon, Text, YStack, brand } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
-import { getAccountMenuGroups, isNavItemActive, navItemNeedsAttention } from "@/lib/accountMenuItems";
+import { getAccountMenuGroups, isNavItemActive } from "@/lib/accountMenuItems";
 import { accountMenuUnreadCounts } from "@/lib/notificationSections";
+import { useNavAttention } from "@/lib/useNavAttention";
 
 export function AccountMenu() {
   const { user, logout, unreadCount, unreadNotifications } = useAuth();
+  const attention = useNavAttention();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
@@ -60,7 +62,8 @@ export function AccountMenu() {
   // totale accanto al nome, deve comparire anche sulla voce del sottomenu
   // che porta alla pagina con la novità, es. "Dashboard"/"Le mie visite").
   const menuUnreadCounts = accountMenuUnreadCounts(user.isProfessional, unreadNotifications);
-  const agendaToDo = user.isProfessional && Boolean(user.agendaAttention);
+  // Qualcosa da fare (agenda, percorso del profilo): pallino anche accanto al nome.
+  const toDo = attention.size > 0;
 
   return (
     <YStack ref={containerRef} position="relative">
@@ -72,7 +75,7 @@ export function AccountMenu() {
         onPress={() => setIsOpen((open) => !open)}
         accessibilityRole="button"
         accessibilityLabel={
-          unreadCount > 0 ? `Il mio account, ${unreadCount} novità da visualizzare` : agendaToDo ? "Il mio account, agenda da completare" : "Il mio account"
+          unreadCount > 0 ? `Il mio account, ${unreadCount} novità da visualizzare` : toDo ? "Il mio account, qualcosa da completare" : "Il mio account"
         }
       >
         <Avatar name={displayName ?? "?"} imageUrl={displayImageUrl} size={24} />
@@ -93,8 +96,8 @@ export function AccountMenu() {
               {unreadCount > 9 ? "9+" : unreadCount}
             </Text>
           </YStack>
-        ) : agendaToDo ? (
-          // Stesso pallino di "Agenda" nel menu: da telefono la voce resta fuori schermo nella barra.
+        ) : toDo ? (
+          // Stesso pallino delle voci del menu: da telefono restano fuori schermo nella barra.
           <span className="acct-nav-dot" style={{ marginLeft: 2 }} aria-hidden="true" />
         ) : null}
         <Text fontSize="$2" color={brand.grafite70}>
@@ -130,7 +133,7 @@ export function AccountMenu() {
                   >
                     <Icon name={item.icon} size={16} color={active ? brand.grafite : brand.grafite70} />
                     <span>{item.label}</span>
-                    {itemUnreadCount > 0 ? <span className="acct-nav-badge">{itemUnreadCount > 9 ? "9+" : itemUnreadCount}</span> : navItemNeedsAttention(item, user) ? <span className="acct-nav-dot" role="img" aria-label="Da completare" /> : null}
+                    {itemUnreadCount > 0 ? <span className="acct-nav-badge">{itemUnreadCount > 9 ? "9+" : itemUnreadCount}</span> : attention.has(item.href) ? <span className="acct-nav-dot" role="img" aria-label="Da completare" /> : null}
                   </Link>
                 );
               })}
