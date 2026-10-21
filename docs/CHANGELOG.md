@@ -19752,3 +19752,17 @@ nella pagina della richiesta, non solo nell'avviso.
 - Privacy (aggiornata al 21 ottobre 2026): mappa interattiva solo col consenso, accesso Google in una finestra di Google solo quando lo scegli, immagine fissa della mappa e suggerimenti degli indirizzi chiesti dal nostro server.
 
 **Verifica**: test `safe-redirect.test.ts` (percorsi buoni e cattivi), typecheck e lint di web e api.
+
+## 284. Ricerca e profilo: "Riprova" quando l'API non risponde
+
+**Richiesta esplicita dell'utente** (21/10/2026, thread "Revisione esterna del piano CEO"): stessa richiesta del §283 (punto 5 della revisione: errori mostrati come assenza di dati).
+
+**Problema**: se l'API non rispondeva (es. Render che si risveglia), `/cerca` e `/cerca/[categoria]` mostravano "Per ora non ci sono professionisti in questa zona" con l'invito a mandare la richiesta, e `/professionista/[id]` dava "pagina non trovata".
+
+**Decisione presa**:
+- `ApiError` in `packages/api-client` (errore con il codice HTTP, sempre un `Error`: nessun controllo esistente cambia).
+- Ricerca: con l'API in errore il riquadro diventa `LoadErrorNotice` ("Non riusciamo a caricare i professionisti", "Riprova tra qualche secondo", pulsante "Riprova"). Riprova da sola una volta dopo 15 secondi.
+- Profilo: "pagina non trovata" solo se l'API risponde 404 (o 400 per un id non valido); altrimenti lo stesso riquadro con "Non riusciamo a caricare questo profilo".
+- `app/error.tsx`: "Riprova" ricarica anche i dati dal server (`router.refresh()` + `reset`), prima ridisegnava lo stesso errore.
+
+**Verifica**: typecheck e lint del web; provato con l'API spenta a 390 e 1280px (anteprime in `anteprime/errori-caricamento/`).

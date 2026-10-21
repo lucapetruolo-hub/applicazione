@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 /**
  * Pagina d'errore al posto della schermata generica di Next.js ("Application
@@ -11,9 +12,20 @@ import Link from "next/link";
  * riprovare o tornare alla home invece di una pagina bianca.
  */
 export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   useEffect(() => {
     console.error(error);
   }, [error]);
+
+  // Un errore della pagina server (API che non risponde) si ripara solo
+  // ricaricando i dati dal server: `reset` da solo ridisegna l'errore.
+  function retry() {
+    startTransition(() => {
+      router.refresh();
+      reset();
+    });
+  }
 
   return (
     <div style={{ maxWidth: 560, margin: "64px auto", padding: "0 16px", textAlign: "center", fontFamily: "var(--font-body), sans-serif" }}>
@@ -22,10 +34,11 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
       <div style={{ display: "flex", gap: 12, justifyContent: "center", marginBottom: 24 }}>
         <button
           type="button"
-          onClick={reset}
+          onClick={retry}
+          disabled={isPending}
           style={{ background: "#189a63", color: "#fff", border: "none", borderRadius: 999, padding: "10px 20px", fontWeight: 700, cursor: "pointer" }}
         >
-          Riprova
+          {isPending ? "Caricamento…" : "Riprova"}
         </button>
         <Link href="/" style={{ padding: "10px 20px", color: "#0e7a4c", fontWeight: 700 }}>
           Torna alla home

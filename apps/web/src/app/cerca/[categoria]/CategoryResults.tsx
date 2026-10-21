@@ -55,10 +55,13 @@ export async function CategoryResults({
   // Fetch server-side: contenuto SEO-critico deve essere presente nell'HTML
   // già al primo render, non caricato via client-side fetch (CLAUDE.md §5.4).
   let professionals: ProfessionalSearchResult[] = [];
+  // API non raggiungibile ≠ nessun risultato: si mostra "Riprova", non
+  // "nessun professionista" (docs/CHANGELOG.md §284).
+  let loadFailed = false;
   try {
     professionals = await apiClient.searchProfessionals({ category: category.slug, city, remote: isOnline });
   } catch {
-    professionals = [];
+    loadFailed = true;
   }
 
   // Tutti i professionisti della categoria (nessun filtro città, ma stesso
@@ -87,6 +90,7 @@ export async function CategoryResults({
         online={isOnline}
         professionals={professionals}
         allProfessionals={allProfessionals}
+        loadFailed={loadFailed}
         initialUrgentOnly={searchParams.urgente === "1"}
       />
     </div>

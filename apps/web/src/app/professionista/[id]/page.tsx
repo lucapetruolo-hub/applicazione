@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { apiClient } from "../../../lib/apiClient";
 import { SITE_URL } from "@/lib/siteUrl";
+import { ApiError } from "@professionisti/api-client";
 import { BRAND } from "@professionisti/shared";
+import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { ProfessionalDetailContent } from "./ProfessionalDetailContent";
 
 type PageParams = { id: string };
@@ -74,7 +76,14 @@ export default async function ProfessionalDetailPage({ params }: { params: PageP
         </Suspense>
       </>
     );
-  } catch {
-    notFound();
+  } catch (err) {
+    // "Non trovata" solo se l'API dice che il profilo non c'è. Se l'API non
+    // risponde: "Riprova", non un falso 404 (docs/CHANGELOG.md §284).
+    if (err instanceof ApiError && (err.status === 404 || err.status === 400)) notFound();
+    return (
+      <div style={{ width: "100%", maxWidth: 720, margin: "0 auto", padding: "48px 16px" }}>
+        <LoadErrorNotice title="Non riusciamo a caricare questo profilo" />
+      </div>
+    );
   }
 }
