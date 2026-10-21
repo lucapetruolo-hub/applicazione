@@ -1124,7 +1124,7 @@ const BUILDERS: Record<string, Builder> = {
       cta: { label: "Completa il profilo", url: `${frontendUrl()}/dashboard` },
     };
   },
-  // Agenda vuota o senza disponibilità nei prossimi giorni (§273).
+  // Agenda vuota o senza disponibilità nei prossimi giorni (§274).
   AGENDA_REMINDER: (payload, ctx) => {
     const empty = payload.attention !== "RUNNING_LOW";
     return {

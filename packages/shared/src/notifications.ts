@@ -109,7 +109,7 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       // Soldi bloccati da più di 80 giorni, Stripe li paga comunque dopo 90 (docs/CHANGELOG.md §249).
       "ADMIN_JOB_PAYMENT_LONG_HOLD",
       "BOOKING_REMINDER",
-      // Agenda vuota o senza disponibilità nei prossimi 7 giorni (docs/CHANGELOG.md §273).
+      // Agenda vuota o senza disponibilità nei prossimi 7 giorni (docs/CHANGELOG.md §274).
       "AGENDA_REMINDER",
       // Nuova recensione ricevuta dal professionista (docs/CHANGELOG.md §185).
       "NEW_REVIEW",

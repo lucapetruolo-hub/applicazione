@@ -108,7 +108,7 @@ export type MyAvailability = {
 export const AGENDA_LOOKAHEAD_DAYS = 7;
 
 /**
- * Agenda da sistemare (docs/CHANGELOG.md §272-§273): `EMPTY` senza nessuna
+ * Agenda da sistemare (docs/CHANGELOG.md §273-§274): `EMPTY` senza nessuna
  * fascia da oggi in poi, `RUNNING_LOW` con fasce solo oltre i prossimi
  * `AGENDA_LOOKAHEAD_DAYS` giorni, `null` se va bene. Una fascia ricorrente
  * (`date` null) copre sempre i prossimi giorni. Date confrontate in UTC,

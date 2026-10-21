@@ -6,7 +6,7 @@ import { useJourneyMenuHrefs } from "@/components/verification/SetupJourney";
 
 /**
  * Voci di menu con un pallino "da fare", senza numero (docs/CHANGELOG.md
- * §272-§274): "Agenda" senza disponibilità nei prossimi giorni, e la voce del
+ * §273-§275): "Agenda" senza disponibilità nei prossimi giorni, e la voce del
  * passo da fare adesso del percorso "Completa il profilo". Lo usano il menu
  * laterale (anche da telefono) e la tendina "Il mio account".
  */

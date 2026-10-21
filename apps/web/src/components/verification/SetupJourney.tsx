@@ -225,7 +225,7 @@ export function SetupJourneyCard({ token }: { token: string }) {
 
 /**
  * Pallino sulle voci di menu del passo da fare adesso (docs/CHANGELOG.md
- * §274, richiesta dell'utente): "Dati fiscali e pagamenti" per i dati fiscali
+ * §275, richiesta dell'utente): "Dati fiscali e pagamenti" per i dati fiscali
  * e i pagamenti online, "Verifica identità" per documento e selfie. Il menu
  * legge il percorso una volta e lo tiene aggiornato con quello mostrato dalle
  * pagine dei passi (Oggi, Profilo pubblico, Dati fiscali, Verifica identità),

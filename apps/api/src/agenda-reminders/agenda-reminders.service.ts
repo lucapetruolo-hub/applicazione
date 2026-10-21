@@ -14,7 +14,7 @@ const MAX_EMPTY_REMINDERS = 2;
 const RUNNING_LOW_EVERY_DAYS = 14;
 
 /**
- * Va mandato il promemoria sull'agenda (docs/CHANGELOG.md §273)? `sent` sono
+ * Va mandato il promemoria sull'agenda (docs/CHANGELOG.md §274)? `sent` sono
  * gli avvisi già mandati, dal più recente.
  */
 export function agendaReminderDue(input: { attention: AgendaAttention | null; profileCreatedAt: Date; sent: { attention: string | null; createdAt: Date }[]; now: Date }): boolean {

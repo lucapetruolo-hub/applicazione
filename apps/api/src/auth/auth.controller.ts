@@ -206,7 +206,7 @@ export class AuthController {
         ? await this.prisma.professionalProfile.findUnique({ where: { userId: id }, select: { id: true, businessName: true, imageUrl: true } })
         : null;
     // Agenda vuota o senza disponibilità nei prossimi giorni: avviso in
-    // "Oggi" e pallino su "Agenda" nel menu (docs/CHANGELOG.md §272-§273).
+    // "Oggi" e pallino su "Agenda" nel menu (docs/CHANGELOG.md §273-§274).
     let agenda: AgendaAttention | null = null;
     if (professionalProfile) {
       const startOfToday = new Date();

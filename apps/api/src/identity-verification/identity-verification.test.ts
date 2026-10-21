@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DiditIdentityProvider, canonicalJson, diditDecision } from "./didit.provider";
+import { DiditIdentityProvider, canonicalJson, diditDecision, diditReason } from "./didit.provider";
 import { matchDocumentToFiscal } from "./identity-match";
 import { identityVerificationNeeded } from "./identity-provider-env";
 import { IdentityVerificationService, STANDBY_PROVIDER_STATUS, expectedPerson, profileSetupMissing, reminderDue, setupReminderDue } from "./identity-verification.service";
@@ -39,6 +39,37 @@ describe("Didit", () => {
     expect(diditDecision({ status: "In Review" }).outcome).toBe("REVIEW");
     expect(diditDecision({ status: "Abandoned" }).outcome).toBe("EXPIRED");
     expect(diditDecision({ status: "In Progress" }).outcome).toBe("IN_PROGRESS");
+    // Lo stato può arrivare anche in maiuscolo con il trattino basso.
+    expect(diditDecision({ status: "APPROVED" }).outcome).toBe("APPROVED");
+    expect(diditDecision({ status: "IN_REVIEW" }).outcome).toBe("REVIEW");
+  });
+
+  it("motivo per il professionista dai codici degli avvisi", () => {
+    expect(diditReason(["IMAGE_TOO_BLURRY"])).toContain("sfocata");
+    expect(diditReason(["IMAGE_TOO_BLURRY", "DOCUMENT_EXPIRED"])).toContain("scaduto");
+    expect(diditReason(["LOW_FRONT_CAMERA_FACE_MATCH_SIMILARITY"])).toContain("selfie");
+    expect(diditReason(["POSSIBLE_DUPLICATED_USER"])).toContain("già usati");
+    expect(diditReason(["DOB_MISMATCH_WITH_PROVIDED"])).toContain("dati fiscali");
+    expect(diditReason(["CODICE_SCONOSCIUTO"])).toBeNull();
+    // Gli avvisi solo informativi non contano.
+    expect(diditDecision({ status: "Declined", warnings: [{ risk: "DOCUMENT_BACK_SIDE_NOT_AVAILABLE", log_type: "information" }] }).warnings).toEqual([]);
+  });
+
+  it("manda a Didit nome e data attesi, così confronta anche lui", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ session_id: "s1", url: "https://verify.didit.me/s1" }), { status: 201 }));
+    await provider.createSession({ reference: "pp-1", callbackUrl: "https://x/ritorno", expected: { firstName: "Mario", lastName: "Rossi", dateOfBirth: "1980-01-01" } });
+    const sent = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(sent.expected_details).toEqual({ first_name: "Mario", last_name: "Rossi", date_of_birth: "1980-01-01" });
+    fetchMock.mockRestore();
+  });
+
+  it("legge i codici degli avvisi che spiegano un rifiuto", () => {
+    const decision = diditDecision({
+      status: "Declined",
+      id_verifications: [{ status: "Declined", warnings: [{ risk: "DOCUMENT_EXPIRED", short_description: "Documento scaduto" }] }],
+      face_matches: [{ warnings: [{ risk: "LOW_FACE_MATCH_SIMILARITY" }] }],
+    });
+    expect(decision.warnings).toEqual(["DOCUMENT_EXPIRED", "LOW_FACE_MATCH_SIMILARITY"]);
   });
 });
 
@@ -108,6 +139,8 @@ describe("esito applicato", () => {
       providerStatus: "Approved",
       outcome: "APPROVED",
       person: { firstName: "Mario", lastName: "Rossi", dateOfBirth: "1980-01-01", personalNumber: null },
+      warnings: [],
+      reason: null,
     });
     expect(updated.status).toBe("APPROVED");
     expect(verification.markVerifiedByProvider).toHaveBeenCalledWith("pp-1", "didit");
@@ -119,6 +152,8 @@ describe("esito applicato", () => {
       providerStatus: "Approved",
       outcome: "APPROVED",
       person: { firstName: "Luigi", lastName: "Bianchi", dateOfBirth: "1985-02-02", personalNumber: null },
+      warnings: [],
+      reason: null,
     });
     expect(updated.status).toBe("DECLINED");
     expect(updated.reason).toContain("correggilo");
@@ -128,10 +163,30 @@ describe("esito applicato", () => {
 
   it("rifiutata o da rivedere per il fornitore: avviso al professionista, che riprova da solo", async () => {
     const { service, row, notifications } = build();
-    await service.apply(row as never, { providerStatus: "Declined", outcome: "DECLINED", person: null });
+    await service.apply(row as never, { providerStatus: "Declined", outcome: "DECLINED", person: null, warnings: [], reason: null });
     expect(notifications.notify).toHaveBeenCalledWith("u-1", "IDENTITY_VERIFICATION_DECLINED", expect.anything());
-    const inReview = await service.apply(row as never, { providerStatus: "In Review", outcome: "REVIEW", person: null });
+    const inReview = await service.apply(row as never, { providerStatus: "In Review", outcome: "REVIEW", person: null, warnings: [], reason: null });
     expect(inReview.status).toBe("DECLINED");
+  });
+
+  it("il motivo preciso del fornitore arriva al professionista (§272)", async () => {
+    const { service, row } = build();
+    const updated = await service.apply(row as never, { providerStatus: "Declined", outcome: "DECLINED", person: null, warnings: ["DOCUMENT_EXPIRED"], reason: "Il documento è scaduto." });
+    expect(updated.reason).toBe("Il documento è scaduto.");
+  });
+
+  it("ambiente di prova di Didit: approvata anche con i dati finti del documento", async () => {
+    const { service, row, verification } = build();
+    (service as unknown as { provider: unknown }).provider = { name: "didit", sandbox: true };
+    const updated = await service.apply(row as never, {
+      providerStatus: "Approved",
+      outcome: "APPROVED",
+      person: { firstName: "Gustavo", lastName: "Matsumoto", dateOfBirth: "1990-06-15", personalNumber: null },
+      warnings: [],
+      reason: null,
+    });
+    expect(updated.status).toBe("APPROVED");
+    expect(verification.markVerifiedByProvider).toHaveBeenCalled();
   });
 });
 
@@ -142,6 +197,7 @@ describe("servizio di verifica che non risponde (§256)", () => {
     const rows: Record<string, unknown>[] = [];
     const prisma = {
       professionalProfile: { findUnique: vi.fn().mockResolvedValue({ id: "pp-1", userId: "u-1", isDemo: false, verified: false, deletedAt: null, fiscalProfile: fiscal }) },
+      professionalFiscalProfile: { findUnique: vi.fn().mockResolvedValue(fiscal) },
       identityVerification: {
         findFirst: vi.fn(async () => rows[rows.length - 1] ?? null),
         count: vi.fn().mockResolvedValue(0),
@@ -160,7 +216,7 @@ describe("servizio di verifica che non risponde (§256)", () => {
     };
     const notifications = { notify: vi.fn() };
     const service = new IdentityVerificationService(prisma as never, { record: vi.fn() } as never, notifications as never, {} as never);
-    const provider = { name: "didit", createSession: vi.fn(createSession), getDecision: vi.fn(), verifyWebhook: vi.fn(), consoleUrl: () => null };
+    const provider = { name: "didit", sandbox: false, createSession: vi.fn(createSession), getDecision: vi.fn(), verifyWebhook: vi.fn(), consoleUrl: () => null };
     (service as unknown as { provider: unknown }).provider = provider;
     return { service, rows, provider, notifications };
   }
