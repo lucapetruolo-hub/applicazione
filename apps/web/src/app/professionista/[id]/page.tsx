@@ -28,6 +28,15 @@ export async function generateMetadata({ params }: { params: PageParams }): Prom
   }
 }
 
+/**
+ * JSON dentro un `<script>`: `<` diventa `\u003c`, così un nome attività con
+ * "</script>" non chiude lo script e non inserisce HTML nella pagina (XSS,
+ * docs/CHANGELOG.md §283). Il JSON resta identico per chi lo legge.
+ */
+function jsonForScript(value: unknown): string {
+  return JSON.stringify(value).replace(/</g, "\\u003c").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
+}
+
 export default async function ProfessionalDetailPage({ params }: { params: PageParams }) {
   try {
     const professional = await apiClient.getProfessional(params.id);
@@ -56,7 +65,7 @@ export default async function ProfessionalDetailPage({ params }: { params: PageP
 
     return (
       <>
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonForScript(jsonLd) }} />
         {/* Suspense richiesto da useSearchParams (App Router) in
             ProfessionalDetailContent — legge `?modalita=` per preselezionare
             il tab dell'agenda quando si arriva da una ricerca "Online". */}

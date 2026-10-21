@@ -24,3 +24,4 @@ export * from "./fiscalCompleteness";
 export * from "./identityVerification";
 export * from "./addressSuggestions";
 export * from "./dac7";
+export * from "./safeRedirect";

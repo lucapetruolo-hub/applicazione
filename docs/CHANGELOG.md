@@ -19736,3 +19736,19 @@ nella pagina della richiesta, non solo nell'avviso.
 **Decisione presa**: con `DIDIT_SANDBOX=true` non si mandano i dati attesi. Con le chiavi vere restano.
 
 **Verifica**: `tsc` ed `eslint` dell'API, 479 test (il test di `createSession` controlla anche che in prova `expected_details` non parta).
+
+## 283. Profilo pubblico e accesso più sicuri, privacy aggiornata su Google
+
+**Richiesta esplicita dell'utente** (21/10/2026, thread "Revisione esterna del piano CEO"): dopo la revisione del piano fatta da un'altra IA, "fai subito le pr che ritieni" (l'agenda va in un thread a parte).
+
+**Problemi verificati sul codice**:
+- Il JSON-LD del profilo pubblico (`professionista/[id]/page.tsx`) usava `JSON.stringify` dentro `<script>`: un nome attività con `</script>` chiudeva lo script e poteva inserire HTML nella pagina (XSS salvato).
+- `/accedi` mandava dove diceva `?redirect=` senza controllo: un link fatto apposta poteva portare su un altro sito subito dopo l'accesso. Il ritorno da Google controllava solo `/` e `//`, non `/\host`.
+- La privacy diceva che il pulsante di accesso con Google si carica solo dopo il consenso: dal §265 non c'è più nessuno script Google per l'accesso.
+
+**Decisione presa**:
+- `jsonForScript` scrive `<` come `<` (più U+2028/U+2029): JSON identico per Google, nessun tag chiudibile.
+- `safeInternalPath` in `packages/shared/src/safeRedirect.ts`: solo percorsi del sito, rifiuta altri siti, `//`, barre rovesciate, caratteri di controllo. Usato da `/accedi` e `/accesso-google`; un valore non sicuro porta alla destinazione normale (Dashboard o home).
+- Privacy (aggiornata al 21 ottobre 2026): mappa interattiva solo col consenso, accesso Google in una finestra di Google solo quando lo scegli, immagine fissa della mappa e suggerimenti degli indirizzi chiesti dal nostro server.
+
+**Verifica**: test `safe-redirect.test.ts` (percorsi buoni e cattivi), typecheck e lint di web e api.

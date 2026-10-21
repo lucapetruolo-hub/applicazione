@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { safeInternalPath } from "@professionisti/shared";
 import { Surface, Text, YStack, brand, radiusDocLg } from "@professionisti/ui";
 import {
   GOOGLE_SIGNIN_CHANNEL,
@@ -42,9 +43,10 @@ export default function AccessoGooglePage() {
       try {
         const pending = JSON.parse(sessionStorage.getItem(GOOGLE_SIGNIN_PENDING_KEY) ?? "null") as GoogleSignInPending | null;
         sessionStorage.removeItem(GOOGLE_SIGNIN_PENDING_KEY);
-        if (pending && pending.state === state && pending.returnTo.startsWith("/") && !pending.returnTo.startsWith("//")) {
+        const returnTo = pending && pending.state === state ? safeInternalPath(pending.returnTo) : null;
+        if (pending && returnTo) {
           sessionStorage.setItem(GOOGLE_SIGNIN_RESULT_KEY, JSON.stringify({ ...message, pending }));
-          window.location.replace(pending.returnTo);
+          window.location.replace(returnTo);
           return;
         }
       } catch {
