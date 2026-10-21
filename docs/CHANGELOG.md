@@ -19673,8 +19673,19 @@ nella pagina della richiesta, non solo nell'avviso.
 
 **Richiesta dell'utente**: nella pagina "Oggi" del professionista dire se deve ancora inserire le disponibilità in agenda e lasciare un pallino sul menu di sinistra.
 
-**Decisione**: "senza disponibilità" vuol dire nessuna fascia da oggi in poi (fasce di una data futura o ricorrenti, `date = null`): un professionista con solo fasce passate ha l'agenda pubblica vuota quanto chi non ne ha mai messe. Il calcolo è nell'API (`agendaEmpty` in `/auth/me`, `auth.controller.ts`), così sito e menu leggono lo stesso dato senza una chiamata in più per pagina.
+**Decisione**: "senza disponibilità" vuol dire nessuna fascia da oggi in poi (fasce di una data futura o ricorrenti, `date = null`): un professionista con solo fasce passate ha l'agenda pubblica vuota quanto chi non ne ha mai messe. Il calcolo è nell'API (`agendaEmpty` in `/auth/me`, poi `agendaAttention` dal §273, `auth.controller.ts`), così sito e menu leggono lo stesso dato senza una chiamata in più per pagina.
 - **Oggi**: una riga sotto "Completa il profilo" (`AgendaEmptyNotice`, stesso stile del suggerimento in fondo alla pagina), con "Apri l'agenda" che porta direttamente alla scheda Disponibilità (`/dashboard/agenda?tab=disponibilita`). Non è un passo del percorso del §262: quello va in ordine e blocca i passi dopo, l'agenda invece si può fare in qualunque momento e non è obbligatoria.
 - **Pallino** rosso senza numero su "Agenda" nel menu laterale, nella barra scorrevole da telefono e nella tendina "Il mio account" (`navItemNeedsAttention` in `accountMenuItems.ts`, classe `.acct-nav-dot`). Sparisce appena si salva una fascia: l'agenda richiede `/auth/me` solo quando lo stato cambia.
 
 **Verifica**: typecheck web e API. Provato in locale con API e database: `agendaEmpty` vero senza fasce, falso con una fascia futura, di nuovo vero togliendola. Foto prima e dopo (computer e telefono, menu da telefono) in `/mnt/project-files/anteprime/agenda-disponibilita/`.
+
+## 273. Agenda: pallino sul menu account, disponibilità in esaurimento, email promemoria
+
+**Richiesta dell'utente**: "effettua le 3 migliorie" proposte in §272.
+
+**Decisione**:
+- **Pallino sul menu account** in alto a destra (`AccountMenu.tsx`), quando non ci sono novità da contare: da telefono la voce "Agenda" resta fuori schermo nella barra scorrevole, così si vede da tutto il sito.
+- **Disponibilità in esaurimento**: `agendaAttention` in `packages/shared/src/availability.ts` sostituisce il vecchio `agendaEmpty` e vale `EMPTY` (nessuna fascia da oggi in poi), `RUNNING_LOW` (fasce solo oltre i prossimi `AGENDA_LOOKAHEAD_DAYS` = 7 giorni) o `null`. Una fascia ricorrente copre sempre. Stessa funzione per `/auth/me`, l'agenda (aggiorna l'utente solo se lo stato cambia) e il promemoria. In Oggi il testo diventa "Aggiungi disponibilità per i prossimi giorni / Nei prossimi 7 giorni non hai orari liberi in agenda."; pallino uguale nei due casi.
+- **Email promemoria** `AGENDA_REMINDER` (sito + email, argomento "Lavori e appuntamenti", spegnibile dalle preferenze): `AgendaRemindersService` ogni giorno alle 10 (ora italiana). Agenda vuota: dopo 3 giorni dalla creazione del profilo e di nuovo dopo una settimana, al massimo due volte. In esaurimento: al massimo una ogni 14 giorni. Stessi filtri dello smistamento (niente profili dimostrativi, sospesi, in pausa, eliminati o in attesa di conferma). Porta a `/dashboard/agenda?tab=disponibilita`.
+
+**Verifica**: typecheck web e API, 472 test dell'API verdi (nuovo `agenda-reminders.test.ts`: stati dell'agenda e regole di invio). In locale con API e database: `agendaAttention` `RUNNING_LOW` con una sola fascia tra 9 giorni. Foto in `/mnt/project-files/anteprime/agenda-disponibilita/` (`vuota-*`, `in-esaurimento-*`).

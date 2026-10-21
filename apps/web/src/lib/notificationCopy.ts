@@ -64,6 +64,8 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   IDENTITY_VERIFICATION_REMINDER: { icon: "🪪", message: "Ti manca la verifica dell'identità per inviare preventivi: bastano 2 minuti." },
   // "Completa il profilo" il giorno dopo l'iscrizione (§261).
   PROFILE_SETUP_REMINDER: { icon: "📋", message: "Ti manca poco per completare il profilo: in Oggi trovi il prossimo passo." },
+  // Agenda vuota o senza disponibilità nei prossimi giorni (§273): il testo dipende dal payload, vedi sotto.
+  AGENDA_REMINDER: { icon: "📅", message: "Non hai ancora orari liberi in agenda: aggiungili per farti prenotare." },
   TAX_ID_INVALID: { icon: "⚠️", message: "Non riusciamo a verificare il codice fiscale o la partita IVA: controllali nei dati fiscali." },
   // Segnalazioni di un problema sul lavoro (docs/CHANGELOG.md §164).
   JOB_ISSUE_REPORTED: { icon: "⚠️", message: "Un cliente ha segnalato un problema su un lavoro: rispondigli in chat entro 48 ore per trovare una soluzione." },
@@ -156,6 +158,9 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   }
   if (change && type === "QUOTE_DATE_PROPOSED") {
     return { icon: "🗓️", message: `Il cliente ha proposto ${scheduleChangeAlternative(change)} per il preventivo${newSlot ? `: ${newSlot}` : ""}.` };
+  }
+  if (type === "AGENDA_REMINDER" && data.attention === "RUNNING_LOW") {
+    return { icon: "📅", message: "Nei prossimi 7 giorni non hai orari liberi in agenda: aggiungili per farti prenotare." };
   }
   if (type === "QUOTE_DATE_REJECTED" && newSlot) {
     return { icon: "📅", message: `Il professionista non è disponibile in quella data: l'appuntamento resta ${newSlot}.` };

@@ -15,6 +15,8 @@ import {
   updateAccountSchema,
   verifyEmailCodeSchema,
   verifyEmailSchema,
+  agendaAttention,
+  type AgendaAttention,
   type ChangePasswordInput,
   type EmailPasswordInput,
   type EmailStatusInput,
@@ -203,16 +205,17 @@ export class AuthController {
       role !== "CLIENT"
         ? await this.prisma.professionalProfile.findUnique({ where: { userId: id }, select: { id: true, businessName: true, imageUrl: true } })
         : null;
-    // Nessuna disponibilità da oggi in poi in agenda (fasce di una data
-    // futura o ricorrenti): avviso in "Oggi" e pallino su "Agenda" nel menu.
-    let agendaEmpty = false;
+    // Agenda vuota o senza disponibilità nei prossimi giorni: avviso in
+    // "Oggi" e pallino su "Agenda" nel menu (docs/CHANGELOG.md §272-§273).
+    let agenda: AgendaAttention | null = null;
     if (professionalProfile) {
       const startOfToday = new Date();
       startOfToday.setUTCHours(0, 0, 0, 0);
-      const upcoming = await this.prisma.availabilitySlot.count({
+      const slots = await this.prisma.availabilitySlot.findMany({
         where: { professionalProfileId: professionalProfile.id, OR: [{ date: null }, { date: { gte: startOfToday } }] },
+        select: { date: true },
       });
-      agendaEmpty = upcoming === 0;
+      agenda = agendaAttention(slots);
     }
     return {
       id,
@@ -243,7 +246,7 @@ export class AuthController {
       // resta sempre null per un professionista (upload disabilitato in
       // /account per quel ruolo, vedi nota altrove in CLAUDE.md).
       businessImageUrl: professionalProfile?.imageUrl ?? null,
-      agendaEmpty,
+      agendaAttention: agenda,
       street,
       houseNumber,
       addressExtra,

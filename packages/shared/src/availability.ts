@@ -103,3 +103,31 @@ export type MyAvailability = {
   /** Date ISO (YYYY-MM-DD) da oggi in poi in cui il professionista ha chiuso per quel giorno (ferie, festività, imprevisto). */
   exceptionDates: string[];
 };
+
+/** Giorni in cui un professionista dovrebbe avere almeno una disponibilità (avviso "stanno per finire"). */
+export const AGENDA_LOOKAHEAD_DAYS = 7;
+
+/**
+ * Agenda da sistemare (docs/CHANGELOG.md §272-§273): `EMPTY` senza nessuna
+ * fascia da oggi in poi, `RUNNING_LOW` con fasce solo oltre i prossimi
+ * `AGENDA_LOOKAHEAD_DAYS` giorni, `null` se va bene. Una fascia ricorrente
+ * (`date` null) copre sempre i prossimi giorni. Date confrontate in UTC,
+ * come le salva l'agenda (mezzanotte UTC).
+ */
+export type AgendaAttention = "EMPTY" | "RUNNING_LOW";
+
+export function agendaAttention(slots: { date: Date | string | null }[], now: Date = new Date()): AgendaAttention | null {
+  const today = new Date(now);
+  today.setUTCHours(0, 0, 0, 0);
+  const horizon = new Date(today);
+  horizon.setUTCDate(horizon.getUTCDate() + AGENDA_LOOKAHEAD_DAYS);
+  let upcoming = false;
+  for (const slot of slots) {
+    if (slot.date === null) return null;
+    const date = new Date(slot.date);
+    if (date < today) continue;
+    if (date < horizon) return null;
+    upcoming = true;
+  }
+  return upcoming ? "RUNNING_LOW" : "EMPTY";
+}

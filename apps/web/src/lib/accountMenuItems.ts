@@ -115,9 +115,9 @@ export function isNavItemActive(item: AccountNavItem, pathname: string): boolean
 
 /**
  * Pallino "da fare" su una voce, senza numero: oggi solo "Agenda" quando il
- * professionista non ha disponibilità da oggi in poi (sparisce appena ne
- * aggiunge una).
+ * professionista non ha disponibilità nei prossimi giorni (sparisce appena
+ * ne aggiunge una).
  */
-export function navItemNeedsAttention(item: AccountNavItem, user: { agendaEmpty?: boolean }): boolean {
-  return item.href === "/dashboard/agenda" && Boolean(user.agendaEmpty);
+export function navItemNeedsAttention(item: AccountNavItem, user: { agendaAttention?: string | null }): boolean {
+  return item.href === "/dashboard/agenda" && Boolean(user.agendaAttention);
 }

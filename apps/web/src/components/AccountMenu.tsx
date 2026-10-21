@@ -60,6 +60,7 @@ export function AccountMenu() {
   // totale accanto al nome, deve comparire anche sulla voce del sottomenu
   // che porta alla pagina con la novità, es. "Dashboard"/"Le mie visite").
   const menuUnreadCounts = accountMenuUnreadCounts(user.isProfessional, unreadNotifications);
+  const agendaToDo = user.isProfessional && Boolean(user.agendaAttention);
 
   return (
     <YStack ref={containerRef} position="relative">
@@ -70,7 +71,9 @@ export function AccountMenu() {
         cursor="pointer"
         onPress={() => setIsOpen((open) => !open)}
         accessibilityRole="button"
-        accessibilityLabel={unreadCount > 0 ? `Il mio account, ${unreadCount} novità da visualizzare` : "Il mio account"}
+        accessibilityLabel={
+          unreadCount > 0 ? `Il mio account, ${unreadCount} novità da visualizzare` : agendaToDo ? "Il mio account, agenda da completare" : "Il mio account"
+        }
       >
         <Avatar name={displayName ?? "?"} imageUrl={displayImageUrl} size={24} />
         <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
@@ -90,6 +93,9 @@ export function AccountMenu() {
               {unreadCount > 9 ? "9+" : unreadCount}
             </Text>
           </YStack>
+        ) : agendaToDo ? (
+          // Stesso pallino di "Agenda" nel menu: da telefono la voce resta fuori schermo nella barra.
+          <span className="acct-nav-dot" style={{ marginLeft: 2 }} aria-hidden="true" />
         ) : null}
         <Text fontSize="$2" color={brand.grafite70}>
           {isOpen ? "▲" : "▼"}

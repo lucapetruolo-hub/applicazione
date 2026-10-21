@@ -1,4 +1,5 @@
 import {
+  AGENDA_LOOKAHEAD_DAYS,
   CONTENT_REPORT_TARGET_LABEL,
   JOB_ISSUE_APPEAL_DAYS,
   JOB_ISSUE_INFO_HOURS,
@@ -1121,6 +1122,22 @@ const BUILDERS: Record<string, Builder> = {
       title: "Ti manca poco per iniziare",
       paragraphs: [...lines, "Trovi tutto in Oggi, con il prossimo passo da fare."],
       cta: { label: "Completa il profilo", url: `${frontendUrl()}/dashboard` },
+    };
+  },
+  // Agenda vuota o senza disponibilità nei prossimi giorni (§273).
+  AGENDA_REMINDER: (payload, ctx) => {
+    const empty = payload.attention !== "RUNNING_LOW";
+    return {
+      kind: "notification",
+      subject: empty ? "Inserisci le tue disponibilità" : "La tua agenda è vuota nei prossimi giorni",
+      greeting: ctx.name,
+      title: empty ? "Fatti trovare libero" : "Aggiungi disponibilità",
+      paragraphs: [
+        empty
+          ? "Non hai ancora orari liberi in agenda. Aggiungili: i clienti vedono quando sei disponibile e ti prenotano prima."
+          : `Nei prossimi ${AGENDA_LOOKAHEAD_DAYS} giorni non hai orari liberi in agenda: aggiungili per farti prenotare.`,
+      ],
+      cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda?tab=disponibilita` },
     };
   },
   TAX_ID_INVALID: (payload, ctx) => {

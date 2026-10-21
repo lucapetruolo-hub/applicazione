@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { ExternalJob, ProfessionalBooking, ProfessionalLead } from "@professionisti/shared";
+import { agendaAttention, type ExternalJob, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -719,10 +719,8 @@ function DashboardAgendaContent() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
       // Aggiorna il pallino su "Agenda" nel menu e l'avviso in Oggi.
-      // Stesso criterio dell'API: fasce ricorrenti o di una data da oggi in poi.
-      const todayUtc = new Date().toISOString().slice(0, 10);
-      const empty = !nextSlots.some((slot) => !slot.date || slot.date.slice(0, 10) >= todayUtc);
-      if (Boolean(user?.agendaEmpty) !== empty) void refreshUser();
+      // Stesso criterio dell'API (`agendaAttention` di packages/shared).
+      if ((user?.agendaAttention ?? null) !== agendaAttention(nextSlots)) void refreshUser();
     } catch (err) {
       if (err instanceof Error && err.message.includes("profilo")) {
         setProfileMissing(true);
