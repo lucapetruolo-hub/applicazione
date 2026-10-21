@@ -19791,3 +19791,15 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 - **Punteggio** (`CategoriesService.getPopularity`): richieste × 3 (`REQUEST_WEIGHT`: chi chiede un preventivo vuole davvero quel lavoro, chi cerca a volte guarda soltanto o ricarica la pagina) + ricerche, ultimi 365 giorni. La città basta da sola da 15 punti (`MIN_CITY_SCORE`, pari alle 5 richieste di prima), altrimenti tutta Italia.
 
 **Verifica**: test di `CategoriesService` (punteggio, città, ritorno a tutta Italia, conteggio per giorno e città, categoria sconosciuta), migrazione confrontata con `prisma migrate diff`, typecheck di api e web, lint, test api (485). Provato nel browser a 390 e 1280px: con `?categoria=fabbro` Fabbro è la prima tessera, poi i più cercati.
+
+## 282. "Servizi più richiesti a [città]" nelle pagine dei risultati
+
+**Richiesta esplicita dell'utente** (21/10/2026): chiesto se i più cercati aiutano anche su Google; proposta una sezione di link nelle pagine di città e categoria, Luca: "prepara già per il lancio completo".
+
+**Decisione presa** (`apps/web/src/components/PopularServicesLinks.tsx`, `CategoryResults.tsx`):
+- **In fondo ai risultati di una categoria** (`/cerca/[categoria]` e `/cerca/[categoria]/[citta]`): titolo h2 "Servizi più richiesti a Latina" (o "Servizi più richiesti" senza città) e fino a 8 pillole con l'icona della categoria, ognuna un link vero alla pagina categoria+città ("Elettricista a Latina", `/cerca/elettricista/latina`) o alla pagina nazionale. Nell'HTML già dal server, quindi Google le legge (SEO locale, CLAUDE.md §7.6); per il cliente sono una scorciatoia agli altri lavori della zona.
+- **Ordine** da `GET /categories/popular` (§280-§281); se l'API non risponde entro 1,5 secondi, ordine del catalogo. Le chiamate partono in parallelo alla ricerca, la pagina non diventa più lenta.
+- **Niente link a pagine vuote**, stessa regola della sitemap: con una città si mostrano solo le categorie con almeno un professionista lì; dal lancio (`NEXT_PUBLIC_SITE_INDEXABLE=true`) contano solo i professionisti veri, non i profili demo. Se la ricerca non risponde o non c'è nulla, la sezione non compare. Solo comuni veri (`findComuneByName`), come le pagine categoria+città.
+- Oggi il sito resta `noindex`: la sezione serve già ai clienti e conta per Google dal lancio, senza altro da fare.
+
+**Verifica**: typecheck e lint di web. Provato col sito locale e i dati veri dell'API: su `/cerca/idraulico/latina` compaiono solo "Elettricista a Latina" e "Imbianchino a Latina" (le categorie con professionisti a Latina), su `/cerca/idraulico` le 8 nazionali; a 390 e 1280px nessuno scorrimento orizzontale.
