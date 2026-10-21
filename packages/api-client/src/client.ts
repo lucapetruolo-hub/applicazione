@@ -1002,13 +1002,15 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     mySavedProfessionals: (token: string) =>
       request<ProfessionalSearchResult[]>("/saved-professionals/me", { headers: { Authorization: `Bearer ${token}` } }),
 
-    searchProfessionals: (params: { category?: string; city?: string; q?: string; remote?: boolean; excludeDemo?: boolean } = {}) => {
+    searchProfessionals: (params: { category?: string; city?: string; q?: string; remote?: boolean; excludeDemo?: boolean; track?: boolean } = {}) => {
       const query = new URLSearchParams();
       if (params.category) query.set("category", params.category);
       if (params.city) query.set("city", params.city);
       if (params.q) query.set("q", params.q);
       if (params.remote) query.set("remote", "1");
       if (params.excludeDemo) query.set("excludeDemo", "1");
+      // Conta la ricerca per i lavori più cercati (docs/CHANGELOG.md §280): solo dalla pagina dei risultati, una volta.
+      if (params.track) query.set("track", "1");
       const queryString = query.toString();
       // cache: "no-store" esplicito: senza questo, in Next.js il Data Cache
       // può mantenere in cache questa fetch indipendentemente da

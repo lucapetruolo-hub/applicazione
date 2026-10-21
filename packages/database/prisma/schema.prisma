@@ -174,6 +174,7 @@ model Category {
   guidedRequests            GuidedRequest[]
   feeRules                  PlatformFeeRule[]
   generalRequestBlocks      GeneralRequestBlock[]
+  searchDays                CategorySearchDay[]
 
   @@map("categories")
 }
@@ -2191,6 +2192,23 @@ model ProfileViewDay {
   @@id([professionalProfileId, day])
   @@index([day])
   @@map("profile_view_days")
+}
+
+// Ricerche per categoria (docs/CHANGELOG.md §280): contatore per giorno e
+// città, mai la singola ricerca né chi cerca. Serve solo a mettere prima i
+// lavori più cercati nella scelta dei lavori. `city` minuscola, "" se la
+// ricerca era senza città.
+model CategorySearchDay {
+  categoryId String
+  city       String
+  day        DateTime @db.Date
+  count      Int      @default(0)
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([categoryId, city, day])
+  @@index([day])
+  @@map("category_search_days")
 }
 
 // ---------------------------------------------------------------------------

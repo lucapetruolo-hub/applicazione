@@ -56,7 +56,7 @@ export async function CategoryResults({
   // già al primo render, non caricato via client-side fetch (CLAUDE.md §5.4).
   let professionals: ProfessionalSearchResult[] = [];
   try {
-    professionals = await apiClient.searchProfessionals({ category: category.slug, city, remote: isOnline });
+    professionals = await apiClient.searchProfessionals({ category: category.slug, city, remote: isOnline, track: true });
   } catch {
     professionals = [];
   }

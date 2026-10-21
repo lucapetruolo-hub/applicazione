@@ -15,10 +15,12 @@ const POPULAR_ORDER_TIMEOUT_MS = 2000;
  * (`CategoryMultiPicker`) e categorie della richiesta di preventivo.
  * Pulsanti veri con `aria-pressed`; raggiunto `max` le altre si attenuano.
  *
- * Ordine: prima le categorie con più richieste nella città indicata (o in
- * tutta la piattaforma, `GET /categories/popular`). Si applica solo se
- * arriva subito e non è ancora stato scelto nulla, così le tessere non si
- * spostano sotto il dito; altrimenti resta l'ordine del catalogo.
+ * Ordine: in cima le categorie già scelte all'apertura (nella richiesta, la
+ * categoria cercata, docs/CHANGELOG.md §280), poi le più cercate nella città
+ * indicata o in tutta la piattaforma (`GET /categories/popular`). L'ordine
+ * dei più cercati si applica solo se arriva subito e prima di qualsiasi
+ * tocco, così le tessere non si spostano sotto il dito; altrimenti resta
+ * l'ordine del catalogo.
  */
 export function CategoryTiles({
   value,
@@ -37,10 +39,11 @@ export function CategoryTiles({
   showPrimary?: boolean;
   ariaLabel?: string;
 }) {
-  const [order, setOrder] = useState<ProfessionalCategorySlug[] | null>(null);
+  const [popularOrder, setPopularOrder] = useState<ProfessionalCategorySlug[] | null>(null);
   const [initialCity] = useState(city?.trim() || undefined);
-  const selectedCount = useRef(value.length);
-  selectedCount.current = value.length;
+  // Scelte già fatte all'apertura: restano in cima per tutta la visita.
+  const [pinned] = useState(value);
+  const touched = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,9 +51,9 @@ export function CategoryTiles({
     apiClient
       .getCategoryPopularity(initialCity)
       .then(({ counts }) => {
-        if (cancelled || selectedCount.current > 0 || Date.now() - startedAt > POPULAR_ORDER_TIMEOUT_MS || counts.length === 0) return;
+        if (cancelled || touched.current || Date.now() - startedAt > POPULAR_ORDER_TIMEOUT_MS || counts.length === 0) return;
         const bySlug = new Map(counts.map((item) => [item.slug, item.count]));
-        setOrder(
+        setPopularOrder(
           [...PROFESSIONAL_CATEGORIES]
             .sort((a, b) => (bySlug.get(b.slug) ?? 0) - (bySlug.get(a.slug) ?? 0))
             .map((category) => category.slug),
@@ -62,9 +65,11 @@ export function CategoryTiles({
     };
   }, [initialCity]);
 
+  const baseOrder = popularOrder ?? PROFESSIONAL_CATEGORIES.map((category) => category.slug);
+  const order = [...pinned.filter((slug) => baseOrder.includes(slug)), ...baseOrder.filter((slug) => !pinned.includes(slug))];
   const categories = order
-    ? order.map((slug) => PROFESSIONAL_CATEGORIES.find((category) => category.slug === slug)).filter((c): c is (typeof PROFESSIONAL_CATEGORIES)[number] => Boolean(c))
-    : PROFESSIONAL_CATEGORIES;
+    .map((slug) => PROFESSIONAL_CATEGORIES.find((category) => category.slug === slug))
+    .filter((c): c is (typeof PROFESSIONAL_CATEGORIES)[number] => Boolean(c));
   const isFull = value.length >= max;
 
   return (
@@ -79,7 +84,10 @@ export function CategoryTiles({
             key={category.slug}
             type="button"
             className={`cat-tile${active ? " is-on" : ""}`}
-            onClick={() => onToggle(category.slug)}
+            onClick={() => {
+              touched.current = true;
+              onToggle(category.slug);
+            }}
             aria-pressed={active}
             disabled={disabled}
             aria-label={isPrimary ? `${category.label}, principale` : category.label}
