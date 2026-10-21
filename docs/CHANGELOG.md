@@ -19726,3 +19726,13 @@ nella pagina della richiesta, non solo nell'avviso.
 - Con `DIDIT_SANDBOX=true` (§272) nessun limite: le verifiche di prova non costano.
 
 **Verifica**: `tsc` ed `eslint` dell'API, 479 test (nuovo: mezzanotte di Roma in ora legale, solare, subito dopo mezzanotte e nel giorno del cambio d'ora).
+
+## 277. Verifica identità di prova: niente dati attesi a Didit
+
+**Richiesta esplicita dell'utente** (21/10/2026, thread "Verifica fiscale e d'identità"): "mi da ancora questo errore sul sito anche se ho impostato didit sandbox true : Il documento non coincide con i dati fiscali: se c'è un errore correggilo scrivendoli come sul documento, poi rifai la verifica."
+
+**Causa**: dal §272 mandiamo a Didit nome e data di nascita attesi (`expected_details`). Nell'ambiente di prova Didit riporta i nomi mandati ma la data resta sempre quella finta (15/06/1990): segnalava `DOB_MISMATCH_WITH_PROVIDED` e rifiutava lui la verifica, prima ancora del nostro confronto (che con `DIDIT_SANDBOX=true` si salta).
+
+**Decisione presa**: con `DIDIT_SANDBOX=true` non si mandano i dati attesi. Con le chiavi vere restano.
+
+**Verifica**: `tsc` ed `eslint` dell'API, 479 test (il test di `createSession` controlla anche che in prova `expected_details` non parta).

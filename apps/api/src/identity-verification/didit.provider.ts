@@ -51,7 +51,9 @@ export class DiditIdentityProvider implements IdentityProvider {
 
   async createSession(input: { reference: string; callbackUrl: string; expected?: ExpectedDocumentPerson }): Promise<{ sessionId: string; url: string }> {
     // Didit confronta anche lui nome e data con il documento e lo segnala negli avvisi.
-    const expected = input.expected;
+    // Non in prova: Didit restituisce sempre la stessa data di nascita finta
+    // (15/06/1990) e rifiuterebbe ogni verifica per "data diversa" (§277).
+    const expected = this.sandbox ? undefined : input.expected;
     const expectedDetails = expected
       ? Object.fromEntries(
           Object.entries({ first_name: expected.firstName, last_name: expected.lastName, date_of_birth: expected.dateOfBirth?.slice(0, 10) }).filter(([, value]) => !!value),
