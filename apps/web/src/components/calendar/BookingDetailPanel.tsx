@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BRAND, buildWhatsAppLink, formatBookingAddress, formatEurCents, formatServicePriceRange, type ProfessionalBooking } from "@professionisti/shared";
+import { BRAND, buildWhatsAppLink, formatAppointmentDate, formatAppointmentTime, formatBookingAddress, formatEurCents, formatServicePriceRange, type ProfessionalBooking } from "@professionisti/shared";
 import type { JobPayment } from "@professionisti/api-client";
 import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { CardButton } from "@/components/CardButton";
@@ -186,13 +186,13 @@ export function BookingDetailPanel({
             Data e ora
           </Text>
           <Text color={brand.grafite} fontSize="$4">
-            {date.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+            {formatAppointmentDate(date, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
             {" · "}
-            {date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
+            {formatAppointmentTime(date)}
             {/* Fascia completa (richiesta esplicita dell'utente: "non
                 visualizzare solo il primo orario ma tutta la fascia
                 d'orario"), quando l'ora di fine è nota. */}
-            {endDate ? `–${endDate.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}` : ""}
+            {endDate ? `–${formatAppointmentTime(endDate)}` : ""}
           </Text>
           {/* Tipo di intervento (a domicilio/online), richiesta esplicita
               dell'utente: stesso trattamento già visibile in "Richieste

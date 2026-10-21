@@ -5,6 +5,8 @@
  * è sempre mezzanotte UTC, mai convertito al fuso del browser.
  */
 
+import { wallClockToday } from "@professionisti/shared";
+
 const WEEKDAY_LABELS_SHORT = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
 const MONTH_LABELS = [
   "Gennaio",
@@ -27,8 +29,9 @@ export function startOfDayUtc(date: Date): Date {
   return result;
 }
 
+/** Oggi in Italia (non in UTC: tra mezzanotte e le 2 sarebbe ancora ieri), docs/CHANGELOG.md §278. */
 export function todayUtc(): Date {
-  return startOfDayUtc(new Date());
+  return wallClockToday();
 }
 
 export function addDaysUtc(date: Date, days: number): Date {

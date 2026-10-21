@@ -1,6 +1,6 @@
 "use client";
 
-import type { ExternalJob, ProfessionalBooking } from "@professionisti/shared";
+import { formatAppointmentTimeRange, type ExternalJob, type ProfessionalBooking } from "@professionisti/shared";
 import { brand } from "@professionisti/ui";
 import { REQUEST_STAGE_STYLE } from "@/lib/requestStage";
 
@@ -113,7 +113,5 @@ export type AgendaListItem = {
 };
 
 export function formatAgendaTimeRange(startIso: string, endIso: string | null): string {
-  const start = new Date(startIso).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
-  if (!endIso) return start;
-  return `${start}–${new Date(endIso).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
+  return formatAppointmentTimeRange(startIso, endIso);
 }

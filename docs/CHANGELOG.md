@@ -19736,3 +19736,17 @@ nella pagina della richiesta, non solo nell'avviso.
 **Decisione presa**: con `DIDIT_SANDBOX=true` non si mandano i dati attesi. Con le chiavi vere restano.
 
 **Verifica**: `tsc` ed `eslint` dell'API, 479 test (il test di `createSession` controlla anche che in prova `expected_details` non parta).
+
+## 278. Orari uguali in tutte le viste e agenda salvata tutto o niente
+
+**Richiesta esplicita dell'utente** (21/10/2026, thread "Agenda: correzioni e restyling"): correggere i due problemi dell'agenda trovati dalla revisione esterna (`/mnt/project-files/analisi/revisione-piano-ceo.md`, punti 3 e 4).
+
+**Orari (CP-01).** Il modello giusto era già quello dell'API, delle email e del calendario allegato: gli appuntamenti (`Booking.scheduledAt`, `Quote.estimatedStartDate`, `ExternalJob.scheduledAt`, fasce dell'agenda) sono l'ora italiana "di parete" scritta in UTC (09:00 → `T09:00:00.000Z`, d'estate e d'inverno). Alcune viste però li mostravano nel fuso del browser: un preventivo alle 09:00 compariva alle 11:00 d'estate e alle 10:00 d'inverno in agenda, nel dettaglio della prenotazione, nella sezione "Intervento" del cliente, in Oggi, nel "Prossimo intervento" e nelle notifiche di cambio orario (queste in ora di Roma). Nessun dato salvato cambia.
+- Nuovo `packages/shared/src/appointmentTime.ts`: `formatAppointmentTime`/`TimeRange`/`Date` (sempre in UTC) e `wallClockNow`/`wallClockToday` (l'ora italiana di adesso nella stessa convenzione, per i confronti con "adesso").
+- Usati in agenda (`page.tsx`, `agendaHelpers.tsx`), `BookingDetailPanel`, `BookingSection`, `AgendaOverview`, Oggi (`dashboard/page.tsx`, anche la finestra "oggi e domani"), `notificationCopy`, `clientNextAction` ("Conferma che il lavoro è terminato" appariva 1-2 ore prima).
+- "Oggi" dell'agenda (`todayUtc`) e i calcoli dell'API (`startOfToday` in `professionals.service.ts`) usano il giorno italiano: tra mezzanotte e le 2 era ancora ieri.
+- Promemoria 24 ore prima (`booking-reminders.service.ts`): finestra calcolata sull'ora italiana di adesso, prima partiva 1-2 ore prima.
+
+**Disponibilità (CP-02).** `upsertMyAvailability` cancellava le fasce e poi le ricreava in due passi: se il secondo falliva l'agenda restava vuota. Ora è una sola transazione; stesso trattamento per le prestazioni del profilo e le voci del preventivo (stesso schema "cancella e ricrea"). Nella pagina Agenda, se il salvataggio non riesce le fasce tornano a quelle salvate davvero e il messaggio dice "Le modifiche non sono state salvate" (un errore vecchio non annulla un salvataggio più recente).
+
+**Verifica**: `tsc` ed `eslint` di API e web, 483 test API (nuovo `appointment-time.test.ts`: ora legale, solare, cambio d'ora del 25/10, mezzanotte italiana).

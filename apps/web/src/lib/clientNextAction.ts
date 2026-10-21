@@ -1,4 +1,5 @@
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
+import { wallClockNow } from "@professionisti/shared";
 import type { RequestStage } from "@/lib/requestStage";
 
 /**
@@ -11,7 +12,8 @@ export function clientNextAction(
   stage: RequestStage,
   request: Pick<ClientGuidedRequest, "quotes">,
   booking: Pick<ClientBooking, "status" | "scheduledAt" | "hasReview" | "clientConfirmedCompletedAt" | "issue" | "canReview"> | null,
-  now: number = Date.now(),
+  // Ora di parete in UTC, come `scheduledAt` (docs/CHANGELOG.md §278).
+  now: number = wallClockNow().getTime(),
 ): string | null {
   if (stage === "in_attesa") {
     const sent = request.quotes.filter((q) => q.status === "SENT").length;

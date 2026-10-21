@@ -1,4 +1,4 @@
-import { asScheduleChange, scheduleChangeAlternative, scheduleChangeObject } from "@professionisti/shared";
+import { asScheduleChange, formatAppointmentDate, formatAppointmentTimeRange, scheduleChangeAlternative, scheduleChangeObject } from "@professionisti/shared";
 
 /**
  * Testo simpatico per il popup "toast" quando arriva una nuova notifica
@@ -127,10 +127,10 @@ function slotLabel(value: unknown): string | null {
   if (typeof start !== "string") return null;
   const startDate = new Date(start);
   if (Number.isNaN(startDate.getTime())) return null;
-  const time = (d: Date) => d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
-  const day = startDate.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Rome" });
+  // Ora di parete in UTC come il resto degli appuntamenti (docs/CHANGELOG.md §278).
+  const day = formatAppointmentDate(startDate, { weekday: "long", day: "numeric", month: "long" });
   const endDate = typeof end === "string" ? new Date(end) : null;
-  return `${day}, ${time(startDate)}${endDate && !Number.isNaN(endDate.getTime()) ? `–${time(endDate)}` : ""}`;
+  return `${day}, ${formatAppointmentTimeRange(startDate, endDate && !Number.isNaN(endDate.getTime()) ? endDate : null)}`;
 }
 
 /**

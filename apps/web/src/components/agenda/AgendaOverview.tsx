@@ -1,8 +1,8 @@
 "use client";
 
-import type { ExternalJob, ProfessionalBooking, ProfessionalLead } from "@professionisti/shared";
+import { formatAppointmentDate, formatAppointmentTime, wallClockNow, type ExternalJob, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
 import { Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
-import { addDaysUtc, startOfWeekUtc, todayUtc, toIsoDate } from "@/lib/calendarDates";
+import { addDaysUtc, isSameDateUtc, startOfWeekUtc, todayUtc, toIsoDate } from "@/lib/calendarDates";
 import { REQUEST_STAGE_STYLE, bookingStageStyle } from "@/lib/requestStage";
 
 /**
@@ -30,21 +30,18 @@ import { REQUEST_STAGE_STYLE, bookingStageStyle } from "@/lib/requestStage";
  *    nessuna parte della pagina.
  */
 
-function describeRelativeTime(target: Date, now: Date = new Date()): string {
+/** `target` e `now` sono ore di parete in UTC (`wallClockNow`, docs/CHANGELOG.md §278). */
+function describeRelativeTime(target: Date, now: Date = wallClockNow()): string {
   const diffMin = Math.round((target.getTime() - now.getTime()) / 60000);
-  const time = target.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+  const time = formatAppointmentTime(target);
   if (diffMin <= 1) return "tra pochi minuti";
   if (diffMin < 60) return `tra ${diffMin} minuti`;
-  const sameDay = target.toDateString() === now.toDateString();
-  if (sameDay) {
+  if (isSameDateUtc(target, now)) {
     const diffHours = Math.round(diffMin / 60);
     return `oggi alle ${time} (tra ${diffHours} ${diffHours === 1 ? "ora" : "ore"})`;
   }
-  const tomorrow = new Date(now);
-  tomorrow.setDate(now.getDate() + 1);
-  if (target.toDateString() === tomorrow.toDateString()) return `domani alle ${time}`;
-  const dateLabel = target.toLocaleDateString("it-IT", { day: "numeric", month: "short" });
-  return `${dateLabel} alle ${time}`;
+  if (isSameDateUtc(target, addDaysUtc(now, 1))) return `domani alle ${time}`;
+  return `${formatAppointmentDate(target, { day: "numeric", month: "short" })} alle ${time}`;
 }
 
 export type NextAgendaItem = {
@@ -69,7 +66,7 @@ export function computeNextAgendaItem(
   onOpenBooking: (booking: ProfessionalBooking) => void,
   onOpenExternal: (job: ExternalJob) => void,
 ): NextAgendaItem | null {
-  const now = new Date();
+  const now = wallClockNow();
   const candidates: { date: Date; item: NextAgendaItem }[] = [];
 
   for (const booking of bookings ?? []) {

@@ -5,7 +5,7 @@ import type { ClientBooking } from "@professionisti/api-client";
 import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { ReportIssueModal } from "@/components/ReportIssueModal";
-import { JOB_ISSUE_LABEL, JOB_ISSUE_STATUS_LABEL, formatEurCents } from "@professionisti/shared";
+import { JOB_ISSUE_LABEL, JOB_ISSUE_STATUS_LABEL, formatAppointmentDate, formatAppointmentTimeRange, formatEurCents } from "@professionisti/shared";
 import { ClientIssueStatus } from "./ClientIssueStatus";
 import { JobPaymentStatus } from "@/components/JobPaymentStatus";
 import { TimelineModal } from "@/components/TimelineModal";
@@ -126,10 +126,9 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
       </Text>
       {/* Data dell'intervento come titolo della sezione (richiesta esplicita dell'utente, §228). */}
       <Text fontFamily="$heading" fontWeight="800" fontSize={20} color={brand.grafite}>
-        {new Date(booking.scheduledAt).toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+        {formatAppointmentDate(booking.scheduledAt, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
         {" · "}
-        {new Date(booking.scheduledAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
-        {booking.scheduledEndAt ? `–${new Date(booking.scheduledEndAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}` : ""}
+        {formatAppointmentTimeRange(booking.scheduledAt, booking.scheduledEndAt)}
       </Text>
 
       {booking.meetingLink ? (

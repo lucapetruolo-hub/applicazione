@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { agendaAttention, type ExternalJob, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
+import { agendaAttention, formatAppointmentTimeRange, type ExternalJob, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -159,7 +159,7 @@ function DashboardAgendaContent() {
         // ciecamente della forma della risposta se l'API non è ancora
         // allineata all'ultimo deploy del frontend.
         if (!Array.isArray(existing?.slots)) return;
-        setSlots(
+        setSavedSlots(
           existing.slots.map((s) => ({
             id: s.id,
             dayOfWeek: s.dayOfWeek,
@@ -214,6 +214,13 @@ function DashboardAgendaContent() {
   // (es. dopo un'azione sul pannello) mentre l'utente ha già navigato
   // altrove.
   const consumedBookingDeepLinkRef = useRef(false);
+  // Ultime fasce confermate dal server, per tornarci se un salvataggio fallisce.
+  const savedSlotsRef = useRef<SlotDraft[]>([]);
+  const persistSeqRef = useRef(0);
+  function setSavedSlots(next: SlotDraft[]) {
+    savedSlotsRef.current = next;
+    setSlots(next);
+  }
   useEffect(() => {
     if (consumedBookingDeepLinkRef.current) return;
     if (!bookings) return;
@@ -692,11 +699,21 @@ function DashboardAgendaContent() {
   // subito dopo `setSlots`, mai un salvataggio rimandato a un secondo
   // click. Riceve l'array esplicito (non legge `slots` dallo stato) per
   // evitare una closure stale nelle chiamate ravvicinate.
+  //
+  // Se il salvataggio non riesce la pagina torna alle fasce salvate davvero
+  // (docs/CHANGELOG.md §278), invece di mostrare fasce che il server non ha.
+  // `persistSeqRef` evita che un errore vecchio annulli un salvataggio più
+  // recente fatto nel frattempo.
   async function persistSlots(nextSlots: SlotDraft[]) {
     setError(null);
+    const seq = ++persistSeqRef.current;
+    const rollback = () => {
+      if (seq === persistSeqRef.current) setSlots(savedSlotsRef.current);
+    };
     for (const slot of nextSlots) {
       if (slot.end <= slot.start) {
         setError("L'orario di fine deve essere dopo l'orario di inizio in ogni fascia.");
+        rollback();
         return;
       }
     }
@@ -716,17 +733,19 @@ function DashboardAgendaContent() {
           date: slot.date ?? undefined,
         })),
       );
+      savedSlotsRef.current = nextSlots;
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
       // Aggiorna il pallino su "Agenda" nel menu e l'avviso in Oggi.
       // Stesso criterio dell'API (`agendaAttention` di packages/shared).
       if ((user?.agendaAttention ?? null) !== agendaAttention(nextSlots)) void refreshUser();
     } catch (err) {
+      rollback();
       if (err instanceof Error && err.message.includes("profilo")) {
         setProfileMissing(true);
         return;
       }
-      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+      setError(err instanceof Error ? `${err.message} Le modifiche non sono state salvate.` : "Modifiche non salvate, riprova.");
     } finally {
       setIsSubmitting(false);
     }
@@ -985,10 +1004,7 @@ function DashboardAgendaContent() {
           // resta su una sola riga anche in vista Settimana (numberOfLines
           // già presente sotto), stesso principio già applicato altrove
           // nell'agenda (BookingDetailPanel, AcceptedJobCard).
-          const startTime = new Date(booking.scheduledAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
-          const time = booking.scheduledEndAt
-            ? `${startTime}–${new Date(booking.scheduledEndAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`
-            : startTime;
+          const time = formatAppointmentTimeRange(booking.scheduledAt, booking.scheduledEndAt);
           const isCanceled = booking.status === "CANCELED" || booking.status === "NO_SHOW";
           return (
             <YStack
@@ -1025,10 +1041,7 @@ function DashboardAgendaContent() {
           );
         })}
         {dayExternalJobs.map((job) => {
-          const startTime = new Date(job.scheduledAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
-          const time = job.scheduledEndAt
-            ? `${startTime}–${new Date(job.scheduledEndAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`
-            : startTime;
+          const time = formatAppointmentTimeRange(job.scheduledAt, job.scheduledEndAt);
           const isCanceled = job.status === "CANCELED";
           return (
             <YStack
@@ -1067,10 +1080,7 @@ function DashboardAgendaContent() {
         })}
         {dayPendingQuotes.map((lead) => {
           const quote = lead.quote!;
-          const startTime = new Date(quote.estimatedStartDate).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
-          const time = quote.estimatedEndDate
-            ? `${startTime}–${new Date(quote.estimatedEndDate).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`
-            : startTime;
+          const time = formatAppointmentTimeRange(quote.estimatedStartDate, quote.estimatedEndDate);
           const clientName = lead.guidedRequest.clientAccountDeleted ? "Account eliminato" : (lead.guidedRequest.clientName ?? "Cliente");
           return (
             <YStack
