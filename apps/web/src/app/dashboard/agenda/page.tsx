@@ -1464,7 +1464,7 @@ function DashboardAgendaContent() {
                 borderRadius="$3"
                 backgroundColor={brand.calce}
                 borderWidth={1}
-                borderColor={brand.filetto}
+                borderColor={brand.bordoCampo}
               >
                 <Icon name="search" size={15} color={brand.grafite70} />
                 <input aria-label="Cerca nell'agenda"

@@ -1,6 +1,6 @@
 "use client";
 
-import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Icon, Text, YStack, brand } from "@professionisti/ui";
 import { ClientEmailFirstAuth } from "@/components/ClientEmailFirstAuth";
 
 const HEADERS = {
@@ -53,20 +53,39 @@ export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: 
             firstTimeNote="Se è la tua prima richiesta, creeremo il tuo account gratuito per seguire preventivi, messaggi e lavori."
             submitSuffix=" e invia la richiesta"
             onAuthenticated={() => onAuthenticated()}
-            renderHeader={(step) => (
-              <XStack justifyContent="space-between" alignItems="flex-start" gap="$3">
-                <YStack gap="$1" flex={1}>
-                  <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografiaScuro}>
+            renderHeader={(step, back) => (
+              // Stessa intestazione a passi della registrazione (docs/CHANGELOG.md
+              // §273): "Indietro" torna al campo email, la ✕ chiude il popup.
+              <YStack gap="$3">
+                <div className="auth-step-top">
+                  {back ? (
+                    <button type="button" className="auth-back" onClick={back}>
+                      <Icon name="chevron-left" size={20} color={brand.grafite} strokeWidth={1.75} />
+                      Indietro
+                    </button>
+                  ) : (
+                    <span className="auth-step-count" style={{ marginLeft: 0, paddingLeft: 8 }}>
+                      Passo 1 di 2
+                    </span>
+                  )}
+                  {back ? <span className="auth-step-count">Passo 2 di 2</span> : null}
+                  <button type="button" className="auth-back" onClick={onClose} aria-label="Chiudi" style={{ padding: "0 10px", marginLeft: back ? 0 : "auto" }}>
+                    <Icon name="x" size={20} color={brand.grafite70} />
+                  </button>
+                </div>
+                <div className="auth-step-bar" aria-hidden="true">
+                  <span className="is-done" />
+                  <span className={back ? "is-done" : undefined} />
+                </div>
+                <YStack gap="$1">
+                  <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.cianografiaScuro}>
                     {HEADERS[step].eyebrow}
                   </Text>
-                  <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+                  <Text tag="h2" fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
                     {HEADERS[step].title}
                   </Text>
                 </YStack>
-                <Text cursor="pointer" onPress={onClose} accessibilityRole="button" accessibilityLabel="Chiudi">
-                  <Icon name="x" size={20} color={brand.grafite70} />
-                </Text>
-              </XStack>
+              </YStack>
             )}
           />
         </YStack>

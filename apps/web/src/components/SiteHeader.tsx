@@ -22,6 +22,8 @@ import { BRAND } from "@professionisti/shared";
  * tramite il proprio CSS interno (media query a 860px) — annidarla in un
  * wrapper Tamagui `$gtMd`-only nasconderebbe anche il suo trigger mobile.
  */
+const AUTH_PAGES = ["/registrati", "/accedi", "/password-dimenticata", "/reimposta-password", "/conferma-email", "/completa-profilo"];
+
 export function SiteHeader() {
   const { user, isLoading } = useAuth();
   const [scrolled, setScrolled] = useState(false);
@@ -32,6 +34,9 @@ export function SiteHeader() {
   // 'servizi' 'come funziona' 'prezzi'" — scoped a `/cerca`/`/cerca/[categoria]`,
   // le uniche due pagine con un banner di ricerca proprio nel corpo.
   const isSearchResultsPage = pathname === "/cerca" || pathname.startsWith("/cerca/");
+  // Registrazione e accesso (docs/CHANGELOG.md §273): niente "Richiedi
+  // preventivo" in alto, l'attenzione resta sul modulo.
+  const isAuthPage = AUTH_PAGES.some((page) => pathname === page || pathname.startsWith(`${page}/`));
 
   useEffect(() => {
     function onScroll() {
@@ -141,7 +146,7 @@ export function SiteHeader() {
               risultava vero per un istante anche per un professionista già
               loggato, facendo comparire il bottone per un breve lampo ad
               ogni caricamento di pagina prima di sparire. */}
-          {!isLoading && !user?.isProfessional ? (
+          {!isLoading && !user?.isProfessional && !isAuthPage ? (
             <Link href="/preventivo" style={{ textDecoration: "none" }}>
               {/* paddingHorizontal ridotto sotto $xs (≤660px): a 320px (iPhone
                   SE, il più stretto tra i telefoni comuni) il bottone a piena

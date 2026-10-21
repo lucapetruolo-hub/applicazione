@@ -19688,3 +19688,16 @@ nella pagina della richiesta, non solo nell'avviso.
 Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove (PR #85), popup "Email verificata", "Lavoro occasionale" sotto Privato, accesso con Google.
 
 **Verifica**: typecheck e lint di web. Provato nel browser a 360, 390 e 1440px (sito locale; risposte dell'API simulate per il passo password del cliente e per il codice): nessuno scorrimento orizzontale, titolo "Registrati | Professionisti", h1 presente, scelta col tasto Tab + Invio, "Indietro" e tasto indietro del browser corretti, errore "Le password non coincidono" sotto Conferma password.
+
+## 273. Scelta dei lavori a tessere e altre migliorie di accesso e moduli
+
+**Richiesta esplicita dell'utente** (21/10/2026): "non mi piace lo stile con cui si scelgono i lavori in fase di registrazione, come si puo migliorare la scelta?" e "poi effettua le 4 migliorie" (quelle proposte dopo §272). Tra tre stili (A tessere con icona colorata, B elenco con caselle, C ricerca + più scelti, foto in `/mnt/project-files/anteprime/scelta-lavori/`) Luca ha scelto "A".
+
+**Decisione presa**:
+- **Scelta dei lavori a tessere** (`CategoryMultiPicker`, usato in registrazione, `/dashboard/profilo` e `/admin/professionisti`): griglia di tessere (`.cat-tiles`, due colonne da telefono e di più dove c'è spazio) con l'icona colorata della categoria (`CategoryIcon`/`CATEGORY_ACCENT`, le stesse della home), spunta verde sulle scelte, "Principale" sotto la prima, "N su 3" in alto. Sono pulsanti veri (`aria-pressed`, tastiera, risposta al tocco). Tolto il bordo dorato animato di §248. La riga per cambiare la principale resta ("Cambia la principale:").
+- **Bordi visibili in tutti i moduli** (migliora 1): `brand.bordoCampo` anche in `Field` (con etichetta a 13px), nei campi, menu a tendina e aree di testo del sito (richiesta di preventivo, account, profilo, dati fiscali, agenda, segnalazioni, finestre di recensione e problemi, admin). Il filetto resta per i divisori.
+- **Popup di accesso della richiesta** (`InlineAuthGate`, migliora 2): "Passo 1 di 2"/"Passo 2 di 2" con la barra, "Indietro" che torna al campo email, ✕ per chiudere, titolo h2.
+- **Accedi e Password dimenticata** (migliora 3): stessa intestazione della registrazione (`AuthStepHeader`, ora in `components/AuthStepHeader.tsx`): icona, titolo h1; in "Password dimenticata" "Indietro" (all'accesso o al campo email) e passi 1-2 al posto del link "Torna all'accesso". Errori sotto il campo giusto. Titolo della scheda "Accedi" (`accedi/layout.tsx`).
+- **Niente "Richiedi preventivo" in alto** (migliora 4) in registrazione, accesso, password dimenticata, reimposta password, conferma email e completa profilo (`SiteHeader`, `AUTH_PAGES`).
+
+**Verifica**: typecheck e lint di web. Provato nel browser a 360, 390 e 1280px: tessere su due colonne da telefono e tre nella scheda da computer, nessuno scorrimento orizzontale, scelta con la barra spaziatrice, titolo "Accedi | Professionisti", "Richiedi preventivo" assente su /accedi e /registrati.

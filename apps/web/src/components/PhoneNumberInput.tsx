@@ -246,7 +246,7 @@ export function PhoneNumberInput({ value, onChange, style, placeholder = "Numero
           align-items: stretch;
           width: 100%;
           box-sizing: border-box;
-          border: 1px solid ${brand.filetto};
+          border: 1px solid ${brand.bordoCampo};
           border-radius: 4px;
           background: #ffffff;
         }

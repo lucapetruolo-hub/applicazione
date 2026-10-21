@@ -21,7 +21,7 @@ const textareaStyle = {
   minHeight: 70,
   padding: 10,
   borderRadius: 8,
-  border: `1px solid ${brand.filetto}`,
+  border: `1px solid ${brand.bordoCampo}`,
   fontSize: 14,
   fontFamily: "inherit",
 };

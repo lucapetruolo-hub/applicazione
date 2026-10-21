@@ -1,13 +1,13 @@
 "use client";
 
 import { useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { passwordResetRequestSchema } from "@professionisti/shared";
 import { Button, Text, YStack, brand } from "@professionisti/ui";
 import { AuthField } from "@/components/AuthField";
 import { EmailCodeForm } from "@/components/EmailCodeForm";
 import { AuthCard, AuthPageBackground } from "@/components/AuthPageBackground";
+import { AuthStepHeader } from "@/components/AuthStepHeader";
 import { apiClient } from "@/lib/apiClient";
 import { TURNSTILE_PENDING_MESSAGE, TurnstileWidget, isTurnstileEnabled } from "@/components/TurnstileWidget";
 
@@ -55,14 +55,14 @@ export function PasswordDimenticataContent() {
   return (
     <AuthPageBackground>
       <AuthCard>
-        <YStack gap="$2">
-          <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografiaScuro}>
-            Password dimenticata
-          </Text>
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
-            {sentTo ? "Controlla la tua email" : "Reimposta la password"}
-          </Text>
-        </YStack>
+        {/* Stessa intestazione della registrazione (docs/CHANGELOG.md §273):
+            "Indietro" torna all'accesso, o all'email dopo l'invio del codice. */}
+        <AuthStepHeader
+          icon={sentTo ? "mail" : "key-round"}
+          title={sentTo ? "Controlla la tua email" : "Reimposta la password"}
+          step={{ current: sentTo ? 2 : 1, total: 2 }}
+          onBack={sentTo ? () => setSentTo(null) : () => router.push("/accedi")}
+        />
 
         {sentTo ? (
           <YStack gap="$4">
@@ -87,7 +87,9 @@ export function PasswordDimenticataContent() {
           </YStack>
         ) : (
           <YStack gap="$4">
-            <Text color={brand.grafite70}>Scrivi l&apos;email del tuo account: ti mandiamo un codice per sceglierne una nuova.</Text>
+            <Text fontSize="$3" color={brand.grafite70} textAlign="center">
+              Ti mandiamo un codice per sceglierne una nuova.
+            </Text>
             <AuthField
               label="Email"
               value={email}
@@ -98,11 +100,12 @@ export function PasswordDimenticataContent() {
               autoComplete="username"
               nativeID="email"
               accessibilityLabel="Email"
+              error={error && error !== TURNSTILE_PENDING_MESSAGE ? error : undefined}
               onSubmitEditing={handleSubmit}
             />
             <TurnstileWidget onTokenChange={setTurnstileToken} resetSignal={turnstileReset} />
-            {error ? (
-              <Text color={brand.urgenza} fontSize="$3">
+            {error === TURNSTILE_PENDING_MESSAGE ? (
+              <Text role="alert" color={brand.urgenza} fontSize="$3">
                 {error}
               </Text>
             ) : null}
@@ -112,11 +115,6 @@ export function PasswordDimenticataContent() {
           </YStack>
         )}
 
-        <Link href="/accedi" style={{ textDecoration: "none", textAlign: "center" }}>
-          <Text fontSize="$3" color={brand.cianografiaScuro} textAlign="center" fontWeight="600">
-            Torna all&apos;accesso
-          </Text>
-        </Link>
       </AuthCard>
     </AuthPageBackground>
   );

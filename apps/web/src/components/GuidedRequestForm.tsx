@@ -79,7 +79,7 @@ function pickableSlotLabel(slot: PickableAgendaSlot): string {
 const fieldInputStyle = {
   padding: 12,
   borderRadius: 4,
-  border: `1px solid ${brand.filetto}`,
+  border: `1px solid ${brand.bordoCampo}`,
   fontSize: 15,
   fontFamily: "inherit",
   color: brand.grafite,
@@ -950,7 +950,7 @@ export function GuidedRequestForm({
               style={{
                 padding: 12,
                 borderRadius: 4,
-                border: `1px solid ${brand.filetto}`,
+                border: `1px solid ${brand.bordoCampo}`,
                 fontSize: 15,
                 fontFamily: "inherit",
                 backgroundColor: brand.calce,
@@ -977,7 +977,7 @@ export function GuidedRequestForm({
             style={{
               padding: 12,
               borderRadius: 4,
-              border: `1px solid ${brand.filetto}`,
+              border: `1px solid ${brand.bordoCampo}`,
               fontSize: 15,
               fontFamily: "inherit",
               color: brand.grafite,

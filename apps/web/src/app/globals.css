@@ -1188,7 +1188,7 @@ a.admin-kpi:hover {
 .admin-input {
   padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #9c8e7f;
   font: inherit;
   font-size: 14px;
   background: #ffffff;
@@ -1571,7 +1571,7 @@ a.admin-kpi:hover {
   font: inherit;
   font-size: 14px;
   padding: 7px 10px;
-  border: 1px solid #f0dcc0;
+  border: 1px solid #9c8e7f;
   border-radius: 10px;
   background: #ffffff;
   color: #2b2420;
@@ -2982,42 +2982,102 @@ a.admin-kpi:hover {
 }
 
 /* Registrazione del professionista (docs/CHANGELOG.md §248, richiesta
-   dell'utente). Categoria principale: bordo dorato che gira piano attorno
-   alla scelta, con un alone leggero. Caselle obbligatorie non spuntate:
-   riga rossa con una scossa breve. Con "riduci movimento" restano fermi. */
-@property --gold-angle {
-  syntax: "<angle>";
-  initial-value: 0deg;
-  inherits: false;
+   dell'utente). Caselle obbligatorie non spuntate: riga rossa con una
+   scossa breve. Con "riduci movimento" resta ferma.
+   Scelta dei lavori a tessere (§273, stile A scelto dall'utente al posto
+   del bordo dorato animato): due colonne da telefono, di più dove c'è
+   spazio; spunta verde sulle scelte, "Principale" sotto la prima. */
+.cat-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+  gap: 10px;
 }
-.category-chip-primary {
-  /* 2px invece di 1px, con -1px di margine: stessa misura delle altre. */
-  border-width: 2px !important;
-  margin: -1px;
-  border-color: transparent !important;
-  background:
-    linear-gradient(#fff8e6, #fff8e6) padding-box,
-    conic-gradient(from var(--gold-angle), #c8961f, #c8961f 55%, #f6d77e 68%, #fffbea 75%, #f6d77e 82%, #c8961f) border-box !important;
-  box-shadow: 0 0 0 3px rgba(217, 164, 65, 0.16);
-  animation:
-    gold-spin 3.2s linear infinite,
-    gold-glow 2.4s ease-in-out infinite;
+.cat-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 96px;
+  padding: 12px 8px;
+  border: 1px solid #f0dcc0;
+  border-radius: 16px;
+  background: #ffffff;
+  font: inherit;
+  color: #2b2420;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 0.15s cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-@keyframes gold-spin {
-  to {
-    --gold-angle: 360deg;
-  }
+.cat-tile:hover:not(:disabled) {
+  border-color: #189a63;
 }
-@keyframes gold-glow {
-  50% {
-    box-shadow: 0 0 0 4px rgba(217, 164, 65, 0.28), 0 2px 12px rgba(217, 164, 65, 0.3);
+.cat-tile:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.cat-tile:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.cat-tile.is-on {
+  /* 2px con 1px di padding in meno: la tessera non cambia misura. */
+  border: 2px solid #189a63;
+  padding: 11px 7px;
+  background: #f2fbf6;
+}
+.cat-tile:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.cat-tile-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cat-tile-label {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+}
+.cat-tile-primary {
+  margin-top: -2px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fff3d6;
+  color: #8a5a00;
+  font-size: 11px;
+  font-weight: 700;
+}
+.cat-tile-check {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #189a63;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cat-tile {
+    transition: none;
   }
 }
 .consent-invalid {
   animation: email-code-shake 0.3s ease;
 }
 @media (prefers-reduced-motion: reduce) {
-  .category-chip-primary,
   .consent-invalid {
     animation: none;
   }
