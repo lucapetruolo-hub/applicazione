@@ -89,6 +89,11 @@ services:
         sync: false
       - key: DIDIT_WEBHOOK_SECRET
         sync: false
+      # true solo con la chiave di un'applicazione Didit di prova: Didit
+      # restituisce dati finti e il confronto con i dati fiscali si salta
+      # (docs/CHANGELOG.md §272). Da togliere al lancio.
+      - key: DIDIT_SANDBOX
+        sync: false
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
       - key: CLOUDINARY_API_KEY

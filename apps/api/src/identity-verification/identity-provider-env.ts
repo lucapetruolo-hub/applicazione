@@ -6,7 +6,7 @@ export function identityProviderFromEnv(): IdentityProvider | null {
   const apiKey = process.env.DIDIT_API_KEY?.trim();
   const workflowId = process.env.DIDIT_WORKFLOW_ID?.trim();
   if (!apiKey || !workflowId) return null;
-  return new DiditIdentityProvider(apiKey, workflowId, process.env.DIDIT_WEBHOOK_SECRET?.trim() || null);
+  return new DiditIdentityProvider(apiKey, workflowId, process.env.DIDIT_WEBHOOK_SECRET?.trim() || null, process.env.DIDIT_SANDBOX?.trim() === "true");
 }
 
 /**

@@ -241,9 +241,12 @@ export class IdentityVerificationService {
 
   private async createSession(professionalProfileId: string): Promise<{ sessionId: string; url: string } | null> {
     if (!this.provider) return null;
+    const fiscal = await this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId }, include: FISCAL_INCLUDE });
+    const expected = expectedPerson(fiscal);
     try {
       return await this.provider.createSession({
         reference: professionalProfileId,
+        expected: { firstName: expected.firstName, lastName: expected.lastName, dateOfBirth: expected.dateOfBirth },
         callbackUrl: `${this.frontendUrl()}/dashboard/verifica-identita?ritorno=1`,
       });
     } catch (error) {
@@ -411,15 +414,21 @@ export class IdentityVerificationService {
         next = { status: "EXPIRED", reason: "La verifica non è stata completata in tempo: puoi ricominciarla." };
         break;
       case "DECLINED":
-        next = { status: "DECLINED", reason: DECLINED_REASON };
+        next = { status: "DECLINED", reason: decision.reason ?? DECLINED_REASON };
         break;
       // Nessun caso passa all'admin (decisione dell'utente, §255): se il
       // controllo automatico non conferma, il professionista sa cosa
       // correggere e rifà la verifica da solo.
       case "REVIEW":
-        next = { status: "DECLINED", reason: UNCLEAR_REASON };
+        next = { status: "DECLINED", reason: decision.reason ?? UNCLEAR_REASON };
         break;
       case "APPROVED": {
+        // Ambiente di prova di Didit: i dati del documento sono finti, il confronto non avrebbe senso.
+        if (this.provider?.sandbox) {
+          this.logger.warn(`Verifica ${row.id} approvata in prova (DIDIT_SANDBOX): confronto con i dati fiscali saltato.`);
+          next = { status: "APPROVED", reason: null };
+          break;
+        }
         const match = matchDocumentToFiscal(decision.person, expectedPerson(owner.fiscalProfile));
         next = match.matched ? { status: "APPROVED", reason: null } : { status: "DECLINED", reason: match.reason };
         break;

@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { IdentityProviderError, type DocumentPerson, type IdentityDecision, type IdentityProvider } from "./identity-provider";
+import { IdentityProviderError, type DocumentPerson, type ExpectedDocumentPerson, type IdentityDecision, type IdentityProvider } from "./identity-provider";
 
 const API = "https://verification.didit.me/v3";
 const TIMEOUT_MS = 10_000;
@@ -20,6 +20,13 @@ export class DiditIdentityProvider implements IdentityProvider {
     private readonly apiKey: string,
     private readonly workflowId: string,
     private readonly webhookSecret: string | null,
+    /**
+     * `DIDIT_SANDBOX=true` su Render con la chiave di un'applicazione Didit
+     * in modalità prova: Didit approva con dati finti (sempre nato il
+     * 15/06/1990), quindi il nostro confronto con i dati fiscali fallirebbe
+     * sempre (docs/CHANGELOG.md §272). Da togliere con la chiave vera.
+     */
+    readonly sandbox = false,
   ) {}
 
   consoleUrl(): string | null {
@@ -42,10 +49,23 @@ export class DiditIdentityProvider implements IdentityProvider {
     return body;
   }
 
-  async createSession(input: { reference: string; callbackUrl: string }): Promise<{ sessionId: string; url: string }> {
+  async createSession(input: { reference: string; callbackUrl: string; expected?: ExpectedDocumentPerson }): Promise<{ sessionId: string; url: string }> {
+    // Didit confronta anche lui nome e data con il documento e lo segnala negli avvisi.
+    const expected = input.expected;
+    const expectedDetails = expected
+      ? Object.fromEntries(
+          Object.entries({ first_name: expected.firstName, last_name: expected.lastName, date_of_birth: expected.dateOfBirth?.slice(0, 10) }).filter(([, value]) => !!value),
+        )
+      : {};
     const body = await this.call("/session/", {
       method: "POST",
-      body: JSON.stringify({ workflow_id: this.workflowId, vendor_data: input.reference, callback: input.callbackUrl, language: "it" }),
+      body: JSON.stringify({
+        workflow_id: this.workflowId,
+        vendor_data: input.reference,
+        callback: input.callbackUrl,
+        language: "it",
+        ...(Object.keys(expectedDetails).length > 0 ? { expected_details: expectedDetails } : {}),
+      }),
     });
     const sessionId = body.session_id;
     const url = body.url;
@@ -122,6 +142,8 @@ function diditWarnings(body: Record<string, unknown>): string[] {
   const collect = (value: unknown) => {
     if (!Array.isArray(value)) return;
     for (const warning of value) {
+      // Gli avvisi solo informativi non pesano sull'esito.
+      if (str((warning as Record<string, unknown> | null)?.log_type)?.toLowerCase() === "information") continue;
       const code = str((warning as Record<string, unknown> | null)?.risk) ?? str((warning as Record<string, unknown> | null)?.short_description);
       if (code) codes.add(code);
     }
@@ -151,5 +173,33 @@ export function diditDecision(body: Record<string, unknown>): IdentityDecision {
         personalNumber: str(entry.personal_number) ?? str(entry.tax_number),
       }
     : null;
-  return { providerStatus, outcome, person, warnings: diditWarnings(body) };
+  const warnings = diditWarnings(body);
+  return { providerStatus, outcome, person, warnings, reason: diditReason(warnings) };
+}
+
+/**
+ * Motivo del rifiuto per il professionista, dal primo avviso riconosciuto
+ * (codici di Didit, docs.didit.me "warnings"; miglioria scelta dall'utente,
+ * docs/CHANGELOG.md §272). Frasi brevi che dicono cosa rifare; l'ordine
+ * conta: prima i motivi che non si risolvono rifacendo la foto.
+ */
+const REASONS: [RegExp, string][] = [
+  [/MINIMUM_AGE|AGE_BELOW/, "Per lavorare sul sito serve avere almeno 18 anni."],
+  [/DOCUMENT_EXPIRED/, "Il documento è scaduto: rifai la verifica con un documento valido."],
+  [/DUPLICATED|BLOCKLIST/, "Questo documento o questo volto risultano già usati per un altro account: scrivici dalla pagina Contatti."],
+  [/SCREEN_CAPTURE|PRINTED_COPY|PUBLIC_DOCUMENT|PORTRAIT_MANIPULATION/, "Serve il documento originale: non una foto presa da uno schermo né una fotocopia."],
+  [/NOT_SUPPORTED|COULD_NOT_RECOGNIZE|COULD_NOT_DETECT_DOCUMENT_TYPE|HAS_NO_PORTRAIT/, "Documento non riconosciuto: usa carta d'identità, patente o passaporto."],
+  [/SIDES_MISMATCH/, "Fronte e retro non erano dello stesso documento: rifai la verifica fotografando lo stesso documento."],
+  [/MISMATCH_WITH_PROVIDED|NAME_DIFFERENT|DATA_MISMATCH_BETWEEN/, "Il documento non coincide con i dati fiscali: se c'è un errore correggilo scrivendoli come sul documento, poi rifai la verifica."],
+  [/FACE_MATCH|FACE_SIMILARITY/, "Il selfie non somiglia abbastanza alla foto del documento: rifallo con il viso ben illuminato, senza occhiali né cappello."],
+  [/LIVENESS|NO_FACE|MULTIPLE_FACES|FACE_ATTACK|CAPTURED_DOCUMENT/, "Il selfie non è riuscito: rifallo da solo, guardando la fotocamera, con il viso ben illuminato."],
+  [/BLURRY|RESOLUTION|QUALITY_TOO_LOW/, "La foto del documento era sfocata: rifalla tenendo fermo il telefono."],
+  [/TOO_DARK|TOO_BRIGHT/, "Troppa o poca luce sul documento: rifai la foto con una luce uniforme, senza riflessi."],
+  [/NOT_FULLY_VISIBLE|OCCLUSION/, "Il documento non si vedeva per intero: inquadralo tutto, senza dita sopra."],
+  [/NOT_DETECTED|VALIDATION_FAILED|INVALID_DATE|FORMAT_MISMATCH|NOT_SAME|DATA_INCONSISTENT|SIGNATURE_INVALID/, "Non siamo riusciti a leggere i dati del documento: rifai la foto più nitida, con buona luce e senza riflessi."],
+];
+
+export function diditReason(warnings: string[]): string | null {
+  for (const [pattern, reason] of REASONS) if (warnings.some((code) => pattern.test(code))) return reason;
+  return null;
 }
