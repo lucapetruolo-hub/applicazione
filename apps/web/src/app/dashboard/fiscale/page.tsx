@@ -7,6 +7,7 @@ import { Button, Field, Icon, Surface, Section, Text, XStack, YStack, brand, Bad
 import type { ProfessionalFiscalProfile, FiscalVerificationStatus, PayoutIbanView } from "@professionisti/api-client";
 import { birthDateFromCodiceFiscale, birthPlaceFromCodiceFiscale, checkFiscalId, findComuneByName, isValidCodiceFiscale, fiscalFieldErrors, professionalFiscalProfileSchema, sexFromCodiceFiscale, taxIdCheckMessage, type MyVerificationStatus, type TaxIdKind } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
+import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { PayoutIbanCard } from "@/components/PayoutIbanCard";
 import { useAuth } from "@/lib/AuthContext";
 import { JourneyProgress, journeyCurrent, setupJourney } from "@/components/verification/SetupJourney";
@@ -141,6 +142,10 @@ function DashboardFiscaleContent() {
   const [prefillApplied, setPrefillApplied] = useState(false);
 
   const [profile, setProfile] = useState<ProfessionalFiscalProfile | null | undefined>(undefined);
+  // Dati non caricati (API in errore): mai il modulo vuoto, come se non ci
+  // fossero dati salvati (docs/CHANGELOG.md §285).
+  const [profileLoadFailed, setProfileLoadFailed] = useState(false);
+  const [profileLoadAttempt, setProfileLoadAttempt] = useState(0);
   const [entityType, setEntityType] = useState<"PRIVATE_INDIVIDUAL" | "SOLE_PROPRIETOR" | "BUSINESS" | "">("");
   // Tipo già deciso: quello salvato, altrimenti quello della registrazione.
   const lockedEntityType: EntityType | null = isEntityType(profile?.entityType)
@@ -241,8 +246,8 @@ function DashboardFiscaleContent() {
           setProfile(null);
         }
       })
-      .catch(() => setProfile(null));
-  }, [token]);
+      .catch(() => setProfileLoadFailed(true));
+  }, [token, profileLoadAttempt]);
 
   // Applica la categoria scelta nella schermata precedente una sola volta
   // (mai su ogni render/refetch), e mai sovrascrivendo un entityType già
@@ -398,6 +403,20 @@ function DashboardFiscaleContent() {
 
   const holderName =
     entityType === "BUSINESS" ? (fields.businessName ?? "") : [fields.fiscalFirstName, fields.fiscalLastName].filter(Boolean).join(" ");
+
+  if (profileLoadFailed) {
+    return (
+      <Section title="Dati fiscali e pagamenti">
+        <LoadErrorNotice
+          title="Non riusciamo a caricare i tuoi dati"
+          onRetry={() => {
+            setProfileLoadFailed(false);
+            setProfileLoadAttempt((n) => n + 1);
+          }}
+        />
+      </Section>
+    );
+  }
 
   if (isLoading || profile === undefined) {
     return (

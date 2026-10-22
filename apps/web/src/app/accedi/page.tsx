@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { BRAND, emailPasswordSchema } from "@professionisti/shared";
+import { BRAND, emailPasswordSchema, safeInternalPath } from "@professionisti/shared";
 import { Button, Icon, Text, YStack, brand } from "@professionisti/ui";
 import { AuthField } from "@/components/AuthField";
 import { apiClient } from "@/lib/apiClient";
@@ -27,7 +27,8 @@ function AccediForm() {
   // /dashboard/profilo) vince sempre; senza, un professionista va dritto
   // in Dashboard invece che sulla home — richiesta esplicita dell'utente,
   // sulla home non ha nulla da fare appena entrato.
-  const explicitRedirect = searchParams.get("redirect");
+  // Solo percorsi interni: mai un altro sito (safeInternalPath).
+  const explicitRedirect = safeInternalPath(searchParams.get("redirect"));
   const { login } = useAuth();
 
   const [email, setEmail] = useState("");

@@ -802,6 +802,21 @@ export type RevenueAnalyticsSummary = {
   monthlySeries: RevenueMonthlyPoint[];
 };
 
+/**
+ * Errore di una risposta dell'API con il codice HTTP: serve a distinguere
+ * "non esiste" (404) da "API non raggiungibile o in errore", che prima
+ * finivano entrambi in una pagina vuota o "non trovata" (docs/CHANGELOG.md §284).
+ */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 function extractErrorMessage(body: unknown, fallback: string): string {
   if (body && typeof body === "object") {
     const record = body as Record<string, unknown>;
@@ -833,7 +848,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     const body = await response.json().catch(() => null);
 
     if (!response.ok) {
-      throw new Error(extractErrorMessage(body, `Richiesta API fallita: ${response.status} ${response.statusText}`));
+      throw new ApiError(extractErrorMessage(body, `Richiesta API fallita: ${response.status} ${response.statusText}`), response.status);
     }
 
     return body as T;
@@ -852,7 +867,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     const body = await response.json().catch(() => null);
 
     if (!response.ok) {
-      throw new Error(extractErrorMessage(body, `Richiesta API fallita: ${response.status} ${response.statusText}`));
+      throw new ApiError(extractErrorMessage(body, `Richiesta API fallita: ${response.status} ${response.statusText}`), response.status);
     }
 
     return body as T;

@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { apiClient } from "../../../lib/apiClient";
 import { SITE_URL } from "@/lib/siteUrl";
+import { ApiError } from "@professionisti/api-client";
 import { BRAND } from "@professionisti/shared";
+import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { ProfessionalDetailContent } from "./ProfessionalDetailContent";
 
 type PageParams = { id: string };
@@ -26,6 +28,15 @@ export async function generateMetadata({ params }: { params: PageParams }): Prom
   } catch {
     return {};
   }
+}
+
+/**
+ * JSON dentro un `<script>`: `<` diventa `\u003c`, così un nome attività con
+ * "</script>" non chiude lo script e non inserisce HTML nella pagina (XSS,
+ * docs/CHANGELOG.md §283). Il JSON resta identico per chi lo legge.
+ */
+function jsonForScript(value: unknown): string {
+  return JSON.stringify(value).replace(/</g, "\\u003c").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
 }
 
 export default async function ProfessionalDetailPage({ params }: { params: PageParams }) {
@@ -56,7 +67,7 @@ export default async function ProfessionalDetailPage({ params }: { params: PageP
 
     return (
       <>
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonForScript(jsonLd) }} />
         {/* Suspense richiesto da useSearchParams (App Router) in
             ProfessionalDetailContent — legge `?modalita=` per preselezionare
             il tab dell'agenda quando si arriva da una ricerca "Online". */}
@@ -65,7 +76,14 @@ export default async function ProfessionalDetailPage({ params }: { params: PageP
         </Suspense>
       </>
     );
-  } catch {
-    notFound();
+  } catch (err) {
+    // "Non trovata" solo se l'API dice che il profilo non c'è. Se l'API non
+    // risponde: "Riprova", non un falso 404 (docs/CHANGELOG.md §284).
+    if (err instanceof ApiError && (err.status === 404 || err.status === 400)) notFound();
+    return (
+      <div style={{ width: "100%", maxWidth: 720, margin: "0 auto", padding: "48px 16px" }}>
+        <LoadErrorNotice title="Non riusciamo a caricare questo profilo" backHref="/cerca" backLabel="Torna alla ricerca" />
+      </div>
+    );
   }
 }

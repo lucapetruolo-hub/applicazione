@@ -19803,3 +19803,65 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 - Oggi il sito resta `noindex`: la sezione serve già ai clienti e conta per Google dal lancio, senza altro da fare.
 
 **Verifica**: typecheck e lint di web. Provato col sito locale e i dati veri dell'API: su `/cerca/idraulico/latina` compaiono solo "Elettricista a Latina" e "Imbianchino a Latina" (le categorie con professionisti a Latina), su `/cerca/idraulico` le 8 nazionali; a 390 e 1280px nessuno scorrimento orizzontale.
+
+## 283. Profilo pubblico e accesso più sicuri, privacy aggiornata su Google
+
+**Richiesta esplicita dell'utente** (21/10/2026, thread "Revisione esterna del piano CEO"): dopo la revisione del piano fatta da un'altra IA, "fai subito le pr che ritieni" (l'agenda va in un thread a parte).
+
+**Problemi verificati sul codice**:
+- Il JSON-LD del profilo pubblico (`professionista/[id]/page.tsx`) usava `JSON.stringify` dentro `<script>`: un nome attività con `</script>` chiudeva lo script e poteva inserire HTML nella pagina (XSS salvato).
+- `/accedi` mandava dove diceva `?redirect=` senza controllo: un link fatto apposta poteva portare su un altro sito subito dopo l'accesso. Il ritorno da Google controllava solo `/` e `//`, non `/\host`.
+- La privacy diceva che il pulsante di accesso con Google si carica solo dopo il consenso: dal §265 non c'è più nessuno script Google per l'accesso.
+
+**Decisione presa**:
+- `jsonForScript` scrive `<` come `<` (più U+2028/U+2029): JSON identico per Google, nessun tag chiudibile.
+- `safeInternalPath` in `packages/shared/src/safeRedirect.ts`: solo percorsi del sito, rifiuta altri siti, `//`, barre rovesciate, caratteri di controllo. Usato da `/accedi` e `/accesso-google`; un valore non sicuro porta alla destinazione normale (Dashboard o home).
+- Privacy (aggiornata al 21 ottobre 2026): mappa interattiva solo col consenso, accesso Google in una finestra di Google solo quando lo scegli, immagine fissa della mappa e suggerimenti degli indirizzi chiesti dal nostro server.
+
+**Verifica**: test `safe-redirect.test.ts` (percorsi buoni e cattivi), typecheck e lint di web e api.
+
+## 284. Ricerca e profilo: "Riprova" quando l'API non risponde
+
+**Richiesta esplicita dell'utente** (21/10/2026, thread "Revisione esterna del piano CEO"): stessa richiesta del §283 (punto 5 della revisione: errori mostrati come assenza di dati).
+
+**Problema**: se l'API non rispondeva (es. Render che si risveglia), `/cerca` e `/cerca/[categoria]` mostravano "Per ora non ci sono professionisti in questa zona" con l'invito a mandare la richiesta, e `/professionista/[id]` dava "pagina non trovata".
+
+**Decisione presa**:
+- `ApiError` in `packages/api-client` (errore con il codice HTTP, sempre un `Error`: nessun controllo esistente cambia).
+- Ricerca: con l'API in errore il riquadro diventa `LoadErrorNotice` ("Non riusciamo a caricare i professionisti", "Riprova tra qualche secondo", pulsante "Riprova"). Riprova da sola una volta dopo 15 secondi.
+- Profilo: "pagina non trovata" solo se l'API risponde 404 (o 400 per un id non valido); altrimenti lo stesso riquadro con "Non riusciamo a caricare questo profilo".
+- `app/error.tsx`: "Riprova" ricarica anche i dati dal server (`router.refresh()` + `reset`), prima ridisegnava lo stesso errore.
+
+**Verifica**: typecheck e lint del web; provato con l'API spenta a 390 e 1280px (anteprime in `anteprime/errori-caricamento/`).
+
+## 285. "Riprova" anche nell'area professionista, Contatti e banner cookie sui telefoni piccoli
+
+**Richiesta esplicita dell'utente** (22/10/2026, thread "Revisione esterna del piano CEO"): "le migliorie vanno bene tutte, procedi ora con quelle che ritieni e mettile nelle cose da fare prima del lancio per quelle che ritieni".
+
+**Problemi verificati**:
+- `/dashboard/profilo`: se il profilo non arrivava dall'API, si apriva il modulo vuoto come per un profilo nuovo (salvandolo si sarebbero persi i dati).
+- `/dashboard/fiscale`: stessa cosa con i dati fiscali.
+- `/dashboard/richieste`: qualunque errore diceva "Crea prima il tuo profilo professionista".
+- `/le-mie-richieste`: un errore sulle prenotazioni le azzerava e spostava le richieste di fase fino al giro successivo.
+- `/contatti` a 320 e 360px: largo 364px (riquadri con `minWidth` 340 e 300), si scorreva di lato.
+- Banner cookie a 320×568: il limite di altezza (15% dello schermo) tagliava i pulsanti "Rifiuta"/"Accetta".
+
+**Decisione presa**:
+- `LoadErrorNotice` (§284) accetta `onRetry` per le pagine client e un link secondario. Profilo, Dati fiscali e Richieste mostrano "Non riusciamo a caricare…" con "Riprova" al posto del modulo vuoto o dell'invito a creare il profilo.
+- Profilo pubblico non caricato: anche "Torna alla ricerca".
+- `/le-mie-richieste`: in errore restano le prenotazioni già caricate.
+- `/contatti`: riquadri che si restringono (`flexBasis` 340/300 con `minWidth` 0), margini di 16px e riquadri meno imbottiti sul telefono.
+- Banner cookie: mai tagliato (altezza massima 40% con scorrimento interno solo come garanzia).
+- Checklist di lancio: prove automatiche nel browser (punto 26) e misure del percorso (punto 27); elenchi admin con totale tra le cose da fare dopo il lancio.
+
+**Verifica**: typecheck e lint del web; nel browser `/contatti` largo 320 e 360px esatti, pulsanti del banner dentro lo schermo a 320×568; anteprime in `anteprime/errori-caricamento/`.
+
+## 286. "Riprova" anche in Oggi e Abbonamento
+
+**Richiesta esplicita dell'utente** (22/10/2026, thread "Revisione esterna del piano CEO"): "effettua miglioria 2 e unisci" (miglioria proposta dopo il §285).
+
+**Problema**: in `/dashboard` (Oggi), se richieste o appuntamenti non arrivavano dall'API, restava un messaggio tecnico in rosso e i riquadri restavano sugli scheletri di caricamento per sempre; anche "Il tuo andamento" restava sugli scheletri. In `/dashboard/abbonamento` c'era solo il messaggio in rosso.
+
+**Decisione presa**: `LoadErrorNotice` con "Riprova" al posto dei contatori e delle sezioni "Da rispondere ora" e "Oggi e domani" ("Non riusciamo a caricare richieste e appuntamenti"); "Il tuo andamento" si nasconde se non si carica; in Abbonamento "Non riusciamo a caricare il tuo abbonamento" con "Riprova". Gli avvisi in alto (pausa, percorso profilo, agenda) restano come prima.
+
+**Verifica**: typecheck e lint del web.
