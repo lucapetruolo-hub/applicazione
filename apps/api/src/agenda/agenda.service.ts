@@ -3,6 +3,7 @@ import type { Prisma, PrismaClient } from "@professionisti/database";
 import {
   agendaWeekTemplateSchema,
   dayPartOf,
+  ITALIAN_COMUNI,
   DEFAULT_WEEK_TEMPLATE,
   ZONE_DEMAND_MIN_REQUESTS,
   type AgendaWeekTemplate,
@@ -11,6 +12,7 @@ import {
   type ZoneDemand,
   type ZoneDemandTip,
 } from "@professionisti/shared";
+import { calculateDistanceKm } from "../common/geo.util";
 import { PRISMA } from "../prisma/prisma.module";
 import { WeatherService } from "./weather.service";
 
@@ -37,6 +39,11 @@ export function zoneDemandTips(requests: { preferredDate: Date | null; preferred
     .filter((tip) => tip.count >= ZONE_DEMAND_MIN_TIP)
     .sort((a, b) => b.count - a.count || a.weekday - b.weekday)
     .slice(0, 2);
+}
+
+/** Comuni entro il raggio di lavoro, per contare le richieste in zona. */
+export function comuniWithinRadius(latitude: number, longitude: number, radiusKm: number): string[] {
+  return ITALIAN_COMUNI.filter((c) => calculateDistanceKm(latitude, longitude, c.lat, c.lon) <= radiusKm).map((c) => c.name);
 }
 
 @Injectable()
@@ -68,18 +75,32 @@ export class AgendaService {
     return this.weatherService.alerts(profile.latitude, profile.longitude);
   }
 
-  /** Richieste in zona: stessa città e stessi lavori, ultimi 30 giorni. */
+  /**
+   * Richieste in zona: stessi lavori, ultimi 30 giorni, nei comuni entro il
+   * raggio di lavoro (solo la sua città se il profilo non ha coordinate).
+   */
   async zoneDemand(userId: string, now = new Date()): Promise<ZoneDemand> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { userId },
-      select: { city: true, categoryId: true, category: { select: { label: true } }, extraCategories: { select: { id: true } } },
+      select: {
+        city: true,
+        latitude: true,
+        longitude: true,
+        engagementRadiusKm: true,
+        categoryId: true,
+        category: { select: { label: true } },
+        extraCategories: { select: { id: true } },
+      },
     });
     if (!profile) throw new NotFoundException("Profilo professionista non trovato.");
+    const hasPosition = !(profile.latitude === 0 && profile.longitude === 0);
+    const cities = hasPosition ? comuniWithinRadius(profile.latitude, profile.longitude, profile.engagementRadiusKm) : [];
+    if (!cities.some((c) => c.toLowerCase() === profile.city.toLowerCase())) cities.push(profile.city);
     const categoryIds = [profile.categoryId, ...profile.extraCategories.map((c) => c.id)];
     const requests = await this.prisma.guidedRequest.findMany({
       where: {
         categoryId: { in: categoryIds },
-        city: { equals: profile.city, mode: "insensitive" },
+        city: { in: cities, mode: "insensitive" },
         createdAt: { gte: new Date(now.getTime() - ZONE_DEMAND_DAYS * 24 * 60 * 60 * 1000) },
         hiddenAt: null,
       },
@@ -89,6 +110,7 @@ export class AgendaService {
     return {
       status: "ready",
       city: profile.city,
+      radiusKm: hasPosition ? Math.round(profile.engagementRadiusKm) : null,
       categoryLabel: profile.extraCategories.length === 0 ? profile.category.label : null,
       total: requests.length,
       tips: zoneDemandTips(requests),

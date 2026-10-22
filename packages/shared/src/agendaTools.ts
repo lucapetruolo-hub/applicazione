@@ -108,9 +108,9 @@ export function navigateUrl(destination: string): string {
 }
 
 /**
- * Richieste in zona (docs/CHANGELOG.md §288, scelta dell'utente): i momenti
- * della settimana in cui i clienti della stessa città chiedono più spesso i
- * lavori del professionista, da confrontare con la sua settimana tipo.
+ * Richieste in zona (docs/CHANGELOG.md §289-§290, scelta dell'utente): i
+ * momenti della settimana in cui i clienti dei comuni nel raggio di lavoro
+ * chiedono più spesso i lavori del professionista, da confrontare con la sua settimana tipo.
  * Solo conteggi: nessun dato del singolo cliente.
  */
 export type DayPart = "morning" | "afternoon" | "evening";
@@ -128,7 +128,15 @@ export type ZoneDemandTip = { weekday: number; part: DayPart; count: number };
 
 export type ZoneDemand =
   | { status: "coming" }
-  | { status: "ready"; city: string; categoryLabel: string | null; total: number; tips: ZoneDemandTip[] };
+  | {
+      status: "ready";
+      city: string;
+      /** Raggio di lavoro del professionista: le richieste contate sono dei comuni entro questa distanza. */
+      radiusKm: number | null;
+      categoryLabel: string | null;
+      total: number;
+      tips: ZoneDemandTip[];
+    };
 
 /** Parte del giorno di un orario "HH:MM". */
 export function dayPartOf(time: string): DayPart {

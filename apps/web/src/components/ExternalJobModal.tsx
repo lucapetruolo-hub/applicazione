@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { ExternalJob, ExternalJobInput } from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
+import { ItalianDateInput } from "@/components/ItalianDateInput";
 
 const inputStyle = { padding: 10, borderRadius: 4, border: `1px solid ${brand.bordoCampo}`, fontSize: 14, fontFamily: "inherit", color: brand.grafite };
 
@@ -251,7 +252,7 @@ export function ExternalJobModal({
               <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
                 Data *
               </Text>
-              <input aria-label="Data" type="date" value={dateStr} onChange={(e) => setDateStr(e.target.value)} style={inputStyle} />
+              <ItalianDateInput ariaLabel="Data" value={dateStr} onChange={setDateStr} style={inputStyle} padX={10} />
             </YStack>
             <YStack gap="$1" flex={1} minWidth={100}>
               <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>

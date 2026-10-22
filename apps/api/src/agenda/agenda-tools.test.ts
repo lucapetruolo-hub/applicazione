@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { agendaWeekTemplateSchema, dayRouteMapsUrl, DEFAULT_WEEK_TEMPLATE, weekTemplateCovers } from "@professionisti/shared";
-import { zoneDemandTips } from "./agenda.service";
+import { comuniWithinRadius, zoneDemandTips } from "./agenda.service";
 import { weatherAlertKind, weatherAlerts } from "./weather.service";
 import { comuneInAddress, estimateLeg, legTiming } from "./day-route.service";
 import { calendarFeedIcs } from "../email/email-calendar";
@@ -104,5 +104,14 @@ describe("weekTemplateCovers", () => {
     expect(weekTemplateCovers(DEFAULT_WEEK_TEMPLATE, 1, "morning")).toBe(true);
     expect(weekTemplateCovers(DEFAULT_WEEK_TEMPLATE, 6, "morning")).toBe(false);
     expect(weekTemplateCovers(DEFAULT_WEEK_TEMPLATE, 1, "evening")).toBe(false);
+  });
+});
+
+describe("comuniWithinRadius", () => {
+  it("prende i comuni nel raggio di lavoro", () => {
+    const near = comuniWithinRadius(41.4677, 12.9036, 15);
+    expect(near).toContain("Latina");
+    expect(near).toContain("Sermoneta");
+    expect(near).not.toContain("Roma");
   });
 });

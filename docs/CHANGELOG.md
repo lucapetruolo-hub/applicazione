@@ -19913,3 +19913,13 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 **4. Prova degli orari nel browser**: aggiunta al punto 26 della checklist di lancio (un preventivo alle 09:00 resta alle 09:00 in ogni vista, con il browser in un altro fuso e prima e dopo il cambio d'ora).
 
 **Verifica**: `tsc` ed `eslint` di API e web, 503 test API (nuovi: momenti più richiesti, parte del giorno coperta dalla settimana tipo), prova in locale con meno e più di 10 richieste (foto `5-orari-pochi-*.png` e `5-orari-pronti-*.png` in `/mnt/project-files/anteprime/agenda-restyling/`).
+
+## 290. Date sempre gg/mm/aaaa e "Richieste in zona" su tutto il raggio
+
+**Richiesta esplicita dell'utente** (22/10/2026, thread "Agenda: correzioni e restyling"): "le migliorie effettuale tutte e due sia uniformare la data sia ampliare il raggio".
+
+**Date**: il campo data del browser segue la lingua del browser, non quella del sito: su un computer in inglese mostrava "mm/dd/yyyy". Nuovo `apps/web/src/components/ItalianDateInput.tsx`: resta il campo nativo (calendario del telefono, tastiera, accessibilità) con il testo nascosto, e sopra la data scritta gg/mm/aaaa; un clic apre il calendario (`showPicker`). Usato in tutti i campi data del sito: Ferie e chiusure, lavoro esterno, data proposta nel preventivo e nella controproposta (professionista e cliente), data di nascita nei dati fiscali, periodo personalizzato delle statistiche. In `eslint.config.mjs` il componente conta come campo per le etichette (`label-has-associated-control`).
+
+**Richieste in zona**: contano le richieste dei comuni entro il raggio di lavoro del professionista (`engagementRadiusKm`, lo stesso dello smistamento; comuni ISTAT con coordinate, `comuniWithinRadius`), non solo della sua città; senza coordinate solo la sua città. Il testo dice "entro 25 km da Latina".
+
+**Verifica**: `tsc` ed `eslint` di API e web, 504 test API (nuovo: comuni nel raggio), prova in locale con un browser in inglese (data mostrata 24/12/2026) e richieste da un comune vicino (`6-ferie-*.png` in `/mnt/project-files/anteprime/agenda-restyling/`).

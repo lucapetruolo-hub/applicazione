@@ -8,6 +8,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { SkeletonRevenuePanel } from "@/components/Skeleton";
 import { StatsBarChart } from "@/components/StatsBarChart";
+import { ItalianDateInput } from "@/components/ItalianDateInput";
 
 /**
  * "Statistiche" del professionista (docs/CHANGELOG.md §149, richiesta
@@ -195,11 +196,11 @@ export default function DashboardStatistichePage() {
             <div className="pstats-custom">
               <label>
                 Dal
-                <input type="date" value={customFrom} max={customTo || today} onChange={(e) => setCustomFrom(e.target.value)} />
+                <ItalianDateInput value={customFrom} max={customTo || today} onChange={setCustomFrom} />
               </label>
               <label>
                 Al
-                <input type="date" value={customTo} min={customFrom} max={today} onChange={(e) => setCustomTo(e.target.value)} />
+                <ItalianDateInput value={customTo} min={customFrom} max={today} onChange={setCustomTo} />
               </label>
               <button type="button" className="pstats-apply" onClick={applyCustom}>
                 Applica

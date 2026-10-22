@@ -59,6 +59,7 @@ import {
 import { AgendaEventsList } from "./_components/AgendaEventsList";
 import { SelectionCheckbox, SlotChip, SlotEditorModal } from "./_components/SlotEditorModal";
 import { AGENDA_BOOKING_STATUS_LABEL, AGENDA_EXTERNAL_JOB_STATUS_LABEL, AgendaListItem, BOOKING_STATUS_COLOR, EXTERNAL_JOB_STATUS_COLOR, PENDING_QUOTE_COLOR, SlotDraft, WEEKDAY_FULL_LABELS, formatAgendaTimeRange, slotsOverlap } from "./_components/agendaHelpers";
+import { ItalianDateInput } from "@/components/ItalianDateInput";
 
 // Tre sezioni (docs/CHANGELOG.md §288): il calendario degli appuntamenti,
 // gli orari di lavoro (settimana tipo + giorno per giorno) e il giro del giorno.
@@ -1765,11 +1766,11 @@ function DashboardAgendaContent() {
               <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap", marginTop: 12 }}>
                 <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600 }}>
                   Dal
-                  <input className="ag-input" type="date" min={todayStr} value={vacationFrom} onChange={(e) => setVacationFrom(e.target.value)} />
+                  <ItalianDateInput className="ag-input" min={todayStr} value={vacationFrom} onChange={setVacationFrom} />
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600 }}>
                   Al
-                  <input className="ag-input" type="date" min={vacationFrom || todayStr} value={vacationTo} onChange={(e) => setVacationTo(e.target.value)} />
+                  <ItalianDateInput className="ag-input" min={vacationFrom || todayStr} value={vacationTo} onChange={setVacationTo} />
                 </label>
                 <button type="button" className="ag-btn" disabled={vacationBusy || !vacationFrom || !vacationTo || vacationTo < vacationFrom} onClick={() => void addVacation()}>
                   {vacationBusy ? "Salvo..." : "Chiudi questi giorni"}

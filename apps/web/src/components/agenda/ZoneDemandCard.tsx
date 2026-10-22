@@ -6,7 +6,7 @@ import { WEEKDAY_FULL_LABELS } from "@/app/dashboard/agenda/_components/agendaHe
 
 /**
  * "Richieste in zona" in Orari di lavoro (docs/CHANGELOG.md §288, scelta
- * dell'utente): i momenti più richiesti dai clienti della stessa città,
+ * dell'utente): i momenti più richiesti dai clienti nel raggio di lavoro,
  * confrontati con la settimana tipo. Con pochi dati dice "in arrivo".
  */
 export function ZoneDemandCard({
@@ -20,6 +20,7 @@ export function ZoneDemandCard({
 }) {
   if (!demand) return null;
   const tips = demand.status === "ready" ? demand.tips : [];
+  const area = demand.status === "ready" ? (demand.radiusKm ? `entro ${demand.radiusKm} km da ${demand.city}` : `a ${demand.city}`) : "";
 
   return (
     <div className="ag-card" style={{ padding: 20 }}>
@@ -31,11 +32,11 @@ export function ZoneDemandCard({
 
       {demand.status === "coming" ? (
         <p className="ag-muted" style={{ fontSize: 13.5, marginTop: 6 }}>
-          Quando nella tua zona ci saranno abbastanza richieste, qui vedrai i giorni e gli orari più cercati dai clienti.
+          Quando nel tuo raggio di lavoro ci saranno abbastanza richieste, qui vedrai i giorni e gli orari più cercati dai clienti.
         </p>
       ) : tips.length === 0 ? (
         <p className="ag-muted" style={{ fontSize: 13.5, marginTop: 6 }}>
-          {demand.total} richieste a {demand.city} nell&apos;ultimo mese, senza un momento più cercato degli altri.
+          {demand.total} richieste {area} nell&apos;ultimo mese, senza un momento più cercato degli altri.
         </p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
@@ -50,7 +51,7 @@ export function ZoneDemandCard({
                     {day} {range.label} è molto richiesto
                   </b>
                   <span className="ag-muted" style={{ fontSize: 13 }}>
-                    {tip.count} richieste{demand.categoryLabel ? ` di ${demand.categoryLabel.toLowerCase()}` : ""} a {demand.city} nell&apos;ultimo mese.
+                    {tip.count} richieste{demand.categoryLabel ? ` di ${demand.categoryLabel.toLowerCase()}` : ""} {area} nell&apos;ultimo mese.
                     {covered ? " Sei già aperto." : " Tu sei chiuso."}
                   </span>
                 </div>
