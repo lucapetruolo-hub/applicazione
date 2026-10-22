@@ -1,6 +1,6 @@
 import { formatEurCents, formatServicePriceRange, quotePriceTotals, type ProfessionalBooking } from "@professionisti/shared";
 
-/** Riga del pagamento nel riquadro dell'appuntamento (docs/CHANGELOG.md §279): cosa è già pagato e cosa resta da incassare. */
+/** Riga del pagamento nel riquadro dell'appuntamento (docs/CHANGELOG.md §288): cosa è già pagato e cosa resta da incassare. */
 export type AgendaPaymentLine = { title: string; detail: string; amount: string | null; paid: boolean };
 
 type BookingPaymentInput = Pick<ProfessionalBooking, "status" | "items" | "finalAmountEurCents" | "payment">;

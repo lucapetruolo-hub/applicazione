@@ -19880,7 +19880,7 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 
 **Verifica**: `tsc` ed `eslint` di API e web, 483 test API (nuovo `appointment-time.test.ts`: ora legale, solare, cambio d'ora del 25/10, mezzanotte italiana).
 
-## 279. Nuova agenda: design, Sto arrivando, calendario collegato, meteo, giro intelligente
+## 288. Nuova agenda: design, Sto arrivando, calendario collegato, meteo, giro intelligente
 
 **Richiesta esplicita dell'utente** (21-22/10/2026, thread "Agenda: correzioni e restyling"): rifare l'agenda con design e idee nuove. Scelte dell'utente: base A delle anteprime + editor orari e consigli di C + "Sto arrivando" di B, tasto "Chiama", regole della skill Taste tranne lo sfondo (resta pesca). Delle migliorie proposte: sì a riepilogo della sera (senza orario di partenza), agenda senza rete, collegamento al calendario (pulsante e interruttore), icona meteo, "Lavoro completato" migliorato, "Giro intelligente" in una sezione a parte; no a tempi di strada automatici tra i lavori, spostamento proponendo orari (si usa la chat) e "Disponibile ora". I lavori su più giorni vanno in una PR a parte.
 
@@ -19900,4 +19900,4 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 
 **Da fare a mano**: abilitare "Routes API" sulla chiave Google usata da Render (checklist di lancio, punto delle chiavi Google).
 
-**Verifica**: `tsc` ed `eslint` di API e web, 492 test API (nuovi: meteo, tempi del giro, comune nell'indirizzo, settimana tipo, feed iCalendar, riepilogo della sera), avvio dell'API (`check-boot`: trovato e corretto `AgendaModule` senza `AuthModule`), prova in locale con dati di prova e foto su computer e telefono (`/mnt/project-files/anteprime/agenda-restyling/1-…4-*.png`).
+**Verifica**: `tsc` ed `eslint` di API e web, 500 test API (nuovi: meteo, tempi del giro, comune nell'indirizzo, settimana tipo, feed iCalendar, riepilogo della sera), avvio dell'API (`check-boot`: trovato e corretto `AgendaModule` senza `AuthModule`), prova in locale con dati di prova e foto su computer e telefono (`/mnt/project-files/anteprime/agenda-restyling/1-…4-*.png`).

@@ -1450,14 +1450,14 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         body: JSON.stringify(input),
       }),
 
-    /** "Sto arrivando" (docs/CHANGELOG.md §279): avvisa il cliente, una volta sola. */
+    /** "Sto arrivando" (docs/CHANGELOG.md §288): avvisa il cliente, una volta sola. */
     notifyOnTheWay: (token: string, bookingId: string) =>
       request<{ bookingId: string; onTheWayAt: string }>(`/bookings/${bookingId}/on-the-way`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       }),
 
-    // Strumenti della nuova agenda (docs/CHANGELOG.md §279).
+    // Strumenti della nuova agenda (docs/CHANGELOG.md §288).
     agendaWeekTemplate: (token: string) => request<AgendaWeekTemplate>("/agenda/week-template", { headers: { Authorization: `Bearer ${token}` } }),
     saveAgendaWeekTemplate: (token: string, template: AgendaWeekTemplate) =>
       request<AgendaWeekTemplate>("/agenda/week-template", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(template) }),

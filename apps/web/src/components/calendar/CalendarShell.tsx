@@ -364,7 +364,7 @@ function WeekOrDayGrid({ days, today, renderDayColumn }: { days: Date[]; today: 
   );
 }
 
-/** Griglia del mese, usata anche da sola dalla nuova agenda (docs/CHANGELOG.md §279). */
+/** Griglia del mese, usata anche da sola dalla nuova agenda (docs/CHANGELOG.md §288). */
 export function MonthGrid({
   currentDate,
   today,

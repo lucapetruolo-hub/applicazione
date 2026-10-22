@@ -1,4 +1,4 @@
--- Agenda (docs/CHANGELOG.md §279): "Sto arrivando", calendario collegato, settimana tipo.
+-- Agenda (docs/CHANGELOG.md §288): "Sto arrivando", calendario collegato, settimana tipo.
 ALTER TABLE "bookings" ADD COLUMN "onTheWayAt" TIMESTAMP(3);
 ALTER TABLE "professional_profiles" ADD COLUMN "calendarFeedToken" TEXT;
 ALTER TABLE "professional_profiles" ADD COLUMN "agendaWeekTemplate" JSONB;

@@ -50,7 +50,7 @@ export function minutesToLabel(minutes: number): string {
 }
 
 /**
- * Griglia oraria di Giorno e Settimana (docs/CHANGELOG.md §279): orari
+ * Griglia oraria di Giorno e Settimana (docs/CHANGELOG.md §288): orari
  * liberi come fasce verdi chiare dietro agli appuntamenti, linea rossa
  * dell'ora attuale, giorni chiusi in pesca scuro, icona meteo accanto al
  * giorno. Gli orari sono "di parete" (vedi appointmentTime.ts).

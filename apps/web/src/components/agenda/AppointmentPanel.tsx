@@ -24,7 +24,7 @@ const STATUS_PILL: Record<ProfessionalBooking["status"], { label: string; tone: 
 };
 
 /**
- * Riquadro di un appuntamento (docs/CHANGELOG.md §279): pannello laterale su
+ * Riquadro di un appuntamento (docs/CHANGELOG.md §288): pannello laterale su
  * computer, a tutto schermo su telefono. Solo quello che serve mentre si è
  * in giro (decisione dell'utente): chi, quando, dove, una riga sul
  * pagamento, Naviga / Sto arrivando / Chiama. Tutto il resto (voci del

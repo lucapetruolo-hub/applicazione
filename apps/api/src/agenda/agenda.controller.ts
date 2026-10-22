@@ -7,7 +7,7 @@ import { AgendaService } from "./agenda.service";
 import { CalendarFeedService } from "./calendar-feed.service";
 import { DayRouteService } from "./day-route.service";
 
-/** Strumenti della nuova agenda (docs/CHANGELOG.md §279), tutti del professionista autenticato. */
+/** Strumenti della nuova agenda (docs/CHANGELOG.md §288), tutti del professionista autenticato. */
 @Controller("agenda")
 @UseGuards(JwtAuthGuard)
 export class AgendaController {

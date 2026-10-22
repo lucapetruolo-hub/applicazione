@@ -7,7 +7,7 @@ import { CalendarFeedService } from "./calendar-feed.service";
 import { DayRouteService } from "./day-route.service";
 import { WeatherService } from "./weather.service";
 
-/** Strumenti della nuova agenda (docs/CHANGELOG.md §279). */
+/** Strumenti della nuova agenda (docs/CHANGELOG.md §288). */
 @Module({
   imports: [AuthModule, GeocodingModule],
   controllers: [AgendaController, CalendarFeedController],

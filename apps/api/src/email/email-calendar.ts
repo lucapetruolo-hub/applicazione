@@ -114,7 +114,7 @@ export function calendarIcs(event: CalendarEvent): string {
 }
 
 /**
- * Calendario collegato dall'agenda (docs/CHANGELOG.md §279): tutti gli
+ * Calendario collegato dall'agenda (docs/CHANGELOG.md §288): tutti gli
  * appuntamenti in un file che Google Calendar e iPhone rileggono da soli.
  */
 export function calendarFeedIcs(name: string, events: CalendarEvent[]): string {

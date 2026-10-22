@@ -1,7 +1,7 @@
 import type { ExternalJob, ProfessionalBooking } from "@professionisti/shared";
 
 /**
- * Agenda anche senza rete (docs/CHANGELOG.md §279, scelto dall'utente): in
+ * Agenda anche senza rete (docs/CHANGELOG.md §288, scelto dall'utente): in
  * cantiere o in cantina la connessione salta. Ad ogni caricamento riuscito
  * si salva sul telefono una copia degli appuntamenti; se il caricamento non
  * riesce si mostra quella, con l'ora dell'ultimo aggiornamento. Solo

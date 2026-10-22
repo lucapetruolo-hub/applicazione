@@ -127,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     window.localStorage.removeItem(TOKEN_STORAGE_KEY);
-    // Copia dell'agenda senza rete (docs/CHANGELOG.md §279): non resta sul telefono dopo l'uscita.
+    // Copia dell'agenda senza rete (docs/CHANGELOG.md §288): non resta sul telefono dopo l'uscita.
     clearAgendaOffline();
     setUser(null);
     setToken(null);

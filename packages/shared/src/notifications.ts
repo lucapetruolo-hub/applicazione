@@ -111,7 +111,7 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "BOOKING_REMINDER",
       // Agenda vuota o senza disponibilità nei prossimi 7 giorni (docs/CHANGELOG.md §274).
       "AGENDA_REMINDER",
-      // Agenda (docs/CHANGELOG.md §279): "Sto arrivando" al cliente, riepilogo della sera prima al professionista.
+      // Agenda (docs/CHANGELOG.md §288): "Sto arrivando" al cliente, riepilogo della sera prima al professionista.
       "PROFESSIONAL_ON_THE_WAY",
       "AGENDA_TOMORROW_SUMMARY",
       // Nuova recensione ricevuta dal professionista (docs/CHANGELOG.md §185).

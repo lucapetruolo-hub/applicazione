@@ -66,7 +66,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   PROFILE_SETUP_REMINDER: { icon: "📋", message: "Ti manca poco per completare il profilo: in Oggi trovi il prossimo passo." },
   // Agenda vuota o senza disponibilità nei prossimi giorni (§274): il testo dipende dal payload, vedi sotto.
   AGENDA_REMINDER: { icon: "📅", message: "Non hai ancora orari liberi in agenda: aggiungili per farti prenotare." },
-  // Agenda (§279).
+  // Agenda (§288).
   PROFESSIONAL_ON_THE_WAY: { icon: "🚐", message: "Il professionista sta arrivando." },
   AGENDA_TOMORROW_SUMMARY: { icon: "📅", message: "Ecco i tuoi lavori di domani." },
   TAX_ID_INVALID: { icon: "⚠️", message: "Non riusciamo a verificare il codice fiscale o la partita IVA: controllali nei dati fiscali." },

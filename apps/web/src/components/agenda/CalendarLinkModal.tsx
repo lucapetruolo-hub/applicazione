@@ -5,7 +5,7 @@ import { X } from "lucide-react";
 import { apiClient } from "@/lib/apiClient";
 
 /**
- * "Collega al tuo calendario" (docs/CHANGELOG.md §279, scelto dall'utente):
+ * "Collega al tuo calendario" (docs/CHANGELOG.md §288, scelto dall'utente):
  * gli appuntamenti compaiono anche in Google Calendar o sull'iPhone, in sola
  * lettura. Un interruttore lo spegne e rende inutile il link già dato.
  */

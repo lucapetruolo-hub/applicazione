@@ -198,7 +198,7 @@ model ProfessionalProfile {
   // §239). Vuoto = diretto + online con acconto del 20%.
   defaultPaymentOptions        String[]  @default([])
   defaultDepositPercent        Int?
-  // Agenda (docs/CHANGELOG.md §279): link segreto del calendario da
+  // Agenda (docs/CHANGELOG.md §288): link segreto del calendario da
   // collegare a Google/iPhone (null = collegamento spento) e settimana tipo
   // usata da "Orari di lavoro" per riempire un mese in un colpo.
   calendarFeedToken            String?   @unique
@@ -1127,7 +1127,7 @@ model Booking {
   // campo.
   serviceMode ServiceMode?
 
-  // "Sto arrivando" dall'agenda (docs/CHANGELOG.md §279): il cliente riceve
+  // "Sto arrivando" dall'agenda (docs/CHANGELOG.md §288): il cliente riceve
   // l'avviso una volta sola per appuntamento.
   onTheWayAt DateTime?
 

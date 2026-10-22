@@ -14,7 +14,7 @@ function travelLabel(minutes: number): string {
 }
 
 /**
- * "Giro intelligente" (docs/CHANGELOG.md §279, richiesta dell'utente): le
+ * "Giro intelligente" (docs/CHANGELOG.md §288, richiesta dell'utente): le
  * tappe a domicilio di un giorno nell'ordine degli orari, il tempo di strada
  * tra l'una e l'altra, un avviso quando non basta e il giro intero in
  * Google Maps. La mappa è l'immagine fissa del nostro server: nessuno script

@@ -37,7 +37,7 @@ function hoursLabel(slots: WeekTemplateSlot[]): string {
 type Editing = { day: number; index: number | null; start: string; end: string; allowsHome: boolean; allowsOnline: boolean; homeMax: string; onlineMax: string };
 
 /**
- * Settimana tipo di "Orari di lavoro" (docs/CHANGELOG.md §279): gli orari
+ * Settimana tipo di "Orari di lavoro" (docs/CHANGELOG.md §288): gli orari
  * soliti, giorno per giorno, da applicare a un mese in un tocco. Non vale
  * all'infinito (le fasce dell'agenda sono per data, decisione dell'utente):
  * "Applica" riempie i giorni del mese ancora vuoti e lascia com'erano quelli

@@ -394,7 +394,7 @@ export class BookingsService {
   }
 
   /**
-   * "Sto arrivando" dall'agenda (docs/CHANGELOG.md §279): avvisa il cliente
+   * "Sto arrivando" dall'agenda (docs/CHANGELOG.md §288): avvisa il cliente
    * che il professionista è in viaggio. Solo per un lavoro confermato di
    * oggi, una volta sola: un secondo tocco non manda un altro avviso.
    */

@@ -3,7 +3,7 @@
 import { brand } from "@professionisti/ui";
 
 /**
- * Stile della nuova agenda (docs/CHANGELOG.md §279), scelto dall'utente
+ * Stile della nuova agenda (docs/CHANGELOG.md §288), scelto dall'utente
  * sulle anteprime: regole della skill Taste (niente ombre a riposo, niente
  * maiuscole spaziate, pulsante principale quasi nero, colore solo per stato
  * e dati) ma sfondo pesca del sito. CSS puro come CalendarShell: griglia

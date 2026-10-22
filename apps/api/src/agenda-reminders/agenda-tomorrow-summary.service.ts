@@ -21,7 +21,7 @@ type SummaryBooking = {
 type SummaryExternalJob = { scheduledAt: Date; scheduledEndAt: Date | null; clientName: string; address: string | null };
 
 /**
- * Righe del riepilogo della sera prima (docs/CHANGELOG.md §279), in ordine di
+ * Righe del riepilogo della sera prima (docs/CHANGELOG.md §288), in ordine di
  * orario: lavori della piattaforma e lavori esterni insieme. Nessun orario di
  * partenza: non sappiamo da dove parte il professionista (decisione dell'utente).
  */

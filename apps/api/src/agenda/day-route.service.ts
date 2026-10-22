@@ -29,7 +29,7 @@ export function estimateLeg(a: Point, b: Point): { minutes: number; km: number }
   return { minutes: Math.max(5, Math.ceil(((km / AVERAGE_KMH) * 60) / 5) * 5), km: Math.round(km * 10) / 10 };
 }
 
-/** Tempo libero tra due tappe e se basta per arrivare (docs/CHANGELOG.md §279). */
+/** Tempo libero tra due tappe e se basta per arrivare (docs/CHANGELOG.md §288). */
 export function legTiming(previous: Pick<DayRouteStop, "start" | "end">, next: Pick<DayRouteStop, "start">, minutes: number): Pick<DayRouteLeg, "gapMinutes" | "tight"> {
   const previousEnd = previous.end ? new Date(previous.end).getTime() : new Date(previous.start).getTime() + DEFAULT_DURATION_MIN * 60_000;
   const gapMinutes = Math.round((new Date(next.start).getTime() - previousEnd) / 60_000);
@@ -37,7 +37,7 @@ export function legTiming(previous: Pick<DayRouteStop, "start" | "end">, next: P
 }
 
 /**
- * "Giro intelligente" (docs/CHANGELOG.md §279, richiesta dell'utente): le
+ * "Giro intelligente" (docs/CHANGELOG.md §288, richiesta dell'utente): le
  * tappe di un giorno nell'ordine degli orari, il tempo di strada tra l'una e
  * l'altra e un avviso quando non basta. Tempi da Google Routes API con la
  * chiave del server; senza (o se non risponde) una stima dalla distanza,

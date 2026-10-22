@@ -11,7 +11,7 @@ const DAY_MS = 24 * 60 * 60_000;
 const PAST_DAYS = 60;
 
 /**
- * Calendario collegato (docs/CHANGELOG.md §279): un link segreto che Google
+ * Calendario collegato (docs/CHANGELOG.md §288): un link segreto che Google
  * Calendar e iPhone rileggono da soli, in sola lettura. Chi ha il link vede
  * gli appuntamenti: spegnerlo e riaccenderlo crea un link nuovo e rende
  * inutile quello vecchio.

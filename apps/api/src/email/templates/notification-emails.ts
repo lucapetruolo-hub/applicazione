@@ -1140,7 +1140,7 @@ const BUILDERS: Record<string, Builder> = {
       cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda?tab=disponibilita` },
     };
   },
-  // "Sto arrivando" dall'agenda (§279).
+  // "Sto arrivando" dall'agenda (§288).
   PROFESSIONAL_ON_THE_WAY: (_payload, ctx) => ({
     kind: "notification",
     subject: `${pro(ctx)} sta arrivando`,
@@ -1151,7 +1151,7 @@ const BUILDERS: Record<string, Builder> = {
     cta: { label: "Apri la richiesta", url: `${frontendUrl()}/le-mie-richieste` },
     after: ["Se serve, scrivigli in chat dalla richiesta."],
   }),
-  // Riepilogo della sera prima, senza orario di partenza (§279).
+  // Riepilogo della sera prima, senza orario di partenza (§288).
   AGENDA_TOMORROW_SUMMARY: (payload, ctx) => {
     const items = Array.isArray(payload.items) ? payload.items.filter(isSummaryItem) : [];
     const count = items.length;

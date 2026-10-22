@@ -56,7 +56,7 @@ import { AgendaEventsList } from "./_components/AgendaEventsList";
 import { SelectionCheckbox, SlotChip, SlotEditorModal } from "./_components/SlotEditorModal";
 import { AGENDA_BOOKING_STATUS_LABEL, AGENDA_EXTERNAL_JOB_STATUS_LABEL, AgendaListItem, BOOKING_STATUS_COLOR, EXTERNAL_JOB_STATUS_COLOR, PENDING_QUOTE_COLOR, SlotDraft, WEEKDAY_FULL_LABELS, formatAgendaTimeRange, isSlotGeneric, slotsOverlap } from "./_components/agendaHelpers";
 
-// Tre sezioni (docs/CHANGELOG.md §279): il calendario degli appuntamenti,
+// Tre sezioni (docs/CHANGELOG.md §288): il calendario degli appuntamenti,
 // gli orari di lavoro (settimana tipo + giorno per giorno) e il giro del giorno.
 type AgendaTab = "calendario" | "orari" | "giro";
 type AgendaFilter = "conf" | "done" | "wait" | "ext" | "free";
@@ -210,7 +210,7 @@ function DashboardAgendaContent() {
   // vuote sparse in giro non avrebbe senso, un elenco sì.
   const [agendaSearchQuery, setAgendaSearchQuery] = useState("");
 
-  // Nuova agenda (docs/CHANGELOG.md §279).
+  // Nuova agenda (docs/CHANGELOG.md §288).
   const [filters, setFilters] = useState<Set<AgendaFilter>>(() => new Set(ALL_FILTERS));
   const [weather, setWeather] = useState<Map<string, WeatherAlertKind>>(new Map());
   const [offlineSavedAt, setOfflineSavedAt] = useState<string | null>(null);
@@ -267,7 +267,7 @@ function DashboardAgendaContent() {
   }, [token]);
 
   // Appuntamenti e lavori esterni insieme: se la rete non c'è si mostra
-  // l'ultima copia salvata sul telefono (docs/CHANGELOG.md §279).
+  // l'ultima copia salvata sul telefono (docs/CHANGELOG.md §288).
   useEffect(() => {
     if (!token || !user) return;
     let cancelled = false;
@@ -429,7 +429,7 @@ function DashboardAgendaContent() {
     patchBooking(selectedBooking.id, { meetingLink: result.meetingLink });
   }
 
-  /** "Sto arrivando" (docs/CHANGELOG.md §279): avvisa il cliente una volta sola. */
+  /** "Sto arrivando" (docs/CHANGELOG.md §288): avvisa il cliente una volta sola. */
   async function handleOnTheWay(booking: ProfessionalBooking) {
     if (!token) return;
     const result = await apiClient.notifyOnTheWay(token, booking.id);
@@ -439,7 +439,7 @@ function DashboardAgendaContent() {
   /**
    * "Lavoro completato" dall'agenda con la stessa finestra di "Richieste e
    * lavori" (importo finale, foto, dichiarazione): prima l'agenda segnava
-   * solo lo stato, senza importo né pagamento del lavoro (docs/CHANGELOG.md §279).
+   * solo lo stato, senza importo né pagamento del lavoro (docs/CHANGELOG.md §288).
    */
   async function handleComplete(input: CompleteBookingInput) {
     if (!token || !completingBooking) return;
@@ -1231,7 +1231,7 @@ function DashboardAgendaContent() {
     return <AgendaEventsList items={items} groupByMonth emptyLabel={`Nessuna prenotazione nel ${year}.`} />;
   }
 
-  // ——— Nuova agenda (docs/CHANGELOG.md §279) ———
+  // ——— Nuova agenda (docs/CHANGELOG.md §288) ———
   const now = wallClockNow(new Date(nowTick));
   const today = todayUtc();
   const todayStr = toIsoDate(today);

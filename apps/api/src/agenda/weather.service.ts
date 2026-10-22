@@ -46,7 +46,7 @@ export function weatherAlerts(response: OpenMeteoDaily): WeatherDayAlert[] {
 }
 
 /**
- * Previsioni per l'icona meteo dell'agenda (docs/CHANGELOG.md §279):
+ * Previsioni per l'icona meteo dell'agenda (docs/CHANGELOG.md §288):
  * Open-Meteo, gratuito e senza chiave, chiamato dal nostro server così il
  * browser non contatta nessun servizio esterno (niente consenso cookie).
  * Mai bloccante: se non risponde, nessuna icona.

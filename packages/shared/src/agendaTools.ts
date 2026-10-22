@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * Strumenti della nuova agenda (docs/CHANGELOG.md §279): settimana tipo,
+ * Strumenti della nuova agenda (docs/CHANGELOG.md §288): settimana tipo,
  * calendario collegato, meteo e giro del giorno.
  */
 
