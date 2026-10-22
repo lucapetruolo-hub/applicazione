@@ -1836,6 +1836,57 @@ a.admin-kpi:hover {
   color: #c8362b;
 }
 
+/* Regole della password nuova sotto il campo (PasswordRules,
+   docs/CHANGELOG.md §289): verde solo per lo stato "fatto", rosso per
+   quello che manca dopo un invio, sempre con un'icona oltre al colore. */
+.pw-rules {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pw-rule {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 18px;
+  color: #6e6459;
+  transition: color 150ms ease;
+}
+.pw-rule-icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border-radius: 50%;
+  border: 1.5px solid #9c8e7f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+.pw-rule.is-ok {
+  color: #0e7a4c;
+}
+.pw-rule.is-ok .pw-rule-icon {
+  background: #189a63;
+  border-color: #189a63;
+}
+.pw-rule.is-missing {
+  color: #c8362b;
+}
+.pw-rule.is-missing .pw-rule-icon {
+  border-color: #c8362b;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pw-rule,
+  .pw-rule-icon {
+    transition: none;
+  }
+}
+
 /* Impostazioni notifiche (docs/CHANGELOG.md §152). */
 .notif-status {
   font-size: 13px;

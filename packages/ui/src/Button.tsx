@@ -72,6 +72,23 @@ export const Button = styled(TamaguiButton, {
         pressStyle: { backgroundColor: brand.filetto },
         focusStyle: { outlineWidth: 2, outlineColor: brand.cianografia, outlineStyle: "solid", outlineOffset: 2 },
       },
+      // Pulsante principale quasi nero delle regole Taste (scelta dell'utente
+      // per la nuova agenda, docs/CHANGELOG.md §288-§289): per ora solo
+      // nell'agenda e nelle pagine di accesso e registrazione, il verde
+      // resta per gli stati.
+      scuro: {
+        height: BUTTON_HEIGHT,
+        paddingHorizontal: 24,
+        borderRadius: PILL,
+        backgroundColor: brand.grafite,
+        color: "white",
+        fontFamily: "$body",
+        fontWeight: "600",
+        borderWidth: 0,
+        hoverStyle: { backgroundColor: "#463B35" },
+        pressStyle: { backgroundColor: "#463B35" },
+        focusStyle: { outlineWidth: 2, outlineColor: brand.cianografia, outlineStyle: "solid", outlineOffset: 2 },
+      },
       // Solo nel flusso urgenza (CLAUDE.md, colore semantico: mai decorativo altrove).
       urgent: {
         height: BUTTON_HEIGHT,

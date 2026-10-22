@@ -11,7 +11,7 @@ describe("categorie del professionista", () => {
     portfolioUrls: [],
     spokenLanguages: ["Italiano"],
   };
-  const registration = { email: "mario@esempio.it", password: "password1", acceptedLegalTerms: true, declaredAdult: true };
+  const registration = { email: "mario@esempio.it", password: "password1!", acceptedLegalTerms: true, declaredAdult: true };
 
   it("il profilo accetta da 1 a 3 categorie, mai doppie", () => {
     expect(professionalProfileSelfSchema.safeParse({ ...profile, categorySlugs: ["idraulico"] }).success).toBe(true);

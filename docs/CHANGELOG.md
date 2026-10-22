@@ -19865,3 +19865,19 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 **Decisione presa**: `LoadErrorNotice` con "Riprova" al posto dei contatori e delle sezioni "Da rispondere ora" e "Oggi e domani" ("Non riusciamo a caricare richieste e appuntamenti"); "Il tuo andamento" si nasconde se non si carica; in Abbonamento "Non riusciamo a caricare il tuo abbonamento" con "Riprova". Gli avvisi in alto (pausa, percorso profilo, agenda) restano come prima.
 
 **Verifica**: typecheck e lint del web.
+
+## 289. Regole della password e una sola spunta per registrarsi
+
+**Richiesta esplicita dell'utente** (22/10/2026, thread "Regole password nella registrazione"): prendere a modello la registrazione di Didit (tre regole sotto la password che diventano verdi mentre si scrive) e aggiungere le migliorie proposte, tutte approvate. Poi: una sola casella da spuntare per Termini, Privacy e 18 anni, e lo stile Taste della nuova agenda (§288) anche qui.
+
+**Prima**: solo "Minimo 8 caratteri" scritto sotto il campo, controllato nel browser e nell'API. Nessun massimo: bcrypt ignorava in silenzio quello che va oltre i 72 byte. Due caselle separate (Termini/Privacy e 18 anni).
+
+**Decisione presa**:
+- Regole in `packages/shared/src/password.ts` (`PASSWORD_RULES`, `passwordProblem`, `newPasswordSchema`): almeno 8 caratteri, almeno un numero, almeno un simbolo o 15 caratteri (le password suggerite da Google hanno 15 caratteri senza simboli, verificato nel codice di Chrome), massimo 64 caratteri e 72 byte. Valgono nel browser e nell'API in registrazione, link d'invito, recupero e cambio password; l'accesso no, così le password vecchie entrano ancora.
+- `PasswordRules` sotto il campo: grigie, verdi con la spunta mentre si scrive, rosse con la × dopo un invio non riuscito (mai solo il colore, stato letto anche dai lettori di schermo). "Le password coincidono" sotto la conferma. Attributo `passwordrules` per il generatore di password di iPhone e Mac.
+- Password già rubate in passato da altri siti rifiutate dall'API con Have I Been Pwned (`apps/api/src/auth/pwned-password.ts`): parte solo l'inizio dell'impronta SHA-1, mai la password; servizio lento (3s) o giù = la password passa; `PWNED_PASSWORD_CHECK=false` su Render lo spegne. Nel link d'invito il controllo avviene prima di usare il link.
+- `LegalConsentCheckbox`: "Accetto i Termini di Servizio, ho letto la Privacy Policy e ho almeno 18 anni." in registrazione del professionista, link d'invito e finestra dopo Google. L'API riceve sempre le due dichiarazioni, dallo stesso valore. Il cliente resta con la frase sotto il pulsante (§176). Domanda 31 per l'avvocato.
+- Controlli dall'alto in basso (categorie, email, password, conferma, spunta), non più prima la spunta.
+- Pulsante principale quasi nero (`Button variant="scuro"`) nelle pagine di accesso, registrazione, recupero password e nella finestra di Google; carattere e angoli invariati (li decide il thread "Aspetto non da sito fatto con IA").
+
+**Verifica**: `password-rules.test.ts` e `pwned-password.test.ts` (500 test API verdi), prova dal vivo con Have I Been Pwned, typecheck e lint di web e api, anteprime da telefono e computer in `/mnt/project-files/anteprime/password-registrazione/sito/`. Checklist OWASP ASVS in `/mnt/project-files/analisi/password-registrazione-owasp.md`.

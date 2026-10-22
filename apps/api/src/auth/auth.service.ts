@@ -21,6 +21,7 @@ import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { GeocodingService } from "../geocoding/geocoding.service";
 import { SUSPENDED_ACCOUNT_MESSAGE } from "./jwt-auth.guard";
 import { googleNameFields, googleNameRepair } from "./google-name";
+import { assertNotPwnedPassword } from "./pwned-password";
 
 const BCRYPT_SALT_ROUNDS = 10;
 /** Validità del link di conferma email (docs/CHANGELOG.md §178). */
@@ -130,6 +131,7 @@ export class AuthService {
       throw new ConflictException("Esiste già un account con questa email.");
     }
 
+    await assertNotPwnedPassword(password);
     const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
     // `acceptedLegalTerms`/`declaredAdult` sono già garantite `=== true` da
     // `registerSchema` (Zod `.refine`) prima di arrivare qui — richiesta
@@ -460,6 +462,7 @@ export class AuthService {
       }
     }
 
+    await assertNotPwnedPassword(newPassword);
     const passwordHash = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
     await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
     if (user.email) await this.emailService.send({ to: user.email, ...passwordChangedEmail(user.name) });
@@ -546,6 +549,7 @@ export class AuthService {
     if (!user?.email || user.deletedAt !== null || !user.passwordResetExpiresAt || user.passwordResetExpiresAt < new Date()) {
       throw new BadRequestException("Il link per reimpostare la password non è valido o è scaduto. Chiedine uno nuovo.");
     }
+    await assertNotPwnedPassword(password);
     const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
     await this.prisma.user.update({
       where: { id: user.id },

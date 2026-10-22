@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "r
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Camera, Download, Trash2, Eye, EyeOff } from "lucide-react";
-import { ALL_ITALIAN_CITY_NAMES, findComuneByName, isPlausiblePhoneNumber } from "@professionisti/shared";
+import { ALL_ITALIAN_CITY_NAMES, findComuneByName, isPlausiblePhoneNumber, passwordProblem } from "@professionisti/shared";
 import { Autocomplete, Avatar, Button, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -14,6 +14,7 @@ import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput"
 import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
 import { ClientEmailVerificationCard } from "@/components/ClientEmailVerificationCard";
+import { PASSWORD_RULES_ATTRIBUTE, PasswordMatchHint, PasswordRules } from "@/components/PasswordRules";
 
 const inputStyle = {
   padding: "10px 12px",
@@ -52,6 +53,8 @@ function PasswordField({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         autoComplete={autoComplete}
+        // Generatore di password di iPhone e Mac: solo per la password nuova (§289).
+        {...(autoComplete === "new-password" ? { passwordrules: PASSWORD_RULES_ATTRIBUTE } : {})}
         style={{ ...inputStyle, paddingRight: 40 }}
       />
       <button
@@ -164,6 +167,7 @@ export default function AccountPage() {
   // ognuno dei tre campi, stesso pattern già in uso su /registrati e /accedi.
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [newPasswordAttempted, setNewPasswordAttempted] = useState(false);
   const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSaved, setPasswordSaved] = useState(false);
@@ -327,8 +331,11 @@ export default function AccountPage() {
   async function handleChangePassword() {
     setPasswordError(null);
     setPasswordSaved(false);
-    if (newPassword.length < 8) {
-      setPasswordError("La nuova password deve avere almeno 8 caratteri.");
+    // Stesse regole della registrazione (docs/CHANGELOG.md §289).
+    const problem = passwordProblem(newPassword);
+    if (problem) {
+      setNewPasswordAttempted(true);
+      if (problem.includes("al massimo")) setPasswordError(problem);
       return;
     }
     if (newPassword !== confirmNewPassword) {
@@ -348,6 +355,7 @@ export default function AccountPage() {
       setNewPassword("");
       setConfirmNewPassword("");
       setIsEditingPassword(false);
+      setNewPasswordAttempted(false);
     } catch (err) {
       setPasswordError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
@@ -633,11 +641,12 @@ export default function AccountPage() {
                 <PasswordField
                   value={newPassword}
                   onChange={setNewPassword}
-                  placeholder="Nuova password (almeno 8 caratteri)"
+                  placeholder="Nuova password"
                   autoComplete="new-password"
                   visible={showNewPassword}
                   onToggleVisible={() => setShowNewPassword((v) => !v)}
                 />
+                <PasswordRules password={newPassword} showMissing={newPasswordAttempted} />
                 <PasswordField
                   value={confirmNewPassword}
                   onChange={setConfirmNewPassword}
@@ -646,6 +655,7 @@ export default function AccountPage() {
                   visible={showConfirmNewPassword}
                   onToggleVisible={() => setShowConfirmNewPassword((v) => !v)}
                 />
+                <PasswordMatchHint password={newPassword} confirmPassword={confirmNewPassword} />
                 {passwordError ? (
                   <Text color={brand.urgenza} fontSize="$3">
                     {passwordError}
@@ -670,6 +680,7 @@ export default function AccountPage() {
                     onPress={() => {
                       setIsEditingPassword(false);
                       setPasswordError(null);
+                      setNewPasswordAttempted(false);
                       setCurrentPassword("");
                       setNewPassword("");
                       setConfirmNewPassword("");

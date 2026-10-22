@@ -1,13 +1,15 @@
 import { z } from "zod";
 
 /**
- * Regole della password nuova (docs/CHANGELOG.md §280, richiesta dell'utente
+ * Regole della password nuova (docs/CHANGELOG.md §289, richiesta dell'utente
  * sul modello di Didit): mostrate sotto il campo, diventano verdi mentre si
  * scrive. Le stesse regole valgono nel browser e nell'API. L'accesso non le
  * controlla: chi ha già una password più semplice entra lo stesso.
  */
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 64;
+/** Da questa lunghezza il simbolo non serve (password suggerite da Google). */
+export const PASSWORD_LONG_WITHOUT_SYMBOL = 15;
 // bcrypt ignora tutto quello che va oltre i 72 byte: con lettere accentate o
 // emoji 64 caratteri possono superarli.
 const PASSWORD_MAX_BYTES = 72;
@@ -17,7 +19,13 @@ export type PasswordRule = { id: "length" | "number" | "symbol"; label: string; 
 export const PASSWORD_RULES: readonly PasswordRule[] = [
   { id: "length", label: `Almeno ${PASSWORD_MIN_LENGTH} caratteri`, test: (p) => [...p].length >= PASSWORD_MIN_LENGTH },
   { id: "number", label: "Almeno un numero", test: (p) => /\p{N}/u.test(p) },
-  { id: "symbol", label: "Almeno un simbolo (es. ! ? @ #)", test: (p) => /[^\p{L}\p{N}\s]/u.test(p) },
+  // Le password suggerite da Google (Chrome, Android) hanno 15 caratteri senza
+  // simboli: valgono lo stesso, sono più sicure di 8 caratteri con il simbolo.
+  {
+    id: "symbol",
+    label: `Almeno un simbolo (es. ! ? @ #) o ${PASSWORD_LONG_WITHOUT_SYMBOL} caratteri`,
+    test: (p) => /[^\p{L}\p{N}\s]/u.test(p) || [...p].length >= PASSWORD_LONG_WITHOUT_SYMBOL,
+  },
 ];
 
 /** Primo messaggio d'errore della password, o null se va bene. */
