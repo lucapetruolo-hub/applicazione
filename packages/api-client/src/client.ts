@@ -33,6 +33,10 @@ import type {
   ProfessionalAgenda,
   ProfessionalAvailableSlot,
   ProfessionalBooking,
+  AgendaWeekTemplate,
+  CalendarFeedStatus,
+  DayRoute,
+  WeatherDayAlert,
   ProfessionalDetail,
   ProfessionalFiscalProfileInput,
   ProfessionalInsights,
@@ -1445,6 +1449,26 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
       }),
+
+    /** "Sto arrivando" (docs/CHANGELOG.md §279): avvisa il cliente, una volta sola. */
+    notifyOnTheWay: (token: string, bookingId: string) =>
+      request<{ bookingId: string; onTheWayAt: string }>(`/bookings/${bookingId}/on-the-way`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    // Strumenti della nuova agenda (docs/CHANGELOG.md §279).
+    agendaWeekTemplate: (token: string) => request<AgendaWeekTemplate>("/agenda/week-template", { headers: { Authorization: `Bearer ${token}` } }),
+    saveAgendaWeekTemplate: (token: string, template: AgendaWeekTemplate) =>
+      request<AgendaWeekTemplate>("/agenda/week-template", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(template) }),
+    agendaWeather: (token: string) => request<WeatherDayAlert[]>("/agenda/weather", { headers: { Authorization: `Bearer ${token}` } }),
+    agendaDayRoute: (token: string, date: string) =>
+      request<DayRoute>(`/agenda/route?date=${encodeURIComponent(date)}`, { headers: { Authorization: `Bearer ${token}` } }),
+    calendarFeedStatus: (token: string) => request<CalendarFeedStatus>("/agenda/calendar-feed", { headers: { Authorization: `Bearer ${token}` } }),
+    enableCalendarFeed: (token: string) => request<CalendarFeedStatus>("/agenda/calendar-feed", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+    disableCalendarFeed: (token: string) => request<CalendarFeedStatus>("/agenda/calendar-feed", { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),
+    /** Indirizzo del calendario collegato, da dare a Google o all'iPhone. */
+    calendarFeedUrl: (feedToken: string) => `${baseUrl}/calendar/${feedToken}.ics`,
 
     myClientBookings: (token: string) =>
       request<ClientBooking[]>("/bookings/me", { headers: { Authorization: `Bearer ${token}` } }),

@@ -3,22 +3,81 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { agendaAttention, formatAppointmentTimeRange, type ExternalJob, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
+import { CalendarDays, ChevronLeft, ChevronRight, Navigation, Phone, Plus, Search, Truck, X } from "lucide-react";
+import {
+  agendaAttention,
+  formatAppointmentTimeRange,
+  navigateUrl,
+  wallClockNow,
+  type AgendaWeekTemplate,
+  type CompleteBookingInput,
+  type ExternalJob,
+  type ProfessionalBooking,
+  type ProfessionalLead,
+  type WeatherAlertKind,
+} from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { CalendarShell, type CalendarView } from "@/components/calendar/CalendarShell";
-import { BookingDetailPanel } from "@/components/calendar/BookingDetailPanel";
+import { CalendarShell, MonthGrid, type CalendarView } from "@/components/calendar/CalendarShell";
 import { SkeletonBlock } from "@/components/Skeleton";
 import { TimelineModal } from "@/components/TimelineModal";
 import { ExternalJobModal } from "@/components/ExternalJobModal";
-import { AgendaStatsStrip, AgendaStatusLegend, NextAppointmentSpotlight, computeAgendaStats, computeNextAgendaItem } from "@/components/agenda/AgendaOverview";
-import { datesInMonth, datesInMonthForGivenWeekday, datesInMonthForWeekday, monthLabel, parseIsoDate, slotAppliesOnDateStr, startOfDayUtc, todayUtc, toIsoDate } from "@/lib/calendarDates";
+import { CompleteJobModal } from "@/components/CompleteJobModal";
+import { CancelBookingModal } from "@/components/CancelBookingModal";
+import { AgendaStyles } from "@/components/agenda/AgendaStyles";
+import { AgendaTimeGrid, WeatherIcon, type AgendaDayNote, type AgendaFreeBand, type AgendaGridEvent } from "@/components/agenda/AgendaTimeGrid";
+import { AgendaMiniMonth } from "@/components/agenda/AgendaMiniMonth";
+import { AppointmentPanel } from "@/components/agenda/AppointmentPanel";
+import { CalendarLinkModal } from "@/components/agenda/CalendarLinkModal";
+import { WeekTemplateEditor } from "@/components/agenda/WeekTemplateEditor";
+import { DayRouteSection } from "@/components/agenda/DayRouteSection";
+import { readAgendaOffline, saveAgendaOffline } from "@/lib/agendaOffline";
+import {
+  addDaysUtc,
+  addMonthsUtc,
+  addYearsUtc,
+  datesInMonth,
+  datesInMonthForGivenWeekday,
+  datesInMonthForWeekday,
+  formatDayRangeLabel,
+  isSameDateUtc,
+  monthLabel,
+  parseIsoDate,
+  slotAppliesOnDateStr,
+  startOfDayUtc,
+  startOfMonthUtc,
+  todayUtc,
+  toIsoDate,
+  weekDays,
+  weekdayShortLabel,
+} from "@/lib/calendarDates";
 import { AgendaEventsList } from "./_components/AgendaEventsList";
 import { SelectionCheckbox, SlotChip, SlotEditorModal } from "./_components/SlotEditorModal";
 import { AGENDA_BOOKING_STATUS_LABEL, AGENDA_EXTERNAL_JOB_STATUS_LABEL, AgendaListItem, BOOKING_STATUS_COLOR, EXTERNAL_JOB_STATUS_COLOR, PENDING_QUOTE_COLOR, SlotDraft, WEEKDAY_FULL_LABELS, formatAgendaTimeRange, isSlotGeneric, slotsOverlap } from "./_components/agendaHelpers";
 
-type AgendaTab = "disponibilita" | "prenotazioni";
+// Tre sezioni (docs/CHANGELOG.md §279): il calendario degli appuntamenti,
+// gli orari di lavoro (settimana tipo + giorno per giorno) e il giro del giorno.
+type AgendaTab = "calendario" | "orari" | "giro";
+type AgendaFilter = "conf" | "done" | "wait" | "ext" | "free";
+const ALL_FILTERS: AgendaFilter[] = ["conf", "done", "wait", "ext", "free"];
+const DEFAULT_DURATION_MIN = 60;
+
+/** Minuti dalla mezzanotte di un orario "di parete" salvato come UTC. */
+function wallMinutes(iso: string): number {
+  const date = new Date(iso);
+  return date.getUTCHours() * 60 + date.getUTCMinutes();
+}
+function timeMinutes(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return (h ?? 0) * 60 + (m ?? 0);
+}
+function hoursText(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m} min`;
+  return m ? `${h} h ${m}` : `${h} h`;
+}
 
 export default function DashboardAgendaPage() {
   return (
@@ -38,7 +97,11 @@ function DashboardAgendaContent() {
   // appuntamenti reali), "Disponibilità" è configurazione che si tocca meno
   // spesso una volta impostata.
   // `?tab=disponibilita` (avviso "agenda vuota" in Oggi) apre subito le disponibilità.
-  const [activeTab, setActiveTab] = useState<AgendaTab>(searchParams.get("tab") === "disponibilita" ? "disponibilita" : "prenotazioni");
+  const [activeTab, setActiveTab] = useState<AgendaTab>(() => {
+    const tab = searchParams.get("tab");
+    if (tab === "disponibilita" || tab === "orari") return "orari";
+    return tab === "giro" ? "giro" : "calendario";
+  });
 
   const [slots, setSlots] = useState<SlotDraft[]>([]);
   const [exceptionDates, setExceptionDates] = useState<string[]>([]);
@@ -111,8 +174,6 @@ function DashboardAgendaContent() {
   const [bookingCurrentDate, setBookingCurrentDate] = useState(todayUtc());
   const [selectedBooking, setSelectedBooking] = useState<ProfessionalBooking | null>(null);
   const [isBookingActionPending, setIsBookingActionPending] = useState(false);
-  const [isSavingBookingNote, setIsSavingBookingNote] = useState(false);
-  const [isSavingMeetingLink, setIsSavingMeetingLink] = useState(false);
   // Cronologia completa della richiesta collegata, aperta dal pannello di
   // dettaglio (richiesta esplicita dell'utente: "cliccandoci sopra
   // inserisci un pulsante dove ti porta alla cronologia della richiesta
@@ -127,7 +188,6 @@ function DashboardAgendaContent() {
   // interamente dal professionista tramite ExternalJobModal, mostrati nello
   // stesso calendario "Prenotazioni" delle Booking reali.
   const [externalJobs, setExternalJobs] = useState<ExternalJob[] | null>(null);
-  const [externalJobsError, setExternalJobsError] = useState<string | null>(null);
   const [selectedExternalJob, setSelectedExternalJob] = useState<ExternalJob | null>(null);
   const [creatingExternalJobFor, setCreatingExternalJobFor] = useState<Date | null>(null);
 
@@ -149,6 +209,21 @@ function DashboardAgendaContent() {
   // elenco piatto dei soli risultati: filtrare una griglia lasciando celle
   // vuote sparse in giro non avrebbe senso, un elenco sì.
   const [agendaSearchQuery, setAgendaSearchQuery] = useState("");
+
+  // Nuova agenda (docs/CHANGELOG.md §279).
+  const [filters, setFilters] = useState<Set<AgendaFilter>>(() => new Set(ALL_FILTERS));
+  const [weather, setWeather] = useState<Map<string, WeatherAlertKind>>(new Map());
+  const [offlineSavedAt, setOfflineSavedAt] = useState<string | null>(null);
+  const [showCalendarLink, setShowCalendarLink] = useState(false);
+  const [completingBooking, setCompletingBooking] = useState<ProfessionalBooking | null>(null);
+  const [cancelingBooking, setCancelingBooking] = useState<ProfessionalBooking | null>(null);
+  const [weekTemplate, setWeekTemplate] = useState<AgendaWeekTemplate | null>(null);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [templateNotice, setTemplateNotice] = useState<string | null>(null);
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  const [vacationFrom, setVacationFrom] = useState("");
+  const [vacationTo, setVacationTo] = useState("");
+  const [vacationBusy, setVacationBusy] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -191,13 +266,54 @@ function DashboardAgendaContent() {
       .finally(() => setIsLoadingSlots(false));
   }, [token]);
 
+  // Appuntamenti e lavori esterni insieme: se la rete non c'è si mostra
+  // l'ultima copia salvata sul telefono (docs/CHANGELOG.md §279).
+  useEffect(() => {
+    if (!token || !user) return;
+    let cancelled = false;
+    Promise.all([apiClient.myProfessionalBookings(token), apiClient.myExternalJobs(token)])
+      .then(([loadedBookings, loadedJobs]) => {
+        if (cancelled) return;
+        setBookings(loadedBookings);
+        setExternalJobs(loadedJobs);
+        setOfflineSavedAt(null);
+        saveAgendaOffline(user.id, loadedBookings, loadedJobs);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        const copy = readAgendaOffline(user.id);
+        if (copy) {
+          setBookings(copy.bookings);
+          setExternalJobs(copy.externalJobs);
+          setOfflineSavedAt(copy.savedAt);
+          return;
+        }
+        const message = err instanceof Error ? err.message : "Errore nel caricamento delle prenotazioni.";
+        setBookingsError(message);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, user?.id]);
+
   useEffect(() => {
     if (!token) return;
     apiClient
-      .myProfessionalBookings(token)
-      .then(setBookings)
-      .catch((err) => setBookingsError(err instanceof Error ? err.message : "Errore nel caricamento delle prenotazioni."));
+      .agendaWeather(token)
+      .then((alerts) => setWeather(new Map(alerts.map((a) => [a.date, a.kind]))))
+      .catch(() => {});
+    apiClient
+      .agendaWeekTemplate(token)
+      .then(setWeekTemplate)
+      .catch(() => {});
   }, [token]);
+
+  // La linea dell'ora attuale si sposta da sola.
+  useEffect(() => {
+    const timer = setInterval(() => setNowTick(Date.now()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Deep-link "Vedi in agenda" da /dashboard/richieste (?booking=<id>) —
   // bug reale segnalato dall'utente: il link portava sempre alla data
@@ -231,7 +347,7 @@ function DashboardAgendaContent() {
     }
     const match = bookings.find((b) => b.id === targetId);
     if (match) {
-      setActiveTab("prenotazioni");
+      setActiveTab("calendario");
       setBookingView("day");
       setBookingCurrentDate(startOfDayUtc(new Date(match.scheduledAt)));
       setSelectedBooking(match);
@@ -239,14 +355,6 @@ function DashboardAgendaContent() {
     consumedBookingDeepLinkRef.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookings]);
-
-  useEffect(() => {
-    if (!token) return;
-    apiClient
-      .myExternalJobs(token)
-      .then(setExternalJobs)
-      .catch((err) => setExternalJobsError(err instanceof Error ? err.message : "Errore nel caricamento dei lavori esterni."));
-  }, [token]);
 
   useEffect(() => {
     if (!token) return;
@@ -302,37 +410,52 @@ function DashboardAgendaContent() {
     }
   }
 
-  // Nota privata del professionista (richiesta esplicita dell'utente:
-  // "eventuali note da ricordare") — mai vista dal cliente, salvata
-  // indipendentemente dallo stato della prenotazione.
-  async function handleSaveBookingNote(note: string) {
-    if (!token || !selectedBooking) return;
-    setIsSavingBookingNote(true);
-    try {
-      const result = await apiClient.updateBookingNote(token, selectedBooking.id, { note });
-      setBookings((prev) => (prev ? prev.map((b) => (b.id === selectedBooking.id ? { ...b, professionalNote: result.professionalNote } : b)) : prev));
-      setSelectedBooking((prev) => (prev ? { ...prev, professionalNote: result.professionalNote } : prev));
-    } catch (err) {
-      setBookingsError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
-    } finally {
-      setIsSavingBookingNote(false);
-    }
+  function patchBooking(id: string, patch: Partial<ProfessionalBooking>) {
+    setBookings((prev) => (prev ? prev.map((b) => (b.id === id ? { ...b, ...patch } : b)) : prev));
+    setSelectedBooking((prev) => (prev && prev.id === id ? { ...prev, ...patch } : prev));
   }
 
-  // Link consulenza video (Meet/Zoom/ecc., richiesta esplicita dell'utente)
-  // — a differenza della nota sopra, questo è visibile al cliente.
+  // Nota privata del professionista (mai vista dal cliente) e link della
+  // videochiamata (visibile al cliente): gli errori li mostra il riquadro.
+  async function handleSaveBookingNote(note: string) {
+    if (!token || !selectedBooking) return;
+    const result = await apiClient.updateBookingNote(token, selectedBooking.id, { note });
+    patchBooking(selectedBooking.id, { professionalNote: result.professionalNote });
+  }
+
   async function handleSaveMeetingLink(meetingLink: string) {
     if (!token || !selectedBooking) return;
-    setIsSavingMeetingLink(true);
-    try {
-      const result = await apiClient.updateBookingMeetingLink(token, selectedBooking.id, { meetingLink });
-      setBookings((prev) => (prev ? prev.map((b) => (b.id === selectedBooking.id ? { ...b, meetingLink: result.meetingLink } : b)) : prev));
-      setSelectedBooking((prev) => (prev ? { ...prev, meetingLink: result.meetingLink } : prev));
-    } catch (err) {
-      setBookingsError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
-    } finally {
-      setIsSavingMeetingLink(false);
-    }
+    const result = await apiClient.updateBookingMeetingLink(token, selectedBooking.id, { meetingLink });
+    patchBooking(selectedBooking.id, { meetingLink: result.meetingLink });
+  }
+
+  /** "Sto arrivando" (docs/CHANGELOG.md §279): avvisa il cliente una volta sola. */
+  async function handleOnTheWay(booking: ProfessionalBooking) {
+    if (!token) return;
+    const result = await apiClient.notifyOnTheWay(token, booking.id);
+    patchBooking(booking.id, { onTheWayAt: result.onTheWayAt });
+  }
+
+  /**
+   * "Lavoro completato" dall'agenda con la stessa finestra di "Richieste e
+   * lavori" (importo finale, foto, dichiarazione): prima l'agenda segnava
+   * solo lo stato, senza importo né pagamento del lavoro (docs/CHANGELOG.md §279).
+   */
+  async function handleComplete(input: CompleteBookingInput) {
+    if (!token || !completingBooking) return;
+    const result = await apiClient.completeBooking(token, completingBooking.id, input);
+    patchBooking(completingBooking.id, { status: "COMPLETED", finalAmountEurCents: result.finalAmountEurCents });
+    setCompletingBooking(null);
+    setSelectedBooking(null);
+  }
+
+  /** Annulla con una nota per il cliente, come da "Richieste e lavori". */
+  async function handleCancelWithNote(note: string | undefined) {
+    if (!token || !cancelingBooking) return;
+    await apiClient.cancelBookingByProfessional(token, cancelingBooking.id, { note });
+    patchBooking(cancelingBooking.id, { status: "CANCELED", canceledBy: "PROFESSIONAL", cancellationNote: note ?? null });
+    setCancelingBooking(null);
+    setSelectedBooking(null);
   }
 
   if (isLoading || (token && isLoadingSlots)) return null;
@@ -979,141 +1102,6 @@ function DashboardAgendaContent() {
       .sort((a, b) => a.quote!.estimatedStartDate.localeCompare(b.quote!.estimatedStartDate));
   }
 
-  function renderBookingDayColumn(date: Date) {
-    const dayBookings = bookingsOnDate(date);
-    const dayExternalJobs = externalJobsOnDate(date);
-    const dayPendingQuotes = pendingQuotesOnDate(date);
-    if (dayBookings.length === 0 && dayExternalJobs.length === 0 && dayPendingQuotes.length === 0) {
-      return (
-        <Text fontSize={11} color={brand.grafite70}>
-          Nessuna prenotazione.
-        </Text>
-      );
-    }
-    // Vista Settimana: colonna stretta, solo l'orario (niente nome cliente,
-    // che essendo di lunghezza variabile è quello che non ci stava dentro) —
-    // richiesta esplicita dell'utente, stesso principio già applicato a
-    // SlotChip nel calendario "Disponibilità". Vista Giorno: molto più
-    // spazio per colonna (una sola), il nome cliente resta.
-    const compact = bookingView === "week";
-    return (
-      <YStack gap="$2" minWidth={0}>
-        {dayBookings.map((booking) => {
-          // Fascia completa (richiesta esplicita dell'utente: "fai
-          // visualizzare la fascia oraria completa"), non solo l'inizio —
-          // resta su una sola riga anche in vista Settimana (numberOfLines
-          // già presente sotto), stesso principio già applicato altrove
-          // nell'agenda (BookingDetailPanel, AcceptedJobCard).
-          const time = formatAppointmentTimeRange(booking.scheduledAt, booking.scheduledEndAt);
-          const isCanceled = booking.status === "CANCELED" || booking.status === "NO_SHOW";
-          return (
-            <YStack
-              key={booking.id}
-              minWidth={0}
-              borderLeftWidth={3}
-              borderLeftColor={BOOKING_STATUS_COLOR[booking.status]}
-              backgroundColor={brand.gesso}
-              borderRadius="$2"
-              paddingHorizontal={compact ? "$1.5" : "$2"}
-              paddingVertical={compact ? 5 : "$2"}
-              gap={compact ? 0 : "$1"}
-              cursor="pointer"
-              opacity={isCanceled ? 0.6 : 1}
-              onPress={() => setSelectedBooking(booking)}
-              accessibilityRole="button"
-            >
-              <Text
-                fontFamily="$mono"
-                fontSize={compact ? 10 : 10.5}
-                fontWeight="700"
-                color={brand.grafite}
-                textDecorationLine={isCanceled ? "line-through" : "none"}
-                numberOfLines={1}
-              >
-                {time}
-              </Text>
-              {!compact ? (
-                <Text fontSize={10.5} color={brand.grafite70}>
-                  {booking.clientName ?? "Cliente"}
-                </Text>
-              ) : null}
-            </YStack>
-          );
-        })}
-        {dayExternalJobs.map((job) => {
-          const time = formatAppointmentTimeRange(job.scheduledAt, job.scheduledEndAt);
-          const isCanceled = job.status === "CANCELED";
-          return (
-            <YStack
-              key={job.id}
-              minWidth={0}
-              borderLeftWidth={3}
-              borderStyle="dashed"
-              borderLeftColor={EXTERNAL_JOB_STATUS_COLOR[job.status]}
-              backgroundColor={brand.gesso}
-              borderRadius="$2"
-              paddingHorizontal={compact ? "$1.5" : "$2"}
-              paddingVertical={compact ? 5 : "$2"}
-              gap={compact ? 0 : "$1"}
-              cursor="pointer"
-              opacity={isCanceled ? 0.6 : 1}
-              onPress={() => setSelectedExternalJob(job)}
-              accessibilityRole="button"
-            >
-              <Text
-                fontFamily="$mono"
-                fontSize={compact ? 10 : 10.5}
-                fontWeight="700"
-                color={brand.grafite}
-                textDecorationLine={isCanceled ? "line-through" : "none"}
-                numberOfLines={1}
-              >
-                {time} · Esterno
-              </Text>
-              {!compact ? (
-                <Text fontSize={10.5} color={brand.grafite70}>
-                  {job.clientName}
-                </Text>
-              ) : null}
-            </YStack>
-          );
-        })}
-        {dayPendingQuotes.map((lead) => {
-          const quote = lead.quote!;
-          const time = formatAppointmentTimeRange(quote.estimatedStartDate, quote.estimatedEndDate);
-          const clientName = lead.guidedRequest.clientAccountDeleted ? "Account eliminato" : (lead.guidedRequest.clientName ?? "Cliente");
-          return (
-            <YStack
-              key={lead.id}
-              minWidth={0}
-              borderLeftWidth={3}
-              borderStyle="dashed"
-              borderLeftColor={PENDING_QUOTE_COLOR}
-              backgroundColor={brand.gesso}
-              borderRadius="$2"
-              paddingHorizontal={compact ? "$1.5" : "$2"}
-              paddingVertical={compact ? 5 : "$2"}
-              gap={compact ? 0 : "$1"}
-              cursor="pointer"
-              onPress={() => router.push("/dashboard/richieste")}
-              accessibilityRole="button"
-              accessibilityLabel={`Preventivo in attesa per ${clientName}, vai a Richieste ricevute`}
-            >
-              <Text fontFamily="$mono" fontSize={compact ? 10 : 10.5} fontWeight="700" color={brand.grafite} numberOfLines={1}>
-                {time} · In attesa
-              </Text>
-              {!compact ? (
-                <Text fontSize={10.5} color={brand.grafite70}>
-                  {clientName}
-                </Text>
-              ) : null}
-            </YStack>
-          );
-        })}
-      </YStack>
-    );
-  }
-
   function renderBookingMonthCell(date: Date) {
     const dayBookings = bookingsOnDate(date);
     const dayExternalJobs = externalJobsOnDate(date);
@@ -1243,326 +1231,645 @@ function DashboardAgendaContent() {
     return <AgendaEventsList items={items} groupByMonth emptyLabel={`Nessuna prenotazione nel ${year}.`} />;
   }
 
-  // Vista "a colpo d'occhio" (richiesta esplicita dell'utente: "rendi la
-  // pagina agenda più innovativa") — spotlight sul prossimo impegno reale +
-  // tre numeri calcolati dagli stessi dati già scaricati, nessuna nuova
-  // chiamata di rete. Vedi apps/web/src/components/agenda/AgendaOverview.tsx.
-  const nextAgendaItem = computeNextAgendaItem(bookings, externalJobs, setSelectedBooking, setSelectedExternalJob);
-  const agendaStats = computeAgendaStats(bookings, externalJobs, leads);
+  // ——— Nuova agenda (docs/CHANGELOG.md §279) ———
+  const now = wallClockNow(new Date(nowTick));
+  const today = todayUtc();
+  const todayStr = toIsoDate(today);
+  const nowMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+  const closedSet = new Set(exceptionDates);
+
+  function bookingKind(b: ProfessionalBooking): AgendaGridEvent["kind"] {
+    if (b.status === "CANCELED" || b.status === "NO_SHOW") return "canceled";
+    if (b.status === "COMPLETED") return "done";
+    return b.status === "PENDING" ? "pending" : "conf";
+  }
+
+  const gridEvents: AgendaGridEvent[] = [
+    ...(filters.has("conf") || filters.has("done")
+      ? (bookings ?? [])
+          .filter((b) => (b.status === "COMPLETED" ? filters.has("done") : filters.has("conf")))
+          .map((b) => {
+            const start = wallMinutes(b.scheduledAt);
+            return {
+              key: `booking-${b.id}`,
+              date: b.scheduledAt.slice(0, 10),
+              start,
+              end: b.scheduledEndAt ? Math.max(start + 15, wallMinutes(b.scheduledEndAt)) : start + DEFAULT_DURATION_MIN,
+              title: b.clientAccountDeleted ? "Account eliminato" : ([b.recipientName, b.recipientSurname].filter(Boolean).join(" ") || b.clientName || "Cliente"),
+              detail: [b.categoryLabel, b.serviceMode === "ONLINE" ? "online" : b.city].filter(Boolean).join(" · "),
+              kind: bookingKind(b),
+              label: AGENDA_BOOKING_STATUS_LABEL[b.status],
+              onPress: () => setSelectedBooking(b),
+            };
+          })
+      : []),
+    ...(filters.has("ext")
+      ? (externalJobs ?? []).map((j) => {
+          const start = wallMinutes(j.scheduledAt);
+          return {
+            key: `external-${j.id}`,
+            date: j.scheduledAt.slice(0, 10),
+            start,
+            end: j.scheduledEndAt ? Math.max(start + 15, wallMinutes(j.scheduledEndAt)) : start + DEFAULT_DURATION_MIN,
+            title: j.clientName,
+            detail: "Lavoro esterno",
+            kind: j.status === "CANCELED" ? ("canceled" as const) : ("ext" as const),
+            label: "Lavoro esterno",
+            onPress: () => setSelectedExternalJob(j),
+          };
+        })
+      : []),
+    ...(filters.has("wait")
+      ? (leads ?? [])
+          .filter((lead) => lead.quote && lead.quote.bookingStatus === null && (lead.quote.status === "SENT" || lead.quote.status === "MODIFICATION_REQUESTED"))
+          .map((lead) => {
+            const quote = lead.quote!;
+            const start = wallMinutes(quote.estimatedStartDate);
+            return {
+              key: `pending-${lead.id}`,
+              date: quote.estimatedStartDate.slice(0, 10),
+              start,
+              end: quote.estimatedEndDate ? Math.max(start + 15, wallMinutes(quote.estimatedEndDate)) : start + DEFAULT_DURATION_MIN,
+              title: lead.guidedRequest.clientAccountDeleted ? "Account eliminato" : (lead.guidedRequest.clientName ?? "Cliente"),
+              detail: "In attesa del cliente",
+              kind: "wait" as const,
+              label: "Preventivo in attesa",
+              onPress: () => router.push(`/dashboard/richieste?open=${lead.guidedRequest.id}`),
+            };
+          })
+      : []),
+  ];
+
+  /** Orari liberi di un giorno: le fasce dell'agenda, da oggi in poi, nei giorni aperti. */
+  function freeBandsOn(dateStr: string): AgendaFreeBand[] {
+    if (closedSet.has(dateStr) || dateStr < todayStr) return [];
+    return slots
+      .filter((slot) => slotAppliesOnDateStr(slot, dateStr))
+      .map((slot) => ({ date: dateStr, start: timeMinutes(slot.start), end: timeMinutes(slot.end) }));
+  }
+
+  /** Minuti liberi di un giorno: fasce meno gli appuntamenti che ci cadono dentro (`null` senza fasce). */
+  function freeMinutesOn(dateStr: string): number | null {
+    const bands = freeBandsOn(dateStr);
+    if (bands.length === 0) return null;
+    const busy = gridEvents.filter((e) => e.date === dateStr && e.kind !== "canceled" && e.kind !== "wait");
+    let total = 0;
+    for (const band of bands) {
+      let free = band.end - band.start;
+      for (const e of busy) free -= Math.max(0, Math.min(band.end, e.end) - Math.max(band.start, e.start));
+      total += Math.max(0, free);
+    }
+    return total;
+  }
+
+  function dayNote(dateStr: string): AgendaDayNote | null {
+    const free = freeMinutesOn(dateStr);
+    if (free === null) return null;
+    return free === 0 ? { text: "Pieno", tone: "full" } : { text: `${hoursText(free)} libere`, tone: "free" };
+  }
+
+  const visibleDays = bookingView === "day" ? [bookingCurrentDate] : weekDays(bookingCurrentDate);
+  const visibleDayStrs = visibleDays.map(toIsoDate);
+  const freeBands = filters.has("free") ? visibleDayStrs.flatMap(freeBandsOn) : [];
+  const busyDates = new Set(gridEvents.filter((e) => e.kind !== "canceled").map((e) => e.date));
+  const rangeEvents = gridEvents.filter((e) => visibleDayStrs.includes(e.date) && e.kind !== "canceled" && e.kind !== "wait");
+  const rangeFree = visibleDayStrs.reduce((sum, d) => sum + (freeMinutesOn(d) ?? 0), 0);
+  const rangeWaiting = gridEvents.filter((e) => visibleDayStrs.includes(e.date) && e.kind === "wait").length;
+  const rangeSummary = [
+    `${rangeEvents.length} ${rangeEvents.length === 1 ? "lavoro" : "lavori"}`,
+    rangeWaiting > 0 ? `${rangeWaiting} in attesa` : null,
+    rangeFree > 0 ? `${hoursText(rangeFree)} libere` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const filterCount = (filter: AgendaFilter): string => {
+    if (filter === "free") return hoursText(visibleDayStrs.reduce((sum, d) => sum + (freeMinutesOn(d) ?? 0), 0));
+    const inRange = (date: string) => visibleDayStrs.includes(date);
+    if (filter === "conf") return String((bookings ?? []).filter((b) => inRange(b.scheduledAt.slice(0, 10)) && (b.status === "CONFIRMED" || b.status === "PENDING")).length);
+    if (filter === "done") return String((bookings ?? []).filter((b) => inRange(b.scheduledAt.slice(0, 10)) && b.status === "COMPLETED").length);
+    if (filter === "ext") return String((externalJobs ?? []).filter((j) => inRange(j.scheduledAt.slice(0, 10)) && j.status !== "CANCELED").length);
+    return String(rangeWaiting);
+  };
+
+  // Prossimo appuntamento di oggi, con le azioni a portata di pollice.
+  const nextBooking =
+    (bookings ?? [])
+      .filter((b) => b.status === "CONFIRMED" && b.scheduledAt.slice(0, 10) === todayStr)
+      .filter((b) => (b.scheduledEndAt ? wallMinutes(b.scheduledEndAt) : wallMinutes(b.scheduledAt) + DEFAULT_DURATION_MIN) > nowMinutes)
+      .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt))[0] ?? null;
+
+  function navigateCalendar(direction: -1 | 1) {
+    if (bookingView === "day") setBookingCurrentDate(addDaysUtc(bookingCurrentDate, direction));
+    else if (bookingView === "week") setBookingCurrentDate(addDaysUtc(bookingCurrentDate, 7 * direction));
+    else if (bookingView === "year") setBookingCurrentDate(addYearsUtc(bookingCurrentDate, direction));
+    else setBookingCurrentDate(addMonthsUtc(bookingCurrentDate, direction));
+  }
+
+  const rangeLabel =
+    bookingView === "day"
+      ? `${weekdayShortLabel(bookingCurrentDate)} ${bookingCurrentDate.getUTCDate()} ${monthLabel(bookingCurrentDate)}`
+      : bookingView === "week"
+        ? formatDayRangeLabel(visibleDays[0]!, visibleDays[6]!)
+        : bookingView === "year"
+          ? String(bookingCurrentDate.getUTCFullYear())
+          : `${monthLabel(bookingCurrentDate)} ${bookingCurrentDate.getUTCFullYear()}`;
+
+  // Settimana tipo: salvata a ogni modifica, applicata ai giorni ancora vuoti del mese scelto.
+  const templateMonths = [0, 1, 2].map((offset) => {
+    const month = addMonthsUtc(startOfMonthUtc(today), offset);
+    return { key: toIsoDate(month), label: `${monthLabel(month)} ${month.getUTCFullYear()}` };
+  });
+
+  async function changeWeekTemplate(next: AgendaWeekTemplate) {
+    if (!token) return;
+    setWeekTemplate(next);
+    setTemplateNotice(null);
+    setSavingTemplate(true);
+    try {
+      await apiClient.saveAgendaWeekTemplate(token, next);
+    } catch (err) {
+      setTemplateNotice(err instanceof Error ? `${err.message} La settimana tipo non è stata salvata.` : "Settimana tipo non salvata, riprova.");
+    } finally {
+      setSavingTemplate(false);
+    }
+  }
+
+  function applyWeekTemplate(monthKey: string) {
+    if (!weekTemplate) return;
+    const added: SlotDraft[] = [];
+    let filledDays = 0;
+    let skippedDays = 0;
+    for (const dateStr of datesInMonth(parseIsoDate(monthKey))) {
+      if (dateStr < todayStr || closedSet.has(dateStr)) continue;
+      const dayOfWeek = parseIsoDate(dateStr).getUTCDay();
+      const templateSlots = weekTemplate.days[dayOfWeek] ?? [];
+      if (templateSlots.length === 0) continue;
+      if (slots.some((slot) => slotAppliesOnDateStr(slot, dateStr))) {
+        skippedDays++;
+        continue;
+      }
+      filledDays++;
+      for (const t of templateSlots) {
+        added.push({ dayOfWeek, date: dateStr, start: t.start, end: t.end, allowsHome: t.allowsHome, allowsOnline: t.allowsOnline, homeMax: t.homeMax, onlineMax: t.onlineMax });
+      }
+    }
+    if (filledDays === 0) {
+      setTemplateNotice(skippedDays > 0 ? "Tutti i giorni di quel mese hanno già i loro orari: cambiali dal calendario qui sotto." : "Nessun giorno da riempire in quel mese.");
+      return;
+    }
+    const next = [...slots, ...added];
+    setSlots(next);
+    void persistSlots(next);
+    setTemplateNotice(
+      `Orari aggiunti a ${filledDays} ${filledDays === 1 ? "giorno" : "giorni"}.${skippedDays > 0 ? ` ${skippedDays} ${skippedDays === 1 ? "giorno aveva" : "giorni avevano"} già i loro orari e sono rimasti com'erano.` : ""}`,
+    );
+  }
+
+  /** Ferie: chiude in un colpo tutti i giorni tra due date. */
+  async function addVacation() {
+    if (!token || !vacationFrom || !vacationTo || vacationTo < vacationFrom) return;
+    setVacationBusy(true);
+    setError(null);
+    try {
+      let latest = exceptionDates;
+      for (let d = parseIsoDate(vacationFrom); toIsoDate(d) <= vacationTo; d = addDaysUtc(d, 1)) {
+        const dateStr = toIsoDate(d);
+        if (latest.includes(dateStr) || dateStr < todayStr) continue;
+        latest = (await apiClient.addAvailabilityException(token, dateStr)).exceptionDates;
+      }
+      setExceptionDates(latest);
+      setVacationFrom("");
+      setVacationTo("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ferie non salvate, riprova.");
+    } finally {
+      setVacationBusy(false);
+    }
+  }
+
+  const upcomingClosed = exceptionDates.filter((d) => d >= todayStr).sort();
+
+  function openStop(key: string) {
+    if (key.startsWith("booking-")) {
+      const match = (bookings ?? []).find((b) => `booking-${b.id}` === key);
+      if (match) setSelectedBooking(match);
+    } else {
+      const match = (externalJobs ?? []).find((j) => `external-${j.id}` === key);
+      if (match) setSelectedExternalJob(match);
+    }
+  }
+
+  const tabs: { value: AgendaTab; label: string }[] = [
+    { value: "calendario", label: "Calendario" },
+    { value: "orari", label: "Orari di lavoro" },
+    { value: "giro", label: "Giro intelligente" },
+  ];
+
+  const nextCard = nextBooking ? (
+    <div className="ag-card ag-next">
+      <b>
+        Prossimo · {formatAppointmentTimeRange(nextBooking.scheduledAt, nextBooking.scheduledEndAt)}{" "}
+        {[nextBooking.recipientName, nextBooking.recipientSurname].filter(Boolean).join(" ") || nextBooking.clientName || "Cliente"}
+      </b>
+      <span className="ag-muted" style={{ fontSize: 13 }}>
+        {nextBooking.serviceMode === "ONLINE" ? "Online" : [nextBooking.street, nextBooking.houseNumber].filter(Boolean).join(" ") || nextBooking.city || nextBooking.categoryLabel}
+      </span>
+      <div className="ag-actions">
+        {nextBooking.serviceMode !== "ONLINE" && nextBooking.street && nextBooking.houseNumber ? (
+          <a
+            className="ag-btn sm primary"
+            href={navigateUrl(`${nextBooking.street} ${nextBooking.houseNumber}, ${[nextBooking.postalCode, nextBooking.city].filter(Boolean).join(" ")}`)}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <Navigation size={15} aria-hidden /> Naviga
+          </a>
+        ) : null}
+        {nextBooking.serviceMode !== "ONLINE" && !nextBooking.onTheWayAt ? (
+          <button type="button" className="ag-btn sm" onClick={() => void handleOnTheWay(nextBooking).catch((err) => setBookingsError(err instanceof Error ? err.message : "Avviso non inviato, riprova."))}>
+            <Truck size={15} aria-hidden /> Sto arrivando
+          </button>
+        ) : null}
+        {nextBooking.recipientPhone ?? nextBooking.clientPhone ? (
+          <a className="ag-btn sm" href={`tel:${(nextBooking.recipientPhone ?? nextBooking.clientPhone)!.replace(/\s+/g, "")}`}>
+            <Phone size={15} aria-hidden /> Chiama
+          </a>
+        ) : null}
+      </div>
+      <button type="button" className="ag-link" style={{ marginTop: 12, fontSize: 13.5 }} onClick={() => setSelectedBooking(nextBooking)}>
+        Apri l&apos;appuntamento ›
+      </button>
+    </div>
+  ) : null;
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={1000} gap="$5">
-        <YStack gap="$2">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
-            Agenda
-          </Text>
-          <Text color={brand.grafite70}>
-            {activeTab === "disponibilita"
-              ? "Imposta i giorni e le fasce orarie in cui sei disponibile: i clienti la vedranno sul tuo profilo pubblico. Ogni fascia aggiunta vale solo per quella data — spunta “Ripeti” nel pop-up per applicarla a tutti gli stessi giorni della settimana nel mese corrente."
-              : "Il calendario dei tuoi appuntamenti: tocca un appuntamento per vederne i dettagli e confermarlo, completarlo o annullarlo."}
-          </Text>
-          {/* Elenco di richieste, preventivi e lavori: vive solo in
-              "Richieste e lavori" (docs/CHANGELOG.md §147), qui resta il
-              calendario. */}
-          <Link href="/dashboard/richieste" style={{ color: brand.cianografiaScuro, fontWeight: 600, fontSize: 14 }}>
-            Richieste, preventivi e lavori in elenco →
-          </Link>
-        </YStack>
+    <div className="ag" style={{ padding: "32px 16px 96px", boxSizing: "border-box" }}>
+      <AgendaStyles />
+      <div style={{ maxWidth: 1180, margin: "0 auto" }}>
+        <div className="ag-head">
+          <h1>Agenda</h1>
+          <div className="ag-head-right">
+            <button type="button" className="ag-btn ag-hide-phone" onClick={() => setShowCalendarLink(true)}>
+              <CalendarDays size={16} aria-hidden /> Collega al tuo calendario
+            </button>
+            <button type="button" className="ag-btn primary ag-hide-phone" onClick={() => setCreatingExternalJobFor(bookingCurrentDate)}>
+              <Plus size={16} aria-hidden /> Lavoro esterno
+            </button>
+          </div>
+        </div>
 
-        <XStack borderWidth={1} borderColor={brand.filetto} borderRadius="$2" overflow="hidden" alignSelf="flex-start">
-          {(
-            [
-              { value: "prenotazioni" as const, label: "Calendario" },
-              { value: "disponibilita" as const, label: "Disponibilità" },
-            ]
-          ).map((tab, index) => {
-            const active = tab.value === activeTab;
-            return (
-              <XStack
-                key={tab.value}
-                paddingHorizontal="$4"
-                paddingVertical="$2"
-                backgroundColor={active ? brand.grafite : brand.calce}
-                borderLeftWidth={index === 0 ? 0 : 1}
-                borderLeftColor={brand.filetto}
-                cursor="pointer"
-                onPress={() => setActiveTab(tab.value)}
-                accessibilityRole="button"
-              >
-                <Text fontWeight="700" fontSize="$3" color={active ? "white" : brand.grafite}>
-                  {tab.label}
-                </Text>
-              </XStack>
-            );
-          })}
-        </XStack>
+        <div className="ag-seg ag-tabs" role="group" aria-label="Sezioni dell'agenda">
+          {tabs.map((tab) => (
+            <button key={tab.value} type="button" aria-pressed={activeTab === tab.value} onClick={() => setActiveTab(tab.value)}>
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-        {/* Avviso ben leggibile se non è ancora stata impostata nessuna
-            disponibilità (richiesta esplicita dell'utente): visibile su
-            entrambe le schede, non solo su "Disponibilità" — l'agenda apre
-            ora di default su "Prenotazioni", dove altrimenti il
-            professionista potrebbe non capire perché non riceve
-            prenotazioni dirette. */}
-        {slots.length === 0 ? (
-          <XStack
-            alignItems="flex-start"
-            gap="$3"
-            padding="$4"
-            backgroundColor={brand.cianografiaVelo}
-            borderWidth={1}
-            borderColor={brand.cianografia}
-            borderRadius="$4"
-          >
-            <Icon name="calendar" size={20} color={brand.cianografiaScuro} strokeWidth={1.5} />
-            <YStack flex={1} gap="$2">
-              <Text fontWeight="700" color={brand.grafite}>
-                Non hai ancora impostato la tua disponibilità
-              </Text>
-              <Text fontSize="$3" color={brand.grafite70}>
-                Aggiungi i giorni e gli orari in cui sei disponibile: comparirà sul tuo profilo pubblico e i clienti
-                potranno prenotarti con molta più facilità.
-              </Text>
-              <Button variant="secondary" size="$3" height={40} alignSelf="flex-start" onPress={() => setActiveTab("disponibilita")}>
-                Aggiungi disponibilità
-              </Button>
-            </YStack>
-          </XStack>
+        {offlineSavedAt ? (
+          <div className="ag-banner warn" role="status">
+            Senza connessione: agenda aggiornata alle {new Date(offlineSavedAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}.
+          </div>
         ) : null}
 
-        {activeTab === "disponibilita" ? (
-          <>
-            {/* Eliminazione massiva delle fasce (richiesta esplicita
-                dell'utente): "Modifica" non apre una finestra separata, attiva
-                una modalità di selezione direttamente sul calendario qui sotto
-                (funziona identica in Giorno/Settimana/Mese) — un click su una
-                fascia la seleziona, più le scorciatoie "tutto il giorno"
-                (nella colonna) e "tutto il mese" (qui). */}
-            <XStack alignItems="center" gap="$3" flexWrap="wrap">
-              <Button variant="secondary" size="$3" height={40} alignSelf="flex-start" onPress={toggleSelectionMode}>
-                <XStack alignItems="center" gap="$2">
-                  <Icon name={selectionMode ? "x" : "pencil"} size={15} color={brand.grafite} />
-                  <Text color={brand.grafite} fontWeight="600">
-                    {selectionMode ? "Annulla" : "Modifica"}
-                  </Text>
-                </XStack>
-              </Button>
-              {selectionMode ? (
-                <>
-                  <Text
-                    fontFamily="$mono"
-                    fontSize={12}
-                    fontWeight="700"
-                    color={brand.cianografiaScuro}
-                    cursor="pointer"
-                    onPress={toggleMonthSelection}
-                    accessibilityRole="button"
+        {slots.length === 0 && activeTab !== "orari" ? (
+          <div className="ag-banner info">
+            <span>Non hai ancora orari di lavoro: aggiungili e i clienti potranno prenotarti più facilmente.</span>
+            <button type="button" className="ag-btn sm" onClick={() => setActiveTab("orari")}>
+              Imposta gli orari
+            </button>
+          </div>
+        ) : null}
+
+        {activeTab === "calendario" ? (
+          <div className="ag-layout">
+            <aside className="ag-aside" aria-label="Riepilogo">
+              {nextCard}
+              <AgendaMiniMonth
+                selected={bookingCurrentDate}
+                rangeDates={new Set(bookingView === "day" || bookingView === "week" ? visibleDayStrs : [])}
+                busyDates={busyDates}
+                today={today}
+                onPick={(date) => {
+                  setBookingCurrentDate(date);
+                  if (bookingView === "month" || bookingView === "year") setBookingView("day");
+                }}
+              />
+              <div className="ag-card">
+                <h3 style={{ marginBottom: 6 }}>Mostra</h3>
+                {(
+                  [
+                    { value: "conf", label: "Confermati", swatch: "ag-swatch-conf" },
+                    { value: "done", label: "Completati", swatch: "ag-swatch-done" },
+                    { value: "wait", label: "Preventivi in attesa", swatch: "ag-swatch-wait" },
+                    { value: "ext", label: "Lavori esterni", swatch: "ag-swatch-ext" },
+                    { value: "free", label: "Orari liberi", swatch: "ag-swatch-free" },
+                  ] as const
+                ).map((item) => (
+                  <button
+                    key={item.value}
+                    type="button"
+                    className="ag-filter"
+                    aria-pressed={filters.has(item.value)}
+                    onClick={() =>
+                      setFilters((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(item.value)) next.delete(item.value);
+                        else next.add(item.value);
+                        return next;
+                      })
+                    }
                   >
-                    Seleziona tutto il mese
-                  </Text>
-                  <Text fontSize="$3" color={brand.grafite70}>
-                    {selectedSlotKeys.size} fasc{selectedSlotKeys.size === 1 ? "ia" : "e"} selezionat
-                    {selectedSlotKeys.size === 1 ? "a" : "e"}
-                  </Text>
+                    <i className={item.swatch} aria-hidden />
+                    {item.label}
+                    {bookingView === "day" || bookingView === "week" ? <em>{filterCount(item.value)}</em> : null}
+                  </button>
+                ))}
+              </div>
+              <div className="ag-card">
+                <h3>Orari di lavoro</h3>
+                <p className="ag-muted" style={{ fontSize: 13, marginTop: 4 }}>
+                  {upcomingClosed.length > 0 ? `Prossima chiusura: ${parseIsoDate(upcomingClosed[0]!).getUTCDate()} ${monthLabel(parseIsoDate(upcomingClosed[0]!))}` : "Settimana tipo, giorni diversi e ferie."}
+                </p>
+                <button type="button" className="ag-link" style={{ marginTop: 10, fontSize: 13.5 }} onClick={() => setActiveTab("orari")}>
+                  Modifica gli orari ›
+                </button>
+              </div>
+            </aside>
+
+            <div style={{ minWidth: 0 }}>
+              <div className="ag-toolbar">
+                <button type="button" className="ag-btn sm" onClick={() => setBookingCurrentDate(today)}>
+                  Oggi
+                </button>
+                <button type="button" className="ag-icon-btn" onClick={() => navigateCalendar(-1)} aria-label="Periodo precedente">
+                  <ChevronLeft size={18} aria-hidden />
+                </button>
+                <button type="button" className="ag-icon-btn" onClick={() => navigateCalendar(1)} aria-label="Periodo successivo">
+                  <ChevronRight size={18} aria-hidden />
+                </button>
+                <span className="ag-range" style={{ textTransform: "capitalize" }}>
+                  {rangeLabel}
+                </span>
+                <div className="ag-seg" role="group" aria-label="Vista" style={{ marginLeft: "auto" }}>
+                  {(
+                    [
+                      { value: "day", label: "Giorno" },
+                      { value: "week", label: "Settimana" },
+                      { value: "month", label: "Mese" },
+                      { value: "year", label: "Anno" },
+                    ] as const
+                  ).map((item) => (
+                    <button key={item.value} type="button" aria-pressed={bookingView === item.value} onClick={() => setBookingView(item.value)}>
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
+                <label className="ag-input" style={{ display: "flex", alignItems: "center", gap: 8, flex: "1 1 220px", maxWidth: 380 }}>
+                  <Search size={16} aria-hidden style={{ color: "var(--ag-muted)", flex: "none" }} />
+                  <input
+                    aria-label="Cerca nell'agenda"
+                    type="text"
+                    value={agendaSearchQuery}
+                    onChange={(e) => setAgendaSearchQuery(e.target.value)}
+                    placeholder="Cerca cliente, via, lavoro..."
+                    style={{ flex: 1, minWidth: 0, border: "none", outline: "none", background: "transparent", fontSize: 14, color: brand.grafite, font: "inherit" }}
+                  />
+                  {agendaSearchQuery ? (
+                    <button type="button" onClick={() => setAgendaSearchQuery("")} aria-label="Cancella ricerca" style={{ border: 0, background: "none", cursor: "pointer", padding: 4, display: "grid" }}>
+                      <X size={15} aria-hidden />
+                    </button>
+                  ) : null}
+                </label>
+                {bookingView === "day" || bookingView === "week" ? <span className="ag-summary">{rangeSummary}</span> : null}
+              </div>
+
+              {bookingView === "day" ? (
+                <>
+                  <div className="ag-strip" role="group" aria-label="Giorni della settimana">
+                    {weekDays(bookingCurrentDate).map((date) => {
+                      const dateStr = toIsoDate(date);
+                      return (
+                        <button
+                          key={dateStr}
+                          type="button"
+                          className={`${isSameDateUtc(date, bookingCurrentDate) ? "on" : ""} ${dateStr === todayStr ? "today" : ""}`}
+                          onClick={() => setBookingCurrentDate(date)}
+                          aria-pressed={isSameDateUtc(date, bookingCurrentDate)}
+                          aria-label={`${weekdayShortLabel(date)} ${date.getUTCDate()}`}
+                        >
+                          {weekdayShortLabel(date)}
+                          <b>{date.getUTCDate()}</b>
+                          {weather.get(dateStr) ? <WeatherIcon kind={weather.get(dateStr)!} size={12} /> : busyDates.has(dateStr) ? <u aria-hidden /> : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {isSameDateUtc(bookingCurrentDate, today) ? <div className="ag-day-only-phone">{nextCard}</div> : null}
                 </>
               ) : null}
-            </XStack>
 
-            {selectionMode ? (
-              confirmingBulkDelete ? (
-                <XStack alignItems="center" gap="$3" flexWrap="wrap">
-                  <Text color={brand.grafite70} fontSize="$3">
-                    Eliminare {selectedSlotKeys.size} fasc{selectedSlotKeys.size === 1 ? "ia" : "e"}?
-                  </Text>
-                  <Button variant="urgent" size="$3" height={40} onPress={deleteSelectedSlots}>
-                    Conferma eliminazione
-                  </Button>
-                  <Button variant="secondary" size="$3" height={40} onPress={() => setConfirmingBulkDelete(false)}>
-                    Annulla
-                  </Button>
-                </XStack>
-              ) : (
-                <Button
-                  variant="urgent"
-                  size="$3"
-                  height={40}
-                  alignSelf="flex-start"
-                  disabled={selectedSlotKeys.size === 0}
-                  opacity={selectedSlotKeys.size === 0 ? 0.5 : 1}
-                  onPress={selectedSlotKeys.size > 0 ? () => setConfirmingBulkDelete(true) : undefined}
-                >
-                  <XStack alignItems="center" gap="$2">
-                    <Icon name="trash-2" size={15} color="white" />
-                    <Text color="white" fontWeight="700">
-                      Elimina
-                    </Text>
-                  </XStack>
-                </Button>
-              )
-            ) : null}
+              {bookingsError && !bookings ? (
+                <div className="ag-banner error" role="alert">
+                  {bookingsError}
+                </div>
+              ) : null}
 
-            <CalendarShell
-              view={view}
-              onViewChange={setView}
-              currentDate={currentDate}
-              onNavigate={setCurrentDate}
-              onSelectDay={(date) => {
-                if (selectionMode) {
-                  toggleDaySelection(date);
-                  return;
-                }
-                setCurrentDate(date);
-                setView("day");
-              }}
-              renderDayColumn={renderDayColumn}
-              renderMonthCell={renderMonthCell}
-            />
-
-            {/* Mentre il pop-up è aperto l'errore è già mostrato lì (più leggibile):
-                questo banner serve solo per gli errori del salvataggio finale,
-                quando nessun editor è in corso. */}
-            {error && !editingKey ? (
-              <XStack
-                borderWidth={1}
-                borderColor={brand.urgenza}
-                backgroundColor={brand.urgenzaVelo}
-                borderRadius="$2"
-                paddingHorizontal="$3"
-                paddingVertical="$2"
-                alignItems="center"
-                gap="$2"
-              >
-                <Icon name="bell-ring" size={14} color={brand.urgenza} />
-                <Text color={brand.urgenza} fontSize="$3" fontWeight="600" flex={1}>
-                  {error}
-                </Text>
-              </XStack>
-            ) : null}
-            {/* Nessun bottone "Salva agenda" (richiesta esplicita
-                dell'utente, F4.1): ogni operazione (impostare un orario,
-                eliminare una fascia, propagare una modifica) salva già da
-                sola — questo è solo un indicatore passivo dello stato del
-                salvataggio in corso, non un'azione da compiere. */}
-            {isSubmitting ? (
-              <Text color={brand.grafite70} fontSize="$3">
-                Salvataggio...
-              </Text>
-            ) : saved ? (
-              <Text color={brand.verificato} fontSize="$3">
-                Agenda salvata!
-              </Text>
-            ) : null}
-          </>
-        ) : (
-          <>
-            <NextAppointmentSpotlight item={nextAgendaItem} />
-            {bookings !== null ? <AgendaStatsStrip stats={agendaStats} onPendingPress={() => router.push("/dashboard/richieste")} /> : null}
-            <AgendaStatusLegend />
-
-            <XStack justifyContent="space-between" alignItems="center" gap="$3" flexWrap="wrap">
-              {/* Ricerca full-text (richiesta esplicita dell'utente):
-                  qualsiasi parola o parte di parola presente in QUALSIASI
-                  campo di una prenotazione/lavoro esterno/preventivo in
-                  attesa (nome cliente, telefono, indirizzo, descrizione,
-                  note, stato, voci del preventivo...) — non solo
-                  nome/città/via. Filtra dal vivo ad ogni digitazione,
-                  nessuna chiamata di rete (stessi dati già scaricati). */}
-              <XStack
-                alignItems="center"
-                gap="$2"
-                flex={1}
-                minWidth={220}
-                maxWidth={360}
-                height={40}
-                paddingHorizontal="$3"
-                borderRadius="$3"
-                backgroundColor={brand.calce}
-                borderWidth={1}
-                borderColor={brand.bordoCampo}
-              >
-                <Icon name="search" size={15} color={brand.grafite70} />
-                <input aria-label="Cerca nell'agenda"
-                  type="text"
-                  value={agendaSearchQuery}
-                  onChange={(e) => setAgendaSearchQuery(e.target.value)}
-                  placeholder="Cerca in qualsiasi campo..."
-                  style={{ flex: 1, minWidth: 0, border: "none", outline: "none", background: "transparent", fontSize: 14, color: brand.grafite }}
+              {bookings === null && !bookingsError ? (
+                <SkeletonBlock height={420} radius={20} />
+              ) : agendaSearchQuery.trim() ? (
+                <AgendaEventsList items={agendaSearchResults} emptyLabel="Nessun appuntamento corrisponde alla ricerca." />
+              ) : bookingView === "day" || bookingView === "week" ? (
+                <AgendaTimeGrid
+                  days={visibleDays}
+                  events={gridEvents}
+                  free={freeBands}
+                  closedDates={closedSet}
+                  weather={weather}
+                  today={today}
+                  nowMinutes={nowMinutes}
+                  selectedKey={selectedBooking ? `booking-${selectedBooking.id}` : null}
+                  dayNote={dayNote}
+                  onDayPress={(date) => {
+                    setBookingCurrentDate(date);
+                    setBookingView("day");
+                  }}
                 />
-                {agendaSearchQuery ? (
-                  <XStack cursor="pointer" onPress={() => setAgendaSearchQuery("")} accessibilityRole="button" accessibilityLabel="Cancella ricerca">
-                    <Icon name="x" size={15} color={brand.grafite70} />
-                  </XStack>
-                ) : null}
-              </XStack>
-              <Button
-                variant="secondary"
-                size="$3"
-                height={40}
-                alignSelf="flex-start"
-                onPress={() => setCreatingExternalJobFor(bookingCurrentDate)}
-              >
-                <XStack alignItems="center" gap="$2">
-                  <Icon name="plus" size={15} color={brand.grafite} />
-                  <Text color={brand.grafite} fontWeight="600">
-                    Lavoro esterno
-                  </Text>
-                </XStack>
-              </Button>
-            </XStack>
-            {bookingsError ? (
-              <Text color={brand.urgenza} fontSize="$3">
-                {bookingsError}
-              </Text>
-            ) : null}
-            {externalJobsError ? (
-              <Text color={brand.urgenza} fontSize="$3">
-                {externalJobsError}
-              </Text>
-            ) : null}
-            {bookings === null ? (
-              <SkeletonBlock height={420} radius={20} />
-            ) : agendaSearchQuery.trim() ? (
-              <AgendaEventsList
-                items={agendaSearchResults}
-                emptyLabel="Nessuna prenotazione corrisponde alla ricerca."
-              />
+              ) : bookingView === "month" ? (
+                <div className="ag-card" style={{ padding: 12 }}>
+                  <MonthGrid
+                    currentDate={bookingCurrentDate}
+                    today={today}
+                    onSelectDay={(date) => {
+                      setBookingCurrentDate(date);
+                      setBookingView("day");
+                    }}
+                    renderMonthCell={renderBookingMonthCell}
+                  />
+                </div>
+              ) : (
+                renderBookingYearList()
+              )}
+              {bookingsError && bookings ? (
+                <div className="ag-banner error" role="alert" style={{ marginTop: 12 }}>
+                  {bookingsError}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ) : activeTab === "orari" ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            {weekTemplate ? (
+              <WeekTemplateEditor template={weekTemplate} onChange={changeWeekTemplate} months={templateMonths} onApply={applyWeekTemplate} saving={savingTemplate} />
             ) : (
-              <CalendarShell
-                view={bookingView}
-                onViewChange={setBookingView}
-                currentDate={bookingCurrentDate}
-                onNavigate={setBookingCurrentDate}
-                onSelectDay={(date) => {
-                  setBookingCurrentDate(date);
-                  setBookingView("day");
-                }}
-                renderDayColumn={renderBookingDayColumn}
-                renderMonthCell={renderBookingMonthCell}
-                renderYearList={renderBookingYearList}
-              />
+              <SkeletonBlock height={360} radius={20} />
             )}
-          </>
-        )}
-      </YStack>
+            {templateNotice ? (
+              <div className="ag-banner info" role="status" style={{ marginBottom: 0 }}>
+                {templateNotice}
+              </div>
+            ) : null}
 
-      {selectedBooking ? (
-        <BookingDetailPanel
+            <div className="ag-card" style={{ padding: 20 }}>
+              <h2 style={{ fontSize: 19 }}>Ferie e chiusure</h2>
+              <p className="ag-muted" style={{ fontSize: 13.5, marginTop: 4 }}>
+                I giorni chiusi non si possono prenotare.
+              </p>
+              <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap", marginTop: 12 }}>
+                <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600 }}>
+                  Dal
+                  <input className="ag-input" type="date" min={todayStr} value={vacationFrom} onChange={(e) => setVacationFrom(e.target.value)} />
+                </label>
+                <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600 }}>
+                  Al
+                  <input className="ag-input" type="date" min={vacationFrom || todayStr} value={vacationTo} onChange={(e) => setVacationTo(e.target.value)} />
+                </label>
+                <button type="button" className="ag-btn" disabled={vacationBusy || !vacationFrom || !vacationTo || vacationTo < vacationFrom} onClick={() => void addVacation()}>
+                  {vacationBusy ? "Salvo..." : "Chiudi questi giorni"}
+                </button>
+              </div>
+              {upcomingClosed.length > 0 ? (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 14 }}>
+                  {upcomingClosed.slice(0, 30).map((dateStr) => (
+                    <button
+                      key={dateStr}
+                      type="button"
+                      className="ag-pill"
+                      style={{ border: 0, cursor: "pointer", height: 32 }}
+                      disabled={exceptionBusyDate === dateStr}
+                      onClick={() => void toggleException(dateStr)}
+                      aria-label={`Riapri il ${parseIsoDate(dateStr).getUTCDate()} ${monthLabel(parseIsoDate(dateStr))}`}
+                    >
+                      {weekdayShortLabel(parseIsoDate(dateStr))} {parseIsoDate(dateStr).getUTCDate()} {monthLabel(parseIsoDate(dateStr))}
+                      <X size={13} aria-hidden />
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="ag-card" style={{ padding: 20 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 6 }}>
+                <h2 style={{ fontSize: 19 }}>Giorno per giorno</h2>
+                <span className="ag-muted" style={{ fontSize: 13 }} aria-live="polite">
+                  {isSubmitting ? "Salvo..." : saved ? "Salvato" : ""}
+                </span>
+                <button type="button" className="ag-btn sm" style={{ marginLeft: "auto" }} onClick={toggleSelectionMode}>
+                  {selectionMode ? "Annulla" : "Elimina più fasce"}
+                </button>
+              </div>
+              <p className="ag-muted" style={{ fontSize: 13.5, marginBottom: 14 }}>
+                Tocca un giorno per aggiungere o cambiare le sue fasce, con il limite di prenotazioni a domicilio e online.
+              </p>
+              {selectionMode ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+                  <button type="button" className="ag-link" onClick={toggleMonthSelection}>
+                    Seleziona tutto il mese
+                  </button>
+                  <span className="ag-muted" style={{ fontSize: 13 }}>
+                    {selectedSlotKeys.size} {selectedSlotKeys.size === 1 ? "fascia selezionata" : "fasce selezionate"}
+                  </span>
+                  {confirmingBulkDelete ? (
+                    <>
+                      <button type="button" className="ag-btn sm danger" onClick={deleteSelectedSlots}>
+                        Conferma eliminazione
+                      </button>
+                      <button type="button" className="ag-btn sm" onClick={() => setConfirmingBulkDelete(false)}>
+                        Annulla
+                      </button>
+                    </>
+                  ) : (
+                    <button type="button" className="ag-btn sm danger" disabled={selectedSlotKeys.size === 0} onClick={() => setConfirmingBulkDelete(true)}>
+                      Elimina
+                    </button>
+                  )}
+                </div>
+              ) : null}
+              <CalendarShell
+                view={view}
+                onViewChange={setView}
+                currentDate={currentDate}
+                onNavigate={setCurrentDate}
+                onSelectDay={(date) => {
+                  if (selectionMode) {
+                    toggleDaySelection(date);
+                    return;
+                  }
+                  setCurrentDate(date);
+                  setView("day");
+                }}
+                renderDayColumn={renderDayColumn}
+                renderMonthCell={renderMonthCell}
+              />
+              {error && !editingKey ? (
+                <div className="ag-banner error" role="alert" style={{ marginTop: 12, marginBottom: 0 }}>
+                  {error}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ) : (
+          <DayRouteSection token={token} today={today} onOpenStop={openStop} />
+        )}
+      </div>
+
+      {activeTab === "calendario" ? (
+        <button type="button" className="ag-fab" onClick={() => setCreatingExternalJobFor(bookingCurrentDate)} aria-label="Aggiungi un lavoro esterno">
+          <Plus size={26} aria-hidden />
+        </button>
+      ) : null}
+
+      {selectedBooking && !completingBooking && !cancelingBooking && !showBookingTimeline ? (
+        <AppointmentPanel
           key={selectedBooking.id}
           booking={selectedBooking}
           onClose={() => setSelectedBooking(null)}
-          onAction={handleBookingAction}
-          isActionPending={isBookingActionPending}
+          onConfirm={() => void handleBookingAction("CONFIRMED")}
+          onComplete={() => setCompletingBooking(selectedBooking)}
+          onCancel={() => setCancelingBooking(selectedBooking)}
+          onOnTheWay={() => handleOnTheWay(selectedBooking)}
           onSaveNote={handleSaveBookingNote}
-          isSavingNote={isSavingBookingNote}
           onSaveMeetingLink={handleSaveMeetingLink}
-          isSavingMeetingLink={isSavingMeetingLink}
-          onOpenTimeline={selectedBooking.guidedRequestId ? () => setShowBookingTimeline(true) : undefined}
-          onOpenFullRequest={
-            selectedBooking.guidedRequestId ? () => router.push(`/dashboard/richieste?open=${selectedBooking.guidedRequestId}`) : undefined
-          }
-          token={token}
+          onOpenMessages={selectedBooking.guidedRequestId && myProfileId ? () => setShowBookingTimeline(true) : undefined}
+          isBusy={isBookingActionPending}
         />
       ) : null}
+
+      {completingBooking ? (
+        <CompleteJobModal
+          quotedItems={completingBooking.items}
+          onClose={() => setCompletingBooking(null)}
+          onComplete={handleComplete}
+          uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}
+        />
+      ) : null}
+      {cancelingBooking ? <CancelBookingModal onClose={() => setCancelingBooking(null)} onCancel={handleCancelWithNote} /> : null}
+
+      {showCalendarLink ? <CalendarLinkModal token={token} onClose={() => setShowCalendarLink(false)} /> : null}
 
       {showBookingTimeline && selectedBooking?.guidedRequestId && myProfileId ? (
         <TimelineModal
@@ -1647,6 +1954,6 @@ function DashboardAgendaContent() {
           }
         />
       ) : null}
-    </YStack>
+    </div>
   );
 }

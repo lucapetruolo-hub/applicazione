@@ -364,7 +364,8 @@ function WeekOrDayGrid({ days, today, renderDayColumn }: { days: Date[]; today: 
   );
 }
 
-function MonthGrid({
+/** Griglia del mese, usata anche da sola dalla nuova agenda (docs/CHANGELOG.md §279). */
+export function MonthGrid({
   currentDate,
   today,
   onSelectDay,
@@ -428,6 +429,16 @@ function MonthGrid({
           );
         })}
       </div>
+      <style jsx global>{`
+        .cal-month-grid {
+          display: grid;
+          grid-template-columns: repeat(7, 1fr);
+          border: 1px solid ${brand.filetto};
+          border-radius: 6px;
+          overflow: hidden;
+          background: ${brand.calce};
+        }
+      `}</style>
     </YStack>
   );
 }
