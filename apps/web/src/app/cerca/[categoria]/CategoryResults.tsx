@@ -7,6 +7,8 @@ import {
   type ProfessionalSearchResult,
 } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
+import { SITE_INDEXABLE } from "@/lib/siteIndexing";
+import { PopularServicesLinks } from "@/components/PopularServicesLinks";
 import { SearchHeader } from "@/components/SearchHeader";
 import { CategoryContent } from "./CategoryContent";
 
@@ -22,6 +24,34 @@ export function findCategory(slug: ProfessionalCategorySlug): Category {
  * pagina indicizzabile categoria+città /cerca/[categoria]/[citta]
  * (docs/CHANGELOG.md §132, SEO locale — CLAUDE.md §7.6).
  */
+/** Oltre questo tempo la pagina non aspetta i più richiesti: resta l'ordine del catalogo. */
+const POPULAR_TIMEOUT_MS = 1500;
+
+/** Ordine dei servizi più richiesti (docs/CHANGELOG.md §282); vuoto se l'API non risponde in tempo. */
+async function popularOrder(city?: string): Promise<string[]> {
+  const timeout = new Promise<string[]>((resolve) => setTimeout(() => resolve([]), POPULAR_TIMEOUT_MS));
+  const fetched = apiClient
+    .getCategoryPopularity(city)
+    .then(({ counts }) => counts.map((item) => item.slug))
+    .catch(() => []);
+  return Promise.race([fetched, timeout]);
+}
+
+/**
+ * Categorie con almeno un professionista nella città (docs/CHANGELOG.md §282):
+ * si collegano solo pagine con risultati, come nella sitemap. Dal lancio
+ * (sito indicizzabile) contano solo i professionisti veri, non i profili demo.
+ * `null` se la ricerca non risponde: meglio nessun link che link a pagine vuote.
+ */
+async function categoriesInCity(city: string): Promise<string[] | null> {
+  try {
+    const list = await apiClient.searchProfessionals({ city, excludeDemo: SITE_INDEXABLE });
+    return [...new Set(list.flatMap((pro) => pro.categories.map((item) => item.slug)))];
+  } catch {
+    return null;
+  }
+}
+
 export function categoryMetadata(category: Category, city?: string): Metadata {
   const comune = city ? findComuneByName(city) : undefined;
   if (comune) {
@@ -51,6 +81,11 @@ export async function CategoryResults({
   // La città resta un filtro valido anche in modalità "Online" (vedi stessa
   // nota in /cerca/page.tsx).
   const isOnline = searchParams.online === "1";
+  // Solo un comune vero ha la sua pagina categoria+città a cui collegarsi.
+  const comune = city ? findComuneByName(city) : undefined;
+  // In parallelo alla ricerca, così non allunga il caricamento.
+  const popularPromise = popularOrder(comune?.name);
+  const availablePromise = comune ? categoriesInCity(comune.name) : Promise.resolve(undefined);
 
   // Fetch server-side: contenuto SEO-critico deve essere presente nell'HTML
   // già al primo render, non caricato via client-side fetch (CLAUDE.md §5.4).
@@ -59,7 +94,7 @@ export async function CategoryResults({
   // "nessun professionista" (docs/CHANGELOG.md §284).
   let loadFailed = false;
   try {
-    professionals = await apiClient.searchProfessionals({ category: category.slug, city, remote: isOnline });
+    professionals = await apiClient.searchProfessionals({ category: category.slug, city, remote: isOnline, track: true });
   } catch {
     loadFailed = true;
   }
@@ -92,6 +127,12 @@ export async function CategoryResults({
         allProfessionals={allProfessionals}
         loadFailed={loadFailed}
         initialUrgentOnly={searchParams.urgente === "1"}
+      />
+      <PopularServicesLinks
+        currentSlug={category.slug}
+        city={comune?.name}
+        order={await popularPromise}
+        available={await availablePromise}
       />
     </div>
   );

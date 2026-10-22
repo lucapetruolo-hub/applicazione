@@ -87,7 +87,7 @@ export function SlotChip({
 export const modalTimeInputStyle = {
   padding: 12,
   borderRadius: 4,
-  border: `1px solid ${brand.filetto}`,
+  border: `1px solid ${brand.bordoCampo}`,
   fontSize: 17,
   fontFamily: "inherit",
   color: brand.grafite,

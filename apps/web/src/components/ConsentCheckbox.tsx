@@ -47,7 +47,7 @@ export function ConsentCheckbox({
         marginTop={2}
         borderRadius="$1"
         borderWidth={2}
-        borderColor={checked ? brand.cianografia : showError ? brand.urgenza : brand.filetto}
+        borderColor={checked ? brand.cianografia : showError ? brand.urgenza : brand.bordoCampo}
         backgroundColor={checked ? brand.cianografia : brand.calce}
         alignItems="center"
         justifyContent="center"

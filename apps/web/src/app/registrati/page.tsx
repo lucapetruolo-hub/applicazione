@@ -23,6 +23,7 @@ import { CategoryMultiPicker } from "@/components/CategoryMultiPicker";
 import { ClientEmailFirstAuth } from "@/components/ClientEmailFirstAuth";
 import { AuthPageBackground } from "@/components/AuthPageBackground";
 import { TURNSTILE_PENDING_MESSAGE, TurnstileWidget, isTurnstileEnabled } from "@/components/TurnstileWidget";
+import { AuthStepHeader } from "@/components/AuthStepHeader";
 
 export default function RegistratiPage() {
   return (
@@ -32,47 +33,57 @@ export default function RegistratiPage() {
   );
 }
 
-/** Badge circolare con icona su sfondo a gradiente — in cima ad ogni card
- * di questa pagina, stesso principio "un tocco di profondità in più" già
- * usato per il pannello della campanella notifiche. */
-function AuthIconBadge({ icon }: { icon: "sparkles" | "search" | "hard-hat" | "briefcase" | "mail" }) {
-  return (
-    <div
-      style={{
-        width: 56,
-        height: 56,
-        borderRadius: 999,
-        background: `linear-gradient(135deg, ${brand.cianografia}, ${brand.cianografiaScuro})`,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexShrink: 0,
-      }}
-    >
-      <Icon name={icon} size={26} color="white" strokeWidth={1.5} />
-    </div>
-  );
-}
-
 /** Due chip di fiducia compatte, stesso principio della striscia già in uso
  * nella pagina risultati di ricerca (CLAUDE.md §70, F1.4) — qui in versione
  * ridotta a due voci pertinenti al momento della registrazione. */
 function TrustChips() {
   return (
-    <XStack flexWrap="wrap" gap="$2" justifyContent="center">
+    <XStack flexWrap="wrap" gap="$2" justifyContent="center" rowGap="$2">
       <XStack alignItems="center" gap="$1" backgroundColor={brand.gesso} borderRadius={999} paddingHorizontal="$3" paddingVertical="$1">
         <Icon name="shield" size={13} color={brand.grafite70} strokeWidth={1.5} />
         <Text fontSize={12} color={brand.grafite70}>
-          I tuoi dati sono protetti
+          Dati protetti
         </Text>
       </XStack>
       <XStack alignItems="center" gap="$1" backgroundColor={brand.gesso} borderRadius={999} paddingHorizontal="$3" paddingVertical="$1">
         <Icon name="heart-handshake" size={13} color={brand.grafite70} strokeWidth={1.5} />
         <Text fontSize={12} color={brand.grafite70}>
-          Gratis, nessuna carta richiesta
+          Gratis, senza carta
         </Text>
       </XStack>
     </XStack>
+  );
+}
+
+/** Scheda di scelta (ruolo, modo di lavorare) come link vero: tastiera,
+ * apertura con il tasto "indietro" del telefono, risposta al tocco. */
+function ChoiceCard({ href, replace, icon, title, text }: { href: string; replace?: boolean; icon: IconName; title: string; text: string }) {
+  return (
+    <Link href={href} replace={replace} className="auth-role-card-link">
+      <XStack
+        className="auth-role-card"
+        alignItems="center"
+        gap="$3"
+        padding="$4"
+        backgroundColor={brand.calce}
+        borderWidth={1}
+        borderColor={brand.filetto}
+        borderRadius="$4"
+      >
+        <XStack width={44} height={44} borderRadius="$3" backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center" flexShrink={0}>
+          <Icon name={icon} size={20} color={brand.cianografiaScuro} strokeWidth={1.5} />
+        </XStack>
+        <YStack flex={1} flexBasis={0} minWidth={0} gap="$1">
+          <Text fontWeight="700" color={brand.grafite}>
+            {title}
+          </Text>
+          <Text fontSize="$2" color={brand.grafite70}>
+            {text}
+          </Text>
+        </YStack>
+        <Icon name="chevron-right" size={18} color={brand.grafite70} />
+      </XStack>
+    </Link>
   );
 }
 
@@ -88,27 +99,17 @@ function TrustChips() {
  * `ruolo=professionista` continuano a saltare questa schermata come prima.
  */
 function RoleChoiceScreen({
-  onChoose,
+  hrefFor,
   noAccountFound,
 }: {
-  onChoose: (role: "cliente" | "professionista") => void;
+  hrefFor: (role: "cliente" | "professionista") => string;
   /** Vero se si arriva qui da "Accedi con Google" su un'email senza account (vedi /accedi). */
   noAccountFound?: boolean;
 }) {
   return (
     <AuthPageBackground>
       <Surface className="auth-card-in" width="100%" maxWidth={480} borderRadius={radiusDocLg} padding="$6" gap="$5">
-        <YStack alignItems="center" gap="$3">
-          <AuthIconBadge icon="sparkles" />
-          <YStack alignItems="center" gap="$1">
-            <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
-              Passo 1
-            </Text>
-            <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
-              Come vuoi registrarti?
-            </Text>
-          </YStack>
-        </YStack>
+        <AuthStepHeader icon="user-round" title="Come vuoi registrarti?" />
 
         {noAccountFound ? (
           <YStack padding="$3" borderRadius="$4" borderWidth={1} borderColor={brand.urgenza} backgroundColor={brand.urgenzaVelo}>
@@ -119,59 +120,8 @@ function RoleChoiceScreen({
         ) : null}
 
         <YStack gap="$3">
-          <XStack
-            className="auth-role-card"
-            alignItems="center"
-            gap="$3"
-            padding="$4"
-            backgroundColor={brand.calce}
-            borderWidth={1}
-            borderColor={brand.filetto}
-            borderRadius="$4"
-            cursor="pointer"
-            onPress={() => onChoose("cliente")}
-            accessibilityRole="button"
-          >
-            <XStack width={44} height={44} borderRadius="$3" backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center">
-              <Icon name="search" size={20} color={brand.cianografiaScuro} strokeWidth={1.5} />
-            </XStack>
-            <YStack flex={1} gap="$1">
-              <Text fontWeight="700" color={brand.grafite}>
-                Sono un cliente
-              </Text>
-              <Text fontSize="$2" color={brand.grafite70}>
-                Cerco un professionista per un lavoro.
-              </Text>
-            </YStack>
-            <Icon name="chevron-right" size={18} color={brand.grafite70} />
-          </XStack>
-
-          <XStack
-            className="auth-role-card"
-            alignItems="center"
-            gap="$3"
-            padding="$4"
-            backgroundColor={brand.calce}
-            borderWidth={1}
-            borderColor={brand.filetto}
-            borderRadius="$4"
-            cursor="pointer"
-            onPress={() => onChoose("professionista")}
-            accessibilityRole="button"
-          >
-            <XStack width={44} height={44} borderRadius="$3" backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center">
-              <Icon name="hard-hat" size={20} color={brand.cianografiaScuro} strokeWidth={1.5} />
-            </XStack>
-            <YStack flex={1} gap="$1">
-              <Text fontWeight="700" color={brand.grafite}>
-                Sono un professionista
-              </Text>
-              <Text fontSize="$2" color={brand.grafite70}>
-                Offro i miei servizi e voglio ricevere richieste.
-              </Text>
-            </YStack>
-            <Icon name="chevron-right" size={18} color={brand.grafite70} />
-          </XStack>
+          <ChoiceCard href={hrefFor("cliente")} replace icon="search" title="Sono un cliente" text="Cerco un professionista per un lavoro." />
+          <ChoiceCard href={hrefFor("professionista")} replace icon="hard-hat" title="Sono un professionista" text="Offro i miei servizi e voglio ricevere richieste." />
         </YStack>
 
         <Text fontSize="$3" textAlign="center" color={brand.grafite70}>
@@ -208,73 +158,27 @@ function entityChoiceFromParam(param: string | null) {
   return ENTITY_CHOICES.find((choice) => choice.param === param) ?? null;
 }
 
-function StepLabel({ children }: { children: ReactNode }) {
-  return (
-    <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
-      {children}
-    </Text>
-  );
-}
-
-function EntityTypeScreen({ onChoose, onBack }: { onChoose: (param: string) => void; onBack: () => void }) {
+function EntityTypeScreen({ hrefFor, onBack }: { hrefFor: (param: string) => string; onBack: () => void }) {
   return (
     <AuthPageBackground>
       <Surface className="auth-card-in" width="100%" maxWidth={480} borderRadius={radiusDocLg} padding="$6" gap="$5">
-        <YStack alignItems="center" gap="$3">
-          <AuthIconBadge icon="briefcase" />
-          <YStack alignItems="center" gap="$1">
-            <StepLabel>Passo 2 di 4</StepLabel>
-            <Text tag="h1" fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
-              Come lavori?
-            </Text>
-            <Text fontSize="$3" color={brand.grafite70} textAlign="center">
-              Così ti chiediamo solo i dati fiscali che servono a te.
-            </Text>
-          </YStack>
-        </YStack>
+        <AuthStepHeader
+          icon="briefcase"
+          title="Come lavori?"
+          subtitle="Così ti chiediamo solo i dati fiscali che servono a te."
+          step={{ current: 2, total: 4 }}
+          onBack={onBack}
+        />
 
-        <YStack gap="$3" role="list">
+        <YStack gap="$3">
           {ENTITY_CHOICES.map((choice) => (
-            <XStack
-              key={choice.value}
-              role="listitem"
-              className="auth-role-card"
-              alignItems="center"
-              gap="$3"
-              padding="$4"
-              backgroundColor={brand.calce}
-              borderWidth={1}
-              borderColor={brand.filetto}
-              borderRadius="$4"
-              cursor="pointer"
-              onPress={() => onChoose(choice.param)}
-              accessibilityRole="button"
-            >
-              <XStack width={44} height={44} borderRadius="$3" backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center" flexShrink={0}>
-                <Icon name={choice.icon} size={20} color={brand.cianografiaScuro} strokeWidth={1.5} />
-              </XStack>
-              <YStack flex={1} flexBasis={0} minWidth={0} gap="$1">
-                <Text fontWeight="700" color={brand.grafite}>
-                  {choice.label}
-                </Text>
-                <Text fontSize="$2" color={brand.grafite70}>
-                  {choice.description}
-                </Text>
-              </YStack>
-              <Icon name="chevron-right" size={18} color={brand.grafite70} />
-            </XStack>
+            <ChoiceCard key={choice.value} href={hrefFor(choice.param)} icon={choice.icon} title={choice.label} text={choice.description} />
           ))}
         </YStack>
 
         <Text fontSize="$2" color={brand.grafite70} textAlign="center">
-          Non sai cosa scegliere? Se non hai una Partita IVA scegli &quot;Privato&quot;. Puoi cambiarlo più avanti da Dati fiscali.
+          Senza Partita IVA scegli &quot;Privato&quot;. Puoi cambiarlo dopo da Dati fiscali.
         </Text>
-
-        <XStack justifyContent="center">
-          <Button variant="ghost" onPress={onBack}>
-            Indietro
-          </Button>
-        </XStack>
       </Surface>
     </AuthPageBackground>
   );
@@ -315,17 +219,19 @@ const SIGNUP_BENEFITS: { icon: IconName; title: string; text: string }[] = [
  */
 function ProfessionalSignupLayout({
   children,
-  step = "Passo 3 di 4",
+  step = 3,
   icon = "hard-hat",
-  title = "Iscriviti come professionista",
-  subtitle = "Crea l'account, poi completi il profilo e inizi a ricevere richieste.",
+  title = "Crea il tuo account",
+  subtitle = "Poi completi il profilo e ricevi le richieste.",
   showFooter = true,
+  onBack,
 }: {
   children: ReactNode;
-  step?: string;
-  icon?: "hard-hat" | "mail";
+  step?: number;
+  icon?: IconName;
   title?: string;
   subtitle?: string;
+  onBack?: () => void;
   /** Link al cliente, foto e vantaggi: non nella schermata del codice. */
   showFooter?: boolean;
 }) {
@@ -333,20 +239,7 @@ function ProfessionalSignupLayout({
     <AuthPageBackground>
       <YStack width="100%" maxWidth={480} gap="$6">
         <Surface className="auth-card-in" width="100%" borderRadius={radiusDocLg} padding="$6" gap="$5">
-          <YStack alignItems="center" gap="$3">
-            <AuthIconBadge icon={icon} />
-            <YStack alignItems="center" gap="$1">
-              <StepLabel>{step}</StepLabel>
-              <Text tag="h1" fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
-                {title}
-              </Text>
-              {subtitle ? (
-                <Text fontSize="$3" color={brand.grafite70} textAlign="center">
-                  {subtitle}
-                </Text>
-              ) : null}
-            </YStack>
-          </YStack>
+          <AuthStepHeader icon={icon} title={title} subtitle={subtitle || undefined} step={{ current: step, total: 4 }} onBack={onBack} />
           {children}
           {showFooter ? (
           <Text fontSize="$3" textAlign="center" color={brand.grafite70}>
@@ -401,33 +294,24 @@ function ProfessionalSignupLayout({
 }
 
 const CLIENT_HEADERS = {
-  email: "Continua con l'email",
+  email: "Crea il tuo account",
   new: "Crea il tuo account gratuito",
   password: "Hai già un account",
   google: "Accedi con Google",
 } as const;
 
-function ClientSignup({ onAuthenticated }: { onAuthenticated: () => void }) {
+const CLIENT_ICONS = { email: "mail", new: "lock", password: "lock", google: "mail" } as const;
+
+function ClientSignup({ onAuthenticated, onBack }: { onAuthenticated: () => void; onBack: () => void }) {
   return (
     <AuthPageBackground>
       <Surface className="auth-card-in" width="100%" maxWidth={420} borderRadius={radiusDocLg} padding="$6" gap="$5">
         <ClientEmailFirstAuth
-          intro="Richieste, preventivi e professionisti salvati saranno collegati a questa email: li ritrovi nel tuo account e ricevi gli aggiornamenti."
-          firstTimeNote="Se è la prima volta, creeremo il tuo account gratuito. Se hai già un account, ti chiediamo la password."
+          intro="Ritrovi richieste, preventivi e professionisti salvati nel tuo account."
           submitSuffix=""
           onAuthenticated={onAuthenticated}
-          renderHeader={(step) => (
-            <YStack alignItems="center" gap="$3">
-              <AuthIconBadge icon="search" />
-              <YStack alignItems="center" gap="$1">
-                <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
-                  Passo 2 di 2
-                </Text>
-                <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
-                  {CLIENT_HEADERS[step]}
-                </Text>
-              </YStack>
-            </YStack>
+          renderHeader={(step, back) => (
+            <AuthStepHeader icon={CLIENT_ICONS[step]} title={CLIENT_HEADERS[step]} step={{ current: 2, total: 2 }} onBack={back ?? onBack} />
           )}
         />
         <TrustChips />
@@ -478,6 +362,9 @@ function RegistratiForm() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Campo a cui si riferisce l'errore (docs/CHANGELOG.md §278): il messaggio
+  // va sotto quel campo. Nullo: errore generale, sopra "Registrati".
+  const [errorField, setErrorField] = useState<"categories" | "email" | "password" | "confirm" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileReset, setTurnstileReset] = useState(0);
@@ -504,29 +391,30 @@ function RegistratiForm() {
   // (docs/CHANGELOG.md §243). Chi entra con Google non la vede mai.
   const [codeStep, setCodeStep] = useState<{ token: string; email: string; resendIn: number; required: boolean } | null>(null);
 
-  function setParam(key: string, value: string | null, mode: "push" | "replace" = "replace") {
+  function hrefWith(key: string, value: string | null) {
     const params = new URLSearchParams(searchParams.toString());
     if (value === null) params.delete(key);
     else params.set(key, value);
-    router[mode](`/registrati?${params.toString()}`);
+    const query = params.toString();
+    return query ? `/registrati?${query}` : "/registrati";
   }
 
-  function chooseRole(choice: "cliente" | "professionista") {
-    setParam("ruolo", choice);
+  function setParam(key: string, value: string | null) {
+    router.replace(hrefWith(key, value));
   }
 
   if (roleParam !== "professionista" && roleParam !== "cliente") {
-    return <RoleChoiceScreen onChoose={chooseRole} noAccountFound={searchParams.get("motivo") === "nessun-account"} />;
+    return <RoleChoiceScreen hrefFor={(choice) => hrefWith("ruolo", choice)} noAccountFound={searchParams.get("motivo") === "nessun-account"} />;
   }
 
   // Cliente: accesso "prima l'email" (docs/CHANGELOG.md §176), lo stesso del
   // popup della richiesta. Un'email già registrata qui entra con la password.
   if (!isProfessional) {
-    return <ClientSignup onAuthenticated={() => router.push("/")} />;
+    return <ClientSignup onAuthenticated={() => router.push("/")} onBack={() => setParam("ruolo", null)} />;
   }
 
   if (!entityChoice) {
-    return <EntityTypeScreen onChoose={(param) => setParam("tipo", param, "push")} onBack={() => setParam("ruolo", null)} />;
+    return <EntityTypeScreen hrefFor={(param) => hrefWith("tipo", param)} onBack={() => setParam("ruolo", null)} />;
   }
 
   // Con Google Sign-In questa pagina può autenticare anche un account
@@ -548,8 +436,19 @@ function RegistratiForm() {
     router.push(isNewUser ? "/dashboard/profilo" : "/dashboard");
   }
 
+  function fieldError(field: "categories" | "email" | "password" | "confirm", message: string) {
+    setError(message);
+    setErrorField(field);
+    const target = { categories: "categorie", email: "email", password: "new-password", confirm: "new-password-confirm" }[field];
+    const el = document.getElementById(target);
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el?.scrollIntoView({ block: "center", behavior: reduceMotion ? "auto" : "smooth" });
+    if (field !== "categories") el?.focus({ preventScroll: true });
+  }
+
   async function handleRegister() {
     setError(null);
+    setErrorField(null);
     if (!canSubmitConsent) {
       setConsentAttempt((n) => n + 1);
       const firstMissing = document.getElementById(acceptedLegalTerms ? "consenso-eta" : "consenso-termini");
@@ -558,7 +457,7 @@ function RegistratiForm() {
       return;
     }
     if (password !== confirmPassword) {
-      setError("Le password non coincidono.");
+      fieldError("confirm", "Le password non coincidono.");
       return;
     }
     const result = registerSchema.safeParse({
@@ -571,7 +470,12 @@ function RegistratiForm() {
       entityType: entityChoice?.value,
     });
     if (!result.success) {
-      setError(result.error.issues[0]?.message ?? "Dati non validi.");
+      const issue = result.error.issues[0];
+      const message = issue?.message ?? "Dati non validi.";
+      const path = issue?.path[0];
+      if (path === "email" || path === "password") fieldError(path, message);
+      else if (path === "categorySlugs") fieldError("categories", message);
+      else setError(message);
       return;
     }
     if (isTurnstileEnabled() && !turnstileToken) {
@@ -634,7 +538,7 @@ function RegistratiForm() {
       // sceglierle nel modulo, poi di ripetere l'accesso con Google.
       if (message === NO_CATEGORY_MESSAGE) {
         setPendingGoogleIdToken(null);
-        setError(`${NO_CATEGORY_MESSAGE} Poi premi di nuovo il pulsante di Google.`);
+        fieldError("categories", `${NO_CATEGORY_MESSAGE} Poi premi di nuovo il pulsante di Google.`);
         return;
       }
       if (viaModal) {
@@ -649,6 +553,7 @@ function RegistratiForm() {
 
   async function handleGoogleCredential(idToken: string) {
     setError(null);
+    setErrorField(null);
     // Un solo tentativo con lo stato di consenso corrente (le due caselle
     // qui sotto, spuntate o no): il backend riconosce da solo un account
     // già esistente per quell'email (login diretto, nessun consenso
@@ -669,7 +574,7 @@ function RegistratiForm() {
 
   if (codeStep) {
     return (
-      <ProfessionalSignupLayout step="Passo 4 di 4" icon="mail" title="Conferma la tua email" subtitle="" showFooter={false}>
+      <ProfessionalSignupLayout step={4} icon="mail" title="Conferma la tua email" subtitle="" showFooter={false}>
         <EmailCodeForm
           token={codeStep.token}
           email={codeStep.email}
@@ -704,17 +609,25 @@ function RegistratiForm() {
     <>
       <EntityTypeSummary choice={entityChoice} onChange={() => setParam("tipo", null)} />
 
-      <div>
+      <div id="categorie">
         <span className="auth-field-label" style={{ display: "block", marginBottom: 8 }}>
-          Che lavori fai? (fino a 3 scelte)
+          Che lavori fai?
         </span>
         <CategoryMultiPicker
           value={categorySlugs}
           onChange={(next) => {
             setCategorySlugs(next);
-            if (next.length > 0 && error?.startsWith(NO_CATEGORY_MESSAGE)) setError(null);
+            if (next.length > 0 && errorField === "categories") {
+              setError(null);
+              setErrorField(null);
+            }
           }}
         />
+        {error && errorField === "categories" ? (
+          <Text role="alert" display="flex" marginTop="$2" fontSize="$3" color={brand.urgenza}>
+            {error}
+          </Text>
+        ) : null}
       </div>
 
       <GoogleSignInButton onCredential={handleGoogleCredential} />
@@ -778,6 +691,7 @@ function RegistratiForm() {
             autoComplete="username"
             nativeID="email"
             accessibilityLabel="Email"
+            error={error && errorField === "email" ? error : undefined}
           />
           <AuthField
             label="Password"
@@ -804,6 +718,7 @@ function RegistratiForm() {
             autoComplete="new-password"
             nativeID="new-password"
             accessibilityLabel="Password"
+            error={error && errorField === "password" ? error : undefined}
           />
           <AuthField
             label="Conferma password"
@@ -824,6 +739,7 @@ function RegistratiForm() {
             autoComplete="new-password"
             nativeID="new-password-confirm"
             accessibilityLabel="Conferma password"
+            error={error && errorField === "confirm" ? error : undefined}
             onSubmitEditing={handleRegister}
           />
 
@@ -859,8 +775,8 @@ function RegistratiForm() {
 
           <TurnstileWidget onTokenChange={setTurnstileToken} resetSignal={turnstileReset} />
 
-          {error ? (
-            <Text color={brand.urgenza} fontSize="$3">
+          {error && !errorField ? (
+            <Text role="alert" color={brand.urgenza} fontSize="$3">
               {error}
             </Text>
           ) : null}
@@ -894,7 +810,7 @@ function RegistratiForm() {
 
   return (
     <>
-    <ProfessionalSignupLayout>{formFields}</ProfessionalSignupLayout>
+    <ProfessionalSignupLayout onBack={() => setParam("tipo", null)}>{formFields}</ProfessionalSignupLayout>
     {pendingGoogleIdToken ? (
       <GoogleConsentModal
         acceptedLegalTerms={acceptedLegalTerms}

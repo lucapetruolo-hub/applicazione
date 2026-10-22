@@ -11,7 +11,7 @@ export const MAX_REQUEST_PHOTOS = 5;
 export const textareaStyle = {
   padding: 10,
   borderRadius: 4,
-  border: `1px solid ${brand.filetto}`,
+  border: `1px solid ${brand.bordoCampo}`,
   fontSize: 14,
   fontFamily: "inherit",
   color: brand.grafite,
@@ -19,7 +19,7 @@ export const textareaStyle = {
 };
 // Filtri in cima alla pagina (cerca/ordina/zona) — stesse dimensioni già in
 // uso in /dashboard/richieste per lo stesso identico blocco.
-export const filterInputStyle = { padding: "14px 16px", borderRadius: radiusDoc, border: `1px solid ${brand.filetto}`, fontSize: 16, fontFamily: "inherit", color: brand.grafite, backgroundColor: brand.calce };
+export const filterInputStyle = { padding: "14px 16px", borderRadius: radiusDoc, border: `1px solid ${brand.bordoCampo}`, fontSize: 16, fontFamily: "inherit", color: brand.grafite, backgroundColor: brand.calce };
 
 export const STAGE_STYLE = REQUEST_STAGE_STYLE;
 

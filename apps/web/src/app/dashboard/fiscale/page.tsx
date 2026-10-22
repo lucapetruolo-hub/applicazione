@@ -91,7 +91,7 @@ const addressInputStyle = {
   boxSizing: "border-box" as const,
   padding: "0 12px",
   borderRadius: radiusDoc,
-  border: `1px solid ${brand.filetto}`,
+  border: `1px solid ${brand.bordoCampo}`,
   background: brand.calce,
   fontSize: 15,
   fontFamily: "inherit",
@@ -624,7 +624,7 @@ function DashboardFiscaleContent() {
                           value={fields.dateOfBirth ?? ""}
                           max={new Date().toISOString().slice(0, 10)}
                           onChange={(event) => setField("dateOfBirth", event.target.value)}
-                          style={{ ...addressInputStyle, borderColor: liveError("dateOfBirth") ? brand.urgenza : brand.filetto }}
+                          style={{ ...addressInputStyle, borderColor: liveError("dateOfBirth") ? brand.urgenza : brand.bordoCampo }}
                         />
                         {liveError("dateOfBirth") ? (
                           <Text fontSize={13} color={brand.urgenza}>
