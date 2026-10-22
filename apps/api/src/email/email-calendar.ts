@@ -60,6 +60,44 @@ function sequence(): number {
   return Math.max(0, Math.floor((Date.now() - Date.UTC(2026, 0, 1)) / 1000));
 }
 
+const ROME_TIMEZONE = [
+  "BEGIN:VTIMEZONE",
+  "TZID:Europe/Rome",
+  "BEGIN:DAYLIGHT",
+  "TZOFFSETFROM:+0100",
+  "TZOFFSETTO:+0200",
+  "TZNAME:CEST",
+  "DTSTART:19700329T020000",
+  "RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU",
+  "END:DAYLIGHT",
+  "BEGIN:STANDARD",
+  "TZOFFSETFROM:+0200",
+  "TZOFFSETTO:+0100",
+  "TZNAME:CET",
+  "DTSTART:19701025T030000",
+  "RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU",
+  "END:STANDARD",
+  "END:VTIMEZONE",
+];
+
+function eventLines(event: CalendarEvent, withOrganizer: boolean): string[] {
+  return [
+    "BEGIN:VEVENT",
+    `UID:${event.uid}`,
+    `SEQUENCE:${sequence()}`,
+    `STATUS:${event.canceled ? "CANCELLED" : "CONFIRMED"}`,
+    // Richiesto dallo standard per un annullamento (RFC 5546): l'assistenza.
+    ...(withOrganizer ? [`ORGANIZER;CN="${EMAIL_BRAND.name.replace(/"/g, "")}":mailto:${EMAIL_BRAND.supportEmail}`] : []),
+    `DTSTAMP:${new Date().toISOString().slice(0, 19).replace(/[-:]/g, "")}Z`,
+    `DTSTART;TZID=Europe/Rome:${wallClock(event.start)}`,
+    `DTEND;TZID=Europe/Rome:${wallClock(endOf(event))}`,
+    `SUMMARY:${icsText(event.title)}`,
+    ...(event.location?.trim() ? [`LOCATION:${icsText(event.location.trim())}`] : []),
+    ...(event.description?.trim() ? [`DESCRIPTION:${icsText(event.description.trim())}`] : []),
+    "END:VEVENT",
+  ];
+}
+
 /** File .ics con un solo evento, in ora italiana. */
 export function calendarIcs(event: CalendarEvent): string {
   const lines = [
@@ -68,36 +106,31 @@ export function calendarIcs(event: CalendarEvent): string {
     `PRODID:-//${icsText(EMAIL_BRAND.name)}//Promemoria//IT`,
     "CALSCALE:GREGORIAN",
     `METHOD:${event.canceled ? "CANCEL" : "PUBLISH"}`,
-    "BEGIN:VTIMEZONE",
-    "TZID:Europe/Rome",
-    "BEGIN:DAYLIGHT",
-    "TZOFFSETFROM:+0100",
-    "TZOFFSETTO:+0200",
-    "TZNAME:CEST",
-    "DTSTART:19700329T020000",
-    "RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU",
-    "END:DAYLIGHT",
-    "BEGIN:STANDARD",
-    "TZOFFSETFROM:+0200",
-    "TZOFFSETTO:+0100",
-    "TZNAME:CET",
-    "DTSTART:19701025T030000",
-    "RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU",
-    "END:STANDARD",
-    "END:VTIMEZONE",
-    "BEGIN:VEVENT",
-    `UID:${event.uid}`,
-    `SEQUENCE:${sequence()}`,
-    `STATUS:${event.canceled ? "CANCELLED" : "CONFIRMED"}`,
-    // Richiesto dallo standard per un annullamento (RFC 5546): l'assistenza.
-    `ORGANIZER;CN="${EMAIL_BRAND.name.replace(/"/g, "")}":mailto:${EMAIL_BRAND.supportEmail}`,
-    `DTSTAMP:${new Date().toISOString().slice(0, 19).replace(/[-:]/g, "")}Z`,
-    `DTSTART;TZID=Europe/Rome:${wallClock(event.start)}`,
-    `DTEND;TZID=Europe/Rome:${wallClock(endOf(event))}`,
-    `SUMMARY:${icsText(event.title)}`,
-    ...(event.location?.trim() ? [`LOCATION:${icsText(event.location.trim())}`] : []),
-    ...(event.description?.trim() ? [`DESCRIPTION:${icsText(event.description.trim())}`] : []),
-    "END:VEVENT",
+    ...ROME_TIMEZONE,
+    ...eventLines(event, true),
+    "END:VCALENDAR",
+  ];
+  return lines.map(fold).join("\r\n") + "\r\n";
+}
+
+/**
+ * Calendario collegato dall'agenda (docs/CHANGELOG.md §279): tutti gli
+ * appuntamenti in un file che Google Calendar e iPhone rileggono da soli.
+ */
+export function calendarFeedIcs(name: string, events: CalendarEvent[]): string {
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    `PRODID:-//${icsText(EMAIL_BRAND.name)}//Agenda//IT`,
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    `X-WR-CALNAME:${icsText(name)}`,
+    "X-WR-TIMEZONE:Europe/Rome",
+    // Ogni ora, per chi lo rispetta (iPhone sì, Google decide da sé).
+    "REFRESH-INTERVAL;VALUE=DURATION:PT1H",
+    "X-PUBLISHED-TTL:PT1H",
+    ...ROME_TIMEZONE,
+    ...events.flatMap((event) => eventLines(event, false)),
     "END:VCALENDAR",
   ];
   return lines.map(fold).join("\r\n") + "\r\n";

@@ -26,3 +26,4 @@ export * from "./addressSuggestions";
 export * from "./dac7";
 export * from "./appointmentTime";
 export * from "./safeRedirect";
+export * from "./agendaTools";

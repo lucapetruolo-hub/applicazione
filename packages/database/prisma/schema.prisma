@@ -198,6 +198,11 @@ model ProfessionalProfile {
   // §239). Vuoto = diretto + online con acconto del 20%.
   defaultPaymentOptions        String[]  @default([])
   defaultDepositPercent        Int?
+  // Agenda (docs/CHANGELOG.md §279): link segreto del calendario da
+  // collegare a Google/iPhone (null = collegamento spento) e settimana tipo
+  // usata da "Orari di lavoro" per riempire un mese in un colpo.
+  calendarFeedToken            String?   @unique
+  agendaWeekTemplate           Json?
   city                         String
   latitude                     Float
   longitude                    Float
@@ -1121,6 +1126,10 @@ model Booking {
   // GuidedRequest collegata) o per prenotazioni create prima di questo
   // campo.
   serviceMode ServiceMode?
+
+  // "Sto arrivando" dall'agenda (docs/CHANGELOG.md §279): il cliente riceve
+  // l'avviso una volta sola per appuntamento.
+  onTheWayAt DateTime?
 
   quote               Quote?              @relation(fields: [quoteId], references: [id])
   client              User                @relation(fields: [clientId], references: [id], onDelete: Cascade)

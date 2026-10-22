@@ -1365,6 +1365,7 @@ export class ProfessionalsService {
       // Link della consulenza video (Meet/Zoom/ecc.), impostato dal
       // professionista stesso — richiesta esplicita dell'utente.
       meetingLink: booking.meetingLink,
+      onTheWayAt: booking.onTheWayAt?.toISOString() ?? null,
       clientConfirmedCompletedAt: booking.clientConfirmedCompletedAt?.toISOString() ?? null,
       professionalCompletionPhotoUrls: booking.professionalCompletionPhotoUrls,
       clientCompletionPhotoUrls: booking.clientCompletionPhotoUrls,

@@ -55,8 +55,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
     activeChannels: ["inApp", "email"],
   },
   lavori: {
-    professional: { label: "Lavori e appuntamenti", description: "Promemoria il giorno prima, nuove recensioni, pagamenti, prenotazioni annullate o riaperte, segnalazioni." },
-    client: { label: "Lavori e appuntamenti", description: "Promemoria il giorno prima, lavoro terminato, saldo da pagare, intervento annullato." },
+    professional: { label: "Lavori e appuntamenti", description: "Promemoria il giorno prima, riepilogo della sera, nuove recensioni, pagamenti, prenotazioni annullate o riaperte, segnalazioni." },
+    client: { label: "Lavori e appuntamenti", description: "Promemoria il giorno prima, professionista in arrivo, lavoro terminato, saldo da pagare, intervento annullato." },
     types: [
       "JOB_COMPLETED",
       "BOOKING_CANCELED_BY_PROFESSIONAL",
@@ -111,6 +111,9 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "BOOKING_REMINDER",
       // Agenda vuota o senza disponibilità nei prossimi 7 giorni (docs/CHANGELOG.md §274).
       "AGENDA_REMINDER",
+      // Agenda (docs/CHANGELOG.md §279): "Sto arrivando" al cliente, riepilogo della sera prima al professionista.
+      "PROFESSIONAL_ON_THE_WAY",
+      "AGENDA_TOMORROW_SUMMARY",
       // Nuova recensione ricevuta dal professionista (docs/CHANGELOG.md §185).
       "NEW_REVIEW",
     ],
