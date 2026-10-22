@@ -19855,3 +19855,13 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 - Checklist di lancio: prove automatiche nel browser (punto 26) e misure del percorso (punto 27); elenchi admin con totale tra le cose da fare dopo il lancio.
 
 **Verifica**: typecheck e lint del web; nel browser `/contatti` largo 320 e 360px esatti, pulsanti del banner dentro lo schermo a 320×568; anteprime in `anteprime/errori-caricamento/`.
+
+## 286. "Riprova" anche in Oggi e Abbonamento
+
+**Richiesta esplicita dell'utente** (22/10/2026, thread "Revisione esterna del piano CEO"): "effettua miglioria 2 e unisci" (miglioria proposta dopo il §285).
+
+**Problema**: in `/dashboard` (Oggi), se richieste o appuntamenti non arrivavano dall'API, restava un messaggio tecnico in rosso e i riquadri restavano sugli scheletri di caricamento per sempre; anche "Il tuo andamento" restava sugli scheletri. In `/dashboard/abbonamento` c'era solo il messaggio in rosso.
+
+**Decisione presa**: `LoadErrorNotice` con "Riprova" al posto dei contatori e delle sezioni "Da rispondere ora" e "Oggi e domani" ("Non riusciamo a caricare richieste e appuntamenti"); "Il tuo andamento" si nasconde se non si carica; in Abbonamento "Non riusciamo a caricare il tuo abbonamento" con "Riprova". Gli avvisi in alto (pausa, percorso profilo, agenda) restano come prima.
+
+**Verifica**: typecheck e lint del web.

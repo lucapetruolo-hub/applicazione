@@ -14,6 +14,7 @@ import {
 import { Button, ButtonArrow, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
+import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { SubscriptionPauseBanner, upgradeCostText } from "@/components/SubscriptionPauseBanner";
 
 /**
@@ -211,7 +212,15 @@ function AbbonamentoContent() {
           </Surface>
         ) : null}
 
-        {loadError ? <Text color={brand.urgenza}>{loadError}</Text> : null}
+        {loadError ? (
+          <LoadErrorNotice
+            title="Non riusciamo a caricare il tuo abbonamento"
+            onRetry={() => {
+              setLoadError(null);
+              load();
+            }}
+          />
+        ) : null}
         {notice ? (
           <Surface borderRadius={radiusDoc} padding="$4" backgroundColor={brand.cianografiaVelo}>
             <Text color={brand.grafite}>{notice}</Text>
