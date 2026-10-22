@@ -203,7 +203,7 @@ export function CalendarShell({
             >
               <Icon name="chevron-left" size={15} color={brand.grafite} />
             </XStack>
-            <Text fontFamily="$mono" fontSize={12.5} color={brand.grafite70} minWidth={140} textAlign="center">
+            <Text fontFamily="$body" fontSize={12.5} color={brand.grafite70} minWidth={140} textAlign="center">
               {rangeLabel}
             </Text>
             <XStack

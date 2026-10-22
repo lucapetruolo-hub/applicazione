@@ -914,7 +914,7 @@ function DashboardAgendaContent() {
             >
               <SelectionCheckbox checked={allDaySelected} />
               <Text
-                fontFamily="$mono"
+                fontFamily="$body"
                 fontSize={9}
                 fontWeight="700"
                 letterSpacing={0.2}
@@ -960,7 +960,7 @@ function DashboardAgendaContent() {
             onPress={() => toggleException(dateStr)}
             accessibilityRole="button"
           >
-            <Text fontFamily="$mono" fontSize={9} fontWeight="600" letterSpacing={0.2} color={isClosed ? brand.verificato : brand.urgenza}>
+            <Text fontFamily="$body" fontSize={11} fontWeight="600" color={isClosed ? brand.verificato : brand.urgenza}>
               {isClosed ? "↺ Riapri" : "✕ Chiudi"}
             </Text>
           </XStack>
@@ -1009,7 +1009,7 @@ function DashboardAgendaContent() {
                 <Icon name="plus" size={16} strokeWidth={2.5} color={brand.cianografiaScuro} />
               </XStack>
             ) : daySlots.length === 0 ? (
-              <Text fontFamily="$mono" fontSize={9} fontWeight="600" letterSpacing={0.2} color={brand.grafite70}>
+              <Text fontFamily="$body" fontSize={11} fontWeight="600" color={brand.grafite70}>
                 Giorno passato
               </Text>
             ) : null}
@@ -1023,7 +1023,7 @@ function DashboardAgendaContent() {
     const dateStr = toIsoDate(date);
     if (exceptionDates.includes(dateStr)) {
       return (
-        <Text fontFamily="$body" fontSize={9} fontWeight="700" color={brand.urgenza}>
+        <Text fontFamily="$body" fontSize={11} fontWeight="600" color={brand.urgenza}>
           Chiuso
         </Text>
       );
@@ -1047,7 +1047,7 @@ function DashboardAgendaContent() {
       return (
         <XStack alignItems="center" gap={4}>
           <SelectionCheckbox checked={allSelected} />
-          <Text fontFamily="$mono" fontSize={9} fontWeight="700" color={allSelected ? brand.cianografiaScuro : brand.grafite70}>
+          <Text fontFamily="$body" fontSize={11} fontWeight="600" color={allSelected ? brand.cianografiaScuro : brand.grafite70}>
             {daySlotsWithIndex.length}
           </Text>
         </XStack>
@@ -1060,7 +1060,7 @@ function DashboardAgendaContent() {
           <YStack key={i} width={6} height={6} borderRadius={3} backgroundColor={isSlotGeneric(s) ? brand.ottone : brand.cianografia} />
         ))}
         {daySlots.length > 4 ? (
-          <Text fontFamily="$mono" fontSize={9} color={brand.grafite70}>
+          <Text fontFamily="$body" fontSize={11} color={brand.grafite70}>
             +{daySlots.length - 4}
           </Text>
         ) : null}
@@ -1120,7 +1120,7 @@ function DashboardAgendaContent() {
           <YStack key={lead.id} width={6} height={6} borderRadius={3} borderWidth={1} borderColor={PENDING_QUOTE_COLOR} backgroundColor="transparent" />
         ))}
         {totalCount > 4 ? (
-          <Text fontFamily="$mono" fontSize={9} color={brand.grafite70}>
+          <Text fontFamily="$body" fontSize={11} color={brand.grafite70}>
             +{totalCount - 4}
           </Text>
         ) : null}
@@ -1510,8 +1510,8 @@ function DashboardAgendaContent() {
         <div className="ag-head">
           <h1>Agenda</h1>
           <div className="ag-head-right">
-            <button type="button" className="ag-btn ag-hide-phone" onClick={() => setShowCalendarLink(true)}>
-              <CalendarDays size={16} aria-hidden /> Collega al tuo calendario
+            <button type="button" className="ag-btn" onClick={() => setShowCalendarLink(true)} aria-label="Collega al tuo calendario">
+              <CalendarDays size={16} aria-hidden /> <span className="ag-hide-phone">Collega al tuo calendario</span>
             </button>
             <button type="button" className="ag-btn primary ag-hide-phone" onClick={() => setCreatingExternalJobFor(bookingCurrentDate)}>
               <Plus size={16} aria-hidden /> Lavoro esterno
@@ -1560,7 +1560,7 @@ function DashboardAgendaContent() {
                 <h3 style={{ marginBottom: 6 }}>Mostra</h3>
                 {(
                   [
-                    { value: "conf", label: "Confermati", swatch: "ag-swatch-conf" },
+                    { value: "conf", label: "Appuntamenti", swatch: "ag-swatch-conf" },
                     { value: "done", label: "Completati", swatch: "ag-swatch-done" },
                     { value: "wait", label: "Preventivi in attesa", swatch: "ag-swatch-wait" },
                     { value: "ext", label: "Lavori esterni", swatch: "ag-swatch-ext" },

@@ -24,12 +24,14 @@ export function DayRouteSection({ token, today, onOpenStop }: { token: string; t
   const [date, setDate] = useState(today);
   const [route, setRoute] = useState<DayRoute | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [mapFailed, setMapFailed] = useState(false);
   const dateStr = toIsoDate(date);
 
   useEffect(() => {
     let cancelled = false;
     setRoute(null);
     setError(null);
+    setMapFailed(false);
     apiClient
       .agendaDayRoute(token, dateStr)
       .then((result) => !cancelled && setRoute(result))
@@ -90,21 +92,23 @@ export function DayRouteSection({ token, today, onOpenStop }: { token: string; t
               {tightCount === 1 ? "Tra due lavori non c'è abbastanza tempo per arrivare." : `In ${tightCount} punti del giro non c'è abbastanza tempo per arrivare.`}
             </div>
           ) : null}
-          {staticMap ? (
+          {staticMap && !mapFailed ? (
             // eslint-disable-next-line @next/next/no-img-element -- immagine del nostro server
-            <img src={staticMap} alt="Mappa delle tappe del giorno" style={{ width: "100%", height: "auto", aspectRatio: "640 / 300", objectFit: "cover", borderRadius: 16, marginTop: 14, background: "#f6f1ec" }} />
+            <img src={staticMap} alt="Mappa delle tappe del giorno" onError={() => setMapFailed(true)} style={{ width: "100%", height: "auto", aspectRatio: "640 / 300", objectFit: "cover", borderRadius: 16, marginTop: 14, background: "#f6f1ec" }} />
           ) : null}
           <ol style={{ listStyle: "none", padding: 0, margin: "14px 0 0" }}>
             {route.stops.map((stop, index) => {
               const leg = index > 0 ? route.legs[index - 1] : null;
+              // Due tappe di cui si conosce solo il comune, nello stesso
+              // comune: un tempo di strada sarebbe inventato.
+              const sameTown = !!leg && leg.km === 0 && stop.approximate && route.stops[index - 1]!.approximate;
               return (
                 <li key={stop.key}>
                   {leg ? (
                     <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0 8px 44px", fontSize: 13, color: leg.tight ? "var(--ag-red)" : "var(--ag-muted)" }}>
                       <Car size={15} aria-hidden />
                       <span>
-                        {leg.estimated ? "circa " : ""}
-                        {travelLabel(leg.minutes)} · {leg.km.toLocaleString("it-IT")} km
+                        {sameTown ? "Nello stesso comune" : `${leg.estimated ? "circa " : ""}${travelLabel(leg.minutes)} · ${leg.km.toLocaleString("it-IT")} km`}
                         {leg.tight ? ` · hai solo ${Math.max(0, leg.gapMinutes)} min` : ""}
                       </span>
                     </div>
@@ -139,8 +143,8 @@ export function DayRouteSection({ token, today, onOpenStop }: { token: string; t
             ) : null}
             {route.legs.length > 0 ? (
               <span className="ag-muted" style={{ fontSize: 13 }}>
-                {route.stops.length} tappe · {anyEstimated ? "circa " : ""}
-                {Math.round(totalKm)} km · {travelLabel(totalMinutes)} di strada
+                {route.stops.length} tappe
+                {totalKm > 0 ? ` · ${anyEstimated ? "circa " : ""}${Math.round(totalKm)} km · ${travelLabel(totalMinutes)} di strada` : ""}
               </span>
             ) : null}
           </div>

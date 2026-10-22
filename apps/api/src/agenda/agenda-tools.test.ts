@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { agendaWeekTemplateSchema, dayRouteMapsUrl, DEFAULT_WEEK_TEMPLATE } from "@professionisti/shared";
 import { weatherAlertKind, weatherAlerts } from "./weather.service";
-import { estimateLeg, legTiming } from "./day-route.service";
+import { comuneInAddress, estimateLeg, legTiming } from "./day-route.service";
 import { calendarFeedIcs } from "../email/email-calendar";
 
 describe("icona meteo", () => {
@@ -69,5 +69,14 @@ describe("calendario collegato", () => {
     expect(ics).toContain("DTSTART;TZID=Europe/Rome:20261022T110000");
     expect(ics).toContain("X-WR-CALNAME:Professionisti");
     expect(ics).not.toContain("METHOD:CANCEL");
+  });
+});
+
+describe("comuneInAddress", () => {
+  it("trova il comune nell'indirizzo scritto in un solo campo", () => {
+    expect(comuneInAddress("Via Isonzo 40, Latina")).toBe("Latina");
+    expect(comuneInAddress("Via Roma 1, 04011 Aprilia (LT)")).toBe("Aprilia");
+    expect(comuneInAddress("Via senza città")).toBeNull();
+    expect(comuneInAddress(null)).toBeNull();
   });
 });

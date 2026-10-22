@@ -104,7 +104,7 @@ export function AgendaTimeGrid({
 
   return (
     <div className="ag-card ag-cal">
-      <div className="ag-days" style={{ gridTemplateColumns: columns }}>
+      <div className={days.length === 1 ? "ag-days ag-days-single" : "ag-days"} style={{ gridTemplateColumns: columns }}>
         <div aria-hidden />
         {days.map((date, index) => {
           const dateStr = dateStrs[index]!;

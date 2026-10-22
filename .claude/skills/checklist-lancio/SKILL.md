@@ -42,7 +42,9 @@ produzione):
      avanzati; senza, si usa `DEMO_MAP_ID`, che è solo di prova (§140);
    - `GOOGLE_MAPS_API_KEY` su Render — seconda chiave, con Geocoding API,
      Places API (New) (suggerimenti degli indirizzi, §264) e Maps Static API
-     (immagine fissa della mappa senza consenso, §265);
+     (immagine fissa della mappa senza consenso, §265) e Routes API (tempi
+     di strada del "Giro intelligente" dell'agenda, §279: senza, i tempi
+     sono una stima "circa");
    - Client ID OAuth di Google: tra gli "URI di reindirizzamento
      autorizzati" l'indirizzo `/accesso-google` del dominio definitivo
      (accesso con Google, §265);

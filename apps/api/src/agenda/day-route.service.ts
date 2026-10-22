@@ -44,6 +44,21 @@ export function legTiming(previous: Pick<DayRouteStop, "start" | "end">, next: P
  * mostrata come "circa". Solo i lavori a domicilio: quelli online non
  * richiedono spostamenti.
  */
+/**
+ * Il lavoro esterno ha l'indirizzo in un solo campo ("Via Isonzo 40, Latina"):
+ * per la posizione approssimata si cerca un comune tra le parti separate da
+ * virgola, dall'ultima alla prima.
+ */
+export function comuneInAddress(address: string | null): string | null {
+  if (!address) return null;
+  const parts = address.split(",").map((part) => part.replace(/\b\d{5}\b|\([A-Z]{2}\)/g, "").trim()).filter(Boolean).reverse();
+  for (const part of parts) {
+    const comune = findComuneByName(part);
+    if (comune) return comune.name;
+  }
+  return null;
+}
+
 @Injectable()
 export class DayRouteService {
   private readonly logger = new Logger(DayRouteService.name);
@@ -57,7 +72,7 @@ export class DayRouteService {
 
   async dayRoute(userId: string, date: string): Promise<DayRoute> {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new BadRequestException("Data non valida.");
-    const profile = await this.prisma.professionalProfile.findUnique({ where: { userId }, select: { id: true } });
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { userId }, select: { id: true, city: true } });
     if (!profile) throw new NotFoundException("Profilo professionista non trovato.");
     const from = new Date(`${date}T00:00:00.000Z`);
     const to = new Date(from.getTime() + DAY_MS);
@@ -98,7 +113,7 @@ export class DayRouteService {
           city: b.city ?? b.quote?.guidedRequest?.city ?? null,
         };
       }),
-      ...externalJobs.map((j) => ({ key: `external-${j.id}`, start: j.scheduledAt, end: j.scheduledEndAt, title: j.clientName, address: j.address, city: null })),
+      ...externalJobs.map((j) => ({ key: `external-${j.id}`, start: j.scheduledAt, end: j.scheduledEndAt, title: j.clientName, address: j.address, city: comuneInAddress(j.address) ?? profile.city })),
     ].sort((a, b) => a.start.getTime() - b.start.getTime());
 
     const stops: DayRouteStop[] = [];

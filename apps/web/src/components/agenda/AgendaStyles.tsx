@@ -886,6 +886,7 @@ export function AgendaStyles() {
           font-size: 26px;
         }
         .ag-toolbar .ag-summary,
+        .ag-days-single,
         .ag-hide-phone {
           display: none;
         }

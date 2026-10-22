@@ -74,7 +74,7 @@ export function SlotChip({
       ) : slot.hasUpcomingBooking ? (
         <Icon name="bell-ring" size={9} color={brand.urgenza} />
       ) : null}
-      <Text fontFamily="$mono" fontSize={10} fontWeight="700" color={isGeneric && !isSelected ? brand.ottone : brand.cianografiaScuro}>
+      <Text fontFamily="$body" fontSize={10} fontWeight="700" color={isGeneric && !isSelected ? brand.ottone : brand.cianografiaScuro}>
         {slot.start}–{slot.end}
       </Text>
       {/* Simbolo "online" in piccolo sulla fascia (richiesta esplicita
