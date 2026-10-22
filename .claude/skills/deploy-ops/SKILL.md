@@ -12,10 +12,9 @@ description: >-
 Note spostate da `CLAUDE.md` §2 (stesso testo). Le regole vincolanti sulle
 migrazioni restano anche in `CLAUDE.md`.
 
-- **Deploy `apps/api` su Railway**: Railway (builder "Railpack") rileva da
-  solo il monorepo pnpm ed esegue `pnpm --filter @professionisti/api build`
-  / `start`, ignorando eventuali Build/Start Command custom impostati a
-  mano — per questo lo script `build` di `apps/api/package.json` costruisce
+- **Deploy `apps/api` su Render**: il Blueprint `render.yaml` dichiara
+  `buildCommand` e `startCommand` (`pnpm --filter @professionisti/api build`
+  / `start`). Lo script `build` di `apps/api/package.json` costruisce
   esplicitamente prima `@professionisti/database` e `@professionisti/shared`
   (altrimenti TypeScript non trova quei moduli). Lo script `start` eseguiva
   `prisma db push --accept-data-loss` ad ogni avvio prima di far partire il
@@ -64,8 +63,8 @@ migrazioni restano anche in `CLAUDE.md`.
   testati sul sito reale): backend su Render (URL `<nome>.onrender.com`),
   Postgres su Render (senza estensione PostGIS — vedi nota schema sotto),
   variabili impostate: `DATABASE_URL`, `JWT_SECRET`, `GOOGLE_CLIENT_ID`,
-  `FRONTEND_URL`. Render inietta `PORT` automaticamente — a differenza di
-  Railway NON va impostata manualmente nelle env var.
+  `FRONTEND_URL`. Render inietta `PORT` automaticamente: non va impostata
+  manualmente nelle env var.
   Il deploy è dichiarato come codice in **`render.yaml`** (Blueprint alla
   radice del repo): Dashboard Render → New → Blueprint → selezionare il repo
   crea il servizio API. Il database non è nel Blueprint (docs/CHANGELOG.md

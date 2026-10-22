@@ -15,7 +15,7 @@ Il brief presuppone **Next.js App Router + Tailwind**. Lo stack reale è diverso
 | `lucide-react` (libreria DOM/SVG) | Il repo è un **monorepo con app mobile nativa** (`apps/mobile`, Expo/React Native) che **consuma gli stessi componenti** (`SearchBar`, `CategoryCard`, ecc. da `packages/ui`). `lucide-react` non funziona in React Native: servirebbe `lucide-react-native` (pacchetto diverso) per non rompere l'app mobile o duplicare i componenti. |
 | `next/font/google` per Archivo/Inter Tight/IBM Plex Mono | Oggi **nessun font custom caricato**: `apps/web/src/app/globals.css` imposta solo `font-family: -apple-system, ...` di sistema. `layout.tsx` non importa `next/font`. |
 | Server Actions (`useFormState`) per i form | **Zero Server Actions nel repo** (`grep '"use server"'` → 0 risultati). Tutti i form sono componenti client (`"use client"`) che chiamano `apps/api` (NestJS separato) via `packages/api-client`, con validazione **Zod condivisa** in `packages/shared/src/schemas.ts` (client e server, non client+Server Action). |
-| Dati in Prisma/Supabase generici | **Prisma + PostgreSQL**, confermato — ma il backend è un **servizio NestJS separato** (`apps/api`, deploy su Railway), non route handler Next.js. Ogni pagina che oggi fa fetch dati usa `packages/api-client`, non query Prisma dirette da Next.js. |
+| Dati in Prisma/Supabase generici | **Prisma + PostgreSQL**, confermato — ma il backend è un **servizio NestJS separato** (`apps/api`, deploy su Render), non route handler Next.js. Ogni pagina che oggi fa fetch dati usa `packages/api-client`, non query Prisma dirette da Next.js. |
 
 **Perché conta:** `packages/ui` non è un dettaglio implementativo, è la garanzia esplicita in `CLAUDE.md` ("stessa interfaccia su iOS, Android e web desktop") che i due frontend non divergano. Introdurre Tailwind + `components/ui/*.tsx` locali a `apps/web` come propone il brief, in parallelo a Tamagui, significa:
 - avere **due design system attivi contemporaneamente** nello stesso repo (rischio concreto di conflitti CSS/hydration, non solo di manutenzione doppia);
@@ -35,7 +35,7 @@ La via architetturalmente coerente con quanto già approvato in `CLAUDE.md` è: 
 - **`tailwind.config.*`**: **non esiste, in nessun package del repo.**
 - **`tsconfig.json`** (`apps/web`): estende `@professionisti/config/tsconfig.nextjs.json`, alias `@/*` → `./src/*`.
 - **Design system**: `packages/ui` (Tamagui `1.144.4`, `@tamagui/config` stock, `react-native-web` per compatibilità web). Nessun file di token di brand: `createTamagui(defaultConfig)` puro, vedi sopra.
-- **Backend**: NestJS separato (`apps/api`), Prisma + PostgreSQL (no PostGIS in produzione, vedi `CLAUDE.md`), deploy Railway. Web deploy su Vercel.
+- **Backend**: NestJS separato (`apps/api`), Prisma + PostgreSQL (no PostGIS in produzione, vedi `CLAUDE.md`), deploy Render. Web deploy su Vercel.
 
 ---
 
@@ -181,7 +181,7 @@ La mappatura proposta dal brief (Search, Zap, FileText, ecc.) copre bene i casi 
 
 ## 5. Dove vivono i dati
 
-- **Database**: PostgreSQL + Prisma (`packages/database/prisma/schema.prisma`), niente PostGIS in produzione (Railway). Nessun dato hardcoded per entità di dominio (utenti, profili, richieste, preventivi, prenotazioni, recensioni sono tutte tabelle reali).
+- **Database**: PostgreSQL + Prisma (`packages/database/prisma/schema.prisma`), niente PostGIS in produzione (Render). Nessun dato hardcoded per entità di dominio (utenti, profili, richieste, preventivi, prenotazioni, recensioni sono tutte tabelle reali).
 - **Costanti condivise, non "dati finti"**: `packages/shared/src/categories.ts` (13 categorie + sotto-tag + prestazioni popolari), `packages/shared/src/data/comuni.ts` (~7900 comuni ISTAT, dataset statico legittimo, non demo).
 - **Backend**: NestJS (`apps/api`), consumato dal frontend via `packages/api-client` (client tipizzato, fetch verso l'URL configurato in `NEXT_PUBLIC_API_URL`).
 - **Homepage**: `page.tsx` fa fetch server-side (`force-dynamic`, `cache: "no-store"`) dei professionisti reali da `GET /professionals/search`, passati come prop a `HomeContent`. **Non è un mock**: la sezione "Professionisti su Professionisti" mostra dati reali dal DB.
