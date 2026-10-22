@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { PWNED_PASSWORD_MESSAGE, acceptProfileInviteSchema, passwordProblem, type ProfileInvitePreview } from "@professionisti/shared";
+import { PASSWORD_CONTAINS_EMAIL_MESSAGE, acceptProfileInviteSchema, isMissingRulesProblem, passwordProblem, type ProfileInvitePreview } from "@professionisti/shared";
 import { Button, Icon, Text, YStack, brand } from "@professionisti/ui";
 import { AuthCard, AuthPageBackground } from "@/components/AuthPageBackground";
 import { AuthField } from "@/components/AuthField";
@@ -60,10 +60,10 @@ function CompletaProfiloForm() {
   async function handleSubmit() {
     setError(null);
     setPasswordError(null);
-    const problem = passwordProblem(password);
+    const problem = passwordProblem(password, preview?.email);
     if (problem) {
       setPasswordAttempted(true);
-      if (problem.includes("al massimo")) setPasswordError(problem);
+      if (!isMissingRulesProblem(problem)) setPasswordError(problem);
       document.getElementById("new-password")?.focus();
       return;
     }
@@ -88,7 +88,7 @@ function CompletaProfiloForm() {
       router.push("/dashboard/profilo");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Errore imprevisto, riprova.";
-      if (message === PWNED_PASSWORD_MESSAGE) setPasswordError(message);
+      if (message === PASSWORD_CONTAINS_EMAIL_MESSAGE) setPasswordError(message);
       else setError(message);
     } finally {
       setIsSubmitting(false);
@@ -142,7 +142,7 @@ function CompletaProfiloForm() {
                 accessibilityLabel="Password"
                 passwordRules={PASSWORD_RULES_ATTRIBUTE}
                 error={passwordError ?? undefined}
-                invalid={passwordAttempted && passwordProblem(password) !== null}
+                invalid={passwordAttempted && passwordProblem(password, preview?.email) !== null}
                 footer={<PasswordRules id="new-password-rules" password={password} showMissing={passwordAttempted} />}
                 footerId="new-password-rules"
               />

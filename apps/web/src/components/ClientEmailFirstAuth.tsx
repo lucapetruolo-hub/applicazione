@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { PWNED_PASSWORD_MESSAGE, emailStatusSchema, passwordProblem, type EmailStatus } from "@professionisti/shared";
+import { PASSWORD_CONTAINS_EMAIL_MESSAGE, emailStatusSchema, isMissingRulesProblem, passwordProblem, type EmailStatus } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { AuthField } from "@/components/AuthField";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
@@ -127,7 +127,7 @@ export function ClientEmailFirstAuth({
       await action();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Errore imprevisto, riprova.";
-      if (message === PWNED_PASSWORD_MESSAGE) fieldError("password", message, "new-password");
+      if (message === PASSWORD_CONTAINS_EMAIL_MESSAGE) fieldError("password", message, "new-password");
       else setError(message);
     } finally {
       setIsSubmitting(false);
@@ -149,10 +149,10 @@ export function ClientEmailFirstAuth({
 
   function handlePassword() {
     // Password nuova: le regole sotto il campo dicono cosa manca (§289).
-    const problem = step === "new" ? passwordProblem(password) : null;
+    const problem = step === "new" ? passwordProblem(password, email) : null;
     if (problem) {
       setPasswordAttempted(true);
-      fieldError("password", problem.includes("al massimo") ? problem : "", "new-password");
+      fieldError("password", isMissingRulesProblem(problem) ? "" : problem, "new-password");
       return;
     }
     // Accesso: le password create prima delle regole hanno almeno 8 caratteri.
@@ -294,7 +294,7 @@ export function ClientEmailFirstAuth({
             accessibilityLabel="Password"
             error={errorFor("password")}
             passwordRules={isNew ? PASSWORD_RULES_ATTRIBUTE : undefined}
-            invalid={isNew && passwordAttempted && passwordProblem(password) !== null}
+            invalid={isNew && passwordAttempted && passwordProblem(password, email) !== null}
             footer={isNew ? <PasswordRules id="new-password-rules" password={password} showMissing={passwordAttempted} /> : undefined}
             footerId={isNew ? "new-password-rules" : undefined}
             onSubmitEditing={handlePassword}

@@ -66,4 +66,4 @@ export function PasswordMatchHint({ password, confirmPassword }: { password: str
  * Regole per il generatore di password di iPhone e Mac (attributo
  * `passwordrules`): la password suggerita rispetta le nostre al primo colpo.
  */
-export const PASSWORD_RULES_ATTRIBUTE = `minlength: ${PASSWORD_MIN_LENGTH}; maxlength: ${PASSWORD_MAX_LENGTH}; required: lower; required: upper; required: digit; required: [-!?@#_.];`;
+export const PASSWORD_RULES_ATTRIBUTE = `minlength: ${PASSWORD_MIN_LENGTH}; maxlength: ${PASSWORD_MAX_LENGTH}; required: lower; required: upper; required: digit;`;

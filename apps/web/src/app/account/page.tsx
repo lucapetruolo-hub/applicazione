@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "r
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Camera, Download, Trash2, Eye, EyeOff } from "lucide-react";
-import { ALL_ITALIAN_CITY_NAMES, findComuneByName, isPlausiblePhoneNumber, passwordProblem } from "@professionisti/shared";
+import { ALL_ITALIAN_CITY_NAMES, findComuneByName, isMissingRulesProblem, isPlausiblePhoneNumber, passwordProblem } from "@professionisti/shared";
 import { Autocomplete, Avatar, Button, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -332,10 +332,10 @@ export default function AccountPage() {
     setPasswordError(null);
     setPasswordSaved(false);
     // Stesse regole della registrazione (docs/CHANGELOG.md §289).
-    const problem = passwordProblem(newPassword);
+    const problem = passwordProblem(newPassword, user?.email);
     if (problem) {
       setNewPasswordAttempted(true);
-      if (problem.includes("al massimo")) setPasswordError(problem);
+      if (!isMissingRulesProblem(problem)) setPasswordError(problem);
       return;
     }
     if (newPassword !== confirmNewPassword) {

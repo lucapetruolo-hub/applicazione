@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { PWNED_PASSWORD_MESSAGE, passwordProblem } from "@professionisti/shared";
+import { PASSWORD_CONTAINS_EMAIL_MESSAGE, isMissingRulesProblem, passwordProblem } from "@professionisti/shared";
 import { Button, Icon, Text, YStack, brand } from "@professionisti/ui";
 import { AuthField } from "@/components/AuthField";
 import { AuthCard, AuthPageBackground } from "@/components/AuthPageBackground";
@@ -33,7 +33,7 @@ export function ReimpostaPasswordContent() {
     const problem = passwordProblem(password);
     if (problem) {
       setPasswordAttempted(true);
-      if (problem.includes("al massimo")) setPasswordError(problem);
+      if (!isMissingRulesProblem(problem)) setPasswordError(problem);
       document.getElementById("new-password")?.focus();
       return;
     }
@@ -44,7 +44,7 @@ export function ReimpostaPasswordContent() {
       router.push(currentUser?.isProfessional ? "/dashboard" : "/");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Errore imprevisto, riprova.";
-      if (message === PWNED_PASSWORD_MESSAGE) setPasswordError(message);
+      if (message === PASSWORD_CONTAINS_EMAIL_MESSAGE) setPasswordError(message);
       else setError(message);
       setIsSubmitting(false);
     }

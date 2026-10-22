@@ -6,8 +6,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   NO_CATEGORY_MESSAGE,
-  PWNED_PASSWORD_MESSAGE,
+  PASSWORD_CONTAINS_EMAIL_MESSAGE,
   parseSubscriptionTier,
+  isMissingRulesProblem,
+  passwordContainsEmail,
   passwordProblem,
   registerSchema,
   type ProfessionalCategorySlug,
@@ -471,10 +473,15 @@ function RegistratiForm() {
         // Le regole sotto il campo dicono già cosa manca: nessun testo in più,
         // salvo la lunghezza massima che non è tra le regole.
         setPasswordAttempted(true);
-        fieldError("password", passwordProblem(password)?.includes("al massimo") ? message : "");
+        fieldError("password", isMissingRulesProblem(message) ? "" : message);
       } else if (path === "email") fieldError(path, message);
       else if (path === "categorySlugs") fieldError("categories", message);
       else setError(message);
+      return;
+    }
+    if (passwordContainsEmail(password, result.data.email)) {
+      setPasswordAttempted(true);
+      fieldError("password", PASSWORD_CONTAINS_EMAIL_MESSAGE);
       return;
     }
     if (password !== confirmPassword) {
@@ -513,7 +520,7 @@ function RegistratiForm() {
       afterAuth(isNewUser);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Errore imprevisto, riprova.";
-      if (message === PWNED_PASSWORD_MESSAGE) fieldError("password", message);
+      if (message === PASSWORD_CONTAINS_EMAIL_MESSAGE) fieldError("password", message);
       else setError(message);
       // Il token anti-bot vale una volta sola: ne serve uno nuovo per riprovare.
       setTurnstileReset((n) => n + 1);
@@ -729,7 +736,7 @@ function RegistratiForm() {
             accessibilityLabel="Password"
             passwordRules={PASSWORD_RULES_ATTRIBUTE}
             error={error && errorField === "password" ? error : undefined}
-            invalid={passwordAttempted && passwordProblem(password) !== null}
+            invalid={passwordAttempted && passwordProblem(password, email) !== null}
             footer={<PasswordRules id="new-password-rules" password={password} showMissing={passwordAttempted} />}
             footerId="new-password-rules"
           />

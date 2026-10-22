@@ -19,7 +19,7 @@ import { EmailService } from "../email/email.service";
 import { profileInviteEmail } from "../email/templates/account-emails";
 import { profileCategories } from "../common/profile-categories.util";
 import type { AuthResult } from "../auth/auth.service";
-import { assertNotPwnedPassword } from "../auth/pwned-password";
+import { assertPasswordWithoutEmail } from "../auth/password-checks";
 
 const BCRYPT_SALT_ROUNDS = 10;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -230,8 +230,8 @@ export class ProfileInvitesService {
   /** Il professionista sceglie la password: entra subito, e conferma il profilo da /dashboard/profilo. */
   async accept(input: AcceptProfileInviteInput): Promise<AuthResult> {
     const invite = await this.findValidInvite(input.token);
-    // Prima di usare il link: con una password rubata si sceglie un'altra senza perderlo.
-    await assertNotPwnedPassword(input.password);
+    // Prima di usare il link: con una password da cambiare non lo si perde.
+    assertPasswordWithoutEmail(input.password, invite.user.email);
     const claimed = await this.prisma.profileInvite.updateMany({ where: { id: invite.id, usedAt: null }, data: { usedAt: new Date() } });
     if (claimed.count === 0) throw new BadRequestException("Questo link è già stato usato: accedi con email e password.");
     const passwordHash = await bcrypt.hash(input.password, BCRYPT_SALT_ROUNDS);
