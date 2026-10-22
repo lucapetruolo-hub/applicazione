@@ -802,6 +802,21 @@ export type RevenueAnalyticsSummary = {
   monthlySeries: RevenueMonthlyPoint[];
 };
 
+/**
+ * Errore di una risposta dell'API con il codice HTTP: serve a distinguere
+ * "non esiste" (404) da "API non raggiungibile o in errore", che prima
+ * finivano entrambi in una pagina vuota o "non trovata" (docs/CHANGELOG.md §284).
+ */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 function extractErrorMessage(body: unknown, fallback: string): string {
   if (body && typeof body === "object") {
     const record = body as Record<string, unknown>;
@@ -833,7 +848,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     const body = await response.json().catch(() => null);
 
     if (!response.ok) {
-      throw new Error(extractErrorMessage(body, `Richiesta API fallita: ${response.status} ${response.statusText}`));
+      throw new ApiError(extractErrorMessage(body, `Richiesta API fallita: ${response.status} ${response.statusText}`), response.status);
     }
 
     return body as T;
@@ -852,7 +867,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     const body = await response.json().catch(() => null);
 
     if (!response.ok) {
-      throw new Error(extractErrorMessage(body, `Richiesta API fallita: ${response.status} ${response.statusText}`));
+      throw new ApiError(extractErrorMessage(body, `Richiesta API fallita: ${response.status} ${response.statusText}`), response.status);
     }
 
     return body as T;
@@ -863,6 +878,11 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     /** Funzioni attive sul server (docs/CHANGELOG.md §170): oggi solo il pagamento online dei lavori. */
     getFeatures: () => request<{ onlinePayments: boolean }>("/health/features"),
     getCategories: () => request<typeof PROFESSIONAL_CATEGORIES>("/categories"),
+    /** Richieste per categoria, per mettere prima i lavori più cercati (docs/CHANGELOG.md §280). */
+    getCategoryPopularity: (city?: string) =>
+      request<{ scope: "CITY" | "ALL"; counts: { slug: string; count: number }[] }>(
+        `/categories/popular${city ? `?city=${encodeURIComponent(city)}` : ""}`,
+      ),
 
     /**
      * URL dello stream SSE in tempo reale (CTO — "socket.io vs websocket vs
@@ -997,13 +1017,15 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     mySavedProfessionals: (token: string) =>
       request<ProfessionalSearchResult[]>("/saved-professionals/me", { headers: { Authorization: `Bearer ${token}` } }),
 
-    searchProfessionals: (params: { category?: string; city?: string; q?: string; remote?: boolean; excludeDemo?: boolean } = {}) => {
+    searchProfessionals: (params: { category?: string; city?: string; q?: string; remote?: boolean; excludeDemo?: boolean; track?: boolean } = {}) => {
       const query = new URLSearchParams();
       if (params.category) query.set("category", params.category);
       if (params.city) query.set("city", params.city);
       if (params.q) query.set("q", params.q);
       if (params.remote) query.set("remote", "1");
       if (params.excludeDemo) query.set("excludeDemo", "1");
+      // Conta la ricerca per i lavori più cercati (docs/CHANGELOG.md §281): solo dalla pagina dei risultati, una volta.
+      if (params.track) query.set("track", "1");
       const queryString = query.toString();
       // cache: "no-store" esplicito: senza questo, in Next.js il Data Cache
       // può mantenere in cache questa fetch indipendentemente da

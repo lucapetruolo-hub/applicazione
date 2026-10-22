@@ -10,6 +10,7 @@ import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import { classifyLeadStage } from "@/lib/requestStage";
 import { formatCompetitors, leadDeadlines } from "@/lib/leadDeadline";
 import { accountMenuUnreadCounts } from "@/lib/notificationSections";
+import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { CardButton } from "@/components/CardButton";
 import { SkeletonSummaryRow } from "@/components/Skeleton";
 import { SubscriptionPauseBanner } from "@/components/SubscriptionPauseBanner";
@@ -35,6 +36,10 @@ export default function DashboardTodayPage() {
   const [restrictions, setRestrictions] = useState<{ demotedUntil?: string | null; requestsBlockedUntil?: string | null } | null>(null);
   const [profileMissing, setProfileMissing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // "Il tuo andamento" non caricato: la sezione si nasconde invece di
+  // restare sugli scheletri (docs/CHANGELOG.md §286).
+  const [insightsFailed, setInsightsFailed] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [, setTick] = useState(0);
 
   useEffect(() => {
@@ -45,13 +50,13 @@ export default function DashboardTodayPage() {
     };
     apiClient.myLeads(token).then(setLeads).catch(onError);
     apiClient.myProfessionalBookings(token).then(setBookings).catch(onError);
-    apiClient.getMyInsights(token).then(setInsights).catch(() => setInsights(null));
+    apiClient.getMyInsights(token).then(setInsights).catch(() => setInsightsFailed(true));
     apiClient.getMySubscription(token).then(setSubscription).catch(() => setSubscription(null));
     apiClient
       .getMyProfessionalProfile(token)
       .then((p) => setRestrictions(p ? { demotedUntil: p.demotedUntil, requestsBlockedUntil: p.requestsBlockedUntil } : null))
       .catch(() => setRestrictions(null));
-  }, [token, user?.isProfessional]);
+  }, [token, user?.isProfessional, loadAttempt]);
 
   // Aggiornamento in background (nuova richiesta, preventivo accettato, ecc.):
   // solo le liste che cambiano con una notifica, senza scheletri né messaggi
@@ -118,7 +123,7 @@ export default function DashboardTodayPage() {
   const datesToConfirm = (leads ?? []).filter((lead) => lead.quote?.status === "MODIFICATION_REQUESTED" && lead.quote.clientProposedDate);
   const unreadMessages = accountMenuUnreadCounts(true, unreadNotifications)["/chat"] ?? 0;
 
-  // Appuntamenti in ora di parete UTC: oggi e domani in Italia, docs/CHANGELOG.md §278.
+  // Appuntamenti in ora di parete UTC: oggi e domani in Italia, docs/CHANGELOG.md §287.
   const startToday = wallClockToday();
   const endTomorrow = new Date(startToday);
   endTomorrow.setUTCDate(endTomorrow.getUTCDate() + 2);
@@ -142,82 +147,100 @@ export default function DashboardTodayPage() {
           </Text>
         </YStack>
 
-        {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
         {subscription ? <SubscriptionPauseBanner sub={subscription} profileStepsElsewhere /> : null}
         {token ? <SetupJourneyCard token={token} /> : null}
         {user.agendaAttention ? <AgendaNotice attention={user.agendaAttention} /> : null}
         {restrictions ? <IssueSanctionBanner {...restrictions} /> : null}
 
-        <div className="today-kpis">
-          <TodayCounter href="/dashboard/richieste?stage=da_quotare" icon="file-text" value={toAnswer.length} label="Richieste da rispondere" urgent={toAnswer.length > 0} loading={loading} />
-          <TodayCounter href="/dashboard/richieste?stage=modifica_richiesta" icon="calendar" value={datesToConfirm.length} label="Date da confermare" urgent={datesToConfirm.length > 0} loading={loading} />
-          <TodayCounter href="/chat" icon="message-circle" value={unreadMessages} label="Messaggi non letti" urgent={unreadMessages > 0} loading={false} />
-        </div>
+        {/* Richieste e lavori non caricati: "Riprova" invece di scheletri
+            infiniti e di un messaggio tecnico (docs/CHANGELOG.md §286). */}
+        {error ? (
+          <LoadErrorNotice
+            title="Non riusciamo a caricare richieste e appuntamenti"
+            onRetry={() => {
+              setError(null);
+              setLeads(null);
+              setBookings(null);
+              setInsightsFailed(false);
+              setLoadAttempt((n) => n + 1);
+            }}
+          />
+        ) : (
+          <>
+            <div className="today-kpis">
+              <TodayCounter href="/dashboard/richieste?stage=da_quotare" icon="file-text" value={toAnswer.length} label="Richieste da rispondere" urgent={toAnswer.length > 0} loading={loading} />
+              <TodayCounter href="/dashboard/richieste?stage=modifica_richiesta" icon="calendar" value={datesToConfirm.length} label="Date da confermare" urgent={datesToConfirm.length > 0} loading={loading} />
+              <TodayCounter href="/chat" icon="message-circle" value={unreadMessages} label="Messaggi non letti" urgent={unreadMessages > 0} loading={false} />
+            </div>
 
-        <TodaySection title="Da rispondere ora" action={{ href: "/dashboard/richieste", label: "Tutte le richieste" }}>
-          {loading ? (
-            <Skeletons />
-          ) : toAnswer.length === 0 ? (
-            <EmptyLine text="Nessuna richiesta in attesa: ti avvisiamo appena ne arriva una nuova." />
-          ) : (
-            toAnswer.slice(0, 5).map((lead) => <LeadToAnswerRow key={lead.id} lead={lead} />)
-          )}
-        </TodaySection>
+            <TodaySection title="Da rispondere ora" action={{ href: "/dashboard/richieste", label: "Tutte le richieste" }}>
+              {loading ? (
+                <Skeletons />
+              ) : toAnswer.length === 0 ? (
+                <EmptyLine text="Nessuna richiesta in attesa: ti avvisiamo appena ne arriva una nuova." />
+              ) : (
+                toAnswer.slice(0, 5).map((lead) => <LeadToAnswerRow key={lead.id} lead={lead} />)
+              )}
+            </TodaySection>
 
-        {datesToConfirm.length > 0 ? (
-          <TodaySection title="Date proposte dai clienti">
-            {datesToConfirm.map((lead) => (
-              <Link key={lead.id} href={`/dashboard/richieste?open=${lead.guidedRequest.id}`} className="today-row">
-                <span className="today-row-main">
-                  <strong>
-                    {lead.guidedRequest.categoryLabel} · {lead.guidedRequest.clientName ?? "Cliente"}
-                  </strong>
-                  <span className="today-row-sub">
-                    {/* Stessa data e stesso orario: solo una nota (docs/CHANGELOG.md §196). */}
-                    {scheduleChangeBetween(
-                      { start: lead.quote!.estimatedStartDate, end: lead.quote!.estimatedEndDate },
-                      { start: lead.quote!.clientProposedDate!, end: lead.quote!.clientProposedEndDate },
-                    )
-                      ? "Nuova data proposta"
-                      : "Nota aggiunta, stessa data"}
-                    : {formatDateTime(lead.quote!.clientProposedDate!)}
-                  </span>
-                </span>
-                <span className="today-row-cta">Rispondi</span>
-              </Link>
-            ))}
+            {datesToConfirm.length > 0 ? (
+              <TodaySection title="Date proposte dai clienti">
+                {datesToConfirm.map((lead) => (
+                  <Link key={lead.id} href={`/dashboard/richieste?open=${lead.guidedRequest.id}`} className="today-row">
+                    <span className="today-row-main">
+                      <strong>
+                        {lead.guidedRequest.categoryLabel} · {lead.guidedRequest.clientName ?? "Cliente"}
+                      </strong>
+                      <span className="today-row-sub">
+                        {/* Stessa data e stesso orario: solo una nota (docs/CHANGELOG.md §196). */}
+                        {scheduleChangeBetween(
+                          { start: lead.quote!.estimatedStartDate, end: lead.quote!.estimatedEndDate },
+                          { start: lead.quote!.clientProposedDate!, end: lead.quote!.clientProposedEndDate },
+                        )
+                          ? "Nuova data proposta"
+                          : "Nota aggiunta, stessa data"}
+                        : {formatDateTime(lead.quote!.clientProposedDate!)}
+                      </span>
+                    </span>
+                    <span className="today-row-cta">Rispondi</span>
+                  </Link>
+                ))}
+              </TodaySection>
+            ) : null}
+
+            <TodaySection title="Oggi e domani" action={{ href: "/dashboard/agenda", label: "Apri l'agenda" }}>
+              {loading ? (
+                <Skeletons />
+              ) : upcoming.length === 0 ? (
+                <EmptyLine text="Nessun appuntamento oggi e domani." />
+              ) : (
+                upcoming.map((booking) => (
+                  <Link
+                    key={booking.id}
+                    href={booking.guidedRequestId ? `/dashboard/richieste?open=${booking.guidedRequestId}` : `/dashboard/agenda?booking=${booking.id}`}
+                    className="today-row"
+                  >
+                    <span className="today-time">{dayLabel(booking.scheduledAt)}</span>
+                    <span className="today-row-main">
+                      <strong>{booking.clientName ?? "Cliente"}</strong>
+                      <span className="today-row-sub">
+                        {[booking.items[0]?.name, booking.city ?? booking.address].filter(Boolean).join(" · ") || "Intervento"}
+                        {booking.status === "PENDING" ? " · da confermare" : ""}
+                      </span>
+                    </span>
+                  </Link>
+                ))
+              )}
+            </TodaySection>
+          </>
+        )}
+
+        {insightsFailed ? null : (
+          <TodaySection title="Il tuo andamento" subtitle={insights ? `Rispetto agli altri professionisti di ${insights.areaLabel}` : undefined}>
+            {insights ? <InsightsGrid insights={insights} /> : <Skeletons />}
           </TodaySection>
-        ) : null}
-
-        <TodaySection title="Oggi e domani" action={{ href: "/dashboard/agenda", label: "Apri l'agenda" }}>
-          {loading ? (
-            <Skeletons />
-          ) : upcoming.length === 0 ? (
-            <EmptyLine text="Nessun appuntamento oggi e domani." />
-          ) : (
-            upcoming.map((booking) => (
-              <Link
-                key={booking.id}
-                href={booking.guidedRequestId ? `/dashboard/richieste?open=${booking.guidedRequestId}` : `/dashboard/agenda?booking=${booking.id}`}
-                className="today-row"
-              >
-                <span className="today-time">{dayLabel(booking.scheduledAt)}</span>
-                <span className="today-row-main">
-                  <strong>{booking.clientName ?? "Cliente"}</strong>
-                  <span className="today-row-sub">
-                    {[booking.items[0]?.name, booking.city ?? booking.address].filter(Boolean).join(" · ") || "Intervento"}
-                    {booking.status === "PENDING" ? " · da confermare" : ""}
-                  </span>
-                </span>
-              </Link>
-            ))
-          )}
-        </TodaySection>
-
-        <TodaySection title="Il tuo andamento" subtitle={insights ? `Rispetto agli altri professionisti di ${insights.areaLabel}` : undefined}>
-          {insights ? <InsightsGrid insights={insights} /> : <Skeletons />}
-        </TodaySection>
+        )}
 
         {insights ? <Suggestion insights={insights} /> : null}
 

@@ -87,8 +87,8 @@ export function CookieBanner() {
     // barra di ricerca/i bottoni "Filtri"/"Mostra mappa" su mobile, il
     // primo ostacolo incontrato proprio sull'azione primaria del sito.
     // Altezza tenuta bassa (padding compatto, testo su una riga su schermi
-    // larghi) e comunque limitata a titolo di garanzia (`maxHeight`) ben
-    // sotto la soglia 12-15% del viewport indicata dal rilievo.
+    // larghi), di solito sotto la soglia 12-15% del viewport indicata dal
+    // rilievo.
     <div
       ref={bannerRef}
       role="dialog"
@@ -99,8 +99,11 @@ export function CookieBanner() {
         left: 0,
         right: 0,
         width: "100%",
-        maxHeight: "15vh",
-        overflow: "hidden",
+        // Mai tagliato: a 320×568 il limite del 15% nascondeva metà dei
+        // pulsanti (docs/CHANGELOG.md §285). Il limite resta solo come
+        // garanzia sugli schermi bassissimi, con scorrimento interno.
+        maxHeight: "40vh",
+        overflowY: "auto",
         backgroundColor: "#ffffff",
         borderTop: "1px solid #e3ded4",
         boxShadow: "0 -4px 20px rgba(43,32,19,0.12)",

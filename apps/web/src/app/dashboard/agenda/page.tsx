@@ -701,7 +701,7 @@ function DashboardAgendaContent() {
   // evitare una closure stale nelle chiamate ravvicinate.
   //
   // Se il salvataggio non riesce la pagina torna alle fasce salvate davvero
-  // (docs/CHANGELOG.md §278), invece di mostrare fasce che il server non ha.
+  // (docs/CHANGELOG.md §287), invece di mostrare fasce che il server non ha.
   // `persistSeqRef` evita che un errore vecchio annulli un salvataggio più
   // recente fatto nel frattempo.
   async function persistSlots(nextSlots: SlotDraft[]) {
@@ -1478,7 +1478,7 @@ function DashboardAgendaContent() {
                 borderRadius="$3"
                 backgroundColor={brand.calce}
                 borderWidth={1}
-                borderColor={brand.filetto}
+                borderColor={brand.bordoCampo}
               >
                 <Icon name="search" size={15} color={brand.grafite70} />
                 <input aria-label="Cerca nell'agenda"

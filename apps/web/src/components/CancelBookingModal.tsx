@@ -6,7 +6,7 @@ import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 const textareaStyle = {
   padding: 10,
   borderRadius: 4,
-  border: `1px solid ${brand.filetto}`,
+  border: `1px solid ${brand.bordoCampo}`,
   fontSize: 14,
   fontFamily: "inherit",
   color: brand.grafite,

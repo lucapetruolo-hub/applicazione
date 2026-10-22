@@ -672,7 +672,7 @@ export class ProfessionalsService {
     // editing granulare per singola voce): coerente con la scala attesa
     // (poche voci a professionista), molto più semplice che diffare la
     // lista esistente contro quella inviata.
-    // In un'unica transazione (docs/CHANGELOG.md §278): un errore a metà non lascia il profilo senza prestazioni.
+    // In un'unica transazione (docs/CHANGELOG.md §287): un errore a metà non lascia il profilo senza prestazioni.
     await this.prisma.$transaction([
       this.prisma.professionalService.deleteMany({ where: { professionalProfileId: profile.id } }),
       this.prisma.professionalService.createMany({
@@ -1510,7 +1510,7 @@ export class ProfessionalsService {
     // di non-sovrapposizione tra fasce dello stesso giorno vive a monte, nello
     // zod schema condiviso (professionalAvailabilitySchema in packages/shared,
     // applicato da ZodValidationPipe) — stessa regola usata anche lato client.
-    // Tutto o niente (docs/CHANGELOG.md §278): se la creazione fallisce le
+    // Tutto o niente (docs/CHANGELOG.md §287): se la creazione fallisce le
     // fasce di prima restano, invece di sparire con il solo deleteMany.
     await this.prisma.$transaction(async (tx) => {
       await tx.availabilitySlot.deleteMany({ where: { professionalProfileId } });

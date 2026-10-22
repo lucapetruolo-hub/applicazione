@@ -43,7 +43,7 @@ export class BookingRemindersService {
 
   @Cron(CronExpression.EVERY_30_MINUTES)
   async sendUpcomingReminders(): Promise<void> {
-    // scheduledAt è l'ora italiana scritta in UTC: si confronta con l'ora italiana di adesso (docs/CHANGELOG.md §278).
+    // scheduledAt è l'ora italiana scritta in UTC: si confronta con l'ora italiana di adesso (docs/CHANGELOG.md §287).
     const now = wallClockNow();
     const windowStart = new Date(now.getTime() + REMINDER_WINDOW_START_HOURS * 60 * 60 * 1000);
     const windowEnd = new Date(now.getTime() + REMINDER_WINDOW_END_HOURS * 60 * 60 * 1000);

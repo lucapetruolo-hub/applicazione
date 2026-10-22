@@ -15,7 +15,7 @@ const ROLE_OPTIONS: { value: ContactMessageInput["role"]; label: string }[] = [
 const fieldStyle = {
   padding: "16px 18px",
   borderRadius: 14,
-  border: `1px solid ${brand.filetto}`,
+  border: `1px solid ${brand.bordoCampo}`,
   fontSize: 16,
   fontFamily: "inherit",
   width: "100%",
@@ -81,7 +81,7 @@ export default function ContattiContent() {
   }
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor="$gesso" paddingHorizontal={24} paddingTop={40} paddingBottom={64} $gtSm={{ paddingHorizontal: 40, paddingTop: 56, paddingBottom: 96 }}>
+    <YStack width="100%" alignItems="center" backgroundColor="$gesso" paddingHorizontal={16} paddingTop={40} paddingBottom={64} $gtSm={{ paddingHorizontal: 40, paddingTop: 56, paddingBottom: 96 }}>
       <YStack width="100%" maxWidth={1080} gap="$5">
         <YStack gap="$2">
           <Text fontFamily="$heading" fontWeight="800" color={brand.grafite} fontSize={34} $gtSm={{ fontSize: 44 }}>
@@ -93,7 +93,7 @@ export default function ContattiContent() {
         </YStack>
 
         <XStack flexWrap="wrap" gap="$5" width="100%" alignItems="flex-start">
-          <Surface flex={2} flexBasis={0} minWidth={340} padding="$6" gap="$4">
+          <Surface flexGrow={2} flexShrink={1} flexBasis={340} minWidth={0} padding="$4" $gtSm={{ padding: "$6" }} gap="$4">
             <Text fontFamily="$heading" fontWeight="700" fontSize={24} color={brand.grafite}>
               Invia un messaggio
             </Text>
@@ -190,7 +190,7 @@ export default function ContattiContent() {
             )}
           </Surface>
 
-          <Surface flex={1} flexBasis={0} minWidth={300} padding="$6" gap="$4">
+          <Surface flexGrow={1} flexShrink={1} flexBasis={300} minWidth={0} padding="$4" $gtSm={{ padding: "$6" }} gap="$4">
             <Text fontFamily="$heading" fontWeight="700" fontSize={24} color={brand.grafite}>
               Dati dell&apos;azienda
             </Text>

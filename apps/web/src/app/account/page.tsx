@@ -18,7 +18,7 @@ import { ClientEmailVerificationCard } from "@/components/ClientEmailVerificatio
 const inputStyle = {
   padding: "10px 12px",
   borderRadius: 4,
-  border: `1px solid ${brand.filetto}`,
+  border: `1px solid ${brand.bordoCampo}`,
   fontSize: 15,
   fontFamily: "inherit",
   color: brand.grafite,

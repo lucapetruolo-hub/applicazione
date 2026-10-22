@@ -232,7 +232,7 @@ export function ProfessionalDetailContent({ professional, preview = false }: { p
         // L'agenda è un widget accessorio (mai bloccare l'apertura del
         // profilo per colpa sua): valida la forma della risposta prima di
         // usarla invece di fidarsi ciecamente del tipo dichiarato — un API
-        // Railway non ancora allineata all'ultimo deploy del frontend (i due
+        // API non ancora allineata all'ultimo deploy del frontend (i due
         // servizi si deployano indipendentemente) potrebbe rispondere ancora
         // con la vecchia forma, e `agenda.days.some(...)` su un valore senza
         // `days` mandava in crash l'intera pagina (bug reale segnalato

@@ -1,5 +1,5 @@
 /**
- * Orari degli appuntamenti (docs/CHANGELOG.md §278). `Booking.scheduledAt`,
+ * Orari degli appuntamenti (docs/CHANGELOG.md §287). `Booking.scheduledAt`,
  * `Quote.estimatedStartDate`, `ExternalJob.scheduledAt` e le fasce
  * dell'agenda sono salvati come ora "di parete" italiana scritta in UTC: un
  * lavoro alle 09:00 è `...T09:00:00.000Z`, d'estate come d'inverno. Si

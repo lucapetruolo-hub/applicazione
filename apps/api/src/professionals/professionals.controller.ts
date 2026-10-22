@@ -40,6 +40,7 @@ import { MulterExceptionFilter } from "../common/multer-exception.filter";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { VerifiedEmailGuard } from "../auth/verified-email.guard";
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
+import { CategoriesService } from "../categories/categories.service";
 import { ProfessionalsService } from "./professionals.service";
 
 const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
@@ -54,6 +55,7 @@ export class ProfessionalsController {
     private readonly professionalsService: ProfessionalsService,
     private readonly cloudinaryService: CloudinaryService,
     private readonly jwtService: JwtService,
+    private readonly categoriesService: CategoriesService,
   ) {}
 
   @Get("search")
@@ -63,7 +65,14 @@ export class ProfessionalsController {
     @Query("q") q?: string,
     @Query("remote") remote?: string,
     @Query("excludeDemo") excludeDemo?: string,
+    @Query("track") track?: string,
   ) {
+    // La pagina dei risultati chiede di contare la ricerca una volta sola
+    // (`track=1`, docs/CHANGELOG.md §281): serve solo a mettere prima i lavori
+    // più cercati. Un errore qui non deve mai rompere la ricerca.
+    if (track === "1" && typeof category === "string" && category) {
+      void this.categoriesService.recordSearch(category, typeof city === "string" ? city : undefined).catch(() => undefined);
+    }
     return this.professionalsService.search({
       category,
       city,

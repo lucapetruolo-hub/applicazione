@@ -5,6 +5,7 @@ import { YStack } from "@professionisti/ui";
 import { CategoryIconBadge } from "@/components/CategoryIconBadge";
 import { EmptySearchResults } from "@/components/EmptySearchResults";
 import { ResultsListWithMap } from "@/components/ResultsListWithMap";
+import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 
 type Category = (typeof PROFESSIONAL_CATEGORIES)[number];
 
@@ -14,6 +15,7 @@ export function CategoryContent({
   online,
   professionals,
   allProfessionals,
+  loadFailed,
   initialUrgentOnly,
 }: {
   category: Category;
@@ -22,6 +24,8 @@ export function CategoryContent({
   professionals: ProfessionalSearchResult[];
   /** Tutti i professionisti della categoria (nessun filtro città), per i puntini sulla mappa. */
   allProfessionals?: ProfessionalSearchResult[];
+  /** La ricerca non è arrivata dall'API: "Riprova" invece di "nessun risultato". */
+  loadFailed?: boolean;
   /** Preimpostato dall'URL (?urgente=1) quando si arriva dal toggle "Intervento urgente?" della homepage. */
   initialUrgentOnly?: boolean;
 }) {
@@ -31,8 +35,9 @@ export function CategoryContent({
   // c'e' nessun risultato, perche' altrimenti la pagina sarebbe un vuoto
   // muto senza spiegazioni.
   const title = `${category.label}${online && city ? ` · consulenza online a ${city}` : online ? " · consulenza online" : city ? ` a ${city}` : " vicino a te"}`;
-  const header =
-    professionals.length > 0 ? null : (
+  const header = loadFailed ? (
+    <LoadErrorNotice title="Non riusciamo a caricare i professionisti" />
+  ) : professionals.length > 0 ? null : (
       <EmptySearchResults
         title={title}
         online={Boolean(online)}

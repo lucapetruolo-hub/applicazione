@@ -127,7 +127,7 @@ function slotLabel(value: unknown): string | null {
   if (typeof start !== "string") return null;
   const startDate = new Date(start);
   if (Number.isNaN(startDate.getTime())) return null;
-  // Ora di parete in UTC come il resto degli appuntamenti (docs/CHANGELOG.md §278).
+  // Ora di parete in UTC come il resto degli appuntamenti (docs/CHANGELOG.md §287).
   const day = formatAppointmentDate(startDate, { weekday: "long", day: "numeric", month: "long" });
   const endDate = typeof end === "string" ? new Date(end) : null;
   return `${day}, ${formatAppointmentTimeRange(startDate, endDate && !Number.isNaN(endDate.getTime()) ? endDate : null)}`;

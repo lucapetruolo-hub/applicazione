@@ -4,6 +4,7 @@ import type { ProfessionalSearchResult } from "@professionisti/shared";
 import { YStack } from "@professionisti/ui";
 import { EmptySearchResults } from "@/components/EmptySearchResults";
 import { ResultsListWithMap } from "@/components/ResultsListWithMap";
+import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 
 export function CercaContent({
   city,
@@ -11,6 +12,7 @@ export function CercaContent({
   q,
   professionals,
   allProfessionals,
+  loadFailed,
   initialUrgentOnly,
 }: {
   city?: string;
@@ -19,6 +21,8 @@ export function CercaContent({
   professionals: ProfessionalSearchResult[];
   /** Tutti i professionisti (nessun filtro città), per i puntini sulla mappa. */
   allProfessionals?: ProfessionalSearchResult[];
+  /** La ricerca non è arrivata dall'API: "Riprova" invece di "nessun risultato". */
+  loadFailed?: boolean;
   /** Preimpostato dall'URL (?urgente=1) quando si arriva dal toggle "Intervento urgente?" della homepage. */
   initialUrgentOnly?: boolean;
 }) {
@@ -35,7 +39,7 @@ export function CercaContent({
   // Richiesta esplicita dell'utente: niente scheda "Ricerca / N
   // professionisti verificati trovati" in cima ai risultati — la lista parla
   // da sola. Il riquadro resta SOLO quando non c'e' nessun risultato.
-  const header = professionals.length > 0 ? null : <EmptySearchResults title={title} online={Boolean(online)} city={city} />;
+  const header = loadFailed ? <LoadErrorNotice title="Non riusciamo a caricare i professionisti" /> : professionals.length > 0 ? null : <EmptySearchResults title={title} online={Boolean(online)} city={city} />;
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent">

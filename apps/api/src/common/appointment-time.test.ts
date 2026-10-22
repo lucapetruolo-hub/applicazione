@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { formatAppointmentTimeRange, wallClockNow, wallClockToday } from "@professionisti/shared";
 
-// Ora di parete italiana scritta in UTC (docs/CHANGELOG.md §278).
+// Ora di parete italiana scritta in UTC (docs/CHANGELOG.md §287).
 describe("orari degli appuntamenti", () => {
   it("mostra l'ora salvata, senza spostarla col fuso", () => {
     expect(formatAppointmentTimeRange("2026-07-15T09:00:00.000Z", "2026-07-15T13:00:00.000Z")).toBe("09:00–13:00");

@@ -23,6 +23,7 @@ import { Autocomplete, Button, Icon, Surface, Text, XStack, YStack, brand } from
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { ImageCropModal } from "@/components/ImageCropModal";
+import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { EngagementRadiusSection } from "@/components/EngagementRadiusSection";
 import { MediaPreview } from "@/components/MediaPreview";
 import { UploadingDots } from "@/components/UploadingDots";
@@ -74,7 +75,7 @@ const CANDIDATE_LANGUAGES = [
   "Croato",
 ];
 
-const inputStyle = { padding: 12, borderRadius: 4, border: `1px solid ${brand.filetto}`, fontSize: 15, fontFamily: "inherit", color: brand.grafite };
+const inputStyle = { padding: 12, borderRadius: 4, border: `1px solid ${brand.bordoCampo}`, fontSize: 15, fontFamily: "inherit", color: brand.grafite };
 const smallInputStyle = { ...inputStyle, padding: 10, fontSize: 14 };
 
 function FieldLabel({ children }: { children: string }) {
@@ -169,6 +170,10 @@ export default function DashboardProfiloPage() {
   // seguito per il micro-tool prezzi in homepage.
   const [languagePopularity, setLanguagePopularity] = useState<{ name: string; count: number }[]>([]);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  // Profilo non caricato (API in errore): mai il modulo vuoto, che salvato
+  // cancellerebbe i dati (docs/CHANGELOG.md §285).
+  const [profileLoadFailed, setProfileLoadFailed] = useState(false);
+  const [profileLoadAttempt, setProfileLoadAttempt] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -279,12 +284,13 @@ export default function DashboardProfiloPage() {
         }
         if (profile) applyProfile(profile);
       })
+      .catch(() => setProfileLoadFailed(true))
       .finally(() => setIsLoadingProfile(false));
-    // Solo al cambio di token: con user?.imageUrl tra le dipendenze, cambiare
-    // la foto dell'account ricaricherebbe il profilo e cancellerebbe le
-    // modifiche non ancora salvate nel modulo.
+    // Solo al cambio di token (o a "Riprova"): con user?.imageUrl tra le
+    // dipendenze, cambiare la foto dell'account ricaricherebbe il profilo e
+    // cancellerebbe le modifiche non ancora salvate nel modulo.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [token, profileLoadAttempt]);
 
   /** Torna all'anteprima rimettendo nel modulo i dati salvati. */
   function discardChanges() {
@@ -332,6 +338,23 @@ export default function DashboardProfiloPage() {
   const [isSavingBeforeLeave, setIsSavingBeforeLeave] = useState(false);
 
   if (isLoading || (token && isLoadingProfile)) return null;
+
+  if (token && profileLoadFailed) {
+    return (
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
+        <YStack width="100%" maxWidth={720}>
+          <LoadErrorNotice
+            title="Non riusciamo a caricare il tuo profilo"
+            onRetry={() => {
+              setProfileLoadFailed(false);
+              setIsLoadingProfile(true);
+              setProfileLoadAttempt((n) => n + 1);
+            }}
+          />
+        </YStack>
+      </YStack>
+    );
+  }
 
   if (!user || !token) {
     return (
@@ -884,7 +907,7 @@ export default function DashboardProfiloPage() {
           <SectionTitle>Categorie e presentazione</SectionTitle>
 
           <YStack gap="$2">
-            <FieldLabel>Categorie (fino a 3 scelte)</FieldLabel>
+            <FieldLabel>Categorie</FieldLabel>
             <CategoryMultiPicker value={categorySlugs} onChange={setCategorySlugs} />
           </YStack>
 

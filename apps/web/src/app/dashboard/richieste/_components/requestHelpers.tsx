@@ -4,11 +4,11 @@ import { formatBookingAddress, type ProfessionalAvailableSlot, type Professional
 import { Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { REQUEST_STAGE_STYLE, type RequestStage } from "@/lib/requestStage";
 
-export const smallInputStyle = { padding: 10, borderRadius: radiusDoc, border: `1px solid ${brand.filetto}`, fontSize: 13, fontFamily: "inherit", color: brand.grafite };
+export const smallInputStyle = { padding: 10, borderRadius: radiusDoc, border: `1px solid ${brand.bordoCampo}`, fontSize: 13, fontFamily: "inherit", color: brand.grafite };
 // Filtri in cima alla pagina (cerca/ordina/zona) — dimensioni più grandi
 // della versione compatta usata nel form preventivo, richiesta esplicita
 // dell'utente ("anche le dimensioni e il carattere delle scritte").
-export const filterInputStyle = { padding: "14px 16px", borderRadius: radiusDoc, border: `1px solid ${brand.filetto}`, fontSize: 16, fontFamily: "inherit", color: brand.grafite, backgroundColor: brand.calce };
+export const filterInputStyle = { padding: "14px 16px", borderRadius: radiusDoc, border: `1px solid ${brand.bordoCampo}`, fontSize: 16, fontFamily: "inherit", color: brand.grafite, backgroundColor: brand.calce };
 
 export type QuoteItemDraft = { name: string; priceMin: string; priceMax: string };
 

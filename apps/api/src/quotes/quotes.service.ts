@@ -207,7 +207,7 @@ export class QuotesService {
 
     // Voci sostituite per intero ad ogni invio/modifica del preventivo,
     // stesso pattern di ProfessionalService in ProfessionalsService, in
-    // un'unica transazione (docs/CHANGELOG.md §278).
+    // un'unica transazione (docs/CHANGELOG.md §287).
     await this.prisma.$transaction([
       this.prisma.quoteItem.deleteMany({ where: { quoteId: quote.id } }),
       this.prisma.quoteItem.createMany({

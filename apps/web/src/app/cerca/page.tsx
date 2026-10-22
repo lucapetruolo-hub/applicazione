@@ -35,10 +35,13 @@ export default async function CercaPage({ searchParams }: { searchParams: PageSe
   const city = searchParams.citta;
 
   let professionals: ProfessionalSearchResult[] = [];
+  // API non raggiungibile ≠ nessun risultato: si mostra "Riprova", non
+  // "nessun professionista" (docs/CHANGELOG.md §284).
+  let loadFailed = false;
   try {
     professionals = await apiClient.searchProfessionals({ city, q: searchParams.q, remote: isOnline });
   } catch {
-    professionals = [];
+    loadFailed = true;
   }
 
   // Tutti i professionisti (nessun filtro città, ma stesso filtro online):
@@ -67,6 +70,7 @@ export default async function CercaPage({ searchParams }: { searchParams: PageSe
         q={searchParams.q}
         professionals={professionals}
         allProfessionals={allProfessionals}
+        loadFailed={loadFailed}
         initialUrgentOnly={searchParams.urgente === "1"}
       />
     </div>

@@ -76,10 +76,11 @@ export function ClientEmailFirstAuth({
   submitSuffix,
   onAuthenticated,
 }: {
-  /** Intestazione del passo corrente (titolo, eventuale pulsante di chiusura). */
-  renderHeader: (step: Step) => ReactNode;
+  /** Intestazione del passo corrente (titolo, eventuale pulsante di chiusura).
+   * `back` c'è dopo l'email: torna al campo email (docs/CHANGELOG.md §278). */
+  renderHeader: (step: Step, back?: () => void) => ReactNode;
   intro: string;
-  firstTimeNote: string;
+  firstTimeNote?: string;
   /** Es. " e invia la richiesta": completa "Crea account"/"Accedi". */
   submitSuffix: string;
   onAuthenticated: (isNewUser: boolean) => void;
@@ -92,6 +93,9 @@ export function ClientEmailFirstAuth({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Campo a cui si riferisce l'errore: il messaggio va sotto quel campo
+  // (docs/CHANGELOG.md §278). Nullo: errore generale, sopra il pulsante.
+  const [errorField, setErrorField] = useState<"email" | "password" | "confirm" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileReset, setTurnstileReset] = useState(0);
@@ -101,11 +105,19 @@ export function ClientEmailFirstAuth({
     setPassword("");
     setConfirmPassword("");
     setError(null);
+    setErrorField(null);
     setTurnstileToken(null);
+  }
+
+  function fieldError(field: "email" | "password" | "confirm", message: string, inputId: string) {
+    setError(message);
+    setErrorField(field);
+    document.getElementById(inputId)?.focus();
   }
 
   async function run(action: () => Promise<void>) {
     setError(null);
+    setErrorField(null);
     setIsSubmitting(true);
     try {
       await action();
@@ -119,7 +131,7 @@ export function ClientEmailFirstAuth({
   function handleContinue() {
     const parsed = emailStatusSchema.safeParse({ email: email.trim() });
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Email non valida");
+      fieldError("email", parsed.error.issues[0]?.message ?? "Email non valida", "email");
       return;
     }
     void run(async () => {
@@ -131,11 +143,11 @@ export function ClientEmailFirstAuth({
 
   function handlePassword() {
     if (password.length < 8) {
-      setError("La password deve avere almeno 8 caratteri");
+      fieldError("password", "La password deve avere almeno 8 caratteri", step === "new" ? "new-password" : "current-password");
       return;
     }
     if (step === "new" && password !== confirmPassword) {
-      setError("Le due password non coincidono");
+      fieldError("confirm", "Le due password non coincidono", "confirm-password");
       return;
     }
     if (step === "new" && isTurnstileEnabled() && !turnstileToken) {
@@ -168,11 +180,13 @@ export function ClientEmailFirstAuth({
     });
   }
 
-  const errorText = error ? (
-    <Text color={brand.urgenza} fontSize="$3">
-      {error}
-    </Text>
-  ) : null;
+  const errorText =
+    error && !errorField ? (
+      <Text role="alert" color={brand.urgenza} fontSize="$3">
+        {error}
+      </Text>
+    ) : null;
+  const errorFor = (field: "email" | "password" | "confirm") => (error && errorField === field ? error : undefined);
 
   if (step === "email") {
     return (
@@ -196,13 +210,17 @@ export function ClientEmailFirstAuth({
             <AuthField
               label="Email"
               value={email}
-              onChangeText={setEmail}
               placeholder="nome@esempio.it"
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="username"
               nativeID="email"
               accessibilityLabel="Email"
+              error={errorFor("email")}
+              onChangeText={(value) => {
+                setEmail(value);
+                if (errorField === "email") setError(null);
+              }}
               onSubmitEditing={handleContinue}
             />
             {errorText}
@@ -212,9 +230,11 @@ export function ClientEmailFirstAuth({
           </YStack>
         </form>
         <LegalNotice action="Continuando" />
-        <Text fontSize="$2" lineHeight={18} color={brand.grafite70} textAlign="center">
-          {firstTimeNote}
-        </Text>
+        {firstTimeNote ? (
+          <Text fontSize="$2" lineHeight={18} color={brand.grafite70} textAlign="center">
+            {firstTimeNote}
+          </Text>
+        ) : null}
       </YStack>
     );
   }
@@ -222,7 +242,7 @@ export function ClientEmailFirstAuth({
   if (step === "google") {
     return (
       <YStack gap="$4">
-        {renderHeader(step)}
+        {renderHeader(step, editEmail)}
         <EmailPill email={email} onEdit={editEmail} />
         <Text fontSize="$3" color={brand.grafite70}>
           Questo account è collegato a Google: accedi con lo stesso indirizzo.
@@ -236,12 +256,12 @@ export function ClientEmailFirstAuth({
   const isNew = step === "new";
   return (
     <YStack gap="$4">
-      {renderHeader(step)}
+      {renderHeader(step, editEmail)}
       <EmailPill email={email} onEdit={editEmail} />
       <Text fontSize="$3" color={brand.grafite70}>
         {isNew
-          ? "Non c'è ancora un account con questa email: scegli una password e scrivila due volte."
-          : "Con questa email hai già un account: inserisci la tua password per accedere."}
+          ? "Scegli una password per il nuovo account."
+          : "Hai già un account: inserisci la password."}
       </Text>
       <form onSubmit={(e) => e.preventDefault()}>
         <YStack gap="$4">
@@ -259,6 +279,7 @@ export function ClientEmailFirstAuth({
             autoComplete={isNew ? "new-password" : "current-password"}
             nativeID={isNew ? "new-password" : "current-password"}
             accessibilityLabel="Password"
+            error={errorFor("password")}
             onSubmitEditing={handlePassword}
           />
           {isNew ? (
@@ -272,6 +293,7 @@ export function ClientEmailFirstAuth({
               autoComplete="new-password"
               nativeID="confirm-password"
               accessibilityLabel="Conferma password"
+              error={errorFor("confirm")}
               onSubmitEditing={handlePassword}
             />
           ) : null}

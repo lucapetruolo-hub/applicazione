@@ -12,7 +12,7 @@ const MAX_PHOTOS = 5;
 const fieldStyle = {
   padding: 10,
   borderRadius: 4,
-  border: `1px solid ${brand.filetto}`,
+  border: `1px solid ${brand.bordoCampo}`,
   fontSize: 14,
   fontFamily: "inherit",
   color: brand.grafite,

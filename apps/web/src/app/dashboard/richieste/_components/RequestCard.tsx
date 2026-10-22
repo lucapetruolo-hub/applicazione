@@ -1040,7 +1040,7 @@ export function RequestCard({
               onBlur={() => noteChanged && handleSaveNote()}
               placeholder="Es. portare il pezzo di ricambio, citofono guasto..."
               rows={2}
-              style={{ width: "100%", padding: 8, borderRadius: radiusDoc, border: `1px solid ${brand.filetto}`, fontSize: 13, fontFamily: "inherit", color: brand.grafite, resize: "none", overflow: "hidden" }}
+              style={{ width: "100%", padding: 8, borderRadius: radiusDoc, border: `1px solid ${brand.bordoCampo}`, fontSize: 13, fontFamily: "inherit", color: brand.grafite, resize: "none", overflow: "hidden" }}
             />
             {noteChanged ? (
               <CardButton alignSelf="flex-start" disabled={isSavingNote} onPress={handleSaveNote}>

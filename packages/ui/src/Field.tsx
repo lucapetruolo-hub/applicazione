@@ -23,13 +23,13 @@ export type FieldProps = ComponentProps<typeof Input> & {
 export function Field({ label, hint, error, rightElement, ...inputProps }: FieldProps) {
   return (
     <YStack gap="$2">
-      <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
+      <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
         {label}
       </Text>
       <XStack
         alignItems="center"
         borderWidth={1}
-        borderColor={error ? brand.urgenza : brand.filetto}
+        borderColor={error ? brand.urgenza : brand.bordoCampo}
         borderRadius={radiusDoc}
         backgroundColor={brand.calce}
         paddingHorizontal="$3"

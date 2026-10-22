@@ -29,7 +29,7 @@ export function startOfDayUtc(date: Date): Date {
   return result;
 }
 
-/** Oggi in Italia (non in UTC: tra mezzanotte e le 2 sarebbe ancora ieri), docs/CHANGELOG.md §278. */
+/** Oggi in Italia (non in UTC: tra mezzanotte e le 2 sarebbe ancora ieri), docs/CHANGELOG.md §287. */
 export function todayUtc(): Date {
   return wallClockToday();
 }

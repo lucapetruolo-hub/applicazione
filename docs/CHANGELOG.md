@@ -19737,7 +19737,136 @@ nella pagina della richiesta, non solo nell'avviso.
 
 **Verifica**: `tsc` ed `eslint` dell'API, 479 test (il test di `createSession` controlla anche che in prova `expected_details` non parta).
 
-## 278. Orari uguali in tutte le viste e agenda salvata tutto o niente
+## 278. Design della registrazione
+
+**Richiesta esplicita dell'utente** (20/10/2026): "migliora il design da questa pagina in poi" (pagina "Come vuoi registrarti?" e tutti i passi dopo, cliente e professionista). Proposte 11 migliorie con le regole della skill UI/UX Pro Max; Luca: "procedi con le migliorie" (tutte). Foto prima e dopo in `/mnt/project-files/anteprime/registrazione/`.
+
+**Decisione presa** (`apps/web/src/app/registrati/page.tsx` salvo dove indicato):
+- **Intestazione uguale su ogni passo** (`AuthStepHeader`): "Indietro" in alto a sinistra (area di tocco 44px), "Passo N di M" a destra e una barra a segmenti. La prima scelta non ha barra (i passi dipendono da quella scelta); cliente 2 passi, professionista 4. Il cliente prima non aveva nessun "Indietro"; dopo l'email "Indietro" torna al campo email (nuovo secondo argomento di `renderHeader` in `ClientEmailFirstAuth`). Il professionista aveva "Indietro" solo in fondo alla scelta del tipo.
+- **Icona del passo**: persona sulla scelta del ruolo (prima una stellina senza significato), busta sull'email, lucchetto sulla password, valigetta sul tipo, caschetto sul modulo, busta sul codice.
+- **Bordi visibili** di campi, caselle di spunta e caselle del codice: nuovo `brand.bordoCampo` `#9C8E7F` (3,2:1 su bianco) al posto del filetto `#F0DCC0` (1,3:1). Solo nelle pagine di accesso e registrazione (`.auth-field-box`, `ConsentCheckbox`, `.email-code-box`); i campi `Field` del resto del sito restano col filetto.
+- **Etichette dei campi** da 11 a 13px (`.auth-field-label`).
+- **Cliente, meno testo**: titolo "Crea il tuo account", una frase sopra ("Ritrovi richieste, preventivi e professionisti salvati nel tuo account."), tolta la nota "Se è la prima volta..." (`firstTimeNote` ora facoltativo, il popup della richiesta la tiene), bollini "Dati protetti" e "Gratis, senza carta" su una riga. Frasi del passo password accorciate ("Scegli una password per il nuovo account." / "Hai già un account: inserisci la password.", anche nel popup).
+- **Professionista**: titolo "Crea il tuo account" (prima "Iscriviti come professionista", su due righe da telefono), sottotitolo "Poi completi il profilo e ricevi le richieste."; etichetta "Che lavori fai?" senza "(fino a 3 scelte)", già detto sotto le categorie. Frase sotto la scelta del tipo accorciata.
+- **Schede di scelta come link veri** (`ChoiceCard`): fuoco da tastiera visibile, Invio funziona, risposta al tocco (leggera riduzione). Ruolo con `replace` come prima, tipo con push come prima (il tasto indietro del telefono torna alla scelta).
+- **Titolo della scheda del browser** "Registrati" (nuovo `registrati/layout.tsx`, la pagina è client) e titolo principale h1 su ogni passo (prima mancava su scelta del ruolo e cliente).
+- **Errori sotto il campo giusto**: email, password, conferma password e categorie mostrano l'errore sotto il campo, con fuoco sul campo; gli errori del server restano sopra il pulsante con `role="alert"`. `AuthField` collega errore o suggerimento al campo (`aria-describedby`) e annuncia l'errore.
+- **Codice email** (`EmailCodeForm`, anche in /conferma-email, /account e password dimenticata): "Vale ancora N minuti · nuovo codice tra m:ss" in una riga invece di due (la durata resta accanto al conto alla rovescia, §250).
+
+Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove (PR #85), popup "Email verificata", "Lavoro occasionale" sotto Privato, accesso con Google.
+
+**Verifica**: typecheck e lint di web. Provato nel browser a 360, 390 e 1440px (sito locale; risposte dell'API simulate per il passo password del cliente e per il codice): nessuno scorrimento orizzontale, titolo "Registrati | Professionisti", h1 presente, scelta col tasto Tab + Invio, "Indietro" e tasto indietro del browser corretti, errore "Le password non coincidono" sotto Conferma password.
+
+## 279. Scelta dei lavori a tessere e altre migliorie di accesso e moduli
+
+**Richiesta esplicita dell'utente** (21/10/2026): "non mi piace lo stile con cui si scelgono i lavori in fase di registrazione, come si puo migliorare la scelta?" e "poi effettua le 4 migliorie" (quelle proposte dopo §278). Tra tre stili (A tessere con icona colorata, B elenco con caselle, C ricerca + più scelti, foto in `/mnt/project-files/anteprime/scelta-lavori/`) Luca ha scelto "A".
+
+**Decisione presa**:
+- **Scelta dei lavori a tessere** (`CategoryMultiPicker`, usato in registrazione, `/dashboard/profilo` e `/admin/professionisti`): griglia di tessere (`.cat-tiles`, due colonne da telefono e di più dove c'è spazio) con l'icona colorata della categoria (`CategoryIcon`/`CATEGORY_ACCENT`, le stesse della home), spunta verde sulle scelte, "Principale" sotto la prima, "N su 3" in alto. Sono pulsanti veri (`aria-pressed`, tastiera, risposta al tocco). Tolto il bordo dorato animato di §248. La riga per cambiare la principale resta ("Cambia la principale:").
+- **Bordi visibili in tutti i moduli** (migliora 1): `brand.bordoCampo` anche in `Field` (con etichetta a 13px), nei campi, menu a tendina e aree di testo del sito (richiesta di preventivo, account, profilo, dati fiscali, agenda, segnalazioni, finestre di recensione e problemi, admin). Il filetto resta per i divisori.
+- **Popup di accesso della richiesta** (`InlineAuthGate`, migliora 2): "Passo 1 di 2"/"Passo 2 di 2" con la barra, "Indietro" che torna al campo email, ✕ per chiudere, titolo h2.
+- **Accedi e Password dimenticata** (migliora 3): stessa intestazione della registrazione (`AuthStepHeader`, ora in `components/AuthStepHeader.tsx`): icona, titolo h1; in "Password dimenticata" "Indietro" (all'accesso o al campo email) e passi 1-2 al posto del link "Torna all'accesso". Errori sotto il campo giusto. Titolo della scheda "Accedi" (`accedi/layout.tsx`).
+- **Niente "Richiedi preventivo" in alto** (migliora 4) in registrazione, accesso, password dimenticata, reimposta password, conferma email e completa profilo (`SiteHeader`, `AUTH_PAGES`).
+
+**Verifica**: typecheck e lint di web. Provato nel browser a 360, 390 e 1280px: tessere su due colonne da telefono e tre nella scheda da computer, nessuno scorrimento orizzontale, scelta con la barra spaziatrice, titolo "Accedi | Professionisti", "Richiedi preventivo" assente su /accedi e /registrati.
+
+## 280. Tessere nella richiesta di preventivo e lavori più cercati per primi
+
+**Richiesta esplicita dell'utente** (21/10/2026): "effettua le 2 migliorie" (proposte dopo §279): le stesse tessere nella scelta delle categorie della richiesta di preventivo e i lavori più cercati in zona per primi.
+
+**Decisione presa**:
+- **Tessere condivise** (`apps/web/src/components/CategoryTiles.tsx`): la griglia di §279 esce da `CategoryMultiPicker` e la usa anche `GuidedRequestForm` (fino a `MAX_REQUEST_CATEGORIES`, senza "Principale"; restano "N di 3" e "Riceverai una richiesta separata per ogni categoria.").
+- **Più cercati per primi**: nuovo `GET /categories/popular?city=` (`CategoriesService.getPopularity`), richieste di preventivo degli ultimi 365 giorni contate per categoria. Con almeno 5 richieste nella città (`MIN_CITY_REQUESTS`) conta solo quella città, altrimenti tutta Italia. Solo conteggi, nessun dato personale. Le categorie senza richieste restano in fondo nell'ordine di sempre.
+- **Mai spostare sotto il dito**: l'ordine si applica una sola volta, solo se arriva entro 2 secondi e prima che sia scelta una categoria; altrimenti resta l'ordine fisso. Nella richiesta usa la città già nota (dall'indirizzo della ricerca o del profilo), in registrazione l'ordine nazionale.
+
+**Verifica**: test di `CategoriesService` (città, ritorno a tutta Italia, categorie tolte ignorate), typecheck di api e web, lint. Provato nel browser a 390 e 1280px con risposte simulate: ordine applicato, chiamata con la città nella richiesta e senza in registrazione, nessuno scorrimento orizzontale.
+
+## 281. Categoria cercata in cima e ricerche nel conteggio dei più cercati
+
+**Richiesta esplicita dell'utente** (21/10/2026): "effettua le due migliorie" (proposte dopo §280): nella richiesta di preventivo la categoria cercata per prima, e contare anche le ricerche oltre alle richieste.
+
+**Decisione presa**:
+- **Categoria cercata in cima** (`CategoryTiles`): le categorie già scelte all'apertura (nella richiesta quella arrivata dalla ricerca, `?categoria=`; nel profilo quelle del professionista) restano per prime, poi le più cercate. L'ordine dei più cercati ora si blocca al primo tocco invece che alla prima scelta, perché una scelta può esserci già all'apertura.
+- **Ricerche contate**: nuova tabella `category_search_days` (`CategorySearchDay`, migrazione `20261021140000_category_search_days`), un contatore per categoria, città (minuscola, vuota senza città) e giorno, mai la singola ricerca né chi cerca. La pagina dei risultati di una categoria (`/cerca/[categoria]` e `/cerca/[categoria]/[citta]`) chiede `track=1` solo nella prima delle sue due ricerche; homepage, sitemap e ricerca libera non contano. Il conteggio non blocca mai la ricerca (errori ignorati).
+- **Punteggio** (`CategoriesService.getPopularity`): richieste × 3 (`REQUEST_WEIGHT`: chi chiede un preventivo vuole davvero quel lavoro, chi cerca a volte guarda soltanto o ricarica la pagina) + ricerche, ultimi 365 giorni. La città basta da sola da 15 punti (`MIN_CITY_SCORE`, pari alle 5 richieste di prima), altrimenti tutta Italia.
+
+**Verifica**: test di `CategoriesService` (punteggio, città, ritorno a tutta Italia, conteggio per giorno e città, categoria sconosciuta), migrazione confrontata con `prisma migrate diff`, typecheck di api e web, lint, test api (485). Provato nel browser a 390 e 1280px: con `?categoria=fabbro` Fabbro è la prima tessera, poi i più cercati.
+
+## 282. "Servizi più richiesti a [città]" nelle pagine dei risultati
+
+**Richiesta esplicita dell'utente** (21/10/2026): chiesto se i più cercati aiutano anche su Google; proposta una sezione di link nelle pagine di città e categoria, Luca: "prepara già per il lancio completo".
+
+**Decisione presa** (`apps/web/src/components/PopularServicesLinks.tsx`, `CategoryResults.tsx`):
+- **In fondo ai risultati di una categoria** (`/cerca/[categoria]` e `/cerca/[categoria]/[citta]`): titolo h2 "Servizi più richiesti a Latina" (o "Servizi più richiesti" senza città) e fino a 8 pillole con l'icona della categoria, ognuna un link vero alla pagina categoria+città ("Elettricista a Latina", `/cerca/elettricista/latina`) o alla pagina nazionale. Nell'HTML già dal server, quindi Google le legge (SEO locale, CLAUDE.md §7.6); per il cliente sono una scorciatoia agli altri lavori della zona.
+- **Ordine** da `GET /categories/popular` (§280-§281); se l'API non risponde entro 1,5 secondi, ordine del catalogo. Le chiamate partono in parallelo alla ricerca, la pagina non diventa più lenta.
+- **Niente link a pagine vuote**, stessa regola della sitemap: con una città si mostrano solo le categorie con almeno un professionista lì; dal lancio (`NEXT_PUBLIC_SITE_INDEXABLE=true`) contano solo i professionisti veri, non i profili demo. Se la ricerca non risponde o non c'è nulla, la sezione non compare. Solo comuni veri (`findComuneByName`), come le pagine categoria+città.
+- Oggi il sito resta `noindex`: la sezione serve già ai clienti e conta per Google dal lancio, senza altro da fare.
+
+**Verifica**: typecheck e lint di web. Provato col sito locale e i dati veri dell'API: su `/cerca/idraulico/latina` compaiono solo "Elettricista a Latina" e "Imbianchino a Latina" (le categorie con professionisti a Latina), su `/cerca/idraulico` le 8 nazionali; a 390 e 1280px nessuno scorrimento orizzontale.
+
+## 283. Profilo pubblico e accesso più sicuri, privacy aggiornata su Google
+
+**Richiesta esplicita dell'utente** (21/10/2026, thread "Revisione esterna del piano CEO"): dopo la revisione del piano fatta da un'altra IA, "fai subito le pr che ritieni" (l'agenda va in un thread a parte).
+
+**Problemi verificati sul codice**:
+- Il JSON-LD del profilo pubblico (`professionista/[id]/page.tsx`) usava `JSON.stringify` dentro `<script>`: un nome attività con `</script>` chiudeva lo script e poteva inserire HTML nella pagina (XSS salvato).
+- `/accedi` mandava dove diceva `?redirect=` senza controllo: un link fatto apposta poteva portare su un altro sito subito dopo l'accesso. Il ritorno da Google controllava solo `/` e `//`, non `/\host`.
+- La privacy diceva che il pulsante di accesso con Google si carica solo dopo il consenso: dal §265 non c'è più nessuno script Google per l'accesso.
+
+**Decisione presa**:
+- `jsonForScript` scrive `<` come `<` (più U+2028/U+2029): JSON identico per Google, nessun tag chiudibile.
+- `safeInternalPath` in `packages/shared/src/safeRedirect.ts`: solo percorsi del sito, rifiuta altri siti, `//`, barre rovesciate, caratteri di controllo. Usato da `/accedi` e `/accesso-google`; un valore non sicuro porta alla destinazione normale (Dashboard o home).
+- Privacy (aggiornata al 21 ottobre 2026): mappa interattiva solo col consenso, accesso Google in una finestra di Google solo quando lo scegli, immagine fissa della mappa e suggerimenti degli indirizzi chiesti dal nostro server.
+
+**Verifica**: test `safe-redirect.test.ts` (percorsi buoni e cattivi), typecheck e lint di web e api.
+
+## 284. Ricerca e profilo: "Riprova" quando l'API non risponde
+
+**Richiesta esplicita dell'utente** (21/10/2026, thread "Revisione esterna del piano CEO"): stessa richiesta del §283 (punto 5 della revisione: errori mostrati come assenza di dati).
+
+**Problema**: se l'API non rispondeva (es. Render che si risveglia), `/cerca` e `/cerca/[categoria]` mostravano "Per ora non ci sono professionisti in questa zona" con l'invito a mandare la richiesta, e `/professionista/[id]` dava "pagina non trovata".
+
+**Decisione presa**:
+- `ApiError` in `packages/api-client` (errore con il codice HTTP, sempre un `Error`: nessun controllo esistente cambia).
+- Ricerca: con l'API in errore il riquadro diventa `LoadErrorNotice` ("Non riusciamo a caricare i professionisti", "Riprova tra qualche secondo", pulsante "Riprova"). Riprova da sola una volta dopo 15 secondi.
+- Profilo: "pagina non trovata" solo se l'API risponde 404 (o 400 per un id non valido); altrimenti lo stesso riquadro con "Non riusciamo a caricare questo profilo".
+- `app/error.tsx`: "Riprova" ricarica anche i dati dal server (`router.refresh()` + `reset`), prima ridisegnava lo stesso errore.
+
+**Verifica**: typecheck e lint del web; provato con l'API spenta a 390 e 1280px (anteprime in `anteprime/errori-caricamento/`).
+
+## 285. "Riprova" anche nell'area professionista, Contatti e banner cookie sui telefoni piccoli
+
+**Richiesta esplicita dell'utente** (22/10/2026, thread "Revisione esterna del piano CEO"): "le migliorie vanno bene tutte, procedi ora con quelle che ritieni e mettile nelle cose da fare prima del lancio per quelle che ritieni".
+
+**Problemi verificati**:
+- `/dashboard/profilo`: se il profilo non arrivava dall'API, si apriva il modulo vuoto come per un profilo nuovo (salvandolo si sarebbero persi i dati).
+- `/dashboard/fiscale`: stessa cosa con i dati fiscali.
+- `/dashboard/richieste`: qualunque errore diceva "Crea prima il tuo profilo professionista".
+- `/le-mie-richieste`: un errore sulle prenotazioni le azzerava e spostava le richieste di fase fino al giro successivo.
+- `/contatti` a 320 e 360px: largo 364px (riquadri con `minWidth` 340 e 300), si scorreva di lato.
+- Banner cookie a 320×568: il limite di altezza (15% dello schermo) tagliava i pulsanti "Rifiuta"/"Accetta".
+
+**Decisione presa**:
+- `LoadErrorNotice` (§284) accetta `onRetry` per le pagine client e un link secondario. Profilo, Dati fiscali e Richieste mostrano "Non riusciamo a caricare…" con "Riprova" al posto del modulo vuoto o dell'invito a creare il profilo.
+- Profilo pubblico non caricato: anche "Torna alla ricerca".
+- `/le-mie-richieste`: in errore restano le prenotazioni già caricate.
+- `/contatti`: riquadri che si restringono (`flexBasis` 340/300 con `minWidth` 0), margini di 16px e riquadri meno imbottiti sul telefono.
+- Banner cookie: mai tagliato (altezza massima 40% con scorrimento interno solo come garanzia).
+- Checklist di lancio: prove automatiche nel browser (punto 26) e misure del percorso (punto 27); elenchi admin con totale tra le cose da fare dopo il lancio.
+
+**Verifica**: typecheck e lint del web; nel browser `/contatti` largo 320 e 360px esatti, pulsanti del banner dentro lo schermo a 320×568; anteprime in `anteprime/errori-caricamento/`.
+
+## 286. "Riprova" anche in Oggi e Abbonamento
+
+**Richiesta esplicita dell'utente** (22/10/2026, thread "Revisione esterna del piano CEO"): "effettua miglioria 2 e unisci" (miglioria proposta dopo il §285).
+
+**Problema**: in `/dashboard` (Oggi), se richieste o appuntamenti non arrivavano dall'API, restava un messaggio tecnico in rosso e i riquadri restavano sugli scheletri di caricamento per sempre; anche "Il tuo andamento" restava sugli scheletri. In `/dashboard/abbonamento` c'era solo il messaggio in rosso.
+
+**Decisione presa**: `LoadErrorNotice` con "Riprova" al posto dei contatori e delle sezioni "Da rispondere ora" e "Oggi e domani" ("Non riusciamo a caricare richieste e appuntamenti"); "Il tuo andamento" si nasconde se non si carica; in Abbonamento "Non riusciamo a caricare il tuo abbonamento" con "Riprova". Gli avvisi in alto (pausa, percorso profilo, agenda) restano come prima.
+
+**Verifica**: typecheck e lint del web.
+
+## 287. Orari uguali in tutte le viste e agenda salvata tutto o niente
 
 **Richiesta esplicita dell'utente** (21/10/2026, thread "Agenda: correzioni e restyling"): correggere i due problemi dell'agenda trovati dalla revisione esterna (`/mnt/project-files/analisi/revisione-piano-ceo.md`, punti 3 e 4).
 

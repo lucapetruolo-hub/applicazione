@@ -30,7 +30,7 @@ import { REQUEST_STAGE_STYLE, bookingStageStyle } from "@/lib/requestStage";
  *    nessuna parte della pagina.
  */
 
-/** `target` e `now` sono ore di parete in UTC (`wallClockNow`, docs/CHANGELOG.md §278). */
+/** `target` e `now` sono ore di parete in UTC (`wallClockNow`, docs/CHANGELOG.md §287). */
 function describeRelativeTime(target: Date, now: Date = wallClockNow()): string {
   const diffMin = Math.round((target.getTime() - now.getTime()) / 60000);
   const time = formatAppointmentTime(target);

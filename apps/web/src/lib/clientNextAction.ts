@@ -12,7 +12,7 @@ export function clientNextAction(
   stage: RequestStage,
   request: Pick<ClientGuidedRequest, "quotes">,
   booking: Pick<ClientBooking, "status" | "scheduledAt" | "hasReview" | "clientConfirmedCompletedAt" | "issue" | "canReview"> | null,
-  // Ora di parete in UTC, come `scheduledAt` (docs/CHANGELOG.md §278).
+  // Ora di parete in UTC, come `scheduledAt` (docs/CHANGELOG.md §287).
   now: number = wallClockNow().getTime(),
 ): string | null {
   if (stage === "in_attesa") {
