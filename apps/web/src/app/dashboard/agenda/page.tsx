@@ -10,6 +10,9 @@ import {
   navigateUrl,
   wallClockNow,
   type AgendaWeekTemplate,
+  type DayPart,
+  type ZoneDemand,
+  DAY_PART_RANGE,
   type CompleteBookingInput,
   type ExternalJob,
   type ProfessionalBooking,
@@ -31,6 +34,7 @@ import { AgendaMiniMonth } from "@/components/agenda/AgendaMiniMonth";
 import { AppointmentPanel } from "@/components/agenda/AppointmentPanel";
 import { CalendarLinkModal } from "@/components/agenda/CalendarLinkModal";
 import { WeekTemplateEditor } from "@/components/agenda/WeekTemplateEditor";
+import { ZoneDemandCard } from "@/components/agenda/ZoneDemandCard";
 import { DayRouteSection } from "@/components/agenda/DayRouteSection";
 import { readAgendaOffline, saveAgendaOffline } from "@/lib/agendaOffline";
 import {
@@ -54,7 +58,7 @@ import {
 } from "@/lib/calendarDates";
 import { AgendaEventsList } from "./_components/AgendaEventsList";
 import { SelectionCheckbox, SlotChip, SlotEditorModal } from "./_components/SlotEditorModal";
-import { AGENDA_BOOKING_STATUS_LABEL, AGENDA_EXTERNAL_JOB_STATUS_LABEL, AgendaListItem, BOOKING_STATUS_COLOR, EXTERNAL_JOB_STATUS_COLOR, PENDING_QUOTE_COLOR, SlotDraft, WEEKDAY_FULL_LABELS, formatAgendaTimeRange, isSlotGeneric, slotsOverlap } from "./_components/agendaHelpers";
+import { AGENDA_BOOKING_STATUS_LABEL, AGENDA_EXTERNAL_JOB_STATUS_LABEL, AgendaListItem, BOOKING_STATUS_COLOR, EXTERNAL_JOB_STATUS_COLOR, PENDING_QUOTE_COLOR, SlotDraft, WEEKDAY_FULL_LABELS, formatAgendaTimeRange, slotsOverlap } from "./_components/agendaHelpers";
 
 // Tre sezioni (docs/CHANGELOG.md §288): il calendario degli appuntamenti,
 // gli orari di lavoro (settimana tipo + giorno per giorno) e il giro del giorno.
@@ -220,6 +224,7 @@ function DashboardAgendaContent() {
   const [weekTemplate, setWeekTemplate] = useState<AgendaWeekTemplate | null>(null);
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [templateNotice, setTemplateNotice] = useState<string | null>(null);
+  const [zoneDemand, setZoneDemand] = useState<ZoneDemand | null>(null);
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [vacationFrom, setVacationFrom] = useState("");
   const [vacationTo, setVacationTo] = useState("");
@@ -306,6 +311,10 @@ function DashboardAgendaContent() {
     apiClient
       .agendaWeekTemplate(token)
       .then(setWeekTemplate)
+      .catch(() => {});
+    apiClient
+      .agendaZoneDemand(token)
+      .then(setZoneDemand)
       .catch(() => {});
   }, [token]);
 
@@ -949,7 +958,7 @@ function DashboardAgendaContent() {
     }
 
     return (
-      <YStack gap="$2" minWidth={0}>
+      <YStack gap="$2" minWidth={0} opacity={isPast ? 0.55 : 1}>
         {!isPast ? (
           <XStack
             alignItems="center"
@@ -960,16 +969,18 @@ function DashboardAgendaContent() {
             onPress={() => toggleException(dateStr)}
             accessibilityRole="button"
           >
-            <Text fontFamily="$body" fontSize={11} fontWeight="600" color={isClosed ? brand.verificato : brand.urgenza}>
-              {isClosed ? "↺ Riapri" : "✕ Chiudi"}
+            <Text fontFamily="$body" fontSize={12} fontWeight="600" color={brand.grafite70} textDecorationLine="underline">
+              {isClosed ? "Riapri" : "Chiudi"}
             </Text>
           </XStack>
         ) : null}
 
         {isClosed ? (
-          <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.urgenza}>
-            Chiuso
-          </Text>
+          <XStack alignSelf="flex-start" borderRadius={999} paddingHorizontal={10} paddingVertical={4} backgroundColor="#ECECE8">
+            <Text fontFamily="$body" fontSize={12} fontWeight="600" color={brand.grafite70}>
+              Chiuso
+            </Text>
+          </XStack>
         ) : (
           <>
             {daySlots.map(({ slot, index }) => (
@@ -993,11 +1004,11 @@ function DashboardAgendaContent() {
             */}
             {!isPast ? (
               <XStack
-                height={34}
-                borderWidth={1.5}
+                height={32}
+                borderWidth={1}
                 borderStyle="dashed"
-                borderColor={brand.cianografia}
-                borderRadius="$2"
+                borderColor={brand.grafite70}
+                borderRadius={999}
                 alignItems="center"
                 justifyContent="center"
                 cursor="pointer"
@@ -1006,7 +1017,7 @@ function DashboardAgendaContent() {
                 accessibilityRole="button"
                 accessibilityLabel="Aggiungi fascia oraria"
               >
-                <Icon name="plus" size={16} strokeWidth={2.5} color={brand.cianografiaScuro} />
+                <Icon name="plus" size={16} strokeWidth={2} color={brand.grafite} />
               </XStack>
             ) : daySlots.length === 0 ? (
               <Text fontFamily="$body" fontSize={11} fontWeight="600" color={brand.grafite70}>
@@ -1057,7 +1068,7 @@ function DashboardAgendaContent() {
     return (
       <XStack gap={3} flexWrap="wrap" alignItems="center">
         {daySlots.slice(0, 4).map((s, i) => (
-          <YStack key={i} width={6} height={6} borderRadius={3} backgroundColor={isSlotGeneric(s) ? brand.ottone : brand.cianografia} />
+          <YStack key={i} width={6} height={6} borderRadius={3} backgroundColor={brand.cianografia} />
         ))}
         {daySlots.length > 4 ? (
           <Text fontFamily="$body" fontSize={11} color={brand.grafite70}>
@@ -1393,6 +1404,16 @@ function DashboardAgendaContent() {
     } finally {
       setSavingTemplate(false);
     }
+  }
+
+  // "Aggiungi alla settimana tipo" da Richieste in zona.
+  function addDemandSlot(weekday: number, part: DayPart) {
+    if (!weekTemplate) return;
+    const range = DAY_PART_RANGE[part];
+    const slot = { start: range.start, end: range.end, allowsHome: true, allowsOnline: false, homeMax: 1, onlineMax: null };
+    void changeWeekTemplate({
+      days: weekTemplate.days.map((daySlots, day) => (day === weekday ? [...daySlots, slot].sort((a, b) => a.start.localeCompare(b.start)) : daySlots)),
+    });
   }
 
   function applyWeekTemplate(monthKey: string) {
@@ -1733,6 +1754,8 @@ function DashboardAgendaContent() {
                 {templateNotice}
               </div>
             ) : null}
+
+            <ZoneDemandCard demand={zoneDemand} template={weekTemplate} onAdd={addDemandSlot} />
 
             <div className="ag-card" style={{ padding: 20 }}>
               <h2 style={{ fontSize: 19 }}>Ferie e chiusure</h2>

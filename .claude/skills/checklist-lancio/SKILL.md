@@ -326,7 +326,12 @@ aperti solo:
     container) con account di prova: cliente che cerca e manda la richiesta,
     professionista che risponde col preventivo, cliente che lo accetta,
     admin che vede la segnalazione. Più una prova con l'API spenta (deve
-    comparire "Riprova", docs/CHANGELOG.md §284-§285).
+    comparire "Riprova", docs/CHANGELOG.md §284-§285). Più una prova degli
+    orari dell'agenda (decisione dell'utente, 22/10/2026, §287-§289): un
+    preventivo alle 09:00 deve comparire alle 09:00 in agenda, nel
+    riquadro dell'appuntamento, in Oggi e lato cliente, con il browser in
+    un fuso diverso dall'Italia (es. `timezoneId: "America/New_York"` di
+    Playwright) e d'estate e d'inverno (prima e dopo il 25/10).
 27. **Misure del percorso** (stessa revisione): contare ricerca → profilo →
     richiesta inviata → preventivo → accettato, e per i professionisti
     iscrizione → profilo pubblico → primo preventivo → primo lavoro. Nel

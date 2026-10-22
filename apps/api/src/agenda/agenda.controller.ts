@@ -32,6 +32,11 @@ export class AgendaController {
     return this.agendaService.weather(req.user.userId);
   }
 
+  @Get("zone-demand")
+  zoneDemand(@Req() req: AuthenticatedRequest) {
+    return this.agendaService.zoneDemand(req.user.userId);
+  }
+
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Get("route")
   route(@Req() req: AuthenticatedRequest, @Query("date") date: string) {

@@ -19901,3 +19901,15 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 **Da fare a mano**: abilitare "Routes API" sulla chiave Google usata da Render (checklist di lancio, punto delle chiavi Google).
 
 **Verifica**: `tsc` ed `eslint` di API e web, 500 test API (nuovi: meteo, tempi del giro, comune nell'indirizzo, settimana tipo, feed iCalendar, riepilogo della sera), avvio dell'API (`check-boot`: trovato e corretto `AgendaModule` senza `AuthModule`), prova in locale con dati di prova e foto su computer e telefono (`/mnt/project-files/anteprime/agenda-restyling/1-…4-*.png`).
+
+## 289. Agenda: "Giorno per giorno" nello stile nuovo e "Richieste in zona"
+
+**Richiesta esplicita dell'utente** (22/10/2026, thread "Agenda: correzioni e restyling"): "effettua le 4 migliorie, per la 1 falla dopo l'unione, per la 3 se non ci sono sufficienti dati scrivi 'in arrivo'". La 1 (lavori su più giorni) va in una PR dopo l'unione della #97.
+
+**2. "Giorno per giorno" nello stile nuovo**: le fasce sono pastiglie verdi come le fasce libere della griglia (`SlotChip`); tolti il bordo tratteggiato ottone delle fasce con più prenotazioni (il limite si vede aprendo la fascia) e `isSlotGeneric`; "Chiudi"/"Riapri" in grigio senza simboli, "Chiuso" in una pastiglia grigia, "+" con bordo tratteggiato neutro, giorni passati attenuati. In `CalendarShell` (anche la vista Mese del Calendario): voce attiva grigio chiaro, oggi in un cerchio quasi nero, numeri nello stesso carattere del testo.
+
+**3. Richieste in zona** (`ZoneDemandCard.tsx` in Orari di lavoro, `GET /agenda/zone-demand`): richieste degli ultimi 30 giorni nella stessa città e per gli stessi lavori del professionista. Sotto 10 richieste mostra "In arrivo"; altrimenti i due momenti della settimana più richiesti (giorno + mattina/pomeriggio/sera, dalle date preferite dei clienti, almeno 3 richieste ciascuno), con "Sei già aperto" o "Tu sei chiuso" e il tasto per aggiungere la fascia alla settimana tipo. Solo conteggi, nessun dato dei clienti. Funzioni condivise in `packages/shared/src/agendaTools.ts` (`DAY_PART_RANGE`, `dayPartOf`, `weekTemplateCovers`).
+
+**4. Prova degli orari nel browser**: aggiunta al punto 26 della checklist di lancio (un preventivo alle 09:00 resta alle 09:00 in ogni vista, con il browser in un altro fuso e prima e dopo il cambio d'ora).
+
+**Verifica**: `tsc` ed `eslint` di API e web, 503 test API (nuovi: momenti più richiesti, parte del giorno coperta dalla settimana tipo), prova in locale con meno e più di 10 richieste (foto `5-orari-pochi-*.png` e `5-orari-pronti-*.png` in `/mnt/project-files/anteprime/agenda-restyling/`).

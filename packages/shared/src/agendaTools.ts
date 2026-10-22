@@ -106,3 +106,40 @@ export function dayRouteMapsUrl(stops: Pick<DayRouteStop, "latitude" | "longitud
 export function navigateUrl(destination: string): string {
   return `https://www.google.com/maps/dir/?${new URLSearchParams({ api: "1", destination, travelmode: "driving" }).toString()}`;
 }
+
+/**
+ * Richieste in zona (docs/CHANGELOG.md §288, scelta dell'utente): i momenti
+ * della settimana in cui i clienti della stessa città chiedono più spesso i
+ * lavori del professionista, da confrontare con la sua settimana tipo.
+ * Solo conteggi: nessun dato del singolo cliente.
+ */
+export type DayPart = "morning" | "afternoon" | "evening";
+
+export const DAY_PART_RANGE: Record<DayPart, { start: string; end: string; label: string }> = {
+  morning: { start: "08:00", end: "13:00", label: "mattina" },
+  afternoon: { start: "14:00", end: "18:00", label: "pomeriggio" },
+  evening: { start: "18:00", end: "21:00", label: "sera" },
+};
+
+/** Sotto questo numero di richieste in 30 giorni i consigli sono "in arrivo". */
+export const ZONE_DEMAND_MIN_REQUESTS = 10;
+
+export type ZoneDemandTip = { weekday: number; part: DayPart; count: number };
+
+export type ZoneDemand =
+  | { status: "coming" }
+  | { status: "ready"; city: string; categoryLabel: string | null; total: number; tips: ZoneDemandTip[] };
+
+/** Parte del giorno di un orario "HH:MM". */
+export function dayPartOf(time: string): DayPart {
+  const hour = Number(time.slice(0, 2));
+  if (hour < 13) return "morning";
+  if (hour < 18) return "afternoon";
+  return "evening";
+}
+
+/** True se la settimana tipo ha già una fascia in quella parte del giorno. */
+export function weekTemplateCovers(template: AgendaWeekTemplate, weekday: number, part: DayPart): boolean {
+  const range = DAY_PART_RANGE[part];
+  return (template.days[weekday] ?? []).some((slot) => slot.start < range.end && slot.end > range.start);
+}

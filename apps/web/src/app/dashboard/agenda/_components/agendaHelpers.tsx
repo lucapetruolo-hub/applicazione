@@ -32,11 +32,6 @@ export function slotsOverlap(aStart: string, aEnd: string, bStart: string, bEnd:
   return aStart < bEnd && bStart < aEnd;
 }
 
-/** Una fascia è "generica" (bordo tratteggiato ottone) se una delle due capienze indipendenti supera 1. */
-export function isSlotGeneric(slot: SlotDraft): boolean {
-  return (slot.homeMax ?? 0) > 1 || (slot.onlineMax ?? 0) > 1;
-}
-
 // Richiesta esplicita dell'utente: "colora le caselle degli appuntamento in
 // base ai colori che sono stati usati per le schede in richieste ricevute"
 // — riusa `REQUEST_STAGE_STYLE` (packages/lib/requestStage.ts, unica fonte

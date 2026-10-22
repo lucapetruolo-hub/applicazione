@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { agendaWeekTemplateSchema, dayRouteMapsUrl, DEFAULT_WEEK_TEMPLATE } from "@professionisti/shared";
+import { agendaWeekTemplateSchema, dayRouteMapsUrl, DEFAULT_WEEK_TEMPLATE, weekTemplateCovers } from "@professionisti/shared";
+import { zoneDemandTips } from "./agenda.service";
 import { weatherAlertKind, weatherAlerts } from "./weather.service";
 import { comuneInAddress, estimateLeg, legTiming } from "./day-route.service";
 import { calendarFeedIcs } from "../email/email-calendar";
@@ -78,5 +79,30 @@ describe("comuneInAddress", () => {
     expect(comuneInAddress("Via Roma 1, 04011 Aprilia (LT)")).toBe("Aprilia");
     expect(comuneInAddress("Via senza città")).toBeNull();
     expect(comuneInAddress(null)).toBeNull();
+  });
+});
+
+describe("zoneDemandTips", () => {
+  const at = (date: string, slot: string | null) => ({ preferredDate: new Date(`${date}T00:00:00.000Z`), preferredTimeSlot: slot });
+  it("trova i momenti più richiesti, con almeno 3 richieste", () => {
+    const saturdayMorning = Array.from({ length: 4 }, () => at("2026-10-24", "09:00-12:00"));
+    const mondayEvening = Array.from({ length: 3 }, () => at("2026-10-26", "18:30-20:00"));
+    const fewTuesday = [at("2026-10-27", "15:00-16:00"), at("2026-10-27", "15:00-16:00")];
+    const noDate = [{ preferredDate: null, preferredTimeSlot: null }];
+    expect(zoneDemandTips([...mondayEvening, ...saturdayMorning, ...fewTuesday, ...noDate])).toEqual([
+      { weekday: 6, part: "morning", count: 4 },
+      { weekday: 1, part: "evening", count: 3 },
+    ]);
+  });
+  it("nessun consiglio senza date preferite", () => {
+    expect(zoneDemandTips([{ preferredDate: null, preferredTimeSlot: null }])).toEqual([]);
+  });
+});
+
+describe("weekTemplateCovers", () => {
+  it("riconosce la parte del giorno già coperta", () => {
+    expect(weekTemplateCovers(DEFAULT_WEEK_TEMPLATE, 1, "morning")).toBe(true);
+    expect(weekTemplateCovers(DEFAULT_WEEK_TEMPLATE, 6, "morning")).toBe(false);
+    expect(weekTemplateCovers(DEFAULT_WEEK_TEMPLATE, 1, "evening")).toBe(false);
   });
 });
