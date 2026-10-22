@@ -19833,3 +19833,25 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 - `app/error.tsx`: "Riprova" ricarica anche i dati dal server (`router.refresh()` + `reset`), prima ridisegnava lo stesso errore.
 
 **Verifica**: typecheck e lint del web; provato con l'API spenta a 390 e 1280px (anteprime in `anteprime/errori-caricamento/`).
+
+## 285. "Riprova" anche nell'area professionista, Contatti e banner cookie sui telefoni piccoli
+
+**Richiesta esplicita dell'utente** (22/10/2026, thread "Revisione esterna del piano CEO"): "le migliorie vanno bene tutte, procedi ora con quelle che ritieni e mettile nelle cose da fare prima del lancio per quelle che ritieni".
+
+**Problemi verificati**:
+- `/dashboard/profilo`: se il profilo non arrivava dall'API, si apriva il modulo vuoto come per un profilo nuovo (salvandolo si sarebbero persi i dati).
+- `/dashboard/fiscale`: stessa cosa con i dati fiscali.
+- `/dashboard/richieste`: qualunque errore diceva "Crea prima il tuo profilo professionista".
+- `/le-mie-richieste`: un errore sulle prenotazioni le azzerava e spostava le richieste di fase fino al giro successivo.
+- `/contatti` a 320 e 360px: largo 364px (riquadri con `minWidth` 340 e 300), si scorreva di lato.
+- Banner cookie a 320×568: il limite di altezza (15% dello schermo) tagliava i pulsanti "Rifiuta"/"Accetta".
+
+**Decisione presa**:
+- `LoadErrorNotice` (§284) accetta `onRetry` per le pagine client e un link secondario. Profilo, Dati fiscali e Richieste mostrano "Non riusciamo a caricare…" con "Riprova" al posto del modulo vuoto o dell'invito a creare il profilo.
+- Profilo pubblico non caricato: anche "Torna alla ricerca".
+- `/le-mie-richieste`: in errore restano le prenotazioni già caricate.
+- `/contatti`: riquadri che si restringono (`flexBasis` 340/300 con `minWidth` 0), margini di 16px e riquadri meno imbottiti sul telefono.
+- Banner cookie: mai tagliato (altezza massima 40% con scorrimento interno solo come garanzia).
+- Checklist di lancio: prove automatiche nel browser (punto 26) e misure del percorso (punto 27); elenchi admin con totale tra le cose da fare dopo il lancio.
+
+**Verifica**: typecheck e lint del web; nel browser `/contatti` largo 320 e 360px esatti, pulsanti del banner dentro lo schermo a 320×568; anteprime in `anteprime/errori-caricamento/`.

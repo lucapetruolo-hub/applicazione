@@ -139,7 +139,9 @@ function LeMieRichiesteContent() {
       .myGuidedRequests(token)
       .then(setRequests)
       .catch((err) => setError(err instanceof Error ? err.message : "Errore nel caricamento delle richieste."));
-    apiClient.myClientBookings(token).then(setBookings).catch(() => setBookings([]));
+    // In errore restano le prenotazioni già caricate (il prossimo giro le
+    // riprova), non una lista vuota che sposterebbe le richieste di fase.
+    apiClient.myClientBookings(token).then(setBookings).catch(() => setBookings((prev) => prev ?? []));
   }, [token]);
 
   useEffect(reload, [reload]);

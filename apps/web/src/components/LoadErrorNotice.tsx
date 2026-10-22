@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
@@ -14,13 +15,25 @@ const AUTO_RETRY_MS = 15_000;
  * profilo "pagina non trovata" (docs/CHANGELOG.md §284). Riprova da sola
  * una volta, poi resta il pulsante "Riprova".
  */
-export function LoadErrorNotice({ title }: { title: string }) {
+export function LoadErrorNotice({
+  title,
+  onRetry,
+  backHref,
+  backLabel,
+}: {
+  title: string;
+  /** Pagine client: ricarica i dati. Senza, si ricarica la pagina dal server. */
+  onRetry?: () => void;
+  backHref?: string;
+  backLabel?: string;
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const autoRetried = useRef(false);
 
   function retry() {
-    startTransition(() => router.refresh());
+    if (onRetry) onRetry();
+    else startTransition(() => router.refresh());
   }
 
   useEffect(() => {
@@ -46,9 +59,16 @@ export function LoadErrorNotice({ title }: { title: string }) {
           </Text>
         </YStack>
       </XStack>
-      <Button variant="primary" alignSelf="flex-start" onPress={retry} disabled={isPending}>
-        {isPending ? "Caricamento…" : "Riprova"}
-      </Button>
+      <XStack alignItems="center" gap="$4" flexWrap="wrap">
+        <Button variant="primary" onPress={retry} disabled={isPending}>
+          {isPending ? "Caricamento…" : "Riprova"}
+        </Button>
+        {backHref && backLabel ? (
+          <Link href={backHref} style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 15, padding: "10px 0" }}>
+            {backLabel}
+          </Link>
+        ) : null}
+      </XStack>
     </YStack>
   );
 }

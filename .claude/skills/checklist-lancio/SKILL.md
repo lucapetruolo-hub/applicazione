@@ -318,6 +318,18 @@ aperti solo:
 20. Postgres free che scade ogni 30 giorni — vedi punto 4bis più sopra
     (voce principale di questo problema, in cima alla checklist perché è
     un rischio operativo ricorrente, non solo tecnico).
+26. **Prove automatiche nel browser dei percorsi principali** (revisione
+    esterna del piano, 21/10/2026, thread "Revisione esterna del piano CEO"):
+    la CI prova solo l'API. Servono 3-4 prove (Playwright, già nel
+    container) con account di prova: cliente che cerca e manda la richiesta,
+    professionista che risponde col preventivo, cliente che lo accetta,
+    admin che vede la segnalazione. Più una prova con l'API spenta (deve
+    comparire "Riprova", docs/CHANGELOG.md §284-§285).
+27. **Misure del percorso** (stessa revisione): contare ricerca → profilo →
+    richiesta inviata → preventivo → accettato, e per i professionisti
+    iscrizione → profilo pubblico → primo preventivo → primo lavoro. Nel
+    nostro database, come le ricerche della PR #92 (gli eventi di Vercel
+    Analytics richiedono il piano a pagamento), senza dati personali.
 
 
 ## Da fare dopo il lancio
@@ -328,3 +340,6 @@ Cose decise con Luca da non fare prima del lancio, ma da non dimenticare:
   (es. "Idraulico a Sezze", "Idraulico ad Aprilia"), solo dove c'è almeno un
   professionista. Aiuta Google nelle ricerche locali; utile quando ci sono
   professionisti in più comuni.
+- **Elenchi admin con totale e pagine** (revisione esterna del piano,
+  21/10/2026): oggi alcuni elenchi si fermano a 50 o 200 righe senza dirlo.
+  Con pochi utenti non pesa; da fare quando crescono.

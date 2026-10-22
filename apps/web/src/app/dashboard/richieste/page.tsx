@@ -8,6 +8,7 @@ import { Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand, radiusD
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { useLiveRefresh } from "@/lib/useLiveRefresh";
+import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { SkeletonRequestList } from "@/components/Skeleton";
 import { classifyLeadStage, type RequestStage } from "@/lib/requestStage";
 import { mergeCounts, unreadGuidedRequestCounts } from "@/lib/notificationSections";
@@ -76,6 +77,10 @@ function RichiesteContent() {
   const [stripeVerified, setStripeVerified] = useState(true);
   const [identityVerificationNeeded, setIdentityVerificationNeeded] = useState(false);
   const [profileMissing, setProfileMissing] = useState(false);
+  // API in errore ≠ profilo mancante (prima diceva "Crea prima il tuo
+  // profilo", docs/CHANGELOG.md §285).
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   // Pallino rosso su "Contatta" (stesso significato già in uso su
   // /dashboard e /le-mie-richieste) — questa pagina è ora la destinazione
   // canonica per il dettaglio di una richiesta (link dal menu account e dal
@@ -193,8 +198,8 @@ function RichiesteContent() {
         setIdentityVerificationNeeded(profile?.identityVerificationNeeded ?? false);
         if (!profile) setProfileMissing(true);
       })
-      .catch(() => setProfileMissing(true));
-  }, [token]);
+      .catch(() => setLoadFailed(true));
+  }, [token, loadAttempt]);
 
   // Ripetuto ogni UNREAD_BADGE_POLL_MS finché la pagina resta aperta
   // (richiesta esplicita dell'utente: "al professionista ancora non si
@@ -297,6 +302,22 @@ function RichiesteContent() {
     else if (sortMode === "aggiornamento") list.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     return list;
   }, [leads, activeTab, zoneFilter, serviceModeFilter, search, sortMode, stageByLeadId, bookingByRequestId]);
+
+  if (token && loadFailed) {
+    return (
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
+        <YStack width="100%" maxWidth={800}>
+          <LoadErrorNotice
+            title="Non riusciamo a caricare le richieste"
+            onRetry={() => {
+              setLoadFailed(false);
+              setLoadAttempt((n) => n + 1);
+            }}
+          />
+        </YStack>
+      </YStack>
+    );
+  }
 
   if (isLoading || (token && leads === null && !profileMissing)) {
     return (

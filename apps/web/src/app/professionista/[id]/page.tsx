@@ -82,7 +82,7 @@ export default async function ProfessionalDetailPage({ params }: { params: PageP
     if (err instanceof ApiError && (err.status === 404 || err.status === 400)) notFound();
     return (
       <div style={{ width: "100%", maxWidth: 720, margin: "0 auto", padding: "48px 16px" }}>
-        <LoadErrorNotice title="Non riusciamo a caricare questo profilo" />
+        <LoadErrorNotice title="Non riusciamo a caricare questo profilo" backHref="/cerca" backLabel="Torna alla ricerca" />
       </div>
     );
   }
