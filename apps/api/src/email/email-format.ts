@@ -1,3 +1,4 @@
+import { formatJobDays } from "@professionisti/shared";
 /**
  * Date e importi nelle email. Gli appuntamenti (`Booking.scheduledAt`,
  * `Quote.estimatedStartDate`) sono salvati come ora "di parete" in UTC, come
@@ -46,6 +47,19 @@ export function formatAppointmentDay(value: Date | string | null | undefined): s
 export function formatAppointmentTime(value: Date | string | null | undefined): string {
   const date = toDate(value);
   return date ? APPOINTMENT_TIME.format(date) : "";
+}
+
+/**
+ * "martedì 14 ottobre, 09:00–13:00", o per un lavoro su più giorni "dal 4
+ * al 6 novembre, ogni giorno 08:00–17:00" (docs/CHANGELOG.md §293).
+ */
+export function formatAppointmentSpan(start: Date | string | null | undefined, end?: Date | string | null): string {
+  const startDate = toDate(start);
+  if (!startDate) return "";
+  const endDate = toDate(end);
+  const days = endDate ? formatJobDays(startDate, endDate) : null;
+  if (days) return `${days}, ogni giorno ${formatAppointmentTime(startDate)}–${formatAppointmentTime(endDate)}`;
+  return `${formatAppointment(startDate)}${endDate ? `–${formatAppointmentTime(endDate)}` : ""}`;
 }
 
 /** "14 ottobre 2026" (ora italiana) */

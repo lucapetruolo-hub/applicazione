@@ -70,6 +70,11 @@ export function countOverlapping(commitments: Commitment[], start: Date, end: Da
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
+/** Filtro Prisma per prenotazioni e lavori esterni che toccano [from, to), anche iniziati prima (lavori su più giorni). */
+export function touchingWindow(from: Date, to: Date) {
+  return { scheduledAt: { lt: to }, OR: [{ scheduledAt: { gte: from } }, { scheduledEndAt: { gt: from } }] };
+}
+
 /**
  * Quanti lavori di quella modalità il professionista accetta insieme
  * all'ora di inizio: la capienza della fascia dell'agenda in cui cade,
@@ -92,7 +97,7 @@ export async function capacityAt(db: Db, professionalProfileId: string, start: D
  * iniziati prima di `from` e non ancora finiti.
  */
 export async function loadCommitments(db: Db, professionalProfileIds: string[], from: Date, to: Date): Promise<Map<string, Commitment[]>> {
-  const window = { scheduledAt: { lt: to }, OR: [{ scheduledAt: { gte: from } }, { scheduledEndAt: { gt: from } }] };
+  const window = touchingWindow(from, to);
   const [bookings, externalJobs] = await Promise.all([
     db.booking.findMany({
       where: { professionalProfileId: { in: professionalProfileIds }, status: { in: [...AGENDA_BOOKING_STATUSES] }, ...window },

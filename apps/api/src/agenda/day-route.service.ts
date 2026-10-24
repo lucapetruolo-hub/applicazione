@@ -1,8 +1,9 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
-import { findComuneByName, type DayRoute, type DayRouteLeg, type DayRouteStop } from "@professionisti/shared";
+import { findComuneByName, jobOccurrenceOn, type DayRoute, type DayRouteLeg, type DayRouteStop } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { GeocodingService, type GeocodedPoint } from "../geocoding/geocoding.service";
+import { touchingWindow } from "./commitments";
 
 const DAY_MS = 24 * 60 * 60_000;
 const TIMEOUT_MS = 5000;
@@ -79,7 +80,7 @@ export class DayRouteService {
 
     const [bookings, externalJobs] = await Promise.all([
       this.prisma.booking.findMany({
-        where: { professionalProfileId: profile.id, scheduledAt: { gte: from, lt: to }, status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] }, NOT: { serviceMode: "ONLINE" } },
+        where: { professionalProfileId: profile.id, ...touchingWindow(from, to), status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] }, NOT: { serviceMode: "ONLINE" } },
         select: {
           id: true,
           scheduledAt: true,
@@ -95,7 +96,7 @@ export class DayRouteService {
         },
       }),
       this.prisma.externalJob.findMany({
-        where: { professionalProfileId: profile.id, scheduledAt: { gte: from, lt: to }, status: { in: ["SCHEDULED", "COMPLETED"] } },
+        where: { professionalProfileId: profile.id, ...touchingWindow(from, to), status: { in: ["SCHEDULED", "COMPLETED"] } },
         select: { id: true, scheduledAt: true, scheduledEndAt: true, clientName: true, address: true },
       }),
     ]);
@@ -114,7 +115,13 @@ export class DayRouteService {
         };
       }),
       ...externalJobs.map((j) => ({ key: `external-${j.id}`, start: j.scheduledAt, end: j.scheduledEndAt, title: j.clientName, address: j.address, city: comuneInAddress(j.address) ?? profile.city })),
-    ].sort((a, b) => a.start.getTime() - b.start.getTime());
+    ]
+      // Un lavoro su più giorni entra nel giro di ogni suo giorno, con l'orario di quel giorno (§293).
+      .flatMap((candidate) => {
+        const occurrence = jobOccurrenceOn(candidate.start, candidate.end, date);
+        return occurrence ? [{ ...candidate, start: occurrence.start, end: occurrence.end }] : [];
+      })
+      .sort((a, b) => a.start.getTime() - b.start.getTime());
 
     const stops: DayRouteStop[] = [];
     for (const candidate of candidates) {

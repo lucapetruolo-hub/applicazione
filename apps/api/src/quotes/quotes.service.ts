@@ -5,6 +5,8 @@ import {
   formatServicePriceRange,
   describePaymentOffer,
   IDENTITY_REQUIRED_FOR_QUOTES_MESSAGE,
+  MAX_JOB_DAYS,
+  jobDayCount,
   paymentChoiceIsOnline,
   paymentOfferChanged,
   quoteChangeWhat,
@@ -139,6 +141,16 @@ export class QuotesService {
         where: { id: professionalProfile.id },
         data: { defaultPaymentOptions: offer.paymentOptions, defaultDepositPercent: offer.depositPercent },
       });
+    }
+
+    // Fine dopo l'inizio, al massimo MAX_JOB_DAYS giorni (lavori su più giorni, docs/CHANGELOG.md §293).
+    if (input.estimatedEndDate) {
+      if (new Date(input.estimatedEndDate) <= new Date(input.estimatedStartDate)) {
+        throw new BadRequestException("L'ora di fine deve essere dopo l'ora di inizio.");
+      }
+      if (jobDayCount(input.estimatedStartDate, input.estimatedEndDate) > MAX_JOB_DAYS) {
+        throw new BadRequestException(`Un lavoro può durare al massimo ${MAX_JOB_DAYS} giorni.`);
+      }
     }
 
     const data = {
@@ -412,6 +424,8 @@ export class QuotesService {
       proposedDate = resolved.scheduledAt;
       proposedEndDate = resolved.scheduledEndAt;
     }
+    // Un lavoro su più giorni resta della stessa durata con la nuova data di inizio (§293).
+    if (!isSameAsCurrentProposal) proposedEndDate = keepJobDays(quote, proposedEndDate);
 
     // Cosa cambia rispetto all'appuntamento sul preventivo: data, orario o
     // entrambi (docs/CHANGELOG.md §180).
@@ -727,6 +741,7 @@ export class QuotesService {
       estimatedStartDate = resolved.scheduledAt;
       estimatedEndDate = resolved.scheduledEndAt;
     }
+    estimatedEndDate = keepJobDays({ estimatedStartDate: quote.clientProposedDate ?? quote.estimatedStartDate, estimatedEndDate: quote.clientProposedDate ? quote.clientProposedEndDate : quote.estimatedEndDate }, estimatedEndDate);
 
     const updated = await this.prisma.quote.update({
       where: { id: quote.id },
@@ -941,4 +956,14 @@ export class QuotesService {
 
     return { scheduledAt, scheduledEndAt };
   }
+}
+
+/**
+ * Fine di un lavoro spostato a un'altra data: un lavoro su più giorni
+ * mantiene lo stesso numero di giorni (docs/CHANGELOG.md §293). `firstDayEnd`
+ * è la fine del primo giorno nella nuova data.
+ */
+function keepJobDays(quote: { estimatedStartDate: Date; estimatedEndDate: Date | null }, firstDayEnd: Date): Date {
+  const days = jobDayCount(quote.estimatedStartDate, quote.estimatedEndDate);
+  return days > 1 ? new Date(firstDayEnd.getTime() + (days - 1) * 24 * 60 * 60 * 1000) : firstDayEnd;
 }

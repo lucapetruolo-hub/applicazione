@@ -40,3 +40,15 @@ test("il lavoro esterno compare all'ora italiana", async ({ page }) => {
   await expect(page.getByRole("button", { name: /Condominio Aurora.*17:00–18:00/ }).first()).toBeVisible();
   expect(externalJob.wallClock).toBe("2026-10-26 17:00");
 });
+
+test("un lavoro su più giorni compare ogni giorno con lo stesso orario (M1)", async ({ page }) => {
+  // Mercoledì 4 novembre 2026, 10:00 in Italia: il secondo dei tre giorni.
+  await page.clock.setFixedTime(new Date("2026-11-04T09:00:00Z"));
+  await page.goto("/dashboard/agenda");
+  const event = page.getByRole("button", { name: /Paolo Verdi, 08:00–17:00/ }).filter({ visible: true }).first();
+  await expect(event).toBeVisible();
+  await expect(event).toContainText("Giorno 2 di 3");
+
+  await page.goto(`/dashboard/agenda?booking=${e2eData().multiDayBookingId}`);
+  await expect(page.getByRole("dialog", { name: /Appuntamento con/ })).toContainText("Dal 3 al 5 novembre · ogni giorno 08:00–17:00");
+});

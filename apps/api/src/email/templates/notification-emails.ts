@@ -22,7 +22,7 @@ import {
 } from "@professionisti/shared";
 import { EMAIL_BRAND, frontendUrl } from "../email-brand";
 import type { EmailContent } from "../email-layout";
-import { descriptionDetail, formatAppointment, formatAppointmentTime, formatDay, formatDeadline, formatEur } from "../email-format";
+import { descriptionDetail, formatAppointment, formatAppointmentSpan, formatAppointmentTime, formatDay, formatDeadline, formatEur } from "../email-format";
 
 /**
  * Testi delle email che accompagnano le notifiche del sito
@@ -108,8 +108,7 @@ function slotText(value: unknown): string | null {
   const slot = value as { start?: unknown; end?: unknown };
   const start = str(slot.start);
   if (!start) return null;
-  const end = str(slot.end);
-  return `${formatAppointment(start)}${end ? `–${formatAppointmentTime(end)}` : ""}`;
+  return formatAppointmentSpan(start, str(slot.end));
 }
 
 /** Lavoro, descrizione e appuntamento prima → dopo, per le email di modifica (richiesta esplicita dell'utente, §228). */
@@ -241,10 +240,9 @@ const BUILDERS: Record<string, Builder> = {
     const clientName = str(payload.clientName);
     const clientPhone = str(payload.clientPhone);
     const clientAddress = str(payload.clientAddress);
-    const endTime = str(payload.scheduledEndAt) ? formatAppointmentTime(str(payload.scheduledEndAt)) : "";
     const details = [
       ...(ctx.category ? [{ label: "Lavoro", value: ctx.city ? `${ctx.category}, ${ctx.city}` : ctx.category }] : []),
-      ...(ctx.when ? [{ label: "Appuntamento", value: `${formatAppointment(ctx.when)}${endTime ? `–${endTime}` : ""}` }] : []),
+      ...(ctx.when ? [{ label: "Appuntamento", value: formatAppointmentSpan(ctx.when, str(payload.scheduledEndAt)) }] : []),
       ...(clientName ? [{ label: "Cliente", value: clientName }] : []),
       ...(clientPhone ? [{ label: "Telefono", value: clientPhone }] : []),
       ...(clientAddress ? [{ label: "Indirizzo", value: clientAddress }] : []),

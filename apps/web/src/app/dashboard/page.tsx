@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { AGENDA_LOOKAHEAD_DAYS, formatAppointmentDate, formatAppointmentTime, scheduleChangeBetween, wallClockToday, type AgendaAttention, type MySubscription, type ProfessionalBooking, type ProfessionalInsights, type ProfessionalLead } from "@professionisti/shared";
+import { AGENDA_LOOKAHEAD_DAYS, formatAppointmentDate, formatAppointmentTime, jobOccurrences, scheduleChangeBetween, wallClockToday, type AgendaAttention, type MySubscription, type ProfessionalBooking, type ProfessionalInsights, type ProfessionalLead } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -127,9 +127,15 @@ export default function DashboardTodayPage() {
   const startToday = wallClockToday();
   const endTomorrow = new Date(startToday);
   endTomorrow.setUTCDate(endTomorrow.getUTCDate() + 2);
+  // Un lavoro su più giorni compare oggi e domani con l'orario di quel giorno (§293).
   const upcoming = (bookings ?? [])
-    .filter((b) => (b.status === "CONFIRMED" || b.status === "PENDING") && new Date(b.scheduledAt) >= startToday && new Date(b.scheduledAt) < endTomorrow)
-    .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
+    .filter((b) => b.status === "CONFIRMED" || b.status === "PENDING")
+    .flatMap((booking) =>
+      jobOccurrences(booking.scheduledAt, booking.scheduledEndAt)
+        .filter((occurrence) => occurrence.start >= startToday && occurrence.start < endTomorrow)
+        .map((occurrence) => ({ booking, at: occurrence.start.toISOString() })),
+    )
+    .sort((a, b) => a.at.localeCompare(b.at));
 
   const loading = leads === null || bookings === null;
   const greetingName = user.businessName ?? user.name ?? "";
@@ -215,13 +221,13 @@ export default function DashboardTodayPage() {
               ) : upcoming.length === 0 ? (
                 <EmptyLine text="Nessun appuntamento oggi e domani." />
               ) : (
-                upcoming.map((booking) => (
+                upcoming.map(({ booking, at }) => (
                   <Link
-                    key={booking.id}
+                    key={`${booking.id}-${at}`}
                     href={booking.guidedRequestId ? `/dashboard/richieste?open=${booking.guidedRequestId}` : `/dashboard/agenda?booking=${booking.id}`}
                     className="today-row"
                   >
-                    <span className="today-time">{dayLabel(booking.scheduledAt)}</span>
+                    <span className="today-time">{dayLabel(at)}</span>
                     <span className="today-row-main">
                       <strong>{booking.clientName ?? "Cliente"}</strong>
                       <span className="today-row-sub">

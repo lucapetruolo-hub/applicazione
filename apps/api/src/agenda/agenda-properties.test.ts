@@ -245,7 +245,10 @@ describe("link del calendario (iCalendar, RFC 5545)", () => {
     .tuple(fc.uuid(), textArb, instantArb, fc.integer({ min: 15, max: 600 }), fc.option(textArb, { nil: null }), fc.option(textArb, { nil: null }))
     .map(([id, title, start, durationMin, location, description]) => {
       start.setUTCSeconds(0, 0);
-      return { uid: `booking-${id}@agenda`, title: title || "Cliente", start, end: new Date(start.getTime() + durationMin * 60_000), location, description };
+      // Entro la mezzanotte: i lavori su più giorni hanno la loro prova sotto.
+      const toMidnight = 24 * 60 - (start.getUTCHours() * 60 + start.getUTCMinutes());
+      const end = new Date(start.getTime() + Math.min(durationMin, toMidnight) * 60_000);
+      return { uid: `booking-${id}@agenda`, title: title || "Cliente", start, end, location, description };
     });
 
   it("il file si legge con un lettore iCalendar indipendente e ogni appuntamento cade all'ora italiana giusta", () => {
@@ -282,6 +285,47 @@ describe("link del calendario (iCalendar, RFC 5545)", () => {
         });
       }),
       { numRuns: 200 },
+    );
+  });
+
+  it("un lavoro su più giorni compare una volta al giorno, ogni giorno alla stessa ora italiana (§293)", () => {
+    const multiDayArb = fc
+      .tuple(fc.integer({ min: 0, max: 4 * 365 }), fc.integer({ min: 0, max: 22 * 4 }), fc.integer({ min: 1, max: 8 * 4 }), fc.integer({ min: 2, max: 10 }))
+      .map(([day, startQ, lengthQ, days]) => {
+        const start = new Date(Date.UTC(2026, 0, 1) + day * 86_400_000 + startQ * 15 * 60_000);
+        const firstEnd = new Date(Math.min(start.getTime() + lengthQ * 15 * 60_000, Date.UTC(2026, 0, 1) + (day + 1) * 86_400_000));
+        return { start, end: new Date(firstEnd.getTime() + (days - 1) * 86_400_000), firstEnd, days };
+      })
+      // Gli orari che non esistono o si ripetono nelle notti del cambio d'ora sono provati sopra.
+      .filter(({ start }) => start.getUTCHours() !== 2);
+    fc.assert(
+      fc.property(multiDayArb, ({ start, end, firstEnd, days }) => {
+        const ics = calendarFeedIcs("Agenda", [{ uid: "booking-x@agenda", title: "Trasloco", start, end }]);
+        const calendar = new ICAL.Component(ICAL.parse(ics));
+        const timezone = new ICAL.Timezone(calendar.getFirstSubcomponent("vtimezone")!);
+        const event = new ICAL.Event(calendar.getFirstSubcomponent("vevent")!);
+        const iterator = event.iterator();
+        const starts: number[] = [];
+        for (let next = iterator.next(); next && starts.length < 50; next = iterator.next()) {
+          next.zone = timezone;
+          starts.push(next.toJSDate().getTime());
+        }
+        expect(starts).toHaveLength(days);
+        starts.forEach((actual, i) => {
+          const wall = new Date(start.getTime() + i * 86_400_000);
+          expect(actual).toBe(wall.getTime() - romeOffsetHours(new Date(wall.getTime() - 2 * 3_600_000)) * 3_600_000);
+        });
+        // Il primo giorno finisce all'ora di parete giusta (gli altri ripetono lo stesso orario).
+        const endWall = event.endDate;
+        expect([endWall.year, endWall.month, endWall.day, endWall.hour, endWall.minute]).toEqual([
+          firstEnd.getUTCFullYear(),
+          firstEnd.getUTCMonth() + 1,
+          firstEnd.getUTCDate(),
+          firstEnd.getUTCHours(),
+          firstEnd.getUTCMinutes(),
+        ]);
+      }),
+      { numRuns: 300 },
     );
   });
 });

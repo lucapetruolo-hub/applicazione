@@ -7,6 +7,8 @@ import { CalendarDays, ChevronLeft, ChevronRight, Navigation, Phone, Plus, Searc
 import {
   agendaAttention,
   formatAppointmentTimeRange,
+  jobOccurrenceOn,
+  jobOccurrences,
   navigateUrl,
   wallClockNow,
   type AgendaWeekTemplate,
@@ -1084,14 +1086,14 @@ function DashboardAgendaContent() {
   function bookingsOnDate(date: Date): ProfessionalBooking[] {
     const dateStr = toIsoDate(date);
     return (bookings ?? [])
-      .filter((b) => b.scheduledAt.slice(0, 10) === dateStr)
+      .filter((b) => jobOccurrenceOn(b.scheduledAt, b.scheduledEndAt, dateStr) !== null)
       .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
   }
 
   function externalJobsOnDate(date: Date): ExternalJob[] {
     const dateStr = toIsoDate(date);
     return (externalJobs ?? [])
-      .filter((j) => j.scheduledAt.slice(0, 10) === dateStr)
+      .filter((j) => jobOccurrenceOn(j.scheduledAt, j.scheduledEndAt, dateStr) !== null)
       .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
   }
 
@@ -1110,7 +1112,7 @@ function DashboardAgendaContent() {
           lead.quote &&
           lead.quote.bookingStatus === null &&
           (lead.quote.status === "SENT" || lead.quote.status === "MODIFICATION_REQUESTED") &&
-          lead.quote.estimatedStartDate.slice(0, 10) === dateStr,
+          jobOccurrenceOn(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate, dateStr) !== null,
       )
       .sort((a, b) => a.quote!.estimatedStartDate.localeCompare(b.quote!.estimatedStartDate));
   }
@@ -1257,58 +1259,66 @@ function DashboardAgendaContent() {
     return b.status === "PENDING" ? "pending" : "conf";
   }
 
+  /**
+   * Posizione nella griglia di un appuntamento, una per giorno: un lavoro su
+   * più giorni compare ogni giorno con lo stesso orario (docs/CHANGELOG.md
+   * §293), con "Giorno 2 di 3".
+   */
+  function onEachDay(startIso: string, endIso: string | null, key: string) {
+    const days = jobOccurrences(startIso, endIso);
+    return days.map((occurrence, i) => {
+      const start = wallMinutes(occurrence.start.toISOString());
+      const end = occurrence.end ? wallMinutes(occurrence.end.toISOString()) || 24 * 60 : null;
+      return {
+        key: days.length > 1 ? `${key}-${occurrence.date}` : key,
+        date: occurrence.date,
+        start,
+        end: end !== null ? Math.max(start + 15, end) : start + DEFAULT_DURATION_MIN,
+        dayOf: days.length > 1 ? `Giorno ${i + 1} di ${days.length}` : null,
+      };
+    });
+  }
+
   const gridEvents: AgendaGridEvent[] = [
     ...(filters.has("conf") || filters.has("done")
       ? (bookings ?? [])
           .filter((b) => (b.status === "COMPLETED" ? filters.has("done") : filters.has("conf")))
-          .map((b) => {
-            const start = wallMinutes(b.scheduledAt);
-            return {
-              key: `booking-${b.id}`,
-              date: b.scheduledAt.slice(0, 10),
-              start,
-              end: b.scheduledEndAt ? Math.max(start + 15, wallMinutes(b.scheduledEndAt)) : start + DEFAULT_DURATION_MIN,
+          .flatMap((b) =>
+            onEachDay(b.scheduledAt, b.scheduledEndAt, `booking-${b.id}`).map((day) => ({
+              ...day,
               title: b.clientAccountDeleted ? "Account eliminato" : ([b.recipientName, b.recipientSurname].filter(Boolean).join(" ") || b.clientName || "Cliente"),
-              detail: [b.categoryLabel, b.serviceMode === "ONLINE" ? "online" : b.city].filter(Boolean).join(" · "),
+              detail: [day.dayOf, b.categoryLabel, b.serviceMode === "ONLINE" ? "online" : b.city].filter(Boolean).join(" · "),
               kind: bookingKind(b),
               label: AGENDA_BOOKING_STATUS_LABEL[b.status],
               onPress: () => setSelectedBooking(b),
-            };
-          })
+            })),
+          )
       : []),
     ...(filters.has("ext")
-      ? (externalJobs ?? []).map((j) => {
-          const start = wallMinutes(j.scheduledAt);
-          return {
-            key: `external-${j.id}`,
-            date: j.scheduledAt.slice(0, 10),
-            start,
-            end: j.scheduledEndAt ? Math.max(start + 15, wallMinutes(j.scheduledEndAt)) : start + DEFAULT_DURATION_MIN,
+      ? (externalJobs ?? []).flatMap((j) =>
+          onEachDay(j.scheduledAt, j.scheduledEndAt, `external-${j.id}`).map((day) => ({
+            ...day,
             title: j.clientName,
-            detail: "Lavoro esterno",
+            detail: [day.dayOf, "Lavoro esterno"].filter(Boolean).join(" · "),
             kind: j.status === "CANCELED" ? ("canceled" as const) : ("ext" as const),
             label: "Lavoro esterno",
             onPress: () => setSelectedExternalJob(j),
-          };
-        })
+          })),
+        )
       : []),
     ...(filters.has("wait")
       ? (leads ?? [])
           .filter((lead) => lead.quote && lead.quote.bookingStatus === null && (lead.quote.status === "SENT" || lead.quote.status === "MODIFICATION_REQUESTED"))
-          .map((lead) => {
+          .flatMap((lead) => {
             const quote = lead.quote!;
-            const start = wallMinutes(quote.estimatedStartDate);
-            return {
-              key: `pending-${lead.id}`,
-              date: quote.estimatedStartDate.slice(0, 10),
-              start,
-              end: quote.estimatedEndDate ? Math.max(start + 15, wallMinutes(quote.estimatedEndDate)) : start + DEFAULT_DURATION_MIN,
+            return onEachDay(quote.estimatedStartDate, quote.estimatedEndDate, `pending-${lead.id}`).map((day) => ({
+              ...day,
               title: lead.guidedRequest.clientAccountDeleted ? "Account eliminato" : (lead.guidedRequest.clientName ?? "Cliente"),
-              detail: "In attesa del cliente",
+              detail: [day.dayOf, "In attesa del cliente"].filter(Boolean).join(" · "),
               kind: "wait" as const,
               label: "Preventivo in attesa",
               onPress: () => router.push(`/dashboard/richieste?open=${lead.guidedRequest.id}`),
-            };
+            }));
           })
       : []),
   ];
@@ -1368,9 +1378,16 @@ function DashboardAgendaContent() {
   // Prossimo appuntamento di oggi, con le azioni a portata di pollice.
   const nextBooking =
     (bookings ?? [])
-      .filter((b) => b.status === "CONFIRMED" && b.scheduledAt.slice(0, 10) === todayStr)
-      .filter((b) => (b.scheduledEndAt ? wallMinutes(b.scheduledEndAt) : wallMinutes(b.scheduledAt) + DEFAULT_DURATION_MIN) > nowMinutes)
-      .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt))[0] ?? null;
+      .filter((b) => b.status === "CONFIRMED")
+      .flatMap((b) => {
+        // Di un lavoro su più giorni conta l'orario di oggi (§293).
+        const occurrence = jobOccurrenceOn(b.scheduledAt, b.scheduledEndAt, todayStr);
+        if (!occurrence) return [];
+        const start = occurrence.start.toISOString();
+        const endMinutes = occurrence.end ? wallMinutes(occurrence.end.toISOString()) || 24 * 60 : wallMinutes(start) + DEFAULT_DURATION_MIN;
+        return endMinutes > nowMinutes ? [{ booking: b, start }] : [];
+      })
+      .sort((a, b) => a.start.localeCompare(b.start))[0]?.booking ?? null;
 
   function navigateCalendar(direction: -1 | 1) {
     if (bookingView === "day") setBookingCurrentDate(addDaysUtc(bookingCurrentDate, direction));

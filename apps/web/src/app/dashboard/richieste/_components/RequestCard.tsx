@@ -6,6 +6,10 @@ import { useRouter } from "next/navigation";
 import {
   DEFAULT_QUOTE_PAYMENT_OPTIONS,
   MAX_DEPOSIT_PERCENT,
+  MAX_JOB_DAYS,
+  formatAppointmentTimeRange,
+  formatJobDays,
+  jobDayCount,
   MIN_DEPOSIT_PERCENT,
   ONLINE_DEPOSIT_PERCENT,
   QUOTE_PAYMENT_OPTION_LABEL,
@@ -117,6 +121,8 @@ export function RequestCard({
   const [manualDate, setManualDate] = useState("");
   const [manualStartTime, setManualStartTime] = useState("");
   const [manualEndTime, setManualEndTime] = useState("");
+  // Lavoro su più giorni (docs/CHANGELOG.md §293): stesso orario ogni giorno.
+  const [jobDays, setJobDays] = useState(1);
   const [quoteNotes, setQuoteNotes] = useState("");
   // Modi di pagamento offerti al cliente e acconto online (docs/CHANGELOG.md §237).
   const onlinePaymentsActive = useOnlinePayments();
@@ -134,6 +140,22 @@ export function RequestCard({
   }, [defaultPaymentOffer]);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [isSubmittingQuote, setIsSubmittingQuote] = useState(false);
+  // Anteprima "Dal 4 al 6 novembre, ogni giorno 08:00–17:00" di un lavoro su più giorni.
+  const jobDaysPreview = (() => {
+    if (jobDays < 2) return null;
+    const slot = modeAvailableSlots.length > 0 && !useManualDateTime ? modeAvailableSlots.find((sl) => slotKey(sl) === selectedSlotKey) : null;
+    const chosen = slot
+      ? { date: slot.date, start: slot.startTime, end: slot.endTime }
+      : manualDate && manualStartTime && manualEndTime > manualStartTime
+        ? { date: manualDate, start: manualStartTime, end: manualEndTime }
+        : null;
+    if (!chosen) return "Indica l'orario di ogni giorno, con l'ora di fine.";
+    const start = `${chosen.date}T${chosen.start}:00.000Z`;
+    const firstEnd = `${chosen.date}T${chosen.end}:00.000Z`;
+    const end = new Date(Date.parse(firstEnd) + (jobDays - 1) * 86_400_000).toISOString();
+    const days = formatJobDays(start, end) ?? "";
+    return `${days.charAt(0).toUpperCase()}${days.slice(1)}, ogni giorno ${formatAppointmentTimeRange(start, firstEnd)}.`;
+  })();
 
   const [showCounterForm, setShowCounterForm] = useState(false);
   const [counterSlotKey, setCounterSlotKey] = useState(modeAvailableSlots[0] ? slotKey(modeAvailableSlots[0]) : "");
@@ -310,6 +332,12 @@ export function RequestCard({
       } else {
         estimatedStartDate = new Date(manualDate).toISOString();
       }
+    }
+
+    // Lavoro su più giorni (§293): la fine cade nell'ultimo giorno, alla stessa ora del primo.
+    if (jobDays > 1) {
+      if (!estimatedEndDate) return setQuoteError("Per un lavoro su più giorni indica anche l'ora di fine.");
+      estimatedEndDate = new Date(new Date(estimatedEndDate).getTime() + (jobDays - 1) * 86_400_000).toISOString();
     }
 
     // Senza pagamenti online attivi resta solo il diretto (le altre caselle non si vedono).
@@ -1323,6 +1351,27 @@ export function RequestCard({
                 </YStack>
               )}
 
+              {/* Lavoro su più giorni (docs/CHANGELOG.md §293): stesso orario ogni giorno, non blocca altri lavori. */}
+              <YStack gap="$1">
+                <XStack gap="$2" alignItems="center">
+                  <label htmlFor={`job-days-${gr.id}`} style={{ fontSize: 13, fontWeight: 600, color: brand.grafite }}>
+                    Durata
+                  </label>
+                  <select id={`job-days-${gr.id}`} value={jobDays} onChange={(e) => setJobDays(Number(e.target.value))} style={smallInputStyle}>
+                    {Array.from({ length: MAX_JOB_DAYS }, (_, i) => i + 1).map((n) => (
+                      <option key={n} value={n}>
+                        {n === 1 ? "1 giorno" : `${n} giorni`}
+                      </option>
+                    ))}
+                  </select>
+                </XStack>
+                {jobDaysPreview ? (
+                  <Text fontSize={12} color={brand.grafite70}>
+                    {jobDaysPreview}
+                  </Text>
+                ) : null}
+              </YStack>
+
               {/* Come vuole essere pagato (docs/CHANGELOG.md §237): uno o più modi, il cliente sceglie tra questi. */}
               <YStack gap="$2" role="group" aria-label="Come vuoi essere pagato">
                 <Text fontSize={13} fontWeight="700" color={brand.grafite}>
@@ -1410,6 +1459,12 @@ export function RequestCard({
           {/* Form "proponi altra data" (contro-proposta) */}
           {showCounterForm ? (
             <YStack gap="$3" padding="$3" borderRadius={radiusDoc} backgroundColor={brand.gesso} borderWidth={1} borderColor={brand.filetto}>
+              {/* Lavoro su più giorni (§293): la durata resta quella del preventivo. */}
+              {lead.quote && jobDayCount(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate) > 1 ? (
+                <Text fontSize={12} color={brand.grafite70}>
+                  Il lavoro resta di {jobDayCount(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)} giorni: scegli il primo giorno e l&apos;orario di ogni giorno.
+                </Text>
+              ) : null}
               {modeAvailableSlots.length > 0 && !useManualCounterDateTime ? (
                 <YStack gap="$2">
                   <select aria-label="Orario dall'agenda" value={counterSlotKey} onChange={(e) => setCounterSlotKey(e.target.value)} style={smallInputStyle}>

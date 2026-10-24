@@ -5,7 +5,7 @@ import type { ClientBooking } from "@professionisti/api-client";
 import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { ReportIssueModal } from "@/components/ReportIssueModal";
-import { JOB_ISSUE_LABEL, JOB_ISSUE_STATUS_LABEL, formatAppointmentDate, formatAppointmentTimeRange, formatEurCents } from "@professionisti/shared";
+import { JOB_ISSUE_LABEL, JOB_ISSUE_STATUS_LABEL, formatAppointmentDate, formatAppointmentTimeRange, formatEurCents, formatJobDays } from "@professionisti/shared";
 import { ClientIssueStatus } from "./ClientIssueStatus";
 import { JobPaymentStatus } from "@/components/JobPaymentStatus";
 import { TimelineModal } from "@/components/TimelineModal";
@@ -118,6 +118,7 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
 
   // Segnalazioni (docs/CHANGELOG.md §164): quali si possono inviare lo decide il server.
   const canReportIssue = booking.issueTypesAllowed.length > 0;
+  const jobDays = formatJobDays(booking.scheduledAt, booking.scheduledEndAt);
 
   return (
     <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
@@ -126,9 +127,10 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
       </Text>
       {/* Data dell'intervento come titolo della sezione (richiesta esplicita dell'utente, §228). */}
       <Text fontFamily="$heading" fontWeight="800" fontSize={20} color={brand.grafite}>
-        {formatAppointmentDate(booking.scheduledAt, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-        {" · "}
-        {formatAppointmentTimeRange(booking.scheduledAt, booking.scheduledEndAt)}
+        {/* Lavoro su più giorni (docs/CHANGELOG.md §293): "Dal 4 al 6 novembre · ogni giorno 08:00–17:00". */}
+        {jobDays
+          ? `${jobDays.charAt(0).toUpperCase()}${jobDays.slice(1)} · ogni giorno ${formatAppointmentTimeRange(booking.scheduledAt, booking.scheduledEndAt)}`
+          : `${formatAppointmentDate(booking.scheduledAt, { weekday: "long", day: "numeric", month: "long", year: "numeric" })} · ${formatAppointmentTimeRange(booking.scheduledAt, booking.scheduledEndAt)}`}
       </Text>
 
       {booking.meetingLink ? (

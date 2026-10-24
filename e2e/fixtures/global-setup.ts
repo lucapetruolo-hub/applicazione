@@ -69,6 +69,27 @@ export default async function globalSetup(): Promise<void> {
       });
       bookings.push({ id: booking.id, label: item.label, wallClock: item.wallClock });
     }
+    // Lavoro su più giorni (docs/CHANGELOG.md §293): dal 3 al 5 novembre, ogni giorno 08:00–17:00.
+    const multiDayRequest = await prisma.guidedRequest.create({
+      data: { clientId: client.id, categoryId: category.id, description: "Trasloco di un appartamento.", city: "Latina" },
+    });
+    const multiDayQuote = await prisma.quote.create({
+      data: { guidedRequestId: multiDayRequest.id, professionalProfileId: profile.id, estimatedStartDate: wall("2026-11-03T08:00"), estimatedEndDate: wall("2026-11-05T17:00"), status: "ACCEPTED" },
+    });
+    const multiDay = await prisma.booking.create({
+      data: {
+        quoteId: multiDayQuote.id,
+        clientId: client.id,
+        professionalProfileId: profile.id,
+        scheduledAt: wall("2026-11-03T08:00"),
+        scheduledEndAt: wall("2026-11-05T17:00"),
+        status: "CONFIRMED",
+        serviceMode: "HOME",
+        city: "Latina",
+        recipientName: "Paolo",
+        recipientSurname: "Verdi",
+      },
+    });
     const externalJob = await prisma.externalJob.create({
       data: {
         professionalProfileId: profile.id,
@@ -88,7 +109,7 @@ export default async function globalSetup(): Promise<void> {
     if (!response.ok) throw new Error(`Accesso di prova non riuscito: ${response.status} ${await response.text()}`);
     const { token } = (await response.json()) as { token: string };
 
-    const data: E2eData = { token, userId: pro.id, bookings, externalJob: { id: externalJob.id, wallClock: "2026-10-26 17:00" } };
+    const data: E2eData = { token, userId: pro.id, bookings, externalJob: { id: externalJob.id, wallClock: "2026-10-26 17:00" }, multiDayBookingId: multiDay.id };
     mkdirSync(dirname(DATA_FILE), { recursive: true });
     writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
     // Sessione già aperta e banner cookie già chiuso, come per un professionista che torna sul sito.

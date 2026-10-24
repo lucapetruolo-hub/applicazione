@@ -8,6 +8,8 @@ export type E2eData = {
   /** Ora italiana attesa per ogni appuntamento, "AAAA-MM-GG HH:MM". */
   bookings: { id: string; label: string; wallClock: string }[];
   externalJob: { id: string; wallClock: string };
+  /** Lavoro dal 3 al 5 novembre 2026, ogni giorno 08:00–17:00. */
+  multiDayBookingId: string;
 };
 
 export const DATA_FILE = fileURLToPath(new URL("../.auth/data.json", import.meta.url));

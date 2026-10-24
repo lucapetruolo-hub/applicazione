@@ -1,9 +1,10 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
-import { formatAppointmentTimeRange, wallClockToday } from "@professionisti/shared";
+import { formatAppointmentTimeRange, jobOccurrenceOn, wallClockToday } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
+import { touchingWindow } from "../agenda/commitments";
 
 const DAY_MS = 24 * 60 * 60_000;
 
@@ -65,14 +66,14 @@ export class AgendaTomorrowSummaryService {
         suspendedAt: null,
         user: { suspendedAt: null },
         OR: [
-          { bookings: { some: { status: "CONFIRMED", scheduledAt: { gte: tomorrow, lt: dayAfter } } } },
-          { externalJobs: { some: { status: "SCHEDULED", scheduledAt: { gte: tomorrow, lt: dayAfter } } } },
+          { bookings: { some: { status: "CONFIRMED", ...touchingWindow(tomorrow, dayAfter) } } },
+          { externalJobs: { some: { status: "SCHEDULED", ...touchingWindow(tomorrow, dayAfter) } } },
         ],
       },
       select: {
         userId: true,
         bookings: {
-          where: { status: "CONFIRMED", scheduledAt: { gte: tomorrow, lt: dayAfter } },
+          where: { status: "CONFIRMED", ...touchingWindow(tomorrow, dayAfter) },
           select: {
             scheduledAt: true,
             scheduledEndAt: true,
@@ -84,14 +85,20 @@ export class AgendaTomorrowSummaryService {
           },
         },
         externalJobs: {
-          where: { status: "SCHEDULED", scheduledAt: { gte: tomorrow, lt: dayAfter } },
+          where: { status: "SCHEDULED", ...touchingWindow(tomorrow, dayAfter) },
           select: { scheduledAt: true, scheduledEndAt: true, clientName: true, address: true },
         },
       },
     });
     const date = tomorrow.toISOString().slice(0, 10);
     for (const profile of profiles) {
-      const items = tomorrowSummaryItems(profile.bookings, profile.externalJobs);
+      // Un lavoro su più giorni compare ogni sera, con l'orario di quel giorno (§293).
+      const onDate = <T extends { scheduledAt: Date; scheduledEndAt: Date | null }>(jobs: T[]): T[] =>
+        jobs.flatMap((job) => {
+          const occurrence = jobOccurrenceOn(job.scheduledAt, job.scheduledEndAt, date);
+          return occurrence ? [{ ...job, scheduledAt: occurrence.start, scheduledEndAt: occurrence.end }] : [];
+        });
+      const items = tomorrowSummaryItems(onDate(profile.bookings), onDate(profile.externalJobs));
       if (items.length === 0) continue;
       // Un solo riepilogo per giorno, anche se il server si riavvia alle 19.
       const already = await this.prisma.notification.findFirst({

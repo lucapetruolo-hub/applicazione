@@ -171,15 +171,21 @@ export function AgendaTimeGrid({
                         className={`ag-ev ${event.kind}${event.key === selectedKey ? " selected" : ""}`}
                         style={{ top: y(event.start) + 2, height: blockHeight }}
                         onClick={event.onPress}
-                        aria-label={`${event.label}: ${event.title}, ${minutesToLabel(event.start)}–${minutesToLabel(event.end)}`}
                       >
+                        {/* Il nome letto dal lettore di schermo parte dal testo visibile (WCAG 2.5.3, A3 di §292). */}
                         <b>{event.title}</b>
                         {blockHeight >= 40 ? (
                           <span>
+                            <span className="sr-only">, </span>
                             {minutesToLabel(event.start)}–{minutesToLabel(event.end)}
                             {blockHeight > 60 && event.detail ? ` · ${event.detail}` : ""}
                           </span>
-                        ) : null}
+                        ) : (
+                          <span className="sr-only">
+                            , {minutesToLabel(event.start)}–{minutesToLabel(event.end)}
+                          </span>
+                        )}
+                        <span className="sr-only">, {event.label}</span>
                       </button>
                     );
                   })}

@@ -212,3 +212,29 @@ export function multiDayDates(start: Date | string, end: Date | string | null | 
 
 /** Al massimo tanti giorni per un lavoro su più giorni. */
 export const MAX_JOB_DAYS = 30;
+
+/**
+ * Le giornate di un lavoro, una per giorno con lo stesso orario (decisione
+ * dell'utente, §293: "comparirà il lavoro per *numero* giorni e nell'orario
+ * inserito"). Un lavoro di un solo giorno ha una sola giornata, uguale a sé.
+ */
+export function jobOccurrences(start: Date | string, end: Date | string | null | undefined): { date: string; start: Date; end: Date | null }[] {
+  const startDate = new Date(start);
+  const endDate = end ? new Date(end) : null;
+  const dates = multiDayDates(startDate, endDate);
+  if (dates.length === 1) return [{ date: dates[0]!, start: startDate, end: endDate }];
+  const startTime = startDate.toISOString().slice(11, 23);
+  // Fine alle 00:00: la giornata finisce a mezzanotte del giorno stesso.
+  const endTime = endDate!.toISOString().slice(11, 23);
+  return dates.map((date) => {
+    const dayStart = new Date(`${date}T${startTime}Z`);
+    let dayEnd = new Date(`${date}T${endTime}Z`);
+    if (dayEnd <= dayStart) dayEnd = new Date(dayEnd.getTime() + 86_400_000);
+    return { date, start: dayStart, end: dayEnd };
+  });
+}
+
+/** La giornata di un lavoro in quella data (AAAA-MM-GG), se il lavoro la tocca. */
+export function jobOccurrenceOn(start: Date | string, end: Date | string | null | undefined, date: string): { start: Date; end: Date | null } | null {
+  return jobOccurrences(start, end).find((occurrence) => occurrence.date === date) ?? null;
+}
