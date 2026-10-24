@@ -4,7 +4,6 @@ import { useState } from "react";
 import type { ClientBooking } from "@professionisti/api-client";
 import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
-import { ReportIssueModal } from "@/components/ReportIssueModal";
 import { JOB_ISSUE_LABEL, JOB_ISSUE_STATUS_LABEL, formatAppointmentDate, formatAppointmentTimeRange, formatEurCents, formatJobDays } from "@professionisti/shared";
 import { ClientIssueStatus } from "./ClientIssueStatus";
 import { JobPaymentStatus } from "@/components/JobPaymentStatus";
@@ -29,7 +28,6 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [isReopening, setIsReopening] = useState(false);
   const [reopenError, setReopenError] = useState<string | null>(null);
-  const [showNoShowModal, setShowNoShowModal] = useState(false);
   const [confirmingDeleteBooking, setConfirmingDeleteBooking] = useState(false);
   const [isDeletingBooking, setIsDeletingBooking] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -116,8 +114,6 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
     }
   }
 
-  // Segnalazioni (docs/CHANGELOG.md §164): quali si possono inviare lo decide il server.
-  const canReportIssue = booking.issueTypesAllowed.length > 0;
   const jobDays = formatJobDays(booking.scheduledAt, booking.scheduledEndAt);
 
   return (
@@ -241,37 +237,12 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
         </YStack>
       ) : null}
 
-      {showNoShowModal ? (
-        <ReportIssueModal
-          businessName={booking.businessName}
-          phone={booking.professionalPhone}
-          email={booking.professionalEmail}
-          allowedTypes={booking.issueTypesAllowed}
-          assisted={booking.payment?.method !== "DIRECT"}
-          onClose={() => {
-            setShowNoShowModal(false);
-            onChanged();
-          }}
-          onSubmit={async (input) => {
-            await apiClient.reportJobIssue(token, booking.id, input);
-          }}
-          onOpenChat={
-            booking.guidedRequestId
-              ? () => {
-                  setShowNoShowModal(false);
-                  setShowTimeline(true);
-                  onChanged();
-                }
-              : undefined
-          }
-          uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}
-        />
-      ) : null}
-
       {/* Azioni dell'intervento in fila (richiesta esplicita dell'utente):
-          Lavoro terminato (o recensione), Contatta/Cronologia, Segnala un
-          problema. Un solo Contatta/Cronologia nella scheda: quello del
-          preventivo accettato è nascosto (QuoteCard, `contactInBooking`). */}
+          Lavoro terminato (o recensione), Contatta/Cronologia. "Segnala un
+          problema" sta solo nel menu hamburger della scheda (GuidedRequestCard,
+          richiesta esplicita dell'utente, docs/CHANGELOG.md §329). Un solo
+          Contatta/Cronologia nella scheda: quello del preventivo accettato è
+          nascosto (QuoteCard, `contactInBooking`). */}
       <XStack gap="$2" flexWrap="wrap" alignItems="center" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
         {/* Lavoro terminato sempre per primo, turchese come lato professionista (richiesta esplicita dell'utente). */}
         {booking.status === "CONFIRMED" || booking.status === "COMPLETED" ? (
@@ -292,11 +263,6 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
               dismissUnread();
             }}
           />
-        ) : null}
-        {canReportIssue ? (
-          <CardButton compactOnPhone tone="danger" onPress={() => setShowNoShowModal(true)}>
-            Segnala un problema
-          </CardButton>
         ) : null}
       </XStack>
       {booking.status === "CONFIRMED" || booking.status === "COMPLETED" ? (

@@ -31,7 +31,7 @@ type AuthContextValue = {
    * Segna tutte le notifiche come lette e azzera il badge — chiamato all'apertura di /dashboard o /le-mie-richieste.
    * `fetched` sono le non lette appena lette dalla pagina: quelle nuove hanno
    * prima il loro popup e suono, che altrimenti la pagina "mangerebbe"
-   * segnandole lette prima del controllo dell'app (docs/CHANGELOG.md §329).
+   * segnandole lette prima del controllo dell'app (docs/CHANGELOG.md §330).
    */
   markNotificationsRead: (fetched?: UnreadNotification[]) => Promise<void>;
   /** Popup "toast" per notifiche appena arrivate (richiesta esplicita dell'utente) — vedi ToastStack. */
@@ -54,7 +54,7 @@ type AuthContextValue = {
   setNotificationPrefs: (prefs: NotificationPreferences) => void;
 };
 
-/** Messaggio di una chat aperta a schermo in questo momento (§330). */
+/** Messaggio di una chat aperta a schermo in questo momento (§331). */
 function chatOnScreen(n: UnreadNotification): boolean {
   if (n.type !== "TIMELINE_MESSAGE_FROM_CLIENT" && n.type !== "TIMELINE_MESSAGE_FROM_PROFESSIONAL") return false;
   const payload = n.payload && typeof n.payload === "object" ? (n.payload as Record<string, unknown>) : {};
@@ -223,7 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     for (const n of freshOnes) {
       seen.add(n.id);
     }
-    // Un messaggio della chat già aperta a schermo si vede lì: niente popup né suono (§330).
+    // Un messaggio della chat già aperta a schermo si vede lì: niente popup né suono (§331).
     const toAnnounce = freshOnes.filter((n) => !chatOnScreen(n));
     // Preferenze (docs/CHANGELOG.md §152): suono e popup si possono
     // spegnere separatamente; la campanella e il numeretto restano.

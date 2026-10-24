@@ -1,5 +1,5 @@
 // Controllo in CI che lo stream in tempo reale consegni davvero gli eventi
-// (docs/CHANGELOG.md §329-§330): il 24/10/2026, con due copie di rxjs e
+// (docs/CHANGELOG.md §330-§331): il 24/10/2026, con due copie di rxjs e
 // l'interceptor globale di Sentry, `GET /realtime/stream` rispondeva 200 ma
 // mandava un evento vuoto, e nessuna notifica arrivava più. Avvia il
 // controller vero dal build (dist/) con `SentryModule`, come in produzione,

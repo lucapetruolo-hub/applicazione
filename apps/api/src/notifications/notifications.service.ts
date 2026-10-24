@@ -96,7 +96,7 @@ export class NotificationsService {
     if (muted || !notificationChannelEnabled(prefs, type, "inApp")) {
       await this.prisma.notification.create({ data: { userId, channel: "PUSH", type, payload, readAt: new Date() } });
       // Messaggio in chat con il sito spento ma l'email accesa: non c'è
-      // nulla da "non leggere" per l'email ritardata (§330), parte subito.
+      // nulla da "non leggere" per l'email ritardata (§331), parte subito.
       if (!muted && isChatMessageType(type) && notificationChannelEnabled(prefs, type, "email")) {
         const thread = payloadThread(payload);
         if (thread) {
@@ -230,7 +230,7 @@ export class NotificationsService {
   }
 
   /**
-   * Email dei messaggi in chat non letti (docs/CHANGELOG.md §330), una per
+   * Email dei messaggi in chat non letti (docs/CHANGELOG.md §331), una per
    * conversazione: la manda `ChatMessageEmailsService`, che ha già
    * controllato preferenze e notifiche lette. Il link apre la chat giusta.
    */

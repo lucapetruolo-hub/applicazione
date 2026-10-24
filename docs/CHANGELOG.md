@@ -20479,7 +20479,18 @@ Richiesta dell'utente, tra le migliorie proposte dopo la §327 ("eccezione" con 
 
 **Verifica**: nuova prova nel browser (`settimana-tipo.spec.ts`: mercoledì cambiato a mano mostra "eccezione", giovedì della settimana tipo no), 68 prove nel browser in locale, foto da telefono e computer delle tre viste, lint e typecheck puliti.
 
-## 329. Notifiche dei messaggi in chat che non arrivavano
+## 329. "Segnala un problema" solo nel menu della scheda
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Spostare Segnala un problema nel menu della scheda"): lato cliente, nella scheda del preventivo accettato, "il pulsante per segnalare un problema dopo che si accetta un preventivo lasciaglielo solo nel menu ad hamburger della relativa scheda". Il cliente deve comunque poter sempre segnalare un problema.
+
+**Decisione presa**
+- Tolto il pulsante rosso "Segnala un problema" dalla fila di azioni dell'intervento (`BookingSection`): restano "Lavoro terminato" (o la recensione) e "Contatta/Cronologia".
+- Nuova voce "Segnala un problema" (icona bandierina, rossa come "Segnala richiesta" del professionista) nel menu hamburger della scheda (`GuidedRequestCard`), subito prima di "Annulla prenotazione". Compare negli stessi casi di prima: quando il server ammette almeno un tipo di segnalazione (`issueTypesAllowed`, §164).
+- La finestra della segnalazione e la chat col professionista che si apre dopo l'invio vivono ora in `GuidedRequestCard`, fuori dal blocco espanso (come "Annulla prenotazione"): la voce funziona anche a scheda chiusa.
+- Nessun cambio al flusso: stessi tipi, stesse prove, stessa fase in chat (§165) e stessa API. Le segnalazioni dei contenuti (DSA, §319) non sono toccate.
+- Pulsante del menu più visibile (richiesta esplicita dell'utente: "rendi più visibile il pulsante ad hamburger"): in `CardActionsMenu` era un'icona grigia senza sfondo da 36px, ora è un tondo da 44px verde chiaro con bordo e icona verdi, pieno verde quando il menu è aperto. Vale per le schede del cliente e del professionista, che condividono il componente.
+
+## 330. Notifiche dei messaggi in chat che non arrivavano
 
 **Richiesta esplicita dell'utente** (24/10/2026, thread "Correggere le notifiche chat al cliente"): "al cliente sembra non arrivino le notifiche quando il professionista gli manda un messaggio in chat", e lo stesso dal cliente al professionista.
 
@@ -20495,9 +20506,9 @@ Richiesta dell'utente, tra le migliorie proposte dopo la §327 ("eccezione" con 
 **Verifica**
 - Prima: stream di produzione letto con un account di prova, `\nid: 1\n\n` e nient'altro in 56 secondi. In locale, controller vero con `SentryModule`: evento senza `data`; dopo la correzione l'evento arriva completo, anche con Sentry attivo e la configurazione dell'app.
 
-## 330. Email dei messaggi non letti, niente popup sulla chat aperta, controllo dello stream
+## 331. Email dei messaggi non letti, niente popup sulla chat aperta, controllo dello stream
 
-**Richiesta esplicita dell'utente** (24/10/2026, stesso thread del §329): "effettua le 3 migliorie" proposte dopo la correzione.
+**Richiesta esplicita dell'utente** (24/10/2026, stesso thread del §330): "effettua le 3 migliorie" proposte dopo la correzione.
 
 **Decisione presa**
 - **Email dei messaggi in chat non letti.** `ChatMessageEmailsService` (`apps/api/src/notifications/chat-message-emails.service.ts`) ogni minuto cerca le notifiche `TIMELINE_MESSAGE_FROM_*` non lette: quando il primo messaggio non letto di una conversazione ha 10 minuti (`CHAT_EMAIL_AFTER_MINUTES`), parte un'email sola con il numero dei messaggi e il link che apre quella chat. Finché chi riceve non legge, niente seconda email per la stessa conversazione. `Notification.sentAt` (colonna già esistente e mai usata) segna i messaggi già coperti da un'email. Mai il testo del messaggio nell'email (CLAUDE.md §5 punto 9). Oltre le 24 ore non si recupera nulla. Chi ha spento il sito per i messaggi ma tiene l'email la riceve subito. Argomento "Messaggi" delle preferenze ora con il canale email attivo (acceso di default, spegnibile). Testo in `chatMessageEmail` (`notification-emails.ts`), fuori da `BUILDERS` che partono subito; anteprime in `email:preview`.
