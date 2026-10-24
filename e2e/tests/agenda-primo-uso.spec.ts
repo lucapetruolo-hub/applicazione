@@ -35,7 +35,8 @@ test("T1: chiudere un giorno sta in cima a Orari di lavoro e basta la data", asy
   await expect(headings.first()).toHaveText("Chiudi un giorno o le ferie");
   // Nella settimana tipo nessun "Chiudi" che sembri chiudere un giorno preciso.
   await expect(page.getByRole("button", { name: "Chiudi", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /^Giorno libero ogni venerdì$/ })).toBeVisible();
+  // Settimana in tre passi (§320): i giorni si accendono e si spengono, nessun "Chiudi".
+  await expect(page.getByRole("region", { name: "La tua settimana" }).getByRole("button", { name: "Venerdì" })).toHaveAttribute("aria-pressed", /true|false/);
 });
 
 test("T9 e T11: il tasto per aggiungere un lavoro ha la scritta; Lavoro completato solo dal giorno del lavoro", async ({ page }) => {

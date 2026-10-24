@@ -16,7 +16,6 @@ import {
   type DayPart,
   type ZoneDemand,
   DAY_PART_RANGE,
-  weekTemplateMonthFill,
   type CompleteBookingInput,
   type ExternalJob,
   type ProfessionalBooking,
@@ -55,7 +54,6 @@ import {
   parseIsoDate,
   slotAppliesOnDateStr,
   startOfDayUtc,
-  startOfMonthUtc,
   todayUtc,
   toIsoDate,
   weekDays,
@@ -228,6 +226,9 @@ function DashboardAgendaContent() {
   const [completingBooking, setCompletingBooking] = useState<ProfessionalBooking | null>(null);
   const [cancelingBooking, setCancelingBooking] = useState<ProfessionalBooking | null>(null);
   const [weekTemplate, setWeekTemplate] = useState<AgendaWeekTemplate | null>(null);
+  const [weekTemplateActive, setWeekTemplateActive] = useState(false);
+  // Dopo "Salva la settimana" il server cambia le fasce dei prossimi giorni: si rileggono.
+  const [slotsReload, setSlotsReload] = useState(0);
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [templateNotice, setTemplateNotice] = useState<string | null>(null);
   const [zoneDemand, setZoneDemand] = useState<ZoneDemand | null>(null);
@@ -275,7 +276,7 @@ function DashboardAgendaContent() {
         }
       })
       .finally(() => setIsLoadingSlots(false));
-  }, [token]);
+  }, [token, slotsReload]);
 
   // Appuntamenti e lavori esterni insieme: se la rete non c'è si mostra
   // l'ultima copia salvata sul telefono (docs/CHANGELOG.md §288).
@@ -348,7 +349,10 @@ function DashboardAgendaContent() {
       .catch(() => {});
     apiClient
       .agendaWeekTemplate(token)
-      .then(setWeekTemplate)
+      .then((state) => {
+        setWeekTemplate(state.template);
+        setWeekTemplateActive(state.active);
+      })
       .catch(() => {});
     apiClient
       .agendaZoneDemand(token)
@@ -1493,21 +1497,24 @@ function DashboardAgendaContent() {
           ? String(bookingCurrentDate.getUTCFullYear())
           : `${monthLabel(bookingCurrentDate)} ${bookingCurrentDate.getUTCFullYear()}`;
 
-  // Settimana tipo: salvata a ogni modifica, applicata ai giorni ancora vuoti del mese scelto.
-  const templateMonths = [0, 1, 2].map((offset) => {
-    const month = addMonthsUtc(startOfMonthUtc(today), offset);
-    return { key: toIsoDate(month), label: `${monthLabel(month)} ${month.getUTCFullYear()}` };
-  });
-
+  // Settimana tipo (docs/CHANGELOG.md §320): "Salva la settimana" la porta
+  // subito nei prossimi giorni e da lì vale per tutte le settimane.
   async function changeWeekTemplate(next: AgendaWeekTemplate) {
     if (!token) return;
-    setWeekTemplate(next);
     setTemplateNotice(null);
     setSavingTemplate(true);
     try {
-      await apiClient.saveAgendaWeekTemplate(token, next);
+      const state = await apiClient.saveAgendaWeekTemplate(token, next);
+      setWeekTemplate(state.template);
+      setWeekTemplateActive(state.active);
+      setSlotsReload((n) => n + 1);
+      setTemplateNotice(
+        state.changedDays > 0
+          ? `Settimana salvata: orari aggiornati in ${state.changedDays} ${state.changedDays === 1 ? "giorno" : "giorni"}. I giorni cambiati a mano, quelli chiusi e quelli con lavori già fissati restano com'erano.`
+          : "Settimana salvata.",
+      );
     } catch (err) {
-      setTemplateNotice(err instanceof Error ? `${err.message} La settimana tipo non è stata salvata.` : "Settimana tipo non salvata, riprova.");
+      setTemplateNotice(err instanceof Error ? `${err.message} La settimana non è stata salvata.` : "Settimana non salvata, riprova.");
     } finally {
       setSavingTemplate(false);
     }
@@ -1521,32 +1528,6 @@ function DashboardAgendaContent() {
     void changeWeekTemplate({
       days: weekTemplate.days.map((daySlots, day) => (day === weekday ? [...daySlots, slot].sort((a, b) => a.start.localeCompare(b.start)) : daySlots)),
     });
-  }
-
-  function applyWeekTemplate(monthKey: string) {
-    if (!weekTemplate) return;
-    const fill = weekTemplateMonthFill(weekTemplate, datesInMonth(parseIsoDate(monthKey)), slots, { fromDate: todayStr, closedDates: closedSet });
-    const { filledDays, skippedDays } = fill;
-    const added: SlotDraft[] = fill.added.map((t) => ({
-      dayOfWeek: t.dayOfWeek,
-      date: t.date,
-      start: t.start,
-      end: t.end,
-      allowsHome: t.allowsHome,
-      allowsOnline: t.allowsOnline,
-      homeMax: t.homeMax,
-      onlineMax: t.onlineMax,
-    }));
-    if (filledDays === 0) {
-      setTemplateNotice(skippedDays > 0 ? "Tutti i giorni di quel mese hanno già i loro orari: cambiali dal calendario qui sotto." : "Nessun giorno da riempire in quel mese.");
-      return;
-    }
-    const next = [...slots, ...added];
-    setSlots(next);
-    void persistSlots(next);
-    setTemplateNotice(
-      `Orari aggiunti a ${filledDays} ${filledDays === 1 ? "giorno" : "giorni"}.${skippedDays > 0 ? ` ${skippedDays} ${skippedDays === 1 ? "giorno aveva" : "giorni avevano"} già i loro orari e sono rimasti com'erano.` : ""}`,
-    );
   }
 
   /** Ferie: chiude in un colpo tutti i giorni tra due date. */
@@ -1658,16 +1639,7 @@ function DashboardAgendaContent() {
           </div>
         ) : null}
 
-        {slots.length === 0 && activeTab !== "orari" && weekTemplate?.days.some((d) => d.length > 0) ? (
-          // Settimana tipo salvata ma non ancora applicata: prima si leggeva
-          // "non hai orari" (T6 del test dei compiti, docs/CHANGELOG.md §311).
-          <div className="ag-banner info">
-            <span>La tua settimana tipo è pronta: applicala al mese per farti prenotare.</span>
-            <button type="button" className="ag-btn sm" onClick={() => applyWeekTemplate(templateMonths[0]!.key)}>
-              Applica a {templateMonths[0]!.label}
-            </button>
-          </div>
-        ) : slots.length === 0 && activeTab !== "orari" ? (
+        {slots.length === 0 && activeTab !== "orari" ? (
           <div className="ag-banner info">
             <span>Non hai ancora orari di lavoro: aggiungili e i clienti potranno prenotarti più facilmente.</span>
             <button type="button" className="ag-btn sm" onClick={() => setActiveTab("orari")}>
@@ -1879,7 +1851,7 @@ function DashboardAgendaContent() {
             </div>
 
             {weekTemplate ? (
-              <WeekTemplateEditor template={weekTemplate} onChange={changeWeekTemplate} months={templateMonths} onApply={applyWeekTemplate} saving={savingTemplate} />
+              <WeekTemplateEditor key={JSON.stringify(weekTemplate)} template={weekTemplate} active={weekTemplateActive} onSave={(next) => void changeWeekTemplate(next)} saving={savingTemplate} />
             ) : (
               <SkeletonBlock height={360} radius={20} />
             )}

@@ -233,6 +233,12 @@ model ProfessionalProfile {
   // usata da "Orari di lavoro" per riempire un mese in un colpo.
   calendarFeedToken            String?   @unique
   agendaWeekTemplate           Json?
+  // Settimana tipo che vale per tutte le settimane (docs/CHANGELOG.md
+  // §320): ultimo giorno già riempito dalla settimana tipo (null = mai
+  // salvata dal nuovo editor). Ogni notte si riempiono i giorni nuovi fino
+  // a 63 giorni da oggi; i giorni già passati da qui non si riempiono più,
+  // così un giorno svuotato a mano resta vuoto.
+  agendaTemplateFilledUntil    DateTime?
   city                         String
   latitude                     Float
   longitude                    Float
@@ -518,6 +524,10 @@ model AvailabilitySlot {
   allowsOnline          Boolean   @default(false)
   homeMaxBookings       Int?
   onlineMaxBookings     Int?
+  // Nata dalla settimana tipo (docs/CHANGELOG.md §320): si aggiorna quando
+  // cambia la settimana tipo. Diventa false appena il professionista cambia
+  // a mano gli orari di quel giorno.
+  fromWeekTemplate      Boolean   @default(false)
   createdAt             DateTime  @default(now())
 
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)

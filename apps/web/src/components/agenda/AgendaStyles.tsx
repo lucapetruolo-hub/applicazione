@@ -806,6 +806,356 @@ export function AgendaStyles() {
         background: #fff;
         min-width: 0;
       }
+      /* Settimana tipo in tre passi (docs/CHANGELOG.md §320). */
+      .ag-wt {
+        padding: 20px;
+      }
+      .ag-wt-body {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+        margin-top: 16px;
+      }
+      .ag-wt-steps {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-width: 0;
+      }
+      .ag-wt-step {
+        border: 1px solid var(--ag-line);
+        border-radius: 16px;
+        padding: 16px;
+        margin: 0;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .ag-wt-step legend {
+        float: left;
+        width: 100%;
+        padding: 0;
+        margin-bottom: 2px;
+        font-weight: 600;
+        font-size: 16px;
+      }
+      .ag-wt-hint {
+        font-size: 14px;
+        margin: 0;
+      }
+      .ag-wt-days {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 6px;
+      }
+      .ag-wt-day {
+        height: 44px;
+        border-radius: 999px;
+        border: 1.5px solid ${brand.filetto};
+        background: #fff;
+        color: var(--ag-ink);
+        font: 600 14px var(--font-body), system-ui, sans-serif;
+        cursor: pointer;
+        padding: 0;
+        transition: background-color 150ms ease;
+      }
+      .ag-wt-day:hover {
+        background: #f6f1ec;
+      }
+      .ag-wt-rest {
+        font-size: 0;
+      }
+      .ag-wt-day.is-on {
+        background: var(--ag-ink);
+        border-color: var(--ag-ink);
+        color: #fff;
+      }
+      .ag-wt-presets {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 8px;
+      }
+      .ag-wt-preset {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 56px;
+        padding: 8px 12px;
+        border: 1.5px solid ${brand.filetto};
+        border-radius: 12px;
+        cursor: pointer;
+        font-size: 15px;
+      }
+      .ag-wt-preset.is-on {
+        border-color: var(--ag-ink);
+        box-shadow: inset 0 0 0 1px var(--ag-ink);
+      }
+      .ag-wt-preset input {
+        width: 20px;
+        height: 20px;
+        margin: 0;
+        accent-color: var(--ag-ink);
+        flex: none;
+      }
+      .ag-wt-preset > span {
+        display: flex;
+        flex-direction: column;
+      }
+      .ag-wt-preset b {
+        font-weight: 600;
+      }
+      .ag-wt-preset:has(input:focus-visible),
+      .ag-wt-day:focus-visible,
+      .ag-wt-chip:focus-visible,
+      .ag-wt-add:focus-visible,
+      .ag-wt-remove:focus-visible {
+        outline: 2px solid var(--ag-green);
+        outline-offset: 2px;
+      }
+      .ag-wt-ranges {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .ag-wt-range {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .ag-wt-range label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 15px;
+      }
+      .ag-wt-time {
+        width: 108px;
+        padding: 0 8px;
+        font-size: 15px;
+      }
+      .ag-wt-dash {
+        display: none;
+      }
+      .ag-wt-remove {
+        width: 44px;
+        height: 44px;
+        border: 0;
+        border-radius: 999px;
+        background: none;
+        color: var(--ag-muted);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .ag-wt-remove:hover {
+        background: var(--ag-line-soft);
+      }
+      .ag-wt-add {
+        align-self: flex-start;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 44px;
+        padding: 0 4px;
+        border: 0;
+        background: none;
+        color: var(--ag-ink);
+        font: 600 15px var(--font-body), system-ui, sans-serif;
+        cursor: pointer;
+      }
+      .ag-wt-error {
+        margin: 0;
+        font-size: 14px;
+        color: var(--ag-red);
+      }
+      .ag-wt-mode {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        padding-top: 4px;
+        font-size: 14px;
+      }
+      .ag-wt-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 40px;
+        padding: 0 14px;
+        border-radius: 999px;
+        border: 1.5px solid ${brand.filetto};
+        background: #fff;
+        color: var(--ag-ink);
+        font: 600 14px var(--font-body), system-ui, sans-serif;
+        cursor: pointer;
+      }
+      .ag-wt-chip.is-on {
+        border-color: var(--ag-ink);
+        background: #f6f1ec;
+      }
+      .ag-wt-per-slot {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .ag-wt-per-slot select {
+        width: 72px;
+      }
+      .ag-wt-special {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 15px;
+      }
+      .ag-wt-special.is-open {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 12px;
+        border-radius: 12px;
+        background: #fffaf5;
+      }
+      .ag-wt-special-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .ag-wt-ghost {
+        border-color: transparent;
+      }
+      .ag-wt-pick {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        font-size: 14px;
+      }
+      .ag-wt-pick .ag-wt-days {
+        display: flex;
+        flex-wrap: wrap;
+      }
+      .ag-wt-pick .ag-wt-day {
+        width: 56px;
+      }
+      .ag-wt-aside {
+        display: none;
+      }
+      .ag-wt-aside h3 {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 0 0 12px;
+      }
+      .ag-wt-preview {
+        display: grid;
+        grid-template-columns: 28px repeat(7, minmax(0, 1fr));
+        gap: 6px;
+        height: 420px;
+      }
+      .ag-wt-preview-hours {
+        position: relative;
+        margin-top: 22px;
+        font-size: 12px;
+        color: var(--ag-muted);
+      }
+      .ag-wt-preview-hours span {
+        position: absolute;
+        left: 0;
+        transform: translateY(-50%);
+      }
+      .ag-wt-preview-day {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+      }
+      .ag-wt-preview-label {
+        height: 18px;
+        font-size: 13px;
+        font-weight: 600;
+        text-align: center;
+      }
+      .ag-wt-preview-col {
+        position: relative;
+        flex: 1;
+        border-radius: 8px;
+        background: #faf3ea;
+      }
+      .ag-wt-preview-free {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        color: var(--ag-muted);
+      }
+      .ag-wt-preview-block {
+        position: absolute;
+        left: 3px;
+        right: 3px;
+        box-sizing: border-box;
+        border-radius: 6px;
+        border: 1px solid #9fd0ad;
+        background: var(--ag-free);
+        font-size: 11px;
+        font-weight: 600;
+        text-align: center;
+        padding-top: 3px;
+        overflow: hidden;
+        color: var(--ag-green-dark);
+      }
+      .ag-wt-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid var(--ag-line);
+        font-size: 14px;
+      }
+      /* Tre orari pronti affiancati solo quando la colonna è larga (senza anteprima accanto). */
+      @media (min-width: 720px) and (max-width: 1080px) {
+        .ag-wt-presets {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+      }
+      @media (min-width: 1081px) {
+        .ag-wt-body {
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+          gap: 24px;
+        }
+        .ag-wt-aside {
+          display: block;
+        }
+      }
+      @media (max-width: 640px) {
+        .ag-wt {
+          padding: 16px;
+        }
+        .ag-wt-step {
+          padding: 12px;
+        }
+        /* Sul telefono "08:00 – 13:00" in una riga: le scritte Dalle/alle restano per chi usa un lettore di schermo. */
+        .ag-wt-word {
+          display: none;
+        }
+        .ag-wt-dash {
+          display: inline;
+        }
+        .ag-wt-range,
+        .ag-wt-range label {
+          gap: 6px;
+        }
+        .ag-wt-time {
+          width: 104px;
+        }
+        .ag-wt-footer .ag-btn {
+          width: 100%;
+        }
+      }
       .ag-links {
         display: flex;
         gap: 18px;

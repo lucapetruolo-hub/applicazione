@@ -53,7 +53,7 @@ for (const view of views) {
     await page.goto(view.path);
     await expect(page.getByRole("group", { name: "Sezioni dell'agenda" })).toBeVisible();
     // L'agenda resta collegata al server per gli avvisi in tempo reale: si aspetta il contenuto, non la rete ferma.
-    await expect(page.getByText(/Condominio Aurora|Settimana tipo|Giro/).first()).toBeVisible();
+    await expect(page.getByText(/Condominio Aurora|La tua settimana|Giro/).first()).toBeVisible();
     const { unknown, known } = await seriousViolations(page);
     testInfo.annotations.push({ type: "problemi noti", description: [...known].join(", ") || "nessuno" });
     expect(unknown).toEqual([]);

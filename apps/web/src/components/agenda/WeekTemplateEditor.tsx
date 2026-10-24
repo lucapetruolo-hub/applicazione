@@ -1,236 +1,414 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Video } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Check, Plus, X } from "lucide-react";
 import { agendaWeekTemplateSchema, type AgendaWeekTemplate, type WeekTemplateSlot } from "@professionisti/shared";
-import { SlotEditorModal } from "@/app/dashboard/agenda/_components/SlotEditorModal";
 import { WEEKDAY_FULL_LABELS } from "@/app/dashboard/agenda/_components/agendaHelpers";
 
 /** Lunedì per primo, come in tutto il calendario. */
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
+const WEEKDAY_SHORT = WEEKDAY_FULL_LABELS.map((label) => label.slice(0, 3));
+const MAX_RANGES = 4;
 
-const PRESETS: { label: string; slots: WeekTemplateSlot[] }[] = [
-  { label: "Mattina 8–13", slots: [{ start: "08:00", end: "13:00", allowsHome: true, allowsOnline: false, homeMax: 1, onlineMax: null }] },
-  { label: "Pomeriggio 14–18", slots: [{ start: "14:00", end: "18:00", allowsHome: true, allowsOnline: false, homeMax: 1, onlineMax: null }] },
-  {
-    label: "Mattina e pomeriggio",
-    slots: [
-      { start: "08:00", end: "13:00", allowsHome: true, allowsOnline: false, homeMax: 1, onlineMax: null },
-      { start: "14:00", end: "18:00", allowsHome: true, allowsOnline: false, homeMax: 1, onlineMax: null },
-    ],
-  },
+type Range = { start: string; end: string };
+type Mode = { allowsHome: boolean; allowsOnline: boolean; perSlot: number };
+
+const PRESETS: { id: string; label: string; ranges: Range[] }[] = [
+  { id: "split", label: "Mattina e pomeriggio", ranges: [{ start: "08:00", end: "13:00" }, { start: "14:00", end: "18:00" }] },
+  { id: "continuous", label: "Orario continuato", ranges: [{ start: "08:00", end: "17:00" }] },
+  { id: "morning", label: "Solo la mattina", ranges: [{ start: "08:00", end: "13:00" }] },
 ];
+
+/** Stato dell'editor: giorni di lavoro, orari di tutti i giorni e i giorni con orari diversi. */
+type Draft = { workDays: number[]; base: Range[]; special: Record<number, Range[]>; mode: Mode };
+
+const rangesKey = (ranges: Range[]) => ranges.map((r) => `${r.start}-${r.end}`).join(",");
+
+function shortTime(time: string): string {
+  const [h, m] = time.split(":");
+  return m === "00" ? String(Number(h)) : `${Number(h)}.${m}`;
+}
+
+export function rangesLabel(ranges: Range[]): string {
+  return ranges.map((r) => `${shortTime(r.start)}–${shortTime(r.end)}`).join(" e ");
+}
 
 function minutes(time: string): number {
   const [h, m] = time.split(":").map(Number);
   return (h ?? 0) * 60 + (m ?? 0);
 }
 
-function hoursLabel(slots: WeekTemplateSlot[]): string {
-  const total = slots.reduce((sum, s) => sum + minutes(s.end) - minutes(s.start), 0);
-  if (total === 0) return "Libero";
-  const h = Math.floor(total / 60);
-  const m = total % 60;
-  return m ? `${h} h ${m}` : `${h} h`;
+/** Dalla settimana salvata ai tre passi: gli orari più comuni diventano "tutti i giorni", gli altri "giorni diversi". */
+export function draftFromTemplate(template: AgendaWeekTemplate): Draft {
+  const workDays = WEEK_ORDER.filter((day) => (template.days[day] ?? []).length > 0);
+  const counts = new Map<string, number>();
+  for (const day of workDays) {
+    const key = rangesKey(template.days[day]!);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  const baseDay = workDays.find((day) => rangesKey(template.days[day]!) === [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]);
+  const base = baseDay !== undefined ? template.days[baseDay]!.map(({ start, end }) => ({ start, end })) : PRESETS[0]!.ranges;
+  const special: Record<number, Range[]> = {};
+  for (const day of workDays) {
+    if (rangesKey(template.days[day]!) !== rangesKey(base)) special[day] = template.days[day]!.map(({ start, end }) => ({ start, end }));
+  }
+  const first = workDays.length ? template.days[workDays[0]!]![0] : undefined;
+  const mode: Mode = {
+    allowsHome: first?.allowsHome ?? true,
+    allowsOnline: first?.allowsOnline ?? false,
+    perSlot: (first?.allowsHome ? first.homeMax : first?.onlineMax) ?? 1,
+  };
+  return { workDays, base, special, mode };
 }
 
-type Editing = { day: number; index: number | null; start: string; end: string; allowsHome: boolean; allowsOnline: boolean; homeMax: string; onlineMax: string };
+export function templateFromDraft(draft: Draft): AgendaWeekTemplate {
+  const toSlot = (r: Range): WeekTemplateSlot => ({
+    start: r.start,
+    end: r.end,
+    allowsHome: draft.mode.allowsHome,
+    allowsOnline: draft.mode.allowsOnline,
+    homeMax: draft.mode.allowsHome ? draft.mode.perSlot : null,
+    onlineMax: draft.mode.allowsOnline ? draft.mode.perSlot : null,
+  });
+  return {
+    days: [0, 1, 2, 3, 4, 5, 6].map((day) =>
+      draft.workDays.includes(day) ? [...(draft.special[day] ?? draft.base)].sort((a, b) => a.start.localeCompare(b.start)).map(toSlot) : [],
+    ),
+  };
+}
+
+function rangesError(ranges: Range[]): string | null {
+  if (ranges.some((r) => r.end <= r.start)) return "L'orario di fine deve essere dopo quello di inizio.";
+  const sorted = [...ranges].sort((a, b) => a.start.localeCompare(b.start));
+  for (let i = 1; i < sorted.length; i++) if (sorted[i]!.start < sorted[i - 1]!.end) return "Due orari dello stesso giorno si sovrappongono.";
+  return null;
+}
+
+function nextRange(ranges: Range[]): Range {
+  const last = ranges[ranges.length - 1];
+  if (!last) return { start: "09:00", end: "13:00" };
+  const start = Math.min(minutes(last.end) + 60, 22 * 60);
+  const end = Math.min(start + 120, 23 * 60 + 59);
+  const fmt = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  return { start: fmt(start), end: fmt(end) };
+}
 
 /**
- * Settimana tipo di "Orari di lavoro" (docs/CHANGELOG.md §288): gli orari
- * soliti, giorno per giorno, da applicare a un mese in un tocco. Non vale
- * all'infinito (le fasce dell'agenda sono per data, decisione dell'utente):
- * "Applica" riempie i giorni del mese ancora vuoti e lascia com'erano quelli
- * già impostati a mano.
+ * "Lun" a vista, "Lunedì" per chi usa un lettore di schermo: il resto del nome
+ * resta nel testo ma senza dimensione (con `sr-only` si leggeva "Lun edì").
+ */
+function DayName({ day }: { day: number }) {
+  const full = WEEKDAY_FULL_LABELS[day]!;
+  return (
+    <>
+      {full.slice(0, 3)}
+      <span className="ag-wt-rest">{full.slice(3)}</span>
+    </>
+  );
+}
+
+/** Righe "Dalle … alle …" con la crocetta per togliere un orario e "Aggiungi un orario". */
+function RangesEditor({ ranges, onChange, label }: { ranges: Range[]; onChange: (next: Range[]) => void; label: string }) {
+  const error = rangesError(ranges);
+  return (
+    <div className="ag-wt-ranges">
+      {ranges.map((range, index) => (
+        <div key={index} className="ag-wt-range">
+          <label>
+            <span className="ag-muted ag-wt-word" aria-hidden>
+              Dalle
+            </span>
+            <input
+              type="time"
+              className="ag-input ag-wt-time"
+              value={range.start}
+              step={900}
+              aria-label={`${label}: inizio ${index + 1}° orario`}
+              onChange={(e) => onChange(ranges.map((r, i) => (i === index ? { ...r, start: e.target.value } : r)))}
+            />
+          </label>
+          <label>
+            <span className="ag-muted ag-wt-word" aria-hidden>
+              alle
+            </span>
+            <span className="ag-muted ag-wt-dash" aria-hidden>
+              –
+            </span>
+            <input
+              type="time"
+              className="ag-input ag-wt-time"
+              value={range.end}
+              step={900}
+              aria-label={`${label}: fine ${index + 1}° orario`}
+              onChange={(e) => onChange(ranges.map((r, i) => (i === index ? { ...r, end: e.target.value } : r)))}
+            />
+          </label>
+          {ranges.length > 1 ? (
+            <button type="button" className="ag-wt-remove" aria-label={`Togli l'orario ${rangesLabel([range])}`} onClick={() => onChange(ranges.filter((_, i) => i !== index))}>
+              <X size={18} aria-hidden />
+            </button>
+          ) : null}
+        </div>
+      ))}
+      {ranges.length < MAX_RANGES ? (
+        <button type="button" className="ag-wt-add" onClick={() => onChange([...ranges, nextRange(ranges)])}>
+          <Plus size={16} aria-hidden /> Aggiungi un orario
+        </button>
+      ) : null}
+      {error ? (
+        <p className="ag-wt-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** Anteprima "Come la vedono i clienti" (solo da computer). */
+function WeekPreview({ template }: { template: AgendaWeekTemplate }) {
+  const all = template.days.flat();
+  const from = Math.min(8 * 60, ...all.map((s) => minutes(s.start)));
+  const to = Math.max(19 * 60, ...all.map((s) => minutes(s.end)));
+  const span = to - from;
+  const hours: number[] = [];
+  for (let h = Math.ceil(from / 60); h <= Math.floor(to / 60); h += 2) hours.push(h);
+  return (
+    <div className="ag-wt-preview" aria-hidden>
+      <div className="ag-wt-preview-hours">
+        {hours.map((h) => (
+          <span key={h} style={{ top: `${((h * 60 - from) / span) * 100}%` }}>
+            {h}
+          </span>
+        ))}
+      </div>
+      {WEEK_ORDER.map((day) => (
+        <div key={day} className="ag-wt-preview-day">
+          <span className="ag-wt-preview-label">{WEEKDAY_SHORT[day]}</span>
+          <div className="ag-wt-preview-col">
+            {(template.days[day] ?? []).length === 0 ? <span className="ag-wt-preview-free">Libero</span> : null}
+            {(template.days[day] ?? []).map((slot) => (
+              <div
+                key={slot.start}
+                className="ag-wt-preview-block"
+                style={{ top: `${((minutes(slot.start) - from) / span) * 100}%`, height: `${((minutes(slot.end) - minutes(slot.start)) / span) * 100}%` }}
+              >
+                {shortTime(slot.start)}–{shortTime(slot.end)}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Settimana tipo di "Orari di lavoro" in tre passi (proposta A scelta
+ * dall'utente, docs/CHANGELOG.md §320): che giorni, in che orari, quale
+ * giorno ha orari diversi. Salvata vale per tutte le settimane: il server
+ * riempie i prossimi 63 giorni e ogni notte quelli nuovi; i giorni cambiati
+ * a mano in "Giorno per giorno" restano come sono.
  */
 export function WeekTemplateEditor({
   template,
-  onChange,
-  months,
-  onApply,
+  active,
+  onSave,
   saving,
 }: {
   template: AgendaWeekTemplate;
-  onChange: (next: AgendaWeekTemplate) => void;
-  months: { key: string; label: string }[];
-  onApply: (monthKey: string) => void;
+  active: boolean;
+  onSave: (next: AgendaWeekTemplate) => void;
   saving: boolean;
 }) {
-  const [editing, setEditing] = useState<Editing | null>(null);
-  const [monthKey, setMonthKey] = useState(months[0]?.key ?? "");
+  const [draft, setDraft] = useState<Draft>(() => draftFromTemplate(template));
+  const [openDay, setOpenDay] = useState<number | null>(null);
+  const [adding, setAdding] = useState(false);
+  // Una settimana cambiata da fuori (es. "Aggiungi alla settimana tipo" da
+  // Richieste in zona) arriva con un nuovo `key` e riparte da qui.
+  const savedKey = JSON.stringify(template);
 
-  function setDay(day: number, slots: WeekTemplateSlot[]) {
-    const days = template.days.map((s, i) => (i === day ? [...slots].sort((a, b) => a.start.localeCompare(b.start)) : s));
-    onChange({ days });
+  const next = useMemo(() => templateFromDraft(draft), [draft]);
+  const valid = agendaWeekTemplateSchema.safeParse(next).success && (draft.mode.allowsHome || draft.mode.allowsOnline);
+  const dirty = JSON.stringify(next) !== savedKey;
+  const totalMinutes = next.days.flat().reduce((sum, s) => sum + minutes(s.end) - minutes(s.start), 0);
+  const hoursText = totalMinutes % 60 ? `${Math.floor(totalMinutes / 60)} ore e ${totalMinutes % 60} minuti` : `${totalMinutes / 60} ore`;
+  const activePreset = PRESETS.find((p) => rangesKey(p.ranges) === rangesKey(draft.base))?.id ?? null;
+  const specialDays = WEEK_ORDER.filter((day) => draft.workDays.includes(day) && draft.special[day]);
+  const sameDays = WEEK_ORDER.filter((day) => draft.workDays.includes(day) && !draft.special[day]);
+
+  const update = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
+  function toggleDay(day: number) {
+    const workDays = draft.workDays.includes(day) ? draft.workDays.filter((d) => d !== day) : [...draft.workDays, day];
+    const special = { ...draft.special };
+    if (!workDays.includes(day)) delete special[day];
+    update({ workDays, special });
   }
-
-  function openNew(day: number) {
-    const last = template.days[day]?.[template.days[day]!.length - 1];
-    const start = last ? last.end : "09:00";
-    const end = last ? (minutes(last.end) + 120 >= 24 * 60 ? "23:59" : `${String(Math.floor((minutes(last.end) + 120) / 60)).padStart(2, "0")}:${last.end.slice(3)}`) : "13:00";
-    setEditing({ day, index: null, start, end, allowsHome: true, allowsOnline: false, homeMax: "1", onlineMax: "1" });
-  }
-
-  function openEdit(day: number, index: number) {
-    const slot = template.days[day]![index]!;
-    setEditing({
-      day,
-      index,
-      start: slot.start,
-      end: slot.end,
-      allowsHome: slot.allowsHome,
-      allowsOnline: slot.allowsOnline,
-      homeMax: String(slot.homeMax ?? 1),
-      onlineMax: String(slot.onlineMax ?? 1),
-    });
-  }
-
-  const editingError = (() => {
-    if (!editing) return null;
-    const clamp = (v: string) => Math.max(1, Math.min(20, Math.round(Number(v)) || 1));
-    const slot: WeekTemplateSlot = {
-      start: editing.start,
-      end: editing.end,
-      allowsHome: editing.allowsHome,
-      allowsOnline: editing.allowsOnline,
-      homeMax: editing.allowsHome ? clamp(editing.homeMax) : null,
-      onlineMax: editing.allowsOnline ? clamp(editing.onlineMax) : null,
-    };
-    const others = template.days[editing.day]!.filter((_, i) => i !== editing.index);
-    const parsed = agendaWeekTemplateSchema.safeParse({ days: template.days.map((s, i) => (i === editing.day ? [...others, slot] : s)) });
-    if (parsed.success) return { slot, error: null };
-    if (editing.end <= editing.start) return { slot, error: "L'orario di fine deve essere dopo l'orario di inizio." };
-    if (!editing.allowsHome && !editing.allowsOnline) return { slot, error: "Seleziona almeno una modalità (a domicilio o online)." };
-    return { slot, error: "Questa fascia si sovrappone a un'altra dello stesso giorno." };
-  })();
-
-  function saveEditing() {
-    if (!editing || !editingError || editingError.error) return;
-    const others = template.days[editing.day]!.filter((_, i) => i !== editing.index);
-    setDay(editing.day, [...others, editingError.slot]);
-    setEditing(null);
+  function setSpecial(day: number, ranges: Range[] | null) {
+    const special = { ...draft.special };
+    if (ranges) special[day] = ranges;
+    else delete special[day];
+    update({ special });
   }
 
   return (
-    <div className="ag-card" style={{ padding: 20 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-        <h2 style={{ fontSize: 19 }}>Settimana tipo</h2>
-        <span className="ag-muted" style={{ fontSize: 13 }} aria-live="polite">
-          {saving ? "Salvo..." : "Salvata"}
-        </span>
-      </div>
-      <p className="ag-muted" style={{ fontSize: 13.5, marginTop: 4 }}>
-        I tuoi orari soliti, uguali ogni settimana. Applicali a un mese e poi cambia i singoli giorni qui sotto.
+    <section className="ag-card ag-wt" aria-labelledby="ag-wt-title">
+      <h2 id="ag-wt-title" style={{ fontSize: 19 }}>
+        La tua settimana
+      </h2>
+      <p className="ag-muted" style={{ fontSize: 14, marginTop: 4 }}>
+        Vale per tutte le settimane. Un giorno diverso lo cambi in &quot;Giorno per giorno&quot;.
       </p>
 
-      <div style={{ marginTop: 6 }}>
-        {WEEK_ORDER.map((day) => {
-          const slots = template.days[day] ?? [];
-          return (
-            <div key={day} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderTop: "1px solid var(--ag-line)", flexWrap: "wrap" }}>
-              <div style={{ width: 96, flex: "none" }}>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>{WEEKDAY_FULL_LABELS[day]}</div>
-                <div className="ag-muted" style={{ fontSize: 12 }}>
-                  {hoursLabel(slots)}
+      <div className="ag-wt-body">
+        <div className="ag-wt-steps">
+          <fieldset className="ag-wt-step">
+            <legend>1. Che giorni lavori?</legend>
+            <div className="ag-wt-days">
+              {WEEK_ORDER.map((day) => {
+                const on = draft.workDays.includes(day);
+                return (
+                  <button key={day} type="button" className={`ag-wt-day${on ? " is-on" : ""}`} aria-pressed={on} onClick={() => toggleDay(day)}>
+                    <DayName day={day} />
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+
+          <fieldset className="ag-wt-step">
+            <legend>2. In che orari?</legend>
+            <div className="ag-wt-presets" role="radiogroup" aria-label="Orari di tutti i giorni">
+              {PRESETS.map((preset) => (
+                <label key={preset.id} className={`ag-wt-preset${activePreset === preset.id ? " is-on" : ""}`}>
+                  <input type="radio" name="ag-wt-preset" checked={activePreset === preset.id} onChange={() => update({ base: preset.ranges })} />
+                  <span>
+                    <b>{preset.label}</b>
+                    <span className="ag-muted">{rangesLabel(preset.ranges)}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            <p className="ag-wt-hint ag-muted">{activePreset ? "Puoi ritoccare gli orari:" : "I tuoi orari:"}</p>
+            <RangesEditor ranges={draft.base} onChange={(base) => update({ base })} label="Tutti i giorni" />
+            <div className="ag-wt-mode">
+              <span className="ag-muted">Come lavori</span>
+              <button
+                type="button"
+                className={`ag-wt-chip${draft.mode.allowsHome ? " is-on" : ""}`}
+                aria-pressed={draft.mode.allowsHome}
+                onClick={() => update({ mode: { ...draft.mode, allowsHome: !draft.mode.allowsHome } })}
+              >
+                {draft.mode.allowsHome ? <Check size={15} aria-hidden /> : null} A domicilio
+              </button>
+              <button
+                type="button"
+                className={`ag-wt-chip${draft.mode.allowsOnline ? " is-on" : ""}`}
+                aria-pressed={draft.mode.allowsOnline}
+                onClick={() => update({ mode: { ...draft.mode, allowsOnline: !draft.mode.allowsOnline } })}
+              >
+                {draft.mode.allowsOnline ? <Check size={15} aria-hidden /> : null} Online
+              </button>
+              <label className="ag-wt-per-slot">
+                <span className="ag-muted">Clienti per orario</span>
+                <select className="ag-input" value={draft.mode.perSlot} onChange={(e) => update({ mode: { ...draft.mode, perSlot: Number(e.target.value) } })}>
+                  {[1, 2, 3, 4, 5, 10, 20].map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            {!draft.mode.allowsHome && !draft.mode.allowsOnline ? (
+              <p className="ag-wt-error" role="alert">
+                Scegli almeno A domicilio oppure Online.
+              </p>
+            ) : null}
+          </fieldset>
+
+          <fieldset className="ag-wt-step">
+            <legend>3. Un giorno ha orari diversi?</legend>
+            {specialDays.length === 0 && !adding ? <p className="ag-muted ag-wt-hint">No, tutti i giorni di lavoro hanno gli stessi orari.</p> : null}
+            {specialDays.map((day) =>
+              openDay === day ? (
+                <div key={day} className="ag-wt-special is-open">
+                  <b>{WEEKDAY_FULL_LABELS[day]}</b>
+                  <RangesEditor ranges={draft.special[day]!} onChange={(ranges) => setSpecial(day, ranges)} label={WEEKDAY_FULL_LABELS[day]!} />
+                  <div className="ag-wt-special-actions">
+                    <button type="button" className="ag-btn sm" onClick={() => setOpenDay(null)}>
+                      Fatto
+                    </button>
+                    <button
+                      type="button"
+                      className="ag-btn sm ag-wt-ghost"
+                      onClick={() => {
+                        setSpecial(day, null);
+                        setOpenDay(null);
+                      }}
+                    >
+                      Come gli altri giorni
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div key={day} className="ag-wt-special">
+                  <span>
+                    <b>{WEEKDAY_FULL_LABELS[day]}</b>
+                    <span className="ag-muted"> · {rangesLabel(draft.special[day]!)}</span>
+                  </span>
+                  <button type="button" className="ag-btn sm" onClick={() => setOpenDay(day)} aria-label={`Cambia gli orari di ${WEEKDAY_FULL_LABELS[day]?.toLowerCase()}`}>
+                    Cambia
+                  </button>
+                </div>
+              ),
+            )}
+            {adding ? (
+              <div className="ag-wt-pick" role="group" aria-label="Quale giorno?">
+                <span className="ag-muted">Quale giorno?</span>
+                <div className="ag-wt-days">
+                  {sameDays.map((day) => (
+                    <button
+                      key={day}
+                      type="button"
+                      className="ag-wt-day"
+                      onClick={() => {
+                        setSpecial(day, draft.base);
+                        setOpenDay(day);
+                        setAdding(false);
+                      }}
+                    >
+                      <DayName day={day} />
+                    </button>
+                  ))}
+                  <button type="button" className="ag-btn sm ag-wt-ghost" onClick={() => setAdding(false)}>
+                    Annulla
+                  </button>
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", flex: 1, minWidth: 180 }}>
-                {slots.map((slot, index) => (
-                  <button
-                    key={`${slot.start}-${slot.end}`}
-                    type="button"
-                    className="ag-btn sm"
-                    style={{ borderColor: "var(--ag-green)", color: "var(--ag-green-dark)", background: "var(--ag-free)" }}
-                    onClick={() => openEdit(day, index)}
-                    aria-label={`Modifica fascia ${WEEKDAY_FULL_LABELS[day]} ${slot.start}–${slot.end}`}
-                  >
-                    {slot.start}–{slot.end}
-                    {slot.allowsOnline ? <Video size={14} aria-label="anche online" /> : null}
-                  </button>
-                ))}
-                <button type="button" className="ag-btn sm" style={{ borderStyle: "dashed" }} onClick={() => openNew(day)} aria-label={`Aggiungi fascia il ${WEEKDAY_FULL_LABELS[day]}`}>
-                  <Plus size={15} aria-hidden /> {slots.length === 0 ? "Aggiungi" : ""}
-                </button>
-                {slots.length > 0 ? (
-                  // "Giorno libero", non "Chiudi": vale per tutte le settimane, non chiude
-                  // un giorno preciso (T1 del test dei compiti, docs/CHANGELOG.md §311).
-                  <button type="button" className="ag-link" style={{ fontSize: 13, color: "var(--ag-muted)" }} onClick={() => setDay(day, [])}>
-                    Giorno libero<span className="sr-only"> ogni {WEEKDAY_FULL_LABELS[day]?.toLowerCase()}</span>
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          );
-        })}
+            ) : sameDays.length > 0 && draft.workDays.length > 1 ? (
+              <button type="button" className="ag-wt-add" onClick={() => setAdding(true)}>
+                <Plus size={16} aria-hidden /> Aggiungi un giorno diverso
+              </button>
+            ) : null}
+          </fieldset>
+        </div>
+
+        <div className="ag-wt-aside">
+          <h3>Come la vedono i clienti</h3>
+          <WeekPreview template={next} />
+        </div>
       </div>
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-        <span className="ag-muted" style={{ fontSize: 13, alignSelf: "center" }}>
-          Dal lunedì al venerdì:
+      <div className="ag-wt-footer">
+        <span className="ag-muted" aria-live="polite">
+          {draft.workDays.length === 0 ? "Nessun giorno di lavoro" : `${hoursText} a settimana`}
+          {" · "}
+          {saving ? "Salvo..." : dirty || !active ? "Non ancora salvata" : "Salvata, vale per tutte le settimane"}
         </span>
-        {PRESETS.map((preset) => (
-          <button
-            key={preset.label}
-            type="button"
-            className="ag-btn sm"
-            onClick={() => onChange({ days: template.days.map((s, day) => (day >= 1 && day <= 5 ? preset.slots : s)) })}
-          >
-            {preset.label}
-          </button>
-        ))}
-      </div>
-
-      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginTop: 18, paddingTop: 16, borderTop: "1px solid var(--ag-line)" }}>
-        <label htmlFor="ag-apply-month" style={{ fontWeight: 600, fontSize: 14 }}>
-          Applica a
-        </label>
-        <select id="ag-apply-month" className="ag-input" value={monthKey} onChange={(e) => setMonthKey(e.target.value)}>
-          {months.map((m) => (
-            <option key={m.key} value={m.key}>
-              {m.label}
-            </option>
-          ))}
-        </select>
-        <button type="button" className="ag-btn primary" onClick={() => onApply(monthKey)}>
-          Applica
+        <button type="button" className="ag-btn primary" disabled={!valid || saving || (!dirty && active)} onClick={() => onSave(next)}>
+          Salva la settimana
         </button>
       </div>
-
-      {editing ? (
-        <SlotEditorModal
-          dayLabel={`${WEEKDAY_FULL_LABELS[editing.day]} · settimana tipo`}
-          start={editing.start}
-          end={editing.end}
-          allowsHome={editing.allowsHome}
-          allowsOnline={editing.allowsOnline}
-          homeMax={editing.homeMax}
-          onlineMax={editing.onlineMax}
-          liveError={editingError?.error ?? null}
-          onStartChange={(start) => setEditing({ ...editing, start })}
-          onEndChange={(end) => setEditing({ ...editing, end })}
-          onAllowsHomeChange={(allowsHome) => setEditing({ ...editing, allowsHome })}
-          onAllowsOnlineChange={(allowsOnline) => setEditing({ ...editing, allowsOnline })}
-          onHomeMaxChange={(homeMax) => setEditing({ ...editing, homeMax })}
-          onOnlineMaxChange={(onlineMax) => setEditing({ ...editing, onlineMax })}
-          onSave={saveEditing}
-          onCancel={() => setEditing(null)}
-          onDelete={
-            editing.index !== null
-              ? () => {
-                  setDay(editing.day, template.days[editing.day]!.filter((_, i) => i !== editing.index));
-                  setEditing(null);
-                }
-              : undefined
-          }
-          hasUpcomingBooking={false}
-          isNew={editing.index === null}
-          canRepeatForMonth={false}
-          repeatForMonth={false}
-          onRepeatForMonthChange={() => {}}
-          repeatWeekdayLabel=""
-          repeatMonthLabel=""
-        />
-      ) : null}
-    </div>
+    </section>
   );
 }

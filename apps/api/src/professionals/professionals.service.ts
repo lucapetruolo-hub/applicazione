@@ -9,6 +9,7 @@ import {
   PUBLIC_AGENDA_DAYS,
   SEARCH_RADIUS_KM,
   type AvailabilitySlotInput,
+  weekTemplateDatesKept,
   type BookAgendaSlotInput,
   type DeclineLeadInput,
   type MyAvailability,
@@ -1568,10 +1569,26 @@ export class ProfessionalsService {
     // Tutto o niente (docs/CHANGELOG.md §287): se la creazione fallisce le
     // fasce di prima restano, invece di sparire con il solo deleteMany.
     await this.prisma.$transaction(async (tx) => {
+      // Un giorno resta "della settimana tipo" solo se le sue fasce non sono
+      // cambiate: cambiarle a mano ne fa un giorno a sé (docs/CHANGELOG.md §320).
+      const previous = await tx.availabilitySlot.findMany({ where: { professionalProfileId } });
+      const toTemplateSlot = (s: { startTime: string; endTime: string; allowsHome: boolean; allowsOnline: boolean; homeMaxBookings?: number | null; onlineMaxBookings?: number | null }) => ({
+        start: s.startTime,
+        end: s.endTime,
+        allowsHome: s.allowsHome,
+        allowsOnline: s.allowsOnline,
+        homeMax: s.allowsHome ? (s.homeMaxBookings ?? 1) : null,
+        onlineMax: s.allowsOnline ? (s.onlineMaxBookings ?? 1) : null,
+      });
+      const templateDates = weekTemplateDatesKept(
+        previous.map((s) => ({ date: s.date ? s.date.toISOString().slice(0, 10) : null, fromWeekTemplate: s.fromWeekTemplate, slot: toTemplateSlot(s) })),
+        slots.map((s) => ({ date: s.date ?? null, slot: toTemplateSlot(s) })),
+      );
       await tx.availabilitySlot.deleteMany({ where: { professionalProfileId } });
       if (!slots.length) return;
       await tx.availabilitySlot.createMany({
         data: slots.map((slot) => ({
+          fromWeekTemplate: slot.date ? templateDates.has(slot.date) : false,
           professionalProfileId,
           dayOfWeek: slot.dayOfWeek,
           startTime: slot.startTime,
