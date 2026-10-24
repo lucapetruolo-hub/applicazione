@@ -2,7 +2,9 @@
 // profilo "mobile" di Lighthouse (Moto G Power, CPU rallentata 4 volte,
 // rete 4G lenta simulata). Blocca sotto i limiti "scarso" di Google
 // (BUDGET) e avvisa sotto quelli "buono" (GOOD), che sono l'obiettivo.
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { chromium } from "@playwright/test";
 import lighthouse from "lighthouse";
 
@@ -14,15 +16,24 @@ const GOOD = { performance: 90, accessibility: 100, "best-practices": 100, lcpMs
 
 const data = JSON.parse(readFileSync(new URL("../.auth/data.json", import.meta.url), "utf8"));
 // CHROMIUM_PATH: solo per provarlo in locale con un Chromium già installato.
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH, args: [`--remote-debugging-port=${PORT}`] });
-const context = await browser.newContext();
-const page = await context.newPage();
+// Contesto persistente: Lighthouse apre la sua scheda nel contesto
+// predefinito del browser, quindi la sessione va scritta lì. Con
+// `browser.newContext()` finiva in un contesto separato e Lighthouse
+// misurava la pagina "Accedi" invece dell'agenda (docs/CHANGELOG.md §319).
+const context = await chromium.launchPersistentContext(mkdtempSync(join(tmpdir(), "lighthouse-")), {
+  executablePath: process.env.CHROMIUM_PATH,
+  args: [`--remote-debugging-port=${PORT}`],
+});
+const page = context.pages()[0] ?? (await context.newPage());
 // Sessione già aperta: Lighthouse non deve cancellare i dati del sito (disableStorageReset).
 await page.goto(WEB_URL);
 await page.evaluate((token) => {
   localStorage.setItem("professionisti_token", token);
   localStorage.setItem("cookie-consent-v1", "denied");
 }, data.token);
+// La sessione deve funzionare davvero: altrimenti si misurerebbe la pagina "Accedi".
+await page.goto(`${WEB_URL}/dashboard/agenda`);
+await page.locator(".ag-strip-row, .ag-card").first().waitFor({ state: "attached", timeout: 30000 });
 
 const pages = [
   { name: "calendario", path: "/dashboard/agenda" },
@@ -74,7 +85,7 @@ for (const item of pages) {
   const toImprove = check(GOOD);
   if (toImprove.length) console.warn(`△ ${item.name}, da migliorare: ${toImprove.join(", ")}`);
 }
-await browser.close();
+await context.close();
 console.table(rows);
 mkdirSync(new URL("../lighthouse-results/", import.meta.url), { recursive: true });
 writeFileSync(new URL("../lighthouse-results/agenda.json", import.meta.url), JSON.stringify(rows, null, 2));

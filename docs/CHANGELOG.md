@@ -20317,3 +20317,13 @@ Non fatto qui: zod 4 (aggiornamento grande, rischio basso: il corpo JSON ha già
 **Frecce nella striscia dei giorni**: con la striscia in cima (T7, §311) le frecce di "Giorno per giorno" erano sparite. Ora la striscia, nel Calendario e in "Giorno per giorno", ha ai lati "Giorno precedente" e "Giorno successivo" (40×56 px, facili da toccare); i sette giorni si contano sempre da oggi, e passando oltre l'ultimo la striscia scorre ai sette successivi.
 
 **Verifica**: nuova prova delle frecce, 62 prove nel browser in locale, 568 test API.
+
+## 319. Lighthouse misura davvero l'agenda, piè di pagina che non salta
+
+Richiesta dell'utente: "effettua migliorie" (dopo l'elenco delle migliorie ancora possibili della §318).
+
+**La prova Lighthouse misurava la pagina "Accedi"**: `e2e/lighthouse/agenda.mjs` scriveva la sessione in un contesto Playwright separato (`browser.newContext()`), mentre Lighthouse apre la sua scheda nel contesto predefinito del browser. Risultato: dalla §309 la prova misurava la pagina "Accedi come professionista" con l'indirizzo dell'agenda (il controllo sull'indirizzo finale passava lo stesso). Anche i numeri della §318 (TBT da ~900 a ~600 ms, CLS 0,14) erano di quella pagina. Ora il browser parte con un contesto persistente, la sessione si scrive lì e prima di misurare si controlla che l'agenda si apra davvero. Con l'agenda vera, in locale: CLS 0,001, TBT tra 480 e 680 ms a seconda del giro (macchina rumorosa; in CI i tempi sono più bassi), accessibilità 100. Il tempo è distribuito tra React e la libreria dei componenti del sito, non in un punto solo dell'agenda: togliere il piè di pagina non cambiava nulla (provato e annullato).
+
+**Piè di pagina che saltava**: nell'area professionista, mentre la pagina caricava, il piè di pagina compariva subito sotto il menu e poi veniva spinto giù dal contenuto (spostamento da 0,8 su un telefono lento). `.acct-main` ora è alto almeno quanto lo schermo, così il piè di pagina resta sotto fino alla fine del caricamento.
+
+**Verifica**: Lighthouse locale sulle due pagine dell'agenda con sessione vera (CLS 0,001); registrazione degli spostamenti con Playwright su telefono lento senza più lo spostamento del piè di pagina.
