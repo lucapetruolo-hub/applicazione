@@ -36,6 +36,11 @@ export type CalendarShellProps = {
    * rischio di regressione lì.
    */
   renderYearList?: () => ReactNode;
+  /**
+   * Vista Giorno senza frecce, data e intestazione del giorno: il chiamante
+   * mostra già la striscia della settimana (T7, docs/CHANGELOG.md §299).
+   */
+  dayStripAbove?: boolean;
 };
 
 const BASE_VIEW_LABELS: { value: CalendarView; label: string }[] = [
@@ -63,7 +68,9 @@ export function CalendarShell({
   renderDayColumn,
   renderMonthCell,
   renderYearList,
+  dayStripAbove = false,
 }: CalendarShellProps) {
+  const compactDay = dayStripAbove && view === "day";
   const viewLabels = renderYearList ? [...BASE_VIEW_LABELS, { value: "year" as const, label: "Anno" }] : BASE_VIEW_LABELS;
   const today = todayUtc();
   // Vista a schermo intero (richiesta esplicita dell'utente per una
@@ -155,14 +162,11 @@ export function CalendarShell({
                 cursor="pointer"
                 onPress={() => onViewChange(item.value)}
                 accessibilityRole="button"
-                style={{ transition: `background-color ${motionFast} ${motionEasing}` }}
+                style={{
+                  transition: `background-color ${motionFast} ${motionEasing}`,
+                }}
               >
-                <Text
-                  fontFamily="$body"
-                  fontSize={13}
-                  fontWeight="600"
-                  color={active ? brand.grafite : brand.grafite70}
-                >
+                <Text fontFamily="$body" fontSize={13} fontWeight="600" color={active ? brand.grafite : brand.grafite70}>
                   {item.label}
                 </Text>
               </XStack>
@@ -171,57 +175,61 @@ export function CalendarShell({
         </XStack>
 
         <XStack alignItems="center" gap="$3">
-          <XStack
-            paddingHorizontal="$2"
-            height={30}
-            borderRadius="$2"
-            borderWidth={1}
-            borderColor={brand.filetto}
-            alignItems="center"
-            justifyContent="center"
-            cursor="pointer"
-            onPress={() => onNavigate(today)}
-            accessibilityRole="button"
-          >
-            <Text fontFamily="$body" fontSize={12} fontWeight="600" color={brand.grafite}>
-              Oggi
-            </Text>
-          </XStack>
-          <XStack alignItems="center" gap="$2">
-            <XStack
-              width={30}
-              height={30}
-              borderRadius="$2"
-              borderWidth={1}
-              borderColor={brand.filetto}
-              alignItems="center"
-              justifyContent="center"
-              cursor="pointer"
-              onPress={handlePrev}
-              accessibilityRole="button"
-              accessibilityLabel="Periodo precedente"
-            >
-              <Icon name="chevron-left" size={15} color={brand.grafite} />
-            </XStack>
-            <Text fontFamily="$body" fontSize={13} fontWeight="600" color={brand.grafite} minWidth={140} textAlign="center">
-              {rangeLabel}
-            </Text>
-            <XStack
-              width={30}
-              height={30}
-              borderRadius="$2"
-              borderWidth={1}
-              borderColor={brand.filetto}
-              alignItems="center"
-              justifyContent="center"
-              cursor="pointer"
-              onPress={handleNext}
-              accessibilityRole="button"
-              accessibilityLabel="Periodo successivo"
-            >
-              <Icon name="chevron-right" size={15} color={brand.grafite} />
-            </XStack>
-          </XStack>
+          {compactDay ? null : (
+            <>
+              <XStack
+                paddingHorizontal="$2"
+                height={30}
+                borderRadius="$2"
+                borderWidth={1}
+                borderColor={brand.filetto}
+                alignItems="center"
+                justifyContent="center"
+                cursor="pointer"
+                onPress={() => onNavigate(today)}
+                accessibilityRole="button"
+              >
+                <Text fontFamily="$body" fontSize={12} fontWeight="600" color={brand.grafite}>
+                  Oggi
+                </Text>
+              </XStack>
+              <XStack alignItems="center" gap="$2">
+                <XStack
+                  width={30}
+                  height={30}
+                  borderRadius="$2"
+                  borderWidth={1}
+                  borderColor={brand.filetto}
+                  alignItems="center"
+                  justifyContent="center"
+                  cursor="pointer"
+                  onPress={handlePrev}
+                  accessibilityRole="button"
+                  accessibilityLabel="Periodo precedente"
+                >
+                  <Icon name="chevron-left" size={15} color={brand.grafite} />
+                </XStack>
+                <Text fontFamily="$body" fontSize={13} fontWeight="600" color={brand.grafite} minWidth={140} textAlign="center">
+                  {rangeLabel}
+                </Text>
+                <XStack
+                  width={30}
+                  height={30}
+                  borderRadius="$2"
+                  borderWidth={1}
+                  borderColor={brand.filetto}
+                  alignItems="center"
+                  justifyContent="center"
+                  cursor="pointer"
+                  onPress={handleNext}
+                  accessibilityRole="button"
+                  accessibilityLabel="Periodo successivo"
+                >
+                  <Icon name="chevron-right" size={15} color={brand.grafite} />
+                </XStack>
+              </XStack>
+            </>
+          )}
           <XStack
             width={30}
             height={30}
@@ -254,11 +262,18 @@ export function CalendarShell({
             seguito nella Fase "motion" del redesign (CLAUDE.md §10). */}
         <div key={view} className="cal-grid-fade">
           {view === "year" ? (
-            renderYearList ? renderYearList() : null
+            renderYearList ? (
+              renderYearList()
+            ) : null
           ) : view === "month" ? (
             <MonthGrid currentDate={currentDate} today={today} onSelectDay={onSelectDay} renderMonthCell={renderMonthCell} />
           ) : (
-            <WeekOrDayGrid days={view === "day" ? [currentDate] : weekDays(currentDate)} today={today} renderDayColumn={renderDayColumn} />
+            <WeekOrDayGrid
+              days={view === "day" ? [currentDate] : weekDays(currentDate)}
+              today={today}
+              renderDayColumn={renderDayColumn}
+              hideHeader={compactDay}
+            />
           )}
         </div>
       </div>
@@ -322,38 +337,50 @@ export function CalendarShell({
   );
 }
 
-function WeekOrDayGrid({ days, today, renderDayColumn }: { days: Date[]; today: Date; renderDayColumn: (date: Date) => ReactNode }) {
+function WeekOrDayGrid({
+  days,
+  today,
+  renderDayColumn,
+  hideHeader = false,
+}: {
+  days: Date[];
+  today: Date;
+  renderDayColumn: (date: Date) => ReactNode;
+  hideHeader?: boolean;
+}) {
   return (
     <div className="cal-week-grid" style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}>
       {days.map((date) => {
         const isToday = isSameDateUtc(date, today);
         return (
           <YStack key={date.toISOString()} borderRightWidth={1} borderRightColor={brand.filetto} minWidth={0} overflow="hidden">
-            <YStack
-              paddingVertical="$2"
-              paddingHorizontal="$2"
-              borderBottomWidth={1}
-              borderBottomColor={brand.filetto}
-              backgroundColor={brand.gesso}
-              alignItems="center"
-              gap="$1"
-            >
-              <Text fontFamily="$body" fontSize={11} fontWeight="600" color={brand.grafite70}>
-                {weekdayShortLabel(date)}
-              </Text>
-              <XStack
-                width={26}
-                height={26}
-                borderRadius={13}
+            {hideHeader ? null : (
+              <YStack
+                paddingVertical="$2"
+                paddingHorizontal="$2"
+                borderBottomWidth={1}
+                borderBottomColor={brand.filetto}
+                backgroundColor={brand.gesso}
                 alignItems="center"
-                justifyContent="center"
-                backgroundColor={isToday ? brand.grafite : "transparent"}
+                gap="$1"
               >
-                <Text fontFamily="$body" fontWeight="600" fontSize={14} color={isToday ? "white" : brand.grafite}>
-                  {date.getUTCDate()}
+                <Text fontFamily="$body" fontSize={11} fontWeight="600" color={brand.grafite70}>
+                  {weekdayShortLabel(date)}
                 </Text>
-              </XStack>
-            </YStack>
+                <XStack
+                  width={26}
+                  height={26}
+                  borderRadius={13}
+                  alignItems="center"
+                  justifyContent="center"
+                  backgroundColor={isToday ? brand.grafite : "transparent"}
+                >
+                  <Text fontFamily="$body" fontWeight="600" fontSize={14} color={isToday ? "white" : brand.grafite}>
+                    {date.getUTCDate()}
+                  </Text>
+                </XStack>
+              </YStack>
+            )}
             <YStack padding="$2" gap="$2" minHeight={220} minWidth={0} overflow="hidden">
               {renderDayColumn(date)}
             </YStack>

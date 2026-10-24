@@ -87,6 +87,8 @@ export function AppointmentPanel({
   const online = booking.serviceMode === "ONLINE";
   const isOpen = booking.status === "PENDING" || booking.status === "CONFIRMED";
   // Anche un giorno in mezzo a un lavoro su più giorni (§298).
+  // "Lavoro completato" dal giorno del lavoro in poi (T11, docs/CHANGELOG.md §299).
+  const startsLater = new Date(booking.scheduledAt).toISOString().slice(0, 10) > wallClockToday().toISOString().slice(0, 10);
   const isToday = jobOccurrenceOn(booking.scheduledAt, booking.scheduledEndAt, wallClockToday().toISOString().slice(0, 10)) !== null;
   const pill = STATUS_PILL[booking.status];
   const payment = agendaPaymentLine(booking);
@@ -245,7 +247,7 @@ export function AppointmentPanel({
               <button type="button" className="ag-btn primary" disabled={isBusy} onClick={onConfirm}>
                 Conferma
               </button>
-            ) : (
+            ) : startsLater ? null : (
               <button type="button" className="ag-btn primary" disabled={isBusy} onClick={onComplete}>
                 Lavoro completato
               </button>

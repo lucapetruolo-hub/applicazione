@@ -71,7 +71,7 @@ test("C2 chiudo un giorno (venerdì) per un impegno", async ({ page }) => {
   await section.scrollIntoViewIfNeeded();
   log.ops.push("T"); // venerdì 30 nella striscia
   await section.getByRole("group", { name: "Giorni della settimana" }).getByRole("button", { name: /30/ }).click();
-  await expect(section).toContainText("30 Ottobre 2026");
+  await expect(section.getByRole("button", { name: /30/, pressed: true })).toBeVisible();
   log.ops.push("M", "T");
   await timed(log, async () => {
     await section.getByRole("button", { name: "Chiudi venerdì 30", exact: true }).click();
@@ -134,8 +134,8 @@ test("C5 aggiungo un lavoro preso fuori dalla piattaforma", async ({ page }) => 
   const log: Log = { ops: [], waitMs: 0 };
   await openAgenda(page, log);
   log.ops.push("M", "T");
-  await page.getByRole("button", { name: "Aggiungi un lavoro esterno" }).click();
-  const modal = page.getByRole("dialog", { name: "Aggiungi lavoro esterno" });
+  await page.getByRole("button", { name: "Aggiungi lavoro" }).click();
+  const modal = page.getByRole("dialog", { name: "Aggiungi un tuo lavoro" });
   await expect(modal).toBeVisible();
   log.ops.push("M", "T", "K11"); // "Mario Rossi"
   await modal.getByRole("textbox", { name: "Nome cliente" }).fill("Mario Rossi");

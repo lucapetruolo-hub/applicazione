@@ -1296,6 +1296,14 @@ function DashboardAgendaContent() {
   const now = wallClockNow(new Date(nowTick));
   const today = todayUtc();
   const todayStr = toIsoDate(today);
+  // Striscia dei giorni: oggi e i 6 dopo, così la domenica sera "domani" è
+  // a un tocco (T4 del test dei compiti, docs/CHANGELOG.md §299); per un
+  // giorno più lontano o passato, la sua settimana da lunedì.
+  function stripDays(current: Date): Date[] {
+    const offset = Math.round((startOfDayUtc(current).getTime() - startOfDayUtc(today).getTime()) / 86_400_000);
+    if (offset >= 0 && offset < 7) return Array.from({ length: 7 }, (_, i) => addDaysUtc(today, i));
+    return weekDays(current);
+  }
   const nowMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
   const closedSet = new Set(exceptionDates);
 
@@ -1509,12 +1517,14 @@ function DashboardAgendaContent() {
 
   /** Ferie: chiude in un colpo tutti i giorni tra due date. */
   async function addVacation() {
-    if (!token || !vacationFrom || !vacationTo || vacationTo < vacationFrom) return;
+    // "Al" vuoto = un giorno solo (T1 del test dei compiti, docs/CHANGELOG.md §299).
+    const until = vacationTo || vacationFrom;
+    if (!token || !vacationFrom || until < vacationFrom) return;
     setVacationBusy(true);
     setError(null);
     try {
       let latest = exceptionDates;
-      for (let d = parseIsoDate(vacationFrom); toIsoDate(d) <= vacationTo; d = addDaysUtc(d, 1)) {
+      for (let d = parseIsoDate(vacationFrom); toIsoDate(d) <= until; d = addDaysUtc(d, 1)) {
         const dateStr = toIsoDate(d);
         if (latest.includes(dateStr) || dateStr < todayStr) continue;
         latest = (await apiClient.addAvailabilityException(token, dateStr)).exceptionDates;
@@ -1614,7 +1624,16 @@ function DashboardAgendaContent() {
           </div>
         ) : null}
 
-        {slots.length === 0 && activeTab !== "orari" ? (
+        {slots.length === 0 && activeTab !== "orari" && weekTemplate?.days.some((d) => d.length > 0) ? (
+          // Settimana tipo salvata ma non ancora applicata: prima si leggeva
+          // "non hai orari" (T6 del test dei compiti, docs/CHANGELOG.md §299).
+          <div className="ag-banner info">
+            <span>La tua settimana tipo è pronta: applicala al mese per farti prenotare.</span>
+            <button type="button" className="ag-btn sm" onClick={() => applyWeekTemplate(templateMonths[0]!.key)}>
+              Applica a {templateMonths[0]!.label}
+            </button>
+          </div>
+        ) : slots.length === 0 && activeTab !== "orari" ? (
           <div className="ag-banner info">
             <span>Non hai ancora orari di lavoro: aggiungili e i clienti potranno prenotarti più facilmente.</span>
             <button type="button" className="ag-btn sm" onClick={() => setActiveTab("orari")}>
@@ -1732,7 +1751,7 @@ function DashboardAgendaContent() {
               {bookingView === "day" ? (
                 <>
                   <div className="ag-strip" role="group" aria-label="Giorni della settimana">
-                    {weekDays(bookingCurrentDate).map((date) => {
+                    {stripDays(bookingCurrentDate).map((date) => {
                       const dateStr = toIsoDate(date);
                       return (
                         <button
@@ -1802,23 +1821,11 @@ function DashboardAgendaContent() {
           </div>
         ) : activeTab === "orari" ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            {weekTemplate ? (
-              <WeekTemplateEditor template={weekTemplate} onChange={changeWeekTemplate} months={templateMonths} onApply={applyWeekTemplate} saving={savingTemplate} />
-            ) : (
-              <SkeletonBlock height={360} radius={20} />
-            )}
-            {templateNotice ? (
-              <div className="ag-banner info" role="status" style={{ marginBottom: 0 }}>
-                {templateNotice}
-              </div>
-            ) : null}
-
-            <ZoneDemandCard demand={zoneDemand} template={weekTemplate} onAdd={addDemandSlot} />
-
+            {/* Chiudere un giorno è il compito più frequente della scheda: prima di tutto (T1, §299). */}
             <div className="ag-card" style={{ padding: 20 }}>
-              <h2 style={{ fontSize: 19 }}>Ferie e chiusure</h2>
+              <h2 style={{ fontSize: 19 }}>Chiudi un giorno o le ferie</h2>
               <p className="ag-muted" style={{ fontSize: 13.5, marginTop: 4 }}>
-                I giorni chiusi non si possono prenotare.
+                Per un giorno solo basta &quot;Dal&quot;. I giorni chiusi non si possono prenotare.
               </p>
               <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap", marginTop: 12 }}>
                 <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600 }}>
@@ -1826,11 +1833,11 @@ function DashboardAgendaContent() {
                   <ItalianDateInput className="ag-input" min={todayStr} value={vacationFrom} onChange={setVacationFrom} />
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600 }}>
-                  Al
+                  Al (facoltativo)
                   <ItalianDateInput className="ag-input" min={vacationFrom || todayStr} value={vacationTo} onChange={setVacationTo} />
                 </label>
-                <button type="button" className="ag-btn" disabled={vacationBusy || !vacationFrom || !vacationTo || vacationTo < vacationFrom} onClick={() => void addVacation()}>
-                  {vacationBusy ? "Salvo..." : "Chiudi questi giorni"}
+                <button type="button" className="ag-btn" disabled={vacationBusy || !vacationFrom || (vacationTo !== "" && vacationTo < vacationFrom)} onClick={() => void addVacation()}>
+                  {vacationBusy ? "Salvo..." : !vacationTo || vacationTo === vacationFrom ? "Chiudi questo giorno" : "Chiudi questi giorni"}
                 </button>
               </div>
               {upcomingClosed.length > 0 ? (
@@ -1843,15 +1850,28 @@ function DashboardAgendaContent() {
                       style={{ border: 0, cursor: "pointer", height: 32 }}
                       disabled={exceptionBusyDate === dateStr}
                       onClick={() => void toggleException(dateStr)}
-                      aria-label={`Riapri il ${parseIsoDate(dateStr).getUTCDate()} ${monthLabel(parseIsoDate(dateStr))}`}
                     >
                       {weekdayShortLabel(parseIsoDate(dateStr))} {parseIsoDate(dateStr).getUTCDate()} {monthLabel(parseIsoDate(dateStr))}
+                      <span className="sr-only">, riapri</span>
                       <X size={13} aria-hidden />
                     </button>
                   ))}
                 </div>
               ) : null}
             </div>
+
+            {weekTemplate ? (
+              <WeekTemplateEditor template={weekTemplate} onChange={changeWeekTemplate} months={templateMonths} onApply={applyWeekTemplate} saving={savingTemplate} />
+            ) : (
+              <SkeletonBlock height={360} radius={20} />
+            )}
+            {templateNotice ? (
+              <div className="ag-banner info" role="status" style={{ marginBottom: 0 }}>
+                {templateNotice}
+              </div>
+            ) : null}
+
+            <ZoneDemandCard demand={zoneDemand} template={weekTemplate} onAdd={addDemandSlot} />
 
             <div className="ag-card" style={{ padding: 20 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 6 }}>
@@ -1893,7 +1913,7 @@ function DashboardAgendaContent() {
               {view === "day" ? (
                 // Striscia della settimana come nel Calendario: venerdì è a un tocco, non a quattro frecce (U1, §298).
                 <div className="ag-strip" role="group" aria-label="Giorni della settimana" style={{ marginBottom: 12 }}>
-                  {weekDays(currentDate).map((date) => {
+                  {stripDays(currentDate).map((date) => {
                     const dateStr = toIsoDate(date);
                     return (
                       <button
@@ -1910,6 +1930,7 @@ function DashboardAgendaContent() {
                 </div>
               ) : null}
               <CalendarShell
+                dayStripAbove
                 view={view}
                 onViewChange={setView}
                 currentDate={currentDate}
@@ -1938,8 +1959,9 @@ function DashboardAgendaContent() {
       </div>
 
       {activeTab === "calendario" ? (
-        <button type="button" className="ag-fab" onClick={() => setCreatingExternalJobFor(bookingCurrentDate)} aria-label="Aggiungi un lavoro esterno">
-          <Plus size={26} aria-hidden />
+        // Con la scritta: il solo "+" non diceva cosa aggiunge (T9, docs/CHANGELOG.md §299).
+        <button type="button" className="ag-fab" onClick={() => setCreatingExternalJobFor(bookingCurrentDate)}>
+          <Plus size={22} aria-hidden /> Aggiungi lavoro
         </button>
       ) : null}
 

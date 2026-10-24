@@ -155,6 +155,35 @@ export default function DashboardTodayPage() {
 
 
         {subscription ? <SubscriptionPauseBanner sub={subscription} profileStepsElsewhere /> : null}
+        {/* Il prossimo lavoro prima di tutto il resto: mezz'ora prima deve vedersi
+            senza scorrere (T2 del test dei compiti, docs/CHANGELOG.md §299). */}
+        {error ? null : (
+        <TodaySection title="Oggi e domani" action={{ href: "/dashboard/agenda", label: "Apri l'agenda" }}>
+          {loading ? (
+            <Skeletons />
+          ) : upcoming.length === 0 ? (
+            <EmptyLine text="Nessun appuntamento oggi e domani." />
+          ) : (
+            upcoming.map(({ booking, at }) => (
+              <Link
+                key={`${booking.id}-${at}`}
+                // Si apre l'appuntamento (indirizzo, Naviga, Chiama), non la richiesta (T3, §299).
+                href={`/dashboard/agenda?booking=${booking.id}`}
+                className="today-row"
+              >
+                <span className="today-time">{dayLabel(at)}</span>
+                <span className="today-row-main">
+                  <strong>{booking.clientName ?? "Cliente"}</strong>
+                  <span className="today-row-sub">
+                    {[booking.street && booking.houseNumber ? `${booking.street} ${booking.houseNumber}` : null, booking.city ?? booking.address, booking.items[0]?.name].filter(Boolean).join(" · ") || "Intervento"}
+                    {booking.status === "PENDING" ? " · da confermare" : ""}
+                  </span>
+                </span>
+              </Link>
+            ))
+          )}
+        </TodaySection>
+        )}
         {token ? <SetupJourneyCard token={token} /> : null}
         {user.agendaAttention ? <AgendaNotice attention={user.agendaAttention} /> : null}
         {restrictions ? <IssueSanctionBanner {...restrictions} /> : null}
@@ -215,30 +244,6 @@ export default function DashboardTodayPage() {
               </TodaySection>
             ) : null}
 
-            <TodaySection title="Oggi e domani" action={{ href: "/dashboard/agenda", label: "Apri l'agenda" }}>
-              {loading ? (
-                <Skeletons />
-              ) : upcoming.length === 0 ? (
-                <EmptyLine text="Nessun appuntamento oggi e domani." />
-              ) : (
-                upcoming.map(({ booking, at }) => (
-                  <Link
-                    key={`${booking.id}-${at}`}
-                    href={booking.guidedRequestId ? `/dashboard/richieste?open=${booking.guidedRequestId}` : `/dashboard/agenda?booking=${booking.id}`}
-                    className="today-row"
-                  >
-                    <span className="today-time">{dayLabel(at)}</span>
-                    <span className="today-row-main">
-                      <strong>{booking.clientName ?? "Cliente"}</strong>
-                      <span className="today-row-sub">
-                        {[booking.items[0]?.name, booking.city ?? booking.address].filter(Boolean).join(" · ") || "Intervento"}
-                        {booking.status === "PENDING" ? " · da confermare" : ""}
-                      </span>
-                    </span>
-                  </Link>
-                ))
-              )}
-            </TodaySection>
           </>
         )}
 

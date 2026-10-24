@@ -28,7 +28,7 @@ function minutes(time: string): number {
 
 function hoursLabel(slots: WeekTemplateSlot[]): string {
   const total = slots.reduce((sum, s) => sum + minutes(s.end) - minutes(s.start), 0);
-  if (total === 0) return "Chiuso";
+  if (total === 0) return "Libero";
   const h = Math.floor(total / 60);
   const m = total % 60;
   return m ? `${h} h ${m}` : `${h} h`;
@@ -120,7 +120,7 @@ export function WeekTemplateEditor({
         </span>
       </div>
       <p className="ag-muted" style={{ fontSize: 13.5, marginTop: 4 }}>
-        I tuoi orari soliti. Applicali a un mese e poi cambia i singoli giorni dal calendario qui sotto.
+        I tuoi orari soliti, uguali ogni settimana. Applicali a un mese e poi cambia i singoli giorni qui sotto.
       </p>
 
       <div style={{ marginTop: 6 }}>
@@ -152,8 +152,10 @@ export function WeekTemplateEditor({
                   <Plus size={15} aria-hidden /> {slots.length === 0 ? "Aggiungi" : ""}
                 </button>
                 {slots.length > 0 ? (
+                  // "Giorno libero", non "Chiudi": vale per tutte le settimane, non chiude
+                  // un giorno preciso (T1 del test dei compiti, docs/CHANGELOG.md §299).
                   <button type="button" className="ag-link" style={{ fontSize: 13, color: "var(--ag-muted)" }} onClick={() => setDay(day, [])}>
-                    Chiudi
+                    Giorno libero<span className="sr-only"> ogni {WEEKDAY_FULL_LABELS[day]?.toLowerCase()}</span>
                   </button>
                 ) : null}
               </div>

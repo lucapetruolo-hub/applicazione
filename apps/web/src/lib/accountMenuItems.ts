@@ -27,9 +27,11 @@ export const PROFESSIONAL_NAV: AccountNavGroup[] = [
     title: "Lavoro",
     items: [
       { href: "/dashboard", label: "Oggi", icon: "house" },
+      // Seconda: sul telefono la barra è scorrevole e l'Agenda, la voce più
+      // usata in giro, finiva tagliata a destra (T12, docs/CHANGELOG.md §299).
+      { href: "/dashboard/agenda", label: "Agenda", icon: "calendar" },
       { href: "/dashboard/richieste", label: "Richieste e lavori", icon: "file-text" },
       { href: "/chat", label: "Messaggi", icon: "message-circle" },
-      { href: "/dashboard/agenda", label: "Agenda", icon: "calendar" },
     ],
   },
   {

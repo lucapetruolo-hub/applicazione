@@ -20069,3 +20069,22 @@ La mappa con una chiave vera si vede solo sul sito pubblicato: dopo l'unione va 
 **Privacy (P1-P2)**: nell'informativa una frase su Open-Meteo e sugli indirizzi del giro inviati a Google; la copia dell'agenda scaduta si cancella; nella finestra del calendario collegato: "Se spegni la sincronizzazione, togli il calendario anche da Google o dall'iPhone: gli appuntamenti già copiati restano lì."
 
 **Verifica**: 568 test API dopo l'unione col ramo principale (nuovi: sovrapposizioni contro un controllo al minuto, lavori su più giorni nel file .ics letto con ical.js, 409 e rimborso dell'acconto), 52 prove nel browser in locale (nuove: doppie prenotazioni sull'API vera con richieste nello stesso istante, lavoro su più giorni, agenda riaperta senza rete del tutto), le prove D1-D4 falliscono sul codice di prima. Lighthouse in locale: calendario 89, orari 93, CLS 0. Tempi stimati dei compiti: C1 7,5 s, C2 9,7 s, C3 8,4 s, C4 10,8 s, C5 19,7 s, tutti sotto gli obiettivi.
+
+## 299. Agenda: test dei 5 compiti "come chi non conosce l'app" e correzioni T1-T12
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Agenda: correzioni e restyling"): "il test che avrei dovuto proporre a 5 professionisti effettualo da solo, fai finta che sei allo scuro di tutto e fai quel test", poi "risolvi tutti i problemi trovati". Risultati nel documento "Verifica dell'agenda come un esperto UX" (problemi T1-T12). Un test con professionisti veri resta da fare prima del lancio: questo non lo sostituisce.
+
+**Correzioni**:
+- T1 (alta): nella Settimana tipo "Chiudi" diventa "Giorno libero" (per il lettore di schermo "Giorno libero ogni venerdì"), l'orario "Libero"; in cima a "Orari di lavoro" la scheda "Chiudi un giorno o le ferie" con "Al (facoltativo)": per un giorno solo basta "Dal".
+- T2 (alta): in "Oggi" la sezione "Oggi e domani" sta subito sotto l'avviso di pausa, prima di profilo, disponibilità e numeri; sotto il nome via, civico e città.
+- T3: toccando un appuntamento in "Oggi" si apre il suo riquadro in agenda (`/dashboard/agenda?booking=...`), non la richiesta.
+- T4: la striscia dei giorni mostra oggi e i 6 giorni dopo quando si guarda la settimana corrente (la domenica sera "domani" c'è).
+- T5: sul telefono la vista Giorno non ha più uno scorrimento interno, si vede tutta scorrendo la pagina.
+- T6: se la settimana tipo è salvata ma non applicata, al posto di "Non hai ancora orari" compare "La tua settimana tipo è pronta: applicala al mese per farti prenotare." con il tasto "Applica a {mese}".
+- T7: in "Giorno per giorno" sul telefono, con la striscia, spariscono frecce, data e intestazione del giorno (prop `dayStripAbove` di `CalendarShell`).
+- T8: "Lavoro completato" porta il cursore sulla casella sbagliata, la colora di rosso (`aria-invalid`) e dice quale ("Scrivi l'importo di "Riparazione"."); la X per togliere una voce non è più rossa.
+- T9-T10: il tasto "+" diventa "Aggiungi lavoro"; la finestra si chiama "Aggiungi un tuo lavoro" con "Un lavoro preso fuori dall'app: lo vedi in agenda insieme agli altri.", che va a capo.
+- T11: "Lavoro completato" compare solo dal giorno del lavoro.
+- T12: Agenda al secondo posto nel menu dell'area professionista (`accountMenuItems.ts`).
+
+**Verifica**: nuove prove `e2e/tests/agenda-primo-uso.spec.ts` (T1, T2-T3, T4, T9-T11); 60 prove nel browser in locale; tempi stimati dei compiti C1 7,4 s, C2 9,7 s, C3 8,1 s, C4 10,8 s, C5 20,0 s (C5 come prima: il tasto con la scritta non cambia i tocchi, solo il dubbio su cosa faccia).
