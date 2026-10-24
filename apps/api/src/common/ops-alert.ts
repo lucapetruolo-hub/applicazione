@@ -6,7 +6,7 @@ const lastSent = new Map<string, number>();
 
 /**
  * Avviso a chi gestisce il sito per un servizio esterno che smette di
- * funzionare senza dare un errore 500 (docs/CHANGELOG.md §320): per esempio
+ * funzionare senza dare un errore 500 (docs/CHANGELOG.md §324): per esempio
  * i suggerimenti di indirizzo di Google, che il cliente vede solo come campi
  * separati. Senza `SENTRY_DSN` non fa nulla (Sentry non è inizializzato).
  */

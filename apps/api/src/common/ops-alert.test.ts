@@ -5,7 +5,7 @@ vi.mock("@sentry/nestjs", () => ({ captureMessage: vi.fn() }));
 import * as Sentry from "@sentry/nestjs";
 import { opsAlert } from "./ops-alert";
 
-describe("opsAlert (§320)", () => {
+describe("opsAlert (§324)", () => {
   it("manda lo stesso avviso al massimo una volta l'ora", () => {
     const start = 1_000_000;
     expect(opsAlert("prova", "Google non risponde", start)).toBe(true);

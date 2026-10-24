@@ -101,7 +101,7 @@ export class StaticMapService {
     this.alert("static-map-budget", "Tetto giornaliero delle mappe fisse raggiunto: fino a mezzanotte compare \"Mappa non disponibile\"."),
   );
 
-  /** Nel log e, una volta l'ora, su Sentry (§320). */
+  /** Nel log e, una volta l'ora, su Sentry (§324). */
   private alert(key: string, message: string): void {
     this.logger.error(message);
     opsAlert(key, message);

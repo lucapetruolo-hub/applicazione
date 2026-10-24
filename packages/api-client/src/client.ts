@@ -36,6 +36,7 @@ import type {
   ProfessionalAvailableSlot,
   ProfessionalBooking,
   AgendaWeekTemplate,
+  AgendaWeekTemplateState,
   CalendarFeedStatus,
   DayRoute,
   WeatherDayAlert,
@@ -1493,9 +1494,9 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
       }),
 
     // Strumenti della nuova agenda (docs/CHANGELOG.md §288).
-    agendaWeekTemplate: (token: string) => request<AgendaWeekTemplate>("/agenda/week-template", { headers: { Authorization: `Bearer ${token}` } }),
+    agendaWeekTemplate: (token: string) => request<AgendaWeekTemplateState>("/agenda/week-template", { headers: { Authorization: `Bearer ${token}` } }),
     saveAgendaWeekTemplate: (token: string, template: AgendaWeekTemplate) =>
-      request<AgendaWeekTemplate>("/agenda/week-template", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(template) }),
+      request<AgendaWeekTemplateState>("/agenda/week-template", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(template) }),
     agendaWeather: (token: string) => request<WeatherDayAlert[]>("/agenda/weather", { headers: { Authorization: `Bearer ${token}` } }),
     agendaZoneDemand: (token: string) => request<ZoneDemand>("/agenda/zone-demand", { headers: { Authorization: `Bearer ${token}` } }),
     agendaDayRoute: (token: string, date: string) =>
@@ -1677,7 +1678,7 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
         headers: { Authorization: `Bearer ${token}` },
       }),
     /** Suggerimenti di indirizzo (Italia) chiesti a Google dal nostro server (docs/CHANGELOG.md §264). */
-    /** Se i suggerimenti di indirizzo funzionano, senza chiamare Google (docs/CHANGELOG.md §320). */
+    /** Se i suggerimenti di indirizzo funzionano, senza chiamare Google (docs/CHANGELOG.md §324). */
     addressStatus: () => request<{ available: boolean }>("/address/status", { cache: "no-store" }),
     addressSuggestions: (params: { q: string; session: string; latitude?: number; longitude?: number }) => {
       const query = new URLSearchParams({ q: params.q, session: params.session });

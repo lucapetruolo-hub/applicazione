@@ -848,6 +848,9 @@ button.notif-row-main:hover {
 .acct-main {
   min-width: 0;
   flex: 1;
+  /* Il piè di pagina resta sotto lo schermo mentre la pagina carica: prima
+     compariva in alto e poi veniva spinto giù (CLS 0,14, docs/CHANGELOG.md §321). */
+  min-height: 100vh;
 }
 .acct-nav {
   display: flex;
@@ -2664,7 +2667,7 @@ a.admin-kpi:hover {
 .guided-city input {
   background-color: #ffffff !important;
 }
-/* Città tra i campi separati dell'indirizzo (§320): alta come gli altri. */
+/* Città tra i campi separati dell'indirizzo (§324): alta come gli altri. */
 .guided-city-inline input {
   height: auto !important;
   min-height: 0 !important;
@@ -3463,7 +3466,7 @@ a.admin-kpi:hover {
   align-items: center;
   justify-content: center;
 }
-/* Tessere vuote finché non arriva l'ordine dei più cercati (§320): stessa
+/* Tessere vuote finché non arriva l'ordine dei più cercati (§324): stessa
    misura delle vere, così la pagina non salta; poi compaiono con una
    dissolvenza breve, mai riordinate davanti a chi guarda. */
 .cat-tile.cat-tile-placeholder {

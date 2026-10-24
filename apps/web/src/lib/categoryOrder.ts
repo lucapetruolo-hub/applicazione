@@ -3,7 +3,7 @@ import { apiClient } from "@/lib/apiClient";
 
 /*
  * Ordine dei più cercati per le tessere delle categorie (docs/CHANGELOG.md
- * §320), in un modulo a parte e leggero: `SiteHeader` lo chiede in anticipo
+ * §324), in un modulo a parte e leggero: `SiteHeader` lo chiede in anticipo
  * senza portarsi dietro le icone di `CategoryTiles` in ogni pagina.
  */
 

@@ -31,7 +31,7 @@ function suggestionsAvailable(): Promise<boolean> {
  * servizio dei suggerimenti non risponde (o non è configurato sul server,
  * §264) si accetta il testo libero, per non bloccare nessuno.
  *
- * Il servizio si controlla appena il modulo si apre (§320): se non funziona,
+ * Il servizio si controlla appena il modulo si apre (§324): se non funziona,
  * i campi separati ci sono già dall'inizio, invece di comparire all'improvviso
  * dopo le prime lettere scritte. `lostWhileTyping` resta per il caso raro in
  * cui Google smette di rispondere proprio mentre si scrive.

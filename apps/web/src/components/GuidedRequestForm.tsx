@@ -1155,7 +1155,7 @@ export function GuidedRequestForm({
 
             {chosenAddress.serviceDown ? (
               // Suggerimenti non disponibili: campi separati, già dall'apertura
-              // del modulo (§320) e con la città insieme al resto dell'indirizzo.
+              // del modulo (§324) e con la città insieme al resto dell'indirizzo.
               <>
                 {chosenAddress.lostWhileTyping ? (
                   <Text fontSize={13} color={brand.grafite70} role="status">
