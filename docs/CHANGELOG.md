@@ -20272,7 +20272,41 @@ Non fatto qui: zod 4 (aggiornamento grande, rischio basso: il corpo JSON ha già
 
 **Verifica**: build, typecheck, test e test dei permessi con Node 22 nella CI; osv-scanner in locale non mostra più zod 3.25.76, e senza il file lo mostra.
 
-## 315. Prove dell'agenda stabili, elenco dei comuni più leggero, frecce nella striscia dei giorni
+## 315. Pagine per Google nel sistema unico
+
+**Richiesta dell'utente**: "si" alla proposta fatta dopo l'unione della PR #102: allineare al sistema unico (§305) le pagine nuove per Google del §296 ("Quanto costa", riquadri delle pagine città, "Lavora con noi", percorso sopra il profilo, pagina non trovata).
+
+**Decisione**: solo CSS in `globals.css`, nessun cambio ai testi.
+- Testi da 14-15 px a 16 px (domande frequenti, numeri delle città, tabella prezzi, link ai servizi, "Lavora con noi"). Il percorso "Home › Idraulico › Latina" resta piccolo come etichetta (13 px).
+- Arrotondamenti da 16 a 12 px (e 4 a 6), come il resto del sito.
+- Pulsante di "Quanto costa" e "Lavora con noi": verde (`#189a63`, più scuro al passaggio) con la pressione dei pulsanti del sito, al posto del quasi nero, come da decisione dell'utente del 24/10 (niente pulsanti color inchiostro).
+- Prezzi della tabella in IBM Plex Mono, come la riga del preventivo.
+
+**Verifica**: build del web; foto a 390 e 1440 px di "Lavora con noi" e dei riquadri della pagina Idraulico a Latina in `/mnt/project-files/anteprime/identita-codice/pagine-seo/` ("Quanto costa" dà 404 in prova perché mancano ancora abbastanza prezzi veri, regola del §296).
+
+## 316. Pannello delle notifiche, prezzi senza puntini, interruttori tondi
+
+**Richieste dell'utente (24/10/2026)**: "migliorare anche il pannello delle notifiche [...] che si apre premendo sulla campanella (anche quella è un ni), è rimasto retrò"; "non mi piacciono queste [puntini] fra il testo e il prezzo, eliminale sia da lì che dalla scheda dopo la ricerca"; "gli switch erano più belli tondeggianti come prima, ripristinali".
+
+**Decisioni**:
+- Campanella (`NotificationBell.tsx`): pulsante da 44 px con l'icona `bell` a tratto sottile, numero rosso con bordo bianco, senza l'animazione "ping" continua. `aria-expanded`/`aria-haspopup` e numero delle non lette nell'etichetta.
+- Pannello: bianco pieno, arrotondamento 12, ombra leggera, apertura di 160 ms dall'angolo (spenta con "riduci movimento"). Intestazione con "Notifiche", pillola "N nuove" ed "Elimina tutte" che chiede conferma al secondo tocco (4 secondi). Gruppi Oggi / Ieri / Prima non maiuscoli; ogni riga con icona dell'argomento in un quadrato tinto, argomento e ora sulla stessa riga, pallino verde e testo in grassetto se nuova, testo a 16 px, "x" per eliminare (sempre visibile sul telefono, al passaggio del mouse sul computer) e trascinamento di lato mantenuto. Stato vuoto con icona e una frase, righe scheletro durante il caricamento, piede "Impostazioni notifiche". Sul telefono il pannello occupa la larghezza dello schermo sotto l'intestazione. Esc chiude e riporta il fuoco sulla campanella.
+- `PriceLine` (`packages/ui`): tolti i puntini di guida tra voce e prezzo, ora uno spazio vuoto. Nel profilo le prestazioni sono separate da una linea sottile; la scheda dei risultati usa lo stesso componente.
+- Arrotondamenti `$10` e `$11` di Tamagui (`packages/ui/src/config.ts`) di nuovo tondi pieni: li usano solo l'interruttore "A domicilio / Online" della richiesta di preventivo, le schede degli orari nel profilo, quelle della barra di ricerca, etichette e pulsanti a pillola, che con il §305 erano scesi a 12 px.
+
+**Verifica**: typecheck di `ui` e `web`, build del web; foto prima/dopo a 390 e 1440 px in `/mnt/project-files/anteprime/identita-codice/notifiche/` e foto di prezzi e interruttori in `/mnt/project-files/anteprime/identita-codice/prezzi-interruttori/`.
+
+## 317. Angoli più morbidi in tutto il sito e "Mostra 0 richieste"
+
+**Richiesta dell'utente (24/10/2026)**, sulla finestra "Filtri" delle richieste: "tutto questo, sia la finestra che il resto all'interno, era più bello tondeggiante, di più, come prima"; e "correggi anche la visualizzazione di quello 0 che non si vede bene" ("Mostra0  richieste").
+
+**Decisioni**:
+- Sistema unico ammorbidito (aggiorna il §305): 10 px per etichette e tessere piccole, 20 px per campi, riquadri, finestre e pannelli, tondo pieno per pulsanti e interruttori. `radiusSm` 10, `radiusDoc`/`radiusDocLg` 20 (`packages/ui/src/tokens.ts`); token Tamagui `$1-$2` a 10 e `$3-$9` a 20 (`config.ts`); in CSS e nei componenti 12 → 20 e 6 → 10. Le icone in quadrato piccolo (38-48 px: notifiche, registrazione, contatti, riquadro professionisti, tessere dei lavori, caselle del codice email) restano a 12, altrimenti diventerebbero cerchi. Agenda non toccata a mano.
+- "Mostra N richieste" (richieste del professionista e del cliente): testo scritto in un'unica stringa. `Button` di Tamagui metteva ogni pezzo in un testo separato con spazio fra l'uno e l'altro, così lo 0 si attaccava a "Mostra".
+
+**Verifica**: typecheck di `ui` e `web`, build del web; foto a 390 e 1440 px (home, profilo, richiesta di preventivo, richieste e finestra Filtri) in `/mnt/project-files/anteprime/identita-codice/tondeggiante/`.
+
+## 318. Prove dell'agenda stabili, elenco dei comuni più leggero, frecce nella striscia dei giorni
 
 **Richiesta** (24/10/2026): il coordinatore ha segnalato le prove nel browser dell'agenda instabili anche sul ramo principale (run 40090532557); Luca ha segnalato che in "Giorno per giorno" non si vedono le frecce per il giorno prima e dopo.
 

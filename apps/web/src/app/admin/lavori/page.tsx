@@ -27,7 +27,7 @@ function Photos({ urls }: { urls: string[] }) {
   return (
     <XStack gap="$2" flexWrap="wrap">
       {urls.map((url) => (
-        <a key={url} href={url} target="_blank" rel="noreferrer" style={{ width: 84, height: 84, borderRadius: 6, overflow: "hidden", border: `1px solid ${brand.filetto}`, display: "block" }}>
+        <a key={url} href={url} target="_blank" rel="noreferrer" style={{ width: 84, height: 84, borderRadius: 10, overflow: "hidden", border: `1px solid ${brand.filetto}`, display: "block" }}>
           <MediaPreview url={url} />
         </a>
       ))}
@@ -158,7 +158,7 @@ export default function AdminLavoriPage() {
                 ) : null}
 
                 {job.changeReason ? (
-                  <YStack padding="$3" borderRadius={12} backgroundColor={brand.urgenzaVelo} gap="$1">
+                  <YStack padding="$3" borderRadius={20} backgroundColor={brand.urgenzaVelo} gap="$1">
                     <Text fontWeight="700" color={brand.grafite}>
                       Motivo delle differenze (professionista)
                     </Text>

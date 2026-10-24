@@ -1299,7 +1299,7 @@ function DashboardAgendaContent() {
   // Striscia dei giorni: sette giorni a partire da oggi, così la domenica
   // sera "domani" è a un tocco (T4 del test dei compiti, docs/CHANGELOG.md
   // §311); le frecce ai lati portano al giorno prima e dopo e la striscia
-  // scorre di sette giorni alla volta, sempre contando da oggi (§315).
+  // scorre di sette giorni alla volta, sempre contando da oggi (§318).
   function stripDays(current: Date): Date[] {
     const offset = Math.round((startOfDayUtc(current).getTime() - startOfDayUtc(today).getTime()) / 86_400_000);
     const start = addDaysUtc(today, Math.floor(offset / 7) * 7);

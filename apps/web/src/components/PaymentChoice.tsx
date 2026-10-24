@@ -65,7 +65,7 @@ export function PaymentChoice({
               display: "flex",
               gap: 12,
               padding: 12,
-              borderRadius: 6,
+              borderRadius: 10,
               border: `2px solid ${selected ? brand.verificato : brand.filetto}`,
               background: selected ? "#E6F4EC" : "#fff",
               cursor: "pointer",

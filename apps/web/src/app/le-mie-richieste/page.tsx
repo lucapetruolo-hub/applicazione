@@ -563,7 +563,7 @@ function LeMieRichiesteContent() {
                   ) : null}
 
                   <Button variant="primary" onPress={() => setShowFiltersModal(false)}>
-                    Mostra {filteredSortedRequests.length} {filteredSortedRequests.length === 1 ? "richiesta" : "richieste"}
+                    {`Mostra ${filteredSortedRequests.length} ${filteredSortedRequests.length === 1 ? "richiesta" : "richieste"}`}
                   </Button>
                 </YStack>
               </div>

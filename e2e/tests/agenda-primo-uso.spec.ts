@@ -49,7 +49,7 @@ test("T9 e T11: il tasto per aggiungere un lavoro ha la scritta; Lavoro completa
   await expect(dialog.getByRole("button", { name: "Lavoro completato" })).toHaveCount(0);
 });
 
-test("frecce della striscia: giorno prima e dopo anche in Giorno per giorno (§315)", async ({ page }) => {
+test("frecce della striscia: giorno prima e dopo anche in Giorno per giorno (§318)", async ({ page }) => {
   await page.clock.setFixedTime(new Date("2026-10-24T10:00:00Z"));
   await page.goto("/dashboard/agenda?tab=orari");
   const section = page.getByRole("heading", { name: "Giorno per giorno" }).locator("xpath=ancestor::div[2]");

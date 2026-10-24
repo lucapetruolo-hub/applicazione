@@ -294,7 +294,7 @@ export function fiscalFieldErrors(input: FiscalValidationInput): FiscalFieldErro
 }
 
 let codiciCatastaliMap: Map<string, string> | null = null;
-/** Codice catastale → "nome|provincia", costruita al primo uso (docs/CHANGELOG.md §315). */
+/** Codice catastale → "nome|provincia", costruita al primo uso (docs/CHANGELOG.md §318). */
 function codiciCatastali(): Map<string, string> {
   if (!codiciCatastaliMap) {
     codiciCatastaliMap = new Map(CODICI_CATASTALI_DATA.split("\n").map((line) => [line.slice(0, 4), line.slice(5)]));

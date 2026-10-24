@@ -17,7 +17,7 @@ export type Comune = {
  */
 // Letti da una stringa compatta e non da un JSON di ~8000 oggetti: l'elenco
 // finisce nel JavaScript di ogni pagina del sito e su un telefono lento il
-// suo peso bloccava la pagina (docs/CHANGELOG.md §315).
+// suo peso bloccava la pagina (docs/CHANGELOG.md §318).
 export const ITALIAN_COMUNI: Comune[] = COMUNI_DATA.split("\n").map((line) => {
   const [name = "", province = "", lat = "0", lon = "0", capoluogo] = line.split("|");
   return { name, province, region: REGION_BY_PROVINCE[province] ?? "", lat: Number(lat), lon: Number(lon), capoluogo: capoluogo === "1" };
