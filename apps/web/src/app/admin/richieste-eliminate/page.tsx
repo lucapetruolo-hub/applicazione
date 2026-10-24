@@ -27,7 +27,7 @@ export default function AdminRichiesteEliminatePage() {
     <YStack>
       <AdminPageHeader
         title="Richieste eliminate"
-        description='Tolte dalla lista "Richieste ricevute" di un professionista, ma mai cancellate: il cliente continua a vederle.'
+        description='Tolte dalla lista "Richieste e lavori" di un professionista, ma mai cancellate: il cliente continua a vederle.'
       />
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       {rows === null && !error ? (

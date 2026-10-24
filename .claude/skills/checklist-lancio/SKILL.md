@@ -490,3 +490,9 @@ Cose decise con Luca da non fare prima del lancio, ma da non dimenticare:
   (SEO)", 22/10/2026): scheda Google Business del sito, elenchi di attività
   locali, un link "Trovami su …" che i professionisti mettono sul loro sito
   e sui social, giornali locali della città di lancio.
+- **Voci del menu del professionista con i dati veri** (24/10/2026,
+  docs/CHANGELOG.md §330): un mese dopo il lancio guardare su Vercel Web
+  Analytics quali pagine dell'area professionista si aprono di più e
+  rivedere le 7 voci fisse della colonna (`SIDEBAR_HREFS` in
+  `apps/web/src/lib/accountMenuItems.ts`, al massimo 8 con "Da completare").
+  Scelte oggi senza dati, in base a quanto spesso servono.

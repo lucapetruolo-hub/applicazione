@@ -668,8 +668,9 @@ function RichiesteContent() {
 function RequestsHeading() {
   return (
     <YStack gap="$1">
+      {/* Stesso nome della voce di menu (richiesta dell'utente, docs/CHANGELOG.md §330). */}
       <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite}>
-        Richieste ricevute
+        Richieste e lavori
       </Text>
       <Text fontFamily="$body" fontSize={16} color={brand.grafite70}>
         Gestisci preventivi, rispondi ai clienti e tieni traccia di ogni lavoro
