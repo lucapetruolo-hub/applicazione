@@ -74,8 +74,11 @@ export function AuthField({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const onChangeRef = useRef(onChangeText);
   const onSubmitRef = useRef(onSubmitEditing);
-  onChangeRef.current = onChangeText;
-  onSubmitRef.current = onSubmitEditing;
+  // Sempre le ultime funzioni del genitore, senza ricreare il campo.
+  useEffect(() => {
+    onChangeRef.current = onChangeText;
+    onSubmitRef.current = onSubmitEditing;
+  });
 
   // Creazione una sola volta, fuori da React.
   useEffect(() => {

@@ -25,6 +25,8 @@ export function CookieBanner() {
   const bannerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // La scelta salvata nel browser si legge solo dopo il montaggio (nel render del server non c'è).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!hasCookieChoice()) setVisible(true);
     // "Preferenze cookie" nel footer riapre il banner per cambiare idea
     // (revoca del consenso, docs/CHANGELOG.md §170).

@@ -124,7 +124,7 @@ function AbbonamentoContent() {
     try {
       const { url } = await apiClient.createSubscriptionCheckout(token, tier);
       if (url) {
-        window.location.href = url;
+        window.location.assign(url);
         return;
       }
       // Passaggio fatto subito, con la differenza addebitata sulla carta salvata.

@@ -132,12 +132,14 @@ export function RequestCard({
   const [depositPercentDraft, setDepositPercentDraft] = useState(String(defaultPaymentOffer?.depositPercent ?? ONLINE_DEPOSIT_PERCENT));
   const [rememberPaymentOffer, setRememberPaymentOffer] = useState(false);
   // Il profilo arriva dopo la scheda: si applicano i valori di serie finché il modulo non è aperto.
-  useEffect(() => {
-    if (!defaultPaymentOffer || showQuoteForm) return;
-    setPaymentOptions(defaultPaymentOffer.paymentOptions);
-    setDepositPercentDraft(String(defaultPaymentOffer.depositPercent));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultPaymentOffer]);
+  const [appliedPaymentOffer, setAppliedPaymentOffer] = useState(defaultPaymentOffer);
+  if (defaultPaymentOffer !== appliedPaymentOffer) {
+    setAppliedPaymentOffer(defaultPaymentOffer);
+    if (defaultPaymentOffer && !showQuoteForm) {
+      setPaymentOptions(defaultPaymentOffer.paymentOptions);
+      setDepositPercentDraft(String(defaultPaymentOffer.depositPercent));
+    }
+  }
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [isSubmittingQuote, setIsSubmittingQuote] = useState(false);
   // Anteprima "Dal 4 al 6 novembre, ogni giorno 08:00–17:00" di un lavoro su più giorni.
@@ -1576,8 +1578,8 @@ export function RequestCard({
           targetType="GUIDED_REQUEST"
           targetLabel={`la richiesta di ${clientName}`}
           onClose={() => setShowReportModal(false)}
-          onSubmit={async (reason, details) => {
-            await apiClient.createContentReport(token, { targetType: "GUIDED_REQUEST", targetId: gr.id, reason, details });
+          onSubmit={async (input) => {
+            await apiClient.createContentReport(token, { targetType: "GUIDED_REQUEST", targetId: gr.id, ...input });
           }}
         />
       ) : null}

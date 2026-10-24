@@ -71,68 +71,74 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setNotificationPrefsState(prefs);
   }, []);
 
-  const loadUser = useCallback(async (currentToken: string, attempt = 0): Promise<CurrentUser | null> => {
-    try {
-      const currentUser = await apiClient.me(currentToken);
-      // `null` copre sia un token non valido sia un account eliminato nel
-      // frattempo (`/auth/me` lo tratta come inesistente, vedi
-      // AuthController) — in entrambi i casi il token salvato non serve
-      // più a nulla: senza rimuoverlo, ogni ricarica di pagina ripeterebbe
-      // la stessa chiamata fallita all'infinito invece di restare
-      // semplicemente disconnessi.
-      if (!currentUser) {
-        window.localStorage.removeItem(TOKEN_STORAGE_KEY);
-        clearOfflineUser();
-      } else {
-        saveOfflineUser(currentUser);
+  const loadUser = useCallback(async (currentToken: string): Promise<CurrentUser | null> => {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const currentUser = await apiClient.me(currentToken);
+        // `null` copre sia un token non valido sia un account eliminato nel
+        // frattempo (`/auth/me` lo tratta come inesistente, vedi
+        // AuthController) — in entrambi i casi il token salvato non serve
+        // più a nulla: senza rimuoverlo, ogni ricarica di pagina ripeterebbe
+        // la stessa chiamata fallita all'infinito invece di restare
+        // semplicemente disconnessi.
+        if (!currentUser) {
+          window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+          clearOfflineUser();
+        } else {
+          saveOfflineUser(currentUser);
+        }
+        setUser(currentUser);
+        setToken(currentUser ? currentToken : null);
+        return currentUser;
+      } catch (err) {
+        // Bug reale trovato da un agente di verifica: un fetch fallito a
+        // livello di rete (offline, richiesta interrotta perché l'utente ha
+        // navigato altrove prima che /auth/me rispondesse — `TypeError` o
+        // `AbortError`, mai un vero 401) veniva trattato esattamente come un
+        // token non valido, disconnettendo silenziosamente un utente con una
+        // sessione perfettamente valida solo per sfortuna di tempistica. Solo
+        // una risposta HTTP che l'API ha davvero dato (qui `request()` lancia
+        // un `Error` generico con lo status nel messaggio, mai un `TypeError`/
+        // `AbortError`) significa "il token non è più valido" — un fallimento
+        // di rete lascia lo stato invariato, il prossimo tentativo (poll,
+        // ricarica, navigazione) riproverà da solo.
+        // Anche un 429 (troppe richieste) o un errore del server non dicono
+        // che il token non vale più: solo 401/403 disconnettono (§311, visto
+        // nelle prove nel browser in CI).
+        const isNetworkFailure = err instanceof TypeError || (err instanceof DOMException && err.name === "AbortError");
+        const sessionRejected = err instanceof ApiError ? err.status === 401 || err.status === 403 : !isNetworkFailure;
+        // Troppe richieste o server in difficoltà: si riprova due volte prima di arrendersi.
+        if (err instanceof ApiError && (err.status === 429 || err.status >= 500) && attempt < 2) {
+          await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)));
+          continue;
+        }
+        if (sessionRejected) {
+          window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+          clearOfflineUser();
+          setUser(null);
+          setToken(null);
+          setNotificationPrefsState(null);
+          return null;
+        }
+        // Senza rete si resta dentro con l'ultimo profilo salvato, così
+        // l'agenda mostra la sua copia invece di "Accedi" (R1 della verifica,
+        // docs/CHANGELOG.md §309-§310). Le azioni chiedono comunque la rete.
+        const offlineUser = readOfflineUser();
+        if (offlineUser) {
+          setUser((current) => current ?? offlineUser);
+          setToken((current) => current ?? currentToken);
+        }
+        return offlineUser;
       }
-      setUser(currentUser);
-      setToken(currentUser ? currentToken : null);
-      return currentUser;
-    } catch (err) {
-      // Bug reale trovato da un agente di verifica: un fetch fallito a
-      // livello di rete (offline, richiesta interrotta perché l'utente ha
-      // navigato altrove prima che /auth/me rispondesse — `TypeError` o
-      // `AbortError`, mai un vero 401) veniva trattato esattamente come un
-      // token non valido, disconnettendo silenziosamente un utente con una
-      // sessione perfettamente valida solo per sfortuna di tempistica. Solo
-      // una risposta HTTP che l'API ha davvero dato (qui `request()` lancia
-      // un `Error` generico con lo status nel messaggio, mai un `TypeError`/
-      // `AbortError`) significa "il token non è più valido" — un fallimento
-      // di rete lascia lo stato invariato, il prossimo tentativo (poll,
-      // ricarica, navigazione) riproverà da solo.
-      // Anche un 429 (troppe richieste) o un errore del server non dicono
-      // che il token non vale più: solo 401/403 disconnettono (§311, visto
-      // nelle prove nel browser in CI).
-      const isNetworkFailure = err instanceof TypeError || (err instanceof DOMException && err.name === "AbortError");
-      const sessionRejected = err instanceof ApiError ? err.status === 401 || err.status === 403 : !isNetworkFailure;
-      // Troppe richieste o server in difficoltà: si riprova due volte prima di arrendersi.
-      if (err instanceof ApiError && (err.status === 429 || err.status >= 500) && attempt < 2) {
-        await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)));
-        return loadUser(currentToken, attempt + 1);
-      }
-      if (sessionRejected) {
-        window.localStorage.removeItem(TOKEN_STORAGE_KEY);
-        clearOfflineUser();
-        setUser(null);
-        setToken(null);
-        return null;
-      }
-      // Senza rete si resta dentro con l'ultimo profilo salvato, così
-      // l'agenda mostra la sua copia invece di "Accedi" (R1 della verifica,
-      // docs/CHANGELOG.md §309-§310). Le azioni chiedono comunque la rete.
-      const offlineUser = readOfflineUser();
-      if (offlineUser) {
-        setUser((current) => current ?? offlineUser);
-        setToken((current) => current ?? currentToken);
-      }
-      return offlineUser;
     }
   }, []);
 
+  // La sessione salvata si legge solo dopo il montaggio: nel render del
+  // server localStorage non esiste e la pagina non combacerebbe.
   useEffect(() => {
     const storedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY);
     if (storedToken) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- loadUser aggiorna lo stato solo dopo la risposta dell'API
       loadUser(storedToken).finally(() => setIsLoading(false));
     } else {
       setIsLoading(false);
@@ -155,6 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setToken(null);
     setUnreadCount(0);
+    setNotificationPrefsState(null);
     seenNotificationIdsRef.current = null;
     setToasts([]);
     setUnreadNotifications([]);
@@ -265,11 +272,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     installNotificationSoundUnlock();
   }, []);
 
-  // Preferenze di notifica, ricaricate a ogni cambio di utente.
+  // Preferenze di notifica, ricaricate a ogni cambio di utente (all'uscita
+  // le azzerano logout e loadUser, insieme all'utente).
   useEffect(() => {
     if (!user || !token) {
       notificationPrefsRef.current = DEFAULT_NOTIFICATION_PREFERENCES;
-      setNotificationPrefsState(null);
       return;
     }
     apiClient
@@ -281,10 +288,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Aggiorna conteggio+toast ogni volta che l'utente (dis)connesso cambia, non solo al primo mount.
   useEffect(() => {
     if (user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- il conteggio arriva dall'API, lo stato cambia solo alla risposta
       refreshUnreadCount();
       checkForNewNotifications();
-    } else {
-      setUnreadCount(0);
     }
   }, [user, refreshUnreadCount, checkForNewNotifications]);
 
@@ -388,13 +394,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         refreshUser,
-        unreadCount,
+        // Senza utente il conteggio è sempre 0, anche prima che logout/loadUser lo azzerino.
+        unreadCount: user ? unreadCount : 0,
         refreshUnreadCount,
         markNotificationsRead,
         toasts,
         dismissToast,
         unreadNotifications,
-        notificationPrefs,
+        notificationPrefs: user ? notificationPrefs : null,
         setNotificationPrefs,
       }}
     >

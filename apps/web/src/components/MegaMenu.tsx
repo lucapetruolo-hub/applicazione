@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Icon, motionBase, motionEasing, motionFast } from "@professionisti/ui";
 import { MEGA_MENU_GROUPS, MEGA_MENU_MICRO_DESCRIPTION, categoryBySlug } from "@/lib/megaMenuGroups";
 import { useAuth } from "@/lib/AuthContext";
+import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 /**
  * "Servizi" nell'header: mega-menu a 3 colonne su desktop (brief §4.1),
@@ -114,8 +115,8 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
           e schiacciava il drawer dentro i 64px dell'header (bug mobile reale). */}
       {mobileOpen && typeof document !== "undefined" ? (
         createPortal(
-        <div className="mega-drawer-backdrop" onClick={() => setMobileOpen(false)}>
-          <div className="mega-drawer" onClick={(e) => e.stopPropagation()}>
+        <div className="mega-drawer-backdrop" role="presentation" onClick={closeOnBackdrop(() => setMobileOpen(false))}>
+          <div className="mega-drawer" role="dialog" aria-modal="true" aria-label="Menu">
             <div className="mega-drawer-header">
               <span>Menu</span>
               <button type="button" aria-label="Chiudi menu" onClick={() => setMobileOpen(false)} className="mega-drawer-close">

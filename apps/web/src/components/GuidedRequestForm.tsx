@@ -31,6 +31,7 @@ import { CategoryTiles } from "@/components/CategoryTiles";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
+import { localPreviewUrl } from "@/lib/media";
 
 // Foto E video (richiesta esplicita dell'utente), fino a 5 elementi
 // (aumentato da 3, stessa richiesta).
@@ -232,51 +233,6 @@ export function GuidedRequestForm({
     // un reset anche qui cancellerebbe il prefill dell'URL al primo render.
   }, [professionalProfileId, serviceMode]);
 
-  // Prefill dai dati dell'account (richiesta esplicita dell'utente), una
-  // sola volta appena `user` è disponibile: gli useState sopra sono
-  // dichiarati prima che `user` sia noto (il componente ritorna null
-  // mentre isLoading è vero, ma gli hook restano comunque eseguiti in
-  // ordine ad ogni render), quindi il valore iniziale da solo non basta —
-  // stesso motivo per cui /account sincronizza i propri campi con un
-  // effetto dedicato invece che nell'inizializzatore di useState.
-  useEffect(() => {
-    if (!user || prefilledFromAccountRef.current) return;
-    prefilledFromAccountRef.current = true;
-    // I valori arrivati dall'URL (es. "Ripeti la richiesta") hanno la
-    // precedenza: l'account riempie solo i campi ancora vuoti.
-    setRecipientName((prev) => prev || user.name || "");
-    setRecipientSurname((prev) => prev || user.surname || "");
-    setRecipientPhone((prev) => prev || user.phone || "");
-    setStreet((prev) => prev || user.street || "");
-    // Indirizzo già salvato nell'account: vale come scelto, finché non si cambia via o città.
-    if (user.street) {
-      setAddressVerified(true);
-      const line = [user.street, user.houseNumber].filter(Boolean).join(" ");
-      const place = [user.postalCode, user.city].filter(Boolean).join(" ");
-      setAddressText((prev) => prev || [line, place].filter(Boolean).join(", "));
-    }
-    setHouseNumber((prev) => prev || user.houseNumber || "");
-    setAddressExtra((prev) => prev || user.addressExtra || "");
-    setPostalCode((prev) => prev || user.postalCode || "");
-    setProvince((prev) => prev || user.province || "");
-    setCity((prev) => prev || user.city || "");
-    // Istantanea dei valori REALI dell'account (non del form, che può
-    // ricadere su valori arrivati dall'URL) — confrontata al momento
-    // dell'invio per rilevare sia campi mancanti sia campi modificati.
-    accountSnapshotRef.current = {
-      name: user.name ?? "",
-      surname: user.surname ?? "",
-      phone: user.phone ?? "",
-      street: user.street ?? "",
-      houseNumber: user.houseNumber ?? "",
-      addressExtra: user.addressExtra ?? "",
-      postalCode: user.postalCode ?? "",
-      city: user.city ?? "",
-      province: user.province ?? "",
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
-
   // Fascia effettivamente inviata: sempre quella corrente nel selettore
   // (inizializzata dall'URL se si è cliccata una pillola dell'agenda, ma
   // sempre modificabile — vedi selectedSlotValue sopra).
@@ -355,10 +311,12 @@ export function GuidedRequestForm({
   const [description, setDescription] = useState(searchParams.get("descrizione") ?? "");
   const [city, setCity] = useState(initialCity);
   // Cambiando città o categoria l'avviso di zona si ricontrolla al passo successivo.
-  useEffect(() => {
+  const [zoneCheckedFor, setZoneCheckedFor] = useState({ city, categorySlugs });
+  if (zoneCheckedFor.city !== city || zoneCheckedFor.categorySlugs !== categorySlugs) {
+    setZoneCheckedFor({ city, categorySlugs });
     setGeneralClosed((current) => (current === "ZONE" ? null : current));
     setClosedCategorySlug(null);
-  }, [city, categorySlugs]);
+  }
   // Facoltativa solo per una consulenza online a un professionista scelto (§210).
   const cityOptional = serviceMode === "ONLINE" && Boolean(professionalProfileId);
   const [street, setStreet] = useState(searchParams.get("via") ?? "");
@@ -369,6 +327,11 @@ export function GuidedRequestForm({
   // non risponde si accetta il testo libero, per non bloccare la richiesta.
   const chosenAddress = useChosenAddress(Boolean(searchParams.get("via")));
   const setAddressVerified = chosenAddress.setChosen;
+  // Se i suggerimenti cadono mentre si scrive, si continua a scrivere in "Via o piazza".
+  const streetInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (chosenAddress.lostWhileTyping) streetInputRef.current?.focus();
+  }, [chosenAddress.lostWhileTyping]);
   const cityComune = findComuneByName(city);
   /** Cambiando città l'indirizzo già scritto non vale più: si svuota insieme a civico, CAP e provincia. */
   function changeCity(next: string) {
@@ -413,7 +376,6 @@ export function GuidedRequestForm({
   });
   // Indirizzo scelto senza numero civico (es. solo la via): lo si chiede a parte.
   const [askHouseNumber, setAskHouseNumber] = useState(false);
-  const prefilledFromAccountRef = useRef(false);
   // Istantanea dei valori reali dell'account al momento del prefill (non i
   // valori di stato, che ricadono su "" per i campi mancanti) — usata al
   // momento dell'invio per capire se il cliente ha modificato o aggiunto
@@ -454,17 +416,52 @@ export function GuidedRequestForm({
   // il vecchio `token` nullo, un problema di closure stale).
   const [pendingSubmit, setPendingSubmit] = useState(false);
 
-  // Riparte da sola non appena il token diventa disponibile dopo il gate
-  // (login/registrazione appena completati dentro InlineAuthGate, senza
-  // mai lasciare questa pagina) — legge il token corrente dal contesto,
-  // mai quello (nullo) catturato dalla chiusura di handleSubmit.
+  // Prefill dai dati dell'account (richiesta esplicita dell'utente), una
+  // sola volta appena `user` è disponibile: gli useState sopra sono
+  // dichiarati prima che `user` sia noto (il componente ritorna null
+  // mentre isLoading è vero, ma gli hook restano comunque eseguiti in
+  // ordine ad ogni render), quindi il valore iniziale da solo non basta.
+  // Fatto durante il render, come /account con i propri campi.
+  const [prefilledFromAccount, setPrefilledFromAccount] = useState(false);
+  if (user && !prefilledFromAccount) {
+    setPrefilledFromAccount(true);
+    // I valori arrivati dall'URL (es. "Ripeti la richiesta") hanno la
+    // precedenza: l'account riempie solo i campi ancora vuoti.
+    setRecipientName((prev) => prev || user.name || "");
+    setRecipientSurname((prev) => prev || user.surname || "");
+    setRecipientPhone((prev) => prev || user.phone || "");
+    setStreet((prev) => prev || user.street || "");
+    // Indirizzo già salvato nell'account: vale come scelto, finché non si cambia via o città.
+    if (user.street) {
+      setAddressVerified(true);
+      const line = [user.street, user.houseNumber].filter(Boolean).join(" ");
+      const place = [user.postalCode, user.city].filter(Boolean).join(" ");
+      setAddressText((prev) => prev || [line, place].filter(Boolean).join(", "));
+    }
+    setHouseNumber((prev) => prev || user.houseNumber || "");
+    setAddressExtra((prev) => prev || user.addressExtra || "");
+    setPostalCode((prev) => prev || user.postalCode || "");
+    setProvince((prev) => prev || user.province || "");
+    setCity((prev) => prev || user.city || "");
+  }
+  // Istantanea dei valori REALI dell'account (non del form, che può
+  // ricadere su valori arrivati dall'URL) — confrontata al momento
+  // dell'invio per rilevare sia campi mancanti sia campi modificati.
   useEffect(() => {
-    if (!pendingSubmit || !token) return;
-    setPendingSubmit(false);
-    setShowAuthGate(false);
-    void doSubmit(token);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingSubmit, token]);
+    if (!user || accountSnapshotRef.current) return;
+    accountSnapshotRef.current = {
+      name: user.name ?? "",
+      surname: user.surname ?? "",
+      phone: user.phone ?? "",
+      street: user.street ?? "",
+      houseNumber: user.houseNumber ?? "",
+      addressExtra: user.addressExtra ?? "",
+      postalCode: user.postalCode ?? "",
+      city: user.city ?? "",
+      province: user.province ?? "",
+    };
+  }, [user]);
+
   // Un solo input file, senza `capture`: su iOS/Android questo fa comparire
   // il menu nativo del sistema ("Scatta foto"/"Libreria foto"/"Scegli file",
   // stile iPhone) invece di aprire direttamente una delle due opzioni —
@@ -472,6 +469,23 @@ export function GuidedRequestForm({
   // salta il menu e apre subito la fotocamera, che è il comportamento che
   // si vuole evitare qui.
   const photoInputRef = useRef<HTMLInputElement>(null);
+
+  // Riparte da sola non appena il token diventa disponibile dopo il gate
+  // (login/registrazione appena completati dentro InlineAuthGate, senza
+  // mai lasciare questa pagina) — legge il token corrente dal contesto,
+  // mai quello (nullo) catturato dalla chiusura di handleSubmit.
+  useEffect(() => {
+    if (!pendingSubmit || !token) return;
+    // Avvia l'invio vero (chiamate all'API): solo un effetto può farlo.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPendingSubmit(false);
+    setShowAuthGate(false);
+    // doSubmit è una function declaration più in basso, dopo i return
+    // condizionali: c'è già quando l'effetto parte.
+    // eslint-disable-next-line react-hooks/immutability
+    void doSubmit(token);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingSubmit, token]);
 
   if (isLoading) {
     return <GuidedRequestHeading title={title} subtitle={subtitle} />;
@@ -733,7 +747,7 @@ export function GuidedRequestForm({
     // Anonimo: nessun token per caricare su Cloudinary — resta locale con
     // un'anteprima via blob:, caricata davvero solo al momento dell'invio
     // (doSubmit, dopo il gate F2.2).
-    const previewUrl = URL.createObjectURL(file);
+    const previewUrl = localPreviewUrl(file);
     setPhotos((prev) => [...prev, { url: previewUrl, file, isVideo: file.type.startsWith("video/") }].slice(0, MAX_PHOTOS));
   }
 
@@ -744,6 +758,54 @@ export function GuidedRequestForm({
       return prev.filter((p) => p.url !== url);
     });
   }
+
+  // Campo della città: con il titolo "Città" nella consulenza online; a
+  // domicilio insieme agli altri campi dell'indirizzo, solo se i suggerimenti
+  // non funzionano (altrimenti la scelta dell'indirizzo la compila).
+  const cityInput = (
+    // `.guided-city`: stesso fondo bianco degli altri campi (prima grigio, docs/CHANGELOG.md §154).
+    // A domicilio stessa misura e bordo degli altri campi dell'indirizzo (`.guided-city-inline`).
+    <div className={serviceMode === "HOME" ? "guided-city guided-city-inline" : "guided-city"}>
+      <YStack
+        borderWidth={1}
+        borderColor={serviceMode === "HOME" ? brand.bordoCampo : brand.filetto}
+        borderRadius={serviceMode === "HOME" ? 6 : "$4"}
+        backgroundColor={brand.calce}
+      >
+        <Autocomplete
+          items={ALL_ITALIAN_CITY_NAMES}
+          getKey={(item) => item}
+          getLabel={(item) => item}
+          onSelect={changeCity}
+          value={city}
+          onChangeText={changeCity}
+          placeholder={serviceMode === "HOME" ? "Città" : "Es. Roma"}
+          size="$5"
+          minChars={3}
+        />
+      </YStack>
+    </div>
+  );
+  const cityField = (
+    <YStack gap="$2">
+      <FieldLabel>{cityOptional ? "Città (facoltativa)" : "Città"}</FieldLabel>
+      {cityInput}
+      {cityOptional ? (
+        // Richiesta esplicita dell'utente: "la città poiché si è
+        // selezionato online non dev'essere obbligatoria... deve
+        // esserci scritto che non è obbligatorio inserire la città, ma
+        // se pensi che sia necessario anche un intervento sul posto
+        // successivo puoi iniziare la ricerca nella zona
+        // dell'intervento" — spiega sia perché il campo è facoltativo
+        // sia perché può comunque avere senso compilarlo.
+        <Text fontSize={13} color={brand.grafite70}>
+          Per una consulenza online non è obbligatorio indicare la città. Se pensi che in un secondo momento possa
+          servire anche un intervento sul posto, indicala comunque: potrai usarla per iniziare la ricerca nella
+          zona dell&apos;intervento.
+        </Text>
+      ) : null}
+    </YStack>
+  );
 
   return (
     <>
@@ -1065,41 +1127,7 @@ export function GuidedRequestForm({
 
         {step === 2 ? (
           <>
-        {serviceMode === "HOME" && !chosenAddress.serviceDown ? null : (
-        <YStack gap="$2">
-          <FieldLabel>{cityOptional ? "Città (facoltativa)" : "Città"}</FieldLabel>
-          {/* `.guided-city`: stesso fondo bianco degli altri campi (prima grigio, docs/CHANGELOG.md §154). */}
-          <div className="guided-city">
-          <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="$4" backgroundColor={brand.calce}>
-            <Autocomplete
-              items={ALL_ITALIAN_CITY_NAMES}
-              getKey={(item) => item}
-              getLabel={(item) => item}
-              onSelect={changeCity}
-              value={city}
-              onChangeText={changeCity}
-              placeholder="Es. Roma"
-              size="$5"
-              minChars={3}
-            />
-          </YStack>
-          </div>
-          {cityOptional ? (
-            // Richiesta esplicita dell'utente: "la città poiché si è
-            // selezionato online non dev'essere obbligatoria... deve
-            // esserci scritto che non è obbligatorio inserire la città, ma
-            // se pensi che sia necessario anche un intervento sul posto
-            // successivo puoi iniziare la ricerca nella zona
-            // dell'intervento" — spiega sia perché il campo è facoltativo
-            // sia perché può comunque avere senso compilarlo.
-            <Text fontSize={13} color={brand.grafite70}>
-              Per una consulenza online non è obbligatorio indicare la città. Se pensi che in un secondo momento possa
-              servire anche un intervento sul posto, indicala comunque: potrai usarla per iniziare la ricerca nella
-              zona dell&apos;intervento.
-            </Text>
-          ) : null}
-        </YStack>
-        )}
+        {serviceMode === "HOME" ? null : cityField}
 
         {serviceMode === "HOME" ? (
           <YStack gap="$3">
@@ -1126,16 +1154,30 @@ export function GuidedRequestForm({
             <PhoneNumberInput value={recipientPhone} onChange={setRecipientPhone} style={fieldInputStyle} />
 
             {chosenAddress.serviceDown ? (
-              // Suggerimenti non disponibili: campi separati, come prima.
+              // Suggerimenti non disponibili: campi separati, già dall'apertura
+              // del modulo (§324) e con la città insieme al resto dell'indirizzo.
               <>
+                {chosenAddress.lostWhileTyping ? (
+                  <Text fontSize={13} color={brand.grafite70} role="status">
+                    I suggerimenti non sono disponibili: completa l&apos;indirizzo nei campi qui sotto.
+                  </Text>
+                ) : null}
                 <XStack gap="$2" flexWrap="wrap">
                   <YStack flex={2} flexBasis={0} minWidth={180}>
-                    <input aria-label="Via o piazza" value={street} onChange={(e) => setStreet(e.target.value)} placeholder="Via o piazza" style={fieldInputStyle} />
+                    <input
+                      aria-label="Via o piazza"
+                      value={street}
+                      onChange={(e) => setStreet(e.target.value)}
+                      placeholder="Via o piazza"
+                      style={fieldInputStyle}
+                      ref={streetInputRef}
+                    />
                   </YStack>
                   <YStack flex={1} flexBasis={0} minWidth={110}>
                     <input aria-label="Numero civico" value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} placeholder="Civico" style={fieldInputStyle} />
                   </YStack>
                 </XStack>
+                {cityInput}
                 <XStack gap="$2" flexWrap="wrap">
                   <YStack flex={1} flexBasis={0} minWidth={100}>
                     <input aria-label="CAP" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="CAP" style={fieldInputStyle} />
@@ -1172,7 +1214,11 @@ export function GuidedRequestForm({
                     setAddressVerified(true);
                   }}
                   biasTowards={cityComune ? { latitude: cityComune.lat, longitude: cityComune.lon } : null}
-                  onServiceUnavailable={chosenAddress.markServiceDown}
+                  onServiceUnavailable={() => {
+                    // Quanto già scritto non si perde: passa nel campo "Via o piazza".
+                    if (!street.trim() && addressText.trim()) setStreet(addressText.trim());
+                    chosenAddress.markServiceDown();
+                  }}
                   placeholder="Indirizzo, es. Via Roma 5, Bari"
                   style={fieldInputStyle}
                 />

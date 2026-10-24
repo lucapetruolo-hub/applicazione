@@ -175,13 +175,15 @@ export function ProfessionalDetailContent({
   // dopo il caricamento della pagina e il browser non trova ancora l'ancora.
   const requestedAgendaDate = searchParams.get("data");
   const [appliedAgendaDate, setAppliedAgendaDate] = useState<string | null>(null);
-  useEffect(() => {
-    if (!agendaPreview || !requestedAgendaDate || appliedAgendaDate === requestedAgendaDate) return;
+  if (agendaPreview && requestedAgendaDate && appliedAgendaDate !== requestedAgendaDate) {
     setAppliedAgendaDate(requestedAgendaDate);
     const index = agendaPreview.allDays.findIndex((day) => day.date === requestedAgendaDate);
     if (index >= 0) setAgendaWindowOffset(index);
+  }
+  useEffect(() => {
+    if (!appliedAgendaDate) return;
     window.requestAnimationFrame(() => document.getElementById("agenda")?.scrollIntoView({ behavior: "smooth", block: "start" }));
-  }, [agendaPreview, requestedAgendaDate, appliedAgendaDate]);
+  }, [appliedAgendaDate]);
 
   const totalAgendaDays = agendaPreview?.allDays.length ?? 0;
   const maxAgendaOffset = Math.max(0, totalAgendaDays - AGENDA_PREVIEW_DAYS);
@@ -990,9 +992,9 @@ export function ProfessionalDetailContent({
           targetType={reportTarget.targetType}
           targetLabel={reportTarget.label}
           onClose={() => setReportTarget(null)}
-          onSubmit={async (reason, details) => {
+          onSubmit={async (input) => {
             if (!token) return;
-            await apiClient.createContentReport(token, { targetType: reportTarget.targetType, targetId: reportTarget.targetId, reason, details });
+            await apiClient.createContentReport(token, { targetType: reportTarget.targetType, targetId: reportTarget.targetId, ...input });
             // Solo se la chiamata sopra non ha lanciato (es. 409 "già
             // segnalato nelle ultime 24 ore") il tasto passa a disabilitato.
             markReported(reportTarget.targetType, reportTarget.targetId);

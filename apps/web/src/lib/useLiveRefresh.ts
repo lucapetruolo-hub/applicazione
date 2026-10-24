@@ -16,7 +16,10 @@ import { subscribeRealtimeEvents } from "./realtimeBus";
  */
 export function useLiveRefresh(refresh: () => void, enabled: boolean, fallbackMs: number | null = 120_000): void {
   const refreshRef = useRef(refresh);
-  refreshRef.current = refresh;
+  // Sempre l'ultima versione di `refresh`, senza ripartire con l'iscrizione.
+  useEffect(() => {
+    refreshRef.current = refresh;
+  });
 
   useEffect(() => {
     if (!enabled) return;
