@@ -1,5 +1,5 @@
 // Confronto delle validazioni prima/dopo un aggiornamento di zod
-// (docs/CHANGELOG.md §324): passa gli stessi dati di prova, generati a caso
+// (docs/CHANGELOG.md §326): passa gli stessi dati di prova, generati a caso
 // dalla forma di ogni schema, agli schemi di `packages/shared` di un commit
 // precedente con la sua versione di zod e a quelli attuali, e segnala dove
 // cambiano l'esito, i dati in uscita o il messaggio mostrato all'utente (il
@@ -201,7 +201,7 @@ function outcome(schema, input) {
 // Differenze già spiegate nel registro, che non fermano la CI: lo schema e
 // l'inizio del primo errore di prima.
 const ACCEPTED = [
-  // zod 4 controlla prima i valori e poi la lunghezza dell'elenco (§324).
+  // zod 4 controlla prima i valori e poi la lunghezza dell'elenco (§326).
   { schema: "agendaWeekTemplateSchema", before: "days: Array must contain exactly 7 element(s)" },
 ];
 const accepted = (name, d) => ACCEPTED.some((a) => a.schema === name && typeof d.prima.primo === "string" && d.prima.primo.startsWith(a.before));

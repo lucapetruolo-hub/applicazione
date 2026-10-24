@@ -327,6 +327,11 @@ export function GuidedRequestForm({
   // non risponde si accetta il testo libero, per non bloccare la richiesta.
   const chosenAddress = useChosenAddress(Boolean(searchParams.get("via")));
   const setAddressVerified = chosenAddress.setChosen;
+  // Se i suggerimenti cadono mentre si scrive, si continua a scrivere in "Via o piazza".
+  const streetInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (chosenAddress.lostWhileTyping) streetInputRef.current?.focus();
+  }, [chosenAddress.lostWhileTyping]);
   const cityComune = findComuneByName(city);
   /** Cambiando città l'indirizzo già scritto non vale più: si svuota insieme a civico, CAP e provincia. */
   function changeCity(next: string) {
@@ -754,6 +759,54 @@ export function GuidedRequestForm({
     });
   }
 
+  // Campo della città: con il titolo "Città" nella consulenza online; a
+  // domicilio insieme agli altri campi dell'indirizzo, solo se i suggerimenti
+  // non funzionano (altrimenti la scelta dell'indirizzo la compila).
+  const cityInput = (
+    // `.guided-city`: stesso fondo bianco degli altri campi (prima grigio, docs/CHANGELOG.md §154).
+    // A domicilio stessa misura e bordo degli altri campi dell'indirizzo (`.guided-city-inline`).
+    <div className={serviceMode === "HOME" ? "guided-city guided-city-inline" : "guided-city"}>
+      <YStack
+        borderWidth={1}
+        borderColor={serviceMode === "HOME" ? brand.bordoCampo : brand.filetto}
+        borderRadius={serviceMode === "HOME" ? 6 : "$4"}
+        backgroundColor={brand.calce}
+      >
+        <Autocomplete
+          items={ALL_ITALIAN_CITY_NAMES}
+          getKey={(item) => item}
+          getLabel={(item) => item}
+          onSelect={changeCity}
+          value={city}
+          onChangeText={changeCity}
+          placeholder={serviceMode === "HOME" ? "Città" : "Es. Roma"}
+          size="$5"
+          minChars={3}
+        />
+      </YStack>
+    </div>
+  );
+  const cityField = (
+    <YStack gap="$2">
+      <FieldLabel>{cityOptional ? "Città (facoltativa)" : "Città"}</FieldLabel>
+      {cityInput}
+      {cityOptional ? (
+        // Richiesta esplicita dell'utente: "la città poiché si è
+        // selezionato online non dev'essere obbligatoria... deve
+        // esserci scritto che non è obbligatorio inserire la città, ma
+        // se pensi che sia necessario anche un intervento sul posto
+        // successivo puoi iniziare la ricerca nella zona
+        // dell'intervento" — spiega sia perché il campo è facoltativo
+        // sia perché può comunque avere senso compilarlo.
+        <Text fontSize={13} color={brand.grafite70}>
+          Per una consulenza online non è obbligatorio indicare la città. Se pensi che in un secondo momento possa
+          servire anche un intervento sul posto, indicala comunque: potrai usarla per iniziare la ricerca nella
+          zona dell&apos;intervento.
+        </Text>
+      ) : null}
+    </YStack>
+  );
+
   return (
     <>
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
@@ -1074,41 +1127,7 @@ export function GuidedRequestForm({
 
         {step === 2 ? (
           <>
-        {serviceMode === "HOME" && !chosenAddress.serviceDown ? null : (
-        <YStack gap="$2">
-          <FieldLabel>{cityOptional ? "Città (facoltativa)" : "Città"}</FieldLabel>
-          {/* `.guided-city`: stesso fondo bianco degli altri campi (prima grigio, docs/CHANGELOG.md §154). */}
-          <div className="guided-city">
-          <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="$4" backgroundColor={brand.calce}>
-            <Autocomplete
-              items={ALL_ITALIAN_CITY_NAMES}
-              getKey={(item) => item}
-              getLabel={(item) => item}
-              onSelect={changeCity}
-              value={city}
-              onChangeText={changeCity}
-              placeholder="Es. Roma"
-              size="$5"
-              minChars={3}
-            />
-          </YStack>
-          </div>
-          {cityOptional ? (
-            // Richiesta esplicita dell'utente: "la città poiché si è
-            // selezionato online non dev'essere obbligatoria... deve
-            // esserci scritto che non è obbligatorio inserire la città, ma
-            // se pensi che sia necessario anche un intervento sul posto
-            // successivo puoi iniziare la ricerca nella zona
-            // dell'intervento" — spiega sia perché il campo è facoltativo
-            // sia perché può comunque avere senso compilarlo.
-            <Text fontSize={13} color={brand.grafite70}>
-              Per una consulenza online non è obbligatorio indicare la città. Se pensi che in un secondo momento possa
-              servire anche un intervento sul posto, indicala comunque: potrai usarla per iniziare la ricerca nella
-              zona dell&apos;intervento.
-            </Text>
-          ) : null}
-        </YStack>
-        )}
+        {serviceMode === "HOME" ? null : cityField}
 
         {serviceMode === "HOME" ? (
           <YStack gap="$3">
@@ -1135,16 +1154,30 @@ export function GuidedRequestForm({
             <PhoneNumberInput value={recipientPhone} onChange={setRecipientPhone} style={fieldInputStyle} />
 
             {chosenAddress.serviceDown ? (
-              // Suggerimenti non disponibili: campi separati, come prima.
+              // Suggerimenti non disponibili: campi separati, già dall'apertura
+              // del modulo (§324) e con la città insieme al resto dell'indirizzo.
               <>
+                {chosenAddress.lostWhileTyping ? (
+                  <Text fontSize={13} color={brand.grafite70} role="status">
+                    I suggerimenti non sono disponibili: completa l&apos;indirizzo nei campi qui sotto.
+                  </Text>
+                ) : null}
                 <XStack gap="$2" flexWrap="wrap">
                   <YStack flex={2} flexBasis={0} minWidth={180}>
-                    <input aria-label="Via o piazza" value={street} onChange={(e) => setStreet(e.target.value)} placeholder="Via o piazza" style={fieldInputStyle} />
+                    <input
+                      aria-label="Via o piazza"
+                      value={street}
+                      onChange={(e) => setStreet(e.target.value)}
+                      placeholder="Via o piazza"
+                      style={fieldInputStyle}
+                      ref={streetInputRef}
+                    />
                   </YStack>
                   <YStack flex={1} flexBasis={0} minWidth={110}>
                     <input aria-label="Numero civico" value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} placeholder="Civico" style={fieldInputStyle} />
                   </YStack>
                 </XStack>
+                {cityInput}
                 <XStack gap="$2" flexWrap="wrap">
                   <YStack flex={1} flexBasis={0} minWidth={100}>
                     <input aria-label="CAP" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="CAP" style={fieldInputStyle} />
@@ -1181,7 +1214,11 @@ export function GuidedRequestForm({
                     setAddressVerified(true);
                   }}
                   biasTowards={cityComune ? { latitude: cityComune.lat, longitude: cityComune.lon } : null}
-                  onServiceUnavailable={chosenAddress.markServiceDown}
+                  onServiceUnavailable={() => {
+                    // Quanto già scritto non si perde: passa nel campo "Via o piazza".
+                    if (!street.trim() && addressText.trim()) setStreet(addressText.trim());
+                    chosenAddress.markServiceDown();
+                  }}
                   placeholder="Indirizzo, es. Via Roma 5, Bari"
                   style={fieldInputStyle}
                 />

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { adminBootstrapSchema, adminRoleUpdateSchema, completeBookingSchema, startIdentityVerificationSchema, reviewSchema } from "@professionisti/shared";
 
-/** zod 4 con i messaggi predefiniti di zod 3, che il sito mostra dove lo schema non ne ha uno suo (§324). */
+/** zod 4 con i messaggi predefiniti di zod 3, che il sito mostra dove lo schema non ne ha uno suo (§326). */
 function firstMessage(schema: z.ZodType, input: unknown): string | undefined {
   const result = schema.safeParse(input);
   return result.success ? undefined : result.error.issues[0]?.message;

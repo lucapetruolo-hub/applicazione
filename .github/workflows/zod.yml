@@ -3,7 +3,7 @@ name: Confronto zod
 # Quando una PR cambia la versione di zod (anche quelle mensili di
 # Dependabot), prova gli schemi di packages/shared prima e dopo con gli stessi
 # dati e si ferma se cambiano esiti, dati o messaggi mostrati agli utenti
-# (docs/CHANGELOG.md §324). Una differenza voluta va spiegata nel registro e
+# (docs/CHANGELOG.md §326). Una differenza voluta va spiegata nel registro e
 # aggiunta tra quelle accettate in packages/shared/scripts/confronto-zod.mjs.
 on:
   pull_request:
