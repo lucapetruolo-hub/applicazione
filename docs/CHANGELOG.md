@@ -20446,3 +20446,19 @@ Nuova migrazione `20261024140000_settimana_tipo_continua` (due colonne, nessun d
 - zod 3 di `@expo/cli` tra le eccezioni di osv-scanner, fatto nella PR #105 (`osv-scanner.toml`, solo per la versione 3.25.76).
 - Controllo automatico `.github/workflows/zod.yml` (approvato da Luca, "effettua miglioria"): sulle PR che toccano `pnpm-lock.yaml` o i `package.json` di shared e API lancia `confronto-zod --solo-se-cambia` contro il commit di base; se zod resta alla stessa versione non fa nulla, altrimenti si ferma su ogni differenza. La versione di partenza è quella del `pnpm-lock.yaml` del commit di base. Le differenze già spiegate nel registro stanno in `ACCEPTED` nello script (oggi solo quella dell'agenda settimanale).
 - Prova automatica (approvata da Luca, "effettua miglioria"): in `apps/api/src/common/zod-messages.test.ts` ogni file di `packages/shared/src` che importa zod deve avere anche `import "./zod"`; senza, il sito caricherebbe quel file senza i messaggi di zod 3 e li mostrerebbe in silenzio in inglese di zod 4.
+
+## 327. Vulnerabilità delle librerie
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Correggere le vulnerabilità delle librerie"): dopo la PR #115 GitHub segnalava 68 vulnerabilità nelle librerie (5 critiche). `pnpm audit` ne contava 74 (4 critiche, 40 alte, 25 moderate, 5 basse). Condizione: il sito non deve cambiare comportamento.
+
+**Decisione presa**
+- Quasi tutte erano librerie usate da altre librerie, ferme a una versione vecchia nel `pnpm-lock.yaml` anche se ne era ammessa una corretta: aggiornate solo quelle, dentro i limiti già dichiarati (`pnpm update --depth Infinity`): multer, body-parser e qs (API), shell-quote, js-yaml, joi, @xmldom/xmldom e compression (strumenti dell'app), fast-uri, browserslist, brace-expansion, nanoid, source-map-js. Nessun `package.json` cambiato per queste.
+- `vitest` 2 → 4.1 in `apps/api`, solo per le prove (le 4 critiche erano qui: vitest, tinypool). Con vitest 4 `vite` è una dipendenza da dichiarare a parte, altrimenti pnpm teneva la vecchia vite 5: aggiunto `vite` ^7.3.7. Un test (`quote-payment-options.test.ts`) spiava un metodo privato con `as never`, che i tipi di vitest 4 non accettano più: ora con il tipo del metodo.
+- `google-auth-library` 9 → 10 in `apps/api` (accesso con Google): la 9 si portava dietro `uuid` 9 con una falla. Il sito usa solo `OAuth2Client.verifyIdToken`, uguale nella 10.
+- Tre versioni forzate in `pnpm-workspace.yaml` (`overrides`), dove il pacchetto che le usa fissa una versione esatta vecchia: `postcss` in Next.js (prepara i CSS nella build), `deepmerge-ts` nella configurazione di Prisma, `fast-xml-parser` negli strumenti di React Native per Android. Stessa API, solo versioni più nuove; valgono solo per le versioni vecchie (`postcss@<8.5.23` ecc.), quindi non bloccano aggiornamenti futuri.
+- Restano due avvisi, entrambi dentro `@expo/cli` (strumento di sviluppo dell'app, non va nell'app, nel sito o nell'API): zod 3 (già eccezione dal §314) e node-forge, che non ha ancora una versione corretta. node-forge aggiunto alle eccezioni di `osv-scanner.toml`.
+
+**Verifica**
+- `pnpm audit`: da 74 a 2 avvisi (i due sopra). osv-scanner con le eccezioni: nessun problema.
+- Typecheck, lint, build, 597 test dell'API, avvio dell'API (grafo dei moduli), `prisma validate`, `npx expo export --platform android`. Accesso con Google: un token falso viene rifiutato come prima.
+- `confronto-pagine` prima/dopo con API e database di prova, cliente, professionista e admin: 132 foto, 124 identiche, nelle altre 5-59 pixel di antialiasing (nessuna differenza visibile), stessi stati HTTP.

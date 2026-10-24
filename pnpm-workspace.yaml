@@ -18,7 +18,11 @@ peerDependencyRules:
 # su React 19, docs/CHANGELOG.md §299): senza, i pacchetti condivisi
 # (packages/ui, Tamagui) si portavano dietro copie diverse. Più le versioni
 # corrette di dipendenze indirette con falle note (controllo sicurezza,
-# docs/CHANGELOG.md §292): multer 2.0.2 e proxy-addr 2.0.7.
+# docs/CHANGELOG.md §292): multer 2.0.2 e proxy-addr 2.0.7. Le ultime tre
+# (docs/CHANGELOG.md §327) correggono falle note dove il pacchetto che le
+# usa fissa una versione vecchia: postcss in Next.js (prepara i CSS nella
+# build), deepmerge-ts nella configurazione di Prisma, fast-xml-parser negli
+# strumenti di React Native per Android. Stessa API, solo versioni nuove.
 overrides:
   react: "19.3.0"
   react-dom: "19.3.0"
@@ -28,3 +32,6 @@ overrides:
   "@react-native/metro-config": "0.88.0"
   multer: "^2.3.0"
   proxy-addr: "^2.0.8"
+  "postcss@<8.5.23": "^8.5.31"
+  "deepmerge-ts@<8": "^8.0.2"
+  "fast-xml-parser@<5.7.0": "^5.11.2"
