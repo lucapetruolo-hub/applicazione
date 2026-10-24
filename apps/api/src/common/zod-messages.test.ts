@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { adminBootstrapSchema, adminRoleUpdateSchema, completeBookingSchema, startIdentityVerificationSchema, reviewSchema } from "@professionisti/shared";
@@ -30,5 +32,17 @@ describe("messaggi di zod 3 con zod 4", () => {
   it("accetta gli ID come zod 3, anche senza versione UUID", () => {
     expect(reviewSchema.shape.bookingId.safeParse("00000000-0000-0000-0000-000000000001").success).toBe(true);
     expect(firstMessage(reviewSchema.shape.bookingId, "123")).toBe("Invalid uuid");
+  });
+
+  it("ogni file di shared che usa zod carica prima i messaggi di zod 3", () => {
+    // Senza `import "./zod"` un file nuovo mostrerebbe in silenzio i messaggi di zod 4 sul sito, che carica solo i file che usa.
+    const src = join(__dirname, "../../../../packages/shared/src");
+    const files = readdirSync(src, { recursive: true, encoding: "utf8" }).filter((f) => f.endsWith(".ts") && f !== "zod.ts");
+    const missing = files.filter((f) => {
+      const text = readFileSync(join(src, f), "utf8");
+      return /from "zod"/.test(text) && !/^import "(\.\/|(\.\.\/)+)zod";$/m.test(text);
+    });
+    expect(files.length).toBeGreaterThan(10);
+    expect(missing).toEqual([]);
   });
 });
