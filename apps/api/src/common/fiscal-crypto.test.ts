@@ -55,3 +55,13 @@ describe("codice fiscale cifrato", () => {
     expect(toRewrite(encryptFiscal("RSSMRA80A01H501U"))).toBeNull();
   });
 });
+
+describe("sigillo del dato cifrato", () => {
+  it("rifiuta un sigillo accorciato", () => {
+    process.env.FISCAL_DATA_KEY = "chiave-dati-fiscali";
+    const [iv, tag, data] = encryptFiscal(IBAN).split(".") as [string, string, string];
+    const shortTag = Buffer.from(tag, "base64url").subarray(0, 4).toString("base64url");
+    expect(decryptFiscal(`${iv}.${shortTag}.${data}`)).toBeNull();
+    expect(decryptFiscal(`${iv}.${tag}.${data}`)).toBe(IBAN);
+  });
+});

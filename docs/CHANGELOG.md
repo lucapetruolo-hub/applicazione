@@ -17226,7 +17226,7 @@ prossima funzionalità da costruire.
   `/le-mie-richieste` la funzione che ricarica le liste è ora un
   `useCallback` legato al token, dichiarato tra le dipendenze del poll
   (stesso comportamento); in `AddressAutocompleteInput` le coordinate di
-  riferimento sono lette fuori dall'effetto (stesso comportamento). In
+  riferimento sono lette fuori dall'effetto (stesso comportamento). Dopo l'unione delle PR #101 e #103 Semgrep segnalava i dati strutturati per Google scritti con `dangerouslySetInnerHTML` in due pagine: erano già sicuri (passano da `jsonForScript`), ma ora tutti e sei i punti usano un solo componente `JsonLd` (`apps/web/src/components/JsonLd.tsx`), unico posto che scrive HTML grezzo. Reso stabile anche un test del calendario che falliva a caso: controllava che il file del cliente non contenesse "333", che può comparire nel numero di versione ricavato dall'ora; ora controlla il numero di telefono intero. In
   `/dashboard/profilo` la dipendenza resta fuori apposta, con il motivo
   scritto: rimetterla ricaricherebbe il profilo al cambio della foto
   dell'account e cancellerebbe le modifiche non salvate.
@@ -20226,7 +20226,126 @@ La mappa con una chiave vera si vede solo sul sito pubblicato: dopo l'unione va 
 
 **Verifica**: nuove prove `e2e/tests/agenda-primo-uso.spec.ts` (T1, T2-T3, T4, T9-T11); 60 prove nel browser in locale; tempi stimati dei compiti C1 7,4 s, C2 9,7 s, C3 8,1 s, C4 10,8 s, C5 20,0 s (C5 come prima: il tasto con la scritta non cambia i tocchi, solo il dubbio su cosa faccia).
 
-## 312. zod 4
+## 312. Test dei permessi e strumenti di controllo nella CI
+
+**Richiesta dell'utente**: dal controllo approfondito (§293), un test nella CI che chiama ogni rotta con ogni ruolo e con gli id di un altro utente, più Semgrep, CodeQL, gitleaks e osv-scanner. Deciso di farli subito invece che prima del lancio. "La prova che il lavoro è giusto non è la tua parola: sono i test nella CI e i rapporti degli strumenti."
+
+**Test dei permessi** (job `access-matrix` in `.github/workflows/ci.yml`, script `apps/api/scripts/access-matrix.mjs`):
+- crea un Postgres vuoto, applica le migrazioni e avvia l'API vera (stessa configurazione di `main.ts`, ora in `src/app-setup.ts`), senza chiavi esterne;
+- crea due clienti, due professionisti, tre admin (SUPER, MODERATOR, FINANCE) e i dati di prova: richiesta con lead, preventivo e chat, prenotazione con pagamento, notifica, lavoro esterno, segnalazione;
+- `apps/api/scripts/access-policy.mjs` dice per ogni rotta chi la può usare (pubblica, solo con il biglietto, dati propri, dati propri solo per i professionisti, dati di qualcuno). **Una rotta nuova non classificata fa fallire la CI**;
+- controlla: rotte pubbliche senza guard; tutte le altre senza accesso → 401; rotte admin → 403 per cliente, professionista e admin senza il permesso giusto, accesso per chi ce l'ha; rotte da professionista → nessun dato a un cliente; rotte con un id → 403/404 a ogni estraneo (anche se il corpo della richiesta non è valido: la validazione viene saltata apposta, così il test arriva sempre al controllo di proprietà) e risposta valida ai proprietari.
+
+Risultato: 218 rotte, 798 controlli, nessuna falla (dopo l'unione della PR #101: 220 rotte, la nuova `GET /professionals/prices/:category` segnalata dal test e classificata pubblica). Prova che il test funziona: togliendo per un attimo il controllo di proprietà dal pagamento di una prenotazione, il test segnala subito i due estranei che lo leggono.
+
+**Strumenti** (`.github/workflows/security.yml`, a ogni PR, a ogni unione e ogni lunedì): CodeQL (`security-extended`), Semgrep (regole `p/default`, `p/nodejs`, `p/typescript`, `p/secrets`) e osv-scanner (librerie con vulnerabilità note) scrivono nella scheda "Security → Code scanning" del repository, per ora senza bloccare. gitleaks controlla tutta la cronologia (641 commit, nessuna chiave trovata) e blocca: il repository è pubblico, una chiave nel codice va tolta subito. Il registro mostra solo le chiavi oscurate (`--redact`).
+
+**Prima lettura dei rapporti**: Semgrep 5 segnalazioni (2 reali ma basse: la lunghezza del sigillo AES-GCM non è controllata nella decifratura dei dati fiscali e dei link di invito; 3 falsi allarmi). osv-scanner 162 avvisi su 45 librerie, quasi tutte usate solo per costruire o provare il codice; nell'API e nel sito pubblicato contano Next.js 14 (passaggio a 15 già in un thread a parte), body-parser, qs (usato solo dal lettore dei moduli `urlencoded`, che nessun client usa), `@nestjs/core` e zod (corretti solo nelle versioni maggiori nuove). Le correzioni sono proposte all'utente in ordine di gravità prima di farle.
+
+## 313. Controllo sicurezza: correzioni dai rapporti degli strumenti
+
+**Richiesta dell'utente**: "effettua le correzioni che ritieni nell'ordine e nelle modalità che ritieni", sulle proposte nate dai rapporti del §312.
+
+1. **Corpi compressi rifiutati** (`src/app-setup.ts`, `inflate: false` sul lettore JSON e sui due webhook): body-parser ha una falla nota che blocca l'API con un corpo compresso fatto apposta. Nessun client manda corpi compressi (sito, app, Stripe, Didit), quindi invece di aggiornare la libreria si spegne la decompressione: la richiesta compressa riceve 415. Funziona uguale su Express 4 e su Express 5 (PR #103).
+2. **Tolto il lettore dei moduli `urlencoded`**: l'API riceve solo JSON e nessun client manda moduli; quel lettore usava `qs`, con due falle note. Un modulo ora arriva vuoto e la validazione risponde 400.
+3. **Sigillo AES-GCM di 16 byte** nella decifratura dei dati fiscali (`common/fiscal-crypto.ts`) e dei link di invito (`profile-invites.service.ts`): Node accetta anche un sigillo più corto, più facile da indovinare per chi volesse falsificare un dato cifrato. Ora un sigillo diverso da 16 byte non viene letto. Test nuovo.
+4. **Semgrep ora blocca la PR**: con le correzioni sopra resta zero segnalazioni. Il falso allarme su `readPath` (solo lettura, non può alterare i prototipi) è sparito riscrivendo la funzione con `reduce`, perché GitHub mostrava comunque l'avviso anche con un commento `nosemgrep`; restano fuori i file di test (le chiavi finte le controlla gitleaks) e gli script di controllo della CI in `apps/*/scripts`, che non arrivano agli utenti (dopo l'unione della PR #101 Semgrep segnalava tre falsi allarmi nel controllo SEO). osv-scanner resta solo rapporto (quasi tutti gli avvisi riguardano librerie per costruire o provare il codice), CodeQL finché la sua scheda non è controllata.
+
+Non fatto qui: zod 4 (aggiornamento grande, rischio basso: il corpo JSON ha già un limite di dimensione); Next.js 15 e NestJS 11 sono nella PR #103.
+
+**Verifica**: 543 test dell'API (con il sigillo accorciato rifiutato), typecheck e lint. API avviata con Postgres locale: login con corpo compresso 415, con modulo 400, con JSON normale la risposta di sempre. Test dei permessi (§312) di nuovo senza problemi. Semgrep: 0 segnalazioni.
+
+**Migliorie** (richiesta dell'utente: "effettua tutte le migliorie da 1 a 4 nella modalità che ritieni"):
+1. **Allegati della chat solo per chi partecipa** (`TimelineService.canDownloadAttachment`): `GET /guided-requests/timeline-photos/download` scarica l'allegato solo se compare in un messaggio di una chat di cui chi chiama è il cliente o il professionista, oppure se è un admin (chat in sola lettura per la moderazione). Altrimenti risponde 404. Prima bastava aver fatto l'accesso e conoscere l'indirizzo, e i documenti sono proprio quelli che la CDN di Cloudinary non consegna da sola. Nel test dei permessi la rotta è ora "di qualcuno": gli estranei ricevono 404, e togliendo apposta il controllo il test fallisce.
+2. **CodeQL blocca la PR**: un passo legge i risultati e fallisce su errori e avvisi; i consigli restano solo nella scheda Security. Stesso perimetro di Semgrep (fuori test e script della CI). Al primo giro ha trovato due cose, corrette: l'espressione regolare che leggeva il percorso degli allegati in `CloudinaryService.fetchAttachmentForDownload` poteva impiegare molto tempo su un indirizzo lungo fatto apposta (ora il percorso si divide per segmenti, stesso risultato); in `EmailCodeForm` un'espressione con `^` solo sulla prima parte, riscritta in modo esplicito (stesso comportamento).
+3. **zod 4**: in un thread a parte dopo l'unione della PR #103, che tocca le stesse dipendenze.
+4. **Azioni della CI su Node 24**: `actions/checkout@v6`, `actions/setup-node@v6`, `pnpm/action-setup@v5`, `github/codeql-action@v4` (GitHub segnalava le versioni su Node 20, in dismissione). Il Node usato per compilare e provare il codice era ancora 20, come su Render: passato a 22 nel §314.
+
+## 314. Node 22 sul server e nella CI, eccezione di osv-scanner per zod 3
+
+**Richiesta dell'utente**: "effettua la prima miglioria e segna da fare prima del lancio la seconda" ("o comunque dopo i primi aggiornamenti di dependabot"), sulle migliorie proposte prima di unire la PR #105: Node 20 non riceve più aggiornamenti di sicurezza da aprile 2026; osv-scanner bloccante.
+
+**Decisione**:
+- `.nvmrc` a 22 e `engines.node` a `22.x`: Render legge `.nvmrc` e al prossimo deploy usa Node 22 da solo, Vercel legge `engines`. Anche i job della CI (`ci.yml`) girano su Node 22, comprese le prove nel browser dell'agenda (§309), con le azioni aggiornate come nel §312.
+- osv-scanner resta solo rapporto: renderlo bloccante (solo per le librerie che vanno sul sito e sull'API) è nella checklist di lancio, punto 40, da fare prima del lancio o dopo i primi aggiornamenti di Dependabot.
+- `osv-scanner.toml`: eccezione per zod 3.25.76, rimasto solo dentro `@expo/cli` (strumento di sviluppo dell'app, non finisce nell'app, nel sito o nell'API) dopo il passaggio a zod 4 della PR #108; approvata dall'utente nel thread di zod. L'eccezione vale solo per quella versione: un altro zod vulnerabile verrebbe segnalato.
+
+**Verifica**: build, typecheck, test e test dei permessi con Node 22 nella CI; osv-scanner in locale non mostra più zod 3.25.76, e senza il file lo mostra.
+
+## 315. Pagine per Google nel sistema unico
+
+**Richiesta dell'utente**: "si" alla proposta fatta dopo l'unione della PR #102: allineare al sistema unico (§305) le pagine nuove per Google del §296 ("Quanto costa", riquadri delle pagine città, "Lavora con noi", percorso sopra il profilo, pagina non trovata).
+
+**Decisione**: solo CSS in `globals.css`, nessun cambio ai testi.
+- Testi da 14-15 px a 16 px (domande frequenti, numeri delle città, tabella prezzi, link ai servizi, "Lavora con noi"). Il percorso "Home › Idraulico › Latina" resta piccolo come etichetta (13 px).
+- Arrotondamenti da 16 a 12 px (e 4 a 6), come il resto del sito.
+- Pulsante di "Quanto costa" e "Lavora con noi": verde (`#189a63`, più scuro al passaggio) con la pressione dei pulsanti del sito, al posto del quasi nero, come da decisione dell'utente del 24/10 (niente pulsanti color inchiostro).
+- Prezzi della tabella in IBM Plex Mono, come la riga del preventivo.
+
+**Verifica**: build del web; foto a 390 e 1440 px di "Lavora con noi" e dei riquadri della pagina Idraulico a Latina in `/mnt/project-files/anteprime/identita-codice/pagine-seo/` ("Quanto costa" dà 404 in prova perché mancano ancora abbastanza prezzi veri, regola del §296).
+
+## 316. Pannello delle notifiche, prezzi senza puntini, interruttori tondi
+
+**Richieste dell'utente (24/10/2026)**: "migliorare anche il pannello delle notifiche [...] che si apre premendo sulla campanella (anche quella è un ni), è rimasto retrò"; "non mi piacciono queste [puntini] fra il testo e il prezzo, eliminale sia da lì che dalla scheda dopo la ricerca"; "gli switch erano più belli tondeggianti come prima, ripristinali".
+
+**Decisioni**:
+- Campanella (`NotificationBell.tsx`): pulsante da 44 px con l'icona `bell` a tratto sottile, numero rosso con bordo bianco, senza l'animazione "ping" continua. `aria-expanded`/`aria-haspopup` e numero delle non lette nell'etichetta.
+- Pannello: bianco pieno, arrotondamento 12, ombra leggera, apertura di 160 ms dall'angolo (spenta con "riduci movimento"). Intestazione con "Notifiche", pillola "N nuove" ed "Elimina tutte" che chiede conferma al secondo tocco (4 secondi). Gruppi Oggi / Ieri / Prima non maiuscoli; ogni riga con icona dell'argomento in un quadrato tinto, argomento e ora sulla stessa riga, pallino verde e testo in grassetto se nuova, testo a 16 px, "x" per eliminare (sempre visibile sul telefono, al passaggio del mouse sul computer) e trascinamento di lato mantenuto. Stato vuoto con icona e una frase, righe scheletro durante il caricamento, piede "Impostazioni notifiche". Sul telefono il pannello occupa la larghezza dello schermo sotto l'intestazione. Esc chiude e riporta il fuoco sulla campanella.
+- `PriceLine` (`packages/ui`): tolti i puntini di guida tra voce e prezzo, ora uno spazio vuoto. Nel profilo le prestazioni sono separate da una linea sottile; la scheda dei risultati usa lo stesso componente.
+- Arrotondamenti `$10` e `$11` di Tamagui (`packages/ui/src/config.ts`) di nuovo tondi pieni: li usano solo l'interruttore "A domicilio / Online" della richiesta di preventivo, le schede degli orari nel profilo, quelle della barra di ricerca, etichette e pulsanti a pillola, che con il §305 erano scesi a 12 px.
+
+**Verifica**: typecheck di `ui` e `web`, build del web; foto prima/dopo a 390 e 1440 px in `/mnt/project-files/anteprime/identita-codice/notifiche/` e foto di prezzi e interruttori in `/mnt/project-files/anteprime/identita-codice/prezzi-interruttori/`.
+
+## 317. Angoli più morbidi in tutto il sito e "Mostra 0 richieste"
+
+**Richiesta dell'utente (24/10/2026)**, sulla finestra "Filtri" delle richieste: "tutto questo, sia la finestra che il resto all'interno, era più bello tondeggiante, di più, come prima"; e "correggi anche la visualizzazione di quello 0 che non si vede bene" ("Mostra0  richieste").
+
+**Decisioni**:
+- Sistema unico ammorbidito (aggiorna il §305): 10 px per etichette e tessere piccole, 20 px per campi, riquadri, finestre e pannelli, tondo pieno per pulsanti e interruttori. `radiusSm` 10, `radiusDoc`/`radiusDocLg` 20 (`packages/ui/src/tokens.ts`); token Tamagui `$1-$2` a 10 e `$3-$9` a 20 (`config.ts`); in CSS e nei componenti 12 → 20 e 6 → 10. Le icone in quadrato piccolo (38-48 px: notifiche, registrazione, contatti, riquadro professionisti, tessere dei lavori, caselle del codice email) restano a 12, altrimenti diventerebbero cerchi. Agenda non toccata a mano.
+- "Mostra N richieste" (richieste del professionista e del cliente): testo scritto in un'unica stringa. `Button` di Tamagui metteva ogni pezzo in un testo separato con spazio fra l'uno e l'altro, così lo 0 si attaccava a "Mostra".
+
+**Verifica**: typecheck di `ui` e `web`, build del web; foto a 390 e 1440 px (home, profilo, richiesta di preventivo, richieste e finestra Filtri) in `/mnt/project-files/anteprime/identita-codice/tondeggiante/`.
+
+## 318. Avvisi del controllo del codice sistemati, regole tornate errori
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Aggiornamento Next.js"): "effettua le due migliorie nelle modalità che ritieni"; la seconda erano gli avvisi di `pnpm turbo run lint` nel sito (regole nuove di React del §301 e accessibilità del §205), fatta in un thread a parte dopo l'unione della PR #103.
+
+**Decisione presa**: 159 avvisi in 62 file sistemati uno per uno; in `eslint.config.mjs` tolte le eccezioni che li abbassavano ad avviso, quindi da ora sono errori e bloccano la CI.
+- **Regole del React Compiler** (`eslint-plugin-react-hooks` 7, 70 avvisi). Al posto di `setState` dentro un effetto: valori derivati durante il render (es. il conteggio delle notifiche è 0 senza utente); risposte salvate insieme alla ricerca da cui arrivano, così cambiando filtro o pagina si torna allo scheletro senza azzerare lo stato a mano (pannello admin, statistiche, giro del giorno, ricerca rapida admin) ed evitando che una risposta vecchia finisca sotto il filtro nuovo; stato aggiornato durante il render quando cambia un valore (campi di `/account`, prefill della richiesta di preventivo, fascia oraria in modifica in agenda, menu account che si chiude cambiando pagina, intestatario dell'IBAN); `useMediaQuery`/`usePrefersReducedMotion` (`apps/web/src/lib/useMediaQuery.ts`) al posto di `matchMedia` in un effetto; le funzioni del genitore tenute in un ref aggiornato in un effetto, non durante il render; `Date.now()` mai durante il render (ora fissata all'apertura o all'arrivo dei dati). Restano poche eccezioni con un `eslint-disable` spiegato accanto: dati che esistono solo nel browser (sessione salvata, scelta dei cookie, frammento dell'indirizzo dopo l'accesso con Google) e link seguiti una volta sola con lo scorrimento fino alla scheda (`?open=`).
+- **Accessibilità** (`jsx-a11y`, 88 avvisi). Le finestre (popup) avevano `role="dialog"` e il clic sullo sfondo, con `stopPropagation` sulla finestra per non chiuderla: ora lo sfondo ha `role="presentation"` e si chiude solo con un clic proprio sullo sfondo (`closeOnBackdrop`, `apps/web/src/lib/closeOnBackdrop.ts`), il ruolo `dialog` è sulla finestra; con la tastiera si chiudono con Esc come prima. Le miniature di foto e documenti che si aprono in grande (`MediaPreview`) sono pulsanti usabili con Invio e spazio, con un nome per i lettori di schermo; il riquadro del professionista sulla mappa è un link raggiungibile con Tab. Nella lista dei paesi del telefono la scelta da tastiera resta dal campo di ricerca (frecce e Invio). Un'immagine `<img>` con testo alternativo può avere il ruolo di pulsante (consentito da ARIA in HTML), aggiunto alla regola.
+- Nessun cambio di aspetto voluto.
+- CodeQL (`js/xss-through-dom`, bloccante dal §313) segnalava le miniature di `MediaPreview` e `ImageCropModal`: per lui l'anteprima `blob:` di un file appena scelto è "testo del DOM" che arriva fino a `src`. L'indirizzo lo genera il browser e non può contenere HTML; `localPreviewUrl` in `lib/media.ts` lo passa per `encodeURI`, che lo lascia identico ma che CodeQL riconosce. Usato nella richiesta di preventivo, in `/account` e nel profilo pubblico.
+- Tolto il messaggio "Pages directory cannot be found" stampato a ogni lint (miglioria approvata da Luca): `rootDir` di Next in `eslint.config.mjs` ora è un percorso assoluto, perché turbo fa partire il lint da `apps/web`.
+
+**Verifica**: lint di tutto il monorepo a zero errori e zero avvisi, typecheck, build. Foto delle 132 pagine prima e dopo (`confronto-pagine`, con il limite di richieste dell'API alzato solo in locale per non avere risposte 429 a caso): 128 identiche al pixel; le altre 4 (riga "adesso" dell'agenda, admin Finanza, pochi pixel in `/urgente`) cambiano anche tra due giri fatti senza modifiche. Stessi stati HTTP, nessun errore nuovo in console. Prove nel browser: filtri della ricerca e menu da telefono si chiudono con un clic sullo sfondo e con Esc, non con un clic dentro; ricerca rapida admin; elenco utenti admin con la ricerca; campi di `/account` compilati anche arrivando da un'altra pagina; finestra della fascia oraria in agenda con `role="dialog"` reso da Tamagui. CodeQL 2.27.3 in locale con le stesse regole della CI: nessuna segnalazione nel codice del sito.
+
+## 319. Segnalazioni dei contenuti secondo il DSA: niente menu "Segnalazioni e decisioni", presa in carico, esito solo se illegale
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Rivedere il percorso delle segnalazioni (DSA)"): togliere dall'area cliente e professionista il menu "Segnalazioni e decisioni", perché chi segnala deve solo sapere che la segnalazione è stata presa in carico. Poi, nella versione approfondita: rivedere tutto il percorso come un responsabile Trust & Safety con un legale DSA, partendo dal testo del Regolamento (UE) 2022/2065 su EUR-Lex e dalle indicazioni AGCOM. Analisi e tabella degli obblighi in `/mnt/project-files/analisi/segnalazioni-dsa-obblighi.md`; l'utente ha approvato tutti e sei i punti.
+
+**Cosa dice la legge** (testo DSA letto su EUR-Lex; AGCOM non ha linee guida sugli artt. 16-17):
+- Art. 16 (solo contenuti **illegali**): meccanismo aperto a chiunque, anche senza account (c. 1); spiegazione e dichiarazione di buona fede (c. 2); conferma di ricevimento (c. 4); **notifica della decisione** con i mezzi di ricorso (c. 5). "Solo presa in carico" va quindi contro il c. 5 per i contenuti illegali, non per le violazioni dei Termini.
+- Art. 17 (illegali e Termini): a chi è colpito misura, fatti, legge o clausola dei Termini violata, mezzi di ricorso.
+- Art. 19: micro e piccole imprese esenti dalla sezione 3, quindi reclamo interno (art. 20) e conciliazione (art. 21) non obbligatori. "Contesta la decisione" resta comunque per l'autore.
+- Art. 14: i Termini devono descrivere moderazione, verifica umana e contestazione.
+
+**Decisione**:
+- Menu: tolta la voce "Segnalazioni e decisioni" (professionista e cliente, `accountMenuItems.ts`). `/segnalazioni` resta, fuori dal menu, solo per le decisioni sui propri contenuti: si apre dall'email e dalla notifica, mostra misura, legge o regola violata, motivazione, "Contesta la decisione". Chi segnala non ha più un elenco delle proprie segnalazioni (`GET /reports/mine` restituisce solo `received`).
+- Modulo "Segnala": motivo da elenco fisso in due gruppi, "È illegale" (insulti, minacce o diffamazione; odio o discriminazione; dati personali di altre persone; recensione falsa o truffa) e "Non rispetta le regole del sito" (informazioni non veritiere; spam o pubblicità; fuori tema; altro), senza scelta già fatta (`CONTENT_REPORT_REASONS` in `packages/shared/src/moderation.ts`). Se è illegale servono "Perché è illegale?" (almeno 10 caratteri) e la spunta "Confermo in buona fede che la segnalazione è corretta e completa", con link ai Termini. Il server lo riverifica (`createContentReportSchema`).
+- Chi segnala: notifica ed email "Abbiamo preso in carico la tua segnalazione" subito (`CONTENT_REPORT_RECEIVED`); alla decisione, **solo per un contenuto illegale**, una riga ("preso provvedimenti sul contenuto" / "non abbiamo preso provvedimenti") più "puoi rivolgerti all'autorità giudiziaria", senza motivazione, senza link (`CONTENT_REPORT_DECISION`, payload senza `note`).
+- Chi è colpito (`CONTENT_REPORT_UPHELD`): in più "Legge violata" o "Regola violata", scelta dall'admin da un elenco (`MODERATION_GROUNDS`: Termini punti 2, 4, 7; diffamazione, minacce, odio, dati personali, recensione falsa, altra norma). Obbligatoria per accogliere, anche lato server.
+- Senza account: link "Segnala un contenuto illegale" in fondo a ogni pagina → `/contatti?motivo=segnalazione` (nuovo ruolo `REPORT_ILLEGAL`, testo di almeno 20 caratteri e buona fede); email di presa in carico a chi scrive e avviso agli admin. In "Messaggi" l'admin ha l'etichetta rossa e "Invia l'esito via email" con le due frasi già scritte.
+- Pannello admin: etichetta "Illegale secondo chi segnala", "buona fede confermata", tendina "Quale regola o legge viola?", testi aggiornati su chi riceve cosa.
+- Termini: punto 7 con l'elenco dei contenuti vietati e nuovo punto 8 "Segnalazioni dei contenuti" (`/termini#segnalazioni`), poi 9 e 10; data e `LEGAL_CONSENT_VERSION` al 24/10/2026.
+- Migrazione `20261024130000_content_report_dsa`: `ContentReport.claimsIllegal`, `goodFaithAt`, `ground`; `ContactMessageRole.REPORT_ILLEGAL`.
+- `ConsentCheckbox`: `aria-checked` al posto di `accessibilityState`, che React segnalava come attributo sconosciuto.
+- Le email arrivano davvero solo con il dominio Resend verificato (checklist di lancio, punto 23); la notifica nel sito c'è comunque.
+- Migliorie approvate dall'utente ("effettua le prime due migliorie"): da telefono (fino a 520px) l'intestazione mostra solo la foto dell'account, senza nome, perché un nome lungo spingeva fuori schermo "Preventivo" (il nome resta per il lettore di schermo); `pnpm --filter @professionisti/api email:preview` si bloccava sull'email di benvenuto del professionista (chiamate rimaste alla firma senza codice) e ora genera tutte le 80 email, compresi "Accesso bloccato" e "Nuovo accesso".
+- Prova nel browser: l'accesso dei tre utenti di prova aspetta e riprova se il limite di 10 accessi al minuto è già esaurito dalle prove precedenti.
+
+**Verifica**: 11 nuovi test API (segnalazione, presa in carico, esito senza motivazione, nessun esito per i Termini, regola obbligatoria, pagina senza chi segnala, Contatti) e 583/583 verdi; typecheck API, web ed e2e; nuova prova nel browser `e2e/tests/segnalazioni.spec.ts` (segnala da telefono → admin decide con la legge → esito senza motivazione → autore senza voce di menu contesta dalla pagina; segnalazione senza account da Contatti). Prova completa in locale con account di prova e schermate da telefono e computer in `/mnt/project-files/anteprime/segnalazioni-dsa/`. Domande per l'avvocato nei punti 32-35 di `domande-commercialista-avvocato.md`.
+
+## 320. zod 4
 
 **Richiesta esplicita dell'utente** (24/10/2026, thread "Controllo sicurezza completo", PR #105): osv-scanner segnala GHSA-mrhx-c7xc-m3w5 su zod 3.25.76 (consumo di memoria su collezioni molto grandi), corretta solo nella serie 4. Luca: "effettua tutte le migliorie da 1 a 4 nella modalita che ritieni". Condizione: validazioni e messaggi d'errore mostrati agli utenti uguali a prima.
 
@@ -20252,3 +20371,4 @@ La mappa con una chiave vera si vede solo sul sito pubblicato: dopo l'unione va 
 - `pnpm --filter @professionisti/shared confronto-zod [--prima <commit>] [--zod-prima <versione>] [--prove <n>] [--tutti]` (`packages/shared/scripts/confronto-zod.mjs`): il confronto automatico usato qui, da rifare a ogni aggiornamento di zod. Prende gli schemi di un commit con la sua versione di zod (scaricata da npm) e quelli attuali, li prova con gli stessi dati a caso e segnala esiti, dati o messaggi diversi (codice d'uscita 1). Legge la forma degli schemi sia di zod 3 sia di zod 4. Contro il ramo principale prima di questa PR trova solo la differenza dell'agenda settimanale descritta sopra; contro sé stesso nessuna.
 - zod 3 di `@expo/cli` tra le eccezioni di osv-scanner, fatto nella PR #105 (`osv-scanner.toml`, solo per la versione 3.25.76).
 - Controllo automatico `.github/workflows/zod.yml` (approvato da Luca, "effettua miglioria"): sulle PR che toccano `pnpm-lock.yaml` o i `package.json` di shared e API lancia `confronto-zod --solo-se-cambia` contro il commit di base; se zod resta alla stessa versione non fa nulla, altrimenti si ferma su ogni differenza. La versione di partenza è quella del `pnpm-lock.yaml` del commit di base. Le differenze già spiegate nel registro stanno in `ACCEPTED` nello script (oggi solo quella dell'agenda settimanale).
+

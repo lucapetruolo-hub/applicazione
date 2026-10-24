@@ -456,7 +456,19 @@ Città, pagine vuote fuori da Google.
     fuori dall'app) fatti da professionisti che non conoscono il sito, senza
     aiuto. Il test simulato del §311 non li sostituisce. Testo dei compiti e
     obiettivi nel documento "Verifica dell'agenda come un esperto UX".
+40. **osv-scanner bloccante** (docs/CHANGELOG.md §314, decisione dell'utente
+    del 24/10/2026): prima del lancio, o comunque dopo i primi aggiornamenti
+    di Dependabot, fargli bloccare la PR per le librerie che vanno sul sito e
+    sull'API (non per quelle usate solo per costruire o provare il codice).
+    Ogni eccezione va in `osv-scanner.toml` con il motivo. Lo fa un thread.
 
+
+41. **Segnalazioni dei contenuti (DSA)** (docs/CHANGELOG.md §319): dopo la
+    verifica del dominio Resend, fare una segnalazione di prova come
+    "contenuto illegale", decidere dal pannello admin e controllare nei log
+    di Resend che siano partite le tre email (presa in carico, esito a chi
+    segnala, decisione all'autore). Far vedere all'avvocato i punti 32-35 di
+    `domande-commercialista-avvocato.md` e il punto 8 dei Termini.
 
 ## Da fare dopo il lancio
 

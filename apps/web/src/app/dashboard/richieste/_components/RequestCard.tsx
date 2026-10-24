@@ -132,12 +132,14 @@ export function RequestCard({
   const [depositPercentDraft, setDepositPercentDraft] = useState(String(defaultPaymentOffer?.depositPercent ?? ONLINE_DEPOSIT_PERCENT));
   const [rememberPaymentOffer, setRememberPaymentOffer] = useState(false);
   // Il profilo arriva dopo la scheda: si applicano i valori di serie finché il modulo non è aperto.
-  useEffect(() => {
-    if (!defaultPaymentOffer || showQuoteForm) return;
-    setPaymentOptions(defaultPaymentOffer.paymentOptions);
-    setDepositPercentDraft(String(defaultPaymentOffer.depositPercent));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultPaymentOffer]);
+  const [appliedPaymentOffer, setAppliedPaymentOffer] = useState(defaultPaymentOffer);
+  if (defaultPaymentOffer !== appliedPaymentOffer) {
+    setAppliedPaymentOffer(defaultPaymentOffer);
+    if (defaultPaymentOffer && !showQuoteForm) {
+      setPaymentOptions(defaultPaymentOffer.paymentOptions);
+      setDepositPercentDraft(String(defaultPaymentOffer.depositPercent));
+    }
+  }
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [isSubmittingQuote, setIsSubmittingQuote] = useState(false);
   // Anteprima "Dal 4 al 6 novembre, ogni giorno 08:00–17:00" di un lavoro su più giorni.
@@ -894,7 +896,7 @@ export function RequestCard({
                       </a>
                       {whatsAppLink ? (
                         <a href={whatsAppLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
-                          <XStack paddingHorizontal="$2.5" paddingVertical={5} borderRadius={6} backgroundColor="#25d366">
+                          <XStack paddingHorizontal="$2.5" paddingVertical={5} borderRadius={10} backgroundColor="#25d366">
                             <Text fontSize={13} fontWeight="700" color="white">
                               WhatsApp
                             </Text>
@@ -902,7 +904,7 @@ export function RequestCard({
                         </a>
                       ) : null}
                       <a href={`tel:${revealedPhone}`} style={{ textDecoration: "none" }}>
-                        <XStack paddingHorizontal="$2.5" paddingVertical={5} borderRadius={6} backgroundColor={brand.cianografia}>
+                        <XStack paddingHorizontal="$2.5" paddingVertical={5} borderRadius={10} backgroundColor={brand.cianografia}>
                           <Text fontSize={13} fontWeight="700" color="white">
                             Chiama
                           </Text>
@@ -928,7 +930,7 @@ export function RequestCard({
                       la stessa conversazione (docs/CHANGELOG.md §228). */}
                   {stage === "scaduta" || stage === "chiusa" ? (
                     <XStack gap="$2" flexWrap="wrap" paddingTop="$1">
-                      <XStack paddingHorizontal="$3" paddingVertical={8} borderRadius={6} backgroundColor={brand.cianografiaVelo} cursor="pointer" onPress={openTimeline} gap="$1" alignItems="center">
+                      <XStack paddingHorizontal="$3" paddingVertical={8} borderRadius={10} backgroundColor={brand.cianografiaVelo} cursor="pointer" onPress={openTimeline} gap="$1" alignItems="center">
                         <Text fontSize={13} fontWeight="700" color={brand.cianografiaScuro}>
                           Chat
                         </Text>
@@ -955,7 +957,7 @@ export function RequestCard({
                       key={url}
                       width={72}
                       height={72}
-                      borderRadius={6}
+                      borderRadius={10}
                       overflow="hidden"
                       borderWidth={1}
                       borderColor={brand.filetto}
@@ -974,7 +976,7 @@ export function RequestCard({
 
           {/* Sezione 3 — Preventivo */}
           {lead.quote ? (
-            <YStack gap="$2" padding="$3" borderRadius={12} backgroundColor={brand.gesso} borderWidth={1} borderColor={brand.filetto}>
+            <YStack gap="$2" padding="$3" borderRadius={20} backgroundColor={brand.gesso} borderWidth={1} borderColor={brand.filetto}>
               <Text fontSize={16} fontWeight="800" color={brand.grafite}>
                 {stage === "accettata" || stage === "completata" || stage === "annullata" ? "Preventivo accettato" : "Il tuo preventivo"}
               </Text>
@@ -1283,7 +1285,7 @@ export function RequestCard({
                   <input aria-label="Prezzo minimo in euro" value={item.priceMin} onChange={(e) => updateItem(index, "priceMin", e.target.value)} placeholder="Da €" inputMode="decimal" style={{ ...smallInputStyle, width: 80 }} />
                   <input aria-label="Prezzo massimo in euro" value={item.priceMax} onChange={(e) => updateItem(index, "priceMax", e.target.value)} placeholder="A €" inputMode="decimal" style={{ ...smallInputStyle, width: 80 }} />
                   {items.length > 1 ? (
-                    <XStack width={32} height={32} alignItems="center" justifyContent="center" borderWidth={1} borderColor={brand.urgenza} backgroundColor={brand.urgenzaVelo} borderRadius={6} cursor="pointer" onPress={() => removeItem(index)}>
+                    <XStack width={32} height={32} alignItems="center" justifyContent="center" borderWidth={1} borderColor={brand.urgenza} backgroundColor={brand.urgenzaVelo} borderRadius={10} cursor="pointer" onPress={() => removeItem(index)}>
                       <Icon name="x" size={14} color={brand.urgenza} />
                     </XStack>
                   ) : null}
@@ -1576,8 +1578,8 @@ export function RequestCard({
           targetType="GUIDED_REQUEST"
           targetLabel={`la richiesta di ${clientName}`}
           onClose={() => setShowReportModal(false)}
-          onSubmit={async (reason, details) => {
-            await apiClient.createContentReport(token, { targetType: "GUIDED_REQUEST", targetId: gr.id, reason, details });
+          onSubmit={async (input) => {
+            await apiClient.createContentReport(token, { targetType: "GUIDED_REQUEST", targetId: gr.id, ...input });
           }}
         />
       ) : null}

@@ -19,7 +19,7 @@ function Photos({ urls }: { urls: string[] }) {
   return (
     <XStack gap="$2" flexWrap="wrap">
       {urls.map((url) => (
-        <a key={url} href={url} target="_blank" rel="noreferrer" style={{ width: 84, height: 84, borderRadius: 6, overflow: "hidden", border: `1px solid ${brand.filetto}`, display: "block" }}>
+        <a key={url} href={url} target="_blank" rel="noreferrer" style={{ width: 84, height: 84, borderRadius: 10, overflow: "hidden", border: `1px solid ${brand.filetto}`, display: "block" }}>
           <MediaPreview url={url} />
         </a>
       ))}
@@ -49,16 +49,19 @@ function Block({ title, children }: { title: string; children: React.ReactNode }
 export default function AdminProblemiPage() {
   const { token } = useAuth();
   const [view, setView] = useState<View>("open");
-  const [rows, setRows] = useState<AdminJobIssue[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
+  // Righe insieme alla scheda (e al ricaricamento) da cui arrivano: cambiando
+  // scheda o dopo una decisione si torna allo scheletro finché non arrivano le nuove.
+  const loadKey = `${view}:${reload}`;
+  const [loaded, setLoaded] = useState<{ key: string; rows: AdminJobIssue[] } | null>(null);
+  const rows = loaded?.key === loadKey ? loaded.rows : null;
 
   useEffect(() => {
     if (!token) return;
-    setRows(null);
     apiClient
       .adminListJobIssues(token, view)
-      .then(setRows)
+      .then((list) => setLoaded({ key: `${view}:${reload}`, rows: list }))
       .catch((err) => setError(errorMessage(err)));
   }, [token, view, reload]);
 

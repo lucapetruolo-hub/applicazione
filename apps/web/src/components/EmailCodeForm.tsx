@@ -156,7 +156,7 @@ export function EmailCodeForm({
     } catch (err) {
       const text = err instanceof Error ? err.message : "Non siamo riusciti a controllare il codice, riprova.";
       // Scaduto o tentativi finiti: si può solo chiederne uno nuovo.
-      if (/^Il codice è scaduto|troppe volte|finito i tentativi/.test(text)) setValidFor(0);
+      if (text.startsWith("Il codice è scaduto") || /troppe volte|finito i tentativi/.test(text)) setValidFor(0);
       setState("error");
       setMessage(text);
       setCode("");

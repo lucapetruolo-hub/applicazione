@@ -92,7 +92,7 @@ prima discuterne e aggiornare questo file.
   schemi, unico con effetti in `sideEffects`; gli schemi importano `z` da "zod", e `apps/web` usa i sorgenti di
   shared, non `dist/`, per non caricare nel browser tutto zod) e `pnpm --filter @professionisti/shared confronto-zod` confronta
   le validazioni prima/dopo un aggiornamento, anche da solo nelle PR che
-  cambiano la versione di zod (`.github/workflows/zod.yml`, docs/CHANGELOG.md §312).
+  cambiano la versione di zod (`.github/workflows/zod.yml`, docs/CHANGELOG.md §320).
 - **Aggiornamenti delle dipendenze** (docs/CHANGELOG.md §302): Dependabot
   (`.github/dependabot.yml`) apre una PR al mese con gli aggiornamenti
   piccoli raggruppati, da unire se la CI è verde; gli aggiornamenti grandi
@@ -237,6 +237,12 @@ sia UI/routing — la logica va in `apps/api` o `packages/shared`.
     (decisione dell'utente): non cambiarlo senza discuterne.
 15. Le voci di menu dell'area account stanno solo in
     `apps/web/src/lib/accountMenuItems.ts`.
+16. **Segnalazioni dei contenuti** (decisione dell'utente, DSA artt. 16-17,
+    docs/CHANGELOG.md §319): chi segnala riceve solo la presa in carico e,
+    per un contenuto illegale, l'esito in una riga, mai la motivazione né
+    una pagina con le sue segnalazioni; chi è colpito riceve per email
+    misura, legge o regola violata, motivazione e come contestare. Nessuna
+    voce "Segnalazioni e decisioni" nel menu.
 
 ---
 

@@ -68,12 +68,10 @@ export function partitaIvaOutcome(activityStatus: string): TaxIdLookup["outcome"
 }
 
 function readPath(value: unknown, path: string[]): unknown {
-  let current = value;
-  for (const key of path) {
-    if (!current || typeof current !== "object") return undefined;
-    current = (current as Record<string, unknown>)[key];
-  }
-  return current;
+  return path.reduce<unknown>(
+    (current, key) => (current && typeof current === "object" ? (current as Record<string, unknown>)[key] : undefined),
+    value,
+  );
 }
 
 /**

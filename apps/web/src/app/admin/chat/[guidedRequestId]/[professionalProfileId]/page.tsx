@@ -73,7 +73,7 @@ export default function AdminChatDetailPage() {
                   alignSelf={system ? "center" : fromClient ? "flex-start" : "flex-end"}
                   maxWidth={system ? "90%" : "80%"}
                   padding="$3"
-                  borderRadius={12}
+                  borderRadius={20}
                   backgroundColor={system ? "transparent" : fromClient ? brand.calce : brand.cianografiaVelo}
                   borderWidth={system ? 0 : 1}
                   borderColor={brand.filetto}
@@ -90,7 +90,7 @@ export default function AdminChatDetailPage() {
                   {event.mediaUrls.length > 0 ? (
                     <XStack gap="$2" flexWrap="wrap">
                       {event.mediaUrls.map((url) => (
-                        <a key={url} href={url} target="_blank" rel="noreferrer" style={{ width: 84, height: 84, borderRadius: 6, overflow: "hidden", display: "block" }}>
+                        <a key={url} href={url} target="_blank" rel="noreferrer" style={{ width: 84, height: 84, borderRadius: 10, overflow: "hidden", display: "block" }}>
                           <MediaPreview url={url} />
                         </a>
                       ))}

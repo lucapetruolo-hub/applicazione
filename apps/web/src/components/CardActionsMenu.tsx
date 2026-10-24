@@ -171,6 +171,7 @@ export function CardActionsMenu({
         ? createPortal(
             <div
               ref={dropdownRef}
+              role="presentation"
               onClick={(e) => e.stopPropagation()}
               style={{
                 position: "fixed",

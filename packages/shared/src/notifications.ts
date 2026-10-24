@@ -136,6 +136,7 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
     professional: { label: "Account e sicurezza", description: "Decisioni su segnalazioni e sul tuo account, scadenze e limiti dell'abbonamento." },
     client: { label: "Account e sicurezza", description: "Decisioni su segnalazioni e sul tuo account. Obbligatorie per legge." },
     types: [
+      "CONTENT_REPORT_RECEIVED",
       "CONTENT_REPORT_DECISION",
       "CONTENT_REPORT_UPHELD",
       "CONTENT_REPORT_REVERTED",

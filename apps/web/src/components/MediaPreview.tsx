@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type CSSProperties, type MouseEventHandler } from "react";
+import { useState, type CSSProperties, type KeyboardEvent } from "react";
 import { Icon, brand } from "@professionisti/ui";
 import { isVideoUrl, isDocumentUrl, documentTypeLabel } from "@/lib/media";
 
@@ -35,7 +35,8 @@ export function MediaPreview({
   url: string;
   alt?: string;
   style?: CSSProperties;
-  onClick?: MouseEventHandler<HTMLImageElement | HTMLVideoElement | HTMLDivElement>;
+  /** Apre l'anteprima: l'elemento diventa un pulsante, usabile anche da tastiera. */
+  onClick?: () => void;
   /**
    * Forza il tipo video indipendentemente dall'estensione dell'URL — serve
    * per gli URL `blob:` di un file selezionato ma non ancora caricato
@@ -49,6 +50,16 @@ export function MediaPreview({
 }) {
   const [broken, setBroken] = useState(false);
   const mergedStyle = { ...DEFAULT_STYLE, ...style };
+  // Con Invio o spazio come con un clic.
+  const onKeyDown = onClick
+    ? (event: KeyboardEvent) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        onClick();
+      }
+    : undefined;
+  const role = onClick ? "button" : undefined;
+  const tabIndex = onClick ? 0 : undefined;
 
   if (broken) {
     return (
@@ -61,7 +72,11 @@ export function MediaPreview({
           backgroundColor: brand.gesso,
           cursor: onClick ? "pointer" : undefined,
         }}
-        onClick={onClick as MouseEventHandler<HTMLDivElement>}
+        role={role}
+        aria-label={onClick ? alt || "Apri la foto" : undefined}
+        tabIndex={tabIndex}
+        onClick={onClick}
+        onKeyDown={onKeyDown}
       >
         <Icon name="camera" size={20} color={brand.grafite70} />
       </div>
@@ -86,7 +101,11 @@ export function MediaPreview({
           backgroundColor: brand.gesso,
           cursor: onClick ? "pointer" : undefined,
         }}
-        onClick={onClick as MouseEventHandler<HTMLDivElement>}
+        role={role}
+        aria-label={onClick ? "Apri il documento" : undefined}
+        tabIndex={tabIndex}
+        onClick={onClick}
+        onKeyDown={onKeyDown}
       >
         <Icon name="file-text" size={20} color={brand.cianografiaScuro} />
         <span style={{ fontSize: 9, fontWeight: 700, color: brand.grafite70 }}>{documentTypeLabel(url)}</span>
@@ -96,7 +115,7 @@ export function MediaPreview({
 
   if (forceVideo || isVideoUrl(url)) {
     return (
-      <video src={url} muted playsInline onClick={onClick} style={mergedStyle} onError={() => setBroken(true)} />
+      <video src={url} muted playsInline role={role} aria-label={onClick ? alt || "Apri il video" : undefined} tabIndex={tabIndex} onClick={onClick} onKeyDown={onKeyDown} style={mergedStyle} onError={() => setBroken(true)} />
     );
   }
   // `<img>` grezzo deliberato, non `next/image`: `url` può essere un
@@ -105,6 +124,10 @@ export function MediaPreview({
   // caso) — non supportato dal loader di `next/image` — e questo
   // componente è usato in 13 punti del sito con dimensioni/aspect ratio
   // diversi passati via `style`, mai una dimensione nota in anticipo.
+  if (onClick) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={url} alt={alt || "Apri la foto"} role="button" tabIndex={0} onClick={onClick} onKeyDown={onKeyDown} style={mergedStyle} onError={() => setBroken(true)} />;
+  }
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={url} alt={alt} onClick={onClick} style={mergedStyle} onError={() => setBroken(true)} />;
+  return <img src={url} alt={alt} style={mergedStyle} onError={() => setBroken(true)} />;
 }

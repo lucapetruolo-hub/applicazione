@@ -21,7 +21,7 @@ export function AdminPageHeader({ title, description, right }: { title: string; 
 
 export function AdminCard({ children, highlight }: { children: ReactNode; highlight?: boolean }) {
   return (
-    <YStack gap="$2" padding="$4" borderRadius={12} backgroundColor={brand.calce} borderWidth={1} borderColor={highlight ? brand.urgenza : brand.filetto}>
+    <YStack gap="$2" padding="$4" borderRadius={20} backgroundColor={brand.calce} borderWidth={1} borderColor={highlight ? brand.urgenza : brand.filetto}>
       {children}
     </YStack>
   );

@@ -75,11 +75,28 @@ export default function ChatPage() {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const hasAutoSelectedRef = useRef(false);
 
+  // "Di default da desktop si andrà ad aprire già l'ultimo messaggio"
+  // (richiesta esplicita dell'utente) — solo da desktop: da mobile la
+  // prima cosa mostrata resta sempre la lista, mai una conversazione
+  // aperta senza che l'utente l'abbia scelta. Una sola volta (il primo
+  // caricamento dei thread), mai riapplicato se l'utente ha già
+  // selezionato/deselezionato qualcosa.
+  function autoSelectFirstThread(list: ChatThreadSummary[]) {
+    if (hasAutoSelectedRef.current) return;
+    if (list.length === 0) return;
+    if (!window.matchMedia(DESKTOP_MEDIA_QUERY).matches) return;
+    hasAutoSelectedRef.current = true;
+    setSelectedKey(threadKey(list[0]!));
+  }
+
   function reload() {
     if (!token) return;
     apiClient
       .myChatThreads(token)
-      .then(setThreads)
+      .then((list) => {
+        setThreads(list);
+        autoSelectFirstThread(list);
+      })
       .catch((err) => setError(err instanceof Error ? err.message : "Errore nel caricamento delle conversazioni."));
   }
   useEffect(reload, [token]);
@@ -119,19 +136,6 @@ export default function ChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, markNotificationsRead]);
 
-  // "Di default da desktop si andrà ad aprire già l'ultimo messaggio"
-  // (richiesta esplicita dell'utente) — solo da desktop: da mobile la
-  // prima cosa mostrata resta sempre la lista, mai una conversazione
-  // aperta senza che l'utente l'abbia scelta. Una sola volta (il primo
-  // caricamento dei thread), mai riapplicato se l'utente ha già
-  // selezionato/deselezionato qualcosa.
-  useEffect(() => {
-    if (hasAutoSelectedRef.current) return;
-    if (!threads || threads.length === 0) return;
-    if (typeof window === "undefined" || !window.matchMedia(DESKTOP_MEDIA_QUERY).matches) return;
-    hasAutoSelectedRef.current = true;
-    setSelectedKey(threadKey(threads[0]!));
-  }, [threads]);
 
   if (isLoading) return null;
 
@@ -166,7 +170,7 @@ export default function ChatPage() {
       <div className={`chat-shell${user.isProfessional ? " is-pro" : ""}${selectedThread ? " has-selection" : ""}`}>
         <div className="chat-list-pane">
           {threads === null ? (
-            <YStack backgroundColor={brand.calce} borderRadius={12} overflow="hidden" margin="$4">
+            <YStack backgroundColor={brand.calce} borderRadius={20} overflow="hidden" margin="$4">
               {[0, 1, 2, 3].map((i) => (
                 <SkeletonThreadRow key={i} zebra={i % 2 !== 0} />
               ))}
@@ -176,7 +180,7 @@ export default function ChatPage() {
               <EmptyState icon="message-circle" title="Nessuna conversazione" description="Le chat delle tue richieste e dei tuoi preventivi compariranno qui." />
             </YStack>
           ) : (
-            <YStack backgroundColor={brand.calce} borderRadius={12} overflow="hidden" margin="$4">
+            <YStack backgroundColor={brand.calce} borderRadius={20} overflow="hidden" margin="$4">
               {threads.map((thread, index) => (
                 <ChatThreadRow
                   key={threadKey(thread)}
@@ -360,7 +364,7 @@ function ChatThreadRow({
         height={32}
         alignItems="center"
         justifyContent="center"
-        borderRadius={6}
+        borderRadius={10}
         backgroundColor={brand.gesso}
         cursor="pointer"
         flexShrink={0}

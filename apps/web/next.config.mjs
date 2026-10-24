@@ -101,7 +101,7 @@ const nextConfig = {
       // @professionisti/shared dai sorgenti (ESM) invece che da dist/
       // (CommonJS): da CommonJS webpack non può togliere le parti di zod che
       // il sito non usa, e zod 4 porterebbe nel browser ~420 KB in più
-      // (tutte le lingue dei messaggi, JSON Schema). docs/CHANGELOG.md §312.
+      // (tutte le lingue dei messaggi, JSON Schema). docs/CHANGELOG.md §320.
       "@professionisti/shared$": fileURLToPath(new URL("../../packages/shared/src/index.ts", import.meta.url)),
     };
     config.resolve.extensions = [".web.js", ".web.jsx", ".web.ts", ".web.tsx", ...config.resolve.extensions];

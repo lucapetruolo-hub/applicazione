@@ -6,12 +6,13 @@ import { PROFESSIONAL_JOB_PROBLEM_REASONS, type ProfessionalJobProblemReason, ty
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { MediaPreview } from "@/components/MediaPreview";
 import { UploadingDots } from "@/components/UploadingDots";
+import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 const MAX_PHOTOS = 5;
 
 const fieldStyle = {
   padding: 10,
-  borderRadius: 6,
+  borderRadius: 10,
   border: `1px solid ${brand.bordoCampo}`,
   fontSize: 16,
   fontFamily: "inherit",
@@ -89,10 +90,8 @@ export function ProfessionalProblemModal({
 
   return (
     <div
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Qualcosa è andato male"
+      role="presentation"
+      onClick={closeOnBackdrop(onClose)}
       style={{
         position: "fixed",
         inset: 0,
@@ -106,7 +105,9 @@ export function ProfessionalProblemModal({
       }}
     >
       <YStack
-        onPress={(e: { stopPropagation: () => void }) => e.stopPropagation()}
+        role="dialog"
+        aria-modal
+        aria-label="Qualcosa è andato male"
         width="100%"
         maxWidth={480}
         backgroundColor={brand.calce}

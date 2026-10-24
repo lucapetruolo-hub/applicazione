@@ -258,13 +258,13 @@ function DashboardFiscaleContent() {
   // Applica la categoria scelta nella schermata precedente una sola volta
   // (mai su ogni render/refetch), e mai sovrascrivendo un entityType già
   // salvato per davvero — solo quando il profilo non ne aveva ancora uno.
-  useEffect(() => {
-    if (prefillApplied || profile === undefined) return;
+  // Durante il render, appena il profilo è arrivato.
+  if (!prefillApplied && profile !== undefined) {
+    setPrefillApplied(true);
     if (!profile?.entityType && (prefillEntityType === "PRIVATE_INDIVIDUAL" || prefillEntityType === "SOLE_PROPRIETOR" || prefillEntityType === "BUSINESS")) {
       setEntityType(prefillEntityType);
     }
-    setPrefillApplied(true);
-  }, [prefillApplied, profile, prefillEntityType]);
+  }
 
   useEffect(() => {
     if (!isLoading && !user) router.replace("/accedi?redirect=/dashboard/fiscale");
@@ -581,7 +581,7 @@ function DashboardFiscaleContent() {
             </YStack>
 
             {toFix && formStep === 1 && invalidChecks.length > 0 ? (
-              <XStack gap="$2" padding="$3" borderRadius={12} backgroundColor={brand.urgenzaVelo} alignItems="flex-start" role="alert">
+              <XStack gap="$2" padding="$3" borderRadius={20} backgroundColor={brand.urgenzaVelo} alignItems="flex-start" role="alert">
                 <Icon name="triangle-alert" size={18} strokeWidth={2} color={brand.urgenza} />
                 <Text flex={1} fontSize={16} color={brand.grafite}>
                   {invalidChecks.map(taxIdCheckMessage).join(" ")}
@@ -707,7 +707,7 @@ function DashboardFiscaleContent() {
                 {/* Fuori dall'Italia: paese e codice fiscale estero (DAC7). */}
                 {entityType ? (
                   abroad ? (
-                    <YStack gap="$3" padding="$3" borderRadius={12} backgroundColor={brand.gesso}>
+                    <YStack gap="$3" padding="$3" borderRadius={20} backgroundColor={brand.gesso}>
                       <Field
                         label={entityType === "BUSINESS" ? "Paese della sede (sigla, es. FR)" : "Paese di residenza fiscale (sigla, es. FR)"}
                         accessibilityLabel="Paese di residenza fiscale"

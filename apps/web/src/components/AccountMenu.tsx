@@ -16,10 +16,12 @@ export function AccountMenu() {
   const containerRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
 
-  // Si chiude cambiando pagina e con Esc.
-  useEffect(() => {
+  // Si chiude cambiando pagina (già durante il render) e con Esc.
+  const [openPathname, setOpenPathname] = useState(pathname);
+  if (pathname !== openPathname) {
+    setOpenPathname(pathname);
     setIsOpen(false);
-  }, [pathname]);
+  }
   useEffect(() => {
     if (!isOpen) return;
     function onKey(event: KeyboardEvent) {
@@ -80,9 +82,15 @@ export function AccountMenu() {
         <span aria-hidden="true" style={{ display: "flex" }}>
           <Avatar name={displayName ?? "?"} imageUrl={displayImageUrl} size={24} />
         </span>
-        <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
-          {displayName ?? "Il mio account"}
-        </Text>
+        {/* Da telefono resta solo la foto: un nome lungo spingeva fuori
+            schermo "Richiedi preventivo" (docs/CHANGELOG.md §319). Il nome
+            resta per il lettore di schermo. */}
+        <span className="acct-trigger-name">
+          <Text fontSize="$3" fontWeight="600" color={brand.grafite} numberOfLines={1}>
+            {displayName ?? "Il mio account"}
+          </Text>
+        </span>
+        <span className="sr-only acct-trigger-name-sr">{displayName ?? "Il mio account"}</span>
         <span className="sr-only">
           {displayName ? ", il mio account" : ""}
           {unreadCount > 0 ? `, ${unreadCount} novità da visualizzare` : toDo ? ", qualcosa da completare" : ""}
