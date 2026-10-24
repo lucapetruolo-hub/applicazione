@@ -221,6 +221,7 @@ describe("agenda pubblica (§293)", () => {
       professionalProfile: { findUnique: vi.fn().mockResolvedValue(profile) },
       availabilitySlot: { findMany: vi.fn().mockResolvedValue([]) },
       booking: { findMany: vi.fn().mockResolvedValue([]) },
+      externalJob: { findMany: vi.fn().mockResolvedValue([]) },
       availabilityException: { findMany: vi.fn().mockResolvedValue([]) },
     };
     return { prisma, service: new ProfessionalsService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never) };
