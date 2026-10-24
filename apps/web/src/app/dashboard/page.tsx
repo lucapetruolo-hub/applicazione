@@ -17,7 +17,7 @@ import { SubscriptionPauseBanner } from "@/components/SubscriptionPauseBanner";
 import { IssueSanctionBanner } from "@/components/IssueSanctionBanner";
 import { BoostSection } from "@/components/BoostSection";
 import { SetupJourneyCard } from "@/components/verification/SetupJourney";
-import { DaysAhead, WeatherStrip, jobsHeadline } from "@/components/DaysAhead";
+import { WeatherStrip, jobsHeadline } from "@/components/DaysAhead";
 
 /**
  * Home "Oggi" del professionista (docs/CHANGELOG.md §147, decisione esplicita
@@ -32,7 +32,7 @@ export default function DashboardTodayPage() {
   const { user, token, isLoading, unreadNotifications } = useAuth();
   const [leads, setLeads] = useState<ProfessionalLead[] | null>(null);
   const [bookings, setBookings] = useState<ProfessionalBooking[] | null>(null);
-  // Meteo e lavori in breve dei prossimi tre giorni (§324): se non arriva, il riquadro sparisce.
+  // Meteo dei prossimi tre giorni (§324): se non arriva, la riga sparisce.
   const [daysAhead, setDaysAhead] = useState<DayAhead[] | null | "failed">(null);
   const [insights, setInsights] = useState<ProfessionalInsights | null>(null);
   const [subscription, setSubscription] = useState<MySubscription | null>(null);
@@ -44,7 +44,6 @@ export default function DashboardTodayPage() {
   const [insightsFailed, setInsightsFailed] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [, setTick] = useState(0);
-  const [variantB] = useState(() => typeof window !== "undefined" && window.location.search.includes("variante=b"));
 
   useEffect(() => {
     if (!token || !user?.isProfessional) return;
@@ -139,7 +138,11 @@ export default function DashboardTodayPage() {
     .flatMap((booking) =>
       jobOccurrences(booking.scheduledAt, booking.scheduledEndAt)
         .filter((occurrence) => occurrence.start >= startToday && occurrence.start < endTomorrow)
-        .map((occurrence) => ({ booking, at: occurrence.start.toISOString() })),
+        .map((occurrence) => ({
+          booking,
+          at: occurrence.start.toISOString(),
+          job: { start: occurrence.start.toISOString(), end: occurrence.end?.toISOString() ?? null, city: booking.city, online: booking.serviceMode === "ONLINE" },
+        })),
     )
     .sort((a, b) => a.at.localeCompare(b.at));
 
@@ -165,7 +168,7 @@ export default function DashboardTodayPage() {
             senza scorrere (T2 del test dei compiti, docs/CHANGELOG.md §311). */}
         {error ? null : (
         <TodaySection title="Oggi e domani" action={{ href: "/dashboard/agenda", label: "Apri l'agenda" }}>
-          {variantB ? (daysAhead === "failed" ? null : <WeatherStrip days={daysAhead} />) : daysAhead === "failed" ? null : <DaysAhead days={daysAhead} />}
+          {daysAhead === "failed" ? null : <WeatherStrip days={daysAhead} />}
           {loading ? (
             <Skeletons />
           ) : upcoming.length === 0 ? (
@@ -173,10 +176,11 @@ export default function DashboardTodayPage() {
           ) : (
             upcoming.map(({ booking, at }, index) => (
               <Fragment key={`${booking.id}-${at}`}>
-              {variantB && Array.isArray(daysAhead) && (index === 0 || upcoming[index - 1]!.at.slice(0, 10) !== at.slice(0, 10)) ? (
+              {/* I lavori raggruppati per giorno, con il riepilogo sopra (§324). */}
+              {index === 0 || upcoming[index - 1]!.at.slice(0, 10) !== at.slice(0, 10) ? (
                 <div className="today-day-head">
                   <strong>{at.slice(0, 10) === startToday.toISOString().slice(0, 10) ? "Oggi" : "Domani"}</strong>
-                  <span>{jobsHeadline(daysAhead.find((d) => d.date === at.slice(0, 10))?.jobs ?? { count: 0, from: null, to: null, places: [], works: [], online: 0 })}</span>
+                  <span>{jobsHeadline(upcoming.filter((row) => row.at.slice(0, 10) === at.slice(0, 10)).map((row) => row.job))}</span>
                 </div>
               ) : null}
               <Link
@@ -185,7 +189,7 @@ export default function DashboardTodayPage() {
                 href={`/dashboard/agenda?booking=${booking.id}`}
                 className="today-row"
               >
-                <span className="today-time">{variantB ? formatAppointmentTime(at) : dayLabel(at)}</span>
+                <span className="today-time">{formatAppointmentTime(at)}</span>
                 <span className="today-row-main">
                   <strong>{booking.clientName ?? "Cliente"}</strong>
                   <span className="today-row-sub">
@@ -450,10 +454,4 @@ function formatMinutes(minutes: number): string {
 
 function formatDateTime(iso: string): string {
   return `${formatAppointmentDate(iso, { weekday: "short", day: "numeric", month: "short" })}, ${formatAppointmentTime(iso)}`;
-}
-
-function dayLabel(iso: string): string {
-  const isToday = iso.slice(0, 10) === wallClockToday().toISOString().slice(0, 10);
-  const time = formatAppointmentTime(iso);
-  return `${isToday ? "Oggi" : "Domani"} ${time}`;
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { agendaWeekTemplateSchema, dayRouteMapsUrl, DEFAULT_WEEK_TEMPLATE, weekTemplateCovers } from "@professionisti/shared";
-import { comuniWithinRadius, summarizeDayJobs, zoneDemandTips } from "./agenda.service";
+import { comuniWithinRadius, firstHomeCity, zoneDemandTips } from "./agenda.service";
 import { dayForecasts, weatherAlertKind, weatherAlerts, weatherCondition } from "./weather.service";
 import { comuneInAddress, estimateLeg, legTiming } from "./day-route.service";
 import { calendarFeedIcs } from "../email/email-calendar";
@@ -42,17 +42,17 @@ describe("meteo e lavori dei prossimi giorni in Oggi", () => {
     ]);
     expect(dayForecasts({})).toEqual([]);
   });
-  it("riassume i lavori del giorno nell'ordine degli orari, senza doppioni", () => {
+  it("prende il meteo dal comune del primo lavoro a domicilio", () => {
     const at = (time: string) => new Date(`2026-10-24T${time}:00.000Z`);
     expect(
-      summarizeDayJobs([
-        { start: at("14:00"), end: at("17:30"), online: false, city: "Sezze", work: "Tinteggiatura" },
-        { start: at("08:30"), end: at("10:00"), online: false, city: "Latina", work: "Perdita lavandino" },
-        { start: at("11:00"), end: null, online: false, city: "Latina", work: "Perdita lavandino" },
-        { start: at("18:00"), end: at("18:30"), online: true, city: "Roma", work: "Consulenza" },
+      firstHomeCity([
+        { start: at("14:00"), online: false, city: "Sezze" },
+        { start: at("08:00"), online: true, city: "Roma" },
+        { start: at("09:00"), online: false, city: " " },
+        { start: at("10:00"), online: false, city: "Latina" },
       ]),
-    ).toEqual({ count: 4, from: "08:30", to: "18:30", places: ["Latina", "Sezze"], works: ["Perdita lavandino", "Tinteggiatura", "Consulenza"], online: 1 });
-    expect(summarizeDayJobs([])).toEqual({ count: 0, from: null, to: null, places: [], works: [], online: 0 });
+    ).toBe("Latina");
+    expect(firstHomeCity([{ start: at("08:00"), online: true, city: "Roma" }])).toBeNull();
   });
 });
 

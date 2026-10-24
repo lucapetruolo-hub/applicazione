@@ -84,24 +84,10 @@ export const WEATHER_CONDITION_LABEL: Record<WeatherCondition, string> = {
 export type DayForecast = { date: string; condition: WeatherCondition; tempMax: number | null; tempMin: number | null };
 
 /**
- * Un giorno nel riepilogo di "Oggi": meteo del comune del primo lavoro a
- * domicilio (o della zona del profilo) e i lavori da fare, in breve.
+ * Meteo di un giorno in "Oggi": del comune del primo lavoro a domicilio del
+ * giorno, o della zona del profilo se non ce ne sono (`place` è quel comune).
  */
-export type DayAhead = {
-  date: string;
-  weather: (DayForecast & { place: string }) | null;
-  jobs: {
-    count: number;
-    /** Ora di parete del primo inizio e dell'ultima fine ("HH:MM"), `null` senza lavori. */
-    from: string | null;
-    to: string | null;
-    /** Comuni dei lavori a domicilio, nell'ordine degli orari, senza doppioni. */
-    places: string[];
-    /** Cosa c'è da fare: prima voce del preventivo, categoria o descrizione del lavoro aggiunto a mano. */
-    works: string[];
-    online: number;
-  };
-};
+export type DayAhead = { date: string; weather: (DayForecast & { place: string }) | null };
 
 /** Una tappa del giro del giorno. */
 export type DayRouteStop = {

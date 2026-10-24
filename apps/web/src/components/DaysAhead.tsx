@@ -1,7 +1,7 @@
 "use client";
 
 import { Cloud, CloudFog, CloudLightning, CloudRain, CloudSun, Snowflake, Sun, Wind } from "lucide-react";
-import { WEATHER_CONDITION_LABEL, type DayAhead, type WeatherCondition } from "@professionisti/shared";
+import { formatAppointmentTime, WEATHER_CONDITION_LABEL, type DayAhead, type WeatherCondition } from "@professionisti/shared";
 
 const CONDITION_ICONS: Record<WeatherCondition, { icon: typeof Sun; color: string }> = {
   clear: { icon: Sun, color: "#c98a00" },
@@ -14,95 +14,19 @@ const CONDITION_ICONS: Record<WeatherCondition, { icon: typeof Sun; color: strin
   fog: { icon: CloudFog, color: "#7a7068" },
 };
 
-const DAY_NAMES = ["Oggi", "Domani", "Dopodomani"];
+const DAY_NAMES = ["Oggi", "Domani"];
 
 /**
- * Meteo di oggi, domani e dopodomani in "Oggi", con i lavori in breve per
- * oggi e domani (richiesta dell'utente, docs/CHANGELOG.md §324). Testi al
- * minimo: quanti lavori, dalle-alle, cosa e dove; il dettaglio resta nella
- * lista sotto e in agenda.
+ * Meteo di oggi, domani e dopodomani in "Oggi" (richiesta dell'utente,
+ * docs/CHANGELOG.md §324): una riga sola, sempre con l'icona, così il
+ * prossimo lavoro resta visibile senza scorrere anche da telefono (§311).
  */
-export function DaysAhead({ days }: { days: DayAhead[] | null }) {
-  if (days === null) {
-    return (
-      <div className="days-ahead" aria-hidden>
-        {DAY_NAMES.map((name) => (
-          <div key={name} className="days-ahead-card is-loading" />
-        ))}
-      </div>
-    );
-  }
-  return (
-    <ul className="days-ahead" aria-label="Meteo e lavori dei prossimi giorni">
-      {days.slice(0, 3).map((day, i) => (
-        <DayCard key={day.date} day={day} name={DAY_NAMES[i]!} withJobs={i < 2} />
-      ))}
-    </ul>
-  );
-}
-
-function DayCard({ day, name, withJobs }: { day: DayAhead; name: string; withJobs: boolean }) {
-  const date = new Date(`${day.date}T12:00:00Z`).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", timeZone: "UTC" });
-  const weather = day.weather;
-  const look = weather ? CONDITION_ICONS[weather.condition] : null;
-  const label = weather ? WEATHER_CONDITION_LABEL[weather.condition] : null;
-  const temps = weather && weather.tempMax !== null ? `${weather.tempMax}°${weather.tempMin !== null ? ` / ${weather.tempMin}°` : ""}` : null;
-  return (
-    <li className="days-ahead-card">
-      <span className="days-ahead-day">
-        <strong>{name}</strong>
-        <span>{date}</span>
-      </span>
-      {look ? (
-        <span className="days-ahead-sky" style={{ background: `${look.color}14` }}>
-          <look.icon size={26} strokeWidth={2} color={look.color} aria-hidden />
-        </span>
-      ) : null}
-      {weather ? (
-        <p className="days-ahead-weather">
-          {temps ? <strong>{temps}</strong> : null}
-          <span>
-            {label} · {weather.place}
-          </span>
-        </p>
-      ) : (
-        <p className="days-ahead-weather">
-          <span>Meteo non disponibile</span>
-        </p>
-      )}
-      {withJobs ? <JobsLine jobs={day.jobs} /> : null}
-    </li>
-  );
-}
-
-function JobsLine({ jobs }: { jobs: DayAhead["jobs"] }) {
-  if (jobs.count === 0) return <p className="days-ahead-jobs is-empty">Nessun lavoro</p>;
-  const works = jobs.works.length > 2 ? `${jobs.works.slice(0, 2).join(", ")} e altri ${jobs.works.length - 2}` : jobs.works.join(", ");
-  const places = [...jobs.places, ...(jobs.online > 0 ? ["online"] : [])];
-  return (
-    <div className="days-ahead-jobs">
-      <strong>
-        {jobs.count === 1 ? "1 lavoro" : `${jobs.count} lavori`}
-        {jobs.from ? ` · ${shortTime(jobs.from)}${jobs.to && jobs.to !== jobs.from ? `–${shortTime(jobs.to)}` : ""}` : ""}
-      </strong>
-      {works ? <span>{works}</span> : null}
-      {places.length > 0 ? <span>{places.join(", ")}</span> : null}
-    </div>
-  );
-}
-
-/** "08:30" → "8:30". */
-function shortTime(time: string): string {
-  return time.replace(/^0(\d)/, "$1");
-}
-
-/** Variante B: tre giorni in una riga sola, i lavori raggruppati sotto ogni giorno. */
 export function WeatherStrip({ days }: { days: DayAhead[] | null }) {
   if (days === null) {
     return (
       <div className="weather-strip" aria-hidden>
-        {DAY_NAMES.map((name) => (
-          <div key={name} className="weather-chip is-loading" />
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="weather-chip is-loading" />
         ))}
       </div>
     );
@@ -131,15 +55,28 @@ export function WeatherStrip({ days }: { days: DayAhead[] | null }) {
   );
 }
 
-/** "2 lavori · 8:30–17:30 · Latina, Sezze" per l'intestazione del giorno. */
-export function jobsHeadline(jobs: DayAhead["jobs"]): string {
-  if (jobs.count === 0) return "Nessun lavoro";
-  const places = [...jobs.places, ...(jobs.online > 0 ? ["online"] : [])];
-  return [
-    jobs.count === 1 ? "1 lavoro" : `${jobs.count} lavori`,
-    jobs.from ? `${shortTime(jobs.from)}${jobs.to && jobs.to !== jobs.from ? `–${shortTime(jobs.to)}` : ""}` : null,
-    places.join(", ") || null,
-  ]
+/** Un lavoro nella lista di "Oggi", per il riepilogo del giorno. */
+export type DayJobRow = { start: string; end: string | null; city: string | null; online: boolean };
+
+/** "2 lavori · 8:30–17:30 · Latina, Sezze": intestazione del giorno sopra i suoi lavori. */
+export function jobsHeadline(rows: DayJobRow[]): string {
+  const sorted = [...rows].sort((a, b) => a.start.localeCompare(b.start));
+  const first = sorted[0];
+  if (!first) return "Nessun lavoro";
+  const lastEnd = sorted.reduce((latest, row) => {
+    const end = row.end && row.end > row.start ? row.end : row.start;
+    return end > latest ? end : latest;
+  }, first.start);
+  const from = formatAppointmentTime(first.start);
+  const to = formatAppointmentTime(lastEnd);
+  const places = [...new Set(sorted.filter((row) => !row.online && row.city?.trim()).map((row) => row.city!.trim()))];
+  if (sorted.some((row) => row.online)) places.push("online");
+  return [sorted.length === 1 ? "1 lavoro" : `${sorted.length} lavori`, from === to ? shortTime(from) : `${shortTime(from)}–${shortTime(to)}`, places.join(", ") || null]
     .filter(Boolean)
     .join(" · ");
+}
+
+/** "08:30" → "8:30". */
+function shortTime(time: string): string {
+  return time.replace(/^0(\d)/, "$1");
 }
