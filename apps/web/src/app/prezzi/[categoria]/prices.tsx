@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   CATEGORY_SEO_NOUN,
-  ITALIAN_COMUNI,
+  italianComuni,
   PROFESSIONAL_CATEGORIES,
   comuneSlug,
   formatServicePriceRange,
@@ -47,7 +47,7 @@ export async function loadPrices(slug: string, comune?: Comune): Promise<PricesD
 
 /** Nome della provincia dal capoluogo ("LT" → "Latina"). */
 function provinceName(comune: Comune): string {
-  return ITALIAN_COMUNI.find((c) => c.province === comune.province && c.capoluogo)?.name ?? comune.province;
+  return italianComuni().find((c) => c.province === comune.province && c.capoluogo)?.name ?? comune.province;
 }
 
 /** Percorso della pagina: nazionale o della città. */

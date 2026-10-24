@@ -17,5 +17,6 @@
   "devDependencies": {
     "@professionisti/config": "workspace:*",
     "typescript": "~6.0.3"
-  }
+  },
+  "sideEffects": false
 }

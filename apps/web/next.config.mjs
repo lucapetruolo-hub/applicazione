@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+
 /** @type {import('next').NextConfig} */
 // Indirizzo dell'API (fetch e stream in tempo reale): l'unica origine
 // esterna a cui il sito parla oltre a Google e Cloudflare.
@@ -96,6 +98,11 @@ const nextConfig = {
     config.resolve.alias = {
       ...config.resolve.alias,
       "react-native$": "react-native-web",
+      // Il sito usa i sorgenti di packages/shared e non la build CommonJS
+      // (docs/CHANGELOG.md §325): con `sideEffects: false` ogni pagina prende
+      // solo le parti che usa (schemi zod, elenco dei comuni...) invece di
+      // tutto il pacchetto. L'API continua a usare dist/.
+      "@professionisti/shared$": fileURLToPath(new URL("../../packages/shared/src/index.ts", import.meta.url)),
     };
     config.resolve.extensions = [".web.js", ".web.jsx", ".web.ts", ".web.tsx", ...config.resolve.extensions];
     return config;

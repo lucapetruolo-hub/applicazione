@@ -17,20 +17,34 @@ export type Comune = {
  */
 // Letti da una stringa compatta e non da un JSON di ~8000 oggetti: l'elenco
 // finisce nel JavaScript di ogni pagina del sito e su un telefono lento il
-// suo peso bloccava la pagina (docs/CHANGELOG.md §320).
-export const ITALIAN_COMUNI: Comune[] = COMUNI_DATA.split("\n").map((line) => {
-  const [name = "", province = "", lat = "0", lon = "0", capoluogo] = line.split("|");
-  return { name, province, region: REGION_BY_PROVINCE[province] ?? "", lat: Number(lat), lon: Number(lon), capoluogo: capoluogo === "1" };
-});
+// suo peso bloccava la pagina (docs/CHANGELOG.md §320). Gli oggetti si
+// creano solo al primo uso, non all'apertura di ogni pagina: l'agenda e le
+// altre pagine che non cercano comuni non pagano più quel lavoro (§325).
+let comuni: Comune[] | null = null;
+let comuniByName: Map<string, Comune> | null = null;
+let cityNames: string[] | null = null;
 
-const comuniByName = new Map(ITALIAN_COMUNI.map((c) => [c.name.toLowerCase(), c]));
+/** Elenco completo dei comuni, creato al primo uso. */
+export function italianComuni(): Comune[] {
+  if (!comuni) {
+    comuni = COMUNI_DATA.split("\n").map((line) => {
+      const [name = "", province = "", lat = "0", lon = "0", capoluogo] = line.split("|");
+      return { name, province, region: REGION_BY_PROVINCE[province] ?? "", lat: Number(lat), lon: Number(lon), capoluogo: capoluogo === "1" };
+    });
+  }
+  return comuni;
+}
 
 export function findComuneByName(name: string): Comune | undefined {
+  comuniByName ??= new Map(italianComuni().map((c) => [c.name.toLowerCase(), c]));
   return comuniByName.get(name.trim().toLowerCase());
 }
 
 /** Nomi di tutti i comuni, per popolare autocomplete testuali semplici. */
-export const ALL_ITALIAN_CITY_NAMES: string[] = ITALIAN_COMUNI.map((c) => c.name);
+export function allItalianCityNames(): string[] {
+  cityNames ??= italianComuni().map((c) => c.name);
+  return cityNames;
+}
 
 /**
  * Slug URL di un comune ("Reggio nell'Emilia" → "reggio-nell-emilia"), per le
@@ -54,7 +68,7 @@ function getSlugIndex() {
   if (!slugIndex) {
     const bySlug = new Map<string, Comune>();
     const byName = new Map<string, string>();
-    for (const comune of ITALIAN_COMUNI) {
+    for (const comune of italianComuni()) {
       let slug = baseSlug(comune.name);
       if (bySlug.has(slug)) slug = `${slug}-${comune.province.toLowerCase()}`;
       bySlug.set(slug, comune);

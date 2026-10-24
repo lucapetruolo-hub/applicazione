@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ALL_ITALIAN_CITY_NAMES } from "@professionisti/shared";
+import { allItalianCityNames } from "@professionisti/shared";
 import { Icon, SearchBar, Text, XStack, YStack, brand, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
 import { buildSearchDestination } from "@/lib/searchNavigation";
 import { buildSearchSuggestions } from "@/lib/searchSuggestions";
@@ -73,7 +73,7 @@ export function SearchHeader({
             initialCity={initialCity}
             initialMode={initialMode}
             professionalSuggestions={professionalSuggestions}
-            citySuggestions={ALL_ITALIAN_CITY_NAMES}
+            citySuggestions={allItalianCityNames()}
             searchOnModeChange
           />
         ) : (

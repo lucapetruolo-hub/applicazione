@@ -15,7 +15,7 @@ import {
   categorySubTags,
   subTagLabel,
   validSubTags,
-  ALL_ITALIAN_CITY_NAMES,
+  allItalianCityNames,
   PROFILE_DECLARATION_TEXT,
   findComuneByName,
   type MyProfessionalProfile,
@@ -868,7 +868,7 @@ export default function DashboardProfiloPage() {
             <FieldLabel>Città in cui operi</FieldLabel>
             <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="$4" backgroundColor={brand.calce}>
               <Autocomplete
-                items={ALL_ITALIAN_CITY_NAMES}
+                items={allItalianCityNames()}
                 getKey={(item) => item}
                 getLabel={(item) => item}
                 onSelect={setCity}

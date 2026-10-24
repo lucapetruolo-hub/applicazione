@@ -9,7 +9,8 @@
     "./config": "./src/config.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "genera-default-tamagui": "TSX_TSCONFIG_PATH=scripts/tsconfig.json tsx scripts/genera-default-tamagui.ts"
   },
   "dependencies": {
     "@tamagui/config": "1.144.4",

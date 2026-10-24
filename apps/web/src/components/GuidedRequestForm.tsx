@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { X } from "lucide-react";
 import {
-  ALL_ITALIAN_CITY_NAMES,
+  allItalianCityNames,
   CATEGORY_DESCRIPTION_EXAMPLES,
   CATEGORY_URGENT_DESCRIPTION_EXAMPLES,
   MAX_REQUEST_CATEGORIES,
@@ -1081,7 +1081,7 @@ export function GuidedRequestForm({
           <div className="guided-city">
           <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="$4" backgroundColor={brand.calce}>
             <Autocomplete
-              items={ALL_ITALIAN_CITY_NAMES}
+              items={allItalianCityNames()}
               getKey={(item) => item}
               getLabel={(item) => item}
               onSelect={changeCity}

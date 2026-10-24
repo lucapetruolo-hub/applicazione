@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ALL_ITALIAN_CITY_NAMES, PROFESSIONAL_CATEGORIES, findComuneBySlug, isProfessionalCategorySlug } from "@professionisti/shared";
+import { allItalianCityNames, PROFESSIONAL_CATEGORIES, findComuneBySlug, isProfessionalCategorySlug } from "@professionisti/shared";
 import { SearchBar, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
 import { buildSearchDestination } from "@/lib/searchNavigation";
 import { buildSearchSuggestions } from "@/lib/searchSuggestions";
@@ -58,7 +58,7 @@ export function HeaderSearchBar() {
       initialCity={city}
       initialMode={online ? "online" : "domicilio"}
       professionalSuggestions={professionalSuggestions}
-      citySuggestions={ALL_ITALIAN_CITY_NAMES}
+      citySuggestions={allItalianCityNames()}
       searchOnModeChange
     />
   );

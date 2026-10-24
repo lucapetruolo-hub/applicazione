@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ALL_ITALIAN_CITY_NAMES } from "@professionisti/shared";
+import { allItalianCityNames } from "@professionisti/shared";
 import { Eyebrow, Icon, SearchBar, Text, XStack, YStack, brand, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
 import { buildSearchDestination } from "@/lib/searchNavigation";
 import { buildSearchSuggestions } from "@/lib/searchSuggestions";
@@ -80,7 +80,7 @@ export function HomeHero() {
               wrapSearchButton={(button) => <MagneticButton block>{button}</MagneticButton>}
               onSearch={handleSearch}
               professionalSuggestions={professionalSuggestions}
-              citySuggestions={ALL_ITALIAN_CITY_NAMES}
+              citySuggestions={allItalianCityNames()}
             />
           </YStack>
 
