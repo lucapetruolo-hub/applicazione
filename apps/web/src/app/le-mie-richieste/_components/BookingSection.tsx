@@ -240,7 +240,7 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
       {/* Azioni dell'intervento in fila (richiesta esplicita dell'utente):
           Lavoro terminato (o recensione), Contatta/Cronologia. "Segnala un
           problema" sta solo nel menu hamburger della scheda (GuidedRequestCard,
-          richiesta esplicita dell'utente, docs/CHANGELOG.md §327). Un solo
+          richiesta esplicita dell'utente, docs/CHANGELOG.md §329). Un solo
           Contatta/Cronologia nella scheda: quello del preventivo accettato è
           nascosto (QuoteCard, `contactInBooking`). */}
       <XStack gap="$2" flexWrap="wrap" alignItems="center" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>

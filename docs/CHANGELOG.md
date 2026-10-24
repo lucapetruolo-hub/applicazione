@@ -20419,6 +20419,16 @@ Nuova migrazione `20261024140000_settimana_tipo_continua` (due colonne, nessun d
 
 **Verifica**: prove `address-suggestions.test.ts`, `daily-budget.test.ts`, `ops-alert.test.ts` ed `e2e/tests/richiesta-preventivo.spec.ts` (8 prove, telefono e computer); sul sito compilato con l'API simulata, da telefono (390 px) e computer (1280 px): tessere vuote → ordine finale, senza passare dall'ordine del catalogo; con i suggerimenti spenti i campi separati ci sono già al passo "Dove"; con Google che cade dopo "Via Rom" il testo resta in "Via o piazza" con il cursore.
 
+## 325. "Richiedi un preventivo a [nome]" vivo come "Cerca", barra fissa su telefono
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Pulsante \"Richiedi preventivo\" nel profilo"): rendere il pulsante "Richiedi un preventivo a [nome]" del profilo pubblico dinamico come "Cerca", chiedendo se farlo nero per farlo riconoscere subito.
+
+**Decisione presa**: nuovo `ProfileQuoteCta` (`apps/web/src/components/ProfileQuoteCta.tsx`): effetto magnete e luce che segue il mouse (`MagneticButton`, solo con mouse vero e senza "riduci movimento"), pressione (già su tutti i pulsanti, `button.is_Button:active`) e freccia delle azioni principali (`ButtonArrow`), testo a 16 px come gli altri pulsanti. Su telefono occupa tutta la larghezza (con un nome lungo va su due righe invece di essere tagliato) e, quando non è sullo schermo, compare una barra fissa in basso con "Richiedi un preventivo" (`.profile-cta-bar` in `globals.css`, `IntersectionObserver`; spazio in fondo alla pagina perché non copra il piè di pagina). Sul telefono il pulsante sta oltre la prima schermata, sotto la scheda: con la barra l'azione principale è sempre a portata di pollice. Nessuna barra nell'anteprima del proprio profilo. Colore: verde, per coerenza con la decisione del §304-§308 (pulsanti verdi, niente quasi nero); anteprime verde e nero in `anteprime/preventivo-profilo/`.
+
+Dopo la scelta del verde, miglioria approvata da Luca: stesso effetto magnete anche su "Invia richiesta" del modulo di preventivo, "Registrati" e, in `/per-professionisti`, "Iscriviti gratis" e "Iscriviti con [livello]" (colori invariati). `MagneticButton` accetta uno `style` per il contenitore (es. `flexGrow` accanto a "Indietro").
+
+**Verifica**: typecheck; foto da computer (mouse sopra il pulsante) e da telefono (barra in cima alla pagina, pulsante nella pagina) sul profilo di prova; in `/per-professionisti` il pulsante segue il mouse.
+
 ## 326. zod 4
 
 **Richiesta esplicita dell'utente** (24/10/2026, thread "Controllo sicurezza completo", PR #105): osv-scanner segnala GHSA-mrhx-c7xc-m3w5 su zod 3.25.76 (consumo di memoria su collezioni molto grandi), corretta solo nella serie 4. Luca: "effettua tutte le migliorie da 1 a 4 nella modalita che ritieni". Condizione: validazioni e messaggi d'errore mostrati agli utenti uguali a prima.
@@ -20447,7 +20457,29 @@ Nuova migrazione `20261024140000_settimana_tipo_continua` (due colonne, nessun d
 - Controllo automatico `.github/workflows/zod.yml` (approvato da Luca, "effettua miglioria"): sulle PR che toccano `pnpm-lock.yaml` o i `package.json` di shared e API lancia `confronto-zod --solo-se-cambia` contro il commit di base; se zod resta alla stessa versione non fa nulla, altrimenti si ferma su ogni differenza. La versione di partenza è quella del `pnpm-lock.yaml` del commit di base. Le differenze già spiegate nel registro stanno in `ACCEPTED` nello script (oggi solo quella dell'agenda settimanale).
 - Prova automatica (approvata da Luca, "effettua miglioria"): in `apps/api/src/common/zod-messages.test.ts` ogni file di `packages/shared/src` che importa zod deve avere anche `import "./zod"`; senza, il sito caricherebbe quel file senza i messaggi di zod 3 e li mostrerebbe in silenzio in inglese di zod 4.
 
-## 327. "Segnala un problema" solo nel menu della scheda
+## 327. Settimana tipo: scegliere il mese in cui salvarla
+
+Richiesta dell'utente, dopo la §323: "dai la possibilità di scegliere il mese in cui salvarlo".
+
+**Decisione**: accanto a "Salva la settimana" c'è "Vale per", con "Tutti i mesi" (come nella §323) oppure uno dei prossimi sei mesi. Si parte da "Tutti i mesi", quindi chi non tocca la scelta non vede cambiare nulla.
+
+**Come funziona**: per un mese solo (`PUT /agenda/week-template/month`, `AgendaService.saveWeekTemplateForMonth`) si riempiono i giorni di quel mese da oggi in poi con le stesse regole della §323 (niente giorni chiusi, con lavori fissati o cambiati a mano). Le fasce create diventano giorni a sé (`fromWeekTemplate` falso): non cambiano quando si salva la settimana di tutti i mesi, e si modificano in "Giorno per giorno". La settimana di tutti i mesi resta com'era; se non è mai stata salvata, l'editor si riapre con quella appena usata. Mesi passati o oltre un anno: rifiutati.
+
+**Schermata**: in fondo "Vale per" + "Salva la settimana" (sul telefono uno sotto l'altro); dopo il salvataggio "Salvata per novembre 2026" oppure "Salvata, vale per tutti i mesi", e l'avviso in cima dice dove è stata salvata.
+
+**Verifica**: nuova prova nel browser (`settimana-tipo.spec.ts`: salvata per un mese, tutte le fasce nuove cadono in quel mese, domenica compresa), prove dell'agenda e dell'accessibilità verdi, lint e typecheck di web e API puliti.
+
+## 328. "eccezione" sui giorni con orari diversi dalla settimana tipo
+
+Richiesta dell'utente, tra le migliorie proposte dopo la §327 ("eccezione" con un tasto "Torna agli orari soliti"): "mostra solo "eccezione"". Quindi solo la scritta, nessun tasto.
+
+**Quando compare**: in "Giorno per giorno", se la settimana tipo di tutti i mesi è attiva, su ogni giorno con fasce che non vengono da lei: cambiato a mano, salvato per un mese solo (§327) o che aveva già fasce sue quando la settimana è stata salvata. L'API manda `fromWeekTemplate` per ogni fascia (`GET /professionals/me/availability`); dopo un salvataggio la pagina applica la stessa regola del server (`weekTemplateDatesKept`) senza rileggere.
+
+**Come si vede**: nella vista Giorno una pastiglia grigia "eccezione" sopra le fasce. Nelle viste Settimana e Mese da computer la stessa parola; sul telefono (sotto i 1000 px) le colonne sono troppo strette per la parola, quindi un cerchietto vuoto accanto ai pallini delle fasce e sotto il calendario la legenda "○ eccezione".
+
+**Verifica**: nuova prova nel browser (`settimana-tipo.spec.ts`: mercoledì cambiato a mano mostra "eccezione", giovedì della settimana tipo no), 68 prove nel browser in locale, foto da telefono e computer delle tre viste, lint e typecheck puliti.
+
+## 329. "Segnala un problema" solo nel menu della scheda
 
 **Richiesta esplicita dell'utente** (24/10/2026, thread "Spostare Segnala un problema nel menu della scheda"): lato cliente, nella scheda del preventivo accettato, "il pulsante per segnalare un problema dopo che si accetta un preventivo lasciaglielo solo nel menu ad hamburger della relativa scheda". Il cliente deve comunque poter sempre segnalare un problema.
 

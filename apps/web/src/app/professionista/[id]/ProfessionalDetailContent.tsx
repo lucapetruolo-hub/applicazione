@@ -8,6 +8,7 @@ import { Badge, Button, Chip, EmptyState, Icon, PriceLine, Rating, Surface, Text
 import { IconActionButton } from "@/components/IconActionButton";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
+import { ProfileQuoteCta } from "@/components/ProfileQuoteCta";
 import { MediaPreview } from "@/components/MediaPreview";
 import { ReportContentModal } from "@/components/ReportContentModal";
 import { apiClient } from "@/lib/apiClient";
@@ -845,13 +846,11 @@ export function ProfessionalDetailContent({
         {/* Account in pausa per l'abbonamento (docs/CHANGELOG.md §162): il
             profilo resta visibile dal link, ma senza agenda né richieste. */}
         {professional.acceptingRequests ? (
-          <Link
+          <ProfileQuoteCta
             href={`/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&nomeProfessionista=${encodeURIComponent(professional.businessName)}&fotoProfessionista=${encodeURIComponent(professional.imageUrl ?? "")}`}
-            style={{ textDecoration: "none", alignSelf: "flex-start", pointerEvents: preview ? "none" : undefined }}
-            tabIndex={preview ? -1 : undefined}
-          >
-            <Button variant="primary" tabIndex={preview ? -1 : undefined}>{`Richiedi un preventivo a ${professional.businessName}`}</Button>
-          </Link>
+            name={professional.businessName}
+            preview={preview}
+          />
         ) : (
           <Surface gap="$2">
             <Text fontWeight="700" color={brand.grafite}>

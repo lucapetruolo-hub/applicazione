@@ -20,6 +20,7 @@ import {
   type ProfessionalDetail,
 } from "@professionisti/shared";
 import { Autocomplete, Button, ButtonArrow, Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { MagneticButton } from "./MagneticButton";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { MediaPreview } from "@/components/MediaPreview";
@@ -1294,6 +1295,7 @@ export function GuidedRequestForm({
               Avanti
             </Button>
           ) : (
+            <MagneticButton block style={{ flexGrow: 2, flexBasis: 200 }}>
             <Button
               variant={isUrgent ? "urgent" : "primary"}
               onPress={() => handleSubmit()}
@@ -1309,6 +1311,7 @@ export function GuidedRequestForm({
                 <ButtonArrow />
               </XStack>
             </Button>
+            </MagneticButton>
           )}
         </XStack>
         </>

@@ -153,7 +153,7 @@ export function GuidedRequestCard({
   // richiesta), non dentro BookingSection.
   const [showCancelModal, setShowCancelModal] = useState(false);
   // "Segnala un problema" vive solo nel menu hamburger (richiesta esplicita
-  // dell'utente, docs/CHANGELOG.md §327): modale e chat della prenotazione
+  // dell'utente, docs/CHANGELOG.md §329): modale e chat della prenotazione
   // stanno qui, così si aprono anche da una scheda chiusa.
   const [showReportModal, setShowReportModal] = useState(false);
   const [showBookingChat, setShowBookingChat] = useState(false);

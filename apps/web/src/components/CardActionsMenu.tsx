@@ -143,7 +143,7 @@ export function CardActionsMenu({
         ref={buttonRef}
         // Tondo verde chiaro con bordo verde, pieno quando è aperto: prima era
         // solo un'icona grigia senza sfondo e non si notava (richiesta
-        // esplicita dell'utente, docs/CHANGELOG.md §327). 44px: misura minima
+        // esplicita dell'utente, docs/CHANGELOG.md §329). 44px: misura minima
         // comoda per il dito.
         width={44}
         height={44}

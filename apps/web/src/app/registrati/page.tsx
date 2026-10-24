@@ -17,6 +17,7 @@ import {
   type ProfessionalEntityTypeValue,
 } from "@professionisti/shared";
 import { Button, ButtonArrow, Icon, Surface, Text, XStack, YStack, brand, radiusDocLg, type IconName } from "@professionisti/ui";
+import { MagneticButton } from "@/components/MagneticButton";
 import { AuthField } from "@/components/AuthField";
 import { EmailCodeForm } from "@/components/EmailCodeForm";
 import { apiClient } from "@/lib/apiClient";
@@ -782,6 +783,7 @@ function RegistratiForm() {
             </Text>
           ) : null}
 
+          <MagneticButton block>
           <Button
             variant="scuro"
             onPress={handleRegister}
@@ -795,6 +797,7 @@ function RegistratiForm() {
               <ButtonArrow />
             </XStack>
           </Button>
+          </MagneticButton>
         </YStack>
       </form>
 
