@@ -1,0 +1,75 @@
+name: Controlli di sicurezza
+
+# Strumenti automatici di controllo (docs/CHANGELOG.md §295). Per ora solo
+# rapporto, tranne gitleaks: i risultati di CodeQL, Semgrep e osv-scanner
+# finiscono nella scheda "Security → Code scanning" del repository e nel
+# riepilogo del job, senza bloccare la PR. gitleaks blocca: la cronologia è
+# pulita e una chiave nel codice va tolta subito (il repository è pubblico).
+# Il giro del lunedì trova le vulnerabilità nuove anche senza modifiche.
+on:
+  push:
+    branches: ["claude/professionisti-platform-architecture-xr9gmn"]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  codeql:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          build-mode: none
+          queries: security-extended
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: codeql
+
+  semgrep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Semgrep
+        run: |
+          pip install --quiet semgrep==1.182.1
+          semgrep scan --metrics=off \
+            --config p/default --config p/nodejs --config p/typescript --config p/secrets \
+            --sarif --output semgrep.sarif apps packages || true
+          python3 -c "import json; r=json.load(open('semgrep.sarif'))['runs'][0]['results']; print(f'Semgrep: {len(r)} segnalazioni')" >> "$GITHUB_STEP_SUMMARY"
+      - uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+  osv-scanner:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Librerie con vulnerabilità note
+        run: |
+          curl -sSfL -o osv-scanner https://github.com/google/osv-scanner/releases/download/v2.0.2/osv-scanner_linux_amd64
+          chmod +x osv-scanner
+          ./osv-scanner scan source --lockfile pnpm-lock.yaml --format sarif --output osv.sarif || true
+          ./osv-scanner scan source --lockfile pnpm-lock.yaml --format markdown >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: osv.sarif
+          category: osv-scanner
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Chiavi e password nel codice (tutta la cronologia)
+        # --redact: il registro del job è pubblico, mai stampare il segreto.
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz | tar xz gitleaks
+          ./gitleaks git --redact --no-banner --verbose .

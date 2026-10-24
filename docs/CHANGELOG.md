@@ -19998,3 +19998,19 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 - Google Maps (script e richieste a `maps.googleapis.com`/`maps.gstatic.com`) e Turnstile (con la chiave di prova di Cloudflare, superato) si caricano senza violazioni.
 
 La mappa con una chiave vera si vede solo sul sito pubblicato: dopo l'unione va aperta una ricerca con risultati e la mappa del raggio in dashboard. Se qualcosa non compare, la console del browser dice quale indirizzo manca.
+
+## 295. Test dei permessi e strumenti di controllo nella CI
+
+**Richiesta dell'utente**: dal controllo approfondito (§293), un test nella CI che chiama ogni rotta con ogni ruolo e con gli id di un altro utente, più Semgrep, CodeQL, gitleaks e osv-scanner. Deciso di farli subito invece che prima del lancio. "La prova che il lavoro è giusto non è la tua parola: sono i test nella CI e i rapporti degli strumenti."
+
+**Test dei permessi** (job `access-matrix` in `.github/workflows/ci.yml`, script `apps/api/scripts/access-matrix.mjs`):
+- crea un Postgres vuoto, applica le migrazioni e avvia l'API vera (stessa configurazione di `main.ts`, ora in `src/app-setup.ts`), senza chiavi esterne;
+- crea due clienti, due professionisti, tre admin (SUPER, MODERATOR, FINANCE) e i dati di prova: richiesta con lead, preventivo e chat, prenotazione con pagamento, notifica, lavoro esterno, segnalazione;
+- `apps/api/scripts/access-policy.mjs` dice per ogni rotta chi la può usare (pubblica, solo con il biglietto, dati propri, dati propri solo per i professionisti, dati di qualcuno). **Una rotta nuova non classificata fa fallire la CI**;
+- controlla: rotte pubbliche senza guard; tutte le altre senza accesso → 401; rotte admin → 403 per cliente, professionista e admin senza il permesso giusto, accesso per chi ce l'ha; rotte da professionista → nessun dato a un cliente; rotte con un id → 403/404 a ogni estraneo (anche se il corpo della richiesta non è valido: la validazione viene saltata apposta, così il test arriva sempre al controllo di proprietà) e risposta valida ai proprietari.
+
+Risultato: 218 rotte, 798 controlli, nessuna falla. Prova che il test funziona: togliendo per un attimo il controllo di proprietà dal pagamento di una prenotazione, il test segnala subito i due estranei che lo leggono.
+
+**Strumenti** (`.github/workflows/security.yml`, a ogni PR, a ogni unione e ogni lunedì): CodeQL (`security-extended`), Semgrep (regole `p/default`, `p/nodejs`, `p/typescript`, `p/secrets`) e osv-scanner (librerie con vulnerabilità note) scrivono nella scheda "Security → Code scanning" del repository, per ora senza bloccare. gitleaks controlla tutta la cronologia (641 commit, nessuna chiave trovata) e blocca: il repository è pubblico, una chiave nel codice va tolta subito. Il registro mostra solo le chiavi oscurate (`--redact`).
+
+**Prima lettura dei rapporti**: Semgrep 5 segnalazioni (2 reali ma basse: la lunghezza del sigillo AES-GCM non è controllata nella decifratura dei dati fiscali e dei link di invito; 3 falsi allarmi). osv-scanner 162 avvisi su 45 librerie, quasi tutte usate solo per costruire o provare il codice; nell'API e nel sito pubblicato contano Next.js 14 (passaggio a 15 già in un thread a parte), body-parser, qs (usato solo dal lettore dei moduli `urlencoded`, che nessun client usa), `@nestjs/core` e zod (corretti solo nelle versioni maggiori nuove). Le correzioni sono proposte all'utente in ordine di gravità prima di farle.

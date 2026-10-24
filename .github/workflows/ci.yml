@@ -60,3 +60,52 @@ jobs:
         env:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
         run: pnpm turbo run test
+
+  # Test dei permessi (docs/CHANGELOG.md §295): ogni rotta dell'API chiamata
+  # senza accesso, con ogni ruolo (cliente, professionista, admin di ogni
+  # tipo) e con gli id di un altro utente, su un Postgres vuoto creato qui.
+  # Una rotta nuova non classificata in apps/api/scripts/access-policy.mjs
+  # fa fallire il job.
+  access-matrix:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build API
+        run: pnpm --filter @professionisti/api build
+
+      - name: Migrazioni
+        working-directory: packages/database
+        run: npx prisma migrate deploy
+
+      - name: Test dei permessi
+        env:
+          ACCESS_MATRIX_RESET_DB: "yes"
+        run: node apps/api/scripts/access-matrix.mjs
