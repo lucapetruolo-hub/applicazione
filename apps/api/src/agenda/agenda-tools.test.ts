@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { agendaWeekTemplateSchema, dayRouteMapsUrl, DEFAULT_WEEK_TEMPLATE, weekTemplateCovers } from "@professionisti/shared";
-import { comuniWithinRadius, zoneDemandTips } from "./agenda.service";
-import { weatherAlertKind, weatherAlerts } from "./weather.service";
+import { comuniWithinRadius, firstHomeCity, zoneDemandTips } from "./agenda.service";
+import { dayForecasts, weatherAlertKind, weatherAlerts, weatherCondition } from "./weather.service";
 import { comuneInAddress, estimateLeg, legTiming } from "./day-route.service";
 import { calendarFeedIcs } from "../email/email-calendar";
 
@@ -20,6 +20,39 @@ describe("icona meteo", () => {
       weatherAlerts({ daily: { time: ["2026-10-22", "2026-10-23"], weather_code: [0, 95], precipitation_probability_max: [0, 90], wind_gusts_10m_max: [10, 40] } }),
     ).toEqual([{ date: "2026-10-23", kind: "storm" }]);
     expect(weatherAlerts({})).toEqual([]);
+  });
+});
+
+describe("meteo e lavori dei prossimi giorni in Oggi", () => {
+  it("dà sempre un tempo: prima i fenomeni dell'agenda, poi il cielo", () => {
+    expect(weatherCondition(0, 0, 10)).toBe("clear");
+    expect(weatherCondition(2, 0, 10)).toBe("partly");
+    expect(weatherCondition(3, 0, 10)).toBe("cloudy");
+    // Pioggia poco probabile: nuvoloso, come l'agenda che non mette l'icona.
+    expect(weatherCondition(61, 20, 10)).toBe("cloudy");
+    expect(weatherCondition(61, 80, 10)).toBe("rain");
+    expect(weatherCondition(0, 0, 75)).toBe("wind");
+  });
+  it("arrotonda le temperature e tollera i dati mancanti", () => {
+    expect(
+      dayForecasts({ daily: { time: ["2026-10-24", "2026-10-25"], weather_code: [0, null], temperature_2m_max: [21.6, null], temperature_2m_min: [12.4, 9] } }),
+    ).toEqual([
+      { date: "2026-10-24", condition: "clear", tempMax: 22, tempMin: 12 },
+      { date: "2026-10-25", condition: "cloudy", tempMax: null, tempMin: 9 },
+    ]);
+    expect(dayForecasts({})).toEqual([]);
+  });
+  it("prende il meteo dal comune del primo lavoro a domicilio", () => {
+    const at = (time: string) => new Date(`2026-10-24T${time}:00.000Z`);
+    expect(
+      firstHomeCity([
+        { start: at("14:00"), online: false, city: "Sezze" },
+        { start: at("08:00"), online: true, city: "Roma" },
+        { start: at("09:00"), online: false, city: " " },
+        { start: at("10:00"), online: false, city: "Latina" },
+      ]),
+    ).toBe("Latina");
+    expect(firstHomeCity([{ start: at("08:00"), online: true, city: "Roma" }])).toBeNull();
   });
 });
 

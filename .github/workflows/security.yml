@@ -7,7 +7,7 @@ name: Controlli di sicurezza
 # riscritta se è un falso allarme, perché GitHub mostra l'avviso anche con un
 # commento che la ignora) e gitleaks (una chiave nel codice va tolta subito,
 # il repository è pubblico). Blocca anche osv-scanner (librerie con
-# vulnerabilità note, docs/CHANGELOG.md §327, checklist punto 40): una
+# vulnerabilità note, docs/CHANGELOG.md §334, checklist punto 40): una
 # libreria segnalata si aggiorna; se una versione corretta non c'è ed è usata
 # solo per costruire o provare il codice, va tra le eccezioni di
 # osv-scanner.toml con il motivo (§314).

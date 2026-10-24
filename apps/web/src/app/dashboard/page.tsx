@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { AGENDA_LOOKAHEAD_DAYS, formatAppointmentDate, formatAppointmentTime, jobOccurrences, scheduleChangeBetween, wallClockToday, type AgendaAttention, type MySubscription, type ProfessionalBooking, type ProfessionalInsights, type ProfessionalLead } from "@professionisti/shared";
+import { AGENDA_LOOKAHEAD_DAYS, formatAppointmentDate, formatAppointmentTime, jobOccurrences, scheduleChangeBetween, wallClockToday, type AgendaAttention, type DayAhead, type ExternalJob, type MySubscription, type ProfessionalBooking, type ProfessionalInsights, type ProfessionalLead } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -17,6 +17,7 @@ import { SubscriptionPauseBanner } from "@/components/SubscriptionPauseBanner";
 import { IssueSanctionBanner } from "@/components/IssueSanctionBanner";
 import { BoostSection } from "@/components/BoostSection";
 import { SetupJourneyCard } from "@/components/verification/SetupJourney";
+import { WeatherStrip, jobsHeadline, type DayJobRow } from "@/components/DaysAhead";
 
 /**
  * Home "Oggi" del professionista (docs/CHANGELOG.md §147, decisione esplicita
@@ -31,6 +32,10 @@ export default function DashboardTodayPage() {
   const { user, token, isLoading, unreadNotifications } = useAuth();
   const [leads, setLeads] = useState<ProfessionalLead[] | null>(null);
   const [bookings, setBookings] = useState<ProfessionalBooking[] | null>(null);
+  // Lavori aggiunti a mano: se non arrivano, restano solo le prenotazioni.
+  const [externalJobs, setExternalJobs] = useState<ExternalJob[] | null>(null);
+  // Meteo dei prossimi tre giorni (§333): se non arriva, la riga sparisce.
+  const [daysAhead, setDaysAhead] = useState<DayAhead[] | null | "failed">(null);
   const [insights, setInsights] = useState<ProfessionalInsights | null>(null);
   const [subscription, setSubscription] = useState<MySubscription | null>(null);
   const [restrictions, setRestrictions] = useState<{ demotedUntil?: string | null; requestsBlockedUntil?: string | null } | null>(null);
@@ -50,6 +55,8 @@ export default function DashboardTodayPage() {
     };
     apiClient.myLeads(token).then(setLeads).catch(onError);
     apiClient.myProfessionalBookings(token).then(setBookings).catch(onError);
+    apiClient.myExternalJobs(token).then(setExternalJobs).catch(() => setExternalJobs([]));
+    apiClient.agendaDaysAhead(token).then(setDaysAhead).catch(() => setDaysAhead("failed"));
     apiClient.getMyInsights(token).then(setInsights).catch(() => setInsightsFailed(true));
     apiClient.getMySubscription(token).then(setSubscription).catch(() => setSubscription(null));
     apiClient
@@ -65,6 +72,8 @@ export default function DashboardTodayPage() {
     if (!token) return;
     apiClient.myLeads(token).then(setLeads).catch(() => {});
     apiClient.myProfessionalBookings(token).then(setBookings).catch(() => {});
+    apiClient.myExternalJobs(token).then(setExternalJobs).catch(() => {});
+    apiClient.agendaDaysAhead(token).then(setDaysAhead).catch(() => {});
   }, [token]);
   useLiveRefresh(refreshInBackground, Boolean(token && user?.isProfessional));
 
@@ -128,16 +137,44 @@ export default function DashboardTodayPage() {
   const endTomorrow = new Date(startToday);
   endTomorrow.setUTCDate(endTomorrow.getUTCDate() + 2);
   // Un lavoro su più giorni compare oggi e domani con l'orario di quel giorno (§310).
-  const upcoming = (bookings ?? [])
-    .filter((b) => b.status === "CONFIRMED" || b.status === "PENDING")
-    .flatMap((booking) =>
-      jobOccurrences(booking.scheduledAt, booking.scheduledEndAt)
-        .filter((occurrence) => occurrence.start >= startToday && occurrence.start < endTomorrow)
-        .map((occurrence) => ({ booking, at: occurrence.start.toISOString() })),
-    )
-    .sort((a, b) => a.at.localeCompare(b.at));
+  type UpcomingRow = { key: string; href: string; at: string; title: string; sub: string; job: DayJobRow };
+  const inWindow = (start: Date) => start >= startToday && start < endTomorrow;
+  const upcoming: UpcomingRow[] = [
+    ...(bookings ?? [])
+      .filter((b) => b.status === "CONFIRMED" || b.status === "PENDING")
+      .flatMap((booking) =>
+        jobOccurrences(booking.scheduledAt, booking.scheduledEndAt)
+          .filter((occurrence) => inWindow(occurrence.start))
+          .map((occurrence) => ({
+            key: `booking-${booking.id}-${occurrence.start.toISOString()}`,
+            // Si apre l'appuntamento (indirizzo, Naviga, Chiama), non la richiesta (T3, §311).
+            href: `/dashboard/agenda?booking=${booking.id}`,
+            at: occurrence.start.toISOString(),
+            title: booking.clientName ?? "Cliente",
+            sub:
+              ([booking.street && booking.houseNumber ? `${booking.street} ${booking.houseNumber}` : null, booking.city ?? booking.address, booking.items[0]?.name].filter(Boolean).join(" · ") || "Intervento") +
+              (booking.status === "PENDING" ? " · da confermare" : ""),
+            job: { start: occurrence.start.toISOString(), end: occurrence.end?.toISOString() ?? null, city: booking.city, online: booking.serviceMode === "ONLINE" },
+          })),
+      ),
+    // Anche i lavori aggiunti a mano in agenda (§333).
+    ...(externalJobs ?? [])
+      .filter((j) => j.status === "SCHEDULED")
+      .flatMap((job) =>
+        jobOccurrences(job.scheduledAt, job.scheduledEndAt)
+          .filter((occurrence) => inWindow(occurrence.start))
+          .map((occurrence) => ({
+            key: `external-${job.id}-${occurrence.start.toISOString()}`,
+            href: `/dashboard/agenda?esterno=${job.id}`,
+            at: occurrence.start.toISOString(),
+            title: job.clientName,
+            sub: [job.address, job.description].filter(Boolean).join(" · ") || "Lavoro aggiunto da te",
+            job: { start: occurrence.start.toISOString(), end: occurrence.end?.toISOString() ?? null, city: cityOfAddress(job.address), online: false },
+          })),
+      ),
+  ].sort((a, b) => a.at.localeCompare(b.at));
 
-  const loading = leads === null || bookings === null;
+  const loading = leads === null || bookings === null || externalJobs === null;
   const greetingName = user.businessName ?? user.name ?? "";
 
   return (
@@ -159,27 +196,29 @@ export default function DashboardTodayPage() {
             senza scorrere (T2 del test dei compiti, docs/CHANGELOG.md §311). */}
         {error ? null : (
         <TodaySection title="Oggi e domani" action={{ href: "/dashboard/agenda", label: "Apri l'agenda" }}>
+          {daysAhead === "failed" ? null : <WeatherStrip days={daysAhead} />}
           {loading ? (
             <Skeletons />
           ) : upcoming.length === 0 ? (
             <EmptyLine text="Nessun appuntamento oggi e domani." />
           ) : (
-            upcoming.map(({ booking, at }) => (
-              <Link
-                key={`${booking.id}-${at}`}
-                // Si apre l'appuntamento (indirizzo, Naviga, Chiama), non la richiesta (T3, §311).
-                href={`/dashboard/agenda?booking=${booking.id}`}
-                className="today-row"
-              >
-                <span className="today-time">{dayLabel(at)}</span>
+            upcoming.map(({ key, href, at, title, sub }, index) => (
+              <Fragment key={key}>
+              {/* I lavori raggruppati per giorno, con il riepilogo sopra (§333). */}
+              {index === 0 || upcoming[index - 1]!.at.slice(0, 10) !== at.slice(0, 10) ? (
+                <div className="today-day-head">
+                  <strong>{at.slice(0, 10) === startToday.toISOString().slice(0, 10) ? "Oggi" : "Domani"}</strong>
+                  <span>{jobsHeadline(upcoming.filter((row) => row.at.slice(0, 10) === at.slice(0, 10)).map((row) => row.job))}</span>
+                </div>
+              ) : null}
+              <Link href={href} className="today-row">
+                <span className="today-time">{formatAppointmentTime(at)}</span>
                 <span className="today-row-main">
-                  <strong>{booking.clientName ?? "Cliente"}</strong>
-                  <span className="today-row-sub">
-                    {[booking.street && booking.houseNumber ? `${booking.street} ${booking.houseNumber}` : null, booking.city ?? booking.address, booking.items[0]?.name].filter(Boolean).join(" · ") || "Intervento"}
-                    {booking.status === "PENDING" ? " · da confermare" : ""}
-                  </span>
+                  <strong>{title}</strong>
+                  <span className="today-row-sub">{sub}</span>
                 </span>
               </Link>
+              </Fragment>
             ))
           )}
         </TodaySection>
@@ -197,6 +236,7 @@ export default function DashboardTodayPage() {
               setError(null);
               setLeads(null);
               setBookings(null);
+              setExternalJobs(null);
               setInsightsFailed(false);
               setLoadAttempt((n) => n + 1);
             }}
@@ -437,8 +477,8 @@ function formatDateTime(iso: string): string {
   return `${formatAppointmentDate(iso, { weekday: "short", day: "numeric", month: "short" })}, ${formatAppointmentTime(iso)}`;
 }
 
-function dayLabel(iso: string): string {
-  const isToday = iso.slice(0, 10) === wallClockToday().toISOString().slice(0, 10);
-  const time = formatAppointmentTime(iso);
-  return `${isToday ? "Oggi" : "Domani"} ${time}`;
+/** Comune di un indirizzo scritto a mano ("Via Roma 3, 04100 Latina" → "Latina"), per il riepilogo del giorno. */
+function cityOfAddress(address: string | null): string | null {
+  const last = address?.split(",").pop()?.replace(/\b\d{5}\b/, "").trim();
+  return last && address!.includes(",") ? last : null;
 }

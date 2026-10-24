@@ -10,7 +10,7 @@ ecosystem = "npm"
 vulnerability.ignore = true
 reason = "Solo in @expo/cli, strumento di sviluppo; sito e API su zod 4 (PR #108)"
 
-# node-forge non ha ancora una versione corretta (docs/CHANGELOG.md §327).
+# node-forge non ha ancora una versione corretta (docs/CHANGELOG.md §334).
 # Lo usa solo @expo/cli per leggere il certificato di firma quando si
 # prova l'app su un iPhone dal computer: non finisce nell'app, nel sito o
 # nell'API.

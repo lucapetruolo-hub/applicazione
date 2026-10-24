@@ -441,7 +441,10 @@ Città, pagine vuote fuori da Google.
       `pnpm --filter @professionisti/web confronto-pagine` si lancia a mano.
       Farlo partire a ogni PR, con un database di prova (seed) e l'API
       avviata nella CI, insieme alle prove del punto 26. Rilanciarlo
-      comunque a mano una volta subito prima del lancio.
+      comunque a mano una volta subito prima del lancio, su tutte le pagine
+      e da telefono e computer: dopo le ultime PR va guardata anche "Oggi"
+      del professionista con il meteo dei tre giorni (PR #126,
+      docs/CHANGELOG.md §333, fotografata solo con l'API simulata).
     - **App mobile** (ora Expo 58, React 19, React Native 0.88): i pacchetti
       Android e iOS si generano, ma non è stata provata su un telefono vero.
       Prima di pubblicarla negli store: build con EAS e prova su un iPhone e
@@ -456,7 +459,7 @@ Città, pagine vuote fuori da Google.
     fuori dall'app) fatti da professionisti che non conoscono il sito, senza
     aiuto. Il test simulato del §311 non li sostituisce. Testo dei compiti e
     obiettivi nel documento "Verifica dell'agenda come un esperto UX".
-40. ~~osv-scanner bloccante~~ — fatto (docs/CHANGELOG.md §327, PR #131):
+40. ~~osv-scanner bloccante~~ — fatto (docs/CHANGELOG.md §334, PR #131):
     blocca la PR su qualunque libreria con vulnerabilità note; quelle usate
     solo per costruire o provare il codice e senza versione corretta vanno
     in `osv-scanner.toml` con il motivo (oggi zod 3 e node-forge dentro

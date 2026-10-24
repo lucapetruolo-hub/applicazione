@@ -20,6 +20,8 @@ on:
     - cron: "*/10 * * * *"
     # Una volta al giorno anche i suggerimenti di indirizzo di Google (§324).
     - cron: "17 7 * * *"
+    # Ogni ora lo stream in tempo reale delle notifiche (§332).
+    - cron: "37 * * * *"
   workflow_dispatch:
 
 permissions: {}
@@ -49,3 +51,21 @@ jobs:
           api="${API_HEALTH_URL%/health}"
           curl --fail --silent --show-error --max-time 90 --retry 2 --retry-delay 10 \
             "$api/address/suggestions?q=via%20roma%201%20latina&session=uptime-$(date +%s)" | grep -q '"id"'
+      # Stream in tempo reale (docs/CHANGELOG.md §331-§332): il 24/10/2026
+      # rispondeva 200 ma senza eventi, e nessuno se n'era accorto. Entra con
+      # l'account di prova (secret UPTIME_EMAIL e UPTIME_PASSWORD), apre lo
+      # stream e aspetta il battito dei 25 secondi, che deve avere contenuto.
+      - name: Stream in tempo reale
+        if: ${{ vars.API_HEALTH_URL != '' && (github.event.schedule == '37 * * * *' || github.event_name == 'workflow_dispatch') }}
+        env:
+          API_HEALTH_URL: ${{ vars.API_HEALTH_URL }}
+          UPTIME_EMAIL: ${{ secrets.UPTIME_EMAIL }}
+          UPTIME_PASSWORD: ${{ secrets.UPTIME_PASSWORD }}
+        run: |
+          if [ -z "$UPTIME_EMAIL" ] || [ -z "$UPTIME_PASSWORD" ]; then echo "Secret UPTIME_EMAIL/UPTIME_PASSWORD mancanti: controllo saltato."; exit 0; fi
+          api="${API_HEALTH_URL%/health}"
+          body=$(jq -n --arg email "$UPTIME_EMAIL" --arg password "$UPTIME_PASSWORD" '{email: $email, password: $password}')
+          token=$(curl --fail --silent --show-error --max-time 90 --retry 2 --retry-delay 10 -H 'content-type: application/json' -d "$body" "$api/auth/login" | jq -r .token)
+          ticket=$(curl --fail --silent --show-error --max-time 30 -X POST -H "Authorization: Bearer $token" "$api/realtime/ticket" | jq -r .ticket)
+          stream=$(curl --silent --no-buffer --max-time 35 "$api/realtime/stream?ticket=$ticket" || true)
+          echo "$stream" | grep -q '^data: {"kind":"ping"}' || { echo "Stream senza eventi: $stream"; exit 1; }
