@@ -20456,3 +20456,19 @@ Dopo la scelta del verde, miglioria approvata da Luca: stesso effetto magnete an
 - zod 3 di `@expo/cli` tra le eccezioni di osv-scanner, fatto nella PR #105 (`osv-scanner.toml`, solo per la versione 3.25.76).
 - Controllo automatico `.github/workflows/zod.yml` (approvato da Luca, "effettua miglioria"): sulle PR che toccano `pnpm-lock.yaml` o i `package.json` di shared e API lancia `confronto-zod --solo-se-cambia` contro il commit di base; se zod resta alla stessa versione non fa nulla, altrimenti si ferma su ogni differenza. La versione di partenza è quella del `pnpm-lock.yaml` del commit di base. Le differenze già spiegate nel registro stanno in `ACCEPTED` nello script (oggi solo quella dell'agenda settimanale).
 - Prova automatica (approvata da Luca, "effettua miglioria"): in `apps/api/src/common/zod-messages.test.ts` ogni file di `packages/shared/src` che importa zod deve avere anche `import "./zod"`; senza, il sito caricherebbe quel file senza i messaggi di zod 3 e li mostrerebbe in silenzio in inglese di zod 4.
+
+## 327. Notifiche dei messaggi in chat che non arrivavano
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Correggere le notifiche chat al cliente"): "al cliente sembra non arrivino le notifiche quando il professionista gli manda un messaggio in chat", e lo stesso dal cliente al professionista.
+
+**Causa**
+- Lato server nulla di diverso tra i due versi: `TimelineService.addUpdate` crea la notifica `TIMELINE_MESSAGE_FROM_*` e la manda sullo stream in tempo reale. I messaggi in chat non hanno email in nessuno dei due versi (argomento "Messaggi" solo sul sito), quindi il limite del dominio Resend non c'entra.
+- Lo stream in tempo reale (`GET /realtime/stream`) in produzione mandava un solo evento vuoto (`id: 1` senza `data`) e poi più nulla: niente popup, suono, pallino o messaggio nuovo nella chat aperta. Con l'aggiornamento a NestJS 11 (§297) nel monorepo c'erano tre copie di rxjs (7.8.1 portata da `@nestjs/cli`, 7.8.2 in `apps/api` e dentro `@nestjs/core`); NestJS riconosce l'Observable di un `@Sse()` con `instanceof` sulla sua copia e, appena c'è un interceptor globale (quello di `SentryModule`), trattava lo stream come un valore qualunque. Riprodotto in locale: senza `SentryModule` lo stream funziona, con `SentryModule` arriva vuoto.
+- Restava il controllo di riserva ogni 45 secondi, ma su `/chat`, `/le-mie-richieste` e `/dashboard/richieste` la pagina segna tutto come letto ogni 15 secondi: la notifica spariva prima che l'app la vedesse, quindi niente popup né suono.
+
+**Decisione presa**
+- `rxjs: "7.8.2"` negli `overrides` di `pnpm-workspace.yaml`: una sola copia. Prova automatica `apps/api/src/realtime/rxjs-single-copy.test.ts` (API e NestJS devono risolvere lo stesso rxjs).
+- `markNotificationsRead(fetched)` in `AuthContext`: le tre pagine passano le non lette appena lette, e quelle nuove hanno il loro popup e suono prima di essere segnate lette (stessa logica di prima, `announceNotifications`, con la stessa soglia iniziale che evita popup per le notifiche vecchie).
+
+**Verifica**
+- Prima: stream di produzione letto con un account di prova, `\nid: 1\n\n` e nient'altro in 56 secondi. In locale, controller vero con `SentryModule`: evento senza `data`; dopo la correzione l'evento arriva completo, anche con Sentry attivo e la configurazione dell'app.

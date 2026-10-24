@@ -13,6 +13,7 @@ overrides:
   '@react-native/metro-config': 0.88.0
   multer: ^2.3.0
   proxy-addr: ^2.0.8
+  rxjs: 7.8.2
 
 importers:
 
@@ -100,7 +101,7 @@ importers:
         specifier: ^4.0.1
         version: 4.8.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       rxjs:
-        specifier: ^7.8.1
+        specifier: 7.8.2
         version: 7.8.2
       stripe:
         specifier: ^22.3.2
@@ -1841,7 +1842,7 @@ packages:
       class-transformer: '>=0.4.1'
       class-validator: '>=0.13.2'
       reflect-metadata: ^0.1.12 || ^0.2.0
-      rxjs: ^7.1.0
+      rxjs: 7.8.2
     peerDependenciesMeta:
       class-transformer:
         optional: true
@@ -1857,7 +1858,7 @@ packages:
       '@nestjs/platform-express': ^11.0.0
       '@nestjs/websockets': ^11.0.0
       reflect-metadata: ^0.1.12 || ^0.2.0
-      rxjs: ^7.1.0
+      rxjs: 7.8.2
     peerDependenciesMeta:
       '@nestjs/microservices':
         optional: true
@@ -6297,9 +6298,6 @@ packages:
   run-parallel@1.2.0:
     resolution: {integrity: sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==}
 
-  rxjs@7.8.1:
-    resolution: {integrity: sha512-AA3TVj+0A2iuIoQkWEK/tqFjBq2j+6PO6Y0zJcvzLAFhEFIO3HL0vls9hWLncZbAAbK0mar7oZ4V079I/qPMxg==}
-
   rxjs@7.8.2:
     resolution: {integrity: sha512-dhKf903U/PQZY6boNNtAGdWbG85WAbjT/1xYoZIC7FAY0yWapOBQVsVrDl58W86//e1VpMNBtRV4MaXfdMySFA==}
 
@@ -7256,7 +7254,7 @@ snapshots:
       ajv-formats: 3.0.1(ajv@8.18.0)
       jsonc-parser: 3.3.1
       picomatch: 4.0.4
-      rxjs: 7.8.1
+      rxjs: 7.8.2
       source-map: 0.7.4
     optionalDependencies:
       chokidar: 4.0.3
@@ -7267,7 +7265,7 @@ snapshots:
       ajv-formats: 3.0.1(ajv@8.18.0)
       jsonc-parser: 3.3.1
       picomatch: 4.0.4
-      rxjs: 7.8.1
+      rxjs: 7.8.2
       source-map: 0.7.4
     optionalDependencies:
       chokidar: 4.0.3
@@ -7290,7 +7288,7 @@ snapshots:
       jsonc-parser: 3.3.1
       magic-string: 0.30.17
       ora: 5.4.1
-      rxjs: 7.8.1
+      rxjs: 7.8.2
     transitivePeerDependencies:
       - chokidar
 
@@ -7300,7 +7298,7 @@ snapshots:
       jsonc-parser: 3.3.1
       magic-string: 0.30.17
       ora: 5.4.1
-      rxjs: 7.8.1
+      rxjs: 7.8.2
     transitivePeerDependencies:
       - chokidar
 
@@ -14499,10 +14497,6 @@ snapshots:
   run-parallel@1.2.0:
     dependencies:
       queue-microtask: 1.2.3
-
-  rxjs@7.8.1:
-    dependencies:
-      tslib: 2.8.1
 
   rxjs@7.8.2:
     dependencies:
