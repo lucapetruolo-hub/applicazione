@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { breadcrumbJsonLd, jsonForScript, type BreadcrumbItem } from "@/lib/jsonLd";
+import { breadcrumbJsonLd, type BreadcrumbItem } from "@/lib/jsonLd";
+import { JsonLd } from "@/components/JsonLd";
 
 /**
  * Percorso "Home › Idraulico › Latina › Nome" (docs/CHANGELOG.md §295): per
@@ -10,7 +11,7 @@ import { breadcrumbJsonLd, jsonForScript, type BreadcrumbItem } from "@/lib/json
 export function Breadcrumbs({ items }: { items: BreadcrumbItem[] }) {
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonForScript(breadcrumbJsonLd(items)) }} />
+      <JsonLd data={breadcrumbJsonLd(items)} />
       <nav aria-label="Percorso" className="breadcrumbs">
         <ol className="breadcrumbs-list">
           {items.map((item, index) => (
