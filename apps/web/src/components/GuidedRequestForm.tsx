@@ -82,7 +82,7 @@ function pickableSlotLabel(slot: PickableAgendaSlot): string {
 
 const fieldInputStyle = {
   padding: 12,
-  borderRadius: 6,
+  borderRadius: 10,
   border: `1px solid ${brand.bordoCampo}`,
   fontSize: 16,
   fontFamily: "inherit",
@@ -950,7 +950,7 @@ export function GuidedRequestForm({
               onChange={(e) => setSelectedSlotValue(e.target.value)}
               style={{
                 padding: 12,
-                borderRadius: 6,
+                borderRadius: 10,
                 border: `1px solid ${brand.bordoCampo}`,
                 fontSize: 16,
                 fontFamily: "inherit",
@@ -977,7 +977,7 @@ export function GuidedRequestForm({
             rows={5}
             style={{
               padding: 12,
-              borderRadius: 6,
+              borderRadius: 10,
               border: `1px solid ${brand.bordoCampo}`,
               fontSize: 16,
               fontFamily: "inherit",

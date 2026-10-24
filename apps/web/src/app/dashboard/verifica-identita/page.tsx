@@ -326,7 +326,7 @@ function ActionPanel({
           alignItems: "flex-start",
           gap: 10,
           padding: 12,
-          borderRadius: 12,
+          borderRadius: 20,
           background: consentMissing ? brand.urgenzaVelo : brand.gesso,
           cursor: "pointer",
           border: `2px solid ${consent ? brand.cianografia : consentMissing ? brand.urgenza : "transparent"}`,

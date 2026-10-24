@@ -20,7 +20,7 @@ const textareaStyle = {
   boxSizing: "border-box" as const,
   minHeight: 70,
   padding: 10,
-  borderRadius: 6,
+  borderRadius: 10,
   border: `1px solid ${brand.bordoCampo}`,
   fontSize: 14,
   fontFamily: "inherit",

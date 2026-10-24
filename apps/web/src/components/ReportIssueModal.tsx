@@ -253,7 +253,7 @@ export function ReportIssueModal({
                   boxSizing: "border-box",
                   minHeight: 96,
                   padding: 10,
-                  borderRadius: 6,
+                  borderRadius: 10,
                   border: `1px solid ${brand.bordoCampo}`,
                   fontSize: 16,
                   fontFamily: "inherit",

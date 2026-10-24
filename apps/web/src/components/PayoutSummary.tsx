@@ -55,7 +55,7 @@ export function PayoutSummary() {
             backgroundColor={brand.calce}
           >
             <XStack gap="$2" alignItems="center">
-              <YStack width={24} height={24} borderRadius={12} backgroundColor={tile.bg} alignItems="center" justifyContent="center">
+              <YStack width={24} height={24} borderRadius={20} backgroundColor={tile.bg} alignItems="center" justifyContent="center">
                 <Icon name={tile.icon} size={13} strokeWidth={2.4} color={tile.color} />
               </YStack>
               <Text fontSize={13} color={brand.grafite70}>

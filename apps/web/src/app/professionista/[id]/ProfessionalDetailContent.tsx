@@ -873,8 +873,8 @@ export function ProfessionalDetailContent({
               </Text>
             </XStack>
             <Surface padding={0} overflow="hidden">
-              {professional.services.map((service) => (
-                <YStack key={service.id} paddingHorizontal="$4" paddingVertical="$2">
+              {professional.services.map((service, index) => (
+                <YStack key={service.id} paddingHorizontal="$4" paddingVertical="$3" borderTopWidth={index === 0 ? 0 : 1} borderTopColor={brand.filetto}>
                   <PriceLine
                     label={service.name}
                     labelColor={brand.grafite}

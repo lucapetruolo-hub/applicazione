@@ -268,7 +268,7 @@ function ProGallery() {
 /** Riquadro bianco con bordo sottile per le piccole illustrazioni delle celle. */
 function Panel({ children }: { children: ReactNode }) {
   return (
-    <YStack marginTop="$4" backgroundColor={brand.calce} borderWidth={1} borderColor={LINE} borderRadius={12} padding="$3" gap="$2">
+    <YStack marginTop="$4" backgroundColor={brand.calce} borderWidth={1} borderColor={LINE} borderRadius={20} padding="$3" gap="$2">
       {children}
     </YStack>
   );

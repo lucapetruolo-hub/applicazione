@@ -10,7 +10,7 @@ const DOCUMENT_EXTENSIONS = [".pdf", ".doc", ".docx", ".xls", ".xlsx"];
  * `encodeURI` lascia l'indirizzo identico (`blob:` + origine + id, solo
  * caratteri sicuri), ma dice a CodeQL che non porta HTML dentro la pagina:
  * altrimenti il file scelto dall'utente risulta "testo del DOM" fino al
- * `src` della miniatura (js/xss-through-dom, docs/CHANGELOG.md §315).
+ * `src` della miniatura (js/xss-through-dom, docs/CHANGELOG.md §318).
  */
 export function localPreviewUrl(file: Blob): string {
   return encodeURI(URL.createObjectURL(file));

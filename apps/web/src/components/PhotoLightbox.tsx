@@ -147,7 +147,7 @@ export function PhotoLightbox({
           controls
           autoPlay
           playsInline
-          style={{ position: "relative", maxWidth: "90vw", maxHeight: "85vh", borderRadius: 6 }}
+          style={{ position: "relative", maxWidth: "90vw", maxHeight: "85vh", borderRadius: 10 }}
         />
       ) : (
         // `<img>` grezzo deliberato, non `next/image`: la foto può avere
@@ -160,7 +160,7 @@ export function PhotoLightbox({
         <img
           src={photos[index]}
           alt=""
-          style={{ position: "relative", maxWidth: "90vw", maxHeight: "85vh", objectFit: "contain", borderRadius: 6 }}
+          style={{ position: "relative", maxWidth: "90vw", maxHeight: "85vh", objectFit: "contain", borderRadius: 10 }}
         />
       )}
     </div>

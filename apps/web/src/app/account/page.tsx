@@ -19,7 +19,7 @@ import { localPreviewUrl } from "@/lib/media";
 
 const inputStyle = {
   padding: "10px 12px",
-  borderRadius: 6,
+  borderRadius: 10,
   border: `1px solid ${brand.bordoCampo}`,
   fontSize: 16,
   fontFamily: "inherit",
