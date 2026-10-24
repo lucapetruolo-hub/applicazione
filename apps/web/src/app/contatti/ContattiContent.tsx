@@ -84,7 +84,7 @@ export default function ContattiContent() {
     <YStack width="100%" alignItems="center" backgroundColor="$gesso" paddingHorizontal={16} paddingTop={40} paddingBottom={64} $gtSm={{ paddingHorizontal: 40, paddingTop: 56, paddingBottom: 96 }}>
       <YStack width="100%" maxWidth={1080} gap="$5">
         <YStack gap="$2">
-          <Text fontFamily="$heading" fontWeight="800" color={brand.grafite} fontSize={34} $gtSm={{ fontSize: 44 }}>
+          <Text tag="h1" margin={0} fontFamily="$heading" fontWeight="800" color={brand.grafite} fontSize={34} $gtSm={{ fontSize: 44 }}>
             Contatti
           </Text>
           <Text fontSize={18} color={brand.grafite70} maxWidth={560} lineHeight={26}>

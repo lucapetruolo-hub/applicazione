@@ -22,6 +22,8 @@ import type {
   ExternalJobInput,
   ExternalJobUpdateInput,
   GuidedRequestInput,
+  TrafficSource,
+  CategoryPriceStats,
   GuidedRequestMyState,
   GuidedRequestStatusSummary,
   GuidedRequestUserStateInput,
@@ -354,6 +356,13 @@ export type AdminSearchResult = {
 export type AdminTrends = {
   weekStarts: string[];
   series: { newClients: number[]; newProfessionals: number[]; requests: number[]; bookings: number[]; reports: number[] };
+};
+
+/** Provenienza delle richieste di preventivo, ultimi 30 giorni (docs/CHANGELOG.md §296). */
+export type AdminTrafficSources = {
+  days: number;
+  total: number;
+  bySource: { source: TrafficSource | "unknown"; count: number }[];
 };
 
 export type AdminReportTarget =
@@ -1071,6 +1080,13 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
         { cache: "no-store" },
       ),
 
+    /** Prezzi veri della pagina "Quanto costa" di una categoria (docs/CHANGELOG.md §296); null sotto le soglie. */
+    getCategoryPrices: (categorySlug: string, city?: string) =>
+      request<CategoryPriceStats>(
+        `/professionals/prices/${encodeURIComponent(categorySlug)}${city ? `?city=${encodeURIComponent(city)}` : ""}`,
+        { cache: "no-store" },
+      ),
+
     /** Conteggio reale di quante volte ogni lingua è già stata inserita da un professionista — alimenta l'elenco selezionabile in /dashboard/profilo. */
     getLanguagePopularity: () =>
       request<{ name: string; count: number }[]>("/professionals/languages/popular", { cache: "no-store" }),
@@ -1567,6 +1583,9 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
     adminOverview: (token: string) => request<AdminOverview>("/admin/overview", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminTrends: (token: string) => request<AdminTrends>("/admin/trends", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminTrafficSources: (token: string) =>
+      request<AdminTrafficSources>("/admin/traffic-sources", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminSearch: (token: string, q: string) =>
       request<AdminSearchResult>(`/admin/search?q=${encodeURIComponent(q)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),

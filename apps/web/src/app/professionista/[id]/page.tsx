@@ -1,23 +1,53 @@
 import { Suspense } from "react";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
 import { apiClient } from "../../../lib/apiClient";
 import { SITE_URL } from "@/lib/siteUrl";
+import { jsonForScript, type BreadcrumbItem } from "@/lib/jsonLd";
 import { ApiError } from "@professionisti/api-client";
-import { BRAND } from "@professionisti/shared";
+import { BRAND, comuneSlug, professionalIdFromSlug, professionalPath, professionalSlug, type ProfessionalDetail } from "@professionisti/shared";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { ProfessionalDetailContent } from "./ProfessionalDetailContent";
 
+// `id` è il segmento dell'indirizzo: "nome-citta-<id>" o, nei link vecchi, il
+// solo id (docs/CHANGELOG.md §295, packages/shared/src/professionalUrl.ts).
 type PageParams = { id: string };
+type PageSearchParams = Record<string, string | string[] | undefined>;
+
+/** Query string da riportare nel redirect all'indirizzo leggibile (?modalita=, ?data=, ?salva=). */
+function queryString(searchParams: PageSearchParams): string {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(searchParams)) {
+    if (Array.isArray(value)) value.forEach((item) => query.append(key, item));
+    else if (value !== undefined) query.append(key, value);
+  }
+  const text = query.toString();
+  return text ? `?${text}` : "";
+}
+
+/** Home › Categoria › Città › Nome: la città solo se ha la sua pagina (comune vero). */
+function breadcrumbItems(professional: ProfessionalDetail): BreadcrumbItem[] {
+  const citySlug = comuneSlug(professional.city);
+  return [
+    { label: "Home", href: "/" },
+    { label: professional.categoryLabel, href: `/cerca/${professional.categorySlug}` },
+    ...(citySlug ? [{ label: professional.city, href: `/cerca/${professional.categorySlug}/${citySlug}` }] : []),
+    { label: professional.businessName },
+  ];
+}
 
 // Pagina profilo pubblico: SEO-critica (CLAUDE.md §5.4), SSR ad ogni richiesta
 // (nessun generateStaticParams: gli id sono dinamici e crescono nel tempo).
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({ params }: { params: PageParams }): Promise<Metadata> {
+export async function generateMetadata(props: { params: Promise<PageParams> }): Promise<Metadata> {
+  const params = await props.params;
   try {
-    const professional = await apiClient.getProfessional(params.id);
+    const professional = await apiClient.getProfessional(professionalIdFromSlug(params.id));
     return {
+      // Una sola pagina per profilo per Google, anche con ?modalita= o ?data=.
+      alternates: { canonical: professionalPath(professional) },
       title: `${professional.businessName} — ${professional.categoryLabel} a ${professional.city}`,
       description: `${professional.businessName}: ${professional.categoryLabel.toLowerCase()} a ${professional.city}. ${
         professional.reviewCount > 0 ? `${professional.rating}/5 su ${professional.reviewCount} recensioni.` : professional.verified
@@ -26,56 +56,16 @@ export async function generateMetadata({ params }: { params: PageParams }): Prom
       }`,
     };
   } catch {
-    return {};
+    // Profilo inesistente (404) o API ferma ("Riprova"): mai in Google.
+    return { robots: { index: false, follow: false } };
   }
 }
 
-/**
- * JSON dentro un `<script>`: `<` diventa `\u003c`, così un nome attività con
- * "</script>" non chiude lo script e non inserisce HTML nella pagina (XSS,
- * docs/CHANGELOG.md §283). Il JSON resta identico per chi lo legge.
- */
-function jsonForScript(value: unknown): string {
-  return JSON.stringify(value).replace(/</g, "\\u003c").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
-}
-
-export default async function ProfessionalDetailPage({ params }: { params: PageParams }) {
+export default async function ProfessionalDetailPage(props: { params: Promise<PageParams>; searchParams: Promise<PageSearchParams> }) {
+  const [params, searchParams] = await Promise.all([props.params, props.searchParams]);
+  let professional: ProfessionalDetail;
   try {
-    const professional = await apiClient.getProfessional(params.id);
-    // JSON-LD (Fase 6, SEO): LocalBusiness è il tipo schema.org corretto per
-    // un professionista/attività locale — abilita rich result (stelle, zona)
-    // nei risultati Google. Solo città come indirizzo (`addressLocality`),
-    // mai la via esatta: stessa scelta già fatta per la UI del profilo
-    // (CLAUDE.md §10, Fase 5 — "nessun indirizzo esposto senza motivo").
-    const jsonLd = {
-      "@context": "https://schema.org",
-      "@type": "LocalBusiness",
-      name: professional.businessName,
-      url: `${SITE_URL}/professionista/${professional.id}`,
-      ...(professional.imageUrl ? { image: professional.imageUrl } : {}),
-      address: { "@type": "PostalAddress", addressLocality: professional.city, addressCountry: "IT" },
-      ...(professional.reviewCount > 0 && professional.rating !== null
-        ? {
-            aggregateRating: {
-              "@type": "AggregateRating",
-              ratingValue: professional.rating,
-              reviewCount: professional.reviewCount,
-            },
-          }
-        : {}),
-    };
-
-    return (
-      <>
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonForScript(jsonLd) }} />
-        {/* Suspense richiesto da useSearchParams (App Router) in
-            ProfessionalDetailContent — legge `?modalita=` per preselezionare
-            il tab dell'agenda quando si arriva da una ricerca "Online". */}
-        <Suspense fallback={null}>
-          <ProfessionalDetailContent professional={professional} />
-        </Suspense>
-      </>
-    );
+    professional = await apiClient.getProfessional(professionalIdFromSlug(params.id));
   } catch (err) {
     // "Non trovata" solo se l'API dice che il profilo non c'è. Se l'API non
     // risponde: "Riprova", non un falso 404 (docs/CHANGELOG.md §284).
@@ -86,4 +76,46 @@ export default async function ProfessionalDetailPage({ params }: { params: PageP
       </div>
     );
   }
+
+  // Link vecchi (solo id) o nome/città cambiati: redirect permanente
+  // all'indirizzo leggibile attuale, con la stessa query (il #frammento lo
+  // conserva il browser). Fuori dal try: il redirect di Next è un'eccezione.
+  if (params.id !== professionalSlug(professional)) {
+    permanentRedirect(`${professionalPath(professional)}${queryString(searchParams)}`);
+  }
+
+  // JSON-LD (Fase 6, SEO): LocalBusiness è il tipo schema.org corretto per
+  // un professionista/attività locale — abilita rich result (stelle, zona)
+  // nei risultati Google. Solo città come indirizzo (`addressLocality`),
+  // mai la via esatta: stessa scelta già fatta per la UI del profilo
+  // (CLAUDE.md §10, Fase 5 — "nessun indirizzo esposto senza motivo").
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    name: professional.businessName,
+    url: `${SITE_URL}${professionalPath(professional)}`,
+    ...(professional.imageUrl ? { image: professional.imageUrl } : {}),
+    address: { "@type": "PostalAddress", addressLocality: professional.city, addressCountry: "IT" },
+    ...(professional.reviewCount > 0 && professional.rating !== null
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: professional.rating,
+            reviewCount: professional.reviewCount,
+          },
+        }
+      : {}),
+  };
+
+  return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonForScript(jsonLd) }} />
+      {/* Suspense richiesto da useSearchParams (App Router) in
+          ProfessionalDetailContent — legge `?modalita=` per preselezionare
+          il tab dell'agenda quando si arriva da una ricerca "Online". */}
+      <Suspense fallback={null}>
+        <ProfessionalDetailContent professional={professional} breadcrumbs={<Breadcrumbs items={breadcrumbItems(professional)} />} />
+      </Suspense>
+    </>
+  );
 }

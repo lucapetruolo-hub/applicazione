@@ -1,6 +1,6 @@
 /**
  * Luci sfumate che si muovono piano, con una grana leggera: il segno "wow"
- * del sito (scelta dell'utente, docs/CHANGELOG.md §296-§297). Va dentro un
+ * del sito (scelta dell'utente, docs/CHANGELOG.md §304-§305). Va dentro un
  * contenitore con `position: relative`; prende la sua forma (`inset: 0`) e il
  * raggio passato. Usarlo in pochi punti scelti, non dappertutto, perché resti
  * speciale: hero della home, riquadro scuro per i professionisti, tessera

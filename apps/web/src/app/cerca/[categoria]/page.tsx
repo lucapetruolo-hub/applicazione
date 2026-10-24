@@ -15,7 +15,11 @@ type PageParams = { categoria: string };
 // il rischio di dati non aggiornati pur di risparmiare query al DB.
 export const dynamic = "force-dynamic";
 
-export function generateMetadata({ params, searchParams }: { params: PageParams; searchParams: CategorySearchParams }): Metadata {
+// Next 15: params e searchParams arrivano come Promise.
+type PageProps = { params: Promise<PageParams>; searchParams: Promise<CategorySearchParams> };
+
+export async function generateMetadata(props: PageProps): Promise<Metadata> {
+  const [params, searchParams] = await Promise.all([props.params, props.searchParams]);
   if (!isProfessionalCategorySlug(params.categoria)) {
     return {};
   }
@@ -24,7 +28,8 @@ export function generateMetadata({ params, searchParams }: { params: PageParams;
   return categoryMetadata(findCategory(params.categoria), searchParams.citta);
 }
 
-export default function CategoryPage({ params, searchParams }: { params: PageParams; searchParams: CategorySearchParams }) {
+export default async function CategoryPage(props: PageProps) {
+  const [params, searchParams] = await Promise.all([props.params, props.searchParams]);
   if (!isProfessionalCategorySlug(params.categoria)) {
     notFound();
   }

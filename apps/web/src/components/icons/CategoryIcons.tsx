@@ -1,4 +1,4 @@
-import type { SVGProps } from "react";
+import type { JSX, SVGProps } from "react";
 import type { ProfessionalCategorySlug } from "@professionisti/shared";
 
 type IconProps = SVGProps<SVGSVGElement> & { size?: number };
@@ -170,7 +170,7 @@ const CATEGORY_ICONS: Record<ProfessionalCategorySlug, (props: IconProps) => JSX
 
 // Colori presi dai materiali dei mestieri (rame, ottone, ardesia, salvia,
 // legno, mattone...) al posto della tavolozza di serie di Tailwind, uno dei
-// segni dei siti fatti con l'IA (docs/CHANGELOG.md §296). Testo sul fondo
+// segni dei siti fatti con l'IA (docs/CHANGELOG.md §304). Testo sul fondo
 // sempre sopra 5:1.
 export const CATEGORY_ACCENT: Record<ProfessionalCategorySlug, { bg: string; fg: string }> = {
   idraulico: { bg: "#DCE4EA", fg: "#2F5566" },

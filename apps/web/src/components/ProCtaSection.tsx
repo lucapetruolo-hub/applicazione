@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { GlowLights } from "./GlowLights";
 
-// Solo cose che il sito fa già (docs/CHANGELOG.md §298): "Richieste
+// Solo cose che il sito fa già (docs/CHANGELOG.md §306): "Richieste
 // filtrate dall'IA · In arrivo" è stata tolta su scelta dell'utente perché
 // prometteva una funzione che non c'è.
 const COLUMNS = [

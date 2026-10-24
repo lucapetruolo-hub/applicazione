@@ -149,7 +149,7 @@ function ProHero({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
         }}
       >
         {/* Sfumatura che la pagina aveva già (scelta dell'utente), ora con le
-            luci che si muovono piano come nella home (docs/CHANGELOG.md §297). */}
+            luci che si muovono piano come nella home (docs/CHANGELOG.md §305). */}
         <GlowLights tone="chiaro" />
         <YStack position="relative" width="100%" maxWidth={760} alignItems="center" gap="$4" paddingHorizontal="$4" paddingVertical="$10" $gtMd={{ paddingVertical: 120 }}>
           <XStack borderWidth={1} borderColor={LINE} borderRadius={999} backgroundColor={brand.calce} overflow="hidden" alignItems="center">
@@ -665,6 +665,15 @@ function ProFinalCta() {
               <Button variant="primary">Scegli il tuo livello</Button>
             </Link>
           </XStack>
+          {/* Una pagina per lavoro, per chi cerca "lavoro pulizie" su Google (docs/CHANGELOG.md §296). */}
+          <nav className="work-links" aria-label="Lavora con noi">
+            <span>Lavora con noi come:</span>
+            {PROFESSIONAL_CATEGORIES.map((category) => (
+              <Link key={category.slug} href={`/lavora-con-noi/${category.slug}`}>
+                {category.label}
+              </Link>
+            ))}
+          </nav>
         </YStack>
       </Band>
     </YStack>

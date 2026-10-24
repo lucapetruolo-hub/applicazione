@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { ProfessionalSearchResult } from "@professionisti/shared";
 import { Avatar, Icon, Rating, Section, Text, XStack, brand } from "@professionisti/ui";
-import { BRAND } from "@professionisti/shared";
+import { BRAND, professionalPath } from "@professionisti/shared";
 import { CategoryIcon, CATEGORY_ACCENT } from "./icons/CategoryIcons";
 import { useRevealOnScroll } from "./useRevealOnScroll";
 
@@ -299,7 +299,7 @@ function NewProfileCard({ pro, delayMs }: { pro: ProfessionalSearchResult; delay
 
   return (
     <div ref={ref} data-new-profile-card className="npc-card" style={style}>
-      <Link href={`/professionista/${pro.id}`} className="npc-link">
+      <Link href={professionalPath(pro)} className="npc-link">
         <div className="npc-band" style={{ backgroundColor: accent.bg }}>
           <span className="npc-chip">
             <CategoryIcon slug={pro.categorySlug} size={14} color={accent.fg} />

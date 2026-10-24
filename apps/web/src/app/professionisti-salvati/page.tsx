@@ -1,5 +1,6 @@
 "use client";
 
+import { professionalPath, subTagLabel } from "@professionisti/shared";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -94,7 +95,7 @@ export default function ProfessionistiSalvatiPage() {
                     categoryLabel={pro.categoryLabel}
                     otherCategoryLabels={pro.categories?.filter((category) => category.slug !== pro.categorySlug).map((category) => category.label)}
                     city={pro.city}
-                    subTags={pro.subTags}
+                    subTags={pro.subTags.map(subTagLabel)}
                     rating={pro.rating ?? undefined}
                     reviewCount={pro.reviewCount}
                     completedThisMonth={pro.completedThisMonth}
@@ -104,8 +105,8 @@ export default function ProfessionistiSalvatiPage() {
                     boosted={pro.boosted}
                     isNewProfile={pro.isNewProfile}
                     services={pro.services}
-                    href={`/professionista/${pro.id}`}
-                    onPress={() => router.push(`/professionista/${pro.id}`)}
+                    href={professionalPath(pro)}
+                    onPress={() => router.push(professionalPath(pro))}
                     icon={<ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={72} />}
                   />
                   <Button variant="ghost" size="$2" height={36} alignSelf="flex-end" onPress={() => handleRemove(pro.id)}>

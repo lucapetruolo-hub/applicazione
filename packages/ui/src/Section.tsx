@@ -4,7 +4,7 @@ import { H2, H3, Paragraph, XStack, YStack } from "tamagui";
 export type SectionTone = "light" | "dark" | "blueprint";
 
 // Niente etichetta sopra il titolo né parole colorate dentro il titolo: sono
-// tra i segni tipici dei siti fatti con l'IA (docs/CHANGELOG.md §295).
+// tra i segni tipici dei siti fatti con l'IA (docs/CHANGELOG.md §303).
 export type SectionProps = {
   title?: string;
   lead?: string;
@@ -12,6 +12,11 @@ export type SectionProps = {
   titleAction?: ReactNode;
   tone?: SectionTone;
   maxWidth?: number;
+  /**
+   * Il titolo è il titolo della pagina: esce come `<h1>` (uno per pagina,
+   * per Google e per i lettori di schermo), con lo stesso aspetto dell'H2.
+   */
+  pageTitle?: boolean;
   children?: ReactNode;
 };
 
@@ -69,19 +74,22 @@ function SectionTitle({
   title,
   isDark,
   nested,
+  pageTitle,
 }: {
   title: string;
   isDark: boolean;
   nested: boolean;
+  pageTitle?: boolean;
 }) {
   const Heading = nested ? H3 : H2;
   return (
     <Heading
+      {...(pageTitle && !nested ? { tag: "h1" } : null)}
       fontFamily="$heading"
       color={isDark ? "white" : "$grafite"}
       {...(nested
         ? { fontSize: "$7", lineHeight: "$7" }
-        : // Titolo di sezione del sistema unico (docs/CHANGELOG.md §296): 26 px
+        : // Titolo di sezione del sistema unico (docs/CHANGELOG.md §304): 26 px
           // sul telefono, 32 dal tablet in su.
           { fontSize: 26, lineHeight: 31, $gtSm: { fontSize: 32, lineHeight: 38 } })}
     >
@@ -96,6 +104,7 @@ export function Section({
   titleAction,
   tone = "light",
   maxWidth = 1200,
+  pageTitle,
   children,
 }: SectionProps) {
   const parentTone = useContext(SectionNestingContext);
@@ -114,6 +123,7 @@ export function Section({
                 title={title}
                 isDark={isDark}
                 nested={nested}
+                pageTitle={pageTitle}
               />
             </YStack>
             <YStack flexShrink={0}>{titleAction}</YStack>
@@ -123,6 +133,7 @@ export function Section({
             title={title}
             isDark={isDark}
             nested={nested}
+            pageTitle={pageTitle}
           />
         ) : null}
         {lead ? (

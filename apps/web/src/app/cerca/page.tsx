@@ -13,20 +13,31 @@ type PageSearchParams = { citta?: string; online?: string; q?: string; urgente?:
 // pagine categoria (CLAUDE.md §5.4).
 export const dynamic = "force-dynamic";
 
-export function generateMetadata({ searchParams }: { searchParams: PageSearchParams }): Metadata {
+export async function generateMetadata(props: { searchParams: Promise<PageSearchParams> }): Promise<Metadata> {
+  const searchParams = await props.searchParams;
+  // Le varianti con filtri (città libera, online, nome) sono ricerche, non
+  // pagine da indicizzare: canonical sulla pagina base e fuori da Google. Le
+  // pagine città indicizzabili sono /cerca/[categoria]/[citta].
+  const filtered = Boolean(searchParams.online || searchParams.citta || searchParams.q || searchParams.urgente);
+  const seo: Metadata = {
+    alternates: { canonical: "/cerca" },
+    ...(filtered ? { robots: { index: false, follow: true } } : {}),
+  };
   if (searchParams.online === "1") {
-    return { title: "Consulenze online — Professionisti", description: "Professionisti disponibili per consulenza online." };
+    return { ...seo, title: "Consulenze online", description: "Professionisti disponibili per consulenza online." };
   }
   if (searchParams.citta) {
     return {
+      ...seo,
       title: `Professionisti a ${searchParams.citta}`,
       description: `Trova professionisti a ${searchParams.citta}.`,
     };
   }
-  return { title: "Tutti i professionisti", description: "Trova professionisti vicino a te." };
+  return { ...seo, title: "Tutti i professionisti", description: "Trova professionisti vicino a te." };
 }
 
-export default async function CercaPage({ searchParams }: { searchParams: PageSearchParams }) {
+export default async function CercaPage(props: { searchParams: Promise<PageSearchParams> }) {
+  const searchParams = await props.searchParams;
   const isOnline = searchParams.online === "1";
   // La città resta un filtro valido anche in modalità "Online": permette di
   // trovare professionisti che offrono consulenza da remoto ma sono radicati
@@ -50,7 +61,7 @@ export default async function CercaPage({ searchParams }: { searchParams: PageSe
   // /cerca/[categoria]. La mappa è mostrata anche in modalità "Online" (un
   // professionista che offre consulenza da remoto resta comunque radicato in
   // una zona), quindi serve calcolarla in entrambe le modalità.
-  let allProfessionals: ProfessionalSearchResult[] = professionals;
+  let allProfessionals: ProfessionalSearchResult[];
   try {
     allProfessionals = await apiClient.searchProfessionals({ q: searchParams.q, remote: isOnline });
   } catch {

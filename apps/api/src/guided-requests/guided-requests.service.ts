@@ -292,6 +292,7 @@ export class GuidedRequestsService {
               preferredDate: resolvedSlot?.date,
               preferredTimeSlot: resolvedSlot ? input.preferredTimeSlot : undefined,
               submissionGroupId: opts.submissionGroupId,
+              trafficSource: input.trafficSource ?? null,
             },
           });
         },

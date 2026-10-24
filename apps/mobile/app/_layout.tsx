@@ -11,7 +11,7 @@ import { useFonts as useIbmPlexMono, IBMPlexMono_500Medium } from "@expo-google-
 import { BRAND } from "@professionisti/shared";
 
 // Stessi caratteri del web (Instrument Sans per titoli e testo, IBM Plex Mono
-// per le cifre, docs/CHANGELOG.md §297; vedi
+// per le cifre, docs/CHANGELOG.md §305; vedi
 // packages/ui/src/config.ts): su native ogni peso è una famiglia caricata a
 // parte, non un'unica famiglia variabile come sul web — se ne caricano più
 // di una per ruolo, anche se il token Tamagui oggi ne referenzia solo un

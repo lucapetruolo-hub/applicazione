@@ -7,7 +7,7 @@ import { Button, Text, YStack, brand } from "@professionisti/ui";
  * L'API risponde 404 "Completa prima il tuo profilo" finché il professionista
  * non ha nome attività, categoria e città: è un passo da fare, non un errore.
  * Prima Abbonamento, Dati fiscali e Richieste mostravano "Non riusciamo a
- * caricare… Riprova" a chi si era appena iscritto (docs/CHANGELOG.md §297).
+ * caricare… Riprova" a chi si era appena iscritto (docs/CHANGELOG.md §305).
  */
 export function isProfileMissingError(err: unknown): boolean {
   return err instanceof Error && err.message.toLowerCase().includes("profilo");

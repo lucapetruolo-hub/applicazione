@@ -1,5 +1,6 @@
 "use client";
 
+import { professionalPath } from "@professionisti/shared";
 import { useEffect, useRef, useState, type TouchEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -88,7 +89,7 @@ export function RecentReviews({ summary }: { summary: { count: number; average: 
 
   const review = reviews[Math.min(active, reviews.length - 1)];
   if (!review) return null;
-  const profileHref = `/professionista/${review.professional.id}`;
+  const profileHref = professionalPath(review.professional);
   const accent = accentFor(review.professional.categorySlug);
 
   function select(index: number) {

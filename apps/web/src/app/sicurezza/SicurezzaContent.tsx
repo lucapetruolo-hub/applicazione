@@ -48,7 +48,7 @@ export function SicurezzaContent() {
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
       <YStack width="100%" maxWidth={720} gap="$6">
         <YStack gap="$3">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$9" color={brand.grafite}>
+          <Text tag="h1" margin={0} fontFamily="$heading" fontWeight="800" fontSize="$9" color={brand.grafite}>
             La tua sicurezza prima di tutto: resta nella chat
           </Text>
           <XStack gap="$3" padding="$4" borderRadius="$4" backgroundColor={brand.cianografiaVelo} alignItems="flex-start">

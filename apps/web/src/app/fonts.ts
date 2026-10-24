@@ -1,7 +1,7 @@
 import localFont from "next/font/local";
 
 // Titoli e testo nello stesso carattere, Instrument Sans (scelta dell'utente,
-// docs/CHANGELOG.md §295): Fredoka per i titoli e Inter Tight per il testo
+// docs/CHANGELOG.md §303): Fredoka per i titoli e Inter Tight per il testo
 // sono stati tolti perché Inter è tra i segni tipici dei siti fatti con l'IA.
 // Le due variabili CSS restano separate (`--font-display` per i titoli,
 // usata da packages/ui/src/config.ts, e `--font-body` per il testo) ma

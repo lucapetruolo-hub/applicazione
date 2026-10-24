@@ -8,7 +8,7 @@ import { brand } from "./tokens";
 // CLAUDE.md, senza duplicare il design system tra le due app.
 
 // Famiglie per ruolo tipografico (Instrument Sans per titoli e testo, IBM
-// Plex Mono per le cifre, docs/CHANGELOG.md §295 e §297), diverse per piattaforma sullo stesso token
+// Plex Mono per le cifre, docs/CHANGELOG.md §303 e §305), diverse per piattaforma sullo stesso token
 // Tamagui — su web puntano alle CSS variable esposte da next/font
 // (apps/web/src/app/fonts.ts, applicate su <html> in layout.tsx); su
 // native al nome esatto caricato via useFonts in apps/mobile
@@ -27,11 +27,11 @@ const displayFamily = isWeb ? "var(--font-display), system-ui, sans-serif" : "In
 const bodyFamily = isWeb ? "var(--font-body), system-ui, sans-serif" : "InstrumentSans_400Regular";
 const monoFamily = isWeb ? "var(--font-mono), monospace" : "IBMPlexMono_500Medium";
 
-// Titoli in Instrument Sans (docs/CHANGELOG.md §295): interlinea 1,2 e
+// Titoli in Instrument Sans (docs/CHANGELOG.md §303): interlinea 1,2 e
 // spaziatura leggermente stretta. Con l'interlinea di default (circa 1,5) un
 // titolo su due righe sembrava due titoli separati, e i titoli larghi
 // andavano a capo prima su telefono.
-// Scala dei titoli del sistema unico (docs/CHANGELOG.md §296): quella di
+// Scala dei titoli del sistema unico (docs/CHANGELOG.md §304): quella di
 // default aveva $5 a 13 px e $6 a 15 px, cioè titoli più piccoli del testo
 // (16 px). Nessun titolo sotto i 16 px tranne $1-$2 (13, note).
 const HEADING_SIZES: Record<string, number> = { "1": 13, "2": 13, "3": 16, "4": 16, "5": 16, "6": 18, "7": 20, "8": 22, true: 16 };
@@ -50,7 +50,7 @@ const headingLetterSpacing = Object.fromEntries(
 // pagine già in produzione, non ancora coinvolte nel redesign). I nuovi
 // token brand vivono accanto a quelli, stessa scala `$nome`.
 // Arrotondamenti $1-$11 ridotti ai due valori del sistema unico (6 e 12 px,
-// docs/CHANGELOG.md §296): prima la scala di default dava 3, 5, 7, 9, 10, 16,
+// docs/CHANGELOG.md §304): prima la scala di default dava 3, 5, 7, 9, 10, 16,
 // 19, 22, 26, 34, 42. $12 (50) resta per gli elementi tondi.
 const radius = Object.fromEntries(
   Object.entries(defaultConfig.tokens.radius).map(([key, token]) => {

@@ -679,6 +679,15 @@ enum ServiceMode {
   ONLINE
 }
 
+/// Provenienza della visita che porta a una richiesta (docs/CHANGELOG.md §296).
+enum TrafficSource {
+  GOOGLE
+  OTHER_SEARCH
+  SOCIAL
+  DIRECT
+  OTHER
+}
+
 model GuidedRequest {
   id                    String                     @id @default(uuid())
   clientId              String
@@ -719,6 +728,10 @@ model GuidedRequest {
   // usata per altri campi opzionali di questo modello) — obbligatorio lato
   // Zod alla creazione di una richiesta nuova (guidedRequestSchema).
   serviceMode           ServiceMode?
+  // Da dove è arrivato il cliente nella visita che porta alla richiesta
+  // (docs/CHANGELOG.md §296): solo la categoria, mai l'indirizzo di
+  // provenienza. Null per le richieste di prima e se il browser non la dà.
+  trafficSource         TrafficSource?
   status                GuidedRequestStatus        @default(OPEN)
   createdAt             DateTime                   @default(now())
   // Per l'ordinamento "per ultimo aggiornamento" nelle liste richieste
