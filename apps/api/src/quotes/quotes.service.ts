@@ -206,16 +206,19 @@ export class QuotesService {
         });
 
     // Voci sostituite per intero ad ogni invio/modifica del preventivo,
-    // stesso pattern di ProfessionalService in ProfessionalsService.
-    await this.prisma.quoteItem.deleteMany({ where: { quoteId: quote.id } });
-    await this.prisma.quoteItem.createMany({
-      data: input.items.map((item) => ({
-        quoteId: quote.id,
-        name: item.name,
-        priceMinEurCents: item.priceMinEurCents ?? null,
-        priceMaxEurCents: item.priceMaxEurCents ?? null,
-      })),
-    });
+    // stesso pattern di ProfessionalService in ProfessionalsService, in
+    // un'unica transazione (docs/CHANGELOG.md §287).
+    await this.prisma.$transaction([
+      this.prisma.quoteItem.deleteMany({ where: { quoteId: quote.id } }),
+      this.prisma.quoteItem.createMany({
+        data: input.items.map((item) => ({
+          quoteId: quote.id,
+          name: item.name,
+          priceMinEurCents: item.priceMinEurCents ?? null,
+          priceMaxEurCents: item.priceMaxEurCents ?? null,
+        })),
+      }),
+    ]);
 
     // Solo al primo invio (non ad ogni modifica successiva): il cliente ha
     // già visto il preventivo la prima volta, una modifica non è "novità"

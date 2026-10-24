@@ -143,6 +143,12 @@ model User {
   passwordResetCodeHash      String?
   passwordResetCodeExpiresAt DateTime?
   passwordResetCodeAttempts  Int                     @default(0)
+  // Limite di password sbagliate sul singolo account (docs/CHANGELOG.md
+  // §289): alla decima di fila l'accesso con password resta chiuso fino a
+  // `loginLockedUntil` (15 minuti) e il titolare riceve un'email. Si azzera
+  // con un accesso riuscito o con il recupero della password.
+  failedLoginCount           Int                     @default(0)
+  loginLockedUntil           DateTime?
 
   professionalProfile ProfessionalProfile?
   guidedRequests      GuidedRequest[]
@@ -152,8 +158,27 @@ model User {
   contentReports      ContentReport[]
   guidedRequestStates GuidedRequestUserState[]
   profileInvites      ProfileInvite[]
+  loginDevices        LoginDevice[]
 
   @@map("users")
+}
+
+// Dispositivi da cui un professionista ha già fatto l'accesso
+// (docs/CHANGELOG.md §289): da uno nuovo parte l'email "Nuovo accesso" a chi
+// incassa online. Del codice del dispositivo (casuale, salvato nel browser)
+// si tiene solo l'impronta SHA-256.
+model LoginDevice {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceHash  String
+  // Browser e sistema, per riconoscerlo nell'email (es. "Chrome su Windows").
+  label       String
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+
+  @@unique([userId, deviceHash])
+  @@map("login_devices")
 }
 
 // ---------------------------------------------------------------------------
@@ -198,6 +223,11 @@ model ProfessionalProfile {
   // §239). Vuoto = diretto + online con acconto del 20%.
   defaultPaymentOptions        String[]  @default([])
   defaultDepositPercent        Int?
+  // Agenda (docs/CHANGELOG.md §288): link segreto del calendario da
+  // collegare a Google/iPhone (null = collegamento spento) e settimana tipo
+  // usata da "Orari di lavoro" per riempire un mese in un colpo.
+  calendarFeedToken            String?   @unique
+  agendaWeekTemplate           Json?
   city                         String
   latitude                     Float
   longitude                    Float
@@ -1121,6 +1151,10 @@ model Booking {
   // GuidedRequest collegata) o per prenotazioni create prima di questo
   // campo.
   serviceMode ServiceMode?
+
+  // "Sto arrivando" dall'agenda (docs/CHANGELOG.md §288): il cliente riceve
+  // l'avviso una volta sola per appuntamento.
+  onTheWayAt DateTime?
 
   quote               Quote?              @relation(fields: [quoteId], references: [id])
   client              User                @relation(fields: [clientId], references: [id], onDelete: Cascade)

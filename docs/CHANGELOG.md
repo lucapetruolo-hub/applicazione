@@ -19866,7 +19866,85 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 
 **Verifica**: typecheck e lint del web.
 
-## 288. Aggiornamento a Next.js 15.5
+## 287. Orari uguali in tutte le viste e agenda salvata tutto o niente
+
+**Richiesta esplicita dell'utente** (21/10/2026, thread "Agenda: correzioni e restyling"): correggere i due problemi dell'agenda trovati dalla revisione esterna (`/mnt/project-files/analisi/revisione-piano-ceo.md`, punti 3 e 4).
+
+**Orari (CP-01).** Il modello giusto era già quello dell'API, delle email e del calendario allegato: gli appuntamenti (`Booking.scheduledAt`, `Quote.estimatedStartDate`, `ExternalJob.scheduledAt`, fasce dell'agenda) sono l'ora italiana "di parete" scritta in UTC (09:00 → `T09:00:00.000Z`, d'estate e d'inverno). Alcune viste però li mostravano nel fuso del browser: un preventivo alle 09:00 compariva alle 11:00 d'estate e alle 10:00 d'inverno in agenda, nel dettaglio della prenotazione, nella sezione "Intervento" del cliente, in Oggi, nel "Prossimo intervento" e nelle notifiche di cambio orario (queste in ora di Roma). Nessun dato salvato cambia.
+- Nuovo `packages/shared/src/appointmentTime.ts`: `formatAppointmentTime`/`TimeRange`/`Date` (sempre in UTC) e `wallClockNow`/`wallClockToday` (l'ora italiana di adesso nella stessa convenzione, per i confronti con "adesso").
+- Usati in agenda (`page.tsx`, `agendaHelpers.tsx`), `BookingDetailPanel`, `BookingSection`, `AgendaOverview`, Oggi (`dashboard/page.tsx`, anche la finestra "oggi e domani"), `notificationCopy`, `clientNextAction` ("Conferma che il lavoro è terminato" appariva 1-2 ore prima).
+- "Oggi" dell'agenda (`todayUtc`) e i calcoli dell'API (`startOfToday` in `professionals.service.ts`) usano il giorno italiano: tra mezzanotte e le 2 era ancora ieri.
+- Promemoria 24 ore prima (`booking-reminders.service.ts`): finestra calcolata sull'ora italiana di adesso, prima partiva 1-2 ore prima.
+
+**Disponibilità (CP-02).** `upsertMyAvailability` cancellava le fasce e poi le ricreava in due passi: se il secondo falliva l'agenda restava vuota. Ora è una sola transazione; stesso trattamento per le prestazioni del profilo e le voci del preventivo (stesso schema "cancella e ricrea"). Nella pagina Agenda, se il salvataggio non riesce le fasce tornano a quelle salvate davvero e il messaggio dice "Le modifiche non sono state salvate" (un errore vecchio non annulla un salvataggio più recente).
+
+**Verifica**: `tsc` ed `eslint` di API e web, 483 test API (nuovo `appointment-time.test.ts`: ora legale, solare, cambio d'ora del 25/10, mezzanotte italiana).
+
+## 288. Nuova agenda: design, Sto arrivando, calendario collegato, meteo, giro intelligente
+
+**Richiesta esplicita dell'utente** (21-22/10/2026, thread "Agenda: correzioni e restyling"): rifare l'agenda con design e idee nuove. Scelte dell'utente: base A delle anteprime + editor orari e consigli di C + "Sto arrivando" di B, tasto "Chiama", regole della skill Taste tranne lo sfondo (resta pesca). Delle migliorie proposte: sì a riepilogo della sera (senza orario di partenza), agenda senza rete, collegamento al calendario (pulsante e interruttore), icona meteo, "Lavoro completato" migliorato, "Giro intelligente" in una sezione a parte; no a tempi di strada automatici tra i lavori, spostamento proponendo orari (si usa la chat) e "Disponibile ora". I lavori su più giorni vanno in una PR a parte.
+
+**Pagina** (`apps/web/src/app/dashboard/agenda/page.tsx`, componenti in `apps/web/src/components/agenda/`, stile unico in `AgendaStyles.tsx`): tre schede, Calendario, Orari di lavoro, Giro intelligente.
+- Calendario: griglia oraria (giorno/settimana) con le fasce libere in verde chiaro, la linea di adesso e i lavori colorati per stato; mese e anno come prima. A lato calendarietto del mese, filtri "Mostra" con i conteggi e il prossimo appuntamento di oggi con le azioni (sul telefono sopra la griglia). Sul telefono striscia dei giorni e pulsante + per il lavoro esterno.
+- Riquadro dell'appuntamento (`AppointmentPanel.tsx`): Naviga (o Videochiamata), Sto arrivando (solo confermati di oggi a domicilio; avvisa il cliente, notifica `PROFESSIONAL_ON_THE_WAY`, `Booking.onTheWayAt`), Chiama; una riga sul pagamento (`apps/web/src/lib/agendaPayment.ts`); note personali; tasto "Richiesta completa" verso `/dashboard/richieste?open=…` (la richiesta non si ripete in agenda, scelta dell'utente).
+- "Lavoro completato" dall'agenda ora usa lo stesso percorso delle richieste (`CompleteJobModal` + `completeBooking`): prima cambiava solo lo stato, senza importo finale, dichiarazione DAC7 né saldo online. "Annulla" chiede una nota per il cliente (`CancelBookingModal`).
+- Orari di lavoro: settimana tipo salvata sul server (`ProfessionalProfile.agendaWeekTemplate`) da applicare a un mese (riempie solo i giorni vuoti, non chiusi e non passati: le fasce restano per data, mai "per sempre"), ferie e chiusure da/a, "Giorno per giorno" come prima (limiti a domicilio/online e "ripeti per tutti i … del mese").
+- Collega al tuo calendario (`CalendarLinkModal.tsx`): interruttore, pulsanti Google e iPhone, copia del link. Feed in sola lettura `GET /calendar/<token>.ics` (ultimi 60 giorni e futuro, anche i lavori esterni), `ProfessionalProfile.calendarFeedToken`.
+- Meteo: icona sui giorni con pioggia, temporale, neve, vento forte o nebbia (Open-Meteo dal nostro server, cache di un'ora, `GET /agenda/weather`).
+- Agenda senza rete (`apps/web/src/lib/agendaOffline.ts`): copia sul dispositivo a ogni caricamento, mostrata con l'ora dell'ultimo aggiornamento se la rete manca; cancellata all'uscita dall'account.
+- Giro intelligente (`DayRouteSection.tsx`, `GET /agenda/route`): tappe a domicilio del giorno nell'ordine degli orari, mappa fissa del nostro server, tempo di strada tra le tappe (Google Routes API sulla chiave del server; senza, stima "circa"), avviso quando il tempo non basta, giro intero in Google Maps. Per i lavori esterni il comune si cerca nell'indirizzo, altrimenti quello del profilo; due tappe note solo per comune nello stesso comune mostrano "Nello stesso comune".
+- Riepilogo della sera: alle 19 una notifica/email con i lavori di domani (`AGENDA_TOMORROW_SUMMARY`, `agenda-tomorrow-summary.service.ts`).
+- Caratteri: tolto il carattere monospaziato dall'agenda (regola Taste: titoli e numeri nello stesso carattere del testo). Rimossi `AgendaOverview.tsx` e `BookingDetailPanel.tsx`, non più usati.
+
+**Migrazione**: `20261022100000_agenda_restyling` (`bookings.onTheWayAt`, `professional_profiles.calendarFeedToken` unico, `professional_profiles.agendaWeekTemplate`).
+
+**Da fare a mano**: abilitare "Routes API" sulla chiave Google usata da Render (checklist di lancio, punto delle chiavi Google).
+
+**Verifica**: `tsc` ed `eslint` di API e web, 500 test API (nuovi: meteo, tempi del giro, comune nell'indirizzo, settimana tipo, feed iCalendar, riepilogo della sera), avvio dell'API (`check-boot`: trovato e corretto `AgendaModule` senza `AuthModule`), prova in locale con dati di prova e foto su computer e telefono (`/mnt/project-files/anteprime/agenda-restyling/1-…4-*.png`).
+
+## 289. Regole della password e una sola spunta per registrarsi
+
+**Richiesta esplicita dell'utente** (22/10/2026, thread "Regole password nella registrazione"): prendere a modello la registrazione di Didit (tre regole sotto la password che diventano verdi mentre si scrive) e aggiungere le migliorie proposte, tutte approvate. Poi: una sola casella da spuntare per Termini, Privacy e 18 anni, e lo stile Taste della nuova agenda (§288) anche qui. Infine (stesso giorno): niente controllo delle password rubate, niente simbolo obbligatorio, e tre protezioni proposte (limite per account, avviso di nuovo dispositivo, email nella password); il secondo codice all'accesso va dopo il lancio.
+
+**Prima**: solo "Minimo 8 caratteri" scritto sotto il campo, controllato nel browser e nell'API. Nessun massimo: bcrypt ignorava in silenzio quello che va oltre i 72 byte. Due caselle separate (Termini/Privacy e 18 anni).
+
+**Decisione presa**:
+- Regole in `packages/shared/src/password.ts` (`PASSWORD_RULES`, `passwordProblem`, `newPasswordSchema`): almeno 8 caratteri e almeno un numero, massimo 64 caratteri e 72 byte. Niente simbolo obbligatorio (decisione dell'utente): le password suggerite da Google hanno 15 caratteri senza simboli (verificato nel codice di Chrome) e devono passare al primo colpo. Valgono nel browser e nell'API in registrazione, link d'invito, recupero e cambio password; l'accesso no, così le password vecchie entrano ancora.
+- `PasswordRules` sotto il campo: grigie, verdi con la spunta mentre si scrive, rosse con la × dopo un invio non riuscito (mai solo il colore, stato letto anche dai lettori di schermo). "Le password coincidono" sotto la conferma. Attributo `passwordrules` per il generatore di password di iPhone e Mac.
+- Password che contengono l'email (o la parte prima della chiocciola, se di almeno 4 caratteri) rifiutate: "La password non può contenere la tua email." (`passwordContainsEmail`, controllo nel browser dove l'email è nota e nell'API con `assertPasswordWithoutEmail`, anche in recupero e cambio password).
+- Controllo delle password rubate (Have I Been Pwned): fatto e poi tolto, decisione dell'utente. Non reintrodurlo senza chiedere.
+- Limite per account (OWASP 6.3.1): alla decima password sbagliata di fila l'accesso con password si ferma 15 minuti, anche con la password giusta, e il titolare riceve "Troppi tentativi di accesso al tuo account" con il link per sceglierne una nuova. Si azzera con un accesso riuscito o con il recupero password; Google resta aperto. Campi `User.failedLoginCount`/`loginLockedUntil`, risposta 429.
+- "Nuovo accesso al tuo account": il sito tiene nel browser un codice casuale (`login-device-id`, solo sicurezza, nessun consenso) e lo manda con registrazione, accesso e Google (`X-Device-Id`). Per i professionisti si ricorda l'impronta di ogni dispositivo (`LoginDevice`, con "Chrome su Windows"); da uno mai visto arriva l'email (a tutti i professionisti, non solo a chi incassa online: decisione dell'utente del 24/10/2026, citata anche nella pagina Cookie) con il link "Non ero io: cambia la password". Il primo dispositivo ricordato non avvisa; un errore non blocca mai l'accesso. Email di sicurezza come "password cambiata": partono sempre.
+- Secondo codice all'accesso per chi incassa online: nella lista "Da fare dopo il lancio" della skill `checklist-lancio`.
+- `LegalConsentCheckbox`: "Accetto i Termini di Servizio, ho letto la Privacy Policy e ho almeno 18 anni." in registrazione del professionista, link d'invito e finestra dopo Google. L'API riceve sempre le due dichiarazioni, dallo stesso valore. Il cliente resta con la frase sotto il pulsante (§176). Domanda 31 per l'avvocato.
+- Controlli dall'alto in basso (categorie, email, password, conferma, spunta), non più prima la spunta.
+- Pulsante principale quasi nero (`Button variant="scuro"`) nelle pagine di accesso, registrazione, recupero password e nella finestra di Google; carattere e angoli invariati (li decide il thread "Aspetto non da sito fatto con IA").
+
+**Verifica**: `password-rules.test.ts`, `login-protection.test.ts` e `password-reset.test.ts` (505 test API verdi), migrazione `20261022150000_login_lockout_devices` generata con `prisma migrate diff`, typecheck e lint di web e api, anteprime da telefono e computer in `/mnt/project-files/anteprime/password-registrazione/sito/`. Checklist OWASP ASVS in `/mnt/project-files/analisi/password-registrazione-owasp.md`.
+
+## 290. Agenda: "Giorno per giorno" nello stile nuovo e "Richieste in zona"
+
+**Richiesta esplicita dell'utente** (22/10/2026, thread "Agenda: correzioni e restyling"): "effettua le 4 migliorie, per la 1 falla dopo l'unione, per la 3 se non ci sono sufficienti dati scrivi 'in arrivo'". La 1 (lavori su più giorni) va in una PR dopo l'unione della #97.
+
+**2. "Giorno per giorno" nello stile nuovo**: le fasce sono pastiglie verdi come le fasce libere della griglia (`SlotChip`); tolti il bordo tratteggiato ottone delle fasce con più prenotazioni (il limite si vede aprendo la fascia) e `isSlotGeneric`; "Chiudi"/"Riapri" in grigio senza simboli, "Chiuso" in una pastiglia grigia, "+" con bordo tratteggiato neutro, giorni passati attenuati. In `CalendarShell` (anche la vista Mese del Calendario): voce attiva grigio chiaro, oggi in un cerchio quasi nero, numeri nello stesso carattere del testo.
+
+**3. Richieste in zona** (`ZoneDemandCard.tsx` in Orari di lavoro, `GET /agenda/zone-demand`): richieste degli ultimi 30 giorni nella stessa città e per gli stessi lavori del professionista. Sotto 10 richieste mostra "In arrivo"; altrimenti i due momenti della settimana più richiesti (giorno + mattina/pomeriggio/sera, dalle date preferite dei clienti, almeno 3 richieste ciascuno), con "Sei già aperto" o "Tu sei chiuso" e il tasto per aggiungere la fascia alla settimana tipo. Solo conteggi, nessun dato dei clienti. Funzioni condivise in `packages/shared/src/agendaTools.ts` (`DAY_PART_RANGE`, `dayPartOf`, `weekTemplateCovers`).
+
+**4. Prova degli orari nel browser**: aggiunta al punto 26 della checklist di lancio (un preventivo alle 09:00 resta alle 09:00 in ogni vista, con il browser in un altro fuso e prima e dopo il cambio d'ora).
+
+**Verifica**: `tsc` ed `eslint` di API e web, 503 test API (nuovi: momenti più richiesti, parte del giorno coperta dalla settimana tipo), prova in locale con meno e più di 10 richieste (foto `5-orari-pochi-*.png` e `5-orari-pronti-*.png` in `/mnt/project-files/anteprime/agenda-restyling/`).
+
+## 291. Date sempre gg/mm/aaaa e "Richieste in zona" su tutto il raggio
+
+**Richiesta esplicita dell'utente** (22/10/2026, thread "Agenda: correzioni e restyling"): "le migliorie effettuale tutte e due sia uniformare la data sia ampliare il raggio".
+
+**Date**: il campo data del browser segue la lingua del browser, non quella del sito: su un computer in inglese mostrava "mm/dd/yyyy". Nuovo `apps/web/src/components/ItalianDateInput.tsx`: resta il campo nativo (calendario del telefono, tastiera, accessibilità) con il testo nascosto, e sopra la data scritta gg/mm/aaaa; un clic apre il calendario (`showPicker`). Usato in tutti i campi data del sito: Ferie e chiusure, lavoro esterno, data proposta nel preventivo e nella controproposta (professionista e cliente), data di nascita nei dati fiscali, periodo personalizzato delle statistiche. In `eslint.config.mjs` il componente conta come campo per le etichette (`label-has-associated-control`).
+
+**Richieste in zona**: contano le richieste dei comuni entro il raggio di lavoro del professionista (`engagementRadiusKm`, lo stesso dello smistamento; comuni ISTAT con coordinate, `comuniWithinRadius`), non solo della sua città; senza coordinate solo la sua città. Il testo dice "entro 25 km da Latina".
+
+**Verifica**: `tsc` ed `eslint` di API e web, 504 test API (nuovo: comuni nel raggio), prova in locale con un browser in inglese (data mostrata 24/12/2026) e richieste da un comune vicino (`6-ferie-*.png` in `/mnt/project-files/anteprime/agenda-restyling/`).
+
+## 292. Aggiornamento a Next.js 15.5
 
 **Richiesta esplicita dell'utente** (22/10/2026, punto 2 del controllo sicurezza, `/mnt/project-files/analisi/controllo-sicurezza.md`): la serie 14 di Next.js non riceve più correzioni di sicurezza (2 falle critiche e 8 alte sulla 14.2.35). Aggiornare con prove su tutte le pagine, da telefono e da computer, senza cambiare l'aspetto.
 
@@ -19878,9 +19956,9 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 
 **Verifica**: typecheck, lint e build del sito. Con API e database locali, foto a pagina intera di 68 indirizzi (pubblici, cliente, professionista, admin, pagine 404) a 1440 e 390 px, con Next 14 e con Next 15: 133 su 136 identiche al pixel, le altre 3 differiscono per pochi pixel di antialiasing del testo. Secondo giro con un professionista con richieste vere: cambiano solo i contatori "Nuovo" già letti nel primo giro. Nessun errore nella console. Prove di navigazione: ricerca → profilo → indietro, cambio Online/A domicilio sulla stessa pagina (i risultati si aggiornano), accesso con email e password, "Le mie richieste". Il titolo della pagina profilo resta nell'`<head>` anche per i motori di ricerca.
 
-## 289. NestJS 11, React 19 sul sito e confronto automatico delle pagine
+## 293. NestJS 11, React 19 sul sito e confronto automatico delle pagine
 
-**Richiesta esplicita dell'utente** (24/10/2026, thread "Aggiornamento Next.js", "effettua le 3 migliorie" proposte con §288): NestJS 11 nell'API (punto 38 del controllo sicurezza, pacchetti vecchi), React 19 nel sito, e il confronto delle foto delle pagine salvato nel progetto.
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Aggiornamento Next.js", "effettua le 3 migliorie" proposte con §292): NestJS 11 nell'API (punto 38 del controllo sicurezza, pacchetti vecchi), React 19 nel sito, e il confronto delle foto delle pagine salvato nel progetto.
 
 **Decisione presa**:
 - **API**: `@nestjs/common`, `core`, `platform-express` 11.2, `@nestjs/jwt` 11, `@nestjs/cli`/`schematics` 11, `@types/express` 5. Nest 11 usa Express 5, che l'API dichiarava già. Nessuna rotta con `*` o `?` (la sintassi che cambia in Express 5), nessun cambio di codice.
