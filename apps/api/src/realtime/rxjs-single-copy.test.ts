@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
  * `@Sse()` (controlla `instanceof` con la sua copia) e, appena c'è un
  * interceptor globale come quello di Sentry, manda un evento vuoto al posto
  * dello stream: niente messaggi né notifiche in tempo reale
- * (docs/CHANGELOG.md §330). La versione unica sta negli `overrides` di
+ * (docs/CHANGELOG.md §331). La versione unica sta negli `overrides` di
  * pnpm-workspace.yaml.
  */
 describe("rxjs", () => {

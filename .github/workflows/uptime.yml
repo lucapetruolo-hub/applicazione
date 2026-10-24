@@ -20,7 +20,7 @@ on:
     - cron: "*/10 * * * *"
     # Una volta al giorno anche i suggerimenti di indirizzo di Google (§324).
     - cron: "17 7 * * *"
-    # Ogni ora lo stream in tempo reale delle notifiche (§331).
+    # Ogni ora lo stream in tempo reale delle notifiche (§332).
     - cron: "37 * * * *"
   workflow_dispatch:
 
@@ -51,7 +51,7 @@ jobs:
           api="${API_HEALTH_URL%/health}"
           curl --fail --silent --show-error --max-time 90 --retry 2 --retry-delay 10 \
             "$api/address/suggestions?q=via%20roma%201%20latina&session=uptime-$(date +%s)" | grep -q '"id"'
-      # Stream in tempo reale (docs/CHANGELOG.md §330-§331): il 24/10/2026
+      # Stream in tempo reale (docs/CHANGELOG.md §331-§332): il 24/10/2026
       # rispondeva 200 ma senza eventi, e nessuno se n'era accorto. Entra con
       # l'account di prova (secret UPTIME_EMAIL e UPTIME_PASSWORD), apre lo
       # stream e aspetta il battito dei 25 secondi, che deve avere contenuto.

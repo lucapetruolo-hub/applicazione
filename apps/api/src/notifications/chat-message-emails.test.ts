@@ -11,7 +11,7 @@ const row = (id: string, minutes: number, thread = "r1", userId = "u1", type = "
   createdAt: minutesAgo(minutes),
 });
 
-describe("chatEmailGroups (§331)", () => {
+describe("chatEmailGroups (§332)", () => {
   it("aspetta 10 minuti dal primo messaggio non letto", () => {
     expect(chatEmailGroups([row("a", 9)], [], now)).toEqual({ groups: [], covered: [] });
     const { groups, covered } = chatEmailGroups([row("a", 10)], [], now);

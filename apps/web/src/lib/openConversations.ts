@@ -1,5 +1,5 @@
 /**
- * Conversazioni aperte a schermo in questo momento (docs/CHANGELOG.md §331):
+ * Conversazioni aperte a schermo in questo momento (docs/CHANGELOG.md §332):
  * un messaggio nuovo lì compare già nella chat, quindi niente popup né
  * suono. Un contatore per coppia richiesta+professionista, perché la stessa
  * chat può essere montata due volte (elenco e finestra).

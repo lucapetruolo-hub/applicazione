@@ -20490,7 +20490,21 @@ Richiesta dell'utente, tra le migliorie proposte dopo la §327 ("eccezione" con 
 - Nessun cambio al flusso: stessi tipi, stesse prove, stessa fase in chat (§165) e stessa API. Le segnalazioni dei contenuti (DSA, §319) non sono toccate.
 - Pulsante del menu più visibile (richiesta esplicita dell'utente: "rendi più visibile il pulsante ad hamburger"): in `CardActionsMenu` era un'icona grigia senza sfondo da 36px, ora è un tondo da 44px verde chiaro con bordo e icona verdi, pieno verde quando il menu è aperto. Vale per le schede del cliente e del professionista, che condividono il componente.
 
-## 330. Notifiche dei messaggi in chat che non arrivavano
+## 330. Email degli account in minuscolo
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Correggere l'email del cambio password"): il codice per reimpostare la password non arrivava. Prova sul sito vero: l'invio funziona (arriva in pochi secondi a lucapetruolo@gmail.com; il primo invio può tardare circa un minuto mentre Render gratuito si sveglia). Nel controllo è emerso però un bug vero: accesso, registrazione e recupero password confrontavano l'email rispettando le maiuscole. Chi si era iscritto come "Mario@Gmail.com" e scriveva "mario@gmail.com" non veniva trovato e, nel recupero password, non riceveva niente senza nessun avviso (di proposito, per non far scoprire chi è iscritto). Luca: "si" alla correzione.
+
+**Decisione presa**
+- `accountEmailSchema` in `packages/shared/src/schemas.ts`: email senza spazi e in minuscolo, con lo stesso messaggio "Email non valida". Usato da accesso, registrazione, stato dell'email, modifica dell'account, richiesta e codice del recupero password.
+- Accesso con Google: email di Google in minuscolo prima di cercare o creare l'account. Promozione del primo admin e invito creato da un operatore (che lo faceva già) cercano in minuscolo.
+- Migrazione `20261024150000_email_minuscolo`: porta in minuscolo le email già salvate, tranne quando un altro account ha la stessa email scritta in modo diverso (resterebbero due account con la stessa email, vietato dal database). Quegli eventuali doppioni, solo dati di prova, restano com'erano.
+- Waitlist e modulo contatti non cambiano: non sono account.
+
+**Verifica**
+- Nuova prova `apps/api/src/auth/account-email.test.ts`; 600 test, typecheck e lint verdi.
+- Migrazione provata su PostgreSQL 16 con email miste, doppioni e valori vuoti: solo le email senza doppioni passano in minuscolo.
+
+## 331. Notifiche dei messaggi in chat che non arrivavano
 
 **Richiesta esplicita dell'utente** (24/10/2026, thread "Correggere le notifiche chat al cliente"): "al cliente sembra non arrivino le notifiche quando il professionista gli manda un messaggio in chat", e lo stesso dal cliente al professionista.
 
@@ -20506,9 +20520,9 @@ Richiesta dell'utente, tra le migliorie proposte dopo la §327 ("eccezione" con 
 **Verifica**
 - Prima: stream di produzione letto con un account di prova, `\nid: 1\n\n` e nient'altro in 56 secondi. In locale, controller vero con `SentryModule`: evento senza `data`; dopo la correzione l'evento arriva completo, anche con Sentry attivo e la configurazione dell'app.
 
-## 331. Email dei messaggi non letti, niente popup sulla chat aperta, controllo dello stream
+## 332. Email dei messaggi non letti, niente popup sulla chat aperta, controllo dello stream
 
-**Richiesta esplicita dell'utente** (24/10/2026, stesso thread del §330): "effettua le 3 migliorie" proposte dopo la correzione.
+**Richiesta esplicita dell'utente** (24/10/2026, stesso thread del §331): "effettua le 3 migliorie" proposte dopo la correzione.
 
 **Decisione presa**
 - **Email dei messaggi in chat non letti.** `ChatMessageEmailsService` (`apps/api/src/notifications/chat-message-emails.service.ts`) ogni minuto cerca le notifiche `TIMELINE_MESSAGE_FROM_*` non lette: quando il primo messaggio non letto di una conversazione ha 10 minuti (`CHAT_EMAIL_AFTER_MINUTES`), parte un'email sola con il numero dei messaggi e il link che apre quella chat. Finché chi riceve non legge, niente seconda email per la stessa conversazione. `Notification.sentAt` (colonna già esistente e mai usata) segna i messaggi già coperti da un'email. Mai il testo del messaggio nell'email (CLAUDE.md §5 punto 9). Oltre le 24 ore non si recupera nulla. Chi ha spento il sito per i messaggi ma tiene l'email la riceve subito. Argomento "Messaggi" delle preferenze ora con il canale email attivo (acceso di default, spegnibile). Testo in `chatMessageEmail` (`notification-emails.ts`), fuori da `BUILDERS` che partono subito; anteprime in `email:preview`.

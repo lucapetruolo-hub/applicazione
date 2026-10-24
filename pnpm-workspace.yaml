@@ -19,7 +19,7 @@ peerDependencyRules:
 # (packages/ui, Tamagui) si portavano dietro copie diverse. Più le versioni
 # corrette di dipendenze indirette con falle note (controllo sicurezza,
 # docs/CHANGELOG.md §292): multer 2.0.2 e proxy-addr 2.0.7. Una sola rxjs
-# (docs/CHANGELOG.md §330): con una seconda copia NestJS non riconosce
+# (docs/CHANGELOG.md §331): con una seconda copia NestJS non riconosce
 # l'Observable dello stream in tempo reale e i push arrivano vuoti.
 overrides:
   react: "19.3.0"

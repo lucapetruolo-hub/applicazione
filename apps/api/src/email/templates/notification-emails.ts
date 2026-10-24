@@ -1389,7 +1389,7 @@ function isSummaryItem(value: unknown): value is SummaryItem {
 }
 
 /**
- * Messaggi in chat non letti (docs/CHANGELOG.md §331): un'email sola per
+ * Messaggi in chat non letti (docs/CHANGELOG.md §332): un'email sola per
  * conversazione, mandata da `ChatMessageEmailsService` solo se dopo qualche
  * minuto chi riceve non li ha ancora visti sul sito. Fuori da `BUILDERS`,
  * che partono subito con la notifica. Mai il testo del messaggio: si legge

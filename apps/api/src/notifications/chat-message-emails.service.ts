@@ -75,7 +75,7 @@ export function chatEmailGroups(
 
 /**
  * Email per i messaggi in chat che chi riceve non ha visto sul sito
- * (docs/CHANGELOG.md §331): dopo CHAT_EMAIL_AFTER_MINUTES minuti dalla
+ * (docs/CHANGELOG.md §332): dopo CHAT_EMAIL_AFTER_MINUTES minuti dalla
  * notifica ancora non letta, una sola email per conversazione con il numero
  * di messaggi. `sentAt` della notifica segna che l'email è partita (o che
  * il canale email era spento): ogni messaggio si avvisa al massimo una volta.
