@@ -10,7 +10,7 @@ import { ProfileInvitesService } from "./profile-invites.service";
  */
 function buildService() {
   const prisma = {
-    user: { findUnique: vi.fn(), findUniqueOrThrow: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn().mockResolvedValue({}) },
+    user: { findUnique: vi.fn(), findUniqueOrThrow: vi.fn(), create: vi.fn(), update: vi.fn().mockResolvedValue({ id: "u-1", sessionVersion: 0 }), delete: vi.fn().mockResolvedValue({}) },
     profileInvite: { create: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 1 }), findUnique: vi.fn(), findFirst: vi.fn() },
   };
   const professionalsService = { upsertMyProfile: vi.fn() };
