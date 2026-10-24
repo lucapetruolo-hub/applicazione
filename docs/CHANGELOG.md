@@ -20166,3 +20166,24 @@ La mappa con una chiave vera si vede solo sul sito pubblicato: dopo l'unione va 
 **Decisione**: ogni scintilla prende un'icona che dice cosa indica. "Gratis per chi cerca" (piè di pagina e risultati): un cartellino del prezzo (`tag`). Consiglio in Oggi e consigli per la bio nel profilo: una lampadina (`lightbulb`). Pacchetto "Storia di successo": una macchina fotografica (`camera`), perché si racconta il lavoro con le foto. Etichetta "Nuovo profilo" sulle schede: un germoglio (`sprout`). Aggiunte `tag`, `lightbulb` e `sprout` al registro icone (web e app). Resta la scintilla nel giro del giorno dell'agenda, che non si tocca a mano.
 
 **Verifica**: typecheck di `packages/ui` e del web.
+
+## 309. zod 4
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Controllo sicurezza completo", PR #105): osv-scanner segnala GHSA-mrhx-c7xc-m3w5 su zod 3.25.76 (consumo di memoria su collezioni molto grandi), corretta solo nella serie 4. Luca: "effettua tutte le migliorie da 1 a 4 nella modalita che ritieni". Condizione: validazioni e messaggi d'errore mostrati agli utenti uguali a prima.
+
+**Decisione presa**
+- `zod` 3.23 → 4.6.7 in `packages/shared` e `apps/api` (il sito lo usa tramite `packages/shared`).
+- zod 4 ha riscritto i messaggi predefiniti ("Required" diventa "Invalid input: expected string, received undefined"), e il sito li mostra dove lo schema non ha un messaggio suo (`ApiError` prende il primo di `fieldErrors`, i moduli il primo `issue`). `packages/shared/src/zod.ts` rimette con `z.config({ customError })` le frasi di zod 3; i messaggi scritti negli schemi vengono sempre prima. Gli schemi del pacchetto importano `z` da lì; la configurazione è globale e vale anche per i tre schemi di `apps/api`.
+- Cambi di sintassi: `errorMap` → `message` (`z.literal`, `z.enum`), `required_error` → `error` che risponde solo al campo mancante, `z.ZodIssueCode.custom` → `"custom"`, nella pagina `/dashboard/fiscale` `issue.type` → `issue.origin` e il percorso di un errore ora può contenere simboli.
+- ID con `z.guid()` al posto di `z.string().uuid()`: con zod 4 `.uuid()` rifiuta gli UUID senza una versione valida (es. `00000000-0000-0000-0000-000000000001`), zod 3 li accettava.
+
+**Differenze rimaste, solo con dati che il sito non manda**
+- Numeri oltre 9 milioni di miliardi in un campo intero: zod 4 li rifiuta subito (prima passavano e il database andava in errore).
+- Un elenco della lunghezza sbagliata con dentro anche valori sbagliati (es. un'agenda settimanale con meno di 7 giorni): il primo errore è quello del valore, non della lunghezza.
+- Date e ore senza secondi (`2026-10-24T10:00Z`): zod 4 le rifiuta. Il sito manda sempre `toISOString()`, con i secondi.
+
+**Verifica**
+- Confronto automatico zod 3 / zod 4 su tutti gli 88 schemi di `packages/shared`: 88.000 dati di prova a caso, stessi esiti, stessi dati in uscita e stesso messaggio mostrato all'utente (primo `issue` e primo `fieldErrors`), tolte le tre differenze qui sopra. Email, indirizzi web e date/ore provati a parte su un elenco di casi limite: uguali tranne le ore senza secondi.
+- Typecheck, lint senza errori, 557 test (3 nuovi in `apps/api/src/common/zod-messages.test.ts`), build. API avviata: errori di validazione con gli stessi messaggi di prima.
+- `confronto-pagine` prima/dopo su 132 foto: 125 identiche, nelle altre la riga "adesso" dell'agenda e pochi pixel di antialiasing.
+- Resta zod 3.25.76 solo dentro `@expo/cli` (strumento di sviluppo dell'app, non va né sul sito né nell'API).

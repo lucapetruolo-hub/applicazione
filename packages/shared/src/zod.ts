@@ -2,7 +2,7 @@ import { z } from "zod";
 
 /**
  * zod 4 con i messaggi d'errore predefiniti di zod 3 (docs/CHANGELOG.md
- * §303). Quasi tutti gli schemi hanno un messaggio in italiano, ma dove manca
+ * §309). Quasi tutti gli schemi hanno un messaggio in italiano, ma dove manca
  * il sito mostra quello predefinito di zod ("Required", "Invalid email", ...):
  * zod 4 li ha riscritti tutti, quindi qui si rimettono quelli di prima, così
  * l'aggiornamento non cambia nulla di quello che vede l'utente. I messaggi
@@ -12,6 +12,9 @@ import { z } from "zod";
  * per gli schemi scritti in `apps/api`, che caricano sempre questo pacchetto.
  * Gli schemi del pacchetto importano `z` da qui, così la configurazione è
  * attiva prima di qualunque validazione.
+ *
+ * Per gli ID si usa `z.guid()`, non `.uuid()`: zod 4 con `.uuid()` accetta
+ * solo UUID con una versione valida, zod 3 qualunque stringa nel formato.
  */
 
 type Issue = z.core.$ZodRawIssue;
