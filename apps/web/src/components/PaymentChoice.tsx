@@ -65,7 +65,7 @@ export function PaymentChoice({
               display: "flex",
               gap: 12,
               padding: 12,
-              borderRadius: 8,
+              borderRadius: 6,
               border: `2px solid ${selected ? brand.verificato : brand.filetto}`,
               background: selected ? "#E6F4EC" : "#fff",
               cursor: "pointer",
@@ -89,12 +89,12 @@ export function PaymentChoice({
                 {copy.title}
               </Text>
               {copy.body ? (
-                <Text fontSize="$2" color={brand.grafite70}>
+                <Text fontSize={13} color={brand.grafite70}>
                   {copy.body}
                 </Text>
               ) : null}
               {paymentChoiceIsOnline(option) && quoteMaxEurCents > 0 ? (
-                <Text fontSize="$2" fontWeight="700" color={brand.grafite}>
+                <Text fontSize={13} fontWeight="700" color={brand.grafite}>
                   {depositPercent >= 100 ? "Da pagare ora (l'intero massimo del preventivo)" : `Acconto ora (${depositPercent}% del massimo del preventivo)`}:{" "}
                   {eur(onlineDepositEurCents(quoteMaxEurCents, depositPercent))}
                 </Text>
@@ -104,16 +104,16 @@ export function PaymentChoice({
         );
       })}
       {options.length === 0 ? (
-        <Text fontSize="$2" color={brand.urgenza}>
+        <Text fontSize={13} color={brand.urgenza}>
           Il professionista accetta solo il pagamento online, che non è ancora attivo: scrivigli dalla chat per accordarvi.
         </Text>
       ) : onlineHidden ? (
-        <Text fontSize="$2" color={brand.grafite70}>
+        <Text fontSize={13} color={brand.grafite70}>
           Il pagamento online con carta sarà disponibile a breve.
         </Text>
       ) : null}
       {options.some(paymentChoiceIsOnline) ? (
-        <Link href="/termini#pagamenti" target="_blank" style={{ color: brand.cianografiaScuro, fontWeight: 600, fontSize: 14 }}>
+        <Link href="/termini#pagamenti" target="_blank" style={{ color: brand.cianografiaScuro, fontWeight: 600, fontSize: 16 }}>
           Come funziona il pagamento online
         </Link>
       ) : null}

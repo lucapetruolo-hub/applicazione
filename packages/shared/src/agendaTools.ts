@@ -185,7 +185,7 @@ export function weekTemplateMonthFill(
 }
 
 /**
- * Lavoro su più giorni (decisione dell'utente, docs/CHANGELOG.md §305): la
+ * Lavoro su più giorni (decisione dell'utente, docs/CHANGELOG.md §310): la
  * fine cade in un giorno di calendario dopo l'inizio. Gli orari sono ora
  * italiana salvata come UTC (§287); una fine alle 00:00 conta come fine del
  * giorno prima.
@@ -215,7 +215,7 @@ export const MAX_JOB_DAYS = 30;
 
 /**
  * Le giornate di un lavoro, una per giorno con lo stesso orario (decisione
- * dell'utente, §305: "comparirà il lavoro per *numero* giorni e nell'orario
+ * dell'utente, §310: "comparirà il lavoro per *numero* giorni e nell'orario
  * inserito"). Un lavoro di un solo giorno ha una sola giornata, uguale a sé.
  */
 export function jobOccurrences(start: Date | string, end: Date | string | null | undefined): { date: string; start: Date; end: Date | null }[] {

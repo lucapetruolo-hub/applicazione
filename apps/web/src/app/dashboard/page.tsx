@@ -127,7 +127,7 @@ export default function DashboardTodayPage() {
   const startToday = wallClockToday();
   const endTomorrow = new Date(startToday);
   endTomorrow.setUTCDate(endTomorrow.getUTCDate() + 2);
-  // Un lavoro su più giorni compare oggi e domani con l'orario di quel giorno (§305).
+  // Un lavoro su più giorni compare oggi e domani con l'orario di quel giorno (§310).
   const upcoming = (bookings ?? [])
     .filter((b) => b.status === "CONFIRMED" || b.status === "PENDING")
     .flatMap((booking) =>
@@ -156,7 +156,7 @@ export default function DashboardTodayPage() {
 
         {subscription ? <SubscriptionPauseBanner sub={subscription} profileStepsElsewhere /> : null}
         {/* Il prossimo lavoro prima di tutto il resto: mezz'ora prima deve vedersi
-            senza scorrere (T2 del test dei compiti, docs/CHANGELOG.md §306). */}
+            senza scorrere (T2 del test dei compiti, docs/CHANGELOG.md §311). */}
         {error ? null : (
         <TodaySection title="Oggi e domani" action={{ href: "/dashboard/agenda", label: "Apri l'agenda" }}>
           {loading ? (
@@ -167,7 +167,7 @@ export default function DashboardTodayPage() {
             upcoming.map(({ booking, at }) => (
               <Link
                 key={`${booking.id}-${at}`}
-                // Si apre l'appuntamento (indirizzo, Naviga, Chiama), non la richiesta (T3, §306).
+                // Si apre l'appuntamento (indirizzo, Naviga, Chiama), non la richiesta (T3, §311).
                 href={`/dashboard/agenda?booking=${booking.id}`}
                 className="today-row"
               >
@@ -281,13 +281,13 @@ function TodaySection({ title, subtitle, action, children }: { title: string; su
             {title}
           </Text>
           {subtitle ? (
-            <Text fontSize="$2" color={brand.grafite70}>
+            <Text fontSize={13} color={brand.grafite70}>
               {subtitle}
             </Text>
           ) : null}
         </YStack>
         {action ? (
-          <Link href={action.href} style={{ color: brand.cianografiaScuro, fontWeight: 600, fontSize: 14, textDecoration: "none" }}>
+          <Link href={action.href} style={{ color: brand.cianografiaScuro, fontWeight: 600, fontSize: 16, textDecoration: "none" }}>
             {action.label} →
           </Link>
         ) : null}
@@ -346,7 +346,7 @@ function InsightsGrid({ insights }: { insights: ProfessionalInsights }) {
         <div key={cell.label} className="admin-kpi">
           <span className="admin-kpi-label">{cell.label}</span>
           <span className="admin-kpi-value">{cell.value}</span>
-          {cell.compare ? <span style={{ fontSize: 12, color: "#6e6459", fontWeight: 600 }}>{cell.compare}</span> : null}
+          {cell.compare ? <span style={{ fontSize: 13, color: "#6e6459", fontWeight: 600 }}>{cell.compare}</span> : null}
         </div>
       ))}
     </div>
@@ -367,7 +367,7 @@ function AgendaNotice({ attention }: { attention: AgendaAttention }) {
           <Text fontWeight="800" color={brand.grafite}>
             {empty ? "Inserisci le tue disponibilità" : "Aggiungi disponibilità per i prossimi giorni"}
           </Text>
-          <Text fontSize={14} color={brand.grafite70}>
+          <Text fontSize={16} color={brand.grafite70}>
             {empty ? "I clienti vedono quando sei libero e ti prenotano prima." : `Nei prossimi ${AGENDA_LOOKAHEAD_DAYS} giorni non hai orari liberi in agenda.`}
           </Text>
         </YStack>
@@ -397,8 +397,8 @@ function Suggestion({ insights }: { insights: ProfessionalInsights }) {
   }
   if (!text) return null;
   return (
-    <XStack gap="$3" alignItems="center" padding="$4" borderRadius={16} backgroundColor={brand.cianografiaVelo} flexWrap="wrap">
-      <Icon name="sparkles" size={20} color={brand.cianografiaScuro} />
+    <XStack gap="$3" alignItems="center" padding="$4" borderRadius={12} backgroundColor={brand.cianografiaVelo} flexWrap="wrap">
+      <Icon name="lightbulb" size={20} color={brand.cianografiaScuro} />
       <Text flex={1} minWidth={220} color={brand.grafite}>
         {text}
       </Text>
@@ -411,7 +411,7 @@ function Suggestion({ insights }: { insights: ProfessionalInsights }) {
 
 function Skeletons() {
   return (
-    <YStack backgroundColor={brand.calce} borderRadius={16} overflow="hidden">
+    <YStack backgroundColor={brand.calce} borderRadius={12} overflow="hidden">
       <SkeletonSummaryRow />
       <SkeletonSummaryRow />
     </YStack>

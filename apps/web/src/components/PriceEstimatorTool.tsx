@@ -62,9 +62,9 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
   const visibleEntries = showFullList ? filtered : mostAdded.slice(0, IDLE_VISIBLE_COUNT);
 
   return (
-    <Section eyebrow="Prezzi reali" title="Quanto costa in media?" titleAccent="Quanto costa" maxWidth={780}>
+    <Section title="Quanto costa in media?" maxWidth={780}>
       <YStack width="100%" gap="$3">
-        <Text fontSize="$3" color={brand.grafite70}>
+        <Text fontSize={16} color={brand.grafite70}>
           Range di prezzo calcolato dalle prestazioni inserite davvero dai professionisti sulla piattaforma — scrivi
           per cercare.
         </Text>
@@ -79,7 +79,7 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
             padding: 14,
             borderRadius: 999,
             border: `1px solid ${brand.bordoCampo}`,
-            fontSize: 15,
+            fontSize: 16,
             fontFamily: "inherit",
             color: brand.grafite,
             backgroundColor: brand.calce,
@@ -88,7 +88,7 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
 
         {isEmpty ? (
           <YStack width="100%" gap="$3" alignItems="flex-start">
-            <Text fontSize="$3" color={brand.grafite70}>
+            <Text fontSize={16} color={brand.grafite70}>
               I prezzi medi appariranno qui non appena i professionisti inseriranno le loro prestazioni. Nel frattempo
               puoi chiedere un preventivo gratuito: è il modo più preciso per sapere quanto costa il tuo lavoro.
             </Text>
@@ -99,7 +99,7 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
                 backgroundColor: brand.cianografia,
                 color: "#fff",
                 fontWeight: 700,
-                fontSize: 15,
+                fontSize: 16,
                 padding: "12px 22px",
                 borderRadius: 999,
                 textDecoration: "none",
@@ -109,11 +109,11 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
             </a>
           </YStack>
         ) : entries === null ? (
-          <Text fontSize="$3" color={brand.grafite70}>
+          <Text fontSize={16} color={brand.grafite70}>
             Caricamento...
           </Text>
         ) : visibleEntries.length === 0 ? (
-          <Text fontSize="$3" color={brand.grafite70}>
+          <Text fontSize={16} color={brand.grafite70}>
             Nessuna prestazione trovata per {'"'}
             {query}
             {'"'}.
@@ -144,7 +144,7 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
                   <Text fontWeight="700" color={brand.grafite}>
                     {entry.name}
                   </Text>
-                  <Text fontSize="$2" color={brand.grafite70}>
+                  <Text fontSize={13} color={brand.grafite70}>
                     {entry.professionalCount === 1 ? "1 professionista" : `${entry.professionalCount} professionisti`}
                   </Text>
                 </YStack>

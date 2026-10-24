@@ -153,7 +153,7 @@ export function WeekTemplateEditor({
                 </button>
                 {slots.length > 0 ? (
                   // "Giorno libero", non "Chiudi": vale per tutte le settimane, non chiude
-                  // un giorno preciso (T1 del test dei compiti, docs/CHANGELOG.md §306).
+                  // un giorno preciso (T1 del test dei compiti, docs/CHANGELOG.md §311).
                   <button type="button" className="ag-link" style={{ fontSize: 13, color: "var(--ag-muted)" }} onClick={() => setDay(day, [])}>
                     Giorno libero<span className="sr-only"> ogni {WEEKDAY_FULL_LABELS[day]?.toLowerCase()}</span>
                   </button>

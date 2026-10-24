@@ -82,7 +82,7 @@ const ROME_TIMEZONE = [
 ];
 
 /**
- * Un lavoro su più giorni (docs/CHANGELOG.md §305) diventa il suo primo
+ * Un lavoro su più giorni (docs/CHANGELOG.md §310) diventa il suo primo
  * giorno ripetuto ogni giorno: nel calendario compare un appuntamento per
  * giorno con lo stesso orario, non un blocco unico notte compresa.
  */

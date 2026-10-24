@@ -7,6 +7,7 @@ import { PROFESSIONAL_CATEGORIES, type ProfessionalCategorySlug } from "@profess
 import { Icon } from "@professionisti/ui";
 import { CategoryCarousel } from "./CategoryCarousel";
 import { CategoryIconBadge } from "./CategoryIconBadge";
+import { GlowLights } from "./GlowLights";
 import { CATEGORY_PHOTOS, CATEGORY_PHOTO_FOCUS } from "@/lib/categoryPhotos";
 import { MEGA_MENU_GROUPS, MEGA_MENU_MICRO_DESCRIPTION } from "@/lib/megaMenuGroups";
 
@@ -110,9 +111,10 @@ export function CategoryStoryRail({ countBySlug, state }: { countBySlug: Map<str
           );
         })}
         <Link href="/preventivo" className="story-card story-card-other">
-          <Icon name="sparkles" size={26} color="white" strokeWidth={1.5} />
+          <GlowLights tone="verde" />
+          <Icon name="file-text" size={26} color="white" strokeWidth={1.5} />
           <span className="story-card-title">Non trovi il tuo lavoro?</span>
-          <span style={{ fontSize: 14, opacity: 0.9 }}>Descrivilo, ci pensiamo noi →</span>
+          <span style={{ fontSize: 16, opacity: 0.9 }}>Descrivilo, ci pensiamo noi →</span>
         </Link>
       </CategoryCarousel>
     </div>

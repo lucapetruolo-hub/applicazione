@@ -6,7 +6,7 @@ import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 
-const inputStyle = { padding: 10, borderRadius: 4, border: `1px solid ${brand.bordoCampo}`, fontSize: 14, fontFamily: "inherit", color: brand.grafite };
+const inputStyle = { padding: 10, borderRadius: 6, border: `1px solid ${brand.bordoCampo}`, fontSize: 14, fontFamily: "inherit", color: brand.grafite };
 
 function toIsoDateLocal(date: Date): string {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
@@ -193,10 +193,10 @@ export function ExternalJobModal({
         gap="$4"
       >
         <XStack justifyContent="space-between" alignItems="center" gap="$3">
-          {/* flex + minWidth 0: la frase sotto il titolo va a capo invece di uscire dal bordo (T10, docs/CHANGELOG.md §306). */}
+          {/* flex + minWidth 0: la frase sotto il titolo va a capo invece di uscire dal bordo (T10, docs/CHANGELOG.md §311). */}
           <YStack gap={2} flex={1} minWidth={0}>
             <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
-              {/* Parole di chi lavora, non "lavoro esterno" (T9, §306). */}
+              {/* Parole di chi lavora, non "lavoro esterno" (T9, §311). */}
               {job ? "Modifica il lavoro" : "Aggiungi un tuo lavoro"}
             </Text>
             {job ? (

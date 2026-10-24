@@ -158,17 +158,17 @@ export function GoogleSignInButton({ onCredential, disabled }: { onCredential: (
       >
         <XStack alignItems="center" justifyContent="center" gap="$3">
           <GoogleIcon />
-          <Text fontSize="$4" fontWeight="600" color={brand.grafite}>
+          <Text fontSize={16} fontWeight="600" color={brand.grafite}>
             Continua con Google
           </Text>
         </XStack>
       </Button>
       {notice === "waiting" ? (
-        <Text fontSize="$2" color={brand.grafite70} textAlign="center" role="status">
+        <Text fontSize={13} color={brand.grafite70} textAlign="center" role="status">
           Continua nella finestra di Google.
         </Text>
       ) : notice === "error" ? (
-        <Text fontSize="$2" color={brand.urgenza} textAlign="center" role="alert">
+        <Text fontSize={13} color={brand.urgenza} textAlign="center" role="alert">
           Accesso con Google non riuscito. Riprova.
         </Text>
       ) : null}

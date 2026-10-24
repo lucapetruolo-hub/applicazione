@@ -29,7 +29,7 @@ export function formatQuoteDate(iso: string): string {
  */
 export function formatQuoteDateRange(startIso: string, endIso: string | null): string {
   if (!endIso) return formatQuoteDate(startIso);
-  // Lavoro su più giorni (docs/CHANGELOG.md §305): "dal 4 al 6 novembre · ogni giorno 08:00–17:00".
+  // Lavoro su più giorni (docs/CHANGELOG.md §310): "dal 4 al 6 novembre · ogni giorno 08:00–17:00".
   const days = formatJobDays(startIso, endIso);
   if (days) return `${days} · ogni giorno ${formatAppointmentTimeRange(startIso, endIso)}`;
   const endLabel = new Date(endIso).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
@@ -233,11 +233,11 @@ export function QuoteCard({
   const dateChooser = isChoosingDate ? (
     <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
       {freeSlots === null ? (
-        <Text fontSize="$2" color={brand.grafite70}>
+        <Text fontSize={13} color={brand.grafite70}>
           Caricamento orari disponibili...
         </Text>
       ) : freeSlots.length === 0 ? (
-        <Text fontSize="$2" color={brand.grafite70}>
+        <Text fontSize={13} color={brand.grafite70}>
           Nessun orario libero nell&apos;agenda pubblica di questo professionista al momento.
         </Text>
       ) : (
@@ -261,12 +261,12 @@ export function QuoteCard({
                 <input aria-label="Ora di inizio" type="time" value={manualStartTime} onChange={(e) => setManualStartTime(e.target.value)} style={{ ...textareaStyle, flex: 1, minWidth: 100 }} />
                 <input aria-label="Ora di fine" type="time" value={manualEndTime} onChange={(e) => setManualEndTime(e.target.value)} style={{ ...textareaStyle, flex: 1, minWidth: 100 }} />
               </XStack>
-              <Text fontSize={11} color={brand.grafite70}>
+              <Text fontSize={13} color={brand.grafite70}>
                 Il professionista dovrà confermare questo orario prima che diventi un appuntamento.
               </Text>
             </YStack>
           ) : null}
-          {/* Lavoro su più giorni (docs/CHANGELOG.md §305): la durata resta quella del preventivo. */}
+          {/* Lavoro su più giorni (docs/CHANGELOG.md §310): la durata resta quella del preventivo. */}
           {jobDayCount(quote.estimatedStartDate, quote.estimatedEndDate) > 1 ? (
             <Text fontSize={12} color={brand.grafite70}>
               Il lavoro dura {jobDayCount(quote.estimatedStartDate, quote.estimatedEndDate)} giorni: scegli il primo giorno e l&apos;orario di ogni giorno.
@@ -301,10 +301,10 @@ export function QuoteCard({
         {/* Un preventivo accettato non è più una novità: le novità del lavoro sono sull'intervento (§228). */}
         {isNew && quote.status !== "ACCEPTED" ? <Badge variant="nuovo">Nuovo</Badge> : null}
       </XStack>
-      <Text fontSize="$3" color={brand.grafite70}>
+      <Text fontSize={16} color={brand.grafite70}>
         Data proposta: {formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}
       </Text>
-      <Text fontSize="$2" color={brand.grafite70}>
+      <Text fontSize={13} color={brand.grafite70}>
         {quote.resentAt ? `Nuovo preventivo inviato il ${formatSentAt(quote.resentAt)}, dopo il tuo rifiuto` : `Inviato il ${formatSentAt(quote.sentAt)}`}
       </Text>
       {contactInBooking ? null : (
@@ -363,10 +363,10 @@ export function QuoteCard({
         // Risposte precedenti a questa versione, senza l'appuntamento sostituito.
         return quote.status === "SENT" && quote.professionalCounterNote ? (
           <YStack gap="$2" borderWidth={1} borderColor={brand.ottone} backgroundColor={brand.calce} borderRadius="$3" padding="$3">
-            <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
+            <Text fontSize={16} fontWeight="600" color={brand.grafite}>
               Il professionista ha risposto proponendo: {formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}
             </Text>
-            <Text fontSize="$3" color={brand.grafite70}>
+            <Text fontSize={16} color={brand.grafite70}>
               {quote.professionalCounterNote}
             </Text>
           </YStack>
@@ -374,14 +374,14 @@ export function QuoteCard({
       })()}
       <YStack gap="$1">
         {quote.items.map((item) => (
-          <Text key={item.id} color={brand.grafite70} fontSize="$3">
+          <Text key={item.id} color={brand.grafite70} fontSize={16}>
             {item.name}: {formatServicePriceRange(item.priceMinEurCents, item.priceMaxEurCents)}
           </Text>
         ))}
       </YStack>
       {priceTotals.totalMinEurCents > 0 || priceTotals.totalMaxEurCents > 0 ? (
         <YStack backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$1">
-          <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
+          <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
             Totale indicativo
           </Text>
           <XStack alignItems="baseline" gap="$2" flexWrap="wrap">
@@ -389,7 +389,7 @@ export function QuoteCard({
                 al nuovo, per non accettare un aumento senza accorgersene
                 (docs/CHANGELOG.md §196). */}
             {previousPriceText ? (
-              <Text fontSize="$4" color={brand.grafite70} textDecorationLine="line-through">
+              <Text fontSize={16} color={brand.grafite70} textDecorationLine="line-through">
                 {previousPriceText}
               </Text>
             ) : null}
@@ -398,7 +398,7 @@ export function QuoteCard({
             </Text>
           </XStack>
           {previousPriceText ? (
-            <Text fontSize="$2" color={brand.ottone} fontWeight="600">
+            <Text fontSize={13} color={brand.ottone} fontWeight="600">
               Il professionista ha cambiato il prezzo
             </Text>
           ) : null}
@@ -406,10 +406,10 @@ export function QuoteCard({
       ) : null}
       {quote.notes ? (
         <YStack backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$1">
-          <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
+          <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
             Messaggio del professionista
           </Text>
-          <Text color={brand.grafite70} fontSize="$3">
+          <Text color={brand.grafite70} fontSize={16}>
             {quote.notes}
           </Text>
         </YStack>
@@ -471,7 +471,7 @@ export function QuoteCard({
           ) : null}
           {!isChoosingDate && confirmingReject ? (
             <YStack gap="$2">
-              <Text fontSize="$2" color={brand.urgenza}>
+              <Text fontSize={13} color={brand.urgenza}>
                 Rifiutare questo preventivo?
               </Text>
               {/* Nota facoltativa (docs/CHANGELOG.md §188): il professionista
@@ -498,7 +498,7 @@ export function QuoteCard({
         </>
       ) : quote.status === "MODIFICATION_REQUESTED" ? (
         <YStack gap="$1">
-          <Text fontSize="$2" color={brand.ottone} fontWeight="600">
+          <Text fontSize={13} color={brand.ottone} fontWeight="600">
             {/* Stessa data e stesso orario: hai solo aggiunto una nota (docs/CHANGELOG.md §196). */}
             {quote.clientProposedDate &&
             !scheduleChangeBetween(
@@ -510,7 +510,7 @@ export function QuoteCard({
             {quote.clientProposedDate ? formatQuoteDateRange(quote.clientProposedDate, quote.clientProposedEndDate) : ""}
           </Text>
           {quote.clientProposedNote ? (
-            <Text fontSize="$2" color={brand.grafite70}>
+            <Text fontSize={13} color={brand.grafite70}>
               {quote.clientProposedNote}
             </Text>
           ) : null}
@@ -523,33 +523,33 @@ export function QuoteCard({
         </YStack>
       ) : quote.status === "ACCEPTED" ? (
         // Niente "Come pago?": il metodo di pagamento è subito sotto, nella sezione dell'intervento (§228).
-        <Text fontSize="$2" color={brand.verificato} fontWeight="600">
+        <Text fontSize={13} color={brand.verificato} fontWeight="600">
           Accettato
         </Text>
       ) : quote.status === "REJECTED" ? (
         <YStack gap="$1">
-          <Text fontSize="$2" color={brand.urgenza} fontWeight="600">
+          <Text fontSize={13} color={brand.urgenza} fontWeight="600">
             Hai rifiutato questo preventivo
           </Text>
           {quote.rejectionNote ? (
-            <Text fontSize="$2" color={brand.grafite70}>
+            <Text fontSize={13} color={brand.grafite70}>
               La tua nota: &quot;{quote.rejectionNote}&quot;
             </Text>
           ) : null}
           {requestOpen ? (
-            <Text fontSize="$2" color={brand.grafite70}>
+            <Text fontSize={13} color={brand.grafite70}>
               Il professionista può ancora inviarti un nuovo preventivo finché la richiesta è aperta.
             </Text>
           ) : null}
         </YStack>
       ) : quote.status === "WITHDRAWN" ? (
-        <Text fontSize="$2" color={brand.urgenza} fontWeight="600">
+        <Text fontSize={13} color={brand.urgenza} fontWeight="600">
           Il professionista ha ritirato questo preventivo
         </Text>
       ) : null}
 
       {error ? (
-        <Text color={brand.urgenza} fontSize="$3">
+        <Text color={brand.urgenza} fontSize={16}>
           {error}
         </Text>
       ) : null}

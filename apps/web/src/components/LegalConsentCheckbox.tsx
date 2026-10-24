@@ -42,7 +42,7 @@ export function LegalConsentCheckbox({
         e ho almeno 18 anni.
       </ConsentCheckbox>
       {attempt > 0 && !checked ? (
-        <Text role="alert" fontSize="$2" color={brand.urgenza} fontWeight="600">
+        <Text role="alert" fontSize={13} color={brand.urgenza} fontWeight="600">
           Spunta la casella per continuare.
         </Text>
       ) : null}

@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 /**
  * Problemi trovati nel test dei 5 compiti fatto come un professionista che
- * apre l'app per la prima volta (docs/CHANGELOG.md §306, T1-T12): ogni prova
+ * apre l'app per la prima volta (docs/CHANGELOG.md §311, T1-T12): ogni prova
  * fallisce sul codice di prima.
  */
 test.beforeEach(({}, testInfo) => {

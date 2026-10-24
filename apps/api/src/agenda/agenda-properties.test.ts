@@ -18,7 +18,7 @@ beforeAll(async () => {
 });
 
 /**
- * Prove "a proprietà" dell'agenda (docs/CHANGELOG.md §304): invece di pochi
+ * Prove "a proprietà" dell'agenda (docs/CHANGELOG.md §309): invece di pochi
  * esempi scritti a mano, fast-check genera migliaia di casi a caso e cerca
  * quello che rompe la regola. Ogni regola è confrontata con un controllo
  * indipendente scritto qui, non con lo stesso codice che si vuole provare.
@@ -293,7 +293,7 @@ describe("link del calendario (iCalendar, RFC 5545)", () => {
     );
   });
 
-  it("un lavoro su più giorni compare una volta al giorno, ogni giorno alla stessa ora italiana (§305)", () => {
+  it("un lavoro su più giorni compare una volta al giorno, ogni giorno alla stessa ora italiana (§310)", () => {
     const multiDayArb = fc
       .tuple(fc.integer({ min: 0, max: 4 * 365 }), fc.integer({ min: 0, max: 22 * 4 }), fc.integer({ min: 1, max: 8 * 4 }), fc.integer({ min: 2, max: 10 }))
       .map(([day, startQ, lengthQ, days]) => {

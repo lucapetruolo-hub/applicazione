@@ -122,12 +122,12 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
 
   return (
     <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
-      <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70} textTransform="uppercase">
+      <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70} textTransform="uppercase">
         Intervento
       </Text>
       {/* Data dell'intervento come titolo della sezione (richiesta esplicita dell'utente, §228). */}
       <Text fontFamily="$heading" fontWeight="800" fontSize={20} color={brand.grafite}>
-        {/* Lavoro su più giorni (docs/CHANGELOG.md §305): "Dal 4 al 6 novembre · ogni giorno 08:00–17:00". */}
+        {/* Lavoro su più giorni (docs/CHANGELOG.md §310): "Dal 4 al 6 novembre · ogni giorno 08:00–17:00". */}
         {jobDays
           ? `${jobDays.charAt(0).toUpperCase()}${jobDays.slice(1)} · ogni giorno ${formatAppointmentTimeRange(booking.scheduledAt, booking.scheduledEndAt)}`
           : `${formatAppointmentDate(booking.scheduledAt, { weekday: "long", day: "numeric", month: "long", year: "numeric" })} · ${formatAppointmentTimeRange(booking.scheduledAt, booking.scheduledEndAt)}`}
@@ -138,7 +138,7 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
           <CardButton>
             <XStack alignItems="center" gap="$2">
               <Icon name="video" size={16} color={brand.grafite} strokeWidth={1.5} />
-              <Text fontFamily="$body" fontSize="$3" color={brand.grafite} fontWeight="600">
+              <Text fontFamily="$body" fontSize={16} color={brand.grafite} fontWeight="600">
                 Partecipa alla videochiamata
               </Text>
             </XStack>
@@ -154,13 +154,13 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
           </CardButton>
         </XStack>
       ) : booking.status === "CANCELED" ? (
-        <Text fontSize="$3" color={brand.grafite70}>
+        <Text fontSize={16} color={brand.grafite70}>
           Il professionista ha annullato questo intervento, quindi non si può riaprire. Con &ldquo;Ripeti la richiesta&rdquo; puoi inviarla
           ad altri professionisti della zona.
         </Text>
       ) : null}
       {reopenError ? (
-        <Text color={brand.urgenza} fontSize="$3">
+        <Text color={brand.urgenza} fontSize={16}>
           {reopenError}
         </Text>
       ) : null}
@@ -179,7 +179,7 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
 
       {booking.issue ? (
         <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
-          <Text fontSize="$2" fontWeight="600" color={booking.issue.status === "REJECTED" || booking.issue.status === "RESOLVED" ? brand.grafite : brand.urgenza}>
+          <Text fontSize={13} fontWeight="600" color={booking.issue.status === "REJECTED" || booking.issue.status === "RESOLVED" ? brand.grafite : brand.urgenza}>
             Hai segnalato: {JOB_ISSUE_LABEL[booking.issue.type].toLowerCase()} · {JOB_ISSUE_STATUS_LABEL[booking.issue.status]}
           </Text>
           <ClientIssueStatus
@@ -193,7 +193,7 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
         </YStack>
       ) : booking.status === "CONFIRMED" && booking.refundRequested ? (
         <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
-          <Text fontSize="$2" fontWeight="600" color={brand.urgenza}>
+          <Text fontSize={13} fontWeight="600" color={brand.urgenza}>
             Hai segnalato la mancata presentazione
           </Text>
         </YStack>
@@ -201,29 +201,29 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
 
       {booking.status === "COMPLETED" && booking.finalAmountEurCents !== null ? (
         <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
-          <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
+          <Text fontSize={13} fontWeight="600" color={brand.grafite}>
             Importo finale
           </Text>
           {booking.finalItems.map((item) => (
             <XStack key={item.id} justifyContent="space-between" gap="$2">
-              <Text fontSize="$2" color={brand.grafite70}>
+              <Text fontSize={13} color={brand.grafite70}>
                 {item.name}
               </Text>
-              <Text fontSize="$2" color={brand.grafite}>
+              <Text fontSize={13} color={brand.grafite}>
                 {formatEurCents(item.priceEurCents)}
               </Text>
             </XStack>
           ))}
           <XStack justifyContent="space-between" gap="$2">
-            <Text fontSize="$2" fontWeight="700" color={brand.grafite}>
+            <Text fontSize={13} fontWeight="700" color={brand.grafite}>
               Totale
             </Text>
-            <Text fontSize="$2" fontWeight="700" color={brand.cianografiaScuro}>
+            <Text fontSize={13} fontWeight="700" color={brand.cianografiaScuro}>
               {formatEurCents(booking.finalAmountEurCents)}
             </Text>
           </XStack>
           {booking.completionChangeReason ? (
-            <Text fontSize="$2" color={brand.grafite70}>
+            <Text fontSize={13} color={brand.grafite70}>
               Perché è diverso dal preventivo: {booking.completionChangeReason}
             </Text>
           ) : null}
@@ -232,10 +232,10 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
 
       {booking.status === "CANCELED" && booking.cancellationNote ? (
         <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
-          <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
+          <Text fontSize={13} fontWeight="600" color={brand.grafite}>
             Nota del professionista
           </Text>
-          <Text fontSize="$2" color={brand.grafite70}>
+          <Text fontSize={13} color={brand.grafite70}>
             {booking.cancellationNote}
           </Text>
         </YStack>
@@ -301,11 +301,11 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
       </XStack>
       {booking.status === "CONFIRMED" || booking.status === "COMPLETED" ? (
         booking.hasReview ? (
-          <Text fontSize="$2" color={brand.verificato} fontWeight="600">
+          <Text fontSize={13} color={brand.verificato} fontWeight="600">
             Recensione inviata
           </Text>
         ) : !booking.canReview && (booking.issue?.status === "OPEN" || booking.issue?.status === "CHAT") ? (
-          <Text fontSize="$2" color={brand.grafite70}>
+          <Text fontSize={13} color={brand.grafite70}>
             Potrai lasciare la recensione quando la segnalazione sarà chiusa.
           </Text>
         ) : null
@@ -316,7 +316,7 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
         <XStack gap="$2" alignItems="center" flexWrap="wrap" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
           {confirmingDeleteBooking ? (
             <>
-              <Text fontSize="$2" color={brand.urgenza}>
+              <Text fontSize={13} color={brand.urgenza}>
                 Eliminare questa prenotazione dalla lista?
               </Text>
               <CardButton tone="dangerSolid" onPress={handleDeleteBooking} disabled={isDeletingBooking}>
@@ -332,7 +332,7 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
         </XStack>
       ) : null}
       {deleteError ? (
-        <Text color={brand.urgenza} fontSize="$3">
+        <Text color={brand.urgenza} fontSize={16}>
           {deleteError}
         </Text>
       ) : null}

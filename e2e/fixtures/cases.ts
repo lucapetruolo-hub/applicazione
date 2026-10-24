@@ -1,4 +1,4 @@
-/** Appuntamenti di prova, in ora italiana (docs/CHANGELOG.md §304). */
+/** Appuntamenti di prova, in ora italiana (docs/CHANGELOG.md §309). */
 export const BOOKING_CASES = [
   { label: "sabato prima del cambio d'ora di ottobre", wallClock: "2026-10-24 09:00", end: "2026-10-24 10:30" },
   { label: "lunedì dopo il cambio d'ora di ottobre", wallClock: "2026-10-26 09:00", end: "2026-10-26 10:30" },

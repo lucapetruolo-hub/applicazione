@@ -14,9 +14,9 @@ const REASON_OPTIONS: { value: string; label: string }[] = [
 
 const textareaStyle = {
   padding: 10,
-  borderRadius: 4,
+  borderRadius: 6,
   border: `1px solid ${brand.bordoCampo}`,
-  fontSize: 14,
+  fontSize: 16,
   fontFamily: "inherit",
   color: brand.grafite,
   resize: "vertical" as const,
@@ -25,9 +25,9 @@ const textareaStyle = {
 
 const selectStyle = {
   padding: 10,
-  borderRadius: 4,
+  borderRadius: 6,
   border: `1px solid ${brand.bordoCampo}`,
-  fontSize: 14,
+  fontSize: 16,
   fontFamily: "inherit",
   color: brand.grafite,
   backgroundColor: brand.calce,
@@ -121,7 +121,7 @@ export function ReportContentModal({
             <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
               Segnalazione inviata
             </Text>
-            <Text fontSize="$3" color={brand.grafite70}>
+            <Text fontSize={16} color={brand.grafite70}>
               Grazie, la verificheremo il prima possibile.
             </Text>
             <Button variant="secondary" size="$3" onPress={onClose}>
@@ -134,13 +134,13 @@ export function ReportContentModal({
               <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
                 Segnala {targetLabel}
               </Text>
-              <Text fontSize="$3" color={brand.grafite70}>
+              <Text fontSize={16} color={brand.grafite70}>
                 Ci aiuta a mantenere la piattaforma affidabile per tutti.
               </Text>
             </YStack>
 
             <YStack gap="$2">
-              <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
+              <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
                 Motivo
               </Text>
               <select aria-label="Motivo" value={reasonValue} onChange={(e) => setReasonValue(e.target.value)} style={selectStyle}>
@@ -153,7 +153,7 @@ export function ReportContentModal({
             </YStack>
 
             <YStack gap="$2">
-              <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
+              <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
                 Dettagli (facoltativi)
               </Text>
               <textarea aria-label="Dettagli"
@@ -167,7 +167,7 @@ export function ReportContentModal({
             </YStack>
 
             {error ? (
-              <Text color={brand.urgenza} fontSize="$3">
+              <Text color={brand.urgenza} fontSize={16}>
                 {error}
               </Text>
             ) : null}

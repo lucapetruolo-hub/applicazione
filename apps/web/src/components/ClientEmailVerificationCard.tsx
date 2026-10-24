@@ -66,7 +66,7 @@ export function ClientEmailVerificationCard() {
             {state === "sending" ? "Invio..." : "Mandami il codice di conferma"}
           </Button>
           {state === "error" ? (
-            <Text color={brand.urgenza} fontSize="$3">
+            <Text color={brand.urgenza} fontSize={16}>
               {error}
             </Text>
           ) : null}

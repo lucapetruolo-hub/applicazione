@@ -111,7 +111,7 @@ export function SearchBar({
             renderItem={(item) => (
               <YStack gap="$1">
                 <Text fontWeight="600">{item.name}</Text>
-                <Text fontSize="$2" color="$color10">
+                <Text fontSize={13} color="$color10">
                   {item.subtitle}
                 </Text>
               </YStack>
@@ -207,7 +207,7 @@ export function SearchBar({
               accessibilityLabel={tab.label}
             >
               <Icon name={tab.icon} size={15} color={active ? "white" : brand.grafite70} />
-              <Text fontSize="$3" fontWeight="600" color={active ? "white" : brand.grafite70}>
+              <Text fontSize={16} fontWeight="600" color={active ? "white" : brand.grafite70}>
                 {tab.label}
               </Text>
             </XStack>
@@ -234,7 +234,7 @@ export function SearchBar({
           renderItem={(item) => (
             <YStack gap="$1">
               <Text fontWeight="600">{item.name}</Text>
-              <Text fontSize="$2" color="$color10">
+              <Text fontSize={13} color="$color10">
                 {item.subtitle}
               </Text>
             </YStack>
@@ -271,7 +271,7 @@ export function SearchBar({
         )}
       </YStack>
       {mode === "online" ? (
-        <Text fontSize="$2" color={brand.grafite70}>
+        <Text fontSize={13} color={brand.grafite70}>
           Consulenza online: parla con il professionista da remoto, ovunque tu sia. Puoi indicare una città per
           trovare professionisti online della tua zona.
         </Text>

@@ -53,7 +53,7 @@ export default function AdminMessaggiPage() {
       />
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       {messages === null && !error ? (
-        <YStack backgroundColor={brand.calce} borderRadius={16} overflow="hidden">
+        <YStack backgroundColor={brand.calce} borderRadius={12} overflow="hidden">
           <SkeletonSummaryRow />
           <SkeletonSummaryRow />
         </YStack>

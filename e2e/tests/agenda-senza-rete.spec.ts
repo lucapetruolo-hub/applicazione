@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { API_URL } from "../fixtures/env";
 
 /**
- * Agenda senza rete (docs/CHANGELOG.md §288 e §304): dopo un'apertura con la
+ * Agenda senza rete (docs/CHANGELOG.md §288 e §309): dopo un'apertura con la
  * rete, se il server non risponde l'agenda mostra la copia salvata sul
  * telefono con l'ora dell'ultimo aggiornamento.
  */
@@ -18,7 +18,7 @@ test("se il server non risponde si vede la copia salvata degli appuntamenti", as
 });
 
 test("senza rete del tutto l'agenda si riapre lo stesso e mostra la copia salvata", async ({ page, context }) => {
-  // R1 della verifica (§304-§305): in cantiere manca anche la pagina, non solo il server.
+  // R1 della verifica (§309-§310): in cantiere manca anche la pagina, non solo il server.
   await page.clock.setFixedTime(new Date("2026-10-26T08:00:00Z"));
   await page.goto("/dashboard/agenda");
   await expect(page.getByRole("button", { name: /Condominio Aurora/ }).first()).toBeVisible();

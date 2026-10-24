@@ -163,7 +163,7 @@ function Steps({ labels, step, error }: { labels: string[]; step: number; error?
         return (
           <YStack key={label} flex={1} gap={4}>
             <YStack height={4} borderRadius={2} backgroundColor={done || current ? color : brand.filetto} opacity={current && !error ? 0.45 : 1} />
-            <Text fontSize={11} lineHeight={14} fontWeight={current ? "700" : "500"} color={done || current ? brand.grafite : brand.grafite70}>
+            <Text fontSize={13} lineHeight={14} fontWeight={current ? "700" : "500"} color={done || current ? brand.grafite : brand.grafite70}>
               {label}
             </Text>
           </YStack>
@@ -176,10 +176,10 @@ function Steps({ labels, step, error }: { labels: string[]; step: number; error?
 function AmountRow({ label, value, strong, muted }: { label: string; value: string; strong?: boolean; muted?: boolean }) {
   return (
     <XStack justifyContent="space-between" gap="$3" paddingVertical={2}>
-      <Text fontSize="$2" color={muted ? brand.grafite70 : brand.grafite} flexShrink={1}>
+      <Text fontSize={13} color={muted ? brand.grafite70 : brand.grafite} flexShrink={1}>
         {label}
       </Text>
-      <Text fontSize="$2" fontWeight={strong ? "700" : "500"} color={muted ? brand.grafite70 : brand.grafite} style={{ fontVariantNumeric: "tabular-nums" }}>
+      <Text fontSize={13} fontWeight={strong ? "700" : "500"} color={muted ? brand.grafite70 : brand.grafite} style={{ fontVariantNumeric: "tabular-nums" }}>
         {value}
       </Text>
     </XStack>
@@ -224,9 +224,9 @@ export function JobPaymentStatus({
   // posto della spiegazione lunga su accordi e contestazioni).
   if (payment.method === "DIRECT") {
     return (
-      <Text fontSize="$3" color={brand.grafite70}>
+      <Text fontSize={16} color={brand.grafite70}>
         Metodo di pagamento:{" "}
-        <Text fontSize="$3" fontWeight="700" color={brand.grafite}>
+        <Text fontSize={16} fontWeight="700" color={brand.grafite}>
           DIRETTO
         </Text>
         {audience === "client" ? " · paghi direttamente il professionista" : " · vieni pagato direttamente dal cliente"}
@@ -269,10 +269,10 @@ export function JobPaymentStatus({
           <Icon name={view.icon} size={18} strokeWidth={2.2} color={tone.fg} />
         </YStack>
         <YStack flex={1} gap={2}>
-          <Text fontSize={12} color={brand.grafite70}>
+          <Text fontSize={13} color={brand.grafite70}>
             {payment.balanceDirect ? "Acconto online con Stripe, saldo diretto" : "Pagamento online con Stripe"}
           </Text>
-          <Text fontSize="$4" fontWeight="700" color={view.tone === "danger" ? brand.urgenza : brand.grafite} lineHeight={22}>
+          <Text fontSize={16} fontWeight="700" color={view.tone === "danger" ? brand.urgenza : brand.grafite} lineHeight={22}>
             {view.title}
           </Text>
         </YStack>
@@ -282,7 +282,7 @@ export function JobPaymentStatus({
         <Steps labels={audience === "client" ? CLIENT_STEPS : PROFESSIONAL_STEPS} step={view.step} error={view.stepError} />
       ) : null}
 
-      <Text fontSize="$2" color={brand.grafite70} lineHeight={20}>
+      <Text fontSize={13} color={brand.grafite70} lineHeight={20}>
         {view.body}{" "}
         <Link
           href={audience === "client" ? "/termini#pagamenti" : "/per-professionisti/pagamenti"}
@@ -315,7 +315,7 @@ export function JobPaymentStatus({
         </CardButton>
       ) : null}
       {error ? (
-        <Text fontSize="$2" color={brand.urgenza} role="alert">
+        <Text fontSize={13} color={brand.urgenza} role="alert">
           {error}
         </Text>
       ) : null}

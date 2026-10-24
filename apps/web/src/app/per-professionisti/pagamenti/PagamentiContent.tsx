@@ -28,7 +28,7 @@ function Block({ title, children }: { title: string; children: ReactNode }) {
 
 function P({ children }: { children: ReactNode }) {
   return (
-    <Text fontSize="$3" color={brand.grafite70} lineHeight={24}>
+    <Text fontSize={16} color={brand.grafite70} lineHeight={24}>
       {children}
     </Text>
   );
@@ -63,7 +63,7 @@ export function PagamentiContent() {
               <YStack flexShrink={0}>
                 <Icon name="credit-card" size={20} color={brand.cianografiaScuro} strokeWidth={1.75} />
               </YStack>
-              <Text fontSize="$3" color={brand.grafite} flex={1} lineHeight={24}>
+              <Text fontSize={16} color={brand.grafite} flex={1} lineHeight={24}>
                 Il pagamento online è in arrivo: per ora i clienti ti pagano direttamente. Qui sotto trovi come funzionerà.
               </Text>
             </XStack>
@@ -102,7 +102,7 @@ export function PagamentiContent() {
           </P>
         </Block>
 
-        <Text fontSize="$2" color={brand.grafite70}>
+        <Text fontSize={13} color={brand.grafite70}>
           Le regole complete sono nei{" "}
           <Link href="/termini" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
             Termini di servizio

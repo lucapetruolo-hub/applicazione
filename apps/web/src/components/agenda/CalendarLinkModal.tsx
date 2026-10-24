@@ -101,7 +101,7 @@ export function CalendarLinkModal({ token, onClose }: { token: string; onClose: 
               </button>
               . Non condividerlo: chi lo ha vede i tuoi appuntamenti.
             </p>
-            {/* P2 della verifica (docs/CHANGELOG.md §305): spegnere il link non cancella quello che il calendario ha già copiato. */}
+            {/* P2 della verifica (docs/CHANGELOG.md §310): spegnere il link non cancella quello che il calendario ha già copiato. */}
             <p className="ag-muted" style={{ fontSize: 13, marginTop: 8 }}>
               Se spegni la sincronizzazione, togli il calendario anche da Google o dall&apos;iPhone: gli appuntamenti già copiati restano lì.
             </p>

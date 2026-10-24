@@ -1,4 +1,4 @@
-// Lighthouse dell'agenda su un telefono lento (docs/CHANGELOG.md §304):
+// Lighthouse dell'agenda su un telefono lento (docs/CHANGELOG.md §309):
 // profilo "mobile" di Lighthouse (Moto G Power, CPU rallentata 4 volte,
 // rete 4G lenta simulata). Blocca sotto i limiti "scarso" di Google
 // (BUDGET) e avvisa sotto quelli "buono" (GOOD), che sono l'obiettivo.

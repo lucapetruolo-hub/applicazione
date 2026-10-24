@@ -18,7 +18,7 @@ export function Eyebrow({ children, tone = "light" }: EyebrowProps) {
 
   return (
     <XStack alignSelf="flex-start" backgroundColor={bg} paddingHorizontal="$3" paddingVertical={6} borderRadius={999}>
-      <Text fontFamily="$body" fontSize={12.5} fontWeight="700" color={textColor}>
+      <Text fontFamily="$body" fontSize={13} fontWeight="700" color={textColor}>
         {children}
       </Text>
     </XStack>

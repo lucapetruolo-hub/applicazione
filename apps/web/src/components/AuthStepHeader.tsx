@@ -78,7 +78,7 @@ export function AuthStepHeader({
             {title}
           </Text>
           {subtitle ? (
-            <Text fontSize="$3" color={brand.grafite70} textAlign="center">
+            <Text fontSize={16} color={brand.grafite70} textAlign="center">
               {subtitle}
             </Text>
           ) : null}

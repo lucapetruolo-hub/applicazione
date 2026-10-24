@@ -32,7 +32,7 @@ export function EmailVerificationBanner() {
       justifyContent="center"
       alignItems="center"
     >
-      <Text fontSize="$3" color={brand.grafite} textAlign="center">
+      <Text fontSize={16} color={brand.grafite} textAlign="center">
         Conferma la tua email per salvare il profilo e inviare preventivi: ti abbiamo mandato un codice a <Text fontWeight="700">{user.email}</Text>.
       </Text>
       <Link href="/conferma-email" style={{ color: brand.cianografiaScuro, fontWeight: 700, textDecoration: "underline" }}>
