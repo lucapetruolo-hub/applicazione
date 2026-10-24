@@ -8,7 +8,8 @@
     "css:tamagui": "TSX_TSCONFIG_PATH=scripts/tsconfig.json tsx scripts/generate-tamagui-css.ts",
     "start": "next start",
     "lint": "eslint src",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit",
+    "confronto-pagine": "node scripts/confronto-pagine.mjs"
   },
   "dependencies": {
     "@professionisti/api-client": "workspace:*",
@@ -17,15 +18,16 @@
     "@vercel/analytics": "^2.0.1",
     "@vis.gl/react-google-maps": "^1.10.1",
     "lucide-react": "^1.27.0",
-    "next": "^14.2.15",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "next": "^15.5.28",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
   },
   "devDependencies": {
     "@professionisti/config": "workspace:*",
     "@types/node": "^22.7.0",
-    "@types/react": "^18.3.11",
-    "@types/react-dom": "^18.3.0",
-    "typescript": "^5.6.0"
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "playwright": "1.63.0",
+    "typescript": "~6.0.3"
   }
 }

@@ -20032,7 +20032,72 @@ La mappa con una chiave vera si vede solo sul sito pubblicato: dopo l'unione va 
 
 **Verifica**: typecheck di web e API, test nuovi in `apps/api/src/seo/seo-helpers.test.ts` (provenienza e indirizzo del profilo) e `category-prices.test.ts` (soglie, mediana e quartili), migrazione su Postgres 16 locale (`migrate deploy` e `migrate diff` vuoto), controllo SEO in locale sui due tipi di build: tutto a posto, e la build privata fa fallire il controllo del sito aperto (20 problemi), quindi il controllo funziona. Il controllo copre anche `/prezzi/idraulico` e `/prezzi/idraulico/latina` (sopra soglia nell'API finta), `/prezzi/pulizie` e `/prezzi/idraulico/roma` (404), `/cerca/idraulico/latina/caldaie` (in Google), `/impianti-sanitari` (noindex), `/domotica` (404) e `/lavora-con-noi/pulizie`. Foto in `anteprime/seo/strategia/`.
 
-## 297. Test dei permessi e strumenti di controllo nella CI
+## 297. Aggiornamento a Next.js 15.5
+
+**Richiesta esplicita dell'utente** (22/10/2026, punto 2 del controllo sicurezza, `/mnt/project-files/analisi/controllo-sicurezza.md`): la serie 14 di Next.js non riceve più correzioni di sicurezza (2 falle critiche e 8 alte sulla 14.2.35). Aggiornare con prove su tutte le pagine, da telefono e da computer, senza cambiare l'aspetto.
+
+**Decisione presa**:
+- `next` 14.2.35 → 15.5.28 in `apps/web`. React resta 18 nel `package.json`: l'App Router usa comunque la copia di React 19 inclusa in Next, e così `apps/mobile` (Expo, React 18) non ne risente. Restano solo due avvisi di build da `react-native-web` (`hydrate` e `unmountComponentAtNode` non esistono più in React 19): sono funzioni che il sito non chiama.
+- Le cinque pagine server che leggono indirizzo o parametri (`/cerca`, `/cerca/[categoria]`, `/cerca/[categoria]/[citta]`, `/professionista/[id]`, `/dashboard/tipo-attivita`) ora attendono `params`/`searchParams`, che in Next 15 sono Promise. Le pagine client usavano già `useParams`/`useSearchParams`; `cookies()`/`headers()` non sono usati.
+- Con l'unione della PR #101 (SEO, §295-§296) stesso adattamento per le sue pagine nuove: `/prezzi/[categoria]`, `/prezzi/[categoria]/[citta]`, `/cerca/[categoria]/[citta]/[servizio]`, `/lavora-con-noi/[categoria]`. Il controllo SEO della CI (sito privato e aperto) passa con Next 15.
+- Cache delle fetch: nessun cambio necessario, tutte le pagine con dati sono già `force-dynamic` e le fetch di ricerca `cache: "no-store"`.
+- `typecheck` del sito: `next typegen && tsc --noEmit`. Next 15.5 aggiunge a `next-env.d.ts` i tipi delle rotte in `.next/types`, che in CI non esisterebbero prima del build; `next typegen` li genera e controlla anche le props delle pagine.
+
+**Verifica**: typecheck, lint e build del sito. Con API e database locali, foto a pagina intera di 68 indirizzi (pubblici, cliente, professionista, admin, pagine 404) a 1440 e 390 px, con Next 14 e con Next 15: 133 su 136 identiche al pixel, le altre 3 differiscono per pochi pixel di antialiasing del testo. Secondo giro con un professionista con richieste vere: cambiano solo i contatori "Nuovo" già letti nel primo giro. Nessun errore nella console. Prove di navigazione: ricerca → profilo → indietro, cambio Online/A domicilio sulla stessa pagina (i risultati si aggiornano), accesso con email e password, "Le mie richieste". Il titolo della pagina profilo resta nell'`<head>` anche per i motori di ricerca.
+
+## 298. NestJS 11, React 19 sul sito e confronto automatico delle pagine
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Aggiornamento Next.js", "effettua le 3 migliorie" proposte con §297): NestJS 11 nell'API (punto 38 del controllo sicurezza, pacchetti vecchi), React 19 nel sito, e il confronto delle foto delle pagine salvato nel progetto.
+
+**Decisione presa**:
+- **API**: `@nestjs/common`, `core`, `platform-express` 11.2, `@nestjs/jwt` 11, `@nestjs/cli`/`schematics` 11, `@types/express` 5. Nest 11 usa Express 5, che l'API dichiarava già. Nessuna rotta con `*` o `?` (la sintassi che cambia in Express 5), nessun cambio di codice.
+- **Sito su React 19** (`react`, `react-dom`, `@types/react` 19). L'app mobile resta su React 18 (Expo 51): nella radice del monorepo restano i tipi 18, quindi `apps/web/tsconfig.json` forza con `paths` i tipi 19 per tutto il controllo del sito (anche per i componenti di `packages/ui`). `react-native-web` in `packages/ui` passa a 0.21 (compatibile con React 18 e 19): spariscono anche i due avvisi di build su `hydrate` e `unmountComponentAtNode`.
+- **Confronto delle pagine**: `apps/web/scripts/confronto-pagine.mjs` (`pnpm --filter @professionisti/web confronto-pagine foto <cartella>` e `confronta <prima> <dopo>`), con `playwright` tra le dipendenze di sviluppo del sito. Fotografa a pagina intera tutte le pagine (pubbliche, cliente, professionista, admin, 404) a 1440 e 390 px, salva stato HTTP ed errori di console in `report.json`, e confronta due giri segnando in rosso i pixel diversi. Le sessioni di prova si passano con variabili d'ambiente, istruzioni in testa al file.
+
+**Verifica**: 487 test dell'API, controllo d'avvio, typecheck e lint di tutto il monorepo, build del sito. API avviata con un database locale: accesso (401 con token falso), errori di validazione 400, JSON rovinato 400, ricerca, richieste del professionista, caricamento immagine (multer), notifiche in tempo reale (SSE). Con lo strumento nuovo: giro "prima" con Next 14, React 18 e NestJS 10 (commit di partenza) e giro "dopo" con Next 15.5, React 19 e NestJS 11, 132 foto: 131 identiche al pixel, una con 8 pixel di antialiasing; stessi stati HTTP e nessun errore in console. Prove di navigazione e moduli (ricerca, profilo, indietro, Online/A domicilio, accesso, contatti, richieste e profilo del professionista) senza errori.
+
+## 299. App mobile su Expo 58 e React 19
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Aggiornamento Next.js"): "cambia anche l'app su react 19".
+
+**Decisione presa**:
+- `apps/mobile`: Expo 51 → 58 (React Native 0.74 → 0.88, React 18.2 → 19.3.0), con le versioni indicate da Expo 58 per `expo-router`, `expo-font`, `expo-status-bar`, `react-native-safe-area-context` e `react-native-screens`, più i pacchetti che `expo-router` ora chiede (`expo-linking`, `expo-constants`, `@expo/metro-runtime`, `@expo/log-box`). Tolto `newArchEnabled` da `app.json`: la nuova architettura ora è l'unica. TypeScript escluso dal controllo versioni di Expo (`expo.install.exclude`): Expo 58 chiederebbe TypeScript 6, il monorepo resta su uno solo.
+- **Una sola versione di React in tutto il monorepo**: `overrides` in `pnpm-workspace.yaml` per `react`, `react-dom` (19.3.0), `react-native` (0.88.0), `react-native-reanimated`, `react-native-worklets` e `@react-native/metro-config` (quelli usati da Expo 58). Senza, i pacchetti condivisi (Tamagui in `packages/ui`) si portavano dietro copie diverse. Il sito passa da 19.3.1 a 19.3.0, la versione di Expo. Tolto il `paths` di `apps/web/tsconfig.json` del §298 (non serve più con una sola versione dei tipi); `peerDependencyRules.allowedVersions.react` ora "19"; `@types/react` 19 anche in `packages/ui`. Un `JSX.Element` globale in `CategoryIcons.tsx` ora importato da `react` (i tipi di React 19 non hanno più il `JSX` globale).
+
+**Verifica**: typecheck di tutto il monorepo (app compresa), lint, test, build. `npx expo export` per Android e iOS genera il pacchetto (prima non funzionava in locale), `npx expo-doctor` 20 controlli su 20. Non provata su un telefono vero: va fatto con una build EAS prima di pubblicarla (checklist di lancio, punto 38).
+
+## 300. Prisma 6
+
+**Richiesta esplicita dell'utente** (24/10/2026, stesso thread): "aggiorna anche prisma da 5 a 6".
+
+**Decisione presa**: `prisma` e `@prisma/client` 5.22 → 6.19. Nel codice nessun campo `Bytes`, nessun `NotFoundError`, nessun nome riservato: niente da cambiare. Una migrazione nuova (`20261024092854_prisma6_relazioni_implicite`): in Prisma 6 la tabella della relazione molti-a-molti implicita `_ProfessionalExtraCategories` usa una chiave primaria invece di un indice unico. Stessi dati, parte da sola al primo avvio su Render.
+
+**Verifica**: build, typecheck, lint, test, controllo d'avvio dell'API. Migrazione applicata al database locale con i dati di prova; su un database vuoto tutte le migrazioni più il seed, poi `migrate diff` senza differenze tra schema e database. Foto delle 132 pagine contro il ramo principale (Next 14, React 18, NestJS 10, Prisma 5): 128 identiche al pixel, nelle altre la riga "adesso" dell'agenda e pochi pixel di antialiasing; nessun errore in console; prove di navigazione e moduli senza errori.
+
+## 301. TypeScript 6 ed ESLint 10
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Aggiornamento Next.js"): "effettua le due migliorie" (TypeScript 6 ed ESLint 10, proposte con §300).
+
+**Decisione presa**:
+- **TypeScript** 5 → 6.0.3 in tutti i pacchetti. Tolta l'esclusione di TypeScript dal controllo versioni di Expo (§299): ora è la versione che Expo 58 chiede. Con TypeScript 6 `types` non include più da solo tutti i tipi installati, quindi ogni `tsconfig` dichiara i suoi (`node`; più `multer` nell'API e `google.maps` nel sito). `moduleResolution: node10` e `baseUrl` sono deprecati: `packages/config/tsconfig.node.json` passa a `Node16`, `baseUrl` tolto dove `paths` non lo usava più. TypeScript 6 controlla anche gli import di file CSS: `apps/web/src/css.d.ts` li dichiara. In `packages/ui/src/Autocomplete.tsx` un tipo di evento più preciso. Nessun cambio di comportamento.
+- **ESLint** 9 → 10.13 (`@eslint/js` 10, `typescript-eslint` 8.72, `globals` 17, `eslint-plugin-react-hooks` 7). La versione 7 degli hooks aggiunge le regole del React Compiler (setState dentro un effetto, valori impuri durante il render...): per ora solo avvisi, da sistemare un po' alla volta come quelle di accessibilità del §205; restano errori le regole degli hooks di sempre. La regola nuova `no-useless-assignment` ha trovato cinque variabili inizializzate con un valore subito sovrascritto, sistemate. `eslint-plugin-jsx-a11y` dichiara ancora ESLint 9 come compatibile ma funziona (solo un avviso di pnpm).
+
+**Verifica**: typecheck di tutto il monorepo (app compresa), lint senza errori, 522 test, build, controllo d'avvio dell'API, `expo export` Android ed `expo-doctor` 20 su 20. Foto delle 132 pagine contro il ramo principale: 128 identiche al pixel, nelle altre 4 solo la riga "adesso" dell'agenda, le tessere "Servizi più richiesti" cambiate dalle ricerche di prova e pochi pixel di antialiasing; nessun errore in console.
+
+## 302. Aggiornamenti automatici con Dependabot
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Aggiornamento Next.js"): dopo §297-§301 Luca ha chiesto "come terrò aggiornate tutte queste cose se usciranno aggiornamenti?", poi "effettua le due migliorie nelle modalità che ritieni".
+
+**Decisione presa**: `.github/dependabot.yml`, gratuito e già dentro GitHub.
+- Una volta al mese una PR unica con tutti gli aggiornamenti piccoli (minor e patch) di sito, API, app e pacchetti condivisi, più una per le azioni della CI. Se la CI è verde si unisce, come le altre PR ("unisci").
+- Gli aggiornamenti grandi (major) arrivano in PR separate, al massimo 5 aperte insieme: vanno trattati in un thread dedicato, con il confronto delle pagine prima e dopo (§298).
+- Esclusi React, React DOM, React Native e i loro tipi, fissati insieme per sito e app con gli `overrides` (§299), e le versioni grandi di Expo e dei suoi pacchetti: si fanno a mano (`npx expo install --fix`, `npx expo-doctor`).
+- Le falle di sicurezza aprono una PR subito, senza aspettare il mese, se nelle impostazioni del repo sono accesi "Dependabot alerts" e "Dependabot security updates" (checklist di lancio, punto 28).
+- La seconda miglioria (i 163 avvisi del controllo del codice: regole nuove di React del §301 e accessibilità del §205) si fa in un thread a parte.
+
+**Verifica**: file controllato come YAML valido; Dependabot lo legge dal ramo principale, quindi parte dopo l'unione.
+
+## 303. Test dei permessi e strumenti di controllo nella CI
 
 **Richiesta dell'utente**: dal controllo approfondito (§293), un test nella CI che chiama ogni rotta con ogni ruolo e con gli id di un altro utente, più Semgrep, CodeQL, gitleaks e osv-scanner. Deciso di farli subito invece che prima del lancio. "La prova che il lavoro è giusto non è la tua parola: sono i test nella CI e i rapporti degli strumenti."
 
@@ -20048,9 +20113,9 @@ Risultato: 218 rotte, 798 controlli, nessuna falla (dopo l'unione della PR #101:
 
 **Prima lettura dei rapporti**: Semgrep 5 segnalazioni (2 reali ma basse: la lunghezza del sigillo AES-GCM non è controllata nella decifratura dei dati fiscali e dei link di invito; 3 falsi allarmi). osv-scanner 162 avvisi su 45 librerie, quasi tutte usate solo per costruire o provare il codice; nell'API e nel sito pubblicato contano Next.js 14 (passaggio a 15 già in un thread a parte), body-parser, qs (usato solo dal lettore dei moduli `urlencoded`, che nessun client usa), `@nestjs/core` e zod (corretti solo nelle versioni maggiori nuove). Le correzioni sono proposte all'utente in ordine di gravità prima di farle.
 
-## 298. Controllo sicurezza: correzioni dai rapporti degli strumenti
+## 304. Controllo sicurezza: correzioni dai rapporti degli strumenti
 
-**Richiesta dell'utente**: "effettua le correzioni che ritieni nell'ordine e nelle modalità che ritieni", sulle proposte nate dai rapporti del §297.
+**Richiesta dell'utente**: "effettua le correzioni che ritieni nell'ordine e nelle modalità che ritieni", sulle proposte nate dai rapporti del §303.
 
 1. **Corpi compressi rifiutati** (`src/app-setup.ts`, `inflate: false` sul lettore JSON e sui due webhook): body-parser ha una falla nota che blocca l'API con un corpo compresso fatto apposta. Nessun client manda corpi compressi (sito, app, Stripe, Didit), quindi invece di aggiornare la libreria si spegne la decompressione: la richiesta compressa riceve 415. Funziona uguale su Express 4 e su Express 5 (PR #103).
 2. **Tolto il lettore dei moduli `urlencoded`**: l'API riceve solo JSON e nessun client manda moduli; quel lettore usava `qs`, con due falle note. Un modulo ora arriva vuoto e la validazione risponde 400.
@@ -20059,7 +20124,7 @@ Risultato: 218 rotte, 798 controlli, nessuna falla (dopo l'unione della PR #101:
 
 Non fatto qui: zod 4 (aggiornamento grande, rischio basso: il corpo JSON ha già un limite di dimensione); Next.js 15 e NestJS 11 sono nella PR #103.
 
-**Verifica**: 543 test dell'API (con il sigillo accorciato rifiutato), typecheck e lint. API avviata con Postgres locale: login con corpo compresso 415, con modulo 400, con JSON normale la risposta di sempre. Test dei permessi (§297) di nuovo senza problemi. Semgrep: 0 segnalazioni.
+**Verifica**: 543 test dell'API (con il sigillo accorciato rifiutato), typecheck e lint. API avviata con Postgres locale: login con corpo compresso 415, con modulo 400, con JSON normale la risposta di sempre. Test dei permessi (§303) di nuovo senza problemi. Semgrep: 0 segnalazioni.
 
 **Migliorie** (richiesta dell'utente: "effettua tutte le migliorie da 1 a 4 nella modalità che ritieni"):
 1. **Allegati della chat solo per chi partecipa** (`TimelineService.canDownloadAttachment`): `GET /guided-requests/timeline-photos/download` scarica l'allegato solo se compare in un messaggio di una chat di cui chi chiama è il cliente o il professionista, oppure se è un admin (chat in sola lettura per la moderazione). Altrimenti risponde 404. Prima bastava aver fatto l'accesso e conoscere l'indirizzo, e i documenti sono proprio quelli che la CDN di Cloudinary non consegna da sola. Nel test dei permessi la rotta è ora "di qualcuno": gli estranei ricevono 404, e togliendo apposta il controllo il test fallisce.

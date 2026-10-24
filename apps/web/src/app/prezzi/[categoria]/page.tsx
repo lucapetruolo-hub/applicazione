@@ -7,11 +7,13 @@ export const dynamic = "force-dynamic";
 
 type PageParams = { categoria: string };
 
-export async function generateMetadata({ params }: { params: PageParams }): Promise<Metadata> {
+export async function generateMetadata(props: { params: Promise<PageParams> }): Promise<Metadata> {
+  const params = await props.params;
   return pricesMetadata(await loadPrices(params.categoria));
 }
 
-export default async function CategoryPricesPage({ params }: { params: PageParams }) {
+export default async function CategoryPricesPage(props: { params: Promise<PageParams> }) {
+  const params = await props.params;
   const data = await loadPrices(params.categoria);
   if (!data) notFound();
   return <PricesView data={data} />;

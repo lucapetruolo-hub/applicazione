@@ -1,6 +1,6 @@
 name: Controlli di sicurezza
 
-# Strumenti automatici di controllo (docs/CHANGELOG.md §297-§298). I
+# Strumenti automatici di controllo (docs/CHANGELOG.md §303-§304). I
 # risultati di CodeQL, Semgrep e osv-scanner finiscono nella scheda
 # "Security → Code scanning" del repository. Bloccano la PR CodeQL e
 # Semgrep (il codice è pulito: una segnalazione nuova va corretta, o

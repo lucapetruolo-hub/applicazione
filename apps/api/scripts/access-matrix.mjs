@@ -1,5 +1,5 @@
 // Test dei permessi di tutte le rotte (controllo sicurezza, docs/CHANGELOG.md
-// §297). Avvia l'API vera dal build (dist/) su un database Postgres di prova,
+// §303). Avvia l'API vera dal build (dist/) su un database Postgres di prova,
 // crea utenti e dati per ogni ruolo e chiama ogni rotta:
 // - senza accesso: 401 su tutto ciò che non è pubblico;
 // - admin: ogni ruolo admin e un utente normale, secondo @RequireAdminScope;
@@ -48,7 +48,7 @@ ZodValidationPipe.prototype.transform = function (value, metadata) {
 };
 
 const prisma = new PrismaClient();
-// Allegato "documento" della chat tra clientA e proA (rotta di download, §298).
+// Allegato "documento" della chat tra clientA e proA (rotta di download, §304).
 const ATTACHMENT_URL = "https://res.cloudinary.com/prova/raw/upload/v1/chat/abc123-preventivo.pdf";
 
 async function resetDatabase() {

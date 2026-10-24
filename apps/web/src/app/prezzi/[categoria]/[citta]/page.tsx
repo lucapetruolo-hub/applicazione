@@ -14,12 +14,12 @@ async function load(params: PageParams) {
   return comune ? loadPrices(params.categoria, comune) : null;
 }
 
-export async function generateMetadata({ params }: { params: PageParams }): Promise<Metadata> {
-  return pricesMetadata(await load(params));
+export async function generateMetadata(props: { params: Promise<PageParams> }): Promise<Metadata> {
+  return pricesMetadata(await load(await props.params));
 }
 
-export default async function CityPricesPage({ params }: { params: PageParams }) {
-  const data = await load(params);
+export default async function CityPricesPage(props: { params: Promise<PageParams> }) {
+  const data = await load(await props.params);
   if (!data) notFound();
   return <PricesView data={data} />;
 }

@@ -1,0 +1,51 @@
+# Aggiornamenti automatici delle dipendenze (docs/CHANGELOG.md §302).
+# Una volta al mese Dependabot apre una PR con tutti gli aggiornamenti
+# piccoli (minor e patch) raggruppati; la CI li prova e, se è verde, si
+# unisce. Gli aggiornamenti grandi (major) arrivano in PR separate, da
+# trattare come §297-§301: un thread dedicato e il confronto delle pagine
+# prima e dopo (`pnpm --filter @professionisti/web confronto-pagine`).
+# Le falle di sicurezza aprono una PR subito, senza aspettare il mese
+# (serve "Dependabot security updates" acceso nelle impostazioni del repo).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directories:
+      - "/"
+      - "/apps/*"
+      - "/packages/*"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    groups:
+      aggiornamenti-piccoli:
+        update-types: ["minor", "patch"]
+    ignore:
+      # React e React Native sono fissati insieme per sito e app con gli
+      # `overrides` di pnpm-workspace.yaml (§299): si aggiornano a mano,
+      # tutti nello stesso momento.
+      - dependency-name: "react"
+      - dependency-name: "react-dom"
+      - dependency-name: "react-native"
+      - dependency-name: "@types/react"
+      - dependency-name: "@types/react-dom"
+      # Le versioni dei pacchetti Expo dipendono dalla versione di Expo:
+      # una nuova versione di Expo si fa a mano con `npx expo install --fix`
+      # e `npx expo-doctor` (§299).
+      - dependency-name: "expo"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "expo-*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@expo/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-native-*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "babel-preset-expo"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    groups:
+      azioni-github:
+        patterns: ["*"]
