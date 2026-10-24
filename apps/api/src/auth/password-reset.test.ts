@@ -51,9 +51,18 @@ describe("recupero password", () => {
     expect(result.token).toBe("jwt-token");
     const data = prisma.user.update.mock.calls[0]![0].data;
     expect(data.passwordResetTokenHash).toBeNull();
+    // Gli accessi sugli altri dispositivi si chiudono (§292).
+    expect(data.sessionVersion).toEqual({ increment: 1 });
     expect(data.emailVerifiedAt).toBeInstanceOf(Date);
     expect(await bcrypt.compare("nuovaPassword1", data.passwordHash)).toBe(true);
     expect(emailService.send).toHaveBeenCalledWith(expect.objectContaining({ subject: "La tua password è stata cambiata" }));
+  });
+
+  it("rifiuta una password nuova che contiene l'email (§289)", async () => {
+    const { service, prisma } = buildService();
+    prisma.user.findUnique.mockResolvedValue({ id: "u-1", email: "mario.rossi@example.it", deletedAt: null, passwordResetExpiresAt: new Date(Date.now() + 60_000) });
+    await expect(service.confirmPasswordReset("x".repeat(43), "Mario.Rossi2026")).rejects.toThrow("La password non può contenere la tua email.");
+    expect(prisma.user.update).not.toHaveBeenCalled();
   });
 
   it("rifiuta un link scaduto", async () => {
@@ -119,5 +128,14 @@ describe("recupero password con il codice di 6 cifre (§245)", () => {
       await expect(service.exchangePasswordResetCode("mario@example.it", code)).rejects.toThrow(message);
       expect(prisma.user.update).not.toHaveBeenCalled();
     }
+  });
+});
+
+describe("esci dagli altri dispositivi (§294)", () => {
+  it("chiude le altre sessioni e dà un token nuovo a questo dispositivo", async () => {
+    const { service, prisma } = buildService();
+    prisma.user.update.mockResolvedValue({ id: "u-1", sessionVersion: 3 });
+    await expect(service.logoutOtherDevices("u-1")).resolves.toEqual({ token: "jwt-token" });
+    expect(prisma.user.update).toHaveBeenCalledWith({ where: { id: "u-1" }, data: { sessionVersion: { increment: 1 } } });
   });
 });

@@ -14,6 +14,7 @@ import { JourneyProgress, journeyCurrent, setupJourney } from "@/components/veri
 import { OnlinePaymentsCard } from "@/components/OnlinePaymentsCard";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { FiscalWhyModal } from "@/components/verification/FiscalWhyModal";
+import { ItalianDateInput } from "@/components/ItalianDateInput";
 
 const isPersonType = (type: string) => type === "PRIVATE_INDIVIDUAL" || type === "SOLE_PROPRIETOR";
 
@@ -637,12 +638,11 @@ function DashboardFiscaleContent() {
                         <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
                           Data di nascita
                         </Text>
-                        <input
-                          type="date"
-                          aria-label="Data di nascita"
+                        <ItalianDateInput
+                          ariaLabel="Data di nascita"
                           value={fields.dateOfBirth ?? ""}
                           max={new Date().toISOString().slice(0, 10)}
-                          onChange={(event) => setField("dateOfBirth", event.target.value)}
+                          onChange={(next) => setField("dateOfBirth", next)}
                           style={{ ...addressInputStyle, borderColor: liveError("dateOfBirth") ? brand.urgenza : brand.bordoCampo }}
                         />
                         {liveError("dateOfBirth") ? (

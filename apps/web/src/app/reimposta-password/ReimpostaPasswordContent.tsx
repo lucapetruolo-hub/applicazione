@@ -3,9 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { PASSWORD_CONTAINS_EMAIL_MESSAGE, isMissingRulesProblem, passwordProblem } from "@professionisti/shared";
 import { Button, Icon, Text, YStack, brand } from "@professionisti/ui";
 import { AuthField } from "@/components/AuthField";
 import { AuthCard, AuthPageBackground } from "@/components/AuthPageBackground";
+import { PASSWORD_RULES_ATTRIBUTE, PasswordRules } from "@/components/PasswordRules";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -20,12 +22,19 @@ export function ReimpostaPasswordContent() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Regole della password (docs/CHANGELOG.md §289): rosse dopo un invio non riuscito.
+  const [passwordAttempted, setPasswordAttempted] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit() {
     setError(null);
-    if (password.length < 8) {
-      setError("La password deve avere almeno 8 caratteri");
+    setPasswordError(null);
+    const problem = passwordProblem(password);
+    if (problem) {
+      setPasswordAttempted(true);
+      if (!isMissingRulesProblem(problem)) setPasswordError(problem);
+      document.getElementById("new-password")?.focus();
       return;
     }
     setIsSubmitting(true);
@@ -34,7 +43,9 @@ export function ReimpostaPasswordContent() {
       const currentUser = await login(result.token);
       router.push(currentUser?.isProfessional ? "/dashboard" : "/");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+      const message = err instanceof Error ? err.message : "Errore imprevisto, riprova.";
+      if (message === PASSWORD_CONTAINS_EMAIL_MESSAGE) setPasswordError(message);
+      else setError(message);
       setIsSubmitting(false);
     }
   }
@@ -55,7 +66,6 @@ export function ReimpostaPasswordContent() {
           <YStack gap="$4">
             <AuthField
               label="Nuova password"
-              hint="Almeno 8 caratteri"
               rightElement={
                 <Text
                   cursor="pointer"
@@ -73,6 +83,11 @@ export function ReimpostaPasswordContent() {
               autoComplete="new-password"
               nativeID="new-password"
               accessibilityLabel="Nuova password"
+              passwordRules={PASSWORD_RULES_ATTRIBUTE}
+              error={passwordError ?? undefined}
+              invalid={passwordAttempted && passwordProblem(password) !== null}
+              footer={<PasswordRules id="new-password-rules" password={password} showMissing={passwordAttempted} />}
+              footerId="new-password-rules"
               onSubmitEditing={handleSubmit}
             />
             {error ? (
@@ -80,7 +95,7 @@ export function ReimpostaPasswordContent() {
                 {error}
               </Text>
             ) : null}
-            <Button variant="primary" onPress={handleSubmit} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
+            <Button variant="scuro" onPress={handleSubmit} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
               {isSubmitting ? "Salvataggio..." : "Salva e accedi"}
             </Button>
           </YStack>

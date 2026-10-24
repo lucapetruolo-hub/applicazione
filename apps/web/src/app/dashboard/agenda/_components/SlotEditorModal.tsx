@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
-import { SlotDraft, isSlotGeneric } from "./agendaHelpers";
+import { SlotDraft } from "./agendaHelpers";
 
 /**
  * Casellina di spunta (richiesta esplicita dell'utente): in modalità
@@ -45,26 +45,29 @@ export function SlotChip({
   isSelected?: boolean;
   onEdit: () => void;
 }) {
-  const isGeneric = isSlotGeneric(slot);
   // Solo l'orario, in piccolo, per restare dentro la colonna anche nella
   // vista Settimana (richiesta esplicita dell'utente): tutto il resto
   // (modifica, capienza, eliminazione) si apre nel pop-up di modifica
   // (SlotEditorModal) toccando l'intera fascia — niente più tasto "×" a
   // parte: su cellulare si sovrapponeva al riquadro della fascia, poco
   // chiaro, richiesta esplicita dell'utente.
+  // Stile della nuova agenda (docs/CHANGELOG.md §288): pastiglia verde come
+  // le fasce libere della griglia. Il limite di prenotazioni si vede
+  // aprendo la fascia (nella colonna della settimana non c'è spazio).
+  const highlighted = isEditing || isSelected;
   return (
     <XStack
-      borderWidth={isConflicting || isEditing || isSelected ? 1.5 : 1}
-      borderStyle={isGeneric && !isConflicting && !isSelected ? "dashed" : "solid"}
-      borderColor={isConflicting ? brand.urgenza : isEditing || isSelected ? brand.cianografia : isGeneric ? brand.ottone : brand.cianografia}
-      borderRadius="$2"
-      paddingHorizontal="$1.5"
+      borderWidth={1}
+      borderColor={isConflicting ? brand.urgenza : highlighted ? brand.cianografiaScuro : brand.cianografia}
+      borderRadius={999}
+      paddingHorizontal={6}
       paddingVertical={5}
       alignItems="center"
-      gap={3}
+      justifyContent="center"
+      gap={4}
       minWidth={0}
       cursor="pointer"
-      backgroundColor={isConflicting ? brand.urgenzaVelo : isEditing || isSelected ? brand.cianografiaVelo : brand.calce}
+      backgroundColor={isConflicting ? brand.urgenzaVelo : highlighted ? brand.cianografiaVelo : "#edf8f2"}
       onPress={onEdit}
       accessibilityRole="button"
       accessibilityLabel={isSelected !== undefined ? `${isSelected ? "Deseleziona" : "Seleziona"} fascia ${slot.start}–${slot.end}` : `Modifica fascia ${slot.start}–${slot.end}`}
@@ -72,14 +75,14 @@ export function SlotChip({
       {isSelected !== undefined ? (
         <SelectionCheckbox checked={isSelected} />
       ) : slot.hasUpcomingBooking ? (
-        <Icon name="bell-ring" size={9} color={brand.urgenza} />
+        <Icon name="bell-ring" size={10} color={brand.urgenza} />
       ) : null}
-      <Text fontFamily="$mono" fontSize={10} fontWeight="700" color={isGeneric && !isSelected ? brand.ottone : brand.cianografiaScuro}>
+      <Text fontFamily="$body" fontSize={11.5} fontWeight="600" color={isConflicting ? brand.urgenza : brand.cianografiaScuro} numberOfLines={1}>
         {slot.start}–{slot.end}
       </Text>
       {/* Simbolo "online" in piccolo sulla fascia (richiesta esplicita
           dell'utente) quando è stata spuntata la modalità online. */}
-      {slot.allowsOnline ? <Icon name="video" size={9} color={brand.verificato} /> : null}
+      {slot.allowsOnline ? <Icon name="video" size={11} color={brand.cianografiaScuro} /> : null}
     </XStack>
   );
 }

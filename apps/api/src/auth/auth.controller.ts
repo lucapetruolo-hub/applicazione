@@ -38,8 +38,14 @@ import { AuthService, emailCodeResendWait, emailCodeValidFor } from "./auth.serv
 import { JwtAuthGuard, type AuthenticatedRequest } from "./jwt-auth.guard";
 import { isEmailVerificationRequired } from "./verified-email.guard";
 import { assertTurnstile } from "./turnstile";
+import type { LoginDeviceInfo } from "./login-device";
 
 const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
+
+/** Codice del dispositivo mandato dal sito e browser, per l'email "Nuovo accesso" (§289). */
+function loginDevice(req: Request): LoginDeviceInfo {
+  return { id: req.get("x-device-id") ?? undefined, userAgent: req.get("user-agent") ?? undefined };
+}
 
 @Controller("auth")
 export class AuthController {
@@ -59,7 +65,7 @@ export class AuthController {
     // `acceptedLegalTerms`/`declaredAdult` sono già garantite `=== true` da
     // `registerSchema` stesso (Zod `.refine`) prima di arrivare qui —
     // `register()` registra sempre il consenso, nessun controllo aggiuntivo.
-    return this.authService.register(body.email, body.password, body.name, body.role, body.categorySlugs, body.entityType);
+    return this.authService.register(body.email, body.password, body.name, body.role, body.categorySlugs, body.entityType, loginDevice(req));
   }
 
   // Rivela se un'email è registrata (docs/CHANGELOG.md §176): limite stretto
@@ -72,17 +78,17 @@ export class AuthController {
 
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post("login")
-  async login(@Body(new ZodValidationPipe(emailPasswordSchema)) body: EmailPasswordInput) {
-    return this.authService.login(body.email, body.password);
+  async login(@Body(new ZodValidationPipe(emailPasswordSchema)) body: EmailPasswordInput, @Req() req: Request) {
+    return this.authService.login(body.email, body.password, loginDevice(req));
   }
 
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post("google/verify")
-  async verifyGoogle(@Body(new ZodValidationPipe(googleVerifySchema)) body: GoogleVerifyInput) {
+  async verifyGoogle(@Body(new ZodValidationPipe(googleVerifySchema)) body: GoogleVerifyInput, @Req() req: Request) {
     return this.authService.verifyGoogleToken(body.idToken, body.role, body.createIfMissing, {
       acceptedLegalTerms: body.acceptedLegalTerms === true,
       declaredAdult: body.declaredAdult === true,
-    }, body.categorySlugs, body.entityType);
+    }, body.categorySlugs, body.entityType, loginDevice(req));
   }
 
   // Recupero password (docs/CHANGELOG.md §185): stessa risposta che
@@ -308,8 +314,16 @@ export class AuthController {
     @Req() req: AuthenticatedRequest,
     @Body(new ZodValidationPipe(changePasswordSchema)) body: ChangePasswordInput,
   ) {
-    await this.authService.changePassword(req.user.userId, body.currentPassword, body.newPassword);
-    return { success: true };
+    // Token nuovo per questo dispositivo: quelli vecchi non valgono più (§292).
+    const { token } = await this.authService.changePassword(req.user.userId, body.currentPassword, body.newPassword);
+    return { success: true, token };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post("logout-others")
+  logoutOtherDevices(@Req() req: AuthenticatedRequest) {
+    return this.authService.logoutOtherDevices(req.user.userId);
   }
 
   @UseGuards(JwtAuthGuard)

@@ -13,12 +13,14 @@ import {
   type ProfileInvitePreview,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { sessionTokenPayload } from "../auth/jwt-auth.guard";
 import { ProfessionalsService } from "../professionals/professionals.service";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { EmailService } from "../email/email.service";
 import { profileInviteEmail } from "../email/templates/account-emails";
 import { profileCategories } from "../common/profile-categories.util";
 import type { AuthResult } from "../auth/auth.service";
+import { assertPasswordWithoutEmail } from "../auth/password-checks";
 
 const BCRYPT_SALT_ROUNDS = 10;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -229,15 +231,17 @@ export class ProfileInvitesService {
   /** Il professionista sceglie la password: entra subito, e conferma il profilo da /dashboard/profilo. */
   async accept(input: AcceptProfileInviteInput): Promise<AuthResult> {
     const invite = await this.findValidInvite(input.token);
+    // Prima di usare il link: con una password da cambiare non lo si perde.
+    assertPasswordWithoutEmail(input.password, invite.user.email);
     const claimed = await this.prisma.profileInvite.updateMany({ where: { id: invite.id, usedAt: null }, data: { usedAt: new Date() } });
     if (claimed.count === 0) throw new BadRequestException("Questo link è già stato usato: accedi con email e password.");
     const passwordHash = await bcrypt.hash(input.password, BCRYPT_SALT_ROUNDS);
-    await this.prisma.user.update({
+    const user = await this.prisma.user.update({
       where: { id: invite.userId },
       // Profilo verificato al telefono da un operatore: nessun link di
       // conferma email in più (docs/CHANGELOG.md §178).
       data: { passwordHash, legalConsentAt: new Date(), legalConsentVersion: LEGAL_CONSENT_VERSION, emailVerifiedAt: new Date() },
     });
-    return { token: this.jwt.sign({ sub: invite.userId }), isNewUser: true };
+    return { token: this.jwt.sign(sessionTokenPayload(user)), isNewUser: true };
   }
 }

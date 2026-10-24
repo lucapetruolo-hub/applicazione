@@ -19866,7 +19866,140 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 
 **Verifica**: typecheck e lint del web.
 
-## 287. Titoli di un solo colore, senza etichette sopra, e carattere Instrument Sans
+## 287. Orari uguali in tutte le viste e agenda salvata tutto o niente
+
+**Richiesta esplicita dell'utente** (21/10/2026, thread "Agenda: correzioni e restyling"): correggere i due problemi dell'agenda trovati dalla revisione esterna (`/mnt/project-files/analisi/revisione-piano-ceo.md`, punti 3 e 4).
+
+**Orari (CP-01).** Il modello giusto era già quello dell'API, delle email e del calendario allegato: gli appuntamenti (`Booking.scheduledAt`, `Quote.estimatedStartDate`, `ExternalJob.scheduledAt`, fasce dell'agenda) sono l'ora italiana "di parete" scritta in UTC (09:00 → `T09:00:00.000Z`, d'estate e d'inverno). Alcune viste però li mostravano nel fuso del browser: un preventivo alle 09:00 compariva alle 11:00 d'estate e alle 10:00 d'inverno in agenda, nel dettaglio della prenotazione, nella sezione "Intervento" del cliente, in Oggi, nel "Prossimo intervento" e nelle notifiche di cambio orario (queste in ora di Roma). Nessun dato salvato cambia.
+- Nuovo `packages/shared/src/appointmentTime.ts`: `formatAppointmentTime`/`TimeRange`/`Date` (sempre in UTC) e `wallClockNow`/`wallClockToday` (l'ora italiana di adesso nella stessa convenzione, per i confronti con "adesso").
+- Usati in agenda (`page.tsx`, `agendaHelpers.tsx`), `BookingDetailPanel`, `BookingSection`, `AgendaOverview`, Oggi (`dashboard/page.tsx`, anche la finestra "oggi e domani"), `notificationCopy`, `clientNextAction` ("Conferma che il lavoro è terminato" appariva 1-2 ore prima).
+- "Oggi" dell'agenda (`todayUtc`) e i calcoli dell'API (`startOfToday` in `professionals.service.ts`) usano il giorno italiano: tra mezzanotte e le 2 era ancora ieri.
+- Promemoria 24 ore prima (`booking-reminders.service.ts`): finestra calcolata sull'ora italiana di adesso, prima partiva 1-2 ore prima.
+
+**Disponibilità (CP-02).** `upsertMyAvailability` cancellava le fasce e poi le ricreava in due passi: se il secondo falliva l'agenda restava vuota. Ora è una sola transazione; stesso trattamento per le prestazioni del profilo e le voci del preventivo (stesso schema "cancella e ricrea"). Nella pagina Agenda, se il salvataggio non riesce le fasce tornano a quelle salvate davvero e il messaggio dice "Le modifiche non sono state salvate" (un errore vecchio non annulla un salvataggio più recente).
+
+**Verifica**: `tsc` ed `eslint` di API e web, 483 test API (nuovo `appointment-time.test.ts`: ora legale, solare, cambio d'ora del 25/10, mezzanotte italiana).
+
+## 288. Nuova agenda: design, Sto arrivando, calendario collegato, meteo, giro intelligente
+
+**Richiesta esplicita dell'utente** (21-22/10/2026, thread "Agenda: correzioni e restyling"): rifare l'agenda con design e idee nuove. Scelte dell'utente: base A delle anteprime + editor orari e consigli di C + "Sto arrivando" di B, tasto "Chiama", regole della skill Taste tranne lo sfondo (resta pesca). Delle migliorie proposte: sì a riepilogo della sera (senza orario di partenza), agenda senza rete, collegamento al calendario (pulsante e interruttore), icona meteo, "Lavoro completato" migliorato, "Giro intelligente" in una sezione a parte; no a tempi di strada automatici tra i lavori, spostamento proponendo orari (si usa la chat) e "Disponibile ora". I lavori su più giorni vanno in una PR a parte.
+
+**Pagina** (`apps/web/src/app/dashboard/agenda/page.tsx`, componenti in `apps/web/src/components/agenda/`, stile unico in `AgendaStyles.tsx`): tre schede, Calendario, Orari di lavoro, Giro intelligente.
+- Calendario: griglia oraria (giorno/settimana) con le fasce libere in verde chiaro, la linea di adesso e i lavori colorati per stato; mese e anno come prima. A lato calendarietto del mese, filtri "Mostra" con i conteggi e il prossimo appuntamento di oggi con le azioni (sul telefono sopra la griglia). Sul telefono striscia dei giorni e pulsante + per il lavoro esterno.
+- Riquadro dell'appuntamento (`AppointmentPanel.tsx`): Naviga (o Videochiamata), Sto arrivando (solo confermati di oggi a domicilio; avvisa il cliente, notifica `PROFESSIONAL_ON_THE_WAY`, `Booking.onTheWayAt`), Chiama; una riga sul pagamento (`apps/web/src/lib/agendaPayment.ts`); note personali; tasto "Richiesta completa" verso `/dashboard/richieste?open=…` (la richiesta non si ripete in agenda, scelta dell'utente).
+- "Lavoro completato" dall'agenda ora usa lo stesso percorso delle richieste (`CompleteJobModal` + `completeBooking`): prima cambiava solo lo stato, senza importo finale, dichiarazione DAC7 né saldo online. "Annulla" chiede una nota per il cliente (`CancelBookingModal`).
+- Orari di lavoro: settimana tipo salvata sul server (`ProfessionalProfile.agendaWeekTemplate`) da applicare a un mese (riempie solo i giorni vuoti, non chiusi e non passati: le fasce restano per data, mai "per sempre"), ferie e chiusure da/a, "Giorno per giorno" come prima (limiti a domicilio/online e "ripeti per tutti i … del mese").
+- Collega al tuo calendario (`CalendarLinkModal.tsx`): interruttore, pulsanti Google e iPhone, copia del link. Feed in sola lettura `GET /calendar/<token>.ics` (ultimi 60 giorni e futuro, anche i lavori esterni), `ProfessionalProfile.calendarFeedToken`.
+- Meteo: icona sui giorni con pioggia, temporale, neve, vento forte o nebbia (Open-Meteo dal nostro server, cache di un'ora, `GET /agenda/weather`).
+- Agenda senza rete (`apps/web/src/lib/agendaOffline.ts`): copia sul dispositivo a ogni caricamento, mostrata con l'ora dell'ultimo aggiornamento se la rete manca; cancellata all'uscita dall'account.
+- Giro intelligente (`DayRouteSection.tsx`, `GET /agenda/route`): tappe a domicilio del giorno nell'ordine degli orari, mappa fissa del nostro server, tempo di strada tra le tappe (Google Routes API sulla chiave del server; senza, stima "circa"), avviso quando il tempo non basta, giro intero in Google Maps. Per i lavori esterni il comune si cerca nell'indirizzo, altrimenti quello del profilo; due tappe note solo per comune nello stesso comune mostrano "Nello stesso comune".
+- Riepilogo della sera: alle 19 una notifica/email con i lavori di domani (`AGENDA_TOMORROW_SUMMARY`, `agenda-tomorrow-summary.service.ts`).
+- Caratteri: tolto il carattere monospaziato dall'agenda (regola Taste: titoli e numeri nello stesso carattere del testo). Rimossi `AgendaOverview.tsx` e `BookingDetailPanel.tsx`, non più usati.
+
+**Migrazione**: `20261022100000_agenda_restyling` (`bookings.onTheWayAt`, `professional_profiles.calendarFeedToken` unico, `professional_profiles.agendaWeekTemplate`).
+
+**Da fare a mano**: abilitare "Routes API" sulla chiave Google usata da Render (checklist di lancio, punto delle chiavi Google).
+
+**Verifica**: `tsc` ed `eslint` di API e web, 500 test API (nuovi: meteo, tempi del giro, comune nell'indirizzo, settimana tipo, feed iCalendar, riepilogo della sera), avvio dell'API (`check-boot`: trovato e corretto `AgendaModule` senza `AuthModule`), prova in locale con dati di prova e foto su computer e telefono (`/mnt/project-files/anteprime/agenda-restyling/1-…4-*.png`).
+
+## 289. Regole della password e una sola spunta per registrarsi
+
+**Richiesta esplicita dell'utente** (22/10/2026, thread "Regole password nella registrazione"): prendere a modello la registrazione di Didit (tre regole sotto la password che diventano verdi mentre si scrive) e aggiungere le migliorie proposte, tutte approvate. Poi: una sola casella da spuntare per Termini, Privacy e 18 anni, e lo stile Taste della nuova agenda (§288) anche qui. Infine (stesso giorno): niente controllo delle password rubate, niente simbolo obbligatorio, e tre protezioni proposte (limite per account, avviso di nuovo dispositivo, email nella password); il secondo codice all'accesso va dopo il lancio.
+
+**Prima**: solo "Minimo 8 caratteri" scritto sotto il campo, controllato nel browser e nell'API. Nessun massimo: bcrypt ignorava in silenzio quello che va oltre i 72 byte. Due caselle separate (Termini/Privacy e 18 anni).
+
+**Decisione presa**:
+- Regole in `packages/shared/src/password.ts` (`PASSWORD_RULES`, `passwordProblem`, `newPasswordSchema`): almeno 8 caratteri e almeno un numero, massimo 64 caratteri e 72 byte. Niente simbolo obbligatorio (decisione dell'utente): le password suggerite da Google hanno 15 caratteri senza simboli (verificato nel codice di Chrome) e devono passare al primo colpo. Valgono nel browser e nell'API in registrazione, link d'invito, recupero e cambio password; l'accesso no, così le password vecchie entrano ancora.
+- `PasswordRules` sotto il campo: grigie, verdi con la spunta mentre si scrive, rosse con la × dopo un invio non riuscito (mai solo il colore, stato letto anche dai lettori di schermo). "Le password coincidono" sotto la conferma. Attributo `passwordrules` per il generatore di password di iPhone e Mac.
+- Password che contengono l'email (o la parte prima della chiocciola, se di almeno 4 caratteri) rifiutate: "La password non può contenere la tua email." (`passwordContainsEmail`, controllo nel browser dove l'email è nota e nell'API con `assertPasswordWithoutEmail`, anche in recupero e cambio password).
+- Controllo delle password rubate (Have I Been Pwned): fatto e poi tolto, decisione dell'utente. Non reintrodurlo senza chiedere.
+- Limite per account (OWASP 6.3.1): alla decima password sbagliata di fila l'accesso con password si ferma 15 minuti, anche con la password giusta, e il titolare riceve "Troppi tentativi di accesso al tuo account" con il link per sceglierne una nuova. Si azzera con un accesso riuscito o con il recupero password; Google resta aperto. Campi `User.failedLoginCount`/`loginLockedUntil`, risposta 429.
+- "Nuovo accesso al tuo account": il sito tiene nel browser un codice casuale (`login-device-id`, solo sicurezza, nessun consenso) e lo manda con registrazione, accesso e Google (`X-Device-Id`). Per i professionisti si ricorda l'impronta di ogni dispositivo (`LoginDevice`, con "Chrome su Windows"); da uno mai visto arriva l'email (a tutti i professionisti, non solo a chi incassa online: decisione dell'utente del 24/10/2026, citata anche nella pagina Cookie) con il link "Non ero io: cambia la password". Il primo dispositivo ricordato non avvisa; un errore non blocca mai l'accesso. Email di sicurezza come "password cambiata": partono sempre.
+- Secondo codice all'accesso per chi incassa online: nella lista "Da fare dopo il lancio" della skill `checklist-lancio`.
+- `LegalConsentCheckbox`: "Accetto i Termini di Servizio, ho letto la Privacy Policy e ho almeno 18 anni." in registrazione del professionista, link d'invito e finestra dopo Google. L'API riceve sempre le due dichiarazioni, dallo stesso valore. Il cliente resta con la frase sotto il pulsante (§176). Domanda 31 per l'avvocato.
+- Controlli dall'alto in basso (categorie, email, password, conferma, spunta), non più prima la spunta.
+- Pulsante principale quasi nero (`Button variant="scuro"`) nelle pagine di accesso, registrazione, recupero password e nella finestra di Google; carattere e angoli invariati (li decide il thread "Aspetto non da sito fatto con IA").
+
+**Verifica**: `password-rules.test.ts`, `login-protection.test.ts` e `password-reset.test.ts` (505 test API verdi), migrazione `20261022150000_login_lockout_devices` generata con `prisma migrate diff`, typecheck e lint di web e api, anteprime da telefono e computer in `/mnt/project-files/anteprime/password-registrazione/sito/`. Checklist OWASP ASVS in `/mnt/project-files/analisi/password-registrazione-owasp.md`.
+
+## 290. Agenda: "Giorno per giorno" nello stile nuovo e "Richieste in zona"
+
+**Richiesta esplicita dell'utente** (22/10/2026, thread "Agenda: correzioni e restyling"): "effettua le 4 migliorie, per la 1 falla dopo l'unione, per la 3 se non ci sono sufficienti dati scrivi 'in arrivo'". La 1 (lavori su più giorni) va in una PR dopo l'unione della #97.
+
+**2. "Giorno per giorno" nello stile nuovo**: le fasce sono pastiglie verdi come le fasce libere della griglia (`SlotChip`); tolti il bordo tratteggiato ottone delle fasce con più prenotazioni (il limite si vede aprendo la fascia) e `isSlotGeneric`; "Chiudi"/"Riapri" in grigio senza simboli, "Chiuso" in una pastiglia grigia, "+" con bordo tratteggiato neutro, giorni passati attenuati. In `CalendarShell` (anche la vista Mese del Calendario): voce attiva grigio chiaro, oggi in un cerchio quasi nero, numeri nello stesso carattere del testo.
+
+**3. Richieste in zona** (`ZoneDemandCard.tsx` in Orari di lavoro, `GET /agenda/zone-demand`): richieste degli ultimi 30 giorni nella stessa città e per gli stessi lavori del professionista. Sotto 10 richieste mostra "In arrivo"; altrimenti i due momenti della settimana più richiesti (giorno + mattina/pomeriggio/sera, dalle date preferite dei clienti, almeno 3 richieste ciascuno), con "Sei già aperto" o "Tu sei chiuso" e il tasto per aggiungere la fascia alla settimana tipo. Solo conteggi, nessun dato dei clienti. Funzioni condivise in `packages/shared/src/agendaTools.ts` (`DAY_PART_RANGE`, `dayPartOf`, `weekTemplateCovers`).
+
+**4. Prova degli orari nel browser**: aggiunta al punto 26 della checklist di lancio (un preventivo alle 09:00 resta alle 09:00 in ogni vista, con il browser in un altro fuso e prima e dopo il cambio d'ora).
+
+**Verifica**: `tsc` ed `eslint` di API e web, 503 test API (nuovi: momenti più richiesti, parte del giorno coperta dalla settimana tipo), prova in locale con meno e più di 10 richieste (foto `5-orari-pochi-*.png` e `5-orari-pronti-*.png` in `/mnt/project-files/anteprime/agenda-restyling/`).
+
+## 291. Date sempre gg/mm/aaaa e "Richieste in zona" su tutto il raggio
+
+**Richiesta esplicita dell'utente** (22/10/2026, thread "Agenda: correzioni e restyling"): "le migliorie effettuale tutte e due sia uniformare la data sia ampliare il raggio".
+
+**Date**: il campo data del browser segue la lingua del browser, non quella del sito: su un computer in inglese mostrava "mm/dd/yyyy". Nuovo `apps/web/src/components/ItalianDateInput.tsx`: resta il campo nativo (calendario del telefono, tastiera, accessibilità) con il testo nascosto, e sopra la data scritta gg/mm/aaaa; un clic apre il calendario (`showPicker`). Usato in tutti i campi data del sito: Ferie e chiusure, lavoro esterno, data proposta nel preventivo e nella controproposta (professionista e cliente), data di nascita nei dati fiscali, periodo personalizzato delle statistiche. In `eslint.config.mjs` il componente conta come campo per le etichette (`label-has-associated-control`).
+
+**Richieste in zona**: contano le richieste dei comuni entro il raggio di lavoro del professionista (`engagementRadiusKm`, lo stesso dello smistamento; comuni ISTAT con coordinate, `comuniWithinRadius`), non solo della sua città; senza coordinate solo la sua città. Il testo dice "entro 25 km da Latina".
+
+**Verifica**: `tsc` ed `eslint` di API e web, 504 test API (nuovo: comuni nel raggio), prova in locale con un browser in inglese (data mostrata 24/12/2026) e richieste da un comune vicino (`6-ferie-*.png` in `/mnt/project-files/anteprime/agenda-restyling/`).
+
+## 292. Controllo sicurezza: le correzioni approvate
+
+**Richiesta esplicita dell'utente** (22/10/2026, thread "Controllo sicurezza completo"): controllo delle 50 falle tipiche delle app fatte con l'IA (rapporto in `/mnt/project-files/analisi/controllo-sicurezza.md`), poi "2 si, 3 si, 5 si e dovremmo anche cambiare il link dell'admin perché troppo semplice da individuare, 6 no; il resto aggiungi alla checklist di lancio".
+
+**Decisione presa**:
+- **Dipendenze**: `multer` 2.5.0 e `proxy-addr` 2.0.8 forzati con `overrides` in `pnpm-workspace.yaml` (Nest 10 ed Express 4 si fermavano a versioni con falle note). Next.js 15 in un thread a parte (checklist, punto 28).
+- **Intestazioni di sicurezza**: sul sito `frame-ancestors 'none'`/`X-Frame-Options: DENY` (niente riquadri in altri siti), `nosniff`, `Referrer-Policy`, `Permissions-Policy` (fotocamera solo per la chat), niente `X-Powered-By`. Sull'API `nosniff`, `X-Frame-Options`, `Referrer-Policy: no-referrer`, niente `X-Powered-By`. Una CSP completa sugli script resta una miglioria possibile (va provata con Google Maps, Stripe e Turnstile).
+- **API**: non parte senza `JWT_SECRET` online (`RENDER=true` o `NODE_ENV=production`); parametri dell'indirizzo letti come testo semplice (`query parser: simple`, prima `?category[contains]=` arrivava ai filtri Prisma come oggetto).
+- **Chiave dei dati fiscali**: con `FISCAL_DATA_KEY` gli IBAN si rileggono anche se cifrati con la chiave vecchia (da `JWT_SECRET`) e all'avvio vengono ricifrati con quella nuova (`reencryptLegacyFiscal`, `PayoutAccountService.onApplicationBootstrap`).
+- **Admin**: `@RequireAdminScope` dichiarato sulle 6 rotte che non lo avevano (regola 12), l'export CSV degli utenti solo ai moderatori; promozione del primo admin con 3 tentativi al minuto e confronto del codice a tempo costante.
+- **Ingresso admin nascosto** (richiesta di Luca): con `ADMIN_ENTRY_PATH` su Vercel, `apps/web/src/middleware.ts` risponde 404 su `/admin` finché il browser non apre `/<ADMIN_ENTRY_PATH>`, che lascia un cookie `admin_gate` (HttpOnly, un anno, solo su `/admin`). I link alle pagine admin nelle email funzionano solo da un browser già passato dal link. `/admin` tolto da `robots.txt` (lo rivelava). Senza la variabile nulla cambia. Resta una protezione in più: i dati admin li dà solo l'API, a un account admin.
+- **Seconda parte** (24/10/2026, "effettua il punto 1 e le altre tre migliorie nell'ordine che ritieni"):
+  - **Chat**: `TimelineService.isRealThread` apre la cronologia e i messaggi solo se la richiesta è arrivata a quel professionista (Lead), se lui ha mandato un preventivo o se il sistema ha già scritto un evento per la coppia. Prima bastava essere un professionista qualsiasi (si poteva scrivere al cliente di una richiesta mai ricevuta) o il cliente della richiesta (si poteva scrivere a qualunque professionista, anche in pausa).
+  - **Pagamento della prenotazione** (`GET /bookings/:id/job-payment`): solo cliente e professionista della prenotazione.
+  - **Limiti**: 20 al minuto su messaggi e allegati della chat e sull'invio dei preventivi (prima solo il limite generale di 60).
+  - **Codice fiscale cifrato** (titolare, legale rappresentante e valore controllato con Openapi): estensione Prisma `fiscal-encryption.extension.ts` montata in `PrismaModule`, cifra a ogni scrittura e decifra a ogni lettura anche dentro gli `include` (provato su un Postgres locale); i dati salvati prima in chiaro si leggono comunque (`readFiscal`) e all'avvio vengono cifrati (`FiscalEncryptionMigrationService`, anche quelli con la chiave vecchia dopo `FISCAL_DATA_KEY`). Nel registro delle modifiche solo le ultime 4 cifre. Le righe DAC7 non contengono il codice fiscale (il file per l'Agenzia lo legge, già decifrato, al momento dell'esportazione), quindi non resta nessuna copia in chiaro (verificato nel §294).
+  - **Sessioni chiuse al cambio password** (dopo la PR #99): `User.sessionVersion` (migrazione `20261024090000_session_version`), il token porta `sv`; cambio e recupero della password lo aumentano. `JwtAuthGuard` e lo stream in tempo reale rifiutano i token vecchi (quelli emessi prima senza `sv` valgono come 0); lo stream già aperto su un altro dispositivo si chiude entro 25 secondi. Il cambio password restituisce un token nuovo e `/account` lo usa, così chi la cambia resta dentro.
+  - La regola completa sugli script (CSP) resta per dopo il passaggio a Next.js 15.
+- Checklist di lancio, punto 28: backup e prova di ripristino, `FISCAL_DATA_KEY`, `ADMIN_ENTRY_PATH`, togliere `ADMIN_BOOTSTRAP_SECRET`, repo privato, chiavi Google limitate, Sentry, verifica in due passaggi, Next.js 15.
+
+**Verifica**: test dell'API (515, con i nuovi `fiscal-crypto.test.ts`, `timeline-access.test.ts` e le prove del guard sulle sessioni); build del sito; con `next start` e `ADMIN_ENTRY_PATH` impostata: `/admin` e `/admin/utenti` 404 senza cookie, il link d'ingresso fa 307 verso `/admin` col cookie, poi `/admin` 200; intestazioni presenti sulla home; `robots.txt` senza `/admin`.
+
+## 293. Controllo sicurezza approfondito: rotte, minacce e quattro correzioni
+
+**Richiesta dell'utente**: rifare il controllo di sicurezza "come un esperto": modello delle minacce (STRIDE), tabella dei permessi di tutte le rotte con un test nella CI, prove per aggirare le regole di prodotto, strumenti (Semgrep, CodeQL, gitleaks, osv-scanner, ZAP, Stripe CLI, k6), mappa dei dati personali, piano per gli incidenti, ASVS livello 2. Decidere cosa fare subito e cosa prima del lancio. Poi, sui quattro problemi trovati: "correggi le 4 proposte".
+
+**Analisi** (in `/mnt/project-files/analisi/controllo-sicurezza-adesso.md`):
+- `apps/api/scripts/route-inventory.mjs` estrae dall'API compilata tutte le rotte con guard, permesso admin e limite al minuto (`node scripts/route-inventory.mjs`, `--json` per il formato macchina): 216 rotte, tutte le 64 admin con `@RequireAdminScope`.
+- Modello delle minacce, prove sulla §5.9 (nessun contatto del cliente prima del preventivo accettato in richieste, chat, lavori, calendario collegato, email; con l'acconto online il lavoro nasce solo a pagamento riuscito), bozza della mappa dei dati personali.
+
+**Le quattro correzioni**:
+1. **Tetto giornaliero alle chiamate a Google** dalle rotte aperte a tutti (`common/daily-budget.ts`): suggerimenti di indirizzo 5000 al giorno, dettagli dell'indirizzo 2000, mappe fisse nuove 2000 (quelle già pronte non contano). Oltre il tetto il sito mostra il campo di testo semplice o "Mappa non disponibile", come quando Google non risponde, e nei log compare un errore una volta al giorno. `GOOGLE_PUBLIC_DAILY_LIMIT` su Render cambia tutti i tetti. Motivo: il limite per IP non ferma chi usa tanti indirizzi IP, e ogni chiamata si paga.
+2. **Biglietto monouso per lo stream in tempo reale**: `POST /realtime/ticket` (con il token nell'header) dà un codice casuale che vale 60 secondi e una volta sola; `GET /realtime/stream?ticket=` al posto di `?token=`. Il biglietto si controlla in un guard (`RealtimeTicketGuard`): un errore dentro il metodo `@Sse` arriva al browser come evento con stato 200 e `EventSource` riproverebbe all'infinito, mentre dal guard esce un 401 vero e il browser chiude. Il sito (`AuthContext`) chiede allora un biglietto nuovo, con attesa che raddoppia fino a un minuto. Il controllo dell'account ogni 25 secondi (§292) resta. Motivo: il token di accesso dura 30 giorni e nell'indirizzo poteva finire nei log; CLAUDE.md §2 aggiornato.
+3. **Agenda pubblica** (`GET /professionals/:id/agenda`): stessi filtri della pagina pubblica (eliminato, sospeso, invito non confermato, dati fiscali mancanti → 404); in pausa o bloccato per le richieste nessuna fascia (regola CLAUDE.md §5.11).
+4. **Link d'invito** (`GET /auth/invite/:token`, `POST /auth/invite/accept`): 10 tentativi al minuto invece di 60.
+
+**Checklist di lancio**: punto 28 (`FISCAL_DATA_KEY` e `ADMIN_ENTRY_PATH` già fatti da Luca, tetto di spesa su Google Cloud, Routes API tra quelle della chiave server) e nuovo punto 29 (ZAP, Stripe CLI, k6, ASVS, mappa dei dati definitiva, piano per gli incidenti, penetration test esterno).
+
+**Verifica**: test dell'API (541, con `daily-budget.test.ts`, `realtime-tickets.test.ts` e le prove dell'agenda pubblica); typecheck e lint. Su un'API locale con Postgres: biglietto valido 200, riusato 401, vecchio `?token=` 401, inventato 401; agenda di un profilo inesistente 404; undicesimo tentativo sull'invito 429. In Chromium un `EventSource` che riceve 401 passa a chiuso senza riprovare, così il sito chiede il biglietto nuovo.
+
+## 294. Controllo sicurezza: le tre migliorie
+
+**Richiesta dell'utente**: "effettua le 3 migliorie" proposte prima di unire la PR #100 (in più ha messo un limite di spesa su Google Cloud, sull'account di prova).
+
+1. **"Esci da tutti gli altri dispositivi"** in Impostazioni → Accesso e sicurezza: `POST /auth/logout-others` (5 al minuto) aumenta `User.sessionVersion` come il cambio password (§292). Gli altri dispositivi e i loro stream in tempo reale escono; questo resta dentro con il token nuovo. Una riga di conferma prima di procedere ("Uscirai da telefoni e computer dove hai fatto l'accesso, tranne questo"), stesso stile della riga "Password". Testo "tutti gli altri" invece di "tutti": chi preme il pulsante resta dentro.
+2. **Codice fiscale nelle copie DAC7**: controllato e non serve nulla. `Dac7Record` contiene solo importi e conteggi; il codice fiscale per il file dell'Agenzia si legge da `ProfessionalFiscalProfile` (cifrato, §292) solo al momento dell'esportazione, e `exportFileUrl` non è usato. La frase del §292 che parlava di istantanee in chiaro era sbagliata ed è corretta.
+3. **Regola sugli script e sulle connessioni (CSP)**, solo in produzione (`next dev` usa `eval`), in `apps/web/next.config.mjs`. Script, stili, font, riquadri e connessioni solo da: il sito stesso, l'API (`NEXT_PUBLIC_API_URL`), Google Maps con l'elenco ufficiale di Google, Cloudflare Turnstile, Vercel Analytics; video da Cloudinary; immagini da qualunque indirizzo https; moduli solo verso il sito. Fatta già su Next.js 14, senza aspettare il passaggio a 15. `'unsafe-inline'` resta tra gli script perché Next.js 14 scrive script in pagina senza nonce; con Next.js 15 e i nonce si potrà togliere. Anche così uno script iniettato non può caricarne altri da fuori né mandare dati a un server qualsiasi.
+
+**Verifica**: test dell'API (con la prova di `logoutOtherDevices`), typecheck e lint. Sito compilato in produzione (`next build` + `next start`) con l'API e Postgres locali, provato in Chromium:
+- nessuna violazione della regola su home, ricerca, pagina categoria/città, registrazione, impostazioni e chat;
+- lo stream in tempo reale si apre con il biglietto (§293);
+- Google Maps (script e richieste a `maps.googleapis.com`/`maps.gstatic.com`) e Turnstile (con la chiave di prova di Cloudflare, superato) si caricano senza violazioni.
+
+La mappa con una chiave vera si vede solo sul sito pubblicato: dopo l'unione va aperta una ricerca con risultati e la mappa del raggio in dashboard. Se qualcosa non compare, la console del browser dice quale indirizzo manca.
+
+## 295. Titoli di un solo colore, senza etichette sopra, e carattere Instrument Sans
 
 **Richiesta esplicita dell'utente** (24/10/2026, thread "Aspetto non da sito fatto con IA"): "effettua solo il punto 5 della prima risposta e il carattere con la proposta 2", dopo il controllo dei 30 segni tipici dei siti fatti con l'IA (`/mnt/project-files/analisi/aspetto-non-da-ia.md`). Punto 5: titoli di un solo colore, senza le etichette verdi sopra. Proposta 2 dei caratteri: Instrument Sans.
 

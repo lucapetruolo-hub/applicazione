@@ -4,7 +4,7 @@ import { H2, H3, Paragraph, XStack, YStack } from "tamagui";
 export type SectionTone = "light" | "dark" | "blueprint";
 
 // Niente etichetta sopra il titolo né parole colorate dentro il titolo: sono
-// tra i segni tipici dei siti fatti con l'IA (docs/CHANGELOG.md §287).
+// tra i segni tipici dei siti fatti con l'IA (docs/CHANGELOG.md §295).
 export type SectionProps = {
   title?: string;
   lead?: string;

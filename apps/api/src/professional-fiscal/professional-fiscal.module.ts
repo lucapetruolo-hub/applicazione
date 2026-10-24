@@ -7,12 +7,13 @@ import { NotificationsModule } from "../notifications/notifications.module";
 import { AdminModule } from "../admin/admin.module";
 import { ProfessionalFiscalController, AdminProfessionalFiscalController, PayoutIbanController } from "./professional-fiscal.controller";
 import { PayoutAccountService } from "./payout-account.service";
+import { FiscalEncryptionMigrationService } from "./fiscal-encryption-migration.service";
 import { ProfessionalFiscalService } from "./professional-fiscal.service";
 
 @Module({
   imports: [AuthModule, AuditLogModule, NotificationsModule, AdminModule, ProfessionalVerificationModule, TaxIdCheckModule],
   controllers: [ProfessionalFiscalController, AdminProfessionalFiscalController, PayoutIbanController],
-  providers: [ProfessionalFiscalService, PayoutAccountService],
+  providers: [ProfessionalFiscalService, PayoutAccountService, FiscalEncryptionMigrationService],
   exports: [ProfessionalFiscalService],
 })
 export class ProfessionalFiscalModule {}

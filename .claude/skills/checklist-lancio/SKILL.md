@@ -42,7 +42,9 @@ produzione):
      avanzati; senza, si usa `DEMO_MAP_ID`, che è solo di prova (§140);
    - `GOOGLE_MAPS_API_KEY` su Render — seconda chiave, con Geocoding API,
      Places API (New) (suggerimenti degli indirizzi, §264) e Maps Static API
-     (immagine fissa della mappa senza consenso, §265);
+     (immagine fissa della mappa senza consenso, §265) e Routes API (tempi
+     di strada del "Giro intelligente" dell'agenda, §288: senza, i tempi
+     sono una stima "circa");
    - Client ID OAuth di Google: tra gli "URI di reindirizzamento
      autorizzati" l'indirizzo `/accesso-google` del dominio definitivo
      (accesso con Google, §265);
@@ -324,13 +326,72 @@ aperti solo:
     container) con account di prova: cliente che cerca e manda la richiesta,
     professionista che risponde col preventivo, cliente che lo accetta,
     admin che vede la segnalazione. Più una prova con l'API spenta (deve
-    comparire "Riprova", docs/CHANGELOG.md §284-§285).
+    comparire "Riprova", docs/CHANGELOG.md §284-§285). Più una prova degli
+    orari dell'agenda (decisione dell'utente, 22/10/2026, §287, §288 e §290): un
+    preventivo alle 09:00 deve comparire alle 09:00 in agenda, nel
+    riquadro dell'appuntamento, in Oggi e lato cliente, con il browser in
+    un fuso diverso dall'Italia (es. `timezoneId: "America/New_York"` di
+    Playwright) e d'estate e d'inverno (prima e dopo il 25/10).
 27. **Misure del percorso** (stessa revisione): contare ricerca → profilo →
     richiesta inviata → preventivo → accettato, e per i professionisti
     iscrizione → profilo pubblico → primo preventivo → primo lavoro. Nel
     nostro database, come le ricerche della PR #92 (gli eventi di Vercel
     Analytics richiedono il piano a pagamento), senza dati personali.
 
+28. **Sicurezza: cose da fare negli account** (controllo sicurezza del
+    22/10/2026, docs/CHANGELOG.md §292, dettaglio in
+    `/mnt/project-files/analisi/controllo-sicurezza.md`):
+    - **Backup del database**: con il piano a pagamento (punto 4bis) Render
+      fa i backup giornalieri. Provare una volta il ripristino su un
+      database di prova, prima del lancio.
+    - ~~**`FISCAL_DATA_KEY` su Render**~~ — fatto (24/10/2026). Non
+      perderla e non cambiarla più: all'avvio l'API ricifra da sola IBAN e
+      codici fiscali salvati con la chiave vecchia.
+    - ~~**`ADMIN_ENTRY_PATH` su Vercel**~~ — fatto (24/10/2026): `/admin`
+      risponde "pagina non trovata" finché da quel browser non si visita una
+      volta `https://<sito>/<ADMIN_ENTRY_PATH>`. Conservare il link: se si
+      perde, basta cambiarlo su Vercel e rifare il deploy.
+    - **Togliere `ADMIN_BOOTSTRAP_SECRET` da Render** appena creato il primo
+      admin (gli altri si nominano da `/admin/utenti`).
+    - **Repo GitHub privato** (Settings → General → Danger Zone).
+    - **Chiavi Google**: la chiave del browser (`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`)
+      limitata ai siti `https://<dominio>/*` in Google Cloud → Credenziali;
+      la chiave server (`GOOGLE_MAPS_API_KEY`) limitata alle sole API usate
+      (Geocoding, Places API (New), Maps Static, Routes).
+    - **Tetto di spesa su Google Cloud** (docs/CHANGELOG.md §293): in
+      Google Cloud → API e servizi → ogni API → Quote, un limite al giorno
+      per Places API (New), Maps Static e Geocoding, più un avviso di budget
+      in Fatturazione → Budget e avvisi. L'API ha già un suo tetto
+      giornaliero sulle rotte aperte a tutti (suggerimenti 5000, dettagli
+      indirizzo 2000, mappe fisse 2000); `GOOGLE_PUBLIC_DAILY_LIMIT` su
+      Render lo cambia per tutte.
+    - **Sentry attivo**: `SENTRY_DSN` impostata su Render e avvisi email
+      accesi in Sentry (Alerts), con una prova.
+    - **Verifica in due passaggi** su GitHub, Render, Vercel, Stripe,
+      Cloudinary, Resend, Google Cloud, Didit, Openapi e sull'email usata
+      per questi account.
+    - **Next.js 15**: la serie 14 non riceve più correzioni di sicurezza;
+      aggiornare prima del lancio (thread dedicato).
+
+29. **Verifiche di sicurezza prima del lancio** (controllo approfondito,
+    docs/CHANGELOG.md §293, dettaglio in
+    `/mnt/project-files/analisi/controllo-sicurezza-adesso.md`). Le fa un
+    thread, sull'anteprima o su una copia del sito, tranne dove scritto:
+    - **OWASP ZAP** (scansione base e completa) sull'anteprima Vercel e
+      sull'API: nessuna voce alta.
+    - **Stripe CLI**: webhook ripetuti, fuori ordine e con firma sbagliata;
+      importi e rimborsi manomessi.
+    - **k6**: i limiti al minuto tengono davvero, anche dopo un riavvio di
+      Render.
+    - **OWASP ASVS livello 2 e API Security Top 10 2023**, voce per voce.
+    - **Mappa dei dati personali definitiva** e DPIA della verifica con
+      selfie, da far vedere all'avvocato (bozza nel file sopra).
+    - **Piano per gli incidenti**: chi avvisare, come cambiare in fretta
+      tutte le chiavi, notifica al Garante entro 72 ore (art. 33 GDPR).
+      Con la prova di ripristino del database del punto 28 (la fa Luca).
+    - **Penetration test esterno** (una o due giornate, da uno studio o un
+      professionista): è l'unica verifica davvero indipendente. Lo sceglie
+      e lo paga Luca.
 
 ## Da fare dopo il lancio
 
@@ -343,3 +404,8 @@ Cose decise con Luca da non fare prima del lancio, ma da non dimenticare:
 - **Elenchi admin con totale e pagine** (revisione esterna del piano,
   21/10/2026): oggi alcuni elenchi si fermano a 50 o 200 righe senza dirlo.
   Con pochi utenti non pesa; da fare quando crescono.
+- **Secondo codice all'accesso** (22/10/2026, docs/CHANGELOG.md §289):
+  per i professionisti con i pagamenti online attivi, dopo la password un
+  codice da un'app di autenticazione (o via email). Protegge i soldi se la
+  password viene rubata. Oggi c'è già l'email "Nuovo accesso al tuo
+  account" da un dispositivo mai usato.

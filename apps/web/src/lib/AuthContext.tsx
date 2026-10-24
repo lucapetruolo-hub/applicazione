@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import type { CurrentUser } from "@professionisti/api-client";
 import { DEFAULT_NOTIFICATION_PREFERENCES, type NotificationPreferences, type RealtimeEvent } from "@professionisti/shared";
 import { apiClient } from "./apiClient";
+import { clearAgendaOffline } from "./agendaOffline";
 import { notificationCopy } from "./notificationCopy";
 import { emitRealtimeEvent } from "./realtimeBus";
 import { installNotificationSoundUnlock, playNotificationSound } from "./notificationSound";
@@ -126,6 +127,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+    // Copia dell'agenda senza rete (docs/CHANGELOG.md §288): non resta sul telefono dopo l'uscita.
+    clearAgendaOffline();
     setUser(null);
     setToken(null);
     setUnreadCount(0);
@@ -292,26 +295,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * Il poll da 45s sopra **resta**, non sostituito: è la rete di sicurezza
    * per una disconnessione prolungata (l'istanza Render in sleep dopo
    * inattività, o un redeploy che chiude la connessione) — `EventSource`
-   * riprova da sé con backoff nativo del browser appena la rete/l'API
-   * tornano disponibili, nessun codice di riconnessione scritto a mano.
+   * riprova da sé appena la rete/l'API tornano disponibili.
+   *
+   * L'indirizzo porta un biglietto monouso da 60 secondi, mai il token
+   * (docs/CHANGELOG.md §293): quando il browser riprova con il biglietto
+   * già usato riceve 401 e chiude, e qui se ne chiede uno nuovo, con
+   * un'attesa che raddoppia fino a un minuto.
    */
   useEffect(() => {
     if (!token) return;
-    const source = new EventSource(apiClient.realtimeStreamUrl(token));
-    source.onmessage = (message) => {
-      try {
-        const data = JSON.parse(message.data) as RealtimeEvent | { kind: "ping" };
-        if (data.kind === "ping") return; // heartbeat, nessun contenuto reale
-        emitRealtimeEvent(data);
-        if (data.kind === "notification") {
-          refreshUnreadCount();
-          checkForNewNotifications();
-        }
-      } catch {
-        // Payload malformato o inatteso — mai bloccare il resto dell'app per un singolo evento scartato.
-      }
+    let source: EventSource | null = null;
+    let retry: ReturnType<typeof setTimeout> | null = null;
+    let delayMs = 2_000;
+    let stopped = false;
+    const reopenLater = () => {
+      if (stopped) return;
+      retry = setTimeout(open, delayMs);
+      delayMs = Math.min(delayMs * 2, 60_000);
     };
-    return () => source.close();
+    async function open() {
+      let ticket: string;
+      try {
+        ({ ticket } = await apiClient.realtimeTicket(token!));
+      } catch {
+        reopenLater();
+        return;
+      }
+      if (stopped) return;
+      source = new EventSource(apiClient.realtimeStreamUrl(ticket));
+      source.onopen = () => {
+        delayMs = 2_000;
+      };
+      // 401 (biglietto già usato o scaduto): il browser chiude; un evento
+      // "error" mandato dal server porta `data`. In entrambi i casi serve un
+      // biglietto nuovo. Gli altri errori sono la rete: riprova il browser.
+      source.onerror = (event) => {
+        if (source?.readyState !== EventSource.CLOSED && !(event instanceof MessageEvent)) return;
+        source?.close();
+        reopenLater();
+      };
+      source.onmessage = (message) => {
+        try {
+          const data = JSON.parse(message.data) as RealtimeEvent | { kind: "ping" };
+          if (data.kind === "ping") return; // heartbeat, nessun contenuto reale
+          emitRealtimeEvent(data);
+          if (data.kind === "notification") {
+            refreshUnreadCount();
+            checkForNewNotifications();
+          }
+        } catch {
+          // Payload malformato o inatteso — mai bloccare il resto dell'app per un singolo evento scartato.
+        }
+      };
+    }
+    void open();
+    return () => {
+      stopped = true;
+      if (retry) clearTimeout(retry);
+      source?.close();
+    };
   }, [token, refreshUnreadCount, checkForNewNotifications]);
 
   return (

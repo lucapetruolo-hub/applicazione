@@ -1,4 +1,4 @@
-import { asScheduleChange, scheduleChangeAlternative, scheduleChangeObject } from "@professionisti/shared";
+import { asScheduleChange, formatAppointmentDate, formatAppointmentTimeRange, scheduleChangeAlternative, scheduleChangeObject } from "@professionisti/shared";
 
 /**
  * Testo simpatico per il popup "toast" quando arriva una nuova notifica
@@ -66,6 +66,9 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   PROFILE_SETUP_REMINDER: { icon: "📋", message: "Ti manca poco per completare il profilo: in Oggi trovi il prossimo passo." },
   // Agenda vuota o senza disponibilità nei prossimi giorni (§274): il testo dipende dal payload, vedi sotto.
   AGENDA_REMINDER: { icon: "📅", message: "Non hai ancora orari liberi in agenda: aggiungili per farti prenotare." },
+  // Agenda (§288).
+  PROFESSIONAL_ON_THE_WAY: { icon: "🚐", message: "Il professionista sta arrivando." },
+  AGENDA_TOMORROW_SUMMARY: { icon: "📅", message: "Ecco i tuoi lavori di domani." },
   TAX_ID_INVALID: { icon: "⚠️", message: "Non riusciamo a verificare il codice fiscale o la partita IVA: controllali nei dati fiscali." },
   // Segnalazioni di un problema sul lavoro (docs/CHANGELOG.md §164).
   JOB_ISSUE_REPORTED: { icon: "⚠️", message: "Un cliente ha segnalato un problema su un lavoro: rispondigli in chat entro 48 ore per trovare una soluzione." },
@@ -127,10 +130,10 @@ function slotLabel(value: unknown): string | null {
   if (typeof start !== "string") return null;
   const startDate = new Date(start);
   if (Number.isNaN(startDate.getTime())) return null;
-  const time = (d: Date) => d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
-  const day = startDate.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Rome" });
+  // Ora di parete in UTC come il resto degli appuntamenti (docs/CHANGELOG.md §287).
+  const day = formatAppointmentDate(startDate, { weekday: "long", day: "numeric", month: "long" });
   const endDate = typeof end === "string" ? new Date(end) : null;
-  return `${day}, ${time(startDate)}${endDate && !Number.isNaN(endDate.getTime()) ? `–${time(endDate)}` : ""}`;
+  return `${day}, ${formatAppointmentTimeRange(startDate, endDate && !Number.isNaN(endDate.getTime()) ? endDate : null)}`;
 }
 
 /**
@@ -158,6 +161,10 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   }
   if (change && type === "QUOTE_DATE_PROPOSED") {
     return { icon: "🗓️", message: `Il cliente ha proposto ${scheduleChangeAlternative(change)} per il preventivo${newSlot ? `: ${newSlot}` : ""}.` };
+  }
+  if (type === "AGENDA_TOMORROW_SUMMARY" && Array.isArray(data.items)) {
+    const count = data.items.length;
+    return { icon: "📅", message: count === 1 ? "Domani hai 1 lavoro in agenda." : `Domani hai ${count} lavori in agenda.` };
   }
   if (type === "AGENDA_REMINDER" && data.attention === "RUNNING_LOW") {
     return { icon: "📅", message: "Nei prossimi 7 giorni non hai orari liberi in agenda: aggiungili per farti prenotare." };

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "r
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Camera, Download, Trash2, Eye, EyeOff } from "lucide-react";
-import { ALL_ITALIAN_CITY_NAMES, findComuneByName, isPlausiblePhoneNumber } from "@professionisti/shared";
+import { ALL_ITALIAN_CITY_NAMES, findComuneByName, isMissingRulesProblem, isPlausiblePhoneNumber, passwordProblem } from "@professionisti/shared";
 import { Autocomplete, Avatar, Button, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -14,6 +14,7 @@ import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput"
 import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
 import { ClientEmailVerificationCard } from "@/components/ClientEmailVerificationCard";
+import { PASSWORD_RULES_ATTRIBUTE, PasswordMatchHint, PasswordRules } from "@/components/PasswordRules";
 
 const inputStyle = {
   padding: "10px 12px",
@@ -52,6 +53,8 @@ function PasswordField({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         autoComplete={autoComplete}
+        // Generatore di password di iPhone e Mac: solo per la password nuova (§289).
+        {...(autoComplete === "new-password" ? { passwordrules: PASSWORD_RULES_ATTRIBUTE } : {})}
         style={{ ...inputStyle, paddingRight: 40 }}
       />
       <button
@@ -117,7 +120,7 @@ function parseBirthDate(iso: string | null) {
 
 export default function AccountPage() {
   const router = useRouter();
-  const { user, token, isLoading, refreshUser, logout } = useAuth();
+  const { user, token, isLoading, refreshUser, login, logout } = useAuth();
 
   const [name, setName] = useState("");
   const [surname, setSurname] = useState("");
@@ -164,10 +167,15 @@ export default function AccountPage() {
   // ognuno dei tre campi, stesso pattern già in uso su /registrati e /accedi.
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [newPasswordAttempted, setNewPasswordAttempted] = useState(false);
   const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSaved, setPasswordSaved] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
+  const [confirmingLogoutOthers, setConfirmingLogoutOthers] = useState(false);
+  const [isLoggingOutOthers, setIsLoggingOutOthers] = useState(false);
+  const [logoutOthersDone, setLogoutOthersDone] = useState(false);
+  const [logoutOthersError, setLogoutOthersError] = useState<string | null>(null);
 
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
@@ -327,8 +335,11 @@ export default function AccountPage() {
   async function handleChangePassword() {
     setPasswordError(null);
     setPasswordSaved(false);
-    if (newPassword.length < 8) {
-      setPasswordError("La nuova password deve avere almeno 8 caratteri.");
+    // Stesse regole della registrazione (docs/CHANGELOG.md §289).
+    const problem = passwordProblem(newPassword, user?.email);
+    if (problem) {
+      setNewPasswordAttempted(true);
+      if (!isMissingRulesProblem(problem)) setPasswordError(problem);
       return;
     }
     if (newPassword !== confirmNewPassword) {
@@ -338,20 +349,39 @@ export default function AccountPage() {
 
     setIsSavingPassword(true);
     try {
-      await apiClient.changePassword(token as string, {
+      const result = await apiClient.changePassword(token as string, {
         currentPassword: currentPassword || undefined,
         newPassword,
       });
-      await refreshUser();
+      // Il token vecchio non vale più (gli altri dispositivi escono): qui si
+      // resta dentro con quello nuovo.
+      await login(result.token);
       setPasswordSaved(true);
       setCurrentPassword("");
       setNewPassword("");
       setConfirmNewPassword("");
       setIsEditingPassword(false);
+      setNewPasswordAttempted(false);
     } catch (err) {
       setPasswordError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
       setIsSavingPassword(false);
+    }
+  }
+
+  // Esci dagli altri dispositivi (docs/CHANGELOG.md §294): qui si resta dentro con il token nuovo.
+  async function handleLogoutOthers() {
+    setLogoutOthersError(null);
+    setIsLoggingOutOthers(true);
+    try {
+      const result = await apiClient.logoutOtherDevices(token as string);
+      await login(result.token);
+      setConfirmingLogoutOthers(false);
+      setLogoutOthersDone(true);
+    } catch (err) {
+      setLogoutOthersError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setIsLoggingOutOthers(false);
     }
   }
 
@@ -633,11 +663,12 @@ export default function AccountPage() {
                 <PasswordField
                   value={newPassword}
                   onChange={setNewPassword}
-                  placeholder="Nuova password (almeno 8 caratteri)"
+                  placeholder="Nuova password"
                   autoComplete="new-password"
                   visible={showNewPassword}
                   onToggleVisible={() => setShowNewPassword((v) => !v)}
                 />
+                <PasswordRules password={newPassword} showMissing={newPasswordAttempted} />
                 <PasswordField
                   value={confirmNewPassword}
                   onChange={setConfirmNewPassword}
@@ -646,6 +677,7 @@ export default function AccountPage() {
                   visible={showConfirmNewPassword}
                   onToggleVisible={() => setShowConfirmNewPassword((v) => !v)}
                 />
+                <PasswordMatchHint password={newPassword} confirmPassword={confirmNewPassword} />
                 {passwordError ? (
                   <Text color={brand.urgenza} fontSize="$3">
                     {passwordError}
@@ -670,6 +702,7 @@ export default function AccountPage() {
                     onPress={() => {
                       setIsEditingPassword(false);
                       setPasswordError(null);
+                      setNewPasswordAttempted(false);
                       setCurrentPassword("");
                       setNewPassword("");
                       setConfirmNewPassword("");
@@ -696,6 +729,63 @@ export default function AccountPage() {
             {!isEditingPassword && passwordSaved ? (
               <Text color={brand.verificato} fontSize="$3">
                 Password aggiornata!
+              </Text>
+            ) : null}
+          </FieldRow>
+
+          <FieldRow label="Dispositivi">
+            {confirmingLogoutOthers ? (
+              <YStack gap="$2" maxWidth={360}>
+                <Text color={brand.grafite} fontSize="$3">
+                  Uscirai da telefoni e computer dove hai fatto l'accesso, tranne questo.
+                </Text>
+                {logoutOthersError ? (
+                  <Text color={brand.urgenza} fontSize="$3">
+                    {logoutOthersError}
+                  </Text>
+                ) : null}
+                <XStack gap="$3" alignItems="center">
+                  <Button
+                    variant="secondary"
+                    size="$3"
+                    height={40}
+                    onPress={handleLogoutOthers}
+                    disabled={isLoggingOutOthers}
+                    opacity={isLoggingOutOthers ? 0.6 : 1}
+                  >
+                    {isLoggingOutOthers ? "Uscita..." : "Conferma"}
+                  </Button>
+                  <Text
+                    color={brand.grafite70}
+                    fontWeight="600"
+                    cursor="pointer"
+                    accessibilityRole="button"
+                    onPress={() => {
+                      setConfirmingLogoutOthers(false);
+                      setLogoutOthersError(null);
+                    }}
+                  >
+                    Annulla
+                  </Text>
+                </XStack>
+              </YStack>
+            ) : (
+              <Text
+                color={brand.cianografiaScuro}
+                fontWeight="600"
+                cursor="pointer"
+                accessibilityRole="button"
+                onPress={() => {
+                  setLogoutOthersDone(false);
+                  setConfirmingLogoutOthers(true);
+                }}
+              >
+                Esci da tutti gli altri dispositivi
+              </Text>
+            )}
+            {!confirmingLogoutOthers && logoutOthersDone ? (
+              <Text color={brand.verificato} fontSize="$3">
+                Fatto: gli altri dispositivi sono stati scollegati.
               </Text>
             ) : null}
           </FieldRow>

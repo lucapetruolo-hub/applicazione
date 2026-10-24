@@ -27,7 +27,7 @@ const displayFamily = isWeb ? "var(--font-display), system-ui, sans-serif" : "Ar
 const bodyFamily = isWeb ? "var(--font-body), system-ui, sans-serif" : "InterTight_400Regular";
 const monoFamily = isWeb ? "var(--font-mono), monospace" : "IBMPlexMono_500Medium";
 
-// Titoli in Instrument Sans (docs/CHANGELOG.md §287): interlinea 1,2 e
+// Titoli in Instrument Sans (docs/CHANGELOG.md §295): interlinea 1,2 e
 // spaziatura leggermente stretta. Con l'interlinea di default (circa 1,5) un
 // titolo su due righe sembrava due titoli separati, e i titoli larghi
 // andavano a capo prima su telefono.

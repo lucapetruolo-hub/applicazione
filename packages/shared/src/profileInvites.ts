@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { phoneNumberSchema, professionalCategorySlugsSchema } from "./schemas";
+import { newPasswordSchema } from "./password";
 
 /**
  * Profilo creato da un operatore al telefono (docs/CHANGELOG.md §170,
@@ -26,7 +27,7 @@ export type OperatorProfileInviteInput = z.infer<typeof operatorProfileInviteSch
 
 export const acceptProfileInviteSchema = z.object({
   token: z.string().min(20).max(200),
-  password: z.string().min(8, "La password deve avere almeno 8 caratteri"),
+  password: newPasswordSchema,
   acceptedLegalTerms: z.boolean().refine((v) => v === true, "Devi accettare Privacy Policy e Termini di Servizio."),
   declaredAdult: z.boolean().refine((v) => v === true, "Devi dichiarare di avere almeno 18 anni."),
 });

@@ -213,3 +213,32 @@ describe("ProfessionalsService.deleteLead — nasconde, non cancella (docs/CHANG
     await expect(service.deleteLead("user-1", "lead-1")).rejects.toThrow("Questa richiesta non è tua.");
   });
 });
+
+describe("agenda pubblica (§293)", () => {
+  const visible = { deletedAt: null, suspendedAt: null, invitePendingAt: null, pausedAt: null, requestsBlockedUntil: null, isDemo: true, fiscalProfile: null };
+  const build = (profile: unknown) => {
+    const prisma = {
+      professionalProfile: { findUnique: vi.fn().mockResolvedValue(profile) },
+      availabilitySlot: { findMany: vi.fn().mockResolvedValue([]) },
+      booking: { findMany: vi.fn().mockResolvedValue([]) },
+      availabilityException: { findMany: vi.fn().mockResolvedValue([]) },
+    };
+    return { prisma, service: new ProfessionalsService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never) };
+  };
+
+  it("non esiste per un profilo eliminato o sospeso", async () => {
+    await expect(build({ ...visible, deletedAt: new Date() }).service.getPublicAgenda("p-1")).rejects.toThrow("Professionista non trovato.");
+    await expect(build({ ...visible, suspendedAt: new Date() }).service.getPublicAgenda("p-1")).rejects.toThrow("Professionista non trovato.");
+  });
+
+  it("nessuna fascia per un profilo in pausa", async () => {
+    const { service, prisma } = build({ ...visible, pausedAt: new Date() });
+    await expect(service.getPublicAgenda("p-1")).resolves.toEqual({ days: [] });
+    expect(prisma.availabilitySlot.findMany).not.toHaveBeenCalled();
+  });
+
+  it("mostra i giorni di un profilo visibile", async () => {
+    const { days } = await build(visible).service.getPublicAgenda("p-1");
+    expect(days.length).toBeGreaterThan(0);
+  });
+});

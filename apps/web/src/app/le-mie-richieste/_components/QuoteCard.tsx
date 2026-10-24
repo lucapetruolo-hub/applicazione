@@ -14,6 +14,7 @@ import { ScheduleChangeBox } from "@/components/ScheduleChangeBox";
 import { TimelineModal } from "@/components/TimelineModal";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 import { textareaStyle } from "./clientRequestHelpers";
+import { ItalianDateInput } from "@/components/ItalianDateInput";
 
 export function formatQuoteDate(iso: string): string {
   const date = new Date(iso);
@@ -253,7 +254,7 @@ export function QuoteCard({
           {selectedSlotKey === MANUAL_OPTION_VALUE ? (
             <YStack gap="$2">
               <XStack gap="$2" flexWrap="wrap">
-                <input aria-label="Data" type="date" value={manualDate} onChange={(e) => setManualDate(e.target.value)} style={{ ...textareaStyle, flex: 1, minWidth: 130 }} />
+                <ItalianDateInput ariaLabel="Data" value={manualDate} onChange={setManualDate} style={{ ...textareaStyle, flex: 1, minWidth: 130 }} />
                 <input aria-label="Ora di inizio" type="time" value={manualStartTime} onChange={(e) => setManualStartTime(e.target.value)} style={{ ...textareaStyle, flex: 1, minWidth: 100 }} />
                 <input aria-label="Ora di fine" type="time" value={manualEndTime} onChange={(e) => setManualEndTime(e.target.value)} style={{ ...textareaStyle, flex: 1, minWidth: 100 }} />
               </XStack>

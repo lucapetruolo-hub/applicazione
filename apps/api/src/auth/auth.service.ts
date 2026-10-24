@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, Inject, Injectable, NotFoundException, Optional, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, Inject, Injectable, Logger, NotFoundException, Optional, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import * as bcrypt from "bcryptjs";
@@ -11,6 +11,8 @@ import { EmailService } from "../email/email.service";
 import { frontendUrl } from "../email/email-brand";
 import {
   accountDeletedEmail,
+  loginLockedEmail,
+  newDeviceLoginEmail,
   passwordChangedEmail,
   passwordResetEmail,
   verifyEmailEmail,
@@ -19,8 +21,10 @@ import {
 } from "../email/templates/account-emails";
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { GeocodingService } from "../geocoding/geocoding.service";
-import { SUSPENDED_ACCOUNT_MESSAGE } from "./jwt-auth.guard";
+import { SUSPENDED_ACCOUNT_MESSAGE, sessionTokenPayload } from "./jwt-auth.guard";
 import { googleNameFields, googleNameRepair } from "./google-name";
+import { assertPasswordWithoutEmail } from "./password-checks";
+import { loginDeviceHash, loginDeviceLabel, type LoginDeviceInfo } from "./login-device";
 
 const BCRYPT_SALT_ROUNDS = 10;
 /** Validità del link di conferma email (docs/CHANGELOG.md §178). */
@@ -33,6 +37,14 @@ const PASSWORD_RESET_CODE_ERROR = "Codice non corretto o scaduto. Controlla l'ul
 export const EMAIL_CODE_MINUTES = 15;
 export const EMAIL_CODE_MAX_ATTEMPTS = 5;
 export const EMAIL_CODE_RESEND_SECONDS = 60;
+/** Password sbagliate di fila sullo stesso account prima della pausa (§289). */
+export const LOGIN_MAX_FAILURES = 10;
+export const LOGIN_LOCK_MINUTES = 15;
+
+function loginLockedMessage(lockedUntil: Date): string {
+  const minutes = Math.max(1, Math.ceil((lockedUntil.getTime() - Date.now()) / 60_000));
+  return `Troppi tentativi con una password sbagliata. Per sicurezza riprova tra ${minutes === 1 ? "1 minuto" : `${minutes} minuti`}, oppure scegli una password nuova con "Password dimenticata?".`;
+}
 
 function hashEmailToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -76,6 +88,7 @@ export type AuthResult = { token: string; isNewUser: boolean };
 @Injectable()
 export class AuthService {
   private readonly googleClient: OAuth2Client | null;
+  private readonly logger = new Logger(AuthService.name);
 
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
@@ -124,12 +137,14 @@ export class AuthService {
     role: "CLIENT" | "PROFESSIONAL" = "CLIENT",
     categorySlugs: string[] = [],
     entityType?: ProfessionalEntityTypeValue,
+    device?: LoginDeviceInfo,
   ): Promise<AuthResult> {
     const existingUser = await this.prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       throw new ConflictException("Esiste già un account con questa email.");
     }
 
+    assertPasswordWithoutEmail(password, email);
     const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
     // `acceptedLegalTerms`/`declaredAdult` sono già garantite `=== true` da
     // `registerSchema` (Zod `.refine`) prima di arrivare qui — richiesta
@@ -158,26 +173,89 @@ export class AuthService {
     } else {
       await this.emailService.send({ to: email, ...welcomeClientEmail(name ?? null) });
     }
+    await this.checkLoginDevice(user, device);
 
-    return { token: this.issueToken(user.id), isNewUser: true };
+    return { token: this.issueToken(user), isNewUser: true };
   }
 
-  async login(email: string, password: string): Promise<AuthResult> {
+  async login(email: string, password: string, device?: LoginDeviceInfo): Promise<AuthResult> {
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user?.passwordHash) {
       throw new UnauthorizedException("Email o password non corretti.");
     }
+    // In pausa anche con la password giusta: altrimenti chi prova a indovinarla
+    // capirebbe dalla risposta quando l'ha trovata.
+    if (user.loginLockedUntil && user.loginLockedUntil > new Date()) {
+      throw new HttpException(loginLockedMessage(user.loginLockedUntil), HttpStatus.TOO_MANY_REQUESTS);
+    }
 
     const isValid = await bcrypt.compare(password, user.passwordHash);
     if (!isValid) {
+      await this.recordFailedLogin(user);
       throw new UnauthorizedException("Email o password non corretti.");
+    }
+    if (user.failedLoginCount > 0 || user.loginLockedUntil) {
+      await this.prisma.user.update({ where: { id: user.id }, data: { failedLoginCount: 0, loginLockedUntil: null } });
     }
     if (user.suspendedAt) {
       throw new ForbiddenException(SUSPENDED_ACCOUNT_MESSAGE);
     }
 
     await this.touchProfessionalActivity(user.id, user.role);
-    return { token: this.issueToken(user.id), isNewUser: false };
+    await this.checkLoginDevice(user, device);
+    return { token: this.issueToken(user), isNewUser: false };
+  }
+
+  /**
+   * Limite di password sbagliate sul singolo account (docs/CHANGELOG.md
+   * §289, OWASP ASVS 6.3.1): il limite per IP del controller non ferma chi
+   * prova da tanti indirizzi. Alla LOGIN_MAX_FAILURES-esima di fila
+   * l'accesso con password si ferma per LOGIN_LOCK_MINUTES minuti e il
+   * titolare riceve un'email; Google e il recupero password restano aperti.
+   */
+  private async recordFailedLogin(user: { id: string; email: string | null; name: string | null }): Promise<void> {
+    const { failedLoginCount } = await this.prisma.user.update({
+      where: { id: user.id },
+      data: { failedLoginCount: { increment: 1 } },
+      select: { failedLoginCount: true },
+    });
+    if (failedLoginCount < LOGIN_MAX_FAILURES) return;
+    const lockedUntil = new Date(Date.now() + LOGIN_LOCK_MINUTES * 60 * 1000);
+    // Una sola richiesta chiude la pausa e manda l'email, anche con tentativi in parallelo.
+    const locked = await this.prisma.user.updateMany({
+      where: { id: user.id, failedLoginCount: { gte: LOGIN_MAX_FAILURES } },
+      data: { failedLoginCount: 0, loginLockedUntil: lockedUntil },
+    });
+    if (locked.count === 0) return;
+    if (user.email) await this.emailService.send({ to: user.email, ...loginLockedEmail(user.name, LOGIN_LOCK_MINUTES) });
+    throw new HttpException(loginLockedMessage(lockedUntil), HttpStatus.TOO_MANY_REQUESTS);
+  }
+
+  /**
+   * Dispositivo nuovo (docs/CHANGELOG.md §289): si ricorda per ogni
+   * professionista da quali browser entra; da uno mai visto arriva l'email
+   * "Nuovo accesso" (a tutti i professionisti, decisione dell'utente). Il primo
+   * dispositivo ricordato non fa partire nulla. Un errore qui non blocca mai
+   * l'accesso.
+   */
+  private async checkLoginDevice(
+    user: { id: string; role: string; email: string | null; name: string | null },
+    device: LoginDeviceInfo | undefined,
+  ): Promise<void> {
+    const deviceHash = loginDeviceHash(device);
+    if (!deviceHash || user.role !== "PROFESSIONAL") return;
+    try {
+      const now = new Date();
+      const seen = await this.prisma.loginDevice.updateMany({ where: { userId: user.id, deviceHash }, data: { lastSeenAt: now } });
+      if (seen.count > 0) return;
+      const known = await this.prisma.loginDevice.count({ where: { userId: user.id } });
+      const label = loginDeviceLabel(device?.userAgent);
+      await this.prisma.loginDevice.create({ data: { userId: user.id, deviceHash, label } });
+      if (known === 0 || !user.email) return;
+      await this.emailService.send({ to: user.email, ...newDeviceLoginEmail(user.name, { label, at: now }) });
+    } catch (error) {
+      this.logger.warn(`Controllo del dispositivo non riuscito: ${error instanceof Error ? error.message : error}`);
+    }
   }
 
   async verifyGoogleToken(
@@ -187,6 +265,7 @@ export class AuthService {
     legalConsent?: { acceptedLegalTerms: boolean; declaredAdult: boolean },
     categorySlugs: string[] = [],
     entityType?: ProfessionalEntityTypeValue,
+    device?: LoginDeviceInfo,
   ): Promise<AuthResult> {
     if (!this.googleClient) {
       throw new BadRequestException("Login con Google non configurato su questo ambiente.");
@@ -289,7 +368,8 @@ export class AuthService {
       const name = user.name ? user.name.split(" ")[0]! : null;
       await this.emailService.send({ to: user.email, ...(user.role === "PROFESSIONAL" ? welcomeProfessionalEmail(name, null) : welcomeClientEmail(name)) });
     }
-    return { token: this.issueToken(user.id), isNewUser: !existingUser };
+    await this.checkLoginDevice(user, device);
+    return { token: this.issueToken(user), isNewUser: !existingUser };
   }
 
   async updateAccount(
@@ -460,9 +540,18 @@ export class AuthService {
       }
     }
 
+    assertPasswordWithoutEmail(newPassword, user.email);
     const passwordHash = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
-    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+    // Gli altri dispositivi escono (§292); questo resta dentro col token nuovo.
+    const updated = await this.prisma.user.update({ where: { id: userId }, data: { passwordHash, sessionVersion: { increment: 1 } } });
     if (user.email) await this.emailService.send({ to: user.email, ...passwordChangedEmail(user.name) });
+    return { token: this.issueToken(updated) };
+  }
+
+  /** "Esci dagli altri dispositivi" (§294): come dopo un cambio password, questo resta dentro col token nuovo. */
+  async logoutOtherDevices(userId: string): Promise<{ token: string }> {
+    const updated = await this.prisma.user.update({ where: { id: userId }, data: { sessionVersion: { increment: 1 } } });
+    return { token: this.issueToken(updated) };
   }
 
   /**
@@ -546,16 +635,22 @@ export class AuthService {
     if (!user?.email || user.deletedAt !== null || !user.passwordResetExpiresAt || user.passwordResetExpiresAt < new Date()) {
       throw new BadRequestException("Il link per reimpostare la password non è valido o è scaduto. Chiedine uno nuovo.");
     }
+    assertPasswordWithoutEmail(password, user.email);
     const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
-    await this.prisma.user.update({
+    // Password nuova: si chiudono gli accessi aperti sugli altri dispositivi (§292).
+    const updated = await this.prisma.user.update({
       where: { id: user.id },
       data: {
         passwordHash,
+        sessionVersion: { increment: 1 },
         passwordResetTokenHash: null,
         passwordResetExpiresAt: null,
         passwordResetCodeHash: null,
         passwordResetCodeExpiresAt: null,
         passwordResetCodeAttempts: 0,
+        // Password nuova: la pausa per i tentativi sbagliati non serve più.
+        failedLoginCount: 0,
+        loginLockedUntil: null,
         emailVerifiedAt: user.emailVerifiedAt ?? new Date(),
         ...CLEARED_EMAIL_CHECKS,
       },
@@ -564,7 +659,7 @@ export class AuthService {
     if (user.suspendedAt) {
       throw new ForbiddenException(SUSPENDED_ACCOUNT_MESSAGE);
     }
-    return { token: this.issueToken(user.id), isNewUser: false };
+    return { token: this.issueToken(updated), isNewUser: false };
   }
 
   /**
@@ -589,6 +684,8 @@ export class AuthService {
       await this.prisma.professionalProfile.update({ where: { id: professionalProfile.id }, data: { deletedAt: new Date() } });
     }
 
+    // Dispositivi usati per l'accesso (§289): non servono più a nulla.
+    await this.prisma.loginDevice.deleteMany({ where: { userId } });
     await this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -713,7 +810,7 @@ export class AuthService {
     };
   }
 
-  private issueToken(userId: string): string {
-    return this.jwt.sign({ sub: userId });
+  private issueToken(user: { id: string; sessionVersion: number }): string {
+    return this.jwt.sign(sessionTokenPayload(user));
   }
 }
