@@ -314,8 +314,9 @@ export class AuthController {
     @Req() req: AuthenticatedRequest,
     @Body(new ZodValidationPipe(changePasswordSchema)) body: ChangePasswordInput,
   ) {
-    await this.authService.changePassword(req.user.userId, body.currentPassword, body.newPassword);
-    return { success: true };
+    // Token nuovo per questo dispositivo: quelli vecchi non valgono più (§290).
+    const { token } = await this.authService.changePassword(req.user.userId, body.currentPassword, body.newPassword);
+    return { success: true, token };
   }
 
   @UseGuards(JwtAuthGuard)

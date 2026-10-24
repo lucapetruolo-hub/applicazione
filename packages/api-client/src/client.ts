@@ -991,8 +991,9 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
         body: JSON.stringify(input),
       }),
 
+    // `token`: il nuovo accesso per questo dispositivo, gli altri si chiudono (docs/CHANGELOG.md §290).
     changePassword: (token: string, input: ChangePasswordInput) =>
-      request<{ success: boolean }>("/auth/change-password", {
+      request<{ success: boolean; token: string }>("/auth/change-password", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),

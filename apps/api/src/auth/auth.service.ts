@@ -21,7 +21,7 @@ import {
 } from "../email/templates/account-emails";
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { GeocodingService } from "../geocoding/geocoding.service";
-import { SUSPENDED_ACCOUNT_MESSAGE } from "./jwt-auth.guard";
+import { SUSPENDED_ACCOUNT_MESSAGE, sessionTokenPayload } from "./jwt-auth.guard";
 import { googleNameFields, googleNameRepair } from "./google-name";
 import { assertPasswordWithoutEmail } from "./password-checks";
 import { loginDeviceHash, loginDeviceLabel, type LoginDeviceInfo } from "./login-device";
@@ -175,7 +175,7 @@ export class AuthService {
     }
     await this.checkLoginDevice(user, device);
 
-    return { token: this.issueToken(user.id), isNewUser: true };
+    return { token: this.issueToken(user), isNewUser: true };
   }
 
   async login(email: string, password: string, device?: LoginDeviceInfo): Promise<AuthResult> {
@@ -203,7 +203,7 @@ export class AuthService {
 
     await this.touchProfessionalActivity(user.id, user.role);
     await this.checkLoginDevice(user, device);
-    return { token: this.issueToken(user.id), isNewUser: false };
+    return { token: this.issueToken(user), isNewUser: false };
   }
 
   /**
@@ -369,7 +369,7 @@ export class AuthService {
       await this.emailService.send({ to: user.email, ...(user.role === "PROFESSIONAL" ? welcomeProfessionalEmail(name, null) : welcomeClientEmail(name)) });
     }
     await this.checkLoginDevice(user, device);
-    return { token: this.issueToken(user.id), isNewUser: !existingUser };
+    return { token: this.issueToken(user), isNewUser: !existingUser };
   }
 
   async updateAccount(
@@ -542,8 +542,10 @@ export class AuthService {
 
     assertPasswordWithoutEmail(newPassword, user.email);
     const passwordHash = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
-    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+    // Gli altri dispositivi escono (§290); questo resta dentro col token nuovo.
+    const updated = await this.prisma.user.update({ where: { id: userId }, data: { passwordHash, sessionVersion: { increment: 1 } } });
     if (user.email) await this.emailService.send({ to: user.email, ...passwordChangedEmail(user.name) });
+    return { token: this.issueToken(updated) };
   }
 
   /**
@@ -629,10 +631,12 @@ export class AuthService {
     }
     assertPasswordWithoutEmail(password, user.email);
     const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
-    await this.prisma.user.update({
+    // Password nuova: si chiudono gli accessi aperti sugli altri dispositivi (§290).
+    const updated = await this.prisma.user.update({
       where: { id: user.id },
       data: {
         passwordHash,
+        sessionVersion: { increment: 1 },
         passwordResetTokenHash: null,
         passwordResetExpiresAt: null,
         passwordResetCodeHash: null,
@@ -649,7 +653,7 @@ export class AuthService {
     if (user.suspendedAt) {
       throw new ForbiddenException(SUSPENDED_ACCOUNT_MESSAGE);
     }
-    return { token: this.issueToken(user.id), isNewUser: false };
+    return { token: this.issueToken(updated), isNewUser: false };
   }
 
   /**
@@ -800,7 +804,7 @@ export class AuthService {
     };
   }
 
-  private issueToken(userId: string): string {
-    return this.jwt.sign({ sub: userId });
+  private issueToken(user: { id: string; sessionVersion: number }): string {
+    return this.jwt.sign(sessionTokenPayload(user));
   }
 }

@@ -6,6 +6,22 @@ import { PRISMA } from "../prisma/prisma.module";
 
 export type AuthenticatedRequest = Request & { user: { userId: string } };
 
+/**
+ * Contenuto del token di accesso: l'utente e la versione delle sessioni di
+ * quando è stato emesso (controllo sicurezza, docs/CHANGELOG.md §290). I token
+ * emessi prima non hanno `sv` e valgono come versione 0.
+ */
+export type SessionTokenPayload = { sub: string; sv?: number };
+
+export function sessionTokenPayload(user: { id: string; sessionVersion: number }): SessionTokenPayload {
+  return { sub: user.id, sv: user.sessionVersion };
+}
+
+/** Il token è stato emesso prima dell'ultimo cambio o recupero della password. */
+export function isRevokedSession(payload: SessionTokenPayload, sessionVersion: number): boolean {
+  return (payload.sv ?? 0) !== sessionVersion;
+}
+
 /** Messaggio unico per un account sospeso, anche al login (AuthService). */
 export const SUSPENDED_ACCOUNT_MESSAGE =
   "Il tuo account è stato sospeso dopo una segnalazione. Se ritieni sia un errore, scrivici dal modulo Contatti.";
@@ -26,18 +42,23 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException("Token mancante.");
     }
 
-    let userId: string;
+    let payload: SessionTokenPayload;
     try {
-      userId = this.jwt.verify<{ sub: string }>(token).sub;
+      payload = this.jwt.verify<SessionTokenPayload>(token);
     } catch {
       throw new UnauthorizedException("Token non valido o scaduto.");
     }
+    const userId = payload.sub;
 
     // Sospensione decisa da un admin (docs/CHANGELOG.md §144): letta dal
     // database a ogni richiesta, perché un token già emesso resta valido per
     // 30 giorni e una sospensione che vale solo al prossimo login non
     // sospenderebbe nulla. Stesso principio di AdminGuard (ruolo riletto).
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { suspendedAt: true } });
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { suspendedAt: true, sessionVersion: true } });
+    // Password cambiata o reimpostata dopo l'emissione: l'accesso è chiuso.
+    if (user && isRevokedSession(payload, user.sessionVersion)) {
+      throw new UnauthorizedException("Token non valido o scaduto.");
+    }
     if (user?.suspendedAt) {
       throw new ForbiddenException(SUSPENDED_ACCOUNT_MESSAGE);
     }

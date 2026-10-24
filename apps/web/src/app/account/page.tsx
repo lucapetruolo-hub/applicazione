@@ -120,7 +120,7 @@ function parseBirthDate(iso: string | null) {
 
 export default function AccountPage() {
   const router = useRouter();
-  const { user, token, isLoading, refreshUser, logout } = useAuth();
+  const { user, token, isLoading, refreshUser, login, logout } = useAuth();
 
   const [name, setName] = useState("");
   const [surname, setSurname] = useState("");
@@ -345,11 +345,13 @@ export default function AccountPage() {
 
     setIsSavingPassword(true);
     try {
-      await apiClient.changePassword(token as string, {
+      const result = await apiClient.changePassword(token as string, {
         currentPassword: currentPassword || undefined,
         newPassword,
       });
-      await refreshUser();
+      // Il token vecchio non vale più (gli altri dispositivi escono): qui si
+      // resta dentro con quello nuovo.
+      await login(result.token);
       setPasswordSaved(true);
       setCurrentPassword("");
       setNewPassword("");
