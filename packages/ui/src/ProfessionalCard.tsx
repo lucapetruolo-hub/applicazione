@@ -336,7 +336,7 @@ export function ProfessionalCard({
                   backgroundColor={brand.cianografiaVelo}
                 >
                   <Icon name="badge-check" size={14} color={brand.verificato} strokeWidth={2} />
-                  <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.verificato}>
+                  <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.verificato}>
                     Verificato
                   </Text>
                 </XStack>
@@ -352,7 +352,7 @@ export function ProfessionalCard({
                   accessibilityHint="Stripe, il fornitore dei pagamenti, ha verificato l'identità del professionista. Non è una garanzia sulla qualità del lavoro."
                 >
                   <Icon name="shield-check" size={13} color={brand.verificato} strokeWidth={2} />
-                  <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.verificato}>
+                  <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.verificato}>
                     Identità verificata da Stripe
                   </Text>
                 </XStack>
@@ -360,7 +360,7 @@ export function ProfessionalCard({
               {boosted ? (
                 <XStack alignItems="center" gap={4} paddingHorizontal="$2" paddingVertical={2} borderRadius="$10" backgroundColor={brand.ottoneVelo}>
                   <Icon name="zap" size={13} color={brand.ottone} strokeWidth={2} />
-                  <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.ottone}>
+                  <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.ottone}>
                     Sponsorizzato
                   </Text>
                 </XStack>
@@ -368,7 +368,7 @@ export function ProfessionalCard({
               {isNewProfile ? (
                 <XStack alignItems="center" gap={4} paddingHorizontal="$2" paddingVertical={2} borderRadius="$10" backgroundColor={brand.cianografiaVelo}>
                   <Icon name="sparkles" size={13} color={brand.cianografiaScuro} strokeWidth={2} />
-                  <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografiaScuro}>
+                  <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.cianografiaScuro}>
                     Nuovo profilo
                   </Text>
                 </XStack>
@@ -376,7 +376,7 @@ export function ProfessionalCard({
               {hasLiabilityInsurance ? (
                 <XStack alignItems="center" gap={4} paddingHorizontal="$2" paddingVertical={2} borderRadius="$10" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto}>
                   <Icon name="shield-check" size={13} color={brand.grafite} strokeWidth={2} />
-                  <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite}>
+                  <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite}>
                     Assicurazione RC
                   </Text>
                   <Text fontFamily="$body" fontSize={10.5} fontWeight="500" color={brand.grafite70}>
@@ -385,7 +385,7 @@ export function ProfessionalCard({
                 </XStack>
               ) : null}
             </XStack>
-            <Text fontSize={15} color={brand.grafite70} fontWeight="500">
+            <Text fontSize={16} color={brand.grafite70} fontWeight="500">
               {specialtyLine}
             </Text>
             <XStack gap="$3" alignItems="center" flexWrap="wrap" paddingTop="$1">
@@ -393,7 +393,7 @@ export function ProfessionalCard({
               {remoteAvailable ? (
                 <XStack gap="$1" alignItems="center">
                   <Icon name="video" size={13} color={brand.cianografiaScuro} strokeWidth={1.5} />
-                  <Text fontFamily="$body" fontSize={11} color={brand.cianografiaScuro} fontWeight="700">
+                  <Text fontFamily="$body" fontSize={13} color={brand.cianografiaScuro} fontWeight="700">
                     Offre consulenza online
                   </Text>
                 </XStack>
@@ -401,12 +401,12 @@ export function ProfessionalCard({
             </XStack>
             <XStack gap="$1" alignItems="center">
               <Icon name="map-pin" size={13} color={brand.grafite70} strokeWidth={1.5} />
-              <Text fontSize={13} color={brand.grafite70}>
+              <Text fontSize={16} color={brand.grafite70}>
                 {distanceKm !== undefined ? `${city} · a ${distanceKm.toString().replace(".", ",")} km` : city}
               </Text>
             </XStack>
             {completedThisMonth && completedThisMonth > 0 ? (
-              <Text fontSize={12.5} color={brand.verificato} fontWeight="600">
+              <Text fontSize={13} color={brand.verificato} fontWeight="600">
                 Ha completato {completedThisMonth} {completedThisMonth === 1 ? "intervento" : "interventi"} questo mese
               </Text>
             ) : null}
@@ -566,7 +566,7 @@ export function ProfessionalCard({
                       if (!slot) {
                         return (
                           <XStack key={day.date} flex={1} flexBasis={0} minWidth={0} alignItems="center" justifyContent="center" paddingVertical={4} onPress={openAgendaAt?.(day.date)}>
-                            <Text fontSize={12} color={brand.filetto}>
+                            <Text fontSize={13} color={brand.filetto}>
                               -
                             </Text>
                           </XStack>
@@ -626,10 +626,10 @@ export function ProfessionalCard({
             {hasAvailableInWindow ? null : firstFree ? (
               <YStack gap="$2" padding="$3" borderRadius={radiusDoc} borderWidth={1} borderColor={brand.filetto}>
                 <YStack gap={2}>
-                  <Text fontSize={11.5} color={brand.grafite70}>
+                  <Text fontSize={13} color={brand.grafite70}>
                     Nessun orario libero in questi giorni. Primo orario libero:
                   </Text>
-                  <Text fontSize={13} fontWeight="700" color={brand.grafite}>
+                  <Text fontSize={16} fontWeight="700" color={brand.grafite}>
                     {firstFree.day.label === "Oggi" || firstFree.day.label === "Domani" ? `${firstFree.day.label}, ` : ""}
                     {firstFree.day.dateLabel}, {firstFree.slot.time}–{firstFree.slot.endTime}
                   </Text>
@@ -651,13 +651,13 @@ export function ProfessionalCard({
                     setWindowOffset(firstFree.index);
                   }}
                 >
-                  <Text fontFamily="$body" fontSize={12} fontWeight="700" color="#FFFFFF">
+                  <Text fontFamily="$body" fontSize={13} fontWeight="700" color="#FFFFFF">
                     Mostra orari disponibili →
                   </Text>
                 </XStack>
               </YStack>
             ) : (
-              <Text fontSize={12} color={brand.grafite70} paddingVertical="$2">
+              <Text fontSize={13} color={brand.grafite70} paddingVertical="$2">
                 Nessun orario libero nei prossimi due mesi.
               </Text>
             )}
@@ -682,10 +682,10 @@ export function ProfessionalCard({
               borderBottomWidth={index < shown.length - 1 ? 1 : 0}
               borderBottomColor={brand.gesso}
             >
-              <Text fontSize={14} color={brand.grafite70} flex={1}>
+              <Text fontSize={16} color={brand.grafite70} flex={1}>
                 {service.name}
               </Text>
-              <Text fontSize={14} color={brand.grafite} fontWeight="600" flexShrink={0} numberOfLines={1}>
+              <Text fontSize={16} color={brand.grafite} fontWeight="600" flexShrink={0} numberOfLines={1}>
                 {formatServicePrice(service.priceMinEurCents, service.priceMaxEurCents)}
               </Text>
             </XStack>
@@ -703,7 +703,7 @@ export function ProfessionalCard({
               accessibilityRole="button"
               accessibilityLabel={showAllServices ? "Mostra meno prestazioni" : "Mostra tutte le prestazioni"}
             >
-              <Text fontSize={13} fontWeight="600" color={brand.cianografiaScuro}>
+              <Text fontSize={16} fontWeight="600" color={brand.cianografiaScuro}>
                 {showAllServices ? "Mostra meno" : `Mostra tutte (${services.length})`}
               </Text>
               <Icon name={showAllServices ? "chevron-up" : "chevron-down"} size={14} color={brand.cianografiaScuro} strokeWidth={2} />

@@ -10,7 +10,7 @@ const MAX_REVIEW_MEDIA = 5;
 
 const textareaStyle = {
   padding: 10,
-  borderRadius: 4,
+  borderRadius: 6,
   border: `1px solid ${brand.bordoCampo}`,
   fontSize: 14,
   fontFamily: "inherit",

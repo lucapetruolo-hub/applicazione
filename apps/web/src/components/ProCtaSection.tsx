@@ -55,7 +55,7 @@ export function ProCtaSection() {
                 <YStack
                   width={44}
                   height={44}
-                  borderRadius={16}
+                  borderRadius={12}
                   backgroundColor="rgba(255,255,255,0.12)"
                   alignItems="center"
                   justifyContent="center"
@@ -70,13 +70,13 @@ export function ProCtaSection() {
                     </Text>
                     {column.comingSoon ? (
                       <XStack backgroundColor="rgba(255,255,255,0.18)" paddingHorizontal={8} paddingVertical={2} borderRadius={999}>
-                        <Text fontSize={11} fontWeight="700" color="white">
+                        <Text fontSize={13} fontWeight="700" color="white">
                           In arrivo
                         </Text>
                       </XStack>
                     ) : null}
                   </XStack>
-                  <Text fontSize="$4" color="rgba(255,255,255,0.85)">
+                  <Text fontSize={16} color="rgba(255,255,255,0.85)">
                     {column.text}
                   </Text>
                 </YStack>

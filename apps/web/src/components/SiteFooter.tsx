@@ -9,7 +9,7 @@ const MAIN_CATEGORIES = PROFESSIONAL_CATEGORIES.slice(0, 8);
 
 function FooterColumnTitle({ children }: { children: string }) {
   return (
-    <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite}>
+    <Text fontFamily="$body" fontSize={16} fontWeight="700" color={brand.grafite}>
       {children}
     </Text>
   );
@@ -18,7 +18,7 @@ function FooterColumnTitle({ children }: { children: string }) {
 function FooterLink({ href, children }: { href: string; children: string }) {
   return (
     <Link href={href} style={{ textDecoration: "none" }}>
-      <Text fontSize="$3" color={brand.grafite}>
+      <Text fontSize={16} color={brand.grafite}>
         {children}
       </Text>
     </Link>
@@ -37,7 +37,7 @@ export function SiteFooter() {
         <XStack flexWrap="wrap" gap="$7" justifyContent="space-between">
           <YStack gap="$3" maxWidth={280}>
             <Logo name={BRAND.name} size={22} />
-            <Text fontSize="$3" color={brand.grafite70}>
+            <Text fontSize={16} color={brand.grafite70}>
               Trova e prenota professionisti per la casa e la famiglia: idraulici, elettricisti,
               imbianchini, babysitter, dogsitter e altro, vicino a te.
             </Text>
@@ -86,19 +86,19 @@ export function SiteFooter() {
         <XStack flexWrap="wrap" gap="$4" paddingTop="$5" borderTopWidth={1} borderTopColor={brand.filetto}>
           <XStack alignItems="center" gap="$2">
             <Icon name="badge-check" size={16} color={brand.grafite70} strokeWidth={1.5} />
-            <Text fontSize="$2" fontWeight="600" color={brand.grafite70}>
+            <Text fontSize={13} fontWeight="600" color={brand.grafite70}>
               Badge Verificato: documento e P.IVA controllati
             </Text>
           </XStack>
           <XStack alignItems="center" gap="$2">
             <Icon name="shield" size={16} color={brand.grafite70} strokeWidth={1.5} />
-            <Text fontSize="$2" fontWeight="600" color={brand.grafite70}>
+            <Text fontSize={13} fontWeight="600" color={brand.grafite70}>
               Recensioni solo da lavori confermati
             </Text>
           </XStack>
           <XStack alignItems="center" gap="$2">
             <Icon name="sparkles" size={16} color={brand.grafite70} strokeWidth={1.5} />
-            <Text fontSize="$2" fontWeight="600" color={brand.grafite70}>
+            <Text fontSize={13} fontWeight="600" color={brand.grafite70}>
               Gratis per chi cerca
             </Text>
           </XStack>
@@ -107,32 +107,32 @@ export function SiteFooter() {
         <XStack flexWrap="wrap" alignItems="center" gap="$4">
           <XStack alignItems="center" gap="$2">
             <Icon name="map-pin" size={14} color={brand.grafite70} strokeWidth={1.5} />
-            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+            <Text fontFamily="$body" fontSize={16} color={brand.grafite70}>
               © {new Date().getFullYear()} {BRAND.name} · Tutti i diritti riservati.
             </Text>
           </XStack>
           <Link href="/privacy" style={{ textDecoration: "none" }}>
-            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+            <Text fontFamily="$body" fontSize={16} color={brand.grafite70}>
               Privacy Policy
             </Text>
           </Link>
           <Link href="/termini" style={{ textDecoration: "none" }}>
-            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+            <Text fontFamily="$body" fontSize={16} color={brand.grafite70}>
               Termini di Servizio
             </Text>
           </Link>
           <Link href="/cookie" style={{ textDecoration: "none" }}>
-            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+            <Text fontFamily="$body" fontSize={16} color={brand.grafite70}>
               Cookie Policy
             </Text>
           </Link>
           <button type="button" onClick={reopenCookieChoice} style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}>
-            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+            <Text fontFamily="$body" fontSize={16} color={brand.grafite70}>
               Preferenze cookie
             </Text>
           </button>
           <Link href="/accessibilita" style={{ textDecoration: "none" }}>
-            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+            <Text fontFamily="$body" fontSize={16} color={brand.grafite70}>
               Accessibilità
             </Text>
           </Link>

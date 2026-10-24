@@ -363,7 +363,7 @@ export function ProfessionalDetailContent({ professional, preview = false }: { p
                       backgroundColor={brand.cianografiaVelo}
                     >
                       {icon ? <Icon name={icon} size={13} color={brand.cianografiaScuro} /> : null}
-                      <Text fontFamily="$body" fontWeight="700" fontSize={13} color={brand.cianografiaScuro}>
+                      <Text fontFamily="$body" fontWeight="700" fontSize={16} color={brand.cianografiaScuro}>
                         {category.label}
                       </Text>
                     </XStack>
@@ -372,18 +372,18 @@ export function ProfessionalDetailContent({ professional, preview = false }: { p
               </XStack>
               <XStack alignItems="center" gap={4}>
                 <Icon name="map-pin" size={13} color={brand.grafite70} />
-                <Text fontFamily="$body" fontWeight="700" fontSize={13} color={brand.grafite70}>
+                <Text fontFamily="$body" fontWeight="700" fontSize={16} color={brand.grafite70}>
                   {professional.city}
                 </Text>
               </XStack>
               {/* Privato o professionista (Codice del consumo art. 49-bis, docs/CHANGELOG.md §241). */}
               {professional.traderStatus ? (
                 <YStack gap={2}>
-                  <Text fontFamily="$body" fontWeight="700" fontSize={13} color={brand.grafite}>
+                  <Text fontFamily="$body" fontWeight="700" fontSize={16} color={brand.grafite}>
                     {TRADER_STATUS_COPY[professional.traderStatus].label}
                   </Text>
                   {professional.traderStatus === "PRIVATE" ? (
-                    <Text fontSize={12} color={brand.grafite70}>
+                    <Text fontSize={13} color={brand.grafite70}>
                       {TRADER_STATUS_COPY.PRIVATE.note}
                     </Text>
                   ) : null}
@@ -395,7 +395,7 @@ export function ProfessionalDetailContent({ professional, preview = false }: { p
                 <Text color={brand.grafite70}>Nessuna recensione ancora</Text>
               )}
               {professional.completedThisMonth > 0 ? (
-                <Text fontSize={13} color={brand.verificato} fontWeight="600">
+                <Text fontSize={16} color={brand.verificato} fontWeight="600">
                   Ha completato {professional.completedThisMonth} {professional.completedThisMonth === 1 ? "intervento" : "interventi"} questo
                   mese
                 </Text>
@@ -410,7 +410,7 @@ export function ProfessionalDetailContent({ professional, preview = false }: { p
                   {professional.completedJobsTotal > 0 ? (
                     <XStack alignItems="center" gap={4} flexShrink={1} minWidth={0}>
                       <Icon name="check" size={13} strokeWidth={2} color={brand.grafite70} />
-                      <Text fontSize={12.5} color={brand.grafite70} flexShrink={1}>
+                      <Text fontSize={13} color={brand.grafite70} flexShrink={1}>
                         {professional.completedJobsTotal} {professional.completedJobsTotal === 1 ? "lavoro completato" : "lavori completati"} in
                         totale
                       </Text>
@@ -419,7 +419,7 @@ export function ProfessionalDetailContent({ professional, preview = false }: { p
                   {professional.avgResponseTimeMinutes !== null ? (
                     <XStack alignItems="center" gap={4} flexShrink={1} minWidth={0}>
                       <Icon name="clock" size={13} strokeWidth={1.5} color={brand.grafite70} />
-                      <Text fontSize={12.5} color={brand.grafite70} flexShrink={1}>
+                      <Text fontSize={13} color={brand.grafite70} flexShrink={1}>
                         Risponde in genere entro {formatResponseTime(professional.avgResponseTimeMinutes)}
                       </Text>
                     </XStack>
@@ -542,7 +542,7 @@ export function ProfessionalDetailContent({ professional, preview = false }: { p
             {professional.yearsOfExperience !== null ? (
               <XStack alignItems="center" gap="$2">
                 <Icon name="briefcase" size={14} strokeWidth={1.5} color={brand.grafite70} />
-                <Text fontSize="$2" color={brand.grafite70}>
+                <Text fontSize={13} color={brand.grafite70}>
                   {professional.yearsOfExperience} {professional.yearsOfExperience === 1 ? "anno" : "anni"} di esperienza
                 </Text>
               </XStack>
@@ -552,7 +552,7 @@ export function ProfessionalDetailContent({ professional, preview = false }: { p
             {professional.spokenLanguages.length > 0 ? (
               <XStack alignItems="center" gap="$2">
                 <Icon name="message-circle" size={14} strokeWidth={1.5} color={brand.grafite70} />
-                <Text fontSize="$2" color={brand.grafite70}>
+                <Text fontSize={13} color={brand.grafite70}>
                   Parla {professional.spokenLanguages.join(", ")}
                 </Text>
               </XStack>
@@ -560,7 +560,7 @@ export function ProfessionalDetailContent({ professional, preview = false }: { p
             {professional.certifications ? (
               <XStack alignItems="flex-start" gap="$2">
                 <Icon name="shield" size={14} strokeWidth={1.5} color={brand.grafite70} />
-                <Text fontSize="$2" color={brand.grafite70} flex={1}>
+                <Text fontSize={13} color={brand.grafite70} flex={1}>
                   {professional.certifications}
                 </Text>
               </XStack>
@@ -568,7 +568,7 @@ export function ProfessionalDetailContent({ professional, preview = false }: { p
             {professional.hasLiabilityInsurance ? (
               <XStack alignItems="center" gap="$2">
                 <Icon name="shield-check" size={14} strokeWidth={1.5} color={brand.grafite70} />
-                <Text fontSize="$2" color={brand.grafite70}>
+                <Text fontSize={13} color={brand.grafite70}>
                   Assicurazione RC professionale
                 </Text>
               </XStack>
@@ -600,7 +600,7 @@ export function ProfessionalDetailContent({ professional, preview = false }: { p
                 Agenda
               </Text>
             </XStack>
-            <Text fontSize="$2" color={brand.grafite70}>
+            <Text fontSize={13} color={brand.grafite70}>
               Tocca un orario libero per richiedere un preventivo per quella fascia. Gli orari barrati sono già al completo.
             </Text>
 
@@ -623,7 +623,7 @@ export function ProfessionalDetailContent({ professional, preview = false }: { p
                     setAgendaWindowOffset(0);
                   }}
                 >
-                  <Text fontFamily="$body" fontSize={13} fontWeight="700" color={agendaMode === mode ? "#FFFFFF" : brand.grafite70}>
+                  <Text fontFamily="$body" fontSize={16} fontWeight="700" color={agendaMode === mode ? "#FFFFFF" : brand.grafite70}>
                     {mode === "HOME" ? "A domicilio" : "Online"}
                   </Text>
                 </XStack>
@@ -693,10 +693,10 @@ export function ProfessionalDetailContent({ professional, preview = false }: { p
               <XStack>
                 {agendaWindowDays.map((day) => (
                   <YStack key={day.date} flex={1} flexBasis={0} minWidth={0} maxWidth={AGENDA_COLUMN_WIDTH} alignItems="center" gap={2}>
-                    <Text fontFamily="$body" fontSize={12} fontWeight="700" color={brand.grafite}>
+                    <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite}>
                       {day.label}
                     </Text>
-                    <Text fontFamily="$mono" fontSize={11} color={brand.grafite70}>
+                    <Text fontFamily="$mono" fontSize={13} color={brand.grafite70}>
                       {day.dateLabel}
                     </Text>
                   </YStack>
@@ -722,7 +722,7 @@ export function ProfessionalDetailContent({ professional, preview = false }: { p
                             justifyContent="center"
                             paddingVertical={4}
                           >
-                            <Text fontSize={13} color={brand.filetto}>
+                            <Text fontSize={16} color={brand.filetto}>
                               -
                             </Text>
                           </XStack>
@@ -795,10 +795,10 @@ export function ProfessionalDetailContent({ professional, preview = false }: { p
             {agendaHasAvailableInWindow ? null : agendaFirstFree ? (
               <YStack gap="$2" padding="$4" borderRadius={radiusDoc} borderWidth={1} borderColor={brand.filetto} alignSelf="flex-start">
                 <YStack gap={2}>
-                  <Text fontSize={12} color={brand.grafite70}>
+                  <Text fontSize={13} color={brand.grafite70}>
                     Nessun orario libero in questi giorni. Primo orario libero:
                   </Text>
-                  <Text fontSize={14} fontWeight="700" color={brand.grafite}>
+                  <Text fontSize={16} fontWeight="700" color={brand.grafite}>
                     {agendaFirstFree.day.dateLabel}, {agendaFirstFree.slot.startTime}–{agendaFirstFree.slot.endTime}
                   </Text>
                 </YStack>
@@ -815,13 +815,13 @@ export function ProfessionalDetailContent({ professional, preview = false }: { p
                   // fascia — nessuna navigazione diretta da qui.
                   onPress={() => setAgendaWindowOffset(agendaFirstFree.index)}
                 >
-                  <Text fontFamily="$body" fontSize={13} fontWeight="700" color="#FFFFFF">
+                  <Text fontFamily="$body" fontSize={16} fontWeight="700" color="#FFFFFF">
                     Mostra orari disponibili →
                   </Text>
                 </XStack>
               </YStack>
             ) : (
-              <Text fontSize="$2" color={brand.grafite70}>
+              <Text fontSize={13} color={brand.grafite70}>
                 Nessun orario libero nei prossimi due mesi.
               </Text>
             )}
@@ -918,11 +918,11 @@ export function ProfessionalDetailContent({ professional, preview = false }: { p
                         invariata), mancava solo di dirlo esplicitamente. */}
                     <XStack alignItems="center" gap={4}>
                       <Icon name="badge-check" size={13} strokeWidth={2} color={brand.verificato} />
-                      <Text fontSize="$1" fontWeight="700" color={brand.verificato}>
+                      <Text fontSize={13} fontWeight="700" color={brand.verificato}>
                         Lavoro confermato
                       </Text>
                     </XStack>
-                    <Text fontSize="$1" color={brand.grafite70}>
+                    <Text fontSize={13} color={brand.grafite70}>
                       · {reviewTimeAgo(review.createdAt)}
                     </Text>
                   </XStack>
@@ -940,7 +940,7 @@ export function ProfessionalDetailContent({ professional, preview = false }: { p
                       accessibilityRole="button"
                     >
                       <Icon name="flag" size={12} strokeWidth={1.5} color={brand.grafite70} />
-                      <Text fontSize="$1" color={brand.grafite70}>
+                      <Text fontSize={13} color={brand.grafite70}>
                         {reportedKeys.has(`REVIEW:${review.id}`) ? "Già segnalato" : "Segnala"}
                       </Text>
                     </XStack>

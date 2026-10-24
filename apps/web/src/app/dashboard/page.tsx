@@ -386,7 +386,7 @@ function Suggestion({ insights }: { insights: ProfessionalInsights }) {
   }
   if (!text) return null;
   return (
-    <XStack gap="$3" alignItems="center" padding="$4" borderRadius={16} backgroundColor={brand.cianografiaVelo} flexWrap="wrap">
+    <XStack gap="$3" alignItems="center" padding="$4" borderRadius={12} backgroundColor={brand.cianografiaVelo} flexWrap="wrap">
       <Icon name="sparkles" size={20} color={brand.cianografiaScuro} />
       <Text flex={1} minWidth={220} color={brand.grafite}>
         {text}
@@ -400,7 +400,7 @@ function Suggestion({ insights }: { insights: ProfessionalInsights }) {
 
 function Skeletons() {
   return (
-    <YStack backgroundColor={brand.calce} borderRadius={16} overflow="hidden">
+    <YStack backgroundColor={brand.calce} borderRadius={12} overflow="hidden">
       <SkeletonSummaryRow />
       <SkeletonSummaryRow />
     </YStack>

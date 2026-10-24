@@ -79,7 +79,11 @@ function SectionTitle({
     <Heading
       fontFamily="$heading"
       color={isDark ? "white" : "$grafite"}
-      {...(nested ? { fontSize: "$7", lineHeight: "$7" } : null)}
+      {...(nested
+        ? { fontSize: "$7", lineHeight: "$7" }
+        : // Titolo di sezione del sistema unico (docs/CHANGELOG.md §296): 26 px
+          // sul telefono, 32 dal tablet in su.
+          { fontSize: 26, lineHeight: 31, $gtSm: { fontSize: 32, lineHeight: 38 } })}
     >
       {title}
     </Heading>

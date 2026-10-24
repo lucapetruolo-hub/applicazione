@@ -22,7 +22,7 @@ export function LegalPage({ title, updatedAt, sections }: { title: string; updat
           <Text fontFamily="$heading" fontWeight="800" fontSize="$9" color={brand.grafite}>
             {title}
           </Text>
-          <Text fontSize="$2" color={brand.grafite70}>
+          <Text fontSize={13} color={brand.grafite70}>
             Ultimo aggiornamento: {updatedAt}
           </Text>
         </YStack>
@@ -31,7 +31,7 @@ export function LegalPage({ title, updatedAt, sections }: { title: string; updat
             <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
               {section.heading}
             </Text>
-            <Text fontSize="$3" color={brand.grafite70} lineHeight={24}>
+            <Text fontSize={16} color={brand.grafite70} lineHeight={24}>
               {section.body}
             </Text>
           </YStack>

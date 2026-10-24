@@ -14,7 +14,7 @@ const ROLE_OPTIONS: { value: ContactMessageInput["role"]; label: string }[] = [
 
 const fieldStyle = {
   padding: "16px 18px",
-  borderRadius: 14,
+  borderRadius: 12,
   border: `1px solid ${brand.bordoCampo}`,
   fontSize: 16,
   fontFamily: "inherit",
@@ -87,7 +87,7 @@ export default function ContattiContent() {
           <Text fontFamily="$heading" fontWeight="800" color={brand.grafite} fontSize={34} $gtSm={{ fontSize: 44 }}>
             Contatti
           </Text>
-          <Text fontSize={17} color={brand.grafite70} maxWidth={560} lineHeight={26}>
+          <Text fontSize={18} color={brand.grafite70} maxWidth={560} lineHeight={26}>
             Scrivici per qualsiasi domanda: ti rispondiamo il prima possibile.
           </Text>
         </YStack>
@@ -99,13 +99,13 @@ export default function ContattiContent() {
             </Text>
 
             {status === "done" ? (
-              <Text fontSize={17} color={brand.verificato} fontWeight="600">
+              <Text fontSize={18} color={brand.verificato} fontWeight="600">
                 Messaggio inviato. Ti risponderemo il prima possibile.
               </Text>
             ) : (
               <YStack gap="$4">
                 <YStack gap="$2">
-                  <Text fontSize={15} fontWeight="600" color={brand.grafite70}>
+                  <Text fontSize={16} fontWeight="600" color={brand.grafite70}>
                     Chi sei?
                   </Text>
                   <select aria-label="Chi sei?" value={role} onChange={(e) => setRole(e.target.value as ContactMessageInput["role"])} style={fieldStyle}>
@@ -129,7 +129,7 @@ export default function ContattiContent() {
                 />
 
                 <YStack gap="$2">
-                  <Text fontSize={15} fontWeight="600" color={brand.grafite70}>
+                  <Text fontSize={16} fontWeight="600" color={brand.grafite70}>
                     La tua email
                   </Text>
                   <input aria-label="La tua email"
@@ -145,7 +145,7 @@ export default function ContattiContent() {
                 </YStack>
 
                 <YStack gap="$2">
-                  <Text fontSize={15} fontWeight="600" color={brand.grafite70}>
+                  <Text fontSize={16} fontWeight="600" color={brand.grafite70}>
                     Messaggio
                   </Text>
                   <textarea aria-label="Messaggio"
@@ -171,7 +171,7 @@ export default function ContattiContent() {
                     border: "none",
                     backgroundColor: brand.cianografia,
                     color: "white",
-                    fontSize: 17,
+                    fontSize: 18,
                     fontWeight: 700,
                     cursor: status === "loading" ? "default" : "pointer",
                     opacity: status === "loading" ? 0.6 : 1,
@@ -182,7 +182,7 @@ export default function ContattiContent() {
                 </button>
 
                 {status === "error" ? (
-                  <Text fontSize={14} color={brand.urgenza}>
+                  <Text fontSize={16} color={brand.urgenza}>
                     {errorMessage}
                   </Text>
                 ) : null}
@@ -209,7 +209,7 @@ export default function ContattiContent() {
                     <Icon name={row.icon} size={19} color={brand.cianografiaScuro} />
                   </YStack>
                   <YStack gap="$1" flex={1} minWidth={0}>
-                    <Text fontSize={13} fontWeight="700" color={brand.grafite70}>
+                    <Text fontSize={16} fontWeight="700" color={brand.grafite70}>
                       {row.label}
                     </Text>
                     <Text fontSize={16} color={brand.grafite} lineHeight={23}>
@@ -219,7 +219,7 @@ export default function ContattiContent() {
                 </XStack>
               ))}
             </YStack>
-            <Text fontSize={14} color={brand.grafite70} lineHeight={21} paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
+            <Text fontSize={16} color={brand.grafite70} lineHeight={21} paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
               Questi dati verranno completati con le informazioni reali dell&apos;azienda prima del lancio definitivo (vedi anche{" "}
               <a href="/privacy" style={{ color: brand.cianografiaScuro, fontWeight: 600 }}>
                 Privacy Policy

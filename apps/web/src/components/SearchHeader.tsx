@@ -80,15 +80,15 @@ export function SearchHeader({
           <button type="button" className="search-summary" onClick={() => setExpanded(true)} aria-label={`Modifica la ricerca: ${what}, ${where}`}>
             <Icon name="search" size={18} color={brand.cianografiaScuro} />
             <YStack flex={1} minWidth={0} alignItems="flex-start">
-              <Text fontWeight="700" fontSize="$4" color={brand.grafite} numberOfLines={1}>
+              <Text fontWeight="700" fontSize={16} color={brand.grafite} numberOfLines={1}>
                 {what}
               </Text>
-              <Text fontSize="$3" color={brand.grafite70} numberOfLines={1}>
+              <Text fontSize={16} color={brand.grafite70} numberOfLines={1}>
                 {where}
               </Text>
             </YStack>
             <XStack flexShrink={0}>
-              <Text fontWeight="700" fontSize="$3" color={brand.cianografiaScuro}>
+              <Text fontWeight="700" fontSize={16} color={brand.cianografiaScuro}>
                 Modifica
               </Text>
             </XStack>

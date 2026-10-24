@@ -73,12 +73,12 @@ export function PlatformGuarantee() {
               <Icon name="check" size={15} strokeWidth={2.5} color={brand.cianografiaScuro} />
             </YStack>
             <XStack flex={1} alignItems="center" gap="$2" flexWrap="wrap">
-              <Text fontSize="$4" color={brand.grafite} lineHeight={24}>
+              <Text fontSize={16} color={brand.grafite} lineHeight={24}>
                 {point.text}
               </Text>
               {point.comingSoon || ("online" in point && point.online && !onlinePayments) ? (
                 <XStack backgroundColor={brand.ottoneVelo} paddingHorizontal={8} paddingVertical={2} borderRadius={999}>
-                  <Text fontSize={11} fontWeight="700" color={brand.ottone}>
+                  <Text fontSize={13} fontWeight="700" color={brand.ottone}>
                     In arrivo
                   </Text>
                 </XStack>

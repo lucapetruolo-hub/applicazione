@@ -4,7 +4,7 @@ import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 
 const selectStyle = {
   padding: "8px 10px",
-  borderRadius: 4,
+  borderRadius: 6,
   border: `1px solid ${brand.bordoCampo}`,
   fontSize: 13,
   fontFamily: "inherit",

@@ -67,7 +67,7 @@ export function ScheduleChangeBox({
         </YStack>
       </XStack>
       {note ? (
-        <YStack padding="$3" borderRadius={8} backgroundColor={brand.calce} borderLeftWidth={3} borderLeftColor={brand.ottone}>
+        <YStack padding="$3" borderRadius={6} backgroundColor={brand.calce} borderLeftWidth={3} borderLeftColor={brand.ottone}>
           <Text fontSize={13} color={brand.grafite}>
             {note}
           </Text>

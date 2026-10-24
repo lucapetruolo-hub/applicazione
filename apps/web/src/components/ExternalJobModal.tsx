@@ -6,7 +6,7 @@ import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 
-const inputStyle = { padding: 10, borderRadius: 4, border: `1px solid ${brand.bordoCampo}`, fontSize: 14, fontFamily: "inherit", color: brand.grafite };
+const inputStyle = { padding: 10, borderRadius: 6, border: `1px solid ${brand.bordoCampo}`, fontSize: 14, fontFamily: "inherit", color: brand.grafite };
 
 function toIsoDateLocal(date: Date): string {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;

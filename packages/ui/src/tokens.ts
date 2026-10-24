@@ -52,13 +52,14 @@ export const brand = {
 // per gli stessi punti web-only che già scrivono `boxShadow` a mano.
 export const shadowVicinato = "0 1px 4px rgba(43,32,19,0.015)";
 
-// Angoli morbidi e amichevoli ("Vicinato"), non più il raggio quasi nullo
-// da documento tecnico di "Scheda Intervento". Letterali semplici (non
-// token Tamagui condivisi con la scala esistente $1..$12) per lo stesso
-// motivo di prima: un solo punto da cui ricolorare/ridimensionare tutti i
-// componenti che lo importano.
-export const radiusDoc = 20;
-export const radiusDocLg = 32;
+// Tre soli arrotondamenti in tutto il sito (sistema unico, docs/CHANGELOG.md
+// §296): 6 px per campi, etichette e tessere piccole, 12 px per riquadri e
+// pannelli, tondo pieno per pulsanti (scelta dell'utente: "stile Apple") e
+// foto profilo. Prima ce n'erano 22 diversi. `radiusDocLg` resta come nome
+// per i punti che lo importano, con lo stesso valore.
+export const radiusSm = 6;
+export const radiusDoc = 12;
+export const radiusDocLg = 12;
 
 // Motion (brief redesign, fase "motion"): due velocità, una sola curva di
 // accelerazione condivisa — prima ogni componente scriveva la propria

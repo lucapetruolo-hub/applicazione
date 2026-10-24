@@ -25,7 +25,7 @@ const textareaStyle = {
   boxSizing: "border-box" as const,
   minHeight: 76,
   padding: 10,
-  borderRadius: 4,
+  borderRadius: 6,
   border: `1px solid ${brand.bordoCampo}`,
   fontSize: 14,
   fontFamily: "inherit",
@@ -35,7 +35,7 @@ const textareaStyle = {
 
 const smallInputStyle = {
   padding: 10,
-  borderRadius: 4,
+  borderRadius: 6,
   border: `1px solid ${brand.bordoCampo}`,
   fontSize: 14,
   fontFamily: "inherit",

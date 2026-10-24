@@ -11,7 +11,7 @@ const MAX_PHOTOS = 5;
 
 const fieldStyle = {
   padding: 10,
-  borderRadius: 4,
+  borderRadius: 6,
   border: `1px solid ${brand.bordoCampo}`,
   fontSize: 14,
   fontFamily: "inherit",

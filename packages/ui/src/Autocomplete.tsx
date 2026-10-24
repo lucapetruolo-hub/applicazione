@@ -113,7 +113,7 @@ export function Autocomplete<T>({
   return (
     <YStack position="relative" flex={1} ref={containerRef as never}>
       {label ? (
-        <Label htmlFor={id} fontSize={13} lineHeight={18} height="auto" fontWeight="600" color={brand.grafite70} paddingLeft="$1" paddingBottom={4}>
+        <Label htmlFor={id} fontSize={16} lineHeight={18} height="auto" fontWeight="600" color={brand.grafite70} paddingLeft="$1" paddingBottom={4}>
           {label}
         </Label>
       ) : null}

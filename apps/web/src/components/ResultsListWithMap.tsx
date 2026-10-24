@@ -561,19 +561,19 @@ export function ResultsListWithMap({
           <XStack flexWrap="wrap" gap="$3" alignItems="center">
             <XStack alignItems="center" gap="$2">
               <Icon name="badge-check" size={14} color={brand.grafite70} strokeWidth={1.5} />
-              <Text fontSize="$1" fontWeight="600" color={brand.grafite70}>
+              <Text fontSize={13} fontWeight="600" color={brand.grafite70}>
                 Badge Verificato: documento e P.IVA controllati
               </Text>
             </XStack>
             <XStack alignItems="center" gap="$2">
               <Icon name="shield" size={14} color={brand.grafite70} strokeWidth={1.5} />
-              <Text fontSize="$1" fontWeight="600" color={brand.grafite70}>
+              <Text fontSize={13} fontWeight="600" color={brand.grafite70}>
                 Recensioni solo da lavori confermati
               </Text>
             </XStack>
             <XStack alignItems="center" gap="$2">
               <Icon name="sparkles" size={14} color={brand.grafite70} strokeWidth={1.5} />
-              <Text fontSize="$1" fontWeight="600" color={brand.grafite70}>
+              <Text fontSize={13} fontWeight="600" color={brand.grafite70}>
                 Gratis per chi cerca
               </Text>
             </XStack>
@@ -616,7 +616,7 @@ export function ResultsListWithMap({
           {header}
           {nearestOutsideKm !== null ? (
             <YStack backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto} borderRadius="$4" padding="$3">
-              <Text color={brand.grafite} fontSize="$3">
+              <Text color={brand.grafite} fontSize={16}>
                 Nessun professionista entro {SEARCH_RADIUS_KM} km da {findComuneByName(city!)?.name ?? city}: ti mostriamo il più
                 vicino, a circa {nearestOutsideKm} km.
               </Text>

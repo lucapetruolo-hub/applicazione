@@ -167,12 +167,12 @@ export function RecentReviews({ summary }: { summary: { count: number; average: 
             <Rating value={review.rating} size={18} />
             <p className="rr-quote">&ldquo;{review.comment ?? ""}&rdquo;</p>
             <XStack alignItems="center" gap="$2" flexWrap="wrap">
-              <Text fontSize={14} color={brand.grafite70}>
+              <Text fontSize={16} color={brand.grafite70}>
                 {review.clientName} · {timeAgo(review.createdAt)}
               </Text>
               <XStack alignItems="center" gap={3}>
                 <Icon name="badge-check" size={13} color={brand.verificato} strokeWidth={2} />
-                <Text fontSize={12} fontWeight="700" color={brand.verificato}>
+                <Text fontSize={13} fontWeight="700" color={brand.verificato}>
                   Lavoro confermato
                 </Text>
               </XStack>
@@ -180,10 +180,10 @@ export function RecentReviews({ summary }: { summary: { count: number; average: 
 
             <div className="rr-feature-foot">
               <YStack minWidth={0} flexShrink={1}>
-                <Text fontFamily="$heading" fontSize={17} fontWeight="700" color={brand.cianografiaScuro} numberOfLines={1}>
+                <Text fontFamily="$heading" fontSize={18} fontWeight="700" color={brand.cianografiaScuro} numberOfLines={1}>
                   {review.professional.businessName}
                 </Text>
-                <Text fontSize={13} color={brand.grafite70} numberOfLines={1}>
+                <Text fontSize={16} color={brand.grafite70} numberOfLines={1}>
                   {review.professional.categoryLabel} · {review.professional.city}
                 </Text>
               </YStack>
@@ -213,10 +213,10 @@ export function RecentReviews({ summary }: { summary: { count: number; average: 
                   >
                     <ReviewAvatar review={item} />
                     <span className="rr-item-text">
-                      <Text fontSize={14} fontWeight="700" color={brand.grafite} numberOfLines={1}>
+                      <Text fontSize={16} fontWeight="700" color={brand.grafite} numberOfLines={1}>
                         {item.professional.businessName}
                       </Text>
-                      <Text fontSize={12.5} color={brand.grafite70} numberOfLines={1}>
+                      <Text fontSize={13} color={brand.grafite70} numberOfLines={1}>
                         &ldquo;{item.comment ?? ""}&rdquo;
                       </Text>
                     </span>

@@ -20012,3 +20012,19 @@ La mappa con una chiave vera si vede solo sul sito pubblicato: dopo l'unione va 
 - Restano per ora, perché fuori dal punto 5: l'etichetta con 👋 "Non chiamare a caso. Chiamalo giusto." in cima alla home (punto 2), la scritta verde sopra i titoli nella finestra di accesso (`InlineAuthGate`, toccata dalla PR #99) e l'app mobile, che usa ancora Archivo/Inter Tight (serve un nuovo pacchetto di caratteri Expo).
 
 **Verifica**: typecheck e lint del web, build di produzione, home e `/per-professionisti` provate in locale a 390 e 1440 px con foto prima/dopo in `anteprime/aspetto-non-ia/titoli-carattere/`.
+
+## 296. Sistema unico: pulsanti nel carattere del sito, testo a 16 px, tre arrotondamenti, colori dei materiali, riga del preventivo, hero verde più d'effetto
+
+**Richiesta dell'utente**: dopo la piattaforma di marca e l'esempio visivo del sistema unico (thread "Aspetto non da sito fatto con IA", materiale in `analisi/identita/`), "va bene quasi tutto" tranne: i pulsanti restano tondi "stile Apple", verdi e interattivi (effetto magnetico e pressione), niente colore inchiostro; l'hero verde della home resta con le sue sfumature, anzi più d'effetto; la sfumatura della pagina per i professionisti resta.
+
+**Decisione**:
+- Pulsanti e campi nel carattere del sito (`button, input, select, textarea { font-family: inherit }`): "Richiedi preventivo", "Cerca" e "Vedi tutte" uscivano in Arial. Testo dei pulsanti di misura `$3` a 16 px (15 nell'intestazione sui telefoni sotto 400 px). Forma, colore e interattività invariati.
+- Testo base a 16 px sulle pagine pubbliche (quelle raggiunte da home, ricerca, profilo, per-professionisti, preventivo, urgente, accesso e pagine legali): nei file `.tsx` e in `packages/ui` 11-12,5 → 13, 13-15 → 16, 17 → 18; misure Tamagui `$1-$2` → 13, `$3-$4` → 16; le classi CSS pubbliche di `globals.css` allo stesso modo. Restano più piccole le celle degli orari (9,5-10,5 px) che non ci starebbero. Scala dei titoli Tamagui corretta (`$5` era 13 px e `$6` 15 px, sotto il testo): ora 16/18/20/22, titoli di sezione 26 px sul telefono e 32 dal tablet. Titolo di `/per-professionisti` come quello della home (38/54).
+- Arrotondamenti: `radiusDoc` 20 → 12, `radiusDocLg` 32 → 12, nuovo `radiusSm` 6; token Tamagui `$1-$5` → 6 e `$6-$11` → 12; valori scritti a mano 4-10 → 6 e 11-40 → 12, tranne gli elementi tondi (larghezza pari al doppio del raggio). Restano tondi pulsanti, etichette a pillola e foto; l'hero della home resta a 40. Agenda (`components/agenda`, `components/calendar`) non toccata a mano.
+- Colori delle categorie (`CATEGORY_ACCENT`) dai materiali dei mestieri al posto della tavolozza di serie di Tailwind, testo sempre sopra 5:1.
+- "La riga del preventivo" nell'esempio della home: foglio color carta a righe leggere, puntini di guida tra voce e cifra, cifre in IBM Plex Mono in colonna, riga piena sopra il totale, nessuna ombra.
+- Hero della home: verde con tre luci sfumate (verde chiaro, ottone, acqua) che si muovono piano e una grana leggera, ferme con "riduci movimento"; le luci stanno sui bordi per tenere il contrasto del testo bianco.
+
+**Misura** (stesso script `analisi/identita/script-inventario-stili.mjs`, 18 pagine a 390 e 1440 px): testo sotto i 16 px dall'85% al 21% degli elementi; dimensioni del testo 25 → 22, interlinee 53 → 45, arrotondamenti 22 → 16 (quasi tutti ormai 999, 12 o 6); nessun testo in Arial.
+
+**Verifica**: typecheck, lint e build del web; home, `/per-professionisti` e `/cerca/idraulico/latina` provate in locale a 360, 390 e 1440 px senza scorrimento orizzontale; foto prima/dopo in `anteprime/identita-codice/`.

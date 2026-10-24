@@ -79,9 +79,9 @@ function pickableSlotLabel(slot: PickableAgendaSlot): string {
 
 const fieldInputStyle = {
   padding: 12,
-  borderRadius: 4,
+  borderRadius: 6,
   border: `1px solid ${brand.bordoCampo}`,
-  fontSize: 15,
+  fontSize: 16,
   fontFamily: "inherit",
   color: brand.grafite,
   width: "100%",
@@ -89,7 +89,7 @@ const fieldInputStyle = {
 
 function FieldLabel({ children }: { children: ReactNode }) {
   return (
-    <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
+    <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
       {children}
     </Text>
   );
@@ -481,17 +481,17 @@ export function GuidedRequestForm({
               borderRadius="$3"
             >
               {defaultsSaved ? (
-                <Text color={brand.verificato} fontWeight="600" fontSize="$3">
+                <Text color={brand.verificato} fontWeight="600" fontSize={16}>
                   Dati salvati come predefiniti nel tuo account.
                 </Text>
               ) : (
                 <>
-                  <Text fontSize="$3" color={brand.grafite}>
+                  <Text fontSize={16} color={brand.grafite}>
                     Vuoi salvare questi dati (nome, telefono, indirizzo) come predefiniti nel tuo account, così
                     restano aggiornati per la prossima richiesta?
                   </Text>
                   {defaultsError ? (
-                    <Text color={brand.urgenza} fontSize="$2">
+                    <Text color={brand.urgenza} fontSize={13}>
                       {defaultsError}
                     </Text>
                   ) : null}
@@ -751,14 +751,14 @@ export function GuidedRequestForm({
               >
                 <ProfessionalAvatar imageUrl={shownProfessionalImage} categorySlug={selectedCategory?.slug ?? categorySlug} size={48} />
                 <YStack>
-                  <Text fontSize="$2" color={brand.grafite70}>
+                  <Text fontSize={13} color={brand.grafite70}>
                     Stai inviando una richiesta a
                   </Text>
                   <Text fontFamily="$heading" fontWeight="800" fontSize="$5" color={brand.grafite}>
                     {shownProfessionalName}
                   </Text>
                   {professional ? (
-                    <Text fontSize="$2" color={brand.grafite70}>
+                    <Text fontSize={13} color={brand.grafite70}>
                       {[
                         professional.categoryLabel,
                         professional.rating !== null && professional.reviewCount > 0
@@ -815,7 +815,7 @@ export function GuidedRequestForm({
           <YStack gap="$2">
             <XStack justifyContent="space-between" alignItems="baseline" gap="$2">
               <FieldLabel>Categorie</FieldLabel>
-              <Text fontSize="$2" color={brand.grafite70} aria-live="polite">
+              <Text fontSize={13} color={brand.grafite70} aria-live="polite">
                 {categorySlugs.length > 0 ? `${categorySlugs.length} di ${MAX_REQUEST_CATEGORIES}` : `Fino a ${MAX_REQUEST_CATEGORIES}`}
               </Text>
             </XStack>
@@ -824,7 +824,7 @@ export function GuidedRequestForm({
                 cercate nella città di partenza prima. */}
             <CategoryTiles value={categorySlugs} onToggle={toggleCategory} max={MAX_REQUEST_CATEGORIES} city={initialCity} ariaLabel="Categorie" />
             {categorySlugs.length > 1 ? (
-              <Text fontSize="$2" color={brand.grafite70}>
+              <Text fontSize={13} color={brand.grafite70}>
                 Riceverai una richiesta separata per ogni categoria.
               </Text>
             ) : null}
@@ -906,7 +906,7 @@ export function GuidedRequestForm({
         {professionalProfileId && displaySlots.length > 0 ? (
           <YStack gap="$2">
             <FieldLabel>Data e orario dell&apos;intervento (facoltativo)</FieldLabel>
-            <Text fontSize="$2" color={brand.grafite70}>
+            <Text fontSize={13} color={brand.grafite70}>
               {preferredDate && preferredTimeSlot
                 ? "Hai scelto questo orario dall'agenda del professionista — puoi cambiarlo qui, sempre tra quelli davvero liberi."
                 : "Scegli un orario tra quelli liberi nell'agenda del professionista, oppure lascia senza preferenza."}{" "}
@@ -917,9 +917,9 @@ export function GuidedRequestForm({
               onChange={(e) => setSelectedSlotValue(e.target.value)}
               style={{
                 padding: 12,
-                borderRadius: 4,
+                borderRadius: 6,
                 border: `1px solid ${brand.bordoCampo}`,
-                fontSize: 15,
+                fontSize: 16,
                 fontFamily: "inherit",
                 backgroundColor: brand.calce,
                 color: brand.grafite,
@@ -944,9 +944,9 @@ export function GuidedRequestForm({
             rows={5}
             style={{
               padding: 12,
-              borderRadius: 4,
+              borderRadius: 6,
               border: `1px solid ${brand.bordoCampo}`,
-              fontSize: 15,
+              fontSize: 16,
               fontFamily: "inherit",
               color: brand.grafite,
               resize: "vertical",
@@ -956,7 +956,7 @@ export function GuidedRequestForm({
 
         <YStack gap="$2">
           <FieldLabel>Foto o video (fino a {MAX_PHOTOS})</FieldLabel>
-          <Text fontSize="$2" color={brand.grafite70}>
+          <Text fontSize={13} color={brand.grafite70}>
             Una foto o un video aiutano il professionista a capire subito il lavoro e a darti un preventivo più preciso.
           </Text>
           <YStack flexDirection="row" flexWrap="wrap" gap="$2">
@@ -1015,7 +1015,7 @@ export function GuidedRequestForm({
                     +
                   </Text>
                 )}
-                <Text fontSize="$1" color={brand.grafite70}>
+                <Text fontSize={13} color={brand.grafite70}>
                   {isUploadingPhoto ? "Caricamento" : "Aggiungi"}
                 </Text>
               </YStack>
@@ -1030,7 +1030,7 @@ export function GuidedRequestForm({
             style={{ display: "none" }}
           />
           {photoError ? (
-            <Text color={brand.urgenza} fontSize="$2">
+            <Text color={brand.urgenza} fontSize={13}>
               {photoError}
             </Text>
           ) : null}
@@ -1068,7 +1068,7 @@ export function GuidedRequestForm({
             // successivo puoi iniziare la ricerca nella zona
             // dell'intervento" — spiega sia perché il campo è facoltativo
             // sia perché può comunque avere senso compilarlo.
-            <Text fontSize="$2" color={brand.grafite70}>
+            <Text fontSize={13} color={brand.grafite70}>
               Per una consulenza online non è obbligatorio indicare la città. Se pensi che in un secondo momento possa
               servire anche un intervento sul posto, indicala comunque: potrai usarla per iniziare la ricerca nella
               zona dell&apos;intervento.
@@ -1080,7 +1080,7 @@ export function GuidedRequestForm({
         {serviceMode === "HOME" ? (
           <YStack gap="$3">
             <YStack gap="$1">
-              <Text fontSize="$2" color={brand.grafite70}>
+              <Text fontSize={13} color={brand.grafite70}>
                 I dati di seguito rimarranno nascosti al professionista finché non accetterai un preventivo.
               </Text>
             </YStack>
@@ -1153,7 +1153,7 @@ export function GuidedRequestForm({
                   style={fieldInputStyle}
                 />
                 {chosenAddress.missing && addressText.trim() ? (
-                  <Text fontSize="$2" color={brand.grafite70}>
+                  <Text fontSize={13} color={brand.grafite70}>
                     Scegli l&apos;indirizzo dall&apos;elenco che compare mentre scrivi.
                   </Text>
                 ) : null}
@@ -1208,7 +1208,7 @@ export function GuidedRequestForm({
         ) : null}
 
         {error ? (
-          <Text color={brand.urgenza} fontSize="$3">
+          <Text color={brand.urgenza} fontSize={16}>
             {error}
           </Text>
         ) : null}
@@ -1282,7 +1282,7 @@ function GeneralRequestsClosedNotice({
       <Text fontWeight="700" color={brand.grafite}>
         {scope === "GLOBAL" ? "Scegli tu il professionista" : `A ${city.trim()} scegli tu il professionista`}
       </Text>
-      <Text color={brand.grafite70} fontSize="$3">
+      <Text color={brand.grafite70} fontSize={16}>
         {scope === "GLOBAL"
           ? "Per ora le richieste si inviano direttamente a un professionista: cercalo, guarda profilo e recensioni e scrivigli dalla sua pagina."
           : `I professionisti${categoryLabel ? ` di ${categoryLabel}` : ""} di questa zona ricevono già molte richieste: per avere risposte più rapide scegline uno e scrivigli dalla sua pagina.`}

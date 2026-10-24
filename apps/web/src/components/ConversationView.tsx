@@ -509,7 +509,7 @@ export function ConversationView({
               key={url}
               url={url}
               onClick={() => openMediaAt(event.mediaUrls, url)}
-              style={{ width: 64, height: 64, borderRadius: 4, cursor: "pointer", border: `1px solid ${brand.filetto}` }}
+              style={{ width: 64, height: 64, borderRadius: 6, cursor: "pointer", border: `1px solid ${brand.filetto}` }}
             />
           ),
         )}
@@ -1093,7 +1093,7 @@ export function ConversationView({
             <Text fontSize="$4" fontWeight="700" color={brand.grafite}>
               Scatta una foto
             </Text>
-            <div style={{ borderRadius: 8, overflow: "hidden", backgroundColor: "#000" }}>
+            <div style={{ borderRadius: 6, overflow: "hidden", backgroundColor: "#000" }}>
               <video ref={videoRef} autoPlay playsInline muted style={{ width: "100%", display: "block" }} />
             </div>
             <XStack gap="$3" justifyContent="flex-end">

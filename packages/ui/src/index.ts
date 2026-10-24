@@ -20,7 +20,7 @@ export { Section, SectionDensityProvider } from "./Section";
 export type { SectionDensity, SectionProps, SectionTone } from "./Section";
 export { Eyebrow } from "./Eyebrow";
 export type { EyebrowProps } from "./Eyebrow";
-export { brand, radiusDoc, radiusDocLg, motionEasing, motionFast, motionBase } from "./tokens";
+export { brand, radiusSm, radiusDoc, radiusDocLg, motionEasing, motionFast, motionBase } from "./tokens";
 export { Icon } from "./Icon";
 export type { IconProps, IconName } from "./Icon";
 export { Logo } from "./Logo";

@@ -148,7 +148,7 @@ export function ImageCropModal({
       <div
         style={{
           backgroundColor: "white",
-          borderRadius: 16,
+          borderRadius: 12,
           padding: 24,
           width: "100%",
           maxWidth: 380,
@@ -238,7 +238,7 @@ export function ImageCropModal({
             style={{
               flex: 1,
               padding: "10px 16px",
-              borderRadius: 8,
+              borderRadius: 6,
               border: "1px solid #d0d5dd",
               backgroundColor: "white",
               fontSize: 15,
@@ -255,7 +255,7 @@ export function ImageCropModal({
             style={{
               flex: 1,
               padding: "10px 16px",
-              borderRadius: 8,
+              borderRadius: 6,
               border: "none",
               backgroundColor: "#1e5eff",
               color: "white",

@@ -46,13 +46,13 @@ function TrustChips() {
     <XStack flexWrap="wrap" gap="$2" justifyContent="center" rowGap="$2">
       <XStack alignItems="center" gap="$1" backgroundColor={brand.gesso} borderRadius={999} paddingHorizontal="$3" paddingVertical="$1">
         <Icon name="shield" size={13} color={brand.grafite70} strokeWidth={1.5} />
-        <Text fontSize={12} color={brand.grafite70}>
+        <Text fontSize={13} color={brand.grafite70}>
           Dati protetti
         </Text>
       </XStack>
       <XStack alignItems="center" gap="$1" backgroundColor={brand.gesso} borderRadius={999} paddingHorizontal="$3" paddingVertical="$1">
         <Icon name="heart-handshake" size={13} color={brand.grafite70} strokeWidth={1.5} />
-        <Text fontSize={12} color={brand.grafite70}>
+        <Text fontSize={13} color={brand.grafite70}>
           Gratis, senza carta
         </Text>
       </XStack>
@@ -82,7 +82,7 @@ function ChoiceCard({ href, replace, icon, title, text }: { href: string; replac
           <Text fontWeight="700" color={brand.grafite}>
             {title}
           </Text>
-          <Text fontSize="$2" color={brand.grafite70}>
+          <Text fontSize={13} color={brand.grafite70}>
             {text}
           </Text>
         </YStack>
@@ -118,7 +118,7 @@ function RoleChoiceScreen({
 
         {noAccountFound ? (
           <YStack padding="$3" borderRadius="$4" borderWidth={1} borderColor={brand.urgenza} backgroundColor={brand.urgenzaVelo}>
-            <Text fontSize="$3" color={brand.urgenza}>
+            <Text fontSize={16} color={brand.urgenza}>
               Nessun account trovato con questa email. Scegli come registrarti per continuare.
             </Text>
           </YStack>
@@ -129,7 +129,7 @@ function RoleChoiceScreen({
           <ChoiceCard href={hrefFor("professionista")} replace icon="hard-hat" title="Sono un professionista" text="Offro i miei servizi e voglio ricevere richieste." />
         </YStack>
 
-        <Text fontSize="$3" textAlign="center" color={brand.grafite70}>
+        <Text fontSize={16} textAlign="center" color={brand.grafite70}>
           Hai già un account?{" "}
           <Link href="/accedi" style={{ textDecoration: "none" }}>
             <Text color={brand.cianografiaScuro} fontWeight="600">
@@ -181,7 +181,7 @@ function EntityTypeScreen({ hrefFor, onBack }: { hrefFor: (param: string) => str
           ))}
         </YStack>
 
-        <Text fontSize="$2" color={brand.grafite70} textAlign="center">
+        <Text fontSize={13} color={brand.grafite70} textAlign="center">
           Senza Partita IVA scegli &quot;Privato&quot;. Puoi cambiarlo dopo da Dati fiscali.
         </Text>
       </Surface>
@@ -195,7 +195,7 @@ function EntityTypeSummary({ choice, onChange }: { choice: (typeof ENTITY_CHOICE
     <XStack alignItems="center" gap="$3" padding="$3" borderRadius="$4" backgroundColor={brand.cianografiaVelo}>
       <Icon name={choice.icon} size={18} color={brand.cianografiaScuro} strokeWidth={1.75} />
       <YStack flex={1} flexBasis={0} minWidth={0}>
-        <Text fontSize={11} fontWeight="700" color={brand.grafite70}>
+        <Text fontSize={13} fontWeight="700" color={brand.grafite70}>
           Ti iscrivi come
         </Text>
         <Text fontWeight="700" color={brand.grafite}>
@@ -247,7 +247,7 @@ function ProfessionalSignupLayout({
           <AuthStepHeader icon={icon} title={title} subtitle={subtitle || undefined} step={{ current: step, total: 4 }} onBack={onBack} />
           {children}
           {showFooter ? (
-          <Text fontSize="$3" textAlign="center" color={brand.grafite70}>
+          <Text fontSize={16} textAlign="center" color={brand.grafite70}>
             Cerchi un professionista?{" "}
             <Link href="/registrati?ruolo=cliente" style={{ textDecoration: "none" }}>
               <Text color={brand.cianografiaScuro} fontWeight="600">
@@ -272,14 +272,14 @@ function ProfessionalSignupLayout({
           <YStack gap="$4">
             {SIGNUP_BENEFITS.map((benefit) => (
               <XStack key={benefit.title} gap="$3" alignItems="flex-start">
-                <XStack width={40} height={40} borderRadius={14} backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center" flexShrink={0}>
+                <XStack width={40} height={40} borderRadius={12} backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center" flexShrink={0}>
                   <Icon name={benefit.icon} size={19} color={brand.cianografiaScuro} strokeWidth={1.75} />
                 </XStack>
                 <YStack flex={1} gap="$1">
                   <Text fontWeight="700" color={brand.grafite}>
                     {benefit.title}
                   </Text>
-                  <Text fontSize="$3" color={brand.grafite70}>
+                  <Text fontSize={16} color={brand.grafite70}>
                     {benefit.text}
                   </Text>
                 </YStack>
@@ -320,7 +320,7 @@ function ClientSignup({ onAuthenticated, onBack }: { onAuthenticated: () => void
           )}
         />
         <TrustChips />
-        <Text fontSize="$3" textAlign="center" color={brand.grafite70}>
+        <Text fontSize={16} textAlign="center" color={brand.grafite70}>
           Offri un servizio?{" "}
           <Link href="/registrati?ruolo=professionista" style={{ textDecoration: "none" }}>
             <Text color={brand.cianografiaScuro} fontWeight="600">
@@ -641,7 +641,7 @@ function RegistratiForm() {
           }}
         />
         {error && errorField === "categories" ? (
-          <Text role="alert" display="flex" marginTop="$2" fontSize="$3" color={brand.urgenza}>
+          <Text role="alert" display="flex" marginTop="$2" fontSize={16} color={brand.urgenza}>
             {error}
           </Text>
         ) : null}
@@ -652,7 +652,7 @@ function RegistratiForm() {
       {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ? (
         <YStack flexDirection="row" alignItems="center" gap="$3">
           <YStack flex={1} height={1} backgroundColor={brand.filetto} />
-          <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
+          <Text fontFamily="$body" fontWeight="700" fontSize={13} color={brand.grafite70}>
             oppure
           </Text>
           <YStack flex={1} height={1} backgroundColor={brand.filetto} />
@@ -772,7 +772,7 @@ function RegistratiForm() {
           <TurnstileWidget onTokenChange={setTurnstileToken} resetSignal={turnstileReset} />
 
           {error && !errorField ? (
-            <Text role="alert" color={brand.urgenza} fontSize="$3">
+            <Text role="alert" color={brand.urgenza} fontSize={16}>
               {error}
             </Text>
           ) : null}
@@ -793,7 +793,7 @@ function RegistratiForm() {
         </YStack>
       </form>
 
-      <Text fontSize="$3" textAlign="center" color={brand.grafite70}>
+      <Text fontSize={16} textAlign="center" color={brand.grafite70}>
         Hai già un account?{" "}
         <Link href="/accedi" style={{ textDecoration: "none" }}>
           <Text color={brand.cianografiaScuro} fontWeight="600">

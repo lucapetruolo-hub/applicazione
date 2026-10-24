@@ -25,7 +25,7 @@ export function CategoryCard({ icon, label, onPress }: CategoryCardProps) {
     >
       <YStack alignItems="center" gap="$2">
         <Icon name={icon} size={28} color={brand.cianografiaScuro} strokeWidth={1.5} />
-        <Text fontSize="$3" fontWeight="600" textAlign="center">
+        <Text fontSize={16} fontWeight="600" textAlign="center">
           {label}
         </Text>
       </YStack>

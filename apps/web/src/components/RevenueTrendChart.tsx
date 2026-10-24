@@ -157,7 +157,7 @@ export function RevenueTrendChart({ points, rangeLabel = "ultimi 12 mesi" }: { p
             pointerEvents: "none",
             background: brand.grafite,
             color: brand.calce,
-            borderRadius: 10,
+            borderRadius: 6,
             padding: "8px 12px",
             fontSize: 12,
             whiteSpace: "nowrap",

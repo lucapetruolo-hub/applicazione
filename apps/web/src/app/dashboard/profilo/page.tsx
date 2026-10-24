@@ -75,7 +75,7 @@ const CANDIDATE_LANGUAGES = [
   "Croato",
 ];
 
-const inputStyle = { padding: 12, borderRadius: 4, border: `1px solid ${brand.bordoCampo}`, fontSize: 15, fontFamily: "inherit", color: brand.grafite };
+const inputStyle = { padding: 12, borderRadius: 6, border: `1px solid ${brand.bordoCampo}`, fontSize: 15, fontFamily: "inherit", color: brand.grafite };
 const smallInputStyle = { ...inputStyle, padding: 10, fontSize: 14 };
 
 function FieldLabel({ children }: { children: string }) {
@@ -652,7 +652,7 @@ export default function DashboardProfiloPage() {
           </XStack>
 
           {saved ? (
-            <XStack alignItems="center" gap="$2" padding="$3" borderRadius={14} backgroundColor={brand.cianografiaVelo}>
+            <XStack alignItems="center" gap="$2" padding="$3" borderRadius={12} backgroundColor={brand.cianografiaVelo}>
               <Icon name="check" size={16} strokeWidth={2.5} color={brand.cianografiaScuro} />
               <Text fontWeight="700" color={brand.cianografiaScuro}>
                 Profilo salvato
