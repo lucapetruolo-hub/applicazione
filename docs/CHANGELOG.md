@@ -20479,7 +20479,18 @@ Richiesta dell'utente, tra le migliorie proposte dopo la §327 ("eccezione" con 
 
 **Verifica**: nuova prova nel browser (`settimana-tipo.spec.ts`: mercoledì cambiato a mano mostra "eccezione", giovedì della settimana tipo no), 68 prove nel browser in locale, foto da telefono e computer delle tre viste, lint e typecheck puliti.
 
-## 329. Email degli account in minuscolo
+## 329. "Segnala un problema" solo nel menu della scheda
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Spostare Segnala un problema nel menu della scheda"): lato cliente, nella scheda del preventivo accettato, "il pulsante per segnalare un problema dopo che si accetta un preventivo lasciaglielo solo nel menu ad hamburger della relativa scheda". Il cliente deve comunque poter sempre segnalare un problema.
+
+**Decisione presa**
+- Tolto il pulsante rosso "Segnala un problema" dalla fila di azioni dell'intervento (`BookingSection`): restano "Lavoro terminato" (o la recensione) e "Contatta/Cronologia".
+- Nuova voce "Segnala un problema" (icona bandierina, rossa come "Segnala richiesta" del professionista) nel menu hamburger della scheda (`GuidedRequestCard`), subito prima di "Annulla prenotazione". Compare negli stessi casi di prima: quando il server ammette almeno un tipo di segnalazione (`issueTypesAllowed`, §164).
+- La finestra della segnalazione e la chat col professionista che si apre dopo l'invio vivono ora in `GuidedRequestCard`, fuori dal blocco espanso (come "Annulla prenotazione"): la voce funziona anche a scheda chiusa.
+- Nessun cambio al flusso: stessi tipi, stesse prove, stessa fase in chat (§165) e stessa API. Le segnalazioni dei contenuti (DSA, §319) non sono toccate.
+- Pulsante del menu più visibile (richiesta esplicita dell'utente: "rendi più visibile il pulsante ad hamburger"): in `CardActionsMenu` era un'icona grigia senza sfondo da 36px, ora è un tondo da 44px verde chiaro con bordo e icona verdi, pieno verde quando il menu è aperto. Vale per le schede del cliente e del professionista, che condividono il componente.
+
+## 330. Email degli account in minuscolo
 
 **Richiesta esplicita dell'utente** (24/10/2026, thread "Correggere l'email del cambio password"): il codice per reimpostare la password non arrivava. Prova sul sito vero: l'invio funziona (arriva in pochi secondi a lucapetruolo@gmail.com; il primo invio può tardare circa un minuto mentre Render gratuito si sveglia). Nel controllo è emerso però un bug vero: accesso, registrazione e recupero password confrontavano l'email rispettando le maiuscole. Chi si era iscritto come "Mario@Gmail.com" e scriveva "mario@gmail.com" non veniva trovato e, nel recupero password, non riceveva niente senza nessun avviso (di proposito, per non far scoprire chi è iscritto). Luca: "si" alla correzione.
 

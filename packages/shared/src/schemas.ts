@@ -15,7 +15,7 @@ const timeRangeSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)-([01]\d|2[0
 
 /**
  * Email di un account: senza spazi e in minuscolo, così "Mario@Gmail.com" e
- * "mario@gmail.com" sono lo stesso account (docs/CHANGELOG.md §329).
+ * "mario@gmail.com" sono lo stesso account (docs/CHANGELOG.md §330).
  */
 export const accountEmailSchema = z.string().trim().toLowerCase().email("Email non valida");
 
