@@ -197,6 +197,15 @@ export const updateAccountSchema = z.object({
 export type UpdateAccountInput = z.infer<typeof updateAccountSchema>;
 
 /**
+ * Preferenze dell'interfaccia salvate sull'account (docs/CHANGELOG.md §319):
+ * menu laterale ridotto a icone, `null` = decide la larghezza dello schermo.
+ */
+export const updatePreferencesSchema = z.object({
+  sidebarCollapsed: z.boolean().nullable(),
+});
+export type UpdatePreferencesInput = z.infer<typeof updatePreferencesSchema>;
+
+/**
  * Cambio password: currentPassword obbligatoria solo se l'account ne ha già
  * una impostata (un account creato via Google potrebbe non averla ancora).
  */

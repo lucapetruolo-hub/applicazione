@@ -6,6 +6,7 @@ import { taxIdCheckMessage, type MyVerificationStatus } from "@professionisti/sh
 import { Button, Icon, Surface, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
+import { CardButton } from "@/components/CardButton";
 
 export type JourneyStepKey = "fiscal" | "identity" | "payments";
 export type JourneyStepState = "done" | "waiting" | "current" | "locked";
@@ -220,7 +221,44 @@ export function useSetupJourney(token: string | null, reloadKey: unknown = 0): {
 export function SetupJourneyCard({ token }: { token: string }) {
   const { steps } = useSetupJourney(token);
   if (!steps || journeyDone(steps)) return null;
+  // Manca solo un passo facoltativo (pagamenti online): una riga, non il
+  // riquadro intero (richiesta dell'utente, docs/CHANGELOG.md §319).
+  const left = steps.filter((step) => step.state !== "done");
+  const onlyOptional = left.length === 1 ? left[0] : undefined;
+  if (onlyOptional?.optional) return <SetupJourneyCompact steps={steps} step={onlyOptional} />;
   return <SetupJourneyView steps={steps} />;
+}
+
+function SetupJourneyCompact({ steps, step }: { steps: JourneyStep[]; step: JourneyStep }) {
+  usePublishJourney(steps);
+  return (
+    <XStack gap="$3" alignItems="center" padding="$4" borderRadius={16} backgroundColor="#FFFFFF" flexWrap="wrap" role="status" aria-label="Completa il profilo">
+      {/* Come l'avviso dell'agenda: icona e testo sulla stessa riga, su telefono va a capo solo il pulsante. */}
+      <XStack flex={1} minWidth={240} gap="$3" alignItems="center">
+        <YStack width={40} height={40} borderRadius={999} alignItems="center" justifyContent="center" backgroundColor={brand.gesso} flexShrink={0} aria-hidden>
+          <Icon name={step.icon} size={20} color={brand.grafite70} />
+        </YStack>
+        <YStack flex={1} minWidth={0} gap={2}>
+          <XStack gap="$2" alignItems="center" flexWrap="wrap">
+            <Text fontWeight="800" color={brand.grafite}>
+              {step.title}
+            </Text>
+            <Text fontSize={13} fontWeight="700" color={brand.grafite70}>
+              Facoltativo
+            </Text>
+          </XStack>
+          <Text fontSize={16} color={brand.grafite70}>
+            {step.text}
+          </Text>
+        </YStack>
+      </XStack>
+      {step.action ? (
+        <Link href={step.action.href} style={{ textDecoration: "none" }}>
+          <CardButton>Attiva</CardButton>
+        </Link>
+      ) : null}
+    </XStack>
+  );
 }
 
 /**

@@ -67,6 +67,10 @@ model User {
   postalCode                 String?
   city                       String?
   province                   String?
+  // Menu laterale dell'area professionista ridotto a icone (docs/CHANGELOG.md
+  // §319): scelta della persona, uguale su tutti i suoi dispositivi. Null =
+  // nessuna scelta, decide la larghezza dello schermo.
+  sidebarCollapsed           Boolean?
   createdAt                  DateTime                @default(now())
   updatedAt                  DateTime                @updatedAt
   // Soft-delete (richiesta esplicita dell'utente): DELETE /auth/me non

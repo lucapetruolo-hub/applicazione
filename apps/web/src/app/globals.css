@@ -850,6 +850,9 @@ button.notif-row-main:hover {
 .acct-main {
   min-width: 0;
   flex: 1;
+  /* Le pagine dentro possono adattarsi allo spazio vero, che cambia col menu
+     ridotto (docs/CHANGELOG.md §319). Non trattiene gli elementi fissi. */
+  container: acct-main / inline-size;
 }
 .acct-nav {
   display: flex;
@@ -1111,6 +1114,32 @@ button.notif-row-main:hover {
   .acct-nav-toggle:focus-visible .acct-nav-tip {
     display: block;
   }
+  .acct-nav-tip kbd {
+    margin-left: 6px;
+    padding: 0 5px;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 12px;
+  }
+  /* Si può passare col puntatore sopra il fumetto senza che sparisca
+     (WCAG 1.4.13): un ponte invisibile copre lo spazio tra icona e fumetto. */
+  html[data-acct-nav="collapsed"] .acct-nav-label::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 100%;
+    width: 12px;
+  }
+  /* Esc chiude il fumetto (useAccountNavKeys). */
+  html[data-acct-tips="hidden"] .acct-nav-toggle .acct-nav-tip {
+    display: none;
+  }
+  html[data-acct-tips="hidden"][data-acct-nav="collapsed"] .acct-nav .acct-nav-link .acct-nav-label {
+    opacity: 0;
+    pointer-events: none;
+  }
   /* Menu ridotto a sole icone: stessa colonna, larga quanto un'icona. */
   html[data-acct-nav="collapsed"] .acct-nav {
     width: 64px;
@@ -1151,13 +1180,12 @@ button.notif-row-main:hover {
      solo passando sopra o arrivando col tasto Tab. */
   html[data-acct-nav="collapsed"] .acct-nav-label {
     opacity: 0;
-    visibility: hidden;
     transition: opacity 120ms ease;
   }
   html[data-acct-nav="collapsed"] .acct-nav-link:hover .acct-nav-label,
   html[data-acct-nav="collapsed"] .acct-nav-link:focus-visible .acct-nav-label {
     opacity: 1;
-    visibility: visible;
+    pointer-events: auto;
   }
   /* Numeri e pallini restano, sull'angolo dell'icona. */
   html[data-acct-nav="collapsed"] .acct-nav .acct-nav-badge {
@@ -1183,6 +1211,37 @@ button.notif-row-main:hover {
   }
 }
 /* Home "Oggi" del professionista (docs/CHANGELOG.md §147). */
+/* Due colonne quando il contenuto è largo almeno 960px (docs/CHANGELOG.md
+   §319): conta lo spazio vero della pagina, che cambia col menu ridotto,
+   non la larghezza della finestra. */
+.today-wrap {
+  container-type: inline-size;
+}
+.today-grid,
+.today-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.today-slot:empty {
+  display: none;
+}
+.today-col {
+  display: contents;
+}
+@container (min-width: 960px) {
+  .today-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr);
+    align-items: start;
+  }
+  .today-col {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    min-width: 0;
+  }
+}
 /* Sempre 3 riquadri affiancati (anche su telefono, più compatti): con
    auto-fill restava una colonna vuota su desktop e su telefono si
    impilavano occupando mezza pagina. */
@@ -2113,6 +2172,13 @@ a.admin-kpi:hover {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
+}
+/* Con la pagina larga (menu ridotto) le sei tessere stanno su una riga e il
+   grafico sale (docs/CHANGELOG.md §319). */
+@container acct-main (min-width: 1140px) {
+  .pstats-kpis {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
 }
 .pstats-kpi {
   display: flex;

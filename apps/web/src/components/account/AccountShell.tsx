@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon } from "@professionisti/ui";
@@ -7,7 +8,8 @@ import { useAuth } from "@/lib/AuthContext";
 import { CLIENT_TABS, PROFESSIONAL_SIDEBAR, isNavItemActive, journeyNavItem } from "@/lib/accountMenuItems";
 import { accountMenuUnreadCounts } from "@/lib/notificationSections";
 import { useNavAttention } from "@/lib/useNavAttention";
-import { useAccountNavCollapsed } from "@/lib/useAccountNavCollapsed";
+import { apiClient } from "@/lib/apiClient";
+import { applyNavPreference, useAccountNavCollapsed, useAccountNavKeys } from "@/lib/useAccountNavCollapsed";
 
 /**
  * Guscio comune delle pagine personali (docs/CHANGELOG.md §147, decisione
@@ -18,9 +20,20 @@ import { useAccountNavCollapsed } from "@/lib/useAccountNavCollapsed";
  */
 export function AccountShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, isLoading, unreadNotifications } = useAuth();
+  const { user, token, isLoading, unreadNotifications } = useAuth();
   const attention = useNavAttention();
-  const [collapsed, toggleCollapsed] = useAccountNavCollapsed();
+  const [collapsed, toggleCollapsedHere] = useAccountNavCollapsed();
+  // La scelta vale su tutti i dispositivi della persona (docs/CHANGELOG.md
+  // §319): salvata sull'account, ripresa da lì all'accesso.
+  const savedPreference = user?.sidebarCollapsed;
+  useEffect(() => {
+    if (typeof savedPreference === "boolean") applyNavPreference(savedPreference);
+  }, [savedPreference]);
+  const toggleCollapsed = useCallback(() => {
+    const next = toggleCollapsedHere();
+    if (token) apiClient.updatePreferences(token, { sidebarCollapsed: next }).catch(() => {});
+  }, [toggleCollapsedHere, token]);
+  useAccountNavKeys(toggleCollapsed);
   // Nell'area professionista il menu c'è già mentre si carica l'accesso:
   // prima compariva dopo e spingeva giù la pagina (A1 della verifica,
   // docs/CHANGELOG.md §310).
@@ -38,9 +51,11 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
         <nav className="acct-nav" aria-label="Sezioni del tuo account">
           {/* Riduce il menu a sole icone (da 1000px, docs/CHANGELOG.md §319):
               il nome della voce compare passando sopra o col tasto Tab. */}
-          <button type="button" className="acct-nav-toggle" onClick={toggleCollapsed} aria-expanded={!collapsed} aria-label={collapsed ? "Espandi il menu" : "Riduci il menu a icone"}>
+          <button type="button" className="acct-nav-toggle" onClick={toggleCollapsed} aria-expanded={!collapsed} aria-keyshortcuts="[" aria-label={collapsed ? "Espandi il menu" : "Riduci il menu a icone"}>
             <Icon name={collapsed ? "chevron-right" : "chevron-left"} size={16} color="#6e6459" />
-            <span className="acct-nav-tip">{collapsed ? "Espandi il menu" : "Riduci il menu"}</span>
+            <span className="acct-nav-tip" aria-hidden="true">
+              {collapsed ? "Espandi il menu" : "Riduci il menu"} <kbd>[</kbd>
+            </span>
           </button>
           {groups.map((group) => (
             <div key={group.title} className="acct-nav-group">

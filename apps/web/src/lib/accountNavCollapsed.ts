@@ -3,7 +3,7 @@
  * §319, richiesta esplicita dell'utente: più spazio per agenda e
  * statistiche). Vale da 1000px; sotto c'è la colonna stretta del tablet o
  * la barra del telefono. Senza una scelta della persona il menu parte
- * ridotto fino a 1280px (portatili piccoli, tablet in orizzontale), dove
+ * ridotto fino a 1366px (portatili comuni, tablet in orizzontale), dove
  * ridurlo dà 192px al contenuto di ogni pagina; la scelta, "1" o "0", vince
  * sempre.
  * Qui solo le costanti, importabili anche dal layout (componente server);
@@ -18,7 +18,7 @@ export const ATTRIBUTE = "data-acct-nav";
 export const COLLAPSED = "collapsed";
 export const CHANGE_EVENT = "acct-nav-change";
 
-export const AUTO_COLLAPSE_UP_TO = 1280;
+export const AUTO_COLLAPSE_UP_TO = 1366;
 
 /**
  * Script in linea nel `<head>`: decide lo stato prima che la pagina compaia
