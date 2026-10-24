@@ -13,6 +13,7 @@ import {
   type DayPart,
   type ZoneDemand,
   DAY_PART_RANGE,
+  weekTemplateMonthFill,
   type CompleteBookingInput,
   type ExternalJob,
   type ProfessionalBooking,
@@ -1419,23 +1420,18 @@ function DashboardAgendaContent() {
 
   function applyWeekTemplate(monthKey: string) {
     if (!weekTemplate) return;
-    const added: SlotDraft[] = [];
-    let filledDays = 0;
-    let skippedDays = 0;
-    for (const dateStr of datesInMonth(parseIsoDate(monthKey))) {
-      if (dateStr < todayStr || closedSet.has(dateStr)) continue;
-      const dayOfWeek = parseIsoDate(dateStr).getUTCDay();
-      const templateSlots = weekTemplate.days[dayOfWeek] ?? [];
-      if (templateSlots.length === 0) continue;
-      if (slots.some((slot) => slotAppliesOnDateStr(slot, dateStr))) {
-        skippedDays++;
-        continue;
-      }
-      filledDays++;
-      for (const t of templateSlots) {
-        added.push({ dayOfWeek, date: dateStr, start: t.start, end: t.end, allowsHome: t.allowsHome, allowsOnline: t.allowsOnline, homeMax: t.homeMax, onlineMax: t.onlineMax });
-      }
-    }
+    const fill = weekTemplateMonthFill(weekTemplate, datesInMonth(parseIsoDate(monthKey)), slots, { fromDate: todayStr, closedDates: closedSet });
+    const { filledDays, skippedDays } = fill;
+    const added: SlotDraft[] = fill.added.map((t) => ({
+      dayOfWeek: t.dayOfWeek,
+      date: t.date,
+      start: t.start,
+      end: t.end,
+      allowsHome: t.allowsHome,
+      allowsOnline: t.allowsOnline,
+      homeMax: t.homeMax,
+      onlineMax: t.onlineMax,
+    }));
     if (filledDays === 0) {
       setTemplateNotice(skippedDays > 0 ? "Tutti i giorni di quel mese hanno già i loro orari: cambiali dal calendario qui sotto." : "Nessun giorno da riempire in quel mese.");
       return;

@@ -1781,7 +1781,7 @@ function parseIsoDateUtc(dateStr: string): Date {
  * (usato per `hasUpcomingBooking`, che resta un avviso generico non
  * per-tipo).
  */
-function countBookingsInSlot(
+export function countBookingsInSlot(
   bookings: { scheduledAt: Date; serviceMode?: string | null }[],
   dateStr: string,
   startTime: string,

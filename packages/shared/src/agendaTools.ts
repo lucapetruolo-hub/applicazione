@@ -151,3 +151,35 @@ export function weekTemplateCovers(template: AgendaWeekTemplate, weekday: number
   const range = DAY_PART_RANGE[part];
   return (template.days[weekday] ?? []).some((slot) => slot.start < range.end && slot.end > range.start);
 }
+
+/** Fascia nata dalla settimana tipo per una data precisa. */
+export type WeekTemplateDateSlot = WeekTemplateSlot & { dayOfWeek: number; date: string };
+
+/**
+ * Settimana tipo applicata a un mese (docs/CHANGELOG.md §288): riempie solo
+ * i giorni da `fromDate` in poi, non chiusi e ancora senza orari; i giorni
+ * che hanno già orari restano com'erano. `monthDates` in AAAA-MM-GG.
+ */
+export function weekTemplateMonthFill(
+  template: AgendaWeekTemplate,
+  monthDates: string[],
+  existing: { dayOfWeek: number; date?: string | null }[],
+  options: { fromDate: string; closedDates: ReadonlySet<string> },
+): { added: WeekTemplateDateSlot[]; filledDays: number; skippedDays: number } {
+  const added: WeekTemplateDateSlot[] = [];
+  let filledDays = 0;
+  let skippedDays = 0;
+  for (const date of monthDates) {
+    if (date < options.fromDate || options.closedDates.has(date)) continue;
+    const dayOfWeek = new Date(`${date}T00:00:00.000Z`).getUTCDay();
+    const templateSlots = template.days[dayOfWeek] ?? [];
+    if (templateSlots.length === 0) continue;
+    if (existing.some((slot) => (slot.date ? slot.date === date : slot.dayOfWeek === dayOfWeek))) {
+      skippedDays++;
+      continue;
+    }
+    filledDays++;
+    for (const slot of templateSlots) added.push({ ...slot, dayOfWeek, date });
+  }
+  return { added, filledDays, skippedDays };
+}

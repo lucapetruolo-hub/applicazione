@@ -1,0 +1,240 @@
+import { describe, expect, it } from "vitest";
+import fc from "fast-check";
+import ICAL from "ical.js";
+import {
+  agendaWeekTemplateSchema,
+  formatAppointmentTime,
+  professionalAvailabilitySchema,
+  wallClockNow,
+  weekTemplateMonthFill,
+  type AvailabilitySlotInput,
+} from "@professionisti/shared";
+import { calendarFeedIcs, type CalendarEvent } from "../email/email-calendar";
+import { countBookingsInSlot } from "../professionals/professionals.service";
+
+/**
+ * Prove "a proprietà" dell'agenda (docs/CHANGELOG.md §292): invece di pochi
+ * esempi scritti a mano, fast-check genera migliaia di casi a caso e cerca
+ * quello che rompe la regola. Ogni regola è confrontata con un controllo
+ * indipendente scritto qui, non con lo stesso codice che si vuole provare.
+ */
+
+const RUNS = 500;
+
+/** "HH:MM" a passi di 15 minuti, come nell'editor degli orari. */
+const quarter = fc.integer({ min: 0, max: 95 }).map((q) => `${String(Math.floor(q / 4)).padStart(2, "0")}:${String((q % 4) * 15).padStart(2, "0")}`);
+const range = fc
+  .tuple(quarter, quarter)
+  .filter(([a, b]) => a !== b)
+  .map(([a, b]) => (a < b ? { start: a, end: b } : { start: b, end: a }));
+
+/** Minuti dalla mezzanotte. */
+const minutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
+
+/** Controllo indipendente: due intervalli [inizio, fine) si toccano se hanno almeno un minuto in comune. */
+function minutesOverlap(a: { start: string; end: string }, b: { start: string; end: string }): boolean {
+  const used = new Set<number>();
+  for (let m = minutes(a.start); m < minutes(a.end); m++) used.add(m);
+  for (let m = minutes(b.start); m < minutes(b.end); m++) if (used.has(m)) return true;
+  return false;
+}
+
+/** Alcune date di ottobre 2026 (da sabato 24 a martedì 27, con il cambio d'ora del 25). */
+const DATES = ["2026-10-24", "2026-10-25", "2026-10-26", "2026-10-27"];
+const weekdayOf = (date: string) => new Date(`${date}T00:00:00.000Z`).getUTCDay();
+
+const slotArb: fc.Arbitrary<AvailabilitySlotInput> = fc
+  .tuple(range, fc.option(fc.constantFrom(...DATES), { nil: undefined }), fc.integer({ min: 0, max: 6 }))
+  .map(([r, date, weekday]) => ({
+    dayOfWeek: date ? weekdayOf(date) : weekday,
+    startTime: r.start,
+    endTime: r.end,
+    allowsHome: true,
+    allowsOnline: false,
+    homeMaxBookings: 1,
+    date,
+  }));
+
+/** Date di calendario in cui una fascia vale: la sua data, o tutte quelle del suo giorno della settimana. */
+function occurrences(slot: AvailabilitySlotInput): string[] {
+  return slot.date ? [slot.date] : DATES.filter((date) => weekdayOf(date) === slot.dayOfWeek).concat(`weekday-${slot.dayOfWeek}`);
+}
+
+describe("fasce orarie generate a caso", () => {
+  it("il controllo degli orari rifiuta tutte e sole le fasce che si sovrappongono nello stesso giorno", () => {
+    fc.assert(
+      fc.property(fc.array(slotArb, { maxLength: 8 }), (slots) => {
+        let expectedOverlap = false;
+        for (let i = 0; i < slots.length && !expectedOverlap; i++) {
+          for (let j = i + 1; j < slots.length && !expectedOverlap; j++) {
+            const a = slots[i]!;
+            const b = slots[j]!;
+            const shareDay = occurrences(a).some((day) => occurrences(b).includes(day));
+            if (shareDay && minutesOverlap({ start: a.startTime, end: a.endTime }, { start: b.startTime, end: b.endTime })) expectedOverlap = true;
+          }
+        }
+        expect(professionalAvailabilitySchema.safeParse({ slots }).success).toBe(!expectedOverlap);
+      }),
+      { numRuns: RUNS },
+    );
+  });
+
+  const templateSlot = range.map((r) => ({ ...r, allowsHome: true, allowsOnline: false, homeMax: 1, onlineMax: null }));
+  const templateArb = fc.array(fc.array(templateSlot, { maxLength: 4 }), { minLength: 7, maxLength: 7 }).map((days) => ({ days }));
+
+  it("la settimana tipo rifiuta tutte e sole le fasce sovrapposte nello stesso giorno", () => {
+    fc.assert(
+      fc.property(templateArb, (template) => {
+        const expectedOverlap = template.days.some((day) => day.some((a, i) => day.some((b, j) => i < j && minutesOverlap(a, b))));
+        expect(agendaWeekTemplateSchema.safeParse(template).success).toBe(!expectedOverlap);
+      }),
+      { numRuns: RUNS },
+    );
+  });
+
+  it("applicare la settimana tipo a un mese non crea mai fasce sovrapposte né tocca i giorni chiusi o passati", () => {
+    const novemberDates = Array.from({ length: 30 }, (_, i) => `2026-11-${String(i + 1).padStart(2, "0")}`);
+    const existingArb = fc
+      .array(
+        fc.tuple(range, fc.constantFrom(...novemberDates)).map(([r, date]) => ({
+          dayOfWeek: weekdayOf(date),
+          startTime: r.start,
+          endTime: r.end,
+          allowsHome: true,
+          allowsOnline: false,
+          homeMaxBookings: 1,
+          date,
+        })),
+        { maxLength: 10 },
+      )
+      .filter((slots) => professionalAvailabilitySchema.safeParse({ slots }).success);
+    fc.assert(
+      fc.property(
+        templateArb.filter((t) => agendaWeekTemplateSchema.safeParse(t).success),
+        existingArb,
+        fc.constantFrom(...novemberDates),
+        fc.uniqueArray(fc.constantFrom(...novemberDates), { maxLength: 5 }),
+        (template, existing, fromDate, closed) => {
+          const fill = weekTemplateMonthFill(template, novemberDates, existing, { fromDate, closedDates: new Set(closed) });
+          const added: AvailabilitySlotInput[] = fill.added.map((s) => ({
+            dayOfWeek: s.dayOfWeek,
+            startTime: s.start,
+            endTime: s.end,
+            allowsHome: s.allowsHome,
+            allowsOnline: s.allowsOnline,
+            homeMaxBookings: s.homeMax ?? undefined,
+            date: s.date,
+          }));
+          expect(professionalAvailabilitySchema.safeParse({ slots: [...existing, ...added] }).success).toBe(true);
+          for (const slot of fill.added) {
+            expect(slot.date >= fromDate).toBe(true);
+            expect(closed.includes(slot.date)).toBe(false);
+            expect(existing.some((e) => e.date === slot.date)).toBe(false);
+          }
+        },
+      ),
+      { numRuns: RUNS },
+    );
+  });
+
+  it("una prenotazione che inizia dentro una fascia la occupa sempre, e solo quella", () => {
+    fc.assert(
+      fc.property(range, quarter, fc.constantFrom(...DATES), fc.constantFrom(...DATES), (slot, bookingTime, slotDate, bookingDate) => {
+        const scheduledAt = new Date(`${bookingDate}T${bookingTime}:00.000Z`);
+        const inside = bookingDate === slotDate && minutes(bookingTime) >= minutes(slot.start) && minutes(bookingTime) < minutes(slot.end);
+        expect(countBookingsInSlot([{ scheduledAt }], slotDate, slot.start, slot.end)).toBe(inside ? 1 : 0);
+      }),
+      { numRuns: RUNS },
+    );
+  });
+});
+
+/** Controllo indipendente dell'ora italiana: regola europea (ultima domenica di marzo e di ottobre, alle 01:00 UTC). */
+function romeOffsetHours(instant: Date): number {
+  const year = instant.getUTCFullYear();
+  const lastSunday = (month: number) => {
+    const last = new Date(Date.UTC(year, month + 1, 0));
+    return Date.UTC(year, month, last.getUTCDate() - last.getUTCDay(), 1);
+  };
+  const t = instant.getTime();
+  return t >= lastSunday(2) && t < lastSunday(9) ? 2 : 1;
+}
+
+const instantArb = fc.date({ min: new Date("2026-01-01T00:00:00Z"), max: new Date("2030-12-31T23:59:59Z"), noInvalidDate: true });
+
+describe("ora degli appuntamenti", () => {
+  it("l'ora italiana di adesso è giusta in ogni momento, anche nelle notti del cambio d'ora", () => {
+    const changeNights = fc.constantFrom("2026-03-29T00:30:00Z", "2026-03-29T01:30:00Z", "2026-10-25T00:30:00Z", "2026-10-25T01:30:00Z", "2027-10-31T00:59:00Z", "2027-10-31T01:00:00Z").map((iso) => new Date(iso));
+    fc.assert(
+      fc.property(fc.oneof(instantArb, changeNights), (now) => {
+        const expected = new Date(now.getTime() + romeOffsetHours(now) * 3_600_000);
+        expected.setUTCMilliseconds(0);
+        expect(wallClockNow(now).toISOString()).toBe(expected.toISOString());
+      }),
+      { numRuns: RUNS * 4 },
+    );
+  });
+
+  it("l'orario mostrato non cambia con il fuso del dispositivo", () => {
+    const zones = ["Europe/Rome", "America/New_York", "Asia/Tokyo", "Pacific/Kiritimati", "America/Los_Angeles", "UTC"];
+    const original = process.env.TZ;
+    try {
+      fc.assert(
+        fc.property(instantArb, fc.constantFrom(...zones), (instant, zone) => {
+          process.env.TZ = zone;
+          expect(formatAppointmentTime(instant)).toBe(instant.toISOString().slice(11, 16));
+        }),
+        { numRuns: RUNS },
+      );
+    } finally {
+      process.env.TZ = original;
+    }
+  });
+});
+
+describe("link del calendario (iCalendar, RFC 5545)", () => {
+  const textArb = fc.string({ unit: "grapheme", maxLength: 120 });
+  const eventArb: fc.Arbitrary<CalendarEvent> = fc
+    .tuple(fc.uuid(), textArb, instantArb, fc.integer({ min: 15, max: 600 }), fc.option(textArb, { nil: null }), fc.option(textArb, { nil: null }))
+    .map(([id, title, start, durationMin, location, description]) => {
+      start.setUTCSeconds(0, 0);
+      return { uid: `booking-${id}@agenda`, title: title || "Cliente", start, end: new Date(start.getTime() + durationMin * 60_000), location, description };
+    });
+
+  it("il file si legge con un lettore iCalendar indipendente e ogni appuntamento cade all'ora italiana giusta", () => {
+    fc.assert(
+      fc.property(fc.uniqueArray(eventArb, { maxLength: 6, selector: (e) => e.uid }), (events) => {
+        const ics = calendarFeedIcs("Agenda", events);
+        // Righe: fine riga CRLF, nessuna oltre 75 byte.
+        expect(ics.endsWith("\r\n")).toBe(true);
+        for (const line of ics.split("\r\n")) expect(Buffer.byteLength(line)).toBeLessThanOrEqual(75);
+
+        const calendar = new ICAL.Component(ICAL.parse(ics));
+        const vtimezone = calendar.getFirstSubcomponent("vtimezone");
+        expect(vtimezone).not.toBeNull();
+        const timezone = new ICAL.Timezone(vtimezone!);
+        const vevents = calendar.getAllSubcomponents("vevent");
+        expect(vevents).toHaveLength(events.length);
+
+        vevents.forEach((vevent, index) => {
+          const source = events[index]!;
+          const event = new ICAL.Event(vevent);
+          expect(event.uid).toBe(source.uid);
+          expect(vevent.getFirstPropertyValue("dtstamp")).toBeTruthy();
+          expect(event.summary).toBe(source.title);
+          if (source.location?.trim()) expect(event.location).toBe(source.location.trim());
+          // L'ora di parete italiana (09:00 salvata come 09:00Z) deve diventare l'istante vero di Roma.
+          const start = event.startDate;
+          start.zone = timezone;
+          const expectedInstant = source.start.getTime() - romeOffsetHours(new Date(source.start.getTime() - 2 * 3_600_000)) * 3_600_000;
+          // Nell'ora che si ripete (25/10 tra le 02:00 e le 03:00) sono giuste entrambe le letture.
+          const actual = start.toJSDate().getTime();
+          const ambiguous = Math.abs(actual - expectedInstant) === 3_600_000 && source.start.getUTCHours() === 2;
+          const skipped = source.start.getUTCHours() === 2 && source.start.getUTCMonth() === 2;
+          if (!ambiguous && !skipped) expect(actual).toBe(expectedInstant);
+        });
+      }),
+      { numRuns: 200 },
+    );
+  });
+});
