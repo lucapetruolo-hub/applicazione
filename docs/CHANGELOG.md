@@ -19865,3 +19865,15 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 **Decisione presa**: `LoadErrorNotice` con "Riprova" al posto dei contatori e delle sezioni "Da rispondere ora" e "Oggi e domani" ("Non riusciamo a caricare richieste e appuntamenti"); "Il tuo andamento" si nasconde se non si carica; in Abbonamento "Non riusciamo a caricare il tuo abbonamento" con "Riprova". Gli avvisi in alto (pausa, percorso profilo, agenda) restano come prima.
 
 **Verifica**: typecheck e lint del web.
+
+## 288. Aggiornamento a Next.js 15.5
+
+**Richiesta esplicita dell'utente** (22/10/2026, punto 2 del controllo sicurezza, `/mnt/project-files/analisi/controllo-sicurezza.md`): la serie 14 di Next.js non riceve più correzioni di sicurezza (2 falle critiche e 8 alte sulla 14.2.35). Aggiornare con prove su tutte le pagine, da telefono e da computer, senza cambiare l'aspetto.
+
+**Decisione presa**:
+- `next` 14.2.35 → 15.5.28 in `apps/web`. React resta 18 nel `package.json`: l'App Router usa comunque la copia di React 19 inclusa in Next, e così `apps/mobile` (Expo, React 18) non ne risente. Restano solo due avvisi di build da `react-native-web` (`hydrate` e `unmountComponentAtNode` non esistono più in React 19): sono funzioni che il sito non chiama.
+- Le cinque pagine server che leggono indirizzo o parametri (`/cerca`, `/cerca/[categoria]`, `/cerca/[categoria]/[citta]`, `/professionista/[id]`, `/dashboard/tipo-attivita`) ora attendono `params`/`searchParams`, che in Next 15 sono Promise. Le pagine client usavano già `useParams`/`useSearchParams`; `cookies()`/`headers()` non sono usati.
+- Cache delle fetch: nessun cambio necessario, tutte le pagine con dati sono già `force-dynamic` e le fetch di ricerca `cache: "no-store"`.
+- `typecheck` del sito: `next typegen && tsc --noEmit`. Next 15.5 aggiunge a `next-env.d.ts` i tipi delle rotte in `.next/types`, che in CI non esisterebbero prima del build; `next typegen` li genera e controlla anche le props delle pagine.
+
+**Verifica**: typecheck, lint e build del sito. Con API e database locali, foto a pagina intera di 68 indirizzi (pubblici, cliente, professionista, admin, pagine 404) a 1440 e 390 px, con Next 14 e con Next 15: 133 su 136 identiche al pixel, le altre 3 differiscono per pochi pixel di antialiasing del testo. Secondo giro con un professionista con richieste vere: cambiano solo i contatori "Nuovo" già letti nel primo giro. Nessun errore nella console. Prove di navigazione: ricerca → profilo → indietro, cambio Online/A domicilio sulla stessa pagina (i risultati si aggiornano), accesso con email e password, "Le mie richieste". Il titolo della pagina profilo resta nell'`<head>` anche per i motori di ricerca.

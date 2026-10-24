@@ -42,7 +42,7 @@ Implicazioni tecniche dirette:
 
 | Livello | Scelta | Perché |
 |---|---|---|
-| Web (desktop/mobile browser) | **Next.js** (App Router, TypeScript) | SSR/SSG per SEO su pagine categoria/professionista — critico per il ricavo da visibilità |
+| Web (desktop/mobile browser) | **Next.js 15** (App Router, TypeScript) | SSR/SSG per SEO su pagine categoria/professionista — critico per il ricavo da visibilità |
 | App mobile (iOS + Android) | **Expo / React Native** (TypeScript) | Un'unica codebase per iOS e Android, OTA update, accesso a push notification/fotocamera/geolocalizzazione native |
 | UI condivisa web+mobile | **Tamagui** (o in alternativa NativeWind) | Stessi componenti/design tokens compilati sia per React Native che per web → "stessa interfaccia" richiesta, senza duplicare il design system |
 | Backend API | **NestJS** (Node.js, TypeScript) | Struttura modulare adatta a un dominio con tanti bounded context (utenti, prenotazioni, pagamenti, ricerca) |
@@ -77,6 +77,11 @@ prima discuterne e aggiornare questo file.
   runtime, a differenza di Next.js (`transpilePackages`) e Metro. `turbo dev`
   dipende da `^build` per garantire che i package siano compilati prima
   dell'avvio dei dev server.
+- **Next.js 15** (docs/CHANGELOG.md §288): nelle pagine server `params` e
+  `searchParams` (come `cookies()` e `headers()`) sono Promise da attendere;
+  il `typecheck` di `apps/web` esegue prima `next typegen`, che genera i tipi
+  con cui si controllano le props delle pagine. React resta 18 nel
+  `package.json` (l'App Router usa la sua copia di React 19).
 - Il build di produzione di `apps/mobile` avviene su **EAS Build** (cloud),
   non in locale: `expo export` in locale è soggetto a un conflitto di
   versione noto tra pacchetti Metro in ambienti pnpm, non vale la pena
