@@ -1680,6 +1680,8 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
         headers: { Authorization: `Bearer ${token}` },
       }),
     /** Suggerimenti di indirizzo (Italia) chiesti a Google dal nostro server (docs/CHANGELOG.md §264). */
+    /** Se i suggerimenti di indirizzo funzionano, senza chiamare Google (docs/CHANGELOG.md §324). */
+    addressStatus: () => request<{ available: boolean }>("/address/status", { cache: "no-store" }),
     addressSuggestions: (params: { q: string; session: string; latitude?: number; longitude?: number }) => {
       const query = new URLSearchParams({ q: params.q, session: params.session });
       if (params.latitude !== undefined && params.longitude !== undefined) {

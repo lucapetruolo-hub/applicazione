@@ -18,7 +18,7 @@ const DAY_NAMES = ["Oggi", "Domani"];
 
 /**
  * Meteo di oggi, domani e dopodomani in "Oggi" (richiesta dell'utente,
- * docs/CHANGELOG.md §324): una riga sola, sempre con l'icona, così il
+ * docs/CHANGELOG.md §325): una riga sola, sempre con l'icona, così il
  * prossimo lavoro resta visibile senza scorrere anche da telefono (§311).
  */
 export function WeatherStrip({ days }: { days: DayAhead[] | null }) {

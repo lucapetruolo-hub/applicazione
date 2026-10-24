@@ -1109,7 +1109,7 @@ button.notif-row-main:hover {
     margin-left: auto;
   }
 }
-/* "Oggi": meteo dei prossimi tre giorni e lavori raggruppati per giorno (docs/CHANGELOG.md §324). */
+/* "Oggi": meteo dei prossimi tre giorni e lavori raggruppati per giorno (docs/CHANGELOG.md §325). */
 .weather-strip {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2739,6 +2739,16 @@ a.admin-kpi:hover {
 .guided-city input {
   background-color: #ffffff !important;
 }
+/* Città tra i campi separati dell'indirizzo (§324): alta come gli altri. */
+.guided-city-inline input {
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 12px !important;
+  border-width: 0 !important;
+  border-radius: 6px !important;
+  font-size: 16px !important;
+  line-height: normal !important;
+}
 @media (max-width: 599px) {
   .guided-steps button {
     flex-direction: column;
@@ -3528,9 +3538,38 @@ a.admin-kpi:hover {
   align-items: center;
   justify-content: center;
 }
+/* Tessere vuote finché non arriva l'ordine dei più cercati (§324): stessa
+   misura delle vere, così la pagina non salta; poi compaiono con una
+   dissolvenza breve, mai riordinate davanti a chi guarda. */
+.cat-tile.cat-tile-placeholder {
+  cursor: default;
+  border-color: #f3e7d6;
+}
+.cat-tile-placeholder .cat-tile-icon {
+  background-color: transparent;
+}
+.cat-tile-placeholder-label {
+  width: 64%;
+  height: 14px;
+  border-radius: 6px;
+}
+@keyframes cat-tiles-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.cat-tiles-ready {
+  animation: cat-tiles-in 0.18s ease-out;
+}
 @media (prefers-reduced-motion: reduce) {
   .cat-tile {
     transition: none;
+  }
+  .cat-tiles-ready {
+    animation: none;
   }
 }
 .consent-invalid {

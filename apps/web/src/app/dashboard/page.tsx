@@ -32,7 +32,7 @@ export default function DashboardTodayPage() {
   const { user, token, isLoading, unreadNotifications } = useAuth();
   const [leads, setLeads] = useState<ProfessionalLead[] | null>(null);
   const [bookings, setBookings] = useState<ProfessionalBooking[] | null>(null);
-  // Meteo dei prossimi tre giorni (§324): se non arriva, la riga sparisce.
+  // Meteo dei prossimi tre giorni (§325): se non arriva, la riga sparisce.
   const [daysAhead, setDaysAhead] = useState<DayAhead[] | null | "failed">(null);
   const [insights, setInsights] = useState<ProfessionalInsights | null>(null);
   const [subscription, setSubscription] = useState<MySubscription | null>(null);
@@ -176,7 +176,7 @@ export default function DashboardTodayPage() {
           ) : (
             upcoming.map(({ booking, at }, index) => (
               <Fragment key={`${booking.id}-${at}`}>
-              {/* I lavori raggruppati per giorno, con il riepilogo sopra (§324). */}
+              {/* I lavori raggruppati per giorno, con il riepilogo sopra (§325). */}
               {index === 0 || upcoming[index - 1]!.at.slice(0, 10) !== at.slice(0, 10) ? (
                 <div className="today-day-head">
                   <strong>{at.slice(0, 10) === startToday.toISOString().slice(0, 10) ? "Oggi" : "Domani"}</strong>

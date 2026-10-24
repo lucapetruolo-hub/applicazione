@@ -14,6 +14,13 @@ const SESSION = /^[A-Za-z0-9-]{8,64}$/;
 export class AddressSuggestionsController {
   constructor(private readonly addressSuggestionsService: AddressSuggestionsService) {}
 
+  /** Se i suggerimenti funzionano, senza chiamare Google (§324). */
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @Get("status")
+  status() {
+    return { available: this.addressSuggestionsService.available() };
+  }
+
   @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @Get("suggestions")
   suggestions(@Query("q") q?: string, @Query("session") session?: string, @Query("lat") lat?: string, @Query("lng") lng?: string) {
