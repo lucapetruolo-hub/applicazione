@@ -77,7 +77,7 @@ export function IconActionButton({ label, onPress, children, active, disabled, f
           font-size: 12px;
           font-weight: 600;
           padding: 4px 8px;
-          border-radius: 6px;
+          border-radius: 10px;
           pointer-events: none;
           opacity: 0;
           transition: opacity 0.12s;

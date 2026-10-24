@@ -18,7 +18,7 @@ import { PASSWORD_RULES_ATTRIBUTE, PasswordMatchHint, PasswordRules } from "@/co
 
 const inputStyle = {
   padding: "10px 12px",
-  borderRadius: 6,
+  borderRadius: 10,
   border: `1px solid ${brand.bordoCampo}`,
   fontSize: 16,
   fontFamily: "inherit",

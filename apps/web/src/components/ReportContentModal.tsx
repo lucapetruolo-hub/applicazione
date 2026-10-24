@@ -14,7 +14,7 @@ const REASON_OPTIONS: { value: string; label: string }[] = [
 
 const textareaStyle = {
   padding: 10,
-  borderRadius: 6,
+  borderRadius: 10,
   border: `1px solid ${brand.bordoCampo}`,
   fontSize: 16,
   fontFamily: "inherit",
@@ -25,7 +25,7 @@ const textareaStyle = {
 
 const selectStyle = {
   padding: 10,
-  borderRadius: 6,
+  borderRadius: 10,
   border: `1px solid ${brand.bordoCampo}`,
   fontSize: 16,
   fontFamily: "inherit",

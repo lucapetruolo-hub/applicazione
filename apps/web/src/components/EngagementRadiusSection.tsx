@@ -115,7 +115,7 @@ export function EngagementRadiusSection({
       <YStack gap="$2">
         <XStack justifyContent="space-between" alignItems="center">
           <XStack alignItems="center" gap="$2">
-            <YStack width={12} height={12} borderRadius={6} backgroundColor={brand.verificato} />
+            <YStack width={12} height={12} borderRadius={10} backgroundColor={brand.verificato} />
             <FieldLabel>Richieste standard</FieldLabel>
           </XStack>
           <Text fontFamily="$mono" fontWeight="700" color={brand.grafite}>
@@ -142,7 +142,7 @@ export function EngagementRadiusSection({
       <YStack gap="$2">
         <XStack justifyContent="space-between" alignItems="center">
           <XStack alignItems="center" gap="$2">
-            <YStack width={12} height={12} borderRadius={6} backgroundColor={brand.ottone} />
+            <YStack width={12} height={12} borderRadius={10} backgroundColor={brand.ottone} />
             <FieldLabel>Richieste urgenti</FieldLabel>
           </XStack>
           <Text fontFamily="$mono" fontWeight="700" color={brand.grafite}>

@@ -132,7 +132,7 @@ export function StatsBarChart({
             pointerEvents: "none",
             background: brand.grafite,
             color: brand.calce,
-            borderRadius: 6,
+            borderRadius: 10,
             padding: "8px 12px",
             fontSize: 13,
             whiteSpace: "nowrap",

@@ -148,7 +148,7 @@ export function ImageCropModal({
       <div
         style={{
           backgroundColor: "white",
-          borderRadius: 12,
+          borderRadius: 20,
           padding: 24,
           width: "100%",
           maxWidth: 380,
@@ -175,7 +175,7 @@ export function ImageCropModal({
             width: STAGE_SIZE,
             height: STAGE_SIZE,
             overflow: "hidden",
-            borderRadius: 12,
+            borderRadius: 20,
             backgroundColor: "#f1f5f9",
             cursor: "grab",
             touchAction: "none",
@@ -238,7 +238,7 @@ export function ImageCropModal({
             style={{
               flex: 1,
               padding: "10px 16px",
-              borderRadius: 6,
+              borderRadius: 10,
               border: "1px solid #d0d5dd",
               backgroundColor: "white",
               fontSize: 16,
@@ -255,7 +255,7 @@ export function ImageCropModal({
             style={{
               flex: 1,
               padding: "10px 16px",
-              borderRadius: 6,
+              borderRadius: 10,
               border: "none",
               backgroundColor: "#1e5eff",
               color: "white",

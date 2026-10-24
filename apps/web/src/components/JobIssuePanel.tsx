@@ -43,7 +43,7 @@ export function JobIssuePanel({
       {issue.photoUrls.length > 0 ? (
         <XStack gap="$2" flexWrap="wrap">
           {issue.photoUrls.map((url) => (
-            <a key={url} href={url} target="_blank" rel="noreferrer" style={{ width: 64, height: 64, borderRadius: 6, overflow: "hidden", display: "block" }}>
+            <a key={url} href={url} target="_blank" rel="noreferrer" style={{ width: 64, height: 64, borderRadius: 10, overflow: "hidden", display: "block" }}>
               <MediaPreview url={url} />
             </a>
           ))}
@@ -207,7 +207,7 @@ function TextForm({
           boxSizing: "border-box",
           minHeight: 76,
           padding: 10,
-          borderRadius: 6,
+          borderRadius: 10,
           border: `1px solid ${brand.bordoCampo}`,
           fontSize: 16,
           fontFamily: "inherit",

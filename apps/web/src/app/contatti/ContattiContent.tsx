@@ -14,7 +14,7 @@ const ROLE_OPTIONS: { value: ContactMessageInput["role"]; label: string }[] = [
 
 const fieldStyle = {
   padding: "16px 18px",
-  borderRadius: 12,
+  borderRadius: 20,
   border: `1px solid ${brand.bordoCampo}`,
   fontSize: 16,
   fontFamily: "inherit",

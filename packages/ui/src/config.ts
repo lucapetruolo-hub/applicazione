@@ -49,13 +49,18 @@ const headingLetterSpacing = Object.fromEntries(
 // token esistenti: $blue10, $color3, $red10 ecc. sono usati in decine di
 // pagine già in produzione, non ancora coinvolte nel redesign). I nuovi
 // token brand vivono accanto a quelli, stessa scala `$nome`.
-// Arrotondamenti $1-$11 ridotti ai due valori del sistema unico (6 e 12 px,
-// docs/CHANGELOG.md §305): prima la scala di default dava 3, 5, 7, 9, 10, 16,
-// 19, 22, 26, 34, 42. $12 (50) resta per gli elementi tondi.
+// Arrotondamenti $1-$9 ridotti ai due valori del sistema unico ($1-$2 a 10
+// px, $3-$9 a 20 px,
+// docs/CHANGELOG.md §305, ammorbiditi nel §317): prima la scala di default dava 3, 5, 7, 9, 10, 16,
+// 19, 22, 26, 34, 42. $12 (50) resta per gli elementi tondi; $10 e $11,
+// usati solo da interruttori, schede "A domicilio/Online", etichette e
+// pulsanti a pillola, tornano tondi pieni come prima (richiesta
+// dell'utente, docs/CHANGELOG.md §316).
 const radius = Object.fromEntries(
   Object.entries(defaultConfig.tokens.radius).map(([key, token]) => {
     if (key === "0" || key === "12") return [key, token.val];
-    return [key, token.val <= 10 ? 6 : 12];
+    if (key === "10" || key === "11") return [key, 999];
+    return [key, token.val <= 5 ? 10 : 20];
   }),
 ) as Record<keyof typeof defaultConfig.tokens.radius, number>;
 
