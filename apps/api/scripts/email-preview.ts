@@ -134,8 +134,9 @@ notification("SUBSCRIPTION_ENDING", "Professionista", "Abbonamento", { tierLabel
 notification("SUBSCRIPTION_PAYMENT_FAILED", "Professionista", "Abbonamento");
 
 // Moderazione
-notification("CONTENT_REPORT_DECISION", "Cliente", "Segnalazioni e moderazione", { targetType: "REVIEW", status: "RESOLVED", note: "La recensione conteneva insulti." });
-notification("CONTENT_REPORT_UPHELD", "Professionista", "Segnalazioni e moderazione", { targetType: "REVIEW", action: "HIDE_CONTENT", note: "Linguaggio offensivo." });
+notification("CONTENT_REPORT_RECEIVED", "Cliente", "Segnalazioni e moderazione", { targetType: "REVIEW" });
+notification("CONTENT_REPORT_DECISION", "Cliente", "Segnalazioni e moderazione", { targetType: "REVIEW", status: "RESOLVED" });
+notification("CONTENT_REPORT_UPHELD", "Professionista", "Segnalazioni e moderazione", { targetType: "REVIEW", action: "HIDE_CONTENT", ground: "legge-diffamazione", note: "La recensione attribuisce al professionista un furto senza alcun riscontro." });
 notification("CONTENT_REPORT_REVERTED", "Professionista", "Segnalazioni e moderazione", { targetType: "REVIEW", note: "Rivista la decisione dopo la contestazione." });
 notification("CONTENT_REPORT_APPEAL_REJECTED", "Professionista", "Segnalazioni e moderazione", { note: "La decisione resta valida." });
 notification("ACCOUNT_SUSPENDED", "Tutti", "Segnalazioni e moderazione", { note: "Violazioni ripetute dei Termini di servizio." });

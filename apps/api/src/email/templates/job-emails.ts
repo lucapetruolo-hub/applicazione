@@ -175,7 +175,7 @@ export function adminGeneralRequestsClosedEmail(zones: { category: string; city:
   });
 }
 
-export function adminNewReportEmail(input: { what: string; reason: string }): RenderedEmail {
+export function adminNewReportEmail(input: { what: string; reason: string; fromContactForm?: boolean }): RenderedEmail {
   return renderEmail({
     kind: "account",
     tone: "urgent",
@@ -183,6 +183,22 @@ export function adminNewReportEmail(input: { what: string; reason: string }): Re
     title: "Nuova segnalazione da gestire",
     paragraphs: [`È arrivata una nuova segnalazione (${input.what.toLowerCase()}).`],
     details: [{ label: "Motivo", value: input.reason }],
-    cta: { label: "Apri le segnalazioni", url: `${frontendUrl()}/admin/segnalazioni` },
+    cta: input.fromContactForm
+      ? { label: "Apri i messaggi", url: `${frontendUrl()}/admin/messaggi` }
+      : { label: "Apri le segnalazioni", url: `${frontendUrl()}/admin/segnalazioni` },
+  });
+}
+
+/**
+ * Presa in carico di una segnalazione di contenuto illegale arrivata dal
+ * modulo Contatti, da chi non ha un account (DSA art. 16 c. 1 e 4,
+ * docs/CHANGELOG.md §312). L'esito lo manda poi l'admin rispondendo via email.
+ */
+export function contactReportReceivedEmail(): RenderedEmail {
+  return renderEmail({
+    kind: "account",
+    subject: "Abbiamo preso in carico la tua segnalazione",
+    title: "Segnalazione presa in carico",
+    paragraphs: ["Grazie, abbiamo preso in carico la tua segnalazione. La esaminerà una persona del nostro team e ti scriveremo l'esito a questo indirizzo."],
   });
 }

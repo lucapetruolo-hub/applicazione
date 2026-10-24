@@ -458,6 +458,13 @@ Città, pagine vuote fuori da Google.
     obiettivi nel documento "Verifica dell'agenda come un esperto UX".
 
 
+40. **Segnalazioni dei contenuti (DSA)** (docs/CHANGELOG.md §312): dopo la
+    verifica del dominio Resend, fare una segnalazione di prova come
+    "contenuto illegale", decidere dal pannello admin e controllare nei log
+    di Resend che siano partite le tre email (presa in carico, esito a chi
+    segnala, decisione all'autore). Far vedere all'avvocato i punti 32-35 di
+    `domande-commercialista-avvocato.md` e il punto 8 dei Termini.
+
 ## Da fare dopo il lancio
 
 Cose decise con Luca da non fare prima del lancio, ma da non dimenticare:

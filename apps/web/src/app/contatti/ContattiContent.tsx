@@ -1,15 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { ContactMessageInput } from "@professionisti/shared";
 import { Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { TURNSTILE_PENDING_MESSAGE, TurnstileWidget, isTurnstileEnabled } from "@/components/TurnstileWidget";
+import { ConsentCheckbox } from "@/components/ConsentCheckbox";
 
 const ROLE_OPTIONS: { value: ContactMessageInput["role"]; label: string }[] = [
   { value: "CLIENT", label: "Sono un cliente" },
   { value: "PROFESSIONAL", label: "Sono un professionista" },
   { value: "OTHER", label: "Altro" },
+  // Anche senza account (DSA art. 16 c. 1, docs/CHANGELOG.md §312): il
+  // link "Segnala un contenuto illegale" del footer apre il modulo già qui.
+  { value: "REPORT_ILLEGAL", label: "Segnalo un contenuto illegale" },
 ];
 
 const fieldStyle = {
@@ -47,8 +52,8 @@ const COMPANY_ROWS: { icon: "file-text" | "map-pin"; label: string; value: strin
  * /admin. I dati aziendali restano segnaposto finché l'utente non
  * fornisce quelli reali — stessa convenzione già in uso per /privacy.
  */
-export default function ContattiContent() {
-  const [role, setRole] = useState<ContactMessageInput["role"]>("CLIENT");
+export default function ContattiContent({ initialReport = false }: { initialReport?: boolean }) {
+  const [role, setRole] = useState<ContactMessageInput["role"]>(initialReport ? "REPORT_ILLEGAL" : "CLIENT");
   const [email, setEmail] = useState("");
   const [content, setContent] = useState("");
   const [website, setWebsite] = useState("");
@@ -56,10 +61,22 @@ export default function ContattiContent() {
   const [errorMessage, setErrorMessage] = useState("Inserisci un'email valida e un messaggio.");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileReset, setTurnstileReset] = useState(0);
+  const [goodFaith, setGoodFaith] = useState(false);
+  const isReport = role === "REPORT_ILLEGAL";
 
   async function handleSubmit() {
     if (!email.trim() || !email.includes("@") || !content.trim()) {
       setErrorMessage("Inserisci un'email valida e un messaggio.");
+      setStatus("error");
+      return;
+    }
+    if (isReport && content.trim().length < 20) {
+      setErrorMessage("Indica dove si trova il contenuto e perché è illegale.");
+      setStatus("error");
+      return;
+    }
+    if (isReport && !goodFaith) {
+      setErrorMessage("Conferma che la segnalazione è fatta in buona fede.");
       setStatus("error");
       return;
     }
@@ -70,7 +87,14 @@ export default function ContattiContent() {
     }
     setStatus("loading");
     try {
-      await apiClient.sendContactMessage({ role, email: email.trim(), content: content.trim(), website, turnstileToken: turnstileToken ?? undefined });
+      await apiClient.sendContactMessage({
+        role,
+        email: email.trim(),
+        content: content.trim(),
+        ...(isReport ? { goodFaith } : {}),
+        website,
+        turnstileToken: turnstileToken ?? undefined,
+      });
       setStatus("done");
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Invio non riuscito, riprova.");
@@ -95,12 +119,14 @@ export default function ContattiContent() {
         <XStack flexWrap="wrap" gap="$5" width="100%" alignItems="flex-start">
           <Surface flexGrow={2} flexShrink={1} flexBasis={340} minWidth={0} padding="$4" $gtSm={{ padding: "$6" }} gap="$4">
             <Text fontFamily="$heading" fontWeight="700" fontSize={24} color={brand.grafite}>
-              Invia un messaggio
+              {isReport ? "Segnala un contenuto illegale" : "Invia un messaggio"}
             </Text>
 
             {status === "done" ? (
               <Text fontSize={18} color={brand.verificato} fontWeight="600">
-                Messaggio inviato. Ti risponderemo il prima possibile.
+                {isReport
+                  ? "Segnalazione presa in carico. Ti scriveremo l'esito a questa email."
+                  : "Messaggio inviato. Ti risponderemo il prima possibile."}
               </Text>
             ) : (
               <YStack gap="$4">
@@ -146,19 +172,28 @@ export default function ContattiContent() {
 
                 <YStack gap="$2">
                   <Text fontSize={16} fontWeight="600" color={brand.grafite70}>
-                    Messaggio
+                    {isReport ? "Cosa vuoi segnalare" : "Messaggio"}
                   </Text>
-                  <textarea aria-label="Messaggio"
+                  <textarea aria-label={isReport ? "Cosa vuoi segnalare" : "Messaggio"}
                     value={content}
                     onChange={(e) => {
                       setContent(e.target.value);
                       if (status === "error") setStatus("idle");
                     }}
-                    placeholder="Scrivi qui la tua richiesta..."
+                    placeholder={isReport ? "Incolla il link della pagina, indica il contenuto e spiega perché è illegale." : "Scrivi qui la tua richiesta..."}
                     rows={7}
                     style={{ ...fieldStyle, resize: "vertical", minHeight: 160, fontFamily: "inherit" }}
                   />
                 </YStack>
+
+                {isReport ? (
+                  <ConsentCheckbox checked={goodFaith} invalid={status === "error" && !goodFaith} onToggle={() => setGoodFaith((v) => !v)}>
+                    Confermo in buona fede che la segnalazione è corretta e completa.{" "}
+                    <Link href="/termini#segnalazioni" target="_blank" style={{ color: brand.cianografiaScuro }} onClick={(e) => e.stopPropagation()}>
+                      Come gestiamo le segnalazioni
+                    </Link>
+                  </ConsentCheckbox>
+                ) : null}
 
                 <TurnstileWidget onTokenChange={setTurnstileToken} resetSignal={turnstileReset} />
 

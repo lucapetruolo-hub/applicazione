@@ -36,35 +36,54 @@ function buildService(report: Record<string, unknown>, overrides: Record<string,
 
 describe("AdminService.resolveContentReport — misure reali", () => {
   it("nasconde una recensione, ricalcola la media e manda la motivazione con la misura all'autore", async () => {
-    const { service, tx, notifications, metrics } = buildService({ targetType: "REVIEW" });
-    await service.resolveContentReport("rep-1", { status: "RESOLVED", action: "HIDE_CONTENT", resolutionNote: "Insulti" });
+    const { service, tx, notifications, metrics } = buildService({ targetType: "REVIEW", claimsIllegal: true });
+    await service.resolveContentReport("rep-1", { status: "RESOLVED", action: "HIDE_CONTENT", ground: "legge-diffamazione", resolutionNote: "Insulti" });
 
     expect(tx.review.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "target-1" }, data: { hiddenAt: expect.any(Date) } }));
     expect(tx.contentReport.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: "RESOLVED", action: "HIDE_CONTENT", contentOwnerId: "author-1" }) }),
     );
     expect(metrics.recomputeReviews).toHaveBeenCalledWith("pro-1");
-    expect(notifications.notify).toHaveBeenCalledWith("author-1", "CONTENT_REPORT_UPHELD", expect.objectContaining({ action: "HIDE_CONTENT", note: "Insulti" }));
-    expect(notifications.notify).toHaveBeenCalledWith("reporter-1", "CONTENT_REPORT_DECISION", expect.objectContaining({ status: "RESOLVED" }));
+    expect(notifications.notify).toHaveBeenCalledWith(
+      "author-1",
+      "CONTENT_REPORT_UPHELD",
+      expect.objectContaining({ action: "HIDE_CONTENT", ground: "legge-diffamazione", note: "Insulti" }),
+    );
+    expect(tx.contentReport.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ ground: "legge-diffamazione" }) }));
+    // Esito a chi segnala un contenuto illegale (DSA art. 16 c. 5): mai la motivazione (docs/CHANGELOG.md §312).
+    expect(notifications.notify).toHaveBeenCalledWith("reporter-1", "CONTENT_REPORT_DECISION", { targetType: "REVIEW", status: "RESOLVED" });
+  });
+
+  it("a chi segnala una violazione dei Termini non manda l'esito: basta la presa in carico", async () => {
+    const { service, notifications } = buildService({ targetType: "REVIEW", claimsIllegal: false });
+    await service.resolveContentReport("rep-1", { status: "RESOLVED", action: "HIDE_CONTENT", ground: "termini-contenuti", resolutionNote: "Spam" });
+    expect(notifications.notify).not.toHaveBeenCalledWith("reporter-1", expect.anything(), expect.anything());
+    expect(notifications.notify).toHaveBeenCalledWith("author-1", "CONTENT_REPORT_UPHELD", expect.objectContaining({ ground: "termini-contenuti" }));
   });
 
   it("toglie un profilo dalla ricerca con SUSPEND_PROFILE", async () => {
     const { service, tx } = buildService({ targetType: "PROFESSIONAL_PROFILE" });
-    await service.resolveContentReport("rep-1", { status: "RESOLVED", action: "SUSPEND_PROFILE", resolutionNote: "Dati falsi" });
+    await service.resolveContentReport("rep-1", { status: "RESOLVED", action: "SUSPEND_PROFILE", ground: "termini-contenuti", resolutionNote: "Dati falsi" });
     expect(tx.professionalProfile.update).toHaveBeenCalledWith({ where: { id: "target-1" }, data: { suspendedAt: expect.any(Date) } });
     expect(tx.user.update).not.toHaveBeenCalled();
   });
 
   it("sospende l'autore e nasconde anche il contenuto segnalato con SUSPEND_USER", async () => {
     const { service, tx } = buildService({ targetType: "GUIDED_REQUEST" });
-    await service.resolveContentReport("rep-1", { status: "RESOLVED", action: "SUSPEND_USER", resolutionNote: "Minacce" });
+    await service.resolveContentReport("rep-1", { status: "RESOLVED", action: "SUSPEND_USER", ground: "termini-contenuti", resolutionNote: "Minacce" });
     expect(tx.user.update).toHaveBeenCalledWith({ where: { id: "author-1" }, data: { suspendedAt: expect.any(Date) } });
     expect(tx.guidedRequest.update).toHaveBeenCalledWith({ where: { id: "target-1" }, data: { hiddenAt: expect.any(Date), status: "CLOSED" } });
   });
 
+  it("rifiuta una decisione senza la regola o la legge violata", async () => {
+    const { service, prisma } = buildService({ targetType: "REVIEW" });
+    await expect(service.resolveContentReport("rep-1", { status: "RESOLVED", action: "HIDE_CONTENT", resolutionNote: "Insulti" })).rejects.toThrow("regola o la legge");
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
   it("rifiuta una misura non compatibile con il tipo di contenuto", async () => {
     const { service, prisma } = buildService({ targetType: "REVIEW" });
-    await expect(service.resolveContentReport("rep-1", { status: "RESOLVED", action: "SUSPEND_PROFILE", resolutionNote: "x" })).rejects.toThrow(
+    await expect(service.resolveContentReport("rep-1", { status: "RESOLVED", action: "SUSPEND_PROFILE", ground: "termini-contenuti", resolutionNote: "x" })).rejects.toThrow(
       "Misura non valida",
     );
     expect(prisma.$transaction).not.toHaveBeenCalled();
@@ -72,17 +91,17 @@ describe("AdminService.resolveContentReport — misure reali", () => {
 
   it("un avvertimento non tocca il contenuto", async () => {
     const { service, tx } = buildService({ targetType: "REVIEW" });
-    await service.resolveContentReport("rep-1", { status: "RESOLVED", action: "WARN", resolutionNote: "Tono" });
+    await service.resolveContentReport("rep-1", { status: "RESOLVED", action: "WARN", ground: "termini-contenuti", resolutionNote: "Tono" });
     expect(tx.review.update).not.toHaveBeenCalled();
     expect(tx.user.update).not.toHaveBeenCalled();
   });
 
   it("ignorare una segnalazione non applica misure e non avvisa l'autore", async () => {
-    const { service, tx, notifications } = buildService({ targetType: "REVIEW" });
+    const { service, tx, notifications } = buildService({ targetType: "REVIEW", claimsIllegal: true });
     await service.resolveContentReport("rep-1", { status: "DISMISSED" });
     expect(tx.review.update).not.toHaveBeenCalled();
     expect(notifications.notify).toHaveBeenCalledTimes(1);
-    expect(notifications.notify).toHaveBeenCalledWith("reporter-1", "CONTENT_REPORT_DECISION", expect.anything());
+    expect(notifications.notify).toHaveBeenCalledWith("reporter-1", "CONTENT_REPORT_DECISION", { targetType: "REVIEW", status: "DISMISSED" });
   });
 
   it("non decide due volte la stessa segnalazione", async () => {

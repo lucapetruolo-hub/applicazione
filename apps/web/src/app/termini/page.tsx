@@ -13,7 +13,7 @@ export default function TerminiPage() {
   return (
     <LegalPage
       title="Termini di Servizio"
-      updatedAt="14 ottobre 2026"
+      updatedAt="24 ottobre 2026"
       sections={[
         {
           heading: `1. Cos'è ${BRAND.name}`,
@@ -47,14 +47,20 @@ export default function TerminiPage() {
         },
         {
           heading: "7. Contenuti caricati",
-          body: "Foto, video e descrizioni caricati devono essere leciti, pertinenti e non violare diritti di terzi. Concedi alla piattaforma una licenza non esclusiva a usarli per fornire il servizio (es. mostrarli ai professionisti o sul tuo profilo). Possiamo rimuovere contenuti inappropriati.",
+          body: "Profili, recensioni, richieste, foto, video e descrizioni devono essere leciti, veritieri, pertinenti e non violare diritti di terzi. Sono vietati in particolare insulti, minacce e contenuti discriminatori, dati personali di altre persone, recensioni non basate su un'esperienza reale, informazioni false o ingannevoli, spam e pubblicità non pertinente. Concedi alla piattaforma una licenza non esclusiva a usarli per fornire il servizio (es. mostrarli ai professionisti o sul tuo profilo). I contenuti che violano queste regole possono essere limitati o rimossi come descritto al punto 8.",
         },
         {
-          heading: "8. Limitazione di responsabilità",
+          // DSA art. 14 c. 1 (docs/CHANGELOG.md §312): regole della moderazione e della contestazione.
+          heading: "8. Segnalazioni dei contenuti",
+          id: "segnalazioni",
+          body: "Chiunque può segnalare un contenuto: con il tasto \"Segnala\" su profili, recensioni e richieste oppure, anche senza account, dal link \"Segnala un contenuto illegale\" in fondo a ogni pagina. Chi segnala un contenuto come illegale spiega perché e conferma di farlo in buona fede. Ogni segnalazione è esaminata da una persona del nostro team, senza sistemi automatici. Le misure, scelte in proporzione alla gravità, sono: un avvertimento, la richiesta di correggere il contenuto, nascondere il contenuto, togliere il profilo dalla ricerca e dalla pagina pubblica, sospendere l'account. Chi segnala riceve la conferma di presa in carico e, se ha segnalato un contenuto illegale, l'esito della decisione. Chi ha pubblicato il contenuto riceve per email la misura, la regola o la legge violata e il motivo, senza il nome di chi ha segnalato, e può contestare la decisione dal link nell'email per almeno 6 mesi: la riesamina una persona del nostro team. Resta sempre possibile rivolgersi al giudice. Le segnalazioni fatte in malafede possono portare alla sospensione dell'account. Se un contenuto fa sospettare un reato che mette in pericolo la vita o la sicurezza di qualcuno, informiamo le autorità.",
+        },
+        {
+          heading: "9. Limitazione di responsabilità",
           body: "La piattaforma non è parte del contratto tra cliente e professionista. Fatto salvo quanto previsto ai punti 5 e 6 per i lavori pagati online (blocco delle somme, rimborsi e decisioni sulle segnalazioni) e fatti salvi i diritti riconosciuti al consumatore dalla legge, la piattaforma non risponde di danni, ritardi o lavori non conformi, che restano a carico del professionista. Non garantiamo la disponibilità continua del servizio.",
         },
         {
-          heading: "9. Modifiche e legge applicabile",
+          heading: "10. Modifiche e legge applicabile",
           body: "Possiamo aggiornare questi termini: le modifiche saranno comunicate in piattaforma e l'uso continuato vale come accettazione. Vale la legge italiana; per i consumatori resta fermo il foro del luogo di residenza. Bozza da far verificare a un legale prima del lancio definitivo.",
         },
       ]}

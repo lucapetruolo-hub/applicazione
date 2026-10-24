@@ -7,7 +7,10 @@ import type { AdminContentReport, AdminReportTarget, ModerationActionValue } fro
 import {
   CONTENT_REPORT_TARGET_LABEL,
   MODERATION_ACTIONS_BY_TARGET,
+  MODERATION_GROUNDS,
   MODERATION_REASON_TEMPLATES,
+  moderationGround,
+  type ModerationGroundCode,
   moderationActionAdminLabel,
 } from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
@@ -72,7 +75,7 @@ function SegnalazioniContent() {
     <YStack>
       <AdminPageHeader
         title="Segnalazioni"
-        description="Decidi su contenuti segnalati dagli utenti. Ogni decisione arriva a chi ha segnalato e, se accolta, all'autore con la motivazione."
+        description="Decidi su contenuti segnalati dagli utenti. Se accolta, l'autore riceve misura, regola violata e motivazione; chi ha segnalato un contenuto illegale riceve solo l'esito."
       />
       <AdminTabs<View>
         value={view}
@@ -118,6 +121,7 @@ type Mode = "idle" | "resolve" | "dismiss" | "revert" | "reject-appeal";
 function ReportCard({ report, token, onChanged }: { report: AdminContentReport; token: string; onChanged: () => void }) {
   const [mode, setMode] = useState<Mode>("idle");
   const [action, setAction] = useState<ModerationActionValue | null>(null);
+  const [ground, setGround] = useState("");
   const [note, setNote] = useState("");
   const [authorities, setAuthorities] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -149,6 +153,8 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
     setMode(next);
     setNote("");
     setAction(null);
+    // Contenuto segnalato come illegale: si parte dalla legge, altrimenti dai Termini.
+    setGround("");
     setAuthorities(false);
     setError(null);
   }
@@ -168,13 +174,15 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
   }
 
   const canConfirm =
-    mode === "resolve" ? Boolean(action) && note.trim().length >= 3 : mode === "dismiss" ? true : note.trim().length >= 3;
+    mode === "resolve" ? Boolean(action) && Boolean(ground) && note.trim().length >= 3 : mode === "dismiss" ? true : note.trim().length >= 3;
 
   return (
     <AdminCard highlight={report.status === "OPEN" || appealPending}>
       <XStack justifyContent="space-between" gap="$2" flexWrap="wrap" alignItems="center">
         <XStack gap="$2" alignItems="center" flexWrap="wrap">
           <AdminPill>{CONTENT_REPORT_TARGET_LABEL[report.targetType]}</AdminPill>
+          {/* DSA art. 16 (docs/CHANGELOG.md §312): solo per un contenuto illegale chi segnala riceve l'esito. */}
+          {report.claimsIllegal ? <AdminPill tone="danger">Illegale secondo chi segnala</AdminPill> : null}
           {report.status === "RESOLVED" ? <AdminPill tone={report.revertedAt ? "neutral" : "danger"}>{report.revertedAt ? "Misura annullata" : "Accolta"}</AdminPill> : null}
           {report.status === "DISMISSED" ? <AdminPill tone="ok">Non accolta</AdminPill> : null}
           {report.authoritiesNotifiedAt ? <AdminPill tone="warn">Segnalata alle autorità</AdminPill> : null}
@@ -215,6 +223,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
       ) : null}
       <Text fontSize="$2" color={brand.grafite70}>
         Da {report.reporterName ?? "utente"} {report.reporterEmail ? `(${report.reporterEmail})` : ""}
+        {report.goodFaithAt ? " · buona fede confermata" : ""}
       </Text>
 
       {report.status !== "OPEN" ? (
@@ -223,6 +232,11 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
             <Text fontWeight="700">Decisione del {formatAdminDate(report.resolvedAt)}: </Text>
             {report.status === "RESOLVED" && report.action ? moderationActionAdminLabel(report.action, report.targetType) : "nessuna misura"}
           </Text>
+          {moderationGround(report.ground) ? (
+            <Text fontSize="$3" color={brand.grafite70}>
+              Base: {moderationGround(report.ground)?.label}
+            </Text>
+          ) : null}
           {report.resolutionNote ? (
             <Text fontSize="$3" color={brand.grafite70}>
               Motivazione: {report.resolutionNote}
@@ -340,6 +354,27 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
                 Una recensione negativa ma vera non va nascosta: si nasconde solo se viola le regole (offese, dati personali, falsa).
               </Text>
               <Text fontWeight="700" color={brand.grafite}>
+                Quale regola o legge viola?
+              </Text>
+              {/* DSA art. 17 c. 3 lett. d-e (docs/CHANGELOG.md §312): l'autore la legge nell'email. */}
+              <select aria-label="Regola o legge violata" className="admin-input" value={ground} onChange={(e) => setGround(e.target.value)}>
+                <option value="">Scegli…</option>
+                <optgroup label="Legge (contenuto illegale)">
+                  {MODERATION_GROUNDS.filter((g) => g.kind === "law").map((g) => (
+                    <option key={g.code} value={g.code}>
+                      {g.label}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Termini di Servizio">
+                  {MODERATION_GROUNDS.filter((g) => g.kind === "terms").map((g) => (
+                    <option key={g.code} value={g.code}>
+                      {g.label}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+              <Text fontWeight="700" color={brand.grafite}>
                 Motivazione per l&apos;autore
               </Text>
               <XStack gap="$2" flexWrap="wrap">
@@ -365,7 +400,9 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
           ) : (
             <Text fontWeight="700" color={brand.grafite}>
               {mode === "dismiss"
-                ? "Non accogliere la segnalazione? Chi ha segnalato riceverà l'esito."
+                ? report.claimsIllegal
+                  ? "Non accogliere la segnalazione? Chi ha segnalato riceverà l'esito in una riga, senza la motivazione."
+                  : "Non accogliere la segnalazione? Chi ha segnalato non riceve altro: ha già avuto la presa in carico."
                 : mode === "revert"
                   ? "Annullare la misura? Il contenuto torna com'era e l'autore viene avvisato."
                   : "Respingere la contestazione? La misura resta e l'autore riceve la motivazione."}
@@ -375,7 +412,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
             className="admin-input admin-textarea"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder={mode === "dismiss" ? "Motivazione (facoltativa)" : "Motivazione (obbligatoria)"}
+            placeholder={mode === "dismiss" ? "Nota interna (facoltativa)" : "Motivazione (obbligatoria)"}
           />
           {mode === "resolve" ? (
             <label style={{ display: "flex", gap: 8, alignItems: "flex-start", cursor: "pointer", fontSize: 14 }}>
@@ -398,6 +435,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
                     return apiClient.adminResolveContentReport(token, report.id, {
                       status: "RESOLVED",
                       action: action ?? undefined,
+                      ground: (ground || undefined) as ModerationGroundCode | undefined,
                       resolutionNote: note,
                       authoritiesNotified: authorities,
                     });

@@ -50,7 +50,6 @@ export const PROFESSIONAL_NAV: AccountNavGroup[] = [
       { href: "/account", label: "Account", icon: "shield" },
       { href: "/account/notifiche", label: "Notifiche", icon: "bell-ring" },
       { href: "/dashboard/fiscale", label: "Dati fiscali e pagamenti", icon: "coins" },
-      { href: "/segnalazioni", label: "Segnalazioni e decisioni", icon: "flag" },
     ],
   },
   {
@@ -68,8 +67,9 @@ export const PROFESSIONAL_NAV: AccountNavGroup[] = [
 
 /**
  * Schede del cliente (docs/CHANGELOG.md §147): poche voci, quindi una barra
- * sotto l'header invece di un menu laterale. "Segnalazioni e decisioni"
- * vive dentro Account.
+ * sotto l'header invece di un menu laterale. La pagina di una decisione
+ * sui propri contenuti (/segnalazioni) non è nel menu, si apre dall'email
+ * (docs/CHANGELOG.md §312): resta evidenziata la scheda Account.
  */
 export const CLIENT_TABS: AccountNavItem[] = [
   { href: "/le-mie-richieste", label: "Richieste", icon: "file-text" },
@@ -83,7 +83,7 @@ export const CLIENT_TABS: AccountNavItem[] = [
  * Gruppi della tendina "Il mio account" nell'header (docs/CHANGELOG.md
  * §148, richiesta esplicita dell'utente: "suddividi meglio anche quel menu
  * a tendina"). Professionista: stessi gruppi del menu laterale. Cliente:
- * le sue richieste, poi account e segnalazioni.
+ * le sue richieste, poi account e notifiche.
  */
 export function getAccountMenuGroups(isProfessional: boolean): AccountNavGroup[] {
   if (isProfessional) return PROFESSIONAL_NAV;
@@ -102,7 +102,6 @@ export function getAccountMenuGroups(isProfessional: boolean): AccountNavGroup[]
       items: [
         { href: "/account", label: "Account", icon: "user-round" },
         { href: "/account/notifiche", label: "Notifiche", icon: "bell-ring" },
-        { href: "/segnalazioni", label: "Segnalazioni e decisioni", icon: "flag" },
       ],
     },
   ];

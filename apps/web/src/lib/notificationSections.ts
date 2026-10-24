@@ -113,8 +113,11 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
       ? `/dashboard/richieste?open=${guidedRequestId}`
       : `/le-mie-richieste?tab=richieste&open=${guidedRequestId}`;
   }
-  // Esiti di segnalazioni e decisioni sui propri contenuti (docs/CHANGELOG.md
-  // §144): tutti nella pagina /segnalazioni, con motivazione e ricorso.
+  // Chi segnala non ha una pagina (docs/CHANGELOG.md §312): presa in carico
+  // ed esito stanno nella notifica e nell'email.
+  if (type === "CONTENT_REPORT_RECEIVED" || type === "CONTENT_REPORT_DECISION") return null;
+  // Decisioni sui propri contenuti (docs/CHANGELOG.md §144): nella pagina
+  // /segnalazioni, fuori dal menu, con motivazione e contestazione.
   if (type.startsWith("CONTENT_REPORT_")) {
     const contentReportId = getPayloadValue(payload, "contentReportId");
     return contentReportId ? `/segnalazioni#segnalazione-${contentReportId}` : "/segnalazioni";

@@ -12,6 +12,7 @@ import {
   asScheduleChange,
   formatItalianUntil,
   moderationActionOwnerText,
+  moderationGround,
   quoteChangeWhat,
   scheduleChangeAlternative,
   scheduleChangeObject,
@@ -908,24 +909,35 @@ const BUILDERS: Record<string, Builder> = {
   }),
 
   // ── Account e sicurezza (non si spengono) ──────────────────────────────
+  // Segnalazioni (DSA art. 16 c. 4-5, docs/CHANGELOG.md §312): chi segnala
+  // riceve la presa in carico e, solo per un contenuto illegale, l'esito in
+  // una riga, mai la motivazione.
+  CONTENT_REPORT_RECEIVED: (payload, ctx) => {
+    const targetType = payload.targetType as ContentReportTargetType | undefined;
+    const what = targetType ? CONTENT_REPORT_TARGET_LABEL[targetType].toLowerCase() : "contenuto";
+    return {
+      kind: "account",
+      subject: "Abbiamo preso in carico la tua segnalazione",
+      greeting: ctx.name,
+      title: "Segnalazione presa in carico",
+      paragraphs: [`Grazie, abbiamo preso in carico la tua segnalazione (${what}). La esaminerà una persona del nostro team.`],
+    };
+  },
   CONTENT_REPORT_DECISION: (payload, ctx) => {
     const targetType = payload.targetType as ContentReportTargetType | undefined;
     const what = targetType ? CONTENT_REPORT_TARGET_LABEL[targetType].toLowerCase() : "contenuto";
-    const note = str(payload.note);
     const upheld = payload.status === "RESOLVED";
     return {
       kind: "account",
-      subject: "Abbiamo esaminato la tua segnalazione",
+      subject: "Esito della tua segnalazione",
       greeting: ctx.name,
       title: "Esito della tua segnalazione",
       paragraphs: [
         upheld
-          ? `Abbiamo esaminato la tua segnalazione (${what}) e l'abbiamo accolta. Grazie per averci aiutato.`
-          : `Abbiamo esaminato la tua segnalazione (${what}): non abbiamo trovato violazioni delle regole, quindi il contenuto resta com'è.`,
-        ...(note ? [`**Motivazione:** ${note}`] : []),
-        "La decisione è stata presa da una persona del nostro team, non da un sistema automatico.",
+          ? `Abbiamo esaminato la tua segnalazione (${what}) e preso provvedimenti sul contenuto.`
+          : `Abbiamo esaminato la tua segnalazione (${what}): non abbiamo preso provvedimenti.`,
       ],
-      cta: { label: "Vedi le tue segnalazioni", url: `${frontendUrl()}/segnalazioni` },
+      after: ["Se non sei d'accordo puoi rivolgerti all'autorità giudiziaria."],
     };
   },
   CONTENT_REPORT_UPHELD: (payload, ctx) => {
@@ -933,6 +945,7 @@ const BUILDERS: Record<string, Builder> = {
     const what = targetType ? CONTENT_REPORT_TARGET_LABEL[targetType].toLowerCase() : "contenuto";
     const note = str(payload.note);
     const suspended = payload.action === "SUSPEND_USER";
+    const ground = moderationGround(str(payload.ground));
     const site = frontendUrl();
     return {
       kind: "account",
@@ -942,6 +955,7 @@ const BUILDERS: Record<string, Builder> = {
       paragraphs: [
         `Abbiamo esaminato una segnalazione su un tuo contenuto (${what}).`,
         `**${moderationActionOwnerText((payload.action as ModerationAction | null) ?? null, targetType ?? "REVIEW")}**`,
+        ...(ground ? [`**${ground.kind === "law" ? "Legge violata" : "Regola violata"}:** ${ground.label}`] : []),
         ...(note ? [`**Motivazione:** ${note}`] : []),
         "La decisione è stata presa da una persona del nostro team, non da un sistema automatico.",
       ],

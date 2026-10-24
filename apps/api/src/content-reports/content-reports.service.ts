@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
-import type { CreateContentReportInput } from "@professionisti/shared";
+import { contentReportReason, type CreateContentReportInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 
@@ -59,46 +59,42 @@ export class ContentReportsService {
       throw new ConflictException("Hai già segnalato questo contenuto nelle ultime 24 ore.");
     }
 
+    const reason = contentReportReason(input.reason);
+    const claimsIllegal = reason?.illegal ?? false;
     const created = await this.prisma.contentReport.create({
       data: {
         reporterId,
         targetType: input.targetType,
         targetId: input.targetId,
-        reason: input.reason,
+        reason: reason?.label ?? input.reason,
         details: input.details?.trim() || null,
+        claimsIllegal,
+        goodFaithAt: claimsIllegal && input.goodFaith ? new Date() : null,
       },
       select: { id: true },
     });
-    this.notificationsService.emailAdminsNewReport({ targetType: input.targetType, reason: input.reason });
+    // Conferma di presa in carico a chi segnala (DSA art. 16 c. 4, docs/CHANGELOG.md §312).
+    await this.notificationsService.notify(reporterId, "CONTENT_REPORT_RECEIVED", { contentReportId: created.id, targetType: input.targetType });
+    this.notificationsService.emailAdminsNewReport({ targetType: input.targetType, reason: claimsIllegal ? `${reason?.label} (contenuto illegale)` : (reason?.label ?? input.reason) });
     return created;
   }
 
   /**
-   * Pagina /segnalazioni (docs/CHANGELOG.md §144): le segnalazioni che l'utente
-   * ha fatto, con l'esito (DSA art. 16(5)), e le decisioni sui suoi contenuti,
-   * con misura, motivazione e stato dell'eventuale ricorso (art. 17 e 20).
-   * Mai il nome di chi ha segnalato un contenuto altrui.
+   * Pagina /segnalazioni, aperta dall'email della decisione (docs/CHANGELOG.md
+   * §144, §312): solo le decisioni sui contenuti dell'utente, con misura,
+   * regola violata, motivazione e stato della contestazione (DSA art. 17).
+   * Chi segnala non vede più l'esito qui: riceve la presa in carico e, solo
+   * per un contenuto illegale, una riga di esito per email (art. 16 c. 4-5).
+   * Mai il nome di chi ha segnalato.
    */
   async listMine(userId: string) {
-    const [submitted, received] = await Promise.all([
-      this.prisma.contentReport.findMany({ where: { reporterId: userId }, orderBy: { createdAt: "desc" } }),
-      this.prisma.contentReport.findMany({ where: { contentOwnerId: userId, status: "RESOLVED" }, orderBy: { resolvedAt: "desc" } }),
-    ]);
+    const received = await this.prisma.contentReport.findMany({ where: { contentOwnerId: userId, status: "RESOLVED" }, orderBy: { resolvedAt: "desc" } });
     return {
-      submitted: submitted.map((r) => ({
-        id: r.id,
-        targetType: r.targetType,
-        reason: r.reason,
-        status: r.status,
-        createdAt: r.createdAt.toISOString(),
-        resolvedAt: r.resolvedAt?.toISOString() ?? null,
-        resolutionNote: r.status === "OPEN" ? null : r.resolutionNote,
-      })),
       received: received.map((r) => ({
         id: r.id,
         targetType: r.targetType,
-        reason: r.reason,
         action: r.action,
+        ground: r.ground,
         resolvedAt: r.resolvedAt?.toISOString() ?? null,
         resolutionNote: r.resolutionNote,
         revertedAt: r.revertedAt?.toISOString() ?? null,
