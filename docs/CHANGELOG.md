@@ -19999,21 +19999,55 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 
 La mappa con una chiave vera si vede solo sul sito pubblicato: dopo l'unione va aperta una ricerca con risultati e la mappa del raggio in dashboard. Se qualcosa non compare, la console del browser dice quale indirizzo manca.
 
-## 295. Aggiornamento a Next.js 15.5
+## 295. Visibilità su Google: H1, canonical, indirizzo leggibile del profilo, pagina non trovata
+
+**Richiesta esplicita dell'utente** (22/10/2026, thread "Visibilità su Google (SEO)"): controllo della lista SEO (sitemap, robots, noindex, canonical, titoli, H1, alt, schema, link, immagini, Core Web Vitals, HTTPS, URL, immagine OG, Search Console, backlink). Controllo in `/mnt/project-files/analisi/seo-controllo.md`. Luca ha scelto di fare subito le correzioni che non dipendono da nome e dominio, e il resto poco prima del lancio ("sì" alla proposta).
+
+**Decisione presa**:
+- **H1** su ogni pagina pubblica: profilo del professionista (il nome), FAQ (`Section` con `pageTitle`, `packages/ui/src/Section.tsx`), Contatti, Sicurezza, pagine legali (`LegalPage`), Preventivo e Urgente (`GuidedRequestForm`). Aspetto invariato.
+- **Canonical** su home, `/cerca`, profili e pagine informative (c'era solo sulle categorie). `/cerca` con filtri (città libera, online, nome) ha canonical `/cerca` e `noindex, follow`: le pagine città da indicizzare sono `/cerca/[categoria]/[citta]`. Titolo "Consulenze online" senza il nome del sito ripetuto.
+- **Indirizzo leggibile del profilo**: `/professionista/luca-idraulica-srl-latina-<id>` (`packages/shared/src/professionalUrl.ts`). Il profilo si trova dall'id in coda; link vecchi (solo id) o nome/città cambiati portano all'indirizzo attuale con redirect permanente (308), query compresa. Usato in ricerca, mappa, vetrina e recensioni in home, salvati, anteprima in dashboard, sitemap e dati strutturati; nelle aree private e admin restano i link con l'id, che funzionano col redirect. L'id resta intero nell'indirizzo: con un pezzo solo servirebbe una ricerca per prefisso nell'API.
+- **Pagina "non trovata"** (`app/not-found.tsx` + `components/NotFoundContent.tsx`): in italiano, con "Cerca un professionista", "Torna alla home" e "Servizi più richiesti"; `noindex`. Prima compariva quella di Next.js in inglese.
+- **Percorso "Home › Categoria › Città › Nome"** (`components/Breadcrumbs.tsx`) sopra la scheda del profilo, con i dati strutturati BreadcrumbList. Sulle pagine categoria e città solo i dati strutturati: il titolo sopra i risultati era stato tolto su richiesta (§271).
+- **Pagine vuote fuori da Google**: con il sito indicizzabile, una pagina categoria o categoria+città senza professionisti veri ha `noindex, follow`; per chi la apre resta uguale (con l'invio della richiesta, §271). Se la ricerca non risponde la pagina resta indicizzabile. Profilo che non si carica: `noindex`.
+- Checklist di lancio: punti 30-35 (dominio in `SITE_URL`, Search Console, anteprima WhatsApp per profilo, titoli e descrizioni col marchio, foto categorie più leggere, velocità della home) e link da altri siti tra le cose da fare dopo il lancio.
+
+**Verifica**: typecheck e lint del web, build di produzione e sito avviato in locale sull'API di produzione: un H1 per pagina, canonical giusti, 308 dal vecchio indirizzo del profilo (anche con `?modalita=`), 404 con la pagina nuova, BreadcrumbList e LocalBusiness nel profilo; anteprime in `anteprime/seo/`.
+
+## 296. Strategia SEO per Latina: pagine città con dati veri, provenienza delle richieste, controllo SEO in CI
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Visibilità su Google (SEO)"): una strategia SEO per il lancio a Latina partendo dai dati grezzi (ricerche suggerite da Google, risultati di Google da Latina, sitemap dei concorrenti). Piano in `/mnt/project-files/analisi/seo-strategia-latina.md`, dati in `analisi/seo-dati/`. Luca ha approvato le 11 migliorie ("vanno bene le 11 migliorie", poi "11 anche si fa"); quelle che dipendono da nome e dominio vanno nella checklist di lancio.
+
+**Decisione presa**:
+- **Pagine categoria+città più ricche** (`components/CityFacts.tsx`): tre numeri veri (professionisti, verificati, voto medio) e quattro domande frequenti locali (quanto costa, preventivo gratis, urgenze, come scegliere), con le parole che la gente cerca (`CATEGORY_SEO_NOUN` in `packages/shared/src/categorySeo.ts`, es. "impresa di pulizie o colf"). Niente prezzi: i servizi del professionista non hanno categoria, un prezzo medio sarebbe sbagliato.
+- **Soglia per Google**: categoria+città indicizzata da 3 professionisti veri (`MIN_PROFESSIONALS_TO_INDEX_CITY`), categoria in Italia da 1. La sitemap segue la stessa soglia, contando tutte le categorie di ogni professionista.
+- **Da dove arrivano le richieste** (la prova che la SEO porta lavoro): alla prima pagina della visita il sito salva in `sessionStorage` solo la categoria della provenienza (Google, altri motori, social, diretto, altri siti; `packages/shared/src/trafficSource.ts`, `components/TrafficSourceTracker.tsx`), mai l'indirizzo né dati personali, nessun cookie. La richiesta di preventivo la porta con sé (`GuidedRequest.trafficSource`, migrazione `20261024120000_guided_request_traffic_source`). In `/admin/statistiche` il riquadro "Da dove arrivano le richieste" degli ultimi 30 giorni (`GET /admin/traffic-sources`); una richiesta a più categorie conta una volta.
+- **Controllo SEO in CI** (`apps/web/scripts/seo-check/`, due passi in `.github/workflows/ci.yml`): `next start` contro un'API finta con 3 idraulici a Latina. Sito privato: noindex ovunque e sitemap vuota. Sito aperto: un H1, canonical assoluto giusto, titolo 10-70 caratteri, descrizione, nessun noindex per sbaglio, JSON-LD leggibile su 16 pagine; noindex sulle pagine vuote e filtrate; 308 dal vecchio indirizzo del profilo; 404 vero; sitemap con le pagine piene e senza quelle vuote.
+- **Pagine "Quanto costa"** (`/prezzi/[categoria]`, `GET /professionals/prices/:category`, `apps/api/src/professionals/category-prices.ts`): metà dei lavori tra 1° e 3° quartile, prezzo a metà e numero dei preventivi accettati (da 10, `MIN_ACCEPTED_QUOTES_FOR_PRICES`; prezzo di un preventivo = somma delle voci al centro della fascia), più la tabella dei prezzi dichiarati dai professionisti che fanno solo quel lavoro (da 5 professionisti, voci con almeno 2). Sotto le soglie l'API non dà numeri e la pagina è un 404, fuori dalla sitemap: oggi sono tutte spente. Dati strutturati BreadcrumbList e FAQPage; link dalle domande frequenti delle pagine città solo quando la pagina esiste. Per ora nazionali: le pagine per città quando ci saranno abbastanza preventivi in una provincia.
+- **"Lavora con noi" per ogni lavoro** (`/lavora-con-noi/[categoria]`, statiche, in sitemap): per chi cerca "lavoro pulizie latina". Tre passi, "nessuna commissione sui lavori pagati direttamente", iscrizione con il lavoro già scelto (`/registrati?ruolo=professionista&categoria=`) e "Prezzi e condizioni". Il mese gratis non si nomina (si annuncia solo sulla pagina prezzi, CLAUDE.md §6). Link a tutte in fondo a `/per-professionisti`.
+- **Specializzazioni nel profilo e pagine per servizio** (scelta di Luca sulla voce 11: "Prima le specializzazioni"): in `/dashboard/profilo`, sotto le categorie, si scelgono le specializzazioni previste da ogni categoria (`subTags` in `packages/shared/src/categories.ts`, nomi in `SUB_TAG_LABELS`); il server tiene solo quelle delle categorie scelte (`validSubTags`). Prima il campo esisteva ma il profilo lo salvava sempre vuoto. Nelle card e nel profilo compaiono col nome leggibile. Pagina `/cerca/[categoria]/[citta]/[servizio]` (es. `/cerca/idraulico/latina/caldaie`) con i soli professionisti di quella specializzazione: in Google e in sitemap da 3 professionisti veri, come le pagine città; una specializzazione di un'altra categoria è un 404. La pagina città le collega ("Specializzazioni") solo da 3 professionisti in su. Le frazioni restano fuori: con il raggio di 25 km mostrerebbero gli stessi professionisti di Latina.
+- **"Quanto costa" anche per città** (miglioria 1 approvata da Luca): `/prezzi/[categoria]/[citta]` con i prezzi della provincia (`?city=` su `GET /professionals/prices/:category`: comune della richiesta per i preventivi, del professionista per i prezzi dichiarati), stesse soglie della pagina nazionale. La pagina città collega quella della sua provincia se ha dati, altrimenti la nazionale.
+- Checklist di lancio: titoli con le parole cercate (punto 33), aprire a Google solo sul dominio definitivo col piano del trasloco (36), invito ai professionisti a mettere il link nella scheda Google Business (37).
+- Il controllo ha trovato un problema vero: `/preventivo` e `/urgente` arrivavano a Google vuote (il modulo aspetta l'accesso e la query). Ora titolo e sottotitolo si vedono subito (`GuidedRequestHeading` in `GuidedRequestForm.tsx`, anche come attesa del `Suspense`).
+
+**Verifica**: typecheck di web e API, test nuovi in `apps/api/src/seo/seo-helpers.test.ts` (provenienza e indirizzo del profilo) e `category-prices.test.ts` (soglie, mediana e quartili), migrazione su Postgres 16 locale (`migrate deploy` e `migrate diff` vuoto), controllo SEO in locale sui due tipi di build: tutto a posto, e la build privata fa fallire il controllo del sito aperto (20 problemi), quindi il controllo funziona. Il controllo copre anche `/prezzi/idraulico` e `/prezzi/idraulico/latina` (sopra soglia nell'API finta), `/prezzi/pulizie` e `/prezzi/idraulico/roma` (404), `/cerca/idraulico/latina/caldaie` (in Google), `/impianti-sanitari` (noindex), `/domotica` (404) e `/lavora-con-noi/pulizie`. Foto in `anteprime/seo/strategia/`.
+
+## 297. Aggiornamento a Next.js 15.5
 
 **Richiesta esplicita dell'utente** (22/10/2026, punto 2 del controllo sicurezza, `/mnt/project-files/analisi/controllo-sicurezza.md`): la serie 14 di Next.js non riceve più correzioni di sicurezza (2 falle critiche e 8 alte sulla 14.2.35). Aggiornare con prove su tutte le pagine, da telefono e da computer, senza cambiare l'aspetto.
 
 **Decisione presa**:
 - `next` 14.2.35 → 15.5.28 in `apps/web`. React resta 18 nel `package.json`: l'App Router usa comunque la copia di React 19 inclusa in Next, e così `apps/mobile` (Expo, React 18) non ne risente. Restano solo due avvisi di build da `react-native-web` (`hydrate` e `unmountComponentAtNode` non esistono più in React 19): sono funzioni che il sito non chiama.
 - Le cinque pagine server che leggono indirizzo o parametri (`/cerca`, `/cerca/[categoria]`, `/cerca/[categoria]/[citta]`, `/professionista/[id]`, `/dashboard/tipo-attivita`) ora attendono `params`/`searchParams`, che in Next 15 sono Promise. Le pagine client usavano già `useParams`/`useSearchParams`; `cookies()`/`headers()` non sono usati.
+- Con l'unione della PR #101 (SEO, §295-§296) stesso adattamento per le sue pagine nuove: `/prezzi/[categoria]`, `/prezzi/[categoria]/[citta]`, `/cerca/[categoria]/[citta]/[servizio]`, `/lavora-con-noi/[categoria]`. Il controllo SEO della CI (sito privato e aperto) passa con Next 15.
 - Cache delle fetch: nessun cambio necessario, tutte le pagine con dati sono già `force-dynamic` e le fetch di ricerca `cache: "no-store"`.
 - `typecheck` del sito: `next typegen && tsc --noEmit`. Next 15.5 aggiunge a `next-env.d.ts` i tipi delle rotte in `.next/types`, che in CI non esisterebbero prima del build; `next typegen` li genera e controlla anche le props delle pagine.
 
 **Verifica**: typecheck, lint e build del sito. Con API e database locali, foto a pagina intera di 68 indirizzi (pubblici, cliente, professionista, admin, pagine 404) a 1440 e 390 px, con Next 14 e con Next 15: 133 su 136 identiche al pixel, le altre 3 differiscono per pochi pixel di antialiasing del testo. Secondo giro con un professionista con richieste vere: cambiano solo i contatori "Nuovo" già letti nel primo giro. Nessun errore nella console. Prove di navigazione: ricerca → profilo → indietro, cambio Online/A domicilio sulla stessa pagina (i risultati si aggiornano), accesso con email e password, "Le mie richieste". Il titolo della pagina profilo resta nell'`<head>` anche per i motori di ricerca.
 
-## 296. NestJS 11, React 19 sul sito e confronto automatico delle pagine
+## 298. NestJS 11, React 19 sul sito e confronto automatico delle pagine
 
-**Richiesta esplicita dell'utente** (24/10/2026, thread "Aggiornamento Next.js", "effettua le 3 migliorie" proposte con §295): NestJS 11 nell'API (punto 38 del controllo sicurezza, pacchetti vecchi), React 19 nel sito, e il confronto delle foto delle pagine salvato nel progetto.
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Aggiornamento Next.js", "effettua le 3 migliorie" proposte con §297): NestJS 11 nell'API (punto 38 del controllo sicurezza, pacchetti vecchi), React 19 nel sito, e il confronto delle foto delle pagine salvato nel progetto.
 
 **Decisione presa**:
 - **API**: `@nestjs/common`, `core`, `platform-express` 11.2, `@nestjs/jwt` 11, `@nestjs/cli`/`schematics` 11, `@types/express` 5. Nest 11 usa Express 5, che l'API dichiarava già. Nessuna rotta con `*` o `?` (la sintassi che cambia in Express 5), nessun cambio di codice.
@@ -20022,17 +20056,17 @@ La mappa con una chiave vera si vede solo sul sito pubblicato: dopo l'unione va 
 
 **Verifica**: 487 test dell'API, controllo d'avvio, typecheck e lint di tutto il monorepo, build del sito. API avviata con un database locale: accesso (401 con token falso), errori di validazione 400, JSON rovinato 400, ricerca, richieste del professionista, caricamento immagine (multer), notifiche in tempo reale (SSE). Con lo strumento nuovo: giro "prima" con Next 14, React 18 e NestJS 10 (commit di partenza) e giro "dopo" con Next 15.5, React 19 e NestJS 11, 132 foto: 131 identiche al pixel, una con 8 pixel di antialiasing; stessi stati HTTP e nessun errore in console. Prove di navigazione e moduli (ricerca, profilo, indietro, Online/A domicilio, accesso, contatti, richieste e profilo del professionista) senza errori.
 
-## 297. App mobile su Expo 58 e React 19
+## 299. App mobile su Expo 58 e React 19
 
 **Richiesta esplicita dell'utente** (24/10/2026, thread "Aggiornamento Next.js"): "cambia anche l'app su react 19".
 
 **Decisione presa**:
 - `apps/mobile`: Expo 51 → 58 (React Native 0.74 → 0.88, React 18.2 → 19.3.0), con le versioni indicate da Expo 58 per `expo-router`, `expo-font`, `expo-status-bar`, `react-native-safe-area-context` e `react-native-screens`, più i pacchetti che `expo-router` ora chiede (`expo-linking`, `expo-constants`, `@expo/metro-runtime`, `@expo/log-box`). Tolto `newArchEnabled` da `app.json`: la nuova architettura ora è l'unica. TypeScript escluso dal controllo versioni di Expo (`expo.install.exclude`): Expo 58 chiederebbe TypeScript 6, il monorepo resta su uno solo.
-- **Una sola versione di React in tutto il monorepo**: `overrides` in `pnpm-workspace.yaml` per `react`, `react-dom` (19.3.0), `react-native` (0.88.0), `react-native-reanimated`, `react-native-worklets` e `@react-native/metro-config` (quelli usati da Expo 58). Senza, i pacchetti condivisi (Tamagui in `packages/ui`) si portavano dietro copie diverse. Il sito passa da 19.3.1 a 19.3.0, la versione di Expo. Tolto il `paths` di `apps/web/tsconfig.json` del §296 (non serve più con una sola versione dei tipi); `peerDependencyRules.allowedVersions.react` ora "19"; `@types/react` 19 anche in `packages/ui`. Un `JSX.Element` globale in `CategoryIcons.tsx` ora importato da `react` (i tipi di React 19 non hanno più il `JSX` globale).
+- **Una sola versione di React in tutto il monorepo**: `overrides` in `pnpm-workspace.yaml` per `react`, `react-dom` (19.3.0), `react-native` (0.88.0), `react-native-reanimated`, `react-native-worklets` e `@react-native/metro-config` (quelli usati da Expo 58). Senza, i pacchetti condivisi (Tamagui in `packages/ui`) si portavano dietro copie diverse. Il sito passa da 19.3.1 a 19.3.0, la versione di Expo. Tolto il `paths` di `apps/web/tsconfig.json` del §298 (non serve più con una sola versione dei tipi); `peerDependencyRules.allowedVersions.react` ora "19"; `@types/react` 19 anche in `packages/ui`. Un `JSX.Element` globale in `CategoryIcons.tsx` ora importato da `react` (i tipi di React 19 non hanno più il `JSX` globale).
 
-**Verifica**: typecheck di tutto il monorepo (app compresa), lint, test, build. `npx expo export` per Android e iOS genera il pacchetto (prima non funzionava in locale), `npx expo-doctor` 20 controlli su 20. Non provata su un telefono vero: va fatto con una build EAS prima di pubblicarla (checklist di lancio, punto 30).
+**Verifica**: typecheck di tutto il monorepo (app compresa), lint, test, build. `npx expo export` per Android e iOS genera il pacchetto (prima non funzionava in locale), `npx expo-doctor` 20 controlli su 20. Non provata su un telefono vero: va fatto con una build EAS prima di pubblicarla (checklist di lancio, punto 38).
 
-## 298. Prisma 6
+## 300. Prisma 6
 
 **Richiesta esplicita dell'utente** (24/10/2026, stesso thread): "aggiorna anche prisma da 5 a 6".
 
@@ -20040,25 +20074,25 @@ La mappa con una chiave vera si vede solo sul sito pubblicato: dopo l'unione va 
 
 **Verifica**: build, typecheck, lint, test, controllo d'avvio dell'API. Migrazione applicata al database locale con i dati di prova; su un database vuoto tutte le migrazioni più il seed, poi `migrate diff` senza differenze tra schema e database. Foto delle 132 pagine contro il ramo principale (Next 14, React 18, NestJS 10, Prisma 5): 128 identiche al pixel, nelle altre la riga "adesso" dell'agenda e pochi pixel di antialiasing; nessun errore in console; prove di navigazione e moduli senza errori.
 
-## 299. TypeScript 6 ed ESLint 10
+## 301. TypeScript 6 ed ESLint 10
 
-**Richiesta esplicita dell'utente** (24/10/2026, thread "Aggiornamento Next.js"): "effettua le due migliorie" (TypeScript 6 ed ESLint 10, proposte con §298).
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Aggiornamento Next.js"): "effettua le due migliorie" (TypeScript 6 ed ESLint 10, proposte con §300).
 
 **Decisione presa**:
-- **TypeScript** 5 → 6.0.3 in tutti i pacchetti. Tolta l'esclusione di TypeScript dal controllo versioni di Expo (§297): ora è la versione che Expo 58 chiede. Con TypeScript 6 `types` non include più da solo tutti i tipi installati, quindi ogni `tsconfig` dichiara i suoi (`node`; più `multer` nell'API e `google.maps` nel sito). `moduleResolution: node10` e `baseUrl` sono deprecati: `packages/config/tsconfig.node.json` passa a `Node16`, `baseUrl` tolto dove `paths` non lo usava più. TypeScript 6 controlla anche gli import di file CSS: `apps/web/src/css.d.ts` li dichiara. In `packages/ui/src/Autocomplete.tsx` un tipo di evento più preciso. Nessun cambio di comportamento.
+- **TypeScript** 5 → 6.0.3 in tutti i pacchetti. Tolta l'esclusione di TypeScript dal controllo versioni di Expo (§299): ora è la versione che Expo 58 chiede. Con TypeScript 6 `types` non include più da solo tutti i tipi installati, quindi ogni `tsconfig` dichiara i suoi (`node`; più `multer` nell'API e `google.maps` nel sito). `moduleResolution: node10` e `baseUrl` sono deprecati: `packages/config/tsconfig.node.json` passa a `Node16`, `baseUrl` tolto dove `paths` non lo usava più. TypeScript 6 controlla anche gli import di file CSS: `apps/web/src/css.d.ts` li dichiara. In `packages/ui/src/Autocomplete.tsx` un tipo di evento più preciso. Nessun cambio di comportamento.
 - **ESLint** 9 → 10.13 (`@eslint/js` 10, `typescript-eslint` 8.72, `globals` 17, `eslint-plugin-react-hooks` 7). La versione 7 degli hooks aggiunge le regole del React Compiler (setState dentro un effetto, valori impuri durante il render...): per ora solo avvisi, da sistemare un po' alla volta come quelle di accessibilità del §205; restano errori le regole degli hooks di sempre. La regola nuova `no-useless-assignment` ha trovato cinque variabili inizializzate con un valore subito sovrascritto, sistemate. `eslint-plugin-jsx-a11y` dichiara ancora ESLint 9 come compatibile ma funziona (solo un avviso di pnpm).
 
 **Verifica**: typecheck di tutto il monorepo (app compresa), lint senza errori, 522 test, build, controllo d'avvio dell'API, `expo export` Android ed `expo-doctor` 20 su 20. Foto delle 132 pagine contro il ramo principale: 128 identiche al pixel, nelle altre 4 solo la riga "adesso" dell'agenda, le tessere "Servizi più richiesti" cambiate dalle ricerche di prova e pochi pixel di antialiasing; nessun errore in console.
 
-## 300. Aggiornamenti automatici con Dependabot
+## 302. Aggiornamenti automatici con Dependabot
 
-**Richiesta esplicita dell'utente** (24/10/2026, thread "Aggiornamento Next.js"): dopo §295-§299 Luca ha chiesto "come terrò aggiornate tutte queste cose se usciranno aggiornamenti?", poi "effettua le due migliorie nelle modalità che ritieni".
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Aggiornamento Next.js"): dopo §297-§301 Luca ha chiesto "come terrò aggiornate tutte queste cose se usciranno aggiornamenti?", poi "effettua le due migliorie nelle modalità che ritieni".
 
 **Decisione presa**: `.github/dependabot.yml`, gratuito e già dentro GitHub.
 - Una volta al mese una PR unica con tutti gli aggiornamenti piccoli (minor e patch) di sito, API, app e pacchetti condivisi, più una per le azioni della CI. Se la CI è verde si unisce, come le altre PR ("unisci").
-- Gli aggiornamenti grandi (major) arrivano in PR separate, al massimo 5 aperte insieme: vanno trattati in un thread dedicato, con il confronto delle pagine prima e dopo (§296).
-- Esclusi React, React DOM, React Native e i loro tipi, fissati insieme per sito e app con gli `overrides` (§297), e le versioni grandi di Expo e dei suoi pacchetti: si fanno a mano (`npx expo install --fix`, `npx expo-doctor`).
+- Gli aggiornamenti grandi (major) arrivano in PR separate, al massimo 5 aperte insieme: vanno trattati in un thread dedicato, con il confronto delle pagine prima e dopo (§298).
+- Esclusi React, React DOM, React Native e i loro tipi, fissati insieme per sito e app con gli `overrides` (§299), e le versioni grandi di Expo e dei suoi pacchetti: si fanno a mano (`npx expo install --fix`, `npx expo-doctor`).
 - Le falle di sicurezza aprono una PR subito, senza aspettare il mese, se nelle impostazioni del repo sono accesi "Dependabot alerts" e "Dependabot security updates" (checklist di lancio, punto 28).
-- La seconda miglioria (i 163 avvisi del controllo del codice: regole nuove di React del §299 e accessibilità del §205) si fa in un thread a parte.
+- La seconda miglioria (i 163 avvisi del controllo del codice: regole nuove di React del §301 e accessibilità del §205) si fa in un thread a parte.
 
 **Verifica**: file controllato come YAML valido; Dependabot lo legge dal ramo principale, quindi parte dopo l'unione.

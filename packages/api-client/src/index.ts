@@ -23,6 +23,7 @@ export type {
   AdminAuditLogPage,
   AdminSearchResult,
   AdminTrends,
+  AdminTrafficSources,
   AdminReportTarget,
   AuthResult,
   ClientBooking,

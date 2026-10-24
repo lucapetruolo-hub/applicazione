@@ -4,6 +4,7 @@ import { PreventivoContent } from "./PreventivoContent";
 export const metadata: Metadata = {
   title: "Preventivo gratuito",
   description: "Descrivi il lavoro con una foto e ricevi un preventivo gratuito dai professionisti in zona.",
+  alternates: { canonical: "/preventivo" },
 };
 
 export default function PreventivoPage() {

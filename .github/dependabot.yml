@@ -1,8 +1,8 @@
-# Aggiornamenti automatici delle dipendenze (docs/CHANGELOG.md §300).
+# Aggiornamenti automatici delle dipendenze (docs/CHANGELOG.md §302).
 # Una volta al mese Dependabot apre una PR con tutti gli aggiornamenti
 # piccoli (minor e patch) raggruppati; la CI li prova e, se è verde, si
 # unisce. Gli aggiornamenti grandi (major) arrivano in PR separate, da
-# trattare come §295-§299: un thread dedicato e il confronto delle pagine
+# trattare come §297-§301: un thread dedicato e il confronto delle pagine
 # prima e dopo (`pnpm --filter @professionisti/web confronto-pagine`).
 # Le falle di sicurezza aprono una PR subito, senza aspettare il mese
 # (serve "Dependabot security updates" acceso nelle impostazioni del repo).
@@ -21,7 +21,7 @@ updates:
         update-types: ["minor", "patch"]
     ignore:
       # React e React Native sono fissati insieme per sito e app con gli
-      # `overrides` di pnpm-workspace.yaml (§297): si aggiornano a mano,
+      # `overrides` di pnpm-workspace.yaml (§299): si aggiornano a mano,
       # tutti nello stesso momento.
       - dependency-name: "react"
       - dependency-name: "react-dom"
@@ -30,7 +30,7 @@ updates:
       - dependency-name: "@types/react-dom"
       # Le versioni dei pacchetti Expo dipendono dalla versione di Expo:
       # una nuova versione di Expo si fa a mano con `npx expo install --fix`
-      # e `npx expo-doctor` (§297).
+      # e `npx expo-doctor` (§299).
       - dependency-name: "expo"
         update-types: ["version-update:semver-major"]
       - dependency-name: "expo-*"

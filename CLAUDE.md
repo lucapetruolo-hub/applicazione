@@ -78,24 +78,24 @@ prima discuterne e aggiornare questo file.
   runtime, a differenza di Next.js (`transpilePackages`) e Metro. `turbo dev`
   dipende da `^build` per garantire che i package siano compilati prima
   dell'avvio dei dev server.
-- **Next.js 15** (docs/CHANGELOG.md §295): nelle pagine server `params` e
+- **Next.js 15** (docs/CHANGELOG.md §297): nelle pagine server `params` e
   `searchParams` (come `cookies()` e `headers()`) sono Promise da attendere;
   il `typecheck` di `apps/web` esegue prima `next typegen`, che genera i tipi
   con cui si controllano le props delle pagine. Sito e app usano la stessa
   versione di React 19, fissata con `overrides` in `pnpm-workspace.yaml`
-  (§297): aggiornandola, cambiarla lì e nei `package.json` di `apps/web` e
+  (§299): aggiornandola, cambiarla lì e nei `package.json` di `apps/web` e
   `apps/mobile` insieme. Prima e dopo un aggiornamento importante
   `pnpm --filter @professionisti/web confronto-pagine` fotografa tutte le
   pagine e confronta i due giri pixel per pixel (istruzioni in testa a
   `apps/web/scripts/confronto-pagine.mjs`).
-- **Aggiornamenti delle dipendenze** (docs/CHANGELOG.md §300): Dependabot
+- **Aggiornamenti delle dipendenze** (docs/CHANGELOG.md §302): Dependabot
   (`.github/dependabot.yml`) apre una PR al mese con gli aggiornamenti
   piccoli raggruppati, da unire se la CI è verde; gli aggiornamenti grandi
   arrivano in PR separate e vanno trattati in un thread dedicato con il
   confronto delle pagine. React, React Native e le versioni grandi di Expo
   sono esclusi: si aggiornano a mano, insieme.
 - Il build di produzione di `apps/mobile` avviene su **EAS Build** (cloud).
-  Dal passaggio a Expo 58 (§297) `npx expo export --platform android|ios`
+  Dal passaggio a Expo 58 (§299) `npx expo export --platform android|ios`
   funziona anche in locale ed è un buon controllo veloce che il pacchetto
   si generi; `npx expo-doctor` controlla le versioni.
 - Lo script `build` di `apps/api` compila prima `@professionisti/database` e

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import type { ProfessionalSearchResult } from "@professionisti/shared";
 import { apiClient } from "../lib/apiClient";
 import HomeContent from "./HomeContent";
@@ -6,6 +7,8 @@ import HomeContent from "./HomeContent";
 // niente finestra di cache in cui un professionista eliminato resterebbe
 // visibile nella vetrina "Professionisti su Professionisti".
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 export default async function HomePage() {
   let professionals: ProfessionalSearchResult[];

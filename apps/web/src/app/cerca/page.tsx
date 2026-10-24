@@ -15,16 +15,25 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata(props: { searchParams: Promise<PageSearchParams> }): Promise<Metadata> {
   const searchParams = await props.searchParams;
+  // Le varianti con filtri (città libera, online, nome) sono ricerche, non
+  // pagine da indicizzare: canonical sulla pagina base e fuori da Google. Le
+  // pagine città indicizzabili sono /cerca/[categoria]/[citta].
+  const filtered = Boolean(searchParams.online || searchParams.citta || searchParams.q || searchParams.urgente);
+  const seo: Metadata = {
+    alternates: { canonical: "/cerca" },
+    ...(filtered ? { robots: { index: false, follow: true } } : {}),
+  };
   if (searchParams.online === "1") {
-    return { title: "Consulenze online — Professionisti", description: "Professionisti disponibili per consulenza online." };
+    return { ...seo, title: "Consulenze online", description: "Professionisti disponibili per consulenza online." };
   }
   if (searchParams.citta) {
     return {
+      ...seo,
       title: `Professionisti a ${searchParams.citta}`,
       description: `Trova professionisti a ${searchParams.citta}.`,
     };
   }
-  return { title: "Tutti i professionisti", description: "Trova professionisti vicino a te." };
+  return { ...seo, title: "Tutti i professionisti", description: "Trova professionisti vicino a te." };
 }
 
 export default async function CercaPage(props: { searchParams: Promise<PageSearchParams> }) {

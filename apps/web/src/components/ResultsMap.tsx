@@ -1,5 +1,6 @@
 "use client";
 
+import { professionalPath } from "@professionisti/shared";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AdvancedMarker, Map as GoogleMap } from "@vis.gl/react-google-maps";
@@ -169,7 +170,7 @@ export function ResultsMap({
       </GoogleMapGate>
 
       {selected ? (
-        <div className="map-banner" onClick={() => router.push(`/professionista/${selected.id}`)}>
+        <div className="map-banner" onClick={() => router.push(professionalPath(selected))}>
           <ProfessionalAvatar imageUrl={selected.imageUrl} categorySlug={selected.categorySlug} size={48} />
           <div className="map-banner-info">
             <div className="map-banner-title-row">

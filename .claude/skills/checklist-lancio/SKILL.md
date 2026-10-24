@@ -355,7 +355,7 @@ aperti solo:
       admin (gli altri si nominano da `/admin/utenti`).
     - **Repo GitHub privato** (Settings → General → Danger Zone).
     - ~~**Avvisi di sicurezza di Dependabot**~~ — fatto (24/10/2026,
-      docs/CHANGELOG.md §300): accesi "Dependabot alerts" e "Dependabot
+      docs/CHANGELOG.md §302): accesi "Dependabot alerts" e "Dependabot
       security updates" (raggruppati). Passando il repo a privato
       controllare che restino accesi. Gli aggiornamenti mensili partono dal
       file `.github/dependabot.yml`.
@@ -375,7 +375,7 @@ aperti solo:
     - **Verifica in due passaggi** su GitHub, Render, Vercel, Stripe,
       Cloudinary, Resend, Google Cloud, Didit, Openapi e sull'email usata
       per questi account.
-    - ~~**Next.js 15**~~ — fatto (PR #103, docs/CHANGELOG.md §295).
+    - ~~**Next.js 15**~~ — fatto (PR #103, docs/CHANGELOG.md §297).
 
 29. **Verifiche di sicurezza prima del lancio** (controllo approfondito,
     docs/CHANGELOG.md §293, dettaglio in
@@ -397,8 +397,46 @@ aperti solo:
       professionista): è l'unica verifica davvero indipendente. Lo sceglie
       e lo paga Luca.
 
-30. **Dopo gli aggiornamenti di Next.js 15, React 19, NestJS 11, Expo 58,
-    Prisma 6 e TypeScript 6** (PR #103, docs/CHANGELOG.md §295-§299):
+**Visibilità su Google (SEO)** (thread "Visibilità su Google (SEO)",
+22/10/2026, controllo in `/mnt/project-files/analisi/seo-controllo.md`):
+Luca ha scelto di farle poco prima del lancio, quando nome e sito sono
+definitivi. Già fatte (docs/CHANGELOG.md §295): H1, canonical, indirizzo
+leggibile del profilo, pagina "non trovata", percorso Home › Categoria ›
+Città, pagine vuote fuori da Google.
+30. **Dominio vero nel sito**: cambiare `SITE_URL` in
+    `apps/web/src/lib/siteUrl.ts` (canonical, sitemap, dati strutturati e
+    anteprime lo prendono tutti da lì) e mettere su Vercel il redirect
+    permanente da `applicazione-web.vercel.app` al dominio nuovo.
+31. **Google Search Console**: verificare il dominio (record DNS) e inviare
+    `/sitemap.xml` (punto 0). Controllare dopo qualche giorno "Pagine" e
+    "Esperienza".
+32. **Anteprima dei link (WhatsApp, Facebook)**: immagine con foto e nome
+    del professionista per ogni profilo (oggi è la stessa per tutto il sito)
+    e immagine generale col marchio definitivo (`opengraph-image.tsx`).
+33. **Titoli e descrizioni**: nome del marchio nel titolo della home,
+    "Trova e contatta un idraulico" (con l'articolo) nelle categorie, testo
+    meno generico per `/cerca`; dati strutturati `Organization` + `WebSite`
+    col nome definitivo. Nei titoli delle categorie le parole che la gente
+    cerca (strategia SEO Latina, docs/CHANGELOG.md §296): "preventivi e
+    pronto intervento"; per le pulizie "impresa di pulizie e colf".
+34. **Foto delle categorie più leggere**: oggi arrivano intere (100-200 KB)
+    anche nei riquadri piccoli, perché il ridimensionamento funziona solo
+    per le foto su Cloudinary; testo alternativo breve su quelle foto. In
+    home una foto profilo arriva in JPG pieno.
+35. **Velocità della home**: troppo JavaScript (Lighthouse telefono 22/10:
+    LCP 3,0 s, blocco 1,1 s; ricerca città LCP 4,5 s). Da rimisurare sul
+    sito finito e sistemare.
+36. **Aprire a Google solo sul dominio definitivo** (strategia SEO Latina,
+    §296): nome e dominio decisi prima, poi `NEXT_PUBLIC_SITE_INDEXABLE=true`
+    sul dominio vero, mai su `applicazione-web.vercel.app`. Il piano del
+    giorno del cambio (redirect, Search Console, cosa controllare il giorno
+    dopo) è in `/mnt/project-files/analisi/seo-strategia-latina.md`, sezione 4.
+37. **Professionisti e scheda Google** (§296): al lancio un'email (o un
+    riquadro in dashboard) che invita i professionisti a mettere il link al
+    loro profilo nella loro scheda Google Business. In cima alle ricerche
+    locali c'è quasi sempre la mappa di Google: è lì che li vedono i clienti.
+38. **Dopo gli aggiornamenti di Next.js 15, React 19, NestJS 11, Expo 58,
+    Prisma 6 e TypeScript 6** (PR #103, docs/CHANGELOG.md §297-§301):
     - **Confronto delle pagine nei controlli automatici**: oggi
       `pnpm --filter @professionisti/web confronto-pagine` si lancia a mano.
       Farlo partire a ogni PR, con un database di prova (seed) e l'API
@@ -412,6 +450,7 @@ aperti solo:
       migrazione di Prisma 6 (chiave delle relazioni molti-a-molti, nessun
       dato toccato). Controllare che arrivi l'email di deploy riuscito e che
       `/health` risponda.
+
 
 ## Da fare dopo il lancio
 
@@ -429,3 +468,7 @@ Cose decise con Luca da non fare prima del lancio, ma da non dimenticare:
   codice da un'app di autenticazione (o via email). Protegge i soldi se la
   password viene rubata. Oggi c'è già l'email "Nuovo accesso al tuo
   account" da un dispositivo mai usato.
+- **Link da altri siti verso il nostro** (thread "Visibilità su Google
+  (SEO)", 22/10/2026): scheda Google Business del sito, elenchi di attività
+  locali, un link "Trovami su …" che i professionisti mettono sul loro sito
+  e sui social, giornali locali della città di lancio.

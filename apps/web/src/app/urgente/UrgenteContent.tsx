@@ -2,7 +2,11 @@
 
 import { Suspense } from "react";
 import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
-import { GuidedRequestForm } from "@/components/GuidedRequestForm";
+import { GuidedRequestForm, GuidedRequestHeading } from "@/components/GuidedRequestForm";
+
+const TITLE = "Richiesta urgente";
+const SUBTITLE =
+  "Per emergenze che non possono aspettare: la richiesta arriva subito, segnata come urgente, a tutti i professionisti della zona.";
 
 export function UrgenteContent() {
   return (
@@ -15,12 +19,12 @@ export function UrgenteContent() {
           </Text>
         </XStack>
       </YStack>
-      <Suspense fallback={null}>
+      <Suspense fallback={<GuidedRequestHeading title={TITLE} subtitle={SUBTITLE} />}>
         <GuidedRequestForm
           isUrgent
           basePath="/urgente"
-          title="Richiesta urgente"
-          subtitle="Per emergenze che non possono aspettare: la richiesta arriva subito, segnata come urgente, a tutti i professionisti della zona."
+          title={TITLE}
+          subtitle={SUBTITLE}
           submitLabel="Invia richiesta urgente"
           submittingLabel="Invio in corso..."
           descriptionPlaceholder="Es. Allagamento in cucina, serve un intervento immediato."
