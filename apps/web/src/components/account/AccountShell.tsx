@@ -19,11 +19,16 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, isLoading, unreadNotifications } = useAuth();
   const attention = useNavAttention();
-  if (isLoading || !user) return <>{children}</>;
+  // Nell'area professionista il menu c'è già mentre si carica l'accesso:
+  // prima compariva dopo e spingeva giù la pagina (A1 della verifica,
+  // docs/CHANGELOG.md §310).
+  const professionalArea = pathname.startsWith("/dashboard");
+  if (!user && !(isLoading && professionalArea)) return <>{children}</>;
 
-  const counts = accountMenuUnreadCounts(user.isProfessional, unreadNotifications);
+  const isProfessional = user ? user.isProfessional : professionalArea;
+  const counts = accountMenuUnreadCounts(isProfessional, unreadNotifications);
 
-  if (user.isProfessional) {
+  if (isProfessional) {
     return (
       <div className="acct-shell">
         <nav className="acct-nav" aria-label="Sezioni del tuo account">
@@ -35,7 +40,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
                 const count = counts[item.href] ?? 0;
                 return (
                   <Link key={item.href} href={item.href} className={`acct-nav-link${active ? " is-active" : ""}`} aria-current={active ? "page" : undefined}>
-                    <Icon name={item.icon} size={16} color={active ? "#ffffff" : "#6e6459"} />
+                    <Icon name={item.icon} size={16} color={active ? "#2b2420" : "#6e6459"} />
                     <span>{item.label}</span>
                     {count > 0 ? <span className="acct-nav-badge">{count > 9 ? "9+" : count}</span> : attention.has(item.href) ? <span className="acct-nav-dot" role="img" aria-label="Da completare" /> : null}
                   </Link>
@@ -57,7 +62,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
           const count = counts[item.href] ?? 0;
           return (
             <Link key={item.href} href={item.href} className={`acct-tab${active ? " is-active" : ""}`} aria-current={active ? "page" : undefined}>
-              <Icon name={item.icon} size={16} color={active ? "#ffffff" : "#6e6459"} />
+              <Icon name={item.icon} size={16} color={active ? "#2b2420" : "#6e6459"} />
               <span>{item.label}</span>
               {count > 0 ? <span className="acct-nav-badge">{count > 9 ? "9+" : count}</span> : null}
             </Link>

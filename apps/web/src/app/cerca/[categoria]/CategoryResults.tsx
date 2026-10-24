@@ -11,7 +11,8 @@ import {
 } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { SITE_INDEXABLE } from "@/lib/siteIndexing";
-import { breadcrumbJsonLd, jsonForScript } from "@/lib/jsonLd";
+import { breadcrumbJsonLd } from "@/lib/jsonLd";
+import { JsonLd } from "@/components/JsonLd";
 import { PopularServicesLinks } from "@/components/PopularServicesLinks";
 import { CityFacts } from "@/components/CityFacts";
 import { SearchHeader } from "@/components/SearchHeader";
@@ -180,7 +181,7 @@ export async function CategoryResults({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonForScript(breadcrumbs) }} />
+      <JsonLd data={breadcrumbs} />
       <SearchHeader initialQuery={category.label} initialCity={city ?? ""} initialMode={isOnline ? "online" : "domicilio"} />
       {/* Key che cambia con i search params: forza il remount completo del
           contenuto quando si cambia modalita'/citta', cosi' la lista si

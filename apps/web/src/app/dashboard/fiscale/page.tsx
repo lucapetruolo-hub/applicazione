@@ -8,6 +8,7 @@ import type { ProfessionalFiscalProfile, FiscalVerificationStatus, PayoutIbanVie
 import { birthDateFromCodiceFiscale, birthPlaceFromCodiceFiscale, checkFiscalId, findComuneByName, isValidCodiceFiscale, fiscalFieldErrors, professionalFiscalProfileSchema, sexFromCodiceFiscale, taxIdCheckMessage, type MyVerificationStatus, type TaxIdKind } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
+import { ProfileMissingNotice, isProfileMissingError } from "@/components/ProfileMissingNotice";
 import { PayoutIbanCard } from "@/components/PayoutIbanCard";
 import { useAuth } from "@/lib/AuthContext";
 import { JourneyProgress, journeyCurrent, setupJourney } from "@/components/verification/SetupJourney";
@@ -95,7 +96,7 @@ const addressInputStyle = {
   borderRadius: radiusDoc,
   border: `1px solid ${brand.bordoCampo}`,
   background: brand.calce,
-  fontSize: 15,
+  fontSize: 16,
   fontFamily: "inherit",
   color: brand.grafite,
 };
@@ -146,6 +147,7 @@ function DashboardFiscaleContent() {
   // Dati non caricati (API in errore): mai il modulo vuoto, come se non ci
   // fossero dati salvati (docs/CHANGELOG.md §285).
   const [profileLoadFailed, setProfileLoadFailed] = useState(false);
+  const [profileMissing, setProfileMissing] = useState(false);
   const [profileLoadAttempt, setProfileLoadAttempt] = useState(0);
   const [entityType, setEntityType] = useState<"PRIVATE_INDIVIDUAL" | "SOLE_PROPRIETOR" | "BUSINESS" | "">("");
   // Tipo già deciso: quello salvato, altrimenti quello della registrazione.
@@ -247,7 +249,10 @@ function DashboardFiscaleContent() {
           setProfile(null);
         }
       })
-      .catch(() => setProfileLoadFailed(true));
+      .catch((err) => {
+        if (isProfileMissingError(err)) setProfileMissing(true);
+        else setProfileLoadFailed(true);
+      });
   }, [token, profileLoadAttempt]);
 
   // Applica la categoria scelta nella schermata precedente una sola volta
@@ -405,6 +410,10 @@ function DashboardFiscaleContent() {
   const holderName =
     entityType === "BUSINESS" ? (fields.businessName ?? "") : [fields.fiscalFirstName, fields.fiscalLastName].filter(Boolean).join(" ");
 
+  if (profileMissing) {
+    return <ProfileMissingNotice text="Serve un profilo completo (nome attività, categoria, città) prima di inserire i dati fiscali." />;
+  }
+
   if (profileLoadFailed) {
     return (
       <Section title="Dati fiscali e pagamenti">
@@ -534,7 +543,7 @@ function DashboardFiscaleContent() {
               <Badge variant={adminVerification.variant}>{adminVerification.label}</Badge>
             </XStack>
             {profile.verificationNote ? (
-              <Text fontSize={13} color={brand.urgenza}>
+              <Text fontSize={16} color={brand.urgenza}>
                 {profile.verificationNote}
               </Text>
             ) : null}
@@ -544,18 +553,18 @@ function DashboardFiscaleContent() {
         {showForm ? (
           <Surface gap="$4">
             <YStack gap="$1">
-              <Text fontSize={13} fontWeight="700" color={brand.grafite70}>
+              <Text fontSize={16} fontWeight="700" color={brand.grafite70}>
                 Parte {formStep} di 2
               </Text>
               <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
                 {formStep === 1 ? (entityType === "BUSINESS" ? "Dati dell'azienda" : "I tuoi dati") : entityType === "BUSINESS" ? "Sede legale" : "Indirizzo di residenza"}
               </Text>
               {formStep === 1 ? (
-                <Text fontSize={14} color={brand.grafite70}>
+                <Text fontSize={16} color={brand.grafite70}>
                   Non li vede nessun cliente.{" "}
                   <Text
                     tag="button"
-                    fontSize={14}
+                    fontSize={16}
                     fontWeight="700"
                     color={brand.cianografiaScuro}
                     textDecorationLine="underline"
@@ -572,9 +581,9 @@ function DashboardFiscaleContent() {
             </YStack>
 
             {toFix && formStep === 1 && invalidChecks.length > 0 ? (
-              <XStack gap="$2" padding="$3" borderRadius={12} backgroundColor={brand.urgenzaVelo} alignItems="flex-start" role="alert">
+              <XStack gap="$2" padding="$3" borderRadius={20} backgroundColor={brand.urgenzaVelo} alignItems="flex-start" role="alert">
                 <Icon name="triangle-alert" size={18} strokeWidth={2} color={brand.urgenza} />
-                <Text flex={1} fontSize={14} color={brand.grafite}>
+                <Text flex={1} fontSize={16} color={brand.grafite}>
                   {invalidChecks.map(taxIdCheckMessage).join(" ")}
                 </Text>
               </XStack>
@@ -587,13 +596,13 @@ function DashboardFiscaleContent() {
                 {lockedEntityType ? (
                   <XStack alignSelf="flex-start" gap="$2" alignItems="center" paddingHorizontal="$3" paddingVertical="$1.5" borderRadius={999} backgroundColor={brand.gesso}>
                     <Icon name={lockedEntityType === "BUSINESS" ? "briefcase" : "user-round"} size={15} strokeWidth={2} color={brand.grafite70} />
-                    <Text fontSize={14} fontWeight="700" color={brand.grafite}>
+                    <Text fontSize={16} fontWeight="700" color={brand.grafite}>
                       {ENTITY_TYPE_LABELS[lockedEntityType]}
                     </Text>
                   </XStack>
                 ) : (
                   <YStack gap="$2">
-                    <Text fontSize={14} fontWeight="700" color={brand.grafite}>
+                    <Text fontSize={16} fontWeight="700" color={brand.grafite}>
                       Come lavori?
                     </Text>
                     <XStack gap="$2" flexWrap="wrap">
@@ -619,15 +628,15 @@ function DashboardFiscaleContent() {
                     {cfField}
                     {cfBirthDate ? (
                       // Quello che dice il codice fiscale, così chi l'ha scritto vede subito se è il suo (§272).
-                      <Text fontSize={13} color={brand.grafite70}>
+                      <Text fontSize={16} color={brand.grafite70}>
                         Dal codice fiscale: {sexFromCodiceFiscale(cfValue) === "F" ? "nata" : "nato"} il{" "}
-                        <Text fontSize={13} fontWeight="700" color={brand.grafite}>{formatBirthDate(cfBirthDate)}</Text>
+                        <Text fontSize={16} fontWeight="700" color={brand.grafite}>{formatBirthDate(cfBirthDate)}</Text>
                         {cfBirthPlace === "abroad" ? (
                           " all'estero"
                         ) : cfBirthPlace ? (
                           <>
                             {" a "}
-                            <Text fontSize={13} fontWeight="700" color={brand.grafite}>{`${cfBirthPlace.name} (${cfBirthPlace.province})`}</Text>
+                            <Text fontSize={16} fontWeight="700" color={brand.grafite}>{`${cfBirthPlace.name} (${cfBirthPlace.province})`}</Text>
                           </>
                         ) : null}
                       </Text>
@@ -635,7 +644,7 @@ function DashboardFiscaleContent() {
                     {/* Calendario del telefono o del browser (docs/CHANGELOG.md §263). */}
                     {askBirthDate ? (
                       <YStack gap="$2">
-                        <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
+                        <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
                           Data di nascita
                         </Text>
                         <ItalianDateInput
@@ -646,7 +655,7 @@ function DashboardFiscaleContent() {
                           style={{ ...addressInputStyle, borderColor: liveError("dateOfBirth") ? brand.urgenza : brand.bordoCampo }}
                         />
                         {liveError("dateOfBirth") ? (
-                          <Text fontSize={13} color={brand.urgenza}>
+                          <Text fontSize={16} color={brand.urgenza}>
                             {liveError("dateOfBirth")}
                           </Text>
                         ) : null}
@@ -669,10 +678,10 @@ function DashboardFiscaleContent() {
                       hint="Lo trovi nella visura camerale."
                     />
                     <YStack gap="$1" marginTop="$2">
-                      <Text fontSize={15} fontWeight="800" color={brand.grafite}>
+                      <Text fontSize={16} fontWeight="800" color={brand.grafite}>
                         Legale rappresentante
                       </Text>
-                      <Text fontSize={13} color={brand.grafite70}>
+                      <Text fontSize={16} color={brand.grafite70}>
                         Sarà lui a fare la verifica dell&apos;identità.
                       </Text>
                     </YStack>
@@ -698,7 +707,7 @@ function DashboardFiscaleContent() {
                 {/* Fuori dall'Italia: paese e codice fiscale estero (DAC7). */}
                 {entityType ? (
                   abroad ? (
-                    <YStack gap="$3" padding="$3" borderRadius={12} backgroundColor={brand.gesso}>
+                    <YStack gap="$3" padding="$3" borderRadius={20} backgroundColor={brand.gesso}>
                       <Field
                         label={entityType === "BUSINESS" ? "Paese della sede (sigla, es. FR)" : "Paese di residenza fiscale (sigla, es. FR)"}
                         accessibilityLabel="Paese di residenza fiscale"
@@ -731,11 +740,11 @@ function DashboardFiscaleContent() {
                     </Button>
                   ) : null}
                   {step1Missing.length > 0 ? (
-                    <Text fontSize={13} color={brand.grafite70}>
+                    <Text fontSize={16} color={brand.grafite70}>
                       Manca: {step1Missing.join(", ")}.
                     </Text>
                   ) : hasLiveErrors ? (
-                    <Text fontSize={13} color={brand.urgenza}>
+                    <Text fontSize={16} color={brand.urgenza}>
                       Correggi i campi in rosso.
                     </Text>
                   ) : null}
@@ -751,7 +760,7 @@ function DashboardFiscaleContent() {
                       // Suggerimenti di Google mentre si scrive: la scelta compila
                       // anche civico, CAP, comune e provincia (docs/CHANGELOG.md §263).
                       <YStack gap="$2">
-                        <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
+                        <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
                           Via o piazza
                         </Text>
                         <AddressAutocompleteInput
@@ -832,7 +841,7 @@ function DashboardFiscaleContent() {
                   >
                     {declarationAccepted ? <Icon name="check" size={13} strokeWidth={2.5} color="white" /> : null}
                   </YStack>
-                  <Text fontSize={14} color={brand.grafite}>
+                  <Text fontSize={16} color={brand.grafite}>
                     Confermo che i dati sono corretti.{" "}
                     <Link href="/termini" target="_blank" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
                       Termini
@@ -854,7 +863,7 @@ function DashboardFiscaleContent() {
                   </Button>
                 </XStack>
                 {saveError ? (
-                  <Text fontSize={13} color={brand.urgenza} role="alert">
+                  <Text fontSize={16} color={brand.urgenza} role="alert">
                     {saveError}
                     {/* Un account appena registrato non ha ancora un profilo
                         pubblico (da cui dipende quello fiscale). */}
@@ -924,7 +933,7 @@ function DashboardFiscaleContent() {
 
             {nextStep?.key === "identity" && nextStep.action ? (
               <Surface gap="$3" borderLeftWidth={4} borderLeftColor={brand.cianografia}>
-                <Text fontSize={12} fontWeight="700" letterSpacing={0.5} textTransform="uppercase" color={brand.grafite70}>
+                <Text fontSize={13} fontWeight="700" letterSpacing={0.5} textTransform="uppercase" color={brand.grafite70}>
                   Prossimo passo
                 </Text>
                 <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
@@ -944,10 +953,10 @@ function DashboardFiscaleContent() {
                 <XStack gap="$3" alignItems="center" padding="$4" borderRadius="$4" backgroundColor={brand.gesso}>
                   <Icon name="lock" size={20} strokeWidth={2} color={brand.grafite70} />
                   <YStack flex={1} gap={2}>
-                    <Text fontSize={15} fontWeight="700" color={brand.grafite70}>
+                    <Text fontSize={16} fontWeight="700" color={brand.grafite70}>
                       Pagamenti online
                     </Text>
-                    <Text fontSize={13} color={brand.grafite70}>
+                    <Text fontSize={16} color={brand.grafite70}>
                       {paymentsStep.text}
                     </Text>
                   </YStack>
@@ -988,7 +997,7 @@ function DashboardFiscaleContent() {
             {/* Riepilogo di quanto comunichiamo al fisco (docs/CHANGELOG.md §246). */}
             <Link href="/dashboard/fiscale/dac7" style={{ textDecoration: "none" }}>
               <XStack alignItems="center" gap="$2" paddingHorizontal="$1">
-                <Text fontSize={14} fontWeight="700" color={brand.cianografiaScuro}>
+                <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
                   Riepilogo DAC7: i compensi che comunichiamo al fisco
                 </Text>
                 <Text color={brand.cianografiaScuro} aria-hidden>

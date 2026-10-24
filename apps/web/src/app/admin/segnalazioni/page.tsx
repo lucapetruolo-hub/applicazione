@@ -85,7 +85,7 @@ function SegnalazioniContent() {
       />
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       {reports === null && !error ? (
-        <YStack backgroundColor={brand.calce} borderRadius={16} overflow="hidden">
+        <YStack backgroundColor={brand.calce} borderRadius={20} overflow="hidden">
           <SkeletonSummaryRow />
           <SkeletonSummaryRow />
         </YStack>
@@ -247,7 +247,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
       ) : null}
 
       {previewOpen ? (
-        <YStack gap="$2" padding="$3" borderRadius={12} borderWidth={1} borderColor={brand.filetto}>
+        <YStack gap="$2" padding="$3" borderRadius={20} borderWidth={1} borderColor={brand.filetto}>
           {preview === null ? (
             <Text color={brand.grafite70}>Caricamento…</Text>
           ) : !preview.exists ? (
@@ -278,7 +278,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
                   {preview.photos.map((url) => (
                     <a key={url} href={url} target="_blank" rel="noreferrer">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={url} alt="" style={{ width: 96, height: 96, objectFit: "cover", borderRadius: 8 }} />
+                      <img src={url} alt="" style={{ width: 96, height: 96, objectFit: "cover", borderRadius: 10 }} />
                     </a>
                   ))}
                 </XStack>
@@ -322,7 +322,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
           ) : null}
         </XStack>
       ) : (
-        <YStack gap="$3" padding="$3" borderRadius={12} backgroundColor={brand.gesso}>
+        <YStack gap="$3" padding="$3" borderRadius={20} backgroundColor={brand.gesso}>
           {mode === "resolve" ? (
             <>
               <Text fontWeight="700" color={brand.grafite}>

@@ -9,6 +9,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
+import { ProfileMissingNotice, isProfileMissingError } from "@/components/ProfileMissingNotice";
 import { SkeletonRequestList } from "@/components/Skeleton";
 import { classifyLeadStage, type RequestStage } from "@/lib/requestStage";
 import { mergeCounts, unreadGuidedRequestCounts } from "@/lib/notificationSections";
@@ -198,7 +199,10 @@ function RichiesteContent() {
         setIdentityVerificationNeeded(profile?.identityVerificationNeeded ?? false);
         if (!profile) setProfileMissing(true);
       })
-      .catch(() => setLoadFailed(true));
+      .catch((err) => {
+        if (isProfileMissingError(err)) setProfileMissing(true);
+        else setLoadFailed(true);
+      });
   }, [token, loadAttempt]);
 
   // Ripetuto ogni UNREAD_BADGE_POLL_MS finché la pagina resta aperta
@@ -345,18 +349,7 @@ function RichiesteContent() {
   }
 
   if (profileMissing) {
-    return (
-      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
-        <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite} textAlign="center">
-            Crea prima il tuo profilo professionista
-          </Text>
-          <Link href="/dashboard/profilo">
-            <Button variant="primary">Vai al profilo</Button>
-          </Link>
-        </YStack>
-      </YStack>
-    );
+    return <ProfileMissingNotice text="Serve un profilo completo (nome attività, categoria, città) per ricevere richieste dai clienti." />;
   }
 
   return (
@@ -367,7 +360,7 @@ function RichiesteContent() {
             <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite}>
               Richieste ricevute
             </Text>
-            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+            <Text fontFamily="$body" fontSize={16} color={brand.grafite70}>
               Gestisci preventivi, rispondi ai clienti e tieni traccia di ogni lavoro
             </Text>
           </YStack>
@@ -405,7 +398,7 @@ function RichiesteContent() {
                   onPress={() => setActiveTab(tab.key)}
                   accessibilityRole="button"
                 >
-                  <Text fontFamily="$body" fontSize={13.5} fontWeight="800" color={active ? "white" : brand.grafite}>
+                  <Text fontFamily="$body" fontSize={16} fontWeight="800" color={active ? "white" : brand.grafite}>
                     {tab.label}
                   </Text>
                 </XStack>
@@ -462,7 +455,7 @@ function RichiesteContent() {
             accessibilityRole="button"
           >
             <Icon name="sliders-horizontal" size={16} color={brand.grafite} />
-            <Text fontWeight="700" fontSize={14} color={brand.grafite}>
+            <Text fontWeight="700" fontSize={16} color={brand.grafite}>
               Filtri{filtersActiveCount > 0 ? ` (${filtersActiveCount})` : ""}
             </Text>
           </XStack>
@@ -492,7 +485,7 @@ function RichiesteContent() {
                       la stessa distinzione — richiesta esplicita dell'utente
                       di coerenza tra il filtro e le richieste mostrate. */}
                   {opt.icon ? <Icon name={opt.icon} size={14} strokeWidth={2} color={active ? "white" : brand.grafite} /> : null}
-                  <Text fontSize={13.5} fontWeight="700" color={active ? "white" : brand.grafite}>
+                  <Text fontSize={16} fontWeight="700" color={active ? "white" : brand.grafite}>
                     {opt.label}
                   </Text>
                 </XStack>
@@ -567,14 +560,14 @@ function RichiesteContent() {
                   }}
                   accessibilityRole="button"
                 >
-                  <Text fontSize={13} fontWeight="700" color={brand.grafite70} textDecorationLine="underline">
+                  <Text fontSize={16} fontWeight="700" color={brand.grafite70} textDecorationLine="underline">
                     Reimposta filtri
                   </Text>
                 </XStack>
               ) : null}
 
               <Button variant="primary" onPress={() => setShowFiltersModal(false)}>
-                Mostra {visibleLeads.length} {visibleLeads.length === 1 ? "richiesta" : "richieste"}
+                {`Mostra ${visibleLeads.length} ${visibleLeads.length === 1 ? "richiesta" : "richieste"}`}
               </Button>
             </YStack>
           </div>
@@ -607,33 +600,33 @@ function RichiesteContent() {
                 <YStack flex={1} minWidth={180} gap="$1">
                   <XStack alignItems="center" gap="$2">
                     <Icon name="bell-ring" size={16} color={brand.cianografiaScuro} strokeWidth={1.5} />
-                    <Text fontWeight="700" fontSize="$3" color={brand.grafite}>
+                    <Text fontWeight="700" fontSize={16} color={brand.grafite}>
                       1. Ricevi la richiesta
                     </Text>
                   </XStack>
-                  <Text fontSize="$2" color={brand.grafite70}>
+                  <Text fontSize={13} color={brand.grafite70}>
                     Un cliente della tua zona descrive il lavoro con foto: ti arriva qui e ti avvisiamo.
                   </Text>
                 </YStack>
                 <YStack flex={1} minWidth={180} gap="$1">
                   <XStack alignItems="center" gap="$2">
                     <Icon name="file-text" size={16} color={brand.cianografiaScuro} strokeWidth={1.5} />
-                    <Text fontWeight="700" fontSize="$3" color={brand.grafite}>
+                    <Text fontWeight="700" fontSize={16} color={brand.grafite}>
                       2. Invii il preventivo
                     </Text>
                   </XStack>
-                  <Text fontSize="$2" color={brand.grafite70}>
+                  <Text fontSize={13} color={brand.grafite70}>
                     Prezzo e data scelti dalla tua agenda. Solo allora il cliente vede chi sei.
                   </Text>
                 </YStack>
                 <YStack flex={1} minWidth={180} gap="$1">
                   <XStack alignItems="center" gap="$2">
                     <Icon name="calendar" size={16} color={brand.cianografiaScuro} strokeWidth={1.5} />
-                    <Text fontWeight="700" fontSize="$3" color={brand.grafite}>
+                    <Text fontWeight="700" fontSize={16} color={brand.grafite}>
                       3. Il lavoro entra in agenda
                     </Text>
                   </XStack>
-                  <Text fontSize="$2" color={brand.grafite70}>
+                  <Text fontSize={13} color={brand.grafite70}>
                     Se il cliente accetta, l'appuntamento compare nella tua agenda con contatti e indirizzo.
                   </Text>
                 </YStack>

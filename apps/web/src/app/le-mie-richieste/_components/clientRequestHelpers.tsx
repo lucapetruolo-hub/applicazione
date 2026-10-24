@@ -10,9 +10,9 @@ export const MAX_REQUEST_PHOTOS = 5;
 
 export const textareaStyle = {
   padding: 10,
-  borderRadius: 4,
+  borderRadius: 10,
   border: `1px solid ${brand.bordoCampo}`,
-  fontSize: 14,
+  fontSize: 16,
   fontFamily: "inherit",
   color: brand.grafite,
   resize: "vertical" as const,
@@ -65,7 +65,7 @@ export function ClientStagePill({ stage }: { stage: RequestStage }) {
   return (
     <XStack alignItems="center" gap={6} paddingHorizontal="$3" paddingVertical={8} borderRadius={999} backgroundColor={s.bg}>
       <Icon name={s.icon} size={15} strokeWidth={2} color={s.fg} />
-      <Text fontFamily="$body" fontSize={14} fontWeight="800" color={s.fg} textTransform="uppercase">
+      <Text fontFamily="$body" fontSize={16} fontWeight="800" color={s.fg} textTransform="uppercase">
         {CLIENT_STAGE_LABEL[stage]}
       </Text>
     </XStack>
@@ -76,7 +76,7 @@ export function ServiceBadge({ online }: { online: boolean }) {
   return (
     <XStack alignItems="center" gap={6} paddingHorizontal="$3" paddingVertical={8} borderRadius={999} backgroundColor={brand.gesso}>
       <Icon name={online ? "video" : "house"} size={15} strokeWidth={2} color={brand.cianografiaScuro} />
-      <Text fontFamily="$body" fontSize={14} fontWeight="700" color={brand.grafite}>
+      <Text fontFamily="$body" fontSize={16} fontWeight="700" color={brand.grafite}>
         {online ? "Consulenza online" : "A domicilio"}
       </Text>
     </XStack>

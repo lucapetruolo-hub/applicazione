@@ -27,7 +27,7 @@ const MIN_RADIUS_KM = 1;
 
 function FieldLabel({ children }: { children: string }) {
   return (
-    <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
+    <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
       {children}
     </Text>
   );
@@ -94,12 +94,12 @@ export function EngagementRadiusSection({
         <Text fontFamily="$heading" fontWeight="800" fontSize="$5" color={brand.grafite}>
           Raggio di ingaggio
         </Text>
-        <Text fontSize="$2" color={brand.grafite70}>
+        <Text fontSize={13} color={brand.grafite70}>
           Scegli fino a quanti chilometri da te ti mandiamo in automatico le richieste di preventivo dei clienti della
           zona: di partenza sono 25 km, per le richieste standard puoi arrivare fino a {MAX_ENGAGEMENT_RADIUS_KM} km.
           Per le richieste urgenti puoi scegliere un raggio diverso.
         </Text>
-        <Text fontSize="$2" color={brand.grafite70}>
+        <Text fontSize={13} color={brand.grafite70}>
           Il raggio non ti limita: nella ricerca del sito resti visibile a tutti i clienti, e chiunque, anche da più
           lontano, può aprire il tuo profilo e mandarti una richiesta direttamente.
         </Text>
@@ -115,7 +115,7 @@ export function EngagementRadiusSection({
       <YStack gap="$2">
         <XStack justifyContent="space-between" alignItems="center">
           <XStack alignItems="center" gap="$2">
-            <YStack width={12} height={12} borderRadius={6} backgroundColor={brand.verificato} />
+            <YStack width={12} height={12} borderRadius={10} backgroundColor={brand.verificato} />
             <FieldLabel>Richieste standard</FieldLabel>
           </XStack>
           <Text fontFamily="$mono" fontWeight="700" color={brand.grafite}>
@@ -142,7 +142,7 @@ export function EngagementRadiusSection({
       <YStack gap="$2">
         <XStack justifyContent="space-between" alignItems="center">
           <XStack alignItems="center" gap="$2">
-            <YStack width={12} height={12} borderRadius={6} backgroundColor={brand.ottone} />
+            <YStack width={12} height={12} borderRadius={10} backgroundColor={brand.ottone} />
             <FieldLabel>Richieste urgenti</FieldLabel>
           </XStack>
           <Text fontFamily="$mono" fontWeight="700" color={brand.grafite}>
@@ -163,12 +163,12 @@ export function EngagementRadiusSection({
       </YStack>
 
       {error ? (
-        <Text color={brand.urgenza} fontSize="$3">
+        <Text color={brand.urgenza} fontSize={16}>
           {error}
         </Text>
       ) : null}
       {saved ? (
-        <Text color={brand.verificato} fontSize="$3">
+        <Text color={brand.verificato} fontSize={16}>
           Raggio di ingaggio salvato!
         </Text>
       ) : null}

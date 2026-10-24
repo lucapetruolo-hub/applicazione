@@ -1,6 +1,6 @@
 "use client";
 
-import { formatAppointmentTimeRange, type ExternalJob, type ProfessionalBooking } from "@professionisti/shared";
+import { formatAppointmentTimeRange, formatJobDays, type ExternalJob, type ProfessionalBooking } from "@professionisti/shared";
 import { brand } from "@professionisti/ui";
 import { REQUEST_STAGE_STYLE } from "@/lib/requestStage";
 
@@ -108,5 +108,7 @@ export type AgendaListItem = {
 };
 
 export function formatAgendaTimeRange(startIso: string, endIso: string | null): string {
-  return formatAppointmentTimeRange(startIso, endIso);
+  // Lavoro su più giorni (docs/CHANGELOG.md §310): "dal 4 al 6 novembre · 08:00–17:00".
+  const days = formatJobDays(startIso, endIso);
+  return days ? `${days} · ${formatAppointmentTimeRange(startIso, endIso)}` : formatAppointmentTimeRange(startIso, endIso);
 }

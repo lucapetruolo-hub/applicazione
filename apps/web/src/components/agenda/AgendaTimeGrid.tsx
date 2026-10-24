@@ -112,7 +112,7 @@ export function AgendaTimeGrid({
           const alert = weather.get(dateStr);
           const content = (
             <>
-              {weekdayShortLabel(date)}
+              {weekdayShortLabel(date)}{" "}
               <span className="ag-day-num">{date.getUTCDate()}</span>
               {note || alert ? (
                 <span className={`ag-day-note ${note?.tone ?? ""}`}>
@@ -124,8 +124,10 @@ export function AgendaTimeGrid({
           );
           const className = isSameDateUtc(date, today) ? "today" : "";
           return onDayPress && days.length > 1 ? (
-            <button key={dateStr} type="button" className={className} onClick={() => onDayPress(date)} aria-label={`Apri il giorno ${date.getUTCDate()}`}>
+            <button key={dateStr} type="button" className={className} onClick={() => onDayPress(date)}>
               {content}
+              {/* Il nome comincia col testo visibile, "lun 26" (A3, §310). */}
+              <span className="sr-only">, apri il giorno</span>
             </button>
           ) : (
             <div key={dateStr} className={className}>
@@ -171,15 +173,21 @@ export function AgendaTimeGrid({
                         className={`ag-ev ${event.kind}${event.key === selectedKey ? " selected" : ""}`}
                         style={{ top: y(event.start) + 2, height: blockHeight }}
                         onClick={event.onPress}
-                        aria-label={`${event.label}: ${event.title}, ${minutesToLabel(event.start)}–${minutesToLabel(event.end)}`}
                       >
+                        {/* Il nome letto dal lettore di schermo parte dal testo visibile (WCAG 2.5.3, A3 di §309). */}
                         <b>{event.title}</b>
                         {blockHeight >= 40 ? (
                           <span>
+                            <span className="sr-only">, </span>
                             {minutesToLabel(event.start)}–{minutesToLabel(event.end)}
                             {blockHeight > 60 && event.detail ? ` · ${event.detail}` : ""}
                           </span>
-                        ) : null}
+                        ) : (
+                          <span className="sr-only">
+                            , {minutesToLabel(event.start)}–{minutesToLabel(event.end)}
+                          </span>
+                        )}
+                        <span className="sr-only">, {event.label}</span>
                       </button>
                     );
                   })}

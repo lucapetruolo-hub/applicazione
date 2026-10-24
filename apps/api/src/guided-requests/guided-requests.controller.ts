@@ -5,6 +5,7 @@ import {
   Delete,
   Get,
   HttpCode,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -157,9 +158,12 @@ export class GuidedRequestsController {
   // raw/upload/) — mai un proxy aperto verso un URL arbitrario.
   @UseGuards(JwtAuthGuard)
   @Get("timeline-photos/download")
-  async downloadTimelinePhoto(@Query("url") url: string, @Res() res: Response) {
+  async downloadTimelinePhoto(@Req() req: AuthenticatedRequest, @Query("url") url: string, @Res() res: Response) {
     if (!url) {
       throw new BadRequestException("url è obbligatorio.");
+    }
+    if (!(await this.timelineService.canDownloadAttachment(req.user.userId, url))) {
+      throw new NotFoundException("Allegato non trovato.");
     }
     const { buffer, contentType, filename } = await this.cloudinaryService.fetchAttachmentForDownload(url);
     // `Content-Disposition` impostato qui, dal nostro stesso backend (non

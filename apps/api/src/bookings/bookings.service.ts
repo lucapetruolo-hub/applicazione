@@ -36,6 +36,7 @@ import { JobPaymentsService } from "../job-payments/job-payments.service";
 import { onlinePaymentsEnabled } from "../job-payments/online-payments-enabled";
 import { stripeVerified } from "../professional-fiscal/public-visibility";
 import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
+import { PROFESSIONAL_BUSY_MESSAGE, capacityAt, countOverlapping, loadCommitments, lockProfessionalAgenda } from "../agenda/commitments";
 
 type AcceptableQuote = Awaited<ReturnType<BookingsService["loadAcceptableQuote"]>>;
 
@@ -79,6 +80,8 @@ export class BookingsService {
       if (!stripeVerified(fiscal)) {
         throw new BadRequestException("Questo professionista non può ancora ricevere pagamenti online: scegli il pagamento diretto.");
       }
+      // Prima di far pagare l'acconto: niente pagamento per un'ora già occupata (§310).
+      await this.assertProfessionalFree(this.prisma, quote);
       const { url } = await this.jobPaymentsService.createQuoteDepositCheckout({
         clientUserId: clientId,
         quoteId: quote.id,
@@ -163,7 +166,19 @@ export class BookingsService {
       if (otherJob) refundReason = "Il cliente ha già accettato un altro preventivo per questa richiesta.";
       else if ((session.amount_total ?? 0) !== this.quoteDepositEurCents(quote)) refundReason = "Il preventivo è cambiato durante il pagamento.";
     }
-    if (!quote || refundReason) {
+    let bookingId: string | null = null;
+    if (quote && !refundReason) {
+      try {
+        bookingId = await this.confirmAcceptedQuote(quote, clientUserId, paymentMethod);
+      } catch (err) {
+        // Nel frattempo il professionista ha preso un altro lavoro a quell'ora
+        // (§310). Se invece è lo stesso evento arrivato due volte, il lavoro
+        // c'è già: Stripe riprova e il controllo in cima lo riconosce.
+        if (!(err instanceof ConflictException) || (await this.prisma.booking.findUnique({ where: { quoteId }, select: { id: true } }))) throw err;
+        refundReason = err.message;
+      }
+    }
+    if (!quote || refundReason || !bookingId) {
       const info = await this.prisma.quote.findUnique({ where: { id: quoteId }, select: { guidedRequestId: true, professionalProfileId: true } });
       const { pending } = await this.jobPaymentsService.refundQuoteDeposit(paymentIntentId, refundReason ?? "Preventivo non più disponibile.", session.metadata?.stripeAccount ?? null, {
         clientUserId,
@@ -182,16 +197,43 @@ export class BookingsService {
       return;
     }
 
-    const bookingId = await this.confirmAcceptedQuote(quote, clientUserId, paymentMethod);
     const jobPayment = await this.prisma.jobPayment.findUniqueOrThrow({ where: { bookingId } });
     await this.jobPaymentsService.recordQuoteDeposit(jobPayment.id, session);
+  }
+
+  /**
+   * Il professionista è ancora libero all'ora del preventivo: nessun lavoro
+   * o lavoro esterno sovrapposto oltre la capienza della fascia (§310).
+   */
+  private async assertProfessionalFree(db: PrismaClient | Prisma.TransactionClient, quote: AcceptableQuote): Promise<void> {
+    const start = quote.estimatedStartDate;
+    const end = quote.estimatedEndDate;
+    const mode = quote.guidedRequest.serviceMode;
+    const dayStart = new Date(start);
+    dayStart.setUTCHours(0, 0, 0, 0);
+    const until = end && end > start ? end : new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+    const commitments = (await loadCommitments(db, [quote.professionalProfileId], dayStart, until)).get(quote.professionalProfileId) ?? [];
+    if (countOverlapping(commitments, start, end, mode) >= (await capacityAt(db, quote.professionalProfileId, start, mode))) {
+      throw new ConflictException(PROFESSIONAL_BUSY_MESSAGE);
+    }
   }
 
   /** Crea la prenotazione dal preventivo accettato: da qui il professionista vede i contatti del cliente (CLAUDE.md §5 punto 9). */
   private async confirmAcceptedQuote(quote: AcceptableQuote, clientId: string, paymentMethod: JobPaymentChoice): Promise<string> {
     const offer = quotePaymentOffer(quote);
     const { guidedRequest } = quote;
-    const booking = await this.prisma.booking.create({
+    // Una accettazione alla volta per professionista: la seconda vede il
+    // lavoro della prima (docs/CHANGELOG.md §310). Prima due clienti che
+    // accettavano insieme due preventivi alla stessa ora creavano due lavori
+    // sovrapposti (D1), e lo stesso preventivo accettato due volte dava un
+    // errore interno invece di "già accettato" (D4).
+    const booking = await this.prisma.$transaction(async (tx) => {
+      await lockProfessionalAgenda(tx, quote.professionalProfileId);
+      if (await tx.booking.findUnique({ where: { quoteId: quote.id }, select: { id: true } })) {
+        throw new ConflictException("Questo preventivo è già stato accettato.");
+      }
+      await this.assertProfessionalFree(tx, quote);
+      return tx.booking.create({
       data: {
         quoteId: quote.id,
         clientId,
@@ -210,6 +252,7 @@ export class BookingsService {
         city: guidedRequest.city,
         province: guidedRequest.province,
       },
+      });
     });
 
     // Metodo di pagamento scelto dal cliente (§168, §237): acconto online

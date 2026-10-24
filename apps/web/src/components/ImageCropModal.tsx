@@ -148,7 +148,7 @@ export function ImageCropModal({
       <div
         style={{
           backgroundColor: "white",
-          borderRadius: 16,
+          borderRadius: 20,
           padding: 24,
           width: "100%",
           maxWidth: 380,
@@ -160,7 +160,7 @@ export function ImageCropModal({
       >
         <div style={{ width: "100%" }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Posiziona la tua immagine</h2>
-          <p style={{ fontSize: 13, color: "#667085", margin: "4px 0 0" }}>
+          <p style={{ fontSize: 16, color: "#667085", margin: "4px 0 0" }}>
             Trascina per spostare, usa lo slider per ingrandire.
           </p>
         </div>
@@ -175,7 +175,7 @@ export function ImageCropModal({
             width: STAGE_SIZE,
             height: STAGE_SIZE,
             overflow: "hidden",
-            borderRadius: 12,
+            borderRadius: 20,
             backgroundColor: "#f1f5f9",
             cursor: "grab",
             touchAction: "none",
@@ -238,10 +238,10 @@ export function ImageCropModal({
             style={{
               flex: 1,
               padding: "10px 16px",
-              borderRadius: 8,
+              borderRadius: 10,
               border: "1px solid #d0d5dd",
               backgroundColor: "white",
-              fontSize: 15,
+              fontSize: 16,
               fontWeight: 600,
               cursor: "pointer",
             }}
@@ -255,11 +255,11 @@ export function ImageCropModal({
             style={{
               flex: 1,
               padding: "10px 16px",
-              borderRadius: 8,
+              borderRadius: 10,
               border: "none",
               backgroundColor: "#1e5eff",
               color: "white",
-              fontSize: 15,
+              fontSize: 16,
               fontWeight: 600,
               cursor: "pointer",
               opacity: isProcessing || !naturalSize ? 0.6 : 1,

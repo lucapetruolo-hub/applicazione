@@ -354,7 +354,7 @@ function LeMieRichiesteContent() {
         {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
         {depositPaid ? (
-          <Text color={brand.grafite} fontSize="$3">
+          <Text color={brand.grafite} fontSize={16}>
             Pagamento ricevuto: il lavoro viene confermato appena Stripe ce lo comunica, di solito in pochi secondi.
           </Text>
         ) : null}
@@ -382,7 +382,7 @@ function LeMieRichiesteContent() {
                       onPress={() => updateStageTab(tab.key)}
                       accessibilityRole="button"
                     >
-                      <Text fontFamily="$body" fontSize={13.5} fontWeight="800" color={active ? "white" : brand.grafite}>
+                      <Text fontFamily="$body" fontSize={16} fontWeight="800" color={active ? "white" : brand.grafite}>
                         {tab.label}
                       </Text>
                     </XStack>
@@ -436,7 +436,7 @@ function LeMieRichiesteContent() {
                 accessibilityRole="button"
               >
                 <Icon name="sliders-horizontal" size={16} color={brand.grafite} />
-                <Text fontWeight="700" fontSize={14} color={brand.grafite}>
+                <Text fontWeight="700" fontSize={16} color={brand.grafite}>
                   Filtri{filtersActiveCount > 0 ? ` (${filtersActiveCount})` : ""}
                 </Text>
               </XStack>
@@ -466,7 +466,7 @@ function LeMieRichiesteContent() {
                       accessibilityRole="button"
                     >
                       {opt.icon ? <Icon name={opt.icon} size={14} strokeWidth={2} color={active ? "white" : brand.grafite} /> : null}
-                      <Text fontSize={13.5} fontWeight="700" color={active ? "white" : brand.grafite}>
+                      <Text fontSize={16} fontWeight="700" color={active ? "white" : brand.grafite}>
                         {opt.label}
                       </Text>
                     </XStack>
@@ -556,14 +556,14 @@ function LeMieRichiesteContent() {
                       }}
                       accessibilityRole="button"
                     >
-                      <Text fontSize={13} fontWeight="700" color={brand.grafite70} textDecorationLine="underline">
+                      <Text fontSize={16} fontWeight="700" color={brand.grafite70} textDecorationLine="underline">
                         Reimposta filtri
                       </Text>
                     </XStack>
                   ) : null}
 
                   <Button variant="primary" onPress={() => setShowFiltersModal(false)}>
-                    Mostra {filteredSortedRequests.length} {filteredSortedRequests.length === 1 ? "richiesta" : "richieste"}
+                    {`Mostra ${filteredSortedRequests.length} ${filteredSortedRequests.length === 1 ? "richiesta" : "richieste"}`}
                   </Button>
                 </YStack>
               </div>

@@ -25,7 +25,7 @@ function Block({ title, children }: { title: string; children: ReactNode }) {
 
 function P({ children }: { children: ReactNode }) {
   return (
-    <Text fontSize="$3" color={brand.grafite70} lineHeight={24}>
+    <Text fontSize={16} color={brand.grafite70} lineHeight={24}>
       {children}
     </Text>
   );
@@ -55,7 +55,7 @@ export function SicurezzaContent() {
             <YStack flexShrink={0}>
               <Icon name="shield-check" size={22} color={brand.cianografiaScuro} strokeWidth={1.75} />
             </YStack>
-            <Text fontSize="$3" color={brand.grafite} flex={1} lineHeight={24}>
+            <Text fontSize={16} color={brand.grafite} flex={1} lineHeight={24}>
               Attenzione a chi ti chiede di uscire dalla nostra chat. Qualsiasi scusa per spostarti su WhatsApp, Telegram o altre app (&quot;ti mando
               più foto&quot;, &quot;così facciamo prima&quot;, &quot;ti giro il preventivo lì&quot;) è un segnale d&apos;allarme. Nella chat resta una traccia di
               cosa vi siete detti, e se nasce un problema il nostro team può aiutarti.

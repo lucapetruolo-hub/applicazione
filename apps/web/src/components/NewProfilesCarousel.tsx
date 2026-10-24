@@ -20,7 +20,7 @@ const NEW_PROFILE_WINDOW_DAYS = 30;
 const MAX_STAGGER_MS = 480;
 const CARD_GAP = 16;
 
-const FALLBACK_ACCENT = { bg: "#F1F5F9", fg: "#334155" };
+const FALLBACK_ACCENT = { bg: "#E4E2DE", fg: "#45423D" };
 
 /**
  * "Nuovi profili su Professionisti" — elenco degli ultimi 21 professionisti
@@ -79,7 +79,7 @@ export function NewProfilesCarousel({
   const atEnd = progress.start + progress.size >= 0.999;
 
   return (
-    <Section eyebrow="Nuovi profili" title={`Appena arrivati su ${BRAND.name}`} maxWidth={1160}>
+    <Section title={`Appena arrivati su ${BRAND.name}`} maxWidth={1160}>
       <div className="npc-root">
         <div
           ref={trackRef}
@@ -303,13 +303,13 @@ function NewProfileCard({ pro, delayMs }: { pro: ProfessionalSearchResult; delay
         <div className="npc-band" style={{ backgroundColor: accent.bg }}>
           <span className="npc-chip">
             <CategoryIcon slug={pro.categorySlug} size={14} color={accent.fg} />
-            <Text fontSize={12} lineHeight={16} fontWeight="700" color={accent.fg} numberOfLines={1}>
+            <Text fontSize={13} lineHeight={16} fontWeight="700" color={accent.fg} numberOfLines={1}>
               {pro.categoryLabel}
             </Text>
           </span>
           {isNewProfile(pro.createdAt) ? (
             <span className="npc-new">
-              <Text fontSize={11} lineHeight={16} fontWeight="700" color={brand.calce}>
+              <Text fontSize={13} lineHeight={16} fontWeight="700" color={brand.calce}>
                 Nuovo
               </Text>
             </span>
@@ -320,31 +320,31 @@ function NewProfileCard({ pro, delayMs }: { pro: ProfessionalSearchResult; delay
         </div>
 
         <div className="npc-body">
-          <Text fontFamily="$heading" fontWeight="700" fontSize={17} color={brand.grafite} numberOfLines={1}>
+          <Text fontFamily="$heading" fontWeight="700" fontSize={18} color={brand.grafite} numberOfLines={1}>
             {pro.businessName}
           </Text>
-          <Text fontSize={13} color={brand.grafite70} numberOfLines={1}>
+          <Text fontSize={16} color={brand.grafite70} numberOfLines={1}>
             {pro.city} · iscritto {joinedAgo(pro.createdAt)}
           </Text>
           <XStack alignItems="center" justifyContent="center" gap="$2" flexWrap="wrap" minHeight={22} marginBottom="$3">
             {pro.rating !== null ? (
               <Rating value={pro.rating} size={13} />
             ) : (
-              <Text fontSize={13} color={brand.grafite70}>
+              <Text fontSize={16} color={brand.grafite70}>
                 Ancora nessuna recensione
               </Text>
             )}
             {pro.verified ? (
               <XStack alignItems="center" gap={3}>
                 <Icon name="badge-check" size={13} color={brand.verificato} strokeWidth={2} />
-                <Text fontSize={12} fontWeight="700" color={brand.verificato}>
+                <Text fontSize={13} fontWeight="700" color={brand.verificato}>
                   Verificato
                 </Text>
               </XStack>
             ) : null}
           </XStack>
           <span className="npc-cta">
-            <Text fontSize={14} fontWeight="700" color={brand.cianografiaScuro}>
+            <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
               Mostra profilo
             </Text>
           </span>

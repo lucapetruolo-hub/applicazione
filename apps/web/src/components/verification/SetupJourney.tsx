@@ -127,7 +127,7 @@ export function SetupJourneyView({ steps, title = "Completa il profilo" }: { ste
           <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
             {title}
           </Text>
-          <Text fontSize={13} fontWeight="700" color={brand.grafite70}>
+          <Text fontSize={16} fontWeight="700" color={brand.grafite70}>
             {done} di {steps.length} fatti
           </Text>
         </XStack>
@@ -149,12 +149,12 @@ export function SetupJourneyView({ steps, title = "Completa il profilo" }: { ste
                   </Text>
                   <span className="journey-sr">{STATE_LABEL[step.state]}</span>
                   {step.optional ? (
-                    <Text fontSize={12} fontWeight="700" color={brand.grafite70}>
+                    <Text fontSize={13} fontWeight="700" color={brand.grafite70}>
                       Facoltativo
                     </Text>
                   ) : null}
                 </XStack>
-                <Text fontSize={14} color={step.state === "current" && step.action?.label.startsWith("Rifai") ? brand.urgenza : brand.grafite70}>
+                <Text fontSize={16} color={step.state === "current" && step.action?.label.startsWith("Rifai") ? brand.urgenza : brand.grafite70}>
                   {step.text}
                 </Text>
                 {active && step.action ? (
@@ -181,7 +181,7 @@ export function JourneyProgress({ steps, here }: { steps: JourneyStep[]; here: J
   if (index < 0) return null;
   return (
     <nav aria-label="Percorso per completare il profilo">
-      <Text fontSize={13} fontWeight="700" color={brand.grafite70} marginBottom="$2">
+      <Text fontSize={16} fontWeight="700" color={brand.grafite70} marginBottom="$2">
         Passo {index + 1} di {steps.length}
       </Text>
       <ol className="journey-bar">

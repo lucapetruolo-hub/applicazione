@@ -124,14 +124,14 @@ function SentReviewsList({ reviews, error }: { reviews: SentReview[] | null; err
                 </Text>
               )}
             </XStack>
-            <Text fontSize="$2" color={brand.grafite70}>
+            <Text fontSize={13} color={brand.grafite70}>
               {formatDate(review.createdAt)}
             </Text>
           </XStack>
           {review.comment ? <Text color={brand.grafite70}>{review.comment}</Text> : null}
           <MediaRow urls={review.mediaUrls} />
           {review.hidden ? (
-            <Text fontSize="$2" color={brand.urgenza}>
+            <Text fontSize={13} color={brand.urgenza}>
               Nascosta dopo una segnalazione: non compare sul profilo del professionista.
             </Text>
           ) : null}

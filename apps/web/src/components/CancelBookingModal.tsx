@@ -5,9 +5,9 @@ import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 
 const textareaStyle = {
   padding: 10,
-  borderRadius: 4,
+  borderRadius: 10,
   border: `1px solid ${brand.bordoCampo}`,
-  fontSize: 14,
+  fontSize: 16,
   fontFamily: "inherit",
   color: brand.grafite,
   resize: "vertical" as const,
@@ -109,14 +109,14 @@ export function CancelBookingModal({
           <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
             {title}
           </Text>
-          <Text fontSize="$3" color={brand.grafite70}>
+          <Text fontSize={16} color={brand.grafite70}>
             {description}
           </Text>
         </YStack>
 
         {showNote ? (
           <YStack gap="$2">
-            <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
+            <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
               Nota (facoltativa)
             </Text>
             <textarea aria-label="Nota" value={note} onChange={(e) => setNote(e.target.value)} placeholder={notePlaceholder} rows={3} style={textareaStyle} />
@@ -124,7 +124,7 @@ export function CancelBookingModal({
         ) : null}
 
         {error ? (
-          <Text color={brand.urgenza} fontSize="$3">
+          <Text color={brand.urgenza} fontSize={16}>
             {error}
           </Text>
         ) : null}

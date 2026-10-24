@@ -63,7 +63,7 @@ export default function AdminHomePage() {
           Da fare
         </Text>
         {overview === null ? (
-          <YStack backgroundColor={brand.calce} borderRadius={16} overflow="hidden">
+          <YStack backgroundColor={brand.calce} borderRadius={20} overflow="hidden">
             <SkeletonSummaryRow />
           </YStack>
         ) : nothingToDo ? (

@@ -55,10 +55,10 @@ export function PayoutSummary() {
             backgroundColor={brand.calce}
           >
             <XStack gap="$2" alignItems="center">
-              <YStack width={24} height={24} borderRadius={12} backgroundColor={tile.bg} alignItems="center" justifyContent="center">
+              <YStack width={24} height={24} borderRadius={20} backgroundColor={tile.bg} alignItems="center" justifyContent="center">
                 <Icon name={tile.icon} size={13} strokeWidth={2.4} color={tile.color} />
               </YStack>
-              <Text fontSize={12} color={brand.grafite70}>
+              <Text fontSize={13} color={brand.grafite70}>
                 {tile.label}
               </Text>
             </XStack>
@@ -69,11 +69,11 @@ export function PayoutSummary() {
         ))}
       </XStack>
       {totals.hasFailed ? (
-        <Text fontSize={13} color={brand.urgenza} role="alert">
+        <Text fontSize={16} color={brand.urgenza} role="alert">
           Un bonifico non è arrivato alla tua banca: controlla il conto bancario su Stripe.
         </Text>
       ) : (
-        <Text fontSize={12} color={brand.grafite70}>
+        <Text fontSize={13} color={brand.grafite70}>
           Importi al netto di commissione, costo della carta e costo del bonifico.
         </Text>
       )}

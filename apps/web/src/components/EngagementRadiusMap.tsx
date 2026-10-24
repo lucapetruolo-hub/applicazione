@@ -30,7 +30,7 @@ export type EngagementRadiusMapProps = {
 export function EngagementRadiusMap({ latitude, longitude, engagementRadiusKm, urgentEngagementRadiusKm }: EngagementRadiusMapProps) {
   const center = { lat: latitude, lng: longitude };
   return (
-    <div style={{ height: 360, width: "100%", borderRadius: 4, overflow: "hidden" }}>
+    <div style={{ height: 360, width: "100%", borderRadius: 10, overflow: "hidden" }}>
       <GoogleMapGate
         staticMap={{ markers: [[latitude, longitude]], center: [latitude, longitude], zoom: 9, radiiKm: [engagementRadiusKm, urgentEngagementRadiusKm] }}
       >

@@ -28,7 +28,7 @@ export function Badge({ variant, children }: BadgeProps) {
   const { bg, fg } = VARIANT_STYLE[variant];
   return (
     <XStack paddingHorizontal="$3" paddingVertical={5} borderRadius={999} backgroundColor={bg} alignSelf="flex-start">
-      <Text fontFamily="$body" fontSize={12} fontWeight="700" color={fg}>
+      <Text fontFamily="$body" fontSize={13} fontWeight="700" color={fg}>
         {children}
       </Text>
     </XStack>

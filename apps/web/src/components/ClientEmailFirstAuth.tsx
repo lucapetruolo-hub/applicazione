@@ -23,7 +23,7 @@ const linkStyle = { textDecoration: "underline", color: brand.cianografiaScuro }
  */
 function LegalNotice({ action }: { action: string }) {
   return (
-    <Text fontSize="$2" lineHeight={18} color={brand.grafite70} textAlign="center">
+    <Text fontSize={13} lineHeight={18} color={brand.grafite70} textAlign="center">
       {action} accetti i nostri{" "}
       <Link href="/termini" target="_blank" style={linkStyle}>
         Termini di Servizio
@@ -40,10 +40,10 @@ function LegalNotice({ action }: { action: string }) {
 function EmailPill({ email, onEdit }: { email: string; onEdit: () => void }) {
   return (
     <XStack alignItems="center" justifyContent="space-between" gap="$3" backgroundColor={brand.gesso} borderRadius={999} paddingHorizontal="$4" paddingVertical="$2">
-      <Text fontSize="$3" color={brand.grafite} numberOfLines={1} flexShrink={1}>
+      <Text fontSize={16} color={brand.grafite} numberOfLines={1} flexShrink={1}>
         {email}
       </Text>
-      <Text fontSize="$3" fontWeight="600" color={brand.cianografiaScuro} cursor="pointer" onPress={onEdit} accessibilityRole="button">
+      <Text fontSize={16} fontWeight="600" color={brand.cianografiaScuro} cursor="pointer" onPress={onEdit} accessibilityRole="button">
         Modifica
       </Text>
     </XStack>
@@ -196,7 +196,7 @@ export function ClientEmailFirstAuth({
 
   const errorText =
     error && !errorField ? (
-      <Text role="alert" color={brand.urgenza} fontSize="$3">
+      <Text role="alert" color={brand.urgenza} fontSize={16}>
         {error}
       </Text>
     ) : null;
@@ -206,14 +206,14 @@ export function ClientEmailFirstAuth({
     return (
       <YStack gap="$4">
         {renderHeader(step)}
-        <Text fontSize="$3" color={brand.grafite70}>
+        <Text fontSize={16} color={brand.grafite70}>
           {intro}
         </Text>
         <GoogleSignInButton onCredential={handleGoogle} disabled={isSubmitting} />
         {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ? (
           <XStack alignItems="center" gap="$3">
             <YStack flex={1} height={1} backgroundColor={brand.filetto} />
-            <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
+            <Text fontFamily="$body" fontWeight="700" fontSize={13} color={brand.grafite70}>
               oppure
             </Text>
             <YStack flex={1} height={1} backgroundColor={brand.filetto} />
@@ -245,7 +245,7 @@ export function ClientEmailFirstAuth({
         </form>
         <LegalNotice action="Continuando" />
         {firstTimeNote ? (
-          <Text fontSize="$2" lineHeight={18} color={brand.grafite70} textAlign="center">
+          <Text fontSize={13} lineHeight={18} color={brand.grafite70} textAlign="center">
             {firstTimeNote}
           </Text>
         ) : null}
@@ -258,7 +258,7 @@ export function ClientEmailFirstAuth({
       <YStack gap="$4">
         {renderHeader(step, editEmail)}
         <EmailPill email={email} onEdit={editEmail} />
-        <Text fontSize="$3" color={brand.grafite70}>
+        <Text fontSize={16} color={brand.grafite70}>
           Questo account è collegato a Google: accedi con lo stesso indirizzo.
         </Text>
         <GoogleSignInButton onCredential={handleGoogle} disabled={isSubmitting} />
@@ -272,7 +272,7 @@ export function ClientEmailFirstAuth({
     <YStack gap="$4">
       {renderHeader(step, editEmail)}
       <EmailPill email={email} onEdit={editEmail} />
-      <Text fontSize="$3" color={brand.grafite70}>
+      <Text fontSize={16} color={brand.grafite70}>
         {isNew
           ? "Scegli una password per il nuovo account."
           : "Hai già un account: inserisci la password."}
@@ -327,7 +327,7 @@ export function ClientEmailFirstAuth({
         <LegalNotice action="Creando l'account" />
       ) : (
         <Link href="/password-dimenticata" target="_blank" style={{ textDecoration: "none", alignSelf: "center" }}>
-          <Text fontSize="$3" fontWeight="600" color={brand.cianografiaScuro} textAlign="center">
+          <Text fontSize={16} fontWeight="600" color={brand.cianografiaScuro} textAlign="center">
             Password dimenticata?
           </Text>
         </Link>
