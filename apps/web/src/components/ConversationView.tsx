@@ -1049,13 +1049,13 @@ export function ConversationView({
 
       {cameraStream ? (
         // Cattura webcam da computer, stesso pattern overlay DOM grezzo già
-        // in uso altrove nel prodotto (`role="dialog"`, chiusura su
-        // Escape/click sul backdrop) — sopra a questo pannello (z-index
+        // in uso altrove nel prodotto (sfondo `role="presentation"`,
+        // `role="dialog"` sulla finestra, chiusura su Escape/click sullo
+        // sfondo) — sopra a questo pannello (z-index
         // maggiore), unico modo di restare visibile sopra un contenuto già
         // aperto (popup o pannello inline).
         <div
-          role="dialog"
-          aria-modal="true"
+          role="presentation"
           onClick={(e) => {
             // Sempre `stopPropagation`: in modalità popup (TimelineModal)
             // questo overlay vive annidato dentro il backdrop del popup
@@ -1077,7 +1077,7 @@ export function ConversationView({
             padding: 16,
           }}
         >
-          <YStack backgroundColor={brand.calce} borderRadius="$4" padding="$4" gap="$3" maxWidth={480} width="100%">
+          <YStack role="dialog" aria-modal aria-label="Scatta una foto" backgroundColor={brand.calce} borderRadius="$4" padding="$4" gap="$3" maxWidth={480} width="100%">
             <Text fontSize="$4" fontWeight="700" color={brand.grafite}>
               Scatta una foto
             </Text>

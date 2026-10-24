@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { isVideoUrl } from "@/lib/media";
+import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 /**
  * Overlay a schermo intero per aprire in grande le foto (o i video, vedi
@@ -46,7 +47,6 @@ export function PhotoLightbox({
 
   return (
     <div
-      onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label="Foto ingrandita"
@@ -63,6 +63,8 @@ export function PhotoLightbox({
         zIndex: 1000,
       }}
     >
+      {/* Sfondo: un clic fuori dalla foto chiude (con la tastiera Esc). */}
+      <div role="presentation" onClick={closeOnBackdrop(onClose)} style={{ position: "absolute", inset: 0 }} />
       <button
         type="button"
         aria-label="Chiudi"
@@ -145,8 +147,7 @@ export function PhotoLightbox({
           controls
           autoPlay
           playsInline
-          onClick={(e) => e.stopPropagation()}
-          style={{ maxWidth: "90vw", maxHeight: "85vh", borderRadius: 8 }}
+          style={{ position: "relative", maxWidth: "90vw", maxHeight: "85vh", borderRadius: 8 }}
         />
       ) : (
         // `<img>` grezzo deliberato, non `next/image`: la foto può avere
@@ -159,8 +160,7 @@ export function PhotoLightbox({
         <img
           src={photos[index]}
           alt=""
-          onClick={(e) => e.stopPropagation()}
-          style={{ maxWidth: "90vw", maxHeight: "85vh", objectFit: "contain", borderRadius: 8 }}
+          style={{ position: "relative", maxWidth: "90vw", maxHeight: "85vh", objectFit: "contain", borderRadius: 8 }}
         />
       )}
     </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { LegalConsentCheckbox } from "./LegalConsentCheckbox";
+import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 /**
  * Popup mostrato subito dopo aver ottenuto le credenziali da Google —
@@ -56,10 +57,8 @@ export function GoogleConsentModal({
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Accetta Privacy Policy e Termini di Servizio"
-      onClick={onCancel}
+      role="presentation"
+      onClick={closeOnBackdrop(onCancel)}
       style={{
         position: "fixed",
         inset: 0,
@@ -71,7 +70,7 @@ export function GoogleConsentModal({
         zIndex: 400,
       }}
     >
-      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 420 }}>
+      <div role="dialog" aria-modal="true" aria-label="Accetta Privacy Policy e Termini di Servizio" style={{ width: "100%", maxWidth: 420 }}>
         <YStack width="100%" backgroundColor={brand.calce} borderRadius="$5" padding="$5" gap="$4">
           <YStack gap="$1">
             <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografiaScuro}>

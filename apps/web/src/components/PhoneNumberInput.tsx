@@ -218,6 +218,8 @@ export function PhoneNumberInput({ value, onChange, style, placeholder = "Numero
                     index += 1;
                     const i = index;
                     return (
+                      // Da tastiera si sceglie dal campo di ricerca (frecce e Invio, aria-activedescendant).
+                      // eslint-disable-next-line jsx-a11y/click-events-have-key-events
                       <li
                         key={`${group.label}-${country.iso}`}
                         id={`${listboxId}-${i}`}

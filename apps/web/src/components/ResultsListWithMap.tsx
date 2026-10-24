@@ -12,6 +12,7 @@ import { useMediaQuery } from "@/lib/useMediaQuery";
 import { useSavedProfessionals } from "@/lib/useSavedProfessionals";
 import { navigateWithTransition } from "@/lib/viewTransition";
 import type { MapBounds } from "./ResultsMap";
+import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 // La mappa (Google Maps) vive solo nel browser: mai importata lato server (CLAUDE.md
 // §5.4 vale per l'SEO delle pagine, non per un widget lato client come
@@ -281,8 +282,8 @@ export function ResultsListWithMap({
     // era uno schermo stretto. 700px isola davvero solo i telefoni.
     <div className="results-layout">
       {showFilters ? (
-        <div className="filters-backdrop" onClick={() => setShowFilters(false)} role="dialog" aria-modal="true" aria-label="Filtri">
-          <div className="filters-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="filters-backdrop" role="presentation" onClick={closeOnBackdrop(() => setShowFilters(false))}>
+          <div className="filters-modal" role="dialog" aria-modal="true" aria-label="Filtri">
             <div className="filters-modal-header">
               <span className="filters-modal-title">Filtri</span>
               <button type="button" className="filters-modal-close" onClick={() => setShowFilters(false)} aria-label="Chiudi">
@@ -478,13 +479,11 @@ export function ResultsListWithMap({
 
       {showSortInfo ? (
         <div
+          role="presentation"
+          onClick={closeOnBackdrop(() => setShowSortInfo(false))}
           className="filters-backdrop"
-          onClick={() => setShowSortInfo(false)}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Come sono ordinati i risultati"
         >
-          <div className="sort-info-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="sort-info-modal" role="dialog" aria-modal="true" aria-label="Come sono ordinati i risultati">
             <div className="filters-modal-header">
               <span className="filters-modal-title">Ordinato per pertinenza</span>
               <button type="button" className="filters-modal-close" onClick={() => setShowSortInfo(false)} aria-label="Chiudi">

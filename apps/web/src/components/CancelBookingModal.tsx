@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 const textareaStyle = {
   padding: 10,
@@ -74,10 +75,8 @@ export function CancelBookingModal({
 
   return (
     <div
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
+      role="presentation"
+      onClick={closeOnBackdrop(onClose)}
       style={{
         position: "fixed",
         top: 0,
@@ -94,7 +93,9 @@ export function CancelBookingModal({
       }}
     >
       <YStack
-        onPress={(e: { stopPropagation: () => void }) => e.stopPropagation()}
+        role="dialog"
+        aria-modal
+        aria-label={title}
         width="100%"
         maxWidth={480}
         backgroundColor={brand.calce}

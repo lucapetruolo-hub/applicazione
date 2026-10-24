@@ -8,6 +8,7 @@ import { Surface, Text, YStack, brand, radiusDocLg } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { EmailCodeForm } from "@/components/EmailCodeForm";
+import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 export default function ConfermaEmailPage() {
   return (
@@ -121,10 +122,8 @@ function ConfermaEmail() {
       </Surface>
       {popupOpen && confirmedEmail ? (
         <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Email verificata con successo"
-          onClick={() => setPopupOpen(false)}
+          role="presentation"
+          onClick={closeOnBackdrop(() => setPopupOpen(false))}
           style={{
             position: "fixed",
             inset: 0,
@@ -136,7 +135,7 @@ function ConfermaEmail() {
             zIndex: 400,
           }}
         >
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380 }}>
+          <div role="dialog" aria-modal="true" aria-label="Email verificata con successo" style={{ width: "100%", maxWidth: 380 }}>
             <YStack width="100%" backgroundColor={brand.calce} borderRadius="$5" padding="$5" gap="$3" alignItems="center">
               <YStack
                 width={56}

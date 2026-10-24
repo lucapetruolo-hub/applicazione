@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { Avatar, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 /**
  * Scheda profilo del cliente, aperta cliccando il suo nome in una richiesta
@@ -47,10 +48,8 @@ export function ClientProfileModal({
 
   return (
     <div
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Scheda cliente"
+      role="presentation"
+      onClick={closeOnBackdrop(onClose)}
       style={{
         position: "fixed",
         top: 0,
@@ -66,7 +65,9 @@ export function ClientProfileModal({
       }}
     >
       <YStack
-        onPress={(e: { stopPropagation: () => void }) => e.stopPropagation()}
+        role="dialog"
+        aria-modal
+        aria-label="Scheda cliente"
         width="100%"
         maxWidth={420}
         maxHeight="85vh"

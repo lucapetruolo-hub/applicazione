@@ -5,6 +5,7 @@ import type { ExternalJob, ExternalJobInput } from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
+import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 const inputStyle = { padding: 10, borderRadius: 4, border: `1px solid ${brand.bordoCampo}`, fontSize: 14, fontFamily: "inherit", color: brand.grafite };
 
@@ -163,10 +164,8 @@ export function ExternalJobModal({
 
   return (
     <div
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label={job ? "Modifica lavoro esterno" : "Aggiungi lavoro esterno"}
+      role="presentation"
+      onClick={closeOnBackdrop(onClose)}
       style={{
         position: "fixed",
         top: 0,
@@ -183,7 +182,9 @@ export function ExternalJobModal({
       }}
     >
       <YStack
-        onPress={(e: { stopPropagation: () => void }) => e.stopPropagation()}
+        role="dialog"
+        aria-modal
+        aria-label={job ? "Modifica lavoro esterno" : "Aggiungi lavoro esterno"}
         width="100%"
         maxWidth={480}
         marginTop="5vh"

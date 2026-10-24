@@ -19,6 +19,7 @@ import { highlightDeepLinkTarget } from "@/lib/deepLinkHighlight";
 import { classifyClientRequestStage, type RequestStage } from "@/lib/requestStage";
 import { GuidedRequestCard } from "./_components/GuidedRequestCard";
 import { clientRequestSearchText, filterInputStyle } from "./_components/clientRequestHelpers";
+import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 // Stesso intervallo/motivo già documentato in apps/web/src/app/dashboard/page.tsx.
 const UNREAD_BADGE_POLL_MS = 15000;
@@ -480,10 +481,8 @@ function LeMieRichiesteContent() {
 
             {showFiltersModal ? (
               <div
-                onClick={() => setShowFiltersModal(false)}
-                role="dialog"
-                aria-modal="true"
-                aria-label="Filtri"
+                role="presentation"
+                onClick={closeOnBackdrop(() => setShowFiltersModal(false))}
                 style={{
                   position: "fixed",
                   top: 0,
@@ -500,7 +499,9 @@ function LeMieRichiesteContent() {
                 }}
               >
                 <YStack
-                  onPress={(e: { stopPropagation: () => void }) => e.stopPropagation()}
+                  role="dialog"
+                  aria-modal
+                  aria-label="Filtri"
                   width="100%"
                   maxWidth={420}
                   backgroundColor={brand.calce}

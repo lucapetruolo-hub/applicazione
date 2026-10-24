@@ -27,28 +27,23 @@ export default tseslint.config(
     plugins: { "react-hooks": reactHooks, "@next/next": nextPlugin, "jsx-a11y": jsxA11y },
     settings: { next: { rootDir: "apps/web" } },
     rules: {
+      // Anche le regole del React Compiler della versione 7 (setState dentro
+      // un effetto, valori impuri durante il render...) sono errori, come
+      // quelle degli hooks di sempre: le eccezioni sono spiegate nel codice
+      // accanto a un eslint-disable (docs/CHANGELOG.md §303).
       ...reactHooks.configs.recommended.rules,
-      // Le regole nuove della versione 7 (quelle del React Compiler: setState
-      // dentro un effetto, funzioni impure durante il render...) per ora
-      // solo avvisi, da sistemare un po' alla volta come quelle di
-      // accessibilità qui sotto (docs/CHANGELOG.md §301). Restano errori le
-      // regole degli hooks di sempre.
-      ...Object.fromEntries(
-        Object.keys(reactHooks.configs.recommended.rules)
-          .filter((rule) => rule !== "react-hooks/rules-of-hooks")
-          .map((rule) => [rule, "warn"]),
-      ),
       ...nextPlugin.configs.recommended.rules,
       ...nextPlugin.configs["core-web-vitals"].rules,
       // Accessibilità (campi senza etichetta, immagini senza testo
-      // alternativo, elementi cliccabili non raggiungibili da tastiera...).
+      // alternativo, elementi cliccabili non raggiungibili da tastiera...),
+      // tutte errori dal docs/CHANGELOG.md §303.
       ...jsxA11y.flatConfigs.recommended.rules,
-      // Per ora solo avvisi: oltre 70 elementi cliccabili (div/span con
-      // onClick) da rendere usabili da tastiera uno per uno, senza bloccare
-      // la CI nel frattempo (docs/CHANGELOG.md §205).
-      "jsx-a11y/click-events-have-key-events": "warn",
-      "jsx-a11y/no-noninteractive-element-interactions": "warn",
-      "jsx-a11y/no-static-element-interactions": "warn",
+      // Una miniatura <img> con un testo alternativo può fare da pulsante
+      // (ARIA in HTML lo consente): apre la foto grande (MediaPreview).
+      "jsx-a11y/no-noninteractive-element-to-interactive-role": [
+        "error",
+        { ...jsxA11y.flatConfigs.recommended.rules["jsx-a11y/no-noninteractive-element-to-interactive-role"][1], img: ["button"] },
+      ],
       // ItalianDateInput contiene un <input type="date"> (docs/CHANGELOG.md §291).
       "jsx-a11y/label-has-associated-control": ["error", { controlComponents: ["ItalianDateInput"], depth: 3 }],
     },

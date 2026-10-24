@@ -35,6 +35,7 @@ import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput"
 import { CategoryMultiPicker } from "@/components/CategoryMultiPicker";
 import { ProfessionalDetailContent } from "@/app/professionista/[id]/ProfessionalDetailContent";
 import { journeyCurrent, setupJourney } from "@/components/verification/SetupJourney";
+import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 const MAX_PORTFOLIO_PHOTOS = 10;
 
@@ -1459,13 +1460,11 @@ export default function DashboardProfiloPage() {
         // docs/CHANGELOG.md §136): stesso overlay del popup disponibilità
         // qui sotto. Click fuori dal popup = si resta sulla pagina.
         <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Modifiche non salvate"
-          onClick={() => {
+          role="presentation"
+          onClick={closeOnBackdrop(() => {
             cancelLeave();
             setConfirmDiscard(false);
-          }}
+          })}
           style={{
             position: "fixed",
             inset: 0,
@@ -1477,7 +1476,7 @@ export default function DashboardProfiloPage() {
             zIndex: 300,
           }}
         >
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 420 }}>
+          <div role="dialog" aria-modal="true" aria-label="Modifiche non salvate" style={{ width: "100%", maxWidth: 420 }}>
             <YStack width="100%" backgroundColor={brand.calce} borderRadius="$5" padding="$5" gap="$4">
               <YStack gap="$2">
                 <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
@@ -1518,10 +1517,8 @@ export default function DashboardProfiloPage() {
         // chiedere se impostare già ora giorni/fasce orarie di
         // disponibilità, portando poi ad /dashboard/agenda.
         <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Imposta la tua disponibilità"
-          onClick={() => router.push("/dashboard")}
+          role="presentation"
+          onClick={closeOnBackdrop(() => router.push("/dashboard"))}
           style={{
             position: "fixed",
             inset: 0,
@@ -1533,7 +1530,7 @@ export default function DashboardProfiloPage() {
             zIndex: 300,
           }}
         >
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 420 }}>
+          <div role="dialog" aria-modal="true" aria-label="Imposta la tua disponibilità" style={{ width: "100%", maxWidth: 420 }}>
             <YStack width="100%" backgroundColor={brand.calce} borderRadius="$5" padding="$5" gap="$4">
               <YStack gap="$2">
                 <XStack alignItems="center" gap="$2">

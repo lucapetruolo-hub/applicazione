@@ -6,6 +6,7 @@ import type { AdminRoleName, AdminSearchResult } from "@professionisti/api-clien
 import { adminCan, CONTENT_REPORT_TARGET_LABEL } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { ADMIN_NAV_ITEMS } from "./AdminNav";
+import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 type Item = { key: string; title: string; subtitle?: string; href: string; group: string };
 
@@ -99,8 +100,8 @@ export function AdminCommandPalette({
   }
 
   return (
-    <div className="admin-palette-backdrop" onMouseDown={onClose}>
-      <div className="admin-palette" role="dialog" aria-modal="true" aria-label="Cerca nel pannello" onMouseDown={(e) => e.stopPropagation()}>
+    <div className="admin-palette-backdrop" role="presentation" onMouseDown={closeOnBackdrop(onClose)}>
+      <div className="admin-palette" role="dialog" aria-modal="true" aria-label="Cerca nel pannello">
         <input aria-label="Cerca nel pannello"
           ref={inputRef}
           // La palette si apre apposta per scrivere: il fuoco va subito al campo.

@@ -6,6 +6,7 @@ import { BAD_WORK_REPORT_DAYS, JOB_ISSUE_LABEL, NO_SHOW_REPORT_DAYS, type JobIss
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { MediaPreview } from "@/components/MediaPreview";
 import { UploadingDots } from "@/components/UploadingDots";
+import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 const MAX_PHOTOS = 5;
 
@@ -108,10 +109,8 @@ export function ReportIssueModal({
 
   return (
     <div
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Segnala un problema"
+      role="presentation"
+      onClick={closeOnBackdrop(onClose)}
       style={{
         position: "fixed",
         inset: 0,
@@ -125,7 +124,9 @@ export function ReportIssueModal({
       }}
     >
       <YStack
-        onPress={(e: { stopPropagation: () => void }) => e.stopPropagation()}
+        role="dialog"
+        aria-modal
+        aria-label="Segnala un problema"
         width="100%"
         maxWidth={520}
         backgroundColor={brand.calce}

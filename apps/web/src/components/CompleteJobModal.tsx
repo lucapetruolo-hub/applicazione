@@ -16,6 +16,7 @@ import { MediaPreview } from "@/components/MediaPreview";
 import { UploadingDots } from "@/components/UploadingDots";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
+import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 const MAX_COMPLETION_PHOTOS = 5;
 const MAX_NOTE_LENGTH = 1000;
@@ -219,10 +220,8 @@ export function CompleteJobModal({
 
   return (
     <div
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Segnala lavoro terminato"
+      role="presentation"
+      onClick={closeOnBackdrop(onClose)}
       style={{
         position: "fixed",
         top: 0,
@@ -244,7 +243,9 @@ export function CompleteJobModal({
       }}
     >
       <YStack
-        onPress={(e: { stopPropagation: () => void }) => e.stopPropagation()}
+        role="dialog"
+        aria-modal
+        aria-label="Segnala lavoro terminato"
         width="100%"
         maxWidth={520}
         backgroundColor={brand.calce}

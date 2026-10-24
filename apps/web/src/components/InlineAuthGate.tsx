@@ -2,6 +2,7 @@
 
 import { Icon, Text, YStack, brand } from "@professionisti/ui";
 import { ClientEmailFirstAuth } from "@/components/ClientEmailFirstAuth";
+import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 const HEADERS = {
   email: { eyebrow: "Un ultimo passo", title: "Continua con l'email" },
@@ -30,10 +31,8 @@ const HEADERS = {
 export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: () => void; onClose: () => void }) {
   return (
     <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Accedi o crea un account per inviare la richiesta"
-      onClick={onClose}
+      role="presentation"
+      onClick={closeOnBackdrop(onClose)}
       style={{
         position: "fixed",
         inset: 0,
@@ -46,7 +45,7 @@ export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: 
         overflowY: "auto",
       }}
     >
-      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 440 }}>
+      <div role="dialog" aria-modal="true" aria-label="Accedi o crea un account per inviare la richiesta" style={{ width: "100%", maxWidth: 440 }}>
         <YStack width="100%" backgroundColor={brand.calce} borderRadius="$5" padding="$5">
           <ClientEmailFirstAuth
             intro="Richieste e preventivi saranno collegati a questa email: li ritrovi nel tuo account e ricevi gli aggiornamenti. Quello che hai scritto resta com'è."

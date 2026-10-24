@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { MediaPreview } from "@/components/MediaPreview";
 import { UploadingDots } from "@/components/UploadingDots";
+import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 const MAX_COMPLETION_PHOTOS = 5;
 
@@ -75,10 +76,8 @@ export function ClientCompleteModal({
 
   return (
     <div
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Lavoro terminato"
+      role="presentation"
+      onClick={closeOnBackdrop(onClose)}
       style={{
         position: "fixed",
         top: 0,
@@ -95,7 +94,9 @@ export function ClientCompleteModal({
       }}
     >
       <YStack
-        onPress={(e: { stopPropagation: () => void }) => e.stopPropagation()}
+        role="dialog"
+        aria-modal
+        aria-label="Lavoro terminato"
         width="100%"
         maxWidth={480}
         backgroundColor={brand.calce}

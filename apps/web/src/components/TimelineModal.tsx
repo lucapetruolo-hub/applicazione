@@ -2,6 +2,7 @@
 
 import { YStack, brand } from "@professionisti/ui";
 import { ConversationView } from "@/components/ConversationView";
+import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 /**
  * Cronologia completa cliente↔professionista di una richiesta guidata
@@ -41,10 +42,8 @@ export function TimelineModal({
 }) {
   return (
     <div
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Cronologia della richiesta"
+      role="presentation"
+      onClick={closeOnBackdrop(onClose)}
       style={{
         position: "fixed",
         top: 0,
@@ -60,7 +59,9 @@ export function TimelineModal({
       }}
     >
       <YStack
-        onPress={(e: { stopPropagation: () => void }) => e.stopPropagation()}
+        role="dialog"
+        aria-modal
+        aria-label="Cronologia della richiesta"
         width="100%"
         maxWidth={520}
         maxHeight="85vh"

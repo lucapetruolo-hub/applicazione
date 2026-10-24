@@ -17,6 +17,7 @@ import { CategoryCarousel } from "@/components/CategoryCarousel";
 import { RestoreAllArchivedBar, RestoredNotice } from "@/components/RequestCardPersonalActions";
 import { RequestCard } from "./_components/RequestCard";
 import { filterInputStyle, leadSearchText } from "./_components/requestHelpers";
+import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 // Stesso intervallo/motivo già documentato in apps/web/src/app/dashboard/page.tsx.
 const UNREAD_BADGE_POLL_MS = 15000;
@@ -501,10 +502,8 @@ function RichiesteContent() {
 
         {showFiltersModal ? (
           <div
-            onClick={() => setShowFiltersModal(false)}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Filtri"
+            role="presentation"
+            onClick={closeOnBackdrop(() => setShowFiltersModal(false))}
             style={{
               position: "fixed",
               top: 0,
@@ -521,7 +520,9 @@ function RichiesteContent() {
             }}
           >
             <YStack
-              onPress={(e: { stopPropagation: () => void }) => e.stopPropagation()}
+              role="dialog"
+              aria-modal
+              aria-label="Filtri"
               width="100%"
               maxWidth={420}
               backgroundColor={brand.calce}
