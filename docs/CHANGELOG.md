@@ -20396,3 +20396,13 @@ Richiesta dell'utente, dopo la §323: "dai la possibilità di scegliere il mese 
 **Schermata**: in fondo "Vale per" + "Salva la settimana" (sul telefono uno sotto l'altro); dopo il salvataggio "Salvata per novembre 2026" oppure "Salvata, vale per tutti i mesi", e l'avviso in cima dice dove è stata salvata.
 
 **Verifica**: nuova prova nel browser (`settimana-tipo.spec.ts`: salvata per un mese, tutte le fasce nuove cadono in quel mese, domenica compresa), prove dell'agenda e dell'accessibilità verdi, lint e typecheck di web e API puliti.
+
+## 325. "eccezione" sui giorni con orari diversi dalla settimana tipo
+
+Richiesta dell'utente, tra le migliorie proposte dopo la §324 ("eccezione" con un tasto "Torna agli orari soliti"): "mostra solo "eccezione"". Quindi solo la scritta, nessun tasto.
+
+**Quando compare**: in "Giorno per giorno", se la settimana tipo di tutti i mesi è attiva, su ogni giorno con fasce che non vengono da lei: cambiato a mano, salvato per un mese solo (§324) o che aveva già fasce sue quando la settimana è stata salvata. L'API manda `fromWeekTemplate` per ogni fascia (`GET /professionals/me/availability`); dopo un salvataggio la pagina applica la stessa regola del server (`weekTemplateDatesKept`) senza rileggere.
+
+**Come si vede**: nella vista Giorno una pastiglia grigia "eccezione" sopra le fasce. Nelle viste Settimana e Mese da computer la stessa parola; sul telefono (sotto i 1000 px) le colonne sono troppo strette per la parola, quindi un cerchietto vuoto accanto ai pallini delle fasce e sotto il calendario la legenda "○ eccezione".
+
+**Verifica**: nuova prova nel browser (`settimana-tipo.spec.ts`: mercoledì cambiato a mano mostra "eccezione", giovedì della settimana tipo no), 68 prove nel browser in locale, foto da telefono e computer delle tre viste, lint e typecheck puliti.

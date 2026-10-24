@@ -806,6 +806,18 @@ export function AgendaStyles() {
         background: #fff;
         min-width: 0;
       }
+      /* "eccezione": parola dove c'è spazio, cerchietto con legenda sul telefono (docs/CHANGELOG.md §325). */
+      .ag-ecc-narrow {
+        display: none !important;
+      }
+      @media (max-width: 1000px) {
+        .ag-ecc-wide {
+          display: none !important;
+        }
+        .ag-ecc-narrow {
+          display: flex !important;
+        }
+      }
       /* Settimana tipo in tre passi (docs/CHANGELOG.md §323). */
       .ag-wt {
         padding: 20px;

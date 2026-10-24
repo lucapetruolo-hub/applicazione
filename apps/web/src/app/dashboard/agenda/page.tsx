@@ -12,6 +12,7 @@ import {
   jobOccurrences,
   navigateUrl,
   wallClockNow,
+  weekTemplateDatesKept,
   type AgendaWeekTemplate,
   type DayPart,
   type ZoneDemand,
@@ -61,7 +62,7 @@ import {
   weekdayShortLabel,
 } from "@/lib/calendarDates";
 import { AgendaEventsList } from "./_components/AgendaEventsList";
-import { SelectionCheckbox, SlotChip, SlotEditorModal } from "./_components/SlotEditorModal";
+import { ExceptionLegend, ExceptionTag, SelectionCheckbox, SlotChip, SlotEditorModal } from "./_components/SlotEditorModal";
 import { AGENDA_BOOKING_STATUS_LABEL, AGENDA_EXTERNAL_JOB_STATUS_LABEL, AgendaListItem, BOOKING_STATUS_COLOR, EXTERNAL_JOB_STATUS_COLOR, PENDING_QUOTE_COLOR, SlotDraft, WEEKDAY_FULL_LABELS, formatAgendaTimeRange, slotsOverlap } from "./_components/agendaHelpers";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 
@@ -231,6 +232,9 @@ function DashboardAgendaContent() {
   // Dopo "Salva la settimana" il server cambia le fasce dei prossimi giorni: si rileggono.
   const [slotsReload, setSlotsReload] = useState(0);
   const [savingTemplate, setSavingTemplate] = useState(false);
+  // Giorni che hanno ancora gli orari della settimana tipo: gli altri giorni
+  // con fasce sono un'"eccezione" in "Giorno per giorno" (docs/CHANGELOG.md §325).
+  const [templateDates, setTemplateDates] = useState<Set<string>>(() => new Set());
   const [templateNotice, setTemplateNotice] = useState<string | null>(null);
   const [zoneDemand, setZoneDemand] = useState<ZoneDemand | null>(null);
   const [nowTick, setNowTick] = useState(() => Date.now());
@@ -296,6 +300,8 @@ function DashboardAgendaContent() {
             hasUpcomingBooking: s.hasUpcomingBooking,
           })),
         );
+        const notFromTemplate = new Set(existing.slots.filter((s) => s.date && !s.fromWeekTemplate).map((s) => s.date as string));
+        setTemplateDates(new Set(existing.slots.filter((s) => s.date && s.fromWeekTemplate && !notFromTemplate.has(s.date)).map((s) => s.date as string)));
         setExceptionDates(Array.isArray(existing.exceptionDates) ? existing.exceptionDates : []);
       })
       .catch((err) => {
@@ -915,6 +921,24 @@ function DashboardAgendaContent() {
           date: slot.date ?? undefined,
         })),
       );
+      // Stessa regola del server: un giorno cambiato a mano non è più della settimana tipo.
+      const asTemplateSlot = (slot: SlotDraft) => ({
+        date: slot.date,
+        slot: {
+          start: slot.start,
+          end: slot.end,
+          allowsHome: slot.allowsHome,
+          allowsOnline: slot.allowsOnline,
+          homeMax: slot.allowsHome ? (slot.homeMax ?? 1) : null,
+          onlineMax: slot.allowsOnline ? (slot.onlineMax ?? 1) : null,
+        },
+      });
+      setTemplateDates(
+        weekTemplateDatesKept(
+          savedSlotsRef.current.map((slot) => ({ ...asTemplateSlot(slot), fromWeekTemplate: slot.date ? templateDates.has(slot.date) : false })),
+          nextSlots.map(asTemplateSlot),
+        ),
+      );
       savedSlotsRef.current = nextSlots;
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -933,6 +957,11 @@ function DashboardAgendaContent() {
     }
   }
 
+  /** Giorno con orari diversi dalla settimana tipo, cambiato a mano o salvato per un mese solo (§325). */
+  function isDayException(dateStr: string): boolean {
+    return weekTemplateActive && !templateDates.has(dateStr) && slots.some((slot) => slot.date === dateStr);
+  }
+
   function renderDayColumn(date: Date) {
     const dayOfWeek = date.getUTCDay();
     const dateStr = toIsoDate(date);
@@ -949,6 +978,7 @@ function DashboardAgendaContent() {
     const editingSlot = editIndexForThisDay !== null ? slots[editIndexForThisDay] : undefined;
     const isEditingThisDay = editingKey === `new-${dateStr}` || (editingSlot !== undefined && slotAppliesOnDateStr(editingSlot, dateStr));
     const conflicts = isEditingThisDay ? conflictingSlotIndexes(dayOfWeek, editIndexForThisDay) : new Set<number>();
+    const isTemplateException = isDayException(dateStr);
 
     // Modalità selezione (tasto "Modifica", richiesta esplicita
     // dell'utente): niente aggiunta/chiusura giorno, solo selezione delle
@@ -1035,6 +1065,16 @@ function DashboardAgendaContent() {
           </XStack>
         ) : (
           <>
+            {isTemplateException ? (
+              view === "day" ? (
+                <ExceptionTag />
+              ) : (
+                <>
+                  <ExceptionTag className="ag-ecc-wide" />
+                  <ExceptionTag compact className="ag-ecc-narrow" />
+                </>
+              )
+            ) : null}
             {daySlots.map(({ slot, index }) => (
               <SlotChip
                 key={index}
@@ -1119,6 +1159,12 @@ function DashboardAgendaContent() {
     const daySlots = daySlotsWithIndex.map(({ s }) => s);
     return (
       <XStack gap={3} flexWrap="wrap" alignItems="center">
+        {isDayException(dateStr) ? (
+          <>
+            <ExceptionTag className="ag-ecc-wide" />
+            <ExceptionTag compact className="ag-ecc-narrow" />
+          </>
+        ) : null}
         {daySlots.slice(0, 4).map((s, i) => (
           <YStack key={i} width={6} height={6} borderRadius={3} backgroundColor={brand.cianografia} />
         ))}
@@ -1928,6 +1974,7 @@ function DashboardAgendaContent() {
                 renderDayColumn={renderDayColumn}
                 renderMonthCell={renderMonthCell}
               />
+              {view !== "day" && !selectionMode && weekTemplateActive && slots.some((slot) => slot.date && isDayException(slot.date)) ? <ExceptionLegend className="ag-ecc-narrow" /> : null}
               {error && !editingKey ? (
                 <div className="ag-banner error" role="alert" style={{ marginTop: 12, marginBottom: 0 }}>
                   {error}

@@ -64,6 +64,12 @@ export type AvailabilitySlotItem = {
    * basta per lo scopo (evitare di cancellare una fascia già impegnata).
    */
   hasUpcomingBooking: boolean;
+  /**
+   * True se la fascia viene dalla settimana tipo di tutti i mesi. Un giorno
+   * con fasce che non lo sono è un'"eccezione" in "Giorno per giorno"
+   * (docs/CHANGELOG.md §325).
+   */
+  fromWeekTemplate: boolean;
 };
 
 /**
