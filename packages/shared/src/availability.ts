@@ -67,7 +67,7 @@ export type AvailabilitySlotItem = {
   /**
    * True se la fascia viene dalla settimana tipo di tutti i mesi. Un giorno
    * con fasce che non lo sono è un'"eccezione" in "Giorno per giorno"
-   * (docs/CHANGELOG.md §325).
+   * (docs/CHANGELOG.md §328).
    */
   fromWeekTemplate: boolean;
 };

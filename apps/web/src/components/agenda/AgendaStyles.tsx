@@ -806,7 +806,7 @@ export function AgendaStyles() {
         background: #fff;
         min-width: 0;
       }
-      /* "eccezione": parola dove c'è spazio, cerchietto con legenda sul telefono (docs/CHANGELOG.md §325). */
+      /* "eccezione": parola dove c'è spazio, cerchietto con legenda sul telefono (docs/CHANGELOG.md §328). */
       .ag-ecc-narrow {
         display: none !important;
       }

@@ -91,7 +91,7 @@ export class AgendaService {
 
   /**
    * Settimana tipo per un mese solo (richiesta dell'utente, docs/CHANGELOG.md
-   * §324): riempie i giorni di quel mese da oggi in poi con le stesse regole,
+   * §327): riempie i giorni di quel mese da oggi in poi con le stesse regole,
    * ma le fasce diventano giorni a sé (non cambiano con la settimana di tutti
    * i mesi). La settimana di tutti i mesi resta com'era; se non è mai stata
    * salvata, si ricorda questa per riaprire l'editor.

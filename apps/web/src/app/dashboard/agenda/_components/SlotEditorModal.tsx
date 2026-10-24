@@ -445,7 +445,7 @@ export function SlotEditorModal({
 
 /**
  * "eccezione" sui giorni di "Giorno per giorno" che hanno orari diversi
- * dalla settimana tipo (richiesta dell'utente, docs/CHANGELOG.md §325): solo
+ * dalla settimana tipo (richiesta dell'utente, docs/CHANGELOG.md §328): solo
  * la scritta, nessun tasto. Dove la colonna è troppo stretta per la parola
  * (Settimana e Mese sul telefono) un cerchietto vuoto, spiegato dalla
  * legenda sotto il calendario (`compact`); `className` sceglie quale dei due

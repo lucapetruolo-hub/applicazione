@@ -206,7 +206,7 @@ function WeekPreview({ template }: { template: AgendaWeekTemplate }) {
  * Settimana tipo di "Orari di lavoro" in tre passi (proposta A scelta
  * dall'utente, docs/CHANGELOG.md §323): che giorni, in che orari, quale
  * giorno ha orari diversi. Salvata per "Tutti i mesi" vale per tutte le
- * settimane, oppure per un mese solo (§324): il server
+ * settimane, oppure per un mese solo (§327): il server
  * riempie i prossimi 63 giorni e ogni notte quelli nuovi; i giorni cambiati
  * a mano in "Giorno per giorno" restano come sono.
  */
@@ -227,7 +227,7 @@ export function WeekTemplateEditor({
   const [draft, setDraft] = useState<Draft>(() => draftFromTemplate(template));
   const [openDay, setOpenDay] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
-  // "" = tutti i mesi; altrimenti un mese solo (richiesta dell'utente, docs/CHANGELOG.md §324).
+  // "" = tutti i mesi; altrimenti un mese solo (richiesta dell'utente, docs/CHANGELOG.md §327).
   const [scope, setScope] = useState("");
   const [savedMonth, setSavedMonth] = useState<string | null>(null);
   // Una settimana cambiata da fuori (es. "Aggiungi alla settimana tipo" da

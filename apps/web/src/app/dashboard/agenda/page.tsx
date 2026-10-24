@@ -233,7 +233,7 @@ function DashboardAgendaContent() {
   const [slotsReload, setSlotsReload] = useState(0);
   const [savingTemplate, setSavingTemplate] = useState(false);
   // Giorni che hanno ancora gli orari della settimana tipo: gli altri giorni
-  // con fasce sono un'"eccezione" in "Giorno per giorno" (docs/CHANGELOG.md §325).
+  // con fasce sono un'"eccezione" in "Giorno per giorno" (docs/CHANGELOG.md §328).
   const [templateDates, setTemplateDates] = useState<Set<string>>(() => new Set());
   const [templateNotice, setTemplateNotice] = useState<string | null>(null);
   const [zoneDemand, setZoneDemand] = useState<ZoneDemand | null>(null);
@@ -957,7 +957,7 @@ function DashboardAgendaContent() {
     }
   }
 
-  /** Giorno con orari diversi dalla settimana tipo, cambiato a mano o salvato per un mese solo (§325). */
+  /** Giorno con orari diversi dalla settimana tipo, cambiato a mano o salvato per un mese solo (§328). */
   function isDayException(dateStr: string): boolean {
     return weekTemplateActive && !templateDates.has(dateStr) && slots.some((slot) => slot.date === dateStr);
   }
@@ -1543,7 +1543,7 @@ function DashboardAgendaContent() {
 
   // Settimana tipo (docs/CHANGELOG.md §323): "Salva la settimana" la porta
   // subito nei prossimi giorni e da lì vale per tutte le settimane.
-  // Mesi che si possono scegliere per salvare la settimana solo lì (§324).
+  // Mesi che si possono scegliere per salvare la settimana solo lì (§327).
   const templateMonths = [0, 1, 2, 3, 4, 5].map((offset) => {
     const month = addMonthsUtc(startOfMonthUtc(today), offset);
     return { key: toIsoDate(month).slice(0, 7), label: `${monthLabel(month).toLowerCase()} ${month.getUTCFullYear()}` };

@@ -99,7 +99,7 @@ test("salvata per un mese solo, riempie solo quel mese", async ({ page, request 
   expect(added.some((s) => weekday(s.date!) === 0)).toBe(true);
 });
 
-test("un giorno cambiato a mano mostra \"eccezione\" in Giorno per giorno (§325)", async ({ page, request }, testInfo) => {
+test("un giorno cambiato a mano mostra \"eccezione\" in Giorno per giorno (§328)", async ({ page, request }, testInfo) => {
   test.skip(testInfo.project.name !== "telefono-italia", "Cambia i dati: una volta sola.");
   type FullSlot = Slot & { dayOfWeek: number; allowsHome: boolean; allowsOnline: boolean; homeMaxBookings: number | null; onlineMaxBookings: number | null; fromWeekTemplate: boolean };
   const headers = { Authorization: `Bearer ${e2eData().token}`, "Content-Type": "application/json" };

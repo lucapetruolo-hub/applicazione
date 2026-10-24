@@ -20367,6 +20367,18 @@ Richiesta dell'utente: "effettua migliorie" (dopo l'elenco delle migliorie ancor
 
 **Verifica**: Lighthouse locale sulle due pagine dell'agenda con sessione vera (CLS 0,001); registrazione degli spostamenti con Playwright su telefono lento senza più lo spostamento del piè di pagina.
 
+## 322. CodeQL rosso sul ramo principale dopo ogni unione, CI non più doppia, meno deploy Vercel
+
+**Richiesta dell'utente (24/10/2026)**: "github mi da tanti run failed, controlla".
+
+**Causa**: sulle PR CodeQL guarda solo le righe cambiate, sul ramo principale tutto il codice. Così avvisi già presenti prima del §312 non bloccavano nessuna PR ma rendevano rosso "Controlli di sicurezza" a ogni unione (un'email per volta). I tre `js/xss-through-dom` li ha già tolti il §318 (`localPreviewUrl`); restavano due `js/http-to-file-access` in `e2e/fixtures/global-setup.ts`, dove la prova dell'agenda salva su file il token preso dall'API di prova. È codice di prova che non arriva agli utenti: `e2e` escluso da CodeQL come già `apps/*/scripts` (Semgrep guarda solo `apps` e `packages`).
+
+**Email doppie**: la CI (`ci.yml`) partiva al push su ogni ramo e di nuovo con la PR, quindi ogni errore su una PR arrivava due volte. Ora al push parte solo sul ramo principale; sulle PR resta com'era (decisione dell'utente). Un ramo senza PR non viene più provato finché la PR non si apre.
+
+**Limite dei deploy di Vercel**: il 24/10 Vercel ha bloccato i deploy per 24 ore ("api-deployments-free-per-day", più di 100). Le anteprime erano già saltate da `scripts/vercel-ignore-build.sh` (§131), ma ogni push su un ramo creava comunque un deploy annullato che conta nel limite. Ora `apps/web/vercel.json` (`git.deploymentEnabled`) non crea proprio deploy per i rami dei thread (`claude/project-thread-*`) e di Dependabot (`dependabot/**`): il ramo principale si comporta come prima (decisione dell'utente).
+
+**Verifica**: CodeQL 2.27.3 in locale con la stessa configurazione della CI e la suite `security-extended`: 0 avvisi bloccanti.
+
 ## 323. Settimana tipo in tre passi, che vale per tutte le settimane
 
 Richiesta dell'utente (con la foto della vecchia "Settimana tipo"): "questa parte è difficilmente comprensibile e utilizzabile, come si potrebbe migliorare". Proposte tre strade con anteprime da telefono e computer; l'utente ha scelto la A, "Prima i giorni, poi gli orari".
@@ -20385,7 +20397,57 @@ Nuova migrazione `20261024140000_settimana_tipo_continua` (due colonne, nessun d
 
 **Verifica**: 6 test sulle regole (`week-template-sync.test.ts`), 575 test API; nuove prove nel browser (`settimana-tipo.spec.ts`: salvataggio che riempie otto sabati senza scegliere un mese, venerdì diverso, domenica vuota, pagina riaperta uguale; orari sbagliati con avviso e salvataggio bloccato), 64 prove nel browser in locale, accessibilità senza problemi gravi.
 
-## 324. Settimana tipo: scegliere il mese in cui salvarla
+## 324. Richiesta di preventivo: l'indirizzo non cambia il modulo mentre si scrive, tessere delle categorie già in ordine
+
+**Richiesta dell'utente**: "quando si clicca a domicilio e si fa avanti quando si va ad inserire l'indirizzo dopo la terza lettera inserita cambia il modulo all'improvviso facendoti inserire altri campi che prima non c'erano"; "quando si clicca su richiedi preventivo non si deve vedere il refresh della riordinazione delle categoria e neanche in fase di registrazione".
+
+**Causa dell'indirizzo**: alla terza lettera parte la prima richiesta di suggerimenti. Sul server di produzione `GET /address/suggestions` risponde 503 (anche `/maps/static`: chiave Google mancante, tetto `GOOGLE_PUBLIC_DAILY_LIMIT` o chiave rifiutata da Google, da guardare nei log di Render). Il modulo passava allora ai campi separati (via, civico, CAP, provincia, più la città in cima alla pagina), perdeva quanto scritto e toglieva il cursore.
+
+**Decisione**:
+- Nuova rotta `GET /address/status` (`{ available }`), che non chiama Google: chiave presente, tetto di oggi non raggiunto (`DailyBudget.hasRoom`), nessun errore di Google negli ultimi 5 minuti. `useChosenAddress` la chiede all'apertura del modulo (risposta riusata per un minuto): se i suggerimenti non funzionano, i campi separati ci sono già dall'inizio.
+- Se Google cade proprio mentre si scrive: quanto scritto passa in "Via o piazza", il cursore resta lì e compare la riga "I suggerimenti non sono disponibili: completa l'indirizzo nei campi qui sotto."
+- A domicilio la città sta tra i campi dell'indirizzo (Via e civico, Città, CAP e provincia), con la stessa misura e lo stesso bordo degli altri campi, non più in cima al modulo.
+
+**Tessere delle categorie** (`CategoryTiles`, richiesta di preventivo e registrazione): prima comparivano nell'ordine del catalogo e si riordinavano appena arrivava l'ordine dei più cercati. Ora compaiono una volta sola già in ordine: finché l'ordine non arriva (al massimo 1,2 secondi, poi l'ordine del catalogo) si vedono tessere vuote della stessa misura, poi le vere con una dissolvenza breve (niente con "riduci movimento"). L'ordine resta in memoria per la visita e `SiteHeader` lo chiede a pagina ferma, così di solito le tessere compaiono subito.
+
+**Avviso su Sentry** (richiesta dell'utente: "effettua miglioria"): quando Google rifiuta la chiave o non risponde, quando manca `GOOGLE_MAPS_API_KEY` o quando si raggiunge il tetto giornaliero, per i suggerimenti di indirizzo e per la mappa fissa parte un avviso su Sentry (`opsAlert` in `apps/api/src/common/ops-alert.ts`), lo stesso al massimo una volta l'ora per restare nella quota gratuita. Prima finiva solo nel log di Render e lo si scopriva da un cliente.
+
+**Lettore di schermo, controllo quotidiano e prove nel browser** (richiesta dell'utente: "risolvi il problema con voiceover ed effettua solo le migliorie/controlli che ritieni necessarie", dopo la versione più profonda in `analisi/preventivo-modulo-versione-profonda.md`):
+- Campo indirizzo: `aria-activedescendant` sull'opzione evidenziata con le frecce (prima VoiceOver non diceva quale indirizzo si stava per scegliere), annuncio "N suggerimenti: usa le frecce per sceglierne uno." o "Nessun indirizzo trovato.", attribuzione Google fuori dall'elenco delle opzioni e leggibile (12 px, contrasto 4,5:1; axe la segnalava a 3,16:1).
+- `uptime.yml`: una volta al giorno (07:17 UTC) chiede un suggerimento vero; se Google rifiuta la chiave il workflow fallisce e arriva l'email di GitHub.
+- `e2e/tests/richiesta-preventivo.spec.ts`: suggerimenti spenti all'apertura, Google che cade mentre si scrive, lettore di schermo (con axe) e tessere che non si riordinano, con i servizi di Google simulati.
+
+**Verifica**: prove `address-suggestions.test.ts`, `daily-budget.test.ts`, `ops-alert.test.ts` ed `e2e/tests/richiesta-preventivo.spec.ts` (8 prove, telefono e computer); sul sito compilato con l'API simulata, da telefono (390 px) e computer (1280 px): tessere vuote → ordine finale, senza passare dall'ordine del catalogo; con i suggerimenti spenti i campi separati ci sono già al passo "Dove"; con Google che cade dopo "Via Rom" il testo resta in "Via o piazza" con il cursore.
+
+## 326. zod 4
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Controllo sicurezza completo", PR #105): osv-scanner segnala GHSA-mrhx-c7xc-m3w5 su zod 3.25.76 (consumo di memoria su collezioni molto grandi), corretta solo nella serie 4. Luca: "effettua tutte le migliorie da 1 a 4 nella modalita che ritieni". Condizione: validazioni e messaggi d'errore mostrati agli utenti uguali a prima.
+
+**Decisione presa**
+- `zod` 3.23 → 4.6.7 in `packages/shared` e `apps/api` (il sito lo usa tramite `packages/shared`).
+- zod 4 ha riscritto i messaggi predefiniti ("Required" diventa "Invalid input: expected string, received undefined"), e il sito li mostra dove lo schema non ha un messaggio suo (`ApiError` prende il primo di `fieldErrors`, i moduli il primo `issue`). `packages/shared/src/zod.ts` rimette con `z.config({ customError })` le frasi di zod 3; i messaggi scritti negli schemi vengono sempre prima. `index.ts` lo carica per primo; la configurazione è globale e vale anche per i tre schemi di `apps/api`.
+- Cambi di sintassi: `errorMap` → `message` (`z.literal`, `z.enum`), `required_error` → `error` che risponde solo al campo mancante, `z.ZodIssueCode.custom` → `"custom"`, nella pagina `/dashboard/fiscale` `issue.type` → `issue.origin` e il percorso di un errore ora può contenere simboli.
+- ID con `z.guid()` al posto di `z.string().uuid()`: con zod 4 `.uuid()` rifiuta gli UUID senza una versione valida (es. `00000000-0000-0000-0000-000000000001`), zod 3 li accettava.
+
+**Differenze rimaste, solo con dati che il sito non manda**
+- Numeri oltre 9 milioni di miliardi in un campo intero: zod 4 li rifiuta subito (prima passavano e il database andava in errore).
+- Un elenco della lunghezza sbagliata con dentro anche valori sbagliati (es. un'agenda settimanale con meno di 7 giorni): il primo errore è quello del valore, non della lunghezza.
+- Date e ore senza secondi (`2026-10-24T10:00Z`): zod 4 le rifiuta. Il sito manda sempre `toISOString()`, con i secondi.
+
+**Verifica**
+- Confronto automatico zod 3 / zod 4 su tutti gli 88 schemi di `packages/shared`: 88.000 dati di prova a caso, stessi esiti, stessi dati in uscita e stesso messaggio mostrato all'utente (primo `issue` e primo `fieldErrors`), tolte le tre differenze qui sopra. Email, indirizzi web e date/ore provati a parte su un elenco di casi limite: uguali tranne le ore senza secondi.
+- Typecheck, lint senza errori, 557 test (3 nuovi in `apps/api/src/common/zod-messages.test.ts`), build. API avviata: errori di validazione con gli stessi messaggi di prima.
+- `confronto-pagine` prima/dopo su 132 foto: 125 identiche, nelle altre la riga "adesso" dell'agenda e pochi pixel di antialiasing.
+- Peso del sito: il controllo di velocità dell'agenda nella CI (Lighthouse, TBT 626 ms oltre il limite di 600) ha mostrato che zod 4 portava nel browser ~420 KB in più, con tutte le lingue dei messaggi e JSON Schema. Due cause: `apps/web` prendeva shared da `dist/` (CommonJS, che webpack non sa sfoltire) e gli schemi importavano `z` ripassato da `src/zod.ts` (così webpack considerava usato tutto zod). Ora `apps/web/next.config.mjs` punta `@professionisti/shared` ai sorgenti, gli schemi importano `z` direttamente da "zod" e `src/zod.ts` è solo configurazione, importato da ogni file con schemi. Non bastava: il controllo restava appena sopra (658 ms; sul ramo principale oscilla già tra 535 e 597), perché zod 4 costruisce gli schemi più lentamente e ogni pagina li costruiva tutti. `packages/shared/package.json` ora dichiara `sideEffects` (solo `zod.ts` ha effetti), così ogni pagina carica solo i moduli di shared che usa: l'agenda passa da 2,3 MB a 1,2 MB di JavaScript.
+- Resta zod 3.25.76 solo dentro `@expo/cli` (strumento di sviluppo dell'app, non va né sul sito né nell'API).
+
+**Migliorie approvate da Luca** ("effettua le 2 migliorie")
+- `pnpm --filter @professionisti/shared confronto-zod [--prima <commit>] [--zod-prima <versione>] [--prove <n>] [--tutti]` (`packages/shared/scripts/confronto-zod.mjs`): il confronto automatico usato qui, da rifare a ogni aggiornamento di zod. Prende gli schemi di un commit con la sua versione di zod (scaricata da npm) e quelli attuali, li prova con gli stessi dati a caso e segnala esiti, dati o messaggi diversi (codice d'uscita 1). Legge la forma degli schemi sia di zod 3 sia di zod 4. Contro il ramo principale prima di questa PR trova solo la differenza dell'agenda settimanale descritta sopra; contro sé stesso nessuna.
+- zod 3 di `@expo/cli` tra le eccezioni di osv-scanner, fatto nella PR #105 (`osv-scanner.toml`, solo per la versione 3.25.76).
+- Controllo automatico `.github/workflows/zod.yml` (approvato da Luca, "effettua miglioria"): sulle PR che toccano `pnpm-lock.yaml` o i `package.json` di shared e API lancia `confronto-zod --solo-se-cambia` contro il commit di base; se zod resta alla stessa versione non fa nulla, altrimenti si ferma su ogni differenza. La versione di partenza è quella del `pnpm-lock.yaml` del commit di base. Le differenze già spiegate nel registro stanno in `ACCEPTED` nello script (oggi solo quella dell'agenda settimanale).
+- Prova automatica (approvata da Luca, "effettua miglioria"): in `apps/api/src/common/zod-messages.test.ts` ogni file di `packages/shared/src` che importa zod deve avere anche `import "./zod"`; senza, il sito caricherebbe quel file senza i messaggi di zod 3 e li mostrerebbe in silenzio in inglese di zod 4.
+
+## 327. Settimana tipo: scegliere il mese in cui salvarla
 
 Richiesta dell'utente, dopo la §323: "dai la possibilità di scegliere il mese in cui salvarlo".
 
@@ -20397,11 +20459,11 @@ Richiesta dell'utente, dopo la §323: "dai la possibilità di scegliere il mese 
 
 **Verifica**: nuova prova nel browser (`settimana-tipo.spec.ts`: salvata per un mese, tutte le fasce nuove cadono in quel mese, domenica compresa), prove dell'agenda e dell'accessibilità verdi, lint e typecheck di web e API puliti.
 
-## 325. "eccezione" sui giorni con orari diversi dalla settimana tipo
+## 328. "eccezione" sui giorni con orari diversi dalla settimana tipo
 
-Richiesta dell'utente, tra le migliorie proposte dopo la §324 ("eccezione" con un tasto "Torna agli orari soliti"): "mostra solo "eccezione"". Quindi solo la scritta, nessun tasto.
+Richiesta dell'utente, tra le migliorie proposte dopo la §327 ("eccezione" con un tasto "Torna agli orari soliti"): "mostra solo "eccezione"". Quindi solo la scritta, nessun tasto.
 
-**Quando compare**: in "Giorno per giorno", se la settimana tipo di tutti i mesi è attiva, su ogni giorno con fasce che non vengono da lei: cambiato a mano, salvato per un mese solo (§324) o che aveva già fasce sue quando la settimana è stata salvata. L'API manda `fromWeekTemplate` per ogni fascia (`GET /professionals/me/availability`); dopo un salvataggio la pagina applica la stessa regola del server (`weekTemplateDatesKept`) senza rileggere.
+**Quando compare**: in "Giorno per giorno", se la settimana tipo di tutti i mesi è attiva, su ogni giorno con fasce che non vengono da lei: cambiato a mano, salvato per un mese solo (§327) o che aveva già fasce sue quando la settimana è stata salvata. L'API manda `fromWeekTemplate` per ogni fascia (`GET /professionals/me/availability`); dopo un salvataggio la pagina applica la stessa regola del server (`weekTemplateDatesKept`) senza rileggere.
 
 **Come si vede**: nella vista Giorno una pastiglia grigia "eccezione" sopra le fasce. Nelle viste Settimana e Mese da computer la stessa parola; sul telefono (sotto i 1000 px) le colonne sono troppo strette per la parola, quindi un cerchietto vuoto accanto ai pallini delle fasce e sotto il calendario la legenda "○ eccezione".
 
