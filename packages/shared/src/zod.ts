@@ -10,8 +10,11 @@ import { z } from "zod";
  *
  * La configurazione è globale (una sola copia di zod nel monorepo): vale anche
  * per gli schemi scritti in `apps/api`, che caricano sempre questo pacchetto.
- * Gli schemi del pacchetto importano `z` da qui, così la configurazione è
- * attiva prima di qualunque validazione.
+ * `index.ts` importa questo file per primo, così la configurazione è attiva
+ * prima di qualunque validazione. Gli schemi importano `z` direttamente da
+ * "zod", non da qui: ripassato da questo file, webpack non riesce più a
+ * togliere dal sito le parti di zod che non usa (tutte le lingue dei
+ * messaggi, JSON Schema, ~420 KB nel browser).
  *
  * Per gli ID si usa `z.guid()`, non `.uuid()`: zod 4 con `.uuid()` accetta
  * solo UUID con una versione valida, zod 3 qualunque stringa nel formato.
@@ -136,5 +139,3 @@ export function zod3Message(issue: Issue): string | undefined {
 }
 
 z.config({ customError: zod3Message });
-
-export { z };

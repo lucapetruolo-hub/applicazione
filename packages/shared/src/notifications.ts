@@ -1,4 +1,4 @@
-import { z } from "./zod";
+import { z } from "zod";
 
 /**
  * Preferenze di notifica per argomento e canale (docs/CHANGELOG.md §152,

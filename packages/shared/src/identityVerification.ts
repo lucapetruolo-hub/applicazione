@@ -1,4 +1,4 @@
-import { z } from "./zod";
+import { z } from "zod";
 
 /**
  * Verifica fiscale e d'identità del professionista (docs/CHANGELOG.md §253,

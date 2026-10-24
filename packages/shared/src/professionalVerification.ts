@@ -1,4 +1,4 @@
-import { z } from "./zod";
+import { z } from "zod";
 
 /**
  * Verifica manuale dei professionisti (docs/CHANGELOG.md §200, checklist

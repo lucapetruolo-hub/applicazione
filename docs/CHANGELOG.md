@@ -20232,7 +20232,7 @@ La mappa con una chiave vera si vede solo sul sito pubblicato: dopo l'unione va 
 
 **Decisione presa**
 - `zod` 3.23 → 4.6.7 in `packages/shared` e `apps/api` (il sito lo usa tramite `packages/shared`).
-- zod 4 ha riscritto i messaggi predefiniti ("Required" diventa "Invalid input: expected string, received undefined"), e il sito li mostra dove lo schema non ha un messaggio suo (`ApiError` prende il primo di `fieldErrors`, i moduli il primo `issue`). `packages/shared/src/zod.ts` rimette con `z.config({ customError })` le frasi di zod 3; i messaggi scritti negli schemi vengono sempre prima. Gli schemi del pacchetto importano `z` da lì; la configurazione è globale e vale anche per i tre schemi di `apps/api`.
+- zod 4 ha riscritto i messaggi predefiniti ("Required" diventa "Invalid input: expected string, received undefined"), e il sito li mostra dove lo schema non ha un messaggio suo (`ApiError` prende il primo di `fieldErrors`, i moduli il primo `issue`). `packages/shared/src/zod.ts` rimette con `z.config({ customError })` le frasi di zod 3; i messaggi scritti negli schemi vengono sempre prima. `index.ts` lo carica per primo; la configurazione è globale e vale anche per i tre schemi di `apps/api`.
 - Cambi di sintassi: `errorMap` → `message` (`z.literal`, `z.enum`), `required_error` → `error` che risponde solo al campo mancante, `z.ZodIssueCode.custom` → `"custom"`, nella pagina `/dashboard/fiscale` `issue.type` → `issue.origin` e il percorso di un errore ora può contenere simboli.
 - ID con `z.guid()` al posto di `z.string().uuid()`: con zod 4 `.uuid()` rifiuta gli UUID senza una versione valida (es. `00000000-0000-0000-0000-000000000001`), zod 3 li accettava.
 
@@ -20245,6 +20245,7 @@ La mappa con una chiave vera si vede solo sul sito pubblicato: dopo l'unione va 
 - Confronto automatico zod 3 / zod 4 su tutti gli 88 schemi di `packages/shared`: 88.000 dati di prova a caso, stessi esiti, stessi dati in uscita e stesso messaggio mostrato all'utente (primo `issue` e primo `fieldErrors`), tolte le tre differenze qui sopra. Email, indirizzi web e date/ore provati a parte su un elenco di casi limite: uguali tranne le ore senza secondi.
 - Typecheck, lint senza errori, 557 test (3 nuovi in `apps/api/src/common/zod-messages.test.ts`), build. API avviata: errori di validazione con gli stessi messaggi di prima.
 - `confronto-pagine` prima/dopo su 132 foto: 125 identiche, nelle altre la riga "adesso" dell'agenda e pochi pixel di antialiasing.
+- Peso del sito: il controllo di velocità dell'agenda nella CI (Lighthouse, TBT 626 ms oltre il limite di 600) ha mostrato che zod 4 portava nel browser ~420 KB in più, con tutte le lingue dei messaggi e JSON Schema. Due cause: `apps/web` prendeva shared da `dist/` (CommonJS, che webpack non sa sfoltire) e gli schemi importavano `z` ripassato da `src/zod.ts` (così webpack considerava usato tutto zod). Ora `apps/web/next.config.mjs` punta `@professionisti/shared` ai sorgenti, gli schemi importano `z` direttamente da "zod" e `src/zod.ts` è solo configurazione, caricato per primo da `index.ts`. JavaScript del sito: 4,08 MB contro 4,11 MB del ramo principale con zod 3.
 - Resta zod 3.25.76 solo dentro `@expo/cli` (strumento di sviluppo dell'app, non va né sul sito né nell'API).
 
 **Migliorie approvate da Luca** ("effettua le 2 migliorie")

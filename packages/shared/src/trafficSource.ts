@@ -1,4 +1,4 @@
-import { z } from "./zod";
+import { z } from "zod";
 
 /**
  * Da dove arriva chi manda una richiesta di preventivo (docs/CHANGELOG.md

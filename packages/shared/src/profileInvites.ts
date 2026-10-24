@@ -1,4 +1,4 @@
-import { z } from "./zod";
+import { z } from "zod";
 import { phoneNumberSchema, professionalCategorySlugsSchema } from "./schemas";
 import { newPasswordSchema } from "./password";
 

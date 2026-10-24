@@ -1,4 +1,4 @@
-import { z } from "./zod";
+import { z } from "zod";
 
 /**
  * Ruoli admin separati (docs/CHANGELOG.md §145): ogni area del pannello

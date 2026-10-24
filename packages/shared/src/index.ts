@@ -1,3 +1,6 @@
+// Per primo: i messaggi d'errore di zod 3 per tutti gli schemi (src/zod.ts).
+import "./zod";
+
 export * from "./availability";
 export * from "./categories";
 export * from "./cities";

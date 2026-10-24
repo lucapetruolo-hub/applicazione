@@ -1,4 +1,4 @@
-import { z } from "./zod";
+import { z } from "zod";
 import { trafficSourceSchema } from "./trafficSource";
 import { PROFESSIONAL_CATEGORIES } from "./categories";
 import { isPlausiblePhoneNumber, normalizePhoneNumber } from "./phoneCountries";

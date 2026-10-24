@@ -1,4 +1,4 @@
-import { z } from "./zod";
+import { z } from "zod";
 
 /**
  * Regole della password nuova (docs/CHANGELOG.md §289, richiesta dell'utente

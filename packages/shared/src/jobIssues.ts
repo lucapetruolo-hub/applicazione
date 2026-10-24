@@ -1,4 +1,4 @@
-import { z } from "./zod";
+import { z } from "zod";
 
 /**
  * Segnalazioni di un problema sul lavoro da parte del cliente (decisione
