@@ -36,6 +36,7 @@ import type {
   ProfessionalAvailableSlot,
   ProfessionalBooking,
   AgendaWeekTemplate,
+  AgendaWeekTemplateState,
   CalendarFeedStatus,
   DayRoute,
   WeatherDayAlert,
@@ -401,22 +402,14 @@ export type AdminOverview = {
 
 export type ModerationActionValue = "WARN" | "REQUEST_CORRECTION" | "HIDE_CONTENT" | "SUSPEND_PROFILE" | "SUSPEND_USER";
 
-/** Pagina /segnalazioni dell'utente (docs/CHANGELOG.md §144). */
+/** Pagina /segnalazioni: decisioni sui propri contenuti, aperta dall'email (docs/CHANGELOG.md §144, §319). */
 export type MyContentReports = {
-  submitted: {
-    id: string;
-    targetType: AdminContentReport["targetType"];
-    reason: string;
-    status: "OPEN" | "RESOLVED" | "DISMISSED";
-    createdAt: string;
-    resolvedAt: string | null;
-    resolutionNote: string | null;
-  }[];
   received: {
     id: string;
     targetType: AdminContentReport["targetType"];
-    reason: string;
     action: ModerationActionValue | null;
+    /** Codice di `MODERATION_GROUNDS`: legge o punto dei Termini violato (DSA art. 17 c. 3 lett. d-e). */
+    ground: string | null;
     resolvedAt: string | null;
     resolutionNote: string | null;
     revertedAt: string | null;
@@ -463,6 +456,11 @@ export type AdminContentReport = {
   linkedProfessionalProfileId: string | null;
   reason: string;
   details: string | null;
+  /** Chi segnala dice che il contenuto è illegale (DSA art. 16, docs/CHANGELOG.md §319). */
+  claimsIllegal: boolean;
+  goodFaithAt: string | null;
+  /** Codice di `MODERATION_GROUNDS` scelto alla decisione. */
+  ground: string | null;
   /** Foto/video allegati alla segnalazione (solo "Qualcosa è andato male" del professionista, §197). */
   photoUrls: string[];
   status: "OPEN" | "RESOLVED" | "DISMISSED";
@@ -577,7 +575,7 @@ export type AdminHiddenLead = {
 
 export type AdminContactMessage = {
   id: string;
-  role: "CLIENT" | "PROFESSIONAL" | "OTHER";
+  role: "CLIENT" | "PROFESSIONAL" | "OTHER" | "REPORT_ILLEGAL";
   email: string;
   content: string;
   resolved: boolean;
@@ -1496,9 +1494,9 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
       }),
 
     // Strumenti della nuova agenda (docs/CHANGELOG.md §288).
-    agendaWeekTemplate: (token: string) => request<AgendaWeekTemplate>("/agenda/week-template", { headers: { Authorization: `Bearer ${token}` } }),
+    agendaWeekTemplate: (token: string) => request<AgendaWeekTemplateState>("/agenda/week-template", { headers: { Authorization: `Bearer ${token}` } }),
     saveAgendaWeekTemplate: (token: string, template: AgendaWeekTemplate) =>
-      request<AgendaWeekTemplate>("/agenda/week-template", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(template) }),
+      request<AgendaWeekTemplateState>("/agenda/week-template", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(template) }),
     agendaWeather: (token: string) => request<WeatherDayAlert[]>("/agenda/weather", { headers: { Authorization: `Bearer ${token}` } }),
     agendaZoneDemand: (token: string) => request<ZoneDemand>("/agenda/zone-demand", { headers: { Authorization: `Bearer ${token}` } }),
     agendaDayRoute: (token: string, date: string) =>
@@ -1680,6 +1678,8 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
         headers: { Authorization: `Bearer ${token}` },
       }),
     /** Suggerimenti di indirizzo (Italia) chiesti a Google dal nostro server (docs/CHANGELOG.md §264). */
+    /** Se i suggerimenti di indirizzo funzionano, senza chiamare Google (docs/CHANGELOG.md §324). */
+    addressStatus: () => request<{ available: boolean }>("/address/status", { cache: "no-store" }),
     addressSuggestions: (params: { q: string; session: string; latitude?: number; longitude?: number }) => {
       const query = new URLSearchParams({ q: params.q, session: params.session });
       if (params.latitude !== undefined && params.longitude !== undefined) {

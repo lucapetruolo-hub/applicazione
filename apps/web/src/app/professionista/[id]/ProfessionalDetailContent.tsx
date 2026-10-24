@@ -991,9 +991,9 @@ export function ProfessionalDetailContent({
           targetType={reportTarget.targetType}
           targetLabel={reportTarget.label}
           onClose={() => setReportTarget(null)}
-          onSubmit={async (reason, details) => {
+          onSubmit={async (input) => {
             if (!token) return;
-            await apiClient.createContentReport(token, { targetType: reportTarget.targetType, targetId: reportTarget.targetId, reason, details });
+            await apiClient.createContentReport(token, { targetType: reportTarget.targetType, targetId: reportTarget.targetId, ...input });
             // Solo se la chiamata sopra non ha lanciato (es. 409 "già
             // segnalato nelle ultime 24 ore") il tasto passa a disabilitato.
             markReported(reportTarget.targetType, reportTarget.targetId);

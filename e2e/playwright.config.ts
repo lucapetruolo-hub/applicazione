@@ -23,6 +23,8 @@ export default defineConfig({
     storageState: "./.auth/professionista.json",
     locale: "it-IT",
     trace: "retain-on-failure",
+    // CHROMIUM_PATH: solo per provarle in locale con un Chromium già installato.
+    launchOptions: process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {},
   },
   projects: [
     { name: "telefono-italia", testIgnore: /tempi-compiti/, use: { ...devices["Pixel 7"], timezoneId: "Europe/Rome" } },

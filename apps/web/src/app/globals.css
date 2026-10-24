@@ -899,6 +899,9 @@ button.notif-row-main:hover {
 .acct-main {
   min-width: 0;
   flex: 1;
+  /* Il piè di pagina resta sotto lo schermo mentre la pagina carica: prima
+     compariva in alto e poi veniva spinto giù (CLS 0,14, docs/CHANGELOG.md §321). */
+  min-height: 100vh;
 }
 .acct-nav {
   display: flex;
@@ -970,6 +973,24 @@ button.notif-row-main:hover {
   justify-content: center;
 }
 /* Pallino "da fare" senza numero (es. agenda senza disponibilità). */
+/* Nome accanto alla foto nell'intestazione (AccountMenu, docs/CHANGELOG.md §319). */
+.acct-trigger-name {
+  display: flex;
+  min-width: 0;
+  max-width: 180px;
+}
+.acct-trigger-name-sr {
+  display: none;
+}
+@media (max-width: 520px) {
+  .acct-trigger-name {
+    display: none;
+  }
+  .acct-trigger-name-sr {
+    display: block;
+  }
+}
+
 .acct-nav-dot {
   margin-left: auto;
   width: 8px;
@@ -2697,6 +2718,16 @@ a.admin-kpi:hover {
 .guided-city input {
   background-color: #ffffff !important;
 }
+/* Città tra i campi separati dell'indirizzo (§324): alta come gli altri. */
+.guided-city-inline input {
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 12px !important;
+  border-width: 0 !important;
+  border-radius: 6px !important;
+  font-size: 16px !important;
+  line-height: normal !important;
+}
 @media (max-width: 599px) {
   .guided-steps button {
     flex-direction: column;
@@ -3486,9 +3517,38 @@ a.admin-kpi:hover {
   align-items: center;
   justify-content: center;
 }
+/* Tessere vuote finché non arriva l'ordine dei più cercati (§324): stessa
+   misura delle vere, così la pagina non salta; poi compaiono con una
+   dissolvenza breve, mai riordinate davanti a chi guarda. */
+.cat-tile.cat-tile-placeholder {
+  cursor: default;
+  border-color: #f3e7d6;
+}
+.cat-tile-placeholder .cat-tile-icon {
+  background-color: transparent;
+}
+.cat-tile-placeholder-label {
+  width: 64%;
+  height: 14px;
+  border-radius: 6px;
+}
+@keyframes cat-tiles-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.cat-tiles-ready {
+  animation: cat-tiles-in 0.18s ease-out;
+}
 @media (prefers-reduced-motion: reduce) {
   .cat-tile {
     transition: none;
+  }
+  .cat-tiles-ready {
+    animation: none;
   }
 }
 .consent-invalid {

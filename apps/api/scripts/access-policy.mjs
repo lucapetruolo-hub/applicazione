@@ -20,6 +20,7 @@ const STRANGERS = ["clientB", "proB"];
 
 const publicRoutes = [
   "GET /address/place/:id",
+  "GET /address/status",
   "GET /address/suggestions",
   "POST /admin/bootstrap",
   "POST /auth/email-status",

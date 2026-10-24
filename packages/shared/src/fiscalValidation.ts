@@ -1,4 +1,4 @@
-import codiciCatastali from "./data/codiciCatastali.json";
+import { CODICI_CATASTALI_DATA } from "./data/comuniCompatti";
 /**
  * Validazione in tempo reale dei documenti fiscali raccolti in
  * `/dashboard/fiscale` (CLAUDE.md §88/§89 — MANOVIA/DAC7). Funzioni pure,
@@ -220,7 +220,7 @@ export function birthPlaceFromCodiceFiscale(value: string): { name: string; prov
     .map((char) => OMOCODIA_DIGIT[char] ?? char)
     .join("");
   if (code.startsWith("Z")) return "abroad";
-  const entry = (codiciCatastali as Record<string, string>)[code];
+  const entry = codiciCatastali().get(code);
   if (!entry) return null;
   const [name = "", province = ""] = entry.split("|");
   return { name, province };
@@ -291,4 +291,13 @@ export function fiscalFieldErrors(input: FiscalValidationInput): FiscalFieldErro
     }
   }
   return errors;
+}
+
+let codiciCatastaliMap: Map<string, string> | null = null;
+/** Codice catastale → "nome|provincia", costruita al primo uso (docs/CHANGELOG.md §320). */
+function codiciCatastali(): Map<string, string> {
+  if (!codiciCatastaliMap) {
+    codiciCatastaliMap = new Map(CODICI_CATASTALI_DATA.split("\n").map((line) => [line.slice(0, 4), line.slice(5)]));
+  }
+  return codiciCatastaliMap;
 }
