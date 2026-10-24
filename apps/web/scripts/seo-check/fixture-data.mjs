@@ -52,3 +52,16 @@ export function detail(pro) {
     acceptingRequests: true,
   };
 }
+
+/** Prezzi veri solo per gli idraulici: le altre categorie restano sotto soglia. */
+export function prices(categorySlug) {
+  if (categorySlug !== "idraulico") return { categorySlug, quotes: null, declared: null };
+  return {
+    categorySlug,
+    quotes: { count: 12, lowEurCents: 8000, medianEurCents: 12000, highEurCents: 18000, updatedAt: "2026-10-20T10:00:00.000Z" },
+    declared: {
+      professionalCount: 5,
+      services: [{ name: "Sostituzione rubinetto", professionalCount: 4, minEurCents: 5000, maxEurCents: 9000 }],
+    },
+  };
+}

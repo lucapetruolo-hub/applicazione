@@ -36,6 +36,8 @@ const INDEXABLE = [
   ["/termini", "/termini"],
   ["/cookie", "/cookie"],
   ["/accessibilita", "/accessibilita"],
+  ["/prezzi/idraulico", "/prezzi/idraulico"],
+  ["/lavora-con-noi/pulizie", "/lavora-con-noi/pulizie"],
 ];
 
 /** Pagine che devono restare fuori da Google anche col sito aperto. */
@@ -113,13 +115,14 @@ if (mode === "public") {
 
   // Pagina e profilo inesistenti: 404 vero, fuori da Google.
   await checkNoindex("/pagina-che-non-esiste", 404);
+  await checkNoindex("/prezzi/pulizie", 404); // prezzi sotto soglia: la pagina non esiste
   await checkNoindex("/professionista/nessuno-latina-00000000-0000-4000-8000-000000000000", 404);
 
   const sitemap = await (await fetch(`${BASE}/sitemap.xml`)).text();
-  for (const path of ["/cerca/idraulico", "/cerca/idraulico/latina", proPath]) {
+  for (const path of ["/cerca/idraulico", "/cerca/idraulico/latina", "/prezzi/idraulico", "/lavora-con-noi/pulizie", proPath]) {
     if (!sitemap.includes(`<loc>${SITE_URL}${path}</loc>`)) fail("/sitemap.xml", `manca ${path}`);
   }
-  for (const path of ["/cerca/pulizie/latina", "/cerca/pulizie<"]) {
+  for (const path of ["/cerca/pulizie/latina", "/cerca/pulizie<", "/prezzi/pulizie"]) {
     if (sitemap.includes(`${SITE_URL}${path}`)) fail("/sitemap.xml", `contiene la pagina vuota ${path.replace("<", "")}`);
   }
   const robots = await (await fetch(`${BASE}/robots.txt`)).text();

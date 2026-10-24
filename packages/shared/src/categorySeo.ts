@@ -10,21 +10,22 @@ export const MIN_PROFESSIONALS_TO_INDEX_CITY = 3;
 
 /**
  * Come si chiama il lavoro in una domanda ("Quanto costa un idraulico a
- * Latina?"): articolo e forma che usano le persone nelle ricerche. Tipizzato
+ * Latina?") e chi cerca lavoro ("Lavoro nelle pulizie"): articolo e forma
+ * che usano le persone nelle ricerche. Tipizzato
  * su tutte le categorie, così una categoria nuova non resta senza.
  */
-export const CATEGORY_SEO_NOUN: Record<ProfessionalCategorySlug, { costQuestion: string; findQuestion: string }> = {
-  idraulico: { costQuestion: "Quanto costa un idraulico", findQuestion: "un idraulico" },
-  elettricista: { costQuestion: "Quanto costa un elettricista", findQuestion: "un elettricista" },
-  imbianchino: { costQuestion: "Quanto costa un imbianchino", findQuestion: "un imbianchino" },
-  pulizie: { costQuestion: "Quanto costano le pulizie", findQuestion: "un'impresa di pulizie o una colf" },
-  giardiniere: { costQuestion: "Quanto costa un giardiniere", findQuestion: "un giardiniere" },
-  traslochi: { costQuestion: "Quanto costa un trasloco", findQuestion: "una ditta di traslochi" },
-  fabbro: { costQuestion: "Quanto costa un fabbro", findQuestion: "un fabbro" },
-  climatizzazione: { costQuestion: "Quanto costa un tecnico per caldaie e climatizzatori", findQuestion: "un tecnico per caldaie e climatizzatori" },
-  muratore: { costQuestion: "Quanto costa un muratore", findQuestion: "un muratore" },
-  falegname: { costQuestion: "Quanto costa un falegname", findQuestion: "un falegname" },
-  tuttofare: { costQuestion: "Quanto costa un tuttofare", findQuestion: "un tuttofare" },
-  dogsitter: { costQuestion: "Quanto costa un dogsitter", findQuestion: "un dogsitter" },
-  babysitter: { costQuestion: "Quanto costa una babysitter", findQuestion: "una babysitter" },
+export const CATEGORY_SEO_NOUN: Record<ProfessionalCategorySlug, { costQuestion: string; findQuestion: string; workTitle: string }> = {
+  idraulico: { costQuestion: "Quanto costa un idraulico", findQuestion: "un idraulico", workTitle: "Lavoro per idraulici" },
+  elettricista: { costQuestion: "Quanto costa un elettricista", findQuestion: "un elettricista", workTitle: "Lavoro per elettricisti" },
+  imbianchino: { costQuestion: "Quanto costa un imbianchino", findQuestion: "un imbianchino", workTitle: "Lavoro per imbianchini" },
+  pulizie: { costQuestion: "Quanto costano le pulizie", findQuestion: "un'impresa di pulizie o una colf", workTitle: "Lavoro nelle pulizie" },
+  giardiniere: { costQuestion: "Quanto costa un giardiniere", findQuestion: "un giardiniere", workTitle: "Lavoro per giardinieri" },
+  traslochi: { costQuestion: "Quanto costa un trasloco", findQuestion: "una ditta di traslochi", workTitle: "Lavoro nei traslochi" },
+  fabbro: { costQuestion: "Quanto costa un fabbro", findQuestion: "un fabbro", workTitle: "Lavoro per fabbri" },
+  climatizzazione: { costQuestion: "Quanto costa un tecnico per caldaie e climatizzatori", findQuestion: "un tecnico per caldaie e climatizzatori", workTitle: "Lavoro per tecnici di caldaie e climatizzatori" },
+  muratore: { costQuestion: "Quanto costa un muratore", findQuestion: "un muratore", workTitle: "Lavoro per muratori" },
+  falegname: { costQuestion: "Quanto costa un falegname", findQuestion: "un falegname", workTitle: "Lavoro per falegnami" },
+  tuttofare: { costQuestion: "Quanto costa un tuttofare", findQuestion: "un tuttofare", workTitle: "Lavoro come tuttofare" },
+  dogsitter: { costQuestion: "Quanto costa un dogsitter", findQuestion: "un dogsitter", workTitle: "Lavoro come dogsitter" },
+  babysitter: { costQuestion: "Quanto costa una babysitter", findQuestion: "una babysitter", workTitle: "Lavoro come babysitter" },
 };

@@ -94,6 +94,13 @@ export class ProfessionalsController {
   // Pubblico allo stesso modo (nessun dato sensibile, solo lingua+conteggio
   // aggregato): alimenta l'elenco lingue selezionabile in /dashboard/profilo
   // (richiesta esplicita dell'utente, "in ordine delle più inserite già").
+  // Pubblico, come il price-index: prezzi aggregati della pagina "Quanto
+  // costa" (docs/CHANGELOG.md §295), mai sotto le soglie. Prima di ":id".
+  @Get("prices/:category")
+  getCategoryPriceStats(@Param("category") category: string) {
+    return this.professionalsService.getCategoryPriceStats(category);
+  }
+
   @Get("languages/popular")
   getLanguagePopularity() {
     return this.professionalsService.getLanguagePopularity();

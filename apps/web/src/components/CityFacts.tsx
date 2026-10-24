@@ -15,11 +15,14 @@ export function CityFacts({
   categoryLabel,
   city,
   professionals,
+  hasPricePage = false,
 }: {
   categorySlug: ProfessionalCategorySlug;
   categoryLabel: string;
   city: string;
   professionals: ProfessionalSearchResult[];
+  /** C'è la pagina "Quanto costa" con prezzi veri (`/prezzi/[categoria]`, §295). */
+  hasPricePage?: boolean;
 }) {
   if (professionals.length === 0) return null;
   const noun = CATEGORY_SEO_NOUN[categorySlug];
@@ -43,6 +46,11 @@ export function CityFacts({
         <>
           Dipende dal lavoro. Descrivilo in una richiesta: ricevi preventivi gratuiti, con il prezzo voce per voce.{" "}
           <Link href={`/preventivo?categoria=${categorySlug}&citta=${encodeURIComponent(city)}`}>Chiedi un preventivo</Link>
+          {hasPricePage ? (
+            <>
+              {" "}o guarda i <Link href={`/prezzi/${categorySlug}`}>prezzi indicativi</Link>.
+            </>
+          ) : null}
         </>
       ),
     },

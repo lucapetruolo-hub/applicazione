@@ -33,6 +33,8 @@ import {
   jobPaidOnline,
   PROFESSIONAL_JOB_PROBLEM_REPORT_PREFIX,
   wallClockToday,
+  isProfessionalCategorySlug,
+  type CategoryPriceStats,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
@@ -41,6 +43,7 @@ import { quoteResendWindow } from "../quotes/quote-resend";
 import { NOT_ACCEPTING_REQUESTS } from "../subscriptions/subscription-rules";
 import { GeocodingService } from "../geocoding/geocoding.service";
 import { selectSearchArea } from "./search-area";
+import { acceptedQuoteStats, declaredServiceStats, quoteMidpointEurCents } from "./category-prices";
 import { slotAppliesOnDate } from "../common/availability.util";
 import { countCompletedThisMonth } from "../common/completed-jobs.util";
 import { profileCategories } from "../common/profile-categories.util";
@@ -276,6 +279,48 @@ export class ProfessionalsService {
     return Array.from(groups.values())
       .map((g) => ({ name: g.label, professionalCount: g.professionalCount, minEurCents: g.minEurCents, maxEurCents: g.maxEurCents }))
       .sort((a, b) => a.name.localeCompare(b.name, "it"));
+  }
+
+  /**
+   * Prezzi veri per la pagina "Quanto costa" di una categoria
+   * (docs/CHANGELOG.md §295): preventivi accettati dai clienti (status
+   * ACCEPTED, cioè con la prenotazione creata) e prestazioni dichiarate dai
+   * professionisti che fanno solo quel lavoro (le prestazioni non dicono a
+   * quale categoria appartengono). Professionisti demo esclusi; sotto le
+   * soglie nessun numero.
+   */
+  async getCategoryPriceStats(categorySlug: string): Promise<CategoryPriceStats> {
+    if (!isProfessionalCategorySlug(categorySlug)) throw new NotFoundException("Categoria non trovata");
+    const [quotes, services] = await Promise.all([
+      this.prisma.quote.findMany({
+        where: {
+          status: "ACCEPTED",
+          guidedRequest: { category: { slug: categorySlug } },
+          professionalProfile: { isDemo: false },
+        },
+        select: { updatedAt: true, items: { select: { priceMinEurCents: true, priceMaxEurCents: true } } },
+      }),
+      this.prisma.professionalService.findMany({
+        where: {
+          OR: [{ priceMinEurCents: { not: null } }, { priceMaxEurCents: { not: null } }],
+          professionalProfile: {
+            isDemo: false,
+            deletedAt: null,
+            suspendedAt: null,
+            invitePendingAt: null,
+            category: { slug: categorySlug },
+            extraCategories: { none: {} },
+            AND: [publicVisibilityWhere()],
+          },
+        },
+        select: { name: true, priceMinEurCents: true, priceMaxEurCents: true, professionalProfileId: true },
+      }),
+    ]);
+    const totals = quotes.flatMap((quote) => {
+      const totalEurCents = quoteMidpointEurCents(quote.items);
+      return totalEurCents === null ? [] : [{ totalEurCents, updatedAt: quote.updatedAt }];
+    });
+    return { categorySlug, quotes: acceptedQuoteStats(totals), declared: declaredServiceStats(services) };
   }
 
   /**

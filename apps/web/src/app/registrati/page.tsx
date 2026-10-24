@@ -9,6 +9,7 @@ import {
   PASSWORD_CONTAINS_EMAIL_MESSAGE,
   parseSubscriptionTier,
   isMissingRulesProblem,
+  isProfessionalCategorySlug,
   passwordContainsEmail,
   passwordProblem,
   registerSchema,
@@ -357,7 +358,11 @@ function RegistratiForm() {
   // stesso numero/ordine di hook ad ogni render).
   // Da 1 a 3 categorie (docs/CHANGELOG.md §217): obbligatorie sia con
   // email e password sia con Google, precompilano il profilo.
-  const [categorySlugs, setCategorySlugs] = useState<ProfessionalCategorySlug[]>([]);
+  // ?categoria= da "Lavora con noi" (docs/CHANGELOG.md §295): lavoro già scelto, modificabile.
+  const [categorySlugs, setCategorySlugs] = useState<ProfessionalCategorySlug[]>(() => {
+    const fromLink = searchParams.get("categoria");
+    return fromLink && isProfessionalCategorySlug(fromLink) ? [fromLink] : [];
+  });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);

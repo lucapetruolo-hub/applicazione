@@ -23,6 +23,7 @@ import type {
   ExternalJobUpdateInput,
   GuidedRequestInput,
   TrafficSource,
+  CategoryPriceStats,
   GuidedRequestMyState,
   GuidedRequestStatusSummary,
   GuidedRequestUserStateInput,
@@ -1071,6 +1072,10 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
         "/professionals/services/price-index",
         { cache: "no-store" },
       ),
+
+    /** Prezzi veri della pagina "Quanto costa" di una categoria (docs/CHANGELOG.md §295); null sotto le soglie. */
+    getCategoryPrices: (categorySlug: string) =>
+      request<CategoryPriceStats>(`/professionals/prices/${encodeURIComponent(categorySlug)}`, { cache: "no-store" }),
 
     /** Conteggio reale di quante volte ogni lingua è già stata inserita da un professionista — alimenta l'elenco selezionabile in /dashboard/profilo. */
     getLanguagePopularity: () =>

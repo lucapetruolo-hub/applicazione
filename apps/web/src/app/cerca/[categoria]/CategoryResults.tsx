@@ -3,6 +3,7 @@ import {
   PROFESSIONAL_CATEGORIES,
   comuneSlug,
   MIN_PROFESSIONALS_TO_INDEX_CITY,
+  hasCategoryPrices,
   findComuneByName,
   type ProfessionalCategorySlug,
   type ProfessionalSearchResult,
@@ -113,6 +114,10 @@ export async function CategoryResults({
   // In parallelo alla ricerca, così non allunga il caricamento.
   const popularPromise = popularOrder(comune?.name);
   const availablePromise = comune ? categoriesInCity(comune.name) : Promise.resolve(undefined);
+  // Link alla pagina "Quanto costa" solo se ha prezzi veri (§295).
+  const pricePagePromise = comune
+    ? apiClient.getCategoryPrices(category.slug).then(hasCategoryPrices, () => false)
+    : Promise.resolve(false);
 
   // Fetch server-side: contenuto SEO-critico deve essere presente nell'HTML
   // già al primo render, non caricato via client-side fetch (CLAUDE.md §5.4).
@@ -166,7 +171,13 @@ export async function CategoryResults({
         initialUrgentOnly={searchParams.urgente === "1"}
       />
       {comune && !loadFailed ? (
-        <CityFacts categorySlug={category.slug} categoryLabel={category.label} city={comune.name} professionals={professionals} />
+        <CityFacts
+          categorySlug={category.slug}
+          categoryLabel={category.label}
+          city={comune.name}
+          professionals={professionals}
+          hasPricePage={await pricePagePromise}
+        />
       ) : null}
       <PopularServicesLinks
         currentSlug={category.slug}

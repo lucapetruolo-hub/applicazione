@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { MIN_PROFESSIONALS_TO_INDEX_CITY, PROFESSIONAL_CATEGORIES, comuneSlug, professionalPath } from "@professionisti/shared";
+import { MIN_PROFESSIONALS_TO_INDEX_CITY, PROFESSIONAL_CATEGORIES, comuneSlug, hasCategoryPrices, professionalPath } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { SITE_URL } from "@/lib/siteUrl";
 import { SITE_INDEXABLE } from "@/lib/siteIndexing";
@@ -24,6 +24,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/faq`, changeFrequency: "monthly", priority: 0.4 },
     { url: `${SITE_URL}/sicurezza`, changeFrequency: "monthly", priority: 0.3 },
     { url: `${SITE_URL}/contatti`, changeFrequency: "monthly", priority: 0.4 },
+    // "Lavora con noi" per ogni lavoro (docs/CHANGELOG.md §295).
+    ...PROFESSIONAL_CATEGORIES.map((category) => ({
+      url: `${SITE_URL}/lavora-con-noi/${category.slug}`,
+      changeFrequency: "monthly" as const,
+      priority: 0.4,
+    })),
   ];
   const categoryEntries = (slugs: string[]): MetadataRoute.Sitemap =>
     slugs.map((slug) => ({ url: `${SITE_URL}/cerca/${slug}`, changeFrequency: "daily", priority: 0.8 }));
@@ -56,7 +62,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Categorie in tutta Italia solo con almeno un professionista vero, come il noindex della pagina (§295).
     const withProfessionals = new Set(professionals.flatMap((pro) => pro.categories.map((category) => category.slug)));
     const categories = categoryEntries(PROFESSIONAL_CATEGORIES.map((category) => category.slug).filter((slug) => withProfessionals.has(slug)));
-    return [...staticEntries, ...categories, ...cityEntries, ...professionalEntries];
+    // Pagine "Quanto costa" solo quando hanno prezzi veri (§295): l'API dice
+    // se si è sopra le soglie, altrimenti la pagina è un 404.
+    const priceSlugs = await Promise.all(
+      PROFESSIONAL_CATEGORIES.map(async ({ slug }) => {
+        try {
+          return hasCategoryPrices(await apiClient.getCategoryPrices(slug)) ? slug : null;
+        } catch {
+          return null;
+        }
+      }),
+    );
+    const priceEntries: MetadataRoute.Sitemap = priceSlugs
+      .filter((slug): slug is (typeof PROFESSIONAL_CATEGORIES)[number]["slug"] => slug !== null)
+      .map((slug) => ({ url: `${SITE_URL}/prezzi/${slug}`, changeFrequency: "weekly", priority: 0.6 }));
+    return [...staticEntries, ...categories, ...cityEntries, ...priceEntries, ...professionalEntries];
   } catch {
     // API ferma: sitemap con le pagine fisse e tutte le categorie, meglio di nessuna.
     return [...staticEntries, ...categoryEntries(PROFESSIONAL_CATEGORIES.map((category) => category.slug))];

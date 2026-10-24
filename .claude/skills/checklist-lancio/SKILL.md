@@ -357,7 +357,9 @@ Città, pagine vuote fuori da Google.
 31. **Titoli e descrizioni**: nome del marchio nel titolo della home,
     "Trova e contatta un idraulico" (con l'articolo) nelle categorie, testo
     meno generico per `/cerca`; dati strutturati `Organization` + `WebSite`
-    col nome definitivo.
+    col nome definitivo. Nei titoli delle categorie le parole che la gente
+    cerca (strategia SEO Latina, docs/CHANGELOG.md §295): "preventivi e
+    pronto intervento"; per le pulizie "impresa di pulizie e colf".
 32. **Foto delle categorie più leggere**: oggi arrivano intere (100-200 KB)
     anche nei riquadri piccoli, perché il ridimensionamento funziona solo
     per le foto su Cloudinary; testo alternativo breve su quelle foto. In
@@ -365,6 +367,15 @@ Città, pagine vuote fuori da Google.
 33. **Velocità della home**: troppo JavaScript (Lighthouse telefono 22/10:
     LCP 3,0 s, blocco 1,1 s; ricerca città LCP 4,5 s). Da rimisurare sul
     sito finito e sistemare.
+34. **Aprire a Google solo sul dominio definitivo** (strategia SEO Latina,
+    §295): nome e dominio decisi prima, poi `NEXT_PUBLIC_SITE_INDEXABLE=true`
+    sul dominio vero, mai su `applicazione-web.vercel.app`. Il piano del
+    giorno del cambio (redirect, Search Console, cosa controllare il giorno
+    dopo) è in `/mnt/project-files/analisi/seo-strategia-latina.md`, sezione 4.
+35. **Professionisti e scheda Google** (§295): al lancio un'email (o un
+    riquadro in dashboard) che invita i professionisti a mettere il link al
+    loro profilo nella loro scheda Google Business. In cima alle ricerche
+    locali c'è quasi sempre la mappa di Google: è lì che li vedono i clienti.
 
 
 ## Da fare dopo il lancio
