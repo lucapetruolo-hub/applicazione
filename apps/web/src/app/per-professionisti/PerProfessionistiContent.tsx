@@ -170,11 +170,10 @@ function ProHero({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
             lineHeight={44}
             letterSpacing={-0.8}
             textAlign="center"
-            color={brand.grafite70}
+            color={brand.grafite}
             $gtSm={{ fontSize: 60, lineHeight: 66 }}
           >
-            Fatti trovare <Text color={brand.grafite}>dai clienti</Text>{" "}
-            <Text color={brand.cianografiaScuro}>della tua zona.</Text>
+            Fatti trovare dai clienti della tua zona.
           </Text>
 
           <Text fontSize="$6" lineHeight={28} color={brand.grafite70} textAlign="center" maxWidth={560}>
@@ -646,10 +645,10 @@ function ProFinalCta() {
             lineHeight={38}
             letterSpacing={-0.5}
             textAlign="center"
-            color={brand.grafite70}
+            color={brand.grafite}
             $gtSm={{ fontSize: 44, lineHeight: 50 }}
           >
-            <Text color={brand.grafite}>Inizia</Text> a ricevere <Text color={brand.cianografiaScuro}>richieste</Text>
+            Inizia a ricevere richieste
           </Text>
           <Text fontSize="$5" color={brand.grafite70} textAlign="center" maxWidth={520}>
             Scegli il tuo livello e crea l&apos;account in un minuto, poi completi il profilo con calma.

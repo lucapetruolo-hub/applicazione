@@ -38,9 +38,7 @@ export function QualitySection({ children }: { children?: ReactNode }) {
   return (
     <Section
       tone="dark"
-      eyebrow="Perché fidarsi"
       title="La trasparenza che non trovi in giro"
-      titleAccent="trasparenza"
       maxWidth={1080}
     >
       <YStack width="100%" flexDirection="column" $gtMd={{ flexDirection: "row" }} gap="$6" data-stagger="">

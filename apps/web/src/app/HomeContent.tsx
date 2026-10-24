@@ -55,9 +55,7 @@ export default function HomeContent({
         {/* 2. Categorie. */}
         <FadeInSection>
           <Section
-            eyebrow="Categorie"
             title="Di cosa hai bisogno?"
-            titleAccent="bisogno"
             titleAction={<CategoryShowAllButton state={categoryRail} />}
             maxWidth={1080}
           >
@@ -80,9 +78,7 @@ export default function HomeContent({
         {professionals.length > 0 ? (
           <FadeInSection>
             <Section
-              eyebrow="Professionisti"
               title="Professionisti della tua zona"
-              titleAccent="della tua zona"
               maxWidth={1080}
             >
               <RecentReviews

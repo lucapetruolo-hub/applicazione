@@ -19865,3 +19865,17 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 **Decisione presa**: `LoadErrorNotice` con "Riprova" al posto dei contatori e delle sezioni "Da rispondere ora" e "Oggi e domani" ("Non riusciamo a caricare richieste e appuntamenti"); "Il tuo andamento" si nasconde se non si carica; in Abbonamento "Non riusciamo a caricare il tuo abbonamento" con "Riprova". Gli avvisi in alto (pausa, percorso profilo, agenda) restano come prima.
 
 **Verifica**: typecheck e lint del web.
+
+## 287. Titoli di un solo colore, senza etichette sopra, e carattere Instrument Sans
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Aspetto non da sito fatto con IA"): "effettua solo il punto 5 della prima risposta e il carattere con la proposta 2", dopo il controllo dei 30 segni tipici dei siti fatti con l'IA (`/mnt/project-files/analisi/aspetto-non-da-ia.md`). Punto 5: titoli di un solo colore, senza le etichette verdi sopra. Proposta 2 dei caratteri: Instrument Sans.
+
+**Decisione presa**:
+- `Section` (packages/ui) non ha più `eyebrow` né `titleAccent`: via le pillole "Categorie", "Come funziona", "Professionisti", "Perché fidarsi", "Prezzi reali", "Nuovi profili", "Recensioni verificate", "Garanzia Piattaforma" e le parole in verde nei titoli della home.
+- `/per-professionisti`: titolo principale e titolo finale di un solo colore (prima grigio, nero e verde).
+- Riquadro "Per chi offre servizi" in home: via l'etichetta sopra e la parte verde del titolo.
+- Carattere: Instrument Sans per titoli e testo (`apps/web/src/app/fonts.ts`), al posto di Fredoka (titoli) e Inter Tight (testo, "Inter" è tra i segni da sito IA). Stesso file per le due variabili CSS, il browser lo scarica una volta. Tolti i file di Fredoka e Inter Tight.
+- Titoli con interlinea 1,2 e spaziatura leggermente stretta (`packages/ui/src/config.ts`): con l'interlinea di default (1,5) un titolo su due righe sembrava due titoli.
+- Restano per ora, perché fuori dal punto 5: l'etichetta con 👋 "Non chiamare a caso. Chiamalo giusto." in cima alla home (punto 2), la scritta verde sopra i titoli nella finestra di accesso (`InlineAuthGate`, toccata dalla PR #99) e l'app mobile, che usa ancora Archivo/Inter Tight (serve un nuovo pacchetto di caratteri Expo).
+
+**Verifica**: typecheck e lint del web, build di produzione, home e `/per-professionisti` provate in locale a 390 e 1440 px con foto prima/dopo in `anteprime/aspetto-non-ia/titoli-carattere/`.

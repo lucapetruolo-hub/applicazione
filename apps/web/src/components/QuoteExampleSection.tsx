@@ -73,9 +73,7 @@ export function QuoteExampleSection() {
 
   return (
     <Section
-      eyebrow="Come funziona"
       title="Tu scrivi due righe, i professionisti ti rispondono con i numeri"
-      titleAccent="ti rispondono con i numeri"
       maxWidth={1080}
     >
       <div ref={ref} className={`qx${quoteVisible ? " is-on" : ""}`}>

@@ -126,7 +126,6 @@ export function RecentReviews({ summary }: { summary: { count: number; average: 
 
   return (
     <Section
-      eyebrow="Recensioni verificate"
       title="Chi ha già trovato il professionista giusto"
       lead={
         summary && summary.count >= MIN_REVIEWS_FOR_AVERAGE

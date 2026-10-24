@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Eyebrow, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 
 const COLUMNS = [
   {
@@ -44,12 +44,8 @@ export function ProCtaSection() {
         <span className="pro-cta-glow pro-cta-glow-warm" aria-hidden />
         <YStack gap="$6" padding="$6" $gtSm={{ padding: "$8" }}>
           <YStack gap="$3">
-            <Eyebrow tone="dark">Per chi offre servizi</Eyebrow>
             <Text fontFamily="$heading" fontWeight="600" fontSize="$9" color="white">
-              Meno telefonate inutili,{" "}
-              <Text fontFamily="$heading" fontWeight="600" fontSize="$9" color="#4FD69A">
-                più lavoro concluso.
-              </Text>
+              Meno telefonate inutili, più lavoro concluso.
             </Text>
           </YStack>
 

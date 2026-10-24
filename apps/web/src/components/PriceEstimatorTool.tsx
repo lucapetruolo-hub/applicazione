@@ -62,7 +62,7 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
   const visibleEntries = showFullList ? filtered : mostAdded.slice(0, IDLE_VISIBLE_COUNT);
 
   return (
-    <Section eyebrow="Prezzi reali" title="Quanto costa in media?" titleAccent="Quanto costa" maxWidth={780}>
+    <Section title="Quanto costa in media?" maxWidth={780}>
       <YStack width="100%" gap="$3">
         <Text fontSize="$3" color={brand.grafite70}>
           Range di prezzo calcolato dalle prestazioni inserite davvero dai professionisti sulla piattaforma — scrivi

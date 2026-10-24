@@ -56,7 +56,7 @@ export function PlatformGuarantee() {
   // attivo (docs/CHANGELOG.md §170).
   const onlinePayments = useOnlinePayments();
   return (
-    <Section eyebrow="Garanzia Piattaforma" title="Ogni intervento è coperto dalla Garanzia Piattaforma" maxWidth={880}>
+    <Section title="Ogni intervento è coperto dalla Garanzia Piattaforma" maxWidth={880}>
       <Surface width="100%" padding="$5" gap="$4">
         {POINTS.map((point) => (
           <XStack key={point.text} alignItems="flex-start" gap="$3">

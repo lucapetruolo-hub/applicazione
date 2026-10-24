@@ -27,6 +27,18 @@ const displayFamily = isWeb ? "var(--font-display), system-ui, sans-serif" : "Ar
 const bodyFamily = isWeb ? "var(--font-body), system-ui, sans-serif" : "InterTight_400Regular";
 const monoFamily = isWeb ? "var(--font-mono), monospace" : "IBMPlexMono_500Medium";
 
+// Titoli in Instrument Sans (docs/CHANGELOG.md §287): interlinea 1,2 e
+// spaziatura leggermente stretta. Con l'interlinea di default (circa 1,5) un
+// titolo su due righe sembrava due titoli separati, e i titoli larghi
+// andavano a capo prima su telefono.
+const headingSize = defaultConfig.fonts.heading.size;
+const headingLineHeight = Object.fromEntries(
+  Object.entries(headingSize).map(([key, size]) => [key, Math.round(size * 1.2)]),
+) as typeof defaultConfig.fonts.heading.lineHeight;
+const headingLetterSpacing = Object.fromEntries(
+  Object.entries(headingSize).map(([key, size]) => [key, -Math.round(size * 0.2) / 10]),
+) as typeof defaultConfig.fonts.heading.letterSpacing;
+
 // Estensione additiva della palette di default (mai rimozione/rinomina dei
 // token esistenti: $blue10, $color3, $red10 ecc. sono usati in decine di
 // pagine già in produzione, non ancora coinvolte nel redesign). I nuovi
@@ -74,6 +86,8 @@ export const tamaguiConfig = createTamagui({
     heading: {
       ...defaultConfig.fonts.heading,
       family: displayFamily,
+      lineHeight: headingLineHeight,
+      letterSpacing: headingLetterSpacing,
     },
     body: {
       ...defaultConfig.fonts.body,

@@ -79,7 +79,7 @@ export function NewProfilesCarousel({
   const atEnd = progress.start + progress.size >= 0.999;
 
   return (
-    <Section eyebrow="Nuovi profili" title={`Appena arrivati su ${BRAND.name}`} maxWidth={1160}>
+    <Section title={`Appena arrivati su ${BRAND.name}`} maxWidth={1160}>
       <div className="npc-root">
         <div
           ref={trackRef}

@@ -1,30 +1,28 @@
 import localFont from "next/font/local";
 
-// Tre ruoli, tre famiglie. Display passato da Archivo (documento tecnico,
-// brief "Scheda Intervento") a Fredoka (rotondo, amichevole — brief
-// "Vicinato", CLAUDE.md §19): stessa CSS variable `--font-display`, quindi
-// packages/ui/src/config.ts (token Tamagui `heading`) non richiede alcuna
-// modifica. Testo/mono invariati: il corpo (Inter Tight) è già abbastanza
-// neutro/caldo da non richiedere un cambio, il mono resta solo per cifre
-// tabulari (prezzi/date), non più voce primaria delle etichette.
+// Titoli e testo nello stesso carattere, Instrument Sans (scelta dell'utente,
+// docs/CHANGELOG.md §287): Fredoka per i titoli e Inter Tight per il testo
+// sono stati tolti perché Inter è tra i segni tipici dei siti fatti con l'IA.
+// Le due variabili CSS restano separate (`--font-display` per i titoli,
+// usata da packages/ui/src/config.ts, e `--font-body` per il testo) ma
+// puntano allo stesso file, che il browser scarica una volta sola. Il mono
+// resta solo per cifre tabulari (prezzi/date).
 //
-// File dei font nel repo (./fonts/, sottoinsieme latino di Google Fonts, gli
-// stessi che next/font/google scaricava a ogni build): il build non dipende
-// più dalla rete, che a volte falliva con "An error occurred in next/font"
-// (docs/CHANGELOG.md §230). Fredoka e Inter Tight sono font variabili: il
-// peso dichiarato resta limitato a quelli che si caricavano prima (500-700 e
-// 400-600), così un peso fuori intervallo si vede come prima.
+// File dei font nel repo (./fonts/, sottoinsieme latino di Google Fonts): il
+// build non dipende dalla rete, che a volte falliva con "An error occurred in
+// next/font" (docs/CHANGELOG.md §230). Instrument Sans è un font variabile
+// 400-700: un peso più alto (800) si vede come 700.
 export const display = localFont({
-  src: "./fonts/fredoka-latin.woff2",
+  src: "./fonts/instrument-sans-latin.woff2",
   variable: "--font-display",
-  weight: "500 700",
+  weight: "400 700",
   display: "swap",
 });
 
 export const body = localFont({
-  src: "./fonts/inter-tight-latin.woff2",
+  src: "./fonts/instrument-sans-latin.woff2",
   variable: "--font-body",
-  weight: "400 600",
+  weight: "400 700",
   display: "swap",
 });
 

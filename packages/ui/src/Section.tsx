@@ -1,17 +1,12 @@
 import { createContext, useContext, type ReactNode } from "react";
-import { H2, H3, Paragraph, Text, XStack, YStack } from "tamagui";
-import { Eyebrow } from "./Eyebrow";
+import { H2, H3, Paragraph, XStack, YStack } from "tamagui";
 
 export type SectionTone = "light" | "dark" | "blueprint";
 
+// Niente etichetta sopra il titolo né parole colorate dentro il titolo: sono
+// tra i segni tipici dei siti fatti con l'IA (docs/CHANGELOG.md §287).
 export type SectionProps = {
-  eyebrow?: string;
   title?: string;
-  /**
-   * Parte del titolo da mettere in verde (deve comparire così com'è in
-   * `title`), per far risaltare la parola chiave (docs/CHANGELOG.md §219).
-   */
-  titleAccent?: string;
   lead?: string;
   /** Comando accanto al titolo, allineato a destra (es. "Mostra tutte"). */
   titleAction?: ReactNode;
@@ -63,61 +58,36 @@ const DENSITY_PADDING: Record<
 
 /**
  * Una `Section` dentro un'altra diventa una sottosezione: niente fondo né
- * spazio verticale proprio, titolo più piccolo e niente etichetta. Serve per
+ * spazio verticale proprio e titolo più piccolo. Serve per
  * unire in un solo blocco della homepage sezioni che prima stavano in fila
  * (docs/CHANGELOG.md §219) senza riscriverle. Il valore è il tono del
  * blocco esterno, per scegliere il colore del titolo.
  */
 const SectionNestingContext = createContext<SectionTone | null>(null);
 
-// Verde più chiaro sui fondi scuri: il verde dei pulsanti su grafite non si
-// legge abbastanza.
-const ACCENT_COLOR = { light: "$cianografia", dark: "#4FD69A" } as const;
-
 function SectionTitle({
   title,
-  accent,
   isDark,
   nested,
 }: {
   title: string;
-  accent?: string;
   isDark: boolean;
   nested: boolean;
 }) {
   const Heading = nested ? H3 : H2;
-  const at = accent ? title.indexOf(accent) : -1;
   return (
     <Heading
       fontFamily="$heading"
       color={isDark ? "white" : "$grafite"}
       {...(nested ? { fontSize: "$7", lineHeight: "$7" } : null)}
     >
-      {at < 0 || !accent ? (
-        title
-      ) : (
-        <>
-          {title.slice(0, at)}
-          <Text
-            fontFamily="$heading"
-            fontSize="inherit"
-            fontWeight="inherit"
-            lineHeight="inherit"
-            color={ACCENT_COLOR[isDark ? "dark" : "light"]}
-          >
-            {accent}
-          </Text>
-          {title.slice(at + accent.length)}
-        </>
-      )}
+      {title}
     </Heading>
   );
 }
 
 export function Section({
-  eyebrow,
   title,
-  titleAccent,
   lead,
   titleAction,
   tone = "light",
@@ -130,18 +100,14 @@ export function Section({
   const padding = DENSITY_PADDING[useContext(SectionDensityContext)];
 
   const header =
-    (!nested && eyebrow) || title || lead ? (
+    title || lead ? (
       <YStack gap="$3">
-        {eyebrow && !nested ? (
-          <Eyebrow tone={isDark ? "dark" : "light"}>{eyebrow}</Eyebrow>
-        ) : null}
         {title && titleAction ? (
           // Il titolo può andare a capo, il comando resta sulla stessa riga.
           <XStack alignItems="center" justifyContent="space-between" gap="$3">
             <YStack flex={1} minWidth={0}>
               <SectionTitle
                 title={title}
-                accent={titleAccent}
                 isDark={isDark}
                 nested={nested}
               />
@@ -151,7 +117,6 @@ export function Section({
         ) : title ? (
           <SectionTitle
             title={title}
-            accent={titleAccent}
             isDark={isDark}
             nested={nested}
           />
