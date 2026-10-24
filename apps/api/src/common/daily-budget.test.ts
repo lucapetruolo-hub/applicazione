@@ -26,4 +26,14 @@ describe("DailyBudget", () => {
     process.env.GOOGLE_PUBLIC_DAILY_LIMIT = "0";
     expect(new DailyBudget(100).take()).toBe(false);
   });
+
+  it("hasRoom guarda senza contare", () => {
+    const budget = new DailyBudget(1);
+    const day = new Date("2026-10-24T10:00:00Z");
+    expect(budget.hasRoom(day)).toBe(true);
+    expect(budget.hasRoom(day)).toBe(true);
+    expect(budget.take(day)).toBe(true);
+    expect(budget.hasRoom(day)).toBe(false);
+    expect(budget.hasRoom(new Date("2026-10-25T00:00:10Z"))).toBe(true);
+  });
 });

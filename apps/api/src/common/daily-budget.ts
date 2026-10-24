@@ -22,6 +22,12 @@ export class DailyBudget {
     return Number.isInteger(parsed) && parsed >= 0 ? parsed : this.defaultLimit;
   }
 
+  /** `true` se oggi resta almeno una chiamata, senza contarla. */
+  hasRoom(now: Date = new Date()): boolean {
+    const today = now.toISOString().slice(0, 10);
+    return today !== this.day || this.used < this.limit();
+  }
+
   /** `true` se la chiamata rientra nel tetto di oggi (e la conta). */
   take(now: Date = new Date()): boolean {
     const today = now.toISOString().slice(0, 10);
