@@ -141,16 +141,21 @@ export function CardActionsMenu({
     <YStack flexShrink={0}>
       <YStack
         ref={buttonRef}
-        width={36}
-        height={36}
+        // Tondo verde chiaro con bordo verde, pieno quando è aperto: prima era
+        // solo un'icona grigia senza sfondo e non si notava (richiesta
+        // esplicita dell'utente, docs/CHANGELOG.md §327). 44px: misura minima
+        // comoda per il dito.
+        width={44}
+        height={44}
         borderRadius={999}
         alignItems="center"
         justifyContent="center"
         cursor="pointer"
-        borderWidth={1}
-        borderColor={isOpen ? brand.filetto : "transparent"}
-        backgroundColor={isOpen ? brand.gesso : "transparent"}
-        hoverStyle={{ backgroundColor: brand.gesso }}
+        borderWidth={1.5}
+        borderColor={brand.cianografia}
+        backgroundColor={isOpen ? brand.cianografia : brand.cianografiaVelo}
+        hoverStyle={{ backgroundColor: isOpen ? brand.cianografia : "#C6EBD7" }}
+        pressStyle={{ backgroundColor: brand.cianografia }}
         onPress={(e: { stopPropagation: () => void }) => {
           e.stopPropagation();
           if (isOpen) close();
@@ -159,7 +164,7 @@ export function CardActionsMenu({
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
       >
-        <Icon name="menu" size={18} color={brand.grafite} />
+        <Icon name="menu" size={22} color={isOpen ? brand.calce : brand.cianografiaScuro} strokeWidth={2.25} />
       </YStack>
 
       {/* `position: fixed` non è tipizzato per Tamagui (stesso limite già
