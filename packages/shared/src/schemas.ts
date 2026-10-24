@@ -105,7 +105,7 @@ export const contactMessageSchema = z
     email: z.string().email("Email non valida"),
     content: z.string().min(1, "Scrivi un messaggio.").max(4000, "Messaggio troppo lungo."),
     // Dichiarazione di buona fede, obbligatoria per una segnalazione di
-    // contenuto illegale (DSA art. 16 c. 2 lett. d, docs/CHANGELOG.md §312).
+    // contenuto illegale (DSA art. 16 c. 2 lett. d, docs/CHANGELOG.md §318).
     goodFaith: z.boolean().optional(),
     // Honeypot anti-spam, stesso pattern di waitlistSignupSchema.
     website: z.string().max(200).optional(),
@@ -903,7 +903,7 @@ export type AdminBootstrapInput = z.infer<typeof adminBootstrapSchema>;
 // l'ha ricevuta (menu hamburger di /dashboard/richieste, CHANGELOG §130).
 export const contentReportTargetTypes = ["PROFESSIONAL_PROFILE", "REVIEW", "GUIDED_REQUEST"] as const;
 export type ContentReportTargetType = (typeof contentReportTargetTypes)[number];
-// Motivo scelto da un elenco fisso (docs/CHANGELOG.md §312): dice se il
+// Motivo scelto da un elenco fisso (docs/CHANGELOG.md §318): dice se il
 // contenuto è segnalato come illegale. In quel caso servono la spiegazione
 // e la dichiarazione di buona fede (DSA art. 16 c. 2 lett. a, d).
 export const createContentReportSchema = z
@@ -938,7 +938,7 @@ export const resolveContentReportSchema = z
     // (nessuna azione presa) resta facoltativa.
     resolutionNote: z.string().trim().max(2000).optional(),
     // Legge o punto dei Termini su cui si basa la misura (DSA art. 17 c. 3
-    // lett. d-e, docs/CHANGELOG.md §312): obbligatorio per RESOLVED.
+    // lett. d-e, docs/CHANGELOG.md §318): obbligatorio per RESOLVED.
     ground: z.enum(moderationGroundCodes).optional(),
     // L'admin ha avvisato le autorità (DSA art. 18).
     authoritiesNotified: z.boolean().optional(),

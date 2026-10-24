@@ -10,7 +10,7 @@ export const MAX_REQUEST_PHOTOS = 5;
 
 export const textareaStyle = {
   padding: 10,
-  borderRadius: 6,
+  borderRadius: 10,
   border: `1px solid ${brand.bordoCampo}`,
   fontSize: 16,
   fontFamily: "inherit",

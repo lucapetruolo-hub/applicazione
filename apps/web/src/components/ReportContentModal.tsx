@@ -8,7 +8,7 @@ import { ConsentCheckbox } from "./ConsentCheckbox";
 
 const textareaStyle = {
   padding: 10,
-  borderRadius: 6,
+  borderRadius: 10,
   border: `1px solid ${brand.bordoCampo}`,
   fontSize: 16,
   fontFamily: "inherit",
@@ -19,7 +19,7 @@ const textareaStyle = {
 
 const selectStyle = {
   padding: 10,
-  borderRadius: 6,
+  borderRadius: 10,
   border: `1px solid ${brand.bordoCampo}`,
   fontSize: 16,
   fontFamily: "inherit",
@@ -54,7 +54,7 @@ export function ReportContentModal({
   const [details, setDetails] = useState("");
   const [goodFaith, setGoodFaith] = useState(false);
   const [attempted, setAttempted] = useState(false);
-  // Contenuto illegale (DSA art. 16 c. 2, docs/CHANGELOG.md §312): servono
+  // Contenuto illegale (DSA art. 16 c. 2, docs/CHANGELOG.md §318): servono
   // una spiegazione e la dichiarazione di buona fede.
   const illegal = reasonValue ? (contentReportReason(reasonValue)?.illegal ?? false) : false;
   const detailsMissing = illegal && details.trim().length < 10;

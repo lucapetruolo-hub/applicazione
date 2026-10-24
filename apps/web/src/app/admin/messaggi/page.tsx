@@ -53,7 +53,7 @@ export default function AdminMessaggiPage() {
       />
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       {messages === null && !error ? (
-        <YStack backgroundColor={brand.calce} borderRadius={12} overflow="hidden">
+        <YStack backgroundColor={brand.calce} borderRadius={20} overflow="hidden">
           <SkeletonSummaryRow />
           <SkeletonSummaryRow />
         </YStack>
@@ -72,7 +72,7 @@ function MessageCard({ message, token, onChanged }: { message: AdminContactMessa
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Segnalazione di contenuto illegale senza account (docs/CHANGELOG.md
-  // §312): l'esito in una riga va comunicato per legge (DSA art. 16 c. 5),
+  // §318): l'esito in una riga va comunicato per legge (DSA art. 16 c. 5),
   // senza motivazione. La risposta parte già scritta, si sceglie la frase.
   const isReport = message.role === "REPORT_ILLEGAL";
   const mailto = `mailto:${message.email}?subject=${encodeURIComponent(isReport ? "Esito della tua segnalazione" : "Risposta al tuo messaggio")}&body=${encodeURIComponent(

@@ -233,7 +233,7 @@ sia UI/routing — la logica va in `apps/api` o `packages/shared`.
 15. Le voci di menu dell'area account stanno solo in
     `apps/web/src/lib/accountMenuItems.ts`.
 16. **Segnalazioni dei contenuti** (decisione dell'utente, DSA artt. 16-17,
-    docs/CHANGELOG.md §312): chi segnala riceve solo la presa in carico e,
+    docs/CHANGELOG.md §318): chi segnala riceve solo la presa in carico e,
     per un contenuto illegale, l'esito in una riga, mai la motivazione né
     una pagina con le sue segnalazioni; chi è colpito riceve per email
     misura, legge o regola violata, motivazione e come contestare. Nessuna

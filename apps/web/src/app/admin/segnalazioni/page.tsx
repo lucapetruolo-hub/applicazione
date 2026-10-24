@@ -88,7 +88,7 @@ function SegnalazioniContent() {
       />
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       {reports === null && !error ? (
-        <YStack backgroundColor={brand.calce} borderRadius={12} overflow="hidden">
+        <YStack backgroundColor={brand.calce} borderRadius={20} overflow="hidden">
           <SkeletonSummaryRow />
           <SkeletonSummaryRow />
         </YStack>
@@ -181,7 +181,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
       <XStack justifyContent="space-between" gap="$2" flexWrap="wrap" alignItems="center">
         <XStack gap="$2" alignItems="center" flexWrap="wrap">
           <AdminPill>{CONTENT_REPORT_TARGET_LABEL[report.targetType]}</AdminPill>
-          {/* DSA art. 16 (docs/CHANGELOG.md §312): solo per un contenuto illegale chi segnala riceve l'esito. */}
+          {/* DSA art. 16 (docs/CHANGELOG.md §318): solo per un contenuto illegale chi segnala riceve l'esito. */}
           {report.claimsIllegal ? <AdminPill tone="danger">Illegale secondo chi segnala</AdminPill> : null}
           {report.status === "RESOLVED" ? <AdminPill tone={report.revertedAt ? "neutral" : "danger"}>{report.revertedAt ? "Misura annullata" : "Accolta"}</AdminPill> : null}
           {report.status === "DISMISSED" ? <AdminPill tone="ok">Non accolta</AdminPill> : null}
@@ -197,7 +197,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
         {report.targetLabel ?? "Contenuto non più disponibile"}
       </Text>
       {report.targetExcerpt ? (
-        <YStack padding="$3" borderRadius={6} backgroundColor={brand.gesso}>
+        <YStack padding="$3" borderRadius={10} backgroundColor={brand.gesso}>
           <Text fontSize="$3" color={brand.grafite} numberOfLines={6}>
             “{report.targetExcerpt}”
           </Text>
@@ -261,7 +261,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
       ) : null}
 
       {previewOpen ? (
-        <YStack gap="$2" padding="$3" borderRadius={12} borderWidth={1} borderColor={brand.filetto}>
+        <YStack gap="$2" padding="$3" borderRadius={20} borderWidth={1} borderColor={brand.filetto}>
           {preview === null ? (
             <Text color={brand.grafite70}>Caricamento…</Text>
           ) : !preview.exists ? (
@@ -292,7 +292,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
                   {preview.photos.map((url) => (
                     <a key={url} href={url} target="_blank" rel="noreferrer">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={url} alt="" style={{ width: 96, height: 96, objectFit: "cover", borderRadius: 6 }} />
+                      <img src={url} alt="" style={{ width: 96, height: 96, objectFit: "cover", borderRadius: 10 }} />
                     </a>
                   ))}
                 </XStack>
@@ -336,7 +336,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
           ) : null}
         </XStack>
       ) : (
-        <YStack gap="$3" padding="$3" borderRadius={12} backgroundColor={brand.gesso}>
+        <YStack gap="$3" padding="$3" borderRadius={20} backgroundColor={brand.gesso}>
           {mode === "resolve" ? (
             <>
               <Text fontWeight="700" color={brand.grafite}>
@@ -356,7 +356,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
               <Text fontWeight="700" color={brand.grafite}>
                 Quale regola o legge viola?
               </Text>
-              {/* DSA art. 17 c. 3 lett. d-e (docs/CHANGELOG.md §312): l'autore la legge nell'email. */}
+              {/* DSA art. 17 c. 3 lett. d-e (docs/CHANGELOG.md §318): l'autore la legge nell'email. */}
               <select aria-label="Regola o legge violata" className="admin-input" value={ground} onChange={(e) => setGround(e.target.value)}>
                 <option value="">Scegli…</option>
                 <optgroup label="Legge (contenuto illegale)">

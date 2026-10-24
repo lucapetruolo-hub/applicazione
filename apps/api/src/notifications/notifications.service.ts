@@ -244,7 +244,7 @@ export class NotificationsService {
 
   /**
    * Segnalazione di contenuto illegale dal modulo Contatti, senza account
-   * (DSA art. 16 c. 1 e 4, docs/CHANGELOG.md §312): presa in carico a chi
+   * (DSA art. 16 c. 1 e 4, docs/CHANGELOG.md §318): presa in carico a chi
    * scrive e avviso agli admin che moderano.
    */
   emailContactReportReceived(senderEmail: string): void {

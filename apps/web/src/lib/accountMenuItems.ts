@@ -69,7 +69,7 @@ export const PROFESSIONAL_NAV: AccountNavGroup[] = [
  * Schede del cliente (docs/CHANGELOG.md §147): poche voci, quindi una barra
  * sotto l'header invece di un menu laterale. La pagina di una decisione
  * sui propri contenuti (/segnalazioni) non è nel menu, si apre dall'email
- * (docs/CHANGELOG.md §312): resta evidenziata la scheda Account.
+ * (docs/CHANGELOG.md §318): resta evidenziata la scheda Account.
  */
 export const CLIENT_TABS: AccountNavItem[] = [
   { href: "/le-mie-richieste", label: "Richieste", icon: "file-text" },

@@ -1399,7 +1399,7 @@ enum ContactMessageRole {
   PROFESSIONAL
   OTHER
   // Segnalazione di un contenuto illegale da chi non ha un account (DSA
-  // art. 16 c. 1, "qualsiasi persona", docs/CHANGELOG.md §312).
+  // art. 16 c. 1, "qualsiasi persona", docs/CHANGELOG.md §318).
   REPORT_ILLEGAL
 }
 
@@ -1464,7 +1464,7 @@ model ContentReport {
   reason                String
   details               String?
   // Chi segnala dice che il contenuto è illegale (DSA art. 16, docs/CHANGELOG.md
-  // §312): solo allora riceve l'esito della decisione (art. 16 c. 5); per una
+  // §318): solo allora riceve l'esito della decisione (art. 16 c. 5); per una
   // violazione dei Termini basta la conferma di presa in carico.
   claimsIllegal         Boolean                 @default(false)
   // Dichiarazione di buona fede di chi segnala un contenuto illegale (art. 16 c. 2 lett. d).

@@ -4,7 +4,7 @@ import { PrismaClient } from "@professionisti/database";
 import { API_URL, WEB_URL } from "../fixtures/env";
 
 /**
- * Percorso delle segnalazioni secondo il DSA (docs/CHANGELOG.md §312): chi
+ * Percorso delle segnalazioni secondo il DSA (docs/CHANGELOG.md §318): chi
  * segnala un contenuto illegale spiega perché e conferma la buona fede,
  * riceve la presa in carico e poi l'esito senza motivazione; l'autore legge
  * misura, legge violata e motivazione nella pagina aperta dall'email e la

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createContentReportSchema } from "@professionisti/shared";
 import { ContentReportsService } from "./content-reports.service";
 
-/** Segnalazioni secondo il DSA art. 16 (docs/CHANGELOG.md §312). */
+/** Segnalazioni secondo il DSA art. 16 (docs/CHANGELOG.md §318). */
 function buildService() {
   const prisma = {
     lead: { findFirst: vi.fn().mockResolvedValue({ id: "lead-1" }) },

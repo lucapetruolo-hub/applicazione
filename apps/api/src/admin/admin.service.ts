@@ -680,7 +680,7 @@ export class AdminService {
    *   all'autore misura, regola violata, motivazione e possibilità di
    *   contestare (pagina /segnalazioni).
    * Il segnalante riceve l'esito in una riga solo se ha segnalato un
-   * contenuto illegale (docs/CHANGELOG.md §312).
+   * contenuto illegale (docs/CHANGELOG.md §318).
    * Prima di §144 "Risolvi" cambiava solo lo stato: il contenuto restava
    * online mentre la motivazione descriveva una limitazione mai avvenuta.
    */
@@ -703,7 +703,7 @@ export class AdminService {
       throw new BadRequestException("Indica il motivo della decisione prima di risolvere la segnalazione.");
     }
     if (status === "RESOLVED" && !moderationGround(input.ground)) {
-      // DSA art. 17 c. 3 lett. d-e (docs/CHANGELOG.md §312): l'autore deve sapere quale regola o legge ha violato.
+      // DSA art. 17 c. 3 lett. d-e (docs/CHANGELOG.md §318): l'autore deve sapere quale regola o legge ha violato.
       throw new BadRequestException("Scegli la regola o la legge violata.");
     }
     if (status === "RESOLVED" && (!action || !MODERATION_ACTIONS_BY_TARGET[report.targetType].includes(action))) {
@@ -747,7 +747,7 @@ export class AdminService {
     });
 
     // Esito a chi segnala solo per un contenuto illegale (DSA art. 16 c. 5,
-    // docs/CHANGELOG.md §312), in una riga e mai con la motivazione: per una
+    // docs/CHANGELOG.md §318), in una riga e mai con la motivazione: per una
     // violazione dei Termini basta la presa in carico già inviata.
     if (report.claimsIllegal) {
       await this.notificationsService.notify(report.reporterId, "CONTENT_REPORT_DECISION", {

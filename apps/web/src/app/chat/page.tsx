@@ -166,7 +166,7 @@ export default function ChatPage() {
       <div className={`chat-shell${user.isProfessional ? " is-pro" : ""}${selectedThread ? " has-selection" : ""}`}>
         <div className="chat-list-pane">
           {threads === null ? (
-            <YStack backgroundColor={brand.calce} borderRadius={12} overflow="hidden" margin="$4">
+            <YStack backgroundColor={brand.calce} borderRadius={20} overflow="hidden" margin="$4">
               {[0, 1, 2, 3].map((i) => (
                 <SkeletonThreadRow key={i} zebra={i % 2 !== 0} />
               ))}
@@ -176,7 +176,7 @@ export default function ChatPage() {
               <EmptyState icon="message-circle" title="Nessuna conversazione" description="Le chat delle tue richieste e dei tuoi preventivi compariranno qui." />
             </YStack>
           ) : (
-            <YStack backgroundColor={brand.calce} borderRadius={12} overflow="hidden" margin="$4">
+            <YStack backgroundColor={brand.calce} borderRadius={20} overflow="hidden" margin="$4">
               {threads.map((thread, index) => (
                 <ChatThreadRow
                   key={threadKey(thread)}
@@ -360,7 +360,7 @@ function ChatThreadRow({
         height={32}
         alignItems="center"
         justifyContent="center"
-        borderRadius={6}
+        borderRadius={10}
         backgroundColor={brand.gesso}
         cursor="pointer"
         flexShrink={0}

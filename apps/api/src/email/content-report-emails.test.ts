@@ -4,7 +4,7 @@ import { renderEmail } from "./email-layout";
 import { notificationEmail, type NotificationEmailContext } from "./templates/notification-emails";
 
 /**
- * Email delle segnalazioni secondo il DSA (docs/CHANGELOG.md §312): chi
+ * Email delle segnalazioni secondo il DSA (docs/CHANGELOG.md §318): chi
  * segnala riceve solo presa in carico ed esito in una riga, mai la
  * motivazione né il nome dell'autore; chi è colpito riceve misura, regola o
  * legge violata, motivazione e come contestare.

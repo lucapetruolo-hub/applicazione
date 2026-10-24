@@ -3,7 +3,8 @@ import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
 import { apiClient } from "../../../lib/apiClient";
 import { SITE_URL } from "@/lib/siteUrl";
-import { jsonForScript, type BreadcrumbItem } from "@/lib/jsonLd";
+import { type BreadcrumbItem } from "@/lib/jsonLd";
+import { JsonLd } from "@/components/JsonLd";
 import { ApiError } from "@professionisti/api-client";
 import { BRAND, comuneSlug, professionalIdFromSlug, professionalPath, professionalSlug, type ProfessionalDetail } from "@professionisti/shared";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
@@ -109,7 +110,7 @@ export default async function ProfessionalDetailPage(props: { params: Promise<Pa
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonForScript(jsonLd) }} />
+      <JsonLd data={jsonLd} />
       {/* Suspense richiesto da useSearchParams (App Router) in
           ProfessionalDetailContent — legge `?modalita=` per preselezionare
           il tab dell'agenda quando si arriva da una ricerca "Online". */}

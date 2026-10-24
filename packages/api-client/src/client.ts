@@ -401,7 +401,7 @@ export type AdminOverview = {
 
 export type ModerationActionValue = "WARN" | "REQUEST_CORRECTION" | "HIDE_CONTENT" | "SUSPEND_PROFILE" | "SUSPEND_USER";
 
-/** Pagina /segnalazioni: decisioni sui propri contenuti, aperta dall'email (docs/CHANGELOG.md §144, §312). */
+/** Pagina /segnalazioni: decisioni sui propri contenuti, aperta dall'email (docs/CHANGELOG.md §144, §318). */
 export type MyContentReports = {
   received: {
     id: string;
@@ -455,7 +455,7 @@ export type AdminContentReport = {
   linkedProfessionalProfileId: string | null;
   reason: string;
   details: string | null;
-  /** Chi segnala dice che il contenuto è illegale (DSA art. 16, docs/CHANGELOG.md §312). */
+  /** Chi segnala dice che il contenuto è illegale (DSA art. 16, docs/CHANGELOG.md §318). */
   claimsIllegal: boolean;
   goodFaithAt: string | null;
   /** Codice di `MODERATION_GROUNDS` scelto alla decisione. */

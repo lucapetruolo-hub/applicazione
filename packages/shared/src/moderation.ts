@@ -86,7 +86,7 @@ export const MODERATION_REASON_TEMPLATES: { label: string; text: string }[] = [
 ];
 
 /**
- * Motivi tra cui sceglie chi segnala (docs/CHANGELOG.md §312). `illegal`
+ * Motivi tra cui sceglie chi segnala (docs/CHANGELOG.md §318). `illegal`
  * separa i contenuti illegali (DSA art. 16: chi segnala riceve l'esito,
  * servono spiegazione e dichiarazione di buona fede) dalle violazioni dei
  * Termini (basta la conferma di presa in carico).

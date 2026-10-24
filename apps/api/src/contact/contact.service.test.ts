@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { contactMessageSchema } from "@professionisti/shared";
 import { ContactService } from "./contact.service";
 
-/** Segnalazione di un contenuto illegale senza account (DSA art. 16 c. 1 e 4, docs/CHANGELOG.md §312). */
+/** Segnalazione di un contenuto illegale senza account (DSA art. 16 c. 1 e 4, docs/CHANGELOG.md §318). */
 describe("Contatti: segnalazione di un contenuto illegale", () => {
   const base = { role: "REPORT_ILLEGAL", email: "anna@example.it", content: "https://sito/professionista/1 mi accusa di furto" };
 

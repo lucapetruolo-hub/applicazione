@@ -12,14 +12,14 @@ const ROLE_OPTIONS: { value: ContactMessageInput["role"]; label: string }[] = [
   { value: "CLIENT", label: "Sono un cliente" },
   { value: "PROFESSIONAL", label: "Sono un professionista" },
   { value: "OTHER", label: "Altro" },
-  // Anche senza account (DSA art. 16 c. 1, docs/CHANGELOG.md §312): il
+  // Anche senza account (DSA art. 16 c. 1, docs/CHANGELOG.md §318): il
   // link "Segnala un contenuto illegale" del footer apre il modulo già qui.
   { value: "REPORT_ILLEGAL", label: "Segnalo un contenuto illegale" },
 ];
 
 const fieldStyle = {
   padding: "16px 18px",
-  borderRadius: 12,
+  borderRadius: 20,
   border: `1px solid ${brand.bordoCampo}`,
   fontSize: 16,
   fontFamily: "inherit",

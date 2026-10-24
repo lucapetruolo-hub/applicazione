@@ -9,7 +9,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 
 /**
- * Decisioni sui contenuti dell'utente (docs/CHANGELOG.md §144, §312): misura
+ * Decisioni sui contenuti dell'utente (docs/CHANGELOG.md §144, §318): misura
  * presa, regola o legge violata, motivazione e "Contesta la decisione" (DSA
  * art. 17; il reclamo interno dell'art. 20 non è obbligatorio per una
  * piccola impresa, art. 19, ma resta). Non è nel menu: si apre dall'email o
@@ -163,7 +163,7 @@ function DecisionCard({ decision, token, onChanged }: { decision: MyContentRepor
               onChange={(e) => setText(e.target.value)}
               rows={4}
               placeholder="Spiega perché ritieni la decisione sbagliata"
-              style={{ width: "100%", boxSizing: "border-box", padding: 10, borderRadius: 6, border: `1px solid ${brand.bordoCampo}`, font: "inherit" }}
+              style={{ width: "100%", boxSizing: "border-box", padding: 10, borderRadius: 10, border: `1px solid ${brand.bordoCampo}`, font: "inherit" }}
             />
             {error ? <Text color={brand.urgenza}>{error}</Text> : null}
             <XStack gap="$2" flexWrap="wrap">

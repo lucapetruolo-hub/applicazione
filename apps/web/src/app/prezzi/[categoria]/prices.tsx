@@ -13,7 +13,8 @@ import {
   type ProfessionalCategorySlug,
 } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
-import { breadcrumbJsonLd, jsonForScript } from "@/lib/jsonLd";
+import { breadcrumbJsonLd } from "@/lib/jsonLd";
+import { JsonLd } from "@/components/JsonLd";
 
 /**
  * "Quanto costa un [lavoro]" (docs/CHANGELOG.md §296, strategia SEO Latina):
@@ -112,8 +113,8 @@ export function PricesView({ data }: { data: PricesData }) {
 
   return (
     <div className="price-page">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonForScript(breadcrumbs) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonForScript(faqJsonLd) }} />
+      <JsonLd data={breadcrumbs} />
+      <JsonLd data={faqJsonLd} />
       <h1 className="price-page-title">
         {noun.costQuestion}
         {where}?
