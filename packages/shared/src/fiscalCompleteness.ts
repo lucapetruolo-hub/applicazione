@@ -58,6 +58,16 @@ export function traderStatusOf(entityType: string | null | undefined): Professio
   return null;
 }
 
+/** Come si è iscritto il professionista, mostrato come badge nel profilo e nei risultati (docs/CHANGELOG.md §326). */
+export type ProfessionalKind = "PRIVATE" | "VAT" | "BUSINESS";
+
+export function professionalKindOf(entityType: string | null | undefined): ProfessionalKind | null {
+  if (entityType === "PRIVATE_INDIVIDUAL") return "PRIVATE";
+  if (entityType === "SOLE_PROPRIETOR") return "VAT";
+  if (entityType === "BUSINESS") return "BUSINESS";
+  return null;
+}
+
 export const TRADER_STATUS_COPY: Record<ProfessionalTraderStatus, { label: string; note: string }> = {
   PRIVATE: {
     label: "Privato senza partita IVA",

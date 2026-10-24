@@ -1,5 +1,5 @@
 import type { ProfessionalCategorySlug } from "./categories";
-import type { ProfessionalTraderStatus } from "./fiscalCompleteness";
+import type { ProfessionalKind, ProfessionalTraderStatus } from "./fiscalCompleteness";
 
 export type PlaceholderProfessional = {
   businessName: string;
@@ -207,6 +207,8 @@ export type ProfessionalSearchResult = {
   verified: boolean;
   /** Identità verificata da Stripe (KYC/KYB), badge distinto da `verified` (docs/CHANGELOG.md §241). */
   stripeVerified: boolean;
+  /** Come si è iscritto: privato, con partita IVA o azienda (badge, docs/CHANGELOG.md §326); null se non ancora indicato. */
+  professionalKind: ProfessionalKind | null;
   rating: number | null;
   reviewCount: number;
   boosted: boolean;

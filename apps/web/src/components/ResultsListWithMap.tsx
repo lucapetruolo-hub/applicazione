@@ -628,6 +628,7 @@ export function ResultsListWithMap({
               completedThisMonth={pro.completedThisMonth}
               verified={pro.verified}
               stripeVerified={pro.stripeVerified}
+              professionalKind={pro.professionalKind}
               boosted={pro.boosted}
               isNewProfile={pro.isNewProfile}
               hasLiabilityInsurance={pro.hasLiabilityInsurance}

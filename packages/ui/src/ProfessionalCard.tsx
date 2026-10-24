@@ -3,6 +3,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Text, XStack, YStack } from "tamagui";
 import { BadgeInfo } from "./BadgeInfo";
+import { ProfessionalKindBadge, type ProfessionalKindValue } from "./ProfessionalKindBadge";
 import { Icon } from "./Icon";
 import { Rating } from "./Rating";
 import { Surface } from "./Surface";
@@ -82,6 +83,8 @@ export type ProfessionalCardProps = {
   verified?: boolean;
   /** Identità verificata da Stripe (KYC/KYB, docs/CHANGELOG.md §241): badge distinto da "Verificato". */
   stripeVerified?: boolean;
+  /** Come si è iscritto: privato, partita IVA o azienda (docs/CHANGELOG.md §326). */
+  professionalKind?: ProfessionalKindValue | null;
   /**
    * Boost di visibilità attivo (richiesta esplicita dell'utente, "Verbale
    * di Conformità" — trasparenza sul ranking sponsorizzato, art. 26 DSA):
@@ -176,6 +179,7 @@ export function ProfessionalCard({
   completedThisMonth,
   verified,
   stripeVerified,
+  professionalKind,
   boosted,
   isNewProfile,
   hasLiabilityInsurance,
@@ -345,6 +349,7 @@ export function ProfessionalCard({
                   </XStack>
                 </BadgeInfo>
               ) : null}
+              {professionalKind ? <ProfessionalKindBadge kind={professionalKind} /> : null}
               {stripeVerified ? (
                 <BadgeInfo info="stripeVerified">
                   <XStack

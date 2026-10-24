@@ -31,6 +31,8 @@ export { Chip } from "./Chip";
 export type { ChipProps } from "./Chip";
 export { Badge } from "./Badge";
 export { BadgeInfo } from "./BadgeInfo";
+export { ProfessionalKindBadge } from "./ProfessionalKindBadge";
+export type { ProfessionalKindValue } from "./ProfessionalKindBadge";
 export type { BadgeInfoProps } from "./BadgeInfo";
 export { BADGE_INFO } from "./badgeInfo";
 export type { BadgeInfoKey } from "./badgeInfo";

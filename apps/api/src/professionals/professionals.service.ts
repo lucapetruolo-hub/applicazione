@@ -3,6 +3,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Inject, Inj
 import { Prisma, type PrismaClient } from "@professionisti/database";
 import {
   quotePaymentOffer,
+  professionalKindOf,
   traderStatusOf,
   findComuneByName,
   PROFILE_DECLARATION_VERSION,
@@ -163,7 +164,7 @@ export class ProfessionalsService {
         bookings: { include: { review: true } },
         visibilityBoosts: { where: { status: "ACTIVE" } },
         services: true,
-        fiscalProfile: { select: { stripePayoutsEnabled: true } },
+        fiscalProfile: { select: { stripePayoutsEnabled: true, entityType: true } },
       },
     });
 
@@ -195,6 +196,7 @@ export class ProfessionalsService {
         address: profile.address,
         verified: profile.verified,
         stripeVerified: stripeVerified(profile.fiscalProfile),
+        professionalKind: professionalKindOf(profile.fiscalProfile?.entityType),
         rating,
         reviewCount,
         boosted: profile.visibilityBoosts.length > 0,
@@ -527,6 +529,7 @@ export class ProfessionalsService {
       stripeVerified: stripeVerified(profile.fiscalProfile),
       // Privato o professionista, per il cliente (Codice del consumo art. 49-bis, §241).
       traderStatus: traderStatusOf(profile.fiscalProfile?.entityType),
+      professionalKind: professionalKindOf(profile.fiscalProfile?.entityType),
       rating,
       reviewCount,
       boosted: profile.visibilityBoosts.length > 0,

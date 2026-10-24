@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BRAND, PROFESSIONAL_CATEGORIES, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, formatServicePriceRange, subTagLabel, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
-import { Badge, BadgeInfo, Button, Chip, EmptyState, Icon, PriceLine, Rating, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { Badge, BadgeInfo, Button, ProfessionalKindBadge, Chip, EmptyState, Icon, PriceLine, Rating, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
@@ -344,6 +344,7 @@ export function ProfessionalDetailContent({
                     <Badge variant="verificato">Verificato</Badge>
                   </BadgeInfo>
                 ) : null}
+                {professional.professionalKind ? <ProfessionalKindBadge kind={professional.professionalKind} size="md" /> : null}
                 {/* Verifica di identità di Stripe, distinta dal "Verificato" del nostro team (docs/CHANGELOG.md §241). */}
                 {professional.stripeVerified ? (
                   <BadgeInfo info="stripeVerified">
@@ -404,18 +405,13 @@ export function ProfessionalDetailContent({
                   {professional.city}
                 </Text>
               </XStack>
-              {/* Privato o professionista (Codice del consumo art. 49-bis, docs/CHANGELOG.md §241). */}
-              {professional.traderStatus ? (
-                <YStack gap={2}>
-                  <Text fontFamily="$body" fontWeight="700" fontSize={16} color={brand.grafite}>
-                    {TRADER_STATUS_COPY[professional.traderStatus].label}
-                  </Text>
-                  {professional.traderStatus === "PRIVATE" ? (
-                    <Text fontSize={13} color={brand.grafite70}>
-                      {TRADER_STATUS_COPY.PRIVATE.note}
-                    </Text>
-                  ) : null}
-                </YStack>
+              {/* Privato o professionista (Codice del consumo art. 49-bis, docs/CHANGELOG.md §241): il tipo è
+                  nel badge accanto al nome (§326); per un privato l'avviso sui diritti del consumatore resta
+                  sempre scritto, non solo nel fumetto. */}
+              {professional.traderStatus === "PRIVATE" ? (
+                <Text fontSize={13} color={brand.grafite70}>
+                  {TRADER_STATUS_COPY.PRIVATE.note}
+                </Text>
               ) : null}
               {professional.rating !== null ? (
                 <Rating value={professional.rating} count={professional.reviewCount} size={16} />
