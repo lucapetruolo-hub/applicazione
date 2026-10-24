@@ -55,9 +55,6 @@ export default function ProfessionistiSalvatiPage() {
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
-      {/* Sidebar "Il tuo account" rimossa (richiesta esplicita dell'utente:
-          "non far vedere quel menu sempre lì fisso") — navigazione tra le
-          voci disponibile dal menu a tendina dell'header (AccountMenu). */}
       <XStack width="100%" maxWidth={760} gap="$8" alignItems="flex-start" flexWrap="wrap">
         <YStack flex={1} minWidth={280} gap="$5">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>

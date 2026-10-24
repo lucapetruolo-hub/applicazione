@@ -8,7 +8,7 @@ import { API_URL } from "../fixtures/env";
  * parte ridotto fino a 1366px, la scelta della persona vince, resta anche
  * ricaricando (senza aprirsi e richiudersi) e sull'account; fumetto col nome
  * che si chiude con Esc (WCAG 1.4.13), tasto [, colonna con i nomi sul tablet
- * in verticale. Solo da computer: sul telefono c'è la barra di sempre.
+ * in verticale, anche per il cliente. Solo da computer: sul telefono c'è la barra di sempre.
  */
 test.skip(({ isMobile }) => isMobile, "Il menu a colonna c'è solo da tablet e computer");
 
@@ -111,3 +111,21 @@ for (const [name, width, height, collapsed] of [
     expect(results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.html.slice(0, 120)).join(" | ")}`)).toEqual([]);
   });
 }
+
+test("anche il cliente ha il menu laterale, riducibile e senza problemi di accessibilità", async ({ page }) => {
+  const response = await page.request.post(`${API_URL}/auth/register`, {
+    data: { email: `cliente-menu-${Date.now()}@test.it`, password: "Prova12345", name: "Cliente Prova", role: "CLIENT", acceptedLegalTerms: true, declaredAdult: true },
+  });
+  expect(response.ok()).toBe(true);
+  const { token } = (await response.json()) as { token: string };
+  await page.goto("/");
+  await page.evaluate((t) => localStorage.setItem("professionisti_token", t), token);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/le-mie-richieste");
+  await expect(nav(page).getByRole("link", { name: "Le mie richieste" })).toHaveAttribute("aria-current", "page");
+  await expect(nav(page).getByRole("link", { name: "Professionisti salvati" })).toBeVisible();
+  await nav(page).getByRole("button", { name: "Riduci il menu a icone" }).click();
+  expect(await navState(page)).toBe("collapsed");
+  const results = await new AxeBuilder({ page }).include(".acct-nav").withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
+  expect(results.violations.map((v) => v.id)).toEqual([]);
+});

@@ -92,45 +92,38 @@ export function journeyNavItem(attention: ReadonlySet<string>): AccountNavItem |
 }
 
 /**
- * Schede del cliente (docs/CHANGELOG.md §147): poche voci, quindi una barra
- * sotto l'header invece di un menu laterale. La pagina di una decisione
- * sui propri contenuti (/segnalazioni) non è nel menu, si apre dall'email
- * (docs/CHANGELOG.md §319): resta evidenziata la scheda Account.
+ * Menu laterale del cliente, come quello del professionista (richiesta
+ * dell'utente, docs/CHANGELOG.md §333: prima una barra di schede sotto
+ * l'header, §147). Stesse voci della tendina "Il mio account". La pagina di
+ * una decisione sui propri contenuti (/segnalazioni) non è nel menu, si apre
+ * dall'email (docs/CHANGELOG.md §319): resta evidenziata la voce Account.
  */
-export const CLIENT_TABS: AccountNavItem[] = [
-  { href: "/le-mie-richieste", label: "Richieste", icon: "file-text" },
-  { href: "/chat", label: "Messaggi", icon: "message-circle" },
-  { href: "/professionisti-salvati", label: "Salvati", icon: "heart" },
-  { href: "/le-mie-recensioni", label: "Recensioni", icon: "star" },
-  { href: "/account", label: "Account", icon: "user-round", alsoMatches: ["/segnalazioni", "/account/notifiche"] },
+export const CLIENT_NAV: AccountNavGroup[] = [
+  {
+    title: "Le tue richieste",
+    items: [
+      { href: "/le-mie-richieste", label: "Le mie richieste", shortLabel: "Richieste", icon: "file-text" },
+      { href: "/chat", label: "Messaggi", icon: "message-circle" },
+      { href: "/professionisti-salvati", label: "Professionisti salvati", shortLabel: "Salvati", icon: "heart" },
+      { href: "/le-mie-recensioni", label: "Le mie recensioni", shortLabel: "Recensioni", icon: "star" },
+    ],
+  },
+  {
+    title: "Impostazioni",
+    items: [
+      { href: "/account", label: "Account", icon: "user-round", alsoMatches: ["/segnalazioni"] },
+      { href: "/account/notifiche", label: "Notifiche", icon: "bell-ring" },
+    ],
+  },
 ];
 
 /**
  * Gruppi della tendina "Il mio account" nell'header (docs/CHANGELOG.md
  * §148, richiesta esplicita dell'utente: "suddividi meglio anche quel menu
- * a tendina"). Professionista: stessi gruppi del menu laterale. Cliente:
- * le sue richieste, poi account e notifiche.
+ * a tendina"): gli stessi dei menu laterali.
  */
 export function getAccountMenuGroups(isProfessional: boolean): AccountNavGroup[] {
-  if (isProfessional) return PROFESSIONAL_NAV;
-  return [
-    {
-      title: "Le tue richieste",
-      items: [
-        { href: "/le-mie-richieste", label: "Le mie richieste", icon: "file-text" },
-        { href: "/chat", label: "Messaggi", icon: "message-circle" },
-        { href: "/professionisti-salvati", label: "Professionisti salvati", icon: "heart" },
-        { href: "/le-mie-recensioni", label: "Le mie recensioni", icon: "star" },
-      ],
-    },
-    {
-      title: "Impostazioni",
-      items: [
-        { href: "/account", label: "Account", icon: "user-round" },
-        { href: "/account/notifiche", label: "Notifiche", icon: "bell-ring" },
-      ],
-    },
-  ];
+  return isProfessional ? PROFESSIONAL_NAV : CLIENT_NAV;
 }
 
 /** La voce è quella della pagina corrente? `/dashboard` solo in modo esatto. */

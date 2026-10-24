@@ -935,13 +935,28 @@ button.notif-row-main:hover {
 .acct-nav-short {
   display: none;
 }
+/* Sul telefono, nella barra che scorre, il nome breve ("Richieste",
+   "Salvati"): con quello intero si vedevano due voci sole (docs/CHANGELOG.md
+   §333). Il nome intero resta per gli screen reader. */
+@media (max-width: 759px) {
+  .acct-nav .acct-nav-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .acct-nav .acct-nav-short {
+    display: inline;
+  }
+}
 /* Tasto "Riduci il menu" (docs/CHANGELOG.md §333): solo con la colonna. */
 .acct-nav-toggle,
 .acct-nav-tip {
   display: none;
 }
-.acct-nav-link,
-.acct-tab {
+.acct-nav-link {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -954,19 +969,16 @@ button.notif-row-main:hover {
   white-space: nowrap;
   flex-shrink: 0;
 }
-.acct-nav-link > svg,
-.acct-tab > svg {
+.acct-nav-link > svg {
   flex-shrink: 0;
 }
-.acct-nav-link:hover,
-.acct-tab:hover {
+.acct-nav-link:hover {
   background: #fdefe1;
 }
 /* Voce attiva grigio chiaro, non più quasi nera (regola accettata
    dall'utente il 22/10, docs/CHANGELOG.md §306): il nero pieno pesava più
    del contenuto della pagina. */
-.acct-nav-link.is-active,
-.acct-tab.is-active {
+.acct-nav-link.is-active {
   background: #efe9e2;
   color: #2b2420;
   font-weight: 700;
@@ -1013,32 +1025,6 @@ button.notif-row-main:hover {
   border-radius: 999px;
   background: #dc3545;
   box-shadow: 0 0 0 2px #ffffff;
-}
-.acct-client {
-  width: 100%;
-}
-.acct-tabs {
-  display: flex;
-  gap: 4px;
-  overflow-x: auto;
-  justify-content: flex-start;
-  background: #ffffff;
-  padding: 8px 12px;
-  border-bottom: 1px solid #f0dcc0;
-  scrollbar-width: none;
-  position: sticky;
-  top: 64px;
-  /* Sotto l'header (z-index 40), non sopra: altrimenti la tendina
-     "Il mio account" finiva dietro questa barra (docs/CHANGELOG.md §148). */
-  z-index: 30;
-}
-.acct-tabs::-webkit-scrollbar {
-  display: none;
-}
-@media (min-width: 760px) {
-  .acct-tabs {
-    justify-content: center;
-  }
 }
 /* Colonna a sinistra da 760px (tablet in verticale compreso, docs/CHANGELOG.md
    §333): prima, fino a 1000px, era una barra che scorreva di lato e
