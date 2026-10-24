@@ -170,7 +170,7 @@ function AccediForm() {
             </Text>
           ) : null}
 
-          <Button variant="primary" onPress={handleLogin} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
+          <Button variant="scuro" onPress={handleLogin} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
             {isSubmitting ? "Accesso in corso..." : "Accedi"}
           </Button>
 

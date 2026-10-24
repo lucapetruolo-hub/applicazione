@@ -39,7 +39,7 @@ export default tseslint.config(
       "jsx-a11y/click-events-have-key-events": "warn",
       "jsx-a11y/no-noninteractive-element-interactions": "warn",
       "jsx-a11y/no-static-element-interactions": "warn",
-      // ItalianDateInput contiene un <input type="date"> (docs/CHANGELOG.md §290).
+      // ItalianDateInput contiene un <input type="date"> (docs/CHANGELOG.md §291).
       "jsx-a11y/label-has-associated-control": ["error", { controlComponents: ["ItalianDateInput"], depth: 3 }],
     },
   },

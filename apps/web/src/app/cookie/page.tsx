@@ -19,7 +19,7 @@ export default function CookiePage() {
         },
         {
           heading: "2. Cookie tecnici (necessari)",
-          body: "Usiamo cookie e archiviazione locale strettamente necessari al funzionamento: mantenere la sessione di accesso, ricordare le preferenze di navigazione e garantire la sicurezza. Questi non richiedono consenso e non possono essere disattivati senza compromettere l'uso del sito.",
+          body: "Usiamo cookie e archiviazione locale strettamente necessari al funzionamento: mantenere la sessione di accesso, ricordare le preferenze di navigazione e garantire la sicurezza (ad esempio un codice casuale che ci fa riconoscere un accesso da un dispositivo nuovo, per avvisarti via email). Questi non richiedono consenso e non possono essere disattivati senza compromettere l'uso del sito.",
         },
         {
           heading: "3. Cookie di terze parti",

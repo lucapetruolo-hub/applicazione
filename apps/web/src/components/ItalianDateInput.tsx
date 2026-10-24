@@ -3,7 +3,7 @@
 import type { CSSProperties } from "react";
 
 /**
- * Campo data che mostra sempre gg/mm/aaaa (docs/CHANGELOG.md §290,
+ * Campo data che mostra sempre gg/mm/aaaa (docs/CHANGELOG.md §291,
  * richiesta dell'utente): il campo data del browser segue la lingua del
  * browser, non quella del sito, e su un computer in inglese mostrava
  * "mm/dd/yyyy". Resta il campo nativo (calendario del telefono, tastiera,

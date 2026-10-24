@@ -6,7 +6,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   NO_CATEGORY_MESSAGE,
+  PASSWORD_CONTAINS_EMAIL_MESSAGE,
   parseSubscriptionTier,
+  isMissingRulesProblem,
+  passwordContainsEmail,
+  passwordProblem,
   registerSchema,
   type ProfessionalCategorySlug,
   type ProfessionalEntityTypeValue,
@@ -18,7 +22,8 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { GoogleConsentModal } from "@/components/GoogleConsentModal";
-import { ConsentCheckbox } from "@/components/ConsentCheckbox";
+import { LegalConsentCheckbox, scrollToLegalConsent } from "@/components/LegalConsentCheckbox";
+import { PASSWORD_RULES_ATTRIBUTE, PasswordMatchHint, PasswordRules } from "@/components/PasswordRules";
 import { CategoryMultiPicker } from "@/components/CategoryMultiPicker";
 import { ClientEmailFirstAuth } from "@/components/ClientEmailFirstAuth";
 import { AuthPageBackground } from "@/components/AuthPageBackground";
@@ -361,6 +366,9 @@ function RegistratiForm() {
   // indipendente dal campo password principale.
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  // Invio provato con una password che non rispetta le regole: quelle che
+  // mancano diventano rosse (docs/CHANGELOG.md §289).
+  const [passwordAttempted, setPasswordAttempted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Campo a cui si riferisce l'errore (docs/CHANGELOG.md §278): il messaggio
   // va sotto quel campo. Nullo: errore generale, sopra "Registrati".
@@ -368,17 +376,14 @@ function RegistratiForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileReset, setTurnstileReset] = useState(0);
-  // Due dichiarazioni obbligatorie richieste esplicitamente dall'utente
-  // ("Verbale di Conformità"): prima nessun atto tracciato confermava che
-  // l'utente avesse letto le informative, né esisteva una dichiarazione di
-  // maggiore età — vale sia per la registrazione email+password sia per
-  // Google (v. `disabled` su GoogleSignInButton sotto).
-  const [acceptedLegalTerms, setAcceptedLegalTerms] = useState(false);
-  const [declaredAdult, setDeclaredAdult] = useState(false);
-  const canSubmitConsent = acceptedLegalTerms && declaredAdult;
-  // "Registrati" resta sempre premibile (docs/CHANGELOG.md §248): senza le
-  // due spunte le caselle mancanti diventano rosse. Il numero cambia a ogni
-  // tentativo per far ripartire la scossa.
+  // Dichiarazioni obbligatorie ("Verbale di Conformità": informative lette e
+  // maggiore età), dal §289 in una sola casella sul modello di Didit. Valgono
+  // sia per la registrazione email+password sia per Google; l'API riceve
+  // sempre le due dichiarazioni dal valore di questa casella.
+  const [legalConsent, setLegalConsent] = useState(false);
+  // "Registrati" resta sempre premibile (docs/CHANGELOG.md §248): senza la
+  // spunta la casella diventa rossa. Il numero cambia a ogni tentativo per
+  // far ripartire la scossa.
   const [consentAttempt, setConsentAttempt] = useState(0);
   // Richiesta esplicita dell'utente: "Continua con Google" deve restare
   // sempre cliccabile fin da subito (prima disabilitato finché non si
@@ -449,23 +454,14 @@ function RegistratiForm() {
   async function handleRegister() {
     setError(null);
     setErrorField(null);
-    if (!canSubmitConsent) {
-      setConsentAttempt((n) => n + 1);
-      const firstMissing = document.getElementById(acceptedLegalTerms ? "consenso-eta" : "consenso-termini");
-      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      firstMissing?.scrollIntoView({ block: "center", behavior: reduceMotion ? "auto" : "smooth" });
-      return;
-    }
-    if (password !== confirmPassword) {
-      fieldError("confirm", "Le password non coincidono.");
-      return;
-    }
+    // Dall'alto in basso: categorie, email, password, conferma, spunta. Il
+    // consenso si controlla per ultimo, qui vale come già dato.
     const result = registerSchema.safeParse({
       email: email.trim(),
       password,
       role,
-      acceptedLegalTerms,
-      declaredAdult,
+      acceptedLegalTerms: true,
+      declaredAdult: true,
       categorySlugs,
       entityType: entityChoice?.value,
     });
@@ -473,9 +469,28 @@ function RegistratiForm() {
       const issue = result.error.issues[0];
       const message = issue?.message ?? "Dati non validi.";
       const path = issue?.path[0];
-      if (path === "email" || path === "password") fieldError(path, message);
+      if (path === "password") {
+        // Le regole sotto il campo dicono già cosa manca: nessun testo in più,
+        // salvo la lunghezza massima che non è tra le regole.
+        setPasswordAttempted(true);
+        fieldError("password", isMissingRulesProblem(message) ? "" : message);
+      } else if (path === "email") fieldError(path, message);
       else if (path === "categorySlugs") fieldError("categories", message);
       else setError(message);
+      return;
+    }
+    if (passwordContainsEmail(password, result.data.email)) {
+      setPasswordAttempted(true);
+      fieldError("password", PASSWORD_CONTAINS_EMAIL_MESSAGE);
+      return;
+    }
+    if (password !== confirmPassword) {
+      fieldError("confirm", "Le password non coincidono.");
+      return;
+    }
+    if (!legalConsent) {
+      setConsentAttempt((n) => n + 1);
+      scrollToLegalConsent();
       return;
     }
     if (isTurnstileEnabled() && !turnstileToken) {
@@ -490,8 +505,8 @@ function RegistratiForm() {
         result.data.password,
         result.data.name,
         result.data.role,
-        result.data.acceptedLegalTerms,
-        result.data.declaredAdult,
+        legalConsent,
+        legalConsent,
         turnstileToken ?? undefined,
         result.data.categorySlugs,
         result.data.entityType,
@@ -504,7 +519,9 @@ function RegistratiForm() {
       }
       afterAuth(isNewUser);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+      const message = err instanceof Error ? err.message : "Errore imprevisto, riprova.";
+      if (message === PASSWORD_CONTAINS_EMAIL_MESSAGE) fieldError("password", message);
+      else setError(message);
       // Il token anti-bot vale una volta sola: ne serve uno nuovo per riprovare.
       setTurnstileReset((n) => n + 1);
     } finally {
@@ -559,12 +576,12 @@ function RegistratiForm() {
     // già esistente per quell'email (login diretto, nessun consenso
     // richiesto) o segnala che serve il consenso solo se sta per creare
     // l'account per davvero — vedi completeGoogleAuth sopra.
-    await completeGoogleAuth(idToken, acceptedLegalTerms, declaredAdult, false);
+    await completeGoogleAuth(idToken, legalConsent, legalConsent, false);
   }
 
   async function handleConfirmGoogleConsent() {
     if (!pendingGoogleIdToken) return;
-    await completeGoogleAuth(pendingGoogleIdToken, acceptedLegalTerms, declaredAdult, true);
+    await completeGoogleAuth(pendingGoogleIdToken, legalConsent, legalConsent, true);
   }
 
   function handleCancelGoogleConsent() {
@@ -695,7 +712,6 @@ function RegistratiForm() {
           />
           <AuthField
             label="Password"
-            hint="Minimo 8 caratteri"
             rightElement={
               <Text
                 cursor="pointer"
@@ -718,7 +734,11 @@ function RegistratiForm() {
             autoComplete="new-password"
             nativeID="new-password"
             accessibilityLabel="Password"
+            passwordRules={PASSWORD_RULES_ATTRIBUTE}
             error={error && errorField === "password" ? error : undefined}
+            invalid={passwordAttempted && passwordProblem(password, email) !== null}
+            footer={<PasswordRules id="new-password-rules" password={password} showMissing={passwordAttempted} />}
+            footerId="new-password-rules"
           />
           <AuthField
             label="Conferma password"
@@ -739,39 +759,15 @@ function RegistratiForm() {
             autoComplete="new-password"
             nativeID="new-password-confirm"
             accessibilityLabel="Conferma password"
+            passwordRules={PASSWORD_RULES_ATTRIBUTE}
             error={error && errorField === "confirm" ? error : undefined}
+            footer={<PasswordMatchHint password={password} confirmPassword={confirmPassword} />}
             onSubmitEditing={handleRegister}
           />
 
-          {/* Due dichiarazioni obbligatorie richieste esplicitamente
-              dall'utente ("Verbale di Conformità") — valgono anche per il
-              pulsante Google sopra, non solo per questo form. */}
-          <YStack key={consentAttempt} gap="$2">
-            <ConsentCheckbox
-              id="consenso-termini"
-              checked={acceptedLegalTerms}
-              invalid={consentAttempt > 0}
-              onToggle={() => setAcceptedLegalTerms((v) => !v)}
-            >
-              Ho letto e accetto la{" "}
-              <Link href="/privacy" target="_blank" style={{ textDecoration: "underline", color: brand.cianografiaScuro }}>
-                Privacy Policy
-              </Link>{" "}
-              e i{" "}
-              <Link href="/termini" target="_blank" style={{ textDecoration: "underline", color: brand.cianografiaScuro }}>
-                Termini di Servizio
-              </Link>
-              .
-            </ConsentCheckbox>
-            <ConsentCheckbox id="consenso-eta" checked={declaredAdult} invalid={consentAttempt > 0} onToggle={() => setDeclaredAdult((v) => !v)}>
-              Dichiaro di avere almeno 18 anni.
-            </ConsentCheckbox>
-            {consentAttempt > 0 && !canSubmitConsent ? (
-              <Text role="alert" fontSize="$2" color={brand.urgenza} fontWeight="600">
-                {acceptedLegalTerms || declaredAdult ? "Spunta anche questa casella per continuare." : "Spunta le due caselle per continuare."}
-              </Text>
-            ) : null}
-          </YStack>
+          {/* Dichiarazioni obbligatorie ("Verbale di Conformità") in una
+              sola casella (§289) — valgono anche per il pulsante Google sopra. */}
+          <LegalConsentCheckbox checked={legalConsent} onToggle={() => setLegalConsent((v) => !v)} attempt={consentAttempt} />
 
           <TurnstileWidget onTokenChange={setTurnstileToken} resetSignal={turnstileReset} />
 
@@ -782,7 +778,7 @@ function RegistratiForm() {
           ) : null}
 
           <Button
-            variant="primary"
+            variant="scuro"
             onPress={handleRegister}
             disabled={isSubmitting}
             opacity={isSubmitting ? 0.6 : 1}
@@ -813,10 +809,8 @@ function RegistratiForm() {
     <ProfessionalSignupLayout onBack={() => setParam("tipo", null)}>{formFields}</ProfessionalSignupLayout>
     {pendingGoogleIdToken ? (
       <GoogleConsentModal
-        acceptedLegalTerms={acceptedLegalTerms}
-        declaredAdult={declaredAdult}
-        onToggleLegalTerms={() => setAcceptedLegalTerms((v) => !v)}
-        onToggleDeclaredAdult={() => setDeclaredAdult((v) => !v)}
+        consent={legalConsent}
+        onToggleConsent={() => setLegalConsent((v) => !v)}
         onConfirm={handleConfirmGoogleConsent}
         onCancel={handleCancelGoogleConsent}
         isSubmitting={isSubmitting}

@@ -108,7 +108,7 @@ export function navigateUrl(destination: string): string {
 }
 
 /**
- * Richieste in zona (docs/CHANGELOG.md §289-§290, scelta dell'utente): i
+ * Richieste in zona (docs/CHANGELOG.md §290-§291, scelta dell'utente): i
  * momenti della settimana in cui i clienti dei comuni nel raggio di lavoro
  * chiedono più spesso i lavori del professionista, da confrontare con la sua settimana tipo.
  * Solo conteggi: nessun dato del singolo cliente.

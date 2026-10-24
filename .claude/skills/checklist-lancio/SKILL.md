@@ -327,7 +327,7 @@ aperti solo:
     professionista che risponde col preventivo, cliente che lo accetta,
     admin che vede la segnalazione. Più una prova con l'API spenta (deve
     comparire "Riprova", docs/CHANGELOG.md §284-§285). Più una prova degli
-    orari dell'agenda (decisione dell'utente, 22/10/2026, §287-§289): un
+    orari dell'agenda (decisione dell'utente, 22/10/2026, §287, §288 e §290): un
     preventivo alle 09:00 deve comparire alle 09:00 in agenda, nel
     riquadro dell'appuntamento, in Oggi e lato cliente, con il browser in
     un fuso diverso dall'Italia (es. `timezoneId: "America/New_York"` di
@@ -350,3 +350,8 @@ Cose decise con Luca da non fare prima del lancio, ma da non dimenticare:
 - **Elenchi admin con totale e pagine** (revisione esterna del piano,
   21/10/2026): oggi alcuni elenchi si fermano a 50 o 200 righe senza dirlo.
   Con pochi utenti non pesa; da fare quando crescono.
+- **Secondo codice all'accesso** (22/10/2026, docs/CHANGELOG.md §289):
+  per i professionisti con i pagamenti online attivi, dopo la password un
+  codice da un'app di autenticazione (o via email). Protegge i soldi se la
+  password viene rubata. Oggi c'è già l'email "Nuovo accesso al tuo
+  account" da un dispositivo mai usato.
