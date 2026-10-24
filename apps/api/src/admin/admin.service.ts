@@ -62,7 +62,7 @@ export class AdminService {
 
   /**
    * Richieste di preventivo degli ultimi 30 giorni per provenienza della
-   * visita (docs/CHANGELOG.md §291): la prova che Google porta lavoro. Una
+   * visita (docs/CHANGELOG.md §295): la prova che Google porta lavoro. Una
    * richiesta con più categorie conta una volta sola (`submissionGroupId`).
    * Le richieste senza provenienza (prima di questa funzione, o browser che
    * non la dà) finiscono in "unknown".

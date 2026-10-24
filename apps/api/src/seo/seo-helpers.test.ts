@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { professionalIdFromSlug, professionalPath, trafficSourceFromReferrer } from "@professionisti/shared";
 
-// Funzioni condivise della SEO (docs/CHANGELOG.md §291), provate qui perché
+// Funzioni condivise della SEO (docs/CHANGELOG.md §294-§295), provate qui perché
 // packages/shared non ha una propria suite di test.
 describe("trafficSourceFromReferrer", () => {
   const own = "applicazione-web.vercel.app";

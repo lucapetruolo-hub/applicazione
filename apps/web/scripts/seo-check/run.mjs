@@ -1,5 +1,5 @@
 // Avvia l'API finta e `next start` sulla build già fatta, lancia check.mjs e
-// chiude tutto (docs/CHANGELOG.md §291). Uso: node run.mjs public|private
+// chiude tutto (docs/CHANGELOG.md §295). Uso: node run.mjs public|private
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";

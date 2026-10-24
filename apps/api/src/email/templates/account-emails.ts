@@ -112,6 +112,48 @@ export function passwordChangedEmail(name: string | null): RenderedEmail {
   });
 }
 
+const LOGIN_TIME = new Intl.DateTimeFormat("it-IT", {
+  timeZone: "Europe/Rome",
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+/** Troppe password sbagliate di fila: accesso con password fermo per qualche minuto (§289). */
+export function loginLockedEmail(name: string | null, minutes: number): RenderedEmail {
+  const site = frontendUrl();
+  return renderEmail({
+    kind: "account",
+    subject: "Troppi tentativi di accesso al tuo account",
+    preheader: `Per sicurezza l'accesso con password è fermo per ${minutes} minuti.`,
+    greeting: name,
+    title: "Troppi tentativi di accesso",
+    paragraphs: [
+      `Qualcuno ha scritto più volte una password sbagliata per entrare nel tuo account. Per sicurezza l'accesso con password è fermo per ${minutes} minuti.`,
+      "Se eri tu, riprova più tardi oppure scegli una password nuova: entri subito.",
+    ],
+    cta: { label: "Scegli una password nuova", url: `${site}/password-dimenticata` },
+    after: [`Se non eri tu, cambiare la password tiene fuori chi ci sta provando. Per qualsiasi dubbio scrivici a ${EMAIL_BRAND.supportEmail}.`],
+  });
+}
+
+/** Accesso da un dispositivo mai visto, per i professionisti (§289). */
+export function newDeviceLoginEmail(name: string | null, device: { label: string; at: Date }): RenderedEmail {
+  const site = frontendUrl();
+  return renderEmail({
+    kind: "account",
+    subject: "Nuovo accesso al tuo account",
+    preheader: `Accesso da ${device.label}.`,
+    greeting: name,
+    title: "Nuovo accesso al tuo account",
+    paragraphs: [`Qualcuno è entrato nel tuo account da un dispositivo che non avevi mai usato: **${device.label}**, ${LOGIN_TIME.format(device.at)}.`, "Se eri tu, non devi fare nulla."],
+    cta: { label: "Non ero io: cambia la password", url: `${site}/password-dimenticata` },
+    after: [`Ti avvisiamo per proteggere i tuoi clienti e i tuoi pagamenti. Per qualsiasi dubbio scrivici a ${EMAIL_BRAND.supportEmail}.`],
+  });
+}
+
 export function accountDeletedEmail(name: string | null): RenderedEmail {
   return renderEmail({
     kind: "account",

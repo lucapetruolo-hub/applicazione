@@ -42,7 +42,9 @@ produzione):
      avanzati; senza, si usa `DEMO_MAP_ID`, che è solo di prova (§140);
    - `GOOGLE_MAPS_API_KEY` su Render — seconda chiave, con Geocoding API,
      Places API (New) (suggerimenti degli indirizzi, §264) e Maps Static API
-     (immagine fissa della mappa senza consenso, §265);
+     (immagine fissa della mappa senza consenso, §265) e Routes API (tempi
+     di strada del "Giro intelligente" dell'agenda, §288: senza, i tempi
+     sono una stima "circa");
    - Client ID OAuth di Google: tra gli "URI di reindirizzamento
      autorizzati" l'indirizzo `/accesso-google` del dominio definitivo
      (accesso con Google, §265);
@@ -324,7 +326,12 @@ aperti solo:
     container) con account di prova: cliente che cerca e manda la richiesta,
     professionista che risponde col preventivo, cliente che lo accetta,
     admin che vede la segnalazione. Più una prova con l'API spenta (deve
-    comparire "Riprova", docs/CHANGELOG.md §284-§285).
+    comparire "Riprova", docs/CHANGELOG.md §284-§285). Più una prova degli
+    orari dell'agenda (decisione dell'utente, 22/10/2026, §287, §288 e §290): un
+    preventivo alle 09:00 deve comparire alle 09:00 in agenda, nel
+    riquadro dell'appuntamento, in Oggi e lato cliente, con il browser in
+    un fuso diverso dall'Italia (es. `timezoneId: "America/New_York"` di
+    Playwright) e d'estate e d'inverno (prima e dopo il 25/10).
 27. **Misure del percorso** (stessa revisione): contare ricerca → profilo →
     richiesta inviata → preventivo → accettato, e per i professionisti
     iscrizione → profilo pubblico → primo preventivo → primo lavoro. Nel
@@ -334,7 +341,7 @@ aperti solo:
 **Visibilità su Google (SEO)** (thread "Visibilità su Google (SEO)",
 22/10/2026, controllo in `/mnt/project-files/analisi/seo-controllo.md`):
 Luca ha scelto di farle poco prima del lancio, quando nome e sito sono
-definitivi. Già fatte (docs/CHANGELOG.md §291): H1, canonical, indirizzo
+definitivi. Già fatte (docs/CHANGELOG.md §294): H1, canonical, indirizzo
 leggibile del profilo, pagina "non trovata", percorso Home › Categoria ›
 Città, pagine vuote fuori da Google.
 28. **Dominio vero nel sito**: cambiare `SITE_URL` in
@@ -371,6 +378,11 @@ Cose decise con Luca da non fare prima del lancio, ma da non dimenticare:
 - **Elenchi admin con totale e pagine** (revisione esterna del piano,
   21/10/2026): oggi alcuni elenchi si fermano a 50 o 200 righe senza dirlo.
   Con pochi utenti non pesa; da fare quando crescono.
+- **Secondo codice all'accesso** (22/10/2026, docs/CHANGELOG.md §289):
+  per i professionisti con i pagamenti online attivi, dopo la password un
+  codice da un'app di autenticazione (o via email). Protegge i soldi se la
+  password viene rubata. Oggi c'è già l'email "Nuovo accesso al tuo
+  account" da un dispositivo mai usato.
 - **Link da altri siti verso il nostro** (thread "Visibilità su Google
   (SEO)", 22/10/2026): scheda Google Business del sito, elenchi di attività
   locali, un link "Trovami su …" che i professionisti mettono sul loro sito

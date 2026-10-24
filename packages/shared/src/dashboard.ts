@@ -331,6 +331,8 @@ export type ProfessionalBooking = {
    * §1). Impostato dal professionista stesso, visibile anche al cliente.
    */
   meetingLink: string | null;
+  /** Quando il professionista ha premuto "Sto arrivando" (docs/CHANGELOG.md §288), `null` se non l'ha fatto. Facoltativa solo per un'API non ancora aggiornata. */
+  onTheWayAt?: string | null;
   /**
    * Conferma del cliente che il lavoro è davvero terminato dal suo lato
    * (richiesta esplicita dell'utente: "servono i completed da entrambi") —

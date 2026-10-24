@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { trafficSourceFromReferrer } from "@professionisti/shared";
 
-/** Chiave di sessionStorage con la provenienza della visita (docs/CHANGELOG.md §291). */
+/** Chiave di sessionStorage con la provenienza della visita (docs/CHANGELOG.md §295). */
 export const TRAFFIC_SOURCE_STORAGE_KEY = "traffic_source";
 
 /**

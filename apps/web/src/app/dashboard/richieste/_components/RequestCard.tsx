@@ -46,6 +46,7 @@ import { CardButton } from "@/components/CardButton";
 import { ContactButton } from "@/components/ContactButton";
 import { ScheduleChangeBox } from "@/components/ScheduleChangeBox";
 import { DeadlinePill, MiniTimeline, QuoteItemDraft, STAGE_STYLE, ServiceBadge, StagePill, formatDateTime, formatSlotRange, slotKey, slotLabel, smallInputStyle } from "./requestHelpers";
+import { ItalianDateInput } from "@/components/ItalianDateInput";
 
 export function RequestCard({
   lead,
@@ -1287,7 +1288,7 @@ export function RequestCard({
               ) : (
                 <YStack gap="$2">
                   <XStack gap="$2" flexWrap="wrap">
-                    <input aria-label="Data" type="date" value={manualDate} onChange={(e) => setManualDate(e.target.value)} style={{ ...smallInputStyle, flex: 1, minWidth: 130 }} />
+                    <ItalianDateInput ariaLabel="Data" value={manualDate} onChange={setManualDate} style={{ ...smallInputStyle, flex: 1, minWidth: 130 }} padX={10} />
                     <input aria-label="Ora di inizio" type="time" value={manualStartTime} onChange={(e) => setManualStartTime(e.target.value)} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} />
                     <input aria-label="Ora di fine"
                       type="time"
@@ -1432,7 +1433,7 @@ export function RequestCard({
               ) : (
                 <YStack gap="$2">
                   <XStack gap="$2" flexWrap="wrap">
-                    <input aria-label="Nuova data" type="date" value={manualCounterDate} onChange={(e) => setManualCounterDate(e.target.value)} style={{ ...smallInputStyle, flex: 1, minWidth: 130 }} />
+                    <ItalianDateInput ariaLabel="Nuova data" value={manualCounterDate} onChange={setManualCounterDate} style={{ ...smallInputStyle, flex: 1, minWidth: 130 }} padX={10} />
                     <input aria-label="Ora di inizio" type="time" value={manualCounterStartTime} onChange={(e) => setManualCounterStartTime(e.target.value)} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} />
                     <input aria-label="Ora di fine" type="time" value={manualCounterEndTime} onChange={(e) => setManualCounterEndTime(e.target.value)} style={{ ...smallInputStyle, flex: 1, minWidth: 100 }} />
                   </XStack>

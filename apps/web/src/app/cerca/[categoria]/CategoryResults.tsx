@@ -58,7 +58,7 @@ async function categoriesInCity(city: string): Promise<string[] | null> {
 /**
  * Pagina con troppo pochi professionisti veri: resta uguale per chi la apre,
  * con l'invio della richiesta (§271), ma fuori da Google, che altrimenti
- * indicizzerebbe pagine quasi vuote tutte uguali (docs/CHANGELOG.md §291).
+ * indicizzerebbe pagine quasi vuote tutte uguali (docs/CHANGELOG.md §294-§295).
  * Categoria+città: almeno `MIN_PROFESSIONALS_TO_INDEX_CITY`; categoria in
  * tutta Italia: almeno uno. Solo con il sito aperto ai motori di ricerca, così
  * prima del lancio nessuna chiamata in più. Se la ricerca non risponde non si
@@ -140,7 +140,7 @@ export async function CategoryResults({
   }
 
   // Percorso per Google (Home › Idraulico › Latina), senza riquadro visibile:
-  // il titolo sopra i risultati era stato tolto (docs/CHANGELOG.md §271, §291).
+  // il titolo sopra i risultati era stato tolto (docs/CHANGELOG.md §271, §294).
   const citySlug = comune ? comuneSlug(comune.name) : undefined;
   const breadcrumbs = breadcrumbJsonLd([
     { label: "Home", href: "/" },

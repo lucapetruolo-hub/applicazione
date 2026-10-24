@@ -5,7 +5,7 @@ import { TRAFFIC_SOURCE_LABELS } from "@professionisti/shared";
 import { Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 
 /**
- * "Da dove arrivano le richieste" (docs/CHANGELOG.md §291, strategia SEO):
+ * "Da dove arrivano le richieste" (docs/CHANGELOG.md §295, strategia SEO):
  * richieste di preventivo degli ultimi 30 giorni per provenienza della
  * visita. Google in evidenza perché è la misura che conta per la SEO.
  */

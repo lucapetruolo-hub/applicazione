@@ -5,7 +5,7 @@ import { PRISMA } from "../prisma/prisma.module";
 import { EmailService } from "../email/email.service";
 import { bookingReminderClientEmail, bookingReminderProfessionalEmail } from "../email/templates/job-emails";
 import { bookingCalendar, bookingPeople } from "../email/booking-calendar";
-import { notificationChannelEnabled, resolveNotificationPreferences } from "@professionisti/shared";
+import { notificationChannelEnabled, resolveNotificationPreferences, wallClockNow } from "@professionisti/shared";
 
 function wantsReminderEmail(stored: unknown): boolean {
   return notificationChannelEnabled(resolveNotificationPreferences(stored), "BOOKING_REMINDER", "email");
@@ -43,7 +43,8 @@ export class BookingRemindersService {
 
   @Cron(CronExpression.EVERY_30_MINUTES)
   async sendUpcomingReminders(): Promise<void> {
-    const now = new Date();
+    // scheduledAt è l'ora italiana scritta in UTC: si confronta con l'ora italiana di adesso (docs/CHANGELOG.md §287).
+    const now = wallClockNow();
     const windowStart = new Date(now.getTime() + REMINDER_WINDOW_START_HOURS * 60 * 60 * 1000);
     const windowEnd = new Date(now.getTime() + REMINDER_WINDOW_END_HOURS * 60 * 60 * 1000);
 

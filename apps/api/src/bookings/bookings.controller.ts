@@ -158,6 +158,13 @@ export class BookingsController {
     return this.bookingsService.updateMeetingLink(req.user.userId, id, body.meetingLink);
   }
 
+  /** "Sto arrivando" (docs/CHANGELOG.md §288): avvisa il cliente, una volta sola. */
+  @UseGuards(JwtAuthGuard)
+  @Post(":id/on-the-way")
+  notifyOnTheWay(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    return this.bookingsService.notifyOnTheWay(req.user.userId, id);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get("me")
   listMine(@Req() req: AuthenticatedRequest) {

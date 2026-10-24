@@ -84,10 +84,10 @@ export function AgendaEventRow({ item }: { item: AgendaListItem }) {
       accessibilityRole="button"
     >
       <YStack minWidth={92}>
-        <Text fontFamily="$mono" fontSize={12} fontWeight="700" color={brand.grafite} numberOfLines={1}>
+        <Text fontFamily="$body" fontSize={12} fontWeight="700" color={brand.grafite} numberOfLines={1}>
           {dateLabel}
         </Text>
-        <Text fontFamily="$mono" fontSize={11} color={brand.grafite70} numberOfLines={1}>
+        <Text fontFamily="$body" fontSize={11} color={brand.grafite70} numberOfLines={1}>
           {item.timeLabel}
         </Text>
       </YStack>

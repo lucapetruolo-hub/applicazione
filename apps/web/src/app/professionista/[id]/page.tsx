@@ -11,7 +11,7 @@ import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { ProfessionalDetailContent } from "./ProfessionalDetailContent";
 
 // `id` è il segmento dell'indirizzo: "nome-citta-<id>" o, nei link vecchi, il
-// solo id (docs/CHANGELOG.md §291, packages/shared/src/professionalUrl.ts).
+// solo id (docs/CHANGELOG.md §294, packages/shared/src/professionalUrl.ts).
 type PageParams = { id: string };
 type PageSearchParams = Record<string, string | string[] | undefined>;
 

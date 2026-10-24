@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { AGENDA_LOOKAHEAD_DAYS, scheduleChangeBetween, type AgendaAttention, type MySubscription, type ProfessionalBooking, type ProfessionalInsights, type ProfessionalLead } from "@professionisti/shared";
+import { AGENDA_LOOKAHEAD_DAYS, formatAppointmentDate, formatAppointmentTime, scheduleChangeBetween, wallClockToday, type AgendaAttention, type MySubscription, type ProfessionalBooking, type ProfessionalInsights, type ProfessionalLead } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -123,10 +123,10 @@ export default function DashboardTodayPage() {
   const datesToConfirm = (leads ?? []).filter((lead) => lead.quote?.status === "MODIFICATION_REQUESTED" && lead.quote.clientProposedDate);
   const unreadMessages = accountMenuUnreadCounts(true, unreadNotifications)["/chat"] ?? 0;
 
-  const startToday = new Date();
-  startToday.setHours(0, 0, 0, 0);
+  // Appuntamenti in ora di parete UTC: oggi e domani in Italia, docs/CHANGELOG.md §287.
+  const startToday = wallClockToday();
   const endTomorrow = new Date(startToday);
-  endTomorrow.setDate(endTomorrow.getDate() + 2);
+  endTomorrow.setUTCDate(endTomorrow.getUTCDate() + 2);
   const upcoming = (bookings ?? [])
     .filter((b) => (b.status === "CONFIRMED" || b.status === "PENDING") && new Date(b.scheduledAt) >= startToday && new Date(b.scheduledAt) < endTomorrow)
     .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
@@ -423,14 +423,11 @@ function formatMinutes(minutes: number): string {
 }
 
 function formatDateTime(iso: string): string {
-  const d = new Date(iso);
-  return `${d.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" })}, ${d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
+  return `${formatAppointmentDate(iso, { weekday: "short", day: "numeric", month: "short" })}, ${formatAppointmentTime(iso)}`;
 }
 
 function dayLabel(iso: string): string {
-  const d = new Date(iso);
-  const today = new Date();
-  const isToday = d.toDateString() === today.toDateString();
-  const time = d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+  const isToday = iso.slice(0, 10) === wallClockToday().toISOString().slice(0, 10);
+  const time = formatAppointmentTime(iso);
   return `${isToday ? "Oggi" : "Domani"} ${time}`;
 }

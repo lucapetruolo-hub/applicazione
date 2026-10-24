@@ -3,6 +3,7 @@ import { trafficSourceSchema } from "./trafficSource";
 import { PROFESSIONAL_CATEGORIES } from "./categories";
 import { isPlausiblePhoneNumber, normalizePhoneNumber } from "./phoneCountries";
 import { quotePaymentOfferSchema } from "./onlinePayments";
+import { newPasswordSchema } from "./password";
 
 const categorySlugs = PROFESSIONAL_CATEGORIES.map((category) => category.slug) as [string, ...string[]];
 
@@ -143,6 +144,9 @@ export type EmailStatus = "new" | "password" | "google";
 export const LEGAL_CONSENT_VERSION = "2026-09-02";
 
 export const registerSchema = emailPasswordSchema.extend({
+  // Password nuova: regole sotto il campo (docs/CHANGELOG.md §289). Il login
+  // resta su emailPasswordSchema, così le password vecchie continuano a entrare.
+  password: newPasswordSchema,
   name: z.string().min(2).max(120).optional(),
   role: z.enum(["CLIENT", "PROFESSIONAL"]).default("CLIENT"),
   // Due dichiarazioni obbligatorie richieste esplicitamente dall'utente
@@ -198,7 +202,7 @@ export type UpdateAccountInput = z.infer<typeof updateAccountSchema>;
  */
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(8).optional(),
-  newPassword: z.string().min(8, "La password deve avere almeno 8 caratteri"),
+  newPassword: newPasswordSchema,
 });
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 
@@ -231,7 +235,7 @@ export type PasswordResetRequestInput = z.infer<typeof passwordResetRequestSchem
 /** Recupero password: nuova password scelta dal link ricevuto. */
 export const passwordResetConfirmSchema = z.object({
   token: z.string().min(20).max(200),
-  password: z.string().min(8, "La password deve avere almeno 8 caratteri"),
+  password: newPasswordSchema,
 });
 export type PasswordResetConfirmInput = z.infer<typeof passwordResetConfirmSchema>;
 
@@ -324,7 +328,7 @@ export const guidedRequestSchema = z
      */
     preferredDate: isoDateSchema.optional(),
     preferredTimeSlot: timeRangeSchema.optional(),
-    /** Da dove è arrivato il cliente nella visita che porta alla richiesta (docs/CHANGELOG.md §291). */
+    /** Da dove è arrivato il cliente nella visita che porta alla richiesta (docs/CHANGELOG.md §295). */
     trafficSource: trafficSourceSchema.optional(),
   })
   .refine((data) => Boolean(data.preferredDate) === Boolean(data.preferredTimeSlot), {

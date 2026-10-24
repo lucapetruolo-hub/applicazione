@@ -34,6 +34,11 @@ import type {
   ProfessionalAgenda,
   ProfessionalAvailableSlot,
   ProfessionalBooking,
+  AgendaWeekTemplate,
+  CalendarFeedStatus,
+  DayRoute,
+  WeatherDayAlert,
+  ZoneDemand,
   ProfessionalDetail,
   ProfessionalFiscalProfileInput,
   ProfessionalInsights,
@@ -267,6 +272,12 @@ export type ClientGuidedRequest = {
 
 export type ApiClientConfig = {
   baseUrl: string;
+  /**
+   * Codice casuale del dispositivo, mandato con registrazione e accesso
+   * (intestazione `X-Device-Id`): da un dispositivo nuovo il professionista
+   * che incassa online riceve un'email (docs/CHANGELOG.md §289).
+   */
+  deviceId?: () => string | null;
 };
 
 export type AuthResult = { token: string; isNewUser: boolean };
@@ -346,7 +357,7 @@ export type AdminTrends = {
   series: { newClients: number[]; newProfessionals: number[]; requests: number[]; bookings: number[]; reports: number[] };
 };
 
-/** Provenienza delle richieste di preventivo, ultimi 30 giorni (docs/CHANGELOG.md §291). */
+/** Provenienza delle richieste di preventivo, ultimi 30 giorni (docs/CHANGELOG.md §295). */
 export type AdminTrafficSources = {
   days: number;
   total: number;
@@ -843,7 +854,12 @@ function extractErrorMessage(body: unknown, fallback: string): string {
  * Client tipizzato unico per chiamare apps/api da apps/web e apps/mobile —
  * niente logica di business duplicata nei due frontend (CLAUDE.md §3).
  */
-export function createApiClient({ baseUrl }: ApiClientConfig) {
+export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
+  function deviceHeaders(): Record<string, string> {
+    const id = deviceId?.();
+    return id ? { "X-Device-Id": id } : {};
+  }
+
   async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const response = await fetch(`${baseUrl}${path}`, {
       ...init,
@@ -914,6 +930,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     ) =>
       request<AuthResult>("/auth/register", {
         method: "POST",
+        headers: deviceHeaders(),
         body: JSON.stringify({ email, password, name, role, acceptedLegalTerms, declaredAdult, turnstileToken, categorySlugs, entityType }),
       }),
 
@@ -926,6 +943,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     login: (email: string, password: string) =>
       request<AuthResult>("/auth/login", {
         method: "POST",
+        headers: deviceHeaders(),
         body: JSON.stringify({ email, password }),
       }),
 
@@ -945,6 +963,7 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     ) =>
       request<AuthResult>("/auth/google/verify", {
         method: "POST",
+        headers: deviceHeaders(),
         body: JSON.stringify({ idToken, role, createIfMissing, acceptedLegalTerms, declaredAdult, categorySlugs, entityType }),
       }),
 
@@ -1453,6 +1472,27 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
       }),
+
+    /** "Sto arrivando" (docs/CHANGELOG.md §288): avvisa il cliente, una volta sola. */
+    notifyOnTheWay: (token: string, bookingId: string) =>
+      request<{ bookingId: string; onTheWayAt: string }>(`/bookings/${bookingId}/on-the-way`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    // Strumenti della nuova agenda (docs/CHANGELOG.md §288).
+    agendaWeekTemplate: (token: string) => request<AgendaWeekTemplate>("/agenda/week-template", { headers: { Authorization: `Bearer ${token}` } }),
+    saveAgendaWeekTemplate: (token: string, template: AgendaWeekTemplate) =>
+      request<AgendaWeekTemplate>("/agenda/week-template", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(template) }),
+    agendaWeather: (token: string) => request<WeatherDayAlert[]>("/agenda/weather", { headers: { Authorization: `Bearer ${token}` } }),
+    agendaZoneDemand: (token: string) => request<ZoneDemand>("/agenda/zone-demand", { headers: { Authorization: `Bearer ${token}` } }),
+    agendaDayRoute: (token: string, date: string) =>
+      request<DayRoute>(`/agenda/route?date=${encodeURIComponent(date)}`, { headers: { Authorization: `Bearer ${token}` } }),
+    calendarFeedStatus: (token: string) => request<CalendarFeedStatus>("/agenda/calendar-feed", { headers: { Authorization: `Bearer ${token}` } }),
+    enableCalendarFeed: (token: string) => request<CalendarFeedStatus>("/agenda/calendar-feed", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+    disableCalendarFeed: (token: string) => request<CalendarFeedStatus>("/agenda/calendar-feed", { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),
+    /** Indirizzo del calendario collegato, da dare a Google o all'iPhone. */
+    calendarFeedUrl: (feedToken: string) => `${baseUrl}/calendar/${feedToken}.ics`,
 
     myClientBookings: (token: string) =>
       request<ClientBooking[]>("/bookings/me", { headers: { Authorization: `Bearer ${token}` } }),

@@ -1,4 +1,4 @@
-// Dati dell'API finta del controllo SEO (docs/CHANGELOG.md §291), letti sia
+// Dati dell'API finta del controllo SEO (docs/CHANGELOG.md §295), letti sia
 // dal server (fixture-api.mjs) sia dal controllo (check.mjs).
 const today = new Date().toISOString().slice(0, 10);
 

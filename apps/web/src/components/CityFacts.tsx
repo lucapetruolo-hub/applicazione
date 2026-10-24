@@ -3,7 +3,7 @@ import { CATEGORY_SEO_NOUN, type ProfessionalCategorySlug, type ProfessionalSear
 
 /**
  * "[Lavoro] a [città] in breve" in fondo ai risultati di una pagina
- * categoria+città (docs/CHANGELOG.md §291, strategia SEO Latina): pochi dati
+ * categoria+città (docs/CHANGELOG.md §295, strategia SEO Latina): pochi dati
  * veri presi dai risultati della pagina e le domande che le persone fanno a
  * Google ("Le persone hanno chiesto anche"), con risposte brevi. Rende la
  * pagina diversa da quella di un'altra città e risponde a chi cerca il

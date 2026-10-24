@@ -36,7 +36,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.6,
     }));
     // Pagine categoria+città (docs/CHANGELOG.md §132) solo da
-    // MIN_PROFESSIONALS_TO_INDEX_CITY professionisti veri in su (§291): niente
+    // MIN_PROFESSIONALS_TO_INDEX_CITY professionisti veri in su (§295): niente
     // pagine quasi vuote proposte a Google. Stessa soglia del noindex della pagina.
     const cityCounts = new Map<string, number>();
     for (const pro of professionals) {
@@ -53,7 +53,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 0.7,
     }));
-    // Categorie in tutta Italia solo con almeno un professionista vero, come il noindex della pagina (§291).
+    // Categorie in tutta Italia solo con almeno un professionista vero, come il noindex della pagina (§295).
     const withProfessionals = new Set(professionals.flatMap((pro) => pro.categories.map((category) => category.slug)));
     const categories = categoryEntries(PROFESSIONAL_CATEGORIES.map((category) => category.slug).filter((slug) => withProfessionals.has(slug)));
     return [...staticEntries, ...categories, ...cityEntries, ...professionalEntries];

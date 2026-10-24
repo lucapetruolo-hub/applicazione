@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * Pagina "non trovata" del sito (docs/CHANGELOG.md §291): prima compariva
+ * Pagina "non trovata" del sito (docs/CHANGELOG.md §294): prima compariva
  * quella di Next.js in inglese. Risponde sempre 404.
  */
 export default function NotFound() {
