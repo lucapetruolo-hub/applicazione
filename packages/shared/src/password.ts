@@ -1,4 +1,5 @@
 import { z } from "zod";
+import "./zod";
 
 /**
  * Regole della password nuova (docs/CHANGELOG.md §289, richiesta dell'utente
@@ -60,5 +61,5 @@ export function passwordProblem(password: string, email?: string | null): string
 /** Password nuova: registrazione, link d'invito, recupero e cambio password. */
 export const newPasswordSchema = z.string().superRefine((password, ctx) => {
   const problem = passwordProblem(password);
-  if (problem) ctx.addIssue({ code: z.ZodIssueCode.custom, message: problem });
+  if (problem) ctx.addIssue({ code: "custom", message: problem });
 });

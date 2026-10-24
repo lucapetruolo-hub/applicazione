@@ -205,24 +205,31 @@ function WeekPreview({ template }: { template: AgendaWeekTemplate }) {
 /**
  * Settimana tipo di "Orari di lavoro" in tre passi (proposta A scelta
  * dall'utente, docs/CHANGELOG.md §323): che giorni, in che orari, quale
- * giorno ha orari diversi. Salvata vale per tutte le settimane: il server
+ * giorno ha orari diversi. Salvata per "Tutti i mesi" vale per tutte le
+ * settimane, oppure per un mese solo (§327): il server
  * riempie i prossimi 63 giorni e ogni notte quelli nuovi; i giorni cambiati
  * a mano in "Giorno per giorno" restano come sono.
  */
 export function WeekTemplateEditor({
   template,
   active,
+  months,
   onSave,
   saving,
 }: {
   template: AgendaWeekTemplate;
   active: boolean;
-  onSave: (next: AgendaWeekTemplate) => void;
+  /** Mesi che si possono scegliere per salvare la settimana solo lì: `key` AAAA-MM. */
+  months: { key: string; label: string }[];
+  onSave: (next: AgendaWeekTemplate, month: string | null) => Promise<boolean>;
   saving: boolean;
 }) {
   const [draft, setDraft] = useState<Draft>(() => draftFromTemplate(template));
   const [openDay, setOpenDay] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
+  // "" = tutti i mesi; altrimenti un mese solo (richiesta dell'utente, docs/CHANGELOG.md §327).
+  const [scope, setScope] = useState("");
+  const [savedMonth, setSavedMonth] = useState<string | null>(null);
   // Una settimana cambiata da fuori (es. "Aggiungi alla settimana tipo" da
   // Richieste in zona) arriva con un nuovo `key` e riparte da qui.
   const savedKey = JSON.stringify(template);
@@ -256,7 +263,7 @@ export function WeekTemplateEditor({
         La tua settimana
       </h2>
       <p className="ag-muted" style={{ fontSize: 14, marginTop: 4 }}>
-        Vale per tutte le settimane. Un giorno diverso lo cambi in &quot;Giorno per giorno&quot;.
+        Vale per tutti i mesi o per il mese che scegli in fondo. Un giorno diverso lo cambi in &quot;Giorno per giorno&quot;.
       </p>
 
       <div className="ag-wt-body">
@@ -403,11 +410,38 @@ export function WeekTemplateEditor({
         <span className="ag-muted" aria-live="polite">
           {draft.workDays.length === 0 ? "Nessun giorno di lavoro" : `${hoursText} a settimana`}
           {" · "}
-          {saving ? "Salvo..." : dirty || !active ? "Non ancora salvata" : "Salvata, vale per tutte le settimane"}
+          {saving
+            ? "Salvo..."
+            : savedMonth
+              ? `Salvata per ${savedMonth}`
+              : dirty || !active
+                ? "Non ancora salvata"
+                : "Salvata, vale per tutti i mesi"}
         </span>
-        <button type="button" className="ag-btn primary" disabled={!valid || saving || (!dirty && active)} onClick={() => onSave(next)}>
-          Salva la settimana
-        </button>
+        <div className="ag-wt-save">
+          <label className="ag-wt-scope">
+            <span className="ag-muted">Vale per</span>
+            <select className="ag-input" value={scope} onChange={(e) => setScope(e.target.value)}>
+              <option value="">Tutti i mesi</option>
+              {months.map((m) => (
+                <option key={m.key} value={m.key}>
+                  Solo {m.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            className="ag-btn primary"
+            disabled={!valid || saving || (!scope && !dirty && active)}
+            onClick={async () => {
+              const ok = await onSave(next, scope || null);
+              if (ok) setSavedMonth(scope ? (months.find((m) => m.key === scope)?.label ?? null) : null);
+            }}
+          >
+            Salva la settimana
+          </button>
+        </div>
       </div>
     </section>
   );

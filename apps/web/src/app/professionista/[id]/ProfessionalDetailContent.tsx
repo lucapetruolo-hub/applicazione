@@ -8,6 +8,7 @@ import { Badge, BadgeInfo, Button, ProfessionalKindBadge, Chip, EmptyState, Icon
 import { IconActionButton } from "@/components/IconActionButton";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
+import { ProfileQuoteCta } from "@/components/ProfileQuoteCta";
 import { MediaPreview } from "@/components/MediaPreview";
 import { ReportContentModal } from "@/components/ReportContentModal";
 import { apiClient } from "@/lib/apiClient";
@@ -338,7 +339,7 @@ export function ProfessionalDetailContent({
                 <Text tag="h1" margin={0} fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} style={{ overflowWrap: "anywhere" }}>
                   {professional.businessName}
                 </Text>
-                {/* Il significato di ogni badge in un fumetto (docs/CHANGELOG.md §326). */}
+                {/* Il significato di ogni badge in un fumetto (docs/CHANGELOG.md §329). */}
                 {professional.verified ? (
                   <BadgeInfo info="verified">
                     <Badge variant="verificato">Verificato</Badge>
@@ -406,7 +407,7 @@ export function ProfessionalDetailContent({
                 </Text>
               </XStack>
               {/* Privato o professionista (Codice del consumo art. 49-bis, docs/CHANGELOG.md §241): il tipo è
-                  nel badge accanto al nome (§326); per un privato l'avviso sui diritti del consumatore resta
+                  nel badge accanto al nome (§329); per un privato l'avviso sui diritti del consumatore resta
                   sempre scritto, non solo nel fumetto. */}
               {professional.traderStatus === "PRIVATE" ? (
                 <Text fontSize={13} color={brand.grafite70}>
@@ -856,13 +857,11 @@ export function ProfessionalDetailContent({
         {/* Account in pausa per l'abbonamento (docs/CHANGELOG.md §162): il
             profilo resta visibile dal link, ma senza agenda né richieste. */}
         {professional.acceptingRequests ? (
-          <Link
+          <ProfileQuoteCta
             href={`/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&nomeProfessionista=${encodeURIComponent(professional.businessName)}&fotoProfessionista=${encodeURIComponent(professional.imageUrl ?? "")}`}
-            style={{ textDecoration: "none", alignSelf: "flex-start", pointerEvents: preview ? "none" : undefined }}
-            tabIndex={preview ? -1 : undefined}
-          >
-            <Button variant="primary" tabIndex={preview ? -1 : undefined}>{`Richiedi un preventivo a ${professional.businessName}`}</Button>
-          </Link>
+            name={professional.businessName}
+            preview={preview}
+          />
         ) : (
           <Surface gap="$2">
             <Text fontWeight="700" color={brand.grafite}>

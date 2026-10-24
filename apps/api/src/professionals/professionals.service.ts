@@ -1553,6 +1553,7 @@ export class ProfessionalsService {
           onlineMaxBookings: slot.onlineMaxBookings,
           date: slotDateStr,
           hasUpcomingBooking,
+          fromWeekTemplate: slot.fromWeekTemplate,
         };
       }),
       exceptionDates: exceptions.map((exception) => exception.date.toISOString().slice(0, 10)),

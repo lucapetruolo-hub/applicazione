@@ -139,6 +139,10 @@ migrazioni restano anche in `CLAUDE.md`.
   `apps/web`, i pacchetti condivisi o le dipendenze. Se il sito "non si
   aggiorna", controllare prima nel log del deploy se compare "build
   saltata": è voluto per commit solo backend/mobile/docs. Redeploy e Deploy
-  Hook sullo stesso commit costruiscono sempre. Le immagini `next/image` su
+  Hook sullo stesso commit costruiscono sempre. Dal §322 i rami dei thread
+  (`claude/project-thread-*`) e di Dependabot (`dependabot/**`) non creano
+  proprio un deploy (`git.deploymentEnabled` in `vercel.json`): anche un
+  deploy annullato conta nel limite di 100 deploy al giorno del piano
+  gratuito, superato il 24/10/2026. Le immagini `next/image` su
   Cloudinary sono ridimensionate da Cloudinary (`images.loaderFile`), non
   dall'ottimizzatore di Vercel.

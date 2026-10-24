@@ -1,4 +1,5 @@
 import { z } from "zod";
+import "./zod";
 import { trafficSourceSchema } from "./trafficSource";
 import { PROFESSIONAL_CATEGORIES } from "./categories";
 import { isPlausiblePhoneNumber, normalizePhoneNumber } from "./phoneCountries";
@@ -180,10 +181,10 @@ export const registerSchema = emailPasswordSchema.extend({
   entityType: z.enum(["PRIVATE_INDIVIDUAL", "SOLE_PROPRIETOR", "BUSINESS"]).optional(),
 }).superRefine((data, ctx) => {
   if (data.role === "PROFESSIONAL" && !data.entityType) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: NO_ENTITY_TYPE_MESSAGE, path: ["entityType"] });
+    ctx.addIssue({ code: "custom", message: NO_ENTITY_TYPE_MESSAGE, path: ["entityType"] });
   }
   if (data.role === "PROFESSIONAL" && !data.categorySlugs?.length) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: NO_CATEGORY_MESSAGE, path: ["categorySlugs"] });
+    ctx.addIssue({ code: "custom", message: NO_CATEGORY_MESSAGE, path: ["categorySlugs"] });
   }
 });
 export type RegisterInput = z.infer<typeof registerSchema>;
@@ -322,9 +323,9 @@ export const guidedRequestSchema = z
      * professionista già sa se può trattarsi di un intervento a domicilio o
      * online"), obbligatorio come gli altri campi della richiesta.
      */
-    serviceMode: z.enum(["HOME", "ONLINE"], { errorMap: () => ({ message: "Indica se l'intervento è a domicilio o online." }) }),
+    serviceMode: z.enum(["HOME", "ONLINE"], { message: "Indica se l'intervento è a domicilio o online." }),
     /** Se presente, la richiesta va solo a questo professionista (partita dal suo profilo pubblico), non in fan-out. */
-    professionalProfileId: z.string().uuid().optional(),
+    professionalProfileId: z.guid().optional(),
     /**
      * Richiesta diretta a un professionista: se non risponde in tempo o
      * rifiuta, inoltrala ad altri professionisti simili (docs/CHANGELOG.md
@@ -369,20 +370,20 @@ export const guidedRequestSchema = z
     // quali professionisti arriva (docs/CHANGELOG.md §210).
     if (data.serviceMode !== "HOME") {
       if (!data.professionalProfileId && !data.city?.trim())
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "La città è obbligatoria.", path: ["city"] });
+        ctx.addIssue({ code: "custom", message: "La città è obbligatoria.", path: ["city"] });
       return;
     }
-    if (!data.city?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "La città è obbligatoria.", path: ["city"] });
-    if (!data.address?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "L'indirizzo è obbligatorio.", path: ["address"] });
-    if (!data.recipientName?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Il nome è obbligatorio.", path: ["recipientName"] });
+    if (!data.city?.trim()) ctx.addIssue({ code: "custom", message: "La città è obbligatoria.", path: ["city"] });
+    if (!data.address?.trim()) ctx.addIssue({ code: "custom", message: "L'indirizzo è obbligatorio.", path: ["address"] });
+    if (!data.recipientName?.trim()) ctx.addIssue({ code: "custom", message: "Il nome è obbligatorio.", path: ["recipientName"] });
     if (!data.recipientSurname?.trim())
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Il cognome è obbligatorio.", path: ["recipientSurname"] });
+      ctx.addIssue({ code: "custom", message: "Il cognome è obbligatorio.", path: ["recipientSurname"] });
     if (!data.recipientPhone || data.recipientPhone.trim().length < 6)
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Numero di telefono non valido.", path: ["recipientPhone"] });
+      ctx.addIssue({ code: "custom", message: "Numero di telefono non valido.", path: ["recipientPhone"] });
     if (!data.houseNumber?.trim())
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Il numero civico è obbligatorio.", path: ["houseNumber"] });
-    if (!data.postalCode?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Il CAP è obbligatorio.", path: ["postalCode"] });
-    if (!data.province?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "La provincia è obbligatoria.", path: ["province"] });
+      ctx.addIssue({ code: "custom", message: "Il numero civico è obbligatorio.", path: ["houseNumber"] });
+    if (!data.postalCode?.trim()) ctx.addIssue({ code: "custom", message: "Il CAP è obbligatorio.", path: ["postalCode"] });
+    if (!data.province?.trim()) ctx.addIssue({ code: "custom", message: "La provincia è obbligatoria.", path: ["province"] });
   });
 export type GuidedRequestInput = z.infer<typeof guidedRequestSchema>;
 
@@ -421,7 +422,7 @@ export const guidedRequestUpdateSchema = z
     // cambiare la modalità, quindi non c'è nulla da validare qui contro
     // un valore che non arriva mai in questo payload.
     if (data.serviceMode === "HOME" && !data.city?.trim()) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "La città è obbligatoria.", path: ["city"] });
+      ctx.addIssue({ code: "custom", message: "La città è obbligatoria.", path: ["city"] });
     }
   });
 export type GuidedRequestUpdateInput = z.infer<typeof guidedRequestUpdateSchema>;
@@ -437,7 +438,7 @@ export type GuidedRequestUpdateInput = z.infer<typeof guidedRequestUpdateSchema>
  */
 export const timelineUpdateSchema = z
   .object({
-    professionalProfileId: z.string().uuid(),
+    professionalProfileId: z.guid(),
     message: z.string().trim().max(2000).optional().default(""),
     mediaUrls: z.array(z.string().url()).max(5).optional().default([]),
   })
@@ -462,8 +463,8 @@ export const quoteItemSchema = z
 export type QuoteItemInput = z.infer<typeof quoteItemSchema>;
 
 export const quoteSchema = z.object({
-  requestId: z.string().uuid(),
-  professionalProfileId: z.string().uuid(),
+  requestId: z.guid(),
+  professionalProfileId: z.guid(),
   items: z.array(quoteItemSchema).min(1).max(20),
   estimatedStartDate: z.string().datetime(),
   /**
@@ -563,7 +564,7 @@ export const completeBookingSchema = z.object({
    * (`completionDeclaration` in dac7.ts, docs/CHANGELOG.md §246): il server
    * la confronta con quella del tipo fiscale del professionista.
    */
-  declarationVersion: z.string({ required_error: "Conferma la dichiarazione sull'importo." }).trim().min(1, "Conferma la dichiarazione sull'importo.").max(60),
+  declarationVersion: z.string({ error: (issue) => (issue.input === undefined ? "Conferma la dichiarazione sull'importo." : undefined) }).trim().min(1, "Conferma la dichiarazione sull'importo.").max(60),
 });
 export type CompleteBookingInput = z.infer<typeof completeBookingSchema>;
 
@@ -708,7 +709,7 @@ export type UpdateEngagementRadiusInput = z.infer<typeof updateEngagementRadiusS
 
 /** Recensione: consentita solo se legata a una prenotazione confermata (CLAUDE.md §8). */
 export const reviewSchema = z.object({
-  bookingId: z.string().uuid(),
+  bookingId: z.guid(),
   rating: z.number().int().min(1).max(5),
   comment: z.string().max(2000).optional(),
   /** Foto o video del lavoro svolto, opzionali (fino a 5): mostrati poi nella sezione recensioni del professionista. */
@@ -730,7 +731,7 @@ export const professionalServiceSchema = z
 export type ProfessionalServiceInput = z.infer<typeof professionalServiceSchema>;
 
 export const professionalProfileSchema = z.object({
-  userId: z.string().uuid(),
+  userId: z.guid(),
   // Da 1 a 3, la prima è la principale (docs/CHANGELOG.md §217).
   categorySlugs: professionalCategorySlugsSchema,
   subTags: z.array(z.string()).default([]),
@@ -855,7 +856,7 @@ export const professionalAvailabilitySchema = z
         if (!slotsShareAnOccurrence(a, b)) continue;
         if (a.startTime < b.endTime && b.startTime < a.endTime) {
           ctx.addIssue({
-            code: z.ZodIssueCode.custom,
+            code: "custom",
             message: "Due fasce orarie non possono sovrapporsi nello stesso giorno.",
             path: ["slots"],
           });
@@ -946,13 +947,13 @@ export const resolveContentReportSchema = z
   .superRefine((data, ctx) => {
     if (data.status === "RESOLVED" && !data.resolutionNote) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         path: ["resolutionNote"],
         message: "Indica il motivo della decisione prima di risolvere la segnalazione.",
       });
     }
     if (data.status === "RESOLVED" && !data.action) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["action"], message: "Scegli la misura da applicare." });
+      ctx.addIssue({ code: "custom", path: ["action"], message: "Scegli la misura da applicare." });
     }
     if (data.status === "RESOLVED" && !data.ground) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["ground"], message: "Scegli la regola o la legge violata." });
