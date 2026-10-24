@@ -41,7 +41,7 @@ import {
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
-import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing, publicVisibilityWhere, stripeVerified } from "../professional-fiscal/public-visibility";
+import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing, publicVisibilityWhere, publicVerified, stripeVerified } from "../professional-fiscal/public-visibility";
 import { quoteResendWindow } from "../quotes/quote-resend";
 import { NOT_ACCEPTING_REQUESTS } from "../subscriptions/subscription-rules";
 import { GeocodingService } from "../geocoding/geocoding.service";
@@ -194,7 +194,7 @@ export class ProfessionalsService {
         categories,
         city: profile.city,
         address: profile.address,
-        verified: profile.verified,
+        verified: publicVerified(profile),
         stripeVerified: stripeVerified(profile.fiscalProfile),
         professionalKind: professionalKindOf(profile.fiscalProfile?.entityType),
         rating,
@@ -525,7 +525,7 @@ export class ProfessionalsService {
       categories: profileCategories(profile),
       city: profile.city,
       address: profile.address,
-      verified: profile.verified,
+      verified: publicVerified(profile),
       stripeVerified: stripeVerified(profile.fiscalProfile),
       // Privato o professionista, per il cliente (Codice del consumo art. 49-bis, §241).
       traderStatus: traderStatusOf(profile.fiscalProfile?.entityType),

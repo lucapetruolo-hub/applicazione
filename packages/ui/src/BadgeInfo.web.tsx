@@ -30,7 +30,6 @@ const CSS = `
 .badge-info-arrow{position:absolute;width:12px;height:12px;background:${brand.calce};transform:rotate(45deg);border-radius:2px}
 @keyframes badge-info-in{from{opacity:0;transform:translateY(-2px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.badge-info-pop{animation:none}}
-.badge-info-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 `;
 
 /**
@@ -148,7 +147,9 @@ export function BadgeInfo({ info, children }: BadgeInfoProps) {
         }}
       >
         {children}
-        <span id={id} className="badge-info-sr">
+        {/* Nascosta: fuori dal nome del pulsante (altrimenti il lettore la
+            legge due volte), ma aria-describedby la legge lo stesso. */}
+        <span id={id} hidden>
           {`${text}${note ? ` ${note}` : ""}`}
         </span>
       </button>

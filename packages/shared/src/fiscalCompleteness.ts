@@ -71,7 +71,7 @@ export function professionalKindOf(entityType: string | null | undefined): Profe
 export const TRADER_STATUS_COPY: Record<ProfessionalTraderStatus, { label: string; note: string }> = {
   PRIVATE: {
     label: "Privato senza partita IVA",
-    note: "Lavora come privato, non come professionista: i diritti del consumatore (per esempio il recesso) non si applicano agli accordi con lui.",
+    note: "Lavora come privato, non come professionista: i diritti del consumatore (per esempio il recesso) non si applicano ai lavori fatti con questa persona.",
   },
   TRADER: {
     label: "Professionista con partita IVA",

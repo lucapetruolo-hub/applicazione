@@ -41,7 +41,7 @@ export const BADGE_INFO: Record<BadgeInfoKey, { title: string; text: string; not
   },
   confirmedJob: {
     title: "Lavoro confermato",
-    text: "Recensione di un cliente che ha prenotato il lavoro sul sito e ha confermato che è finito.",
+    text: "Recensione di un cliente che ha prenotato il lavoro sul sito.",
   },
   kindPrivate: {
     title: "Privato",

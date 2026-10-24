@@ -4,7 +4,7 @@ import { professionalKindOf, type ProfessionalSearchResult, type ProfessionalCat
 import { PRISMA } from "../prisma/prisma.module";
 import { countCompletedThisMonth } from "../common/completed-jobs.util";
 import { profileCategories } from "../common/profile-categories.util";
-import { stripeVerified } from "../professional-fiscal/public-visibility";
+import { publicVerified, stripeVerified } from "../professional-fiscal/public-visibility";
 import { computeIsNewProfile } from "../common/new-profile.util";
 
 @Injectable()
@@ -59,7 +59,7 @@ export class SavedProfessionalsService {
         categories: profileCategories(profile),
         city: profile.city,
         address: profile.address,
-        verified: profile.verified,
+        verified: publicVerified(profile),
         stripeVerified: stripeVerified(profile.fiscalProfile),
         professionalKind: professionalKindOf(profile.fiscalProfile?.entityType),
         rating,

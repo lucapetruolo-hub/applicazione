@@ -1001,11 +1001,11 @@ const BUILDERS: Record<string, Builder> = {
   },
   PROFILE_VERIFIED: (_payload, ctx) => ({
     kind: "account",
-    subject: "Il tuo profilo è verificato",
+    subject: "La tua identità è verificata",
     greeting: ctx.name,
-    title: "Profilo verificato",
+    title: "Identità verificata",
     paragraphs: [
-      "Abbiamo controllato il tuo documento d'identità e i tuoi dati fiscali: il tuo profilo ora mostra il badge **Verificato** nella ricerca e nella tua pagina pubblica.",
+      "La verifica con documento e selfie è riuscita: il tuo profilo ora mostra il badge **Verificato** nella ricerca e nella tua pagina pubblica.",
       "Da adesso puoi anche inviare preventivi ai clienti.",
     ],
     cta: { label: "Vedi il tuo profilo", url: `${frontendUrl()}/dashboard/profilo` },

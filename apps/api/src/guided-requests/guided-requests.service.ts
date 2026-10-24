@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import { Prisma, type PrismaClient, type ProfessionalProfile } from "@professionisti/database";
 import { findComuneByName, professionalRestrictions, clientPaymentOffer, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
-import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing, publicVisibilityWhere, stripeVerified } from "../professional-fiscal/public-visibility";
+import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing, publicVisibilityWhere, publicVerified, stripeVerified } from "../professional-fiscal/public-visibility";
 import { NOT_ACCEPTING_REQUESTS } from "../subscriptions/subscription-rules";
 import { calculateDistanceKm } from "../common/geo.util";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -511,7 +511,7 @@ export class GuidedRequestsService {
           categorySlug: lead.professionalProfile.category.slug,
           categoryLabel: lead.professionalProfile.category.label,
           city: lead.professionalProfile.city,
-          verified: lead.professionalProfile.verified,
+          verified: publicVerified(lead.professionalProfile),
           declined: lead.status === "DECLINED",
           declineNote: lead.declineNote,
         })),
