@@ -85,7 +85,6 @@ import type {
   AddressSuggestion,
   AddressPlace,
   TaxIdCheckView,
-  VerifyProfessionalInput,
   GeneralRequestAvailability,
   GeneralRequestsAdminOverview,
   GeneralRequestThresholds,
@@ -1671,11 +1670,6 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
       request<ProfessionalVerificationRow[]>(
         `/admin/professional-verifications?stato=${filter === "verified" ? "verificati" : "da-verificare"}&q=${encodeURIComponent(q)}`,
         { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" },
-      ),
-    adminVerifyProfessional: (token: string, professionalProfileId: string, input: VerifyProfessionalInput) =>
-      request<{ professionalProfileId: string; verified: boolean }>(
-        `/admin/professional-verifications/${encodeURIComponent(professionalProfileId)}/verify`,
-        { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) },
       ),
     /** "Ricontrolla ora": rifà subito la verifica di codice fiscale e partita IVA (docs/CHANGELOG.md §254). */
     adminRecheckTaxIds: (token: string, professionalProfileId: string) =>

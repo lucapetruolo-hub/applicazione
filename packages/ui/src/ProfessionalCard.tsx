@@ -2,6 +2,8 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { Text, XStack, YStack } from "tamagui";
+import { BadgeInfo } from "./BadgeInfo";
+import { ProfessionalKindBadge, type ProfessionalKindValue } from "./ProfessionalKindBadge";
 import { Icon } from "./Icon";
 import { Rating } from "./Rating";
 import { Surface } from "./Surface";
@@ -81,6 +83,8 @@ export type ProfessionalCardProps = {
   verified?: boolean;
   /** Identità verificata da Stripe (KYC/KYB, docs/CHANGELOG.md §241): badge distinto da "Verificato". */
   stripeVerified?: boolean;
+  /** Come si è iscritto: privato, partita IVA o azienda (docs/CHANGELOG.md §331). */
+  professionalKind?: ProfessionalKindValue | null;
   /**
    * Boost di visibilità attivo (richiesta esplicita dell'utente, "Verbale
    * di Conformità" — trasparenza sul ranking sponsorizzato, art. 26 DSA):
@@ -175,6 +179,7 @@ export function ProfessionalCard({
   completedThisMonth,
   verified,
   stripeVerified,
+  professionalKind,
   boosted,
   isNewProfile,
   hasLiabilityInsurance,
@@ -328,62 +333,72 @@ export function ProfessionalCard({
                 // Pillola "Verificato" esplicita accanto al nome: la sola
                 // icona non comunica il significato a chi non conosce la
                 // piattaforma (principio di riprova sociale leggibile).
-                <XStack
-                  alignItems="center"
-                  gap={4}
-                  paddingHorizontal="$2"
-                  paddingVertical={2}
-                  borderRadius="$10"
-                  backgroundColor={brand.cianografiaVelo}
-                >
-                  <Icon name="badge-check" size={14} color={brand.verificato} strokeWidth={2} />
-                  <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.verificato}>
-                    Verificato
-                  </Text>
-                </XStack>
+                <BadgeInfo info="verified">
+                  <XStack
+                    alignItems="center"
+                    gap={4}
+                    paddingHorizontal="$2"
+                    paddingVertical={2}
+                    borderRadius="$10"
+                    backgroundColor={brand.cianografiaVelo}
+                  >
+                    <Icon name="badge-check" size={14} color={brand.verificato} strokeWidth={2} />
+                    <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.verificato}>
+                      Verificato
+                    </Text>
+                  </XStack>
+                </BadgeInfo>
               ) : null}
+              {professionalKind ? <ProfessionalKindBadge kind={professionalKind} /> : null}
               {stripeVerified ? (
-                <XStack
-                  alignItems="center"
-                  gap={4}
-                  paddingHorizontal="$2"
-                  paddingVertical={2}
-                  borderRadius="$10"
-                  backgroundColor={brand.cianografiaVelo}
-                  accessibilityHint="Stripe, il fornitore dei pagamenti, ha verificato l'identità del professionista. Non è una garanzia sulla qualità del lavoro."
-                >
-                  <Icon name="shield-check" size={13} color={brand.verificato} strokeWidth={2} />
-                  <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.verificato}>
-                    Identità verificata da Stripe
-                  </Text>
-                </XStack>
+                <BadgeInfo info="stripeVerified">
+                  <XStack
+                    alignItems="center"
+                    gap={4}
+                    paddingHorizontal="$2"
+                    paddingVertical={2}
+                    borderRadius="$10"
+                    backgroundColor={brand.cianografiaVelo}
+                  >
+                    <Icon name="shield-check" size={13} color={brand.verificato} strokeWidth={2} />
+                    <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.verificato}>
+                      Identità verificata da Stripe
+                    </Text>
+                  </XStack>
+                </BadgeInfo>
               ) : null}
               {boosted ? (
-                <XStack alignItems="center" gap={4} paddingHorizontal="$2" paddingVertical={2} borderRadius="$10" backgroundColor={brand.ottoneVelo}>
-                  <Icon name="zap" size={13} color={brand.ottone} strokeWidth={2} />
-                  <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.ottone}>
-                    Sponsorizzato
-                  </Text>
-                </XStack>
+                <BadgeInfo info="boosted">
+                  <XStack alignItems="center" gap={4} paddingHorizontal="$2" paddingVertical={2} borderRadius="$10" backgroundColor={brand.ottoneVelo}>
+                    <Icon name="zap" size={13} color={brand.ottone} strokeWidth={2} />
+                    <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.ottone}>
+                      Sponsorizzato
+                    </Text>
+                  </XStack>
+                </BadgeInfo>
               ) : null}
               {isNewProfile ? (
-                <XStack alignItems="center" gap={4} paddingHorizontal="$2" paddingVertical={2} borderRadius="$10" backgroundColor={brand.cianografiaVelo}>
-                  <Icon name="sprout" size={13} color={brand.cianografiaScuro} strokeWidth={2} />
-                  <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.cianografiaScuro}>
-                    Nuovo profilo
-                  </Text>
-                </XStack>
+                <BadgeInfo info="newProfile">
+                  <XStack alignItems="center" gap={4} paddingHorizontal="$2" paddingVertical={2} borderRadius="$10" backgroundColor={brand.cianografiaVelo}>
+                    <Icon name="sprout" size={13} color={brand.cianografiaScuro} strokeWidth={2} />
+                    <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.cianografiaScuro}>
+                      Nuovo profilo
+                    </Text>
+                  </XStack>
+                </BadgeInfo>
               ) : null}
               {hasLiabilityInsurance ? (
-                <XStack alignItems="center" gap={4} paddingHorizontal="$2" paddingVertical={2} borderRadius="$10" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto}>
-                  <Icon name="shield-check" size={13} color={brand.grafite} strokeWidth={2} />
-                  <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite}>
-                    Assicurazione RC
-                  </Text>
-                  <Text fontFamily="$body" fontSize={10.5} fontWeight="500" color={brand.grafite70}>
-                    dichiarata
-                  </Text>
-                </XStack>
+                <BadgeInfo info="liabilityInsurance">
+                  <XStack alignItems="center" gap={4} paddingHorizontal="$2" paddingVertical={2} borderRadius="$10" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto}>
+                    <Icon name="shield-check" size={13} color={brand.grafite} strokeWidth={2} />
+                    <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite}>
+                      Assicurazione RC
+                    </Text>
+                    <Text fontFamily="$body" fontSize={10.5} fontWeight="500" color={brand.grafite70}>
+                      dichiarata
+                    </Text>
+                  </XStack>
+                </BadgeInfo>
               ) : null}
             </XStack>
             <Text fontSize={16} color={brand.grafite70} fontWeight="500">

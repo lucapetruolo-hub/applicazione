@@ -4,7 +4,7 @@ import { professionalPath } from "@professionisti/shared";
 import { useEffect, useRef, useState, type TouchEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Avatar, Icon, Rating, Section, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Avatar, BadgeInfo, Icon, Rating, Section, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { usePrefersReducedMotion } from "@/lib/useMediaQuery";
 import { CategoryIcon, CATEGORY_ACCENT } from "./icons/CategoryIcons";
@@ -171,12 +171,14 @@ export function RecentReviews({ summary }: { summary: { count: number; average: 
               <Text fontSize={16} color={brand.grafite70}>
                 {review.clientName} · {timeAgo(review.createdAt)}
               </Text>
-              <XStack alignItems="center" gap={3}>
-                <Icon name="badge-check" size={13} color={brand.verificato} strokeWidth={2} />
-                <Text fontSize={13} fontWeight="700" color={brand.verificato}>
-                  Lavoro confermato
-                </Text>
-              </XStack>
+              <BadgeInfo info="confirmedJob">
+                <XStack alignItems="center" gap={3}>
+                  <Icon name="badge-check" size={13} color={brand.verificato} strokeWidth={2} />
+                  <Text fontSize={13} fontWeight="700" color={brand.verificato}>
+                    Lavoro confermato
+                  </Text>
+                </XStack>
+              </BadgeInfo>
             </XStack>
 
             <div className="rr-feature-foot">

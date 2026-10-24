@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { AdvancedMarker, Map as GoogleMap } from "@vis.gl/react-google-maps";
 import { Star, X } from "lucide-react";
 import type { ProfessionalSearchResult } from "@professionisti/shared";
-import { brand } from "@professionisti/ui";
+import { BadgeInfo, brand } from "@professionisti/ui";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { GOOGLE_MAPS_MAP_ID, GoogleMapGate } from "@/components/GoogleMapGate";
 
@@ -183,7 +183,11 @@ export function ResultsMap({
           <div className="map-banner-info">
             <div className="map-banner-title-row">
               <strong>{selected.businessName}</strong>
-              {selected.verified ? <span className="map-banner-verified">Verificato</span> : null}
+              {selected.verified ? (
+                <BadgeInfo info="verified">
+                  <span className="map-banner-verified">Verificato</span>
+                </BadgeInfo>
+              ) : null}
             </div>
             <span className="map-banner-subtitle">
               {selected.categoryLabel} · {selected.city}

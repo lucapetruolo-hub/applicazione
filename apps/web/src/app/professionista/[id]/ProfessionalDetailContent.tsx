@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BRAND, PROFESSIONAL_CATEGORIES, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, formatServicePriceRange, subTagLabel, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
-import { Badge, Button, Chip, EmptyState, Icon, PriceLine, Rating, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { Badge, BadgeInfo, Button, ProfessionalKindBadge, Chip, EmptyState, Icon, PriceLine, Rating, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
@@ -339,23 +339,39 @@ export function ProfessionalDetailContent({
                 <Text tag="h1" margin={0} fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} style={{ overflowWrap: "anywhere" }}>
                   {professional.businessName}
                 </Text>
-                {professional.verified ? <Badge variant="verificato">Verificato</Badge> : null}
+                {/* Il significato di ogni badge in un fumetto (docs/CHANGELOG.md §331). */}
+                {professional.verified ? (
+                  <BadgeInfo info="verified">
+                    <Badge variant="verificato">Verificato</Badge>
+                  </BadgeInfo>
+                ) : null}
+                {professional.professionalKind ? <ProfessionalKindBadge kind={professional.professionalKind} size="md" /> : null}
                 {/* Verifica di identità di Stripe, distinta dal "Verificato" del nostro team (docs/CHANGELOG.md §241). */}
                 {professional.stripeVerified ? (
-                  <span title={STRIPE_VERIFIED_BADGE.note}>
+                  <BadgeInfo info="stripeVerified">
                     <Badge variant="verificato">{STRIPE_VERIFIED_BADGE.label}</Badge>
-                  </span>
+                  </BadgeInfo>
                 ) : null}
-                {professional.boosted ? <Badge variant="pro">Sponsorizzato</Badge> : null}
-                {professional.isNewProfile ? <Badge variant="nuovo">Nuovo profilo</Badge> : null}
+                {professional.boosted ? (
+                  <BadgeInfo info="boosted">
+                    <Badge variant="pro">Sponsorizzato</Badge>
+                  </BadgeInfo>
+                ) : null}
+                {professional.isNewProfile ? (
+                  <BadgeInfo info="newProfile">
+                    <Badge variant="nuovo">Nuovo profilo</Badge>
+                  </BadgeInfo>
+                ) : null}
                 {professional.hasLiabilityInsurance ? (
-                  <span className="rc-badge" title="Dichiarata dal professionista, non ancora verificata da noi">
-                    <span>
-                      <Icon name="shield-check" size={13} strokeWidth={2} color={brand.grafite} />
-                      Assicurazione RC
+                  <BadgeInfo info="liabilityInsurance">
+                    <span className="rc-badge">
+                      <span>
+                        <Icon name="shield-check" size={13} strokeWidth={2} color={brand.grafite} />
+                        Assicurazione RC
+                      </span>
+                      <small>dichiarata</small>
                     </span>
-                    <small>dichiarata</small>
-                  </span>
+                  </BadgeInfo>
                 ) : null}
               </XStack>
               {/* Categorie (da 1 a 3, docs/CHANGELOG.md §217) su una riga loro,
@@ -390,18 +406,13 @@ export function ProfessionalDetailContent({
                   {professional.city}
                 </Text>
               </XStack>
-              {/* Privato o professionista (Codice del consumo art. 49-bis, docs/CHANGELOG.md §241). */}
-              {professional.traderStatus ? (
-                <YStack gap={2}>
-                  <Text fontFamily="$body" fontWeight="700" fontSize={16} color={brand.grafite}>
-                    {TRADER_STATUS_COPY[professional.traderStatus].label}
-                  </Text>
-                  {professional.traderStatus === "PRIVATE" ? (
-                    <Text fontSize={13} color={brand.grafite70}>
-                      {TRADER_STATUS_COPY.PRIVATE.note}
-                    </Text>
-                  ) : null}
-                </YStack>
+              {/* Privato o professionista (Codice del consumo art. 49-bis, docs/CHANGELOG.md §241): il tipo è
+                  nel badge accanto al nome (§331); per un privato l'avviso sui diritti del consumatore resta
+                  sempre scritto, non solo nel fumetto. */}
+              {professional.traderStatus === "PRIVATE" ? (
+                <Text fontSize={13} color={brand.grafite70}>
+                  {TRADER_STATUS_COPY.PRIVATE.note}
+                </Text>
               ) : null}
               {professional.rating !== null ? (
                 <Rating value={professional.rating} count={professional.reviewCount} size={16} />
@@ -921,12 +932,14 @@ export function ProfessionalDetailContent({
                         superfici: ogni recensione nasce comunque solo da una
                         prenotazione confermata (regola di prodotto
                         invariata), mancava solo di dirlo esplicitamente. */}
-                    <XStack alignItems="center" gap={4}>
-                      <Icon name="badge-check" size={13} strokeWidth={2} color={brand.verificato} />
-                      <Text fontSize={13} fontWeight="700" color={brand.verificato}>
-                        Lavoro confermato
-                      </Text>
-                    </XStack>
+                    <BadgeInfo info="confirmedJob">
+                      <XStack alignItems="center" gap={4}>
+                        <Icon name="badge-check" size={13} strokeWidth={2} color={brand.verificato} />
+                        <Text fontSize={13} fontWeight="700" color={brand.verificato}>
+                          Lavoro confermato
+                        </Text>
+                      </XStack>
+                    </BadgeInfo>
                     <Text fontSize={13} color={brand.grafite70}>
                       · {reviewTimeAgo(review.createdAt)}
                     </Text>

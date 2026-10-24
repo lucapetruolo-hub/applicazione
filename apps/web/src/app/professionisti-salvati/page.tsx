@@ -101,6 +101,7 @@ export default function ProfessionistiSalvatiPage() {
                     completedThisMonth={pro.completedThisMonth}
                     verified={pro.verified}
                     stripeVerified={pro.stripeVerified}
+                    professionalKind={pro.professionalKind}
                     hasLiabilityInsurance={pro.hasLiabilityInsurance}
                     boosted={pro.boosted}
                     isNewProfile={pro.isNewProfile}
