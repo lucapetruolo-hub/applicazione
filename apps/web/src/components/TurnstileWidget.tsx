@@ -72,7 +72,10 @@ export function TurnstileWidget({
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
   const onTokenChangeRef = useRef(onTokenChange);
-  onTokenChangeRef.current = onTokenChange;
+  // Sempre l'ultima funzione del genitore, senza ricaricare il widget.
+  useEffect(() => {
+    onTokenChangeRef.current = onTokenChange;
+  });
 
   useEffect(() => {
     if (!siteKey) return;

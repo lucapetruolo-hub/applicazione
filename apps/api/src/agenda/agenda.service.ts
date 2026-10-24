@@ -74,7 +74,7 @@ export class AgendaService {
 
   /**
    * Salva la settimana tipo e la porta subito nei prossimi 63 giorni
-   * (docs/CHANGELOG.md §320): da qui in avanti vale per tutte le settimane.
+   * (docs/CHANGELOG.md §321): da qui in avanti vale per tutte le settimane.
    */
   async saveWeekTemplate(userId: string, template: AgendaWeekTemplate): Promise<AgendaWeekTemplateState> {
     const profile = await this.prisma.professionalProfile.findUnique({

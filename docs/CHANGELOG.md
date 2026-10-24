@@ -20306,7 +20306,20 @@ Non fatto qui: zod 4 (aggiornamento grande, rischio basso: il corpo JSON ha già
 
 **Verifica**: typecheck di `ui` e `web`, build del web; foto a 390 e 1440 px (home, profilo, richiesta di preventivo, richieste e finestra Filtri) in `/mnt/project-files/anteprime/identita-codice/tondeggiante/`.
 
-## 318. Prove dell'agenda stabili, elenco dei comuni più leggero, frecce nella striscia dei giorni
+## 318. Avvisi del controllo del codice sistemati, regole tornate errori
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Aggiornamento Next.js"): "effettua le due migliorie nelle modalità che ritieni"; la seconda erano gli avvisi di `pnpm turbo run lint` nel sito (regole nuove di React del §301 e accessibilità del §205), fatta in un thread a parte dopo l'unione della PR #103.
+
+**Decisione presa**: 159 avvisi in 62 file sistemati uno per uno; in `eslint.config.mjs` tolte le eccezioni che li abbassavano ad avviso, quindi da ora sono errori e bloccano la CI.
+- **Regole del React Compiler** (`eslint-plugin-react-hooks` 7, 70 avvisi). Al posto di `setState` dentro un effetto: valori derivati durante il render (es. il conteggio delle notifiche è 0 senza utente); risposte salvate insieme alla ricerca da cui arrivano, così cambiando filtro o pagina si torna allo scheletro senza azzerare lo stato a mano (pannello admin, statistiche, giro del giorno, ricerca rapida admin) ed evitando che una risposta vecchia finisca sotto il filtro nuovo; stato aggiornato durante il render quando cambia un valore (campi di `/account`, prefill della richiesta di preventivo, fascia oraria in modifica in agenda, menu account che si chiude cambiando pagina, intestatario dell'IBAN); `useMediaQuery`/`usePrefersReducedMotion` (`apps/web/src/lib/useMediaQuery.ts`) al posto di `matchMedia` in un effetto; le funzioni del genitore tenute in un ref aggiornato in un effetto, non durante il render; `Date.now()` mai durante il render (ora fissata all'apertura o all'arrivo dei dati). Restano poche eccezioni con un `eslint-disable` spiegato accanto: dati che esistono solo nel browser (sessione salvata, scelta dei cookie, frammento dell'indirizzo dopo l'accesso con Google) e link seguiti una volta sola con lo scorrimento fino alla scheda (`?open=`).
+- **Accessibilità** (`jsx-a11y`, 88 avvisi). Le finestre (popup) avevano `role="dialog"` e il clic sullo sfondo, con `stopPropagation` sulla finestra per non chiuderla: ora lo sfondo ha `role="presentation"` e si chiude solo con un clic proprio sullo sfondo (`closeOnBackdrop`, `apps/web/src/lib/closeOnBackdrop.ts`), il ruolo `dialog` è sulla finestra; con la tastiera si chiudono con Esc come prima. Le miniature di foto e documenti che si aprono in grande (`MediaPreview`) sono pulsanti usabili con Invio e spazio, con un nome per i lettori di schermo; il riquadro del professionista sulla mappa è un link raggiungibile con Tab. Nella lista dei paesi del telefono la scelta da tastiera resta dal campo di ricerca (frecce e Invio). Un'immagine `<img>` con testo alternativo può avere il ruolo di pulsante (consentito da ARIA in HTML), aggiunto alla regola.
+- Nessun cambio di aspetto voluto.
+- CodeQL (`js/xss-through-dom`, bloccante dal §313) segnalava le miniature di `MediaPreview` e `ImageCropModal`: per lui l'anteprima `blob:` di un file appena scelto è "testo del DOM" che arriva fino a `src`. L'indirizzo lo genera il browser e non può contenere HTML; `localPreviewUrl` in `lib/media.ts` lo passa per `encodeURI`, che lo lascia identico ma che CodeQL riconosce. Usato nella richiesta di preventivo, in `/account` e nel profilo pubblico.
+- Tolto il messaggio "Pages directory cannot be found" stampato a ogni lint (miglioria approvata da Luca): `rootDir` di Next in `eslint.config.mjs` ora è un percorso assoluto, perché turbo fa partire il lint da `apps/web`.
+
+**Verifica**: lint di tutto il monorepo a zero errori e zero avvisi, typecheck, build. Foto delle 132 pagine prima e dopo (`confronto-pagine`, con il limite di richieste dell'API alzato solo in locale per non avere risposte 429 a caso): 128 identiche al pixel; le altre 4 (riga "adesso" dell'agenda, admin Finanza, pochi pixel in `/urgente`) cambiano anche tra due giri fatti senza modifiche. Stessi stati HTTP, nessun errore nuovo in console. Prove nel browser: filtri della ricerca e menu da telefono si chiudono con un clic sullo sfondo e con Esc, non con un clic dentro; ricerca rapida admin; elenco utenti admin con la ricerca; campi di `/account` compilati anche arrivando da un'altra pagina; finestra della fascia oraria in agenda con `role="dialog"` reso da Tamagui. CodeQL 2.27.3 in locale con le stesse regole della CI: nessuna segnalazione nel codice del sito.
+
+## 319. Prove dell'agenda stabili, elenco dei comuni più leggero, frecce nella striscia dei giorni
 
 **Richiesta** (24/10/2026): il coordinatore ha segnalato le prove nel browser dell'agenda instabili anche sul ramo principale (run 40090532557); Luca ha segnalato che in "Giorno per giorno" non si vedono le frecce per il giorno prima e dopo.
 
@@ -20318,12 +20331,30 @@ Non fatto qui: zod 4 (aggiornamento grande, rischio basso: il corpo JSON ha già
 
 **Verifica**: nuova prova delle frecce, 62 prove nel browser in locale, 568 test API.
 
-## 319. Lighthouse misura davvero l'agenda, piè di pagina che non salta
+## 320. Lighthouse misura davvero l'agenda, piè di pagina che non salta
 
-Richiesta dell'utente: "effettua migliorie" (dopo l'elenco delle migliorie ancora possibili della §318).
+Richiesta dell'utente: "effettua migliorie" (dopo l'elenco delle migliorie ancora possibili della §319).
 
 **La prova Lighthouse misurava la pagina "Accedi"**: `e2e/lighthouse/agenda.mjs` scriveva la sessione in un contesto Playwright separato (`browser.newContext()`), mentre Lighthouse apre la sua scheda nel contesto predefinito del browser. Risultato: dalla §309 la prova misurava la pagina "Accedi come professionista" con l'indirizzo dell'agenda (il controllo sull'indirizzo finale passava lo stesso). Anche i numeri della §318 (TBT da ~900 a ~600 ms, CLS 0,14) erano di quella pagina. Ora il browser parte con un contesto persistente, la sessione si scrive lì e prima di misurare si controlla che l'agenda si apra davvero. Con l'agenda vera, in locale: CLS 0,001, TBT tra 480 e 680 ms a seconda del giro (macchina rumorosa; in CI i tempi sono più bassi), accessibilità 100. Il tempo è distribuito tra React e la libreria dei componenti del sito, non in un punto solo dell'agenda: togliere il piè di pagina non cambiava nulla (provato e annullato).
 
 **Piè di pagina che saltava**: nell'area professionista, mentre la pagina caricava, il piè di pagina compariva subito sotto il menu e poi veniva spinto giù dal contenuto (spostamento da 0,8 su un telefono lento). `.acct-main` ora è alto almeno quanto lo schermo, così il piè di pagina resta sotto fino alla fine del caricamento.
 
 **Verifica**: Lighthouse locale sulle due pagine dell'agenda con sessione vera (CLS 0,001); registrazione degli spostamenti con Playwright su telefono lento senza più lo spostamento del piè di pagina.
+
+## 321. Settimana tipo in tre passi, che vale per tutte le settimane
+
+Richiesta dell'utente (con la foto della vecchia "Settimana tipo"): "questa parte è difficilmente comprensibile e utilizzabile, come si potrebbe migliorare". Proposte tre strade con anteprime da telefono e computer; l'utente ha scelto la A, "Prima i giorni, poi gli orari".
+
+**Decisione**: la settimana tipo non si applica più a un mese. Salvata vale per tutte le settimane. Questo supera la regola della §288 ("non vale all'infinito"), con la scelta dell'utente della proposta A, che lo diceva esplicitamente.
+
+**Come funziona**: le fasce restano per data (nessuna ricorrenza aperta da gestire nelle prenotazioni). "Salva la settimana" (`PUT /agenda/week-template`) riempie i prossimi 63 giorni (gli stessi che vedono i clienti) e ogni notte alle 2.30 si aggiungono i giorni nuovi (`AgendaService.extendWeekTemplates`). Regole in `weekTemplateSync` (`packages/shared/src/agendaTools.ts`):
+- le fasce nate dalla settimana tipo hanno `fromWeekTemplate`; cambiando la settimana cambiano solo quei giorni;
+- un giorno cambiato a mano in "Giorno per giorno" diventa un giorno a sé e non si tocca più (`weekTemplateDatesKept` al salvataggio delle fasce);
+- non si toccano i giorni chiusi, quelli con lavori già fissati e quelli con le vecchie fasce ricorrenti;
+- `ProfessionalProfile.agendaTemplateFilledUntil` ricorda fin dove si è già riempito: un giorno svuotato a mano resta vuoto, un giorno libero che diventa di lavoro si riempie.
+
+Nuova migrazione `20261024140000_settimana_tipo_continua` (due colonne, nessun dato toccato). La settimana parte solo al primo "Salva la settimana": chi aveva già una settimana tipo non vede cambiare nulla finché non la salva.
+
+**Schermata** (`WeekTemplateEditor`): 1. "Che giorni lavori?" con i giorni da accendere e spegnere; 2. "In che orari?" con tre orari pronti (Mattina e pomeriggio, Orario continuato, Solo la mattina), orari da ritoccare "Dalle … alle …" (sul telefono "08:00 – 13:00" in una riga), A domicilio/Online e clienti per orario; 3. "Un giorno ha orari diversi?" con "Cambia" e "Aggiungi un giorno diverso". Da computer, accanto, "Come la vedono i clienti". In fondo ore a settimana, stato del salvataggio e "Salva la settimana". Tolti "Applica a [mese]", il "+" tratteggiato, "Giorno libero" come link e le scorciatoie staccate dalle righe. I giorni hanno "Lun" a vista e "Lunedì" letto dai lettori di schermo (testo senza dimensione: con `sr-only` si leggeva "Lun edì"). Tolto anche l'avviso "La tua settimana tipo è pronta: applicala al mese".
+
+**Verifica**: 6 test sulle regole (`week-template-sync.test.ts`), 575 test API; nuove prove nel browser (`settimana-tipo.spec.ts`: salvataggio che riempie otto sabati senza scegliere un mese, venerdì diverso, domenica vuota, pagina riaperta uguale; orari sbagliati con avviso e salvataggio bloccato), 64 prove nel browser in locale, accessibilità senza problemi gravi.

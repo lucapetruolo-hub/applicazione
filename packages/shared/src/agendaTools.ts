@@ -38,7 +38,7 @@ export const agendaWeekTemplateSchema = z
 export type AgendaWeekTemplate = z.infer<typeof agendaWeekTemplateSchema>;
 
 /**
- * Settimana tipo con il suo stato (docs/CHANGELOG.md §320): `active` dopo il
+ * Settimana tipo con il suo stato (docs/CHANGELOG.md §321): `active` dopo il
  * primo "Salva la settimana", da lì vale per tutte le settimane;
  * `changedDays` = giorni aggiornati dall'ultimo salvataggio.
  */
@@ -209,7 +209,7 @@ function sameSlots(a: WeekTemplateSlot[], b: WeekTemplateSlot[]): boolean {
 
 /**
  * Settimana tipo che vale per tutte le settimane (decisione dell'utente,
- * docs/CHANGELOG.md §320). Le fasce restano per data: qui si decide, per
+ * docs/CHANGELOG.md §321). Le fasce restano per data: qui si decide, per
  * ogni giorno da oggi in poi, cosa togliere e cosa aggiungere.
  * - Giorno chiuso, con vecchie fasce ricorrenti o con lavori già fissati: resta com'è.
  * - Giorno con le sole fasce della settimana tipo: prende quelle nuove.

@@ -1570,7 +1570,7 @@ export class ProfessionalsService {
     // fasce di prima restano, invece di sparire con il solo deleteMany.
     await this.prisma.$transaction(async (tx) => {
       // Un giorno resta "della settimana tipo" solo se le sue fasce non sono
-      // cambiate: cambiarle a mano ne fa un giorno a sé (docs/CHANGELOG.md §320).
+      // cambiate: cambiarle a mano ne fa un giorno a sé (docs/CHANGELOG.md §321).
       const previous = await tx.availabilitySlot.findMany({ where: { professionalProfileId } });
       const toTemplateSlot = (s: { startTime: string; endTime: string; allowsHome: boolean; allowsOnline: boolean; homeMaxBookings?: number | null; onlineMaxBookings?: number | null }) => ({
         start: s.startTime,

@@ -806,7 +806,7 @@ export function AgendaStyles() {
         background: #fff;
         min-width: 0;
       }
-      /* Settimana tipo in tre passi (docs/CHANGELOG.md §320). */
+      /* Settimana tipo in tre passi (docs/CHANGELOG.md §321). */
       .ag-wt {
         padding: 20px;
       }

@@ -19,7 +19,7 @@ const data = JSON.parse(readFileSync(new URL("../.auth/data.json", import.meta.u
 // Contesto persistente: Lighthouse apre la sua scheda nel contesto
 // predefinito del browser, quindi la sessione va scritta lì. Con
 // `browser.newContext()` finiva in un contesto separato e Lighthouse
-// misurava la pagina "Accedi" invece dell'agenda (docs/CHANGELOG.md §319).
+// misurava la pagina "Accedi" invece dell'agenda (docs/CHANGELOG.md §320).
 const context = await chromium.launchPersistentContext(mkdtempSync(join(tmpdir(), "lighthouse-")), {
   executablePath: process.env.CHROMIUM_PATH,
   args: [`--remote-debugging-port=${PORT}`],

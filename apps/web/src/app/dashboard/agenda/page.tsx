@@ -237,6 +237,41 @@ function DashboardAgendaContent() {
   const [vacationTo, setVacationTo] = useState("");
   const [vacationBusy, setVacationBusy] = useState(false);
 
+  // Deep-link "Vedi in agenda" da /dashboard/richieste (?booking=<id>) —
+  // bug reale segnalato dall'utente: il link portava sempre alla data
+  // odierna del calendario "Prenotazioni", che il più delle volte non è
+  // la data del preventivo appena accettato (spesso settimane avanti/
+  // indietro) — la prenotazione esisteva ma non compariva da nessuna
+  // parte nella vista mostrata, sembrando "mancante". Una volta che
+  // `bookings` è caricato, se l'id in URL corrisponde a una prenotazione
+  // reale: la vista "Prenotazioni" naviga alla sua data esatta (vista
+  // "Giorno", sempre visibile a prescindere da settimana/mese) e apre
+  // subito il pannello di dettaglio — non basta "essere sulla data
+  // giusta", l'utente deve vedere concretamente la prenotazione aperta.
+  // `consumedRef` evita di ripetere il salto se `bookings` si ricarica
+  // (es. dopo un'azione sul pannello) mentre l'utente ha già navigato
+  // altrove.
+  const consumedBookingDeepLinkRef = useRef(false);
+  // Ultime fasce confermate dal server, per tornarci se un salvataggio fallisce.
+  const savedSlotsRef = useRef<SlotDraft[]>([]);
+  const persistSeqRef = useRef(0);
+  function setSavedSlots(next: SlotDraft[]) {
+    savedSlotsRef.current = next;
+    setSlots(next);
+  }
+  function openDeepLinkedBooking(list: ProfessionalBooking[]) {
+    if (consumedBookingDeepLinkRef.current) return;
+    consumedBookingDeepLinkRef.current = true;
+    const targetId = searchParams.get("booking");
+    const match = targetId ? list.find((b) => b.id === targetId) : undefined;
+    if (match) {
+      setActiveTab("calendario");
+      setBookingView("day");
+      setBookingCurrentDate(startOfDayUtc(new Date(match.scheduledAt)));
+      setSelectedBooking(match);
+    }
+  }
+
   useEffect(() => {
     if (!token) return;
     apiClient
@@ -317,6 +352,7 @@ function DashboardAgendaContent() {
       .then(([loadedBookings, loadedJobs]) => {
         if (cancelled) return;
         setBookings(loadedBookings);
+        openDeepLinkedBooking(loadedBookings);
         setExternalJobs(loadedJobs);
         // Il riquadro aperto mostra subito lo stato nuovo (es. annullato dal cliente).
         setSelectedBooking((current) => (current ? (loadedBookings.find((b) => b.id === current.id) ?? current) : current));
@@ -328,6 +364,7 @@ function DashboardAgendaContent() {
         const copy = readAgendaOffline(user.id);
         if (copy) {
           setBookings(copy.bookings);
+          openDeepLinkedBooking(copy.bookings);
           setExternalJobs(copy.externalJobs);
           setOfflineSavedAt(copy.savedAt);
           return;
@@ -366,46 +403,6 @@ function DashboardAgendaContent() {
     return () => clearInterval(timer);
   }, []);
 
-  // Deep-link "Vedi in agenda" da /dashboard/richieste (?booking=<id>) —
-  // bug reale segnalato dall'utente: il link portava sempre alla data
-  // odierna del calendario "Prenotazioni", che il più delle volte non è
-  // la data del preventivo appena accettato (spesso settimane avanti/
-  // indietro) — la prenotazione esisteva ma non compariva da nessuna
-  // parte nella vista mostrata, sembrando "mancante". Una volta che
-  // `bookings` è caricato, se l'id in URL corrisponde a una prenotazione
-  // reale: la vista "Prenotazioni" naviga alla sua data esatta (vista
-  // "Giorno", sempre visibile a prescindere da settimana/mese) e apre
-  // subito il pannello di dettaglio — non basta "essere sulla data
-  // giusta", l'utente deve vedere concretamente la prenotazione aperta.
-  // `consumedRef` evita di ripetere il salto se `bookings` si ricarica
-  // (es. dopo un'azione sul pannello) mentre l'utente ha già navigato
-  // altrove.
-  const consumedBookingDeepLinkRef = useRef(false);
-  // Ultime fasce confermate dal server, per tornarci se un salvataggio fallisce.
-  const savedSlotsRef = useRef<SlotDraft[]>([]);
-  const persistSeqRef = useRef(0);
-  function setSavedSlots(next: SlotDraft[]) {
-    savedSlotsRef.current = next;
-    setSlots(next);
-  }
-  useEffect(() => {
-    if (consumedBookingDeepLinkRef.current) return;
-    if (!bookings) return;
-    const targetId = searchParams.get("booking");
-    if (!targetId) {
-      consumedBookingDeepLinkRef.current = true;
-      return;
-    }
-    const match = bookings.find((b) => b.id === targetId);
-    if (match) {
-      setActiveTab("calendario");
-      setBookingView("day");
-      setBookingCurrentDate(startOfDayUtc(new Date(match.scheduledAt)));
-      setSelectedBooking(match);
-    }
-    consumedBookingDeepLinkRef.current = true;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bookings]);
 
   useEffect(() => {
     if (!token) return;
@@ -428,16 +425,16 @@ function DashboardAgendaContent() {
   // stesso numero/ordine di hook ad ogni render) — editingDayOfWeek/
   // slotEditorLiveError sono function declaration, quindi già disponibili
   // per hoisting anche se definite più in basso nel corpo del componente.
-  useEffect(() => {
+  // Ricalcolato durante il render quando cambia uno dei valori dell'editor,
+  // invece che in un effetto dopo.
+  const liveErrorInputs = [draftStart, draftEnd, draftAllowsHome, draftAllowsOnline, editingKey, slots] as const;
+  const [checkedLiveErrorInputs, setCheckedLiveErrorInputs] = useState<readonly unknown[] | null>(null);
+  if (!checkedLiveErrorInputs || liveErrorInputs.some((value, i) => value !== checkedLiveErrorInputs[i])) {
+    setCheckedLiveErrorInputs(liveErrorInputs);
     const dayOfWeek = editingDayOfWeek();
-    if (dayOfWeek === null) {
-      setError(null);
-      return;
-    }
     const editIndex = editingKey?.startsWith("edit-") ? Number(editingKey.slice(5)) : null;
-    setError(slotEditorLiveError(dayOfWeek, editIndex));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draftStart, draftEnd, draftAllowsHome, draftAllowsOnline, editingKey, slots]);
+    setError(dayOfWeek === null ? null : slotEditorLiveError(dayOfWeek, editIndex));
+  }
 
   async function handleBookingAction(status: "CONFIRMED" | "COMPLETED" | "CANCELED") {
     if (!token || !selectedBooking) return;
@@ -1303,7 +1300,7 @@ function DashboardAgendaContent() {
   // Striscia dei giorni: sette giorni a partire da oggi, così la domenica
   // sera "domani" è a un tocco (T4 del test dei compiti, docs/CHANGELOG.md
   // §311); le frecce ai lati portano al giorno prima e dopo e la striscia
-  // scorre di sette giorni alla volta, sempre contando da oggi (§318).
+  // scorre di sette giorni alla volta, sempre contando da oggi (§319).
   function stripDays(current: Date): Date[] {
     const offset = Math.round((startOfDayUtc(current).getTime() - startOfDayUtc(today).getTime()) / 86_400_000);
     const start = addDaysUtc(today, Math.floor(offset / 7) * 7);
@@ -1497,7 +1494,7 @@ function DashboardAgendaContent() {
           ? String(bookingCurrentDate.getUTCFullYear())
           : `${monthLabel(bookingCurrentDate)} ${bookingCurrentDate.getUTCFullYear()}`;
 
-  // Settimana tipo (docs/CHANGELOG.md §320): "Salva la settimana" la porta
+  // Settimana tipo (docs/CHANGELOG.md §321): "Salva la settimana" la porta
   // subito nei prossimi giorni e da lì vale per tutte le settimane.
   async function changeWeekTemplate(next: AgendaWeekTemplate) {
     if (!token) return;

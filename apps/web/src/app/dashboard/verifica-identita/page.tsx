@@ -37,7 +37,8 @@ function VerificaIdentitaContent() {
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
-  const pollStartedAt = useRef<number | null>(returned ? Date.now() : null);
+  // Inizio dei controlli dopo il ritorno da Didit, segnato al primo controllo.
+  const pollStartedAt = useRef<number | null>(null);
   const [stripeVerified, setStripeVerified] = useState(false);
 
   useEffect(() => {
