@@ -151,3 +151,90 @@ export function weekTemplateCovers(template: AgendaWeekTemplate, weekday: number
   const range = DAY_PART_RANGE[part];
   return (template.days[weekday] ?? []).some((slot) => slot.start < range.end && slot.end > range.start);
 }
+
+/** Fascia nata dalla settimana tipo per una data precisa. */
+export type WeekTemplateDateSlot = WeekTemplateSlot & { dayOfWeek: number; date: string };
+
+/**
+ * Settimana tipo applicata a un mese (docs/CHANGELOG.md §288): riempie solo
+ * i giorni da `fromDate` in poi, non chiusi e ancora senza orari; i giorni
+ * che hanno già orari restano com'erano. `monthDates` in AAAA-MM-GG.
+ */
+export function weekTemplateMonthFill(
+  template: AgendaWeekTemplate,
+  monthDates: string[],
+  existing: { dayOfWeek: number; date?: string | null }[],
+  options: { fromDate: string; closedDates: ReadonlySet<string> },
+): { added: WeekTemplateDateSlot[]; filledDays: number; skippedDays: number } {
+  const added: WeekTemplateDateSlot[] = [];
+  let filledDays = 0;
+  let skippedDays = 0;
+  for (const date of monthDates) {
+    if (date < options.fromDate || options.closedDates.has(date)) continue;
+    const dayOfWeek = new Date(`${date}T00:00:00.000Z`).getUTCDay();
+    const templateSlots = template.days[dayOfWeek] ?? [];
+    if (templateSlots.length === 0) continue;
+    if (existing.some((slot) => (slot.date ? slot.date === date : slot.dayOfWeek === dayOfWeek))) {
+      skippedDays++;
+      continue;
+    }
+    filledDays++;
+    for (const slot of templateSlots) added.push({ ...slot, dayOfWeek, date });
+  }
+  return { added, filledDays, skippedDays };
+}
+
+/**
+ * Lavoro su più giorni (decisione dell'utente, docs/CHANGELOG.md §310): la
+ * fine cade in un giorno di calendario dopo l'inizio. Gli orari sono ora
+ * italiana salvata come UTC (§287); una fine alle 00:00 conta come fine del
+ * giorno prima.
+ */
+export function spansMultipleDays(start: Date | string, end: Date | string | null | undefined): boolean {
+  if (!end) return false;
+  return multiDayDates(start, end).length > 1;
+}
+
+/** I giorni (AAAA-MM-GG) di un lavoro, dal primo all'ultimo; uno solo se non ha una fine in un altro giorno. */
+export function multiDayDates(start: Date | string, end: Date | string | null | undefined): string[] {
+  const startMs = new Date(start).getTime();
+  const first = new Date(startMs).toISOString().slice(0, 10);
+  if (!end) return [first];
+  const endMs = new Date(end).getTime();
+  if (!(endMs > startMs)) return [first];
+  const last = new Date(endMs - 1).toISOString().slice(0, 10);
+  const dates: string[] = [];
+  for (let day = new Date(`${first}T00:00:00.000Z`); day.toISOString().slice(0, 10) <= last; day.setUTCDate(day.getUTCDate() + 1)) {
+    dates.push(day.toISOString().slice(0, 10));
+  }
+  return dates;
+}
+
+/** Al massimo tanti giorni per un lavoro su più giorni. */
+export const MAX_JOB_DAYS = 30;
+
+/**
+ * Le giornate di un lavoro, una per giorno con lo stesso orario (decisione
+ * dell'utente, §310: "comparirà il lavoro per *numero* giorni e nell'orario
+ * inserito"). Un lavoro di un solo giorno ha una sola giornata, uguale a sé.
+ */
+export function jobOccurrences(start: Date | string, end: Date | string | null | undefined): { date: string; start: Date; end: Date | null }[] {
+  const startDate = new Date(start);
+  const endDate = end ? new Date(end) : null;
+  const dates = multiDayDates(startDate, endDate);
+  if (dates.length === 1) return [{ date: dates[0]!, start: startDate, end: endDate }];
+  const startTime = startDate.toISOString().slice(11, 23);
+  // Fine alle 00:00: la giornata finisce a mezzanotte del giorno stesso.
+  const endTime = endDate!.toISOString().slice(11, 23);
+  return dates.map((date) => {
+    const dayStart = new Date(`${date}T${startTime}Z`);
+    let dayEnd = new Date(`${date}T${endTime}Z`);
+    if (dayEnd <= dayStart) dayEnd = new Date(dayEnd.getTime() + 86_400_000);
+    return { date, start: dayStart, end: dayEnd };
+  });
+}
+
+/** La giornata di un lavoro in quella data (AAAA-MM-GG), se il lavoro la tocca. */
+export function jobOccurrenceOn(start: Date | string, end: Date | string | null | undefined, date: string): { start: Date; end: Date | null } | null {
+  return jobOccurrences(start, end).find((occurrence) => occurrence.date === date) ?? null;
+}

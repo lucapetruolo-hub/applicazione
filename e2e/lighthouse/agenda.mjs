@@ -1,0 +1,80 @@
+// Lighthouse dell'agenda su un telefono lento (docs/CHANGELOG.md §309):
+// profilo "mobile" di Lighthouse (Moto G Power, CPU rallentata 4 volte,
+// rete 4G lenta simulata). Blocca sotto i limiti "scarso" di Google
+// (BUDGET) e avvisa sotto quelli "buono" (GOOD), che sono l'obiettivo.
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { chromium } from "@playwright/test";
+import lighthouse from "lighthouse";
+
+const WEB_URL = process.env.E2E_WEB_URL ?? "http://localhost:3000";
+const PORT = 9333;
+/** Soglie: punteggi 0-100 e tempi in millisecondi. */
+const BUDGET = { performance: 60, accessibility: 90, "best-practices": 90, lcpMs: 4000, tbtMs: 600, cls: 0.25 };
+const GOOD = { performance: 90, accessibility: 100, "best-practices": 100, lcpMs: 2500, tbtMs: 200, cls: 0.1 };
+
+const data = JSON.parse(readFileSync(new URL("../.auth/data.json", import.meta.url), "utf8"));
+const browser = await chromium.launch({ args: [`--remote-debugging-port=${PORT}`] });
+const context = await browser.newContext();
+const page = await context.newPage();
+// Sessione già aperta: Lighthouse non deve cancellare i dati del sito (disableStorageReset).
+await page.goto(WEB_URL);
+await page.evaluate((token) => {
+  localStorage.setItem("professionisti_token", token);
+  localStorage.setItem("cookie-consent-v1", "denied");
+}, data.token);
+
+const pages = [
+  { name: "calendario", path: "/dashboard/agenda" },
+  { name: "orari", path: "/dashboard/agenda?tab=orari" },
+];
+const rows = [];
+let failed = false;
+/** Tre misure per pagina e si tiene quella mediana per il punteggio, come consiglia Lighthouse CI. */
+const RUNS = 3;
+for (const item of pages) {
+  const runs = [];
+  for (let i = 0; i < RUNS; i++) {
+    const result = await lighthouse(`${WEB_URL}${item.path}`, {
+      port: PORT,
+      output: "json",
+      logLevel: "error",
+      disableStorageReset: true,
+      onlyCategories: ["performance", "accessibility", "best-practices"],
+    });
+    runs.push(result.lhr);
+  }
+  runs.sort((a, b) => a.categories.performance.score - b.categories.performance.score);
+  const lhr = runs[Math.floor(RUNS / 2)];
+  const row = {
+    pagina: item.name,
+    performance: Math.round(lhr.categories.performance.score * 100),
+    accessibility: Math.round(lhr.categories.accessibility.score * 100),
+    "best-practices": Math.round(lhr.categories["best-practices"].score * 100),
+    lcpMs: Math.round(lhr.audits["largest-contentful-paint"].numericValue),
+    tbtMs: Math.round(lhr.audits["total-blocking-time"].numericValue),
+    cls: Number(lhr.audits["cumulative-layout-shift"].numericValue.toFixed(3)),
+    finalUrl: lhr.finalDisplayedUrl,
+  };
+  rows.push(row);
+  const check = (limits) => {
+    const out = [];
+    for (const key of ["performance", "accessibility", "best-practices"]) if (row[key] < limits[key]) out.push(`${key} ${row[key]} < ${limits[key]}`);
+    if (row.lcpMs > limits.lcpMs) out.push(`LCP ${row.lcpMs}ms > ${limits.lcpMs}ms`);
+    if (row.tbtMs > limits.tbtMs) out.push(`TBT ${row.tbtMs}ms > ${limits.tbtMs}ms`);
+    if (row.cls > limits.cls) out.push(`CLS ${row.cls} > ${limits.cls}`);
+    return out;
+  };
+  const problems = check(BUDGET);
+  if (!row.finalUrl.includes("/dashboard/agenda")) problems.push(`pagina sbagliata: ${row.finalUrl}`);
+  if (problems.length) {
+    failed = true;
+    console.error(`✗ ${item.name}: ${problems.join(", ")}`);
+  }
+  const toImprove = check(GOOD);
+  if (toImprove.length) console.warn(`△ ${item.name}, da migliorare: ${toImprove.join(", ")}`);
+}
+await browser.close();
+console.table(rows);
+mkdirSync(new URL("../lighthouse-results/", import.meta.url), { recursive: true });
+writeFileSync(new URL("../lighthouse-results/agenda.json", import.meta.url), JSON.stringify(rows, null, 2));
+process.exit(failed ? 1 : 0);

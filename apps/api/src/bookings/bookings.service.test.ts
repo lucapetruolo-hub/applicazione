@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { BookingsService } from "./bookings.service";
 
 /**
@@ -14,12 +14,18 @@ import { BookingsService } from "./bookings.service";
 function buildService(prismaOverrides: Record<string, unknown> = {}) {
   const prisma = {
     quote: { findUnique: vi.fn(), update: vi.fn() },
-    booking: { create: vi.fn(), update: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn() },
+    booking: { create: vi.fn(), update: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
+    externalJob: { findMany: vi.fn().mockResolvedValue([]) },
+    availabilitySlot: { findMany: vi.fn().mockResolvedValue([]) },
+    $executeRaw: vi.fn(),
+    $transaction: vi.fn(),
     jobPayment: { findUniqueOrThrow: vi.fn().mockResolvedValue({ id: "jp-1" }) },
     professionalFiscalProfile: { findUnique: vi.fn().mockResolvedValue({ stripePayoutsEnabled: true }) },
     guidedRequest: { update: vi.fn() },
     ...prismaOverrides,
   };
+  // Il blocco dell'agenda (§310) gira in una transazione: qui la transazione usa lo stesso finto database.
+  prisma.$transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
   const notificationsService = { notify: vi.fn() };
   const professionalMetricsService = { recordJobAccepted: vi.fn() };
   const timelineService = { log: vi.fn() };
@@ -274,7 +280,73 @@ describe("BookingsService.reportProblemByProfessional", () => {
   });
 });
 
+describe("BookingsService.createFromQuote — professionista già impegnato (§310)", () => {
+  it("rifiuta se a quell'ora il professionista ha già un lavoro, anche iniziato prima", async () => {
+    const { service, prisma } = buildService();
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote());
+    (prisma.booking.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { professionalProfileId: "pro-1", scheduledAt: new Date("2026-10-01T09:00:00Z"), scheduledEndAt: new Date("2026-10-01T12:00:00Z"), serviceMode: "HOME" },
+    ]);
+
+    await expect(service.createFromQuote("client-1", "quote-1")).rejects.toThrow(ConflictException);
+    expect(prisma.booking.create).not.toHaveBeenCalled();
+  });
+
+  it("rifiuta se a quell'ora c'è un lavoro esterno", async () => {
+    const { service, prisma } = buildService();
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote());
+    (prisma.externalJob.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { professionalProfileId: "pro-1", scheduledAt: new Date("2026-10-01T10:30:00Z"), scheduledEndAt: new Date("2026-10-01T11:30:00Z") },
+    ]);
+
+    await expect(service.createFromQuote("client-1", "quote-1")).rejects.toThrow(ConflictException);
+    expect(prisma.booking.create).not.toHaveBeenCalled();
+  });
+
+  it("accetta se la fascia dell'agenda ha ancora posto per un altro lavoro", async () => {
+    const { service, prisma } = buildService();
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote());
+    (prisma.booking.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { professionalProfileId: "pro-1", scheduledAt: new Date("2026-10-01T10:00:00Z"), scheduledEndAt: null, serviceMode: "HOME" },
+    ]);
+    (prisma.availabilitySlot.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { dayOfWeek: 4, date: null, startTime: "08:00", endTime: "13:00", homeMaxBookings: 2, onlineMaxBookings: null },
+    ]);
+    (prisma.booking.create as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "b-2" });
+
+    await expect(service.createFromQuote("client-1", "quote-1")).resolves.toMatchObject({ bookingId: "b-2" });
+  });
+
+  it("un secondo tocco su Accetta mentre il primo è in corso risponde 'già accettato', non un errore interno", async () => {
+    const { service, prisma } = buildService();
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote());
+    (prisma.booking.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "b-1" });
+
+    await expect(service.createFromQuote("client-1", "quote-1")).rejects.toThrow("Questo preventivo è già stato accettato.");
+    expect(prisma.booking.create).not.toHaveBeenCalled();
+  });
+});
+
 describe("BookingsService.confirmQuoteDeposit — lavoro confermato solo dopo l'acconto (§240)", () => {
+  it("rimborsa l'acconto se nel frattempo il professionista ha preso un altro lavoro a quell'ora (§310)", async () => {
+    const { service, prisma, jobPaymentsService } = buildService();
+    (prisma.booking.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (prisma.booking.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote());
+    (prisma.booking.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { professionalProfileId: "pro-1", scheduledAt: new Date("2026-10-01T10:00:00Z"), scheduledEndAt: new Date("2026-10-01T11:00:00Z"), serviceMode: "HOME" },
+    ]);
+
+    await service.confirmQuoteDeposit({
+      payment_intent: "pi_1",
+      amount_total: 6000,
+      metadata: { kind: "quote_deposit", quoteId: "quote-1", clientUserId: "client-1", paymentMethod: "ONLINE" },
+    } as never);
+
+    expect(prisma.booking.create).not.toHaveBeenCalled();
+    expect(jobPaymentsService.refundQuoteDeposit).toHaveBeenCalledWith("pi_1", expect.stringContaining("non è più libero"), null, expect.anything());
+  });
+
   function session(overrides: Record<string, unknown> = {}) {
     return {
       payment_intent: "pi_1",

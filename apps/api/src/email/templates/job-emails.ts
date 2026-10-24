@@ -2,6 +2,7 @@ import { calendarDetail } from "../booking-calendar";
 import { frontendUrl } from "../email-brand";
 import { renderEmail, type RenderedEmail } from "../email-layout";
 import { descriptionDetail, formatAppointmentDay, formatAppointmentTime } from "../email-format";
+import { formatJobDays } from "@professionisti/shared";
 
 /**
  * Email legate a una richiesta o a un appuntamento che non nascono da una
@@ -146,6 +147,8 @@ function placeDetail(address: string | null | undefined, city: string | null | u
 /** Righe "Data" e "Ora" (con la fine della fascia, se c'è). */
 function appointmentDetails(scheduledAt: Date, scheduledEndAt?: Date | null): { label: string; value: string }[] {
   const end = scheduledEndAt ? formatAppointmentTime(scheduledEndAt) : "";
+  const days = formatJobDays(scheduledAt, scheduledEndAt);
+  if (days) return [{ label: "Data", value: days }, { label: "Ora", value: `${formatAppointmentTime(scheduledAt)}–${end} ogni giorno` }];
   return [
     { label: "Data", value: formatAppointmentDay(scheduledAt) },
     { label: "Ora", value: `${formatAppointmentTime(scheduledAt)}${end ? `–${end}` : ""}` },

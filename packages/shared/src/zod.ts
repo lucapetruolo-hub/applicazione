@@ -2,7 +2,7 @@ import { z } from "zod";
 
 /**
  * zod 4 con i messaggi d'errore predefiniti di zod 3 (docs/CHANGELOG.md
- * §309). Quasi tutti gli schemi hanno un messaggio in italiano, ma dove manca
+ * §312). Quasi tutti gli schemi hanno un messaggio in italiano, ma dove manca
  * il sito mostra quello predefinito di zod ("Required", "Invalid email", ...):
  * zod 4 li ha riscritti tutti, quindi qui si rimettono quelli di prima, così
  * l'aggiornamento non cambia nulla di quello che vede l'utente. I messaggi
