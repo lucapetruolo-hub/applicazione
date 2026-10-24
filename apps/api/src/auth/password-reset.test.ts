@@ -130,3 +130,12 @@ describe("recupero password con il codice di 6 cifre (§245)", () => {
     }
   });
 });
+
+describe("esci dagli altri dispositivi (§294)", () => {
+  it("chiude le altre sessioni e dà un token nuovo a questo dispositivo", async () => {
+    const { service, prisma } = buildService();
+    prisma.user.update.mockResolvedValue({ id: "u-1", sessionVersion: 3 });
+    await expect(service.logoutOtherDevices("u-1")).resolves.toEqual({ token: "jwt-token" });
+    expect(prisma.user.update).toHaveBeenCalledWith({ where: { id: "u-1" }, data: { sessionVersion: { increment: 1 } } });
+  });
+});

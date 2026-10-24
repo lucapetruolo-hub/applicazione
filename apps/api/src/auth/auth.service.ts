@@ -548,6 +548,12 @@ export class AuthService {
     return { token: this.issueToken(updated) };
   }
 
+  /** "Esci dagli altri dispositivi" (§294): come dopo un cambio password, questo resta dentro col token nuovo. */
+  async logoutOtherDevices(userId: string): Promise<{ token: string }> {
+    const updated = await this.prisma.user.update({ where: { id: userId }, data: { sessionVersion: { increment: 1 } } });
+    return { token: this.issueToken(updated) };
+  }
+
   /**
    * Recupero password (docs/CHANGELOG.md §185): manda un link valido
    * PASSWORD_RESET_MINUTES minuti, una volta sola. Risponde sempre allo stesso

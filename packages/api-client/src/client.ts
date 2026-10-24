@@ -1006,6 +1006,10 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
         body: JSON.stringify(input),
       }),
 
+    // Gli altri dispositivi escono; `token` è il nuovo accesso per questo (docs/CHANGELOG.md §294).
+    logoutOtherDevices: (token: string) =>
+      request<{ token: string }>("/auth/logout-others", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+
     deleteAccount: (token: string) =>
       request<{ success: boolean }>("/auth/me", {
         method: "DELETE",

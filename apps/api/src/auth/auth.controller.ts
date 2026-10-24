@@ -320,6 +320,13 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post("logout-others")
+  logoutOtherDevices(@Req() req: AuthenticatedRequest) {
+    return this.authService.logoutOtherDevices(req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Delete("me")
   async deleteMe(@Req() req: AuthenticatedRequest) {
     await this.authService.deleteAccount(req.user.userId);

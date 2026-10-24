@@ -172,6 +172,10 @@ export default function AccountPage() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSaved, setPasswordSaved] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
+  const [confirmingLogoutOthers, setConfirmingLogoutOthers] = useState(false);
+  const [isLoggingOutOthers, setIsLoggingOutOthers] = useState(false);
+  const [logoutOthersDone, setLogoutOthersDone] = useState(false);
+  const [logoutOthersError, setLogoutOthersError] = useState<string | null>(null);
 
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
@@ -362,6 +366,22 @@ export default function AccountPage() {
       setPasswordError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
       setIsSavingPassword(false);
+    }
+  }
+
+  // Esci dagli altri dispositivi (docs/CHANGELOG.md §294): qui si resta dentro con il token nuovo.
+  async function handleLogoutOthers() {
+    setLogoutOthersError(null);
+    setIsLoggingOutOthers(true);
+    try {
+      const result = await apiClient.logoutOtherDevices(token as string);
+      await login(result.token);
+      setConfirmingLogoutOthers(false);
+      setLogoutOthersDone(true);
+    } catch (err) {
+      setLogoutOthersError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setIsLoggingOutOthers(false);
     }
   }
 
@@ -709,6 +729,63 @@ export default function AccountPage() {
             {!isEditingPassword && passwordSaved ? (
               <Text color={brand.verificato} fontSize="$3">
                 Password aggiornata!
+              </Text>
+            ) : null}
+          </FieldRow>
+
+          <FieldRow label="Dispositivi">
+            {confirmingLogoutOthers ? (
+              <YStack gap="$2" maxWidth={360}>
+                <Text color={brand.grafite} fontSize="$3">
+                  Uscirai da telefoni e computer dove hai fatto l'accesso, tranne questo.
+                </Text>
+                {logoutOthersError ? (
+                  <Text color={brand.urgenza} fontSize="$3">
+                    {logoutOthersError}
+                  </Text>
+                ) : null}
+                <XStack gap="$3" alignItems="center">
+                  <Button
+                    variant="secondary"
+                    size="$3"
+                    height={40}
+                    onPress={handleLogoutOthers}
+                    disabled={isLoggingOutOthers}
+                    opacity={isLoggingOutOthers ? 0.6 : 1}
+                  >
+                    {isLoggingOutOthers ? "Uscita..." : "Conferma"}
+                  </Button>
+                  <Text
+                    color={brand.grafite70}
+                    fontWeight="600"
+                    cursor="pointer"
+                    accessibilityRole="button"
+                    onPress={() => {
+                      setConfirmingLogoutOthers(false);
+                      setLogoutOthersError(null);
+                    }}
+                  >
+                    Annulla
+                  </Text>
+                </XStack>
+              </YStack>
+            ) : (
+              <Text
+                color={brand.cianografiaScuro}
+                fontWeight="600"
+                cursor="pointer"
+                accessibilityRole="button"
+                onPress={() => {
+                  setLogoutOthersDone(false);
+                  setConfirmingLogoutOthers(true);
+                }}
+              >
+                Esci da tutti gli altri dispositivi
+              </Text>
+            )}
+            {!confirmingLogoutOthers && logoutOthersDone ? (
+              <Text color={brand.verificato} fontSize="$3">
+                Fatto: gli altri dispositivi sono stati scollegati.
               </Text>
             ) : null}
           </FieldRow>
