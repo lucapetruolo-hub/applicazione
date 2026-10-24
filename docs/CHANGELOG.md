@@ -17226,7 +17226,7 @@ prossima funzionalità da costruire.
   `/le-mie-richieste` la funzione che ricarica le liste è ora un
   `useCallback` legato al token, dichiarato tra le dipendenze del poll
   (stesso comportamento); in `AddressAutocompleteInput` le coordinate di
-  riferimento sono lette fuori dall'effetto (stesso comportamento). In
+  riferimento sono lette fuori dall'effetto (stesso comportamento). Dopo l'unione delle PR #101 e #103 Semgrep segnalava i dati strutturati per Google scritti con `dangerouslySetInnerHTML` in due pagine: erano già sicuri (passano da `jsonForScript`), ma ora tutti e sei i punti usano un solo componente `JsonLd` (`apps/web/src/components/JsonLd.tsx`), unico posto che scrive HTML grezzo. Reso stabile anche un test del calendario che falliva a caso: controllava che il file del cliente non contenesse "333", che può comparire nel numero di versione ricavato dall'ora; ora controlla il numero di telefono intero. In
   `/dashboard/profilo` la dipendenza resta fuori apposta, con il motivo
   scritto: rimetterla ricaricherebbe il profilo al cambio della foto
   dell'account e cancellerebbe le modifiche non salvate.
@@ -20225,3 +20225,49 @@ La mappa con una chiave vera si vede solo sul sito pubblicato: dopo l'unione va 
 **Disconnessi per un 429** (visto nelle prove nel browser in CI): se `/auth/me` rispondeva 429 (troppe richieste) o con un errore del server, il sito cancellava l'accesso e mostrava "Accedi". Ora disconnettono solo 401 e 403; su 429 ed errori del server si riprova due volte (dopo 1,5 e 3 secondi) e poi si resta con la copia salvata. Il limite generale di 60 chiamate al minuto si può alzare con `RATE_LIMIT_PER_MINUTE`, usato solo dalle prove nel browser (tutte dallo stesso indirizzo); in produzione resta 60.
 
 **Verifica**: nuove prove `e2e/tests/agenda-primo-uso.spec.ts` (T1, T2-T3, T4, T9-T11); 60 prove nel browser in locale; tempi stimati dei compiti C1 7,4 s, C2 9,7 s, C3 8,1 s, C4 10,8 s, C5 20,0 s (C5 come prima: il tasto con la scritta non cambia i tocchi, solo il dubbio su cosa faccia).
+
+## 312. Test dei permessi e strumenti di controllo nella CI
+
+**Richiesta dell'utente**: dal controllo approfondito (§293), un test nella CI che chiama ogni rotta con ogni ruolo e con gli id di un altro utente, più Semgrep, CodeQL, gitleaks e osv-scanner. Deciso di farli subito invece che prima del lancio. "La prova che il lavoro è giusto non è la tua parola: sono i test nella CI e i rapporti degli strumenti."
+
+**Test dei permessi** (job `access-matrix` in `.github/workflows/ci.yml`, script `apps/api/scripts/access-matrix.mjs`):
+- crea un Postgres vuoto, applica le migrazioni e avvia l'API vera (stessa configurazione di `main.ts`, ora in `src/app-setup.ts`), senza chiavi esterne;
+- crea due clienti, due professionisti, tre admin (SUPER, MODERATOR, FINANCE) e i dati di prova: richiesta con lead, preventivo e chat, prenotazione con pagamento, notifica, lavoro esterno, segnalazione;
+- `apps/api/scripts/access-policy.mjs` dice per ogni rotta chi la può usare (pubblica, solo con il biglietto, dati propri, dati propri solo per i professionisti, dati di qualcuno). **Una rotta nuova non classificata fa fallire la CI**;
+- controlla: rotte pubbliche senza guard; tutte le altre senza accesso → 401; rotte admin → 403 per cliente, professionista e admin senza il permesso giusto, accesso per chi ce l'ha; rotte da professionista → nessun dato a un cliente; rotte con un id → 403/404 a ogni estraneo (anche se il corpo della richiesta non è valido: la validazione viene saltata apposta, così il test arriva sempre al controllo di proprietà) e risposta valida ai proprietari.
+
+Risultato: 218 rotte, 798 controlli, nessuna falla (dopo l'unione della PR #101: 220 rotte, la nuova `GET /professionals/prices/:category` segnalata dal test e classificata pubblica). Prova che il test funziona: togliendo per un attimo il controllo di proprietà dal pagamento di una prenotazione, il test segnala subito i due estranei che lo leggono.
+
+**Strumenti** (`.github/workflows/security.yml`, a ogni PR, a ogni unione e ogni lunedì): CodeQL (`security-extended`), Semgrep (regole `p/default`, `p/nodejs`, `p/typescript`, `p/secrets`) e osv-scanner (librerie con vulnerabilità note) scrivono nella scheda "Security → Code scanning" del repository, per ora senza bloccare. gitleaks controlla tutta la cronologia (641 commit, nessuna chiave trovata) e blocca: il repository è pubblico, una chiave nel codice va tolta subito. Il registro mostra solo le chiavi oscurate (`--redact`).
+
+**Prima lettura dei rapporti**: Semgrep 5 segnalazioni (2 reali ma basse: la lunghezza del sigillo AES-GCM non è controllata nella decifratura dei dati fiscali e dei link di invito; 3 falsi allarmi). osv-scanner 162 avvisi su 45 librerie, quasi tutte usate solo per costruire o provare il codice; nell'API e nel sito pubblicato contano Next.js 14 (passaggio a 15 già in un thread a parte), body-parser, qs (usato solo dal lettore dei moduli `urlencoded`, che nessun client usa), `@nestjs/core` e zod (corretti solo nelle versioni maggiori nuove). Le correzioni sono proposte all'utente in ordine di gravità prima di farle.
+
+## 313. Controllo sicurezza: correzioni dai rapporti degli strumenti
+
+**Richiesta dell'utente**: "effettua le correzioni che ritieni nell'ordine e nelle modalità che ritieni", sulle proposte nate dai rapporti del §312.
+
+1. **Corpi compressi rifiutati** (`src/app-setup.ts`, `inflate: false` sul lettore JSON e sui due webhook): body-parser ha una falla nota che blocca l'API con un corpo compresso fatto apposta. Nessun client manda corpi compressi (sito, app, Stripe, Didit), quindi invece di aggiornare la libreria si spegne la decompressione: la richiesta compressa riceve 415. Funziona uguale su Express 4 e su Express 5 (PR #103).
+2. **Tolto il lettore dei moduli `urlencoded`**: l'API riceve solo JSON e nessun client manda moduli; quel lettore usava `qs`, con due falle note. Un modulo ora arriva vuoto e la validazione risponde 400.
+3. **Sigillo AES-GCM di 16 byte** nella decifratura dei dati fiscali (`common/fiscal-crypto.ts`) e dei link di invito (`profile-invites.service.ts`): Node accetta anche un sigillo più corto, più facile da indovinare per chi volesse falsificare un dato cifrato. Ora un sigillo diverso da 16 byte non viene letto. Test nuovo.
+4. **Semgrep ora blocca la PR**: con le correzioni sopra resta zero segnalazioni. Il falso allarme su `readPath` (solo lettura, non può alterare i prototipi) è sparito riscrivendo la funzione con `reduce`, perché GitHub mostrava comunque l'avviso anche con un commento `nosemgrep`; restano fuori i file di test (le chiavi finte le controlla gitleaks) e gli script di controllo della CI in `apps/*/scripts`, che non arrivano agli utenti (dopo l'unione della PR #101 Semgrep segnalava tre falsi allarmi nel controllo SEO). osv-scanner resta solo rapporto (quasi tutti gli avvisi riguardano librerie per costruire o provare il codice), CodeQL finché la sua scheda non è controllata.
+
+Non fatto qui: zod 4 (aggiornamento grande, rischio basso: il corpo JSON ha già un limite di dimensione); Next.js 15 e NestJS 11 sono nella PR #103.
+
+**Verifica**: 543 test dell'API (con il sigillo accorciato rifiutato), typecheck e lint. API avviata con Postgres locale: login con corpo compresso 415, con modulo 400, con JSON normale la risposta di sempre. Test dei permessi (§312) di nuovo senza problemi. Semgrep: 0 segnalazioni.
+
+**Migliorie** (richiesta dell'utente: "effettua tutte le migliorie da 1 a 4 nella modalità che ritieni"):
+1. **Allegati della chat solo per chi partecipa** (`TimelineService.canDownloadAttachment`): `GET /guided-requests/timeline-photos/download` scarica l'allegato solo se compare in un messaggio di una chat di cui chi chiama è il cliente o il professionista, oppure se è un admin (chat in sola lettura per la moderazione). Altrimenti risponde 404. Prima bastava aver fatto l'accesso e conoscere l'indirizzo, e i documenti sono proprio quelli che la CDN di Cloudinary non consegna da sola. Nel test dei permessi la rotta è ora "di qualcuno": gli estranei ricevono 404, e togliendo apposta il controllo il test fallisce.
+2. **CodeQL blocca la PR**: un passo legge i risultati e fallisce su errori e avvisi; i consigli restano solo nella scheda Security. Stesso perimetro di Semgrep (fuori test e script della CI). Al primo giro ha trovato due cose, corrette: l'espressione regolare che leggeva il percorso degli allegati in `CloudinaryService.fetchAttachmentForDownload` poteva impiegare molto tempo su un indirizzo lungo fatto apposta (ora il percorso si divide per segmenti, stesso risultato); in `EmailCodeForm` un'espressione con `^` solo sulla prima parte, riscritta in modo esplicito (stesso comportamento).
+3. **zod 4**: in un thread a parte dopo l'unione della PR #103, che tocca le stesse dipendenze.
+4. **Azioni della CI su Node 24**: `actions/checkout@v6`, `actions/setup-node@v6`, `pnpm/action-setup@v5`, `github/codeql-action@v4` (GitHub segnalava le versioni su Node 20, in dismissione). Il Node usato per compilare e provare il codice era ancora 20, come su Render: passato a 22 nel §314.
+
+## 314. Node 22 sul server e nella CI, eccezione di osv-scanner per zod 3
+
+**Richiesta dell'utente**: "effettua la prima miglioria e segna da fare prima del lancio la seconda" ("o comunque dopo i primi aggiornamenti di dependabot"), sulle migliorie proposte prima di unire la PR #105: Node 20 non riceve più aggiornamenti di sicurezza da aprile 2026; osv-scanner bloccante.
+
+**Decisione**:
+- `.nvmrc` a 22 e `engines.node` a `22.x`: Render legge `.nvmrc` e al prossimo deploy usa Node 22 da solo, Vercel legge `engines`. Anche i job della CI (`ci.yml`) girano su Node 22, comprese le prove nel browser dell'agenda (§309), con le azioni aggiornate come nel §312.
+- osv-scanner resta solo rapporto: renderlo bloccante (solo per le librerie che vanno sul sito e sull'API) è nella checklist di lancio, punto 40, da fare prima del lancio o dopo i primi aggiornamenti di Dependabot.
+- `osv-scanner.toml`: eccezione per zod 3.25.76, rimasto solo dentro `@expo/cli` (strumento di sviluppo dell'app, non finisce nell'app, nel sito o nell'API) dopo il passaggio a zod 4 della PR #108; approvata dall'utente nel thread di zod. L'eccezione vale solo per quella versione: un altro zod vulnerabile verrebbe segnalato.
+
+**Verifica**: build, typecheck, test e test dei permessi con Node 22 nella CI; osv-scanner in locale non mostra più zod 3.25.76, e senza il file lo mostra.
