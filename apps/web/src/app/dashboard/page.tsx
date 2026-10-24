@@ -156,7 +156,7 @@ export default function DashboardTodayPage() {
 
         {subscription ? <SubscriptionPauseBanner sub={subscription} profileStepsElsewhere /> : null}
         {restrictions ? <IssueSanctionBanner {...restrictions} /> : null}
-        {/* Due colonne quando c'è spazio (docs/CHANGELOG.md §319): a sinistra il
+        {/* Due colonne quando c'è spazio (docs/CHANGELOG.md §325): a sinistra il
             lavoro (appuntamenti, richieste, andamento), a destra percorso del
             profilo, avvisi e visibilità. Stretto, `today-col` non conta e `order` rimette tutto
             nell'ordine di sempre: prima il prossimo lavoro, poi il percorso. */}

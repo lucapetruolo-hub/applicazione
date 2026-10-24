@@ -36,11 +36,11 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   BOOKING_REOPENED_BY_PROFESSIONAL: { icon: "🔄", message: "Il professionista ha riaperto una prenotazione annullata." },
   // Recensione del cliente (docs/CHANGELOG.md §185): pubblica subito (§215).
   NEW_REVIEW: { icon: "⭐", message: "Un cliente ha recensito un tuo lavoro: la sua recensione è ora visibile." },
-  // DSA artt. 16/17 ("Verbale di Conformità", Parte 1 punto 4): esito di una
-  // segnalazione contenuti comunicato a chi l'ha presentata, e "statement of
-  // reasons" a chi ha scritto un contenuto la cui segnalazione è stata
-  // accolta — entrambi generati da AdminService.resolveContentReport.
-  CONTENT_REPORT_DECISION: { icon: "🚩", message: "La tua segnalazione è stata esaminata da un amministratore." },
+  // DSA art. 16 c. 4-5 (docs/CHANGELOG.md §319): a chi segnala la presa in
+  // carico e, solo per un contenuto illegale, l'esito; a chi ha scritto il
+  // contenuto la motivazione (art. 17, CONTENT_REPORT_UPHELD).
+  CONTENT_REPORT_RECEIVED: { icon: "🚩", message: "Abbiamo preso in carico la tua segnalazione." },
+  CONTENT_REPORT_DECISION: { icon: "🚩", message: "Abbiamo esaminato la tua segnalazione: trovi l'esito nell'email." },
   // Promemoria programmato dall'utente dal menu della scheda (docs/CHANGELOG.md §130).
   REQUEST_REMINDER: { icon: "⏰", message: "Promemoria: hai chiesto di ricordarti questa richiesta." },
   CONTENT_REPORT_UPHELD: { icon: "⚠️", message: "Abbiamo preso una decisione su un tuo contenuto segnalato: tocca per leggere la motivazione." },

@@ -18,6 +18,8 @@ name: Uptime
 on:
   schedule:
     - cron: "*/10 * * * *"
+    # Una volta al giorno anche i suggerimenti di indirizzo di Google (§324).
+    - cron: "17 7 * * *"
   workflow_dispatch:
 
 permissions: {}
@@ -35,3 +37,15 @@ jobs:
       - name: Sito web
         if: ${{ vars.SITE_URL != '' }}
         run: curl --fail --silent --show-error --output /dev/null --max-time 30 --retry 2 --retry-delay 10 "${{ vars.SITE_URL }}"
+      # Suggerimenti di indirizzo (docs/CHANGELOG.md §324): il 24/10/2026 Google
+      # rifiutava la chiave e lo si è scoperto solo provando il sito. Una
+      # volta al giorno (una sola chiamata a pagamento): se la chiave è
+      # rifiutata o manca, il workflow fallisce e GitHub manda l'email.
+      - name: Suggerimenti di indirizzo
+        if: ${{ vars.API_HEALTH_URL != '' && (github.event.schedule == '17 7 * * *' || github.event_name == 'workflow_dispatch') }}
+        env:
+          API_HEALTH_URL: ${{ vars.API_HEALTH_URL }}
+        run: |
+          api="${API_HEALTH_URL%/health}"
+          curl --fail --silent --show-error --max-time 90 --retry 2 --retry-delay 10 \
+            "$api/address/suggestions?q=via%20roma%201%20latina&session=uptime-$(date +%s)" | grep -q '"id"'

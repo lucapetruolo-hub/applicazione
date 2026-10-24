@@ -84,3 +84,49 @@ export const MODERATION_REASON_TEMPLATES: { label: string; text: string }[] = [
   { label: "Recensione non genuina", text: "La recensione non descrive un'esperienza reale con il servizio ricevuto (Codice del Consumo e Termini di Servizio)." },
   { label: "Contenuto illecito", text: "Il contenuto è illecito ai sensi della legge italiana ed è stato rimosso dopo la segnalazione." },
 ];
+
+/**
+ * Motivi tra cui sceglie chi segnala (docs/CHANGELOG.md §319). `illegal`
+ * separa i contenuti illegali (DSA art. 16: chi segnala riceve l'esito,
+ * servono spiegazione e dichiarazione di buona fede) dalle violazioni dei
+ * Termini (basta la conferma di presa in carico).
+ */
+export const CONTENT_REPORT_REASONS = [
+  { code: "insulti-minacce", label: "Insulti, minacce o diffamazione", illegal: true },
+  { code: "odio-discriminazione", label: "Odio o discriminazione", illegal: true },
+  { code: "dati-personali", label: "Dati personali di altre persone", illegal: true },
+  { code: "recensione-falsa-truffa", label: "Recensione falsa o truffa", illegal: true },
+  { code: "informazioni-false", label: "Informazioni non veritiere", illegal: false },
+  { code: "spam", label: "Spam o pubblicità", illegal: false },
+  { code: "fuori-tema", label: "Fuori tema o non pertinente", illegal: false },
+  { code: "altro", label: "Altro motivo", illegal: false },
+] as const;
+export type ContentReportReasonCode = (typeof CONTENT_REPORT_REASONS)[number]["code"];
+export const contentReportReasonCodes = CONTENT_REPORT_REASONS.map((r) => r.code) as [ContentReportReasonCode, ...ContentReportReasonCode[]];
+
+export function contentReportReason(code: string) {
+  return CONTENT_REPORT_REASONS.find((r) => r.code === code);
+}
+
+/**
+ * Su cosa si basa la misura (DSA art. 17 c. 3 lett. d-e): una legge per i
+ * contenuti illegali, un punto dei Termini per le violazioni delle regole.
+ * Lo sceglie l'admin, l'autore lo legge nell'email della decisione.
+ */
+export const MODERATION_GROUNDS = [
+  { code: "termini-contenuti", kind: "terms", label: "Termini di Servizio, punto 7 (contenuti vietati)" },
+  { code: "termini-profilo", kind: "terms", label: "Termini di Servizio, punto 4 (dati del profilo non veritieri)" },
+  { code: "termini-account", kind: "terms", label: "Termini di Servizio, punto 2 (uso scorretto dell'account)" },
+  { code: "legge-diffamazione", kind: "law", label: "Diffamazione (art. 595 del codice penale)" },
+  { code: "legge-minacce", kind: "law", label: "Minacce (art. 612 del codice penale)" },
+  { code: "legge-odio", kind: "law", label: "Propaganda e istigazione all'odio (art. 604-bis del codice penale)" },
+  { code: "legge-dati-personali", kind: "law", label: "Dati personali pubblicati senza base legale (Regolamento UE 2016/679, GDPR)" },
+  { code: "legge-recensione-falsa", kind: "law", label: "Recensione falsa o pratica ingannevole (Codice del Consumo, artt. 21-23)" },
+  { code: "legge-altra", kind: "law", label: "Altra norma di legge, indicata nella motivazione" },
+] as const;
+export type ModerationGroundCode = (typeof MODERATION_GROUNDS)[number]["code"];
+export const moderationGroundCodes = MODERATION_GROUNDS.map((g) => g.code) as [ModerationGroundCode, ...ModerationGroundCode[]];
+
+export function moderationGround(code: string | null | undefined) {
+  return code ? MODERATION_GROUNDS.find((g) => g.code === code) : undefined;
+}

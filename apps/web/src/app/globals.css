@@ -839,7 +839,7 @@ button.notif-row-main:hover {
    di schede del cliente. Le pagine dentro restano centrate come prima. */
 .acct-shell {
   width: 100%;
-  /* 1600 e non più 1320 (docs/CHANGELOG.md §319): su uno schermo da 1920px
+  /* 1600 e non più 1320 (docs/CHANGELOG.md §325): su uno schermo da 1920px
      agenda e messaggi restavano in una striscia centrale con 600px vuoti. */
   max-width: 1600px;
   margin: 0 auto;
@@ -851,8 +851,11 @@ button.notif-row-main:hover {
   min-width: 0;
   flex: 1;
   /* Le pagine dentro possono adattarsi allo spazio vero, che cambia col menu
-     ridotto (docs/CHANGELOG.md §319). Non trattiene gli elementi fissi. */
+     ridotto (docs/CHANGELOG.md §325). Non trattiene gli elementi fissi. */
   container: acct-main / inline-size;
+  /* Il piè di pagina resta sotto lo schermo mentre la pagina carica: prima
+     compariva in alto e poi veniva spinto giù (CLS 0,14, docs/CHANGELOG.md §321). */
+  min-height: 100vh;
 }
 .acct-nav {
   display: flex;
@@ -881,7 +884,7 @@ button.notif-row-main:hover {
 .acct-nav-short {
   display: none;
 }
-/* Tasto "Riduci il menu" (docs/CHANGELOG.md §319): solo con la colonna. */
+/* Tasto "Riduci il menu" (docs/CHANGELOG.md §325): solo con la colonna. */
 .acct-nav-toggle,
 .acct-nav-tip {
   display: none;
@@ -933,6 +936,24 @@ button.notif-row-main:hover {
   justify-content: center;
 }
 /* Pallino "da fare" senza numero (es. agenda senza disponibilità). */
+/* Nome accanto alla foto nell'intestazione (AccountMenu, docs/CHANGELOG.md §319). */
+.acct-trigger-name {
+  display: flex;
+  min-width: 0;
+  max-width: 180px;
+}
+.acct-trigger-name-sr {
+  display: none;
+}
+@media (max-width: 520px) {
+  .acct-trigger-name {
+    display: none;
+  }
+  .acct-trigger-name-sr {
+    display: block;
+  }
+}
+
 .acct-nav-dot {
   margin-left: auto;
   width: 8px;
@@ -969,7 +990,7 @@ button.notif-row-main:hover {
   }
 }
 /* Colonna a sinistra da 760px (tablet in verticale compreso, docs/CHANGELOG.md
-   §319): prima, fino a 1000px, era una barra che scorreva di lato e
+   §325): prima, fino a 1000px, era una barra che scorreva di lato e
    nascondeva metà delle voci. */
 @media (min-width: 760px) {
   .acct-shell {
@@ -1212,7 +1233,7 @@ button.notif-row-main:hover {
 }
 /* Home "Oggi" del professionista (docs/CHANGELOG.md §147). */
 /* Due colonne quando il contenuto è largo almeno 960px (docs/CHANGELOG.md
-   §319): conta lo spazio vero della pagina, che cambia col menu ridotto,
+   §325): conta lo spazio vero della pagina, che cambia col menu ridotto,
    non la larghezza della finestra. */
 .today-wrap {
   container-type: inline-size;
@@ -2174,7 +2195,7 @@ a.admin-kpi:hover {
   gap: 12px;
 }
 /* Con la pagina larga (menu ridotto) le sei tessere stanno su una riga e il
-   grafico sale (docs/CHANGELOG.md §319). */
+   grafico sale (docs/CHANGELOG.md §325). */
 @container acct-main (min-width: 1140px) {
   .pstats-kpis {
     grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -2905,6 +2926,16 @@ a.admin-kpi:hover {
 }
 .guided-city input {
   background-color: #ffffff !important;
+}
+/* Città tra i campi separati dell'indirizzo (§324): alta come gli altri. */
+.guided-city-inline input {
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 12px !important;
+  border-width: 0 !important;
+  border-radius: 6px !important;
+  font-size: 16px !important;
+  line-height: normal !important;
 }
 @media (max-width: 599px) {
   .guided-steps button {
@@ -3695,9 +3726,38 @@ a.admin-kpi:hover {
   align-items: center;
   justify-content: center;
 }
+/* Tessere vuote finché non arriva l'ordine dei più cercati (§324): stessa
+   misura delle vere, così la pagina non salta; poi compaiono con una
+   dissolvenza breve, mai riordinate davanti a chi guarda. */
+.cat-tile.cat-tile-placeholder {
+  cursor: default;
+  border-color: #f3e7d6;
+}
+.cat-tile-placeholder .cat-tile-icon {
+  background-color: transparent;
+}
+.cat-tile-placeholder-label {
+  width: 64%;
+  height: 14px;
+  border-radius: 6px;
+}
+@keyframes cat-tiles-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.cat-tiles-ready {
+  animation: cat-tiles-in 0.18s ease-out;
+}
 @media (prefers-reduced-motion: reduce) {
   .cat-tile {
     transition: none;
+  }
+  .cat-tiles-ready {
+    animation: none;
   }
 }
 .consent-invalid {

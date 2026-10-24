@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ContentReportTargetType, ModerationAction, Prisma, PrismaClient } from "@professionisti/database";
-import { JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, completionDeviation, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource } from "@professionisti/shared";
+import { JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
@@ -650,6 +650,9 @@ export class AdminService {
       linkedProfessionalProfileId: targetInfo[index]?.linkedProfessionalProfileId ?? null,
       reason: report.reason,
       details: report.details,
+      claimsIllegal: report.claimsIllegal,
+      goodFaithAt: report.goodFaithAt?.toISOString() ?? null,
+      ground: report.ground,
       photoUrls: report.photoUrls,
       status: report.status,
       createdAt: report.createdAt.toISOString(),
@@ -671,11 +674,13 @@ export class AdminService {
 
   /**
    * Risolve una segnalazione (DSA artt. 16/17, docs/CHANGELOG.md §144).
-   * - DISMISSED: nessuna misura, il segnalante viene informato.
+   * - DISMISSED: nessuna misura.
    * - RESOLVED: applica davvero la misura scelta (`action`, compatibile col
-   *   tipo di contenuto — `MODERATION_ACTIONS_BY_TARGET`), poi manda al
-   *   segnalante l'esito e all'autore la motivazione con misura presa e
-   *   possibilità di contestare (pagina /segnalazioni).
+   *   tipo di contenuto — `MODERATION_ACTIONS_BY_TARGET`), poi manda
+   *   all'autore misura, regola violata, motivazione e possibilità di
+   *   contestare (pagina /segnalazioni).
+   * Il segnalante riceve l'esito in una riga solo se ha segnalato un
+   * contenuto illegale (docs/CHANGELOG.md §319).
    * Prima di §144 "Risolvi" cambiava solo lo stato: il contenuto restava
    * online mentre la motivazione descriveva una limitazione mai avvenuta.
    */
@@ -696,6 +701,10 @@ export class AdminService {
       // solo della validazione a monte per un vincolo che alimenta un
       // obbligo di trasparenza reale.
       throw new BadRequestException("Indica il motivo della decisione prima di risolvere la segnalazione.");
+    }
+    if (status === "RESOLVED" && !moderationGround(input.ground)) {
+      // DSA art. 17 c. 3 lett. d-e (docs/CHANGELOG.md §319): l'autore deve sapere quale regola o legge ha violato.
+      throw new BadRequestException("Scegli la regola o la legge violata.");
     }
     if (status === "RESOLVED" && (!action || !MODERATION_ACTIONS_BY_TARGET[report.targetType].includes(action))) {
       throw new BadRequestException("Misura non valida per questo tipo di contenuto.");
@@ -719,6 +728,7 @@ export class AdminService {
           resolvedAt: now,
           resolutionNote: note,
           action,
+          ground: status === "RESOLVED" ? (input.ground ?? null) : null,
           contentOwnerId: status === "RESOLVED" ? ownerUserId : null,
           authoritiesNotifiedAt: input.authoritiesNotified ? now : null,
         },
@@ -736,18 +746,22 @@ export class AdminService {
       reason: note,
     });
 
-    await this.notificationsService.notify(report.reporterId, "CONTENT_REPORT_DECISION", {
-      contentReportId: report.id,
-      targetType: report.targetType,
-      status,
-      note,
-    });
+    // Esito a chi segnala solo per un contenuto illegale (DSA art. 16 c. 5,
+    // docs/CHANGELOG.md §319), in una riga e mai con la motivazione: per una
+    // violazione dei Termini basta la presa in carico già inviata.
+    if (report.claimsIllegal) {
+      await this.notificationsService.notify(report.reporterId, "CONTENT_REPORT_DECISION", {
+        targetType: report.targetType,
+        status,
+      });
+    }
 
     if (status === "RESOLVED" && ownerUserId) {
       await this.notificationsService.notify(ownerUserId, "CONTENT_REPORT_UPHELD", {
         contentReportId: report.id,
         targetType: report.targetType,
         action,
+        ground: input.ground ?? null,
         note,
       });
     }

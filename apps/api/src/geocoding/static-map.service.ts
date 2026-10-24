@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, Logger, ServiceUnavailableException } from "@nestjs/common";
 import { DailyBudget } from "../common/daily-budget";
+import { opsAlert } from "../common/ops-alert";
 
 const TIMEOUT_MS = 5000;
 const MAX_MARKERS = 60;
@@ -97,12 +98,21 @@ export class StaticMapService {
    */
   private readonly cache = new Map<string, { buffer: Buffer; contentType: string; expiresAt: number }>();
   private readonly budget = new DailyBudget(DAILY_LIMIT, () =>
-    this.logger.error("Tetto giornaliero delle mappe fisse raggiunto: fino a mezzanotte compare \"Mappa non disponibile\"."),
+    this.alert("static-map-budget", "Tetto giornaliero delle mappe fisse raggiunto: fino a mezzanotte compare \"Mappa non disponibile\"."),
   );
+
+  /** Nel log e, una volta l'ora, su Sentry (§324). */
+  private alert(key: string, message: string): void {
+    this.logger.error(message);
+    opsAlert(key, message);
+  }
 
   async image(input: StaticMapInput, now = Date.now()): Promise<{ buffer: Buffer; contentType: string }> {
     const key = process.env.GOOGLE_MAPS_API_KEY?.trim();
-    if (!key) throw new ServiceUnavailableException("Mappa non disponibile.");
+    if (!key) {
+      opsAlert("static-map-no-key", "GOOGLE_MAPS_API_KEY mancante: la mappa fissa mostra \"Mappa non disponibile\".");
+      throw new ServiceUnavailableException("Mappa non disponibile.");
+    }
     const params = staticMapGoogleParams(input);
     const cacheKey = params.toString();
     const cached = this.cache.get(cacheKey);
@@ -123,13 +133,13 @@ export class StaticMapService {
       const response = await fetch(`https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`, { signal: controller.signal });
       const contentType = response.headers.get("content-type") ?? "";
       if (!response.ok || !contentType.startsWith("image/")) {
-        this.logger.error(`Google Static Maps ha risposto ${response.status}: ${(await response.text()).slice(0, 300)}`);
+        this.alert("static-map-google-refused", `Google Static Maps ha risposto ${response.status}: ${(await response.text()).slice(0, 300)}`);
         throw new ServiceUnavailableException("Mappa non disponibile.");
       }
       return { buffer: Buffer.from(await response.arrayBuffer()), contentType };
     } catch (error) {
       if (error instanceof ServiceUnavailableException) throw error;
-      this.logger.warn(`Google Static Maps non raggiungibile: ${error instanceof Error ? error.message : error}`);
+      this.alert("static-map-google-unreachable", `Google Static Maps non raggiungibile: ${error instanceof Error ? error.message : error}`);
       throw new ServiceUnavailableException("Mappa non disponibile.");
     } finally {
       clearTimeout(timeout);

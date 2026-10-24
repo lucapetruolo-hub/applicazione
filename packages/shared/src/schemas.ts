@@ -3,6 +3,7 @@ import { trafficSourceSchema } from "./trafficSource";
 import { PROFESSIONAL_CATEGORIES } from "./categories";
 import { isPlausiblePhoneNumber, normalizePhoneNumber } from "./phoneCountries";
 import { quotePaymentOfferSchema } from "./onlinePayments";
+import { contentReportReason, contentReportReasonCodes, moderationGroundCodes } from "./moderation";
 import { newPasswordSchema } from "./password";
 
 const categorySlugs = PROFESSIONAL_CATEGORIES.map((category) => category.slug) as [string, ...string[]];
@@ -91,21 +92,34 @@ export type WaitlistSignupInput = z.infer<typeof waitlistSignupSchema>;
  * riferimento screenshot). Nessun account richiesto per inviarlo, stesso
  * principio già seguito per `waitlistSignupSchema` sopra.
  */
-export const contactMessageRoleSchema = z.enum(["CLIENT", "PROFESSIONAL", "OTHER"]);
+export const contactMessageRoleSchema = z.enum(["CLIENT", "PROFESSIONAL", "OTHER", "REPORT_ILLEGAL"]);
 /**
  * Token del widget anti-bot Cloudflare Turnstile (docs/CHANGELOG.md §204):
  * controllato dal server solo se `TURNSTILE_SECRET_KEY` è impostata.
  */
 export const turnstileTokenSchema = z.string().max(2048).optional();
 
-export const contactMessageSchema = z.object({
-  role: contactMessageRoleSchema,
-  email: z.string().email("Email non valida"),
-  content: z.string().min(1, "Scrivi un messaggio.").max(4000, "Messaggio troppo lungo."),
-  // Honeypot anti-spam, stesso pattern di waitlistSignupSchema.
-  website: z.string().max(200).optional(),
-  turnstileToken: turnstileTokenSchema,
-});
+export const contactMessageSchema = z
+  .object({
+    role: contactMessageRoleSchema,
+    email: z.string().email("Email non valida"),
+    content: z.string().min(1, "Scrivi un messaggio.").max(4000, "Messaggio troppo lungo."),
+    // Dichiarazione di buona fede, obbligatoria per una segnalazione di
+    // contenuto illegale (DSA art. 16 c. 2 lett. d, docs/CHANGELOG.md §319).
+    goodFaith: z.boolean().optional(),
+    // Honeypot anti-spam, stesso pattern di waitlistSignupSchema.
+    website: z.string().max(200).optional(),
+    turnstileToken: turnstileTokenSchema,
+  })
+  .superRefine((data, ctx) => {
+    if (data.role !== "REPORT_ILLEGAL") return;
+    if (data.content.trim().length < 20) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["content"], message: "Indica dove si trova il contenuto e perché è illegale." });
+    }
+    if (data.goodFaith !== true) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["goodFaith"], message: "Conferma che la segnalazione è fatta in buona fede." });
+    }
+  });
 export type ContactMessageInput = z.infer<typeof contactMessageSchema>;
 
 export const resolveContactMessageSchema = z.object({
@@ -141,7 +155,7 @@ export type EmailStatus = "new" | "password" | "google";
  * tracciano la versione realmente accettata — mai retroattivo sugli account
  * già creati (`User.legalConsentVersion` resta quella accettata a suo tempo).
  */
-export const LEGAL_CONSENT_VERSION = "2026-09-02";
+export const LEGAL_CONSENT_VERSION = "2026-10-24";
 
 export const registerSchema = emailPasswordSchema.extend({
   // Password nuova: regole sotto il campo (docs/CHANGELOG.md §289). Il login
@@ -197,7 +211,7 @@ export const updateAccountSchema = z.object({
 export type UpdateAccountInput = z.infer<typeof updateAccountSchema>;
 
 /**
- * Preferenze dell'interfaccia salvate sull'account (docs/CHANGELOG.md §319):
+ * Preferenze dell'interfaccia salvate sull'account (docs/CHANGELOG.md §325):
  * menu laterale ridotto a icone, `null` = decide la larghezza dello schermo.
  */
 export const updatePreferencesSchema = z.object({
@@ -898,12 +912,26 @@ export type AdminBootstrapInput = z.infer<typeof adminBootstrapSchema>;
 // l'ha ricevuta (menu hamburger di /dashboard/richieste, CHANGELOG §130).
 export const contentReportTargetTypes = ["PROFESSIONAL_PROFILE", "REVIEW", "GUIDED_REQUEST"] as const;
 export type ContentReportTargetType = (typeof contentReportTargetTypes)[number];
-export const createContentReportSchema = z.object({
-  targetType: z.enum(contentReportTargetTypes),
-  targetId: z.string().min(1),
-  reason: z.string().min(3, "Indica il motivo della segnalazione.").max(300),
-  details: z.string().max(1000).optional(),
-});
+// Motivo scelto da un elenco fisso (docs/CHANGELOG.md §319): dice se il
+// contenuto è segnalato come illegale. In quel caso servono la spiegazione
+// e la dichiarazione di buona fede (DSA art. 16 c. 2 lett. a, d).
+export const createContentReportSchema = z
+  .object({
+    targetType: z.enum(contentReportTargetTypes),
+    targetId: z.string().min(1),
+    reason: z.enum(contentReportReasonCodes, { message: "Indica il motivo della segnalazione." }),
+    details: z.string().trim().max(1000).optional(),
+    goodFaith: z.boolean().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!contentReportReason(data.reason)?.illegal) return;
+    if (!data.details || data.details.length < 10) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["details"], message: "Spiega in poche parole perché è illegale." });
+    }
+    if (data.goodFaith !== true) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["goodFaith"], message: "Conferma che la segnalazione è fatta in buona fede." });
+    }
+  });
 export type CreateContentReportInput = z.infer<typeof createContentReportSchema>;
 
 export const resolveContentReportSchema = z
@@ -918,6 +946,9 @@ export const resolveContentReportSchema = z
     // comunicato a chi ha scritto il contenuto segnalato; per DISMISSED
     // (nessuna azione presa) resta facoltativa.
     resolutionNote: z.string().trim().max(2000).optional(),
+    // Legge o punto dei Termini su cui si basa la misura (DSA art. 17 c. 3
+    // lett. d-e, docs/CHANGELOG.md §319): obbligatorio per RESOLVED.
+    ground: z.enum(moderationGroundCodes).optional(),
     // L'admin ha avvisato le autorità (DSA art. 18).
     authoritiesNotified: z.boolean().optional(),
   })
@@ -931,6 +962,9 @@ export const resolveContentReportSchema = z
     }
     if (data.status === "RESOLVED" && !data.action) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["action"], message: "Scegli la misura da applicare." });
+    }
+    if (data.status === "RESOLVED" && !data.ground) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["ground"], message: "Scegli la regola o la legge violata." });
     }
   });
 export type ResolveContentReportInput = z.infer<typeof resolveContentReportSchema>;

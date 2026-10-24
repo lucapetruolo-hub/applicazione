@@ -24,7 +24,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
   const attention = useNavAttention();
   const [collapsed, toggleCollapsedHere] = useAccountNavCollapsed();
   // La scelta vale su tutti i dispositivi della persona (docs/CHANGELOG.md
-  // §319): salvata sull'account, ripresa da lì all'accesso.
+  // §325): salvata sull'account, ripresa da lì all'accesso.
   const savedPreference = user?.sidebarCollapsed;
   useEffect(() => {
     if (typeof savedPreference === "boolean") applyNavPreference(savedPreference);
@@ -49,7 +49,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
     return (
       <div className="acct-shell">
         <nav className="acct-nav" aria-label="Sezioni del tuo account">
-          {/* Riduce il menu a sole icone (da 1000px, docs/CHANGELOG.md §319):
+          {/* Riduce il menu a sole icone (da 1000px, docs/CHANGELOG.md §325):
               il nome della voce compare passando sopra o col tasto Tab. */}
           <button type="button" className="acct-nav-toggle" onClick={toggleCollapsed} aria-expanded={!collapsed} aria-keyshortcuts="[" aria-label={collapsed ? "Espandi il menu" : "Riduci il menu a icone"}>
             <Icon name={collapsed ? "chevron-right" : "chevron-left"} size={16} color="#6e6459" />

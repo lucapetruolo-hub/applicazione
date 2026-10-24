@@ -222,7 +222,7 @@ export function SetupJourneyCard({ token }: { token: string }) {
   const { steps } = useSetupJourney(token);
   if (!steps || journeyDone(steps)) return null;
   // Manca solo un passo facoltativo (pagamenti online): una riga, non il
-  // riquadro intero (richiesta dell'utente, docs/CHANGELOG.md §319).
+  // riquadro intero (richiesta dell'utente, docs/CHANGELOG.md §325).
   const left = steps.filter((step) => step.state !== "done");
   const onlyOptional = left.length === 1 ? left[0] : undefined;
   if (onlyOptional?.optional) return <SetupJourneyCompact steps={steps} step={onlyOptional} />;

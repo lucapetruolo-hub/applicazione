@@ -16,7 +16,11 @@ export const metadata: Metadata = {
  * questo Server Component fallisce in build ("createContext is not a
  * function"), stesso gotcha già documentato altrove nel progetto
  * (es. /faq, /password-dimenticata).
+ *
+ * `?motivo=segnalazione` (link "Segnala un contenuto illegale" del footer,
+ * docs/CHANGELOG.md §319) apre il modulo già sulla segnalazione.
  */
-export default function ContattiPage() {
-  return <ContattiContent />;
+export default async function ContattiPage({ searchParams }: { searchParams: Promise<{ motivo?: string | string[] }> }) {
+  const { motivo } = await searchParams;
+  return <ContattiContent initialReport={motivo === "segnalazione"} />;
 }

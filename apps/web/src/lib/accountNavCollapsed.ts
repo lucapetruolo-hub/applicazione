@@ -1,6 +1,6 @@
 /**
  * Menu laterale del professionista ridotto a sole icone (docs/CHANGELOG.md
- * §319, richiesta esplicita dell'utente: più spazio per agenda e
+ * §325, richiesta esplicita dell'utente: più spazio per agenda e
  * statistiche). Vale da 1000px; sotto c'è la colonna stretta del tablet o
  * la barra del telefono. Senza una scelta della persona il menu parte
  * ridotto fino a 1366px (portatili comuni, tablet in orizzontale), dove
