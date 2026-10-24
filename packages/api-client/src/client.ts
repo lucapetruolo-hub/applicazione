@@ -40,6 +40,7 @@ import type {
   CalendarFeedStatus,
   DayRoute,
   WeatherDayAlert,
+  DayAhead,
   ZoneDemand,
   ProfessionalDetail,
   ProfessionalFiscalProfileInput,
@@ -1504,6 +1505,7 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
         body: JSON.stringify({ month, template }),
       }),
     agendaWeather: (token: string) => request<WeatherDayAlert[]>("/agenda/weather", { headers: { Authorization: `Bearer ${token}` } }),
+    agendaDaysAhead: (token: string) => request<DayAhead[]>("/agenda/days-ahead", { headers: { Authorization: `Bearer ${token}` } }),
     agendaZoneDemand: (token: string) => request<ZoneDemand>("/agenda/zone-demand", { headers: { Authorization: `Bearer ${token}` } }),
     agendaDayRoute: (token: string, date: string) =>
       request<DayRoute>(`/agenda/route?date=${encodeURIComponent(date)}`, { headers: { Authorization: `Bearer ${token}` } }),
