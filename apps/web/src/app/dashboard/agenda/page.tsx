@@ -1296,13 +1296,47 @@ function DashboardAgendaContent() {
   const now = wallClockNow(new Date(nowTick));
   const today = todayUtc();
   const todayStr = toIsoDate(today);
-  // Striscia dei giorni: oggi e i 6 dopo, così la domenica sera "domani" è
-  // a un tocco (T4 del test dei compiti, docs/CHANGELOG.md §311); per un
-  // giorno più lontano o passato, la sua settimana da lunedì.
+  // Striscia dei giorni: sette giorni a partire da oggi, così la domenica
+  // sera "domani" è a un tocco (T4 del test dei compiti, docs/CHANGELOG.md
+  // §311); le frecce ai lati portano al giorno prima e dopo e la striscia
+  // scorre di sette giorni alla volta, sempre contando da oggi (§315).
   function stripDays(current: Date): Date[] {
     const offset = Math.round((startOfDayUtc(current).getTime() - startOfDayUtc(today).getTime()) / 86_400_000);
-    if (offset >= 0 && offset < 7) return Array.from({ length: 7 }, (_, i) => addDaysUtc(today, i));
-    return weekDays(current);
+    const start = addDaysUtc(today, Math.floor(offset / 7) * 7);
+    return Array.from({ length: 7 }, (_, i) => addDaysUtc(start, i));
+  }
+  function dayStrip(current: Date, onChange: (date: Date) => void, withWeather: boolean) {
+    return (
+      <div className="ag-strip-row">
+        <button type="button" className="ag-strip-arrow" aria-label="Giorno precedente" onClick={() => onChange(addDaysUtc(current, -1))}>
+          <ChevronLeft size={20} aria-hidden />
+        </button>
+        <div className="ag-strip" role="group" aria-label="Giorni della settimana">
+          {stripDays(current).map((date) => {
+            const dateStr = toIsoDate(date);
+            return (
+              <button
+                key={dateStr}
+                type="button"
+                className={`${isSameDateUtc(date, current) ? "on" : ""} ${dateStr === todayStr ? "today" : ""}`}
+                onClick={() => onChange(date)}
+                aria-pressed={isSameDateUtc(date, current)}
+              >
+                {weekdayShortLabel(date)} <b>{date.getUTCDate()}</b>
+                {withWeather && weather.get(dateStr) ? (
+                  <WeatherIcon kind={weather.get(dateStr)!} size={12} />
+                ) : withWeather && busyDates.has(dateStr) ? (
+                  <u aria-hidden />
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+        <button type="button" className="ag-strip-arrow" aria-label="Giorno successivo" onClick={() => onChange(addDaysUtc(current, 1))}>
+          <ChevronRight size={20} aria-hidden />
+        </button>
+      </div>
+    );
   }
   const nowMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
   const closedSet = new Set(exceptionDates);
@@ -1750,23 +1784,7 @@ function DashboardAgendaContent() {
 
               {bookingView === "day" ? (
                 <>
-                  <div className="ag-strip" role="group" aria-label="Giorni della settimana">
-                    {stripDays(bookingCurrentDate).map((date) => {
-                      const dateStr = toIsoDate(date);
-                      return (
-                        <button
-                          key={dateStr}
-                          type="button"
-                          className={`${isSameDateUtc(date, bookingCurrentDate) ? "on" : ""} ${dateStr === todayStr ? "today" : ""}`}
-                          onClick={() => setBookingCurrentDate(date)}
-                          aria-pressed={isSameDateUtc(date, bookingCurrentDate)}
-                        >
-                          {weekdayShortLabel(date)} <b>{date.getUTCDate()}</b>
-                          {weather.get(dateStr) ? <WeatherIcon kind={weather.get(dateStr)!} size={12} /> : busyDates.has(dateStr) ? <u aria-hidden /> : null}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {dayStrip(bookingCurrentDate, setBookingCurrentDate, true)}
                   {isSameDateUtc(bookingCurrentDate, today) ? <div className="ag-day-only-phone">{nextCard}</div> : null}
                 </>
               ) : null}
@@ -1912,22 +1930,7 @@ function DashboardAgendaContent() {
               ) : null}
               {view === "day" ? (
                 // Striscia della settimana come nel Calendario: venerdì è a un tocco, non a quattro frecce (U1, §310).
-                <div className="ag-strip" role="group" aria-label="Giorni della settimana" style={{ marginBottom: 12 }}>
-                  {stripDays(currentDate).map((date) => {
-                    const dateStr = toIsoDate(date);
-                    return (
-                      <button
-                        key={dateStr}
-                        type="button"
-                        className={`${isSameDateUtc(date, currentDate) ? "on" : ""} ${dateStr === todayStr ? "today" : ""}`}
-                        onClick={() => setCurrentDate(date)}
-                        aria-pressed={isSameDateUtc(date, currentDate)}
-                      >
-                        {weekdayShortLabel(date)} <b>{date.getUTCDate()}</b>
-                      </button>
-                    );
-                  })}
-                </div>
+                dayStrip(currentDate, setCurrentDate, false)
               ) : null}
               <CalendarShell
                 dayStripAbove

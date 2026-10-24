@@ -48,3 +48,18 @@ test("T9 e T11: il tasto per aggiungere un lavoro ha la scritta; Lavoro completa
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Lavoro completato" })).toHaveCount(0);
 });
+
+test("frecce della striscia: giorno prima e dopo anche in Giorno per giorno (§315)", async ({ page }) => {
+  await page.clock.setFixedTime(new Date("2026-10-24T10:00:00Z"));
+  await page.goto("/dashboard/agenda?tab=orari");
+  const section = page.getByRole("heading", { name: "Giorno per giorno" }).locator("xpath=ancestor::div[2]");
+  await section.getByRole("button", { name: "Giorno", exact: true }).click();
+  const strip = section.getByRole("group", { name: "Giorni della settimana" });
+  await expect(strip.getByRole("button", { pressed: true })).toContainText("24");
+  for (let i = 0; i < 7; i++) await section.getByRole("button", { name: "Giorno successivo" }).click();
+  // Sette giorni dopo la striscia è passata ai sette successivi: da sabato 31 a venerdì 6.
+  await expect(strip.getByRole("button", { pressed: true })).toContainText("31");
+  await expect(strip.getByRole("button").last()).toContainText("6");
+  await section.getByRole("button", { name: "Giorno precedente" }).click();
+  await expect(strip.getByRole("button", { pressed: true })).toContainText("30");
+});

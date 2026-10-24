@@ -13,7 +13,8 @@ const BUDGET = { performance: 60, accessibility: 90, "best-practices": 90, lcpMs
 const GOOD = { performance: 90, accessibility: 100, "best-practices": 100, lcpMs: 2500, tbtMs: 200, cls: 0.1 };
 
 const data = JSON.parse(readFileSync(new URL("../.auth/data.json", import.meta.url), "utf8"));
-const browser = await chromium.launch({ args: [`--remote-debugging-port=${PORT}`] });
+// CHROMIUM_PATH: solo per provarlo in locale con un Chromium già installato.
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH, args: [`--remote-debugging-port=${PORT}`] });
 const context = await browser.newContext();
 const page = await context.newPage();
 // Sessione già aperta: Lighthouse non deve cancellare i dati del sito (disableStorageReset).

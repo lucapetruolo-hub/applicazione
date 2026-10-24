@@ -605,11 +605,36 @@ export function AgendaStyles() {
         border-radius: 50%;
         background: var(--ag-red);
       }
-      .ag-strip {
+      .ag-strip-row {
         display: grid;
-        grid-template-columns: repeat(7, 1fr);
+        grid-template-columns: 40px minmax(0, 1fr) 40px;
+        align-items: center;
         gap: 4px;
         margin-bottom: 12px;
+      }
+      .ag-strip {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 4px;
+      }
+      .ag-strip-arrow {
+        width: 40px;
+        height: 56px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--ag-line);
+        border-radius: 14px;
+        background: #fff;
+        color: var(--ag-ink);
+        cursor: pointer;
+      }
+      .ag-strip-arrow:hover {
+        background: var(--ag-line-soft);
+      }
+      .ag-strip-arrow:focus-visible {
+        outline: 2px solid var(--ag-ink);
+        outline-offset: 2px;
       }
       .ag-strip button {
         border: 0;

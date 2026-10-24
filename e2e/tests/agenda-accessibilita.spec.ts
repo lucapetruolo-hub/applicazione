@@ -16,6 +16,16 @@ type Violation = { id: string; html: string };
 const KNOWN: { finding: string; id: string; html: RegExp }[] = [];
 
 async function seriousViolations(page: Page): Promise<{ unknown: string[]; known: Set<string> }> {
+  // axe misura i colori come sono in quel momento: a metà dell'apertura del riquadro (opacità in
+  // salita) il contrasto risulta basso. Si aspetta la fine delle animazioni (§315).
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((animation) => animation.effect?.getTiming().iterations !== Infinity)
+        .map((animation) => animation.finished.catch(() => undefined)),
+    ),
+  );
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
   const unknown: string[] = [];
   const known = new Set<string>();

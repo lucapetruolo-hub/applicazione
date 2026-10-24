@@ -1,4 +1,4 @@
-import comuniRaw from "./comuni.json";
+import { COMUNI_DATA, REGION_BY_PROVINCE } from "./comuniCompatti";
 
 export type Comune = {
   name: string;
@@ -15,7 +15,13 @@ export type Comune = {
  * campo "Città" in ricerca e per geolocalizzare il comune scelto dal
  * professionista in fase di registrazione profilo.
  */
-export const ITALIAN_COMUNI: Comune[] = comuniRaw as Comune[];
+// Letti da una stringa compatta e non da un JSON di ~8000 oggetti: l'elenco
+// finisce nel JavaScript di ogni pagina del sito e su un telefono lento il
+// suo peso bloccava la pagina (docs/CHANGELOG.md §315).
+export const ITALIAN_COMUNI: Comune[] = COMUNI_DATA.split("\n").map((line) => {
+  const [name = "", province = "", lat = "0", lon = "0", capoluogo] = line.split("|");
+  return { name, province, region: REGION_BY_PROVINCE[province] ?? "", lat: Number(lat), lon: Number(lon), capoluogo: capoluogo === "1" };
+});
 
 const comuniByName = new Map(ITALIAN_COMUNI.map((c) => [c.name.toLowerCase(), c]));
 

@@ -20271,3 +20271,15 @@ Non fatto qui: zod 4 (aggiornamento grande, rischio basso: il corpo JSON ha già
 - `osv-scanner.toml`: eccezione per zod 3.25.76, rimasto solo dentro `@expo/cli` (strumento di sviluppo dell'app, non finisce nell'app, nel sito o nell'API) dopo il passaggio a zod 4 della PR #108; approvata dall'utente nel thread di zod. L'eccezione vale solo per quella versione: un altro zod vulnerabile verrebbe segnalato.
 
 **Verifica**: build, typecheck, test e test dei permessi con Node 22 nella CI; osv-scanner in locale non mostra più zod 3.25.76, e senza il file lo mostra.
+
+## 315. Prove dell'agenda stabili, elenco dei comuni più leggero, frecce nella striscia dei giorni
+
+**Richiesta** (24/10/2026): il coordinatore ha segnalato le prove nel browser dell'agenda instabili anche sul ramo principale (run 40090532557); Luca ha segnalato che in "Giorno per giorno" non si vedono le frecce per il giorno prima e dopo.
+
+**Accessibilità a volte rossa**: axe misurava il riquadro dell'appuntamento mentre si stava ancora aprendo (opacità in salita, contrasto basso). Ora la prova aspetta la fine delle animazioni prima di misurare; 45 giri di fila senza errori.
+
+**TBT del calendario oltre i 600 ms**: Lighthouse indicava un compito lungo da 600 ms nel file JavaScript comune a tutte le pagine (1,15 MB). Dentro c'erano l'elenco di tutti i comuni d'Italia e i codici catastali come JSON (~1 MB, ~16000 oggetti), usati da ricerca, moduli e verifica del codice fiscale e quindi presenti in ogni pagina (il pacchetto condiviso è CommonJS, il sito non può toglierli). Ora sono due stringhe compatte (`packages/shared/src/data/comuniCompatti.ts`, rigenerabile con `node packages/shared/scripts/compatta-comuni.mjs` dai JSON originali, che restano): 437 KB invece di 1040, i codici catastali letti solo al primo uso. Stessi dati: controllati uno per uno contro i JSON. File comune da 1,15 MB a 558 KB; in locale TBT del calendario da circa 900 a circa 600 ms, degli orari da 530 a 440 (in CI i tempi sono più bassi). Vale per tutto il sito, non solo per l'agenda. Resta un CLS di 0,14 arrivato con l'identità del sito (sotto il limite di 0,25).
+
+**Frecce nella striscia dei giorni**: con la striscia in cima (T7, §311) le frecce di "Giorno per giorno" erano sparite. Ora la striscia, nel Calendario e in "Giorno per giorno", ha ai lati "Giorno precedente" e "Giorno successivo" (40×56 px, facili da toccare); i sette giorni si contano sempre da oggi, e passando oltre l'ultimo la striscia scorre ai sette successivi.
+
+**Verifica**: nuova prova delle frecce, 62 prove nel browser in locale, 568 test API.
