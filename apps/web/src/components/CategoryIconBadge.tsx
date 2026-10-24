@@ -11,7 +11,7 @@ export type CategoryIconBadgeProps = {
 
 /** Cerchio colorato (tinta per categoria) con l'icona a linee della categoria dentro. */
 export function CategoryIconBadge({ slug, size = 48, iconSize }: CategoryIconBadgeProps) {
-  const accent = CATEGORY_ACCENT[slug as keyof typeof CATEGORY_ACCENT] ?? { bg: "#F1F5F9", fg: "#334155" };
+  const accent = CATEGORY_ACCENT[slug as keyof typeof CATEGORY_ACCENT] ?? { bg: "#E4E2DE", fg: "#45423D" };
   return (
     <YStack
       width={size}

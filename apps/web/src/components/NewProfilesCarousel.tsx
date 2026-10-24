@@ -20,7 +20,7 @@ const NEW_PROFILE_WINDOW_DAYS = 30;
 const MAX_STAGGER_MS = 480;
 const CARD_GAP = 16;
 
-const FALLBACK_ACCENT = { bg: "#F1F5F9", fg: "#334155" };
+const FALLBACK_ACCENT = { bg: "#E4E2DE", fg: "#45423D" };
 
 /**
  * "Nuovi profili su Professionisti" — elenco degli ultimi 21 professionisti

@@ -24,7 +24,7 @@ const SWIPE_MIN_PX = 50;
 // mostriamo (docs/CHANGELOG.md §232).
 const MIN_REVIEWS_FOR_AVERAGE = 10;
 
-const FALLBACK_ACCENT = { bg: "#F1F5F9", fg: "#334155" };
+const FALLBACK_ACCENT = { bg: "#E4E2DE", fg: "#45423D" };
 
 function accentFor(slug: string) {
   return CATEGORY_ACCENT[slug as keyof typeof CATEGORY_ACCENT] ?? FALLBACK_ACCENT;

@@ -25,6 +25,16 @@ a {
   color: inherit;
 }
 
+/* I pulsanti e i campi non ereditano il carattere della pagina: senza questa
+   regola "Richiedi preventivo", "Cerca" e "Vedi tutte" uscivano in Arial
+   (docs/CHANGELOG.md §288). */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
 /* Skip link (Fase 6, accessibilità): fuori schermo finché non riceve il
    focus da tastiera (Tab), poi torna visibile in alto a sinistra. */
 .skip-link {
