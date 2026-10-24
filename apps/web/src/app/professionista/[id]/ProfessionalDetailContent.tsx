@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BRAND, PROFESSIONAL_CATEGORIES, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, formatServicePriceRange, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
-import { Badge, Button, Chip, EmptyState, Icon, Rating, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { Badge, Button, Chip, EmptyState, Icon, PriceLine, Rating, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
@@ -860,21 +860,14 @@ export function ProfessionalDetailContent({ professional, preview = false }: { p
               </Text>
             </XStack>
             <Surface padding={0} overflow="hidden">
-              {professional.services.map((service, index) => (
-                <XStack
-                  key={service.id}
-                  justifyContent="space-between"
-                  alignItems="center"
-                  paddingHorizontal="$4"
-                  paddingVertical="$3"
-                  borderTopWidth={index === 0 ? 0 : 1}
-                  borderTopColor={brand.filetto}
-                >
-                  <Text color={brand.grafite}>{service.name}</Text>
-                  <Text fontWeight="600" color={brand.grafite}>
-                    {formatServicePriceRange(service.priceMinEurCents, service.priceMaxEurCents)}
-                  </Text>
-                </XStack>
+              {professional.services.map((service) => (
+                <YStack key={service.id} paddingHorizontal="$4" paddingVertical="$2">
+                  <PriceLine
+                    label={service.name}
+                    labelColor={brand.grafite}
+                    price={formatServicePriceRange(service.priceMinEurCents, service.priceMaxEurCents)}
+                  />
+                </YStack>
               ))}
             </Surface>
           </YStack>

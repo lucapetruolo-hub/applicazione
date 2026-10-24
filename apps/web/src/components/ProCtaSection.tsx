@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { GlowLights } from "./GlowLights";
 
 const COLUMNS = [
   {
@@ -40,9 +41,8 @@ export function ProCtaSection() {
   return (
     <YStack width="100%" paddingVertical="$8" paddingHorizontal="$4" alignItems="center">
       <div className="pro-cta">
-        <span className="pro-cta-glow pro-cta-glow-green" aria-hidden />
-        <span className="pro-cta-glow pro-cta-glow-warm" aria-hidden />
-        <YStack gap="$6" padding="$6" $gtSm={{ padding: "$8" }}>
+        <GlowLights tone="scuro" />
+        <YStack gap="$6" padding="$6" position="relative" $gtSm={{ padding: "$8" }}>
           <YStack gap="$3">
             <Text fontFamily="$heading" fontWeight="600" fontSize="$9" color="white">
               Meno telefonate inutili, più lavoro concluso.

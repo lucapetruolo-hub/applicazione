@@ -4,6 +4,7 @@ export { Button, BUTTON_HEIGHT } from "./Button";
 export { ButtonArrow } from "./ButtonArrow";
 export type { ButtonArrowProps } from "./ButtonArrow";
 export { ProfessionalCard } from "./ProfessionalCard";
+export { PriceLine } from "./PriceLine";
 export { CategoryCard } from "./CategoryCard";
 export { SearchBar } from "./SearchBar";
 export type { SearchBarProps, ProfessionalSuggestion, SearchMode } from "./SearchBar";

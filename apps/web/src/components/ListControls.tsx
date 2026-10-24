@@ -6,7 +6,7 @@ const selectStyle = {
   padding: "8px 10px",
   borderRadius: 6,
   border: `1px solid ${brand.bordoCampo}`,
-  fontSize: 13,
+  fontSize: 16,
   fontFamily: "inherit",
   backgroundColor: brand.calce,
   color: brand.grafite,
@@ -174,7 +174,7 @@ export function Pagination({ page, totalPages, onPageChange }: { page: number; t
           accessibilityRole="button"
           accessibilityLabel={`Pagina ${p}`}
         >
-          <Text fontSize="$2" fontWeight={p === page ? "700" : "400"} color={p === page ? brand.cianografiaScuro : brand.grafite70}>
+          <Text fontSize={13} fontWeight={p === page ? "700" : "400"} color={p === page ? brand.cianografiaScuro : brand.grafite70}>
             {p}
           </Text>
         </XStack>

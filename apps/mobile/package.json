@@ -10,9 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@expo-google-fonts/archivo": "^0.4.2",
     "@expo-google-fonts/ibm-plex-mono": "^0.4.1",
-    "@expo-google-fonts/inter-tight": "^0.4.2",
+    "@expo-google-fonts/instrument-sans": "^0.4.2",
     "@professionisti/shared": "workspace:*",
     "@professionisti/ui": "workspace:*",
     "expo": "~51.0.28",

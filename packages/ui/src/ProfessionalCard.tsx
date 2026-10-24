@@ -5,6 +5,7 @@ import { Text, XStack, YStack } from "tamagui";
 import { Icon } from "./Icon";
 import { Rating } from "./Rating";
 import { Surface } from "./Surface";
+import { PriceLine } from "./PriceLine";
 import { brand, radiusDoc } from "./tokens";
 
 export type ProfessionalCardService = {
@@ -670,25 +671,8 @@ export function ProfessionalCard({
           lasciavano vuoto lo spazio sotto la foto e sotto l'agenda. */}
       {services && services.length > 0 ? (
         <YStack gap="$1" paddingTop="$3" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$4">
-          {(showAllServices ? services : services.slice(0, 3)).map((service, index, shown) => (
-            // Linea molto leggera sotto ogni riga, fino al prezzo (richiesta
-            // esplicita dell'utente): aiuta a collegare a colpo d'occhio
-            // ogni prestazione al suo prezzo. Niente linea sotto l'ultima.
-            <XStack
-              key={service.id}
-              justifyContent="space-between"
-              gap="$2"
-              paddingVertical={3}
-              borderBottomWidth={index < shown.length - 1 ? 1 : 0}
-              borderBottomColor={brand.gesso}
-            >
-              <Text fontSize={16} color={brand.grafite70} flex={1}>
-                {service.name}
-              </Text>
-              <Text fontSize={16} color={brand.grafite} fontWeight="600" flexShrink={0} numberOfLines={1}>
-                {formatServicePrice(service.priceMinEurCents, service.priceMaxEurCents)}
-              </Text>
-            </XStack>
+          {(showAllServices ? services : services.slice(0, 3)).map((service) => (
+            <PriceLine key={service.id} label={service.name} price={formatServicePrice(service.priceMinEurCents, service.priceMaxEurCents)} />
           ))}
           {services.length > 3 ? (
             <XStack

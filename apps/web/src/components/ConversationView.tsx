@@ -500,7 +500,7 @@ export function ConversationView({
               accessibilityRole="button"
             >
               <Icon name="file-text" size={14} color={brand.cianografiaScuro} />
-              <Text fontSize={11} color={brand.grafite} numberOfLines={1} flexShrink={1}>
+              <Text fontSize={13} color={brand.grafite} numberOfLines={1} flexShrink={1}>
                 {attachmentFileName(url) ?? `Documento.${documentTypeLabel(url).toLowerCase()}`}
               </Text>
             </XStack>
@@ -596,7 +596,7 @@ export function ConversationView({
                 >
                   {otherPartyName}
                 </Text>
-                <Text fontSize="$1" color={brand.grafite70} numberOfLines={1}>
+                <Text fontSize={13} color={brand.grafite70} numberOfLines={1}>
                   {headerDescription?.trim() || "Cronologia della richiesta"}
                 </Text>
               </YStack>
@@ -633,7 +633,7 @@ export function ConversationView({
           <Icon name="shield-check" size={16} color={brand.cianografiaScuro} strokeWidth={1.75} />
         </YStack>
         {/* Una riga sola (docs/CHANGELOG.md §198): il dettaglio è in /sicurezza. */}
-        <Text fontSize="$2" color={brand.grafite} flex={1}>
+        <Text fontSize={13} color={brand.grafite} flex={1}>
           Resta in questa chat: non condividere numeri, dati personali o QR code.{" "}
           <Link href="/sicurezza" target="_blank" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
             Scopri di più
@@ -653,15 +653,15 @@ export function ConversationView({
       >
         <YStack gap="$3" paddingBottom="$2">
           {loadError ? (
-            <Text color={brand.urgenza} fontSize="$3">
+            <Text color={brand.urgenza} fontSize={16}>
               {loadError}
             </Text>
           ) : events === null ? (
-            <Text color={brand.grafite70} fontSize="$3">
+            <Text color={brand.grafite70} fontSize={16}>
               Caricamento...
             </Text>
           ) : events.length === 0 ? (
-            <Text color={brand.grafite70} fontSize="$3">
+            <Text color={brand.grafite70} fontSize={16}>
               Nessun aggiornamento ancora.
             </Text>
           ) : (
@@ -673,7 +673,7 @@ export function ConversationView({
               const previous = events[index - 1];
               const daySeparator =
                 !previous || formatDayLabel(previous.createdAt) !== dayLabel ? (
-                  <Text fontSize={11} fontWeight="600" color={brand.grafite70} textAlign="center" paddingTop="$1">
+                  <Text fontSize={13} fontWeight="600" color={brand.grafite70} textAlign="center" paddingTop="$1">
                     {dayLabel}
                   </Text>
                 ) : null;
@@ -701,7 +701,7 @@ export function ConversationView({
                       borderColor={brand.filetto}
                       backgroundColor={brand.calce}
                     >
-                      <Text fontSize={12} color={brand.grafite} textAlign="center">
+                      <Text fontSize={13} color={brand.grafite} textAlign="center">
                         {event.message}
                       </Text>
                       {renderEventMedia(event)}
@@ -734,7 +734,7 @@ export function ConversationView({
                       paddingVertical="$2.5"
                     >
                       {event.message ? (
-                        <Text color={brand.grafite} fontSize="$3">
+                        <Text color={brand.grafite} fontSize={16}>
                           {event.message}
                         </Text>
                       ) : null}
@@ -783,7 +783,7 @@ export function ConversationView({
                   accessibilityRole="button"
                 >
                   <Icon name="file-text" size={14} color={brand.cianografiaScuro} />
-                  <Text fontSize={11} color={brand.grafite} numberOfLines={1} flexShrink={1}>
+                  <Text fontSize={13} color={brand.grafite} numberOfLines={1} flexShrink={1}>
                     {attachmentFileName(url) ?? `Documento.${documentTypeLabel(url).toLowerCase()}`}
                   </Text>
                   <YStack
@@ -829,12 +829,12 @@ export function ConversationView({
           </XStack>
         ) : null}
         {mediaError ? (
-          <Text color={brand.urgenza} fontSize="$2" paddingLeft={52}>
+          <Text color={brand.urgenza} fontSize={13} paddingLeft={52}>
             {mediaError}
           </Text>
         ) : null}
         {submitError ? (
-          <Text color={brand.urgenza} fontSize="$2" paddingLeft={52}>
+          <Text color={brand.urgenza} fontSize={13} paddingLeft={52}>
             {submitError}
           </Text>
         ) : null}
@@ -906,7 +906,7 @@ export function ConversationView({
                     accessibilityRole="button"
                   >
                     <Icon name={item.icon} size={16} color={brand.grafite} />
-                    <Text fontSize="$3" color={brand.grafite} fontWeight="600">
+                    <Text fontSize={16} color={brand.grafite} fontWeight="600">
                       {item.label}
                     </Text>
                   </XStack>
@@ -1090,7 +1090,7 @@ export function ConversationView({
           }}
         >
           <YStack backgroundColor={brand.calce} borderRadius="$4" padding="$4" gap="$3" maxWidth={480} width="100%">
-            <Text fontSize="$4" fontWeight="700" color={brand.grafite}>
+            <Text fontSize={16} fontWeight="700" color={brand.grafite}>
               Scatta una foto
             </Text>
             <div style={{ borderRadius: 6, overflow: "hidden", backgroundColor: "#000" }}>

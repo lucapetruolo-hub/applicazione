@@ -8,6 +8,7 @@ import { Eyebrow, Icon, SearchBar, Text, XStack, YStack, brand, type Professiona
 import { buildSearchDestination } from "@/lib/searchNavigation";
 import { buildSearchSuggestions } from "@/lib/searchSuggestions";
 import { navigateWithTransition } from "@/lib/viewTransition";
+import { GlowLights } from "./GlowLights";
 import { MagneticButton } from "./MagneticButton";
 
 /**
@@ -46,18 +47,11 @@ export function HomeHero() {
         alignItems="center"
         position="relative"
       >
-        {/* Sfondo a luci sfumate (scelta dell'utente: il verde dell'hero resta,
-            con un effetto più d'impatto, docs/CHANGELOG.md §296): tre luci che
-            si muovono piano e una grana leggera, in .home-hero-glow di
-            globals.css. Wrapper a parte con "overflow:hidden" invece che
-            sull'intero pannello: sul pannello tagliava anche il menu a
-            discesa di SearchBar (CLAUDE.md §10). Fermo con "riduci
-            movimento". */}
-        <div className="home-hero-glow" aria-hidden="true">
-          <span className="home-hero-glow__light home-hero-glow__light--one" />
-          <span className="home-hero-glow__light home-hero-glow__light--two" />
-          <span className="home-hero-glow__light home-hero-glow__light--three" />
-        </div>
+        {/* Luci sfumate (scelta dell'utente, docs/CHANGELOG.md §296): in un
+            livello a parte con "overflow:hidden" invece che sull'intero
+            pannello, che tagliava il menu a discesa di SearchBar (CLAUDE.md
+            §10). */}
+        <GlowLights tone="verde" radius={40} />
 
         <YStack width="100%" maxWidth={720} alignItems="center" gap="$4" position="relative">
           <Eyebrow tone="dark">👋 Non chiamare a caso. Chiamalo giusto.</Eyebrow>

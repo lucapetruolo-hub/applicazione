@@ -97,7 +97,7 @@ export function RequestStateIndicators({ myState }: { myState: GuidedRequestMySt
       {myState.remindAt ? (
         <XStack alignItems="center" gap={4}>
           <Icon name="clock" size={13} color={brand.cianografiaScuro} />
-          <Text fontSize={13} fontWeight="600" color={brand.cianografiaScuro}>
+          <Text fontSize={16} fontWeight="600" color={brand.cianografiaScuro}>
             Promemoria {formatReminder(myState.remindAt)}
           </Text>
         </XStack>
@@ -105,7 +105,7 @@ export function RequestStateIndicators({ myState }: { myState: GuidedRequestMySt
       {myState.mutedAt ? (
         <XStack alignItems="center" gap={4}>
           <Icon name="bell-ring" size={13} color={brand.grafite70} />
-          <Text fontSize={13} color={brand.grafite70}>
+          <Text fontSize={16} color={brand.grafite70}>
             Notifiche silenziate
           </Text>
         </XStack>
@@ -155,7 +155,7 @@ export function ArchivedRestoreBar({
       <XStack alignItems="center" justifyContent="space-between" gap="$3" flexWrap="wrap" backgroundColor={brand.gesso} borderRadius="$3" padding="$3">
         <XStack alignItems="center" gap="$2" flexShrink={1} minWidth={0}>
           <Icon name="archive" size={16} color={brand.grafite70} />
-          <Text fontSize="$3" color={brand.grafite70}>
+          <Text fontSize={16} color={brand.grafite70}>
             Archiviata il {new Date(myState.archivedAt).toLocaleDateString("it-IT", { day: "numeric", month: "long" })}
           </Text>
         </XStack>
@@ -164,7 +164,7 @@ export function ArchivedRestoreBar({
         </CardButton>
       </XStack>
       {error ? (
-        <Text color={brand.urgenza} fontSize="$3">
+        <Text color={brand.urgenza} fontSize={16}>
           {error}
         </Text>
       ) : null}
@@ -211,7 +211,7 @@ export function RestoreAllArchivedBar({
       <XStack alignItems="center" justifyContent="flex-end" gap="$2" flexWrap="wrap">
         {confirming ? (
           <YStack alignItems="flex-end" gap="$2">
-            <Text fontSize="$3" color={brand.grafite} textAlign="right">
+            <Text fontSize={16} color={brand.grafite} textAlign="right">
               Ripristinare tutte le {guidedRequestIds.length} richieste archiviate?
             </Text>
             <XStack gap="$2">
@@ -228,7 +228,7 @@ export function RestoreAllArchivedBar({
         )}
       </XStack>
       {error ? (
-        <Text color={brand.urgenza} fontSize="$3" textAlign="right">
+        <Text color={brand.urgenza} fontSize={16} textAlign="right">
           {error}
         </Text>
       ) : null}
@@ -266,7 +266,7 @@ export function RestoredNotice() {
   return (
     <XStack role="status" alignItems="center" gap="$2" backgroundColor={brand.cianografiaVelo} borderRadius="$3" padding="$3">
       <Icon name="check" size={16} color={brand.cianografiaScuro} strokeWidth={2.5} />
-      <Text fontSize="$3" fontWeight="600" color={brand.cianografiaScuro}>
+      <Text fontSize={16} fontWeight="600" color={brand.cianografiaScuro}>
         {count === 1 ? `Richiesta ripristinata: la trovi di nuovo in "Tutte".` : `${count} richieste ripristinate: le trovi di nuovo in "Tutte".`}
       </Text>
     </XStack>

@@ -87,7 +87,7 @@ export function StatsBarChart({
           return (
             <g key={step}>
               <line x1={paddingLeft} y1={y} x2={width - paddingRight} y2={y} stroke={brand.filetto} strokeWidth={1} />
-              <text x={paddingLeft - 8} y={y + 4} textAnchor="end" fontSize={11} fill={brand.grafite70}>
+              <text x={paddingLeft - 8} y={y + 4} textAnchor="end" fontSize={13} fill={brand.grafite70}>
                 {formatValue(niceMax * step)}
               </text>
             </g>
@@ -114,7 +114,7 @@ export function StatsBarChart({
         {points.map((point, index) => {
           if (index % labelEvery !== 0) return null;
           return (
-            <text key={point.key} x={paddingLeft + slot * index + slot / 2} y={height - 10} textAnchor="middle" fontSize={11} fill={brand.grafite70}>
+            <text key={point.key} x={paddingLeft + slot * index + slot / 2} y={height - 10} textAnchor="middle" fontSize={13} fill={brand.grafite70}>
               {point.label}
             </text>
           );
@@ -134,12 +134,12 @@ export function StatsBarChart({
             color: brand.calce,
             borderRadius: 6,
             padding: "8px 12px",
-            fontSize: 12,
+            fontSize: 13,
             whiteSpace: "nowrap",
             boxShadow: "0 6px 16px rgba(43,32,19,0.18)",
           }}
         >
-          <div style={{ fontWeight: 700, fontSize: 13 }}>{formatValue(active.value)}</div>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>{formatValue(active.value)}</div>
           <div style={{ opacity: 0.8 }}>{active.label}</div>
         </div>
       ) : null}

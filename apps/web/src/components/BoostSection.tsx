@@ -50,7 +50,7 @@ export function BoostSection() {
         <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
           Aumenta la tua visibilità
         </Text>
-        <Text fontSize="$2" color={brand.grafite70}>
+        <Text fontSize={13} color={brand.grafite70}>
           Ti avvisiamo appena si potranno attivare.
         </Text>
       </YStack>

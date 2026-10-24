@@ -75,12 +75,12 @@ const CANDIDATE_LANGUAGES = [
   "Croato",
 ];
 
-const inputStyle = { padding: 12, borderRadius: 6, border: `1px solid ${brand.bordoCampo}`, fontSize: 15, fontFamily: "inherit", color: brand.grafite };
-const smallInputStyle = { ...inputStyle, padding: 10, fontSize: 14 };
+const inputStyle = { padding: 12, borderRadius: 6, border: `1px solid ${brand.bordoCampo}`, fontSize: 16, fontFamily: "inherit", color: brand.grafite };
+const smallInputStyle = { ...inputStyle, padding: 10, fontSize: 16 };
 
 function FieldLabel({ children }: { children: string }) {
   return (
-    <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
+    <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
       {children}
     </Text>
   );
@@ -832,7 +832,7 @@ export default function DashboardProfiloPage() {
                   style={{ display: "none" }}
                 />
                 {imageError ? (
-                  <Text color={brand.urgenza} fontSize="$2" flexShrink={1}>
+                  <Text color={brand.urgenza} fontSize={13} flexShrink={1}>
                     {imageError}
                   </Text>
                 ) : null}
@@ -847,7 +847,7 @@ export default function DashboardProfiloPage() {
 
           <YStack gap="$1">
             <FieldLabel>Posizione</FieldLabel>
-            <Text fontSize="$2" color={brand.grafite70}>
+            <Text fontSize={13} color={brand.grafite70}>
               La città è obbligatoria e ti fa trovare nelle ricerche per zona. Se aggiungi anche l&apos;indirizzo
               preciso, il tuo profilo comparirà esattamente lì sulla mappa dei risultati invece che al centro della
               città.
@@ -892,7 +892,7 @@ export default function DashboardProfiloPage() {
                 return comune ? { latitude: comune.lat, longitude: comune.lon } : null;
               })()}
             />
-            <Text fontSize="$2" color={brand.grafite70}>
+            <Text fontSize={13} color={brand.grafite70}>
               Usato solo per posizionarti con precisione sulla mappa dei risultati: non viene mai mostrato per
               intero nel tuo profilo pubblico o nella tua card.
             </Text>
@@ -916,17 +916,17 @@ export default function DashboardProfiloPage() {
             <YStack gap="$2" padding="$3" backgroundColor={brand.gesso} borderRadius="$4">
               <XStack alignItems="center" gap="$2">
                 <Icon name="sparkles" size={14} color={brand.cianografiaScuro} />
-                <Text fontFamily="$body" fontSize={12} fontWeight="700" color={brand.grafite}>
+                <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite}>
                   Consigli per una bio più professionale
                 </Text>
               </XStack>
               <YStack gap="$1">
                 {BIO_TIPS.map((tip) => (
                   <XStack key={tip} gap="$2" alignItems="flex-start">
-                    <Text fontSize="$2" color={brand.cianografiaScuro}>
+                    <Text fontSize={13} color={brand.cianografiaScuro}>
                       ·
                     </Text>
-                    <Text fontSize="$2" color={brand.grafite70} flex={1}>
+                    <Text fontSize={13} color={brand.grafite70} flex={1}>
                       {tip}
                     </Text>
                   </XStack>
@@ -934,7 +934,7 @@ export default function DashboardProfiloPage() {
               </YStack>
               {!bio.trim() ? (
                 <Text
-                  fontSize="$2"
+                  fontSize={13}
                   fontWeight="600"
                   color={brand.cianografiaScuro}
                   alignSelf="flex-start"
@@ -969,12 +969,12 @@ export default function DashboardProfiloPage() {
               Esperienza e affidabilità
             </Text>
           </XStack>
-          <Text fontSize="$2" color={brand.grafite70}>
+          <Text fontSize={13} color={brand.grafite70}>
             Dati dichiarati da te, mostrati sul tuo profilo pubblico per aiutare i clienti a scegliere.
           </Text>
 
           <YStack gap="$2">
-            <Text fontFamily="$body" fontSize={13} fontWeight="600" color={brand.grafite}>
+            <Text fontFamily="$body" fontSize={16} fontWeight="600" color={brand.grafite}>
               Anni di esperienza
             </Text>
             <input aria-label="Anni di esperienza"
@@ -989,7 +989,7 @@ export default function DashboardProfiloPage() {
           </YStack>
 
           <YStack gap="$2">
-            <Text fontFamily="$body" fontSize={13} fontWeight="600" color={brand.grafite}>
+            <Text fontFamily="$body" fontSize={16} fontWeight="600" color={brand.grafite}>
               Certificazioni e qualifiche
             </Text>
             <textarea aria-label="Certificazioni e qualifiche"
@@ -1028,7 +1028,7 @@ export default function DashboardProfiloPage() {
               Ho un'assicurazione di responsabilità civile professionale (RC)
             </Text>
           </YStack>
-          <Text fontSize="$2" color={brand.grafite70}>
+          <Text fontSize={13} color={brand.grafite70}>
             Se la spunti, sul tuo profilo e nei risultati compare il badge &quot;Assicurazione RC dichiarata&quot;, e i clienti che
             filtrano per assicurazione ti trovano. Spuntala solo se la polizza è attiva.
           </Text>
@@ -1067,7 +1067,7 @@ export default function DashboardProfiloPage() {
                 Offro anche consulenza online
               </Text>
             </XStack>
-            <Text fontSize="$2" color={brand.grafite70}>
+            <Text fontSize={13} color={brand.grafite70}>
               Compari nella ricerca &quot;Online&quot; della home: i clienti possono contattarti da remoto, ovunque si trovino.
             </Text>
           </YStack>
@@ -1075,14 +1075,14 @@ export default function DashboardProfiloPage() {
 
         <Surface gap="$3">
           <SectionTitle>Prestazioni offerte</SectionTitle>
-          <Text fontSize="$2" color={brand.grafite70}>
+          <Text fontSize={13} color={brand.grafite70}>
             Aggiungi i servizi che offri, con un range di prezzo se vuoi indicarlo (es. da 50€ a 100€, utile quando il
             costo varia da caso a caso): comparirà nella tua card nei risultati di ricerca.
           </Text>
 
           {suggestedServices.length > 0 ? (
             <YStack gap="$1">
-              <Text fontSize="$2" color={brand.grafite70}>
+              <Text fontSize={13} color={brand.grafite70}>
                 {categorySlugs.length > 1 ? "Le più richieste per le tue categorie:" : "Le più richieste per questa categoria:"}
               </Text>
               <YStack flexDirection="row" flexWrap="wrap" gap="$2">
@@ -1099,7 +1099,7 @@ export default function DashboardProfiloPage() {
                     onPress={() => addSuggestedService(name)}
                     accessibilityRole="button"
                   >
-                    <Text color={brand.cianografiaScuro} fontWeight="600" fontSize="$3">
+                    <Text color={brand.cianografiaScuro} fontWeight="600" fontSize={16}>
                       + {name}
                     </Text>
                   </XStack>
@@ -1130,7 +1130,7 @@ export default function DashboardProfiloPage() {
                     inputMode="decimal"
                     style={{ ...smallInputStyle, width: 90 }}
                   />
-                  <Text fontSize="$2" color={brand.grafite70}>
+                  <Text fontSize={13} color={brand.grafite70}>
                     a
                   </Text>
                   <input aria-label="Prezzo massimo in euro"
@@ -1168,7 +1168,7 @@ export default function DashboardProfiloPage() {
 
         <Surface gap="$3">
           <SectionTitle>Lingue parlate</SectionTitle>
-          <Text fontSize="$2" color={brand.grafite70}>
+          <Text fontSize={13} color={brand.grafite70}>
             Usate dai clienti per filtrare la ricerca (es. &quot;Inglese&quot;, &quot;Francese&quot;).
           </Text>
           <XStack flexWrap="wrap" gap="$2">
@@ -1184,7 +1184,7 @@ export default function DashboardProfiloPage() {
                 borderColor={brand.filetto}
                 backgroundColor={brand.calce}
               >
-                <Text fontSize="$3" color={brand.grafite}>
+                <Text fontSize={16} color={brand.grafite}>
                   {lang}
                 </Text>
                 <XStack
@@ -1272,7 +1272,7 @@ export default function DashboardProfiloPage() {
                     }}
                     accessibilityRole="button"
                   >
-                    <Text fontSize="$3" color={brand.grafite}>
+                    <Text fontSize={16} color={brand.grafite}>
                       {lang}
                     </Text>
                   </XStack>
@@ -1285,7 +1285,7 @@ export default function DashboardProfiloPage() {
         <Surface gap="$2">
           <SectionTitle>Portfolio</SectionTitle>
           <FieldLabel>{`Foto o video dei lavori svolti (fino a ${MAX_PORTFOLIO_PHOTOS}, opzionale)`}</FieldLabel>
-          <Text fontSize="$2" color={brand.grafite70}>
+          <Text fontSize={13} color={brand.grafite70}>
             Foto o video reali di lavori completati: aiutano chi apre il tuo profilo a farsi un&apos;idea concreta di
             cosa sai fare.
           </Text>
@@ -1336,7 +1336,7 @@ export default function DashboardProfiloPage() {
                     +
                   </Text>
                 )}
-                <Text fontSize="$1" color={brand.grafite70}>
+                <Text fontSize={13} color={brand.grafite70}>
                   {isUploadingPortfolioPhoto ? "Caricamento" : "Aggiungi"}
                 </Text>
               </YStack>
@@ -1351,7 +1351,7 @@ export default function DashboardProfiloPage() {
             style={{ display: "none" }}
           />
           {portfolioPhotoError ? (
-            <Text color={brand.urgenza} fontSize="$2">
+            <Text color={brand.urgenza} fontSize={13}>
               {portfolioPhotoError}
             </Text>
           ) : null}
@@ -1373,12 +1373,12 @@ export default function DashboardProfiloPage() {
         ) : null}
 
         {error ? (
-          <Text color={brand.urgenza} fontSize="$3">
+          <Text color={brand.urgenza} fontSize={16}>
             {error}
           </Text>
         ) : null}
         {saved ? (
-          <Text color={brand.verificato} fontSize="$3">
+          <Text color={brand.verificato} fontSize={16}>
             Profilo salvato!
           </Text>
         ) : null}
@@ -1429,13 +1429,13 @@ export default function DashboardProfiloPage() {
                 <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
                   Salvare le modifiche?
                 </Text>
-                <Text fontSize="$3" color={brand.grafite70}>
+                <Text fontSize={16} color={brand.grafite70}>
                   {confirmDiscard
                     ? "Hai modificato il tuo profilo senza salvare. Se torni all'anteprima, le modifiche andranno perse."
                     : "Hai modificato il tuo profilo pubblico senza salvare. Se esci ora, le modifiche andranno perse."}
                 </Text>
                 {error ? (
-                  <Text fontSize="$3" color={brand.urgenza}>
+                  <Text fontSize={16} color={brand.urgenza}>
                     {error}
                   </Text>
                 ) : null}
@@ -1488,7 +1488,7 @@ export default function DashboardProfiloPage() {
                     Profilo salvato!
                   </Text>
                 </XStack>
-                <Text fontSize="$3" color={brand.grafite70}>
+                <Text fontSize={16} color={brand.grafite70}>
                   Vuoi impostare già ora i giorni e le fasce orarie in cui sei disponibile? Comparirà sul tuo
                   profilo pubblico e i clienti potranno contattarti con molta più facilità.
                 </Text>

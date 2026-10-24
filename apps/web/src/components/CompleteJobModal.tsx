@@ -27,7 +27,7 @@ const textareaStyle = {
   padding: 10,
   borderRadius: 6,
   border: `1px solid ${brand.bordoCampo}`,
-  fontSize: 14,
+  fontSize: 16,
   fontFamily: "inherit",
   color: brand.grafite,
   resize: "vertical" as const,
@@ -37,7 +37,7 @@ const smallInputStyle = {
   padding: 10,
   borderRadius: 6,
   border: `1px solid ${brand.bordoCampo}`,
-  fontSize: 14,
+  fontSize: 16,
   fontFamily: "inherit",
   color: brand.grafite,
 };
@@ -259,7 +259,7 @@ export function CompleteJobModal({
           <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
             Lavoro terminato
           </Text>
-          <Text fontSize="$3" color={brand.grafite70}>
+          <Text fontSize={16} color={brand.grafite70}>
             Scrivi l&apos;importo finale di ogni voce.
           </Text>
         </YStack>
@@ -267,15 +267,15 @@ export function CompleteJobModal({
         <YStack gap="$3">
           {quotedRows.map((row, index) => (
             <YStack key={index} gap="$1">
-              <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
+              <Text fontSize={16} fontWeight="600" color={brand.grafite}>
                 {row.name}
               </Text>
               <XStack alignItems="center" gap="$2" flexWrap="wrap">
-                <Text fontSize="$2" color={brand.grafite70} flex={1} minWidth={140}>
+                <Text fontSize={13} color={brand.grafite70} flex={1} minWidth={140}>
                   {row.hint}
                 </Text>
                 <XStack alignItems="center" gap="$1">
-                  <Text fontSize="$2" color={brand.grafite70}>
+                  <Text fontSize={13} color={brand.grafite70}>
                     Importo finale (€) *
                   </Text>
                   <input aria-label="Importo finale in euro"
@@ -292,7 +292,7 @@ export function CompleteJobModal({
 
           {extraRows.length > 0 ? (
             <YStack gap="$2">
-              <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
+              <Text fontSize={16} fontWeight="600" color={brand.grafite}>
                 Altre voci
               </Text>
               {extraRows.map((row, index) => (
@@ -353,10 +353,10 @@ export function CompleteJobModal({
 
         {needsReason && deviation ? (
           <YStack gap="$1" padding="$3" borderRadius="$3" backgroundColor={brand.urgenzaVelo}>
-            <Text fontSize="$3" fontWeight="700" color={brand.grafite}>
+            <Text fontSize={16} fontWeight="700" color={brand.grafite}>
               {completionDeviationText(deviation)}: spiega il motivo *
             </Text>
-            <Text fontSize="$2" color={brand.grafite70}>
+            <Text fontSize={13} color={brand.grafite70}>
               Preventivo: {formatServicePriceRange(deviation.quoteMinEurCents, deviation.quoteMaxEurCents)}. Lo legge anche il cliente.
             </Text>
             <textarea
@@ -370,7 +370,7 @@ export function CompleteJobModal({
         ) : null}
 
         <YStack gap="$1">
-          <Text fontSize="$2" color={brand.grafite70}>
+          <Text fontSize={13} color={brand.grafite70}>
             Note sul lavoro svolto (opzionale)
           </Text>
           <textarea
@@ -385,7 +385,7 @@ export function CompleteJobModal({
         {/* Foto/video del lavoro terminato (richiesta esplicita
             dell'utente), distinte dalle foto della recensione. */}
         <YStack gap="$1">
-          <Text fontSize="$2" color={brand.grafite70}>
+          <Text fontSize={13} color={brand.grafite70}>
             Foto o video del lavoro svolto (opzionale, fino a {MAX_COMPLETION_PHOTOS})
           </Text>
           <YStack flexDirection="row" flexWrap="wrap" gap="$2">
@@ -439,14 +439,14 @@ export function CompleteJobModal({
           </YStack>
           <input ref={photoInputRef} type="file" accept="image/*,video/*" onChange={handlePhotoChange} disabled={isUploadingPhoto} style={{ display: "none" }} />
           {photoError ? (
-            <Text color={brand.urgenza} fontSize="$2">
+            <Text color={brand.urgenza} fontSize={13}>
               {photoError}
             </Text>
           ) : null}
         </YStack>
 
         {error ? (
-          <Text color={brand.urgenza} fontSize="$3">
+          <Text color={brand.urgenza} fontSize={16}>
             {error}
           </Text>
         ) : null}
@@ -455,13 +455,13 @@ export function CompleteJobModal({
             riga accanto al pulsante, accettata premendo "Conferma" e salvata
             con data e versione; il testo completo dietro "Scopri di più". */}
         <YStack gap="$2">
-          <Text fontSize="$2" color={brand.grafite70}>
+          <Text fontSize={13} color={brand.grafite70}>
             Confermando dichiari che {formatEurCents(totalEurCents)} è l&apos;importo che ricevi per questo lavoro.{" "}
             <LearnMoreToggle open={declarationOpen} onToggle={() => setDeclarationOpen((v) => !v)} controls="completion-declaration" />
           </Text>
           {declarationOpen ? (
             <YStack id="completion-declaration" padding="$3" borderRadius="$3" backgroundColor={brand.gesso}>
-              <Text fontSize="$2" color={brand.grafite70}>
+              <Text fontSize={13} color={brand.grafite70}>
                 {declaration ? declaration.text : "Carico il testo..."}
               </Text>
             </YStack>

@@ -6,6 +6,7 @@ import { useState, type ReactNode } from "react";
 import { Check } from "lucide-react";
 import { PROFESSIONAL_CATEGORIES, SUBSCRIPTION_FEATURES, SUBSCRIPTION_TIERS, type SubscriptionTier } from "@professionisti/shared";
 import { Button, ButtonArrow, Icon, Text, XStack, YStack, brand, radiusDoc, type IconName } from "@professionisti/ui";
+import { GlowLights } from "@/components/GlowLights";
 import { useAuth } from "@/lib/AuthContext";
 
 /**
@@ -144,10 +145,13 @@ function ProHero({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
           width: "100%",
           display: "flex",
           justifyContent: "center",
-          background: "radial-gradient(ellipse 60% 55% at 50% 50%, rgba(24,154,99,0.13), rgba(24,154,99,0) 70%)",
+          position: "relative",
         }}
       >
-        <YStack width="100%" maxWidth={760} alignItems="center" gap="$4" paddingHorizontal="$4" paddingVertical="$10" $gtMd={{ paddingVertical: 120 }}>
+        {/* Sfumatura che la pagina aveva già (scelta dell'utente), ora con le
+            luci che si muovono piano come nella home (docs/CHANGELOG.md §297). */}
+        <GlowLights tone="chiaro" />
+        <YStack position="relative" width="100%" maxWidth={760} alignItems="center" gap="$4" paddingHorizontal="$4" paddingVertical="$10" $gtMd={{ paddingVertical: 120 }}>
           <XStack borderWidth={1} borderColor={LINE} borderRadius={999} backgroundColor={brand.calce} overflow="hidden" alignItems="center">
             <Text fontSize={13} color={brand.grafite} paddingHorizontal="$3" paddingVertical={6}>
               Per i professionisti

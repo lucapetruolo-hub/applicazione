@@ -65,16 +65,16 @@ export default function Dac7SummaryPage() {
   return (
     <Section title="Riepilogo DAC7" maxWidth={760}>
       <YStack gap="$5">
-        <Link href="/dashboard/fiscale" style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 14, textDecoration: "none" }}>
+        <Link href="/dashboard/fiscale" style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 16, textDecoration: "none" }}>
           ← Dati fiscali e pagamenti
         </Link>
 
-        <LearnMore fontSize={14} summary="I compensi che comunichiamo ogni anno al fisco.">
-          <Text fontSize={13} color={brand.grafite70}>
+        <LearnMore fontSize={16} summary="I compensi che comunichiamo ogni anno al fisco.">
+          <Text fontSize={16} color={brand.grafite70}>
             Lo chiede la direttiva europea DAC7: entro il 31 gennaio comunichiamo i compensi dell&apos;anno prima, insieme ai tuoi dati fiscali,
             e ti avvisiamo per email.
           </Text>
-          <Text fontSize={13} color={brand.grafite70}>
+          <Text fontSize={16} color={brand.grafite70}>
             Gli importi sono quelli che indichi a &quot;Lavoro terminato&quot;. Quelli online sono al netto della commissione, che comunichiamo a
             parte.
           </Text>
@@ -86,7 +86,7 @@ export default function Dac7SummaryPage() {
             <YStack height={140} borderRadius="$3" backgroundColor={brand.gesso} />
           </YStack>
         ) : error ? (
-          <Text fontSize={14} color={brand.urgenza} role="alert">
+          <Text fontSize={16} color={brand.urgenza} role="alert">
             {error}
           </Text>
         ) : !data || data.years.length === 0 || !summary ? (
@@ -117,7 +117,7 @@ export default function Dac7SummaryPage() {
             <Surface padding="$4">
               <YStack gap="$2">
                 <XStack justifyContent="space-between" alignItems="center" gap="$3" flexWrap="wrap">
-                  <Text fontSize={13} fontWeight="700" color={brand.grafite70}>
+                  <Text fontSize={16} fontWeight="700" color={brand.grafite70}>
                     Compensi {summary.year}
                   </Text>
                   <Badge variant={yearStatus(summary).variant}>{yearStatus(summary).label}</Badge>
@@ -125,7 +125,7 @@ export default function Dac7SummaryPage() {
                 <Text fontFamily="$heading" fontSize={32} fontWeight="800" color={brand.grafite}>
                   {formatEurCents(summary.totalEurCents)}
                 </Text>
-                <Text fontSize={13} color={brand.grafite70}>
+                <Text fontSize={16} color={brand.grafite70}>
                   {yearStatus(summary).detail}
                   {summary.notifiedAt ? ` Ti abbiamo inviato l'avviso il ${formatDate(summary.notifiedAt)}.` : ""}
                 </Text>
@@ -140,15 +140,15 @@ export default function Dac7SummaryPage() {
                   <Surface key={q} padding="$3" opacity={empty ? 0.6 : 1}>
                     <YStack gap="$2">
                       <XStack justifyContent="space-between" alignItems="baseline">
-                        <Text fontSize={13} fontWeight="800" color={brand.grafite}>
+                        <Text fontSize={16} fontWeight="800" color={brand.grafite}>
                           {q}° trimestre
                         </Text>
-                        <Text fontSize={12} color={brand.grafite70}>
+                        <Text fontSize={13} color={brand.grafite70}>
                           {QUARTER_LABEL[q]}
                         </Text>
                       </XStack>
                       {empty ? (
-                        <Text fontSize={13} color={brand.grafite70}>
+                        <Text fontSize={16} color={brand.grafite70}>
                           Nessun lavoro
                         </Text>
                       ) : (
@@ -167,15 +167,15 @@ export default function Dac7SummaryPage() {
 
             {hasOnline ? (
               data.maskedIban ? (
-                <Text fontSize={13} color={brand.grafite70}>
+                <Text fontSize={16} color={brand.grafite70}>
                   Conto dei pagamenti online: <Text fontFamily="$mono" fontWeight="700" color={brand.grafite}>{data.maskedIban}</Text>
                 </Text>
               ) : (
                 <XStack gap="$3" padding="$3" borderRadius="$3" backgroundColor={brand.urgenzaVelo} alignItems="center" justifyContent="space-between" flexWrap="wrap">
-                  <Text fontSize={13} fontWeight="700" color={brand.grafite}>
+                  <Text fontSize={16} fontWeight="700" color={brand.grafite}>
                     Manca l&apos;IBAN dei pagamenti online
                   </Text>
-                  <Link href="/dashboard/fiscale" style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 14 }}>
+                  <Link href="/dashboard/fiscale" style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 16 }}>
                     Aggiungilo →
                   </Link>
                 </XStack>
@@ -184,7 +184,7 @@ export default function Dac7SummaryPage() {
           </YStack>
         )}
 
-        <Text fontSize={13} color={brand.grafite70}>
+        <Text fontSize={16} color={brand.grafite70}>
           Qualcosa non torna?{" "}
           <Link href="/contatti" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
             Scrivici
@@ -198,10 +198,10 @@ export default function Dac7SummaryPage() {
 function QuarterRow({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
   return (
     <XStack justifyContent="space-between" gap="$2">
-      <Text fontSize={13} color={brand.grafite70}>
+      <Text fontSize={16} color={brand.grafite70}>
         {label}
       </Text>
-      <Text fontSize={13} fontWeight={muted ? "400" : "700"} color={muted ? brand.grafite70 : brand.grafite}>
+      <Text fontSize={16} fontWeight={muted ? "400" : "700"} color={muted ? brand.grafite70 : brand.grafite}>
         {value}
       </Text>
     </XStack>

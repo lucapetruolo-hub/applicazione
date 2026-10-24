@@ -7,8 +7,8 @@ import { brand } from "./tokens";
 // (Expo) — è ciò che garantisce la "stessa interfaccia" richiesta da
 // CLAUDE.md, senza duplicare il design system tra le due app.
 
-// Famiglie per ruolo tipografico ("Scheda Intervento": Archivo/Inter
-// Tight/IBM Plex Mono), diverse per piattaforma sullo stesso token
+// Famiglie per ruolo tipografico (Instrument Sans per titoli e testo, IBM
+// Plex Mono per le cifre, docs/CHANGELOG.md §295 e §297), diverse per piattaforma sullo stesso token
 // Tamagui — su web puntano alle CSS variable esposte da next/font
 // (apps/web/src/app/fonts.ts, applicate su <html> in layout.tsx); su
 // native al nome esatto caricato via useFonts in apps/mobile
@@ -19,12 +19,12 @@ import { brand } from "./tokens";
 // Limite noto: RN non supporta il cambio di peso su un'unica famiglia
 // custom come fa il CSS (`font-weight` su un web font variabile) — ogni
 // peso è una famiglia caricata a parte. Qui il token porta un solo peso
-// rappresentativo per ruolo (heading 800, body 400, mono 500); i pesi
+// rappresentativo per ruolo (heading 700, body 400, mono 500); i pesi
 // aggiuntivi caricati in apps/mobile restano disponibili per stili nativi
 // più specifici in un secondo momento, non ancora cablati token per token.
 const isWeb = Platform.OS === "web";
-const displayFamily = isWeb ? "var(--font-display), system-ui, sans-serif" : "Archivo_800ExtraBold";
-const bodyFamily = isWeb ? "var(--font-body), system-ui, sans-serif" : "InterTight_400Regular";
+const displayFamily = isWeb ? "var(--font-display), system-ui, sans-serif" : "InstrumentSans_700Bold";
+const bodyFamily = isWeb ? "var(--font-body), system-ui, sans-serif" : "InstrumentSans_400Regular";
 const monoFamily = isWeb ? "var(--font-mono), monospace" : "IBMPlexMono_500Medium";
 
 // Titoli in Instrument Sans (docs/CHANGELOG.md §295): interlinea 1,2 e

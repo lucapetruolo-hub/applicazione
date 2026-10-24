@@ -20028,3 +20028,17 @@ La mappa con una chiave vera si vede solo sul sito pubblicato: dopo l'unione va 
 **Misura** (stesso script `analisi/identita/script-inventario-stili.mjs`, 18 pagine a 390 e 1440 px): testo sotto i 16 px dall'85% al 21% degli elementi; dimensioni del testo 25 → 22, interlinee 53 → 45, arrotondamenti 22 → 16 (quasi tutti ormai 999, 12 o 6); nessun testo in Arial.
 
 **Verifica**: typecheck, lint e build del web; home, `/per-professionisti` e `/cerca/idraulico/latina` provate in locale a 360, 390 e 1440 px senza scorrimento orizzontale; foto prima/dopo in `anteprime/identita-codice/`.
+
+## 297. Luci sfumate in altri tre punti, riga del preventivo sui prezzi, testo a 16 px anche nelle aree riservate, carattere nuovo nell'app
+
+**Richiesta dell'utente**: "bella l'hero con le luci sfumate, dovremmo implementare questo wow anche da altre parti"; poi "effettua miglioria 1-2-4" (riga del preventivo sui prezzi delle schede, scala dei testi nell'area professionista e cliente, Instrument Sans nell'app) e controllare anche i menu dopo l'accesso, lato cliente e professionista, con account di prova creati da noi.
+
+**Decisione**:
+- Luci sfumate (`components/GlowLights.tsx`, classi `.glow-lights` in `globals.css`, toni verde/scuro/chiaro) in pochi punti scelti perché restino speciali: hero della home, riquadro scuro "Meno telefonate inutili" (al posto dei due aloni di prima), tessera verde "Non trovi il tuo lavoro?", apertura di `/per-professionisti` (la sfumatura che c'era, ora in movimento). Ferme con "riduci movimento".
+- `PriceLine` in `packages/ui` (voce, puntini di guida, prezzo in IBM Plex Mono; "Su richiesta" nel carattere del testo): prestazioni nelle schede dei risultati e nel profilo pubblico. I puntini sostituiscono la linea leggera sotto ogni riga, che serviva allo stesso scopo (collegare prestazione e prezzo).
+- Scala dei testi del §296 anche nelle pagine dell'area professionista e cliente e nei componenti che usano (agenda e admin esclusi), più le classi CSS dell'area (`.acct-`, `.today-`, `.profile-`, `.notif-`, `.pstats-`...). Menu laterale a 15 px, largo 256 px, icone che non si restringono.
+- Menu dell'area riservata e dell'admin: voce attiva grigio chiaro con testo scuro (prima quasi nera) e titoli dei gruppi non più in maiuscolo, come da regole accettate dall'utente il 22/10.
+- Un professionista appena iscritto, senza profilo completo, vedeva "Non riusciamo a caricare… Riprova" in Abbonamento, Dati fiscali e Richieste (l'API risponde 404 "Completa prima il tuo profilo"): ora vede "Completa il tuo profilo per iniziare" con il pulsante, come in Oggi e Agenda (`components/ProfileMissingNotice.tsx`).
+- App: Instrument Sans (`@expo-google-fonts/instrument-sans`, pesi 400-700) al posto di Archivo e Inter Tight, tolti i due pacchetti.
+
+**Verifica**: typecheck e lint di web e app, build del web; area professionista e cliente fotografate con due account di prova (prova.design.pro@example.com, prova.design.cliente@example.com) a 390 e 1440 px, prima e dopo.

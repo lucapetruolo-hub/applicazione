@@ -334,17 +334,17 @@ function ChatThreadRow({
         </Text>
         {/* Categoria + inizio della descrizione del lavoro (docs/CHANGELOG.md
             §198): due chat con la stessa persona non sembrano più uguali. */}
-        <Text fontSize="$2" color={brand.grafite70} numberOfLines={1}>
+        <Text fontSize={13} color={brand.grafite70} numberOfLines={1}>
           {thread.categoryLabel}
           {thread.requestDescription?.trim() ? ` · ${thread.requestDescription.trim()}` : ""}
         </Text>
-        <Text fontSize="$3" color={brand.grafite70} numberOfLines={1}>
+        <Text fontSize={16} color={brand.grafite70} numberOfLines={1}>
           {thread.lastMessageIsMine ? "Tu: " : ""}
           {previewText}
         </Text>
       </YStack>
       <YStack alignItems="flex-end" gap="$1" flexShrink={0}>
-        <Text fontSize="$2" color={brand.grafite70}>
+        <Text fontSize={13} color={brand.grafite70}>
           {formatThreadTimestamp(thread.lastMessageAt)}
         </Text>
         <UnreadDot count={effectiveUnreadCount} />

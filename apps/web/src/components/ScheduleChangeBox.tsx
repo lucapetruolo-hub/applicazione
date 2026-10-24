@@ -38,7 +38,7 @@ export function ScheduleChangeBox({
       borderColor={brand.ottone}
       gap="$3"
     >
-      <Text fontFamily="$body" fontWeight="800" fontSize={14} color="#8a5a00">
+      <Text fontFamily="$body" fontWeight="800" fontSize={16} color="#8a5a00">
         {title}
       </Text>
       <XStack alignItems="center" gap="$2">
@@ -48,7 +48,7 @@ export function ScheduleChangeBox({
               <Text fontSize={10.5} fontWeight="700" color={brand.grafite70} textTransform="uppercase">
                 {beforeLabel}
               </Text>
-              <Text fontSize={13} color={brand.grafite70} textDecorationLine="line-through">
+              <Text fontSize={16} color={brand.grafite70} textDecorationLine="line-through">
                 {beforeText}
               </Text>
             </YStack>
@@ -61,14 +61,14 @@ export function ScheduleChangeBox({
           <Text fontSize={10.5} fontWeight="700" color={brand.ottone} textTransform="uppercase">
             {afterLabel}
           </Text>
-          <Text fontSize={13} fontWeight="800" color={brand.grafite}>
+          <Text fontSize={16} fontWeight="800" color={brand.grafite}>
             {afterText}
           </Text>
         </YStack>
       </XStack>
       {note ? (
         <YStack padding="$3" borderRadius={6} backgroundColor={brand.calce} borderLeftWidth={3} borderLeftColor={brand.ottone}>
-          <Text fontSize={13} color={brand.grafite}>
+          <Text fontSize={16} color={brand.grafite}>
             {note}
           </Text>
         </YStack>

@@ -56,7 +56,7 @@ export function JobIssuePanel({
 
       {issue.status === "CHAT" ? (
         <YStack gap="$2">
-          <Text fontSize="$2" color={brand.grafite70}>
+          <Text fontSize={13} color={brand.grafite70}>
             {!issue.assisted
               ? "Il cliente ha pagato direttamente: rispondigli qui in chat per trovare insieme una soluzione. Il cliente potrà comunque lasciare la recensione."
               : issue.proRepliedInChat
@@ -70,11 +70,11 @@ export function JobIssuePanel({
           ) : null}
         </YStack>
       ) : issue.status === "UNRESOLVED" ? (
-        <Text fontSize="$2" color={brand.grafite}>
+        <Text fontSize={13} color={brand.grafite}>
           Il cliente ha indicato che non avete trovato un accordo.
         </Text>
       ) : issue.status === "RESOLVED" ? (
-        <Text fontSize="$2" color={brand.grafite}>
+        <Text fontSize={13} color={brand.grafite}>
           Il cliente ha indicato che avete risolto il problema.
         </Text>
       ) : issue.status === "OPEN" && issue.reviewPhase === "AWAITING_INFO" ? (
@@ -99,7 +99,7 @@ export function JobIssuePanel({
         />
       ) : issue.resolutionNote ? (
         <YStack gap="$2">
-          <Text fontSize="$2" color={brand.grafite}>
+          <Text fontSize={13} color={brand.grafite}>
             {issue.appealDecision === "ACCEPTED"
               ? `Ricorso accolto: la segnalazione è respinta e la misura presa è stata tolta. Motivazione: ${issue.appealNote}`
               : jobIssueOutcomeText({
@@ -113,17 +113,17 @@ export function JobIssuePanel({
                 })}
           </Text>
           {issue.status === "UPHELD" && issue.sanction ? (
-            <Text fontSize="$2" fontWeight="700" color={brand.urgenza}>
+            <Text fontSize={13} fontWeight="700" color={brand.urgenza}>
               Misura: {JOB_ISSUE_SANCTION_LABEL[issue.sanction]}
             </Text>
           ) : null}
           {issue.appealedAt && !issue.appealDecision ? (
-            <Text fontSize="$2" color={brand.grafite70}>
+            <Text fontSize={13} color={brand.grafite70}>
               Hai fatto ricorso: lo esamina una persona del nostro team diversa da chi ha deciso.
             </Text>
           ) : null}
           {issue.appealDecision === "REJECTED" ? (
-            <Text fontSize="$2" color={brand.grafite70}>
+            <Text fontSize={13} color={brand.grafite70}>
               Ricorso respinto: la decisione resta valida. Motivazione: {issue.appealNote}
             </Text>
           ) : null}
@@ -146,10 +146,10 @@ export function JobIssuePanel({
 function Quoted({ title, text }: { title: string; text: string }) {
   return (
     <YStack gap={2}>
-      <Text fontSize="$2" fontWeight="700" color={brand.grafite}>
+      <Text fontSize={13} fontWeight="700" color={brand.grafite}>
         {title}
       </Text>
-      <Text fontSize="$2" color={brand.grafite70}>
+      <Text fontSize={13} color={brand.grafite70}>
         {text}
       </Text>
     </YStack>
@@ -194,7 +194,7 @@ function TextForm({
 
   return (
     <YStack gap="$2">
-      <Text fontSize="$2" color={brand.grafite70}>
+      <Text fontSize={13} color={brand.grafite70}>
         {intro}
       </Text>
       <textarea
@@ -209,7 +209,7 @@ function TextForm({
           padding: 10,
           borderRadius: 6,
           border: `1px solid ${brand.bordoCampo}`,
-          fontSize: 14,
+          fontSize: 16,
           fontFamily: "inherit",
           color: brand.grafite,
           background: "#fff",
@@ -217,7 +217,7 @@ function TextForm({
         }}
       />
       {error ? (
-        <Text fontSize="$2" color={brand.urgenza}>
+        <Text fontSize={13} color={brand.urgenza}>
           {error}
         </Text>
       ) : null}

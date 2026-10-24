@@ -25,7 +25,7 @@ export function ContactButton({
   return (
     <CardButton tone="primary" compact={compact} compactOnPhone={compactOnPhone} alignSelf="flex-start" onPress={onPress}>
       <XStack alignItems="center" gap="$1">
-        <Text color="white" fontFamily="$body" fontWeight="600" fontSize={compact ? "$2" : "$3"} {...(compactOnPhone ? { $xs: { fontSize: "$2" } } : {})}>
+        <Text color="white" fontFamily="$body" fontWeight="600" fontSize={compact ? "$2" : "$3"} {...(compactOnPhone ? { $xs: { fontSize: 13 } } : {})}>
           Contatta/Cronologia
         </Text>
         <UnreadDot count={unreadCount} />
