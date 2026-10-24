@@ -192,10 +192,10 @@ export function AddressAutocompleteInput({ value, onChange, onSelect, placeholde
         aria-controls={listboxId}
         aria-expanded={open}
         aria-autocomplete="list"
-        // VoiceOver e TalkBack leggono l'opzione evidenziata con le frecce (§319).
+        // VoiceOver e TalkBack leggono l'opzione evidenziata con le frecce (§320).
         aria-activedescendant={open && highlighted >= 0 ? `${listboxId}-${highlighted}` : undefined}
       />
-      {/* Annuncio per i lettori di schermo: quanti suggerimenti sono comparsi (§319). */}
+      {/* Annuncio per i lettori di schermo: quanti suggerimenti sono comparsi (§320). */}
       <span className="address-sr-status" role="status" aria-live="polite">
         {open ? (suggestions.length > 0 ? `${suggestions.length} ${suggestions.length === 1 ? "suggerimento" : "suggerimenti"}: usa le frecce per sceglierne uno.` : "Nessun indirizzo trovato.") : ""}
       </span>
@@ -282,7 +282,7 @@ export function AddressAutocompleteInput({ value, onChange, onSelect, placeholde
         }
         .address-suggestions li.address-attribution {
           cursor: default;
-          /* Leggibile anche così piccola: contrasto almeno 4,5:1 (§319). */
+          /* Leggibile anche così piccola: contrasto almeno 4,5:1 (§320). */
           font-size: 12px;
           color: #6e6459;
           align-items: flex-end;

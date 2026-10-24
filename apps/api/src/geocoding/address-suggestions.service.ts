@@ -25,7 +25,7 @@ const SUGGESTIONS_DAILY_LIMIT = 5000;
 const PLACES_DAILY_LIMIT = 2000;
 /**
  * Dopo un errore di Google, per qualche minuto il sito apre il modulo già con
- * i campi separati (§319): meglio che vederlo cambiare mentre si scrive.
+ * i campi separati (§320): meglio che vederlo cambiare mentre si scrive.
  */
 const RECENT_FAILURE_MS = 5 * 60_000;
 
@@ -47,7 +47,7 @@ export class AddressSuggestionsService {
     this.alert("address-place-budget", "Tetto giornaliero dei dettagli di indirizzo raggiunto: fino a mezzanotte si scrive l'indirizzo a mano."),
   );
 
-  /** Nel log e, una volta l'ora, su Sentry: il cliente vede solo i campi separati (§319). */
+  /** Nel log e, una volta l'ora, su Sentry: il cliente vede solo i campi separati (§320). */
   private alert(key: string, message: string): void {
     this.logger.error(message);
     opsAlert(key, message);
@@ -59,7 +59,7 @@ export class AddressSuggestionsService {
    * I suggerimenti funzionano? Senza chiamare Google: chiave presente, tetto
    * di oggi non raggiunto, nessun errore di Google negli ultimi minuti. Il
    * sito lo chiede prima che si scriva l'indirizzo, così sceglie subito tra
-   * campo unico con suggerimenti e campi separati (§319).
+   * campo unico con suggerimenti e campi separati (§320).
    */
   available(now = Date.now()): boolean {
     if (!process.env.GOOGLE_MAPS_API_KEY?.trim()) return false;
