@@ -338,8 +338,62 @@ aperti solo:
     nostro database, come le ricerche della PR #92 (gli eventi di Vercel
     Analytics richiedono il piano a pagamento), senza dati personali.
 
-29. **Dopo gli aggiornamenti di Next.js 15, React 19, NestJS 11, Expo 58 e
-    Prisma 6** (PR #103, docs/CHANGELOG.md §292-§295):
+28. **Sicurezza: cose da fare negli account** (controllo sicurezza del
+    22/10/2026, docs/CHANGELOG.md §292, dettaglio in
+    `/mnt/project-files/analisi/controllo-sicurezza.md`):
+    - **Backup del database**: con il piano a pagamento (punto 4bis) Render
+      fa i backup giornalieri. Provare una volta il ripristino su un
+      database di prova, prima del lancio.
+    - ~~**`FISCAL_DATA_KEY` su Render**~~ — fatto (24/10/2026). Non
+      perderla e non cambiarla più: all'avvio l'API ricifra da sola IBAN e
+      codici fiscali salvati con la chiave vecchia.
+    - ~~**`ADMIN_ENTRY_PATH` su Vercel**~~ — fatto (24/10/2026): `/admin`
+      risponde "pagina non trovata" finché da quel browser non si visita una
+      volta `https://<sito>/<ADMIN_ENTRY_PATH>`. Conservare il link: se si
+      perde, basta cambiarlo su Vercel e rifare il deploy.
+    - **Togliere `ADMIN_BOOTSTRAP_SECRET` da Render** appena creato il primo
+      admin (gli altri si nominano da `/admin/utenti`).
+    - **Repo GitHub privato** (Settings → General → Danger Zone).
+    - **Chiavi Google**: la chiave del browser (`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`)
+      limitata ai siti `https://<dominio>/*` in Google Cloud → Credenziali;
+      la chiave server (`GOOGLE_MAPS_API_KEY`) limitata alle sole API usate
+      (Geocoding, Places API (New), Maps Static, Routes).
+    - **Tetto di spesa su Google Cloud** (docs/CHANGELOG.md §293): in
+      Google Cloud → API e servizi → ogni API → Quote, un limite al giorno
+      per Places API (New), Maps Static e Geocoding, più un avviso di budget
+      in Fatturazione → Budget e avvisi. L'API ha già un suo tetto
+      giornaliero sulle rotte aperte a tutti (suggerimenti 5000, dettagli
+      indirizzo 2000, mappe fisse 2000); `GOOGLE_PUBLIC_DAILY_LIMIT` su
+      Render lo cambia per tutte.
+    - **Sentry attivo**: `SENTRY_DSN` impostata su Render e avvisi email
+      accesi in Sentry (Alerts), con una prova.
+    - **Verifica in due passaggi** su GitHub, Render, Vercel, Stripe,
+      Cloudinary, Resend, Google Cloud, Didit, Openapi e sull'email usata
+      per questi account.
+    - ~~**Next.js 15**~~ — fatto (PR #103, docs/CHANGELOG.md §295).
+
+29. **Verifiche di sicurezza prima del lancio** (controllo approfondito,
+    docs/CHANGELOG.md §293, dettaglio in
+    `/mnt/project-files/analisi/controllo-sicurezza-adesso.md`). Le fa un
+    thread, sull'anteprima o su una copia del sito, tranne dove scritto:
+    - **OWASP ZAP** (scansione base e completa) sull'anteprima Vercel e
+      sull'API: nessuna voce alta.
+    - **Stripe CLI**: webhook ripetuti, fuori ordine e con firma sbagliata;
+      importi e rimborsi manomessi.
+    - **k6**: i limiti al minuto tengono davvero, anche dopo un riavvio di
+      Render.
+    - **OWASP ASVS livello 2 e API Security Top 10 2023**, voce per voce.
+    - **Mappa dei dati personali definitiva** e DPIA della verifica con
+      selfie, da far vedere all'avvocato (bozza nel file sopra).
+    - **Piano per gli incidenti**: chi avvisare, come cambiare in fretta
+      tutte le chiavi, notifica al Garante entro 72 ore (art. 33 GDPR).
+      Con la prova di ripristino del database del punto 28 (la fa Luca).
+    - **Penetration test esterno** (una o due giornate, da uno studio o un
+      professionista): è l'unica verifica davvero indipendente. Lo sceglie
+      e lo paga Luca.
+
+30. **Dopo gli aggiornamenti di Next.js 15, React 19, NestJS 11, Expo 58,
+    Prisma 6 e TypeScript 6** (PR #103, docs/CHANGELOG.md §295-§299):
     - **Confronto delle pagine nei controlli automatici**: oggi
       `pnpm --filter @professionisti/web confronto-pagine` si lancia a mano.
       Farlo partire a ogni PR, con un database di prova (seed) e l'API
@@ -353,9 +407,6 @@ aperti solo:
       migrazione di Prisma 6 (chiave delle relazioni molti-a-molti, nessun
       dato toccato). Controllare che arrivi l'email di deploy riuscito e che
       `/health` risponda.
-    - Quando sono unite sia la PR #100 sia la #103, togliere la voce
-      "Next.js 15" dal punto 28: è fatta.
-
 
 ## Da fare dopo il lancio
 

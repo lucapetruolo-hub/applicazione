@@ -19944,7 +19944,62 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 
 **Verifica**: `tsc` ed `eslint` di API e web, 504 test API (nuovo: comuni nel raggio), prova in locale con un browser in inglese (data mostrata 24/12/2026) e richieste da un comune vicino (`6-ferie-*.png` in `/mnt/project-files/anteprime/agenda-restyling/`).
 
-## 292. Aggiornamento a Next.js 15.5
+## 292. Controllo sicurezza: le correzioni approvate
+
+**Richiesta esplicita dell'utente** (22/10/2026, thread "Controllo sicurezza completo"): controllo delle 50 falle tipiche delle app fatte con l'IA (rapporto in `/mnt/project-files/analisi/controllo-sicurezza.md`), poi "2 si, 3 si, 5 si e dovremmo anche cambiare il link dell'admin perché troppo semplice da individuare, 6 no; il resto aggiungi alla checklist di lancio".
+
+**Decisione presa**:
+- **Dipendenze**: `multer` 2.5.0 e `proxy-addr` 2.0.8 forzati con `overrides` in `pnpm-workspace.yaml` (Nest 10 ed Express 4 si fermavano a versioni con falle note). Next.js 15 in un thread a parte (checklist, punto 28).
+- **Intestazioni di sicurezza**: sul sito `frame-ancestors 'none'`/`X-Frame-Options: DENY` (niente riquadri in altri siti), `nosniff`, `Referrer-Policy`, `Permissions-Policy` (fotocamera solo per la chat), niente `X-Powered-By`. Sull'API `nosniff`, `X-Frame-Options`, `Referrer-Policy: no-referrer`, niente `X-Powered-By`. Una CSP completa sugli script resta una miglioria possibile (va provata con Google Maps, Stripe e Turnstile).
+- **API**: non parte senza `JWT_SECRET` online (`RENDER=true` o `NODE_ENV=production`); parametri dell'indirizzo letti come testo semplice (`query parser: simple`, prima `?category[contains]=` arrivava ai filtri Prisma come oggetto).
+- **Chiave dei dati fiscali**: con `FISCAL_DATA_KEY` gli IBAN si rileggono anche se cifrati con la chiave vecchia (da `JWT_SECRET`) e all'avvio vengono ricifrati con quella nuova (`reencryptLegacyFiscal`, `PayoutAccountService.onApplicationBootstrap`).
+- **Admin**: `@RequireAdminScope` dichiarato sulle 6 rotte che non lo avevano (regola 12), l'export CSV degli utenti solo ai moderatori; promozione del primo admin con 3 tentativi al minuto e confronto del codice a tempo costante.
+- **Ingresso admin nascosto** (richiesta di Luca): con `ADMIN_ENTRY_PATH` su Vercel, `apps/web/src/middleware.ts` risponde 404 su `/admin` finché il browser non apre `/<ADMIN_ENTRY_PATH>`, che lascia un cookie `admin_gate` (HttpOnly, un anno, solo su `/admin`). I link alle pagine admin nelle email funzionano solo da un browser già passato dal link. `/admin` tolto da `robots.txt` (lo rivelava). Senza la variabile nulla cambia. Resta una protezione in più: i dati admin li dà solo l'API, a un account admin.
+- **Seconda parte** (24/10/2026, "effettua il punto 1 e le altre tre migliorie nell'ordine che ritieni"):
+  - **Chat**: `TimelineService.isRealThread` apre la cronologia e i messaggi solo se la richiesta è arrivata a quel professionista (Lead), se lui ha mandato un preventivo o se il sistema ha già scritto un evento per la coppia. Prima bastava essere un professionista qualsiasi (si poteva scrivere al cliente di una richiesta mai ricevuta) o il cliente della richiesta (si poteva scrivere a qualunque professionista, anche in pausa).
+  - **Pagamento della prenotazione** (`GET /bookings/:id/job-payment`): solo cliente e professionista della prenotazione.
+  - **Limiti**: 20 al minuto su messaggi e allegati della chat e sull'invio dei preventivi (prima solo il limite generale di 60).
+  - **Codice fiscale cifrato** (titolare, legale rappresentante e valore controllato con Openapi): estensione Prisma `fiscal-encryption.extension.ts` montata in `PrismaModule`, cifra a ogni scrittura e decifra a ogni lettura anche dentro gli `include` (provato su un Postgres locale); i dati salvati prima in chiaro si leggono comunque (`readFiscal`) e all'avvio vengono cifrati (`FiscalEncryptionMigrationService`, anche quelli con la chiave vecchia dopo `FISCAL_DATA_KEY`). Nel registro delle modifiche solo le ultime 4 cifre. Le righe DAC7 non contengono il codice fiscale (il file per l'Agenzia lo legge, già decifrato, al momento dell'esportazione), quindi non resta nessuna copia in chiaro (verificato nel §294).
+  - **Sessioni chiuse al cambio password** (dopo la PR #99): `User.sessionVersion` (migrazione `20261024090000_session_version`), il token porta `sv`; cambio e recupero della password lo aumentano. `JwtAuthGuard` e lo stream in tempo reale rifiutano i token vecchi (quelli emessi prima senza `sv` valgono come 0); lo stream già aperto su un altro dispositivo si chiude entro 25 secondi. Il cambio password restituisce un token nuovo e `/account` lo usa, così chi la cambia resta dentro.
+  - La regola completa sugli script (CSP) resta per dopo il passaggio a Next.js 15.
+- Checklist di lancio, punto 28: backup e prova di ripristino, `FISCAL_DATA_KEY`, `ADMIN_ENTRY_PATH`, togliere `ADMIN_BOOTSTRAP_SECRET`, repo privato, chiavi Google limitate, Sentry, verifica in due passaggi, Next.js 15.
+
+**Verifica**: test dell'API (515, con i nuovi `fiscal-crypto.test.ts`, `timeline-access.test.ts` e le prove del guard sulle sessioni); build del sito; con `next start` e `ADMIN_ENTRY_PATH` impostata: `/admin` e `/admin/utenti` 404 senza cookie, il link d'ingresso fa 307 verso `/admin` col cookie, poi `/admin` 200; intestazioni presenti sulla home; `robots.txt` senza `/admin`.
+
+## 293. Controllo sicurezza approfondito: rotte, minacce e quattro correzioni
+
+**Richiesta dell'utente**: rifare il controllo di sicurezza "come un esperto": modello delle minacce (STRIDE), tabella dei permessi di tutte le rotte con un test nella CI, prove per aggirare le regole di prodotto, strumenti (Semgrep, CodeQL, gitleaks, osv-scanner, ZAP, Stripe CLI, k6), mappa dei dati personali, piano per gli incidenti, ASVS livello 2. Decidere cosa fare subito e cosa prima del lancio. Poi, sui quattro problemi trovati: "correggi le 4 proposte".
+
+**Analisi** (in `/mnt/project-files/analisi/controllo-sicurezza-adesso.md`):
+- `apps/api/scripts/route-inventory.mjs` estrae dall'API compilata tutte le rotte con guard, permesso admin e limite al minuto (`node scripts/route-inventory.mjs`, `--json` per il formato macchina): 216 rotte, tutte le 64 admin con `@RequireAdminScope`.
+- Modello delle minacce, prove sulla §5.9 (nessun contatto del cliente prima del preventivo accettato in richieste, chat, lavori, calendario collegato, email; con l'acconto online il lavoro nasce solo a pagamento riuscito), bozza della mappa dei dati personali.
+
+**Le quattro correzioni**:
+1. **Tetto giornaliero alle chiamate a Google** dalle rotte aperte a tutti (`common/daily-budget.ts`): suggerimenti di indirizzo 5000 al giorno, dettagli dell'indirizzo 2000, mappe fisse nuove 2000 (quelle già pronte non contano). Oltre il tetto il sito mostra il campo di testo semplice o "Mappa non disponibile", come quando Google non risponde, e nei log compare un errore una volta al giorno. `GOOGLE_PUBLIC_DAILY_LIMIT` su Render cambia tutti i tetti. Motivo: il limite per IP non ferma chi usa tanti indirizzi IP, e ogni chiamata si paga.
+2. **Biglietto monouso per lo stream in tempo reale**: `POST /realtime/ticket` (con il token nell'header) dà un codice casuale che vale 60 secondi e una volta sola; `GET /realtime/stream?ticket=` al posto di `?token=`. Il biglietto si controlla in un guard (`RealtimeTicketGuard`): un errore dentro il metodo `@Sse` arriva al browser come evento con stato 200 e `EventSource` riproverebbe all'infinito, mentre dal guard esce un 401 vero e il browser chiude. Il sito (`AuthContext`) chiede allora un biglietto nuovo, con attesa che raddoppia fino a un minuto. Il controllo dell'account ogni 25 secondi (§292) resta. Motivo: il token di accesso dura 30 giorni e nell'indirizzo poteva finire nei log; CLAUDE.md §2 aggiornato.
+3. **Agenda pubblica** (`GET /professionals/:id/agenda`): stessi filtri della pagina pubblica (eliminato, sospeso, invito non confermato, dati fiscali mancanti → 404); in pausa o bloccato per le richieste nessuna fascia (regola CLAUDE.md §5.11).
+4. **Link d'invito** (`GET /auth/invite/:token`, `POST /auth/invite/accept`): 10 tentativi al minuto invece di 60.
+
+**Checklist di lancio**: punto 28 (`FISCAL_DATA_KEY` e `ADMIN_ENTRY_PATH` già fatti da Luca, tetto di spesa su Google Cloud, Routes API tra quelle della chiave server) e nuovo punto 29 (ZAP, Stripe CLI, k6, ASVS, mappa dei dati definitiva, piano per gli incidenti, penetration test esterno).
+
+**Verifica**: test dell'API (541, con `daily-budget.test.ts`, `realtime-tickets.test.ts` e le prove dell'agenda pubblica); typecheck e lint. Su un'API locale con Postgres: biglietto valido 200, riusato 401, vecchio `?token=` 401, inventato 401; agenda di un profilo inesistente 404; undicesimo tentativo sull'invito 429. In Chromium un `EventSource` che riceve 401 passa a chiuso senza riprovare, così il sito chiede il biglietto nuovo.
+
+## 294. Controllo sicurezza: le tre migliorie
+
+**Richiesta dell'utente**: "effettua le 3 migliorie" proposte prima di unire la PR #100 (in più ha messo un limite di spesa su Google Cloud, sull'account di prova).
+
+1. **"Esci da tutti gli altri dispositivi"** in Impostazioni → Accesso e sicurezza: `POST /auth/logout-others` (5 al minuto) aumenta `User.sessionVersion` come il cambio password (§292). Gli altri dispositivi e i loro stream in tempo reale escono; questo resta dentro con il token nuovo. Una riga di conferma prima di procedere ("Uscirai da telefoni e computer dove hai fatto l'accesso, tranne questo"), stesso stile della riga "Password". Testo "tutti gli altri" invece di "tutti": chi preme il pulsante resta dentro.
+2. **Codice fiscale nelle copie DAC7**: controllato e non serve nulla. `Dac7Record` contiene solo importi e conteggi; il codice fiscale per il file dell'Agenzia si legge da `ProfessionalFiscalProfile` (cifrato, §292) solo al momento dell'esportazione, e `exportFileUrl` non è usato. La frase del §292 che parlava di istantanee in chiaro era sbagliata ed è corretta.
+3. **Regola sugli script e sulle connessioni (CSP)**, solo in produzione (`next dev` usa `eval`), in `apps/web/next.config.mjs`. Script, stili, font, riquadri e connessioni solo da: il sito stesso, l'API (`NEXT_PUBLIC_API_URL`), Google Maps con l'elenco ufficiale di Google, Cloudflare Turnstile, Vercel Analytics; video da Cloudinary; immagini da qualunque indirizzo https; moduli solo verso il sito. Fatta già su Next.js 14, senza aspettare il passaggio a 15. `'unsafe-inline'` resta tra gli script perché Next.js 14 scrive script in pagina senza nonce; con Next.js 15 e i nonce si potrà togliere. Anche così uno script iniettato non può caricarne altri da fuori né mandare dati a un server qualsiasi.
+
+**Verifica**: test dell'API (con la prova di `logoutOtherDevices`), typecheck e lint. Sito compilato in produzione (`next build` + `next start`) con l'API e Postgres locali, provato in Chromium:
+- nessuna violazione della regola su home, ricerca, pagina categoria/città, registrazione, impostazioni e chat;
+- lo stream in tempo reale si apre con il biglietto (§293);
+- Google Maps (script e richieste a `maps.googleapis.com`/`maps.gstatic.com`) e Turnstile (con la chiave di prova di Cloudflare, superato) si caricano senza violazioni.
+
+La mappa con una chiave vera si vede solo sul sito pubblicato: dopo l'unione va aperta una ricerca con risultati e la mappa del raggio in dashboard. Se qualcosa non compare, la console del browser dice quale indirizzo manca.
+
+## 295. Aggiornamento a Next.js 15.5
 
 **Richiesta esplicita dell'utente** (22/10/2026, punto 2 del controllo sicurezza, `/mnt/project-files/analisi/controllo-sicurezza.md`): la serie 14 di Next.js non riceve più correzioni di sicurezza (2 falle critiche e 8 alte sulla 14.2.35). Aggiornare con prove su tutte le pagine, da telefono e da computer, senza cambiare l'aspetto.
 
@@ -19956,9 +20011,9 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 
 **Verifica**: typecheck, lint e build del sito. Con API e database locali, foto a pagina intera di 68 indirizzi (pubblici, cliente, professionista, admin, pagine 404) a 1440 e 390 px, con Next 14 e con Next 15: 133 su 136 identiche al pixel, le altre 3 differiscono per pochi pixel di antialiasing del testo. Secondo giro con un professionista con richieste vere: cambiano solo i contatori "Nuovo" già letti nel primo giro. Nessun errore nella console. Prove di navigazione: ricerca → profilo → indietro, cambio Online/A domicilio sulla stessa pagina (i risultati si aggiornano), accesso con email e password, "Le mie richieste". Il titolo della pagina profilo resta nell'`<head>` anche per i motori di ricerca.
 
-## 293. NestJS 11, React 19 sul sito e confronto automatico delle pagine
+## 296. NestJS 11, React 19 sul sito e confronto automatico delle pagine
 
-**Richiesta esplicita dell'utente** (24/10/2026, thread "Aggiornamento Next.js", "effettua le 3 migliorie" proposte con §292): NestJS 11 nell'API (punto 38 del controllo sicurezza, pacchetti vecchi), React 19 nel sito, e il confronto delle foto delle pagine salvato nel progetto.
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Aggiornamento Next.js", "effettua le 3 migliorie" proposte con §295): NestJS 11 nell'API (punto 38 del controllo sicurezza, pacchetti vecchi), React 19 nel sito, e il confronto delle foto delle pagine salvato nel progetto.
 
 **Decisione presa**:
 - **API**: `@nestjs/common`, `core`, `platform-express` 11.2, `@nestjs/jwt` 11, `@nestjs/cli`/`schematics` 11, `@types/express` 5. Nest 11 usa Express 5, che l'API dichiarava già. Nessuna rotta con `*` o `?` (la sintassi che cambia in Express 5), nessun cambio di codice.
@@ -19967,17 +20022,17 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 
 **Verifica**: 487 test dell'API, controllo d'avvio, typecheck e lint di tutto il monorepo, build del sito. API avviata con un database locale: accesso (401 con token falso), errori di validazione 400, JSON rovinato 400, ricerca, richieste del professionista, caricamento immagine (multer), notifiche in tempo reale (SSE). Con lo strumento nuovo: giro "prima" con Next 14, React 18 e NestJS 10 (commit di partenza) e giro "dopo" con Next 15.5, React 19 e NestJS 11, 132 foto: 131 identiche al pixel, una con 8 pixel di antialiasing; stessi stati HTTP e nessun errore in console. Prove di navigazione e moduli (ricerca, profilo, indietro, Online/A domicilio, accesso, contatti, richieste e profilo del professionista) senza errori.
 
-## 294. App mobile su Expo 58 e React 19
+## 297. App mobile su Expo 58 e React 19
 
 **Richiesta esplicita dell'utente** (24/10/2026, thread "Aggiornamento Next.js"): "cambia anche l'app su react 19".
 
 **Decisione presa**:
 - `apps/mobile`: Expo 51 → 58 (React Native 0.74 → 0.88, React 18.2 → 19.3.0), con le versioni indicate da Expo 58 per `expo-router`, `expo-font`, `expo-status-bar`, `react-native-safe-area-context` e `react-native-screens`, più i pacchetti che `expo-router` ora chiede (`expo-linking`, `expo-constants`, `@expo/metro-runtime`, `@expo/log-box`). Tolto `newArchEnabled` da `app.json`: la nuova architettura ora è l'unica. TypeScript escluso dal controllo versioni di Expo (`expo.install.exclude`): Expo 58 chiederebbe TypeScript 6, il monorepo resta su uno solo.
-- **Una sola versione di React in tutto il monorepo**: `overrides` in `pnpm-workspace.yaml` per `react`, `react-dom` (19.3.0), `react-native` (0.88.0), `react-native-reanimated`, `react-native-worklets` e `@react-native/metro-config` (quelli usati da Expo 58). Senza, i pacchetti condivisi (Tamagui in `packages/ui`) si portavano dietro copie diverse. Il sito passa da 19.3.1 a 19.3.0, la versione di Expo. Tolto il `paths` di `apps/web/tsconfig.json` del §293 (non serve più con una sola versione dei tipi); `peerDependencyRules.allowedVersions.react` ora "19"; `@types/react` 19 anche in `packages/ui`. Un `JSX.Element` globale in `CategoryIcons.tsx` ora importato da `react` (i tipi di React 19 non hanno più il `JSX` globale).
+- **Una sola versione di React in tutto il monorepo**: `overrides` in `pnpm-workspace.yaml` per `react`, `react-dom` (19.3.0), `react-native` (0.88.0), `react-native-reanimated`, `react-native-worklets` e `@react-native/metro-config` (quelli usati da Expo 58). Senza, i pacchetti condivisi (Tamagui in `packages/ui`) si portavano dietro copie diverse. Il sito passa da 19.3.1 a 19.3.0, la versione di Expo. Tolto il `paths` di `apps/web/tsconfig.json` del §296 (non serve più con una sola versione dei tipi); `peerDependencyRules.allowedVersions.react` ora "19"; `@types/react` 19 anche in `packages/ui`. Un `JSX.Element` globale in `CategoryIcons.tsx` ora importato da `react` (i tipi di React 19 non hanno più il `JSX` globale).
 
-**Verifica**: typecheck di tutto il monorepo (app compresa), lint, test, build. `npx expo export` per Android e iOS genera il pacchetto (prima non funzionava in locale), `npx expo-doctor` 20 controlli su 20. Non provata su un telefono vero: va fatto con una build EAS prima di pubblicarla (checklist di lancio, punto 29).
+**Verifica**: typecheck di tutto il monorepo (app compresa), lint, test, build. `npx expo export` per Android e iOS genera il pacchetto (prima non funzionava in locale), `npx expo-doctor` 20 controlli su 20. Non provata su un telefono vero: va fatto con una build EAS prima di pubblicarla (checklist di lancio, punto 30).
 
-## 295. Prisma 6
+## 298. Prisma 6
 
 **Richiesta esplicita dell'utente** (24/10/2026, stesso thread): "aggiorna anche prisma da 5 a 6".
 
@@ -19985,12 +20040,12 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 
 **Verifica**: build, typecheck, lint, test, controllo d'avvio dell'API. Migrazione applicata al database locale con i dati di prova; su un database vuoto tutte le migrazioni più il seed, poi `migrate diff` senza differenze tra schema e database. Foto delle 132 pagine contro il ramo principale (Next 14, React 18, NestJS 10, Prisma 5): 128 identiche al pixel, nelle altre la riga "adesso" dell'agenda e pochi pixel di antialiasing; nessun errore in console; prove di navigazione e moduli senza errori.
 
-## 296. TypeScript 6 ed ESLint 10
+## 299. TypeScript 6 ed ESLint 10
 
-**Richiesta esplicita dell'utente** (24/10/2026, thread "Aggiornamento Next.js"): "effettua le due migliorie" (TypeScript 6 ed ESLint 10, proposte con §295).
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Aggiornamento Next.js"): "effettua le due migliorie" (TypeScript 6 ed ESLint 10, proposte con §298).
 
 **Decisione presa**:
-- **TypeScript** 5 → 6.0.3 in tutti i pacchetti. Tolta l'esclusione di TypeScript dal controllo versioni di Expo (§294): ora è la versione che Expo 58 chiede. Con TypeScript 6 `types` non include più da solo tutti i tipi installati, quindi ogni `tsconfig` dichiara i suoi (`node`; più `multer` nell'API e `google.maps` nel sito). `moduleResolution: node10` e `baseUrl` sono deprecati: `packages/config/tsconfig.node.json` passa a `Node16`, `baseUrl` tolto dove `paths` non lo usava più. TypeScript 6 controlla anche gli import di file CSS: `apps/web/src/css.d.ts` li dichiara. In `packages/ui/src/Autocomplete.tsx` un tipo di evento più preciso. Nessun cambio di comportamento.
+- **TypeScript** 5 → 6.0.3 in tutti i pacchetti. Tolta l'esclusione di TypeScript dal controllo versioni di Expo (§297): ora è la versione che Expo 58 chiede. Con TypeScript 6 `types` non include più da solo tutti i tipi installati, quindi ogni `tsconfig` dichiara i suoi (`node`; più `multer` nell'API e `google.maps` nel sito). `moduleResolution: node10` e `baseUrl` sono deprecati: `packages/config/tsconfig.node.json` passa a `Node16`, `baseUrl` tolto dove `paths` non lo usava più. TypeScript 6 controlla anche gli import di file CSS: `apps/web/src/css.d.ts` li dichiara. In `packages/ui/src/Autocomplete.tsx` un tipo di evento più preciso. Nessun cambio di comportamento.
 - **ESLint** 9 → 10.13 (`@eslint/js` 10, `typescript-eslint` 8.72, `globals` 17, `eslint-plugin-react-hooks` 7). La versione 7 degli hooks aggiunge le regole del React Compiler (setState dentro un effetto, valori impuri durante il render...): per ora solo avvisi, da sistemare un po' alla volta come quelle di accessibilità del §205; restano errori le regole degli hooks di sempre. La regola nuova `no-useless-assignment` ha trovato cinque variabili inizializzate con un valore subito sovrascritto, sistemate. `eslint-plugin-jsx-a11y` dichiara ancora ESLint 9 come compatibile ma funziona (solo un avviso di pnpm).
 
 **Verifica**: typecheck di tutto il monorepo (app compresa), lint senza errori, 522 test, build, controllo d'avvio dell'API, `expo export` Android ed `expo-doctor` 20 su 20. Foto delle 132 pagine contro il ramo principale: 128 identiche al pixel, nelle altre 4 solo la riga "adesso" dell'agenda, le tessere "Servizi più richiesti" cambiate dalle ricerche di prova e pochi pixel di antialiasing; nessun errore in console.

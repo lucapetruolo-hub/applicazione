@@ -31,7 +31,7 @@ export default tseslint.config(
       // Le regole nuove della versione 7 (quelle del React Compiler: setState
       // dentro un effetto, funzioni impure durante il render...) per ora
       // solo avvisi, da sistemare un po' alla volta come quelle di
-      // accessibilità qui sotto (docs/CHANGELOG.md §296). Restano errori le
+      // accessibilità qui sotto (docs/CHANGELOG.md §299). Restano errori le
       // regole degli hooks di sempre.
       ...Object.fromEntries(
         Object.keys(reactHooks.configs.recommended.rules)

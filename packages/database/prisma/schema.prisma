@@ -149,6 +149,11 @@ model User {
   // con un accesso riuscito o con il recupero della password.
   failedLoginCount           Int                     @default(0)
   loginLockedUntil           DateTime?
+  // Versione delle sessioni (controllo sicurezza, docs/CHANGELOG.md §292):
+  // ogni token porta il numero di quando è stato emesso; cambiare o
+  // reimpostare la password lo aumenta e chiude gli accessi sugli altri
+  // dispositivi.
+  sessionVersion             Int                     @default(0)
 
   professionalProfile ProfessionalProfile?
   guidedRequests      GuidedRequest[]

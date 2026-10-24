@@ -1,7 +1,7 @@
 // Confronto delle pagine prima/dopo un aggiornamento importante (Next.js,
 // React, Tamagui...): fotografa tutte le pagine del sito a pagina intera, da
 // computer (1440px) e da telefono (390px), e confronta due giri pixel per
-// pixel (docs/CHANGELOG.md §289).
+// pixel (docs/CHANGELOG.md §296).
 //
 //   node scripts/confronto-pagine.mjs foto <cartella>
 //   node scripts/confronto-pagine.mjs confronta <cartella-prima> <cartella-dopo>

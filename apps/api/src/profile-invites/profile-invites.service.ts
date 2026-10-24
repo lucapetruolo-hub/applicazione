@@ -13,6 +13,7 @@ import {
   type ProfileInvitePreview,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { sessionTokenPayload } from "../auth/jwt-auth.guard";
 import { ProfessionalsService } from "../professionals/professionals.service";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { EmailService } from "../email/email.service";
@@ -235,12 +236,12 @@ export class ProfileInvitesService {
     const claimed = await this.prisma.profileInvite.updateMany({ where: { id: invite.id, usedAt: null }, data: { usedAt: new Date() } });
     if (claimed.count === 0) throw new BadRequestException("Questo link è già stato usato: accedi con email e password.");
     const passwordHash = await bcrypt.hash(input.password, BCRYPT_SALT_ROUNDS);
-    await this.prisma.user.update({
+    const user = await this.prisma.user.update({
       where: { id: invite.userId },
       // Profilo verificato al telefono da un operatore: nessun link di
       // conferma email in più (docs/CHANGELOG.md §178).
       data: { passwordHash, legalConsentAt: new Date(), legalConsentVersion: LEGAL_CONSENT_VERSION, emailVerifiedAt: new Date() },
     });
-    return { token: this.jwt.sign({ sub: invite.userId }), isNewUser: true };
+    return { token: this.jwt.sign(sessionTokenPayload(user)), isNewUser: true };
   }
 }

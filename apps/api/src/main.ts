@@ -8,6 +8,14 @@ import type { NestExpressApplication } from "@nestjs/platform-express";
 import { AppModule } from "./app.module";
 
 async function bootstrap() {
+  // Senza JWT_SECRET l'API userebbe la chiave di sviluppo scritta nel codice
+  // e chiunque potrebbe crearsi un accesso (controllo sicurezza,
+  // docs/CHANGELOG.md §292): online meglio non partire. Render imposta da
+  // solo RENDER=true.
+  const deployed = process.env.NODE_ENV === "production" || process.env.RENDER === "true";
+  if (deployed && !process.env.JWT_SECRET?.trim()) {
+    throw new Error("JWT_SECRET mancante: l'API non parte senza la chiave delle sessioni.");
+  }
   // Body parser disabilitato di default: il webhook Stripe ha bisogno del
   // body raw (non parsato) per verificare la firma, quindi lo montiamo
   // manualmente solo su quella rotta, prima del parser JSON globale
@@ -19,6 +27,19 @@ async function bootstrap() {
   // protezione (un solo client abusivo blocca tutti) invece di limitare per
   // singolo IP reale — Express deve fidarsi dell'header X-Forwarded-For.
   app.set("trust proxy", 1);
+  // Parametri dell'indirizzo solo come testo (controllo sicurezza, §292): con
+  // il formato esteso `?category[contains]=` diventava un oggetto passato
+  // così com'è ai filtri del database.
+  app.set("query parser", "simple");
+  app.disable("x-powered-by");
+  // Intestazioni di sicurezza di base (l'API risponde solo JSON e file
+  // scaricati): niente riquadri in altri siti, niente indovinare il tipo di file.
+  app.use((_req: express.Request, res: express.Response, next: express.NextFunction) => {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Frame-Options", "DENY");
+    res.setHeader("Referrer-Policy", "no-referrer");
+    next();
+  });
   app.use("/billing/webhook", express.raw({ type: "application/json" }));
   // Webhook della verifica d'identità (Didit, docs/CHANGELOG.md §253): firma sul body raw.
   app.use("/identity-verification/webhook", express.raw({ type: "application/json" }));

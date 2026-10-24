@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
 import type Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
@@ -133,7 +133,15 @@ export class JobPaymentsService {
     return null;
   }
 
-  async getForBooking(bookingId: string) {
+  /** Solo il cliente e il professionista della prenotazione (controllo sicurezza, docs/CHANGELOG.md §292). */
+  async getForBooking(userId: string, bookingId: string) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: { clientId: true, professionalProfile: { select: { userId: true } } },
+    });
+    if (!booking || (booking.clientId !== userId && booking.professionalProfile.userId !== userId)) {
+      throw new ForbiddenException("Questa prenotazione non è tua.");
+    }
     return this.prisma.jobPayment.findUnique({ where: { bookingId } });
   }
 

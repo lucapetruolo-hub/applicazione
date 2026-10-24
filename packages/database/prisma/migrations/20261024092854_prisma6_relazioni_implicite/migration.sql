@@ -1,4 +1,4 @@
--- Prisma 6 (docs/CHANGELOG.md §295): le tabelle delle relazioni molti-a-molti
+-- Prisma 6 (docs/CHANGELOG.md §298): le tabelle delle relazioni molti-a-molti
 -- implicite usano una chiave primaria invece di un indice unico. Stessi dati,
 -- nessuna riga toccata.
 

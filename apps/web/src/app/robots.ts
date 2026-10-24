@@ -5,7 +5,7 @@ import { SITE_INDEXABLE } from "@/lib/siteIndexing";
 /**
  * Fase 6 (SEO): esclude dalla scansione le pagine che non hanno valore come
  * contenuto indicizzabile — form di autenticazione, aree account/dashboard
- * dietro login, pannello admin. Nessuna di queste può usare `noindex` via
+ * dietro login. Nessuna di queste può usare `noindex` via
  * `<meta>` perché sono tutte pagine client (`"use client"` nel file stesso,
  * non un server component con `generateMetadata`) — `robots.txt` è il modo
  * corretto per tenerle fuori dall'indice senza dover riscrivere la
@@ -28,8 +28,9 @@ export default function robots(): MetadataRoute.Robots {
         "/chat",
         "/dashboard",
         "/dashboard/*",
-        "/admin",
-        "/admin/*",
+        // L'area admin non si nomina qui: robots.txt è pubblico e lo
+        // leggerebbe anche chi la cerca (controllo sicurezza, docs/CHANGELOG.md
+        // §292). Senza il link d'ingresso risponde "pagina non trovata".
       ],
     },
     // Sito privato (lib/siteIndexing.ts): scansione ancora permessa, così i

@@ -227,12 +227,28 @@ export class TimelineService {
     if (!participants) {
       throw new NotFoundException("Richiesta o professionista non trovati.");
     }
-    if (participants.clientUserId === userId) {
-      return { actor: "CLIENT", ...participants };
+    const actor = participants.clientUserId === userId ? "CLIENT" : participants.professionalUserId === userId ? "PROFESSIONAL" : null;
+    if (!actor || !(await this.isRealThread(guidedRequestId, professionalProfileId))) {
+      throw new ForbiddenException("Non hai accesso a questa cronologia.");
     }
-    if (participants.professionalUserId === userId) {
-      return { actor: "PROFESSIONAL", ...participants };
-    }
-    throw new ForbiddenException("Non hai accesso a questa cronologia.");
+    return { actor, ...participants };
+  }
+
+  /**
+   * La coppia richiesta+professionista è una conversazione vera solo se la
+   * richiesta è arrivata a quel professionista (Lead), se lui ha mandato un
+   * preventivo o se il sistema ha già scritto un evento per loro (controllo
+   * sicurezza, docs/CHANGELOG.md §292). Prima bastava essere un
+   * professionista qualsiasi: si poteva scrivere al cliente di una richiesta
+   * mai ricevuta, e un cliente a qualunque professionista.
+   */
+  private async isRealThread(guidedRequestId: string, professionalProfileId: string): Promise<boolean> {
+    const pair = { guidedRequestId, professionalProfileId };
+    const [lead, quote, systemEvent] = await Promise.all([
+      this.prisma.lead.findUnique({ where: { guidedRequestId_professionalProfileId: pair }, select: { id: true } }),
+      this.prisma.quote.findFirst({ where: pair, select: { id: true } }),
+      this.prisma.conversationEvent.findFirst({ where: { ...pair, automatic: true }, select: { id: true } }),
+    ]);
+    return Boolean(lead || quote || systemEvent);
   }
 }
