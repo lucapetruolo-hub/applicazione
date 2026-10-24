@@ -36,7 +36,9 @@ const INDEXABLE = [
   ["/termini", "/termini"],
   ["/cookie", "/cookie"],
   ["/accessibilita", "/accessibilita"],
+  ["/cerca/idraulico/latina/caldaie", "/cerca/idraulico/latina/caldaie"],
   ["/prezzi/idraulico", "/prezzi/idraulico"],
+  ["/prezzi/idraulico/latina", "/prezzi/idraulico/latina"],
   ["/lavora-con-noi/pulizie", "/lavora-con-noi/pulizie"],
 ];
 
@@ -45,6 +47,7 @@ const NOINDEX = [
   "/cerca/pulizie/latina", // meno di 3 professionisti veri
   "/cerca/pulizie", // nessun professionista vero in Italia
   "/cerca?citta=Latina", // ricerca filtrata
+  "/cerca/idraulico/latina/impianti-sanitari", // specializzazione senza professionisti
 ];
 
 const failures = [];
@@ -115,14 +118,16 @@ if (mode === "public") {
 
   // Pagina e profilo inesistenti: 404 vero, fuori da Google.
   await checkNoindex("/pagina-che-non-esiste", 404);
-  await checkNoindex("/prezzi/pulizie", 404); // prezzi sotto soglia: la pagina non esiste
+  await checkNoindex("/cerca/idraulico/latina/domotica", 404); // specializzazione di un'altra categoria
+  await checkNoindex("/prezzi/pulizie", 404);
+  await checkNoindex("/prezzi/idraulico/roma", 404); // nessun prezzo in provincia di Roma // prezzi sotto soglia: la pagina non esiste
   await checkNoindex("/professionista/nessuno-latina-00000000-0000-4000-8000-000000000000", 404);
 
   const sitemap = await (await fetch(`${BASE}/sitemap.xml`)).text();
-  for (const path of ["/cerca/idraulico", "/cerca/idraulico/latina", "/prezzi/idraulico", "/lavora-con-noi/pulizie", proPath]) {
+  for (const path of ["/cerca/idraulico", "/cerca/idraulico/latina", "/cerca/idraulico/latina/caldaie", "/prezzi/idraulico", "/prezzi/idraulico/latina", "/lavora-con-noi/pulizie", proPath]) {
     if (!sitemap.includes(`<loc>${SITE_URL}${path}</loc>`)) fail("/sitemap.xml", `manca ${path}`);
   }
-  for (const path of ["/cerca/pulizie/latina", "/cerca/pulizie<", "/prezzi/pulizie"]) {
+  for (const path of ["/cerca/pulizie/latina", "/cerca/pulizie<", "/prezzi/pulizie", "/cerca/idraulico/latina/impianti-sanitari"]) {
     if (sitemap.includes(`${SITE_URL}${path}`)) fail("/sitemap.xml", `contiene la pagina vuota ${path.replace("<", "")}`);
   }
   const robots = await (await fetch(`${BASE}/robots.txt`)).text();

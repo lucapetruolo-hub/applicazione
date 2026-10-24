@@ -4,6 +4,7 @@ import {
   comuneSlug,
   MIN_PROFESSIONALS_TO_INDEX_CITY,
   hasCategoryPrices,
+  subTagLabel,
   findComuneByName,
   type ProfessionalCategorySlug,
   type ProfessionalSearchResult,
@@ -66,20 +67,41 @@ async function categoriesInCity(city: string): Promise<string[] | null> {
  * sa: la pagina resta indicizzabile, meglio di un noindex per un errore
  * passeggero.
  */
-async function tooFewRealProfessionals(categorySlug: string, city?: string): Promise<boolean> {
+async function tooFewRealProfessionals(categorySlug: string, city?: string, subTag?: string): Promise<boolean> {
   if (!SITE_INDEXABLE) return false;
   try {
-    const list = await apiClient.searchProfessionals({ category: categorySlug, city, excludeDemo: true });
+    const list = withSubTag(await apiClient.searchProfessionals({ category: categorySlug, city, excludeDemo: true }), subTag);
     return list.length < (city ? MIN_PROFESSIONALS_TO_INDEX_CITY : 1);
   } catch {
     return false;
   }
 }
 
-export async function categoryMetadata(category: Category, city?: string): Promise<Metadata> {
+/** Pagina "Quanto costa" da collegare dalla pagina città, o null se nessuna ha prezzi veri. */
+async function pricePageHref(categorySlug: string, city: string): Promise<string | null> {
+  const has = (cityName?: string) => apiClient.getCategoryPrices(categorySlug, cityName).then(hasCategoryPrices, () => false);
+  if (await has(city)) return `/prezzi/${categorySlug}/${comuneSlug(city)}`;
+  return (await has()) ? `/prezzi/${categorySlug}` : null;
+}
+
+/** Solo i professionisti con quella specializzazione (pagine per servizio, docs/CHANGELOG.md §296). */
+function withSubTag(list: ProfessionalSearchResult[], subTag?: string): ProfessionalSearchResult[] {
+  return subTag ? list.filter((pro) => pro.subTags.includes(subTag)) : list;
+}
+
+export async function categoryMetadata(category: Category, city?: string, subTag?: string): Promise<Metadata> {
   const comune = city ? findComuneByName(city) : undefined;
-  const empty = await tooFewRealProfessionals(category.slug, comune?.name);
+  const empty = await tooFewRealProfessionals(category.slug, comune?.name, subTag);
   const robots: Metadata = empty ? { robots: { index: false, follow: true } } : {};
+  if (comune && subTag) {
+    const service = subTagLabel(subTag);
+    return {
+      ...robots,
+      title: `${category.label} a ${comune.name}: ${service.toLowerCase()}`,
+      description: `${category.label} a ${comune.name} per ${service.toLowerCase()}: confronta profili, prezzi e recensioni e chiedi un preventivo gratis.`,
+      alternates: { canonical: `/cerca/${category.slug}/${comuneSlug(comune.name)}/${subTag}` },
+    };
+  }
   if (comune) {
     return {
       ...robots,
@@ -100,10 +122,13 @@ export async function categoryMetadata(category: Category, city?: string): Promi
 export async function CategoryResults({
   category,
   city,
+  subTag,
   searchParams,
 }: {
   category: Category;
   city?: string;
+  /** Specializzazione della pagina per servizio (`/cerca/[categoria]/[citta]/[servizio]`). */
+  subTag?: string;
   searchParams: CategorySearchParams;
 }) {
   // La città resta un filtro valido anche in modalità "Online" (vedi stessa
@@ -114,10 +139,9 @@ export async function CategoryResults({
   // In parallelo alla ricerca, così non allunga il caricamento.
   const popularPromise = popularOrder(comune?.name);
   const availablePromise = comune ? categoriesInCity(comune.name) : Promise.resolve(undefined);
-  // Link alla pagina "Quanto costa" solo se ha prezzi veri (§296).
-  const pricePagePromise = comune
-    ? apiClient.getCategoryPrices(category.slug).then(hasCategoryPrices, () => false)
-    : Promise.resolve(false);
+  // Link alla pagina "Quanto costa" solo se ha prezzi veri (§296): quella
+  // della città se la provincia ha abbastanza dati, altrimenti la nazionale.
+  const pricePagePromise = comune ? pricePageHref(category.slug, comune.name) : Promise.resolve(null);
 
   // Fetch server-side: contenuto SEO-critico deve essere presente nell'HTML
   // già al primo render, non caricato via client-side fetch (CLAUDE.md §5.4).
@@ -126,7 +150,7 @@ export async function CategoryResults({
   // "nessun professionista" (docs/CHANGELOG.md §284).
   let loadFailed = false;
   try {
-    professionals = await apiClient.searchProfessionals({ category: category.slug, city, remote: isOnline, track: true });
+    professionals = withSubTag(await apiClient.searchProfessionals({ category: category.slug, city, remote: isOnline, track: true }), subTag);
   } catch {
     loadFailed = true;
   }
@@ -139,7 +163,7 @@ export async function CategoryResults({
   // "Online", quindi serve calcolarla in entrambe le modalità.
   let allProfessionals: ProfessionalSearchResult[] = professionals;
   try {
-    allProfessionals = await apiClient.searchProfessionals({ category: category.slug, remote: isOnline });
+    allProfessionals = withSubTag(await apiClient.searchProfessionals({ category: category.slug, remote: isOnline }), subTag);
   } catch {
     allProfessionals = professionals;
   }
@@ -151,6 +175,7 @@ export async function CategoryResults({
     { label: "Home", href: "/" },
     { label: category.label, href: `/cerca/${category.slug}` },
     ...(comune && citySlug ? [{ label: comune.name, href: `/cerca/${category.slug}/${citySlug}` }] : []),
+    ...(comune && citySlug && subTag ? [{ label: subTagLabel(subTag), href: `/cerca/${category.slug}/${citySlug}/${subTag}` }] : []),
   ]);
 
   return (
@@ -161,7 +186,7 @@ export async function CategoryResults({
           contenuto quando si cambia modalita'/citta', cosi' la lista si
           aggiorna sempre anche navigando verso lo stesso percorso. */}
       <CategoryContent
-        key={`${category.slug}-${isOnline}-${city ?? ""}`}
+        key={`${category.slug}-${isOnline}-${city ?? ""}-${subTag ?? ""}`}
         category={category}
         city={city}
         online={isOnline}
@@ -176,7 +201,8 @@ export async function CategoryResults({
           categoryLabel={category.label}
           city={comune.name}
           professionals={professionals}
-          hasPricePage={await pricePagePromise}
+          pricePageHref={await pricePagePromise}
+          subTag={subTag}
         />
       ) : null}
       <PopularServicesLinks

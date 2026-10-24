@@ -1,5 +1,13 @@
 import Link from "next/link";
-import { CATEGORY_SEO_NOUN, type ProfessionalCategorySlug, type ProfessionalSearchResult } from "@professionisti/shared";
+import {
+  CATEGORY_SEO_NOUN,
+  MIN_PROFESSIONALS_TO_INDEX_CITY,
+  categorySubTags,
+  comuneSlug,
+  subTagLabel,
+  type ProfessionalCategorySlug,
+  type ProfessionalSearchResult,
+} from "@professionisti/shared";
 
 /**
  * "[Lavoro] a [città] in breve" in fondo ai risultati di una pagina
@@ -15,14 +23,17 @@ export function CityFacts({
   categoryLabel,
   city,
   professionals,
-  hasPricePage = false,
+  pricePageHref = null,
+  subTag,
 }: {
   categorySlug: ProfessionalCategorySlug;
   categoryLabel: string;
   city: string;
   professionals: ProfessionalSearchResult[];
-  /** C'è la pagina "Quanto costa" con prezzi veri (`/prezzi/[categoria]`, §296). */
-  hasPricePage?: boolean;
+  /** Pagina "Quanto costa" con prezzi veri da collegare (`/prezzi/...`, §296), se c'è. */
+  pricePageHref?: string | null;
+  /** Pagina per servizio: i dati sono già dei soli professionisti con questa specializzazione. */
+  subTag?: string;
 }) {
   if (professionals.length === 0) return null;
   const noun = CATEGORY_SEO_NOUN[categorySlug];
@@ -39,6 +50,15 @@ export function CityFacts({
       : { value: "Gratis", label: "chiedere un preventivo" },
   ];
 
+  // Pagine per servizio da collegare (docs/CHANGELOG.md §296): solo quelle
+  // con abbastanza professionisti da essere in Google, mai pagine vuote.
+  const citySlug = comuneSlug(city);
+  const serviceLinks = subTag
+    ? []
+    : categorySubTags(categorySlug).filter(
+        (tag) => professionals.filter((pro) => pro.subTags.includes(tag)).length >= MIN_PROFESSIONALS_TO_INDEX_CITY,
+      );
+
   const faqs = [
     {
       question: `${noun.costQuestion} a ${city}?`,
@@ -46,9 +66,9 @@ export function CityFacts({
         <>
           Dipende dal lavoro. Descrivilo in una richiesta: ricevi preventivi gratuiti, con il prezzo voce per voce.{" "}
           <Link href={`/preventivo?categoria=${categorySlug}&citta=${encodeURIComponent(city)}`}>Chiedi un preventivo</Link>
-          {hasPricePage ? (
+          {pricePageHref ? (
             <>
-              {" "}o guarda i <Link href={`/prezzi/${categorySlug}`}>prezzi indicativi</Link>.
+              {" "}o guarda i <Link href={pricePageHref}>prezzi indicativi</Link>.
             </>
           ) : null}
         </>
@@ -75,7 +95,8 @@ export function CityFacts({
   return (
     <section className="city-facts" aria-labelledby="city-facts-title">
       <h2 id="city-facts-title" className="city-facts-title">
-        {categoryLabel} a {city} in breve
+        {categoryLabel} a {city}
+        {subTag ? `: ${subTagLabel(subTag).toLowerCase()}` : ""} in breve
       </h2>
       <ul className="city-facts-list">
         {facts.map((fact) => (
@@ -85,6 +106,18 @@ export function CityFacts({
           </li>
         ))}
       </ul>
+      {serviceLinks.length > 0 && citySlug ? (
+        <>
+          <h3 className="city-facts-subtitle">Specializzazioni</h3>
+          <ul className="city-facts-services">
+            {serviceLinks.map((tag) => (
+              <li key={tag}>
+                <Link href={`/cerca/${categorySlug}/${citySlug}/${tag}`}>{subTagLabel(tag)}</Link>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
       <h3 className="city-facts-subtitle">Domande frequenti</h3>
       <div className="city-facts-faq">
         {faqs.map((faq) => (

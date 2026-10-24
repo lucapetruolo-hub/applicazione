@@ -1,6 +1,6 @@
 "use client";
 
-import { professionalPath } from "@professionisti/shared";
+import { professionalPath, subTagLabel } from "@professionisti/shared";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -95,7 +95,7 @@ export default function ProfessionistiSalvatiPage() {
                     categoryLabel={pro.categoryLabel}
                     otherCategoryLabels={pro.categories?.filter((category) => category.slug !== pro.categorySlug).map((category) => category.label)}
                     city={pro.city}
-                    subTags={pro.subTags}
+                    subTags={pro.subTags.map(subTagLabel)}
                     rating={pro.rating ?? undefined}
                     reviewCount={pro.reviewCount}
                     completedThisMonth={pro.completedThisMonth}

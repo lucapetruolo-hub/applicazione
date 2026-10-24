@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, Map as MapIcon, Maximize2, Minimize2, ShieldCheck, SlidersHorizontal, X, Zap } from "lucide-react";
-import { findComuneByName, PUBLIC_AGENDA_DAYS, SEARCH_RADIUS_KM, type ProfessionalSearchResult, professionalPath } from "@professionisti/shared";
+import { findComuneByName, PUBLIC_AGENDA_DAYS, SEARCH_RADIUS_KM, type ProfessionalSearchResult, professionalPath, subTagLabel } from "@professionisti/shared";
 import { Icon, ProfessionalCard, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
@@ -630,7 +630,7 @@ export function ResultsListWithMap({
               otherCategoryLabels={pro.categories?.filter((category) => category.slug !== pro.categorySlug).map((category) => category.label)}
               city={pro.city}
               distanceKm={pro.distanceKm}
-              subTags={pro.subTags}
+              subTags={pro.subTags.map(subTagLabel)}
               rating={pro.rating ?? undefined}
               reviewCount={pro.reviewCount}
               completedThisMonth={pro.completedThisMonth}

@@ -3722,3 +3722,32 @@ a.admin-kpi:hover {
   outline: 2px solid #0e7a4c;
   outline-offset: 2px;
 }
+/* Link alle pagine per servizio nelle pagine città (docs/CHANGELOG.md §296). */
+.city-facts-services {
+  list-style: none;
+  margin: 0 0 24px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.city-facts-services a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid #f0dcc0;
+  background: #fff;
+  color: #2b2420;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.city-facts-services a:hover {
+  background: #fdf8f2;
+}
+.city-facts-services a:focus-visible {
+  outline: 2px solid #0e7a4c;
+  outline-offset: 2px;
+}

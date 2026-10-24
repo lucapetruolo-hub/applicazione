@@ -34,6 +34,7 @@ import {
   PROFESSIONAL_JOB_PROBLEM_REPORT_PREFIX,
   wallClockToday,
   isProfessionalCategorySlug,
+  validSubTags,
   type CategoryPriceStats,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
@@ -289,16 +290,27 @@ export class ProfessionalsService {
    * quale categoria appartengono). Professionisti demo esclusi; sotto le
    * soglie nessun numero.
    */
-  async getCategoryPriceStats(categorySlug: string): Promise<CategoryPriceStats> {
+  async getCategoryPriceStats(categorySlug: string, city?: string): Promise<CategoryPriceStats> {
     if (!isProfessionalCategorySlug(categorySlug)) throw new NotFoundException("Categoria non trovata");
-    const [quotes, services] = await Promise.all([
+    // Con una città: solo la sua provincia (richiesta di Luca, §296), sia per
+    // i preventivi (comune della richiesta) sia per i prezzi dichiarati
+    // (comune del professionista). Il comune si risolve in memoria perché le
+    // città sono testo libero.
+    const comune = city ? findComuneByName(city) : undefined;
+    if (city && !comune) throw new NotFoundException("Comune non trovato");
+    const inProvince = (name: string | null | undefined) => !comune || findComuneByName(name ?? "")?.province === comune.province;
+    const [allQuotes, allServices] = await Promise.all([
       this.prisma.quote.findMany({
         where: {
           status: "ACCEPTED",
           guidedRequest: { category: { slug: categorySlug } },
           professionalProfile: { isDemo: false },
         },
-        select: { updatedAt: true, items: { select: { priceMinEurCents: true, priceMaxEurCents: true } } },
+        select: {
+          updatedAt: true,
+          guidedRequest: { select: { city: true } },
+          items: { select: { priceMinEurCents: true, priceMaxEurCents: true } },
+        },
       }),
       this.prisma.professionalService.findMany({
         where: {
@@ -313,14 +325,27 @@ export class ProfessionalsService {
             AND: [publicVisibilityWhere()],
           },
         },
-        select: { name: true, priceMinEurCents: true, priceMaxEurCents: true, professionalProfileId: true },
+        select: {
+          name: true,
+          priceMinEurCents: true,
+          priceMaxEurCents: true,
+          professionalProfileId: true,
+          professionalProfile: { select: { city: true } },
+        },
       }),
     ]);
+    const quotes = allQuotes.filter((quote) => inProvince(quote.guidedRequest.city));
+    const services = allServices.filter((service) => inProvince(service.professionalProfile.city));
     const totals = quotes.flatMap((quote) => {
       const totalEurCents = quoteMidpointEurCents(quote.items);
       return totalEurCents === null ? [] : [{ totalEurCents, updatedAt: quote.updatedAt }];
     });
-    return { categorySlug, quotes: acceptedQuoteStats(totals), declared: declaredServiceStats(services) };
+    return {
+      categorySlug,
+      province: comune ? comune.province : null,
+      quotes: acceptedQuoteStats(totals),
+      declared: declaredServiceStats(services),
+    };
   }
 
   /**
@@ -605,6 +630,9 @@ export class ProfessionalsService {
     }
     const categoryIdBySlug = new Map(categories.map((category) => [category.slug, category.id]));
     const primaryCategoryId = categoryIdBySlug.get(categorySlugs[0]!)!;
+    // Solo le specializzazioni delle categorie scelte (docs/CHANGELOG.md §296):
+    // togliendo una categoria spariscono anche le sue.
+    const subTags = validSubTags(input.subTags, categorySlugs as ProfessionalCategorySlug[]);
     const extraCategoryIds = categorySlugs.slice(1).map((slug) => ({ id: categoryIdBySlug.get(slug)! }));
 
     // Posizione sulla mappa: se il professionista indica un indirizzo
@@ -670,7 +698,7 @@ export class ProfessionalsService {
       update: {
         categoryId: primaryCategoryId,
         extraCategories: { set: extraCategoryIds },
-        subTags: input.subTags,
+        subTags,
         businessName: input.businessName,
         city: input.city,
         address: input.address,
@@ -693,7 +721,7 @@ export class ProfessionalsService {
         userId,
         categoryId: primaryCategoryId,
         extraCategories: { connect: extraCategoryIds },
-        subTags: input.subTags,
+        subTags,
         businessName: input.businessName,
         city: input.city,
         address: input.address,

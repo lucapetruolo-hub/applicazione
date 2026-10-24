@@ -21,7 +21,7 @@ function professional(n, businessName) {
     longitude: 12.9037,
     imageUrl: null,
     services: [],
-    subTags: [],
+    subTags: ["caldaie"],
     spokenLanguages: ["Italiano"],
     hasLiabilityInsurance: false,
     availabilityPreview: [],
@@ -53,11 +53,15 @@ export function detail(pro) {
   };
 }
 
-/** Prezzi veri solo per gli idraulici: le altre categorie restano sotto soglia. */
-export function prices(categorySlug) {
-  if (categorySlug !== "idraulico") return { categorySlug, quotes: null, declared: null };
+/** Prezzi veri solo per gli idraulici, in Italia e in provincia di Latina: il resto resta sotto soglia. */
+export function prices(categorySlug, city) {
+  const province = city ? "LT" : null;
+  if (categorySlug !== "idraulico" || (city && city.toLowerCase() !== "latina")) {
+    return { categorySlug, province, quotes: null, declared: null };
+  }
   return {
     categorySlug,
+    province,
     quotes: { count: 12, lowEurCents: 8000, medianEurCents: 12000, highEurCents: 18000, updatedAt: "2026-10-20T10:00:00.000Z" },
     declared: {
       professionalCount: 5,

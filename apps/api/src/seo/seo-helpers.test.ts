@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { professionalIdFromSlug, professionalPath, trafficSourceFromReferrer } from "@professionisti/shared";
+import { professionalIdFromSlug, professionalPath, subTagLabel, trafficSourceFromReferrer, validSubTags } from "@professionisti/shared";
 
 // Funzioni condivise della SEO (docs/CHANGELOG.md §295-§296), provate qui perché
 // packages/shared non ha una propria suite di test.
@@ -36,5 +36,16 @@ describe("indirizzo del profilo", () => {
   it("ritrova l'id dal nuovo indirizzo e dal vecchio", () => {
     expect(professionalIdFromSlug(`mario-rossi-latina-${id}`)).toBe(id);
     expect(professionalIdFromSlug(id)).toBe(id);
+  });
+});
+
+describe("specializzazioni", () => {
+  it("tiene solo quelle delle categorie scelte, senza doppioni", () => {
+    expect(validSubTags(["caldaie", "domotica", "caldaie", "inventata"], ["idraulico"])).toEqual(["caldaie"]);
+    expect(validSubTags(["caldaie", "domotica"], ["idraulico", "elettricista"])).toEqual(["caldaie", "domotica"]);
+  });
+  it("nome leggibile anche per uno slug sconosciuto", () => {
+    expect(subTagLabel("pensione-cani")).toBe("Pensione per cani");
+    expect(subTagLabel("vecchio-tag")).toBe("vecchio tag");
   });
 });

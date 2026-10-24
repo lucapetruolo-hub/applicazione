@@ -21,7 +21,7 @@ createServer((req, res) => {
     return send(res, 200, match ? PROFESSIONALS : []);
   }
   const priceMatch = /^\/professionals\/prices\/([^/]+)$/.exec(url.pathname);
-  if (priceMatch) return send(res, 200, prices(priceMatch[1]));
+  if (priceMatch) return send(res, 200, prices(priceMatch[1], url.searchParams.get("city")));
   const profile = /^\/professionals\/([^/]+)$/.exec(url.pathname);
   if (profile && req.method === "GET") {
     const pro = PROFESSIONALS.find((p) => p.id === profile[1]);

@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { MIN_PROFESSIONALS_TO_INDEX_CITY, PROFESSIONAL_CATEGORIES, comuneSlug, hasCategoryPrices, professionalPath } from "@professionisti/shared";
+import { MIN_PROFESSIONALS_TO_INDEX_CITY, PROFESSIONAL_CATEGORIES, categorySubTags, comuneSlug, hasCategoryPrices, professionalPath } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { SITE_URL } from "@/lib/siteUrl";
 import { SITE_INDEXABLE } from "@/lib/siteIndexing";
@@ -45,12 +45,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // MIN_PROFESSIONALS_TO_INDEX_CITY professionisti veri in su (§296): niente
     // pagine quasi vuote proposte a Google. Stessa soglia del noindex della pagina.
     const cityCounts = new Map<string, number>();
+    // Categoria e città di ogni pagina città, per le pagine "Quanto costa" della città.
+    const cityPages = new Map<string, { slug: string; city: string }>();
     for (const pro of professionals) {
       const citySlug = comuneSlug(pro.city);
       if (!citySlug) continue;
       for (const category of pro.categories) {
         const path = `/cerca/${category.slug}/${citySlug}`;
         cityCounts.set(path, (cityCounts.get(path) ?? 0) + 1);
+        cityPages.set(path, { slug: category.slug, city: pro.city });
+        // Pagine per servizio (§296), con la stessa soglia delle pagine città.
+        for (const tag of pro.subTags) {
+          if (!categorySubTags(category.slug).includes(tag)) continue;
+          cityCounts.set(`${path}/${tag}`, (cityCounts.get(`${path}/${tag}`) ?? 0) + 1);
+        }
       }
     }
     const cityPaths = [...cityCounts].filter(([, count]) => count >= MIN_PROFESSIONALS_TO_INDEX_CITY).map(([path]) => path);
@@ -64,18 +72,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const categories = categoryEntries(PROFESSIONAL_CATEGORIES.map((category) => category.slug).filter((slug) => withProfessionals.has(slug)));
     // Pagine "Quanto costa" solo quando hanno prezzi veri (§296): l'API dice
     // se si è sopra le soglie, altrimenti la pagina è un 404.
-    const priceSlugs = await Promise.all(
-      PROFESSIONAL_CATEGORIES.map(async ({ slug }) => {
+    // Le pagine della città solo per le pagine città già in sitemap.
+    const priceCandidates = [
+      ...PROFESSIONAL_CATEGORIES.map(({ slug }) => ({ slug, city: undefined as string | undefined, path: `/prezzi/${slug}` })),
+      ...cityPaths.flatMap((path) => {
+        const page = cityPages.get(path);
+        return page ? [{ slug: page.slug, city: page.city, path: `/prezzi/${page.slug}/${comuneSlug(page.city)}` }] : [];
+      }),
+    ];
+    const pricePaths = await Promise.all(
+      priceCandidates.map(async ({ slug, city, path }) => {
         try {
-          return hasCategoryPrices(await apiClient.getCategoryPrices(slug)) ? slug : null;
+          return hasCategoryPrices(await apiClient.getCategoryPrices(slug, city)) ? path : null;
         } catch {
           return null;
         }
       }),
     );
-    const priceEntries: MetadataRoute.Sitemap = priceSlugs
-      .filter((slug): slug is (typeof PROFESSIONAL_CATEGORIES)[number]["slug"] => slug !== null)
-      .map((slug) => ({ url: `${SITE_URL}/prezzi/${slug}`, changeFrequency: "weekly", priority: 0.6 }));
+    const priceEntries: MetadataRoute.Sitemap = pricePaths
+      .filter((path): path is string => path !== null)
+      .map((path) => ({ url: `${SITE_URL}${path}`, changeFrequency: "weekly", priority: 0.6 }));
     return [...staticEntries, ...categories, ...cityEntries, ...priceEntries, ...professionalEntries];
   } catch {
     // API ferma: sitemap con le pagine fisse e tutte le categorie, meglio di nessuna.

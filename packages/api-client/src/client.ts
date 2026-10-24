@@ -1081,8 +1081,11 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
       ),
 
     /** Prezzi veri della pagina "Quanto costa" di una categoria (docs/CHANGELOG.md §296); null sotto le soglie. */
-    getCategoryPrices: (categorySlug: string) =>
-      request<CategoryPriceStats>(`/professionals/prices/${encodeURIComponent(categorySlug)}`, { cache: "no-store" }),
+    getCategoryPrices: (categorySlug: string, city?: string) =>
+      request<CategoryPriceStats>(
+        `/professionals/prices/${encodeURIComponent(categorySlug)}${city ? `?city=${encodeURIComponent(city)}` : ""}`,
+        { cache: "no-store" },
+      ),
 
     /** Conteggio reale di quante volte ogni lingua è già stata inserita da un professionista — alimenta l'elenco selezionabile in /dashboard/profilo. */
     getLanguagePopularity: () =>

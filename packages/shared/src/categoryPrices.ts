@@ -10,6 +10,8 @@ export const MIN_PROFESSIONALS_FOR_DECLARED_PRICES = 5;
 
 export type CategoryPriceStats = {
   categorySlug: string;
+  /** Sigla della provincia quando i prezzi sono di una zona (`?city=`), null per tutta Italia. */
+  province: string | null;
   /** Preventivi accettati dai clienti, null sotto `MIN_ACCEPTED_QUOTES_FOR_PRICES`. */
   quotes: {
     count: number;

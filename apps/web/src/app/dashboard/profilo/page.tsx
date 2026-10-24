@@ -11,6 +11,10 @@ import {
   NO_CATEGORY_MESSAGE,
   POPULAR_SERVICES,
   isProfessionalCategorySlug,
+  PROFESSIONAL_CATEGORIES,
+  categorySubTags,
+  subTagLabel,
+  validSubTags,
   ALL_ITALIAN_CITY_NAMES,
   PROFILE_DECLARATION_TEXT,
   findComuneByName,
@@ -135,6 +139,9 @@ export default function DashboardProfiloPage() {
   // "Richiedi la verifica" (docs/CHANGELOG.md §201): data della richiesta già inviata.
   // Da 1 a 3 categorie, la prima è la principale (docs/CHANGELOG.md §217).
   const [categorySlugs, setCategorySlugs] = useState<ProfessionalCategorySlug[]>([]);
+  // Specializzazioni (docs/CHANGELOG.md §296): danno le pagine per servizio
+  // ("Idraulico per caldaie a Latina"). Solo quelle delle categorie scelte.
+  const [subTags, setSubTags] = useState<string[]>([]);
   const [city, setCity] = useState("");
   const [address, setAddress] = useState("");
   // Coordinate esatte dell'indirizzo scelto dai suggerimenti di Google
@@ -234,6 +241,7 @@ export default function DashboardProfiloPage() {
     setBusinessName(profile.businessName);
     setVerified(profile.verified);
     setCategorySlugs(profile.categorySlugs.filter(isProfessionalCategorySlug));
+    setSubTags(profile.subTags);
     setCity(profile.city);
     setAddress(profile.address ?? "");
     setBio(profile.bio ?? "");
@@ -315,6 +323,7 @@ export default function DashboardProfiloPage() {
   const formSnapshot = JSON.stringify({
     businessName,
     categorySlugs,
+    subTags,
     city,
     address,
     bio,
@@ -441,7 +450,7 @@ export default function DashboardProfiloPage() {
         city: city.trim(),
         address: address.trim() || undefined,
         ...(addressCoords && address.trim() ? addressCoords : {}),
-        subTags: [],
+        subTags: validSubTags(subTags, categorySlugs),
         bio: bio.trim() || undefined,
         remoteAvailable,
         // Se l'immagine è stata caricata prima ancora di salvare il resto
@@ -909,6 +918,52 @@ export default function DashboardProfiloPage() {
             <FieldLabel>Categorie</FieldLabel>
             <CategoryMultiPicker value={categorySlugs} onChange={setCategorySlugs} />
           </YStack>
+
+          {categorySlugs.length > 0 ? (
+            <YStack gap="$2">
+              <FieldLabel>Specializzazioni</FieldLabel>
+              <Text fontSize="$2" color={brand.grafite70}>
+                Scegli in cosa sei più forte: i clienti ti trovano anche cercando quel lavoro.
+              </Text>
+              {categorySlugs.map((slug) => (
+                <YStack key={slug} gap="$2">
+                  {categorySlugs.length > 1 ? (
+                    <Text fontSize="$2" fontWeight="600" color={brand.grafite}>
+                      {PROFESSIONAL_CATEGORIES.find((category) => category.slug === slug)?.label}
+                    </Text>
+                  ) : null}
+                  <XStack flexWrap="wrap" gap="$2">
+                    {categorySubTags(slug).map((tag) => {
+                      const selected = subTags.includes(tag);
+                      return (
+                        <XStack
+                          key={tag}
+                          alignItems="center"
+                          gap="$1"
+                          minHeight={40}
+                          paddingHorizontal="$3"
+                          borderRadius={999}
+                          borderWidth={1}
+                          borderColor={selected ? brand.cianografia : brand.filetto}
+                          backgroundColor={selected ? brand.cianografiaVelo : brand.calce}
+                          cursor="pointer"
+                          onPress={() => setSubTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))}
+                          accessibilityRole="checkbox"
+                          aria-checked={selected}
+                          accessibilityLabel={subTagLabel(tag)}
+                        >
+                          {selected ? <Icon name="check" size={14} color={brand.cianografiaScuro} /> : null}
+                          <Text fontSize="$3" fontWeight="600" color={selected ? brand.cianografiaScuro : brand.grafite}>
+                            {subTagLabel(tag)}
+                          </Text>
+                        </XStack>
+                      );
+                    })}
+                  </XStack>
+                </YStack>
+              ))}
+            </YStack>
+          ) : null}
 
           <YStack gap="$2">
             <FieldLabel>Bio</FieldLabel>
