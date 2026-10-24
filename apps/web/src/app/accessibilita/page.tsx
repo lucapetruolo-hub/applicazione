@@ -5,6 +5,7 @@ import { BRAND } from "@professionisti/shared";
 export const metadata: Metadata = {
   title: "Accessibilità",
   description: `L'impegno di ${BRAND.name} per un sito accessibile a tutti, gli standard seguiti e come segnalare un problema.`,
+  alternates: { canonical: "/accessibilita" },
 };
 
 /**

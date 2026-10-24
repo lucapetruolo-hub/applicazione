@@ -6,6 +6,7 @@ import { BRAND } from "@professionisti/shared";
 export const metadata: Metadata = {
   title: "Termini di Servizio",
   description: `Le regole d'uso della piattaforma ${BRAND.name}.`,
+  alternates: { canonical: "/termini" },
 };
 
 export default function TerminiPage() {

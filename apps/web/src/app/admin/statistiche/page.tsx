@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { RevenueAnalyticsSummary } from "@professionisti/api-client";
+import type { AdminTrafficSources, RevenueAnalyticsSummary } from "@professionisti/api-client";
 import { Icon, Paragraph, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { SkeletonRevenuePanel } from "@/components/Skeleton";
 import { RevenueAnalyticsPanel } from "@/components/RevenueAnalyticsPanel";
+import { TrafficSourcesPanel } from "@/components/TrafficSourcesPanel";
 
 /**
  * "Statistiche" → Revenue Analytics (richiesta esplicita dell'utente,
@@ -27,6 +28,7 @@ export default function AdminStatistichePage() {
   const { user, token, isLoading } = useAuth();
   const [data, setData] = useState<RevenueAnalyticsSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [traffic, setTraffic] = useState<AdminTrafficSources | null>(null);
 
   useEffect(() => {
     if (!token || user?.role !== "ADMIN") return;
@@ -34,6 +36,8 @@ export default function AdminStatistichePage() {
       .adminRevenueAnalytics(token)
       .then(setData)
       .catch((err) => setError(err instanceof Error ? err.message : "Errore nel caricamento."));
+    // Pannello a parte: se non risponde, le entrate restano visibili.
+    apiClient.adminTrafficSources(token).then(setTraffic).catch(() => setTraffic(null));
   }, [token, user]);
 
   if (isLoading) return null;
@@ -87,6 +91,8 @@ export default function AdminStatistichePage() {
             chartCaption="Solo lavori confermati completati da entrambe le parti (professionista e cliente), su tutta la piattaforma. Passa il mouse su un punto per i dettagli."
           />
         ) : null}
+
+        {traffic ? <TrafficSourcesPanel data={traffic} /> : null}
       </YStack>
     </YStack>
   );

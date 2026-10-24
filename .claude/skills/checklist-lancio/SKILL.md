@@ -393,6 +393,46 @@ aperti solo:
       professionista): è l'unica verifica davvero indipendente. Lo sceglie
       e lo paga Luca.
 
+**Visibilità su Google (SEO)** (thread "Visibilità su Google (SEO)",
+22/10/2026, controllo in `/mnt/project-files/analisi/seo-controllo.md`):
+Luca ha scelto di farle poco prima del lancio, quando nome e sito sono
+definitivi. Già fatte (docs/CHANGELOG.md §295): H1, canonical, indirizzo
+leggibile del profilo, pagina "non trovata", percorso Home › Categoria ›
+Città, pagine vuote fuori da Google.
+30. **Dominio vero nel sito**: cambiare `SITE_URL` in
+    `apps/web/src/lib/siteUrl.ts` (canonical, sitemap, dati strutturati e
+    anteprime lo prendono tutti da lì) e mettere su Vercel il redirect
+    permanente da `applicazione-web.vercel.app` al dominio nuovo.
+31. **Google Search Console**: verificare il dominio (record DNS) e inviare
+    `/sitemap.xml` (punto 0). Controllare dopo qualche giorno "Pagine" e
+    "Esperienza".
+32. **Anteprima dei link (WhatsApp, Facebook)**: immagine con foto e nome
+    del professionista per ogni profilo (oggi è la stessa per tutto il sito)
+    e immagine generale col marchio definitivo (`opengraph-image.tsx`).
+33. **Titoli e descrizioni**: nome del marchio nel titolo della home,
+    "Trova e contatta un idraulico" (con l'articolo) nelle categorie, testo
+    meno generico per `/cerca`; dati strutturati `Organization` + `WebSite`
+    col nome definitivo. Nei titoli delle categorie le parole che la gente
+    cerca (strategia SEO Latina, docs/CHANGELOG.md §296): "preventivi e
+    pronto intervento"; per le pulizie "impresa di pulizie e colf".
+34. **Foto delle categorie più leggere**: oggi arrivano intere (100-200 KB)
+    anche nei riquadri piccoli, perché il ridimensionamento funziona solo
+    per le foto su Cloudinary; testo alternativo breve su quelle foto. In
+    home una foto profilo arriva in JPG pieno.
+35. **Velocità della home**: troppo JavaScript (Lighthouse telefono 22/10:
+    LCP 3,0 s, blocco 1,1 s; ricerca città LCP 4,5 s). Da rimisurare sul
+    sito finito e sistemare.
+36. **Aprire a Google solo sul dominio definitivo** (strategia SEO Latina,
+    §296): nome e dominio decisi prima, poi `NEXT_PUBLIC_SITE_INDEXABLE=true`
+    sul dominio vero, mai su `applicazione-web.vercel.app`. Il piano del
+    giorno del cambio (redirect, Search Console, cosa controllare il giorno
+    dopo) è in `/mnt/project-files/analisi/seo-strategia-latina.md`, sezione 4.
+37. **Professionisti e scheda Google** (§296): al lancio un'email (o un
+    riquadro in dashboard) che invita i professionisti a mettere il link al
+    loro profilo nella loro scheda Google Business. In cima alle ricerche
+    locali c'è quasi sempre la mappa di Google: è lì che li vedono i clienti.
+
+
 ## Da fare dopo il lancio
 
 Cose decise con Luca da non fare prima del lancio, ma da non dimenticare:
@@ -409,3 +449,7 @@ Cose decise con Luca da non fare prima del lancio, ma da non dimenticare:
   codice da un'app di autenticazione (o via email). Protegge i soldi se la
   password viene rubata. Oggi c'è già l'email "Nuovo accesso al tuo
   account" da un dispositivo mai usato.
+- **Link da altri siti verso il nostro** (thread "Visibilità su Google
+  (SEO)", 22/10/2026): scheda Google Business del sito, elenchi di attività
+  locali, un link "Trovami su …" che i professionisti mettono sul loro sito
+  e sui social, giornali locali della città di lancio.

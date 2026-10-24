@@ -33,6 +33,9 @@ import {
   jobPaidOnline,
   PROFESSIONAL_JOB_PROBLEM_REPORT_PREFIX,
   wallClockToday,
+  isProfessionalCategorySlug,
+  validSubTags,
+  type CategoryPriceStats,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
@@ -41,6 +44,7 @@ import { quoteResendWindow } from "../quotes/quote-resend";
 import { NOT_ACCEPTING_REQUESTS } from "../subscriptions/subscription-rules";
 import { GeocodingService } from "../geocoding/geocoding.service";
 import { selectSearchArea } from "./search-area";
+import { acceptedQuoteStats, declaredServiceStats, quoteMidpointEurCents } from "./category-prices";
 import { slotAppliesOnDate } from "../common/availability.util";
 import { countCompletedThisMonth } from "../common/completed-jobs.util";
 import { profileCategories } from "../common/profile-categories.util";
@@ -276,6 +280,72 @@ export class ProfessionalsService {
     return Array.from(groups.values())
       .map((g) => ({ name: g.label, professionalCount: g.professionalCount, minEurCents: g.minEurCents, maxEurCents: g.maxEurCents }))
       .sort((a, b) => a.name.localeCompare(b.name, "it"));
+  }
+
+  /**
+   * Prezzi veri per la pagina "Quanto costa" di una categoria
+   * (docs/CHANGELOG.md §296): preventivi accettati dai clienti (status
+   * ACCEPTED, cioè con la prenotazione creata) e prestazioni dichiarate dai
+   * professionisti che fanno solo quel lavoro (le prestazioni non dicono a
+   * quale categoria appartengono). Professionisti demo esclusi; sotto le
+   * soglie nessun numero.
+   */
+  async getCategoryPriceStats(categorySlug: string, city?: string): Promise<CategoryPriceStats> {
+    if (!isProfessionalCategorySlug(categorySlug)) throw new NotFoundException("Categoria non trovata");
+    // Con una città: solo la sua provincia (richiesta di Luca, §296), sia per
+    // i preventivi (comune della richiesta) sia per i prezzi dichiarati
+    // (comune del professionista). Il comune si risolve in memoria perché le
+    // città sono testo libero.
+    const comune = city ? findComuneByName(city) : undefined;
+    if (city && !comune) throw new NotFoundException("Comune non trovato");
+    const inProvince = (name: string | null | undefined) => !comune || findComuneByName(name ?? "")?.province === comune.province;
+    const [allQuotes, allServices] = await Promise.all([
+      this.prisma.quote.findMany({
+        where: {
+          status: "ACCEPTED",
+          guidedRequest: { category: { slug: categorySlug } },
+          professionalProfile: { isDemo: false },
+        },
+        select: {
+          updatedAt: true,
+          guidedRequest: { select: { city: true } },
+          items: { select: { priceMinEurCents: true, priceMaxEurCents: true } },
+        },
+      }),
+      this.prisma.professionalService.findMany({
+        where: {
+          OR: [{ priceMinEurCents: { not: null } }, { priceMaxEurCents: { not: null } }],
+          professionalProfile: {
+            isDemo: false,
+            deletedAt: null,
+            suspendedAt: null,
+            invitePendingAt: null,
+            category: { slug: categorySlug },
+            extraCategories: { none: {} },
+            AND: [publicVisibilityWhere()],
+          },
+        },
+        select: {
+          name: true,
+          priceMinEurCents: true,
+          priceMaxEurCents: true,
+          professionalProfileId: true,
+          professionalProfile: { select: { city: true } },
+        },
+      }),
+    ]);
+    const quotes = allQuotes.filter((quote) => inProvince(quote.guidedRequest.city));
+    const services = allServices.filter((service) => inProvince(service.professionalProfile.city));
+    const totals = quotes.flatMap((quote) => {
+      const totalEurCents = quoteMidpointEurCents(quote.items);
+      return totalEurCents === null ? [] : [{ totalEurCents, updatedAt: quote.updatedAt }];
+    });
+    return {
+      categorySlug,
+      province: comune ? comune.province : null,
+      quotes: acceptedQuoteStats(totals),
+      declared: declaredServiceStats(services),
+    };
   }
 
   /**
@@ -560,6 +630,9 @@ export class ProfessionalsService {
     }
     const categoryIdBySlug = new Map(categories.map((category) => [category.slug, category.id]));
     const primaryCategoryId = categoryIdBySlug.get(categorySlugs[0]!)!;
+    // Solo le specializzazioni delle categorie scelte (docs/CHANGELOG.md §296):
+    // togliendo una categoria spariscono anche le sue.
+    const subTags = validSubTags(input.subTags, categorySlugs as ProfessionalCategorySlug[]);
     const extraCategoryIds = categorySlugs.slice(1).map((slug) => ({ id: categoryIdBySlug.get(slug)! }));
 
     // Posizione sulla mappa: se il professionista indica un indirizzo
@@ -625,7 +698,7 @@ export class ProfessionalsService {
       update: {
         categoryId: primaryCategoryId,
         extraCategories: { set: extraCategoryIds },
-        subTags: input.subTags,
+        subTags,
         businessName: input.businessName,
         city: input.city,
         address: input.address,
@@ -648,7 +721,7 @@ export class ProfessionalsService {
         userId,
         categoryId: primaryCategoryId,
         extraCategories: { connect: extraCategoryIds },
-        subTags: input.subTags,
+        subTags,
         businessName: input.businessName,
         city: input.city,
         address: input.address,
