@@ -17226,7 +17226,7 @@ prossima funzionalità da costruire.
   `/le-mie-richieste` la funzione che ricarica le liste è ora un
   `useCallback` legato al token, dichiarato tra le dipendenze del poll
   (stesso comportamento); in `AddressAutocompleteInput` le coordinate di
-  riferimento sono lette fuori dall'effetto (stesso comportamento). In
+  riferimento sono lette fuori dall'effetto (stesso comportamento). Reso stabile anche un test del calendario che falliva a caso: controllava che il file del cliente non contenesse "333", che può comparire nel numero di versione ricavato dall'ora; ora controlla il numero di telefono intero. In
   `/dashboard/profilo` la dipendenza resta fuori apposta, con il motivo
   scritto: rimetterla ricaricherebbe il profilo al cambio della foto
   dell'account e cancellerebbe le modifiche non salvate.
