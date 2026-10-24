@@ -41,6 +41,10 @@ export function AuthField({
   nativeID,
   accessibilityLabel,
   onSubmitEditing,
+  footer,
+  footerId,
+  invalid,
+  passwordRules,
 }: {
   label: string;
   hint?: string;
@@ -56,6 +60,14 @@ export function AuthField({
   nativeID?: string;
   accessibilityLabel?: string;
   onSubmitEditing?: () => void;
+  /** Sotto il campo, dopo l'errore o il suggerimento (es. le regole della password, §289). */
+  footer?: ReactNode;
+  /** `id` del contenuto di `footer`, letto insieme al campo dai lettori di schermo. */
+  footerId?: string;
+  /** Bordo rosso senza messaggio: il motivo è già in `footer`. */
+  invalid?: boolean;
+  /** Regole per il generatore di password di iPhone e Mac. */
+  passwordRules?: string;
 }) {
   const isEmail = keyboardType === "email-address";
   const containerRef = useRef<HTMLSpanElement>(null);
@@ -105,9 +117,10 @@ export function AuthField({
       autocorrect: noCorrect ? "off" : null,
       spellcheck: noCorrect ? "false" : null,
       "aria-label": accessibilityLabel ?? null,
-      "aria-invalid": error ? "true" : null,
+      "aria-invalid": error || invalid ? "true" : null,
       // Errore o suggerimento letti insieme al campo (docs/CHANGELOG.md §278).
-      "aria-describedby": nativeID && (error || hint) ? `${nativeID}-msg` : null,
+      "aria-describedby": [nativeID && (error || hint) ? `${nativeID}-msg` : null, footerId ?? null].filter(Boolean).join(" ") || null,
+      passwordrules: passwordRules ?? null,
     };
     for (const [name, attrValue] of Object.entries(attrs)) {
       if (attrValue === null) {
@@ -116,7 +129,7 @@ export function AuthField({
         input.setAttribute(name, attrValue);
       }
     }
-  }, [nativeID, type, isEmail, placeholder, autoComplete, autoCapitalize, noCorrect, accessibilityLabel, error, hint]);
+  }, [nativeID, type, isEmail, placeholder, autoComplete, autoCapitalize, noCorrect, accessibilityLabel, error, hint, invalid, footerId, passwordRules]);
 
   // Valore cambiato dal modulo (es. svuotato): solo la proprietà, niente attributi.
   useEffect(() => {
@@ -129,7 +142,7 @@ export function AuthField({
       <label className="auth-field-label" htmlFor={nativeID}>
         {label}
       </label>
-      <div className={`auth-field-box${error ? " has-error" : ""}`}>
+      <div className={`auth-field-box${error || invalid ? " has-error" : ""}`}>
         <span ref={containerRef} className="auth-field-slot" />
         {rightElement}
       </div>
@@ -142,6 +155,7 @@ export function AuthField({
           {hint}
         </span>
       ) : null}
+      {footer}
     </div>
   );
 }

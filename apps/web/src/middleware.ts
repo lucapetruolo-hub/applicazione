@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 /**
  * Ingresso nascosto all'area admin (controllo sicurezza, docs/CHANGELOG.md
- * §287, richiesta di Luca: "/admin" era troppo facile da trovare). Con
+ * §290, richiesta di Luca: "/admin" era troppo facile da trovare). Con
  * `ADMIN_ENTRY_PATH` impostata su Vercel (solo lato server, mai nel codice
  * del browser) "/admin" risponde "pagina non trovata" finché da quel browser
  * non si apre una volta il link segreto `/<ADMIN_ENTRY_PATH>`, che lascia un

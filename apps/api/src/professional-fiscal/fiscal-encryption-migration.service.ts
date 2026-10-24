@@ -4,7 +4,7 @@ import { PRISMA } from "../prisma/prisma.module";
 import { isEncryptedFiscal, readFiscal, reencryptLegacyFiscal } from "../common/fiscal-crypto";
 
 /**
- * All'avvio cifra i codici fiscali salvati in chiaro prima del §287 e
+ * All'avvio cifra i codici fiscali salvati in chiaro prima del §290 e
  * ricifra con `FISCAL_DATA_KEY` quelli cifrati con la chiave vecchia. Legge
  * dal client senza estensione (vede il dato com'è nel database) e scrive con
  * quello dell'API, che cifra da solo. Un errore qui non ferma mai l'avvio.

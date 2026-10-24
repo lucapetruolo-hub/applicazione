@@ -56,6 +56,13 @@ describe("recupero password", () => {
     expect(emailService.send).toHaveBeenCalledWith(expect.objectContaining({ subject: "La tua password è stata cambiata" }));
   });
 
+  it("rifiuta una password nuova che contiene l'email (§289)", async () => {
+    const { service, prisma } = buildService();
+    prisma.user.findUnique.mockResolvedValue({ id: "u-1", email: "mario.rossi@example.it", deletedAt: null, passwordResetExpiresAt: new Date(Date.now() + 60_000) });
+    await expect(service.confirmPasswordReset("x".repeat(43), "Mario.Rossi2026")).rejects.toThrow("La password non può contenere la tua email.");
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
   it("rifiuta un link scaduto", async () => {
     const { service, prisma } = buildService();
     prisma.user.findUnique.mockResolvedValue({ id: "u-1", email: "mario@example.it", deletedAt: null, passwordResetExpiresAt: new Date(Date.now() - 1) });

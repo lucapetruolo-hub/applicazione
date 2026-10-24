@@ -243,7 +243,7 @@ export function EmailCodeForm({
           error={emailError ?? undefined}
           onSubmitEditing={saveEmail}
         />
-        <Button variant="primary" onPress={saveEmail} disabled={savingEmail} opacity={savingEmail ? 0.6 : 1}>
+        <Button variant="scuro" onPress={saveEmail} disabled={savingEmail} opacity={savingEmail ? 0.6 : 1}>
           {savingEmail ? "Invio del codice..." : "Manda il codice a questa email"}
         </Button>
         <Button variant="ghost" onPress={() => setEditingEmail(false)}>

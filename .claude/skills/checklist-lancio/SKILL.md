@@ -332,7 +332,7 @@ aperti solo:
     Analytics richiedono il piano a pagamento), senza dati personali.
 
 28. **Sicurezza: cose da fare negli account** (controllo sicurezza del
-    22/10/2026, docs/CHANGELOG.md §287, dettaglio in
+    22/10/2026, docs/CHANGELOG.md §290, dettaglio in
     `/mnt/project-files/analisi/controllo-sicurezza.md`):
     - **Backup del database**: con il piano a pagamento (punto 4bis) Render
       fa i backup giornalieri. Provare una volta il ripristino su un
@@ -371,3 +371,8 @@ Cose decise con Luca da non fare prima del lancio, ma da non dimenticare:
 - **Elenchi admin con totale e pagine** (revisione esterna del piano,
   21/10/2026): oggi alcuni elenchi si fermano a 50 o 200 righe senza dirlo.
   Con pochi utenti non pesa; da fare quando crescono.
+- **Secondo codice all'accesso** (22/10/2026, docs/CHANGELOG.md §289):
+  per i professionisti con i pagamenti online attivi, dopo la password un
+  codice da un'app di autenticazione (o via email). Protegge i soldi se la
+  password viene rubata. Oggi c'è già l'email "Nuovo accesso al tuo
+  account" da un dispositivo mai usato.

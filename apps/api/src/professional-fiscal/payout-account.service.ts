@@ -61,7 +61,7 @@ export class PayoutAccountService implements OnApplicationBootstrap {
   /**
    * Appena si imposta `FISCAL_DATA_KEY`, gli IBAN cifrati prima con la chiave
    * derivata da `JWT_SECRET` vengono ricifrati con quella nuova (controllo
-   * sicurezza, docs/CHANGELOG.md §287). Senza la variabile non fa nulla; un
+   * sicurezza, docs/CHANGELOG.md §290). Senza la variabile non fa nulla; un
    * errore qui non deve mai fermare l'avvio.
    */
   async onApplicationBootstrap(): Promise<void> {

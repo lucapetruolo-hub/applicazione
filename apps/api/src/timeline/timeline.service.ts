@@ -238,7 +238,7 @@ export class TimelineService {
    * La coppia richiesta+professionista è una conversazione vera solo se la
    * richiesta è arrivata a quel professionista (Lead), se lui ha mandato un
    * preventivo o se il sistema ha già scritto un evento per loro (controllo
-   * sicurezza, docs/CHANGELOG.md §287). Prima bastava essere un
+   * sicurezza, docs/CHANGELOG.md §290). Prima bastava essere un
    * professionista qualsiasi: si poteva scrivere al cliente di una richiesta
    * mai ricevuta, e un cliente a qualunque professionista.
    */

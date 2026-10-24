@@ -54,7 +54,7 @@ export class AdminController {
     return this.adminService.listUsers({ q, role, status, page: page ? Number(page) || 1 : 1 });
   }
 
-  // Tutti gli utenti con i contatti in un file: solo moderatori (controllo sicurezza, §287).
+  // Tutti gli utenti con i contatti in un file: solo moderatori (controllo sicurezza, §290).
   @RequireAdminScope("MODERATION")
   @Get("users/export.csv")
   @Header("Content-Type", "text/csv; charset=utf-8")

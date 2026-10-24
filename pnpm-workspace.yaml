@@ -14,7 +14,7 @@ peerDependencyRules:
   allowedVersions:
     react: "18"
 # Versioni corrette di dipendenze indirette con falle note (controllo
-# sicurezza, docs/CHANGELOG.md §287): @nestjs/platform-express 10 si ferma a
+# sicurezza, docs/CHANGELOG.md §290): @nestjs/platform-express 10 si ferma a
 # multer 2.0.2, express 4 a proxy-addr 2.0.7.
 overrides:
   multer: "^2.3.0"

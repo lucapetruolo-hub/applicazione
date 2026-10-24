@@ -3,7 +3,7 @@ import { encryptFiscal, readFiscal } from "./fiscal-crypto";
 
 /**
  * Codice fiscale cifrato nel database (controllo sicurezza, docs/CHANGELOG.md
- * §287), come l'IBAN: si cifra a ogni scrittura e si decifra a ogni lettura,
+ * §290), come l'IBAN: si cifra a ogni scrittura e si decifra a ogni lettura,
  * anche dentro un `include`, così il resto dell'API continua a vedere il
  * testo in chiaro. I valori salvati prima restano leggibili (`readFiscal`) e
  * all'avvio vengono cifrati (`FiscalEncryptionMigrationService`).
