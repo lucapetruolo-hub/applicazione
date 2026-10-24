@@ -19943,3 +19943,17 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 **Richieste in zona**: contano le richieste dei comuni entro il raggio di lavoro del professionista (`engagementRadiusKm`, lo stesso dello smistamento; comuni ISTAT con coordinate, `comuniWithinRadius`), non solo della sua città; senza coordinate solo la sua città. Il testo dice "entro 25 km da Latina".
 
 **Verifica**: `tsc` ed `eslint` di API e web, 504 test API (nuovo: comuni nel raggio), prova in locale con un browser in inglese (data mostrata 24/12/2026) e richieste da un comune vicino (`6-ferie-*.png` in `/mnt/project-files/anteprime/agenda-restyling/`).
+
+## 292. Verifica dell'agenda come un esperto UX: prove automatiche e problemi trovati
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Agenda: correzioni e restyling"): verificare l'agenda come la verificherebbe un esperto UX, senza funzioni nuove: obiettivi misurabili per 5 compiti, dati grezzi e concorrenti, casi limite, prove automatiche in CI (altro fuso e cambio d'ora, fasce a caso, axe, Lighthouse, link del calendario), test con 5 professionisti, privacy; "correggi solo ciò che approvo".
+
+**Decisione**: nessuna modifica visibile al professionista in questa voce. Aggiunte solo le prove e i loro strumenti; i problemi trovati (D1-D4, M1, R1-R2, E1, U1-U2, A1-A4, P1-P2) sono nel documento "Verifica dell'agenda come un esperto UX" e aspettano l'ok dell'utente. Nelle prove sono registrati come noti (`KNOWN` nella prova di accessibilità, `test.fail` per R1): quando uno viene corretto va tolto da lì.
+
+**Cosa c'è**:
+- `apps/api/src/agenda/agenda-properties.test.ts` (fast-check): sovrapposizioni delle fasce e della settimana tipo confrontate con un controllo indipendente al minuto; settimana tipo applicata a un mese (`weekTemplateMonthFill`, spostata da `dashboard/agenda/page.tsx` in `packages/shared/src/agendaTools.ts` per poterla provare); ora italiana dal 2026 al 2030 contro la regola europea del cambio d'ora; orario uguale con qualunque fuso del server; link del calendario letto con ical.js. `countBookingsInSlot` ora esportata per la prova.
+- `e2e/` (nuovo pacchetto, Playwright): API e sito veri su un database di prova (`fixtures/global-setup.ts` crea professionista e appuntamenti attorno al 25/10/2026 e al 28/03/2027); progetti telefono Italia, telefono New York, computer Tokyo; prove di orari, accessibilità (axe-core, WCAG 2.1 AA, gravi e critici), agenda senza rete, link del calendario; `tests/tempi-compiti.spec.ts` misura i 5 compiti (tocchi, caratteri, stima KLM) nel progetto `misure`, che gira per ultimo perché cambia i dati; `lighthouse/agenda.mjs` (profilo mobile, mediana di 3 misure, blocca sotto i limiti "scarso" di Google e avvisa sotto "buono").
+- CI: nuovo job `agenda-browser` in `.github/workflows/ci.yml` (Postgres 16 come servizio, migrazioni, build, prove, Lighthouse, risultati come artifact).
+- `/mnt/project-files/analisi/verifica-agenda/query-dati-veri.sql`: 6 query in sola lettura per i numeri sui dati veri (no-show, doppie prenotazioni, fasce vuote, tempo di conferma, annullamenti all'ultimo minuto, lavori segnati completati).
+
+**Verifica**: 529 test API, 42 prove nel browser in locale da database vuoto (come in CI), Lighthouse in locale (calendario 81, CLS 0,22), ogni prova a proprietà controllata con un errore inserito apposta.
