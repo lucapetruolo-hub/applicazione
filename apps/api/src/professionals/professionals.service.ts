@@ -1580,6 +1580,17 @@ export class ProfessionalsService {
    * dipendenza per un confronto di sola data.
    */
   async getPublicAgenda(professionalProfileId: string): Promise<ProfessionalAgenda> {
+    // Stessi filtri della pagina pubblica; in pausa o bloccato per le
+    // richieste non si prenota, quindi nessuna fascia (CLAUDE.md §5.11, §293).
+    const profile = await this.prisma.professionalProfile.findUnique({
+      where: { id: professionalProfileId },
+      select: { deletedAt: true, suspendedAt: true, invitePendingAt: true, pausedAt: true, requestsBlockedUntil: true, ...PUBLIC_VISIBILITY_SELECT },
+    });
+    if (!profile || profile.deletedAt || profile.suspendedAt || profile.invitePendingAt || publicVisibilityMissing(profile)) {
+      throw new NotFoundException("Professionista non trovato.");
+    }
+    if (profile.pausedAt || (profile.requestsBlockedUntil && profile.requestsBlockedUntil > new Date())) return { days: [] };
+
     const startOfToday = wallClockToday();
     const endWindow = new Date(startOfToday);
     endWindow.setUTCDate(endWindow.getUTCDate() + PUBLIC_AGENDA_DAYS);

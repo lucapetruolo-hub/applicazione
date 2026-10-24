@@ -1,5 +1,6 @@
 import { Injectable, Logger, ServiceUnavailableException } from "@nestjs/common";
 import type { AddressPlace, AddressSuggestion } from "@professionisti/shared";
+import { DailyBudget } from "../common/daily-budget";
 
 type GoogleAutocompleteResponse = {
   suggestions?: {
@@ -18,6 +19,9 @@ type GooglePlaceResponse = {
 };
 
 const TIMEOUT_MS = 5000;
+/** Tetti giornalieri (§293): ben sopra l'uso normale di oggi, sotto una bolletta a sorpresa. */
+const SUGGESTIONS_DAILY_LIMIT = 5000;
+const PLACES_DAILY_LIMIT = 2000;
 
 /**
  * Suggerimenti di indirizzo chiesti a Google dal nostro server (richiesta
@@ -30,6 +34,17 @@ const TIMEOUT_MS = 5000;
 @Injectable()
 export class AddressSuggestionsService {
   private readonly logger = new Logger(AddressSuggestionsService.name);
+  private readonly suggestionsBudget = new DailyBudget(SUGGESTIONS_DAILY_LIMIT, () =>
+    this.logger.error("Tetto giornaliero dei suggerimenti di indirizzo raggiunto: fino a mezzanotte si scrive l'indirizzo a mano."),
+  );
+  private readonly placesBudget = new DailyBudget(PLACES_DAILY_LIMIT, () =>
+    this.logger.error("Tetto giornaliero dei dettagli di indirizzo raggiunto: fino a mezzanotte si scrive l'indirizzo a mano."),
+  );
+
+  /** Oltre il tetto il sito mostra il campo di testo semplice, come quando Google non risponde. */
+  private takeBudget(budget: DailyBudget): void {
+    if (!budget.take()) throw new ServiceUnavailableException("Suggerimenti di indirizzo non disponibili.");
+  }
 
   private apiKey(): string {
     const key = process.env.GOOGLE_MAPS_API_KEY?.trim();
@@ -60,6 +75,7 @@ export class AddressSuggestionsService {
     const text = input.q.trim().slice(0, 200);
     if (text.length < 3) return [];
     const key = this.apiKey();
+    this.takeBudget(this.suggestionsBudget);
     const hasBias = input.latitude !== undefined && input.longitude !== undefined && Number.isFinite(input.latitude) && Number.isFinite(input.longitude);
     const data = await this.call<GoogleAutocompleteResponse>("https://places.googleapis.com/v1/places:autocomplete", {
       method: "POST",
@@ -83,6 +99,7 @@ export class AddressSuggestionsService {
 
   async place(id: string, session: string): Promise<AddressPlace> {
     const key = this.apiKey();
+    this.takeBudget(this.placesBudget);
     const url = new URL(`https://places.googleapis.com/v1/places/${encodeURIComponent(id)}`);
     url.searchParams.set("languageCode", "it");
     if (session) url.searchParams.set("sessionToken", session);

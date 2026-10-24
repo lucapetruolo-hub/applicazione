@@ -344,21 +344,27 @@ aperti solo:
     - **Backup del database**: con il piano a pagamento (punto 4bis) Render
       fa i backup giornalieri. Provare una volta il ripristino su un
       database di prova, prima del lancio.
-    - **`FISCAL_DATA_KEY` su Render** (una stringa lunga a caso, da non
-      perdere e non cambiare più): all'avvio l'API ricifra da sola gli IBAN
-      salvati prima con la chiave delle sessioni. Da fare prima dei dati veri.
-    - **`ADMIN_ENTRY_PATH` su Vercel** (es. una parola lunga a caso): poi
-      `/admin` risponde "pagina non trovata" e l'area admin si apre solo
-      dopo aver visitato una volta da quel browser
-      `https://<sito>/<ADMIN_ENTRY_PATH>`. Conservare il link: se si perde,
-      basta cambiarlo su Vercel e rifare il deploy.
+    - ~~**`FISCAL_DATA_KEY` su Render**~~ — fatto (24/10/2026). Non
+      perderla e non cambiarla più: all'avvio l'API ricifra da sola IBAN e
+      codici fiscali salvati con la chiave vecchia.
+    - ~~**`ADMIN_ENTRY_PATH` su Vercel**~~ — fatto (24/10/2026): `/admin`
+      risponde "pagina non trovata" finché da quel browser non si visita una
+      volta `https://<sito>/<ADMIN_ENTRY_PATH>`. Conservare il link: se si
+      perde, basta cambiarlo su Vercel e rifare il deploy.
     - **Togliere `ADMIN_BOOTSTRAP_SECRET` da Render** appena creato il primo
       admin (gli altri si nominano da `/admin/utenti`).
     - **Repo GitHub privato** (Settings → General → Danger Zone).
     - **Chiavi Google**: la chiave del browser (`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`)
       limitata ai siti `https://<dominio>/*` in Google Cloud → Credenziali;
       la chiave server (`GOOGLE_MAPS_API_KEY`) limitata alle sole API usate
-      (Geocoding, Places API (New), Maps Static).
+      (Geocoding, Places API (New), Maps Static, Routes).
+    - **Tetto di spesa su Google Cloud** (docs/CHANGELOG.md §293): in
+      Google Cloud → API e servizi → ogni API → Quote, un limite al giorno
+      per Places API (New), Maps Static e Geocoding, più un avviso di budget
+      in Fatturazione → Budget e avvisi. L'API ha già un suo tetto
+      giornaliero sulle rotte aperte a tutti (suggerimenti 5000, dettagli
+      indirizzo 2000, mappe fisse 2000); `GOOGLE_PUBLIC_DAILY_LIMIT` su
+      Render lo cambia per tutte.
     - **Sentry attivo**: `SENTRY_DSN` impostata su Render e avvisi email
       accesi in Sentry (Alerts), con una prova.
     - **Verifica in due passaggi** su GitHub, Render, Vercel, Stripe,
@@ -366,6 +372,26 @@ aperti solo:
       per questi account.
     - **Next.js 15**: la serie 14 non riceve più correzioni di sicurezza;
       aggiornare prima del lancio (thread dedicato).
+
+29. **Verifiche di sicurezza prima del lancio** (controllo approfondito,
+    docs/CHANGELOG.md §293, dettaglio in
+    `/mnt/project-files/analisi/controllo-sicurezza-adesso.md`). Le fa un
+    thread, sull'anteprima o su una copia del sito, tranne dove scritto:
+    - **OWASP ZAP** (scansione base e completa) sull'anteprima Vercel e
+      sull'API: nessuna voce alta.
+    - **Stripe CLI**: webhook ripetuti, fuori ordine e con firma sbagliata;
+      importi e rimborsi manomessi.
+    - **k6**: i limiti al minuto tengono davvero, anche dopo un riavvio di
+      Render.
+    - **OWASP ASVS livello 2 e API Security Top 10 2023**, voce per voce.
+    - **Mappa dei dati personali definitiva** e DPIA della verifica con
+      selfie, da far vedere all'avvocato (bozza nel file sopra).
+    - **Piano per gli incidenti**: chi avvisare, come cambiare in fretta
+      tutte le chiavi, notifica al Garante entro 72 ore (art. 33 GDPR).
+      Con la prova di ripristino del database del punto 28 (la fa Luca).
+    - **Penetration test esterno** (una o due giornate, da uno studio o un
+      professionista): è l'unica verifica davvero indipendente. Lo sceglie
+      e lo paga Luca.
 
 ## Da fare dopo il lancio
 

@@ -901,13 +901,15 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
       ),
 
     /**
-     * URL dello stream SSE in tempo reale (CTO — "socket.io vs websocket vs
-     * alternative", scelta SSE) — non una `request()` come le altre
-     * chiamate: `EventSource` (l'API browser nativa) prende un URL grezzo,
-     * mai un header `Authorization` (non lo supporta), da qui il token in
-     * query string invece che nell'header Bearer usato ovunque altrove.
+     * Stream SSE in tempo reale (CTO — "socket.io vs websocket vs
+     * alternative", scelta SSE). `EventSource` prende un URL grezzo, senza
+     * header `Authorization`: prima si chiede con il token un biglietto
+     * monouso da 60 secondi, poi lo si mette nell'indirizzo (docs/CHANGELOG.md §293).
      */
-    realtimeStreamUrl: (token: string) => `${baseUrl}/realtime/stream?token=${encodeURIComponent(token)}`,
+    realtimeTicket: (token: string) =>
+      request<{ ticket: string }>("/realtime/ticket", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+
+    realtimeStreamUrl: (ticket: string) => `${baseUrl}/realtime/stream?ticket=${encodeURIComponent(ticket)}`,
 
     register: (
       email: string,

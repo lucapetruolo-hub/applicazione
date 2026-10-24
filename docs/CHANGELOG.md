@@ -19965,3 +19965,21 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 - Checklist di lancio, punto 28: backup e prova di ripristino, `FISCAL_DATA_KEY`, `ADMIN_ENTRY_PATH`, togliere `ADMIN_BOOTSTRAP_SECRET`, repo privato, chiavi Google limitate, Sentry, verifica in due passaggi, Next.js 15.
 
 **Verifica**: test dell'API (515, con i nuovi `fiscal-crypto.test.ts`, `timeline-access.test.ts` e le prove del guard sulle sessioni); build del sito; con `next start` e `ADMIN_ENTRY_PATH` impostata: `/admin` e `/admin/utenti` 404 senza cookie, il link d'ingresso fa 307 verso `/admin` col cookie, poi `/admin` 200; intestazioni presenti sulla home; `robots.txt` senza `/admin`.
+
+## 293. Controllo sicurezza approfondito: rotte, minacce e quattro correzioni
+
+**Richiesta dell'utente**: rifare il controllo di sicurezza "come un esperto": modello delle minacce (STRIDE), tabella dei permessi di tutte le rotte con un test nella CI, prove per aggirare le regole di prodotto, strumenti (Semgrep, CodeQL, gitleaks, osv-scanner, ZAP, Stripe CLI, k6), mappa dei dati personali, piano per gli incidenti, ASVS livello 2. Decidere cosa fare subito e cosa prima del lancio. Poi, sui quattro problemi trovati: "correggi le 4 proposte".
+
+**Analisi** (in `/mnt/project-files/analisi/controllo-sicurezza-adesso.md`):
+- `apps/api/scripts/route-inventory.mjs` estrae dall'API compilata tutte le rotte con guard, permesso admin e limite al minuto (`node scripts/route-inventory.mjs`, `--json` per il formato macchina): 216 rotte, tutte le 64 admin con `@RequireAdminScope`.
+- Modello delle minacce, prove sulla §5.9 (nessun contatto del cliente prima del preventivo accettato in richieste, chat, lavori, calendario collegato, email; con l'acconto online il lavoro nasce solo a pagamento riuscito), bozza della mappa dei dati personali.
+
+**Le quattro correzioni**:
+1. **Tetto giornaliero alle chiamate a Google** dalle rotte aperte a tutti (`common/daily-budget.ts`): suggerimenti di indirizzo 5000 al giorno, dettagli dell'indirizzo 2000, mappe fisse nuove 2000 (quelle già pronte non contano). Oltre il tetto il sito mostra il campo di testo semplice o "Mappa non disponibile", come quando Google non risponde, e nei log compare un errore una volta al giorno. `GOOGLE_PUBLIC_DAILY_LIMIT` su Render cambia tutti i tetti. Motivo: il limite per IP non ferma chi usa tanti indirizzi IP, e ogni chiamata si paga.
+2. **Biglietto monouso per lo stream in tempo reale**: `POST /realtime/ticket` (con il token nell'header) dà un codice casuale che vale 60 secondi e una volta sola; `GET /realtime/stream?ticket=` al posto di `?token=`. Il biglietto si controlla in un guard (`RealtimeTicketGuard`): un errore dentro il metodo `@Sse` arriva al browser come evento con stato 200 e `EventSource` riproverebbe all'infinito, mentre dal guard esce un 401 vero e il browser chiude. Il sito (`AuthContext`) chiede allora un biglietto nuovo, con attesa che raddoppia fino a un minuto. Il controllo dell'account ogni 25 secondi (§292) resta. Motivo: il token di accesso dura 30 giorni e nell'indirizzo poteva finire nei log; CLAUDE.md §2 aggiornato.
+3. **Agenda pubblica** (`GET /professionals/:id/agenda`): stessi filtri della pagina pubblica (eliminato, sospeso, invito non confermato, dati fiscali mancanti → 404); in pausa o bloccato per le richieste nessuna fascia (regola CLAUDE.md §5.11).
+4. **Link d'invito** (`GET /auth/invite/:token`, `POST /auth/invite/accept`): 10 tentativi al minuto invece di 60.
+
+**Checklist di lancio**: punto 28 (`FISCAL_DATA_KEY` e `ADMIN_ENTRY_PATH` già fatti da Luca, tetto di spesa su Google Cloud, Routes API tra quelle della chiave server) e nuovo punto 29 (ZAP, Stripe CLI, k6, ASVS, mappa dei dati definitiva, piano per gli incidenti, penetration test esterno).
+
+**Verifica**: test dell'API (541, con `daily-budget.test.ts`, `realtime-tickets.test.ts` e le prove dell'agenda pubblica); typecheck e lint. Su un'API locale con Postgres: biglietto valido 200, riusato 401, vecchio `?token=` 401, inventato 401; agenda di un profilo inesistente 404; undicesimo tentativo sull'invito 429. In Chromium un `EventSource` che riceve 401 passa a chiuso senza riprovare, così il sito chiede il biglietto nuovo.
