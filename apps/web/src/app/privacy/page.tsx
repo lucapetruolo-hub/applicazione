@@ -5,6 +5,7 @@ import { BRAND } from "@professionisti/shared";
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description: `Come trattiamo i tuoi dati personali su ${BRAND.name}.`,
+  alternates: { canonical: "/privacy" },
 };
 
 export default function PrivacyPage() {

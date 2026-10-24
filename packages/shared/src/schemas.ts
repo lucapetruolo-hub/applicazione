@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { trafficSourceSchema } from "./trafficSource";
 import { PROFESSIONAL_CATEGORIES } from "./categories";
 import { isPlausiblePhoneNumber, normalizePhoneNumber } from "./phoneCountries";
 import { quotePaymentOfferSchema } from "./onlinePayments";
@@ -327,6 +328,8 @@ export const guidedRequestSchema = z
      */
     preferredDate: isoDateSchema.optional(),
     preferredTimeSlot: timeRangeSchema.optional(),
+    /** Da dove è arrivato il cliente nella visita che porta alla richiesta (docs/CHANGELOG.md §296). */
+    trafficSource: trafficSourceSchema.optional(),
   })
   .refine((data) => Boolean(data.preferredDate) === Boolean(data.preferredTimeSlot), {
     message: "Data e fascia oraria preferita vanno indicate insieme.",

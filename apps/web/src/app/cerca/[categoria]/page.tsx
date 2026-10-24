@@ -15,7 +15,7 @@ type PageParams = { categoria: string };
 // il rischio di dati non aggiornati pur di risparmiare query al DB.
 export const dynamic = "force-dynamic";
 
-export function generateMetadata({ params, searchParams }: { params: PageParams; searchParams: CategorySearchParams }): Metadata {
+export async function generateMetadata({ params, searchParams }: { params: PageParams; searchParams: CategorySearchParams }): Promise<Metadata> {
   if (!isProfessionalCategorySlug(params.categoria)) {
     return {};
   }

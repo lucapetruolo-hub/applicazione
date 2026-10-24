@@ -5,6 +5,7 @@ import { BRAND } from "@professionisti/shared";
 export const metadata: Metadata = {
   title: "Cookie Policy",
   description: `Quali cookie e strumenti simili usa ${BRAND.name}.`,
+  alternates: { canonical: "/cookie" },
 };
 
 export default function CookiePage() {

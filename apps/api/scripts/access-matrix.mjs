@@ -1,5 +1,5 @@
 // Test dei permessi di tutte le rotte (controllo sicurezza, docs/CHANGELOG.md
-// §295). Avvia l'API vera dal build (dist/) su un database Postgres di prova,
+// §297). Avvia l'API vera dal build (dist/) su un database Postgres di prova,
 // crea utenti e dati per ogni ruolo e chiama ogni rotta:
 // - senza accesso: 401 su tutto ciò che non è pubblico;
 // - admin: ogni ruolo admin e un utente normale, secondo @RequireAdminScope;

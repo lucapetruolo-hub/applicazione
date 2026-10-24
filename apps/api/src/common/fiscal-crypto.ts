@@ -38,7 +38,7 @@ export function encryptFiscal(value: string): string {
 function decryptWith(key: Buffer, value: string): string | null {
   try {
     const [iv, tag, data] = value.split(".").map((part) => Buffer.from(part, "base64url"));
-    // Sigillo sempre di 16 byte: Node ne accetterebbe anche uno più corto, più facile da indovinare (§296).
+    // Sigillo sempre di 16 byte: Node ne accetterebbe anche uno più corto, più facile da indovinare (§298).
     if (!iv || !tag || !data || tag.length !== 16) return null;
     const decipher = createDecipheriv("aes-256-gcm", key, iv, { authTagLength: 16 });
     decipher.setAuthTag(tag);

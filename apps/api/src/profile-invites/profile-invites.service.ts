@@ -49,7 +49,7 @@ function encryptToken(token: string): string {
 function decryptToken(value: string): string | null {
   try {
     const [iv, tag, data] = value.split(".").map((part) => Buffer.from(part, "base64url"));
-    // Sigillo sempre di 16 byte: Node ne accetterebbe anche uno più corto, più facile da indovinare (§296).
+    // Sigillo sempre di 16 byte: Node ne accetterebbe anche uno più corto, più facile da indovinare (§298).
     if (!iv || !tag || !data || tag.length !== 16) return null;
     const decipher = createDecipheriv("aes-256-gcm", tokenKey(), iv, { authTagLength: 16 });
     decipher.setAuthTag(tag);

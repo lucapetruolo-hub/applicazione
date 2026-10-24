@@ -1,4 +1,4 @@
-// Chi può usare ogni rotta dell'API (test dei permessi, docs/CHANGELOG.md §295).
+// Chi può usare ogni rotta dell'API (test dei permessi, docs/CHANGELOG.md §297).
 // Le rotte admin non stanno qui: il permesso lo dice `@RequireAdminScope` e il
 // test lo prova con ogni ruolo. Una rotta nuova che manca da qui fa fallire la
 // CI finché non viene classificata.
@@ -44,6 +44,8 @@ const publicRoutes = [
   "GET /professionals/:id/agenda",
   "POST /professionals/:id/views",
   "GET /professionals/languages/popular",
+  // Prezzi aggregati della pagina "Quanto costa", mai sotto le soglie (§296).
+  "GET /professionals/prices/:category",
   "GET /professionals/search",
   "GET /professionals/services/price-index",
   "GET /reviews/recent",
