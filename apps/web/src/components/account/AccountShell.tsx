@@ -19,11 +19,16 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, isLoading, unreadNotifications } = useAuth();
   const attention = useNavAttention();
-  if (isLoading || !user) return <>{children}</>;
+  // Nell'area professionista il menu c'è già mentre si carica l'accesso:
+  // prima compariva dopo e spingeva giù la pagina (A1 della verifica,
+  // docs/CHANGELOG.md §310).
+  const professionalArea = pathname.startsWith("/dashboard");
+  if (!user && !(isLoading && professionalArea)) return <>{children}</>;
 
-  const counts = accountMenuUnreadCounts(user.isProfessional, unreadNotifications);
+  const isProfessional = user ? user.isProfessional : professionalArea;
+  const counts = accountMenuUnreadCounts(isProfessional, unreadNotifications);
 
-  if (user.isProfessional) {
+  if (isProfessional) {
     return (
       <div className="acct-shell">
         <nav className="acct-nav" aria-label="Sezioni del tuo account">

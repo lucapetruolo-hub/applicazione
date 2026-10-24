@@ -1,4 +1,5 @@
 import { EMAIL_BRAND } from "./email-brand";
+import { jobOccurrences } from "@professionisti/shared";
 
 /**
  * "Aggiungi al calendario" nei promemoria (docs/CHANGELOG.md §235): un file
@@ -80,7 +81,19 @@ const ROME_TIMEZONE = [
   "END:VTIMEZONE",
 ];
 
-function eventLines(event: CalendarEvent, withOrganizer: boolean): string[] {
+/**
+ * Un lavoro su più giorni (docs/CHANGELOG.md §310) diventa il suo primo
+ * giorno ripetuto ogni giorno: nel calendario compare un appuntamento per
+ * giorno con lo stesso orario, non un blocco unico notte compresa.
+ */
+function dailyRepeat(event: CalendarEvent): { event: CalendarEvent; days: number } {
+  const occurrences = jobOccurrences(event.start, event.end);
+  if (occurrences.length === 1) return { event, days: 1 };
+  return { event: { ...event, start: occurrences[0]!.start, end: occurrences[0]!.end }, days: occurrences.length };
+}
+
+function eventLines(original: CalendarEvent, withOrganizer: boolean): string[] {
+  const { event, days } = dailyRepeat(original);
   return [
     "BEGIN:VEVENT",
     `UID:${event.uid}`,
@@ -91,6 +104,7 @@ function eventLines(event: CalendarEvent, withOrganizer: boolean): string[] {
     `DTSTAMP:${new Date().toISOString().slice(0, 19).replace(/[-:]/g, "")}Z`,
     `DTSTART;TZID=Europe/Rome:${wallClock(event.start)}`,
     `DTEND;TZID=Europe/Rome:${wallClock(endOf(event))}`,
+    ...(days > 1 ? [`RRULE:FREQ=DAILY;COUNT=${days}`] : []),
     `SUMMARY:${icsText(event.title)}`,
     ...(event.location?.trim() ? [`LOCATION:${icsText(event.location.trim())}`] : []),
     ...(event.description?.trim() ? [`DESCRIPTION:${icsText(event.description.trim())}`] : []),
@@ -137,7 +151,8 @@ export function calendarFeedIcs(name: string, events: CalendarEvent[]): string {
 }
 
 /** Link "Aggiungi a Google Calendar" con lo stesso evento. */
-export function googleCalendarUrl(event: CalendarEvent): string {
+export function googleCalendarUrl(original: CalendarEvent): string {
+  const { event, days } = dailyRepeat(original);
   const params = new URLSearchParams({
     action: "TEMPLATE",
     text: event.title,
@@ -146,5 +161,6 @@ export function googleCalendarUrl(event: CalendarEvent): string {
   });
   if (event.location?.trim()) params.set("location", event.location.trim());
   if (event.description?.trim()) params.set("details", event.description.trim());
+  if (days > 1) params.set("recur", `RRULE:FREQ=DAILY;COUNT=${days}`);
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }

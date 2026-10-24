@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { ClientGuidedRequest } from "@professionisti/api-client";
-import { formatServicePriceRange, paymentChoiceIsOnline, quotePriceTotals, scheduleChangeBetween, scheduleChangeObject, type JobPaymentChoice } from "@professionisti/shared";
+import { formatAppointmentTimeRange, formatJobDays, formatServicePriceRange, jobDayCount, paymentChoiceIsOnline, quotePriceTotals, scheduleChangeBetween, scheduleChangeObject, type JobPaymentChoice } from "@professionisti/shared";
 import { PaymentChoice, selectablePaymentChoices } from "@/components/PaymentChoice";
 import { useOnlinePayments } from "@/lib/onlinePayments";
 import { Avatar, Badge, Text, XStack, YStack, brand } from "@professionisti/ui";
@@ -29,6 +29,9 @@ export function formatQuoteDate(iso: string): string {
  */
 export function formatQuoteDateRange(startIso: string, endIso: string | null): string {
   if (!endIso) return formatQuoteDate(startIso);
+  // Lavoro su più giorni (docs/CHANGELOG.md §310): "dal 4 al 6 novembre · ogni giorno 08:00–17:00".
+  const days = formatJobDays(startIso, endIso);
+  if (days) return `${days} · ogni giorno ${formatAppointmentTimeRange(startIso, endIso)}`;
   const endLabel = new Date(endIso).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
   return `${formatQuoteDate(startIso)}–${endLabel}`;
 }
@@ -262,6 +265,12 @@ export function QuoteCard({
                 Il professionista dovrà confermare questo orario prima che diventi un appuntamento.
               </Text>
             </YStack>
+          ) : null}
+          {/* Lavoro su più giorni (docs/CHANGELOG.md §310): la durata resta quella del preventivo. */}
+          {jobDayCount(quote.estimatedStartDate, quote.estimatedEndDate) > 1 ? (
+            <Text fontSize={12} color={brand.grafite70}>
+              Il lavoro dura {jobDayCount(quote.estimatedStartDate, quote.estimatedEndDate)} giorni: scegli il primo giorno e l&apos;orario di ogni giorno.
+            </Text>
           ) : null}
           <textarea aria-label="Dettagli aggiuntivi" value={proposeNote} onChange={(e) => setProposeNote(e.target.value)} placeholder="Dettagli aggiuntivi (opzionale): es. posso solo dopo le 17" rows={2} style={textareaStyle} />
           <XStack gap="$2" flexWrap="wrap">

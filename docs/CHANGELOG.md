@@ -20166,3 +20166,62 @@ La mappa con una chiave vera si vede solo sul sito pubblicato: dopo l'unione va 
 **Decisione**: ogni scintilla prende un'icona che dice cosa indica. "Gratis per chi cerca" (piè di pagina e risultati): un cartellino del prezzo (`tag`). Consiglio in Oggi e consigli per la bio nel profilo: una lampadina (`lightbulb`). Pacchetto "Storia di successo": una macchina fotografica (`camera`), perché si racconta il lavoro con le foto. Etichetta "Nuovo profilo" sulle schede: un germoglio (`sprout`). Aggiunte `tag`, `lightbulb` e `sprout` al registro icone (web e app). Resta la scintilla nel giro del giorno dell'agenda, che non si tocca a mano.
 
 **Verifica**: typecheck di `packages/ui` e del web.
+
+## 309. Verifica dell'agenda come un esperto UX: prove automatiche e problemi trovati
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Agenda: correzioni e restyling"): verificare l'agenda come la verificherebbe un esperto UX, senza funzioni nuove: obiettivi misurabili per 5 compiti, dati grezzi e concorrenti, casi limite, prove automatiche in CI (altro fuso e cambio d'ora, fasce a caso, axe, Lighthouse, link del calendario), test con 5 professionisti, privacy; "correggi solo ciò che approvo".
+
+**Decisione**: nessuna modifica visibile al professionista in questa voce. Aggiunte solo le prove e i loro strumenti; i problemi trovati (D1-D4, M1, R1-R2, E1, U1-U2, A1-A4, P1-P2) sono nel documento "Verifica dell'agenda come un esperto UX" e aspettano l'ok dell'utente. Nelle prove sono registrati come noti (`KNOWN` nella prova di accessibilità, `test.fail` per R1): quando uno viene corretto va tolto da lì.
+
+**Cosa c'è**:
+- `apps/api/src/agenda/agenda-properties.test.ts` (fast-check): sovrapposizioni delle fasce e della settimana tipo confrontate con un controllo indipendente al minuto; settimana tipo applicata a un mese (`weekTemplateMonthFill`, spostata da `dashboard/agenda/page.tsx` in `packages/shared/src/agendaTools.ts` per poterla provare); ora italiana dal 2026 al 2030 contro la regola europea del cambio d'ora; orario uguale con qualunque fuso del server; link del calendario letto con ical.js. `countBookingsInSlot` ora esportata per la prova.
+- `e2e/` (nuovo pacchetto, Playwright): API e sito veri su un database di prova (`fixtures/global-setup.ts` crea professionista e appuntamenti attorno al 25/10/2026 e al 28/03/2027); progetti telefono Italia, telefono New York, computer Tokyo; prove di orari, accessibilità (axe-core, WCAG 2.1 AA, gravi e critici), agenda senza rete, link del calendario; `tests/tempi-compiti.spec.ts` misura i 5 compiti (tocchi, caratteri, stima KLM) nel progetto `misure`, che gira per ultimo perché cambia i dati; `lighthouse/agenda.mjs` (profilo mobile, mediana di 3 misure, blocca sotto i limiti "scarso" di Google e avvisa sotto "buono").
+- CI: nuovo job `agenda-browser` in `.github/workflows/ci.yml` (Postgres 16 come servizio, migrazioni, build, prove, Lighthouse, risultati come artifact).
+- `/mnt/project-files/analisi/verifica-agenda/query-dati-veri.sql`: 6 query in sola lettura per i numeri sui dati veri (no-show, doppie prenotazioni, fasce vuote, tempo di conferma, annullamenti all'ultimo minuto, lavori segnati completati).
+
+**Verifica**: 529 test API, 42 prove nel browser in locale da database vuoto (come in CI), Lighthouse in locale (calendario 81, CLS 0,22), ogni prova a proprietà controllata con un errore inserito apposta.
+
+## 310. Agenda: le correzioni della verifica (tutte tranne E1)
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Agenda: correzioni e restyling"): "effettua tutte tranne e1 (non togliendo la possibilità al cliente di segnalare qualcosa)". E1 (il cliente può annullare dopo l'inizio del lavoro) resta com'è, e le segnalazioni del cliente non cambiano.
+
+**Doppie prenotazioni (D1-D4)**: nuovo `apps/api/src/agenda/commitments.ts`, unico punto che conta gli impegni (prenotazioni e lavori esterni). Un lavoro lungo occupa tutte le fasce che attraversa (prima solo quella dell'inizio) e i lavori esterni contano. Accettare un preventivo, prenotare dall'agenda e confermare una data proposta passano da un blocco Postgres per professionista (`pg_advisory_xact_lock`) dentro una transazione: due accettazioni nello stesso istante passano una alla volta e la seconda riceve 409 "Il professionista non è più libero a quell'ora: scrivigli in chat per scegliere un altro momento." Con l'acconto online il controllo si fa prima del pagamento e di nuovo al pagamento riuscito: se nel frattempo l'ora è stata presa, l'acconto viene rimborsato. Cinque tocchi insieme su Accetta creano un solo lavoro e nessun errore interno.
+
+**Lavori su più giorni (M1)**, come deciso dall'utente il 22/10: nel preventivo "Durata" da 1 a 30 giorni (`MAX_JOB_DAYS`), stesso orario ogni giorno. In agenda il lavoro compare ogni giorno ("Giorno 2 di 3"), nel riquadro "Dal 3 al 5 novembre · ogni giorno 08:00–17:00", nelle email e nella cronologia "dal 4 al 6 novembre, ogni giorno", nel calendario collegato e nel file .ics come evento che si ripete (`RRULE:FREQ=DAILY;COUNT=N`). Non blocca le fasce: il professionista può accettare altri lavori secondo i suoi orari. Il numero di giorni resta quando cliente o professionista propongono un'altra data.
+
+**Senza rete (R1)**: con la rete si salva sul telefono anche chi è entrato (`saveOfflineUser`, 7 giorni, cancellato all'uscita o se il server dice che la sessione non vale più); il service worker salva la pagina dell'agenda (solo quella, senza dati) e la usa solo senza rete. Prima, senza rete compariva "Accedi" al posto della copia.
+
+**Aggiornata da sola (R2)**: l'agenda si ricarica quando arriva un avviso su preventivi, prenotazioni o lavori (accettato, annullato, spostato), quando si torna sull'app e quando torna la rete (non più di una volta ogni 5 secondi); il riquadro aperto mostra lo stato nuovo.
+
+**Pagina che non salta (A1)**: mentre carica si tiene il posto della pagina e, nell'area professionista, il menu c'è già. CLS da 0,22 a 0.
+
+**Striscia dei giorni (U1)**: in "Giorno per giorno" sul telefono la settimana è a un tocco come nel Calendario. Chiudere venerdì: da 7 a 4 tocchi.
+
+**Lavoro completato (U2)**: se il preventivo non ha voci, la voce ha già il nome del lavoro; gli errori sono annunciati dal lettore di schermo (`role="alert"`). Da 16,0 a 10,8 secondi stimati.
+
+**Accessibilità (A3-A4)**: "Chiudi venerdì 30" / "Riapri venerdì 30" invece di sei "Chiudi"; i nomi letti dal lettore di schermo cominciano col testo visibile (menu dell'account, giorni, appuntamenti); testo "gg/mm/aaaa" vuoto e giorni fuori mese più scuri (contrasto 4,5:1). La lista `KNOWN` della prova axe è vuota.
+
+**Privacy (P1-P2)**: nell'informativa una frase su Open-Meteo e sugli indirizzi del giro inviati a Google; la copia dell'agenda scaduta si cancella; nella finestra del calendario collegato: "Se spegni la sincronizzazione, togli il calendario anche da Google o dall'iPhone: gli appuntamenti già copiati restano lì."
+
+**Verifica**: 568 test API dopo l'unione col ramo principale (nuovi: sovrapposizioni contro un controllo al minuto, lavori su più giorni nel file .ics letto con ical.js, 409 e rimborso dell'acconto), 52 prove nel browser in locale (nuove: doppie prenotazioni sull'API vera con richieste nello stesso istante, lavoro su più giorni, agenda riaperta senza rete del tutto), le prove D1-D4 falliscono sul codice di prima. Lighthouse in locale: calendario 89, orari 93, CLS 0. Tempi stimati dei compiti: C1 7,5 s, C2 9,7 s, C3 8,4 s, C4 10,8 s, C5 19,7 s, tutti sotto gli obiettivi.
+
+## 311. Agenda: test dei 5 compiti "come chi non conosce l'app" e correzioni T1-T12
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Agenda: correzioni e restyling"): "il test che avrei dovuto proporre a 5 professionisti effettualo da solo, fai finta che sei allo scuro di tutto e fai quel test", poi "risolvi tutti i problemi trovati". Risultati nel documento "Verifica dell'agenda come un esperto UX" (problemi T1-T12). Un test con professionisti veri resta da fare prima del lancio: questo non lo sostituisce.
+
+**Correzioni**:
+- T1 (alta): nella Settimana tipo "Chiudi" diventa "Giorno libero" (per il lettore di schermo "Giorno libero ogni venerdì"), l'orario "Libero"; in cima a "Orari di lavoro" la scheda "Chiudi un giorno o le ferie" con "Al (facoltativo)": per un giorno solo basta "Dal".
+- T2 (alta): in "Oggi" la sezione "Oggi e domani" sta subito sotto l'avviso di pausa, prima di profilo, disponibilità e numeri; sotto il nome via, civico e città.
+- T3: toccando un appuntamento in "Oggi" si apre il suo riquadro in agenda (`/dashboard/agenda?booking=...`), non la richiesta.
+- T4: la striscia dei giorni mostra oggi e i 6 giorni dopo quando si guarda la settimana corrente (la domenica sera "domani" c'è).
+- T5: sul telefono la vista Giorno non ha più uno scorrimento interno, si vede tutta scorrendo la pagina.
+- T6: se la settimana tipo è salvata ma non applicata, al posto di "Non hai ancora orari" compare "La tua settimana tipo è pronta: applicala al mese per farti prenotare." con il tasto "Applica a {mese}".
+- T7: in "Giorno per giorno" sul telefono, con la striscia, spariscono frecce, data e intestazione del giorno (prop `dayStripAbove` di `CalendarShell`).
+- T8: "Lavoro completato" porta il cursore sulla casella sbagliata, la colora di rosso (`aria-invalid`) e dice quale ("Scrivi l'importo di "Riparazione"."); la X per togliere una voce non è più rossa.
+- T9-T10: il tasto "+" diventa "Aggiungi lavoro"; la finestra si chiama "Aggiungi un tuo lavoro" con "Un lavoro preso fuori dall'app: lo vedi in agenda insieme agli altri.", che va a capo.
+- T11: "Lavoro completato" compare solo dal giorno del lavoro.
+- T12: Agenda al secondo posto nel menu dell'area professionista (`accountMenuItems.ts`).
+
+**Disconnessi per un 429** (visto nelle prove nel browser in CI): se `/auth/me` rispondeva 429 (troppe richieste) o con un errore del server, il sito cancellava l'accesso e mostrava "Accedi". Ora disconnettono solo 401 e 403; su 429 ed errori del server si riprova due volte (dopo 1,5 e 3 secondi) e poi si resta con la copia salvata. Il limite generale di 60 chiamate al minuto si può alzare con `RATE_LIMIT_PER_MINUTE`, usato solo dalle prove nel browser (tutte dallo stesso indirizzo); in produzione resta 60.
+
+**Verifica**: nuove prove `e2e/tests/agenda-primo-uso.spec.ts` (T1, T2-T3, T4, T9-T11); 60 prove nel browser in locale; tempi stimati dei compiti C1 7,4 s, C2 9,7 s, C3 8,1 s, C4 10,8 s, C5 20,0 s (C5 come prima: il tasto con la scritta non cambia i tocchi, solo il dubbio su cosa faccia).

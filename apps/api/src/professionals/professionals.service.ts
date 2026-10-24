@@ -46,6 +46,7 @@ import { GeocodingService } from "../geocoding/geocoding.service";
 import { selectSearchArea } from "./search-area";
 import { acceptedQuoteStats, declaredServiceStats, quoteMidpointEurCents } from "./category-prices";
 import { slotAppliesOnDate } from "../common/availability.util";
+import { countBookingsInSlot, loadCommitments, lockProfessionalAgenda, type Commitment } from "../agenda/commitments";
 import { countCompletedThisMonth } from "../common/completed-jobs.util";
 import { profileCategories } from "../common/profile-categories.util";
 import { computeIsNewProfile } from "../common/new-profile.util";
@@ -400,7 +401,7 @@ export class ProfessionalsService {
     const searchEnd = new Date(startOfToday);
     searchEnd.setUTCDate(searchEnd.getUTCDate() + PUBLIC_AGENDA_DAYS);
 
-    const [slots, bookings, exceptions] = await Promise.all([
+    const [slots, bookingsByProfile, exceptions] = await Promise.all([
       // Ogni fascia, a prescindere dalla capienza (richiesta esplicita
       // dell'utente: "devono comparire da subito gli orari disponibili a
       // prescindere se il professionista ha impostato la capienza per
@@ -409,14 +410,7 @@ export class ProfessionalsService {
       this.prisma.availabilitySlot.findMany({
         where: { professionalProfileId: { in: profileIds } },
       }),
-      this.prisma.booking.findMany({
-        where: {
-          professionalProfileId: { in: profileIds },
-          status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] },
-          scheduledAt: { gte: startOfToday, lt: searchEnd },
-        },
-        select: { professionalProfileId: true, scheduledAt: true, serviceMode: true },
-      }),
+      loadCommitments(this.prisma, profileIds, startOfToday, searchEnd),
       this.prisma.availabilityException.findMany({
         where: { professionalProfileId: { in: profileIds }, date: { gte: startOfToday, lt: searchEnd } },
         select: { professionalProfileId: true, date: true },
@@ -428,12 +422,6 @@ export class ProfessionalsService {
       const list = slotsByProfile.get(slot.professionalProfileId) ?? [];
       list.push(slot);
       slotsByProfile.set(slot.professionalProfileId, list);
-    }
-    const bookingsByProfile = new Map<string, typeof bookings>();
-    for (const booking of bookings) {
-      const list = bookingsByProfile.get(booking.professionalProfileId) ?? [];
-      list.push(booking);
-      bookingsByProfile.set(booking.professionalProfileId, list);
     }
     const exceptionDatesByProfile = new Map<string, Set<string>>();
     for (const exception of exceptions) {
@@ -1473,14 +1461,7 @@ export class ProfessionalsService {
 
     const [slots, bookings, exceptions] = await Promise.all([
       this.prisma.availabilitySlot.findMany({ where: { professionalProfileId } }),
-      this.prisma.booking.findMany({
-        where: {
-          professionalProfileId,
-          status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] },
-          scheduledAt: { gte: startOfToday, lt: endWindow },
-        },
-        select: { scheduledAt: true, serviceMode: true },
-      }),
+      loadCommitments(this.prisma, [professionalProfileId], startOfToday, endWindow).then((byProfile) => byProfile.get(professionalProfileId) ?? []),
       this.prisma.availabilityException.findMany({
         where: { professionalProfileId, date: { gte: startOfToday, lt: endWindow } },
         select: { date: true },
@@ -1670,14 +1651,7 @@ export class ProfessionalsService {
 
     const [slots, bookings, exceptions] = await Promise.all([
       this.prisma.availabilitySlot.findMany({ where: { professionalProfileId } }),
-      this.prisma.booking.findMany({
-        where: {
-          professionalProfileId,
-          status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] },
-          scheduledAt: { gte: startOfToday, lt: endWindow },
-        },
-        select: { scheduledAt: true, serviceMode: true },
-      }),
+      loadCommitments(this.prisma, [professionalProfileId], startOfToday, endWindow).then((byProfile) => byProfile.get(professionalProfileId) ?? []),
       this.prisma.availabilityException.findMany({
         where: { professionalProfileId, date: { gte: startOfToday, lt: endWindow } },
         select: { date: true },
@@ -1808,19 +1782,13 @@ export class ProfessionalsService {
     try {
       const booking = await this.prisma.$transaction(
         async (tx) => {
-          const existingBookings = await tx.booking.findMany({
-            where: {
-              professionalProfileId,
-              status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] },
-              scheduledAt: { gte: dayStart, lt: dayEnd },
-            },
-            select: { scheduledAt: true },
-          });
-          if (isSlotBooked(existingBookings, input.date, input.startTime, input.endTime)) {
+          await lockProfessionalAgenda(tx, professionalProfileId);
+          const commitments = (await loadCommitments(tx, [professionalProfileId], dayStart, dayEnd)).get(professionalProfileId) ?? [];
+          if (isSlotBooked(commitments, input.date, input.startTime, input.endTime)) {
             throw new ConflictException("Questa fascia è già stata prenotata.");
           }
           return tx.booking.create({
-            data: { clientId, professionalProfileId, scheduledAt, status: "PENDING" },
+            data: { clientId, professionalProfileId, scheduledAt, scheduledEndAt: new Date(`${input.date}T${input.endTime}:00.000Z`), status: "PENDING" },
           });
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
@@ -1844,43 +1812,7 @@ function parseIsoDateUtc(dateStr: string): Date {
   return date;
 }
 
-/**
- * Quante prenotazioni reali (Booking, non semplici richieste) cadono in
- * questa data+fascia — usata sia per le fasce esatte (capienza 1: il
- * booleano `isSlotBooked` sotto ne è un caso particolare) sia per quelle
- * generiche (capienza > 1, "N/M prenotazioni"). Richiesta esplicita
- * dell'utente: il conteggio deve riflettere solo le trattative concluse
- * (preventivo accettato → Booking creato), NON il semplice arrivo di una
- * richiesta di preventivo — cliccare per richiedere non deve "sbarrare"
- * l'orario, altrimenti la capienza si esaurirebbe con richieste mai
- * andate a buon fine. Una prenotazione annullata (CANCELED/NO_SHOW, già
- * esclusa dal filtro di stato a monte con cui `bookings` viene popolato)
- * libera automaticamente la fascia, senza bisogno di logica dedicata.
- */
-/**
- * `mode` opzionale: quando presente, conta solo le prenotazioni di quel
- * tipo (`Booking.serviceMode`) — necessario da quando la capienza è
- * indipendente per home/online sulla stessa fascia (CLAUDE.md §22). Senza
- * `mode`, conta tutte le prenotazioni della fascia a prescindere dal tipo
- * (usato per `hasUpcomingBooking`, che resta un avviso generico non
- * per-tipo).
- */
-function countBookingsInSlot(
-  bookings: { scheduledAt: Date; serviceMode?: string | null }[],
-  dateStr: string,
-  startTime: string,
-  endTime: string,
-  mode?: "HOME" | "ONLINE",
-): number {
-  return bookings.filter((booking) => {
-    if (mode && booking.serviceMode !== mode) return false;
-    const bookingDate = booking.scheduledAt.toISOString().slice(0, 10);
-    if (bookingDate !== dateStr) return false;
-    const bookingTime = booking.scheduledAt.toISOString().slice(11, 16);
-    return bookingTime >= startTime && bookingTime < endTime;
-  }).length;
-}
-
-function isSlotBooked(bookings: { scheduledAt: Date; serviceMode?: string | null }[], dateStr: string, startTime: string, endTime: string): boolean {
+/** Fascia già occupata da almeno un impegno (prenotazione o lavoro esterno, docs/CHANGELOG.md §310). */
+function isSlotBooked(bookings: Commitment[], dateStr: string, startTime: string, endTime: string): boolean {
   return countBookingsInSlot(bookings, dateStr, startTime, endTime) > 0;
 }

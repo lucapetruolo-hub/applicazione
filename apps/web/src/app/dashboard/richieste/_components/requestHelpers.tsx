@@ -1,6 +1,6 @@
 "use client";
 
-import { formatBookingAddress, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
+import { formatAppointmentTimeRange, formatBookingAddress, formatJobDays, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
 import { Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { REQUEST_STAGE_STYLE, type RequestStage } from "@/lib/requestStage";
 
@@ -25,6 +25,9 @@ export function formatDateTime(iso: string): string {
   return `${d.toLocaleDateString("it-IT", { day: "numeric", month: "short" })} · ${d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
 }
 export function formatSlotRange(startIso: string, endIso: string | null): string {
+  // Lavoro su più giorni (docs/CHANGELOG.md §310).
+  const days = formatJobDays(startIso, endIso);
+  if (days && endIso) return `${days} · ogni giorno ${formatAppointmentTimeRange(startIso, endIso)}`;
   const start = new Date(startIso);
   const dateLabel = start.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
   const startLabel = start.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
