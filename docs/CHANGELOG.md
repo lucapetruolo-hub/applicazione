@@ -20367,6 +20367,18 @@ Richiesta dell'utente: "effettua migliorie" (dopo l'elenco delle migliorie ancor
 
 **Verifica**: Lighthouse locale sulle due pagine dell'agenda con sessione vera (CLS 0,001); registrazione degli spostamenti con Playwright su telefono lento senza più lo spostamento del piè di pagina.
 
+## 322. CodeQL rosso sul ramo principale dopo ogni unione, CI non più doppia, meno deploy Vercel
+
+**Richiesta dell'utente (24/10/2026)**: "github mi da tanti run failed, controlla".
+
+**Causa**: sulle PR CodeQL guarda solo le righe cambiate, sul ramo principale tutto il codice. Così avvisi già presenti prima del §312 non bloccavano nessuna PR ma rendevano rosso "Controlli di sicurezza" a ogni unione (un'email per volta). I tre `js/xss-through-dom` li ha già tolti il §318 (`localPreviewUrl`); restavano due `js/http-to-file-access` in `e2e/fixtures/global-setup.ts`, dove la prova dell'agenda salva su file il token preso dall'API di prova. È codice di prova che non arriva agli utenti: `e2e` escluso da CodeQL come già `apps/*/scripts` (Semgrep guarda solo `apps` e `packages`).
+
+**Email doppie**: la CI (`ci.yml`) partiva al push su ogni ramo e di nuovo con la PR, quindi ogni errore su una PR arrivava due volte. Ora al push parte solo sul ramo principale; sulle PR resta com'era (decisione dell'utente). Un ramo senza PR non viene più provato finché la PR non si apre.
+
+**Limite dei deploy di Vercel**: il 24/10 Vercel ha bloccato i deploy per 24 ore ("api-deployments-free-per-day", più di 100). Le anteprime erano già saltate da `scripts/vercel-ignore-build.sh` (§131), ma ogni push su un ramo creava comunque un deploy annullato che conta nel limite. Ora `apps/web/vercel.json` (`git.deploymentEnabled`) non crea proprio deploy per i rami dei thread (`claude/project-thread-*`) e di Dependabot (`dependabot/**`): il ramo principale si comporta come prima (decisione dell'utente).
+
+**Verifica**: CodeQL 2.27.3 in locale con la stessa configurazione della CI e la suite `security-extended`: 0 avvisi bloccanti.
+
 ## 323. Settimana tipo in tre passi, che vale per tutte le settimane
 
 Richiesta dell'utente (con la foto della vecchia "Settimana tipo"): "questa parte è difficilmente comprensibile e utilizzabile, come si potrebbe migliorare". Proposte tre strade con anteprime da telefono e computer; l'utente ha scelto la A, "Prima i giorni, poi gli orari".
@@ -20416,3 +20428,31 @@ Nuova migrazione `20261024140000_settimana_tipo_continua` (due colonne, nessun d
 Dopo la scelta del verde, miglioria approvata da Luca: stesso effetto magnete anche su "Invia richiesta" del modulo di preventivo, "Registrati" e, in `/per-professionisti`, "Iscriviti gratis" e "Iscriviti con [livello]" (colori invariati). `MagneticButton` accetta uno `style` per il contenitore (es. `flexGrow` accanto a "Indietro").
 
 **Verifica**: typecheck; foto da computer (mouse sopra il pulsante) e da telefono (barra in cima alla pagina, pulsante nella pagina) sul profilo di prova; in `/per-professionisti` il pulsante segue il mouse.
+
+## 326. zod 4
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Controllo sicurezza completo", PR #105): osv-scanner segnala GHSA-mrhx-c7xc-m3w5 su zod 3.25.76 (consumo di memoria su collezioni molto grandi), corretta solo nella serie 4. Luca: "effettua tutte le migliorie da 1 a 4 nella modalita che ritieni". Condizione: validazioni e messaggi d'errore mostrati agli utenti uguali a prima.
+
+**Decisione presa**
+- `zod` 3.23 → 4.6.7 in `packages/shared` e `apps/api` (il sito lo usa tramite `packages/shared`).
+- zod 4 ha riscritto i messaggi predefiniti ("Required" diventa "Invalid input: expected string, received undefined"), e il sito li mostra dove lo schema non ha un messaggio suo (`ApiError` prende il primo di `fieldErrors`, i moduli il primo `issue`). `packages/shared/src/zod.ts` rimette con `z.config({ customError })` le frasi di zod 3; i messaggi scritti negli schemi vengono sempre prima. `index.ts` lo carica per primo; la configurazione è globale e vale anche per i tre schemi di `apps/api`.
+- Cambi di sintassi: `errorMap` → `message` (`z.literal`, `z.enum`), `required_error` → `error` che risponde solo al campo mancante, `z.ZodIssueCode.custom` → `"custom"`, nella pagina `/dashboard/fiscale` `issue.type` → `issue.origin` e il percorso di un errore ora può contenere simboli.
+- ID con `z.guid()` al posto di `z.string().uuid()`: con zod 4 `.uuid()` rifiuta gli UUID senza una versione valida (es. `00000000-0000-0000-0000-000000000001`), zod 3 li accettava.
+
+**Differenze rimaste, solo con dati che il sito non manda**
+- Numeri oltre 9 milioni di miliardi in un campo intero: zod 4 li rifiuta subito (prima passavano e il database andava in errore).
+- Un elenco della lunghezza sbagliata con dentro anche valori sbagliati (es. un'agenda settimanale con meno di 7 giorni): il primo errore è quello del valore, non della lunghezza.
+- Date e ore senza secondi (`2026-10-24T10:00Z`): zod 4 le rifiuta. Il sito manda sempre `toISOString()`, con i secondi.
+
+**Verifica**
+- Confronto automatico zod 3 / zod 4 su tutti gli 88 schemi di `packages/shared`: 88.000 dati di prova a caso, stessi esiti, stessi dati in uscita e stesso messaggio mostrato all'utente (primo `issue` e primo `fieldErrors`), tolte le tre differenze qui sopra. Email, indirizzi web e date/ore provati a parte su un elenco di casi limite: uguali tranne le ore senza secondi.
+- Typecheck, lint senza errori, 557 test (3 nuovi in `apps/api/src/common/zod-messages.test.ts`), build. API avviata: errori di validazione con gli stessi messaggi di prima.
+- `confronto-pagine` prima/dopo su 132 foto: 125 identiche, nelle altre la riga "adesso" dell'agenda e pochi pixel di antialiasing.
+- Peso del sito: il controllo di velocità dell'agenda nella CI (Lighthouse, TBT 626 ms oltre il limite di 600) ha mostrato che zod 4 portava nel browser ~420 KB in più, con tutte le lingue dei messaggi e JSON Schema. Due cause: `apps/web` prendeva shared da `dist/` (CommonJS, che webpack non sa sfoltire) e gli schemi importavano `z` ripassato da `src/zod.ts` (così webpack considerava usato tutto zod). Ora `apps/web/next.config.mjs` punta `@professionisti/shared` ai sorgenti, gli schemi importano `z` direttamente da "zod" e `src/zod.ts` è solo configurazione, importato da ogni file con schemi. Non bastava: il controllo restava appena sopra (658 ms; sul ramo principale oscilla già tra 535 e 597), perché zod 4 costruisce gli schemi più lentamente e ogni pagina li costruiva tutti. `packages/shared/package.json` ora dichiara `sideEffects` (solo `zod.ts` ha effetti), così ogni pagina carica solo i moduli di shared che usa: l'agenda passa da 2,3 MB a 1,2 MB di JavaScript.
+- Resta zod 3.25.76 solo dentro `@expo/cli` (strumento di sviluppo dell'app, non va né sul sito né nell'API).
+
+**Migliorie approvate da Luca** ("effettua le 2 migliorie")
+- `pnpm --filter @professionisti/shared confronto-zod [--prima <commit>] [--zod-prima <versione>] [--prove <n>] [--tutti]` (`packages/shared/scripts/confronto-zod.mjs`): il confronto automatico usato qui, da rifare a ogni aggiornamento di zod. Prende gli schemi di un commit con la sua versione di zod (scaricata da npm) e quelli attuali, li prova con gli stessi dati a caso e segnala esiti, dati o messaggi diversi (codice d'uscita 1). Legge la forma degli schemi sia di zod 3 sia di zod 4. Contro il ramo principale prima di questa PR trova solo la differenza dell'agenda settimanale descritta sopra; contro sé stesso nessuna.
+- zod 3 di `@expo/cli` tra le eccezioni di osv-scanner, fatto nella PR #105 (`osv-scanner.toml`, solo per la versione 3.25.76).
+- Controllo automatico `.github/workflows/zod.yml` (approvato da Luca, "effettua miglioria"): sulle PR che toccano `pnpm-lock.yaml` o i `package.json` di shared e API lancia `confronto-zod --solo-se-cambia` contro il commit di base; se zod resta alla stessa versione non fa nulla, altrimenti si ferma su ogni differenza. La versione di partenza è quella del `pnpm-lock.yaml` del commit di base. Le differenze già spiegate nel registro stanno in `ACCEPTED` nello script (oggi solo quella dell'agenda settimanale).
+- Prova automatica (approvata da Luca, "effettua miglioria"): in `apps/api/src/common/zod-messages.test.ts` ogni file di `packages/shared/src` che importa zod deve avere anche `import "./zod"`; senza, il sito caricherebbe quel file senza i messaggi di zod 3 e li mostrerebbe in silenzio in inglese di zod 4.

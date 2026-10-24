@@ -31,11 +31,13 @@ jobs:
           languages: javascript-typescript
           build-mode: none
           queries: security-extended
-          # Stesso perimetro di Semgrep: il codice che arriva agli utenti.
+          # Stesso perimetro di Semgrep: il codice che arriva agli utenti
+          # (fuori anche le prove nel browser di e2e/, §322).
           config: |
             paths-ignore:
               - "**/*.test.ts"
               - "apps/*/scripts"
+              - "e2e"
       - uses: github/codeql-action/analyze@v4
         with:
           category: codeql
