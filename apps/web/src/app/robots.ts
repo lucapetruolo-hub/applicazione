@@ -30,7 +30,7 @@ export default function robots(): MetadataRoute.Robots {
         "/dashboard/*",
         // L'area admin non si nomina qui: robots.txt è pubblico e lo
         // leggerebbe anche chi la cerca (controllo sicurezza, docs/CHANGELOG.md
-        // §290). Senza il link d'ingresso risponde "pagina non trovata".
+        // §292). Senza il link d'ingresso risponde "pagina non trovata".
       ],
     },
     // Sito privato (lib/siteIndexing.ts): scansione ancora permessa, così i

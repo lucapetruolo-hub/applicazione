@@ -1,6 +1,6 @@
 "use client";
 
-import type { ExternalJob, ProfessionalBooking } from "@professionisti/shared";
+import { formatAppointmentTimeRange, type ExternalJob, type ProfessionalBooking } from "@professionisti/shared";
 import { brand } from "@professionisti/ui";
 import { REQUEST_STAGE_STYLE } from "@/lib/requestStage";
 
@@ -30,11 +30,6 @@ export const WEEKDAY_FULL_LABELS = ["Domenica", "Lunedì", "Martedì", "Mercoled
 
 export function slotsOverlap(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
   return aStart < bEnd && bStart < aEnd;
-}
-
-/** Una fascia è "generica" (bordo tratteggiato ottone) se una delle due capienze indipendenti supera 1. */
-export function isSlotGeneric(slot: SlotDraft): boolean {
-  return (slot.homeMax ?? 0) > 1 || (slot.onlineMax ?? 0) > 1;
 }
 
 // Richiesta esplicita dell'utente: "colora le caselle degli appuntamento in
@@ -113,7 +108,5 @@ export type AgendaListItem = {
 };
 
 export function formatAgendaTimeRange(startIso: string, endIso: string | null): string {
-  const start = new Date(startIso).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
-  if (!endIso) return start;
-  return `${start}–${new Date(endIso).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
+  return formatAppointmentTimeRange(startIso, endIso);
 }

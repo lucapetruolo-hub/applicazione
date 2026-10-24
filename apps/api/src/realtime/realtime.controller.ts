@@ -21,7 +21,7 @@ export class RealtimeController {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
   ) {}
 
-  /** Account sospeso, eliminato o password cambiata dopo l'emissione del token (§290). */
+  /** Account sospeso, eliminato o password cambiata dopo l'emissione del token (§292). */
   private async sessionClosed(payload: SessionTokenPayload): Promise<boolean> {
     const user = await this.prisma.user.findUnique({ where: { id: payload.sub }, select: { suspendedAt: true, sessionVersion: true } });
     return !user || user.suspendedAt !== null || isRevokedSession(payload, user.sessionVersion);
@@ -63,7 +63,7 @@ export class RealtimeController {
     const heartbeat$ = interval(HEARTBEAT_MS).pipe(map((): MessageEvent => ({ data: { kind: "ping" } as unknown as RealtimeEvent })));
     // A ogni battito si ricontrolla l'account: dopo un cambio password la
     // connessione aperta su un altro dispositivo si chiude entro 25 secondi
-    // e la riconnessione col token vecchio viene rifiutata (§290).
+    // e la riconnessione col token vecchio viene rifiutata (§292).
     const closed$ = interval(HEARTBEAT_MS).pipe(
       switchMap(() => from(this.sessionClosed(payload).catch(() => false))),
       filter(Boolean),

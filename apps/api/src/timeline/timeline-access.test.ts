@@ -3,7 +3,7 @@ import { ForbiddenException } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
 import { TimelineService } from "./timeline.service";
 
-/** Chat: solo cliente e professionista che hanno davvero una richiesta in comune (docs/CHANGELOG.md §290). */
+/** Chat: solo cliente e professionista che hanno davvero una richiesta in comune (docs/CHANGELOG.md §292). */
 function service({ lead = false, quote = false, systemEvent = false } = {}) {
   const prisma = {
     guidedRequest: { findUnique: vi.fn().mockResolvedValue({ clientId: "cliente" }) },

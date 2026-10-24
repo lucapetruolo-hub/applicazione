@@ -8,7 +8,7 @@ export type AuthenticatedRequest = Request & { user: { userId: string } };
 
 /**
  * Contenuto del token di accesso: l'utente e la versione delle sessioni di
- * quando è stato emesso (controllo sicurezza, docs/CHANGELOG.md §290). I token
+ * quando è stato emesso (controllo sicurezza, docs/CHANGELOG.md §292). I token
  * emessi prima non hanno `sv` e valgono come versione 0.
  */
 export type SessionTokenPayload = { sub: string; sv?: number };

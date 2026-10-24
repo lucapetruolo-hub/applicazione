@@ -542,7 +542,7 @@ export class AuthService {
 
     assertPasswordWithoutEmail(newPassword, user.email);
     const passwordHash = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
-    // Gli altri dispositivi escono (§290); questo resta dentro col token nuovo.
+    // Gli altri dispositivi escono (§292); questo resta dentro col token nuovo.
     const updated = await this.prisma.user.update({ where: { id: userId }, data: { passwordHash, sessionVersion: { increment: 1 } } });
     if (user.email) await this.emailService.send({ to: user.email, ...passwordChangedEmail(user.name) });
     return { token: this.issueToken(updated) };
@@ -631,7 +631,7 @@ export class AuthService {
     }
     assertPasswordWithoutEmail(password, user.email);
     const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
-    // Password nuova: si chiudono gli accessi aperti sugli altri dispositivi (§290).
+    // Password nuova: si chiudono gli accessi aperti sugli altri dispositivi (§292).
     const updated = await this.prisma.user.update({
       where: { id: user.id },
       data: {

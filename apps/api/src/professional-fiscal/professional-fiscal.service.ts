@@ -174,7 +174,7 @@ export class ProfessionalFiscalService {
       const newValue = (fiscalProfile as unknown as Record<string, unknown>)[field];
       if (JSON.stringify(oldValue ?? null) === JSON.stringify(newValue ?? null)) continue;
       // Il codice fiscale nel registro solo con le ultime 4 cifre: nel
-      // database è cifrato, una copia in chiaro qui lo vanificherebbe (§290).
+      // database è cifrato, una copia in chiaro qui lo vanificherebbe (§292).
       const secret = field === "fiscalCodiceFiscale";
       await this.auditLogService.record({
         entityType: "ProfessionalFiscalProfile",

@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 // Intestazioni di sicurezza su tutte le pagine (controllo sicurezza,
-// docs/CHANGELOG.md §290). `frame-ancestors`/`X-Frame-Options`: nessun sito
+// docs/CHANGELOG.md §292). `frame-ancestors`/`X-Frame-Options`: nessun sito
 // può mostrare il nostro dentro un riquadro per far cliccare a sua insaputa.
 // La fotocamera serve solo alla chat (foto scattate dal sito); il resto è spento.
 const securityHeaders = [

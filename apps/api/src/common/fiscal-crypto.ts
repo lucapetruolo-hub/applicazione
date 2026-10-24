@@ -22,7 +22,7 @@ function fiscalKey(): Buffer {
 /**
  * Chiave usata prima che `FISCAL_DATA_KEY` fosse impostata (derivata da
  * `JWT_SECRET`): serve solo a rileggere e ricifrare i dati salvati allora
- * (controllo sicurezza, docs/CHANGELOG.md §290). null se coincide con l'attuale.
+ * (controllo sicurezza, docs/CHANGELOG.md §292). null se coincide con l'attuale.
  */
 function legacyFiscalKey(): Buffer | null {
   return process.env.FISCAL_DATA_KEY?.trim() ? keyFrom(legacySecret()) : null;
@@ -75,7 +75,7 @@ export function isEncryptedFiscal(value: string): boolean {
 
 /**
  * Lettura di un campo cifrato che può essere ancora in chiaro (salvato prima
- * della cifratura, docs/CHANGELOG.md §290): il testo in chiaro torna così com'è.
+ * della cifratura, docs/CHANGELOG.md §292): il testo in chiaro torna così com'è.
  */
 export function readFiscal(value: string | null): string | null {
   if (value === null || !isEncryptedFiscal(value)) return value;

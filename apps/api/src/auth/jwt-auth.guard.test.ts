@@ -31,7 +31,7 @@ describe("JwtAuthGuard — account sospesi (docs/CHANGELOG.md §144)", () => {
   });
 });
 
-describe("JwtAuthGuard — sessioni chiuse al cambio password (docs/CHANGELOG.md §290)", () => {
+describe("JwtAuthGuard — sessioni chiuse al cambio password (docs/CHANGELOG.md §292)", () => {
   const prisma = { user: { findUnique: vi.fn().mockResolvedValue({ suspendedAt: null, sessionVersion: 2 }) } };
 
   it("rifiuta un token emesso prima del cambio password", async () => {

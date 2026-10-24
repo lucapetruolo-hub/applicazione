@@ -65,7 +65,7 @@ migrazioni restano anche in `CLAUDE.md`.
   variabili impostate: `DATABASE_URL`, `JWT_SECRET`, `GOOGLE_CLIENT_ID`,
   `FRONTEND_URL`. Render inietta `PORT` automaticamente: non va impostata
   manualmente nelle env var.
-  Dal docs/CHANGELOG.md §290 l'API **non parte** senza `JWT_SECRET` (su
+  Dal docs/CHANGELOG.md §292 l'API **non parte** senza `JWT_SECRET` (su
   Render o con `NODE_ENV=production`), e `FISCAL_DATA_KEY` cifra gli IBAN:
   impostata una volta, non va più cambiata. Su Vercel `ADMIN_ENTRY_PATH`
   (facoltativa, solo lato server) nasconde `/admin` dietro un link d'ingresso.

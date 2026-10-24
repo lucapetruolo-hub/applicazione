@@ -42,7 +42,9 @@ produzione):
      avanzati; senza, si usa `DEMO_MAP_ID`, che è solo di prova (§140);
    - `GOOGLE_MAPS_API_KEY` su Render — seconda chiave, con Geocoding API,
      Places API (New) (suggerimenti degli indirizzi, §264) e Maps Static API
-     (immagine fissa della mappa senza consenso, §265);
+     (immagine fissa della mappa senza consenso, §265) e Routes API (tempi
+     di strada del "Giro intelligente" dell'agenda, §288: senza, i tempi
+     sono una stima "circa");
    - Client ID OAuth di Google: tra gli "URI di reindirizzamento
      autorizzati" l'indirizzo `/accesso-google` del dominio definitivo
      (accesso con Google, §265);
@@ -324,7 +326,12 @@ aperti solo:
     container) con account di prova: cliente che cerca e manda la richiesta,
     professionista che risponde col preventivo, cliente che lo accetta,
     admin che vede la segnalazione. Più una prova con l'API spenta (deve
-    comparire "Riprova", docs/CHANGELOG.md §284-§285).
+    comparire "Riprova", docs/CHANGELOG.md §284-§285). Più una prova degli
+    orari dell'agenda (decisione dell'utente, 22/10/2026, §287, §288 e §290): un
+    preventivo alle 09:00 deve comparire alle 09:00 in agenda, nel
+    riquadro dell'appuntamento, in Oggi e lato cliente, con il browser in
+    un fuso diverso dall'Italia (es. `timezoneId: "America/New_York"` di
+    Playwright) e d'estate e d'inverno (prima e dopo il 25/10).
 27. **Misure del percorso** (stessa revisione): contare ricerca → profilo →
     richiesta inviata → preventivo → accettato, e per i professionisti
     iscrizione → profilo pubblico → primo preventivo → primo lavoro. Nel
@@ -332,7 +339,7 @@ aperti solo:
     Analytics richiedono il piano a pagamento), senza dati personali.
 
 28. **Sicurezza: cose da fare negli account** (controllo sicurezza del
-    22/10/2026, docs/CHANGELOG.md §290, dettaglio in
+    22/10/2026, docs/CHANGELOG.md §292, dettaglio in
     `/mnt/project-files/analisi/controllo-sicurezza.md`):
     - **Backup del database**: con il piano a pagamento (punto 4bis) Render
       fa i backup giornalieri. Provare una volta il ripristino su un

@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import type { CurrentUser } from "@professionisti/api-client";
 import { DEFAULT_NOTIFICATION_PREFERENCES, type NotificationPreferences, type RealtimeEvent } from "@professionisti/shared";
 import { apiClient } from "./apiClient";
+import { clearAgendaOffline } from "./agendaOffline";
 import { notificationCopy } from "./notificationCopy";
 import { emitRealtimeEvent } from "./realtimeBus";
 import { installNotificationSoundUnlock, playNotificationSound } from "./notificationSound";
@@ -126,6 +127,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+    // Copia dell'agenda senza rete (docs/CHANGELOG.md §288): non resta sul telefono dopo l'uscita.
+    clearAgendaOffline();
     setUser(null);
     setToken(null);
     setUnreadCount(0);

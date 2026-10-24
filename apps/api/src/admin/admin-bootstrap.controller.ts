@@ -15,7 +15,7 @@ export class AdminBootstrapController {
   constructor(private readonly adminService: AdminService) {}
 
   // Pochi tentativi: chi prova a indovinare il codice si ferma presto
-  // (controllo sicurezza, docs/CHANGELOG.md §290).
+  // (controllo sicurezza, docs/CHANGELOG.md §292).
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @Post("bootstrap")
   async bootstrap(@Body(new ZodValidationPipe(adminBootstrapSchema)) body: AdminBootstrapInput) {

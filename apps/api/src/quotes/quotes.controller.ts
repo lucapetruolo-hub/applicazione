@@ -19,7 +19,7 @@ import { QuotesService } from "./quotes.service";
 export class QuotesController {
   constructor(private readonly quotesService: QuotesService) {}
 
-  // Stesso limite dei messaggi in chat (controllo sicurezza, docs/CHANGELOG.md §290).
+  // Stesso limite dei messaggi in chat (controllo sicurezza, docs/CHANGELOG.md §292).
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @UseGuards(JwtAuthGuard, VerifiedEmailGuard)
   @Post()

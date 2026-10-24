@@ -51,7 +51,7 @@ describe("recupero password", () => {
     expect(result.token).toBe("jwt-token");
     const data = prisma.user.update.mock.calls[0]![0].data;
     expect(data.passwordResetTokenHash).toBeNull();
-    // Gli accessi sugli altri dispositivi si chiudono (§290).
+    // Gli accessi sugli altri dispositivi si chiudono (§292).
     expect(data.sessionVersion).toEqual({ increment: 1 });
     expect(data.emailVerifiedAt).toBeInstanceOf(Date);
     expect(await bcrypt.compare("nuovaPassword1", data.passwordHash)).toBe(true);

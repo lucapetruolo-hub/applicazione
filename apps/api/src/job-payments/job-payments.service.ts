@@ -133,7 +133,7 @@ export class JobPaymentsService {
     return null;
   }
 
-  /** Solo il cliente e il professionista della prenotazione (controllo sicurezza, docs/CHANGELOG.md §290). */
+  /** Solo il cliente e il professionista della prenotazione (controllo sicurezza, docs/CHANGELOG.md §292). */
   async getForBooking(userId: string, bookingId: string) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },

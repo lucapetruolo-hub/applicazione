@@ -10,7 +10,7 @@ import { AppModule } from "./app.module";
 async function bootstrap() {
   // Senza JWT_SECRET l'API userebbe la chiave di sviluppo scritta nel codice
   // e chiunque potrebbe crearsi un accesso (controllo sicurezza,
-  // docs/CHANGELOG.md §290): online meglio non partire. Render imposta da
+  // docs/CHANGELOG.md §292): online meglio non partire. Render imposta da
   // solo RENDER=true.
   const deployed = process.env.NODE_ENV === "production" || process.env.RENDER === "true";
   if (deployed && !process.env.JWT_SECRET?.trim()) {
@@ -27,7 +27,7 @@ async function bootstrap() {
   // protezione (un solo client abusivo blocca tutti) invece di limitare per
   // singolo IP reale — Express deve fidarsi dell'header X-Forwarded-For.
   app.set("trust proxy", 1);
-  // Parametri dell'indirizzo solo come testo (controllo sicurezza, §290): con
+  // Parametri dell'indirizzo solo come testo (controllo sicurezza, §292): con
   // il formato esteso `?category[contains]=` diventava un oggetto passato
   // così com'è ai filtri del database.
   app.set("query parser", "simple");
