@@ -38,7 +38,7 @@ export type CalendarShellProps = {
   renderYearList?: () => ReactNode;
   /**
    * Vista Giorno senza frecce, data e intestazione del giorno: il chiamante
-   * mostra già la striscia della settimana (T7, docs/CHANGELOG.md §299).
+   * mostra già la striscia della settimana (T7, docs/CHANGELOG.md §306).
    */
   dayStripAbove?: boolean;
 };

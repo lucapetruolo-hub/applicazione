@@ -76,7 +76,7 @@ export function AccountMenu() {
         accessibilityRole="button"
       >
         {/* Niente etichetta separata: il nome letto è il testo visibile, più
-            le novità solo per il lettore di schermo (WCAG 2.5.3, docs/CHANGELOG.md §298). */}
+            le novità solo per il lettore di schermo (WCAG 2.5.3, docs/CHANGELOG.md §305). */}
         <span aria-hidden="true" style={{ display: "flex" }}>
           <Avatar name={displayName ?? "?"} imageUrl={displayImageUrl} size={24} />
         </span>

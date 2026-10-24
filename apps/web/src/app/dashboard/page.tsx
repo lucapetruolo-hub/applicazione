@@ -127,7 +127,7 @@ export default function DashboardTodayPage() {
   const startToday = wallClockToday();
   const endTomorrow = new Date(startToday);
   endTomorrow.setUTCDate(endTomorrow.getUTCDate() + 2);
-  // Un lavoro su più giorni compare oggi e domani con l'orario di quel giorno (§298).
+  // Un lavoro su più giorni compare oggi e domani con l'orario di quel giorno (§305).
   const upcoming = (bookings ?? [])
     .filter((b) => b.status === "CONFIRMED" || b.status === "PENDING")
     .flatMap((booking) =>
@@ -156,7 +156,7 @@ export default function DashboardTodayPage() {
 
         {subscription ? <SubscriptionPauseBanner sub={subscription} profileStepsElsewhere /> : null}
         {/* Il prossimo lavoro prima di tutto il resto: mezz'ora prima deve vedersi
-            senza scorrere (T2 del test dei compiti, docs/CHANGELOG.md §299). */}
+            senza scorrere (T2 del test dei compiti, docs/CHANGELOG.md §306). */}
         {error ? null : (
         <TodaySection title="Oggi e domani" action={{ href: "/dashboard/agenda", label: "Apri l'agenda" }}>
           {loading ? (
@@ -167,7 +167,7 @@ export default function DashboardTodayPage() {
             upcoming.map(({ booking, at }) => (
               <Link
                 key={`${booking.id}-${at}`}
-                // Si apre l'appuntamento (indirizzo, Naviga, Chiama), non la richiesta (T3, §299).
+                // Si apre l'appuntamento (indirizzo, Naviga, Chiama), non la richiesta (T3, §306).
                 href={`/dashboard/agenda?booking=${booking.id}`}
                 className="today-row"
               >

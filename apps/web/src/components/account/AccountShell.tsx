@@ -21,7 +21,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
   const attention = useNavAttention();
   // Nell'area professionista il menu c'è già mentre si carica l'accesso:
   // prima compariva dopo e spingeva giù la pagina (A1 della verifica,
-  // docs/CHANGELOG.md §298).
+  // docs/CHANGELOG.md §305).
   const professionalArea = pathname.startsWith("/dashboard");
   if (!user && !(isLoading && professionalArea)) return <>{children}</>;
 

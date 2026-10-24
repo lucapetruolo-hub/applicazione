@@ -281,7 +281,7 @@ function DashboardAgendaContent() {
   // l'ultima copia salvata sul telefono (docs/CHANGELOG.md §288).
   // Si ricarica da sola quando un cliente accetta, sposta o annulla, e
   // quando si torna sull'app o torna la rete (R2 della verifica,
-  // docs/CHANGELOG.md §298): prima restava ferma all'apertura.
+  // docs/CHANGELOG.md §305): prima restava ferma all'apertura.
   const [agendaReload, setAgendaReload] = useState(0);
   useEffect(() => {
     let last = Date.now();
@@ -507,7 +507,7 @@ function DashboardAgendaContent() {
 
   // Mentre carica si tiene il posto della pagina: prima non c'era nulla e il
   // piè di pagina saltava giù all'arrivo dell'agenda (A1 della verifica,
-  // CLS 0,22, docs/CHANGELOG.md §298).
+  // CLS 0,22, docs/CHANGELOG.md §305).
   if (isLoading || (token && isLoadingSlots)) {
     return (
       <div aria-busy="true" style={{ minHeight: "100vh", padding: 16, display: "flex", flexDirection: "column", gap: 16 }}>
@@ -1016,7 +1016,7 @@ function DashboardAgendaContent() {
             opacity={exceptionBusyDate === dateStr ? 0.5 : 1}
             onPress={() => toggleException(dateStr)}
             accessibilityRole="button"
-            // "Chiudi venerdì 30" invece di sei "Chiudi" uguali per il lettore di schermo (A3, §298).
+            // "Chiudi venerdì 30" invece di sei "Chiudi" uguali per il lettore di schermo (A3, §305).
             accessibilityLabel={`${isClosed ? "Riapri" : "Chiudi"} ${formatAppointmentDate(date, { weekday: "long", day: "numeric" })}`}
           >
             <Text fontFamily="$body" fontSize={12} fontWeight="600" color={brand.grafite70} textDecorationLine="underline">
@@ -1297,7 +1297,7 @@ function DashboardAgendaContent() {
   const today = todayUtc();
   const todayStr = toIsoDate(today);
   // Striscia dei giorni: oggi e i 6 dopo, così la domenica sera "domani" è
-  // a un tocco (T4 del test dei compiti, docs/CHANGELOG.md §299); per un
+  // a un tocco (T4 del test dei compiti, docs/CHANGELOG.md §306); per un
   // giorno più lontano o passato, la sua settimana da lunedì.
   function stripDays(current: Date): Date[] {
     const offset = Math.round((startOfDayUtc(current).getTime() - startOfDayUtc(today).getTime()) / 86_400_000);
@@ -1316,7 +1316,7 @@ function DashboardAgendaContent() {
   /**
    * Posizione nella griglia di un appuntamento, una per giorno: un lavoro su
    * più giorni compare ogni giorno con lo stesso orario (docs/CHANGELOG.md
-   * §298), con "Giorno 2 di 3".
+   * §305), con "Giorno 2 di 3".
    */
   function onEachDay(startIso: string, endIso: string | null, key: string) {
     const days = jobOccurrences(startIso, endIso);
@@ -1434,7 +1434,7 @@ function DashboardAgendaContent() {
     (bookings ?? [])
       .filter((b) => b.status === "CONFIRMED")
       .flatMap((b) => {
-        // Di un lavoro su più giorni conta l'orario di oggi (§298).
+        // Di un lavoro su più giorni conta l'orario di oggi (§305).
         const occurrence = jobOccurrenceOn(b.scheduledAt, b.scheduledEndAt, todayStr);
         if (!occurrence) return [];
         const start = occurrence.start.toISOString();
@@ -1517,7 +1517,7 @@ function DashboardAgendaContent() {
 
   /** Ferie: chiude in un colpo tutti i giorni tra due date. */
   async function addVacation() {
-    // "Al" vuoto = un giorno solo (T1 del test dei compiti, docs/CHANGELOG.md §299).
+    // "Al" vuoto = un giorno solo (T1 del test dei compiti, docs/CHANGELOG.md §306).
     const until = vacationTo || vacationFrom;
     if (!token || !vacationFrom || until < vacationFrom) return;
     setVacationBusy(true);
@@ -1626,7 +1626,7 @@ function DashboardAgendaContent() {
 
         {slots.length === 0 && activeTab !== "orari" && weekTemplate?.days.some((d) => d.length > 0) ? (
           // Settimana tipo salvata ma non ancora applicata: prima si leggeva
-          // "non hai orari" (T6 del test dei compiti, docs/CHANGELOG.md §299).
+          // "non hai orari" (T6 del test dei compiti, docs/CHANGELOG.md §306).
           <div className="ag-banner info">
             <span>La tua settimana tipo è pronta: applicala al mese per farti prenotare.</span>
             <button type="button" className="ag-btn sm" onClick={() => applyWeekTemplate(templateMonths[0]!.key)}>
@@ -1821,7 +1821,7 @@ function DashboardAgendaContent() {
           </div>
         ) : activeTab === "orari" ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            {/* Chiudere un giorno è il compito più frequente della scheda: prima di tutto (T1, §299). */}
+            {/* Chiudere un giorno è il compito più frequente della scheda: prima di tutto (T1, §306). */}
             <div className="ag-card" style={{ padding: 20 }}>
               <h2 style={{ fontSize: 19 }}>Chiudi un giorno o le ferie</h2>
               <p className="ag-muted" style={{ fontSize: 13.5, marginTop: 4 }}>
@@ -1911,7 +1911,7 @@ function DashboardAgendaContent() {
                 </div>
               ) : null}
               {view === "day" ? (
-                // Striscia della settimana come nel Calendario: venerdì è a un tocco, non a quattro frecce (U1, §298).
+                // Striscia della settimana come nel Calendario: venerdì è a un tocco, non a quattro frecce (U1, §305).
                 <div className="ag-strip" role="group" aria-label="Giorni della settimana" style={{ marginBottom: 12 }}>
                   {stripDays(currentDate).map((date) => {
                     const dateStr = toIsoDate(date);
@@ -1959,7 +1959,7 @@ function DashboardAgendaContent() {
       </div>
 
       {activeTab === "calendario" ? (
-        // Con la scritta: il solo "+" non diceva cosa aggiunge (T9, docs/CHANGELOG.md §299).
+        // Con la scritta: il solo "+" non diceva cosa aggiunge (T9, docs/CHANGELOG.md §306).
         <button type="button" className="ag-fab" onClick={() => setCreatingExternalJobFor(bookingCurrentDate)}>
           <Plus size={22} aria-hidden /> Aggiungi lavoro
         </button>

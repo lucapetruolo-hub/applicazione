@@ -24,7 +24,7 @@ function buildService(prismaOverrides: Record<string, unknown> = {}) {
     guidedRequest: { update: vi.fn() },
     ...prismaOverrides,
   };
-  // Il blocco dell'agenda (§298) gira in una transazione: qui la transazione usa lo stesso finto database.
+  // Il blocco dell'agenda (§305) gira in una transazione: qui la transazione usa lo stesso finto database.
   prisma.$transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
   const notificationsService = { notify: vi.fn() };
   const professionalMetricsService = { recordJobAccepted: vi.fn() };
@@ -280,7 +280,7 @@ describe("BookingsService.reportProblemByProfessional", () => {
   });
 });
 
-describe("BookingsService.createFromQuote — professionista già impegnato (§298)", () => {
+describe("BookingsService.createFromQuote — professionista già impegnato (§305)", () => {
   it("rifiuta se a quell'ora il professionista ha già un lavoro, anche iniziato prima", async () => {
     const { service, prisma } = buildService();
     (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote());
@@ -328,7 +328,7 @@ describe("BookingsService.createFromQuote — professionista già impegnato (§2
 });
 
 describe("BookingsService.confirmQuoteDeposit — lavoro confermato solo dopo l'acconto (§240)", () => {
-  it("rimborsa l'acconto se nel frattempo il professionista ha preso un altro lavoro a quell'ora (§298)", async () => {
+  it("rimborsa l'acconto se nel frattempo il professionista ha preso un altro lavoro a quell'ora (§305)", async () => {
     const { service, prisma, jobPaymentsService } = buildService();
     (prisma.booking.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
     (prisma.booking.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);

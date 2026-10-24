@@ -51,7 +51,7 @@ export function formatAppointmentTime(value: Date | string | null | undefined): 
 
 /**
  * "martedì 14 ottobre, 09:00–13:00", o per un lavoro su più giorni "dal 4
- * al 6 novembre, ogni giorno 08:00–17:00" (docs/CHANGELOG.md §298).
+ * al 6 novembre, ogni giorno 08:00–17:00" (docs/CHANGELOG.md §305).
  */
 export function formatAppointmentSpan(start: Date | string | null | undefined, end?: Date | string | null): string {
   const startDate = toDate(start);

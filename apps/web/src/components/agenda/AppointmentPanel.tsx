@@ -86,8 +86,8 @@ export function AppointmentPanel({
   const navigateTo = booking.street && booking.houseNumber ? `${booking.street} ${booking.houseNumber}, ${[booking.postalCode, booking.city].filter(Boolean).join(" ")}` : address;
   const online = booking.serviceMode === "ONLINE";
   const isOpen = booking.status === "PENDING" || booking.status === "CONFIRMED";
-  // Anche un giorno in mezzo a un lavoro su più giorni (§298).
-  // "Lavoro completato" dal giorno del lavoro in poi (T11, docs/CHANGELOG.md §299).
+  // Anche un giorno in mezzo a un lavoro su più giorni (§305).
+  // "Lavoro completato" dal giorno del lavoro in poi (T11, docs/CHANGELOG.md §306).
   const startsLater = new Date(booking.scheduledAt).toISOString().slice(0, 10) > wallClockToday().toISOString().slice(0, 10);
   const isToday = jobOccurrenceOn(booking.scheduledAt, booking.scheduledEndAt, wallClockToday().toISOString().slice(0, 10)) !== null;
   const pill = STATUS_PILL[booking.status];
@@ -121,7 +121,7 @@ export function AppointmentPanel({
         </div>
         <h2>{name}</h2>
         {jobDays ? (
-          // Lavoro su più giorni (docs/CHANGELOG.md §298).
+          // Lavoro su più giorni (docs/CHANGELOG.md §305).
           <p style={{ fontSize: 14.5, marginTop: 4 }}>
             {jobDays.charAt(0).toUpperCase()}
             {jobDays.slice(1)} · ogni giorno {formatAppointmentTimeRange(booking.scheduledAt, booking.scheduledEndAt)}

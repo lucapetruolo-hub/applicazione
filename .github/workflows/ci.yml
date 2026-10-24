@@ -76,7 +76,7 @@ jobs:
           pnpm --filter @professionisti/web build
           node apps/web/scripts/seo-check/run.mjs public
 
-  # Agenda nel browser (docs/CHANGELOG.md §297): API e sito veri su un
+  # Agenda nel browser (docs/CHANGELOG.md §304): API e sito veri su un
   # database di prova, aperti da un telefono in Italia, a New York e a Tokyo,
   # con appuntamenti prima e dopo i cambi d'ora; accessibilità (axe), agenda
   # senza rete, link del calendario e Lighthouse su telefono lento.

@@ -74,7 +74,7 @@ export function CompleteJobModal({
   uploadPhoto,
 }: {
   quotedItems: { name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
-  /** Nome del lavoro (es. "Idraulico"): già scritto nella voce quando il preventivo non ha voci (U2, §298). */
+  /** Nome del lavoro (es. "Idraulico"): già scritto nella voce quando il preventivo non ha voci (U2, §305). */
   jobName?: string | null;
   onClose: () => void;
   onComplete: (input: CompleteBookingInput) => Promise<void>;
@@ -93,7 +93,7 @@ export function CompleteJobModal({
   const [photoError, setPhotoError] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
-  // Casella da correggere: in rosso e con il cursore dentro (T8 del test dei compiti, docs/CHANGELOG.md §299).
+  // Casella da correggere: in rosso e con il cursore dentro (T8 del test dei compiti, docs/CHANGELOG.md §306).
   const [invalidField, setInvalidField] = useState<string | null>(null);
   function fail(message: string, field: string | null) {
     setError(message);
@@ -311,7 +311,7 @@ export function CompleteJobModal({
           {extraRows.length > 0 ? (
             <YStack gap="$2">
               <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
-                {/* "Altre" solo se ci sono anche le voci del preventivo (T8, §299). */}
+                {/* "Altre" solo se ci sono anche le voci del preventivo (T8, §306). */}
                 {quotedRows.length > 0 ? "Altre voci" : "Voci"}
               </Text>
               {extraRows.map((row, index) => (
@@ -470,7 +470,7 @@ export function CompleteJobModal({
         </YStack>
 
         {error ? (
-          // Annunciato dal lettore di schermo (U2, docs/CHANGELOG.md §298).
+          // Annunciato dal lettore di schermo (U2, docs/CHANGELOG.md §305).
           <div role="alert">
             <Text color={brand.urgenza} fontSize="$3">
               {error}

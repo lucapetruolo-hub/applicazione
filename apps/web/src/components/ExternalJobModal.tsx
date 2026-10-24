@@ -193,10 +193,10 @@ export function ExternalJobModal({
         gap="$4"
       >
         <XStack justifyContent="space-between" alignItems="center" gap="$3">
-          {/* flex + minWidth 0: la frase sotto il titolo va a capo invece di uscire dal bordo (T10, docs/CHANGELOG.md §299). */}
+          {/* flex + minWidth 0: la frase sotto il titolo va a capo invece di uscire dal bordo (T10, docs/CHANGELOG.md §306). */}
           <YStack gap={2} flex={1} minWidth={0}>
             <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
-              {/* Parole di chi lavora, non "lavoro esterno" (T9, §299). */}
+              {/* Parole di chi lavora, non "lavoro esterno" (T9, §306). */}
               {job ? "Modifica il lavoro" : "Aggiungi un tuo lavoro"}
             </Text>
             {job ? (

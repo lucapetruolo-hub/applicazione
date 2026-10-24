@@ -92,7 +92,7 @@ export class AgendaTomorrowSummaryService {
     });
     const date = tomorrow.toISOString().slice(0, 10);
     for (const profile of profiles) {
-      // Un lavoro su più giorni compare ogni sera, con l'orario di quel giorno (§298).
+      // Un lavoro su più giorni compare ogni sera, con l'orario di quel giorno (§305).
       const onDate = <T extends { scheduledAt: Date; scheduledEndAt: Date | null }>(jobs: T[]): T[] =>
         jobs.flatMap((job) => {
           const occurrence = jobOccurrenceOn(job.scheduledAt, job.scheduledEndAt, date);

@@ -3,12 +3,12 @@ import { expect, test, type Page } from "@playwright/test";
 import { e2eData } from "../fixtures/data";
 
 /**
- * Accessibilità dell'agenda con axe-core (docs/CHANGELOG.md §297): nessun
+ * Accessibilità dell'agenda con axe-core (docs/CHANGELOG.md §304): nessun
  * problema grave o critico (WCAG 2.1 A e AA) nelle tre schede e nel riquadro
  * dell'appuntamento.
  *
  * KNOWN elenca i problemi noti che la prova lascia passare: vuoto dal
- * §298, quando A3 e A4 della verifica (§297) sono stati corretti. Ogni
+ * §305, quando A3 e A4 della verifica (§304) sono stati corretti. Ogni
  * problema grave fa fallire la prova.
  */
 type Violation = { id: string; html: string };

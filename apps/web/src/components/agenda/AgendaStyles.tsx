@@ -333,7 +333,7 @@ export function AgendaStyles() {
         font-weight: 600;
       }
       .ag-mini-grid button.out {
-        /* Più chiaro dei giorni del mese ma leggibile, 4,5:1 anche sul verde chiaro (A4, §298). */
+        /* Più chiaro dei giorni del mese ma leggibile, 4,5:1 anche sul verde chiaro (A4, §305). */
         color: #766758;
       }
       .ag-mini-grid button.has::after {
@@ -897,7 +897,7 @@ export function AgendaStyles() {
           display: inline-flex;
         }
         /* Sul telefono la giornata scorre con la pagina: lo scorrimento interno
-           nascondeva i lavori della sera (T5, docs/CHANGELOG.md §299). */
+           nascondeva i lavori della sera (T5, docs/CHANGELOG.md §306). */
         .ag-grid-scroll {
           max-height: none;
           overflow: visible;

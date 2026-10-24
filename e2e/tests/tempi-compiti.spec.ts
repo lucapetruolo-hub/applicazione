@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
 
 /**
- * Tempi dei 5 compiti principali dell'agenda (docs/CHANGELOG.md §297), fatti
+ * Tempi dei 5 compiti principali dell'agenda (docs/CHANGELOG.md §304), fatti
  * sul sito vero da un telefono. Il tempo è una stima con il modello KLM
  * (Keystroke-Level Model): non sostituisce la prova con persone vere, ma
  * dice se una modifica allunga un compito. Gira per ultima (progetto
@@ -65,7 +65,7 @@ test("C2 chiudo un giorno (venerdì) per un impegno", async ({ page }) => {
   await openAgenda(page, log);
   log.ops.push("M", "T");
   await page.getByRole("button", { name: "Orari di lavoro" }).click();
-  // "Giorno per giorno" è in fondo alla scheda; sul telefono la striscia della settimana porta a venerdì con un tocco (U1, §298).
+  // "Giorno per giorno" è in fondo alla scheda; sul telefono la striscia della settimana porta a venerdì con un tocco (U1, §305).
   log.ops.push("S", "S", "M");
   const section = page.getByRole("heading", { name: "Giorno per giorno" }).locator("xpath=ancestor::div[2]");
   await section.scrollIntoViewIfNeeded();
@@ -110,7 +110,7 @@ test("C4 segno il lavoro completato", async ({ page }) => {
   const amount = modal.getByRole("textbox", { name: /Importo/ }).first();
   const description = modal.getByRole("textbox", { name: "Descrizione della voce" });
   if (await description.count()) {
-    // Preventivo senza voci: la voce ha già il nome del lavoro, non si scrive nulla (U2, §298).
+    // Preventivo senza voci: la voce ha già il nome del lavoro, non si scrive nulla (U2, §305).
     await expect(description).not.toHaveValue("");
   }
   log.ops.push("M", "T", "K3"); // importo finale, es. 120

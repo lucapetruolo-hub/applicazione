@@ -102,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // di rete lascia lo stato invariato, il prossimo tentativo (poll,
       // ricarica, navigazione) riproverà da solo.
       // Anche un 429 (troppe richieste) o un errore del server non dicono
-      // che il token non vale più: solo 401/403 disconnettono (§299, visto
+      // che il token non vale più: solo 401/403 disconnettono (§306, visto
       // nelle prove nel browser in CI).
       const isNetworkFailure = err instanceof TypeError || (err instanceof DOMException && err.name === "AbortError");
       const sessionRejected = err instanceof ApiError ? err.status === 401 || err.status === 403 : !isNetworkFailure;
@@ -120,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       // Senza rete si resta dentro con l'ultimo profilo salvato, così
       // l'agenda mostra la sua copia invece di "Accedi" (R1 della verifica,
-      // docs/CHANGELOG.md §297-§298). Le azioni chiedono comunque la rete.
+      // docs/CHANGELOG.md §304-§305). Le azioni chiedono comunque la rete.
       const offlineUser = readOfflineUser();
       if (offlineUser) {
         setUser((current) => current ?? offlineUser);

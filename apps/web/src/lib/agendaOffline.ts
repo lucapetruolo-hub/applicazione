@@ -36,7 +36,7 @@ export function readAgendaOffline(userId: string): AgendaOfflineCopy | null {
     const copy = JSON.parse(raw) as AgendaOfflineCopy;
     if (copy.userId !== userId || !Array.isArray(copy.bookings) || !Array.isArray(copy.externalJobs)) return null;
     if (Date.now() - new Date(copy.savedAt).getTime() > MAX_AGE_MS) {
-      // Copia scaduta: si cancella, non resta sul telefono (P2 della verifica, §298).
+      // Copia scaduta: si cancella, non resta sul telefono (P2 della verifica, §305).
       window.localStorage.removeItem(KEY);
       return null;
     }
@@ -56,7 +56,7 @@ export function clearAgendaOffline(): void {
 
 /**
  * Chi è entrato, salvato insieme alla copia dell'agenda (R1 della verifica,
- * §298): senza rete il sito non può chiedere al server chi sei e mostrava
+ * §305): senza rete il sito non può chiedere al server chi sei e mostrava
  * "Accedi" al posto degli appuntamenti. Stessa durata della copia, e si
  * cancella all'uscita o quando il server dice che la sessione non vale più.
  */

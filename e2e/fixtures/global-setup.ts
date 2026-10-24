@@ -69,7 +69,7 @@ export default async function globalSetup(): Promise<void> {
       });
       bookings.push({ id: booking.id, label: item.label, wallClock: item.wallClock });
     }
-    // Lavoro su più giorni (docs/CHANGELOG.md §298): dal 3 al 5 novembre, ogni giorno 08:00–17:00.
+    // Lavoro su più giorni (docs/CHANGELOG.md §305): dal 3 al 5 novembre, ogni giorno 08:00–17:00.
     const multiDayRequest = await prisma.guidedRequest.create({
       data: { clientId: client.id, categoryId: category.id, description: "Trasloco di un appartamento.", city: "Latina" },
     });

@@ -3,7 +3,7 @@ import { BOOKING_CASES } from "../fixtures/cases";
 import { e2eData } from "../fixtures/data";
 
 /**
- * Ora legale e fuso orario (docs/CHANGELOG.md §297): lo stesso appuntamento
+ * Ora legale e fuso orario (docs/CHANGELOG.md §304): lo stesso appuntamento
  * deve mostrare la stessa ora italiana su un telefono in Italia, a New York
  * e a Tokyo, prima e dopo i cambi d'ora del 25/10/2026 e del 28/03/2027.
  */

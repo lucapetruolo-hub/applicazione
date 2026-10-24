@@ -121,7 +121,7 @@ export function RequestCard({
   const [manualDate, setManualDate] = useState("");
   const [manualStartTime, setManualStartTime] = useState("");
   const [manualEndTime, setManualEndTime] = useState("");
-  // Lavoro su più giorni (docs/CHANGELOG.md §298): stesso orario ogni giorno.
+  // Lavoro su più giorni (docs/CHANGELOG.md §305): stesso orario ogni giorno.
   const [jobDays, setJobDays] = useState(1);
   const [quoteNotes, setQuoteNotes] = useState("");
   // Modi di pagamento offerti al cliente e acconto online (docs/CHANGELOG.md §237).
@@ -334,7 +334,7 @@ export function RequestCard({
       }
     }
 
-    // Lavoro su più giorni (§298): la fine cade nell'ultimo giorno, alla stessa ora del primo.
+    // Lavoro su più giorni (§305): la fine cade nell'ultimo giorno, alla stessa ora del primo.
     if (jobDays > 1) {
       if (!estimatedEndDate) return setQuoteError("Per un lavoro su più giorni indica anche l'ora di fine.");
       estimatedEndDate = new Date(new Date(estimatedEndDate).getTime() + (jobDays - 1) * 86_400_000).toISOString();
@@ -1351,7 +1351,7 @@ export function RequestCard({
                 </YStack>
               )}
 
-              {/* Lavoro su più giorni (docs/CHANGELOG.md §298): stesso orario ogni giorno, non blocca altri lavori. */}
+              {/* Lavoro su più giorni (docs/CHANGELOG.md §305): stesso orario ogni giorno, non blocca altri lavori. */}
               <YStack gap="$1">
                 <XStack gap="$2" alignItems="center">
                   <label htmlFor={`job-days-${gr.id}`} style={{ fontSize: 13, fontWeight: 600, color: brand.grafite }}>
@@ -1459,7 +1459,7 @@ export function RequestCard({
           {/* Form "proponi altra data" (contro-proposta) */}
           {showCounterForm ? (
             <YStack gap="$3" padding="$3" borderRadius={radiusDoc} backgroundColor={brand.gesso} borderWidth={1} borderColor={brand.filetto}>
-              {/* Lavoro su più giorni (§298): la durata resta quella del preventivo. */}
+              {/* Lavoro su più giorni (§305): la durata resta quella del preventivo. */}
               {lead.quote && jobDayCount(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate) > 1 ? (
                 <Text fontSize={12} color={brand.grafite70}>
                   Il lavoro resta di {jobDayCount(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)} giorni: scegli il primo giorno e l&apos;orario di ogni giorno.

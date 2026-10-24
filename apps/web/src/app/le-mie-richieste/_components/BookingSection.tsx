@@ -127,7 +127,7 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
       </Text>
       {/* Data dell'intervento come titolo della sezione (richiesta esplicita dell'utente, §228). */}
       <Text fontFamily="$heading" fontWeight="800" fontSize={20} color={brand.grafite}>
-        {/* Lavoro su più giorni (docs/CHANGELOG.md §298): "Dal 4 al 6 novembre · ogni giorno 08:00–17:00". */}
+        {/* Lavoro su più giorni (docs/CHANGELOG.md §305): "Dal 4 al 6 novembre · ogni giorno 08:00–17:00". */}
         {jobDays
           ? `${jobDays.charAt(0).toUpperCase()}${jobDays.slice(1)} · ogni giorno ${formatAppointmentTimeRange(booking.scheduledAt, booking.scheduledEndAt)}`
           : `${formatAppointmentDate(booking.scheduledAt, { weekday: "long", day: "numeric", month: "long", year: "numeric" })} · ${formatAppointmentTimeRange(booking.scheduledAt, booking.scheduledEndAt)}`}

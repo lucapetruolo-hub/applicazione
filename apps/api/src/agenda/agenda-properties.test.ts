@@ -1,6 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import fc from "fast-check";
-import ICAL from "ical.js";
 import {
   agendaWeekTemplateSchema,
   formatAppointmentTime,
@@ -12,8 +11,14 @@ import {
 import { calendarFeedIcs, type CalendarEvent } from "../email/email-calendar";
 import { countBookingsInSlot, countOverlapping } from "./commitments";
 
+// ical.js è solo ESM: con TypeScript 6 un test CommonJS lo carica con import() dinamico.
+let ICAL: typeof import("ical.js", { with: { "resolution-mode": "import" } }).default;
+beforeAll(async () => {
+  ICAL = (await import("ical.js")).default;
+});
+
 /**
- * Prove "a proprietà" dell'agenda (docs/CHANGELOG.md §297): invece di pochi
+ * Prove "a proprietà" dell'agenda (docs/CHANGELOG.md §304): invece di pochi
  * esempi scritti a mano, fast-check genera migliaia di casi a caso e cerca
  * quello che rompe la regola. Ogni regola è confrontata con un controllo
  * indipendente scritto qui, non con lo stesso codice che si vuole provare.
@@ -288,7 +293,7 @@ describe("link del calendario (iCalendar, RFC 5545)", () => {
     );
   });
 
-  it("un lavoro su più giorni compare una volta al giorno, ogni giorno alla stessa ora italiana (§298)", () => {
+  it("un lavoro su più giorni compare una volta al giorno, ogni giorno alla stessa ora italiana (§305)", () => {
     const multiDayArb = fc
       .tuple(fc.integer({ min: 0, max: 4 * 365 }), fc.integer({ min: 0, max: 22 * 4 }), fc.integer({ min: 1, max: 8 * 4 }), fc.integer({ min: 2, max: 10 }))
       .map(([day, startQ, lengthQ, days]) => {

@@ -143,7 +143,7 @@ export class QuotesService {
       });
     }
 
-    // Fine dopo l'inizio, al massimo MAX_JOB_DAYS giorni (lavori su più giorni, docs/CHANGELOG.md §298).
+    // Fine dopo l'inizio, al massimo MAX_JOB_DAYS giorni (lavori su più giorni, docs/CHANGELOG.md §305).
     if (input.estimatedEndDate) {
       if (new Date(input.estimatedEndDate) <= new Date(input.estimatedStartDate)) {
         throw new BadRequestException("L'ora di fine deve essere dopo l'ora di inizio.");
@@ -424,7 +424,7 @@ export class QuotesService {
       proposedDate = resolved.scheduledAt;
       proposedEndDate = resolved.scheduledEndAt;
     }
-    // Un lavoro su più giorni resta della stessa durata con la nuova data di inizio (§298).
+    // Un lavoro su più giorni resta della stessa durata con la nuova data di inizio (§305).
     if (!isSameAsCurrentProposal) proposedEndDate = keepJobDays(quote, proposedEndDate);
 
     // Cosa cambia rispetto all'appuntamento sul preventivo: data, orario o
@@ -586,7 +586,7 @@ export class QuotesService {
       const booking = await this.prisma.$transaction(
         async (tx) => {
           // Un lavoro già preso che si sovrappone (anche un lavoro esterno
-          // o uno lungo iniziato prima) occupa la fascia (docs/CHANGELOG.md §298).
+          // o uno lungo iniziato prima) occupa la fascia (docs/CHANGELOG.md §305).
           await lockProfessionalAgenda(tx, professionalProfile.id);
           const commitments =
             (await loadCommitments(tx, [professionalProfile.id], dayStart, quote.clientProposedEndDate ?? dayEnd)).get(professionalProfile.id) ?? [];
@@ -960,7 +960,7 @@ export class QuotesService {
 
 /**
  * Fine di un lavoro spostato a un'altra data: un lavoro su più giorni
- * mantiene lo stesso numero di giorni (docs/CHANGELOG.md §298). `firstDayEnd`
+ * mantiene lo stesso numero di giorni (docs/CHANGELOG.md §305). `firstDayEnd`
  * è la fine del primo giorno nella nuova data.
  */
 function keepJobDays(quote: { estimatedStartDate: Date; estimatedEndDate: Date | null }, firstDayEnd: Date): Date {

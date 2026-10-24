@@ -9,7 +9,7 @@
 // caricamento più rapido a rivisita e la possibilità tecnica di
 // installare l'app.
 //
-// Unica eccezione (docs/CHANGELOG.md §298, R1 della verifica §297): la
+// Unica eccezione (docs/CHANGELOG.md §305, R1 della verifica §304): la
 // pagina dell'agenda del professionista si salva ad ogni apertura con la
 // rete e si usa SOLO quando la rete manca, così in cantiere si riapre e
 // mostra la copia degli appuntamenti salvata sul telefono. Quella pagina

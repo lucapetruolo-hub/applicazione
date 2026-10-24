@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 export default async function HomePage() {
-  let professionals: ProfessionalSearchResult[] = [];
+  let professionals: ProfessionalSearchResult[];
   try {
     // excludeDemo: la home dichiara esplicitamente di mostrare conteggi e
     // professionisti reali (redesign "Scheda Intervento" §4.3/§4.6) — i
@@ -25,7 +25,7 @@ export default async function HomePage() {
   // Numeri reali per la striscia "social proof" (richiesta esplicita
   // dell'utente) — se l'API non risponde, la striscia semplicemente non
   // compare invece di mostrare uno zero fuorviante (vedi PlatformStats).
-  let platformStats: { totalUsers: number; totalProfessionals: number; reviewCount?: number; averageRating?: number | null } | null = null;
+  let platformStats: { totalUsers: number; totalProfessionals: number; reviewCount?: number; averageRating?: number | null } | null;
   try {
     platformStats = await apiClient.platformStats();
   } catch {

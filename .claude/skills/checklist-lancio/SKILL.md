@@ -354,6 +354,11 @@ aperti solo:
     - **Togliere `ADMIN_BOOTSTRAP_SECRET` da Render** appena creato il primo
       admin (gli altri si nominano da `/admin/utenti`).
     - **Repo GitHub privato** (Settings → General → Danger Zone).
+    - ~~**Avvisi di sicurezza di Dependabot**~~ — fatto (24/10/2026,
+      docs/CHANGELOG.md §302): accesi "Dependabot alerts" e "Dependabot
+      security updates" (raggruppati). Passando il repo a privato
+      controllare che restino accesi. Gli aggiornamenti mensili partono dal
+      file `.github/dependabot.yml`.
     - **Chiavi Google**: la chiave del browser (`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`)
       limitata ai siti `https://<dominio>/*` in Google Cloud → Credenziali;
       la chiave server (`GOOGLE_MAPS_API_KEY`) limitata alle sole API usate
@@ -370,8 +375,7 @@ aperti solo:
     - **Verifica in due passaggi** su GitHub, Render, Vercel, Stripe,
       Cloudinary, Resend, Google Cloud, Didit, Openapi e sull'email usata
       per questi account.
-    - **Next.js 15**: la serie 14 non riceve più correzioni di sicurezza;
-      aggiornare prima del lancio (thread dedicato).
+    - ~~**Next.js 15**~~ — fatto (PR #103, docs/CHANGELOG.md §297).
 
 29. **Verifiche di sicurezza prima del lancio** (controllo approfondito,
     docs/CHANGELOG.md §293, dettaglio in
@@ -431,11 +435,26 @@ Città, pagine vuote fuori da Google.
     riquadro in dashboard) che invita i professionisti a mettere il link al
     loro profilo nella loro scheda Google Business. In cima alle ricerche
     locali c'è quasi sempre la mappa di Google: è lì che li vedono i clienti.
-38. **Agenda provata da 2-3 professionisti veri** (docs/CHANGELOG.md §299,
+38. **Dopo gli aggiornamenti di Next.js 15, React 19, NestJS 11, Expo 58,
+    Prisma 6 e TypeScript 6** (PR #103, docs/CHANGELOG.md §297-§301):
+    - **Confronto delle pagine nei controlli automatici**: oggi
+      `pnpm --filter @professionisti/web confronto-pagine` si lancia a mano.
+      Farlo partire a ogni PR, con un database di prova (seed) e l'API
+      avviata nella CI, insieme alle prove del punto 26. Rilanciarlo
+      comunque a mano una volta subito prima del lancio.
+    - **App mobile** (ora Expo 58, React 19, React Native 0.88): i pacchetti
+      Android e iOS si generano, ma non è stata provata su un telefono vero.
+      Prima di pubblicarla negli store: build con EAS e prova su un iPhone e
+      un Android (l'app è comunque ancora da completare).
+    - **Primo deploy su Render dopo la PR #103**: parte da sola una piccola
+      migrazione di Prisma 6 (chiave delle relazioni molti-a-molti, nessun
+      dato toccato). Controllare che arrivi l'email di deploy riuscito e che
+      `/health` risponda.
+39. **Agenda provata da 2-3 professionisti veri** (docs/CHANGELOG.md §306,
     decisione dell'utente del 24/10/2026): i 5 compiti (domani dove vado,
     chiudere un giorno, avvisare e navigare, lavoro completato, lavoro preso
     fuori dall'app) fatti da professionisti che non conoscono il sito, senza
-    aiuto. Il test simulato del §299 non li sostituisce. Testo dei compiti e
+    aiuto. Il test simulato del §306 non li sostituisce. Testo dei compiti e
     obiettivi nel documento "Verifica dell'agenda come un esperto UX".
 
 

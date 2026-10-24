@@ -60,7 +60,7 @@ const DAY_MONTH = new Intl.DateTimeFormat("it-IT", { timeZone: "UTC", day: "nume
 const DAY_ONLY = new Intl.DateTimeFormat("it-IT", { timeZone: "UTC", day: "numeric" });
 
 /**
- * Giorni di un lavoro su più giorni (docs/CHANGELOG.md §298): "dal 4 al 6
+ * Giorni di un lavoro su più giorni (docs/CHANGELOG.md §305): "dal 4 al 6
  * novembre", "dal 30 ottobre al 2 novembre"; `null` se dura un giorno solo.
  */
 export function formatJobDays(start: DateLike, end?: DateLike | null): string | null {

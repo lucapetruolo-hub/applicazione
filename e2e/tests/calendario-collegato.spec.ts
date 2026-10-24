@@ -5,7 +5,7 @@ import { e2eData } from "../fixtures/data";
 import { API_URL } from "../fixtures/env";
 
 /**
- * Link del calendario (docs/CHANGELOG.md §288 e §297): il file che leggono
+ * Link del calendario (docs/CHANGELOG.md §288 e §304): il file che leggono
  * Google Calendar e iPhone, letto con un lettore iCalendar indipendente
  * (ical.js, lo stesso di Thunderbird). Ogni appuntamento deve cadere
  * all'istante giusto: le 09:00 italiane sono le 07:00 UTC d'estate e le

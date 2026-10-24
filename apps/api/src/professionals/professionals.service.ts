@@ -1812,7 +1812,7 @@ function parseIsoDateUtc(dateStr: string): Date {
   return date;
 }
 
-/** Fascia già occupata da almeno un impegno (prenotazione o lavoro esterno, docs/CHANGELOG.md §298). */
+/** Fascia già occupata da almeno un impegno (prenotazione o lavoro esterno, docs/CHANGELOG.md §305). */
 function isSlotBooked(bookings: Commitment[], dateStr: string, startTime: string, endTime: string): boolean {
   return countBookingsInSlot(bookings, dateStr, startTime, endTime) > 0;
 }
