@@ -3,7 +3,7 @@ import { CATEGORY_SEO_NOUN, type ProfessionalCategorySlug, type ProfessionalSear
 
 /**
  * "[Lavoro] a [città] in breve" in fondo ai risultati di una pagina
- * categoria+città (docs/CHANGELOG.md §295, strategia SEO Latina): pochi dati
+ * categoria+città (docs/CHANGELOG.md §296, strategia SEO Latina): pochi dati
  * veri presi dai risultati della pagina e le domande che le persone fanno a
  * Google ("Le persone hanno chiesto anche"), con risposte brevi. Rende la
  * pagina diversa da quella di un'altra città e risponde a chi cerca il
@@ -21,7 +21,7 @@ export function CityFacts({
   categoryLabel: string;
   city: string;
   professionals: ProfessionalSearchResult[];
-  /** C'è la pagina "Quanto costa" con prezzi veri (`/prezzi/[categoria]`, §295). */
+  /** C'è la pagina "Quanto costa" con prezzi veri (`/prezzi/[categoria]`, §296). */
   hasPricePage?: boolean;
 }) {
   if (professionals.length === 0) return null;

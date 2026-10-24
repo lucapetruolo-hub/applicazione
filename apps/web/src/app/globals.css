@@ -3345,7 +3345,7 @@ a.admin-kpi:hover {
 }
 
 /* Percorso "Home › Idraulico › Latina › Nome" sopra il profilo pubblico
-   (docs/CHANGELOG.md §294). Testo piccolo e discreto, link con area di
+   (docs/CHANGELOG.md §295). Testo piccolo e discreto, link con area di
    tocco comoda; l'ultima voce si accorcia con i puntini sui telefoni. */
 .breadcrumbs {
   width: 100%;
@@ -3401,7 +3401,7 @@ a.admin-kpi:hover {
   min-width: 0;
 }
 
-/* Pagina "non trovata" (docs/CHANGELOG.md §294): servizi centrati sotto ai
+/* Pagina "non trovata" (docs/CHANGELOG.md §295): servizi centrati sotto ai
    pulsanti, stessa pillola dei risultati. */
 .not-found-services {
   width: 100%;
@@ -3420,7 +3420,7 @@ a.admin-kpi:hover {
 }
 
 /* "[Lavoro] a [città] in breve" in fondo alle pagine categoria+città
-   (docs/CHANGELOG.md §295): tre numeri veri e le domande frequenti, aperte
+   (docs/CHANGELOG.md §296): tre numeri veri e le domande frequenti, aperte
    una alla volta. Stessi bordi e colori di "Servizi più richiesti". */
 .city-facts {
   width: 100%;
@@ -3555,7 +3555,7 @@ a.admin-kpi:hover {
   }
 }
 
-/* Barre "Da dove arrivano le richieste" in /admin/statistiche (CHANGELOG §295). */
+/* Barre "Da dove arrivano le richieste" in /admin/statistiche (CHANGELOG §296). */
 .traffic-bar {
   height: 8px;
   border-radius: 999px;
@@ -3572,7 +3572,7 @@ a.admin-kpi:hover {
   background: #2b2420;
 }
 
-/* Pagina "Quanto costa" /prezzi/[categoria] (docs/CHANGELOG.md §295): numeri
+/* Pagina "Quanto costa" /prezzi/[categoria] (docs/CHANGELOG.md §296): numeri
    e domande con gli stessi riquadri delle pagine città. */
 .price-page {
   width: 100%;
@@ -3670,7 +3670,7 @@ a.admin-kpi:hover {
   outline-offset: 3px;
 }
 
-/* "Lavora con noi" /lavora-con-noi/[categoria] (docs/CHANGELOG.md §295). */
+/* "Lavora con noi" /lavora-con-noi/[categoria] (docs/CHANGELOG.md §296). */
 .work-steps {
   list-style: none;
   margin: 0;

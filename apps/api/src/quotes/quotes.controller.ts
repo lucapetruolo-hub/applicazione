@@ -1,4 +1,5 @@
 import { Body, Controller, Param, Post, Req, UseGuards } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import {
   counterProposeQuoteDateSchema,
   proposeQuoteDateSchema,
@@ -18,6 +19,8 @@ import { QuotesService } from "./quotes.service";
 export class QuotesController {
   constructor(private readonly quotesService: QuotesService) {}
 
+  // Stesso limite dei messaggi in chat (controllo sicurezza, docs/CHANGELOG.md §292).
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @UseGuards(JwtAuthGuard, VerifiedEmailGuard)
   @Post()
   create(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(quoteSelfSchema)) body: QuoteSelfInput) {

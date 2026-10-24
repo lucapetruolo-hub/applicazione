@@ -111,7 +111,7 @@ export type GuidedRequestFormProps = {
  * Titolo e sottotitolo del modulo, mostrati da soli finché il modulo non è
  * pronto (accesso in caricamento, o `Suspense` della pagina): così la pagina
  * arriva a Google e al browser già col suo titolo, non vuota
- * (docs/CHANGELOG.md §295). Stessa misura del modulo completo, niente salti.
+ * (docs/CHANGELOG.md §296). Stessa misura del modulo completo, niente salti.
  */
 export function GuidedRequestHeading({ title, subtitle }: { title: string; subtitle: string }) {
   return (

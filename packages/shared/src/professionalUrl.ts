@@ -1,5 +1,5 @@
 /**
- * Indirizzo leggibile del profilo pubblico (docs/CHANGELOG.md §294, SEO):
+ * Indirizzo leggibile del profilo pubblico (docs/CHANGELOG.md §295, SEO):
  * `/professionista/luca-idraulica-latina-<id>` invece del solo id. Il nome
  * serve a Google e a chi legge il link; il profilo si trova sempre dall'id in
  * coda, quindi un cambio di nome o città non rompe i link vecchi: la pagina

@@ -662,7 +662,7 @@ function ProFinalCta() {
               <Button variant="primary">Scegli il tuo livello</Button>
             </Link>
           </XStack>
-          {/* Una pagina per lavoro, per chi cerca "lavoro pulizie" su Google (docs/CHANGELOG.md §295). */}
+          {/* Una pagina per lavoro, per chi cerca "lavoro pulizie" su Google (docs/CHANGELOG.md §296). */}
           <nav className="work-links" aria-label="Lavora con noi">
             <span>Lavora con noi come:</span>
             {PROFESSIONAL_CATEGORIES.map((category) => (

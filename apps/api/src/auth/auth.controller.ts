@@ -314,8 +314,16 @@ export class AuthController {
     @Req() req: AuthenticatedRequest,
     @Body(new ZodValidationPipe(changePasswordSchema)) body: ChangePasswordInput,
   ) {
-    await this.authService.changePassword(req.user.userId, body.currentPassword, body.newPassword);
-    return { success: true };
+    // Token nuovo per questo dispositivo: quelli vecchi non valgono più (§292).
+    const { token } = await this.authService.changePassword(req.user.userId, body.currentPassword, body.newPassword);
+    return { success: true, token };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post("logout-others")
+  logoutOtherDevices(@Req() req: AuthenticatedRequest) {
+    return this.authService.logoutOtherDevices(req.user.userId);
   }
 
   @UseGuards(JwtAuthGuard)

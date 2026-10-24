@@ -24,7 +24,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/faq`, changeFrequency: "monthly", priority: 0.4 },
     { url: `${SITE_URL}/sicurezza`, changeFrequency: "monthly", priority: 0.3 },
     { url: `${SITE_URL}/contatti`, changeFrequency: "monthly", priority: 0.4 },
-    // "Lavora con noi" per ogni lavoro (docs/CHANGELOG.md §295).
+    // "Lavora con noi" per ogni lavoro (docs/CHANGELOG.md §296).
     ...PROFESSIONAL_CATEGORIES.map((category) => ({
       url: `${SITE_URL}/lavora-con-noi/${category.slug}`,
       changeFrequency: "monthly" as const,
@@ -42,7 +42,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.6,
     }));
     // Pagine categoria+città (docs/CHANGELOG.md §132) solo da
-    // MIN_PROFESSIONALS_TO_INDEX_CITY professionisti veri in su (§295): niente
+    // MIN_PROFESSIONALS_TO_INDEX_CITY professionisti veri in su (§296): niente
     // pagine quasi vuote proposte a Google. Stessa soglia del noindex della pagina.
     const cityCounts = new Map<string, number>();
     for (const pro of professionals) {
@@ -59,10 +59,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 0.7,
     }));
-    // Categorie in tutta Italia solo con almeno un professionista vero, come il noindex della pagina (§295).
+    // Categorie in tutta Italia solo con almeno un professionista vero, come il noindex della pagina (§296).
     const withProfessionals = new Set(professionals.flatMap((pro) => pro.categories.map((category) => category.slug)));
     const categories = categoryEntries(PROFESSIONAL_CATEGORIES.map((category) => category.slug).filter((slug) => withProfessionals.has(slug)));
-    // Pagine "Quanto costa" solo quando hanno prezzi veri (§295): l'API dice
+    // Pagine "Quanto costa" solo quando hanno prezzi veri (§296): l'API dice
     // se si è sopra le soglie, altrimenti la pagina è un 404.
     const priceSlugs = await Promise.all(
       PROFESSIONAL_CATEGORIES.map(async ({ slug }) => {

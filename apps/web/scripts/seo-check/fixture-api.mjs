@@ -1,4 +1,4 @@
-// API finta per il controllo SEO in CI (docs/CHANGELOG.md §295): tre
+// API finta per il controllo SEO in CI (docs/CHANGELOG.md §296): tre
 // idraulici veri a Latina, nessun professionista nelle altre categorie.
 // Così si provano sia le pagine piene (indicizzabili) sia quelle vuote
 // (noindex). Risponde a tutto il resto con un elenco vuoto, così una pagina

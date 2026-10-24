@@ -8,7 +8,7 @@ type PriceRange = { priceMinEurCents: number | null; priceMaxEurCents: number | 
 
 /**
  * Prezzo di un preventivo per le pagine "Quanto costa" (docs/CHANGELOG.md
- * §295): somma delle voci, ognuna al centro della sua fascia (una voce con un
+ * §296): somma delle voci, ognuna al centro della sua fascia (una voce con un
  * solo prezzo vale quello). Null se nessuna voce ha un prezzo.
  */
 export function quoteMidpointEurCents(items: PriceRange[]): number | null {

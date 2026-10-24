@@ -5,7 +5,7 @@ import { CATEGORY_SEO_NOUN, PROFESSIONAL_CATEGORIES, isProfessionalCategorySlug 
 import { breadcrumbJsonLd, jsonForScript } from "@/lib/jsonLd";
 
 /**
- * "Lavora con noi" per ogni lavoro (docs/CHANGELOG.md §295, strategia SEO
+ * "Lavora con noi" per ogni lavoro (docs/CHANGELOG.md §296, strategia SEO
  * Latina): chi cerca "lavoro pulizie latina" è un professionista da
  * trovare. Pagina breve che porta all'iscrizione con la categoria già
  * scelta; prezzi e condizioni restano su /per-professionisti.

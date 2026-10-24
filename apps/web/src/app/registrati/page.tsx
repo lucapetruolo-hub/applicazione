@@ -358,7 +358,7 @@ function RegistratiForm() {
   // stesso numero/ordine di hook ad ogni render).
   // Da 1 a 3 categorie (docs/CHANGELOG.md §217): obbligatorie sia con
   // email e password sia con Google, precompilano il profilo.
-  // ?categoria= da "Lavora con noi" (docs/CHANGELOG.md §295): lavoro già scelto, modificabile.
+  // ?categoria= da "Lavora con noi" (docs/CHANGELOG.md §296): lavoro già scelto, modificabile.
   const [categorySlugs, setCategorySlugs] = useState<ProfessionalCategorySlug[]>(() => {
     const fromLink = searchParams.get("categoria");
     return fromLink && isProfessionalCategorySlug(fromLink) ? [fromLink] : [];

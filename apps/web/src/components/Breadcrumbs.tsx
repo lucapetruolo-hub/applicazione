@@ -2,7 +2,7 @@ import Link from "next/link";
 import { breadcrumbJsonLd, jsonForScript, type BreadcrumbItem } from "@/lib/jsonLd";
 
 /**
- * Percorso "Home › Idraulico › Latina › Nome" (docs/CHANGELOG.md §294): per
+ * Percorso "Home › Idraulico › Latina › Nome" (docs/CHANGELOG.md §295): per
  * chi legge, un modo per risalire alla categoria e alla città; per Google, i
  * dati strutturati BreadcrumbList nello stesso HTML. L'ultima voce è la
  * pagina corrente (senza link) e si accorcia con i puntini se non ci sta.

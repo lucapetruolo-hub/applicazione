@@ -1,10 +1,13 @@
 import { BadRequestException, Injectable, Logger, ServiceUnavailableException } from "@nestjs/common";
+import { DailyBudget } from "../common/daily-budget";
 
 const TIMEOUT_MS = 5000;
 const MAX_MARKERS = 60;
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 /** Circa 300 immagini da ~100 KB: una trentina di MB al massimo. */
 const CACHE_MAX = 300;
+/** Immagini nuove chieste a Google al giorno (§293); quelle già pronte non contano. */
+const DAILY_LIMIT = 2000;
 const PIN_COLOR = "0x189A63";
 /** Raggio richieste standard e urgenti (stessi colori della mappa interattiva). */
 const CIRCLE_STYLES = ["color:0x3D6B3ECC|weight:2|fillcolor:0x3D6B3E1F", "color:0xD9A441CC|weight:2|fillcolor:0xD9A44114"];
@@ -93,6 +96,9 @@ export class StaticMapService {
    * `CACHE_MAX` immagini (le più vecchie escono per prime).
    */
   private readonly cache = new Map<string, { buffer: Buffer; contentType: string; expiresAt: number }>();
+  private readonly budget = new DailyBudget(DAILY_LIMIT, () =>
+    this.logger.error("Tetto giornaliero delle mappe fisse raggiunto: fino a mezzanotte compare \"Mappa non disponibile\"."),
+  );
 
   async image(input: StaticMapInput, now = Date.now()): Promise<{ buffer: Buffer; contentType: string }> {
     const key = process.env.GOOGLE_MAPS_API_KEY?.trim();
@@ -102,6 +108,7 @@ export class StaticMapService {
     const cached = this.cache.get(cacheKey);
     if (cached && cached.expiresAt > now) return cached;
     if (cached) this.cache.delete(cacheKey);
+    if (!this.budget.take(new Date(now))) throw new ServiceUnavailableException("Mappa non disponibile.");
     const image = await this.fetchImage(params, key);
     this.cache.set(cacheKey, { ...image, expiresAt: now + CACHE_TTL_MS });
     while (this.cache.size > CACHE_MAX) this.cache.delete(this.cache.keys().next().value!);

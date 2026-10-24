@@ -2,7 +2,7 @@ import { z } from "zod";
 
 /**
  * Da dove arriva chi manda una richiesta di preventivo (docs/CHANGELOG.md
- * §295, strategia SEO): l'unica prova che Google porta lavoro vero. Solo una
+ * §296, strategia SEO): l'unica prova che Google porta lavoro vero. Solo una
  * categoria, mai l'indirizzo di provenienza né dati personali.
  */
 export const TRAFFIC_SOURCES = ["GOOGLE", "OTHER_SEARCH", "SOCIAL", "DIRECT", "OTHER"] as const;

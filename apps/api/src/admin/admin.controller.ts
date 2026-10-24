@@ -28,18 +28,20 @@ export class AdminController {
   ) {}
 
   /** Contatori della home admin (docs/CHANGELOG.md §144). */
+  @RequireAdminScope("ANY")
   @Get("overview")
   overview() {
     return this.adminService.getOverview();
   }
 
   /** Andamento settimanale per la Home (docs/CHANGELOG.md §145). */
+  @RequireAdminScope("ANY")
   @Get("trends")
   trends() {
     return this.adminService.getTrends();
   }
 
-  /** Da dove arrivano le richieste di preventivo, ultimi 30 giorni (docs/CHANGELOG.md §295). */
+  /** Da dove arrivano le richieste di preventivo, ultimi 30 giorni (docs/CHANGELOG.md §296). */
   @RequireAdminScope("ANY")
   @Get("traffic-sources")
   trafficSources() {
@@ -47,16 +49,20 @@ export class AdminController {
   }
 
   /** Ricerca globale ⌘K (docs/CHANGELOG.md §145). */
+  @RequireAdminScope("ANY")
   @Get("search")
   search(@Query("q") q = "") {
     return this.adminService.search(q);
   }
 
+  @RequireAdminScope("ANY")
   @Get("users")
   listUsers(@Query("q") q?: string, @Query("role") role?: string, @Query("status") status?: string, @Query("page") page?: string) {
     return this.adminService.listUsers({ q, role, status, page: page ? Number(page) || 1 : 1 });
   }
 
+  // Tutti gli utenti con i contatti in un file: solo moderatori (controllo sicurezza, §292).
+  @RequireAdminScope("MODERATION")
   @Get("users/export.csv")
   @Header("Content-Type", "text/csv; charset=utf-8")
   @Header("Content-Disposition", 'attachment; filename="utenti.csv"')
@@ -65,6 +71,7 @@ export class AdminController {
   }
 
   /** Scheda utente con cronologia (docs/CHANGELOG.md §145). */
+  @RequireAdminScope("ANY")
   @Get("users/:id")
   getUser(@Param("id") id: string) {
     return this.adminService.getUserDetail(id);

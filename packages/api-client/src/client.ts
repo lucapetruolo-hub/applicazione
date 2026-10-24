@@ -358,7 +358,7 @@ export type AdminTrends = {
   series: { newClients: number[]; newProfessionals: number[]; requests: number[]; bookings: number[]; reports: number[] };
 };
 
-/** Provenienza delle richieste di preventivo, ultimi 30 giorni (docs/CHANGELOG.md §295). */
+/** Provenienza delle richieste di preventivo, ultimi 30 giorni (docs/CHANGELOG.md §296). */
 export type AdminTrafficSources = {
   days: number;
   total: number;
@@ -910,13 +910,15 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
       ),
 
     /**
-     * URL dello stream SSE in tempo reale (CTO — "socket.io vs websocket vs
-     * alternative", scelta SSE) — non una `request()` come le altre
-     * chiamate: `EventSource` (l'API browser nativa) prende un URL grezzo,
-     * mai un header `Authorization` (non lo supporta), da qui il token in
-     * query string invece che nell'header Bearer usato ovunque altrove.
+     * Stream SSE in tempo reale (CTO — "socket.io vs websocket vs
+     * alternative", scelta SSE). `EventSource` prende un URL grezzo, senza
+     * header `Authorization`: prima si chiede con il token un biglietto
+     * monouso da 60 secondi, poi lo si mette nell'indirizzo (docs/CHANGELOG.md §293).
      */
-    realtimeStreamUrl: (token: string) => `${baseUrl}/realtime/stream?token=${encodeURIComponent(token)}`,
+    realtimeTicket: (token: string) =>
+      request<{ ticket: string }>("/realtime/ticket", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+
+    realtimeStreamUrl: (ticket: string) => `${baseUrl}/realtime/stream?ticket=${encodeURIComponent(ticket)}`,
 
     register: (
       email: string,
@@ -1005,12 +1007,17 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
         body: JSON.stringify(input),
       }),
 
+    // `token`: il nuovo accesso per questo dispositivo, gli altri si chiudono (docs/CHANGELOG.md §292).
     changePassword: (token: string, input: ChangePasswordInput) =>
-      request<{ success: boolean }>("/auth/change-password", {
+      request<{ success: boolean; token: string }>("/auth/change-password", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
       }),
+
+    // Gli altri dispositivi escono; `token` è il nuovo accesso per questo (docs/CHANGELOG.md §294).
+    logoutOtherDevices: (token: string) =>
+      request<{ token: string }>("/auth/logout-others", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
     deleteAccount: (token: string) =>
       request<{ success: boolean }>("/auth/me", {
@@ -1073,7 +1080,7 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
         { cache: "no-store" },
       ),
 
-    /** Prezzi veri della pagina "Quanto costa" di una categoria (docs/CHANGELOG.md §295); null sotto le soglie. */
+    /** Prezzi veri della pagina "Quanto costa" di una categoria (docs/CHANGELOG.md §296); null sotto le soglie. */
     getCategoryPrices: (categorySlug: string) =>
       request<CategoryPriceStats>(`/professionals/prices/${encodeURIComponent(categorySlug)}`, { cache: "no-store" }),
 

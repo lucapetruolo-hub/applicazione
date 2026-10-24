@@ -2,7 +2,7 @@ import type { ProfessionalCategorySlug } from "./categories";
 
 /**
  * Pagine categoria+città indicizzabili solo da 3 professionisti veri in su
- * (docs/CHANGELOG.md §295, strategia SEO Latina): con meno, la pagina resta
+ * (docs/CHANGELOG.md §296, strategia SEO Latina): con meno, la pagina resta
  * visibile a chi la apre ma fuori da Google e dalla sitemap, così non si
  * creano pagine quasi vuote tutte uguali.
  */

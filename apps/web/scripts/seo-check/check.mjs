@@ -1,4 +1,4 @@
-// Controllo SEO delle pagine pubbliche (docs/CHANGELOG.md §295), eseguito in
+// Controllo SEO delle pagine pubbliche (docs/CHANGELOG.md §296), eseguito in
 // CI contro `next start` e l'API finta (fixture-api.mjs).
 //   node check.mjs public   sito aperto (NEXT_PUBLIC_SITE_INDEXABLE=true)
 //   node check.mjs private  sito privato: tutto in noindex, sitemap vuota

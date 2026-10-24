@@ -28,8 +28,8 @@ export class JobPaymentsController {
 
   @UseGuards(JwtAuthGuard)
   @Get()
-  get(@Param("id") bookingId: string) {
-    return this.jobPaymentsService.getForBooking(bookingId);
+  get(@Req() req: AuthenticatedRequest, @Param("id") bookingId: string) {
+    return this.jobPaymentsService.getForBooking(req.user.userId, bookingId);
   }
 
   /** Pagamento online (§168): checkout Stripe dell'acconto o del saldo. */

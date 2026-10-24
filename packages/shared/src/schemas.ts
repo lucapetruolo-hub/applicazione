@@ -328,7 +328,7 @@ export const guidedRequestSchema = z
      */
     preferredDate: isoDateSchema.optional(),
     preferredTimeSlot: timeRangeSchema.optional(),
-    /** Da dove è arrivato il cliente nella visita che porta alla richiesta (docs/CHANGELOG.md §295). */
+    /** Da dove è arrivato il cliente nella visita che porta alla richiesta (docs/CHANGELOG.md §296). */
     trafficSource: trafficSourceSchema.optional(),
   })
   .refine((data) => Boolean(data.preferredDate) === Boolean(data.preferredTimeSlot), {

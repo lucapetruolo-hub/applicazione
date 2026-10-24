@@ -1,6 +1,6 @@
 /**
  * Pagine "Quanto costa un [lavoro]" (`/prezzi/[categoria]`, docs/CHANGELOG.md
- * §295, strategia SEO Latina): prezzi veri del sito, mai stime inventate.
+ * §296, strategia SEO Latina): prezzi veri del sito, mai stime inventate.
  * La pagina esiste solo da queste soglie in su; sotto, l'API non restituisce
  * numeri (con due o tre preventivi si potrebbe risalire al prezzo di un
  * singolo lavoro) e la pagina non c'è.

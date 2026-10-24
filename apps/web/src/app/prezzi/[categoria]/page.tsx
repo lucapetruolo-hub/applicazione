@@ -14,7 +14,7 @@ import { apiClient } from "@/lib/apiClient";
 import { breadcrumbJsonLd, jsonForScript } from "@/lib/jsonLd";
 
 /**
- * "Quanto costa un [lavoro]" (docs/CHANGELOG.md §295, strategia SEO Latina):
+ * "Quanto costa un [lavoro]" (docs/CHANGELOG.md §296, strategia SEO Latina):
  * le ricerche sui prezzi sono tantissime e nazionali, e Google premia numeri
  * chiari e verificabili. Qui solo prezzi veri del sito: preventivi accettati
  * (da 10) e prezzi dichiarati dai professionisti (da 5 professionisti). Sotto
