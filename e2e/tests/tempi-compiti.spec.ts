@@ -65,22 +65,19 @@ test("C2 chiudo un giorno (venerdì) per un impegno", async ({ page }) => {
   await openAgenda(page, log);
   log.ops.push("M", "T");
   await page.getByRole("button", { name: "Orari di lavoro" }).click();
-  // "Giorno per giorno" è in fondo alla scheda; sul telefono mostra un giorno alla volta.
+  // "Giorno per giorno" è in fondo alla scheda; sul telefono la striscia della settimana porta a venerdì con un tocco (U1, §293).
   log.ops.push("S", "S", "M");
   const section = page.getByRole("heading", { name: "Giorno per giorno" }).locator("xpath=ancestor::div[2]");
   await section.scrollIntoViewIfNeeded();
-  for (let i = 0; i < 4; i++) {
-    log.ops.push("T"); // giorno dopo, fino a venerdì 30
-    await section.getByRole("button", { name: "Periodo successivo" }).click();
-  }
+  log.ops.push("T"); // venerdì 30 nella striscia
+  await section.getByRole("group", { name: "Giorni della settimana" }).getByRole("button", { name: /30/ }).click();
   await expect(section).toContainText("30 Ottobre 2026");
-  const n = await page.getByRole("button", { name: "Chiudi", exact: true }).count();
   log.ops.push("M", "T");
   await timed(log, async () => {
-    await section.getByRole("button", { name: "Chiudi", exact: true }).click();
-    await expect(section.getByRole("button", { name: "Riapri", exact: true })).toBeVisible();
+    await section.getByRole("button", { name: "Chiudi venerdì 30", exact: true }).click();
+    await expect(section.getByRole("button", { name: "Riapri venerdì 30", exact: true })).toBeVisible();
   });
-  done(`C2 Chiudo venerdì (${n} pulsanti "Chiudi" uguali)`, log);
+  done("C2 Chiudo venerdì", log);
 });
 
 test("C3 arrivo dal cliente: navigo e lo avviso", async ({ page }) => {
@@ -113,8 +110,8 @@ test("C4 segno il lavoro completato", async ({ page }) => {
   const amount = modal.getByRole("textbox", { name: /Importo/ }).first();
   const description = modal.getByRole("textbox", { name: "Descrizione della voce" });
   if (await description.count()) {
-    log.ops.push("M", "T", "K11"); // preventivo senza voci: va scritto anche il nome della voce
-    await description.fill("Riparazione");
+    // Preventivo senza voci: la voce ha già il nome del lavoro, non si scrive nulla (U2, §293).
+    await expect(description).not.toHaveValue("");
   }
   log.ops.push("M", "T", "K3"); // importo finale, es. 120
   await amount.fill("120");

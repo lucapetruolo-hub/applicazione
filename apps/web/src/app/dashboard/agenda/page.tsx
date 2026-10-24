@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CalendarDays, ChevronLeft, ChevronRight, Navigation, Phone, Plus, Search, Truck, X } from "lucide-react";
 import {
   agendaAttention,
+  formatAppointmentDate,
   formatAppointmentTimeRange,
   jobOccurrenceOn,
   jobOccurrences,
@@ -40,6 +41,7 @@ import { WeekTemplateEditor } from "@/components/agenda/WeekTemplateEditor";
 import { ZoneDemandCard } from "@/components/agenda/ZoneDemandCard";
 import { DayRouteSection } from "@/components/agenda/DayRouteSection";
 import { readAgendaOffline, saveAgendaOffline } from "@/lib/agendaOffline";
+import { subscribeRealtimeEvents } from "@/lib/realtimeBus";
 import {
   addDaysUtc,
   addMonthsUtc,
@@ -277,6 +279,36 @@ function DashboardAgendaContent() {
 
   // Appuntamenti e lavori esterni insieme: se la rete non c'è si mostra
   // l'ultima copia salvata sul telefono (docs/CHANGELOG.md §288).
+  // Si ricarica da sola quando un cliente accetta, sposta o annulla, e
+  // quando si torna sull'app o torna la rete (R2 della verifica,
+  // docs/CHANGELOG.md §293): prima restava ferma all'apertura.
+  const [agendaReload, setAgendaReload] = useState(0);
+  useEffect(() => {
+    let last = Date.now();
+    const reload = () => {
+      // Mai più di una volta ogni 5 secondi: tornare sull'app più volte di fila non serve.
+      if (Date.now() - last < 5_000) return;
+      last = Date.now();
+      setAgendaReload((n) => n + 1);
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") reload();
+    };
+    const unsubscribe = subscribeRealtimeEvents((event) => {
+      if (event.kind === "notification" && /^(QUOTE_|BOOKING_|JOB_)/.test(event.notification.type)) {
+        last = 0;
+        reload();
+      }
+    });
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", reload);
+    return () => {
+      unsubscribe();
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", reload);
+    };
+  }, []);
+
   useEffect(() => {
     if (!token || !user) return;
     let cancelled = false;
@@ -285,6 +317,8 @@ function DashboardAgendaContent() {
         if (cancelled) return;
         setBookings(loadedBookings);
         setExternalJobs(loadedJobs);
+        // Il riquadro aperto mostra subito lo stato nuovo (es. annullato dal cliente).
+        setSelectedBooking((current) => (current ? (loadedBookings.find((b) => b.id === current.id) ?? current) : current));
         setOfflineSavedAt(null);
         saveAgendaOffline(user.id, loadedBookings, loadedJobs);
       })
@@ -304,7 +338,7 @@ function DashboardAgendaContent() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, user?.id]);
+  }, [token, user?.id, agendaReload]);
 
   useEffect(() => {
     if (!token) return;
@@ -372,7 +406,7 @@ function DashboardAgendaContent() {
   useEffect(() => {
     if (!token) return;
     apiClient.myLeads(token).then(setLeads).catch(() => {});
-  }, [token]);
+  }, [token, agendaReload]);
 
   useEffect(() => {
     if (!token) return;
@@ -471,7 +505,17 @@ function DashboardAgendaContent() {
     setSelectedBooking(null);
   }
 
-  if (isLoading || (token && isLoadingSlots)) return null;
+  // Mentre carica si tiene il posto della pagina: prima non c'era nulla e il
+  // piè di pagina saltava giù all'arrivo dell'agenda (A1 della verifica,
+  // CLS 0,22, docs/CHANGELOG.md §293).
+  if (isLoading || (token && isLoadingSlots)) {
+    return (
+      <div aria-busy="true" style={{ minHeight: "100vh", padding: 16, display: "flex", flexDirection: "column", gap: 16 }}>
+        <SkeletonBlock height={44} radius={12} />
+        <SkeletonBlock height={420} radius={20} />
+      </div>
+    );
+  }
 
   if (!user || !token) {
     return (
@@ -972,6 +1016,8 @@ function DashboardAgendaContent() {
             opacity={exceptionBusyDate === dateStr ? 0.5 : 1}
             onPress={() => toggleException(dateStr)}
             accessibilityRole="button"
+            // "Chiudi venerdì 30" invece di sei "Chiudi" uguali per il lettore di schermo (A3, §293).
+            accessibilityLabel={`${isClosed ? "Riapri" : "Chiudi"} ${formatAppointmentDate(date, { weekday: "long", day: "numeric" })}`}
           >
             <Text fontFamily="$body" fontSize={12} fontWeight="600" color={brand.grafite70} textDecorationLine="underline">
               {isClosed ? "Riapri" : "Chiudi"}
@@ -1695,10 +1741,8 @@ function DashboardAgendaContent() {
                           className={`${isSameDateUtc(date, bookingCurrentDate) ? "on" : ""} ${dateStr === todayStr ? "today" : ""}`}
                           onClick={() => setBookingCurrentDate(date)}
                           aria-pressed={isSameDateUtc(date, bookingCurrentDate)}
-                          aria-label={`${weekdayShortLabel(date)} ${date.getUTCDate()}`}
                         >
-                          {weekdayShortLabel(date)}
-                          <b>{date.getUTCDate()}</b>
+                          {weekdayShortLabel(date)} <b>{date.getUTCDate()}</b>
                           {weather.get(dateStr) ? <WeatherIcon kind={weather.get(dateStr)!} size={12} /> : busyDates.has(dateStr) ? <u aria-hidden /> : null}
                         </button>
                       );
@@ -1846,6 +1890,25 @@ function DashboardAgendaContent() {
                   )}
                 </div>
               ) : null}
+              {view === "day" ? (
+                // Striscia della settimana come nel Calendario: venerdì è a un tocco, non a quattro frecce (U1, §293).
+                <div className="ag-strip" role="group" aria-label="Giorni della settimana" style={{ marginBottom: 12 }}>
+                  {weekDays(currentDate).map((date) => {
+                    const dateStr = toIsoDate(date);
+                    return (
+                      <button
+                        key={dateStr}
+                        type="button"
+                        className={`${isSameDateUtc(date, currentDate) ? "on" : ""} ${dateStr === todayStr ? "today" : ""}`}
+                        onClick={() => setCurrentDate(date)}
+                        aria-pressed={isSameDateUtc(date, currentDate)}
+                      >
+                        {weekdayShortLabel(date)} <b>{date.getUTCDate()}</b>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
               <CalendarShell
                 view={view}
                 onViewChange={setView}
@@ -1899,6 +1962,7 @@ function DashboardAgendaContent() {
       {completingBooking ? (
         <CompleteJobModal
           quotedItems={completingBooking.items}
+          jobName={completingBooking.categoryLabel}
           onClose={() => setCompletingBooking(null)}
           onComplete={handleComplete}
           uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}

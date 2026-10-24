@@ -68,11 +68,14 @@ function parseEuroToCents(value: string): number | null {
  */
 export function CompleteJobModal({
   quotedItems,
+  jobName,
   onClose,
   onComplete,
   uploadPhoto,
 }: {
   quotedItems: { name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
+  /** Nome del lavoro (es. "Idraulico"): già scritto nella voce quando il preventivo non ha voci (U2, §293). */
+  jobName?: string | null;
   onClose: () => void;
   onComplete: (input: CompleteBookingInput) => Promise<void>;
   /** Upload di una foto/video del lavoro terminato (richiesta esplicita dell'utente), restituisce l'URL. */
@@ -84,7 +87,7 @@ export function CompleteJobModal({
       ? quotedItems.map((item) => ({ name: item.name, hint: formatRangeHint(item.priceMinEurCents, item.priceMaxEurCents), price: "" }))
       : [],
   );
-  const [extraRows, setExtraRows] = useState<ExtraRow[]>(quotedItems.length === 0 ? [{ name: "", price: "" }] : []);
+  const [extraRows, setExtraRows] = useState<ExtraRow[]>(quotedItems.length === 0 ? [{ name: jobName ?? "", price: "" }] : []);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
@@ -439,16 +442,21 @@ export function CompleteJobModal({
           </YStack>
           <input ref={photoInputRef} type="file" accept="image/*,video/*" onChange={handlePhotoChange} disabled={isUploadingPhoto} style={{ display: "none" }} />
           {photoError ? (
-            <Text color={brand.urgenza} fontSize="$2">
-              {photoError}
-            </Text>
+            <div role="alert">
+              <Text color={brand.urgenza} fontSize="$2">
+                {photoError}
+              </Text>
+            </div>
           ) : null}
         </YStack>
 
         {error ? (
-          <Text color={brand.urgenza} fontSize="$3">
-            {error}
-          </Text>
+          // Annunciato dal lettore di schermo (U2, docs/CHANGELOG.md §293).
+          <div role="alert">
+            <Text color={brand.urgenza} fontSize="$3">
+              {error}
+            </Text>
+          </div>
         ) : null}
 
         {/* Dichiarazione sull'importo (DAC7, docs/CHANGELOG.md §247): una

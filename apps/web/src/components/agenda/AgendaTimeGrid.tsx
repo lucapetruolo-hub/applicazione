@@ -112,7 +112,7 @@ export function AgendaTimeGrid({
           const alert = weather.get(dateStr);
           const content = (
             <>
-              {weekdayShortLabel(date)}
+              {weekdayShortLabel(date)}{" "}
               <span className="ag-day-num">{date.getUTCDate()}</span>
               {note || alert ? (
                 <span className={`ag-day-note ${note?.tone ?? ""}`}>
@@ -124,8 +124,10 @@ export function AgendaTimeGrid({
           );
           const className = isSameDateUtc(date, today) ? "today" : "";
           return onDayPress && days.length > 1 ? (
-            <button key={dateStr} type="button" className={className} onClick={() => onDayPress(date)} aria-label={`Apri il giorno ${date.getUTCDate()}`}>
+            <button key={dateStr} type="button" className={className} onClick={() => onDayPress(date)}>
               {content}
+              {/* Il nome comincia col testo visibile, "lun 26" (A3, §293). */}
+              <span className="sr-only">, apri il giorno</span>
             </button>
           ) : (
             <div key={dateStr} className={className}>

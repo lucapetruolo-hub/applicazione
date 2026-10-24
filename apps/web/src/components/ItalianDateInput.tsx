@@ -81,7 +81,8 @@ export function ItalianDateInput({
           font-variant-numeric: tabular-nums;
         }
         .it-date-text.empty {
-          opacity: 0.55;
+          /* Abbastanza scuro da leggersi (contrasto 4,5:1, A4 di docs/CHANGELOG.md §293). */
+          opacity: 0.72;
         }
       `}</style>
     </span>

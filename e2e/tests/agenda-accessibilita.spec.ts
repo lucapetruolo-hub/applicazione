@@ -7,23 +7,13 @@ import { e2eData } from "../fixtures/data";
  * problema grave o critico (WCAG 2.1 A e AA) nelle tre schede e nel riquadro
  * dell'appuntamento.
  *
- * KNOWN elenca i problemi già trovati e in attesa della decisione
- * dell'utente (tabella della verifica, §292): la prova li lascia passare ma
- * fallisce su qualunque problema nuovo. Quando uno viene corretto, la sua
- * riga va tolta.
+ * KNOWN elenca i problemi noti che la prova lascia passare: vuoto dal
+ * §293, quando A3 e A4 della verifica (§292) sono stati corretti. Ogni
+ * problema grave fa fallire la prova.
  */
 type Violation = { id: string; html: string };
 
-const KNOWN: { finding: string; id: string; html: RegExp }[] = [
-  // A3: il nome letto dal lettore di schermo non contiene il testo visibile (WCAG 2.5.3).
-  { finding: "A3", id: "label-content-name-mismatch", html: /aria-label="Il mio account/ },
-  { finding: "A3", id: "label-content-name-mismatch", html: /aria-label="(Lun|Mar|Mer|Gio|Ven|Sab|Dom) \d+"/ },
-  { finding: "A3", id: "label-content-name-mismatch", html: /class="ag-ev / },
-  { finding: "A3", id: "label-content-name-mismatch", html: /aria-label="Apri il giorno \d+"/ },
-  // A4: testo "gg/mm/aaaa" vuoto e giorni fuori mese troppo chiari (WCAG 1.4.3).
-  { finding: "A4", id: "color-contrast", html: /it-date-text empty/ },
-  { finding: "A4", id: "color-contrast", html: /aria-label="\d+ [A-Z][a-z]+"/ },
-];
+const KNOWN: { finding: string; id: string; html: RegExp }[] = [];
 
 async function seriousViolations(page: Page): Promise<{ unknown: string[]; known: Set<string> }> {
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();

@@ -1564,6 +1564,7 @@ export function RequestCard({
       {showCompleteModal && booking ? (
         <CompleteJobModal
           quotedItems={booking.items}
+          jobName={gr.categoryLabel}
           onClose={() => setShowCompleteModal(false)}
           onComplete={handleComplete}
           uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}

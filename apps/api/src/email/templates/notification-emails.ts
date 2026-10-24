@@ -22,7 +22,7 @@ import {
 } from "@professionisti/shared";
 import { EMAIL_BRAND, frontendUrl } from "../email-brand";
 import type { EmailContent } from "../email-layout";
-import { descriptionDetail, formatAppointment, formatAppointmentSpan, formatAppointmentTime, formatDay, formatDeadline, formatEur } from "../email-format";
+import { descriptionDetail, formatAppointment, formatAppointmentSpan, formatDay, formatDeadline, formatEur } from "../email-format";
 
 /**
  * Testi delle email che accompagnano le notifiche del sito

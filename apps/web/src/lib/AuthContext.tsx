@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import type { CurrentUser } from "@professionisti/api-client";
 import { DEFAULT_NOTIFICATION_PREFERENCES, type NotificationPreferences, type RealtimeEvent } from "@professionisti/shared";
 import { apiClient } from "./apiClient";
-import { clearAgendaOffline } from "./agendaOffline";
+import { clearAgendaOffline, clearOfflineUser, readOfflineUser, saveOfflineUser } from "./agendaOffline";
 import { notificationCopy } from "./notificationCopy";
 import { emitRealtimeEvent } from "./realtimeBus";
 import { installNotificationSoundUnlock, playNotificationSound } from "./notificationSound";
@@ -82,6 +82,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // semplicemente disconnessi.
       if (!currentUser) {
         window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+        clearOfflineUser();
+      } else {
+        saveOfflineUser(currentUser);
       }
       setUser(currentUser);
       setToken(currentUser ? currentToken : null);
@@ -101,10 +104,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const isNetworkFailure = err instanceof TypeError || (err instanceof DOMException && err.name === "AbortError");
       if (!isNetworkFailure) {
         window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+        clearOfflineUser();
         setUser(null);
         setToken(null);
+        return null;
       }
-      return null;
+      // Senza rete si resta dentro con l'ultimo profilo salvato, così
+      // l'agenda mostra la sua copia invece di "Accedi" (R1 della verifica,
+      // docs/CHANGELOG.md §292-§293). Le azioni chiedono comunque la rete.
+      const offlineUser = readOfflineUser();
+      if (offlineUser) {
+        setUser((current) => current ?? offlineUser);
+        setToken((current) => current ?? currentToken);
+      }
+      return offlineUser;
     }
   }, []);
 
@@ -129,6 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.localStorage.removeItem(TOKEN_STORAGE_KEY);
     // Copia dell'agenda senza rete (docs/CHANGELOG.md §288): non resta sul telefono dopo l'uscita.
     clearAgendaOffline();
+    clearOfflineUser();
     setUser(null);
     setToken(null);
     setUnreadCount(0);
