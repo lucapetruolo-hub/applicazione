@@ -1,4 +1,4 @@
--- Email degli account in minuscolo (docs/CHANGELOG.md §327): da ora il sito
+-- Email degli account in minuscolo (docs/CHANGELOG.md §329): da ora il sito
 -- le salva e le cerca così. Si cambiano solo quelle senza un altro account
 -- con la stessa email scritta in modo diverso, per non violare l'unicità.
 UPDATE "users" AS u

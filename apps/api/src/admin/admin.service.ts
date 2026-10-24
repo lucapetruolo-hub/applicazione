@@ -581,7 +581,7 @@ export class AdminService {
   }
 
   async promoteToAdmin(typedEmail: string): Promise<{ email: string; role: string }> {
-    // Email degli account in minuscolo (§327).
+    // Email degli account in minuscolo (§329).
     const email = typedEmail.trim().toLowerCase();
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user) {

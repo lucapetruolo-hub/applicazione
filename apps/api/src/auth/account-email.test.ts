@@ -8,7 +8,7 @@ import {
   updateAccountSchema,
 } from "@professionisti/shared";
 
-/** Email degli account sempre senza spazi e in minuscolo (docs/CHANGELOG.md §327). */
+/** Email degli account sempre senza spazi e in minuscolo (docs/CHANGELOG.md §329). */
 describe("email degli account", () => {
   const typed = "  Mario.Rossi@Gmail.COM ";
   const saved = "mario.rossi@gmail.com";

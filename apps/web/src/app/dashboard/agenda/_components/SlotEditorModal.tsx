@@ -442,3 +442,36 @@ export function SlotEditorModal({
     </div>
   );
 }
+
+/**
+ * "eccezione" sui giorni di "Giorno per giorno" che hanno orari diversi
+ * dalla settimana tipo (richiesta dell'utente, docs/CHANGELOG.md §328): solo
+ * la scritta, nessun tasto. Dove la colonna è troppo stretta per la parola
+ * (Settimana e Mese sul telefono) un cerchietto vuoto, spiegato dalla
+ * legenda sotto il calendario (`compact`); `className` sceglie quale dei due
+ * si vede (`.ag-ecc-wide`/`.ag-ecc-narrow` in AgendaStyles).
+ */
+export function ExceptionTag({ compact = false, className }: { compact?: boolean; className?: string }) {
+  if (compact) {
+    return <YStack className={className} width={6} height={6} borderRadius={3} borderWidth={1.5} borderColor={brand.grafite70} aria-label="eccezione" role="img" />;
+  }
+  return (
+    <XStack className={className} alignSelf="flex-start" borderRadius={999} paddingHorizontal={8} paddingVertical={2} backgroundColor="#ECECE8">
+      <Text fontFamily="$body" fontSize={11} fontWeight="600" color={brand.grafite70}>
+        eccezione
+      </Text>
+    </XStack>
+  );
+}
+
+/** Legenda del cerchietto di `ExceptionTag compact`. */
+export function ExceptionLegend({ className }: { className?: string }) {
+  return (
+    <XStack className={className} alignItems="center" gap={6} marginTop={10}>
+      <YStack width={6} height={6} borderRadius={3} borderWidth={1.5} borderColor={brand.grafite70} />
+      <Text fontFamily="$body" fontSize={12} color={brand.grafite70}>
+        eccezione
+      </Text>
+    </XStack>
+  );
+}

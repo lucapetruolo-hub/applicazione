@@ -284,7 +284,7 @@ export class AuthService {
     if (!payload?.sub || !payload.email) {
       throw new UnauthorizedException("Token Google non valido.");
     }
-    // Email in minuscolo come nei moduli del sito (§327).
+    // Email in minuscolo come nei moduli del sito (§329).
     const googleEmail = payload.email.trim().toLowerCase();
 
     const existingUser = await this.prisma.user.findFirst({

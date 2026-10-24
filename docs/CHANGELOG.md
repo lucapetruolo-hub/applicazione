@@ -20457,7 +20457,29 @@ Dopo la scelta del verde, miglioria approvata da Luca: stesso effetto magnete an
 - Controllo automatico `.github/workflows/zod.yml` (approvato da Luca, "effettua miglioria"): sulle PR che toccano `pnpm-lock.yaml` o i `package.json` di shared e API lancia `confronto-zod --solo-se-cambia` contro il commit di base; se zod resta alla stessa versione non fa nulla, altrimenti si ferma su ogni differenza. La versione di partenza è quella del `pnpm-lock.yaml` del commit di base. Le differenze già spiegate nel registro stanno in `ACCEPTED` nello script (oggi solo quella dell'agenda settimanale).
 - Prova automatica (approvata da Luca, "effettua miglioria"): in `apps/api/src/common/zod-messages.test.ts` ogni file di `packages/shared/src` che importa zod deve avere anche `import "./zod"`; senza, il sito caricherebbe quel file senza i messaggi di zod 3 e li mostrerebbe in silenzio in inglese di zod 4.
 
-## 327. Email degli account in minuscolo
+## 327. Settimana tipo: scegliere il mese in cui salvarla
+
+Richiesta dell'utente, dopo la §323: "dai la possibilità di scegliere il mese in cui salvarlo".
+
+**Decisione**: accanto a "Salva la settimana" c'è "Vale per", con "Tutti i mesi" (come nella §323) oppure uno dei prossimi sei mesi. Si parte da "Tutti i mesi", quindi chi non tocca la scelta non vede cambiare nulla.
+
+**Come funziona**: per un mese solo (`PUT /agenda/week-template/month`, `AgendaService.saveWeekTemplateForMonth`) si riempiono i giorni di quel mese da oggi in poi con le stesse regole della §323 (niente giorni chiusi, con lavori fissati o cambiati a mano). Le fasce create diventano giorni a sé (`fromWeekTemplate` falso): non cambiano quando si salva la settimana di tutti i mesi, e si modificano in "Giorno per giorno". La settimana di tutti i mesi resta com'era; se non è mai stata salvata, l'editor si riapre con quella appena usata. Mesi passati o oltre un anno: rifiutati.
+
+**Schermata**: in fondo "Vale per" + "Salva la settimana" (sul telefono uno sotto l'altro); dopo il salvataggio "Salvata per novembre 2026" oppure "Salvata, vale per tutti i mesi", e l'avviso in cima dice dove è stata salvata.
+
+**Verifica**: nuova prova nel browser (`settimana-tipo.spec.ts`: salvata per un mese, tutte le fasce nuove cadono in quel mese, domenica compresa), prove dell'agenda e dell'accessibilità verdi, lint e typecheck di web e API puliti.
+
+## 328. "eccezione" sui giorni con orari diversi dalla settimana tipo
+
+Richiesta dell'utente, tra le migliorie proposte dopo la §327 ("eccezione" con un tasto "Torna agli orari soliti"): "mostra solo "eccezione"". Quindi solo la scritta, nessun tasto.
+
+**Quando compare**: in "Giorno per giorno", se la settimana tipo di tutti i mesi è attiva, su ogni giorno con fasce che non vengono da lei: cambiato a mano, salvato per un mese solo (§327) o che aveva già fasce sue quando la settimana è stata salvata. L'API manda `fromWeekTemplate` per ogni fascia (`GET /professionals/me/availability`); dopo un salvataggio la pagina applica la stessa regola del server (`weekTemplateDatesKept`) senza rileggere.
+
+**Come si vede**: nella vista Giorno una pastiglia grigia "eccezione" sopra le fasce. Nelle viste Settimana e Mese da computer la stessa parola; sul telefono (sotto i 1000 px) le colonne sono troppo strette per la parola, quindi un cerchietto vuoto accanto ai pallini delle fasce e sotto il calendario la legenda "○ eccezione".
+
+**Verifica**: nuova prova nel browser (`settimana-tipo.spec.ts`: mercoledì cambiato a mano mostra "eccezione", giovedì della settimana tipo no), 68 prove nel browser in locale, foto da telefono e computer delle tre viste, lint e typecheck puliti.
+
+## 329. Email degli account in minuscolo
 
 **Richiesta esplicita dell'utente** (24/10/2026, thread "Correggere l'email del cambio password"): il codice per reimpostare la password non arrivava. Prova sul sito vero: l'invio funziona (arriva in pochi secondi a lucapetruolo@gmail.com; il primo invio può tardare circa un minuto mentre Render gratuito si sveglia). Nel controllo è emerso però un bug vero: accesso, registrazione e recupero password confrontavano l'email rispettando le maiuscole. Chi si era iscritto come "Mario@Gmail.com" e scriveva "mario@gmail.com" non veniva trovato e, nel recupero password, non riceveva niente senza nessun avviso (di proposito, per non far scoprire chi è iscritto). Luca: "si" alla correzione.
 
