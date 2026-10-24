@@ -293,7 +293,6 @@ function DashboardAgendaContent() {
     apiClient
       .getMyAvailability(token)
       .then((existing) => {
-<<<<<<< HEAD
         startTransition(() => {
           // Stessa cautela della pagina profilo pubblico: non fidarsi
           // ciecamente della forma della risposta se l'API non è ancora
@@ -313,34 +312,13 @@ function DashboardAgendaContent() {
                 hasUpcomingBooking: s.hasUpcomingBooking,
               })),
             );
+            const notFromTemplate = new Set(existing.slots.filter((s) => s.date && !s.fromWeekTemplate).map((s) => s.date as string));
+            setTemplateDates(new Set(existing.slots.filter((s) => s.date && s.fromWeekTemplate && !notFromTemplate.has(s.date)).map((s) => s.date as string)));
             setExceptionDates(Array.isArray(existing.exceptionDates) ? existing.exceptionDates : []);
           }
           // Insieme alle fasce, così non si vede mai un attimo l'agenda vuota.
           setIsLoadingSlots(false);
         });
-=======
-        // Stessa cautela della pagina profilo pubblico: non fidarsi
-        // ciecamente della forma della risposta se l'API non è ancora
-        // allineata all'ultimo deploy del frontend.
-        if (!Array.isArray(existing?.slots)) return;
-        setSavedSlots(
-          existing.slots.map((s) => ({
-            id: s.id,
-            dayOfWeek: s.dayOfWeek,
-            date: s.date,
-            start: s.startTime,
-            end: s.endTime,
-            allowsHome: s.allowsHome,
-            allowsOnline: s.allowsOnline,
-            homeMax: s.homeMaxBookings,
-            onlineMax: s.onlineMaxBookings,
-            hasUpcomingBooking: s.hasUpcomingBooking,
-          })),
-        );
-        const notFromTemplate = new Set(existing.slots.filter((s) => s.date && !s.fromWeekTemplate).map((s) => s.date as string));
-        setTemplateDates(new Set(existing.slots.filter((s) => s.date && s.fromWeekTemplate && !notFromTemplate.has(s.date)).map((s) => s.date as string)));
-        setExceptionDates(Array.isArray(existing.exceptionDates) ? existing.exceptionDates : []);
->>>>>>> origin/claude/professionisti-platform-architecture-xr9gmn
       })
       .catch((err) => {
         startTransition(() => {
@@ -398,19 +376,10 @@ function DashboardAgendaContent() {
     Promise.all([apiClient.myProfessionalBookings(token), apiClient.myExternalJobs(token)])
       .then(([loadedBookings, loadedJobs]) => {
         if (cancelled) return;
-<<<<<<< HEAD
-=======
-        setBookings(loadedBookings);
-        openDeepLinkedBooking(loadedBookings, loadedJobs);
-        setExternalJobs(loadedJobs);
-        // Il riquadro aperto mostra subito lo stato nuovo (es. annullato dal cliente).
-        setSelectedBooking((current) => (current ? (loadedBookings.find((b) => b.id === current.id) ?? current) : current));
-        setOfflineSavedAt(null);
->>>>>>> origin/claude/professionisti-platform-architecture-xr9gmn
         saveAgendaOffline(user.id, loadedBookings, loadedJobs);
         startTransition(() => {
           setBookings(loadedBookings);
-          openDeepLinkedBooking(loadedBookings);
+          openDeepLinkedBooking(loadedBookings, loadedJobs);
           setExternalJobs(loadedJobs);
           // Il riquadro aperto mostra subito lo stato nuovo (es. annullato dal cliente).
           setSelectedBooking((current) => (current ? (loadedBookings.find((b) => b.id === current.id) ?? current) : current));
@@ -420,11 +389,10 @@ function DashboardAgendaContent() {
       .catch((err) => {
         if (cancelled) return;
         const copy = readAgendaOffline(user.id);
-<<<<<<< HEAD
         startTransition(() => {
           if (copy) {
             setBookings(copy.bookings);
-            openDeepLinkedBooking(copy.bookings);
+            openDeepLinkedBooking(copy.bookings, copy.externalJobs);
             setExternalJobs(copy.externalJobs);
             setOfflineSavedAt(copy.savedAt);
             return;
@@ -432,17 +400,6 @@ function DashboardAgendaContent() {
           const message = err instanceof Error ? err.message : "Errore nel caricamento delle prenotazioni.";
           setBookingsError(message);
         });
-=======
-        if (copy) {
-          setBookings(copy.bookings);
-          openDeepLinkedBooking(copy.bookings, copy.externalJobs);
-          setExternalJobs(copy.externalJobs);
-          setOfflineSavedAt(copy.savedAt);
-          return;
-        }
-        const message = err instanceof Error ? err.message : "Errore nel caricamento delle prenotazioni.";
-        setBookingsError(message);
->>>>>>> origin/claude/professionisti-platform-architecture-xr9gmn
       });
     return () => {
       cancelled = true;

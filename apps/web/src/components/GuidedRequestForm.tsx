@@ -774,7 +774,7 @@ export function GuidedRequestForm({
         backgroundColor={brand.calce}
       >
         <Autocomplete
-          items={ALL_ITALIAN_CITY_NAMES}
+          items={allItalianCityNames()}
           getKey={(item) => item}
           getLabel={(item) => item}
           onSelect={changeCity}
@@ -1128,45 +1128,7 @@ export function GuidedRequestForm({
 
         {step === 2 ? (
           <>
-<<<<<<< HEAD
-        {serviceMode === "HOME" && !chosenAddress.serviceDown ? null : (
-        <YStack gap="$2">
-          <FieldLabel>{cityOptional ? "Città (facoltativa)" : "Città"}</FieldLabel>
-          {/* `.guided-city`: stesso fondo bianco degli altri campi (prima grigio, docs/CHANGELOG.md §154). */}
-          <div className="guided-city">
-          <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="$4" backgroundColor={brand.calce}>
-            <Autocomplete
-              items={allItalianCityNames()}
-              getKey={(item) => item}
-              getLabel={(item) => item}
-              onSelect={changeCity}
-              value={city}
-              onChangeText={changeCity}
-              placeholder="Es. Roma"
-              size="$5"
-              minChars={3}
-            />
-          </YStack>
-          </div>
-          {cityOptional ? (
-            // Richiesta esplicita dell'utente: "la città poiché si è
-            // selezionato online non dev'essere obbligatoria... deve
-            // esserci scritto che non è obbligatorio inserire la città, ma
-            // se pensi che sia necessario anche un intervento sul posto
-            // successivo puoi iniziare la ricerca nella zona
-            // dell'intervento" — spiega sia perché il campo è facoltativo
-            // sia perché può comunque avere senso compilarlo.
-            <Text fontSize={13} color={brand.grafite70}>
-              Per una consulenza online non è obbligatorio indicare la città. Se pensi che in un secondo momento possa
-              servire anche un intervento sul posto, indicala comunque: potrai usarla per iniziare la ricerca nella
-              zona dell&apos;intervento.
-            </Text>
-          ) : null}
-        </YStack>
-        )}
-=======
         {serviceMode === "HOME" ? null : cityField}
->>>>>>> origin/claude/professionisti-platform-architecture-xr9gmn
 
         {serviceMode === "HOME" ? (
           <YStack gap="$3">

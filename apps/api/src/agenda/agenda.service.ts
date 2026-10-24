@@ -4,13 +4,9 @@ import type { Prisma, PrismaClient } from "@professionisti/database";
 import {
   agendaWeekTemplateSchema,
   dayPartOf,
-<<<<<<< HEAD
-  italianComuni,
-=======
   findComuneByName,
-  ITALIAN_COMUNI,
+  italianComuni,
   jobOccurrenceOn,
->>>>>>> origin/claude/professionisti-platform-architecture-xr9gmn
   DEFAULT_WEEK_TEMPLATE,
   PUBLIC_AGENDA_DAYS,
   wallClockToday,

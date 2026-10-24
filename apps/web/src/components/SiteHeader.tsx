@@ -7,11 +7,7 @@ import { usePathname } from "next/navigation";
 import { Button, Logo, Text, XStack, brand, motionEasing, motionFast } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
 import { AccountMenu } from "./AccountMenu";
-<<<<<<< HEAD
-=======
 import { prefetchCategoryOrder } from "@/lib/categoryOrder";
-import { HeaderSearchBar } from "./HeaderSearchBar";
->>>>>>> origin/claude/professionisti-platform-architecture-xr9gmn
 import { MegaMenu } from "./MegaMenu";
 import { NotificationBell } from "./NotificationBell";
 import { BRAND } from "@professionisti/shared";

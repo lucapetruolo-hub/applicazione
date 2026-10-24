@@ -220,7 +220,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * giorni vedrebbe 5 popup tutti insieme al primo caricamento.
    */
   const announceNotifications = useCallback((notifications: UnreadNotification[]) => {
-    setUnreadNotifications(notifications);
+    startTransition(() => setUnreadNotifications(notifications));
     if (seenNotificationIdsRef.current === null) {
       seenNotificationIdsRef.current = new Set(notifications.map((n) => n.id));
       return;
@@ -295,68 +295,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-<<<<<<< HEAD
-  /**
-   * Confronta le notifiche non lette con quelle già viste in questa
-   * sessione: quelle nuove diventano un popup "toast" con un messaggio
-   * simpatico (richiesta esplicita dell'utente, es. "Fantastico! Hai
-   * ricevuto un nuovo preventivo"). Il primo controllo dopo login stabilisce
-   * solo la baseline, senza mostrare toast per notifiche già in attesa da
-   * prima — altrimenti un professionista con 5 richieste non lette da
-   * giorni vedrebbe 5 popup tutti insieme al primo caricamento.
-   */
-  const checkForNewNotifications = useCallback(async () => {
-    const storedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY);
-    if (!storedToken) return;
-    try {
-      const notifications = await apiClient.unreadNotifications(storedToken);
-      startTransition(() => setUnreadNotifications(notifications));
-      if (seenNotificationIdsRef.current === null) {
-        seenNotificationIdsRef.current = new Set(notifications.map((n) => n.id));
-        return;
-      }
-      const seen = seenNotificationIdsRef.current;
-      const freshOnes = notifications.filter((n) => !seen.has(n.id));
-      for (const n of freshOnes) {
-        seen.add(n.id);
-      }
-      // Preferenze (docs/CHANGELOG.md §152): suono e popup si possono
-      // spegnere separatamente; la campanella e il numeretto restano.
-      const prefs = notificationPrefsRef.current;
-      if (freshOnes.length > 0 && prefs.sound) playNotificationSound();
-      if (!prefs.popups) return;
-      if (freshOnes.length === 1) {
-        // Caso comune: un solo evento in questo giro di poll, stesso
-        // messaggio simpatico specifico di sempre.
-        const { icon, message } = notificationCopy(freshOnes[0]!.type, freshOnes[0]!.payload);
-        setToasts((prev) => [...prev, { id: freshOnes[0]!.id, icon, message, type: freshOnes[0]!.type, payload: freshOnes[0]!.payload }]);
-      } else if (freshOnes.length > 1) {
-        // Più eventi arrivati nello stesso giro (48s): un toast per
-        // ciascuno si impilerebbe a schermo — richiedendo una chiusura per
-        // volta, dato che i toast non spariscono più da soli (richiesta
-        // esplicita dell'utente) — proprio il rischio di "notification
-        // fatigue" segnalato nel Verbale Cognitivo (F7.2). Un solo toast
-        // aggregato al posto di N: il click apre la pagina/tab del primo
-        // evento del gruppo (i tipi coinvolti puntano comunque sempre a una
-        // delle stesse due pagine, /dashboard o /le-mie-richieste — mai una
-        // destinazione sbagliata, al più non la più recente del gruppo).
-        setToasts((prev) => [
-          ...prev,
-          {
-            id: `batch-${Date.now()}`,
-            icon: "🔔",
-            message: `Hai ${freshOnes.length} nuovi aggiornamenti.`,
-            type: freshOnes[0]!.type,
-            payload: freshOnes[0]!.payload,
-          },
-        ]);
-      }
-    } catch {
-      // Silenzioso, stesso principio di refreshUnreadCount: un toast mancato non deve rompere l'app.
-    }
-  }, []);
-=======
->>>>>>> origin/claude/professionisti-platform-architecture-xr9gmn
 
   useEffect(() => {
     installNotificationSoundUnlock();
