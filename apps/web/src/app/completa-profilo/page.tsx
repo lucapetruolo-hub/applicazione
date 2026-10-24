@@ -31,7 +31,8 @@ function CompletaProfiloForm() {
   const code = useSearchParams().get("codice") ?? "";
   const { login } = useAuth();
   const [preview, setPreview] = useState<ProfileInvitePreview | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const loadError = code ? linkError : "Link incompleto. Apri di nuovo il link che ti abbiamo mandato.";
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -47,14 +48,11 @@ function CompletaProfiloForm() {
   const [consentAttempt, setConsentAttempt] = useState(0);
 
   useEffect(() => {
-    if (!code) {
-      setLoadError("Link incompleto. Apri di nuovo il link che ti abbiamo mandato.");
-      return;
-    }
+    if (!code) return;
     apiClient
       .getProfileInvite(code)
       .then(setPreview)
-      .catch((err) => setLoadError(err instanceof Error ? err.message : "Link non valido."));
+      .catch((err) => setLinkError(err instanceof Error ? err.message : "Link non valido."));
   }, [code]);
 
   async function handleSubmit() {

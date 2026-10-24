@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { usePrefersReducedMotion } from "@/lib/useMediaQuery";
 
 /**
  * Conteggio animato da 0 al valore reale quando la card entra in vista —
@@ -18,23 +19,21 @@ import { useEffect, useRef, useState } from "react";
  * preferenza di sistema vede subito il valore finale, senza il conteggio.
  */
 export function useCountUp(target: number, durationMs = 900) {
-  const ref = useRef<HTMLDivElement>(null);
+  // Ref a callback (l'elemento in uno stato): l'osservatore parte quando l'elemento c'è.
+  const [node, setNode] = useState<Element | null>(null);
+  const attach = useCallback((element: object | null) => setNode(element instanceof Element ? element : null), []);
   const [value, setValue] = useState(0);
+  const reducedMotion = usePrefersReducedMotion();
   const startedRef = useRef(false);
 
   useEffect(() => {
-    const node = ref.current;
-    if (!node) return;
-
-    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setValue(target);
-      return;
-    }
+    if (!node || reducedMotion) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         if (!entries[0]?.isIntersecting || startedRef.current) return;
         startedRef.current = true;
+        observer.disconnect();
         const start = performance.now();
 
         function tick(now: number) {
@@ -44,13 +43,12 @@ export function useCountUp(target: number, durationMs = 900) {
           if (progress < 1) requestAnimationFrame(tick);
         }
         requestAnimationFrame(tick);
-        observer.disconnect();
       },
       { threshold: 0.3 },
     );
     observer.observe(node);
     return () => observer.disconnect();
-  }, [target, durationMs]);
+  }, [node, target, durationMs, reducedMotion]);
 
-  return { ref, value };
+  return { attach, value: reducedMotion ? target : value };
 }

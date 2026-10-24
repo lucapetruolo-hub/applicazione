@@ -18,6 +18,7 @@ import { CategoryCarousel } from "@/components/CategoryCarousel";
 import { RestoreAllArchivedBar, RestoredNotice } from "@/components/RequestCardPersonalActions";
 import { RequestCard } from "./_components/RequestCard";
 import { filterInputStyle, leadSearchText } from "./_components/requestHelpers";
+import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 // Stesso intervallo/motivo già documentato in apps/web/src/app/dashboard/page.tsx.
 const UNREAD_BADGE_POLL_MS = 15000;
@@ -89,7 +90,16 @@ function RichiesteContent() {
   // arrivo esattamente come faceva prima la vecchia scheda in /dashboard.
   const [leadUnreadCounts, setLeadUnreadCounts] = useState<Map<string, number>>(new Map());
 
-  const [activeTab, setActiveTab] = useState<ProTabKey>("tutte");
+  // Deep link "stage" (richiesta esplicita dell'utente, deduplicazione
+  // /dashboard "Lavori accettati" → CTA "Apri tutti i lavori accettati",
+  // CLAUDE.md §56): preseleziona il tab quando si arriva da un link
+  // esterno con `?stage=<chiave>` — già come valore iniziale, a differenza
+  // di `?open=` sotto non serve aspettare i lead (il tab è impostabile
+  // subito, nessun dato da cui dipende).
+  const [activeTab, setActiveTab] = useState<ProTabKey>(() => {
+    const stageParam = searchParams.get("stage");
+    return stageParam && TABS.some((t) => t.key === stageParam) ? (stageParam as ProTabKey) : "tutte";
+  });
   const [search, setSearch] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("recenti");
   const [zoneFilter, setZoneFilter] = useState("tutte");
@@ -101,20 +111,6 @@ function RichiesteContent() {
   const [serviceModeFilter, setServiceModeFilter] = useState<"tutte" | "HOME" | "ONLINE">("tutte");
   const [showFiltersModal, setShowFiltersModal] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
-
-  // Deep link "stage" (richiesta esplicita dell'utente, deduplicazione
-  // /dashboard "Lavori accettati" → CTA "Apri tutti i lavori accettati",
-  // CLAUDE.md §56): preseleziona il tab quando si arriva da un link
-  // esterno con `?stage=<chiave>` — una sola volta al mount, a differenza
-  // di `?open=` sotto non serve aspettare i lead (il tab è impostabile
-  // subito, nessun dato da cui dipende).
-  useEffect(() => {
-    const stageParam = searchParams.get("stage");
-    if (stageParam && TABS.some((t) => t.key === stageParam)) {
-      setActiveTab(stageParam as ProTabKey);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Deep link da /chat (richiesta esplicita dell'utente: "dai la
   // possibilità di andare alla pagina del preventivo/informazioni di
@@ -152,6 +148,9 @@ function RichiesteContent() {
     const match = leads.find((l) => l.guidedRequest.id === targetGuidedRequestId);
     if (!match) return;
     consumedRequestOpenRef.current = targetGuidedRequestId;
+    // Il link si segue una volta sola (ref sopra) e serve anche lo scroll
+    // alla card, che solo un effetto può fare.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveTab(match.myState.archivedAt ? "archiviate" : "tutte");
     setOpenId(match.id);
     if (searchParams.get("chat")) setPendingChatOpenLeadId(match.id);
@@ -496,10 +495,8 @@ function RichiesteContent() {
 
         {showFiltersModal ? (
           <div
-            onClick={() => setShowFiltersModal(false)}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Filtri"
+            role="presentation"
+            onClick={closeOnBackdrop(() => setShowFiltersModal(false))}
             style={{
               position: "fixed",
               top: 0,
@@ -516,7 +513,9 @@ function RichiesteContent() {
             }}
           >
             <YStack
-              onPress={(e: { stopPropagation: () => void }) => e.stopPropagation()}
+              role="dialog"
+              aria-modal
+              aria-label="Filtri"
               width="100%"
               maxWidth={420}
               backgroundColor={brand.calce}

@@ -8,9 +8,11 @@ import { findComuneByName, PUBLIC_AGENDA_DAYS, SEARCH_RADIUS_KM, type Profession
 import { Icon, ProfessionalCard, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
+import { useMediaQuery } from "@/lib/useMediaQuery";
 import { useSavedProfessionals } from "@/lib/useSavedProfessionals";
 import { navigateWithTransition } from "@/lib/viewTransition";
 import type { MapBounds } from "./ResultsMap";
+import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 // La mappa (Google Maps) vive solo nel browser: mai importata lato server (CLAUDE.md
 // §5.4 vale per l'SEO delle pagine, non per un widget lato client come
@@ -106,19 +108,10 @@ export function ResultsListWithMap({
   // anche con un solo risultato — sufficiente a coprire lo scroll
   // realistico di una pagina di risultati corta (che di per sé ha poco
   // altro da scorrere) senza introdurre un vuoto enorme sotto la mappa.
-  useEffect(() => {
-    if (mobileMapOpen) setShouldMountMap(true);
-  }, [mobileMapOpen]);
-
-  useEffect(() => {
-    const mql = window.matchMedia("(min-width: 700px)");
-    if (mql.matches) setShouldMountMap(true);
-    function handleChange(e: MediaQueryListEvent) {
-      if (e.matches) setShouldMountMap(true);
-    }
-    mql.addEventListener("change", handleChange);
-    return () => mql.removeEventListener("change", handleChange);
-  }, []);
+  // Montata la prima volta che serve (mappa aperta da telefono o schermo
+  // largo), poi resta montata.
+  const wideScreen = useMediaQuery("(min-width: 700px)");
+  if ((mobileMapOpen || wideScreen) && !shouldMountMap) setShouldMountMap(true);
 
   function handleBoundsChange(bounds: MapBounds) {
     // Su mobile la mappa parte chiusa (display:none) ma resta montata: una mappa
@@ -232,8 +225,9 @@ export function ResultsListWithMap({
   // di ogni fascia (`day.date` + `slot.time`) come "wall clock UTC", stessa
   // convenzione già in uso in tutto il modulo agenda (mai convertita al
   // fuso del browser).
+  // "Adesso" fissato all'apertura della pagina: il calcolo resta lo stesso a ogni render.
+  const [now] = useState(() => Date.now());
   function hasAvailabilityWithin24h(pro: ProfessionalSearchResult): boolean {
-    const now = Date.now();
     const cutoff = now + 24 * 60 * 60 * 1000;
     return pro.availabilityPreview.some((day) =>
       day.times.some((slot) => {
@@ -288,8 +282,8 @@ export function ResultsListWithMap({
     // era uno schermo stretto. 700px isola davvero solo i telefoni.
     <div className="results-layout">
       {showFilters ? (
-        <div className="filters-backdrop" onClick={() => setShowFilters(false)} role="dialog" aria-modal="true" aria-label="Filtri">
-          <div className="filters-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="filters-backdrop" role="presentation" onClick={closeOnBackdrop(() => setShowFilters(false))}>
+          <div className="filters-modal" role="dialog" aria-modal="true" aria-label="Filtri">
             <div className="filters-modal-header">
               <span className="filters-modal-title">Filtri</span>
               <button type="button" className="filters-modal-close" onClick={() => setShowFilters(false)} aria-label="Chiudi">
@@ -485,13 +479,11 @@ export function ResultsListWithMap({
 
       {showSortInfo ? (
         <div
+          role="presentation"
+          onClick={closeOnBackdrop(() => setShowSortInfo(false))}
           className="filters-backdrop"
-          onClick={() => setShowSortInfo(false)}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Come sono ordinati i risultati"
         >
-          <div className="sort-info-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="sort-info-modal" role="dialog" aria-modal="true" aria-label="Come sono ordinati i risultati">
             <div className="filters-modal-header">
               <span className="filters-modal-title">Ordinato per pertinenza</span>
               <button type="button" className="filters-modal-close" onClick={() => setShowSortInfo(false)} aria-label="Chiudi">

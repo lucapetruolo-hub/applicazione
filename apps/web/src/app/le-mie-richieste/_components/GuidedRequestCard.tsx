@@ -104,6 +104,8 @@ export function GuidedRequestCard({
     if (autoOpenedChatRef.current === autoOpenChatProfessionalId) return;
     autoOpenedChatRef.current = autoOpenChatProfessionalId;
     const hasQuote = request.quotes.some((q) => q.professionalProfileId === autoOpenChatProfessionalId);
+    // Link seguito una volta sola (ref sopra), poi avvisa la pagina: serve un effetto.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!hasQuote) openTimelineForProfessional(autoOpenChatProfessionalId);
     onChatAutoOpenHandled?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps

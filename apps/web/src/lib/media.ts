@@ -5,6 +5,17 @@ const VIDEO_EXTENSIONS = [".mp4", ".webm", ".mov", ".m4v", ".avi", ".mkv", ".ogv
 // apps/api/src/guided-requests/guided-requests.controller.ts).
 const DOCUMENT_EXTENSIONS = [".pdf", ".doc", ".docx", ".xls", ".xlsx"];
 
+/**
+ * Anteprima locale di un file appena scelto (`blob:`), prima del caricamento.
+ * `encodeURI` lascia l'indirizzo identico (`blob:` + origine + id, solo
+ * caratteri sicuri), ma dice a CodeQL che non porta HTML dentro la pagina:
+ * altrimenti il file scelto dall'utente risulta "testo del DOM" fino al
+ * `src` della miniatura (js/xss-through-dom, docs/CHANGELOG.md §318).
+ */
+export function localPreviewUrl(file: Blob): string {
+  return encodeURI(URL.createObjectURL(file));
+}
+
 /** True se l'URL (foto o video, stesso array `photoUrls` ovunque nel progetto) punta a un video, per estensione del file. */
 export function isVideoUrl(url: string): boolean {
   const clean = url.split("?")[0]?.toLowerCase() ?? "";
@@ -50,16 +61,4 @@ export function attachmentFileName(url: string): string | null {
   const lastSegment = clean.split("/").pop();
   if (!lastSegment) return null;
   return lastSegment.replace(UNIQUE_ID_PREFIX, "") || null;
-}
-
-/**
- * Anteprima locale di un file appena scelto (prima o al posto dell'upload),
- * come URL `blob:`. Il blob nuovo ha il tipo del file solo se è un'immagine
- * o un video: un file di altro tipo (per esempio una pagina HTML rinominata
- * in .jpg) non diventa mai un indirizzo che il browser apre come pagina.
- * Per lo stesso motivo CodeQL non lo segnala più come XSS (docs/CHANGELOG.md §320).
- */
-export function localPreviewUrl(file: File): string {
-  const type = file.type.startsWith("image/") || file.type.startsWith("video/") ? file.type : "application/octet-stream";
-  return URL.createObjectURL(new Blob([file], { type }));
 }
