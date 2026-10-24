@@ -343,3 +343,8 @@ Cose decise con Luca da non fare prima del lancio, ma da non dimenticare:
 - **Elenchi admin con totale e pagine** (revisione esterna del piano,
   21/10/2026): oggi alcuni elenchi si fermano a 50 o 200 righe senza dirlo.
   Con pochi utenti non pesa; da fare quando crescono.
+- **Secondo codice all'accesso** (22/10/2026, docs/CHANGELOG.md §289):
+  per i professionisti con i pagamenti online attivi, dopo la password un
+  codice da un'app di autenticazione (o via email). Protegge i soldi se la
+  password viene rubata. Oggi c'è già l'email "Nuovo accesso al tuo
+  account" da un dispositivo mai usato.

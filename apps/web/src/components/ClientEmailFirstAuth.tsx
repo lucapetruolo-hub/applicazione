@@ -2,10 +2,11 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { emailStatusSchema, type EmailStatus } from "@professionisti/shared";
+import { PASSWORD_CONTAINS_EMAIL_MESSAGE, emailStatusSchema, isMissingRulesProblem, passwordProblem, type EmailStatus } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { AuthField } from "@/components/AuthField";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
+import { PASSWORD_RULES_ATTRIBUTE, PasswordMatchHint, PasswordRules } from "@/components/PasswordRules";
 import { TURNSTILE_PENDING_MESSAGE, TurnstileWidget, isTurnstileEnabled } from "@/components/TurnstileWidget";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -92,6 +93,8 @@ export function ClientEmailFirstAuth({
   const [showPassword, setShowPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  // Account nuovo: regole della password rosse dopo un invio non riuscito (§289).
+  const [passwordAttempted, setPasswordAttempted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Campo a cui si riferisce l'errore: il messaggio va sotto quel campo
   // (docs/CHANGELOG.md §278). Nullo: errore generale, sopra il pulsante.
@@ -104,6 +107,7 @@ export function ClientEmailFirstAuth({
     setStep("email");
     setPassword("");
     setConfirmPassword("");
+    setPasswordAttempted(false);
     setError(null);
     setErrorField(null);
     setTurnstileToken(null);
@@ -122,7 +126,9 @@ export function ClientEmailFirstAuth({
     try {
       await action();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+      const message = err instanceof Error ? err.message : "Errore imprevisto, riprova.";
+      if (message === PASSWORD_CONTAINS_EMAIL_MESSAGE) fieldError("password", message, "new-password");
+      else setError(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -142,8 +148,16 @@ export function ClientEmailFirstAuth({
   }
 
   function handlePassword() {
-    if (password.length < 8) {
-      fieldError("password", "La password deve avere almeno 8 caratteri", step === "new" ? "new-password" : "current-password");
+    // Password nuova: le regole sotto il campo dicono cosa manca (§289).
+    const problem = step === "new" ? passwordProblem(password, email) : null;
+    if (problem) {
+      setPasswordAttempted(true);
+      fieldError("password", isMissingRulesProblem(problem) ? "" : problem, "new-password");
+      return;
+    }
+    // Accesso: le password create prima delle regole hanno almeno 8 caratteri.
+    if (step !== "new" && password.length < 8) {
+      fieldError("password", "La password deve avere almeno 8 caratteri", "current-password");
       return;
     }
     if (step === "new" && password !== confirmPassword) {
@@ -224,7 +238,7 @@ export function ClientEmailFirstAuth({
               onSubmitEditing={handleContinue}
             />
             {errorText}
-            <Button variant="primary" onPress={handleContinue} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
+            <Button variant="scuro" onPress={handleContinue} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
               {isSubmitting ? "Un momento..." : "Continua"}
             </Button>
           </YStack>
@@ -270,7 +284,6 @@ export function ClientEmailFirstAuth({
           <input type="email" name="email" autoComplete="username" value={email} readOnly hidden />
           <AuthField
             label={isNew ? "Scegli una password" : "Password"}
-            hint={isNew ? "Minimo 8 caratteri" : undefined}
             rightElement={<PasswordToggle visible={showPassword} onToggle={() => setShowPassword((v) => !v)} />}
             value={password}
             onChangeText={setPassword}
@@ -280,6 +293,10 @@ export function ClientEmailFirstAuth({
             nativeID={isNew ? "new-password" : "current-password"}
             accessibilityLabel="Password"
             error={errorFor("password")}
+            passwordRules={isNew ? PASSWORD_RULES_ATTRIBUTE : undefined}
+            invalid={isNew && passwordAttempted && passwordProblem(password, email) !== null}
+            footer={isNew ? <PasswordRules id="new-password-rules" password={password} showMissing={passwordAttempted} /> : undefined}
+            footerId={isNew ? "new-password-rules" : undefined}
             onSubmitEditing={handlePassword}
           />
           {isNew ? (
@@ -293,13 +310,15 @@ export function ClientEmailFirstAuth({
               autoComplete="new-password"
               nativeID="confirm-password"
               accessibilityLabel="Conferma password"
+              passwordRules={PASSWORD_RULES_ATTRIBUTE}
               error={errorFor("confirm")}
+              footer={<PasswordMatchHint password={password} confirmPassword={confirmPassword} />}
               onSubmitEditing={handlePassword}
             />
           ) : null}
           {isNew ? <TurnstileWidget onTokenChange={setTurnstileToken} resetSignal={turnstileReset} /> : null}
           {errorText}
-          <Button variant="primary" onPress={handlePassword} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
+          <Button variant="scuro" onPress={handlePassword} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
             {isSubmitting ? "Un momento..." : `${isNew ? "Crea account" : "Accedi"}${submitSuffix}`}
           </Button>
         </YStack>

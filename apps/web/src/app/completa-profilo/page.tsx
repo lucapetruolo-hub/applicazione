@@ -3,11 +3,12 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { acceptProfileInviteSchema, type ProfileInvitePreview } from "@professionisti/shared";
+import { PASSWORD_CONTAINS_EMAIL_MESSAGE, acceptProfileInviteSchema, isMissingRulesProblem, passwordProblem, type ProfileInvitePreview } from "@professionisti/shared";
 import { Button, Icon, Text, YStack, brand } from "@professionisti/ui";
 import { AuthCard, AuthPageBackground } from "@/components/AuthPageBackground";
 import { AuthField } from "@/components/AuthField";
-import { ConsentCheckbox } from "@/components/ConsentCheckbox";
+import { LegalConsentCheckbox, scrollToLegalConsent } from "@/components/LegalConsentCheckbox";
+import { PASSWORD_RULES_ATTRIBUTE, PasswordMatchHint, PasswordRules } from "@/components/PasswordRules";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -22,7 +23,7 @@ export default function CompletaProfiloPage() {
 /**
  * Link d'invito per un profilo creato da un operatore al telefono
  * (docs/CHANGELOG.md §170): il professionista sceglie la password, accetta
- * informative e maggiore età, ed entra. Il profilo entra in ricerca solo
+ * informative e maggiore età (una casella), ed entra. Il profilo entra in ricerca solo
  * quando lo salva da /dashboard/profilo accettando la dichiarazione.
  */
 function CompletaProfiloForm() {
@@ -34,14 +35,16 @@ function CompletaProfiloForm() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [acceptedLegalTerms, setAcceptedLegalTerms] = useState(false);
-  const [declaredAdult, setDeclaredAdult] = useState(false);
+  // Informative e maggiore età in una sola casella (docs/CHANGELOG.md §289).
+  const [legalConsent, setLegalConsent] = useState(false);
+  const [passwordAttempted, setPasswordAttempted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Errore della password dal server (password rubata) o lunghezza massima.
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // Pulsante sempre premibile: senza spunte le caselle diventano rosse
+  // Pulsante sempre premibile: senza spunta la casella diventa rossa
   // (docs/CHANGELOG.md §248, come in /registrati).
   const [consentAttempt, setConsentAttempt] = useState(0);
-  const canSubmitConsent = acceptedLegalTerms && declaredAdult;
 
   useEffect(() => {
     if (!code) {
@@ -56,18 +59,24 @@ function CompletaProfiloForm() {
 
   async function handleSubmit() {
     setError(null);
-    if (!canSubmitConsent) {
-      setConsentAttempt((n) => n + 1);
-      const firstMissing = document.getElementById(acceptedLegalTerms ? "consenso-eta" : "consenso-termini");
-      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      firstMissing?.scrollIntoView({ block: "center", behavior: reduceMotion ? "auto" : "smooth" });
+    setPasswordError(null);
+    const problem = passwordProblem(password, preview?.email);
+    if (problem) {
+      setPasswordAttempted(true);
+      if (!isMissingRulesProblem(problem)) setPasswordError(problem);
+      document.getElementById("new-password")?.focus();
       return;
     }
     if (password !== confirmPassword) {
       setError("Le due password non coincidono.");
       return;
     }
-    const parsed = acceptProfileInviteSchema.safeParse({ token: code, password, acceptedLegalTerms, declaredAdult });
+    if (!legalConsent) {
+      setConsentAttempt((n) => n + 1);
+      scrollToLegalConsent();
+      return;
+    }
+    const parsed = acceptProfileInviteSchema.safeParse({ token: code, password, acceptedLegalTerms: legalConsent, declaredAdult: legalConsent });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Controlla i dati inseriti.");
       return;
@@ -78,7 +87,9 @@ function CompletaProfiloForm() {
       await login(result.token);
       router.push("/dashboard/profilo");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+      const message = err instanceof Error ? err.message : "Errore imprevisto, riprova.";
+      if (message === PASSWORD_CONTAINS_EMAIL_MESSAGE) setPasswordError(message);
+      else setError(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -112,7 +123,6 @@ function CompletaProfiloForm() {
             <YStack gap="$4">
               <AuthField
                 label="Password"
-                hint="Minimo 8 caratteri"
                 rightElement={
                   <Text
                     cursor="pointer"
@@ -130,6 +140,11 @@ function CompletaProfiloForm() {
                 autoComplete="new-password"
                 nativeID="new-password"
                 accessibilityLabel="Password"
+                passwordRules={PASSWORD_RULES_ATTRIBUTE}
+                error={passwordError ?? undefined}
+                invalid={passwordAttempted && passwordProblem(password, preview?.email) !== null}
+                footer={<PasswordRules id="new-password-rules" password={password} showMissing={passwordAttempted} />}
+                footerId="new-password-rules"
               />
               <AuthField
                 label="Conferma password"
@@ -140,41 +155,18 @@ function CompletaProfiloForm() {
                 autoComplete="new-password"
                 nativeID="new-password-confirm"
                 accessibilityLabel="Conferma password"
+                passwordRules={PASSWORD_RULES_ATTRIBUTE}
+                footer={<PasswordMatchHint password={password} confirmPassword={confirmPassword} />}
                 onSubmitEditing={handleSubmit}
               />
-              <YStack key={consentAttempt} gap="$2">
-                <ConsentCheckbox
-                  id="consenso-termini"
-                  checked={acceptedLegalTerms}
-                  invalid={consentAttempt > 0}
-                  onToggle={() => setAcceptedLegalTerms((v) => !v)}
-                >
-                  Ho letto e accetto la{" "}
-                  <Link href="/privacy" target="_blank" style={{ textDecoration: "underline", color: brand.cianografia }}>
-                    Privacy Policy
-                  </Link>{" "}
-                  e i{" "}
-                  <Link href="/termini" target="_blank" style={{ textDecoration: "underline", color: brand.cianografia }}>
-                    Termini di Servizio
-                  </Link>
-                  .
-                </ConsentCheckbox>
-                <ConsentCheckbox id="consenso-eta" checked={declaredAdult} invalid={consentAttempt > 0} onToggle={() => setDeclaredAdult((v) => !v)}>
-                  Dichiaro di avere almeno 18 anni.
-                </ConsentCheckbox>
-                {consentAttempt > 0 && !canSubmitConsent ? (
-                  <Text role="alert" fontSize="$2" color={brand.urgenza} fontWeight="600">
-                    {acceptedLegalTerms || declaredAdult ? "Spunta anche questa casella per continuare." : "Spunta le due caselle per continuare."}
-                  </Text>
-                ) : null}
-              </YStack>
+              <LegalConsentCheckbox checked={legalConsent} onToggle={() => setLegalConsent((v) => !v)} attempt={consentAttempt} />
               {error ? (
                 <Text color={brand.urgenza} fontSize="$3">
                   {error}
                 </Text>
               ) : null}
               <Button
-                variant="primary"
+                variant="scuro"
                 onPress={handleSubmit}
                 disabled={isSubmitting}
                 opacity={isSubmitting ? 0.6 : 1}
