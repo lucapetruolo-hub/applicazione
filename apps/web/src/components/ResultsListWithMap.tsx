@@ -8,6 +8,7 @@ import { findComuneByName, PUBLIC_AGENDA_DAYS, SEARCH_RADIUS_KM, type Profession
 import { Icon, ProfessionalCard, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
+import { useMediaQuery } from "@/lib/useMediaQuery";
 import { useSavedProfessionals } from "@/lib/useSavedProfessionals";
 import { navigateWithTransition } from "@/lib/viewTransition";
 import type { MapBounds } from "./ResultsMap";
@@ -106,19 +107,10 @@ export function ResultsListWithMap({
   // anche con un solo risultato — sufficiente a coprire lo scroll
   // realistico di una pagina di risultati corta (che di per sé ha poco
   // altro da scorrere) senza introdurre un vuoto enorme sotto la mappa.
-  useEffect(() => {
-    if (mobileMapOpen) setShouldMountMap(true);
-  }, [mobileMapOpen]);
-
-  useEffect(() => {
-    const mql = window.matchMedia("(min-width: 700px)");
-    if (mql.matches) setShouldMountMap(true);
-    function handleChange(e: MediaQueryListEvent) {
-      if (e.matches) setShouldMountMap(true);
-    }
-    mql.addEventListener("change", handleChange);
-    return () => mql.removeEventListener("change", handleChange);
-  }, []);
+  // Montata la prima volta che serve (mappa aperta da telefono o schermo
+  // largo), poi resta montata.
+  const wideScreen = useMediaQuery("(min-width: 700px)");
+  if ((mobileMapOpen || wideScreen) && !shouldMountMap) setShouldMountMap(true);
 
   function handleBoundsChange(bounds: MapBounds) {
     // Su mobile la mappa parte chiusa (display:none) ma resta montata: una mappa
@@ -232,8 +224,9 @@ export function ResultsListWithMap({
   // di ogni fascia (`day.date` + `slot.time`) come "wall clock UTC", stessa
   // convenzione già in uso in tutto il modulo agenda (mai convertita al
   // fuso del browser).
+  // "Adesso" fissato all'apertura della pagina: il calcolo resta lo stesso a ogni render.
+  const [now] = useState(() => Date.now());
   function hasAvailabilityWithin24h(pro: ProfessionalSearchResult): boolean {
-    const now = Date.now();
     const cutoff = now + 24 * 60 * 60 * 1000;
     return pro.availabilityPreview.some((day) =>
       day.times.some((slot) => {

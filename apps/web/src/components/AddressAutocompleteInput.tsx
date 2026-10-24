@@ -85,15 +85,17 @@ export function AddressAutocompleteInput({ value, onChange, onSelect, placeholde
   const biasLongitude = restrictToCity?.longitude ?? biasTowards?.longitude;
   const cityName = restrictToCity?.name;
   const onServiceUnavailableRef = useRef(onServiceUnavailable);
-  onServiceUnavailableRef.current = onServiceUnavailable;
+  useEffect(() => {
+    onServiceUnavailableRef.current = onServiceUnavailable;
+  });
+
+  // Sotto i 3 caratteri niente suggerimenti, tolti già durante il render.
+  if (value.trim().length < 3 && suggestions.length > 0) setSuggestions([]);
 
   useEffect(() => {
     if (!typedRef.current) return;
     const input = value.trim();
-    if (input.length < 3) {
-      setSuggestions([]);
-      return;
-    }
+    if (input.length < 3) return;
     let cancelled = false;
     const timer = setTimeout(async () => {
       try {

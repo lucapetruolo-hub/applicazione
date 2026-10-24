@@ -64,6 +64,13 @@ function formatDayLabel(iso: string): string {
   return date.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" });
 }
 
+/** Voci del menu "allega" accanto al campo del messaggio. */
+const ATTACH_OPTIONS = [
+  { kind: "camera", icon: "camera", label: "Fotocamera" },
+  { kind: "gallery", icon: "video", label: "Foto o video" },
+  { kind: "document", icon: "file-text", label: "File" },
+] as const;
+
 /**
  * Corpo della cronologia cliente↔professionista di una richiesta guidata —
  * estratto da `TimelineModal` (che ora ne resta un thin wrapper per i 5
@@ -268,7 +275,12 @@ export function ConversationView({
       setMediaError("Impossibile catturare la foto dalla fotocamera.");
       return;
     }
-    await uploadFile(new File([blob], `foto-${Date.now()}.jpg`, { type: "image/jpeg" }));
+    await uploadFile(new File([blob], `foto-${new Date().getTime()}.jpg`, { type: "image/jpeg" }));
+  }
+
+  function openAttachPicker(kind: "gallery" | "document") {
+    setIsAttachMenuOpen(false);
+    (kind === "gallery" ? galleryInputRef : documentInputRef).current?.click();
   }
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -869,31 +881,7 @@ export function ConversationView({
                 borderWidth={1}
                 borderColor={brand.filetto}
               >
-                {[
-                  {
-                    icon: "camera" as const,
-                    label: "Fotocamera",
-                    onPress: () => {
-                      void handleCameraOption();
-                    },
-                  },
-                  {
-                    icon: "video" as const,
-                    label: "Foto o video",
-                    onPress: () => {
-                      setIsAttachMenuOpen(false);
-                      galleryInputRef.current?.click();
-                    },
-                  },
-                  {
-                    icon: "file-text" as const,
-                    label: "File",
-                    onPress: () => {
-                      setIsAttachMenuOpen(false);
-                      documentInputRef.current?.click();
-                    },
-                  },
-                ].map((item) => (
+                {ATTACH_OPTIONS.map((item) => (
                   <XStack
                     key={item.label}
                     paddingHorizontal="$4"
@@ -902,7 +890,7 @@ export function ConversationView({
                     gap="$2"
                     cursor="pointer"
                     hoverStyle={{ backgroundColor: brand.gesso }}
-                    onPress={item.onPress}
+                    onPress={() => (item.kind === "camera" ? void handleCameraOption() : openAttachPicker(item.kind))}
                     accessibilityRole="button"
                   >
                     <Icon name={item.icon} size={16} color={brand.grafite} />

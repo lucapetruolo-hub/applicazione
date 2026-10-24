@@ -17,8 +17,8 @@ import { useCountUp } from "./useCountUp";
  * solo il modo in cui vi arriva è animato.
  */
 export function PlatformStats({ stats }: { stats: { totalUsers: number; totalProfessionals: number } }) {
-  const usersCount = useCountUp(stats.totalUsers);
-  const professionalsCount = useCountUp(stats.totalProfessionals);
+  const { attach: attachUsers, value: usersValue } = useCountUp(stats.totalUsers);
+  const { attach: attachProfessionals, value: professionalsValue } = useCountUp(stats.totalProfessionals);
 
   // Sotto questa soglia i numeri sarebbero più imbarazzanti che
   // rassicuranti (es. "3 utenti") — stessa logica di cautela già applicata
@@ -28,17 +28,17 @@ export function PlatformStats({ stats }: { stats: { totalUsers: number; totalPro
   return (
     <YStack width="100%" alignItems="center" paddingVertical="$5" paddingHorizontal="$4">
       <XStack gap="$7" flexWrap="wrap" justifyContent="center" alignItems="center">
-        <YStack ref={usersCount.ref} alignItems="center" gap={2}>
+        <YStack ref={attachUsers} alignItems="center" gap={2}>
           <Text fontFamily="$heading" fontWeight="700" fontSize={28} color={brand.grafite} style={{ fontVariantNumeric: "tabular-nums" }}>
-            {usersCount.value.toLocaleString("it-IT")}
+            {usersValue.toLocaleString("it-IT")}
           </Text>
           <Text fontSize={13} fontWeight="600" color={brand.grafite70}>
             Utenti entrati nella piattaforma
           </Text>
         </YStack>
-        <YStack ref={professionalsCount.ref} alignItems="center" gap={2}>
+        <YStack ref={attachProfessionals} alignItems="center" gap={2}>
           <Text fontFamily="$heading" fontWeight="700" fontSize={28} color={brand.grafite} style={{ fontVariantNumeric: "tabular-nums" }}>
-            {professionalsCount.value.toLocaleString("it-IT")}
+            {professionalsValue.toLocaleString("it-IT")}
           </Text>
           <Text fontSize={13} fontWeight="600" color={brand.grafite70}>
             Professionisti entrati nella piattaforma

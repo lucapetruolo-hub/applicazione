@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Icon, Section, Text, YStack, brand } from "@professionisti/ui";
+import { usePrefersReducedMotion } from "@/lib/useMediaQuery";
 
 const REQUEST_TEXT =
   "Il rubinetto della cucina gocciola anche da chiuso. Sono a Milano, zona Città Studi. Meglio in settimana.";
@@ -39,17 +40,16 @@ const ROW_STAGGER_MS = 160;
  */
 export function QuoteExampleSection() {
   const ref = useRef<HTMLDivElement>(null);
-  const [started, setStarted] = useState(false);
-  const [typed, setTyped] = useState(0);
+  const reducedMotion = usePrefersReducedMotion();
+  const [startedInView, setStarted] = useState(false);
+  const [typedSoFar, setTyped] = useState(0);
+  // Con "riduci movimento" tutto subito, senza animazione.
+  const started = reducedMotion || startedInView;
+  const typed = reducedMotion ? REQUEST_TEXT.length : typedSoFar;
 
   useEffect(() => {
     const node = ref.current;
-    if (!node) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setStarted(true);
-      setTyped(REQUEST_TEXT.length);
-      return;
-    }
+    if (!node || reducedMotion) return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting) {
@@ -61,7 +61,7 @@ export function QuoteExampleSection() {
     );
     observer.observe(node);
     return () => observer.disconnect();
-  }, []);
+  }, [reducedMotion]);
 
   useEffect(() => {
     if (!started || typed >= REQUEST_TEXT.length) return;

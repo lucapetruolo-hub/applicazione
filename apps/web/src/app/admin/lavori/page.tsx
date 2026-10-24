@@ -60,15 +60,17 @@ function Side({ title, done, note, photos }: { title: string; done: string; note
 export default function AdminLavoriPage() {
   const { token } = useAuth();
   const [filter, setFilter] = useState<Filter>("all");
-  const [rows, setRows] = useState<AdminCompletedJob[] | null>(null);
+  // Righe insieme al filtro con cui sono arrivate: cambiando filtro si torna
+  // allo scheletro finché non arrivano quelle nuove.
+  const [loaded, setLoaded] = useState<{ filter: Filter; rows: AdminCompletedJob[] } | null>(null);
+  const rows = loaded?.filter === filter ? loaded.rows : null;
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) return;
-    setRows(null);
     apiClient
       .adminListCompletedJobs(token, filter)
-      .then(setRows)
+      .then((list) => setLoaded({ filter, rows: list }))
       .catch((err) => setError(errorMessage(err)));
   }, [token, filter]);
 

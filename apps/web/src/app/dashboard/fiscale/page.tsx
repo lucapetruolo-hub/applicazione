@@ -253,13 +253,13 @@ function DashboardFiscaleContent() {
   // Applica la categoria scelta nella schermata precedente una sola volta
   // (mai su ogni render/refetch), e mai sovrascrivendo un entityType già
   // salvato per davvero — solo quando il profilo non ne aveva ancora uno.
-  useEffect(() => {
-    if (prefillApplied || profile === undefined) return;
+  // Durante il render, appena il profilo è arrivato.
+  if (!prefillApplied && profile !== undefined) {
+    setPrefillApplied(true);
     if (!profile?.entityType && (prefillEntityType === "PRIVATE_INDIVIDUAL" || prefillEntityType === "SOLE_PROPRIETOR" || prefillEntityType === "BUSINESS")) {
       setEntityType(prefillEntityType);
     }
-    setPrefillApplied(true);
-  }, [prefillApplied, profile, prefillEntityType]);
+  }
 
   useEffect(() => {
     if (!isLoading && !user) router.replace("/accedi?redirect=/dashboard/fiscale");

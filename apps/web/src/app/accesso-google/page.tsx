@@ -28,6 +28,8 @@ export default function AccessoGooglePage() {
     window.history.replaceState(null, "", window.location.pathname);
     const rawState = params.get("state");
     if (!rawState) {
+      // Il frammento dell'indirizzo esiste solo nel browser: si legge dopo il montaggio.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOutcome("error");
       return;
     }

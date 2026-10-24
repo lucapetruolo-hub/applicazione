@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Camera, Download, Trash2, Eye, EyeOff } from "lucide-react";
@@ -251,10 +251,13 @@ export default function AccountPage() {
     setProfileSaved(false);
   }
 
-  useEffect(() => {
+  // Campi ricopiati dall'utente ogni volta che cambia (accesso, salvataggio),
+  // già durante il render invece che in un effetto dopo.
+  const [syncedUser, setSyncedUser] = useState<typeof user>(null);
+  if (user !== syncedUser) {
+    setSyncedUser(user);
     syncFieldsFromUser();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }
 
   if (isLoading) return null;
 

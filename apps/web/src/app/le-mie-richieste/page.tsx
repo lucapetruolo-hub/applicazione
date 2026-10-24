@@ -221,6 +221,9 @@ function LeMieRichiesteContent() {
     // Una scheda archiviata vive solo nel tab "Archiviate".
     const targetTab: ClientTabKey = target.myState.archivedAt ? "archiviate" : "tutte";
     if (activeStageTab !== targetTab) {
+      // Si porta la lista sulla scheda giusta un filtro alla volta, poi si
+      // scorre fino alla scheda: serve un effetto (link seguito una volta sola).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveStageTab(targetTab);
       return;
     }

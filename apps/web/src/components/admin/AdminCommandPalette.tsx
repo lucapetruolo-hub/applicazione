@@ -28,28 +28,33 @@ export function AdminCommandPalette({
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [q, setQ] = useState("");
-  const [results, setResults] = useState<AdminSearchResult | null>(null);
+  // Risultati insieme alla ricerca da cui arrivano: valgono solo per quella.
+  const [answer, setAnswer] = useState<{ query: string; results: AdminSearchResult | null } | null>(null);
+  const results = open && answer?.query === q.trim() ? answer.results : null;
   const [active, setActive] = useState(0);
 
+  // A ogni apertura si riparte da vuoto.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      setQ("");
+      setAnswer(null);
+      setActive(0);
+    }
+  }
   useEffect(() => {
-    if (!open) return;
-    setQ("");
-    setResults(null);
-    setActive(0);
-    setTimeout(() => inputRef.current?.focus(), 0);
+    if (open) setTimeout(() => inputRef.current?.focus(), 0);
   }, [open]);
 
   useEffect(() => {
     const query = q.trim();
-    if (!open || query.length < 2) {
-      setResults(null);
-      return;
-    }
+    if (!open || query.length < 2) return;
     const handle = setTimeout(() => {
       apiClient
         .adminSearch(token, query)
-        .then(setResults)
-        .catch(() => setResults(null));
+        .then((found) => setAnswer({ query, results: found }))
+        .catch(() => setAnswer({ query, results: null }));
     }, 200);
     return () => clearTimeout(handle);
   }, [q, open, token]);
@@ -78,7 +83,12 @@ export function AdminCommandPalette({
     return [...pages, ...users, ...reports];
   }, [q, results, adminRoles]);
 
-  useEffect(() => setActive(0), [items.length]);
+  // Elenco cambiato: si riparte dalla prima voce.
+  const [itemsCount, setItemsCount] = useState(items.length);
+  if (items.length !== itemsCount) {
+    setItemsCount(items.length);
+    setActive(0);
+  }
 
   if (!open) return null;
 

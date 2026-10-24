@@ -86,24 +86,28 @@ export default function DashboardStatistichePage() {
   const [customError, setCustomError] = useState<string | null>(null);
   const [metric, setMetric] = useState<MetricKey>("requests");
   const [data, setData] = useState<ProfessionalStats | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  // Periodo dell'ultima risposta (dati o errore): finché non coincide con
+  // quello scelto i dati vecchi restano con "aggiornamento…".
+  const rangeKey = `${range.from}:${range.to}`;
+  const [answeredKey, setAnsweredKey] = useState<string | null>(null);
+  const [failure, setFailure] = useState<{ key: string; message: string } | null>(null);
+  const error = failure?.key === rangeKey ? failure.message : null;
+  const loading = Boolean(token && user?.isProfessional) && answeredKey !== rangeKey;
 
   useEffect(() => {
     if (!token || !user?.isProfessional) return;
     let cancelled = false;
-    setLoading(true);
-    setError(null);
+    const key = `${range.from}:${range.to}`;
     apiClient
       .myProfessionalStats(token, range.from, range.to)
       .then((result) => {
         if (!cancelled) setData(result);
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Errore nel caricamento.");
+        if (!cancelled) setFailure({ key, message: err instanceof Error ? err.message : "Errore nel caricamento." });
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setAnsweredKey(key);
       });
     return () => {
       cancelled = true;

@@ -126,12 +126,14 @@ export function RequestCard({
   const [depositPercentDraft, setDepositPercentDraft] = useState(String(defaultPaymentOffer?.depositPercent ?? ONLINE_DEPOSIT_PERCENT));
   const [rememberPaymentOffer, setRememberPaymentOffer] = useState(false);
   // Il profilo arriva dopo la scheda: si applicano i valori di serie finché il modulo non è aperto.
-  useEffect(() => {
-    if (!defaultPaymentOffer || showQuoteForm) return;
-    setPaymentOptions(defaultPaymentOffer.paymentOptions);
-    setDepositPercentDraft(String(defaultPaymentOffer.depositPercent));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultPaymentOffer]);
+  const [appliedPaymentOffer, setAppliedPaymentOffer] = useState(defaultPaymentOffer);
+  if (defaultPaymentOffer !== appliedPaymentOffer) {
+    setAppliedPaymentOffer(defaultPaymentOffer);
+    if (defaultPaymentOffer && !showQuoteForm) {
+      setPaymentOptions(defaultPaymentOffer.paymentOptions);
+      setDepositPercentDraft(String(defaultPaymentOffer.depositPercent));
+    }
+  }
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [isSubmittingQuote, setIsSubmittingQuote] = useState(false);
 

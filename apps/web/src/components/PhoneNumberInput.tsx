@@ -43,6 +43,7 @@ function searchable(text: string): string {
  * MIT): le bandiere emoji su Windows compaiono come due lettere ("IT").
  */
 function Flag({ iso }: { iso: string }) {
+  // eslint-disable-next-line @next/next/no-img-element -- piccola SVG statica, next/image non la ottimizzerebbe
   return <img src={`/flags/${iso.toLowerCase()}.svg`} alt="" width={21} height={14} loading="lazy" style={{ borderRadius: 2, boxShadow: "0 0 0 1px rgba(0,0,0,0.08)", flexShrink: 0 }} />;
 }
 

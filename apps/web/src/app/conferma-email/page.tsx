@@ -84,10 +84,7 @@ function ConfermaEmail() {
   useEffect(() => {
     if (started.current) return;
     started.current = true;
-    if (!token) {
-      setError("Link incompleto. Apri di nuovo il link che ti abbiamo mandato.");
-      return;
-    }
+    // Qui il token c'è sempre: senza, ConfermaEmailRouter mostra ConfermaConCodice.
     apiClient
       .verifyEmail(token)
       .then((result) => {

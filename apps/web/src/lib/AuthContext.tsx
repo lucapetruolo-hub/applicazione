@@ -103,14 +103,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         window.localStorage.removeItem(TOKEN_STORAGE_KEY);
         setUser(null);
         setToken(null);
+        setNotificationPrefsState(null);
       }
       return null;
     }
   }, []);
 
+  // La sessione salvata si legge solo dopo il montaggio: nel render del
+  // server localStorage non esiste e la pagina non combacerebbe.
   useEffect(() => {
     const storedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY);
     if (storedToken) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- loadUser aggiorna lo stato solo dopo la risposta dell'API
       loadUser(storedToken).finally(() => setIsLoading(false));
     } else {
       setIsLoading(false);
@@ -132,6 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setToken(null);
     setUnreadCount(0);
+    setNotificationPrefsState(null);
     seenNotificationIdsRef.current = null;
     setToasts([]);
     setUnreadNotifications([]);
@@ -242,11 +247,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     installNotificationSoundUnlock();
   }, []);
 
-  // Preferenze di notifica, ricaricate a ogni cambio di utente.
+  // Preferenze di notifica, ricaricate a ogni cambio di utente (all'uscita
+  // le azzerano logout e loadUser, insieme all'utente).
   useEffect(() => {
     if (!user || !token) {
       notificationPrefsRef.current = DEFAULT_NOTIFICATION_PREFERENCES;
-      setNotificationPrefsState(null);
       return;
     }
     apiClient
@@ -258,10 +263,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Aggiorna conteggio+toast ogni volta che l'utente (dis)connesso cambia, non solo al primo mount.
   useEffect(() => {
     if (user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- il conteggio arriva dall'API, lo stato cambia solo alla risposta
       refreshUnreadCount();
       checkForNewNotifications();
-    } else {
-      setUnreadCount(0);
     }
   }, [user, refreshUnreadCount, checkForNewNotifications]);
 
@@ -365,13 +369,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         refreshUser,
-        unreadCount,
+        // Senza utente il conteggio è sempre 0, anche prima che logout/loadUser lo azzerino.
+        unreadCount: user ? unreadCount : 0,
         refreshUnreadCount,
         markNotificationsRead,
         toasts,
         dismissToast,
         unreadNotifications,
-        notificationPrefs,
+        notificationPrefs: user ? notificationPrefs : null,
         setNotificationPrefs,
       }}
     >

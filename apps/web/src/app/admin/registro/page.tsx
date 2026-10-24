@@ -27,16 +27,19 @@ export default function AdminRegistroPage() {
   const { token } = useAuth();
   const [page, setPage] = useState(1);
   const [entityType, setEntityType] = useState("");
-  const [data, setData] = useState<AdminAuditLogPage | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Pagina del registro insieme alla ricerca da cui arriva: cambiando pagina
+  // o tipo si torna allo scheletro finché non arriva quella nuova.
+  const loadKey = `${page}:${entityType}`;
+  const [loaded, setLoaded] = useState<{ key: string; data: AdminAuditLogPage } | null>(null);
+  const data = loaded?.key === loadKey ? loaded.data : null;
 
   useEffect(() => {
     if (!token) return;
-    setData(null);
     apiClient
       .adminAuditLog(token, page, entityType || undefined)
       .then((d) => {
-        setData(d);
+        setLoaded({ key: `${page}:${entityType}`, data: d });
         setError(null);
       })
       .catch((err) => setError(errorMessage(err)));

@@ -57,11 +57,15 @@ export function PayoutIbanCard({
   const [error, setError] = useState<string | null>(null);
   const [justSaved, setJustSaved] = useState(false);
 
+  // Intestatario dall'IBAN già salvato passato dalla pagina, appena arriva.
+  const [appliedInitial, setAppliedInitial] = useState<PayoutIbanView | null | undefined>(undefined);
+  if (initial !== appliedInitial) {
+    setAppliedInitial(initial);
+    if (initial) setHolderName(initial.holderName);
+  }
+
   useEffect(() => {
-    if (initial !== undefined) {
-      if (initial) setHolderName(initial.holderName);
-      return;
-    }
+    if (initial !== undefined) return;
     apiClient
       .myPayoutIban(token)
       .then((data) => {
@@ -74,9 +78,8 @@ export function PayoutIbanCard({
       });
   }, [token, initial]);
 
-  useEffect(() => {
-    if (!saved && !holderName && defaultHolderName) setHolderName(defaultHolderName);
-  }, [defaultHolderName, holderName, saved]);
+  // Campo vuoto senza IBAN salvato: si propone il nome del profilo.
+  if (!saved && !holderName && defaultHolderName) setHolderName(defaultHolderName);
 
   const ibanCheck = checkIban(iban);
   const ibanError = ibanTouched && iban.trim() && !ibanCheck.ok ? ibanCheck.message : undefined;

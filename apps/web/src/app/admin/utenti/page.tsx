@@ -35,16 +35,18 @@ function UtentiContent() {
     status: (searchParams.get("stato") as AdminUsersQuery["status"]) ?? undefined,
     page: 1,
   });
-  const [data, setData] = useState<AdminUsersPage | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Risultati insieme alla ricerca da cui arrivano: a ogni ricerca nuova si
+  // torna allo scheletro finché non arrivano quelli nuovi.
+  const [loaded, setLoaded] = useState<{ query: AdminUsersQuery; data: AdminUsersPage } | null>(null);
+  const data = loaded?.query === query ? loaded.data : null;
 
   useEffect(() => {
     if (!token) return;
-    setData(null);
     apiClient
       .adminListUsers(token, query)
       .then((page) => {
-        setData(page);
+        setLoaded({ query, data: page });
         setError(null);
       })
       .catch((err) => setError(errorMessage(err)));
