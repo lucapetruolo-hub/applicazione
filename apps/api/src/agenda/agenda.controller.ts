@@ -32,6 +32,11 @@ export class AgendaController {
     return this.agendaService.weather(req.user.userId);
   }
 
+  @Get("days-ahead")
+  daysAhead(@Req() req: AuthenticatedRequest) {
+    return this.agendaService.daysAhead(req.user.userId);
+  }
+
   @Get("zone-demand")
   zoneDemand(@Req() req: AuthenticatedRequest) {
     return this.agendaService.zoneDemand(req.user.userId);

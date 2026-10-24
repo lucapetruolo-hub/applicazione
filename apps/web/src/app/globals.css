@@ -1109,6 +1109,194 @@ button.notif-row-main:hover {
     margin-left: auto;
   }
 }
+/* "Oggi": meteo dei prossimi tre giorni e lavori in breve (docs/CHANGELOG.md §324). */
+.days-ahead {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 4px;
+  padding: 0;
+  list-style: none;
+}
+.days-ahead-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "day sky" "weather weather" "jobs jobs";
+  align-content: start;
+  gap: 10px 8px;
+  min-width: 0;
+  padding: 16px;
+  border-radius: 20px;
+  background: #ffffff;
+  color: #2b2420;
+}
+.days-ahead-card.is-loading {
+  min-height: 150px;
+  background: #fbf3ea;
+}
+.days-ahead-day {
+  grid-area: day;
+  display: flex;
+  flex-direction: column;
+  font-size: 16px;
+  line-height: 1.3;
+}
+.days-ahead-day > span {
+  color: #6e6459;
+  font-size: 14px;
+  text-transform: capitalize;
+}
+.days-ahead-sky {
+  grid-area: sky;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.days-ahead-weather {
+  grid-area: weather;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  margin: 0;
+  font-size: 15px;
+  color: #6e6459;
+}
+.days-ahead-weather strong {
+  font-size: 22px;
+  font-weight: 800;
+  color: #2b2420;
+  font-variant-numeric: tabular-nums;
+}
+.days-ahead-jobs {
+  grid-area: jobs;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding-top: 10px;
+  border-top: 1px solid #f3e6d6;
+  font-size: 15px;
+  color: #6e6459;
+  overflow-wrap: anywhere;
+}
+.days-ahead-jobs strong {
+  font-size: 16px;
+  color: #2b2420;
+  font-variant-numeric: tabular-nums;
+}
+.days-ahead-jobs.is-empty {
+  color: #6e6459;
+}
+@media (max-width: 640px) {
+  /* Sul telefono un giorno per riga: giorno a sinistra, icona e temperature a destra, lavori sotto. */
+  .days-ahead {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .days-ahead-card {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas: "day sky weather" "jobs jobs jobs";
+    align-items: center;
+    gap: 8px 10px;
+    padding: 12px 16px;
+  }
+  .days-ahead-card.is-loading {
+    min-height: 72px;
+  }
+  .days-ahead-sky {
+    width: 40px;
+    height: 40px;
+  }
+  .days-ahead-weather {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0;
+    font-size: 14px;
+    text-align: right;
+  }
+  .days-ahead-weather strong {
+    font-size: 18px;
+  }
+  .days-ahead-jobs {
+    padding-top: 8px;
+  }
+}
+.weather-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 4px;
+  padding: 0;
+  list-style: none;
+}
+.weather-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: 20px;
+  background: #ffffff;
+}
+.weather-chip.is-loading {
+  min-height: 92px;
+  background: #fbf3ea;
+}
+.weather-chip-day {
+  font-weight: 800;
+  font-size: 15px;
+  color: #2b2420;
+  text-transform: capitalize;
+}
+.weather-chip-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.weather-chip-main strong {
+  font-size: 20px;
+  font-weight: 800;
+  color: #2b2420;
+  font-variant-numeric: tabular-nums;
+}
+.weather-chip-main strong span {
+  font-size: 15px;
+  font-weight: 600;
+  color: #6e6459;
+}
+.weather-chip-label {
+  font-size: 14px;
+  color: #6e6459;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.today-day-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  margin: 8px 4px 0;
+  font-size: 15px;
+  color: #6e6459;
+}
+.today-day-head strong {
+  font-size: 16px;
+  color: #2b2420;
+}
+@media (max-width: 640px) {
+  .weather-chip {
+    padding: 10px 12px;
+  }
+  .weather-chip-label {
+    display: none;
+  }
+}
 /* "Profilo pubblico": anteprima del profilo pubblico (docs/CHANGELOG.md §252). */
 .profile-preview-frame {
   border-radius: 20px;

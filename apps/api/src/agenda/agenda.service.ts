@@ -4,7 +4,9 @@ import type { Prisma, PrismaClient } from "@professionisti/database";
 import {
   agendaWeekTemplateSchema,
   dayPartOf,
+  findComuneByName,
   ITALIAN_COMUNI,
+  jobOccurrenceOn,
   DEFAULT_WEEK_TEMPLATE,
   PUBLIC_AGENDA_DAYS,
   wallClockToday,
@@ -12,6 +14,7 @@ import {
   ZONE_DEMAND_MIN_REQUESTS,
   type AgendaWeekTemplate,
   type AgendaWeekTemplateState,
+  type DayAhead,
   type DayPart,
   type WeatherDayAlert,
   type ZoneDemand,
@@ -19,10 +22,37 @@ import {
 } from "@professionisti/shared";
 import { calculateDistanceKm } from "../common/geo.util";
 import { PRISMA } from "../prisma/prisma.module";
-import { AGENDA_BOOKING_STATUSES } from "./commitments";
+import { AGENDA_BOOKING_STATUSES, touchingWindow } from "./commitments";
+import { comuneInAddress } from "./day-route.service";
 import { WeatherService } from "./weather.service";
 
 const ZONE_DEMAND_DAYS = 30;
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** Oggi, domani e dopodomani (richiesta dell'utente, docs/CHANGELOG.md §324). */
+const DAYS_AHEAD = 3;
+
+type DayJob = { start: Date; end: Date | null; online: boolean; city: string | null; work: string | null };
+
+/**
+ * Riepilogo dei lavori di un giorno: quanti, dalle-alle (ora di parete),
+ * comuni e cosa c'è da fare, senza doppioni e nell'ordine degli orari.
+ */
+export function summarizeDayJobs(jobs: DayJob[]): DayAhead["jobs"] {
+  const sorted = [...jobs].sort((a, b) => a.start.getTime() - b.start.getTime());
+  const unique = (values: (string | null)[]) => [...new Set(values.filter((v): v is string => Boolean(v?.trim())).map((v) => v.trim()))];
+  const lastEnd = sorted.reduce<Date | null>((latest, job) => {
+    const end = job.end && job.end > job.start ? job.end : job.start;
+    return !latest || end > latest ? end : latest;
+  }, null);
+  return {
+    count: sorted.length,
+    from: sorted[0] ? sorted[0].start.toISOString().slice(11, 16) : null,
+    to: lastEnd ? lastEnd.toISOString().slice(11, 16) : null,
+    places: unique(sorted.filter((job) => !job.online).map((job) => job.city)),
+    works: unique(sorted.map((job) => job.work)),
+    online: sorted.filter((job) => job.online).length,
+  };
+}
 /** Un momento è "richiesto" da almeno 3 richieste: meno è rumore. */
 const ZONE_DEMAND_MIN_TIP = 3;
 
@@ -187,6 +217,68 @@ export class AgendaService {
   }
 
   /**
+   * Oggi, domani e dopodomani in "Oggi" (docs/CHANGELOG.md §324): il meteo
+   * del comune del primo lavoro a domicilio del giorno, o della zona del
+   * profilo, e i lavori ancora da fare. Il meteo non blocca mai: se
+   * Open-Meteo non risponde il giorno resta senza icona.
+   */
+  async daysAhead(userId: string): Promise<DayAhead[]> {
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { userId }, select: { id: true, city: true, latitude: true, longitude: true } });
+    if (!profile) throw new NotFoundException("Profilo professionista non trovato.");
+    const from = wallClockToday();
+    const to = new Date(from.getTime() + DAYS_AHEAD * DAY_MS);
+    const [bookings, externalJobs] = await Promise.all([
+      this.prisma.booking.findMany({
+        where: { professionalProfileId: profile.id, status: { in: ["PENDING", "CONFIRMED"] }, ...touchingWindow(from, to) },
+        select: {
+          scheduledAt: true,
+          scheduledEndAt: true,
+          serviceMode: true,
+          city: true,
+          quote: { select: { items: { select: { name: true }, take: 1 }, guidedRequest: { select: { city: true, category: { select: { label: true } } } } } },
+        },
+      }),
+      this.prisma.externalJob.findMany({
+        where: { professionalProfileId: profile.id, status: "SCHEDULED", ...touchingWindow(from, to) },
+        select: { scheduledAt: true, scheduledEndAt: true, address: true, description: true },
+      }),
+    ]);
+    const jobs = [
+      ...bookings.map((b) => ({
+        start: b.scheduledAt,
+        end: b.scheduledEndAt,
+        online: b.serviceMode === "ONLINE",
+        city: b.city ?? b.quote?.guidedRequest.city ?? null,
+        work: b.quote?.items[0]?.name ?? b.quote?.guidedRequest.category.label ?? null,
+      })),
+      ...externalJobs.map((j) => ({
+        start: j.scheduledAt,
+        end: j.scheduledEndAt,
+        online: false,
+        city: comuneInAddress(j.address),
+        work: j.description ? shortWork(j.description) : null,
+      })),
+    ];
+
+    const days = Array.from({ length: DAYS_AHEAD }, (_, i) => new Date(from.getTime() + i * DAY_MS).toISOString().slice(0, 10));
+    const perDay = days.map((date) =>
+      jobs.flatMap((job) => {
+        const occurrence = jobOccurrenceOn(job.start, job.end, date);
+        return occurrence ? [{ ...job, start: occurrence.start, end: occurrence.end }] : [];
+      }),
+    );
+    return Promise.all(
+      days.map(async (date, i) => {
+        const summary = summarizeDayJobs(perDay[i]!);
+        const comune = summary.places.map((place) => findComuneByName(place)).find(Boolean);
+        const place = comune ? { name: comune.name, lat: comune.lat, lon: comune.lon } : { name: profile.city, lat: profile.latitude, lon: profile.longitude };
+        const forecast = (await this.weatherService.forecast(place.lat, place.lon)).find((day) => day.date === date);
+        return { date, weather: forecast ? { ...forecast, place: place.name } : null, jobs: summary };
+      }),
+    );
+  }
+
+  /**
    * Richieste in zona: stessi lavori, ultimi 30 giorni, nei comuni entro il
    * raggio di lavoro (solo la sua città se il profilo non ha coordinate).
    */
@@ -227,4 +319,10 @@ export class AgendaService {
       tips: zoneDemandTips(requests),
     };
   }
+}
+
+/** Prima frase della descrizione di un lavoro aggiunto a mano, al massimo 40 caratteri. */
+function shortWork(description: string): string {
+  const first = description.trim().split(/[.\n]/)[0]!.trim();
+  return first.length > 40 ? `${first.slice(0, 39).trimEnd()}…` : first;
 }

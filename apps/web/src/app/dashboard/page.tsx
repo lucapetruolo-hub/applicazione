@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { AGENDA_LOOKAHEAD_DAYS, formatAppointmentDate, formatAppointmentTime, jobOccurrences, scheduleChangeBetween, wallClockToday, type AgendaAttention, type MySubscription, type ProfessionalBooking, type ProfessionalInsights, type ProfessionalLead } from "@professionisti/shared";
+import { AGENDA_LOOKAHEAD_DAYS, formatAppointmentDate, formatAppointmentTime, jobOccurrences, scheduleChangeBetween, wallClockToday, type AgendaAttention, type DayAhead, type MySubscription, type ProfessionalBooking, type ProfessionalInsights, type ProfessionalLead } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -17,6 +17,7 @@ import { SubscriptionPauseBanner } from "@/components/SubscriptionPauseBanner";
 import { IssueSanctionBanner } from "@/components/IssueSanctionBanner";
 import { BoostSection } from "@/components/BoostSection";
 import { SetupJourneyCard } from "@/components/verification/SetupJourney";
+import { DaysAhead, WeatherStrip, jobsHeadline } from "@/components/DaysAhead";
 
 /**
  * Home "Oggi" del professionista (docs/CHANGELOG.md §147, decisione esplicita
@@ -31,6 +32,8 @@ export default function DashboardTodayPage() {
   const { user, token, isLoading, unreadNotifications } = useAuth();
   const [leads, setLeads] = useState<ProfessionalLead[] | null>(null);
   const [bookings, setBookings] = useState<ProfessionalBooking[] | null>(null);
+  // Meteo e lavori in breve dei prossimi tre giorni (§324): se non arriva, il riquadro sparisce.
+  const [daysAhead, setDaysAhead] = useState<DayAhead[] | null | "failed">(null);
   const [insights, setInsights] = useState<ProfessionalInsights | null>(null);
   const [subscription, setSubscription] = useState<MySubscription | null>(null);
   const [restrictions, setRestrictions] = useState<{ demotedUntil?: string | null; requestsBlockedUntil?: string | null } | null>(null);
@@ -41,6 +44,7 @@ export default function DashboardTodayPage() {
   const [insightsFailed, setInsightsFailed] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [, setTick] = useState(0);
+  const [variantB] = useState(() => typeof window !== "undefined" && window.location.search.includes("variante=b"));
 
   useEffect(() => {
     if (!token || !user?.isProfessional) return;
@@ -50,6 +54,7 @@ export default function DashboardTodayPage() {
     };
     apiClient.myLeads(token).then(setLeads).catch(onError);
     apiClient.myProfessionalBookings(token).then(setBookings).catch(onError);
+    apiClient.agendaDaysAhead(token).then(setDaysAhead).catch(() => setDaysAhead("failed"));
     apiClient.getMyInsights(token).then(setInsights).catch(() => setInsightsFailed(true));
     apiClient.getMySubscription(token).then(setSubscription).catch(() => setSubscription(null));
     apiClient
@@ -65,6 +70,7 @@ export default function DashboardTodayPage() {
     if (!token) return;
     apiClient.myLeads(token).then(setLeads).catch(() => {});
     apiClient.myProfessionalBookings(token).then(setBookings).catch(() => {});
+    apiClient.agendaDaysAhead(token).then(setDaysAhead).catch(() => {});
   }, [token]);
   useLiveRefresh(refreshInBackground, Boolean(token && user?.isProfessional));
 
@@ -159,19 +165,27 @@ export default function DashboardTodayPage() {
             senza scorrere (T2 del test dei compiti, docs/CHANGELOG.md §311). */}
         {error ? null : (
         <TodaySection title="Oggi e domani" action={{ href: "/dashboard/agenda", label: "Apri l'agenda" }}>
+          {variantB ? (daysAhead === "failed" ? null : <WeatherStrip days={daysAhead} />) : daysAhead === "failed" ? null : <DaysAhead days={daysAhead} />}
           {loading ? (
             <Skeletons />
           ) : upcoming.length === 0 ? (
             <EmptyLine text="Nessun appuntamento oggi e domani." />
           ) : (
-            upcoming.map(({ booking, at }) => (
+            upcoming.map(({ booking, at }, index) => (
+              <Fragment key={`${booking.id}-${at}`}>
+              {variantB && Array.isArray(daysAhead) && (index === 0 || upcoming[index - 1]!.at.slice(0, 10) !== at.slice(0, 10)) ? (
+                <div className="today-day-head">
+                  <strong>{at.slice(0, 10) === startToday.toISOString().slice(0, 10) ? "Oggi" : "Domani"}</strong>
+                  <span>{jobsHeadline(daysAhead.find((d) => d.date === at.slice(0, 10))?.jobs ?? { count: 0, from: null, to: null, places: [], works: [], online: 0 })}</span>
+                </div>
+              ) : null}
               <Link
                 key={`${booking.id}-${at}`}
                 // Si apre l'appuntamento (indirizzo, Naviga, Chiama), non la richiesta (T3, §311).
                 href={`/dashboard/agenda?booking=${booking.id}`}
                 className="today-row"
               >
-                <span className="today-time">{dayLabel(at)}</span>
+                <span className="today-time">{variantB ? formatAppointmentTime(at) : dayLabel(at)}</span>
                 <span className="today-row-main">
                   <strong>{booking.clientName ?? "Cliente"}</strong>
                   <span className="today-row-sub">
@@ -180,6 +194,7 @@ export default function DashboardTodayPage() {
                   </span>
                 </span>
               </Link>
+              </Fragment>
             ))
           )}
         </TodaySection>

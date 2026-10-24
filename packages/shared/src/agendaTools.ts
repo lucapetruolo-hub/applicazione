@@ -71,6 +71,38 @@ export const WEATHER_ALERT_LABEL: Record<WeatherAlertKind, string> = {
   fog: "Nebbia",
 };
 
+/** Tempo del giorno per l'icona in "Oggi" (docs/CHANGELOG.md §324): sempre un'icona, anche col sereno. */
+export type WeatherCondition = "clear" | "partly" | "cloudy" | WeatherAlertKind;
+
+export const WEATHER_CONDITION_LABEL: Record<WeatherCondition, string> = {
+  clear: "Sereno",
+  partly: "Poco nuvoloso",
+  cloudy: "Nuvoloso",
+  ...WEATHER_ALERT_LABEL,
+};
+
+export type DayForecast = { date: string; condition: WeatherCondition; tempMax: number | null; tempMin: number | null };
+
+/**
+ * Un giorno nel riepilogo di "Oggi": meteo del comune del primo lavoro a
+ * domicilio (o della zona del profilo) e i lavori da fare, in breve.
+ */
+export type DayAhead = {
+  date: string;
+  weather: (DayForecast & { place: string }) | null;
+  jobs: {
+    count: number;
+    /** Ora di parete del primo inizio e dell'ultima fine ("HH:MM"), `null` senza lavori. */
+    from: string | null;
+    to: string | null;
+    /** Comuni dei lavori a domicilio, nell'ordine degli orari, senza doppioni. */
+    places: string[];
+    /** Cosa c'è da fare: prima voce del preventivo, categoria o descrizione del lavoro aggiunto a mano. */
+    works: string[];
+    online: number;
+  };
+};
+
 /** Una tappa del giro del giorno. */
 export type DayRouteStop = {
   /** `booking-<id>` o `external-<id>`, per aprire l'appuntamento dal giro. */
