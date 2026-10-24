@@ -54,6 +54,7 @@ import {
   parseIsoDate,
   slotAppliesOnDateStr,
   startOfDayUtc,
+  startOfMonthUtc,
   todayUtc,
   toIsoDate,
   weekDays,
@@ -1496,22 +1497,31 @@ function DashboardAgendaContent() {
 
   // Settimana tipo (docs/CHANGELOG.md §323): "Salva la settimana" la porta
   // subito nei prossimi giorni e da lì vale per tutte le settimane.
-  async function changeWeekTemplate(next: AgendaWeekTemplate) {
-    if (!token) return;
+  // Mesi che si possono scegliere per salvare la settimana solo lì (§324).
+  const templateMonths = [0, 1, 2, 3, 4, 5].map((offset) => {
+    const month = addMonthsUtc(startOfMonthUtc(today), offset);
+    return { key: toIsoDate(month).slice(0, 7), label: `${monthLabel(month).toLowerCase()} ${month.getUTCFullYear()}` };
+  });
+
+  async function changeWeekTemplate(next: AgendaWeekTemplate, month: string | null = null): Promise<boolean> {
+    if (!token) return false;
     setTemplateNotice(null);
     setSavingTemplate(true);
     try {
-      const state = await apiClient.saveAgendaWeekTemplate(token, next);
-      setWeekTemplate(state.template);
+      const state = month ? await apiClient.saveAgendaWeekTemplateForMonth(token, next, month) : await apiClient.saveAgendaWeekTemplate(token, next);
+      if (!month) setWeekTemplate(state.template);
       setWeekTemplateActive(state.active);
       setSlotsReload((n) => n + 1);
+      const where = month ? `a ${templateMonths.find((m) => m.key === month)?.label ?? month}` : "a tutti i mesi";
       setTemplateNotice(
         state.changedDays > 0
-          ? `Settimana salvata: orari aggiornati in ${state.changedDays} ${state.changedDays === 1 ? "giorno" : "giorni"}. I giorni cambiati a mano, quelli chiusi e quelli con lavori già fissati restano com'erano.`
-          : "Settimana salvata.",
+          ? `Settimana salvata ${where}: orari aggiornati in ${state.changedDays} ${state.changedDays === 1 ? "giorno" : "giorni"}. I giorni cambiati a mano, quelli chiusi e quelli con lavori già fissati restano com'erano.`
+          : `Settimana salvata ${where}.`,
       );
+      return true;
     } catch (err) {
       setTemplateNotice(err instanceof Error ? `${err.message} La settimana non è stata salvata.` : "Settimana non salvata, riprova.");
+      return false;
     } finally {
       setSavingTemplate(false);
     }
@@ -1848,7 +1858,7 @@ function DashboardAgendaContent() {
             </div>
 
             {weekTemplate ? (
-              <WeekTemplateEditor key={JSON.stringify(weekTemplate)} template={weekTemplate} active={weekTemplateActive} onSave={(next) => void changeWeekTemplate(next)} saving={savingTemplate} />
+              <WeekTemplateEditor key={JSON.stringify(weekTemplate)} template={weekTemplate} active={weekTemplateActive} months={templateMonths} onSave={changeWeekTemplate} saving={savingTemplate} />
             ) : (
               <SkeletonBlock height={360} radius={20} />
             )}

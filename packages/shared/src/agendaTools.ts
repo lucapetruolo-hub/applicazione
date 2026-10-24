@@ -38,6 +38,16 @@ export const agendaWeekTemplateSchema = z
 export type AgendaWeekTemplate = z.infer<typeof agendaWeekTemplateSchema>;
 
 /**
+ * Settimana tipo salvata per un mese solo (richiesta dell'utente,
+ * docs/CHANGELOG.md §323): `month` in AAAA-MM, al massimo un anno avanti.
+ */
+export const agendaWeekTemplateMonthSchema = z.object({
+  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Mese non valido."),
+  template: agendaWeekTemplateSchema,
+});
+export type AgendaWeekTemplateMonth = z.infer<typeof agendaWeekTemplateMonthSchema>;
+
+/**
  * Settimana tipo con il suo stato (docs/CHANGELOG.md §323): `active` dopo il
  * primo "Salva la settimana", da lì vale per tutte le settimane;
  * `changedDays` = giorni aggiornati dall'ultimo salvataggio.

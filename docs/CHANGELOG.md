@@ -20384,3 +20384,15 @@ Nuova migrazione `20261024140000_settimana_tipo_continua` (due colonne, nessun d
 **Schermata** (`WeekTemplateEditor`): 1. "Che giorni lavori?" con i giorni da accendere e spegnere; 2. "In che orari?" con tre orari pronti (Mattina e pomeriggio, Orario continuato, Solo la mattina), orari da ritoccare "Dalle … alle …" (sul telefono "08:00 – 13:00" in una riga), A domicilio/Online e clienti per orario; 3. "Un giorno ha orari diversi?" con "Cambia" e "Aggiungi un giorno diverso". Da computer, accanto, "Come la vedono i clienti". In fondo ore a settimana, stato del salvataggio e "Salva la settimana". Tolti "Applica a [mese]", il "+" tratteggiato, "Giorno libero" come link e le scorciatoie staccate dalle righe. I giorni hanno "Lun" a vista e "Lunedì" letto dai lettori di schermo (testo senza dimensione: con `sr-only` si leggeva "Lun edì"). Tolto anche l'avviso "La tua settimana tipo è pronta: applicala al mese".
 
 **Verifica**: 6 test sulle regole (`week-template-sync.test.ts`), 575 test API; nuove prove nel browser (`settimana-tipo.spec.ts`: salvataggio che riempie otto sabati senza scegliere un mese, venerdì diverso, domenica vuota, pagina riaperta uguale; orari sbagliati con avviso e salvataggio bloccato), 64 prove nel browser in locale, accessibilità senza problemi gravi.
+
+## 324. Settimana tipo: scegliere il mese in cui salvarla
+
+Richiesta dell'utente, dopo la §323: "dai la possibilità di scegliere il mese in cui salvarlo".
+
+**Decisione**: accanto a "Salva la settimana" c'è "Vale per", con "Tutti i mesi" (come nella §323) oppure uno dei prossimi sei mesi. Si parte da "Tutti i mesi", quindi chi non tocca la scelta non vede cambiare nulla.
+
+**Come funziona**: per un mese solo (`PUT /agenda/week-template/month`, `AgendaService.saveWeekTemplateForMonth`) si riempiono i giorni di quel mese da oggi in poi con le stesse regole della §323 (niente giorni chiusi, con lavori fissati o cambiati a mano). Le fasce create diventano giorni a sé (`fromWeekTemplate` falso): non cambiano quando si salva la settimana di tutti i mesi, e si modificano in "Giorno per giorno". La settimana di tutti i mesi resta com'era; se non è mai stata salvata, l'editor si riapre con quella appena usata. Mesi passati o oltre un anno: rifiutati.
+
+**Schermata**: in fondo "Vale per" + "Salva la settimana" (sul telefono uno sotto l'altro); dopo il salvataggio "Salvata per novembre 2026" oppure "Salvata, vale per tutti i mesi", e l'avviso in cima dice dove è stata salvata.
+
+**Verifica**: nuova prova nel browser (`settimana-tipo.spec.ts`: salvata per un mese, tutte le fasce nuove cadono in quel mese, domenica compresa), prove dell'agenda e dell'accessibilità verdi, lint e typecheck di web e API puliti.

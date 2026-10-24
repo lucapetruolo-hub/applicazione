@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Header, NotFoundException, Param, Post, Put, Query, Req, UseGuards } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
-import { agendaWeekTemplateSchema, type AgendaWeekTemplate } from "@professionisti/shared";
+import { agendaWeekTemplateMonthSchema, agendaWeekTemplateSchema, type AgendaWeekTemplate, type AgendaWeekTemplateMonth } from "@professionisti/shared";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { AgendaService } from "./agenda.service";
@@ -25,6 +25,11 @@ export class AgendaController {
   @Put("week-template")
   saveWeekTemplate(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(agendaWeekTemplateSchema)) body: AgendaWeekTemplate) {
     return this.agendaService.saveWeekTemplate(req.user.userId, body);
+  }
+
+  @Put("week-template/month")
+  saveWeekTemplateForMonth(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(agendaWeekTemplateMonthSchema)) body: AgendaWeekTemplateMonth) {
+    return this.agendaService.saveWeekTemplateForMonth(req.user.userId, body.template, body.month);
   }
 
   @Get("weather")

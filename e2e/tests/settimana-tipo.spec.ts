@@ -4,8 +4,8 @@ import { API_URL } from "../fixtures/env";
 
 /**
  * Settimana tipo in tre passi, scelta dall'utente (proposta A,
- * docs/CHANGELOG.md §323): salvata vale per tutte le settimane, senza
- * "Applica a un mese".
+ * docs/CHANGELOG.md §323): salvata vale per tutti i mesi, oppure per un
+ * mese solo scelto accanto a "Salva la settimana".
  */
 type Slot = { date: string | null; startTime: string; endTime: string };
 
@@ -37,7 +37,7 @@ test("salvata, la settimana riempie i prossimi giorni senza scegliere un mese", 
 
   await week.getByRole("button", { name: "Salva la settimana" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Settimana salvata" })).toBeVisible();
-  await expect(week).toContainText("Salvata, vale per tutte le settimane");
+  await expect(week).toContainText("Salvata, vale per tutti i mesi");
 
   const after = (await mySlots(request)).filter((s) => s.date && !before.some((b) => b.date === s.date));
   const saturdays = after.filter((s) => weekday(s.date!) === 6);
@@ -76,4 +76,25 @@ test("orari sbagliati: l'avviso spiega cosa non va e non si salva", async ({ pag
   await week.getByLabel("Tutti i giorni: fine 1° orario").fill("07:00");
   await expect(week.getByRole("alert")).toHaveText("L'orario di fine deve essere dopo quello di inizio.");
   await expect(week.getByRole("button", { name: "Salva la settimana" })).toBeDisabled();
+});
+
+test("salvata per un mese solo, riempie solo quel mese", async ({ page, request }, testInfo) => {
+  test.skip(testInfo.project.name !== "telefono-italia", "Cambia i dati: una volta sola.");
+  const before = await mySlots(request);
+  await page.goto("/dashboard/agenda?tab=orari");
+  const week = page.getByRole("region", { name: "La tua settimana" });
+  await week.getByRole("button", { name: "Domenica" }).click();
+  // Il secondo mese dell'elenco: sempre nel futuro, qualunque sia oggi.
+  const scope = week.getByRole("combobox", { name: "Vale per" });
+  const option = scope.locator("option").nth(2);
+  const month = (await option.getAttribute("value"))!;
+  await scope.selectOption(month);
+  await week.getByRole("button", { name: "Salva la settimana" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Settimana salvata a" })).toBeVisible();
+  await expect(week).toContainText("Salvata per");
+
+  const added = (await mySlots(request)).filter((s) => s.date && !before.some((b) => b.date === s.date));
+  expect(added.length).toBeGreaterThan(0);
+  expect(added.every((s) => s.date!.startsWith(month))).toBe(true);
+  expect(added.some((s) => weekday(s.date!) === 0)).toBe(true);
 });

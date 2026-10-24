@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import type { Prisma, PrismaClient } from "@professionisti/database";
 import {
@@ -89,6 +89,45 @@ export class AgendaService {
     return { template, active: true, changedDays };
   }
 
+  /**
+   * Settimana tipo per un mese solo (richiesta dell'utente, docs/CHANGELOG.md
+   * §324): riempie i giorni di quel mese da oggi in poi con le stesse regole,
+   * ma le fasce diventano giorni a sé (non cambiano con la settimana di tutti
+   * i mesi). La settimana di tutti i mesi resta com'era; se non è mai stata
+   * salvata, si ricorda questa per riaprire l'editor.
+   */
+  async saveWeekTemplateForMonth(userId: string, template: AgendaWeekTemplate, month: string, now = new Date()): Promise<AgendaWeekTemplateState> {
+    const profile = await this.prisma.professionalProfile.findUnique({
+      where: { userId },
+      select: { id: true, agendaWeekTemplate: true, agendaTemplateFilledUntil: true },
+    });
+    if (!profile) throw new NotFoundException("Profilo professionista non trovato.");
+    const today = wallClockToday(now);
+    const todayStr = today.toISOString().slice(0, 10);
+    const first = new Date(`${month}-01T00:00:00.000Z`);
+    const limit = new Date(today);
+    limit.setUTCFullYear(limit.getUTCFullYear() + 1);
+    if (first > limit) throw new BadRequestException("Si può scegliere al massimo un anno avanti.");
+    const dates: string[] = [];
+    for (const day = new Date(first); day.getUTCMonth() === first.getUTCMonth(); day.setUTCDate(day.getUTCDate() + 1)) {
+      const date = day.toISOString().slice(0, 10);
+      if (date >= todayStr) dates.push(date);
+    }
+    if (dates.length === 0) throw new BadRequestException("Quel mese è già passato.");
+    const end = new Date(`${dates[dates.length - 1]}T00:00:00.000Z`);
+    end.setUTCDate(end.getUTCDate() + 1);
+    const changedDays = await this.prisma.$transaction(async (tx) => {
+      const sync = await this.computeSync(tx, profile.id, template, null, null, dates, new Date(`${dates[0]}T00:00:00.000Z`), end);
+      await this.applySync(tx, profile.id, sync, false);
+      if (!profile.agendaTemplateFilledUntil) {
+        await tx.professionalProfile.update({ where: { id: profile.id }, data: { agendaWeekTemplate: template as unknown as Prisma.InputJsonValue } });
+      }
+      return sync.changedDays;
+    });
+    const saved = agendaWeekTemplateSchema.safeParse(profile.agendaTemplateFilledUntil ? profile.agendaWeekTemplate : template);
+    return { template: saved.success ? saved.data : template, active: profile.agendaTemplateFilledUntil !== null, changedDays };
+  }
+
   /** Ogni notte la settimana tipo riempie i giorni che entrano nei prossimi 63. */
   @Cron("30 2 * * *", { timeZone: "Europe/Rome" })
   async extendWeekTemplates(): Promise<void> {
@@ -125,57 +164,73 @@ export class AgendaService {
     const windowEnd = new Date(lastDate);
     windowEnd.setUTCDate(windowEnd.getUTCDate() + 1);
     return this.prisma.$transaction(async (tx) => {
-      const [slots, exceptions, bookings] = await Promise.all([
-        tx.availabilitySlot.findMany({ where: { professionalProfileId, OR: [{ date: null }, { date: { gte: today } }] } }),
-        tx.availabilityException.findMany({ where: { professionalProfileId, date: { gte: today } }, select: { date: true } }),
-        tx.booking.findMany({
-          where: { professionalProfileId, status: { in: [...AGENDA_BOOKING_STATUSES] }, scheduledAt: { gte: today, lt: windowEnd } },
-          select: { scheduledAt: true },
-        }),
-      ]);
-      const sync = weekTemplateSync({
-        template,
-        previous,
-        dates,
-        filledUntil: filledUntil ? filledUntil.toISOString().slice(0, 10) : null,
-        existing: slots.map((slot) => ({
-          id: slot.id,
-          dayOfWeek: slot.dayOfWeek,
-          date: slot.date ? slot.date.toISOString().slice(0, 10) : null,
-          start: slot.startTime,
-          end: slot.endTime,
-          allowsHome: slot.allowsHome,
-          allowsOnline: slot.allowsOnline,
-          homeMax: slot.homeMaxBookings,
-          onlineMax: slot.onlineMaxBookings,
-          fromWeekTemplate: slot.fromWeekTemplate,
-        })),
-        closedDates: new Set(exceptions.map((e) => e.date.toISOString().slice(0, 10))),
-        bookedDates: new Set(bookings.map((b) => b.scheduledAt.toISOString().slice(0, 10))),
-      });
-      if (sync.deleteIds.length) await tx.availabilitySlot.deleteMany({ where: { id: { in: sync.deleteIds }, professionalProfileId } });
-      if (sync.added.length) {
-        await tx.availabilitySlot.createMany({
-          data: sync.added.map((slot) => ({
-            professionalProfileId,
-            dayOfWeek: slot.dayOfWeek,
-            date: new Date(`${slot.date}T00:00:00.000Z`),
-            startTime: slot.start,
-            endTime: slot.end,
-            allowsHome: slot.allowsHome,
-            allowsOnline: slot.allowsOnline,
-            homeMaxBookings: slot.allowsHome ? (slot.homeMax ?? 1) : null,
-            onlineMaxBookings: slot.allowsOnline ? (slot.onlineMax ?? 1) : null,
-            fromWeekTemplate: true,
-          })),
-        });
-      }
+      const sync = await this.computeSync(tx, professionalProfileId, template, previous, filledUntil, dates, today, windowEnd);
+      await this.applySync(tx, professionalProfileId, sync, true);
       const nextFilledUntil = filledUntil && filledUntil > lastDate ? filledUntil : lastDate;
       await tx.professionalProfile.update({
         where: { id: professionalProfileId },
         data: { agendaWeekTemplate: template as unknown as Prisma.InputJsonValue, agendaTemplateFilledUntil: nextFilledUntil },
       });
       return sync.changedDays;
+    });
+  }
+
+  private async computeSync(
+    tx: Prisma.TransactionClient,
+    professionalProfileId: string,
+    template: AgendaWeekTemplate,
+    previous: AgendaWeekTemplate | null,
+    filledUntil: Date | null,
+    dates: string[],
+    from: Date,
+    to: Date,
+  ) {
+    const [slots, exceptions, bookings] = await Promise.all([
+      tx.availabilitySlot.findMany({ where: { professionalProfileId, OR: [{ date: null }, { date: { gte: from, lt: to } }] } }),
+      tx.availabilityException.findMany({ where: { professionalProfileId, date: { gte: from, lt: to } }, select: { date: true } }),
+      tx.booking.findMany({
+        where: { professionalProfileId, status: { in: [...AGENDA_BOOKING_STATUSES] }, scheduledAt: { gte: from, lt: to } },
+        select: { scheduledAt: true },
+      }),
+    ]);
+    return weekTemplateSync({
+      template,
+      previous,
+      dates,
+      filledUntil: filledUntil ? filledUntil.toISOString().slice(0, 10) : null,
+      existing: slots.map((slot) => ({
+        id: slot.id,
+        dayOfWeek: slot.dayOfWeek,
+        date: slot.date ? slot.date.toISOString().slice(0, 10) : null,
+        start: slot.startTime,
+        end: slot.endTime,
+        allowsHome: slot.allowsHome,
+        allowsOnline: slot.allowsOnline,
+        homeMax: slot.homeMaxBookings,
+        onlineMax: slot.onlineMaxBookings,
+        fromWeekTemplate: slot.fromWeekTemplate,
+      })),
+      closedDates: new Set(exceptions.map((e) => e.date.toISOString().slice(0, 10))),
+      bookedDates: new Set(bookings.map((b) => b.scheduledAt.toISOString().slice(0, 10))),
+    });
+  }
+
+  private async applySync(tx: Prisma.TransactionClient, professionalProfileId: string, sync: ReturnType<typeof weekTemplateSync>, fromWeekTemplate: boolean) {
+    if (sync.deleteIds.length) await tx.availabilitySlot.deleteMany({ where: { id: { in: sync.deleteIds }, professionalProfileId } });
+    if (!sync.added.length) return;
+    await tx.availabilitySlot.createMany({
+      data: sync.added.map((slot) => ({
+        professionalProfileId,
+        dayOfWeek: slot.dayOfWeek,
+        date: new Date(`${slot.date}T00:00:00.000Z`),
+        startTime: slot.start,
+        endTime: slot.end,
+        allowsHome: slot.allowsHome,
+        allowsOnline: slot.allowsOnline,
+        homeMaxBookings: slot.allowsHome ? (slot.homeMax ?? 1) : null,
+        onlineMaxBookings: slot.allowsOnline ? (slot.onlineMax ?? 1) : null,
+        fromWeekTemplate,
+      })),
     });
   }
 

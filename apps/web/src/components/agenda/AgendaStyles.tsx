@@ -1117,6 +1117,20 @@ export function AgendaStyles() {
         font-size: 14px;
       }
       /* Tre orari pronti affiancati solo quando la colonna è larga (senza anteprima accanto). */
+      .ag-wt-save {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .ag-wt-scope {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .ag-wt-scope select {
+        min-width: 168px;
+      }
       @media (min-width: 720px) and (max-width: 1080px) {
         .ag-wt-presets {
           grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1152,8 +1166,15 @@ export function AgendaStyles() {
         .ag-wt-time {
           width: 104px;
         }
+        .ag-wt-save,
         .ag-wt-footer .ag-btn {
           width: 100%;
+        }
+        .ag-wt-scope {
+          flex: 1;
+        }
+        .ag-wt-scope select {
+          flex: 1;
         }
       }
       .ag-links {
