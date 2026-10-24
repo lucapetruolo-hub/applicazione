@@ -13,7 +13,8 @@ type PageSearchParams = { citta?: string; online?: string; q?: string; urgente?:
 // pagine categoria (CLAUDE.md §5.4).
 export const dynamic = "force-dynamic";
 
-export function generateMetadata({ searchParams }: { searchParams: PageSearchParams }): Metadata {
+export async function generateMetadata(props: { searchParams: Promise<PageSearchParams> }): Promise<Metadata> {
+  const searchParams = await props.searchParams;
   if (searchParams.online === "1") {
     return { title: "Consulenze online — Professionisti", description: "Professionisti disponibili per consulenza online." };
   }
@@ -26,7 +27,8 @@ export function generateMetadata({ searchParams }: { searchParams: PageSearchPar
   return { title: "Tutti i professionisti", description: "Trova professionisti vicino a te." };
 }
 
-export default async function CercaPage({ searchParams }: { searchParams: PageSearchParams }) {
+export default async function CercaPage(props: { searchParams: Promise<PageSearchParams> }) {
+  const searchParams = await props.searchParams;
   const isOnline = searchParams.online === "1";
   // La città resta un filtro valido anche in modalità "Online": permette di
   // trovare professionisti che offrono consulenza da remoto ma sono radicati

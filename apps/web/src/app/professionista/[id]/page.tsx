@@ -14,7 +14,8 @@ type PageParams = { id: string };
 // (nessun generateStaticParams: gli id sono dinamici e crescono nel tempo).
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({ params }: { params: PageParams }): Promise<Metadata> {
+export async function generateMetadata(props: { params: Promise<PageParams> }): Promise<Metadata> {
+  const params = await props.params;
   try {
     const professional = await apiClient.getProfessional(params.id);
     return {
@@ -39,7 +40,8 @@ function jsonForScript(value: unknown): string {
   return JSON.stringify(value).replace(/</g, "\\u003c").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
 }
 
-export default async function ProfessionalDetailPage({ params }: { params: PageParams }) {
+export default async function ProfessionalDetailPage(props: { params: Promise<PageParams> }) {
+  const params = await props.params;
   try {
     const professional = await apiClient.getProfessional(params.id);
     // JSON-LD (Fase 6, SEO): LocalBusiness è il tipo schema.org corretto per

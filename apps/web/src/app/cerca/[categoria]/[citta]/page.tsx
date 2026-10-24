@@ -14,7 +14,8 @@ export const dynamic = "force-dynamic";
  * Prima la città era solo `?citta=`, un URL che i motori di ricerca non
  * trattano come pagina a sé. Stesso contenuto di /cerca/[categoria]?citta=.
  */
-export function generateMetadata({ params }: { params: PageParams }): Metadata {
+export async function generateMetadata(props: { params: Promise<PageParams> }): Promise<Metadata> {
+  const params = await props.params;
   const comune = findComuneBySlug(params.citta);
   if (!isProfessionalCategorySlug(params.categoria) || !comune) {
     return {};
@@ -22,7 +23,8 @@ export function generateMetadata({ params }: { params: PageParams }): Metadata {
   return categoryMetadata(findCategory(params.categoria), comune.name);
 }
 
-export default function CategoryCityPage({ params, searchParams }: { params: PageParams; searchParams: CategorySearchParams }) {
+export default async function CategoryCityPage(props: { params: Promise<PageParams>; searchParams: Promise<CategorySearchParams> }) {
+  const [params, searchParams] = await Promise.all([props.params, props.searchParams]);
   const comune = findComuneBySlug(params.citta);
   if (!isProfessionalCategorySlug(params.categoria) || !comune) {
     notFound();

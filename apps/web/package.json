@@ -8,7 +8,7 @@
     "css:tamagui": "TSX_TSCONFIG_PATH=scripts/tsconfig.json tsx scripts/generate-tamagui-css.ts",
     "start": "next start",
     "lint": "eslint src",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
     "@professionisti/api-client": "workspace:*",
@@ -17,7 +17,7 @@
     "@vercel/analytics": "^2.0.1",
     "@vis.gl/react-google-maps": "^1.10.1",
     "lucide-react": "^1.27.0",
-    "next": "^14.2.15",
+    "next": "^15.5.28",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

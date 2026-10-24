@@ -5,11 +5,11 @@ import { redirect } from "next/navigation";
  * §243) e si cambia da "Dati fiscali e pagamenti": questo vecchio indirizzo
  * resta solo per i link già salvati o arrivati per email.
  */
-export default function DashboardTipoAttivitaPage({
+export default async function DashboardTipoAttivitaPage({
   searchParams,
 }: {
-  searchParams: { entityType?: string };
+  searchParams: Promise<{ entityType?: string }>;
 }) {
-  const { entityType } = searchParams;
+  const { entityType } = await searchParams;
   redirect(entityType ? `/dashboard/fiscale?entityType=${encodeURIComponent(entityType)}` : "/dashboard/fiscale");
 }
