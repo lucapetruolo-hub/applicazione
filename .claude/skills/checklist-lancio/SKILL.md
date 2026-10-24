@@ -463,7 +463,7 @@ Città, pagine vuote fuori da Google.
     Ogni eccezione va in `osv-scanner.toml` con il motivo. Lo fa un thread.
 
 
-41. **Segnalazioni dei contenuti (DSA)** (docs/CHANGELOG.md §318): dopo la
+41. **Segnalazioni dei contenuti (DSA)** (docs/CHANGELOG.md §319): dopo la
     verifica del dominio Resend, fare una segnalazione di prova come
     "contenuto illegale", decidere dal pannello admin e controllare nei log
     di Resend che siano partite le tre email (presa in carico, esito a chi

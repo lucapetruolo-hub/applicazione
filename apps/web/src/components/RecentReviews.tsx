@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Avatar, Icon, Rating, Section, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
+import { usePrefersReducedMotion } from "@/lib/useMediaQuery";
 import { CategoryIcon, CATEGORY_ACCENT } from "./icons/CategoryIcons";
 
 type RecentReview = {
@@ -63,7 +64,7 @@ export function RecentReviews({ summary }: { summary: { count: number; average: 
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
   const [cycle, setCycle] = useState(0);
-  const [reducedMotion, setReducedMotion] = useState(false);
+  const reducedMotion = usePrefersReducedMotion();
   const rootRef = useRef<HTMLDivElement>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
@@ -73,7 +74,6 @@ export function RecentReviews({ summary }: { summary: { count: number; average: 
       // Anche il server le esclude: qui resta solo il controllo sugli spazi.
       .then((items) => setReviews(items.filter((item) => item.comment?.trim())))
       .catch(() => setReviews([]));
-    setReducedMotion(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   }, []);
 
   const count = reviews?.length ?? 0;

@@ -919,6 +919,24 @@ button.notif-row-main:hover {
   justify-content: center;
 }
 /* Pallino "da fare" senza numero (es. agenda senza disponibilità). */
+/* Nome accanto alla foto nell'intestazione (AccountMenu, docs/CHANGELOG.md §319). */
+.acct-trigger-name {
+  display: flex;
+  min-width: 0;
+  max-width: 180px;
+}
+.acct-trigger-name-sr {
+  display: none;
+}
+@media (max-width: 520px) {
+  .acct-trigger-name {
+    display: none;
+  }
+  .acct-trigger-name-sr {
+    display: block;
+  }
+}
+
 .acct-nav-dot {
   margin-left: auto;
   width: 8px;

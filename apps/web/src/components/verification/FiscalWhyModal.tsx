@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { Button, Icon, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
+import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 const REASONS: { icon: IconName; text: string }[] = [
   { icon: "shield-check", text: "Controlliamo che codice fiscale e partita IVA siano validi." },
@@ -30,10 +31,8 @@ export function FiscalWhyModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="fiscal-why-title"
-      onClick={onClose}
+      role="presentation"
+      onClick={closeOnBackdrop(onClose)}
       style={{
         position: "fixed",
         inset: 0,
@@ -45,7 +44,7 @@ export function FiscalWhyModal({ onClose }: { onClose: () => void }) {
         zIndex: 400,
       }}
     >
-      <div onClick={(event) => event.stopPropagation()} style={{ width: "100%", maxWidth: 420 }}>
+      <div role="dialog" aria-modal="true" aria-labelledby="fiscal-why-title" style={{ width: "100%", maxWidth: 420 }}>
         <YStack width="100%" backgroundColor={brand.calce} borderRadius="$5" padding="$5" gap="$4">
           <Text id="fiscal-why-title" tag="h2" fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
             Perché ti chiediamo questi dati

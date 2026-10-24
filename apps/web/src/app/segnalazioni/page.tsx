@@ -9,7 +9,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 
 /**
- * Decisioni sui contenuti dell'utente (docs/CHANGELOG.md §144, §318): misura
+ * Decisioni sui contenuti dell'utente (docs/CHANGELOG.md §144, §319): misura
  * presa, regola o legge violata, motivazione e "Contesta la decisione" (DSA
  * art. 17; il reclamo interno dell'art. 20 non è obbligatorio per una
  * piccola impresa, art. 19, ma resta). Non è nel menu: si apre dall'email o

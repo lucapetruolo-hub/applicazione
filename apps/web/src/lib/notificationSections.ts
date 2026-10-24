@@ -113,7 +113,7 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
       ? `/dashboard/richieste?open=${guidedRequestId}`
       : `/le-mie-richieste?tab=richieste&open=${guidedRequestId}`;
   }
-  // Chi segnala non ha una pagina (docs/CHANGELOG.md §318): presa in carico
+  // Chi segnala non ha una pagina (docs/CHANGELOG.md §319): presa in carico
   // ed esito stanno nella notifica e nell'email.
   if (type === "CONTENT_REPORT_RECEIVED" || type === "CONTENT_REPORT_DECISION") return null;
   // Decisioni sui propri contenuti (docs/CHANGELOG.md §144): nella pagina

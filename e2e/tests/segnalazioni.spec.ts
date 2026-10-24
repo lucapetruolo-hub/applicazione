@@ -4,7 +4,7 @@ import { PrismaClient } from "@professionisti/database";
 import { API_URL, WEB_URL } from "../fixtures/env";
 
 /**
- * Percorso delle segnalazioni secondo il DSA (docs/CHANGELOG.md §318): chi
+ * Percorso delle segnalazioni secondo il DSA (docs/CHANGELOG.md §319): chi
  * segnala un contenuto illegale spiega perché e conferma la buona fede,
  * riceve la presa in carico e poi l'esito senza motivazione; l'autore legge
  * misura, legge violata e motivazione nella pagina aperta dall'email e la
@@ -18,6 +18,8 @@ let reviewId = "";
 
 test.beforeEach(({}, testInfo) => {
   test.skip(testInfo.project.name !== "telefono-italia", "Basta un telefono: il percorso non dipende dal fuso.");
+  // Margine per l'attesa del limite sugli accessi (pageAs).
+  testInfo.setTimeout(180_000);
 });
 
 test.beforeAll(async () => {
@@ -49,8 +51,17 @@ test.afterAll(async () => {
 async function pageAs(browser: Browser, email: string | null) {
   let token: string | null = null;
   if (email) {
-    const response = await fetch(`${API_URL}/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: PASSWORD }) });
-    token = ((await response.json()) as { token: string }).token;
+    // L'accesso ha un limite di 10 al minuto per indirizzo: le altre prove
+    // appena eseguite possono averlo esaurito, si aspetta e si riprova.
+    for (let attempt = 0; !token; attempt++) {
+      const response = await fetch(`${API_URL}/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: PASSWORD }) });
+      if (response.status === 429 && attempt < 3) {
+        await new Promise((resolve) => setTimeout(resolve, (Number(response.headers.get("retry-after")) || 20) * 1000 + 500));
+        continue;
+      }
+      expect(response.ok, `Accesso di prova non riuscito: ${response.status}`).toBe(true);
+      token = ((await response.json()) as { token: string }).token;
+    }
   }
   const context = await browser.newContext({
     baseURL: WEB_URL,

@@ -54,7 +54,9 @@ export function GoogleSignInButton({ onCredential, disabled }: { onCredential: (
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
   // Funzione sempre aggiornata senza rifare gli ascoltatori a ogni render del genitore.
   const onCredentialRef = useRef(onCredential);
-  onCredentialRef.current = onCredential;
+  useEffect(() => {
+    onCredentialRef.current = onCredential;
+  });
   const pendingRef = useRef<GoogleSignInPending | null>(null);
   const [notice, setNotice] = useState<"waiting" | "error" | null>(null);
 

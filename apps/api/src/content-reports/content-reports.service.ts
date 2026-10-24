@@ -73,7 +73,7 @@ export class ContentReportsService {
       },
       select: { id: true },
     });
-    // Conferma di presa in carico a chi segnala (DSA art. 16 c. 4, docs/CHANGELOG.md §318).
+    // Conferma di presa in carico a chi segnala (DSA art. 16 c. 4, docs/CHANGELOG.md §319).
     await this.notificationsService.notify(reporterId, "CONTENT_REPORT_RECEIVED", { contentReportId: created.id, targetType: input.targetType });
     this.notificationsService.emailAdminsNewReport({ targetType: input.targetType, reason: claimsIllegal ? `${reason?.label} (contenuto illegale)` : (reason?.label ?? input.reason) });
     return created;
@@ -81,7 +81,7 @@ export class ContentReportsService {
 
   /**
    * Pagina /segnalazioni, aperta dall'email della decisione (docs/CHANGELOG.md
-   * §144, §318): solo le decisioni sui contenuti dell'utente, con misura,
+   * §144, §319): solo le decisioni sui contenuti dell'utente, con misura,
    * regola violata, motivazione e stato della contestazione (DSA art. 17).
    * Chi segnala non vede più l'esito qui: riceve la presa in carico e, solo
    * per un contenuto illegale, una riga di esito per email (art. 16 c. 4-5).

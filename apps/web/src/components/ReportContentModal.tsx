@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CONTENT_REPORT_REASONS, contentReportReason, type ContentReportReasonCode, type ContentReportTargetType } from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { ConsentCheckbox } from "./ConsentCheckbox";
+import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 const textareaStyle = {
   padding: 10,
@@ -54,7 +55,7 @@ export function ReportContentModal({
   const [details, setDetails] = useState("");
   const [goodFaith, setGoodFaith] = useState(false);
   const [attempted, setAttempted] = useState(false);
-  // Contenuto illegale (DSA art. 16 c. 2, docs/CHANGELOG.md §318): servono
+  // Contenuto illegale (DSA art. 16 c. 2, docs/CHANGELOG.md §319): servono
   // una spiegazione e la dichiarazione di buona fede.
   const illegal = reasonValue ? (contentReportReason(reasonValue)?.illegal ?? false) : false;
   const detailsMissing = illegal && details.trim().length < 10;
@@ -89,10 +90,8 @@ export function ReportContentModal({
 
   return (
     <div
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Segnala contenuto"
+      role="presentation"
+      onClick={closeOnBackdrop(onClose)}
       style={{
         position: "fixed",
         top: 0,
@@ -109,7 +108,9 @@ export function ReportContentModal({
       }}
     >
       <YStack
-        onPress={(e: { stopPropagation: () => void }) => e.stopPropagation()}
+        role="dialog"
+        aria-modal
+        aria-label="Segnala contenuto"
         width="100%"
         maxWidth={460}
         backgroundColor={brand.calce}

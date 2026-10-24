@@ -909,7 +909,7 @@ const BUILDERS: Record<string, Builder> = {
   }),
 
   // ── Account e sicurezza (non si spengono) ──────────────────────────────
-  // Segnalazioni (DSA art. 16 c. 4-5, docs/CHANGELOG.md §318): chi segnala
+  // Segnalazioni (DSA art. 16 c. 4-5, docs/CHANGELOG.md §319): chi segnala
   // riceve la presa in carico e, solo per un contenuto illegale, l'esito in
   // una riga, mai la motivazione.
   CONTENT_REPORT_RECEIVED: (payload, ctx) => {

@@ -137,7 +137,7 @@ export function SiteFooter() {
             </Text>
           </Link>
           {/* Chiunque, anche senza account, può segnalare un contenuto
-              illegale (DSA art. 16 c. 1, docs/CHANGELOG.md §318). */}
+              illegale (DSA art. 16 c. 1, docs/CHANGELOG.md §319). */}
           <Link href="/contatti?motivo=segnalazione" style={{ textDecoration: "none" }}>
             <Text fontFamily="$body" fontSize={16} color={brand.grafite70}>
               Segnala un contenuto illegale

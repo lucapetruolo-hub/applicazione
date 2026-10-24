@@ -18,7 +18,7 @@ export const metadata: Metadata = {
  * (es. /faq, /password-dimenticata).
  *
  * `?motivo=segnalazione` (link "Segnala un contenuto illegale" del footer,
- * docs/CHANGELOG.md §318) apre il modulo già sulla segnalazione.
+ * docs/CHANGELOG.md §319) apre il modulo già sulla segnalazione.
  */
 export default async function ContattiPage({ searchParams }: { searchParams: Promise<{ motivo?: string | string[] }> }) {
   const { motivo } = await searchParams;

@@ -20,25 +20,30 @@ export default function AdminMessaggiPage() {
   const { token } = useAuth();
   const { refresh } = useAdminOverview();
   const [view, setView] = useState<"aperti" | "archivio">("aperti");
-  const [messages, setMessages] = useState<AdminContactMessage[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Ogni messaggio gestito fa ricaricare l'elenco.
+  const [version, setVersion] = useState(0);
+  // Elenco insieme alla scheda (e al ricaricamento) da cui arriva: fino
+  // all'elenco nuovo si vede lo scheletro.
+  const loadKey = `${view}:${version}`;
+  const [loaded, setLoaded] = useState<{ key: string; messages: AdminContactMessage[] } | null>(null);
+  const messages = loaded?.key === loadKey ? loaded.messages : null;
 
   function reload() {
+    setVersion((n) => n + 1);
+  }
+  useEffect(() => {
     if (!token) return;
-    setMessages(null);
     apiClient
       .adminListContactMessages(token, view === "archivio")
       .then((list) => {
-        setMessages(list);
+        setLoaded({ key: `${view}:${version}`, messages: list });
         setError(null);
       })
       .catch((err) => setError(errorMessage(err)));
     refresh();
-  }
-  useEffect(() => {
-    reload();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, view]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh cambia a ogni aggiornamento del riepilogo
+  }, [token, view, version]);
 
   return (
     <YStack>
@@ -72,7 +77,7 @@ function MessageCard({ message, token, onChanged }: { message: AdminContactMessa
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Segnalazione di contenuto illegale senza account (docs/CHANGELOG.md
-  // §318): l'esito in una riga va comunicato per legge (DSA art. 16 c. 5),
+  // §319): l'esito in una riga va comunicato per legge (DSA art. 16 c. 5),
   // senza motivazione. La risposta parte già scritta, si sceglie la frase.
   const isReport = message.role === "REPORT_ILLEGAL";
   const mailto = `mailto:${message.email}?subject=${encodeURIComponent(isReport ? "Esito della tua segnalazione" : "Risposta al tuo messaggio")}&body=${encodeURIComponent(

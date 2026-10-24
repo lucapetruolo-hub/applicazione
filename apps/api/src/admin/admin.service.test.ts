@@ -50,7 +50,7 @@ describe("AdminService.resolveContentReport — misure reali", () => {
       expect.objectContaining({ action: "HIDE_CONTENT", ground: "legge-diffamazione", note: "Insulti" }),
     );
     expect(tx.contentReport.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ ground: "legge-diffamazione" }) }));
-    // Esito a chi segnala un contenuto illegale (DSA art. 16 c. 5): mai la motivazione (docs/CHANGELOG.md §318).
+    // Esito a chi segnala un contenuto illegale (DSA art. 16 c. 5): mai la motivazione (docs/CHANGELOG.md §319).
     expect(notifications.notify).toHaveBeenCalledWith("reporter-1", "CONTENT_REPORT_DECISION", { targetType: "REVIEW", status: "RESOLVED" });
   });
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { SlotDraft } from "./agendaHelpers";
+import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 /**
  * Casellina di spunta (richiesta esplicita dell'utente): in modalità
@@ -180,10 +181,8 @@ export function SlotEditorModal({
 
   return (
     <div
-      onClick={onCancel}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Imposta fascia oraria"
+      role="presentation"
+      onClick={closeOnBackdrop(onCancel)}
       style={{
         position: "fixed",
         top: 0,
@@ -199,7 +198,9 @@ export function SlotEditorModal({
       }}
     >
       <YStack
-        onPress={(e: { stopPropagation: () => void }) => e.stopPropagation()}
+        role="dialog"
+        aria-modal
+        aria-label="Imposta fascia oraria"
         width="100%"
         maxWidth={400}
         backgroundColor={brand.calce}

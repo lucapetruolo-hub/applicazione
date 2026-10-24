@@ -5,7 +5,7 @@ import { ContactService } from "./contact.service";
 
 @Module({
   // NotificationsModule: presa in carico delle segnalazioni di contenuti
-  // illegali inviate da chi non ha un account (docs/CHANGELOG.md §318).
+  // illegali inviate da chi non ha un account (docs/CHANGELOG.md §319).
   imports: [NotificationsModule],
   controllers: [ContactController],
   providers: [ContactService],

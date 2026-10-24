@@ -181,7 +181,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
       <XStack justifyContent="space-between" gap="$2" flexWrap="wrap" alignItems="center">
         <XStack gap="$2" alignItems="center" flexWrap="wrap">
           <AdminPill>{CONTENT_REPORT_TARGET_LABEL[report.targetType]}</AdminPill>
-          {/* DSA art. 16 (docs/CHANGELOG.md §318): solo per un contenuto illegale chi segnala riceve l'esito. */}
+          {/* DSA art. 16 (docs/CHANGELOG.md §319): solo per un contenuto illegale chi segnala riceve l'esito. */}
           {report.claimsIllegal ? <AdminPill tone="danger">Illegale secondo chi segnala</AdminPill> : null}
           {report.status === "RESOLVED" ? <AdminPill tone={report.revertedAt ? "neutral" : "danger"}>{report.revertedAt ? "Misura annullata" : "Accolta"}</AdminPill> : null}
           {report.status === "DISMISSED" ? <AdminPill tone="ok">Non accolta</AdminPill> : null}
@@ -356,7 +356,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
               <Text fontWeight="700" color={brand.grafite}>
                 Quale regola o legge viola?
               </Text>
-              {/* DSA art. 17 c. 3 lett. d-e (docs/CHANGELOG.md §318): l'autore la legge nell'email. */}
+              {/* DSA art. 17 c. 3 lett. d-e (docs/CHANGELOG.md §319): l'autore la legge nell'email. */}
               <select aria-label="Regola o legge violata" className="admin-input" value={ground} onChange={(e) => setGround(e.target.value)}>
                 <option value="">Scegli…</option>
                 <optgroup label="Legge (contenuto illegale)">

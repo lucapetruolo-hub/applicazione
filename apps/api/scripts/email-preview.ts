@@ -10,6 +10,8 @@ import { renderEmail, type RenderedEmail } from "../src/email/email-layout";
 import {
   accountDeletedEmail,
   passwordChangedEmail,
+  loginLockedEmail,
+  newDeviceLoginEmail,
   passwordResetEmail,
   profileInviteEmail,
   verifyEmailEmail,
@@ -43,12 +45,15 @@ function notification(type: string, to: Entry["to"], group: string, payload: Rec
 }
 
 // Account
+const verify = { link: `${site}/conferma-email?token=esempio`, hours: 48, code: "482915", codeMinutes: 15 };
 add("benvenuto-cliente", "Account", "Cliente", welcomeClientEmail("Giulia"));
-add("benvenuto-professionista", "Account", "Professionista", welcomeProfessionalEmail("Marco", { link: `${site}/conferma-email?token=esempio`, hours: 48 }));
+add("benvenuto-professionista", "Account", "Professionista", welcomeProfessionalEmail("Marco", verify));
 add("benvenuto-professionista-google", "Account", "Professionista", welcomeProfessionalEmail("Marco", null));
-add("conferma-email", "Account", "Tutti", verifyEmailEmail("Marco", `${site}/conferma-email?token=esempio`, 48));
-add("password-dimenticata", "Account", "Tutti", passwordResetEmail("Giulia", `${site}/reimposta-password?token=esempio`, 60));
+add("conferma-email", "Account", "Tutti", verifyEmailEmail("Marco", verify));
+add("password-dimenticata", "Account", "Tutti", passwordResetEmail("Giulia", { link: `${site}/reimposta-password?token=esempio`, minutes: 60, code: "731604", codeMinutes: 15 }));
 add("password-cambiata", "Account", "Tutti", passwordChangedEmail("Giulia"));
+add("accesso-bloccato", "Account", "Tutti", loginLockedEmail("Giulia", 15));
+add("nuovo-accesso", "Account", "Professionista", newDeviceLoginEmail("Marco", { label: "Chrome su Android", at: new Date("2026-10-24T09:30:00Z") }));
 add("account-eliminato", "Account", "Tutti", accountDeletedEmail("Giulia"));
 add("profilo-creato-al-telefono", "Account", "Professionista", profileInviteEmail("Marco", "Idraulica Rossi", `${site}/completa-profilo?codice=esempio`, 7));
 

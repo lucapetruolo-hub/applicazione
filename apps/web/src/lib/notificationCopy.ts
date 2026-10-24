@@ -36,7 +36,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   BOOKING_REOPENED_BY_PROFESSIONAL: { icon: "🔄", message: "Il professionista ha riaperto una prenotazione annullata." },
   // Recensione del cliente (docs/CHANGELOG.md §185): pubblica subito (§215).
   NEW_REVIEW: { icon: "⭐", message: "Un cliente ha recensito un tuo lavoro: la sua recensione è ora visibile." },
-  // DSA art. 16 c. 4-5 (docs/CHANGELOG.md §318): a chi segnala la presa in
+  // DSA art. 16 c. 4-5 (docs/CHANGELOG.md §319): a chi segnala la presa in
   // carico e, solo per un contenuto illegale, l'esito; a chi ha scritto il
   // contenuto la motivazione (art. 17, CONTENT_REPORT_UPHELD).
   CONTENT_REPORT_RECEIVED: { icon: "🚩", message: "Abbiamo preso in carico la tua segnalazione." },

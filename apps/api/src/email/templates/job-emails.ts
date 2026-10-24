@@ -192,7 +192,7 @@ export function adminNewReportEmail(input: { what: string; reason: string; fromC
 /**
  * Presa in carico di una segnalazione di contenuto illegale arrivata dal
  * modulo Contatti, da chi non ha un account (DSA art. 16 c. 1 e 4,
- * docs/CHANGELOG.md §318). L'esito lo manda poi l'admin rispondendo via email.
+ * docs/CHANGELOG.md §319). L'esito lo manda poi l'admin rispondendo via email.
  */
 export function contactReportReceivedEmail(): RenderedEmail {
   return renderEmail({

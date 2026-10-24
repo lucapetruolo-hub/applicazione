@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { apiClient } from "@/lib/apiClient";
+import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 /**
  * "Collega al tuo calendario" (docs/CHANGELOG.md §288, scelto dall'utente):
@@ -59,8 +60,8 @@ export function CalendarLinkModal({ token, onClose }: { token: string; onClose: 
   }
 
   return (
-    <div className="ag-dialog-wrap" onClick={onClose}>
-      <div className="ag-dialog" role="dialog" aria-modal="true" aria-labelledby="ag-cal-link-title" onClick={(e) => e.stopPropagation()}>
+    <div className="ag-dialog-wrap" role="presentation" onClick={closeOnBackdrop(onClose)}>
+      <div className="ag-dialog" role="dialog" aria-modal="true" aria-labelledby="ag-cal-link-title">
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <h2 id="ag-cal-link-title">Collega al tuo calendario</h2>
           <button type="button" className="ag-icon-btn" style={{ marginLeft: "auto", background: "#f6f1ec", borderRadius: "50%" }} onClick={onClose} aria-label="Chiudi">
