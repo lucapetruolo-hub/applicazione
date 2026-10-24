@@ -20429,7 +20429,7 @@ Richiesta dell'utente: "si potrebbe dare l'icona del meteo per 3 giorni e dire d
 
 **Migliorie approvate dall'utente** ("effettua le migliorie"): in "Oggi" compaiono anche i lavori aggiunti a mano in agenda (aprono il lavoro in agenda con `?esterno=<id>`); toccando un giorno del meteo l'agenda si apre su quel giorno (`?giorno=AAAA-MM-GG`, vista Giorno); da computer, se il meteo è di un comune diverso da quello del profilo, si legge accanto al tempo ("Pioggia · Sezze", campo `away`).
 
-**Verifica**: test su tempo del giorno, temperature e comune del primo lavoro (`agenda-tools.test.ts`), 37 test dell'agenda; anteprime da telefono (390px) e computer (1440px) con e senza lavori.
+**Verifica**: test su tempo del giorno, temperature e comune del primo lavoro (`agenda-tools.test.ts`), 37 test dell'agenda; prova nel browser `e2e/tests/oggi-meteo.spec.ts` (lavoro aggiunto a mano che compare in "Oggi" e si apre in agenda, giorno del meteo che apre l'agenda su quel giorno, con il meteo simulato; telefono e computer, tre fusi orari), approvata dall'utente ("si falla"); anteprime da telefono (390px) e computer (1440px) con e senza lavori.
 
 ## 326. zod 4
 
