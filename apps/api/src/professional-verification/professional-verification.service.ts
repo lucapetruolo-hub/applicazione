@@ -7,8 +7,8 @@ import { NotificationsService } from "../notifications/notifications.service";
 
 /**
  * Badge "Verificato" dei professionisti. Da docs/CHANGELOG.md §253 lo assegna
- * da sola la verifica di documento e selfie (Didit, `markVerifiedByProvider`);
- * all'admin restano i casi dubbi e la verifica manuale di riserva (§200).
+ * solo la verifica di documento e selfie (Didit, `markVerifiedByProvider`);
+ * all'admin resta "Togli verifica" (la verifica manuale, §200, è stata tolta nel §329).
  * Ogni cambio finisce nel registro azioni e il professionista riceve un avviso.
  */
 @Injectable()
@@ -87,32 +87,6 @@ export class ProfessionalVerificationService {
         : null,
       taxIdChecks: (profile.fiscalProfile?.taxIdChecks ?? []).map((c) => ({ kind: c.kind, status: c.status, detail: c.detail, officialName: c.officialName })),
     }));
-  }
-
-  async verify(adminUserId: string, professionalProfileId: string, note?: string) {
-    const profile = await this.findActive(professionalProfileId);
-    if (profile.verified) throw new BadRequestException("Il profilo è già verificato.");
-    const now = new Date();
-    await this.prisma.professionalProfile.update({
-      where: { id: profile.id },
-      data: { verified: true, verifiedAt: now, verifiedByUserId: adminUserId, verificationNote: note || null, verificationRequestedAt: null },
-    });
-    await this.auditLogService.record({
-      entityType: "ProfessionalProfile",
-      entityId: profile.id,
-      fieldName: "verified",
-      oldValue: false,
-      newValue: true,
-      changedByUserId: adminUserId,
-      reason: note || "Documento d'identità e partita IVA/codice fiscale controllati",
-    });
-    // Un caso dubbio di Didit approvato da qui (docs/CHANGELOG.md §253).
-    await this.prisma.identityVerification.updateMany({
-      where: { professionalProfileId: profile.id, status: "NEEDS_REVIEW" },
-      data: { status: "APPROVED", reviewedByUserId: adminUserId, reviewNote: note || null, decidedAt: now },
-    });
-    await this.notificationsService.notify(profile.userId, "PROFILE_VERIFIED", {});
-    return { professionalProfileId: profile.id, verified: true, verifiedAt: now.toISOString() };
   }
 
   /**

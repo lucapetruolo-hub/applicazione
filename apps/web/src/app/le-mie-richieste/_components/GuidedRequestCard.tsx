@@ -15,7 +15,7 @@ import {
   isPlausiblePhoneNumber,
   type GuidedRequestStatusSummary,
 } from "@professionisti/shared";
-import { Autocomplete, Avatar, Badge, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Autocomplete, Avatar, Badge, BadgeInfo, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
@@ -754,7 +754,11 @@ export function GuidedRequestCard({
                           <Text fontWeight="600" color={brand.grafite}>
                             {professional.businessName}
                           </Text>
-                          {professional.verified ? <Badge variant="verificato">Verificato</Badge> : null}
+                          {professional.verified ? (
+                            <BadgeInfo info="verified">
+                              <Badge variant="verificato">Verificato</Badge>
+                            </BadgeInfo>
+                          ) : null}
                           {professional.declined ? (
                             <Text fontFamily="$body" fontSize={10} fontWeight="700" color={brand.urgenza}>
                               Ha rifiutato

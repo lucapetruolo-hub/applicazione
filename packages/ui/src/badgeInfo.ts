@@ -51,11 +51,9 @@ export const BADGE_INFO: Record<BadgeInfoKey, { title: string; text: string; not
   kindVat: {
     title: "Partita IVA",
     text: "Lavora in proprio con partita IVA.",
-    note: "Si applicano i diritti del consumatore.",
   },
   kindBusiness: {
     title: "Azienda",
     text: "Impresa con partita IVA.",
-    note: "Si applicano i diritti del consumatore.",
   },
 };
