@@ -431,6 +431,12 @@ Città, pagine vuote fuori da Google.
     riquadro in dashboard) che invita i professionisti a mettere il link al
     loro profilo nella loro scheda Google Business. In cima alle ricerche
     locali c'è quasi sempre la mappa di Google: è lì che li vedono i clienti.
+38. **Agenda provata da 2-3 professionisti veri** (docs/CHANGELOG.md §299,
+    decisione dell'utente del 24/10/2026): i 5 compiti (domani dove vado,
+    chiudere un giorno, avvisare e navigare, lavoro completato, lavoro preso
+    fuori dall'app) fatti da professionisti che non conoscono il sito, senza
+    aiuto. Il test simulato del §299 non li sostituisce. Testo dei compiti e
+    obiettivi nel documento "Verifica dell'agenda come un esperto UX".
 
 
 ## Da fare dopo il lancio
