@@ -87,7 +87,10 @@ prima discuterne e aggiornare questo file.
   `apps/mobile` insieme. Prima e dopo un aggiornamento importante
   `pnpm --filter @professionisti/web confronto-pagine` fotografa tutte le
   pagine e confronta i due giri pixel per pixel (istruzioni in testa a
-  `apps/web/scripts/confronto-pagine.mjs`).
+  `apps/web/scripts/confronto-pagine.mjs`). Per zod, `src/zod.ts` di
+  `packages/shared` tiene i messaggi d'errore di zod 3 (gli schemi importano
+  `z` da lì) e `pnpm --filter @professionisti/shared confronto-zod` confronta
+  le validazioni prima/dopo un aggiornamento (docs/CHANGELOG.md §312).
 - **Aggiornamenti delle dipendenze** (docs/CHANGELOG.md §302): Dependabot
   (`.github/dependabot.yml`) apre una PR al mese con gli aggiornamenti
   piccoli raggruppati, da unire se la CI è verde; gli aggiornamenti grandi

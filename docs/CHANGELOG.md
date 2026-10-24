@@ -20246,3 +20246,7 @@ La mappa con una chiave vera si vede solo sul sito pubblicato: dopo l'unione va 
 - Typecheck, lint senza errori, 557 test (3 nuovi in `apps/api/src/common/zod-messages.test.ts`), build. API avviata: errori di validazione con gli stessi messaggi di prima.
 - `confronto-pagine` prima/dopo su 132 foto: 125 identiche, nelle altre la riga "adesso" dell'agenda e pochi pixel di antialiasing.
 - Resta zod 3.25.76 solo dentro `@expo/cli` (strumento di sviluppo dell'app, non va né sul sito né nell'API).
+
+**Migliorie approvate da Luca** ("effettua le 2 migliorie")
+- `pnpm --filter @professionisti/shared confronto-zod [--prima <commit>] [--zod-prima <versione>] [--prove <n>] [--tutti]` (`packages/shared/scripts/confronto-zod.mjs`): il confronto automatico usato qui, da rifare a ogni aggiornamento di zod. Prende gli schemi di un commit con la sua versione di zod (scaricata da npm) e quelli attuali, li prova con gli stessi dati a caso e segnala esiti, dati o messaggi diversi (codice d'uscita 1). Legge la forma degli schemi sia di zod 3 sia di zod 4. Contro il ramo principale prima di questa PR trova solo la differenza dell'agenda settimanale descritta sopra; contro sé stesso nessuna.
+- zod 3 di `@expo/cli` tra le eccezioni di osv-scanner, chiesto al thread del controllo sicurezza (PR #105, dove sta la configurazione dello scanner).
