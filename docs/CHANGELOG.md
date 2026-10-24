@@ -20446,3 +20446,13 @@ Nuova migrazione `20261024140000_settimana_tipo_continua` (due colonne, nessun d
 - zod 3 di `@expo/cli` tra le eccezioni di osv-scanner, fatto nella PR #105 (`osv-scanner.toml`, solo per la versione 3.25.76).
 - Controllo automatico `.github/workflows/zod.yml` (approvato da Luca, "effettua miglioria"): sulle PR che toccano `pnpm-lock.yaml` o i `package.json` di shared e API lancia `confronto-zod --solo-se-cambia` contro il commit di base; se zod resta alla stessa versione non fa nulla, altrimenti si ferma su ogni differenza. La versione di partenza è quella del `pnpm-lock.yaml` del commit di base. Le differenze già spiegate nel registro stanno in `ACCEPTED` nello script (oggi solo quella dell'agenda settimanale).
 - Prova automatica (approvata da Luca, "effettua miglioria"): in `apps/api/src/common/zod-messages.test.ts` ogni file di `packages/shared/src` che importa zod deve avere anche `import "./zod"`; senza, il sito caricherebbe quel file senza i messaggi di zod 3 e li mostrerebbe in silenzio in inglese di zod 4.
+
+## 327. "Segnala un problema" solo nel menu della scheda
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Spostare Segnala un problema nel menu della scheda"): lato cliente, nella scheda del preventivo accettato, "il pulsante per segnalare un problema dopo che si accetta un preventivo lasciaglielo solo nel menu ad hamburger della relativa scheda". Il cliente deve comunque poter sempre segnalare un problema.
+
+**Decisione presa**
+- Tolto il pulsante rosso "Segnala un problema" dalla fila di azioni dell'intervento (`BookingSection`): restano "Lavoro terminato" (o la recensione) e "Contatta/Cronologia".
+- Nuova voce "Segnala un problema" (icona bandierina, rossa come "Segnala richiesta" del professionista) nel menu hamburger della scheda (`GuidedRequestCard`), subito prima di "Annulla prenotazione". Compare negli stessi casi di prima: quando il server ammette almeno un tipo di segnalazione (`issueTypesAllowed`, §164).
+- La finestra della segnalazione e la chat col professionista che si apre dopo l'invio vivono ora in `GuidedRequestCard`, fuori dal blocco espanso (come "Annulla prenotazione"): la voce funziona anche a scheda chiusa.
+- Nessun cambio al flusso: stessi tipi, stesse prove, stessa fase in chat (§165) e stessa API. Le segnalazioni dei contenuti (DSA, §319) non sono toccate.
