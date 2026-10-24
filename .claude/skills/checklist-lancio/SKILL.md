@@ -354,11 +354,11 @@ aperti solo:
     - **Togliere `ADMIN_BOOTSTRAP_SECRET` da Render** appena creato il primo
       admin (gli altri si nominano da `/admin/utenti`).
     - **Repo GitHub privato** (Settings → General → Danger Zone).
-    - **Avvisi di sicurezza di Dependabot** (docs/CHANGELOG.md §300): in
-      GitHub → Settings → Code security accendere "Dependabot alerts" e
-      "Dependabot security updates". Con il repo privato vanno riaccesi se
-      si spengono. Gli aggiornamenti mensili partono già dal file
-      `.github/dependabot.yml`.
+    - ~~**Avvisi di sicurezza di Dependabot**~~ — fatto (24/10/2026,
+      docs/CHANGELOG.md §300): accesi "Dependabot alerts" e "Dependabot
+      security updates" (raggruppati). Passando il repo a privato
+      controllare che restino accesi. Gli aggiornamenti mensili partono dal
+      file `.github/dependabot.yml`.
     - **Chiavi Google**: la chiave del browser (`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`)
       limitata ai siti `https://<dominio>/*` in Google Cloud → Credenziali;
       la chiave server (`GOOGLE_MAPS_API_KEY`) limitata alle sole API usate
