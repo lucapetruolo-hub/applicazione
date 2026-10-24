@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { Button, Logo, Text, XStack, brand, motionEasing, motionFast } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
 import { AccountMenu } from "./AccountMenu";
-import { prefetchCategoryOrder } from "./CategoryTiles";
+import { prefetchCategoryOrder } from "@/lib/categoryOrder";
 import { HeaderSearchBar } from "./HeaderSearchBar";
 import { MegaMenu } from "./MegaMenu";
 import { NotificationBell } from "./NotificationBell";
