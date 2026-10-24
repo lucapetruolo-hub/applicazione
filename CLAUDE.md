@@ -87,7 +87,12 @@ prima discuterne e aggiornare questo file.
   `apps/mobile` insieme. Prima e dopo un aggiornamento importante
   `pnpm --filter @professionisti/web confronto-pagine` fotografa tutte le
   pagine e confronta i due giri pixel per pixel (istruzioni in testa a
-  `apps/web/scripts/confronto-pagine.mjs`).
+  `apps/web/scripts/confronto-pagine.mjs`). Per zod, `src/zod.ts` di
+  `packages/shared` tiene i messaggi d'errore di zod 3 (lo importa ogni file con
+  schemi, unico con effetti in `sideEffects`; gli schemi importano `z` da "zod", e `apps/web` usa i sorgenti di
+  shared, non `dist/`, per non caricare nel browser tutto zod) e `pnpm --filter @professionisti/shared confronto-zod` confronta
+  le validazioni prima/dopo un aggiornamento, anche da solo nelle PR che
+  cambiano la versione di zod (`.github/workflows/zod.yml`, docs/CHANGELOG.md §326).
 - **Aggiornamenti delle dipendenze** (docs/CHANGELOG.md §302): Dependabot
   (`.github/dependabot.yml`) apre una PR al mese con gli aggiornamenti
   piccoli raggruppati, da unire se la CI è verde; gli aggiornamenti grandi
@@ -95,12 +100,12 @@ prima discuterne e aggiornare questo file.
   confronto delle pagine. React, React Native e le versioni grandi di Expo
   sono esclusi: si aggiornano a mano, insieme.
 - **Il sito usa i sorgenti di `packages/shared`** (alias in
-  `apps/web/next.config.mjs`, `sideEffects: false`, docs/CHANGELOG.md §325):
+  `apps/web/next.config.mjs`, `sideEffects: false`, docs/CHANGELOG.md §334):
   ogni pagina prende solo le parti che usa. Un modulo di `packages/shared`
   non deve contare su effetti al solo import (registrazioni, globali). L'API
   usa sempre `dist/`.
 - **Config Tamagui**: i valori di default stanno in
-  `packages/ui/src/tamaguiDefaults.ts` (generato, §325), non si importa
+  `packages/ui/src/tamaguiDefaults.ts` (generato, §334), non si importa
   `@tamagui/config` nel sito (1408 temi e animazioni di React Native in ogni
   pagina). Un tema nuovo va in `packages/ui/src/usedThemes.ts`, poi
   `pnpm --filter @professionisti/ui genera-default-tamagui`. Sul sito niente

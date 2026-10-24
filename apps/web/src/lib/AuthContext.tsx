@@ -8,6 +8,7 @@ import { clearAgendaOffline, clearOfflineUser, readOfflineUser, saveOfflineUser 
 import { notificationCopy } from "./notificationCopy";
 import { emitRealtimeEvent } from "./realtimeBus";
 import { installNotificationSoundUnlock, playNotificationSound } from "./notificationSound";
+import { isConversationOnScreen } from "./openConversations";
 
 const TOKEN_STORAGE_KEY = "professionisti_token";
 
@@ -26,8 +27,13 @@ type AuthContextValue = {
   /** Notifiche non lette (nuova richiesta/risposta/aggiornamento) — badge in AccountMenu, visibile solo al proprietario loggato. */
   unreadCount: number;
   refreshUnreadCount: () => Promise<void>;
-  /** Segna tutte le notifiche come lette e azzera il badge — chiamato all'apertura di /dashboard o /le-mie-richieste. */
-  markNotificationsRead: () => Promise<void>;
+  /**
+   * Segna tutte le notifiche come lette e azzera il badge — chiamato all'apertura di /dashboard o /le-mie-richieste.
+   * `fetched` sono le non lette appena lette dalla pagina: quelle nuove hanno
+   * prima il loro popup e suono, che altrimenti la pagina "mangerebbe"
+   * segnandole lette prima del controllo dell'app (docs/CHANGELOG.md §331).
+   */
+  markNotificationsRead: (fetched?: UnreadNotification[]) => Promise<void>;
   /** Popup "toast" per notifiche appena arrivate (richiesta esplicita dell'utente) — vedi ToastStack. */
   toasts: NotificationToast[];
   dismissToast: (id: string) => void;
@@ -47,6 +53,14 @@ type AuthContextValue = {
   notificationPrefs: NotificationPreferences | null;
   setNotificationPrefs: (prefs: NotificationPreferences) => void;
 };
+
+/** Messaggio di una chat aperta a schermo in questo momento (§332). */
+function chatOnScreen(n: UnreadNotification): boolean {
+  if (n.type !== "TIMELINE_MESSAGE_FROM_CLIENT" && n.type !== "TIMELINE_MESSAGE_FROM_PROFESSIONAL") return false;
+  const payload = n.payload && typeof n.payload === "object" ? (n.payload as Record<string, unknown>) : {};
+  const { guidedRequestId, professionalProfileId } = payload;
+  return typeof guidedRequestId === "string" && typeof professionalProfileId === "string" && isConversationOnScreen(guidedRequestId, professionalProfileId);
+}
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -87,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           saveOfflineUser(currentUser);
         }
-        // Con `startTransition` (docs/CHANGELOG.md §325): l'utente arrivato
+        // Con `startTransition` (docs/CHANGELOG.md §334): l'utente arrivato
         // ridisegna tutta la pagina (menu, intestazione, contenuto) e su un
         // telefono lento React lo fa a piccoli pezzi invece che in un blocco.
         startTransition(() => {
@@ -196,9 +210,75 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const markNotificationsRead = useCallback(async () => {
+  /**
+   * Confronta le notifiche non lette con quelle già viste in questa
+   * sessione: quelle nuove diventano un popup "toast" con un messaggio
+   * simpatico (richiesta esplicita dell'utente, es. "Fantastico! Hai
+   * ricevuto un nuovo preventivo"). Il primo controllo dopo login stabilisce
+   * solo la baseline, senza mostrare toast per notifiche già in attesa da
+   * prima — altrimenti un professionista con 5 richieste non lette da
+   * giorni vedrebbe 5 popup tutti insieme al primo caricamento.
+   */
+  const announceNotifications = useCallback((notifications: UnreadNotification[]) => {
+    setUnreadNotifications(notifications);
+    if (seenNotificationIdsRef.current === null) {
+      seenNotificationIdsRef.current = new Set(notifications.map((n) => n.id));
+      return;
+    }
+    const seen = seenNotificationIdsRef.current;
+    const freshOnes = notifications.filter((n) => !seen.has(n.id));
+    for (const n of freshOnes) {
+      seen.add(n.id);
+    }
+    // Un messaggio della chat già aperta a schermo si vede lì: niente popup né suono (§332).
+    const toAnnounce = freshOnes.filter((n) => !chatOnScreen(n));
+    // Preferenze (docs/CHANGELOG.md §152): suono e popup si possono
+    // spegnere separatamente; la campanella e il numeretto restano.
+    const prefs = notificationPrefsRef.current;
+    if (toAnnounce.length > 0 && prefs.sound) playNotificationSound();
+    if (!prefs.popups) return;
+    if (toAnnounce.length === 1) {
+      // Caso comune: un solo evento in questo giro di poll, stesso
+      // messaggio simpatico specifico di sempre.
+      const { icon, message } = notificationCopy(toAnnounce[0]!.type, toAnnounce[0]!.payload);
+      setToasts((prev) => [...prev, { id: toAnnounce[0]!.id, icon, message, type: toAnnounce[0]!.type, payload: toAnnounce[0]!.payload }]);
+    } else if (toAnnounce.length > 1) {
+      // Più eventi arrivati nello stesso giro (48s): un toast per
+      // ciascuno si impilerebbe a schermo — richiedendo una chiusura per
+      // volta, dato che i toast non spariscono più da soli (richiesta
+      // esplicita dell'utente) — proprio il rischio di "notification
+      // fatigue" segnalato nel Verbale Cognitivo (F7.2). Un solo toast
+      // aggregato al posto di N: il click apre la pagina/tab del primo
+      // evento del gruppo (i tipi coinvolti puntano comunque sempre a una
+      // delle stesse due pagine, /dashboard o /le-mie-richieste — mai una
+      // destinazione sbagliata, al più non la più recente del gruppo).
+      setToasts((prev) => [
+        ...prev,
+        {
+          id: `batch-${Date.now()}`,
+          icon: "🔔",
+          message: `Hai ${toAnnounce.length} nuovi aggiornamenti.`,
+          type: toAnnounce[0]!.type,
+          payload: toAnnounce[0]!.payload,
+        },
+      ]);
+    }
+  }, []);
+
+  const checkForNewNotifications = useCallback(async () => {
     const storedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY);
     if (!storedToken) return;
+    try {
+      announceNotifications(await apiClient.unreadNotifications(storedToken));
+    } catch {
+      // Silenzioso, stesso principio di refreshUnreadCount: un toast mancato non deve rompere l'app.
+    }
+  }, [announceNotifications]);
+
+  const markNotificationsRead = useCallback(async (fetched?: UnreadNotification[]) => {
+    const storedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY);
+    if (!storedToken) return;
+    if (fetched) announceNotifications(fetched);
     try {
       await apiClient.markNotificationsRead(storedToken);
       setUnreadCount(0);
@@ -209,12 +289,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // Idem: un fallimento nel segnare come lette non deve rompere la pagina.
     }
-  }, []);
+  }, [announceNotifications]);
 
   const dismissToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
+<<<<<<< HEAD
   /**
    * Confronta le notifiche non lette con quelle già viste in questa
    * sessione: quelle nuove diventano un popup "toast" con un messaggio
@@ -274,6 +355,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Silenzioso, stesso principio di refreshUnreadCount: un toast mancato non deve rompere l'app.
     }
   }, []);
+=======
+>>>>>>> origin/claude/professionisti-platform-architecture-xr9gmn
 
   useEffect(() => {
     installNotificationSoundUnlock();
@@ -287,7 +370,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     // Badge, notifiche e preferenze arrivate dall'API si mostrano con
-    // `startTransition` (docs/CHANGELOG.md §325): ognuno ridisegna tutte le
+    // `startTransition` (docs/CHANGELOG.md §334): ognuno ridisegna tutte le
     // pagine che usano useAuth e su un telefono lento, in un blocco unico,
     // fermava la pagina.
     apiClient

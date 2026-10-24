@@ -20367,6 +20367,18 @@ Richiesta dell'utente: "effettua migliorie" (dopo l'elenco delle migliorie ancor
 
 **Verifica**: Lighthouse locale sulle due pagine dell'agenda con sessione vera (CLS 0,001); registrazione degli spostamenti con Playwright su telefono lento senza più lo spostamento del piè di pagina.
 
+## 322. CodeQL rosso sul ramo principale dopo ogni unione, CI non più doppia, meno deploy Vercel
+
+**Richiesta dell'utente (24/10/2026)**: "github mi da tanti run failed, controlla".
+
+**Causa**: sulle PR CodeQL guarda solo le righe cambiate, sul ramo principale tutto il codice. Così avvisi già presenti prima del §312 non bloccavano nessuna PR ma rendevano rosso "Controlli di sicurezza" a ogni unione (un'email per volta). I tre `js/xss-through-dom` li ha già tolti il §318 (`localPreviewUrl`); restavano due `js/http-to-file-access` in `e2e/fixtures/global-setup.ts`, dove la prova dell'agenda salva su file il token preso dall'API di prova. È codice di prova che non arriva agli utenti: `e2e` escluso da CodeQL come già `apps/*/scripts` (Semgrep guarda solo `apps` e `packages`).
+
+**Email doppie**: la CI (`ci.yml`) partiva al push su ogni ramo e di nuovo con la PR, quindi ogni errore su una PR arrivava due volte. Ora al push parte solo sul ramo principale; sulle PR resta com'era (decisione dell'utente). Un ramo senza PR non viene più provato finché la PR non si apre.
+
+**Limite dei deploy di Vercel**: il 24/10 Vercel ha bloccato i deploy per 24 ore ("api-deployments-free-per-day", più di 100). Le anteprime erano già saltate da `scripts/vercel-ignore-build.sh` (§131), ma ogni push su un ramo creava comunque un deploy annullato che conta nel limite. Ora `apps/web/vercel.json` (`git.deploymentEnabled`) non crea proprio deploy per i rami dei thread (`claude/project-thread-*`) e di Dependabot (`dependabot/**`): il ramo principale si comporta come prima (decisione dell'utente).
+
+**Verifica**: CodeQL 2.27.3 in locale con la stessa configurazione della CI e la suite `security-extended`: 0 avvisi bloccanti.
+
 ## 323. Settimana tipo in tre passi, che vale per tutte le settimane
 
 Richiesta dell'utente (con la foto della vecchia "Settimana tipo"): "questa parte è difficilmente comprensibile e utilizzabile, come si potrebbe migliorare". Proposte tre strade con anteprime da telefono e computer; l'utente ha scelto la A, "Prima i giorni, poi gli orari".
@@ -20385,7 +20397,154 @@ Nuova migrazione `20261024140000_settimana_tipo_continua` (due colonne, nessun d
 
 **Verifica**: 6 test sulle regole (`week-template-sync.test.ts`), 575 test API; nuove prove nel browser (`settimana-tipo.spec.ts`: salvataggio che riempie otto sabati senza scegliere un mese, venerdì diverso, domenica vuota, pagina riaperta uguale; orari sbagliati con avviso e salvataggio bloccato), 64 prove nel browser in locale, accessibilità senza problemi gravi.
 
-## 325. Agenda più veloce sui telefoni lenti
+## 324. Richiesta di preventivo: l'indirizzo non cambia il modulo mentre si scrive, tessere delle categorie già in ordine
+
+**Richiesta dell'utente**: "quando si clicca a domicilio e si fa avanti quando si va ad inserire l'indirizzo dopo la terza lettera inserita cambia il modulo all'improvviso facendoti inserire altri campi che prima non c'erano"; "quando si clicca su richiedi preventivo non si deve vedere il refresh della riordinazione delle categoria e neanche in fase di registrazione".
+
+**Causa dell'indirizzo**: alla terza lettera parte la prima richiesta di suggerimenti. Sul server di produzione `GET /address/suggestions` risponde 503 (anche `/maps/static`: chiave Google mancante, tetto `GOOGLE_PUBLIC_DAILY_LIMIT` o chiave rifiutata da Google, da guardare nei log di Render). Il modulo passava allora ai campi separati (via, civico, CAP, provincia, più la città in cima alla pagina), perdeva quanto scritto e toglieva il cursore.
+
+**Decisione**:
+- Nuova rotta `GET /address/status` (`{ available }`), che non chiama Google: chiave presente, tetto di oggi non raggiunto (`DailyBudget.hasRoom`), nessun errore di Google negli ultimi 5 minuti. `useChosenAddress` la chiede all'apertura del modulo (risposta riusata per un minuto): se i suggerimenti non funzionano, i campi separati ci sono già dall'inizio.
+- Se Google cade proprio mentre si scrive: quanto scritto passa in "Via o piazza", il cursore resta lì e compare la riga "I suggerimenti non sono disponibili: completa l'indirizzo nei campi qui sotto."
+- A domicilio la città sta tra i campi dell'indirizzo (Via e civico, Città, CAP e provincia), con la stessa misura e lo stesso bordo degli altri campi, non più in cima al modulo.
+
+**Tessere delle categorie** (`CategoryTiles`, richiesta di preventivo e registrazione): prima comparivano nell'ordine del catalogo e si riordinavano appena arrivava l'ordine dei più cercati. Ora compaiono una volta sola già in ordine: finché l'ordine non arriva (al massimo 1,2 secondi, poi l'ordine del catalogo) si vedono tessere vuote della stessa misura, poi le vere con una dissolvenza breve (niente con "riduci movimento"). L'ordine resta in memoria per la visita e `SiteHeader` lo chiede a pagina ferma, così di solito le tessere compaiono subito.
+
+**Avviso su Sentry** (richiesta dell'utente: "effettua miglioria"): quando Google rifiuta la chiave o non risponde, quando manca `GOOGLE_MAPS_API_KEY` o quando si raggiunge il tetto giornaliero, per i suggerimenti di indirizzo e per la mappa fissa parte un avviso su Sentry (`opsAlert` in `apps/api/src/common/ops-alert.ts`), lo stesso al massimo una volta l'ora per restare nella quota gratuita. Prima finiva solo nel log di Render e lo si scopriva da un cliente.
+
+**Lettore di schermo, controllo quotidiano e prove nel browser** (richiesta dell'utente: "risolvi il problema con voiceover ed effettua solo le migliorie/controlli che ritieni necessarie", dopo la versione più profonda in `analisi/preventivo-modulo-versione-profonda.md`):
+- Campo indirizzo: `aria-activedescendant` sull'opzione evidenziata con le frecce (prima VoiceOver non diceva quale indirizzo si stava per scegliere), annuncio "N suggerimenti: usa le frecce per sceglierne uno." o "Nessun indirizzo trovato.", attribuzione Google fuori dall'elenco delle opzioni e leggibile (12 px, contrasto 4,5:1; axe la segnalava a 3,16:1).
+- `uptime.yml`: una volta al giorno (07:17 UTC) chiede un suggerimento vero; se Google rifiuta la chiave il workflow fallisce e arriva l'email di GitHub.
+- `e2e/tests/richiesta-preventivo.spec.ts`: suggerimenti spenti all'apertura, Google che cade mentre si scrive, lettore di schermo (con axe) e tessere che non si riordinano, con i servizi di Google simulati.
+
+**Verifica**: prove `address-suggestions.test.ts`, `daily-budget.test.ts`, `ops-alert.test.ts` ed `e2e/tests/richiesta-preventivo.spec.ts` (8 prove, telefono e computer); sul sito compilato con l'API simulata, da telefono (390 px) e computer (1280 px): tessere vuote → ordine finale, senza passare dall'ordine del catalogo; con i suggerimenti spenti i campi separati ci sono già al passo "Dove"; con Google che cade dopo "Via Rom" il testo resta in "Via o piazza" con il cursore.
+
+## 325. "Richiedi un preventivo a [nome]" vivo come "Cerca", barra fissa su telefono
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Pulsante \"Richiedi preventivo\" nel profilo"): rendere il pulsante "Richiedi un preventivo a [nome]" del profilo pubblico dinamico come "Cerca", chiedendo se farlo nero per farlo riconoscere subito.
+
+**Decisione presa**: nuovo `ProfileQuoteCta` (`apps/web/src/components/ProfileQuoteCta.tsx`): effetto magnete e luce che segue il mouse (`MagneticButton`, solo con mouse vero e senza "riduci movimento"), pressione (già su tutti i pulsanti, `button.is_Button:active`) e freccia delle azioni principali (`ButtonArrow`), testo a 16 px come gli altri pulsanti. Su telefono occupa tutta la larghezza (con un nome lungo va su due righe invece di essere tagliato) e, quando non è sullo schermo, compare una barra fissa in basso con "Richiedi un preventivo" (`.profile-cta-bar` in `globals.css`, `IntersectionObserver`; spazio in fondo alla pagina perché non copra il piè di pagina). Sul telefono il pulsante sta oltre la prima schermata, sotto la scheda: con la barra l'azione principale è sempre a portata di pollice. Nessuna barra nell'anteprima del proprio profilo. Colore: verde, per coerenza con la decisione del §304-§308 (pulsanti verdi, niente quasi nero); anteprime verde e nero in `anteprime/preventivo-profilo/`.
+
+Dopo la scelta del verde, miglioria approvata da Luca: stesso effetto magnete anche su "Invia richiesta" del modulo di preventivo, "Registrati" e, in `/per-professionisti`, "Iscriviti gratis" e "Iscriviti con [livello]" (colori invariati). `MagneticButton` accetta uno `style` per il contenitore (es. `flexGrow` accanto a "Indietro").
+
+**Verifica**: typecheck; foto da computer (mouse sopra il pulsante) e da telefono (barra in cima alla pagina, pulsante nella pagina) sul profilo di prova; in `/per-professionisti` il pulsante segue il mouse.
+
+## 326. zod 4
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Controllo sicurezza completo", PR #105): osv-scanner segnala GHSA-mrhx-c7xc-m3w5 su zod 3.25.76 (consumo di memoria su collezioni molto grandi), corretta solo nella serie 4. Luca: "effettua tutte le migliorie da 1 a 4 nella modalita che ritieni". Condizione: validazioni e messaggi d'errore mostrati agli utenti uguali a prima.
+
+**Decisione presa**
+- `zod` 3.23 → 4.6.7 in `packages/shared` e `apps/api` (il sito lo usa tramite `packages/shared`).
+- zod 4 ha riscritto i messaggi predefiniti ("Required" diventa "Invalid input: expected string, received undefined"), e il sito li mostra dove lo schema non ha un messaggio suo (`ApiError` prende il primo di `fieldErrors`, i moduli il primo `issue`). `packages/shared/src/zod.ts` rimette con `z.config({ customError })` le frasi di zod 3; i messaggi scritti negli schemi vengono sempre prima. `index.ts` lo carica per primo; la configurazione è globale e vale anche per i tre schemi di `apps/api`.
+- Cambi di sintassi: `errorMap` → `message` (`z.literal`, `z.enum`), `required_error` → `error` che risponde solo al campo mancante, `z.ZodIssueCode.custom` → `"custom"`, nella pagina `/dashboard/fiscale` `issue.type` → `issue.origin` e il percorso di un errore ora può contenere simboli.
+- ID con `z.guid()` al posto di `z.string().uuid()`: con zod 4 `.uuid()` rifiuta gli UUID senza una versione valida (es. `00000000-0000-0000-0000-000000000001`), zod 3 li accettava.
+
+**Differenze rimaste, solo con dati che il sito non manda**
+- Numeri oltre 9 milioni di miliardi in un campo intero: zod 4 li rifiuta subito (prima passavano e il database andava in errore).
+- Un elenco della lunghezza sbagliata con dentro anche valori sbagliati (es. un'agenda settimanale con meno di 7 giorni): il primo errore è quello del valore, non della lunghezza.
+- Date e ore senza secondi (`2026-10-24T10:00Z`): zod 4 le rifiuta. Il sito manda sempre `toISOString()`, con i secondi.
+
+**Verifica**
+- Confronto automatico zod 3 / zod 4 su tutti gli 88 schemi di `packages/shared`: 88.000 dati di prova a caso, stessi esiti, stessi dati in uscita e stesso messaggio mostrato all'utente (primo `issue` e primo `fieldErrors`), tolte le tre differenze qui sopra. Email, indirizzi web e date/ore provati a parte su un elenco di casi limite: uguali tranne le ore senza secondi.
+- Typecheck, lint senza errori, 557 test (3 nuovi in `apps/api/src/common/zod-messages.test.ts`), build. API avviata: errori di validazione con gli stessi messaggi di prima.
+- `confronto-pagine` prima/dopo su 132 foto: 125 identiche, nelle altre la riga "adesso" dell'agenda e pochi pixel di antialiasing.
+- Peso del sito: il controllo di velocità dell'agenda nella CI (Lighthouse, TBT 626 ms oltre il limite di 600) ha mostrato che zod 4 portava nel browser ~420 KB in più, con tutte le lingue dei messaggi e JSON Schema. Due cause: `apps/web` prendeva shared da `dist/` (CommonJS, che webpack non sa sfoltire) e gli schemi importavano `z` ripassato da `src/zod.ts` (così webpack considerava usato tutto zod). Ora `apps/web/next.config.mjs` punta `@professionisti/shared` ai sorgenti, gli schemi importano `z` direttamente da "zod" e `src/zod.ts` è solo configurazione, importato da ogni file con schemi. Non bastava: il controllo restava appena sopra (658 ms; sul ramo principale oscilla già tra 535 e 597), perché zod 4 costruisce gli schemi più lentamente e ogni pagina li costruiva tutti. `packages/shared/package.json` ora dichiara `sideEffects` (solo `zod.ts` ha effetti), così ogni pagina carica solo i moduli di shared che usa: l'agenda passa da 2,3 MB a 1,2 MB di JavaScript.
+- Resta zod 3.25.76 solo dentro `@expo/cli` (strumento di sviluppo dell'app, non va né sul sito né nell'API).
+
+**Migliorie approvate da Luca** ("effettua le 2 migliorie")
+- `pnpm --filter @professionisti/shared confronto-zod [--prima <commit>] [--zod-prima <versione>] [--prove <n>] [--tutti]` (`packages/shared/scripts/confronto-zod.mjs`): il confronto automatico usato qui, da rifare a ogni aggiornamento di zod. Prende gli schemi di un commit con la sua versione di zod (scaricata da npm) e quelli attuali, li prova con gli stessi dati a caso e segnala esiti, dati o messaggi diversi (codice d'uscita 1). Legge la forma degli schemi sia di zod 3 sia di zod 4. Contro il ramo principale prima di questa PR trova solo la differenza dell'agenda settimanale descritta sopra; contro sé stesso nessuna.
+- zod 3 di `@expo/cli` tra le eccezioni di osv-scanner, fatto nella PR #105 (`osv-scanner.toml`, solo per la versione 3.25.76).
+- Controllo automatico `.github/workflows/zod.yml` (approvato da Luca, "effettua miglioria"): sulle PR che toccano `pnpm-lock.yaml` o i `package.json` di shared e API lancia `confronto-zod --solo-se-cambia` contro il commit di base; se zod resta alla stessa versione non fa nulla, altrimenti si ferma su ogni differenza. La versione di partenza è quella del `pnpm-lock.yaml` del commit di base. Le differenze già spiegate nel registro stanno in `ACCEPTED` nello script (oggi solo quella dell'agenda settimanale).
+- Prova automatica (approvata da Luca, "effettua miglioria"): in `apps/api/src/common/zod-messages.test.ts` ogni file di `packages/shared/src` che importa zod deve avere anche `import "./zod"`; senza, il sito caricherebbe quel file senza i messaggi di zod 3 e li mostrerebbe in silenzio in inglese di zod 4.
+
+## 327. Settimana tipo: scegliere il mese in cui salvarla
+
+Richiesta dell'utente, dopo la §323: "dai la possibilità di scegliere il mese in cui salvarlo".
+
+**Decisione**: accanto a "Salva la settimana" c'è "Vale per", con "Tutti i mesi" (come nella §323) oppure uno dei prossimi sei mesi. Si parte da "Tutti i mesi", quindi chi non tocca la scelta non vede cambiare nulla.
+
+**Come funziona**: per un mese solo (`PUT /agenda/week-template/month`, `AgendaService.saveWeekTemplateForMonth`) si riempiono i giorni di quel mese da oggi in poi con le stesse regole della §323 (niente giorni chiusi, con lavori fissati o cambiati a mano). Le fasce create diventano giorni a sé (`fromWeekTemplate` falso): non cambiano quando si salva la settimana di tutti i mesi, e si modificano in "Giorno per giorno". La settimana di tutti i mesi resta com'era; se non è mai stata salvata, l'editor si riapre con quella appena usata. Mesi passati o oltre un anno: rifiutati.
+
+**Schermata**: in fondo "Vale per" + "Salva la settimana" (sul telefono uno sotto l'altro); dopo il salvataggio "Salvata per novembre 2026" oppure "Salvata, vale per tutti i mesi", e l'avviso in cima dice dove è stata salvata.
+
+**Verifica**: nuova prova nel browser (`settimana-tipo.spec.ts`: salvata per un mese, tutte le fasce nuove cadono in quel mese, domenica compresa), prove dell'agenda e dell'accessibilità verdi, lint e typecheck di web e API puliti.
+
+## 328. "eccezione" sui giorni con orari diversi dalla settimana tipo
+
+Richiesta dell'utente, tra le migliorie proposte dopo la §327 ("eccezione" con un tasto "Torna agli orari soliti"): "mostra solo "eccezione"". Quindi solo la scritta, nessun tasto.
+
+**Quando compare**: in "Giorno per giorno", se la settimana tipo di tutti i mesi è attiva, su ogni giorno con fasce che non vengono da lei: cambiato a mano, salvato per un mese solo (§327) o che aveva già fasce sue quando la settimana è stata salvata. L'API manda `fromWeekTemplate` per ogni fascia (`GET /professionals/me/availability`); dopo un salvataggio la pagina applica la stessa regola del server (`weekTemplateDatesKept`) senza rileggere.
+
+**Come si vede**: nella vista Giorno una pastiglia grigia "eccezione" sopra le fasce. Nelle viste Settimana e Mese da computer la stessa parola; sul telefono (sotto i 1000 px) le colonne sono troppo strette per la parola, quindi un cerchietto vuoto accanto ai pallini delle fasce e sotto il calendario la legenda "○ eccezione".
+
+**Verifica**: nuova prova nel browser (`settimana-tipo.spec.ts`: mercoledì cambiato a mano mostra "eccezione", giovedì della settimana tipo no), 68 prove nel browser in locale, foto da telefono e computer delle tre viste, lint e typecheck puliti.
+
+## 329. "Segnala un problema" solo nel menu della scheda
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Spostare Segnala un problema nel menu della scheda"): lato cliente, nella scheda del preventivo accettato, "il pulsante per segnalare un problema dopo che si accetta un preventivo lasciaglielo solo nel menu ad hamburger della relativa scheda". Il cliente deve comunque poter sempre segnalare un problema.
+
+**Decisione presa**
+- Tolto il pulsante rosso "Segnala un problema" dalla fila di azioni dell'intervento (`BookingSection`): restano "Lavoro terminato" (o la recensione) e "Contatta/Cronologia".
+- Nuova voce "Segnala un problema" (icona bandierina, rossa come "Segnala richiesta" del professionista) nel menu hamburger della scheda (`GuidedRequestCard`), subito prima di "Annulla prenotazione". Compare negli stessi casi di prima: quando il server ammette almeno un tipo di segnalazione (`issueTypesAllowed`, §164).
+- La finestra della segnalazione e la chat col professionista che si apre dopo l'invio vivono ora in `GuidedRequestCard`, fuori dal blocco espanso (come "Annulla prenotazione"): la voce funziona anche a scheda chiusa.
+- Nessun cambio al flusso: stessi tipi, stesse prove, stessa fase in chat (§165) e stessa API. Le segnalazioni dei contenuti (DSA, §319) non sono toccate.
+- Pulsante del menu più visibile (richiesta esplicita dell'utente: "rendi più visibile il pulsante ad hamburger"): in `CardActionsMenu` era un'icona grigia senza sfondo da 36px, ora è un tondo da 44px verde chiaro con bordo e icona verdi, pieno verde quando il menu è aperto. Vale per le schede del cliente e del professionista, che condividono il componente.
+
+## 330. Email degli account in minuscolo
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Correggere l'email del cambio password"): il codice per reimpostare la password non arrivava. Prova sul sito vero: l'invio funziona (arriva in pochi secondi a lucapetruolo@gmail.com; il primo invio può tardare circa un minuto mentre Render gratuito si sveglia). Nel controllo è emerso però un bug vero: accesso, registrazione e recupero password confrontavano l'email rispettando le maiuscole. Chi si era iscritto come "Mario@Gmail.com" e scriveva "mario@gmail.com" non veniva trovato e, nel recupero password, non riceveva niente senza nessun avviso (di proposito, per non far scoprire chi è iscritto). Luca: "si" alla correzione.
+
+**Decisione presa**
+- `accountEmailSchema` in `packages/shared/src/schemas.ts`: email senza spazi e in minuscolo, con lo stesso messaggio "Email non valida". Usato da accesso, registrazione, stato dell'email, modifica dell'account, richiesta e codice del recupero password.
+- Accesso con Google: email di Google in minuscolo prima di cercare o creare l'account. Promozione del primo admin e invito creato da un operatore (che lo faceva già) cercano in minuscolo.
+- Migrazione `20261024150000_email_minuscolo`: porta in minuscolo le email già salvate, tranne quando un altro account ha la stessa email scritta in modo diverso (resterebbero due account con la stessa email, vietato dal database). Quegli eventuali doppioni, solo dati di prova, restano com'erano.
+- Waitlist e modulo contatti non cambiano: non sono account.
+
+**Verifica**
+- Nuova prova `apps/api/src/auth/account-email.test.ts`; 600 test, typecheck e lint verdi.
+- Migrazione provata su PostgreSQL 16 con email miste, doppioni e valori vuoti: solo le email senza doppioni passano in minuscolo.
+
+## 331. Notifiche dei messaggi in chat che non arrivavano
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Correggere le notifiche chat al cliente"): "al cliente sembra non arrivino le notifiche quando il professionista gli manda un messaggio in chat", e lo stesso dal cliente al professionista.
+
+**Causa**
+- Lato server nulla di diverso tra i due versi: `TimelineService.addUpdate` crea la notifica `TIMELINE_MESSAGE_FROM_*` e la manda sullo stream in tempo reale. I messaggi in chat non hanno email in nessuno dei due versi (argomento "Messaggi" solo sul sito), quindi il limite del dominio Resend non c'entra.
+- Lo stream in tempo reale (`GET /realtime/stream`) in produzione mandava un solo evento vuoto (`id: 1` senza `data`) e poi più nulla: niente popup, suono, pallino o messaggio nuovo nella chat aperta. Con l'aggiornamento a NestJS 11 (§297) nel monorepo c'erano tre copie di rxjs (7.8.1 portata da `@nestjs/cli`, 7.8.2 in `apps/api` e dentro `@nestjs/core`); NestJS riconosce l'Observable di un `@Sse()` con `instanceof` sulla sua copia e, appena c'è un interceptor globale (quello di `SentryModule`), trattava lo stream come un valore qualunque. Riprodotto in locale: senza `SentryModule` lo stream funziona, con `SentryModule` arriva vuoto.
+- Restava il controllo di riserva ogni 45 secondi, ma su `/chat`, `/le-mie-richieste` e `/dashboard/richieste` la pagina segna tutto come letto ogni 15 secondi: la notifica spariva prima che l'app la vedesse, quindi niente popup né suono.
+
+**Decisione presa**
+- `rxjs: "7.8.2"` negli `overrides` di `pnpm-workspace.yaml`: una sola copia. Prova automatica `apps/api/src/realtime/rxjs-single-copy.test.ts` (API e NestJS devono risolvere lo stesso rxjs).
+- `markNotificationsRead(fetched)` in `AuthContext`: le tre pagine passano le non lette appena lette, e quelle nuove hanno il loro popup e suono prima di essere segnate lette (stessa logica di prima, `announceNotifications`, con la stessa soglia iniziale che evita popup per le notifiche vecchie).
+
+**Verifica**
+- Prima: stream di produzione letto con un account di prova, `\nid: 1\n\n` e nient'altro in 56 secondi. In locale, controller vero con `SentryModule`: evento senza `data`; dopo la correzione l'evento arriva completo, anche con Sentry attivo e la configurazione dell'app.
+
+## 332. Email dei messaggi non letti, niente popup sulla chat aperta, controllo dello stream
+
+**Richiesta esplicita dell'utente** (24/10/2026, stesso thread del §331): "effettua le 3 migliorie" proposte dopo la correzione.
+
+**Decisione presa**
+- **Email dei messaggi in chat non letti.** `ChatMessageEmailsService` (`apps/api/src/notifications/chat-message-emails.service.ts`) ogni minuto cerca le notifiche `TIMELINE_MESSAGE_FROM_*` non lette: quando il primo messaggio non letto di una conversazione ha 10 minuti (`CHAT_EMAIL_AFTER_MINUTES`), parte un'email sola con il numero dei messaggi e il link che apre quella chat. Finché chi riceve non legge, niente seconda email per la stessa conversazione. `Notification.sentAt` (colonna già esistente e mai usata) segna i messaggi già coperti da un'email. Mai il testo del messaggio nell'email (CLAUDE.md §5 punto 9). Oltre le 24 ore non si recupera nulla. Chi ha spento il sito per i messaggi ma tiene l'email la riceve subito. Argomento "Messaggi" delle preferenze ora con il canale email attivo (acceso di default, spegnibile). Testo in `chatMessageEmail` (`notification-emails.ts`), fuori da `BUILDERS` che partono subito; anteprime in `email:preview`.
+- **Niente popup né suono per la chat già aperta.** `apps/web/src/lib/openConversations.ts`: `ConversationView` registra la conversazione a schermo; `AuthContext` non annuncia i messaggi di quella conversazione se la scheda è in primo piano. Campanella e numeretti non cambiano.
+- **Controllo dello stream.** In CI `apps/api/scripts/check-realtime.mjs` avvia il controller vero con `SentryModule` e fallisce se l'evento non arriva completo (provato: con una seconda copia di rxjs fallisce). In produzione `uptime.yml`, ogni ora, entra con un account di prova (secret `UPTIME_EMAIL` e `UPTIME_PASSWORD`, controllo saltato senza) e richiede che il battito dei 25 secondi abbia contenuto; provato contro la produzione di oggi, fallisce come deve.
+
+**Verifica**
+- 4 test nuovi per il raggruppamento delle email (`chat-message-emails.test.ts`), typecheck, lint, test, `check-boot`, `check-realtime`.
+
+## 333. Meteo dei prossimi tre giorni e lavori raggruppati per giorno in "Oggi"
+
+Richiesta dell'utente: "si potrebbe dare l'icona del meteo per 3 giorni e dire del meteo anche in oggi magari con una breve descrizione dei lavori che si dovranno fare nella giornata e in oggi e domani". Mostrate due proposte con anteprime da telefono e computer (A: tre schede grandi con meteo e riepilogo; B: meteo in una riga e lavori raggruppati per giorno); l'utente ha scelto la B.
+
+**Cosa cambia**: in "Oggi", sotto "Oggi e domani", una riga con Oggi, Domani e il giorno dopo, sempre con l'icona (anche col sereno), temperatura massima e minima e, da computer, il tempo in una parola. Sotto, i lavori raggruppati per giorno con un riepilogo in una riga ("2 lavori · 8:30–17:30 · Latina, Sezze"); ogni lavoro mostra solo l'ora, il giorno è nell'intestazione. Il prossimo lavoro resta visibile senza scorrere anche da telefono (§311). In agenda l'icona resta solo col maltempo (decisione del 22/10, §288).
+
+**Come funziona**: `GET /agenda/days-ahead` (`AgendaService.daysAhead`) usa le stesse previsioni Open-Meteo dell'icona dell'agenda (`WeatherService`, ora con temperature e cache delle risposte, una sola chiamata per zona all'ora). Il meteo è quello del comune del primo lavoro a domicilio del giorno (prenotazioni e lavori aggiunti a mano, `firstHomeCity`), altrimenti della zona del profilo; a Open-Meteo vanno solo le coordinate del centro del comune, mai l'indirizzo. Informativa privacy aggiornata. Se il meteo non arriva la riga sparisce, i lavori restano.
+
+**Migliorie approvate dall'utente** ("effettua le migliorie"): in "Oggi" compaiono anche i lavori aggiunti a mano in agenda (aprono il lavoro in agenda con `?esterno=<id>`); toccando un giorno del meteo l'agenda si apre su quel giorno (`?giorno=AAAA-MM-GG`, vista Giorno); da computer, se il meteo è di un comune diverso da quello del profilo, si legge accanto al tempo ("Pioggia · Sezze", campo `away`).
+
+**Verifica**: test su tempo del giorno, temperature e comune del primo lavoro (`agenda-tools.test.ts`), 37 test dell'agenda; prova nel browser `e2e/tests/oggi-meteo.spec.ts` (lavoro aggiunto a mano che compare in "Oggi" e si apre in agenda, giorno del meteo che apre l'agenda su quel giorno, con il meteo simulato; telefono e computer, tre fusi orari), approvata dall'utente ("si falla"); il confronto foto di tutte le pagine (`confronto-pagine`) non si è potuto fare senza il database di prova: aggiunto al punto 38 della checklist di lancio ("aggiungi a prima del lancio"); anteprime da telefono (390px) e computer (1440px) con e senza lavori.
+
+## 334. Agenda più veloce sui telefoni lenti
 
 Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla lista delle migliorie della §323: con la prova Lighthouse che misura davvero l'agenda, §321, il TBT era al limite).
 

@@ -1,5 +1,5 @@
 /**
- * Temi Tamagui del sito e dell'app (docs/CHANGELOG.md §206 e §325): il tema
+ * Temi Tamagui del sito e dell'app (docs/CHANGELOG.md §206 e §334): il tema
  * "light" e i sotto-temi dei soli componenti Tamagui usati (Button, Input,
  * TextArea, Card). Niente "dark", varianti a colori, alt1/alt2/active né
  * sotto-temi di componenti mai usati (Sheet, Dialog, Tooltip, Switch...).

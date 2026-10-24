@@ -7,11 +7,16 @@ import { usePathname } from "next/navigation";
 import { Button, Logo, Text, XStack, brand, motionEasing, motionFast } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
 import { AccountMenu } from "./AccountMenu";
+<<<<<<< HEAD
+=======
+import { prefetchCategoryOrder } from "@/lib/categoryOrder";
+import { HeaderSearchBar } from "./HeaderSearchBar";
+>>>>>>> origin/claude/professionisti-platform-architecture-xr9gmn
 import { MegaMenu } from "./MegaMenu";
 import { NotificationBell } from "./NotificationBell";
 import { BRAND } from "@professionisti/shared";
 
-// Caricata a parte (docs/CHANGELOG.md §325): serve solo nelle pagine dei
+// Caricata a parte (docs/CHANGELOG.md §334): serve solo nelle pagine dei
 // risultati e porta con sé l'elenco di tutti i comuni (circa 440 KB), che
 // prima finiva nel JavaScript di ogni pagina del sito.
 const HeaderSearchBar = dynamic(() => import("./HeaderSearchBar").then((module) => module.HeaderSearchBar));
@@ -42,6 +47,18 @@ export function SiteHeader() {
   // Registrazione e accesso (docs/CHANGELOG.md §279): niente "Richiedi
   // preventivo" in alto, l'attenzione resta sul modulo.
   const isAuthPage = AUTH_PAGES.some((page) => pathname === page || pathname.startsWith(`${page}/`));
+
+  // Ordine delle categorie per la richiesta di preventivo e la registrazione,
+  // chiesto a pagina ferma: aprendole le tessere compaiono subito in ordine (§324).
+  useEffect(() => {
+    const start = () => prefetchCategoryOrder();
+    if (typeof window.requestIdleCallback === "function") {
+      const id = window.requestIdleCallback(start, { timeout: 4000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const timer = setTimeout(start, 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     function onScroll() {

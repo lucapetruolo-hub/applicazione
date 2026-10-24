@@ -98,10 +98,17 @@ const nextConfig = {
     config.resolve.alias = {
       ...config.resolve.alias,
       "react-native$": "react-native-web",
+<<<<<<< HEAD
       // Il sito usa i sorgenti di packages/shared e non la build CommonJS
-      // (docs/CHANGELOG.md §325): con `sideEffects: false` ogni pagina prende
+      // (docs/CHANGELOG.md §334): con `sideEffects: false` ogni pagina prende
       // solo le parti che usa (schemi zod, elenco dei comuni...) invece di
       // tutto il pacchetto. L'API continua a usare dist/.
+=======
+      // @professionisti/shared dai sorgenti (ESM) invece che da dist/
+      // (CommonJS): da CommonJS webpack non può togliere le parti di zod che
+      // il sito non usa, e zod 4 porterebbe nel browser ~420 KB in più
+      // (tutte le lingue dei messaggi, JSON Schema). docs/CHANGELOG.md §326.
+>>>>>>> origin/claude/professionisti-platform-architecture-xr9gmn
       "@professionisti/shared$": fileURLToPath(new URL("../../packages/shared/src/index.ts", import.meta.url)),
     };
     config.resolve.extensions = [".web.js", ".web.jsx", ".web.ts", ".web.tsx", ...config.resolve.extensions];

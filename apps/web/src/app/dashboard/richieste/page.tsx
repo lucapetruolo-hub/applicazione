@@ -218,7 +218,7 @@ function RichiesteContent() {
       apiClient
         .unreadNotifications(token!)
         .then((notifications) => {
-          if (cancelled || notifications.length === 0) return;
+          if (cancelled || notifications.length === 0) return notifications;
           setLeadUnreadCounts((prev) => mergeCounts(prev, unreadGuidedRequestCounts(notifications)));
           // Stesso bug/fix già applicato in /le-mie-richieste: un evento
           // generato dal cliente (accettazione, proposta data, conferma
@@ -226,9 +226,10 @@ function RichiesteContent() {
           // lasciava leads/bookings non aggiornati fino a un ricaricamento
           // manuale — il poll dei pallini ora ricarica anche le due liste.
           reloadLeads();
+          return notifications;
         })
-        .catch(() => {})
-        .finally(() => markNotificationsRead());
+        .catch(() => undefined)
+        .then((notifications) => markNotificationsRead(notifications));
     }
     poll();
     const interval = setInterval(poll, UNREAD_BADGE_POLL_MS);

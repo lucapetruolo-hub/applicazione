@@ -40,6 +40,7 @@ import type {
   CalendarFeedStatus,
   DayRoute,
   WeatherDayAlert,
+  DayAhead,
   ZoneDemand,
   ProfessionalDetail,
   ProfessionalFiscalProfileInput,
@@ -1497,7 +1498,14 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
     agendaWeekTemplate: (token: string) => request<AgendaWeekTemplateState>("/agenda/week-template", { headers: { Authorization: `Bearer ${token}` } }),
     saveAgendaWeekTemplate: (token: string, template: AgendaWeekTemplate) =>
       request<AgendaWeekTemplateState>("/agenda/week-template", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(template) }),
+    saveAgendaWeekTemplateForMonth: (token: string, template: AgendaWeekTemplate, month: string) =>
+      request<AgendaWeekTemplateState>("/agenda/week-template/month", {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ month, template }),
+      }),
     agendaWeather: (token: string) => request<WeatherDayAlert[]>("/agenda/weather", { headers: { Authorization: `Bearer ${token}` } }),
+    agendaDaysAhead: (token: string) => request<DayAhead[]>("/agenda/days-ahead", { headers: { Authorization: `Bearer ${token}` } }),
     agendaZoneDemand: (token: string) => request<ZoneDemand>("/agenda/zone-demand", { headers: { Authorization: `Bearer ${token}` } }),
     agendaDayRoute: (token: string, date: string) =>
       request<DayRoute>(`/agenda/route?date=${encodeURIComponent(date)}`, { headers: { Authorization: `Bearer ${token}` } }),
@@ -1678,6 +1686,8 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
         headers: { Authorization: `Bearer ${token}` },
       }),
     /** Suggerimenti di indirizzo (Italia) chiesti a Google dal nostro server (docs/CHANGELOG.md §264). */
+    /** Se i suggerimenti di indirizzo funzionano, senza chiamare Google (docs/CHANGELOG.md §324). */
+    addressStatus: () => request<{ available: boolean }>("/address/status", { cache: "no-store" }),
     addressSuggestions: (params: { q: string; session: string; latitude?: number; longitude?: number }) => {
       const query = new URLSearchParams({ q: params.q, session: params.session });
       if (params.latitude !== undefined && params.longitude !== undefined) {

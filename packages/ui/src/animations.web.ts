@@ -4,7 +4,7 @@ import type { animations as nativeAnimations } from "@tamagui/config";
  * Sul sito nessun componente usa la prop `animation` di Tamagui (le
  * animazioni sono in CSS): al posto del driver di React Native, che portava
  * in ogni pagina le animazioni di React Native con FlatList e
- * VirtualizedList (circa 95 KB, docs/CHANGELOG.md §325), un driver vuoto.
+ * VirtualizedList (circa 95 KB, docs/CHANGELOG.md §334), un driver vuoto.
  * Ha gli stessi valori di quello di React Native per i componenti senza
  * animazione (`supportsCSS` spento: Tamagui converte gli stili come prima)
  * ed è segnato `isStub`, così una prop `animation` sul web viene ignorata

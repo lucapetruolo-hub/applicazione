@@ -441,7 +441,10 @@ Città, pagine vuote fuori da Google.
       `pnpm --filter @professionisti/web confronto-pagine` si lancia a mano.
       Farlo partire a ogni PR, con un database di prova (seed) e l'API
       avviata nella CI, insieme alle prove del punto 26. Rilanciarlo
-      comunque a mano una volta subito prima del lancio.
+      comunque a mano una volta subito prima del lancio, su tutte le pagine
+      e da telefono e computer: dopo le ultime PR va guardata anche "Oggi"
+      del professionista con il meteo dei tre giorni (PR #126,
+      docs/CHANGELOG.md §333, fotografata solo con l'API simulata).
     - **App mobile** (ora Expo 58, React 19, React Native 0.88): i pacchetti
       Android e iOS si generano, ma non è stata provata su un telefono vero.
       Prima di pubblicarla negli store: build con EAS e prova su un iPhone e

@@ -20,6 +20,7 @@ const STRANGERS = ["clientB", "proB"];
 
 const publicRoutes = [
   "GET /address/place/:id",
+  "GET /address/status",
   "GET /address/suggestions",
   "POST /admin/bootstrap",
   "POST /auth/email-status",
@@ -96,10 +97,12 @@ const selfProfessional = [
   "DELETE /agenda/calendar-feed",
   "GET /agenda/calendar-feed",
   "POST /agenda/calendar-feed",
+  "GET /agenda/days-ahead",
   "GET /agenda/route",
   "GET /agenda/weather",
   "GET /agenda/week-template",
   "PUT /agenda/week-template",
+  "PUT /agenda/week-template/month",
   "GET /agenda/zone-demand",
   "POST /billing/boost/checkout",
   "POST /billing/portal",

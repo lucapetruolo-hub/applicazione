@@ -5,22 +5,25 @@ name: CI
 # produzione). Blocca un push/PR che non compila o non passa il typecheck
 # — non sostituisce una suite di test reale (vedi packages/*/vitest.config.ts,
 # ancora minima), ma è la prima rete di sicurezza automatica del progetto.
+# Al push solo sul ramo principale: sugli altri rami la CI parte già con la
+# PR, e prima partiva due volte per ogni modifica (due email per ogni
+# errore, docs/CHANGELOG.md §322).
 on:
   push:
-    branches: ["**"]
+    branches: ["claude/professionisti-platform-architecture-xr9gmn"]
   pull_request:
 
 jobs:
   typecheck-build-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v5
+      - uses: pnpm/action-setup@v6
         with:
           version: 10.33.0
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -55,6 +58,12 @@ jobs:
         env:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
         run: node apps/api/scripts/check-boot.mjs
+
+      # Lo stream in tempo reale può rispondere 200 senza consegnare nulla
+      # (docs/CHANGELOG.md §331): qui un evento deve arrivare completo, con
+      # Sentry attivo come in produzione.
+      - name: Avvio API (stream in tempo reale)
+        run: node apps/api/scripts/check-realtime.mjs
 
       - name: Test
         env:
@@ -100,13 +109,13 @@ jobs:
       JWT_SECRET: e2e-secret
       NEXT_PUBLIC_API_URL: http://localhost:3001
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v5
+      - uses: pnpm/action-setup@v6
         with:
           version: 10.33.0
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -140,7 +149,7 @@ jobs:
 
       - name: Risultati
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: agenda-browser
           path: |
@@ -173,13 +182,13 @@ jobs:
     env:
       DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v5
+      - uses: pnpm/action-setup@v6
         with:
           version: 10.33.0
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
