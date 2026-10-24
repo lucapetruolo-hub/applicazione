@@ -10,6 +10,8 @@ import { renderEmail, type RenderedEmail } from "../src/email/email-layout";
 import {
   accountDeletedEmail,
   passwordChangedEmail,
+  loginLockedEmail,
+  newDeviceLoginEmail,
   passwordResetEmail,
   profileInviteEmail,
   verifyEmailEmail,
@@ -43,12 +45,15 @@ function notification(type: string, to: Entry["to"], group: string, payload: Rec
 }
 
 // Account
+const verify = { link: `${site}/conferma-email?token=esempio`, hours: 48, code: "482915", codeMinutes: 15 };
 add("benvenuto-cliente", "Account", "Cliente", welcomeClientEmail("Giulia"));
-add("benvenuto-professionista", "Account", "Professionista", welcomeProfessionalEmail("Marco", { link: `${site}/conferma-email?token=esempio`, hours: 48 }));
+add("benvenuto-professionista", "Account", "Professionista", welcomeProfessionalEmail("Marco", verify));
 add("benvenuto-professionista-google", "Account", "Professionista", welcomeProfessionalEmail("Marco", null));
-add("conferma-email", "Account", "Tutti", verifyEmailEmail("Marco", `${site}/conferma-email?token=esempio`, 48));
-add("password-dimenticata", "Account", "Tutti", passwordResetEmail("Giulia", `${site}/reimposta-password?token=esempio`, 60));
+add("conferma-email", "Account", "Tutti", verifyEmailEmail("Marco", verify));
+add("password-dimenticata", "Account", "Tutti", passwordResetEmail("Giulia", { link: `${site}/reimposta-password?token=esempio`, minutes: 60, code: "731604", codeMinutes: 15 }));
 add("password-cambiata", "Account", "Tutti", passwordChangedEmail("Giulia"));
+add("accesso-bloccato", "Account", "Tutti", loginLockedEmail("Giulia", 15));
+add("nuovo-accesso", "Account", "Professionista", newDeviceLoginEmail("Marco", { label: "Chrome su Android", at: new Date("2026-10-24T09:30:00Z") }));
 add("account-eliminato", "Account", "Tutti", accountDeletedEmail("Giulia"));
 add("profilo-creato-al-telefono", "Account", "Professionista", profileInviteEmail("Marco", "Idraulica Rossi", `${site}/completa-profilo?codice=esempio`, 7));
 
@@ -134,8 +139,9 @@ notification("SUBSCRIPTION_ENDING", "Professionista", "Abbonamento", { tierLabel
 notification("SUBSCRIPTION_PAYMENT_FAILED", "Professionista", "Abbonamento");
 
 // Moderazione
-notification("CONTENT_REPORT_DECISION", "Cliente", "Segnalazioni e moderazione", { targetType: "REVIEW", status: "RESOLVED", note: "La recensione conteneva insulti." });
-notification("CONTENT_REPORT_UPHELD", "Professionista", "Segnalazioni e moderazione", { targetType: "REVIEW", action: "HIDE_CONTENT", note: "Linguaggio offensivo." });
+notification("CONTENT_REPORT_RECEIVED", "Cliente", "Segnalazioni e moderazione", { targetType: "REVIEW" });
+notification("CONTENT_REPORT_DECISION", "Cliente", "Segnalazioni e moderazione", { targetType: "REVIEW", status: "RESOLVED" });
+notification("CONTENT_REPORT_UPHELD", "Professionista", "Segnalazioni e moderazione", { targetType: "REVIEW", action: "HIDE_CONTENT", ground: "legge-diffamazione", note: "La recensione attribuisce al professionista un furto senza alcun riscontro." });
 notification("CONTENT_REPORT_REVERTED", "Professionista", "Segnalazioni e moderazione", { targetType: "REVIEW", note: "Rivista la decisione dopo la contestazione." });
 notification("CONTENT_REPORT_APPEAL_REJECTED", "Professionista", "Segnalazioni e moderazione", { note: "La decisione resta valida." });
 notification("ACCOUNT_SUSPENDED", "Tutti", "Segnalazioni e moderazione", { note: "Violazioni ripetute dei Termini di servizio." });

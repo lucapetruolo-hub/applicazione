@@ -16,6 +16,16 @@ type Violation = { id: string; html: string };
 const KNOWN: { finding: string; id: string; html: RegExp }[] = [];
 
 async function seriousViolations(page: Page): Promise<{ unknown: string[]; known: Set<string> }> {
+  // axe misura i colori come sono in quel momento: a metà dell'apertura del riquadro (opacità in
+  // salita) il contrasto risulta basso. Si aspetta la fine delle animazioni (§320).
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((animation) => animation.effect?.getTiming().iterations !== Infinity)
+        .map((animation) => animation.finished.catch(() => undefined)),
+    ),
+  );
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
   const unknown: string[] = [];
   const known = new Set<string>();
@@ -43,7 +53,7 @@ for (const view of views) {
     await page.goto(view.path);
     await expect(page.getByRole("group", { name: "Sezioni dell'agenda" })).toBeVisible();
     // L'agenda resta collegata al server per gli avvisi in tempo reale: si aspetta il contenuto, non la rete ferma.
-    await expect(page.getByText(/Condominio Aurora|Settimana tipo|Giro/).first()).toBeVisible();
+    await expect(page.getByText(/Condominio Aurora|La tua settimana|Giro/).first()).toBeVisible();
     const { unknown, known } = await seriousViolations(page);
     testInfo.annotations.push({ type: "problemi noti", description: [...known].join(", ") || "nessuno" });
     expect(unknown).toEqual([]);

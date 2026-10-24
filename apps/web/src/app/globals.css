@@ -848,6 +848,9 @@ button.notif-row-main:hover {
 .acct-main {
   min-width: 0;
   flex: 1;
+  /* Il piè di pagina resta sotto lo schermo mentre la pagina carica: prima
+     compariva in alto e poi veniva spinto giù (CLS 0,14, docs/CHANGELOG.md §321). */
+  min-height: 100vh;
 }
 .acct-nav {
   display: flex;
@@ -919,6 +922,24 @@ button.notif-row-main:hover {
   justify-content: center;
 }
 /* Pallino "da fare" senza numero (es. agenda senza disponibilità). */
+/* Nome accanto alla foto nell'intestazione (AccountMenu, docs/CHANGELOG.md §319). */
+.acct-trigger-name {
+  display: flex;
+  min-width: 0;
+  max-width: 180px;
+}
+.acct-trigger-name-sr {
+  display: none;
+}
+@media (max-width: 520px) {
+  .acct-trigger-name {
+    display: none;
+  }
+  .acct-trigger-name-sr {
+    display: block;
+  }
+}
+
 .acct-nav-dot {
   margin-left: auto;
   width: 8px;

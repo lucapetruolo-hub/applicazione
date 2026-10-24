@@ -9,7 +9,7 @@ import { useAdminOverview } from "@/components/admin/AdminOverviewContext";
 import { AdminCard, AdminPageHeader, AdminPill, AdminTabs, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { SkeletonSummaryRow } from "@/components/Skeleton";
 
-const ROLE_LABEL: Record<AdminContactMessage["role"], string> = { CLIENT: "Cliente", PROFESSIONAL: "Professionista", OTHER: "Altro" };
+const ROLE_LABEL: Record<AdminContactMessage["role"], string> = { CLIENT: "Cliente", PROFESSIONAL: "Professionista", OTHER: "Altro", REPORT_ILLEGAL: "Segnalazione di contenuto illegale" };
 
 /**
  * Messaggi dal modulo "Contatti" (docs/CHANGELOG.md §144): si risponde con un
@@ -76,8 +76,16 @@ export default function AdminMessaggiPage() {
 function MessageCard({ message, token, onChanged }: { message: AdminContactMessage; token: string; onChanged: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const mailto = `mailto:${message.email}?subject=${encodeURIComponent("Risposta al tuo messaggio")}&body=${encodeURIComponent(
-    `\n\n---\nIl tuo messaggio del ${formatAdminDate(message.createdAt)}:\n${message.content}`,
+  // Segnalazione di contenuto illegale senza account (docs/CHANGELOG.md
+  // §319): l'esito in una riga va comunicato per legge (DSA art. 16 c. 5),
+  // senza motivazione. La risposta parte già scritta, si sceglie la frase.
+  const isReport = message.role === "REPORT_ILLEGAL";
+  const mailto = `mailto:${message.email}?subject=${encodeURIComponent(isReport ? "Esito della tua segnalazione" : "Risposta al tuo messaggio")}&body=${encodeURIComponent(
+    `${
+      isReport
+        ? "Abbiamo esaminato la tua segnalazione e preso provvedimenti sul contenuto.\nAbbiamo esaminato la tua segnalazione: non abbiamo preso provvedimenti.\n\nSe non sei d'accordo puoi rivolgerti all'autorità giudiziaria."
+        : ""
+    }\n\n---\nIl tuo messaggio del ${formatAdminDate(message.createdAt)}:\n${message.content}`,
   )}`;
 
   async function resolve() {
@@ -97,7 +105,7 @@ function MessageCard({ message, token, onChanged }: { message: AdminContactMessa
     <AdminCard>
       <XStack justifyContent="space-between" gap="$2" flexWrap="wrap" alignItems="center">
         <XStack gap="$2" alignItems="center" flexWrap="wrap">
-          <AdminPill>{ROLE_LABEL[message.role]}</AdminPill>
+          <AdminPill tone={isReport ? "danger" : "neutral"}>{ROLE_LABEL[message.role]}</AdminPill>
           <Text fontWeight="700" color={brand.grafite}>
             {message.email}
           </Text>
@@ -109,11 +117,16 @@ function MessageCard({ message, token, onChanged }: { message: AdminContactMessa
       <Text color={brand.grafite} style={{ whiteSpace: "pre-wrap" }}>
         {message.content}
       </Text>
+      {isReport ? (
+        <Text fontSize="$2" color={brand.grafite70}>
+          Rispondi con l&apos;esito in una riga, senza motivazione: lascia una delle due frasi già scritte.
+        </Text>
+      ) : null}
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       <XStack gap="$2" flexWrap="wrap">
         <a href={mailto} style={{ textDecoration: "none" }}>
           <Button variant="secondary" size="$3">
-            Rispondi via email
+            {isReport ? "Invia l'esito via email" : "Rispondi via email"}
           </Button>
         </a>
         {!message.resolved ? (
