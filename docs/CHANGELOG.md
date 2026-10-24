@@ -20295,3 +20295,13 @@ Non fatto qui: zod 4 (aggiornamento grande, rischio basso: il corpo JSON ha già
 - Arrotondamenti `$10` e `$11` di Tamagui (`packages/ui/src/config.ts`) di nuovo tondi pieni: li usano solo l'interruttore "A domicilio / Online" della richiesta di preventivo, le schede degli orari nel profilo, quelle della barra di ricerca, etichette e pulsanti a pillola, che con il §305 erano scesi a 12 px.
 
 **Verifica**: typecheck di `ui` e `web`, build del web; foto prima/dopo a 390 e 1440 px in `/mnt/project-files/anteprime/identita-codice/notifiche/` e foto di prezzi e interruttori in `/mnt/project-files/anteprime/identita-codice/prezzi-interruttori/`.
+
+## 317. Angoli più morbidi in tutto il sito e "Mostra 0 richieste"
+
+**Richiesta dell'utente (24/10/2026)**, sulla finestra "Filtri" delle richieste: "tutto questo, sia la finestra che il resto all'interno, era più bello tondeggiante, di più, come prima"; e "correggi anche la visualizzazione di quello 0 che non si vede bene" ("Mostra0  richieste").
+
+**Decisioni**:
+- Sistema unico ammorbidito (aggiorna il §305): 10 px per etichette e tessere piccole, 20 px per campi, riquadri, finestre e pannelli, tondo pieno per pulsanti e interruttori. `radiusSm` 10, `radiusDoc`/`radiusDocLg` 20 (`packages/ui/src/tokens.ts`); token Tamagui `$1-$2` a 10 e `$3-$9` a 20 (`config.ts`); in CSS e nei componenti 12 → 20 e 6 → 10. Le icone in quadrato piccolo (38-48 px: notifiche, registrazione, contatti, riquadro professionisti, tessere dei lavori, caselle del codice email) restano a 12, altrimenti diventerebbero cerchi. Agenda non toccata a mano.
+- "Mostra N richieste" (richieste del professionista e del cliente): testo scritto in un'unica stringa. `Button` di Tamagui metteva ogni pezzo in un testo separato con spazio fra l'uno e l'altro, così lo 0 si attaccava a "Mostra".
+
+**Verifica**: typecheck di `ui` e `web`, build del web; foto a 390 e 1440 px (home, profilo, richiesta di preventivo, richieste e finestra Filtri) in `/mnt/project-files/anteprime/identita-codice/tondeggiante/`.

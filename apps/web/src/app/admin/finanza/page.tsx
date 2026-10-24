@@ -171,7 +171,7 @@ export default function AdminFinanzaPage() {
 
         {error && <Text color={brand.urgenza}>{error}</Text>}
         {actionMessage && (
-          <YStack backgroundColor={brand.gesso} padding="$3" borderRadius={6} maxHeight={240} style={{ overflow: "auto" as const }}>
+          <YStack backgroundColor={brand.gesso} padding="$3" borderRadius={10} maxHeight={240} style={{ overflow: "auto" as const }}>
             <Text fontSize={12} fontFamily="$mono" style={{ whiteSpace: "pre-wrap" as const }}>
               {actionMessage}
             </Text>
@@ -371,7 +371,7 @@ export default function AdminFinanzaPage() {
           )}
 
           {selectedPeriod && (
-            <YStack gap="$2" backgroundColor={brand.gesso} padding="$4" borderRadius={6}>
+            <YStack gap="$2" backgroundColor={brand.gesso} padding="$4" borderRadius={10}>
               <Text fontWeight="700">
                 Dettaglio {selectedPeriod.year} {selectedPeriod.quarter ? `Q${selectedPeriod.quarter}` : "(anno)"}
               </Text>

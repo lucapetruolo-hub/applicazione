@@ -59,7 +59,7 @@ span.is_Button._fos-f-size-true {
   background: #189a63;
   color: #ffffff;
   padding: 12px 16px;
-  border-radius: 12px;
+  border-radius: 20px;
   font-weight: 600;
   text-decoration: none;
   transition: top 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -367,7 +367,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   flex-direction: column;
   background: #fff;
   border: 1px solid #f0dcc0;
-  border-radius: 12px;
+  border-radius: 20px;
   box-shadow: 0 16px 40px rgba(43, 36, 32, 0.14), 0 2px 6px rgba(43, 36, 32, 0.06);
   overflow: hidden;
   transform-origin: top right;
@@ -410,7 +410,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   min-height: 36px;
   padding: 0 10px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 10px;
   background: transparent;
   color: #6e6459;
   font-size: 15px;
@@ -620,7 +620,7 @@ button.notif-row-main:hover {
   gap: 8px;
   min-height: 44px;
   padding: 0 8px;
-  border-radius: 6px;
+  border-radius: 10px;
   color: #0e7a4c;
   font-size: 15px;
   font-weight: 600;
@@ -664,7 +664,7 @@ button.notif-row-main:hover {
   gap: 6px;
   overflow-x: auto;
   background: #ffffff;
-  border-radius: 12px;
+  border-radius: 20px;
   padding: 8px;
   scrollbar-width: none;
 }
@@ -679,7 +679,7 @@ button.notif-row-main:hover {
   align-items: center;
   gap: 8px;
   padding: 9px 12px;
-  border-radius: 6px;
+  border-radius: 10px;
   color: #2b2420;
   text-decoration: none;
   font-weight: 600;
@@ -751,7 +751,7 @@ button.notif-row-main:hover {
   font-size: 11px;
   font-family: inherit;
   border: 1px solid #f0dcc0;
-  border-radius: 6px;
+  border-radius: 10px;
   padding: 1px 6px;
   color: #6e6459;
   background: #ffffff;
@@ -771,7 +771,7 @@ button.notif-row-main:hover {
   width: 100%;
   max-width: 560px;
   background: #ffffff;
-  border-radius: 12px;
+  border-radius: 20px;
   box-shadow: 0 20px 60px rgba(43, 36, 32, 0.25);
   overflow: hidden;
   display: flex;
@@ -806,7 +806,7 @@ button.notif-row-main:hover {
   gap: 2px;
   border: none;
   background: transparent;
-  border-radius: 6px;
+  border-radius: 10px;
   padding: 9px 12px;
   font: inherit;
   cursor: pointer;
@@ -878,7 +878,7 @@ button.notif-row-main:hover {
   align-items: center;
   gap: 8px;
   padding: 9px 12px;
-  border-radius: 6px;
+  border-radius: 10px;
   color: #2b2420;
   text-decoration: none;
   font-weight: 600;
@@ -970,7 +970,7 @@ button.notif-row-main:hover {
     overflow-x: visible;
     padding: 12px;
     border: none;
-    border-radius: 12px;
+    border-radius: 20px;
   }
   .acct-nav-group {
     display: flex;
@@ -1021,7 +1021,7 @@ button.notif-row-main:hover {
   align-items: center;
   gap: 14px;
   padding: 14px 16px;
-  border-radius: 12px;
+  border-radius: 20px;
   background: #ffffff;
   text-decoration: none;
   color: #2b2420;
@@ -1075,7 +1075,7 @@ button.notif-row-main:hover {
 }
 .today-empty {
   padding: 14px 16px;
-  border-radius: 12px;
+  border-radius: 20px;
   background: #ffffff;
   color: #6e6459;
   font-size: 16px;
@@ -1090,7 +1090,7 @@ button.notif-row-main:hover {
 }
 /* "Profilo pubblico": anteprima del profilo pubblico (docs/CHANGELOG.md §252). */
 .profile-preview-frame {
-  border-radius: 12px;
+  border-radius: 20px;
   background: #fdefe1;
   border: 1px solid #f0dcc0;
   box-shadow: 0 12px 32px rgba(43, 32, 19, 0.08);
@@ -1100,7 +1100,7 @@ button.notif-row-main:hover {
   /* Sul telefono l'anteprima usa quasi tutta la larghezza, come la pagina vera. */
   .profile-preview-frame {
     margin: 0 -12px;
-    border-radius: 12px;
+    border-radius: 20px;
   }
 }
 .profile-preview-bar {
@@ -1221,7 +1221,7 @@ button.notif-row-main:hover {
 .profile-status {
   display: flex;
   flex-direction: column;
-  border-radius: 12px;
+  border-radius: 20px;
   background: #ffffff;
 }
 .profile-status .profile-visibility {
@@ -1368,7 +1368,7 @@ button.notif-row-main:hover {
   flex-direction: column;
   gap: 16px;
   padding: 20px;
-  border-radius: 12px;
+  border-radius: 20px;
   background: #ffffff;
   color: #2b2420;
   box-shadow: 0 8px 24px rgba(43, 32, 19, 0.06);
@@ -1481,7 +1481,7 @@ button.notif-row-main:hover {
   flex-direction: column;
   gap: 6px;
   padding: 16px;
-  border-radius: 12px;
+  border-radius: 20px;
   background: #ffffff;
   text-decoration: none;
   color: #2b2420;
@@ -1505,7 +1505,7 @@ a.admin-kpi:hover {
 }
 .admin-input {
   padding: 10px 12px;
-  border-radius: 6px;
+  border-radius: 10px;
   border: 1px solid #9c8e7f;
   font: inherit;
   font-size: 14px;
@@ -1520,7 +1520,7 @@ a.admin-kpi:hover {
 }
 .admin-table-wrap {
   overflow-x: auto;
-  border-radius: 12px;
+  border-radius: 20px;
   background: #ffffff;
 }
 .admin-table {
@@ -1591,7 +1591,7 @@ a.admin-kpi:hover {
 }
 .deep-link-highlight {
   animation: deep-link-highlight 2.5s ease-out;
-  border-radius: 12px;
+  border-radius: 20px;
 }
 
 /* /registrati — pagina di registrazione resa più "innovativa" (richiesta
@@ -1671,7 +1671,7 @@ a.admin-kpi:hover {
   display: block;
   text-decoration: none;
   color: inherit;
-  border-radius: 12px;
+  border-radius: 20px;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
@@ -1701,7 +1701,7 @@ a.admin-kpi:hover {
   min-height: 44px;
   padding: 0 10px 0 4px;
   border: none;
-  border-radius: 12px;
+  border-radius: 20px;
   background: none;
   font: inherit;
   font-size: 16px;
@@ -1748,7 +1748,7 @@ a.admin-kpi:hover {
   overflow-y: auto;
   background: #ffffff;
   border: 1px solid #f0dcc0;
-  border-radius: 12px;
+  border-radius: 20px;
   box-shadow: 0 12px 32px rgba(43, 32, 19, 0.12);
   z-index: 1000;
   padding: 8px;
@@ -1794,7 +1794,7 @@ a.admin-kpi:hover {
   align-items: center;
   gap: 10px;
   padding: 9px 8px;
-  border-radius: 6px;
+  border-radius: 10px;
   color: #2b2420;
   text-decoration: none;
   font-size: 16px;
@@ -1890,7 +1890,7 @@ a.admin-kpi:hover {
   font-size: 16px;
   padding: 7px 10px;
   border: 1px solid #9c8e7f;
-  border-radius: 6px;
+  border-radius: 10px;
   background: #ffffff;
   color: #2b2420;
 }
@@ -1926,7 +1926,7 @@ a.admin-kpi:hover {
   align-items: flex-start;
   gap: 6px;
   padding: 16px;
-  border-radius: 12px;
+  border-radius: 20px;
   background: #ffffff;
   border: 2px solid transparent;
   text-align: left;
@@ -1966,7 +1966,7 @@ a.admin-kpi:hover {
 }
 .pstats-card {
   background: #ffffff;
-  border-radius: 12px;
+  border-radius: 20px;
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -2036,7 +2036,7 @@ a.admin-kpi:hover {
   flex-direction: column;
   gap: 4px;
   padding: 14px;
-  border-radius: 12px;
+  border-radius: 20px;
   background: #f7f6f4;
 }
 .pstats-ratio-value {
@@ -2104,7 +2104,7 @@ a.admin-kpi:hover {
   gap: 8px;
   /* brand.bordoCampo: 3,2:1 su bianco (docs/CHANGELOG.md §278). */
   border: 1px solid #9c8e7f;
-  border-radius: 12px;
+  border-radius: 20px;
   background: #ffffff;
   padding: 0 12px;
 }
@@ -2210,7 +2210,7 @@ a.admin-kpi:hover {
 }
 .notif-card {
   background: #ffffff;
-  border-radius: 12px;
+  border-radius: 20px;
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -2395,7 +2395,7 @@ a.admin-kpi:hover {
   display: flex;
   align-items: flex-start;
   background: #ffffff;
-  border-radius: 12px;
+  border-radius: 20px;
   border-left: 4px solid #189a63;
   box-shadow: 0 10px 28px rgba(43, 32, 19, 0.18);
   animation: toast-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -2549,7 +2549,7 @@ a.admin-kpi:hover {
   gap: 12px;
   align-items: flex-start;
   padding: 14px;
-  border-radius: 12px;
+  border-radius: 20px;
   border: 1px solid #f0dcc0;
   background: #ffffff;
   cursor: pointer;
@@ -2607,7 +2607,7 @@ a.admin-kpi:hover {
   flex-direction: column;
   gap: 6px;
   padding: 16px;
-  border-radius: 12px;
+  border-radius: 20px;
   background: #ffffff;
   border: 1px solid #f0dcc0;
 }
@@ -2665,7 +2665,7 @@ a.admin-kpi:hover {
   column-gap: 4px;
   max-width: 100%;
   padding: 3px 10px;
-  border-radius: 12px;
+  border-radius: 20px;
   border: 1px solid #f0dcc0;
   background: #fff;
   color: #2b2420;
@@ -2747,7 +2747,7 @@ a.admin-kpi:hover {
   scroll-snap-align: start;
   width: 230px;
   height: 340px;
-  border-radius: 12px;
+  border-radius: 20px;
   overflow: hidden;
   background: #f6ecd9;
   text-decoration: none;
@@ -2859,7 +2859,7 @@ a.admin-kpi:hover {
   grid-template-columns: 1fr 1fr;
   width: 100%;
   max-width: 1112px;
-  border-radius: 12px;
+  border-radius: 20px;
   overflow: hidden;
   background: #2b2420;
 }
@@ -2870,7 +2870,7 @@ a.admin-kpi:hover {
 @media (max-width: 860px) {
   .pro-cta {
     grid-template-columns: 1fr;
-    border-radius: 12px;
+    border-radius: 20px;
   }
   .pro-cta-photo {
     min-height: 220px;
@@ -2946,7 +2946,7 @@ a.admin-kpi:hover {
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
-  border-radius: 12px;
+  border-radius: 20px;
   overflow: hidden;
   background: #f6ecd9;
 }
@@ -2959,7 +2959,7 @@ a.admin-kpi:hover {
   justify-content: center;
 }
 .qx-quote {
-  border-radius: 12px;
+  border-radius: 20px;
   padding: 22px;
 }
 .qx-quote-head {
@@ -3129,7 +3129,7 @@ a.admin-kpi:hover {
   width: 300px;
   max-width: calc(100% - 32px);
   padding: 12px 16px;
-  border-radius: 12px;
+  border-radius: 20px;
   background: rgba(255, 255, 255, 0.95);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
   color: #2b2420;
@@ -3344,7 +3344,7 @@ a.admin-kpi:hover {
 .link-button:focus-visible {
   outline: 2px solid #189a63;
   outline-offset: 2px;
-  border-radius: 6px;
+  border-radius: 10px;
 }
 
 /* Registrazione del professionista (docs/CHANGELOG.md §248, richiesta
@@ -3368,7 +3368,7 @@ a.admin-kpi:hover {
   min-height: 96px;
   padding: 12px 8px;
   border: 1px solid #f0dcc0;
-  border-radius: 12px;
+  border-radius: 20px;
   background: #ffffff;
   font: inherit;
   color: #2b2420;
@@ -3488,7 +3488,7 @@ a.admin-kpi:hover {
 .hero-secondary-link:focus-visible {
   outline: 3px solid #189a63;
   outline-offset: 2px;
-  border-radius: 6px;
+  border-radius: 10px;
 }
 
 /* Testo letto da Google e dai lettori di schermo ma non mostrato (es. il
@@ -3791,7 +3791,7 @@ a.admin-kpi:hover {
 .breadcrumbs-link:focus-visible {
   outline: 2px solid #0e7a4c;
   outline-offset: 2px;
-  border-radius: 6px;
+  border-radius: 10px;
 }
 .breadcrumbs-current {
   color: #2b2420;
@@ -3849,7 +3849,7 @@ a.admin-kpi:hover {
   flex-direction: column;
   gap: 2px;
   padding: 14px 16px;
-  border-radius: 12px;
+  border-radius: 20px;
   background: #fff;
   border: 1px solid #f0dcc0;
   min-width: 0;
@@ -3875,7 +3875,7 @@ a.admin-kpi:hover {
 .city-facts-faq {
   display: flex;
   flex-direction: column;
-  border-radius: 12px;
+  border-radius: 20px;
   background: #fff;
   border: 1px solid #f0dcc0;
   overflow: hidden;
@@ -4007,7 +4007,7 @@ a.admin-kpi:hover {
   border-collapse: separate;
   border-spacing: 0;
   border: 1px solid #f0dcc0;
-  border-radius: 12px;
+  border-radius: 20px;
   background: #fff;
   overflow: hidden;
   font-size: 16px;

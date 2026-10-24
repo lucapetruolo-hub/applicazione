@@ -581,7 +581,7 @@ function DashboardFiscaleContent() {
             </YStack>
 
             {toFix && formStep === 1 && invalidChecks.length > 0 ? (
-              <XStack gap="$2" padding="$3" borderRadius={12} backgroundColor={brand.urgenzaVelo} alignItems="flex-start" role="alert">
+              <XStack gap="$2" padding="$3" borderRadius={20} backgroundColor={brand.urgenzaVelo} alignItems="flex-start" role="alert">
                 <Icon name="triangle-alert" size={18} strokeWidth={2} color={brand.urgenza} />
                 <Text flex={1} fontSize={16} color={brand.grafite}>
                   {invalidChecks.map(taxIdCheckMessage).join(" ")}
@@ -707,7 +707,7 @@ function DashboardFiscaleContent() {
                 {/* Fuori dall'Italia: paese e codice fiscale estero (DAC7). */}
                 {entityType ? (
                   abroad ? (
-                    <YStack gap="$3" padding="$3" borderRadius={12} backgroundColor={brand.gesso}>
+                    <YStack gap="$3" padding="$3" borderRadius={20} backgroundColor={brand.gesso}>
                       <Field
                         label={entityType === "BUSINESS" ? "Paese della sede (sigla, es. FR)" : "Paese di residenza fiscale (sigla, es. FR)"}
                         accessibilityLabel="Paese di residenza fiscale"

@@ -76,7 +76,7 @@ function ChoiceCard({ href, replace, icon, title, text }: { href: string; replac
         borderColor={brand.filetto}
         borderRadius="$4"
       >
-        <XStack width={44} height={44} borderRadius="$3" backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center" flexShrink={0}>
+        <XStack width={44} height={44} borderRadius={12} backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center" flexShrink={0}>
           <Icon name={icon} size={20} color={brand.cianografiaScuro} strokeWidth={1.5} />
         </XStack>
         <YStack flex={1} flexBasis={0} minWidth={0} gap="$1">

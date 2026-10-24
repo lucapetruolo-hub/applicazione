@@ -567,7 +567,7 @@ function RichiesteContent() {
               ) : null}
 
               <Button variant="primary" onPress={() => setShowFiltersModal(false)}>
-                Mostra {visibleLeads.length} {visibleLeads.length === 1 ? "richiesta" : "richieste"}
+                {`Mostra ${visibleLeads.length} ${visibleLeads.length === 1 ? "richiesta" : "richieste"}`}
               </Button>
             </YStack>
           </div>
