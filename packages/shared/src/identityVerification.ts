@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "./zod";
 
 /**
  * Verifica fiscale e d'identità del professionista (docs/CHANGELOG.md §253,
@@ -25,7 +25,7 @@ export function biometricConsentText(): string {
 }
 
 export const startIdentityVerificationSchema = z.object({
-  biometricConsent: z.literal(true, { errorMap: () => ({ message: "Per continuare spunta il consenso al confronto del selfie." }) }),
+  biometricConsent: z.literal(true, { message: "Per continuare spunta il consenso al confronto del selfie." }),
 });
 export type StartIdentityVerificationInput = z.infer<typeof startIdentityVerificationSchema>;
 

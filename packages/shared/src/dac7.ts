@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "./zod";
 
 /**
  * DAC7 lato professionista (docs/CHANGELOG.md §246): dichiarazione a

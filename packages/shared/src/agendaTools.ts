@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "./zod";
 
 /**
  * Strumenti della nuova agenda (docs/CHANGELOG.md §288): settimana tipo,
@@ -29,7 +29,7 @@ export const agendaWeekTemplateSchema = z
       const sorted = [...slots].sort((a, b) => a.start.localeCompare(b.start));
       for (let i = 1; i < sorted.length; i++) {
         if (sorted[i]!.start < sorted[i - 1]!.end) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Due fasce dello stesso giorno non possono sovrapporsi.", path: ["days", day] });
+          ctx.addIssue({ code: "custom", message: "Due fasce dello stesso giorno non possono sovrapporsi.", path: ["days", day] });
           return;
         }
       }

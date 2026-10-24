@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "./zod";
 
 /**
  * Verifica manuale dei professionisti (docs/CHANGELOG.md §200, checklist
@@ -8,8 +8,8 @@ import { z } from "zod";
  * fuori (videochiamata, email), qui resta solo l'esito.
  */
 export const verifyProfessionalSchema = z.object({
-  identityChecked: z.literal(true, { errorMap: () => ({ message: "Conferma di aver controllato il documento d'identità." }) }),
-  taxIdChecked: z.literal(true, { errorMap: () => ({ message: "Conferma di aver controllato partita IVA o codice fiscale." }) }),
+  identityChecked: z.literal(true, { message: "Conferma di aver controllato il documento d'identità." }),
+  taxIdChecked: z.literal(true, { message: "Conferma di aver controllato partita IVA o codice fiscale." }),
   note: z.string().trim().max(500).optional(),
 });
 export type VerifyProfessionalInput = z.infer<typeof verifyProfessionalSchema>;
