@@ -100,7 +100,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build API e pacchetti
-        run: pnpm turbo run build --filter=@professionisti/api
+        run: pnpm turbo run build --filter=@professionisti/api --filter=@professionisti/api-client
 
       - name: Build sito
         run: pnpm --filter @professionisti/web build
