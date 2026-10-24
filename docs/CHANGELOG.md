@@ -20087,4 +20087,6 @@ La mappa con una chiave vera si vede solo sul sito pubblicato: dopo l'unione va 
 - T11: "Lavoro completato" compare solo dal giorno del lavoro.
 - T12: Agenda al secondo posto nel menu dell'area professionista (`accountMenuItems.ts`).
 
+**Disconnessi per un 429** (visto nelle prove nel browser in CI): se `/auth/me` rispondeva 429 (troppe richieste) o con un errore del server, il sito cancellava l'accesso e mostrava "Accedi". Ora disconnettono solo 401 e 403; su 429 ed errori del server si riprova due volte (dopo 1,5 e 3 secondi) e poi si resta con la copia salvata. Il limite generale di 60 chiamate al minuto si può alzare con `RATE_LIMIT_PER_MINUTE`, usato solo dalle prove nel browser (tutte dallo stesso indirizzo); in produzione resta 60.
+
 **Verifica**: nuove prove `e2e/tests/agenda-primo-uso.spec.ts` (T1, T2-T3, T4, T9-T11); 60 prove nel browser in locale; tempi stimati dei compiti C1 7,4 s, C2 9,7 s, C3 8,1 s, C4 10,8 s, C5 20,0 s (C5 come prima: il tasto con la scritta non cambia i tocchi, solo il dubbio su cosa faccia).

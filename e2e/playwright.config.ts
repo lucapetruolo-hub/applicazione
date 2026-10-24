@@ -48,6 +48,8 @@ export default defineConfig({
         EMAIL_VERIFICATION_REQUIRED: "false",
         FRONTEND_URL: WEB_URL,
         DATABASE_URL: process.env.DATABASE_URL ?? "",
+        // Tutte le prove chiamano l'API dallo stesso indirizzo: il limite di 60 al minuto le farebbe fallire a caso.
+        RATE_LIMIT_PER_MINUTE: "1000",
       },
     },
     {
