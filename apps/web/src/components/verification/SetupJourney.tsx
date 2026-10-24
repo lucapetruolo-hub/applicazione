@@ -198,28 +198,35 @@ export function JourneyProgress({ steps, here }: { steps: JourneyStep[]; here: J
 }
 
 /** Carica stato e pagamenti e restituisce il percorso (null finché non è pronto). */
-export function useSetupJourney(token: string | null, reloadKey: unknown = 0): { steps: JourneyStep[] | null; status: MyVerificationStatus | null } {
+export function useSetupJourney(
+  token: string | null,
+  reloadKey: unknown = 0,
+): { steps: JourneyStep[] | null; status: MyVerificationStatus | null; settled: boolean } {
   const [status, setStatus] = useState<MyVerificationStatus | null>(null);
   const [stripeVerified, setStripeVerified] = useState<boolean | null>(null);
+  // Risposte arrivate (anche con errore): Oggi aspetta questo per non far
+  // saltare la colonna di destra quando compare il riquadro (§325).
+  const [settled, setSettled] = useState(false);
 
   useEffect(() => {
     if (!token) return;
-    apiClient
-      .myVerificationStatus(token)
-      .then(setStatus)
-      .catch(() => setStatus(null));
-    apiClient
-      .getMyProfessionalProfile(token)
-      .then((profile) => setStripeVerified(profile?.stripeVerified ?? false))
-      .catch(() => setStripeVerified(false));
+    Promise.allSettled([
+      apiClient
+        .myVerificationStatus(token)
+        .then(setStatus)
+        .catch(() => setStatus(null)),
+      apiClient
+        .getMyProfessionalProfile(token)
+        .then((profile) => setStripeVerified(profile?.stripeVerified ?? false))
+        .catch(() => setStripeVerified(false)),
+    ]).then(() => setSettled(true));
   }, [token, reloadKey]);
 
-  return { steps: status && stripeVerified !== null ? setupJourney(status, stripeVerified) : null, status };
+  return { steps: status && stripeVerified !== null ? setupJourney(status, stripeVerified) : null, status, settled };
 }
 
 /** "Completa il profilo" in Oggi: sparisce quando è tutto fatto. */
-export function SetupJourneyCard({ token }: { token: string }) {
-  const { steps } = useSetupJourney(token);
+export function SetupJourneyCard({ steps }: { steps: JourneyStep[] | null }) {
   if (!steps || journeyDone(steps)) return null;
   // Manca solo un passo facoltativo (pagamenti online): una riga, non il
   // riquadro intero (richiesta dell'utente, docs/CHANGELOG.md §325).

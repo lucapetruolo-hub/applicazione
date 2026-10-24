@@ -38,6 +38,10 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
   // prima compariva dopo e spingeva giù la pagina (A1 della verifica,
   // docs/CHANGELOG.md §310).
   const professionalArea = pathname.startsWith("/dashboard");
+  // Altrove (es. Messaggi, cliente o professionista) si tiene lo spazio dello
+  // schermo mentre si carica l'accesso: il piè di pagina compariva in alto e
+  // poi veniva spinto giù (CLS 0,38, docs/CHANGELOG.md §325).
+  if (!user && isLoading && !professionalArea) return <div style={{ minHeight: "100vh" }}>{children}</div>;
   if (!user && !(isLoading && professionalArea)) return <>{children}</>;
 
   const isProfessional = user ? user.isProfessional : professionalArea;
