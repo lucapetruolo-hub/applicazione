@@ -32,7 +32,7 @@ jobs:
           build-mode: none
           queries: security-extended
           # Stesso perimetro di Semgrep: il codice che arriva agli utenti
-          # (fuori anche le prove nel browser di e2e/, §320).
+          # (fuori anche le prove nel browser di e2e/, §322).
           config: |
             paths-ignore:
               - "**/*.test.ts"

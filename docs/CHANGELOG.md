@@ -20319,7 +20319,7 @@ Non fatto qui: zod 4 (aggiornamento grande, rischio basso: il corpo JSON ha già
 
 **Verifica**: lint di tutto il monorepo a zero errori e zero avvisi, typecheck, build. Foto delle 132 pagine prima e dopo (`confronto-pagine`, con il limite di richieste dell'API alzato solo in locale per non avere risposte 429 a caso): 128 identiche al pixel; le altre 4 (riga "adesso" dell'agenda, admin Finanza, pochi pixel in `/urgente`) cambiano anche tra due giri fatti senza modifiche. Stessi stati HTTP, nessun errore nuovo in console. Prove nel browser: filtri della ricerca e menu da telefono si chiudono con un clic sullo sfondo e con Esc, non con un clic dentro; ricerca rapida admin; elenco utenti admin con la ricerca; campi di `/account` compilati anche arrivando da un'altra pagina; finestra della fascia oraria in agenda con `role="dialog"` reso da Tamagui. CodeQL 2.27.3 in locale con le stesse regole della CI: nessuna segnalazione nel codice del sito.
 
-## 320. CodeQL rosso sul ramo principale dopo ogni unione, CI non più doppia
+## 322. CodeQL rosso sul ramo principale dopo ogni unione, CI non più doppia
 
 **Richiesta dell'utente (24/10/2026)**: "github mi da tanti run failed, controlla".
 

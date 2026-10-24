@@ -7,7 +7,7 @@ name: CI
 # ancora minima), ma è la prima rete di sicurezza automatica del progetto.
 # Al push solo sul ramo principale: sugli altri rami la CI parte già con la
 # PR, e prima partiva due volte per ogni modifica (due email per ogni
-# errore, docs/CHANGELOG.md §320).
+# errore, docs/CHANGELOG.md §322).
 on:
   push:
     branches: ["claude/professionisti-platform-architecture-xr9gmn"]
