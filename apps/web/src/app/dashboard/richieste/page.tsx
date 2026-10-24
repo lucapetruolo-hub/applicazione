@@ -324,9 +324,12 @@ function RichiesteContent() {
   }
 
   if (isLoading || (token && leads === null && !profileMissing)) {
+    // Stessi margini, larghezza e titolo della pagina caricata: niente salto
+    // quando arrivano le richieste (CLS, docs/CHANGELOG.md §334).
     return (
-      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
-        <YStack width="100%" maxWidth={800}>
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
+        <YStack width="100%" maxWidth={1180} gap="$5">
+          <RequestsHeading />
           <SkeletonRequestList count={3} />
         </YStack>
       </YStack>
@@ -354,22 +357,8 @@ function RichiesteContent() {
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={1000} gap="$5">
-        <XStack justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap="$3">
-          <YStack gap="$1">
-            <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite}>
-              Richieste ricevute
-            </Text>
-            <Text fontFamily="$body" fontSize={16} color={brand.grafite70}>
-              Gestisci preventivi, rispondi ai clienti e tieni traccia di ogni lavoro
-            </Text>
-          </YStack>
-          <Link href="/dashboard">
-            <Button variant="ghost" size="$3">
-              ← Dashboard
-            </Button>
-          </Link>
-        </XStack>
+      <YStack width="100%" maxWidth={1180} gap="$5">
+        <RequestsHeading />
 
         {/* Tab filtro — riga unica scorrevole orizzontalmente (richiesta
             esplicita dell'utente, con riferimento visivo puntuale): niente
@@ -673,6 +662,20 @@ function RichiesteContent() {
           </YStack>
         )}
       </YStack>
+    </YStack>
+  );
+}
+
+function RequestsHeading() {
+  return (
+    <YStack gap="$1">
+      {/* Stesso nome della voce di menu (richiesta dell'utente, docs/CHANGELOG.md §334). */}
+      <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite}>
+        Richieste e lavori
+      </Text>
+      <Text fontFamily="$body" fontSize={16} color={brand.grafite70}>
+        Gestisci preventivi, rispondi ai clienti e tieni traccia di ogni lavoro
+      </Text>
     </YStack>
   );
 }

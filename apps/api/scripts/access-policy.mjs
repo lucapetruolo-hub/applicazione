@@ -62,6 +62,7 @@ const selfAny = [
   "DELETE /auth/me",
   "GET /auth/me",
   "PATCH /auth/me",
+  "PATCH /auth/me/preferences",
   "GET /auth/me/export",
   "POST /auth/me/image",
   "POST /auth/verify-email/code",
