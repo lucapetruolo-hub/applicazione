@@ -43,11 +43,11 @@ Implicazioni tecniche dirette:
 | Livello | Scelta | Perché |
 |---|---|---|
 | Web (desktop/mobile browser) | **Next.js 15** (App Router, TypeScript) | SSR/SSG per SEO su pagine categoria/professionista — critico per il ricavo da visibilità |
-| App mobile (iOS + Android) | **Expo / React Native** (TypeScript) | Un'unica codebase per iOS e Android, OTA update, accesso a push notification/fotocamera/geolocalizzazione native |
+| App mobile (iOS + Android) | **Expo 58 / React Native 0.88** (TypeScript) | Un'unica codebase per iOS e Android, OTA update, accesso a push notification/fotocamera/geolocalizzazione native |
 | UI condivisa web+mobile | **Tamagui** (o in alternativa NativeWind) | Stessi componenti/design tokens compilati sia per React Native che per web → "stessa interfaccia" richiesta, senza duplicare il design system |
 | Backend API | **NestJS 11** (Node.js, TypeScript, Express 5) | Struttura modulare adatta a un dominio con tanti bounded context (utenti, prenotazioni, pagamenti, ricerca) |
 | Database | **PostgreSQL** + **PostGIS** | Ricerca geografica (professionisti vicini) nativa in SQL; PostGIS evita di introdurre subito un motore di ricerca separato |
-| ORM | **Prisma** | Type-safety end-to-end condivisa col resto del monorepo TS |
+| ORM | **Prisma 6** | Type-safety end-to-end condivisa col resto del monorepo TS |
 | Ricerca full-text avanzata (fase 2) | **Meilisearch** o **Typesense** | Da introdurre quando serve ranking sponsorizzato + filtri complessi oltre a ciò che Postgres gestisce bene |
 | Autenticazione | **Email+password + Google Sign-In**, JWT emesso da `apps/api` | Login implementato direttamente in NestJS (bcrypt + `@nestjs/jwt`, niente Auth.js/Clerk): un solo backend emette la sessione per web e mobile. Google: pagina di accesso di Google in una finestra (OpenID Connect `id_token` + `nonce`, ritorno su `/accesso-google`), nessuno script Google sul sito e quindi nessun consenso cookie (docs/CHANGELOG.md §265). Niente Apple Sign-In (richiede Apple Developer Program a pagamento, non attivato) |
 | Pagamenti | **Stripe** (Subscriptions + Checkout one-off) | Copre sia l'abbonamento SaaS ricorrente sia i pacchetti di visibilità one-shot |
@@ -81,17 +81,18 @@ prima discuterne e aggiornare questo file.
 - **Next.js 15** (docs/CHANGELOG.md §292): nelle pagine server `params` e
   `searchParams` (come `cookies()` e `headers()`) sono Promise da attendere;
   il `typecheck` di `apps/web` esegue prima `next typegen`, che genera i tipi
-  con cui si controllano le props delle pagine. Il sito usa React 19
-  (§293), l'app mobile resta su React 18: in `apps/web/tsconfig.json`
-  `paths` forza i tipi di React 19, perché nella radice del monorepo ci
-  sono quelli 18 dell'app mobile. Prima e dopo un aggiornamento importante
+  con cui si controllano le props delle pagine. Sito e app usano la stessa
+  versione di React 19, fissata con `overrides` in `pnpm-workspace.yaml`
+  (§294): aggiornandola, cambiarla lì e nei `package.json` di `apps/web` e
+  `apps/mobile` insieme. Prima e dopo un aggiornamento importante
   `pnpm --filter @professionisti/web confronto-pagine` fotografa tutte le
   pagine e confronta i due giri pixel per pixel (istruzioni in testa a
   `apps/web/scripts/confronto-pagine.mjs`).
-- Il build di produzione di `apps/mobile` avviene su **EAS Build** (cloud),
-  non in locale: `expo export` in locale è soggetto a un conflitto di
-  versione noto tra pacchetti Metro in ambienti pnpm, non vale la pena
-  risolverlo per un comando che non è il path di build reale.
+- Il build di produzione di `apps/mobile` avviene su **EAS Build** (cloud).
+  Dal passaggio a Expo 58 (§294) `npx expo export --platform android|ios`
+  funziona anche in locale ed è un buon controllo veloce che il pacchetto
+  si generi; `npx expo-doctor` controlla le versioni (TypeScript escluso
+  apposta in `package.json`, il monorepo ne usa uno solo).
 - Lo script `build` di `apps/api` compila prima `@professionisti/database` e
   `@professionisti/shared` (altrimenti TypeScript non trova quei moduli): non toglierlo.
 - **Migrazioni DB**: mai `prisma db push` in produzione. Lo `start` di

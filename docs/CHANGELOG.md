@@ -19966,3 +19966,21 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 - **Confronto delle pagine**: `apps/web/scripts/confronto-pagine.mjs` (`pnpm --filter @professionisti/web confronto-pagine foto <cartella>` e `confronta <prima> <dopo>`), con `playwright` tra le dipendenze di sviluppo del sito. Fotografa a pagina intera tutte le pagine (pubbliche, cliente, professionista, admin, 404) a 1440 e 390 px, salva stato HTTP ed errori di console in `report.json`, e confronta due giri segnando in rosso i pixel diversi. Le sessioni di prova si passano con variabili d'ambiente, istruzioni in testa al file.
 
 **Verifica**: 487 test dell'API, controllo d'avvio, typecheck e lint di tutto il monorepo, build del sito. API avviata con un database locale: accesso (401 con token falso), errori di validazione 400, JSON rovinato 400, ricerca, richieste del professionista, caricamento immagine (multer), notifiche in tempo reale (SSE). Con lo strumento nuovo: giro "prima" con Next 14, React 18 e NestJS 10 (commit di partenza) e giro "dopo" con Next 15.5, React 19 e NestJS 11, 132 foto: 131 identiche al pixel, una con 8 pixel di antialiasing; stessi stati HTTP e nessun errore in console. Prove di navigazione e moduli (ricerca, profilo, indietro, Online/A domicilio, accesso, contatti, richieste e profilo del professionista) senza errori.
+
+## 294. App mobile su Expo 58 e React 19
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Aggiornamento Next.js"): "cambia anche l'app su react 19".
+
+**Decisione presa**:
+- `apps/mobile`: Expo 51 → 58 (React Native 0.74 → 0.88, React 18.2 → 19.3.0), con le versioni indicate da Expo 58 per `expo-router`, `expo-font`, `expo-status-bar`, `react-native-safe-area-context` e `react-native-screens`, più i pacchetti che `expo-router` ora chiede (`expo-linking`, `expo-constants`, `@expo/metro-runtime`, `@expo/log-box`). Tolto `newArchEnabled` da `app.json`: la nuova architettura ora è l'unica. TypeScript escluso dal controllo versioni di Expo (`expo.install.exclude`): Expo 58 chiederebbe TypeScript 6, il monorepo resta su uno solo.
+- **Una sola versione di React in tutto il monorepo**: `overrides` in `pnpm-workspace.yaml` per `react`, `react-dom` (19.3.0), `react-native` (0.88.0), `react-native-reanimated`, `react-native-worklets` e `@react-native/metro-config` (quelli usati da Expo 58). Senza, i pacchetti condivisi (Tamagui in `packages/ui`) si portavano dietro copie diverse. Il sito passa da 19.3.1 a 19.3.0, la versione di Expo. Tolto il `paths` di `apps/web/tsconfig.json` del §293 (non serve più con una sola versione dei tipi); `peerDependencyRules.allowedVersions.react` ora "19"; `@types/react` 19 anche in `packages/ui`. Un `JSX.Element` globale in `CategoryIcons.tsx` ora importato da `react` (i tipi di React 19 non hanno più il `JSX` globale).
+
+**Verifica**: typecheck di tutto il monorepo (app compresa), lint, test, build. `npx expo export` per Android e iOS genera il pacchetto (prima non funzionava in locale), `npx expo-doctor` 20 controlli su 20. Non provata su un telefono vero: va fatto con una build EAS prima di pubblicarla (checklist di lancio, punto 29).
+
+## 295. Prisma 6
+
+**Richiesta esplicita dell'utente** (24/10/2026, stesso thread): "aggiorna anche prisma da 5 a 6".
+
+**Decisione presa**: `prisma` e `@prisma/client` 5.22 → 6.19. Nel codice nessun campo `Bytes`, nessun `NotFoundError`, nessun nome riservato: niente da cambiare. Una migrazione nuova (`20261024092854_prisma6_relazioni_implicite`): in Prisma 6 la tabella della relazione molti-a-molti implicita `_ProfessionalExtraCategories` usa una chiave primaria invece di un indice unico. Stessi dati, parte da sola al primo avvio su Render.
+
+**Verifica**: build, typecheck, lint, test, controllo d'avvio dell'API. Migrazione applicata al database locale con i dati di prova; su un database vuoto tutte le migrazioni più il seed, poi `migrate diff` senza differenze tra schema e database. Foto delle 132 pagine contro il ramo principale (Next 14, React 18, NestJS 10, Prisma 5): 128 identiche al pixel, nelle altre la riga "adesso" dell'agenda e pochi pixel di antialiasing; nessun errore in console; prove di navigazione e moduli senza errori.

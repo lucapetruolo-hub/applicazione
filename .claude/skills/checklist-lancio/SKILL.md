@@ -338,6 +338,24 @@ aperti solo:
     nostro database, come le ricerche della PR #92 (gli eventi di Vercel
     Analytics richiedono il piano a pagamento), senza dati personali.
 
+29. **Dopo gli aggiornamenti di Next.js 15, React 19, NestJS 11, Expo 58 e
+    Prisma 6** (PR #103, docs/CHANGELOG.md §292-§295):
+    - **Confronto delle pagine nei controlli automatici**: oggi
+      `pnpm --filter @professionisti/web confronto-pagine` si lancia a mano.
+      Farlo partire a ogni PR, con un database di prova (seed) e l'API
+      avviata nella CI, insieme alle prove del punto 26. Rilanciarlo
+      comunque a mano una volta subito prima del lancio.
+    - **App mobile** (ora Expo 58, React 19, React Native 0.88): i pacchetti
+      Android e iOS si generano, ma non è stata provata su un telefono vero.
+      Prima di pubblicarla negli store: build con EAS e prova su un iPhone e
+      un Android (l'app è comunque ancora da completare).
+    - **Primo deploy su Render dopo la PR #103**: parte da sola una piccola
+      migrazione di Prisma 6 (chiave delle relazioni molti-a-molti, nessun
+      dato toccato). Controllare che arrivi l'email di deploy riuscito e che
+      `/health` risponda.
+    - Quando sono unite sia la PR #100 sia la #103, togliere la voce
+      "Next.js 15" dal punto 28: è fatta.
+
 
 ## Da fare dopo il lancio
 
