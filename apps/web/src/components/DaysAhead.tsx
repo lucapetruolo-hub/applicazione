@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Cloud, CloudFog, CloudLightning, CloudRain, CloudSun, Snowflake, Sun, Wind } from "lucide-react";
 import { formatAppointmentTime, WEATHER_CONDITION_LABEL, type DayAhead, type WeatherCondition } from "@professionisti/shared";
 
@@ -37,17 +38,20 @@ export function WeatherStrip({ days }: { days: DayAhead[] | null }) {
         const look = day.weather ? CONDITION_ICONS[day.weather.condition] : null;
         const label = day.weather ? WEATHER_CONDITION_LABEL[day.weather.condition] : "Meteo non disponibile";
         return (
-          <li key={day.date} className="weather-chip" title={day.weather ? `${label} · ${day.weather.place}` : label}>
-            <span className="weather-chip-day">{i < 2 ? DAY_NAMES[i] : new Date(`${day.date}T12:00:00Z`).toLocaleDateString("it-IT", { weekday: "long", timeZone: "UTC" })}</span>
-            <span className="weather-chip-main">
-              {look ? <look.icon size={22} strokeWidth={2} color={look.color} aria-label={label} role="img" /> : null}
-              {day.weather?.tempMax != null ? (
-                <strong>
-                  {day.weather.tempMax}°<span>{day.weather.tempMin != null ? ` ${day.weather.tempMin}°` : ""}</span>
-                </strong>
-              ) : null}
-            </span>
-            <span className="weather-chip-label">{label}</span>
+          <li key={day.date}>
+            {/* Tocca un giorno: l'agenda si apre su quel giorno (§325). */}
+            <Link href={`/dashboard/agenda?giorno=${day.date}`} className="weather-chip" title={day.weather ? `${label} · ${day.weather.place}` : label}>
+              <span className="weather-chip-day">{i < 2 ? DAY_NAMES[i] : new Date(`${day.date}T12:00:00Z`).toLocaleDateString("it-IT", { weekday: "long", timeZone: "UTC" })}</span>
+              <span className="weather-chip-main">
+                {look ? <look.icon size={22} strokeWidth={2} color={look.color} aria-label={label} role="img" /> : null}
+                {day.weather?.tempMax != null ? (
+                  <strong>
+                    {day.weather.tempMax}°<span>{day.weather.tempMin != null ? ` ${day.weather.tempMin}°` : ""}</span>
+                  </strong>
+                ) : null}
+              </span>
+              <span className="weather-chip-label">{day.weather?.away ? `${label} · ${day.weather.place}` : label}</span>
+            </Link>
           </li>
         );
       })}

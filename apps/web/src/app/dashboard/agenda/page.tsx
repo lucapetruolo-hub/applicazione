@@ -176,10 +176,12 @@ function DashboardAgendaContent() {
   // passa comunque a Settimana/Mese con i selettori. Rilevato una sola
   // volta all'avvio, senza listener: cambiare orientamento/larghezza dopo
   // non deve resettare la scelta fatta a mano dall'utente.
+  // `?giorno=AAAA-MM-GG` (un giorno del meteo in "Oggi", docs/CHANGELOG.md §325) apre quel giorno.
+  const deepLinkedDay = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.get("giorno") ?? "") ? searchParams.get("giorno")! : null;
   const [bookingView, setBookingView] = useState<CalendarView>(() =>
-    typeof window !== "undefined" && window.innerWidth < 640 ? "day" : "week",
+    deepLinkedDay || (typeof window !== "undefined" && window.innerWidth < 640) ? "day" : "week",
   );
-  const [bookingCurrentDate, setBookingCurrentDate] = useState(todayUtc());
+  const [bookingCurrentDate, setBookingCurrentDate] = useState(() => (deepLinkedDay ? new Date(`${deepLinkedDay}T00:00:00.000Z`) : todayUtc()));
   const [selectedBooking, setSelectedBooking] = useState<ProfessionalBooking | null>(null);
   const [isBookingActionPending, setIsBookingActionPending] = useState(false);
   // Cronologia completa della richiesta collegata, aperta dal pannello di
@@ -259,16 +261,21 @@ function DashboardAgendaContent() {
     savedSlotsRef.current = next;
     setSlots(next);
   }
-  function openDeepLinkedBooking(list: ProfessionalBooking[]) {
+  function openDeepLinkedBooking(list: ProfessionalBooking[], jobs: ExternalJob[]) {
     if (consumedBookingDeepLinkRef.current) return;
     consumedBookingDeepLinkRef.current = true;
     const targetId = searchParams.get("booking");
     const match = targetId ? list.find((b) => b.id === targetId) : undefined;
-    if (match) {
+    // `?esterno=<id>`: un lavoro aggiunto a mano, aperto da "Oggi" (§325).
+    const externalId = searchParams.get("esterno");
+    const externalMatch = externalId ? jobs.find((j) => j.id === externalId) : undefined;
+    const target = match ?? externalMatch;
+    if (target) {
       setActiveTab("calendario");
       setBookingView("day");
-      setBookingCurrentDate(startOfDayUtc(new Date(match.scheduledAt)));
-      setSelectedBooking(match);
+      setBookingCurrentDate(startOfDayUtc(new Date(target.scheduledAt)));
+      if (match) setSelectedBooking(match);
+      else if (externalMatch) setSelectedExternalJob(externalMatch);
     }
   }
 
@@ -352,7 +359,7 @@ function DashboardAgendaContent() {
       .then(([loadedBookings, loadedJobs]) => {
         if (cancelled) return;
         setBookings(loadedBookings);
-        openDeepLinkedBooking(loadedBookings);
+        openDeepLinkedBooking(loadedBookings, loadedJobs);
         setExternalJobs(loadedJobs);
         // Il riquadro aperto mostra subito lo stato nuovo (es. annullato dal cliente).
         setSelectedBooking((current) => (current ? (loadedBookings.find((b) => b.id === current.id) ?? current) : current));
@@ -364,7 +371,7 @@ function DashboardAgendaContent() {
         const copy = readAgendaOffline(user.id);
         if (copy) {
           setBookings(copy.bookings);
-          openDeepLinkedBooking(copy.bookings);
+          openDeepLinkedBooking(copy.bookings, copy.externalJobs);
           setExternalJobs(copy.externalJobs);
           setOfflineSavedAt(copy.savedAt);
           return;

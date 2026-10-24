@@ -237,7 +237,7 @@ export class AgendaService {
         const comune = city ? findComuneByName(city) : undefined;
         const place = comune ? { name: comune.name, lat: comune.lat, lon: comune.lon } : { name: profile.city, lat: profile.latitude, lon: profile.longitude };
         const forecast = (await this.weatherService.forecast(place.lat, place.lon)).find((day) => day.date === date);
-        return { date, weather: forecast ? { ...forecast, place: place.name } : null };
+        return { date, weather: forecast ? { ...forecast, place: place.name, away: place.name.toLowerCase() !== profile.city.trim().toLowerCase() } : null };
       }),
     );
   }

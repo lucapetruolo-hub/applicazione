@@ -87,7 +87,11 @@ export type DayForecast = { date: string; condition: WeatherCondition; tempMax: 
  * Meteo di un giorno in "Oggi": del comune del primo lavoro a domicilio del
  * giorno, o della zona del profilo se non ce ne sono (`place` è quel comune).
  */
-export type DayAhead = { date: string; weather: (DayForecast & { place: string }) | null };
+export type DayAhead = {
+  date: string;
+  /** `away`: il comune è diverso da quello del profilo (da computer si scrive accanto al tempo). */
+  weather: (DayForecast & { place: string; away: boolean }) | null;
+};
 
 /** Una tappa del giro del giorno. */
 export type DayRouteStop = {

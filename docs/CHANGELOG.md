@@ -20415,4 +20415,6 @@ Richiesta dell'utente: "si potrebbe dare l'icona del meteo per 3 giorni e dire d
 
 **Come funziona**: `GET /agenda/days-ahead` (`AgendaService.daysAhead`) usa le stesse previsioni Open-Meteo dell'icona dell'agenda (`WeatherService`, ora con temperature e cache delle risposte, una sola chiamata per zona all'ora). Il meteo è quello del comune del primo lavoro a domicilio del giorno (prenotazioni e lavori aggiunti a mano, `firstHomeCity`), altrimenti della zona del profilo; a Open-Meteo vanno solo le coordinate del centro del comune, mai l'indirizzo. Informativa privacy aggiornata. Se il meteo non arriva la riga sparisce, i lavori restano.
 
+**Migliorie approvate dall'utente** ("effettua le migliorie"): in "Oggi" compaiono anche i lavori aggiunti a mano in agenda (aprono il lavoro in agenda con `?esterno=<id>`); toccando un giorno del meteo l'agenda si apre su quel giorno (`?giorno=AAAA-MM-GG`, vista Giorno); da computer, se il meteo è di un comune diverso da quello del profilo, si legge accanto al tempo ("Pioggia · Sezze", campo `away`).
+
 **Verifica**: test su tempo del giorno, temperature e comune del primo lavoro (`agenda-tools.test.ts`), 37 test dell'agenda; anteprime da telefono (390px) e computer (1440px) con e senza lavori.

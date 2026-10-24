@@ -1118,14 +1118,29 @@ button.notif-row-main:hover {
   padding: 0;
   list-style: none;
 }
+.weather-strip > li {
+  min-width: 0;
+}
 .weather-chip {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  height: 100%;
   padding: 12px 14px;
   border-radius: 20px;
+  border: 1px solid transparent;
   background: #ffffff;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 150ms ease-out;
+}
+.weather-chip:hover {
+  border-color: #f0dcc0;
+}
+.weather-chip:focus-visible {
+  outline: 3px solid #189a63;
+  outline-offset: 2px;
 }
 .weather-chip.is-loading {
   min-height: 92px;
@@ -1143,6 +1158,7 @@ button.notif-row-main:hover {
   gap: 8px;
 }
 .weather-chip-main strong {
+  white-space: nowrap;
   font-size: 20px;
   font-weight: 800;
   color: #2b2420;
