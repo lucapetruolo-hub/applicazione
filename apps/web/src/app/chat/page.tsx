@@ -170,7 +170,7 @@ export default function ChatPage() {
       <div className={`chat-shell${user.isProfessional ? " is-pro" : ""}${selectedThread ? " has-selection" : ""}`}>
         <div className="chat-list-pane">
           {threads === null ? (
-            <YStack backgroundColor={brand.calce} borderRadius={16} overflow="hidden" margin="$4">
+            <YStack backgroundColor={brand.calce} borderRadius={12} overflow="hidden" margin="$4">
               {[0, 1, 2, 3].map((i) => (
                 <SkeletonThreadRow key={i} zebra={i % 2 !== 0} />
               ))}
@@ -180,7 +180,7 @@ export default function ChatPage() {
               <EmptyState icon="message-circle" title="Nessuna conversazione" description="Le chat delle tue richieste e dei tuoi preventivi compariranno qui." />
             </YStack>
           ) : (
-            <YStack backgroundColor={brand.calce} borderRadius={16} overflow="hidden" margin="$4">
+            <YStack backgroundColor={brand.calce} borderRadius={12} overflow="hidden" margin="$4">
               {threads.map((thread, index) => (
                 <ChatThreadRow
                   key={threadKey(thread)}
@@ -338,17 +338,17 @@ function ChatThreadRow({
         </Text>
         {/* Categoria + inizio della descrizione del lavoro (docs/CHANGELOG.md
             §198): due chat con la stessa persona non sembrano più uguali. */}
-        <Text fontSize="$2" color={brand.grafite70} numberOfLines={1}>
+        <Text fontSize={13} color={brand.grafite70} numberOfLines={1}>
           {thread.categoryLabel}
           {thread.requestDescription?.trim() ? ` · ${thread.requestDescription.trim()}` : ""}
         </Text>
-        <Text fontSize="$3" color={brand.grafite70} numberOfLines={1}>
+        <Text fontSize={16} color={brand.grafite70} numberOfLines={1}>
           {thread.lastMessageIsMine ? "Tu: " : ""}
           {previewText}
         </Text>
       </YStack>
       <YStack alignItems="flex-end" gap="$1" flexShrink={0}>
-        <Text fontSize="$2" color={brand.grafite70}>
+        <Text fontSize={13} color={brand.grafite70}>
           {formatThreadTimestamp(thread.lastMessageAt)}
         </Text>
         <UnreadDot count={effectiveUnreadCount} />
@@ -364,7 +364,7 @@ function ChatThreadRow({
         height={32}
         alignItems="center"
         justifyContent="center"
-        borderRadius={8}
+        borderRadius={6}
         backgroundColor={brand.gesso}
         cursor="pointer"
         flexShrink={0}

@@ -51,7 +51,9 @@ import { AgendaModule } from "./agenda/agenda.module";
     // di abuso (registrazione, login, waitlist, richieste guidate,
     // recensioni) hanno un limite più stretto via @Throttle sul singolo
     // controller — CLAUDE.md §10/AUDIT.md §6, punto rimandato alla Fase 6.
-    ThrottlerModule.forRoot([{ name: "default", ttl: 60_000, limit: 60 }]),
+    // `RATE_LIMIT_PER_MINUTE` serve solo alle prove nel browser, che fanno
+    // tutte le chiamate dallo stesso indirizzo (docs/CHANGELOG.md §311).
+    ThrottlerModule.forRoot([{ name: "default", ttl: 60_000, limit: Number(process.env.RATE_LIMIT_PER_MINUTE) || 60 }]),
     // Scadenza/espansione automatica dei Lead e delle richieste guidate
     // (CLAUDE.md §14, GuidedRequestsService.runExpiryCheck): nessuna coda
     // reale nello stack (Redis/BullMQ restano solo nella tabella §2, mai

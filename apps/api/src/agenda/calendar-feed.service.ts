@@ -51,7 +51,7 @@ export class CalendarFeedService {
     const since = new Date(now.getTime() - PAST_DAYS * DAY_MS);
     const [bookings, externalJobs] = await Promise.all([
       this.prisma.booking.findMany({
-        where: { professionalProfileId: profile.id, scheduledAt: { gte: since }, status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] } },
+        where: { professionalProfileId: profile.id, OR: [{ scheduledAt: { gte: since } }, { scheduledEndAt: { gte: since } }], status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] } },
         select: {
           id: true,
           scheduledAt: true,
@@ -71,7 +71,7 @@ export class CalendarFeedService {
         orderBy: { scheduledAt: "asc" },
       }),
       this.prisma.externalJob.findMany({
-        where: { professionalProfileId: profile.id, scheduledAt: { gte: since }, status: { in: ["SCHEDULED", "COMPLETED"] } },
+        where: { professionalProfileId: profile.id, OR: [{ scheduledAt: { gte: since } }, { scheduledEndAt: { gte: since } }], status: { in: ["SCHEDULED", "COMPLETED"] } },
         select: { id: true, scheduledAt: true, scheduledEndAt: true, clientName: true, address: true, description: true },
         orderBy: { scheduledAt: "asc" },
       }),

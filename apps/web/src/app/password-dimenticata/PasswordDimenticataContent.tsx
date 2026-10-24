@@ -87,7 +87,7 @@ export function PasswordDimenticataContent() {
           </YStack>
         ) : (
           <YStack gap="$4">
-            <Text fontSize="$3" color={brand.grafite70} textAlign="center">
+            <Text fontSize={16} color={brand.grafite70} textAlign="center">
               Ti mandiamo un codice per sceglierne una nuova.
             </Text>
             <AuthField
@@ -105,7 +105,7 @@ export function PasswordDimenticataContent() {
             />
             <TurnstileWidget onTokenChange={setTurnstileToken} resetSignal={turnstileReset} />
             {error === TURNSTILE_PENDING_MESSAGE ? (
-              <Text role="alert" color={brand.urgenza} fontSize="$3">
+              <Text role="alert" color={brand.urgenza} fontSize={16}>
                 {error}
               </Text>
             ) : null}

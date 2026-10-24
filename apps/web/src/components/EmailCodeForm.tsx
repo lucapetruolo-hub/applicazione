@@ -156,7 +156,7 @@ export function EmailCodeForm({
     } catch (err) {
       const text = err instanceof Error ? err.message : "Non siamo riusciti a controllare il codice, riprova.";
       // Scaduto o tentativi finiti: si può solo chiederne uno nuovo.
-      if (/^Il codice è scaduto|troppe volte|finito i tentativi/.test(text)) setValidFor(0);
+      if (text.startsWith("Il codice è scaduto") || /troppe volte|finito i tentativi/.test(text)) setValidFor(0);
       setState("error");
       setMessage(text);
       setCode("");
@@ -255,7 +255,7 @@ export function EmailCodeForm({
 
   return (
     <YStack gap="$4">
-      <Text fontSize="$4" color={brand.grafite70} textAlign="center">
+      <Text fontSize={16} color={brand.grafite70} textAlign="center">
         {intro} {EMAIL_CODE_LENGTH} cifre a<br />
         <Text fontWeight="700" color={brand.grafite}>
           {email}
@@ -293,34 +293,34 @@ export function EmailCodeForm({
 
       <div id="email-code-status" role="status" aria-live="polite" style={{ minHeight: 22, textAlign: "center" }}>
         {state === "checking" ? (
-          <Text fontSize="$3" color={brand.grafite70}>
+          <Text fontSize={16} color={brand.grafite70}>
             Controllo il codice...
           </Text>
         ) : state === "done" ? (
           <XStack gap="$2" alignItems="center" justifyContent="center">
             <Icon name="check" size={18} color={brand.cianografiaScuro} strokeWidth={2.5} />
-            <Text fontSize="$3" fontWeight="700" color={brand.cianografiaScuro}>
+            <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
               {doneLabel}
             </Text>
           </XStack>
         ) : resendState === "sending" && validFor <= 0 ? (
-          <Text fontSize="$3" color={brand.grafite70}>
+          <Text fontSize={16} color={brand.grafite70}>
             Il codice di prima è scaduto: te ne mandiamo uno nuovo...
           </Text>
         ) : message ? (
-          <Text fontSize="$3" color={brand.urgenza}>
+          <Text fontSize={16} color={brand.urgenza}>
             {message}
           </Text>
         ) : expired ? (
-          <Text fontSize="$3" color={brand.urgenza}>
+          <Text fontSize={16} color={brand.urgenza}>
             Il codice è scaduto. Chiedine uno nuovo qui sotto.
           </Text>
         ) : resendState === "renewed" ? (
-          <Text fontSize="$3" color={brand.cianografiaScuro} fontWeight="600">
+          <Text fontSize={16} color={brand.cianografiaScuro} fontWeight="600">
             Il codice di prima era scaduto: te ne abbiamo mandato uno nuovo.
           </Text>
         ) : resendState === "sent" ? (
-          <Text fontSize="$3" color={brand.cianografiaScuro} fontWeight="600">
+          <Text fontSize={16} color={brand.cianografiaScuro} fontWeight="600">
             Nuovo codice inviato. Quello di prima non vale più.
           </Text>
         ) : null}
@@ -331,12 +331,12 @@ export function EmailCodeForm({
             attesa per un nuovo invio sembrava la scadenza del codice (§250). */}
         {/* Durata e nuovo invio in una riga sola (docs/CHANGELOG.md §278). */}
         {!expired && state !== "done" ? (
-          <Text fontSize="$3" color={brand.grafite70} textAlign="center">
+          <Text fontSize={16} color={brand.grafite70} textAlign="center">
             Vale ancora {validMinutes === 1 ? "1 minuto" : `${validMinutes} minuti`}
             {resendIn > 0 ? (
               <>
                 {" · "}
-                <Text fontSize="$3" color={brand.grafite70} style={{ whiteSpace: "nowrap" }}>
+                <Text fontSize={16} color={brand.grafite70} style={{ whiteSpace: "nowrap" }}>
                   nuovo codice tra {minutes}:{seconds}
                 </Text>
               </>
@@ -345,7 +345,7 @@ export function EmailCodeForm({
         ) : null}
         {resendIn > 0 ? (
           expired ? (
-            <Text fontSize="$3" color={brand.grafite70} textAlign="center">
+            <Text fontSize={16} color={brand.grafite70} textAlign="center">
               Puoi chiederne un altro tra {minutes}:{seconds}
             </Text>
           ) : null
@@ -355,7 +355,7 @@ export function EmailCodeForm({
           </Button>
         )}
         {resendError ? (
-          <Text fontSize="$3" color={brand.urgenza} textAlign="center">
+          <Text fontSize={16} color={brand.urgenza} textAlign="center">
             {resendError}
           </Text>
         ) : null}
@@ -373,7 +373,7 @@ export function EmailCodeForm({
         ) : null}
       </YStack>
 
-      <Text fontSize="$2" color={brand.grafite70} textAlign="center">
+      <Text fontSize={13} color={brand.grafite70} textAlign="center">
         {tip}
       </Text>
     </YStack>

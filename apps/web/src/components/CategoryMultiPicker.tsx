@@ -40,10 +40,10 @@ export function CategoryMultiPicker({
   return (
     <YStack gap="$3">
       <XStack alignItems="baseline" justifyContent="space-between" gap="$3">
-        <Text fontSize="$2" color={brand.grafite70} flexShrink={1}>
+        <Text fontSize={13} color={brand.grafite70} flexShrink={1}>
           {isFull ? "Hai scelto il massimo: togline una per cambiarla." : `Fino a ${MAX_PROFESSIONAL_CATEGORIES}. La prima è la principale.`}
         </Text>
-        <Text fontSize="$2" fontWeight="700" color={value.length ? brand.cianografiaScuro : brand.grafite70} flexShrink={0} aria-live="polite">
+        <Text fontSize={13} fontWeight="700" color={value.length ? brand.cianografiaScuro : brand.grafite70} flexShrink={0} aria-live="polite">
           {value.length} su {MAX_PROFESSIONAL_CATEGORIES}
         </Text>
       </XStack>
@@ -52,7 +52,7 @@ export function CategoryMultiPicker({
 
       {value.length > 1 ? (
         <XStack alignItems="center" gap="$2" flexWrap="wrap">
-          <Text fontSize="$2" fontWeight="700" color={brand.grafite}>
+          <Text fontSize={13} fontWeight="700" color={brand.grafite}>
             Cambia la principale:
           </Text>
           {value.map((slug, index) => {
@@ -76,7 +76,7 @@ export function CategoryMultiPicker({
                 accessibilityState={{ checked: isPrimary }}
               >
                 {isPrimary ? <Icon name="star" size={13} color={brand.ottoneScuro} /> : null}
-                <Text fontSize="$2" fontWeight="600" color={isPrimary ? brand.ottoneScuro : brand.grafite}>
+                <Text fontSize={13} fontWeight="600" color={isPrimary ? brand.ottoneScuro : brand.grafite}>
                   {category.label}
                 </Text>
               </XStack>

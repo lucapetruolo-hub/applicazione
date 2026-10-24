@@ -33,13 +33,13 @@ export default tseslint.config(
       // Anche le regole del React Compiler della versione 7 (setState dentro
       // un effetto, valori impuri durante il render...) sono errori, come
       // quelle degli hooks di sempre: le eccezioni sono spiegate nel codice
-      // accanto a un eslint-disable (docs/CHANGELOG.md §303).
+      // accanto a un eslint-disable (docs/CHANGELOG.md §315).
       ...reactHooks.configs.recommended.rules,
       ...nextPlugin.configs.recommended.rules,
       ...nextPlugin.configs["core-web-vitals"].rules,
       // Accessibilità (campi senza etichetta, immagini senza testo
       // alternativo, elementi cliccabili non raggiungibili da tastiera...),
-      // tutte errori dal docs/CHANGELOG.md §303.
+      // tutte errori dal docs/CHANGELOG.md §315.
       ...jsxA11y.flatConfigs.recommended.rules,
       // Una miniatura <img> con un testo alternativo può fare da pulsante
       // (ARIA in HTML lo consente): apre la foto grande (MediaPreview).

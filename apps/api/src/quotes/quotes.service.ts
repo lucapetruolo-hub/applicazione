@@ -5,6 +5,8 @@ import {
   formatServicePriceRange,
   describePaymentOffer,
   IDENTITY_REQUIRED_FOR_QUOTES_MESSAGE,
+  MAX_JOB_DAYS,
+  jobDayCount,
   paymentChoiceIsOnline,
   paymentOfferChanged,
   quoteChangeWhat,
@@ -26,6 +28,7 @@ import { quoteResendWindow } from "./quote-resend";
 import { onlinePaymentsEnabled } from "../job-payments/online-payments-enabled";
 import { stripeVerified } from "../professional-fiscal/public-visibility";
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
+import { countBookingsInSlot, countOverlapping, loadCommitments, lockProfessionalAgenda } from "../agenda/commitments";
 
 
 /** Appuntamento "prima"/"dopo" nel payload delle notifiche, per le email (docs/CHANGELOG.md §228). */
@@ -138,6 +141,16 @@ export class QuotesService {
         where: { id: professionalProfile.id },
         data: { defaultPaymentOptions: offer.paymentOptions, defaultDepositPercent: offer.depositPercent },
       });
+    }
+
+    // Fine dopo l'inizio, al massimo MAX_JOB_DAYS giorni (lavori su più giorni, docs/CHANGELOG.md §310).
+    if (input.estimatedEndDate) {
+      if (new Date(input.estimatedEndDate) <= new Date(input.estimatedStartDate)) {
+        throw new BadRequestException("L'ora di fine deve essere dopo l'ora di inizio.");
+      }
+      if (jobDayCount(input.estimatedStartDate, input.estimatedEndDate) > MAX_JOB_DAYS) {
+        throw new BadRequestException(`Un lavoro può durare al massimo ${MAX_JOB_DAYS} giorni.`);
+      }
     }
 
     const data = {
@@ -411,6 +424,8 @@ export class QuotesService {
       proposedDate = resolved.scheduledAt;
       proposedEndDate = resolved.scheduledEndAt;
     }
+    // Un lavoro su più giorni resta della stessa durata con la nuova data di inizio (§310).
+    if (!isSameAsCurrentProposal) proposedEndDate = keepJobDays(quote, proposedEndDate);
 
     // Cosa cambia rispetto all'appuntamento sul preventivo: data, orario o
     // entrambi (docs/CHANGELOG.md §180).
@@ -570,20 +585,12 @@ export class QuotesService {
     try {
       const booking = await this.prisma.$transaction(
         async (tx) => {
-          const existingBookings = await tx.booking.findMany({
-            where: {
-              professionalProfileId: professionalProfile.id,
-              status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] },
-              scheduledAt: { gte: dayStart, lt: dayEnd },
-            },
-            select: { scheduledAt: true, serviceMode: true },
-          });
-          const bookedCount = existingBookings.filter(
-            (b) =>
-              b.scheduledAt.getTime() === scheduledAt.getTime() &&
-              (requestServiceMode ? b.serviceMode === requestServiceMode : true),
-          ).length;
-          if (bookedCount >= maxBookings) {
+          // Un lavoro già preso che si sovrappone (anche un lavoro esterno
+          // o uno lungo iniziato prima) occupa la fascia (docs/CHANGELOG.md §310).
+          await lockProfessionalAgenda(tx, professionalProfile.id);
+          const commitments =
+            (await loadCommitments(tx, [professionalProfile.id], dayStart, quote.clientProposedEndDate ?? dayEnd)).get(professionalProfile.id) ?? [];
+          if (countOverlapping(commitments, scheduledAt, quote.clientProposedEndDate, requestServiceMode) >= maxBookings) {
             throw new ConflictException("Questa fascia non è più libera.");
           }
           const created = await tx.booking.create({
@@ -734,6 +741,7 @@ export class QuotesService {
       estimatedStartDate = resolved.scheduledAt;
       estimatedEndDate = resolved.scheduledEndAt;
     }
+    estimatedEndDate = keepJobDays({ estimatedStartDate: quote.clientProposedDate ?? quote.estimatedStartDate, estimatedEndDate: quote.clientProposedDate ? quote.clientProposedEndDate : quote.estimatedEndDate }, estimatedEndDate);
 
     const updated = await this.prisma.quote.update({
       where: { id: quote.id },
@@ -930,14 +938,7 @@ export class QuotesService {
       );
     }
 
-    const existingBookings = await this.prisma.booking.findMany({
-      where: {
-        professionalProfileId,
-        status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] },
-        scheduledAt: { gte: dayStart, lt: dayEnd },
-      },
-      select: { scheduledAt: true, serviceMode: true },
-    });
+    const commitments = (await loadCommitments(this.prisma, [professionalProfileId], dayStart, dayEnd)).get(professionalProfileId) ?? [];
     const [hoursStr, minutesStr] = startTime.split(":");
     const scheduledAt = new Date(date);
     scheduledAt.setUTCHours(Number(hoursStr), Number(minutesStr), 0, 0);
@@ -949,13 +950,20 @@ export class QuotesService {
     // data+ora, non solo una — stesso principio di countBookingsInSlot già
     // in uso in ProfessionalsService per bookedCount. Filtrato per
     // modalità: le due capienze (domicilio/online) sono pool indipendenti.
-    const bookedCount = existingBookings.filter(
-      (b) => b.scheduledAt.getTime() === scheduledAt.getTime() && (serviceMode ? b.serviceMode === serviceMode : true),
-    ).length;
-    if (bookedCount >= maxBookings) {
+    if (countBookingsInSlot(commitments, dateStr, startTime, endTime, serviceMode ?? undefined) >= maxBookings) {
       throw new ConflictException("Questa fascia è già stata prenotata.");
     }
 
     return { scheduledAt, scheduledEndAt };
   }
+}
+
+/**
+ * Fine di un lavoro spostato a un'altra data: un lavoro su più giorni
+ * mantiene lo stesso numero di giorni (docs/CHANGELOG.md §310). `firstDayEnd`
+ * è la fine del primo giorno nella nuova data.
+ */
+function keepJobDays(quote: { estimatedStartDate: Date; estimatedEndDate: Date | null }, firstDayEnd: Date): Date {
+  const days = jobDayCount(quote.estimatedStartDate, quote.estimatedEndDate);
+  return days > 1 ? new Date(firstDayEnd.getTime() + (days - 1) * 24 * 60 * 60 * 1000) : firstDayEnd;
 }

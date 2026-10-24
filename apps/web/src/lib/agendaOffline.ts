@@ -1,3 +1,4 @@
+import type { CurrentUser } from "@professionisti/api-client";
 import type { ExternalJob, ProfessionalBooking } from "@professionisti/shared";
 
 /**
@@ -34,7 +35,11 @@ export function readAgendaOffline(userId: string): AgendaOfflineCopy | null {
     if (!raw) return null;
     const copy = JSON.parse(raw) as AgendaOfflineCopy;
     if (copy.userId !== userId || !Array.isArray(copy.bookings) || !Array.isArray(copy.externalJobs)) return null;
-    if (Date.now() - new Date(copy.savedAt).getTime() > MAX_AGE_MS) return null;
+    if (Date.now() - new Date(copy.savedAt).getTime() > MAX_AGE_MS) {
+      // Copia scaduta: si cancella, non resta sul telefono (P2 della verifica, §310).
+      window.localStorage.removeItem(KEY);
+      return null;
+    }
     return copy;
   } catch {
     return null;
@@ -44,6 +49,45 @@ export function readAgendaOffline(userId: string): AgendaOfflineCopy | null {
 export function clearAgendaOffline(): void {
   try {
     window.localStorage.removeItem(KEY);
+  } catch {
+    // niente da fare
+  }
+}
+
+/**
+ * Chi è entrato, salvato insieme alla copia dell'agenda (R1 della verifica,
+ * §310): senza rete il sito non può chiedere al server chi sei e mostrava
+ * "Accedi" al posto degli appuntamenti. Stessa durata della copia, e si
+ * cancella all'uscita o quando il server dice che la sessione non vale più.
+ */
+const USER_KEY = "agenda-offline-user-v1";
+
+export function saveOfflineUser(user: CurrentUser): void {
+  try {
+    window.localStorage.setItem(USER_KEY, JSON.stringify({ savedAt: new Date().toISOString(), user }));
+  } catch {
+    // Spazio pieno o navigazione privata: niente copia.
+  }
+}
+
+export function readOfflineUser(): CurrentUser | null {
+  try {
+    const raw = window.localStorage.getItem(USER_KEY);
+    if (!raw) return null;
+    const saved = JSON.parse(raw) as { savedAt: string; user: CurrentUser };
+    if (!saved.user || Date.now() - new Date(saved.savedAt).getTime() > MAX_AGE_MS) {
+      window.localStorage.removeItem(USER_KEY);
+      return null;
+    }
+    return saved.user;
+  } catch {
+    return null;
+  }
+}
+
+export function clearOfflineUser(): void {
+  try {
+    window.localStorage.removeItem(USER_KEY);
   } catch {
     // niente da fare
   }

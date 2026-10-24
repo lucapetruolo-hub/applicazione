@@ -77,7 +77,7 @@ export function InlineAuthGate({ onAuthenticated, onClose }: { onAuthenticated: 
                   <span className={back ? "is-done" : undefined} />
                 </div>
                 <YStack gap="$1">
-                  <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.cianografiaScuro}>
+                  <Text fontFamily="$body" fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
                     {HEADERS[step].eyebrow}
                   </Text>
                   <Text tag="h2" fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>

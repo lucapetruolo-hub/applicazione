@@ -26,9 +26,9 @@ const textareaStyle = {
   boxSizing: "border-box" as const,
   minHeight: 76,
   padding: 10,
-  borderRadius: 4,
+  borderRadius: 6,
   border: `1px solid ${brand.bordoCampo}`,
-  fontSize: 14,
+  fontSize: 16,
   fontFamily: "inherit",
   color: brand.grafite,
   resize: "vertical" as const,
@@ -36,9 +36,9 @@ const textareaStyle = {
 
 const smallInputStyle = {
   padding: 10,
-  borderRadius: 4,
+  borderRadius: 6,
   border: `1px solid ${brand.bordoCampo}`,
-  fontSize: 14,
+  fontSize: 16,
   fontFamily: "inherit",
   color: brand.grafite,
 };
@@ -69,11 +69,14 @@ function parseEuroToCents(value: string): number | null {
  */
 export function CompleteJobModal({
   quotedItems,
+  jobName,
   onClose,
   onComplete,
   uploadPhoto,
 }: {
   quotedItems: { name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
+  /** Nome del lavoro (es. "Idraulico"): già scritto nella voce quando il preventivo non ha voci (U2, §310). */
+  jobName?: string | null;
   onClose: () => void;
   onComplete: (input: CompleteBookingInput) => Promise<void>;
   /** Upload di una foto/video del lavoro terminato (richiesta esplicita dell'utente), restituisce l'URL. */
@@ -85,12 +88,21 @@ export function CompleteJobModal({
       ? quotedItems.map((item) => ({ name: item.name, hint: formatRangeHint(item.priceMinEurCents, item.priceMaxEurCents), price: "" }))
       : [],
   );
-  const [extraRows, setExtraRows] = useState<ExtraRow[]>(quotedItems.length === 0 ? [{ name: "", price: "" }] : []);
+  const [extraRows, setExtraRows] = useState<ExtraRow[]>(quotedItems.length === 0 ? [{ name: jobName ?? "", price: "" }] : []);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
+  // Casella da correggere: in rosso e con il cursore dentro (T8 del test dei compiti, docs/CHANGELOG.md §311).
+  const [invalidField, setInvalidField] = useState<string | null>(null);
+  function fail(message: string, field: string | null) {
+    setError(message);
+    setInvalidField(field);
+    if (field) requestAnimationFrame(() => document.getElementById(field)?.focus());
+  }
+  const fieldStyle = (field: string, base: React.CSSProperties): React.CSSProperties =>
+    invalidField === field ? { ...base, borderColor: brand.urgenza, boxShadow: `0 0 0 1px ${brand.urgenza}` } : base;
   const [isSaving, setIsSaving] = useState(false);
   const [note, setNote] = useState("");
   const [changeReason, setChangeReason] = useState("");
@@ -174,17 +186,21 @@ export function CompleteJobModal({
 
   async function handleSubmit() {
     setError(null);
+    setInvalidField(null);
 
-    if (quotedRows.some((row) => parseEuroToCents(row.price) === null)) {
-      setError("Inserisci un importo valido per ogni voce del preventivo.");
+    const badQuoted = quotedRows.findIndex((row) => parseEuroToCents(row.price) === null);
+    if (badQuoted >= 0) {
+      fail(`Scrivi l'importo di "${quotedRows[badQuoted]!.name}".`, `complete-q-${badQuoted}`);
       return;
     }
-    if (extraRows.some((row) => (row.name.trim() && !row.price.trim()) || (!row.name.trim() && row.price.trim()))) {
-      setError("Completa nome e importo di ogni voce aggiunta, o rimuovila.");
+    const badExtraName = extraRows.findIndex((row) => !row.name.trim() && row.price.trim());
+    if (badExtraName >= 0) {
+      fail("Scrivi il nome della voce, o toglila.", `complete-x-${badExtraName}-name`);
       return;
     }
-    if (parsedExtra.some((row) => row.cents === null)) {
-      setError("Inserisci un importo valido per ogni voce aggiunta.");
+    const badExtraPrice = extraRows.findIndex((row) => row.name.trim() && parseEuroToCents(row.price) === null);
+    if (badExtraPrice >= 0) {
+      fail(`Scrivi l'importo di "${extraRows[badExtraPrice]!.name.trim()}".`, `complete-x-${badExtraPrice}-price`);
       return;
     }
 
@@ -193,11 +209,11 @@ export function CompleteJobModal({
       .map((row) => ({ name: row.name, priceEurCents: row.cents as number }));
 
     if (items.length === 0) {
-      setError("Aggiungi almeno una voce con il relativo importo.");
+      fail("Aggiungi almeno una voce con il suo importo.", extraRows.length > 0 ? "complete-x-0-name" : null);
       return;
     }
     if (needsReason && !changeReason.trim()) {
-      setError("Spiega il motivo delle differenze rispetto al preventivo.");
+      fail("Spiega il motivo delle differenze rispetto al preventivo.", null);
       return;
     }
     if (!declaration) return;
@@ -260,7 +276,7 @@ export function CompleteJobModal({
           <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
             Lavoro terminato
           </Text>
-          <Text fontSize="$3" color={brand.grafite70}>
+          <Text fontSize={16} color={brand.grafite70}>
             Scrivi l&apos;importo finale di ogni voce.
           </Text>
         </YStack>
@@ -268,23 +284,25 @@ export function CompleteJobModal({
         <YStack gap="$3">
           {quotedRows.map((row, index) => (
             <YStack key={index} gap="$1">
-              <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
+              <Text fontSize={16} fontWeight="600" color={brand.grafite}>
                 {row.name}
               </Text>
               <XStack alignItems="center" gap="$2" flexWrap="wrap">
-                <Text fontSize="$2" color={brand.grafite70} flex={1} minWidth={140}>
+                <Text fontSize={13} color={brand.grafite70} flex={1} minWidth={140}>
                   {row.hint}
                 </Text>
                 <XStack alignItems="center" gap="$1">
-                  <Text fontSize="$2" color={brand.grafite70}>
+                  <Text fontSize={13} color={brand.grafite70}>
                     Importo finale (€) *
                   </Text>
                   <input aria-label="Importo finale in euro"
+                    id={`complete-q-${index}`}
+                    aria-invalid={invalidField === `complete-q-${index}` || undefined}
                     value={row.price}
                     onChange={(e) => updateQuotedPrice(index, e.target.value)}
                     placeholder="0"
                     inputMode="decimal"
-                    style={{ ...smallInputStyle, width: 90 }}
+                    style={fieldStyle(`complete-q-${index}`, { ...smallInputStyle, width: 90 })}
                   />
                 </XStack>
               </XStack>
@@ -293,23 +311,28 @@ export function CompleteJobModal({
 
           {extraRows.length > 0 ? (
             <YStack gap="$2">
-              <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
-                Altre voci
+              <Text fontSize={16} fontWeight="600" color={brand.grafite}>
+                {/* "Altre" solo se ci sono anche le voci del preventivo (T8, §311). */}
+                {quotedRows.length > 0 ? "Altre voci" : "Voci"}
               </Text>
               {extraRows.map((row, index) => (
                 <XStack key={index} gap="$2" alignItems="center" flexWrap="wrap">
                   <input aria-label="Descrizione della voce"
+                    id={`complete-x-${index}-name`}
+                    aria-invalid={invalidField === `complete-x-${index}-name` || undefined}
                     value={row.name}
                     onChange={(e) => updateExtraRow(index, "name", e.target.value)}
                     placeholder="Es. Materiale extra"
-                    style={{ ...smallInputStyle, flex: 1, minWidth: 140 }}
+                    style={fieldStyle(`complete-x-${index}-name`, { ...smallInputStyle, flex: 1, minWidth: 140 })}
                   />
                   <input aria-label="Importo in euro"
+                    id={`complete-x-${index}-price`}
+                    aria-invalid={invalidField === `complete-x-${index}-price` || undefined}
                     value={row.price}
                     onChange={(e) => updateExtraRow(index, "price", e.target.value)}
                     placeholder="€"
                     inputMode="decimal"
-                    style={{ ...smallInputStyle, width: 90 }}
+                    style={fieldStyle(`complete-x-${index}-price`, { ...smallInputStyle, width: 90 })}
                   />
                   <XStack
                     width={36}
@@ -317,15 +340,14 @@ export function CompleteJobModal({
                     alignItems="center"
                     justifyContent="center"
                     borderWidth={1}
-                    borderColor={brand.urgenza}
-                    backgroundColor={brand.urgenzaVelo}
+                    borderColor={brand.filetto}
                     borderRadius="$2"
                     cursor="pointer"
                     onPress={() => removeExtraRow(index)}
                     accessibilityRole="button"
                     accessibilityLabel="Rimuovi voce"
                   >
-                    <X size={16} strokeWidth={1.5} color={brand.urgenza} />
+                    <X size={16} strokeWidth={1.5} color={brand.grafite70} />
                   </XStack>
                 </XStack>
               ))}
@@ -354,10 +376,10 @@ export function CompleteJobModal({
 
         {needsReason && deviation ? (
           <YStack gap="$1" padding="$3" borderRadius="$3" backgroundColor={brand.urgenzaVelo}>
-            <Text fontSize="$3" fontWeight="700" color={brand.grafite}>
+            <Text fontSize={16} fontWeight="700" color={brand.grafite}>
               {completionDeviationText(deviation)}: spiega il motivo *
             </Text>
-            <Text fontSize="$2" color={brand.grafite70}>
+            <Text fontSize={13} color={brand.grafite70}>
               Preventivo: {formatServicePriceRange(deviation.quoteMinEurCents, deviation.quoteMaxEurCents)}. Lo legge anche il cliente.
             </Text>
             <textarea
@@ -371,7 +393,7 @@ export function CompleteJobModal({
         ) : null}
 
         <YStack gap="$1">
-          <Text fontSize="$2" color={brand.grafite70}>
+          <Text fontSize={13} color={brand.grafite70}>
             Note sul lavoro svolto (opzionale)
           </Text>
           <textarea
@@ -386,7 +408,7 @@ export function CompleteJobModal({
         {/* Foto/video del lavoro terminato (richiesta esplicita
             dell'utente), distinte dalle foto della recensione. */}
         <YStack gap="$1">
-          <Text fontSize="$2" color={brand.grafite70}>
+          <Text fontSize={13} color={brand.grafite70}>
             Foto o video del lavoro svolto (opzionale, fino a {MAX_COMPLETION_PHOTOS})
           </Text>
           <YStack flexDirection="row" flexWrap="wrap" gap="$2">
@@ -440,29 +462,34 @@ export function CompleteJobModal({
           </YStack>
           <input ref={photoInputRef} type="file" accept="image/*,video/*" onChange={handlePhotoChange} disabled={isUploadingPhoto} style={{ display: "none" }} />
           {photoError ? (
-            <Text color={brand.urgenza} fontSize="$2">
-              {photoError}
-            </Text>
+            <div role="alert">
+              <Text color={brand.urgenza} fontSize={13}>
+                {photoError}
+              </Text>
+            </div>
           ) : null}
         </YStack>
 
         {error ? (
-          <Text color={brand.urgenza} fontSize="$3">
-            {error}
-          </Text>
+          // Annunciato dal lettore di schermo (U2, docs/CHANGELOG.md §310).
+          <div role="alert">
+            <Text color={brand.urgenza} fontSize={16}>
+              {error}
+            </Text>
+          </div>
         ) : null}
 
         {/* Dichiarazione sull'importo (DAC7, docs/CHANGELOG.md §247): una
             riga accanto al pulsante, accettata premendo "Conferma" e salvata
             con data e versione; il testo completo dietro "Scopri di più". */}
         <YStack gap="$2">
-          <Text fontSize="$2" color={brand.grafite70}>
+          <Text fontSize={13} color={brand.grafite70}>
             Confermando dichiari che {formatEurCents(totalEurCents)} è l&apos;importo che ricevi per questo lavoro.{" "}
             <LearnMoreToggle open={declarationOpen} onToggle={() => setDeclarationOpen((v) => !v)} controls="completion-declaration" />
           </Text>
           {declarationOpen ? (
             <YStack id="completion-declaration" padding="$3" borderRadius="$3" backgroundColor={brand.gesso}>
-              <Text fontSize="$2" color={brand.grafite70}>
+              <Text fontSize={13} color={brand.grafite70}>
                 {declaration ? declaration.text : "Carico il testo..."}
               </Text>
             </YStack>

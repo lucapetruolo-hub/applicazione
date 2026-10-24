@@ -343,7 +343,7 @@ export function GuidedRequestCard({
             <Autocomplete items={ALL_ITALIAN_CITY_NAMES} getKey={(item) => item} getLabel={(item) => item} onSelect={changeCity} value={city} onChangeText={changeCity} placeholder="Città" minChars={3} />
           </YStack>
           {request.serviceMode === "ONLINE" ? (
-            <Text fontSize="$2" color={brand.grafite70}>
+            <Text fontSize={13} color={brand.grafite70}>
               Per una consulenza online non è obbligatorio indicare la città.
             </Text>
           ) : null}
@@ -370,7 +370,7 @@ export function GuidedRequestCard({
             style={textareaStyle}
           />
           {chosenAddress.missing && address.trim() ? (
-            <Text fontSize="$2" color={brand.grafite70}>
+            <Text fontSize={13} color={brand.grafite70}>
               Scegli l&apos;indirizzo dall&apos;elenco che compare mentre scrivi.
             </Text>
           ) : null}
@@ -398,7 +398,7 @@ export function GuidedRequestCard({
           <input aria-label="Scala, piano, interno" value={addressExtra} onChange={(e) => setAddressExtra(e.target.value)} placeholder="Scala, piano, interno (facoltativo)" style={textareaStyle} />
 
           <YStack gap="$1">
-            <Text fontSize="$2" color={brand.grafite70}>
+            <Text fontSize={13} color={brand.grafite70}>
               Foto o video (opzionale, fino a {MAX_REQUEST_PHOTOS})
             </Text>
             <YStack flexDirection="row" flexWrap="wrap" gap="$2">
@@ -452,14 +452,14 @@ export function GuidedRequestCard({
             </YStack>
             <input ref={photoInputRef} type="file" accept="image/*,video/*" onChange={handlePhotoChange} disabled={isUploadingPhoto} style={{ display: "none" }} />
             {photoError ? (
-              <Text color={brand.urgenza} fontSize="$2">
+              <Text color={brand.urgenza} fontSize={13}>
                 {photoError}
               </Text>
             ) : null}
           </YStack>
 
           {error ? (
-            <Text color={brand.urgenza} fontSize="$3">
+            <Text color={brand.urgenza} fontSize={16}>
               {error}
             </Text>
           ) : null}
@@ -561,7 +561,7 @@ export function GuidedRequestCard({
             <ServiceBadge online={isOnline} />
           </XStack>
           <YStack alignItems="flex-end" gap="$1">
-            <Text fontSize={14} color={brand.grafite70}>
+            <Text fontSize={16} color={brand.grafite70}>
               Inviata {formatDateTime(request.createdAt)}
             </Text>
             {stage === "completata" && booking?.finalAmountEurCents != null ? (
@@ -591,12 +591,12 @@ export function GuidedRequestCard({
         </XStack>
         <RequestStateIndicators myState={request.myState} />
         {notice ? (
-          <Text color={brand.verificato} fontSize="$3" fontWeight="600">
+          <Text color={brand.verificato} fontSize={16} fontWeight="600">
             {notice}
           </Text>
         ) : null}
         {!isOpen && error ? (
-          <Text color={brand.urgenza} fontSize="$3">
+          <Text color={brand.urgenza} fontSize={16}>
             {error}
           </Text>
         ) : null}
@@ -619,13 +619,13 @@ export function GuidedRequestCard({
           // Richieste nate dallo stesso invio con più categorie (docs/CHANGELOG.md §259).
           <XStack alignItems="center" gap="$1">
             <Icon name="send" size={14} color={brand.grafite70} />
-            <Text fontSize={14} color={brand.grafite70}>
+            <Text fontSize={16} color={brand.grafite70}>
               Inviata insieme a {new Intl.ListFormat("it-IT", { type: "conjunction" }).format(request.sentWith.map((other) => other.categoryLabel))}
             </Text>
           </XStack>
         ) : null}
         {stage === "annullata" && booking?.canceledBy ? (
-          <Text fontSize={13} fontWeight="700" color={STAGE_STYLE.annullata.fg}>
+          <Text fontSize={16} fontWeight="700" color={STAGE_STYLE.annullata.fg}>
             Annullata {booking.canceledBy === "PROFESSIONAL" ? "dal professionista" : "da te"}
           </Text>
         ) : null}
@@ -654,7 +654,7 @@ export function GuidedRequestCard({
         <YStack paddingHorizontal="$4" paddingBottom="$4" gap="$4" borderTopWidth={1} borderTopColor={brand.filetto}>
           {stage !== "scaduta" && stage !== "chiusa" ? (
             <YStack gap="$2" paddingTop="$3">
-              <Text fontSize={11} fontWeight="800" color={brand.grafite70} textTransform="uppercase">
+              <Text fontSize={13} fontWeight="800" color={brand.grafite70} textTransform="uppercase">
                 Andamento
               </Text>
               <ClientMiniTimeline stage={stage} />
@@ -664,11 +664,11 @@ export function GuidedRequestCard({
           {statusSummary ? (
             <YStack gap="$1" backgroundColor={brand.gesso} borderRadius="$3" padding="$3">
               {statusSummary.statusMessage ? (
-                <Text fontSize="$2" color={brand.grafite70}>
+                <Text fontSize={13} color={brand.grafite70}>
                   {statusSummary.statusMessage}
                 </Text>
               ) : (
-                <Text fontSize="$2" color={brand.grafite70}>
+                <Text fontSize={13} color={brand.grafite70}>
                   {/* Richiesta generale: senza il numero dei professionisti contattati (docs/CHANGELOG.md §211). */}
                   {!request.professionalProfileId
                     ? statusSummary.responded === 0
@@ -685,7 +685,7 @@ export function GuidedRequestCard({
           {request.openUntil ? (
             <XStack alignItems="center" gap="$2">
               <Icon name="clock" size={14} color={brand.grafite70} strokeWidth={1.5} />
-              <Text fontSize="$3" color={brand.grafite70}>
+              <Text fontSize={16} color={brand.grafite70}>
                 La richiesta resta aperta ai preventivi fino {formatItalianUntil(request.openUntil)}.
               </Text>
             </XStack>
@@ -694,7 +694,7 @@ export function GuidedRequestCard({
           {!request.professionalProfileId && averagePriceEurCents !== null ? (
             <XStack alignItems="center" gap="$2" backgroundColor={brand.cianografiaVelo} borderRadius="$3" padding="$3">
               <Icon name="coins" size={16} color={brand.cianografiaScuro} strokeWidth={1.5} />
-              <Text fontSize="$3" fontWeight="700" color={brand.cianografiaScuro}>
+              <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
                 Prezzo totale medio: {formatEurCents(averagePriceEurCents)}
               </Text>
             </XStack>
@@ -703,7 +703,7 @@ export function GuidedRequestCard({
           {request.address ? (
             <XStack alignItems="center" gap="$1">
               <Icon name="map-pin" size={14} color={brand.grafite70} strokeWidth={1.5} />
-              <Text fontSize="$3" color={brand.grafite70}>
+              <Text fontSize={16} color={brand.grafite70}>
                 {request.address}
                 {request.city ? `, ${request.city}` : ""}
               </Text>
@@ -728,12 +728,12 @@ export function GuidedRequestCard({
             </Link>
           </XStack>
           {canDelete && !canEditDetails ? (
-            <Text fontSize="$2" color={brand.grafite70}>
+            <Text fontSize={13} color={brand.grafite70}>
               Non modificabile: hai già ricevuto un preventivo.
             </Text>
           ) : null}
           {error ? (
-            <Text color={brand.urgenza} fontSize="$3">
+            <Text color={brand.urgenza} fontSize={16}>
               {error}
             </Text>
           ) : null}
@@ -741,7 +741,7 @@ export function GuidedRequestCard({
           {/* Elenco dei destinatari solo per una richiesta diretta: una generale arriva a tutti i professionisti della zona (§211). */}
           {request.professionalProfileId && request.sentTo.length > 0 ? (
             <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
-              <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
+              <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
                 Inviata a
               </Text>
               {request.sentTo.map((professional) => (
@@ -761,11 +761,11 @@ export function GuidedRequestCard({
                             </Text>
                           ) : null}
                         </XStack>
-                        <Text color={brand.grafite70} fontSize="$3">
+                        <Text color={brand.grafite70} fontSize={16}>
                           {professional.categoryLabel} · {professional.city}
                         </Text>
                         {professional.declined && professional.declineNote ? (
-                          <Text color={brand.grafite70} fontSize="$2">
+                          <Text color={brand.grafite70} fontSize={13}>
                             {professional.declineNote}
                           </Text>
                         ) : null}
@@ -795,7 +795,7 @@ export function GuidedRequestCard({
 
           {request.quotes.length > 0 ? (
             <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
-              <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
+              <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
                 Preventivi ricevuti
               </Text>
               {request.quotes.map((quote) => (
@@ -816,7 +816,7 @@ export function GuidedRequestCard({
               ))}
             </YStack>
           ) : (
-            <Text color={brand.grafite70} fontSize="$3">
+            <Text color={brand.grafite70} fontSize={16}>
               Nessun preventivo ricevuto ancora.
             </Text>
           )}

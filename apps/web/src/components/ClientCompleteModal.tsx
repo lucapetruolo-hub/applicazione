@@ -111,14 +111,14 @@ export function ClientCompleteModal({
           <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
             Confermi che il lavoro è terminato?
           </Text>
-          <Text fontSize="$3" color={brand.grafite70}>
+          <Text fontSize={16} color={brand.grafite70}>
             Puoi allegare qualche foto del lavoro svolto e delle note, poi ti chiederemo di lasciare una recensione al professionista.
           </Text>
         </YStack>
 
         {/* Note del cliente (docs/CHANGELOG.md §163), lette dall'admin. */}
         <YStack gap="$1">
-          <Text fontSize="$2" color={brand.grafite70}>
+          <Text fontSize={13} color={brand.grafite70}>
             Note sul lavoro (opzionale)
           </Text>
           <textarea
@@ -131,9 +131,9 @@ export function ClientCompleteModal({
               boxSizing: "border-box",
               minHeight: 76,
               padding: 10,
-              borderRadius: 4,
+              borderRadius: 6,
               border: `1px solid ${brand.bordoCampo}`,
-              fontSize: 14,
+              fontSize: 16,
               fontFamily: "inherit",
               color: brand.grafite,
               resize: "vertical",
@@ -142,7 +142,7 @@ export function ClientCompleteModal({
         </YStack>
 
         <YStack gap="$1">
-          <Text fontSize="$2" color={brand.grafite70}>
+          <Text fontSize={13} color={brand.grafite70}>
             Foto o video (opzionale, fino a {MAX_COMPLETION_PHOTOS})
           </Text>
           <YStack flexDirection="row" flexWrap="wrap" gap="$2">
@@ -196,14 +196,14 @@ export function ClientCompleteModal({
           </YStack>
           <input ref={photoInputRef} type="file" accept="image/*,video/*" onChange={handlePhotoChange} disabled={isUploadingPhoto} style={{ display: "none" }} />
           {photoError ? (
-            <Text color={brand.urgenza} fontSize="$2">
+            <Text color={brand.urgenza} fontSize={13}>
               {photoError}
             </Text>
           ) : null}
         </YStack>
 
         {error ? (
-          <Text color={brand.urgenza} fontSize="$3">
+          <Text color={brand.urgenza} fontSize={16}>
             {error}
           </Text>
         ) : null}

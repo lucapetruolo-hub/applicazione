@@ -15,6 +15,7 @@ import { Button, ButtonArrow, Surface, Text, XStack, YStack, brand, radiusDoc } 
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
+import { ProfileMissingNotice, isProfileMissingError } from "@/components/ProfileMissingNotice";
 import { SubscriptionPauseBanner, upgradeCostText } from "@/components/SubscriptionPauseBanner";
 
 /**
@@ -83,6 +84,7 @@ function AbbonamentoContent() {
   const searchParams = useSearchParams();
   const [sub, setSub] = useState<MySubscription | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [profileMissing, setProfileMissing] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [pendingTier, setPendingTier] = useState<SubscriptionTier | null>(null);
 
@@ -99,7 +101,10 @@ function AbbonamentoContent() {
     apiClient
       .getMySubscription(token)
       .then(setSub)
-      .catch((err) => setLoadError(err instanceof Error ? err.message : "Errore imprevisto, riprova."));
+      .catch((err) => {
+        if (isProfileMissingError(err)) setProfileMissing(true);
+        else setLoadError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+      });
   }, [token]);
 
   useEffect(() => {
@@ -188,6 +193,10 @@ function AbbonamentoContent() {
     );
   }
 
+  if (profileMissing) {
+    return <ProfileMissingNotice text="Serve un profilo completo (nome attività, categoria, città) prima di scegliere l'abbonamento." />;
+  }
+
   const status = sub ? statusText(sub) : null;
   const used = sub?.usage.acceptedJobsThisMonth ?? 0;
   const limit = sub?.usage.monthlyLimit ?? null;
@@ -250,7 +259,7 @@ function AbbonamentoContent() {
                 </div>
               ) : null}
               {limit !== null && used < limit && used >= Math.ceil(limit * 0.8) ? (
-                <Text color={brand.grafite70} fontSize="$3">
+                <Text color={brand.grafite70} fontSize={16}>
                   Ti restano {limit - used} {limit - used === 1 ? "lavoro" : "lavori"} questo mese. Raggiunto il limite il profilo esce dalle ricerche fino al mese prossimo.
                 </Text>
               ) : null}
@@ -332,7 +341,7 @@ function AbbonamentoContent() {
                     )}
                   </XStack>
                   {freeNow && sub?.trialEndsAt ? (
-                    <Text color={brand.grafite70} fontSize="$3">
+                    <Text color={brand.grafite70} fontSize={16}>
                       fino al {formatDate(sub.trialEndsAt)}, poi {formatEur(tier.priceEurCents)}/mese
                     </Text>
                   ) : null}
@@ -340,7 +349,7 @@ function AbbonamentoContent() {
                     {tier.monthlyAcceptedJobs === null ? "Lavori senza limite" : `${tier.monthlyAcceptedJobs} lavori al mese`}
                   </Text>
                   {hint ? (
-                    <Text color={brand.grafite70} fontSize="$3">
+                    <Text color={brand.grafite70} fontSize={16}>
                       {hint}
                     </Text>
                   ) : null}
@@ -365,7 +374,7 @@ function AbbonamentoContent() {
               );
             })}
           </YStack>
-          <Text color={brand.grafite70} fontSize="$3">
+          <Text color={brand.grafite70} fontSize={16}>
             L&apos;abbonamento si rinnova in automatico ogni mese: ti avvisiamo qualche giorno prima di ogni rinnovo e puoi annullarlo quando vuoi.
           </Text>
         </YStack>

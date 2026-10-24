@@ -1,10 +1,10 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import type { CurrentUser } from "@professionisti/api-client";
+import { ApiError, type CurrentUser } from "@professionisti/api-client";
 import { DEFAULT_NOTIFICATION_PREFERENCES, type NotificationPreferences, type RealtimeEvent } from "@professionisti/shared";
 import { apiClient } from "./apiClient";
-import { clearAgendaOffline } from "./agendaOffline";
+import { clearAgendaOffline, clearOfflineUser, readOfflineUser, saveOfflineUser } from "./agendaOffline";
 import { notificationCopy } from "./notificationCopy";
 import { emitRealtimeEvent } from "./realtimeBus";
 import { installNotificationSoundUnlock, playNotificationSound } from "./notificationSound";
@@ -71,41 +71,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setNotificationPrefsState(prefs);
   }, []);
 
-  const loadUser = useCallback(async (currentToken: string) => {
-    try {
-      const currentUser = await apiClient.me(currentToken);
-      // `null` copre sia un token non valido sia un account eliminato nel
-      // frattempo (`/auth/me` lo tratta come inesistente, vedi
-      // AuthController) — in entrambi i casi il token salvato non serve
-      // più a nulla: senza rimuoverlo, ogni ricarica di pagina ripeterebbe
-      // la stessa chiamata fallita all'infinito invece di restare
-      // semplicemente disconnessi.
-      if (!currentUser) {
-        window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+  const loadUser = useCallback(async (currentToken: string): Promise<CurrentUser | null> => {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const currentUser = await apiClient.me(currentToken);
+        // `null` copre sia un token non valido sia un account eliminato nel
+        // frattempo (`/auth/me` lo tratta come inesistente, vedi
+        // AuthController) — in entrambi i casi il token salvato non serve
+        // più a nulla: senza rimuoverlo, ogni ricarica di pagina ripeterebbe
+        // la stessa chiamata fallita all'infinito invece di restare
+        // semplicemente disconnessi.
+        if (!currentUser) {
+          window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+          clearOfflineUser();
+        } else {
+          saveOfflineUser(currentUser);
+        }
+        setUser(currentUser);
+        setToken(currentUser ? currentToken : null);
+        return currentUser;
+      } catch (err) {
+        // Bug reale trovato da un agente di verifica: un fetch fallito a
+        // livello di rete (offline, richiesta interrotta perché l'utente ha
+        // navigato altrove prima che /auth/me rispondesse — `TypeError` o
+        // `AbortError`, mai un vero 401) veniva trattato esattamente come un
+        // token non valido, disconnettendo silenziosamente un utente con una
+        // sessione perfettamente valida solo per sfortuna di tempistica. Solo
+        // una risposta HTTP che l'API ha davvero dato (qui `request()` lancia
+        // un `Error` generico con lo status nel messaggio, mai un `TypeError`/
+        // `AbortError`) significa "il token non è più valido" — un fallimento
+        // di rete lascia lo stato invariato, il prossimo tentativo (poll,
+        // ricarica, navigazione) riproverà da solo.
+        // Anche un 429 (troppe richieste) o un errore del server non dicono
+        // che il token non vale più: solo 401/403 disconnettono (§311, visto
+        // nelle prove nel browser in CI).
+        const isNetworkFailure = err instanceof TypeError || (err instanceof DOMException && err.name === "AbortError");
+        const sessionRejected = err instanceof ApiError ? err.status === 401 || err.status === 403 : !isNetworkFailure;
+        // Troppe richieste o server in difficoltà: si riprova due volte prima di arrendersi.
+        if (err instanceof ApiError && (err.status === 429 || err.status >= 500) && attempt < 2) {
+          await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)));
+          continue;
+        }
+        if (sessionRejected) {
+          window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+          clearOfflineUser();
+          setUser(null);
+          setToken(null);
+          setNotificationPrefsState(null);
+          return null;
+        }
+        // Senza rete si resta dentro con l'ultimo profilo salvato, così
+        // l'agenda mostra la sua copia invece di "Accedi" (R1 della verifica,
+        // docs/CHANGELOG.md §309-§310). Le azioni chiedono comunque la rete.
+        const offlineUser = readOfflineUser();
+        if (offlineUser) {
+          setUser((current) => current ?? offlineUser);
+          setToken((current) => current ?? currentToken);
+        }
+        return offlineUser;
       }
-      setUser(currentUser);
-      setToken(currentUser ? currentToken : null);
-      return currentUser;
-    } catch (err) {
-      // Bug reale trovato da un agente di verifica: un fetch fallito a
-      // livello di rete (offline, richiesta interrotta perché l'utente ha
-      // navigato altrove prima che /auth/me rispondesse — `TypeError` o
-      // `AbortError`, mai un vero 401) veniva trattato esattamente come un
-      // token non valido, disconnettendo silenziosamente un utente con una
-      // sessione perfettamente valida solo per sfortuna di tempistica. Solo
-      // una risposta HTTP che l'API ha davvero dato (qui `request()` lancia
-      // un `Error` generico con lo status nel messaggio, mai un `TypeError`/
-      // `AbortError`) significa "il token non è più valido" — un fallimento
-      // di rete lascia lo stato invariato, il prossimo tentativo (poll,
-      // ricarica, navigazione) riproverà da solo.
-      const isNetworkFailure = err instanceof TypeError || (err instanceof DOMException && err.name === "AbortError");
-      if (!isNetworkFailure) {
-        window.localStorage.removeItem(TOKEN_STORAGE_KEY);
-        setUser(null);
-        setToken(null);
-        setNotificationPrefsState(null);
-      }
-      return null;
     }
   }, []);
 
@@ -133,6 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.localStorage.removeItem(TOKEN_STORAGE_KEY);
     // Copia dell'agenda senza rete (docs/CHANGELOG.md §288): non resta sul telefono dopo l'uscita.
     clearAgendaOffline();
+    clearOfflineUser();
     setUser(null);
     setToken(null);
     setUnreadCount(0);

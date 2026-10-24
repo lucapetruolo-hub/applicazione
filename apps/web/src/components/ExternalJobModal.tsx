@@ -7,7 +7,7 @@ import { apiClient } from "@/lib/apiClient";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
-const inputStyle = { padding: 10, borderRadius: 4, border: `1px solid ${brand.bordoCampo}`, fontSize: 14, fontFamily: "inherit", color: brand.grafite };
+const inputStyle = { padding: 10, borderRadius: 6, border: `1px solid ${brand.bordoCampo}`, fontSize: 14, fontFamily: "inherit", color: brand.grafite };
 
 function toIsoDateLocal(date: Date): string {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
@@ -184,7 +184,7 @@ export function ExternalJobModal({
       <YStack
         role="dialog"
         aria-modal
-        aria-label={job ? "Modifica lavoro esterno" : "Aggiungi lavoro esterno"}
+        aria-label={job ? "Modifica il lavoro" : "Aggiungi un tuo lavoro"}
         width="100%"
         maxWidth={480}
         marginTop="5vh"
@@ -193,10 +193,12 @@ export function ExternalJobModal({
         padding="$5"
         gap="$4"
       >
-        <XStack justifyContent="space-between" alignItems="center">
-          <YStack gap={2}>
+        <XStack justifyContent="space-between" alignItems="center" gap="$3">
+          {/* flex + minWidth 0: la frase sotto il titolo va a capo invece di uscire dal bordo (T10, docs/CHANGELOG.md §311). */}
+          <YStack gap={2} flex={1} minWidth={0}>
             <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
-              {job ? "Modifica lavoro esterno" : "Aggiungi lavoro esterno"}
+              {/* Parole di chi lavora, non "lavoro esterno" (T9, §311). */}
+              {job ? "Modifica il lavoro" : "Aggiungi un tuo lavoro"}
             </Text>
             {job ? (
               <Text fontFamily="$body" fontSize={11} fontWeight="700" color={STATUS_COLOR[job.status]}>
@@ -204,7 +206,7 @@ export function ExternalJobModal({
               </Text>
             ) : (
               <Text fontSize="$2" color={brand.grafite70}>
-                Un lavoro preso al di fuori della piattaforma, con tutti i dati utili per svolgerlo.
+                Un lavoro preso fuori dall&apos;app: lo vedi in agenda insieme agli altri.
               </Text>
             )}
           </YStack>

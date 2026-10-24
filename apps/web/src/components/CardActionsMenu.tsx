@@ -199,7 +199,7 @@ export function CardActionsMenu({
               >
                 {confirming?.confirm ? (
                   <YStack padding="$3" gap="$2">
-                    <Text fontSize="$2" color={brand.grafite}>
+                    <Text fontSize={13} color={brand.grafite}>
                       {confirming.confirm.question}
                     </Text>
                     <XStack gap="$2">
@@ -256,7 +256,7 @@ export function CardActionsMenu({
                         accessibilityRole="button"
                       >
                         <Icon name={action.icon} size={16} color={color} />
-                        <Text fontSize="$3" color={color} fontWeight="600">
+                        <Text fontSize={16} color={color} fontWeight="600">
                           {action.text}
                         </Text>
                       </XStack>

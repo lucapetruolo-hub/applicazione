@@ -27,7 +27,7 @@ function Photos({ urls }: { urls: string[] }) {
   return (
     <XStack gap="$2" flexWrap="wrap">
       {urls.map((url) => (
-        <a key={url} href={url} target="_blank" rel="noreferrer" style={{ width: 84, height: 84, borderRadius: 8, overflow: "hidden", border: `1px solid ${brand.filetto}`, display: "block" }}>
+        <a key={url} href={url} target="_blank" rel="noreferrer" style={{ width: 84, height: 84, borderRadius: 6, overflow: "hidden", border: `1px solid ${brand.filetto}`, display: "block" }}>
           <MediaPreview url={url} />
         </a>
       ))}

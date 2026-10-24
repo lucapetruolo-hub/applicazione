@@ -166,7 +166,7 @@ function Need({ icon, children }: { icon: IconName; children: React.ReactNode })
       <YStack width={32} height={32} borderRadius={999} backgroundColor={brand.gesso} alignItems="center" justifyContent="center" flexShrink={0}>
         <Icon name={icon} size={17} color={brand.cianografiaScuro} strokeWidth={1.8} />
       </YStack>
-      <Text flex={1} fontSize={14} color={brand.grafite} paddingTop={6}>
+      <Text flex={1} fontSize={16} color={brand.grafite} paddingTop={6}>
         {children}
       </Text>
     </XStack>
@@ -261,12 +261,12 @@ function ActionPanel({
             {starting ? "Riprovo…" : "Riprova adesso"}
           </Button>
           {stillDown && !starting ? (
-            <Text fontSize={13.5} color={brand.grafite70} role="status">
+            <Text fontSize={16} color={brand.grafite70} role="status">
               Ancora non risponde: ti avvisiamo noi.
             </Text>
           ) : null}
           {startError ? (
-            <Text fontSize={13.5} color={brand.urgenza} role="alert">
+            <Text fontSize={16} color={brand.urgenza} role="alert">
               {startError}
             </Text>
           ) : null}
@@ -301,7 +301,7 @@ function ActionPanel({
         <YStack gap="$1.5">
           <Text color={brand.urgenza}>{identity.reason}</Text>
           {/* Il professionista si corregge da solo, nessun admin in mezzo (§255). */}
-          <Link href="/dashboard/fiscale" style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 14, textDecoration: "underline", alignSelf: "flex-start" }}>
+          <Link href="/dashboard/fiscale" style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 16, textDecoration: "underline", alignSelf: "flex-start" }}>
             Controlla i dati fiscali →
           </Link>
         </YStack>
@@ -339,7 +339,7 @@ function ActionPanel({
           aria-invalid={consentMissing || undefined}
           style={{ width: 20, height: 20, marginTop: 1, flexShrink: 0, accentColor: brand.cianografia, cursor: "pointer" }}
         />
-        <Text fontSize={13.5} color={brand.grafite} lineHeight={19} flex={1}>
+        <Text fontSize={16} color={brand.grafite} lineHeight={19} flex={1}>
           {biometricConsentText()}{" "}
           <Link href="/privacy#verifica-identita" target="_blank" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
             Informativa
@@ -356,24 +356,24 @@ function ActionPanel({
           {starting ? "Apertura…" : resume ? "Continua la verifica" : retry ? "Riprova la verifica" : "Inizia la verifica"}
         </Button>
         {consentMissing ? (
-          <Text fontSize={13} fontWeight="600" color={brand.urgenza} role="alert">
+          <Text fontSize={16} fontWeight="600" color={brand.urgenza} role="alert">
             Spunta il consenso per continuare.
           </Text>
         ) : null}
         {startError ? (
-          <Text fontSize={13.5} color={brand.urgenza} role="alert">
+          <Text fontSize={16} color={brand.urgenza} role="alert">
             {startError}
           </Text>
         ) : null}
         {identity.blockedReason && !startError ? (
-          <Text fontSize={13.5} color={brand.grafite70}>
+          <Text fontSize={16} color={brand.grafite70}>
             {identity.blockedReason}
           </Text>
         ) : null}
       </YStack>
       <XStack gap="$2" alignItems="center">
         <Icon name="lock" size={14} color={brand.grafite70} />
-        <Text fontSize={12.5} color={brand.grafite70} flex={1}>
+        <Text fontSize={13} color={brand.grafite70} flex={1}>
           La verifica la fa Didit, il nostro fornitore. Foto e selfie restano a Didit: noi teniamo solo l&apos;esito.
         </Text>
       </XStack>

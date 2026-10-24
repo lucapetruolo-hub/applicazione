@@ -29,11 +29,11 @@ export function TestimonialCard({ authorName, authorRole, text, rating }: Testim
             </XStack>
           ) : null}
         </XStack>
-        <Text color="$color11" fontSize="$3">
+        <Text color="$color11" fontSize={16}>
           {text}
         </Text>
         {authorRole ? (
-          <Text color="$color9" fontSize="$2" fontStyle="italic">
+          <Text color="$color9" fontSize={13} fontStyle="italic">
             {authorRole}
           </Text>
         ) : null}

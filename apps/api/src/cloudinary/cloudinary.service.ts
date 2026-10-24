@@ -234,8 +234,12 @@ export class CloudinaryService {
     if (!rawUrl.startsWith(expectedPrefix)) {
       throw new BadRequestException("URL non valido per il download.");
     }
-    const versionMatch = /\/v\d+\/(.+)$/.exec(rawUrl.split("?")[0] ?? "");
-    const pathWithExtension = versionMatch?.[1];
+    // Tutto ciò che segue il segmento di versione ("v1712345678"). Diviso per
+    // segmenti invece che con un'espressione regolare: su un indirizzo lungo
+    // fatto apposta quella poteva impiegare molto tempo (CodeQL, §313).
+    const segments = (rawUrl.split("?")[0] ?? "").split("/");
+    const versionIndex = segments.findIndex((segment) => /^v\d+$/.test(segment));
+    const pathWithExtension = versionIndex === -1 ? "" : segments.slice(versionIndex + 1).join("/");
     if (!pathWithExtension) {
       throw new BadRequestException("URL non valido per il download.");
     }

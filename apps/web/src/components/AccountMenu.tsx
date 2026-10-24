@@ -76,35 +76,44 @@ export function AccountMenu() {
         cursor="pointer"
         onPress={() => setIsOpen((open) => !open)}
         accessibilityRole="button"
-        accessibilityLabel={
-          unreadCount > 0 ? `Il mio account, ${unreadCount} novità da visualizzare` : toDo ? "Il mio account, qualcosa da completare" : "Il mio account"
-        }
       >
-        <Avatar name={displayName ?? "?"} imageUrl={displayImageUrl} size={24} />
+        {/* Niente etichetta separata: il nome letto è il testo visibile, più
+            le novità solo per il lettore di schermo (WCAG 2.5.3, docs/CHANGELOG.md §310). */}
+        <span aria-hidden="true" style={{ display: "flex" }}>
+          <Avatar name={displayName ?? "?"} imageUrl={displayImageUrl} size={24} />
+        </span>
         <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
-          {displayName}
+          {displayName ?? "Il mio account"}
         </Text>
+        <span className="sr-only">
+          {displayName ? ", il mio account" : ""}
+          {unreadCount > 0 ? `, ${unreadCount} novità da visualizzare` : toDo ? ", qualcosa da completare" : ""}
+        </span>
         {unreadCount > 0 ? (
-          <YStack
-            backgroundColor={brand.urgenza}
-            borderRadius={999}
-            minWidth={18}
-            height={18}
-            paddingHorizontal={4}
-            alignItems="center"
-            justifyContent="center"
-          >
-            <Text fontSize={11} fontWeight="700" color="white" lineHeight={14}>
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </Text>
-          </YStack>
+          <span aria-hidden="true">
+            <YStack
+              backgroundColor={brand.urgenza}
+              borderRadius={999}
+              minWidth={18}
+              height={18}
+              paddingHorizontal={4}
+              alignItems="center"
+              justifyContent="center"
+            >
+              <Text fontSize={11} fontWeight="700" color="white" lineHeight={14}>
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </Text>
+            </YStack>
+          </span>
         ) : toDo ? (
           // Stesso pallino delle voci del menu: da telefono restano fuori schermo nella barra.
           <span className="acct-nav-dot" style={{ marginLeft: 2 }} aria-hidden="true" />
         ) : null}
-        <Text fontSize="$2" color={brand.grafite70}>
-          {isOpen ? "▲" : "▼"}
-        </Text>
+        <span aria-hidden="true">
+          <Text fontSize="$2" color={brand.grafite70}>
+            {isOpen ? "▲" : "▼"}
+          </Text>
+        </span>
       </YStack>
 
       {isOpen ? (

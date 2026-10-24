@@ -117,22 +117,22 @@ export function PayoutIbanCard({
   return (
     <YStack gap="$3" {...(isStep ? {} : { paddingTop: "$3", borderTopWidth: 1, borderTopColor: brand.filetto })}>
       <YStack gap="$1">
-        <Text fontSize={15} fontWeight="700">
+        <Text fontSize={16} fontWeight="700">
           {isStep ? "Il conto su cui ricevi i pagamenti" : "IBAN dei pagamenti online"}
         </Text>
         <LearnMore summary={isStep ? "Poi completi l'attivazione su Stripe, con lo stesso conto." : "Lo stesso conto che hai indicato a Stripe."}>
-          <Text fontSize={13} color={brand.grafite70}>
+          <Text fontSize={16} color={brand.grafite70}>
             Per legge (DAC7) comunichiamo ogni anno al fisco i pagamenti online che ricevi e il conto su cui arrivano.
             Stripe non ci mostra l&apos;IBAN, per questo te lo chiediamo.
           </Text>
-          <Text fontSize={13} color={brand.grafite70}>
+          <Text fontSize={16} color={brand.grafite70}>
             Lo conserviamo cifrato e lo usiamo solo per questa comunicazione. Dopo il salvataggio vedi solo le ultime 4 cifre.
           </Text>
         </LearnMore>
       </YStack>
 
       {saved === undefined && !isStep ? (
-        <Text fontSize={13} color={brand.grafite70}>
+        <Text fontSize={16} color={brand.grafite70}>
           Caricamento...
         </Text>
       ) : showForm ? (
@@ -163,12 +163,12 @@ export function PayoutIbanCard({
             placeholder="Nome e cognome o ragione sociale"
           />
           {error ? (
-            <Text fontSize={13} color={brand.urgenza} role="alert">
+            <Text fontSize={16} color={brand.urgenza} role="alert">
               {error}
             </Text>
           ) : null}
           {loadError && !isStep ? (
-            <Text fontSize={13} color={brand.grafite70}>
+            <Text fontSize={16} color={brand.grafite70}>
               Non riusciamo a leggere l&apos;IBAN salvato: riprova più tardi.
             </Text>
           ) : null}
@@ -201,10 +201,10 @@ export function PayoutIbanCard({
         <YStack gap="$2">
           <XStack gap="$3" alignItems="center" flexWrap="wrap" justifyContent="space-between">
             <YStack gap={2}>
-              <Text fontSize={15} fontWeight="700" fontFamily="$mono" color={brand.grafite}>
+              <Text fontSize={16} fontWeight="700" fontFamily="$mono" color={brand.grafite}>
                 {saved.maskedIban}
               </Text>
-              <Text fontSize={13} color={brand.grafite70}>
+              <Text fontSize={16} color={brand.grafite70}>
                 {saved.holderName}
               </Text>
             </YStack>
@@ -216,14 +216,14 @@ export function PayoutIbanCard({
             <YStack gap="$1">
               <Badge variant={CHECK_LABEL[saved.stripeCheck].variant}>{CHECK_LABEL[saved.stripeCheck].label}</Badge>
               {CHECK_HINT[saved.stripeCheck] ? (
-                <Text fontSize={13} color={saved.stripeCheck === "MISMATCH" ? brand.urgenza : brand.grafite70}>
+                <Text fontSize={16} color={saved.stripeCheck === "MISMATCH" ? brand.urgenza : brand.grafite70}>
                   {CHECK_HINT[saved.stripeCheck]}
                 </Text>
               ) : null}
             </YStack>
           ) : null}
           {justSaved ? (
-            <Text fontSize={13} color={brand.verificato} aria-live="polite">
+            <Text fontSize={16} color={brand.verificato} aria-live="polite">
               IBAN salvato.
             </Text>
           ) : null}

@@ -74,7 +74,7 @@ export default function NotifichePage() {
           <Text fontFamily="$heading" fontWeight="800" fontSize={30} color={brand.grafite}>
             Notifiche
           </Text>
-          <Text fontSize={14} color={brand.grafite70}>
+          <Text fontSize={16} color={brand.grafite70}>
             Scegli cosa ti avvisiamo e come. Ogni modifica si salva da sola.
           </Text>
           <span className={`notif-status is-${status}`} role="status">

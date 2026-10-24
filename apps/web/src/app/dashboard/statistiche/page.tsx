@@ -176,7 +176,7 @@ export default function DashboardStatistichePage() {
           <Text fontFamily="$heading" fontWeight="800" fontSize={30} color={brand.grafite}>
             Statistiche
           </Text>
-          <Text fontSize={14} color={brand.grafite70}>
+          <Text fontSize={16} color={brand.grafite70}>
             Dalla visita al tuo profilo al lavoro pagato, nel periodo che scegli.
           </Text>
         </YStack>

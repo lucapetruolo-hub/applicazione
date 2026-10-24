@@ -12,9 +12,9 @@ const MAX_PHOTOS = 5;
 
 const fieldStyle = {
   padding: 10,
-  borderRadius: 4,
+  borderRadius: 6,
   border: `1px solid ${brand.bordoCampo}`,
-  fontSize: 14,
+  fontSize: 16,
   fontFamily: "inherit",
   color: brand.grafite,
   backgroundColor: brand.calce,
@@ -123,7 +123,7 @@ export function ProfessionalProblemModal({
             <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
               Segnalazione inviata
             </Text>
-            <Text fontSize="$3" color={brand.grafite70}>
+            <Text fontSize={16} color={brand.grafite70}>
               L&apos;abbiamo scritta in chat a {clientName} e la verificheremo il prima possibile.
             </Text>
             <Button variant="secondary" size="$3" onPress={onClose}>
@@ -136,13 +136,13 @@ export function ProfessionalProblemModal({
               <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
                 Qualcosa è andato male?
               </Text>
-              <Text fontSize="$3" color={brand.grafite70}>
+              <Text fontSize={16} color={brand.grafite70}>
                 Raccontaci cosa è successo con {clientName}. Lo scriviamo anche in chat al cliente e lo legge il nostro team.
               </Text>
             </YStack>
 
             <YStack gap="$2">
-              <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
+              <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
                 Motivo
               </Text>
               <select aria-label="Motivo" value={reason} onChange={(e) => setReason(e.target.value as ProfessionalJobProblemReason)} style={fieldStyle}>
@@ -155,7 +155,7 @@ export function ProfessionalProblemModal({
             </YStack>
 
             <YStack gap="$2">
-              <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite70}>
+              <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
                 Cosa è successo
               </Text>
               <textarea aria-label="Cosa è successo"
@@ -169,7 +169,7 @@ export function ProfessionalProblemModal({
             </YStack>
 
             <YStack gap="$1">
-              <Text fontSize="$2" color={brand.grafite70}>
+              <Text fontSize={13} color={brand.grafite70}>
                 Foto o video (facoltativi, fino a {MAX_PHOTOS})
               </Text>
               <XStack flexWrap="wrap" gap="$2">
@@ -225,7 +225,7 @@ export function ProfessionalProblemModal({
             </YStack>
 
             {error ? (
-              <Text color={brand.urgenza} fontSize="$3">
+              <Text color={brand.urgenza} fontSize={16}>
                 {error}
               </Text>
             ) : null}

@@ -32,7 +32,7 @@ export function PlatformStats({ stats }: { stats: { totalUsers: number; totalPro
           <Text fontFamily="$heading" fontWeight="700" fontSize={28} color={brand.grafite} style={{ fontVariantNumeric: "tabular-nums" }}>
             {usersValue.toLocaleString("it-IT")}
           </Text>
-          <Text fontSize={13} fontWeight="600" color={brand.grafite70}>
+          <Text fontSize={16} fontWeight="600" color={brand.grafite70}>
             Utenti entrati nella piattaforma
           </Text>
         </YStack>
@@ -40,7 +40,7 @@ export function PlatformStats({ stats }: { stats: { totalUsers: number; totalPro
           <Text fontFamily="$heading" fontWeight="700" fontSize={28} color={brand.grafite} style={{ fontVariantNumeric: "tabular-nums" }}>
             {professionalsValue.toLocaleString("it-IT")}
           </Text>
-          <Text fontSize={13} fontWeight="600" color={brand.grafite70}>
+          <Text fontSize={16} fontWeight="600" color={brand.grafite70}>
             Professionisti entrati nella piattaforma
           </Text>
         </YStack>

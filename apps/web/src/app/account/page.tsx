@@ -18,9 +18,9 @@ import { PASSWORD_RULES_ATTRIBUTE, PasswordMatchHint, PasswordRules } from "@/co
 
 const inputStyle = {
   padding: "10px 12px",
-  borderRadius: 4,
+  borderRadius: 6,
   border: `1px solid ${brand.bordoCampo}`,
-  fontSize: 15,
+  fontSize: 16,
   fontFamily: "inherit",
   color: brand.grafite,
   width: "100%",
@@ -97,7 +97,7 @@ function FieldRow({ label, required, children }: { label: string; required?: boo
   return (
     <XStack flexDirection="column" $gtSm={{ flexDirection: "row", alignItems: "center" }} gap="$2">
       <YStack width={200} flexShrink={0}>
-        <Text fontFamily="$body" fontSize={12} fontWeight="700" color={brand.grafite70}>
+        <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
           {label}
           {required ? " *" : ""}
         </Text>
@@ -442,7 +442,7 @@ export default function AccountPage() {
           <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
             Impostazioni dell&apos;account
           </Text>
-          <Text fontSize="$2" color={brand.grafite70}>
+          <Text fontSize={13} color={brand.grafite70}>
             * Campo obbligatorio
           </Text>
         </YStack>
@@ -515,7 +515,7 @@ export default function AccountPage() {
                     style={{ display: "none" }}
                   />
                   {imageError ? (
-                    <Text color={brand.urgenza} fontSize="$2" flexShrink={1}>
+                    <Text color={brand.urgenza} fontSize={13} flexShrink={1}>
                       {imageError}
                     </Text>
                   ) : null}
@@ -573,7 +573,7 @@ export default function AccountPage() {
 
         <Surface gap="$4">
           <SectionTitle>Indirizzo predefinito</SectionTitle>
-          <Text fontSize="$2" color={brand.grafite70} marginTop={-8}>
+          <Text fontSize={13} color={brand.grafite70} marginTop={-8}>
             Usato solo per pre-compilare i tuoi dati quando richiedi un preventivo — resta comunque modificabile
             per ogni singola richiesta.
           </Text>
@@ -618,7 +618,7 @@ export default function AccountPage() {
                 style={inputStyle}
               />
               {chosenAddress.missing && street.trim() ? (
-                <Text fontSize="$2" color={brand.grafite70}>
+                <Text fontSize={13} color={brand.grafite70}>
                   Scegli l&apos;indirizzo dall&apos;elenco che compare mentre scrivi.
                 </Text>
               ) : null}
@@ -682,7 +682,7 @@ export default function AccountPage() {
                 />
                 <PasswordMatchHint password={newPassword} confirmPassword={confirmNewPassword} />
                 {passwordError ? (
-                  <Text color={brand.urgenza} fontSize="$3">
+                  <Text color={brand.urgenza} fontSize={16}>
                     {passwordError}
                   </Text>
                 ) : null}
@@ -730,7 +730,7 @@ export default function AccountPage() {
               </Text>
             )}
             {!isEditingPassword && passwordSaved ? (
-              <Text color={brand.verificato} fontSize="$3">
+              <Text color={brand.verificato} fontSize={16}>
                 Password aggiornata!
               </Text>
             ) : null}
@@ -739,11 +739,11 @@ export default function AccountPage() {
           <FieldRow label="Dispositivi">
             {confirmingLogoutOthers ? (
               <YStack gap="$2" maxWidth={360}>
-                <Text color={brand.grafite} fontSize="$3">
+                <Text color={brand.grafite} fontSize={16}>
                   Uscirai da telefoni e computer dove hai fatto l'accesso, tranne questo.
                 </Text>
                 {logoutOthersError ? (
-                  <Text color={brand.urgenza} fontSize="$3">
+                  <Text color={brand.urgenza} fontSize={16}>
                     {logoutOthersError}
                   </Text>
                 ) : null}
@@ -787,7 +787,7 @@ export default function AccountPage() {
               </Text>
             )}
             {!confirmingLogoutOthers && logoutOthersDone ? (
-              <Text color={brand.verificato} fontSize="$3">
+              <Text color={brand.verificato} fontSize={16}>
                 Fatto: gli altri dispositivi sono stati scollegati.
               </Text>
             ) : null}
@@ -807,7 +807,7 @@ export default function AccountPage() {
               <Text fontWeight="600" color={brand.grafite}>
                 Esporta i tuoi dati
               </Text>
-              <Text fontSize="$2" color={brand.grafite70}>
+              <Text fontSize={13} color={brand.grafite70}>
                 Scarica un file con tutte le informazioni collegate al tuo account.
               </Text>
             </YStack>
@@ -827,7 +827,7 @@ export default function AccountPage() {
             </XStack>
           </XStack>
           {exportError ? (
-            <Text color={brand.urgenza} fontSize="$3">
+            <Text color={brand.urgenza} fontSize={16}>
               {exportError}
             </Text>
           ) : null}
@@ -839,7 +839,7 @@ export default function AccountPage() {
               <Text fontWeight="600" color={brand.urgenza}>
                 Elimina il mio account
               </Text>
-              <Text fontSize="$2" color={brand.grafite70}>
+              <Text fontSize={13} color={brand.grafite70}>
                 Azione definitiva, non reversibile.
               </Text>
             </YStack>
@@ -862,7 +862,7 @@ export default function AccountPage() {
 
           {isConfirmingDelete ? (
             <YStack gap="$3" padding="$4" backgroundColor="#FBEAE8" borderRadius="$4" borderWidth={1} borderColor={brand.urgenza}>
-              <Text color={brand.grafite} fontSize="$3">
+              <Text color={brand.grafite} fontSize={16}>
                 Questa azione è definitiva: verranno eliminati il tuo profilo, le richieste, le prenotazioni e le
                 recensioni collegate al tuo account. Scrivi <Text fontWeight="800">ELIMINA</Text> per confermare.
               </Text>
@@ -873,7 +873,7 @@ export default function AccountPage() {
                 style={{ ...inputStyle, maxWidth: 240 }}
               />
               {deleteError ? (
-                <Text color={brand.urgenza} fontSize="$3">
+                <Text color={brand.urgenza} fontSize={16}>
                   {deleteError}
                 </Text>
               ) : null}
@@ -914,12 +914,12 @@ export default function AccountPage() {
             l'eliminazione account hanno già le proprie azioni indipendenti
             più in alto, non toccate da questo spostamento. */}
         {profileError ? (
-          <Text color={brand.urgenza} fontSize="$3">
+          <Text color={brand.urgenza} fontSize={16}>
             {profileError}
           </Text>
         ) : null}
         {profileSaved ? (
-          <Text color={brand.verificato} fontSize="$3">
+          <Text color={brand.verificato} fontSize={16}>
             Dati salvati!
           </Text>
         ) : null}
