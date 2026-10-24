@@ -13,6 +13,12 @@ const timeSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Orario non v
 const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data non valida.");
 const timeRangeSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)-([01]\d|2[0-3]):([0-5]\d)$/, "Fascia oraria non valida.");
 
+/**
+ * Email di un account: senza spazi e in minuscolo, così "Mario@Gmail.com" e
+ * "mario@gmail.com" sono lo stesso account (docs/CHANGELOG.md §330).
+ */
+export const accountEmailSchema = z.string().trim().toLowerCase().email("Email non valida");
+
 export const professionalCategorySlugSchema = z.enum(categorySlugs);
 
 /**
@@ -130,7 +136,7 @@ export type ResolveContactMessageInput = z.infer<typeof resolveContactMessageSch
 
 /** Login via email + password (CLAUDE.md §8). */
 export const emailPasswordSchema = z.object({
-  email: z.string().email("Email non valida"),
+  email: accountEmailSchema,
   password: z.string().min(8, "La password deve avere almeno 8 caratteri"),
 });
 export type EmailPasswordInput = z.infer<typeof emailPasswordSchema>;
@@ -141,7 +147,7 @@ export type EmailPasswordInput = z.infer<typeof emailPasswordSchema>;
  * la password, farne scegliere una nuova o rimandare a Google.
  */
 export const emailStatusSchema = z.object({
-  email: z.string().email("Email non valida"),
+  email: accountEmailSchema,
 });
 export type EmailStatusInput = z.infer<typeof emailStatusSchema>;
 /** `new`: nessun account; `password`: accesso con password; `google`: account creato con Google, senza password. */
@@ -200,7 +206,7 @@ export const updateAccountSchema = z.object({
   name: z.string().min(2).max(120).optional(),
   surname: z.string().min(1).max(120).optional(),
   birthDate: z.string().date("Data non valida").optional(),
-  email: z.string().email("Email non valida").optional(),
+  email: accountEmailSchema.optional(),
   phone: phoneNumberSchema.optional(),
   street: z.string().max(200).optional(),
   houseNumber: z.string().max(20).optional(),
@@ -242,7 +248,7 @@ export type VerifyEmailCodeInput = z.infer<typeof verifyEmailCodeSchema>;
 
 /** Recupero password (docs/CHANGELOG.md §185): richiesta del link. */
 export const passwordResetRequestSchema = z.object({
-  email: z.string().trim().email("Email non valida"),
+  email: accountEmailSchema,
   turnstileToken: turnstileTokenSchema,
 });
 export type PasswordResetRequestInput = z.infer<typeof passwordResetRequestSchema>;
@@ -259,7 +265,7 @@ export type PasswordResetConfirmInput = z.infer<typeof passwordResetConfirmSchem
  * giusto, il server restituisce un link nuovo per scegliere la password.
  */
 export const passwordResetCodeSchema = verifyEmailCodeSchema.extend({
-  email: z.string().trim().email("Email non valida"),
+  email: accountEmailSchema,
 });
 export type PasswordResetCodeInput = z.infer<typeof passwordResetCodeSchema>;
 

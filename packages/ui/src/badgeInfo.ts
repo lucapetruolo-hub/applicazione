@@ -1,7 +1,7 @@
 // Cosa vuol dire ogni badge del professionista, mostrato passando sopra il
 // badge, toccandolo o raggiungendolo da tastiera (BadgeInfo). Ogni frase
 // dice solo quello che il sito controlla davvero, con le parole scelte
-// dall'utente (docs/CHANGELOG.md §330):
+// dall'utente (docs/CHANGELOG.md §331):
 // - "Verificato": documento e selfie approvati da Didit e intestati alla
 //   persona dei dati fiscali (identity-verification.service.ts,
 //   `matchDocumentToFiscal`), per un'azienda il legale rappresentante.

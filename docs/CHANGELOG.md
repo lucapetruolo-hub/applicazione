@@ -20490,7 +20490,21 @@ Richiesta dell'utente, tra le migliorie proposte dopo la §327 ("eccezione" con 
 - Nessun cambio al flusso: stessi tipi, stesse prove, stessa fase in chat (§165) e stessa API. Le segnalazioni dei contenuti (DSA, §319) non sono toccate.
 - Pulsante del menu più visibile (richiesta esplicita dell'utente: "rendi più visibile il pulsante ad hamburger"): in `CardActionsMenu` era un'icona grigia senza sfondo da 36px, ora è un tondo da 44px verde chiaro con bordo e icona verdi, pieno verde quando il menu è aperto. Vale per le schede del cliente e del professionista, che condividono il componente.
 
-## 330. Significato dei badge del professionista in un fumetto, badge "Privato / Partita IVA / Azienda"
+## 330. Email degli account in minuscolo
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Correggere l'email del cambio password"): il codice per reimpostare la password non arrivava. Prova sul sito vero: l'invio funziona (arriva in pochi secondi a lucapetruolo@gmail.com; il primo invio può tardare circa un minuto mentre Render gratuito si sveglia). Nel controllo è emerso però un bug vero: accesso, registrazione e recupero password confrontavano l'email rispettando le maiuscole. Chi si era iscritto come "Mario@Gmail.com" e scriveva "mario@gmail.com" non veniva trovato e, nel recupero password, non riceveva niente senza nessun avviso (di proposito, per non far scoprire chi è iscritto). Luca: "si" alla correzione.
+
+**Decisione presa**
+- `accountEmailSchema` in `packages/shared/src/schemas.ts`: email senza spazi e in minuscolo, con lo stesso messaggio "Email non valida". Usato da accesso, registrazione, stato dell'email, modifica dell'account, richiesta e codice del recupero password.
+- Accesso con Google: email di Google in minuscolo prima di cercare o creare l'account. Promozione del primo admin e invito creato da un operatore (che lo faceva già) cercano in minuscolo.
+- Migrazione `20261024150000_email_minuscolo`: porta in minuscolo le email già salvate, tranne quando un altro account ha la stessa email scritta in modo diverso (resterebbero due account con la stessa email, vietato dal database). Quegli eventuali doppioni, solo dati di prova, restano com'erano.
+- Waitlist e modulo contatti non cambiano: non sono account.
+
+**Verifica**
+- Nuova prova `apps/api/src/auth/account-email.test.ts`; 600 test, typecheck e lint verdi.
+- Migrazione provata su PostgreSQL 16 con email miste, doppioni e valori vuoti: solo le email senza doppioni passano in minuscolo.
+
+## 331. Significato dei badge del professionista in un fumetto, badge "Privato / Partita IVA / Azienda"
 
 **Richiesta esplicita dell'utente** (24/10/2026, thread "Spiegare i badge del professionista"): passando sopra un badge del professionista deve comparire la sua descrizione, soprattutto per "Verificato" ("è molto importante che il cliente capisca cosa è stato verificato"); poi: "far capire al cliente in che modalità si è iscritto il professionista e quindi differenziarli".
 
