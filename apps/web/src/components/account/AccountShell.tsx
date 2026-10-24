@@ -15,7 +15,7 @@ import { applyNavPreference, useAccountNavCollapsed, useAccountNavKeys } from "@
  * Guscio comune delle pagine personali (docs/CHANGELOG.md §147, decisione
  * esplicita dell'utente): un menu a sezioni come quello dell'area admin
  * (colonna a sinistra da 760px, riducibile a icone, barra scorrevole su
- * telefono), per il professionista e, dal §333, anche per il cliente. Senza
+ * telefono), per il professionista e, dal §334, anche per il cliente. Senza
  * accesso le pagine mostrano da sole il loro invito ad accedere.
  */
 export function AccountShell({ children }: { children: React.ReactNode }) {
@@ -24,7 +24,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
   const attention = useNavAttention();
   const [collapsed, toggleCollapsedHere] = useAccountNavCollapsed();
   // La scelta vale su tutti i dispositivi della persona (docs/CHANGELOG.md
-  // §333): salvata sull'account, ripresa da lì all'accesso.
+  // §334): salvata sull'account, ripresa da lì all'accesso.
   const savedPreference = user?.sidebarCollapsed;
   useEffect(() => {
     if (typeof savedPreference === "boolean") applyNavPreference(savedPreference);
@@ -40,7 +40,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
   const professionalArea = pathname.startsWith("/dashboard");
   // Altrove (es. Messaggi, cliente o professionista) si tiene lo spazio dello
   // schermo mentre si carica l'accesso: il piè di pagina compariva in alto e
-  // poi veniva spinto giù (CLS 0,38, docs/CHANGELOG.md §333).
+  // poi veniva spinto giù (CLS 0,38, docs/CHANGELOG.md §334).
   if (!user && isLoading && !professionalArea) return <div style={{ minHeight: "100vh" }}>{children}</div>;
   if (!user && !(isLoading && professionalArea)) return <>{children}</>;
 
@@ -52,7 +52,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="acct-shell">
       <nav className="acct-nav" aria-label="Sezioni del tuo account">
-        {/* Riduce il menu a sole icone (da 1000px, docs/CHANGELOG.md §333):
+        {/* Riduce il menu a sole icone (da 1000px, docs/CHANGELOG.md §334):
             il nome della voce compare passando sopra o col tasto Tab. */}
         <button type="button" className="acct-nav-toggle" onClick={toggleCollapsed} aria-expanded={!collapsed} aria-keyshortcuts="[" aria-label={collapsed ? "Espandi il menu" : "Riduci il menu a icone"}>
           <Icon name={collapsed ? "chevron-right" : "chevron-left"} size={16} color="#6e6459" />

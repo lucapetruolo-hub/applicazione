@@ -218,7 +218,7 @@ export const updateAccountSchema = z.object({
 export type UpdateAccountInput = z.infer<typeof updateAccountSchema>;
 
 /**
- * Preferenze dell'interfaccia salvate sull'account (docs/CHANGELOG.md §333):
+ * Preferenze dell'interfaccia salvate sull'account (docs/CHANGELOG.md §334):
  * menu laterale ridotto a icone, `null` = decide la larghezza dello schermo.
  */
 export const updatePreferencesSchema = z.object({

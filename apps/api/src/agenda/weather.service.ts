@@ -1,5 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
-import type { WeatherAlertKind, WeatherDayAlert } from "@professionisti/shared";
+import type { DayForecast, WeatherAlertKind, WeatherCondition, WeatherDayAlert } from "@professionisti/shared";
 
 const TIMEOUT_MS = 5000;
 const CACHE_TTL_MS = 60 * 60 * 1000;
@@ -15,6 +15,8 @@ type OpenMeteoDaily = {
     weather_code?: (number | null)[];
     precipitation_probability_max?: (number | null)[];
     wind_gusts_10m_max?: (number | null)[];
+    temperature_2m_max?: (number | null)[];
+    temperature_2m_min?: (number | null)[];
   };
 };
 
@@ -45,42 +47,72 @@ export function weatherAlerts(response: OpenMeteoDaily): WeatherDayAlert[] {
   return alerts;
 }
 
+/** Tempo del giorno per "Oggi": prima i fenomeni dell'agenda, poi il cielo. */
+export function weatherCondition(code: number | null | undefined, rainProbability: number | null | undefined, gustsKmh: number | null | undefined): WeatherCondition {
+  const alert = weatherAlertKind(code, rainProbability, gustsKmh);
+  if (alert) return alert;
+  if (code === 0) return "clear";
+  if (code === 1 || code === 2) return "partly";
+  return "cloudy";
+}
+
+export function dayForecasts(response: OpenMeteoDaily): DayForecast[] {
+  const daily = response.daily;
+  if (!daily?.time) return [];
+  const round = (value: number | null | undefined) => (value == null ? null : Math.round(value));
+  return daily.time.map((date, i) => ({
+    date,
+    condition: weatherCondition(daily.weather_code?.[i], daily.precipitation_probability_max?.[i], daily.wind_gusts_10m_max?.[i]),
+    tempMax: round(daily.temperature_2m_max?.[i]),
+    tempMin: round(daily.temperature_2m_min?.[i]),
+  }));
+}
+
 /**
  * Previsioni per l'icona meteo dell'agenda (docs/CHANGELOG.md §288):
  * Open-Meteo, gratuito e senza chiave, chiamato dal nostro server così il
  * browser non contatta nessun servizio esterno (niente consenso cookie).
- * Mai bloccante: se non risponde, nessuna icona.
+ * Mai bloccante: se non risponde, nessuna icona. Le stesse previsioni danno
+ * il meteo dei prossimi giorni in "Oggi" (§333).
  */
 @Injectable()
 export class WeatherService {
   private readonly logger = new Logger(WeatherService.name);
-  private readonly cache = new Map<string, { at: number; alerts: WeatherDayAlert[] }>();
+  private readonly cache = new Map<string, { at: number; response: OpenMeteoDaily }>();
 
   async alerts(latitude: number, longitude: number): Promise<WeatherDayAlert[]> {
+    return weatherAlerts(await this.daily(latitude, longitude));
+  }
+
+  async forecast(latitude: number, longitude: number): Promise<DayForecast[]> {
+    return dayForecasts(await this.daily(latitude, longitude));
+  }
+
+  private async daily(latitude: number, longitude: number): Promise<OpenMeteoDaily> {
     // Circa un chilometro di precisione: basta per il meteo e riusa la cache tra vicini.
     const key = `${latitude.toFixed(2)},${longitude.toFixed(2)}`;
     const cached = this.cache.get(key);
-    if (cached && Date.now() - cached.at < CACHE_TTL_MS) return cached.alerts;
+    if (cached && Date.now() - cached.at < CACHE_TTL_MS) return cached.response;
 
     const url = new URL("https://api.open-meteo.com/v1/forecast");
     url.searchParams.set("latitude", latitude.toFixed(2));
     url.searchParams.set("longitude", longitude.toFixed(2));
-    url.searchParams.set("daily", "weather_code,precipitation_probability_max,wind_gusts_10m_max");
+    url.searchParams.set("daily", "weather_code,precipitation_probability_max,wind_gusts_10m_max,temperature_2m_max,temperature_2m_min");
     url.searchParams.set("timezone", "Europe/Rome");
     url.searchParams.set("forecast_days", "14");
     try {
       const response = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
       if (!response.ok) {
         this.logger.warn(`Open-Meteo ha risposto ${response.status}.`);
-        return cached?.alerts ?? [];
+        return cached?.response ?? {};
       }
-      const alerts = weatherAlerts((await response.json()) as OpenMeteoDaily);
+      const daily = (await response.json()) as OpenMeteoDaily;
       if (this.cache.size >= CACHE_MAX) this.cache.delete(this.cache.keys().next().value as string);
-      this.cache.set(key, { at: Date.now(), alerts });
-      return alerts;
+      this.cache.set(key, { at: Date.now(), response: daily });
+      return daily;
     } catch (err) {
       this.logger.warn(`Open-Meteo non raggiungibile: ${err instanceof Error ? err.message : String(err)}`);
-      return cached?.alerts ?? [];
+      return cached?.response ?? {};
     }
   }
 }

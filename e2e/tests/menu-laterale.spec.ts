@@ -4,7 +4,7 @@ import { e2eData } from "../fixtures/data";
 import { API_URL } from "../fixtures/env";
 
 /**
- * Menu laterale del professionista ridotto a icone (docs/CHANGELOG.md §333):
+ * Menu laterale del professionista ridotto a icone (docs/CHANGELOG.md §334):
  * parte ridotto fino a 1366px, la scelta della persona vince, resta anche
  * ricaricando (senza aprirsi e richiudersi) e sull'account; fumetto col nome
  * che si chiude con Esc (WCAG 1.4.13), tasto [, colonna con i nomi sul tablet

@@ -82,6 +82,28 @@ export const WEATHER_ALERT_LABEL: Record<WeatherAlertKind, string> = {
   fog: "Nebbia",
 };
 
+/** Tempo del giorno per l'icona in "Oggi" (docs/CHANGELOG.md §333): sempre un'icona, anche col sereno. */
+export type WeatherCondition = "clear" | "partly" | "cloudy" | WeatherAlertKind;
+
+export const WEATHER_CONDITION_LABEL: Record<WeatherCondition, string> = {
+  clear: "Sereno",
+  partly: "Poco nuvoloso",
+  cloudy: "Nuvoloso",
+  ...WEATHER_ALERT_LABEL,
+};
+
+export type DayForecast = { date: string; condition: WeatherCondition; tempMax: number | null; tempMin: number | null };
+
+/**
+ * Meteo di un giorno in "Oggi": del comune del primo lavoro a domicilio del
+ * giorno, o della zona del profilo se non ce ne sono (`place` è quel comune).
+ */
+export type DayAhead = {
+  date: string;
+  /** `away`: il comune è diverso da quello del profilo (da computer si scrive accanto al tempo). */
+  weather: (DayForecast & { place: string; away: boolean }) | null;
+};
+
 /** Una tappa del giro del giorno. */
 export type DayRouteStop = {
   /** `booking-<id>` o `external-<id>`, per aprire l'appuntamento dal giro. */

@@ -325,7 +325,7 @@ function RichiesteContent() {
 
   if (isLoading || (token && leads === null && !profileMissing)) {
     // Stessi margini, larghezza e titolo della pagina caricata: niente salto
-    // quando arrivano le richieste (CLS, docs/CHANGELOG.md §333).
+    // quando arrivano le richieste (CLS, docs/CHANGELOG.md §334).
     return (
       <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={1180} gap="$5">
@@ -669,7 +669,7 @@ function RichiesteContent() {
 function RequestsHeading() {
   return (
     <YStack gap="$1">
-      {/* Stesso nome della voce di menu (richiesta dell'utente, docs/CHANGELOG.md §333). */}
+      {/* Stesso nome della voce di menu (richiesta dell'utente, docs/CHANGELOG.md §334). */}
       <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite}>
         Richieste e lavori
       </Text>

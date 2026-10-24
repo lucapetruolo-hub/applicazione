@@ -441,7 +441,10 @@ Città, pagine vuote fuori da Google.
       `pnpm --filter @professionisti/web confronto-pagine` si lancia a mano.
       Farlo partire a ogni PR, con un database di prova (seed) e l'API
       avviata nella CI, insieme alle prove del punto 26. Rilanciarlo
-      comunque a mano una volta subito prima del lancio.
+      comunque a mano una volta subito prima del lancio, su tutte le pagine
+      e da telefono e computer: dopo le ultime PR va guardata anche "Oggi"
+      del professionista con il meteo dei tre giorni (PR #126,
+      docs/CHANGELOG.md §333, fotografata solo con l'API simulata).
     - **App mobile** (ora Expo 58, React 19, React Native 0.88): i pacchetti
       Android e iOS si generano, ma non è stata provata su un telefono vero.
       Prima di pubblicarla negli store: build con EAS e prova su un iPhone e
@@ -491,7 +494,7 @@ Cose decise con Luca da non fare prima del lancio, ma da non dimenticare:
   locali, un link "Trovami su …" che i professionisti mettono sul loro sito
   e sui social, giornali locali della città di lancio.
 - **Voci del menu del professionista con i dati veri** (24/10/2026,
-  docs/CHANGELOG.md §333): un mese dopo il lancio guardare su Vercel Web
+  docs/CHANGELOG.md §334): un mese dopo il lancio guardare su Vercel Web
   Analytics quali pagine dell'area professionista si aprono di più e
   rivedere le 7 voci fisse della colonna (`SIDEBAR_HREFS` in
   `apps/web/src/lib/accountMenuItems.ts`, al massimo 8 con "Da completare").

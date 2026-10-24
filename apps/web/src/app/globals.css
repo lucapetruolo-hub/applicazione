@@ -890,7 +890,7 @@ button.notif-row-main:hover {
    di schede del cliente. Le pagine dentro restano centrate come prima. */
 .acct-shell {
   width: 100%;
-  /* 1600 e non più 1320 (docs/CHANGELOG.md §333): su uno schermo da 1920px
+  /* 1600 e non più 1320 (docs/CHANGELOG.md §334): su uno schermo da 1920px
      agenda e messaggi restavano in una striscia centrale con 600px vuoti. */
   max-width: 1600px;
   margin: 0 auto;
@@ -902,7 +902,7 @@ button.notif-row-main:hover {
   min-width: 0;
   flex: 1;
   /* Le pagine dentro possono adattarsi allo spazio vero, che cambia col menu
-     ridotto (docs/CHANGELOG.md §333). Non trattiene gli elementi fissi. */
+     ridotto (docs/CHANGELOG.md §334). Non trattiene gli elementi fissi. */
   container: acct-main / inline-size;
   /* Il piè di pagina resta sotto lo schermo mentre la pagina carica: prima
      compariva in alto e poi veniva spinto giù (CLS 0,14, docs/CHANGELOG.md §321). */
@@ -937,7 +937,7 @@ button.notif-row-main:hover {
 }
 /* Sul telefono, nella barra che scorre, il nome breve ("Richieste",
    "Salvati"): con quello intero si vedevano due voci sole (docs/CHANGELOG.md
-   §333). Il nome intero resta per gli screen reader. */
+   §334). Il nome intero resta per gli screen reader. */
 @media (max-width: 759px) {
   .acct-nav .acct-nav-label {
     position: absolute;
@@ -951,7 +951,7 @@ button.notif-row-main:hover {
     display: inline;
   }
 }
-/* Tasto "Riduci il menu" (docs/CHANGELOG.md §333): solo con la colonna. */
+/* Tasto "Riduci il menu" (docs/CHANGELOG.md §334): solo con la colonna. */
 .acct-nav-toggle,
 .acct-nav-tip {
   display: none;
@@ -1027,7 +1027,7 @@ button.notif-row-main:hover {
   box-shadow: 0 0 0 2px #ffffff;
 }
 /* Colonna a sinistra da 760px (tablet in verticale compreso, docs/CHANGELOG.md
-   §333): prima, fino a 1000px, era una barra che scorreva di lato e
+   §334): prima, fino a 1000px, era una barra che scorreva di lato e
    nascondeva metà delle voci. */
 @media (min-width: 760px) {
   .acct-shell {
@@ -1270,7 +1270,7 @@ button.notif-row-main:hover {
 }
 /* Home "Oggi" del professionista (docs/CHANGELOG.md §147). */
 /* Due colonne quando il contenuto è largo almeno 960px (docs/CHANGELOG.md
-   §333): conta lo spazio vero della pagina, che cambia col menu ridotto,
+   §334): conta lo spazio vero della pagina, che cambia col menu ridotto,
    non la larghezza della finestra. */
 .today-wrap {
   container-type: inline-size;
@@ -1380,7 +1380,7 @@ button.notif-row-main:hover {
 }
 .today-time {
   flex-shrink: 0;
-  min-width: 96px;
+  min-width: 56px;
   font-weight: 800;
   font-size: 16px;
 }
@@ -1397,6 +1397,94 @@ button.notif-row-main:hover {
   }
   .today-row-cta {
     margin-left: auto;
+  }
+}
+/* "Oggi": meteo dei prossimi tre giorni e lavori raggruppati per giorno (docs/CHANGELOG.md §333). */
+.weather-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 4px;
+  padding: 0;
+  list-style: none;
+}
+.weather-strip > li {
+  min-width: 0;
+}
+.weather-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  height: 100%;
+  padding: 12px 14px;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  background: #ffffff;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 150ms ease-out;
+}
+.weather-chip:hover {
+  border-color: #f0dcc0;
+}
+.weather-chip:focus-visible {
+  outline: 3px solid #189a63;
+  outline-offset: 2px;
+}
+.weather-chip.is-loading {
+  min-height: 92px;
+  background: #fbf3ea;
+}
+.weather-chip-day {
+  font-weight: 800;
+  font-size: 15px;
+  color: #2b2420;
+  text-transform: capitalize;
+}
+.weather-chip-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.weather-chip-main strong {
+  white-space: nowrap;
+  font-size: 20px;
+  font-weight: 800;
+  color: #2b2420;
+  font-variant-numeric: tabular-nums;
+}
+.weather-chip-main strong span {
+  font-size: 15px;
+  font-weight: 600;
+  color: #6e6459;
+}
+.weather-chip-label {
+  font-size: 14px;
+  color: #6e6459;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.today-day-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  margin: 8px 4px 0;
+  font-size: 15px;
+  color: #6e6459;
+}
+.today-day-head strong {
+  font-size: 16px;
+  color: #2b2420;
+}
+@media (max-width: 640px) {
+  .weather-chip {
+    padding: 10px 12px;
+  }
+  .weather-chip-label {
+    display: none;
   }
 }
 /* "Profilo pubblico": anteprima del profilo pubblico (docs/CHANGELOG.md §252). */
@@ -2232,7 +2320,7 @@ a.admin-kpi:hover {
   gap: 12px;
 }
 /* Con la pagina larga (menu ridotto) le sei tessere stanno su una riga e il
-   grafico sale (docs/CHANGELOG.md §333). */
+   grafico sale (docs/CHANGELOG.md §334). */
 @container acct-main (min-width: 1140px) {
   .pstats-kpis {
     grid-template-columns: repeat(6, minmax(0, 1fr));

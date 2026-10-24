@@ -98,6 +98,7 @@ const selfProfessional = [
   "DELETE /agenda/calendar-feed",
   "GET /agenda/calendar-feed",
   "POST /agenda/calendar-feed",
+  "GET /agenda/days-ahead",
   "GET /agenda/route",
   "GET /agenda/weather",
   "GET /agenda/week-template",

@@ -68,7 +68,7 @@ export const PROFESSIONAL_NAV: AccountNavGroup[] = [
 ];
 
 /**
- * Voci del menu laterale (docs/CHANGELOG.md §333, richiesta esplicita
+ * Voci del menu laterale (docs/CHANGELOG.md §334, richiesta esplicita
  * dell'utente: al massimo 8 icone nella colonna ridotta). Restano le voci
  * di tutti i giorni; impostazioni, dati fiscali e pagine da cliente vivono
  * nella tendina "Il mio account" (`PROFESSIONAL_NAV`). In più una voce
@@ -93,7 +93,7 @@ export function journeyNavItem(attention: ReadonlySet<string>): AccountNavItem |
 
 /**
  * Menu laterale del cliente, come quello del professionista (richiesta
- * dell'utente, docs/CHANGELOG.md §333: prima una barra di schede sotto
+ * dell'utente, docs/CHANGELOG.md §334: prima una barra di schede sotto
  * l'header, §147). Stesse voci della tendina "Il mio account". La pagina di
  * una decisione sui propri contenuti (/segnalazioni) non è nel menu, si apre
  * dall'email (docs/CHANGELOG.md §319): resta evidenziata la voce Account.

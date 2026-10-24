@@ -20532,7 +20532,19 @@ Richiesta dell'utente, tra le migliorie proposte dopo la §327 ("eccezione" con 
 **Verifica**
 - 4 test nuovi per il raggruppamento delle email (`chat-message-emails.test.ts`), typecheck, lint, test, `check-boot`, `check-realtime`.
 
-## 333. Menu laterale del professionista: riducibile a icone, al massimo 8 voci, pagine più larghe
+## 333. Meteo dei prossimi tre giorni e lavori raggruppati per giorno in "Oggi"
+
+Richiesta dell'utente: "si potrebbe dare l'icona del meteo per 3 giorni e dire del meteo anche in oggi magari con una breve descrizione dei lavori che si dovranno fare nella giornata e in oggi e domani". Mostrate due proposte con anteprime da telefono e computer (A: tre schede grandi con meteo e riepilogo; B: meteo in una riga e lavori raggruppati per giorno); l'utente ha scelto la B.
+
+**Cosa cambia**: in "Oggi", sotto "Oggi e domani", una riga con Oggi, Domani e il giorno dopo, sempre con l'icona (anche col sereno), temperatura massima e minima e, da computer, il tempo in una parola. Sotto, i lavori raggruppati per giorno con un riepilogo in una riga ("2 lavori · 8:30–17:30 · Latina, Sezze"); ogni lavoro mostra solo l'ora, il giorno è nell'intestazione. Il prossimo lavoro resta visibile senza scorrere anche da telefono (§311). In agenda l'icona resta solo col maltempo (decisione del 22/10, §288).
+
+**Come funziona**: `GET /agenda/days-ahead` (`AgendaService.daysAhead`) usa le stesse previsioni Open-Meteo dell'icona dell'agenda (`WeatherService`, ora con temperature e cache delle risposte, una sola chiamata per zona all'ora). Il meteo è quello del comune del primo lavoro a domicilio del giorno (prenotazioni e lavori aggiunti a mano, `firstHomeCity`), altrimenti della zona del profilo; a Open-Meteo vanno solo le coordinate del centro del comune, mai l'indirizzo. Informativa privacy aggiornata. Se il meteo non arriva la riga sparisce, i lavori restano.
+
+**Migliorie approvate dall'utente** ("effettua le migliorie"): in "Oggi" compaiono anche i lavori aggiunti a mano in agenda (aprono il lavoro in agenda con `?esterno=<id>`); toccando un giorno del meteo l'agenda si apre su quel giorno (`?giorno=AAAA-MM-GG`, vista Giorno); da computer, se il meteo è di un comune diverso da quello del profilo, si legge accanto al tempo ("Pioggia · Sezze", campo `away`).
+
+**Verifica**: test su tempo del giorno, temperature e comune del primo lavoro (`agenda-tools.test.ts`), 37 test dell'agenda; prova nel browser `e2e/tests/oggi-meteo.spec.ts` (lavoro aggiunto a mano che compare in "Oggi" e si apre in agenda, giorno del meteo che apre l'agenda su quel giorno, con il meteo simulato; telefono e computer, tre fusi orari), approvata dall'utente ("si falla"); il confronto foto di tutte le pagine (`confronto-pagine`) non si è potuto fare senza il database di prova: aggiunto al punto 38 della checklist di lancio ("aggiungi a prima del lancio"); anteprime da telefono (390px) e computer (1440px) con e senza lavori.
+
+## 334. Menu laterale del professionista: riducibile a icone, al massimo 8 voci, pagine più larghe
 
 **Richiesta esplicita dell'utente** (24/10/2026, thread "Menu laterale riducibile a sole icone"): poter ridurre il menu laterale del professionista a sole icone, per avere più spazio in pagine piene come Agenda e Statistiche, e togliere il pulsante "← Dashboard" rimasto in alto a destra in Richieste e lavori. Poi, nella versione approfondita: misurare con Playwright lo spazio guadagnato per pagina a 1024/1280/1440/1920px, proporre cosa fare dove il guadagno è zero, tenere al massimo 8 voci nella colonna, ridurre il menu da solo sui portatili (la scelta della persona vince sempre), valutare la colonna di icone sul tablet in verticale. Misure e proposte in `/mnt/project-files/analisi/menu-ridotto-misure-e-proposte.md`, anteprime in `/mnt/project-files/anteprime/menu-ridotto/v2/`. L'utente ha approvato tutto tranne il test di riconoscimento delle icone con persone esterne, con la soglia a 1366px e Oggi su due colonne; poi ha chiesto di rimpicciolire "Completa il profilo" in Oggi quando manca solo il passo facoltativo dei pagamenti online.
 

@@ -216,7 +216,7 @@ function AbbonamentoContent() {
   );
 
   // Finché non arriva l'abbonamento solo il titolo: prima i livelli
-  // comparivano subito e poi scendevano sotto lo stato (CLS, docs/CHANGELOG.md §333).
+  // comparivano subito e poi scendevano sotto lo stato (CLS, docs/CHANGELOG.md §334).
   if (!sub && !loadError) {
     return (
       <YStack width="100%" alignItems="center" paddingVertical="$8" paddingHorizontal="$4">

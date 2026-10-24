@@ -40,7 +40,7 @@ const isTyping = (target: EventTarget | null) =>
   target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
 
 /**
- * Tastiera del menu laterale (docs/CHANGELOG.md §333):
+ * Tastiera del menu laterale (docs/CHANGELOG.md §334):
  * - `[` riduce o espande il menu, fuori dai campi di testo (come Linear e Notion);
  * - Esc chiude il fumetto col nome (WCAG 1.4.13), che torna passando su
  *   un'altra voce o spostando il focus.
