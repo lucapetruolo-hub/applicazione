@@ -290,9 +290,7 @@ const journeyListeners = new Set<() => void>();
 const NO_HREFS: string[] = [];
 
 function publishJourney(token: string, steps: JourneyStep[]) {
-  // Un passo facoltativo (pagamenti online) non mette il pallino rosso: non
-  // deve mettere fretta (richiesta dell'utente, docs/CHANGELOG.md §333).
-  const hrefs = [...new Set(steps.filter((step) => step.state === "current" && !step.optional).map((step) => STEP_MENU_HREF[step.key]))];
+  const hrefs = [...new Set(steps.filter((step) => step.state === "current").map((step) => STEP_MENU_HREF[step.key]))];
   const same = journeyStore?.token === token && journeyStore.hrefs.join() === hrefs.join();
   journeyStore = { token, hrefs: same && journeyStore ? journeyStore.hrefs : hrefs, at: Date.now() };
   if (!same) journeyListeners.forEach((listener) => listener());
