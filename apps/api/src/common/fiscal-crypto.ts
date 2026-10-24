@@ -7,9 +7,25 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:
  * illeggibili gli IBAN. Senza la variabile (sviluppo) si ricade su
  * `JWT_SECRET`, come gli inviti (`profile-invites.service.ts`).
  */
-function fiscalKey(): Buffer {
-  const secret = process.env.FISCAL_DATA_KEY ?? process.env.JWT_SECRET ?? "dev-secret-change-me";
+function keyFrom(secret: string): Buffer {
   return createHash("sha256").update(`fiscal-data:${secret}`).digest();
+}
+
+function legacySecret(): string {
+  return process.env.JWT_SECRET ?? "dev-secret-change-me";
+}
+
+function fiscalKey(): Buffer {
+  return keyFrom(process.env.FISCAL_DATA_KEY?.trim() || legacySecret());
+}
+
+/**
+ * Chiave usata prima che `FISCAL_DATA_KEY` fosse impostata (derivata da
+ * `JWT_SECRET`): serve solo a rileggere e ricifrare i dati salvati allora
+ * (controllo sicurezza, docs/CHANGELOG.md §287). null se coincide con l'attuale.
+ */
+function legacyFiscalKey(): Buffer | null {
+  return process.env.FISCAL_DATA_KEY?.trim() ? keyFrom(legacySecret()) : null;
 }
 
 export function encryptFiscal(value: string): string {
@@ -19,15 +35,33 @@ export function encryptFiscal(value: string): string {
   return [iv, cipher.getAuthTag(), data].map((part) => part.toString("base64url")).join(".");
 }
 
-/** null se la chiave è cambiata o il dato è rovinato: mai un'eccezione che blocca il file DAC7. */
-export function decryptFiscal(value: string): string | null {
+function decryptWith(key: Buffer, value: string): string | null {
   try {
     const [iv, tag, data] = value.split(".").map((part) => Buffer.from(part, "base64url"));
     if (!iv || !tag || !data) return null;
-    const decipher = createDecipheriv("aes-256-gcm", fiscalKey(), iv);
+    const decipher = createDecipheriv("aes-256-gcm", key, iv);
     decipher.setAuthTag(tag);
     return Buffer.concat([decipher.update(data), decipher.final()]).toString("utf8");
   } catch {
     return null;
   }
+}
+
+/** null se la chiave è cambiata o il dato è rovinato: mai un'eccezione che blocca il file DAC7. */
+export function decryptFiscal(value: string): string | null {
+  const plain = decryptWith(fiscalKey(), value);
+  if (plain !== null) return plain;
+  const legacy = legacyFiscalKey();
+  return legacy ? decryptWith(legacy, value) : null;
+}
+
+/**
+ * Il dato ricifrato con la chiave attuale se era ancora cifrato con quella
+ * vecchia, altrimenti null (già a posto, oppure illeggibile).
+ */
+export function reencryptLegacyFiscal(value: string): string | null {
+  const legacy = legacyFiscalKey();
+  if (!legacy || decryptWith(fiscalKey(), value) !== null) return null;
+  const plain = decryptWith(legacy, value);
+  return plain === null ? null : encryptFiscal(plain);
 }

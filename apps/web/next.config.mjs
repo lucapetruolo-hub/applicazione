@@ -1,6 +1,20 @@
 /** @type {import('next').NextConfig} */
+// Intestazioni di sicurezza su tutte le pagine (controllo sicurezza,
+// docs/CHANGELOG.md §287). `frame-ancestors`/`X-Frame-Options`: nessun sito
+// può mostrare il nostro dentro un riquadro per far cliccare a sua insaputa.
+// La fotocamera serve solo alla chat (foto scattate dal sito); il resto è spento.
+const securityHeaders = [
+  { key: "Content-Security-Policy", value: "frame-ancestors 'none'; base-uri 'self'; object-src 'none'" },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=(), payment=(), usb=()" },
+];
+
 const nextConfig = {
   reactStrictMode: true,
+  // Niente "X-Powered-By: Next.js": non serve dire a chi cerca falle cosa usiamo.
+  poweredByHeader: false,
   images: {
     // Cloudinary (immagini profilo/portfolio, CLAUDE.md §2) è l'unica
     // origine remota servita tramite `next/image` nel sito — il cloud
@@ -29,8 +43,9 @@ const nextConfig = {
       source: "/tamagui.css",
       headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
     };
-    if (process.env.NEXT_PUBLIC_SITE_INDEXABLE === "true") return [tamaguiCss];
-    return [tamaguiCss, { source: "/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] }];
+    const security = { source: "/:path*", headers: securityHeaders };
+    if (process.env.NEXT_PUBLIC_SITE_INDEXABLE === "true") return [tamaguiCss, security];
+    return [tamaguiCss, security, { source: "/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] }];
   },
   transpilePackages: ["@professionisti/ui", "@professionisti/shared"],
   // packages/ui/src/config.ts importa `Platform` da "react-native" per

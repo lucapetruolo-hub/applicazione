@@ -19865,3 +19865,18 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 **Decisione presa**: `LoadErrorNotice` con "Riprova" al posto dei contatori e delle sezioni "Da rispondere ora" e "Oggi e domani" ("Non riusciamo a caricare richieste e appuntamenti"); "Il tuo andamento" si nasconde se non si carica; in Abbonamento "Non riusciamo a caricare il tuo abbonamento" con "Riprova". Gli avvisi in alto (pausa, percorso profilo, agenda) restano come prima.
 
 **Verifica**: typecheck e lint del web.
+
+## 287. Controllo sicurezza: le correzioni approvate
+
+**Richiesta esplicita dell'utente** (22/10/2026, thread "Controllo sicurezza completo"): controllo delle 50 falle tipiche delle app fatte con l'IA (rapporto in `/mnt/project-files/analisi/controllo-sicurezza.md`), poi "2 si, 3 si, 5 si e dovremmo anche cambiare il link dell'admin perché troppo semplice da individuare, 6 no; il resto aggiungi alla checklist di lancio".
+
+**Decisione presa**:
+- **Dipendenze**: `multer` 2.5.0 e `proxy-addr` 2.0.8 forzati con `overrides` in `pnpm-workspace.yaml` (Nest 10 ed Express 4 si fermavano a versioni con falle note). Next.js 15 in un thread a parte (checklist, punto 28).
+- **Intestazioni di sicurezza**: sul sito `frame-ancestors 'none'`/`X-Frame-Options: DENY` (niente riquadri in altri siti), `nosniff`, `Referrer-Policy`, `Permissions-Policy` (fotocamera solo per la chat), niente `X-Powered-By`. Sull'API `nosniff`, `X-Frame-Options`, `Referrer-Policy: no-referrer`, niente `X-Powered-By`. Una CSP completa sugli script resta una miglioria possibile (va provata con Google Maps, Stripe e Turnstile).
+- **API**: non parte senza `JWT_SECRET` online (`RENDER=true` o `NODE_ENV=production`); parametri dell'indirizzo letti come testo semplice (`query parser: simple`, prima `?category[contains]=` arrivava ai filtri Prisma come oggetto).
+- **Chiave dei dati fiscali**: con `FISCAL_DATA_KEY` gli IBAN si rileggono anche se cifrati con la chiave vecchia (da `JWT_SECRET`) e all'avvio vengono ricifrati con quella nuova (`reencryptLegacyFiscal`, `PayoutAccountService.onApplicationBootstrap`).
+- **Admin**: `@RequireAdminScope` dichiarato sulle 6 rotte che non lo avevano (regola 12), l'export CSV degli utenti solo ai moderatori; promozione del primo admin con 3 tentativi al minuto e confronto del codice a tempo costante.
+- **Ingresso admin nascosto** (richiesta di Luca): con `ADMIN_ENTRY_PATH` su Vercel, `apps/web/src/middleware.ts` risponde 404 su `/admin` finché il browser non apre `/<ADMIN_ENTRY_PATH>`, che lascia un cookie `admin_gate` (HttpOnly, un anno, solo su `/admin`). I link alle pagine admin nelle email funzionano solo da un browser già passato dal link. `/admin` tolto da `robots.txt` (lo rivelava). Senza la variabile nulla cambia. Resta una protezione in più: i dati admin li dà solo l'API, a un account admin.
+- Checklist di lancio, punto 28: backup e prova di ripristino, `FISCAL_DATA_KEY`, `ADMIN_ENTRY_PATH`, togliere `ADMIN_BOOTSTRAP_SECRET`, repo privato, chiavi Google limitate, Sentry, verifica in due passaggi, Next.js 15.
+
+**Verifica**: test dell'API (488 + nuovo `fiscal-crypto.test.ts`); build del sito; con `next start` e `ADMIN_ENTRY_PATH` impostata: `/admin` e `/admin/utenti` 404 senza cookie, il link d'ingresso fa 307 verso `/admin` col cookie, poi `/admin` 200; intestazioni presenti sulla home; `robots.txt` senza `/admin`.

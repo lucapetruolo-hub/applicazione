@@ -331,6 +331,34 @@ aperti solo:
     nostro database, come le ricerche della PR #92 (gli eventi di Vercel
     Analytics richiedono il piano a pagamento), senza dati personali.
 
+28. **Sicurezza: cose da fare negli account** (controllo sicurezza del
+    22/10/2026, docs/CHANGELOG.md §287, dettaglio in
+    `/mnt/project-files/analisi/controllo-sicurezza.md`):
+    - **Backup del database**: con il piano a pagamento (punto 4bis) Render
+      fa i backup giornalieri. Provare una volta il ripristino su un
+      database di prova, prima del lancio.
+    - **`FISCAL_DATA_KEY` su Render** (una stringa lunga a caso, da non
+      perdere e non cambiare più): all'avvio l'API ricifra da sola gli IBAN
+      salvati prima con la chiave delle sessioni. Da fare prima dei dati veri.
+    - **`ADMIN_ENTRY_PATH` su Vercel** (es. una parola lunga a caso): poi
+      `/admin` risponde "pagina non trovata" e l'area admin si apre solo
+      dopo aver visitato una volta da quel browser
+      `https://<sito>/<ADMIN_ENTRY_PATH>`. Conservare il link: se si perde,
+      basta cambiarlo su Vercel e rifare il deploy.
+    - **Togliere `ADMIN_BOOTSTRAP_SECRET` da Render** appena creato il primo
+      admin (gli altri si nominano da `/admin/utenti`).
+    - **Repo GitHub privato** (Settings → General → Danger Zone).
+    - **Chiavi Google**: la chiave del browser (`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`)
+      limitata ai siti `https://<dominio>/*` in Google Cloud → Credenziali;
+      la chiave server (`GOOGLE_MAPS_API_KEY`) limitata alle sole API usate
+      (Geocoding, Places API (New), Maps Static).
+    - **Sentry attivo**: `SENTRY_DSN` impostata su Render e avvisi email
+      accesi in Sentry (Alerts), con una prova.
+    - **Verifica in due passaggi** su GitHub, Render, Vercel, Stripe,
+      Cloudinary, Resend, Google Cloud, Didit, Openapi e sull'email usata
+      per questi account.
+    - **Next.js 15**: la serie 14 non riceve più correzioni di sicurezza;
+      aggiornare prima del lancio (thread dedicato).
 
 ## Da fare dopo il lancio
 

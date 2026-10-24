@@ -1,11 +1,11 @@
-import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException, type OnApplicationBootstrap } from "@nestjs/common";
 import Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
 import { checkIban, maskIban, type PayoutIbanInput, type PayoutIbanStripeCheck } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { NotificationsService } from "../notifications/notifications.service";
-import { encryptFiscal } from "../common/fiscal-crypto";
+import { encryptFiscal, reencryptLegacyFiscal } from "../common/fiscal-crypto";
 
 /** Ricontrollo con Stripe al massimo ogni 10 minuti (esito non definitivo) o ogni giorno (esito già positivo). */
 const RECHECK_PENDING_MS = 10 * 60 * 1000;
@@ -46,7 +46,7 @@ export function compareWithStripe(iban: { country: string; last4: string }, stri
  * segnala al professionista (e al file DAC7).
  */
 @Injectable()
-export class PayoutAccountService {
+export class PayoutAccountService implements OnApplicationBootstrap {
   private readonly logger = new Logger(PayoutAccountService.name);
   private readonly stripe: Stripe | null;
 
@@ -56,6 +56,29 @@ export class PayoutAccountService {
     private readonly notificationsService: NotificationsService,
   ) {
     this.stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+  }
+
+  /**
+   * Appena si imposta `FISCAL_DATA_KEY`, gli IBAN cifrati prima con la chiave
+   * derivata da `JWT_SECRET` vengono ricifrati con quella nuova (controllo
+   * sicurezza, docs/CHANGELOG.md §287). Senza la variabile non fa nulla; un
+   * errore qui non deve mai fermare l'avvio.
+   */
+  async onApplicationBootstrap(): Promise<void> {
+    if (!process.env.FISCAL_DATA_KEY?.trim()) return;
+    try {
+      const accounts = await this.prisma.professionalPayoutAccount.findMany({ select: { id: true, ibanEncrypted: true } });
+      let updated = 0;
+      for (const account of accounts) {
+        const reencrypted = reencryptLegacyFiscal(account.ibanEncrypted);
+        if (!reencrypted) continue;
+        await this.prisma.professionalPayoutAccount.update({ where: { id: account.id }, data: { ibanEncrypted: reencrypted } });
+        updated += 1;
+      }
+      if (updated > 0) this.logger.log(`IBAN ricifrati con FISCAL_DATA_KEY: ${updated}.`);
+    } catch (err) {
+      this.logger.error(`Ricifratura degli IBAN non riuscita: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   private async myFiscalProfile(userId: string) {

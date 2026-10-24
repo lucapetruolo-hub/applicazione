@@ -1,4 +1,6 @@
 import { BadRequestException, Body, Controller, ForbiddenException, Post } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { adminBootstrapSchema, type AdminBootstrapInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { AdminService } from "./admin.service";
@@ -12,6 +14,9 @@ import { AdminService } from "./admin.service";
 export class AdminBootstrapController {
   constructor(private readonly adminService: AdminService) {}
 
+  // Pochi tentativi: chi prova a indovinare il codice si ferma presto
+  // (controllo sicurezza, docs/CHANGELOG.md §287).
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @Post("bootstrap")
   async bootstrap(@Body(new ZodValidationPipe(adminBootstrapSchema)) body: AdminBootstrapInput) {
     const expectedSecret = process.env.ADMIN_BOOTSTRAP_SECRET;
@@ -20,9 +25,15 @@ export class AdminBootstrapController {
         "La promozione admin non è configurata su questo ambiente. Aggiungi ADMIN_BOOTSTRAP_SECRET per attivarla.",
       );
     }
-    if (body.secret !== expectedSecret) {
+    if (!sameSecret(body.secret, expectedSecret)) {
       throw new ForbiddenException("Codice non valido.");
     }
     return this.adminService.promoteToAdmin(body.email);
   }
+}
+
+/** Confronto a tempo costante (impronte di uguale lunghezza): il tempo di risposta non rivela il codice. */
+function sameSecret(given: string, expected: string): boolean {
+  const digest = (value: string) => createHash("sha256").update(value, "utf8").digest();
+  return timingSafeEqual(digest(given), digest(expected));
 }
