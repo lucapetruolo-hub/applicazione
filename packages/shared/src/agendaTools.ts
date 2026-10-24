@@ -38,6 +38,13 @@ export const agendaWeekTemplateSchema = z
   });
 export type AgendaWeekTemplate = z.infer<typeof agendaWeekTemplateSchema>;
 
+/**
+ * Settimana tipo con il suo stato (docs/CHANGELOG.md §323): `active` dopo il
+ * primo "Salva la settimana", da lì vale per tutte le settimane;
+ * `changedDays` = giorni aggiornati dall'ultimo salvataggio.
+ */
+export type AgendaWeekTemplateState = { template: AgendaWeekTemplate; active: boolean; changedDays: number };
+
 /** Settimana tipo proposta la prima volta: dal lunedì al venerdì 8–13 e 14–18, a domicilio. */
 export const DEFAULT_WEEK_TEMPLATE: AgendaWeekTemplate = {
   days: [0, 1, 2, 3, 4, 5, 6].map((day) =>
@@ -183,6 +190,96 @@ export function weekTemplateMonthFill(
     for (const slot of templateSlots) added.push({ ...slot, dayOfWeek, date });
   }
   return { added, filledDays, skippedDays };
+}
+
+/** Una fascia già salvata, come la vede la settimana tipo continua. */
+export type WeekTemplateExistingSlot = WeekTemplateSlot & {
+  id: string;
+  dayOfWeek: number;
+  /** AAAA-MM-GG, `null` per le vecchie fasce ricorrenti. */
+  date: string | null;
+  fromWeekTemplate: boolean;
+};
+
+function sameSlots(a: WeekTemplateSlot[], b: WeekTemplateSlot[]): boolean {
+  const key = (s: WeekTemplateSlot) => `${s.start}|${s.end}|${s.allowsHome}|${s.allowsOnline}|${s.homeMax}|${s.onlineMax}`;
+  const ka = a.map(key).sort();
+  const kb = b.map(key).sort();
+  return ka.length === kb.length && ka.every((k, i) => k === kb[i]);
+}
+
+/**
+ * Settimana tipo che vale per tutte le settimane (decisione dell'utente,
+ * docs/CHANGELOG.md §323). Le fasce restano per data: qui si decide, per
+ * ogni giorno da oggi in poi, cosa togliere e cosa aggiungere.
+ * - Giorno chiuso, con vecchie fasce ricorrenti o con lavori già fissati: resta com'è.
+ * - Giorno con le sole fasce della settimana tipo: prende quelle nuove.
+ * - Giorno con orari cambiati a mano: resta com'è.
+ * - Giorno vuoto mai riempito (dopo `filledUntil`): prende la settimana tipo.
+ * - Giorno vuoto già riempito in passato: si riempie solo se era vuoto per
+ *   la settimana tipo di prima (giorno libero), non se è stato svuotato a mano.
+ */
+export function weekTemplateSync(input: {
+  template: AgendaWeekTemplate;
+  previous: AgendaWeekTemplate | null;
+  dates: string[];
+  filledUntil: string | null;
+  existing: WeekTemplateExistingSlot[];
+  closedDates: ReadonlySet<string>;
+  bookedDates: ReadonlySet<string>;
+}): { deleteIds: string[]; added: WeekTemplateDateSlot[]; changedDays: number } {
+  const { template, previous, filledUntil, existing, closedDates, bookedDates } = input;
+  const recurringDays = new Set(existing.filter((s) => s.date === null).map((s) => s.dayOfWeek));
+  const byDate = new Map<string, WeekTemplateExistingSlot[]>();
+  for (const slot of existing) {
+    if (!slot.date) continue;
+    byDate.set(slot.date, [...(byDate.get(slot.date) ?? []), slot]);
+  }
+  const deleteIds: string[] = [];
+  const added: WeekTemplateDateSlot[] = [];
+  let changedDays = 0;
+  for (const date of input.dates) {
+    const dayOfWeek = new Date(`${date}T00:00:00.000Z`).getUTCDay();
+    if (closedDates.has(date) || recurringDays.has(dayOfWeek)) continue;
+    const wanted = template.days[dayOfWeek] ?? [];
+    const current = byDate.get(date) ?? [];
+    if (current.length > 0) {
+      if (bookedDates.has(date) || !current.every((s) => s.fromWeekTemplate) || sameSlots(current, wanted)) continue;
+      deleteIds.push(...current.map((s) => s.id));
+      for (const slot of wanted) added.push({ ...slot, dayOfWeek, date });
+      changedDays++;
+      continue;
+    }
+    if (wanted.length === 0) continue;
+    const neverFilled = filledUntil === null || date > filledUntil;
+    const wasFreeDay = previous !== null && (previous.days[dayOfWeek] ?? []).length === 0;
+    if (!neverFilled && !wasFreeDay) continue;
+    for (const slot of wanted) added.push({ ...slot, dayOfWeek, date });
+    changedDays++;
+  }
+  return { deleteIds, added, changedDays };
+}
+
+/**
+ * Salvataggio di "Giorno per giorno": una fascia resta "della settimana tipo"
+ * solo se il suo giorno ha ancora esattamente le fasce della settimana tipo.
+ * Restituisce le date (AAAA-MM-GG) che restano della settimana tipo.
+ */
+export function weekTemplateDatesKept(previous: { date: string | null; fromWeekTemplate: boolean; slot: WeekTemplateSlot }[], incoming: { date: string | null; slot: WeekTemplateSlot }[]): Set<string> {
+  const group = <T extends { date: string | null }>(list: T[]) => {
+    const map = new Map<string, T[]>();
+    for (const item of list) if (item.date) map.set(item.date, [...(map.get(item.date) ?? []), item]);
+    return map;
+  };
+  const before = group(previous);
+  const after = group(incoming);
+  const kept = new Set<string>();
+  for (const [date, slots] of before) {
+    if (!slots.every((s) => s.fromWeekTemplate)) continue;
+    const next = after.get(date);
+    if (next && sameSlots(slots.map((s) => s.slot), next.map((s) => s.slot))) kept.add(date);
+  }
+  return kept;
 }
 
 /**

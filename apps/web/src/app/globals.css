@@ -848,6 +848,9 @@ button.notif-row-main:hover {
 .acct-main {
   min-width: 0;
   flex: 1;
+  /* Il piè di pagina resta sotto lo schermo mentre la pagina carica: prima
+     compariva in alto e poi veniva spinto giù (CLS 0,14, docs/CHANGELOG.md §321). */
+  min-height: 100vh;
 }
 .acct-nav {
   display: flex;

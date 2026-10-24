@@ -92,7 +92,7 @@ prima discuterne e aggiornare questo file.
   schemi, unico con effetti in `sideEffects`; gli schemi importano `z` da "zod", e `apps/web` usa i sorgenti di
   shared, non `dist/`, per non caricare nel browser tutto zod) e `pnpm --filter @professionisti/shared confronto-zod` confronta
   le validazioni prima/dopo un aggiornamento, anche da solo nelle PR che
-  cambiano la versione di zod (`.github/workflows/zod.yml`, docs/CHANGELOG.md §320).
+  cambiano la versione di zod (`.github/workflows/zod.yml`, docs/CHANGELOG.md §324).
 - **Aggiornamenti delle dipendenze** (docs/CHANGELOG.md §302): Dependabot
   (`.github/dependabot.yml`) apre una PR al mese con gli aggiornamenti
   piccoli raggruppati, da unire se la CI è verde; gli aggiornamenti grandi
