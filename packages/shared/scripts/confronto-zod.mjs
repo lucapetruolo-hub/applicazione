@@ -36,7 +36,8 @@ const option = (name, fallback) => {
   const i = args.indexOf(name);
   return i >= 0 && args[i + 1] ? args[i + 1] : fallback;
 };
-const REF = option("--prima", "HEAD");
+// Il commit di partenza, risolto subito in un hash: niente nomi passati alla shell o presi per opzioni.
+const REF = execFileSync("git", ["rev-parse", "--verify", "--end-of-options", `${option("--prima", "HEAD")}^{commit}`], { cwd: REPO_DIR, encoding: "utf8" }).trim();
 const RUNS = Number(option("--prove", "1000"));
 const ALL_ISSUES = args.includes("--tutti");
 
@@ -46,7 +47,9 @@ const git = (...a) => execFileSync("git", a, { cwd: REPO_DIR, encoding: "utf8", 
 // Schemi di partenza, dal commit indicato.
 const beforeSrc = join(work, "prima");
 mkdirSync(beforeSrc);
-execFileSync("sh", ["-c", `git archive ${JSON.stringify(REF)} packages/shared/src | tar -x -C ${JSON.stringify(beforeSrc)}`], { cwd: REPO_DIR });
+const beforeTar = join(work, "prima.tar");
+execFileSync("git", ["archive", `--output=${beforeTar}`, REF, "--", "packages/shared/src"], { cwd: REPO_DIR });
+execFileSync("tar", ["-xf", beforeTar, "-C", beforeSrc]);
 /** La versione di zod installata a quel commit (pnpm-lock.yaml), o in mancanza quella del package.json. */
 function lockedZod(ref) {
   const lock = git("show", `${ref}:pnpm-lock.yaml`);
@@ -54,6 +57,7 @@ function lockedZod(ref) {
   return match?.[1] ?? JSON.parse(git("show", `${ref}:packages/shared/package.json`)).dependencies.zod;
 }
 const zodBefore = option("--zod-prima", lockedZod(REF));
+if (!/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(zodBefore)) throw new Error(`Versione di zod non valida: ${zodBefore}`);
 const zodAfterVersion = require(require.resolve("zod/package.json", { paths: [PACKAGE_DIR] })).version;
 if (args.includes("--solo-se-cambia") && zodBefore === zodAfterVersion) {
   console.log(`zod resta alla ${zodAfterVersion}: nessun confronto da fare.`);
