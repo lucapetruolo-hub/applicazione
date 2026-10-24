@@ -1,0 +1,11 @@
+# Eccezioni di osv-scanner (docs/CHANGELOG.md §314). Ognuna con il motivo.
+
+# zod 3 resta solo dentro @expo/cli, lo strumento di sviluppo dell'app: legge
+# i file di configurazione di Expo, non finisce nell'app, nel sito o nell'API
+# (sito e API sono su zod 4, PR #108). Forzarlo alla 4 rischia di rompere Expo.
+[[PackageOverrides]]
+name = "zod"
+version = "3.25.76"
+ecosystem = "npm"
+vulnerability.ignore = true
+reason = "Solo in @expo/cli, strumento di sviluppo; sito e API su zod 4 (PR #108)"

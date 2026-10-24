@@ -295,7 +295,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
    affiancato). Visibile solo da una larghezza per cui c'è margine
    sufficiente a sinistra della colonna centrale senza sovrapporla. */
 /* Campanella e pannello delle notifiche (components/NotificationBell.tsx,
-   docs/CHANGELOG.md §313): stesso sistema del sito, testo a 16 px,
+   docs/CHANGELOG.md §316): stesso sistema del sito, testo a 16 px,
    arrotondamento 12, bianco pieno con ombra leggera. Sul telefono il
    pannello è fisso sotto l'intestazione e largo quanto lo schermo: ancorato
    alla campanella usciva dal bordo sinistro, perché a destra della

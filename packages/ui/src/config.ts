@@ -54,7 +54,7 @@ const headingLetterSpacing = Object.fromEntries(
 // 19, 22, 26, 34, 42. $12 (50) resta per gli elementi tondi; $10 e $11,
 // usati solo da interruttori, schede "A domicilio/Online", etichette e
 // pulsanti a pillola, tornano tondi pieni come prima (richiesta
-// dell'utente, docs/CHANGELOG.md §313).
+// dell'utente, docs/CHANGELOG.md §316).
 const radius = Object.fromEntries(
   Object.entries(defaultConfig.tokens.radius).map(([key, token]) => {
     if (key === "0" || key === "12") return [key, token.val];

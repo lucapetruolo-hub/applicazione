@@ -85,7 +85,8 @@ describe("calendario: annullamento e prenotazioni (docs/CHANGELOG.md §235)", ()
     const client = bookingCalendar(booking, "client").attachment.content;
     const professional = bookingCalendar(booking, "professional").attachment.content;
     expect(client).toContain("SUMMARY:Idraulico con Luigi Rossi");
-    expect(client).not.toContain("333");
+    // Il numero intero, non "333": SEQUENCE (dall'ora corrente) può contenerlo.
+    expect(client).not.toContain("1234567");
     expect(professional).toContain("SUMMARY:Idraulico da Anna Bianchi");
     expect(professional).toContain("+39 333 1234567");
   });

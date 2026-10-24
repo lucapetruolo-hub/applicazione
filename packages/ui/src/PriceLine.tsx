@@ -4,7 +4,7 @@ import { brand } from "./tokens";
 /**
  * Riga di un prezzo (docs/CHANGELOG.md §305-§306): voce a sinistra, prezzo a
  * destra con le cifre a larghezza fissa, in colonna. Senza puntini di guida
- * in mezzo, tolti su richiesta dell'utente (§313). Un prezzo senza cifre ("Su richiesta") resta
+ * in mezzo, tolti su richiesta dell'utente (§316). Un prezzo senza cifre ("Su richiesta") resta
  * nel carattere del testo: in quello a larghezza fissa sembrava scritto a
  * macchina.
  */

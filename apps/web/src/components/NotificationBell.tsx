@@ -46,7 +46,7 @@ function groupByDay(items: HistoryItem[]): { label: string; items: HistoryItem[]
 }
 
 /**
- * Riga di una notifica (docs/CHANGELOG.md §313). Si elimina con la "x"
+ * Riga di una notifica (docs/CHANGELOG.md §316). Si elimina con la "x"
  * (sempre visibile sul telefono, al passaggio del mouse sul computer) o
  * trascinandola di lato: lo swipe segue solo i gesti chiaramente
  * orizzontali e non chiama mai `preventDefault`, così lo scorrimento
@@ -160,7 +160,7 @@ function LoadingRows() {
 
 /**
  * Campanella dell'intestazione e pannello delle notifiche (docs/CHANGELOG.md
- * §313): stesso sistema del resto del sito (testo a 16 px, arrotondamento
+ * §316): stesso sistema del resto del sito (testo a 16 px, arrotondamento
  * 12, bianco pieno con ombra leggera). Sul telefono il pannello occupa la
  * larghezza dello schermo sotto l'intestazione. Si chiude toccando fuori o
  * con Esc, e il fuoco torna sulla campanella.

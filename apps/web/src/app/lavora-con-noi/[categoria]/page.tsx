@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CATEGORY_SEO_NOUN, PROFESSIONAL_CATEGORIES, isProfessionalCategorySlug } from "@professionisti/shared";
-import { breadcrumbJsonLd, jsonForScript } from "@/lib/jsonLd";
+import { breadcrumbJsonLd } from "@/lib/jsonLd";
+import { JsonLd } from "@/components/JsonLd";
 
 /**
  * "Lavora con noi" per ogni lavoro (docs/CHANGELOG.md §296, strategia SEO
@@ -51,7 +52,7 @@ export default async function WorkWithUsPage(props: { params: Promise<PageParams
 
   return (
     <div className="price-page">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonForScript(breadcrumbs) }} />
+      <JsonLd data={breadcrumbs} />
       <h1 className="price-page-title">{noun.workTitle}: trova clienti nella tua zona</h1>
       <p className="price-page-lead">Le persone ci chiedono {noun.findQuestion}. Tu ricevi le richieste vicino a te e scegli a quali rispondere.</p>
       <ol className="work-steps">
