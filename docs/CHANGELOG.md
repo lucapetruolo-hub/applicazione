@@ -20367,13 +20367,15 @@ Richiesta dell'utente: "effettua migliorie" (dopo l'elenco delle migliorie ancor
 
 **Verifica**: Lighthouse locale sulle due pagine dell'agenda con sessione vera (CLS 0,001); registrazione degli spostamenti con Playwright su telefono lento senza più lo spostamento del piè di pagina.
 
-## 322. CodeQL rosso sul ramo principale dopo ogni unione, CI non più doppia
+## 322. CodeQL rosso sul ramo principale dopo ogni unione, CI non più doppia, meno deploy Vercel
 
 **Richiesta dell'utente (24/10/2026)**: "github mi da tanti run failed, controlla".
 
 **Causa**: sulle PR CodeQL guarda solo le righe cambiate, sul ramo principale tutto il codice. Così avvisi già presenti prima del §312 non bloccavano nessuna PR ma rendevano rosso "Controlli di sicurezza" a ogni unione (un'email per volta). I tre `js/xss-through-dom` li ha già tolti il §318 (`localPreviewUrl`); restavano due `js/http-to-file-access` in `e2e/fixtures/global-setup.ts`, dove la prova dell'agenda salva su file il token preso dall'API di prova. È codice di prova che non arriva agli utenti: `e2e` escluso da CodeQL come già `apps/*/scripts` (Semgrep guarda solo `apps` e `packages`).
 
 **Email doppie**: la CI (`ci.yml`) partiva al push su ogni ramo e di nuovo con la PR, quindi ogni errore su una PR arrivava due volte. Ora al push parte solo sul ramo principale; sulle PR resta com'era (decisione dell'utente). Un ramo senza PR non viene più provato finché la PR non si apre.
+
+**Limite dei deploy di Vercel**: il 24/10 Vercel ha bloccato i deploy per 24 ore ("api-deployments-free-per-day", più di 100). Le anteprime erano già saltate da `scripts/vercel-ignore-build.sh` (§131), ma ogni push su un ramo creava comunque un deploy annullato che conta nel limite. Ora `apps/web/vercel.json` (`git.deploymentEnabled`) non crea proprio deploy per i rami dei thread (`claude/project-thread-*`) e di Dependabot (`dependabot/**`): il ramo principale si comporta come prima (decisione dell'utente).
 
 **Verifica**: CodeQL 2.27.3 in locale con la stessa configurazione della CI e la suite `security-extended`: 0 avvisi bloccanti.
 
