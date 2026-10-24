@@ -1,0 +1,36 @@
+name: Confronto zod
+
+# Quando una PR cambia la versione di zod (anche quelle mensili di
+# Dependabot), prova gli schemi di packages/shared prima e dopo con gli stessi
+# dati e si ferma se cambiano esiti, dati o messaggi mostrati agli utenti
+# (docs/CHANGELOG.md §312). Una differenza voluta va spiegata nel registro e
+# aggiunta tra quelle accettate in packages/shared/scripts/confronto-zod.mjs.
+on:
+  pull_request:
+    paths:
+      - pnpm-lock.yaml
+      - packages/shared/package.json
+      - apps/api/package.json
+
+jobs:
+  confronto-zod:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Confronto prima/dopo
+        run: pnpm --filter @professionisti/shared confronto-zod --prima ${{ github.event.pull_request.base.sha }} --solo-se-cambia

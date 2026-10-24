@@ -9,10 +9,12 @@
 //   pnpm --filter @professionisti/shared confronto-zod [opzioni]
 //
 //   --prima <commit>    commit o ramo di partenza (predefinito: HEAD)
-//   --zod-prima <ver>   versione di zod di partenza (predefinito: quella del
-//                       package.json di quel commit, scaricata da npm)
+//   --zod-prima <ver>   versione di zod di partenza (predefinito: quella
+//                       installata a quel commit, scaricata da npm)
 //   --prove <n>         dati di prova per schema (predefinito: 1000)
 //   --tutti             confronta tutti gli errori, non solo quello mostrato
+//   --solo-se-cambia    non fa nulla se zod è alla stessa versione (lo usa la
+//                       CI, .github/workflows/zod.yml)
 //
 // Esce con codice 1 se trova differenze: ognuna va spiegata nel registro o
 // sistemata (es. con i messaggi di `src/zod.ts`).
@@ -45,7 +47,18 @@ const git = (...a) => execFileSync("git", a, { cwd: REPO_DIR, encoding: "utf8", 
 const beforeSrc = join(work, "prima");
 mkdirSync(beforeSrc);
 execFileSync("sh", ["-c", `git archive ${JSON.stringify(REF)} packages/shared/src | tar -x -C ${JSON.stringify(beforeSrc)}`], { cwd: REPO_DIR });
-const zodBefore = option("--zod-prima", JSON.parse(git("show", `${REF}:packages/shared/package.json`)).dependencies.zod);
+/** La versione di zod installata a quel commit (pnpm-lock.yaml), o in mancanza quella del package.json. */
+function lockedZod(ref) {
+  const lock = git("show", `${ref}:pnpm-lock.yaml`);
+  const match = /\n {2}packages\/shared:\n {4}dependencies:\n(?: {6}[^\n]*\n)*? {6}zod:\n {8}specifier: [^\n]*\n {8}version: ([^\s(]+)/.exec(lock);
+  return match?.[1] ?? JSON.parse(git("show", `${ref}:packages/shared/package.json`)).dependencies.zod;
+}
+const zodBefore = option("--zod-prima", lockedZod(REF));
+const zodAfterVersion = require(require.resolve("zod/package.json", { paths: [PACKAGE_DIR] })).version;
+if (args.includes("--solo-se-cambia") && zodBefore === zodAfterVersion) {
+  console.log(`zod resta alla ${zodAfterVersion}: nessun confronto da fare.`);
+  process.exit(0);
+}
 
 // zod di partenza, scaricato da npm in una cartella a parte.
 const zodDir = join(work, "zod-prima");
@@ -54,7 +67,6 @@ const tarball = execFileSync("npm", ["pack", `zod@${zodBefore}`, "--silent"], { 
 execFileSync("tar", ["-xzf", tarball, "-C", zodDir], { cwd: zodDir });
 const zodBeforeDir = join(zodDir, "package");
 const zodBeforeVersion = JSON.parse(readFileSync(join(zodBeforeDir, "package.json"), "utf8")).version;
-const zodAfterVersion = require(require.resolve("zod/package.json", { paths: [PACKAGE_DIR] })).version;
 
 const bundle = (entry, outfile, alias) => esbuild.buildSync({ entryPoints: [entry], bundle: true, platform: "node", format: "cjs", outfile, logLevel: "warning", ...(alias ? { alias: { zod: alias } } : {}), nodePaths: [join(PACKAGE_DIR, "node_modules"), join(REPO_DIR, "node_modules")] });
 bundle(join(beforeSrc, "packages/shared/src/index.ts"), join(work, "prima.cjs"), zodBeforeDir);
@@ -182,10 +194,19 @@ function outcome(schema, input) {
   return { ok: false, primo: issues[0] && `${issues[0].path.join(".")}: ${issues[0].message}`, api: Object.values(fieldErrors).flat()[0] ?? null };
 }
 
+// Differenze già spiegate nel registro, che non fermano la CI: lo schema e
+// l'inizio del primo errore di prima.
+const ACCEPTED = [
+  // zod 4 controlla prima i valori e poi la lunghezza dell'elenco (§312).
+  { schema: "agendaWeekTemplateSchema", before: "days: Array must contain exactly 7 element(s)" },
+];
+const accepted = (name, d) => ACCEPTED.some((a) => a.schema === name && typeof d.prima.primo === "string" && d.prima.primo.startsWith(a.before));
+
 const isSchema = (value) => value && typeof value.safeParse === "function";
 const names = Object.keys(after).filter((name) => isSchema(after[name]));
 const missing = names.filter((name) => !isSchema(before[name]));
 let tests = 0;
+let acceptedCount = 0;
 const differences = new Map();
 for (const name of names.filter((n) => isSchema(before[n]))) {
   for (let i = 0; i < RUNS; i++) {
@@ -194,14 +215,19 @@ for (const name of names.filter((n) => isSchema(before[n]))) {
     const b = JSON.stringify(outcome(after[name], input));
     tests++;
     if (a === b) continue;
+    const difference = { input, prima: JSON.parse(a), dopo: JSON.parse(b) };
+    if (!ALL_ISSUES && accepted(name, difference)) {
+      acceptedCount++;
+      continue;
+    }
     const list = differences.get(name) ?? [];
-    list.push({ input, prima: JSON.parse(a), dopo: JSON.parse(b) });
+    list.push(difference);
     differences.set(name, list);
   }
 }
 
 const total = [...differences.values()].reduce((n, list) => n + list.length, 0);
-console.log(`${names.length - missing.length} schemi, ${tests} prove, ${total} differenze.`);
+console.log(`${names.length - missing.length} schemi, ${tests} prove, ${total} differenze (più ${acceptedCount} già spiegate nel registro).`);
 if (missing.length) console.log(`Schemi nuovi, senza confronto: ${missing.join(", ")}`);
 for (const [name, list] of differences) {
   console.log(`\n${name}: ${list.length} differenze, per esempio`);

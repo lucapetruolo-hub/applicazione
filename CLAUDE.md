@@ -90,7 +90,8 @@ prima discuterne e aggiornare questo file.
   `apps/web/scripts/confronto-pagine.mjs`). Per zod, `src/zod.ts` di
   `packages/shared` tiene i messaggi d'errore di zod 3 (gli schemi importano
   `z` da lì) e `pnpm --filter @professionisti/shared confronto-zod` confronta
-  le validazioni prima/dopo un aggiornamento (docs/CHANGELOG.md §312).
+  le validazioni prima/dopo un aggiornamento, anche da solo nelle PR che
+  cambiano la versione di zod (`.github/workflows/zod.yml`, docs/CHANGELOG.md §312).
 - **Aggiornamenti delle dipendenze** (docs/CHANGELOG.md §302): Dependabot
   (`.github/dependabot.yml`) apre una PR al mese con gli aggiornamenti
   piccoli raggruppati, da unire se la CI è verde; gli aggiornamenti grandi
