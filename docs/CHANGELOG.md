@@ -20543,3 +20543,23 @@ Richiesta dell'utente: "si potrebbe dare l'icona del meteo per 3 giorni e dire d
 **Migliorie approvate dall'utente** ("effettua le migliorie"): in "Oggi" compaiono anche i lavori aggiunti a mano in agenda (aprono il lavoro in agenda con `?esterno=<id>`); toccando un giorno del meteo l'agenda si apre su quel giorno (`?giorno=AAAA-MM-GG`, vista Giorno); da computer, se il meteo è di un comune diverso da quello del profilo, si legge accanto al tempo ("Pioggia · Sezze", campo `away`).
 
 **Verifica**: test su tempo del giorno, temperature e comune del primo lavoro (`agenda-tools.test.ts`), 37 test dell'agenda; prova nel browser `e2e/tests/oggi-meteo.spec.ts` (lavoro aggiunto a mano che compare in "Oggi" e si apre in agenda, giorno del meteo che apre l'agenda su quel giorno, con il meteo simulato; telefono e computer, tre fusi orari), approvata dall'utente ("si falla"); il confronto foto di tutte le pagine (`confronto-pagine`) non si è potuto fare senza il database di prova: aggiunto al punto 38 della checklist di lancio ("aggiungi a prima del lancio"); anteprime da telefono (390px) e computer (1440px) con e senza lavori.
+
+## 334. Vulnerabilità delle librerie
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Correggere le vulnerabilità delle librerie"): dopo la PR #115 GitHub segnalava 68 vulnerabilità nelle librerie (5 critiche). `pnpm audit` ne contava 74 (4 critiche, 40 alte, 25 moderate, 5 basse). Condizione: il sito non deve cambiare comportamento.
+
+**Decisione presa**
+- Quasi tutte erano librerie usate da altre librerie, ferme a una versione vecchia nel `pnpm-lock.yaml` anche se ne era ammessa una corretta: aggiornate solo quelle, dentro i limiti già dichiarati (`pnpm update --depth Infinity`): multer, body-parser e qs (API), shell-quote, js-yaml, joi, @xmldom/xmldom e compression (strumenti dell'app), fast-uri, browserslist, brace-expansion, nanoid, source-map-js. Nessun `package.json` cambiato per queste.
+- `vitest` 2 → 4.1 in `apps/api`, solo per le prove (le 4 critiche erano qui: vitest, tinypool). Con vitest 4 `vite` è una dipendenza da dichiarare a parte, altrimenti pnpm teneva la vecchia vite 5: aggiunto `vite` ^7.3.7. Un test (`quote-payment-options.test.ts`) spiava un metodo privato con `as never`, che i tipi di vitest 4 non accettano più: ora con il tipo del metodo.
+- `google-auth-library` 9 → 10 in `apps/api` (accesso con Google): la 9 si portava dietro `uuid` 9 con una falla. Il sito usa solo `OAuth2Client.verifyIdToken`, uguale nella 10.
+- Tre versioni forzate in `pnpm-workspace.yaml` (`overrides`), dove il pacchetto che le usa fissa una versione esatta vecchia: `postcss` in Next.js (prepara i CSS nella build), `deepmerge-ts` nella configurazione di Prisma, `fast-xml-parser` negli strumenti di React Native per Android. Stessa API, solo versioni più nuove; valgono solo per le versioni vecchie (`postcss@<8.5.23` ecc.), quindi non bloccano aggiornamenti futuri.
+- Restano due avvisi, entrambi dentro `@expo/cli` (strumento di sviluppo dell'app, non va nell'app, nel sito o nell'API): zod 3 (già eccezione dal §314) e node-forge, che non ha ancora una versione corretta. node-forge aggiunto alle eccezioni di `osv-scanner.toml`.
+
+**Verifica**
+- `pnpm audit`: da 74 a 2 avvisi (i due sopra). osv-scanner con le eccezioni: nessun problema.
+- Typecheck, lint, build, 597 test dell'API, avvio dell'API (grafo dei moduli), `prisma validate`, `npx expo export --platform android`. Accesso con Google: un token falso viene rifiutato come prima.
+- `confronto-pagine` prima/dopo con API e database di prova, cliente, professionista e admin: 132 foto, 124 identiche, nelle altre 5-59 pixel di antialiasing (nessuna differenza visibile), stessi stati HTTP.
+
+**Migliorie approvate da Luca** ("effettua le 2 migliorie")
+- osv-scanner ora blocca la PR (`.github/workflows/security.yml`, checklist punto 40): dopo aver caricato il rapporto, un passo rifà il controllo e fallisce se trova una vulnerabilità fuori dalle eccezioni di `osv-scanner.toml`. Vale per tutte le librerie, non solo per quelle del sito e dell'API: osv-scanner non sa distinguere quelle usate solo per costruire o provare (anche `pnpm audit --prod` conta lo strumento di Expo, dipendenza dell'app), quindi quelle senza versione corretta vanno tra le eccezioni con il motivo. Provato: con il `pnpm-lock.yaml` di prima di questa PR il controllo fallisce (vitest, tinypool, ecc.), con quello nuovo passa.
+- I due avvisi rimasti (zod 3 e node-forge in `@expo/cli`) vanno chiusi a mano nella scheda Security → Dependabot di GitHub con "Vulnerable code is not actually used" / "Risk is tolerable": lo fa Luca, i thread non hanno accesso agli avvisi.

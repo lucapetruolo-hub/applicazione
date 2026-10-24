@@ -6,9 +6,11 @@ name: Controlli di sicurezza
 # Semgrep (il codice è pulito: una segnalazione nuova va corretta, o
 # riscritta se è un falso allarme, perché GitHub mostra l'avviso anche con un
 # commento che la ignora) e gitleaks (una chiave nel codice va tolta subito,
-# il repository è pubblico). osv-scanner resta solo rapporto: quasi tutti gli
-# avvisi riguardano librerie usate per costruire o provare il codice (diventa
-# bloccante prima del lancio, checklist punto 40; eccezioni in osv-scanner.toml, §314).
+# il repository è pubblico). Blocca anche osv-scanner (librerie con
+# vulnerabilità note, docs/CHANGELOG.md §334, checklist punto 40): una
+# libreria segnalata si aggiorna; se una versione corretta non c'è ed è usata
+# solo per costruire o provare il codice, va tra le eccezioni di
+# osv-scanner.toml con il motivo (§314).
 # Il giro del lunedì trova le vulnerabilità nuove anche senza modifiche.
 on:
   push:
@@ -93,6 +95,9 @@ jobs:
         with:
           sarif_file: osv.sarif
           category: osv-scanner
+      # Dopo il caricamento, così il rapporto c'è anche quando fallisce.
+      - name: Nessuna vulnerabilità fuori dalle eccezioni
+        run: ./osv-scanner scan source --lockfile pnpm-lock.yaml
 
   gitleaks:
     runs-on: ubuntu-latest
