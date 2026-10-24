@@ -183,3 +183,32 @@ export function weekTemplateMonthFill(
   }
   return { added, filledDays, skippedDays };
 }
+
+/**
+ * Lavoro su più giorni (decisione dell'utente, docs/CHANGELOG.md §293): la
+ * fine cade in un giorno di calendario dopo l'inizio. Gli orari sono ora
+ * italiana salvata come UTC (§287); una fine alle 00:00 conta come fine del
+ * giorno prima.
+ */
+export function spansMultipleDays(start: Date | string, end: Date | string | null | undefined): boolean {
+  if (!end) return false;
+  return multiDayDates(start, end).length > 1;
+}
+
+/** I giorni (AAAA-MM-GG) di un lavoro, dal primo all'ultimo; uno solo se non ha una fine in un altro giorno. */
+export function multiDayDates(start: Date | string, end: Date | string | null | undefined): string[] {
+  const startMs = new Date(start).getTime();
+  const first = new Date(startMs).toISOString().slice(0, 10);
+  if (!end) return [first];
+  const endMs = new Date(end).getTime();
+  if (!(endMs > startMs)) return [first];
+  const last = new Date(endMs - 1).toISOString().slice(0, 10);
+  const dates: string[] = [];
+  for (let day = new Date(`${first}T00:00:00.000Z`); day.toISOString().slice(0, 10) <= last; day.setUTCDate(day.getUTCDate() + 1)) {
+    dates.push(day.toISOString().slice(0, 10));
+  }
+  return dates;
+}
+
+/** Al massimo tanti giorni per un lavoro su più giorni. */
+export const MAX_JOB_DAYS = 30;

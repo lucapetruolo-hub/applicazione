@@ -10,7 +10,7 @@ import {
   type AvailabilitySlotInput,
 } from "@professionisti/shared";
 import { calendarFeedIcs, type CalendarEvent } from "../email/email-calendar";
-import { countBookingsInSlot } from "../professionals/professionals.service";
+import { countBookingsInSlot, countOverlapping } from "./commitments";
 
 /**
  * Prove "a proprietà" dell'agenda (docs/CHANGELOG.md §292): invece di pochi
@@ -137,14 +137,61 @@ describe("fasce orarie generate a caso", () => {
     );
   });
 
-  it("una prenotazione che inizia dentro una fascia la occupa sempre, e solo quella", () => {
+  it("un impegno occupa tutte e sole le fasce con cui ha almeno un minuto in comune; un lavoro su più giorni non ne occupa nessuna", () => {
+    const base = Date.parse("2026-10-24T00:00:00.000Z") / 60000;
+    const minuteOf = (date: string, time: string) => Date.parse(`${date}T${time}:00.000Z`) / 60000;
     fc.assert(
-      fc.property(range, quarter, fc.constantFrom(...DATES), fc.constantFrom(...DATES), (slot, bookingTime, slotDate, bookingDate) => {
-        const scheduledAt = new Date(`${bookingDate}T${bookingTime}:00.000Z`);
-        const inside = bookingDate === slotDate && minutes(bookingTime) >= minutes(slot.start) && minutes(bookingTime) < minutes(slot.end);
-        expect(countBookingsInSlot([{ scheduledAt }], slotDate, slot.start, slot.end)).toBe(inside ? 1 : 0);
+      fc.property(
+        range,
+        fc.constantFrom(...DATES),
+        fc.constantFrom(...DATES),
+        quarter,
+        // Durata a passi di 15 minuti fino a 3 giorni; 0 = senza orario di fine.
+        fc.integer({ min: 0, max: 288 }),
+        fc.constantFrom<"HOME" | "ONLINE" | "EXTERNAL">("HOME", "ONLINE", "EXTERNAL"),
+        fc.constantFrom<"HOME" | "ONLINE">("HOME", "ONLINE"),
+        (slot, slotDate, bookingDate, bookingTime, quarters, kind, mode) => {
+          const scheduledAt = new Date(`${bookingDate}T${bookingTime}:00.000Z`);
+          const scheduledEndAt = quarters === 0 ? null : new Date(scheduledAt.getTime() + quarters * 15 * 60000);
+          const commitment = kind === "EXTERNAL" ? { scheduledAt, scheduledEndAt, external: true } : { scheduledAt, scheduledEndAt, serviceMode: kind };
+          // Minuti occupati dall'impegno: tutti quelli tra inizio e fine, o solo il primo se non ha una fine.
+          const start = scheduledAt.getTime() / 60000 - base;
+          const used = new Set<number>();
+          for (let m = start; m < start + Math.max(quarters * 15, 1); m++) used.add(m);
+          let touches = false;
+          for (let m = minuteOf(slotDate, slot.start) - base; m < minuteOf(slotDate, slot.end) - base; m++) if (used.has(m)) touches = true;
+          const sameMode = kind === "EXTERNAL" || kind === mode;
+          // Su più giorni: primo e ultimo minuto in due giorni di calendario diversi.
+          const multiDay = quarters > 0 && Math.floor(start / 1440) !== Math.floor((start + quarters * 15 - 1) / 1440);
+          expect(countBookingsInSlot([commitment], slotDate, slot.start, slot.end, mode)).toBe(touches && sameMode && !multiDay ? 1 : 0);
+          expect(countBookingsInSlot([commitment], slotDate, slot.start, slot.end)).toBe(touches && !multiDay ? 1 : 0);
+        },
+      ),
+      { numRuns: RUNS * 4 },
+    );
+  });
+
+  it("un nuovo lavoro si sovrappone a uno già preso solo se hanno almeno un minuto in comune e nessuno dei due dura più giorni", () => {
+    const job = fc.tuple(fc.integer({ min: 0, max: 4 * 96 }), fc.integer({ min: 0, max: 192 })).map(([q, len]) => ({
+      start: new Date(Date.parse("2026-10-24T00:00:00.000Z") + q * 15 * 60000),
+      quarters: len,
+    }));
+    fc.assert(
+      fc.property(job, job, (a, b) => {
+        const minutesOf = (j: { start: Date; quarters: number }) => {
+          const first = j.start.getTime() / 60000;
+          return Array.from({ length: Math.max(j.quarters * 15, 1) }, (_, i) => first + i);
+        };
+        const usedA = new Set(minutesOf(a));
+        const multiDay = (j: { start: Date; quarters: number }) => {
+          const days = new Set(minutesOf(j).map((m) => Math.floor(m / 1440)));
+          return days.size > 1;
+        };
+        const touches = minutesOf(b).some((m) => usedA.has(m)) && !multiDay(a) && !multiDay(b);
+        const end = (j: { start: Date; quarters: number }) => (j.quarters === 0 ? null : new Date(j.start.getTime() + j.quarters * 15 * 60000));
+        expect(countOverlapping([{ scheduledAt: a.start, scheduledEndAt: end(a), serviceMode: "HOME" }], b.start, end(b), "HOME")).toBe(touches ? 1 : 0);
       }),
-      { numRuns: RUNS },
+      { numRuns: RUNS * 4 },
     );
   });
 });

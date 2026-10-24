@@ -26,6 +26,7 @@ import { quoteResendWindow } from "./quote-resend";
 import { onlinePaymentsEnabled } from "../job-payments/online-payments-enabled";
 import { stripeVerified } from "../professional-fiscal/public-visibility";
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
+import { countBookingsInSlot, countOverlapping, loadCommitments, lockProfessionalAgenda } from "../agenda/commitments";
 
 
 /** Appuntamento "prima"/"dopo" nel payload delle notifiche, per le email (docs/CHANGELOG.md §228). */
@@ -570,20 +571,12 @@ export class QuotesService {
     try {
       const booking = await this.prisma.$transaction(
         async (tx) => {
-          const existingBookings = await tx.booking.findMany({
-            where: {
-              professionalProfileId: professionalProfile.id,
-              status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] },
-              scheduledAt: { gte: dayStart, lt: dayEnd },
-            },
-            select: { scheduledAt: true, serviceMode: true },
-          });
-          const bookedCount = existingBookings.filter(
-            (b) =>
-              b.scheduledAt.getTime() === scheduledAt.getTime() &&
-              (requestServiceMode ? b.serviceMode === requestServiceMode : true),
-          ).length;
-          if (bookedCount >= maxBookings) {
+          // Un lavoro già preso che si sovrappone (anche un lavoro esterno
+          // o uno lungo iniziato prima) occupa la fascia (docs/CHANGELOG.md §293).
+          await lockProfessionalAgenda(tx, professionalProfile.id);
+          const commitments =
+            (await loadCommitments(tx, [professionalProfile.id], dayStart, quote.clientProposedEndDate ?? dayEnd)).get(professionalProfile.id) ?? [];
+          if (countOverlapping(commitments, scheduledAt, quote.clientProposedEndDate, requestServiceMode) >= maxBookings) {
             throw new ConflictException("Questa fascia non è più libera.");
           }
           const created = await tx.booking.create({
@@ -930,14 +923,7 @@ export class QuotesService {
       );
     }
 
-    const existingBookings = await this.prisma.booking.findMany({
-      where: {
-        professionalProfileId,
-        status: { in: ["PENDING", "CONFIRMED", "COMPLETED"] },
-        scheduledAt: { gte: dayStart, lt: dayEnd },
-      },
-      select: { scheduledAt: true, serviceMode: true },
-    });
+    const commitments = (await loadCommitments(this.prisma, [professionalProfileId], dayStart, dayEnd)).get(professionalProfileId) ?? [];
     const [hoursStr, minutesStr] = startTime.split(":");
     const scheduledAt = new Date(date);
     scheduledAt.setUTCHours(Number(hoursStr), Number(minutesStr), 0, 0);
@@ -949,10 +935,7 @@ export class QuotesService {
     // data+ora, non solo una — stesso principio di countBookingsInSlot già
     // in uso in ProfessionalsService per bookedCount. Filtrato per
     // modalità: le due capienze (domicilio/online) sono pool indipendenti.
-    const bookedCount = existingBookings.filter(
-      (b) => b.scheduledAt.getTime() === scheduledAt.getTime() && (serviceMode ? b.serviceMode === serviceMode : true),
-    ).length;
-    if (bookedCount >= maxBookings) {
+    if (countBookingsInSlot(commitments, dateStr, startTime, endTime, serviceMode ?? undefined) >= maxBookings) {
       throw new ConflictException("Questa fascia è già stata prenotata.");
     }
 
