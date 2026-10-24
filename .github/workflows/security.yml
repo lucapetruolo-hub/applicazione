@@ -1,10 +1,13 @@
 name: Controlli di sicurezza
 
-# Strumenti automatici di controllo (docs/CHANGELOG.md §295). Per ora solo
-# rapporto, tranne gitleaks: i risultati di CodeQL, Semgrep e osv-scanner
-# finiscono nella scheda "Security → Code scanning" del repository e nel
-# riepilogo del job, senza bloccare la PR. gitleaks blocca: la cronologia è
-# pulita e una chiave nel codice va tolta subito (il repository è pubblico).
+# Strumenti automatici di controllo (docs/CHANGELOG.md §295-§296). I
+# risultati di CodeQL, Semgrep e osv-scanner finiscono nella scheda
+# "Security → Code scanning" del repository. Bloccano la PR Semgrep (il
+# codice è pulito: una segnalazione nuova va corretta o, se falso allarme,
+# spiegata con un commento `nosemgrep`) e gitleaks (una chiave nel codice va
+# tolta subito, il repository è pubblico). osv-scanner resta solo rapporto:
+# quasi tutti gli avvisi riguardano librerie usate per costruire o provare il
+# codice. CodeQL resta solo rapporto finché la scheda non è controllata.
 # Il giro del lunedì trova le vulnerabilità nuove anche senza modifiche.
 on:
   push:
@@ -38,11 +41,15 @@ jobs:
       - name: Semgrep
         run: |
           pip install --quiet semgrep==1.182.1
-          semgrep scan --metrics=off \
+          # I test restano fuori: le loro chiavi finte le controlla gitleaks.
+          semgrep scan --metrics=off --exclude "*.test.ts" \
             --config p/default --config p/nodejs --config p/typescript --config p/secrets \
-            --sarif --output semgrep.sarif apps packages || true
-          python3 -c "import json; r=json.load(open('semgrep.sarif'))['runs'][0]['results']; print(f'Semgrep: {len(r)} segnalazioni')" >> "$GITHUB_STEP_SUMMARY"
+            --sarif --output semgrep.sarif apps packages
+          semgrep scan --metrics=off --exclude "*.test.ts" --error \
+            --config p/default --config p/nodejs --config p/typescript --config p/secrets \
+            apps packages
       - uses: github/codeql-action/upload-sarif@v3
+        if: always()
         with:
           sarif_file: semgrep.sarif
           category: semgrep

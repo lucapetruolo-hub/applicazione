@@ -20014,3 +20014,16 @@ Risultato: 218 rotte, 798 controlli, nessuna falla. Prova che il test funziona: 
 **Strumenti** (`.github/workflows/security.yml`, a ogni PR, a ogni unione e ogni lunedì): CodeQL (`security-extended`), Semgrep (regole `p/default`, `p/nodejs`, `p/typescript`, `p/secrets`) e osv-scanner (librerie con vulnerabilità note) scrivono nella scheda "Security → Code scanning" del repository, per ora senza bloccare. gitleaks controlla tutta la cronologia (641 commit, nessuna chiave trovata) e blocca: il repository è pubblico, una chiave nel codice va tolta subito. Il registro mostra solo le chiavi oscurate (`--redact`).
 
 **Prima lettura dei rapporti**: Semgrep 5 segnalazioni (2 reali ma basse: la lunghezza del sigillo AES-GCM non è controllata nella decifratura dei dati fiscali e dei link di invito; 3 falsi allarmi). osv-scanner 162 avvisi su 45 librerie, quasi tutte usate solo per costruire o provare il codice; nell'API e nel sito pubblicato contano Next.js 14 (passaggio a 15 già in un thread a parte), body-parser, qs (usato solo dal lettore dei moduli `urlencoded`, che nessun client usa), `@nestjs/core` e zod (corretti solo nelle versioni maggiori nuove). Le correzioni sono proposte all'utente in ordine di gravità prima di farle.
+
+## 296. Controllo sicurezza: correzioni dai rapporti degli strumenti
+
+**Richiesta dell'utente**: "effettua le correzioni che ritieni nell'ordine e nelle modalità che ritieni", sulle proposte nate dai rapporti del §295.
+
+1. **Corpi compressi rifiutati** (`src/app-setup.ts`, `inflate: false` sul lettore JSON e sui due webhook): body-parser ha una falla nota che blocca l'API con un corpo compresso fatto apposta. Nessun client manda corpi compressi (sito, app, Stripe, Didit), quindi invece di aggiornare la libreria si spegne la decompressione: la richiesta compressa riceve 415. Funziona uguale su Express 4 e su Express 5 (PR #103).
+2. **Tolto il lettore dei moduli `urlencoded`**: l'API riceve solo JSON e nessun client manda moduli; quel lettore usava `qs`, con due falle note. Un modulo ora arriva vuoto e la validazione risponde 400.
+3. **Sigillo AES-GCM di 16 byte** nella decifratura dei dati fiscali (`common/fiscal-crypto.ts`) e dei link di invito (`profile-invites.service.ts`): Node accetta anche un sigillo più corto, più facile da indovinare per chi volesse falsificare un dato cifrato. Ora un sigillo diverso da 16 byte non viene letto. Test nuovo.
+4. **Semgrep ora blocca la PR**: con le correzioni sopra resta zero segnalazioni. Il falso allarme su `readPath` (solo lettura, non può alterare i prototipi) è spiegato con un commento `nosemgrep`; i file di test restano fuori (le chiavi finte le controlla gitleaks). osv-scanner resta solo rapporto (quasi tutti gli avvisi riguardano librerie per costruire o provare il codice), CodeQL finché la sua scheda non è controllata.
+
+Non fatto qui: zod 4 (aggiornamento grande, rischio basso: il corpo JSON ha già un limite di dimensione); Next.js 15 e NestJS 11 sono nella PR #103.
+
+**Verifica**: 543 test dell'API (con il sigillo accorciato rifiutato), typecheck e lint. API avviata con Postgres locale: login con corpo compresso 415, con modulo 400, con JSON normale la risposta di sempre. Test dei permessi (§295) di nuovo senza problemi. Semgrep: 0 segnalazioni.

@@ -71,7 +71,8 @@ function readPath(value: unknown, path: string[]): unknown {
   let current = value;
   for (const key of path) {
     if (!current || typeof current !== "object") return undefined;
-    current = (current as Record<string, unknown>)[key];
+    // Solo lettura della risposta di Openapi, nessuna scrittura: non può alterare i prototipi.
+    current = (current as Record<string, unknown>)[key]; // nosemgrep: prototype-pollution-loop
   }
   return current;
 }

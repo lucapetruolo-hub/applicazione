@@ -26,11 +26,15 @@ export function configureApp(app: NestExpressApplication): void {
     res.setHeader("Referrer-Policy", "no-referrer");
     next();
   });
-  app.use("/billing/webhook", express.raw({ type: "application/json" }));
+  // `inflate: false` (docs/CHANGELOG.md §296): nessun client manda corpi
+  // compressi, e decomprimerli era un modo noto di bloccare body-parser con
+  // una richiesta fatta apposta (risposta 415). Niente lettore dei moduli
+  // `urlencoded`: l'API riceve solo JSON, e quel lettore usava `qs`, con
+  // altre falle note.
+  app.use("/billing/webhook", express.raw({ type: "application/json", inflate: false }));
   // Webhook della verifica d'identità (Didit, docs/CHANGELOG.md §253): firma sul body raw.
-  app.use("/identity-verification/webhook", express.raw({ type: "application/json" }));
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
+  app.use("/identity-verification/webhook", express.raw({ type: "application/json", inflate: false }));
+  app.use(express.json({ inflate: false }));
   // Ristretto a FRONTEND_URL (CTO — audit sicurezza, checklist esterna
   // verificata contro il codice reale): `enableCors()` senza argomenti
   // accetta qualunque origine, un'API con JWT in localStorage letto da
