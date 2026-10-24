@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import {
   PROFESSIONAL_CATEGORIES,
   comuneSlug,
+  MIN_PROFESSIONALS_TO_INDEX_CITY,
   findComuneByName,
   type ProfessionalCategorySlug,
   type ProfessionalSearchResult,
@@ -10,6 +11,7 @@ import { apiClient } from "@/lib/apiClient";
 import { SITE_INDEXABLE } from "@/lib/siteIndexing";
 import { breadcrumbJsonLd, jsonForScript } from "@/lib/jsonLd";
 import { PopularServicesLinks } from "@/components/PopularServicesLinks";
+import { CityFacts } from "@/components/CityFacts";
 import { SearchHeader } from "@/components/SearchHeader";
 import { CategoryContent } from "./CategoryContent";
 
@@ -54,19 +56,20 @@ async function categoriesInCity(city: string): Promise<string[] | null> {
 }
 
 /**
- * Pagina senza professionisti veri (es. "Fabbro a Milano" prima che ci sia
- * qualcuno): resta uguale per chi la apre, con l'invio della richiesta, ma
- * fuori da Google, che altrimenti indicizzerebbe pagine vuote
- * (docs/CHANGELOG.md §291). Solo con il sito aperto ai motori di ricerca, così
+ * Pagina con troppo pochi professionisti veri: resta uguale per chi la apre,
+ * con l'invio della richiesta (§271), ma fuori da Google, che altrimenti
+ * indicizzerebbe pagine quasi vuote tutte uguali (docs/CHANGELOG.md §291).
+ * Categoria+città: almeno `MIN_PROFESSIONALS_TO_INDEX_CITY`; categoria in
+ * tutta Italia: almeno uno. Solo con il sito aperto ai motori di ricerca, così
  * prima del lancio nessuna chiamata in più. Se la ricerca non risponde non si
  * sa: la pagina resta indicizzabile, meglio di un noindex per un errore
  * passeggero.
  */
-async function hasNoRealProfessionals(categorySlug: string, city?: string): Promise<boolean> {
+async function tooFewRealProfessionals(categorySlug: string, city?: string): Promise<boolean> {
   if (!SITE_INDEXABLE) return false;
   try {
     const list = await apiClient.searchProfessionals({ category: categorySlug, city, excludeDemo: true });
-    return list.length === 0;
+    return list.length < (city ? MIN_PROFESSIONALS_TO_INDEX_CITY : 1);
   } catch {
     return false;
   }
@@ -74,7 +77,7 @@ async function hasNoRealProfessionals(categorySlug: string, city?: string): Prom
 
 export async function categoryMetadata(category: Category, city?: string): Promise<Metadata> {
   const comune = city ? findComuneByName(city) : undefined;
-  const empty = await hasNoRealProfessionals(category.slug, comune?.name);
+  const empty = await tooFewRealProfessionals(category.slug, comune?.name);
   const robots: Metadata = empty ? { robots: { index: false, follow: true } } : {};
   if (comune) {
     return {
@@ -162,6 +165,9 @@ export async function CategoryResults({
         loadFailed={loadFailed}
         initialUrgentOnly={searchParams.urgente === "1"}
       />
+      {comune && !loadFailed ? (
+        <CityFacts categorySlug={category.slug} categoryLabel={category.label} city={comune.name} professionals={professionals} />
+      ) : null}
       <PopularServicesLinks
         currentSlug={category.slug}
         city={comune?.name}

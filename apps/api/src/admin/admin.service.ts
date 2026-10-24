@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ContentReportTargetType, ModerationAction, Prisma, PrismaClient } from "@professionisti/database";
-import { JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, completionDeviation, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput } from "@professionisti/shared";
+import { JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, completionDeviation, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
@@ -59,6 +59,37 @@ export class AdminService {
     private readonly auditLogService: AuditLogService,
     private readonly jobIssueOutcomeService: JobIssueOutcomeService,
   ) {}
+
+  /**
+   * Richieste di preventivo degli ultimi 30 giorni per provenienza della
+   * visita (docs/CHANGELOG.md §291): la prova che Google porta lavoro. Una
+   * richiesta con più categorie conta una volta sola (`submissionGroupId`).
+   * Le richieste senza provenienza (prima di questa funzione, o browser che
+   * non la dà) finiscono in "unknown".
+   */
+  async getTrafficSources(): Promise<{ days: number; total: number; bySource: { source: TrafficSource | "unknown"; count: number }[] }> {
+    const days = 30;
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const rows = await this.prisma.guidedRequest.findMany({
+      where: { createdAt: { gte: since } },
+      select: { id: true, submissionGroupId: true, trafficSource: true },
+    });
+    const seen = new Set<string>();
+    const counts = new Map<TrafficSource | "unknown", number>();
+    for (const row of rows) {
+      const key = row.submissionGroupId ?? row.id;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const source = row.trafficSource ?? "unknown";
+      counts.set(source, (counts.get(source) ?? 0) + 1);
+    }
+    const order: (TrafficSource | "unknown")[] = [...TRAFFIC_SOURCES, "unknown"];
+    return {
+      days,
+      total: seen.size,
+      bySource: order.map((source) => ({ source, count: counts.get(source) ?? 0 })),
+    };
+  }
 
   /**
    * Utenti con ricerca, filtri e paginazione (docs/CHANGELOG.md §144): prima

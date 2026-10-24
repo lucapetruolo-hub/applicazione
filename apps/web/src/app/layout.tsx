@@ -8,6 +8,7 @@ import { ToastStack } from "@/components/ToastStack";
 import { CookieBanner } from "@/components/CookieBanner";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
+import { TrafficSourceTracker } from "@/components/TrafficSourceTracker";
 import { SITE_URL } from "@/lib/siteUrl";
 import { SITE_INDEXABLE } from "@/lib/siteIndexing";
 import { display, body, mono } from "./fonts";
@@ -58,6 +59,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         </div>
         <Providers>
           <ServiceWorkerRegistration />
+          <TrafficSourceTracker />
           {/* Skip link (Fase 6, accessibilità): invisibile finché non riceve il
               focus da tastiera, permette di saltare header+mega-menu e arrivare
               dritti al contenuto — senza, un utente da tastiera/screen reader

@@ -22,6 +22,7 @@ import type {
   ExternalJobInput,
   ExternalJobUpdateInput,
   GuidedRequestInput,
+  TrafficSource,
   GuidedRequestMyState,
   GuidedRequestStatusSummary,
   GuidedRequestUserStateInput,
@@ -343,6 +344,13 @@ export type AdminSearchResult = {
 export type AdminTrends = {
   weekStarts: string[];
   series: { newClients: number[]; newProfessionals: number[]; requests: number[]; bookings: number[]; reports: number[] };
+};
+
+/** Provenienza delle richieste di preventivo, ultimi 30 giorni (docs/CHANGELOG.md §291). */
+export type AdminTrafficSources = {
+  days: number;
+  total: number;
+  bySource: { source: TrafficSource | "unknown"; count: number }[];
 };
 
 export type AdminReportTarget =
@@ -1520,6 +1528,9 @@ export function createApiClient({ baseUrl }: ApiClientConfig) {
     adminOverview: (token: string) => request<AdminOverview>("/admin/overview", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminTrends: (token: string) => request<AdminTrends>("/admin/trends", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminTrafficSources: (token: string) =>
+      request<AdminTrafficSources>("/admin/traffic-sources", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminSearch: (token: string, q: string) =>
       request<AdminSearchResult>(`/admin/search?q=${encodeURIComponent(q)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),

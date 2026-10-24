@@ -14,6 +14,7 @@ import {
   isPlausiblePhoneNumber,
   isProfessionalCategorySlug,
   normalizePhoneNumber,
+  trafficSourceSchema,
   type ProfessionalAgenda,
   type ProfessionalCategorySlug,
   type ProfessionalDetail,
@@ -22,6 +23,7 @@ import { Autocomplete, Button, ButtonArrow, Icon, Text, XStack, YStack, brand, r
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { MediaPreview } from "@/components/MediaPreview";
+import { TRAFFIC_SOURCE_STORAGE_KEY } from "@/components/TrafficSourceTracker";
 import { InlineAuthGate } from "@/components/InlineAuthGate";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { UploadingDots } from "@/components/UploadingDots";
@@ -104,6 +106,27 @@ export type GuidedRequestFormProps = {
   submittingLabel: string;
   descriptionPlaceholder: string;
 };
+
+/**
+ * Titolo e sottotitolo del modulo, mostrati da soli finché il modulo non è
+ * pronto (accesso in caricamento, o `Suspense` della pagina): così la pagina
+ * arriva a Google e al browser già col suo titolo, non vuota
+ * (docs/CHANGELOG.md §291). Stessa misura del modulo completo, niente salti.
+ */
+export function GuidedRequestHeading({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
+      <YStack width="100%" maxWidth={560} gap="$5">
+        <YStack gap="$3">
+          <Text tag="h1" margin={0} fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
+            {title}
+          </Text>
+          <Text color={brand.grafite70}>{subtitle}</Text>
+        </YStack>
+      </YStack>
+    </YStack>
+  );
+}
 
 export function GuidedRequestForm({
   isUrgent: isUrgentInitial,
@@ -451,7 +474,7 @@ export function GuidedRequestForm({
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   if (isLoading) {
-    return null;
+    return <GuidedRequestHeading title={title} subtitle={subtitle} />;
   }
 
   if (result) {
@@ -651,6 +674,7 @@ export function GuidedRequestForm({
         forwardIfNoReply: professionalProfileId ? forwardIfNoReply : false,
         preferredDate: finalPreferredDate,
         preferredTimeSlot: finalPreferredTimeSlot,
+        trafficSource: storedTrafficSource(),
       });
       // Solo per un intervento a domicilio: i campi destinatario/indirizzo
       // restano vuoti (mai riempiti) per una richiesta Online, confrontarli
@@ -1438,3 +1462,12 @@ function RequestSummary({
   );
 }
 
+/** Provenienza della visita salvata da `TrafficSourceTracker`, se valida. */
+function storedTrafficSource() {
+  try {
+    const parsed = trafficSourceSchema.safeParse(window.sessionStorage.getItem(TRAFFIC_SOURCE_STORAGE_KEY));
+    return parsed.success ? parsed.data : undefined;
+  } catch {
+    return undefined;
+  }
+}

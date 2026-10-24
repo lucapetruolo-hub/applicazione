@@ -3367,3 +3367,156 @@ a.admin-kpi:hover {
 .not-found-services .popular-services-list {
   justify-content: center;
 }
+
+/* "[Lavoro] a [città] in breve" in fondo alle pagine categoria+città
+   (docs/CHANGELOG.md §291): tre numeri veri e le domande frequenti, aperte
+   una alla volta. Stessi bordi e colori di "Servizi più richiesti". */
+.city-facts {
+  width: 100%;
+  max-width: 1200px;
+  box-sizing: border-box;
+  padding: 8px 16px 32px;
+}
+.city-facts-title {
+  margin: 0 0 14px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #2b2420;
+  text-wrap: balance;
+}
+.city-facts-list {
+  list-style: none;
+  margin: 0 0 24px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.city-facts-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #f0dcc0;
+  min-width: 0;
+}
+.city-facts-value {
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 800;
+  color: #2b2420;
+  font-variant-numeric: tabular-nums;
+}
+.city-facts-label {
+  font-size: 14px;
+  line-height: 20px;
+  color: #6e6459;
+}
+.city-facts-subtitle {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #2b2420;
+}
+.city-facts-faq {
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #f0dcc0;
+  overflow: hidden;
+}
+.city-facts-question + .city-facts-question {
+  border-top: 1px solid #f0dcc0;
+}
+.city-facts-question summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #2b2420;
+  cursor: pointer;
+  list-style: none;
+}
+.city-facts-question summary::-webkit-details-marker {
+  display: none;
+}
+.city-facts-question summary::after {
+  content: "";
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid #6e6459;
+  border-bottom: 2px solid #6e6459;
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.city-facts-question[open] summary::after {
+  transform: rotate(-135deg) translateY(-2px);
+}
+.city-facts-question summary:hover {
+  background: #fdf8f2;
+}
+.city-facts-question summary:focus-visible {
+  outline: 2px solid #0e7a4c;
+  outline-offset: -2px;
+}
+.city-facts-question p {
+  margin: 0;
+  padding: 0 16px 14px;
+  font-size: 15px;
+  line-height: 23px;
+  color: #6e6459;
+}
+.city-facts-question a {
+  color: #0e7a4c;
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+@media (max-width: 520px) {
+  .city-facts-list {
+    grid-template-columns: 1fr;
+  }
+  .city-facts-item {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8px;
+    padding: 12px 14px;
+  }
+  .city-facts-value {
+    font-size: 18px;
+  }
+}
+@media (min-width: 661px) {
+  .city-facts {
+    padding: 8px 24px 40px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .city-facts-question summary::after {
+    transition: none;
+  }
+}
+
+/* Barre "Da dove arrivano le richieste" in /admin/statistiche (CHANGELOG §291). */
+.traffic-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: #f5eadb;
+  overflow: hidden;
+}
+.traffic-bar-fill {
+  height: 100%;
+  min-width: 2px;
+  border-radius: 999px;
+  background: #c9b39a;
+}
+.traffic-bar-fill--google {
+  background: #2b2420;
+}

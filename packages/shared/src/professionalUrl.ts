@@ -14,7 +14,7 @@ const MAX_NAME_SLUG_LENGTH = 60;
 function slugPart(text: string): string {
   return text
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     // "S.R.L." → "srl", non "s-r-l".
     .replace(/\./g, "")

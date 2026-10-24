@@ -60,3 +60,18 @@ jobs:
         env:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
         run: pnpm turbo run test
+
+      # Controllo SEO (docs/CHANGELOG.md §291) contro un'API finta: prima il
+      # sito privato appena costruito (tutto noindex, sitemap vuota), poi una
+      # build col sito aperto (un H1, canonical, titolo, nessun noindex per
+      # sbaglio, dati strutturati, redirect dei profili, 404, sitemap).
+      - name: Controllo SEO (sito privato)
+        run: node apps/web/scripts/seo-check/run.mjs private
+
+      - name: Controllo SEO (sito aperto)
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+          NEXT_PUBLIC_SITE_INDEXABLE: "true"
+        run: |
+          pnpm --filter @professionisti/web build
+          node apps/web/scripts/seo-check/run.mjs public

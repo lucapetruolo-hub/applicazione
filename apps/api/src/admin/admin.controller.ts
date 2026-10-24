@@ -39,6 +39,13 @@ export class AdminController {
     return this.adminService.getTrends();
   }
 
+  /** Da dove arrivano le richieste di preventivo, ultimi 30 giorni (docs/CHANGELOG.md §291). */
+  @RequireAdminScope("ANY")
+  @Get("traffic-sources")
+  trafficSources() {
+    return this.adminService.getTrafficSources();
+  }
+
   /** Ricerca globale ⌘K (docs/CHANGELOG.md §145). */
   @Get("search")
   search(@Query("q") q = "") {
