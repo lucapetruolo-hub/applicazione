@@ -20318,3 +20318,16 @@ Non fatto qui: zod 4 (aggiornamento grande, rischio basso: il corpo JSON ha già
 - Tolto il messaggio "Pages directory cannot be found" stampato a ogni lint (miglioria approvata da Luca): `rootDir` di Next in `eslint.config.mjs` ora è un percorso assoluto, perché turbo fa partire il lint da `apps/web`.
 
 **Verifica**: lint di tutto il monorepo a zero errori e zero avvisi, typecheck, build. Foto delle 132 pagine prima e dopo (`confronto-pagine`, con il limite di richieste dell'API alzato solo in locale per non avere risposte 429 a caso): 128 identiche al pixel; le altre 4 (riga "adesso" dell'agenda, admin Finanza, pochi pixel in `/urgente`) cambiano anche tra due giri fatti senza modifiche. Stessi stati HTTP, nessun errore nuovo in console. Prove nel browser: filtri della ricerca e menu da telefono si chiudono con un clic sullo sfondo e con Esc, non con un clic dentro; ricerca rapida admin; elenco utenti admin con la ricerca; campi di `/account` compilati anche arrivando da un'altra pagina; finestra della fascia oraria in agenda con `role="dialog"` reso da Tamagui. CodeQL 2.27.3 in locale con le stesse regole della CI: nessuna segnalazione nel codice del sito.
+
+## 319. Menu laterale riducibile a sole icone, via "← Dashboard" da Richieste e lavori
+
+**Richiesta esplicita dell'utente**: poter rimpicciolire il menu laterale del professionista mostrando solo le icone, per avere più spazio in pagine piene come Agenda e Statistiche. Nello stesso thread: togliere il pulsante "← Dashboard" rimasto in alto a destra in Richieste e lavori.
+
+**Decisione**:
+- Tasto tondo in alto nel menu (`AccountShell`): riduce la colonna da 256px a 64px e la riapre. Solo da 1000px, dove il menu è una colonna; su telefono e tablet in verticale resta la barra scorrevole.
+- Col menu ridotto il nome della voce compare a fumetto passando sopra o arrivando col tasto Tab (resta nella pagina per gli screen reader); numeri e pallini rossi restano sull'angolo dell'icona; i titoli dei gruppi diventano righe di separazione.
+- La scelta resta nel browser (`localStorage`, `professionisti_menu_ridotto`). Uno script in linea nel `<head>` (`lib/accountNavCollapsed.ts`) mette l'attributo `data-acct-nav` su `<html>` prima del primo disegno e il CSS legge quello: chi ha ridotto il menu non lo vede aprirsi e richiudersi a ogni pagina. Il hook è `lib/useAccountNavCollapsed.ts` (`useSyncExternalStore`).
+- Nessuna riduzione automatica nell'agenda: la sua vista a schermo intero copre già tutta la pagina.
+- Le regole del menu ridotto per `.acct-nav-dot`/`.acct-nav-badge` valgono solo dentro `.acct-nav`: la tendina "Il mio account" dell'header usa le stesse classi.
+
+**Verifica**: typecheck e lint; foto di Agenda, Statistiche e Richieste a 1440px e 1024px con menu aperto, ridotto e con il nome a fumetto.

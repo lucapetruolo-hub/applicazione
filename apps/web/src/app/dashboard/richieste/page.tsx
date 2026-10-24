@@ -363,11 +363,6 @@ function RichiesteContent() {
               Gestisci preventivi, rispondi ai clienti e tieni traccia di ogni lavoro
             </Text>
           </YStack>
-          <Link href="/dashboard">
-            <Button variant="ghost" size="$3">
-              ← Dashboard
-            </Button>
-          </Link>
         </XStack>
 
         {/* Tab filtro — riga unica scorrevole orizzontalmente (richiesta

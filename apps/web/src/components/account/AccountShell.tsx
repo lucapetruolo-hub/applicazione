@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { CLIENT_TABS, PROFESSIONAL_NAV, isNavItemActive } from "@/lib/accountMenuItems";
 import { accountMenuUnreadCounts } from "@/lib/notificationSections";
 import { useNavAttention } from "@/lib/useNavAttention";
+import { useAccountNavCollapsed } from "@/lib/useAccountNavCollapsed";
 
 /**
  * Guscio comune delle pagine personali (docs/CHANGELOG.md §147, decisione
@@ -19,6 +20,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, isLoading, unreadNotifications } = useAuth();
   const attention = useNavAttention();
+  const [collapsed, toggleCollapsed] = useAccountNavCollapsed();
   // Nell'area professionista il menu c'è già mentre si carica l'accesso:
   // prima compariva dopo e spingeva giù la pagina (A1 della verifica,
   // docs/CHANGELOG.md §310).
@@ -32,6 +34,12 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
     return (
       <div className="acct-shell">
         <nav className="acct-nav" aria-label="Sezioni del tuo account">
+          {/* Riduce il menu a sole icone (da 1000px, docs/CHANGELOG.md §319):
+              il nome della voce compare passando sopra o col tasto Tab. */}
+          <button type="button" className="acct-nav-toggle" onClick={toggleCollapsed} aria-expanded={!collapsed} aria-label={collapsed ? "Espandi il menu" : "Riduci il menu a icone"}>
+            <Icon name={collapsed ? "chevron-right" : "chevron-left"} size={16} color="#6e6459" />
+            <span className="acct-nav-tip">{collapsed ? "Espandi il menu" : "Riduci il menu"}</span>
+          </button>
           {PROFESSIONAL_NAV.map((group) => (
             <div key={group.title} className="acct-nav-group">
               <span className="acct-nav-title">{group.title}</span>
@@ -41,7 +49,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
                 return (
                   <Link key={item.href} href={item.href} className={`acct-nav-link${active ? " is-active" : ""}`} aria-current={active ? "page" : undefined}>
                     <Icon name={item.icon} size={16} color={active ? "#2b2420" : "#6e6459"} />
-                    <span>{item.label}</span>
+                    <span className="acct-nav-label">{item.label}</span>
                     {count > 0 ? <span className="acct-nav-badge">{count > 9 ? "9+" : count}</span> : attention.has(item.href) ? <span className="acct-nav-dot" role="img" aria-label="Da completare" /> : null}
                   </Link>
                 );
