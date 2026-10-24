@@ -20042,3 +20042,11 @@ La mappa con una chiave vera si vede solo sul sito pubblicato: dopo l'unione va 
 - App: Instrument Sans (`@expo-google-fonts/instrument-sans`, pesi 400-700) al posto di Archivo e Inter Tight, tolti i due pacchetti.
 
 **Verifica**: typecheck e lint di web e app, build del web; area professionista e cliente fotografate con due account di prova (prova.design.pro@example.com, prova.design.cliente@example.com) a 390 e 1440 px, prima e dopo.
+
+## 298. Via le scintille e la promessa "Richieste filtrate dall'IA · In arrivo"
+
+**Richiesta dell'utente**: "effettua miglioria 1" (proposta nel §297: togliere le scintille dalla tessera "Non trovi il tuo lavoro?" e il riquadro "Richieste filtrate dall'IA · In arrivo", che prometteva una funzione che non c'è).
+
+**Decisione**: nella tessera verde l'icona diventa un foglio (`file-text`), coerente con "Descrivilo". Nel riquadro scuro per i professionisti la seconda colonna diventa "Richieste della tua zona" (richieste dei clienti nel raggio di lavoro, con foto e descrizione, nessun costo per contatto), cosa che il sito fa già; tolta l'etichetta "In arrivo" e il campo `comingSoon`. Restano altre scintille (piè di pagina "Gratis per chi cerca", risultati, Boost, consigli del profilo), non comprese nella richiesta.
+
+**Verifica**: typecheck del web.

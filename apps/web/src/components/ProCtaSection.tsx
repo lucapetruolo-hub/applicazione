@@ -5,23 +5,19 @@ import Link from "next/link";
 import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { GlowLights } from "./GlowLights";
 
+// Solo cose che il sito fa già (docs/CHANGELOG.md §298): "Richieste
+// filtrate dall'IA · In arrivo" è stata tolta su scelta dell'utente perché
+// prometteva una funzione che non c'è.
 const COLUMNS = [
   {
     icon: "receipt-text" as const,
     title: "Agenda e preventivi",
     text: "Agenda, preventivi e fatturazione in un'unica dashboard. Senza fogli di calcolo o WhatsApp sparsi.",
-    comingSoon: false,
   },
   {
-    icon: "sparkles" as const,
-    title: "Richieste filtrate dall'IA",
-    text: 'Il cliente carica una foto, il sistema propone categoria e fascia di budget. A te arriva già classificata, non un "ciao quanto costa?".',
-    // Richiesta esplicita dell'utente: nessuna classificazione automatica
-    // via IA è implementata (il cliente sceglie la categoria a mano in
-    // GuidedRequestForm) — a differenza del giro precedente, qui l'utente
-    // ha chiesto esplicitamente di pubblicarla comunque marcata "In
-    // arrivo", non come funzionalità già attiva.
-    comingSoon: true,
+    icon: "map-pin" as const,
+    title: "Richieste della tua zona",
+    text: "Ti arrivano le richieste dei clienti nel tuo raggio di lavoro, con foto e descrizione. Nessun costo per contatto.",
   },
 ];
 
@@ -64,18 +60,9 @@ export function ProCtaSection() {
                   <Icon name={column.icon} size={22} color="white" strokeWidth={1.5} />
                 </YStack>
                 <YStack gap="$1" flex={1} minWidth={0}>
-                  <XStack alignItems="center" gap="$2" flexWrap="wrap">
-                    <Text fontFamily="$heading" fontWeight="600" fontSize="$6" color="white">
-                      {column.title}
-                    </Text>
-                    {column.comingSoon ? (
-                      <XStack backgroundColor="rgba(255,255,255,0.18)" paddingHorizontal={8} paddingVertical={2} borderRadius={999}>
-                        <Text fontSize={13} fontWeight="700" color="white">
-                          In arrivo
-                        </Text>
-                      </XStack>
-                    ) : null}
-                  </XStack>
+                  <Text fontFamily="$heading" fontWeight="600" fontSize="$6" color="white">
+                    {column.title}
+                  </Text>
                   <Text fontSize={16} color="rgba(255,255,255,0.85)">
                     {column.text}
                   </Text>
