@@ -1,6 +1,7 @@
 import { Injectable, Logger, ServiceUnavailableException } from "@nestjs/common";
 import type { AddressPlace, AddressSuggestion } from "@professionisti/shared";
 import { DailyBudget } from "../common/daily-budget";
+import { opsAlert } from "../common/ops-alert";
 
 type GoogleAutocompleteResponse = {
   suggestions?: {
@@ -40,11 +41,17 @@ const RECENT_FAILURE_MS = 5 * 60_000;
 export class AddressSuggestionsService {
   private readonly logger = new Logger(AddressSuggestionsService.name);
   private readonly suggestionsBudget = new DailyBudget(SUGGESTIONS_DAILY_LIMIT, () =>
-    this.logger.error("Tetto giornaliero dei suggerimenti di indirizzo raggiunto: fino a mezzanotte si scrive l'indirizzo a mano."),
+    this.alert("address-budget", "Tetto giornaliero dei suggerimenti di indirizzo raggiunto: fino a mezzanotte si scrive l'indirizzo a mano."),
   );
   private readonly placesBudget = new DailyBudget(PLACES_DAILY_LIMIT, () =>
-    this.logger.error("Tetto giornaliero dei dettagli di indirizzo raggiunto: fino a mezzanotte si scrive l'indirizzo a mano."),
+    this.alert("address-place-budget", "Tetto giornaliero dei dettagli di indirizzo raggiunto: fino a mezzanotte si scrive l'indirizzo a mano."),
   );
+
+  /** Nel log e, una volta l'ora, su Sentry: il cliente vede solo i campi separati (§315). */
+  private alert(key: string, message: string): void {
+    this.logger.error(message);
+    opsAlert(key, message);
+  }
 
   private lastFailureAt = 0;
 
@@ -67,7 +74,10 @@ export class AddressSuggestionsService {
 
   private apiKey(): string {
     const key = process.env.GOOGLE_MAPS_API_KEY?.trim();
-    if (!key) throw new ServiceUnavailableException("Suggerimenti di indirizzo non disponibili.");
+    if (!key) {
+      opsAlert("address-no-key", "GOOGLE_MAPS_API_KEY mancante: niente suggerimenti di indirizzo né mappa fissa.");
+      throw new ServiceUnavailableException("Suggerimenti di indirizzo non disponibili.");
+    }
     return key;
   }
 
@@ -78,14 +88,14 @@ export class AddressSuggestionsService {
       const response = await fetch(url, { ...init, signal: controller.signal });
       if (!response.ok) {
         this.lastFailureAt = Date.now();
-        this.logger.error(`Google Places ha risposto ${response.status}: ${(await response.text()).slice(0, 300)}`);
+        this.alert("address-google-refused", `Google Places ha risposto ${response.status}: ${(await response.text()).slice(0, 300)}`);
         throw new ServiceUnavailableException("Suggerimenti di indirizzo non disponibili.");
       }
       return (await response.json()) as T;
     } catch (error) {
       if (error instanceof ServiceUnavailableException) throw error;
       this.lastFailureAt = Date.now();
-      this.logger.warn(`Google Places non raggiungibile: ${error instanceof Error ? error.message : error}`);
+      this.alert("address-google-unreachable", `Google Places non raggiungibile: ${error instanceof Error ? error.message : error}`);
       throw new ServiceUnavailableException("Suggerimenti di indirizzo non disponibili.");
     } finally {
       clearTimeout(timeout);
