@@ -192,12 +192,19 @@ export function AddressAutocompleteInput({ value, onChange, onSelect, placeholde
         aria-controls={listboxId}
         aria-expanded={open}
         aria-autocomplete="list"
+        // VoiceOver e TalkBack leggono l'opzione evidenziata con le frecce (§324).
+        aria-activedescendant={open && highlighted >= 0 ? `${listboxId}-${highlighted}` : undefined}
       />
+      {/* Annuncio per i lettori di schermo: quanti suggerimenti sono comparsi (§324). */}
+      <span className="address-sr-status" role="status" aria-live="polite">
+        {open ? (suggestions.length > 0 ? `${suggestions.length} ${suggestions.length === 1 ? "suggerimento" : "suggerimenti"}: usa le frecce per sceglierne uno.` : "Nessun indirizzo trovato.") : ""}
+      </span>
       {open && suggestions.length > 0 ? (
         <ul id={listboxId} className="address-suggestions" role="listbox">
           {suggestions.map((s, i) => (
             <li
               key={s.id}
+              id={`${listboxId}-${i}`}
               role="option"
               aria-selected={i === highlighted}
               className={i === highlighted ? "highlighted" : undefined}
@@ -211,7 +218,7 @@ export function AddressAutocompleteInput({ value, onChange, onSelect, placeholde
             </li>
           ))}
           {/* Attribuzione richiesta da Google per i suggerimenti mostrati fuori da una mappa Google. */}
-          <li className="address-attribution" aria-hidden="true">
+          <li className="address-attribution" role="presentation" aria-hidden="true">
             Suggerimenti di Google
           </li>
         </ul>
@@ -226,6 +233,14 @@ export function AddressAutocompleteInput({ value, onChange, onSelect, placeholde
         .address-autocomplete {
           position: relative;
           width: 100%;
+        }
+        .address-sr-status {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          overflow: hidden;
+          clip: rect(0 0 0 0);
+          white-space: nowrap;
         }
         .address-wrong-city {
           margin: 6px 0 0;
@@ -267,8 +282,9 @@ export function AddressAutocompleteInput({ value, onChange, onSelect, placeholde
         }
         .address-suggestions li.address-attribution {
           cursor: default;
-          font-size: 11px;
-          color: #9a8f82;
+          /* Leggibile anche così piccola: contrasto almeno 4,5:1 (§324). */
+          font-size: 12px;
+          color: #6e6459;
           align-items: flex-end;
         }
         .address-suggestions li.address-attribution:hover {
