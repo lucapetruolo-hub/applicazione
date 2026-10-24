@@ -52,7 +52,7 @@ export default async function CercaPage(props: { searchParams: Promise<PageSearc
   // /cerca/[categoria]. La mappa è mostrata anche in modalità "Online" (un
   // professionista che offre consulenza da remoto resta comunque radicato in
   // una zona), quindi serve calcolarla in entrambe le modalità.
-  let allProfessionals: ProfessionalSearchResult[] = professionals;
+  let allProfessionals: ProfessionalSearchResult[];
   try {
     allProfessionals = await apiClient.searchProfessionals({ q: searchParams.q, remote: isOnline });
   } catch {

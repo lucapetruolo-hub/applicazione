@@ -105,7 +105,7 @@ export async function CategoryResults({
   // a sinistra si aggiorna di conseguenza in base a cosa è visibile sulla
   // mappa (ResultsListWithMap). La mappa è mostrata anche in modalità
   // "Online", quindi serve calcolarla in entrambe le modalità.
-  let allProfessionals: ProfessionalSearchResult[] = professionals;
+  let allProfessionals: ProfessionalSearchResult[];
   try {
     allProfessionals = await apiClient.searchProfessionals({ category: category.slug, remote: isOnline });
   } catch {

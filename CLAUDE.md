@@ -91,8 +91,7 @@ prima discuterne e aggiornare questo file.
 - Il build di produzione di `apps/mobile` avviene su **EAS Build** (cloud).
   Dal passaggio a Expo 58 (§294) `npx expo export --platform android|ios`
   funziona anche in locale ed è un buon controllo veloce che il pacchetto
-  si generi; `npx expo-doctor` controlla le versioni (TypeScript escluso
-  apposta in `package.json`, il monorepo ne usa uno solo).
+  si generi; `npx expo-doctor` controlla le versioni.
 - Lo script `build` di `apps/api` compila prima `@professionisti/database` e
   `@professionisti/shared` (altrimenti TypeScript non trova quei moduli): non toglierlo.
 - **Migrazioni DB**: mai `prisma db push` in produzione. Lo `start` di
