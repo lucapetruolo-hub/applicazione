@@ -3,7 +3,11 @@ import { ATTRIBUTE, CHANGE_EVENT, COLLAPSED, STORAGE_KEY } from "@/lib/accountNa
 
 function subscribe(onChange: () => void) {
   window.addEventListener(CHANGE_EVENT, onChange);
-  return () => window.removeEventListener(CHANGE_EVENT, onChange);
+  window.addEventListener("resize", onChange);
+  return () => {
+    window.removeEventListener(CHANGE_EVENT, onChange);
+    window.removeEventListener("resize", onChange);
+  };
 }
 
 const isCollapsed = () => document.documentElement.getAttribute(ATTRIBUTE) === COLLAPSED;
@@ -12,15 +16,12 @@ const isCollapsed = () => document.documentElement.getAttribute(ATTRIBUTE) === C
 export function useAccountNavCollapsed(): [boolean, () => void] {
   const collapsed = useSyncExternalStore(subscribe, isCollapsed, () => false);
   const toggle = useCallback(() => {
-    const next = !isCollapsed();
-    if (next) document.documentElement.setAttribute(ATTRIBUTE, COLLAPSED);
-    else document.documentElement.removeAttribute(ATTRIBUTE);
     try {
-      if (next) localStorage.setItem(STORAGE_KEY, "1");
-      else localStorage.removeItem(STORAGE_KEY);
+      localStorage.setItem(STORAGE_KEY, isCollapsed() ? "0" : "1");
     } catch {
-      // archiviazione non disponibile: la scelta vale fino alla chiusura della pagina
+      // archiviazione non disponibile (navigazione privata bloccata): resta lo stato automatico
     }
+    // Lo script di layout.tsx ricalcola l'attributo, poi il hook lo rilegge.
     window.dispatchEvent(new Event(CHANGE_EVENT));
   }, []);
   return [collapsed, toggle];

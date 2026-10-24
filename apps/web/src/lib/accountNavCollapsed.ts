@@ -1,8 +1,11 @@
 /**
  * Menu laterale del professionista ridotto a sole icone (docs/CHANGELOG.md
  * §319, richiesta esplicita dell'utente: più spazio per agenda e
- * statistiche). La scelta resta nel browser e vale solo da 1000px, dove il
- * menu è una colonna; su telefono e tablet in verticale resta la barra.
+ * statistiche). Vale da 1000px; sotto c'è la colonna stretta del tablet o
+ * la barra del telefono. Senza una scelta della persona il menu parte
+ * ridotto fino a 1280px (portatili piccoli, tablet in orizzontale), dove
+ * ridurlo dà 192px al contenuto di ogni pagina; la scelta, "1" o "0", vince
+ * sempre.
  * Qui solo le costanti, importabili anche dal layout (componente server);
  * il hook è in `useAccountNavCollapsed.ts`.
  *
@@ -15,5 +18,10 @@ export const ATTRIBUTE = "data-acct-nav";
 export const COLLAPSED = "collapsed";
 export const CHANGE_EVENT = "acct-nav-change";
 
-/** Script in linea nel `<head>`: legge la scelta salvata prima che la pagina compaia. */
-export const ACCOUNT_NAV_BOOT_SCRIPT = `try{if(localStorage.getItem("${STORAGE_KEY}")==="1")document.documentElement.setAttribute("${ATTRIBUTE}","${COLLAPSED}")}catch(e){}`;
+export const AUTO_COLLAPSE_UP_TO = 1280;
+
+/**
+ * Script in linea nel `<head>`: decide lo stato prima che la pagina compaia
+ * e lo ricalcola quando cambia la finestra o la scelta.
+ */
+export const ACCOUNT_NAV_BOOT_SCRIPT = `(function(){var d=document.documentElement;function a(){var p=null;try{p=localStorage.getItem("${STORAGE_KEY}")}catch(e){}if(p==="1"||(p===null&&innerWidth<=${AUTO_COLLAPSE_UP_TO}))d.setAttribute("${ATTRIBUTE}","${COLLAPSED}");else d.removeAttribute("${ATTRIBUTE}")}a();addEventListener("resize",a);addEventListener("${CHANGE_EVENT}",a)})()`;

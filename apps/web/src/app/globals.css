@@ -839,7 +839,9 @@ button.notif-row-main:hover {
    di schede del cliente. Le pagine dentro restano centrate come prima. */
 .acct-shell {
   width: 100%;
-  max-width: 1320px;
+  /* 1600 e non più 1320 (docs/CHANGELOG.md §319): su uno schermo da 1920px
+     agenda e messaggi restavano in una striscia centrale con 600px vuoti. */
+  max-width: 1600px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -870,6 +872,10 @@ button.notif-row-main:hover {
   display: contents;
 }
 .acct-nav-title {
+  display: none;
+}
+/* Nome breve sotto l'icona: solo nella colonna stretta del tablet. */
+.acct-nav-short {
   display: none;
 }
 /* Tasto "Riduci il menu" (docs/CHANGELOG.md §319): solo con la colonna. */
@@ -959,7 +965,10 @@ button.notif-row-main:hover {
     justify-content: center;
   }
 }
-@media (min-width: 1000px) {
+/* Colonna a sinistra da 760px (tablet in verticale compreso, docs/CHANGELOG.md
+   §319): prima, fino a 1000px, era una barra che scorreva di lato e
+   nascondeva metà delle voci. */
+@media (min-width: 760px) {
   .acct-shell {
     flex-direction: row;
     align-items: flex-start;
@@ -985,6 +994,66 @@ button.notif-row-main:hover {
   .acct-nav-group + .acct-nav-group {
     margin-top: 10px;
   }
+}
+/* Tablet in verticale: colonna stretta con icona e nome breve sotto, come la
+   "navigation rail" di Material. Niente fumetti: col dito non si passa sopra. */
+@media (min-width: 760px) and (max-width: 999px) {
+  .acct-nav {
+    width: 96px;
+    padding: 8px 4px;
+  }
+  .acct-nav-group + .acct-nav-group {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #f0dcc0;
+  }
+  .acct-nav-link {
+    position: relative;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 0 8px;
+    min-height: 56px;
+    justify-content: center;
+    text-align: center;
+    white-space: normal;
+  }
+  .acct-nav-link > svg {
+    width: 20px;
+    height: 20px;
+  }
+  /* Il nome intero resta per gli screen reader, si vede quello breve. */
+  .acct-nav-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .acct-nav-short {
+    display: block;
+    font-size: 12px;
+    line-height: 1.2;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+  .acct-nav .acct-nav-badge {
+    position: absolute;
+    top: 4px;
+    right: 12px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    font-size: 11px;
+    box-shadow: 0 0 0 2px #ffffff;
+  }
+  .acct-nav .acct-nav-dot {
+    position: absolute;
+    top: 9px;
+    right: 22px;
+  }
+}
+@media (min-width: 1000px) {
   .acct-nav-title {
     display: block;
     font-size: 13px;
