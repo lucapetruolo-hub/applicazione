@@ -20050,3 +20050,11 @@ La mappa con una chiave vera si vede solo sul sito pubblicato: dopo l'unione va 
 **Decisione**: nella tessera verde l'icona diventa un foglio (`file-text`), coerente con "Descrivilo". Nel riquadro scuro per i professionisti la seconda colonna diventa "Richieste della tua zona" (richieste dei clienti nel raggio di lavoro, con foto e descrizione, nessun costo per contatto), cosa che il sito fa già; tolta l'etichetta "In arrivo" e il campo `comingSoon`. Restano altre scintille (piè di pagina "Gratis per chi cerca", risultati, Boost, consigli del profilo), non comprese nella richiesta.
 
 **Verifica**: typecheck del web.
+
+## 299. Via le scintille rimaste
+
+**Richiesta dell'utente**: "effettua ancora possibile" (proposta del §298: togliere le scintille rimaste, simbolo tipico dei siti fatti con l'IA).
+
+**Decisione**: ogni scintilla prende un'icona che dice cosa indica. "Gratis per chi cerca" (piè di pagina e risultati): un cartellino del prezzo (`tag`). Consiglio in Oggi e consigli per la bio nel profilo: una lampadina (`lightbulb`). Pacchetto "Storia di successo": una macchina fotografica (`camera`), perché si racconta il lavoro con le foto. Etichetta "Nuovo profilo" sulle schede: un germoglio (`sprout`). Aggiunte `tag`, `lightbulb` e `sprout` al registro icone (web e app). Resta la scintilla nel giro del giorno dell'agenda, che non si tocca a mano.
+
+**Verifica**: typecheck di `packages/ui` e del web.

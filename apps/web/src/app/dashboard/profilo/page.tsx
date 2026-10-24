@@ -915,7 +915,7 @@ export default function DashboardProfiloPage() {
             <FieldLabel>Bio</FieldLabel>
             <YStack gap="$2" padding="$3" backgroundColor={brand.gesso} borderRadius="$4">
               <XStack alignItems="center" gap="$2">
-                <Icon name="sparkles" size={14} color={brand.cianografiaScuro} />
+                <Icon name="lightbulb" size={14} color={brand.cianografiaScuro} />
                 <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite}>
                   Consigli per una bio più professionale
                 </Text>

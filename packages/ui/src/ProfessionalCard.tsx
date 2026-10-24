@@ -368,7 +368,7 @@ export function ProfessionalCard({
               ) : null}
               {isNewProfile ? (
                 <XStack alignItems="center" gap={4} paddingHorizontal="$2" paddingVertical={2} borderRadius="$10" backgroundColor={brand.cianografiaVelo}>
-                  <Icon name="sparkles" size={13} color={brand.cianografiaScuro} strokeWidth={2} />
+                  <Icon name="sprout" size={13} color={brand.cianografiaScuro} strokeWidth={2} />
                   <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.cianografiaScuro}>
                     Nuovo profilo
                   </Text>

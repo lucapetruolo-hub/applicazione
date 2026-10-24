@@ -31,7 +31,7 @@ const BOOST_OPTIONS: BoostOption[] = [
     perks: ["Testo curato da noi", "Con le foto del lavoro"],
     priceEur: 49.9,
     priceNote: "una tantum",
-    icon: "sparkles",
+    icon: "camera",
     tone: "gold",
   },
 ];

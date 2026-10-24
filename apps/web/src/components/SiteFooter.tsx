@@ -97,7 +97,7 @@ export function SiteFooter() {
             </Text>
           </XStack>
           <XStack alignItems="center" gap="$2">
-            <Icon name="sparkles" size={16} color={brand.grafite70} strokeWidth={1.5} />
+            <Icon name="tag" size={16} color={brand.grafite70} strokeWidth={1.5} />
             <Text fontSize={13} fontWeight="600" color={brand.grafite70}>
               Gratis per chi cerca
             </Text>
