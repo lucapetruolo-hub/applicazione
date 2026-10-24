@@ -580,7 +580,9 @@ export class AdminService {
     return signups.map((s) => ({ email: s.email, createdAt: s.createdAt.toISOString() }));
   }
 
-  async promoteToAdmin(email: string): Promise<{ email: string; role: string }> {
+  async promoteToAdmin(typedEmail: string): Promise<{ email: string; role: string }> {
+    // Email degli account in minuscolo (§327).
+    const email = typedEmail.trim().toLowerCase();
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user) {
       throw new NotFoundException("Nessun utente registrato con questa email.");

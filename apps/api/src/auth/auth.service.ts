@@ -284,9 +284,11 @@ export class AuthService {
     if (!payload?.sub || !payload.email) {
       throw new UnauthorizedException("Token Google non valido.");
     }
+    // Email in minuscolo come nei moduli del sito (§327).
+    const googleEmail = payload.email.trim().toLowerCase();
 
     const existingUser = await this.prisma.user.findFirst({
-      where: { OR: [{ googleId: payload.sub }, { email: payload.email }] },
+      where: { OR: [{ googleId: payload.sub }, { email: googleEmail }] },
     });
 
     // Bug reale segnalato dall'utente: "Accedi con Google" su un'email mai
@@ -322,7 +324,7 @@ export class AuthService {
       (await this.prisma.user.create({
         data: {
           googleId: payload.sub,
-          email: payload.email,
+          email: googleEmail,
           ...googleNameFields(payload),
           imageUrl,
           role: role ?? "CLIENT",
@@ -354,7 +356,7 @@ export class AuthService {
     // iscritto con l'email di un altro: si azzera, il titolare può
     // sceglierne una nuova da /account. Solo per i professionisti, gli unici
     // a cui si chiede la conferma.
-    if (existingUser && existingUser.role !== "CLIENT" && !existingUser.emailVerifiedAt && existingUser.email === payload.email) {
+    if (existingUser && existingUser.role !== "CLIENT" && !existingUser.emailVerifiedAt && existingUser.email === googleEmail) {
       await this.prisma.user.update({
         where: { id: existingUser.id },
         data: { emailVerifiedAt: new Date(), ...CLEARED_EMAIL_CHECKS, passwordHash: null },

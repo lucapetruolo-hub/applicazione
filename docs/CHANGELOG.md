@@ -20456,3 +20456,17 @@ Dopo la scelta del verde, miglioria approvata da Luca: stesso effetto magnete an
 - zod 3 di `@expo/cli` tra le eccezioni di osv-scanner, fatto nella PR #105 (`osv-scanner.toml`, solo per la versione 3.25.76).
 - Controllo automatico `.github/workflows/zod.yml` (approvato da Luca, "effettua miglioria"): sulle PR che toccano `pnpm-lock.yaml` o i `package.json` di shared e API lancia `confronto-zod --solo-se-cambia` contro il commit di base; se zod resta alla stessa versione non fa nulla, altrimenti si ferma su ogni differenza. La versione di partenza è quella del `pnpm-lock.yaml` del commit di base. Le differenze già spiegate nel registro stanno in `ACCEPTED` nello script (oggi solo quella dell'agenda settimanale).
 - Prova automatica (approvata da Luca, "effettua miglioria"): in `apps/api/src/common/zod-messages.test.ts` ogni file di `packages/shared/src` che importa zod deve avere anche `import "./zod"`; senza, il sito caricherebbe quel file senza i messaggi di zod 3 e li mostrerebbe in silenzio in inglese di zod 4.
+
+## 327. Email degli account in minuscolo
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Correggere l'email del cambio password"): il codice per reimpostare la password non arrivava. Prova sul sito vero: l'invio funziona (arriva in pochi secondi a lucapetruolo@gmail.com; il primo invio può tardare circa un minuto mentre Render gratuito si sveglia). Nel controllo è emerso però un bug vero: accesso, registrazione e recupero password confrontavano l'email rispettando le maiuscole. Chi si era iscritto come "Mario@Gmail.com" e scriveva "mario@gmail.com" non veniva trovato e, nel recupero password, non riceveva niente senza nessun avviso (di proposito, per non far scoprire chi è iscritto). Luca: "si" alla correzione.
+
+**Decisione presa**
+- `accountEmailSchema` in `packages/shared/src/schemas.ts`: email senza spazi e in minuscolo, con lo stesso messaggio "Email non valida". Usato da accesso, registrazione, stato dell'email, modifica dell'account, richiesta e codice del recupero password.
+- Accesso con Google: email di Google in minuscolo prima di cercare o creare l'account. Promozione del primo admin e invito creato da un operatore (che lo faceva già) cercano in minuscolo.
+- Migrazione `20261024150000_email_minuscolo`: porta in minuscolo le email già salvate, tranne quando un altro account ha la stessa email scritta in modo diverso (resterebbero due account con la stessa email, vietato dal database). Quegli eventuali doppioni, solo dati di prova, restano com'erano.
+- Waitlist e modulo contatti non cambiano: non sono account.
+
+**Verifica**
+- Nuova prova `apps/api/src/auth/account-email.test.ts`; 600 test, typecheck e lint verdi.
+- Migrazione provata su PostgreSQL 16 con email miste, doppioni e valori vuoti: solo le email senza doppioni passano in minuscolo.
