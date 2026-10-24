@@ -1578,8 +1578,8 @@ export function RequestCard({
           targetType="GUIDED_REQUEST"
           targetLabel={`la richiesta di ${clientName}`}
           onClose={() => setShowReportModal(false)}
-          onSubmit={async (reason, details) => {
-            await apiClient.createContentReport(token, { targetType: "GUIDED_REQUEST", targetId: gr.id, reason, details });
+          onSubmit={async (input) => {
+            await apiClient.createContentReport(token, { targetType: "GUIDED_REQUEST", targetId: gr.id, ...input });
           }}
         />
       ) : null}

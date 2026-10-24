@@ -12,7 +12,7 @@ import {
 } from "@professionisti/shared";
 import { renderEmail } from "../email/email-layout";
 import { BOOKING_CALENDAR_INCLUDE, bookingCalendar, withCalendar, type BookingCalendar } from "../email/booking-calendar";
-import { adminNewReportEmail, requestSentEmail } from "../email/templates/job-emails";
+import { adminNewReportEmail, contactReportReceivedEmail, requestSentEmail } from "../email/templates/job-emails";
 import {
   EMPTY_EMAIL_CONTEXT,
   NOTIFICATION_EMAIL_TYPES,
@@ -227,17 +227,31 @@ export class NotificationsService {
    * segnalazione (docs/CHANGELOG.md §145): per un caso grave (minacce,
    * sicurezza) aspettare che qualcuno apra /admin è troppo.
    */
-  emailAdminsNewReport(report: { targetType: ContentReportTargetType; reason: string }): void {
+  emailAdminsNewReport(report: { targetType: ContentReportTargetType | "CONTACT_FORM"; reason: string }): void {
     void (async () => {
       const admins = await this.prisma.user.findMany({
         where: { role: "ADMIN", suspendedAt: null, OR: [{ adminRoles: { isEmpty: true } }, { adminRoles: { hasSome: ["SUPER", "MODERATOR"] } }] },
         select: { email: true },
       });
-      const email = adminNewReportEmail({ what: CONTENT_REPORT_TARGET_LABEL[report.targetType], reason: report.reason });
+      const fromContactForm = report.targetType === "CONTACT_FORM";
+      const what = report.targetType === "CONTACT_FORM" ? "Contenuto illegale, dal modulo Contatti" : CONTENT_REPORT_TARGET_LABEL[report.targetType];
+      const email = adminNewReportEmail({ what, reason: report.reason, fromContactForm });
       await Promise.all(admins.flatMap((admin) => (admin.email ? [this.emailService.send({ to: admin.email, ...email })] : [])));
     })().catch((err: unknown) => {
       this.logger.error(`Email admin nuova segnalazione non inviata: ${err instanceof Error ? err.message : String(err)}`);
     });
+  }
+
+  /**
+   * Segnalazione di contenuto illegale dal modulo Contatti, senza account
+   * (DSA art. 16 c. 1 e 4, docs/CHANGELOG.md §319): presa in carico a chi
+   * scrive e avviso agli admin che moderano.
+   */
+  emailContactReportReceived(senderEmail: string): void {
+    void this.emailService.send({ to: senderEmail, ...contactReportReceivedEmail() }).catch((err: unknown) => {
+      this.logger.error(`Email presa in carico segnalazione non inviata: ${err instanceof Error ? err.message : String(err)}`);
+    });
+    this.emailAdminsNewReport({ targetType: "CONTACT_FORM", reason: "Segnalazione di un contenuto illegale da chi non ha un account" });
   }
 
   async unreadCount(userId: string): Promise<{ count: number }> {

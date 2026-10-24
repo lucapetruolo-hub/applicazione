@@ -1398,6 +1398,9 @@ enum ContactMessageRole {
   CLIENT
   PROFESSIONAL
   OTHER
+  // Segnalazione di un contenuto illegale da chi non ha un account (DSA
+  // art. 16 c. 1, "qualsiasi persona", docs/CHANGELOG.md §319).
+  REPORT_ILLEGAL
 }
 
 model ContactMessage {
@@ -1460,6 +1463,12 @@ model ContentReport {
   targetId              String
   reason                String
   details               String?
+  // Chi segnala dice che il contenuto è illegale (DSA art. 16, docs/CHANGELOG.md
+  // §319): solo allora riceve l'esito della decisione (art. 16 c. 5); per una
+  // violazione dei Termini basta la conferma di presa in carico.
+  claimsIllegal         Boolean                 @default(false)
+  // Dichiarazione di buona fede di chi segnala un contenuto illegale (art. 16 c. 2 lett. d).
+  goodFaithAt           DateTime?
   status                ContentReportStatus     @default(OPEN)
   createdAt             DateTime                @default(now())
   resolvedAt            DateTime?
@@ -1472,6 +1481,9 @@ model ContentReport {
   // Misura applicata (solo RESOLVED). `null` per DISMISSED e per le
   // segnalazioni decise prima di docs/CHANGELOG.md §144.
   action                ModerationAction?
+  // Legge o punto dei Termini su cui si basa la misura (DSA art. 17 c. 3
+  // lett. d-e), chiave di `MODERATION_GROUNDS` in packages/shared.
+  ground                String?
   // L'admin ha segnalato il caso alle autorità (DSA art. 18: sospetto reato
   // che minaccia vita o sicurezza delle persone).
   authoritiesNotifiedAt DateTime?
