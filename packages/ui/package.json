@@ -16,7 +16,7 @@
     "lucide-react": "^1.27.0",
     "lucide-react-native": "^1.27.0",
     "react-native-svg": "^15.15.5",
-    "react-native-web": "^0.19.13",
+    "react-native-web": "^0.21.4",
     "tamagui": "1.144.4"
   },
   "peerDependencies": {

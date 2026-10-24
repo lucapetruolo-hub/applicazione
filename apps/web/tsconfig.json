@@ -3,7 +3,13 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      // React 19 solo nel sito: i pacchetti condivisi (packages/ui, Tamagui)
+      // troverebbero i tipi di React 18 dell'app mobile nella radice del
+      // monorepo. Così tutto il sito si controlla con un'unica versione (se
+      // un giorno i tipi 19 finissero nella radice, si ricade su quelli).
+      "react": ["./node_modules/@types/react"],
+      "react/*": ["./node_modules/@types/react/*"]
     },
     // Stesso ordine di risoluzione del webpack in next.config.mjs
     // (resolve.extensions con ".web.*" prima): senza questo, tsc
