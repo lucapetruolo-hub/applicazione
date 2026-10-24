@@ -1,4 +1,5 @@
 import { z } from "zod";
+import "./zod";
 
 /**
  * Strumenti della nuova agenda (docs/CHANGELOG.md §288): settimana tipo,

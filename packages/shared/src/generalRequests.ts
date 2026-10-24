@@ -1,4 +1,5 @@
 import { z } from "zod";
+import "./zod";
 import { findComuneByName } from "./data/comuni";
 import { professionalCategorySlugSchema } from "./schemas";
 import type { ProfessionalCategorySlug } from "./categories";

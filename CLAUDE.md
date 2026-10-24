@@ -88,8 +88,8 @@ prima discuterne e aggiornare questo file.
   `pnpm --filter @professionisti/web confronto-pagine` fotografa tutte le
   pagine e confronta i due giri pixel per pixel (istruzioni in testa a
   `apps/web/scripts/confronto-pagine.mjs`). Per zod, `src/zod.ts` di
-  `packages/shared` tiene i messaggi d'errore di zod 3 (lo carica `index.ts` per
-  primo; gli schemi importano `z` da "zod", e `apps/web` usa i sorgenti di
+  `packages/shared` tiene i messaggi d'errore di zod 3 (lo importa ogni file con
+  schemi, unico con effetti in `sideEffects`; gli schemi importano `z` da "zod", e `apps/web` usa i sorgenti di
   shared, non `dist/`, per non caricare nel browser tutto zod) e `pnpm --filter @professionisti/shared confronto-zod` confronta
   le validazioni prima/dopo un aggiornamento, anche da solo nelle PR che
   cambiano la versione di zod (`.github/workflows/zod.yml`, docs/CHANGELOG.md §312).

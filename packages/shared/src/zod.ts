@@ -10,11 +10,13 @@ import { z } from "zod";
  *
  * La configurazione è globale (una sola copia di zod nel monorepo): vale anche
  * per gli schemi scritti in `apps/api`, che caricano sempre questo pacchetto.
- * `index.ts` importa questo file per primo, così la configurazione è attiva
- * prima di qualunque validazione. Gli schemi importano `z` direttamente da
- * "zod", non da qui: ripassato da questo file, webpack non riesce più a
- * togliere dal sito le parti di zod che non usa (tutte le lingue dei
- * messaggi, JSON Schema, ~420 KB nel browser).
+ * Ogni file con schemi importa questo file (`import "./zod"`), così la
+ * configurazione è attiva prima di qualunque validazione anche quando il sito
+ * carica solo alcuni schemi (il pacchetto dichiara `sideEffects`, e questo è
+ * l'unico file con effetti). Gli schemi importano `z` direttamente da "zod",
+ * non da qui: ripassato da questo file, webpack non riesce più a togliere dal
+ * sito le parti di zod che non usa (tutte le lingue dei messaggi, JSON
+ * Schema, ~420 KB nel browser).
  *
  * Per gli ID si usa `z.guid()`, non `.uuid()`: zod 4 con `.uuid()` accetta
  * solo UUID con una versione valida, zod 3 qualunque stringa nel formato.
