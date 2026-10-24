@@ -59,6 +59,12 @@ jobs:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
         run: node apps/api/scripts/check-boot.mjs
 
+      # Lo stream in tempo reale può rispondere 200 senza consegnare nulla
+      # (docs/CHANGELOG.md §327): qui un evento deve arrivare completo, con
+      # Sentry attivo come in produzione.
+      - name: Avvio API (stream in tempo reale)
+        run: node apps/api/scripts/check-realtime.mjs
+
       - name: Test
         env:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci

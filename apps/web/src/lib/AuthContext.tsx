@@ -8,6 +8,7 @@ import { clearAgendaOffline, clearOfflineUser, readOfflineUser, saveOfflineUser 
 import { notificationCopy } from "./notificationCopy";
 import { emitRealtimeEvent } from "./realtimeBus";
 import { installNotificationSoundUnlock, playNotificationSound } from "./notificationSound";
+import { isConversationOnScreen } from "./openConversations";
 
 const TOKEN_STORAGE_KEY = "professionisti_token";
 
@@ -52,6 +53,14 @@ type AuthContextValue = {
   notificationPrefs: NotificationPreferences | null;
   setNotificationPrefs: (prefs: NotificationPreferences) => void;
 };
+
+/** Messaggio di una chat aperta a schermo in questo momento (§328). */
+function chatOnScreen(n: UnreadNotification): boolean {
+  if (n.type !== "TIMELINE_MESSAGE_FROM_CLIENT" && n.type !== "TIMELINE_MESSAGE_FROM_PROFESSIONAL") return false;
+  const payload = n.payload && typeof n.payload === "object" ? (n.payload as Record<string, unknown>) : {};
+  const { guidedRequestId, professionalProfileId } = payload;
+  return typeof guidedRequestId === "string" && typeof professionalProfileId === "string" && isConversationOnScreen(guidedRequestId, professionalProfileId);
+}
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -214,17 +223,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     for (const n of freshOnes) {
       seen.add(n.id);
     }
+    // Un messaggio della chat già aperta a schermo si vede lì: niente popup né suono (§328).
+    const toAnnounce = freshOnes.filter((n) => !chatOnScreen(n));
     // Preferenze (docs/CHANGELOG.md §152): suono e popup si possono
     // spegnere separatamente; la campanella e il numeretto restano.
     const prefs = notificationPrefsRef.current;
-    if (freshOnes.length > 0 && prefs.sound) playNotificationSound();
+    if (toAnnounce.length > 0 && prefs.sound) playNotificationSound();
     if (!prefs.popups) return;
-    if (freshOnes.length === 1) {
+    if (toAnnounce.length === 1) {
       // Caso comune: un solo evento in questo giro di poll, stesso
       // messaggio simpatico specifico di sempre.
-      const { icon, message } = notificationCopy(freshOnes[0]!.type, freshOnes[0]!.payload);
-      setToasts((prev) => [...prev, { id: freshOnes[0]!.id, icon, message, type: freshOnes[0]!.type, payload: freshOnes[0]!.payload }]);
-    } else if (freshOnes.length > 1) {
+      const { icon, message } = notificationCopy(toAnnounce[0]!.type, toAnnounce[0]!.payload);
+      setToasts((prev) => [...prev, { id: toAnnounce[0]!.id, icon, message, type: toAnnounce[0]!.type, payload: toAnnounce[0]!.payload }]);
+    } else if (toAnnounce.length > 1) {
       // Più eventi arrivati nello stesso giro (48s): un toast per
       // ciascuno si impilerebbe a schermo — richiedendo una chiusura per
       // volta, dato che i toast non spariscono più da soli (richiesta
@@ -239,9 +250,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         {
           id: `batch-${Date.now()}`,
           icon: "🔔",
-          message: `Hai ${freshOnes.length} nuovi aggiornamenti.`,
-          type: freshOnes[0]!.type,
-          payload: freshOnes[0]!.payload,
+          message: `Hai ${toAnnounce.length} nuovi aggiornamenti.`,
+          type: toAnnounce[0]!.type,
+          payload: toAnnounce[0]!.payload,
         },
       ]);
     }

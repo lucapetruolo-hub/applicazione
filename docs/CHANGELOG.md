@@ -20472,3 +20472,15 @@ Dopo la scelta del verde, miglioria approvata da Luca: stesso effetto magnete an
 
 **Verifica**
 - Prima: stream di produzione letto con un account di prova, `\nid: 1\n\n` e nient'altro in 56 secondi. In locale, controller vero con `SentryModule`: evento senza `data`; dopo la correzione l'evento arriva completo, anche con Sentry attivo e la configurazione dell'app.
+
+## 328. Email dei messaggi non letti, niente popup sulla chat aperta, controllo dello stream
+
+**Richiesta esplicita dell'utente** (24/10/2026, stesso thread del §327): "effettua le 3 migliorie" proposte dopo la correzione.
+
+**Decisione presa**
+- **Email dei messaggi in chat non letti.** `ChatMessageEmailsService` (`apps/api/src/notifications/chat-message-emails.service.ts`) ogni minuto cerca le notifiche `TIMELINE_MESSAGE_FROM_*` non lette: quando il primo messaggio non letto di una conversazione ha 10 minuti (`CHAT_EMAIL_AFTER_MINUTES`), parte un'email sola con il numero dei messaggi e il link che apre quella chat. Finché chi riceve non legge, niente seconda email per la stessa conversazione. `Notification.sentAt` (colonna già esistente e mai usata) segna i messaggi già coperti da un'email. Mai il testo del messaggio nell'email (CLAUDE.md §5 punto 9). Oltre le 24 ore non si recupera nulla. Chi ha spento il sito per i messaggi ma tiene l'email la riceve subito. Argomento "Messaggi" delle preferenze ora con il canale email attivo (acceso di default, spegnibile). Testo in `chatMessageEmail` (`notification-emails.ts`), fuori da `BUILDERS` che partono subito; anteprime in `email:preview`.
+- **Niente popup né suono per la chat già aperta.** `apps/web/src/lib/openConversations.ts`: `ConversationView` registra la conversazione a schermo; `AuthContext` non annuncia i messaggi di quella conversazione se la scheda è in primo piano. Campanella e numeretti non cambiano.
+- **Controllo dello stream.** In CI `apps/api/scripts/check-realtime.mjs` avvia il controller vero con `SentryModule` e fallisce se l'evento non arriva completo (provato: con una seconda copia di rxjs fallisce). In produzione `uptime.yml`, ogni ora, entra con un account di prova (secret `UPTIME_EMAIL` e `UPTIME_PASSWORD`, controllo saltato senza) e richiede che il battito dei 25 secondi abbia contenuto; provato contro la produzione di oggi, fallisce come deve.
+
+**Verifica**
+- 4 test nuovi per il raggruppamento delle email (`chat-message-emails.test.ts`), typecheck, lint, test, `check-boot`, `check-realtime`.

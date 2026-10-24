@@ -24,7 +24,7 @@ import {
   bookingReminderProfessionalEmail,
   requestSentEmail,
 } from "../src/email/templates/job-emails";
-import { notificationEmail, type NotificationEmailContext } from "../src/email/templates/notification-emails";
+import { chatMessageEmail, notificationEmail, type NotificationEmailContext } from "../src/email/templates/notification-emails";
 
 type Entry = { file: string; group: string; to: "Cliente" | "Professionista" | "Admin" | "Tutti"; email: RenderedEmail };
 
@@ -67,6 +67,10 @@ notification("REQUEST_FORWARDED", "Cliente", "Richieste", { count: 3 });
 notification("REQUEST_FORWARD_NO_MATCH", "Cliente", "Richieste");
 notification("REQUEST_MATCHED_LATER", "Cliente", "Richieste");
 notification("GUIDED_REQUEST_EXPIRED", "Cliente", "Richieste");
+
+// Messaggi in chat non letti dopo 10 minuti (§328)
+add("chat-messaggio-dal-professionista", "Messaggi", "Cliente", renderEmail(chatMessageEmail("TIMELINE_MESSAGE_FROM_PROFESSIONAL", 1, { ...forClient, when: null }, "https://example.it/le-mie-richieste")));
+add("chat-messaggi-dal-cliente", "Messaggi", "Professionista", renderEmail(chatMessageEmail("TIMELINE_MESSAGE_FROM_CLIENT", 3, { ...forPro, when: null }, "https://example.it/dashboard/richieste")));
 
 // Preventivi e date
 notification("NEW_QUOTE", "Cliente", "Preventivi e date");

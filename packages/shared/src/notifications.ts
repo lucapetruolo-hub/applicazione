@@ -124,7 +124,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
     professional: { label: "Messaggi", description: "Quando un cliente ti scrive in chat." },
     client: { label: "Messaggi", description: "Quando un professionista ti scrive in chat." },
     types: ["TIMELINE_MESSAGE_FROM_CLIENT", "TIMELINE_MESSAGE_FROM_PROFESSIONAL"],
-    activeChannels: ["inApp"],
+    // Email solo se il messaggio resta non letto sul sito per qualche minuto (docs/CHANGELOG.md §328).
+    activeChannels: ["inApp", "email"],
   },
   promemoria: {
     professional: { label: "Promemoria che imposti tu", description: "Il \"ricordamelo\" scelto dal menu di una richiesta." },
