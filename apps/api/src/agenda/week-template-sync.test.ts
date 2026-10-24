@@ -13,7 +13,7 @@ function slot(date: string, s: typeof MORNING, fromWeekTemplate: boolean): WeekT
 }
 const none = new Set<string>();
 
-describe("settimana tipo per tutte le settimane (§321)", () => {
+describe("settimana tipo per tutte le settimane (§323)", () => {
   it("la prima volta riempie i giorni vuoti e lascia quelli con orari messi a mano", () => {
     const manual = slot("2026-11-03", { ...MORNING, start: "09:00" }, false);
     const sync = weekTemplateSync({ template: DEFAULT_WEEK_TEMPLATE, previous: null, dates: WEEK, filledUntil: null, existing: [manual], closedDates: none, bookedDates: none });

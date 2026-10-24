@@ -4,7 +4,7 @@ import { API_URL } from "../fixtures/env";
 
 /**
  * Settimana tipo in tre passi, scelta dall'utente (proposta A,
- * docs/CHANGELOG.md §321): salvata vale per tutte le settimane, senza
+ * docs/CHANGELOG.md §323): salvata vale per tutte le settimane, senza
  * "Applica a un mese".
  */
 type Slot = { date: string | null; startTime: string; endTime: string };

@@ -38,7 +38,7 @@ export function ConsentCheckbox({
       cursor="pointer"
       onPress={onToggle}
       accessibilityRole="checkbox"
-      accessibilityState={{ checked }}
+      aria-checked={checked}
       aria-invalid={showError || undefined}
     >
       <YStack

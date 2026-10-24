@@ -20319,7 +20319,33 @@ Non fatto qui: zod 4 (aggiornamento grande, rischio basso: il corpo JSON ha già
 
 **Verifica**: lint di tutto il monorepo a zero errori e zero avvisi, typecheck, build. Foto delle 132 pagine prima e dopo (`confronto-pagine`, con il limite di richieste dell'API alzato solo in locale per non avere risposte 429 a caso): 128 identiche al pixel; le altre 4 (riga "adesso" dell'agenda, admin Finanza, pochi pixel in `/urgente`) cambiano anche tra due giri fatti senza modifiche. Stessi stati HTTP, nessun errore nuovo in console. Prove nel browser: filtri della ricerca e menu da telefono si chiudono con un clic sullo sfondo e con Esc, non con un clic dentro; ricerca rapida admin; elenco utenti admin con la ricerca; campi di `/account` compilati anche arrivando da un'altra pagina; finestra della fascia oraria in agenda con `role="dialog"` reso da Tamagui. CodeQL 2.27.3 in locale con le stesse regole della CI: nessuna segnalazione nel codice del sito.
 
-## 319. Prove dell'agenda stabili, elenco dei comuni più leggero, frecce nella striscia dei giorni
+## 319. Segnalazioni dei contenuti secondo il DSA: niente menu "Segnalazioni e decisioni", presa in carico, esito solo se illegale
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Rivedere il percorso delle segnalazioni (DSA)"): togliere dall'area cliente e professionista il menu "Segnalazioni e decisioni", perché chi segnala deve solo sapere che la segnalazione è stata presa in carico. Poi, nella versione approfondita: rivedere tutto il percorso come un responsabile Trust & Safety con un legale DSA, partendo dal testo del Regolamento (UE) 2022/2065 su EUR-Lex e dalle indicazioni AGCOM. Analisi e tabella degli obblighi in `/mnt/project-files/analisi/segnalazioni-dsa-obblighi.md`; l'utente ha approvato tutti e sei i punti.
+
+**Cosa dice la legge** (testo DSA letto su EUR-Lex; AGCOM non ha linee guida sugli artt. 16-17):
+- Art. 16 (solo contenuti **illegali**): meccanismo aperto a chiunque, anche senza account (c. 1); spiegazione e dichiarazione di buona fede (c. 2); conferma di ricevimento (c. 4); **notifica della decisione** con i mezzi di ricorso (c. 5). "Solo presa in carico" va quindi contro il c. 5 per i contenuti illegali, non per le violazioni dei Termini.
+- Art. 17 (illegali e Termini): a chi è colpito misura, fatti, legge o clausola dei Termini violata, mezzi di ricorso.
+- Art. 19: micro e piccole imprese esenti dalla sezione 3, quindi reclamo interno (art. 20) e conciliazione (art. 21) non obbligatori. "Contesta la decisione" resta comunque per l'autore.
+- Art. 14: i Termini devono descrivere moderazione, verifica umana e contestazione.
+
+**Decisione**:
+- Menu: tolta la voce "Segnalazioni e decisioni" (professionista e cliente, `accountMenuItems.ts`). `/segnalazioni` resta, fuori dal menu, solo per le decisioni sui propri contenuti: si apre dall'email e dalla notifica, mostra misura, legge o regola violata, motivazione, "Contesta la decisione". Chi segnala non ha più un elenco delle proprie segnalazioni (`GET /reports/mine` restituisce solo `received`).
+- Modulo "Segnala": motivo da elenco fisso in due gruppi, "È illegale" (insulti, minacce o diffamazione; odio o discriminazione; dati personali di altre persone; recensione falsa o truffa) e "Non rispetta le regole del sito" (informazioni non veritiere; spam o pubblicità; fuori tema; altro), senza scelta già fatta (`CONTENT_REPORT_REASONS` in `packages/shared/src/moderation.ts`). Se è illegale servono "Perché è illegale?" (almeno 10 caratteri) e la spunta "Confermo in buona fede che la segnalazione è corretta e completa", con link ai Termini. Il server lo riverifica (`createContentReportSchema`).
+- Chi segnala: notifica ed email "Abbiamo preso in carico la tua segnalazione" subito (`CONTENT_REPORT_RECEIVED`); alla decisione, **solo per un contenuto illegale**, una riga ("preso provvedimenti sul contenuto" / "non abbiamo preso provvedimenti") più "puoi rivolgerti all'autorità giudiziaria", senza motivazione, senza link (`CONTENT_REPORT_DECISION`, payload senza `note`).
+- Chi è colpito (`CONTENT_REPORT_UPHELD`): in più "Legge violata" o "Regola violata", scelta dall'admin da un elenco (`MODERATION_GROUNDS`: Termini punti 2, 4, 7; diffamazione, minacce, odio, dati personali, recensione falsa, altra norma). Obbligatoria per accogliere, anche lato server.
+- Senza account: link "Segnala un contenuto illegale" in fondo a ogni pagina → `/contatti?motivo=segnalazione` (nuovo ruolo `REPORT_ILLEGAL`, testo di almeno 20 caratteri e buona fede); email di presa in carico a chi scrive e avviso agli admin. In "Messaggi" l'admin ha l'etichetta rossa e "Invia l'esito via email" con le due frasi già scritte.
+- Pannello admin: etichetta "Illegale secondo chi segnala", "buona fede confermata", tendina "Quale regola o legge viola?", testi aggiornati su chi riceve cosa.
+- Termini: punto 7 con l'elenco dei contenuti vietati e nuovo punto 8 "Segnalazioni dei contenuti" (`/termini#segnalazioni`), poi 9 e 10; data e `LEGAL_CONSENT_VERSION` al 24/10/2026.
+- Migrazione `20261024130000_content_report_dsa`: `ContentReport.claimsIllegal`, `goodFaithAt`, `ground`; `ContactMessageRole.REPORT_ILLEGAL`.
+- `ConsentCheckbox`: `aria-checked` al posto di `accessibilityState`, che React segnalava come attributo sconosciuto.
+- Le email arrivano davvero solo con il dominio Resend verificato (checklist di lancio, punto 23); la notifica nel sito c'è comunque.
+- Migliorie approvate dall'utente ("effettua le prime due migliorie"): da telefono (fino a 520px) l'intestazione mostra solo la foto dell'account, senza nome, perché un nome lungo spingeva fuori schermo "Preventivo" (il nome resta per il lettore di schermo); `pnpm --filter @professionisti/api email:preview` si bloccava sull'email di benvenuto del professionista (chiamate rimaste alla firma senza codice) e ora genera tutte le 80 email, compresi "Accesso bloccato" e "Nuovo accesso".
+- Prova nel browser: l'accesso dei tre utenti di prova aspetta e riprova se il limite di 10 accessi al minuto è già esaurito dalle prove precedenti.
+
+**Verifica**: 11 nuovi test API (segnalazione, presa in carico, esito senza motivazione, nessun esito per i Termini, regola obbligatoria, pagina senza chi segnala, Contatti) e 583/583 verdi; typecheck API, web ed e2e; nuova prova nel browser `e2e/tests/segnalazioni.spec.ts` (segnala da telefono → admin decide con la legge → esito senza motivazione → autore senza voce di menu contesta dalla pagina; segnalazione senza account da Contatti). Prova completa in locale con account di prova e schermate da telefono e computer in `/mnt/project-files/anteprime/segnalazioni-dsa/`. Domande per l'avvocato nei punti 32-35 di `domande-commercialista-avvocato.md`.
+
+## 320. Prove dell'agenda stabili, elenco dei comuni più leggero, frecce nella striscia dei giorni
 
 **Richiesta** (24/10/2026): il coordinatore ha segnalato le prove nel browser dell'agenda instabili anche sul ramo principale (run 40090532557); Luca ha segnalato che in "Giorno per giorno" non si vedono le frecce per il giorno prima e dopo.
 
@@ -20331,9 +20357,9 @@ Non fatto qui: zod 4 (aggiornamento grande, rischio basso: il corpo JSON ha già
 
 **Verifica**: nuova prova delle frecce, 62 prove nel browser in locale, 568 test API.
 
-## 320. Lighthouse misura davvero l'agenda, piè di pagina che non salta
+## 321. Lighthouse misura davvero l'agenda, piè di pagina che non salta
 
-Richiesta dell'utente: "effettua migliorie" (dopo l'elenco delle migliorie ancora possibili della §319).
+Richiesta dell'utente: "effettua migliorie" (dopo l'elenco delle migliorie ancora possibili della §320).
 
 **La prova Lighthouse misurava la pagina "Accedi"**: `e2e/lighthouse/agenda.mjs` scriveva la sessione in un contesto Playwright separato (`browser.newContext()`), mentre Lighthouse apre la sua scheda nel contesto predefinito del browser. Risultato: dalla §309 la prova misurava la pagina "Accedi come professionista" con l'indirizzo dell'agenda (il controllo sull'indirizzo finale passava lo stesso). Anche i numeri della §318 (TBT da ~900 a ~600 ms, CLS 0,14) erano di quella pagina. Ora il browser parte con un contesto persistente, la sessione si scrive lì e prima di misurare si controlla che l'agenda si apra davvero. Con l'agenda vera, in locale: CLS 0,001, TBT tra 480 e 680 ms a seconda del giro (macchina rumorosa; in CI i tempi sono più bassi), accessibilità 100. Il tempo è distribuito tra React e la libreria dei componenti del sito, non in un punto solo dell'agenda: togliere il piè di pagina non cambiava nulla (provato e annullato).
 
@@ -20341,7 +20367,7 @@ Richiesta dell'utente: "effettua migliorie" (dopo l'elenco delle migliorie ancor
 
 **Verifica**: Lighthouse locale sulle due pagine dell'agenda con sessione vera (CLS 0,001); registrazione degli spostamenti con Playwright su telefono lento senza più lo spostamento del piè di pagina.
 
-## 321. Settimana tipo in tre passi, che vale per tutte le settimane
+## 323. Settimana tipo in tre passi, che vale per tutte le settimane
 
 Richiesta dell'utente (con la foto della vecchia "Settimana tipo"): "questa parte è difficilmente comprensibile e utilizzabile, come si potrebbe migliorare". Proposte tre strade con anteprime da telefono e computer; l'utente ha scelto la A, "Prima i giorni, poi gli orari".
 

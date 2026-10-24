@@ -204,7 +204,7 @@ function WeekPreview({ template }: { template: AgendaWeekTemplate }) {
 
 /**
  * Settimana tipo di "Orari di lavoro" in tre passi (proposta A scelta
- * dall'utente, docs/CHANGELOG.md §321): che giorni, in che orari, quale
+ * dall'utente, docs/CHANGELOG.md §323): che giorni, in che orari, quale
  * giorno ha orari diversi. Salvata vale per tutte le settimane: il server
  * riempie i prossimi 63 giorni e ogni notte quelli nuovi; i giorni cambiati
  * a mano in "Giorno per giorno" restano come sono.

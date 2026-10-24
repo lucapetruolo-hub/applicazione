@@ -402,22 +402,14 @@ export type AdminOverview = {
 
 export type ModerationActionValue = "WARN" | "REQUEST_CORRECTION" | "HIDE_CONTENT" | "SUSPEND_PROFILE" | "SUSPEND_USER";
 
-/** Pagina /segnalazioni dell'utente (docs/CHANGELOG.md §144). */
+/** Pagina /segnalazioni: decisioni sui propri contenuti, aperta dall'email (docs/CHANGELOG.md §144, §319). */
 export type MyContentReports = {
-  submitted: {
-    id: string;
-    targetType: AdminContentReport["targetType"];
-    reason: string;
-    status: "OPEN" | "RESOLVED" | "DISMISSED";
-    createdAt: string;
-    resolvedAt: string | null;
-    resolutionNote: string | null;
-  }[];
   received: {
     id: string;
     targetType: AdminContentReport["targetType"];
-    reason: string;
     action: ModerationActionValue | null;
+    /** Codice di `MODERATION_GROUNDS`: legge o punto dei Termini violato (DSA art. 17 c. 3 lett. d-e). */
+    ground: string | null;
     resolvedAt: string | null;
     resolutionNote: string | null;
     revertedAt: string | null;
@@ -464,6 +456,11 @@ export type AdminContentReport = {
   linkedProfessionalProfileId: string | null;
   reason: string;
   details: string | null;
+  /** Chi segnala dice che il contenuto è illegale (DSA art. 16, docs/CHANGELOG.md §319). */
+  claimsIllegal: boolean;
+  goodFaithAt: string | null;
+  /** Codice di `MODERATION_GROUNDS` scelto alla decisione. */
+  ground: string | null;
   /** Foto/video allegati alla segnalazione (solo "Qualcosa è andato male" del professionista, §197). */
   photoUrls: string[];
   status: "OPEN" | "RESOLVED" | "DISMISSED";
@@ -578,7 +575,7 @@ export type AdminHiddenLead = {
 
 export type AdminContactMessage = {
   id: string;
-  role: "CLIENT" | "PROFESSIONAL" | "OTHER";
+  role: "CLIENT" | "PROFESSIONAL" | "OTHER" | "REPORT_ILLEGAL";
   email: string;
   content: string;
   resolved: boolean;

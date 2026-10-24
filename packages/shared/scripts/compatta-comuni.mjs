@@ -1,5 +1,5 @@
 // Rigenera src/data/comuniCompatti.ts da comuni.json e codiciCatastali.json
-// (docs/CHANGELOG.md §319): i dati restano gli stessi, ma come un'unica
+// (docs/CHANGELOG.md §320): i dati restano gli stessi, ma come un'unica
 // stringa per elenco invece di ~8000 oggetti, perché finiscono nel
 // JavaScript di ogni pagina del sito e su un telefono lento il loro peso si
 // sentiva. Uso: node packages/shared/scripts/compatta-comuni.mjs

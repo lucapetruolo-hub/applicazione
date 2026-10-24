@@ -35,7 +35,7 @@ test("T1: chiudere un giorno sta in cima a Orari di lavoro e basta la data", asy
   await expect(headings.first()).toHaveText("Chiudi un giorno o le ferie");
   // Nella settimana tipo nessun "Chiudi" che sembri chiudere un giorno preciso.
   await expect(page.getByRole("button", { name: "Chiudi", exact: true })).toHaveCount(0);
-  // Settimana in tre passi (§321): i giorni si accendono e si spengono, nessun "Chiudi".
+  // Settimana in tre passi (§323): i giorni si accendono e si spengono, nessun "Chiudi".
   await expect(page.getByRole("region", { name: "La tua settimana" }).getByRole("button", { name: "Venerdì" })).toHaveAttribute("aria-pressed", /true|false/);
 });
 
@@ -50,7 +50,7 @@ test("T9 e T11: il tasto per aggiungere un lavoro ha la scritta; Lavoro completa
   await expect(dialog.getByRole("button", { name: "Lavoro completato" })).toHaveCount(0);
 });
 
-test("frecce della striscia: giorno prima e dopo anche in Giorno per giorno (§319)", async ({ page }) => {
+test("frecce della striscia: giorno prima e dopo anche in Giorno per giorno (§320)", async ({ page }) => {
   await page.clock.setFixedTime(new Date("2026-10-24T10:00:00Z"));
   await page.goto("/dashboard/agenda?tab=orari");
   const section = page.getByRole("heading", { name: "Giorno per giorno" }).locator("xpath=ancestor::div[2]");

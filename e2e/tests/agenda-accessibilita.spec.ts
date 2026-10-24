@@ -17,7 +17,7 @@ const KNOWN: { finding: string; id: string; html: RegExp }[] = [];
 
 async function seriousViolations(page: Page): Promise<{ unknown: string[]; known: Set<string> }> {
   // axe misura i colori come sono in quel momento: a metà dell'apertura del riquadro (opacità in
-  // salita) il contrasto risulta basso. Si aspetta la fine delle animazioni (§319).
+  // salita) il contrasto risulta basso. Si aspetta la fine delle animazioni (§320).
   await page.evaluate(() =>
     Promise.all(
       document
