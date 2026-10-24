@@ -338,6 +338,100 @@ aperti solo:
     nostro database, come le ricerche della PR #92 (gli eventi di Vercel
     Analytics richiedono il piano a pagamento), senza dati personali.
 
+28. **Sicurezza: cose da fare negli account** (controllo sicurezza del
+    22/10/2026, docs/CHANGELOG.md §292, dettaglio in
+    `/mnt/project-files/analisi/controllo-sicurezza.md`):
+    - **Backup del database**: con il piano a pagamento (punto 4bis) Render
+      fa i backup giornalieri. Provare una volta il ripristino su un
+      database di prova, prima del lancio.
+    - ~~**`FISCAL_DATA_KEY` su Render**~~ — fatto (24/10/2026). Non
+      perderla e non cambiarla più: all'avvio l'API ricifra da sola IBAN e
+      codici fiscali salvati con la chiave vecchia.
+    - ~~**`ADMIN_ENTRY_PATH` su Vercel**~~ — fatto (24/10/2026): `/admin`
+      risponde "pagina non trovata" finché da quel browser non si visita una
+      volta `https://<sito>/<ADMIN_ENTRY_PATH>`. Conservare il link: se si
+      perde, basta cambiarlo su Vercel e rifare il deploy.
+    - **Togliere `ADMIN_BOOTSTRAP_SECRET` da Render** appena creato il primo
+      admin (gli altri si nominano da `/admin/utenti`).
+    - **Repo GitHub privato** (Settings → General → Danger Zone).
+    - **Chiavi Google**: la chiave del browser (`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`)
+      limitata ai siti `https://<dominio>/*` in Google Cloud → Credenziali;
+      la chiave server (`GOOGLE_MAPS_API_KEY`) limitata alle sole API usate
+      (Geocoding, Places API (New), Maps Static, Routes).
+    - **Tetto di spesa su Google Cloud** (docs/CHANGELOG.md §293): in
+      Google Cloud → API e servizi → ogni API → Quote, un limite al giorno
+      per Places API (New), Maps Static e Geocoding, più un avviso di budget
+      in Fatturazione → Budget e avvisi. L'API ha già un suo tetto
+      giornaliero sulle rotte aperte a tutti (suggerimenti 5000, dettagli
+      indirizzo 2000, mappe fisse 2000); `GOOGLE_PUBLIC_DAILY_LIMIT` su
+      Render lo cambia per tutte.
+    - **Sentry attivo**: `SENTRY_DSN` impostata su Render e avvisi email
+      accesi in Sentry (Alerts), con una prova.
+    - **Verifica in due passaggi** su GitHub, Render, Vercel, Stripe,
+      Cloudinary, Resend, Google Cloud, Didit, Openapi e sull'email usata
+      per questi account.
+    - **Next.js 15**: la serie 14 non riceve più correzioni di sicurezza;
+      aggiornare prima del lancio (thread dedicato).
+
+29. **Verifiche di sicurezza prima del lancio** (controllo approfondito,
+    docs/CHANGELOG.md §293, dettaglio in
+    `/mnt/project-files/analisi/controllo-sicurezza-adesso.md`). Le fa un
+    thread, sull'anteprima o su una copia del sito, tranne dove scritto:
+    - **OWASP ZAP** (scansione base e completa) sull'anteprima Vercel e
+      sull'API: nessuna voce alta.
+    - **Stripe CLI**: webhook ripetuti, fuori ordine e con firma sbagliata;
+      importi e rimborsi manomessi.
+    - **k6**: i limiti al minuto tengono davvero, anche dopo un riavvio di
+      Render.
+    - **OWASP ASVS livello 2 e API Security Top 10 2023**, voce per voce.
+    - **Mappa dei dati personali definitiva** e DPIA della verifica con
+      selfie, da far vedere all'avvocato (bozza nel file sopra).
+    - **Piano per gli incidenti**: chi avvisare, come cambiare in fretta
+      tutte le chiavi, notifica al Garante entro 72 ore (art. 33 GDPR).
+      Con la prova di ripristino del database del punto 28 (la fa Luca).
+    - **Penetration test esterno** (una o due giornate, da uno studio o un
+      professionista): è l'unica verifica davvero indipendente. Lo sceglie
+      e lo paga Luca.
+
+**Visibilità su Google (SEO)** (thread "Visibilità su Google (SEO)",
+22/10/2026, controllo in `/mnt/project-files/analisi/seo-controllo.md`):
+Luca ha scelto di farle poco prima del lancio, quando nome e sito sono
+definitivi. Già fatte (docs/CHANGELOG.md §295): H1, canonical, indirizzo
+leggibile del profilo, pagina "non trovata", percorso Home › Categoria ›
+Città, pagine vuote fuori da Google.
+30. **Dominio vero nel sito**: cambiare `SITE_URL` in
+    `apps/web/src/lib/siteUrl.ts` (canonical, sitemap, dati strutturati e
+    anteprime lo prendono tutti da lì) e mettere su Vercel il redirect
+    permanente da `applicazione-web.vercel.app` al dominio nuovo.
+31. **Google Search Console**: verificare il dominio (record DNS) e inviare
+    `/sitemap.xml` (punto 0). Controllare dopo qualche giorno "Pagine" e
+    "Esperienza".
+32. **Anteprima dei link (WhatsApp, Facebook)**: immagine con foto e nome
+    del professionista per ogni profilo (oggi è la stessa per tutto il sito)
+    e immagine generale col marchio definitivo (`opengraph-image.tsx`).
+33. **Titoli e descrizioni**: nome del marchio nel titolo della home,
+    "Trova e contatta un idraulico" (con l'articolo) nelle categorie, testo
+    meno generico per `/cerca`; dati strutturati `Organization` + `WebSite`
+    col nome definitivo. Nei titoli delle categorie le parole che la gente
+    cerca (strategia SEO Latina, docs/CHANGELOG.md §296): "preventivi e
+    pronto intervento"; per le pulizie "impresa di pulizie e colf".
+34. **Foto delle categorie più leggere**: oggi arrivano intere (100-200 KB)
+    anche nei riquadri piccoli, perché il ridimensionamento funziona solo
+    per le foto su Cloudinary; testo alternativo breve su quelle foto. In
+    home una foto profilo arriva in JPG pieno.
+35. **Velocità della home**: troppo JavaScript (Lighthouse telefono 22/10:
+    LCP 3,0 s, blocco 1,1 s; ricerca città LCP 4,5 s). Da rimisurare sul
+    sito finito e sistemare.
+36. **Aprire a Google solo sul dominio definitivo** (strategia SEO Latina,
+    §296): nome e dominio decisi prima, poi `NEXT_PUBLIC_SITE_INDEXABLE=true`
+    sul dominio vero, mai su `applicazione-web.vercel.app`. Il piano del
+    giorno del cambio (redirect, Search Console, cosa controllare il giorno
+    dopo) è in `/mnt/project-files/analisi/seo-strategia-latina.md`, sezione 4.
+37. **Professionisti e scheda Google** (§296): al lancio un'email (o un
+    riquadro in dashboard) che invita i professionisti a mettere il link al
+    loro profilo nella loro scheda Google Business. In cima alle ricerche
+    locali c'è quasi sempre la mappa di Google: è lì che li vedono i clienti.
+
 
 ## Da fare dopo il lancio
 
@@ -355,3 +449,7 @@ Cose decise con Luca da non fare prima del lancio, ma da non dimenticare:
   codice da un'app di autenticazione (o via email). Protegge i soldi se la
   password viene rubata. Oggi c'è già l'email "Nuovo accesso al tuo
   account" da un dispositivo mai usato.
+- **Link da altri siti verso il nostro** (thread "Visibilità su Google
+  (SEO)", 22/10/2026): scheda Google Business del sito, elenchi di attività
+  locali, un link "Trovami su …" che i professionisti mettono sul loro sito
+  e sui social, giornali locali della città di lancio.

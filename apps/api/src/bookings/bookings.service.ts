@@ -80,7 +80,7 @@ export class BookingsService {
       if (!stripeVerified(fiscal)) {
         throw new BadRequestException("Questo professionista non può ancora ricevere pagamenti online: scegli il pagamento diretto.");
       }
-      // Prima di far pagare l'acconto: niente pagamento per un'ora già occupata (§293).
+      // Prima di far pagare l'acconto: niente pagamento per un'ora già occupata (§298).
       await this.assertProfessionalFree(this.prisma, quote);
       const { url } = await this.jobPaymentsService.createQuoteDepositCheckout({
         clientUserId: clientId,
@@ -172,7 +172,7 @@ export class BookingsService {
         bookingId = await this.confirmAcceptedQuote(quote, clientUserId, paymentMethod);
       } catch (err) {
         // Nel frattempo il professionista ha preso un altro lavoro a quell'ora
-        // (§293). Se invece è lo stesso evento arrivato due volte, il lavoro
+        // (§298). Se invece è lo stesso evento arrivato due volte, il lavoro
         // c'è già: Stripe riprova e il controllo in cima lo riconosce.
         if (!(err instanceof ConflictException) || (await this.prisma.booking.findUnique({ where: { quoteId }, select: { id: true } }))) throw err;
         refundReason = err.message;
@@ -203,7 +203,7 @@ export class BookingsService {
 
   /**
    * Il professionista è ancora libero all'ora del preventivo: nessun lavoro
-   * o lavoro esterno sovrapposto oltre la capienza della fascia (§293).
+   * o lavoro esterno sovrapposto oltre la capienza della fascia (§298).
    */
   private async assertProfessionalFree(db: PrismaClient | Prisma.TransactionClient, quote: AcceptableQuote): Promise<void> {
     const start = quote.estimatedStartDate;
@@ -223,7 +223,7 @@ export class BookingsService {
     const offer = quotePaymentOffer(quote);
     const { guidedRequest } = quote;
     // Una accettazione alla volta per professionista: la seconda vede il
-    // lavoro della prima (docs/CHANGELOG.md §293). Prima due clienti che
+    // lavoro della prima (docs/CHANGELOG.md §298). Prima due clienti che
     // accettavano insieme due preventivi alla stessa ora creavano due lavori
     // sovrapposti (D1), e lo stesso preventivo accettato due volte dava un
     // errore interno invece di "già accettato" (D4).

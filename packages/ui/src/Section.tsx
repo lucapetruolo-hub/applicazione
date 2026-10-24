@@ -17,6 +17,11 @@ export type SectionProps = {
   titleAction?: ReactNode;
   tone?: SectionTone;
   maxWidth?: number;
+  /**
+   * Il titolo è il titolo della pagina: esce come `<h1>` (uno per pagina,
+   * per Google e per i lettori di schermo), con lo stesso aspetto dell'H2.
+   */
+  pageTitle?: boolean;
   children?: ReactNode;
 };
 
@@ -79,16 +84,19 @@ function SectionTitle({
   accent,
   isDark,
   nested,
+  pageTitle,
 }: {
   title: string;
   accent?: string;
   isDark: boolean;
   nested: boolean;
+  pageTitle?: boolean;
 }) {
   const Heading = nested ? H3 : H2;
   const at = accent ? title.indexOf(accent) : -1;
   return (
     <Heading
+      {...(pageTitle && !nested ? { tag: "h1" } : null)}
       fontFamily="$heading"
       color={isDark ? "white" : "$grafite"}
       {...(nested ? { fontSize: "$7", lineHeight: "$7" } : null)}
@@ -122,6 +130,7 @@ export function Section({
   titleAction,
   tone = "light",
   maxWidth = 1200,
+  pageTitle,
   children,
 }: SectionProps) {
   const parentTone = useContext(SectionNestingContext);
@@ -144,6 +153,7 @@ export function Section({
                 accent={titleAccent}
                 isDark={isDark}
                 nested={nested}
+                pageTitle={pageTitle}
               />
             </YStack>
             <YStack flexShrink={0}>{titleAction}</YStack>
@@ -154,6 +164,7 @@ export function Section({
             accent={titleAccent}
             isDark={isDark}
             nested={nested}
+            pageTitle={pageTitle}
           />
         ) : null}
         {lead ? (

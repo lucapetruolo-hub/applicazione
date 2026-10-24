@@ -108,7 +108,7 @@ export type AgendaListItem = {
 };
 
 export function formatAgendaTimeRange(startIso: string, endIso: string | null): string {
-  // Lavoro su più giorni (docs/CHANGELOG.md §293): "dal 4 al 6 novembre · 08:00–17:00".
+  // Lavoro su più giorni (docs/CHANGELOG.md §298): "dal 4 al 6 novembre · 08:00–17:00".
   const days = formatJobDays(startIso, endIso);
   return days ? `${days} · ${formatAppointmentTimeRange(startIso, endIso)}` : formatAppointmentTimeRange(startIso, endIso);
 }

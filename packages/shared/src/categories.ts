@@ -100,6 +100,69 @@ export function isProfessionalCategorySlug(value: string): value is Professional
 }
 
 /**
+ * Nome leggibile delle specializzazioni (`subTags`), scelte dal professionista
+ * nel profilo e usate dalle pagine per servizio
+ * (`/cerca/[categoria]/[citta]/[servizio]`, docs/CHANGELOG.md §296).
+ * Stesso slug in più categorie (es. "manutenzione") = stesso nome.
+ */
+export const SUB_TAG_LABELS: Record<(typeof PROFESSIONAL_CATEGORIES)[number]["subTags"][number], string> = {
+  "riparazioni-urgenti": "Riparazioni urgenti",
+  caldaie: "Caldaie",
+  "impianti-sanitari": "Impianti sanitari",
+  "impianti-civili": "Impianti civili",
+  domotica: "Domotica",
+  certificazioni: "Certificazioni",
+  interni: "Interni",
+  esterni: "Esterni",
+  decorazioni: "Decorazioni",
+  casa: "Casa",
+  ufficio: "Uffici",
+  "fine-cantiere": "Fine cantiere",
+  manutenzione: "Manutenzione",
+  potatura: "Potatura",
+  progettazione: "Progettazione",
+  locali: "Traslochi locali",
+  "lunga-distanza": "Lunga distanza",
+  "smontaggio-mobili": "Smontaggio mobili",
+  "apertura-porte": "Apertura porte",
+  serrature: "Serrature",
+  cancelli: "Cancelli",
+  installazione: "Installazione",
+  assistenza: "Assistenza",
+  ristrutturazioni: "Ristrutturazioni",
+  "opere-murarie": "Opere murarie",
+  cartongesso: "Cartongesso",
+  "mobili-su-misura": "Mobili su misura",
+  riparazioni: "Riparazioni",
+  infissi: "Infissi",
+  "piccole-riparazioni": "Piccole riparazioni",
+  "montaggio-mobili": "Montaggio mobili",
+  "manutenzione-generale": "Manutenzione generale",
+  passeggiate: "Passeggiate",
+  "visite-a-domicilio": "Visite a domicilio",
+  "pensione-cani": "Pensione per cani",
+  serate: "Serate",
+  "dopo-scuola": "Dopo scuola",
+  neonati: "Neonati",
+};
+
+/** Nome leggibile di una specializzazione; uno slug sconosciuto (dati vecchi) resta leggibile. */
+export function subTagLabel(slug: string): string {
+  return (SUB_TAG_LABELS as Record<string, string>)[slug] ?? slug.replace(/-/g, " ");
+}
+
+/** Specializzazioni previste per una categoria. */
+export function categorySubTags(categorySlug: ProfessionalCategorySlug): readonly string[] {
+  return PROFESSIONAL_CATEGORIES.find((category) => category.slug === categorySlug)?.subTags ?? [];
+}
+
+/** Tiene solo le specializzazioni delle categorie scelte, senza doppioni. */
+export function validSubTags(subTags: string[], categorySlugs: readonly ProfessionalCategorySlug[]): string[] {
+  const allowed = new Set(categorySlugs.flatMap((slug) => categorySubTags(slug)));
+  return [...new Set(subTags)].filter((tag) => allowed.has(tag));
+}
+
+/**
  * Prestazioni più richieste per categoria, suggerite in /dashboard/profilo
  * come scorciatoia per aggiungere una prestazione senza doverne scrivere il
  * nome da zero — il prezzo (range) resta comunque da compilare a mano,

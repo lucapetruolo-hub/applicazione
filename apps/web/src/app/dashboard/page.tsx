@@ -127,7 +127,7 @@ export default function DashboardTodayPage() {
   const startToday = wallClockToday();
   const endTomorrow = new Date(startToday);
   endTomorrow.setUTCDate(endTomorrow.getUTCDate() + 2);
-  // Un lavoro su più giorni compare oggi e domani con l'orario di quel giorno (§293).
+  // Un lavoro su più giorni compare oggi e domani con l'orario di quel giorno (§298).
   const upcoming = (bookings ?? [])
     .filter((b) => b.status === "CONFIRMED" || b.status === "PENDING")
     .flatMap((booking) =>

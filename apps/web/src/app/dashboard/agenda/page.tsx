@@ -281,7 +281,7 @@ function DashboardAgendaContent() {
   // l'ultima copia salvata sul telefono (docs/CHANGELOG.md §288).
   // Si ricarica da sola quando un cliente accetta, sposta o annulla, e
   // quando si torna sull'app o torna la rete (R2 della verifica,
-  // docs/CHANGELOG.md §293): prima restava ferma all'apertura.
+  // docs/CHANGELOG.md §298): prima restava ferma all'apertura.
   const [agendaReload, setAgendaReload] = useState(0);
   useEffect(() => {
     let last = Date.now();
@@ -507,7 +507,7 @@ function DashboardAgendaContent() {
 
   // Mentre carica si tiene il posto della pagina: prima non c'era nulla e il
   // piè di pagina saltava giù all'arrivo dell'agenda (A1 della verifica,
-  // CLS 0,22, docs/CHANGELOG.md §293).
+  // CLS 0,22, docs/CHANGELOG.md §298).
   if (isLoading || (token && isLoadingSlots)) {
     return (
       <div aria-busy="true" style={{ minHeight: "100vh", padding: 16, display: "flex", flexDirection: "column", gap: 16 }}>
@@ -1016,7 +1016,7 @@ function DashboardAgendaContent() {
             opacity={exceptionBusyDate === dateStr ? 0.5 : 1}
             onPress={() => toggleException(dateStr)}
             accessibilityRole="button"
-            // "Chiudi venerdì 30" invece di sei "Chiudi" uguali per il lettore di schermo (A3, §293).
+            // "Chiudi venerdì 30" invece di sei "Chiudi" uguali per il lettore di schermo (A3, §298).
             accessibilityLabel={`${isClosed ? "Riapri" : "Chiudi"} ${formatAppointmentDate(date, { weekday: "long", day: "numeric" })}`}
           >
             <Text fontFamily="$body" fontSize={12} fontWeight="600" color={brand.grafite70} textDecorationLine="underline">
@@ -1308,7 +1308,7 @@ function DashboardAgendaContent() {
   /**
    * Posizione nella griglia di un appuntamento, una per giorno: un lavoro su
    * più giorni compare ogni giorno con lo stesso orario (docs/CHANGELOG.md
-   * §293), con "Giorno 2 di 3".
+   * §298), con "Giorno 2 di 3".
    */
   function onEachDay(startIso: string, endIso: string | null, key: string) {
     const days = jobOccurrences(startIso, endIso);
@@ -1426,7 +1426,7 @@ function DashboardAgendaContent() {
     (bookings ?? [])
       .filter((b) => b.status === "CONFIRMED")
       .flatMap((b) => {
-        // Di un lavoro su più giorni conta l'orario di oggi (§293).
+        // Di un lavoro su più giorni conta l'orario di oggi (§298).
         const occurrence = jobOccurrenceOn(b.scheduledAt, b.scheduledEndAt, todayStr);
         if (!occurrence) return [];
         const start = occurrence.start.toISOString();
@@ -1891,7 +1891,7 @@ function DashboardAgendaContent() {
                 </div>
               ) : null}
               {view === "day" ? (
-                // Striscia della settimana come nel Calendario: venerdì è a un tocco, non a quattro frecce (U1, §293).
+                // Striscia della settimana come nel Calendario: venerdì è a un tocco, non a quattro frecce (U1, §298).
                 <div className="ag-strip" role="group" aria-label="Giorni della settimana" style={{ marginBottom: 12 }}>
                   {weekDays(currentDate).map((date) => {
                     const dateStr = toIsoDate(date);

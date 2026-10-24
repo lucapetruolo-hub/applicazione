@@ -25,7 +25,7 @@ export function formatDateTime(iso: string): string {
   return `${d.toLocaleDateString("it-IT", { day: "numeric", month: "short" })} · ${d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
 }
 export function formatSlotRange(startIso: string, endIso: string | null): string {
-  // Lavoro su più giorni (docs/CHANGELOG.md §293).
+  // Lavoro su più giorni (docs/CHANGELOG.md §298).
   const days = formatJobDays(startIso, endIso);
   if (days && endIso) return `${days} · ogni giorno ${formatAppointmentTimeRange(startIso, endIso)}`;
   const start = new Date(startIso);

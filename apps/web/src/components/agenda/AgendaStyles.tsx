@@ -333,7 +333,7 @@ export function AgendaStyles() {
         font-weight: 600;
       }
       .ag-mini-grid button.out {
-        /* Più chiaro dei giorni del mese ma leggibile, 4,5:1 anche sul verde chiaro (A4, §293). */
+        /* Più chiaro dei giorni del mese ma leggibile, 4,5:1 anche sul verde chiaro (A4, §298). */
         color: #766758;
       }
       .ag-mini-grid button.has::after {

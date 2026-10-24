@@ -2,13 +2,18 @@ import type { Metadata } from "next";
 import {
   PROFESSIONAL_CATEGORIES,
   comuneSlug,
+  MIN_PROFESSIONALS_TO_INDEX_CITY,
+  hasCategoryPrices,
+  subTagLabel,
   findComuneByName,
   type ProfessionalCategorySlug,
   type ProfessionalSearchResult,
 } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { SITE_INDEXABLE } from "@/lib/siteIndexing";
+import { breadcrumbJsonLd, jsonForScript } from "@/lib/jsonLd";
 import { PopularServicesLinks } from "@/components/PopularServicesLinks";
+import { CityFacts } from "@/components/CityFacts";
 import { SearchHeader } from "@/components/SearchHeader";
 import { CategoryContent } from "./CategoryContent";
 
@@ -52,16 +57,61 @@ async function categoriesInCity(city: string): Promise<string[] | null> {
   }
 }
 
-export function categoryMetadata(category: Category, city?: string): Metadata {
+/**
+ * Pagina con troppo pochi professionisti veri: resta uguale per chi la apre,
+ * con l'invio della richiesta (§271), ma fuori da Google, che altrimenti
+ * indicizzerebbe pagine quasi vuote tutte uguali (docs/CHANGELOG.md §295-§296).
+ * Categoria+città: almeno `MIN_PROFESSIONALS_TO_INDEX_CITY`; categoria in
+ * tutta Italia: almeno uno. Solo con il sito aperto ai motori di ricerca, così
+ * prima del lancio nessuna chiamata in più. Se la ricerca non risponde non si
+ * sa: la pagina resta indicizzabile, meglio di un noindex per un errore
+ * passeggero.
+ */
+async function tooFewRealProfessionals(categorySlug: string, city?: string, subTag?: string): Promise<boolean> {
+  if (!SITE_INDEXABLE) return false;
+  try {
+    const list = withSubTag(await apiClient.searchProfessionals({ category: categorySlug, city, excludeDemo: true }), subTag);
+    return list.length < (city ? MIN_PROFESSIONALS_TO_INDEX_CITY : 1);
+  } catch {
+    return false;
+  }
+}
+
+/** Pagina "Quanto costa" da collegare dalla pagina città, o null se nessuna ha prezzi veri. */
+async function pricePageHref(categorySlug: string, city: string): Promise<string | null> {
+  const has = (cityName?: string) => apiClient.getCategoryPrices(categorySlug, cityName).then(hasCategoryPrices, () => false);
+  if (await has(city)) return `/prezzi/${categorySlug}/${comuneSlug(city)}`;
+  return (await has()) ? `/prezzi/${categorySlug}` : null;
+}
+
+/** Solo i professionisti con quella specializzazione (pagine per servizio, docs/CHANGELOG.md §296). */
+function withSubTag(list: ProfessionalSearchResult[], subTag?: string): ProfessionalSearchResult[] {
+  return subTag ? list.filter((pro) => pro.subTags.includes(subTag)) : list;
+}
+
+export async function categoryMetadata(category: Category, city?: string, subTag?: string): Promise<Metadata> {
   const comune = city ? findComuneByName(city) : undefined;
+  const empty = await tooFewRealProfessionals(category.slug, comune?.name, subTag);
+  const robots: Metadata = empty ? { robots: { index: false, follow: true } } : {};
+  if (comune && subTag) {
+    const service = subTagLabel(subTag);
+    return {
+      ...robots,
+      title: `${category.label} a ${comune.name}: ${service.toLowerCase()}`,
+      description: `${category.label} a ${comune.name} per ${service.toLowerCase()}: confronta profili, prezzi e recensioni e chiedi un preventivo gratis.`,
+      alternates: { canonical: `/cerca/${category.slug}/${comuneSlug(comune.name)}/${subTag}` },
+    };
+  }
   if (comune) {
     return {
+      ...robots,
       title: `${category.label} a ${comune.name}`,
       description: `Trova e contatta ${category.label.toLowerCase()} a ${comune.name}: confronta profili, prezzi e recensioni e chiedi un preventivo gratis.`,
       alternates: { canonical: `/cerca/${category.slug}/${comuneSlug(comune.name)}` },
     };
   }
   return {
+    ...robots,
     title: `${category.label} vicino a te`,
     description: `Trova e contatta ${category.label.toLowerCase()} nella tua zona.`,
     alternates: { canonical: `/cerca/${category.slug}` },
@@ -72,10 +122,13 @@ export function categoryMetadata(category: Category, city?: string): Metadata {
 export async function CategoryResults({
   category,
   city,
+  subTag,
   searchParams,
 }: {
   category: Category;
   city?: string;
+  /** Specializzazione della pagina per servizio (`/cerca/[categoria]/[citta]/[servizio]`). */
+  subTag?: string;
   searchParams: CategorySearchParams;
 }) {
   // La città resta un filtro valido anche in modalità "Online" (vedi stessa
@@ -86,6 +139,9 @@ export async function CategoryResults({
   // In parallelo alla ricerca, così non allunga il caricamento.
   const popularPromise = popularOrder(comune?.name);
   const availablePromise = comune ? categoriesInCity(comune.name) : Promise.resolve(undefined);
+  // Link alla pagina "Quanto costa" solo se ha prezzi veri (§296): quella
+  // della città se la provincia ha abbastanza dati, altrimenti la nazionale.
+  const pricePagePromise = comune ? pricePageHref(category.slug, comune.name) : Promise.resolve(null);
 
   // Fetch server-side: contenuto SEO-critico deve essere presente nell'HTML
   // già al primo render, non caricato via client-side fetch (CLAUDE.md §5.4).
@@ -94,7 +150,7 @@ export async function CategoryResults({
   // "nessun professionista" (docs/CHANGELOG.md §284).
   let loadFailed = false;
   try {
-    professionals = await apiClient.searchProfessionals({ category: category.slug, city, remote: isOnline, track: true });
+    professionals = withSubTag(await apiClient.searchProfessionals({ category: category.slug, city, remote: isOnline, track: true }), subTag);
   } catch {
     loadFailed = true;
   }
@@ -107,19 +163,30 @@ export async function CategoryResults({
   // "Online", quindi serve calcolarla in entrambe le modalità.
   let allProfessionals: ProfessionalSearchResult[] = professionals;
   try {
-    allProfessionals = await apiClient.searchProfessionals({ category: category.slug, remote: isOnline });
+    allProfessionals = withSubTag(await apiClient.searchProfessionals({ category: category.slug, remote: isOnline }), subTag);
   } catch {
     allProfessionals = professionals;
   }
 
+  // Percorso per Google (Home › Idraulico › Latina), senza riquadro visibile:
+  // il titolo sopra i risultati era stato tolto (docs/CHANGELOG.md §271, §295).
+  const citySlug = comune ? comuneSlug(comune.name) : undefined;
+  const breadcrumbs = breadcrumbJsonLd([
+    { label: "Home", href: "/" },
+    { label: category.label, href: `/cerca/${category.slug}` },
+    ...(comune && citySlug ? [{ label: comune.name, href: `/cerca/${category.slug}/${citySlug}` }] : []),
+    ...(comune && citySlug && subTag ? [{ label: subTagLabel(subTag), href: `/cerca/${category.slug}/${citySlug}/${subTag}` }] : []),
+  ]);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonForScript(breadcrumbs) }} />
       <SearchHeader initialQuery={category.label} initialCity={city ?? ""} initialMode={isOnline ? "online" : "domicilio"} />
       {/* Key che cambia con i search params: forza il remount completo del
           contenuto quando si cambia modalita'/citta', cosi' la lista si
           aggiorna sempre anche navigando verso lo stesso percorso. */}
       <CategoryContent
-        key={`${category.slug}-${isOnline}-${city ?? ""}`}
+        key={`${category.slug}-${isOnline}-${city ?? ""}-${subTag ?? ""}`}
         category={category}
         city={city}
         online={isOnline}
@@ -128,6 +195,16 @@ export async function CategoryResults({
         loadFailed={loadFailed}
         initialUrgentOnly={searchParams.urgente === "1"}
       />
+      {comune && !loadFailed ? (
+        <CityFacts
+          categorySlug={category.slug}
+          categoryLabel={category.label}
+          city={comune.name}
+          professionals={professionals}
+          pricePageHref={await pricePagePromise}
+          subTag={subTag}
+        />
+      ) : null}
       <PopularServicesLinks
         currentSlug={category.slug}
         city={comune?.name}

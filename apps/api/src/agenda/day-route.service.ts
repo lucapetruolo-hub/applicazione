@@ -116,7 +116,7 @@ export class DayRouteService {
       }),
       ...externalJobs.map((j) => ({ key: `external-${j.id}`, start: j.scheduledAt, end: j.scheduledEndAt, title: j.clientName, address: j.address, city: comuneInAddress(j.address) ?? profile.city })),
     ]
-      // Un lavoro su più giorni entra nel giro di ogni suo giorno, con l'orario di quel giorno (§293).
+      // Un lavoro su più giorni entra nel giro di ogni suo giorno, con l'orario di quel giorno (§298).
       .flatMap((candidate) => {
         const occurrence = jobOccurrenceOn(candidate.start, candidate.end, date);
         return occurrence ? [{ ...candidate, start: occurrence.start, end: occurrence.end }] : [];

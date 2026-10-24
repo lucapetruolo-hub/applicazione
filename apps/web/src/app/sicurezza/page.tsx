@@ -4,6 +4,7 @@ import { SicurezzaContent } from "./SicurezzaContent";
 export const metadata: Metadata = {
   title: "Sicurezza e truffe",
   description: "Come usare la chat in sicurezza e riconoscere i tentativi di truffa e phishing.",
+  alternates: { canonical: "/sicurezza" },
 };
 
 export default function SicurezzaPage() {

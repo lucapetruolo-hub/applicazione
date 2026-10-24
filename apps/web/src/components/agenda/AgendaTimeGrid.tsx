@@ -126,7 +126,7 @@ export function AgendaTimeGrid({
           return onDayPress && days.length > 1 ? (
             <button key={dateStr} type="button" className={className} onClick={() => onDayPress(date)}>
               {content}
-              {/* Il nome comincia col testo visibile, "lun 26" (A3, §293). */}
+              {/* Il nome comincia col testo visibile, "lun 26" (A3, §298). */}
               <span className="sr-only">, apri il giorno</span>
             </button>
           ) : (
@@ -174,7 +174,7 @@ export function AgendaTimeGrid({
                         style={{ top: y(event.start) + 2, height: blockHeight }}
                         onClick={event.onPress}
                       >
-                        {/* Il nome letto dal lettore di schermo parte dal testo visibile (WCAG 2.5.3, A3 di §292). */}
+                        {/* Il nome letto dal lettore di schermo parte dal testo visibile (WCAG 2.5.3, A3 di §297). */}
                         <b>{event.title}</b>
                         {blockHeight >= 40 ? (
                           <span>

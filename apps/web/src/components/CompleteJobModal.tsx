@@ -74,7 +74,7 @@ export function CompleteJobModal({
   uploadPhoto,
 }: {
   quotedItems: { name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
-  /** Nome del lavoro (es. "Idraulico"): già scritto nella voce quando il preventivo non ha voci (U2, §293). */
+  /** Nome del lavoro (es. "Idraulico"): già scritto nella voce quando il preventivo non ha voci (U2, §298). */
   jobName?: string | null;
   onClose: () => void;
   onComplete: (input: CompleteBookingInput) => Promise<void>;
@@ -451,7 +451,7 @@ export function CompleteJobModal({
         </YStack>
 
         {error ? (
-          // Annunciato dal lettore di schermo (U2, docs/CHANGELOG.md §293).
+          // Annunciato dal lettore di schermo (U2, docs/CHANGELOG.md §298).
           <div role="alert">
             <Text color={brand.urgenza} fontSize="$3">
               {error}

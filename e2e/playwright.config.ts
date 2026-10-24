@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 import { API_URL, WEB_URL } from "./fixtures/env";
 
 /**
- * Prove nel browser dell'agenda (docs/CHANGELOG.md §292). Avviano API e sito
+ * Prove nel browser dell'agenda (docs/CHANGELOG.md §297). Avviano API e sito
  * veri su un database di prova (DATABASE_URL), con gli stessi appuntamenti
  * aperti da un telefono in Italia, a New York e a Tokyo: l'orario mostrato
  * deve essere sempre quello italiano.

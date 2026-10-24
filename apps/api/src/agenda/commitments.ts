@@ -3,14 +3,14 @@ import { spansMultipleDays } from "@professionisti/shared";
 import { slotAppliesOnDate } from "../common/availability.util";
 
 /**
- * Impegni del professionista nell'agenda (docs/CHANGELOG.md §293): le
+ * Impegni del professionista nell'agenda (docs/CHANGELOG.md §298): le
  * prenotazioni e i lavori presi fuori dalla piattaforma. Servono a decidere
  * quali fasce sono ancora libere per i clienti e se un nuovo lavoro si
  * sovrappone a uno già preso.
  *
  * Prima contava solo l'ora di inizio della prenotazione (un lavoro 09-12
  * lasciava libera la fascia 10-11) e i lavori esterni non contavano (D2 e
- * D3 della verifica, §292).
+ * D3 della verifica, §297).
  *
  * Un lavoro su più giorni non occupa nulla (decisione dell'utente): compare
  * in agenda ogni giorno, ma il professionista può ricevere e accettare altri
@@ -31,7 +31,7 @@ const AGENDA_EXTERNAL_STATUSES = ["SCHEDULED", "COMPLETED"] as const;
 /**
  * Due impegni si sovrappongono se hanno un momento in comune. Senza orario
  * di fine (o con una fine non dopo l'inizio) l'impegno è un solo istante:
- * occupa l'intervallo in cui cade il suo inizio, come prima di §293.
+ * occupa l'intervallo in cui cade il suo inizio, come prima di §298.
  */
 export function commitmentsOverlap(aStart: Date, aEnd: Date | null | undefined, bStart: Date, bEnd: Date | null | undefined): boolean {
   const as = aStart.getTime();
@@ -122,7 +122,7 @@ export async function loadCommitments(db: Db, professionalProfileIds: string[], 
 /**
  * Blocca l'agenda del professionista fino alla fine della transazione: due
  * accettazioni nello stesso istante passano una alla volta, e la seconda
- * vede il lavoro creato dalla prima (D1 e D4 della verifica, §292).
+ * vede il lavoro creato dalla prima (D1 e D4 della verifica, §297).
  */
 export async function lockProfessionalAgenda(tx: Prisma.TransactionClient, professionalProfileId: string): Promise<void> {
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`agenda:${professionalProfileId}`}))`;

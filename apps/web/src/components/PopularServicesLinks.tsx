@@ -20,7 +20,8 @@ export function PopularServicesLinks({
   order,
   available,
 }: {
-  currentSlug: ProfessionalCategorySlug;
+  /** Categoria della pagina, esclusa dai link; assente fuori dai risultati (es. pagina non trovata). */
+  currentSlug?: ProfessionalCategorySlug;
   /** Nome del comune già verificato; senza città i link vanno alle pagine nazionali. */
   city?: string;
   order: string[];

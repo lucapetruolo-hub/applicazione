@@ -4,7 +4,7 @@ import { PrismaClient } from "@professionisti/database";
 import { API_URL } from "../fixtures/env";
 
 /**
- * Doppie prenotazioni (docs/CHANGELOG.md §293, D1-D4 della verifica §292),
+ * Doppie prenotazioni (docs/CHANGELOG.md §298, D1-D4 della verifica §297),
  * provate sull'API vera con un database vero: le richieste partono davvero
  * nello stesso istante, come due clienti che toccano "Accetta" insieme.
  */

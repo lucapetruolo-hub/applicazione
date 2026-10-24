@@ -29,7 +29,7 @@ export function formatQuoteDate(iso: string): string {
  */
 export function formatQuoteDateRange(startIso: string, endIso: string | null): string {
   if (!endIso) return formatQuoteDate(startIso);
-  // Lavoro su più giorni (docs/CHANGELOG.md §293): "dal 4 al 6 novembre · ogni giorno 08:00–17:00".
+  // Lavoro su più giorni (docs/CHANGELOG.md §298): "dal 4 al 6 novembre · ogni giorno 08:00–17:00".
   const days = formatJobDays(startIso, endIso);
   if (days) return `${days} · ogni giorno ${formatAppointmentTimeRange(startIso, endIso)}`;
   const endLabel = new Date(endIso).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
@@ -266,7 +266,7 @@ export function QuoteCard({
               </Text>
             </YStack>
           ) : null}
-          {/* Lavoro su più giorni (docs/CHANGELOG.md §293): la durata resta quella del preventivo. */}
+          {/* Lavoro su più giorni (docs/CHANGELOG.md §298): la durata resta quella del preventivo. */}
           {jobDayCount(quote.estimatedStartDate, quote.estimatedEndDate) > 1 ? (
             <Text fontSize={12} color={brand.grafite70}>
               Il lavoro dura {jobDayCount(quote.estimatedStartDate, quote.estimatedEndDate)} giorni: scegli il primo giorno e l&apos;orario di ogni giorno.

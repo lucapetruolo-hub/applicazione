@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import {
   acceptProfileInviteSchema,
   operatorProfileInviteSchema,
@@ -47,11 +48,14 @@ export class AdminProfileInvitesController {
 export class ProfileInvitesController {
   constructor(private readonly profileInvitesService: ProfileInvitesService) {}
 
+  // Il codice è lungo e non si indovina, ma un limite basso non costa nulla (§293).
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Get(":token")
   preview(@Param("token") token: string) {
     return this.profileInvitesService.preview(token);
   }
 
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post("accept")
   accept(@Body(new ZodValidationPipe(acceptProfileInviteSchema)) body: AcceptProfileInviteInput) {
     return this.profileInvitesService.accept(body);
