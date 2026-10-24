@@ -18,7 +18,7 @@ name: Uptime
 on:
   schedule:
     - cron: "*/10 * * * *"
-    # Una volta al giorno anche i suggerimenti di indirizzo di Google (§315).
+    # Una volta al giorno anche i suggerimenti di indirizzo di Google (§319).
     - cron: "17 7 * * *"
   workflow_dispatch:
 
@@ -37,7 +37,7 @@ jobs:
       - name: Sito web
         if: ${{ vars.SITE_URL != '' }}
         run: curl --fail --silent --show-error --output /dev/null --max-time 30 --retry 2 --retry-delay 10 "${{ vars.SITE_URL }}"
-      # Suggerimenti di indirizzo (docs/CHANGELOG.md §315): il 24/10/2026 Google
+      # Suggerimenti di indirizzo (docs/CHANGELOG.md §319): il 24/10/2026 Google
       # rifiutava la chiave e lo si è scoperto solo provando il sito. Una
       # volta al giorno (una sola chiamata a pagamento): se la chiave è
       # rifiutata o manca, il workflow fallisce e GitHub manda l'email.

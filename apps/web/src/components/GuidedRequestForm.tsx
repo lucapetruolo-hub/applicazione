@@ -31,6 +31,7 @@ import { CategoryTiles } from "@/components/CategoryTiles";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
+import { localPreviewUrl } from "@/lib/media";
 
 // Foto E video (richiesta esplicita dell'utente), fino a 5 elementi
 // (aumentato da 3, stessa richiesta).
@@ -81,7 +82,7 @@ function pickableSlotLabel(slot: PickableAgendaSlot): string {
 
 const fieldInputStyle = {
   padding: 12,
-  borderRadius: 6,
+  borderRadius: 10,
   border: `1px solid ${brand.bordoCampo}`,
   fontSize: 16,
   fontFamily: "inherit",
@@ -232,51 +233,6 @@ export function GuidedRequestForm({
     // un reset anche qui cancellerebbe il prefill dell'URL al primo render.
   }, [professionalProfileId, serviceMode]);
 
-  // Prefill dai dati dell'account (richiesta esplicita dell'utente), una
-  // sola volta appena `user` è disponibile: gli useState sopra sono
-  // dichiarati prima che `user` sia noto (il componente ritorna null
-  // mentre isLoading è vero, ma gli hook restano comunque eseguiti in
-  // ordine ad ogni render), quindi il valore iniziale da solo non basta —
-  // stesso motivo per cui /account sincronizza i propri campi con un
-  // effetto dedicato invece che nell'inizializzatore di useState.
-  useEffect(() => {
-    if (!user || prefilledFromAccountRef.current) return;
-    prefilledFromAccountRef.current = true;
-    // I valori arrivati dall'URL (es. "Ripeti la richiesta") hanno la
-    // precedenza: l'account riempie solo i campi ancora vuoti.
-    setRecipientName((prev) => prev || user.name || "");
-    setRecipientSurname((prev) => prev || user.surname || "");
-    setRecipientPhone((prev) => prev || user.phone || "");
-    setStreet((prev) => prev || user.street || "");
-    // Indirizzo già salvato nell'account: vale come scelto, finché non si cambia via o città.
-    if (user.street) {
-      setAddressVerified(true);
-      const line = [user.street, user.houseNumber].filter(Boolean).join(" ");
-      const place = [user.postalCode, user.city].filter(Boolean).join(" ");
-      setAddressText((prev) => prev || [line, place].filter(Boolean).join(", "));
-    }
-    setHouseNumber((prev) => prev || user.houseNumber || "");
-    setAddressExtra((prev) => prev || user.addressExtra || "");
-    setPostalCode((prev) => prev || user.postalCode || "");
-    setProvince((prev) => prev || user.province || "");
-    setCity((prev) => prev || user.city || "");
-    // Istantanea dei valori REALI dell'account (non del form, che può
-    // ricadere su valori arrivati dall'URL) — confrontata al momento
-    // dell'invio per rilevare sia campi mancanti sia campi modificati.
-    accountSnapshotRef.current = {
-      name: user.name ?? "",
-      surname: user.surname ?? "",
-      phone: user.phone ?? "",
-      street: user.street ?? "",
-      houseNumber: user.houseNumber ?? "",
-      addressExtra: user.addressExtra ?? "",
-      postalCode: user.postalCode ?? "",
-      city: user.city ?? "",
-      province: user.province ?? "",
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
-
   // Fascia effettivamente inviata: sempre quella corrente nel selettore
   // (inizializzata dall'URL se si è cliccata una pillola dell'agenda, ma
   // sempre modificabile — vedi selectedSlotValue sopra).
@@ -355,10 +311,12 @@ export function GuidedRequestForm({
   const [description, setDescription] = useState(searchParams.get("descrizione") ?? "");
   const [city, setCity] = useState(initialCity);
   // Cambiando città o categoria l'avviso di zona si ricontrolla al passo successivo.
-  useEffect(() => {
+  const [zoneCheckedFor, setZoneCheckedFor] = useState({ city, categorySlugs });
+  if (zoneCheckedFor.city !== city || zoneCheckedFor.categorySlugs !== categorySlugs) {
+    setZoneCheckedFor({ city, categorySlugs });
     setGeneralClosed((current) => (current === "ZONE" ? null : current));
     setClosedCategorySlug(null);
-  }, [city, categorySlugs]);
+  }
   // Facoltativa solo per una consulenza online a un professionista scelto (§210).
   const cityOptional = serviceMode === "ONLINE" && Boolean(professionalProfileId);
   const [street, setStreet] = useState(searchParams.get("via") ?? "");
@@ -418,7 +376,6 @@ export function GuidedRequestForm({
   });
   // Indirizzo scelto senza numero civico (es. solo la via): lo si chiede a parte.
   const [askHouseNumber, setAskHouseNumber] = useState(false);
-  const prefilledFromAccountRef = useRef(false);
   // Istantanea dei valori reali dell'account al momento del prefill (non i
   // valori di stato, che ricadono su "" per i campi mancanti) — usata al
   // momento dell'invio per capire se il cliente ha modificato o aggiunto
@@ -459,17 +416,52 @@ export function GuidedRequestForm({
   // il vecchio `token` nullo, un problema di closure stale).
   const [pendingSubmit, setPendingSubmit] = useState(false);
 
-  // Riparte da sola non appena il token diventa disponibile dopo il gate
-  // (login/registrazione appena completati dentro InlineAuthGate, senza
-  // mai lasciare questa pagina) — legge il token corrente dal contesto,
-  // mai quello (nullo) catturato dalla chiusura di handleSubmit.
+  // Prefill dai dati dell'account (richiesta esplicita dell'utente), una
+  // sola volta appena `user` è disponibile: gli useState sopra sono
+  // dichiarati prima che `user` sia noto (il componente ritorna null
+  // mentre isLoading è vero, ma gli hook restano comunque eseguiti in
+  // ordine ad ogni render), quindi il valore iniziale da solo non basta.
+  // Fatto durante il render, come /account con i propri campi.
+  const [prefilledFromAccount, setPrefilledFromAccount] = useState(false);
+  if (user && !prefilledFromAccount) {
+    setPrefilledFromAccount(true);
+    // I valori arrivati dall'URL (es. "Ripeti la richiesta") hanno la
+    // precedenza: l'account riempie solo i campi ancora vuoti.
+    setRecipientName((prev) => prev || user.name || "");
+    setRecipientSurname((prev) => prev || user.surname || "");
+    setRecipientPhone((prev) => prev || user.phone || "");
+    setStreet((prev) => prev || user.street || "");
+    // Indirizzo già salvato nell'account: vale come scelto, finché non si cambia via o città.
+    if (user.street) {
+      setAddressVerified(true);
+      const line = [user.street, user.houseNumber].filter(Boolean).join(" ");
+      const place = [user.postalCode, user.city].filter(Boolean).join(" ");
+      setAddressText((prev) => prev || [line, place].filter(Boolean).join(", "));
+    }
+    setHouseNumber((prev) => prev || user.houseNumber || "");
+    setAddressExtra((prev) => prev || user.addressExtra || "");
+    setPostalCode((prev) => prev || user.postalCode || "");
+    setProvince((prev) => prev || user.province || "");
+    setCity((prev) => prev || user.city || "");
+  }
+  // Istantanea dei valori REALI dell'account (non del form, che può
+  // ricadere su valori arrivati dall'URL) — confrontata al momento
+  // dell'invio per rilevare sia campi mancanti sia campi modificati.
   useEffect(() => {
-    if (!pendingSubmit || !token) return;
-    setPendingSubmit(false);
-    setShowAuthGate(false);
-    void doSubmit(token);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingSubmit, token]);
+    if (!user || accountSnapshotRef.current) return;
+    accountSnapshotRef.current = {
+      name: user.name ?? "",
+      surname: user.surname ?? "",
+      phone: user.phone ?? "",
+      street: user.street ?? "",
+      houseNumber: user.houseNumber ?? "",
+      addressExtra: user.addressExtra ?? "",
+      postalCode: user.postalCode ?? "",
+      city: user.city ?? "",
+      province: user.province ?? "",
+    };
+  }, [user]);
+
   // Un solo input file, senza `capture`: su iOS/Android questo fa comparire
   // il menu nativo del sistema ("Scatta foto"/"Libreria foto"/"Scegli file",
   // stile iPhone) invece di aprire direttamente una delle due opzioni —
@@ -477,6 +469,23 @@ export function GuidedRequestForm({
   // salta il menu e apre subito la fotocamera, che è il comportamento che
   // si vuole evitare qui.
   const photoInputRef = useRef<HTMLInputElement>(null);
+
+  // Riparte da sola non appena il token diventa disponibile dopo il gate
+  // (login/registrazione appena completati dentro InlineAuthGate, senza
+  // mai lasciare questa pagina) — legge il token corrente dal contesto,
+  // mai quello (nullo) catturato dalla chiusura di handleSubmit.
+  useEffect(() => {
+    if (!pendingSubmit || !token) return;
+    // Avvia l'invio vero (chiamate all'API): solo un effetto può farlo.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPendingSubmit(false);
+    setShowAuthGate(false);
+    // doSubmit è una function declaration più in basso, dopo i return
+    // condizionali: c'è già quando l'effetto parte.
+    // eslint-disable-next-line react-hooks/immutability
+    void doSubmit(token);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingSubmit, token]);
 
   if (isLoading) {
     return <GuidedRequestHeading title={title} subtitle={subtitle} />;
@@ -738,7 +747,7 @@ export function GuidedRequestForm({
     // Anonimo: nessun token per caricare su Cloudinary — resta locale con
     // un'anteprima via blob:, caricata davvero solo al momento dell'invio
     // (doSubmit, dopo il gate F2.2).
-    const previewUrl = URL.createObjectURL(file);
+    const previewUrl = localPreviewUrl(file);
     setPhotos((prev) => [...prev, { url: previewUrl, file, isVideo: file.type.startsWith("video/") }].slice(0, MAX_PHOTOS));
   }
 
@@ -994,7 +1003,7 @@ export function GuidedRequestForm({
               onChange={(e) => setSelectedSlotValue(e.target.value)}
               style={{
                 padding: 12,
-                borderRadius: 6,
+                borderRadius: 10,
                 border: `1px solid ${brand.bordoCampo}`,
                 fontSize: 16,
                 fontFamily: "inherit",
@@ -1021,7 +1030,7 @@ export function GuidedRequestForm({
             rows={5}
             style={{
               padding: 12,
-              borderRadius: 6,
+              borderRadius: 10,
               border: `1px solid ${brand.bordoCampo}`,
               fontSize: 16,
               fontFamily: "inherit",
@@ -1146,7 +1155,7 @@ export function GuidedRequestForm({
 
             {chosenAddress.serviceDown ? (
               // Suggerimenti non disponibili: campi separati, già dall'apertura
-              // del modulo (§315) e con la città insieme al resto dell'indirizzo.
+              // del modulo (§319) e con la città insieme al resto dell'indirizzo.
               <>
                 {chosenAddress.lostWhileTyping ? (
                   <Text fontSize={13} color={brand.grafite70} role="status">

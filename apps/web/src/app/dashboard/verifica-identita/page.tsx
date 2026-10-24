@@ -37,7 +37,8 @@ function VerificaIdentitaContent() {
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
-  const pollStartedAt = useRef<number | null>(returned ? Date.now() : null);
+  // Inizio dei controlli dopo il ritorno da Didit, segnato al primo controllo.
+  const pollStartedAt = useRef<number | null>(null);
   const [stripeVerified, setStripeVerified] = useState(false);
 
   useEffect(() => {
@@ -325,7 +326,7 @@ function ActionPanel({
           alignItems: "flex-start",
           gap: 10,
           padding: 12,
-          borderRadius: 12,
+          borderRadius: 20,
           background: consentMissing ? brand.urgenzaVelo : brand.gesso,
           cursor: "pointer",
           border: `2px solid ${consent ? brand.cianografia : consentMissing ? brand.urgenza : "transparent"}`,

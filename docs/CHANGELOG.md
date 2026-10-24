@@ -20272,7 +20272,54 @@ Non fatto qui: zod 4 (aggiornamento grande, rischio basso: il corpo JSON ha già
 
 **Verifica**: build, typecheck, test e test dei permessi con Node 22 nella CI; osv-scanner in locale non mostra più zod 3.25.76, e senza il file lo mostra.
 
-## 315. Richiesta di preventivo: l'indirizzo non cambia il modulo mentre si scrive, tessere delle categorie già in ordine
+## 315. Pagine per Google nel sistema unico
+
+**Richiesta dell'utente**: "si" alla proposta fatta dopo l'unione della PR #102: allineare al sistema unico (§305) le pagine nuove per Google del §296 ("Quanto costa", riquadri delle pagine città, "Lavora con noi", percorso sopra il profilo, pagina non trovata).
+
+**Decisione**: solo CSS in `globals.css`, nessun cambio ai testi.
+- Testi da 14-15 px a 16 px (domande frequenti, numeri delle città, tabella prezzi, link ai servizi, "Lavora con noi"). Il percorso "Home › Idraulico › Latina" resta piccolo come etichetta (13 px).
+- Arrotondamenti da 16 a 12 px (e 4 a 6), come il resto del sito.
+- Pulsante di "Quanto costa" e "Lavora con noi": verde (`#189a63`, più scuro al passaggio) con la pressione dei pulsanti del sito, al posto del quasi nero, come da decisione dell'utente del 24/10 (niente pulsanti color inchiostro).
+- Prezzi della tabella in IBM Plex Mono, come la riga del preventivo.
+
+**Verifica**: build del web; foto a 390 e 1440 px di "Lavora con noi" e dei riquadri della pagina Idraulico a Latina in `/mnt/project-files/anteprime/identita-codice/pagine-seo/` ("Quanto costa" dà 404 in prova perché mancano ancora abbastanza prezzi veri, regola del §296).
+
+## 316. Pannello delle notifiche, prezzi senza puntini, interruttori tondi
+
+**Richieste dell'utente (24/10/2026)**: "migliorare anche il pannello delle notifiche [...] che si apre premendo sulla campanella (anche quella è un ni), è rimasto retrò"; "non mi piacciono queste [puntini] fra il testo e il prezzo, eliminale sia da lì che dalla scheda dopo la ricerca"; "gli switch erano più belli tondeggianti come prima, ripristinali".
+
+**Decisioni**:
+- Campanella (`NotificationBell.tsx`): pulsante da 44 px con l'icona `bell` a tratto sottile, numero rosso con bordo bianco, senza l'animazione "ping" continua. `aria-expanded`/`aria-haspopup` e numero delle non lette nell'etichetta.
+- Pannello: bianco pieno, arrotondamento 12, ombra leggera, apertura di 160 ms dall'angolo (spenta con "riduci movimento"). Intestazione con "Notifiche", pillola "N nuove" ed "Elimina tutte" che chiede conferma al secondo tocco (4 secondi). Gruppi Oggi / Ieri / Prima non maiuscoli; ogni riga con icona dell'argomento in un quadrato tinto, argomento e ora sulla stessa riga, pallino verde e testo in grassetto se nuova, testo a 16 px, "x" per eliminare (sempre visibile sul telefono, al passaggio del mouse sul computer) e trascinamento di lato mantenuto. Stato vuoto con icona e una frase, righe scheletro durante il caricamento, piede "Impostazioni notifiche". Sul telefono il pannello occupa la larghezza dello schermo sotto l'intestazione. Esc chiude e riporta il fuoco sulla campanella.
+- `PriceLine` (`packages/ui`): tolti i puntini di guida tra voce e prezzo, ora uno spazio vuoto. Nel profilo le prestazioni sono separate da una linea sottile; la scheda dei risultati usa lo stesso componente.
+- Arrotondamenti `$10` e `$11` di Tamagui (`packages/ui/src/config.ts`) di nuovo tondi pieni: li usano solo l'interruttore "A domicilio / Online" della richiesta di preventivo, le schede degli orari nel profilo, quelle della barra di ricerca, etichette e pulsanti a pillola, che con il §305 erano scesi a 12 px.
+
+**Verifica**: typecheck di `ui` e `web`, build del web; foto prima/dopo a 390 e 1440 px in `/mnt/project-files/anteprime/identita-codice/notifiche/` e foto di prezzi e interruttori in `/mnt/project-files/anteprime/identita-codice/prezzi-interruttori/`.
+
+## 317. Angoli più morbidi in tutto il sito e "Mostra 0 richieste"
+
+**Richiesta dell'utente (24/10/2026)**, sulla finestra "Filtri" delle richieste: "tutto questo, sia la finestra che il resto all'interno, era più bello tondeggiante, di più, come prima"; e "correggi anche la visualizzazione di quello 0 che non si vede bene" ("Mostra0  richieste").
+
+**Decisioni**:
+- Sistema unico ammorbidito (aggiorna il §305): 10 px per etichette e tessere piccole, 20 px per campi, riquadri, finestre e pannelli, tondo pieno per pulsanti e interruttori. `radiusSm` 10, `radiusDoc`/`radiusDocLg` 20 (`packages/ui/src/tokens.ts`); token Tamagui `$1-$2` a 10 e `$3-$9` a 20 (`config.ts`); in CSS e nei componenti 12 → 20 e 6 → 10. Le icone in quadrato piccolo (38-48 px: notifiche, registrazione, contatti, riquadro professionisti, tessere dei lavori, caselle del codice email) restano a 12, altrimenti diventerebbero cerchi. Agenda non toccata a mano.
+- "Mostra N richieste" (richieste del professionista e del cliente): testo scritto in un'unica stringa. `Button` di Tamagui metteva ogni pezzo in un testo separato con spazio fra l'uno e l'altro, così lo 0 si attaccava a "Mostra".
+
+**Verifica**: typecheck di `ui` e `web`, build del web; foto a 390 e 1440 px (home, profilo, richiesta di preventivo, richieste e finestra Filtri) in `/mnt/project-files/anteprime/identita-codice/tondeggiante/`.
+
+## 318. Avvisi del controllo del codice sistemati, regole tornate errori
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Aggiornamento Next.js"): "effettua le due migliorie nelle modalità che ritieni"; la seconda erano gli avvisi di `pnpm turbo run lint` nel sito (regole nuove di React del §301 e accessibilità del §205), fatta in un thread a parte dopo l'unione della PR #103.
+
+**Decisione presa**: 159 avvisi in 62 file sistemati uno per uno; in `eslint.config.mjs` tolte le eccezioni che li abbassavano ad avviso, quindi da ora sono errori e bloccano la CI.
+- **Regole del React Compiler** (`eslint-plugin-react-hooks` 7, 70 avvisi). Al posto di `setState` dentro un effetto: valori derivati durante il render (es. il conteggio delle notifiche è 0 senza utente); risposte salvate insieme alla ricerca da cui arrivano, così cambiando filtro o pagina si torna allo scheletro senza azzerare lo stato a mano (pannello admin, statistiche, giro del giorno, ricerca rapida admin) ed evitando che una risposta vecchia finisca sotto il filtro nuovo; stato aggiornato durante il render quando cambia un valore (campi di `/account`, prefill della richiesta di preventivo, fascia oraria in modifica in agenda, menu account che si chiude cambiando pagina, intestatario dell'IBAN); `useMediaQuery`/`usePrefersReducedMotion` (`apps/web/src/lib/useMediaQuery.ts`) al posto di `matchMedia` in un effetto; le funzioni del genitore tenute in un ref aggiornato in un effetto, non durante il render; `Date.now()` mai durante il render (ora fissata all'apertura o all'arrivo dei dati). Restano poche eccezioni con un `eslint-disable` spiegato accanto: dati che esistono solo nel browser (sessione salvata, scelta dei cookie, frammento dell'indirizzo dopo l'accesso con Google) e link seguiti una volta sola con lo scorrimento fino alla scheda (`?open=`).
+- **Accessibilità** (`jsx-a11y`, 88 avvisi). Le finestre (popup) avevano `role="dialog"` e il clic sullo sfondo, con `stopPropagation` sulla finestra per non chiuderla: ora lo sfondo ha `role="presentation"` e si chiude solo con un clic proprio sullo sfondo (`closeOnBackdrop`, `apps/web/src/lib/closeOnBackdrop.ts`), il ruolo `dialog` è sulla finestra; con la tastiera si chiudono con Esc come prima. Le miniature di foto e documenti che si aprono in grande (`MediaPreview`) sono pulsanti usabili con Invio e spazio, con un nome per i lettori di schermo; il riquadro del professionista sulla mappa è un link raggiungibile con Tab. Nella lista dei paesi del telefono la scelta da tastiera resta dal campo di ricerca (frecce e Invio). Un'immagine `<img>` con testo alternativo può avere il ruolo di pulsante (consentito da ARIA in HTML), aggiunto alla regola.
+- Nessun cambio di aspetto voluto.
+- CodeQL (`js/xss-through-dom`, bloccante dal §313) segnalava le miniature di `MediaPreview` e `ImageCropModal`: per lui l'anteprima `blob:` di un file appena scelto è "testo del DOM" che arriva fino a `src`. L'indirizzo lo genera il browser e non può contenere HTML; `localPreviewUrl` in `lib/media.ts` lo passa per `encodeURI`, che lo lascia identico ma che CodeQL riconosce. Usato nella richiesta di preventivo, in `/account` e nel profilo pubblico.
+- Tolto il messaggio "Pages directory cannot be found" stampato a ogni lint (miglioria approvata da Luca): `rootDir` di Next in `eslint.config.mjs` ora è un percorso assoluto, perché turbo fa partire il lint da `apps/web`.
+
+**Verifica**: lint di tutto il monorepo a zero errori e zero avvisi, typecheck, build. Foto delle 132 pagine prima e dopo (`confronto-pagine`, con il limite di richieste dell'API alzato solo in locale per non avere risposte 429 a caso): 128 identiche al pixel; le altre 4 (riga "adesso" dell'agenda, admin Finanza, pochi pixel in `/urgente`) cambiano anche tra due giri fatti senza modifiche. Stessi stati HTTP, nessun errore nuovo in console. Prove nel browser: filtri della ricerca e menu da telefono si chiudono con un clic sullo sfondo e con Esc, non con un clic dentro; ricerca rapida admin; elenco utenti admin con la ricerca; campi di `/account` compilati anche arrivando da un'altra pagina; finestra della fascia oraria in agenda con `role="dialog"` reso da Tamagui. CodeQL 2.27.3 in locale con le stesse regole della CI: nessuna segnalazione nel codice del sito.
+
+## 319. Richiesta di preventivo: l'indirizzo non cambia il modulo mentre si scrive, tessere delle categorie già in ordine
 
 **Richiesta dell'utente**: "quando si clicca a domicilio e si fa avanti quando si va ad inserire l'indirizzo dopo la terza lettera inserita cambia il modulo all'improvviso facendoti inserire altri campi che prima non c'erano"; "quando si clicca su richiedi preventivo non si deve vedere il refresh della riordinazione delle categoria e neanche in fase di registrazione".
 

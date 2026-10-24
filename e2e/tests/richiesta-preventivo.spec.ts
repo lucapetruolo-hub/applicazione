@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { API_URL } from "../fixtures/env";
 
 /**
- * Richiesta di preventivo (docs/CHANGELOG.md §315): il campo indirizzo non
+ * Richiesta di preventivo (docs/CHANGELOG.md §319): il campo indirizzo non
  * cambia il modulo mentre si scrive quando i suggerimenti di Google non
  * funzionano, si usa con un lettore di schermo, e le tessere delle categorie
  * compaiono già in ordine. I servizi di Google sono simulati: la prova

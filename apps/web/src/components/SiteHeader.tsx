@@ -40,7 +40,7 @@ export function SiteHeader() {
   const isAuthPage = AUTH_PAGES.some((page) => pathname === page || pathname.startsWith(`${page}/`));
 
   // Ordine delle categorie per la richiesta di preventivo e la registrazione,
-  // chiesto a pagina ferma: aprendole le tessere compaiono subito in ordine (§315).
+  // chiesto a pagina ferma: aprendole le tessere compaiono subito in ordine (§319).
   useEffect(() => {
     const start = () => prefetchCategoryOrder();
     if (typeof window.requestIdleCallback === "function") {

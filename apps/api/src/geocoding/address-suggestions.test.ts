@@ -58,7 +58,7 @@ describe("suggerimenti di indirizzo dal server (§264)", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("dice se i suggerimenti funzionano senza chiamare Google (§315)", async () => {
+  it("dice se i suggerimenti funzionano senza chiamare Google (§319)", async () => {
     const service = new AddressSuggestionsService();
     expect(service.available()).toBe(false);
     process.env.GOOGLE_MAPS_API_KEY = "k";

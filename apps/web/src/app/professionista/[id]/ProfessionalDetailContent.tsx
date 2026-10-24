@@ -175,13 +175,15 @@ export function ProfessionalDetailContent({
   // dopo il caricamento della pagina e il browser non trova ancora l'ancora.
   const requestedAgendaDate = searchParams.get("data");
   const [appliedAgendaDate, setAppliedAgendaDate] = useState<string | null>(null);
-  useEffect(() => {
-    if (!agendaPreview || !requestedAgendaDate || appliedAgendaDate === requestedAgendaDate) return;
+  if (agendaPreview && requestedAgendaDate && appliedAgendaDate !== requestedAgendaDate) {
     setAppliedAgendaDate(requestedAgendaDate);
     const index = agendaPreview.allDays.findIndex((day) => day.date === requestedAgendaDate);
     if (index >= 0) setAgendaWindowOffset(index);
+  }
+  useEffect(() => {
+    if (!appliedAgendaDate) return;
     window.requestAnimationFrame(() => document.getElementById("agenda")?.scrollIntoView({ behavior: "smooth", block: "start" }));
-  }, [agendaPreview, requestedAgendaDate, appliedAgendaDate]);
+  }, [appliedAgendaDate]);
 
   const totalAgendaDays = agendaPreview?.allDays.length ?? 0;
   const maxAgendaOffset = Math.max(0, totalAgendaDays - AGENDA_PREVIEW_DAYS);
@@ -871,8 +873,8 @@ export function ProfessionalDetailContent({
               </Text>
             </XStack>
             <Surface padding={0} overflow="hidden">
-              {professional.services.map((service) => (
-                <YStack key={service.id} paddingHorizontal="$4" paddingVertical="$2">
+              {professional.services.map((service, index) => (
+                <YStack key={service.id} paddingHorizontal="$4" paddingVertical="$3" borderTopWidth={index === 0 ? 0 : 1} borderTopColor={brand.filetto}>
                   <PriceLine
                     label={service.name}
                     labelColor={brand.grafite}

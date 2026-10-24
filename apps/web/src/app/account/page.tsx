@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Camera, Download, Trash2, Eye, EyeOff } from "lucide-react";
@@ -15,10 +15,11 @@ import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
 import { ClientEmailVerificationCard } from "@/components/ClientEmailVerificationCard";
 import { PASSWORD_RULES_ATTRIBUTE, PasswordMatchHint, PasswordRules } from "@/components/PasswordRules";
+import { localPreviewUrl } from "@/lib/media";
 
 const inputStyle = {
   padding: "10px 12px",
-  borderRadius: 6,
+  borderRadius: 10,
   border: `1px solid ${brand.bordoCampo}`,
   fontSize: 16,
   fontFamily: "inherit",
@@ -219,7 +220,7 @@ export default function AccountPage() {
     if (!file) return;
 
     setImageError(null);
-    setCropImageSrc(URL.createObjectURL(file));
+    setCropImageSrc(localPreviewUrl(file));
   }
 
   // Stesso motivo già documentato in /dashboard/profilo: revocare l'URL blob
@@ -251,10 +252,13 @@ export default function AccountPage() {
     setProfileSaved(false);
   }
 
-  useEffect(() => {
+  // Campi ricopiati dall'utente ogni volta che cambia (accesso, salvataggio),
+  // già durante il render invece che in un effetto dopo.
+  const [syncedUser, setSyncedUser] = useState<typeof user>(null);
+  if (user !== syncedUser) {
+    setSyncedUser(user);
     syncFieldsFromUser();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }
 
   if (isLoading) return null;
 

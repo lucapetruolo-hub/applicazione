@@ -14,7 +14,7 @@ const SESSION = /^[A-Za-z0-9-]{8,64}$/;
 export class AddressSuggestionsController {
   constructor(private readonly addressSuggestionsService: AddressSuggestionsService) {}
 
-  /** Se i suggerimenti funzionano, senza chiamare Google (§315). */
+  /** Se i suggerimenti funzionano, senza chiamare Google (§319). */
   @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @Get("status")
   status() {

@@ -104,6 +104,8 @@ export function GuidedRequestCard({
     if (autoOpenedChatRef.current === autoOpenChatProfessionalId) return;
     autoOpenedChatRef.current = autoOpenChatProfessionalId;
     const hasQuote = request.quotes.some((q) => q.professionalProfileId === autoOpenChatProfessionalId);
+    // Link seguito una volta sola (ref sopra), poi avvisa la pagina: serve un effetto.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!hasQuote) openTimelineForProfessional(autoOpenChatProfessionalId);
     onChatAutoOpenHandled?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -711,7 +713,7 @@ export function GuidedRequestCard({
           {request.photoUrls.length > 0 ? (
             <XStack gap="$2" flexWrap="wrap">
               {request.photoUrls.map((url, index) => (
-                <MediaPreview key={url} url={url} onClick={() => setOpenPhotoIndex(index)} style={{ width: 72, height: 72, borderRadius: 6, border: `1px solid ${brand.filetto}`, cursor: "pointer" }} />
+                <MediaPreview key={url} url={url} onClick={() => setOpenPhotoIndex(index)} style={{ width: 72, height: 72, borderRadius: 10, border: `1px solid ${brand.filetto}`, cursor: "pointer" }} />
               ))}
             </XStack>
           ) : null}

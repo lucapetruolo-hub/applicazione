@@ -5,12 +5,13 @@ import { X } from "lucide-react";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { MediaPreview } from "@/components/MediaPreview";
 import { UploadingDots } from "@/components/UploadingDots";
+import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 const MAX_REVIEW_MEDIA = 5;
 
 const textareaStyle = {
   padding: 10,
-  borderRadius: 6,
+  borderRadius: 10,
   border: `1px solid ${brand.bordoCampo}`,
   fontSize: 16,
   fontFamily: "inherit",
@@ -90,10 +91,8 @@ export function ReviewModal({
 
   return (
     <div
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
+      role="presentation"
+      onClick={closeOnBackdrop(onClose)}
       style={{
         position: "fixed",
         top: 0,
@@ -110,7 +109,9 @@ export function ReviewModal({
       }}
     >
       <YStack
-        onPress={(e: { stopPropagation: () => void }) => e.stopPropagation()}
+        role="dialog"
+        aria-modal
+        aria-label={title}
         width="100%"
         maxWidth={480}
         backgroundColor={brand.calce}

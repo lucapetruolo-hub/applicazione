@@ -27,7 +27,7 @@ function Photos({ urls }: { urls: string[] }) {
   return (
     <XStack gap="$2" flexWrap="wrap">
       {urls.map((url) => (
-        <a key={url} href={url} target="_blank" rel="noreferrer" style={{ width: 84, height: 84, borderRadius: 6, overflow: "hidden", border: `1px solid ${brand.filetto}`, display: "block" }}>
+        <a key={url} href={url} target="_blank" rel="noreferrer" style={{ width: 84, height: 84, borderRadius: 10, overflow: "hidden", border: `1px solid ${brand.filetto}`, display: "block" }}>
           <MediaPreview url={url} />
         </a>
       ))}
@@ -60,15 +60,17 @@ function Side({ title, done, note, photos }: { title: string; done: string; note
 export default function AdminLavoriPage() {
   const { token } = useAuth();
   const [filter, setFilter] = useState<Filter>("all");
-  const [rows, setRows] = useState<AdminCompletedJob[] | null>(null);
+  // Righe insieme al filtro con cui sono arrivate: cambiando filtro si torna
+  // allo scheletro finché non arrivano quelle nuove.
+  const [loaded, setLoaded] = useState<{ filter: Filter; rows: AdminCompletedJob[] } | null>(null);
+  const rows = loaded?.filter === filter ? loaded.rows : null;
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) return;
-    setRows(null);
     apiClient
       .adminListCompletedJobs(token, filter)
-      .then(setRows)
+      .then((list) => setLoaded({ filter, rows: list }))
       .catch((err) => setError(errorMessage(err)));
   }, [token, filter]);
 
@@ -158,7 +160,7 @@ export default function AdminLavoriPage() {
                 ) : null}
 
                 {job.changeReason ? (
-                  <YStack padding="$3" borderRadius={12} backgroundColor={brand.urgenzaVelo} gap="$1">
+                  <YStack padding="$3" borderRadius={20} backgroundColor={brand.urgenzaVelo} gap="$1">
                     <Text fontWeight="700" color={brand.grafite}>
                       Motivo delle differenze (professionista)
                     </Text>

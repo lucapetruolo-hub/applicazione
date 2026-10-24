@@ -23,7 +23,7 @@ const POPULAR_ORDER_TIMEOUT_MS = 1200;
  * categoria cercata, docs/CHANGELOG.md §281), poi le più cercate nella città
  * indicata o in tutta la piattaforma (`GET /categories/popular`). Le tessere
  * compaiono una volta sola, già nell'ordine giusto (richiesta dell'utente,
- * docs/CHANGELOG.md §315: non si deve vedere il riordino): finché l'ordine
+ * docs/CHANGELOG.md §319: non si deve vedere il riordino): finché l'ordine
  * non arriva si vedono tessere vuote della stessa misura, al massimo per
  * `POPULAR_ORDER_TIMEOUT_MS`, poi l'ordine del catalogo. Mostrate, non si
  * spostano più.

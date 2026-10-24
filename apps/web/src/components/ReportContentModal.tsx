@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { ContentReportTargetType } from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 const REASON_OPTIONS: { value: string; label: string }[] = [
   { value: "contenuto-falso", label: "Informazioni false o ingannevoli" },
@@ -14,7 +15,7 @@ const REASON_OPTIONS: { value: string; label: string }[] = [
 
 const textareaStyle = {
   padding: 10,
-  borderRadius: 6,
+  borderRadius: 10,
   border: `1px solid ${brand.bordoCampo}`,
   fontSize: 16,
   fontFamily: "inherit",
@@ -25,7 +26,7 @@ const textareaStyle = {
 
 const selectStyle = {
   padding: 10,
-  borderRadius: 6,
+  borderRadius: 10,
   border: `1px solid ${brand.bordoCampo}`,
   fontSize: 16,
   fontFamily: "inherit",
@@ -85,10 +86,8 @@ export function ReportContentModal({
 
   return (
     <div
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Segnala contenuto"
+      role="presentation"
+      onClick={closeOnBackdrop(onClose)}
       style={{
         position: "fixed",
         top: 0,
@@ -105,7 +104,9 @@ export function ReportContentModal({
       }}
     >
       <YStack
-        onPress={(e: { stopPropagation: () => void }) => e.stopPropagation()}
+        role="dialog"
+        aria-modal
+        aria-label="Segnala contenuto"
         width="100%"
         maxWidth={460}
         backgroundColor={brand.calce}

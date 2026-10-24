@@ -129,7 +129,7 @@ function StaticMapPreview({ spec }: { spec: StaticMapSpec }) {
   return (
     <div ref={boxRef} className="static-map">
       {src ? (
-        // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/no-noninteractive-element-interactions -- immagine del nostro server; onError non è un comando dell'utente
+        // eslint-disable-next-line @next/next/no-img-element -- immagine del nostro server
         <img src={src} alt="Mappa con la posizione dei professionisti" onError={() => setFailed(true)} />
       ) : null}
       <button type="button" className="static-map-button" onClick={grantCookieConsent}>
