@@ -10,7 +10,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
-    "@playwright/test": "1.56.1",
+    "@playwright/test": "1.63.0",
     "@professionisti/database": "workspace:*",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.20.1",
