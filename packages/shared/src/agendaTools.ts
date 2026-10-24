@@ -1,4 +1,5 @@
 import { z } from "zod";
+import "./zod";
 
 /**
  * Strumenti della nuova agenda (docs/CHANGELOG.md §288): settimana tipo,
@@ -29,13 +30,23 @@ export const agendaWeekTemplateSchema = z
       const sorted = [...slots].sort((a, b) => a.start.localeCompare(b.start));
       for (let i = 1; i < sorted.length; i++) {
         if (sorted[i]!.start < sorted[i - 1]!.end) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Due fasce dello stesso giorno non possono sovrapporsi.", path: ["days", day] });
+          ctx.addIssue({ code: "custom", message: "Due fasce dello stesso giorno non possono sovrapporsi.", path: ["days", day] });
           return;
         }
       }
     });
   });
 export type AgendaWeekTemplate = z.infer<typeof agendaWeekTemplateSchema>;
+
+/**
+ * Settimana tipo salvata per un mese solo (richiesta dell'utente,
+ * docs/CHANGELOG.md §323): `month` in AAAA-MM, al massimo un anno avanti.
+ */
+export const agendaWeekTemplateMonthSchema = z.object({
+  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Mese non valido."),
+  template: agendaWeekTemplateSchema,
+});
+export type AgendaWeekTemplateMonth = z.infer<typeof agendaWeekTemplateMonthSchema>;
 
 /**
  * Settimana tipo con il suo stato (docs/CHANGELOG.md §323): `active` dopo il

@@ -806,6 +806,18 @@ export function AgendaStyles() {
         background: #fff;
         min-width: 0;
       }
+      /* "eccezione": parola dove c'è spazio, cerchietto con legenda sul telefono (docs/CHANGELOG.md §328). */
+      .ag-ecc-narrow {
+        display: none !important;
+      }
+      @media (max-width: 1000px) {
+        .ag-ecc-wide {
+          display: none !important;
+        }
+        .ag-ecc-narrow {
+          display: flex !important;
+        }
+      }
       /* Settimana tipo in tre passi (docs/CHANGELOG.md §323). */
       .ag-wt {
         padding: 20px;
@@ -1117,6 +1129,20 @@ export function AgendaStyles() {
         font-size: 14px;
       }
       /* Tre orari pronti affiancati solo quando la colonna è larga (senza anteprima accanto). */
+      .ag-wt-save {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .ag-wt-scope {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .ag-wt-scope select {
+        min-width: 168px;
+      }
       @media (min-width: 720px) and (max-width: 1080px) {
         .ag-wt-presets {
           grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1152,8 +1178,15 @@ export function AgendaStyles() {
         .ag-wt-time {
           width: 104px;
         }
+        .ag-wt-save,
         .ag-wt-footer .ag-btn {
           width: 100%;
+        }
+        .ag-wt-scope {
+          flex: 1;
+        }
+        .ag-wt-scope select {
+          flex: 1;
         }
       }
       .ag-links {

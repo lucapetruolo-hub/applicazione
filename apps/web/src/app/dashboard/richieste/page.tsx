@@ -324,7 +324,7 @@ function RichiesteContent() {
 
   if (isLoading || (token && leads === null && !profileMissing)) {
     // Stessi margini, larghezza e titolo della pagina caricata: niente salto
-    // quando arrivano le richieste (CLS, docs/CHANGELOG.md §325).
+    // quando arrivano le richieste (CLS, docs/CHANGELOG.md §330).
     return (
       <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={1180} gap="$5">

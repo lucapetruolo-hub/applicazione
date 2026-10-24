@@ -3,5 +3,11 @@
   "installCommand": "cd ../.. && pnpm install",
   "buildCommand": "cd ../.. && pnpm turbo run build --filter=...@professionisti/web",
   "outputDirectory": ".next",
-  "ignoreCommand": "bash ../../scripts/vercel-ignore-build.sh"
+  "ignoreCommand": "bash ../../scripts/vercel-ignore-build.sh",
+  "git": {
+    "deploymentEnabled": {
+      "claude/project-thread-*": false,
+      "dependabot/**": false
+    }
+  }
 }

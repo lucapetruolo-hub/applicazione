@@ -165,7 +165,7 @@ export class AuthController {
     return this.withBusinessName(user);
   }
 
-  /** Preferenze dell'interfaccia (menu laterale ridotto, docs/CHANGELOG.md §325). */
+  /** Preferenze dell'interfaccia (menu laterale ridotto, docs/CHANGELOG.md §330). */
   @UseGuards(JwtAuthGuard)
   @Patch("me/preferences")
   async updatePreferences(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(updatePreferencesSchema)) body: UpdatePreferencesInput) {

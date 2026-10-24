@@ -101,8 +101,8 @@ const addressInputStyle = {
   color: brand.grafite,
 };
 
-function fiscalFieldLabel(path: (string | number)[]): string {
-  return FISCAL_FIELD_LABELS[path.join(".")] ?? FISCAL_FIELD_LABELS[String(path[0] ?? "")] ?? "Un campo";
+function fiscalFieldLabel(path: readonly PropertyKey[]): string {
+  return FISCAL_FIELD_LABELS[path.map(String).join(".")] ?? FISCAL_FIELD_LABELS[String(path[0] ?? "")] ?? "Un campo";
 }
 
 /**
@@ -338,7 +338,7 @@ function DashboardFiscaleContent() {
         case "too_big": {
           const tooBig = issue;
           reason =
-            tooBig.type === "array"
+            tooBig.origin === "array"
               ? `puoi indicarne al massimo ${tooBig.maximum}.`
               : tooBig.maximum === 2
                 ? "deve essere un codice a 2 lettere (es. IT), non il nome esteso del paese."
@@ -429,7 +429,7 @@ function DashboardFiscaleContent() {
   }
 
   if (isLoading || profile === undefined) {
-    // Stessa larghezza della pagina caricata: niente salto di lato (CLS, docs/CHANGELOG.md §325).
+    // Stessa larghezza della pagina caricata: niente salto di lato (CLS, docs/CHANGELOG.md §330).
     return (
       <Section title="Dati fiscali e pagamenti" maxWidth={640}>
         <Text>Caricamento...</Text>

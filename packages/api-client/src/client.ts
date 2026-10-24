@@ -635,7 +635,7 @@ export type CurrentUser = {
   emailCodeValidForSeconds: number;
   /** Privato, P.IVA o azienda scelto in registrazione: precompila /dashboard/fiscale. */
   signupEntityType: ProfessionalEntityTypeValue | null;
-  /** Menu laterale ridotto a icone scelto dalla persona; null = decide lo schermo (docs/CHANGELOG.md §325). */
+  /** Menu laterale ridotto a icone scelto dalla persona; null = decide lo schermo (docs/CHANGELOG.md §330). */
   sidebarCollapsed?: boolean | null;
 };
 
@@ -1507,6 +1507,12 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
     agendaWeekTemplate: (token: string) => request<AgendaWeekTemplateState>("/agenda/week-template", { headers: { Authorization: `Bearer ${token}` } }),
     saveAgendaWeekTemplate: (token: string, template: AgendaWeekTemplate) =>
       request<AgendaWeekTemplateState>("/agenda/week-template", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(template) }),
+    saveAgendaWeekTemplateForMonth: (token: string, template: AgendaWeekTemplate, month: string) =>
+      request<AgendaWeekTemplateState>("/agenda/week-template/month", {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ month, template }),
+      }),
     agendaWeather: (token: string) => request<WeatherDayAlert[]>("/agenda/weather", { headers: { Authorization: `Bearer ${token}` } }),
     agendaZoneDemand: (token: string) => request<ZoneDemand>("/agenda/zone-demand", { headers: { Authorization: `Bearer ${token}` } }),
     agendaDayRoute: (token: string, date: string) =>

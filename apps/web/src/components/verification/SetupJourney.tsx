@@ -205,7 +205,7 @@ export function useSetupJourney(
   const [status, setStatus] = useState<MyVerificationStatus | null>(null);
   const [stripeVerified, setStripeVerified] = useState<boolean | null>(null);
   // Risposte arrivate (anche con errore): Oggi aspetta questo per non far
-  // saltare la colonna di destra quando compare il riquadro (§325).
+  // saltare la colonna di destra quando compare il riquadro (§330).
   const [settled, setSettled] = useState(false);
 
   useEffect(() => {
@@ -229,7 +229,7 @@ export function useSetupJourney(
 export function SetupJourneyCard({ steps }: { steps: JourneyStep[] | null }) {
   if (!steps || journeyDone(steps)) return null;
   // Manca solo un passo facoltativo (pagamenti online): una riga, non il
-  // riquadro intero (richiesta dell'utente, docs/CHANGELOG.md §325).
+  // riquadro intero (richiesta dell'utente, docs/CHANGELOG.md §330).
   const left = steps.filter((step) => step.state !== "done");
   const onlyOptional = left.length === 1 ? left[0] : undefined;
   if (onlyOptional?.optional) return <SetupJourneyCompact steps={steps} step={onlyOptional} />;

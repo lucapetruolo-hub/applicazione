@@ -68,7 +68,7 @@ export const PROFESSIONAL_NAV: AccountNavGroup[] = [
 ];
 
 /**
- * Voci del menu laterale (docs/CHANGELOG.md §325, richiesta esplicita
+ * Voci del menu laterale (docs/CHANGELOG.md §330, richiesta esplicita
  * dell'utente: al massimo 8 icone nella colonna ridotta). Restano le voci
  * di tutti i giorni; impostazioni, dati fiscali e pagine da cliente vivono
  * nella tendina "Il mio account" (`PROFESSIONAL_NAV`). In più una voce

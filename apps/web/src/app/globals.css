@@ -149,6 +149,57 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   background-image: radial-gradient(circle 90px at var(--mx) var(--my), rgba(255, 255, 255, 0.3), transparent 70%);
 }
 
+/* "Richiedi un preventivo a [nome]" nel profilo pubblico (ProfileQuoteCta):
+   da computer largo quanto il testo, da telefono tutta la larghezza e, quando
+   il pulsante non è sullo schermo, una barra fissa in basso. */
+.profile-cta {
+  align-self: flex-start;
+  max-width: 100%;
+}
+.profile-cta-bar {
+  display: none;
+}
+@media (max-width: 767px) {
+  .profile-cta {
+    align-self: stretch;
+  }
+  .profile-cta-bar {
+    display: block;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 -1px 0 rgba(26, 21, 19, 0.08);
+    transform: translateY(110%);
+    visibility: hidden;
+    transition:
+      transform 250ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      visibility 0s linear 250ms;
+  }
+  /* Spazio in fondo alla pagina, così la barra non copre il piè di pagina. */
+  body:has(.profile-cta-bar) {
+    padding-bottom: 72px;
+  }
+  .profile-cta-bar[data-visible="true"] {
+    transform: translateY(0);
+    visibility: visible;
+    transition:
+      transform 250ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      visibility 0s;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .profile-cta-bar,
+  .profile-cta-bar[data-visible="true"] {
+    transition: none;
+  }
+}
+
 /* Foto dei mestieri in /per-professionisti (ProGallery): 2 colonne su
    telefono, 4 da tablet in su. */
 .pro-gallery {
@@ -839,7 +890,7 @@ button.notif-row-main:hover {
    di schede del cliente. Le pagine dentro restano centrate come prima. */
 .acct-shell {
   width: 100%;
-  /* 1600 e non più 1320 (docs/CHANGELOG.md §325): su uno schermo da 1920px
+  /* 1600 e non più 1320 (docs/CHANGELOG.md §330): su uno schermo da 1920px
      agenda e messaggi restavano in una striscia centrale con 600px vuoti. */
   max-width: 1600px;
   margin: 0 auto;
@@ -851,7 +902,7 @@ button.notif-row-main:hover {
   min-width: 0;
   flex: 1;
   /* Le pagine dentro possono adattarsi allo spazio vero, che cambia col menu
-     ridotto (docs/CHANGELOG.md §325). Non trattiene gli elementi fissi. */
+     ridotto (docs/CHANGELOG.md §330). Non trattiene gli elementi fissi. */
   container: acct-main / inline-size;
   /* Il piè di pagina resta sotto lo schermo mentre la pagina carica: prima
      compariva in alto e poi veniva spinto giù (CLS 0,14, docs/CHANGELOG.md §321). */
@@ -884,7 +935,7 @@ button.notif-row-main:hover {
 .acct-nav-short {
   display: none;
 }
-/* Tasto "Riduci il menu" (docs/CHANGELOG.md §325): solo con la colonna. */
+/* Tasto "Riduci il menu" (docs/CHANGELOG.md §330): solo con la colonna. */
 .acct-nav-toggle,
 .acct-nav-tip {
   display: none;
@@ -990,7 +1041,7 @@ button.notif-row-main:hover {
   }
 }
 /* Colonna a sinistra da 760px (tablet in verticale compreso, docs/CHANGELOG.md
-   §325): prima, fino a 1000px, era una barra che scorreva di lato e
+   §330): prima, fino a 1000px, era una barra che scorreva di lato e
    nascondeva metà delle voci. */
 @media (min-width: 760px) {
   .acct-shell {
@@ -1233,7 +1284,7 @@ button.notif-row-main:hover {
 }
 /* Home "Oggi" del professionista (docs/CHANGELOG.md §147). */
 /* Due colonne quando il contenuto è largo almeno 960px (docs/CHANGELOG.md
-   §325): conta lo spazio vero della pagina, che cambia col menu ridotto,
+   §330): conta lo spazio vero della pagina, che cambia col menu ridotto,
    non la larghezza della finestra. */
 .today-wrap {
   container-type: inline-size;
@@ -2195,7 +2246,7 @@ a.admin-kpi:hover {
   gap: 12px;
 }
 /* Con la pagina larga (menu ridotto) le sei tessere stanno su una riga e il
-   grafico sale (docs/CHANGELOG.md §325). */
+   grafico sale (docs/CHANGELOG.md §330). */
 @container acct-main (min-width: 1140px) {
   .pstats-kpis {
     grid-template-columns: repeat(6, minmax(0, 1fr));
