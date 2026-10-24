@@ -20106,3 +20106,63 @@ La mappa con una chiave vera si vede solo sul sito pubblicato: dopo l'unione va 
 **Motivo**: le pagine lavoro + città entrano in Google solo da 3 professionisti veri (§296): reclutare falegnami fin dall'inizio rende indicizzabile una delle due ricerche più frequenti della provincia.
 
 **Verifica**: nessun codice cambiato. La categoria esiste già (`PROFESSIONAL_CATEGORIES`) ed è nel menu "Casa e impianti".
+
+## 304. Titoli di un solo colore, senza etichette sopra, e carattere Instrument Sans
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Aspetto non da sito fatto con IA"): "effettua solo il punto 5 della prima risposta e il carattere con la proposta 2", dopo il controllo dei 30 segni tipici dei siti fatti con l'IA (`/mnt/project-files/analisi/aspetto-non-da-ia.md`). Punto 5: titoli di un solo colore, senza le etichette verdi sopra. Proposta 2 dei caratteri: Instrument Sans.
+
+**Decisione presa**:
+- `Section` (packages/ui) non ha più `eyebrow` né `titleAccent`: via le pillole "Categorie", "Come funziona", "Professionisti", "Perché fidarsi", "Prezzi reali", "Nuovi profili", "Recensioni verificate", "Garanzia Piattaforma" e le parole in verde nei titoli della home.
+- `/per-professionisti`: titolo principale e titolo finale di un solo colore (prima grigio, nero e verde).
+- Riquadro "Per chi offre servizi" in home: via l'etichetta sopra e la parte verde del titolo.
+- Carattere: Instrument Sans per titoli e testo (`apps/web/src/app/fonts.ts`), al posto di Fredoka (titoli) e Inter Tight (testo, "Inter" è tra i segni da sito IA). Stesso file per le due variabili CSS, il browser lo scarica una volta. Tolti i file di Fredoka e Inter Tight.
+- Titoli con interlinea 1,2 e spaziatura leggermente stretta (`packages/ui/src/config.ts`): con l'interlinea di default (1,5) un titolo su due righe sembrava due titoli.
+- Restano per ora, perché fuori dal punto 5: l'etichetta con 👋 "Non chiamare a caso. Chiamalo giusto." in cima alla home (punto 2), la scritta verde sopra i titoli nella finestra di accesso (`InlineAuthGate`, toccata dalla PR #99) e l'app mobile, che usa ancora Archivo/Inter Tight (serve un nuovo pacchetto di caratteri Expo).
+
+**Verifica**: typecheck e lint del web, build di produzione, home e `/per-professionisti` provate in locale a 390 e 1440 px con foto prima/dopo in `anteprime/aspetto-non-ia/titoli-carattere/`.
+
+## 305. Sistema unico: pulsanti nel carattere del sito, testo a 16 px, tre arrotondamenti, colori dei materiali, riga del preventivo, hero verde più d'effetto
+
+**Richiesta dell'utente**: dopo la piattaforma di marca e l'esempio visivo del sistema unico (thread "Aspetto non da sito fatto con IA", materiale in `analisi/identita/`), "va bene quasi tutto" tranne: i pulsanti restano tondi "stile Apple", verdi e interattivi (effetto magnetico e pressione), niente colore inchiostro; l'hero verde della home resta con le sue sfumature, anzi più d'effetto; la sfumatura della pagina per i professionisti resta.
+
+**Decisione**:
+- Pulsanti e campi nel carattere del sito (`button, input, select, textarea { font-family: inherit }`): "Richiedi preventivo", "Cerca" e "Vedi tutte" uscivano in Arial. Testo dei pulsanti di misura `$3` a 16 px (15 nell'intestazione sui telefoni sotto 400 px). Forma, colore e interattività invariati.
+- Testo base a 16 px sulle pagine pubbliche (quelle raggiunte da home, ricerca, profilo, per-professionisti, preventivo, urgente, accesso e pagine legali): nei file `.tsx` e in `packages/ui` 11-12,5 → 13, 13-15 → 16, 17 → 18; misure Tamagui `$1-$2` → 13, `$3-$4` → 16; le classi CSS pubbliche di `globals.css` allo stesso modo. Restano più piccole le celle degli orari (9,5-10,5 px) che non ci starebbero. Scala dei titoli Tamagui corretta (`$5` era 13 px e `$6` 15 px, sotto il testo): ora 16/18/20/22, titoli di sezione 26 px sul telefono e 32 dal tablet. Titolo di `/per-professionisti` come quello della home (38/54).
+- Arrotondamenti: `radiusDoc` 20 → 12, `radiusDocLg` 32 → 12, nuovo `radiusSm` 6; token Tamagui `$1-$5` → 6 e `$6-$11` → 12; valori scritti a mano 4-10 → 6 e 11-40 → 12, tranne gli elementi tondi (larghezza pari al doppio del raggio). Restano tondi pulsanti, etichette a pillola e foto; l'hero della home resta a 40. Agenda (`components/agenda`, `components/calendar`) non toccata a mano.
+- Colori delle categorie (`CATEGORY_ACCENT`) dai materiali dei mestieri al posto della tavolozza di serie di Tailwind, testo sempre sopra 5:1.
+- "La riga del preventivo" nell'esempio della home: foglio color carta a righe leggere, puntini di guida tra voce e cifra, cifre in IBM Plex Mono in colonna, riga piena sopra il totale, nessuna ombra.
+- Hero della home: verde con tre luci sfumate (verde chiaro, ottone, acqua) che si muovono piano e una grana leggera, ferme con "riduci movimento"; le luci stanno sui bordi per tenere il contrasto del testo bianco.
+
+**Misura** (stesso script `analisi/identita/script-inventario-stili.mjs`, 18 pagine a 390 e 1440 px): testo sotto i 16 px dall'85% al 21% degli elementi; dimensioni del testo 25 → 22, interlinee 53 → 45, arrotondamenti 22 → 16 (quasi tutti ormai 999, 12 o 6); nessun testo in Arial.
+
+**Verifica**: typecheck, lint e build del web; home, `/per-professionisti` e `/cerca/idraulico/latina` provate in locale a 360, 390 e 1440 px senza scorrimento orizzontale; foto prima/dopo in `anteprime/identita-codice/`.
+
+## 306. Luci sfumate in altri tre punti, riga del preventivo sui prezzi, testo a 16 px anche nelle aree riservate, carattere nuovo nell'app
+
+**Richiesta dell'utente**: "bella l'hero con le luci sfumate, dovremmo implementare questo wow anche da altre parti"; poi "effettua miglioria 1-2-4" (riga del preventivo sui prezzi delle schede, scala dei testi nell'area professionista e cliente, Instrument Sans nell'app) e controllare anche i menu dopo l'accesso, lato cliente e professionista, con account di prova creati da noi.
+
+**Decisione**:
+- Luci sfumate (`components/GlowLights.tsx`, classi `.glow-lights` in `globals.css`, toni verde/scuro/chiaro) in pochi punti scelti perché restino speciali: hero della home, riquadro scuro "Meno telefonate inutili" (al posto dei due aloni di prima), tessera verde "Non trovi il tuo lavoro?", apertura di `/per-professionisti` (la sfumatura che c'era, ora in movimento). Ferme con "riduci movimento".
+- `PriceLine` in `packages/ui` (voce, puntini di guida, prezzo in IBM Plex Mono; "Su richiesta" nel carattere del testo): prestazioni nelle schede dei risultati e nel profilo pubblico. I puntini sostituiscono la linea leggera sotto ogni riga, che serviva allo stesso scopo (collegare prestazione e prezzo).
+- Scala dei testi del §305 anche nelle pagine dell'area professionista e cliente e nei componenti che usano (agenda e admin esclusi), più le classi CSS dell'area (`.acct-`, `.today-`, `.profile-`, `.notif-`, `.pstats-`...). Menu laterale a 15 px, largo 256 px, icone che non si restringono.
+- Menu dell'area riservata e dell'admin: voce attiva grigio chiaro con testo scuro (prima quasi nera) e titoli dei gruppi non più in maiuscolo, come da regole accettate dall'utente il 22/10.
+- Un professionista appena iscritto, senza profilo completo, vedeva "Non riusciamo a caricare… Riprova" in Abbonamento, Dati fiscali e Richieste (l'API risponde 404 "Completa prima il tuo profilo"): ora vede "Completa il tuo profilo per iniziare" con il pulsante, come in Oggi e Agenda (`components/ProfileMissingNotice.tsx`).
+- App: Instrument Sans (`@expo-google-fonts/instrument-sans`, pesi 400-700) al posto di Archivo e Inter Tight, tolti i due pacchetti.
+
+**Verifica**: typecheck e lint di web e app, build del web; area professionista e cliente fotografate con due account di prova (prova.design.pro@example.com, prova.design.cliente@example.com) a 390 e 1440 px, prima e dopo.
+
+## 307. Via le scintille e la promessa "Richieste filtrate dall'IA · In arrivo"
+
+**Richiesta dell'utente**: "effettua miglioria 1" (proposta nel §306: togliere le scintille dalla tessera "Non trovi il tuo lavoro?" e il riquadro "Richieste filtrate dall'IA · In arrivo", che prometteva una funzione che non c'è).
+
+**Decisione**: nella tessera verde l'icona diventa un foglio (`file-text`), coerente con "Descrivilo". Nel riquadro scuro per i professionisti la seconda colonna diventa "Richieste della tua zona" (richieste dei clienti nel raggio di lavoro, con foto e descrizione, nessun costo per contatto), cosa che il sito fa già; tolta l'etichetta "In arrivo" e il campo `comingSoon`. Restano altre scintille (piè di pagina "Gratis per chi cerca", risultati, Boost, consigli del profilo), non comprese nella richiesta.
+
+**Verifica**: typecheck del web.
+
+## 308. Via le scintille rimaste
+
+**Richiesta dell'utente**: "effettua ancora possibile" (proposta del §307: togliere le scintille rimaste, simbolo tipico dei siti fatti con l'IA).
+
+**Decisione**: ogni scintilla prende un'icona che dice cosa indica. "Gratis per chi cerca" (piè di pagina e risultati): un cartellino del prezzo (`tag`). Consiglio in Oggi e consigli per la bio nel profilo: una lampadina (`lightbulb`). Pacchetto "Storia di successo": una macchina fotografica (`camera`), perché si racconta il lavoro con le foto. Etichetta "Nuovo profilo" sulle schede: un germoglio (`sprout`). Aggiunte `tag`, `lightbulb` e `sprout` al registro icone (web e app). Resta la scintilla nel giro del giorno dell'agenda, che non si tocca a mano.
+
+**Verifica**: typecheck di `packages/ui` e del web.

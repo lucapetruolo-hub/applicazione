@@ -10,9 +10,9 @@ const MAX_REVIEW_MEDIA = 5;
 
 const textareaStyle = {
   padding: 10,
-  borderRadius: 4,
+  borderRadius: 6,
   border: `1px solid ${brand.bordoCampo}`,
-  fontSize: 14,
+  fontSize: 16,
   fontFamily: "inherit",
   color: brand.grafite,
   resize: "vertical" as const,
@@ -125,7 +125,7 @@ export function ReviewModal({
           <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
             {title}
           </Text>
-          <Text fontSize="$3" color={brand.grafite70}>
+          <Text fontSize={16} color={brand.grafite70}>
             {subtitle}
           </Text>
         </YStack>
@@ -141,7 +141,7 @@ export function ReviewModal({
         <textarea aria-label="Com'è andata?" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Com'è andata? (opzionale)" rows={3} style={textareaStyle} />
 
         <YStack gap="$1">
-          <Text fontSize="$2" color={brand.grafite70}>
+          <Text fontSize={13} color={brand.grafite70}>
             Foto o video (opzionale, fino a {MAX_REVIEW_MEDIA})
           </Text>
           <YStack flexDirection="row" flexWrap="wrap" gap="$2">
@@ -195,14 +195,14 @@ export function ReviewModal({
           </YStack>
           <input ref={photoInputRef} type="file" accept="image/*,video/*" onChange={handlePhotoChange} disabled={isUploadingPhoto} style={{ display: "none" }} />
           {photoError ? (
-            <Text color={brand.urgenza} fontSize="$2">
+            <Text color={brand.urgenza} fontSize={13}>
               {photoError}
             </Text>
           ) : null}
         </YStack>
 
         {error ? (
-          <Text color={brand.urgenza} fontSize="$3">
+          <Text color={brand.urgenza} fontSize={16}>
             {error}
           </Text>
         ) : null}

@@ -90,7 +90,7 @@ export default function AdminChatDetailPage() {
                   {event.mediaUrls.length > 0 ? (
                     <XStack gap="$2" flexWrap="wrap">
                       {event.mediaUrls.map((url) => (
-                        <a key={url} href={url} target="_blank" rel="noreferrer" style={{ width: 84, height: 84, borderRadius: 8, overflow: "hidden", display: "block" }}>
+                        <a key={url} href={url} target="_blank" rel="noreferrer" style={{ width: 84, height: 84, borderRadius: 6, overflow: "hidden", display: "block" }}>
                           <MediaPreview url={url} />
                         </a>
                       ))}

@@ -53,7 +53,7 @@ export function Hero({ title, subtitle, extra, onUrgentPress, onQuotePress, ...s
         <XStack gap="$2" flexWrap="wrap" justifyContent="center">
           <XStack paddingHorizontal="$3" paddingVertical="$2" borderRadius="$10" backgroundColor="$blue10" alignItems="center" gap="$2">
             <Icon name="search" size={16} color="white" />
-            <Text fontSize="$3" fontWeight="600" color="white">
+            <Text fontSize={16} fontWeight="600" color="white">
               Trova un professionista
             </Text>
           </XStack>
@@ -72,7 +72,7 @@ export function Hero({ title, subtitle, extra, onUrgentPress, onQuotePress, ...s
             onPress={onUrgentPress}
           >
             <Icon name="zap" size={16} />
-            <Text fontSize="$3" fontWeight="600" color="$color12">
+            <Text fontSize={16} fontWeight="600" color="$color12">
               Richiesta urgente
             </Text>
           </XStack>
@@ -91,7 +91,7 @@ export function Hero({ title, subtitle, extra, onUrgentPress, onQuotePress, ...s
             onPress={onQuotePress}
           >
             <Icon name="file-text" size={16} />
-            <Text fontSize="$3" fontWeight="600" color="$color12">
+            <Text fontSize={16} fontWeight="600" color="$color12">
               Preventivo gratuito
             </Text>
           </XStack>

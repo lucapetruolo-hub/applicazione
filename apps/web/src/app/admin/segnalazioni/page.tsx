@@ -85,7 +85,7 @@ function SegnalazioniContent() {
       />
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       {reports === null && !error ? (
-        <YStack backgroundColor={brand.calce} borderRadius={16} overflow="hidden">
+        <YStack backgroundColor={brand.calce} borderRadius={12} overflow="hidden">
           <SkeletonSummaryRow />
           <SkeletonSummaryRow />
         </YStack>
@@ -189,7 +189,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
         {report.targetLabel ?? "Contenuto non più disponibile"}
       </Text>
       {report.targetExcerpt ? (
-        <YStack padding="$3" borderRadius={10} backgroundColor={brand.gesso}>
+        <YStack padding="$3" borderRadius={6} backgroundColor={brand.gesso}>
           <Text fontSize="$3" color={brand.grafite} numberOfLines={6}>
             “{report.targetExcerpt}”
           </Text>
@@ -278,7 +278,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
                   {preview.photos.map((url) => (
                     <a key={url} href={url} target="_blank" rel="noreferrer">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={url} alt="" style={{ width: 96, height: 96, objectFit: "cover", borderRadius: 8 }} />
+                      <img src={url} alt="" style={{ width: 96, height: 96, objectFit: "cover", borderRadius: 6 }} />
                     </a>
                   ))}
                 </XStack>

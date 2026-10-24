@@ -74,13 +74,13 @@ export function GoogleConsentModal({
       <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 420 }}>
         <YStack width="100%" backgroundColor={brand.calce} borderRadius="$5" padding="$5" gap="$4">
           <YStack gap="$1">
-            <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografiaScuro}>
+            <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.cianografiaScuro}>
               Un&apos;ultima cosa
             </Text>
             <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
               Prima di continuare
             </Text>
-            <Text fontSize="$3" color={brand.grafite70}>
+            <Text fontSize={16} color={brand.grafite70}>
               L&apos;accesso con Google è andato a buon fine. Per completare la registrazione spunta la casella.
             </Text>
           </YStack>
@@ -88,7 +88,7 @@ export function GoogleConsentModal({
           <LegalConsentCheckbox id="consenso-google" checked={consent} onToggle={onToggleConsent} attempt={attempt} />
 
           {error ? (
-            <Text color={brand.urgenza} fontSize="$3">
+            <Text color={brand.urgenza} fontSize={16}>
               {error}
             </Text>
           ) : null}

@@ -47,7 +47,7 @@ export function CardButton({ tone = "outline", fill, compact, compactOnPhone, ar
 
   const label =
     typeof children === "string" ? (
-      <Text color={textColor} fontFamily="$body" fontWeight="600" fontSize={compact ? "$2" : "$3"} {...(compactOnPhone ? { $xs: { fontSize: "$2" } } : {})}>
+      <Text color={textColor} fontFamily="$body" fontWeight="600" fontSize={compact ? "$2" : "$3"} {...(compactOnPhone ? { $xs: { fontSize: 13 } } : {})}>
         {children}
       </Text>
     ) : (

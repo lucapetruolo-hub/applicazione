@@ -130,7 +130,7 @@ export function PhotoLightbox({
           >
             <ChevronRight size={24} strokeWidth={1.5} />
           </button>
-          <div style={{ position: "absolute", bottom: 20, color: "white", fontSize: 14 }}>
+          <div style={{ position: "absolute", bottom: 20, color: "white", fontSize: 16 }}>
             {index + 1} / {photos.length}
           </div>
         </>
@@ -146,7 +146,7 @@ export function PhotoLightbox({
           autoPlay
           playsInline
           onClick={(e) => e.stopPropagation()}
-          style={{ maxWidth: "90vw", maxHeight: "85vh", borderRadius: 8 }}
+          style={{ maxWidth: "90vw", maxHeight: "85vh", borderRadius: 6 }}
         />
       ) : (
         // `<img>` grezzo deliberato, non `next/image`: la foto può avere
@@ -160,7 +160,7 @@ export function PhotoLightbox({
           src={photos[index]}
           alt=""
           onClick={(e) => e.stopPropagation()}
-          style={{ maxWidth: "90vw", maxHeight: "85vh", objectFit: "contain", borderRadius: 8 }}
+          style={{ maxWidth: "90vw", maxHeight: "85vh", objectFit: "contain", borderRadius: 6 }}
         />
       )}
     </div>

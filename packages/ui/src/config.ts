@@ -7,8 +7,8 @@ import { brand } from "./tokens";
 // (Expo) — è ciò che garantisce la "stessa interfaccia" richiesta da
 // CLAUDE.md, senza duplicare il design system tra le due app.
 
-// Famiglie per ruolo tipografico ("Scheda Intervento": Archivo/Inter
-// Tight/IBM Plex Mono), diverse per piattaforma sullo stesso token
+// Famiglie per ruolo tipografico (Instrument Sans per titoli e testo, IBM
+// Plex Mono per le cifre, docs/CHANGELOG.md §304 e §306), diverse per piattaforma sullo stesso token
 // Tamagui — su web puntano alle CSS variable esposte da next/font
 // (apps/web/src/app/fonts.ts, applicate su <html> in layout.tsx); su
 // native al nome esatto caricato via useFonts in apps/mobile
@@ -19,20 +19,49 @@ import { brand } from "./tokens";
 // Limite noto: RN non supporta il cambio di peso su un'unica famiglia
 // custom come fa il CSS (`font-weight` su un web font variabile) — ogni
 // peso è una famiglia caricata a parte. Qui il token porta un solo peso
-// rappresentativo per ruolo (heading 800, body 400, mono 500); i pesi
+// rappresentativo per ruolo (heading 700, body 400, mono 500); i pesi
 // aggiuntivi caricati in apps/mobile restano disponibili per stili nativi
 // più specifici in un secondo momento, non ancora cablati token per token.
 const isWeb = Platform.OS === "web";
-const displayFamily = isWeb ? "var(--font-display), system-ui, sans-serif" : "Archivo_800ExtraBold";
-const bodyFamily = isWeb ? "var(--font-body), system-ui, sans-serif" : "InterTight_400Regular";
+const displayFamily = isWeb ? "var(--font-display), system-ui, sans-serif" : "InstrumentSans_700Bold";
+const bodyFamily = isWeb ? "var(--font-body), system-ui, sans-serif" : "InstrumentSans_400Regular";
 const monoFamily = isWeb ? "var(--font-mono), monospace" : "IBMPlexMono_500Medium";
+
+// Titoli in Instrument Sans (docs/CHANGELOG.md §304): interlinea 1,2 e
+// spaziatura leggermente stretta. Con l'interlinea di default (circa 1,5) un
+// titolo su due righe sembrava due titoli separati, e i titoli larghi
+// andavano a capo prima su telefono.
+// Scala dei titoli del sistema unico (docs/CHANGELOG.md §305): quella di
+// default aveva $5 a 13 px e $6 a 15 px, cioè titoli più piccoli del testo
+// (16 px). Nessun titolo sotto i 16 px tranne $1-$2 (13, note).
+const HEADING_SIZES: Record<string, number> = { "1": 13, "2": 13, "3": 16, "4": 16, "5": 16, "6": 18, "7": 20, "8": 22, true: 16 };
+const headingSize = Object.fromEntries(
+  Object.entries(defaultConfig.fonts.heading.size).map(([key, size]) => [key, HEADING_SIZES[key] ?? size]),
+) as typeof defaultConfig.fonts.heading.size;
+const headingLineHeight = Object.fromEntries(
+  Object.entries(headingSize).map(([key, size]) => [key, Math.round(size * 1.2)]),
+) as typeof defaultConfig.fonts.heading.lineHeight;
+const headingLetterSpacing = Object.fromEntries(
+  Object.entries(headingSize).map(([key, size]) => [key, -Math.round(size * 0.2) / 10]),
+) as typeof defaultConfig.fonts.heading.letterSpacing;
 
 // Estensione additiva della palette di default (mai rimozione/rinomina dei
 // token esistenti: $blue10, $color3, $red10 ecc. sono usati in decine di
 // pagine già in produzione, non ancora coinvolte nel redesign). I nuovi
 // token brand vivono accanto a quelli, stessa scala `$nome`.
+// Arrotondamenti $1-$11 ridotti ai due valori del sistema unico (6 e 12 px,
+// docs/CHANGELOG.md §305): prima la scala di default dava 3, 5, 7, 9, 10, 16,
+// 19, 22, 26, 34, 42. $12 (50) resta per gli elementi tondi.
+const radius = Object.fromEntries(
+  Object.entries(defaultConfig.tokens.radius).map(([key, token]) => {
+    if (key === "0" || key === "12") return [key, token.val];
+    return [key, token.val <= 10 ? 6 : 12];
+  }),
+) as Record<keyof typeof defaultConfig.tokens.radius, number>;
+
 const customTokens = createTokens({
   ...defaultConfig.tokens,
+  radius,
   color: {
     ...defaultConfig.tokens.color,
     gesso: brand.gesso,
@@ -74,6 +103,9 @@ export const tamaguiConfig = createTamagui({
     heading: {
       ...defaultConfig.fonts.heading,
       family: displayFamily,
+      size: headingSize,
+      lineHeight: headingLineHeight,
+      letterSpacing: headingLetterSpacing,
     },
     body: {
       ...defaultConfig.fonts.body,

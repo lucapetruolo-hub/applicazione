@@ -168,20 +168,24 @@ const CATEGORY_ICONS: Record<ProfessionalCategorySlug, (props: IconProps) => JSX
   babysitter: Babysitter,
 };
 
+// Colori presi dai materiali dei mestieri (rame, ottone, ardesia, salvia,
+// legno, mattone...) al posto della tavolozza di serie di Tailwind, uno dei
+// segni dei siti fatti con l'IA (docs/CHANGELOG.md §305). Testo sul fondo
+// sempre sopra 5:1.
 export const CATEGORY_ACCENT: Record<ProfessionalCategorySlug, { bg: string; fg: string }> = {
-  idraulico: { bg: "#E3F2FD", fg: "#1565C0" },
-  elettricista: { bg: "#FEF3C7", fg: "#B45309" },
-  imbianchino: { bg: "#FCE7F3", fg: "#BE185D" },
-  pulizie: { bg: "#CCFBF1", fg: "#0F766E" },
-  giardiniere: { bg: "#DCFCE7", fg: "#15803D" },
-  traslochi: { bg: "#FFEDD5", fg: "#C2410C" },
-  fabbro: { bg: "#F1F5F9", fg: "#334155" },
-  climatizzazione: { bg: "#CFFAFE", fg: "#0E7490" },
-  muratore: { bg: "#FEE2E2", fg: "#B91C1C" },
-  falegname: { bg: "#F5E6D3", fg: "#92400E" },
-  tuttofare: { bg: "#E0E7FF", fg: "#3730A3" },
-  dogsitter: { bg: "#FFE4E6", fg: "#BE123C" },
-  babysitter: { bg: "#E9D5FF", fg: "#7E22CE" },
+  idraulico: { bg: "#DCE4EA", fg: "#2F5566" },
+  elettricista: { bg: "#F3E6C4", fg: "#74550F" },
+  imbianchino: { bg: "#ECDDE3", fg: "#7A3E58" },
+  pulizie: { bg: "#DCE8E2", fg: "#2F6352" },
+  giardiniere: { bg: "#E2E8D3", fg: "#4A5E25" },
+  traslochi: { bg: "#F3DDCB", fg: "#934420" },
+  fabbro: { bg: "#E4E2DE", fg: "#45423D" },
+  climatizzazione: { bg: "#D8E6E6", fg: "#2A5C5C" },
+  muratore: { bg: "#F2D9CF", fg: "#943823" },
+  falegname: { bg: "#EEDFCB", fg: "#74471F" },
+  tuttofare: { bg: "#E0E0EA", fg: "#474A72" },
+  dogsitter: { bg: "#F2DEDA", fg: "#8A4640" },
+  babysitter: { bg: "#E6E0EE", fg: "#5E4A80" },
 };
 
 export function CategoryIcon({ slug, size = 24, color }: { slug: string; size?: number; color?: string }) {

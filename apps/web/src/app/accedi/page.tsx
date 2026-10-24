@@ -106,7 +106,7 @@ function AccediForm() {
         {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ? (
           <YStack flexDirection="row" alignItems="center" gap="$3">
             <YStack flex={1} height={1} backgroundColor={brand.filetto} />
-            <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
+            <Text fontFamily="$body" fontWeight="700" fontSize={13} color={brand.grafite70}>
               oppure
             </Text>
             <YStack flex={1} height={1} backgroundColor={brand.filetto} />
@@ -165,7 +165,7 @@ function AccediForm() {
           />
 
           {error && !errorField ? (
-            <Text role="alert" color={brand.urgenza} fontSize="$3">
+            <Text role="alert" color={brand.urgenza} fontSize={16}>
               {error}
             </Text>
           ) : null}
@@ -175,14 +175,14 @@ function AccediForm() {
           </Button>
 
           <Link href="/password-dimenticata" style={{ textDecoration: "none", textAlign: "center" }}>
-            <Text fontSize="$3" color={brand.cianografiaScuro} textAlign="center" fontWeight="600">
+            <Text fontSize={16} color={brand.cianografiaScuro} textAlign="center" fontWeight="600">
               Hai dimenticato la password?
             </Text>
           </Link>
         </YStack>
 
         <YStack borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$4" gap="$3">
-          <Text fontSize="$3" textAlign="center" color={brand.grafite70}>
+          <Text fontSize={16} textAlign="center" color={brand.grafite70}>
             Non hai ancora un account?{" "}
             <Link href="/registrati" style={{ textDecoration: "none" }}>
               <Text color={brand.cianografiaScuro} fontWeight="600">
@@ -195,7 +195,7 @@ function AccediForm() {
         <YStack gap="$2">
           <Text
             fontFamily="$body"
-            fontSize={13}
+            fontSize={16}
             fontWeight="700"
             color={brand.grafite}
             cursor="pointer"
@@ -206,7 +206,7 @@ function AccediForm() {
             Hai bisogno di aiuto? {helpOpen ? "−" : "+"}
           </Text>
           {helpOpen ? (
-            <Text color={brand.grafite70} fontSize="$3">
+            <Text color={brand.grafite70} fontSize={16}>
               Se non riesci ad accedere, verifica di aver inserito correttamente email e password. Per problemi
               persistenti scrivi a {BRAND.supportEmail}.
             </Text>

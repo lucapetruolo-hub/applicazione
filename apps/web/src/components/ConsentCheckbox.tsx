@@ -55,7 +55,7 @@ export function ConsentCheckbox({
       >
         {checked ? <Icon name="check" size={12} strokeWidth={2.5} color="white" /> : null}
       </YStack>
-      <Text fontSize="$2" color={showError ? brand.grafite : brand.grafite70} lineHeight={18}>
+      <Text fontSize={13} color={showError ? brand.grafite : brand.grafite70} lineHeight={18}>
         {children}
       </Text>
     </XStack>

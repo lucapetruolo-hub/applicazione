@@ -26,7 +26,7 @@ export function CategoryChips({ items, onPress }: CategoryChipsProps) {
           cursor="pointer"
           onPress={() => onPress?.(item.key)}
         >
-          <Text fontSize="$3">{item.label}</Text>
+          <Text fontSize={16}>{item.label}</Text>
         </XStack>
       ))}
     </XStack>

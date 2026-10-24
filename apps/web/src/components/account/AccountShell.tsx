@@ -35,7 +35,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
                 const count = counts[item.href] ?? 0;
                 return (
                   <Link key={item.href} href={item.href} className={`acct-nav-link${active ? " is-active" : ""}`} aria-current={active ? "page" : undefined}>
-                    <Icon name={item.icon} size={16} color={active ? "#ffffff" : "#6e6459"} />
+                    <Icon name={item.icon} size={16} color={active ? "#2b2420" : "#6e6459"} />
                     <span>{item.label}</span>
                     {count > 0 ? <span className="acct-nav-badge">{count > 9 ? "9+" : count}</span> : attention.has(item.href) ? <span className="acct-nav-dot" role="img" aria-label="Da completare" /> : null}
                   </Link>
@@ -57,7 +57,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
           const count = counts[item.href] ?? 0;
           return (
             <Link key={item.href} href={item.href} className={`acct-tab${active ? " is-active" : ""}`} aria-current={active ? "page" : undefined}>
-              <Icon name={item.icon} size={16} color={active ? "#ffffff" : "#6e6459"} />
+              <Icon name={item.icon} size={16} color={active ? "#2b2420" : "#6e6459"} />
               <span>{item.label}</span>
               {count > 0 ? <span className="acct-nav-badge">{count > 9 ? "9+" : count}</span> : null}
             </Link>

@@ -54,7 +54,7 @@ export function LoadErrorNotice({
           <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
             {title}
           </Text>
-          <Text color={brand.grafite70} fontSize="$3">
+          <Text color={brand.grafite70} fontSize={16}>
             Riprova tra qualche secondo.
           </Text>
         </YStack>
@@ -64,7 +64,7 @@ export function LoadErrorNotice({
           {isPending ? "Caricamento…" : "Riprova"}
         </Button>
         {backHref && backLabel ? (
-          <Link href={backHref} style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 15, padding: "10px 0" }}>
+          <Link href={backHref} style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 16, padding: "10px 0" }}>
             {backLabel}
           </Link>
         ) : null}

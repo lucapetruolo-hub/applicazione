@@ -38,7 +38,7 @@ export function EmptySearchResults({
           <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
             {title}
           </Text>
-          <Text color={brand.grafite70} fontSize="$3">
+          <Text color={brand.grafite70} fontSize={16}>
             {online ? "Per ora nessuno offre consulenza online qui." : "Per ora non ci sono professionisti in questa zona."} Invia
             lo stesso la richiesta: ti avvisiamo appena ce n'è uno compatibile.
           </Text>

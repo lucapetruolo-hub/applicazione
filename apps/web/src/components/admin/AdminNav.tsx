@@ -56,7 +56,7 @@ export function AdminNav({ overview, adminRoles, onOpenSearch }: { overview: Adm
         const count = overview && item.badge ? item.badge(overview) : 0;
         return (
           <Link key={item.href} href={item.href} className={`admin-nav-link${active ? " is-active" : ""}`} aria-current={active ? "page" : undefined}>
-            <Icon name={item.icon} size={16} color={active ? "#ffffff" : "#6e6459"} />
+            <Icon name={item.icon} size={16} color={active ? "#2b2420" : "#6e6459"} />
             <span>{item.label}</span>
             {count > 0 ? <span className="admin-nav-badge">{count}</span> : null}
           </Link>

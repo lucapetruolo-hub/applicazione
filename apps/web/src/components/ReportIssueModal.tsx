@@ -192,7 +192,7 @@ export function ReportIssueModal({
               <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
                 Segnala un problema
               </Text>
-              <Text fontSize="$3" color={brand.grafite70}>
+              <Text fontSize={16} color={brand.grafite70}>
                 {!assisted
                   ? `Hai scelto il pagamento diretto: ti mettiamo in contatto con ${businessName} per trovare un accordo, ma non possiamo rimborsarti né decidere noi. Con il pagamento online avresti avuto la nostra assistenza.`
                   : onOpenChat
@@ -222,7 +222,7 @@ export function ReportIssueModal({
                     <Text fontWeight="700" color={brand.grafite}>
                       {JOB_ISSUE_LABEL[option]}
                     </Text>
-                    <Text fontSize="$2" color={brand.grafite70}>
+                    <Text fontSize={13} color={brand.grafite70}>
                       {enabled ? HINT[option] : `Non disponibile adesso. ${HINT[option]}`}
                     </Text>
                   </YStack>
@@ -231,7 +231,7 @@ export function ReportIssueModal({
             </YStack>
 
             {type === "NO_SHOW" && (phone || email) ? (
-              <Text fontSize="$2" color={brand.grafite70}>
+              <Text fontSize={13} color={brand.grafite70}>
                 Se non l&apos;hai già fatto, prova a sentire {businessName}
                 {phone ? `: ${phone}` : ""}
                 {email ? `${phone ? " · " : ": "}${email}` : ""}.
@@ -239,7 +239,7 @@ export function ReportIssueModal({
             ) : null}
 
             <YStack gap="$1">
-              <Text fontSize="$2" color={brand.grafite70}>
+              <Text fontSize={13} color={brand.grafite70}>
                 Cosa è successo? *
               </Text>
               <textarea
@@ -252,9 +252,9 @@ export function ReportIssueModal({
                   boxSizing: "border-box",
                   minHeight: 96,
                   padding: 10,
-                  borderRadius: 4,
+                  borderRadius: 6,
                   border: `1px solid ${brand.bordoCampo}`,
-                  fontSize: 14,
+                  fontSize: 16,
                   fontFamily: "inherit",
                   color: brand.grafite,
                   resize: "vertical",
@@ -263,7 +263,7 @@ export function ReportIssueModal({
             </YStack>
 
             <YStack gap="$1">
-              <Text fontSize="$2" color={brand.grafite70}>
+              <Text fontSize={13} color={brand.grafite70}>
                 {type === "BAD_WORK" ? `Foto o video del lavoro (almeno una, fino a ${MAX_PHOTOS})` : `Foto o video (opzionale, fino a ${MAX_PHOTOS})`}
               </Text>
               <XStack flexWrap="wrap" gap="$2">
@@ -319,7 +319,7 @@ export function ReportIssueModal({
             </YStack>
 
             {error ? (
-              <Text color={brand.urgenza} fontSize="$3">
+              <Text color={brand.urgenza} fontSize={16}>
                 {error}
               </Text>
             ) : null}

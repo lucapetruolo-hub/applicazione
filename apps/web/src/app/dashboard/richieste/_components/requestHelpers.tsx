@@ -4,7 +4,7 @@ import { formatBookingAddress, type ProfessionalAvailableSlot, type Professional
 import { Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { REQUEST_STAGE_STYLE, type RequestStage } from "@/lib/requestStage";
 
-export const smallInputStyle = { padding: 10, borderRadius: radiusDoc, border: `1px solid ${brand.bordoCampo}`, fontSize: 13, fontFamily: "inherit", color: brand.grafite };
+export const smallInputStyle = { padding: 10, borderRadius: radiusDoc, border: `1px solid ${brand.bordoCampo}`, fontSize: 16, fontFamily: "inherit", color: brand.grafite };
 // Filtri in cima alla pagina (cerca/ordina/zona) — dimensioni più grandi
 // della versione compatta usata nel form preventivo, richiesta esplicita
 // dell'utente ("anche le dimensioni e il carattere delle scritte").
@@ -111,7 +111,7 @@ export function StagePill({ stage }: { stage: RequestStage }) {
   return (
     <XStack alignItems="center" gap={6} paddingHorizontal="$3" paddingVertical={8} borderRadius={999} backgroundColor={s.bg}>
       <Icon name={s.icon} size={15} strokeWidth={2} color={s.fg} />
-      <Text fontFamily="$body" fontSize={14} fontWeight="800" color={s.fg} textTransform="uppercase">
+      <Text fontFamily="$body" fontSize={16} fontWeight="800" color={s.fg} textTransform="uppercase">
         {s.label}
       </Text>
     </XStack>
@@ -122,7 +122,7 @@ export function ServiceBadge({ online }: { online: boolean }) {
   return (
     <XStack alignItems="center" gap={6} paddingHorizontal="$3" paddingVertical={8} borderRadius={999} backgroundColor={brand.gesso}>
       <Icon name={online ? "video" : "house"} size={15} strokeWidth={2} color={brand.cianografiaScuro} />
-      <Text fontFamily="$body" fontSize={14} fontWeight="700" color={brand.grafite}>
+      <Text fontFamily="$body" fontSize={16} fontWeight="700" color={brand.grafite}>
         {online ? "Consulenza online" : "A domicilio"}
       </Text>
     </XStack>
@@ -143,7 +143,7 @@ export function DeadlinePill({ deadline }: { deadline: { label: string; urgent: 
   return (
     <XStack alignItems="center" gap={6} paddingHorizontal="$3" paddingVertical={8} borderRadius={999} backgroundColor={bg}>
       <Icon name="clock" size={15} strokeWidth={2} color={color} />
-      <Text fontFamily="$body" fontSize={14} fontWeight="800" color={color}>
+      <Text fontFamily="$body" fontSize={16} fontWeight="800" color={color}>
         {deadline.label}
       </Text>
     </XStack>

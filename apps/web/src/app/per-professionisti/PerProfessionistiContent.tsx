@@ -6,6 +6,7 @@ import { useState, type ReactNode } from "react";
 import { Check } from "lucide-react";
 import { PROFESSIONAL_CATEGORIES, SUBSCRIPTION_FEATURES, SUBSCRIPTION_TIERS, type SubscriptionTier } from "@professionisti/shared";
 import { Button, ButtonArrow, Icon, Text, XStack, YStack, brand, radiusDoc, type IconName } from "@professionisti/ui";
+import { GlowLights } from "@/components/GlowLights";
 import { useAuth } from "@/lib/AuthContext";
 
 /**
@@ -144,17 +145,20 @@ function ProHero({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
           width: "100%",
           display: "flex",
           justifyContent: "center",
-          background: "radial-gradient(ellipse 60% 55% at 50% 50%, rgba(24,154,99,0.13), rgba(24,154,99,0) 70%)",
+          position: "relative",
         }}
       >
-        <YStack width="100%" maxWidth={760} alignItems="center" gap="$4" paddingHorizontal="$4" paddingVertical="$10" $gtMd={{ paddingVertical: 120 }}>
+        {/* Sfumatura che la pagina aveva già (scelta dell'utente), ora con le
+            luci che si muovono piano come nella home (docs/CHANGELOG.md §306). */}
+        <GlowLights tone="chiaro" />
+        <YStack position="relative" width="100%" maxWidth={760} alignItems="center" gap="$4" paddingHorizontal="$4" paddingVertical="$10" $gtMd={{ paddingVertical: 120 }}>
           <XStack borderWidth={1} borderColor={LINE} borderRadius={999} backgroundColor={brand.calce} overflow="hidden" alignItems="center">
-            <Text fontSize="$2" color={brand.grafite} paddingHorizontal="$3" paddingVertical={6}>
+            <Text fontSize={13} color={brand.grafite} paddingHorizontal="$3" paddingVertical={6}>
               Per i professionisti
             </Text>
             <Link href="#prezzi" style={{ textDecoration: "none", borderLeft: `1px solid ${LINE}` }}>
               <XStack alignItems="center" gap="$1" paddingHorizontal="$3" paddingVertical={6} hoverStyle={{ backgroundColor: brand.cianografiaVelo }}>
-                <Text fontSize="$2" color={brand.cianografiaScuro} fontWeight="600">
+                <Text fontSize={13} color={brand.cianografiaScuro} fontWeight="600">
                   Vedi i prezzi
                 </Text>
                 <Icon name="chevron-right" size={14} color={brand.cianografiaScuro} strokeWidth={2} />
@@ -167,14 +171,13 @@ function ProHero({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
             fontFamily="$heading"
             fontWeight="700"
             fontSize={38}
-            lineHeight={44}
+            lineHeight={42}
             letterSpacing={-0.8}
             textAlign="center"
-            color={brand.grafite70}
-            $gtSm={{ fontSize: 60, lineHeight: 66 }}
+            color={brand.grafite}
+            $gtSm={{ fontSize: 54, lineHeight: 56 }}
           >
-            Fatti trovare <Text color={brand.grafite}>dai clienti</Text>{" "}
-            <Text color={brand.cianografiaScuro}>della tua zona.</Text>
+            Fatti trovare dai clienti della tua zona.
           </Text>
 
           <Text fontSize="$6" lineHeight={28} color={brand.grafite70} textAlign="center" maxWidth={560}>
@@ -192,7 +195,7 @@ function ProHero({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
 
           <XStack gap="$2" alignItems="center">
             <Icon name="shield-check" size={16} color={brand.cianografiaScuro} strokeWidth={1.75} />
-            <Text fontSize="$3" color={brand.grafite70}>
+            <Text fontSize={16} color={brand.grafite70}>
               Iscrizione gratuita, nessuna carta richiesta.
             </Text>
           </XStack>
@@ -265,7 +268,7 @@ function ProGallery() {
 /** Riquadro bianco con bordo sottile per le piccole illustrazioni delle celle. */
 function Panel({ children }: { children: ReactNode }) {
   return (
-    <YStack marginTop="$4" backgroundColor={brand.calce} borderWidth={1} borderColor={LINE} borderRadius={14} padding="$3" gap="$2">
+    <YStack marginTop="$4" backgroundColor={brand.calce} borderWidth={1} borderColor={LINE} borderRadius={12} padding="$3" gap="$2">
       {children}
     </YStack>
   );
@@ -306,7 +309,7 @@ function ProBenefits() {
                 backgroundColor={brand.calce}
               >
                 <Icon name={category.icon as IconName} size={14} color={brand.cianografiaScuro} strokeWidth={1.75} />
-                <Text fontSize="$2" color={brand.grafite}>
+                <Text fontSize={13} color={brand.grafite}>
                   {category.label}
                 </Text>
               </XStack>
@@ -450,7 +453,7 @@ function ProPricing({ isProfessional }: { isProfessional: boolean }) {
                 </Text>
                 {welcome ? (
                   <Text
-                    fontSize="$2"
+                    fontSize={13}
                     fontWeight="700"
                     color="#FFFFFF"
                     backgroundColor={brand.urgenza}
@@ -472,7 +475,7 @@ function ProPricing({ isProfessional }: { isProfessional: boolean }) {
                       Gratuito
                     </Text>
                   </XStack>
-                  <Text color={brand.grafite70} fontSize="$2">
+                  <Text color={brand.grafite70} fontSize={13}>
                     il primo mese, poi €{price}/mese
                   </Text>
                 </YStack>
@@ -508,7 +511,7 @@ function ProPricing({ isProfessional }: { isProfessional: boolean }) {
             Scegli un livello
           </Button>
         )}
-        <Text fontSize="$3" color={brand.grafite70} textAlign="center">
+        <Text fontSize={16} color={brand.grafite70} textAlign="center">
           {continueHref ? "Poi confermi il livello e il pagamento." : "Tocca uno dei livelli qui sopra per continuare."}
         </Text>
       </YStack>
@@ -646,10 +649,10 @@ function ProFinalCta() {
             lineHeight={38}
             letterSpacing={-0.5}
             textAlign="center"
-            color={brand.grafite70}
+            color={brand.grafite}
             $gtSm={{ fontSize: 44, lineHeight: 50 }}
           >
-            <Text color={brand.grafite}>Inizia</Text> a ricevere <Text color={brand.cianografiaScuro}>richieste</Text>
+            Inizia a ricevere richieste
           </Text>
           <Text fontSize="$5" color={brand.grafite70} textAlign="center" maxWidth={520}>
             Scegli il tuo livello e crea l&apos;account in un minuto, poi completi il profilo con calma.
