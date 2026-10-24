@@ -28,7 +28,6 @@ function buildService(user: Record<string, unknown>) {
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
     professionalProfile: { findUnique: vi.fn().mockResolvedValue(null) },
-    professionalFiscalProfile: { count: vi.fn().mockResolvedValue(1) },
     loginDevice: { updateMany: vi.fn().mockResolvedValue({ count: 0 }), count: vi.fn().mockResolvedValue(1), create: vi.fn().mockResolvedValue({}) },
   };
   const emailService = { send: vi.fn().mockResolvedValue(true) };
@@ -71,7 +70,7 @@ describe("limite di password sbagliate sul singolo account", () => {
 });
 
 describe("email per l'accesso da un dispositivo nuovo", () => {
-  it("parte per chi incassa online, da un dispositivo mai visto", async () => {
+  it("parte per un professionista, da un dispositivo mai visto", async () => {
     const { service, prisma, emailService } = buildService({});
     await service.login("mario@example.it", PASSWORD, DEVICE);
     const created = prisma.loginDevice.create.mock.calls[0]![0].data;
@@ -88,17 +87,12 @@ describe("email per l'accesso da un dispositivo nuovo", () => {
     expect(emailService.send).not.toHaveBeenCalled();
   });
 
-  it("non parte per il primo dispositivo ricordato, né per chi non incassa online", async () => {
+  it("non parte per il primo dispositivo ricordato", async () => {
     const first = buildService({});
     first.prisma.loginDevice.count.mockResolvedValue(0);
     await first.service.login("mario@example.it", PASSWORD, DEVICE);
     expect(first.prisma.loginDevice.create).toHaveBeenCalled();
     expect(first.emailService.send).not.toHaveBeenCalled();
-
-    const offline = buildService({});
-    offline.prisma.professionalFiscalProfile.count.mockResolvedValue(0);
-    await offline.service.login("mario@example.it", PASSWORD, DEVICE);
-    expect(offline.emailService.send).not.toHaveBeenCalled();
   });
 
   it("niente per i clienti o senza codice del dispositivo, e un errore non blocca l'accesso", async () => {

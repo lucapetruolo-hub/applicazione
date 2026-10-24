@@ -139,7 +139,7 @@ export function loginLockedEmail(name: string | null, minutes: number): Rendered
   });
 }
 
-/** Accesso da un dispositivo mai visto, per chi incassa online (§289). */
+/** Accesso da un dispositivo mai visto, per i professionisti (§289). */
 export function newDeviceLoginEmail(name: string | null, device: { label: string; at: Date }): RenderedEmail {
   const site = frontendUrl();
   return renderEmail({
@@ -150,7 +150,7 @@ export function newDeviceLoginEmail(name: string | null, device: { label: string
     title: "Nuovo accesso al tuo account",
     paragraphs: [`Qualcuno è entrato nel tuo account da un dispositivo che non avevi mai usato: **${device.label}**, ${LOGIN_TIME.format(device.at)}.`, "Se eri tu, non devi fare nulla."],
     cta: { label: "Non ero io: cambia la password", url: `${site}/password-dimenticata` },
-    after: [`Ti avvisiamo perché con il tuo account si incassano pagamenti online. Per qualsiasi dubbio scrivici a ${EMAIL_BRAND.supportEmail}.`],
+    after: [`Ti avvisiamo per proteggere i tuoi clienti e i tuoi pagamenti. Per qualsiasi dubbio scrivici a ${EMAIL_BRAND.supportEmail}.`],
   });
 }
 

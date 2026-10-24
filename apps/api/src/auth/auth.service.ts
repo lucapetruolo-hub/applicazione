@@ -233,8 +233,8 @@ export class AuthService {
 
   /**
    * Dispositivo nuovo (docs/CHANGELOG.md §289): si ricorda per ogni
-   * professionista da quali browser entra; da uno mai visto, a chi incassa
-   * online (`stripeChargesEnabled`) arriva l'email "Nuovo accesso". Il primo
+   * professionista da quali browser entra; da uno mai visto arriva l'email
+   * "Nuovo accesso" (a tutti i professionisti, decisione dell'utente). Il primo
    * dispositivo ricordato non fa partire nulla. Un errore qui non blocca mai
    * l'accesso.
    */
@@ -252,10 +252,6 @@ export class AuthService {
       const label = loginDeviceLabel(device?.userAgent);
       await this.prisma.loginDevice.create({ data: { userId: user.id, deviceHash, label } });
       if (known === 0 || !user.email) return;
-      const collectsOnline = await this.prisma.professionalFiscalProfile.count({
-        where: { professionalProfile: { userId: user.id }, stripeChargesEnabled: true },
-      });
-      if (collectsOnline === 0) return;
       await this.emailService.send({ to: user.email, ...newDeviceLoginEmail(user.name, { label, at: now }) });
     } catch (error) {
       this.logger.warn(`Controllo del dispositivo non riuscito: ${error instanceof Error ? error.message : error}`);
