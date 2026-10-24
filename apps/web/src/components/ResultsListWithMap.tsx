@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, Map as MapIcon, Maximize2, Minimize2, ShieldCheck, SlidersHorizontal, X, Zap } from "lucide-react";
-import { findComuneByName, PUBLIC_AGENDA_DAYS, SEARCH_RADIUS_KM, type ProfessionalSearchResult } from "@professionisti/shared";
+import { findComuneByName, PUBLIC_AGENDA_DAYS, SEARCH_RADIUS_KM, type ProfessionalSearchResult, professionalPath } from "@professionisti/shared";
 import { Icon, ProfessionalCard, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
@@ -649,10 +649,10 @@ export function ResultsListWithMap({
               // con l'agenda su quel tab (richiesta esplicita dell'utente) —
               // letto da ProfessionalDetailContent via `?modalita=`, stesso
               // parametro già usato per precompilare /preventivo.
-              href={`/professionista/${pro.id}${defaultMode === "ONLINE" ? "?modalita=ONLINE" : ""}`}
+              href={`${professionalPath(pro)}${defaultMode === "ONLINE" ? "?modalita=ONLINE" : ""}`}
               onPress={() =>
                 navigateWithTransition(() =>
-                  router.push(`/professionista/${pro.id}${defaultMode === "ONLINE" ? "?modalita=ONLINE" : ""}`),
+                  router.push(`${professionalPath(pro)}${defaultMode === "ONLINE" ? "?modalita=ONLINE" : ""}`),
                 )
               }
               // Click su un orario libero della mini-agenda (o sul bottone
@@ -685,7 +685,7 @@ export function ResultsListWithMap({
               // (richiesta esplicita dell'utente, docs/CHANGELOG.md §206).
               onAgendaPress={(date, mode) =>
                 navigateWithTransition(() =>
-                  router.push(`/professionista/${pro.id}?data=${date}${mode === "ONLINE" ? "&modalita=ONLINE" : ""}#agenda`),
+                  router.push(`${professionalPath(pro)}?data=${date}${mode === "ONLINE" ? "&modalita=ONLINE" : ""}#agenda`),
                 )
               }
               // Cuoricino piccolo nell'angolo della foto (richiesta esplicita

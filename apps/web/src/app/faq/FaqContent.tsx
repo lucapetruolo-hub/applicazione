@@ -19,7 +19,7 @@ const ALL_ITEMS: { question: string; answer: string; answerWithoutOnline?: strin
 export default function FaqContent() {
   const onlinePayments = useOnlinePayments();
   return (
-    <Section title="Domande frequenti" lead="Le risposte alle domande più comuni su come funziona la piattaforma." maxWidth={780}>
+    <Section pageTitle title="Domande frequenti" lead="Le risposte alle domande più comuni su come funziona la piattaforma." maxWidth={780}>
       <div className="faq-list">
         {ALL_ITEMS.map((item) => (
           <details key={item.question} className="faq-item">

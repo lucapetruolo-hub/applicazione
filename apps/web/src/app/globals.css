@@ -3292,3 +3292,78 @@ a.admin-kpi:hover {
     padding: 8px 24px 64px;
   }
 }
+
+/* Percorso "Home › Idraulico › Latina › Nome" sopra il profilo pubblico
+   (docs/CHANGELOG.md §291). Testo piccolo e discreto, link con area di
+   tocco comoda; l'ultima voce si accorcia con i puntini sui telefoni. */
+.breadcrumbs {
+  width: 100%;
+  font-size: 14px;
+  line-height: 20px;
+  color: #6e6459;
+}
+.breadcrumbs-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 2px;
+  min-width: 0;
+}
+.breadcrumbs-item {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+.breadcrumbs-item:last-child {
+  flex: 1 1 0;
+}
+.breadcrumbs-sep {
+  padding: 0 8px;
+  color: #a89c8f;
+}
+.breadcrumbs-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  color: #6e6459;
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+.breadcrumbs-link:hover {
+  color: #2b2420;
+  text-decoration: underline;
+}
+.breadcrumbs-link:focus-visible {
+  outline: 2px solid #0e7a4c;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.breadcrumbs-current {
+  color: #2b2420;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* Pagina "non trovata" (docs/CHANGELOG.md §291): servizi centrati sotto ai
+   pulsanti, stessa pillola dei risultati. */
+.not-found-services {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: 40px;
+}
+.not-found-services .popular-services {
+  max-width: 760px;
+}
+.not-found-services .popular-services-title {
+  text-align: center;
+}
+.not-found-services .popular-services-list {
+  justify-content: center;
+}

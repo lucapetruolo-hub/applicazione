@@ -5,6 +5,7 @@ import { BRAND } from "@professionisti/shared";
 export const metadata: Metadata = {
   title: "Contatti",
   description: `Scrivici per qualsiasi domanda su ${BRAND.name}: ti rispondiamo il prima possibile.`,
+  alternates: { canonical: "/contatti" },
 };
 
 /**

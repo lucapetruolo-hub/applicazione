@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BRAND, PROFESSIONAL_CATEGORIES, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, formatServicePriceRange, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
@@ -73,7 +73,16 @@ function reviewTimeAgo(iso: string): string {
  * azioni (salva, condividi, segnala, richiedi preventivo) e senza contare la
  * visita.
  */
-export function ProfessionalDetailContent({ professional, preview = false }: { professional: ProfessionalDetail; preview?: boolean }) {
+export function ProfessionalDetailContent({
+  professional,
+  preview = false,
+  breadcrumbs,
+}: {
+  professional: ProfessionalDetail;
+  preview?: boolean;
+  /** Percorso "Home › Categoria › Città › Nome" sopra la scheda (solo pagina pubblica). */
+  breadcrumbs?: ReactNode;
+}) {
   const { user, token, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
   const [isSaved, setIsSaved] = useState(false);
@@ -293,6 +302,8 @@ export function ProfessionalDetailContent({ professional, preview = false }: { p
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent">
       <YStack width="100%" maxWidth={860} paddingHorizontal="$4" paddingVertical="$6" gap="$6">
+        {/* Più vicino alla scheda del gap standard: il percorso ne è l'intestazione. */}
+        {breadcrumbs ? <YStack style={{ marginTop: -8, marginBottom: -12 }}>{breadcrumbs}</YStack> : null}
         {/* Scheda identità — richiesta esplicita dell'utente ("migliora la
             visualizzazione di un profilo pubblico"): prima nome/badge/
             rating/bio/sottotag/azioni fluttuavano direttamente sullo sfondo
@@ -322,7 +333,7 @@ export function ProfessionalDetailContent({ professional, preview = false }: { p
             </YStack>
             <YStack gap="$2" flex={1} minWidth={0}>
               <XStack alignItems="center" gap="$2" flexWrap="wrap">
-                <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} style={{ overflowWrap: "anywhere" }}>
+                <Text tag="h1" margin={0} fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} style={{ overflowWrap: "anywhere" }}>
                   {professional.businessName}
                 </Text>
                 {professional.verified ? <Badge variant="verificato">Verificato</Badge> : null}

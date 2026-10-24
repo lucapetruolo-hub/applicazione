@@ -19865,3 +19865,18 @@ Non cambiati: codice email (§243), avanzamento se l'email è confermata altrove
 **Decisione presa**: `LoadErrorNotice` con "Riprova" al posto dei contatori e delle sezioni "Da rispondere ora" e "Oggi e domani" ("Non riusciamo a caricare richieste e appuntamenti"); "Il tuo andamento" si nasconde se non si carica; in Abbonamento "Non riusciamo a caricare il tuo abbonamento" con "Riprova". Gli avvisi in alto (pausa, percorso profilo, agenda) restano come prima.
 
 **Verifica**: typecheck e lint del web.
+
+## 291. Visibilità su Google: H1, canonical, indirizzo leggibile del profilo, pagina non trovata
+
+**Richiesta esplicita dell'utente** (22/10/2026, thread "Visibilità su Google (SEO)"): controllo della lista SEO (sitemap, robots, noindex, canonical, titoli, H1, alt, schema, link, immagini, Core Web Vitals, HTTPS, URL, immagine OG, Search Console, backlink). Controllo in `/mnt/project-files/analisi/seo-controllo.md`. Luca ha scelto di fare subito le correzioni che non dipendono da nome e dominio, e il resto poco prima del lancio ("sì" alla proposta).
+
+**Decisione presa**:
+- **H1** su ogni pagina pubblica: profilo del professionista (il nome), FAQ (`Section` con `pageTitle`, `packages/ui/src/Section.tsx`), Contatti, Sicurezza, pagine legali (`LegalPage`), Preventivo e Urgente (`GuidedRequestForm`). Aspetto invariato.
+- **Canonical** su home, `/cerca`, profili e pagine informative (c'era solo sulle categorie). `/cerca` con filtri (città libera, online, nome) ha canonical `/cerca` e `noindex, follow`: le pagine città da indicizzare sono `/cerca/[categoria]/[citta]`. Titolo "Consulenze online" senza il nome del sito ripetuto.
+- **Indirizzo leggibile del profilo**: `/professionista/luca-idraulica-srl-latina-<id>` (`packages/shared/src/professionalUrl.ts`). Il profilo si trova dall'id in coda; link vecchi (solo id) o nome/città cambiati portano all'indirizzo attuale con redirect permanente (308), query compresa. Usato in ricerca, mappa, vetrina e recensioni in home, salvati, anteprima in dashboard, sitemap e dati strutturati; nelle aree private e admin restano i link con l'id, che funzionano col redirect. L'id resta intero nell'indirizzo: con un pezzo solo servirebbe una ricerca per prefisso nell'API.
+- **Pagina "non trovata"** (`app/not-found.tsx` + `components/NotFoundContent.tsx`): in italiano, con "Cerca un professionista", "Torna alla home" e "Servizi più richiesti"; `noindex`. Prima compariva quella di Next.js in inglese.
+- **Percorso "Home › Categoria › Città › Nome"** (`components/Breadcrumbs.tsx`) sopra la scheda del profilo, con i dati strutturati BreadcrumbList. Sulle pagine categoria e città solo i dati strutturati: il titolo sopra i risultati era stato tolto su richiesta (§271).
+- **Pagine vuote fuori da Google**: con il sito indicizzabile, una pagina categoria o categoria+città senza professionisti veri ha `noindex, follow`; per chi la apre resta uguale (con l'invio della richiesta, §271). Se la ricerca non risponde la pagina resta indicizzabile. Profilo che non si carica: `noindex`.
+- Checklist di lancio: punti 28-33 (dominio in `SITE_URL`, Search Console, anteprima WhatsApp per profilo, titoli e descrizioni col marchio, foto categorie più leggere, velocità della home) e link da altri siti tra le cose da fare dopo il lancio.
+
+**Verifica**: typecheck e lint del web, build di produzione e sito avviato in locale sull'API di produzione: un H1 per pagina, canonical giusti, 308 dal vecchio indirizzo del profilo (anche con `?modalita=`), 404 con la pagina nuova, BreadcrumbList e LocalBusiness nel profilo; anteprime in `anteprime/seo/`.

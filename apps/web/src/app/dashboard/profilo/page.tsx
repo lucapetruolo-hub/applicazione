@@ -17,8 +17,7 @@ import {
   type MyProfessionalProfile,
   type MyProfilePreview,
   type MyVerificationStatus,
-  type ProfessionalCategorySlug,
-} from "@professionisti/shared";
+  type ProfessionalCategorySlug, professionalPath } from "@professionisti/shared";
 import { Autocomplete, Button, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -673,7 +672,7 @@ export default function DashboardProfiloPage() {
                   </span>
                 ) : null}
                 {preview.visibility === "PUBLIC" ? (
-                  <Link href={`/professionista/${preview.profile.id}`} target="_blank" className="profile-visibility-link">
+                  <Link href={professionalPath(preview.profile)} target="_blank" className="profile-visibility-link">
                     Apri la pagina pubblica ↗
                   </Link>
                 ) : preview.visibility === "NOT_CONFIRMED" ? (

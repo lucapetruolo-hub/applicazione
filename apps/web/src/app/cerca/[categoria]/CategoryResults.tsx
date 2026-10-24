@@ -8,6 +8,7 @@ import {
 } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { SITE_INDEXABLE } from "@/lib/siteIndexing";
+import { breadcrumbJsonLd, jsonForScript } from "@/lib/jsonLd";
 import { PopularServicesLinks } from "@/components/PopularServicesLinks";
 import { SearchHeader } from "@/components/SearchHeader";
 import { CategoryContent } from "./CategoryContent";
@@ -52,16 +53,39 @@ async function categoriesInCity(city: string): Promise<string[] | null> {
   }
 }
 
-export function categoryMetadata(category: Category, city?: string): Metadata {
+/**
+ * Pagina senza professionisti veri (es. "Fabbro a Milano" prima che ci sia
+ * qualcuno): resta uguale per chi la apre, con l'invio della richiesta, ma
+ * fuori da Google, che altrimenti indicizzerebbe pagine vuote
+ * (docs/CHANGELOG.md §291). Solo con il sito aperto ai motori di ricerca, così
+ * prima del lancio nessuna chiamata in più. Se la ricerca non risponde non si
+ * sa: la pagina resta indicizzabile, meglio di un noindex per un errore
+ * passeggero.
+ */
+async function hasNoRealProfessionals(categorySlug: string, city?: string): Promise<boolean> {
+  if (!SITE_INDEXABLE) return false;
+  try {
+    const list = await apiClient.searchProfessionals({ category: categorySlug, city, excludeDemo: true });
+    return list.length === 0;
+  } catch {
+    return false;
+  }
+}
+
+export async function categoryMetadata(category: Category, city?: string): Promise<Metadata> {
   const comune = city ? findComuneByName(city) : undefined;
+  const empty = await hasNoRealProfessionals(category.slug, comune?.name);
+  const robots: Metadata = empty ? { robots: { index: false, follow: true } } : {};
   if (comune) {
     return {
+      ...robots,
       title: `${category.label} a ${comune.name}`,
       description: `Trova e contatta ${category.label.toLowerCase()} a ${comune.name}: confronta profili, prezzi e recensioni e chiedi un preventivo gratis.`,
       alternates: { canonical: `/cerca/${category.slug}/${comuneSlug(comune.name)}` },
     };
   }
   return {
+    ...robots,
     title: `${category.label} vicino a te`,
     description: `Trova e contatta ${category.label.toLowerCase()} nella tua zona.`,
     alternates: { canonical: `/cerca/${category.slug}` },
@@ -112,8 +136,18 @@ export async function CategoryResults({
     allProfessionals = professionals;
   }
 
+  // Percorso per Google (Home › Idraulico › Latina), senza riquadro visibile:
+  // il titolo sopra i risultati era stato tolto (docs/CHANGELOG.md §271, §291).
+  const citySlug = comune ? comuneSlug(comune.name) : undefined;
+  const breadcrumbs = breadcrumbJsonLd([
+    { label: "Home", href: "/" },
+    { label: category.label, href: `/cerca/${category.slug}` },
+    ...(comune && citySlug ? [{ label: comune.name, href: `/cerca/${category.slug}/${citySlug}` }] : []),
+  ]);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonForScript(breadcrumbs) }} />
       <SearchHeader initialQuery={category.label} initialCity={city ?? ""} initialMode={isOnline ? "online" : "domicilio"} />
       {/* Key che cambia con i search params: forza il remount completo del
           contenuto quando si cambia modalita'/citta', cosi' la lista si

@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { PROFESSIONAL_CATEGORIES, comuneSlug } from "@professionisti/shared";
+import { PROFESSIONAL_CATEGORIES, comuneSlug, professionalPath } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { SITE_URL } from "@/lib/siteUrl";
 import { SITE_INDEXABLE } from "@/lib/siteIndexing";
@@ -34,7 +34,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const professionals = await apiClient.searchProfessionals({ excludeDemo: true });
     const professionalEntries: MetadataRoute.Sitemap = professionals.map((pro) => ({
-      url: `${SITE_URL}/professionista/${pro.id}`,
+      url: `${SITE_URL}${professionalPath(pro)}`,
       changeFrequency: "weekly",
       priority: 0.6,
     }));
