@@ -23,7 +23,7 @@ const CLIENT_RICHIESTE_TYPES = new Set([
   "REQUEST_MATCHED_LATER",
   "TIMELINE_MESSAGE_FROM_PROFESSIONAL",
 ]);
-const CLIENT_LAVORI_TYPES = new Set(["JOB_COMPLETED", "JOB_CONFIRM_REMINDER", "JOB_AUTO_CONFIRMED", "BOOKING_CANCELED_BY_PROFESSIONAL", "BOOKING_REOPENED_BY_PROFESSIONAL"]);
+const CLIENT_LAVORI_TYPES = new Set(["JOB_COMPLETED", "PROFESSIONAL_ON_THE_WAY", "JOB_CONFIRM_REMINDER", "JOB_AUTO_CONFIRMED", "BOOKING_CANCELED_BY_PROFESSIONAL", "BOOKING_REOPENED_BY_PROFESSIONAL"]);
 // Messaggi di chat non letti, indipendentemente dal ruolo — un viewer
 // riceve sempre e solo il tipo pertinente al proprio lato (mai entrambi),
 // quindi sommare i due insiemi è sicuro. Usato per il pallino sulla voce
@@ -133,6 +133,7 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
   if (type === "TAX_ID_INVALID") return "/dashboard/fiscale";
   if (type === "PROFILE_SETUP_REMINDER") return "/dashboard";
   if (type === "AGENDA_REMINDER") return "/dashboard/agenda?tab=disponibilita";
+  if (type === "AGENDA_TOMORROW_SUMMARY") return "/dashboard/agenda";
   if (type.startsWith("IDENTITY_VERIFICATION_") || type === "PROFILE_VERIFICATION_REMOVED") return "/dashboard/verifica-identita";
   if (type === "ADMIN_JOB_BALANCE_UNPAID" || type === "ADMIN_JOB_NOT_CLOSED" || type === "ADMIN_STRIPE_DISPUTE" || type === "ADMIN_JOB_PAYMENT_LONG_HOLD" || type === "ADMIN_JOB_REFUND_FAILED") return "/admin/pagamenti";
   if (type === "JOB_DEPOSIT_PAID" || type === "JOB_BALANCE_PAID" || type === "JOB_PAYOUT_SENT" || type === "JOB_STRIPE_DISPUTE" || type === "JOB_PAYMENT_DEBT" || type === "JOB_REFUND_WAITING_FUNDS") {

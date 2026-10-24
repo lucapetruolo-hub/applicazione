@@ -32,6 +32,7 @@ import {
   professionalRestrictions,
   jobPaidOnline,
   PROFESSIONAL_JOB_PROBLEM_REPORT_PREFIX,
+  wallClockToday,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
@@ -325,8 +326,7 @@ export class ProfessionalsService {
     const result = new Map<string, { days: ProfessionalAvailabilityPreviewDay[] }>();
     if (profileIds.length === 0) return result;
 
-    const startOfToday = new Date();
-    startOfToday.setUTCHours(0, 0, 0, 0);
+    const startOfToday = wallClockToday();
     const searchEnd = new Date(startOfToday);
     searchEnd.setUTCDate(searchEnd.getUTCDate() + PUBLIC_AGENDA_DAYS);
 
@@ -672,17 +672,18 @@ export class ProfessionalsService {
     // editing granulare per singola voce): coerente con la scala attesa
     // (poche voci a professionista), molto più semplice che diffare la
     // lista esistente contro quella inviata.
-    await this.prisma.professionalService.deleteMany({ where: { professionalProfileId: profile.id } });
-    if (input.services.length) {
-      await this.prisma.professionalService.createMany({
+    // In un'unica transazione (docs/CHANGELOG.md §287): un errore a metà non lascia il profilo senza prestazioni.
+    await this.prisma.$transaction([
+      this.prisma.professionalService.deleteMany({ where: { professionalProfileId: profile.id } }),
+      this.prisma.professionalService.createMany({
         data: input.services.map((service) => ({
           professionalProfileId: profile.id,
           name: service.name,
           priceMinEurCents: service.priceMinEurCents ?? null,
           priceMaxEurCents: service.priceMaxEurCents ?? null,
         })),
-      });
-    }
+      }),
+    ]);
     const savedServices = await this.prisma.professionalService.findMany({ where: { professionalProfileId: profile.id } });
 
     // Badge "Verificato" (docs/CHANGELOG.md §200): il controllo valeva per il
@@ -1364,6 +1365,7 @@ export class ProfessionalsService {
       // Link della consulenza video (Meet/Zoom/ecc.), impostato dal
       // professionista stesso — richiesta esplicita dell'utente.
       meetingLink: booking.meetingLink,
+      onTheWayAt: booking.onTheWayAt?.toISOString() ?? null,
       clientConfirmedCompletedAt: booking.clientConfirmedCompletedAt?.toISOString() ?? null,
       professionalCompletionPhotoUrls: booking.professionalCompletionPhotoUrls,
       clientCompletionPhotoUrls: booking.clientCompletionPhotoUrls,
@@ -1392,8 +1394,7 @@ export class ProfessionalsService {
    */
   async getMyAvailableSlots(userId: string): Promise<ProfessionalAvailableSlot[]> {
     const professionalProfileId = await this.requireMyProfileId(userId);
-    const startOfToday = new Date();
-    startOfToday.setUTCHours(0, 0, 0, 0);
+    const startOfToday = wallClockToday();
     const endWindow = new Date(startOfToday);
     endWindow.setUTCDate(endWindow.getUTCDate() + PUBLIC_AGENDA_DAYS);
 
@@ -1435,8 +1436,7 @@ export class ProfessionalsService {
 
   async getMyAvailability(userId: string): Promise<MyAvailability> {
     const professionalProfileId = await this.requireMyProfileId(userId);
-    const startOfToday = new Date();
-    startOfToday.setUTCHours(0, 0, 0, 0);
+    const startOfToday = wallClockToday();
     const endWindow = new Date(startOfToday);
     endWindow.setUTCDate(endWindow.getUTCDate() + PUBLIC_AGENDA_DAYS);
 
@@ -1511,9 +1511,12 @@ export class ProfessionalsService {
     // di non-sovrapposizione tra fasce dello stesso giorno vive a monte, nello
     // zod schema condiviso (professionalAvailabilitySchema in packages/shared,
     // applicato da ZodValidationPipe) — stessa regola usata anche lato client.
-    await this.prisma.availabilitySlot.deleteMany({ where: { professionalProfileId } });
-    if (slots.length) {
-      await this.prisma.availabilitySlot.createMany({
+    // Tutto o niente (docs/CHANGELOG.md §287): se la creazione fallisce le
+    // fasce di prima restano, invece di sparire con il solo deleteMany.
+    await this.prisma.$transaction(async (tx) => {
+      await tx.availabilitySlot.deleteMany({ where: { professionalProfileId } });
+      if (!slots.length) return;
+      await tx.availabilitySlot.createMany({
         data: slots.map((slot) => ({
           professionalProfileId,
           dayOfWeek: slot.dayOfWeek,
@@ -1526,7 +1529,7 @@ export class ProfessionalsService {
           date: slot.date ? new Date(`${slot.date}T00:00:00.000Z`) : null,
         })),
       });
-    }
+    });
     // Metriche di affidabilità (CLAUDE.md §15, evento 7): aggiornamento
     // disponibilità è un'azione esplicita del professionista.
     await this.professionalMetricsService.touchActivity(professionalProfileId);
@@ -1559,8 +1562,7 @@ export class ProfessionalsService {
   }
 
   private async listMyExceptionDates(professionalProfileId: string): Promise<{ exceptionDates: string[] }> {
-    const startOfToday = new Date();
-    startOfToday.setUTCHours(0, 0, 0, 0);
+    const startOfToday = wallClockToday();
     const exceptions = await this.prisma.availabilityException.findMany({
       where: { professionalProfileId, date: { gte: startOfToday } },
       orderBy: { date: "asc" },
@@ -1578,8 +1580,7 @@ export class ProfessionalsService {
    * dipendenza per un confronto di sola data.
    */
   async getPublicAgenda(professionalProfileId: string): Promise<ProfessionalAgenda> {
-    const startOfToday = new Date();
-    startOfToday.setUTCHours(0, 0, 0, 0);
+    const startOfToday = wallClockToday();
     const endWindow = new Date(startOfToday);
     endWindow.setUTCDate(endWindow.getUTCDate() + PUBLIC_AGENDA_DAYS);
 

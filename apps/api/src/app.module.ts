@@ -39,6 +39,7 @@ import { ProfessionalVerificationModule } from "./professional-verification/prof
 import { GeneralRequestsAdminModule } from "./general-requests/general-requests-admin.module";
 import { BookingRemindersModule } from "./booking-reminders/booking-reminders.module";
 import { AgendaRemindersModule } from "./agenda-reminders/agenda-reminders.module";
+import { AgendaModule } from "./agenda/agenda.module";
 
 @Module({
   imports: [
@@ -98,6 +99,7 @@ import { AgendaRemindersModule } from "./agenda-reminders/agenda-reminders.modul
     // "prima di considerare l'MVP davvero completo" (CLAUDE.md §1).
     BookingRemindersModule,
     AgendaRemindersModule,
+    AgendaModule,
     SubscriptionsModule,
     // Profili creati al telefono da un operatore (docs/CHANGELOG.md §170).
     ProfileInvitesModule,

@@ -1140,6 +1140,30 @@ const BUILDERS: Record<string, Builder> = {
       cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda?tab=disponibilita` },
     };
   },
+  // "Sto arrivando" dall'agenda (§288).
+  PROFESSIONAL_ON_THE_WAY: (_payload, ctx) => ({
+    kind: "notification",
+    subject: `${pro(ctx)} sta arrivando`,
+    greeting: ctx.name,
+    title: "Il professionista è in viaggio",
+    paragraphs: [`**${pro(ctx)}** sta arrivando per **${job(ctx)}**.`],
+    details: jobDetails(ctx),
+    cta: { label: "Apri la richiesta", url: `${frontendUrl()}/le-mie-richieste` },
+    after: ["Se serve, scrivigli in chat dalla richiesta."],
+  }),
+  // Riepilogo della sera prima, senza orario di partenza (§288).
+  AGENDA_TOMORROW_SUMMARY: (payload, ctx) => {
+    const items = Array.isArray(payload.items) ? payload.items.filter(isSummaryItem) : [];
+    const count = items.length;
+    return {
+      kind: "notification",
+      subject: count === 1 ? "Domani hai 1 lavoro" : `Domani hai ${count || "dei"} lavori`,
+      greeting: ctx.name,
+      title: "Il tuo domani",
+      paragraphs: count > 0 ? items.map((item) => `**${item.time}** · ${[item.name, item.place].filter(Boolean).join(", ")}`) : ["Domani hai lavori in agenda."],
+      cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda` },
+    };
+  },
   TAX_ID_INVALID: (payload, ctx) => {
     const isVat = payload.kind === "PARTITA_IVA";
     return {
@@ -1346,3 +1370,8 @@ export const EMPTY_EMAIL_CONTEXT: NotificationEmailContext = {
   proposedWhen: null,
 };
 
+type SummaryItem = { time: string; name: string | null; place: string | null };
+
+function isSummaryItem(value: unknown): value is SummaryItem {
+  return !!value && typeof value === "object" && typeof (value as Record<string, unknown>).time === "string";
+}

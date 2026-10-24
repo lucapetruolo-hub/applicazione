@@ -151,7 +151,7 @@ export function CalendarShell({
                 paddingHorizontal="$3"
                 paddingVertical="$2"
                 borderRadius={999}
-                backgroundColor={active ? brand.cianografia : "transparent"}
+                backgroundColor={active ? "#ECECE8" : "transparent"}
                 cursor="pointer"
                 onPress={() => onViewChange(item.value)}
                 accessibilityRole="button"
@@ -160,8 +160,8 @@ export function CalendarShell({
                 <Text
                   fontFamily="$body"
                   fontSize={13}
-                  fontWeight="700"
-                  color={active ? "white" : brand.grafite70}
+                  fontWeight="600"
+                  color={active ? brand.grafite : brand.grafite70}
                 >
                   {item.label}
                 </Text>
@@ -183,7 +183,7 @@ export function CalendarShell({
             onPress={() => onNavigate(today)}
             accessibilityRole="button"
           >
-            <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.grafite}>
+            <Text fontFamily="$body" fontSize={12} fontWeight="600" color={brand.grafite}>
               Oggi
             </Text>
           </XStack>
@@ -203,7 +203,7 @@ export function CalendarShell({
             >
               <Icon name="chevron-left" size={15} color={brand.grafite} />
             </XStack>
-            <Text fontFamily="$mono" fontSize={12.5} color={brand.grafite70} minWidth={140} textAlign="center">
+            <Text fontFamily="$body" fontSize={13} fontWeight="600" color={brand.grafite} minWidth={140} textAlign="center">
               {rangeLabel}
             </Text>
             <XStack
@@ -332,13 +332,13 @@ function WeekOrDayGrid({ days, today, renderDayColumn }: { days: Date[]; today: 
             <YStack
               paddingVertical="$2"
               paddingHorizontal="$2"
-              borderBottomWidth={isToday ? 2 : 1}
-              borderBottomColor={isToday ? brand.cianografia : brand.filetto}
-              backgroundColor={isToday ? brand.cianografiaVelo : brand.gesso}
+              borderBottomWidth={1}
+              borderBottomColor={brand.filetto}
+              backgroundColor={brand.gesso}
               alignItems="center"
               gap="$1"
             >
-              <Text fontFamily="$body" fontSize={10.5} fontWeight="700" color={brand.grafite70}>
+              <Text fontFamily="$body" fontSize={11} fontWeight="600" color={brand.grafite70}>
                 {weekdayShortLabel(date)}
               </Text>
               <XStack
@@ -347,9 +347,9 @@ function WeekOrDayGrid({ days, today, renderDayColumn }: { days: Date[]; today: 
                 borderRadius={13}
                 alignItems="center"
                 justifyContent="center"
-                backgroundColor={isToday ? brand.cianografia : "transparent"}
+                backgroundColor={isToday ? brand.grafite : "transparent"}
               >
-                <Text fontFamily="$heading" fontWeight="800" fontSize={14} color={isToday ? "white" : brand.grafite}>
+                <Text fontFamily="$body" fontWeight="600" fontSize={14} color={isToday ? "white" : brand.grafite}>
                   {date.getUTCDate()}
                 </Text>
               </XStack>
@@ -364,7 +364,8 @@ function WeekOrDayGrid({ days, today, renderDayColumn }: { days: Date[]; today: 
   );
 }
 
-function MonthGrid({
+/** Griglia del mese, usata anche da sola dalla nuova agenda (docs/CHANGELOG.md §288). */
+export function MonthGrid({
   currentDate,
   today,
   onSelectDay,
@@ -403,8 +404,8 @@ function MonthGrid({
               gap="$1"
               borderRightWidth={1}
               borderBottomWidth={1}
-              borderColor={isToday ? brand.cianografia : brand.filetto}
-              backgroundColor={isToday ? brand.cianografiaVelo : inMonth ? brand.calce : brand.gesso}
+              borderColor={brand.filetto}
+              backgroundColor={inMonth ? brand.calce : brand.gesso}
               opacity={inMonth ? 1 : 0.55}
               cursor={onSelectDay ? "pointer" : undefined}
               onPress={onSelectDay ? () => onSelectDay(date) : undefined}
@@ -417,9 +418,9 @@ function MonthGrid({
                 borderRadius={11}
                 alignItems="center"
                 justifyContent="center"
-                backgroundColor={isToday ? brand.cianografia : "transparent"}
+                backgroundColor={isToday ? brand.grafite : "transparent"}
               >
-                <Text fontFamily="$heading" fontWeight="800" fontSize={12} color={isToday ? "white" : brand.grafite}>
+                <Text fontFamily="$body" fontWeight="600" fontSize={12} color={isToday ? "white" : brand.grafite}>
                   {date.getUTCDate()}
                 </Text>
               </XStack>
@@ -428,6 +429,16 @@ function MonthGrid({
           );
         })}
       </div>
+      <style jsx global>{`
+        .cal-month-grid {
+          display: grid;
+          grid-template-columns: repeat(7, 1fr);
+          border: 1px solid ${brand.filetto};
+          border-radius: 6px;
+          overflow: hidden;
+          background: ${brand.calce};
+        }
+      `}</style>
     </YStack>
   );
 }

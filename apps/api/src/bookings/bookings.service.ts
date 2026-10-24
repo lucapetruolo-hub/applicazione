@@ -24,6 +24,7 @@ import {
   PROFESSIONAL_JOB_PROBLEM_REASONS,
   formatEurCents,
   completionDeclaration,
+  wallClockToday,
   PROFESSIONAL_JOB_PROBLEM_REPORT_PREFIX,
   type ReportProfessionalJobProblemInput,
   type CancelBookingByProfessionalInput, type ClientConfirmCompleteInput, type CompleteBookingInput } from "@professionisti/shared";
@@ -390,6 +391,42 @@ export class BookingsService {
     // Metriche di affidabilità (CLAUDE.md §15, evento 7): azione del professionista.
     await this.professionalMetricsService.touchActivity(professionalProfile.id);
     return { bookingId, professionalNote: trimmed || null };
+  }
+
+  /**
+   * "Sto arrivando" dall'agenda (docs/CHANGELOG.md §288): avvisa il cliente
+   * che il professionista è in viaggio. Solo per un lavoro confermato di
+   * oggi, una volta sola: un secondo tocco non manda un altro avviso.
+   */
+  async notifyOnTheWay(professionalUserId: string, bookingId: string, now: Date = new Date()) {
+    const professionalProfile = await this.prisma.professionalProfile.findUnique({ where: { userId: professionalUserId } });
+    if (!professionalProfile) {
+      throw new NotFoundException("Profilo professionista non trovato.");
+    }
+    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: { quote: { select: { guidedRequestId: true } } } });
+    if (!booking || booking.professionalProfileId !== professionalProfile.id) {
+      throw new ForbiddenException("Questa prenotazione non è tua.");
+    }
+    if (booking.status !== "CONFIRMED") {
+      throw new BadRequestException("Puoi avvisare il cliente solo per un lavoro confermato.");
+    }
+    if (booking.scheduledAt.toISOString().slice(0, 10) !== wallClockToday(now).toISOString().slice(0, 10)) {
+      throw new BadRequestException("Puoi avvisare il cliente solo il giorno dell'appuntamento.");
+    }
+    if (booking.onTheWayAt) {
+      return { bookingId, onTheWayAt: booking.onTheWayAt.toISOString() };
+    }
+
+    const updated = await this.prisma.booking.update({ where: { id: bookingId }, data: { onTheWayAt: now } });
+    await this.notificationsService.notify(booking.clientId, "PROFESSIONAL_ON_THE_WAY", {
+      bookingId,
+      guidedRequestId: booking.quote?.guidedRequestId,
+    });
+    if (booking.quote) {
+      await this.timelineService.log(booking.quote.guidedRequestId, professionalProfile.id, "PROFESSIONAL", "Il professionista sta arrivando.");
+    }
+    await this.professionalMetricsService.touchActivity(professionalProfile.id);
+    return { bookingId, onTheWayAt: updated.onTheWayAt!.toISOString() };
   }
 
   /**
