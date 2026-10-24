@@ -2,12 +2,12 @@ name: Controlli di sicurezza
 
 # Strumenti automatici di controllo (docs/CHANGELOG.md §297-§298). I
 # risultati di CodeQL, Semgrep e osv-scanner finiscono nella scheda
-# "Security → Code scanning" del repository. Bloccano la PR Semgrep (il
-# codice è pulito: una segnalazione nuova va corretta o, se falso allarme,
-# spiegata con un commento `nosemgrep`) e gitleaks (una chiave nel codice va
-# tolta subito, il repository è pubblico). osv-scanner resta solo rapporto:
-# quasi tutti gli avvisi riguardano librerie usate per costruire o provare il
-# codice. CodeQL resta solo rapporto finché la scheda non è controllata.
+# "Security → Code scanning" del repository. Bloccano la PR CodeQL e
+# Semgrep (il codice è pulito: una segnalazione nuova va corretta, o
+# riscritta se è un falso allarme, perché GitHub mostra l'avviso anche con un
+# commento che la ignora) e gitleaks (una chiave nel codice va tolta subito,
+# il repository è pubblico). osv-scanner resta solo rapporto: quasi tutti gli
+# avvisi riguardano librerie usate per costruire o provare il codice.
 # Il giro del lunedì trova le vulnerabilità nuove anche senza modifiche.
 on:
   push:
@@ -24,20 +24,41 @@ jobs:
   codeql:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: github/codeql-action/init@v3
+      - uses: actions/checkout@v6
+      - uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript
           build-mode: none
           queries: security-extended
-      - uses: github/codeql-action/analyze@v3
+          # Stesso perimetro di Semgrep: il codice che arriva agli utenti.
+          config: |
+            paths-ignore:
+              - "**/*.test.ts"
+              - "apps/*/scripts"
+      - uses: github/codeql-action/analyze@v4
         with:
           category: codeql
+          output: codeql-results
+      - name: Nessuna segnalazione nuova
+        # Errori e avvisi bloccano; i semplici consigli ("note") restano nella scheda Security.
+        run: |
+          python3 - <<'PY'
+          import glob, json, sys
+          found = []
+          for path in glob.glob("codeql-results/*.sarif"):
+              for run in json.load(open(path))["runs"]:
+                  for r in run.get("results", []):
+                      if r.get("level", "warning") in ("error", "warning"):
+                          loc = r["locations"][0]["physicalLocation"]
+                          found.append(f'{r["ruleId"]} {loc["artifactLocation"]["uri"]}:{loc.get("region", {}).get("startLine")} {r["message"]["text"][:160]}')
+          print("\n".join(found) or "CodeQL: nessuna segnalazione")
+          sys.exit(1 if found else 0)
+          PY
 
   semgrep:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Semgrep
         run: |
           pip install --quiet semgrep==1.182.1
@@ -49,7 +70,7 @@ jobs:
           semgrep scan --metrics=off --exclude "*.test.ts" --exclude "apps/*/scripts" --error \
             --config p/default --config p/nodejs --config p/typescript --config p/secrets \
             apps packages
-      - uses: github/codeql-action/upload-sarif@v3
+      - uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: semgrep.sarif
@@ -58,14 +79,14 @@ jobs:
   osv-scanner:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Librerie con vulnerabilità note
         run: |
           curl -sSfL -o osv-scanner https://github.com/google/osv-scanner/releases/download/v2.0.2/osv-scanner_linux_amd64
           chmod +x osv-scanner
           ./osv-scanner scan source --lockfile pnpm-lock.yaml --format sarif --output osv.sarif || true
           ./osv-scanner scan source --lockfile pnpm-lock.yaml --format markdown >> "$GITHUB_STEP_SUMMARY" || true
-      - uses: github/codeql-action/upload-sarif@v3
+      - uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: osv.sarif
           category: osv-scanner
@@ -73,7 +94,7 @@ jobs:
   gitleaks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Chiavi e password nel codice (tutta la cronologia)

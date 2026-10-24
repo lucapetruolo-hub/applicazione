@@ -12,6 +12,8 @@
 //   "estranei" (di serie tutti gli utenti non proprietari) devono ricevere
 //   403 o 404; nelle GET i proprietari devono ricevere una risposta valida.
 //   `params`, `query` e `body` usano i dati di prova (`f`) creati dal test.
+//   `ownerPassesCheck`: per i proprietari basta superare il controllo (dopo
+//   la rotta usa un servizio esterno spento nel test).
 
 const BOTH = ["clientA", "proA"];
 const STRANGERS = ["clientB", "proB"];
@@ -70,9 +72,6 @@ const selfAny = [
   "GET /guided-requests/me",
   "POST /guided-requests/photos",
   "POST /guided-requests/timeline-photos",
-  // Scarica un allegato della chat dal nostro Cloudinary: l'indirizzo è già
-  // pubblico sulla CDN, la rotta aggiunge solo il nome del file.
-  "GET /guided-requests/timeline-photos/download",
   "DELETE /notifications",
   "GET /notifications/history",
   "POST /notifications/mark-all-read",
@@ -184,6 +183,14 @@ const owned = {
     owners: BOTH,
     body: (f, actor) => ({ professionalProfileId: actor === "proB" ? f.profileB : f.profileA, message: "Messaggio da un estraneo" }),
   }),
+
+  // Allegato della chat: solo chi partecipa alla chat (o un admin, §298).
+  "GET /guided-requests/timeline-photos/download": {
+    kind: "owned",
+    owners: BOTH,
+    query: (f) => ({ url: f.attachmentUrl }),
+    ownerPassesCheck: true,
+  },
 
   "DELETE /notifications/:id": { kind: "owned", owners: ["clientA"], params: (f) => ({ id: f.notificationA }) },
 

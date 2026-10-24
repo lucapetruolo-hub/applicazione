@@ -48,6 +48,8 @@ ZodValidationPipe.prototype.transform = function (value, metadata) {
 };
 
 const prisma = new PrismaClient();
+// Allegato "documento" della chat tra clientA e proA (rotta di download, §298).
+const ATTACHMENT_URL = "https://res.cloudinary.com/prova/raw/upload/v1/chat/abc123-preventivo.pdf";
 
 async function resetDatabase() {
   const tables = await prisma.$queryRawUnsafe(`SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> '_prisma_migrations'`);
@@ -85,7 +87,7 @@ async function seed() {
     data: { guidedRequestId: requestA.id, professionalProfileId: profileA.id, estimatedStartDate: start, items: { create: [{ name: "Manodopera" }] } },
   });
   await prisma.conversationEvent.create({
-    data: { guidedRequestId: requestA.id, professionalProfileId: profileA.id, actor: "PROFESSIONAL", message: "Buongiorno" },
+    data: { guidedRequestId: requestA.id, professionalProfileId: profileA.id, actor: "PROFESSIONAL", message: "Buongiorno", mediaUrls: [ATTACHMENT_URL] },
   });
 
   // Lavoro già accettato tra clientA e proA, con pagamento diretto.
@@ -128,6 +130,7 @@ async function seed() {
   return {
     users,
     ids: {
+      attachmentUrl: ATTACHMENT_URL,
       profileA: profileA.id,
       profileB: profileB.id,
       requestA: requestA.id,
@@ -277,7 +280,10 @@ async function main() {
       if (route.httpMethod === "GET") {
         for (const actor of policy.owners) {
           const status = await call(base, route, url, { token: tokens[actor] });
-          expect(route, ok(status), `${actor} (proprietario) riceve ${status}: dati di prova sbagliati o rotta rotta`);
+          // `ownerPassesCheck`: dopo il controllo di proprietà la rotta usa un
+          // servizio esterno spento nel test, basta che non neghi l'accesso.
+          const passed = policy.ownerPassesCheck ? typeof status === "number" && !denied(status) && status !== 401 : ok(status);
+          expect(route, passed, `${actor} (proprietario) riceve ${status}: dati di prova sbagliati o rotta rotta`);
         }
       }
     }

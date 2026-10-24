@@ -20060,3 +20060,9 @@ Risultato: 218 rotte, 798 controlli, nessuna falla (dopo l'unione della PR #101:
 Non fatto qui: zod 4 (aggiornamento grande, rischio basso: il corpo JSON ha già un limite di dimensione); Next.js 15 e NestJS 11 sono nella PR #103.
 
 **Verifica**: 543 test dell'API (con il sigillo accorciato rifiutato), typecheck e lint. API avviata con Postgres locale: login con corpo compresso 415, con modulo 400, con JSON normale la risposta di sempre. Test dei permessi (§297) di nuovo senza problemi. Semgrep: 0 segnalazioni.
+
+**Migliorie** (richiesta dell'utente: "effettua tutte le migliorie da 1 a 4 nella modalità che ritieni"):
+1. **Allegati della chat solo per chi partecipa** (`TimelineService.canDownloadAttachment`): `GET /guided-requests/timeline-photos/download` scarica l'allegato solo se compare in un messaggio di una chat di cui chi chiama è il cliente o il professionista, oppure se è un admin (chat in sola lettura per la moderazione). Altrimenti risponde 404. Prima bastava aver fatto l'accesso e conoscere l'indirizzo, e i documenti sono proprio quelli che la CDN di Cloudinary non consegna da sola. Nel test dei permessi la rotta è ora "di qualcuno": gli estranei ricevono 404, e togliendo apposta il controllo il test fallisce.
+2. **CodeQL blocca la PR**: un passo legge i risultati e fallisce su errori e avvisi; i consigli restano solo nella scheda Security. Stesso perimetro di Semgrep (fuori test e script della CI).
+3. **zod 4**: in un thread a parte dopo l'unione della PR #103, che tocca le stesse dipendenze.
+4. **Azioni della CI su Node 24**: `actions/checkout@v6`, `actions/setup-node@v6`, `pnpm/action-setup@v5`, `github/codeql-action@v4` (GitHub segnalava le versioni su Node 20, in dismissione). Il Node usato per compilare e provare il codice resta 20, come su Render.

@@ -75,6 +75,20 @@ export class TimelineService {
   }
 
   /**
+   * Un allegato della chat si scarica solo da chi partecipa a quella chat
+   * (cliente o professionista) o da un admin, che la legge per la
+   * moderazione (docs/CHANGELOG.md §298). I documenti "raw" non sono
+   * consegnati dalla CDN pubblica di Cloudinary: senza questo controllo
+   * bastava conoscerne l'indirizzo.
+   */
+  async canDownloadAttachment(userId: string, url: string): Promise<boolean> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+    const participant = user?.role === "ADMIN" ? {} : { OR: [{ guidedRequest: { clientId: userId } }, { professionalProfile: { userId } }] };
+    const event = await this.prisma.conversationEvent.findFirst({ where: { mediaUrls: { has: url }, ...participant }, select: { id: true } });
+    return event !== null;
+  }
+
+  /**
    * Elenco dei thread (coppie richiesta guidata+professionista) a cui
    * questo utente partecipa, con solo l'ultimo evento come anteprima —
    * richiesta esplicita dell'utente: menu "Chat" che elenca "solo il nome
