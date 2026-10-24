@@ -20049,3 +20049,16 @@ La mappa con una chiave vera si vede solo sul sito pubblicato: dopo l'unione va 
 - **ESLint** 9 → 10.13 (`@eslint/js` 10, `typescript-eslint` 8.72, `globals` 17, `eslint-plugin-react-hooks` 7). La versione 7 degli hooks aggiunge le regole del React Compiler (setState dentro un effetto, valori impuri durante il render...): per ora solo avvisi, da sistemare un po' alla volta come quelle di accessibilità del §205; restano errori le regole degli hooks di sempre. La regola nuova `no-useless-assignment` ha trovato cinque variabili inizializzate con un valore subito sovrascritto, sistemate. `eslint-plugin-jsx-a11y` dichiara ancora ESLint 9 come compatibile ma funziona (solo un avviso di pnpm).
 
 **Verifica**: typecheck di tutto il monorepo (app compresa), lint senza errori, 522 test, build, controllo d'avvio dell'API, `expo export` Android ed `expo-doctor` 20 su 20. Foto delle 132 pagine contro il ramo principale: 128 identiche al pixel, nelle altre 4 solo la riga "adesso" dell'agenda, le tessere "Servizi più richiesti" cambiate dalle ricerche di prova e pochi pixel di antialiasing; nessun errore in console.
+
+## 300. Aggiornamenti automatici con Dependabot
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Aggiornamento Next.js"): dopo §295-§299 Luca ha chiesto "come terrò aggiornate tutte queste cose se usciranno aggiornamenti?", poi "effettua le due migliorie nelle modalità che ritieni".
+
+**Decisione presa**: `.github/dependabot.yml`, gratuito e già dentro GitHub.
+- Una volta al mese una PR unica con tutti gli aggiornamenti piccoli (minor e patch) di sito, API, app e pacchetti condivisi, più una per le azioni della CI. Se la CI è verde si unisce, come le altre PR ("unisci").
+- Gli aggiornamenti grandi (major) arrivano in PR separate, al massimo 5 aperte insieme: vanno trattati in un thread dedicato, con il confronto delle pagine prima e dopo (§296).
+- Esclusi React, React DOM, React Native e i loro tipi, fissati insieme per sito e app con gli `overrides` (§297), e le versioni grandi di Expo e dei suoi pacchetti: si fanno a mano (`npx expo install --fix`, `npx expo-doctor`).
+- Le falle di sicurezza aprono una PR subito, senza aspettare il mese, se nelle impostazioni del repo sono accesi "Dependabot alerts" e "Dependabot security updates" (checklist di lancio, punto 28).
+- La seconda miglioria (i 163 avvisi del controllo del codice: regole nuove di React del §299 e accessibilità del §205) si fa in un thread a parte.
+
+**Verifica**: file controllato come YAML valido; Dependabot lo legge dal ramo principale, quindi parte dopo l'unione.
