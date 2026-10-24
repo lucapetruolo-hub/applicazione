@@ -1,4 +1,5 @@
 import { z } from "zod";
+import "./zod";
 
 /**
  * Pagamento dei lavori (decisioni dell'utente del 29/09/2026,
