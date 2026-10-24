@@ -294,74 +294,353 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
    triplo-click su un indirizzo email lì selezionerebbe anche il nome
    affiancato). Visibile solo da una larghezza per cui c'è margine
    sufficiente a sinistra della colonna centrale senza sovrapporla. */
-/* Pannello a tendina della campanella notifiche (NotificationBell.tsx):
-   bug reale segnalato dall'utente ("da mobile esce fuori lo schermo") — il
-   pannello era `position:absolute, right:0` relativo al solo contenitore
-   36x36 del pulsante campanella, non al vero bordo destro del viewport. La
-   campanella non è l'ultimo elemento dell'header (a destra c'è ancora
-   AccountMenu, CLAUDE.md §71): il suo bordo destro può trovarsi ben lontano
-   dal bordo reale dello schermo, quindi un pannello largo 340px che si
-   estende a sinistra da lì può sforare abbondantemente il bordo sinistro su
-   un telefono stretto — non risolvibile con `maxWidth`, che vincola solo la
-   larghezza, non la posizione di ancoraggio. Sotto 480px il pannello passa a
-   `position:fixed` con `left`/`right` entrambi impostati (mai un `width`
-   esplicito in quel caso): si allarga sempre a piena larghezza meno 16px per
-   lato, ancorato al vero bordo del viewport, indipendente da dove si trova
-   la campanella nell'header. */
-.notification-bell-panel {
+/* Campanella e pannello delle notifiche (components/NotificationBell.tsx,
+   docs/CHANGELOG.md §313): stesso sistema del sito, testo a 16 px,
+   arrotondamento 12, bianco pieno con ombra leggera. Sul telefono il
+   pannello è fisso sotto l'intestazione e largo quanto lo schermo: ancorato
+   alla campanella usciva dal bordo sinistro, perché a destra della
+   campanella c'è ancora il menu dell'account. */
+.notif {
+  position: relative;
+}
+.notif-bell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 150ms ease, transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.notif-bell:hover,
+.notif-bell.is-open {
+  background: #fdefe1;
+}
+.notif-bell:active {
+  transform: scale(0.94);
+}
+.notif-bell:focus-visible {
+  outline: 2px solid #0e7a4c;
+  outline-offset: 2px;
+}
+.notif-badge {
   position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 8px;
+  top: 4px;
+  right: 2px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  border: 2px solid #fff;
+  background: #c8362b;
+  color: #fff;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 700;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
-@media (max-width: 480px) {
-  .notification-bell-panel {
-    position: fixed;
-    top: 72px;
-    left: 16px;
-    right: 16px;
-    margin-top: 0;
-    width: auto;
-    max-width: none;
-  }
-}
-
-/* Campanella notifiche — resa più "moderna" (richiesta esplicita
-   dell'utente): pannello con ingresso animato (scala + dissolvenza dal
-   basso verso l'alto invece di comparire di scatto) e sfondo a vetro
-   smerigliato (`backdrop-filter`, non ottenibile con le sole prop
-   Tamagui/react-native-web — stesso principio "CSS puro per un dettaglio
-   che Tamagui non rende bene" già seguito altrove in questo file), più un
-   anello pulsante attorno al pallino di notifiche non lette per farlo
-   notare senza doverci passare sopra. `prefers-reduced-motion` è già
-   gestito globalmente più sotto in questo file (le durate collassano a
-   istantanee), nessun guard aggiuntivo necessario qui. */
-@keyframes notification-panel-in {
+@keyframes notif-panel-in {
   from {
     opacity: 0;
-    transform: translateY(-6px) scale(0.97);
+    transform: translateY(-4px) scale(0.98);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: none;
   }
 }
-/* Sfondo pieno, niente backdrop-filter (docs/CHANGELOG.md §152): il
-   pannello vive dentro l'header che ha già il suo blur, e i due effetti
-   annidati lo rendevano trasparente (si leggeva la pagina sotto). */
-.notification-bell-panel-inner {
-  animation: notification-panel-in 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+.notif-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 1000;
+  width: 400px;
+  max-height: min(600px, calc(100dvh - 96px));
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #f0dcc0;
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(43, 36, 32, 0.14), 0 2px 6px rgba(43, 36, 32, 0.06);
+  overflow: hidden;
+  transform-origin: top right;
+  animation: notif-panel-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  outline: none;
 }
-@keyframes notification-ping {
-  0% {
-    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.55);
-  }
-  100% {
-    box-shadow: 0 0 0 8px rgba(220, 53, 69, 0);
+@media (max-width: 480px) {
+  .notif-panel {
+    position: fixed;
+    top: 68px;
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-height: calc(100dvh - 84px);
   }
 }
-.notification-bell-ping {
-  animation: notification-ping 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+.notif-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 12px 12px 20px;
+  border-bottom: 1px solid #f0dcc0;
+}
+.notif-title {
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 700;
+  color: #2b2420;
+}
+.notif-new {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #dcf3e7;
+  color: #0e7a4c;
+  font-size: 13px;
+  font-weight: 600;
+}
+.notif-clear {
+  margin-left: auto;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #6e6459;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.notif-clear:hover {
+  background: #fdefe1;
+  color: #2b2420;
+}
+.notif-clear.is-confirm {
+  background: #fbe4e1;
+  color: #a12a21;
+}
+.notif-clear:focus-visible,
+.notif-row-main:focus-visible,
+.notif-row-delete:focus-visible,
+.notif-settings:focus-visible {
+  outline: 2px solid #0e7a4c;
+  outline-offset: -2px;
+}
+.notif-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 8px;
+}
+.notif-group {
+  margin: 0;
+  padding: 14px 20px 6px;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: #6e6459;
+}
+.notif-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.notif-row {
+  position: relative;
+}
+.notif-row-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+  padding: 12px 52px 12px 20px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  box-sizing: border-box;
+}
+button.notif-row-main {
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+button.notif-row-main:hover {
+  background: #fdf8f2;
+}
+.notif-row + .notif-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 74px;
+  right: 0;
+  height: 1px;
+  background: #f0dcc0;
+}
+.notif-row-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+.notif-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.notif-row-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 18px;
+}
+.notif-row-topic {
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.notif-row-time {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: #6e6459;
+  font-variant-numeric: tabular-nums;
+}
+.notif-row-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #189a63;
+}
+.notif-row-message {
+  font-size: 16px;
+  line-height: 22px;
+  color: #2b2420;
+  overflow-wrap: anywhere;
+}
+.notif-row.is-unread .notif-row-message {
+  font-weight: 600;
+}
+.notif-row-delete {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease, background-color 120ms ease;
+}
+.notif-row:hover .notif-row-delete,
+.notif-row:focus-within .notif-row-delete {
+  opacity: 1;
+}
+.notif-row-delete:hover {
+  background: #fdefe1;
+}
+/* Sul telefono non c'è il passaggio del mouse: la "x" resta visibile. */
+@media (hover: none) {
+  .notif-row-delete {
+    opacity: 1;
+  }
+}
+.notif-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 40px 24px 32px;
+  text-align: center;
+}
+.notif-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 6px;
+  border-radius: 12px;
+  background: #fdefe1;
+}
+.notif-empty-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2b2420;
+}
+.notif-empty-text {
+  font-size: 15px;
+  line-height: 22px;
+  color: #6e6459;
+}
+.notif-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 16px 20px;
+}
+.notif-loading-row {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.notif-loading-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.notif-foot {
+  border-top: 1px solid #f0dcc0;
+  padding: 6px 12px;
+}
+.notif-settings {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 8px;
+  border-radius: 6px;
+  color: #0e7a4c;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.notif-settings:hover {
+  background: #fdf8f2;
+}
+@media (prefers-reduced-motion: reduce) {
+  .notif-panel {
+    animation: none;
+  }
+  .notif-bell,
+  .notif-row-delete,
+  button.notif-row-main {
+    transition: none;
+  }
+  .notif-bell:active {
+    transform: none;
+  }
 }
 
 /* Area admin (docs/CHANGELOG.md §144): menu sempre visibile — barra

@@ -20237,3 +20237,15 @@ La mappa con una chiave vera si vede solo sul sito pubblicato: dopo l'unione va 
 - Prezzi della tabella in IBM Plex Mono, come la riga del preventivo.
 
 **Verifica**: build del web; foto a 390 e 1440 px di "Lavora con noi" e dei riquadri della pagina Idraulico a Latina in `/mnt/project-files/anteprime/identita-codice/pagine-seo/` ("Quanto costa" dà 404 in prova perché mancano ancora abbastanza prezzi veri, regola del §296).
+
+## 313. Pannello delle notifiche, prezzi senza puntini, interruttori tondi
+
+**Richieste dell'utente (24/10/2026)**: "migliorare anche il pannello delle notifiche [...] che si apre premendo sulla campanella (anche quella è un ni), è rimasto retrò"; "non mi piacciono queste [puntini] fra il testo e il prezzo, eliminale sia da lì che dalla scheda dopo la ricerca"; "gli switch erano più belli tondeggianti come prima, ripristinali".
+
+**Decisioni**:
+- Campanella (`NotificationBell.tsx`): pulsante da 44 px con l'icona `bell` a tratto sottile, numero rosso con bordo bianco, senza l'animazione "ping" continua. `aria-expanded`/`aria-haspopup` e numero delle non lette nell'etichetta.
+- Pannello: bianco pieno, arrotondamento 12, ombra leggera, apertura di 160 ms dall'angolo (spenta con "riduci movimento"). Intestazione con "Notifiche", pillola "N nuove" ed "Elimina tutte" che chiede conferma al secondo tocco (4 secondi). Gruppi Oggi / Ieri / Prima non maiuscoli; ogni riga con icona dell'argomento in un quadrato tinto, argomento e ora sulla stessa riga, pallino verde e testo in grassetto se nuova, testo a 16 px, "x" per eliminare (sempre visibile sul telefono, al passaggio del mouse sul computer) e trascinamento di lato mantenuto. Stato vuoto con icona e una frase, righe scheletro durante il caricamento, piede "Impostazioni notifiche". Sul telefono il pannello occupa la larghezza dello schermo sotto l'intestazione. Esc chiude e riporta il fuoco sulla campanella.
+- `PriceLine` (`packages/ui`): tolti i puntini di guida tra voce e prezzo, ora uno spazio vuoto. Nel profilo le prestazioni sono separate da una linea sottile; la scheda dei risultati usa lo stesso componente.
+- Arrotondamenti `$10` e `$11` di Tamagui (`packages/ui/src/config.ts`) di nuovo tondi pieni: li usano solo l'interruttore "A domicilio / Online" della richiesta di preventivo, le schede degli orari nel profilo, quelle della barra di ricerca, etichette e pulsanti a pillola, che con il §305 erano scesi a 12 px.
+
+**Verifica**: typecheck di `ui` e `web`, build del web; foto prima/dopo a 390 e 1440 px in `/mnt/project-files/anteprime/identita-codice/notifiche/` e foto di prezzi e interruttori in `/mnt/project-files/anteprime/identita-codice/prezzi-interruttori/`.

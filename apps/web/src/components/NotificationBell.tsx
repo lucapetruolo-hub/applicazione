@@ -4,15 +4,18 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/apiClient";
-import { Icon, Text, XStack, YStack, brand, radiusDocLg } from "@professionisti/ui";
+import { Icon, brand } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
 import { notificationCopy } from "@/lib/notificationCopy";
 import { notificationDeepLink } from "@/lib/notificationSections";
 import { notificationTopicStyle } from "@/lib/notificationTopicStyle";
+import { SkeletonBlock } from "./Skeleton";
 
 type HistoryItem = { id: string; type: string; payload: unknown; createdAt: string; readAt: string | null };
 
 const SWIPE_DELETE_THRESHOLD_PX = 70;
+/** Tempo per confermare "Elimina tutte" col secondo tocco. */
+const DELETE_ALL_CONFIRM_MS = 4000;
 
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -43,15 +46,12 @@ function groupByDay(items: HistoryItem[]): { label: string; items: HistoryItem[]
 }
 
 /**
- * Riga di una singola notifica — eliminabile in due modi (richiesta
- * esplicita dell'utente): un piccolo pulsante "x" in alto a destra, o uno
- * swipe orizzontale sulla riga stessa. Lo swipe segue lo stesso principio
- * già in uso in `CalendarShell.tsx` (solo `onTouchStart`/`onTouchEnd`, mai
- * `preventDefault`, così lo scroll verticale della lista resta intatto) —
- * qui la traccia viene invece seguita anche durante il gesto
- * (`onTouchMove`, per dare un feedback visivo di trascinamento), ma senza
- * mai bloccare lo scroll verticale del contenitore (nessun `preventDefault`,
- * e la soglia di eliminazione è puramente orizzontale).
+ * Riga di una notifica (docs/CHANGELOG.md §313). Si elimina con la "x"
+ * (sempre visibile sul telefono, al passaggio del mouse sul computer) o
+ * trascinandola di lato: lo swipe segue solo i gesti chiaramente
+ * orizzontali e non chiama mai `preventDefault`, così lo scorrimento
+ * verticale della lista resta intatto (stesso principio di
+ * `CalendarShell.tsx`).
  */
 function NotificationRow({
   item,
@@ -69,7 +69,6 @@ function NotificationRow({
   const draggingRef = useRef(false);
 
   const copy = notificationCopy(item.type, item.payload);
-  // Icona e colore per argomento invece dell'emoji (docs/CHANGELOG.md §152).
   const topic = notificationTopicStyle(item.type, isProfessional);
   const isUnread = item.readAt === null;
   const destination = notificationDeepLink(item.type, item.payload);
@@ -87,131 +86,133 @@ function NotificationRow({
     if (!start || !touch) return;
     const dx = touch.clientX - start.x;
     const dy = touch.clientY - start.y;
-    // Attiva il trascinamento solo se il gesto è chiaramente orizzontale
-    // (stesso principio di dominanza asse già in uso in CalendarShell, per
-    // non confliggere con lo scroll verticale della lista).
     if (!draggingRef.current && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.5) {
       draggingRef.current = true;
     }
-    if (draggingRef.current) {
-      setDragX(dx);
-    }
+    if (draggingRef.current) setDragX(dx);
   }
 
   function handleTouchEnd() {
-    if (draggingRef.current && Math.abs(dragX) > SWIPE_DELETE_THRESHOLD_PX) {
-      onDelete(item.id);
-    }
+    if (draggingRef.current && Math.abs(dragX) > SWIPE_DELETE_THRESHOLD_PX) onDelete(item.id);
     setDragX(0);
     touchStartRef.current = null;
     draggingRef.current = false;
   }
 
-  // Handler touch sul `<div>` grezzo, non su `XStack` — stesso principio già
-  // documentato per `CalendarShell.tsx`: gli eventi touch nativi restano più
-  // affidabili su un nodo DOM diretto piuttosto che passati attraverso il
-  // layer react-native-web di Tamagui.
+  const body = (
+    <>
+      <span className="notif-row-icon" style={{ backgroundColor: topic.tint }} aria-hidden="true">
+        <Icon name={topic.icon} size={18} color={topic.color} />
+      </span>
+      <span className="notif-row-text">
+        <span className="notif-row-meta">
+          <span className="notif-row-topic" style={{ color: topic.color }}>
+            {topic.title}
+          </span>
+          <span className="notif-row-time">{timeAgo(item.createdAt)}</span>
+          {isUnread ? <span className="notif-row-dot" aria-label="Nuova" /> : null}
+        </span>
+        <span className="notif-row-message">{copy.message}</span>
+      </span>
+    </>
+  );
+
   return (
-    <div
+    <li
+      className={`notif-row${isUnread ? " is-unread" : ""}`}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       style={{
-        position: "relative",
         transform: dragX !== 0 ? `translateX(${dragX}px)` : undefined,
-        transition: dragX === 0 ? "transform 0.15s ease" : undefined,
+        transition: dragX === 0 ? "transform 150ms ease" : undefined,
       }}
     >
-      <XStack
-        paddingHorizontal="$4"
-        paddingVertical="$3"
-        gap="$3"
-        alignItems="flex-start"
-        borderBottomWidth={1}
-        borderBottomColor={brand.filetto}
-        backgroundColor={isUnread ? brand.gesso : "transparent"}
-        cursor={destination ? "pointer" : "default"}
-        hoverStyle={destination ? { backgroundColor: brand.gesso } : undefined}
-        onPress={destination ? () => onOpen(item) : undefined}
-        accessibilityRole={destination ? "button" : undefined}
-        accessibilityLabel={destination ? `${copy.message} — apri` : copy.message}
-      >
-        {/* Icona in un chip colorato invece del solo emoji isolato — resa
-            più "da app moderna" (richiesta esplicita dell'utente), lo
-            stesso principio già in uso per le icone categoria colorate
-            altrove nel prodotto. */}
-        <YStack width={36} height={36} borderRadius={999} alignItems="center" justifyContent="center" backgroundColor={topic.tint} flexShrink={0}>
-          <Icon name={topic.icon} size={17} color={topic.color} />
-        </YStack>
-        <YStack flex={1} flexBasis={0} gap={2} paddingRight={20}>
-          <Text fontSize={11} fontWeight="700" color={topic.color}>
-            {topic.title}
-          </Text>
-          <Text fontSize="$2" color={brand.grafite} fontWeight={isUnread ? "700" : "500"}>
-            {copy.message}
-          </Text>
-          <Text fontSize="$1" color={brand.grafite70}>
-            {timeAgo(item.createdAt)}
-          </Text>
-        </YStack>
-        {isUnread ? <YStack width={7} height={7} borderRadius={999} backgroundColor={brand.cianografia} marginTop={7} /> : null}
-      </XStack>
-      {/* Accento a sinistra sulle non lette — sostituisce il solo sfondo
-          tinto come unico indizio di "non letta", più riconoscibile a
-          colpo d'occhio in una lista scorrevole. */}
-      {isUnread ? (
-        <YStack position="absolute" top={0} bottom={0} left={0} width={3} backgroundColor={brand.cianografia} />
-      ) : null}
-      {/* Pulsante di eliminazione — richiesta esplicita dell'utente: "un
-          piccolo pulsante in alto a destra per ogni notifica", oltre allo
-          swipe già gestito sopra sulla riga intera. */}
-      <XStack
-        position="absolute"
-        top={6}
-        right={6}
-        padding={4}
-        cursor="pointer"
-        onPress={(e: { stopPropagation: () => void }) => {
-          e.stopPropagation();
-          onDelete(item.id);
-        }}
-        accessibilityRole="button"
-        accessibilityLabel="Elimina questa notifica"
-      >
-        <Icon name="x" size={13} color={brand.grafite70} />
-      </XStack>
+      {destination ? (
+        <button type="button" className="notif-row-main" onClick={() => onOpen(item)}>
+          {body}
+        </button>
+      ) : (
+        <div className="notif-row-main">{body}</div>
+      )}
+      <button type="button" className="notif-row-delete" onClick={() => onDelete(item.id)} aria-label="Elimina questa notifica">
+        <Icon name="x" size={16} color={brand.grafite70} />
+      </button>
+    </li>
+  );
+}
+
+function LoadingRows() {
+  return (
+    <div className="notif-loading" aria-label="Caricamento delle notifiche">
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="notif-loading-row">
+          <SkeletonBlock width={40} height={40} radius={12} />
+          <div className="notif-loading-text">
+            <SkeletonBlock width="40%" height={12} />
+            <SkeletonBlock width="85%" height={14} />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
 
+/**
+ * Campanella dell'intestazione e pannello delle notifiche (docs/CHANGELOG.md
+ * §313): stesso sistema del resto del sito (testo a 16 px, arrotondamento
+ * 12, bianco pieno con ombra leggera). Sul telefono il pannello occupa la
+ * larghezza dello schermo sotto l'intestazione. Si chiude toccando fuori o
+ * con Esc, e il fuoco torna sulla campanella.
+ */
 export function NotificationBell() {
   const { token, user, unreadCount, markNotificationsRead } = useAuth();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [history, setHistory] = useState<HistoryItem[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const bellRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) setIsOpen(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    panelRef.current?.focus();
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+        bellRef.current?.focus();
+      }
+    }
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!confirmDeleteAll) return;
+    const timer = setTimeout(() => setConfirmDeleteAll(false), DELETE_ALL_CONFIRM_MS);
+    return () => clearTimeout(timer);
+  }, [confirmDeleteAll]);
 
   if (!token) return null;
 
   async function handleToggle() {
     const next = !isOpen;
     setIsOpen(next);
+    setConfirmDeleteAll(false);
     if (next) {
       setIsLoading(true);
       try {
-        const items = await apiClient.notificationHistory(token as string);
-        setHistory(items);
+        setHistory(await apiClient.notificationHistory(token as string));
       } catch {
         setHistory([]);
       } finally {
@@ -232,159 +233,87 @@ export function NotificationBell() {
     try {
       await apiClient.deleteNotification(token as string, id);
     } catch {
-      // Silenzioso, stesso principio già seguito altrove per operazioni non
-      // critiche: se la richiesta fallisce la notifica ricompare al
-      // prossimo giro di apertura del dropdown, nessun blocco dell'UI.
+      // Operazione non critica: se fallisce, la notifica ricompare alla prossima apertura.
     }
   }
 
-  /** Elimina tutte le notifiche in un colpo (richiesta esplicita dell'utente). */
+  /** Elimina tutte: il primo tocco chiede conferma, il secondo elimina. */
   async function handleDeleteAll() {
+    if (!confirmDeleteAll) {
+      setConfirmDeleteAll(true);
+      return;
+    }
+    setConfirmDeleteAll(false);
     setHistory([]);
     try {
       await apiClient.deleteAllNotifications(token as string);
     } catch {
-      // Stesso principio di handleDelete: silenzioso, nessun blocco dell'UI.
+      // Come handleDelete: silenzioso, nessun blocco dell'interfaccia.
     }
   }
 
+  const newCount = history ? history.filter((item) => item.readAt === null).length : 0;
+
   return (
-    <YStack ref={containerRef} position="relative">
-      <XStack
-        position="relative"
-        alignItems="center"
-        justifyContent="center"
-        width={36}
-        height={36}
-        borderRadius={999}
-        cursor="pointer"
-        hoverStyle={{ backgroundColor: brand.gesso }}
-        onPress={handleToggle}
-        accessibilityRole="button"
-        accessibilityLabel={unreadCount > 0 ? `Notifiche, ${unreadCount} non lette` : "Notifiche"}
+    <div ref={containerRef} className="notif">
+      <button
+        ref={bellRef}
+        type="button"
+        className={`notif-bell${isOpen ? " is-open" : ""}`}
+        onClick={handleToggle}
+        aria-haspopup="dialog"
+        aria-expanded={isOpen}
+        aria-label={unreadCount > 0 ? `Notifiche, ${unreadCount} non lette` : "Notifiche"}
       >
-        <Icon name="bell-ring" size={20} color={brand.grafite} />
-        {unreadCount > 0 ? (
-          // Anello pulsante attorno al pallino (richiesta esplicita
-          // dell'utente, resa più "da sito di ultima generazione"): un
-          // `<div>` grezzo per la keyframe animation (globals.css), non
-          // ottenibile con le sole prop Tamagui.
-          <div className="notification-bell-ping" style={{ position: "absolute", top: 2, right: 2, borderRadius: 999 }}>
-            <YStack
-              backgroundColor={brand.urgenza}
-              borderRadius={999}
-              minWidth={16}
-              height={16}
-              paddingHorizontal={3}
-              alignItems="center"
-              justifyContent="center"
-            >
-              <Text fontSize={10} fontWeight="700" color="white" lineHeight={12}>
-                {unreadCount > 9 ? "9+" : unreadCount}
-              </Text>
-            </YStack>
-          </div>
-        ) : null}
-      </XStack>
+        <Icon name="bell" size={22} color={brand.grafite} strokeWidth={1.75} />
+        {unreadCount > 0 ? <span className="notif-badge">{unreadCount > 9 ? "9+" : unreadCount}</span> : null}
+      </button>
 
       {isOpen ? (
-        // Bug reale corretto (segnalazione utente: "da mobile esce fuori lo
-        // schermo"): `right:0` era relativo al solo contenitore 36x36 della
-        // campanella, non al vero bordo destro del viewport — la campanella
-        // non è l'ultimo elemento dell'header (AccountMenu sta ancora più a
-        // destra, CLAUDE.md §71), quindi un pannello largo 340px poteva
-        // sforare abbondantemente il bordo sinistro su schermi stretti.
-        // `.notification-bell-panel` (globals.css) passa a `position:fixed`
-        // con `left`/`right` fissi sotto 480px, ancorato al vero viewport
-        // indipendentemente da dove sta la campanella nell'header.
-        <div className="notification-bell-panel" style={{ width: 340, maxWidth: "90vw", zIndex: 1000 }}>
-        {/* Pannello ridisegnato in stile "vetro smerigliato" (richiesta
-            esplicita dell'utente: "rendilo più innovativo come i siti di
-            ultima generazione") — sfondo bianco translucido +
-            `backdrop-filter: blur` (classe CSS, non esprimibile con le
-            sole prop Tamagui) invece del bianco pieno di prima, ingresso
-            animato (scala + dissolvenza) invece di comparire di scatto,
-            angoli più morbidi (radiusDocLg) e ombra più profonda/diffusa. */}
-        <YStack
-          className="notification-bell-panel-inner"
-          maxHeight={500}
-          overflow="hidden"
-          backgroundColor={brand.calce}
-          borderRadius={radiusDocLg}
-          borderWidth={1}
-          borderColor="rgba(255,255,255,0.6)"
-          shadowColor="rgba(43,32,19,0.18)"
-          shadowRadius={28}
-          shadowOffset={{ width: 0, height: 12 }}
-          shadowOpacity={1}
-        >
-          <XStack
-            paddingHorizontal="$4"
-            paddingVertical="$3"
-            borderBottomWidth={1}
-            borderBottomColor={brand.filetto}
-            alignItems="center"
-            justifyContent="space-between"
-          >
-            <XStack alignItems="center" gap="$2">
-              <YStack width={26} height={26} borderRadius={999} alignItems="center" justifyContent="center" backgroundColor={brand.cianografiaVelo}>
-                <Icon name="bell-ring" size={13} color={brand.cianografiaScuro} />
-              </YStack>
-              <Text fontFamily="$body" fontWeight="700" fontSize="$3" color={brand.grafite}>
-                Notifiche
-              </Text>
-            </XStack>
+        <div ref={panelRef} className="notif-panel" role="dialog" aria-label="Notifiche" tabIndex={-1}>
+          <div className="notif-head">
+            <span className="notif-title">Notifiche</span>
+            {newCount > 0 ? <span className="notif-new">{newCount === 1 ? "1 nuova" : `${newCount} nuove`}</span> : null}
             {history && history.length > 0 ? (
-              <XStack cursor="pointer" onPress={handleDeleteAll} accessibilityRole="button" accessibilityLabel="Elimina tutte le notifiche">
-                <Text fontSize="$1" fontWeight="600" color={brand.grafite70}>
-                  Elimina tutte
-                </Text>
-              </XStack>
+              <button type="button" className={`notif-clear${confirmDeleteAll ? " is-confirm" : ""}`} onClick={handleDeleteAll}>
+                {confirmDeleteAll ? "Conferma" : "Elimina tutte"}
+              </button>
             ) : null}
-          </XStack>
-          <YStack maxHeight={360} overflow="scroll" flexShrink={1}>
+          </div>
+
+          <div className="notif-list">
             {isLoading ? (
-              <Text padding="$4" fontSize="$2" color={brand.grafite70}>
-                Caricamento...
-              </Text>
+              <LoadingRows />
             ) : !history || history.length === 0 ? (
-              // Icona lineare al posto dell'emoji campana (richiesta
-              // esplicita dell'utente: "troppo old style") — stesso chip
-              // circolare tinta già in uso nell'intestazione del pannello,
-              // coerente con il registro icone del resto del sito.
-              <YStack padding="$5" alignItems="center" gap="$3">
-                <YStack width={44} height={44} borderRadius={999} alignItems="center" justifyContent="center" backgroundColor={brand.gesso}>
-                  <Icon name="bell-ring" size={20} color={brand.grafite70} strokeWidth={1.5} />
-                </YStack>
-                <Text fontSize="$2" color={brand.grafite70} textAlign="center">
-                  Nessuna notifica per ora.
-                </Text>
-              </YStack>
+              <div className="notif-empty">
+                <span className="notif-empty-icon" aria-hidden="true">
+                  <Icon name="bell" size={22} color={brand.grafite70} strokeWidth={1.5} />
+                </span>
+                <span className="notif-empty-title">Nessuna notifica</span>
+                <span className="notif-empty-text">Qui arrivano richieste, preventivi e messaggi.</span>
+              </div>
             ) : (
-              // Raggruppate per giorno (docs/CHANGELOG.md §152): "Oggi", "Ieri", "Prima".
               groupByDay(history).map((group) => (
-                <YStack key={group.label}>
-                  <Text paddingHorizontal="$4" paddingTop="$3" paddingBottom="$1" fontSize={11} fontWeight="700" color={brand.grafite70} textTransform="uppercase">
-                    {group.label}
-                  </Text>
-                  {group.items.map((item) => (
-                    <NotificationRow key={item.id} item={item} isProfessional={!!user?.isProfessional} onOpen={handleItemClick} onDelete={handleDelete} />
-                  ))}
-                </YStack>
+                <section key={group.label} aria-label={group.label}>
+                  <h3 className="notif-group">{group.label}</h3>
+                  <ul className="notif-rows">
+                    {group.items.map((item) => (
+                      <NotificationRow key={item.id} item={item} isProfessional={!!user?.isProfessional} onOpen={handleItemClick} onDelete={handleDelete} />
+                    ))}
+                  </ul>
+                </section>
               ))
             )}
-          </YStack>
-          <XStack borderTopWidth={1} borderTopColor={brand.filetto} paddingHorizontal="$4" paddingVertical="$3" justifyContent="center">
-            <Link href="/account/notifiche" onClick={() => setIsOpen(false)} style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <Icon name="sliders-horizontal" size={14} color={brand.cianografiaScuro} />
-              <Text fontSize="$2" fontWeight="700" color={brand.cianografiaScuro}>
-                Impostazioni notifiche
-              </Text>
+          </div>
+
+          <div className="notif-foot">
+            <Link href="/account/notifiche" className="notif-settings" onClick={() => setIsOpen(false)}>
+              <Icon name="sliders-horizontal" size={16} color={brand.cianografiaScuro} />
+              Impostazioni notifiche
             </Link>
-          </XStack>
-        </YStack>
+          </div>
         </div>
       ) : null}
-    </YStack>
+    </div>
   );
 }
