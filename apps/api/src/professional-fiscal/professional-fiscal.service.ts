@@ -18,6 +18,11 @@ import { readStripeConnectStatus } from "./stripe-connect-status";
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
 import { PayoutAccountService } from "./payout-account.service";
 
+/** Solo le ultime 4 cifre di un codice fiscale, per il registro delle modifiche. */
+export function maskTaxId(value: unknown): unknown {
+  return typeof value === "string" && value ? `••••${value.slice(-4)}` : value;
+}
+
 const FISCAL_FIELDS = [
   "entityType",
   "fiscalFirstName",
@@ -168,12 +173,15 @@ export class ProfessionalFiscalService {
       const oldValue = existing ? (existing as unknown as Record<string, unknown>)[field] : undefined;
       const newValue = (fiscalProfile as unknown as Record<string, unknown>)[field];
       if (JSON.stringify(oldValue ?? null) === JSON.stringify(newValue ?? null)) continue;
+      // Il codice fiscale nel registro solo con le ultime 4 cifre: nel
+      // database è cifrato, una copia in chiaro qui lo vanificherebbe (§287).
+      const secret = field === "fiscalCodiceFiscale";
       await this.auditLogService.record({
         entityType: "ProfessionalFiscalProfile",
         entityId: fiscalProfile.id,
         fieldName: field,
-        oldValue,
-        newValue,
+        oldValue: secret ? maskTaxId(oldValue) : oldValue,
+        newValue: secret ? maskTaxId(newValue) : newValue,
         changedByUserId: userId,
       });
     }
@@ -228,7 +236,7 @@ export class ProfessionalFiscalService {
       await this.auditLogService.record({
         entityType: "FiscalRepresentative",
         entityId: fiscalProfile.id,
-        newValue: rep,
+        newValue: { ...rep, codiceFiscale: maskTaxId(rep.codiceFiscale) },
         changedByUserId: userId,
       });
     }

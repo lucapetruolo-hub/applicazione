@@ -65,3 +65,19 @@ export function reencryptLegacyFiscal(value: string): string | null {
   const plain = decryptWith(legacy, value);
   return plain === null ? null : encryptFiscal(plain);
 }
+
+const ENCRYPTED_FORMAT = /^[A-Za-z0-9_-]{16}\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]+$/;
+
+/** Il dato è già cifrato da `encryptFiscal` (iv da 12 byte, tag da 16). */
+export function isEncryptedFiscal(value: string): boolean {
+  return ENCRYPTED_FORMAT.test(value);
+}
+
+/**
+ * Lettura di un campo cifrato che può essere ancora in chiaro (salvato prima
+ * della cifratura, docs/CHANGELOG.md §287): il testo in chiaro torna così com'è.
+ */
+export function readFiscal(value: string | null): string | null {
+  if (value === null || !isEncryptedFiscal(value)) return value;
+  return decryptFiscal(value);
+}

@@ -119,6 +119,7 @@ export class GuidedRequestsController {
   // allegato di chat che deve poter portare "anche la fattura o ricevuta"
   // (richiesta esplicita dell'utente), non generalizzato agli altri upload
   // del prodotto.
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @UseGuards(JwtAuthGuard)
   @UseFilters(MulterExceptionFilter)
   @Post("timeline-photos")
@@ -259,6 +260,9 @@ export class GuidedRequestsController {
   // possibilità ad entrambi di inserire foto e video dell'aggiornamento
   // dei lavori") — stesso controllo di accesso di getTimeline sopra,
   // eseguito dentro TimelineService.addUpdate.
+  // 20 messaggi al minuto bastano a chi scrive davvero, fermano chi riempie
+  // la chat di un altro (controllo sicurezza, docs/CHANGELOG.md §287).
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @UseGuards(JwtAuthGuard)
   @Post(":id/timeline")
   addTimelineUpdate(

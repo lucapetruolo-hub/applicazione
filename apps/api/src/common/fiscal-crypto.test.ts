@@ -30,3 +30,29 @@ describe("passaggio a FISCAL_DATA_KEY", () => {
     expect(decryptFiscal(legacy)).toBeNull();
   });
 });
+
+describe("codice fiscale cifrato", () => {
+  it("legge sia il dato cifrato sia quello salvato in chiaro prima", async () => {
+    const { isEncryptedFiscal, readFiscal } = await import("./fiscal-crypto");
+    const encrypted = encryptFiscal("RSSMRA80A01H501U");
+    expect(isEncryptedFiscal(encrypted)).toBe(true);
+    expect(isEncryptedFiscal("RSSMRA80A01H501U")).toBe(false);
+    expect(isEncryptedFiscal("12345678901")).toBe(false);
+    expect(readFiscal(encrypted)).toBe("RSSMRA80A01H501U");
+    expect(readFiscal("RSSMRA80A01H501U")).toBe("RSSMRA80A01H501U");
+    expect(readFiscal(null)).toBeNull();
+  });
+
+  it("all'avvio riscrive solo i dati in chiaro o con la chiave vecchia", async () => {
+    const { toRewrite } = await import("../professional-fiscal/fiscal-encryption-migration.service");
+    process.env.JWT_SECRET = "segreto-sessioni";
+    delete process.env.FISCAL_DATA_KEY;
+    const legacy = encryptFiscal("RSSMRA80A01H501U");
+    expect(toRewrite("RSSMRA80A01H501U")).toBe("RSSMRA80A01H501U");
+    expect(toRewrite(legacy)).toBeNull();
+    expect(toRewrite(null)).toBeNull();
+    process.env.FISCAL_DATA_KEY = "chiave-dati-fiscali";
+    expect(toRewrite(legacy)).toBe("RSSMRA80A01H501U");
+    expect(toRewrite(encryptFiscal("RSSMRA80A01H501U"))).toBeNull();
+  });
+});
