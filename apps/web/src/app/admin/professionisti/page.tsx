@@ -40,6 +40,8 @@ export default function AdminProfessionistiPage() {
   const [link, setLink] = useState<ProfileInviteLink | null>(null);
   const [copied, setCopied] = useState(false);
   const [pending, setPending] = useState<PendingProfileInvite[] | null>(null);
+  // Quando è arrivato l'elenco: i link scaduti si contano da quel momento.
+  const [pendingLoadedAt, setPendingLoadedAt] = useState(0);
   const [listError, setListError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   // Riga con "Elimina" premuto una volta: serve la conferma.
@@ -51,7 +53,10 @@ export default function AdminProfessionistiPage() {
     if (!token) return;
     apiClient
       .adminListProfileInvites(token)
-      .then(setPending)
+      .then((rows) => {
+        setPending(rows);
+        setPendingLoadedAt(Date.now());
+      })
       .catch((err) => setListError(errorMessage(err)));
   }, [token]);
 
@@ -278,7 +283,7 @@ export default function AdminProfessionistiPage() {
                     </td>
                     <td>{formatAdminDate(row.createdAt)}</td>
                     <td>
-                      {row.lastLinkExpiresAt && new Date(row.lastLinkExpiresAt).getTime() > Date.now()
+                      {row.lastLinkExpiresAt && new Date(row.lastLinkExpiresAt).getTime() > pendingLoadedAt
                         ? formatAdminDate(row.lastLinkExpiresAt)
                         : "Scaduto"}
                     </td>

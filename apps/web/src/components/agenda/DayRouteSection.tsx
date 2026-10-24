@@ -22,20 +22,22 @@ function travelLabel(minutes: number): string {
  */
 export function DayRouteSection({ token, today, onOpenStop }: { token: string; today: Date; onOpenStop: (key: string) => void }) {
   const [date, setDate] = useState(today);
-  const [route, setRoute] = useState<DayRoute | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [mapFailed, setMapFailed] = useState(false);
   const dateStr = toIsoDate(date);
+  // Risposta insieme al giorno a cui si riferisce: cambiando giorno si torna
+  // al caricamento finché non arriva quella nuova.
+  const [answer, setAnswer] = useState<{ dateStr: string; route: DayRoute | null; error: string | null } | null>(null);
+  const current = answer?.dateStr === dateStr ? answer : null;
+  const route = current?.route ?? null;
+  const error = current?.error ?? null;
+  const [mapFailedFor, setMapFailedFor] = useState<string | null>(null);
+  const mapFailed = mapFailedFor === dateStr;
 
   useEffect(() => {
     let cancelled = false;
-    setRoute(null);
-    setError(null);
-    setMapFailed(false);
     apiClient
       .agendaDayRoute(token, dateStr)
-      .then((result) => !cancelled && setRoute(result))
-      .catch((err) => !cancelled && setError(err instanceof Error ? err.message : "Giro non disponibile, riprova."));
+      .then((result) => !cancelled && setAnswer({ dateStr, route: result, error: null }))
+      .catch((err) => !cancelled && setAnswer({ dateStr, route: null, error: err instanceof Error ? err.message : "Giro non disponibile, riprova." }));
     return () => {
       cancelled = true;
     };
@@ -94,7 +96,7 @@ export function DayRouteSection({ token, today, onOpenStop }: { token: string; t
           ) : null}
           {staticMap && !mapFailed ? (
             // eslint-disable-next-line @next/next/no-img-element -- immagine del nostro server
-            <img src={staticMap} alt="Mappa delle tappe del giorno" onError={() => setMapFailed(true)} style={{ width: "100%", height: "auto", aspectRatio: "640 / 300", objectFit: "cover", borderRadius: 16, marginTop: 14, background: "#f6f1ec" }} />
+            <img src={staticMap} alt="Mappa delle tappe del giorno" onError={() => setMapFailedFor(dateStr)} style={{ width: "100%", height: "auto", aspectRatio: "640 / 300", objectFit: "cover", borderRadius: 16, marginTop: 14, background: "#f6f1ec" }} />
           ) : null}
           <ol style={{ listStyle: "none", padding: 0, margin: "14px 0 0" }}>
             {route.stops.map((stop, index) => {

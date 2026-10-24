@@ -16,10 +16,12 @@ export function AccountMenu() {
   const containerRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
 
-  // Si chiude cambiando pagina e con Esc.
-  useEffect(() => {
+  // Si chiude cambiando pagina (già durante il render) e con Esc.
+  const [openPathname, setOpenPathname] = useState(pathname);
+  if (pathname !== openPathname) {
+    setOpenPathname(pathname);
     setIsOpen(false);
-  }, [pathname]);
+  }
   useEffect(() => {
     if (!isOpen) return;
     function onKey(event: KeyboardEvent) {

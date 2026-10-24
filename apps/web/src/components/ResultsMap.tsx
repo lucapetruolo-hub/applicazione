@@ -170,7 +170,15 @@ export function ResultsMap({
       </GoogleMapGate>
 
       {selected ? (
-        <div className="map-banner" onClick={() => router.push(professionalPath(selected))}>
+        <div
+          className="map-banner"
+          role="link"
+          tabIndex={0}
+          onClick={() => router.push(professionalPath(selected))}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && e.target === e.currentTarget) router.push(professionalPath(selected));
+          }}
+        >
           <ProfessionalAvatar imageUrl={selected.imageUrl} categorySlug={selected.categorySlug} size={48} />
           <div className="map-banner-info">
             <div className="map-banner-title-row">
