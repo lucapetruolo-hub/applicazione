@@ -429,7 +429,7 @@ function DashboardFiscaleContent() {
   }
 
   if (isLoading || profile === undefined) {
-    // Stessa larghezza della pagina caricata: niente salto di lato (CLS, docs/CHANGELOG.md §330).
+    // Stessa larghezza della pagina caricata: niente salto di lato (CLS, docs/CHANGELOG.md §333).
     return (
       <Section title="Dati fiscali e pagamenti" maxWidth={640}>
         <Text>Caricamento...</Text>

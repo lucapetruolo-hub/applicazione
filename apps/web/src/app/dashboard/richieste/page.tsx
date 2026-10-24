@@ -218,7 +218,7 @@ function RichiesteContent() {
       apiClient
         .unreadNotifications(token!)
         .then((notifications) => {
-          if (cancelled || notifications.length === 0) return;
+          if (cancelled || notifications.length === 0) return notifications;
           setLeadUnreadCounts((prev) => mergeCounts(prev, unreadGuidedRequestCounts(notifications)));
           // Stesso bug/fix già applicato in /le-mie-richieste: un evento
           // generato dal cliente (accettazione, proposta data, conferma
@@ -226,9 +226,10 @@ function RichiesteContent() {
           // lasciava leads/bookings non aggiornati fino a un ricaricamento
           // manuale — il poll dei pallini ora ricarica anche le due liste.
           reloadLeads();
+          return notifications;
         })
-        .catch(() => {})
-        .finally(() => markNotificationsRead());
+        .catch(() => undefined)
+        .then((notifications) => markNotificationsRead(notifications));
     }
     poll();
     const interval = setInterval(poll, UNREAD_BADGE_POLL_MS);
@@ -324,7 +325,7 @@ function RichiesteContent() {
 
   if (isLoading || (token && leads === null && !profileMissing)) {
     // Stessi margini, larghezza e titolo della pagina caricata: niente salto
-    // quando arrivano le richieste (CLS, docs/CHANGELOG.md §330).
+    // quando arrivano le richieste (CLS, docs/CHANGELOG.md §333).
     return (
       <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
         <YStack width="100%" maxWidth={1180} gap="$5">
@@ -668,7 +669,7 @@ function RichiesteContent() {
 function RequestsHeading() {
   return (
     <YStack gap="$1">
-      {/* Stesso nome della voce di menu (richiesta dell'utente, docs/CHANGELOG.md §330). */}
+      {/* Stesso nome della voce di menu (richiesta dell'utente, docs/CHANGELOG.md §333). */}
       <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite}>
         Richieste e lavori
       </Text>

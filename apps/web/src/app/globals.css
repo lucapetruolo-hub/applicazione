@@ -890,7 +890,7 @@ button.notif-row-main:hover {
    di schede del cliente. Le pagine dentro restano centrate come prima. */
 .acct-shell {
   width: 100%;
-  /* 1600 e non più 1320 (docs/CHANGELOG.md §330): su uno schermo da 1920px
+  /* 1600 e non più 1320 (docs/CHANGELOG.md §333): su uno schermo da 1920px
      agenda e messaggi restavano in una striscia centrale con 600px vuoti. */
   max-width: 1600px;
   margin: 0 auto;
@@ -902,7 +902,7 @@ button.notif-row-main:hover {
   min-width: 0;
   flex: 1;
   /* Le pagine dentro possono adattarsi allo spazio vero, che cambia col menu
-     ridotto (docs/CHANGELOG.md §330). Non trattiene gli elementi fissi. */
+     ridotto (docs/CHANGELOG.md §333). Non trattiene gli elementi fissi. */
   container: acct-main / inline-size;
   /* Il piè di pagina resta sotto lo schermo mentre la pagina carica: prima
      compariva in alto e poi veniva spinto giù (CLS 0,14, docs/CHANGELOG.md §321). */
@@ -935,7 +935,7 @@ button.notif-row-main:hover {
 .acct-nav-short {
   display: none;
 }
-/* Tasto "Riduci il menu" (docs/CHANGELOG.md §330): solo con la colonna. */
+/* Tasto "Riduci il menu" (docs/CHANGELOG.md §333): solo con la colonna. */
 .acct-nav-toggle,
 .acct-nav-tip {
   display: none;
@@ -1041,7 +1041,7 @@ button.notif-row-main:hover {
   }
 }
 /* Colonna a sinistra da 760px (tablet in verticale compreso, docs/CHANGELOG.md
-   §330): prima, fino a 1000px, era una barra che scorreva di lato e
+   §333): prima, fino a 1000px, era una barra che scorreva di lato e
    nascondeva metà delle voci. */
 @media (min-width: 760px) {
   .acct-shell {
@@ -1284,7 +1284,7 @@ button.notif-row-main:hover {
 }
 /* Home "Oggi" del professionista (docs/CHANGELOG.md §147). */
 /* Due colonne quando il contenuto è largo almeno 960px (docs/CHANGELOG.md
-   §330): conta lo spazio vero della pagina, che cambia col menu ridotto,
+   §333): conta lo spazio vero della pagina, che cambia col menu ridotto,
    non la larghezza della finestra. */
 .today-wrap {
   container-type: inline-size;
@@ -2246,7 +2246,7 @@ a.admin-kpi:hover {
   gap: 12px;
 }
 /* Con la pagina larga (menu ridotto) le sei tessere stanno su una riga e il
-   grafico sale (docs/CHANGELOG.md §330). */
+   grafico sale (docs/CHANGELOG.md §333). */
 @container acct-main (min-width: 1140px) {
   .pstats-kpis {
     grid-template-columns: repeat(6, minmax(0, 1fr));

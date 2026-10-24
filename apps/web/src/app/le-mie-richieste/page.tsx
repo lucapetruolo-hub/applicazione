@@ -266,7 +266,7 @@ function LeMieRichiesteContent() {
       apiClient
         .unreadNotifications(token!)
         .then((notifications) => {
-          if (cancelled || notifications.length === 0) return;
+          if (cancelled || notifications.length === 0) return notifications;
           const freshRequestIds = unreadGuidedRequestIds(notifications);
           setNewRequestIds((prev) => mergeIds(prev, freshRequestIds));
           // Un aggiornamento arrivato dopo "Segna come letta" riaccende il "Nuovo".
@@ -277,9 +277,10 @@ function LeMieRichiesteContent() {
           setQuoteUnreadCounts((prev) => mergeCounts(prev, unreadQuoteCounts(notifications)));
           setBookingUnreadCounts((prev) => mergeCounts(prev, unreadBookingCounts(notifications)));
           reload();
+          return notifications;
         })
-        .catch(() => {})
-        .finally(() => markNotificationsRead());
+        .catch(() => undefined)
+        .then((notifications) => markNotificationsRead(notifications));
     }
     poll();
     const interval = setInterval(poll, UNREAD_BADGE_POLL_MS);
@@ -351,7 +352,7 @@ function LeMieRichiesteContent() {
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
       {/* Come "Richieste e lavori" del professionista (richiesta dell'utente,
-          docs/CHANGELOG.md §330): stessa larghezza, titolo e riga sotto. */}
+          docs/CHANGELOG.md §333): stessa larghezza, titolo e riga sotto. */}
       <YStack width="100%" maxWidth={1180} gap="$5">
         <YStack gap="$1">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite}>
@@ -592,7 +593,7 @@ function LeMieRichiesteContent() {
           {requests === null ? (
             <SkeletonRequestList count={3} />
           ) : requests.length === 0 ? (
-            // Nel riquadro bianco come in "Richieste e lavori" (docs/CHANGELOG.md §330).
+            // Nel riquadro bianco come in "Richieste e lavori" (docs/CHANGELOG.md §333).
             <Surface>
               <EmptyState
                 icon="file-text"

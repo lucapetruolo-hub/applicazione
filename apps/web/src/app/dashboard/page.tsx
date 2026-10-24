@@ -141,7 +141,7 @@ export default function DashboardTodayPage() {
   const loading = leads === null || bookings === null;
   // Tutto quello che sta sotto "Oggi e domani" compare insieme, quando sono
   // arrivati richieste, appuntamenti e percorso del profilo: arrivando in
-  // momenti diversi si spingevano giù a vicenda (CLS, docs/CHANGELOG.md §330).
+  // momenti diversi si spingevano giù a vicenda (CLS, docs/CHANGELOG.md §333).
   // Un errore si mostra subito.
   const ready = (!loading || Boolean(error)) && journey.settled;
   const greetingName = user.businessName ?? user.name ?? "";
@@ -162,7 +162,7 @@ export default function DashboardTodayPage() {
 
         {subscription ? <SubscriptionPauseBanner sub={subscription} profileStepsElsewhere /> : null}
         {restrictions ? <IssueSanctionBanner {...restrictions} /> : null}
-        {/* Due colonne quando c'è spazio (docs/CHANGELOG.md §330): a sinistra il
+        {/* Due colonne quando c'è spazio (docs/CHANGELOG.md §333): a sinistra il
             lavoro (appuntamenti, richieste, andamento), a destra percorso del
             profilo, avvisi e visibilità. Stretto, `today-col` non conta e `order` rimette tutto
             nell'ordine di sempre: prima il prossimo lavoro, poi il percorso. */}
@@ -453,7 +453,7 @@ function Skeletons() {
   );
 }
 
-/** Alta quanto `EmptyLine`, il caso più comune: niente salto quando arriva (§330). */
+/** Alta quanto `EmptyLine`, il caso più comune: niente salto quando arriva (§333). */
 function LineSkeleton() {
   return (
     <div className="today-empty" aria-hidden>

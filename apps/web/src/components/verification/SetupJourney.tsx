@@ -205,7 +205,7 @@ export function useSetupJourney(
   const [status, setStatus] = useState<MyVerificationStatus | null>(null);
   const [stripeVerified, setStripeVerified] = useState<boolean | null>(null);
   // Risposte arrivate (anche con errore): Oggi aspetta questo per non far
-  // saltare la colonna di destra quando compare il riquadro (§330).
+  // saltare la colonna di destra quando compare il riquadro (§333).
   const [settled, setSettled] = useState(false);
 
   useEffect(() => {
@@ -229,7 +229,7 @@ export function useSetupJourney(
 export function SetupJourneyCard({ steps }: { steps: JourneyStep[] | null }) {
   if (!steps || journeyDone(steps)) return null;
   // Manca solo un passo facoltativo (pagamenti online): una riga, non il
-  // riquadro intero (richiesta dell'utente, docs/CHANGELOG.md §330).
+  // riquadro intero (richiesta dell'utente, docs/CHANGELOG.md §333).
   const left = steps.filter((step) => step.state !== "done");
   const onlyOptional = left.length === 1 ? left[0] : undefined;
   if (onlyOptional?.optional) return <SetupJourneyCompact steps={steps} step={onlyOptional} />;
@@ -291,7 +291,7 @@ const NO_HREFS: string[] = [];
 
 function publishJourney(token: string, steps: JourneyStep[]) {
   // Un passo facoltativo (pagamenti online) non mette il pallino rosso: non
-  // deve mettere fretta (richiesta dell'utente, docs/CHANGELOG.md §330).
+  // deve mettere fretta (richiesta dell'utente, docs/CHANGELOG.md §333).
   const hrefs = [...new Set(steps.filter((step) => step.state === "current" && !step.optional).map((step) => STEP_MENU_HREF[step.key]))];
   const same = journeyStore?.token === token && journeyStore.hrefs.join() === hrefs.join();
   journeyStore = { token, hrefs: same && journeyStore ? journeyStore.hrefs : hrefs, at: Date.now() };

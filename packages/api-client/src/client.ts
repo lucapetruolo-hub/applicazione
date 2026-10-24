@@ -635,7 +635,7 @@ export type CurrentUser = {
   emailCodeValidForSeconds: number;
   /** Privato, P.IVA o azienda scelto in registrazione: precompila /dashboard/fiscale. */
   signupEntityType: ProfessionalEntityTypeValue | null;
-  /** Menu laterale ridotto a icone scelto dalla persona; null = decide lo schermo (docs/CHANGELOG.md §330). */
+  /** Menu laterale ridotto a icone scelto dalla persona; null = decide lo schermo (docs/CHANGELOG.md §333). */
   sidebarCollapsed?: boolean | null;
 };
 

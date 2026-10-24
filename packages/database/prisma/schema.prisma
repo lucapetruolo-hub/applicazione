@@ -68,7 +68,7 @@ model User {
   city                       String?
   province                   String?
   // Menu laterale dell'area professionista ridotto a icone (docs/CHANGELOG.md
-  // §330): scelta della persona, uguale su tutti i suoi dispositivi. Null =
+  // §333): scelta della persona, uguale su tutti i suoi dispositivi. Null =
   // nessuna scelta, decide la larghezza dello schermo.
   sidebarCollapsed           Boolean?
   createdAt                  DateTime                @default(now())
