@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import {
-  ALL_ITALIAN_CITY_NAMES,
+  allItalianCityNames,
   operatorProfileInviteSchema,
   type PendingProfileInvite,
   type ProfessionalCategorySlug,
@@ -223,7 +223,7 @@ export default function AdminProfessionistiPage() {
             </YStack>
             <YStack>
               <Autocomplete
-                items={ALL_ITALIAN_CITY_NAMES}
+                items={allItalianCityNames()}
                 getKey={(item) => item}
                 getLabel={(item) => item}
                 onSelect={(value) => update("city", value)}

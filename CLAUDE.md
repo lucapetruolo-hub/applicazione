@@ -99,6 +99,17 @@ prima discuterne e aggiornare questo file.
   arrivano in PR separate e vanno trattati in un thread dedicato con il
   confronto delle pagine. React, React Native e le versioni grandi di Expo
   sono esclusi: si aggiornano a mano, insieme.
+- **Il sito usa i sorgenti di `packages/shared`** (alias in
+  `apps/web/next.config.mjs`, `sideEffects: false`, docs/CHANGELOG.md §334):
+  ogni pagina prende solo le parti che usa. Un modulo di `packages/shared`
+  non deve contare su effetti al solo import (registrazioni, globali). L'API
+  usa sempre `dist/`.
+- **Config Tamagui**: i valori di default stanno in
+  `packages/ui/src/tamaguiDefaults.ts` (generato, §334), non si importa
+  `@tamagui/config` nel sito (1408 temi e animazioni di React Native in ogni
+  pagina). Un tema nuovo va in `packages/ui/src/usedThemes.ts`, poi
+  `pnpm --filter @professionisti/ui genera-default-tamagui`. Sul sito niente
+  prop `animation` di Tamagui (driver vuoto, `animations.web.ts`).
 - Il build di produzione di `apps/mobile` avviene su **EAS Build** (cloud).
   Dal passaggio a Expo 58 (§299) `npx expo export --platform android|ios`
   funziona anche in locale ed è un buon controllo veloce che il pacchetto

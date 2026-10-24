@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, startTransition, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { ApiError, type CurrentUser } from "@professionisti/api-client";
 import { DEFAULT_NOTIFICATION_PREFERENCES, type NotificationPreferences, type RealtimeEvent } from "@professionisti/shared";
 import { apiClient } from "./apiClient";
@@ -101,8 +101,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           saveOfflineUser(currentUser);
         }
-        setUser(currentUser);
-        setToken(currentUser ? currentToken : null);
+        // Con `startTransition` (docs/CHANGELOG.md §334): l'utente arrivato
+        // ridisegna tutta la pagina (menu, intestazione, contenuto) e su un
+        // telefono lento React lo fa a piccoli pezzi invece che in un blocco.
+        startTransition(() => {
+          setUser(currentUser);
+          setToken(currentUser ? currentToken : null);
+        });
         return currentUser;
       } catch (err) {
         // Bug reale trovato da un agente di verifica: un fetch fallito a
@@ -152,8 +157,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const storedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY);
     if (storedToken) {
+      // Nella stessa transizione dell'utente (vedi loadUser): React le
+      // disegna insieme, così non si vede mai "caricato" senza l'utente.
       // eslint-disable-next-line react-hooks/set-state-in-effect -- loadUser aggiorna lo stato solo dopo la risposta dell'API
-      loadUser(storedToken).finally(() => setIsLoading(false));
+      loadUser(storedToken).finally(() => startTransition(() => setIsLoading(false)));
     } else {
       setIsLoading(false);
     }
@@ -196,7 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     try {
       const { count } = await apiClient.unreadNotificationsCount(storedToken);
-      setUnreadCount(count);
+      startTransition(() => setUnreadCount(count));
     } catch {
       // Silenzioso: un badge che non si aggiorna per un errore di rete
       // transitorio non deve bloccare o disturbare il resto dell'app.
@@ -213,7 +220,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * giorni vedrebbe 5 popup tutti insieme al primo caricamento.
    */
   const announceNotifications = useCallback((notifications: UnreadNotification[]) => {
-    setUnreadNotifications(notifications);
+    startTransition(() => setUnreadNotifications(notifications));
     if (seenNotificationIdsRef.current === null) {
       seenNotificationIdsRef.current = new Set(notifications.map((n) => n.id));
       return;
@@ -300,9 +307,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       notificationPrefsRef.current = DEFAULT_NOTIFICATION_PREFERENCES;
       return;
     }
+    // Badge, notifiche e preferenze arrivate dall'API si mostrano con
+    // `startTransition` (docs/CHANGELOG.md §334): ognuno ridisegna tutte le
+    // pagine che usano useAuth e su un telefono lento, in un blocco unico,
+    // fermava la pagina.
     apiClient
       .notificationPreferences(token)
-      .then(setNotificationPrefs)
+      .then((prefs) => startTransition(() => setNotificationPrefs(prefs)))
       .catch(() => undefined);
   }, [user, token, setNotificationPrefs]);
 

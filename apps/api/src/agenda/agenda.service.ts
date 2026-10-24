@@ -5,7 +5,7 @@ import {
   agendaWeekTemplateSchema,
   dayPartOf,
   findComuneByName,
-  ITALIAN_COMUNI,
+  italianComuni,
   jobOccurrenceOn,
   DEFAULT_WEEK_TEMPLATE,
   PUBLIC_AGENDA_DAYS,
@@ -63,7 +63,7 @@ export function zoneDemandTips(requests: { preferredDate: Date | null; preferred
 
 /** Comuni entro il raggio di lavoro, per contare le richieste in zona. */
 export function comuniWithinRadius(latitude: number, longitude: number, radiusKm: number): string[] {
-  return ITALIAN_COMUNI.filter((c) => calculateDistanceKm(latitude, longitude, c.lat, c.lon) <= radiusKm).map((c) => c.name);
+  return italianComuni().filter((c) => calculateDistanceKm(latitude, longitude, c.lat, c.lon) <= radiusKm).map((c) => c.name);
 }
 
 @Injectable()
