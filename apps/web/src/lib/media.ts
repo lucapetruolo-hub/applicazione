@@ -51,3 +51,15 @@ export function attachmentFileName(url: string): string | null {
   if (!lastSegment) return null;
   return lastSegment.replace(UNIQUE_ID_PREFIX, "") || null;
 }
+
+/**
+ * Anteprima locale di un file appena scelto (prima o al posto dell'upload),
+ * come URL `blob:`. Il blob nuovo ha il tipo del file solo se è un'immagine
+ * o un video: un file di altro tipo (per esempio una pagina HTML rinominata
+ * in .jpg) non diventa mai un indirizzo che il browser apre come pagina.
+ * Per lo stesso motivo CodeQL non lo segnala più come XSS (docs/CHANGELOG.md §320).
+ */
+export function localPreviewUrl(file: File): string {
+  const type = file.type.startsWith("image/") || file.type.startsWith("video/") ? file.type : "application/octet-stream";
+  return URL.createObjectURL(new Blob([file], { type }));
+}

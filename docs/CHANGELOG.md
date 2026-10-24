@@ -20305,3 +20305,13 @@ Non fatto qui: zod 4 (aggiornamento grande, rischio basso: il corpo JSON ha già
 - "Mostra N richieste" (richieste del professionista e del cliente): testo scritto in un'unica stringa. `Button` di Tamagui metteva ogni pezzo in un testo separato con spazio fra l'uno e l'altro, così lo 0 si attaccava a "Mostra".
 
 **Verifica**: typecheck di `ui` e `web`, build del web; foto a 390 e 1440 px (home, profilo, richiesta di preventivo, richieste e finestra Filtri) in `/mnt/project-files/anteprime/identita-codice/tondeggiante/`.
+
+## 320. CodeQL rosso sul ramo principale dopo ogni unione
+
+**Richiesta dell'utente (24/10/2026)**: "github mi da tanti run failed, controlla".
+
+**Causa**: sulle PR CodeQL guarda solo le righe cambiate, sul ramo principale tutto il codice. Così cinque avvisi già presenti prima del §312 non bloccavano nessuna PR ma rendevano rosso "Controlli di sicurezza" a ogni unione (un'email per volta):
+- `js/xss-through-dom` (3): il file scelto nell'`<input>` (foto profilo in `/account` e `/dashboard/profilo`, foto della richiesta di preventivo senza accesso) diventava un URL `blob:` messo in un `src`. Nuova `localPreviewUrl` in `apps/web/src/lib/media.ts`: il blob prende il tipo del file solo se è immagine o video, altrimenti `application/octet-stream`, così un file HTML rinominato non diventa mai una pagina apribile. Corretto davvero, non ignorato (regola §312).
+- `js/http-to-file-access` (2) in `e2e/fixtures/global-setup.ts`: la prova dell'agenda salva su file il token preso dall'API di prova. È codice di prova che non arriva agli utenti: `e2e` escluso da CodeQL come già `apps/*/scripts` (Semgrep guarda solo `apps` e `packages`).
+
+**Verifica**: CodeQL 2.27.3 in locale con la stessa configurazione della CI: 5 avvisi prima, 0 dopo. Typecheck e lint del web.
