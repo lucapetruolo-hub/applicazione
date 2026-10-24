@@ -20225,3 +20225,15 @@ La mappa con una chiave vera si vede solo sul sito pubblicato: dopo l'unione va 
 **Disconnessi per un 429** (visto nelle prove nel browser in CI): se `/auth/me` rispondeva 429 (troppe richieste) o con un errore del server, il sito cancellava l'accesso e mostrava "Accedi". Ora disconnettono solo 401 e 403; su 429 ed errori del server si riprova due volte (dopo 1,5 e 3 secondi) e poi si resta con la copia salvata. Il limite generale di 60 chiamate al minuto si può alzare con `RATE_LIMIT_PER_MINUTE`, usato solo dalle prove nel browser (tutte dallo stesso indirizzo); in produzione resta 60.
 
 **Verifica**: nuove prove `e2e/tests/agenda-primo-uso.spec.ts` (T1, T2-T3, T4, T9-T11); 60 prove nel browser in locale; tempi stimati dei compiti C1 7,4 s, C2 9,7 s, C3 8,1 s, C4 10,8 s, C5 20,0 s (C5 come prima: il tasto con la scritta non cambia i tocchi, solo il dubbio su cosa faccia).
+
+## 312. Pagine per Google nel sistema unico
+
+**Richiesta dell'utente**: "si" alla proposta fatta dopo l'unione della PR #102: allineare al sistema unico (§305) le pagine nuove per Google del §296 ("Quanto costa", riquadri delle pagine città, "Lavora con noi", percorso sopra il profilo, pagina non trovata).
+
+**Decisione**: solo CSS in `globals.css`, nessun cambio ai testi.
+- Testi da 14-15 px a 16 px (domande frequenti, numeri delle città, tabella prezzi, link ai servizi, "Lavora con noi"). Il percorso "Home › Idraulico › Latina" resta piccolo come etichetta (13 px).
+- Arrotondamenti da 16 a 12 px (e 4 a 6), come il resto del sito.
+- Pulsante di "Quanto costa" e "Lavora con noi": verde (`#189a63`, più scuro al passaggio) con la pressione dei pulsanti del sito, al posto del quasi nero, come da decisione dell'utente del 24/10 (niente pulsanti color inchiostro).
+- Prezzi della tabella in IBM Plex Mono, come la riga del preventivo.
+
+**Verifica**: build del web; foto a 390 e 1440 px di "Lavora con noi" e dei riquadri della pagina Idraulico a Latina in `/mnt/project-files/anteprime/identita-codice/pagine-seo/` ("Quanto costa" dà 404 in prova perché mancano ancora abbastanza prezzi veri, regola del §296).
