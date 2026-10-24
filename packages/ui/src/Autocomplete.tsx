@@ -58,12 +58,12 @@ export function Autocomplete<T>({
     // per non rompere il typecheck RN né il bundle nativo.
     if (typeof globalThis !== "object" || !("document" in globalThis)) return;
     type DocLike = {
-      addEventListener: (type: string, listener: (e: Event) => void) => void;
-      removeEventListener: (type: string, listener: (e: Event) => void) => void;
+      addEventListener: (type: string, listener: (e: { target: unknown }) => void) => void;
+      removeEventListener: (type: string, listener: (e: { target: unknown }) => void) => void;
     };
     const doc = (globalThis as { document?: DocLike }).document;
     if (!doc) return;
-    function handlePointerDown(e: Event) {
+    function handlePointerDown(e: { target: unknown }) {
       const node = containerRef.current as unknown as { contains?: (t: unknown) => boolean } | null;
       if (node && typeof node.contains === "function" && !node.contains(e.target)) {
         setIsFocused(false);

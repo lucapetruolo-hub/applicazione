@@ -1,4 +1,4 @@
-// Config ESLint unica del monorepo (formato "flat" di ESLint 9), al posto di
+// Config ESLint unica del monorepo (formato "flat", ESLint 10), al posto di
 // `packages/config/eslint.base.js` che non era mai stato collegato: stesse
 // regole di base (eslint:recommended + typescript-eslint, niente `any`
 // esplicito), più gli hooks di React e le regole di Next.js per `apps/web`.
@@ -28,6 +28,16 @@ export default tseslint.config(
     settings: { next: { rootDir: "apps/web" } },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      // Le regole nuove della versione 7 (quelle del React Compiler: setState
+      // dentro un effetto, funzioni impure durante il render...) per ora
+      // solo avvisi, da sistemare un po' alla volta come quelle di
+      // accessibilità qui sotto (docs/CHANGELOG.md §301). Restano errori le
+      // regole degli hooks di sempre.
+      ...Object.fromEntries(
+        Object.keys(reactHooks.configs.recommended.rules)
+          .filter((rule) => rule !== "react-hooks/rules-of-hooks")
+          .map((rule) => [rule, "warn"]),
+      ),
       ...nextPlugin.configs.recommended.rules,
       ...nextPlugin.configs["core-web-vitals"].rules,
       // Accessibilità (campi senza etichetta, immagini senza testo

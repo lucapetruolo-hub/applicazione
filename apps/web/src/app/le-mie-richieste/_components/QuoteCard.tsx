@@ -176,7 +176,7 @@ export function QuoteCard({
     let date: string;
     let startTime: string;
     let endTime: string;
-    let isManual = false;
+    let isManual: boolean;
     if (selectedSlotKey === MANUAL_OPTION_VALUE) {
       if (!manualDate) return setError("Indica una data.");
       if (!manualStartTime || !manualEndTime) return setError("Indica sia l'ora di inizio sia l'ora di fine.");

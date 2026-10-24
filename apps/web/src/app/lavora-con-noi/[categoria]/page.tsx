@@ -22,8 +22,8 @@ function findCategory(slug: string) {
   return isProfessionalCategorySlug(slug) ? PROFESSIONAL_CATEGORIES.find((c) => c.slug === slug) : undefined;
 }
 
-export function generateMetadata({ params }: { params: PageParams }): Metadata {
-  const category = findCategory(params.categoria);
+export async function generateMetadata(props: { params: Promise<PageParams> }): Promise<Metadata> {
+  const category = findCategory((await props.params).categoria);
   if (!category) return {};
   const noun = CATEGORY_SEO_NOUN[category.slug];
   return {
@@ -39,8 +39,8 @@ const STEPS = [
   { title: "Manda il preventivo", text: "Voce per voce, dal telefono. Se il cliente accetta, il lavoro va in agenda." },
 ];
 
-export default function WorkWithUsPage({ params }: { params: PageParams }) {
-  const category = findCategory(params.categoria);
+export default async function WorkWithUsPage(props: { params: Promise<PageParams> }) {
+  const category = findCategory((await props.params).categoria);
   if (!category) notFound();
   const noun = CATEGORY_SEO_NOUN[category.slug];
   const breadcrumbs = breadcrumbJsonLd([

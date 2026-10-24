@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { decryptFiscal, encryptFiscal, reencryptLegacyFiscal } from "./fiscal-crypto";
+import { toRewrite } from "../professional-fiscal/fiscal-encryption-migration.service";
+import { decryptFiscal, encryptFiscal, isEncryptedFiscal, readFiscal, reencryptLegacyFiscal } from "./fiscal-crypto";
 
 const IBAN = "IT60X0542811101000000123456";
 const original = { fiscal: process.env.FISCAL_DATA_KEY, jwt: process.env.JWT_SECRET };
@@ -32,8 +33,7 @@ describe("passaggio a FISCAL_DATA_KEY", () => {
 });
 
 describe("codice fiscale cifrato", () => {
-  it("legge sia il dato cifrato sia quello salvato in chiaro prima", async () => {
-    const { isEncryptedFiscal, readFiscal } = await import("./fiscal-crypto");
+  it("legge sia il dato cifrato sia quello salvato in chiaro prima", () => {
     const encrypted = encryptFiscal("RSSMRA80A01H501U");
     expect(isEncryptedFiscal(encrypted)).toBe(true);
     expect(isEncryptedFiscal("RSSMRA80A01H501U")).toBe(false);
@@ -43,8 +43,7 @@ describe("codice fiscale cifrato", () => {
     expect(readFiscal(null)).toBeNull();
   });
 
-  it("all'avvio riscrive solo i dati in chiaro o con la chiave vecchia", async () => {
-    const { toRewrite } = await import("../professional-fiscal/fiscal-encryption-migration.service");
+  it("all'avvio riscrive solo i dati in chiaro o con la chiave vecchia", () => {
     process.env.JWT_SECRET = "segreto-sessioni";
     delete process.env.FISCAL_DATA_KEY;
     const legacy = encryptFiscal("RSSMRA80A01H501U");

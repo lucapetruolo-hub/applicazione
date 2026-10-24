@@ -41,7 +41,8 @@ function breadcrumbItems(professional: ProfessionalDetail): BreadcrumbItem[] {
 // (nessun generateStaticParams: gli id sono dinamici e crescono nel tempo).
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({ params }: { params: PageParams }): Promise<Metadata> {
+export async function generateMetadata(props: { params: Promise<PageParams> }): Promise<Metadata> {
+  const params = await props.params;
   try {
     const professional = await apiClient.getProfessional(professionalIdFromSlug(params.id));
     return {
@@ -60,7 +61,8 @@ export async function generateMetadata({ params }: { params: PageParams }): Prom
   }
 }
 
-export default async function ProfessionalDetailPage({ params, searchParams }: { params: PageParams; searchParams: PageSearchParams }) {
+export default async function ProfessionalDetailPage(props: { params: Promise<PageParams>; searchParams: Promise<PageSearchParams> }) {
+  const [params, searchParams] = await Promise.all([props.params, props.searchParams]);
   let professional: ProfessionalDetail;
   try {
     professional = await apiClient.getProfessional(professionalIdFromSlug(params.id));
