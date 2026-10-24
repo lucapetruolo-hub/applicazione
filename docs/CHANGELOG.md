@@ -20462,3 +20462,7 @@ Nuova migrazione `20261024140000_settimana_tipo_continua` (due colonne, nessun d
 - `pnpm audit`: da 74 a 2 avvisi (i due sopra). osv-scanner con le eccezioni: nessun problema.
 - Typecheck, lint, build, 597 test dell'API, avvio dell'API (grafo dei moduli), `prisma validate`, `npx expo export --platform android`. Accesso con Google: un token falso viene rifiutato come prima.
 - `confronto-pagine` prima/dopo con API e database di prova, cliente, professionista e admin: 132 foto, 124 identiche, nelle altre 5-59 pixel di antialiasing (nessuna differenza visibile), stessi stati HTTP.
+
+**Migliorie approvate da Luca** ("effettua le 2 migliorie")
+- osv-scanner ora blocca la PR (`.github/workflows/security.yml`, checklist punto 40): dopo aver caricato il rapporto, un passo rifà il controllo e fallisce se trova una vulnerabilità fuori dalle eccezioni di `osv-scanner.toml`. Vale per tutte le librerie, non solo per quelle del sito e dell'API: osv-scanner non sa distinguere quelle usate solo per costruire o provare (anche `pnpm audit --prod` conta lo strumento di Expo, dipendenza dell'app), quindi quelle senza versione corretta vanno tra le eccezioni con il motivo. Provato: con il `pnpm-lock.yaml` di prima di questa PR il controllo fallisce (vitest, tinypool, ecc.), con quello nuovo passa.
+- I due avvisi rimasti (zod 3 e node-forge in `@expo/cli`) vanno chiusi a mano nella scheda Security → Dependabot di GitHub con "Vulnerable code is not actually used" / "Risk is tolerable": lo fa Luca, i thread non hanno accesso agli avvisi.
