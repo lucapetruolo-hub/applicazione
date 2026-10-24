@@ -2,6 +2,7 @@
 // `packages/config/eslint.base.js` che non era mai stato collegato: stesse
 // regole di base (eslint:recommended + typescript-eslint, niente `any`
 // esplicito), più gli hooks di React e le regole di Next.js per `apps/web`.
+import { join } from "node:path";
 import js from "@eslint/js";
 import nextPlugin from "@next/eslint-plugin-next";
 import reactHooks from "eslint-plugin-react-hooks";
@@ -25,7 +26,9 @@ export default tseslint.config(
   {
     files: ["apps/web/**/*.{ts,tsx}"],
     plugins: { "react-hooks": reactHooks, "@next/next": nextPlugin, "jsx-a11y": jsxA11y },
-    settings: { next: { rootDir: "apps/web" } },
+    // Percorso assoluto: il lint parte da apps/web (turbo), non dalla radice,
+    // e con "apps/web" relativo la regola dei link non trovava le pagine.
+    settings: { next: { rootDir: join(import.meta.dirname, "apps/web") } },
     rules: {
       // Anche le regole del React Compiler della versione 7 (setState dentro
       // un effetto, valori impuri durante il render...) sono errori, come
