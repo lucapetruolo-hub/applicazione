@@ -47,7 +47,7 @@ export function HomeHero() {
         alignItems="center"
         position="relative"
       >
-        {/* Luci sfumate (scelta dell'utente, docs/CHANGELOG.md §304): in un
+        {/* Luci sfumate (scelta dell'utente, docs/CHANGELOG.md §305): in un
             livello a parte con "overflow:hidden" invece che sull'intero
             pannello, che tagliava il menu a discesa di SearchBar (CLAUDE.md
             §10). */}

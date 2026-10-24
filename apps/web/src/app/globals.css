@@ -27,7 +27,7 @@ a {
 
 /* I pulsanti e i campi non ereditano il carattere della pagina: senza questa
    regola "Richiedi preventivo", "Cerca" e "Vedi tutte" uscivano in Arial
-   (docs/CHANGELOG.md §304). */
+   (docs/CHANGELOG.md §305). */
 button,
 input,
 select,
@@ -35,7 +35,7 @@ textarea {
   font-family: inherit;
 }
 
-/* Testo dei pulsanti a 16 px come il testo base (sistema unico, §304): la
+/* Testo dei pulsanti a 16 px come il testo base (sistema unico, §305): la
    misura "$3" di Tamagui li scriveva a 13 px. I pulsanti piccoli ($1-$2)
    restano compatti. */
 span.is_Button._fos-f-size-3,
@@ -616,7 +616,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   background: #fdefe1;
 }
 /* Voce attiva grigio chiaro, non più quasi nera (regola accettata
-   dall'utente il 22/10, docs/CHANGELOG.md §305): il nero pieno pesava più
+   dall'utente il 22/10, docs/CHANGELOG.md §306): il nero pieno pesava più
    del contenuto della pagina. */
 .acct-nav-link.is-active,
 .acct-tab.is-active {
@@ -2625,7 +2625,7 @@ a.admin-kpi:hover {
   border: 1px solid #f0dcc0;
 }
 /* "La riga del preventivo", il segno grafico del sito (docs/CHANGELOG.md
-   §304): foglio color carta con righe leggere, voce a sinistra, puntini di
+   §305): foglio color carta con righe leggere, voce a sinistra, puntini di
    guida, cifre in carattere a larghezza fissa in colonna, riga piena sopra
    il totale. */
 .qx-quote {
@@ -3370,7 +3370,7 @@ a.admin-kpi:hover {
   }
 }
 
-/* Luci sfumate (components/GlowLights.tsx, docs/CHANGELOG.md §304-§305): tre
+/* Luci sfumate (components/GlowLights.tsx, docs/CHANGELOG.md §305-§306): tre
    luci che si muovono piano e una grana leggera. Le luci stanno sui bordi,
    lontano dal testo, così il contrasto resta sopra 4,5:1. Il colore delle
    luci cambia col tono del fondo. */

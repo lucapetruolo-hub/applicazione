@@ -4,7 +4,7 @@ import { H2, H3, Paragraph, XStack, YStack } from "tamagui";
 export type SectionTone = "light" | "dark" | "blueprint";
 
 // Niente etichetta sopra il titolo né parole colorate dentro il titolo: sono
-// tra i segni tipici dei siti fatti con l'IA (docs/CHANGELOG.md §303).
+// tra i segni tipici dei siti fatti con l'IA (docs/CHANGELOG.md §304).
 export type SectionProps = {
   title?: string;
   lead?: string;
@@ -89,7 +89,7 @@ function SectionTitle({
       color={isDark ? "white" : "$grafite"}
       {...(nested
         ? { fontSize: "$7", lineHeight: "$7" }
-        : // Titolo di sezione del sistema unico (docs/CHANGELOG.md §304): 26 px
+        : // Titolo di sezione del sistema unico (docs/CHANGELOG.md §305): 26 px
           // sul telefono, 32 dal tablet in su.
           { fontSize: 26, lineHeight: 31, $gtSm: { fontSize: 32, lineHeight: 38 } })}
     >

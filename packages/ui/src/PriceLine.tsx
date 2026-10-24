@@ -3,7 +3,7 @@ import { brand } from "./tokens";
 
 /**
  * "La riga del preventivo", il segno grafico del sito (docs/CHANGELOG.md
- * §304-§305): voce a sinistra, puntini di guida, prezzo a destra con le cifre
+ * §305-§306): voce a sinistra, puntini di guida, prezzo a destra con le cifre
  * a larghezza fissa, in colonna. Un prezzo senza cifre ("Su richiesta") resta
  * nel carattere del testo: in quello a larghezza fissa sembrava scritto a
  * macchina.

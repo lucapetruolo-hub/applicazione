@@ -149,7 +149,7 @@ function ProHero({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
         }}
       >
         {/* Sfumatura che la pagina aveva già (scelta dell'utente), ora con le
-            luci che si muovono piano come nella home (docs/CHANGELOG.md §305). */}
+            luci che si muovono piano come nella home (docs/CHANGELOG.md §306). */}
         <GlowLights tone="chiaro" />
         <YStack position="relative" width="100%" maxWidth={760} alignItems="center" gap="$4" paddingHorizontal="$4" paddingVertical="$10" $gtMd={{ paddingVertical: 120 }}>
           <XStack borderWidth={1} borderColor={LINE} borderRadius={999} backgroundColor={brand.calce} overflow="hidden" alignItems="center">

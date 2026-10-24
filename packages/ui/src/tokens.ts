@@ -53,7 +53,7 @@ export const brand = {
 export const shadowVicinato = "0 1px 4px rgba(43,32,19,0.015)";
 
 // Tre soli arrotondamenti in tutto il sito (sistema unico, docs/CHANGELOG.md
-// §304): 6 px per campi, etichette e tessere piccole, 12 px per riquadri e
+// §305): 6 px per campi, etichette e tessere piccole, 12 px per riquadri e
 // pannelli, tondo pieno per pulsanti (scelta dell'utente: "stile Apple") e
 // foto profilo. Prima ce n'erano 22 diversi. `radiusDocLg` resta come nome
 // per i punti che lo importano, con lo stesso valore.
