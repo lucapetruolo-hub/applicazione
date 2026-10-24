@@ -236,7 +236,7 @@ export class CloudinaryService {
     }
     // Tutto ciò che segue il segmento di versione ("v1712345678"). Diviso per
     // segmenti invece che con un'espressione regolare: su un indirizzo lungo
-    // fatto apposta quella poteva impiegare molto tempo (CodeQL, §304).
+    // fatto apposta quella poteva impiegare molto tempo (CodeQL, §305).
     const segments = (rawUrl.split("?")[0] ?? "").split("/");
     const versionIndex = segments.findIndex((segment) => /^v\d+$/.test(segment));
     const pathWithExtension = versionIndex === -1 ? "" : segments.slice(versionIndex + 1).join("/");

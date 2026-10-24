@@ -20097,7 +20097,17 @@ La mappa con una chiave vera si vede solo sul sito pubblicato: dopo l'unione va 
 
 **Verifica**: file controllato come YAML valido; Dependabot lo legge dal ramo principale, quindi parte dopo l'unione.
 
-## 303. Test dei permessi e strumenti di controllo nella CI
+## 303. Falegname tra i lavori del lancio
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Visibilità su Google (SEO)"): letti i volumi di Keyword Planner per la provincia di Latina, "falegname latina" e "falegname a latina" hanno 100-1.000 ricerche al mese, come l'idraulico, in crescita e con concorrenza bassa; elettricista e pulizie stanno tra 10 e 100. Proposto di aggiungere falegname ai lavori del lancio, Luca: "si effettua miglioria".
+
+**Decisione presa**: i lavori su cui concentrare il lancio a Latina passano da 3 a 4: idraulico, elettricista, pulizie e falegname (CLAUDE.md §7 punto 1). Vale per il reclutamento dei primi professionisti e per le pagine da far indicizzare per prime (`/cerca/falegname/latina` in Search Console il giorno del lancio, punto 5 del piano in `/mnt/project-files/analisi/seo-strategia-latina.md`).
+
+**Motivo**: le pagine lavoro + città entrano in Google solo da 3 professionisti veri (§296): reclutare falegnami fin dall'inizio rende indicizzabile una delle due ricerche più frequenti della provincia.
+
+**Verifica**: nessun codice cambiato. La categoria esiste già (`PROFESSIONAL_CATEGORIES`) ed è nel menu "Casa e impianti".
+
+## 304. Test dei permessi e strumenti di controllo nella CI
 
 **Richiesta dell'utente**: dal controllo approfondito (§293), un test nella CI che chiama ogni rotta con ogni ruolo e con gli id di un altro utente, più Semgrep, CodeQL, gitleaks e osv-scanner. Deciso di farli subito invece che prima del lancio. "La prova che il lavoro è giusto non è la tua parola: sono i test nella CI e i rapporti degli strumenti."
 
@@ -20113,9 +20123,9 @@ Risultato: 218 rotte, 798 controlli, nessuna falla (dopo l'unione della PR #101:
 
 **Prima lettura dei rapporti**: Semgrep 5 segnalazioni (2 reali ma basse: la lunghezza del sigillo AES-GCM non è controllata nella decifratura dei dati fiscali e dei link di invito; 3 falsi allarmi). osv-scanner 162 avvisi su 45 librerie, quasi tutte usate solo per costruire o provare il codice; nell'API e nel sito pubblicato contano Next.js 14 (passaggio a 15 già in un thread a parte), body-parser, qs (usato solo dal lettore dei moduli `urlencoded`, che nessun client usa), `@nestjs/core` e zod (corretti solo nelle versioni maggiori nuove). Le correzioni sono proposte all'utente in ordine di gravità prima di farle.
 
-## 304. Controllo sicurezza: correzioni dai rapporti degli strumenti
+## 305. Controllo sicurezza: correzioni dai rapporti degli strumenti
 
-**Richiesta dell'utente**: "effettua le correzioni che ritieni nell'ordine e nelle modalità che ritieni", sulle proposte nate dai rapporti del §303.
+**Richiesta dell'utente**: "effettua le correzioni che ritieni nell'ordine e nelle modalità che ritieni", sulle proposte nate dai rapporti del §304.
 
 1. **Corpi compressi rifiutati** (`src/app-setup.ts`, `inflate: false` sul lettore JSON e sui due webhook): body-parser ha una falla nota che blocca l'API con un corpo compresso fatto apposta. Nessun client manda corpi compressi (sito, app, Stripe, Didit), quindi invece di aggiornare la libreria si spegne la decompressione: la richiesta compressa riceve 415. Funziona uguale su Express 4 e su Express 5 (PR #103).
 2. **Tolto il lettore dei moduli `urlencoded`**: l'API riceve solo JSON e nessun client manda moduli; quel lettore usava `qs`, con due falle note. Un modulo ora arriva vuoto e la validazione risponde 400.
@@ -20124,7 +20134,7 @@ Risultato: 218 rotte, 798 controlli, nessuna falla (dopo l'unione della PR #101:
 
 Non fatto qui: zod 4 (aggiornamento grande, rischio basso: il corpo JSON ha già un limite di dimensione); Next.js 15 e NestJS 11 sono nella PR #103.
 
-**Verifica**: 543 test dell'API (con il sigillo accorciato rifiutato), typecheck e lint. API avviata con Postgres locale: login con corpo compresso 415, con modulo 400, con JSON normale la risposta di sempre. Test dei permessi (§303) di nuovo senza problemi. Semgrep: 0 segnalazioni.
+**Verifica**: 543 test dell'API (con il sigillo accorciato rifiutato), typecheck e lint. API avviata con Postgres locale: login con corpo compresso 415, con modulo 400, con JSON normale la risposta di sempre. Test dei permessi (§304) di nuovo senza problemi. Semgrep: 0 segnalazioni.
 
 **Migliorie** (richiesta dell'utente: "effettua tutte le migliorie da 1 a 4 nella modalità che ritieni"):
 1. **Allegati della chat solo per chi partecipa** (`TimelineService.canDownloadAttachment`): `GET /guided-requests/timeline-photos/download` scarica l'allegato solo se compare in un messaggio di una chat di cui chi chiama è il cliente o il professionista, oppure se è un admin (chat in sola lettura per la moderazione). Altrimenti risponde 404. Prima bastava aver fatto l'accesso e conoscere l'indirizzo, e i documenti sono proprio quelli che la CDN di Cloudinary non consegna da sola. Nel test dei permessi la rotta è ora "di qualcuno": gli estranei ricevono 404, e togliendo apposta il controllo il test fallisce.

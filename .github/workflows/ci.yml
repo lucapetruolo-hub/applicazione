@@ -76,7 +76,7 @@ jobs:
           pnpm --filter @professionisti/web build
           node apps/web/scripts/seo-check/run.mjs public
 
-  # Test dei permessi (docs/CHANGELOG.md §303): ogni rotta dell'API chiamata
+  # Test dei permessi (docs/CHANGELOG.md §304): ogni rotta dell'API chiamata
   # senza accesso, con ogni ruolo (cliente, professionista, admin di ogni
   # tipo) e con gli id di un altro utente, su un Postgres vuoto creato qui.
   # Una rotta nuova non classificata in apps/api/scripts/access-policy.mjs

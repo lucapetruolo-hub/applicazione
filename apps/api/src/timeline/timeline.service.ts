@@ -77,7 +77,7 @@ export class TimelineService {
   /**
    * Un allegato della chat si scarica solo da chi partecipa a quella chat
    * (cliente o professionista) o da un admin, che la legge per la
-   * moderazione (docs/CHANGELOG.md §304). I documenti "raw" non sono
+   * moderazione (docs/CHANGELOG.md §305). I documenti "raw" non sono
    * consegnati dalla CDN pubblica di Cloudinary: senza questo controllo
    * bastava conoscerne l'indirizzo.
    */

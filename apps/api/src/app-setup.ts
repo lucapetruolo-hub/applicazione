@@ -3,7 +3,7 @@ import type { NestExpressApplication } from "@nestjs/platform-express";
 
 /**
  * Impostazioni dell'app comuni all'avvio vero (main.ts) e al test dei
- * permessi nella CI (scripts/access-matrix.mjs, docs/CHANGELOG.md §303):
+ * permessi nella CI (scripts/access-matrix.mjs, docs/CHANGELOG.md §304):
  * il test deve vedere l'API esattamente come la vede Render.
  */
 export function configureApp(app: NestExpressApplication): void {
@@ -26,7 +26,7 @@ export function configureApp(app: NestExpressApplication): void {
     res.setHeader("Referrer-Policy", "no-referrer");
     next();
   });
-  // `inflate: false` (docs/CHANGELOG.md §304): nessun client manda corpi
+  // `inflate: false` (docs/CHANGELOG.md §305): nessun client manda corpi
   // compressi, e decomprimerli era un modo noto di bloccare body-parser con
   // una richiesta fatta apposta (risposta 415). Niente lettore dei moduli
   // `urlencoded`: l'API riceve solo JSON, e quel lettore usava `qs`, con

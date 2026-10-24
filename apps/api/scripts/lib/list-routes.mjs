@@ -1,4 +1,4 @@
-// Rotte dell'API lette dai metadati di Nest (docs/CHANGELOG.md §293, §303):
+// Rotte dell'API lette dai metadati di Nest (docs/CHANGELOG.md §293, §304):
 // usate dall'elenco delle rotte e dal test dei permessi nella CI.
 import "reflect-metadata";
 import { ModulesContainer } from "@nestjs/core";

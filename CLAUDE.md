@@ -331,9 +331,10 @@ accetta il preventivo, mai i "completati", che segna il professionista).
 
 ## 7. Strategia go-to-market
 
-1. **Concentrare la liquidità, non disperderla**: lanciare in 1 città con 3
-   categoria ad alta frequenza (idraulico, elettricista, pulizie) prima di
-   espandere. Un marketplace con ricerca vuota non converte, a prescindere
+1. **Concentrare la liquidità, non disperderla**: lanciare in 1 città con 4
+   categorie ad alta frequenza (idraulico, elettricista, pulizie, falegname;
+   falegname aggiunto il 24/10/2026 sui volumi di Keyword Planner,
+   docs/CHANGELOG.md §303) prima di espandere. Un marketplace con ricerca vuota non converte, a prescindere
    da quante città copre sulla carta.
 2. **Bootstrap manuale del lato offerta**: i primi 50-100 professionisti per
    città vanno reclutati uno per uno (telefonate, contatti diretti), con
