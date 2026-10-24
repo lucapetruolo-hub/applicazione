@@ -6,6 +6,7 @@ import { useState, type ReactNode } from "react";
 import { Check } from "lucide-react";
 import { PROFESSIONAL_CATEGORIES, SUBSCRIPTION_FEATURES, SUBSCRIPTION_TIERS, type SubscriptionTier } from "@professionisti/shared";
 import { Button, ButtonArrow, Icon, Text, XStack, YStack, brand, radiusDoc, type IconName } from "@professionisti/ui";
+import { MagneticButton } from "@/components/MagneticButton";
 import { GlowLights } from "@/components/GlowLights";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -189,7 +190,9 @@ function ProHero({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
               <Button variant="secondary">Come funziona</Button>
             </Link>
             <Link href={ctaHref} style={{ textDecoration: "none" }}>
-              <Button variant="primary">{ctaLabel}</Button>
+              <MagneticButton>
+                <Button variant="primary">{ctaLabel}</Button>
+              </MagneticButton>
             </Link>
           </XStack>
 
@@ -497,6 +500,7 @@ function ProPricing({ isProfessional }: { isProfessional: boolean }) {
       <YStack borderTopWidth={1} borderColor={LINE} padding="$5" gap="$2" alignItems="center" $gtMd={{ padding: "$6" }}>
         {continueHref ? (
           <Link href={continueHref} style={{ textDecoration: "none" }}>
+            <MagneticButton>
             <Button variant="acquisto" size="$5">
               <XStack alignItems="center" gap="$2">
                 <Text color="white" fontFamily="$body" fontWeight="600" fontSize="$5">
@@ -505,6 +509,7 @@ function ProPricing({ isProfessional }: { isProfessional: boolean }) {
                 <ButtonArrow tone="red" />
               </XStack>
             </Button>
+            </MagneticButton>
           </Link>
         ) : (
           <Button variant="primary" size="$5" disabled opacity={0.5}>

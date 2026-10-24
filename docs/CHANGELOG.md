@@ -20419,6 +20419,16 @@ Nuova migrazione `20261024140000_settimana_tipo_continua` (due colonne, nessun d
 
 **Verifica**: prove `address-suggestions.test.ts`, `daily-budget.test.ts`, `ops-alert.test.ts` ed `e2e/tests/richiesta-preventivo.spec.ts` (8 prove, telefono e computer); sul sito compilato con l'API simulata, da telefono (390 px) e computer (1280 px): tessere vuote → ordine finale, senza passare dall'ordine del catalogo; con i suggerimenti spenti i campi separati ci sono già al passo "Dove"; con Google che cade dopo "Via Rom" il testo resta in "Via o piazza" con il cursore.
 
+## 325. "Richiedi un preventivo a [nome]" vivo come "Cerca", barra fissa su telefono
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Pulsante \"Richiedi preventivo\" nel profilo"): rendere il pulsante "Richiedi un preventivo a [nome]" del profilo pubblico dinamico come "Cerca", chiedendo se farlo nero per farlo riconoscere subito.
+
+**Decisione presa**: nuovo `ProfileQuoteCta` (`apps/web/src/components/ProfileQuoteCta.tsx`): effetto magnete e luce che segue il mouse (`MagneticButton`, solo con mouse vero e senza "riduci movimento"), pressione (già su tutti i pulsanti, `button.is_Button:active`) e freccia delle azioni principali (`ButtonArrow`), testo a 16 px come gli altri pulsanti. Su telefono occupa tutta la larghezza (con un nome lungo va su due righe invece di essere tagliato) e, quando non è sullo schermo, compare una barra fissa in basso con "Richiedi un preventivo" (`.profile-cta-bar` in `globals.css`, `IntersectionObserver`; spazio in fondo alla pagina perché non copra il piè di pagina). Sul telefono il pulsante sta oltre la prima schermata, sotto la scheda: con la barra l'azione principale è sempre a portata di pollice. Nessuna barra nell'anteprima del proprio profilo. Colore: verde, per coerenza con la decisione del §304-§308 (pulsanti verdi, niente quasi nero); anteprime verde e nero in `anteprime/preventivo-profilo/`.
+
+Dopo la scelta del verde, miglioria approvata da Luca: stesso effetto magnete anche su "Invia richiesta" del modulo di preventivo, "Registrati" e, in `/per-professionisti`, "Iscriviti gratis" e "Iscriviti con [livello]" (colori invariati). `MagneticButton` accetta uno `style` per il contenitore (es. `flexGrow` accanto a "Indietro").
+
+**Verifica**: typecheck; foto da computer (mouse sopra il pulsante) e da telefono (barra in cima alla pagina, pulsante nella pagina) sul profilo di prova; in `/per-professionisti` il pulsante segue il mouse.
+
 ## 326. zod 4
 
 **Richiesta esplicita dell'utente** (24/10/2026, thread "Controllo sicurezza completo", PR #105): osv-scanner segnala GHSA-mrhx-c7xc-m3w5 su zod 3.25.76 (consumo di memoria su collezioni molto grandi), corretta solo nella serie 4. Luca: "effettua tutte le migliorie da 1 a 4 nella modalita che ritieni". Condizione: validazioni e messaggi d'errore mostrati agli utenti uguali a prima.
