@@ -68,7 +68,7 @@ notification("REQUEST_FORWARD_NO_MATCH", "Cliente", "Richieste");
 notification("REQUEST_MATCHED_LATER", "Cliente", "Richieste");
 notification("GUIDED_REQUEST_EXPIRED", "Cliente", "Richieste");
 
-// Messaggi in chat non letti dopo 10 minuti (§328)
+// Messaggi in chat non letti dopo 10 minuti (§330)
 add("chat-messaggio-dal-professionista", "Messaggi", "Cliente", renderEmail(chatMessageEmail("TIMELINE_MESSAGE_FROM_PROFESSIONAL", 1, { ...forClient, when: null }, "https://example.it/le-mie-richieste")));
 add("chat-messaggi-dal-cliente", "Messaggi", "Professionista", renderEmail(chatMessageEmail("TIMELINE_MESSAGE_FROM_CLIENT", 3, { ...forPro, when: null }, "https://example.it/dashboard/richieste")));
 

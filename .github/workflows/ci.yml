@@ -60,7 +60,7 @@ jobs:
         run: node apps/api/scripts/check-boot.mjs
 
       # Lo stream in tempo reale può rispondere 200 senza consegnare nulla
-      # (docs/CHANGELOG.md §327): qui un evento deve arrivare completo, con
+      # (docs/CHANGELOG.md §329): qui un evento deve arrivare completo, con
       # Sentry attivo come in produzione.
       - name: Avvio API (stream in tempo reale)
         run: node apps/api/scripts/check-realtime.mjs

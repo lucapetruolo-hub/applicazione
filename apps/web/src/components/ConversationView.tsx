@@ -305,7 +305,7 @@ export function ConversationView({
       .catch((err) => setLoadError(err instanceof Error ? err.message : "Errore nel caricamento della cronologia."));
   }, [token, guidedRequestId, professionalProfileId]);
 
-  // Chat a schermo: i suoi messaggi nuovi non fanno popup né suono (§328).
+  // Chat a schermo: i suoi messaggi nuovi non fanno popup né suono (§330).
   useEffect(() => markConversationOpen(guidedRequestId, professionalProfileId), [guidedRequestId, professionalProfileId]);
 
   // Push in tempo reale (CTO — SSE): un evento "chat_message" per QUESTA
