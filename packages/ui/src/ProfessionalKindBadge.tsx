@@ -14,7 +14,7 @@ const KIND: Record<ProfessionalKindValue, { label: string; icon: IconName; info:
 };
 
 /**
- * Come si è iscritto il professionista (docs/CHANGELOG.md §329): privato,
+ * Come si è iscritto il professionista (docs/CHANGELOG.md §330): privato,
  * partita IVA o azienda, con il significato nel fumetto. Pillola neutra
  * (bianca con bordo): è un'informazione, non un merito né un pagamento.
  * `md` per la scheda del profilo, accanto ai `Badge`; `sm` per le schede dei risultati.

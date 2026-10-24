@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ProfessionalVerificationService } from "./professional-verification.service";
 
 /**
- * Badge "Verificato" (docs/CHANGELOG.md §253, §329): lo dà solo la verifica di
+ * Badge "Verificato" (docs/CHANGELOG.md §253, §330): lo dà solo la verifica di
  * documento e selfie, l'admin può solo toglierlo; ogni cambio finisce nel
  * registro azioni e arriva al professionista.
  */

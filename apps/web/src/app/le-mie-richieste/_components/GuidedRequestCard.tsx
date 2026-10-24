@@ -25,6 +25,7 @@ import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput"
 import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
+import { ReportIssueModal } from "@/components/ReportIssueModal";
 import { TimelineModal } from "@/components/TimelineModal";
 import { CardActionsMenu, type CardAction } from "@/components/CardActionsMenu";
 import { CardButton } from "@/components/CardButton";
@@ -151,6 +152,11 @@ export function GuidedRequestCard({
   // che lo apre vive nell'intestazione (unificata con quella della
   // richiesta), non dentro BookingSection.
   const [showCancelModal, setShowCancelModal] = useState(false);
+  // "Segnala un problema" vive solo nel menu hamburger (richiesta esplicita
+  // dell'utente, docs/CHANGELOG.md §329): modale e chat della prenotazione
+  // stanno qui, così si aprono anche da una scheda chiusa.
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [showBookingChat, setShowBookingChat] = useState(false);
   // Conferma breve dopo "Copia riepilogo" (nessun toast globale per azioni locali).
   const [notice, setNotice] = useState<string | null>(null);
   function flashNotice(message: string) {
@@ -509,6 +515,10 @@ export function GuidedRequestCard({
       onError: setError,
     }),
   );
+  // Quali segnalazioni si possono inviare lo decide il server (docs/CHANGELOG.md §164).
+  if (booking && booking.issueTypesAllowed.length > 0) {
+    menuActions.push({ icon: "flag", text: "Segnala un problema", tone: "danger", onPress: () => setShowReportModal(true) });
+  }
   if (booking && (booking.status === "PENDING" || booking.status === "CONFIRMED")) {
     menuActions.push({ icon: "x", text: "Annulla prenotazione", tone: "danger", onPress: () => setShowCancelModal(true) });
   } else if (booking?.status === "CANCELED") {
@@ -848,8 +858,45 @@ export function GuidedRequestCard({
         </YStack>
       ) : null}
 
-      {/* Fuori dal blocco espanso: "Annulla prenotazione" si apre anche dal
-          menu hamburger di una scheda chiusa. */}
+      {/* Fuori dal blocco espanso: "Segnala un problema" e "Annulla
+          prenotazione" si aprono anche dal menu hamburger di una scheda chiusa. */}
+      {showReportModal && booking ? (
+        <ReportIssueModal
+          businessName={booking.businessName}
+          phone={booking.professionalPhone}
+          email={booking.professionalEmail}
+          allowedTypes={booking.issueTypesAllowed}
+          assisted={booking.payment?.method !== "DIRECT"}
+          onClose={() => {
+            setShowReportModal(false);
+            onChanged();
+          }}
+          onSubmit={async (input) => {
+            await apiClient.reportJobIssue(token, booking.id, input);
+          }}
+          onOpenChat={
+            booking.guidedRequestId
+              ? () => {
+                  setShowReportModal(false);
+                  setShowBookingChat(true);
+                  onChanged();
+                }
+              : undefined
+          }
+          uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}
+        />
+      ) : null}
+      {showBookingChat && booking?.guidedRequestId ? (
+        <TimelineModal
+          token={token}
+          guidedRequestId={booking.guidedRequestId}
+          professionalProfileId={booking.professionalProfileId}
+          viewerRole="CLIENT"
+          otherPartyName={booking.businessName}
+          otherPartyImageUrl={booking.professionalImageUrl}
+          onClose={() => setShowBookingChat(false)}
+        />
+      ) : null}
       {showCancelModal ? (
         <CancelBookingModal
           title="Annulla prenotazione"

@@ -35,7 +35,7 @@ const CSS = `
 
 /**
  * Badge del professionista con il suo significato in un fumetto
- * (docs/CHANGELOG.md §329): si apre passando col mouse, toccando il badge
+ * (docs/CHANGELOG.md §330): si apre passando col mouse, toccando il badge
  * da telefono o raggiungendolo col tasto Tab; si chiude con Esc, toccando
  * altrove o allontanando il mouse. Il mouse può spostarsi sul fumetto senza
  * chiuderlo (WCAG 1.4.13). Il clic sul badge non apre la scheda che lo
