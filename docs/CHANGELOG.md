@@ -20479,7 +20479,60 @@ Richiesta dell'utente, tra le migliorie proposte dopo la §327 ("eccezione" con 
 
 **Verifica**: nuova prova nel browser (`settimana-tipo.spec.ts`: mercoledì cambiato a mano mostra "eccezione", giovedì della settimana tipo no), 68 prove nel browser in locale, foto da telefono e computer delle tre viste, lint e typecheck puliti.
 
-## 329. Meteo dei prossimi tre giorni e lavori raggruppati per giorno in "Oggi"
+## 329. "Segnala un problema" solo nel menu della scheda
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Spostare Segnala un problema nel menu della scheda"): lato cliente, nella scheda del preventivo accettato, "il pulsante per segnalare un problema dopo che si accetta un preventivo lasciaglielo solo nel menu ad hamburger della relativa scheda". Il cliente deve comunque poter sempre segnalare un problema.
+
+**Decisione presa**
+- Tolto il pulsante rosso "Segnala un problema" dalla fila di azioni dell'intervento (`BookingSection`): restano "Lavoro terminato" (o la recensione) e "Contatta/Cronologia".
+- Nuova voce "Segnala un problema" (icona bandierina, rossa come "Segnala richiesta" del professionista) nel menu hamburger della scheda (`GuidedRequestCard`), subito prima di "Annulla prenotazione". Compare negli stessi casi di prima: quando il server ammette almeno un tipo di segnalazione (`issueTypesAllowed`, §164).
+- La finestra della segnalazione e la chat col professionista che si apre dopo l'invio vivono ora in `GuidedRequestCard`, fuori dal blocco espanso (come "Annulla prenotazione"): la voce funziona anche a scheda chiusa.
+- Nessun cambio al flusso: stessi tipi, stesse prove, stessa fase in chat (§165) e stessa API. Le segnalazioni dei contenuti (DSA, §319) non sono toccate.
+- Pulsante del menu più visibile (richiesta esplicita dell'utente: "rendi più visibile il pulsante ad hamburger"): in `CardActionsMenu` era un'icona grigia senza sfondo da 36px, ora è un tondo da 44px verde chiaro con bordo e icona verdi, pieno verde quando il menu è aperto. Vale per le schede del cliente e del professionista, che condividono il componente.
+
+## 330. Email degli account in minuscolo
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Correggere l'email del cambio password"): il codice per reimpostare la password non arrivava. Prova sul sito vero: l'invio funziona (arriva in pochi secondi a lucapetruolo@gmail.com; il primo invio può tardare circa un minuto mentre Render gratuito si sveglia). Nel controllo è emerso però un bug vero: accesso, registrazione e recupero password confrontavano l'email rispettando le maiuscole. Chi si era iscritto come "Mario@Gmail.com" e scriveva "mario@gmail.com" non veniva trovato e, nel recupero password, non riceveva niente senza nessun avviso (di proposito, per non far scoprire chi è iscritto). Luca: "si" alla correzione.
+
+**Decisione presa**
+- `accountEmailSchema` in `packages/shared/src/schemas.ts`: email senza spazi e in minuscolo, con lo stesso messaggio "Email non valida". Usato da accesso, registrazione, stato dell'email, modifica dell'account, richiesta e codice del recupero password.
+- Accesso con Google: email di Google in minuscolo prima di cercare o creare l'account. Promozione del primo admin e invito creato da un operatore (che lo faceva già) cercano in minuscolo.
+- Migrazione `20261024150000_email_minuscolo`: porta in minuscolo le email già salvate, tranne quando un altro account ha la stessa email scritta in modo diverso (resterebbero due account con la stessa email, vietato dal database). Quegli eventuali doppioni, solo dati di prova, restano com'erano.
+- Waitlist e modulo contatti non cambiano: non sono account.
+
+**Verifica**
+- Nuova prova `apps/api/src/auth/account-email.test.ts`; 600 test, typecheck e lint verdi.
+- Migrazione provata su PostgreSQL 16 con email miste, doppioni e valori vuoti: solo le email senza doppioni passano in minuscolo.
+
+## 331. Notifiche dei messaggi in chat che non arrivavano
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Correggere le notifiche chat al cliente"): "al cliente sembra non arrivino le notifiche quando il professionista gli manda un messaggio in chat", e lo stesso dal cliente al professionista.
+
+**Causa**
+- Lato server nulla di diverso tra i due versi: `TimelineService.addUpdate` crea la notifica `TIMELINE_MESSAGE_FROM_*` e la manda sullo stream in tempo reale. I messaggi in chat non hanno email in nessuno dei due versi (argomento "Messaggi" solo sul sito), quindi il limite del dominio Resend non c'entra.
+- Lo stream in tempo reale (`GET /realtime/stream`) in produzione mandava un solo evento vuoto (`id: 1` senza `data`) e poi più nulla: niente popup, suono, pallino o messaggio nuovo nella chat aperta. Con l'aggiornamento a NestJS 11 (§297) nel monorepo c'erano tre copie di rxjs (7.8.1 portata da `@nestjs/cli`, 7.8.2 in `apps/api` e dentro `@nestjs/core`); NestJS riconosce l'Observable di un `@Sse()` con `instanceof` sulla sua copia e, appena c'è un interceptor globale (quello di `SentryModule`), trattava lo stream come un valore qualunque. Riprodotto in locale: senza `SentryModule` lo stream funziona, con `SentryModule` arriva vuoto.
+- Restava il controllo di riserva ogni 45 secondi, ma su `/chat`, `/le-mie-richieste` e `/dashboard/richieste` la pagina segna tutto come letto ogni 15 secondi: la notifica spariva prima che l'app la vedesse, quindi niente popup né suono.
+
+**Decisione presa**
+- `rxjs: "7.8.2"` negli `overrides` di `pnpm-workspace.yaml`: una sola copia. Prova automatica `apps/api/src/realtime/rxjs-single-copy.test.ts` (API e NestJS devono risolvere lo stesso rxjs).
+- `markNotificationsRead(fetched)` in `AuthContext`: le tre pagine passano le non lette appena lette, e quelle nuove hanno il loro popup e suono prima di essere segnate lette (stessa logica di prima, `announceNotifications`, con la stessa soglia iniziale che evita popup per le notifiche vecchie).
+
+**Verifica**
+- Prima: stream di produzione letto con un account di prova, `\nid: 1\n\n` e nient'altro in 56 secondi. In locale, controller vero con `SentryModule`: evento senza `data`; dopo la correzione l'evento arriva completo, anche con Sentry attivo e la configurazione dell'app.
+
+## 332. Email dei messaggi non letti, niente popup sulla chat aperta, controllo dello stream
+
+**Richiesta esplicita dell'utente** (24/10/2026, stesso thread del §331): "effettua le 3 migliorie" proposte dopo la correzione.
+
+**Decisione presa**
+- **Email dei messaggi in chat non letti.** `ChatMessageEmailsService` (`apps/api/src/notifications/chat-message-emails.service.ts`) ogni minuto cerca le notifiche `TIMELINE_MESSAGE_FROM_*` non lette: quando il primo messaggio non letto di una conversazione ha 10 minuti (`CHAT_EMAIL_AFTER_MINUTES`), parte un'email sola con il numero dei messaggi e il link che apre quella chat. Finché chi riceve non legge, niente seconda email per la stessa conversazione. `Notification.sentAt` (colonna già esistente e mai usata) segna i messaggi già coperti da un'email. Mai il testo del messaggio nell'email (CLAUDE.md §5 punto 9). Oltre le 24 ore non si recupera nulla. Chi ha spento il sito per i messaggi ma tiene l'email la riceve subito. Argomento "Messaggi" delle preferenze ora con il canale email attivo (acceso di default, spegnibile). Testo in `chatMessageEmail` (`notification-emails.ts`), fuori da `BUILDERS` che partono subito; anteprime in `email:preview`.
+- **Niente popup né suono per la chat già aperta.** `apps/web/src/lib/openConversations.ts`: `ConversationView` registra la conversazione a schermo; `AuthContext` non annuncia i messaggi di quella conversazione se la scheda è in primo piano. Campanella e numeretti non cambiano.
+- **Controllo dello stream.** In CI `apps/api/scripts/check-realtime.mjs` avvia il controller vero con `SentryModule` e fallisce se l'evento non arriva completo (provato: con una seconda copia di rxjs fallisce). In produzione `uptime.yml`, ogni ora, entra con un account di prova (secret `UPTIME_EMAIL` e `UPTIME_PASSWORD`, controllo saltato senza) e richiede che il battito dei 25 secondi abbia contenuto; provato contro la produzione di oggi, fallisce come deve.
+
+**Verifica**
+- 4 test nuovi per il raggruppamento delle email (`chat-message-emails.test.ts`), typecheck, lint, test, `check-boot`, `check-realtime`.
+
+## 333. Meteo dei prossimi tre giorni e lavori raggruppati per giorno in "Oggi"
 
 Richiesta dell'utente: "si potrebbe dare l'icona del meteo per 3 giorni e dire del meteo anche in oggi magari con una breve descrizione dei lavori che si dovranno fare nella giornata e in oggi e domani". Mostrate due proposte con anteprime da telefono e computer (A: tre schede grandi con meteo e riepilogo; B: meteo in una riga e lavori raggruppati per giorno); l'utente ha scelto la B.
 
@@ -20489,4 +20542,4 @@ Richiesta dell'utente: "si potrebbe dare l'icona del meteo per 3 giorni e dire d
 
 **Migliorie approvate dall'utente** ("effettua le migliorie"): in "Oggi" compaiono anche i lavori aggiunti a mano in agenda (aprono il lavoro in agenda con `?esterno=<id>`); toccando un giorno del meteo l'agenda si apre su quel giorno (`?giorno=AAAA-MM-GG`, vista Giorno); da computer, se il meteo è di un comune diverso da quello del profilo, si legge accanto al tempo ("Pioggia · Sezze", campo `away`).
 
-**Verifica**: test su tempo del giorno, temperature e comune del primo lavoro (`agenda-tools.test.ts`), 37 test dell'agenda; prova nel browser `e2e/tests/oggi-meteo.spec.ts` (lavoro aggiunto a mano che compare in "Oggi" e si apre in agenda, giorno del meteo che apre l'agenda su quel giorno, con il meteo simulato; telefono e computer, tre fusi orari), approvata dall'utente ("si falla"); anteprime da telefono (390px) e computer (1440px) con e senza lavori.
+**Verifica**: test su tempo del giorno, temperature e comune del primo lavoro (`agenda-tools.test.ts`), 37 test dell'agenda; prova nel browser `e2e/tests/oggi-meteo.spec.ts` (lavoro aggiunto a mano che compare in "Oggi" e si apre in agenda, giorno del meteo che apre l'agenda su quel giorno, con il meteo simulato; telefono e computer, tre fusi orari), approvata dall'utente ("si falla"); il confronto foto di tutte le pagine (`confronto-pagine`) non si è potuto fare senza il database di prova: aggiunto al punto 38 della checklist di lancio ("aggiungi a prima del lancio"); anteprime da telefono (390px) e computer (1440px) con e senza lavori.

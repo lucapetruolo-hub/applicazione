@@ -82,7 +82,7 @@ export const WEATHER_ALERT_LABEL: Record<WeatherAlertKind, string> = {
   fog: "Nebbia",
 };
 
-/** Tempo del giorno per l'icona in "Oggi" (docs/CHANGELOG.md §329): sempre un'icona, anche col sereno. */
+/** Tempo del giorno per l'icona in "Oggi" (docs/CHANGELOG.md §333): sempre un'icona, anche col sereno. */
 export type WeatherCondition = "clear" | "partly" | "cloudy" | WeatherAlertKind;
 
 export const WEATHER_CONDITION_LABEL: Record<WeatherCondition, string> = {

@@ -7,6 +7,7 @@ import type { ConversationEvent } from "@professionisti/shared";
 import { Avatar, Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { subscribeRealtimeEvents } from "@/lib/realtimeBus";
+import { markConversationOpen } from "@/lib/openConversations";
 import { ClientProfileModal } from "@/components/ClientProfileModal";
 import { MediaPreview } from "@/components/MediaPreview";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
@@ -303,6 +304,9 @@ export function ConversationView({
       })
       .catch((err) => setLoadError(err instanceof Error ? err.message : "Errore nel caricamento della cronologia."));
   }, [token, guidedRequestId, professionalProfileId]);
+
+  // Chat a schermo: i suoi messaggi nuovi non fanno popup né suono (§332).
+  useEffect(() => markConversationOpen(guidedRequestId, professionalProfileId), [guidedRequestId, professionalProfileId]);
 
   // Push in tempo reale (CTO — SSE): un evento "chat_message" per QUESTA
   // esatta coppia richiesta+professionista viene aggiunto subito, senza

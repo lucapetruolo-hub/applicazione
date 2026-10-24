@@ -178,7 +178,7 @@ function DashboardAgendaContent() {
   // passa comunque a Settimana/Mese con i selettori. Rilevato una sola
   // volta all'avvio, senza listener: cambiare orientamento/larghezza dopo
   // non deve resettare la scelta fatta a mano dall'utente.
-  // `?giorno=AAAA-MM-GG` (un giorno del meteo in "Oggi", docs/CHANGELOG.md §329) apre quel giorno.
+  // `?giorno=AAAA-MM-GG` (un giorno del meteo in "Oggi", docs/CHANGELOG.md §333) apre quel giorno.
   const deepLinkedDay = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.get("giorno") ?? "") ? searchParams.get("giorno")! : null;
   const [bookingView, setBookingView] = useState<CalendarView>(() =>
     deepLinkedDay || (typeof window !== "undefined" && window.innerWidth < 640) ? "day" : "week",
@@ -271,7 +271,7 @@ function DashboardAgendaContent() {
     consumedBookingDeepLinkRef.current = true;
     const targetId = searchParams.get("booking");
     const match = targetId ? list.find((b) => b.id === targetId) : undefined;
-    // `?esterno=<id>`: un lavoro aggiunto a mano, aperto da "Oggi" (§329).
+    // `?esterno=<id>`: un lavoro aggiunto a mano, aperto da "Oggi" (§333).
     const externalId = searchParams.get("esterno");
     const externalMatch = externalId ? jobs.find((j) => j.id === externalId) : undefined;
     const target = match ?? externalMatch;

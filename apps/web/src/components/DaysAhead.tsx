@@ -19,7 +19,7 @@ const DAY_NAMES = ["Oggi", "Domani"];
 
 /**
  * Meteo di oggi, domani e dopodomani in "Oggi" (richiesta dell'utente,
- * docs/CHANGELOG.md §329): una riga sola, sempre con l'icona, così il
+ * docs/CHANGELOG.md §333): una riga sola, sempre con l'icona, così il
  * prossimo lavoro resta visibile senza scorrere anche da telefono (§311).
  */
 export function WeatherStrip({ days }: { days: DayAhead[] | null }) {
@@ -39,7 +39,7 @@ export function WeatherStrip({ days }: { days: DayAhead[] | null }) {
         const label = day.weather ? WEATHER_CONDITION_LABEL[day.weather.condition] : "Meteo non disponibile";
         return (
           <li key={day.date}>
-            {/* Tocca un giorno: l'agenda si apre su quel giorno (§329). */}
+            {/* Tocca un giorno: l'agenda si apre su quel giorno (§333). */}
             <Link href={`/dashboard/agenda?giorno=${day.date}`} className="weather-chip" title={day.weather ? `${label} · ${day.weather.place}` : label}>
               <span className="weather-chip-day">{i < 2 ? DAY_NAMES[i] : new Date(`${day.date}T12:00:00Z`).toLocaleDateString("it-IT", { weekday: "long", timeZone: "UTC" })}</span>
               <span className="weather-chip-main">

@@ -28,7 +28,7 @@ import { WeatherService } from "./weather.service";
 
 const ZONE_DEMAND_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
-/** Oggi, domani e dopodomani (richiesta dell'utente, docs/CHANGELOG.md §329). */
+/** Oggi, domani e dopodomani (richiesta dell'utente, docs/CHANGELOG.md §333). */
 const DAYS_AHEAD = 3;
 /** Un momento è "richiesto" da almeno 3 richieste: meno è rumore. */
 const ZONE_DEMAND_MIN_TIP = 3;
@@ -256,7 +256,7 @@ export class AgendaService {
   }
 
   /**
-   * Meteo di oggi, domani e dopodomani in "Oggi" (docs/CHANGELOG.md §329):
+   * Meteo di oggi, domani e dopodomani in "Oggi" (docs/CHANGELOG.md §333):
    * del comune del primo lavoro a domicilio del giorno, o della zona del
    * profilo. A Open-Meteo vanno solo le coordinate del centro del comune,
    * mai l'indirizzo del cliente. Mai bloccante: senza risposta, nessuna icona.

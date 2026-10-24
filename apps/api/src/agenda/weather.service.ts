@@ -73,7 +73,7 @@ export function dayForecasts(response: OpenMeteoDaily): DayForecast[] {
  * Open-Meteo, gratuito e senza chiave, chiamato dal nostro server così il
  * browser non contatta nessun servizio esterno (niente consenso cookie).
  * Mai bloccante: se non risponde, nessuna icona. Le stesse previsioni danno
- * il meteo dei prossimi giorni in "Oggi" (§329).
+ * il meteo dei prossimi giorni in "Oggi" (§333).
  */
 @Injectable()
 export class WeatherService {

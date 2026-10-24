@@ -1160,7 +1160,7 @@ button.notif-row-main:hover {
     margin-left: auto;
   }
 }
-/* "Oggi": meteo dei prossimi tre giorni e lavori raggruppati per giorno (docs/CHANGELOG.md §329). */
+/* "Oggi": meteo dei prossimi tre giorni e lavori raggruppati per giorno (docs/CHANGELOG.md §333). */
 .weather-strip {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
