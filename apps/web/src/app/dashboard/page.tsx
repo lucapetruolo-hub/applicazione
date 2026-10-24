@@ -34,7 +34,7 @@ export default function DashboardTodayPage() {
   const [bookings, setBookings] = useState<ProfessionalBooking[] | null>(null);
   // Lavori aggiunti a mano: se non arrivano, restano solo le prenotazioni.
   const [externalJobs, setExternalJobs] = useState<ExternalJob[] | null>(null);
-  // Meteo dei prossimi tre giorni (§325): se non arriva, la riga sparisce.
+  // Meteo dei prossimi tre giorni (§329): se non arriva, la riga sparisce.
   const [daysAhead, setDaysAhead] = useState<DayAhead[] | null | "failed">(null);
   const [insights, setInsights] = useState<ProfessionalInsights | null>(null);
   const [subscription, setSubscription] = useState<MySubscription | null>(null);
@@ -157,7 +157,7 @@ export default function DashboardTodayPage() {
             job: { start: occurrence.start.toISOString(), end: occurrence.end?.toISOString() ?? null, city: booking.city, online: booking.serviceMode === "ONLINE" },
           })),
       ),
-    // Anche i lavori aggiunti a mano in agenda (§325).
+    // Anche i lavori aggiunti a mano in agenda (§329).
     ...(externalJobs ?? [])
       .filter((j) => j.status === "SCHEDULED")
       .flatMap((job) =>
@@ -204,7 +204,7 @@ export default function DashboardTodayPage() {
           ) : (
             upcoming.map(({ key, href, at, title, sub }, index) => (
               <Fragment key={key}>
-              {/* I lavori raggruppati per giorno, con il riepilogo sopra (§325). */}
+              {/* I lavori raggruppati per giorno, con il riepilogo sopra (§329). */}
               {index === 0 || upcoming[index - 1]!.at.slice(0, 10) !== at.slice(0, 10) ? (
                 <div className="today-day-head">
                   <strong>{at.slice(0, 10) === startToday.toISOString().slice(0, 10) ? "Oggi" : "Domani"}</strong>

@@ -1498,6 +1498,12 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
     agendaWeekTemplate: (token: string) => request<AgendaWeekTemplateState>("/agenda/week-template", { headers: { Authorization: `Bearer ${token}` } }),
     saveAgendaWeekTemplate: (token: string, template: AgendaWeekTemplate) =>
       request<AgendaWeekTemplateState>("/agenda/week-template", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(template) }),
+    saveAgendaWeekTemplateForMonth: (token: string, template: AgendaWeekTemplate, month: string) =>
+      request<AgendaWeekTemplateState>("/agenda/week-template/month", {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ month, template }),
+      }),
     agendaWeather: (token: string) => request<WeatherDayAlert[]>("/agenda/weather", { headers: { Authorization: `Bearer ${token}` } }),
     agendaDaysAhead: (token: string) => request<DayAhead[]>("/agenda/days-ahead", { headers: { Authorization: `Bearer ${token}` } }),
     agendaZoneDemand: (token: string) => request<ZoneDemand>("/agenda/zone-demand", { headers: { Authorization: `Bearer ${token}` } }),

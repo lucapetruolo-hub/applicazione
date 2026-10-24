@@ -3,7 +3,7 @@ import { API_URL } from "../fixtures/env";
 
 /**
  * "Oggi" con il meteo dei prossimi giorni e i lavori raggruppati per giorno
- * (docs/CHANGELOG.md §325): i lavori aggiunti a mano compaiono e si aprono in
+ * (docs/CHANGELOG.md §329): i lavori aggiunti a mano compaiono e si aprono in
  * agenda, un giorno del meteo apre l'agenda su quel giorno. Il meteo è
  * simulato: la prova non dipende da Open-Meteo.
  */

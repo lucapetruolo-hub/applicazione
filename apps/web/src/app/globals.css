@@ -149,6 +149,57 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   background-image: radial-gradient(circle 90px at var(--mx) var(--my), rgba(255, 255, 255, 0.3), transparent 70%);
 }
 
+/* "Richiedi un preventivo a [nome]" nel profilo pubblico (ProfileQuoteCta):
+   da computer largo quanto il testo, da telefono tutta la larghezza e, quando
+   il pulsante non è sullo schermo, una barra fissa in basso. */
+.profile-cta {
+  align-self: flex-start;
+  max-width: 100%;
+}
+.profile-cta-bar {
+  display: none;
+}
+@media (max-width: 767px) {
+  .profile-cta {
+    align-self: stretch;
+  }
+  .profile-cta-bar {
+    display: block;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 -1px 0 rgba(26, 21, 19, 0.08);
+    transform: translateY(110%);
+    visibility: hidden;
+    transition:
+      transform 250ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      visibility 0s linear 250ms;
+  }
+  /* Spazio in fondo alla pagina, così la barra non copre il piè di pagina. */
+  body:has(.profile-cta-bar) {
+    padding-bottom: 72px;
+  }
+  .profile-cta-bar[data-visible="true"] {
+    transform: translateY(0);
+    visibility: visible;
+    transition:
+      transform 250ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      visibility 0s;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .profile-cta-bar,
+  .profile-cta-bar[data-visible="true"] {
+    transition: none;
+  }
+}
+
 /* Foto dei mestieri in /per-professionisti (ProGallery): 2 colonne su
    telefono, 4 da tablet in su. */
 .pro-gallery {
@@ -1109,7 +1160,7 @@ button.notif-row-main:hover {
     margin-left: auto;
   }
 }
-/* "Oggi": meteo dei prossimi tre giorni e lavori raggruppati per giorno (docs/CHANGELOG.md §325). */
+/* "Oggi": meteo dei prossimi tre giorni e lavori raggruppati per giorno (docs/CHANGELOG.md §329). */
 .weather-strip {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
