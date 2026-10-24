@@ -25,9 +25,16 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   projects: [
-    { name: "telefono-italia", use: { ...devices["Pixel 7"], timezoneId: "Europe/Rome" } },
-    { name: "telefono-new-york", use: { ...devices["Pixel 7"], timezoneId: "America/New_York" } },
-    { name: "computer-tokyo", use: { ...devices["Desktop Chrome"], timezoneId: "Asia/Tokyo", locale: "en-US" } },
+    { name: "telefono-italia", testIgnore: /tempi-compiti/, use: { ...devices["Pixel 7"], timezoneId: "Europe/Rome" } },
+    { name: "telefono-new-york", testIgnore: /tempi-compiti/, use: { ...devices["Pixel 7"], timezoneId: "America/New_York" } },
+    { name: "computer-tokyo", testIgnore: /tempi-compiti/, use: { ...devices["Desktop Chrome"], timezoneId: "Asia/Tokyo", locale: "en-US" } },
+    // Ultima: cambia i dati (completa un lavoro, chiude un giorno).
+    {
+      name: "misure",
+      testMatch: /tempi-compiti/,
+      dependencies: ["telefono-italia", "telefono-new-york", "computer-tokyo"],
+      use: { ...devices["Pixel 7"], timezoneId: "Europe/Rome" },
+    },
   ],
   webServer: [
     {
