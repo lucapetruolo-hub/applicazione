@@ -31,6 +31,7 @@ import { CategoryTiles } from "@/components/CategoryTiles";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
+import { localPreviewUrl } from "@/lib/media";
 
 // Foto E video (richiesta esplicita dell'utente), fino a 5 elementi
 // (aumentato da 3, stessa richiesta).
@@ -741,7 +742,7 @@ export function GuidedRequestForm({
     // Anonimo: nessun token per caricare su Cloudinary — resta locale con
     // un'anteprima via blob:, caricata davvero solo al momento dell'invio
     // (doSubmit, dopo il gate F2.2).
-    const previewUrl = URL.createObjectURL(file);
+    const previewUrl = localPreviewUrl(file);
     setPhotos((prev) => [...prev, { url: previewUrl, file, isVideo: file.type.startsWith("video/") }].slice(0, MAX_PHOTOS));
   }
 

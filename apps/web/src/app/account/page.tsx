@@ -15,6 +15,7 @@ import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
 import { ClientEmailVerificationCard } from "@/components/ClientEmailVerificationCard";
 import { PASSWORD_RULES_ATTRIBUTE, PasswordMatchHint, PasswordRules } from "@/components/PasswordRules";
+import { localPreviewUrl } from "@/lib/media";
 
 const inputStyle = {
   padding: "10px 12px",
@@ -219,7 +220,7 @@ export default function AccountPage() {
     if (!file) return;
 
     setImageError(null);
-    setCropImageSrc(URL.createObjectURL(file));
+    setCropImageSrc(localPreviewUrl(file));
   }
 
   // Stesso motivo già documentato in /dashboard/profilo: revocare l'URL blob

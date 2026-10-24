@@ -5,6 +5,17 @@ const VIDEO_EXTENSIONS = [".mp4", ".webm", ".mov", ".m4v", ".avi", ".mkv", ".ogv
 // apps/api/src/guided-requests/guided-requests.controller.ts).
 const DOCUMENT_EXTENSIONS = [".pdf", ".doc", ".docx", ".xls", ".xlsx"];
 
+/**
+ * Anteprima locale di un file appena scelto (`blob:`), prima del caricamento.
+ * `encodeURI` lascia l'indirizzo identico (`blob:` + origine + id, solo
+ * caratteri sicuri), ma dice a CodeQL che non porta HTML dentro la pagina:
+ * altrimenti il file scelto dall'utente risulta "testo del DOM" fino al
+ * `src` della miniatura (js/xss-through-dom, docs/CHANGELOG.md §315).
+ */
+export function localPreviewUrl(file: Blob): string {
+  return encodeURI(URL.createObjectURL(file));
+}
+
 /** True se l'URL (foto o video, stesso array `photoUrls` ovunque nel progetto) punta a un video, per estensione del file. */
 export function isVideoUrl(url: string): boolean {
   const clean = url.split("?")[0]?.toLowerCase() ?? "";

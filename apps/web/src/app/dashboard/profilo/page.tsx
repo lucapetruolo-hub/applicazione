@@ -36,6 +36,7 @@ import { CategoryMultiPicker } from "@/components/CategoryMultiPicker";
 import { ProfessionalDetailContent } from "@/app/professionista/[id]/ProfessionalDetailContent";
 import { journeyCurrent, setupJourney } from "@/components/verification/SetupJourney";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
+import { localPreviewUrl } from "@/lib/media";
 
 const MAX_PORTFOLIO_PHOTOS = 10;
 
@@ -562,7 +563,7 @@ export default function DashboardProfiloPage() {
     if (!file) return;
 
     setImageError(null);
-    setCropImageSrc(URL.createObjectURL(file));
+    setCropImageSrc(localPreviewUrl(file));
   }
 
   // L'URL blob va revocato solo qui, dal genitore, quando la modale si
