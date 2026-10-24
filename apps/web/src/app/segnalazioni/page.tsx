@@ -91,14 +91,14 @@ export default function SegnalazioniPage() {
                   <Text fontWeight="700" color={brand.grafite}>
                     {CONTENT_REPORT_TARGET_LABEL[report.targetType]}
                   </Text>
-                  <Text fontSize="$2" color={brand.grafite70}>
+                  <Text fontSize={13} color={brand.grafite70}>
                     Inviata il {formatDate(report.createdAt)}
                   </Text>
                 </XStack>
-                <Text fontSize="$3" color={brand.grafite70}>
+                <Text fontSize={16} color={brand.grafite70}>
                   Motivo: {report.reason}
                 </Text>
-                <Text fontSize="$3" fontWeight="700" color={report.status === "RESOLVED" ? brand.cianografiaScuro : brand.grafite}>
+                <Text fontSize={16} fontWeight="700" color={report.status === "RESOLVED" ? brand.cianografiaScuro : brand.grafite}>
                   {report.status === "OPEN"
                     ? "In esame: ti avviseremo quando avremo deciso."
                     : report.status === "RESOLVED"
@@ -106,7 +106,7 @@ export default function SegnalazioniPage() {
                       : "Non accolta: il contenuto non viola le regole del sito."}
                 </Text>
                 {report.resolutionNote ? (
-                  <Text fontSize="$3" color={brand.grafite}>
+                  <Text fontSize={16} color={brand.grafite}>
                     Motivazione: {report.resolutionNote}
                   </Text>
                 ) : null}
@@ -155,38 +155,38 @@ function DecisionCard({ decision, token, onChanged }: { decision: MyContentRepor
         <Text fontWeight="700" color={brand.grafite}>
           {CONTENT_REPORT_TARGET_LABEL[decision.targetType]}
         </Text>
-        <Text fontSize="$2" color={brand.grafite70}>
+        <Text fontSize={13} color={brand.grafite70}>
           Decisione del {decision.resolvedAt ? formatDate(decision.resolvedAt) : "—"}
         </Text>
       </XStack>
       <Text color={brand.grafite} fontWeight="700">
         {decision.revertedAt ? "Misura annullata: il contenuto è di nuovo come prima." : moderationActionOwnerText(decision.action, decision.targetType)}
       </Text>
-      <Text fontSize="$3" color={brand.grafite}>
+      <Text fontSize={16} color={brand.grafite}>
         <Text fontWeight="700">Perché: </Text>
         {decision.resolutionNote ?? "—"}
       </Text>
-      <Text fontSize="$3" color={brand.grafite70}>
+      <Text fontSize={16} color={brand.grafite70}>
         Motivo della segnalazione ricevuta: {decision.reason}. La decisione è stata presa da una persona del nostro team, non da un sistema
         automatico.
       </Text>
       {decision.appealedAt ? (
-        <Text fontSize="$3" color={brand.grafite70}>
+        <Text fontSize={16} color={brand.grafite70}>
           Hai contestato la decisione il {formatDate(decision.appealedAt)}: “{decision.appealText}”
         </Text>
       ) : null}
       {appealPending ? (
-        <Text fontSize="$3" fontWeight="700" color={brand.grafite}>
+        <Text fontSize={16} fontWeight="700" color={brand.grafite}>
           Contestazione in esame: ti avviseremo dell&apos;esito.
         </Text>
       ) : null}
       {decision.revertedAt && decision.revertNote ? (
-        <Text fontSize="$3" color={brand.grafite}>
+        <Text fontSize={16} color={brand.grafite}>
           Motivo dell&apos;annullamento: {decision.revertNote}
         </Text>
       ) : null}
       {decision.appealRejectedAt ? (
-        <Text fontSize="$3" color={brand.grafite}>
+        <Text fontSize={16} color={brand.grafite}>
           Contestazione respinta il {formatDate(decision.appealRejectedAt)}: {decision.appealRejectNote}
         </Text>
       ) : null}
@@ -199,7 +199,7 @@ function DecisionCard({ decision, token, onChanged }: { decision: MyContentRepor
               onChange={(e) => setText(e.target.value)}
               rows={4}
               placeholder="Spiega perché ritieni la decisione sbagliata"
-              style={{ width: "100%", boxSizing: "border-box", padding: 10, borderRadius: 10, border: `1px solid ${brand.bordoCampo}`, font: "inherit" }}
+              style={{ width: "100%", boxSizing: "border-box", padding: 10, borderRadius: 6, border: `1px solid ${brand.bordoCampo}`, font: "inherit" }}
             />
             {error ? <Text color={brand.urgenza}>{error}</Text> : null}
             <XStack gap="$2" flexWrap="wrap">
@@ -220,7 +220,7 @@ function DecisionCard({ decision, token, onChanged }: { decision: MyContentRepor
         )
       ) : null}
       {!decision.revertedAt ? (
-        <Text fontSize="$2" color={brand.grafite70}>
+        <Text fontSize={13} color={brand.grafite70}>
           Puoi anche rivolgerti a un organismo di risoluzione extragiudiziale delle controversie o all&apos;autorità giudiziaria.
         </Text>
       ) : null}

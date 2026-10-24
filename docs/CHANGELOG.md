@@ -20107,7 +20107,126 @@ La mappa con una chiave vera si vede solo sul sito pubblicato: dopo l'unione va 
 
 **Verifica**: nessun codice cambiato. La categoria esiste già (`PROFESSIONAL_CATEGORIES`) ed è nel menu "Casa e impianti".
 
-## 304. Test dei permessi e strumenti di controllo nella CI
+## 304. Titoli di un solo colore, senza etichette sopra, e carattere Instrument Sans
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Aspetto non da sito fatto con IA"): "effettua solo il punto 5 della prima risposta e il carattere con la proposta 2", dopo il controllo dei 30 segni tipici dei siti fatti con l'IA (`/mnt/project-files/analisi/aspetto-non-da-ia.md`). Punto 5: titoli di un solo colore, senza le etichette verdi sopra. Proposta 2 dei caratteri: Instrument Sans.
+
+**Decisione presa**:
+- `Section` (packages/ui) non ha più `eyebrow` né `titleAccent`: via le pillole "Categorie", "Come funziona", "Professionisti", "Perché fidarsi", "Prezzi reali", "Nuovi profili", "Recensioni verificate", "Garanzia Piattaforma" e le parole in verde nei titoli della home.
+- `/per-professionisti`: titolo principale e titolo finale di un solo colore (prima grigio, nero e verde).
+- Riquadro "Per chi offre servizi" in home: via l'etichetta sopra e la parte verde del titolo.
+- Carattere: Instrument Sans per titoli e testo (`apps/web/src/app/fonts.ts`), al posto di Fredoka (titoli) e Inter Tight (testo, "Inter" è tra i segni da sito IA). Stesso file per le due variabili CSS, il browser lo scarica una volta. Tolti i file di Fredoka e Inter Tight.
+- Titoli con interlinea 1,2 e spaziatura leggermente stretta (`packages/ui/src/config.ts`): con l'interlinea di default (1,5) un titolo su due righe sembrava due titoli.
+- Restano per ora, perché fuori dal punto 5: l'etichetta con 👋 "Non chiamare a caso. Chiamalo giusto." in cima alla home (punto 2), la scritta verde sopra i titoli nella finestra di accesso (`InlineAuthGate`, toccata dalla PR #99) e l'app mobile, che usa ancora Archivo/Inter Tight (serve un nuovo pacchetto di caratteri Expo).
+
+**Verifica**: typecheck e lint del web, build di produzione, home e `/per-professionisti` provate in locale a 390 e 1440 px con foto prima/dopo in `anteprime/aspetto-non-ia/titoli-carattere/`.
+
+## 305. Sistema unico: pulsanti nel carattere del sito, testo a 16 px, tre arrotondamenti, colori dei materiali, riga del preventivo, hero verde più d'effetto
+
+**Richiesta dell'utente**: dopo la piattaforma di marca e l'esempio visivo del sistema unico (thread "Aspetto non da sito fatto con IA", materiale in `analisi/identita/`), "va bene quasi tutto" tranne: i pulsanti restano tondi "stile Apple", verdi e interattivi (effetto magnetico e pressione), niente colore inchiostro; l'hero verde della home resta con le sue sfumature, anzi più d'effetto; la sfumatura della pagina per i professionisti resta.
+
+**Decisione**:
+- Pulsanti e campi nel carattere del sito (`button, input, select, textarea { font-family: inherit }`): "Richiedi preventivo", "Cerca" e "Vedi tutte" uscivano in Arial. Testo dei pulsanti di misura `$3` a 16 px (15 nell'intestazione sui telefoni sotto 400 px). Forma, colore e interattività invariati.
+- Testo base a 16 px sulle pagine pubbliche (quelle raggiunte da home, ricerca, profilo, per-professionisti, preventivo, urgente, accesso e pagine legali): nei file `.tsx` e in `packages/ui` 11-12,5 → 13, 13-15 → 16, 17 → 18; misure Tamagui `$1-$2` → 13, `$3-$4` → 16; le classi CSS pubbliche di `globals.css` allo stesso modo. Restano più piccole le celle degli orari (9,5-10,5 px) che non ci starebbero. Scala dei titoli Tamagui corretta (`$5` era 13 px e `$6` 15 px, sotto il testo): ora 16/18/20/22, titoli di sezione 26 px sul telefono e 32 dal tablet. Titolo di `/per-professionisti` come quello della home (38/54).
+- Arrotondamenti: `radiusDoc` 20 → 12, `radiusDocLg` 32 → 12, nuovo `radiusSm` 6; token Tamagui `$1-$5` → 6 e `$6-$11` → 12; valori scritti a mano 4-10 → 6 e 11-40 → 12, tranne gli elementi tondi (larghezza pari al doppio del raggio). Restano tondi pulsanti, etichette a pillola e foto; l'hero della home resta a 40. Agenda (`components/agenda`, `components/calendar`) non toccata a mano.
+- Colori delle categorie (`CATEGORY_ACCENT`) dai materiali dei mestieri al posto della tavolozza di serie di Tailwind, testo sempre sopra 5:1.
+- "La riga del preventivo" nell'esempio della home: foglio color carta a righe leggere, puntini di guida tra voce e cifra, cifre in IBM Plex Mono in colonna, riga piena sopra il totale, nessuna ombra.
+- Hero della home: verde con tre luci sfumate (verde chiaro, ottone, acqua) che si muovono piano e una grana leggera, ferme con "riduci movimento"; le luci stanno sui bordi per tenere il contrasto del testo bianco.
+
+**Misura** (stesso script `analisi/identita/script-inventario-stili.mjs`, 18 pagine a 390 e 1440 px): testo sotto i 16 px dall'85% al 21% degli elementi; dimensioni del testo 25 → 22, interlinee 53 → 45, arrotondamenti 22 → 16 (quasi tutti ormai 999, 12 o 6); nessun testo in Arial.
+
+**Verifica**: typecheck, lint e build del web; home, `/per-professionisti` e `/cerca/idraulico/latina` provate in locale a 360, 390 e 1440 px senza scorrimento orizzontale; foto prima/dopo in `anteprime/identita-codice/`.
+
+## 306. Luci sfumate in altri tre punti, riga del preventivo sui prezzi, testo a 16 px anche nelle aree riservate, carattere nuovo nell'app
+
+**Richiesta dell'utente**: "bella l'hero con le luci sfumate, dovremmo implementare questo wow anche da altre parti"; poi "effettua miglioria 1-2-4" (riga del preventivo sui prezzi delle schede, scala dei testi nell'area professionista e cliente, Instrument Sans nell'app) e controllare anche i menu dopo l'accesso, lato cliente e professionista, con account di prova creati da noi.
+
+**Decisione**:
+- Luci sfumate (`components/GlowLights.tsx`, classi `.glow-lights` in `globals.css`, toni verde/scuro/chiaro) in pochi punti scelti perché restino speciali: hero della home, riquadro scuro "Meno telefonate inutili" (al posto dei due aloni di prima), tessera verde "Non trovi il tuo lavoro?", apertura di `/per-professionisti` (la sfumatura che c'era, ora in movimento). Ferme con "riduci movimento".
+- `PriceLine` in `packages/ui` (voce, puntini di guida, prezzo in IBM Plex Mono; "Su richiesta" nel carattere del testo): prestazioni nelle schede dei risultati e nel profilo pubblico. I puntini sostituiscono la linea leggera sotto ogni riga, che serviva allo stesso scopo (collegare prestazione e prezzo).
+- Scala dei testi del §305 anche nelle pagine dell'area professionista e cliente e nei componenti che usano (agenda e admin esclusi), più le classi CSS dell'area (`.acct-`, `.today-`, `.profile-`, `.notif-`, `.pstats-`...). Menu laterale a 15 px, largo 256 px, icone che non si restringono.
+- Menu dell'area riservata e dell'admin: voce attiva grigio chiaro con testo scuro (prima quasi nera) e titoli dei gruppi non più in maiuscolo, come da regole accettate dall'utente il 22/10.
+- Un professionista appena iscritto, senza profilo completo, vedeva "Non riusciamo a caricare… Riprova" in Abbonamento, Dati fiscali e Richieste (l'API risponde 404 "Completa prima il tuo profilo"): ora vede "Completa il tuo profilo per iniziare" con il pulsante, come in Oggi e Agenda (`components/ProfileMissingNotice.tsx`).
+- App: Instrument Sans (`@expo-google-fonts/instrument-sans`, pesi 400-700) al posto di Archivo e Inter Tight, tolti i due pacchetti.
+
+**Verifica**: typecheck e lint di web e app, build del web; area professionista e cliente fotografate con due account di prova (prova.design.pro@example.com, prova.design.cliente@example.com) a 390 e 1440 px, prima e dopo.
+
+## 307. Via le scintille e la promessa "Richieste filtrate dall'IA · In arrivo"
+
+**Richiesta dell'utente**: "effettua miglioria 1" (proposta nel §306: togliere le scintille dalla tessera "Non trovi il tuo lavoro?" e il riquadro "Richieste filtrate dall'IA · In arrivo", che prometteva una funzione che non c'è).
+
+**Decisione**: nella tessera verde l'icona diventa un foglio (`file-text`), coerente con "Descrivilo". Nel riquadro scuro per i professionisti la seconda colonna diventa "Richieste della tua zona" (richieste dei clienti nel raggio di lavoro, con foto e descrizione, nessun costo per contatto), cosa che il sito fa già; tolta l'etichetta "In arrivo" e il campo `comingSoon`. Restano altre scintille (piè di pagina "Gratis per chi cerca", risultati, Boost, consigli del profilo), non comprese nella richiesta.
+
+**Verifica**: typecheck del web.
+
+## 308. Via le scintille rimaste
+
+**Richiesta dell'utente**: "effettua ancora possibile" (proposta del §307: togliere le scintille rimaste, simbolo tipico dei siti fatti con l'IA).
+
+**Decisione**: ogni scintilla prende un'icona che dice cosa indica. "Gratis per chi cerca" (piè di pagina e risultati): un cartellino del prezzo (`tag`). Consiglio in Oggi e consigli per la bio nel profilo: una lampadina (`lightbulb`). Pacchetto "Storia di successo": una macchina fotografica (`camera`), perché si racconta il lavoro con le foto. Etichetta "Nuovo profilo" sulle schede: un germoglio (`sprout`). Aggiunte `tag`, `lightbulb` e `sprout` al registro icone (web e app). Resta la scintilla nel giro del giorno dell'agenda, che non si tocca a mano.
+
+**Verifica**: typecheck di `packages/ui` e del web.
+
+## 309. Verifica dell'agenda come un esperto UX: prove automatiche e problemi trovati
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Agenda: correzioni e restyling"): verificare l'agenda come la verificherebbe un esperto UX, senza funzioni nuove: obiettivi misurabili per 5 compiti, dati grezzi e concorrenti, casi limite, prove automatiche in CI (altro fuso e cambio d'ora, fasce a caso, axe, Lighthouse, link del calendario), test con 5 professionisti, privacy; "correggi solo ciò che approvo".
+
+**Decisione**: nessuna modifica visibile al professionista in questa voce. Aggiunte solo le prove e i loro strumenti; i problemi trovati (D1-D4, M1, R1-R2, E1, U1-U2, A1-A4, P1-P2) sono nel documento "Verifica dell'agenda come un esperto UX" e aspettano l'ok dell'utente. Nelle prove sono registrati come noti (`KNOWN` nella prova di accessibilità, `test.fail` per R1): quando uno viene corretto va tolto da lì.
+
+**Cosa c'è**:
+- `apps/api/src/agenda/agenda-properties.test.ts` (fast-check): sovrapposizioni delle fasce e della settimana tipo confrontate con un controllo indipendente al minuto; settimana tipo applicata a un mese (`weekTemplateMonthFill`, spostata da `dashboard/agenda/page.tsx` in `packages/shared/src/agendaTools.ts` per poterla provare); ora italiana dal 2026 al 2030 contro la regola europea del cambio d'ora; orario uguale con qualunque fuso del server; link del calendario letto con ical.js. `countBookingsInSlot` ora esportata per la prova.
+- `e2e/` (nuovo pacchetto, Playwright): API e sito veri su un database di prova (`fixtures/global-setup.ts` crea professionista e appuntamenti attorno al 25/10/2026 e al 28/03/2027); progetti telefono Italia, telefono New York, computer Tokyo; prove di orari, accessibilità (axe-core, WCAG 2.1 AA, gravi e critici), agenda senza rete, link del calendario; `tests/tempi-compiti.spec.ts` misura i 5 compiti (tocchi, caratteri, stima KLM) nel progetto `misure`, che gira per ultimo perché cambia i dati; `lighthouse/agenda.mjs` (profilo mobile, mediana di 3 misure, blocca sotto i limiti "scarso" di Google e avvisa sotto "buono").
+- CI: nuovo job `agenda-browser` in `.github/workflows/ci.yml` (Postgres 16 come servizio, migrazioni, build, prove, Lighthouse, risultati come artifact).
+- `/mnt/project-files/analisi/verifica-agenda/query-dati-veri.sql`: 6 query in sola lettura per i numeri sui dati veri (no-show, doppie prenotazioni, fasce vuote, tempo di conferma, annullamenti all'ultimo minuto, lavori segnati completati).
+
+**Verifica**: 529 test API, 42 prove nel browser in locale da database vuoto (come in CI), Lighthouse in locale (calendario 81, CLS 0,22), ogni prova a proprietà controllata con un errore inserito apposta.
+
+## 310. Agenda: le correzioni della verifica (tutte tranne E1)
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Agenda: correzioni e restyling"): "effettua tutte tranne e1 (non togliendo la possibilità al cliente di segnalare qualcosa)". E1 (il cliente può annullare dopo l'inizio del lavoro) resta com'è, e le segnalazioni del cliente non cambiano.
+
+**Doppie prenotazioni (D1-D4)**: nuovo `apps/api/src/agenda/commitments.ts`, unico punto che conta gli impegni (prenotazioni e lavori esterni). Un lavoro lungo occupa tutte le fasce che attraversa (prima solo quella dell'inizio) e i lavori esterni contano. Accettare un preventivo, prenotare dall'agenda e confermare una data proposta passano da un blocco Postgres per professionista (`pg_advisory_xact_lock`) dentro una transazione: due accettazioni nello stesso istante passano una alla volta e la seconda riceve 409 "Il professionista non è più libero a quell'ora: scrivigli in chat per scegliere un altro momento." Con l'acconto online il controllo si fa prima del pagamento e di nuovo al pagamento riuscito: se nel frattempo l'ora è stata presa, l'acconto viene rimborsato. Cinque tocchi insieme su Accetta creano un solo lavoro e nessun errore interno.
+
+**Lavori su più giorni (M1)**, come deciso dall'utente il 22/10: nel preventivo "Durata" da 1 a 30 giorni (`MAX_JOB_DAYS`), stesso orario ogni giorno. In agenda il lavoro compare ogni giorno ("Giorno 2 di 3"), nel riquadro "Dal 3 al 5 novembre · ogni giorno 08:00–17:00", nelle email e nella cronologia "dal 4 al 6 novembre, ogni giorno", nel calendario collegato e nel file .ics come evento che si ripete (`RRULE:FREQ=DAILY;COUNT=N`). Non blocca le fasce: il professionista può accettare altri lavori secondo i suoi orari. Il numero di giorni resta quando cliente o professionista propongono un'altra data.
+
+**Senza rete (R1)**: con la rete si salva sul telefono anche chi è entrato (`saveOfflineUser`, 7 giorni, cancellato all'uscita o se il server dice che la sessione non vale più); il service worker salva la pagina dell'agenda (solo quella, senza dati) e la usa solo senza rete. Prima, senza rete compariva "Accedi" al posto della copia.
+
+**Aggiornata da sola (R2)**: l'agenda si ricarica quando arriva un avviso su preventivi, prenotazioni o lavori (accettato, annullato, spostato), quando si torna sull'app e quando torna la rete (non più di una volta ogni 5 secondi); il riquadro aperto mostra lo stato nuovo.
+
+**Pagina che non salta (A1)**: mentre carica si tiene il posto della pagina e, nell'area professionista, il menu c'è già. CLS da 0,22 a 0.
+
+**Striscia dei giorni (U1)**: in "Giorno per giorno" sul telefono la settimana è a un tocco come nel Calendario. Chiudere venerdì: da 7 a 4 tocchi.
+
+**Lavoro completato (U2)**: se il preventivo non ha voci, la voce ha già il nome del lavoro; gli errori sono annunciati dal lettore di schermo (`role="alert"`). Da 16,0 a 10,8 secondi stimati.
+
+**Accessibilità (A3-A4)**: "Chiudi venerdì 30" / "Riapri venerdì 30" invece di sei "Chiudi"; i nomi letti dal lettore di schermo cominciano col testo visibile (menu dell'account, giorni, appuntamenti); testo "gg/mm/aaaa" vuoto e giorni fuori mese più scuri (contrasto 4,5:1). La lista `KNOWN` della prova axe è vuota.
+
+**Privacy (P1-P2)**: nell'informativa una frase su Open-Meteo e sugli indirizzi del giro inviati a Google; la copia dell'agenda scaduta si cancella; nella finestra del calendario collegato: "Se spegni la sincronizzazione, togli il calendario anche da Google o dall'iPhone: gli appuntamenti già copiati restano lì."
+
+**Verifica**: 568 test API dopo l'unione col ramo principale (nuovi: sovrapposizioni contro un controllo al minuto, lavori su più giorni nel file .ics letto con ical.js, 409 e rimborso dell'acconto), 52 prove nel browser in locale (nuove: doppie prenotazioni sull'API vera con richieste nello stesso istante, lavoro su più giorni, agenda riaperta senza rete del tutto), le prove D1-D4 falliscono sul codice di prima. Lighthouse in locale: calendario 89, orari 93, CLS 0. Tempi stimati dei compiti: C1 7,5 s, C2 9,7 s, C3 8,4 s, C4 10,8 s, C5 19,7 s, tutti sotto gli obiettivi.
+
+## 311. Agenda: test dei 5 compiti "come chi non conosce l'app" e correzioni T1-T12
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Agenda: correzioni e restyling"): "il test che avrei dovuto proporre a 5 professionisti effettualo da solo, fai finta che sei allo scuro di tutto e fai quel test", poi "risolvi tutti i problemi trovati". Risultati nel documento "Verifica dell'agenda come un esperto UX" (problemi T1-T12). Un test con professionisti veri resta da fare prima del lancio: questo non lo sostituisce.
+
+**Correzioni**:
+- T1 (alta): nella Settimana tipo "Chiudi" diventa "Giorno libero" (per il lettore di schermo "Giorno libero ogni venerdì"), l'orario "Libero"; in cima a "Orari di lavoro" la scheda "Chiudi un giorno o le ferie" con "Al (facoltativo)": per un giorno solo basta "Dal".
+- T2 (alta): in "Oggi" la sezione "Oggi e domani" sta subito sotto l'avviso di pausa, prima di profilo, disponibilità e numeri; sotto il nome via, civico e città.
+- T3: toccando un appuntamento in "Oggi" si apre il suo riquadro in agenda (`/dashboard/agenda?booking=...`), non la richiesta.
+- T4: la striscia dei giorni mostra oggi e i 6 giorni dopo quando si guarda la settimana corrente (la domenica sera "domani" c'è).
+- T5: sul telefono la vista Giorno non ha più uno scorrimento interno, si vede tutta scorrendo la pagina.
+- T6: se la settimana tipo è salvata ma non applicata, al posto di "Non hai ancora orari" compare "La tua settimana tipo è pronta: applicala al mese per farti prenotare." con il tasto "Applica a {mese}".
+- T7: in "Giorno per giorno" sul telefono, con la striscia, spariscono frecce, data e intestazione del giorno (prop `dayStripAbove` di `CalendarShell`).
+- T8: "Lavoro completato" porta il cursore sulla casella sbagliata, la colora di rosso (`aria-invalid`) e dice quale ("Scrivi l'importo di "Riparazione"."); la X per togliere una voce non è più rossa.
+- T9-T10: il tasto "+" diventa "Aggiungi lavoro"; la finestra si chiama "Aggiungi un tuo lavoro" con "Un lavoro preso fuori dall'app: lo vedi in agenda insieme agli altri.", che va a capo.
+- T11: "Lavoro completato" compare solo dal giorno del lavoro.
+- T12: Agenda al secondo posto nel menu dell'area professionista (`accountMenuItems.ts`).
+
+**Disconnessi per un 429** (visto nelle prove nel browser in CI): se `/auth/me` rispondeva 429 (troppe richieste) o con un errore del server, il sito cancellava l'accesso e mostrava "Accedi". Ora disconnettono solo 401 e 403; su 429 ed errori del server si riprova due volte (dopo 1,5 e 3 secondi) e poi si resta con la copia salvata. Il limite generale di 60 chiamate al minuto si può alzare con `RATE_LIMIT_PER_MINUTE`, usato solo dalle prove nel browser (tutte dallo stesso indirizzo); in produzione resta 60.
+
+**Verifica**: nuove prove `e2e/tests/agenda-primo-uso.spec.ts` (T1, T2-T3, T4, T9-T11); 60 prove nel browser in locale; tempi stimati dei compiti C1 7,4 s, C2 9,7 s, C3 8,1 s, C4 10,8 s, C5 20,0 s (C5 come prima: il tasto con la scritta non cambia i tocchi, solo il dubbio su cosa faccia).
+
+## 312. Test dei permessi e strumenti di controllo nella CI
 
 **Richiesta dell'utente**: dal controllo approfondito (§293), un test nella CI che chiama ogni rotta con ogni ruolo e con gli id di un altro utente, più Semgrep, CodeQL, gitleaks e osv-scanner. Deciso di farli subito invece che prima del lancio. "La prova che il lavoro è giusto non è la tua parola: sono i test nella CI e i rapporti degli strumenti."
 
@@ -20123,9 +20242,9 @@ Risultato: 218 rotte, 798 controlli, nessuna falla (dopo l'unione della PR #101:
 
 **Prima lettura dei rapporti**: Semgrep 5 segnalazioni (2 reali ma basse: la lunghezza del sigillo AES-GCM non è controllata nella decifratura dei dati fiscali e dei link di invito; 3 falsi allarmi). osv-scanner 162 avvisi su 45 librerie, quasi tutte usate solo per costruire o provare il codice; nell'API e nel sito pubblicato contano Next.js 14 (passaggio a 15 già in un thread a parte), body-parser, qs (usato solo dal lettore dei moduli `urlencoded`, che nessun client usa), `@nestjs/core` e zod (corretti solo nelle versioni maggiori nuove). Le correzioni sono proposte all'utente in ordine di gravità prima di farle.
 
-## 305. Controllo sicurezza: correzioni dai rapporti degli strumenti
+## 313. Controllo sicurezza: correzioni dai rapporti degli strumenti
 
-**Richiesta dell'utente**: "effettua le correzioni che ritieni nell'ordine e nelle modalità che ritieni", sulle proposte nate dai rapporti del §304.
+**Richiesta dell'utente**: "effettua le correzioni che ritieni nell'ordine e nelle modalità che ritieni", sulle proposte nate dai rapporti del §312.
 
 1. **Corpi compressi rifiutati** (`src/app-setup.ts`, `inflate: false` sul lettore JSON e sui due webhook): body-parser ha una falla nota che blocca l'API con un corpo compresso fatto apposta. Nessun client manda corpi compressi (sito, app, Stripe, Didit), quindi invece di aggiornare la libreria si spegne la decompressione: la richiesta compressa riceve 415. Funziona uguale su Express 4 e su Express 5 (PR #103).
 2. **Tolto il lettore dei moduli `urlencoded`**: l'API riceve solo JSON e nessun client manda moduli; quel lettore usava `qs`, con due falle note. Un modulo ora arriva vuoto e la validazione risponde 400.
@@ -20134,10 +20253,21 @@ Risultato: 218 rotte, 798 controlli, nessuna falla (dopo l'unione della PR #101:
 
 Non fatto qui: zod 4 (aggiornamento grande, rischio basso: il corpo JSON ha già un limite di dimensione); Next.js 15 e NestJS 11 sono nella PR #103.
 
-**Verifica**: 543 test dell'API (con il sigillo accorciato rifiutato), typecheck e lint. API avviata con Postgres locale: login con corpo compresso 415, con modulo 400, con JSON normale la risposta di sempre. Test dei permessi (§304) di nuovo senza problemi. Semgrep: 0 segnalazioni.
+**Verifica**: 543 test dell'API (con il sigillo accorciato rifiutato), typecheck e lint. API avviata con Postgres locale: login con corpo compresso 415, con modulo 400, con JSON normale la risposta di sempre. Test dei permessi (§312) di nuovo senza problemi. Semgrep: 0 segnalazioni.
 
 **Migliorie** (richiesta dell'utente: "effettua tutte le migliorie da 1 a 4 nella modalità che ritieni"):
 1. **Allegati della chat solo per chi partecipa** (`TimelineService.canDownloadAttachment`): `GET /guided-requests/timeline-photos/download` scarica l'allegato solo se compare in un messaggio di una chat di cui chi chiama è il cliente o il professionista, oppure se è un admin (chat in sola lettura per la moderazione). Altrimenti risponde 404. Prima bastava aver fatto l'accesso e conoscere l'indirizzo, e i documenti sono proprio quelli che la CDN di Cloudinary non consegna da sola. Nel test dei permessi la rotta è ora "di qualcuno": gli estranei ricevono 404, e togliendo apposta il controllo il test fallisce.
 2. **CodeQL blocca la PR**: un passo legge i risultati e fallisce su errori e avvisi; i consigli restano solo nella scheda Security. Stesso perimetro di Semgrep (fuori test e script della CI). Al primo giro ha trovato due cose, corrette: l'espressione regolare che leggeva il percorso degli allegati in `CloudinaryService.fetchAttachmentForDownload` poteva impiegare molto tempo su un indirizzo lungo fatto apposta (ora il percorso si divide per segmenti, stesso risultato); in `EmailCodeForm` un'espressione con `^` solo sulla prima parte, riscritta in modo esplicito (stesso comportamento).
 3. **zod 4**: in un thread a parte dopo l'unione della PR #103, che tocca le stesse dipendenze.
-4. **Azioni della CI su Node 24**: `actions/checkout@v6`, `actions/setup-node@v6`, `pnpm/action-setup@v5`, `github/codeql-action@v4` (GitHub segnalava le versioni su Node 20, in dismissione). Il Node usato per compilare e provare il codice resta 20, come su Render.
+4. **Azioni della CI su Node 24**: `actions/checkout@v6`, `actions/setup-node@v6`, `pnpm/action-setup@v5`, `github/codeql-action@v4` (GitHub segnalava le versioni su Node 20, in dismissione). Il Node usato per compilare e provare il codice era ancora 20, come su Render: passato a 22 nel §314.
+
+## 314. Node 22 sul server e nella CI, eccezione di osv-scanner per zod 3
+
+**Richiesta dell'utente**: "effettua la prima miglioria e segna da fare prima del lancio la seconda" ("o comunque dopo i primi aggiornamenti di dependabot"), sulle migliorie proposte prima di unire la PR #105: Node 20 non riceve più aggiornamenti di sicurezza da aprile 2026; osv-scanner bloccante.
+
+**Decisione**:
+- `.nvmrc` a 22 e `engines.node` a `22.x`: Render legge `.nvmrc` e al prossimo deploy usa Node 22 da solo, Vercel legge `engines`. Anche i job della CI (`ci.yml`) girano su Node 22, comprese le prove nel browser dell'agenda (§309), con le azioni aggiornate come nel §312.
+- osv-scanner resta solo rapporto: renderlo bloccante (solo per le librerie che vanno sul sito e sull'API) è nella checklist di lancio, punto 40, da fare prima del lancio o dopo i primi aggiornamenti di Dependabot.
+- `osv-scanner.toml`: eccezione per zod 3.25.76, rimasto solo dentro `@expo/cli` (strumento di sviluppo dell'app, non finisce nell'app, nel sito o nell'API) dopo il passaggio a zod 4 della PR #108; approvata dall'utente nel thread di zod. L'eccezione vale solo per quella versione: un altro zod vulnerabile verrebbe segnalato.
+
+**Verifica**: build, typecheck, test e test dei permessi con Node 22 nella CI; osv-scanner in locale non mostra più zod 3.25.76, e senza il file lo mostra.

@@ -91,13 +91,13 @@ export function ClientProfileModal({
           <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite} textAlign="center">
             {name}
           </Text>
-          <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
+          <Text fontFamily="$body" fontWeight="700" fontSize={13} color={brand.grafite70}>
             Cliente
           </Text>
         </YStack>
 
         {detailsUnlocked ? null : (
-          <Text fontSize="$2" color={brand.grafite70} textAlign="center">
+          <Text fontSize={13} color={brand.grafite70} textAlign="center">
             Cognome, foto, telefono, email e indirizzo saranno visibili all&apos;accettazione del preventivo.
           </Text>
         )}

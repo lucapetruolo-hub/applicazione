@@ -50,7 +50,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
           whiteSpace: "pre-wrap",
           wordBreak: "break-word",
           background: "#f5f1ea",
-          borderRadius: 8,
+          borderRadius: 6,
           padding: 12,
           fontSize: 12,
           color: "#6e6459",

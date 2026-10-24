@@ -23,7 +23,7 @@ export type FieldProps = ComponentProps<typeof Input> & {
 export function Field({ label, hint, error, rightElement, ...inputProps }: FieldProps) {
   return (
     <YStack gap="$2">
-      <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
+      <Text fontFamily="$body" fontSize={16} fontWeight="700" color={brand.grafite70}>
         {label}
       </Text>
       <XStack
@@ -46,11 +46,11 @@ export function Field({ label, hint, error, rightElement, ...inputProps }: Field
         {rightElement}
       </XStack>
       {error ? (
-        <Text fontSize={13} color={brand.urgenza}>
+        <Text fontSize={16} color={brand.urgenza}>
           {error}
         </Text>
       ) : hint ? (
-        <Text fontSize={13} color={brand.grafite70}>
+        <Text fontSize={16} color={brand.grafite70}>
           {hint}
         </Text>
       ) : null}

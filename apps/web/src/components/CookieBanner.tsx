@@ -14,7 +14,7 @@ import { COOKIE_CONSENT_ACCEPTED_EVENT, COOKIE_CONSENT_CHANGED_EVENT, denyCookie
 const buttonStyle = {
   borderRadius: 999,
   padding: "7px 16px",
-  fontSize: 13,
+  fontSize: 16,
   fontWeight: 700,
   cursor: "pointer",
   fontFamily: "inherit",
@@ -119,7 +119,7 @@ export function CookieBanner() {
         fontFamily: "var(--font-body), sans-serif",
       }}
     >
-      <p style={{ flex: "1 1 260px", margin: 0, fontSize: 12.5, lineHeight: 1.4, color: "#2b2420" }}>
+      <p style={{ flex: "1 1 260px", margin: 0, fontSize: 13, lineHeight: 1.4, color: "#2b2420" }}>
         <span className="cookie-text-long">
           Usiamo solo cookie tecnici necessari al funzionamento del sito e, se lo accetti, la mappa
           interattiva di Google. Nessun cookie pubblicitario o di profilazione. Puoi cambiare idea quando vuoi da

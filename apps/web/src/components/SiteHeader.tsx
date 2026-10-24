@@ -98,12 +98,12 @@ export function SiteHeader() {
               <MegaMenu />
               <XStack alignItems="center" gap="$5" display="none" $gtMd={{ display: "flex" }}>
                 <Link href="/#come-funziona" style={{ textDecoration: "none" }}>
-                  <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
+                  <Text fontSize={16} fontWeight="600" color={brand.grafite}>
                     Come funziona
                   </Text>
                 </Link>
                 <Link href="/per-professionisti#prezzi" style={{ textDecoration: "none" }}>
-                  <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
+                  <Text fontSize={16} fontWeight="600" color={brand.grafite}>
                     Prezzi
                   </Text>
                 </Link>
@@ -111,7 +111,7 @@ export function SiteHeader() {
                     "Diventa un sitter" su Rover (docs/CHANGELOG.md §173). */}
                 {!isLoading && !user?.isProfessional ? (
                   <Link href="/per-professionisti" style={{ textDecoration: "none" }}>
-                    <Text fontSize="$3" fontWeight="600" color={brand.grafite}>
+                    <Text fontSize={16} fontWeight="600" color={brand.grafite}>
                       Sei un professionista?
                     </Text>
                   </Link>
@@ -132,7 +132,7 @@ export function SiteHeader() {
               {/* brand.cianografia invece di $blue10 stock (Fase 6): 3.84:1 di
                   contrasto su bianco a questa dimensione, sotto la soglia
                   4.5:1 richiesta per testo normale (Lighthouse color-contrast). */}
-              <Text fontSize="$3" fontWeight="600" color={brand.cianografiaScuro}>
+              <Text fontSize={16} fontWeight="600" color={brand.cianografiaScuro}>
                 Accedi
               </Text>
             </Link>
@@ -159,7 +159,7 @@ export function SiteHeader() {
                   quindi non ha lo stesso problema di spazio) per restare
                   entro la larghezza del viewport senza nasconderlo del
                   tutto. */}
-              <Button variant="primary" size="$3" height={40} paddingHorizontal="$4" $xs={{ paddingHorizontal: "$3" }}>
+              <Button className="site-header-cta" variant="primary" size="$3" height={40} paddingHorizontal="$4" $xs={{ paddingHorizontal: "$3" }}>
                 {user ? (
                   <>
                     <Text display="none" $gtXs={{ display: "flex" }} color="white" fontWeight="600">

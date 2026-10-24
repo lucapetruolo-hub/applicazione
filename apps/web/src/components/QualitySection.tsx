@@ -38,9 +38,7 @@ export function QualitySection({ children }: { children?: ReactNode }) {
   return (
     <Section
       tone="dark"
-      eyebrow="Perché fidarsi"
       title="La trasparenza che non trovi in giro"
-      titleAccent="trasparenza"
       maxWidth={1080}
     >
       <YStack width="100%" flexDirection="column" $gtMd={{ flexDirection: "row" }} gap="$6" data-stagger="">
@@ -59,7 +57,7 @@ export function QualitySection({ children }: { children?: ReactNode }) {
             <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color="white">
               {point.title}
             </Text>
-            <Text fontSize="$3" color="rgba(255,255,255,0.7)">
+            <Text fontSize={16} color="rgba(255,255,255,0.7)">
               {point.text}
             </Text>
           </YStack>

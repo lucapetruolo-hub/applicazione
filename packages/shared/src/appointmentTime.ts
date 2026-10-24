@@ -55,3 +55,32 @@ export function wallClockToday(now: Date = new Date()): Date {
   today.setUTCHours(0, 0, 0, 0);
   return today;
 }
+
+const DAY_MONTH = new Intl.DateTimeFormat("it-IT", { timeZone: "UTC", day: "numeric", month: "long" });
+const DAY_ONLY = new Intl.DateTimeFormat("it-IT", { timeZone: "UTC", day: "numeric" });
+
+/**
+ * Giorni di un lavoro su più giorni (docs/CHANGELOG.md §310): "dal 4 al 6
+ * novembre", "dal 30 ottobre al 2 novembre"; `null` se dura un giorno solo.
+ */
+export function formatJobDays(start: DateLike, end?: DateLike | null): string | null {
+  if (!end) return null;
+  const startDate = toDate(start);
+  const endDate = toDate(end);
+  if (!(endDate.getTime() > startDate.getTime())) return null;
+  const last = new Date(endDate.getTime() - 1);
+  const first = startDate.toISOString().slice(0, 10);
+  if (first === last.toISOString().slice(0, 10)) return null;
+  const sameMonth = first.slice(0, 7) === last.toISOString().slice(0, 7);
+  return `dal ${sameMonth ? DAY_ONLY.format(startDate) : DAY_MONTH.format(startDate)} al ${DAY_MONTH.format(last)}`;
+}
+
+/** Quanti giorni dura un lavoro (1 se finisce lo stesso giorno). */
+export function jobDayCount(start: DateLike, end?: DateLike | null): number {
+  if (!end) return 1;
+  const startDay = Date.parse(toDate(start).toISOString().slice(0, 10));
+  const endDate = toDate(end);
+  if (!(endDate.getTime() > toDate(start).getTime())) return 1;
+  const lastDay = Date.parse(new Date(endDate.getTime() - 1).toISOString().slice(0, 10));
+  return Math.round((lastDay - startDay) / 86_400_000) + 1;
+}

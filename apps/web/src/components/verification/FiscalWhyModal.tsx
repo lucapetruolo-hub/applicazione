@@ -56,14 +56,14 @@ export function FiscalWhyModal({ onClose }: { onClose: () => void }) {
                 <YStack width={32} height={32} borderRadius={999} alignItems="center" justifyContent="center" backgroundColor={brand.cianografiaVelo} flexShrink={0}>
                   <Icon name={reason.icon} size={16} strokeWidth={2} color={brand.cianografiaScuro} />
                 </YStack>
-                <Text flex={1} fontSize={15} color={brand.grafite} paddingTop={5}>
+                <Text flex={1} fontSize={16} color={brand.grafite} paddingTop={5}>
                   {reason.text}
                 </Text>
               </XStack>
             ))}
           </YStack>
           <XStack alignItems="center" justifyContent="space-between" gap="$3" flexWrap="wrap">
-            <Link href="/privacy" target="_blank" style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 14 }}>
+            <Link href="/privacy" target="_blank" style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 16 }}>
               Privacy
             </Link>
             <div ref={closeRef}>

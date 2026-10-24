@@ -58,7 +58,7 @@ export default function AdminPromuoviPage() {
             // salvate/suggerite dal browser) — stesso principio già
             // applicato al campo email di /accedi.
             autoComplete="email"
-            style={{ padding: 12, borderRadius: 16, border: `1px solid ${brand.bordoCampo}`, fontSize: 15 }}
+            style={{ padding: 12, borderRadius: 12, border: `1px solid ${brand.bordoCampo}`, fontSize: 15 }}
           />
         </YStack>
 
@@ -69,7 +69,7 @@ export default function AdminPromuoviPage() {
             onChange={(e) => setSecret(e.target.value)}
             placeholder="ADMIN_BOOTSTRAP_SECRET"
             type="password"
-            style={{ padding: 12, borderRadius: 16, border: `1px solid ${brand.bordoCampo}`, fontSize: 15 }}
+            style={{ padding: 12, borderRadius: 12, border: `1px solid ${brand.bordoCampo}`, fontSize: 15 }}
           />
         </YStack>
 

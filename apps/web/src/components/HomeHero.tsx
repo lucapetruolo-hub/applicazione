@@ -8,6 +8,7 @@ import { Eyebrow, Icon, SearchBar, Text, XStack, YStack, brand, type Professiona
 import { buildSearchDestination } from "@/lib/searchNavigation";
 import { buildSearchSuggestions } from "@/lib/searchSuggestions";
 import { navigateWithTransition } from "@/lib/viewTransition";
+import { GlowLights } from "./GlowLights";
 import { MagneticButton } from "./MagneticButton";
 
 /**
@@ -46,32 +47,11 @@ export function HomeHero() {
         alignItems="center"
         position="relative"
       >
-        {/* Le due macchie decorative hanno il proprio wrapper "overflow:hidden"
-            invece di applicarlo all'intero pannello: un overflow:hidden sul
-            pannello tagliava anche il menu a discesa di SearchBar (stesso bug
-            già documentato per Hero.tsx in packages/ui, qui riapparso nel
-            nuovo hero "Vicinato" — CLAUDE.md §10). */}
-        <YStack position="absolute" top={0} left={0} right={0} bottom={0} borderRadius={40} overflow="hidden" pointerEvents="none">
-          <YStack
-            position="absolute"
-            top={-140}
-            left={-80}
-            width={340}
-            height={340}
-            borderRadius={999}
-            backgroundColor="rgba(255,255,255,0.12)"
-          />
-          <YStack
-            position="absolute"
-            bottom={-110}
-            right={-40}
-            width={230}
-            height={230}
-            borderRadius={999}
-            backgroundColor={brand.ottone}
-            opacity={0.22}
-          />
-        </YStack>
+        {/* Luci sfumate (scelta dell'utente, docs/CHANGELOG.md §305): in un
+            livello a parte con "overflow:hidden" invece che sull'intero
+            pannello, che tagliava il menu a discesa di SearchBar (CLAUDE.md
+            §10). */}
+        <GlowLights tone="verde" radius={40} />
 
         <YStack width="100%" maxWidth={720} alignItems="center" gap="$4" position="relative">
           <Eyebrow tone="dark">👋 Non chiamare a caso. Chiamalo giusto.</Eyebrow>
@@ -113,7 +93,7 @@ export function HomeHero() {
             justifyContent="space-between"
             gap="$3"
             width="100%"
-            maxWidth={520}
+            maxWidth={600}
             marginTop="$3"
             backgroundColor="rgba(255,255,255,0.14)"
             borderRadius={999}
@@ -126,7 +106,7 @@ export function HomeHero() {
           >
             <XStack alignItems="center" gap="$2" flex={1} minWidth={0}>
               <Icon name="zap" size={16} color="white" />
-              <Text fontSize={13} fontWeight="600" color="white">
+              <Text fontSize={16} fontWeight="600" color="white">
                 Intervento urgente? Solo disponibili nelle prossime 24h
               </Text>
             </XStack>
@@ -143,7 +123,7 @@ export function HomeHero() {
             </YStack>
           </XStack>
 
-          <Text fontSize={13} fontWeight="600" color="rgba(255,255,255,0.75)">
+          <Text fontSize={16} fontWeight="600" color="rgba(255,255,255,0.75)">
             Ricerca gratuita · Nessuna registrazione
           </Text>
         </YStack>
@@ -164,7 +144,7 @@ export function HomeHero() {
         maxWidth={1160}
       >
         {/* Da telefono la domanda va su una riga a sé e i due link sotto, affiancati. */}
-        <Text fontSize="$4" color={brand.grafite70} textAlign="center" $xs={{ width: "100%" }}>
+        <Text fontSize={16} color={brand.grafite70} textAlign="center" $xs={{ width: "100%" }}>
           Preferisci descrivere il lavoro?
         </Text>
         <Link href="/preventivo" className="hero-secondary-link">

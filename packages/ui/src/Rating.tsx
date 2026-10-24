@@ -32,11 +32,11 @@ export function Rating({ value, count, size = 16 }: RatingProps) {
           />
         ))}
       </XStack>
-      <Text fontFamily="$mono" fontSize={13} fontWeight="500" color={brand.grafite}>
+      <Text fontFamily="$mono" fontSize={16} fontWeight="500" color={brand.grafite}>
         {value.toFixed(1)}
       </Text>
       {count !== undefined ? (
-        <Text fontSize={13} color={brand.grafite70}>
+        <Text fontSize={16} color={brand.grafite70}>
           ({count} recension{count === 1 ? "e" : "i"})
         </Text>
       ) : null}

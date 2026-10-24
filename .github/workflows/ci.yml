@@ -22,7 +22,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
 
       - name: Install dependencies
@@ -76,7 +76,81 @@ jobs:
           pnpm --filter @professionisti/web build
           node apps/web/scripts/seo-check/run.mjs public
 
-  # Test dei permessi (docs/CHANGELOG.md §304): ogni rotta dell'API chiamata
+  # Agenda nel browser (docs/CHANGELOG.md §309): API e sito veri su un
+  # database di prova, aperti da un telefono in Italia, a New York e a Tokyo,
+  # con appuntamenti prima e dopo i cambi d'ora; accessibilità (axe), agenda
+  # senza rete, link del calendario e Lighthouse su telefono lento.
+  agenda-browser:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      JWT_SECRET: e2e-secret
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v5
+        with:
+          version: 10.33.0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build API e pacchetti
+        run: pnpm turbo run build --filter=@professionisti/api --filter=@professionisti/api-client
+
+      - name: Build sito
+        run: pnpm --filter @professionisti/web build
+
+      - name: Migrazioni sul database di prova
+        run: pnpm --filter @professionisti/database exec prisma migrate deploy
+
+      - name: Browser per le prove
+        run: pnpm --filter @professionisti/e2e exec playwright install --with-deps chromium
+
+      - name: Prove nel browser
+        env:
+          CI: "true"
+        run: pnpm --filter @professionisti/e2e e2e
+
+      - name: Lighthouse su telefono lento
+        run: |
+          PORT=3001 EMAIL_VERIFICATION_REQUIRED=false FRONTEND_URL=http://localhost:3000 node apps/api/dist/main.js > api.log 2>&1 &
+          pnpm --filter @professionisti/web start > web.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://localhost:3001/health > /dev/null && curl -sf -o /dev/null http://localhost:3000 && break; sleep 2; done
+          pnpm --filter @professionisti/e2e lighthouse
+
+      - name: Risultati
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agenda-browser
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+            e2e/lighthouse-results/
+            e2e/misure-results/
+          if-no-files-found: ignore
+
+  # Test dei permessi (docs/CHANGELOG.md §312): ogni rotta dell'API chiamata
   # senza accesso, con ogni ruolo (cliente, professionista, admin di ogni
   # tipo) e con gli id di un altro utente, su un Postgres vuoto creato qui.
   # Una rotta nuova non classificata in apps/api/scripts/access-policy.mjs
@@ -107,7 +181,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
 
       - name: Install dependencies

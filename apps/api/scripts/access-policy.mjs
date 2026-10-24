@@ -1,4 +1,4 @@
-// Chi può usare ogni rotta dell'API (test dei permessi, docs/CHANGELOG.md §304).
+// Chi può usare ogni rotta dell'API (test dei permessi, docs/CHANGELOG.md §312).
 // Le rotte admin non stanno qui: il permesso lo dice `@RequireAdminScope` e il
 // test lo prova con ogni ruolo. Una rotta nuova che manca da qui fa fallire la
 // CI finché non viene classificata.
@@ -184,7 +184,7 @@ const owned = {
     body: (f, actor) => ({ professionalProfileId: actor === "proB" ? f.profileB : f.profileA, message: "Messaggio da un estraneo" }),
   }),
 
-  // Allegato della chat: solo chi partecipa alla chat (o un admin, §305).
+  // Allegato della chat: solo chi partecipa alla chat (o un admin, §313).
   "GET /guided-requests/timeline-photos/download": {
     kind: "owned",
     owners: BOTH,

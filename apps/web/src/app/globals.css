@@ -25,6 +25,30 @@ a {
   color: inherit;
 }
 
+/* I pulsanti e i campi non ereditano il carattere della pagina: senza questa
+   regola "Richiedi preventivo", "Cerca" e "Vedi tutte" uscivano in Arial
+   (docs/CHANGELOG.md §305). */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+/* Testo dei pulsanti a 16 px come il testo base (sistema unico, §305): la
+   misura "$3" di Tamagui li scriveva a 13 px. I pulsanti piccoli ($1-$2)
+   restano compatti. */
+span.is_Button._fos-f-size-3,
+span.is_Button._fos-f-size-true {
+  font-size: 16px;
+}
+/* Nell'intestazione dei telefoni stretti lo spazio non basta: 15 px. */
+@media (max-width: 400px) {
+  .site-header-cta span.is_Button {
+    font-size: 15px;
+  }
+}
+
 /* Skip link (Fase 6, accessibilità): fuori schermo finché non riceve il
    focus da tastiera (Tab), poi torna visibile in alto a sinistra. */
 .skip-link {
@@ -35,7 +59,7 @@ a {
   background: #189a63;
   color: #ffffff;
   padding: 12px 16px;
-  border-radius: 14px;
+  border-radius: 12px;
   font-weight: 600;
   text-decoration: none;
   transition: top 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -361,7 +385,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   gap: 6px;
   overflow-x: auto;
   background: #ffffff;
-  border-radius: 16px;
+  border-radius: 12px;
   padding: 8px;
   scrollbar-width: none;
 }
@@ -376,7 +400,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   align-items: center;
   gap: 8px;
   padding: 9px 12px;
-  border-radius: 10px;
+  border-radius: 6px;
   color: #2b2420;
   text-decoration: none;
   font-weight: 600;
@@ -388,8 +412,9 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   background: #fdefe1;
 }
 .admin-nav-link.is-active {
-  background: #2b2420;
-  color: #ffffff;
+  background: #efe9e2;
+  color: #2b2420;
+  font-weight: 700;
 }
 .admin-nav-badge {
   margin-left: auto;
@@ -427,11 +452,9 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   }
   .admin-nav-title {
     display: block;
-    font-size: 12px;
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 600;
     color: #6e6459;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
     padding: 4px 12px 8px;
   }
 }
@@ -469,7 +492,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   width: 100%;
   max-width: 560px;
   background: #ffffff;
-  border-radius: 16px;
+  border-radius: 12px;
   box-shadow: 0 20px 60px rgba(43, 36, 32, 0.25);
   overflow: hidden;
   display: flex;
@@ -504,7 +527,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   gap: 2px;
   border: none;
   background: transparent;
-  border-radius: 10px;
+  border-radius: 6px;
   padding: 9px 12px;
   font: inherit;
   cursor: pointer;
@@ -576,22 +599,30 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   align-items: center;
   gap: 8px;
   padding: 9px 12px;
-  border-radius: 10px;
+  border-radius: 6px;
   color: #2b2420;
   text-decoration: none;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 15px;
   white-space: nowrap;
+  flex-shrink: 0;
+}
+.acct-nav-link > svg,
+.acct-tab > svg {
   flex-shrink: 0;
 }
 .acct-nav-link:hover,
 .acct-tab:hover {
   background: #fdefe1;
 }
+/* Voce attiva grigio chiaro, non più quasi nera (regola accettata
+   dall'utente il 22/10, docs/CHANGELOG.md §306): il nero pieno pesava più
+   del contenuto della pagina. */
 .acct-nav-link.is-active,
 .acct-tab.is-active {
-  background: #2b2420;
-  color: #ffffff;
+  background: #efe9e2;
+  color: #2b2420;
+  font-weight: 700;
 }
 .acct-nav-badge {
   margin-left: auto;
@@ -602,7 +633,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   border-radius: 999px;
   background: #dc3545;
   color: #ffffff;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
@@ -655,12 +686,12 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
     position: sticky;
     top: 88px;
     flex-direction: column;
-    width: 232px;
+    width: 256px;
     flex-shrink: 0;
     overflow-x: visible;
     padding: 12px;
     border: none;
-    border-radius: 16px;
+    border-radius: 12px;
   }
   .acct-nav-group {
     display: flex;
@@ -672,11 +703,9 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   }
   .acct-nav-title {
     display: block;
-    font-size: 11px;
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 600;
     color: #6e6459;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
     padding: 4px 12px 6px;
   }
 }
@@ -700,7 +729,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
     font-size: 22px;
   }
   .today-kpis .admin-kpi-label {
-    font-size: 12px;
+    font-size: 13px;
   }
 }
 .today-list {
@@ -713,7 +742,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   align-items: center;
   gap: 14px;
   padding: 14px 16px;
-  border-radius: 14px;
+  border-radius: 12px;
   background: #ffffff;
   text-decoration: none;
   color: #2b2420;
@@ -728,17 +757,17 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   gap: 3px;
   flex: 1;
   min-width: 0;
-  font-size: 14px;
+  font-size: 16px;
 }
 .today-row-sub {
   color: #6e6459;
-  font-size: 13px;
+  font-size: 16px;
 }
 .today-row-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 6px 12px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
 }
 .today-deadline {
@@ -752,7 +781,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
 }
 .today-row-cta {
   flex-shrink: 0;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   color: #ffffff;
   background: #189a63;
@@ -763,14 +792,14 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   flex-shrink: 0;
   min-width: 96px;
   font-weight: 800;
-  font-size: 14px;
+  font-size: 16px;
 }
 .today-empty {
   padding: 14px 16px;
-  border-radius: 14px;
+  border-radius: 12px;
   background: #ffffff;
   color: #6e6459;
-  font-size: 14px;
+  font-size: 16px;
 }
 @media (max-width: 520px) {
   .today-row {
@@ -782,7 +811,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
 }
 /* "Profilo pubblico": anteprima del profilo pubblico (docs/CHANGELOG.md §252). */
 .profile-preview-frame {
-  border-radius: 22px;
+  border-radius: 12px;
   background: #fdefe1;
   border: 1px solid #f0dcc0;
   box-shadow: 0 12px 32px rgba(43, 32, 19, 0.08);
@@ -792,7 +821,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   /* Sul telefono l'anteprima usa quasi tutta la larghezza, come la pagina vera. */
   .profile-preview-frame {
     margin: 0 -12px;
-    border-radius: 18px;
+    border-radius: 12px;
   }
 }
 .profile-preview-bar {
@@ -803,7 +832,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   padding: 10px 16px;
   background: #ffffff;
   border-bottom: 1px solid #f0dcc0;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: #6e6459;
 }
@@ -883,7 +912,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   gap: 8px;
   flex: 0 0 auto;
   min-width: 0;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   color: #6e6459;
 }
@@ -913,7 +942,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
 .profile-status {
   display: flex;
   flex-direction: column;
-  border-radius: 14px;
+  border-radius: 12px;
   background: #ffffff;
 }
 .profile-status .profile-visibility {
@@ -931,7 +960,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
 }
 .profile-status-next-label {
   display: block;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -953,7 +982,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   padding: 12px 16px;
   border-radius: 14px;
   background: #ffffff;
-  font-size: 14px;
+  font-size: 16px;
 }
 .profile-visibility-dot {
   width: 10px;
@@ -987,7 +1016,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   align-items: center;
   gap: 5px;
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   padding: 4px 10px;
   border-radius: 999px;
@@ -1031,7 +1060,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   align-items: center;
   gap: 4px;
   font: inherit;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   color: #0e7a4c;
   background: none;
@@ -1060,7 +1089,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   flex-direction: column;
   gap: 16px;
   padding: 20px;
-  border-radius: 20px;
+  border-radius: 12px;
   background: #ffffff;
   color: #2b2420;
   box-shadow: 0 8px 24px rgba(43, 32, 19, 0.06);
@@ -1091,7 +1120,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   justify-content: center;
   width: 44px;
   height: 44px;
-  border-radius: 14px;
+  border-radius: 12px;
 }
 .is-green .boost-card-icon {
   background: #189a63;
@@ -1102,7 +1131,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   box-shadow: 0 6px 14px rgba(217, 164, 65, 0.35);
 }
 .boost-card-soon {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   padding: 4px 10px;
   border-radius: 999px;
@@ -1123,7 +1152,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
 }
 .boost-card-body p {
   margin: 0;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.45;
   color: #6e6459;
 }
@@ -1139,7 +1168,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
 }
 .boost-card-price {
@@ -1156,7 +1185,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   letter-spacing: -0.02em;
 }
 .boost-card-price span {
-  font-size: 13px;
+  font-size: 16px;
   color: #6e6459;
 }
 /* Griglia dei contatori della home admin. */
@@ -1173,7 +1202,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   flex-direction: column;
   gap: 6px;
   padding: 16px;
-  border-radius: 16px;
+  border-radius: 12px;
   background: #ffffff;
   text-decoration: none;
   color: #2b2420;
@@ -1197,7 +1226,7 @@ a.admin-kpi:hover {
 }
 .admin-input {
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: 6px;
   border: 1px solid #9c8e7f;
   font: inherit;
   font-size: 14px;
@@ -1212,7 +1241,7 @@ a.admin-kpi:hover {
 }
 .admin-table-wrap {
   overflow-x: auto;
-  border-radius: 16px;
+  border-radius: 12px;
   background: #ffffff;
 }
 .admin-table {
@@ -1283,7 +1312,7 @@ a.admin-kpi:hover {
 }
 .deep-link-highlight {
   animation: deep-link-highlight 2.5s ease-out;
-  border-radius: 20px;
+  border-radius: 12px;
 }
 
 /* /registrati — pagina di registrazione resa più "innovativa" (richiesta
@@ -1363,7 +1392,7 @@ a.admin-kpi:hover {
   display: block;
   text-decoration: none;
   color: inherit;
-  border-radius: 16px;
+  border-radius: 12px;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
@@ -1396,7 +1425,7 @@ a.admin-kpi:hover {
   border-radius: 12px;
   background: none;
   font: inherit;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   color: #2b2420;
   cursor: pointer;
@@ -1440,7 +1469,7 @@ a.admin-kpi:hover {
   overflow-y: auto;
   background: #ffffff;
   border: 1px solid #f0dcc0;
-  border-radius: 16px;
+  border-radius: 12px;
   box-shadow: 0 12px 32px rgba(43, 32, 19, 0.12);
   z-index: 1000;
   padding: 8px;
@@ -1459,14 +1488,14 @@ a.admin-kpi:hover {
   min-width: 0;
 }
 .acct-menu-head-text strong {
-  font-size: 15px;
+  font-size: 16px;
   color: #2b2420;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .acct-menu-head-text span {
-  font-size: 12px;
+  font-size: 13px;
   color: #6e6459;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1475,7 +1504,7 @@ a.admin-kpi:hover {
 .acct-menu-title {
   display: block;
   padding: 10px 8px 4px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   color: #6e6459;
   text-transform: uppercase;
@@ -1486,10 +1515,10 @@ a.admin-kpi:hover {
   align-items: center;
   gap: 10px;
   padding: 9px 8px;
-  border-radius: 10px;
+  border-radius: 6px;
   color: #2b2420;
   text-decoration: none;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   background: none;
   border: none;
@@ -1551,7 +1580,7 @@ a.admin-kpi:hover {
   border-radius: 999px;
   padding: 8px 14px;
   font: inherit;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -1573,22 +1602,22 @@ a.admin-kpi:hover {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: #6e6459;
 }
 .pstats-custom input {
   font: inherit;
-  font-size: 14px;
+  font-size: 16px;
   padding: 7px 10px;
   border: 1px solid #9c8e7f;
-  border-radius: 10px;
+  border-radius: 6px;
   background: #ffffff;
   color: #2b2420;
 }
 .pstats-apply {
   font: inherit;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   padding: 9px 16px;
   border-radius: 999px;
@@ -1598,12 +1627,12 @@ a.admin-kpi:hover {
   cursor: pointer;
 }
 .pstats-error {
-  font-size: 13px;
+  font-size: 16px;
   color: #dc3545;
   font-weight: 600;
 }
 .pstats-period {
-  font-size: 13px;
+  font-size: 16px;
   color: #6e6459;
   flex-basis: 100%;
 }
@@ -1618,7 +1647,7 @@ a.admin-kpi:hover {
   align-items: flex-start;
   gap: 6px;
   padding: 16px;
-  border-radius: 16px;
+  border-radius: 12px;
   background: #ffffff;
   border: 2px solid transparent;
   text-align: left;
@@ -1646,7 +1675,7 @@ a.admin-kpi:hover {
   line-height: 1.1;
 }
 .pstats-kpi-delta {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: #6e6459;
 }
@@ -1658,7 +1687,7 @@ a.admin-kpi:hover {
 }
 .pstats-card {
   background: #ffffff;
-  border-radius: 16px;
+  border-radius: 12px;
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -1677,7 +1706,7 @@ a.admin-kpi:hover {
 }
 .pstats-card-head p {
   margin: 4px 0 0;
-  font-size: 13px;
+  font-size: 16px;
   color: #6e6459;
 }
 .pstats-card-head strong {
@@ -1687,7 +1716,7 @@ a.admin-kpi:hover {
 }
 .pstats-table summary {
   cursor: pointer;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   color: #0e7a4c;
 }
@@ -1700,7 +1729,7 @@ a.admin-kpi:hover {
 .pstats-table table {
   border-collapse: collapse;
   width: 100%;
-  font-size: 13px;
+  font-size: 16px;
 }
 .pstats-table th,
 .pstats-table td {
@@ -1737,7 +1766,7 @@ a.admin-kpi:hover {
   color: #2b2420;
 }
 .pstats-ratio-detail {
-  font-size: 12px;
+  font-size: 13px;
   color: #6e6459;
 }
 @media (max-width: 799px) {
@@ -1786,7 +1815,7 @@ a.admin-kpi:hover {
   gap: 8px;
 }
 .auth-field-label {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   color: #6e6459;
 }
@@ -1796,7 +1825,7 @@ a.admin-kpi:hover {
   gap: 8px;
   /* brand.bordoCampo: 3,2:1 su bianco (docs/CHANGELOG.md §278). */
   border: 1px solid #9c8e7f;
-  border-radius: 20px;
+  border-radius: 12px;
   background: #ffffff;
   padding: 0 12px;
 }
@@ -1829,7 +1858,7 @@ a.admin-kpi:hover {
 }
 .auth-field-hint,
 .auth-field-error {
-  font-size: 13px;
+  font-size: 16px;
   color: #6e6459;
 }
 .auth-field-error {
@@ -1889,7 +1918,7 @@ a.admin-kpi:hover {
 
 /* Impostazioni notifiche (docs/CHANGELOG.md §152). */
 .notif-status {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 600;
   min-height: 18px;
   color: #6e6459;
@@ -1902,7 +1931,7 @@ a.admin-kpi:hover {
 }
 .notif-card {
   background: #ffffff;
-  border-radius: 16px;
+  border-radius: 12px;
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -1915,7 +1944,7 @@ a.admin-kpi:hover {
 }
 .notif-note {
   margin: 0;
-  font-size: 13px;
+  font-size: 16px;
   color: #6e6459;
   line-height: 1.5;
 }
@@ -1935,7 +1964,7 @@ a.admin-kpi:hover {
 }
 .notif-switch-row strong,
 .notif-topic strong {
-  font-size: 15px;
+  font-size: 16px;
   color: #2b2420;
 }
 .notif-switch-row small,
@@ -1949,7 +1978,7 @@ a.admin-kpi:hover {
   padding: 0;
   margin-top: 4px;
   font: inherit;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   color: #0e7a4c;
   cursor: pointer;
@@ -1999,7 +2028,7 @@ a.admin-kpi:hover {
   align-items: center;
 }
 .notif-grid-head {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: #6e6459;
   padding-bottom: 6px;
@@ -2037,7 +2066,7 @@ a.admin-kpi:hover {
   gap: 4px;
 }
 .notif-cell small {
-  font-size: 11px;
+  font-size: 13px;
   color: #6e6459;
   text-align: center;
 }
@@ -2059,7 +2088,7 @@ a.admin-kpi:hover {
   }
   .notif-cell-label {
     display: block;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
     color: #6e6459;
   }
@@ -2087,7 +2116,7 @@ a.admin-kpi:hover {
   display: flex;
   align-items: flex-start;
   background: #ffffff;
-  border-radius: 14px;
+  border-radius: 12px;
   border-left: 4px solid #189a63;
   box-shadow: 0 10px 28px rgba(43, 32, 19, 0.18);
   animation: toast-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -2123,18 +2152,18 @@ a.admin-kpi:hover {
   min-width: 0;
 }
 .toast-card-title {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
 .toast-card-message {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1.35;
 }
 .toast-card-cta {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: #0e7a4c;
   margin-top: 2px;
@@ -2148,7 +2177,7 @@ a.admin-kpi:hover {
 }
 .toast-more {
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: #6e6459;
   background: #ffffff;
@@ -2204,7 +2233,7 @@ a.admin-kpi:hover {
   border-top: 3px solid #f0dcc0;
   background: none;
   font: inherit;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   color: #6e6459;
   text-align: left;
@@ -2226,7 +2255,7 @@ a.admin-kpi:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 13px;
   background: #f0dcc0;
   color: #2b2420;
 }
@@ -2241,7 +2270,7 @@ a.admin-kpi:hover {
   gap: 12px;
   align-items: flex-start;
   padding: 14px;
-  border-radius: 14px;
+  border-radius: 12px;
   border: 1px solid #f0dcc0;
   background: #ffffff;
   cursor: pointer;
@@ -2263,7 +2292,7 @@ a.admin-kpi:hover {
   gap: 2px;
 }
 .guided-urgent-toggle strong {
-  font-size: 15px;
+  font-size: 16px;
   color: #2b2420;
 }
 .guided-urgent-toggle small {
@@ -2275,7 +2304,7 @@ a.admin-kpi:hover {
   background: #fbeae7;
 }
 .guided-forward span {
-  font-size: 14px;
+  font-size: 16px;
   color: #2b2420;
   line-height: 1.45;
 }
@@ -2286,12 +2315,12 @@ a.admin-kpi:hover {
   color: #0e4f33;
 }
 .guided-next strong {
-  font-size: 15px;
+  font-size: 16px;
 }
 .guided-next ul {
   margin: 8px 0 0;
   padding-left: 18px;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.5;
 }
 .guided-recap {
@@ -2299,7 +2328,7 @@ a.admin-kpi:hover {
   flex-direction: column;
   gap: 6px;
   padding: 16px;
-  border-radius: 14px;
+  border-radius: 12px;
   background: #ffffff;
   border: 1px solid #f0dcc0;
 }
@@ -2310,7 +2339,7 @@ a.admin-kpi:hover {
   margin-top: 6px;
 }
 .guided-recap > div span {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -2320,7 +2349,7 @@ a.admin-kpi:hover {
   background: none;
   border: none;
   font: inherit;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   color: #0e7a4c;
   cursor: pointer;
@@ -2328,7 +2357,7 @@ a.admin-kpi:hover {
 }
 .guided-recap p {
   margin: 0;
-  font-size: 14px;
+  font-size: 16px;
   color: #2b2420;
 }
 .guided-recap-text {
@@ -2343,7 +2372,7 @@ a.admin-kpi:hover {
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
-    font-size: 12px;
+    font-size: 13px;
   }
 }
 
@@ -2361,7 +2390,7 @@ a.admin-kpi:hover {
   border: 1px solid #f0dcc0;
   background: #fff;
   color: #2b2420;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   line-height: 1.4;
 }
@@ -2372,7 +2401,7 @@ a.admin-kpi:hover {
   white-space: nowrap;
 }
 .rc-badge small {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
   color: #6e6459;
 }
@@ -2381,7 +2410,7 @@ a.admin-kpi:hover {
    il bottone (docs/CHANGELOG.md §158-§159). */
 .profile-declaration-note {
   margin: 0;
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 1.5;
   color: #6e6459;
 }
@@ -2401,7 +2430,7 @@ a.admin-kpi:hover {
 }
 .story-filter {
   font: inherit;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   padding: 9px 15px;
   border-radius: 999px;
@@ -2439,7 +2468,7 @@ a.admin-kpi:hover {
   scroll-snap-align: start;
   width: 230px;
   height: 340px;
-  border-radius: 22px;
+  border-radius: 12px;
   overflow: hidden;
   background: #f6ecd9;
   text-decoration: none;
@@ -2467,7 +2496,7 @@ a.admin-kpi:hover {
   position: absolute;
   top: 12px;
   left: 12px;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   padding: 5px 10px;
   border-radius: 999px;
@@ -2495,7 +2524,7 @@ a.admin-kpi:hover {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  font-size: 13.5px;
+  font-size: 16px;
   line-height: 1.3;
   opacity: 0;
   max-height: 0;
@@ -2522,6 +2551,7 @@ a.admin-kpi:hover {
   }
 }
 .story-card-other {
+  position: relative;
   background: #189a63;
   display: flex;
   flex-direction: column;
@@ -2529,6 +2559,11 @@ a.admin-kpi:hover {
   gap: 10px;
   padding: 20px;
 }
+/* Testo e icona sopra le luci sfumate (GlowLights). */
+.story-card-other > :not(.glow-lights) {
+  position: relative;
+}
+
 @media (max-width: 700px) {
   .story-card {
     width: 170px;
@@ -2545,7 +2580,7 @@ a.admin-kpi:hover {
   grid-template-columns: 1fr 1fr;
   width: 100%;
   max-width: 1112px;
-  border-radius: 32px;
+  border-radius: 12px;
   overflow: hidden;
   background: #2b2420;
 }
@@ -2556,7 +2591,7 @@ a.admin-kpi:hover {
 @media (max-width: 860px) {
   .pro-cta {
     grid-template-columns: 1fr;
-    border-radius: 24px;
+    border-radius: 12px;
   }
   .pro-cta-photo {
     min-height: 220px;
@@ -2585,10 +2620,18 @@ a.admin-kpi:hover {
   text-transform: uppercase;
   color: #6e6459;
 }
-.qx-bubble,
-.qx-quote {
+.qx-bubble {
   background: #fff;
-  box-shadow: 0 10px 30px rgba(43, 34, 32, 0.08);
+  border: 1px solid #f0dcc0;
+}
+/* "La riga del preventivo", il segno grafico del sito (docs/CHANGELOG.md
+   §305): foglio color carta con righe leggere, voce a sinistra, puntini di
+   guida, cifre in carattere a larghezza fissa in colonna, riga piena sopra
+   il totale. */
+.qx-quote {
+  background-color: #fff9f1;
+  background-image: repeating-linear-gradient(transparent 0 31px, rgba(185, 165, 140, 0.16) 31px 32px);
+  border: 1px solid #e6d3bc;
 }
 .qx-bubble {
   border-radius: 22px 22px 22px 6px;
@@ -2624,7 +2667,7 @@ a.admin-kpi:hover {
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
-  border-radius: 14px;
+  border-radius: 12px;
   overflow: hidden;
   background: #f6ecd9;
 }
@@ -2637,7 +2680,7 @@ a.admin-kpi:hover {
   justify-content: center;
 }
 .qx-quote {
-  border-radius: 22px;
+  border-radius: 12px;
   padding: 22px;
 }
 .qx-quote-head {
@@ -2673,7 +2716,7 @@ a.admin-kpi:hover {
   color: #6e6459;
 }
 .qx-example {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: #8a6a1f;
   background: #f6ecd9;
@@ -2693,18 +2736,32 @@ a.admin-kpi:hover {
     transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .qx-row {
+  align-items: baseline;
+  gap: 8px;
   padding: 11px 0;
-  border-bottom: 1px dashed #f0e6dc;
   font-size: 16px;
   color: #2b2420;
 }
+.qx-row > span:first-child {
+  min-width: 0;
+}
+.qx-leader {
+  flex: 1;
+  min-width: 16px;
+  border-bottom: 2px dotted #b9a58c;
+  transform: translateY(-4px);
+}
 .qx-value {
-  font-weight: 700;
+  font-family: var(--font-mono), monospace;
+  font-weight: 500;
   text-align: right;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 .qx-total {
+  margin-top: 6px;
   padding-top: 14px;
+  border-top: 2px solid #2b2420;
   font-family: var(--font-display), sans-serif;
   font-weight: 700;
   font-size: 24px;
@@ -2784,36 +2841,6 @@ a.admin-kpi:hover {
   position: relative;
   isolation: isolate;
 }
-.pro-cta-glow {
-  position: absolute;
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: -1;
-  filter: blur(90px);
-  animation: pro-cta-drift 14s ease-in-out infinite alternate;
-}
-.pro-cta-glow-green {
-  width: 380px;
-  height: 380px;
-  left: -120px;
-  top: -140px;
-  background: #189a63;
-  opacity: 0.55;
-}
-.pro-cta-glow-warm {
-  width: 300px;
-  height: 300px;
-  left: 30%;
-  bottom: -170px;
-  background: #ff8a3d;
-  opacity: 0.32;
-  animation-delay: -7s;
-}
-@keyframes pro-cta-drift {
-  to {
-    transform: translate(60px, 40px) scale(1.15);
-  }
-}
 .pro-cta-notif {
   position: absolute;
   z-index: 2;
@@ -2823,7 +2850,7 @@ a.admin-kpi:hover {
   width: 300px;
   max-width: calc(100% - 32px);
   padding: 12px 16px;
-  border-radius: 16px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.95);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
   color: #2b2420;
@@ -2849,7 +2876,7 @@ a.admin-kpi:hover {
 }
 .pro-cta-notif strong {
   display: block;
-  font-size: 15px;
+  font-size: 16px;
 }
 .pro-cta-notif small {
   display: block;
@@ -2899,7 +2926,6 @@ a.admin-kpi:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pro-cta-glow,
   .pro-cta-notif,
   .qx-caret {
     animation: none;
@@ -2949,7 +2975,7 @@ a.admin-kpi:hover {
 .email-code-box {
   height: 56px;
   border: 1px solid #9c8e7f;
-  border-radius: 14px;
+  border-radius: 12px;
   background: #ffffff;
   display: flex;
   align-items: center;
@@ -3029,7 +3055,7 @@ a.admin-kpi:hover {
   padding: 8px 4px;
   margin: -8px -4px;
   font: inherit;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   color: #0e7a4c;
   text-decoration: underline;
@@ -3063,7 +3089,7 @@ a.admin-kpi:hover {
   min-height: 96px;
   padding: 12px 8px;
   border: 1px solid #f0dcc0;
-  border-radius: 16px;
+  border-radius: 12px;
   background: #ffffff;
   font: inherit;
   color: #2b2420;
@@ -3098,13 +3124,13 @@ a.admin-kpi:hover {
 .cat-tile-icon {
   width: 44px;
   height: 44px;
-  border-radius: 14px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .cat-tile-label {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1.25;
   text-align: center;
@@ -3115,7 +3141,7 @@ a.admin-kpi:hover {
   border-radius: 999px;
   background: #fff3d6;
   color: #8a5a00;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
 }
 .cat-tile-check {
@@ -3150,7 +3176,7 @@ a.admin-kpi:hover {
   border: 0;
   background: none;
   font: inherit;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   color: #0e7a4c;
   cursor: pointer;
@@ -3272,7 +3298,7 @@ a.admin-kpi:hover {
     color: #0e7a4c;
     font: inherit;
     font-weight: 700;
-    font-size: 15px;
+    font-size: 16px;
     cursor: pointer;
     touch-action: manipulation;
   }
@@ -3316,7 +3342,7 @@ a.admin-kpi:hover {
   background: #fff;
   border: 1px solid #f0dcc0;
   color: #2b2420;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   text-decoration: none;
   transition: border-color 150ms cubic-bezier(0.2, 0.8, 0.2, 1), background-color 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -3341,6 +3367,102 @@ a.admin-kpi:hover {
 @media (min-width: 661px) {
   .popular-services {
     padding: 8px 24px 64px;
+  }
+}
+
+/* Luci sfumate (components/GlowLights.tsx, docs/CHANGELOG.md §305-§306): tre
+   luci che si muovono piano e una grana leggera. Le luci stanno sui bordi,
+   lontano dal testo, così il contrasto resta sopra 4,5:1. Il colore delle
+   luci cambia col tono del fondo. */
+.glow-lights {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.glow-lights::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.16;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.glow-lights--verde {
+  background:
+    radial-gradient(120% 90% at 50% 120%, rgba(6, 70, 44, 0.55), transparent 60%),
+    linear-gradient(160deg, #1fae70 0%, #189a63 42%, #0f7f50 100%);
+}
+.glow-lights--scuro {
+  background: #2b2420;
+}
+.glow-lights--chiaro::after {
+  opacity: 0.08;
+  mix-blend-mode: multiply;
+}
+.glow-lights__light {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  will-change: transform;
+}
+.glow-lights__light--one {
+  width: 520px;
+  height: 520px;
+  top: -260px;
+  left: -160px;
+  background: radial-gradient(circle, rgba(140, 255, 200, 0.55), transparent 65%);
+  animation: glow-lights-drift-one 18s ease-in-out infinite alternate;
+}
+.glow-lights__light--two {
+  width: 460px;
+  height: 460px;
+  bottom: -260px;
+  right: -140px;
+  background: radial-gradient(circle, rgba(217, 164, 65, 0.6), transparent 65%);
+  animation: glow-lights-drift-two 22s ease-in-out infinite alternate;
+}
+.glow-lights__light--three {
+  width: 380px;
+  height: 380px;
+  top: -200px;
+  right: 8%;
+  background: radial-gradient(circle, rgba(64, 200, 220, 0.4), transparent 65%);
+  animation: glow-lights-drift-three 26s ease-in-out infinite alternate;
+}
+/* Sul fondo scuro: verde e arancio caldo, più intensi. */
+.glow-lights--scuro .glow-lights__light--one {
+  background: radial-gradient(circle, rgba(24, 154, 99, 0.75), transparent 65%);
+}
+.glow-lights--scuro .glow-lights__light--two {
+  background: radial-gradient(circle, rgba(255, 138, 61, 0.45), transparent 65%);
+}
+.glow-lights--scuro .glow-lights__light--three {
+  background: radial-gradient(circle, rgba(64, 200, 220, 0.25), transparent 65%);
+}
+/* Sul fondo pesca: luci tenui, verde e ottone. */
+.glow-lights--chiaro .glow-lights__light--one {
+  background: radial-gradient(circle, rgba(24, 154, 99, 0.3), transparent 65%);
+}
+.glow-lights--chiaro .glow-lights__light--two {
+  background: radial-gradient(circle, rgba(217, 164, 65, 0.35), transparent 65%);
+}
+.glow-lights--chiaro .glow-lights__light--three {
+  background: radial-gradient(circle, rgba(64, 200, 220, 0.18), transparent 65%);
+}
+@keyframes glow-lights-drift-one {
+  to { transform: translate(120px, 60px) scale(1.1); }
+}
+@keyframes glow-lights-drift-two {
+  to { transform: translate(-140px, -40px) scale(1.15); }
+}
+@keyframes glow-lights-drift-three {
+  to { transform: translate(-160px, 50px) scale(0.9); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .glow-lights__light {
+    animation: none;
   }
 }
 

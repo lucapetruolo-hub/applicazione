@@ -6,13 +6,17 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CalendarDays, ChevronLeft, ChevronRight, Navigation, Phone, Plus, Search, Truck, X } from "lucide-react";
 import {
   agendaAttention,
+  formatAppointmentDate,
   formatAppointmentTimeRange,
+  jobOccurrenceOn,
+  jobOccurrences,
   navigateUrl,
   wallClockNow,
   type AgendaWeekTemplate,
   type DayPart,
   type ZoneDemand,
   DAY_PART_RANGE,
+  weekTemplateMonthFill,
   type CompleteBookingInput,
   type ExternalJob,
   type ProfessionalBooking,
@@ -37,6 +41,7 @@ import { WeekTemplateEditor } from "@/components/agenda/WeekTemplateEditor";
 import { ZoneDemandCard } from "@/components/agenda/ZoneDemandCard";
 import { DayRouteSection } from "@/components/agenda/DayRouteSection";
 import { readAgendaOffline, saveAgendaOffline } from "@/lib/agendaOffline";
+import { subscribeRealtimeEvents } from "@/lib/realtimeBus";
 import {
   addDaysUtc,
   addMonthsUtc,
@@ -274,6 +279,36 @@ function DashboardAgendaContent() {
 
   // Appuntamenti e lavori esterni insieme: se la rete non c'è si mostra
   // l'ultima copia salvata sul telefono (docs/CHANGELOG.md §288).
+  // Si ricarica da sola quando un cliente accetta, sposta o annulla, e
+  // quando si torna sull'app o torna la rete (R2 della verifica,
+  // docs/CHANGELOG.md §310): prima restava ferma all'apertura.
+  const [agendaReload, setAgendaReload] = useState(0);
+  useEffect(() => {
+    let last = Date.now();
+    const reload = () => {
+      // Mai più di una volta ogni 5 secondi: tornare sull'app più volte di fila non serve.
+      if (Date.now() - last < 5_000) return;
+      last = Date.now();
+      setAgendaReload((n) => n + 1);
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") reload();
+    };
+    const unsubscribe = subscribeRealtimeEvents((event) => {
+      if (event.kind === "notification" && /^(QUOTE_|BOOKING_|JOB_)/.test(event.notification.type)) {
+        last = 0;
+        reload();
+      }
+    });
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", reload);
+    return () => {
+      unsubscribe();
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", reload);
+    };
+  }, []);
+
   useEffect(() => {
     if (!token || !user) return;
     let cancelled = false;
@@ -282,6 +317,8 @@ function DashboardAgendaContent() {
         if (cancelled) return;
         setBookings(loadedBookings);
         setExternalJobs(loadedJobs);
+        // Il riquadro aperto mostra subito lo stato nuovo (es. annullato dal cliente).
+        setSelectedBooking((current) => (current ? (loadedBookings.find((b) => b.id === current.id) ?? current) : current));
         setOfflineSavedAt(null);
         saveAgendaOffline(user.id, loadedBookings, loadedJobs);
       })
@@ -301,7 +338,7 @@ function DashboardAgendaContent() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, user?.id]);
+  }, [token, user?.id, agendaReload]);
 
   useEffect(() => {
     if (!token) return;
@@ -369,7 +406,7 @@ function DashboardAgendaContent() {
   useEffect(() => {
     if (!token) return;
     apiClient.myLeads(token).then(setLeads).catch(() => {});
-  }, [token]);
+  }, [token, agendaReload]);
 
   useEffect(() => {
     if (!token) return;
@@ -468,7 +505,17 @@ function DashboardAgendaContent() {
     setSelectedBooking(null);
   }
 
-  if (isLoading || (token && isLoadingSlots)) return null;
+  // Mentre carica si tiene il posto della pagina: prima non c'era nulla e il
+  // piè di pagina saltava giù all'arrivo dell'agenda (A1 della verifica,
+  // CLS 0,22, docs/CHANGELOG.md §310).
+  if (isLoading || (token && isLoadingSlots)) {
+    return (
+      <div aria-busy="true" style={{ minHeight: "100vh", padding: 16, display: "flex", flexDirection: "column", gap: 16 }}>
+        <SkeletonBlock height={44} radius={12} />
+        <SkeletonBlock height={420} radius={20} />
+      </div>
+    );
+  }
 
   if (!user || !token) {
     return (
@@ -969,6 +1016,8 @@ function DashboardAgendaContent() {
             opacity={exceptionBusyDate === dateStr ? 0.5 : 1}
             onPress={() => toggleException(dateStr)}
             accessibilityRole="button"
+            // "Chiudi venerdì 30" invece di sei "Chiudi" uguali per il lettore di schermo (A3, §310).
+            accessibilityLabel={`${isClosed ? "Riapri" : "Chiudi"} ${formatAppointmentDate(date, { weekday: "long", day: "numeric" })}`}
           >
             <Text fontFamily="$body" fontSize={12} fontWeight="600" color={brand.grafite70} textDecorationLine="underline">
               {isClosed ? "Riapri" : "Chiudi"}
@@ -1083,14 +1132,14 @@ function DashboardAgendaContent() {
   function bookingsOnDate(date: Date): ProfessionalBooking[] {
     const dateStr = toIsoDate(date);
     return (bookings ?? [])
-      .filter((b) => b.scheduledAt.slice(0, 10) === dateStr)
+      .filter((b) => jobOccurrenceOn(b.scheduledAt, b.scheduledEndAt, dateStr) !== null)
       .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
   }
 
   function externalJobsOnDate(date: Date): ExternalJob[] {
     const dateStr = toIsoDate(date);
     return (externalJobs ?? [])
-      .filter((j) => j.scheduledAt.slice(0, 10) === dateStr)
+      .filter((j) => jobOccurrenceOn(j.scheduledAt, j.scheduledEndAt, dateStr) !== null)
       .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
   }
 
@@ -1109,7 +1158,7 @@ function DashboardAgendaContent() {
           lead.quote &&
           lead.quote.bookingStatus === null &&
           (lead.quote.status === "SENT" || lead.quote.status === "MODIFICATION_REQUESTED") &&
-          lead.quote.estimatedStartDate.slice(0, 10) === dateStr,
+          jobOccurrenceOn(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate, dateStr) !== null,
       )
       .sort((a, b) => a.quote!.estimatedStartDate.localeCompare(b.quote!.estimatedStartDate));
   }
@@ -1247,6 +1296,14 @@ function DashboardAgendaContent() {
   const now = wallClockNow(new Date(nowTick));
   const today = todayUtc();
   const todayStr = toIsoDate(today);
+  // Striscia dei giorni: oggi e i 6 dopo, così la domenica sera "domani" è
+  // a un tocco (T4 del test dei compiti, docs/CHANGELOG.md §311); per un
+  // giorno più lontano o passato, la sua settimana da lunedì.
+  function stripDays(current: Date): Date[] {
+    const offset = Math.round((startOfDayUtc(current).getTime() - startOfDayUtc(today).getTime()) / 86_400_000);
+    if (offset >= 0 && offset < 7) return Array.from({ length: 7 }, (_, i) => addDaysUtc(today, i));
+    return weekDays(current);
+  }
   const nowMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
   const closedSet = new Set(exceptionDates);
 
@@ -1256,58 +1313,66 @@ function DashboardAgendaContent() {
     return b.status === "PENDING" ? "pending" : "conf";
   }
 
+  /**
+   * Posizione nella griglia di un appuntamento, una per giorno: un lavoro su
+   * più giorni compare ogni giorno con lo stesso orario (docs/CHANGELOG.md
+   * §310), con "Giorno 2 di 3".
+   */
+  function onEachDay(startIso: string, endIso: string | null, key: string) {
+    const days = jobOccurrences(startIso, endIso);
+    return days.map((occurrence, i) => {
+      const start = wallMinutes(occurrence.start.toISOString());
+      const end = occurrence.end ? wallMinutes(occurrence.end.toISOString()) || 24 * 60 : null;
+      return {
+        key: days.length > 1 ? `${key}-${occurrence.date}` : key,
+        date: occurrence.date,
+        start,
+        end: end !== null ? Math.max(start + 15, end) : start + DEFAULT_DURATION_MIN,
+        dayOf: days.length > 1 ? `Giorno ${i + 1} di ${days.length}` : null,
+      };
+    });
+  }
+
   const gridEvents: AgendaGridEvent[] = [
     ...(filters.has("conf") || filters.has("done")
       ? (bookings ?? [])
           .filter((b) => (b.status === "COMPLETED" ? filters.has("done") : filters.has("conf")))
-          .map((b) => {
-            const start = wallMinutes(b.scheduledAt);
-            return {
-              key: `booking-${b.id}`,
-              date: b.scheduledAt.slice(0, 10),
-              start,
-              end: b.scheduledEndAt ? Math.max(start + 15, wallMinutes(b.scheduledEndAt)) : start + DEFAULT_DURATION_MIN,
+          .flatMap((b) =>
+            onEachDay(b.scheduledAt, b.scheduledEndAt, `booking-${b.id}`).map((day) => ({
+              ...day,
               title: b.clientAccountDeleted ? "Account eliminato" : ([b.recipientName, b.recipientSurname].filter(Boolean).join(" ") || b.clientName || "Cliente"),
-              detail: [b.categoryLabel, b.serviceMode === "ONLINE" ? "online" : b.city].filter(Boolean).join(" · "),
+              detail: [day.dayOf, b.categoryLabel, b.serviceMode === "ONLINE" ? "online" : b.city].filter(Boolean).join(" · "),
               kind: bookingKind(b),
               label: AGENDA_BOOKING_STATUS_LABEL[b.status],
               onPress: () => setSelectedBooking(b),
-            };
-          })
+            })),
+          )
       : []),
     ...(filters.has("ext")
-      ? (externalJobs ?? []).map((j) => {
-          const start = wallMinutes(j.scheduledAt);
-          return {
-            key: `external-${j.id}`,
-            date: j.scheduledAt.slice(0, 10),
-            start,
-            end: j.scheduledEndAt ? Math.max(start + 15, wallMinutes(j.scheduledEndAt)) : start + DEFAULT_DURATION_MIN,
+      ? (externalJobs ?? []).flatMap((j) =>
+          onEachDay(j.scheduledAt, j.scheduledEndAt, `external-${j.id}`).map((day) => ({
+            ...day,
             title: j.clientName,
-            detail: "Lavoro esterno",
+            detail: [day.dayOf, "Lavoro esterno"].filter(Boolean).join(" · "),
             kind: j.status === "CANCELED" ? ("canceled" as const) : ("ext" as const),
             label: "Lavoro esterno",
             onPress: () => setSelectedExternalJob(j),
-          };
-        })
+          })),
+        )
       : []),
     ...(filters.has("wait")
       ? (leads ?? [])
           .filter((lead) => lead.quote && lead.quote.bookingStatus === null && (lead.quote.status === "SENT" || lead.quote.status === "MODIFICATION_REQUESTED"))
-          .map((lead) => {
+          .flatMap((lead) => {
             const quote = lead.quote!;
-            const start = wallMinutes(quote.estimatedStartDate);
-            return {
-              key: `pending-${lead.id}`,
-              date: quote.estimatedStartDate.slice(0, 10),
-              start,
-              end: quote.estimatedEndDate ? Math.max(start + 15, wallMinutes(quote.estimatedEndDate)) : start + DEFAULT_DURATION_MIN,
+            return onEachDay(quote.estimatedStartDate, quote.estimatedEndDate, `pending-${lead.id}`).map((day) => ({
+              ...day,
               title: lead.guidedRequest.clientAccountDeleted ? "Account eliminato" : (lead.guidedRequest.clientName ?? "Cliente"),
-              detail: "In attesa del cliente",
+              detail: [day.dayOf, "In attesa del cliente"].filter(Boolean).join(" · "),
               kind: "wait" as const,
               label: "Preventivo in attesa",
               onPress: () => router.push(`/dashboard/richieste?open=${lead.guidedRequest.id}`),
-            };
+            }));
           })
       : []),
   ];
@@ -1367,9 +1432,16 @@ function DashboardAgendaContent() {
   // Prossimo appuntamento di oggi, con le azioni a portata di pollice.
   const nextBooking =
     (bookings ?? [])
-      .filter((b) => b.status === "CONFIRMED" && b.scheduledAt.slice(0, 10) === todayStr)
-      .filter((b) => (b.scheduledEndAt ? wallMinutes(b.scheduledEndAt) : wallMinutes(b.scheduledAt) + DEFAULT_DURATION_MIN) > nowMinutes)
-      .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt))[0] ?? null;
+      .filter((b) => b.status === "CONFIRMED")
+      .flatMap((b) => {
+        // Di un lavoro su più giorni conta l'orario di oggi (§310).
+        const occurrence = jobOccurrenceOn(b.scheduledAt, b.scheduledEndAt, todayStr);
+        if (!occurrence) return [];
+        const start = occurrence.start.toISOString();
+        const endMinutes = occurrence.end ? wallMinutes(occurrence.end.toISOString()) || 24 * 60 : wallMinutes(start) + DEFAULT_DURATION_MIN;
+        return endMinutes > nowMinutes ? [{ booking: b, start }] : [];
+      })
+      .sort((a, b) => a.start.localeCompare(b.start))[0]?.booking ?? null;
 
   function navigateCalendar(direction: -1 | 1) {
     if (bookingView === "day") setBookingCurrentDate(addDaysUtc(bookingCurrentDate, direction));
@@ -1419,23 +1491,18 @@ function DashboardAgendaContent() {
 
   function applyWeekTemplate(monthKey: string) {
     if (!weekTemplate) return;
-    const added: SlotDraft[] = [];
-    let filledDays = 0;
-    let skippedDays = 0;
-    for (const dateStr of datesInMonth(parseIsoDate(monthKey))) {
-      if (dateStr < todayStr || closedSet.has(dateStr)) continue;
-      const dayOfWeek = parseIsoDate(dateStr).getUTCDay();
-      const templateSlots = weekTemplate.days[dayOfWeek] ?? [];
-      if (templateSlots.length === 0) continue;
-      if (slots.some((slot) => slotAppliesOnDateStr(slot, dateStr))) {
-        skippedDays++;
-        continue;
-      }
-      filledDays++;
-      for (const t of templateSlots) {
-        added.push({ dayOfWeek, date: dateStr, start: t.start, end: t.end, allowsHome: t.allowsHome, allowsOnline: t.allowsOnline, homeMax: t.homeMax, onlineMax: t.onlineMax });
-      }
-    }
+    const fill = weekTemplateMonthFill(weekTemplate, datesInMonth(parseIsoDate(monthKey)), slots, { fromDate: todayStr, closedDates: closedSet });
+    const { filledDays, skippedDays } = fill;
+    const added: SlotDraft[] = fill.added.map((t) => ({
+      dayOfWeek: t.dayOfWeek,
+      date: t.date,
+      start: t.start,
+      end: t.end,
+      allowsHome: t.allowsHome,
+      allowsOnline: t.allowsOnline,
+      homeMax: t.homeMax,
+      onlineMax: t.onlineMax,
+    }));
     if (filledDays === 0) {
       setTemplateNotice(skippedDays > 0 ? "Tutti i giorni di quel mese hanno già i loro orari: cambiali dal calendario qui sotto." : "Nessun giorno da riempire in quel mese.");
       return;
@@ -1450,12 +1517,14 @@ function DashboardAgendaContent() {
 
   /** Ferie: chiude in un colpo tutti i giorni tra due date. */
   async function addVacation() {
-    if (!token || !vacationFrom || !vacationTo || vacationTo < vacationFrom) return;
+    // "Al" vuoto = un giorno solo (T1 del test dei compiti, docs/CHANGELOG.md §311).
+    const until = vacationTo || vacationFrom;
+    if (!token || !vacationFrom || until < vacationFrom) return;
     setVacationBusy(true);
     setError(null);
     try {
       let latest = exceptionDates;
-      for (let d = parseIsoDate(vacationFrom); toIsoDate(d) <= vacationTo; d = addDaysUtc(d, 1)) {
+      for (let d = parseIsoDate(vacationFrom); toIsoDate(d) <= until; d = addDaysUtc(d, 1)) {
         const dateStr = toIsoDate(d);
         if (latest.includes(dateStr) || dateStr < todayStr) continue;
         latest = (await apiClient.addAvailabilityException(token, dateStr)).exceptionDates;
@@ -1555,7 +1624,16 @@ function DashboardAgendaContent() {
           </div>
         ) : null}
 
-        {slots.length === 0 && activeTab !== "orari" ? (
+        {slots.length === 0 && activeTab !== "orari" && weekTemplate?.days.some((d) => d.length > 0) ? (
+          // Settimana tipo salvata ma non ancora applicata: prima si leggeva
+          // "non hai orari" (T6 del test dei compiti, docs/CHANGELOG.md §311).
+          <div className="ag-banner info">
+            <span>La tua settimana tipo è pronta: applicala al mese per farti prenotare.</span>
+            <button type="button" className="ag-btn sm" onClick={() => applyWeekTemplate(templateMonths[0]!.key)}>
+              Applica a {templateMonths[0]!.label}
+            </button>
+          </div>
+        ) : slots.length === 0 && activeTab !== "orari" ? (
           <div className="ag-banner info">
             <span>Non hai ancora orari di lavoro: aggiungili e i clienti potranno prenotarti più facilmente.</span>
             <button type="button" className="ag-btn sm" onClick={() => setActiveTab("orari")}>
@@ -1673,7 +1751,7 @@ function DashboardAgendaContent() {
               {bookingView === "day" ? (
                 <>
                   <div className="ag-strip" role="group" aria-label="Giorni della settimana">
-                    {weekDays(bookingCurrentDate).map((date) => {
+                    {stripDays(bookingCurrentDate).map((date) => {
                       const dateStr = toIsoDate(date);
                       return (
                         <button
@@ -1682,10 +1760,8 @@ function DashboardAgendaContent() {
                           className={`${isSameDateUtc(date, bookingCurrentDate) ? "on" : ""} ${dateStr === todayStr ? "today" : ""}`}
                           onClick={() => setBookingCurrentDate(date)}
                           aria-pressed={isSameDateUtc(date, bookingCurrentDate)}
-                          aria-label={`${weekdayShortLabel(date)} ${date.getUTCDate()}`}
                         >
-                          {weekdayShortLabel(date)}
-                          <b>{date.getUTCDate()}</b>
+                          {weekdayShortLabel(date)} <b>{date.getUTCDate()}</b>
                           {weather.get(dateStr) ? <WeatherIcon kind={weather.get(dateStr)!} size={12} /> : busyDates.has(dateStr) ? <u aria-hidden /> : null}
                         </button>
                       );
@@ -1745,23 +1821,11 @@ function DashboardAgendaContent() {
           </div>
         ) : activeTab === "orari" ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            {weekTemplate ? (
-              <WeekTemplateEditor template={weekTemplate} onChange={changeWeekTemplate} months={templateMonths} onApply={applyWeekTemplate} saving={savingTemplate} />
-            ) : (
-              <SkeletonBlock height={360} radius={20} />
-            )}
-            {templateNotice ? (
-              <div className="ag-banner info" role="status" style={{ marginBottom: 0 }}>
-                {templateNotice}
-              </div>
-            ) : null}
-
-            <ZoneDemandCard demand={zoneDemand} template={weekTemplate} onAdd={addDemandSlot} />
-
+            {/* Chiudere un giorno è il compito più frequente della scheda: prima di tutto (T1, §311). */}
             <div className="ag-card" style={{ padding: 20 }}>
-              <h2 style={{ fontSize: 19 }}>Ferie e chiusure</h2>
+              <h2 style={{ fontSize: 19 }}>Chiudi un giorno o le ferie</h2>
               <p className="ag-muted" style={{ fontSize: 13.5, marginTop: 4 }}>
-                I giorni chiusi non si possono prenotare.
+                Per un giorno solo basta &quot;Dal&quot;. I giorni chiusi non si possono prenotare.
               </p>
               <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap", marginTop: 12 }}>
                 <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600 }}>
@@ -1769,11 +1833,11 @@ function DashboardAgendaContent() {
                   <ItalianDateInput className="ag-input" min={todayStr} value={vacationFrom} onChange={setVacationFrom} />
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 600 }}>
-                  Al
+                  Al (facoltativo)
                   <ItalianDateInput className="ag-input" min={vacationFrom || todayStr} value={vacationTo} onChange={setVacationTo} />
                 </label>
-                <button type="button" className="ag-btn" disabled={vacationBusy || !vacationFrom || !vacationTo || vacationTo < vacationFrom} onClick={() => void addVacation()}>
-                  {vacationBusy ? "Salvo..." : "Chiudi questi giorni"}
+                <button type="button" className="ag-btn" disabled={vacationBusy || !vacationFrom || (vacationTo !== "" && vacationTo < vacationFrom)} onClick={() => void addVacation()}>
+                  {vacationBusy ? "Salvo..." : !vacationTo || vacationTo === vacationFrom ? "Chiudi questo giorno" : "Chiudi questi giorni"}
                 </button>
               </div>
               {upcomingClosed.length > 0 ? (
@@ -1786,15 +1850,28 @@ function DashboardAgendaContent() {
                       style={{ border: 0, cursor: "pointer", height: 32 }}
                       disabled={exceptionBusyDate === dateStr}
                       onClick={() => void toggleException(dateStr)}
-                      aria-label={`Riapri il ${parseIsoDate(dateStr).getUTCDate()} ${monthLabel(parseIsoDate(dateStr))}`}
                     >
                       {weekdayShortLabel(parseIsoDate(dateStr))} {parseIsoDate(dateStr).getUTCDate()} {monthLabel(parseIsoDate(dateStr))}
+                      <span className="sr-only">, riapri</span>
                       <X size={13} aria-hidden />
                     </button>
                   ))}
                 </div>
               ) : null}
             </div>
+
+            {weekTemplate ? (
+              <WeekTemplateEditor template={weekTemplate} onChange={changeWeekTemplate} months={templateMonths} onApply={applyWeekTemplate} saving={savingTemplate} />
+            ) : (
+              <SkeletonBlock height={360} radius={20} />
+            )}
+            {templateNotice ? (
+              <div className="ag-banner info" role="status" style={{ marginBottom: 0 }}>
+                {templateNotice}
+              </div>
+            ) : null}
+
+            <ZoneDemandCard demand={zoneDemand} template={weekTemplate} onAdd={addDemandSlot} />
 
             <div className="ag-card" style={{ padding: 20 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 6 }}>
@@ -1833,7 +1910,27 @@ function DashboardAgendaContent() {
                   )}
                 </div>
               ) : null}
+              {view === "day" ? (
+                // Striscia della settimana come nel Calendario: venerdì è a un tocco, non a quattro frecce (U1, §310).
+                <div className="ag-strip" role="group" aria-label="Giorni della settimana" style={{ marginBottom: 12 }}>
+                  {stripDays(currentDate).map((date) => {
+                    const dateStr = toIsoDate(date);
+                    return (
+                      <button
+                        key={dateStr}
+                        type="button"
+                        className={`${isSameDateUtc(date, currentDate) ? "on" : ""} ${dateStr === todayStr ? "today" : ""}`}
+                        onClick={() => setCurrentDate(date)}
+                        aria-pressed={isSameDateUtc(date, currentDate)}
+                      >
+                        {weekdayShortLabel(date)} <b>{date.getUTCDate()}</b>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
               <CalendarShell
+                dayStripAbove
                 view={view}
                 onViewChange={setView}
                 currentDate={currentDate}
@@ -1862,8 +1959,9 @@ function DashboardAgendaContent() {
       </div>
 
       {activeTab === "calendario" ? (
-        <button type="button" className="ag-fab" onClick={() => setCreatingExternalJobFor(bookingCurrentDate)} aria-label="Aggiungi un lavoro esterno">
-          <Plus size={26} aria-hidden />
+        // Con la scritta: il solo "+" non diceva cosa aggiunge (T9, docs/CHANGELOG.md §311).
+        <button type="button" className="ag-fab" onClick={() => setCreatingExternalJobFor(bookingCurrentDate)}>
+          <Plus size={22} aria-hidden /> Aggiungi lavoro
         </button>
       ) : null}
 
@@ -1886,6 +1984,7 @@ function DashboardAgendaContent() {
       {completingBooking ? (
         <CompleteJobModal
           quotedItems={completingBooking.items}
+          jobName={completingBooking.categoryLabel}
           onClose={() => setCompletingBooking(null)}
           onComplete={handleComplete}
           uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}

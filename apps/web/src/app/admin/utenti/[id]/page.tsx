@@ -44,7 +44,7 @@ export default function AdminUserDetailPage() {
   if (error && !detail) return <Text color={brand.urgenza}>{error}</Text>;
   if (!detail) {
     return (
-      <YStack backgroundColor={brand.calce} borderRadius={16} overflow="hidden">
+      <YStack backgroundColor={brand.calce} borderRadius={12} overflow="hidden">
         <SkeletonSummaryRow />
         <SkeletonSummaryRow />
       </YStack>

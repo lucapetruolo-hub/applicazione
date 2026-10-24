@@ -54,7 +54,7 @@ export function ReimpostaPasswordContent() {
     <AuthPageBackground>
       <AuthCard>
         <YStack gap="$2">
-          <Text fontFamily="$body" fontSize={11} fontWeight="700" color={brand.cianografiaScuro}>
+          <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.cianografiaScuro}>
             Password dimenticata
           </Text>
           <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
@@ -91,7 +91,7 @@ export function ReimpostaPasswordContent() {
               onSubmitEditing={handleSubmit}
             />
             {error ? (
-              <Text color={brand.urgenza} fontSize="$3">
+              <Text color={brand.urgenza} fontSize={16}>
                 {error}
               </Text>
             ) : null}
@@ -104,7 +104,7 @@ export function ReimpostaPasswordContent() {
         )}
 
         <Link href="/password-dimenticata" style={{ textDecoration: "none", textAlign: "center" }}>
-          <Text fontSize="$3" color={brand.cianografiaScuro} textAlign="center" fontWeight="600">
+          <Text fontSize={16} color={brand.cianografiaScuro} textAlign="center" fontWeight="600">
             Chiedi un nuovo link
           </Text>
         </Link>

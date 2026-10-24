@@ -73,9 +73,7 @@ export function QuoteExampleSection() {
 
   return (
     <Section
-      eyebrow="Come funziona"
       title="Tu scrivi due righe, i professionisti ti rispondono con i numeri"
-      titleAccent="ti rispondono con i numeri"
       maxWidth={1080}
     >
       <div ref={ref} className={`qx${quoteVisible ? " is-on" : ""}`}>
@@ -123,12 +121,13 @@ export function QuoteExampleSection() {
             {QUOTE_ROWS.map((row, index) => (
               <div key={row.label} className="qx-row" style={{ transitionDelay: `${index * ROW_STAGGER_MS}ms` }}>
                 <span>{row.label}</span>
+                <span className="qx-leader" aria-hidden />
                 <span className="qx-value">{row.value}</span>
               </div>
             ))}
             <div className="qx-total" style={{ transitionDelay: `${QUOTE_ROWS.length * ROW_STAGGER_MS}ms` }}>
               <span>Totale</span>
-              <span>€ 93</span>
+              <span className="qx-value">€ 93</span>
             </div>
           </div>
         </div>
@@ -142,7 +141,7 @@ export function QuoteExampleSection() {
               <Text fontFamily="$heading" fontWeight="600" fontSize="$5" color={brand.grafite}>
                 {step.title}
               </Text>
-              <Text fontSize="$3" color={brand.grafite70}>
+              <Text fontSize={16} color={brand.grafite70}>
                 {step.text}
               </Text>
             </YStack>
@@ -154,7 +153,7 @@ export function QuoteExampleSection() {
         <Link href="/preventivo" className="qx-cta-button">
           Descrivi il tuo lavoro
         </Link>
-        <Text fontSize="$3" color={brand.grafite70}>
+        <Text fontSize={16} color={brand.grafite70}>
           Per chi cerca, il servizio è gratuito.
         </Text>
       </div>

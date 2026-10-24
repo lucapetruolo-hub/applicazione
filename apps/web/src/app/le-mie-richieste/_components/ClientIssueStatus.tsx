@@ -33,7 +33,7 @@ export function ClientIssueStatus({
   if (!issue) return null;
   const pro = booking.businessName;
   const errorText = error ? (
-    <Text fontSize="$2" color={brand.urgenza}>
+    <Text fontSize={13} color={brand.urgenza}>
       {error}
     </Text>
   ) : null;
@@ -41,7 +41,7 @@ export function ClientIssueStatus({
   if (issue.status === "CHAT") {
     return (
       <YStack gap="$2">
-        <Text fontSize="$2" color={brand.grafite70}>
+        <Text fontSize={13} color={brand.grafite70}>
           {!issue.assisted
             ? `Hai scelto il pagamento diretto: scrivi a ${pro} in chat per trovare insieme una soluzione. In questo caso non possiamo rimborsarti né decidere noi, ma potrai sempre lasciare la recensione.`
             : issue.proRepliedInChat
@@ -71,7 +71,7 @@ export function ClientIssueStatus({
   if (issue.status === "UNRESOLVED") {
     return (
       <YStack gap="$2">
-        <Text fontSize="$2" color={brand.grafite70}>
+        <Text fontSize={13} color={brand.grafite70}>
           Non avete trovato un accordo con {pro}. Puoi lasciare la recensione per raccontare com&apos;è andata.
         </Text>
         {issue.canRedispatch ? (
@@ -86,7 +86,7 @@ export function ClientIssueStatus({
 
   if (issue.status === "RESOLVED") {
     return (
-      <Text fontSize="$2" color={brand.grafite70}>
+      <Text fontSize={13} color={brand.grafite70}>
         Hai indicato che avete risolto il problema con {pro}.
       </Text>
     );
@@ -101,7 +101,7 @@ export function ClientIssueStatus({
           ? `Il nostro team la sta esaminando e decide entro ${due}. Ti comunichiamo la decisione qui e per notifica.`
           : `Il nostro team la sta esaminando. ${pro} ha tempo fino a ${due} per inviare la sua versione: se non risponde, la segnalazione è accolta.`;
     return (
-      <Text fontSize="$2" color={brand.grafite70}>
+      <Text fontSize={13} color={brand.grafite70}>
         {text}
       </Text>
     );
@@ -112,7 +112,7 @@ export function ClientIssueStatus({
   return (
     <YStack gap="$2">
       {issue.resolutionNote && !appealAccepted ? (
-        <Text fontSize="$2" color={brand.grafite70}>
+        <Text fontSize={13} color={brand.grafite70}>
           {jobIssueOutcomeText({
             type: issue.type,
             decision: issue.status === "UPHELD" ? "UPHELD" : "REJECTED",
@@ -124,7 +124,7 @@ export function ClientIssueStatus({
         </Text>
       ) : null}
       {appealAccepted ? (
-        <Text fontSize="$2" color={brand.grafite70}>
+        <Text fontSize={13} color={brand.grafite70}>
           {pro} ha fatto ricorso e un'altra persona del nostro team gli ha dato ragione: la segnalazione è respinta. Motivazione: {issue.appealNote}
         </Text>
       ) : null}
@@ -133,14 +133,14 @@ export function ClientIssueStatus({
           <CardButton tone="primary" alignSelf="flex-start" disabled={busy} onPress={onRedispatch}>
             Invia la richiesta ad altri professionisti
           </CardButton>
-          <Text fontSize="$1" color={brand.grafite70}>
+          <Text fontSize={13} color={brand.grafite70}>
             La stessa richiesta, con descrizione e foto, arriva ad altri professionisti della zona. {pro} non la riceve.
           </Text>
         </YStack>
       ) : null}
       {issue.redispatchedGuidedRequestId ? (
         <YStack gap="$2" alignItems="flex-start">
-          <Text fontSize="$2" fontWeight="600" color={brand.grafite70}>
+          <Text fontSize={13} fontWeight="600" color={brand.grafite70}>
             Hai inviato la richiesta ad altri professionisti.
           </Text>
           <Link href={`/le-mie-richieste?tab=richieste&open=${issue.redispatchedGuidedRequestId}`} style={{ textDecoration: "none" }}>

@@ -8,6 +8,8 @@ import {
   formatAppointmentTime,
   formatAppointmentTimeRange,
   formatBookingAddress,
+  formatJobDays,
+  jobOccurrenceOn,
   navigateUrl,
   wallClockNow,
   wallClockToday,
@@ -84,7 +86,10 @@ export function AppointmentPanel({
   const navigateTo = booking.street && booking.houseNumber ? `${booking.street} ${booking.houseNumber}, ${[booking.postalCode, booking.city].filter(Boolean).join(" ")}` : address;
   const online = booking.serviceMode === "ONLINE";
   const isOpen = booking.status === "PENDING" || booking.status === "CONFIRMED";
-  const isToday = booking.scheduledAt.slice(0, 10) === wallClockToday().toISOString().slice(0, 10);
+  // Anche un giorno in mezzo a un lavoro su più giorni (§310).
+  // "Lavoro completato" dal giorno del lavoro in poi (T11, docs/CHANGELOG.md §311).
+  const startsLater = new Date(booking.scheduledAt).toISOString().slice(0, 10) > wallClockToday().toISOString().slice(0, 10);
+  const isToday = jobOccurrenceOn(booking.scheduledAt, booking.scheduledEndAt, wallClockToday().toISOString().slice(0, 10)) !== null;
   const pill = STATUS_PILL[booking.status];
   const payment = agendaPaymentLine(booking);
   const kindLabel = [online ? "Online" : booking.serviceMode === "HOME" ? "A domicilio" : null, booking.categoryLabel].filter(Boolean).join(" · ");
@@ -101,6 +106,8 @@ export function AppointmentPanel({
     }
   }
 
+  const jobDays = formatJobDays(booking.scheduledAt, booking.scheduledEndAt);
+
   return (
     <>
       <div className="ag-scrim" onClick={onClose} aria-hidden />
@@ -113,9 +120,17 @@ export function AppointmentPanel({
           </button>
         </div>
         <h2>{name}</h2>
-        <p style={{ fontSize: 14.5, marginTop: 4, textTransform: "capitalize" }}>
-          {formatAppointmentDate(booking.scheduledAt, { weekday: "long", day: "numeric", month: "long" })} · {formatAppointmentTimeRange(booking.scheduledAt, booking.scheduledEndAt)}
-        </p>
+        {jobDays ? (
+          // Lavoro su più giorni (docs/CHANGELOG.md §310).
+          <p style={{ fontSize: 14.5, marginTop: 4 }}>
+            {jobDays.charAt(0).toUpperCase()}
+            {jobDays.slice(1)} · ogni giorno {formatAppointmentTimeRange(booking.scheduledAt, booking.scheduledEndAt)}
+          </p>
+        ) : (
+          <p style={{ fontSize: 14.5, marginTop: 4, textTransform: "capitalize" }}>
+            {formatAppointmentDate(booking.scheduledAt, { weekday: "long", day: "numeric", month: "long" })} · {formatAppointmentTimeRange(booking.scheduledAt, booking.scheduledEndAt)}
+          </p>
+        )}
         {!online && address ? (
           <p className="ag-muted" style={{ fontSize: 14, marginTop: 4 }}>
             {address}
@@ -232,7 +247,7 @@ export function AppointmentPanel({
               <button type="button" className="ag-btn primary" disabled={isBusy} onClick={onConfirm}>
                 Conferma
               </button>
-            ) : (
+            ) : startsLater ? null : (
               <button type="button" className="ag-btn primary" disabled={isBusy} onClick={onComplete}>
                 Lavoro completato
               </button>

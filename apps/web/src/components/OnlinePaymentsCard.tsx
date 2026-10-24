@@ -47,17 +47,17 @@ export function OnlinePaymentsCard({
             <Icon name="credit-card" size={20} strokeWidth={2.2} color={brand.cianografiaScuro} />
           </YStack>
           <YStack flex={1} gap={2}>
-            <Text fontSize={15} fontWeight="700" color={brand.grafite}>
+            <Text fontSize={16} fontWeight="700" color={brand.grafite}>
               {started ? "Completa l'attivazione dei pagamenti online" : "Attiva i pagamenti online"}
             </Text>
-            <Text fontSize={13} color={brand.grafite70}>
+            <Text fontSize={16} color={brand.grafite70}>
               {started && requirements ? `Stripe ti chiede ancora: ${requirements}` : "Fatti pagare un acconto online prima ancora di iniziare il lavoro."}{" "}
               <Link href="/per-professionisti/pagamenti" style={{ color: brand.cianografiaScuro, fontWeight: 600, whiteSpace: "nowrap" }}>
                 Scopri di più
               </Link>
             </Text>
             {error ? (
-              <Text fontSize={13} color={brand.urgenza} role="alert">
+              <Text fontSize={16} color={brand.urgenza} role="alert">
                 {error}
               </Text>
             ) : null}
@@ -81,7 +81,7 @@ export function OnlinePaymentsCard({
   return (
     <YStack gap="$3" padding="$4" borderRadius="$4" borderWidth={1} borderColor={brand.filetto} backgroundColor={brand.calce}>
       <XStack gap="$2" alignItems="center" justifyContent="space-between" flexWrap="wrap">
-        <Text fontSize={15} fontWeight="700" color={brand.grafite}>
+        <Text fontSize={16} fontWeight="700" color={brand.grafite}>
           Pagamenti online
         </Text>
         <Badge variant="verificato">Attivi</Badge>
@@ -92,12 +92,12 @@ export function OnlinePaymentsCard({
         <Button variant="secondary" onPress={onOpenStripe} disabled={loading}>
           {loading ? "Attendere..." : "Apri il conto Stripe"}
         </Button>
-        <Link href="/per-professionisti/pagamenti" style={{ color: brand.cianografiaScuro, fontWeight: 600, fontSize: 14 }}>
+        <Link href="/per-professionisti/pagamenti" style={{ color: brand.cianografiaScuro, fontWeight: 600, fontSize: 16 }}>
           Come funziona
         </Link>
       </XStack>
       {error ? (
-        <Text fontSize={13} color={brand.urgenza} role="alert">
+        <Text fontSize={16} color={brand.urgenza} role="alert">
           {error}
         </Text>
       ) : null}

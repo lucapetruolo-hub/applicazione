@@ -1,0 +1,22 @@
+{
+  "name": "@professionisti/e2e",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "e2e": "playwright test",
+    "lighthouse": "node lighthouse/agenda.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "1.63.0",
+    "@professionisti/database": "workspace:*",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.20.1",
+    "bcryptjs": "^2.4.3",
+    "ical.js": "^2.2.1",
+    "lighthouse": "^13.5.0",
+    "typescript": "^5.9.3"
+  }
+}

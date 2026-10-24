@@ -1,13 +1,14 @@
 name: Controlli di sicurezza
 
-# Strumenti automatici di controllo (docs/CHANGELOG.md §304-§305). I
+# Strumenti automatici di controllo (docs/CHANGELOG.md §312-§313). I
 # risultati di CodeQL, Semgrep e osv-scanner finiscono nella scheda
 # "Security → Code scanning" del repository. Bloccano la PR CodeQL e
 # Semgrep (il codice è pulito: una segnalazione nuova va corretta, o
 # riscritta se è un falso allarme, perché GitHub mostra l'avviso anche con un
 # commento che la ignora) e gitleaks (una chiave nel codice va tolta subito,
 # il repository è pubblico). osv-scanner resta solo rapporto: quasi tutti gli
-# avvisi riguardano librerie usate per costruire o provare il codice.
+# avvisi riguardano librerie usate per costruire o provare il codice (diventa
+# bloccante prima del lancio, checklist punto 40; eccezioni in osv-scanner.toml, §314).
 # Il giro del lunedì trova le vulnerabilità nuove anche senza modifiche.
 on:
   push:

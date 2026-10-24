@@ -333,7 +333,8 @@ export function AgendaStyles() {
         font-weight: 600;
       }
       .ag-mini-grid button.out {
-        color: #c9b9a8;
+        /* Più chiaro dei giorni del mese ma leggibile, 4,5:1 anche sul verde chiaro (A4, §310). */
+        color: #766758;
       }
       .ag-mini-grid button.has::after {
         content: "";
@@ -789,14 +790,16 @@ export function AgendaStyles() {
         position: fixed;
         right: 16px;
         bottom: 24px;
-        width: 58px;
-        height: 58px;
-        border-radius: 50%;
+        height: 54px;
+        padding: 0 20px 0 16px;
+        gap: 8px;
+        border-radius: 999px;
         background: var(--ag-ink);
         color: #fff;
         border: 0;
+        font: 600 15px var(--font-body), system-ui, sans-serif;
         display: none;
-        place-items: center;
+        align-items: center;
         box-shadow: var(--ag-float);
         z-index: 50;
         cursor: pointer;
@@ -891,7 +894,13 @@ export function AgendaStyles() {
           display: none;
         }
         .ag-fab {
-          display: grid;
+          display: inline-flex;
+        }
+        /* Sul telefono la giornata scorre con la pagina: lo scorrimento interno
+           nascondeva i lavori della sera (T5, docs/CHANGELOG.md §311). */
+        .ag-grid-scroll {
+          max-height: none;
+          overflow: visible;
         }
         .ag-sheet {
           width: 100%;

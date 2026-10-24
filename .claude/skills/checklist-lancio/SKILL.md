@@ -450,6 +450,17 @@ Città, pagine vuote fuori da Google.
       migrazione di Prisma 6 (chiave delle relazioni molti-a-molti, nessun
       dato toccato). Controllare che arrivi l'email di deploy riuscito e che
       `/health` risponda.
+39. **Agenda provata da 2-3 professionisti veri** (docs/CHANGELOG.md §311,
+    decisione dell'utente del 24/10/2026): i 5 compiti (domani dove vado,
+    chiudere un giorno, avvisare e navigare, lavoro completato, lavoro preso
+    fuori dall'app) fatti da professionisti che non conoscono il sito, senza
+    aiuto. Il test simulato del §311 non li sostituisce. Testo dei compiti e
+    obiettivi nel documento "Verifica dell'agenda come un esperto UX".
+40. **osv-scanner bloccante** (docs/CHANGELOG.md §314, decisione dell'utente
+    del 24/10/2026): prima del lancio, o comunque dopo i primi aggiornamenti
+    di Dependabot, fargli bloccare la PR per le librerie che vanno sul sito e
+    sull'API (non per quelle usate solo per costruire o provare il codice).
+    Ogni eccezione va in `osv-scanner.toml` con il motivo. Lo fa un thread.
 
 
 ## Da fare dopo il lancio
