@@ -1,13 +1,62 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { PROFESSIONAL_CATEGORIES, type ProfessionalCategorySlug } from "@professionisti/shared";
 import { Icon } from "@professionisti/ui";
 import { CATEGORY_ACCENT, CategoryIcon } from "@/components/icons/CategoryIcons";
 import { apiClient } from "@/lib/apiClient";
 
-/** Oltre questo tempo l'ordine dei più cercati non si applica più: le tessere non devono spostarsi mentre si guarda. */
-const POPULAR_ORDER_TIMEOUT_MS = 2000;
+/**
+ * Oltre questo tempo si mostrano le tessere nell'ordine del catalogo: meglio
+ * un ordine meno preciso che un'attesa lunga (l'API gratuita può essere
+ * lenta al risveglio).
+ */
+const POPULAR_ORDER_TIMEOUT_MS = 1200;
+
+type PopularOrder = ProfessionalCategorySlug[] | null;
+
+/**
+ * Ordine dei più cercati, chiesto una volta sola per città durante la visita:
+ * riaprendo il modulo le tessere compaiono subito, già in ordine.
+ */
+const popularOrderCache = new Map<string, { promise: Promise<PopularOrder>; value?: PopularOrder }>();
+
+function cacheKey(city?: string): string {
+  return city?.trim().toLowerCase() ?? "";
+}
+
+function loadPopularOrder(city?: string) {
+  const key = cacheKey(city);
+  let entry = popularOrderCache.get(key);
+  if (!entry) {
+    const created: { promise: Promise<PopularOrder>; value?: PopularOrder } = {
+      promise: apiClient
+        .getCategoryPopularity(city?.trim() || undefined)
+        .then(({ counts }): PopularOrder => {
+          if (counts.length === 0) return null;
+          const bySlug = new Map(counts.map((item) => [item.slug, item.count]));
+          return [...PROFESSIONAL_CATEGORIES].sort((a, b) => (bySlug.get(b.slug) ?? 0) - (bySlug.get(a.slug) ?? 0)).map((category) => category.slug);
+        })
+        .catch(() => {
+          // Un errore non resta in memoria: alla prossima apertura si riprova.
+          popularOrderCache.delete(key);
+          return null;
+        })
+        .then((order) => {
+          created.value = order;
+          return order;
+        }),
+    };
+    entry = created;
+    popularOrderCache.set(key, entry);
+  }
+  return entry;
+}
+
+/** Da chiamare appena si sa che le tessere stanno per comparire (es. all'apertura della pagina). */
+export function prefetchCategoryOrder(city?: string): void {
+  void loadPopularOrder(city);
+}
 
 /**
  * Tessere delle categorie con l'icona colorata (docs/CHANGELOG.md §279-§280, stile
@@ -17,10 +66,12 @@ const POPULAR_ORDER_TIMEOUT_MS = 2000;
  *
  * Ordine: in cima le categorie già scelte all'apertura (nella richiesta, la
  * categoria cercata, docs/CHANGELOG.md §281), poi le più cercate nella città
- * indicata o in tutta la piattaforma (`GET /categories/popular`). L'ordine
- * dei più cercati si applica solo se arriva subito e prima di qualsiasi
- * tocco, così le tessere non si spostano sotto il dito; altrimenti resta
- * l'ordine del catalogo.
+ * indicata o in tutta la piattaforma (`GET /categories/popular`). Le tessere
+ * compaiono una volta sola, già nell'ordine giusto (richiesta dell'utente,
+ * docs/CHANGELOG.md §315: non si deve vedere il riordino): finché l'ordine
+ * non arriva si vedono tessere vuote della stessa misura, al massimo per
+ * `POPULAR_ORDER_TIMEOUT_MS`, poi l'ordine del catalogo. Mostrate, non si
+ * spostano più.
  */
 export function CategoryTiles({
   value,
@@ -39,31 +90,41 @@ export function CategoryTiles({
   showPrimary?: boolean;
   ariaLabel?: string;
 }) {
-  const [popularOrder, setPopularOrder] = useState<ProfessionalCategorySlug[] | null>(null);
   const [initialCity] = useState(city?.trim() || undefined);
+  // Ordine già in memoria (seconda apertura): niente attesa.
+  const [popularOrder, setPopularOrder] = useState<PopularOrder | undefined>(() => popularOrderCache.get(cacheKey(initialCity))?.value);
+  const ready = popularOrder !== undefined;
   // Scelte già fatte all'apertura: restano in cima per tutta la visita.
   const [pinned] = useState(value);
-  const touched = useRef(false);
 
   useEffect(() => {
-    let cancelled = false;
-    const startedAt = Date.now();
-    apiClient
-      .getCategoryPopularity(initialCity)
-      .then(({ counts }) => {
-        if (cancelled || touched.current || Date.now() - startedAt > POPULAR_ORDER_TIMEOUT_MS || counts.length === 0) return;
-        const bySlug = new Map(counts.map((item) => [item.slug, item.count]));
-        setPopularOrder(
-          [...PROFESSIONAL_CATEGORIES]
-            .sort((a, b) => (bySlug.get(b.slug) ?? 0) - (bySlug.get(a.slug) ?? 0))
-            .map((category) => category.slug),
-        );
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
+    if (ready) return;
+    let settled = false;
+    const settle = (order: PopularOrder) => {
+      if (settled) return;
+      settled = true;
+      setPopularOrder(order);
     };
-  }, [initialCity]);
+    const timer = setTimeout(() => settle(null), POPULAR_ORDER_TIMEOUT_MS);
+    void loadPopularOrder(initialCity).promise.then(settle);
+    return () => {
+      settled = true;
+      clearTimeout(timer);
+    };
+  }, [initialCity, ready]);
+
+  if (!ready) {
+    return (
+      <div className="cat-tiles" role="group" aria-label={ariaLabel} aria-busy="true">
+        {PROFESSIONAL_CATEGORIES.map((category) => (
+          <div key={category.slug} className="cat-tile cat-tile-placeholder" aria-hidden="true">
+            <span className="cat-tile-icon skeleton-shimmer" />
+            <span className="cat-tile-placeholder-label skeleton-shimmer" />
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   const baseOrder = popularOrder ?? PROFESSIONAL_CATEGORIES.map((category) => category.slug);
   const order = [...pinned.filter((slug) => baseOrder.includes(slug)), ...baseOrder.filter((slug) => !pinned.includes(slug))];
@@ -73,7 +134,7 @@ export function CategoryTiles({
   const isFull = value.length >= max;
 
   return (
-    <div className="cat-tiles" role="group" aria-label={ariaLabel}>
+    <div className="cat-tiles cat-tiles-ready" role="group" aria-label={ariaLabel}>
       {categories.map((category) => {
         const active = value.includes(category.slug);
         const isPrimary = showPrimary && value[0] === category.slug;
@@ -84,10 +145,7 @@ export function CategoryTiles({
             key={category.slug}
             type="button"
             className={`cat-tile${active ? " is-on" : ""}`}
-            onClick={() => {
-              touched.current = true;
-              onToggle(category.slug);
-            }}
+            onClick={() => onToggle(category.slug)}
             aria-pressed={active}
             disabled={disabled}
             aria-label={isPrimary ? `${category.label}, principale` : category.label}

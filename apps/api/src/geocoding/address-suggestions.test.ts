@@ -57,4 +57,17 @@ describe("suggerimenti di indirizzo dal server (§264)", () => {
     await expect(service.suggest({ q: "via roma", session: "sess-12345" })).rejects.toThrow("non disponibili");
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it("dice se i suggerimenti funzionano senza chiamare Google (§315)", async () => {
+    const service = new AddressSuggestionsService();
+    expect(service.available()).toBe(false);
+    process.env.GOOGLE_MAPS_API_KEY = "k";
+    expect(service.available()).toBe(true);
+    const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 403, text: async () => "API key not valid" });
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(service.suggest({ q: "via roma", session: "sess-12345" })).rejects.toThrow("non disponibili");
+    expect(service.available()).toBe(false);
+    expect(service.available(Date.now() + 6 * 60_000)).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });

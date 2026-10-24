@@ -20271,3 +20271,18 @@ Non fatto qui: zod 4 (aggiornamento grande, rischio basso: il corpo JSON ha già
 - `osv-scanner.toml`: eccezione per zod 3.25.76, rimasto solo dentro `@expo/cli` (strumento di sviluppo dell'app, non finisce nell'app, nel sito o nell'API) dopo il passaggio a zod 4 della PR #108; approvata dall'utente nel thread di zod. L'eccezione vale solo per quella versione: un altro zod vulnerabile verrebbe segnalato.
 
 **Verifica**: build, typecheck, test e test dei permessi con Node 22 nella CI; osv-scanner in locale non mostra più zod 3.25.76, e senza il file lo mostra.
+
+## 315. Richiesta di preventivo: l'indirizzo non cambia il modulo mentre si scrive, tessere delle categorie già in ordine
+
+**Richiesta dell'utente**: "quando si clicca a domicilio e si fa avanti quando si va ad inserire l'indirizzo dopo la terza lettera inserita cambia il modulo all'improvviso facendoti inserire altri campi che prima non c'erano"; "quando si clicca su richiedi preventivo non si deve vedere il refresh della riordinazione delle categoria e neanche in fase di registrazione".
+
+**Causa dell'indirizzo**: alla terza lettera parte la prima richiesta di suggerimenti. Sul server di produzione `GET /address/suggestions` risponde 503 (anche `/maps/static`: chiave Google mancante, tetto `GOOGLE_PUBLIC_DAILY_LIMIT` o chiave rifiutata da Google, da guardare nei log di Render). Il modulo passava allora ai campi separati (via, civico, CAP, provincia, più la città in cima alla pagina), perdeva quanto scritto e toglieva il cursore.
+
+**Decisione**:
+- Nuova rotta `GET /address/status` (`{ available }`), che non chiama Google: chiave presente, tetto di oggi non raggiunto (`DailyBudget.hasRoom`), nessun errore di Google negli ultimi 5 minuti. `useChosenAddress` la chiede all'apertura del modulo (risposta riusata per un minuto): se i suggerimenti non funzionano, i campi separati ci sono già dall'inizio.
+- Se Google cade proprio mentre si scrive: quanto scritto passa in "Via o piazza", il cursore resta lì e compare la riga "I suggerimenti non sono disponibili: completa l'indirizzo nei campi qui sotto."
+- A domicilio la città sta tra i campi dell'indirizzo (Via e civico, Città, CAP e provincia), con la stessa misura e lo stesso bordo degli altri campi, non più in cima al modulo.
+
+**Tessere delle categorie** (`CategoryTiles`, richiesta di preventivo e registrazione): prima comparivano nell'ordine del catalogo e si riordinavano appena arrivava l'ordine dei più cercati. Ora compaiono una volta sola già in ordine: finché l'ordine non arriva (al massimo 1,2 secondi, poi l'ordine del catalogo) si vedono tessere vuote della stessa misura, poi le vere con una dissolvenza breve (niente con "riduci movimento"). L'ordine resta in memoria per la visita e `SiteHeader` lo chiede a pagina ferma, così di solito le tessere compaiono subito.
+
+**Verifica**: prove `address-suggestions.test.ts` e `daily-budget.test.ts`; sul sito compilato con l'API simulata, da telefono (390 px) e computer (1280 px): tessere vuote → ordine finale, senza passare dall'ordine del catalogo; con i suggerimenti spenti i campi separati ci sono già al passo "Dove"; con Google che cade dopo "Via Rom" il testo resta in "Via o piazza" con il cursore.

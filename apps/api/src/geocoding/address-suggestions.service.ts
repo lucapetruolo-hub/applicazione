@@ -22,6 +22,11 @@ const TIMEOUT_MS = 5000;
 /** Tetti giornalieri (§293): ben sopra l'uso normale di oggi, sotto una bolletta a sorpresa. */
 const SUGGESTIONS_DAILY_LIMIT = 5000;
 const PLACES_DAILY_LIMIT = 2000;
+/**
+ * Dopo un errore di Google, per qualche minuto il sito apre il modulo già con
+ * i campi separati (§315): meglio che vederlo cambiare mentre si scrive.
+ */
+const RECENT_FAILURE_MS = 5 * 60_000;
 
 /**
  * Suggerimenti di indirizzo chiesti a Google dal nostro server (richiesta
@@ -41,6 +46,20 @@ export class AddressSuggestionsService {
     this.logger.error("Tetto giornaliero dei dettagli di indirizzo raggiunto: fino a mezzanotte si scrive l'indirizzo a mano."),
   );
 
+  private lastFailureAt = 0;
+
+  /**
+   * I suggerimenti funzionano? Senza chiamare Google: chiave presente, tetto
+   * di oggi non raggiunto, nessun errore di Google negli ultimi minuti. Il
+   * sito lo chiede prima che si scriva l'indirizzo, così sceglie subito tra
+   * campo unico con suggerimenti e campi separati (§315).
+   */
+  available(now = Date.now()): boolean {
+    if (!process.env.GOOGLE_MAPS_API_KEY?.trim()) return false;
+    if (!this.suggestionsBudget.hasRoom(new Date(now))) return false;
+    return now - this.lastFailureAt > RECENT_FAILURE_MS;
+  }
+
   /** Oltre il tetto il sito mostra il campo di testo semplice, come quando Google non risponde. */
   private takeBudget(budget: DailyBudget): void {
     if (!budget.take()) throw new ServiceUnavailableException("Suggerimenti di indirizzo non disponibili.");
@@ -58,12 +77,14 @@ export class AddressSuggestionsService {
     try {
       const response = await fetch(url, { ...init, signal: controller.signal });
       if (!response.ok) {
+        this.lastFailureAt = Date.now();
         this.logger.error(`Google Places ha risposto ${response.status}: ${(await response.text()).slice(0, 300)}`);
         throw new ServiceUnavailableException("Suggerimenti di indirizzo non disponibili.");
       }
       return (await response.json()) as T;
     } catch (error) {
       if (error instanceof ServiceUnavailableException) throw error;
+      this.lastFailureAt = Date.now();
       this.logger.warn(`Google Places non raggiungibile: ${error instanceof Error ? error.message : error}`);
       throw new ServiceUnavailableException("Suggerimenti di indirizzo non disponibili.");
     } finally {

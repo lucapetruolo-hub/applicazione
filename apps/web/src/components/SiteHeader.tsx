@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Button, Logo, Text, XStack, brand, motionEasing, motionFast } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
 import { AccountMenu } from "./AccountMenu";
+import { prefetchCategoryOrder } from "./CategoryTiles";
 import { HeaderSearchBar } from "./HeaderSearchBar";
 import { MegaMenu } from "./MegaMenu";
 import { NotificationBell } from "./NotificationBell";
@@ -37,6 +38,18 @@ export function SiteHeader() {
   // Registrazione e accesso (docs/CHANGELOG.md §279): niente "Richiedi
   // preventivo" in alto, l'attenzione resta sul modulo.
   const isAuthPage = AUTH_PAGES.some((page) => pathname === page || pathname.startsWith(`${page}/`));
+
+  // Ordine delle categorie per la richiesta di preventivo e la registrazione,
+  // chiesto a pagina ferma: aprendole le tessere compaiono subito in ordine (§315).
+  useEffect(() => {
+    const start = () => prefetchCategoryOrder();
+    if (typeof window.requestIdleCallback === "function") {
+      const id = window.requestIdleCallback(start, { timeout: 4000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const timer = setTimeout(start, 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     function onScroll() {
