@@ -266,7 +266,7 @@ function LeMieRichiesteContent() {
       apiClient
         .unreadNotifications(token!)
         .then((notifications) => {
-          if (cancelled || notifications.length === 0) return;
+          if (cancelled || notifications.length === 0) return notifications;
           const freshRequestIds = unreadGuidedRequestIds(notifications);
           setNewRequestIds((prev) => mergeIds(prev, freshRequestIds));
           // Un aggiornamento arrivato dopo "Segna come letta" riaccende il "Nuovo".
@@ -277,9 +277,10 @@ function LeMieRichiesteContent() {
           setQuoteUnreadCounts((prev) => mergeCounts(prev, unreadQuoteCounts(notifications)));
           setBookingUnreadCounts((prev) => mergeCounts(prev, unreadBookingCounts(notifications)));
           reload();
+          return notifications;
         })
-        .catch(() => {})
-        .finally(() => markNotificationsRead());
+        .catch(() => undefined)
+        .then((notifications) => markNotificationsRead(notifications));
     }
     poll();
     const interval = setInterval(poll, UNREAD_BADGE_POLL_MS);
