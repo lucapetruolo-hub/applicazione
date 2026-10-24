@@ -20096,3 +20096,13 @@ La mappa con una chiave vera si vede solo sul sito pubblicato: dopo l'unione va 
 - La seconda miglioria (i 163 avvisi del controllo del codice: regole nuove di React del §301 e accessibilità del §205) si fa in un thread a parte.
 
 **Verifica**: file controllato come YAML valido; Dependabot lo legge dal ramo principale, quindi parte dopo l'unione.
+
+## 303. Falegname tra i lavori del lancio
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Visibilità su Google (SEO)"): letti i volumi di Keyword Planner per la provincia di Latina, "falegname latina" e "falegname a latina" hanno 100-1.000 ricerche al mese, come l'idraulico, in crescita e con concorrenza bassa; elettricista e pulizie stanno tra 10 e 100. Proposto di aggiungere falegname ai lavori del lancio, Luca: "si effettua miglioria".
+
+**Decisione presa**: i lavori su cui concentrare il lancio a Latina passano da 3 a 4: idraulico, elettricista, pulizie e falegname (CLAUDE.md §7 punto 1). Vale per il reclutamento dei primi professionisti e per le pagine da far indicizzare per prime (`/cerca/falegname/latina` in Search Console il giorno del lancio, punto 5 del piano in `/mnt/project-files/analisi/seo-strategia-latina.md`).
+
+**Motivo**: le pagine lavoro + città entrano in Google solo da 3 professionisti veri (§296): reclutare falegnami fin dall'inizio rende indicizzabile una delle due ricerche più frequenti della provincia.
+
+**Verifica**: nessun codice cambiato. La categoria esiste già (`PROFESSIONAL_CATEGORIES`) ed è nel menu "Casa e impianti".
