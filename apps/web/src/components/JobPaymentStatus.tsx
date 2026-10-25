@@ -222,7 +222,7 @@ export function JobPaymentStatus({
 
   // Pagamento diretto: una riga sola (richiesta esplicita dell'utente, al
   // posto della spiegazione lunga su accordi e contestazioni), con le
-  // stesse parole del preventivo (docs/CHANGELOG.md §337).
+  // stesse parole del preventivo (docs/CHANGELOG.md §338).
   if (payment.method === "DIRECT") {
     return (
       <Text fontSize={16} color={brand.grafite70}>

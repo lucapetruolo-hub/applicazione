@@ -73,7 +73,7 @@ export function QuoteCard({
   requestOpen,
   compare,
 }: {
-  /** Più preventivi nella stessa richiesta: etichetta del pagamento accanto al totale (docs/CHANGELOG.md §337). */
+  /** Più preventivi nella stessa richiesta: etichetta del pagamento accanto al totale (docs/CHANGELOG.md §338). */
   compare?: boolean;
   quote: ClientGuidedRequest["quotes"][number];
   /** Richiesta ancora aperta: dopo un rifiuto il professionista può inviare un nuovo preventivo (docs/CHANGELOG.md §188). */
@@ -132,7 +132,7 @@ export function QuoteCard({
   }, [quote.status, quote.previousPrice, priceTotals]);
 
   // Modi che il cliente può davvero usare: con uno solo si accetta subito,
-  // senza il passaggio della scelta (docs/CHANGELOG.md §337).
+  // senza il passaggio della scelta (docs/CHANGELOG.md §338).
   const selectablePayments = selectablePaymentChoices(quote.paymentOptions, onlinePayments);
   const onlyPayment = selectablePayments.length === 1 ? selectablePayments[0] : undefined;
   const paymentTag = compare && quote.status === "SENT" ? paymentOfferShortLabel(quote.paymentOptions, onlinePayments) : null;

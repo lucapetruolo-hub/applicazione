@@ -20599,7 +20599,17 @@ Richiesta dell'utente: "si potrebbe dare l'icona del meteo per 3 giorni e dire d
 **Verifica**
 - Typecheck e lint del sito. Con API e database di prova: cliente con una richiesta, scheda aperta da computer (1440px) e da telefono (390px); cliente con due richieste, elenco chiuso; richiusa la scheda, resta chiusa dopo l'aggiornamento automatico. Dopo le migliorie: con una sola richiesta niente ricerca né schede di stato; cliente con una richiesta attiva e una archiviata, controlli presenti e "Archiviate" apre da sola l'archiviata; cliente con due richieste in "In attesa", nessuna aperta. Foto in `/mnt/project-files/anteprime/richiesta-unica-aperta/`.
 
-## 337. Pagamento con una sola scelta: niente domanda
+## 337. Il tondo "Riduci il menu" non copre più la prima voce
+
+**Richiesta dell'utente** (25/10/2026, con foto del menu del cliente da computer): "Il pulsante delle freccette si sovrappone, correggi".
+
+**Causa**: il tondo da 32px stava in alto a destra, sulla riga del primo titolo, che però era alta solo 28px. Il tondo sporgeva quindi sulla prima voce ("Le mie richieste" per il cliente, "Oggi" per il professionista), e si vedeva soprattutto quando la voce era attiva. Non capitava con il menu ridotto né sul tablet o sul telefono, dove il tondo è in colonna oppure non c'è.
+
+**Correzione** (`apps/web/src/app/globals.css`): la riga del primo titolo, cioè quella accanto al tondo, è alta 32px. Il testo è centrato sul tondo e ha 44px di margine a destra, così un titolo lungo non finisce sotto il tondo. Vale per tutti e due i menu.
+
+**Verifica**: in `e2e/tests/menu-laterale.spec.ts` c'è un nuovo controllo, `expectToggleFree`: il tondo non deve toccare nessuna voce né il testo di nessun titolo. Lo fanno il professionista con il menu aperto e ridotto, e il cliente prima e dopo aver ridotto il menu. Senza la correzione falliva su "Oggi" e su "Le mie richieste"; con la correzione passa. Le foto prima e dopo sono in `/mnt/project-files/anteprime/menu-ridotto/freccette/`.
+
+## 338. Pagamento con una sola scelta: niente domanda
 
 **Richiesta dell'utente**: accettando un preventivo in cui il professionista
 offre solo il pagamento diretto, il cliente vedeva "Come vuoi pagare?" con
