@@ -185,10 +185,16 @@ export type JobPayoutStatus = "BLOCKED" | "WAITING_FUNDS" | "SENT" | "PAID" | "F
 export type JobPaymentOnlineStage = "AWAITING_DEPOSIT" | "DEPOSIT_PAID" | "AWAITING_BALANCE" | "PAID" | "RELEASED" | "REFUNDED";
 
 /** Testi per il cliente; la percentuale dell'acconto è quella scelta dal professionista nel preventivo. */
-export function jobPaymentChoiceCopy(choice: JobPaymentChoice, depositPercent: number = ONLINE_DEPOSIT_PERCENT): { title: string; body?: string } {
+export function jobPaymentChoiceCopy(
+  choice: JobPaymentChoice,
+  depositPercent: number = ONLINE_DEPOSIT_PERCENT,
+  /** Unico modo offerto: niente "(consigliato)", non c'è altro da confrontare. */
+  only = false,
+): { title: string; body?: string } {
   if (choice === "ONLINE") {
+    const full = depositPercent >= 100;
     return {
-      title: depositPercent >= 100 ? "Tutto online con carta (consigliato)" : "Paga online con carta (consigliato)",
+      title: only ? (full ? "Tutto online con carta" : "Online con carta") : full ? "Tutto online con carta (consigliato)" : "Paga online con carta (consigliato)",
       body:
         depositPercent >= 100
           ? "Paghi tutto ora. Il professionista riceve i soldi quando confermi il lavoro; se qualcosa va storto ti assistiamo noi."
@@ -201,8 +207,8 @@ export function jobPaymentChoiceCopy(choice: JobPaymentChoice, depositPercent: n
       body: `Paghi ora un acconto del ${depositPercent}%, il resto direttamente al professionista a lavoro finito.`,
     };
   }
-  // Una riga sola, senza spiegazioni (richiesta esplicita dell'utente).
-  return { title: "DIRETTO al professionista" };
+  // Una riga sola, senza spiegazioni (richiesta esplicita dell'utente, §228).
+  return { title: only ? "Direttamente al professionista" : "Diretto al professionista" };
 }
 
 /** Testi per il professionista nel modulo del preventivo. */

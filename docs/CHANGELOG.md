@@ -20582,3 +20582,22 @@ Richiesta dell'utente: "si potrebbe dare l'icona del meteo per 3 giorni e dire d
 **Migliorie approvate da Luca** ("effettua le 2 migliorie")
 - osv-scanner ora blocca la PR (`.github/workflows/security.yml`, checklist punto 40): dopo aver caricato il rapporto, un passo rifà il controllo e fallisce se trova una vulnerabilità fuori dalle eccezioni di `osv-scanner.toml`. Vale per tutte le librerie, non solo per quelle del sito e dell'API: osv-scanner non sa distinguere quelle usate solo per costruire o provare (anche `pnpm audit --prod` conta lo strumento di Expo, dipendenza dell'app), quindi quelle senza versione corretta vanno tra le eccezioni con il motivo. Provato: con il `pnpm-lock.yaml` di prima di questa PR il controllo fallisce (vitest, tinypool, ecc.), con quello nuovo passa.
 - I due avvisi rimasti (zod 3 e node-forge in `@expo/cli`) vanno chiusi a mano nella scheda Security → Dependabot di GitHub con "Vulnerable code is not actually used" / "Risk is tolerable": lo fa Luca, i thread non hanno accesso agli avvisi.
+
+## 336. Pagamento con una sola scelta: niente domanda
+
+**Richiesta dell'utente**: accettando un preventivo in cui il professionista
+offre solo il pagamento diretto, il cliente vedeva "Come vuoi pagare?" con
+un'unica opzione "DIRETTO al professionista" già selezionata, come se
+dovesse scegliere.
+
+**Decisione** (`PaymentChoice`, `jobPaymentChoiceCopy`):
+- Con un solo modo offerto (diretto, tutto online o acconto online + saldo
+  diretto) niente domanda né pallino: un riquadro "Pagamento" come
+  "Messaggio del professionista", con il modo ("Direttamente al
+  professionista", "Online con carta", ...), la spiegazione e l'acconto
+  quando è online. Senza "(consigliato)": non c'è altro da confrontare.
+- Con due o più modi resta la scelta "Come vuoi pagare?"; l'opzione diretta
+  ora è "Diretto al professionista" (niente maiuscolo, regole Taste).
+
+**Verifica**: typecheck e lint; anteprime dei quattro casi da computer e
+telefono.

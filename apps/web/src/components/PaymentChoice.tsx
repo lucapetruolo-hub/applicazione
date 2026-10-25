@@ -16,8 +16,12 @@ function eur(cents: number): string {
 /**
  * Scelta del metodo di pagamento accettando un preventivo
  * (docs/CHANGELOG.md §168): online con Stripe (acconto, saldo a
- * lavoro finito, assistenza e rimborso) o "DIRETTO al professionista", una
+ * lavoro finito, assistenza e rimborso) o "Diretto al professionista", una
  * riga senza spiegazioni (richiesta esplicita dell'utente, §228).
+ *
+ * Con un solo modo offerto non c'è niente da scegliere: niente domanda né
+ * pallino, solo un riquadro "Pagamento" come "Messaggio del professionista"
+ * (docs/CHANGELOG.md §336).
  *
  * Senza Stripe attivo (`onlineAvailable` falso) resta solo il pagamento
  * diretto, con una riga che spiega che quello online arriverà
@@ -50,6 +54,45 @@ export function PaymentChoice({
 }) {
   const options = selectablePaymentChoices(offered, onlineAvailable);
   const onlineHidden = !onlineAvailable && offered.some(paymentChoiceIsOnline);
+  const only = options.length === 1 ? options[0] : undefined;
+  const depositLine = (option: JobPaymentChoice) =>
+    paymentChoiceIsOnline(option) && quoteMaxEurCents > 0 ? (
+      <Text fontSize={13} fontWeight="700" color={brand.grafite}>
+        {depositPercent >= 100 ? "Da pagare ora (l'intero massimo del preventivo)" : `Acconto ora (${depositPercent}% del massimo del preventivo)`}:{" "}
+        {eur(onlineDepositEurCents(quoteMaxEurCents, depositPercent))}
+      </Text>
+    ) : null;
+  if (only) {
+    const copy = jobPaymentChoiceCopy(only, depositPercent, true);
+    return (
+      <YStack gap="$2">
+        <YStack backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$1">
+          <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
+            Pagamento
+          </Text>
+          <Text fontSize={16} fontWeight="700" color={brand.grafite}>
+            {copy.title}
+          </Text>
+          {copy.body ? (
+            <Text fontSize={13} color={brand.grafite70}>
+              {copy.body}
+            </Text>
+          ) : null}
+          {depositLine(only)}
+        </YStack>
+        {onlineHidden ? (
+          <Text fontSize={13} color={brand.grafite70}>
+            Il pagamento online con carta sarà disponibile a breve.
+          </Text>
+        ) : null}
+        {paymentChoiceIsOnline(only) ? (
+          <Link href="/termini#pagamenti" target="_blank" style={{ color: brand.cianografiaScuro, fontWeight: 600, fontSize: 16 }}>
+            Come funziona il pagamento online
+          </Link>
+        ) : null}
+      </YStack>
+    );
+  }
   return (
     <YStack gap="$2" role="radiogroup" aria-label="Come vuoi pagare">
       <Text fontWeight="800" color={brand.grafite}>
@@ -93,12 +136,7 @@ export function PaymentChoice({
                   {copy.body}
                 </Text>
               ) : null}
-              {paymentChoiceIsOnline(option) && quoteMaxEurCents > 0 ? (
-                <Text fontSize={13} fontWeight="700" color={brand.grafite}>
-                  {depositPercent >= 100 ? "Da pagare ora (l'intero massimo del preventivo)" : `Acconto ora (${depositPercent}% del massimo del preventivo)`}:{" "}
-                  {eur(onlineDepositEurCents(quoteMaxEurCents, depositPercent))}
-                </Text>
-              ) : null}
+              {depositLine(option)}
             </YStack>
           </label>
         );
