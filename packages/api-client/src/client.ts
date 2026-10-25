@@ -200,7 +200,7 @@ export type ClientGuidedRequest = {
   /** Tipo di intervento (richiesta esplicita dell'utente) — `null` per le richieste create prima di questo campo. */
   serviceMode: "HOME" | "ONLINE" | null;
   isUrgent: boolean;
-  /** Quando serve, scelto dal cliente (docs/CHANGELOG.md §340): null per le richieste di prima. */
+  /** Quando serve, scelto dal cliente (docs/CHANGELOG.md §342): null per le richieste di prima. */
   timing: RequestTiming | null;
   status: "OPEN" | "MATCHED" | "CLOSED";
   /**
@@ -1676,7 +1676,7 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
       if (city?.trim()) params.set("citta", city.trim());
       return request<GeneralRequestAvailability>(`/general-requests/availability?${params.toString()}`, { cache: "no-store" });
     },
-    /** A quanti professionisti arriverebbe la richiesta, senza e con "Urgente" (docs/CHANGELOG.md §340). */
+    /** A quanti professionisti arriverebbe la richiesta, senza e con "Urgente" (docs/CHANGELOG.md §342). */
     guidedRequestReach: (input: { categorySlugs: string[]; city?: string; serviceMode?: string; professionalProfileId?: string }) => {
       const params = new URLSearchParams({ categoria: input.categorySlugs.join(",") });
       if (input.city?.trim()) params.set("citta", input.city.trim());

@@ -569,7 +569,7 @@ export function GuidedRequestCard({
             {request.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
             <ClientStagePill stage={stage} />
             <ServiceBadge online={isOnline} />
-            {/* Quando serve, scelto alla richiesta (§340): "Oggi" è già il badge Urgente. */}
+            {/* Quando serve, scelto alla richiesta (§342): "Oggi" è già il badge Urgente. */}
             {request.timing === "WEEK" || request.timing === "CALM" ? (
               <Text fontSize={13} fontWeight="600" color={brand.grafite70} alignSelf="center">
                 {REQUEST_TIMING_LABEL[request.timing]}

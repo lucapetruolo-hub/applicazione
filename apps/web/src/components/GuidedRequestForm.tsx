@@ -31,12 +31,14 @@ import { MediaPreview } from "@/components/MediaPreview";
 import { TRAFFIC_SOURCE_STORAGE_KEY } from "@/components/TrafficSourceTracker";
 import { InlineAuthGate } from "@/components/InlineAuthGate";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
+import { RequestSentScreen } from "@/components/RequestSentScreen";
 import { UploadingDots } from "@/components/UploadingDots";
 import { CategoryTiles } from "@/components/CategoryTiles";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
 import { localPreviewUrl } from "@/lib/media";
+import { formatResponseTime } from "@/lib/responseTime";
 
 // Foto E video (richiesta esplicita dell'utente), fino a 5 elementi
 // (aumentato da 3, stessa richiesta).
@@ -148,16 +150,16 @@ export function GuidedRequestForm({
   const searchParams = useSearchParams();
   const { user, token, isLoading, refreshUser } = useAuth();
   // Urgenza scelta anche da qui, non solo arrivando da /urgente
-  // (docs/CHANGELOG.md §154), al passo 1 e nel riepilogo (§340).
+  // (docs/CHANGELOG.md §154), al passo 1 e nel riepilogo (§342).
   // "Oggi" è l'urgente; "In settimana" e "Con calma" sono richieste normali.
   // Nessuna scelta preselezionata (da /urgente "Oggi"): il cliente decide
   // (nel test chi andava di fretta lasciava quella già scelta).
   const [timing, setTiming] = useState<RequestTiming | null>(isUrgentInitial ? "TODAY" : null);
   const isUrgent = timing === "TODAY";
   // Frase per il lettore di schermo quando cambia l'urgenza: cosa cambia,
-  // in poche parole (§340). Vuota all'apertura, così non legge nulla.
+  // in poche parole (§342). Vuota all'apertura, così non legge nulla.
   const [urgencyAnnouncement, setUrgencyAnnouncement] = useState("");
-  // A quanti professionisti arriva, senza e con "Urgente" (§340): chiesto
+  // A quanti professionisti arriva, senza e con "Urgente" (§342): chiesto
   // all'API entrando nel riepilogo.
   const [reach, setReach] = useState<GuidedRequestReach | null>(null);
   function chooseTiming(next: RequestTiming) {
@@ -322,7 +324,7 @@ export function GuidedRequestForm({
   }, [professionalProfileId]);
   const shownProfessionalName = professional?.businessName ?? professionalName;
   // Riga sotto "Quando ti serve?": cosa comporta la scelta e, per "Oggi" in
-  // una richiesta generale, a quanti professionisti arriva (§340).
+  // una richiesta generale, a quanti professionisti arriva (§342).
   // Le urgenti usano il raggio "urgente" di ogni professionista: nel test il
   // solo "5 invece di 12" sembrava una penalità, quindi si dice a chi va.
   const urgencyReachNote =
@@ -548,69 +550,54 @@ export function GuidedRequestForm({
 
   if (result) {
     return (
-      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
-        <YStack width="100%" maxWidth={480} gap="$4" alignItems="center">
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite} textAlign="center">
-            {result.requestsCount > 1 ? `${result.requestsCount} richieste inviate!` : "Richiesta inviata!"}
-          </Text>
-          <Text color={brand.grafite70} textAlign="center">
-            {result.matchedProfessionals > 0
-              ? professionalProfileId
-                ? `La tua richiesta è stata inviata a ${shownProfessionalName ?? "il professionista che hai scelto"}${isUrgent ? ", segnata come urgente" : ""}. Riceverai il preventivo qui appena arriva.`
-                : result.requestsCount > 1
-                  ? `Una per ogni categoria, inviate ai professionisti della tua zona${isUrgent ? " e segnate come urgenti" : ""}. Le trovi separate in Le mie richieste.`
-                  : `La tua richiesta è stata inviata ai professionisti della tua zona${isUrgent ? ", segnata come urgente" : ""}. Riceverai i preventivi qui appena disponibili.`
-              : `Al momento non ci sono professionisti disponibili per ${result.requestsCount > 1 ? "queste categorie" : "questa categoria"} in questa città, ma ${result.requestsCount > 1 ? "le richieste sono state registrate" : "la richiesta è stata registrata"}: te lo faremo sapere appena se ne iscrive uno.`}
-          </Text>
-          {accountDataDiffers && !defaultsDeclined ? (
-            <YStack
-              width="100%"
-              gap="$2"
-              padding="$4"
-              backgroundColor={brand.calce}
-              borderWidth={1}
-              borderColor={brand.filetto}
-              borderRadius="$3"
-            >
+      <RequestSentScreen
+        professionalName={professionalProfileId ? (shownProfessionalName ?? null) : null}
+        professionalImageUrl={shownProfessionalImage}
+        professionalVerified={professional?.verified ?? false}
+        professionalKind={professional?.professionalKind ?? null}
+        avgResponseTimeMinutes={professional?.avgResponseTimeMinutes ?? null}
+        categorySlug={selectedCategory?.slug ?? categorySlug}
+        categoryLabels={selectedCategories.map((c) => c.label)}
+        city={city}
+        isUrgent={isUrgent}
+        matchedProfessionals={result.matchedProfessionals}
+        requestsCount={result.requestsCount}
+        saveDefaults={
+          accountDataDiffers && !defaultsDeclined ? (
+            <div className="request-sent-save" role="group" aria-label="Salvare i dati">
               {defaultsSaved ? (
-                <Text color={brand.verificato} fontWeight="600" fontSize={16}>
-                  Dati salvati come predefiniti nel tuo account.
-                </Text>
+                <p role="status" className="request-sent-saved">
+                  Dati salvati nel tuo account.
+                </p>
               ) : (
                 <>
-                  <Text fontSize={16} color={brand.grafite}>
-                    Vuoi salvare questi dati (nome, telefono, indirizzo) come predefiniti nel tuo account, così
-                    restano aggiornati per la prossima richiesta?
-                  </Text>
-                  {defaultsError ? (
-                    <Text color={brand.urgenza} fontSize={13}>
-                      {defaultsError}
-                    </Text>
-                  ) : null}
-                  <XStack gap="$2" flexWrap="wrap">
+                  <p>Salvare nome, telefono e indirizzo per la prossima volta?</p>
+                  <div className="request-sent-save-actions">
                     <Button
                       variant="secondary"
                       size="$2"
-                      height={36}
+                      height={44}
                       onPress={handleSaveAsDefaults}
                       disabled={savingDefaults}
                       opacity={savingDefaults ? 0.6 : 1}
                     >
-                      {savingDefaults ? "Salvataggio..." : "Sì, salva"}
+                      {savingDefaults ? "Salvataggio..." : "Salva"}
                     </Button>
-                    <Button variant="ghost" size="$2" height={36} onPress={() => setDefaultsDeclined(true)} disabled={savingDefaults}>
-                      No, grazie
+                    <Button variant="ghost" size="$2" height={44} onPress={() => setDefaultsDeclined(true)} disabled={savingDefaults}>
+                      No
                     </Button>
-                  </XStack>
+                  </div>
+                  {defaultsError ? (
+                    <Text role="alert" color={brand.urgenza} fontSize={13} width="100%">
+                      {defaultsError}
+                    </Text>
+                  ) : null}
                 </>
               )}
-            </YStack>
-          ) : null}
-          <Link href="/le-mie-richieste" style={{ textDecoration: "none" }}>
-            <Button variant="primary">Vai alle mie richieste</Button>
-          </Link>
-        </YStack>
-      </YStack>
+            </div>
+          ) : null
+        }
+      />
     );
   }
 
@@ -1347,7 +1334,7 @@ export function GuidedRequestForm({
           />
         ) : null}
 
-        {/* Annuncia al lettore di schermo cosa cambia con l'urgenza (§340). */}
+        {/* Annuncia al lettore di schermo cosa cambia con l'urgenza (§342). */}
         <p className="sr-only" role="status" aria-live="polite">
           {urgencyAnnouncement}
         </p>
@@ -1448,12 +1435,6 @@ function GeneralRequestsClosedNotice({
   );
 }
 
-function formatResponseTime(minutes: number): string {
-  if (minutes < 60) return `${Math.max(1, Math.round(minutes))} min`;
-  const hours = Math.round(minutes / 60);
-  return hours === 1 ? "1 ora" : `${hours} ore`;
-}
-
 const STEPS = ["Il lavoro", "Dove", "Riepilogo"] as const;
 
 /** Avanzamento del modulo (docs/CHANGELOG.md §154); si torna indietro toccando un passo già fatto. */
@@ -1526,7 +1507,7 @@ function RequestSummary({
   const categoriesText = new Intl.ListFormat("it-IT", { type: "conjunction" }).format(categoryLabels);
   const multiple = categoryLabels.length > 1;
   const urgentSuffix = isUrgent ? ", segnata come urgente" : "";
-  // Numero vero dei destinatari (§340): per una richiesta diretta sono quelli dell'inoltro.
+  // Numero vero dei destinatari (§342): per una richiesta diretta sono quelli dell'inoltro.
   const reachCount = reach ? (isUrgent ? reach.urgent : reach.standard) : null;
   const professionalsText = (n: number) => (n === 1 ? "1 professionista" : `${n} professionisti`);
   const forwardTargets =
@@ -1618,7 +1599,7 @@ function RequestSummary({
 }
 
 /**
- * "Quando ti serve?" (docs/CHANGELOG.md §340, scelta di Luca tra interruttore
+ * "Quando ti serve?" (docs/CHANGELOG.md §342, scelta di Luca tra interruttore
  * e tempi): solo "Oggi" rende la richiesta urgente.
  */
 function UrgencyControl({

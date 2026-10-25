@@ -84,21 +84,21 @@ export function SiteFooter() {
             nel footer distruggono la fiducia invece di costruirla e
             espongono legalmente (pratica commerciale ingannevole). */}
         <XStack flexWrap="wrap" gap="$4" paddingTop="$5" borderTopWidth={1} borderTopColor={brand.filetto}>
-          <XStack alignItems="center" gap="$2">
+          <XStack alignItems="center" gap="$2" flexShrink={1} minWidth={0}>
             <Icon name="badge-check" size={16} color={brand.grafite70} strokeWidth={1.5} />
-            <Text fontSize={13} fontWeight="600" color={brand.grafite70}>
+            <Text fontSize={13} fontWeight="600" color={brand.grafite70} flexShrink={1}>
               Badge Verificato: identità controllata con documento e selfie
             </Text>
           </XStack>
-          <XStack alignItems="center" gap="$2">
+          <XStack alignItems="center" gap="$2" flexShrink={1} minWidth={0}>
             <Icon name="shield" size={16} color={brand.grafite70} strokeWidth={1.5} />
-            <Text fontSize={13} fontWeight="600" color={brand.grafite70}>
+            <Text fontSize={13} fontWeight="600" color={brand.grafite70} flexShrink={1}>
               Recensioni solo da lavori confermati
             </Text>
           </XStack>
-          <XStack alignItems="center" gap="$2">
+          <XStack alignItems="center" gap="$2" flexShrink={1} minWidth={0}>
             <Icon name="tag" size={16} color={brand.grafite70} strokeWidth={1.5} />
-            <Text fontSize={13} fontWeight="600" color={brand.grafite70}>
+            <Text fontSize={13} fontWeight="600" color={brand.grafite70} flexShrink={1}>
               Gratis per chi cerca
             </Text>
           </XStack>

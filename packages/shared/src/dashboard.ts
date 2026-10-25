@@ -219,7 +219,7 @@ export type ProfessionalLead = {
     /** Tipo di intervento (richiesta esplicita dell'utente: "il professionista già sa se può trattarsi di un intervento a domicilio o online") — `null` per le richieste create prima di questo campo. */
     serviceMode: "HOME" | "ONLINE" | null;
     isUrgent: boolean;
-    /** Quando serve, scelto dal cliente (§340): null per le richieste di prima. */
+    /** Quando serve, scelto dal cliente (§342): null per le richieste di prima. */
     timing: RequestTiming | null;
     /** Valorizzati solo se la richiesta è nata da una fascia generica dell'agenda (vedi packages/shared/src/availability.ts). */
     preferredDate: string | null;

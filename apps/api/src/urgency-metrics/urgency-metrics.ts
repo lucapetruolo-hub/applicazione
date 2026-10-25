@@ -18,7 +18,7 @@ const minutesToFirstQuote = (samples: UrgencySample[]) =>
   samples.flatMap((s) => (s.firstQuoteAt ? [Math.round((s.firstQuoteAt.getTime() - s.createdAt.getTime()) / 60_000)] : []));
 
 /**
- * Numeri della settimana e avvisi (docs/CHANGELOG.md §340). Avvisi solo con
+ * Numeri della settimana e avvisi (docs/CHANGELOG.md §342). Avvisi solo con
  * almeno URGENCY_METRICS_MIN_REQUESTS richieste: con pochi numeri una sola
  * richiesta sposta tutto.
  */

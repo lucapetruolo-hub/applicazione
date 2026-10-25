@@ -52,7 +52,7 @@ function addDays(date: Date, days: number): Date {
  * §224): la scadenza della richiesta, mai per le urgenti (resta la
  * dicitura di prima, decisione dell'utente §221).
  */
-/** Con la scelta dei tempi (§340) è "Oggi" a rendere urgente la richiesta. */
+/** Con la scelta dei tempi (§342) è "Oggi" a rendere urgente la richiesta. */
 function withTimingUrgency<T extends { isUrgent: boolean; timing?: GuidedRequestInput["timing"] }>(input: T): T {
   return input.timing ? { ...input, isUrgent: input.timing === "TODAY" } : input;
 }
@@ -796,7 +796,7 @@ export class GuidedRequestsService {
 
   /**
    * A quanti professionisti arriverebbe la richiesta senza e con "Urgente"
-   * (docs/CHANGELOG.md §340): stessa selezione del fan-out, così il
+   * (docs/CHANGELOG.md §342): stessa selezione del fan-out, così il
    * riepilogo del modulo mostra un numero vero. Con `excludeProfileId`
    * (richiesta diretta) conta l'inoltro: zona del cliente o, se manca,
    * quella del professionista scelto, come in forwardDirectRequest.

@@ -1,6 +1,6 @@
 /**
  * Quando serve il lavoro, scelto dal cliente nella richiesta
- * (docs/CHANGELOG.md §340, scelta di Luca): "Oggi" rende la richiesta urgente,
+ * (docs/CHANGELOG.md §342, scelta di Luca): "Oggi" rende la richiesta urgente,
  * "In settimana" e "Con calma" sono richieste normali, ma il professionista
  * vede la scelta. Null per le richieste di prima.
  */
