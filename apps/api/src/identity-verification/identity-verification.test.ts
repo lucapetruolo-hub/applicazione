@@ -113,7 +113,7 @@ describe("obbligo prima dei preventivi", () => {
     expect(identityVerificationNeeded({ isDemo: false, verified: false, identityExpiredAt: null })).toBe(true);
     expect(identityVerificationNeeded({ isDemo: true, verified: false, identityExpiredAt: null })).toBe(false);
     expect(identityVerificationNeeded({ isDemo: false, verified: true, identityExpiredAt: null })).toBe(false);
-    // Badge tolto per documento scaduto (§335): si continua a inviare preventivi mentre si rifà la verifica.
+    // Badge tolto per documento scaduto (§336): si continua a inviare preventivi mentre si rifà la verifica.
     expect(identityVerificationNeeded({ isDemo: false, verified: false, identityExpiredAt: new Date() })).toBe(false);
   });
 });
@@ -308,7 +308,7 @@ describe("tentativi del giorno (§276)", () => {
   });
 });
 
-describe("badge Verificato nel tempo (§335)", () => {
+describe("badge Verificato nel tempo (§336)", () => {
   const now = new Date("2026-11-01T08:00:00Z");
   const approved = (fields: Partial<{ decidedAt: Date; documentExpiresAt: Date | null; expiryRemindedAt: Date | null }>) => ({
     createdAt: new Date("2026-10-25T10:00:00Z"),

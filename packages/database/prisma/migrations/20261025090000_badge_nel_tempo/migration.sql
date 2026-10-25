@@ -1,4 +1,4 @@
--- Badge "Verificato" nel tempo (docs/CHANGELOG.md §335).
+-- Badge "Verificato" nel tempo (docs/CHANGELOG.md §336).
 ALTER TABLE "identity_verifications" ADD COLUMN "sandbox" BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE "identity_verifications" ADD COLUMN "documentExpiresAt" TIMESTAMP(3);
 ALTER TABLE "identity_verifications" ADD COLUMN "expiryRemindedAt" TIMESTAMP(3);

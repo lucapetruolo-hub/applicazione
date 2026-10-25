@@ -106,16 +106,16 @@ export const EXPIRED_BADGE_REASON = "Il documento della tua verifica è scaduto:
 const DECLINED_REASON =
   "Il documento o il selfie non sono stati accettati. Usa un documento valido e non scaduto, con buona luce e senza riflessi, e riprova.";
 
-/** Avviso "il documento sta per scadere" (§335). */
+/** Avviso "il documento sta per scadere" (§336). */
 export const EXPIRY_REMINDER_DAYS = 30;
-/** Senza data di scadenza letta dal documento, la verifica vale 5 anni (§335). */
+/** Senza data di scadenza letta dal documento, la verifica vale 5 anni (§336). */
 export const VERIFICATION_VALID_YEARS = 5;
 
 export type BadgeOverTime = "KEEP" | "REMIND" | "REVOKE_SANDBOX" | "REVOKE_EXPIRED";
 
 /**
  * Badge "Verificato" nel tempo (decisione dell'utente, docs/CHANGELOG.md
- * §335), con le chiavi vere del fornitore: senza una verifica approvata non
+ * §336), con le chiavi vere del fornitore: senza una verifica approvata non
  * di prova il badge cade; alla scadenza del documento (o dopo 5 anni senza
  * data) cade anche lui, con un avviso 30 giorni prima.
  */
@@ -377,7 +377,7 @@ export class IdentityVerificationService {
     const profiles = await this.prisma.professionalProfile.findMany({
       where: {
         verified: false,
-        // Documento scaduto: ha già il suo avviso, e può continuare a lavorare (§335).
+        // Documento scaduto: ha già il suo avviso, e può continuare a lavorare (§336).
         identityExpiredAt: null,
         isDemo: false,
         deletedAt: null,
@@ -404,7 +404,7 @@ export class IdentityVerificationService {
   }
 
   /**
-   * Badge nel tempo (§335), ogni mattina e solo con le chiavi vere del
+   * Badge nel tempo (§336), ogni mattina e solo con le chiavi vere del
    * fornitore: in prova le verifiche sono tutte di prova e il badge resta.
    */
   @Cron("0 9 * * *", { timeZone: "Europe/Rome" })
@@ -543,7 +543,7 @@ export class IdentityVerificationService {
         reason: next.reason,
         providerStatus: decision.providerStatus,
         decidedAt: decided ? new Date() : row.decidedAt,
-        // Dal documento si conserva solo la scadenza (§335).
+        // Dal documento si conserva solo la scadenza (§336).
         ...(next.status === "APPROVED" ? { documentExpiresAt: documentExpiry(decision.documentExpiresAt), expiryRemindedAt: null } : {}),
       },
     });

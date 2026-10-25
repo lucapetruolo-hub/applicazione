@@ -128,7 +128,7 @@ describe("OnlineMoneyService con saldo diretto", () => {
   it("accredita l'acconto meno costi, senza rimborsi se l'importo finale lo supera", async () => {
     const { service, prisma, stripe } = buildService();
     prisma.jobPayment.findUnique.mockResolvedValue(mixedJob(50000));
-    vi.spyOn(service as never, "accountActive").mockResolvedValue(true as never);
+    vi.spyOn(service as unknown as { accountActive: () => Promise<boolean> }, "accountActive").mockResolvedValue(true);
 
     await expect(service.releaseIfDue("jp-1")).resolves.toBe(true);
     expect(stripe.refunds.create).not.toHaveBeenCalled();
@@ -139,7 +139,7 @@ describe("OnlineMoneyService con saldo diretto", () => {
     const { service, prisma, stripe } = buildService();
     prisma.jobPayment.findUnique.mockResolvedValue(mixedJob(8000));
     prisma.jobPayment.findUniqueOrThrow.mockResolvedValue(mixedJob(8000));
-    vi.spyOn(service as never, "accountActive").mockResolvedValue(true as never);
+    vi.spyOn(service as unknown as { accountActive: () => Promise<boolean> }, "accountActive").mockResolvedValue(true);
 
     await service.releaseIfDue("jp-1");
     expect(stripe.refunds.create).toHaveBeenCalledWith(expect.objectContaining({ payment_intent: "pi_dep", amount: 2000 }), expect.anything());

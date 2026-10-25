@@ -11,7 +11,7 @@ import { ProfessionalVerificationService } from "./professional-verification.ser
 /**
  * Area admin dei professionisti verificati: elenco e "Togli verifica". Il badge
  * lo dà solo la verifica di documento e selfie (docs/CHANGELOG.md §253); la
- * verifica manuale dell'admin (§200) è stata tolta nel §335.
+ * verifica manuale dell'admin (§200) è stata tolta nel §336.
  */
 @UseGuards(JwtAuthGuard, AdminGuard)
 @Controller("admin/professional-verifications")

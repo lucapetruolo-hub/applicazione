@@ -8,7 +8,7 @@ import { NotificationsService } from "../notifications/notifications.service";
 /**
  * Badge "Verificato" dei professionisti. Da docs/CHANGELOG.md §253 lo assegna
  * solo la verifica di documento e selfie (Didit, `markVerifiedByProvider`);
- * all'admin resta "Togli verifica" (la verifica manuale, §200, è stata tolta nel §335).
+ * all'admin resta "Togli verifica" (la verifica manuale, §200, è stata tolta nel §336).
  * Ogni cambio finisce nel registro azioni e il professionista riceve un avviso.
  */
 @Injectable()
@@ -174,7 +174,7 @@ export class ProfessionalVerificationService {
   }
 
   /**
-   * Badge nel tempo (decisione dell'utente, docs/CHANGELOG.md §335): tolto
+   * Badge nel tempo (decisione dell'utente, docs/CHANGELOG.md §336): tolto
    * quando il documento della verifica scade (`expired`, il professionista
    * continua a inviare preventivi mentre la rifà) o quando l'unica verifica
    * approvata era una prova (`DIDIT_SANDBOX`).

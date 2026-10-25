@@ -221,7 +221,7 @@ CEO sulle segnalazioni, `docs/CHANGELOG.md` §144):
 dell'utente, §113: non riformulare il testo nel frattempo — costruire
 davvero la verifica prima):
 15. ~~Claim "Profili verificati"~~ — il badge "Verificato" lo dà solo la
-    verifica di documento e selfie con Didit (docs/CHANGELOG.md §253, §335;
+    verifica di documento e selfie con Didit (docs/CHANGELOG.md §253, §336;
     la verifica manuale dell'admin è stata tolta). Prima del lancio:
     controllare nella console Didit che il flusso (`DIDIT_WORKFLOW_ID`)
     comprenda documento, prova di presenza (liveness) e confronto del volto,
@@ -229,7 +229,7 @@ davvero la verifica prima):
     lanciare `/mnt/project-files/analisi/badge-verifica/query-dati-veri.sql`
     sul database vero il giorno dopo aver tolto `DIDIT_SANDBOX` (la query 1
     deve dare zero righe: i badge dati in prova cadono da soli col controllo
-    delle 9, docs/CHANGELOG.md §335, e quei professionisti ricevono l'email
+    delle 9, docs/CHANGELOG.md §336, e quei professionisti ricevono l'email
     "Badge Verificato tolto").
 16. ~~Risposte di `WhatIfSection.tsx` con promesse inesistenti~~ —
     allineate alle regole reali di pagamento e segnalazioni
@@ -463,11 +463,11 @@ Città, pagine vuote fuori da Google.
     fuori dall'app) fatti da professionisti che non conoscono il sito, senza
     aiuto. Il test simulato del §311 non li sostituisce. Testo dei compiti e
     obiettivi nel documento "Verifica dell'agenda come un esperto UX".
-40. **osv-scanner bloccante** (docs/CHANGELOG.md §314, decisione dell'utente
-    del 24/10/2026): prima del lancio, o comunque dopo i primi aggiornamenti
-    di Dependabot, fargli bloccare la PR per le librerie che vanno sul sito e
-    sull'API (non per quelle usate solo per costruire o provare il codice).
-    Ogni eccezione va in `osv-scanner.toml` con il motivo. Lo fa un thread.
+40. ~~osv-scanner bloccante~~ — fatto (docs/CHANGELOG.md §335, PR #131):
+    blocca la PR su qualunque libreria con vulnerabilità note; quelle usate
+    solo per costruire o provare il codice e senza versione corretta vanno
+    in `osv-scanner.toml` con il motivo (oggi zod 3 e node-forge dentro
+    `@expo/cli`).
 
 
 41. **Segnalazioni dei contenuti (DSA)** (docs/CHANGELOG.md §319): dopo la

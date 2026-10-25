@@ -55,7 +55,7 @@ export function publicVisibilityMissing(profile: {
 /**
  * Badge "Verificato" mostrato ai clienti: solo per una persona vera che ha
  * superato documento e selfie, mai su un profilo dimostrativo (docs/CHANGELOG.md
- * §335: un badge su un profilo finto è un'approvazione falsa).
+ * §336: un badge su un profilo finto è un'approvazione falsa).
  */
 export function publicVerified(profile: { verified: boolean; isDemo: boolean }): boolean {
   return profile.verified && !profile.isDemo;

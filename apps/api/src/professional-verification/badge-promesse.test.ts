@@ -6,7 +6,7 @@ import { publicVerified } from "../professional-fiscal/public-visibility";
 
 /**
  * Il sito dice "Badge Verificato: identità controllata con documento e
- * selfie" (docs/CHANGELOG.md §335). Questa prova lo tiene vero: nel codice
+ * selfie" (docs/CHANGELOG.md §336). Questa prova lo tiene vero: nel codice
  * c'è un solo punto che accende il badge, la verifica di documento e selfie
  * (`markVerifiedByProvider`, chiamata solo con esito approvato e documento
  * della persona dei dati fiscali, vedi identity-verification.test.ts), e un

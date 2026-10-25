@@ -22,7 +22,7 @@ export type IdentityDecision = {
   person: DocumentPerson | null;
   /** Codici degli avvisi del fornitore (es. documento sfocato, volto diverso): spiegano un rifiuto nei log e nel registro azioni. */
   warnings: string[];
-  /** Scadenza del documento (AAAA-MM-GG), l'unico dato del documento che si conserva (§335). */
+  /** Scadenza del documento (AAAA-MM-GG), l'unico dato del documento che si conserva (§336). */
   documentExpiresAt?: string | null;
   /** Motivo per il professionista ricavato dagli avvisi (documento scaduto, foto sfocata…), o null se non ce n'è uno preciso. */
   reason: string | null;

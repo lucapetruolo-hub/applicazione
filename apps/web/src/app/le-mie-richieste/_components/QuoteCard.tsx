@@ -298,7 +298,7 @@ export function QuoteCard({
             </Text>
           </XStack>
         </Link>
-        {/* Che tipo di lavoratore ha mandato il preventivo, dove il cliente decide (richiesta dell'utente, §335). */}
+        {/* Che tipo di lavoratore ha mandato il preventivo, dove il cliente decide (richiesta dell'utente, §336). */}
         {quote.professionalKind ? <ProfessionalKindBadge kind={quote.professionalKind} /> : null}
         {/* Un preventivo accettato non è più una novità: le novità del lavoro sono sull'intervento (§228). */}
         {isNew && quote.status !== "ACCEPTED" ? <Badge variant="nuovo">Nuovo</Badge> : null}
