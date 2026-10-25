@@ -147,10 +147,13 @@ test("badge e fumetto senza problemi gravi di accessibilità", async ({ page }) 
 });
 
 test("nel preventivo il cliente vede che tipo di lavoratore lo manda", async ({ page }) => {
+  // L'accesso ha un limite al minuto per indirizzo: dopo gli altri test può
+  // servire aspettare un giro intero prima di entrare.
+  test.setTimeout(180_000);
   let token = "";
   for (let attempt = 0; !token; attempt++) {
     const response = await fetch(`${API_URL}/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: client.email, password: "Password123!" }) });
-    if (response.status === 429 && attempt < 3) {
+    if (response.status === 429 && attempt < 6) {
       await new Promise((resolve) => setTimeout(resolve, (Number(response.headers.get("retry-after")) || 20) * 1000 + 500));
       continue;
     }
