@@ -1001,11 +1001,11 @@ const BUILDERS: Record<string, Builder> = {
   },
   PROFILE_VERIFIED: (_payload, ctx) => ({
     kind: "account",
-    subject: "Il tuo profilo è verificato",
+    subject: "La tua identità è verificata",
     greeting: ctx.name,
-    title: "Profilo verificato",
+    title: "Identità verificata",
     paragraphs: [
-      "Abbiamo controllato il tuo documento d'identità e i tuoi dati fiscali: il tuo profilo ora mostra il badge **Verificato** nella ricerca e nella tua pagina pubblica.",
+      "La verifica con documento e selfie è riuscita: il tuo profilo ora mostra il badge **Verificato** nella ricerca e nella tua pagina pubblica.",
       "Da adesso puoi anche inviare preventivi ai clienti.",
     ],
     cta: { label: "Vedi il tuo profilo", url: `${frontendUrl()}/dashboard/profilo` },
@@ -1114,11 +1114,27 @@ const BUILDERS: Record<string, Builder> = {
     greeting: ctx.name,
     title: "Completa la verifica per inviare preventivi",
     paragraphs: [
-      "Per inviare il tuo primo preventivo serve una verifica veloce con documento e selfie: circa 2 minuti, una volta sola.",
+      "Per inviare il tuo primo preventivo serve una verifica veloce con documento e selfie: circa 2 minuti.",
       "Così i clienti vedono il badge **Verificato** sul tuo profilo.",
     ],
     cta: { label: "Fai la verifica", url: `${frontendUrl()}/dashboard/verifica-identita` },
   }),
+  // Documento della verifica in scadenza (§338): 30 giorni prima, una volta.
+  IDENTITY_VERIFICATION_EXPIRING: (payload, ctx) => {
+    const expiresOn = str(payload.expiresOn);
+    const day = expiresOn ? new Date(expiresOn).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Rome" }) : null;
+    return {
+      kind: "account",
+      subject: "Il documento della tua verifica sta per scadere",
+      greeting: ctx.name,
+      title: "Rinnova la verifica dell'identità",
+      paragraphs: [
+        `Il documento che hai usato per la verifica scade${day ? ` il ${day}` : " tra poco"}. Da quel giorno il tuo profilo non mostra più il badge **Verificato**.`,
+        "Per tenerlo rifai la verifica con un documento valido: circa 2 minuti. Puoi continuare a inviare preventivi.",
+      ],
+      cta: { label: "Rinnova la verifica", url: `${frontendUrl()}/dashboard/verifica-identita` },
+    };
+  },
   // "Completa il profilo" il giorno dopo l'iscrizione, solo se manca qualcosa (§261).
   PROFILE_SETUP_REMINDER: (payload, ctx) => {
     const missing = Array.isArray(payload.missing) ? payload.missing : [];

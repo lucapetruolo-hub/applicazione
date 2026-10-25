@@ -6,7 +6,7 @@ import type { ClientGuidedRequest } from "@professionisti/api-client";
 import { formatAppointmentTimeRange, formatJobDays, formatServicePriceRange, jobDayCount, paymentChoiceIsOnline, quotePriceTotals, scheduleChangeBetween, scheduleChangeObject, type JobPaymentChoice } from "@professionisti/shared";
 import { PaymentChoice, selectablePaymentChoices } from "@/components/PaymentChoice";
 import { useOnlinePayments } from "@/lib/onlinePayments";
-import { Avatar, Badge, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Avatar, Badge, ProfessionalKindBadge, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { CardButton } from "@/components/CardButton";
 import { ContactButton } from "@/components/ContactButton";
@@ -78,17 +78,17 @@ export function QuoteCard({
   token: string;
   onChanged: () => void;
   onAcceptQuote: (quoteId: string, paymentMethod: JobPaymentChoice) => Promise<void>;
-  /** Richiesta di origine, per il bottone "Cronologia". */
+  /** Richiesta di origine, per i messaggi. */
   guidedRequestId: string;
   /** Modalità della richiesta originale — filtra le fasce proponibili a quelle che offrono questa modalità. */
   serviceMode: "HOME" | "ONLINE" | null;
   /** True se proprio QUESTO preventivo ha ricevuto un aggiornamento non letto. */
   isNew?: boolean;
-  /** Numero di aggiornamenti non letti per questo preventivo — pallino rosso accanto a "Contatta/Cronologia". */
+  /** Numero di aggiornamenti non letti per questo preventivo — pallino rosso su "Messaggi". */
   unreadCount?: number;
   /** True se questo preventivo è il thread da cui arriva un nuovo messaggio in chat — apre subito il TimelineModal invece di aspettare un click. */
   autoOpenTimeline?: boolean;
-  /** Il preventivo è diventato un intervento: Contatta/Cronologia sta lì, non qui (un solo pulsante per scheda). */
+  /** Il preventivo è diventato un intervento: i messaggi stanno lì, non qui (un solo pulsante per scheda). */
   contactInBooking?: boolean;
 }) {
   const [isChoosingDate, setIsChoosingDate] = useState(false);
@@ -288,18 +288,33 @@ export function QuoteCard({
 
   return (
     <YStack backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$2">
-      <XStack alignItems="center" gap="$2" flexWrap="wrap">
-        <Link href={`/professionista/${quote.professionalProfileId}`} style={{ textDecoration: "none" }}>
-          {/* Foto accanto al nome (richiesta esplicita dell'utente), iniziali se manca. */}
-          <XStack alignItems="center" gap="$2">
-            <Avatar name={quote.businessName} imageUrl={quote.imageUrl} size={32} />
-            <Text fontWeight="600" color={brand.cianografiaScuro}>
-              {quote.businessName}
-            </Text>
-          </XStack>
-        </Link>
-        {/* Un preventivo accettato non è più una novità: le novità del lavoro sono sull'intervento (§228). */}
-        {isNew && quote.status !== "ACCEPTED" ? <Badge variant="nuovo">Nuovo</Badge> : null}
+      <XStack alignItems="center" gap="$2">
+        <XStack flex={1} alignItems="center" gap="$2" flexWrap="wrap">
+          <Link href={`/professionista/${quote.professionalProfileId}`} style={{ textDecoration: "none" }}>
+            {/* Foto accanto al nome (richiesta esplicita dell'utente), iniziali se manca. */}
+            <XStack alignItems="center" gap="$2">
+              <Avatar name={quote.businessName} imageUrl={quote.imageUrl} size={32} />
+              <Text fontWeight="600" color={brand.cianografiaScuro}>
+                {quote.businessName}
+              </Text>
+            </XStack>
+          </Link>
+          {/* Che tipo di lavoratore ha mandato il preventivo, dove il cliente decide (richiesta dell'utente, §338). */}
+          {quote.professionalKind ? <ProfessionalKindBadge kind={quote.professionalKind} /> : null}
+          {/* Un preventivo accettato non è più una novità: le novità del lavoro sono sull'intervento (§228). */}
+          {isNew && quote.status !== "ACCEPTED" ? <Badge variant="nuovo">Nuovo</Badge> : null}
+        </XStack>
+        {/* Messaggi accanto al nome, leggero: non compete con la scelta sul preventivo (§338). */}
+        {contactInBooking ? null : (
+          <ContactButton
+            light
+            unreadCount={effectiveUnreadCount}
+            onPress={() => {
+              setShowTimeline(true);
+              dismissUnread();
+            }}
+          />
+        )}
       </XStack>
       <Text fontSize={16} color={brand.grafite70}>
         Data proposta: {formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}
@@ -307,15 +322,6 @@ export function QuoteCard({
       <Text fontSize={13} color={brand.grafite70}>
         {quote.resentAt ? `Nuovo preventivo inviato il ${formatSentAt(quote.resentAt)}, dopo il tuo rifiuto` : `Inviato il ${formatSentAt(quote.sentAt)}`}
       </Text>
-      {contactInBooking ? null : (
-        <ContactButton
-          unreadCount={effectiveUnreadCount}
-          onPress={() => {
-            setShowTimeline(true);
-            dismissUnread();
-          }}
-        />
-      )}
       {(() => {
         // Stesso "prima → ora" che vede il professionista quando il cliente
         // propone un'altra data (docs/CHANGELOG.md §186).
@@ -417,10 +423,16 @@ export function QuoteCard({
 
       {quote.status === "SENT" ? (
         <>
-          <XStack gap="$2" flexWrap="wrap" alignItems="center">
-            {!choosingPayment && !isChoosingDate && !confirmingReject ? (
+          {/* Da telefono "Accetta preventivo" largo in fondo, dove arriva il
+              pollice, con "Modifica" e "Rifiuta" affiancati sopra; da
+              computer tutti in riga (richiesta dell'utente, §338). Durante
+              accettazione, modifica o rifiuto restano solo i pulsanti di
+              quel passaggio (docs/CHANGELOG.md §225). */}
+          {!choosingPayment && !isChoosingDate && !confirmingReject ? (
+            <XStack gap="$2" flexWrap="wrap" alignItems="center" $xs={{ flexDirection: "column-reverse", alignItems: "stretch" }}>
               <CardButton
                 tone="primary"
+                $xs={{ height: 48 }}
                 onPress={() => {
                   // Preselezionato il primo modo offerto dal professionista (online per primo, se c'è).
                   setPaymentMethod(selectablePaymentChoices(quote.paymentOptions, onlinePayments)[0] ?? "DIRECT");
@@ -429,21 +441,16 @@ export function QuoteCard({
               >
                 Accetta preventivo
               </CardButton>
-            ) : null}
-            {/* Durante accettazione, modifica o rifiuto restano solo i
-                pulsanti di quel passaggio (richiesta esplicita
-                dell'utente, docs/CHANGELOG.md §225). */}
-            {!isChoosingDate && !choosingPayment && !confirmingReject ? (
-              <CardButton fill={brand.ottone} onPress={startChoosingDate}>
-                Modifica
-              </CardButton>
-            ) : null}
-            {!isChoosingDate && !confirmingReject && !choosingPayment ? (
-              <CardButton tone="danger" onPress={() => setConfirmingReject(true)}>
-                Rifiuta
-              </CardButton>
-            ) : null}
-          </XStack>
+              <XStack gap="$2">
+                <CardButton $xs={{ height: 48, flex: 1, paddingHorizontal: 12 }} onPress={startChoosingDate}>
+                  Modifica
+                </CardButton>
+                <CardButton tone="danger" $xs={{ height: 48, flex: 1, paddingHorizontal: 12 }} onPress={() => setConfirmingReject(true)}>
+                  Rifiuta
+                </CardButton>
+              </XStack>
+            </XStack>
+          ) : null}
           {choosingPayment ? (
             <YStack gap="$3" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
               <PaymentChoice
@@ -515,7 +522,7 @@ export function QuoteCard({
             </Text>
           ) : null}
           {!isChoosingDate ? (
-            <CardButton alignSelf="flex-start" fill={brand.ottone} onPress={startChoosingDate}>
+            <CardButton alignSelf="flex-start" $xs={{ height: 48 }} onPress={startChoosingDate}>
               Cambia proposta
             </CardButton>
           ) : null}

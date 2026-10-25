@@ -1,20 +1,7 @@
 import { z } from "zod";
 import "./zod";
 
-/**
- * Verifica manuale dei professionisti (docs/CHANGELOG.md §200, checklist
- * lancio punto 15): un admin controlla un documento d'identità e la partita
- * IVA (o il codice fiscale, per chi non ha partita IVA) e assegna il badge
- * "Verificato". Niente documenti caricati sul sito: il controllo avviene
- * fuori (videochiamata, email), qui resta solo l'esito.
- */
-export const verifyProfessionalSchema = z.object({
-  identityChecked: z.literal(true, { message: "Conferma di aver controllato il documento d'identità." }),
-  taxIdChecked: z.literal(true, { message: "Conferma di aver controllato partita IVA o codice fiscale." }),
-  note: z.string().trim().max(500).optional(),
-});
-export type VerifyProfessionalInput = z.infer<typeof verifyProfessionalSchema>;
-
+/** "Togli verifica" dall'area admin: il motivo arriva al professionista. */
 export const unverifyProfessionalSchema = z.object({
   note: z.string().trim().min(3, "Scrivi il motivo.").max(500),
 });
@@ -51,6 +38,12 @@ export type ProfessionalVerificationRow = {
     provider: string;
     providerSessionId: string;
     updatedAt: string;
+    /** Fatta con DIDIT_SANDBOX: dal lancio non tiene il badge (§338). */
+    sandbox: boolean;
+    /** Scadenza del documento letta dal fornitore, se c'è. */
+    documentExpiresAt: string | null;
+    /** Solo se approvata: fino a quando tiene il badge (scadenza del documento o 5 anni). */
+    validUntil: string | null;
   } | null;
   /** Verifiche di codice fiscale e partita IVA (VIES, Openapi). */
   taxIdChecks: { kind: "CODICE_FISCALE" | "PARTITA_IVA"; status: "PENDING" | "VALID" | "INVALID" | "REVIEW"; detail: string | null; officialName: string | null }[];
