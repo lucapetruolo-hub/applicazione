@@ -45,6 +45,12 @@ function Point({ n, title, children }: { n: number; title: string; children: Rea
   );
 }
 
+const SUMMARY = [
+  "Nel preventivo scegli tu i modi: online con carta, direttamente a te, o tutti e due.",
+  "Online il cliente paga un acconto quando accetta e il saldo a lavoro chiuso, sul tuo conto Stripe.",
+  "Online paghi il costo di Stripe e il 5%; il pagamento diretto non ha commissioni.",
+];
+
 export function PagamentiContent() {
   const onlinePayments = useOnlinePayments();
   return (
@@ -68,6 +74,21 @@ export function PagamentiContent() {
               </Text>
             </XStack>
           ) : null}
+        </YStack>
+
+        {/* Tre righe in cima e i dettagli sotto (docs/CHANGELOG.md §346): la
+            regola dell'utente è il minimo indispensabile prima. */}
+        <YStack tag="ul" margin={0} padding="$4" gap="$2" borderRadius={20} backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto}>
+          {SUMMARY.map((line) => (
+            <XStack key={line} tag="li" gap="$2" alignItems="flex-start">
+              <YStack paddingTop={3} flexShrink={0}>
+                <Icon name="check" size={16} color={brand.cianografiaScuro} strokeWidth={2} />
+              </YStack>
+              <Text fontSize={16} color={brand.grafite} lineHeight={24} flex={1}>
+                {line}
+              </Text>
+            </XStack>
+          ))}
         </YStack>
 
         <Block title="Pagamento online">

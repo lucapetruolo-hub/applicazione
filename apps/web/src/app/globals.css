@@ -215,10 +215,36 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
     padding: 0 24px 32px;
   }
 }
+.pro-gallery {
+  list-style: none;
+  margin: 0;
+}
 .pro-gallery-item {
   position: relative;
+  display: block;
   aspect-ratio: 4 / 3;
   overflow: hidden;
+  color: #fff;
+  text-decoration: none;
+}
+/* Nome del mestiere sulla foto, su una sfumatura scura per leggerlo su
+   qualsiasi immagine (docs/CHANGELOG.md §346). */
+.pro-gallery-caption {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 28px 12px 10px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0));
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.pro-gallery-item:hover .pro-gallery-caption {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.pro-gallery-item:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
 }
 
 /* Stato di caricamento (fase "motion"): un pulsare lento e simmetrico,
