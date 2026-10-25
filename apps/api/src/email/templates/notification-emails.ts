@@ -1169,6 +1169,22 @@ const BUILDERS: Record<string, Builder> = {
     };
   },
   // "Sto arrivando" dall'agenda (§288).
+  // Conferma al cliente appena accetta (docs/CHANGELOG.md §341): prima col
+  // pagamento diretto non riceveva nulla, e il calendario arrivava solo col
+  // promemoria del giorno prima.
+  BOOKING_CONFIRMED: (payload, ctx) => ({
+    kind: "notification",
+    subject: `Appuntamento prenotato con ${pro(ctx)}`,
+    greeting: ctx.name,
+    title: "Appuntamento prenotato",
+    paragraphs: [
+      `Hai scelto **${pro(ctx)}** per **${job(ctx)}**: ha già ricevuto la conferma e i tuoi contatti.`,
+      "Ti ricordiamo l'appuntamento anche il giorno prima.",
+    ],
+    details: jobDetails(ctx),
+    cta: { label: "Apri l'appuntamento", url: `${frontendUrl()}/le-mie-richieste${str(payload.guidedRequestId) ? `?open=${str(payload.guidedRequestId)}` : ""}` },
+    after: ["Serve cambiare? Scrivi al professionista dalla richiesta, oppure annulla l'appuntamento prima dell'orario."],
+  }),
   PROFESSIONAL_ON_THE_WAY: (_payload, ctx) => ({
     kind: "notification",
     subject: `${pro(ctx)} sta arrivando`,

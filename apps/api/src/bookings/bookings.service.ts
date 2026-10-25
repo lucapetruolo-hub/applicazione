@@ -311,6 +311,8 @@ export class BookingsService {
       clientAddress,
       scheduledEndAt: booking.scheduledEndAt?.toISOString() ?? null,
     });
+    // Conferma al cliente con il calendario (§341), solo email: sul sito ha appena visto "Appuntamento prenotato".
+    this.notificationsService.emailOnly(clientId, "BOOKING_CONFIRMED", { bookingId: booking.id, guidedRequestId: quote.guidedRequestId });
 
     // Metriche di affidabilità (CLAUDE.md §15, evento 3): il preventivo è
     // diventato una prenotazione reale ("accettato" in questo dominio).

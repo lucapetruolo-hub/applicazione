@@ -43,6 +43,7 @@ function payloadGuidedRequestId(payload: Prisma.InputJsonValue): string | null {
 /** Notifiche che aggiungono o tolgono l'appuntamento dal calendario (docs/CHANGELOG.md §235). */
 const CALENDAR_NOTIFICATION_TYPES: Record<string, "add" | "cancel"> = {
   QUOTE_ACCEPTED: "add",
+  BOOKING_CONFIRMED: "add",
   BOOKING_REOPENED_BY_CLIENT: "add",
   BOOKING_REOPENED_BY_PROFESSIONAL: "add",
   BOOKING_CANCELED_BY_PROFESSIONAL: "cancel",
@@ -125,6 +126,19 @@ export class NotificationsService {
     const resolved = resolveNotificationPreferences(prefs);
     await this.prisma.user.update({ where: { id: userId }, data: { notificationPrefs: resolved } });
     return resolved;
+  }
+
+  /**
+   * Solo l'email, senza notifica nel sito: per confermare qualcosa che la
+   * persona ha appena fatto e vede già sullo schermo (docs/CHANGELOG.md §341).
+   */
+  emailOnly(userId: string, type: string, payload: Prisma.InputJsonValue): void {
+    void (async () => {
+      if (!notificationChannelEnabled(await this.preferencesOf(userId), type, "email")) return;
+      this.emailNotification(userId, type, payload);
+    })().catch((err: unknown) => {
+      this.logger.error(`Email ${type} non inviata: ${err instanceof Error ? err.message : String(err)}`);
+    });
   }
 
   /**

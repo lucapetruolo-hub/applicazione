@@ -59,6 +59,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
     professional: { label: "Lavori e appuntamenti", description: "Promemoria il giorno prima, riepilogo della sera, nuove recensioni, pagamenti, prenotazioni annullate o riaperte, segnalazioni." },
     client: { label: "Lavori e appuntamenti", description: "Promemoria il giorno prima, professionista in arrivo, lavoro terminato, saldo da pagare, intervento annullato." },
     types: [
+      // Solo email al cliente: appuntamento prenotato, con il calendario (docs/CHANGELOG.md §341).
+      "BOOKING_CONFIRMED",
       "JOB_COMPLETED",
       "BOOKING_CANCELED_BY_PROFESSIONAL",
       // Il cliente annulla: prima il professionista non riceveva nulla (docs/CHANGELOG.md §235).

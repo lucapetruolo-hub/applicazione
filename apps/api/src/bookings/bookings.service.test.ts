@@ -26,7 +26,7 @@ function buildService(prismaOverrides: Record<string, unknown> = {}) {
   };
   // Il blocco dell'agenda (§310) gira in una transazione: qui la transazione usa lo stesso finto database.
   prisma.$transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
-  const notificationsService = { notify: vi.fn() };
+  const notificationsService = { notify: vi.fn(), emailOnly: vi.fn() };
   const professionalMetricsService = { recordJobAccepted: vi.fn() };
   const timelineService = { log: vi.fn() };
   const jobPaymentsService = {
@@ -133,6 +133,8 @@ describe("BookingsService.createFromQuote", () => {
       data: { status: "CLOSED", closedReason: "COMPLETED" },
     });
     expect(notificationsService.notify).toHaveBeenCalledWith("pro-user-1", "QUOTE_ACCEPTED", expect.any(Object));
+    // Il cliente riceve la conferma con il calendario, solo per email (§341).
+    expect(notificationsService.emailOnly).toHaveBeenCalledWith("client-1", "BOOKING_CONFIRMED", { bookingId: expect.any(String), guidedRequestId: "gr-1" });
     expect(professionalMetricsService.recordJobAccepted).toHaveBeenCalledWith("pro-1");
     expect(timelineService.log).toHaveBeenCalled();
   });
