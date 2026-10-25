@@ -107,6 +107,8 @@ export type GuidedRequestFormProps = {
   submitLabel: string;
   submittingLabel: string;
   descriptionPlaceholder: string;
+  /** Avvisa la pagina quando il cliente accende o spegne "Urgente". */
+  onUrgentChange?: (isUrgent: boolean) => void;
 };
 
 /**
@@ -137,6 +139,7 @@ export function GuidedRequestForm({
   submitLabel,
   submittingLabel,
   descriptionPlaceholder,
+  onUrgentChange,
 }: GuidedRequestFormProps) {
   const searchParams = useSearchParams();
   const { user, token, isLoading, refreshUser } = useAuth();
@@ -145,6 +148,11 @@ export function GuidedRequestForm({
   const [isUrgent, setIsUrgent] = useState(isUrgentInitial);
   // L'urgenza si cambia anche nel riepilogo: il pulsante d'invio segue la
   // scelta attuale, non quella con cui si è aperta la pagina.
+  function toggleUrgent() {
+    const next = !isUrgent;
+    setIsUrgent(next);
+    onUrgentChange?.(next);
+  }
   const shownSubmitLabel =
     isUrgent === isUrgentInitial ? submitLabel : isUrgent ? "Invia richiesta urgente" : "Invia richiesta";
   // Modulo in 3 passi (docs/CHANGELOG.md §154): il lavoro, dove, riepilogo.
@@ -985,7 +993,7 @@ export function GuidedRequestForm({
             id="guided-urgent-1"
             tone="urgent"
             checked={isUrgent}
-            onToggle={() => setIsUrgent((v) => !v)}
+            onToggle={toggleUrgent}
             title="È urgente?"
             description={
               isUrgent
@@ -1281,7 +1289,7 @@ export function GuidedRequestForm({
             }
             forwardIfNoReply={forwardIfNoReply}
             onToggleForward={() => setForwardIfNoReply((v) => !v)}
-            onToggleUrgent={() => setIsUrgent((v) => !v)}
+            onToggleUrgent={toggleUrgent}
             onEdit={goToStep}
           />
         ) : null}

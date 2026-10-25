@@ -20596,3 +20596,6 @@ Richiesta dell'utente: "si potrebbe dare l'icona del meteo per 3 giorni e dire d
 **Verifica**
 - Typecheck e lint di `apps/web`.
 - Prova nel browser (1366px e 390px), richiesta diretta e generale: l'interruttore acceso nel riepilogo risulta acceso anche tornando al passo 1. Anteprime in `/mnt/project-files/anteprime/urgente-riepilogo/`.
+
+**Miglioria approvata da Luca** ("Effettua miglioria 1")
+- Su `/urgente`, se il cliente spegne "Urgente", spariscono la fascia rossa "Richiesta urgente: notifichiamo subito…" e titolo e frase diventano quelli di `/preventivo` ("Richiedi un preventivo gratuito"); riaccendendolo tornano. Il modulo avvisa la pagina con `onUrgentChange`. Provato a 1366px e 390px.
