@@ -1,5 +1,6 @@
 import type {
   AgendaAttention,
+  ProfessionalKind,
   EmailStatus,
   ProfessionalEntityTypeValue,
   MySubscription,
@@ -88,7 +89,6 @@ import type {
   AddressSuggestion,
   AddressPlace,
   TaxIdCheckView,
-  VerifyProfessionalInput,
   GeneralRequestAvailability,
   GeneralRequestsAdminOverview,
   GeneralRequestThresholds,
@@ -240,6 +240,8 @@ export type ClientGuidedRequest = {
     businessName: string;
     /** Foto profilo del professionista, mostrata accanto al nome; null se assente o profilo eliminato. */
     imageUrl: string | null;
+    /** Privato, partita IVA o azienda, badge accanto al nome (docs/CHANGELOG.md §338); null se non ancora indicato. */
+    professionalKind: ProfessionalKind | null;
     items: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
     /** Data+ora di invio del preventivo (richiesta esplicita dell'utente), visibile sia al cliente che al professionista. */
     sentAt: string;
@@ -1707,11 +1709,6 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
       request<ProfessionalVerificationRow[]>(
         `/admin/professional-verifications?stato=${filter === "verified" ? "verificati" : "da-verificare"}&q=${encodeURIComponent(q)}`,
         { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" },
-      ),
-    adminVerifyProfessional: (token: string, professionalProfileId: string, input: VerifyProfessionalInput) =>
-      request<{ professionalProfileId: string; verified: boolean }>(
-        `/admin/professional-verifications/${encodeURIComponent(professionalProfileId)}/verify`,
-        { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) },
       ),
     /** "Ricontrolla ora": rifà subito la verifica di codice fiscale e partita IVA (docs/CHANGELOG.md §254). */
     adminRecheckTaxIds: (token: string, professionalProfileId: string) =>

@@ -3,9 +3,9 @@ import { GeocodingService } from "../geocoding/geocoding.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { randomUUID } from "node:crypto";
 import { Prisma, type PrismaClient, type ProfessionalProfile } from "@professionisti/database";
-import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_RESTORE_WINDOW_MINUTES, type RequestWithdrawReason, findComuneByName, professionalRestrictions, clientPaymentOffer, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
+import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_RESTORE_WINDOW_MINUTES, type RequestWithdrawReason, findComuneByName, professionalKindOf, professionalRestrictions, clientPaymentOffer, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
-import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing, publicVisibilityWhere, stripeVerified } from "../professional-fiscal/public-visibility";
+import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing, publicVisibilityWhere, publicVerified, stripeVerified } from "../professional-fiscal/public-visibility";
 import { NOT_ACCEPTING_REQUESTS } from "../subscriptions/subscription-rules";
 import { calculateDistanceKm } from "../common/geo.util";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -515,7 +515,7 @@ export class GuidedRequestsService {
           categorySlug: lead.professionalProfile.category.slug,
           categoryLabel: lead.professionalProfile.category.label,
           city: lead.professionalProfile.city,
-          verified: lead.professionalProfile.verified,
+          verified: publicVerified(lead.professionalProfile),
           declined: lead.status === "DECLINED",
           declineNote: lead.declineNote,
         })),
@@ -527,6 +527,8 @@ export class GuidedRequestsService {
           // (richiesta esplicita dell'utente: riconoscere a colpo d'occhio
           // di chi si tratta). Mai per un profilo eliminato.
           imageUrl: quote.professionalProfile.deletedAt ? null : quote.professionalProfile.imageUrl,
+          // Che tipo di lavoratore ha mandato il preventivo (richiesta dell'utente, §338).
+          professionalKind: professionalKindOf(quote.professionalProfile.fiscalProfile?.entityType),
           items: quote.items.map((item) => ({
             id: item.id,
             name: item.name,

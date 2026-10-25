@@ -220,13 +220,17 @@ CEO sulle segnalazioni, `docs/CHANGELOG.md` §144):
 **Claim non veritieri pubblicati dal vivo** (decisione esplicita
 dell'utente, §113: non riformulare il testo nel frattempo — costruire
 davvero la verifica prima):
-15. ~~Claim "Profili verificati"~~ — la verifica esiste (docs/CHANGELOG.md
-    §200-§201): l'admin controlla documento e partita IVA e assegna il badge
-    da `/admin/verifiche`, il professionista lo chiede dal profilo. Footer e
-    risultati dicono ora "Badge Verificato: documento e P.IVA controllati".
-    Resta da fare: verificare davvero i primi professionisti prima del
-    lancio. "Professionisti verificati" generico tolto dalle descrizioni
-    (§202).
+15. ~~Claim "Profili verificati"~~ — il badge "Verificato" lo dà solo la
+    verifica di documento e selfie con Didit (docs/CHANGELOG.md §253, §338;
+    la verifica manuale dell'admin è stata tolta). Prima del lancio:
+    controllare nella console Didit che il flusso (`DIDIT_WORKFLOW_ID`)
+    comprenda documento, prova di presenza (liveness) e confronto del volto,
+    perché il sito scrive "identità controllata con documento e selfie";
+    lanciare `/mnt/project-files/analisi/badge-verifica/query-dati-veri.sql`
+    sul database vero il giorno dopo aver tolto `DIDIT_SANDBOX` (la query 1
+    deve dare zero righe: i badge dati in prova cadono da soli col controllo
+    delle 9, docs/CHANGELOG.md §338, e quei professionisti ricevono l'email
+    "Badge Verificato tolto").
 16. ~~Risposte di `WhatIfSection.tsx` con promesse inesistenti~~ —
     allineate alle regole reali di pagamento e segnalazioni
     (docs/CHANGELOG.md §168).

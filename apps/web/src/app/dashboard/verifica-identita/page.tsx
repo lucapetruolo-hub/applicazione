@@ -295,7 +295,7 @@ function ActionPanel({
     <Panel
       icon={retry ? "rotate-ccw" : "id-card"}
       tone={retry ? "error" : "neutral"}
-      title={retry ? "Riprova la verifica" : resume ? "Finisci la verifica" : "Verifica la tua identità"}
+      title={retry ? "Riprova la verifica" : resume ? "Finisci la verifica" : identity.renewal ? "Rinnova la verifica" : "Verifica la tua identità"}
     >
       {retry && identity.reason ? (
         <YStack gap="$1.5">
@@ -307,7 +307,9 @@ function ActionPanel({
         </YStack>
       ) : null}
       <Text color={brand.grafite70}>
-        Serve una sola volta, prima del tuo primo preventivo: così i clienti sanno che dietro il profilo ci sei davvero tu. Ci vogliono circa 2 minuti.
+        {identity.renewal
+          ? "Il documento della tua verifica è scaduto: rifalla con un documento valido per riavere il badge Verificato. Intanto puoi continuare a inviare preventivi."
+          : "Serve prima del tuo primo preventivo: così i clienti sanno che dietro il profilo ci sei davvero tu. Ci vogliono circa 2 minuti."}
       </Text>
       <YStack gap="$2.5">
         <Need icon="id-card">
