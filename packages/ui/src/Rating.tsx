@@ -34,7 +34,7 @@ export function Rating({ value, count, size = 16, textSize = 16 }: RatingProps) 
           />
         ))}
       </XStack>
-      <Text fontFamily="$mono" fontSize={textSize} fontWeight="500" color={brand.grafite}>
+      <Text fontVariant={["tabular-nums"]} fontSize={textSize} fontWeight="600" color={brand.grafite}>
         {/* Con la virgola, come in italiano (docs/CHANGELOG.md §342; stessa regola di formatRating in shared). */}
         {value.toFixed(1).replace(".", ",")}
       </Text>

@@ -38,7 +38,7 @@ import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput"
 import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
 import { localPreviewUrl } from "@/lib/media";
-import { formatResponseTime } from "@/lib/responseTime";
+import { formatResponseTime, respondsRightAway } from "@/lib/responseTime";
 
 // Foto E video (richiesta esplicita dell'utente), fino a 5 elementi
 // (aumentato da 3, stessa richiesta).
@@ -903,7 +903,11 @@ export function GuidedRequestForm({
                         professional.rating !== null && professional.reviewCount > 0
                           ? `★ ${professional.rating.toLocaleString("it-IT")} (${professional.reviewCount})`
                           : null,
-                        professional.avgResponseTimeMinutes !== null ? `di solito risponde in ${formatResponseTime(professional.avgResponseTimeMinutes)}` : null,
+                        professional.avgResponseTimeMinutes !== null
+                          ? respondsRightAway(professional.avgResponseTimeMinutes)
+                            ? "di solito risponde subito"
+                            : `di solito risponde in ${formatResponseTime(professional.avgResponseTimeMinutes)}`
+                          : null,
                       ]
                         .filter(Boolean)
                         .join(" · ")}

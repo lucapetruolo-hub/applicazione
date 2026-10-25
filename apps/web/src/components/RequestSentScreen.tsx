@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Badge, BadgeInfo, Button, ProfessionalKindBadge, Text, YStack, brand } from "@professionisti/ui";
 import type { ProfessionalKind } from "@professionisti/shared";
 import { CategoryIconBadge } from "./CategoryIconBadge";
-import { formatResponseTime } from "@/lib/responseTime";
+import { formatResponseTime, respondsRightAway } from "@/lib/responseTime";
 
 export type RequestSentScreenProps = {
   /** Nome del professionista scelto: assente quando la richiesta va a tutti quelli della zona. */
@@ -78,7 +78,14 @@ export function RequestSentScreen({
   const note = nobodyYet
     ? "Per ora non c'è nessun professionista disponibile in zona: ti avvisiamo appena se ne iscrive uno."
     : direct
-      ? [avgResponseTimeMinutes !== null ? `Di solito risponde entro ${formatResponseTime(avgResponseTimeMinutes)}.` : null, "Ti avvisiamo appena arriva il preventivo."]
+      ? [
+          avgResponseTimeMinutes !== null
+            ? respondsRightAway(avgResponseTimeMinutes)
+              ? "Di solito risponde subito."
+              : `Di solito risponde entro ${formatResponseTime(avgResponseTimeMinutes)}.`
+            : null,
+          "Ti avvisiamo appena arriva il preventivo.",
+        ]
           .filter(Boolean)
           .join(" ")
       : multiple

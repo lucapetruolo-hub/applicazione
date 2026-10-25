@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { AdminCompletedJob } from "@professionisti/api-client";
+import { formatEur } from "@professionisti/shared";
 import { Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -13,7 +14,7 @@ import { SkeletonTableRows } from "@/components/Skeleton";
 type Filter = "all" | "changes" | "notes";
 
 function eur(cents: number): string {
-  return `€${(cents / 100).toLocaleString("it-IT", { minimumFractionDigits: cents % 100 ? 2 : 0 })}`;
+  return formatEur(cents);
 }
 
 function quoteRange(job: AdminCompletedJob): string | null {

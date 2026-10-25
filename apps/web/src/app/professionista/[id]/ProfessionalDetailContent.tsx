@@ -14,7 +14,7 @@ import { ReportContentModal } from "@/components/ReportContentModal";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { hasRecentlyReported, markReported } from "@/lib/reportedContent";
-import { formatResponseTime } from "@/lib/responseTime";
+import { formatResponseTime, respondsRightAway } from "@/lib/responseTime";
 
 // Colonne fisse Oggi + 3 giorni (stessa griglia della mini-agenda di ricerca,
 // vedi ProfessionalCard in packages/ui) — qui costruita a partire dai giorni
@@ -434,7 +434,9 @@ export function ProfessionalDetailContent({
                     <XStack alignItems="center" gap={4} flexShrink={1} minWidth={0}>
                       <Icon name="clock" size={13} strokeWidth={1.5} color={brand.grafite70} />
                       <Text fontSize={13} color={brand.grafite70} flexShrink={1}>
-                        Risponde in genere entro {formatResponseTime(professional.avgResponseTimeMinutes)}
+                        {respondsRightAway(professional.avgResponseTimeMinutes)
+                          ? "Risponde subito"
+                          : `Risponde in genere entro ${formatResponseTime(professional.avgResponseTimeMinutes)}`}
                       </Text>
                     </XStack>
                   ) : null}
@@ -710,7 +712,7 @@ export function ProfessionalDetailContent({
                     <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite}>
                       {day.label}
                     </Text>
-                    <Text fontFamily="$mono" fontSize={13} color={brand.grafite70}>
+                    <Text fontVariant={["tabular-nums"]} fontSize={13} color={brand.grafite70}>
                       {day.dateLabel}
                     </Text>
                   </YStack>
@@ -758,7 +760,7 @@ export function ProfessionalDetailContent({
                             paddingVertical={4}
                           >
                             <Text
-                              fontFamily="$mono"
+                              fontVariant={["tabular-nums"]}
                               fontSize={10.5}
                               $xs={{ fontSize: 9.5 }}
                               letterSpacing={-0.3}
@@ -793,7 +795,7 @@ export function ProfessionalDetailContent({
                         >
                           <Link href={href} style={{ textDecoration: "none", pointerEvents: preview ? "none" : undefined }} tabIndex={preview ? -1 : undefined}>
                             <XStack paddingHorizontal={6} $xs={{ paddingHorizontal: 4 }} paddingVertical={4} borderRadius="$10" backgroundColor={brand.cianografiaVelo}>
-                              <Text fontFamily="$mono" fontSize={10.5} $xs={{ fontSize: 9.5 }} letterSpacing={-0.3} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
+                              <Text fontVariant={["tabular-nums"]} fontSize={10.5} $xs={{ fontSize: 9.5 }} letterSpacing={-0.3} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
                                 {range}
                               </Text>
                             </XStack>

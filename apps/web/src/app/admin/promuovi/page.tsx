@@ -84,7 +84,7 @@ export default function AdminPromuoviPage() {
           </Text>
         ) : null}
 
-        <Button size="$5" onPress={handleSubmit} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
+        <Button variant="primary" size="$5" onPress={handleSubmit} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
           {isSubmitting ? "Attendi..." : "Promuovi"}
         </Button>
       </YStack>

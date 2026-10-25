@@ -25,7 +25,7 @@ const DISPUTE_STATUS: Record<AdminDispute["status"], { label: string; tone: "war
 };
 
 function euro(cents: number | undefined): string {
-  return cents === undefined ? "—" : (cents / 100).toLocaleString("it-IT", { style: "currency", currency: "EUR" });
+  return cents === undefined ? "—" : formatEurCents(cents);
 }
 
 /**

@@ -5,12 +5,14 @@ import {
   onlineDepositEurCents,
   paymentChoiceIsOnline,
   type JobPaymentChoice,
+  formatEurCents,
 } from "@professionisti/shared";
 import Link from "next/link";
 import { Text, YStack, brand } from "@professionisti/ui";
 
+/** Importo esatto di un pagamento, stesso formato di tutto il sito (§346). */
 function eur(cents: number): string {
-  return `€${(cents / 100).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return formatEurCents(cents);
 }
 
 /**

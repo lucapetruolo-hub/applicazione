@@ -19,6 +19,7 @@ import {
   buildWhatsAppLink,
   formatBookingAddress,
   formatEurCents,
+  formatEurRange,
   quotePriceTotals,
   scheduleChangeBetween,
   scheduleChangeOf,
@@ -688,8 +689,7 @@ export function RequestCard({
               </Text>
             ) : priceRange && (priceRange.totalMinEurCents > 0 || priceRange.totalMaxEurCents > 0) ? (
               <Text fontFamily="$body" fontWeight="800" fontSize={18} color={brand.grafite}>
-                {formatEurCents(priceRange.totalMinEurCents)}
-                {priceRange.totalMaxEurCents !== priceRange.totalMinEurCents ? ` – ${formatEurCents(priceRange.totalMaxEurCents)}` : ""}
+                {formatEurRange(priceRange.totalMinEurCents, priceRange.totalMaxEurCents)}
               </Text>
             ) : null}
           </YStack>
@@ -993,8 +993,7 @@ export function RequestCard({
                     {item.name}
                   </Text>
                   <Text fontSize={16} color={brand.grafite}>
-                    {item.priceMinEurCents != null ? formatEurCents(item.priceMinEurCents) : "–"}
-                    {item.priceMaxEurCents != null && item.priceMaxEurCents !== item.priceMinEurCents ? ` – ${formatEurCents(item.priceMaxEurCents)}` : ""}
+                    {formatEurRange(item.priceMinEurCents, item.priceMaxEurCents)}
                   </Text>
                 </XStack>
               ))}
@@ -1013,8 +1012,7 @@ export function RequestCard({
                     Totale stimato
                   </Text>
                   <Text fontSize={16} fontWeight="800" color={brand.grafite}>
-                    {formatEurCents(priceRange.totalMinEurCents)}
-                    {priceRange.totalMaxEurCents !== priceRange.totalMinEurCents ? ` – ${formatEurCents(priceRange.totalMaxEurCents)}` : ""}
+                    {formatEurRange(priceRange.totalMinEurCents, priceRange.totalMaxEurCents)}
                   </Text>
                 </XStack>
               ) : null}

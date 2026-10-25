@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { ProfessionalPayoutTotals } from "@professionisti/shared";
+import { formatEurCents, type ProfessionalPayoutTotals } from "@professionisti/shared";
 import { Icon, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 
+/** Importo esatto di un pagamento, stesso formato di tutto il sito (§346). */
 function eur(cents: number): string {
-  return `€${(cents / 100).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return formatEurCents(cents);
 }
 
 const TILES: Array<{ key: keyof Omit<ProfessionalPayoutTotals, "hasFailed">; label: string; icon: IconName; color: string; bg: string }> = [

@@ -7,13 +7,15 @@ import {
   BRAND,
   ONLINE_APP_FEE_PERCENT,
   type JobPaymentSummary,
+  formatEurCents,
 } from "@professionisti/shared";
 import { Icon, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { CardButton } from "@/components/CardButton";
 import { formatIssueDeadline } from "@/lib/leadDeadline";
 
+/** Importo esatto di un pagamento, stesso formato di tutto il sito (§346). */
 function eur(cents: number): string {
-  return `€${(cents / 100).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return formatEurCents(cents);
 }
 
 type Tone = "action" | "blocked" | "done" | "danger" | "neutral";

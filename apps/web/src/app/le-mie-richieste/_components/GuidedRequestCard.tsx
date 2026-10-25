@@ -8,7 +8,8 @@ import { X } from "lucide-react";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
 import {
   allItalianCityNames,
-  averageQuoteTotalEurCents,
+  quotesPriceSpan,
+  formatEur,
   findComuneByName,
   formatEurCents,
   formatItalianUntil,
@@ -283,7 +284,7 @@ export function GuidedRequestCard({
   // Preventivo diventato l'intervento: il suo Contatta/Cronologia passa nella sezione dell'intervento.
   const acceptedQuote = booking ? request.quotes.find((quote) => quote.status === "ACCEPTED" && quote.professionalProfileId === booking.professionalProfileId) : undefined;
   const canEditDetails = canDelete && !hasQuote;
-  const averagePriceEurCents = useMemo(() => averageQuoteTotalEurCents(request.quotes.map((quote) => quote.items)), [request.quotes]);
+  const priceSpan = useMemo(() => quotesPriceSpan(request.quotes.map((quote) => quote.items)), [request.quotes]);
 
   function startEditing() {
     setDescription(request.description);
@@ -810,11 +811,14 @@ export function GuidedRequestCard({
             </XStack>
           ) : null}
 
-          {!request.professionalProfileId && averagePriceEurCents !== null ? (
+          {!request.professionalProfileId && priceSpan !== null ? (
             <XStack alignItems="center" gap="$2" backgroundColor={brand.cianografiaVelo} borderRadius="$3" padding="$3">
               <Icon name="coins" size={16} color={brand.cianografiaScuro} strokeWidth={1.5} />
               <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
-                Prezzo totale medio: {formatEurCents(averagePriceEurCents)}
+                {priceSpan.count} preventivi:{" "}
+                {priceSpan.minEurCents === priceSpan.maxEurCents
+                  ? formatEur(priceSpan.minEurCents)
+                  : `da ${formatEur(priceSpan.minEurCents)} a ${formatEur(priceSpan.maxEurCents)}`}
               </Text>
             </XStack>
           ) : null}

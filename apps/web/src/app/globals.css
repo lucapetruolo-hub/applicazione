@@ -3576,8 +3576,7 @@ a.admin-kpi:hover {
   transform: translateY(-4px);
 }
 .qx-value {
-  font-family: var(--font-mono), monospace;
-  font-weight: 500;
+  font-weight: 600;
   text-align: right;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -4605,8 +4604,7 @@ a.admin-kpi:hover {
 .price-table td {
   white-space: nowrap;
   text-align: right;
-  font-family: var(--font-mono), monospace;
-  font-weight: 500;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: #2b2420;
 }

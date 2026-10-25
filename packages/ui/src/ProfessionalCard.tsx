@@ -566,7 +566,7 @@ export function ProfessionalCard({
                   <Text fontFamily="$body" fontSize={10.5} fontWeight="700" color={brand.grafite}>
                     {day.label}
                   </Text>
-                  <Text fontFamily="$mono" fontSize={9.5} color={brand.grafite70}>
+                  <Text fontVariant={["tabular-nums"]} fontSize={9.5} color={brand.grafite70}>
                     {day.dateLabel}
                   </Text>
                 </YStack>
@@ -593,7 +593,7 @@ export function ProfessionalCard({
                         return (
                           <XStack key={day.date} flex={1} flexBasis={0} minWidth={0} alignItems="center" justifyContent="center" paddingVertical={4} onPress={openAgendaAt?.(day.date)}>
                             <Text
-                              fontFamily="$mono"
+                              fontVariant={["tabular-nums"]}
                               fontSize={9.5}
                               letterSpacing={-0.3}
                               color={brand.grafite70}
@@ -627,7 +627,7 @@ export function ProfessionalCard({
                           }
                         >
                           <XStack paddingHorizontal={4} paddingVertical={3} borderRadius="$10" backgroundColor={brand.cianografiaVelo} maxWidth="100%">
-                            <Text fontFamily="$mono" fontSize={9.5} letterSpacing={-0.3} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
+                            <Text fontVariant={["tabular-nums"]} fontSize={9.5} letterSpacing={-0.3} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
                               {range}
                             </Text>
                           </XStack>

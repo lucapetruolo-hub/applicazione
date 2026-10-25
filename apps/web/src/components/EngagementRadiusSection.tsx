@@ -118,7 +118,7 @@ export function EngagementRadiusSection({
             <YStack width={12} height={12} borderRadius={10} backgroundColor={brand.verificato} />
             <FieldLabel>Richieste standard</FieldLabel>
           </XStack>
-          <Text fontFamily="$mono" fontWeight="700" color={brand.grafite}>
+          <Text fontVariant={["tabular-nums"]} fontWeight="700" color={brand.grafite}>
             {engagementRadiusKm} km
           </Text>
         </XStack>
@@ -145,7 +145,7 @@ export function EngagementRadiusSection({
             <YStack width={12} height={12} borderRadius={10} backgroundColor={brand.ottone} />
             <FieldLabel>Richieste urgenti</FieldLabel>
           </XStack>
-          <Text fontFamily="$mono" fontWeight="700" color={brand.grafite}>
+          <Text fontVariant={["tabular-nums"]} fontWeight="700" color={brand.grafite}>
             {urgentEngagementRadiusKm} km
           </Text>
         </XStack>

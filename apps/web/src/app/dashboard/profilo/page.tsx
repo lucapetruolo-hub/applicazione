@@ -83,6 +83,11 @@ const CANDIDATE_LANGUAGES = [
 const inputStyle = { padding: 12, borderRadius: 10, border: `1px solid ${brand.bordoCampo}`, fontSize: 16, fontFamily: "inherit", color: brand.grafite };
 const smallInputStyle = { ...inputStyle, padding: 10, fontSize: 16 };
 
+/** Prezzo nel campo di testo: "60" per 60,00 € e "12,50" solo con i centesimi (§346), mai "60.00". */
+function eurInputValue(cents: number): string {
+  return cents % 100 === 0 ? String(cents / 100) : (cents / 100).toFixed(2).replace(".", ",");
+}
+
 function FieldLabel({ children }: { children: string }) {
   return (
     <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
@@ -265,8 +270,8 @@ export default function DashboardProfiloPage() {
     setServices(
       profile.services.map((service) => ({
         name: service.name,
-        priceMin: service.priceMinEurCents !== null ? (service.priceMinEurCents / 100).toFixed(2) : "",
-        priceMax: service.priceMaxEurCents !== null ? (service.priceMaxEurCents / 100).toFixed(2) : "",
+        priceMin: service.priceMinEurCents !== null ? eurInputValue(service.priceMinEurCents) : "",
+        priceMax: service.priceMaxEurCents !== null ? eurInputValue(service.priceMaxEurCents) : "",
       })),
     );
   }

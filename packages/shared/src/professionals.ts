@@ -54,9 +54,48 @@ function formatEurAmount(cents: number, withCents: boolean): string {
 /**
  * Importo esatto di un pagamento all'italiana, sempre con i centesimi:
  * "1.234,50 €" (docs/CHANGELOG.md §231). Spazio indivisibile prima di "€".
+ * Solo per somme davvero pagate o da pagare (importo finale, pagamenti,
+ * DAC7, finanza): per prezzi, preventivi e abbonamenti si usa `formatEur`.
  */
 export function formatEurCents(cents: number): string {
   return `${formatEurAmount(cents, true)}\u00A0€`;
+}
+
+/**
+ * Prezzo "parlato" (docs/CHANGELOG.md §346, regola unica dei numeri del
+ * sito): importo tondo senza decimali ("180 €"), decimali solo se esistono
+ * ("12,50 €"). Per una forbice vedi `formatEurRange`.
+ */
+export function formatEur(cents: number): string {
+  return `${formatEurAmount(cents, Math.round(cents) % 100 !== 0)}\u00A0€`;
+}
+
+/**
+ * Forbice di prezzo "250–280 €" (un solo simbolo, trattino corto senza
+ * spazi): se minimo e massimo coincidono, o manca uno dei due, un solo
+ * importo; senza nessuno dei due, "Su richiesta". Stessa regola di
+ * `formatServicePriceRange`, di cui è il nome generico (§346).
+ */
+export function formatEurRange(minEurCents: number | null, maxEurCents: number | null): string {
+  return formatServicePriceRange(minEurCents, maxEurCents);
+}
+
+/**
+ * Riassunto dei preventivi con un prezzo ricevuti per la stessa richiesta
+ * (§346, al posto della media "96,25 €" che nessuno aveva proposto): quanti
+ * sono e la forbice dal totale più basso al più alto. `null` con meno di due
+ * preventivi con prezzo (con uno solo il riassunto non aggiunge niente).
+ */
+export function quotesPriceSpan(
+  quotesItems: { priceMinEurCents: number | null; priceMaxEurCents: number | null }[][],
+): { count: number; minEurCents: number; maxEurCents: number } | null {
+  const priced = quotesItems.map((items) => quotePriceTotals(items)).filter((totals) => totals.totalMinEurCents > 0 || totals.totalMaxEurCents > 0);
+  if (priced.length < 2) return null;
+  return {
+    count: priced.length,
+    minEurCents: Math.min(...priced.map((totals) => totals.totalMinEurCents)),
+    maxEurCents: Math.max(...priced.map((totals) => totals.totalMaxEurCents)),
+  };
 }
 
 /**

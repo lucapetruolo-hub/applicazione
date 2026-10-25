@@ -10,6 +10,7 @@ import {
   subscriptionTierInfo,
   type MySubscription,
   type SubscriptionTier,
+  formatEur as formatEurShared,
 } from "@professionisti/shared";
 import { Button, ButtonArrow, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -32,7 +33,7 @@ function formatDate(iso: string): string {
 }
 
 function formatEur(cents: number): string {
-  return `€${(cents / 100).toLocaleString("it-IT", { minimumFractionDigits: cents % 100 ? 2 : 0 })}`;
+  return formatEurShared(cents);
 }
 
 function tierRank(tier: SubscriptionTier): number {
@@ -332,6 +333,8 @@ function AbbonamentoContent() {
                 <Surface
                   key={tier.tier}
                   flex={1}
+                  flexBasis={0}
+                  minWidth={0}
                   borderRadius={radiusDoc}
                   padding="$4"
                   gap="$2"
@@ -373,23 +376,31 @@ function AbbonamentoContent() {
                       {hint}
                     </Text>
                   ) : null}
-                  <Button
-                    variant={current ? "secondary" : "acquisto"}
-                    disabled={disabled}
-                    opacity={disabled ? 0.6 : 1}
-                    onPress={() => chooseTier(tier.tier)}
-                  >
-                    {current ? (
-                      label
-                    ) : (
-                      <XStack alignItems="center" gap="$2">
-                        <Text color="white" fontFamily="$body" fontWeight="600">
-                          {label}
-                        </Text>
-                        <ButtonArrow tone="red" />
-                      </XStack>
-                    )}
-                  </Button>
+                  {!current && sub && !sub.checkoutAvailable ? (
+                    // Senza Stripe nessun livello si può scegliere: una riga chiara
+                    // al posto di un pulsante spento che sembra attivo (§346).
+                    <Text color={brand.grafite70} fontSize={16} paddingVertical="$2">
+                      Disponibile dal lancio
+                    </Text>
+                  ) : (
+                    <Button
+                      variant={current || disabled ? "secondary" : "acquisto"}
+                      disabled={disabled}
+                      opacity={disabled && !current ? 0.55 : 1}
+                      onPress={() => chooseTier(tier.tier)}
+                    >
+                      {current || disabled ? (
+                        label
+                      ) : (
+                        <XStack alignItems="center" gap="$2">
+                          <Text color="white" fontFamily="$body" fontWeight="600">
+                            {label}
+                          </Text>
+                          <ButtonArrow tone="red" />
+                        </XStack>
+                      )}
+                    </Button>
+                  )}
                 </Surface>
               );
             })}

@@ -196,7 +196,7 @@ export default function AdminFinanzaPage() {
                   finance.revenueBySource.map((r) => (
                     <XStack key={r.source} justifyContent="space-between" maxWidth={400}>
                       <Text>{r.source}</Text>
-                      <Text fontFamily="$mono">{formatEurCents(r.totalEurCents)}</Text>
+                      <Text fontVariant={["tabular-nums"]}>{formatEurCents(r.totalEurCents)}</Text>
                     </XStack>
                   ))
                 )}
@@ -208,7 +208,7 @@ export default function AdminFinanzaPage() {
                     <Text>
                       {m.method === "MANOVIA" ? `Tramite ${BRAND.name}` : "Diretti"} ({m.count})
                     </Text>
-                    <Text fontFamily="$mono">{formatEurCents(m.totalGrossEurCents)}</Text>
+                    <Text fontVariant={["tabular-nums"]}>{formatEurCents(m.totalGrossEurCents)}</Text>
                   </XStack>
                 ))}
               </YStack>
@@ -217,7 +217,7 @@ export default function AdminFinanzaPage() {
                 {finance.jobPaymentsByStatus.map((s) => (
                   <XStack key={s.status} justifyContent="space-between" maxWidth={400}>
                     <Text>{s.status}</Text>
-                    <Text fontFamily="$mono">{s.count}</Text>
+                    <Text fontVariant={["tabular-nums"]}>{s.count}</Text>
                   </XStack>
                 ))}
               </YStack>
@@ -392,7 +392,7 @@ export default function AdminFinanzaPage() {
                       {r.missingFiscalData ? <Text fontSize={13} color={brand.urgenza}> · dati fiscali mancanti</Text> : null}
                       {r.missingIban ? <Text fontSize={13} color={brand.urgenza}> · IBAN mancante</Text> : null}
                     </Text>
-                    <Text fontSize={13} fontFamily="$mono">
+                    <Text fontSize={13} fontVariant={["tabular-nums"]}>
                       {formatEurCents(r.considerationEurCents)} (diretti {formatEurCents(r.directConsiderationEurCents)}, online{" "}
                       {formatEurCents(r.onlineConsiderationEurCents)}) · {r.numberOfTransactions} lavori
                       {r.sellerNotifiedAt ? " · avvisato" : ""}

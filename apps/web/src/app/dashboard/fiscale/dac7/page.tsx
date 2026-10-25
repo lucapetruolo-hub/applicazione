@@ -168,7 +168,7 @@ export default function Dac7SummaryPage() {
             {hasOnline ? (
               data.maskedIban ? (
                 <Text fontSize={16} color={brand.grafite70}>
-                  Conto dei pagamenti online: <Text fontFamily="$mono" fontWeight="700" color={brand.grafite}>{data.maskedIban}</Text>
+                  Conto dei pagamenti online: <Text fontVariant={["tabular-nums"]} fontWeight="700" color={brand.grafite}>{data.maskedIban}</Text>
                 </Text>
               ) : (
                 <XStack gap="$3" padding="$3" borderRadius="$3" backgroundColor={brand.urgenzaVelo} alignItems="center" justifyContent="space-between" flexWrap="wrap">
