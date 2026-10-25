@@ -1,5 +1,5 @@
 // Scrive src/tamaguiDefaults.ts con i valori della config di default di
-// Tamagui che il sito usa (docs/CHANGELOG.md §335): token, font, media,
+// Tamagui che il sito usa (docs/CHANGELOG.md §343): token, font, media,
 // abbreviazioni e i soli temi usati. Prima `@tamagui/config` si importava
 // nel sito: 1408 temi creati e poi scartati e le animazioni di React Native
 // (con FlatList e VirtualizedList dentro) in ogni pagina, circa 230 KB di
@@ -29,7 +29,7 @@ if (missing.length) throw new Error(`Temi inesistenti in @tamagui/config: ${miss
 const configVersion = JSON.parse(readFileSync(createRequire(import.meta.url).resolve("@tamagui/config/package.json"), "utf8")).version;
 const json = (value: unknown) => JSON.stringify(value, null, 2);
 const out = `// File generato da scripts/genera-default-tamagui.ts: non modificarlo a mano.
-// Valori di @tamagui/config ${configVersion} (docs/CHANGELOG.md §335).
+// Valori di @tamagui/config ${configVersion} (docs/CHANGELOG.md §343).
 /* eslint-disable */
 
 export const defaultTokens = ${json(rawTokens)};

@@ -20563,7 +20563,182 @@ Richiesta dell'utente: "si potrebbe dare l'icona del meteo per 3 giorni e dire d
 
 **Verifica**: typecheck, lint e build; prove e2e `e2e/tests/menu-laterale.spec.ts` (ridotto a 1280 e aperto a 1440, scelta che resta ricaricando già prima che la pagina sia pronta e che arriva dall'account, tasto `[`, fumetto che resta sotto il puntatore e si chiude con Esc, tasto ignorato nella ricerca, tablet con i nomi brevi, axe-core WCAG 2.2 AA a zero errori sul menu aperto, ridotto e tablet). Misure dello spazio prima e dopo nel file delle proposte (Agenda a 1920px da 992 a 1464px). Tutte le prove e2e passate, con una in più per il menu del cliente (voce attiva, riduzione, axe). CLS anche sulle pagine del cliente: 0 da computer, 0,001 da telefono. `confronto-pagine` tra il ramo principale e questo (130 foto, computer e telefono): cambiano solo le pagine del professionista; fuori da lì 5 pagine con pochi pixel diversi (admin Finanza, `/urgente`, `/cerca/idraulico?online=1` e due bordi arrotondati sul telefono), che cambiano anche tra due giri fatti senza modifiche. CLS con Lighthouse in tutte le pagine del professionista, da computer (1280px ridotto da solo, 1440px aperto, 1920px ridotto) e da telefono: tra 0 e 0,002 (prima fino a 0,38).
 
-## 335. Agenda più veloce sui telefoni lenti
+## 335. Vulnerabilità delle librerie
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Correggere le vulnerabilità delle librerie"): dopo la PR #115 GitHub segnalava 68 vulnerabilità nelle librerie (5 critiche). `pnpm audit` ne contava 74 (4 critiche, 40 alte, 25 moderate, 5 basse). Condizione: il sito non deve cambiare comportamento.
+
+**Decisione presa**
+- Quasi tutte erano librerie usate da altre librerie, ferme a una versione vecchia nel `pnpm-lock.yaml` anche se ne era ammessa una corretta: aggiornate solo quelle, dentro i limiti già dichiarati (`pnpm update --depth Infinity`): multer, body-parser e qs (API), shell-quote, js-yaml, joi, @xmldom/xmldom e compression (strumenti dell'app), fast-uri, browserslist, brace-expansion, nanoid, source-map-js. Nessun `package.json` cambiato per queste.
+- `vitest` 2 → 4.1 in `apps/api`, solo per le prove (le 4 critiche erano qui: vitest, tinypool). Con vitest 4 `vite` è una dipendenza da dichiarare a parte, altrimenti pnpm teneva la vecchia vite 5: aggiunto `vite` ^7.3.7. Un test (`quote-payment-options.test.ts`) spiava un metodo privato con `as never`, che i tipi di vitest 4 non accettano più: ora con il tipo del metodo.
+- `google-auth-library` 9 → 10 in `apps/api` (accesso con Google): la 9 si portava dietro `uuid` 9 con una falla. Il sito usa solo `OAuth2Client.verifyIdToken`, uguale nella 10.
+- Tre versioni forzate in `pnpm-workspace.yaml` (`overrides`), dove il pacchetto che le usa fissa una versione esatta vecchia: `postcss` in Next.js (prepara i CSS nella build), `deepmerge-ts` nella configurazione di Prisma, `fast-xml-parser` negli strumenti di React Native per Android. Stessa API, solo versioni più nuove; valgono solo per le versioni vecchie (`postcss@<8.5.23` ecc.), quindi non bloccano aggiornamenti futuri.
+- Restano due avvisi, entrambi dentro `@expo/cli` (strumento di sviluppo dell'app, non va nell'app, nel sito o nell'API): zod 3 (già eccezione dal §314) e node-forge, che non ha ancora una versione corretta. node-forge aggiunto alle eccezioni di `osv-scanner.toml`.
+
+**Verifica**
+- `pnpm audit`: da 74 a 2 avvisi (i due sopra). osv-scanner con le eccezioni: nessun problema.
+- Typecheck, lint, build, 597 test dell'API, avvio dell'API (grafo dei moduli), `prisma validate`, `npx expo export --platform android`. Accesso con Google: un token falso viene rifiutato come prima.
+- `confronto-pagine` prima/dopo con API e database di prova, cliente, professionista e admin: 132 foto, 124 identiche, nelle altre 5-59 pixel di antialiasing (nessuna differenza visibile), stessi stati HTTP.
+
+**Migliorie approvate da Luca** ("effettua le 2 migliorie")
+- osv-scanner ora blocca la PR (`.github/workflows/security.yml`, checklist punto 40): dopo aver caricato il rapporto, un passo rifà il controllo e fallisce se trova una vulnerabilità fuori dalle eccezioni di `osv-scanner.toml`. Vale per tutte le librerie, non solo per quelle del sito e dell'API: osv-scanner non sa distinguere quelle usate solo per costruire o provare (anche `pnpm audit --prod` conta lo strumento di Expo, dipendenza dell'app), quindi quelle senza versione corretta vanno tra le eccezioni con il motivo. Provato: con il `pnpm-lock.yaml` di prima di questa PR il controllo fallisce (vitest, tinypool, ecc.), con quello nuovo passa.
+- I due avvisi rimasti (zod 3 e node-forge in `@expo/cli`) vanno chiusi a mano nella scheda Security → Dependabot di GitHub con "Vulnerable code is not actually used" / "Risk is tolerable": lo fa Luca, i thread non hanno accesso agli avvisi.
+
+## 336. "Le mie richieste": l'unica richiesta si apre da sola
+
+**Richiesta esplicita dell'utente** (25/10/2026): "Se c'è solo una richiesta preventivo, nella pagina le mie richieste, la visualizzazione standard rendila già aperta".
+
+**Decisione presa**
+- In `apps/web/src/app/le-mie-richieste/page.tsx`, al primo caricamento, se il cliente ha una sola richiesta non archiviata la sua scheda si apre già (stessa scheda aperta di quando la si tocca). Con due o più resta l'elenco chiuso come prima.
+- Una volta sola per visita: se il cliente la richiude resta chiusa, anche quando la pagina si aggiorna da sola ogni 15 secondi. Un link da notifica (`?open=`) ha la precedenza.
+- L'apertura automatica non toglie il segno "da leggere" messo a mano dal menu della scheda: lo toglie solo il tocco del cliente, come prima.
+
+**Migliorie approvate da Luca** ("Effettua miglioria 1 e 3")
+- Con una sola richiesta in tutto (non archiviata) spariscono schede di stato, ricerca, filtri e domicilio/online: non servono e da telefono spingevano la scheda sotto la prima schermata. Se ci sono anche richieste archiviate restano, per poter aprire "Archiviate".
+- Scegliendo una scheda di stato (per esempio "Accettate" o "Archiviate") che contiene una sola richiesta, quella si apre da sola. Solo al cambio di scheda, non a ogni aggiornamento automatico.
+
+**Verifica**
+- Typecheck e lint del sito. Con API e database di prova: cliente con una richiesta, scheda aperta da computer (1440px) e da telefono (390px); cliente con due richieste, elenco chiuso; richiusa la scheda, resta chiusa dopo l'aggiornamento automatico. Dopo le migliorie: con una sola richiesta niente ricerca né schede di stato; cliente con una richiesta attiva e una archiviata, controlli presenti e "Archiviate" apre da sola l'archiviata; cliente con due richieste in "In attesa", nessuna aperta. Foto in `/mnt/project-files/anteprime/richiesta-unica-aperta/`.
+
+## 337. Il tondo "Riduci il menu" non copre più la prima voce
+
+**Richiesta dell'utente** (25/10/2026, con foto del menu del cliente da computer): "Il pulsante delle freccette si sovrappone, correggi".
+
+**Causa**: il tondo da 32px stava in alto a destra, sulla riga del primo titolo, che però era alta solo 28px. Il tondo sporgeva quindi sulla prima voce ("Le mie richieste" per il cliente, "Oggi" per il professionista), e si vedeva soprattutto quando la voce era attiva. Non capitava con il menu ridotto né sul tablet o sul telefono, dove il tondo è in colonna oppure non c'è.
+
+**Correzione** (`apps/web/src/app/globals.css`): la riga del primo titolo, cioè quella accanto al tondo, è alta 32px. Il testo è centrato sul tondo e ha 44px di margine a destra, così un titolo lungo non finisce sotto il tondo. Vale per tutti e due i menu.
+
+**Verifica**: in `e2e/tests/menu-laterale.spec.ts` c'è un nuovo controllo, `expectToggleFree`: il tondo non deve toccare nessuna voce né il testo di nessun titolo. Lo fanno il professionista con il menu aperto e ridotto, e il cliente prima e dopo aver ridotto il menu. Senza la correzione falliva su "Oggi" e su "Le mie richieste"; con la correzione passa. Le foto prima e dopo sono in `/mnt/project-files/anteprime/menu-ridotto/freccette/`.
+
+## 338. Significato dei badge del professionista in un fumetto, badge "Privato / Partita IVA / Azienda"
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Spiegare i badge del professionista"): passando sopra un badge del professionista deve comparire la sua descrizione, soprattutto per "Verificato" ("è molto importante che il cliente capisca cosa è stato verificato"); poi: "far capire al cliente in che modalità si è iscritto il professionista e quindi differenziarli".
+
+**Decisione presa**:
+- Nuovo `BadgeInfo` (`packages/ui/src/BadgeInfo.web.tsx`, variante nativa in `BadgeInfo.tsx` solo per il lettore di schermo): il badge diventa un pulsante con un fumetto bianco ad angoli tondi. Si apre passando col mouse, toccando il badge da telefono (un secondo tocco lo chiude) o raggiungendolo col tasto Tab; si chiude con Esc, toccando altrove o allontanando il mouse, che può spostarsi sul fumetto senza chiuderlo (WCAG 1.4.13). Il clic sul badge non apre la scheda dei risultati che lo contiene. Il fumetto è in un portale con posizione fissa, sotto o sopra il badge secondo lo spazio, sempre dentro lo schermo. La descrizione è sempre collegata al pulsante (`aria-describedby`).
+- Testi in un solo punto (`packages/ui/src/badgeInfo.ts`), scelti dall'utente: "Verificato" → "Ha confermato la sua identità." (più "Non è una garanzia sulla qualità del lavoro."), "Sponsorizzato" → "Pacchetto di visibilità a pagamento.", "Nuovo profilo" → "Iscritto da meno di 30 giorni.", "Assicurazione RC dichiarata" → "Il professionista dichiara di possedere un'assicurazione per i danni causati durante il lavoro.", "Lavoro confermato" (recensioni) e "Identità verificata da Stripe" con frasi brevi fedeli al codice.
+- Nuovo badge `ProfessionalKindBadge` "Privato" / "Partita IVA" / "Azienda" (pillola neutra con icona, accanto a "Verificato") nel profilo, nei risultati e nei professionisti salvati, dal tipo dei dati fiscali (`professionalKind`, `professionalKindOf` in `packages/shared/src/fiscalCompleteness.ts`, aggiunto alle risposte di ricerca, profilo e salvati). Nel fumetto: per il privato "Lavora in modo occasionale, senza partita IVA." e che i diritti del consumatore non si applicano; per gli altri che si applicano. Nel profilo la riga "Privato senza partita IVA" / "Professionista con partita IVA" lascia il posto al badge, ma per il privato l'avviso sui diritti del consumatore resta scritto in chiaro (Codice del consumo art. 49-bis, §241), non solo nel fumetto.
+- Domande 36-37 per l'avvocato (cosa promette "Verificato", etichetta "Sponsorizzato").
+- Dopo la revisione dell'utente: riga sui diritti del consumatore nel fumetto solo per il privato (l'unica obbligatoria); per "Partita IVA" e "Azienda" solo la prima frase.
+- Migliorie approvate dall'utente: (1) la scritta "Badge Verificato: documento e P.IVA controllati" (piè di pagina, risultati, garanzie, domande della città) prometteva più del controllo reale (il badge può arrivare mentre la partita IVA è ancora in controllo, e il privato non ce l'ha): ora "identità controllata con documento e selfie"; (2) fumetto anche su "Verificato" nel riquadro della mappa, nei nuovi profili in home e nelle risposte di "Le mie richieste", e su "Lavoro confermato" nelle recensioni della home; (3) tolta la verifica manuale dell'admin (`POST /admin/professional-verifications/:id/verify`, `verifyProfessionalSchema`, `adminVerifyProfessional`), che il sito non usava più: "Verificato" vuol dire sempre documento e selfie; all'admin resta "Togli verifica".
+
+**Verifica**: typecheck di `packages/ui`, `apps/api`, `apps/web`; lint; sul sito compilato con database di prova, da computer (1280 px) e telefono (390 px): fumetto col mouse, al tocco (secondo tocco chiude, la pagina non cambia), con Tab ed Esc, mouse spostato sul fumetto; `confronto-pagine` prima/dopo: cambiano solo profilo e pagine dei risultati (badge in più). Anteprime in `anteprime/badge-descrizioni/`.
+
+**Seconda parte: ogni frase sulla verifica corrisponde a un controllo reale** (richiesta esplicita dell'utente, stesso thread: "come farebbe un responsabile Trust & Safety con un legale dei consumatori", tabella frase → dove → controllo → codice → test in `/mnt/project-files/analisi/badge-frasi-e-controlli.md`).
+- Testi corretti perché promettevano più del controllo: fumetto "Lavoro confermato" ("Recensione di un cliente che ha prenotato il lavoro sul sito.": la recensione si apre anche dopo una segnalazione chiusa, senza conferma di fine lavoro); garanzie in home ("Recensioni lasciate solo da clienti che hanno prenotato il lavoro sul sito", non "confermato da entrambe le parti", che il codice non chiede; soldi bloccati "fino alla tua conferma o per 7 giorni dalla fine del lavoro", come `onlineCanRelease`; titolo "Come ti proteggiamo" al posto di "Ogni intervento è coperto dalla Garanzia Piattaforma": il pagamento diretto non è coperto e "garanzia" fa pensare alla garanzia convenzionale, art. 133 Codice del consumo); descrizione per Google "Identità verificata su …" (non "Profilo verificato"); email del badge "La verifica con documento e selfie è riuscita" (con `DIDIT_SANDBOX=true` il confronto con i dati fiscali è saltato); banner dei dati fiscali "Li controlliamo in automatico" (non "subito": Openapi può riprovare dopo 30 minuti); domanda per i professionisti "Solo un cliente che ha prenotato un lavoro con te sul sito"; avviso del privato senza "con lui".
+- `publicVerified` (`apps/api/src/professional-fiscal/public-visibility.ts`): un profilo dimostrativo non mostra mai il badge ai clienti (ricerca, profilo, salvati, "Le mie richieste"); il seed li crea con `verified: true`.
+- Fumetto: la descrizione è in uno span `hidden` collegato con `aria-describedby`. Prima era dentro il pulsante e il lettore di schermo la leggeva due volte (nome "Verificato Ha confermato…" più la descrizione), trovato dalla nuova prova nel browser.
+- Badge nel tempo (decisione dell'utente del 25/10/2026, "A e B" sulla proposta): (A) da Didit si salva solo la scadenza del documento (`identity_verifications.documentExpiresAt`, da `expiration_date`); 30 giorni prima notifica ed email `IDENTITY_VERIFICATION_EXPIRING`, alla scadenza (o 5 anni dopo la verifica se la data manca) badge tolto con `revokeOverTime`, ma il professionista continua a inviare preventivi (`identityExpiredAt` sul profilo, letto da `identityVerificationNeeded`) e la pagina "Verifica identità" dice "Rinnova la verifica"; (B) ogni verifica salva se è di prova (`sandbox`, da `DIDIT_SANDBOX`) e con le chiavi vere il controllo di ogni mattina (`checkBadgesOverTime`, alle 9) toglie il badge a chi non ha una verifica approvata non di prova, quindi al lancio i badge di prova cadono da soli. La migrazione `20261025090000_badge_nel_tempo` segna come prova tutte le verifiche già fatte (Didit è stato usato solo con le chiavi di prova). Informativa privacy, punto 8: si conserva anche la data di scadenza del documento.
+- Tipo di lavoratore nel preventivo (richiesta esplicita dell'utente: "fai capire al cliente il profilo da cui è pervenuto quel preventivo che tipo di lavoratore è"): badge "Privato" / "Partita IVA" / "Azienda" con il suo fumetto accanto al nome nella scheda del preventivo in "Le mie richieste" (`professionalKind` nei preventivi del cliente). Nessuna riga in più sotto il nome (decisione dell'utente: "niente riga esplicativa"): per il privato l'avviso sui diritti del consumatore è nel fumetto del badge.
+- Migliorie approvate dall'utente ("effettua migliorie"): (1) pulsanti del preventivo da telefono: "Accetta preventivo" largo in fondo, dove arriva il pollice, "Modifica" (non più giallo) e "Rifiuta" affiancati sopra, tutti alti 48 px; da computer restano in riga nello stesso ordine; "Contatta/Cronologia" della scheda diventa "Messaggi", leggero, accanto al nome (da telefono solo l'icona tonda con il pallino dei non letti) (`ContactButton light`); (2) in Admin > Verifiche la data fino a cui vale la verifica (scadenza del documento o 5 anni) e "verifica di prova" per quelle fatte con `DIDIT_SANDBOX` (`verificationValidUntil` spostata in `identity-verification/validity.ts`).
+- Cosa già valeva e resta: badge tolto se cambiano i dati della persona o il nome dell'attività (con il documento scaduto, cambiare la persona fa tornare obbligatoria la verifica prima dei preventivi); codice fiscale o P.IVA non validi tolgono il profilo da ricerca e link dal lancio.
+
+**Verifica**: prove del badge nel tempo in `identity-verification.test.ts` e `professional-verification.service.test.ts` (scadenza letta dal documento, avviso una volta sola, badge tolto, prova senza effetti con `DIDIT_SANDBOX`), 616 test API; `badge-promesse.test.ts` (un solo punto del codice accende il badge, chiamato solo dalla verifica approvata; mai sui profili dimostrativi; badge del tipo), 599 test API; prova nel browser `e2e/tests/badge-fumetto.spec.ts` da telefono e computer (badge solo con verifica approvata, nome e descrizione per il lettore di schermo, mouse, tocco, Tab, Esc, axe senza problemi gravi); query in sola lettura per il database vero in `/mnt/project-files/analisi/badge-verifica/query-dati-veri.sql`.
+
+## 339. Pagamento con una sola scelta: niente domanda
+
+**Richiesta dell'utente**: accettando un preventivo in cui il professionista
+offre solo il pagamento diretto, il cliente vedeva "Come vuoi pagare?" con
+un'unica opzione "DIRETTO al professionista" già selezionata, come se
+dovesse scegliere.
+
+**Decisione** (`PaymentChoice`, `jobPaymentChoiceCopy`):
+- Con un solo modo offerto (diretto, tutto online o acconto online + saldo
+  diretto) niente domanda né pallino: un riquadro "Pagamento" come
+  "Messaggio del professionista", con il modo ("Direttamente al
+  professionista", "Online con carta", ...), la spiegazione e l'acconto
+  quando è online. Senza "(consigliato)": non c'è altro da confrontare.
+- Con due o più modi resta la scelta "Come vuoi pagare?"; l'opzione diretta
+  ora è "Diretto al professionista" (niente maiuscolo, regole Taste).
+
+Migliorie approvate dall'utente ("Effettua le migliorie"), e la sua domanda
+se il cliente capisce come si paga già dal preventivo, per scegliere tra più
+preventivi (prima no: lo vedeva solo premendo "Accetta preventivo"):
+- Il riquadro "Pagamento" ora è nella scheda del preventivo, sotto
+  "Totale indicativo" (`PaymentOffer`): con un solo modo il modo, la
+  spiegazione e l'acconto; con più modi "Pagamento, a tua scelta" e
+  l'elenco, con l'acconto accanto a quelli online. Online offerto ma Stripe
+  non attivo: il messaggio di prima, e "Accetta preventivo" è spento.
+- Con un solo modo "Accetta preventivo" accetta subito, senza il passaggio
+  con "Annulla" (con l'online diventa "Accetta e paga l'acconto" e porta al
+  pagamento). La scelta con i pallini resta solo con due o più modi.
+- Lavoro accettato con pagamento diretto: "Pagamento: direttamente al
+  professionista" (cliente) o "direttamente dal cliente" (professionista),
+  al posto di "Metodo di pagamento: DIRETTO · ...".
+
+**Verifica**: typecheck e lint; anteprime da computer e telefono della
+scheda vera e dei riquadri nei vari casi.
+
+Miglioria approvata dall'utente ("effettua miglioria n.2"): con più
+preventivi da valutare nella stessa richiesta, accanto al totale di ognuno
+un'etichetta corta ("Pagamento diretto", "Pagamento online", "Acconto
+online" o "Online o diretto", `jobPaymentOfferLabel`), neutra (bianca con
+filetto: non è uno stato, quindi niente colori dei badge). Con un solo
+preventivo non compare: c'è già il riquadro "Pagamento" sotto.
+
+Dopo la "versione più profonda" del compito: aggiunta la domanda 40 per
+l'avvocato (art. 49 Codice del consumo, modalità di pagamento prima
+dell'impegno). Il modo di pagamento nell'email "Nuovo preventivo" era stato
+aggiunto e poi tolto su decisione dell'utente: il cliente lo vede sul sito,
+non nell'email.
+
+## 340. "Lavoro terminato" del cliente: solo la conferma, niente note e foto
+
+Domanda dell'utente: a cosa servono la descrizione e le foto che il cliente
+scrive dopo "Lavoro terminato". Risposta: la conferma serve (sblocca i soldi
+online, vale come "ho pagato" nel pagamento diretto, apre la recensione), ma
+note e foto le leggeva solo l'admin (`/admin/lavori`, `/admin/problemi`): il
+professionista non le vedeva, non andavano sul profilo, e subito dopo la
+recensione chiedeva di nuovo testo e foto. Decisione dell'utente (opzione 1
+di 3): togliere note e foto e lasciare solo la conferma, poi la recensione.
+
+- `ClientCompleteModal`: solo "Confermi che il lavoro è terminato?" con una
+  frase ("Subito dopo potrai lasciare una recensione al professionista,
+  anche con foto"), "Conferma lavoro terminato" e "Annulla".
+- `BookingSection` invia `{ photoUrls: [] }`; dopo la conferma si apre la
+  recensione come prima (mai con una segnalazione in corso).
+- API, schema e colonne `clientCompletionNote`/`clientCompletionPhotoUrls`
+  invariati: i lavori già chiusi le mostrano ancora in admin. Per un
+  problema resta "Segnala un problema", che raccoglie le foto.
+
+**Miglioria approvata da Luca** ("effettua miglioria n.2"): col pagamento
+diretto (`payment.method === "DIRECT"`) la finestra dice anche "Confermando
+dichiari di aver pagato il professionista", perché la conferma vale
+come pagamento ricevuto (`JobPaymentsService.confirmDirect`). Frase di base
+accorciata in "Subito dopo potrai lasciare una recensione, anche con foto".
+
+## 341. Pagina "Richiesta inviata" più curata
+
+**Richiesta dell'utente** (25/10/2026, con uno screenshot): la pagina dopo l'invio di una richiesta di preventivo era quasi vuota e poco curata; "migliora questa schermata". Viste tre varianti (A una colonna, B due colonne, C essenziale), l'utente ha scelto A con la foto del professionista più grande e "qualcosa che dia gioia", poi **senza coriandoli e senza emoji**, tenendo le due precisazioni proposte.
+
+**Decisione**: nuovo componente `apps/web/src/components/RequestSentScreen.tsx`, stili `.request-sent-*` in `globals.css`.
+- In alto la foto del professionista grande (136 px, 120 da telefono) con bordo bianco, alone verde e spunta verde; entra con un piccolo rimbalzo. Con "riduci movimento" la regola globale del sito la mostra già ferma. Se la richiesta va a tutti i professionisti della zona (o il professionista non ha foto) al suo posto c'è l'icona colorata della categoria.
+- "Fatto!" (o "Ci siamo quasi" se in zona non c'è ancora nessuno) e, come titolo h1, "La tua richiesta è arrivata a **nome**". Badge "Verificato" e "Privato / Partita IVA / Azienda" (§338) con i loro fumetti, tempo medio di risposta solo se misurato.
+- "Cosa succede adesso" in tre passi: richiesta inviata (categoria, città, badge Urgente), ricevi il preventivo, lo accetti e fissate il giorno ("solo allora vede i tuoi contatti", CLAUDE.md §5 punto 9).
+- Pulsante principale "Vai alle mie richieste" e link "Torna alla home".
+- La domanda sui dati in una riga tratteggiata, testo corto ("Salvare nome, telefono e indirizzo per la prossima volta?", Salva / No), pulsanti alti 44 px.
+- All'apertura la pagina torna in cima e il titolo riceve il fuoco (lettori di schermo).
+- Il tempo medio di risposta ("risponde entro 2 ore") ha un solo calcolo, `apps/web/src/lib/responseTime.ts`, usato da profilo, modulo di richiesta e questa pagina (prima tre copie con risultati diversi, es. "45 min" nel modulo e "45 minuti" nel profilo, "48 ore" invece di "2 giorni").
+
+- In fondo a ogni pagina e sopra i risultati della ricerca la riga "Badge Verificato: identità controllata con documento e selfie" (§338) non andava a capo e da telefono faceva scorrere la pagina di lato: ora va a capo (`flexShrink` sulla riga e sul testo, testo invariato). Misurato a 360 e 390 px su home, richiesta di preventivo e ricerca: nessuno scorrimento laterale.
+
+**Verifica**: typecheck e lint di `apps/web`; foto della pagina vera da computer e da telefono, richiesta diretta e a tutta la zona. Anteprime in `/mnt/project-files/anteprime/richiesta-inviata/`.
+
+## 342. Stelle e numero di recensioni accanto al professionista, dalla parte del cliente
+
+**Richiesta esplicita dell'utente** (25/10/2026, thread "Stelle e numero recensioni accanto al professionista"): sia nella richiesta inviata a un solo professionista sia nei preventivi ricevuti da più professionisti, accanto al nome mostrare le stelle delle recensioni con il numero, per aiutare la scelta.
+
+**Decisione presa**:
+- `GuidedRequestsService.listForClient` aggiunge `reviews: { rating, count }` a ogni professionista di `sentTo` e di `quotes`, con una sola query per tutte le richieste (`reviewSummariesFor` in `apps/api/src/reviews/review-summary.ts`). Stesso calcolo del profilo pubblico e della ricerca: media a una cifra decimale, recensioni nascoste da un admin escluse (§144). `null` per un profilo eliminato (nessuna riga).
+- Sotto il nome, il componente `Rating` già usato nel profilo e nei risultati (`packages/ui`), più piccolo (nuova prop `textSize`, 13px) per stare su una riga anche da telefono. Senza recensioni la stessa scritta del profilo, "Nessuna recensione ancora", in grigio piccolo: non "Nuovo", che nella scheda indica già un preventivo appena arrivato.
+- Nei preventivi le stelle portano alle recensioni del profilo pubblico (`/professionista/<id>#recensioni`, nuova ancora come `#agenda`), con un nome per il lettore di schermo ("Valutazione 4,7 su 5, 3 recensioni: vedi le recensioni"). Nell'elenco "Inviata a" la riga intera è già un link al profilo: niente link dentro il link.
+- Foto e nome del preventivo: foto a 40px allineata alle due righe (nome, stelle); la foto resta un link al profilo ma fuori dal tasto Tab (stesso link del nome).
+- "Inviata a": il pulsante "Contatta/Cronologia" diventa "Messaggi" leggero come nei preventivi (§338). Da telefono il pulsante verde largo stringeva nome e città su più righe; ora l'icona tonda lascia una riga a nome, città e stelle.
+- Migliorie approvate dall'utente ("effettua migliorie 1 e 3"): (1) in "Professionisti salvati" la media contava anche le recensioni nascoste da un admin (§144, CLAUDE.md §5 punto 11): ora usa lo stesso `summarizeReviews`; (3) voto medio con la virgola ("4,7") in tutto il sito: `Rating` di `packages/ui`, `StarRating`, banner della mappa dei risultati, descrizione del profilo per Google, fatti della città, con il nuovo `formatRating` in `packages/shared`. I dati strutturati per Google (JSON-LD) restano numeri; il voto della singola recensione in admin resta intero.
+- Seconda miglioria approvata dall'utente: tolta l'etichetta del pagamento accanto al totale ("Pagamento diretto", "Online o diretto", §339), perché il riquadro "Pagamento" subito sotto, sempre presente in un preventivo da decidere, diceva la stessa cosa. Tolti anche `jobPaymentOfferLabel` (shared), `paymentOfferShortLabel` e la prop `compare` di `QuoteCard`.
+
+**Verifica**: prove `review-summary.test.ts` e `saved-professionals.service.test.ts` (media, recensioni nascoste escluse, una sola query); prova nel browser `e2e/tests/stelle-preventivi.spec.ts` da telefono e computer (due preventivi, uno con stelle e uno senza recensioni, clic sulle stelle che apre le recensioni, richiesta a un solo professionista). Anteprime in `anteprime/stelle-recensioni/`.
+
+## 343. Agenda più veloce sui telefoni lenti
 
 Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla lista delle migliorie della §323: con la prova Lighthouse che misura davvero l'agenda, §321, il TBT era al limite).
 

@@ -1,5 +1,5 @@
 // File generato da scripts/genera-default-tamagui.ts: non modificarlo a mano.
-// Valori di @tamagui/config 1.144.4 (docs/CHANGELOG.md §335).
+// Valori di @tamagui/config 1.144.4 (docs/CHANGELOG.md §343).
 /* eslint-disable */
 
 export const defaultTokens = {

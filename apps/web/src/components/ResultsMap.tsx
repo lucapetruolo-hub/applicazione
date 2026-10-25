@@ -1,12 +1,12 @@
 "use client";
 
-import { professionalPath } from "@professionisti/shared";
+import { formatRating, professionalPath } from "@professionisti/shared";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AdvancedMarker, Map as GoogleMap } from "@vis.gl/react-google-maps";
 import { Star, X } from "lucide-react";
 import type { ProfessionalSearchResult } from "@professionisti/shared";
-import { brand } from "@professionisti/ui";
+import { BadgeInfo, brand } from "@professionisti/ui";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { GOOGLE_MAPS_MAP_ID, GoogleMapGate } from "@/components/GoogleMapGate";
 
@@ -80,7 +80,7 @@ export function ResultsMap({
   /** Notifica i confini visibili della mappa ad ogni pan/zoom, per sincronizzare la lista a sinistra. */
   onBoundsChange?: (bounds: MapBounds) => void;
 }) {
-  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §335).
+  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §343).
   "use no memo";
   const router = useRouter();
   // Professionista selezionato cliccando un puntino: mostrato come banner in
@@ -185,7 +185,11 @@ export function ResultsMap({
           <div className="map-banner-info">
             <div className="map-banner-title-row">
               <strong>{selected.businessName}</strong>
-              {selected.verified ? <span className="map-banner-verified">Verificato</span> : null}
+              {selected.verified ? (
+                <BadgeInfo info="verified">
+                  <span className="map-banner-verified">Verificato</span>
+                </BadgeInfo>
+              ) : null}
             </div>
             <span className="map-banner-subtitle">
               {selected.categoryLabel} · {selected.city}
@@ -193,7 +197,7 @@ export function ResultsMap({
                 <>
                   {" · "}
                   <Star size={12} strokeWidth={1.5} color={brand.ottone} fill={brand.ottone} style={{ verticalAlign: "-1px" }} />{" "}
-                  {selected.rating.toFixed(1)}
+                  {formatRating(selected.rating)}
                 </>
               ) : (
                 ""

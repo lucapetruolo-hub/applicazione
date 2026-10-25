@@ -30,7 +30,7 @@ export function ItalianDateInput({
   /** Spazio a sinistra del testo, uguale al padding del campo. */
   padX?: number;
 }) {
-  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §335).
+  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §343).
   "use no memo";
   const [year, month, day] = value.split("-");
   const shown = year && month && day ? `${day}/${month}/${year}` : "gg/mm/aaaa";

@@ -52,6 +52,15 @@ export function publicVisibilityMissing(profile: {
   return (fiscal.taxIdChecks ?? []).some((check) => check.status === "INVALID");
 }
 
+/**
+ * Badge "Verificato" mostrato ai clienti: solo per una persona vera che ha
+ * superato documento e selfie, mai su un profilo dimostrativo (docs/CHANGELOG.md
+ * §338: un badge su un profilo finto è un'approvazione falsa).
+ */
+export function publicVerified(profile: { verified: boolean; isDemo: boolean }): boolean {
+  return profile.verified && !profile.isDemo;
+}
+
 /** Account Stripe attivo: può ricevere l'acconto online e mostra il badge. */
 export function stripeVerified(fiscalProfile: { stripePayoutsEnabled: boolean } | null | undefined): boolean {
   return onlinePaymentsEnabled() && !!fiscalProfile?.stripePayoutsEnabled;

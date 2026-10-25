@@ -1,6 +1,6 @@
 /* Stile della nuova agenda (docs/CHANGELOG.md §288). I colori del marchio
    (--ag-ink, --ag-green...) li definisce AgendaStyles.tsx da `brand`: qui
-   solo CSS fisso, in un file a parte (§335) invece che dentro il JavaScript. */
+   solo CSS fisso, in un file a parte (§343) invece che dentro il JavaScript. */
 .ag {
   --ag-line: #f3e6d6;
   --ag-line-soft: #f7eee4;

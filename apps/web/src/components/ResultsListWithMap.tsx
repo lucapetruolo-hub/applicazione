@@ -46,7 +46,7 @@ export function ResultsListWithMap({
   /** Preimpostato dall'URL (?urgente=1) quando si arriva dal toggle "Intervento urgente?" della homepage — evita di dover ripetere la scelta qui. */
   initialUrgentOnly?: boolean;
 }) {
-  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §335).
+  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §343).
   "use no memo";
   const router = useRouter();
   const { canSave, savedIds, pendingId, toggleSave } = useSavedProfessionals();
@@ -553,21 +553,21 @@ export function ResultsListWithMap({
               fidarmi?" si forma davvero, non solo dopo aver superato
               l'intera lista. */}
           <XStack flexWrap="wrap" gap="$3" alignItems="center">
-            <XStack alignItems="center" gap="$2">
+            <XStack alignItems="center" gap="$2" flexShrink={1} minWidth={0}>
               <Icon name="badge-check" size={14} color={brand.grafite70} strokeWidth={1.5} />
-              <Text fontSize={13} fontWeight="600" color={brand.grafite70}>
-                Badge Verificato: documento e P.IVA controllati
+              <Text fontSize={13} fontWeight="600" color={brand.grafite70} flexShrink={1}>
+                Badge Verificato: identità controllata con documento e selfie
               </Text>
             </XStack>
-            <XStack alignItems="center" gap="$2">
+            <XStack alignItems="center" gap="$2" flexShrink={1} minWidth={0}>
               <Icon name="shield" size={14} color={brand.grafite70} strokeWidth={1.5} />
-              <Text fontSize={13} fontWeight="600" color={brand.grafite70}>
+              <Text fontSize={13} fontWeight="600" color={brand.grafite70} flexShrink={1}>
                 Recensioni solo da lavori confermati
               </Text>
             </XStack>
-            <XStack alignItems="center" gap="$2">
+            <XStack alignItems="center" gap="$2" flexShrink={1} minWidth={0}>
               <Icon name="tag" size={14} color={brand.grafite70} strokeWidth={1.5} />
-              <Text fontSize={13} fontWeight="600" color={brand.grafite70}>
+              <Text fontSize={13} fontWeight="600" color={brand.grafite70} flexShrink={1}>
                 Gratis per chi cerca
               </Text>
             </XStack>
@@ -630,6 +630,7 @@ export function ResultsListWithMap({
               completedThisMonth={pro.completedThisMonth}
               verified={pro.verified}
               stripeVerified={pro.stripeVerified}
+              professionalKind={pro.professionalKind}
               boosted={pro.boosted}
               isNewProfile={pro.isNewProfile}
               hasLiabilityInsurance={pro.hasLiabilityInsurance}

@@ -1,10 +1,11 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
-import type { ProfessionalSearchResult, ProfessionalCategorySlug } from "@professionisti/shared";
+import { professionalKindOf, type ProfessionalSearchResult, type ProfessionalCategorySlug } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { summarizeReviews } from "../reviews/review-summary";
 import { countCompletedThisMonth } from "../common/completed-jobs.util";
 import { profileCategories } from "../common/profile-categories.util";
-import { stripeVerified } from "../professional-fiscal/public-visibility";
+import { publicVerified, stripeVerified } from "../professional-fiscal/public-visibility";
 import { computeIsNewProfile } from "../common/new-profile.util";
 
 @Injectable()
@@ -37,19 +38,17 @@ export class SavedProfessionalsService {
             bookings: { include: { review: true } },
             visibilityBoosts: { where: { status: "ACTIVE" } },
             services: true,
-            fiscalProfile: { select: { stripePayoutsEnabled: true } },
+            fiscalProfile: { select: { stripePayoutsEnabled: true, entityType: true } },
           },
         },
       },
     });
 
     return saved.map(({ professionalProfile: profile }) => {
-      const reviews = profile.bookings
-        .map((booking) => booking.review)
-        .filter((review): review is NonNullable<typeof review> => review !== null);
-      const reviewCount = reviews.length;
-      const rating =
-        reviewCount > 0 ? Math.round((reviews.reduce((sum, review) => sum + review.rating, 0) / reviewCount) * 10) / 10 : null;
+      // Recensioni nascoste da un admin escluse, come nel profilo e nella ricerca (§144, §342).
+      const { rating, count: reviewCount } = summarizeReviews(
+        profile.bookings.flatMap((booking) => (booking.review && booking.review.hiddenAt === null ? [booking.review.rating] : [])),
+      );
 
       return {
         id: profile.id,
@@ -59,8 +58,9 @@ export class SavedProfessionalsService {
         categories: profileCategories(profile),
         city: profile.city,
         address: profile.address,
-        verified: profile.verified,
+        verified: publicVerified(profile),
         stripeVerified: stripeVerified(profile.fiscalProfile),
+        professionalKind: professionalKindOf(profile.fiscalProfile?.entityType),
         rating,
         reviewCount,
         boosted: profile.visibilityBoosts.length > 0,

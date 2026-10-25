@@ -1,12 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { BadRequestException, NotFoundException } from "@nestjs/common";
-import { verifyProfessionalSchema } from "@professionisti/shared";
 import { ProfessionalVerificationService } from "./professional-verification.service";
 
 /**
- * Verifica manuale dei professionisti (docs/CHANGELOG.md §200): il badge
- * "Verificato" lo assegna solo un admin, con i due controlli spuntati, e ogni
- * cambio finisce nel registro azioni e arriva al professionista.
+ * Badge "Verificato" (docs/CHANGELOG.md §253, §338): lo dà solo la verifica di
+ * documento e selfie, l'admin può solo toglierlo; ogni cambio finisce nel
+ * registro azioni e arriva al professionista.
  */
 function buildService() {
   const prisma = {
@@ -22,24 +20,6 @@ function buildService() {
 const activeProfile = { id: "p-1", userId: "u-1", verified: false, deletedAt: null, invitePendingAt: null };
 
 describe("ProfessionalVerificationService", () => {
-  it("verifica il profilo, registra chi l'ha fatto e avvisa il professionista", async () => {
-    const { service, prisma, auditLogService, notificationsService } = buildService();
-    prisma.professionalProfile.findUnique.mockResolvedValue(activeProfile);
-
-    await service.verify("admin-1", "p-1", "Videochiamata");
-
-    expect(prisma.professionalProfile.update).toHaveBeenCalledWith({
-      where: { id: "p-1" },
-      data: expect.objectContaining({ verified: true, verifiedByUserId: "admin-1", verificationNote: "Videochiamata" }),
-    });
-    expect(auditLogService.record).toHaveBeenCalledWith(expect.objectContaining({ entityId: "p-1", newValue: true, changedByUserId: "admin-1" }));
-    expect(notificationsService.notify).toHaveBeenCalledWith("u-1", "PROFILE_VERIFIED", {});
-    // Un caso dubbio della verifica automatica si chiude con l'approvazione (§253).
-    expect(prisma.identityVerification.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { professionalProfileId: "p-1", status: "NEEDS_REVIEW" }, data: expect.objectContaining({ status: "APPROVED" }) }),
-    );
-  });
-
   it("documento e selfie approvati dal fornitore: badge senza admin (§253)", async () => {
     const { service, prisma, notificationsService } = buildService();
     prisma.professionalProfile.findUnique.mockResolvedValue(activeProfile);
@@ -56,49 +36,26 @@ describe("ProfessionalVerificationService", () => {
 
     expect(prisma.professionalProfile.update).toHaveBeenCalledWith({
       where: { id: "p-1" },
-      data: { verified: false, verifiedAt: null, verifiedByUserId: null, verificationNote: "Partita IVA cessata" },
+      data: { verified: false, verifiedAt: null, verifiedByUserId: null, verificationNote: "Partita IVA cessata", identityExpiredAt: null },
     });
     expect(notificationsService.notify).toHaveBeenCalledWith("u-1", "PROFILE_VERIFICATION_REMOVED", { note: "Partita IVA cessata" });
   });
 
-  it("non verifica un profilo eliminato o non ancora confermato", async () => {
-    const { service, prisma } = buildService();
-    prisma.professionalProfile.findUnique.mockResolvedValue({ ...activeProfile, deletedAt: new Date() });
-    await expect(service.verify("admin-1", "p-1")).rejects.toBeInstanceOf(NotFoundException);
-
-    prisma.professionalProfile.findUnique.mockResolvedValue({ ...activeProfile, invitePendingAt: new Date() });
-    await expect(service.verify("admin-1", "p-1")).rejects.toBeInstanceOf(BadRequestException);
-    expect(prisma.professionalProfile.update).not.toHaveBeenCalled();
-  });
-
-  it("senza i due controlli spuntati la richiesta non passa", () => {
-    expect(verifyProfessionalSchema.safeParse({ identityChecked: true, taxIdChecked: false }).success).toBe(false);
-    expect(verifyProfessionalSchema.safeParse({ identityChecked: true }).success).toBe(false);
-    expect(verifyProfessionalSchema.safeParse({ identityChecked: true, taxIdChecked: true }).success).toBe(true);
-  });
-});
-
-describe("ProfessionalVerificationService.revokeAfterOwnChange", () => {
-  it("toglie il badge se il professionista cambia un dato controllato", async () => {
+  it("documento scaduto: badge tolto, ma si continuano a inviare preventivi (§338)", async () => {
     const { service, prisma, notificationsService } = buildService();
-    prisma.professionalProfile.findUnique.mockResolvedValue({ id: "p-1", userId: "u-1", verified: true });
-
-    await service.revokeAfterOwnChange("p-1", "u-1", "Partita IVA cambiata");
-
+    prisma.professionalProfile.findUnique.mockResolvedValue({ ...activeProfile, verified: true });
+    await service.revokeOverTime("p-1", "Documento scaduto", true);
     expect(prisma.professionalProfile.update).toHaveBeenCalledWith({
       where: { id: "p-1" },
-      data: { verified: false, verifiedAt: null, verifiedByUserId: null, verificationNote: "Partita IVA cambiata" },
+      data: expect.objectContaining({ verified: false, verificationNote: "Documento scaduto", identityExpiredAt: expect.any(Date) }),
     });
-    expect(notificationsService.notify).toHaveBeenCalledWith("u-1", "PROFILE_VERIFICATION_REMOVED", { note: "Partita IVA cambiata" });
+    expect(notificationsService.notify).toHaveBeenCalledWith("u-1", "PROFILE_VERIFICATION_REMOVED", { note: "Documento scaduto" });
   });
 
-  it("non fa nulla su un profilo non verificato", async () => {
-    const { service, prisma, notificationsService } = buildService();
-    prisma.professionalProfile.findUnique.mockResolvedValue({ id: "p-1", userId: "u-1", verified: false });
-
-    await service.revokeAfterOwnChange("p-1", "u-1", "Partita IVA cambiata");
-
-    expect(prisma.professionalProfile.update).not.toHaveBeenCalled();
-    expect(notificationsService.notify).not.toHaveBeenCalled();
+  it("badge di prova tolto: la verifica va rifatta prima dei preventivi (§338)", async () => {
+    const { service, prisma } = buildService();
+    prisma.professionalProfile.findUnique.mockResolvedValue({ ...activeProfile, verified: true });
+    await service.revokeOverTime("p-1", "Prova", false);
+    expect(prisma.professionalProfile.update).toHaveBeenCalledWith({ where: { id: "p-1" }, data: expect.objectContaining({ verified: false, identityExpiredAt: null }) });
   });
 });

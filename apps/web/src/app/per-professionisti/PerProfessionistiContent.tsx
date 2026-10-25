@@ -540,7 +540,7 @@ const FAQ: { question: string; answer: string; paymentsLink?: boolean }[] = [
   },
   {
     question: "Chi può lasciarmi una recensione?",
-    answer: "Solo un cliente con cui hai fatto un lavoro prenotato sulla piattaforma e segnato come completato.",
+    answer: "Solo un cliente che ha prenotato un lavoro con te sul sito.",
   },
   {
     question: "Come vengo pagato dai clienti?",
@@ -550,7 +550,7 @@ const FAQ: { question: string; answer: string; paymentsLink?: boolean }[] = [
 ];
 
 function ProFaq() {
-  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §335).
+  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §343).
   "use no memo";
   return (
     <Band>

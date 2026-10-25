@@ -1,4 +1,4 @@
-// Lighthouse dell'agenda, di Oggi e di Richieste su un telefono lento (docs/CHANGELOG.md §309, §335):
+// Lighthouse dell'agenda, di Oggi e di Richieste su un telefono lento (docs/CHANGELOG.md §309, §343):
 // profilo "mobile" di Lighthouse (Moto G Power, CPU rallentata 4 volte,
 // rete 4G lenta simulata). Blocca sotto i limiti "scarso" di Google
 // (BUDGET) e avvisa sotto quelli "buono" (GOOD), che sono l'obiettivo.
@@ -12,7 +12,7 @@ const WEB_URL = process.env.E2E_WEB_URL ?? "http://localhost:3000";
 const PORT = 9333;
 /**
  * Soglie: punteggi 0-100 e tempi in millisecondi. TBT a 400 invece dei 600
- * "scarso" di Google (docs/CHANGELOG.md §335): in CI l'agenda sta intorno ai
+ * "scarso" di Google (docs/CHANGELOG.md §343): in CI l'agenda sta intorno ai
  * 130-190 ms, quindi c'è margine contro il rumore ma un peggioramento serio
  * blocca la PR.
  */
@@ -43,7 +43,7 @@ await page.locator(".ag-strip-row, .ag-card").first().waitFor({ state: "attached
 const pages = [
   { name: "calendario", path: "/dashboard/agenda" },
   { name: "orari", path: "/dashboard/agenda?tab=orari" },
-  // Le altre due pagine aperte più spesso dal professionista (docs/CHANGELOG.md §335).
+  // Le altre due pagine aperte più spesso dal professionista (docs/CHANGELOG.md §343).
   { name: "oggi", path: "/dashboard" },
   { name: "richieste", path: "/dashboard/richieste" },
 ];

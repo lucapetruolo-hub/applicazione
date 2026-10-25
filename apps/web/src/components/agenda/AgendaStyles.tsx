@@ -11,7 +11,7 @@ import "./agenda.css";
  * oraria e pannelli posizionati che Tamagui da solo non rende bene. Tutte le
  * classi iniziano con `ag-` per non toccare il resto del sito.
  *
- * Le regole stanno in `agenda.css` (§335: un file CSS normale, scaricato
+ * Le regole stanno in `agenda.css` (§343: un file CSS normale, scaricato
  * insieme alla pagina, invece di ~32 KB di testo dentro il JavaScript da
  * inserire a mano a ogni apertura); qui restano solo i colori del marchio.
  */

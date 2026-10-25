@@ -9,7 +9,7 @@ import { brand } from "./tokens";
 // CLAUDE.md, senza duplicare il design system tra le due app.
 //
 // Parte dai valori di default di Tamagui copiati in tamaguiDefaults.ts
-// (generato, docs/CHANGELOG.md §335) e non da `@tamagui/config`, che in ogni
+// (generato, docs/CHANGELOG.md §343) e non da `@tamagui/config`, che in ogni
 // pagina del sito creava 1408 temi per poi tenerne 5 e portava le
 // animazioni di React Native: circa 230 KB di JavaScript in meno da
 // eseguire all'apertura su un telefono lento. Stessi valori: il CSS dei
@@ -91,7 +91,7 @@ const customTokens = createTokens({
   },
 });
 
-// Temi: solo quelli usati (src/usedThemes.ts, docs/CHANGELOG.md §206 e §335).
+// Temi: solo quelli usati (src/usedThemes.ts, docs/CHANGELOG.md §206 e §343).
 export const tamaguiConfig = createTamagui({
   themes: defaultThemes,
   media: defaultMedia,

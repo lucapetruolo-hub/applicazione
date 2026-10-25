@@ -136,7 +136,7 @@ export function ConversationView({
   /** Descrizione del lavoro sotto il nome in intestazione (docs/CHANGELOG.md §198); senza, resta "Cronologia della richiesta". */
   requestDescription?: string | null;
 }) {
-  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §335).
+  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §343).
   "use no memo";
   const router = useRouter();
   // Nomi cliccabili da entrambe le parti (docs/CHANGELOG.md §149, richiesta
