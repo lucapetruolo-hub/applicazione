@@ -546,7 +546,7 @@ export function RequestCard({
   // raggiungibili dai bottoni della scheda espansa, qui a portata di un
   // click anche a scheda chiusa.
   const menuActions: CardAction[] = [];
-  if (myProfileId) menuActions.push({ icon: "message-circle", text: "Contatta/Cronologia", onPress: openTimeline });
+  if (myProfileId) menuActions.push({ icon: "message-circle", text: "Messaggi", onPress: openTimeline });
   if (!gr.clientAccountDeleted) menuActions.push({ icon: "user-round", text: "Profilo del cliente", onPress: () => setShowClientProfile(true) });
   if (stage === "da_quotare") {
     menuActions.push({

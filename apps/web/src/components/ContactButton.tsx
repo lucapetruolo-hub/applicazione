@@ -5,7 +5,7 @@ import { CardButton } from "@/components/CardButton";
 import { UnreadDot } from "@/components/UnreadDot";
 
 /**
- * Pulsante "Contatta/Cronologia" (apre la conversazione e la storia della richiesta) con il pallino dei non letti,
+ * Pulsante "Messaggi" (apre la conversazione e la storia della richiesta; prima "Contatta/Cronologia") con il pallino dei non letti,
  * uguale per cliente e professionista nelle richieste — richiesta esplicita
  * dell'utente di farlo sembrare un pulsante e di non chiamarlo più "Chat"
  * (docs/CHANGELOG.md §187). La sua misura è quella di tutti i pulsanti in
@@ -45,11 +45,15 @@ export function ContactButton({
       </CardButton>
     );
   }
+  // "Messaggi" con bordo (docs/CHANGELOG.md §346): "Contatta/Cronologia"
+  // con la barra non era una parola, e pieno verde competeva con l'azione
+  // principale della scheda (Invia preventivo, Lavoro terminato).
   return (
-    <CardButton tone="primary" compact={compact} compactOnPhone={compactOnPhone} alignSelf="flex-start" onPress={onPress}>
-      <XStack alignItems="center" gap="$1">
-        <Text color="white" fontFamily="$body" fontWeight="600" fontSize={compact ? "$2" : "$3"} {...(compactOnPhone ? { $xs: { fontSize: 13 } } : {})}>
-          Contatta/Cronologia
+    <CardButton compact={compact} compactOnPhone={compactOnPhone} alignSelf="flex-start" onPress={onPress}>
+      <XStack alignItems="center" gap="$2">
+        <Icon name="message-circle" size={compact ? 16 : 18} color={brand.grafite} />
+        <Text color={brand.grafite} fontFamily="$body" fontWeight="600" fontSize={compact ? "$2" : "$3"} {...(compactOnPhone ? { $xs: { fontSize: 13 } } : {})}>
+          Messaggi
         </Text>
         <UnreadDot count={unreadCount} />
       </XStack>
