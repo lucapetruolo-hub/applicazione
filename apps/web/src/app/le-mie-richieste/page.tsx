@@ -250,6 +250,20 @@ function LeMieRichiesteContent() {
     }, 100);
   }, [requests, activeStageTab, zoneFilter, serviceModeFilter, filteredSortedRequests, pageSize, searchParams]);
 
+  // Una sola richiesta (richiesta dell'utente, docs/CHANGELOG.md §336): la
+  // scheda si apre già al primo caricamento, invece di un elenco con una
+  // voce da toccare. Una volta sola: se il cliente la richiude resta chiusa.
+  // Un link da notifica (`?open=`) ha la precedenza.
+  const autoOpenedSingleRef = useRef(false);
+  useEffect(() => {
+    if (!requests || autoOpenedSingleRef.current) return;
+    autoOpenedSingleRef.current = true;
+    if (searchParams.get("open")) return;
+    const active = requests.filter((r) => !r.myState.archivedAt);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (active.length === 1) setOpenId(active[0]!.id);
+  }, [requests, searchParams]);
+
   // Stesso principio della dashboard professionista: aprire questa pagina
   // segna come lette le notifiche in attesa, ripetuto ogni
   // UNREAD_BADGE_POLL_MS finché la pagina resta aperta. Ogni tick trova solo

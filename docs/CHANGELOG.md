@@ -20582,3 +20582,15 @@ Richiesta dell'utente: "si potrebbe dare l'icona del meteo per 3 giorni e dire d
 **Migliorie approvate da Luca** ("effettua le 2 migliorie")
 - osv-scanner ora blocca la PR (`.github/workflows/security.yml`, checklist punto 40): dopo aver caricato il rapporto, un passo rifà il controllo e fallisce se trova una vulnerabilità fuori dalle eccezioni di `osv-scanner.toml`. Vale per tutte le librerie, non solo per quelle del sito e dell'API: osv-scanner non sa distinguere quelle usate solo per costruire o provare (anche `pnpm audit --prod` conta lo strumento di Expo, dipendenza dell'app), quindi quelle senza versione corretta vanno tra le eccezioni con il motivo. Provato: con il `pnpm-lock.yaml` di prima di questa PR il controllo fallisce (vitest, tinypool, ecc.), con quello nuovo passa.
 - I due avvisi rimasti (zod 3 e node-forge in `@expo/cli`) vanno chiusi a mano nella scheda Security → Dependabot di GitHub con "Vulnerable code is not actually used" / "Risk is tolerable": lo fa Luca, i thread non hanno accesso agli avvisi.
+
+## 336. "Le mie richieste": l'unica richiesta si apre da sola
+
+**Richiesta esplicita dell'utente** (25/10/2026): "Se c'è solo una richiesta preventivo, nella pagina le mie richieste, la visualizzazione standard rendila già aperta".
+
+**Decisione presa**
+- In `apps/web/src/app/le-mie-richieste/page.tsx`, al primo caricamento, se il cliente ha una sola richiesta non archiviata la sua scheda si apre già (stessa scheda aperta di quando la si tocca). Con due o più resta l'elenco chiuso come prima.
+- Una volta sola per visita: se il cliente la richiude resta chiusa, anche quando la pagina si aggiorna da sola ogni 15 secondi. Un link da notifica (`?open=`) ha la precedenza.
+- L'apertura automatica non toglie il segno "da leggere" messo a mano dal menu della scheda: lo toglie solo il tocco del cliente, come prima.
+
+**Verifica**
+- Typecheck e lint del sito. Con API e database di prova: cliente con una richiesta, scheda aperta da computer (1440px) e da telefono (390px); cliente con due richieste, elenco chiuso; richiusa la scheda, resta chiusa dopo l'aggiornamento automatico. Foto in `/mnt/project-files/anteprime/richiesta-unica-aperta/`.
