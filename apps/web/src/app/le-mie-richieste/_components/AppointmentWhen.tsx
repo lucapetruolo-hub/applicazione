@@ -8,7 +8,7 @@ import { appointmentMoment, formatAppointmentDate, formatAppointmentTimeRange, f
 /**
  * Momento dell'appuntamento, ricalcolato ogni minuto così la scheda passa
  * da "domani" a "oggi" e a "com'è andata?" senza ricaricare (docs/CHANGELOG.md
- * §341). Null per un lavoro annullato o già chiuso dal cliente.
+ * §344). Null per un lavoro annullato o già chiuso dal cliente.
  */
 export function useAppointmentMoment(booking: ClientBooking): AppointmentMoment | null {
   const [now, setNow] = useState(() => new Date());

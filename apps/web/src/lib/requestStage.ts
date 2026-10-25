@@ -1,4 +1,4 @@
-import type { ProfessionalBooking, ProfessionalLead } from "@professionisti/shared";
+import { REQUEST_WITHDRAW_REASON_PROFESSIONAL_LABEL, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
 import { brand, type IconName } from "@professionisti/ui";
 
 /**
@@ -22,12 +22,14 @@ import { brand, type IconName } from "@professionisti/ui";
 export type RequestStage = "da_quotare" | "in_attesa" | "modifica_richiesta" | "accettata" | "completata" | "annullata" | "scaduta" | "chiusa";
 
 export function classifyLeadStage(lead: ProfessionalLead): RequestStage {
+  // Ritirata dal cliente (docs/CHANGELOG.md §343): prima risultava "Scaduta".
+  if (lead.guidedRequest.withdrawnByClient && !(lead.quote?.status === "ACCEPTED")) return "chiusa";
   if (lead.status === "EXPIRED") return "scaduta";
   if (lead.status === "DECLINED") return "chiusa";
 
   const quote = lead.quote;
   if (!quote) return "da_quotare";
-  // Il cliente ha accettato il preventivo di un altro (docs/CHANGELOG.md §341).
+  // Il cliente ha accettato il preventivo di un altro (docs/CHANGELOG.md §344).
   if (quote.otherProfessionalChosen) return "chiusa";
   if (quote.status === "WITHDRAWN" || quote.status === "REJECTED") return "chiusa";
   if (quote.status === "MODIFICATION_REQUESTED") return "modifica_richiesta";
@@ -90,6 +92,8 @@ export function bookingStageStyle(status: ProfessionalBooking["status"]): (typeo
 
 /** Motivo per cui un preventivo/richiesta "chiusa" non è più azionabile — mostrato al posto delle azioni. */
 export function describeClosedReason(lead: ProfessionalLead): string {
+  const withdrawn = lead.guidedRequest.withdrawnByClient;
+  if (withdrawn) return withdrawn.reason ? `Il cliente l'ha ritirata: ${REQUEST_WITHDRAW_REASON_PROFESSIONAL_LABEL[withdrawn.reason]}.` : "Il cliente l'ha ritirata.";
   if (lead.status === "DECLINED") return "Hai rifiutato questa richiesta." + (lead.declineNote ? ` Nota: "${lead.declineNote}"` : "");
   if (lead.quote?.otherProfessionalChosen) return "Il cliente ha scelto un altro professionista per questa richiesta.";
   if (lead.quote?.status === "WITHDRAWN") return "Hai ritirato il preventivo inviato per questa richiesta.";

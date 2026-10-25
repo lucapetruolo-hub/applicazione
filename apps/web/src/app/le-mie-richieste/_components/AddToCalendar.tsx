@@ -6,7 +6,7 @@ import { apiClient } from "@/lib/apiClient";
 import { CardButton } from "@/components/CardButton";
 
 /**
- * "Aggiungi al calendario" del cliente (docs/CHANGELOG.md §341): stesso
+ * "Aggiungi al calendario" del cliente (docs/CHANGELOG.md §344): stesso
  * evento delle email (stesso UID, niente doppioni), con Google Calendar o
  * con il file .ics che iPhone e Outlook aprono da soli.
  */

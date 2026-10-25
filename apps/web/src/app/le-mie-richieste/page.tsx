@@ -17,6 +17,7 @@ import { Pagination } from "@/components/ListControls";
 import { RestoreAllArchivedBar, RestoredNotice } from "@/components/RequestCardPersonalActions";
 import { highlightDeepLinkTarget } from "@/lib/deepLinkHighlight";
 import { classifyClientRequestStage, type RequestStage } from "@/lib/requestStage";
+import { RequestDeletedNotice } from "./_components/RequestDeletedNotice";
 import { GuidedRequestCard } from "./_components/GuidedRequestCard";
 import { clientRequestSearchText, filterInputStyle, requestJobAddress } from "./_components/clientRequestHelpers";
 import { BookingConfirmed } from "./_components/BookingConfirmed";
@@ -158,7 +159,7 @@ function LeMieRichiesteContent() {
     const map = new Map<string, ClientBooking>();
     (bookings ?? []).forEach((b) => {
       if (!b.guidedRequestId) return;
-      // Un appuntamento annullato non copre quello nato dopo da un altro preventivo (§341).
+      // Un appuntamento annullato non copre quello nato dopo da un altro preventivo (§344).
       const current = map.get(b.guidedRequestId);
       if (!current || current.status === "CANCELED") map.set(b.guidedRequestId, b);
     });
@@ -371,7 +372,7 @@ function LeMieRichiesteContent() {
   }
 
   // "Appuntamento prenotato" subito dopo l'accettazione (docs/CHANGELOG.md
-  // §341): col pagamento diretto dalla risposta, con l'acconto online al
+  // §344): col pagamento diretto dalla risposta, con l'acconto online al
   // ritorno da Stripe, appena il lavoro compare.
   const [confirmDismissed, setConfirmDismissed] = useState(false);
   const paidRequestId = depositPaid && !confirmDismissed ? searchParams.get("open") : null;
@@ -649,6 +650,12 @@ function LeMieRichiesteContent() {
 
         <YStack ref={listTopRef} gap="$4">
           <RestoredNotice />
+          <RequestDeletedNotice
+            onUndo={async (guidedRequestId) => {
+              await apiClient.restoreGuidedRequest(token, guidedRequestId);
+              reload();
+            }}
+          />
           {activeStageTab === "archiviate" ? (
             <RestoreAllArchivedBar token={token} guidedRequestIds={(requests ?? []).filter((r) => r.myState.archivedAt).map((r) => r.id)} onChanged={reload} />
           ) : null}

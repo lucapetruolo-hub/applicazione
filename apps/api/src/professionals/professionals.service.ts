@@ -1012,7 +1012,7 @@ export class ProfessionalsService {
     );
     const otherQuotesPerRequest = new Map(quoteCounts.map((row) => [row.guidedRequestId, row._count._all]));
     // Richieste in cui il cliente ha accettato il preventivo di un altro
-    // professionista (docs/CHANGELOG.md §341): il preventivo di chi non è
+    // professionista (docs/CHANGELOG.md §344): il preventivo di chi non è
     // stato scelto non resta "in attesa del cliente" per sempre.
     const takenByOthers = new Set(
       requestIds.length > 0
@@ -1162,6 +1162,11 @@ export class ProfessionalsService {
           // deve vedere subito per quale orario è stata richiesta.
           preferredDate: lead.guidedRequest.preferredDate?.toISOString().slice(0, 10) ?? null,
           preferredTimeSlot: lead.guidedRequest.preferredTimeSlot,
+          // Eliminata (o annullata prima del §343) dal cliente: "Ritirata dal cliente", non "Scaduta".
+          withdrawnByClient:
+            lead.guidedRequest.closedReason === "CANCELED_BY_CLIENT"
+              ? { at: (lead.guidedRequest.deletedByClientAt ?? lead.guidedRequest.updatedAt).toISOString(), reason: lead.guidedRequest.withdrawReason }
+              : null,
         },
         myState: toMyState(lead.guidedRequest.userStates?.[0]),
       };

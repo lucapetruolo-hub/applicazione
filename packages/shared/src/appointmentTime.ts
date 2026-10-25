@@ -86,7 +86,7 @@ export function jobDayCount(start: DateLike, end?: DateLike | null): number {
 }
 
 /**
- * Momento dell'appuntamento visto dal cliente (docs/CHANGELOG.md §341): la
+ * Momento dell'appuntamento visto dal cliente (docs/CHANGELOG.md §344): la
  * scheda del lavoro accettato cambia la riga in cima e il pulsante
  * principale a seconda di quanto manca. `onTheWayAt` è l'ora vera in cui il
  * professionista ha premuto "Sto arrivando" (non un'ora di parete).

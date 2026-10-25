@@ -14,6 +14,7 @@ import { ReportContentModal } from "@/components/ReportContentModal";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { hasRecentlyReported, markReported } from "@/lib/reportedContent";
+import { formatResponseTime } from "@/lib/responseTime";
 
 // Colonne fisse Oggi + 3 giorni (stessa griglia della mini-agenda di ricerca,
 // vedi ProfessionalCard in packages/ui) — qui costruita a partire dai giorni
@@ -39,20 +40,6 @@ function agendaDayLabel(offset: number, dayOfWeek: number): string {
 function agendaDateLabel(dateStr: string): string {
   const date = new Date(`${dateStr}T00:00:00Z`);
   return `${date.getUTCDate()} ${MONTH_SHORT_LABELS[date.getUTCMonth()]}`;
-}
-
-/**
- * "Risponde in genere entro..." (CEO, consiglio esperti — CPO: segnale di
- * fiducia già calcolato in `ProfessionalMetrics.avgResponseTimeMinutes` per
- * il solo ranking interno, mai mostrato prima al cliente). Arrotonda alla
- * granularità più leggibile invece di mostrare sempre minuti grezzi (es.
- * "entro 2 giorni", non "entro 2880 minuti").
- */
-function formatResponseTime(minutes: number): string {
-  if (minutes < 60) return `${Math.max(1, Math.round(minutes))} minuti`;
-  if (minutes < 24 * 60) return `${Math.round(minutes / 60)} ${Math.round(minutes / 60) === 1 ? "ora" : "ore"}`;
-  const days = Math.round(minutes / (24 * 60));
-  return `${days} ${days === 1 ? "giorno" : "giorni"}`;
 }
 
 /** Data relativa per le recensioni — stesso principio già in uso in
@@ -896,6 +883,8 @@ export function ProfessionalDetailContent({
           </YStack>
         ) : null}
 
+        {/* Ancora per le stelle accanto al nome nelle schede del cliente (§342), come #agenda. */}
+        <div id="recensioni" style={{ scrollMarginTop: 96 }} />
         <YStack gap="$3">
           <YStack flexDirection="row" alignItems="center" gap="$3" flexWrap="wrap">
             <XStack alignItems="center" gap="$2">

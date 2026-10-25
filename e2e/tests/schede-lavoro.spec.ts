@@ -6,7 +6,7 @@ import { acceptQuote, COMPUTER, createClient, createProfessional, createRequestW
 
 /**
  * La scheda del lavoro in ogni stato, fotografata da telefono e da computer
- * (docs/CHANGELOG.md §341). Le foto finiscono in e2e/schede-results/ (nella
+ * (docs/CHANGELOG.md §344). Le foto finiscono in e2e/schede-results/ (nella
  * CI tra i risultati del job "agenda-browser"): a ogni modifica si guardano
  * tutte insieme invece di ricreare a mano ogni caso. Ogni stato controlla
  * anche la scritta che lo distingue.

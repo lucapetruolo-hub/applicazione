@@ -1,7 +1,7 @@
 import { Prisma, type PrismaClient } from "@professionisti/database";
 
 /**
- * Un solo lavoro non annullato per richiesta (docs/CHANGELOG.md §341). Il
+ * Un solo lavoro non annullato per richiesta (docs/CHANGELOG.md §344). Il
  * controllo nel codice dà il messaggio giusto; l'indice unico parziale
  * "bookings_one_active_job_per_request" lo garantisce anche se un percorso
  * nuovo se ne dimenticasse.

@@ -3,8 +3,9 @@ import { GeocodingService } from "../geocoding/geocoding.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { randomUUID } from "node:crypto";
 import { Prisma, type PrismaClient, type ProfessionalProfile } from "@professionisti/database";
-import { findComuneByName, professionalKindOf, professionalRestrictions, clientPaymentOffer, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
+import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_RESTORE_WINDOW_MINUTES, type RequestWithdrawReason, findComuneByName, professionalKindOf, professionalRestrictions, clientPaymentOffer, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { reviewSummariesFor, type ReviewSummary } from "../reviews/review-summary";
 import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing, publicVisibilityWhere, publicVerified, stripeVerified } from "../professional-fiscal/public-visibility";
 import { NOT_ACCEPTING_REQUESTS } from "../subscriptions/subscription-rules";
 import { calculateDistanceKm } from "../common/geo.util";
@@ -14,6 +15,9 @@ import { TimelineService } from "../timeline/timeline.service";
 import { GeneralRequestsService } from "../general-requests/general-requests.service";
 import { toMyState } from "./guided-request-user-state.service";
 import { computeDirectForwardAt } from "./lead-routing";
+
+/** Riga nella chat dei professionisti quando il cliente elimina una richiesta aperta (§343). */
+export const WITHDRAWN_TIMELINE_MESSAGE = "Il cliente ha ritirato la richiesta.";
 
 /** Candidato compatibile con la distanza dalla richiesta (null se non calcolabile). */
 type MatchedCandidate = { profile: ProfessionalProfile; distanceKm: number | null; radiusKm: number | null };
@@ -403,7 +407,8 @@ export class GuidedRequestsService {
   /** Richieste (con relativi lead) inviate dal cliente autenticato. */
   async listForClient(clientId: string) {
     const requests = await this.prisma.guidedRequest.findMany({
-      where: { clientId },
+      // Le eliminate dal cliente restano solo per i professionisti e l'admin (§343).
+      where: { clientId, deletedByClientAt: null },
       include: {
         category: true,
         // `booking` (relazione inversa 1:1 su Quote, valorizzata solo per il
@@ -429,6 +434,19 @@ export class GuidedRequestsService {
       },
       orderBy: { createdAt: "desc" },
     });
+
+    // Stelle e numero di recensioni accanto al nome del professionista, per
+    // scegliere tra più preventivi (docs/CHANGELOG.md §342). Mai per un
+    // profilo eliminato.
+    const reviewSummaries = await reviewSummariesFor(
+      this.prisma,
+      requests.flatMap((request) => [
+        ...request.leads.map((lead) => lead.professionalProfileId),
+        ...request.quotes.map((quote) => quote.professionalProfileId),
+      ]),
+    );
+    const reviewsOf = (profile: { id: string; deletedAt: Date | null }): ReviewSummary | null =>
+      profile.deletedAt ? null : (reviewSummaries.get(profile.id) ?? { rating: null, count: 0 });
 
     return requests.map((request) => {
       // Altre richieste dello stesso invio con più categorie (§259).
@@ -512,6 +530,7 @@ export class GuidedRequestsService {
           categoryLabel: lead.professionalProfile.category.label,
           city: lead.professionalProfile.city,
           verified: publicVerified(lead.professionalProfile),
+          reviews: reviewsOf(lead.professionalProfile),
           declined: lead.status === "DECLINED",
           declineNote: lead.declineNote,
         })),
@@ -523,6 +542,7 @@ export class GuidedRequestsService {
           // (richiesta esplicita dell'utente: riconoscere a colpo d'occhio
           // di chi si tratta). Mai per un profilo eliminato.
           imageUrl: quote.professionalProfile.deletedAt ? null : quote.professionalProfile.imageUrl,
+          reviews: reviewsOf(quote.professionalProfile),
           // Che tipo di lavoratore ha mandato il preventivo (richiesta dell'utente, §338).
           professionalKind: professionalKindOf(quote.professionalProfile.fiscalProfile?.entityType),
           items: quote.items.map((item) => ({
@@ -679,63 +699,126 @@ export class GuidedRequestsService {
   }
 
   /**
-   * Cancellazione lato cliente (CLAUDE.md §14) — CLOSED con closedReason
-   * CANCELED_BY_CLIENT, non più un hard delete come prima di
-   * GET /guided-requests/:id/status: una riga davvero cancellata non
-   * potrebbe più riportare alcuno stato dopo la cancellazione, e Lead/Quote
-   * (storico utile anche solo per debug) andrebbero persi con lei. Bloccata
-   * se già CLOSED — stessa guardia di prima (requireOwnEditableRequest).
-   * I Lead ancora PENDING vengono marcati EXPIRED (non DECLINED: non è
-   * stato un professionista a rifiutare) — nessuna notifica di scadenza in
-   * questo caso, è una scelta esplicita del cliente, non un timeout.
+   * "Elimina richiesta" del cliente (docs/CHANGELOG.md §343, decisione
+   * dell'utente): una sola azione finché la richiesta non ha portato a un
+   * lavoro. Per il cliente sparisce subito; se era aperta si chiude
+   * (CANCELED_BY_CLIENT, i Lead ancora in attesa diventano EXPIRED) e i
+   * professionisti la vedono "Ritirata dal cliente", con il motivo se c'è,
+   * senza email. Resta nel database, visibile all'admin con chat e
+   * preventivi, finché `purgeClientDeletedRequests` non la cancella davvero
+   * (mai se è stata segnalata: servono le prove). "Annulla" per qualche
+   * minuto: `restoreDeletedByClient`.
+   * Con una prenotazione (anche annullata) non si elimina: documenta un
+   * lavoro, e `Booking.quoteId` non è in cascata. Si archivia.
    */
-  async remove(clientId: string, id: string): Promise<void> {
-    const request = await this.requireOwnEditableRequest(clientId, id, "eliminare");
-    const leads = await this.prisma.lead.findMany({ where: { guidedRequestId: request.id }, select: { professionalProfileId: true } });
-    await this.prisma.lead.updateMany({
-      where: { guidedRequestId: request.id, status: "PENDING" },
-      data: { status: "EXPIRED" },
-    });
-    await this.prisma.guidedRequest.update({
-      where: { id: request.id },
-      data: { status: "CLOSED", closedReason: "CANCELED_BY_CLIENT" },
-    });
-    await Promise.all(
-      leads.map((lead) => this.timelineService.log(request.id, lead.professionalProfileId, "CLIENT", "Il cliente ha annullato la richiesta.")),
-    );
-  }
-
-  /**
-   * Eliminazione definitiva lato cliente (docs/CHANGELOG.md §130, richiesta
-   * esplicita dell'utente: "prima annulli, poi archivi o elimini") — a
-   * differenza di `remove` sopra (che annulla, CLOSED/CANCELED_BY_CLIENT),
-   * qui la riga sparisce davvero, con Lead/Quote/cronologia in cascata.
-   * Solo su una richiesta già chiusa (annullata o scaduta: prima va
-   * annullata, così i professionisti vengono avvisati nella cronologia) e
-   * mai se un preventivo ha già generato una prenotazione: quella documenta
-   * un lavoro reale (e `Booking.quoteId` non è in cascata).
-   * Le notifiche che puntano alla richiesta vengono rimosse per tutti,
-   * altrimenti porterebbero a una scheda che non esiste più.
-   */
-  async permanentlyDelete(clientId: string, id: string): Promise<void> {
+  async deleteByClient(clientId: string, id: string, reason?: RequestWithdrawReason): Promise<void> {
     const request = await this.prisma.guidedRequest.findUnique({ where: { id } });
-    if (!request) {
+    if (!request || request.deletedByClientAt) {
       throw new NotFoundException("Richiesta non trovata.");
     }
     if (request.clientId !== clientId) {
       throw new ForbiddenException("Questa richiesta non è tua.");
     }
-    if (request.status !== "CLOSED") {
-      throw new ForbiddenException("Annulla la richiesta prima di eliminarla definitivamente.");
-    }
     const bookingCount = await this.prisma.booking.count({ where: { quote: { guidedRequestId: id } } });
     if (bookingCount > 0) {
-      throw new ForbiddenException("Non puoi eliminare una richiesta che ha già portato a una prenotazione: puoi archiviarla.");
+      throw new ForbiddenException("Questa richiesta è diventata un lavoro: non si può eliminare, puoi archiviarla.");
     }
+    const wasOpen = request.status !== "CLOSED";
+    const leads = wasOpen ? await this.prisma.lead.findMany({ where: { guidedRequestId: id }, select: { professionalProfileId: true } }) : [];
     await this.prisma.$transaction([
-      this.prisma.notification.deleteMany({ where: { payload: { path: ["guidedRequestId"], equals: id } } }),
-      this.prisma.guidedRequest.delete({ where: { id } }),
+      ...(wasOpen ? [this.prisma.lead.updateMany({ where: { guidedRequestId: id, status: "PENDING" }, data: { status: "EXPIRED" } })] : []),
+      this.prisma.guidedRequest.update({
+        where: { id },
+        data: {
+          ...(wasOpen ? { status: "CLOSED" as const, closedReason: "CANCELED_BY_CLIENT" as const } : {}),
+          deletedByClientAt: new Date(),
+          deletedWhileOpen: wasOpen,
+          withdrawReason: reason ?? null,
+        },
+      }),
+      // Le sue notifiche porterebbero a una scheda che per lui non c'è più.
+      this.prisma.notification.updateMany({
+        where: { userId: clientId, readAt: null, payload: { path: ["guidedRequestId"], equals: id } },
+        data: { readAt: new Date() },
+      }),
     ]);
+    await Promise.all(
+      leads.map((lead) => this.timelineService.log(id, lead.professionalProfileId, "CLIENT", WITHDRAWN_TIMELINE_MESSAGE)),
+    );
+  }
+
+  /**
+   * "Annulla" subito dopo "Elimina richiesta" (§343): la richiesta torna
+   * com'era, riaperta se era aperta, e sparisce la riga "ritirata" dalla
+   * chat dei professionisti. Solo entro REQUEST_RESTORE_WINDOW_MINUTES.
+   */
+  async restoreDeletedByClient(clientId: string, id: string): Promise<void> {
+    const request = await this.prisma.guidedRequest.findUnique({ where: { id } });
+    if (!request || request.clientId !== clientId || !request.deletedByClientAt) {
+      throw new NotFoundException("Richiesta non trovata.");
+    }
+    const deletedAt = request.deletedByClientAt;
+    if (Date.now() - deletedAt.getTime() > REQUEST_RESTORE_WINDOW_MINUTES * 60_000) {
+      throw new ForbiddenException("È passato troppo tempo per annullare l'eliminazione.");
+    }
+    const reopen = request.deletedWhileOpen && request.closedReason === "CANCELED_BY_CLIENT";
+    const now = new Date();
+    await this.prisma.$transaction([
+      this.prisma.guidedRequest.update({
+        where: { id },
+        data: {
+          deletedByClientAt: null,
+          deletedWhileOpen: false,
+          withdrawReason: null,
+          ...(reopen ? { status: "OPEN" as const, closedReason: null } : {}),
+        },
+      }),
+      // Tornano in attesa solo i Lead chiusi dall'eliminazione: quelli
+      // scaduti da soli hanno una scadenza già passata.
+      ...(reopen
+        ? [
+            this.prisma.lead.updateMany({
+              where: { guidedRequestId: id, status: "EXPIRED", OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+              data: { status: "PENDING" },
+            }),
+            this.prisma.conversationEvent.deleteMany({
+              where: { guidedRequestId: id, automatic: true, message: WITHDRAWN_TIMELINE_MESSAGE, createdAt: { gte: deletedAt } },
+            }),
+          ]
+        : []),
+    ]);
+  }
+
+  /**
+   * Cancellazione vera delle richieste eliminate dai clienti (§343), una
+   * volta al giorno: dopo CLIENT_DELETED_REQUEST_RETENTION_DAYS, con Lead,
+   * preventivi, chat e notifiche in cascata. Mai se un professionista l'ha
+   * segnalata (prove per la moderazione e le sue conseguenze, decisione
+   * dell'utente) né se ha un lavoro (non si può eliminare comunque).
+   */
+  @Cron(CronExpression.EVERY_DAY_AT_4AM)
+  async purgeClientDeletedRequests(now = new Date()): Promise<number> {
+    const cutoff = new Date(now.getTime() - CLIENT_DELETED_REQUEST_RETENTION_DAYS * 24 * 60 * 60_000);
+    const candidates = await this.prisma.guidedRequest.findMany({
+      where: { deletedByClientAt: { lt: cutoff }, quotes: { none: { booking: { isNot: null } } } },
+      select: { id: true },
+      take: 500,
+    });
+    if (candidates.length === 0) return 0;
+    const reported = await this.prisma.contentReport.findMany({
+      where: { targetType: "GUIDED_REQUEST", targetId: { in: candidates.map((c) => c.id) } },
+      select: { targetId: true },
+    });
+    const keep = new Set(reported.map((r) => r.targetId));
+    const ids = candidates.map((c) => c.id).filter((requestId) => !keep.has(requestId));
+    for (const requestId of ids) {
+      await this.prisma.$transaction([
+        this.prisma.notification.deleteMany({ where: { payload: { path: ["guidedRequestId"], equals: requestId } } }),
+        this.prisma.guidedRequest.delete({ where: { id: requestId } }),
+      ]);
+    }
+    if (ids.length > 0) this.logger.log(`Richieste eliminate dai clienti cancellate: ${ids.length}`);
+    return ids.length;
   }
 
   /**

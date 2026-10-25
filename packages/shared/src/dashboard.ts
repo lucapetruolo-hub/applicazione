@@ -1,3 +1,4 @@
+import type { RequestWithdrawReason } from "./requestWithdraw";
 import type { JobIssueSummary } from "./jobIssues";
 import type { JobPaymentChoice, JobPaymentSummary } from "./onlinePayments";
 import type { ProfessionalDetail } from "./professionals";
@@ -169,7 +170,7 @@ export type ProfessionalLead = {
      * `null` finché il preventivo non è stato accettato.
      */
     bookingStatus: string | null;
-    /** Il cliente ha accettato il preventivo di un altro professionista (docs/CHANGELOG.md §341). */
+    /** Il cliente ha accettato il preventivo di un altro professionista (docs/CHANGELOG.md §344). */
     otherProfessionalChosen: boolean;
   } | null;
   guidedRequest: {
@@ -223,6 +224,12 @@ export type ProfessionalLead = {
     /** Valorizzati solo se la richiesta è nata da una fascia generica dell'agenda (vedi packages/shared/src/availability.ts). */
     preferredDate: string | null;
     preferredTimeSlot: string | null;
+    /**
+     * Il cliente ha tolto la richiesta (docs/CHANGELOG.md §343): mostrata
+     * come "Ritirata dal cliente", con il motivo se l'ha dato, al posto di
+     * "Scaduta". `null` se è ancora sua.
+     */
+    withdrawnByClient: { at: string; reason: RequestWithdrawReason | null } | null;
   };
   /** Stato personale del professionista su questa richiesta (CHANGELOG §130). */
   myState: GuidedRequestMyState;

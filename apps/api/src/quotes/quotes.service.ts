@@ -31,6 +31,9 @@ import { identityVerificationNeeded } from "../identity-verification/identity-pr
 import { countBookingsInSlot, countOverlapping, loadCommitments, lockProfessionalAgenda } from "../agenda/commitments";
 import { hasOtherJob, isOtherJobViolation, lockGuidedRequest } from "../bookings/one-job-per-request";
 
+/** Preventivo su una richiesta che il cliente ha eliminato (docs/CHANGELOG.md §343). */
+const WITHDRAWN_BY_CLIENT_MESSAGE = "Il cliente ha ritirato questa richiesta.";
+
 
 /** Appuntamento "prima"/"dopo" nel payload delle notifiche, per le email (docs/CHANGELOG.md §228). */
 function slotPayload(start: Date, end: Date | null | undefined): { start: string; end: string | null } {
@@ -67,7 +70,17 @@ export class QuotesService {
       include: { guidedRequest: { include: { client: true } } },
     });
     if (!lead) {
+      // Il cliente può eliminare una richiesta senza preventivi (§343):
+      // a chi la stava ancora guardando lo si dice chiaramente.
+      const requestExists = await this.prisma.guidedRequest.count({ where: { id: input.requestId } });
+      if (!requestExists) {
+        throw new NotFoundException("Il cliente ha eliminato questa richiesta.");
+      }
       throw new ForbiddenException("Non hai ricevuto questa richiesta.");
+    }
+    // Ritirata dal cliente con "Elimina richiesta" (§343): niente preventivi nuovi né modifiche.
+    if (lead.guidedRequest.closedReason === "CANCELED_BY_CLIENT") {
+      throw new ForbiddenException(WITHDRAWN_BY_CLIENT_MESSAGE);
     }
     // Richiesta esplicita dell'utente: se il cliente ha eliminato il
     // proprio account nel frattempo, non si può più inviare o modificare un
@@ -535,6 +548,10 @@ export class QuotesService {
     if (quote.status !== "MODIFICATION_REQUESTED" || !quote.clientProposedDate) {
       throw new ForbiddenException("Nessuna data proposta da confermare per questo preventivo.");
     }
+    // Prima un lavoro poteva nascere da una richiesta già ritirata (§343).
+    if (quote.guidedRequest.closedReason === "CANCELED_BY_CLIENT") {
+      throw new ForbiddenException(WITHDRAWN_BY_CLIENT_MESSAGE);
+    }
     if (quote.booking) {
       throw new ForbiddenException("Questo preventivo è già stato accettato.");
     }
@@ -591,7 +608,7 @@ export class QuotesService {
           // Un lavoro già preso che si sovrappone (anche un lavoro esterno
           // o uno lungo iniziato prima) occupa la fascia (docs/CHANGELOG.md §310).
           await lockProfessionalAgenda(tx, professionalProfile.id);
-          // Nel frattempo il cliente ha accettato il preventivo di un altro professionista (§341).
+          // Nel frattempo il cliente ha accettato il preventivo di un altro professionista (§344).
           await lockGuidedRequest(tx, quote.guidedRequestId);
           if (await hasOtherJob(tx, quote.guidedRequestId)) throw new ConflictException(OTHER_PROFESSIONAL_CHOSEN);
           const commitments =

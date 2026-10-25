@@ -138,7 +138,7 @@ export function ClientMiniTimeline({ stage }: { stage: RequestStage }) {
   );
 }
 
-/** Dove si svolge il lavoro, per il biglietto dell'appuntamento (§341); null per una consulenza online. */
+/** Dove si svolge il lavoro, per il biglietto dell'appuntamento (§344); null per una consulenza online. */
 export function requestJobAddress(request: ClientGuidedRequest): string | null {
   if (request.serviceMode === "ONLINE") return null;
   const full = formatBookingAddress({

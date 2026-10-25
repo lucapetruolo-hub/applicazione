@@ -331,3 +331,12 @@ export const PLACEHOLDER_PROFESSIONALS: PlaceholderProfessional[] = [
   { businessName: "Greco Climatizzazione", categorySlug: "climatizzazione", categoryLabel: "Climatizzazione e caldaie", city: "Bari", rating: 4.8, verified: true },
   { businessName: "Costa Falegnameria", categorySlug: "falegname", categoryLabel: "Falegname", city: "Verona", rating: 4.9, verified: false },
 ];
+
+/**
+ * Voto medio con una cifra decimale e la virgola, come si scrive in italiano
+ * ("4,7"), in tutto il sito (docs/CHANGELOG.md §342). Mai nei dati per Google
+ * (JSON-LD), che vogliono il numero.
+ */
+export function formatRating(value: number): string {
+  return value.toFixed(1).replace(".", ",");
+}

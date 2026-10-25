@@ -41,7 +41,7 @@ import { stripeVerified } from "../professional-fiscal/public-visibility";
 import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
 import { PROFESSIONAL_BUSY_MESSAGE, capacityAt, countOverlapping, loadCommitments, lockProfessionalAgenda } from "../agenda/commitments";
 
-/** Il cliente ha già un lavoro per questa richiesta (docs/CHANGELOG.md §341). */
+/** Il cliente ha già un lavoro per questa richiesta (docs/CHANGELOG.md §344). */
 const CLIENT_CANCEL_TOO_LATE = "L'appuntamento è già cominciato e non si può più annullare. Se qualcosa non va, usa \"C'è un problema\".";
 const OTHER_JOB_MESSAGE = "Hai già accettato un altro preventivo per questa richiesta. Per cambiare professionista annulla prima l'appuntamento.";
 
@@ -131,7 +131,11 @@ export class BookingsService {
     if (quote.status === "REJECTED" || quote.status === "WITHDRAWN") {
       throw new ForbiddenException("Questo preventivo non è più disponibile.");
     }
-    // Un solo lavoro per richiesta (docs/CHANGELOG.md §341): accettato un
+    // Richiesta eliminata dal cliente (§343): i suoi preventivi non si accettano più.
+    if (quote.guidedRequest.closedReason === "CANCELED_BY_CLIENT") {
+      throw new ForbiddenException("Hai eliminato questa richiesta: il preventivo non è più disponibile.");
+    }
+    // Un solo lavoro per richiesta (docs/CHANGELOG.md §344): accettato un
     // preventivo, gli altri della stessa richiesta non si accettano più. Prima
     // il controllo c'era solo per l'acconto online e con il pagamento diretto
     // nasceva un secondo lavoro.
@@ -249,7 +253,7 @@ export class BookingsService {
       if (await tx.booking.findUnique({ where: { quoteId: quote.id }, select: { id: true } })) {
         throw new ConflictException("Questo preventivo è già stato accettato.");
       }
-      // Due preventivi della stessa richiesta accettati insieme (§341): il secondo vede il primo.
+      // Due preventivi della stessa richiesta accettati insieme (§344): il secondo vede il primo.
       await lockGuidedRequest(tx, quote.guidedRequestId);
       await this.assertNoOtherJob(tx, quote.guidedRequestId);
       await this.assertProfessionalFree(tx, quote);
@@ -311,7 +315,7 @@ export class BookingsService {
       clientAddress,
       scheduledEndAt: booking.scheduledEndAt?.toISOString() ?? null,
     });
-    // Conferma al cliente con il calendario (§341), solo email: sul sito ha appena visto "Appuntamento prenotato".
+    // Conferma al cliente con il calendario (§344), solo email: sul sito ha appena visto "Appuntamento prenotato".
     this.notificationsService.emailOnly(clientId, "BOOKING_CONFIRMED", { bookingId: booking.id, guidedRequestId: quote.guidedRequestId });
 
     // Metriche di affidabilità (CLAUDE.md §15, evento 3): il preventivo è
@@ -753,7 +757,7 @@ export class BookingsService {
     if (booking.status !== "PENDING" && booking.status !== "CONFIRMED") {
       throw new ForbiddenException("Questa prenotazione non può più essere annullata.");
     }
-    // Cominciato l'appuntamento non si annulla più (§341): prima si poteva
+    // Cominciato l'appuntamento non si annulla più (§344): prima si poteva
     // anche a lavoro fatto, e con l'acconto online tornavano i soldi.
     if (booking.scheduledAt.getTime() <= wallClockNow().getTime()) {
       throw new ForbiddenException(CLIENT_CANCEL_TOO_LATE);
@@ -826,7 +830,7 @@ export class BookingsService {
     if (!isClient && booking.canceledBy !== "PROFESSIONAL") {
       throw new ForbiddenException("Il cliente ha annullato questo intervento: solo lui può riaprirlo.");
     }
-    // Nel frattempo il cliente ha accettato un altro preventivo della stessa richiesta (§341).
+    // Nel frattempo il cliente ha accettato un altro preventivo della stessa richiesta (§344).
     if (booking.quote) await this.assertNoOtherJob(this.prisma, booking.quote.guidedRequestId, booking.id);
 
     const scheduledAt = booking.scheduledAt;
@@ -1320,7 +1324,7 @@ export class BookingsService {
       // l'eliminazione della prenotazione dalla propria lista.
       professionalAccountDeleted: booking.professionalProfile.deletedAt !== null,
       clientConfirmedCompletedAt: booking.clientConfirmedCompletedAt?.toISOString() ?? null,
-      // "Sto arrivando" del professionista, mostrato in cima alla scheda (docs/CHANGELOG.md §341).
+      // "Sto arrivando" del professionista, mostrato in cima alla scheda (docs/CHANGELOG.md §344).
       onTheWayAt: booking.onTheWayAt?.toISOString() ?? null,
       professionalCompletionPhotoUrls: booking.professionalCompletionPhotoUrls,
       clientCompletionPhotoUrls: booking.clientCompletionPhotoUrls,

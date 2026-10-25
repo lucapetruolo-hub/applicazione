@@ -130,7 +130,7 @@ export class NotificationsService {
 
   /**
    * Solo l'email, senza notifica nel sito: per confermare qualcosa che la
-   * persona ha appena fatto e vede già sullo schermo (docs/CHANGELOG.md §341).
+   * persona ha appena fatto e vede già sullo schermo (docs/CHANGELOG.md §344).
    */
   emailOnly(userId: string, type: string, payload: Prisma.InputJsonValue): void {
     void (async () => {

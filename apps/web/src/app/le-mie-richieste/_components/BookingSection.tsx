@@ -18,7 +18,7 @@ import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 
 /**
  * Il lavoro nato dal preventivo accettato, in cima alla scheda come un
- * biglietto dell'appuntamento (docs/CHANGELOG.md §341, variante C scelta
+ * biglietto dell'appuntamento (docs/CHANGELOG.md §344, variante C scelta
  * dall'utente): quando, dove, chiama o scrivi, quanto e come si paga. La
  * riga in cima e il pulsante principale cambiano col momento (tra qualche
  * giorno, domani, sta arrivando, com'è andata). La trattativa (richiesta,
@@ -136,7 +136,7 @@ export function BookingSection({
   const proGone = booking.professionalAccountDeleted;
   const upcoming = live && !proGone && isUpcoming(moment);
   const issueOpen = booking.issue?.status === "OPEN" || booking.issue?.status === "CHAT";
-  // "Lavoro terminato" solo da quando l'appuntamento è iniziato (§341):
+  // "Lavoro terminato" solo da quando l'appuntamento è iniziato (§344):
   // prima compariva già giorni prima. Se il professionista l'ha già chiuso, subito.
   const started = moment?.kind === "inProgress" || moment?.kind === "over" || booking.status === "COMPLETED";
   const canConfirmDone =
@@ -449,14 +449,14 @@ export function BookingSection({
   );
 }
 
-/** L'appuntamento deve ancora cominciare: calendario, cambio data e annullamento hanno senso solo prima (§341). */
+/** L'appuntamento deve ancora cominciare: calendario, cambio data e annullamento hanno senso solo prima (§344). */
 function isUpcoming(moment: AppointmentMoment | null): boolean {
   return moment !== null && moment.kind !== "inProgress" && moment.kind !== "over";
 }
 
 /**
  * "Serve cambiare? Scrivi un messaggio · Annulla appuntamento" sotto la
- * trattativa chiusa (§341): solo prima dell'appuntamento, quando il
+ * trattativa chiusa (§344): solo prima dell'appuntamento, quando il
  * professionista c'è ancora. Dopo, per qualcosa che non va c'è "C'è un problema".
  */
 export function ChangeLinks({ booking, onMessage, onCancel }: { booking: ClientBooking; onMessage: (() => void) | null; onCancel: () => void }) {

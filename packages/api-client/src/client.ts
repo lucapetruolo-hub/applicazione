@@ -61,6 +61,7 @@ import type {
   SetDac7RuleInput,
   PlatformDac7SettingsInput,
   PayoutIbanInput,
+  RequestWithdrawReason,
   PayoutIbanStripeCheck,
   Dac7YearSummary,
   SetFiscalVerificationInput,
@@ -161,13 +162,16 @@ export type ClientBooking = {
   professionalAddress: string | null;
   /** Vero se il cliente ha già segnalato un no-show per questa prenotazione. */
   refundRequested: boolean;
-  /** Quando il professionista ha premuto "Sto arrivando" (docs/CHANGELOG.md §341), null se non ancora. */
+  /** Quando il professionista ha premuto "Sto arrivando" (docs/CHANGELOG.md §344), null se non ancora. */
   onTheWayAt: string | null;
   /** Link per una consulenza video (Meet/Zoom/ecc.), impostato dal professionista — richiesta esplicita dell'utente. */
   meetingLink: string | null;
   /** Il professionista ha eliminato l'account (soft-delete) — richiesta esplicita dell'utente, mostra "Account eliminato" con possibilità di eliminare la prenotazione dalla lista. */
   professionalAccountDeleted: boolean;
 };
+
+/** Valutazione di un professionista: media con una cifra decimale (`null` senza recensioni) e numero di recensioni. */
+export type ProfessionalReviewSummary = { rating: number | null; count: number };
 
 export type ClientGuidedRequest = {
   id: string;
@@ -230,6 +234,8 @@ export type ClientGuidedRequest = {
     categoryLabel: string;
     city: string;
     verified: boolean;
+    /** Media e numero delle recensioni (docs/CHANGELOG.md §342); null se il profilo è stato eliminato. */
+    reviews: ProfessionalReviewSummary | null;
     /** True se questo professionista ha rifiutato la richiesta prima di inviare un preventivo. */
     declined: boolean;
     /** Nota facoltativa lasciata dal professionista con il rifiuto. */
@@ -241,6 +247,8 @@ export type ClientGuidedRequest = {
     businessName: string;
     /** Foto profilo del professionista, mostrata accanto al nome; null se assente o profilo eliminato. */
     imageUrl: string | null;
+    /** Media e numero delle recensioni (docs/CHANGELOG.md §342); null se il profilo è stato eliminato. */
+    reviews: ProfessionalReviewSummary | null;
     /** Privato, partita IVA o azienda, badge accanto al nome (docs/CHANGELOG.md §338); null se non ancora indicato. */
     professionalKind: ProfessionalKind | null;
     items: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
@@ -562,6 +570,27 @@ export type AdminJobIssue = {
   clientCompletionNote: string | null;
   professionalCompletionPhotoUrls: string[];
   clientCompletionPhotoUrls: string[];
+};
+
+/** Richiesta eliminata da un cliente, nell'area admin (docs/CHANGELOG.md §343). */
+export type AdminClientDeletedRequest = {
+  guidedRequestId: string;
+  categoryLabel: string;
+  city: string;
+  description: string;
+  clientName: string | null;
+  clientAccountDeleted: boolean;
+  reasonLabel: string | null;
+  wasOpen: boolean;
+  professionalsReached: number;
+  quotes: number;
+  messages: number;
+  reports: number;
+  openReports: number;
+  requestCreatedAt: string;
+  deletedAt: string;
+  /** Quando si cancella davvero; `null` se resta perché segnalata. */
+  purgeAt: string | null;
 };
 
 export type AdminHiddenLead = {
@@ -1198,16 +1227,18 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
         body: JSON.stringify(input),
       }),
 
-    deleteGuidedRequest: (token: string, id: string) =>
+    /** "Elimina richiesta": sparisce per il cliente, i professionisti la vedono ritirata (docs/CHANGELOG.md §343). */
+    deleteGuidedRequest: (token: string, id: string, reason?: RequestWithdrawReason) =>
       request<null>(`/guided-requests/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ reason }),
       }),
 
-    /** Elimina definitivamente una richiesta già annullata/scaduta senza prenotazioni (`deleteGuidedRequest` invece la annulla). */
-    deleteGuidedRequestPermanently: (token: string, id: string) =>
-      request<null>(`/guided-requests/${id}/permanent`, {
-        method: "DELETE",
+    /** "Annulla" pochi secondi dopo l'eliminazione. */
+    restoreGuidedRequest: (token: string, id: string) =>
+      request<null>(`/guided-requests/${id}/restore`, {
+        method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       }),
 
@@ -1501,7 +1532,7 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
         body: JSON.stringify(input),
       }),
 
-    /** "Aggiungi al calendario" del cliente (docs/CHANGELOG.md §341): link di Google Calendar e file .ics. */
+    /** "Aggiungi al calendario" del cliente (docs/CHANGELOG.md §344): link di Google Calendar e file .ics. */
     bookingCalendar: (token: string, bookingId: string) =>
       request<{ googleUrl: string | null; ics: string }>(`/bookings/${bookingId}/calendar`, { headers: { Authorization: `Bearer ${token}` } }),
 
@@ -1920,6 +1951,9 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
 
     adminListHiddenLeads: (token: string) =>
       request<AdminHiddenLead[]>("/admin/hidden-leads", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminListClientDeletedRequests: (token: string) =>
+      request<AdminClientDeletedRequest[]>("/admin/client-deleted-requests", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminResolveContactMessage: (token: string, id: string) =>
       request<{ id: string; resolved: boolean }>(`/admin/contact-messages/${id}`, {

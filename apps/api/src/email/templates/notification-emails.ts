@@ -1169,7 +1169,7 @@ const BUILDERS: Record<string, Builder> = {
     };
   },
   // "Sto arrivando" dall'agenda (§288).
-  // Conferma al cliente appena accetta (docs/CHANGELOG.md §341): prima col
+  // Conferma al cliente appena accetta (docs/CHANGELOG.md §344): prima col
   // pagamento diretto non riceveva nulla, e il calendario arrivava solo col
   // promemoria del giorno prima.
   BOOKING_CONFIRMED: (payload, ctx) => ({

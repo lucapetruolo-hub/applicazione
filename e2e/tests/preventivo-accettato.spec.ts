@@ -5,7 +5,7 @@ import { acceptQuote, createClient, createProfessional, createRequestWithQuotes,
 
 /**
  * Dal preventivo accettato al biglietto dell'appuntamento (docs/CHANGELOG.md
- * §341): un solo lavoro per richiesta anche con due "Accetta" nello stesso
+ * §344): un solo lavoro per richiesta anche con due "Accetta" nello stesso
  * istante, anche se il codice se ne dimenticasse (vincolo del database), e il
  * percorso che vede il cliente.
  */

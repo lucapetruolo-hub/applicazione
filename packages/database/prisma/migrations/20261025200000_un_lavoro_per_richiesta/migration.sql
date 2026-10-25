@@ -1,4 +1,4 @@
--- Un solo lavoro attivo per richiesta (docs/CHANGELOG.md §341): accettare un
+-- Un solo lavoro attivo per richiesta (docs/CHANGELOG.md §344): accettare un
 -- secondo preventivo della stessa richiesta creava un secondo lavoro.
 ALTER TABLE "bookings" ADD COLUMN "guidedRequestId" TEXT;
 
