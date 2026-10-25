@@ -20582,3 +20582,22 @@ Richiesta dell'utente: "si potrebbe dare l'icona del meteo per 3 giorni e dire d
 **Migliorie approvate da Luca** ("effettua le 2 migliorie")
 - osv-scanner ora blocca la PR (`.github/workflows/security.yml`, checklist punto 40): dopo aver caricato il rapporto, un passo rifà il controllo e fallisce se trova una vulnerabilità fuori dalle eccezioni di `osv-scanner.toml`. Vale per tutte le librerie, non solo per quelle del sito e dell'API: osv-scanner non sa distinguere quelle usate solo per costruire o provare (anche `pnpm audit --prod` conta lo strumento di Expo, dipendenza dell'app), quindi quelle senza versione corretta vanno tra le eccezioni con il motivo. Provato: con il `pnpm-lock.yaml` di prima di questa PR il controllo fallisce (vitest, tinypool, ecc.), con quello nuovo passa.
 - I due avvisi rimasti (zod 3 e node-forge in `@expo/cli`) vanno chiusi a mano nella scheda Security → Dependabot di GitHub con "Vulnerable code is not actually used" / "Risk is tolerable": lo fa Luca, i thread non hanno accesso agli avvisi.
+
+## 336. "Lavoro terminato" del cliente: solo la conferma, niente note e foto
+
+Domanda dell'utente: a cosa servono la descrizione e le foto che il cliente
+scrive dopo "Lavoro terminato". Risposta: la conferma serve (sblocca i soldi
+online, vale come "ho pagato" nel pagamento diretto, apre la recensione), ma
+note e foto le leggeva solo l'admin (`/admin/lavori`, `/admin/problemi`): il
+professionista non le vedeva, non andavano sul profilo, e subito dopo la
+recensione chiedeva di nuovo testo e foto. Decisione dell'utente (opzione 1
+di 3): togliere note e foto e lasciare solo la conferma, poi la recensione.
+
+- `ClientCompleteModal`: solo "Confermi che il lavoro è terminato?" con una
+  frase ("Subito dopo potrai lasciare una recensione al professionista,
+  anche con foto"), "Conferma lavoro terminato" e "Annulla".
+- `BookingSection` invia `{ photoUrls: [] }`; dopo la conferma si apre la
+  recensione come prima (mai con una segnalazione in corso).
+- API, schema e colonne `clientCompletionNote`/`clientCompletionPhotoUrls`
+  invariati: i lavori già chiusi le mostrano ancora in admin. Per un
+  problema resta "Segnala un problema", che raccoglie le foto.

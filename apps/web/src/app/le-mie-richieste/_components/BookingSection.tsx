@@ -63,8 +63,8 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
     }
   }
 
-  async function handleClientConfirmComplete(photoUrls: string[], note: string | undefined) {
-    await apiClient.clientConfirmComplete(token, booking.id, { photoUrls, note });
+  async function handleClientConfirmComplete() {
+    await apiClient.clientConfirmComplete(token, booking.id, { photoUrls: [] });
     setShowClientCompleteModal(false);
     // Subito la recensione, anche se il professionista non ha ancora segnato
     // il lavoro come terminato (§189). Mai con una segnalazione in corso.
@@ -305,11 +305,7 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
 
 
       {showClientCompleteModal ? (
-        <ClientCompleteModal
-          onClose={() => setShowClientCompleteModal(false)}
-          onConfirm={handleClientConfirmComplete}
-          uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}
-        />
+        <ClientCompleteModal onClose={() => setShowClientCompleteModal(false)} onConfirm={handleClientConfirmComplete} />
       ) : null}
       {showReviewModal ? (
         <ReviewModal
