@@ -1,6 +1,7 @@
 "use client";
 
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
+import { REQUEST_TIMING_LABEL } from "@professionisti/shared";
 import { Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { formatBookingAddress } from "@professionisti/shared";
 import { CLIENT_STAGE_LABEL, REQUEST_STAGE_STYLE, type RequestStage } from "@/lib/requestStage";
@@ -43,6 +44,7 @@ export function clientRequestSearchText(request: ClientGuidedRequest, stage: Req
     request.address,
     request.serviceMode === "ONLINE" ? "consulenza online" : "a domicilio",
     request.isUrgent ? "urgente" : null,
+    request.timing ? REQUEST_TIMING_LABEL[request.timing] : null,
     stage ? CLIENT_STAGE_LABEL[stage] : null,
     request.recipientName,
     request.recipientSurname,
@@ -138,7 +140,7 @@ export function ClientMiniTimeline({ stage }: { stage: RequestStage }) {
   );
 }
 
-/** Dove si svolge il lavoro, per il biglietto dell'appuntamento (§344); null per una consulenza online. */
+/** Dove si svolge il lavoro, per il biglietto dell'appuntamento (§346); null per una consulenza online. */
 export function requestJobAddress(request: ClientGuidedRequest): string | null {
   if (request.serviceMode === "ONLINE") return null;
   const full = formatBookingAddress({

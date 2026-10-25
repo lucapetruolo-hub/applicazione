@@ -608,7 +608,7 @@ export class QuotesService {
           // Un lavoro già preso che si sovrappone (anche un lavoro esterno
           // o uno lungo iniziato prima) occupa la fascia (docs/CHANGELOG.md §310).
           await lockProfessionalAgenda(tx, professionalProfile.id);
-          // Nel frattempo il cliente ha accettato il preventivo di un altro professionista (§344).
+          // Nel frattempo il cliente ha accettato il preventivo di un altro professionista (§346).
           await lockGuidedRequest(tx, quote.guidedRequestId);
           if (await hasOtherJob(tx, quote.guidedRequestId)) throw new ConflictException(OTHER_PROFESSIONAL_CHOSEN);
           const commitments =
@@ -656,7 +656,7 @@ export class QuotesService {
       await this.notificationsService.notify(quote.guidedRequest.clientId, "QUOTE_DATE_CONFIRMED", {
         guidedRequestId: quote.guidedRequestId,
         quoteId: quote.id,
-        // Con il calendario nell'email, come quando accetta il cliente (§344).
+        // Con il calendario nell'email, come quando accetta il cliente (§346).
         bookingId: booking.id,
       });
       // Metriche di affidabilità (CLAUDE.md §15, evento 3): il preventivo è

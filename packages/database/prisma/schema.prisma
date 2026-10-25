@@ -311,7 +311,7 @@ model ProfessionalProfile {
   certifications               String?
   hasLiabilityInsurance        Boolean   @default(false)
   // Preavviso per annullare scelto dal professionista: 24, 48 o 72 ore
-  // (docs/CHANGELOG.md §345, CANCELLATION_NOTICE_OPTIONS in packages/shared).
+  // (docs/CHANGELOG.md §347, CANCELLATION_NOTICE_OPTIONS in packages/shared).
   cancellationNoticeHours      Int       @default(24)
   // Dichiarazione di responsabilità accettata salvando il profilo
   // (docs/CHANGELOG.md §158): quando e quale versione del testo
@@ -716,6 +716,14 @@ enum TrafficSource {
   OTHER
 }
 
+// Quando serve il lavoro, scelto dal cliente (docs/CHANGELOG.md §344):
+// TODAY = urgente (isUrgent resta il campo che decide raggio e inoltro).
+enum RequestTiming {
+  TODAY
+  WEEK
+  CALM
+}
+
 model GuidedRequest {
   id                    String                       @id @default(uuid())
   clientId              String
@@ -751,6 +759,8 @@ model GuidedRequest {
   postalCode            String?
   province              String?
   isUrgent              Boolean                      @default(false)
+  // Null per le richieste di prima della scelta dei tempi (§344).
+  timing                RequestTiming?
   // Nullable: le richieste create prima di questa funzionalità non hanno
   // un tipo esplicito (mai un backfill retroattivo, stessa convenzione già
   // usata per altri campi opzionali di questo modello) — obbligatorio lato
@@ -1066,7 +1076,7 @@ enum BookingCanceledBy {
 model Booking {
   id                    String        @id @default(uuid())
   quoteId               String?       @unique
-  // Richiesta da cui nasce il lavoro (docs/CHANGELOG.md §344): la compila un
+  // Richiesta da cui nasce il lavoro (docs/CHANGELOG.md §346): la compila un
   // trigger del database dal preventivo (quoteId), mai il codice. Un indice
   // unico parziale ("bookings_one_active_job_per_request", solo nella
   // migrazione: Prisma non descrive gli indici con WHERE) vieta un secondo
@@ -1076,7 +1086,7 @@ model Booking {
   professionalProfileId String
   scheduledAt           DateTime
   // Preavviso per annullare valido per questo lavoro, copiato dal profilo
-  // quando nasce (docs/CHANGELOG.md §345): null per i lavori di prima, che
+  // quando nasce (docs/CHANGELOG.md §347): null per i lavori di prima, che
   // valgono 24 ore. canceledLate: il cliente ha annullato dentro il preavviso.
   cancellationNoticeHours Int?
   canceledLate            Boolean       @default(false)

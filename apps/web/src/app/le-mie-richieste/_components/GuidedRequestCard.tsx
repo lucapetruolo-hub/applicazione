@@ -1,13 +1,13 @@
 "use client";
 
-import type { JobPaymentChoice, RequestWithdrawReason } from "@professionisti/shared";
+import { REQUEST_TIMING_LABEL, type JobPaymentChoice, type RequestWithdrawReason } from "@professionisti/shared";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
 import {
-  ALL_ITALIAN_CITY_NAMES,
+  allItalianCityNames,
   cancellationNoticeLabel,
   isLateCancellation,
   averageQuoteTotalEurCents,
@@ -458,7 +458,7 @@ export function GuidedRequestCard({
           </Text>
           <textarea aria-label="Descrizione del lavoro" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} style={textareaStyle} />
           <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="$4" backgroundColor={brand.calce}>
-            <Autocomplete items={ALL_ITALIAN_CITY_NAMES} getKey={(item) => item} getLabel={(item) => item} onSelect={changeCity} value={city} onChangeText={changeCity} placeholder="Città" minChars={3} />
+            <Autocomplete items={allItalianCityNames()} getKey={(item) => item} getLabel={(item) => item} onSelect={changeCity} value={city} onChangeText={changeCity} placeholder="Città" minChars={3} />
           </YStack>
           {request.serviceMode === "ONLINE" ? (
             <Text fontSize={13} color={brand.grafite70}>
@@ -653,7 +653,7 @@ export function GuidedRequestCard({
   if (booking && booking.issueTypesAllowed.length > 0) {
     menuActions.push({ icon: "flag", text: "Segnala un problema", tone: "danger", onPress: () => setShowReportModal(true) });
   }
-  // Cominciato l'appuntamento non si annulla più (§344): per un problema c'è "Segnala un problema".
+  // Cominciato l'appuntamento non si annulla più (§346): per un problema c'è "Segnala un problema".
   if (booking && (booking.status === "PENDING" || booking.status === "CONFIRMED") && new Date(booking.scheduledAt) > wallClockNow()) {
     menuActions.push({ icon: "x", text: "Annulla prenotazione", tone: "danger", onPress: () => setShowCancelModal(true) });
   } else if (booking?.status === "CANCELED") {
@@ -669,7 +669,7 @@ export function GuidedRequestCard({
 
   const nextAction = clientNextAction(stage, request, booking);
 
-  // Biglietto dell'appuntamento e, sotto, la trattativa chiusa (docs/CHANGELOG.md §344).
+  // Biglietto dell'appuntamento e, sotto, la trattativa chiusa (docs/CHANGELOG.md §346).
   const jobChosen = Boolean(booking && booking.status !== "CANCELED");
   const otherQuotes = request.quotes.filter((quote) => quote.id !== acceptedQuote?.id);
   const quoteCard = (quote: ClientGuidedRequest["quotes"][number]) => (
@@ -752,6 +752,12 @@ export function GuidedRequestCard({
             {request.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
             <ClientStagePill stage={stage} />
             <ServiceBadge online={isOnline} />
+            {/* Quando serve, scelto alla richiesta (§344): "Oggi" è già il badge Urgente. */}
+            {request.timing === "WEEK" || request.timing === "CALM" ? (
+              <Text fontSize={13} fontWeight="600" color={brand.grafite70} alignSelf="center">
+                {REQUEST_TIMING_LABEL[request.timing]}
+              </Text>
+            ) : null}
           </XStack>
           <YStack alignItems="flex-end" gap="$1">
             <Text fontSize={16} color={brand.grafite70}>
@@ -845,7 +851,7 @@ export function GuidedRequestCard({
 
       {isOpen ? (
         <YStack paddingHorizontal="$4" paddingBottom="$4" gap="$4" borderTopWidth={1} borderTopColor={brand.filetto}>
-          {/* Con un lavoro la scheda parte dal biglietto dell'appuntamento (§344):
+          {/* Con un lavoro la scheda parte dal biglietto dell'appuntamento (§346):
               andamento, riepiloghi e trattativa stanno sotto o spariscono. */}
           {booking ? bookingView : null}
 

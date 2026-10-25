@@ -44,7 +44,7 @@ function payloadGuidedRequestId(payload: Prisma.InputJsonValue): string | null {
 const CALENDAR_NOTIFICATION_TYPES: Record<string, "add" | "cancel"> = {
   QUOTE_ACCEPTED: "add",
   BOOKING_CONFIRMED: "add",
-  // Il professionista conferma la data proposta dal cliente: nasce il lavoro (§344).
+  // Il professionista conferma la data proposta dal cliente: nasce il lavoro (§346).
   QUOTE_DATE_CONFIRMED: "add",
   BOOKING_REOPENED_BY_CLIENT: "add",
   BOOKING_REOPENED_BY_PROFESSIONAL: "add",
@@ -132,7 +132,7 @@ export class NotificationsService {
 
   /**
    * Solo l'email, senza notifica nel sito: per confermare qualcosa che la
-   * persona ha appena fatto e vede già sullo schermo (docs/CHANGELOG.md §344).
+   * persona ha appena fatto e vede già sullo schermo (docs/CHANGELOG.md §346).
    */
   emailOnly(userId: string, type: string, payload: Prisma.InputJsonValue): void {
     void (async () => {

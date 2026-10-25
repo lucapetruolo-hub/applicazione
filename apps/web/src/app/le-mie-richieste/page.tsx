@@ -159,7 +159,7 @@ function LeMieRichiesteContent() {
     const map = new Map<string, ClientBooking>();
     (bookings ?? []).forEach((b) => {
       if (!b.guidedRequestId) return;
-      // Un appuntamento annullato non copre quello nato dopo da un altro preventivo (§344).
+      // Un appuntamento annullato non copre quello nato dopo da un altro preventivo (§346).
       const current = map.get(b.guidedRequestId);
       if (!current || current.status === "CANCELED") map.set(b.guidedRequestId, b);
     });
@@ -372,7 +372,7 @@ function LeMieRichiesteContent() {
   }
 
   // "Appuntamento prenotato" subito dopo l'accettazione (docs/CHANGELOG.md
-  // §344): col pagamento diretto dalla risposta, con l'acconto online al
+  // §346): col pagamento diretto dalla risposta, con l'acconto online al
   // ritorno da Stripe, appena il lavoro compare.
   const [confirmDismissed, setConfirmDismissed] = useState(false);
   const paidRequestId = depositPaid && !confirmDismissed ? searchParams.get("open") : null;

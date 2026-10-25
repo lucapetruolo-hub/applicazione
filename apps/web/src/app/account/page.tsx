@@ -4,7 +4,7 @@ import { useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Camera, Download, Trash2, Eye, EyeOff } from "lucide-react";
-import { ALL_ITALIAN_CITY_NAMES, findComuneByName, isMissingRulesProblem, isPlausiblePhoneNumber, passwordProblem } from "@professionisti/shared";
+import { allItalianCityNames, findComuneByName, isMissingRulesProblem, isPlausiblePhoneNumber, passwordProblem } from "@professionisti/shared";
 import { Autocomplete, Avatar, Button, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -582,7 +582,7 @@ export default function AccountPage() {
           <FieldRow label="Città">
             <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="$2" backgroundColor={brand.calce}>
               <Autocomplete
-                items={ALL_ITALIAN_CITY_NAMES}
+                items={allItalianCityNames()}
                 getKey={(item) => item}
                 getLabel={(item) => item}
                 onSelect={changeCity}

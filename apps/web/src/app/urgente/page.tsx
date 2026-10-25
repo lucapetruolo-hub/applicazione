@@ -3,7 +3,7 @@ import { UrgenteContent } from "./UrgenteContent";
 
 export const metadata: Metadata = {
   title: "Richiesta urgente",
-  description: "Trova subito un professionista disponibile ora per un intervento urgente.",
+  description: "Richiesta urgente gratuita: arriva subito ai professionisti della tua zona, segnata come urgente.",
   alternates: { canonical: "/urgente" },
 };
 

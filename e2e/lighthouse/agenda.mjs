@@ -1,4 +1,4 @@
-// Lighthouse dell'agenda su un telefono lento (docs/CHANGELOG.md §309):
+// Lighthouse dell'agenda, di Oggi e di Richieste su un telefono lento (docs/CHANGELOG.md §309, §345):
 // profilo "mobile" di Lighthouse (Moto G Power, CPU rallentata 4 volte,
 // rete 4G lenta simulata). Blocca sotto i limiti "scarso" di Google
 // (BUDGET) e avvisa sotto quelli "buono" (GOOD), che sono l'obiettivo.
@@ -10,8 +10,13 @@ import lighthouse from "lighthouse";
 
 const WEB_URL = process.env.E2E_WEB_URL ?? "http://localhost:3000";
 const PORT = 9333;
-/** Soglie: punteggi 0-100 e tempi in millisecondi. */
-const BUDGET = { performance: 60, accessibility: 90, "best-practices": 90, lcpMs: 4000, tbtMs: 600, cls: 0.25 };
+/**
+ * Soglie: punteggi 0-100 e tempi in millisecondi. TBT a 500 invece dei 600
+ * "scarso" di Google (docs/CHANGELOG.md §345): in CI le quattro pagine sono
+ * uscite tra 106 e 335 ms a seconda della macchina, quindi c'è margine contro
+ * il rumore ma un peggioramento serio blocca la PR.
+ */
+const BUDGET = { performance: 60, accessibility: 90, "best-practices": 90, lcpMs: 4000, tbtMs: 500, cls: 0.25 };
 const GOOD = { performance: 90, accessibility: 100, "best-practices": 100, lcpMs: 2500, tbtMs: 200, cls: 0.1 };
 
 const data = JSON.parse(readFileSync(new URL("../.auth/data.json", import.meta.url), "utf8"));
@@ -38,6 +43,9 @@ await page.locator(".ag-strip-row, .ag-card").first().waitFor({ state: "attached
 const pages = [
   { name: "calendario", path: "/dashboard/agenda" },
   { name: "orari", path: "/dashboard/agenda?tab=orari" },
+  // Le altre due pagine aperte più spesso dal professionista (docs/CHANGELOG.md §345).
+  { name: "oggi", path: "/dashboard" },
+  { name: "richieste", path: "/dashboard/richieste" },
 ];
 const rows = [];
 let failed = false;
@@ -77,7 +85,7 @@ for (const item of pages) {
     return out;
   };
   const problems = check(BUDGET);
-  if (!row.finalUrl.includes("/dashboard/agenda")) problems.push(`pagina sbagliata: ${row.finalUrl}`);
+  if (new URL(row.finalUrl).pathname !== new URL(item.path, WEB_URL).pathname) problems.push(`pagina sbagliata: ${row.finalUrl}`);
   if (problems.length) {
     failed = true;
     console.error(`✗ ${item.name}: ${problems.join(", ")}`);

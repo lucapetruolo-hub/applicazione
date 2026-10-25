@@ -159,6 +159,8 @@ const BUILDERS: Record<string, Builder> = {
       paragraphs: [
         `Un cliente cerca un professionista per **${category}**${city ? ` a ${city}` : ""}.`,
         ...(urgent ? ["**È una richiesta urgente:** il cliente cerca qualcuno disponibile subito."] : []),
+        // Quando serve, scelto dal cliente (docs/CHANGELOG.md §344).
+        ...(payload.timing === "WEEK" ? ["**Quando:** in settimana."] : payload.timing === "CALM" ? ["**Quando:** con calma, il cliente non ha fretta."] : []),
         ...(respondUntil ? [`**Puoi rispondere fino ${formatItalianUntil(respondUntil)}.**`] : []),
         "Chi risponde per primo ha più probabilità di aggiudicarsi il lavoro: apri la richiesta, guarda le foto e invia il tuo preventivo.",
       ],
@@ -465,7 +467,7 @@ const BUILDERS: Record<string, Builder> = {
     title: "Intervento annullato",
     paragraphs: [
       `Il cliente ha annullato l'intervento per **${job(ctx)}**: l'appuntamento non è più nella tua agenda.`,
-      // Dentro il preavviso scelto dal professionista (docs/CHANGELOG.md §345).
+      // Dentro il preavviso scelto dal professionista (docs/CHANGELOG.md §347).
       ...(typeof payload.lateNotice === "string" ? [`Ha annullato con meno di ${payload.lateNotice} di preavviso.`] : []),
     ],
     details: proJobDetails(ctx),
@@ -903,6 +905,17 @@ const BUILDERS: Record<string, Builder> = {
     paragraphs: ["Dopo l'invio all'Agenzia delle Entrate alcuni importi sono cambiati (rimborso o lavoro riaperto). Usa \"Correggi\" sull'anno, poi esporta e invia la correzione."],
     cta: { label: "Apri Finanza e DAC7", url: `${frontendUrl()}/admin/finanza` },
   }),
+  ADMIN_URGENCY_ALERT: (payload) => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: "Richieste urgenti da controllare",
+    title: "Richieste urgenti fuori soglia",
+    paragraphs: [
+      ...(Array.isArray(payload.alerts) ? payload.alerts.filter((a): a is string => typeof a === "string") : []),
+      "Numeri degli ultimi 7 giorni, nella Home dell'area admin.",
+    ],
+    cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin` },
+  }),
   ADMIN_JOB_BALANCE_UNPAID: () => ({
     kind: "notification",
     tone: "urgent",
@@ -1173,7 +1186,7 @@ const BUILDERS: Record<string, Builder> = {
     };
   },
   // "Sto arrivando" dall'agenda (§288).
-  // Conferma al cliente appena accetta (docs/CHANGELOG.md §344): prima col
+  // Conferma al cliente appena accetta (docs/CHANGELOG.md §346): prima col
   // pagamento diretto non riceveva nulla, e il calendario arrivava solo col
   // promemoria del giorno prima.
   BOOKING_CONFIRMED: (payload, ctx) => ({

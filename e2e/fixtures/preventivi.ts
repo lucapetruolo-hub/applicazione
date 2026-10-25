@@ -5,7 +5,7 @@ import { API_URL, WEB_URL } from "./env";
 
 /**
  * Richieste con preventivi da accettare, per le prove del lavoro prenotato
- * (docs/CHANGELOG.md §344): cliente, professionisti e preventivi creati nel
+ * (docs/CHANGELOG.md §346): cliente, professionisti e preventivi creati nel
  * database di prova, accettazione fatta dall'API vera.
  */
 

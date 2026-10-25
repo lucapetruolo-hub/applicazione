@@ -24,7 +24,7 @@ describe("orari degli appuntamenti", () => {
   });
 });
 
-// Riga in cima alla scheda del lavoro accettato, lato cliente (docs/CHANGELOG.md §344).
+// Riga in cima alla scheda del lavoro accettato, lato cliente (docs/CHANGELOG.md §346).
 describe("momento dell'appuntamento", () => {
   const start = "2026-10-28T14:00:00.000Z";
   const end = "2026-10-28T16:00:00.000Z";

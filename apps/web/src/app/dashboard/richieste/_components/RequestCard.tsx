@@ -26,6 +26,7 @@ import {
   type ProfessionalAvailableSlot,
   type ProfessionalBooking,
   type ProfessionalLead,
+  REQUEST_TIMING_LABEL,
 } from "@professionisti/shared";
 import { Avatar, Badge, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -659,6 +660,12 @@ export function RequestCard({
                 (ServiceBadge, "A domicilio"/"Consulenza online"). */}
             <StagePill stage={stage} label={stage === "chiusa" && gr.withdrawnByClient ? "Ritirata dal cliente" : undefined} />
             <ServiceBadge online={isOnline} />
+            {/* Quando serve, scelto dal cliente (§344): "Oggi" è già il badge Urgente. */}
+            {gr.timing === "WEEK" || gr.timing === "CALM" ? (
+              <Text fontSize={13} fontWeight="600" color={brand.grafite70} alignSelf="center">
+                {REQUEST_TIMING_LABEL[gr.timing]}
+              </Text>
+            ) : null}
             {stage === "da_quotare" ? deadlines.map((deadline) => <DeadlinePill key={deadline.label} deadline={deadline} />) : null}
             {stage === "da_quotare" && competitorsLabel ? (
               <Text fontSize={13} fontWeight="600" color={brand.grafite70}>
@@ -1034,7 +1041,7 @@ export function RequestCard({
                   : "Il nostro team l'ha esaminata e chiusa senza misure."}
             </Text>
           ) : null}
-          {/* Annullato dal cliente dentro il preavviso che hai scelto (docs/CHANGELOG.md §345). */}
+          {/* Annullato dal cliente dentro il preavviso che hai scelto (docs/CHANGELOG.md §347). */}
           {booking?.status === "CANCELED" && booking.canceledBy === "CLIENT" && booking.canceledLate ? (
             <Text fontSize={13} color={brand.urgenza} fontWeight="600">
               Il cliente ha annullato con meno preavviso di quello che chiedi.

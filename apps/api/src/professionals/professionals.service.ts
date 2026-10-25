@@ -1017,7 +1017,7 @@ export class ProfessionalsService {
     );
     const otherQuotesPerRequest = new Map(quoteCounts.map((row) => [row.guidedRequestId, row._count._all]));
     // Richieste in cui il cliente ha accettato il preventivo di un altro
-    // professionista (docs/CHANGELOG.md §344): il preventivo di chi non è
+    // professionista (docs/CHANGELOG.md §346): il preventivo di chi non è
     // stato scelto non resta "in attesa del cliente" per sempre.
     const takenByOthers = new Set(
       requestIds.length > 0
@@ -1162,6 +1162,7 @@ export class ProfessionalsService {
           photoUrls: lead.guidedRequest.photoUrls,
           serviceMode: lead.guidedRequest.serviceMode,
           isUrgent: lead.guidedRequest.isUrgent,
+          timing: lead.guidedRequest.timing,
           // Valorizzati solo se la richiesta è nata da una fascia generica
           // dell'agenda (AvailabilitySlot.maxBookings > 1): il professionista
           // deve vedere subito per quale orario è stata richiesta.
@@ -1431,7 +1432,7 @@ export class ProfessionalsService {
       // Chi ha annullato — richiesta esplicita dell'utente, mostrato accanto
       // all'etichetta "Annullata".
       canceledBy: booking.canceledBy,
-      // Il cliente ha annullato dentro il preavviso scelto (docs/CHANGELOG.md §345).
+      // Il cliente ha annullato dentro il preavviso scelto (docs/CHANGELOG.md §347).
       canceledLate: booking.canceledLate,
       professionalProblemReport: booking.quote?.guidedRequestId ? (problemReportByGuidedRequestId.get(booking.quote.guidedRequestId) ?? null) : null,
       description: booking.quote?.guidedRequest?.description ?? null,

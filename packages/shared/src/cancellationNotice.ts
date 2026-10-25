@@ -1,7 +1,7 @@
 import { wallClockNow } from "./appointmentTime";
 
 /**
- * Preavviso per annullare scelto dal professionista (docs/CHANGELOG.md §345,
+ * Preavviso per annullare scelto dal professionista (docs/CHANGELOG.md §347,
  * decisione dell'utente): 24 ore, 48 ore o 3 giorni. Si copia sul lavoro
  * quando il cliente accetta, così cambiarlo dopo non tocca i lavori già
  * prenotati. Oggi è un'indicazione: il cliente può annullare fino all'inizio

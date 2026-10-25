@@ -3,7 +3,7 @@ import { GeocodingService } from "../geocoding/geocoding.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { randomUUID } from "node:crypto";
 import { Prisma, type PrismaClient, type ProfessionalProfile } from "@professionisti/database";
-import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_RESTORE_WINDOW_MINUTES, type RequestWithdrawReason, findComuneByName, professionalKindOf, professionalRestrictions, clientPaymentOffer, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
+import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_RESTORE_WINDOW_MINUTES, type RequestWithdrawReason, findComuneByName, professionalKindOf, professionalRestrictions, clientPaymentOffer, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestReach, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { reviewSummariesFor, type ReviewSummary } from "../reviews/review-summary";
 import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing, publicVisibilityWhere, publicVerified, stripeVerified } from "../professional-fiscal/public-visibility";
@@ -56,6 +56,11 @@ function addDays(date: Date, days: number): Date {
  * §224): la scadenza della richiesta, mai per le urgenti (resta la
  * dicitura di prima, decisione dell'utente §221).
  */
+/** Con la scelta dei tempi (§344) è "Oggi" a rendere urgente la richiesta. */
+function withTimingUrgency<T extends { isUrgent: boolean; timing?: GuidedRequestInput["timing"] }>(input: T): T {
+  return input.timing ? { ...input, isUrgent: input.timing === "TODAY" } : input;
+}
+
 function respondUntilForEmail(isUrgent: boolean, expiresAt: Date | null): string | null {
   return !isUrgent && expiresAt ? expiresAt.toISOString() : null;
 }
@@ -85,7 +90,8 @@ export class GuidedRequestsService {
    * controlli (categorie, zona aperta, indirizzo) si fanno tutti prima di
    * crearne una, così non resta mai una parte delle richieste a metà.
    */
-  async createForCategories(clientId: string, input: GuidedRequestInput) {
+  async createForCategories(clientId: string, rawInput: GuidedRequestInput) {
+    const input = withTimingUrgency(rawInput);
     const { extraCategorySlugs, ...rest } = input;
     const slugs = [input.categorySlug, ...(extraCategorySlugs ?? [])];
     if (slugs.length === 1) {
@@ -289,6 +295,7 @@ export class GuidedRequestsService {
               postalCode: input.postalCode?.trim() || null,
               province: input.province?.trim() || null,
               isUrgent: input.isUrgent,
+              timing: input.timing ?? null,
               serviceMode: input.serviceMode,
               professionalProfileId: targetProfile?.id,
               forwardIfNoReply: !!targetProfile && input.forwardIfNoReply,
@@ -360,6 +367,7 @@ export class GuidedRequestsService {
           guidedRequestId: guidedRequest.id,
           category: category.label,
           city: input.city ?? null,
+          timing: input.timing ?? null,
           isUrgent: input.isUrgent,
           respondUntil: respondUntilForEmail(input.isUrgent, requestExpiresAt),
         });
@@ -502,6 +510,7 @@ export class GuidedRequestsService {
         photoUrls: request.photoUrls,
         serviceMode: request.serviceMode,
         isUrgent: request.isUrgent,
+        timing: request.timing,
         status: request.status,
         // Esposto ora anche qui (richiesta esplicita dell'utente,
         // /le-mie-richieste "simile alle richieste ricevute"): distingue
@@ -593,7 +602,7 @@ export class GuidedRequestsService {
           // serie per i preventivi vecchi; senza la verifica su Stripe del
           // professionista l'acconto online non si può scegliere (§241).
           ...clientPaymentOffer(quote, stripeVerified(quote.professionalProfile.fiscalProfile)),
-          // Preavviso per annullare scelto dal professionista (docs/CHANGELOG.md §345), detto prima di Accetta.
+          // Preavviso per annullare scelto dal professionista (docs/CHANGELOG.md §347), detto prima di Accetta.
           cancellationNoticeHours: quote.professionalProfile.cancellationNoticeHours,
           resentAt: quote.resentAt?.toISOString() ?? null,
           notes: quote.notes,
@@ -871,6 +880,41 @@ export class GuidedRequestsService {
   }
 
   /**
+   * A quanti professionisti arriverebbe la richiesta senza e con "Urgente"
+   * (docs/CHANGELOG.md §344): stessa selezione del fan-out, così il
+   * riepilogo del modulo mostra un numero vero. Con `excludeProfileId`
+   * (richiesta diretta) conta l'inoltro: zona del cliente o, se manca,
+   * quella del professionista scelto, come in forwardDirectRequest.
+   */
+  async reach(input: {
+    categorySlugs: string[];
+    city?: string;
+    serviceMode?: string;
+    excludeProfileId?: string;
+  }): Promise<GuidedRequestReach> {
+    const categories = input.categorySlugs.length
+      ? await this.prisma.category.findMany({ where: { slug: { in: input.categorySlugs.slice(0, 5) } }, select: { id: true } })
+      : [];
+    if (categories.length === 0) return { standard: 0, urgent: 0 };
+    let zone = input.city?.trim() ?? "";
+    if (!zone && input.excludeProfileId) {
+      const chosen = await this.prisma.professionalProfile.findUnique({ where: { id: input.excludeProfileId }, select: { city: true } });
+      zone = chosen?.city ?? "";
+    }
+    const opts = { excludeProfileId: input.excludeProfileId, remoteOnly: input.serviceMode === "ONLINE" };
+    // Più categorie: professionisti diversi, chi ne fa due conta una volta.
+    const count = async (isUrgent: boolean) => {
+      const ids = new Set<string>();
+      for (const category of categories) {
+        for (const match of await this.matchProfilesForFanOut(category.id, zone, isUrgent, opts)) ids.add(match.profile.id);
+      }
+      return ids.size;
+    };
+    const [standard, urgent] = await Promise.all([count(false), count(true)]);
+    return { standard, urgent };
+  }
+
+  /**
    * Professionisti compatibili col fan-out di una richiesta guidata:
    * stessa categoria + entro il raggio di ingaggio del professionista
    * candidato (engagementRadiusKm per le richieste standard,
@@ -1004,6 +1048,7 @@ export class GuidedRequestsService {
         guidedRequestId: request.id,
         category: request.category.label,
         city: request.city,
+        timing: request.timing ?? null,
         isUrgent: request.isUrgent,
         respondUntil: respondUntilForEmail(request.isUrgent, request.expiresAt),
       });
@@ -1080,6 +1125,7 @@ export class GuidedRequestsService {
         guidedRequestId,
         category: request.category.label,
         city: request.city,
+        timing: request.timing ?? null,
         isUrgent: request.isUrgent,
         respondUntil: respondUntilForEmail(request.isUrgent, request.expiresAt),
       });
@@ -1131,7 +1177,7 @@ export class GuidedRequestsService {
       await this.forwardDirectRequest(guidedRequestId);
       return;
     }
-    type NotifyTarget = { userId: string; professionalProfileId: string; categoryLabel: string; city: string; isUrgent: boolean; expiresAt: Date | null };
+    type NotifyTarget = { userId: string; professionalProfileId: string; categoryLabel: string; city: string; isUrgent: boolean; timing: string | null; expiresAt: Date | null };
     let notifyTarget: NotifyTarget | null;
 
     try {
@@ -1181,6 +1227,7 @@ export class GuidedRequestsService {
             categoryLabel: request.category.label,
             city: request.city,
             isUrgent: request.isUrgent,
+            timing: request.timing,
             expiresAt: request.expiresAt,
           };
         },
@@ -1201,6 +1248,7 @@ export class GuidedRequestsService {
         guidedRequestId,
         category: notifyTarget.categoryLabel,
         city: notifyTarget.city,
+        timing: notifyTarget.timing ?? null,
         isUrgent: notifyTarget.isUrgent,
         respondUntil: respondUntilForEmail(notifyTarget.isUrgent, notifyTarget.expiresAt),
       });

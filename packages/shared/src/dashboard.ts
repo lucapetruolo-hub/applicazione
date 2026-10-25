@@ -2,6 +2,7 @@ import type { RequestWithdrawReason } from "./requestWithdraw";
 import type { JobIssueSummary } from "./jobIssues";
 import type { JobPaymentChoice, JobPaymentSummary } from "./onlinePayments";
 import type { ProfessionalDetail } from "./professionals";
+import type { RequestTiming } from "./requestTiming";
 /**
  * Anteprima del proprio profilo pubblico (docs/CHANGELOG.md §252): gli stessi
  * dati della pagina pubblica e se i clienti la vedono già, o perché no.
@@ -37,7 +38,7 @@ export type MyProfessionalProfile = {
   /** Quando ha chiesto la verifica (docs/CHANGELOG.md §201); null se non l'ha chiesta o è già verificato. */
   verificationRequestedAt: string | null;
   remoteAvailable: boolean;
-  /** Preavviso per annullare scelto dal professionista: 24, 48 o 72 ore (docs/CHANGELOG.md §345). */
+  /** Preavviso per annullare scelto dal professionista: 24, 48 o 72 ore (docs/CHANGELOG.md §347). */
   cancellationNoticeHours: number;
   imageUrl: string | null;
   /** Foto reali di lavori svolti (fino a 10), mostrate in una galleria sul profilo pubblico. */
@@ -172,7 +173,7 @@ export type ProfessionalLead = {
      * `null` finché il preventivo non è stato accettato.
      */
     bookingStatus: string | null;
-    /** Il cliente ha accettato il preventivo di un altro professionista (docs/CHANGELOG.md §344). */
+    /** Il cliente ha accettato il preventivo di un altro professionista (docs/CHANGELOG.md §346). */
     otherProfessionalChosen: boolean;
   } | null;
   guidedRequest: {
@@ -223,6 +224,8 @@ export type ProfessionalLead = {
     /** Tipo di intervento (richiesta esplicita dell'utente: "il professionista già sa se può trattarsi di un intervento a domicilio o online") — `null` per le richieste create prima di questo campo. */
     serviceMode: "HOME" | "ONLINE" | null;
     isUrgent: boolean;
+    /** Quando serve, scelto dal cliente (§344): null per le richieste di prima. */
+    timing: RequestTiming | null;
     /** Valorizzati solo se la richiesta è nata da una fascia generica dell'agenda (vedi packages/shared/src/availability.ts). */
     preferredDate: string | null;
     preferredTimeSlot: string | null;
@@ -305,7 +308,7 @@ export type ProfessionalBooking = {
   cancellationNote: string | null;
   /** Chi ha annullato — richiesta esplicita dell'utente, mostrato accanto all'etichetta "Annullata". `null` finché non CANCELED, o per righe annullate prima di questo campo. */
   canceledBy: "CLIENT" | "PROFESSIONAL" | null;
-  /** Il cliente ha annullato dentro il preavviso scelto dal professionista (docs/CHANGELOG.md §345). */
+  /** Il cliente ha annullato dentro il preavviso scelto dal professionista (docs/CHANGELOG.md §347). */
   canceledLate: boolean;
   /** Ultima segnalazione "Qualcosa è andato male" del professionista su questo lavoro (§197), `null` se non ne ha fatte. */
   professionalProblemReport: { reason: string; status: "OPEN" | "RESOLVED" | "DISMISSED"; createdAt: string } | null;

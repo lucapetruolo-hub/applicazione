@@ -1,16 +1,21 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button, Logo, Text, XStack, brand, motionEasing, motionFast } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
 import { AccountMenu } from "./AccountMenu";
 import { prefetchCategoryOrder } from "@/lib/categoryOrder";
-import { HeaderSearchBar } from "./HeaderSearchBar";
 import { MegaMenu } from "./MegaMenu";
 import { NotificationBell } from "./NotificationBell";
 import { BRAND } from "@professionisti/shared";
+
+// Caricata a parte (docs/CHANGELOG.md §345): serve solo nelle pagine dei
+// risultati e porta con sé l'elenco di tutti i comuni (circa 440 KB), che
+// prima finiva nel JavaScript di ogni pagina del sito.
+const HeaderSearchBar = dynamic(() => import("./HeaderSearchBar").then((module) => module.HeaderSearchBar));
 
 /**
  * Header sticky (brief "Vicinato", CLAUDE.md §19): niente più hairline —

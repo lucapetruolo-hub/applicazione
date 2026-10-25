@@ -70,6 +70,13 @@ const nextConfig = {
     // risultati devono rileggere i searchParams ad ogni navigazione, anche
     // verso lo stesso percorso con query diverse (cambio Online/Domicilio).
     staleTimes: { dynamic: 0, static: 0 },
+    // React Compiler (docs/CHANGELOG.md §345): ricorda da solo i valori e i
+    // componenti che non cambiano, così React ridisegna meno a ogni
+    // aggiornamento. Tutto il sito tranne i componenti con `<style jsx>`, che
+    // hanno la direttiva "use no memo": compilati perdono le classi jsx-...
+    // (es. il testo breve del banner cookie compariva insieme a quello lungo).
+    // Un componente nuovo con `<style jsx>` deve avere "use no memo".
+    reactCompiler: true,
   },
   // Sito privato finché NEXT_PUBLIC_SITE_INDEXABLE non vale "true" (vedi
   // src/lib/siteIndexing.ts): l'header copre anche le pagine client e le
@@ -98,10 +105,10 @@ const nextConfig = {
     config.resolve.alias = {
       ...config.resolve.alias,
       "react-native$": "react-native-web",
-      // @professionisti/shared dai sorgenti (ESM) invece che da dist/
-      // (CommonJS): da CommonJS webpack non può togliere le parti di zod che
-      // il sito non usa, e zod 4 porterebbe nel browser ~420 KB in più
-      // (tutte le lingue dei messaggi, JSON Schema). docs/CHANGELOG.md §326.
+      // Il sito usa i sorgenti di packages/shared (ESM) e non dist/
+      // (CommonJS): con `sideEffects: false` ogni pagina prende solo le parti
+      // che usa (zod 4, elenco dei comuni...) invece di tutto il pacchetto.
+      // docs/CHANGELOG.md §326 e §345. L'API continua a usare dist/.
       "@professionisti/shared$": fileURLToPath(new URL("../../packages/shared/src/index.ts", import.meta.url)),
     };
     config.resolve.extensions = [".web.js", ".web.jsx", ".web.ts", ".web.tsx", ...config.resolve.extensions];

@@ -90,6 +90,9 @@ import type {
   AddressPlace,
   TaxIdCheckView,
   GeneralRequestAvailability,
+  GuidedRequestReach,
+  UrgencyMetrics,
+  RequestTiming,
   GeneralRequestsAdminOverview,
   GeneralRequestThresholds,
   CloseGeneralRequestsInput,
@@ -162,9 +165,9 @@ export type ClientBooking = {
   professionalAddress: string | null;
   /** Vero se il cliente ha già segnalato un no-show per questa prenotazione. */
   refundRequested: boolean;
-  /** Quando il professionista ha premuto "Sto arrivando" (docs/CHANGELOG.md §344), null se non ancora. */
+  /** Quando il professionista ha premuto "Sto arrivando" (docs/CHANGELOG.md §346), null se non ancora. */
   onTheWayAt: string | null;
-  /** Preavviso per annullare valido per questo lavoro, in ore: 24, 48 o 72 (docs/CHANGELOG.md §345). */
+  /** Preavviso per annullare valido per questo lavoro, in ore: 24, 48 o 72 (docs/CHANGELOG.md §347). */
   cancellationNoticeHours: number;
   /** Link per una consulenza video (Meet/Zoom/ecc.), impostato dal professionista — richiesta esplicita dell'utente. */
   meetingLink: string | null;
@@ -205,6 +208,8 @@ export type ClientGuidedRequest = {
   /** Tipo di intervento (richiesta esplicita dell'utente) — `null` per le richieste create prima di questo campo. */
   serviceMode: "HOME" | "ONLINE" | null;
   isUrgent: boolean;
+  /** Quando serve, scelto dal cliente (docs/CHANGELOG.md §344): null per le richieste di prima. */
+  timing: RequestTiming | null;
   status: "OPEN" | "MATCHED" | "CLOSED";
   /**
    * Perché è CLOSED (`null` finché non lo è) — richiesta esplicita
@@ -277,7 +282,7 @@ export type ClientGuidedRequest = {
     /** Modi di pagamento offerti dal professionista e percentuale dell'acconto online (docs/CHANGELOG.md §237). */
     paymentOptions: JobPaymentChoice[];
     depositPercent: number;
-    /** Preavviso per annullare scelto dal professionista, in ore: 24, 48 o 72 (docs/CHANGELOG.md §345). */
+    /** Preavviso per annullare scelto dal professionista, in ore: 24, 48 o 72 (docs/CHANGELOG.md §347). */
     cancellationNoticeHours: number;
     /** Quando il professionista ha inviato un nuovo preventivo dopo un rifiuto, null se mai. */
     resentAt: string | null;
@@ -1536,7 +1541,7 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
         body: JSON.stringify(input),
       }),
 
-    /** "Aggiungi al calendario" del cliente (docs/CHANGELOG.md §344): link di Google Calendar e file .ics. */
+    /** "Aggiungi al calendario" del cliente (docs/CHANGELOG.md §346): link di Google Calendar e file .ics. */
     bookingCalendar: (token: string, bookingId: string) =>
       request<{ googleUrl: string | null; ics: string }>(`/bookings/${bookingId}/calendar`, { headers: { Authorization: `Bearer ${token}` } }),
 
@@ -1712,6 +1717,16 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
       if (city?.trim()) params.set("citta", city.trim());
       return request<GeneralRequestAvailability>(`/general-requests/availability?${params.toString()}`, { cache: "no-store" });
     },
+    /** A quanti professionisti arriverebbe la richiesta, senza e con "Urgente" (docs/CHANGELOG.md §344). */
+    guidedRequestReach: (input: { categorySlugs: string[]; city?: string; serviceMode?: string; professionalProfileId?: string }) => {
+      const params = new URLSearchParams({ categoria: input.categorySlugs.join(",") });
+      if (input.city?.trim()) params.set("citta", input.city.trim());
+      if (input.serviceMode) params.set("modalita", input.serviceMode);
+      if (input.professionalProfileId) params.set("professionista", input.professionalProfileId);
+      return request<GuidedRequestReach>(`/guided-requests/reach?${params.toString()}`, { cache: "no-store" });
+    },
+    adminUrgencyMetrics: (token: string) =>
+      request<UrgencyMetrics>("/admin/urgency-metrics", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
     adminGeneralRequests: (token: string) =>
       request<GeneralRequestsAdminOverview>("/admin/general-requests", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
     adminCloseGeneralRequests: (token: string, input: CloseGeneralRequestsInput) =>

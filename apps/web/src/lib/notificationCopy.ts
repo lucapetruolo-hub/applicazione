@@ -99,6 +99,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   JOB_PAYMENT_DEBT: { icon: "💳", message: "Hai un importo da restituire su un lavoro: lo tratteniamo dai tuoi prossimi pagamenti online." },
   ADMIN_JOB_PAYMENT_LONG_HOLD: { icon: "⏳", message: "Un pagamento online è bloccato da quasi 90 giorni: decidi se sbloccarlo o rimborsare." },
   ADMIN_DAC7_NEEDS_CORRECTION: { icon: "⚠️", message: "DAC7: importi cambiati dopo l'invio, l'anno va corretto." },
+  ADMIN_URGENCY_ALERT: { icon: "⚡", message: "Richieste urgenti fuori soglia questa settimana: guarda i numeri nell'area admin." },
   ADMIN_STRIPE_DISPUTE: { icon: "⚠️", message: "Contestazione in banca su un pagamento: rispondi con le prove dalla Dashboard Stripe." },
   ADMIN_JOB_BALANCE_UNPAID: { icon: "⚠️", message: "Un cliente non ha pagato il saldo di un lavoro entro 7 giorni." },
   // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §190).

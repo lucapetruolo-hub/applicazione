@@ -1,6 +1,6 @@
 "use client";
 
-import { formatAppointmentTimeRange, formatBookingAddress, formatJobDays, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
+import { REQUEST_TIMING_LABEL, formatAppointmentTimeRange, formatBookingAddress, formatJobDays, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
 import { Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { REQUEST_STAGE_STYLE, type RequestStage } from "@/lib/requestStage";
 
@@ -92,6 +92,7 @@ export function leadSearchText(lead: ProfessionalLead, stage: RequestStage | und
     gr.city,
     gr.serviceMode === "ONLINE" ? "consulenza online" : "a domicilio",
     gr.isUrgent ? "urgente" : null,
+    gr.timing ? REQUEST_TIMING_LABEL[gr.timing] : null,
     stage ? STAGE_STYLE[stage].label : null,
     lead.declineNote,
     lead.professionalNote,

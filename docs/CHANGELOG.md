@@ -20762,7 +20762,80 @@ accorciata in "Subito dopo potrai lasciare una recensione, anche con foto".
 - Nella conferma di "Rifiuta" un preventivo: "Non ti serve più il lavoro? **Elimina la richiesta**", che apre la stessa conferma (chi non vuole più il lavoro sceglieva "Rifiuta").
 - Nel menu a tre linee una riga piccola sotto "Archivia" ("La ritrovi in Archiviate") ed "Elimina richiesta" ("La ritiri anche per i professionisti"): `CardAction.hint`. Anteprime 15-17.
 
-## 344. Dal preventivo accettato alla recensione: biglietto dell'appuntamento, un solo lavoro per richiesta
+## 344. Interruttore "Urgente" anche nel riepilogo della richiesta
+
+**Richiesta esplicita dell'utente** (25/10/2026, thread "Interruttore Urgente nell'ultimo passo del preventivo"): nel modulo di richiesta preventivo, all'ultimo passo, "Urgente" deve stare vicino all'opzione che inoltra la richiesta agli altri professionisti se quello scelto non risponde, facile da accendere e spegnere.
+
+**Decisione presa**
+- Nel riepilogo (passo 3) un riquadro "Opzioni di invio" subito sopra il pulsante, con due righe a interruttore tondo: "Urgente" (rosso acceso) e, per la richiesta diretta, "Inoltra se non risponde" (verde, prima era una casella di spunta). Nella richiesta generale c'è solo "Urgente". Tutta la riga si tocca (`role="switch"`), comoda da telefono.
+- È lo stesso stato dell'interruttore "È urgente?" del passo 1, che ora usa la stessa riga a interruttore al posto della casella di spunta (stesso riquadro rosato quando è acceso).
+- Accendendo o spegnendo "Urgente" nel riepilogo cambiano subito il tempo dell'inoltro (60 minuti / 6 ore), "Cosa succede dopo l'invio", la riga del lavoro e il pulsante d'invio (rosso "Invia richiesta urgente" / verde "Invia richiesta"; anche da `/urgente`, se si spegne, il testo torna "Invia richiesta").
+- Componente `SendOptionSwitch` in `GuidedRequestForm.tsx`, stile `.guided-option*` in `globals.css` (stesso disegno di `.notif-switch`); tolte le classi `.guided-urgent-toggle` e `.guided-forward`.
+
+**Verifica**
+- Typecheck e lint di `apps/web`.
+- Prova nel browser (1366px e 390px), richiesta diretta e generale: l'interruttore acceso nel riepilogo risulta acceso anche tornando al passo 1. Anteprime in `/mnt/project-files/anteprime/urgente-riepilogo/`.
+
+**Miglioria approvata da Luca** ("Effettua miglioria 1")
+- Su `/urgente`, se il cliente spegne "Urgente", spariscono la fascia rossa "Richiesta urgente: notifichiamo subito…" e titolo e frase diventano quelli di `/preventivo` ("Richiedi un preventivo gratuito"); riaccendendolo tornano. Il modulo avvisa la pagina con `onUrgentChange`. Provato a 1366px e 390px.
+
+**Versione più approfondita** (richiesta di Luca, stesso thread): "Urgente" facile da segnare anche all'ultimo passo, ma il cliente deve sapere cosa comporta e non usarlo "per sicurezza".
+- **Promessa vera**: su `/urgente` c'era "notifichiamo subito i professionisti disponibili ora", ma nessun controllo guarda chi è disponibile adesso (la richiesta va a tutti quelli che accettano urgenze nel raggio). Luca ha scelto di correggere la scritta: "Richiesta urgente: arriva subito ai professionisti della tua zona" (fascia e descrizione della pagina). Domanda 41 per l'avvocato (Codice del consumo artt. 21-22) nel file unico.
+- **A quanti arriva**: nuova rotta pubblica `GET /guided-requests/reach` (stessa selezione del fan-out, `GuidedRequestsService.reach`, fino a 5 categorie, 60/min per IP) che restituisce quanti professionisti riceverebbero la richiesta senza e con "Urgente". Il riepilogo lo dice in una riga ("Arriva subito a N professionisti di …", "Per ora nessun professionista … ti avvisiamo appena ce n'è uno"), l'inoltro dice "altri N professionisti simili". Il numero urgente compare sotto l'interruttore solo da acceso (da spento faceva pensare che fosse già urgente). "Possono risponderti per 30/60 giorni" sostituito da "Ti avvisiamo a ogni preventivo: li confronti e scegli tu".
+- **Lettore di schermo**: una zona `role="status"` `aria-live="polite"` annuncia ogni cambio ("Urgente attivo. Arriva a 5 professionisti." / "Urgente disattivato. Se non risponde, la inoltriamo dopo 6 ore.").
+- **Due modi a confronto**: interruttore sì/no ("Solo se serve entro 24 ore") e scelta dei tempi "Oggi / In settimana / Con calma" (`URGENCY_CONTROL` in `GuidedRequestForm.tsx`, componente `UrgencyControl`, stile `.guided-timing*`), anteprime in `/mnt/project-files/anteprime/urgente-due-modi/` (e `giro2/`). Test con 10 utenti di prova simulati in due giri (`/mnt/project-files/analisi/urgente-test-utenti.md`): nel secondo giro 5 su 5 scelgono bene in entrambi i modi e sanno dire cosa succede dopo l'invio. Consigliato l'interruttore, **Luca ha scelto i tempi**: vedi sotto.
+- **Prova automatica**: `e2e/tests/richiesta-urgente.spec.ts` (stato uguale nei due passi, tempi dell'inoltro e pulsante aggiornati, annuncio, /urgente coerente, richiesta inviata con `isUrgent` giusto) con controllo axe sul riquadro e sul pulsante; gira nel job della CI con le altre prove nel browser.
+- **Misura dopo il lancio**: `apps/api/src/urgency-metrics/` calcola sugli ultimi 7 giorni quota di urgenti, minuti mediani al primo preventivo (urgenti e normali) e urgenti senza destinatari (`GET /admin/urgency-metrics`, riquadro "Richieste urgenti" nella Home admin). Ogni lunedì alle 9, solo dopo `LAUNCH_DATE` e con almeno 20 richieste, notifica `ADMIN_URGENCY_ALERT` (sito + email) agli admin senza ruoli specifici o SUPER se le urgenti superano il 30% o non ricevono il primo preventivo prima delle normali. Prova in `urgency-metrics.test.ts`.
+
+**Scelte di Luca dopo il test**
+- **"Oggi / In settimana / Con calma"** al posto dell'interruttore, al passo 1 e nel riepilogo (gruppo "Quando ti serve?", radio veri, nessuna scelta già fatta tranne "Oggi" da `/urgente`). Solo "Oggi" rende la richiesta urgente; tolti l'interruttore "Urgente" e `URGENCY_CONTROL`. "Inoltra se non risponde" resta a interruttore.
+- La scelta si salva: enum `RequestTiming` e campo `GuidedRequest.timing` (migrazione `20261025160000_quando_serve`, null per le richieste di prima), `timing` nello schema della richiesta (se c'è decide anche `isUrgent`, `withTimingUrgency`), ricopiato nel rinvio dopo una mancata presentazione. Il professionista la vede: "In settimana"/"Con calma" nella scheda in Richieste (cercabile) e "**Quando:** …" nell'email "Nuova richiesta" ("Oggi" è già il badge Urgente). Etichette in `packages/shared/src/requestTiming.ts`.
+- **Raggio delle urgenti lasciato così**: un'urgente va solo a chi la accetta nel suo raggio urgente; il riepilogo mostra quanti sono.
+- Prova nel browser aggiornata ai tempi (12 verdi in locale); anteprime finali in `/mnt/project-files/anteprime/urgente-due-modi/finale/`.
+
+**Migliorie approvate da Luca** ("Effettua le due migliorie")
+- Il cliente vede la scelta anche in "Le mie richieste": "In settimana"/"Con calma" accanto ai badge della scheda (cercabile), `timing` in `ClientGuidedRequest`; "Oggi" è già il badge Urgente.
+- Test con 5 nuovi utenti di prova che non conoscono il sito, sulla versione finale (`/mnt/project-files/analisi/urgente-test-utenti.md`, terzo giro): 5 su 5 scelgono bene e sanno dire cosa succede dopo l'invio.
+
+**Migliorie dal terzo test, approvate da Luca** ("effettua le 4 migliorie")
+- "Oggi" non sembra più già scelto: finché non lo tocchi è grigio come gli altri, rosso solo il fulmine (5 su 5 lo credevano selezionato).
+- Al passo 1, prima di scegliere, la riga "Oggi solo se serve entro 24 ore." (prima le spiegazioni comparivano solo dopo il tocco).
+- "Ti avvisiamo per email a ogni preventivo" (4 su 5 chiedevano come).
+- Al posto di "I tuoi dati di contatto restano nascosti…": "Finché non accetti un preventivo vedono solo nome, città e lavoro: telefono e via restano nascosti" (3 su 5 non sapevano se la via si vede; è quello che fa `clientNameForProfessional` e CLAUDE.md §5 punto 9).
+- Proposta non scelta: "Richiesta gratuita anche se urgente".
+
+## 345. Agenda più veloce sui telefoni lenti
+
+Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla lista delle migliorie della §323: con la prova Lighthouse che misura davvero l'agenda, §321, il TBT era al limite).
+
+**Misura di partenza** (ramo principale, Lighthouse "telefono lento", mediana di tre giri): TBT 683 ms nel Calendario e 684 negli Orari, limite 600. Con il profilo della CPU e le mappe dei sorgenti, il lavoro del telefono all'apertura era: l'avvio di tutti gli script in un blocco unico (temi di Tamagui, React Native per il web, schemi zod ed elenco dei comuni del pacchetto condiviso), il primo disegno, e un ridisegno completo della pagina per ognuna delle risposte dell'API (sette per l'agenda, quattro per l'accesso e le notifiche). Il peso non era nell'agenda: valeva per tutte le pagine. Togliere il piè di pagina non cambiava nulla (provato e annullato, come nella §321).
+
+**Cosa è cambiato** (nessun cambio di aspetto):
+- **Temi di Tamagui**: restano solo `light` e i sotto-temi di Button, Input, TextArea e Card, gli unici componenti Tamagui con un tema che il sito usa (`packages/ui/src/usedThemes.ts`). Via alt1/alt2/active e i sotto-temi di Sheet, Dialog, Tooltip, Switch, Slider... `tamagui.css` da 583 a 81 KB.
+- **Config di Tamagui senza `@tamagui/config` nel sito**: importarla creava in ogni pagina i 1408 temi di default (per poi tenerne 5) e portava il driver di animazioni di React Native, con dentro FlatList e VirtualizedList. Ora i valori di default (token, font, media, abbreviazioni, impostazioni e i 5 temi) stanno in `packages/ui/src/tamaguiDefaults.ts`, generato da `pnpm --filter @professionisti/ui genera-default-tamagui` (da rilanciare solo aggiornando Tamagui o cambiando i temi). Sul sito un driver di animazioni vuoto (`animations.web.ts`, nessun componente usa la prop `animation`; con `supportsCSS` spento come quello di React Native, altrimenti Tamagui tratta diversamente gli stili di Input e Image; senza nessun driver il render sul server si rompeva). L'app continua a usare le animazioni di React Native (`animations.ts`). Controllo: il CSS generato con la nuova config è identico byte per byte a quello con la vecchia.
+- **Pacchetto condiviso dai sorgenti**: il sito usa `packages/shared/src` e non la build CommonJS (alias in `next.config.mjs`, `sideEffects: false` in `packages/shared/package.json`), così ogni pagina prende solo le parti che usa. Supera la nota della §320 ("il pacchetto condiviso è CommonJS, il sito non può toglierli"). L'API continua a usare `dist/`.
+- **Elenco dei comuni**: gli oggetti si creano al primo uso (`italianComuni()`, `allItalianCityNames()` al posto delle costanti `ITALIAN_COMUNI` e `ALL_ITALIAN_CITY_NAMES`), e la barra di ricerca dell'intestazione, che serve solo nei risultati, si carica a parte (`next/dynamic`): i 440 KB dell'elenco non sono più nel JavaScript di ogni pagina, solo in ricerca, home, moduli con la città e dati fiscali.
+- **Ridisegni a pezzi**: le risposte dell'API dell'agenda e quelle di accesso, notifiche e preferenze (`AuthContext`) aggiornano la pagina con `startTransition`, così React disegna a piccoli pezzi invece che in un blocco unico. Gli stati che vanno insieme (fasce e "caricamento finito", utente e "caricamento finito") stanno nella stessa transizione, per non mostrare mai un attimo l'agenda vuota o la pagina "Accedi". Le azioni dell'utente (es. le preferenze di notifica cambiate a mano) restano immediate.
+
+**Risultato**: JavaScript all'apertura dell'agenda da 545 a 281 KB compressi (Next.js, "First Load JS"). Lighthouse "telefono lento" in locale, stessa macchina e stessi dati: TBT tra 377 e 487 ms nelle due pagine, contro 521-710 ms del ramo principale; punteggio da 81-82 a 86-91. La macchina è rumorosa: un giro su dodici è uscito a 601 e uno a 781, gli altri sotto 490. Foto di tutte le pagine (`confronto-pagine`): 128 identiche su 132, le altre quattro solo per la linea dell'ora dell'agenda e pochi pixel già diversi tra due giri del principale. L'obiettivo "buono" di 200 ms resta lontano: rimangono l'avvio di React e Tamagui e il primo disegno, che si ridurrebbero solo togliendo Tamagui dalle parti comuni a tutte le pagine o con React Compiler. In CI (macchina più veloce) l'agenda è uscita a 191 ms (calendario) e 132 ms (orari).
+
+**Verifica**: confronto delle foto di tutte le pagine (`confronto-pagine`, computer e telefono) prima e dopo; 66 prove nel browser, 590 test API, typecheck e lint di tutto il monorepo.
+
+**Migliorie in più** (richiesta dell'utente: "Effettua migliorie", sulle cinque proposte dopo la prima versione):
+- **Una sola richiesta del profilo**: all'apertura di un'area del professionista `GET /professionals/me` partiva due volte (la pagina e i pallini del menu, `loadJourney`), tre in Oggi. Ora `loadMyProfessionalProfile` (`apps/web/src/lib/myProfessionalProfile.ts`) fa condividere la stessa richiesta a chi la chiede mentre è già in viaggio, senza tenere copie: dopo un salvataggio si rilegge sempre il profilo nuovo. La pagina Profilo pubblico resta su `getMyProfessionalProfile`, perché rilegge subito dopo aver salvato.
+- **React Compiler** (`experimental.reactCompiler`, `babel-plugin-react-compiler` 1.0.0): ricorda da solo i valori e i componenti che non cambiano. Solo nei componenti con la direttiva `"use memo"` (`compilationMode: "annotation"`), oggi il contenuto dell'agenda: acceso su tutto il sito il confronto delle foto ha mostrato che rompe gli stili `<style jsx>` (spariscono le classi `jsx-...`: nel banner cookie compariva il testo breve insieme a quello lungo, in 20 file che li usano). Non metterlo in un componente con `<style jsx>`. Le regole react-hooks 7 erano già errori nel lint (§318), quindi il codice era pronto.
+- **Stile dell'agenda in un file CSS** (`components/agenda/agenda.css`): prima erano 32 KB di testo dentro il JavaScript, inseriti da styled-jsx a ogni apertura. In `AgendaStyles.tsx` restano solo i colori del marchio come variabili (`--ag-filetto` nuova, al posto di `brand.filetto` scritto nelle regole).
+- **Testata e piè di pagina senza Tamagui: non fatto**. Misura prima di riscriverli: con testata e piè di pagina tolti del tutto il TBT dell'agenda non cambia (stessi valori nel rumore della macchina), quindi riscriverli non darebbe niente all'agenda.
+- **Limite della prova Lighthouse** da 600 a 500 ms (`e2e/lighthouse/agenda.mjs`). Prima 400, alzato dopo aver visto quanto cambia la macchina della CI: l'agenda è uscita a 106-191 ms in tre giri e a 277-279 nel quarto, Oggi a 335. Con 500 resta margine contro il rumore e un peggioramento serio blocca la PR.
+
+**Risultato delle migliorie**: JavaScript all'apertura dell'agenda da 295 a 289 KB compressi (con le novità del ramo principale). Lighthouse in locale, tre giri: TBT 393-413 ms (calendario) e 351-498 ms (orari), contro 424-484 e 413-565 prima, nel rumore della macchina. Foto di tutte le pagine contro il ramo con la prima versione: 112 identiche su 132, le altre con 2-108 pixel di sfumatura dei bordi del testo, controllati a occhio (nessuna differenza visibile), più la linea dell'ora dell'agenda. 94 prove nel browser passate, typecheck, lint e test di tutto il monorepo verdi.
+
+**Secondo giro** (richiesta dell'utente: "Effettua modifiche", sulle migliorie proposte prima di unire):
+- **React Compiler su tutto il sito** (`reactCompiler: true`), tranne i 21 componenti con `<style jsx>`, che hanno la direttiva `"use no memo"` in testa. Scelto al posto di riscrivere i loro stili in file CSS: sono 19 file con circa 220 valori calcolati negli stili (colori del marchio, misure dalle props), una riscrittura lunga e rischiosa per lo stesso risultato. `apps/web/scripts/controlla-style-jsx.mjs`, dentro `pnpm lint`, fa fallire la CI se un componente con `<style jsx>` non ha `"use no memo"`. Il contenuto dell'agenda non ha più bisogno di `"use memo"`.
+- **Prova Lighthouse anche su Oggi (`/dashboard`) e Richieste (`/dashboard/richieste`)**, stesso limite. In locale TBT 509-617 ms Oggi e 378-536 ms Richieste, contro 426-440 dell'agenda nello stesso giro; in CI 335 e 282 ms (agenda 277-279 nello stesso giro). Accessibilità 96 su entrambe per due testi con contrasto basso (avviso, non blocca).
+- **Verifica**: foto di tutte le pagine contro il giro precedente sugli stessi dati, 115 identiche su 132, le altre con 1-84 pixel di sfumatura dei bordi del testo e la linea dell'ora dell'agenda (controllata a occhio); 94 prove nel browser, typecheck, lint e test verdi.
+
+## 346. Dal preventivo accettato alla recensione: biglietto dell'appuntamento, un solo lavoro per richiesta
 
 **Richiesta esplicita dell'utente** (25/10/2026, thread "Migliorare il dopo-accettazione del preventivo"): "si potrebbe modificare la visualizzazione di quando il cliente accetta uno specifico preventivo?". Tra tre varianti Luca ha scelto la C (biglietto dell'appuntamento in cima, schermata "Appuntamento prenotato", riga in cima che cambia nel tempo) "più la miglioria" (gli altri preventivi della stessa richiesta restavano accettabili). Poi la "versione profonda": rivedere cliente e professionista dal momento di "Accetta" fino alla recensione, sul sito e nelle email, con obiettivi misurabili, controllo dei dati veri, tabella di tutti i casi, confronto con i concorrenti, rischio del tasto "Chiama" e regola per annullare. Il risultato è giusto se un vincolo del database impedisce un secondo lavoro, le prove automatiche passano nella CI, una pagina di prova fotografa la scheda in ogni stato, il calendario funziona su telefoni veri e 5 persone completano i compiti. Analisi in `analisi/preventivo-accettato/analisi-profonda.md`.
 
@@ -20812,9 +20885,9 @@ accorciata in "Subito dopo potrai lasciare una recensione, anche con foto".
 - Da fare a mano: calendario su iPhone e Android veri, prova con 5 persone (istruzioni nell'analisi, sezione 9).
 - Dopo l'unione: confronto dei numeri a 4 settimane.
 
-## 345. Preavviso per annullare scelto dal professionista
+## 347. Preavviso per annullare scelto dal professionista
 
-**Richiesta** (Luca, 25/10/2026, rispondendo alle scelte aperte del §344):
+**Richiesta** (Luca, 25/10/2026, rispondendo alle scelte aperte del §346):
 - "Chiama" resta com'è: anche col numero solo dal giorno prima si accorderebbero la volta dopo, e il numero serve alla buona riuscita del lavoro;
 - "dovremmo far decidere al professionista i termini per la cancellazione, se 24 ore o 48 ore o 3 giorni";
 - nessuna email ai professionisti non scelti ("ci sono già troppe email").

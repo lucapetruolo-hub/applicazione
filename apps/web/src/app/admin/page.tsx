@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { AdminTrends } from "@professionisti/api-client";
-import { adminCan, type AdminScope } from "@professionisti/shared";
+import { adminCan, type AdminScope, type UrgencyMetrics } from "@professionisti/shared";
 import { Text, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -22,6 +22,7 @@ export default function AdminHomePage() {
   const { user, token } = useAuth();
   const adminRoles = user?.adminRoles ?? [];
   const [trends, setTrends] = useState<AdminTrends | null>(null);
+  const [urgency, setUrgency] = useState<UrgencyMetrics | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -29,6 +30,10 @@ export default function AdminHomePage() {
       .adminTrends(token)
       .then(setTrends)
       .catch(() => setTrends(null));
+    apiClient
+      .adminUrgencyMetrics(token)
+      .then(setUrgency)
+      .catch(() => setUrgency(null));
   }, [token]);
 
   const todo = (
@@ -50,6 +55,16 @@ export default function AdminHomePage() {
         { href: "/admin/utenti?stato=suspended", value: overview.suspendedUsers, label: "Account sospesi" },
         { href: "/admin/richieste-eliminate", value: overview.hiddenLeads, label: "Richieste eliminate dai professionisti" },
         { href: "/admin/lista-attesa", value: overview.waitlist, label: "Iscritti alla lista d'attesa" },
+      ]
+    : [];
+  // Richieste urgenti (docs/CHANGELOG.md §344): avviso agli admin ogni lunedì se fuori soglia.
+  const minutes = (value: number | null) => (value === null ? "—" : value < 120 ? `${value} min` : `${Math.round(value / 60)} ore`);
+  const urgencyNumbers = urgency
+    ? [
+        { value: urgency.urgentShare === null ? "—" : `${Math.round(urgency.urgentShare * 100)}%`, label: `Richieste urgenti (${urgency.urgent} su ${urgency.requests})` },
+        { value: minutes(urgency.urgentMedianMinutesToFirstQuote), label: "Primo preventivo, urgenti" },
+        { value: minutes(urgency.standardMedianMinutesToFirstQuote), label: "Primo preventivo, normali" },
+        { value: String(urgency.urgentWithoutRecipients), label: "Urgenti senza destinatari", urgent: urgency.urgentWithoutRecipients > 0 },
       ]
     : [];
   const nothingToDo = overview !== null && todo.every((item) => item.value === 0);
@@ -96,6 +111,27 @@ export default function AdminHomePage() {
           <Text color={brand.grafite70}>Caricamento…</Text>
         )}
       </YStack>
+
+      {urgency ? (
+        <YStack gap="$3">
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+            Richieste urgenti (ultimi 7 giorni)
+          </Text>
+          {urgency.alerts.map((alert) => (
+            <Text key={alert} color={brand.urgenza}>
+              {alert}
+            </Text>
+          ))}
+          <div className="admin-kpi-grid">
+            {urgencyNumbers.map((item) => (
+              <div key={item.label} className={`admin-kpi${item.urgent ? " is-urgent" : ""}`}>
+                <span className="admin-kpi-value">{item.value}</span>
+                <span className="admin-kpi-label">{item.label}</span>
+              </div>
+            ))}
+          </div>
+        </YStack>
+      ) : null}
 
       <YStack gap="$3">
         <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>

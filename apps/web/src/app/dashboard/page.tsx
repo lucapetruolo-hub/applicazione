@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AGENDA_LOOKAHEAD_DAYS, formatAppointmentDate, formatAppointmentTime, jobOccurrences, scheduleChangeBetween, wallClockToday, type AgendaAttention, type DayAhead, type ExternalJob, type MySubscription, type ProfessionalBooking, type ProfessionalInsights, type ProfessionalLead } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
+import { loadMyProfessionalProfile } from "@/lib/myProfessionalProfile";
 import { useAuth } from "@/lib/AuthContext";
 import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import { classifyLeadStage } from "@/lib/requestStage";
@@ -60,8 +61,7 @@ export default function DashboardTodayPage() {
     apiClient.agendaDaysAhead(token).then(setDaysAhead).catch(() => setDaysAhead("failed"));
     apiClient.getMyInsights(token).then(setInsights).catch(() => setInsightsFailed(true));
     apiClient.getMySubscription(token).then(setSubscription).catch(() => setSubscription(null));
-    apiClient
-      .getMyProfessionalProfile(token)
+    loadMyProfessionalProfile(token)
       .then((p) => setRestrictions(p ? { demotedUntil: p.demotedUntil, requestsBlockedUntil: p.requestsBlockedUntil } : null))
       .catch(() => setRestrictions(null));
   }, [token, user?.isProfessional, loadAttempt]);

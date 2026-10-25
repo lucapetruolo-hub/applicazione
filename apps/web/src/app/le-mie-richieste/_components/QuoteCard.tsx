@@ -78,7 +78,7 @@ export function QuoteCard({
   quote: ClientGuidedRequest["quotes"][number];
   /** Richiesta ancora aperta: dopo un rifiuto il professionista può inviare un nuovo preventivo (docs/CHANGELOG.md §188). */
   requestOpen?: boolean;
-  /** Per questa richiesta il cliente ha già accettato un altro preventivo: niente Accetta, Modifica, Rifiuta (docs/CHANGELOG.md §344). */
+  /** Per questa richiesta il cliente ha già accettato un altro preventivo: niente Accetta, Modifica, Rifiuta (docs/CHANGELOG.md §346). */
   notChosen?: boolean;
   token: string;
   onChanged: () => void;
@@ -434,7 +434,7 @@ export function QuoteCard({
           depositPercent={quote.depositPercent}
         />
       ) : null}
-      {/* Preavviso scelto dal professionista, detto prima di Accetta (docs/CHANGELOG.md §345). */}
+      {/* Preavviso scelto dal professionista, detto prima di Accetta (docs/CHANGELOG.md §347). */}
       {(quote.status === "SENT" || quote.status === "MODIFICATION_REQUESTED") && !notChosen ? (
         <Text fontSize={13} color={brand.grafite70}>
           Se poi devi annullare, avvisa almeno {cancellationNoticeLabel(quote.cancellationNoticeHours)} prima.

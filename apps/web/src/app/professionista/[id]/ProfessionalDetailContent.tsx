@@ -71,6 +71,8 @@ export function ProfessionalDetailContent({
   /** Percorso "Home › Categoria › Città › Nome" sopra la scheda (solo pagina pubblica). */
   breadcrumbs?: ReactNode;
 }) {
+  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
+  "use no memo";
   const { user, token, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
   const [isSaved, setIsSaved] = useState(false);

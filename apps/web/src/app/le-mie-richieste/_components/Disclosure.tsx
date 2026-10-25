@@ -5,7 +5,7 @@ import { Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui
 
 /**
  * Riga che si apre e si chiude, per la trattativa sotto il biglietto
- * dell'appuntamento (docs/CHANGELOG.md §344): preventivo accettato, foto,
+ * dell'appuntamento (docs/CHANGELOG.md §346): preventivo accettato, foto,
  * preventivi non scelti. Chiusa resta una riga sola con il riassunto.
  */
 export function Disclosure({ title, summary, muted, defaultOpen = false, children }: { title: string; summary?: string; muted?: boolean; defaultOpen?: boolean; children: ReactNode }) {

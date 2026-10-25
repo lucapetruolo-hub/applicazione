@@ -20,7 +20,7 @@ import {
   categorySubTags,
   subTagLabel,
   validSubTags,
-  ALL_ITALIAN_CITY_NAMES,
+  allItalianCityNames,
   PROFILE_DECLARATION_TEXT,
   findComuneByName,
   type MyProfessionalProfile,
@@ -157,7 +157,7 @@ export default function DashboardProfiloPage() {
   const [addressCoords, setAddressCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [bio, setBio] = useState("");
   const [remoteAvailable, setRemoteAvailable] = useState(false);
-  // Preavviso per annullare chiesto al cliente (docs/CHANGELOG.md §345).
+  // Preavviso per annullare chiesto al cliente (docs/CHANGELOG.md §347).
   const [cancellationNoticeHours, setCancellationNoticeHours] = useState<CancellationNoticeHours>(DEFAULT_CANCELLATION_NOTICE_HOURS);
   const [services, setServices] = useState<{ name: string; priceMin: string; priceMax: string }[]>([]);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -878,7 +878,7 @@ export default function DashboardProfiloPage() {
             <FieldLabel>Città in cui operi</FieldLabel>
             <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="$4" backgroundColor={brand.calce}>
               <Autocomplete
-                items={ALL_ITALIAN_CITY_NAMES}
+                items={allItalianCityNames()}
                 getKey={(item) => item}
                 getLabel={(item) => item}
                 onSelect={setCity}

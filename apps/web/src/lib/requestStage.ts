@@ -29,7 +29,7 @@ export function classifyLeadStage(lead: ProfessionalLead): RequestStage {
 
   const quote = lead.quote;
   if (!quote) return "da_quotare";
-  // Il cliente ha accettato il preventivo di un altro (docs/CHANGELOG.md §344).
+  // Il cliente ha accettato il preventivo di un altro (docs/CHANGELOG.md §346).
   if (quote.otherProfessionalChosen) return "chiusa";
   if (quote.status === "WITHDRAWN" || quote.status === "REJECTED") return "chiusa";
   if (quote.status === "MODIFICATION_REQUESTED") return "modifica_richiesta";

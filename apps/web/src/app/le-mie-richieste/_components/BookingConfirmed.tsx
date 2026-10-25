@@ -10,7 +10,7 @@ import { AppointmentWhen, useAppointmentMoment } from "./AppointmentWhen";
 import { AddToCalendar } from "./AddToCalendar";
 
 /**
- * Subito dopo "Accetta preventivo" (docs/CHANGELOG.md §344, variante scelta
+ * Subito dopo "Accetta preventivo" (docs/CHANGELOG.md §346, variante scelta
  * dall'utente): la conferma che l'appuntamento è fissato, il riepilogo e cosa
  * succede adesso, come le app di prenotazione. Stesso stile della pagina
  * "Richiesta inviata": foto con alone verde e spunta, niente festeggiamenti.

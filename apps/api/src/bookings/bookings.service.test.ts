@@ -126,7 +126,7 @@ describe("BookingsService.createFromQuote", () => {
           clientId: "client-1",
           professionalProfileId: "pro-1",
           status: "CONFIRMED",
-          // Il preavviso del professionista resta quello del giorno dell'accettazione (§345).
+          // Il preavviso del professionista resta quello del giorno dell'accettazione (§347).
           cancellationNoticeHours: 48,
         }),
       }),
@@ -137,14 +137,14 @@ describe("BookingsService.createFromQuote", () => {
       data: { status: "CLOSED", closedReason: "COMPLETED" },
     });
     expect(notificationsService.notify).toHaveBeenCalledWith("pro-user-1", "QUOTE_ACCEPTED", expect.any(Object));
-    // Il cliente riceve la conferma con il calendario, solo per email (§344).
+    // Il cliente riceve la conferma con il calendario, solo per email (§346).
     expect(notificationsService.emailOnly).toHaveBeenCalledWith("client-1", "BOOKING_CONFIRMED", { bookingId: expect.any(String), guidedRequestId: "gr-1" });
     expect(professionalMetricsService.recordJobAccepted).toHaveBeenCalledWith("pro-1");
     expect(timelineService.log).toHaveBeenCalled();
   });
 });
 
-describe("BookingsService.createFromQuote — un solo lavoro per richiesta (§344)", () => {
+describe("BookingsService.createFromQuote — un solo lavoro per richiesta (§346)", () => {
   it("rifiuta un altro preventivo della stessa richiesta se ce n'è già uno accettato, anche col pagamento diretto", async () => {
     const { service, prisma } = buildService();
     (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote({ id: "quote-2" }));
@@ -243,7 +243,7 @@ describe("BookingsService.reopenBooking", () => {
     };
   }
 
-  it("il cliente non riapre un appuntamento se nel frattempo ha accettato un altro preventivo della richiesta (§344)", async () => {
+  it("il cliente non riapre un appuntamento se nel frattempo ha accettato un altro preventivo della richiesta (§346)", async () => {
     const { service, prisma } = buildService();
     (prisma.booking.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ ...canceledBooking("CLIENT"), quote: { guidedRequestId: "gr-1" } });
     (prisma.booking.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "lavoro-2" });
@@ -461,7 +461,7 @@ describe("BookingsService.confirmQuoteDeposit — lavoro confermato solo dopo l'
   });
 });
 
-describe("BookingsService.cancelForClient — solo prima dell'appuntamento (§344)", () => {
+describe("BookingsService.cancelForClient — solo prima dell'appuntamento (§346)", () => {
   it("rifiuta l'annullamento a appuntamento cominciato: niente acconto rimborsato a lavoro fatto", async () => {
     const { service, prisma, jobPaymentsService } = buildService();
     prisma.booking.findUnique.mockResolvedValue({ id: "b-1", clientId: "client-1", status: "CONFIRMED", scheduledAt: new Date("2020-01-01T10:00:00Z"), quote: null });
@@ -478,7 +478,7 @@ describe("BookingsService.cancelForClient — solo prima dell'appuntamento (§34
     expect(prisma.booking.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ canceledLate: false }) }));
   });
 
-  it("dentro il preavviso del professionista (§345) annulla lo stesso ma lo segna e lo dice al professionista", async () => {
+  it("dentro il preavviso del professionista (§347) annulla lo stesso ma lo segna e lo dice al professionista", async () => {
     const { service, prisma, notificationsService } = buildService({ professionalProfile: { findUnique: vi.fn().mockResolvedValue({ userId: "pro-user-1" }) } });
     // Tra 30 ore, con 48 ore di preavviso chieste.
     const scheduledAt = new Date(wallClockNow().getTime() + 30 * 60 * 60_000);

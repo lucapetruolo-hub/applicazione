@@ -59,7 +59,7 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
     professional: { label: "Lavori e appuntamenti", description: "Promemoria il giorno prima, riepilogo della sera, nuove recensioni, pagamenti, prenotazioni annullate o riaperte, segnalazioni." },
     client: { label: "Lavori e appuntamenti", description: "Promemoria il giorno prima, professionista in arrivo, lavoro terminato, saldo da pagare, intervento annullato." },
     types: [
-      // Solo email al cliente: appuntamento prenotato, con il calendario (docs/CHANGELOG.md §344).
+      // Solo email al cliente: appuntamento prenotato, con il calendario (docs/CHANGELOG.md §346).
       "BOOKING_CONFIRMED",
       "JOB_COMPLETED",
       "BOOKING_CANCELED_BY_PROFESSIONAL",
@@ -103,6 +103,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "ADMIN_JOB_REFUND_FAILED",
       // Anno DAC7 già comunicato con importi cambiati dopo l'invio (docs/CHANGELOG.md §247).
       "ADMIN_DAC7_NEEDS_CORRECTION",
+      // Urgenti oltre il 30% o non più veloci delle normali, ogni lunedì (docs/CHANGELOG.md §338).
+      "ADMIN_URGENCY_ALERT",
       // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §190).
       "JOB_CONFIRM_REMINDER",
       "JOB_AUTO_CONFIRMED",

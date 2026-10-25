@@ -44,7 +44,7 @@ import { stripeVerified } from "../professional-fiscal/public-visibility";
 import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
 import { PROFESSIONAL_BUSY_MESSAGE, capacityAt, countOverlapping, loadCommitments, lockProfessionalAgenda } from "../agenda/commitments";
 
-/** Il cliente ha già un lavoro per questa richiesta (docs/CHANGELOG.md §344). */
+/** Il cliente ha già un lavoro per questa richiesta (docs/CHANGELOG.md §346). */
 const CLIENT_CANCEL_TOO_LATE = "L'appuntamento è già cominciato e non si può più annullare. Se qualcosa non va, usa \"C'è un problema\".";
 const OTHER_JOB_MESSAGE = "Hai già accettato un altro preventivo per questa richiesta. Per cambiare professionista annulla prima l'appuntamento.";
 
@@ -138,7 +138,7 @@ export class BookingsService {
     if (quote.guidedRequest.closedReason === "CANCELED_BY_CLIENT") {
       throw new ForbiddenException("Hai eliminato questa richiesta: il preventivo non è più disponibile.");
     }
-    // Un solo lavoro per richiesta (docs/CHANGELOG.md §344): accettato un
+    // Un solo lavoro per richiesta (docs/CHANGELOG.md §346): accettato un
     // preventivo, gli altri della stessa richiesta non si accettano più. Prima
     // il controllo c'era solo per l'acconto online e con il pagamento diretto
     // nasceva un secondo lavoro.
@@ -256,7 +256,7 @@ export class BookingsService {
       if (await tx.booking.findUnique({ where: { quoteId: quote.id }, select: { id: true } })) {
         throw new ConflictException("Questo preventivo è già stato accettato.");
       }
-      // Due preventivi della stessa richiesta accettati insieme (§344): il secondo vede il primo.
+      // Due preventivi della stessa richiesta accettati insieme (§346): il secondo vede il primo.
       await lockGuidedRequest(tx, quote.guidedRequestId);
       await this.assertNoOtherJob(tx, quote.guidedRequestId);
       await this.assertProfessionalFree(tx, quote);
@@ -320,7 +320,7 @@ export class BookingsService {
       clientAddress,
       scheduledEndAt: booking.scheduledEndAt?.toISOString() ?? null,
     });
-    // Conferma al cliente con il calendario (§344), solo email: sul sito ha appena visto "Appuntamento prenotato".
+    // Conferma al cliente con il calendario (§346), solo email: sul sito ha appena visto "Appuntamento prenotato".
     this.notificationsService.emailOnly(clientId, "BOOKING_CONFIRMED", { bookingId: booking.id, guidedRequestId: quote.guidedRequestId });
 
     // Metriche di affidabilità (CLAUDE.md §15, evento 3): il preventivo è
@@ -762,13 +762,13 @@ export class BookingsService {
     if (booking.status !== "PENDING" && booking.status !== "CONFIRMED") {
       throw new ForbiddenException("Questa prenotazione non può più essere annullata.");
     }
-    // Cominciato l'appuntamento non si annulla più (§344): prima si poteva
+    // Cominciato l'appuntamento non si annulla più (§346): prima si poteva
     // anche a lavoro fatto, e con l'acconto online tornavano i soldi.
     if (booking.scheduledAt.getTime() <= wallClockNow().getTime()) {
       throw new ForbiddenException(CLIENT_CANCEL_TOO_LATE);
     }
 
-    // Dentro il preavviso scelto dal professionista (§345) si può ancora
+    // Dentro il preavviso scelto dal professionista (§347) si può ancora
     // annullare, ma resta segnato: lo vede il professionista. L'acconto per
     // ora torna comunque, finché l'avvocato non dice se si può trattenere.
     const late = isLateCancellation(booking.scheduledAt, booking.cancellationNoticeHours);
@@ -842,7 +842,7 @@ export class BookingsService {
     if (!isClient && booking.canceledBy !== "PROFESSIONAL") {
       throw new ForbiddenException("Il cliente ha annullato questo intervento: solo lui può riaprirlo.");
     }
-    // Nel frattempo il cliente ha accettato un altro preventivo della stessa richiesta (§344).
+    // Nel frattempo il cliente ha accettato un altro preventivo della stessa richiesta (§346).
     if (booking.quote) await this.assertNoOtherJob(this.prisma, booking.quote.guidedRequestId, booking.id);
 
     const scheduledAt = booking.scheduledAt;
@@ -1336,9 +1336,9 @@ export class BookingsService {
       // l'eliminazione della prenotazione dalla propria lista.
       professionalAccountDeleted: booking.professionalProfile.deletedAt !== null,
       clientConfirmedCompletedAt: booking.clientConfirmedCompletedAt?.toISOString() ?? null,
-      // "Sto arrivando" del professionista, mostrato in cima alla scheda (docs/CHANGELOG.md §344).
+      // "Sto arrivando" del professionista, mostrato in cima alla scheda (docs/CHANGELOG.md §346).
       onTheWayAt: booking.onTheWayAt?.toISOString() ?? null,
-      // Preavviso per annullare valido per questo lavoro (docs/CHANGELOG.md §345): 24 ore per i lavori di prima.
+      // Preavviso per annullare valido per questo lavoro (docs/CHANGELOG.md §347): 24 ore per i lavori di prima.
       cancellationNoticeHours: booking.cancellationNoticeHours ?? DEFAULT_CANCELLATION_NOTICE_HOURS,
       professionalCompletionPhotoUrls: booking.professionalCompletionPhotoUrls,
       clientCompletionPhotoUrls: booking.clientCompletionPhotoUrls,
