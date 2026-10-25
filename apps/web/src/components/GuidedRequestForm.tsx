@@ -87,6 +87,20 @@ function pickableSlotLabel(slot: PickableAgendaSlot): string {
   return `${dateLabel} · ${slot.startTime}–${slot.endTime} (${seatsLabel})`;
 }
 
+/** Campi del passo "Dove" che possono avere un errore sotto (docs/CHANGELOG.md §346). */
+type StepField = "citta" | "indirizzo" | "nome" | "telefono" | "civico" | "cap" | "provincia";
+type StepProblem = { message: string; field?: StepField };
+
+/** Porta il campo sbagliato al centro dello schermo e ci mette il cursore. */
+function focusGuidedField(field: StepField) {
+  if (typeof document === "undefined") return;
+  const anchor = document.getElementById(`guided-field-${field}`);
+  if (!anchor) return;
+  anchor.scrollIntoView({ behavior: "smooth", block: "center" });
+  const input = anchor.matches("input, textarea") ? anchor : anchor.querySelector<HTMLElement>("input, textarea");
+  input?.focus({ preventScroll: true });
+}
+
 const fieldInputStyle = {
   padding: 12,
   borderRadius: 10,
@@ -452,6 +466,10 @@ export function GuidedRequestForm({
   const [defaultsDeclined, setDefaultsDeclined] = useState(false);
   const [defaultsError, setDefaultsError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Errore sotto il campo sbagliato del passo "Dove" (docs/CHANGELOG.md
+  // §346): resta finché quel campo non cambia (`value` è il valore al momento
+  // dell'errore), così sparisce da solo appena si corregge.
+  const [fieldError, setFieldError] = useState<{ field: StepField; message: string; value: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ matchedProfessionals: number; requestsCount: number } | null>(null);
   // Una foto/video selezionato prima di autenticarsi (`file` valorizzato)
@@ -627,30 +645,75 @@ export function GuidedRequestForm({
     }
   }
 
+  /** Valore attuale di un campo del passo "Dove", per sapere quando l'errore sotto di esso non vale più. */
+  function fieldValue(field: StepField): string {
+    switch (field) {
+      case "nome":
+        return `${recipientName}\u0000${recipientSurname}`;
+      case "telefono":
+        return recipientPhone;
+      case "indirizzo":
+        return `${addressText}\u0000${street}`;
+      case "citta":
+        return city;
+      case "civico":
+        return houseNumber;
+      case "cap":
+        return postalCode;
+      case "provincia":
+        return province;
+    }
+  }
+
+  /** Errore sotto il campo (se ancora valido) o riga rossa in fondo per i problemi senza campo. */
+  function showProblem(problem: StepProblem) {
+    if (!problem.field) {
+      setError(problem.message);
+      return;
+    }
+    const field = problem.field;
+    setFieldError({ field, message: problem.message, value: fieldValue(field) });
+    // Dopo il render: il campo può stare in un passo appena riaperto.
+    setTimeout(() => focusGuidedField(field), 50);
+  }
+
+  function fieldErrorFor(field: StepField): ReactNode {
+    if (!fieldError || fieldError.field !== field || fieldError.value !== fieldValue(field)) return null;
+    return (
+      <span id={`guided-field-${field}-error`} role="alert" style={{ color: brand.urgenza, fontSize: 13, fontWeight: 600, flexBasis: "100%" }}>
+        {fieldError.message}
+      </span>
+    );
+  }
+
+  function fieldInvalid(field: StepField): true | undefined {
+    return fieldError && fieldError.field === field && fieldError.value === fieldValue(field) ? true : undefined;
+  }
+
   /** Controlli del passo 1 (il lavoro) e del passo 2 (dove): null se tutto a posto. */
-  function validateStep(which: 1 | 2): string | null {
+  function validateStep(which: 1 | 2): StepProblem | null {
     if (which === 1) {
-      if (!categorySlug) return "Scegli almeno una categoria.";
-      if (description.trim().length < 10) return "Descrivi il lavoro con almeno 10 caratteri.";
-      if (!timing) return "Scegli quando ti serve.";
+      if (!categorySlug) return { message: "Scegli almeno una categoria." };
+      if (description.trim().length < 10) return { message: "Descrivi il lavoro con almeno 10 caratteri." };
+      if (!timing) return { message: "Scegli quando ti serve." };
       return null;
     }
     // Città obbligatoria anche online se la richiesta è generale: decide a
     // chi arriva (docs/CHANGELOG.md §210).
-    if (serviceMode === "ONLINE" && !professionalProfileId && !city.trim()) return "Indica la città: la richiesta arriva ai professionisti della zona.";
-    if (city.trim() && !cityComune) return "Scegli la città dall'elenco dei comuni.";
+    if (serviceMode === "ONLINE" && !professionalProfileId && !city.trim()) return { message: "Indica la città: la richiesta arriva ai professionisti della zona.", field: "citta" };
+    if (city.trim() && !cityComune) return { message: "Scegli la città dall'elenco dei comuni.", field: "citta" };
     // Città, indirizzo e destinatario obbligatori a domicilio: per una
     // consulenza online restano facoltativi (richiesta esplicita dell'utente).
     if (serviceMode === "HOME") {
-      if (chosenAddress.missing) return addressText.trim() ? ADDRESS_NOT_CHOSEN_MESSAGE : "Indica l'indirizzo.";
-      if (!city.trim()) return "Indica la città in cui serve l'intervento.";
-      if (!street.trim()) return "Indica l'indirizzo.";
-      if (!recipientName.trim() || !recipientSurname.trim()) return "Indica nome e cognome di chi riceverà il professionista.";
-      if (!recipientPhone.trim()) return "Indica un numero di telefono.";
-      if (!isPlausiblePhoneNumber(recipientPhone)) return "Controlla il numero di telefono: sembra incompleto o troppo lungo.";
-      if (!houseNumber.trim()) return "Indica il numero civico.";
-      if (!postalCode.trim()) return "Indica il CAP.";
-      if (!province.trim()) return "Indica la provincia.";
+      if (chosenAddress.missing) return { message: addressText.trim() ? ADDRESS_NOT_CHOSEN_MESSAGE : "Indica l'indirizzo.", field: "indirizzo" };
+      if (!city.trim()) return { message: "Indica la città in cui serve l'intervento.", field: "citta" };
+      if (!street.trim()) return { message: "Indica l'indirizzo.", field: "indirizzo" };
+      if (!recipientName.trim() || !recipientSurname.trim()) return { message: "Indica nome e cognome di chi riceverà il professionista.", field: "nome" };
+      if (!recipientPhone.trim()) return { message: "Indica un numero di telefono.", field: "telefono" };
+      if (!isPlausiblePhoneNumber(recipientPhone)) return { message: "Controlla il numero di telefono: sembra incompleto o troppo lungo.", field: "telefono" };
+      if (!houseNumber.trim()) return { message: "Indica il numero civico.", field: "civico" };
+      if (!postalCode.trim()) return { message: "Indica il CAP.", field: "cap" };
+      if (!province.trim()) return { message: "Indica la provincia.", field: "provincia" };
     }
     return null;
   }
@@ -660,7 +723,7 @@ export function GuidedRequestForm({
     if (next > step) {
       const problem = validateStep(1) ?? (next === 3 ? validateStep(2) : null);
       if (problem) {
-        setError(problem);
+        showProblem(problem);
         if (validateStep(1)) setStep(1);
         return;
       }
@@ -690,7 +753,9 @@ export function GuidedRequestForm({
     setError(null);
     const problem = validateStep(1) ?? validateStep(2);
     if (problem) {
-      setError(problem);
+      // Un campo del passo "Dove" sbagliato: si torna lì, con l'errore sotto il campo.
+      if (problem.field) setStep(2);
+      showProblem(problem);
       return;
     }
     // Gate di autenticazione all'ultimo passo prima dell'invio (F2.2): tutto
@@ -818,7 +883,7 @@ export function GuidedRequestForm({
   const cityInput = (
     // `.guided-city`: stesso fondo bianco degli altri campi (prima grigio, docs/CHANGELOG.md §154).
     // A domicilio stessa misura e bordo degli altri campi dell'indirizzo (`.guided-city-inline`).
-    <div className={serviceMode === "HOME" ? "guided-city guided-city-inline" : "guided-city"}>
+    <div id="guided-field-citta" className={serviceMode === "HOME" ? "guided-city guided-city-inline" : "guided-city"}>
       <YStack
         borderWidth={1}
         borderColor={serviceMode === "HOME" ? brand.bordoCampo : brand.filetto}
@@ -843,6 +908,7 @@ export function GuidedRequestForm({
     <YStack gap="$2">
       <FieldLabel>{cityOptional ? "Città (facoltativa)" : "Città"}</FieldLabel>
       {cityInput}
+      {fieldErrorFor("citta")}
       {cityOptional ? (
         // Richiesta esplicita dell'utente: "la città poiché si è
         // selezionato online non dev'essere obbligatoria... deve
@@ -1189,21 +1255,44 @@ export function GuidedRequestForm({
               </Text>
             </YStack>
 
+            {/* Etichette sopra i campi come nel passo 1 (docs/CHANGELOG.md
+                §346): col solo segnaposto, appena scritto non si sapeva più
+                cos'era "04100" o "LT". L'`aria-label` resta per i lettori di
+                schermo e per le prove. */}
             <XStack gap="$2" flexWrap="wrap">
-              <YStack flex={1} minWidth={160}>
-                <input aria-label="Nome" value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="Nome" style={fieldInputStyle} />
+              <YStack flex={1} minWidth={160} gap="$1">
+                <FieldLabel>Nome</FieldLabel>
+                <input
+                  id="guided-field-nome"
+                  aria-label="Nome"
+                  aria-invalid={fieldInvalid("nome")}
+                  value={recipientName}
+                  onChange={(e) => setRecipientName(e.target.value)}
+                  placeholder="Nome"
+                  style={fieldInputStyle}
+                />
               </YStack>
-              <YStack flex={1} minWidth={160}>
-                <input aria-label="Cognome"
+              <YStack flex={1} minWidth={160} gap="$1">
+                <FieldLabel>Cognome</FieldLabel>
+                <input
+                  aria-label="Cognome"
+                  aria-invalid={fieldInvalid("nome")}
                   value={recipientSurname}
                   onChange={(e) => setRecipientSurname(e.target.value)}
                   placeholder="Cognome"
                   style={fieldInputStyle}
                 />
               </YStack>
+              {fieldErrorFor("nome")}
             </XStack>
 
-            <PhoneNumberInput value={recipientPhone} onChange={setRecipientPhone} style={fieldInputStyle} />
+            <YStack gap="$1">
+              <FieldLabel>Telefono</FieldLabel>
+              <div id="guided-field-telefono">
+                <PhoneNumberInput value={recipientPhone} onChange={setRecipientPhone} style={fieldInputStyle} />
+              </div>
+              {fieldErrorFor("telefono")}
+            </YStack>
 
             {chosenAddress.serviceDown ? (
               // Suggerimenti non disponibili: campi separati, già dall'apertura
@@ -1215,9 +1304,12 @@ export function GuidedRequestForm({
                   </Text>
                 ) : null}
                 <XStack gap="$2" flexWrap="wrap">
-                  <YStack flex={2} flexBasis={0} minWidth={180}>
+                  <YStack flex={2} flexBasis={0} minWidth={180} gap="$1">
+                    <FieldLabel>Via o piazza</FieldLabel>
                     <input
+                      id="guided-field-indirizzo"
                       aria-label="Via o piazza"
+                      aria-invalid={fieldInvalid("indirizzo")}
                       value={street}
                       onChange={(e) => setStreet(e.target.value)}
                       placeholder="Via o piazza"
@@ -1225,30 +1317,62 @@ export function GuidedRequestForm({
                       ref={streetInputRef}
                     />
                   </YStack>
-                  <YStack flex={1} flexBasis={0} minWidth={110}>
-                    <input aria-label="Numero civico" value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} placeholder="Civico" style={fieldInputStyle} />
-                  </YStack>
-                </XStack>
-                {cityInput}
-                <XStack gap="$2" flexWrap="wrap">
-                  <YStack flex={1} flexBasis={0} minWidth={100}>
-                    <input aria-label="CAP" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="CAP" style={fieldInputStyle} />
-                  </YStack>
-                  <YStack flex={1} flexBasis={0} minWidth={100}>
+                  <YStack flex={1} flexBasis={0} minWidth={110} gap="$1">
+                    <FieldLabel>Numero civico</FieldLabel>
                     <input
+                      id="guided-field-civico"
+                      aria-label="Numero civico"
+                      aria-invalid={fieldInvalid("civico")}
+                      value={houseNumber}
+                      onChange={(e) => setHouseNumber(e.target.value)}
+                      placeholder="Civico"
+                      style={fieldInputStyle}
+                    />
+                  </YStack>
+                  {fieldErrorFor("indirizzo")}
+                  {fieldErrorFor("civico")}
+                </XStack>
+                <YStack gap="$1">
+                  <FieldLabel>Città</FieldLabel>
+                  {cityInput}
+                  {fieldErrorFor("citta")}
+                </YStack>
+                <XStack gap="$2" flexWrap="wrap">
+                  <YStack flex={1} flexBasis={0} minWidth={100} gap="$1">
+                    <FieldLabel>CAP</FieldLabel>
+                    <input
+                      id="guided-field-cap"
+                      aria-label="CAP"
+                      aria-invalid={fieldInvalid("cap")}
+                      inputMode="numeric"
+                      value={postalCode}
+                      onChange={(e) => setPostalCode(e.target.value)}
+                      placeholder="CAP"
+                      style={fieldInputStyle}
+                    />
+                  </YStack>
+                  <YStack flex={1} flexBasis={0} minWidth={100} gap="$1">
+                    <FieldLabel>Provincia</FieldLabel>
+                    <input
+                      id="guided-field-provincia"
                       aria-label="Provincia"
+                      aria-invalid={fieldInvalid("provincia")}
                       value={province}
                       onChange={(e) => setProvince(e.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2))}
                       placeholder="Provincia (es. RM)"
                       style={fieldInputStyle}
                     />
                   </YStack>
+                  {fieldErrorFor("cap")}
+                  {fieldErrorFor("provincia")}
                 </XStack>
               </>
             ) : (
               <YStack gap="$1">
+                <FieldLabel>Indirizzo</FieldLabel>
                 {/* Via e città insieme: la scelta dall'elenco compila città,
                     civico, CAP e provincia (docs/CHANGELOG.md §141, §214, §264). */}
+                <div id="guided-field-indirizzo">
                 <AddressAutocompleteInput
                   value={addressText}
                   onChange={(next) => {
@@ -1274,29 +1398,35 @@ export function GuidedRequestForm({
                   placeholder="Indirizzo, es. Via Roma 5, Bari"
                   style={fieldInputStyle}
                 />
-                {chosenAddress.missing && addressText.trim() ? (
+                </div>
+                {chosenAddress.missing && addressText.trim() && !fieldErrorFor("indirizzo") ? (
                   <Text fontSize={13} color={brand.grafite70}>
                     Scegli l&apos;indirizzo dall&apos;elenco che compare mentre scrivi.
                   </Text>
                 ) : null}
+                {fieldErrorFor("indirizzo")}
                 {chosenAddress.chosen && (askHouseNumber || !houseNumber.trim()) ? (
-                  <input
-                    aria-label="Numero civico"
-                    value={houseNumber}
-                    onChange={(e) => setHouseNumber(e.target.value)}
-                    placeholder="Numero civico"
-                    style={{ ...fieldInputStyle, maxWidth: 180, marginTop: 6 }}
-                  />
+                  <YStack gap="$1" marginTop={6}>
+                    <FieldLabel>Numero civico</FieldLabel>
+                    <input
+                      id="guided-field-civico"
+                      aria-label="Numero civico"
+                      aria-invalid={fieldInvalid("civico")}
+                      value={houseNumber}
+                      onChange={(e) => setHouseNumber(e.target.value)}
+                      placeholder="Numero civico"
+                      style={{ ...fieldInputStyle, maxWidth: 180 }}
+                    />
+                    {fieldErrorFor("civico")}
+                  </YStack>
                 ) : null}
               </YStack>
             )}
 
-            <input aria-label="Scala, piano, interno"
-              value={addressExtra}
-              onChange={(e) => setAddressExtra(e.target.value)}
-              placeholder="Scala, piano, interno (facoltativo)"
-              style={fieldInputStyle}
-            />
+            <YStack gap="$1">
+              <FieldLabel>Scala, piano, interno (facoltativo)</FieldLabel>
+              <input aria-label="Scala, piano, interno" value={addressExtra} onChange={(e) => setAddressExtra(e.target.value)} placeholder="Es. scala B, 2° piano" style={fieldInputStyle} />
+            </YStack>
           </YStack>
         ) : null}
 

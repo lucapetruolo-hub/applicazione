@@ -57,6 +57,8 @@ const TABS: { key: ProTabKey; label: string }[] = [
   { key: "scaduta", label: "Scadute" },
   { key: "archiviate", label: "Archiviate" },
 ];
+/** Numero rosso solo dove tocca al professionista (§346); altrove il numero sta nella pillola, in grigio. */
+const ACTION_TABS: ReadonlySet<ProTabKey> = new Set<ProTabKey>(["da_quotare", "modifica_richiesta"]);
 
 type SortMode = "recenti" | "vecchie" | "aggiornamento";
 
@@ -391,8 +393,13 @@ function RichiesteContent() {
                   <Text fontFamily="$body" fontSize={16} fontWeight="800" color={active ? "white" : brand.grafite}>
                     {tab.label}
                   </Text>
+                  {count > 0 && !ACTION_TABS.has(tab.key) ? (
+                    <Text fontFamily="$body" fontSize={14} fontWeight="600" color={active ? "rgba(255,255,255,0.85)" : brand.grafite70} marginLeft={6}>
+                      {count}
+                    </Text>
+                  ) : null}
                 </XStack>
-                {count > 0 ? (
+                {count > 0 && ACTION_TABS.has(tab.key) ? (
                   <YStack
                     position="absolute"
                     top={-5}

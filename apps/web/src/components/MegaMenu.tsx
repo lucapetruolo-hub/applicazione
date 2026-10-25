@@ -3,8 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { adminCan } from "@professionisti/shared";
 import { Icon, motionBase, motionEasing, motionFast } from "@professionisti/ui";
 import { MEGA_MENU_GROUPS, MEGA_MENU_MICRO_DESCRIPTION, categoryBySlug } from "@/lib/megaMenuGroups";
+import { getAccountMenuGroups, isNavItemActive, type AccountNavGroup } from "@/lib/accountMenuItems";
+import { ADMIN_NAV_ITEMS } from "@/components/admin/AdminNav";
 import { useAuth } from "@/lib/AuthContext";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
@@ -29,6 +33,26 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
   // "Accedi" e i link, quindi il menu hamburger è l'unico modo per
   // raggiungere login/dashboard da telefono (bug segnalato in audit).
   const { user, isLoading } = useAuth();
+  const pathname = usePathname();
+  // Dentro un'area riservata il menu da telefono apre prima le sezioni di
+  // quell'area (docs/CHANGELOG.md §346): prima mostrava solo le voci
+  // pubbliche e un idraulico dal telefono non trovava "Abbonamento" né
+  // "Messaggi". Le voci pubbliche restano, in fondo.
+  const inAdmin = pathname.startsWith("/admin") && user?.role === "ADMIN";
+  const areaGroups: AccountNavGroup[] = !user
+    ? []
+    : inAdmin
+      ? [
+          {
+            title: "Amministrazione",
+            items: ADMIN_NAV_ITEMS.filter((item) => adminCan(user.adminRoles ?? [], item.scope) && !item.hidden?.(null)).map((item) => ({
+              href: item.href,
+              label: item.label,
+              icon: item.icon,
+            })),
+          },
+        ]
+      : getAccountMenuGroups(user.isProfessional);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -126,6 +150,26 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
               </button>
             </div>
             <div className="mega-drawer-body">
+              {areaGroups.map((group) => (
+                <div key={group.title} className="mega-area">
+                  <span className="mega-area-title">{group.title}</span>
+                  {group.items.map((item) => {
+                    const active = inAdmin ? (item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href)) : isNavItemActive(item, pathname);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={`mega-area-link${active ? " is-active" : ""}`}
+                        aria-current={active ? "page" : undefined}
+                        onClick={() => setMobileOpen(false)}
+                      >
+                        <Icon name={item.icon} size={16} strokeWidth={1.75} color={active ? "#0e7a4c" : "#6e6459"} />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              ))}
               {/* Link di navigazione principali (su mobile l'header li
                   nasconde: qui restano raggiungibili) */}
               <div className="mega-navlinks">
@@ -145,15 +189,6 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
                     Accedi
                   </Link>
                 ) : null}
-                {!isLoading && user ? (
-                  <Link
-                    href={user.isProfessional ? "/dashboard" : "/le-mie-richieste"}
-                    className="mega-navlink mega-navlink-strong"
-                    onClick={() => setMobileOpen(false)}
-                  >
-                    {user.isProfessional ? "La mia dashboard" : "Le mie richieste"}
-                  </Link>
-                ) : null}
               </div>
               <div className="mega-section-label">Servizi</div>
               {MEGA_MENU_GROUPS.map((group) => (
@@ -171,11 +206,14 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
                 </details>
               ))}
             </div>
-            <div className="mega-drawer-cta">
-              <Link href="/preventivo" onClick={() => setMobileOpen(false)}>
-                Richiedi un preventivo →
-              </Link>
-            </div>
+            {/* Azione da cliente: come nell'header, non per un professionista. */}
+            {!user?.isProfessional ? (
+              <div className="mega-drawer-cta">
+                <Link href="/preventivo" onClick={() => setMobileOpen(false)}>
+                  Richiedi un preventivo →
+                </Link>
+              </div>
+            ) : null}
           </div>
         </div>,
         document.body,
@@ -371,6 +409,35 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
           padding-bottom: 12px;
           border-bottom: 1px solid #f0dcc0;
           margin-bottom: 4px;
+        }
+        .mega-area {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          padding-bottom: 10px;
+          margin-bottom: 8px;
+          border-bottom: 1px solid #f0dcc0;
+        }
+        .mega-area-title {
+          font-size: 12px;
+          font-weight: 700;
+          color: #6e6459;
+          padding: 8px 4px 4px;
+        }
+        :global(.mega-area-link) {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 6px;
+          border-radius: 10px;
+          text-decoration: none;
+          color: #2b2420;
+          font-size: 15px;
+          font-weight: 600;
+        }
+        :global(.mega-area-link.is-active) {
+          background: #efe9e2;
+          color: #0e7a4c;
         }
         :global(.mega-navlink) {
           padding: 10px 4px;

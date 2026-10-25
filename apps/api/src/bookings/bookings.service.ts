@@ -27,6 +27,7 @@ import {
   wallClockToday,
   PROFESSIONAL_JOB_PROBLEM_REPORT_PREFIX,
   type ReportProfessionalJobProblemInput,
+  notificationJobLabel,
   type CancelBookingByProfessionalInput, type ClientConfirmCompleteInput, type CompleteBookingInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -106,7 +107,12 @@ export class BookingsService {
   private async loadAcceptableQuote(clientId: string, quoteId: string, paymentMethod: JobPaymentChoice) {
     const quote = await this.prisma.quote.findUnique({
       where: { id: quoteId },
-      include: { guidedRequest: { include: { client: { select: { name: true, surname: true, phone: true } } } }, booking: true, professionalProfile: true, items: true },
+      include: {
+        guidedRequest: { include: { client: { select: { name: true, surname: true, phone: true } }, category: { select: { label: true } } } },
+        booking: true,
+        professionalProfile: true,
+        items: true,
+      },
     });
     if (!quote) {
       throw new NotFoundException("Preventivo non trovato.");
@@ -287,6 +293,9 @@ export class BookingsService {
       bookingId: booking.id,
       guidedRequestId: quote.guidedRequestId,
       clientName: clientFullName,
+      // Quale lavoro, nel testo della notifica (docs/CHANGELOG.md §346).
+      category: guidedRequest.category.label,
+      jobLabel: notificationJobLabel(guidedRequest.description),
       clientPhone: booking.recipientPhone ?? client?.phone ?? null,
       clientAddress,
       scheduledEndAt: booking.scheduledEndAt?.toISOString() ?? null,

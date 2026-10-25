@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon } from "@professionisti/ui";
@@ -10,6 +10,7 @@ import { accountMenuUnreadCounts } from "@/lib/notificationSections";
 import { useNavAttention } from "@/lib/useNavAttention";
 import { apiClient } from "@/lib/apiClient";
 import { applyNavPreference, useAccountNavCollapsed, useAccountNavKeys } from "@/lib/useAccountNavCollapsed";
+import { useScrollMoreRight } from "@/lib/useScrollMoreRight";
 
 /**
  * Guscio comune delle pagine personali (docs/CHANGELOG.md §147, decisione
@@ -23,6 +24,9 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
   const { user, token, isLoading, unreadNotifications } = useAuth();
   const attention = useNavAttention();
   const [collapsed, toggleCollapsedHere] = useAccountNavCollapsed();
+  // Su telefono la barra sfuma a destra finché ci sono altre voci (§346).
+  const navRef = useRef<HTMLElement>(null);
+  const moreRight = useScrollMoreRight(navRef);
   // La scelta vale su tutti i dispositivi della persona (docs/CHANGELOG.md
   // §334): salvata sull'account, ripresa da lì all'accesso.
   const savedPreference = user?.sidebarCollapsed;
@@ -51,7 +55,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
   const groups = !isProfessional ? CLIENT_NAV : journeyItem ? [...PROFESSIONAL_SIDEBAR, { title: "Da completare", items: [journeyItem] }] : PROFESSIONAL_SIDEBAR;
   return (
     <div className="acct-shell">
-      <nav className="acct-nav" aria-label="Sezioni del tuo account">
+      <nav ref={navRef} className="acct-nav" aria-label="Sezioni del tuo account" data-more-right={moreRight ? "true" : undefined}>
         {/* Riduce il menu a sole icone (da 1000px, docs/CHANGELOG.md §334):
             il nome della voce compare passando sopra o col tasto Tab. */}
         <button type="button" className="acct-nav-toggle" onClick={toggleCollapsed} aria-expanded={!collapsed} aria-keyshortcuts="[" aria-label={collapsed ? "Espandi il menu" : "Riduci il menu a icone"}>

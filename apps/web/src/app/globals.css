@@ -722,6 +722,13 @@ button.notif-row-main:hover {
 .admin-nav::-webkit-scrollbar {
   display: none;
 }
+/* Finché c'è altro a destra, il bordo sfuma (docs/CHANGELOG.md §346). */
+@media (max-width: 999px) {
+  .admin-nav[data-more-right="true"] {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent);
+  }
+}
 .admin-nav-title {
   display: none;
 }
@@ -924,6 +931,13 @@ button.notif-row-main:hover {
 }
 .acct-nav::-webkit-scrollbar {
   display: none;
+}
+/* Finché c'è altro a destra, il bordo sfuma (docs/CHANGELOG.md §346). */
+@media (max-width: 759px) {
+  .acct-nav[data-more-right="true"] {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent);
+  }
 }
 .acct-nav-group {
   display: contents;

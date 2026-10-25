@@ -18,6 +18,7 @@ import {
   type ProposeQuoteDateInput,
   type QuoteSelfInput,
   type RejectQuoteInput,
+  notificationJobLabel,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { formatSlotForTimeline } from "../common/format-date.util";
@@ -64,7 +65,7 @@ export class QuotesService {
           professionalProfileId: professionalProfile.id,
         },
       },
-      include: { guidedRequest: { include: { client: true } } },
+      include: { guidedRequest: { include: { client: true, category: { select: { label: true } } } } },
     });
     if (!lead) {
       // Il cliente può eliminare una richiesta senza preventivi (§343):
@@ -259,6 +260,8 @@ export class QuotesService {
         guidedRequestId: lead.guidedRequestId,
         quoteId: quote.id,
         businessName: professionalProfile.businessName,
+        category: lead.guidedRequest.category.label,
+        jobLabel: notificationJobLabel(lead.guidedRequest.description),
         resent: true,
       });
       await this.timelineService.log(
@@ -272,6 +275,9 @@ export class QuotesService {
         guidedRequestId: lead.guidedRequestId,
         quoteId: quote.id,
         businessName: professionalProfile.businessName,
+        // Chi e quale lavoro nel testo della notifica (docs/CHANGELOG.md §346).
+        category: lead.guidedRequest.category.label,
+        jobLabel: notificationJobLabel(lead.guidedRequest.description),
       });
       // Metriche di affidabilità (CLAUDE.md §15, evento 2): prima risposta
       // del professionista a QUESTO lead — minuti da quando gli è arrivato

@@ -254,6 +254,13 @@ export function NotificationBell() {
 
   const newCount = history ? history.filter((item) => item.readAt === null).length : 0;
 
+  /** Toglie subito i pallini "Nuova" (§346); sul server sono già segnate lette all'apertura. */
+  function handleMarkAllRead() {
+    const now = new Date().toISOString();
+    setHistory((prev) => (prev ? prev.map((item) => (item.readAt === null ? { ...item, readAt: now } : item)) : prev));
+    void markNotificationsRead();
+  }
+
   return (
     <div ref={containerRef} className="notif">
       <button
@@ -274,6 +281,11 @@ export function NotificationBell() {
           <div className="notif-head">
             <span className="notif-title">Notifiche</span>
             {newCount > 0 ? <span className="notif-new">{newCount === 1 ? "1 nuova" : `${newCount} nuove`}</span> : null}
+            {newCount > 0 ? (
+              <button type="button" className="notif-clear" onClick={handleMarkAllRead}>
+                Segna tutte come lette
+              </button>
+            ) : null}
             {history && history.length > 0 ? (
               <button type="button" className={`notif-clear${confirmDeleteAll ? " is-confirm" : ""}`} onClick={handleDeleteAll}>
                 {confirmDeleteAll ? "Conferma" : "Elimina tutte"}
