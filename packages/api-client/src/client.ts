@@ -239,7 +239,7 @@ export type ClientGuidedRequest = {
     businessName: string;
     /** Foto profilo del professionista, mostrata accanto al nome; null se assente o profilo eliminato. */
     imageUrl: string | null;
-    /** Privato, partita IVA o azienda, badge accanto al nome (docs/CHANGELOG.md §337); null se non ancora indicato. */
+    /** Privato, partita IVA o azienda, badge accanto al nome (docs/CHANGELOG.md §338); null se non ancora indicato. */
     professionalKind: ProfessionalKind | null;
     items: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
     /** Data+ora di invio del preventivo (richiesta esplicita dell'utente), visibile sia al cliente che al professionista. */

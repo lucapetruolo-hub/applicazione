@@ -1119,7 +1119,7 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: { label: "Fai la verifica", url: `${frontendUrl()}/dashboard/verifica-identita` },
   }),
-  // Documento della verifica in scadenza (§337): 30 giorni prima, una volta.
+  // Documento della verifica in scadenza (§338): 30 giorni prima, una volta.
   IDENTITY_VERIFICATION_EXPIRING: (payload, ctx) => {
     const expiresOn = str(payload.expiresOn);
     const day = expiresOn ? new Date(expiresOn).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Rome" }) : null;

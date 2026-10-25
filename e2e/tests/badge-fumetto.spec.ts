@@ -5,7 +5,7 @@ import { PrismaClient } from "@professionisti/database";
 import { API_URL } from "../fixtures/env";
 
 /**
- * Badge del professionista e loro significato (docs/CHANGELOG.md §337).
+ * Badge del professionista e loro significato (docs/CHANGELOG.md §338).
  * Il badge "Verificato" compare solo con la verifica di documento e selfie
  * approvata, mai su un profilo dimostrativo; il fumetto si apre col mouse,
  * al tocco e col tasto Tab, si chiude con Esc, e il lettore di schermo

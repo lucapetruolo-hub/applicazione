@@ -156,7 +156,7 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       // Servizio di verifica tornato disponibile, promemoria a chi non l'ha fatta (§256).
       "IDENTITY_VERIFICATION_READY",
       "IDENTITY_VERIFICATION_REMINDER",
-      // Documento della verifica in scadenza (§337).
+      // Documento della verifica in scadenza (§338).
       "IDENTITY_VERIFICATION_EXPIRING",
       // "Completa il profilo" il giorno dopo l'iscrizione, solo se manca qualcosa (§261).
       "PROFILE_SETUP_REMINDER",

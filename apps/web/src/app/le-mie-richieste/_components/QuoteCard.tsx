@@ -299,12 +299,12 @@ export function QuoteCard({
               </Text>
             </XStack>
           </Link>
-          {/* Che tipo di lavoratore ha mandato il preventivo, dove il cliente decide (richiesta dell'utente, §337). */}
+          {/* Che tipo di lavoratore ha mandato il preventivo, dove il cliente decide (richiesta dell'utente, §338). */}
           {quote.professionalKind ? <ProfessionalKindBadge kind={quote.professionalKind} /> : null}
           {/* Un preventivo accettato non è più una novità: le novità del lavoro sono sull'intervento (§228). */}
           {isNew && quote.status !== "ACCEPTED" ? <Badge variant="nuovo">Nuovo</Badge> : null}
         </XStack>
-        {/* Messaggi accanto al nome, leggero: non compete con la scelta sul preventivo (§337). */}
+        {/* Messaggi accanto al nome, leggero: non compete con la scelta sul preventivo (§338). */}
         {contactInBooking ? null : (
           <ContactButton
             light
@@ -425,7 +425,7 @@ export function QuoteCard({
         <>
           {/* Da telefono "Accetta preventivo" largo in fondo, dove arriva il
               pollice, con "Modifica" e "Rifiuta" affiancati sopra; da
-              computer tutti in riga (richiesta dell'utente, §337). Durante
+              computer tutti in riga (richiesta dell'utente, §338). Durante
               accettazione, modifica o rifiuto restano solo i pulsanti di
               quel passaggio (docs/CHANGELOG.md §225). */}
           {!choosingPayment && !isChoosingDate && !confirmingReject ? (

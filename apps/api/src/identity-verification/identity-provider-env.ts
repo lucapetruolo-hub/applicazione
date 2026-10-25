@@ -19,7 +19,7 @@ export function identityVerificationRequired(): boolean {
   return Boolean(process.env.DIDIT_API_KEY?.trim() && process.env.DIDIT_WORKFLOW_ID?.trim());
 }
 
-/** Con il documento scaduto (`identityExpiredAt`, §337) si toglie il badge ma si continua a lavorare. */
+/** Con il documento scaduto (`identityExpiredAt`, §338) si toglie il badge ma si continua a lavorare. */
 export function identityVerificationNeeded(profile: { isDemo: boolean; verified: boolean; identityExpiredAt: Date | null }): boolean {
   return identityVerificationRequired() && !profile.isDemo && !profile.verified && !profile.identityExpiredAt;
 }

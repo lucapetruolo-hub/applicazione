@@ -109,14 +109,14 @@ export const EXPIRED_BADGE_REASON = "Il documento della tua verifica è scaduto:
 const DECLINED_REASON =
   "Il documento o il selfie non sono stati accettati. Usa un documento valido e non scaduto, con buona luce e senza riflessi, e riprova.";
 
-/** Avviso "il documento sta per scadere" (§337). */
+/** Avviso "il documento sta per scadere" (§338). */
 export const EXPIRY_REMINDER_DAYS = 30;
 
 export type BadgeOverTime = "KEEP" | "REMIND" | "REVOKE_SANDBOX" | "REVOKE_EXPIRED";
 
 /**
  * Badge "Verificato" nel tempo (decisione dell'utente, docs/CHANGELOG.md
- * §337), con le chiavi vere del fornitore: senza una verifica approvata non
+ * §338), con le chiavi vere del fornitore: senza una verifica approvata non
  * di prova il badge cade; alla scadenza del documento (o dopo 5 anni senza
  * data) cade anche lui, con un avviso 30 giorni prima.
  */
@@ -372,7 +372,7 @@ export class IdentityVerificationService {
     const profiles = await this.prisma.professionalProfile.findMany({
       where: {
         verified: false,
-        // Documento scaduto: ha già il suo avviso, e può continuare a lavorare (§337).
+        // Documento scaduto: ha già il suo avviso, e può continuare a lavorare (§338).
         identityExpiredAt: null,
         isDemo: false,
         deletedAt: null,
@@ -399,7 +399,7 @@ export class IdentityVerificationService {
   }
 
   /**
-   * Badge nel tempo (§337), ogni mattina e solo con le chiavi vere del
+   * Badge nel tempo (§338), ogni mattina e solo con le chiavi vere del
    * fornitore: in prova le verifiche sono tutte di prova e il badge resta.
    */
   @Cron("0 9 * * *", { timeZone: "Europe/Rome" })
@@ -538,7 +538,7 @@ export class IdentityVerificationService {
         reason: next.reason,
         providerStatus: decision.providerStatus,
         decidedAt: decided ? new Date() : row.decidedAt,
-        // Dal documento si conserva solo la scadenza (§337).
+        // Dal documento si conserva solo la scadenza (§338).
         ...(next.status === "APPROVED" ? { documentExpiresAt: documentExpiry(decision.documentExpiresAt), expiryRemindedAt: null } : {}),
       },
     });

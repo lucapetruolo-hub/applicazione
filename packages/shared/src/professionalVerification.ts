@@ -38,7 +38,7 @@ export type ProfessionalVerificationRow = {
     provider: string;
     providerSessionId: string;
     updatedAt: string;
-    /** Fatta con DIDIT_SANDBOX: dal lancio non tiene il badge (§337). */
+    /** Fatta con DIDIT_SANDBOX: dal lancio non tiene il badge (§338). */
     sandbox: boolean;
     /** Scadenza del documento letta dal fornitore, se c'è. */
     documentExpiresAt: string | null;

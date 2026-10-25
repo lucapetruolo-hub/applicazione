@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ProfessionalVerificationService } from "./professional-verification.service";
 
 /**
- * Badge "Verificato" (docs/CHANGELOG.md §253, §337): lo dà solo la verifica di
+ * Badge "Verificato" (docs/CHANGELOG.md §253, §338): lo dà solo la verifica di
  * documento e selfie, l'admin può solo toglierlo; ogni cambio finisce nel
  * registro azioni e arriva al professionista.
  */
@@ -41,7 +41,7 @@ describe("ProfessionalVerificationService", () => {
     expect(notificationsService.notify).toHaveBeenCalledWith("u-1", "PROFILE_VERIFICATION_REMOVED", { note: "Partita IVA cessata" });
   });
 
-  it("documento scaduto: badge tolto, ma si continuano a inviare preventivi (§337)", async () => {
+  it("documento scaduto: badge tolto, ma si continuano a inviare preventivi (§338)", async () => {
     const { service, prisma, notificationsService } = buildService();
     prisma.professionalProfile.findUnique.mockResolvedValue({ ...activeProfile, verified: true });
     await service.revokeOverTime("p-1", "Documento scaduto", true);
@@ -52,7 +52,7 @@ describe("ProfessionalVerificationService", () => {
     expect(notificationsService.notify).toHaveBeenCalledWith("u-1", "PROFILE_VERIFICATION_REMOVED", { note: "Documento scaduto" });
   });
 
-  it("badge di prova tolto: la verifica va rifatta prima dei preventivi (§337)", async () => {
+  it("badge di prova tolto: la verifica va rifatta prima dei preventivi (§338)", async () => {
     const { service, prisma } = buildService();
     prisma.professionalProfile.findUnique.mockResolvedValue({ ...activeProfile, verified: true });
     await service.revokeOverTime("p-1", "Prova", false);

@@ -24,7 +24,7 @@ export function ContactButton({
   compactOnPhone?: boolean;
   /**
    * "Messaggi" leggero accanto al nome, per le schede dove la scelta
-   * principale è un'altra (preventivo del cliente, docs/CHANGELOG.md §337).
+   * principale è un'altra (preventivo del cliente, docs/CHANGELOG.md §338).
    */
   light?: boolean;
 }) {
