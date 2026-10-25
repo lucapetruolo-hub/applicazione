@@ -32,6 +32,7 @@ import { CardButton } from "@/components/CardButton";
 import { ContactButton } from "@/components/ContactButton";
 import { ArchivedRestoreBar, buildPersonalStateActions, RequestStateIndicators } from "@/components/RequestCardPersonalActions";
 import { combineUnreadCounts } from "@/lib/notificationSections";
+import { useSamePageLinkClick } from "@/lib/useSamePageLinkClick";
 import { clientNextAction } from "@/lib/clientNextAction";
 import { CLIENT_STAGE_LABEL, type RequestStage } from "@/lib/requestStage";
 import { BookingSection } from "./BookingSection";
@@ -113,6 +114,10 @@ export function GuidedRequestCard({
   }, [autoOpenChatProfessionalId]);
 
   const [isEditing, setIsEditing] = useState(false);
+  // "Le mie richieste" nel menu mentre si modifica: si torna alla scheda,
+  // non si resta bloccati nel modulo (docs/CHANGELOG.md §336).
+  useSamePageLinkClick(() => setIsEditing(false), isEditing);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [description, setDescription] = useState(request.description);
   const [city, setCity] = useState(request.city);
   const [address, setAddress] = useState(request.address ?? "");
@@ -294,6 +299,15 @@ export function GuidedRequestCard({
     }
   }
 
+  // "Elimina richiesta" dal modulo di modifica (§336): l'errore resta nel
+  // popup, che lo mostra da sé.
+  async function handleDeleteFromEdit(): Promise<void> {
+    await apiClient.deleteGuidedRequestPermanently(token, request.id);
+    setShowDeleteModal(false);
+    setIsEditing(false);
+    onChanged();
+  }
+
   // Riepilogo condivisibile — solo categoria, zona, descrizione e stato:
   // mai indirizzo, telefono o nome del destinatario (chi lo riceve non è
   // detto sia la persona giusta per vederli).
@@ -341,8 +355,27 @@ export function GuidedRequestCard({
     return (
       <Surface gap="$3">
         <YStack gap="$2">
+          {/* Uscita sempre in vista, anche su un modulo lungo dal telefono (§336). */}
+          <XStack
+            alignSelf="flex-start"
+            alignItems="center"
+            gap="$1"
+            minHeight={44}
+            marginLeft={-6}
+            paddingHorizontal={6}
+            borderRadius="$3"
+            cursor="pointer"
+            hoverStyle={{ backgroundColor: brand.filetto }}
+            onPress={() => !isSaving && setIsEditing(false)}
+            accessibilityRole="button"
+          >
+            <Icon name="chevron-left" size={18} color={brand.grafite} />
+            <Text fontSize={16} fontWeight="600" color={brand.grafite}>
+              Torna alla richiesta
+            </Text>
+          </XStack>
           <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite}>
-            {request.categoryLabel}
+            Modifica · {request.categoryLabel}
           </Text>
           <textarea aria-label="Descrizione del lavoro" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} style={textareaStyle} />
           <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="$4" backgroundColor={brand.calce}>
@@ -477,7 +510,26 @@ export function GuidedRequestCard({
               Annulla
             </CardButton>
           </XStack>
+          {/* Eliminare è possibile solo finché non arriva un preventivo, gli
+              stessi casi in cui si può modificare (§336): staccato dai
+              pulsanti del salvataggio per non premerlo per sbaglio. */}
+          <YStack borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3" marginTop="$2" alignItems="flex-start">
+            <CardButton tone="danger" onPress={() => setShowDeleteModal(true)} disabled={isSaving}>
+              Elimina richiesta
+            </CardButton>
+          </YStack>
         </YStack>
+        {showDeleteModal ? (
+          <CancelBookingModal
+            title="Eliminare la richiesta?"
+            description="Sparirà anche per i professionisti che l'hanno ricevuta. Non si può tornare indietro."
+            confirmLabel="Elimina richiesta"
+            confirmingLabel="Eliminazione..."
+            showNote={false}
+            onClose={() => setShowDeleteModal(false)}
+            onCancel={handleDeleteFromEdit}
+          />
+        ) : null}
       </Surface>
     );
   }

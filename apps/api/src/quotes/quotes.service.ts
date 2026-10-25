@@ -64,6 +64,12 @@ export class QuotesService {
       include: { guidedRequest: { include: { client: true } } },
     });
     if (!lead) {
+      // Il cliente può eliminare una richiesta senza preventivi (§336):
+      // a chi la stava ancora guardando lo si dice chiaramente.
+      const requestExists = await this.prisma.guidedRequest.count({ where: { id: input.requestId } });
+      if (!requestExists) {
+        throw new NotFoundException("Il cliente ha eliminato questa richiesta.");
+      }
       throw new ForbiddenException("Non hai ricevuto questa richiesta.");
     }
     // Richiesta esplicita dell'utente: se il cliente ha eliminato il

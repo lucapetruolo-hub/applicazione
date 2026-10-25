@@ -712,6 +712,11 @@ export class GuidedRequestsService {
    * annullata, così i professionisti vengono avvisati nella cronologia) e
    * mai se un preventivo ha già generato una prenotazione: quella documenta
    * un lavoro reale (e `Booking.quoteId` non è in cascata).
+   * Eccezione (docs/CHANGELOG.md §336, richiesta esplicita dell'utente:
+   * "Elimina richiesta" nel modulo di modifica): una richiesta ancora aperta
+   * si elimina subito se nessuno ha mandato un preventivo, gli stessi casi
+   * in cui si può modificare. Non c'è nessun lavoro né pagamento da
+   * conservare, e la cronologia andrebbe comunque persa in cascata.
    * Le notifiche che puntano alla richiesta vengono rimosse per tutti,
    * altrimenti porterebbero a una scheda che non esiste più.
    */
@@ -724,7 +729,10 @@ export class GuidedRequestsService {
       throw new ForbiddenException("Questa richiesta non è tua.");
     }
     if (request.status !== "CLOSED") {
-      throw new ForbiddenException("Annulla la richiesta prima di eliminarla definitivamente.");
+      const quoteCount = await this.prisma.quote.count({ where: { guidedRequestId: id } });
+      if (quoteCount > 0) {
+        throw new ForbiddenException("Hai già ricevuto un preventivo: annulla la richiesta prima di eliminarla.");
+      }
     }
     const bookingCount = await this.prisma.booking.count({ where: { quote: { guidedRequestId: id } } });
     if (bookingCount > 0) {
