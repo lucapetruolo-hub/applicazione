@@ -27,6 +27,8 @@ export function classifyLeadStage(lead: ProfessionalLead): RequestStage {
 
   const quote = lead.quote;
   if (!quote) return "da_quotare";
+  // Il cliente ha accettato il preventivo di un altro (docs/CHANGELOG.md §341).
+  if (quote.otherProfessionalChosen) return "chiusa";
   if (quote.status === "WITHDRAWN" || quote.status === "REJECTED") return "chiusa";
   if (quote.status === "MODIFICATION_REQUESTED") return "modifica_richiesta";
   if (quote.status === "SENT") return "in_attesa";
@@ -89,6 +91,7 @@ export function bookingStageStyle(status: ProfessionalBooking["status"]): (typeo
 /** Motivo per cui un preventivo/richiesta "chiusa" non è più azionabile — mostrato al posto delle azioni. */
 export function describeClosedReason(lead: ProfessionalLead): string {
   if (lead.status === "DECLINED") return "Hai rifiutato questa richiesta." + (lead.declineNote ? ` Nota: "${lead.declineNote}"` : "");
+  if (lead.quote?.otherProfessionalChosen) return "Il cliente ha scelto un altro professionista per questa richiesta.";
   if (lead.quote?.status === "WITHDRAWN") return "Hai ritirato il preventivo inviato per questa richiesta.";
   if (lead.quote?.status === "REJECTED")
     return "Il cliente ha rifiutato il preventivo che hai inviato." + (lead.quote.rejectionNote ? ` Nota: "${lead.quote.rejectionNote}"` : "");

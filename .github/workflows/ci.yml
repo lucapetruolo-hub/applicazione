@@ -157,6 +157,7 @@ jobs:
             e2e/test-results/
             e2e/lighthouse-results/
             e2e/misure-results/
+            e2e/schede-results/
           if-no-files-found: ignore
 
   # Test dei permessi (docs/CHANGELOG.md §312): ogni rotta dell'API chiamata

@@ -15,6 +15,7 @@ import {
   formatServicePriceRange,
   isPlausiblePhoneNumber,
   quotePriceTotals,
+  wallClockNow,
   type GuidedRequestStatusSummary,
 } from "@professionisti/shared";
 import { Autocomplete, Avatar, Badge, BadgeInfo, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
@@ -36,7 +37,7 @@ import { ArchivedRestoreBar, buildPersonalStateActions, RequestStateIndicators }
 import { combineUnreadCounts } from "@/lib/notificationSections";
 import { clientNextAction } from "@/lib/clientNextAction";
 import { CLIENT_STAGE_LABEL, type RequestStage } from "@/lib/requestStage";
-import { BookingSection } from "./BookingSection";
+import { BookingSection, ChangeLinks } from "./BookingSection";
 import { QuoteCard } from "./QuoteCard";
 import { Disclosure } from "./Disclosure";
 import { ClientMiniTimeline, ClientStagePill, MAX_REQUEST_PHOTOS, STAGE_STYLE, ServiceBadge, formatDateTime, requestJobAddress, textareaStyle } from "./clientRequestHelpers";
@@ -522,7 +523,8 @@ export function GuidedRequestCard({
   if (booking && booking.issueTypesAllowed.length > 0) {
     menuActions.push({ icon: "flag", text: "Segnala un problema", tone: "danger", onPress: () => setShowReportModal(true) });
   }
-  if (booking && (booking.status === "PENDING" || booking.status === "CONFIRMED")) {
+  // Cominciato l'appuntamento non si annulla più (§341): per un problema c'è "Segnala un problema".
+  if (booking && (booking.status === "PENDING" || booking.status === "CONFIRMED") && new Date(booking.scheduledAt) > wallClockNow()) {
     menuActions.push({ icon: "x", text: "Annulla prenotazione", tone: "danger", onPress: () => setShowCancelModal(true) });
   } else if (booking?.status === "CANCELED") {
     // Un intervento annullato dal professionista non si riapre dal lato cliente.
@@ -627,22 +629,11 @@ export function GuidedRequestCard({
           {otherQuotes.map(quoteCard)}
         </Disclosure>
       ) : null}
-      {booking.status === "CONFIRMED" || booking.status === "PENDING" ? (
-        // Cambiare idea senza cercare nel menu (§341): scrivere o annullare.
-        <XStack alignItems="center" gap="$4" flexWrap="wrap" paddingHorizontal="$1" paddingTop="$1">
-          <Text fontSize={16} color={brand.grafite70}>
-            Serve cambiare?
-          </Text>
-          {booking.guidedRequestId ? (
-            <Text fontSize={16} fontWeight="600" color={brand.grafite} textDecorationLine="underline" cursor="pointer" accessibilityRole="button" onPress={() => setShowBookingChat(true)}>
-              Scrivi un messaggio
-            </Text>
-          ) : null}
-          <Text fontSize={16} fontWeight="600" color={brand.urgenza} textDecorationLine="underline" cursor="pointer" accessibilityRole="button" onPress={() => setShowCancelModal(true)}>
-            Annulla appuntamento
-          </Text>
-        </XStack>
-      ) : null}
+      <ChangeLinks
+        booking={booking}
+        onMessage={booking.guidedRequestId ? () => setShowBookingChat(true) : null}
+        onCancel={() => setShowCancelModal(true)}
+      />
     </YStack>
   ) : null;
 

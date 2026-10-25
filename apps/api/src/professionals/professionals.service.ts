@@ -1011,6 +1011,19 @@ export class ProfessionalsService {
         : [],
     );
     const otherQuotesPerRequest = new Map(quoteCounts.map((row) => [row.guidedRequestId, row._count._all]));
+    // Richieste in cui il cliente ha accettato il preventivo di un altro
+    // professionista (docs/CHANGELOG.md §341): il preventivo di chi non è
+    // stato scelto non resta "in attesa del cliente" per sempre.
+    const takenByOthers = new Set(
+      requestIds.length > 0
+        ? (
+            await this.prisma.booking.findMany({
+              where: { guidedRequestId: { in: requestIds }, status: { not: "CANCELED" }, professionalProfileId: { not: professionalProfileId } },
+              select: { guidedRequestId: true },
+            })
+          ).map((row) => row.guidedRequestId)
+        : [],
+    );
     return leads.map((lead) => {
       // quotes è filtrato per professionalProfileId nella query: al più una
       // voce (un professionista invia un solo preventivo per richiesta,
@@ -1112,6 +1125,7 @@ export class ProfessionalsService {
               // cliente") — stesso campo già esposto lato cliente
               // (GuidedRequestsService.listForClient).
               bookingStatus: quote.booking?.status ?? null,
+              otherProfessionalChosen: quote.booking === null && takenByOthers.has(lead.guidedRequest.id),
             }
           : null,
         guidedRequest: {

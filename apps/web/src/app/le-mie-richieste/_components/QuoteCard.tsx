@@ -299,7 +299,7 @@ export function QuoteCard({
   ) : null;
 
   return (
-    <YStack backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$2">
+    <YStack id={`quote-${quote.id}`} backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$2">
       <XStack alignItems="center" gap="$2">
         <XStack flex={1} alignItems="center" gap="$2" flexWrap="wrap">
           <Link href={`/professionista/${quote.professionalProfileId}`} style={{ textDecoration: "none" }}>

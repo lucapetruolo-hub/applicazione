@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { ClientBooking } from "@professionisti/api-client";
 import { Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
-import { JOB_ISSUE_LABEL, JOB_ISSUE_STATUS_LABEL, formatEurCents, formatServicePriceRange, quotePriceTotals } from "@professionisti/shared";
+import { JOB_ISSUE_LABEL, JOB_ISSUE_STATUS_LABEL, formatEurCents, formatServicePriceRange, quotePriceTotals, type AppointmentMoment } from "@professionisti/shared";
 import { AppointmentWhen, useAppointmentMoment } from "./AppointmentWhen";
 import { AddToCalendar } from "./AddToCalendar";
 import { UnreadDot } from "@/components/UnreadDot";
@@ -133,6 +133,8 @@ export function BookingSection({
 
   const moment = useAppointmentMoment(booking);
   const live = booking.status === "CONFIRMED" || booking.status === "PENDING";
+  const proGone = booking.professionalAccountDeleted;
+  const upcoming = live && !proGone && isUpcoming(moment);
   const issueOpen = booking.issue?.status === "OPEN" || booking.issue?.status === "CHAT";
   // "Lavoro terminato" solo da quando l'appuntamento è iniziato (§341):
   // prima compariva già giorni prima. Se il professionista l'ha già chiuso, subito.
@@ -161,6 +163,28 @@ export function BookingSection({
             </Text>
           </YStack>
         </XStack>
+      ) : null}
+
+      {live && proGone && isUpcoming(moment) ? (
+        <YStack gap="$1" backgroundColor={brand.gesso} borderRadius={radiusDoc} padding="$4">
+          <Text fontFamily="$heading" fontWeight="800" fontSize={18} color={brand.grafite}>
+            Questo appuntamento non si farà
+          </Text>
+          <Text fontSize={16} color={brand.grafite70}>
+            Il professionista ha chiuso il suo account. Puoi eliminare la prenotazione e ripetere la richiesta.
+          </Text>
+        </YStack>
+      ) : null}
+
+      {booking.status === "NO_SHOW" ? (
+        <YStack gap="$1" backgroundColor={brand.gesso} borderRadius={radiusDoc} padding="$4">
+          <Text fontFamily="$heading" fontWeight="800" fontSize={18} color={brand.grafite}>
+            Appuntamento segnato come mancato
+          </Text>
+          <Text fontSize={16} color={brand.grafite70}>
+            Il professionista ha segnato che non eri presente. Se non è andata così, scrivigli un messaggio.
+          </Text>
+        </YStack>
       ) : null}
 
       {canConfirmDone || canWriteReview ? (
@@ -216,7 +240,7 @@ export function BookingSection({
               </CardButton>
             </a>
           ) : null}
-          {live && moment && moment.kind !== "over" ? <AddToCalendar token={token} bookingId={booking.id} /> : null}
+          {upcoming ? <AddToCalendar token={token} bookingId={booking.id} /> : null}
         </YStack>
 
         {booking.status !== "CANCELED" ? (
@@ -234,7 +258,7 @@ export function BookingSection({
                   </CardButton>
                 </a>
               ) : null}
-              {booking.guidedRequestId ? (
+              {booking.guidedRequestId && !proGone ? (
                 <CardButton
                   flex={1}
                   minWidth={130}
@@ -422,5 +446,35 @@ export function BookingSection({
         <TimelineModal token={token} guidedRequestId={booking.guidedRequestId} professionalProfileId={booking.professionalProfileId} viewerRole="CLIENT" otherPartyName={booking.businessName} otherPartyImageUrl={booking.professionalImageUrl} onClose={() => setShowTimeline(false)} />
       ) : null}
     </YStack>
+  );
+}
+
+/** L'appuntamento deve ancora cominciare: calendario, cambio data e annullamento hanno senso solo prima (§341). */
+function isUpcoming(moment: AppointmentMoment | null): boolean {
+  return moment !== null && moment.kind !== "inProgress" && moment.kind !== "over";
+}
+
+/**
+ * "Serve cambiare? Scrivi un messaggio · Annulla appuntamento" sotto la
+ * trattativa chiusa (§341): solo prima dell'appuntamento, quando il
+ * professionista c'è ancora. Dopo, per qualcosa che non va c'è "C'è un problema".
+ */
+export function ChangeLinks({ booking, onMessage, onCancel }: { booking: ClientBooking; onMessage: (() => void) | null; onCancel: () => void }) {
+  const moment = useAppointmentMoment(booking);
+  if ((booking.status !== "CONFIRMED" && booking.status !== "PENDING") || booking.professionalAccountDeleted || !isUpcoming(moment)) return null;
+  return (
+    <XStack alignItems="center" gap="$4" flexWrap="wrap" paddingHorizontal="$1" paddingTop="$1">
+      <Text fontSize={16} color={brand.grafite70}>
+        Serve cambiare?
+      </Text>
+      {onMessage ? (
+        <Text fontSize={16} fontWeight="600" color={brand.grafite} textDecorationLine="underline" cursor="pointer" accessibilityRole="button" onPress={onMessage}>
+          Scrivi un messaggio
+        </Text>
+      ) : null}
+      <Text fontSize={16} fontWeight="600" color={brand.urgenza} textDecorationLine="underline" cursor="pointer" accessibilityRole="button" onPress={onCancel}>
+        Annulla appuntamento
+      </Text>
+    </XStack>
   );
 }

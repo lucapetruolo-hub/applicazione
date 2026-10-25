@@ -34,6 +34,7 @@ function buildService(prismaOverrides: Record<string, unknown> = {}) {
     createQuoteDepositCheckout: vi.fn().mockResolvedValue({ url: "https://checkout.stripe.com/c/pay" }),
     recordQuoteDeposit: vi.fn(),
     refundQuoteDeposit: vi.fn().mockResolvedValue({ pending: false }),
+    refundOnCancel: vi.fn(),
   };
 
   const service = new BookingsService(
@@ -451,5 +452,22 @@ describe("BookingsService.confirmQuoteDeposit — lavoro confermato solo dopo l'
 
     expect(prisma.booking.create).not.toHaveBeenCalled();
     expect(jobPaymentsService.refundQuoteDeposit).toHaveBeenCalled();
+  });
+});
+
+describe("BookingsService.cancelForClient — solo prima dell'appuntamento (§341)", () => {
+  it("rifiuta l'annullamento a appuntamento cominciato: niente acconto rimborsato a lavoro fatto", async () => {
+    const { service, prisma, jobPaymentsService } = buildService();
+    prisma.booking.findUnique.mockResolvedValue({ id: "b-1", clientId: "client-1", status: "CONFIRMED", scheduledAt: new Date("2020-01-01T10:00:00Z"), quote: null });
+    await expect(service.cancelForClient("client-1", "b-1")).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.booking.update).not.toHaveBeenCalled();
+    expect(jobPaymentsService.refundOnCancel).not.toHaveBeenCalled();
+  });
+
+  it("annulla un appuntamento futuro e rimborsa l'eventuale acconto", async () => {
+    const { service, prisma, jobPaymentsService } = buildService({ professionalProfile: { findUnique: vi.fn().mockResolvedValue({ userId: "pro-user-1" }) } });
+    prisma.booking.findUnique.mockResolvedValue({ id: "b-1", clientId: "client-1", professionalProfileId: "pro-1", status: "CONFIRMED", scheduledAt: new Date("2099-01-01T10:00:00Z"), quote: null });
+    await expect(service.cancelForClient("client-1", "b-1")).resolves.toEqual({ bookingId: "b-1", status: "CANCELED" });
+    expect(jobPaymentsService.refundOnCancel).toHaveBeenCalledWith("b-1", "client-1");
   });
 });

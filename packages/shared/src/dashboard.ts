@@ -169,6 +169,8 @@ export type ProfessionalLead = {
      * `null` finché il preventivo non è stato accettato.
      */
     bookingStatus: string | null;
+    /** Il cliente ha accettato il preventivo di un altro professionista (docs/CHANGELOG.md §341). */
+    otherProfessionalChosen: boolean;
   } | null;
   guidedRequest: {
     id: string;

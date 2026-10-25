@@ -1212,6 +1212,7 @@ function DashboardAgendaContent() {
         (lead) =>
           lead.quote &&
           lead.quote.bookingStatus === null &&
+          !lead.quote.otherProfessionalChosen &&
           (lead.quote.status === "SENT" || lead.quote.status === "MODIFICATION_REQUESTED") &&
           jobOccurrenceOn(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate, dateStr) !== null,
       )
@@ -1312,6 +1313,7 @@ function DashboardAgendaContent() {
         (lead) =>
           lead.quote &&
           lead.quote.bookingStatus === null &&
+          !lead.quote.otherProfessionalChosen &&
           (lead.quote.status === "SENT" || lead.quote.status === "MODIFICATION_REQUESTED"),
       )
       .map((lead) => {
@@ -1451,7 +1453,7 @@ function DashboardAgendaContent() {
       : []),
     ...(filters.has("wait")
       ? (leads ?? [])
-          .filter((lead) => lead.quote && lead.quote.bookingStatus === null && (lead.quote.status === "SENT" || lead.quote.status === "MODIFICATION_REQUESTED"))
+          .filter((lead) => lead.quote && lead.quote.bookingStatus === null && !lead.quote.otherProfessionalChosen && (lead.quote.status === "SENT" || lead.quote.status === "MODIFICATION_REQUESTED"))
           .flatMap((lead) => {
             const quote = lead.quote!;
             return onEachDay(quote.estimatedStartDate, quote.estimatedEndDate, `pending-${lead.id}`).map((day) => ({

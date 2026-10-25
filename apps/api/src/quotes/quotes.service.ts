@@ -29,12 +29,15 @@ import { onlinePaymentsEnabled } from "../job-payments/online-payments-enabled";
 import { stripeVerified } from "../professional-fiscal/public-visibility";
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
 import { countBookingsInSlot, countOverlapping, loadCommitments, lockProfessionalAgenda } from "../agenda/commitments";
+import { hasOtherJob, isOtherJobViolation, lockGuidedRequest } from "../bookings/one-job-per-request";
 
 
 /** Appuntamento "prima"/"dopo" nel payload delle notifiche, per le email (docs/CHANGELOG.md §228). */
 function slotPayload(start: Date, end: Date | null | undefined): { start: string; end: string | null } {
   return { start: start.toISOString(), end: end ? end.toISOString() : null };
 }
+
+const OTHER_PROFESSIONAL_CHOSEN = "Il cliente ha già scelto un altro professionista per questa richiesta.";
 @Injectable()
 export class QuotesService {
   constructor(
@@ -588,6 +591,9 @@ export class QuotesService {
           // Un lavoro già preso che si sovrappone (anche un lavoro esterno
           // o uno lungo iniziato prima) occupa la fascia (docs/CHANGELOG.md §310).
           await lockProfessionalAgenda(tx, professionalProfile.id);
+          // Nel frattempo il cliente ha accettato il preventivo di un altro professionista (§341).
+          await lockGuidedRequest(tx, quote.guidedRequestId);
+          if (await hasOtherJob(tx, quote.guidedRequestId)) throw new ConflictException(OTHER_PROFESSIONAL_CHOSEN);
           const commitments =
             (await loadCommitments(tx, [professionalProfile.id], dayStart, quote.clientProposedEndDate ?? dayEnd)).get(professionalProfile.id) ?? [];
           if (countOverlapping(commitments, scheduledAt, quote.clientProposedEndDate, requestServiceMode) >= maxBookings) {
@@ -648,6 +654,7 @@ export class QuotesService {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2034") {
         throw new ConflictException("Questa fascia non è più libera.");
       }
+      if (isOtherJobViolation(err)) throw new ConflictException(OTHER_PROFESSIONAL_CHOSEN);
       throw err;
     }
   }

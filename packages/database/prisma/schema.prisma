@@ -1045,6 +1045,12 @@ enum BookingCanceledBy {
 model Booking {
   id                    String        @id @default(uuid())
   quoteId               String?       @unique
+  // Richiesta da cui nasce il lavoro (docs/CHANGELOG.md §341): la compila un
+  // trigger del database dal preventivo (quoteId), mai il codice. Un indice
+  // unico parziale ("bookings_one_active_job_per_request", solo nella
+  // migrazione: Prisma non descrive gli indici con WHERE) vieta un secondo
+  // lavoro non annullato sulla stessa richiesta, anche se il codice sbagliasse.
+  guidedRequestId       String?
   clientId              String
   professionalProfileId String
   scheduledAt           DateTime

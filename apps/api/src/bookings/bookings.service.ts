@@ -24,12 +24,14 @@ import {
   PROFESSIONAL_JOB_PROBLEM_REASONS,
   formatEurCents,
   completionDeclaration,
+  wallClockNow,
   wallClockToday,
   PROFESSIONAL_JOB_PROBLEM_REPORT_PREFIX,
   type ReportProfessionalJobProblemInput,
   type CancelBookingByProfessionalInput, type ClientConfirmCompleteInput, type CompleteBookingInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { BOOKING_CALENDAR_INCLUDE, bookingCalendar } from "../email/booking-calendar";
+import { hasOtherJob, isOtherJobViolation, lockGuidedRequest } from "./one-job-per-request";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { TimelineService } from "../timeline/timeline.service";
@@ -40,6 +42,7 @@ import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service"
 import { PROFESSIONAL_BUSY_MESSAGE, capacityAt, countOverlapping, loadCommitments, lockProfessionalAgenda } from "../agenda/commitments";
 
 /** Il cliente ha già un lavoro per questa richiesta (docs/CHANGELOG.md §341). */
+const CLIENT_CANCEL_TOO_LATE = "L'appuntamento è già cominciato e non si può più annullare. Se qualcosa non va, usa \"C'è un problema\".";
 const OTHER_JOB_MESSAGE = "Hai già accettato un altro preventivo per questa richiesta. Per cambiare professionista annulla prima l'appuntamento.";
 
 type AcceptableQuote = Awaited<ReturnType<BookingsService["loadAcceptableQuote"]>>;
@@ -144,11 +147,7 @@ export class BookingsService {
 
   /** La richiesta non ha già un lavoro non annullato (un preventivo accettato), escluso `exceptBookingId`. */
   private async assertNoOtherJob(db: PrismaClient | Prisma.TransactionClient, guidedRequestId: string, exceptBookingId?: string): Promise<void> {
-    const other = await db.booking.findFirst({
-      where: { quote: { guidedRequestId }, status: { not: "CANCELED" }, ...(exceptBookingId ? { id: { not: exceptBookingId } } : {}) },
-      select: { id: true },
-    });
-    if (other) throw new ConflictException(OTHER_JOB_MESSAGE);
+    if (await hasOtherJob(db, guidedRequestId, exceptBookingId)) throw new ConflictException(OTHER_JOB_MESSAGE);
   }
 
   /**
@@ -180,7 +179,7 @@ export class BookingsService {
       refundReason = err instanceof Error ? err.message : "Preventivo non più disponibile.";
     }
     if (quote) {
-      const otherJob = await this.prisma.booking.findFirst({ where: { quote: { guidedRequestId: quote.guidedRequestId } }, select: { id: true } });
+      const otherJob = await this.prisma.booking.findFirst({ where: { quote: { guidedRequestId: quote.guidedRequestId }, status: { not: "CANCELED" } }, select: { id: true } });
       if (otherJob) refundReason = "Il cliente ha già accettato un altro preventivo per questa richiesta.";
       else if ((session.amount_total ?? 0) !== this.quoteDepositEurCents(quote)) refundReason = "Il preventivo è cambiato durante il pagamento.";
     }
@@ -251,7 +250,7 @@ export class BookingsService {
         throw new ConflictException("Questo preventivo è già stato accettato.");
       }
       // Due preventivi della stessa richiesta accettati insieme (§341): il secondo vede il primo.
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`request:${quote.guidedRequestId}`}))`;
+      await lockGuidedRequest(tx, quote.guidedRequestId);
       await this.assertNoOtherJob(tx, quote.guidedRequestId);
       await this.assertProfessionalFree(tx, quote);
       return tx.booking.create({
@@ -274,6 +273,10 @@ export class BookingsService {
         province: guidedRequest.province,
       },
       });
+    }).catch((err: unknown) => {
+      // Il vincolo del database ha fermato un secondo lavoro sfuggito al controllo.
+      if (isOtherJobViolation(err)) throw new ConflictException(OTHER_JOB_MESSAGE);
+      throw err;
     });
 
     // Metodo di pagamento scelto dal cliente (§168, §237): acconto online
@@ -748,6 +751,11 @@ export class BookingsService {
     if (booking.status !== "PENDING" && booking.status !== "CONFIRMED") {
       throw new ForbiddenException("Questa prenotazione non può più essere annullata.");
     }
+    // Cominciato l'appuntamento non si annulla più (§341): prima si poteva
+    // anche a lavoro fatto, e con l'acconto online tornavano i soldi.
+    if (booking.scheduledAt.getTime() <= wallClockNow().getTime()) {
+      throw new ForbiddenException(CLIENT_CANCEL_TOO_LATE);
+    }
 
     await this.prisma.booking.update({ where: { id: bookingId }, data: { status: "CANCELED", canceledBy: "CLIENT" } });
     // Lavoro pagato online (§168): l'acconto torna al cliente.
@@ -873,6 +881,7 @@ export class BookingsService {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2034") {
         throw new ConflictException("Questa fascia non è più libera.");
       }
+      if (isOtherJobViolation(err)) throw new ConflictException(OTHER_JOB_MESSAGE);
       throw err;
     }
 
