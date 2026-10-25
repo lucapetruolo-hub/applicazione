@@ -81,6 +81,8 @@ export default function AbbonamentoPage() {
 }
 
 function AbbonamentoContent() {
+  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §335).
+  "use no memo";
   const { user, token, isLoading } = useAuth();
   const searchParams = useSearchParams();
   const [sub, setSub] = useState<MySubscription | null>(null);

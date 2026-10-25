@@ -23,6 +23,8 @@ type IconActionButtonProps = {
  * `title` nativo: quello compare solo dopo circa un secondo.
  */
 export function IconActionButton({ label, onPress, children, active, disabled, forceTooltip, size = 40 }: IconActionButtonProps) {
+  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §335).
+  "use no memo";
   return (
     <span className="icon-action">
       <button

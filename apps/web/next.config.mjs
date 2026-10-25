@@ -72,11 +72,11 @@ const nextConfig = {
     staleTimes: { dynamic: 0, static: 0 },
     // React Compiler (docs/CHANGELOG.md §335): ricorda da solo i valori e i
     // componenti che non cambiano, così React ridisegna meno a ogni
-    // aggiornamento. Solo nei componenti con la direttiva "use memo": acceso
-    // su tutto il sito rompe gli stili `<style jsx>` (spariscono le classi
-    // jsx-..., es. il testo breve del banner cookie compariva insieme a
-    // quello lungo). Non metterlo in un componente che usa `<style jsx>`.
-    reactCompiler: { compilationMode: "annotation" },
+    // aggiornamento. Tutto il sito tranne i componenti con `<style jsx>`, che
+    // hanno la direttiva "use no memo": compilati perdono le classi jsx-...
+    // (es. il testo breve del banner cookie compariva insieme a quello lungo).
+    // Un componente nuovo con `<style jsx>` deve avere "use no memo".
+    reactCompiler: true,
   },
   // Sito privato finché NEXT_PUBLIC_SITE_INDEXABLE non vale "true" (vedi
   // src/lib/siteIndexing.ts): l'header copre anche le pagine client e le

@@ -99,8 +99,6 @@ export default function DashboardAgendaPage() {
 }
 
 function DashboardAgendaContent() {
-  // React Compiler solo qui (docs/CHANGELOG.md §335, vedi next.config.mjs).
-  "use memo";
   const { user, token, isLoading, refreshUser } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();

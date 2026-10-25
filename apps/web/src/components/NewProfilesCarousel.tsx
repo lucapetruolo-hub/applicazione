@@ -43,6 +43,8 @@ export function NewProfilesCarousel({
 }: {
   professionals: ProfessionalSearchResult[];
 }) {
+  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §335).
+  "use no memo";
   const trackRef = useRef<HTMLDivElement>(null);
   const [progress, setProgress] = useState({ start: 0, size: 1 });
 

@@ -54,6 +54,8 @@ function Flag({ iso }: { iso: string }) {
  * per nome o prefisso come negli altri siti.
  */
 export function PhoneNumberInput({ value, onChange, style, placeholder = "Numero di telefono" }: Props) {
+  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §335).
+  "use no memo";
   // Il paese scelto resta in memoria: un prefisso condiviso (+1, +44, +7)
   // non deve far saltare la scelta mentre si scrive il numero.
   const [iso, setIso] = useState(() => splitPhoneNumber(value).iso);

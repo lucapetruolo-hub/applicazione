@@ -70,6 +70,8 @@ export function CalendarShell({
   renderYearList,
   dayStripAbove = false,
 }: CalendarShellProps) {
+  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §335).
+  "use no memo";
   const compactDay = dayStripAbove && view === "day";
   const viewLabels = renderYearList ? [...BASE_VIEW_LABELS, { value: "year" as const, label: "Anno" }] : BASE_VIEW_LABELS;
   const today = todayUtc();
@@ -403,6 +405,8 @@ export function MonthGrid({
   onSelectDay?: (date: Date) => void;
   renderMonthCell?: (date: Date) => ReactNode;
 }) {
+  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §335).
+  "use no memo";
   const days = monthGridDays(currentDate);
   const currentMonth = currentDate.getUTCMonth();
 

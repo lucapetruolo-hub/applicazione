@@ -1,4 +1,4 @@
-// Lighthouse dell'agenda su un telefono lento (docs/CHANGELOG.md §309):
+// Lighthouse dell'agenda, di Oggi e di Richieste su un telefono lento (docs/CHANGELOG.md §309, §335):
 // profilo "mobile" di Lighthouse (Moto G Power, CPU rallentata 4 volte,
 // rete 4G lenta simulata). Blocca sotto i limiti "scarso" di Google
 // (BUDGET) e avvisa sotto quelli "buono" (GOOD), che sono l'obiettivo.
@@ -43,6 +43,9 @@ await page.locator(".ag-strip-row, .ag-card").first().waitFor({ state: "attached
 const pages = [
   { name: "calendario", path: "/dashboard/agenda" },
   { name: "orari", path: "/dashboard/agenda?tab=orari" },
+  // Le altre due pagine aperte più spesso dal professionista (docs/CHANGELOG.md §335).
+  { name: "oggi", path: "/dashboard" },
+  { name: "richieste", path: "/dashboard/richieste" },
 ];
 const rows = [];
 let failed = false;
@@ -82,7 +85,7 @@ for (const item of pages) {
     return out;
   };
   const problems = check(BUDGET);
-  if (!row.finalUrl.includes("/dashboard/agenda")) problems.push(`pagina sbagliata: ${row.finalUrl}`);
+  if (new URL(row.finalUrl).pathname !== new URL(item.path, WEB_URL).pathname) problems.push(`pagina sbagliata: ${row.finalUrl}`);
   if (problems.length) {
     failed = true;
     console.error(`✗ ${item.name}: ${problems.join(", ")}`);

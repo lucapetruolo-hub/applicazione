@@ -62,6 +62,8 @@ function formatThreadTimestamp(iso: string): string {
  * backdrop.
  */
 export default function ChatPage() {
+  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §335).
+  "use no memo";
   const router = useRouter();
   const { user, token, isLoading, markNotificationsRead } = useAuth();
   const [threads, setThreads] = useState<ChatThreadSummary[] | null>(null);

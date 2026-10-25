@@ -17,6 +17,8 @@ import { WHAT_IF_ITEMS } from "@/components/WhatIfSection";
 const ALL_ITEMS: { question: string; answer: string; answerWithoutOnline?: string }[] = [...FAQ_ITEMS, ...WHAT_IF_ITEMS];
 
 export default function FaqContent() {
+  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §335).
+  "use no memo";
   const onlinePayments = useOnlinePayments();
   return (
     <Section pageTitle title="Domande frequenti" lead="Le risposte alle domande più comuni su come funziona la piattaforma." maxWidth={780}>

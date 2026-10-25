@@ -93,6 +93,8 @@ export function GoogleMapGate({ children, staticMap }: { children: ReactNode; st
  * (consenso). Se l'immagine non arriva resta il riquadro con il pulsante.
  */
 function StaticMapPreview({ spec }: { spec: StaticMapSpec }) {
+  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §335).
+  "use no memo";
   const boxRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<{ width: number; height: number } | null>(null);
   const [failed, setFailed] = useState(false);
@@ -224,6 +226,8 @@ function describeError(error: Error): string {
 }
 
 function MapPlaceholder({ text, children }: { text: string; children?: ReactNode }) {
+  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §335).
+  "use no memo";
   return (
     <div className="map-placeholder">
       <MapPin size={28} strokeWidth={1.5} color="#6e6459" />
