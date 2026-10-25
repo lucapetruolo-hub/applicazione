@@ -5,7 +5,7 @@ import { type JobPaymentChoice } from "@professionisti/shared";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
-import { Button, EmptyState, Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { useLiveRefresh } from "@/lib/useLiveRefresh";
@@ -351,10 +351,17 @@ function LeMieRichiesteContent() {
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={1000} gap="$5">
-        <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite}>
-          Le mie richieste
-        </Text>
+      {/* Come "Richieste e lavori" del professionista (richiesta dell'utente,
+          docs/CHANGELOG.md §334): stessa larghezza, titolo e riga sotto. */}
+      <YStack width="100%" maxWidth={1180} gap="$5">
+        <YStack gap="$1">
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite}>
+            Le mie richieste
+          </Text>
+          <Text fontFamily="$body" fontSize={16} color={brand.grafite70}>
+            Preventivi, appuntamenti e pagamenti di ogni tua richiesta
+          </Text>
+        </YStack>
 
         {error ? <Text color={brand.urgenza}>{error}</Text> : null}
 
@@ -586,21 +593,26 @@ function LeMieRichiesteContent() {
           {requests === null ? (
             <SkeletonRequestList count={3} />
           ) : requests.length === 0 ? (
-            <EmptyState
-              icon="file-text"
-              illustration={<EmptyRequestsIllustration size={28} style={{ color: brand.cianografiaScuro }} />}
-              title="Nessuna richiesta inviata"
-              description="Non hai ancora inviato nessuna richiesta di preventivo."
-              action={
-                <Link href="/preventivo" style={{ textDecoration: "none" }}>
-                  <Text color={brand.cianografiaScuro} fontWeight="600">
-                    Richiedi il tuo primo preventivo
-                  </Text>
-                </Link>
-              }
-            />
+            // Nel riquadro bianco come in "Richieste e lavori" (docs/CHANGELOG.md §334).
+            <Surface>
+              <EmptyState
+                icon="file-text"
+                illustration={<EmptyRequestsIllustration size={28} style={{ color: brand.cianografiaScuro }} />}
+                title="Nessuna richiesta inviata"
+                description="Non hai ancora inviato nessuna richiesta di preventivo."
+                action={
+                  <Link href="/preventivo" style={{ textDecoration: "none" }}>
+                    <Text color={brand.cianografiaScuro} fontWeight="600">
+                      Richiedi il tuo primo preventivo
+                    </Text>
+                  </Link>
+                }
+              />
+            </Surface>
           ) : visibleRequests.length === 0 ? (
-            <Text color={brand.grafite70}>Nessuna richiesta corrisponde al filtro selezionato.</Text>
+            <Surface>
+              <EmptyState icon="search" title="Nessuna richiesta in questa categoria" description="Cambia filtro per vedere le altre richieste." />
+            </Surface>
           ) : (
             visibleRequests.map((request) => (
               <div key={request.id} id={`request-${request.id}`}>

@@ -890,7 +890,9 @@ button.notif-row-main:hover {
    di schede del cliente. Le pagine dentro restano centrate come prima. */
 .acct-shell {
   width: 100%;
-  max-width: 1320px;
+  /* 1600 e non più 1320 (docs/CHANGELOG.md §334): su uno schermo da 1920px
+     agenda e messaggi restavano in una striscia centrale con 600px vuoti. */
+  max-width: 1600px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -899,6 +901,9 @@ button.notif-row-main:hover {
 .acct-main {
   min-width: 0;
   flex: 1;
+  /* Le pagine dentro possono adattarsi allo spazio vero, che cambia col menu
+     ridotto (docs/CHANGELOG.md §334). Non trattiene gli elementi fissi. */
+  container: acct-main / inline-size;
   /* Il piè di pagina resta sotto lo schermo mentre la pagina carica: prima
      compariva in alto e poi veniva spinto giù (CLS 0,14, docs/CHANGELOG.md §321). */
   min-height: 100vh;
@@ -926,8 +931,32 @@ button.notif-row-main:hover {
 .acct-nav-title {
   display: none;
 }
-.acct-nav-link,
-.acct-tab {
+/* Nome breve sotto l'icona: solo nella colonna stretta del tablet. */
+.acct-nav-short {
+  display: none;
+}
+/* Sul telefono, nella barra che scorre, il nome breve ("Richieste",
+   "Salvati"): con quello intero si vedevano due voci sole (docs/CHANGELOG.md
+   §334). Il nome intero resta per gli screen reader. */
+@media (max-width: 759px) {
+  .acct-nav .acct-nav-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .acct-nav .acct-nav-short {
+    display: inline;
+  }
+}
+/* Tasto "Riduci il menu" (docs/CHANGELOG.md §334): solo con la colonna. */
+.acct-nav-toggle,
+.acct-nav-tip {
+  display: none;
+}
+.acct-nav-link {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -940,19 +969,16 @@ button.notif-row-main:hover {
   white-space: nowrap;
   flex-shrink: 0;
 }
-.acct-nav-link > svg,
-.acct-tab > svg {
+.acct-nav-link > svg {
   flex-shrink: 0;
 }
-.acct-nav-link:hover,
-.acct-tab:hover {
+.acct-nav-link:hover {
   background: #fdefe1;
 }
 /* Voce attiva grigio chiaro, non più quasi nera (regola accettata
    dall'utente il 22/10, docs/CHANGELOG.md §306): il nero pieno pesava più
    del contenuto della pagina. */
-.acct-nav-link.is-active,
-.acct-tab.is-active {
+.acct-nav-link.is-active {
   background: #efe9e2;
   color: #2b2420;
   font-weight: 700;
@@ -1000,33 +1026,10 @@ button.notif-row-main:hover {
   background: #dc3545;
   box-shadow: 0 0 0 2px #ffffff;
 }
-.acct-client {
-  width: 100%;
-}
-.acct-tabs {
-  display: flex;
-  gap: 4px;
-  overflow-x: auto;
-  justify-content: flex-start;
-  background: #ffffff;
-  padding: 8px 12px;
-  border-bottom: 1px solid #f0dcc0;
-  scrollbar-width: none;
-  position: sticky;
-  top: 64px;
-  /* Sotto l'header (z-index 40), non sopra: altrimenti la tendina
-     "Il mio account" finiva dietro questa barra (docs/CHANGELOG.md §148). */
-  z-index: 30;
-}
-.acct-tabs::-webkit-scrollbar {
-  display: none;
-}
+/* Colonna a sinistra da 760px (tablet in verticale compreso, docs/CHANGELOG.md
+   §334): prima, fino a 1000px, era una barra che scorreva di lato e
+   nascondeva metà delle voci. */
 @media (min-width: 760px) {
-  .acct-tabs {
-    justify-content: center;
-  }
-}
-@media (min-width: 1000px) {
   .acct-shell {
     flex-direction: row;
     align-items: flex-start;
@@ -1052,6 +1055,66 @@ button.notif-row-main:hover {
   .acct-nav-group + .acct-nav-group {
     margin-top: 10px;
   }
+}
+/* Tablet in verticale: colonna stretta con icona e nome breve sotto, come la
+   "navigation rail" di Material. Niente fumetti: col dito non si passa sopra. */
+@media (min-width: 760px) and (max-width: 999px) {
+  .acct-nav {
+    width: 96px;
+    padding: 8px 4px;
+  }
+  .acct-nav-group + .acct-nav-group {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #f0dcc0;
+  }
+  .acct-nav-link {
+    position: relative;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 0 8px;
+    min-height: 56px;
+    justify-content: center;
+    text-align: center;
+    white-space: normal;
+  }
+  .acct-nav-link > svg {
+    width: 20px;
+    height: 20px;
+  }
+  /* Il nome intero resta per gli screen reader, si vede quello breve. */
+  .acct-nav-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .acct-nav-short {
+    display: block;
+    font-size: 12px;
+    line-height: 1.2;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+  .acct-nav .acct-nav-badge {
+    position: absolute;
+    top: 4px;
+    right: 12px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    font-size: 11px;
+    box-shadow: 0 0 0 2px #ffffff;
+  }
+  .acct-nav .acct-nav-dot {
+    position: absolute;
+    top: 9px;
+    right: 22px;
+  }
+}
+@media (min-width: 1000px) {
   .acct-nav-title {
     display: block;
     font-size: 13px;
@@ -1059,8 +1122,184 @@ button.notif-row-main:hover {
     color: #6e6459;
     padding: 4px 12px 6px;
   }
+  /* Tondo in alto a destra, sulla riga del primo titolo. */
+  .acct-nav-toggle {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    border: 1px solid #f0dcc0;
+    border-radius: 999px;
+    background: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    transition: background-color 150ms ease;
+  }
+  .acct-nav-toggle:hover {
+    background: #fdefe1;
+  }
+  .acct-nav-toggle:focus-visible,
+  .acct-nav-link:focus-visible {
+    outline: 2px solid #2b2420;
+    outline-offset: 2px;
+  }
+  /* Etichetta a fumetto: nome del tasto e, col menu ridotto, delle voci. */
+  .acct-nav-tip,
+  html[data-acct-nav="collapsed"] .acct-nav-label {
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: #2b2420;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(43, 36, 32, 0.18);
+    z-index: 1;
+  }
+  .acct-nav-tip {
+    display: none;
+  }
+  .acct-nav-toggle:hover .acct-nav-tip,
+  .acct-nav-toggle:focus-visible .acct-nav-tip {
+    display: block;
+  }
+  .acct-nav-tip kbd {
+    margin-left: 6px;
+    padding: 0 5px;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 12px;
+  }
+  /* Si può passare col puntatore sopra il fumetto senza che sparisca
+     (WCAG 1.4.13): un ponte invisibile copre lo spazio tra icona e fumetto. */
+  html[data-acct-nav="collapsed"] .acct-nav-label::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 100%;
+    width: 12px;
+  }
+  /* Esc chiude il fumetto (useAccountNavKeys). */
+  html[data-acct-tips="hidden"] .acct-nav-toggle .acct-nav-tip {
+    display: none;
+  }
+  html[data-acct-tips="hidden"][data-acct-nav="collapsed"] .acct-nav .acct-nav-link .acct-nav-label {
+    opacity: 0;
+    pointer-events: none;
+  }
+  /* Menu ridotto a sole icone: stessa colonna, larga quanto un'icona. */
+  html[data-acct-nav="collapsed"] .acct-nav {
+    width: 64px;
+    padding: 12px 8px;
+    align-items: center;
+  }
+  html[data-acct-nav="collapsed"] .acct-nav-toggle {
+    position: relative;
+    top: auto;
+    right: auto;
+    margin-bottom: 8px;
+    flex-shrink: 0;
+  }
+  html[data-acct-nav="collapsed"] .acct-nav-group {
+    align-items: center;
+  }
+  /* I titoli dei gruppi diventano una riga di separazione. */
+  html[data-acct-nav="collapsed"] .acct-nav-title {
+    display: none;
+  }
+  html[data-acct-nav="collapsed"] .acct-nav-group + .acct-nav-group {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #f0dcc0;
+  }
+  html[data-acct-nav="collapsed"] .acct-nav-link {
+    position: relative;
+    width: 48px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+  html[data-acct-nav="collapsed"] .acct-nav-link > svg {
+    width: 20px;
+    height: 20px;
+  }
+  /* Il nome resta nella pagina (lo leggono gli screen reader) ma si vede
+     solo passando sopra o arrivando col tasto Tab. */
+  html[data-acct-nav="collapsed"] .acct-nav-label {
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+  html[data-acct-nav="collapsed"] .acct-nav-link:hover .acct-nav-label,
+  html[data-acct-nav="collapsed"] .acct-nav-link:focus-visible .acct-nav-label {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  /* Numeri e pallini restano, sull'angolo dell'icona. */
+  html[data-acct-nav="collapsed"] .acct-nav .acct-nav-badge {
+    position: absolute;
+    top: 3px;
+    right: 2px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    font-size: 11px;
+    box-shadow: 0 0 0 2px #ffffff;
+  }
+  html[data-acct-nav="collapsed"] .acct-nav .acct-nav-dot {
+    position: absolute;
+    top: 9px;
+    right: 9px;
+  }
+}
+@media (min-width: 1000px) and (prefers-reduced-motion: reduce) {
+  .acct-nav-toggle,
+  html[data-acct-nav="collapsed"] .acct-nav-label {
+    transition: none;
+  }
 }
 /* Home "Oggi" del professionista (docs/CHANGELOG.md §147). */
+/* Due colonne quando il contenuto è largo almeno 960px (docs/CHANGELOG.md
+   §334): conta lo spazio vero della pagina, che cambia col menu ridotto,
+   non la larghezza della finestra. */
+.today-wrap {
+  container-type: inline-size;
+}
+.today-grid,
+.today-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.today-slot:empty {
+  display: none;
+}
+.today-col {
+  display: contents;
+}
+@container (min-width: 960px) {
+  .today-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr);
+    align-items: start;
+  }
+  .today-col {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    min-width: 0;
+  }
+}
 /* Sempre 3 riquadri affiancati (anche su telefono, più compatti): con
    auto-fill restava una colonna vuota su desktop e su telefono si
    impilavano occupando mezza pagina. */
@@ -2079,6 +2318,13 @@ a.admin-kpi:hover {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
+}
+/* Con la pagina larga (menu ridotto) le sei tessere stanno su una riga e il
+   grafico sale (docs/CHANGELOG.md §334). */
+@container acct-main (min-width: 1140px) {
+  .pstats-kpis {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
 }
 .pstats-kpi {
   display: flex;
