@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ProfessionalReviewsLink } from "@/components/ProfessionalReviewsLink";
 import type { ClientGuidedRequest } from "@professionisti/api-client";
 import { formatAppointmentTimeRange, formatJobDays, formatServicePriceRange, jobDayCount, paymentChoiceIsOnline, quotePriceTotals, scheduleChangeBetween, scheduleChangeObject, type JobPaymentChoice } from "@professionisti/shared";
-import { PaymentChoice, PaymentOffer, paymentOfferShortLabel, selectablePaymentChoices } from "@/components/PaymentChoice";
+import { PaymentChoice, PaymentOffer, selectablePaymentChoices } from "@/components/PaymentChoice";
 import { useOnlinePayments } from "@/lib/onlinePayments";
 import { Avatar, Badge, ProfessionalKindBadge, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -72,10 +72,7 @@ export function QuoteCard({
   autoOpenTimeline,
   contactInBooking,
   requestOpen,
-  compare,
 }: {
-  /** Più preventivi nella stessa richiesta: etichetta del pagamento accanto al totale (docs/CHANGELOG.md §339). */
-  compare?: boolean;
   quote: ClientGuidedRequest["quotes"][number];
   /** Richiesta ancora aperta: dopo un rifiuto il professionista può inviare un nuovo preventivo (docs/CHANGELOG.md §188). */
   requestOpen?: boolean;
@@ -136,7 +133,6 @@ export function QuoteCard({
   // senza il passaggio della scelta (docs/CHANGELOG.md §339).
   const selectablePayments = selectablePaymentChoices(quote.paymentOptions, onlinePayments);
   const onlyPayment = selectablePayments.length === 1 ? selectablePayments[0] : undefined;
-  const paymentTag = compare && quote.status === "SENT" ? paymentOfferShortLabel(quote.paymentOptions, onlinePayments) : null;
 
   async function handleAccept(method: JobPaymentChoice = paymentMethod) {
     setError(null);
@@ -416,13 +412,6 @@ export function QuoteCard({
             <Text fontSize="$6" fontWeight="800" color={brand.grafite}>
               {formatServicePriceRange(priceTotals.totalMinEurCents, priceTotals.totalMaxEurCents)}
             </Text>
-            {paymentTag ? (
-              <XStack alignSelf="center" paddingHorizontal="$3" paddingVertical={4} borderRadius={999} borderWidth={1} borderColor={brand.filetto} backgroundColor="#fff">
-                <Text fontFamily="$body" fontSize={13} fontWeight="600" color={brand.grafite}>
-                  {paymentTag}
-                </Text>
-              </XStack>
-            ) : null}
           </XStack>
           {previousPriceText ? (
             <Text fontSize={13} color={brand.ottone} fontWeight="600">
