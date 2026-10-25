@@ -7,7 +7,6 @@ import { FadeInSection } from "@/components/FadeInSection";
 import { HomeFaq } from "@/components/HomeFaq";
 import { HomeHero } from "@/components/HomeHero";
 import { NewProfilesCarousel } from "@/components/NewProfilesCarousel";
-import { PlatformGuarantee } from "@/components/PlatformGuarantee";
 import { PlatformStats } from "@/components/PlatformStats";
 import { PriceEstimatorTool } from "@/components/PriceEstimatorTool";
 import { QualitySection } from "@/components/QualitySection";
@@ -77,10 +76,9 @@ export default function HomeContent({
             sezione non compare, invece di restare un titolo vuoto. */}
         {professionals.length > 0 ? (
           <FadeInSection>
-            <Section
-              title="Professionisti della tua zona"
-              maxWidth={1080}
-            >
+            {/* "Cosa dicono i clienti" (docs/CHANGELOG.md §346): il titolo
+                diceva professionisti e il contenuto erano recensioni. */}
+            <Section title="Cosa dicono i clienti" maxWidth={1080}>
               <RecentReviews
                 summary={
                   platformStats?.reviewCount !== undefined && platformStats.averageRating != null
@@ -93,11 +91,10 @@ export default function HomeContent({
           </FadeInSection>
         ) : null}
 
-        {/* 5. Perché fidarsi: trasparenza e Garanzia Piattaforma. */}
+        {/* 5. Perché fidarsi: un solo blocco (docs/CHANGELOG.md §346), prima
+            tre tessere più una scheda "Come ti proteggiamo" sullo stesso tema. */}
         <FadeInSection>
-          <QualitySection>
-            <PlatformGuarantee />
-          </QualitySection>
+          <QualitySection />
         </FadeInSection>
 
         {/* 6. Prezzi e domande frequenti. */}

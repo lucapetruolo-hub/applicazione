@@ -11,7 +11,7 @@ const REQUEST_TEXT =
 
 const QUOTE_ROWS = [
   { label: "Manodopera (1 ora)", value: "€ 45" },
-  { label: "Materiali · cartuccia miscelatore", value: "€ 28" },
+  { label: "Materiali · cartuccia", value: "€ 28" },
   { label: "Uscita", value: "€ 20" },
   { label: "Quando", value: "giovedì 9:00–11:00" },
 ];

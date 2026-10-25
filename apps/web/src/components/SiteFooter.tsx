@@ -67,8 +67,9 @@ export function SiteFooter() {
   return (
     <YStack width="100%" backgroundColor="transparent" alignItems="center">
       <YStack width="100%" maxWidth={1200} paddingVertical="$8" paddingHorizontal="$4" gap="$7">
-        <XStack flexWrap="wrap" gap="$7" justifyContent="space-between">
-          <YStack gap="$3" maxWidth={280}>
+        {/* Su telefono "Servizi" e "Per i clienti" stanno affiancate (docs/CHANGELOG.md §346). */}
+        <XStack flexWrap="wrap" columnGap="$5" rowGap="$6" justifyContent="space-between">
+          <YStack gap="$3" maxWidth={280} flexBasis="100%" $gtSm={{ flexBasis: "auto" }}>
             <Logo name={BRAND.name} size={22} />
             <Text fontSize={16} color={brand.grafite70}>
               Trova e prenota professionisti per la casa e la famiglia: idraulici, elettricisti,
@@ -76,7 +77,7 @@ export function SiteFooter() {
             </Text>
           </YStack>
 
-          <YStack gap="$2" minWidth={160}>
+          <YStack gap="$2" flexBasis={150} flexGrow={1} maxWidth={240}>
             <FooterColumnTitle>Servizi</FooterColumnTitle>
             {MAIN_CATEGORIES.map((category) => (
               <FooterLink key={category.slug} href={`/cerca/${category.slug}`}>
@@ -91,7 +92,7 @@ export function SiteFooter() {
             <FooterLink href="/contatti">Contatti</FooterLink>
           </YStack>
 
-          <YStack gap="$2" minWidth={160}>
+          <YStack gap="$2" flexBasis={150} flexGrow={1} maxWidth={240}>
             <FooterColumnTitle>Per i clienti</FooterColumnTitle>
             <FooterLink href="/preventivo">Richiedi preventivo</FooterLink>
             <FooterLink href="/urgente">Richiesta urgente</FooterLink>
@@ -101,7 +102,7 @@ export function SiteFooter() {
             <FooterLink href="/sicurezza">Sicurezza e truffe</FooterLink>
           </YStack>
 
-          <YStack gap="$2" minWidth={160}>
+          <YStack gap="$2" flexBasis={150} flexGrow={1} maxWidth={240}>
             <FooterColumnTitle>Per i professionisti</FooterColumnTitle>
             <FooterLink href="/registrati?ruolo=professionista">Iscriviti gratis</FooterLink>
             <FooterLink href="/per-professionisti">Piani e prezzi</FooterLink>
@@ -140,39 +141,39 @@ export function SiteFooter() {
         <XStack flexWrap="wrap" alignItems="center" gap="$4">
           <XStack alignItems="center" gap="$2">
             <Icon name="map-pin" size={14} color={brand.grafite70} strokeWidth={1.5} />
-            <Text fontFamily="$body" fontSize={16} color={brand.grafite70}>
+            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
               © {new Date().getFullYear()} {BRAND.name} · Tutti i diritti riservati.
             </Text>
           </XStack>
           <Link href="/privacy" style={{ textDecoration: "none" }}>
-            <Text fontFamily="$body" fontSize={16} color={brand.grafite70}>
+            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
               Privacy Policy
             </Text>
           </Link>
           <Link href="/termini" style={{ textDecoration: "none" }}>
-            <Text fontFamily="$body" fontSize={16} color={brand.grafite70}>
+            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
               Termini di Servizio
             </Text>
           </Link>
           <Link href="/cookie" style={{ textDecoration: "none" }}>
-            <Text fontFamily="$body" fontSize={16} color={brand.grafite70}>
+            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
               Cookie Policy
             </Text>
           </Link>
           <button type="button" onClick={reopenCookieChoice} style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}>
-            <Text fontFamily="$body" fontSize={16} color={brand.grafite70}>
+            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
               Preferenze cookie
             </Text>
           </button>
           <Link href="/accessibilita" style={{ textDecoration: "none" }}>
-            <Text fontFamily="$body" fontSize={16} color={brand.grafite70}>
+            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
               Accessibilità
             </Text>
           </Link>
           {/* Chiunque, anche senza account, può segnalare un contenuto
               illegale (DSA art. 16 c. 1, docs/CHANGELOG.md §319). */}
           <Link href="/contatti?motivo=segnalazione" style={{ textDecoration: "none" }}>
-            <Text fontFamily="$body" fontSize={16} color={brand.grafite70}>
+            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
               Segnala un contenuto illegale
             </Text>
           </Link>

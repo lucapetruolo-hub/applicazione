@@ -3330,17 +3330,6 @@ a.admin-kpi:hover {
   justify-content: center;
   padding-bottom: 60px;
 }
-.story-card-chip {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 5px 10px;
-  border-radius: 999px;
-  background: #e6f4ec;
-  color: #2f6b3e;
-}
 .story-card-label {
   position: absolute;
   left: 0;

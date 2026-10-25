@@ -156,15 +156,14 @@ export function RecentReviews({ summary }: { summary: { count: number; average: 
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}
         >
-          <Link href={profileHref} className="rr-feature-photo" aria-label={review.professional.businessName} style={{ backgroundColor: accent.bg }}>
-            {review.professional.imageUrl ? (
+          {/* Senza foto niente riquadro vuoto (docs/CHANGELOG.md §346): un
+              rettangolo di 220 px con una piccola icona sembrava un'immagine
+              rotta; l'iniziale colorata sta accanto al nome, in fondo. */}
+          {review.professional.imageUrl ? (
+            <Link href={profileHref} className="rr-feature-photo" aria-label={review.professional.businessName} style={{ backgroundColor: accent.bg }}>
               <Image src={review.professional.imageUrl} alt="" fill sizes="(min-width: 700px) 220px, 100vw" style={{ objectFit: "cover" }} />
-            ) : (
-              <span className="rr-feature-icon">
-                <CategoryIcon slug={review.professional.categorySlug} size={52} color={accent.fg} />
-              </span>
-            )}
-          </Link>
+            </Link>
+          ) : null}
 
           <div className="rr-feature-body">
             <Rating value={review.rating} size={18} />
@@ -184,14 +183,21 @@ export function RecentReviews({ summary }: { summary: { count: number; average: 
             </XStack>
 
             <div className="rr-feature-foot">
-              <YStack minWidth={0} flexShrink={1}>
-                <Text fontFamily="$heading" fontSize={18} fontWeight="700" color={brand.cianografiaScuro} numberOfLines={1}>
-                  {review.professional.businessName}
-                </Text>
-                <Text fontSize={16} color={brand.grafite70} numberOfLines={1}>
-                  {review.professional.categoryLabel} · {review.professional.city}
-                </Text>
-              </YStack>
+              <XStack alignItems="center" gap="$3" minWidth={0} flexShrink={1}>
+                {!review.professional.imageUrl ? (
+                  <span className="rr-initial" style={{ backgroundColor: accent.bg, color: accent.fg }} aria-hidden="true">
+                    {review.professional.businessName.trim().charAt(0).toUpperCase()}
+                  </span>
+                ) : null}
+                <YStack minWidth={0} flexShrink={1}>
+                  <Text fontFamily="$heading" fontSize={18} fontWeight="700" color={brand.cianografiaScuro} numberOfLines={1}>
+                    {review.professional.businessName}
+                  </Text>
+                  <Text fontSize={16} color={brand.grafite70} numberOfLines={1}>
+                    {review.professional.categoryLabel} · {review.professional.city}
+                  </Text>
+                </YStack>
+              </XStack>
               <Link href={profileHref} className="rr-cta">
                 Vedi profilo
               </Link>
@@ -298,12 +304,17 @@ export function RecentReviews({ summary }: { summary: { count: number; average: 
             height: auto;
           }
         }
-        .rr-feature-icon {
-          position: absolute;
-          inset: 0;
-          display: flex;
+        .rr-initial {
+          width: 40px;
+          height: 40px;
+          border-radius: 999px;
+          display: inline-flex;
           align-items: center;
           justify-content: center;
+          flex-shrink: 0;
+          font-family: var(--font-display), sans-serif;
+          font-weight: 700;
+          font-size: 17px;
         }
         .rr-feature-body {
           display: flex;

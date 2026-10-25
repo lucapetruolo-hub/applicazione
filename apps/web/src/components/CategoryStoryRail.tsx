@@ -99,7 +99,6 @@ export function CategoryStoryRail({ countBySlug, state }: { countBySlug: Map<str
                   <CategoryIconBadge slug={c.slug} size={64} />
                 </span>
               )}
-              {countBySlug.get(c.slug) ? <span className="story-card-chip">● Disponibile</span> : null}
               <span className="story-card-label">
                 <span className="story-card-title">{c.label}</span>
                 <span className="story-card-more">
