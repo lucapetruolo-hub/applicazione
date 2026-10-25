@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Badge, Button, Text, YStack, brand } from "@professionisti/ui";
 import { CategoryIconBadge } from "./CategoryIconBadge";
+import { formatResponseTime } from "@/lib/responseTime";
 
 export type RequestSentScreenProps = {
   /** Nome del professionista scelto: assente quando la richiesta va a tutti quelli della zona. */
@@ -163,10 +164,4 @@ export function RequestSentScreen({
       </YStack>
     </YStack>
   );
-}
-
-function formatResponseTime(minutes: number): string {
-  if (minutes < 60) return `${Math.max(1, Math.round(minutes))} minuti`;
-  const hours = Math.round(minutes / 60);
-  return hours === 1 ? "un'ora" : `${hours} ore`;
 }

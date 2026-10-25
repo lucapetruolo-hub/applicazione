@@ -34,6 +34,7 @@ import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput"
 import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
 import { localPreviewUrl } from "@/lib/media";
+import { formatResponseTime } from "@/lib/responseTime";
 
 // Foto E video (richiesta esplicita dell'utente), fino a 5 elementi
 // (aumentato da 3, stessa richiesta).
@@ -1357,12 +1358,6 @@ function GeneralRequestsClosedNotice({
       </XStack>
     </YStack>
   );
-}
-
-function formatResponseTime(minutes: number): string {
-  if (minutes < 60) return `${Math.max(1, Math.round(minutes))} min`;
-  const hours = Math.round(minutes / 60);
-  return hours === 1 ? "1 ora" : `${hours} ore`;
 }
 
 const STEPS = ["Il lavoro", "Dove", "Riepilogo"] as const;
