@@ -1015,7 +1015,7 @@ export class AdminService {
   }
 
   /**
-   * Richieste eliminate dai clienti (docs/CHANGELOG.md §340): spariscono per
+   * Richieste eliminate dai clienti (docs/CHANGELOG.md §343): spariscono per
    * il cliente ma restano qui, con chat e preventivi, fino alla
    * cancellazione vera dopo CLIENT_DELETED_REQUEST_RETENTION_DAYS. Quelle
    * segnalate da un professionista restano sempre (prove della moderazione).

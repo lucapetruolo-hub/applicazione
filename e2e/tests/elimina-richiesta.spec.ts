@@ -4,7 +4,7 @@ import { PrismaClient } from "@professionisti/database";
 import { API_URL, WEB_URL } from "../fixtures/env";
 
 /**
- * "Elimina richiesta" del cliente (docs/CHANGELOG.md §340): una sola voce,
+ * "Elimina richiesta" del cliente (docs/CHANGELOG.md §343): una sola voce,
  * dal modulo di modifica e dal menu a tre linee, conferma con motivo
  * facoltativo e poi "Richiesta eliminata · Annulla". La richiesta sparisce
  * per il cliente ma resta per i professionisti ("Ritirata dal cliente") e

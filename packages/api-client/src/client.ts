@@ -168,6 +168,9 @@ export type ClientBooking = {
   professionalAccountDeleted: boolean;
 };
 
+/** Valutazione di un professionista: media con una cifra decimale (`null` senza recensioni) e numero di recensioni. */
+export type ProfessionalReviewSummary = { rating: number | null; count: number };
+
 export type ClientGuidedRequest = {
   id: string;
   /** Altre richieste dello stesso invio con più categorie (docs/CHANGELOG.md §259). */
@@ -229,6 +232,8 @@ export type ClientGuidedRequest = {
     categoryLabel: string;
     city: string;
     verified: boolean;
+    /** Media e numero delle recensioni (docs/CHANGELOG.md §342); null se il profilo è stato eliminato. */
+    reviews: ProfessionalReviewSummary | null;
     /** True se questo professionista ha rifiutato la richiesta prima di inviare un preventivo. */
     declined: boolean;
     /** Nota facoltativa lasciata dal professionista con il rifiuto. */
@@ -240,6 +245,8 @@ export type ClientGuidedRequest = {
     businessName: string;
     /** Foto profilo del professionista, mostrata accanto al nome; null se assente o profilo eliminato. */
     imageUrl: string | null;
+    /** Media e numero delle recensioni (docs/CHANGELOG.md §342); null se il profilo è stato eliminato. */
+    reviews: ProfessionalReviewSummary | null;
     /** Privato, partita IVA o azienda, badge accanto al nome (docs/CHANGELOG.md §338); null se non ancora indicato. */
     professionalKind: ProfessionalKind | null;
     items: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
@@ -563,7 +570,7 @@ export type AdminJobIssue = {
   clientCompletionPhotoUrls: string[];
 };
 
-/** Richiesta eliminata da un cliente, nell'area admin (docs/CHANGELOG.md §340). */
+/** Richiesta eliminata da un cliente, nell'area admin (docs/CHANGELOG.md §343). */
 export type AdminClientDeletedRequest = {
   guidedRequestId: string;
   categoryLabel: string;
@@ -1218,7 +1225,7 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
         body: JSON.stringify(input),
       }),
 
-    /** "Elimina richiesta": sparisce per il cliente, i professionisti la vedono ritirata (docs/CHANGELOG.md §340). */
+    /** "Elimina richiesta": sparisce per il cliente, i professionisti la vedono ritirata (docs/CHANGELOG.md §343). */
     deleteGuidedRequest: (token: string, id: string, reason?: RequestWithdrawReason) =>
       request<null>(`/guided-requests/${id}`, {
         method: "DELETE",

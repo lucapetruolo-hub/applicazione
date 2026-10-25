@@ -211,17 +211,6 @@ export function jobPaymentChoiceCopy(
   return { title: only ? "Direttamente al professionista" : "Diretto al professionista" };
 }
 
-/**
- * Come si paga un preventivo, in breve, dai modi che il cliente può davvero
- * usare: l'etichetta accanto al totale quando si confrontano più preventivi
- * (docs/CHANGELOG.md §339). null se non resta nessun modo utilizzabile.
- */
-export function jobPaymentOfferLabel(options: JobPaymentChoice[]): string | null {
-  if (options.length === 0) return null;
-  if (options.length > 1) return "Online o diretto";
-  return options[0] === "DIRECT" ? "Pagamento diretto" : options[0] === "ONLINE" ? "Pagamento online" : "Acconto online";
-}
-
 /** Testi per il professionista nel modulo del preventivo. */
 export const QUOTE_PAYMENT_OPTION_LABEL: Record<JobPaymentChoice, string> = {
   DIRECT: "Tutto diretto (contanti, bonifico...)",

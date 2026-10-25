@@ -22,7 +22,7 @@ import { brand, type IconName } from "@professionisti/ui";
 export type RequestStage = "da_quotare" | "in_attesa" | "modifica_richiesta" | "accettata" | "completata" | "annullata" | "scaduta" | "chiusa";
 
 export function classifyLeadStage(lead: ProfessionalLead): RequestStage {
-  // Ritirata dal cliente (docs/CHANGELOG.md §340): prima risultava "Scaduta".
+  // Ritirata dal cliente (docs/CHANGELOG.md §343): prima risultava "Scaduta".
   if (lead.guidedRequest.withdrawnByClient && !(lead.quote?.status === "ACCEPTED")) return "chiusa";
   if (lead.status === "EXPIRED") return "scaduta";
   if (lead.status === "DECLINED") return "chiusa";

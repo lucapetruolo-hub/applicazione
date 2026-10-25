@@ -165,7 +165,7 @@ export class AdminController {
     return this.adminService.listHiddenLeads();
   }
 
-  /** Richieste eliminate dai clienti: nascoste solo a loro, cancellate dopo 90 giorni se non segnalate (docs/CHANGELOG.md §340). */
+  /** Richieste eliminate dai clienti: nascoste solo a loro, cancellate dopo 90 giorni se non segnalate (docs/CHANGELOG.md §343). */
   @RequireAdminScope("MODERATION")
   @Get("client-deleted-requests")
   listClientDeletedRequests() {

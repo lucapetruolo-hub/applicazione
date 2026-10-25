@@ -20681,7 +20681,64 @@ dell'impegno). Il modo di pagamento nell'email "Nuovo preventivo" era stato
 aggiunto e poi tolto su decisione dell'utente: il cliente lo vede sul sito,
 non nell'email.
 
-## 340. "Elimina richiesta" del cliente: una voce sola, conferma, Annulla, prove conservate
+## 340. "Lavoro terminato" del cliente: solo la conferma, niente note e foto
+
+Domanda dell'utente: a cosa servono la descrizione e le foto che il cliente
+scrive dopo "Lavoro terminato". Risposta: la conferma serve (sblocca i soldi
+online, vale come "ho pagato" nel pagamento diretto, apre la recensione), ma
+note e foto le leggeva solo l'admin (`/admin/lavori`, `/admin/problemi`): il
+professionista non le vedeva, non andavano sul profilo, e subito dopo la
+recensione chiedeva di nuovo testo e foto. Decisione dell'utente (opzione 1
+di 3): togliere note e foto e lasciare solo la conferma, poi la recensione.
+
+- `ClientCompleteModal`: solo "Confermi che il lavoro è terminato?" con una
+  frase ("Subito dopo potrai lasciare una recensione al professionista,
+  anche con foto"), "Conferma lavoro terminato" e "Annulla".
+- `BookingSection` invia `{ photoUrls: [] }`; dopo la conferma si apre la
+  recensione come prima (mai con una segnalazione in corso).
+- API, schema e colonne `clientCompletionNote`/`clientCompletionPhotoUrls`
+  invariati: i lavori già chiusi le mostrano ancora in admin. Per un
+  problema resta "Segnala un problema", che raccoglie le foto.
+
+**Miglioria approvata da Luca** ("effettua miglioria n.2"): col pagamento
+diretto (`payment.method === "DIRECT"`) la finestra dice anche "Confermando
+dichiari di aver pagato il professionista", perché la conferma vale
+come pagamento ricevuto (`JobPaymentsService.confirmDirect`). Frase di base
+accorciata in "Subito dopo potrai lasciare una recensione, anche con foto".
+
+## 341. Pagina "Richiesta inviata" più curata
+
+**Richiesta dell'utente** (25/10/2026, con uno screenshot): la pagina dopo l'invio di una richiesta di preventivo era quasi vuota e poco curata; "migliora questa schermata". Viste tre varianti (A una colonna, B due colonne, C essenziale), l'utente ha scelto A con la foto del professionista più grande e "qualcosa che dia gioia", poi **senza coriandoli e senza emoji**, tenendo le due precisazioni proposte.
+
+**Decisione**: nuovo componente `apps/web/src/components/RequestSentScreen.tsx`, stili `.request-sent-*` in `globals.css`.
+- In alto la foto del professionista grande (136 px, 120 da telefono) con bordo bianco, alone verde e spunta verde; entra con un piccolo rimbalzo. Con "riduci movimento" la regola globale del sito la mostra già ferma. Se la richiesta va a tutti i professionisti della zona (o il professionista non ha foto) al suo posto c'è l'icona colorata della categoria.
+- "Fatto!" (o "Ci siamo quasi" se in zona non c'è ancora nessuno) e, come titolo h1, "La tua richiesta è arrivata a **nome**". Badge "Verificato" e "Privato / Partita IVA / Azienda" (§338) con i loro fumetti, tempo medio di risposta solo se misurato.
+- "Cosa succede adesso" in tre passi: richiesta inviata (categoria, città, badge Urgente), ricevi il preventivo, lo accetti e fissate il giorno ("solo allora vede i tuoi contatti", CLAUDE.md §5 punto 9).
+- Pulsante principale "Vai alle mie richieste" e link "Torna alla home".
+- La domanda sui dati in una riga tratteggiata, testo corto ("Salvare nome, telefono e indirizzo per la prossima volta?", Salva / No), pulsanti alti 44 px.
+- All'apertura la pagina torna in cima e il titolo riceve il fuoco (lettori di schermo).
+- Il tempo medio di risposta ("risponde entro 2 ore") ha un solo calcolo, `apps/web/src/lib/responseTime.ts`, usato da profilo, modulo di richiesta e questa pagina (prima tre copie con risultati diversi, es. "45 min" nel modulo e "45 minuti" nel profilo, "48 ore" invece di "2 giorni").
+
+- In fondo a ogni pagina e sopra i risultati della ricerca la riga "Badge Verificato: identità controllata con documento e selfie" (§338) non andava a capo e da telefono faceva scorrere la pagina di lato: ora va a capo (`flexShrink` sulla riga e sul testo, testo invariato). Misurato a 360 e 390 px su home, richiesta di preventivo e ricerca: nessuno scorrimento laterale.
+
+**Verifica**: typecheck e lint di `apps/web`; foto della pagina vera da computer e da telefono, richiesta diretta e a tutta la zona. Anteprime in `/mnt/project-files/anteprime/richiesta-inviata/`.
+
+## 342. Stelle e numero di recensioni accanto al professionista, dalla parte del cliente
+
+**Richiesta esplicita dell'utente** (25/10/2026, thread "Stelle e numero recensioni accanto al professionista"): sia nella richiesta inviata a un solo professionista sia nei preventivi ricevuti da più professionisti, accanto al nome mostrare le stelle delle recensioni con il numero, per aiutare la scelta.
+
+**Decisione presa**:
+- `GuidedRequestsService.listForClient` aggiunge `reviews: { rating, count }` a ogni professionista di `sentTo` e di `quotes`, con una sola query per tutte le richieste (`reviewSummariesFor` in `apps/api/src/reviews/review-summary.ts`). Stesso calcolo del profilo pubblico e della ricerca: media a una cifra decimale, recensioni nascoste da un admin escluse (§144). `null` per un profilo eliminato (nessuna riga).
+- Sotto il nome, il componente `Rating` già usato nel profilo e nei risultati (`packages/ui`), più piccolo (nuova prop `textSize`, 13px) per stare su una riga anche da telefono. Senza recensioni la stessa scritta del profilo, "Nessuna recensione ancora", in grigio piccolo: non "Nuovo", che nella scheda indica già un preventivo appena arrivato.
+- Nei preventivi le stelle portano alle recensioni del profilo pubblico (`/professionista/<id>#recensioni`, nuova ancora come `#agenda`), con un nome per il lettore di schermo ("Valutazione 4,7 su 5, 3 recensioni: vedi le recensioni"). Nell'elenco "Inviata a" la riga intera è già un link al profilo: niente link dentro il link.
+- Foto e nome del preventivo: foto a 40px allineata alle due righe (nome, stelle); la foto resta un link al profilo ma fuori dal tasto Tab (stesso link del nome).
+- "Inviata a": il pulsante "Contatta/Cronologia" diventa "Messaggi" leggero come nei preventivi (§338). Da telefono il pulsante verde largo stringeva nome e città su più righe; ora l'icona tonda lascia una riga a nome, città e stelle.
+- Migliorie approvate dall'utente ("effettua migliorie 1 e 3"): (1) in "Professionisti salvati" la media contava anche le recensioni nascoste da un admin (§144, CLAUDE.md §5 punto 11): ora usa lo stesso `summarizeReviews`; (3) voto medio con la virgola ("4,7") in tutto il sito: `Rating` di `packages/ui`, `StarRating`, banner della mappa dei risultati, descrizione del profilo per Google, fatti della città, con il nuovo `formatRating` in `packages/shared`. I dati strutturati per Google (JSON-LD) restano numeri; il voto della singola recensione in admin resta intero.
+- Seconda miglioria approvata dall'utente: tolta l'etichetta del pagamento accanto al totale ("Pagamento diretto", "Online o diretto", §339), perché il riquadro "Pagamento" subito sotto, sempre presente in un preventivo da decidere, diceva la stessa cosa. Tolti anche `jobPaymentOfferLabel` (shared), `paymentOfferShortLabel` e la prop `compare` di `QuoteCard`.
+
+**Verifica**: prove `review-summary.test.ts` e `saved-professionals.service.test.ts` (media, recensioni nascoste escluse, una sola query); prova nel browser `e2e/tests/stelle-preventivi.spec.ts` da telefono e computer (due preventivi, uno con stelle e uno senza recensioni, clic sulle stelle che apre le recensioni, richiesta a un solo professionista). Anteprime in `anteprime/stelle-recensioni/`.
+
+## 343. "Elimina richiesta" del cliente: una voce sola, conferma, Annulla, prove conservate
 
 **Richiesta esplicita dell'utente** (25/10/2026, thread "Eliminare una richiesta di preventivo dal cliente"): "se clicca su modifica in una richiesta preventivo inserisci un pulsante con elimina richiesta"; poi, sulla stessa schermata, cliccando di nuovo "Le mie richieste" nel menu laterale la pagina restava sulla modifica. Dopo un primo giro (cancellazione definitiva senza preventivi, "Richiesta eliminata", voce nel menu, conferma prima di uscire senza salvare) Luca ha chiesto la "versione profonda": "una richiesta di preventivo si deve poter togliere in modo chiaro e senza errori, senza far perdere prove alla moderazione né lasciare i professionisti senza spiegazione", con mappa degli stati, conferma e poi "i secondi con annulla", eliminazione che nasconde e cancella dopo un periodo fisso ("altrimenti si può eliminare ma rimanere nella parte admin per le prove e conseguenze"), prove automatiche, prova con 5 persone (simulata, su sua indicazione) e due domande per l'avvocato. Niente email ai professionisti (scartata da Luca).
 

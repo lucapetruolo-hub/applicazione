@@ -6,7 +6,7 @@ import { SITE_URL } from "@/lib/siteUrl";
 import { type BreadcrumbItem } from "@/lib/jsonLd";
 import { JsonLd } from "@/components/JsonLd";
 import { ApiError } from "@professionisti/api-client";
-import { BRAND, comuneSlug, professionalIdFromSlug, professionalPath, professionalSlug, type ProfessionalDetail } from "@professionisti/shared";
+import { BRAND, comuneSlug, formatRating, professionalIdFromSlug, professionalPath, professionalSlug, type ProfessionalDetail } from "@professionisti/shared";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { ProfessionalDetailContent } from "./ProfessionalDetailContent";
@@ -51,7 +51,7 @@ export async function generateMetadata(props: { params: Promise<PageParams> }): 
       alternates: { canonical: professionalPath(professional) },
       title: `${professional.businessName} — ${professional.categoryLabel} a ${professional.city}`,
       description: `${professional.businessName}: ${professional.categoryLabel.toLowerCase()} a ${professional.city}. ${
-        professional.reviewCount > 0 ? `${professional.rating}/5 su ${professional.reviewCount} recensioni.` : professional.verified
+        professional.reviewCount > 0 ? `${formatRating(professional.rating ?? 0)}/5 su ${professional.reviewCount} recensioni.` : professional.verified
           ? `Identità verificata su ${BRAND.name}.`
           : `Profilo su ${BRAND.name}.`
       }`,

@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { ProfessionalReviewsLink } from "@/components/ProfessionalReviewsLink";
 import type { ClientGuidedRequest } from "@professionisti/api-client";
 import { formatAppointmentTimeRange, formatJobDays, formatServicePriceRange, jobDayCount, paymentChoiceIsOnline, quotePriceTotals, scheduleChangeBetween, scheduleChangeObject, type JobPaymentChoice } from "@professionisti/shared";
-import { PaymentChoice, PaymentOffer, paymentOfferShortLabel, selectablePaymentChoices } from "@/components/PaymentChoice";
+import { PaymentChoice, PaymentOffer, selectablePaymentChoices } from "@/components/PaymentChoice";
 import { useOnlinePayments } from "@/lib/onlinePayments";
 import { Avatar, Badge, ProfessionalKindBadge, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -72,10 +73,7 @@ export function QuoteCard({
   contactInBooking,
   requestOpen,
   onDeleteRequest,
-  compare,
 }: {
-  /** Più preventivi nella stessa richiesta: etichetta del pagamento accanto al totale (docs/CHANGELOG.md §339). */
-  compare?: boolean;
   quote: ClientGuidedRequest["quotes"][number];
   /** Richiesta ancora aperta: dopo un rifiuto il professionista può inviare un nuovo preventivo (docs/CHANGELOG.md §188). */
   requestOpen?: boolean;
@@ -94,7 +92,7 @@ export function QuoteCard({
   autoOpenTimeline?: boolean;
   /** Il preventivo è diventato un intervento: i messaggi stanno lì, non qui (un solo pulsante per scheda). */
   contactInBooking?: boolean;
-  /** "Non ti serve più il lavoro? Elimina la richiesta" nella conferma di Rifiuta (docs/CHANGELOG.md §340): chi non vuole più il lavoro sceglieva "Rifiuta". */
+  /** "Non ti serve più il lavoro? Elimina la richiesta" nella conferma di Rifiuta (docs/CHANGELOG.md §343): chi non vuole più il lavoro sceglieva "Rifiuta". */
   onDeleteRequest?: () => void;
 }) {
   const [isChoosingDate, setIsChoosingDate] = useState(false);
@@ -138,7 +136,6 @@ export function QuoteCard({
   // senza il passaggio della scelta (docs/CHANGELOG.md §339).
   const selectablePayments = selectablePaymentChoices(quote.paymentOptions, onlinePayments);
   const onlyPayment = selectablePayments.length === 1 ? selectablePayments[0] : undefined;
-  const paymentTag = compare && quote.status === "SENT" ? paymentOfferShortLabel(quote.paymentOptions, onlinePayments) : null;
 
   async function handleAccept(method: JobPaymentChoice = paymentMethod) {
     setError(null);
@@ -301,21 +298,25 @@ export function QuoteCard({
   return (
     <YStack backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$2">
       <XStack alignItems="center" gap="$2">
-        <XStack flex={1} alignItems="center" gap="$2" flexWrap="wrap">
-          <Link href={`/professionista/${quote.professionalProfileId}`} style={{ textDecoration: "none" }}>
-            {/* Foto accanto al nome (richiesta esplicita dell'utente), iniziali se manca. */}
-            <XStack alignItems="center" gap="$2">
-              <Avatar name={quote.businessName} imageUrl={quote.imageUrl} size={32} />
+        {/* Foto accanto al nome (richiesta esplicita dell'utente), iniziali se manca; stesso link del nome, fuori dal Tab. */}
+        <Link href={`/professionista/${quote.professionalProfileId}`} tabIndex={-1} aria-hidden style={{ textDecoration: "none", alignSelf: "flex-start" }}>
+          <Avatar name={quote.businessName} imageUrl={quote.imageUrl} size={40} />
+        </Link>
+        <YStack flex={1} minWidth={0} gap={2}>
+          <XStack alignItems="center" gap="$2" flexWrap="wrap">
+            <Link href={`/professionista/${quote.professionalProfileId}`} style={{ textDecoration: "none" }}>
               <Text fontWeight="600" color={brand.cianografiaScuro}>
                 {quote.businessName}
               </Text>
-            </XStack>
-          </Link>
-          {/* Che tipo di lavoratore ha mandato il preventivo, dove il cliente decide (richiesta dell'utente, §338). */}
-          {quote.professionalKind ? <ProfessionalKindBadge kind={quote.professionalKind} /> : null}
-          {/* Un preventivo accettato non è più una novità: le novità del lavoro sono sull'intervento (§228). */}
-          {isNew && quote.status !== "ACCEPTED" ? <Badge variant="nuovo">Nuovo</Badge> : null}
-        </XStack>
+            </Link>
+            {/* Che tipo di lavoratore ha mandato il preventivo, dove il cliente decide (richiesta dell'utente, §338). */}
+            {quote.professionalKind ? <ProfessionalKindBadge kind={quote.professionalKind} /> : null}
+            {/* Un preventivo accettato non è più una novità: le novità del lavoro sono sull'intervento (§228). */}
+            {isNew && quote.status !== "ACCEPTED" ? <Badge variant="nuovo">Nuovo</Badge> : null}
+          </XStack>
+          {/* Stelle e numero di recensioni per scegliere tra più preventivi (richiesta dell'utente, §342). */}
+          <ProfessionalReviewsLink professionalProfileId={quote.professionalProfileId} reviews={quote.reviews} />
+        </YStack>
         {/* Messaggi accanto al nome, leggero: non compete con la scelta sul preventivo (§338). */}
         {contactInBooking ? null : (
           <ContactButton
@@ -414,13 +415,6 @@ export function QuoteCard({
             <Text fontSize="$6" fontWeight="800" color={brand.grafite}>
               {formatServicePriceRange(priceTotals.totalMinEurCents, priceTotals.totalMaxEurCents)}
             </Text>
-            {paymentTag ? (
-              <XStack alignSelf="center" paddingHorizontal="$3" paddingVertical={4} borderRadius={999} borderWidth={1} borderColor={brand.filetto} backgroundColor="#fff">
-                <Text fontFamily="$body" fontSize={13} fontWeight="600" color={brand.grafite}>
-                  {paymentTag}
-                </Text>
-              </XStack>
-            ) : null}
           </XStack>
           {previousPriceText ? (
             <Text fontSize={13} color={brand.ottone} fontWeight="600">

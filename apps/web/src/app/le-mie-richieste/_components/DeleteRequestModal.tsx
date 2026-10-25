@@ -6,7 +6,7 @@ import { Text, YStack, brand } from "@professionisti/ui";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 
 /**
- * Conferma di "Elimina richiesta" (docs/CHANGELOG.md §340), dal modulo di
+ * Conferma di "Elimina richiesta" (docs/CHANGELOG.md §343), dal modulo di
  * modifica e dal menu: motivo facoltativo con un tocco, poi "Richiesta
  * eliminata · Annulla" per qualche secondo (RequestDeletedNotice).
  * `stillOpen`: la richiesta è ancora aperta, quindi i professionisti la

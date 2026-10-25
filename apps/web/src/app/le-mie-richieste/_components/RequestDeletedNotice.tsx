@@ -14,7 +14,7 @@ export function announceRequestDeleted(guidedRequestId: string) {
 
 /**
  * "Richiesta eliminata · Annulla" per qualche secondo in basso
- * (docs/CHANGELOG.md §340, decisione dell'utente: prima la conferma, poi
+ * (docs/CHANGELOG.md §343, decisione dell'utente: prima la conferma, poi
  * anche "Annulla"): fissa allo schermo e non in cima all'elenco, perché chi
  * elimina può essere molto più in basso nella pagina.
  */

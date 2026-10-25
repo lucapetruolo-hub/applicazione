@@ -1148,7 +1148,7 @@ export class ProfessionalsService {
           // deve vedere subito per quale orario è stata richiesta.
           preferredDate: lead.guidedRequest.preferredDate?.toISOString().slice(0, 10) ?? null,
           preferredTimeSlot: lead.guidedRequest.preferredTimeSlot,
-          // Eliminata (o annullata prima del §340) dal cliente: "Ritirata dal cliente", non "Scaduta".
+          // Eliminata (o annullata prima del §343) dal cliente: "Ritirata dal cliente", non "Scaduta".
           withdrawnByClient:
             lead.guidedRequest.closedReason === "CANCELED_BY_CLIENT"
               ? { at: (lead.guidedRequest.deletedByClientAt ?? lead.guidedRequest.updatedAt).toISOString(), reason: lead.guidedRequest.withdrawReason }

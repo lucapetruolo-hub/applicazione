@@ -1,37 +1,29 @@
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
-import { MediaPreview } from "@/components/MediaPreview";
-import { UploadingDots } from "@/components/UploadingDots";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
-
-const MAX_COMPLETION_PHOTOS = 5;
 
 /**
  * Conferma del cliente che il lavoro è davvero terminato dal suo lato
- * (richiesta esplicita dell'utente: "servono i completed da entrambi... dai
- * la possibilità di inserire delle foto del lavoro terminato") — solo foto/
- * video, nessun importo (quello resta di competenza del professionista,
- * vedi CompleteJobModal). Stesso pattern overlay.
+ * (richiesta esplicita dell'utente: "servono i completed da entrambi"). Solo
+ * la conferma: note e foto tolte (docs/CHANGELOG.md §340, decisione
+ * dell'utente) perché le leggeva solo l'admin e subito dopo la recensione
+ * chiede di nuovo testo e foto. Per un problema c'è "Segnala un problema".
+ * Col pagamento diretto la conferma vale anche come "ho pagato"
+ * (`JobPaymentsService.confirmDirect`): lo diciamo in mezza riga.
  */
 export function ClientCompleteModal({
+  directPayment,
   onClose,
   onConfirm,
-  uploadPhoto,
 }: {
+  directPayment: boolean;
   onClose: () => void;
-  onConfirm: (photoUrls: string[], note: string | undefined) => Promise<void>;
-  uploadPhoto: (file: File) => Promise<string>;
+  onConfirm: () => Promise<void>;
 }) {
-  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
-  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
-  const [photoError, setPhotoError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [note, setNote] = useState("");
-  const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -41,32 +33,11 @@ export function ClientCompleteModal({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  async function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-
-    setPhotoError(null);
-    setIsUploadingPhoto(true);
-    try {
-      const imageUrl = await uploadPhoto(file);
-      setPhotoUrls((prev) => [...prev, imageUrl].slice(0, MAX_COMPLETION_PHOTOS));
-    } catch (err) {
-      setPhotoError(err instanceof Error ? err.message : "Errore durante il caricamento della foto.");
-    } finally {
-      setIsUploadingPhoto(false);
-    }
-  }
-
-  function removePhoto(url: string) {
-    setPhotoUrls((prev) => prev.filter((u) => u !== url));
-  }
-
   async function handleSubmit() {
     setError(null);
     setIsSaving(true);
     try {
-      await onConfirm(photoUrls, note.trim() || undefined);
+      await onConfirm();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
@@ -112,94 +83,9 @@ export function ClientCompleteModal({
             Confermi che il lavoro è terminato?
           </Text>
           <Text fontSize={16} color={brand.grafite70}>
-            Puoi allegare qualche foto del lavoro svolto e delle note, poi ti chiederemo di lasciare una recensione al professionista.
+            {directPayment ? "Confermando dichiari di aver pagato il professionista. " : ""}
+            Subito dopo potrai lasciare una recensione, anche con foto.
           </Text>
-        </YStack>
-
-        {/* Note del cliente (docs/CHANGELOG.md §163), lette dall'admin. */}
-        <YStack gap="$1">
-          <Text fontSize={13} color={brand.grafite70}>
-            Note sul lavoro (opzionale)
-          </Text>
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value.slice(0, 1000))}
-            placeholder="Es. lavoro pulito, finito in tempo"
-            aria-label="Note sul lavoro"
-            style={{
-              width: "100%",
-              boxSizing: "border-box",
-              minHeight: 76,
-              padding: 10,
-              borderRadius: 10,
-              border: `1px solid ${brand.bordoCampo}`,
-              fontSize: 16,
-              fontFamily: "inherit",
-              color: brand.grafite,
-              resize: "vertical",
-            }}
-          />
-        </YStack>
-
-        <YStack gap="$1">
-          <Text fontSize={13} color={brand.grafite70}>
-            Foto o video (opzionale, fino a {MAX_COMPLETION_PHOTOS})
-          </Text>
-          <YStack flexDirection="row" flexWrap="wrap" gap="$2">
-            {photoUrls.map((url) => (
-              <YStack key={url} width={64} height={64} borderRadius="$3" overflow="hidden" position="relative" borderWidth={1} borderColor={brand.filetto}>
-                <MediaPreview url={url} />
-                <YStack
-                  position="absolute"
-                  top={2}
-                  right={2}
-                  width={18}
-                  height={18}
-                  borderRadius={9}
-                  backgroundColor="rgba(20,24,30,0.7)"
-                  alignItems="center"
-                  justifyContent="center"
-                  cursor="pointer"
-                  onPress={() => removePhoto(url)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Rimuovi foto"
-                >
-                  <X size={11} strokeWidth={2} color="white" />
-                </YStack>
-              </YStack>
-            ))}
-            {photoUrls.length < MAX_COMPLETION_PHOTOS ? (
-              <YStack
-                width={64}
-                height={64}
-                borderRadius="$3"
-                borderWidth={1}
-                borderColor={brand.filetto}
-                borderStyle="dashed"
-                alignItems="center"
-                justifyContent="center"
-                cursor="pointer"
-                opacity={isUploadingPhoto ? 0.6 : 1}
-                onPress={() => !isUploadingPhoto && photoInputRef.current?.click()}
-                accessibilityRole="button"
-                accessibilityLabel="Aggiungi foto"
-              >
-                {isUploadingPhoto ? (
-                  <UploadingDots dotSize={6} />
-                ) : (
-                  <Text fontSize="$6" color={brand.grafite70}>
-                    +
-                  </Text>
-                )}
-              </YStack>
-            ) : null}
-          </YStack>
-          <input ref={photoInputRef} type="file" accept="image/*,video/*" onChange={handlePhotoChange} disabled={isUploadingPhoto} style={{ display: "none" }} />
-          {photoError ? (
-            <Text color={brand.urgenza} fontSize={13}>
-              {photoError}
-            </Text>
-          ) : null}
         </YStack>
 
         {error ? (
@@ -209,7 +95,7 @@ export function ClientCompleteModal({
         ) : null}
 
         <XStack gap="$2" flexWrap="wrap">
-          <Button variant="primary" size="$3" height={44} onPress={handleSubmit} disabled={isSaving || isUploadingPhoto} opacity={isSaving ? 0.6 : 1}>
+          <Button variant="primary" size="$3" height={44} onPress={handleSubmit} disabled={isSaving} opacity={isSaving ? 0.6 : 1}>
             {isSaving ? "Conferma..." : "Conferma lavoro terminato"}
           </Button>
           <Button variant="ghost" size="$3" height={44} onPress={onClose} disabled={isSaving}>

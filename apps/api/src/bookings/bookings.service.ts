@@ -124,7 +124,7 @@ export class BookingsService {
     if (quote.status === "REJECTED" || quote.status === "WITHDRAWN") {
       throw new ForbiddenException("Questo preventivo non è più disponibile.");
     }
-    // Richiesta eliminata dal cliente (§340): i suoi preventivi non si accettano più.
+    // Richiesta eliminata dal cliente (§343): i suoi preventivi non si accettano più.
     if (quote.guidedRequest.closedReason === "CANCELED_BY_CLIENT") {
       throw new ForbiddenException("Hai eliminato questa richiesta: il preventivo non è più disponibile.");
     }

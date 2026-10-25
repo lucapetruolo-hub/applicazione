@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { GuidedRequestsService, WITHDRAWN_TIMELINE_MESSAGE } from "./guided-requests.service";
 
 /**
- * "Elimina richiesta" del cliente (docs/CHANGELOG.md §340): la richiesta
+ * "Elimina richiesta" del cliente (docs/CHANGELOG.md §343): la richiesta
  * sparisce per lui ma resta nel database (professionisti e admin), si può
  * annullare per qualche minuto e si cancella davvero solo dopo il periodo
  * fisso, mai se è stata segnalata.

@@ -2,7 +2,7 @@ import { z } from "zod";
 import "./zod";
 
 /**
- * "Elimina richiesta" del cliente (docs/CHANGELOG.md §340): motivo
+ * "Elimina richiesta" del cliente (docs/CHANGELOG.md §343): motivo
  * facoltativo, scelto con un tocco, e quanto resta nel database.
  */
 export const REQUEST_WITHDRAW_REASONS = ["FOUND_ELSEWHERE", "NO_LONGER_NEEDED", "MISTAKE"] as const;

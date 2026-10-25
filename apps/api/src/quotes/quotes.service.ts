@@ -30,7 +30,7 @@ import { stripeVerified } from "../professional-fiscal/public-visibility";
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
 import { countBookingsInSlot, countOverlapping, loadCommitments, lockProfessionalAgenda } from "../agenda/commitments";
 
-/** Preventivo su una richiesta che il cliente ha eliminato (docs/CHANGELOG.md §340). */
+/** Preventivo su una richiesta che il cliente ha eliminato (docs/CHANGELOG.md §343). */
 const WITHDRAWN_BY_CLIENT_MESSAGE = "Il cliente ha ritirato questa richiesta.";
 
 
@@ -67,7 +67,7 @@ export class QuotesService {
       include: { guidedRequest: { include: { client: true } } },
     });
     if (!lead) {
-      // Il cliente può eliminare una richiesta senza preventivi (§340):
+      // Il cliente può eliminare una richiesta senza preventivi (§343):
       // a chi la stava ancora guardando lo si dice chiaramente.
       const requestExists = await this.prisma.guidedRequest.count({ where: { id: input.requestId } });
       if (!requestExists) {
@@ -75,7 +75,7 @@ export class QuotesService {
       }
       throw new ForbiddenException("Non hai ricevuto questa richiesta.");
     }
-    // Ritirata dal cliente con "Elimina richiesta" (§340): niente preventivi nuovi né modifiche.
+    // Ritirata dal cliente con "Elimina richiesta" (§343): niente preventivi nuovi né modifiche.
     if (lead.guidedRequest.closedReason === "CANCELED_BY_CLIENT") {
       throw new ForbiddenException(WITHDRAWN_BY_CLIENT_MESSAGE);
     }
@@ -545,7 +545,7 @@ export class QuotesService {
     if (quote.status !== "MODIFICATION_REQUESTED" || !quote.clientProposedDate) {
       throw new ForbiddenException("Nessuna data proposta da confermare per questo preventivo.");
     }
-    // Prima un lavoro poteva nascere da una richiesta già ritirata (§340).
+    // Prima un lavoro poteva nascere da una richiesta già ritirata (§343).
     if (quote.guidedRequest.closedReason === "CANCELED_BY_CLIENT") {
       throw new ForbiddenException(WITHDRAWN_BY_CLIENT_MESSAGE);
     }

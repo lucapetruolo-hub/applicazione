@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { Prisma, type PrismaClient, type ProfessionalProfile } from "@professionisti/database";
 import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_RESTORE_WINDOW_MINUTES, type RequestWithdrawReason, findComuneByName, professionalKindOf, professionalRestrictions, clientPaymentOffer, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { reviewSummariesFor, type ReviewSummary } from "../reviews/review-summary";
 import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing, publicVisibilityWhere, publicVerified, stripeVerified } from "../professional-fiscal/public-visibility";
 import { NOT_ACCEPTING_REQUESTS } from "../subscriptions/subscription-rules";
 import { calculateDistanceKm } from "../common/geo.util";
@@ -15,7 +16,7 @@ import { GeneralRequestsService } from "../general-requests/general-requests.ser
 import { toMyState } from "./guided-request-user-state.service";
 import { computeDirectForwardAt } from "./lead-routing";
 
-/** Riga nella chat dei professionisti quando il cliente elimina una richiesta aperta (§340). */
+/** Riga nella chat dei professionisti quando il cliente elimina una richiesta aperta (§343). */
 export const WITHDRAWN_TIMELINE_MESSAGE = "Il cliente ha ritirato la richiesta.";
 
 /** Candidato compatibile con la distanza dalla richiesta (null se non calcolabile). */
@@ -406,7 +407,7 @@ export class GuidedRequestsService {
   /** Richieste (con relativi lead) inviate dal cliente autenticato. */
   async listForClient(clientId: string) {
     const requests = await this.prisma.guidedRequest.findMany({
-      // Le eliminate dal cliente restano solo per i professionisti e l'admin (§340).
+      // Le eliminate dal cliente restano solo per i professionisti e l'admin (§343).
       where: { clientId, deletedByClientAt: null },
       include: {
         category: true,
@@ -433,6 +434,19 @@ export class GuidedRequestsService {
       },
       orderBy: { createdAt: "desc" },
     });
+
+    // Stelle e numero di recensioni accanto al nome del professionista, per
+    // scegliere tra più preventivi (docs/CHANGELOG.md §342). Mai per un
+    // profilo eliminato.
+    const reviewSummaries = await reviewSummariesFor(
+      this.prisma,
+      requests.flatMap((request) => [
+        ...request.leads.map((lead) => lead.professionalProfileId),
+        ...request.quotes.map((quote) => quote.professionalProfileId),
+      ]),
+    );
+    const reviewsOf = (profile: { id: string; deletedAt: Date | null }): ReviewSummary | null =>
+      profile.deletedAt ? null : (reviewSummaries.get(profile.id) ?? { rating: null, count: 0 });
 
     return requests.map((request) => {
       // Altre richieste dello stesso invio con più categorie (§259).
@@ -516,6 +530,7 @@ export class GuidedRequestsService {
           categoryLabel: lead.professionalProfile.category.label,
           city: lead.professionalProfile.city,
           verified: publicVerified(lead.professionalProfile),
+          reviews: reviewsOf(lead.professionalProfile),
           declined: lead.status === "DECLINED",
           declineNote: lead.declineNote,
         })),
@@ -527,6 +542,7 @@ export class GuidedRequestsService {
           // (richiesta esplicita dell'utente: riconoscere a colpo d'occhio
           // di chi si tratta). Mai per un profilo eliminato.
           imageUrl: quote.professionalProfile.deletedAt ? null : quote.professionalProfile.imageUrl,
+          reviews: reviewsOf(quote.professionalProfile),
           // Che tipo di lavoratore ha mandato il preventivo (richiesta dell'utente, §338).
           professionalKind: professionalKindOf(quote.professionalProfile.fiscalProfile?.entityType),
           items: quote.items.map((item) => ({
@@ -683,7 +699,7 @@ export class GuidedRequestsService {
   }
 
   /**
-   * "Elimina richiesta" del cliente (docs/CHANGELOG.md §340, decisione
+   * "Elimina richiesta" del cliente (docs/CHANGELOG.md §343, decisione
    * dell'utente): una sola azione finché la richiesta non ha portato a un
    * lavoro. Per il cliente sparisce subito; se era aperta si chiude
    * (CANCELED_BY_CLIENT, i Lead ancora in attesa diventano EXPIRED) e i
@@ -732,7 +748,7 @@ export class GuidedRequestsService {
   }
 
   /**
-   * "Annulla" subito dopo "Elimina richiesta" (§340): la richiesta torna
+   * "Annulla" subito dopo "Elimina richiesta" (§343): la richiesta torna
    * com'era, riaperta se era aperta, e sparisce la riga "ritirata" dalla
    * chat dei professionisti. Solo entro REQUEST_RESTORE_WINDOW_MINUTES.
    */
@@ -774,7 +790,7 @@ export class GuidedRequestsService {
   }
 
   /**
-   * Cancellazione vera delle richieste eliminate dai clienti (§340), una
+   * Cancellazione vera delle richieste eliminate dai clienti (§343), una
    * volta al giorno: dopo CLIENT_DELETED_REQUEST_RETENTION_DAYS, con Lead,
    * preventivi, chat e notifiche in cascata. Mai se un professionista l'ha
    * segnalata (prove per la moderazione e le sue conseguenze, decisione
