@@ -899,6 +899,17 @@ const BUILDERS: Record<string, Builder> = {
     paragraphs: ["Dopo l'invio all'Agenzia delle Entrate alcuni importi sono cambiati (rimborso o lavoro riaperto). Usa \"Correggi\" sull'anno, poi esporta e invia la correzione."],
     cta: { label: "Apri Finanza e DAC7", url: `${frontendUrl()}/admin/finanza` },
   }),
+  ADMIN_URGENCY_ALERT: (payload) => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: "Richieste urgenti da controllare",
+    title: "Richieste urgenti fuori soglia",
+    paragraphs: [
+      ...(Array.isArray(payload.alerts) ? payload.alerts.filter((a): a is string => typeof a === "string") : []),
+      "Numeri degli ultimi 7 giorni, nella Home dell'area admin.",
+    ],
+    cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin` },
+  }),
   ADMIN_JOB_BALANCE_UNPAID: () => ({
     kind: "notification",
     tone: "urgent",

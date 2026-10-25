@@ -2970,7 +2970,8 @@ a.admin-kpi:hover {
   overflow: hidden;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
-.guided-options.is-urgent-card:has(.guided-option.is-on) {
+.guided-options.is-urgent-card:has(.guided-option.is-on),
+.guided-options.is-urgent-card:has(.guided-timing-option.is-today input:checked) {
   border-color: #c8362b;
   background: #fbeae7;
 }
@@ -3044,10 +3045,87 @@ a.admin-kpi:hover {
 .guided-option.is-urgent.is-on .guided-option-track {
   background: #c8362b;
 }
+/* Scelta dei tempi "Quando ti serve?" (§340): tre pillole, Oggi in rosso. */
+.guided-timing {
+  margin: 0;
+  border: none;
+  padding: 14px 16px;
+  min-width: 0;
+}
+.guided-timing legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+  margin-bottom: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #2b2420;
+}
+.guided-timing-options {
+  clear: both;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid #f0dcc0;
+  background: #fbf6f0;
+}
+.guided-timing-option {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+.guided-timing-option input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.guided-timing-option span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #6e6459;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.guided-timing-option.is-today span {
+  color: #c8362b;
+}
+.guided-timing-option input:checked + span {
+  background: #189a63;
+  color: #ffffff;
+}
+.guided-timing-option.is-today input:checked + span {
+  background: #c8362b;
+}
+.guided-timing-option input:focus-visible + span {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.guided-timing-desc {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #6e6459;
+}
+.guided-option + .guided-timing,
+.guided-timing + .guided-option {
+  border-top: 1px solid #f0dcc0;
+}
 @media (prefers-reduced-motion: reduce) {
   .guided-options,
   .guided-option-track,
-  .guided-option-track span {
+  .guided-option-track span,
+  .guided-timing-option span {
     transition: none;
   }
 }

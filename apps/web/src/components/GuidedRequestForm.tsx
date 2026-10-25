@@ -18,6 +18,7 @@ import {
   type ProfessionalAgenda,
   type ProfessionalCategorySlug,
   type ProfessionalDetail,
+  type GuidedRequestReach,
 } from "@professionisti/shared";
 import { Autocomplete, Button, ButtonArrow, Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { MagneticButton } from "./MagneticButton";
@@ -144,17 +145,28 @@ export function GuidedRequestForm({
   const searchParams = useSearchParams();
   const { user, token, isLoading, refreshUser } = useAuth();
   // Urgenza scelta anche da qui, non solo arrivando da /urgente
-  // (docs/CHANGELOG.md §154): interruttore "È urgente?" al passo 1.
-  const [isUrgent, setIsUrgent] = useState(isUrgentInitial);
-  // L'urgenza si cambia anche nel riepilogo: il pulsante d'invio segue la
-  // scelta attuale, non quella con cui si è aperta la pagina.
-  function toggleUrgent() {
-    const next = !isUrgent;
-    setIsUrgent(next);
-    onUrgentChange?.(next);
+  // (docs/CHANGELOG.md §154), al passo 1 e nel riepilogo (§340).
+  // "Oggi" è l'urgente; "In settimana" e "Con calma" sono richieste normali.
+  // Con la scelta dei tempi nessuna è preselezionata: il cliente decide
+  // (nel test chi andava di fretta lasciava quella già scelta).
+  const [timing, setTiming] = useState<UrgencyTiming | null>(isUrgentInitial ? "TODAY" : URGENCY_CONTROL === "switch" ? "WEEK" : null);
+  const isUrgent = timing === "TODAY";
+  // Frase per il lettore di schermo quando cambia l'urgenza: cosa cambia,
+  // in poche parole (§340). Vuota all'apertura, così non legge nulla.
+  const [urgencyAnnouncement, setUrgencyAnnouncement] = useState("");
+  // A quanti professionisti arriva, senza e con "Urgente" (§340): chiesto
+  // all'API entrando nel riepilogo.
+  const [reach, setReach] = useState<GuidedRequestReach | null>(null);
+  function chooseTiming(next: UrgencyTiming) {
+    if (next === timing) return;
+    const nextUrgent = next === "TODAY";
+    setTiming(next);
+    if (nextUrgent !== isUrgent) onUrgentChange?.(nextUrgent);
+    setUrgencyAnnouncement(urgencyChangeText(next));
   }
-  const shownSubmitLabel =
-    isUrgent === isUrgentInitial ? submitLabel : isUrgent ? "Invia richiesta urgente" : "Invia richiesta";
+  function toggleUrgent() {
+    chooseTiming(isUrgent ? "WEEK" : "TODAY");
+  }
   // Modulo in 3 passi (docs/CHANGELOG.md §154): il lavoro, dove, riepilogo.
   const [step, setStep] = useState<1 | 2 | 3>(1);
   // Richiesta diretta: inoltrarla ad altri se il professionista non
@@ -309,6 +321,44 @@ export function GuidedRequestForm({
       .catch(() => undefined);
   }, [professionalProfileId]);
   const shownProfessionalName = professional?.businessName ?? professionalName;
+  // Riga sotto "Urgente": a cosa serve e, nel riepilogo di una richiesta
+  // generale, quanti professionisti in più o in meno raggiunge (§340).
+  // Le urgenti usano il raggio "urgente" di ogni professionista: nel test il
+  // solo "5 invece di 12" sembrava una penalità, quindi si dice a chi va.
+  const urgencyReachNote =
+    !professionalProfileId && reach
+      ? reach.urgent === 0
+        ? " Per ora nessuno accetta urgenze in zona."
+        : ` Va a chi accetta urgenze in zona: ${reach.urgent === 1 ? "1 professionista" : `${reach.urgent} professionisti`}.`
+      : "";
+  const urgencyDescription =
+    URGENCY_CONTROL === "switch"
+      ? // Il numero solo da acceso: da spento sembrava già urgente (test, §340).
+        `Solo se serve entro 24 ore.${isUrgent ? urgencyReachNote : ""}`
+      : timing === "TODAY"
+        ? `Segnata come urgente.${urgencyReachNote}`
+        : timing === "WEEK"
+          ? "Il professionista sa che ti serve entro pochi giorni."
+          : timing === "CALM"
+            ? "Il professionista sa che non hai fretta."
+            : null;
+  function urgencyChangeText(next: UrgencyTiming) {
+    const nextUrgent = next === "TODAY";
+    const head =
+      URGENCY_CONTROL === "switch"
+        ? nextUrgent
+          ? "Urgente attivo."
+          : "Urgente disattivato."
+        : `Quando: ${URGENCY_TIMING_LABEL[next]}${nextUrgent ? ", urgente" : ""}.`;
+    if (professionalProfileId) {
+      return forwardIfNoReply ? `${head} Se non risponde, la inoltriamo dopo ${nextUrgent ? "60 minuti" : "6 ore"}.` : head;
+    }
+    if (!reach) return head;
+    const count = nextUrgent ? reach.urgent : reach.standard;
+    return `${head} ${count === 0 ? "Per ora nessun professionista in zona." : `Arriva a ${count} ${count === 1 ? "professionista" : "professionisti"}.`}`;
+  }
+  const shownSubmitLabel =
+    isUrgent === isUrgentInitial ? submitLabel : isUrgent ? "Invia richiesta urgente" : "Invia richiesta";
   const shownProfessionalImage = professional?.imageUrl ?? professionalImageUrl;
   // Esempio del campo "Descrivi il lavoro" specifico per la categoria scelta
   // (richiesta esplicita dell'utente) — prima di scegliere una categoria
@@ -602,6 +652,7 @@ export function GuidedRequestForm({
     if (which === 1) {
       if (!categorySlug) return "Scegli almeno una categoria.";
       if (description.trim().length < 10) return "Descrivi il lavoro con almeno 10 caratteri.";
+      if (!timing) return "Scegli quando ti serve.";
       return null;
     }
     // Città obbligatoria anche online se la richiesta è generale: decide a
@@ -642,6 +693,14 @@ export function GuidedRequestForm({
         setClosedCategorySlug(closed ? slug : null);
         if (closed) return;
       }
+    }
+    if (next === 3) {
+      // Numero vero per il riepilogo; se l'API non risponde resta il testo senza numero.
+      setReach(null);
+      apiClient
+        .guidedRequestReach({ categorySlugs, city, serviceMode, professionalProfileId })
+        .then(setReach)
+        .catch(() => setReach(null));
     }
     setStep(next);
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
@@ -989,19 +1048,13 @@ export function GuidedRequestForm({
         </YStack>
 
         <div className="guided-options is-urgent-card">
-          <SendOptionSwitch
-            id="guided-urgent-1"
-            tone="urgent"
-            checked={isUrgent}
+          <UrgencyControl
+            idPrefix="guided-urgency-1"
+            timing={timing}
             onToggle={toggleUrgent}
-            title="È urgente?"
-            description={
-              isUrgent
-                ? professionalProfileId
-                  ? `Sì: arriva a ${shownProfessionalName ?? "il professionista"} segnata come urgente. Se non risponde entro 60 minuti, nel riepilogo puoi scegliere di inoltrarla anche ad altri professionisti della zona.`
-                  : "Sì: la mandiamo subito a tutti i professionisti della zona, segnata come urgente."
-                : null
-            }
+            onChoose={chooseTiming}
+            switchTitle="È urgente?"
+            description={urgencyDescription}
           />
         </div>
 
@@ -1289,10 +1342,26 @@ export function GuidedRequestForm({
             }
             forwardIfNoReply={forwardIfNoReply}
             onToggleForward={() => setForwardIfNoReply((v) => !v)}
-            onToggleUrgent={toggleUrgent}
+            reach={reach}
+            timing={timing}
+            urgencyControl={
+              <UrgencyControl
+                idPrefix="guided-urgency-3"
+                timing={timing}
+                onToggle={toggleUrgent}
+                onChoose={chooseTiming}
+                switchTitle="Urgente"
+                description={urgencyDescription}
+              />
+            }
             onEdit={goToStep}
           />
         ) : null}
+
+        {/* Annuncia al lettore di schermo cosa cambia con l'urgenza (§340). */}
+        <p className="sr-only" role="status" aria-live="polite">
+          {urgencyAnnouncement}
+        </p>
 
         {error ? (
           <Text color={brand.urgenza} fontSize={16}>
@@ -1436,7 +1505,9 @@ function RequestSummary({
   slotLabel,
   forwardIfNoReply,
   onToggleForward,
-  onToggleUrgent,
+  reach,
+  timing,
+  urgencyControl,
   onEdit,
 }: {
   isUrgent: boolean;
@@ -1452,7 +1523,11 @@ function RequestSummary({
   slotLabel: string | null;
   forwardIfNoReply: boolean;
   onToggleForward: () => void;
-  onToggleUrgent: () => void;
+  /** A quanti professionisti arriva (null finché non risponde l'API). */
+  reach: GuidedRequestReach | null;
+  timing: UrgencyTiming | null;
+  /** Interruttore "Urgente" o scelta dei tempi, già collegati allo stato del modulo. */
+  urgencyControl: ReactNode;
   onEdit: (step: 1 | 2) => void;
 }) {
   // Richiesta diretta: il professionista scelto non ha scadenza, l'inoltro
@@ -1461,6 +1536,18 @@ function RequestSummary({
   const forwardZone = city.trim() ? "della tua zona" : `della zona di ${professionalName}`;
   const categoriesText = new Intl.ListFormat("it-IT", { type: "conjunction" }).format(categoryLabels);
   const multiple = categoryLabels.length > 1;
+  const urgentSuffix = isUrgent ? ", segnata come urgente" : "";
+  // Numero vero dei destinatari (§340): per una richiesta diretta sono quelli dell'inoltro.
+  const reachCount = reach ? (isUrgent ? reach.urgent : reach.standard) : null;
+  const professionalsText = (n: number) => (n === 1 ? "1 professionista" : `${n} professionisti`);
+  const forwardTargets =
+    reachCount === null
+      ? `anche ad altri professionisti simili ${forwardZone}`
+      : reachCount === 0
+        ? `agli altri professionisti simili ${forwardZone} appena ce ne sono`
+        : reachCount === 1
+          ? `anche a un altro professionista simile ${forwardZone}`
+          : `anche ad altri ${reachCount} professionisti simili ${forwardZone}`;
   return (
     <YStack gap="$4">
       <div className="guided-next">
@@ -1475,35 +1562,34 @@ function RequestSummary({
           </ul>
         ) : (
           <ul>
-            {multiple ? (
+            {reachCount === 0 ? (
               <li>
-                Diventa {categoryLabels.length} richieste separate, una per categoria: ognuna arriva subito ai professionisti di quella
-                categoria nella tua zona{isUrgent ? ", segnata come urgente" : ""}.
+                Per ora nessun professionista di {categoriesText} lavora nella tua zona: la lasciamo aperta e ti avvisiamo appena ce n&apos;è uno.
+              </li>
+            ) : multiple ? (
+              <li>
+                Diventa {categoryLabels.length} richieste separate, una per categoria: arrivano subito{" "}
+                {reachCount === null ? "ai professionisti" : `a ${professionalsText(reachCount)}`} della tua zona{urgentSuffix}.
+              </li>
+            ) : reachCount === null ? (
+              <li>
+                La mandiamo subito a tutti i professionisti di {categoriesText} che lavorano nella tua zona{urgentSuffix}.
               </li>
             ) : (
               <li>
-                La mandiamo subito a tutti i professionisti di {categoriesText} che lavorano nella tua zona
-                {isUrgent ? ", segnata come urgente" : ""}.
+                Arriva subito a {professionalsText(reachCount)} di {categoriesText} della tua zona{urgentSuffix}.
               </li>
             )}
-            <li>Possono risponderti finché la richiesta è aperta: al massimo {isUrgent ? "30" : "60"} giorni.</li>
+            <li>Ti avvisiamo a ogni preventivo: li confronti e scegli tu.</li>
             <li>I tuoi dati di contatto restano nascosti finché non accetti un preventivo.</li>
           </ul>
         )}
       </div>
 
-      {/* Le due scelte sull'invio insieme, subito sopra il pulsante: si
-          accendono e spengono qui senza tornare al passo 1. "Urgente" è lo
-          stesso stato dell'interruttore del passo 1. */}
+      {/* Le scelte sull'invio insieme, subito sopra il pulsante: si cambiano
+          qui senza tornare al passo 1, ed è lo stesso stato del passo 1. */}
       <div className="guided-options" role="group" aria-label="Opzioni di invio">
-        <SendOptionSwitch
-          id="guided-urgent-3"
-          tone="urgent"
-          checked={isUrgent}
-          onToggle={onToggleUrgent}
-          title="Urgente"
-          description="Arriva segnata come urgente."
-        />
+        {urgencyControl}
         {professionalName ? (
           <SendOptionSwitch
             id="guided-forward"
@@ -1511,7 +1597,7 @@ function RequestSummary({
             checked={forwardIfNoReply}
             onToggle={onToggleForward}
             title="Inoltra se non risponde"
-            description={`Se ${professionalName} non risponde entro ${forwardTime}, la mandiamo anche ad altri professionisti simili ${forwardZone}. Potrà comunque risponderti.`}
+            description={`Se ${professionalName} non risponde entro ${forwardTime}, la mandiamo ${forwardTargets}. Potrà comunque risponderti.`}
           />
         ) : null}
       </div>
@@ -1525,7 +1611,7 @@ function RequestSummary({
         </div>
         <p>
           <strong>{categoriesText}</strong> · {serviceMode === "HOME" ? "A domicilio" : "Online"}
-          {isUrgent ? " · Urgente" : ""}
+          {URGENCY_CONTROL === "timing" ? (timing ? ` · ${URGENCY_TIMING_LABEL[timing]}` : "") : isUrgent ? " · Urgente" : ""}
           {slotLabel ? ` · ${slotLabel}` : ""}
         </p>
         <p className="guided-recap-text">{description}</p>
@@ -1540,6 +1626,72 @@ function RequestSummary({
         {contact ? <p>{contact}</p> : null}
       </div>
     </YStack>
+  );
+}
+
+type UrgencyTiming = "TODAY" | "WEEK" | "CALM";
+
+/**
+ * Come si sceglie l'urgenza (docs/CHANGELOG.md §340): "switch" è
+ * l'interruttore sì/no, "timing" la scelta tra Oggi, In settimana e Con
+ * calma (solo Oggi rende la richiesta urgente).
+ */
+const URGENCY_CONTROL: "switch" | "timing" = "switch";
+
+const URGENCY_TIMING_LABEL: Record<UrgencyTiming, string> = {
+  TODAY: "Oggi",
+  WEEK: "In settimana",
+  CALM: "Con calma",
+};
+
+function UrgencyControl({
+  idPrefix,
+  timing,
+  onToggle,
+  onChoose,
+  switchTitle,
+  description,
+}: {
+  idPrefix: string;
+  timing: UrgencyTiming | null;
+  onToggle: () => void;
+  onChoose: (next: UrgencyTiming) => void;
+  switchTitle: string;
+  description: string | null;
+}) {
+  if (URGENCY_CONTROL === "switch") {
+    return (
+      <SendOptionSwitch
+        id={idPrefix}
+        tone="urgent"
+        checked={timing === "TODAY"}
+        onToggle={onToggle}
+        title={switchTitle}
+        description={description}
+      />
+    );
+  }
+  // Tre scelte come pillole: radio veri, così frecce e lettore di schermo funzionano da soli.
+  return (
+    <fieldset className="guided-timing" aria-describedby={description ? `${idPrefix}-desc` : undefined}>
+      <legend>Quando ti serve?</legend>
+      <div className="guided-timing-options">
+        {(Object.keys(URGENCY_TIMING_LABEL) as UrgencyTiming[]).map((value) => (
+          <label key={value} className={`guided-timing-option${value === "TODAY" ? " is-today" : ""}`}>
+            <input type="radio" name={idPrefix} value={value} checked={timing === value} onChange={() => onChoose(value)} />
+            <span>
+              {value === "TODAY" ? <Icon name="zap" size={15} strokeWidth={2} color="currentColor" fill={timing === "TODAY" ? "currentColor" : "none"} /> : null}
+              {URGENCY_TIMING_LABEL[value]}
+            </span>
+          </label>
+        ))}
+      </div>
+      {description ? (
+        <small id={`${idPrefix}-desc`} className="guided-timing-desc">
+          {description}
+        </small>
+      ) : null}
+    </fieldset>
   );
 }
 

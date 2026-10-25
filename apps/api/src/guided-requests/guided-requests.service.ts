@@ -3,7 +3,7 @@ import { GeocodingService } from "../geocoding/geocoding.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { randomUUID } from "node:crypto";
 import { Prisma, type PrismaClient, type ProfessionalProfile } from "@professionisti/database";
-import { findComuneByName, professionalKindOf, professionalRestrictions, clientPaymentOffer, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
+import { findComuneByName, professionalKindOf, professionalRestrictions, clientPaymentOffer, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestReach, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing, publicVisibilityWhere, publicVerified, stripeVerified } from "../professional-fiscal/public-visibility";
 import { NOT_ACCEPTING_REQUESTS } from "../subscriptions/subscription-rules";
@@ -783,6 +783,41 @@ export class GuidedRequestsService {
     }
 
     return { totalContacted, responded, pending, statusMessage };
+  }
+
+  /**
+   * A quanti professionisti arriverebbe la richiesta senza e con "Urgente"
+   * (docs/CHANGELOG.md §340): stessa selezione del fan-out, così il
+   * riepilogo del modulo mostra un numero vero. Con `excludeProfileId`
+   * (richiesta diretta) conta l'inoltro: zona del cliente o, se manca,
+   * quella del professionista scelto, come in forwardDirectRequest.
+   */
+  async reach(input: {
+    categorySlugs: string[];
+    city?: string;
+    serviceMode?: string;
+    excludeProfileId?: string;
+  }): Promise<GuidedRequestReach> {
+    const categories = input.categorySlugs.length
+      ? await this.prisma.category.findMany({ where: { slug: { in: input.categorySlugs.slice(0, 5) } }, select: { id: true } })
+      : [];
+    if (categories.length === 0) return { standard: 0, urgent: 0 };
+    let zone = input.city?.trim() ?? "";
+    if (!zone && input.excludeProfileId) {
+      const chosen = await this.prisma.professionalProfile.findUnique({ where: { id: input.excludeProfileId }, select: { city: true } });
+      zone = chosen?.city ?? "";
+    }
+    const opts = { excludeProfileId: input.excludeProfileId, remoteOnly: input.serviceMode === "ONLINE" };
+    // Più categorie: professionisti diversi, chi ne fa due conta una volta.
+    const count = async (isUrgent: boolean) => {
+      const ids = new Set<string>();
+      for (const category of categories) {
+        for (const match of await this.matchProfilesForFanOut(category.id, zone, isUrgent, opts)) ids.add(match.profile.id);
+      }
+      return ids.size;
+    };
+    const [standard, urgent] = await Promise.all([count(false), count(true)]);
+    return { standard, urgent };
   }
 
   /**
