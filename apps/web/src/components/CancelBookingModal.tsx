@@ -32,6 +32,7 @@ export function CancelBookingModal({
   notePlaceholder = "Es. Imprevisto, ti ricontatterò per riprogrammare.",
   confirmLabel = "Conferma annullamento",
   confirmingLabel = "Annullamento...",
+  backLabel = "Torna indietro",
   // Il cliente che annulla una propria prenotazione non lascia una nota
   // (richiesta esplicita dell'utente, decisione di design già presa:
   // "il cliente non deve spiegazioni al professionista") — a differenza
@@ -47,6 +48,8 @@ export function CancelBookingModal({
   notePlaceholder?: string;
   confirmLabel?: string;
   confirmingLabel?: string;
+  /** Testo del pulsante che chiude senza confermare. */
+  backLabel?: string;
   showNote?: boolean;
 }) {
   const [note, setNote] = useState("");
@@ -135,7 +138,7 @@ export function CancelBookingModal({
             {isSaving ? confirmingLabel : confirmLabel}
           </Button>
           <Button variant="ghost" size="$3" height={44} onPress={onClose} disabled={isSaving}>
-            Torna indietro
+            {backLabel}
           </Button>
         </XStack>
       </YStack>

@@ -32,11 +32,12 @@ import { CardButton } from "@/components/CardButton";
 import { ContactButton } from "@/components/ContactButton";
 import { ArchivedRestoreBar, buildPersonalStateActions, RequestStateIndicators } from "@/components/RequestCardPersonalActions";
 import { combineUnreadCounts } from "@/lib/notificationSections";
-import { useSamePageLinkClick } from "@/lib/useSamePageLinkClick";
+import { useInternalLinkClick } from "@/lib/useInternalLinkClick";
 import { clientNextAction } from "@/lib/clientNextAction";
 import { CLIENT_STAGE_LABEL, type RequestStage } from "@/lib/requestStage";
 import { BookingSection } from "./BookingSection";
 import { QuoteCard } from "./QuoteCard";
+import { announceRequestDeleted } from "./RequestDeletedNotice";
 import { ClientMiniTimeline, ClientStagePill, MAX_REQUEST_PHOTOS, STAGE_STYLE, ServiceBadge, formatDateTime, textareaStyle } from "./clientRequestHelpers";
 
 export function GuidedRequestCard({
@@ -114,9 +115,6 @@ export function GuidedRequestCard({
   }, [autoOpenChatProfessionalId]);
 
   const [isEditing, setIsEditing] = useState(false);
-  // "Le mie richieste" nel menu mentre si modifica: si torna alla scheda,
-  // non si resta bloccati nel modulo (docs/CHANGELOG.md §336).
-  useSamePageLinkClick(() => setIsEditing(false), isEditing);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [description, setDescription] = useState(request.description);
   const [city, setCity] = useState(request.city);
@@ -150,6 +148,56 @@ export function GuidedRequestCard({
   const [photoError, setPhotoError] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Uscita dalla modifica (docs/CHANGELOG.md §336): con modifiche non
+  // salvate si chiede prima conferma; `href` è la pagina da aprire dopo,
+  // null per tornare solo alla scheda.
+  const isDirty =
+    isEditing &&
+    (description !== request.description ||
+      city !== request.city ||
+      address !== (request.address ?? "") ||
+      recipientName !== (request.recipientName ?? "") ||
+      recipientSurname !== (request.recipientSurname ?? "") ||
+      recipientPhone !== (request.recipientPhone ?? "") ||
+      houseNumber !== (request.houseNumber ?? "") ||
+      addressExtra !== (request.addressExtra ?? "") ||
+      postalCode !== (request.postalCode ?? "") ||
+      province !== (request.province ?? "") ||
+      photoUrls.join("\n") !== request.photoUrls.join("\n"));
+  const [pendingExit, setPendingExit] = useState<{ href: string | null } | null>(null);
+  function requestExitEditing() {
+    if (isSaving) return;
+    if (isDirty) setPendingExit({ href: null });
+    else setIsEditing(false);
+  }
+  function confirmExitEditing() {
+    const href = pendingExit?.href ?? null;
+    setPendingExit(null);
+    setIsEditing(false);
+    if (href) router.push(href);
+  }
+  // Un link del menu mentre si modifica: "Le mie richieste" riporta alla
+  // scheda invece di lasciare il modulo aperto; con modifiche non salvate
+  // qualunque link chiede prima conferma.
+  useInternalLinkClick((url, event) => {
+    const samePage = url.pathname === window.location.pathname;
+    if (isDirty) {
+      event.preventDefault();
+      setPendingExit({ href: samePage ? null : `${url.pathname}${url.search}${url.hash}` });
+    } else if (samePage) {
+      setIsEditing(false);
+    }
+  }, isEditing);
+  // Chiusura o ricarica della scheda del browser: avviso del browser stesso.
+  useEffect(() => {
+    if (!isDirty) return;
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault();
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
   const [error, setError] = useState<string | null>(null);
   const [openPhotoIndex, setOpenPhotoIndex] = useState<number | null>(null);
   // "Annulla prenotazione" (una volta accettato un preventivo) apre un
@@ -293,6 +341,7 @@ export function GuidedRequestCard({
     setError(null);
     try {
       await apiClient.deleteGuidedRequestPermanently(token, request.id);
+      announceRequestDeleted();
       onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
@@ -305,6 +354,7 @@ export function GuidedRequestCard({
     await apiClient.deleteGuidedRequestPermanently(token, request.id);
     setShowDeleteModal(false);
     setIsEditing(false);
+    announceRequestDeleted();
     onChanged();
   }
 
@@ -366,7 +416,7 @@ export function GuidedRequestCard({
             borderRadius="$3"
             cursor="pointer"
             hoverStyle={{ backgroundColor: brand.filetto }}
-            onPress={() => !isSaving && setIsEditing(false)}
+            onPress={requestExitEditing}
             accessibilityRole="button"
           >
             <Icon name="chevron-left" size={18} color={brand.grafite} />
@@ -506,7 +556,7 @@ export function GuidedRequestCard({
             <CardButton tone="primary" onPress={handleSaveEdit} disabled={isSaving || isUploadingPhoto}>
               {isSaving ? "Salvataggio..." : "Salva modifiche"}
             </CardButton>
-            <CardButton onPress={() => setIsEditing(false)} disabled={isSaving}>
+            <CardButton onPress={requestExitEditing} disabled={isSaving}>
               Annulla
             </CardButton>
           </XStack>
@@ -528,6 +578,17 @@ export function GuidedRequestCard({
             showNote={false}
             onClose={() => setShowDeleteModal(false)}
             onCancel={handleDeleteFromEdit}
+          />
+        ) : null}
+        {pendingExit ? (
+          <CancelBookingModal
+            title="Uscire senza salvare?"
+            description="Le modifiche alla richiesta andranno perse."
+            confirmLabel="Esci senza salvare"
+            backLabel="Continua a modificare"
+            showNote={false}
+            onClose={() => setPendingExit(null)}
+            onCancel={async () => confirmExitEditing()}
           />
         ) : null}
       </Surface>
@@ -590,6 +651,20 @@ export function GuidedRequestCard({
         question: "Annullare questa richiesta? I professionisti contattati non potranno più inviarti preventivi. Potrai poi archiviarla o eliminarla.",
         confirmLabel: "Sì, annulla",
         busyLabel: "Annullamento...",
+      },
+    });
+  }
+  // Senza preventivi si elimina anche senza annullare (§336), come dal modulo di modifica.
+  if (canEditDetails) {
+    menuActions.push({
+      icon: "trash-2",
+      text: "Elimina richiesta",
+      tone: "danger",
+      onPress: handlePermanentDelete,
+      confirm: {
+        question: "Eliminare la richiesta? Sparirà anche per i professionisti che l'hanno ricevuta. Non si può tornare indietro.",
+        confirmLabel: "Elimina",
+        busyLabel: "Eliminazione...",
       },
     });
   }
