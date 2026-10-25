@@ -18,6 +18,9 @@ import { toTaxIdCheckView } from "../tax-id-check/tax-id-check.service";
 import { IdentityProviderError, type IdentityDecision, type IdentityProvider } from "./identity-provider";
 import { identityProviderFromEnv, identityVerificationNeeded } from "./identity-provider-env";
 import { matchDocumentToFiscal, type ExpectedPerson } from "./identity-match";
+import { verificationValidUntil } from "./validity";
+
+export { VERIFICATION_VALID_YEARS, verificationValidUntil } from "./validity";
 
 /** Tentativi al giorno: ogni verifica ha un costo, e oltre è meglio che ci scriva. */
 export const MAX_IDENTITY_ATTEMPTS_PER_DAY = 5;
@@ -108,8 +111,6 @@ const DECLINED_REASON =
 
 /** Avviso "il documento sta per scadere" (§337). */
 export const EXPIRY_REMINDER_DAYS = 30;
-/** Senza data di scadenza letta dal documento, la verifica vale 5 anni (§337). */
-export const VERIFICATION_VALID_YEARS = 5;
 
 export type BadgeOverTime = "KEEP" | "REMIND" | "REVOKE_SANDBOX" | "REVOKE_EXPIRED";
 
@@ -128,12 +129,6 @@ export function badgeOverTime(
   if (now.getTime() >= validUntil.getTime()) return "REVOKE_EXPIRED";
   if (!approved.expiryRemindedAt && validUntil.getTime() - now.getTime() <= EXPIRY_REMINDER_DAYS * DAY_MS) return "REMIND";
   return "KEEP";
-}
-
-export function verificationValidUntil(approved: Pick<IdentityVerification, "decidedAt" | "createdAt" | "documentExpiresAt">): Date {
-  if (approved.documentExpiresAt) return approved.documentExpiresAt;
-  const from = approved.decidedAt ?? approved.createdAt;
-  return new Date(Date.UTC(from.getUTCFullYear() + VERIFICATION_VALID_YEARS, from.getUTCMonth(), from.getUTCDate()));
 }
 
 /** "AAAA-MM-GG" del fornitore → fine di quel giorno in Italia (il documento vale tutto il giorno). */

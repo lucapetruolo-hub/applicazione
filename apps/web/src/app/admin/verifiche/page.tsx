@@ -68,6 +68,14 @@ function AutomaticChecks({ row, onRecheck, rechecking }: { row: Row; onRecheck?:
         <div>
           <AdminPill tone={identity.tone}>{identity.text}</AdminPill>
           {row.identity.reason ? <div style={{ color: brand.grafite70, fontSize: 13 }}>{row.identity.reason}</div> : null}
+          {/* Badge nel tempo (§337): fino a quando vale e se è solo una prova. */}
+          {row.identity.validUntil ? (
+            <div style={{ color: brand.grafite70, fontSize: 13 }}>
+              {row.identity.documentExpiresAt ? "Documento valido fino al " : "Nessuna scadenza sul documento, vale fino al "}
+              {new Date(row.identity.validUntil).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Rome" })}
+              {row.identity.sandbox ? " · verifica di prova" : ""}
+            </div>
+          ) : null}
           <div style={{ color: brand.grafite70, fontSize: 12 }}>
             Sessione {row.identity.provider}: <code>{row.identity.providerSessionId}</code>
           </div>

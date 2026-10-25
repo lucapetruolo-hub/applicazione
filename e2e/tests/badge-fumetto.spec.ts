@@ -162,8 +162,12 @@ test("nel preventivo il cliente vede che tipo di lavoratore lo manda", async ({ 
   }
   await page.addInitScript((value) => localStorage.setItem("professionisti_token", value), token);
   await page.goto("/le-mie-richieste");
-  await page.getByRole("button", { name: "Guarda il preventivo" }).first().click();
-  await expect(page.getByText("Anna Verdi Idraulica").first()).toBeVisible();
+  // Con una sola richiesta la scheda si apre da sola (§336), altrimenti si apre dall'elenco.
+  const name = page.getByText("Anna Verdi Idraulica").first();
+  const open = page.getByRole("button", { name: "Guarda il preventivo" }).first();
+  await expect(name.or(open)).toBeVisible();
+  if (await open.isVisible()) await open.click();
+  await expect(name).toBeVisible();
   await expect(badge(page, "Privato")).toHaveAccessibleDescription(PRIVATE_TEXT);
   if (process.env.E2E_SCREENSHOTS) await badge(page, "Privato").evaluate((el) => el.scrollIntoView({ block: "center" }));
   if (process.env.E2E_SCREENSHOTS) await page.screenshot({ path: `${process.env.E2E_SCREENSHOTS}/preventivo-${test.info().project.name}.png` });

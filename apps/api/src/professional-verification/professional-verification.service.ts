@@ -4,6 +4,7 @@ import type { ProfessionalVerificationFilter, ProfessionalVerificationRow } from
 import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { verificationValidUntil } from "../identity-verification/validity";
 
 /**
  * Badge "Verificato" dei professionisti. Da docs/CHANGELOG.md §253 lo assegna
@@ -83,6 +84,9 @@ export class ProfessionalVerificationService {
             provider: profile.identityVerifications[0].provider,
             providerSessionId: profile.identityVerifications[0].providerSessionId,
             updatedAt: profile.identityVerifications[0].updatedAt.toISOString(),
+            sandbox: profile.identityVerifications[0].sandbox,
+            documentExpiresAt: profile.identityVerifications[0].documentExpiresAt?.toISOString() ?? null,
+            validUntil: profile.identityVerifications[0].status === "APPROVED" ? verificationValidUntil(profile.identityVerifications[0]).toISOString() : null,
           }
         : null,
       taxIdChecks: (profile.fiscalProfile?.taxIdChecks ?? []).map((c) => ({ kind: c.kind, status: c.status, detail: c.detail, officialName: c.officialName })),
