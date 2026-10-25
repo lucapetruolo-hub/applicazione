@@ -7,6 +7,7 @@ import {
   IDENTITY_REQUIRED_FOR_QUOTES_MESSAGE,
   MAX_JOB_DAYS,
   jobDayCount,
+  jobPaymentOfferText,
   paymentChoiceIsOnline,
   paymentOfferChanged,
   quoteChangeWhat,
@@ -237,6 +238,13 @@ export class QuotesService {
     // già visto il preventivo la prima volta, una modifica non è "novità"
     // da badge — coerente con la stessa distinzione già fatta altrove nel
     // progetto (es. isNewUser per l'auth Google).
+    // Come si paga, per l'email "Nuovo preventivo": solo i modi che il cliente
+    // può davvero usare (docs/CHANGELOG.md §337).
+    const paymentText =
+      jobPaymentOfferText(
+        offer.paymentOptions.filter((choice) => onlinePaymentsEnabled() || !paymentChoiceIsOnline(choice)),
+        offer.depositPercent,
+      )?.long ?? null;
     if (isResend) {
       // Nuovo preventivo dopo il rifiuto (docs/CHANGELOG.md §188): per il
       // cliente è una novità come il primo invio, ma nessuna metrica di
@@ -247,6 +255,7 @@ export class QuotesService {
         quoteId: quote.id,
         businessName: professionalProfile.businessName,
         resent: true,
+        payment: paymentText,
       });
       await this.timelineService.log(
         lead.guidedRequestId,
@@ -259,6 +268,7 @@ export class QuotesService {
         guidedRequestId: lead.guidedRequestId,
         quoteId: quote.id,
         businessName: professionalProfile.businessName,
+        payment: paymentText,
       });
       // Metriche di affidabilità (CLAUDE.md §15, evento 2): prima risposta
       // del professionista a QUESTO lead — minuti da quando gli è arrivato

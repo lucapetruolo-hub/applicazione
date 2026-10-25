@@ -2,6 +2,7 @@
 
 import {
   jobPaymentChoiceCopy,
+  jobPaymentOfferText,
   onlineDepositEurCents,
   paymentChoiceIsOnline,
   type JobPaymentChoice,
@@ -110,10 +111,7 @@ export function PaymentOffer({
  * d'occhio (docs/CHANGELOG.md §337). null se non c'è un modo utilizzabile.
  */
 export function paymentOfferShortLabel(offered: JobPaymentChoice[], onlineAvailable: boolean): string | null {
-  const options = selectablePaymentChoices(offered, onlineAvailable);
-  if (options.length === 0) return null;
-  if (options.length > 1) return "Online o diretto";
-  return options[0] === "DIRECT" ? "Pagamento diretto" : options[0] === "ONLINE" ? "Pagamento online" : "Acconto online";
+  return jobPaymentOfferText(selectablePaymentChoices(offered, onlineAvailable))?.short ?? null;
 }
 
 /** Modi che il cliente può davvero scegliere: quelli offerti, senza gli online se Stripe non è attivo. */
