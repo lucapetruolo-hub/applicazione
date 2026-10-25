@@ -69,7 +69,7 @@ export default function NotifichePage() {
 
   return (
     <YStack width="100%" alignItems="center" paddingVertical="$8" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={760} gap="$5">
+      <YStack width="100%" maxWidth={880} gap="$5">
         <YStack gap="$1">
           <Text fontFamily="$heading" fontWeight="800" fontSize={30} color={brand.grafite}>
             Notifiche
@@ -112,9 +112,9 @@ export default function NotifichePage() {
 
             <section className="notif-card" aria-labelledby="notif-topics-title">
               <h2 id="notif-topics-title">Per argomento</h2>
+              {/* Una nota sola al posto del paragrafo e dei sette "In arrivo"
+                  ripetuti sotto ogni SMS (docs/CHANGELOG.md §346). */}
               <p className="notif-note">
-                <strong>Sito</strong>: campanella e popup. <strong>Email</strong>: oggi partono per nuove richieste, promemoria degli
-                appuntamenti e decisioni sul tuo account; per gli altri argomenti la tua scelta è già salvata per quando le attiveremo.{" "}
                 <strong>SMS</strong>: in arrivo, puoi già scegliere per cosa riceverli.
               </p>
               <div className="notif-grid" role="table" aria-label="Notifiche per argomento e canale">
@@ -153,7 +153,7 @@ export default function NotifichePage() {
                               label={`${copy.label}: ${CHANNEL_LABEL[channel]}`}
                               onChange={() => toggleChannel(topic, channel)}
                             />
-                            {locked ? <small>Sempre attivo</small> : upcoming ? <small>In arrivo</small> : null}
+                            {locked ? <small>Sempre attivo</small> : upcoming && channel !== "sms" ? <small>In arrivo</small> : null}
                           </div>
                         );
                       })}

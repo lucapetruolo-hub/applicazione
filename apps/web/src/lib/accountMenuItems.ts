@@ -96,7 +96,8 @@ export function journeyNavItem(attention: ReadonlySet<string>): AccountNavItem |
  * dell'utente, docs/CHANGELOG.md §334: prima una barra di schede sotto
  * l'header, §147). Stesse voci della tendina "Il mio account". La pagina di
  * una decisione sui propri contenuti (/segnalazioni) non è nel menu, si apre
- * dall'email (docs/CHANGELOG.md §319): resta evidenziata la voce Account.
+ * dall'email (docs/CHANGELOG.md §319): nessuna voce evidenziata, perché
+ * nessuna è la pagina in cui sei (§346; prima restava accesa "Account").
  */
 export const CLIENT_NAV: AccountNavGroup[] = [
   {
@@ -111,7 +112,7 @@ export const CLIENT_NAV: AccountNavGroup[] = [
   {
     title: "Impostazioni",
     items: [
-      { href: "/account", label: "Account", icon: "user-round", alsoMatches: ["/segnalazioni"] },
+      { href: "/account", label: "Account", icon: "user-round" },
       { href: "/account/notifiche", label: "Notifiche", icon: "bell-ring" },
     ],
   },

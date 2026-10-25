@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { SentReview } from "@professionisti/api-client";
-import { Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
+import type { ClientBooking, SentReview } from "@professionisti/api-client";
+import { Avatar, Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { MediaPreview } from "@/components/MediaPreview";
@@ -51,6 +51,9 @@ export default function LeMieRecensioniPage() {
   const { user, token, isLoading } = useAuth();
   const [sent, setSent] = useState<SentReview[] | null>(null);
   const [sentError, setSentError] = useState<string | null>(null);
+  // Lavori ancora da recensire (docs/CHANGELOG.md §346): con una recensione
+  // sola la pagina era un archivio con 500 px di vuoto sotto.
+  const [toReview, setToReview] = useState<ClientBooking[]>([]);
 
   useEffect(() => {
     if (!token) return;
@@ -58,6 +61,10 @@ export default function LeMieRecensioniPage() {
       .mySentReviews(token)
       .then(setSent)
       .catch((err) => setSentError(err instanceof Error ? err.message : "Errore nel caricamento."));
+    apiClient
+      .myClientBookings(token)
+      .then((bookings) => setToReview(bookings.filter((booking) => booking.canReview && !booking.hasReview && booking.guidedRequestId)))
+      .catch(() => setToReview([]));
   }, [token]);
 
   if (isLoading) return null;
@@ -79,7 +86,7 @@ export default function LeMieRecensioniPage() {
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={760} gap="$5">
+      <YStack width="100%" maxWidth={880} gap="$5">
         <YStack gap="$1">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
             Le mie recensioni
@@ -87,16 +94,47 @@ export default function LeMieRecensioniPage() {
           <Text color={brand.grafite70}>Le recensioni che hai lasciato ai professionisti dopo un lavoro concluso.</Text>
         </YStack>
 
-        <SentReviewsList reviews={sent} error={sentError} />
+        <SentReviewsList reviews={sent} error={sentError} hasPending={toReview.length > 0} />
+        {toReview.length > 0 ? <PendingReviews bookings={toReview} /> : null}
       </YStack>
     </YStack>
   );
 }
 
-function SentReviewsList({ reviews, error }: { reviews: SentReview[] | null; error: string | null }) {
+function PendingReviews({ bookings }: { bookings: ClientBooking[] }) {
+  return (
+    <YStack gap="$3">
+      <Text tag="h2" margin={0} fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+        Lavori che puoi ancora recensire
+      </Text>
+      {bookings.map((booking) => (
+        <Surface key={booking.id} gap="$3">
+          <XStack alignItems="center" gap="$3" flexWrap="wrap">
+            <Avatar name={booking.businessName} imageUrl={booking.professionalImageUrl} size={40} />
+            <YStack flex={1} minWidth={180} gap={2}>
+              <Text fontWeight="700" color={brand.grafite} numberOfLines={1}>
+                {booking.description?.trim() || booking.categoryLabel || "Lavoro"}
+              </Text>
+              <Text fontSize={16} color={brand.grafite70} numberOfLines={1}>
+                {[booking.categoryLabel, `con ${booking.businessName}`, formatDate(booking.scheduledAt)].filter(Boolean).join(" · ")}
+              </Text>
+            </YStack>
+            <Link href={`/le-mie-richieste?open=${booking.guidedRequestId}`} style={{ textDecoration: "none" }}>
+              <Button variant="primary">Lascia una recensione</Button>
+            </Link>
+          </XStack>
+        </Surface>
+      ))}
+    </YStack>
+  );
+}
+
+function SentReviewsList({ reviews, error, hasPending }: { reviews: SentReview[] | null; error: string | null; hasPending: boolean }) {
   if (error) return <Text color={brand.urgenza}>{error}</Text>;
   if (reviews === null) return <Text color={brand.grafite70}>Caricamento...</Text>;
   if (reviews.length === 0) {
+    // Con lavori da recensire qui sotto basta una riga.
+    if (hasPending) return <Text color={brand.grafite70}>Non hai ancora lasciato recensioni.</Text>;
     return (
       <EmptyState
         icon="star"

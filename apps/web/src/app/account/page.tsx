@@ -13,6 +13,7 @@ import { UploadingDots } from "@/components/UploadingDots";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
+import { SaveBar } from "@/components/SaveBar";
 import { ClientEmailVerificationCard } from "@/components/ClientEmailVerificationCard";
 import { PASSWORD_RULES_ATTRIBUTE, PasswordMatchHint, PasswordRules } from "@/components/PasswordRules";
 import { localPreviewUrl } from "@/lib/media";
@@ -246,6 +247,25 @@ export default function AccountPage() {
     }
   }
 
+  // Modifiche ai dati del profilo non ancora salvate: la barra "Salva" resta
+  // in fondo allo schermo (SaveBar, docs/CHANGELOG.md §346).
+  const savedBirth = parseBirthDate(user?.birthDate ?? null);
+  const profileDirty =
+    Boolean(user) &&
+    (name !== (user?.name ?? "") ||
+      surname !== (user?.surname ?? "") ||
+      birthDay !== savedBirth.day ||
+      birthMonth !== savedBirth.month ||
+      birthYear !== savedBirth.year ||
+      email !== (user?.email ?? "") ||
+      phone !== (user?.phone ?? "") ||
+      street !== (user?.street ?? "") ||
+      houseNumber !== (user?.houseNumber ?? "") ||
+      addressExtra !== (user?.addressExtra ?? "") ||
+      postalCode !== (user?.postalCode ?? "") ||
+      addressCity !== (user?.city ?? "") ||
+      province !== (user?.province ?? ""));
+
   function handleCancelProfile() {
     syncFieldsFromUser();
     setProfileError(null);
@@ -438,7 +458,7 @@ export default function AccountPage() {
           aperto") — la navigazione tra le voci resta disponibile dal
           menu a tendina dell'header (AccountMenu), che le elenca già
           tutte. */}
-      <YStack width="100%" maxWidth={760} gap="$5">
+      <YStack width="100%" maxWidth={880} gap="$5">
         <YStack gap="$1">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
             Impostazioni dell&apos;account
@@ -538,7 +558,7 @@ export default function AccountPage() {
               <input aria-label="Giorno di nascita"
                 value={birthDay}
                 onChange={(e) => setBirthDay(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                placeholder="DD"
+                placeholder="GG"
                 inputMode="numeric"
                 style={smallInputStyle}
               />
@@ -552,7 +572,7 @@ export default function AccountPage() {
               <input aria-label="Anno di nascita"
                 value={birthYear}
                 onChange={(e) => setBirthYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                placeholder="YYYY"
+                placeholder="AAAA"
                 inputMode="numeric"
                 style={{ ...smallInputStyle, width: 96 }}
               />
@@ -925,14 +945,7 @@ export default function AccountPage() {
           </Text>
         ) : null}
 
-        <XStack gap="$4" alignItems="center">
-          <Button variant="primary" size="$4" onPress={handleSaveProfile} disabled={isSavingProfile} opacity={isSavingProfile ? 0.6 : 1}>
-            {isSavingProfile ? "Salvataggio..." : "Salva"}
-          </Button>
-          <Text color={brand.grafite70} fontWeight="600" cursor="pointer" accessibilityRole="button" onPress={handleCancelProfile}>
-            Annulla
-          </Text>
-        </XStack>
+        <SaveBar dirty={profileDirty} saving={isSavingProfile} onSave={handleSaveProfile} onCancel={handleCancelProfile} />
       </YStack>
 
       {cropImageSrc ? <ImageCropModal imageSrc={cropImageSrc} onCancel={closeCropModal} onConfirm={handleCropConfirm} /> : null}

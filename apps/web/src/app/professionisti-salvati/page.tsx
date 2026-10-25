@@ -71,7 +71,7 @@ export default function ProfessionistiSalvatiPage() {
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
-      <XStack width="100%" maxWidth={760} gap="$8" alignItems="flex-start" flexWrap="wrap">
+      <XStack width="100%" maxWidth={880} gap="$8" alignItems="flex-start" flexWrap="wrap">
         <YStack flex={1} minWidth={280} gap="$5">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
             Professionisti salvati

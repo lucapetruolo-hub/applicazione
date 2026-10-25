@@ -53,7 +53,7 @@ export default function SegnalazioniPage() {
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={760} gap="$6">
+      <YStack width="100%" maxWidth={880} gap="$6">
         <YStack gap="$2">
           <Text tag="h1" margin={0} fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
             Decisioni sui tuoi contenuti
