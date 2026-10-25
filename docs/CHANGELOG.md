@@ -20604,6 +20604,6 @@ di 3): togliere note e foto e lasciare solo la conferma, poi la recensione.
 
 **Miglioria approvata da Luca** ("effettua miglioria n.2"): col pagamento
 diretto (`payment.method === "DIRECT"`) la finestra dice anche "Confermando
-dichiari anche di aver pagato il professionista", perché la conferma vale
+dichiari di aver pagato il professionista", perché la conferma vale
 come pagamento ricevuto (`JobPaymentsService.confirmDirect`). Frase di base
 accorciata in "Subito dopo potrai lasciare una recensione, anche con foto".
