@@ -67,6 +67,8 @@ function normalizePlaceName(name: string): string {
  * normale campo di testo.
  */
 export function AddressAutocompleteInput({ value, onChange, onSelect, placeholder, style, biasTowards, restrictToCity, onServiceUnavailable, disabled }: Props) {
+  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
+  "use no memo";
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [wrongCity, setWrongCity] = useState<string | null>(null);
   const [open, setOpen] = useState(false);

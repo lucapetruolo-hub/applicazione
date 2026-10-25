@@ -20,6 +20,8 @@ import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
  * così da telefono il menu c'è in tutte le pagine (docs/CHANGELOG.md §271).
  */
 export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) {
+  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
+  "use no memo";
   const [desktopOpen, setDesktopOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);

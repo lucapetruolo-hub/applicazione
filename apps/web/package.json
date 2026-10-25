@@ -7,7 +7,7 @@
     "build": "pnpm css:tamagui && next build",
     "css:tamagui": "TSX_TSCONFIG_PATH=scripts/tsconfig.json tsx scripts/generate-tamagui-css.ts",
     "start": "next start",
-    "lint": "eslint src",
+    "lint": "eslint src && node scripts/controlla-style-jsx.mjs",
     "typecheck": "next typegen && tsc --noEmit",
     "confronto-pagine": "node scripts/confronto-pagine.mjs"
   },
@@ -27,6 +27,7 @@
     "@types/node": "^22.7.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "babel-plugin-react-compiler": "1.0.0",
     "playwright": "1.64.1",
     "typescript": "~6.0.3"
   }

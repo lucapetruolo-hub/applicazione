@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, startTransition, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CalendarDays, ChevronLeft, ChevronRight, Navigation, Phone, Plus, Search, Truck, X } from "lucide-react";
@@ -25,6 +25,7 @@ import {
 } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
+import { loadMyProfessionalProfile } from "@/lib/myProfessionalProfile";
 import { useAuth } from "@/lib/AuthContext";
 import { CalendarShell, MonthGrid, type CalendarView } from "@/components/calendar/CalendarShell";
 import { SkeletonBlock } from "@/components/Skeleton";
@@ -284,47 +285,58 @@ function DashboardAgendaContent() {
     }
   }
 
+  // I dati che arrivano dall'API aggiornano la pagina con `startTransition`
+  // (docs/CHANGELOG.md §345): React disegna l'agenda a piccoli pezzi invece
+  // che in un blocco unico, e su un telefono lento la pagina resta pronta a
+  // rispondere al dito mentre si riempie. L'aspetto finale non cambia.
   useEffect(() => {
     if (!token) return;
     apiClient
       .getMyAvailability(token)
       .then((existing) => {
-        // Stessa cautela della pagina profilo pubblico: non fidarsi
-        // ciecamente della forma della risposta se l'API non è ancora
-        // allineata all'ultimo deploy del frontend.
-        if (!Array.isArray(existing?.slots)) return;
-        setSavedSlots(
-          existing.slots.map((s) => ({
-            id: s.id,
-            dayOfWeek: s.dayOfWeek,
-            date: s.date,
-            start: s.startTime,
-            end: s.endTime,
-            allowsHome: s.allowsHome,
-            allowsOnline: s.allowsOnline,
-            homeMax: s.homeMaxBookings,
-            onlineMax: s.onlineMaxBookings,
-            hasUpcomingBooking: s.hasUpcomingBooking,
-          })),
-        );
-        const notFromTemplate = new Set(existing.slots.filter((s) => s.date && !s.fromWeekTemplate).map((s) => s.date as string));
-        setTemplateDates(new Set(existing.slots.filter((s) => s.date && s.fromWeekTemplate && !notFromTemplate.has(s.date)).map((s) => s.date as string)));
-        setExceptionDates(Array.isArray(existing.exceptionDates) ? existing.exceptionDates : []);
+        startTransition(() => {
+          // Stessa cautela della pagina profilo pubblico: non fidarsi
+          // ciecamente della forma della risposta se l'API non è ancora
+          // allineata all'ultimo deploy del frontend.
+          if (Array.isArray(existing?.slots)) {
+            setSavedSlots(
+              existing.slots.map((s) => ({
+                id: s.id,
+                dayOfWeek: s.dayOfWeek,
+                date: s.date,
+                start: s.startTime,
+                end: s.endTime,
+                allowsHome: s.allowsHome,
+                allowsOnline: s.allowsOnline,
+                homeMax: s.homeMaxBookings,
+                onlineMax: s.onlineMaxBookings,
+                hasUpcomingBooking: s.hasUpcomingBooking,
+              })),
+            );
+            const notFromTemplate = new Set(existing.slots.filter((s) => s.date && !s.fromWeekTemplate).map((s) => s.date as string));
+            setTemplateDates(new Set(existing.slots.filter((s) => s.date && s.fromWeekTemplate && !notFromTemplate.has(s.date)).map((s) => s.date as string)));
+            setExceptionDates(Array.isArray(existing.exceptionDates) ? existing.exceptionDates : []);
+          }
+          // Insieme alle fasce, così non si vede mai un attimo l'agenda vuota.
+          setIsLoadingSlots(false);
+        });
       })
       .catch((err) => {
-        // Bug reale segnalato dall'utente: senza questo controllo, un
-        // professionista che apre "Agenda" (nuova voce di menu) prima di
-        // aver salvato il profilo base in /dashboard/profilo poteva
-        // compilare e "salvare" l'agenda normalmente, ma il salvataggio
-        // falliva silenziosamente con un piccolo testo d'errore facile da
-        // non notare ("Completa prima il tuo profilo professionista") —
-        // sembrava che l'agenda non si salvasse. Stesso pattern già usato
-        // in /dashboard per lo stesso identico caso.
-        if (err instanceof Error && err.message.includes("profilo")) {
-          setProfileMissing(true);
-        }
-      })
-      .finally(() => setIsLoadingSlots(false));
+        startTransition(() => {
+          // Bug reale segnalato dall'utente: senza questo controllo, un
+          // professionista che apre "Agenda" (nuova voce di menu) prima di
+          // aver salvato il profilo base in /dashboard/profilo poteva
+          // compilare e "salvare" l'agenda normalmente, ma il salvataggio
+          // falliva silenziosamente con un piccolo testo d'errore facile da
+          // non notare ("Completa prima il tuo profilo professionista") —
+          // sembrava che l'agenda non si salvasse. Stesso pattern già usato
+          // in /dashboard per lo stesso identico caso.
+          if (err instanceof Error && err.message.includes("profilo")) {
+            setProfileMissing(true);
+          }
+          setIsLoadingSlots(false);
+        });
+      });
   }, [token, slotsReload]);
 
   // Appuntamenti e lavori esterni insieme: se la rete non c'è si mostra
@@ -365,26 +377,30 @@ function DashboardAgendaContent() {
     Promise.all([apiClient.myProfessionalBookings(token), apiClient.myExternalJobs(token)])
       .then(([loadedBookings, loadedJobs]) => {
         if (cancelled) return;
-        setBookings(loadedBookings);
-        openDeepLinkedBooking(loadedBookings, loadedJobs);
-        setExternalJobs(loadedJobs);
-        // Il riquadro aperto mostra subito lo stato nuovo (es. annullato dal cliente).
-        setSelectedBooking((current) => (current ? (loadedBookings.find((b) => b.id === current.id) ?? current) : current));
-        setOfflineSavedAt(null);
         saveAgendaOffline(user.id, loadedBookings, loadedJobs);
+        startTransition(() => {
+          setBookings(loadedBookings);
+          openDeepLinkedBooking(loadedBookings, loadedJobs);
+          setExternalJobs(loadedJobs);
+          // Il riquadro aperto mostra subito lo stato nuovo (es. annullato dal cliente).
+          setSelectedBooking((current) => (current ? (loadedBookings.find((b) => b.id === current.id) ?? current) : current));
+          setOfflineSavedAt(null);
+        });
       })
       .catch((err) => {
         if (cancelled) return;
         const copy = readAgendaOffline(user.id);
-        if (copy) {
-          setBookings(copy.bookings);
-          openDeepLinkedBooking(copy.bookings, copy.externalJobs);
-          setExternalJobs(copy.externalJobs);
-          setOfflineSavedAt(copy.savedAt);
-          return;
-        }
-        const message = err instanceof Error ? err.message : "Errore nel caricamento delle prenotazioni.";
-        setBookingsError(message);
+        startTransition(() => {
+          if (copy) {
+            setBookings(copy.bookings);
+            openDeepLinkedBooking(copy.bookings, copy.externalJobs);
+            setExternalJobs(copy.externalJobs);
+            setOfflineSavedAt(copy.savedAt);
+            return;
+          }
+          const message = err instanceof Error ? err.message : "Errore nel caricamento delle prenotazioni.";
+          setBookingsError(message);
+        });
       });
     return () => {
       cancelled = true;
@@ -396,18 +412,20 @@ function DashboardAgendaContent() {
     if (!token) return;
     apiClient
       .agendaWeather(token)
-      .then((alerts) => setWeather(new Map(alerts.map((a) => [a.date, a.kind]))))
+      .then((alerts) => startTransition(() => setWeather(new Map(alerts.map((a) => [a.date, a.kind])))))
       .catch(() => {});
     apiClient
       .agendaWeekTemplate(token)
-      .then((state) => {
-        setWeekTemplate(state.template);
-        setWeekTemplateActive(state.active);
-      })
+      .then((state) =>
+        startTransition(() => {
+          setWeekTemplate(state.template);
+          setWeekTemplateActive(state.active);
+        }),
+      )
       .catch(() => {});
     apiClient
       .agendaZoneDemand(token)
-      .then(setZoneDemand)
+      .then((demand) => startTransition(() => setZoneDemand(demand)))
       .catch(() => {});
   }, [token]);
 
@@ -420,14 +438,16 @@ function DashboardAgendaContent() {
 
   useEffect(() => {
     if (!token) return;
-    apiClient.myLeads(token).then(setLeads).catch(() => {});
+    apiClient
+      .myLeads(token)
+      .then((loaded) => startTransition(() => setLeads(loaded)))
+      .catch(() => {});
   }, [token, agendaReload]);
 
   useEffect(() => {
     if (!token) return;
-    apiClient
-      .getMyProfessionalProfile(token)
-      .then((profile) => setMyProfileId(profile?.id ?? null))
+    loadMyProfessionalProfile(token)
+      .then((profile) => startTransition(() => setMyProfileId(profile?.id ?? null)))
       .catch(() => {});
   }, [token]);
 
