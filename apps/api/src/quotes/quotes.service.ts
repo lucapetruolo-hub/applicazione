@@ -655,6 +655,8 @@ export class QuotesService {
       await this.notificationsService.notify(quote.guidedRequest.clientId, "QUOTE_DATE_CONFIRMED", {
         guidedRequestId: quote.guidedRequestId,
         quoteId: quote.id,
+        // Con il calendario nell'email, come quando accetta il cliente (§344).
+        bookingId: booking.id,
       });
       // Metriche di affidabilità (CLAUDE.md §15, evento 3): il preventivo è
       // diventato una prenotazione reale ("accettato" in questo dominio).

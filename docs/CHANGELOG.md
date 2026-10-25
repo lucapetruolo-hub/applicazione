@@ -20761,3 +20761,53 @@ accorciata in "Subito dopo potrai lasciare una recensione, anche con foto".
 - I tre motivi sono un elenco con pallino (radio), testo 15px; toccandolo di nuovo si toglie la scelta.
 - Nella conferma di "Rifiuta" un preventivo: "Non ti serve più il lavoro? **Elimina la richiesta**", che apre la stessa conferma (chi non vuole più il lavoro sceglieva "Rifiuta").
 - Nel menu a tre linee una riga piccola sotto "Archivia" ("La ritrovi in Archiviate") ed "Elimina richiesta" ("La ritiri anche per i professionisti"): `CardAction.hint`. Anteprime 15-17.
+
+## 344. Dal preventivo accettato alla recensione: biglietto dell'appuntamento, un solo lavoro per richiesta
+
+**Richiesta esplicita dell'utente** (25/10/2026, thread "Migliorare il dopo-accettazione del preventivo"): "si potrebbe modificare la visualizzazione di quando il cliente accetta uno specifico preventivo?". Tra tre varianti Luca ha scelto la C (biglietto dell'appuntamento in cima, schermata "Appuntamento prenotato", riga in cima che cambia nel tempo) "più la miglioria" (gli altri preventivi della stessa richiesta restavano accettabili). Poi la "versione profonda": rivedere cliente e professionista dal momento di "Accetta" fino alla recensione, sul sito e nelle email, con obiettivi misurabili, controllo dei dati veri, tabella di tutti i casi, confronto con i concorrenti, rischio del tasto "Chiama" e regola per annullare. Il risultato è giusto se un vincolo del database impedisce un secondo lavoro, le prove automatiche passano nella CI, una pagina di prova fotografa la scheda in ogni stato, il calendario funziona su telefoni veri e 5 persone completano i compiti. Analisi in `analisi/preventivo-accettato/analisi-profonda.md`.
+
+**Problemi trovati**
+- Con il pagamento diretto, accettare un secondo preventivo della stessa richiesta creava un secondo lavoro. Lo stesso succedeva quando il professionista confermava una data proposta dal cliente, un percorso che non aveva nessun controllo.
+- Il cliente non riceveva nessuna email accettando con il pagamento diretto. Il calendario arrivava solo col promemoria del giorno prima.
+- I professionisti non scelti restavano "In attesa del cliente" per sempre, anche in agenda.
+- "Lavoro terminato" compariva già giorni prima dell'appuntamento.
+- Il cliente poteva annullare anche a lavoro fatto, e con l'acconto online riavere i soldi.
+- Le foto della scheda in ogni stato hanno trovato altri problemi:
+  - "Annulla appuntamento" anche a lavoro finito o con una segnalazione aperta;
+  - nessuna spiegazione per l'appuntamento segnato come mancato;
+  - un appuntamento con un professionista che ha chiuso l'account ancora presentato come valido.
+
+**Decisione presa**
+- **Un solo lavoro per richiesta.**
+  - Nel codice: controllo comune in `apps/api/src/bookings/one-job-per-request.ts` (blocco sulla richiesta e "c'è già un lavoro non annullato") all'accettazione, alla conferma della data proposta e alla riapertura.
+  - Nel database: `bookings.guidedRequestId` compilato da un trigger dal preventivo, più l'indice unico parziale `bookings_one_active_job_per_request` (lavori non annullati). La migrazione è `20261025200000_un_lavoro_per_richiesta`.
+  - Se in produzione ci fosse già una richiesta con due lavori attivi, la migrazione si ferma: prima va lanciata la query 1 di `analisi/preventivo-accettato/query-dati-veri.sql`.
+  - Il rimborso dell'acconto per "altro preventivo già accettato" ora non conta i lavori annullati.
+- **Biglietto dell'appuntamento** (`BookingSection`, `AppointmentWhen`, `appointmentMoment` in `packages/shared/src/appointmentTime.ts`):
+  - in cima alla scheda: data grande e quanto manca (tra N giorni, domani, oggi, in corso);
+  - "sta arrivando" con l'ora di partenza;
+  - "Lavoro in corso" o "Com'è andata?" solo da quando l'appuntamento è cominciato;
+  - accanto: indirizzo, "Aggiungi al calendario" (Google Calendar o file .ics con lo stesso UID delle email, `GET /bookings/:id/calendar`, solo il cliente), Chiama, Messaggi, totale e pagamento.
+  - Sotto, chiusi: "Preventivo accettato", le foto e "N altri preventivi non scelti" (senza Accetta, con "Non scelto: hai accettato un altro preventivo"). Infine "Serve cambiare? Scrivi un messaggio · Annulla appuntamento", solo prima dell'orario (`ChangeLinks`).
+- **"Appuntamento prenotato"** subito dopo Accetta, o al ritorno dal pagamento dell'acconto (`BookingConfirmed`), con il cursore sul titolo.
+- **Email al cliente "Appuntamento prenotato"** con il calendario (`BOOKING_CONFIRMED`, solo email con `NotificationsService.emailOnly`, argomento "Lavori e appuntamenti"). Il calendario c'è anche nell'email "data confermata" (`QUOTE_DATE_CONFIRMED`).
+- **Professionista non scelto:** `otherProfessionalChosen` nel lead. In Richieste vede "Chiusa: il cliente ha scelto un altro professionista per questa richiesta"; dall'agenda spariscono i preventivi in attesa.
+- **Annullamento del cliente solo prima dell'orario**, sia nel server sia nel menu. Dopo resta "C'è un problema".
+- **Casi della scheda:**
+  - professionista con account chiuso e appuntamento futuro: "Questo appuntamento non si farà", senza Chiama, Messaggi né calendario;
+  - lavoro `NO_SHOW`: "Appuntamento segnato come mancato".
+- **Non deciso, proposto a Luca** (analisi, sezioni 5-6):
+  - il tasto "Chiama" solo dal giorno prima;
+  - la regola scritta per annullare e cambiare data (domande 42-43 per l'avvocato);
+  - l'email ai professionisti non scelti;
+  - l'annullamento automatico dei lavori futuri quando un professionista chiude l'account.
+
+**Verifica**
+- Test dell'API verdi, tra cui: secondo preventivo rifiutato, riapertura con un altro lavoro, annullamento dopo l'orario senza rimborso, conferma per email.
+- Momento dell'appuntamento anche ai cambi d'ora (`appointment-time.test.ts`).
+- Test dei permessi con la rotta nuova.
+- Prove nel browser in CI:
+  - `e2e/tests/preventivo-accettato.spec.ts`: due "Accetta" nello stesso istante, vincolo del database senza i controlli del codice, percorso completo con calendario, il professionista non scelto lo vede;
+  - `e2e/tests/schede-lavoro.spec.ts`: la scheda in 17 stati da telefono e computer, con le scritte che li distinguono. Le foto finiscono in `e2e/schede-results/`, tra i risultati del job "agenda-browser".
+- Da fare a mano: calendario su iPhone e Android veri, prova con 5 persone (istruzioni nell'analisi, sezione 9).
+- Dopo l'unione: confronto dei numeri a 4 settimane.

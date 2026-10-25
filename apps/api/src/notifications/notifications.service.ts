@@ -44,6 +44,8 @@ function payloadGuidedRequestId(payload: Prisma.InputJsonValue): string | null {
 const CALENDAR_NOTIFICATION_TYPES: Record<string, "add" | "cancel"> = {
   QUOTE_ACCEPTED: "add",
   BOOKING_CONFIRMED: "add",
+  // Il professionista conferma la data proposta dal cliente: nasce il lavoro (§344).
+  QUOTE_DATE_CONFIRMED: "add",
   BOOKING_REOPENED_BY_CLIENT: "add",
   BOOKING_REOPENED_BY_PROFESSIONAL: "add",
   BOOKING_CANCELED_BY_PROFESSIONAL: "cancel",

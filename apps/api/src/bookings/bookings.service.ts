@@ -798,7 +798,8 @@ export class BookingsService {
   /** Evento del calendario per il cliente: link di Google Calendar e file .ics, con lo stesso UID delle email. */
   async calendarForClient(clientUserId: string, bookingId: string): Promise<{ googleUrl: string | null; ics: string }> {
     const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: BOOKING_CALENDAR_INCLUDE });
-    if (!booking || booking.clientId !== clientUserId) throw new NotFoundException("Prenotazione non trovata.");
+    if (!booking) throw new NotFoundException("Prenotazione non trovata.");
+    if (booking.clientId !== clientUserId) throw new ForbiddenException("Questa prenotazione non è tua.");
     if (booking.status === "CANCELED") throw new BadRequestException("Questo appuntamento è stato annullato.");
     const calendar = bookingCalendar(booking, "client");
     return { googleUrl: calendar.calendarUrl, ics: calendar.attachment.content };

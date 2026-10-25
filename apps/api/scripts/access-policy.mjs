@@ -159,6 +159,7 @@ const owned = {
   "PATCH /bookings/:id/issue/info": booking({ body: () => ({ response: "Ecco le informazioni richieste." }) }),
   "POST /bookings/:id/issue/redispatch": booking(),
   "PATCH /bookings/:id/issue/response": booking({ body: () => ({ response: "Ecco la mia versione dei fatti." }) }),
+  "GET /bookings/:id/calendar": booking({ owners: ["clientA"] }),
   "GET /bookings/:id/job-payment": booking(),
   "POST /bookings/:id/job-payment/checkout/:part": booking({ params: (f) => ({ id: f.bookingA, part: "deposit" }) }),
   "POST /bookings/:id/job-payment/dispute": booking({ body: () => ({ reason: "Il lavoro non è stato svolto come concordato." }) }),
