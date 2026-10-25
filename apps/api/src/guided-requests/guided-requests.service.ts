@@ -432,7 +432,7 @@ export class GuidedRequestsService {
     });
 
     // Stelle e numero di recensioni accanto al nome del professionista, per
-    // scegliere tra più preventivi (docs/CHANGELOG.md §339). Mai per un
+    // scegliere tra più preventivi (docs/CHANGELOG.md §340). Mai per un
     // profilo eliminato.
     const reviewSummaries = await reviewSummariesFor(
       this.prisma,

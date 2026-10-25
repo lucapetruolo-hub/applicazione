@@ -6,7 +6,7 @@ export type RatingProps = {
   value: number;
   count?: number;
   size?: number;
-  /** Testo di voto e conteggio: più piccolo dove le stelle stanno sotto un nome (docs/CHANGELOG.md §339). */
+  /** Testo di voto e conteggio: più piccolo dove le stelle stanno sotto un nome (docs/CHANGELOG.md §340). */
   textSize?: number;
 };
 

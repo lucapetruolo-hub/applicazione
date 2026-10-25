@@ -788,7 +788,7 @@ export function GuidedRequestCard({
                       </YStack>
                     </XStack>
                   </Link>
-                  {/* "Messaggi" leggero come nei preventivi (§338): da telefono l'icona tonda lascia spazio a nome e stelle (§339). */}
+                  {/* "Messaggi" leggero come nei preventivi (§338): da telefono l'icona tonda lascia spazio a nome e stelle (§340). */}
                   <ContactButton
                     light
                     unreadCount={effectiveThreadUnread(`${request.id}:${professional.id}`)}

@@ -896,7 +896,7 @@ export function ProfessionalDetailContent({
           </YStack>
         ) : null}
 
-        {/* Ancora per le stelle accanto al nome nelle schede del cliente (§339), come #agenda. */}
+        {/* Ancora per le stelle accanto al nome nelle schede del cliente (§340), come #agenda. */}
         <div id="recensioni" style={{ scrollMarginTop: 96 }} />
         <YStack gap="$3">
           <YStack flexDirection="row" alignItems="center" gap="$3" flexWrap="wrap">

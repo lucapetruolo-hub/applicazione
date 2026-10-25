@@ -5,7 +5,7 @@ import type { ProfessionalReviewSummary } from "@professionisti/api-client";
 /**
  * Stelle e numero di recensioni sotto il nome del professionista nelle
  * schede del cliente (/le-mie-richieste), per scegliere tra più preventivi
- * (docs/CHANGELOG.md §339). Senza recensioni la stessa scritta del profilo
+ * (docs/CHANGELOG.md §340). Senza recensioni la stessa scritta del profilo
  * pubblico; niente per un profilo eliminato.
  */
 export function ProfessionalReviewsSummary({ reviews }: { reviews: ProfessionalReviewSummary | null }) {

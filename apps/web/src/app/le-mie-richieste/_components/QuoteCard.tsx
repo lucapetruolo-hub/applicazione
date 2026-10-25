@@ -315,7 +315,7 @@ export function QuoteCard({
             {/* Un preventivo accettato non è più una novità: le novità del lavoro sono sull'intervento (§228). */}
             {isNew && quote.status !== "ACCEPTED" ? <Badge variant="nuovo">Nuovo</Badge> : null}
           </XStack>
-          {/* Stelle e numero di recensioni per scegliere tra più preventivi (richiesta dell'utente, §339). */}
+          {/* Stelle e numero di recensioni per scegliere tra più preventivi (richiesta dell'utente, §340). */}
           <ProfessionalReviewsLink professionalProfileId={quote.professionalProfileId} reviews={quote.reviews} />
         </YStack>
         {/* Messaggi accanto al nome, leggero: non compete con la scelta sul preventivo (§338). */}
