@@ -77,10 +77,6 @@ function unchangedSlot(payload: Payload): { label: string; value: string }[] {
   return slot ? [{ label: "Appuntamento (invariato)", value: slot }] : [];
 }
 
-function capitalize(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
-
 function str(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value : null;
 }
@@ -235,8 +231,7 @@ const BUILDERS: Record<string, Builder> = {
           : `**${pro(ctx)}** ti ha inviato un preventivo per ${ctx.category ? `la tua richiesta di **${job(ctx)}**` : "la tua richiesta"}.`,
         "Aprilo per vedere le voci, il prezzo e la data proposta. Puoi accettarlo, proporre un'altra data o scrivere al professionista in chat prima di decidere.",
       ],
-      // Come si paga, per confrontare più preventivi già dall'email (docs/CHANGELOG.md §337).
-      details: jobDetails(ctx, str(payload.payment) ? [{ label: "Pagamento", value: capitalize(str(payload.payment)!) }] : []),
+      details: jobDetails(ctx),
       cta: { label: "Vedi il preventivo", url: `${frontendUrl()}/le-mie-richieste` },
     };
   },

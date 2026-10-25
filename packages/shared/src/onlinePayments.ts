@@ -213,25 +213,13 @@ export function jobPaymentChoiceCopy(
 
 /**
  * Come si paga un preventivo, in breve, dai modi che il cliente può davvero
- * usare (docs/CHANGELOG.md §337): `short` per l'etichetta accanto al totale
- * quando si confrontano più preventivi, `long` per l'email "Nuovo
- * preventivo". null se non resta nessun modo utilizzabile.
+ * usare: l'etichetta accanto al totale quando si confrontano più preventivi
+ * (docs/CHANGELOG.md §337). null se non resta nessun modo utilizzabile.
  */
-export function jobPaymentOfferText(
-  options: JobPaymentChoice[],
-  depositPercent: number = ONLINE_DEPOSIT_PERCENT,
-): { short: string; long: string } | null {
+export function jobPaymentOfferLabel(options: JobPaymentChoice[]): string | null {
   if (options.length === 0) return null;
-  if (options.length > 1) return { short: "Online o diretto", long: "online con carta o diretto al professionista, a tua scelta" };
-  const [only] = options;
-  if (only === "DIRECT") return { short: "Pagamento diretto", long: "direttamente al professionista" };
-  if (only === "ONLINE") {
-    return {
-      short: "Pagamento online",
-      long: depositPercent >= 100 ? "tutto online con carta, accettando" : `online con carta: acconto del ${depositPercent}% accettando, saldo a lavoro finito`,
-    };
-  }
-  return { short: "Acconto online", long: `acconto online del ${depositPercent}% accettando, saldo diretto al professionista` };
+  if (options.length > 1) return "Online o diretto";
+  return options[0] === "DIRECT" ? "Pagamento diretto" : options[0] === "ONLINE" ? "Pagamento online" : "Acconto online";
 }
 
 /** Testi per il professionista nel modulo del preventivo. */

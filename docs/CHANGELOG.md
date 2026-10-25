@@ -20636,24 +20636,12 @@ scheda vera e dei riquadri nei vari casi.
 Miglioria approvata dall'utente ("effettua miglioria n.2"): con più
 preventivi da valutare nella stessa richiesta, accanto al totale di ognuno
 un'etichetta corta ("Pagamento diretto", "Pagamento online", "Acconto
-online" o "Online o diretto", `paymentOfferShortLabel`), neutra (bianca con
+online" o "Online o diretto", `jobPaymentOfferLabel`), neutra (bianca con
 filetto: non è uno stato, quindi niente colori dei badge). Con un solo
 preventivo non compare: c'è già il riquadro "Pagamento" sotto.
 
-Dopo la "versione più profonda" del compito l'utente ha detto "fai solo
-quello che ritieni utile". Fatto:
-- Email "Nuovo preventivo": nel riquadro dei dati la riga "Pagamento"
-  ("Direttamente al professionista", "Online con carta: acconto del 20%
-  accettando, saldo a lavoro finito", ...), così il cliente confronta i
-  preventivi già dalla casella. Il testo viene da `jobPaymentOfferText`
-  (shared), lo stesso dell'etichetta accanto al totale, con i soli modi
-  utilizzabili (senza Stripe attivo restano quelli diretti).
-- Prove automatiche: `new-quote-payment.test.ts` (testi per ogni caso e riga
-  nell'email; senza il dato, notifiche vecchie, la riga non c'è).
-- Domanda 40 per l'avvocato (art. 49 Codice del consumo, modalità di
-  pagamento prima dell'impegno) in `domande-commercialista-avvocato.md`.
-
-Non fatto perché non ne vale la pena ora: query sui dati veri (pochi
-preventivi reali prima del lancio), test con 5 persone (meglio con tutto il
-flusso finito), prove Playwright con Stripe di prova (la parte di pagamento
-non cambia: cambia solo da dove si parte).
+Dopo la "versione più profonda" del compito: aggiunta la domanda 40 per
+l'avvocato (art. 49 Codice del consumo, modalità di pagamento prima
+dell'impegno). Il modo di pagamento nell'email "Nuovo preventivo" era stato
+aggiunto e poi tolto su decisione dell'utente: il cliente lo vede sul sito,
+non nell'email.
