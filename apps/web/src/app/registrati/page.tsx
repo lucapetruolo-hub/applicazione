@@ -785,7 +785,7 @@ function RegistratiForm() {
 
           <MagneticButton block>
           <Button
-            variant="scuro"
+            variant="primary"
             onPress={handleRegister}
             disabled={isSubmitting}
             opacity={isSubmitting ? 0.6 : 1}

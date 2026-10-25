@@ -164,7 +164,7 @@ function CompletaProfiloForm() {
                 </Text>
               ) : null}
               <Button
-                variant="scuro"
+                variant="primary"
                 onPress={handleSubmit}
                 disabled={isSubmitting}
                 opacity={isSubmitting ? 0.6 : 1}

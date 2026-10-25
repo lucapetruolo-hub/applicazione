@@ -3900,6 +3900,80 @@ a.admin-kpi:hover {
    Scelta dei lavori a tessere (§279, stile A scelto dall'utente al posto
    del bordo dorato animato): due colonne da telefono, di più dove c'è
    spazio; spunta verde sulle scelte, "Principale" sotto la prima. */
+/* Orari liberi del professionista a pillole nella richiesta di preventivo
+   (docs/CHANGELOG.md §346), al posto del menu a tendina nativo. */
+.slot-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.slot-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.slot-pill {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid #f0dcc0;
+  border-radius: 999px;
+  background: #fff;
+  color: #2b2420;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.slot-pill:hover {
+  border-color: #189a63;
+}
+.slot-pill.is-on {
+  border-color: #189a63;
+  background: #189a63;
+  color: #fff;
+}
+.slot-pill:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.slot-more {
+  align-self: flex-start;
+  min-height: 40px;
+  padding: 0 2px;
+  border: none;
+  background: none;
+  color: #0e7a4c;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.slot-more:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.slot-days {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+}
+.slot-day {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.slot-day-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #6e6459;
+  text-transform: capitalize;
+}
+
 .cat-tiles {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));

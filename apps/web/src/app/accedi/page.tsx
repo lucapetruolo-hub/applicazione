@@ -170,7 +170,7 @@ function AccediForm() {
             </Text>
           ) : null}
 
-          <Button variant="scuro" onPress={handleLogin} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
+          <Button variant="primary" onPress={handleLogin} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
             {isSubmitting ? "Accesso in corso..." : "Accedi"}
           </Button>
 
@@ -192,8 +192,10 @@ function AccediForm() {
           </Text>
         </YStack>
 
-        <YStack gap="$2">
+        {/* Centrato come gli altri link della scheda (docs/CHANGELOG.md §346). */}
+        <YStack gap="$2" alignItems="center">
           <Text
+            textAlign="center"
             fontFamily="$body"
             fontSize={16}
             fontWeight="700"
@@ -206,7 +208,7 @@ function AccediForm() {
             Hai bisogno di aiuto? {helpOpen ? "−" : "+"}
           </Text>
           {helpOpen ? (
-            <Text color={brand.grafite70} fontSize={16}>
+            <Text color={brand.grafite70} fontSize={16} textAlign="center">
               Se non riesci ad accedere, verifica di aver inserito correttamente email e password. Per problemi
               persistenti scrivi a {BRAND.supportEmail}.
             </Text>

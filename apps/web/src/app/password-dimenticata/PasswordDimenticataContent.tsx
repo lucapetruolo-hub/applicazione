@@ -109,7 +109,7 @@ export function PasswordDimenticataContent() {
                 {error}
               </Text>
             ) : null}
-            <Button variant="scuro" onPress={handleSubmit} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
+            <Button variant="primary" onPress={handleSubmit} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
               {isSubmitting ? "Invio in corso..." : "Mandami il codice"}
             </Button>
           </YStack>

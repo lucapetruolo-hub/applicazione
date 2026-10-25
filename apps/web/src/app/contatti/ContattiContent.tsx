@@ -134,13 +134,21 @@ export default function ContattiContent({ initialReport = false }: { initialRepo
                   <Text fontSize={16} fontWeight="600" color={brand.grafite70}>
                     Chi sei?
                   </Text>
-                  <select aria-label="Chi sei?" value={role} onChange={(e) => setRole(e.target.value as ContactMessageInput["role"])} style={fieldStyle}>
+                  {/* Quattro scelte visibili invece di un menu a tendina (docs/CHANGELOG.md §346). */}
+                  <div className="slot-pills" role="radiogroup" aria-label="Chi sei?">
                     {ROLE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
+                      <button
+                        key={option.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={role === option.value}
+                        className={`slot-pill${role === option.value ? " is-on" : ""}`}
+                        onClick={() => setRole(option.value)}
+                      >
                         {option.label}
-                      </option>
+                      </button>
                     ))}
-                  </select>
+                  </div>
                 </YStack>
 
                 <input
@@ -210,7 +218,7 @@ export default function ContattiContent({ initialReport = false }: { initialRepo
                     fontWeight: 700,
                     cursor: status === "loading" ? "default" : "pointer",
                     opacity: status === "loading" ? 0.6 : 1,
-                    alignSelf: "flex-start",
+                    width: "100%",
                   }}
                 >
                   {status === "loading" ? "Invio..." : "Invia"}

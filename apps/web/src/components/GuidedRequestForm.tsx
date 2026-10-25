@@ -79,6 +79,14 @@ function pickableSlotValue(slot: Pick<PickableAgendaSlot, "date" | "startTime" |
   return `${slot.date}|${slot.startTime}-${slot.endTime}`;
 }
 
+/** Giorno della fascia, breve: "mar 28 ott". */
+function pickableSlotDay(date: string): string {
+  return new Date(`${date}T00:00:00Z`).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+}
+
+/** Quanti giorni mostra "Altri orari" alla volta (docs/CHANGELOG.md §346). */
+const SLOT_DAYS_PAGE = 7;
+
 function pickableSlotLabel(slot: PickableAgendaSlot): string {
   const date = new Date(`${slot.date}T00:00:00Z`);
   const dateLabel = date.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
@@ -239,6 +247,9 @@ export function GuidedRequestForm({
   // Inizializzato dalla fascia già bloccata in URL (click su una pillola
   // dell'agenda pubblica), se presente — resta comunque modificabile.
   const [selectedSlotValue, setSelectedSlotValue] = useState(preferredDate && preferredTimeSlot ? `${preferredDate}|${preferredTimeSlot}` : "");
+  // "Altri orari": quanti giorni dell'agenda sono aperti sotto i primi tre
+  // orari liberi (0 = chiusi, docs/CHANGELOG.md §346).
+  const [slotDaysShown, setSlotDaysShown] = useState(0);
   // Tipo di intervento (richiesta esplicita dell'utente: "in modo che il
   // professionista già sa se può trattarsi di un intervento a domicilio o
   // online") — obbligatorio (a differenza della foto/video, non più
@@ -592,18 +603,19 @@ export function GuidedRequestForm({
                 <>
                   <p>Salvare nome, telefono e indirizzo per la prossima volta?</p>
                   <div className="request-sent-save-actions">
+                    {/* Due risposte chiare invece di "Salva / No" (docs/CHANGELOG.md §346). */}
                     <Button
-                      variant="secondary"
+                      variant="primary"
                       size="$2"
                       height={44}
                       onPress={handleSaveAsDefaults}
                       disabled={savingDefaults}
                       opacity={savingDefaults ? 0.6 : 1}
                     >
-                      {savingDefaults ? "Salvataggio..." : "Salva"}
+                      {savingDefaults ? "Salvataggio..." : "Sì, salva"}
                     </Button>
-                    <Button variant="ghost" size="$2" height={44} onPress={() => setDefaultsDeclined(true)} disabled={savingDefaults}>
-                      No
+                    <Button variant="secondary" size="$2" height={44} onPress={() => setDefaultsDeclined(true)} disabled={savingDefaults}>
+                      No, grazie
                     </Button>
                   </div>
                   {defaultsError ? (
@@ -1025,7 +1037,9 @@ export function GuidedRequestForm({
             <XStack justifyContent="space-between" alignItems="baseline" gap="$2">
               <FieldLabel>Categorie</FieldLabel>
               <Text fontSize={13} color={brand.grafite70} aria-live="polite">
-                {categorySlugs.length > 0 ? `${categorySlugs.length} di ${MAX_REQUEST_CATEGORIES}` : `Fino a ${MAX_REQUEST_CATEGORIES}`}
+                {/* "Scegli fino a 3", poi "1 di 3" (docs/CHANGELOG.md §346): "Fino a 3"
+                    da solo non diceva che si possono scegliere più tessere. */}
+                {categorySlugs.length > 0 ? `${categorySlugs.length} di ${MAX_REQUEST_CATEGORIES}` : `Scegli fino a ${MAX_REQUEST_CATEGORIES}`}
               </Text>
             </XStack>
             {/* Più categorie insieme (docs/CHANGELOG.md §259), a tessere come
@@ -1110,32 +1124,20 @@ export function GuidedRequestForm({
         {professionalProfileId && displaySlots.length > 0 ? (
           <YStack gap="$2">
             <FieldLabel>Data e orario dell&apos;intervento (facoltativo)</FieldLabel>
+            {/* Pillole con i primi tre orari liberi e "Altri orari", al posto
+                del menu a tendina nativo che stonava con il resto del modulo
+                (docs/CHANGELOG.md §346). L'orario scelto dall'agenda resta
+                selezionato e in vista anche se non è tra i primi tre. */}
             <Text fontSize={13} color={brand.grafite70}>
-              {preferredDate && preferredTimeSlot
-                ? "Hai scelto questo orario dall'agenda del professionista — puoi cambiarlo qui, sempre tra quelli davvero liberi."
-                : "Scegli un orario tra quelli liberi nell'agenda del professionista, oppure lascia senza preferenza."}{" "}
-              La richiesta non prenota subito l&apos;orario: il professionista ti risponderà con un preventivo.
+              Scegli un orario libero o lascia senza preferenza: non è ancora una prenotazione.
             </Text>
-            <select aria-label="Data e orario dell'intervento"
-              value={selectedSlotValue}
-              onChange={(e) => setSelectedSlotValue(e.target.value)}
-              style={{
-                padding: 12,
-                borderRadius: 10,
-                border: `1px solid ${brand.bordoCampo}`,
-                fontSize: 16,
-                fontFamily: "inherit",
-                backgroundColor: brand.calce,
-                color: brand.grafite,
-              }}
-            >
-              <option value="">Nessuna preferenza di orario</option>
-              {displaySlots.map((slot) => (
-                <option key={pickableSlotValue(slot)} value={pickableSlotValue(slot)}>
-                  {pickableSlotLabel(slot)}
-                </option>
-              ))}
-            </select>
+            <SlotPills
+              slots={displaySlots}
+              selected={selectedSlotValue}
+              onSelect={setSelectedSlotValue}
+              daysShown={slotDaysShown}
+              onShowMoreDays={() => setSlotDaysShown((shown) => shown + SLOT_DAYS_PAGE)}
+            />
           </YStack>
         ) : null}
 
@@ -1818,4 +1820,74 @@ function storedTrafficSource() {
   } catch {
     return undefined;
   }
+}
+
+/**
+ * Orari liberi del professionista a pillole (docs/CHANGELOG.md §346): i primi
+ * tre e "Nessuna preferenza" sempre in vista, gli altri giorno per giorno con
+ * "Altri orari", una settimana alla volta.
+ */
+function SlotPills({
+  slots,
+  selected,
+  onSelect,
+  daysShown,
+  onShowMoreDays,
+}: {
+  slots: PickableAgendaSlot[];
+  selected: string;
+  onSelect: (value: string) => void;
+  daysShown: number;
+  onShowMoreDays: () => void;
+}) {
+  const quick = slots.slice(0, 3);
+  const selectedSlot = selected ? slots.find((slot) => pickableSlotValue(slot) === selected) : undefined;
+  // L'orario scelto resta in vista anche quando non è tra i primi tre.
+  const pinned = selectedSlot && !quick.includes(selectedSlot) && daysShown === 0 ? [selectedSlot, ...quick] : quick;
+  const days: { date: string; slots: PickableAgendaSlot[] }[] = [];
+  for (const slot of slots) {
+    const last = days[days.length - 1];
+    if (last && last.date === slot.date) last.slots.push(slot);
+    else days.push({ date: slot.date, slots: [slot] });
+  }
+  const pill = (slot: PickableAgendaSlot, label: string) => {
+    const value = pickableSlotValue(slot);
+    return (
+      <button key={value} type="button" role="radio" aria-checked={selected === value} className={`slot-pill${selected === value ? " is-on" : ""}`} onClick={() => onSelect(value)}>
+        {label}
+      </button>
+    );
+  };
+  return (
+    <div className="slot-picker">
+      <div className="slot-pills" role="radiogroup" aria-label="Data e orario dell'intervento">
+        <button type="button" role="radio" aria-checked={selected === ""} className={`slot-pill${selected === "" ? " is-on" : ""}`} onClick={() => onSelect("")}>
+          Nessuna preferenza
+        </button>
+        {daysShown === 0 ? pinned.map((slot) => pill(slot, `${pickableSlotDay(slot.date)} · ${slot.startTime}–${slot.endTime}`)) : null}
+      </div>
+      {daysShown === 0 && slots.length > quick.length ? (
+        <button type="button" className="slot-more" onClick={onShowMoreDays}>
+          Altri orari
+        </button>
+      ) : null}
+      {daysShown > 0 ? (
+        <div className="slot-days">
+          {days.slice(0, daysShown).map((day) => (
+            <div key={day.date} className="slot-day">
+              <span className="slot-day-label">{pickableSlotDay(day.date)}</span>
+              <div className="slot-pills" role="radiogroup" aria-label={`Orari di ${pickableSlotDay(day.date)}`}>
+                {day.slots.map((slot) => pill(slot, `${slot.startTime}–${slot.endTime}`))}
+              </div>
+            </div>
+          ))}
+          {days.length > daysShown ? (
+            <button type="button" className="slot-more" onClick={onShowMoreDays}>
+              Altri giorni
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
 }
