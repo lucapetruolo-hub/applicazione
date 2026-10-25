@@ -79,10 +79,15 @@ export function SearchBar({
           {MODE_TABS.map((tab) => {
             const active = tab.key === mode;
             return (
+              // Con lo spazio (schermi da 1281 px) anche il nome del modo
+              // accanto all'icona (docs/CHANGELOG.md §349): la sola casa o
+              // videocamera non diceva cosa sceglieva.
               <XStack
                 key={tab.key}
-                width={28}
+                minWidth={28}
                 height={28}
+                gap={5}
+                $gtLg={{ paddingHorizontal: 10 }}
                 borderRadius="$10"
                 backgroundColor={active ? brand.cianografia : "transparent"}
                 cursor="pointer"
@@ -91,8 +96,12 @@ export function SearchBar({
                 onPress={() => handleModeChange(tab.key)}
                 accessibilityRole="button"
                 accessibilityLabel={tab.label}
+                aria-pressed={active}
               >
                 <Icon name={tab.icon} size={13} color={active ? "white" : brand.grafite70} />
+                <Text display="none" $gtLg={{ display: "flex" }} fontSize={13} fontWeight="600" color={active ? "white" : brand.grafite70}>
+                  {tab.label}
+                </Text>
               </XStack>
             );
           })}

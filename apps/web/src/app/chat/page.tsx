@@ -339,11 +339,11 @@ function ChatThreadRow({
         <Text fontWeight="700" color={brand.grafite} numberOfLines={1}>
           {thread.otherPartyName}
         </Text>
-        {/* Categoria + inizio della descrizione del lavoro (docs/CHANGELOG.md
-            §198): due chat con la stessa persona non sembrano più uguali. */}
+        {/* Il lavoro (docs/CHANGELOG.md §198): due chat con la stessa persona
+            non sembrano più uguali. Solo la descrizione, la categoria se manca
+            (§349): "Idraulico · ..." tagliava proprio la parte che distingue. */}
         <Text fontSize={13} color={brand.grafite70} numberOfLines={1}>
-          {thread.categoryLabel}
-          {thread.requestDescription?.trim() ? ` · ${thread.requestDescription.trim()}` : ""}
+          {thread.requestDescription?.trim() || thread.categoryLabel}
         </Text>
         <Text fontSize={16} color={brand.grafite70} numberOfLines={1}>
           {thread.lastMessageIsMine ? "Tu: " : ""}

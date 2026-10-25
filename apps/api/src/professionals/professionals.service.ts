@@ -8,6 +8,7 @@ import {
   findComuneByName,
   PROFILE_DECLARATION_VERSION,
   PUBLIC_AGENDA_DAYS,
+  SEARCH_FALLBACK_MAX_KM,
   SEARCH_RADIUS_KM,
   type AvailabilitySlotInput,
   weekTemplateDatesKept,
@@ -59,7 +60,7 @@ import { toMyState } from "../guided-requests/guided-request-user-state.service"
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { TimelineService } from "../timeline/timeline.service";
 import { ProfessionalVerificationService } from "../professional-verification/professional-verification.service";
-import { clientNameForProfessional } from "../common/client-name.util";
+import { clientNameForProfessional, publicClientName } from "../common/client-name.util";
 import { cancellationNoticeFor } from "../bookings/one-job-per-request";
 
 export type ProfessionalSearchParams = {
@@ -94,7 +95,15 @@ const PROFESSIONAL_DETAIL_INCLUDE = {
   category: true,
   fiscalProfile: { select: { stripePayoutsEnabled: true, fiscalDataCompleteAt: true, entityType: true } },
   extraCategories: true,
-  bookings: { include: { review: true } },
+  // Nome di chi recensisce e servizio del lavoro, per l'intestazione delle
+  // recensioni sul profilo (docs/CHANGELOG.md §349).
+  bookings: {
+    include: {
+      review: true,
+      client: { select: { name: true, surname: true } },
+      quote: { select: { guidedRequest: { select: { category: { select: { label: true } } } } } },
+    },
+  },
   visibilityBoosts: { where: { status: "ACTIVE" } },
   services: true,
   metrics: true,
@@ -152,7 +161,7 @@ export class ProfessionalsService {
         where: baseWhere,
         select: { id: true, latitude: true, longitude: true },
       });
-      distanceById = selectSearchArea(comune, candidates, SEARCH_RADIUS_KM);
+      distanceById = selectSearchArea(comune, candidates, SEARCH_RADIUS_KM, SEARCH_FALLBACK_MAX_KM);
       where = { ...baseWhere, id: { in: [...distanceById.keys()] } };
     } else if (city) {
       where = { ...baseWhere, city: { equals: city, mode: "insensitive" } };
@@ -510,11 +519,10 @@ export class ProfessionalsService {
 
   private toProfessionalDetail(profile: Prisma.ProfessionalProfileGetPayload<{ include: typeof PROFESSIONAL_DETAIL_INCLUDE }>): ProfessionalDetail {
     // Recensioni dei clienti pubbliche subito (docs/CHANGELOG.md §215).
-    const reviews = profile.bookings
-      .filter((booking) => booking.review !== null && booking.review.hiddenAt === null)
-      .map((booking) => booking.review)
-      .filter((review): review is NonNullable<typeof review> => review !== null)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    const reviewed = profile.bookings
+      .flatMap((booking) => (booking.review !== null && booking.review.hiddenAt === null ? [{ review: booking.review, booking }] : []))
+      .sort((a, b) => b.review.createdAt.getTime() - a.review.createdAt.getTime());
+    const reviews = reviewed.map(({ review }) => review);
     const reviewCount = reviews.length;
     const rating =
       reviewCount > 0 ? Math.round((reviews.reduce((sum, review) => sum + review.rating, 0) / reviewCount) * 10) / 10 : null;
@@ -557,12 +565,15 @@ export class ProfessionalsService {
       certifications: profile.certifications,
       hasLiabilityInsurance: profile.hasLiabilityInsurance,
       acceptingRequests: !profile.pausedAt && !professionalRestrictions(profile, new Date()).blocked,
-      reviews: reviews.map((review) => ({
+      reviews: reviewed.map(({ review, booking }) => ({
         id: review.id,
         rating: review.rating,
         comment: review.comment,
         photoUrls: review.photoUrls,
         createdAt: review.createdAt.toISOString(),
+        // Pagina pubblica: solo nome e iniziale del cognome (§216).
+        clientName: publicClientName(booking.client),
+        jobLabel: booking.quote?.guidedRequest.category.label ?? null,
       })),
     };
   }

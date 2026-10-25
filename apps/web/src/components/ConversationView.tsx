@@ -13,6 +13,7 @@ import { MediaPreview } from "@/components/MediaPreview";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { UploadingDots } from "@/components/UploadingDots";
 import { attachmentFileName, documentTypeLabel, isDocumentUrl } from "@/lib/media";
+import { personalizeEventMessage } from "@/lib/conversationText";
 
 // Documenti accettati dall'opzione "File" del menu allegati (richiesta
 // esplicita dell'utente: "in modo che puo essere caricata anche la fattura
@@ -707,25 +708,28 @@ export function ConversationView({
                     {/* In un riquadro per essere più visibili (richiesta
                         esplicita dell'utente, §198): bianco con bordo,
                         distinto dalle nuvolette colorate. */}
+                    {/* Una riga compatta con l'ora accanto, in seconda persona
+                        per chi ha fatto l'azione (docs/CHANGELOG.md §349). */}
                     <YStack
                       gap="$1"
                       alignItems="center"
                       alignSelf="center"
-                      maxWidth="85%"
+                      maxWidth="90%"
                       paddingHorizontal="$3"
-                      paddingVertical="$2"
+                      paddingVertical={6}
                       borderRadius="$3"
                       borderWidth={1}
                       borderColor={brand.filetto}
                       backgroundColor={brand.calce}
                     >
                       <Text fontSize={13} color={brand.grafite} textAlign="center">
-                        {event.message}
+                        {personalizeEventMessage(event.message, event.actor, viewerRole)}
+                        <Text fontSize={13} color={brand.grafite70}>
+                          {" · "}
+                          {formatEventTime(event.createdAt)}
+                        </Text>
                       </Text>
                       {renderEventMedia(event)}
-                      <Text fontSize={10} color={brand.grafite70}>
-                        {formatEventTime(event.createdAt)}
-                      </Text>
                     </YStack>
                   </Fragment>
                 );

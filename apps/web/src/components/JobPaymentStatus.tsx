@@ -7,13 +7,15 @@ import {
   BRAND,
   ONLINE_APP_FEE_PERCENT,
   type JobPaymentSummary,
+  formatEurCents,
 } from "@professionisti/shared";
 import { Icon, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { CardButton } from "@/components/CardButton";
 import { formatIssueDeadline } from "@/lib/leadDeadline";
 
+/** Importo esatto di un pagamento, stesso formato di tutto il sito (§349). */
 function eur(cents: number): string {
-  return `€${(cents / 100).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return formatEurCents(cents);
 }
 
 type Tone = "action" | "blocked" | "done" | "danger" | "neutral";
@@ -176,10 +178,10 @@ function Steps({ labels, step, error }: { labels: string[]; step: number; error?
 function AmountRow({ label, value, strong, muted }: { label: string; value: string; strong?: boolean; muted?: boolean }) {
   return (
     <XStack justifyContent="space-between" gap="$3" paddingVertical={2}>
-      <Text fontSize={13} color={muted ? brand.grafite70 : brand.grafite} flexShrink={1}>
+      <Text fontSize={16} color={muted ? brand.grafite70 : brand.grafite} flexShrink={1}>
         {label}
       </Text>
-      <Text fontSize={13} fontWeight={strong ? "700" : "500"} color={muted ? brand.grafite70 : brand.grafite} style={{ fontVariantNumeric: "tabular-nums" }}>
+      <Text fontSize={16} fontWeight={strong ? "700" : "500"} color={muted ? brand.grafite70 : brand.grafite} style={{ fontVariantNumeric: "tabular-nums" }}>
         {value}
       </Text>
     </XStack>

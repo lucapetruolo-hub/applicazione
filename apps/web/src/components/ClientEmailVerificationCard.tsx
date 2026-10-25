@@ -48,8 +48,8 @@ export function ClientEmailVerificationCard() {
           Conferma la tua email
         </Text>
         <Text color={brand.grafite70}>
-          Confermando l&apos;email sarai considerato un cliente più affidabile: i professionisti vedranno &quot;Email
-          confermata&quot; sulle tue richieste e avrai più possibilità di ricevere preventivi.
+          {/* Una riga sola (docs/CHANGELOG.md §349). */}
+          Così ricevi più risposte dai professionisti.
         </Text>
       </YStack>
       {state === "sent" ? (

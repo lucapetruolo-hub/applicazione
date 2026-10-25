@@ -54,9 +54,48 @@ function formatEurAmount(cents: number, withCents: boolean): string {
 /**
  * Importo esatto di un pagamento all'italiana, sempre con i centesimi:
  * "1.234,50 €" (docs/CHANGELOG.md §231). Spazio indivisibile prima di "€".
+ * Solo per somme davvero pagate o da pagare (importo finale, pagamenti,
+ * DAC7, finanza): per prezzi, preventivi e abbonamenti si usa `formatEur`.
  */
 export function formatEurCents(cents: number): string {
   return `${formatEurAmount(cents, true)}\u00A0€`;
+}
+
+/**
+ * Prezzo "parlato" (docs/CHANGELOG.md §349, regola unica dei numeri del
+ * sito): importo tondo senza decimali ("180 €"), decimali solo se esistono
+ * ("12,50 €"). Per una forbice vedi `formatEurRange`.
+ */
+export function formatEur(cents: number): string {
+  return `${formatEurAmount(cents, Math.round(cents) % 100 !== 0)}\u00A0€`;
+}
+
+/**
+ * Forbice di prezzo "250–280 €" (un solo simbolo, trattino corto senza
+ * spazi): se minimo e massimo coincidono, o manca uno dei due, un solo
+ * importo; senza nessuno dei due, "Su richiesta". Stessa regola di
+ * `formatServicePriceRange`, di cui è il nome generico (§349).
+ */
+export function formatEurRange(minEurCents: number | null, maxEurCents: number | null): string {
+  return formatServicePriceRange(minEurCents, maxEurCents);
+}
+
+/**
+ * Riassunto dei preventivi con un prezzo ricevuti per la stessa richiesta
+ * (§349, al posto della media "96,25 €" che nessuno aveva proposto): quanti
+ * sono e la forbice dal totale più basso al più alto. `null` con meno di due
+ * preventivi con prezzo (con uno solo il riassunto non aggiunge niente).
+ */
+export function quotesPriceSpan(
+  quotesItems: { priceMinEurCents: number | null; priceMaxEurCents: number | null }[][],
+): { count: number; minEurCents: number; maxEurCents: number } | null {
+  const priced = quotesItems.map((items) => quotePriceTotals(items)).filter((totals) => totals.totalMinEurCents > 0 || totals.totalMaxEurCents > 0);
+  if (priced.length < 2) return null;
+  return {
+    count: priced.length,
+    minEurCents: Math.min(...priced.map((totals) => totals.totalMinEurCents)),
+    maxEurCents: Math.max(...priced.map((totals) => totals.totalMaxEurCents)),
+  };
 }
 
 /**
@@ -273,6 +312,14 @@ export type ProfessionalSearchResult = {
  */
 export const SEARCH_RADIUS_KM = 25;
 
+/**
+ * Fin dove si allarga la ricerca per trovare il professionista più vicino
+ * (docs/CHANGELOG.md §349): oltre, la pagina dice che nella zona non c'è
+ * nessuno e invita a mandare lo stesso la richiesta. Prima si arrivava a
+ * proporre un giardiniere di Bologna a chi cercava a Latina (circa 360 km).
+ */
+export const SEARCH_FALLBACK_MAX_KM = 100;
+
 /** Dettaglio profilo, restituito da GET /professionals/:id per la pagina pubblica. */
 export type ProfessionalDetail = ProfessionalSearchResult & {
   /** Privato senza P.IVA o professionista/azienda (Codice del consumo art. 49-bis, §241); null se non ancora indicato. */
@@ -284,6 +331,14 @@ export type ProfessionalDetail = ProfessionalSearchResult & {
     comment: string | null;
     photoUrls: string[];
     createdAt: string;
+    /**
+     * Chi l'ha scritta: nome e iniziale del cognome, come nelle recensioni
+     * in home (docs/CHANGELOG.md §216, §349). Null per un account eliminato o
+     * senza nome. Facoltativo: un'API non ancora aggiornata non lo manda.
+     */
+    clientName?: string | null;
+    /** Il servizio del lavoro recensito (la categoria della richiesta), se noto. */
+    jobLabel?: string | null;
   }[];
   /**
    * Foto reali di lavori svolti (fino a 10), mostrate in una galleria sul

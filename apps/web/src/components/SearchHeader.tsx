@@ -66,16 +66,26 @@ export function SearchHeader({
     >
       <YStack width="100%" maxWidth={680}>
         {expanded ? (
-          <SearchBar
-            wrapSearchButton={(button) => <MagneticButton>{button}</MagneticButton>}
-            onSearch={handleSearch}
-            initialQuery={initialQuery}
-            initialCity={initialCity}
-            initialMode={initialMode}
-            professionalSuggestions={professionalSuggestions}
-            citySuggestions={allItalianCityNames()}
-            searchOnModeChange
-          />
+          <YStack gap="$2">
+            {/* "Chiudi" per tornare ai risultati senza cercare, e "Cerca"
+                largo quanto i campi come in home (docs/CHANGELOG.md §349). */}
+            <XStack justifyContent="flex-end">
+              <button type="button" className="search-close" onClick={() => setExpanded(false)}>
+                <Icon name="x" size={16} color={brand.grafite} />
+                Chiudi
+              </button>
+            </XStack>
+            <SearchBar
+              wrapSearchButton={(button) => <MagneticButton block>{button}</MagneticButton>}
+              onSearch={handleSearch}
+              initialQuery={initialQuery}
+              initialCity={initialCity}
+              initialMode={initialMode}
+              professionalSuggestions={professionalSuggestions}
+              citySuggestions={allItalianCityNames()}
+              searchOnModeChange
+            />
+          </YStack>
         ) : (
           <button type="button" className="search-summary" onClick={() => setExpanded(true)} aria-label={`Modifica la ricerca: ${what}, ${where}`}>
             <Icon name="search" size={18} color={brand.cianografiaScuro} />

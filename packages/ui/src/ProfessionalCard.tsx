@@ -42,7 +42,6 @@ export type ProfessionalCardAvailabilityDay = {
   times: ProfessionalCardAvailabilitySlot[];
 };
 
-const AGENDA_COLUMN_WIDTH = 84;
 const AGENDA_VISIBLE_DAYS = 4;
 // Stesso valore di PUBLIC_AGENDA_DAYS in packages/shared (qui duplicato:
 // packages/ui non dipende dal resto del monorepo, vedi formatServicePrice).
@@ -54,16 +53,29 @@ const MONTH_SHORT_LABELS = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ag
 // dipende dal resto del monorepo, resta un design system consumabile da solo
 // — vedi formatServicePriceRange in packages/shared/src/professionals.ts per
 // la stessa logica lato pagina profilo pubblica.
+function formatAmount(cents: number): string {
+  const euros = Math.floor(cents / 100).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return cents % 100 === 0 ? euros : `${euros},${(cents % 100).toString().padStart(2, "0")}`;
+}
+
 function formatServicePrice(priceMinEurCents: number | null, priceMaxEurCents: number | null): string {
-  const amount = (cents: number) => {
-    const euros = Math.floor(cents / 100).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-    return cents % 100 === 0 ? euros : `${euros},${(cents % 100).toString().padStart(2, "0")}`;
-  };
   if (priceMinEurCents !== null && priceMaxEurCents !== null && priceMaxEurCents > priceMinEurCents) {
-    return `${amount(priceMinEurCents)}–${amount(priceMaxEurCents)}\u00A0€`;
+    return `${formatAmount(priceMinEurCents)}–${formatAmount(priceMaxEurCents)}\u00A0€`;
   }
   const single = priceMinEurCents ?? priceMaxEurCents;
-  return single !== null ? `${amount(single)}\u00A0€` : "Su richiesta";
+  return single !== null ? `${formatAmount(single)}\u00A0€` : "Su richiesta";
+}
+
+/** Prezzo più basso tra le prestazioni ("da 40 €" sulla scheda chiusa), o null se nessuna ha un prezzo. */
+function lowestServicePrice(services: ProfessionalCardService[]): number | null {
+  const prices = services.map((service) => service.priceMinEurCents ?? service.priceMaxEurCents).filter((price): price is number => price !== null);
+  return prices.length > 0 ? Math.min(...prices) : null;
+}
+
+type StopPropagationEvent = { stopPropagation?: () => void } | undefined;
+
+function stop(e: unknown) {
+  (e as StopPropagationEvent)?.stopPropagation?.();
 }
 
 export type ProfessionalCardProps = {
@@ -133,6 +145,12 @@ export type ProfessionalCardProps = {
    * domicilio, "online" se cercato online). Default "HOME" se assente.
    */
   defaultMode?: "HOME" | "ONLINE";
+  /**
+   * Orari e prezzi aperti fin dall'inizio (docs/CHANGELOG.md §349): nelle
+   * liste solo la prima scheda li mostra, le altre hanno "Vedi orari e
+   * prezzi" e restano tutte della stessa altezza.
+   */
+  defaultExpanded?: boolean;
   onPress?: () => void;
   /**
    * Indirizzo del profilo (solo web): il nome diventa un link vero, che si
@@ -189,6 +207,7 @@ export function ProfessionalCard({
   availabilityFrom,
   availabilityDays = DEFAULT_AGENDA_DAYS,
   defaultMode,
+  defaultExpanded = false,
   onPress,
   href,
   onSlotPress,
@@ -196,11 +215,18 @@ export function ProfessionalCard({
   icon,
   action,
 }: ProfessionalCardProps) {
+  // Mestieri in grassetto, specializzazioni dopo in grigio, al massimo due
+  // righe (docs/CHANGELOG.md §349): prima era un elenco unico tutto uguale.
   const categoriesLine = [categoryLabel, ...(otherCategoryLabels ?? [])].join(" · ");
-  const specialtyLine = subTags && subTags.length > 0 ? `${categoriesLine} · ${subTags.slice(0, 3).join(", ")}` : categoriesLine;
+  const specialties = subTags && subTags.length > 0 ? subTags.slice(0, 3).join(", ") : null;
   // Richiesta esplicita dell'utente: "dai la possibilità tramite freccetta
   // di far vedere tutte le prestazioni... ora se ne vedono solo 3".
   const [showAllServices, setShowAllServices] = useState(false);
+  // Orari e prezzi sotto il blocco del nome, a tutta larghezza, chiusi tranne
+  // che nella prima scheda della lista (docs/CHANGELOG.md §349): prima la
+  // mini-agenda stava a destra e schiacciava nome, mestiere e voto in una
+  // colonna di 150 px, e nella stessa lista convivevano due formati di scheda.
+  const [expanded, setExpanded] = useState(defaultExpanded);
 
   // Tab "A domicilio"/"Online" (richiesta esplicita dell'utente): filtrano
   // gli orari mostrati in base alla modalità offerta su quella fascia — "A
@@ -238,11 +264,11 @@ export function ProfessionalCard({
   const allowsKey = activeMode === "HOME" ? ("allowsHome" as const) : ("allowsOnline" as const);
   const availableKey = activeMode === "HOME" ? ("homeAvailable" as const) : ("onlineAvailable" as const);
   const visibleDaysRaw = allDays.slice(offset, offset + AGENDA_VISIBLE_DAYS);
-  // Filtrate alla sola modalità attiva: un giorno mostra solo le fasce che
-  // offrono quel tipo di intervento, le altre restano "-" come se non
-  // esistessero per questo tab.
-  const visibleDays = visibleDaysRaw.map((day) => ({ ...day, times: day.times.filter((slot) => slot[allowsKey]) }));
-  const hasAvailableInWindow = visibleDays.some((day) => day.times.some((slot) => slot[availableKey]));
+  // Solo gli orari liberi della modalità scelta (docs/CHANGELOG.md §349): in
+  // una lista serve sapere quando il professionista è libero, gli orari al
+  // completo (prima barrati) restano nell'agenda della pagina profilo.
+  const visibleDays = visibleDaysRaw.map((day) => ({ ...day, times: day.times.filter((slot) => slot[allowsKey] && slot[availableKey]) }));
+  const hasAvailableInWindow = visibleDays.some((day) => day.times.length > 0);
   // Primo orario libero per "Mostra orari disponibili" (richiesta esplicita
   // dell'utente: deve portare davvero al primo orario disponibile). Cercato
   // prima dopo i giorni visibili, poi dall'inizio se si è già andati oltre.
@@ -257,20 +283,25 @@ export function ProfessionalCard({
     return null;
   };
   const firstFree = hasAvailableInWindow ? null : (findFirstFree(offset + AGENDA_VISIBLE_DAYS) ?? findFirstFree(0));
-  // Unione di tutti gli orari configurati su almeno un giorno della finestra
-  // visibile, ordinata: righe della griglia. Un giorno senza quell'orario
-  // mostra "-". Sempre visibile, anche quando è tutto al completo (orari
-  // barrati): prima in quel caso la griglia spariva e restavano solo le
-  // intestazioni dei giorni (bug reale segnalato dall'utente).
+  // Unione degli orari liberi dei giorni visibili, ordinata: righe della
+  // griglia. Un giorno senza quell'orario libero mostra "-".
   const timeRows = Array.from(new Set(visibleDays.flatMap((day) => day.times.map((slot) => slot.time)))).sort();
   const openAgendaAt = onAgendaPress
     ? (date: string) => (e: unknown) => {
-        (e as { stopPropagation?: () => void } | undefined)?.stopPropagation?.();
+        stop(e);
         onAgendaPress(date, activeMode);
       }
     : undefined;
   const canGoBack = offset > 0;
   const canGoForward = offset + AGENDA_VISIBLE_DAYS < totalDays;
+
+  const hasAgenda = totalDays > 0;
+  const serviceList = services ?? [];
+  const hasServices = serviceList.length > 0;
+  const lowestPrice = hasServices ? lowestServicePrice(serviceList) : null;
+  const detailsLabel = [hasAgenda ? "orari" : null, hasServices ? (lowestPrice !== null ? "prezzi" : "prestazioni") : null]
+    .filter(Boolean)
+    .join(" e ");
 
   return (
     // Niente accessibilityLabel personalizzato: la card contiene già come
@@ -287,24 +318,21 @@ export function ProfessionalCard({
       // link del nome: la card non si annuncia anche come pulsante.
       accessibilityRole={onPress && !href ? "button" : undefined}
       padding="$5"
+      $xs={{ padding: "$4" }}
       hoverStyle={onPress ? { borderColor: brand.cianografia } : undefined}
       pressStyle={onPress ? { borderColor: brand.cianografiaScuro } : undefined}
     >
-      <XStack gap="$5" alignItems="flex-start" flexWrap="wrap">
-        {/* flexBasis 0 (non "auto", il default di flex={1} da solo): senza,
-            il calcolo del wrap dell'XStack esterno usa la larghezza "a
-            contenuto" del nome attività come ipotesi iniziale — un nome
-            lungo (bug reale osservato: "Rossi Idraulica 194621734" vs "Rossi
-            Idraulica Test") faceva andare a capo l'intera mini-agenda sotto
-            invece che a fianco, pur restando spazio a sufficienza una volta
-            che il testo si spezza correttamente su più righe. */}
-        {/* Sotto i 660px meno spazio tra foto e nome: sui telefoni da 360px la
-            colonna del nome restava di circa 170px e i bollini (Verificato,
-            Nuovo profilo...) e le recensioni toccavano il bordo. */}
-        <XStack gap="$4" $xs={{ gap: "$3" }} flex={1} flexBasis={0} minWidth={260} alignItems="flex-start">
-          {icon}
-          <YStack gap="$2" flex={1} minWidth={0}>
-            <XStack alignItems="center" gap="$2" flexWrap="wrap">
+      {/* Sotto i 660px meno spazio tra foto e nome: sui telefoni da 360px la
+          colonna del nome restava stretta e i bollini (Verificato, Nuovo
+          profilo...) e le recensioni toccavano il bordo. */}
+      <XStack gap="$4" $xs={{ gap: "$3" }} alignItems="flex-start">
+        {icon}
+        <YStack gap="$2" flex={1} minWidth={0}>
+          <XStack alignItems="flex-start" gap="$2">
+            {/* Nome e bollini sulla stessa riga, che va a capo quando non
+                c'è spazio (docs/CHANGELOG.md §349): prima, nella colonna
+                stretta, i bollini finivano uno sotto l'altro. */}
+            <XStack flex={1} minWidth={0} alignItems="center" columnGap="$2" rowGap={6} flexWrap="wrap">
               <Text
                 fontFamily="$heading"
                 fontWeight="800"
@@ -389,7 +417,7 @@ export function ProfessionalCard({
               ) : null}
               {hasLiabilityInsurance ? (
                 <BadgeInfo info="liabilityInsurance">
-                  <XStack alignItems="center" gap={4} paddingHorizontal="$2" paddingVertical={2} borderRadius="$10" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto}>
+                  <XStack alignItems="center" gap={4} paddingHorizontal="$2" paddingVertical={2} borderRadius="$10" backgroundColor={brand.gesso}>
                     <Icon name="shield-check" size={13} color={brand.grafite} strokeWidth={2} />
                     <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite}>
                       Assicurazione RC
@@ -401,312 +429,321 @@ export function ProfessionalCard({
                 </BadgeInfo>
               ) : null}
             </XStack>
-            <Text fontSize={16} color={brand.grafite70} fontWeight="500">
-              {specialtyLine}
+            {action}
+          </XStack>
+          <Text fontSize={16} lineHeight={22} color={brand.grafite70} numberOfLines={2}>
+            <Text fontFamily="$body" fontSize={16} fontWeight="700" color={brand.grafite}>
+              {categoriesLine}
             </Text>
-            <XStack gap="$3" alignItems="center" flexWrap="wrap" paddingTop="$1">
-              {rating !== undefined ? <Rating value={rating} count={reviewCount} size={15} /> : null}
-              {remoteAvailable ? (
-                <XStack gap="$1" alignItems="center">
-                  <Icon name="video" size={13} color={brand.cianografiaScuro} strokeWidth={1.5} />
-                  <Text fontFamily="$body" fontSize={13} color={brand.cianografiaScuro} fontWeight="700">
-                    Offre consulenza online
-                  </Text>
-                </XStack>
-              ) : null}
-            </XStack>
-            <XStack gap="$1" alignItems="center">
-              <Icon name="map-pin" size={13} color={brand.grafite70} strokeWidth={1.5} />
-              <Text fontSize={16} color={brand.grafite70}>
-                {distanceKm !== undefined ? `${city} · a ${distanceKm.toString().replace(".", ",")} km` : city}
-              </Text>
-            </XStack>
-            {completedThisMonth && completedThisMonth > 0 ? (
-              <Text fontSize={13} color={brand.verificato} fontWeight="600">
-                Ha completato {completedThisMonth} {completedThisMonth === 1 ? "intervento" : "interventi"} questo mese
-              </Text>
+            {specialties ? ` · ${specialties}` : null}
+          </Text>
+          <XStack gap="$3" alignItems="center" flexWrap="wrap">
+            {rating !== undefined ? <Rating value={rating} count={reviewCount} size={15} /> : null}
+            {remoteAvailable ? (
+              <XStack gap="$1" alignItems="center">
+                <Icon name="video" size={13} color={brand.cianografiaScuro} strokeWidth={1.5} />
+                <Text fontFamily="$body" fontSize={13} color={brand.cianografiaScuro} fontWeight="700">
+                  Offre consulenza online
+                </Text>
+              </XStack>
             ) : null}
-          </YStack>
-          {action}
-        </XStack>
+          </XStack>
+          <XStack gap="$1" alignItems="center">
+            <Icon name="map-pin" size={13} color={brand.grafite70} strokeWidth={1.5} />
+            <Text fontSize={16} color={brand.grafite70}>
+              {distanceKm !== undefined ? `${city} · a ${distanceKm.toString().replace(".", ",")} km` : city}
+            </Text>
+          </XStack>
+          {/* In grigio (docs/CHANGELOG.md §349): è un dato, non un'azione, e
+              nel resto del sito il verde vuol dire "cliccabile". */}
+          {completedThisMonth && completedThisMonth > 0 ? (
+            <Text fontSize={13} color={brand.grafite70}>
+              Ha completato {completedThisMonth} {completedThisMonth === 1 ? "intervento" : "interventi"} questo mese
+            </Text>
+          ) : null}
+        </YStack>
+      </XStack>
 
-        {totalDays > 0 ? (
-          <YStack
+      {hasAgenda || hasServices ? (
+        <YStack
+          marginTop="$4"
+          paddingTop="$3"
+          borderTopWidth={1}
+          borderTopColor={brand.filetto}
+          gap="$3"
+          // Richiesta esplicita dell'utente: "rendi cliccabile solo i vari
+          // pulsanti e non tutta l'area dell'agenda". Un clic su uno spazio
+          // vuoto qui (tra le pillole, sui trattini "-") non apre il profilo
+          // dalla card; i singoli controlli fermano da sé la propagazione. Il
+          // clic che porta all'agenda del profilo (`onAgendaPress`) sta solo
+          // sulle intestazioni dei giorni e sulle celle senza orario libero.
+          onPress={stop}
+        >
+          <XStack
+            tag="button"
+            alignItems="center"
+            justifyContent="space-between"
             gap="$2"
-            minWidth={AGENDA_COLUMN_WIDTH * visibleDays.length}
-            paddingLeft="$4"
-            borderLeftWidth={1}
-            // Telefono (bug reale, docs/CHANGELOG.md §206): 4 colonne fisse da
-            // 78px più il margine sinistro superavano la larghezza della card
-            // e "Dom" usciva dal bordo. Sotto 800px il blocco va a tutta
-            // larghezza senza filetto e le colonne si dividono lo spazio.
-            $sm={{ minWidth: 0, width: "100%", paddingLeft: 0, borderLeftWidth: 0 }}
-            borderLeftColor={brand.filetto}
-            // Su una riga stretta il blocco cade sotto (flexWrap sul contenitore):
-            // il bordo verticale sinistro non avrebbe più senso, si toglie da solo
-            // (borderLeftWidth resta 0 solo se non c'è spazio, gestito dal wrap).
-            //
-            // stopPropagation qui, sull'intero blocco agenda — richiesta
-            // esplicita dell'utente: "rendi cliccabile solo i vari pulsanti e
-            // non tutta l'area dell'agenda". La card ha un onPress proprio
-            // che porta al profilo (vedi Surface più sopra): senza questo
-            // stop, un click su uno spazio vuoto della mini-agenda (tra le
-            // pillole, sulle intestazioni giorno, sui trattini "-" di una
-            // fascia non configurata) faceva comunque da bubbling fino alla
-            // card e navigava al profilo, anche se l'utente non aveva
-            // toccato nulla di realmente interattivo. I singoli controlli
-            // (tab, frecce, pillole orario) hanno già ciascuno il proprio
-            // stopPropagation più sotto — restano invariati e continuano a
-            // funzionare, qui si aggiunge solo una rete di sicurezza per il
-            // resto dell'area. Il clic che porta all'agenda del profilo
-            // (`onAgendaPress`) sta solo sulle intestazioni dei giorni e
-            // sulle celle senza orario libero, non sull'intero blocco: un
-            // onPress qui scatterebbe anche cliccando frecce e pulsanti.
-            onPress={(e: { stopPropagation: () => void }) => e.stopPropagation()}
+            minHeight={32}
+            padding={0}
+            borderWidth={0}
+            backgroundColor="transparent"
+            cursor="pointer"
+            aria-expanded={expanded}
+            accessibilityRole="button"
+            onPress={(e: unknown) => {
+              stop(e);
+              setExpanded((prev) => !prev);
+            }}
           >
-            {/* Tab "A domicilio"/"Online" (richiesta esplicita dell'utente,
-                stesso pattern a pillola di SearchBar): filtrano gli orari
-                mostrati sotto in base alla modalità offerta su ogni fascia. */}
-            <XStack
-              gap={4}
-              onPress={(e: { stopPropagation: () => void }) => e.stopPropagation()}
-            >
-              {(["HOME", "ONLINE"] as const).map((mode) => (
-                <XStack
-                  key={mode}
-                  paddingHorizontal="$2"
-                  paddingVertical={4}
-                  borderRadius="$10"
-                  backgroundColor={activeMode === mode ? brand.cianografia : brand.gesso}
-                  cursor="pointer"
-                  accessibilityRole="button"
-                  accessibilityLabel={mode === "HOME" ? "A domicilio" : "Online"}
-                  onPress={(e: { stopPropagation: () => void }) => {
-                    e.stopPropagation();
-                    setActiveMode(mode);
-                    setWindowOffset(0);
-                  }}
-                >
-                  <Text fontFamily="$body" fontSize={10.5} fontWeight="700" color={activeMode === mode ? "#FFFFFF" : brand.grafite70}>
-                    {mode === "HOME" ? "A domicilio" : "Online"}
-                  </Text>
-                </XStack>
-              ))}
-            </XStack>
-            <XStack alignItems="center" justifyContent="space-between" gap="$2">
-              <Text fontFamily="$body" fontSize={10.5} fontWeight="700" color={brand.grafite70}>
-                Prossima disponibilità
+            <Text fontSize={16} color={brand.grafite70} textAlign="left">
+              <Text fontFamily="$body" fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
+                {expanded ? `Nascondi ${detailsLabel}` : `Vedi ${detailsLabel}`}
               </Text>
-              {totalDays > AGENDA_VISIBLE_DAYS ? (
-                <XStack gap="$1" alignItems="center">
-                  <XStack
-                    width={28}
-                    height={28}
-                    borderRadius="$10"
-                    alignItems="center"
-                    justifyContent="center"
-                    backgroundColor={brand.gesso}
-                    opacity={canGoBack ? 1 : 0.3}
-                    cursor={canGoBack ? "pointer" : undefined}
-                    accessibilityRole={canGoBack ? "button" : undefined}
-                    accessibilityLabel="Giorni precedenti"
-                    onPress={
-                      canGoBack
-                        ? (e: unknown) => {
-                            (e as { stopPropagation?: () => void } | undefined)?.stopPropagation?.();
-                            setWindowOffset(Math.max(0, offset - AGENDA_VISIBLE_DAYS));
-                          }
-                        : undefined
-                    }
-                  >
-                    <Icon name="chevron-left" size={16} color={brand.grafite} />
-                  </XStack>
-                  <XStack
-                    width={28}
-                    height={28}
-                    borderRadius="$10"
-                    alignItems="center"
-                    justifyContent="center"
-                    backgroundColor={brand.gesso}
-                    opacity={canGoForward ? 1 : 0.3}
-                    cursor={canGoForward ? "pointer" : undefined}
-                    accessibilityRole={canGoForward ? "button" : undefined}
-                    accessibilityLabel="Giorni successivi"
-                    onPress={
-                      canGoForward
-                        ? (e: unknown) => {
-                            (e as { stopPropagation?: () => void } | undefined)?.stopPropagation?.();
-                            setWindowOffset(offset + AGENDA_VISIBLE_DAYS);
-                          }
-                        : undefined
-                    }
-                  >
-                    <Icon name="chevron-right" size={16} color={brand.grafite} />
-                  </XStack>
-                </XStack>
-              ) : null}
-            </XStack>
-            {/* flexBasis 0 su intestazioni e celle (bug reale segnalato
-                dall'utente): con flex={1} da solo Tamagui usa flexBasis
-                "auto", ogni colonna prendeva la larghezza del suo contenuto e
-                gli orari non stavano più sotto il loro giorno. */}
-            <XStack>
-              {visibleDays.map((day) => (
-                <YStack
-                  key={day.date}
-                  flex={1}
-                  flexBasis={0}
-                  minWidth={0}
-                  alignItems="center"
-                  gap={2}
-                  cursor={openAgendaAt ? "pointer" : undefined}
-                  accessibilityRole={openAgendaAt ? "button" : undefined}
-                  onPress={openAgendaAt?.(day.date)}
-                >
-                  <Text fontFamily="$body" fontSize={10.5} fontWeight="700" color={brand.grafite}>
-                    {day.label}
-                  </Text>
-                  <Text fontFamily="$mono" fontSize={9.5} color={brand.grafite70}>
-                    {day.dateLabel}
-                  </Text>
-                </YStack>
-              ))}
-            </XStack>
+              {!expanded && lowestPrice !== null ? ` · da ${formatAmount(lowestPrice)} €` : null}
+            </Text>
+            <Icon name={expanded ? "chevron-up" : "chevron-down"} size={18} color={brand.cianografiaScuro} strokeWidth={2} />
+          </XStack>
 
-            {timeRows.length > 0 ? (
-              <YStack gap="$1">
-                {timeRows.map((time) => (
-                  <XStack key={time}>
-                    {visibleDays.map((day) => {
-                      const slot = day.times.find((s) => s.time === time);
-                      if (!slot) {
-                        return (
-                          <XStack key={day.date} flex={1} flexBasis={0} minWidth={0} alignItems="center" justifyContent="center" paddingVertical={4} onPress={openAgendaAt?.(day.date)}>
-                            <Text fontSize={13} color={brand.filetto}>
-                              -
-                            </Text>
-                          </XStack>
-                        );
-                      }
-                      const range = `${slot.time}–${slot.endTime}`;
-                      if (!slot[availableKey]) {
-                        return (
-                          <XStack key={day.date} flex={1} flexBasis={0} minWidth={0} alignItems="center" justifyContent="center" paddingVertical={4} onPress={openAgendaAt?.(day.date)}>
-                            <Text
-                              fontFamily="$mono"
-                              fontSize={9.5}
-                              letterSpacing={-0.3}
-                              color={brand.grafite70}
-                              textDecorationLine="line-through"
-                              textAlign="center"
-                            >
-                              {range}
-                            </Text>
-                          </XStack>
-                        );
-                      }
+          {expanded && hasAgenda ? (
+            <YStack gap="$2">
+              <XStack alignItems="center" justifyContent="space-between" gap="$2" flexWrap="wrap">
+                {/* Segmentato come la barra di ricerca, con "Orari per:"
+                    davanti (docs/CHANGELOG.md §349): le due pillole separate
+                    sembravano un interruttore, e "Online" grigio sembrava
+                    "non offerto". */}
+                <XStack alignItems="center" gap="$2">
+                  <Text fontFamily="$body" fontSize={13} fontWeight="600" color={brand.grafite70}>
+                    Orari per:
+                  </Text>
+                  <XStack gap={2} backgroundColor={brand.gesso} borderRadius="$10" padding={2}>
+                    {(["HOME", "ONLINE"] as const).map((mode) => {
+                      const active = activeMode === mode;
                       return (
                         <XStack
-                          key={day.date}
-                          flex={1}
-                          flexBasis={0}
-                          minWidth={0}
-                          alignItems="center"
-                          justifyContent="center"
-                          paddingVertical={3}
-                          cursor={onSlotPress ? "pointer" : undefined}
-                          accessibilityRole={onSlotPress ? "button" : undefined}
-                          accessibilityLabel={onSlotPress ? `Richiedi un preventivo per ${range} il ${day.label}` : undefined}
-                          onPress={
-                            onSlotPress
-                              ? (e: unknown) => {
-                                  (e as { stopPropagation?: () => void } | undefined)?.stopPropagation?.();
-                                  onSlotPress(day.date, slot.time, slot.endTime, activeMode);
-                                }
-                              : undefined
-                          }
+                          key={mode}
+                          tag="button"
+                          paddingHorizontal="$3"
+                          paddingVertical={5}
+                          borderWidth={0}
+                          borderRadius="$10"
+                          backgroundColor={active ? brand.cianografia : "transparent"}
+                          cursor="pointer"
+                          accessibilityRole="button"
+                          aria-pressed={active}
+                          onPress={(e: unknown) => {
+                            stop(e);
+                            setActiveMode(mode);
+                            setWindowOffset(0);
+                          }}
                         >
-                          <XStack paddingHorizontal={4} paddingVertical={3} borderRadius="$10" backgroundColor={brand.cianografiaVelo} maxWidth="100%">
-                            <Text fontFamily="$mono" fontSize={9.5} letterSpacing={-0.3} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
-                              {range}
-                            </Text>
-                          </XStack>
+                          <Text fontFamily="$body" fontSize={13} fontWeight="700" color={active ? "#FFFFFF" : brand.grafite}>
+                            {mode === "HOME" ? "A domicilio" : "Online"}
+                          </Text>
                         </XStack>
                       );
                     })}
                   </XStack>
-                ))}
-              </YStack>
-            ) : null}
-
-            {hasAvailableInWindow ? null : firstFree ? (
-              <YStack gap="$2" padding="$3" borderRadius={radiusDoc} borderWidth={1} borderColor={brand.filetto}>
-                <YStack gap={2}>
-                  <Text fontSize={13} color={brand.grafite70}>
-                    Nessun orario libero in questi giorni. Primo orario libero:
-                  </Text>
-                  <Text fontSize={16} fontWeight="700" color={brand.grafite}>
-                    {firstFree.day.label === "Oggi" || firstFree.day.label === "Domani" ? `${firstFree.day.label}, ` : ""}
-                    {firstFree.day.dateLabel}, {firstFree.slot.time}–{firstFree.slot.endTime}
-                  </Text>
-                </YStack>
-                <XStack
-                  alignSelf="flex-start"
-                  paddingHorizontal="$3"
-                  paddingVertical={6}
-                  borderRadius="$10"
-                  backgroundColor={brand.cianografia}
-                  cursor="pointer"
-                  accessibilityRole="button"
-                  accessibilityLabel="Mostra orari disponibili"
-                  // Porta la finestra della mini-agenda sul giorno del primo
-                  // orario libero, che resta cliccabile come ogni altra fascia
-                  // per aprire la richiesta di preventivo precompilata.
-                  onPress={(e: unknown) => {
-                    (e as { stopPropagation?: () => void } | undefined)?.stopPropagation?.();
-                    setWindowOffset(firstFree.index);
-                  }}
-                >
-                  <Text fontFamily="$body" fontSize={13} fontWeight="700" color="#FFFFFF">
-                    Mostra orari disponibili →
-                  </Text>
                 </XStack>
-              </YStack>
-            ) : (
-              <Text fontSize={13} color={brand.grafite70} paddingVertical="$2">
-                Nessun orario libero nei prossimi due mesi.
-              </Text>
-            )}
-          </YStack>
-        ) : null}
-      </XStack>
-      {/* Prestazioni a tutta larghezza sotto la riga profilo + agenda
-          (richiesta esplicita dell'utente): dentro la colonna del nome,
-          stretta quando c'è la mini-agenda, i nomi andavano a capo e
-          lasciavano vuoto lo spazio sotto la foto e sotto l'agenda. */}
-      {services && services.length > 0 ? (
-        <YStack gap="$1" paddingTop="$3" borderTopWidth={1} borderTopColor={brand.filetto} marginTop="$4">
-          {(showAllServices ? services : services.slice(0, 3)).map((service) => (
-            <PriceLine key={service.id} label={service.name} price={formatServicePrice(service.priceMinEurCents, service.priceMaxEurCents)} />
-          ))}
-          {services.length > 3 ? (
-            <XStack
-              alignItems="center"
-              gap="$1"
-              paddingTop="$1"
-              cursor="pointer"
-              onPress={(e: { stopPropagation: () => void }) => {
-                e.stopPropagation();
-                setShowAllServices((prev) => !prev);
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={showAllServices ? "Mostra meno prestazioni" : "Mostra tutte le prestazioni"}
-            >
-              <Text fontSize={16} fontWeight="600" color={brand.cianografiaScuro}>
-                {showAllServices ? "Mostra meno" : `Mostra tutte (${services.length})`}
-              </Text>
-              <Icon name={showAllServices ? "chevron-up" : "chevron-down"} size={14} color={brand.cianografiaScuro} strokeWidth={2} />
-            </XStack>
+                {totalDays > AGENDA_VISIBLE_DAYS ? (
+                  <XStack gap="$1" alignItems="center">
+                    <XStack
+                      width={32}
+                      height={32}
+                      borderRadius="$10"
+                      alignItems="center"
+                      justifyContent="center"
+                      backgroundColor={brand.gesso}
+                      opacity={canGoBack ? 1 : 0.3}
+                      cursor={canGoBack ? "pointer" : undefined}
+                      accessibilityRole={canGoBack ? "button" : undefined}
+                      accessibilityLabel="Giorni precedenti"
+                      onPress={
+                        canGoBack
+                          ? (e: unknown) => {
+                              stop(e);
+                              setWindowOffset(Math.max(0, offset - AGENDA_VISIBLE_DAYS));
+                            }
+                          : undefined
+                      }
+                    >
+                      <Icon name="chevron-left" size={16} color={brand.grafite} />
+                    </XStack>
+                    <XStack
+                      width={32}
+                      height={32}
+                      borderRadius="$10"
+                      alignItems="center"
+                      justifyContent="center"
+                      backgroundColor={brand.gesso}
+                      opacity={canGoForward ? 1 : 0.3}
+                      cursor={canGoForward ? "pointer" : undefined}
+                      accessibilityRole={canGoForward ? "button" : undefined}
+                      accessibilityLabel="Giorni successivi"
+                      onPress={
+                        canGoForward
+                          ? (e: unknown) => {
+                              stop(e);
+                              setWindowOffset(offset + AGENDA_VISIBLE_DAYS);
+                            }
+                          : undefined
+                      }
+                    >
+                      <Icon name="chevron-right" size={16} color={brand.grafite} />
+                    </XStack>
+                  </XStack>
+                ) : null}
+              </XStack>
+              {/* flexBasis 0 su intestazioni e celle (bug reale segnalato
+                  dall'utente): con flex={1} da solo Tamagui usa flexBasis
+                  "auto", ogni colonna prendeva la larghezza del suo contenuto e
+                  gli orari non stavano più sotto il loro giorno. */}
+              <XStack>
+                {visibleDays.map((day) => (
+                  <YStack
+                    key={day.date}
+                    flex={1}
+                    flexBasis={0}
+                    minWidth={0}
+                    alignItems="center"
+                    gap={2}
+                    cursor={openAgendaAt ? "pointer" : undefined}
+                    accessibilityRole={openAgendaAt ? "button" : undefined}
+                    onPress={openAgendaAt?.(day.date)}
+                  >
+                    <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite}>
+                      {day.label}
+                    </Text>
+                    <Text fontVariant={["tabular-nums"]} fontSize={12} color={brand.grafite70}>
+                      {day.dateLabel}
+                    </Text>
+                  </YStack>
+                ))}
+              </XStack>
+
+              {timeRows.length > 0 ? (
+                <YStack gap="$1">
+                  {timeRows.map((time) => (
+                    <XStack key={time}>
+                      {visibleDays.map((day) => {
+                        const slot = day.times.find((s) => s.time === time);
+                        if (!slot) {
+                          return (
+                            <XStack key={day.date} flex={1} flexBasis={0} minWidth={0} alignItems="center" justifyContent="center" paddingVertical={4} onPress={openAgendaAt?.(day.date)}>
+                              <Text fontSize={13} color={brand.filetto}>
+                                -
+                              </Text>
+                            </XStack>
+                          );
+                        }
+                        const range = `${slot.time}–${slot.endTime}`;
+                        return (
+                          <XStack
+                            key={day.date}
+                            flex={1}
+                            flexBasis={0}
+                            minWidth={0}
+                            alignItems="center"
+                            justifyContent="center"
+                            paddingVertical={3}
+                            cursor={onSlotPress ? "pointer" : undefined}
+                            accessibilityRole={onSlotPress ? "button" : undefined}
+                            accessibilityLabel={onSlotPress ? `Richiedi un preventivo per ${range} il ${day.label}` : undefined}
+                            onPress={
+                              onSlotPress
+                                ? (e: unknown) => {
+                                    stop(e);
+                                    onSlotPress(day.date, slot.time, slot.endTime, activeMode);
+                                  }
+                                : undefined
+                            }
+                          >
+                            <XStack paddingHorizontal={6} paddingVertical={4} $xs={{ paddingHorizontal: 3 }} borderRadius="$10" backgroundColor={brand.cianografiaVelo} maxWidth="100%">
+                              <Text
+                                fontVariant={["tabular-nums"]}
+                                fontSize={12}
+                                $xs={{ fontSize: 11, letterSpacing: -0.2 }}
+                                fontWeight="700"
+                                color={brand.cianografiaScuro}
+                                textAlign="center"
+                              >
+                                {range}
+                              </Text>
+                            </XStack>
+                          </XStack>
+                        );
+                      })}
+                    </XStack>
+                  ))}
+                </YStack>
+              ) : null}
+
+              {hasAvailableInWindow ? null : firstFree ? (
+                <YStack gap="$2" padding="$3" borderRadius={radiusDoc} borderWidth={1} borderColor={brand.filetto}>
+                  <YStack gap={2}>
+                    <Text fontSize={13} color={brand.grafite70}>
+                      Nessun orario libero in questi giorni. Primo orario libero:
+                    </Text>
+                    <Text fontSize={16} fontWeight="700" color={brand.grafite}>
+                      {firstFree.day.label === "Oggi" || firstFree.day.label === "Domani" ? `${firstFree.day.label}, ` : ""}
+                      {firstFree.day.dateLabel}, {firstFree.slot.time}–{firstFree.slot.endTime}
+                    </Text>
+                  </YStack>
+                  <XStack
+                    alignSelf="flex-start"
+                    paddingHorizontal="$3"
+                    paddingVertical={6}
+                    borderRadius="$10"
+                    backgroundColor={brand.cianografia}
+                    cursor="pointer"
+                    accessibilityRole="button"
+                    accessibilityLabel="Mostra orari disponibili"
+                    // Porta la finestra della mini-agenda sul giorno del primo
+                    // orario libero, che resta cliccabile come ogni altra fascia
+                    // per aprire la richiesta di preventivo precompilata.
+                    onPress={(e: unknown) => {
+                      stop(e);
+                      setWindowOffset(firstFree.index);
+                    }}
+                  >
+                    <Text fontFamily="$body" fontSize={13} fontWeight="700" color="#FFFFFF">
+                      Mostra orari disponibili →
+                    </Text>
+                  </XStack>
+                </YStack>
+              ) : (
+                <Text fontSize={13} color={brand.grafite70} paddingVertical="$2">
+                  Nessun orario libero nei prossimi due mesi.
+                </Text>
+              )}
+            </YStack>
+          ) : null}
+
+          {expanded && hasServices ? (
+            <YStack gap="$1" {...(hasAgenda ? { paddingTop: "$3", borderTopWidth: 1, borderTopColor: brand.filetto } : null)}>
+              {(showAllServices ? serviceList : serviceList.slice(0, 3)).map((service) => (
+                <PriceLine key={service.id} label={service.name} price={formatServicePrice(service.priceMinEurCents, service.priceMaxEurCents)} />
+              ))}
+              {serviceList.length > 3 ? (
+                <XStack
+                  alignItems="center"
+                  gap="$1"
+                  paddingTop="$1"
+                  cursor="pointer"
+                  onPress={(e: unknown) => {
+                    stop(e);
+                    setShowAllServices((prev) => !prev);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={showAllServices ? "Mostra meno prestazioni" : "Mostra tutte le prestazioni"}
+                >
+                  <Text fontSize={16} fontWeight="600" color={brand.cianografiaScuro}>
+                    {showAllServices ? "Mostra meno" : `Mostra tutte (${serviceList.length})`}
+                  </Text>
+                  <Icon name={showAllServices ? "chevron-up" : "chevron-down"} size={14} color={brand.cianografiaScuro} strokeWidth={2} />
+                </XStack>
+              ) : null}
+            </YStack>
           ) : null}
         </YStack>
       ) : null}

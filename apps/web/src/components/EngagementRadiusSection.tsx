@@ -94,15 +94,23 @@ export function EngagementRadiusSection({
         <Text fontFamily="$heading" fontWeight="800" fontSize="$5" color={brand.grafite}>
           Raggio di ingaggio
         </Text>
+        {/* Una riga e "Scopri di più" (docs/CHANGELOG.md §349), prima due paragrafi. */}
         <Text fontSize={13} color={brand.grafite70}>
-          Scegli fino a quanti chilometri da te ti mandiamo in automatico le richieste di preventivo dei clienti della
-          zona: di partenza sono 25 km, per le richieste standard puoi arrivare fino a {MAX_ENGAGEMENT_RADIUS_KM} km.
-          Per le richieste urgenti puoi scegliere un raggio diverso.
+          Fin dove ti mandiamo in automatico le richieste dei clienti vicini.
         </Text>
-        <Text fontSize={13} color={brand.grafite70}>
-          Il raggio non ti limita: nella ricerca del sito resti visibile a tutti i clienti, e chiunque, anche da più
-          lontano, può aprire il tuo profilo e mandarti una richiesta direttamente.
-        </Text>
+        <details className="bio-tips radius-more">
+          <summary>Scopri di più</summary>
+          <YStack gap="$1" paddingTop="$1">
+            <Text fontSize={13} color={brand.grafite70}>
+              Di partenza sono 25 km, per le richieste standard puoi arrivare fino a {MAX_ENGAGEMENT_RADIUS_KM} km. Per le richieste
+              urgenti puoi scegliere un raggio diverso.
+            </Text>
+            <Text fontSize={13} color={brand.grafite70}>
+              Il raggio non ti limita: nella ricerca del sito resti visibile a tutti i clienti, e chiunque, anche da più lontano, può
+              aprire il tuo profilo e mandarti una richiesta direttamente.
+            </Text>
+          </YStack>
+        </details>
       </YStack>
 
       <EngagementRadiusMap
@@ -118,7 +126,7 @@ export function EngagementRadiusSection({
             <YStack width={12} height={12} borderRadius={10} backgroundColor={brand.verificato} />
             <FieldLabel>Richieste standard</FieldLabel>
           </XStack>
-          <Text fontFamily="$mono" fontWeight="700" color={brand.grafite}>
+          <Text fontVariant={["tabular-nums"]} fontWeight="700" color={brand.grafite}>
             {engagementRadiusKm} km
           </Text>
         </XStack>
@@ -145,7 +153,7 @@ export function EngagementRadiusSection({
             <YStack width={12} height={12} borderRadius={10} backgroundColor={brand.ottone} />
             <FieldLabel>Richieste urgenti</FieldLabel>
           </XStack>
-          <Text fontFamily="$mono" fontWeight="700" color={brand.grafite}>
+          <Text fontVariant={["tabular-nums"]} fontWeight="700" color={brand.grafite}>
             {urgentEngagementRadiusKm} km
           </Text>
         </XStack>

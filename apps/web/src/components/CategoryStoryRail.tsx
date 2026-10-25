@@ -53,7 +53,7 @@ export function CategoryShowAllButton({ state }: { state: CategoryStoryRailState
 
 const RAIL_ID = "categorie-home";
 
-export function CategoryStoryRail({ countBySlug, state }: { countBySlug: Map<string, number>; state: CategoryStoryRailState }) {
+export function CategoryStoryRail({ state }: { state: CategoryStoryRailState }) {
   const { group, setGroup, showAll, setShowAll, categories } = state;
 
   return (
@@ -99,7 +99,6 @@ export function CategoryStoryRail({ countBySlug, state }: { countBySlug: Map<str
                   <CategoryIconBadge slug={c.slug} size={64} />
                 </span>
               )}
-              {countBySlug.get(c.slug) ? <span className="story-card-chip">● Disponibile</span> : null}
               <span className="story-card-label">
                 <span className="story-card-title">{c.label}</span>
                 <span className="story-card-more">

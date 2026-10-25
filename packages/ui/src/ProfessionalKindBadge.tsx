@@ -16,7 +16,9 @@ const KIND: Record<ProfessionalKindValue, { label: string; icon: IconName; info:
 /**
  * Come si è iscritto il professionista (docs/CHANGELOG.md §338): privato,
  * partita IVA o azienda, con il significato nel fumetto. Pillola neutra
- * (bianca con bordo): è un'informazione, non un merito né un pagamento.
+ * (piena color gesso, non verde): è un'informazione, non un merito né un
+ * pagamento. Piena e senza bordo come gli altri bollini: il bordo resta solo
+ * alle specializzazioni (docs/CHANGELOG.md §349).
  * `md` per la scheda del profilo, accanto ai `Badge`; `sm` per le schede dei risultati.
  */
 export function ProfessionalKindBadge({ kind, size = "sm" }: { kind: ProfessionalKindValue; size?: "sm" | "md" }) {
@@ -27,12 +29,10 @@ export function ProfessionalKindBadge({ kind, size = "sm" }: { kind: Professiona
       <XStack
         alignItems="center"
         gap={4}
-        paddingHorizontal={md ? 11 : "$2"}
-        paddingVertical={md ? 4 : 1}
+        paddingHorizontal={md ? 12 : "$2"}
+        paddingVertical={md ? 5 : 2}
         borderRadius={999}
-        backgroundColor={brand.calce}
-        borderWidth={1}
-        borderColor={brand.filetto}
+        backgroundColor={brand.gesso}
       >
         <Icon name={icon} size={13} color={brand.grafite} strokeWidth={2} />
         <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite}>

@@ -63,7 +63,7 @@ export default function Dac7SummaryPage() {
   const hasOnline = summary?.quarters.some((q) => q.onlineEurCents > 0) ?? false;
 
   return (
-    <Section title="Riepilogo DAC7" maxWidth={760}>
+    <Section title="Riepilogo annuale dei compensi (DAC7)" maxWidth={760}>
       <YStack gap="$5">
         <Link href="/dashboard/fiscale" style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 16, textDecoration: "none" }}>
           ← Dati fiscali e pagamenti
@@ -168,7 +168,7 @@ export default function Dac7SummaryPage() {
             {hasOnline ? (
               data.maskedIban ? (
                 <Text fontSize={16} color={brand.grafite70}>
-                  Conto dei pagamenti online: <Text fontFamily="$mono" fontWeight="700" color={brand.grafite}>{data.maskedIban}</Text>
+                  Conto dei pagamenti online: <Text fontVariant={["tabular-nums"]} fontWeight="700" color={brand.grafite}>{data.maskedIban}</Text>
                 </Text>
               ) : (
                 <XStack gap="$3" padding="$3" borderRadius="$3" backgroundColor={brand.urgenzaVelo} alignItems="center" justifyContent="space-between" flexWrap="wrap">

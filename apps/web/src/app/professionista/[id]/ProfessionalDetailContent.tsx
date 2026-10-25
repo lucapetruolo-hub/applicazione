@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BRAND, PROFESSIONAL_CATEGORIES, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, formatServicePriceRange, subTagLabel, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
+import { BRAND, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, formatServicePriceRange, subTagLabel, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
 import { Badge, BadgeInfo, Button, ProfessionalKindBadge, Chip, EmptyState, Icon, PriceLine, Rating, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
@@ -14,7 +14,8 @@ import { ReportContentModal } from "@/components/ReportContentModal";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { hasRecentlyReported, markReported } from "@/lib/reportedContent";
-import { formatResponseTime } from "@/lib/responseTime";
+import { formatResponseTime, respondsRightAway } from "@/lib/responseTime";
+import { useMediaQuery } from "@/lib/useMediaQuery";
 
 // Colonne fisse Oggi + 3 giorni (stessa griglia della mini-agenda di ricerca,
 // vedi ProfessionalCard in packages/ui) — qui costruita a partire dai giorni
@@ -22,6 +23,9 @@ import { formatResponseTime } from "@/lib/responseTime";
 // bisogno di una ricerca aggiuntiva se non c'è disponibilità nella finestra:
 // il primo orario libero è cercato nello stesso payload già scaricato.
 const AGENDA_PREVIEW_DAYS = 4;
+// Da computer e tablet una settimana intera (docs/CHANGELOG.md §349): con 4
+// giorni la griglia occupava metà scheda e il resto restava vuoto.
+const AGENDA_PREVIEW_DAYS_WIDE = 7;
 // Larghezza MASSIMA di una colonna: le colonne si dividono lo spazio in parti
 // uguali (flex 1 + flexBasis 0) senza superare questo valore. Bug reali
 // corretti: con colonne fisse da 90px la griglia usciva dallo schermo dei
@@ -175,10 +179,11 @@ export function ProfessionalDetailContent({
     window.requestAnimationFrame(() => document.getElementById("agenda")?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }, [appliedAgendaDate]);
 
+  const agendaVisibleDays = useMediaQuery("(min-width: 661px)") ? AGENDA_PREVIEW_DAYS_WIDE : AGENDA_PREVIEW_DAYS;
   const totalAgendaDays = agendaPreview?.allDays.length ?? 0;
-  const maxAgendaOffset = Math.max(0, totalAgendaDays - AGENDA_PREVIEW_DAYS);
+  const maxAgendaOffset = Math.max(0, totalAgendaDays - agendaVisibleDays);
   const agendaOffset = Math.min(agendaWindowOffset, maxAgendaOffset);
-  const agendaWindowDaysRaw = agendaPreview?.allDays.slice(agendaOffset, agendaOffset + AGENDA_PREVIEW_DAYS) ?? [];
+  const agendaWindowDaysRaw = agendaPreview?.allDays.slice(agendaOffset, agendaOffset + agendaVisibleDays) ?? [];
   // Filtrati alla sola modalità attiva: le fasce che non offrono quel tipo
   // di intervento restano fuori, come se non esistessero per questo tab.
   const agendaWindowDays = agendaWindowDaysRaw.map((day) => ({
@@ -202,9 +207,12 @@ export function ProfessionalDetailContent({
   };
   const agendaFirstFree = agendaHasAvailableInWindow
     ? null
-    : (findFirstFreeAgendaSlot(agendaOffset + AGENDA_PREVIEW_DAYS) ?? findFirstFreeAgendaSlot(0));
+    : (findFirstFreeAgendaSlot(agendaOffset + agendaVisibleDays) ?? findFirstFreeAgendaSlot(0));
   const agendaCanGoBack = agendaOffset > 0;
-  const agendaCanGoForward = agendaOffset + AGENDA_PREVIEW_DAYS < totalAgendaDays;
+  const agendaCanGoForward = agendaOffset + agendaVisibleDays < totalAgendaDays;
+  // Lavori completati: il totale non è mai meno di quelli del mese (i due
+  // numeri arrivano da conti diversi, docs/CHANGELOG.md §349).
+  const completedTotal = Math.max(professional.completedJobsTotal, professional.completedThisMonth);
 
   // `?salva=1`: il visitatore ha toccato il cuoricino senza essere entrato
   // ed è tornato qui dopo l'accesso, quindi il profilo si salva da solo
@@ -304,7 +312,7 @@ export function ProfessionalDetailContent({
             avvolta in una `Surface` — incoerenza visiva mai risolta prima
             d'ora. Un solo blocco coeso invece di elementi sparsi. */}
         <Surface gap="$4">
-        <XStack gap="$3" alignItems="flex-start">
+        <XStack gap="$3" alignItems="flex-start" position="relative">
           {/* Su telefono il nome va sotto la foto: accanto restava una
               colonna stretta, con il nome spezzato su più righe
               (docs/CHANGELOG.md §252). */}
@@ -324,11 +332,25 @@ export function ProfessionalDetailContent({
               <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={140} />
             </YStack>
             <YStack gap="$2" flex={1} minWidth={0}>
-              <XStack alignItems="center" gap="$2" flexWrap="wrap">
-                <Text tag="h1" margin={0} fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} style={{ overflowWrap: "anywhere" }}>
-                  {professional.businessName}
-                </Text>
-                {/* Il significato di ogni badge in un fumetto (docs/CHANGELOG.md §338). */}
+              <Text tag="h1" margin={0} fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} style={{ overflowWrap: "anywhere" }}>
+                {professional.businessName}
+              </Text>
+              {/* Mestieri come testo sotto il nome (da 1 a 3, docs/CHANGELOG.md
+                  §217), non più pillole verdi con l'icona: nell'intestazione
+                  restano due soli stili di pillola, i bollini piccoli pieni e
+                  le specializzazioni con il bordo (docs/CHANGELOG.md §349). */}
+              <Text fontSize={16} fontWeight="600" color={brand.grafite}>
+                {(professional.categories?.length
+                  ? professional.categories
+                  : [{ slug: professional.categorySlug, label: professional.categoryLabel }]
+                )
+                  .map((category) => category.label)
+                  .join(" · ")}
+              </Text>
+              {/* Bollini in una riga che va a capo (docs/CHANGELOG.md §349): da
+                  telefono prima ne stava uno per riga. Il significato di ogni
+                  bollino è in un fumetto (docs/CHANGELOG.md §338). */}
+              <XStack alignItems="center" gap={6} flexWrap="wrap">
                 {professional.verified ? (
                   <BadgeInfo info="verified">
                     <Badge variant="verificato">Verificato</Badge>
@@ -363,32 +385,6 @@ export function ProfessionalDetailContent({
                   </BadgeInfo>
                 ) : null}
               </XStack>
-              {/* Categorie (da 1 a 3, docs/CHANGELOG.md §217) su una riga loro,
-                  separate dalla città (docs/CHANGELOG.md §259). */}
-              <XStack flexWrap="wrap" gap="$2">
-                {(professional.categories?.length
-                  ? professional.categories
-                  : [{ slug: professional.categorySlug, label: professional.categoryLabel }]
-                ).map((category) => {
-                  const icon = PROFESSIONAL_CATEGORIES.find((c) => c.slug === category.slug)?.icon;
-                  return (
-                    <XStack
-                      key={category.slug}
-                      alignItems="center"
-                      gap={6}
-                      paddingHorizontal={10}
-                      paddingVertical={4}
-                      borderRadius={999}
-                      backgroundColor={brand.cianografiaVelo}
-                    >
-                      {icon ? <Icon name={icon} size={13} color={brand.cianografiaScuro} /> : null}
-                      <Text fontFamily="$body" fontWeight="700" fontSize={16} color={brand.cianografiaScuro}>
-                        {category.label}
-                      </Text>
-                    </XStack>
-                  );
-                })}
-              </XStack>
               <XStack alignItems="center" gap={4}>
                 <Icon name="map-pin" size={13} color={brand.grafite70} />
                 <Text fontFamily="$body" fontWeight="700" fontSize={16} color={brand.grafite70}>
@@ -408,74 +404,62 @@ export function ProfessionalDetailContent({
               ) : (
                 <Text color={brand.grafite70}>Nessuna recensione ancora</Text>
               )}
-              {professional.completedThisMonth > 0 ? (
-                <Text fontSize={16} color={brand.verificato} fontWeight="600">
-                  Ha completato {professional.completedThisMonth} {professional.completedThisMonth === 1 ? "intervento" : "interventi"} questo
-                  mese
+              {/* Una riga sola, in grigio (docs/CHANGELOG.md §349): prima "Ha
+                  completato 1 intervento questo mese" in verde e "1 lavoro
+                  completato in totale" una sotto l'altra. Il totale non è mai
+                  meno dei lavori del mese (i due numeri arrivano da conti
+                  diversi). Mai uno zero: senza dati la riga non compare. */}
+              {completedTotal > 0 || professional.avgResponseTimeMinutes !== null ? (
+                <Text fontSize={16} color={brand.grafite70}>
+                  {[
+                    completedTotal > 0 ? `${completedTotal} ${completedTotal === 1 ? "lavoro completato" : "lavori completati"}` : null,
+                    professional.avgResponseTimeMinutes !== null
+                      ? respondsRightAway(professional.avgResponseTimeMinutes)
+                        ? "Risponde subito"
+                        : `Risponde entro ${formatResponseTime(professional.avgResponseTimeMinutes)}`
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </Text>
-              ) : null}
-              {/* Segnali di fiducia aggiuntivi (CEO, consiglio esperti —
-                  CPO: "esporre completedJobs + tempo medio di risposta sul
-                  profilo pubblico... massimo ritorno per minimo sforzo").
-                  Mai uno zero fuorviante: un professionista senza ancora
-                  dati misurati non mostra questa riga, non "0 lavori". */}
-              {professional.completedJobsTotal > 0 || professional.avgResponseTimeMinutes !== null ? (
-                <XStack alignItems="center" gap="$3" flexWrap="wrap">
-                  {professional.completedJobsTotal > 0 ? (
-                    <XStack alignItems="center" gap={4} flexShrink={1} minWidth={0}>
-                      <Icon name="check" size={13} strokeWidth={2} color={brand.grafite70} />
-                      <Text fontSize={13} color={brand.grafite70} flexShrink={1}>
-                        {professional.completedJobsTotal} {professional.completedJobsTotal === 1 ? "lavoro completato" : "lavori completati"} in
-                        totale
-                      </Text>
-                    </XStack>
-                  ) : null}
-                  {professional.avgResponseTimeMinutes !== null ? (
-                    <XStack alignItems="center" gap={4} flexShrink={1} minWidth={0}>
-                      <Icon name="clock" size={13} strokeWidth={1.5} color={brand.grafite70} />
-                      <Text fontSize={13} color={brand.grafite70} flexShrink={1}>
-                        Risponde in genere entro {formatResponseTime(professional.avgResponseTimeMinutes)}
-                      </Text>
-                    </XStack>
-                  ) : null}
-                </XStack>
               ) : null}
             </YStack>
           </XStack>
+          {/* Salva, condividi e segnala in alto a destra della scheda
+              (docs/CHANGELOG.md §349): sotto la foto erano staccati dal nome.
+              Solo icone, con la descrizione al passaggio del mouse (richiesta
+              esplicita dell'utente, docs/CHANGELOG.md §206). Da telefono in
+              colonna accanto alla foto. Passaparola: per i lavori di casa la
+              raccomandazione gira su WhatsApp, quindi il bottone apre la
+              condivisione nativa del dispositivo e ripiega sulla copia del
+              link dove l'API non esiste. */}
+          {preview ? null : (
+            <XStack gap="$2" alignItems="center" flexShrink={0} $xs={{ flexDirection: "column", position: "absolute", top: 0, right: 0 }}>
+              {/* Cuoricino visibile anche a chi non è entrato (docs/CHANGELOG.md
+                  §208): al tocco porta all'accesso. Nascosto solo a
+                  professionisti e admin, che non salvano profili. */}
+              {!user || user.role === "CLIENT" ? (
+                <IconActionButton label={isSaved ? "Salvato" : "Salva"} active={isSaved} disabled={isSaving} onPress={handleToggleSave} tooltipAlign="end">
+                  <Icon name="heart" size={17} strokeWidth={1.5} color={isSaved ? "white" : brand.grafite} fill={isSaved ? "white" : "none"} />
+                </IconActionButton>
+              ) : null}
+              <IconActionButton label={shareFeedback ?? "Condividi il profilo"} forceTooltip={shareFeedback !== null} onPress={handleShare} tooltipAlign="end">
+                <Icon name="share-2" size={17} strokeWidth={1.5} color={brand.cianografiaScuro} />
+              </IconActionButton>
+              {user ? (
+                <IconActionButton
+                  label={reportedKeys.has(`PROFESSIONAL_PROFILE:${professional.id}`) ? "Già segnalato" : "Segnala"}
+                  disabled={reportedKeys.has(`PROFESSIONAL_PROFILE:${professional.id}`)}
+                  onPress={() => setReportTarget({ targetType: "PROFESSIONAL_PROFILE", targetId: professional.id, label: `il profilo di ${professional.businessName}` })}
+                  tooltipAlign="end"
+                >
+                  <Icon name="flag" size={17} strokeWidth={1.5} color={brand.grafite70} />
+                </IconActionButton>
+              ) : null}
+            </XStack>
+          )}
         </XStack>
 
-        {/* Passaparola: per i lavori di casa la raccomandazione gira su
-            WhatsApp, quindi il bottone apre la condivisione nativa del
-            dispositivo (che su mobile include WhatsApp/contatti) e ripiega
-            sulla copia del link dove l'API non esiste (desktop senza
-            navigator.share). */}
-        {/* Solo icone, con la descrizione al passaggio del mouse (richiesta
-            esplicita dell'utente, docs/CHANGELOG.md §206). */}
-        {preview ? null : (
-        <XStack gap="$2" alignItems="center">
-          {/* Cuoricino visibile anche a chi non è entrato (docs/CHANGELOG.md
-              §208): prima compariva solo a un cliente già entrato, e per
-              tutti gli altri sembrava sparito. Al tocco porta all'accesso.
-              Nascosto solo a professionisti e admin, che non salvano profili. */}
-          {!user || user.role === "CLIENT" ? (
-            <IconActionButton label={isSaved ? "Salvato" : "Salva"} active={isSaved} disabled={isSaving} onPress={handleToggleSave}>
-              <Icon name="heart" size={17} strokeWidth={1.5} color={isSaved ? "white" : brand.grafite} fill={isSaved ? "white" : "none"} />
-            </IconActionButton>
-          ) : null}
-          <IconActionButton label={shareFeedback ?? "Condividi il profilo"} forceTooltip={shareFeedback !== null} onPress={handleShare}>
-            <Icon name="share-2" size={17} strokeWidth={1.5} color={brand.cianografiaScuro} />
-          </IconActionButton>
-          {user ? (
-            <IconActionButton
-              label={reportedKeys.has(`PROFESSIONAL_PROFILE:${professional.id}`) ? "Già segnalato" : "Segnala"}
-              disabled={reportedKeys.has(`PROFESSIONAL_PROFILE:${professional.id}`)}
-              onPress={() => setReportTarget({ targetType: "PROFESSIONAL_PROFILE", targetId: professional.id, label: `il profilo di ${professional.businessName}` })}
-            >
-              <Icon name="flag" size={17} strokeWidth={1.5} color={brand.grafite70} />
-            </IconActionButton>
-          ) : null}
-        </XStack>
-        )}
 
         {professional.subTags.length > 0 ? (
           <XStack flexWrap="wrap" gap="$2">
@@ -614,34 +598,48 @@ export function ProfessionalDetailContent({
                 Agenda
               </Text>
             </XStack>
+            {/* Una riga sola (docs/CHANGELOG.md §349): gli orari al completo
+                sono grigi, non serve spiegarli. */}
             <Text fontSize={13} color={brand.grafite70}>
-              Tocca un orario libero per richiedere un preventivo per quella fascia. Gli orari barrati sono già al completo.
+              Tocca un orario libero per chiedere un preventivo.
             </Text>
 
             {/* Tab "A domicilio"/"Online" (richiesta esplicita dell'utente):
-                filtrano gli orari sotto in base alla modalità offerta su
-                ogni fascia. */}
-            <XStack gap="$2">
-              {(["HOME", "ONLINE"] as const).map((mode) => (
-                <XStack
-                  key={mode}
-                  paddingHorizontal="$3"
-                  paddingVertical="$2"
-                  borderRadius="$10"
-                  backgroundColor={agendaMode === mode ? brand.cianografia : brand.gesso}
-                  cursor="pointer"
-                  accessibilityRole="button"
-                  accessibilityLabel={mode === "HOME" ? "A domicilio" : "Online"}
-                  onPress={() => {
-                    setAgendaMode(mode);
-                    setAgendaWindowOffset(0);
-                  }}
-                >
-                  <Text fontFamily="$body" fontSize={16} fontWeight="700" color={agendaMode === mode ? "#FFFFFF" : brand.grafite70}>
-                    {mode === "HOME" ? "A domicilio" : "Online"}
-                  </Text>
-                </XStack>
-              ))}
+                filtrano gli orari sotto in base alla modalità offerta su ogni
+                fascia. Segmentati come nella barra di ricerca, con "Orari
+                per:" davanti, come nella scheda dei risultati
+                (docs/CHANGELOG.md §349). */}
+            <XStack alignItems="center" gap="$2" flexWrap="wrap">
+              <Text fontFamily="$body" fontSize={13} fontWeight="600" color={brand.grafite70}>
+                Orari per:
+              </Text>
+              <XStack gap={2} backgroundColor={brand.gesso} borderRadius="$10" padding={3}>
+                {(["HOME", "ONLINE"] as const).map((mode) => {
+                  const active = agendaMode === mode;
+                  return (
+                    <XStack
+                      key={mode}
+                      tag="button"
+                      paddingHorizontal="$3"
+                      paddingVertical={6}
+                      borderWidth={0}
+                      borderRadius="$10"
+                      backgroundColor={active ? brand.cianografia : "transparent"}
+                      cursor="pointer"
+                      accessibilityRole="button"
+                      aria-pressed={active}
+                      onPress={() => {
+                        setAgendaMode(mode);
+                        setAgendaWindowOffset(0);
+                      }}
+                    >
+                      <Text fontFamily="$body" fontSize={14} fontWeight="700" color={active ? "#FFFFFF" : brand.grafite}>
+                        {mode === "HOME" ? "A domicilio" : "Online"}
+                      </Text>
+                    </XStack>
+                  );
+                })}
+              </XStack>
             </XStack>
 
             {/* Frecce raggruppate a ridosso delle intestazioni giorno
@@ -658,8 +656,8 @@ export function ProfessionalDetailContent({
                 docs/CHANGELOG.md §227): su computer le frecce finivano
                 all'estremo destro della scheda, lontane dai giorni; ora
                 stanno sopra l'ultima colonna. */}
-            <YStack gap="$1" width="100%" maxWidth={AGENDA_COLUMN_WIDTH * AGENDA_PREVIEW_DAYS}>
-              {totalAgendaDays > AGENDA_PREVIEW_DAYS ? (
+            <YStack gap="$1" width="100%" maxWidth={AGENDA_COLUMN_WIDTH * agendaVisibleDays}>
+              {totalAgendaDays > agendaVisibleDays ? (
                 // Frecce su una riga propria, allineate a destra (richiesta
                 // esplicita dell'utente: prima condividevano la riga con le
                 // intestazioni ed erano soggette allo stesso `flexWrap` di
@@ -682,7 +680,7 @@ export function ProfessionalDetailContent({
                     cursor={agendaCanGoBack ? "pointer" : undefined}
                     accessibilityRole={agendaCanGoBack ? "button" : undefined}
                     accessibilityLabel="Giorni precedenti"
-                    onPress={agendaCanGoBack ? () => setAgendaWindowOffset(Math.max(0, agendaOffset - AGENDA_PREVIEW_DAYS)) : undefined}
+                    onPress={agendaCanGoBack ? () => setAgendaWindowOffset(Math.max(0, agendaOffset - agendaVisibleDays)) : undefined}
                   >
                     <Icon name="chevron-left" size={20} color={brand.grafite} />
                   </XStack>
@@ -697,7 +695,7 @@ export function ProfessionalDetailContent({
                     cursor={agendaCanGoForward ? "pointer" : undefined}
                     accessibilityRole={agendaCanGoForward ? "button" : undefined}
                     accessibilityLabel="Giorni successivi"
-                    onPress={agendaCanGoForward ? () => setAgendaWindowOffset(agendaOffset + AGENDA_PREVIEW_DAYS) : undefined}
+                    onPress={agendaCanGoForward ? () => setAgendaWindowOffset(agendaOffset + agendaVisibleDays) : undefined}
                   >
                     <Icon name="chevron-right" size={20} color={brand.grafite} />
                   </XStack>
@@ -710,7 +708,7 @@ export function ProfessionalDetailContent({
                     <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite}>
                       {day.label}
                     </Text>
-                    <Text fontFamily="$mono" fontSize={13} color={brand.grafite70}>
+                    <Text fontVariant={["tabular-nums"]} fontSize={13} color={brand.grafite70}>
                       {day.dateLabel}
                     </Text>
                   </YStack>
@@ -719,7 +717,7 @@ export function ProfessionalDetailContent({
             </YStack>
 
             {agendaTimeRows.length > 0 ? (
-              <YStack gap="$1.5" width="100%" maxWidth={AGENDA_COLUMN_WIDTH * AGENDA_PREVIEW_DAYS}>
+              <YStack gap="$1.5" width="100%" maxWidth={AGENDA_COLUMN_WIDTH * agendaVisibleDays}>
                 {agendaTimeRows.map((time) => (
                   <XStack key={time}>
                     {agendaWindowDays.map((day) => {
@@ -757,14 +755,16 @@ export function ProfessionalDetailContent({
                             justifyContent="center"
                             paddingVertical={4}
                           >
+                            {/* Al completo: grigio chiaro, senza barra (docs/CHANGELOG.md §349). */}
                             <Text
-                              fontFamily="$mono"
+                              fontVariant={["tabular-nums"]}
                               fontSize={10.5}
                               $xs={{ fontSize: 9.5 }}
                               letterSpacing={-0.3}
                               color={brand.grafite70}
-                              textDecorationLine="line-through"
+                              opacity={0.55}
                               textAlign="center"
+                              accessibilityLabel={`${range}, al completo`}
                             >
                               {range}
                             </Text>
@@ -793,7 +793,7 @@ export function ProfessionalDetailContent({
                         >
                           <Link href={href} style={{ textDecoration: "none", pointerEvents: preview ? "none" : undefined }} tabIndex={preview ? -1 : undefined}>
                             <XStack paddingHorizontal={6} $xs={{ paddingHorizontal: 4 }} paddingVertical={4} borderRadius="$10" backgroundColor={brand.cianografiaVelo}>
-                              <Text fontFamily="$mono" fontSize={10.5} $xs={{ fontSize: 9.5 }} letterSpacing={-0.3} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
+                              <Text fontVariant={["tabular-nums"]} fontSize={10.5} $xs={{ fontSize: 9.5 }} letterSpacing={-0.3} fontWeight="700" color={brand.cianografiaScuro} textAlign="center">
                                 {range}
                               </Text>
                             </XStack>
@@ -909,32 +909,41 @@ export function ProfessionalDetailContent({
                     garantito che lo inoltri al nodo DOM). */}
                 <div id={`recensione-${review.id}`} style={{ scrollMarginTop: 96 }} />
                 <Surface gap="$2">
-                <XStack alignItems="center" justifyContent="space-between" gap="$2" flexWrap="wrap">
-                  <XStack alignItems="center" gap="$2" flexWrap="wrap">
-                    <XStack alignItems="center" gap="$1">
-                      <Icon name="star" size={15} strokeWidth={1.5} color={brand.ottone} fill={brand.ottone} />
-                      <Text fontWeight="600" color={brand.grafite}>
-                        {review.rating}/5
-                      </Text>
-                    </XStack>
-                    {/* Stesso segnale di fiducia già usato per le recensioni
-                        in homepage ("Lavoro confermato", RecentReviews.tsx) —
-                        qui era assente, ora coerente su entrambe le
-                        superfici: ogni recensione nasce comunque solo da una
-                        prenotazione confermata (regola di prodotto
-                        invariata), mancava solo di dirlo esplicitamente. */}
-                    <BadgeInfo info="confirmedJob">
-                      <XStack alignItems="center" gap={4}>
-                        <Icon name="badge-check" size={13} strokeWidth={2} color={brand.verificato} />
-                        <Text fontSize={13} fontWeight="700" color={brand.verificato}>
-                          Lavoro confermato
+                <XStack alignItems="flex-start" justifyContent="space-between" gap="$2">
+                  <YStack gap={4} flex={1} minWidth={0}>
+                    <XStack alignItems="center" gap="$2" flexWrap="wrap">
+                      <XStack alignItems="center" gap="$1">
+                        <Icon name="star" size={15} strokeWidth={1.5} color={brand.ottone} fill={brand.ottone} />
+                        <Text fontWeight="600" color={brand.grafite}>
+                          {review.rating}/5
                         </Text>
                       </XStack>
-                    </BadgeInfo>
+                      {/* Stesso segnale di fiducia già usato per le recensioni
+                          in homepage ("Lavoro confermato", RecentReviews.tsx) —
+                          qui era assente, ora coerente su entrambe le
+                          superfici: ogni recensione nasce comunque solo da una
+                          prenotazione confermata (regola di prodotto
+                          invariata), mancava solo di dirlo esplicitamente. */}
+                      <BadgeInfo info="confirmedJob">
+                        <XStack alignItems="center" gap={4}>
+                          <Icon name="badge-check" size={13} strokeWidth={2} color={brand.verificato} />
+                          <Text fontSize={13} fontWeight="700" color={brand.verificato}>
+                            Lavoro confermato
+                          </Text>
+                        </XStack>
+                      </BadgeInfo>
+                    </XStack>
+                    {/* Chi l'ha scritta e per quale lavoro (docs/CHANGELOG.md §349):
+                        nome e iniziale del cognome come nelle recensioni in
+                        home; il servizio solo se il professionista ne fa più
+                        d'uno, altrimenti ripeterebbe sempre lo stesso. */}
                     <Text fontSize={13} color={brand.grafite70}>
-                      · {reviewTimeAgo(review.createdAt)}
+                      <Text fontSize={13} fontWeight="700" color={brand.grafite}>
+                        {review.clientName ?? "Cliente"}
+                      </Text>
+                      {review.jobLabel && (professional.categories?.length ?? 1) > 1 ? ` · ${review.jobLabel}` : ""} · {reviewTimeAgo(review.createdAt)}
                     </Text>
-                  </XStack>
+                  </YStack>
                   {user && !preview ? (
                     <XStack
                       alignItems="center"

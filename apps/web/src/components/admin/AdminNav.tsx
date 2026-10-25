@@ -1,10 +1,12 @@
 "use client";
 
+import { useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { AdminOverview, AdminRoleName } from "@professionisti/api-client";
 import { adminCan, type AdminScope } from "@professionisti/shared";
 import { Icon, type IconName } from "@professionisti/ui";
+import { useScrollMoreRight } from "@/lib/useScrollMoreRight";
 
 type NavItem = {
   href: string;
@@ -29,7 +31,6 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { href: "/admin/pagamenti", label: "Pagamenti e rimborsi", icon: "credit-card", scope: "FINANCE", badge: (o) => o.pendingRefunds + o.openDisputes + o.unpaidBalances },
   { href: "/admin/richieste-generali", label: "Richieste generali", icon: "send", scope: "MODERATION", badge: (o) => o.closedGeneralRequestZones },
   { href: "/admin/richieste-eliminate", label: "Richieste eliminate", icon: "trash-2", scope: "MODERATION" },
-  { href: "/admin/lista-attesa", label: "Lista d'attesa", icon: "clock", scope: "MODERATION" },
   { href: "/admin/finanza", label: "Finanza e DAC7", icon: "coins", scope: "FINANCE" },
   { href: "/admin/statistiche", label: "Statistiche", icon: "trending-up", scope: "FINANCE" },
   { href: "/admin/registro", label: "Registro azioni", icon: "file-text", scope: "SUPER" },
@@ -43,8 +44,11 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
  */
 export function AdminNav({ overview, adminRoles, onOpenSearch }: { overview: AdminOverview | null; adminRoles: AdminRoleName[]; onOpenSearch: () => void }) {
   const pathname = usePathname();
+  // Su telefono la barra sfuma a destra finché ci sono altre sezioni (§349).
+  const navRef = useRef<HTMLElement>(null);
+  const moreRight = useScrollMoreRight(navRef);
   return (
-    <nav className="admin-nav" aria-label="Sezioni amministrazione">
+    <nav ref={navRef} className="admin-nav" aria-label="Sezioni amministrazione" data-more-right={moreRight ? "true" : undefined}>
       <span className="admin-nav-title">Amministrazione</span>
       <button type="button" className="admin-nav-link admin-nav-search" onClick={onOpenSearch}>
         <Icon name="search" size={16} color="#6e6459" />

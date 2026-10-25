@@ -351,7 +351,9 @@ function TodaySection({ title, subtitle, action, children }: { title: string; su
   return (
     <YStack gap="$3">
       <XStack justifyContent="space-between" alignItems="flex-end" gap="$2" flexWrap="wrap">
-        <YStack>
+        {/* flexShrink: senza, il sottotitolo lungo su una riga allargava la
+            pagina a 470px su telefono (docs/CHANGELOG.md §349, bug 1). */}
+        <YStack flex={1} flexShrink={1} minWidth={0}>
           <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
             {title}
           </Text>

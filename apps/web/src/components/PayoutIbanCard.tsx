@@ -201,7 +201,7 @@ export function PayoutIbanCard({
         <YStack gap="$2">
           <XStack gap="$3" alignItems="center" flexWrap="wrap" justifyContent="space-between">
             <YStack gap={2}>
-              <Text fontSize={16} fontWeight="700" fontFamily="$mono" color={brand.grafite}>
+              <Text fontSize={16} fontWeight="700" fontVariant={["tabular-nums"]} color={brand.grafite}>
                 {saved.maskedIban}
               </Text>
               <Text fontSize={16} color={brand.grafite70}>

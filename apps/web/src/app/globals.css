@@ -215,10 +215,36 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
     padding: 0 24px 32px;
   }
 }
+.pro-gallery {
+  list-style: none;
+  margin: 0;
+}
 .pro-gallery-item {
   position: relative;
+  display: block;
   aspect-ratio: 4 / 3;
   overflow: hidden;
+  color: #fff;
+  text-decoration: none;
+}
+/* Nome del mestiere sulla foto, su una sfumatura scura per leggerlo su
+   qualsiasi immagine (docs/CHANGELOG.md §349). */
+.pro-gallery-caption {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 28px 12px 10px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0));
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.pro-gallery-item:hover .pro-gallery-caption {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.pro-gallery-item:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
 }
 
 /* Stato di caricamento (fase "motion"): un pulsare lento e simmetrico,
@@ -722,6 +748,13 @@ button.notif-row-main:hover {
 .admin-nav::-webkit-scrollbar {
   display: none;
 }
+/* Finché c'è altro a destra, il bordo sfuma (docs/CHANGELOG.md §349). */
+@media (max-width: 999px) {
+  .admin-nav[data-more-right="true"] {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent);
+  }
+}
 .admin-nav-title {
   display: none;
 }
@@ -924,6 +957,13 @@ button.notif-row-main:hover {
 }
 .acct-nav::-webkit-scrollbar {
   display: none;
+}
+/* Finché c'è altro a destra, il bordo sfuma (docs/CHANGELOG.md §349). */
+@media (max-width: 759px) {
+  .acct-nav[data-more-right="true"] {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent);
+  }
 }
 .acct-nav-group {
   display: contents;
@@ -1623,9 +1663,15 @@ button.notif-row-main:hover {
 .journey-bar-step.is-here {
   color: #2b2420;
 }
+/* Da telefono le etichette restano, più piccole (docs/CHANGELOG.md §349):
+   senza, i passi non attivi erano cerchi muti. */
 @media (max-width: 480px) {
-  .journey-bar-step:not(.is-here) span {
-    display: none;
+  .journey-bar,
+  .journey-bar-step {
+    gap: 6px;
+  }
+  .journey-bar-step {
+    font-size: 13px;
   }
 }
 /* Stato del profilo e cosa non può ancora fare: righe in un solo riquadro. */
@@ -1883,6 +1929,12 @@ button.notif-row-main:hover {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
   gap: 12px;
+}
+/* Scheda utente: sei numeri in 3+3, non 5 e 1 orfano (docs/CHANGELOG.md §349). */
+@media (min-width: 661px) {
+  .admin-kpi-grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 .admin-trend-grid {
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
@@ -3209,10 +3261,10 @@ a.admin-kpi:hover {
   align-items: center;
   column-gap: 4px;
   max-width: 100%;
-  padding: 3px 10px;
+  padding: 5px 12px;
   border-radius: 20px;
-  border: 1px solid #f0dcc0;
-  background: #fff;
+  /* Piena come gli altri bollini, senza bordo (docs/CHANGELOG.md §349). */
+  background: #fdefe1;
   color: #2b2420;
   font-size: 13px;
   font-weight: 700;
@@ -3315,17 +3367,6 @@ a.admin-kpi:hover {
   align-items: center;
   justify-content: center;
   padding-bottom: 60px;
-}
-.story-card-chip {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 5px 10px;
-  border-radius: 999px;
-  background: #e6f4ec;
-  color: #2f6b3e;
 }
 .story-card-label {
   position: absolute;
@@ -3576,8 +3617,7 @@ a.admin-kpi:hover {
   transform: translateY(-4px);
 }
 .qx-value {
-  font-family: var(--font-mono), monospace;
-  font-weight: 500;
+  font-weight: 600;
   text-align: right;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -3898,6 +3938,80 @@ a.admin-kpi:hover {
    Scelta dei lavori a tessere (§279, stile A scelto dall'utente al posto
    del bordo dorato animato): due colonne da telefono, di più dove c'è
    spazio; spunta verde sulle scelte, "Principale" sotto la prima. */
+/* Orari liberi del professionista a pillole nella richiesta di preventivo
+   (docs/CHANGELOG.md §349), al posto del menu a tendina nativo. */
+.slot-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.slot-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.slot-pill {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid #f0dcc0;
+  border-radius: 999px;
+  background: #fff;
+  color: #2b2420;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.slot-pill:hover {
+  border-color: #189a63;
+}
+.slot-pill.is-on {
+  border-color: #189a63;
+  background: #189a63;
+  color: #fff;
+}
+.slot-pill:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.slot-more {
+  align-self: flex-start;
+  min-height: 40px;
+  padding: 0 2px;
+  border: none;
+  background: none;
+  color: #0e7a4c;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.slot-more:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.slot-days {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+}
+.slot-day {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.slot-day-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #6e6459;
+  text-transform: capitalize;
+}
+
 .cat-tiles {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
@@ -4100,6 +4214,27 @@ a.admin-kpi:hover {
   background: #faf6f0;
 }
 .search-summary:focus-visible {
+  outline: 3px solid #189a63;
+  outline-offset: 2px;
+}
+/* "Chiudi" sopra la ricerca aperta da telefono (docs/CHANGELOG.md §349). */
+.search-close {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid #eadfd3;
+  border-radius: 999px;
+  background: #fff;
+  color: #2b2420;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.search-close:focus-visible {
   outline: 3px solid #189a63;
   outline-offset: 2px;
 }
@@ -4415,7 +4550,8 @@ a.admin-kpi:hover {
   margin: 0 0 24px;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* Quante tessere ci sono davvero: quelle a zero non compaiono (§349). */
+  grid-template-columns: repeat(var(--facts-count, 3), minmax(0, 1fr));
   gap: 10px;
 }
 .city-facts-item {
@@ -4529,6 +4665,11 @@ a.admin-kpi:hover {
     transition: none;
   }
 }
+/* Nella colonna dei risultati, subito sotto le schede (docs/CHANGELOG.md §349). */
+.results-list-footer .city-facts {
+  max-width: none;
+  padding: 16px 0 0;
+}
 
 /* Barre "Da dove arrivano le richieste" in /admin/statistiche (CHANGELOG §296). */
 .traffic-bar {
@@ -4605,8 +4746,7 @@ a.admin-kpi:hover {
 .price-table td {
   white-space: nowrap;
   text-align: right;
-  font-family: var(--font-mono), monospace;
-  font-weight: 500;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: #2b2420;
 }
@@ -4935,5 +5075,162 @@ a.admin-kpi:hover {
   }
   .request-sent-yay {
     font-size: 30px;
+  }
+}
+
+/* Barra "Modifiche non salvate · Salva" dei moduli lunghi (SaveBar,
+   docs/CHANGELOG.md §349): ferma in fondo allo schermo solo quando c'è
+   qualcosa da salvare. */
+.save-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.save-bar.is-dirty {
+  position: sticky;
+  bottom: 12px;
+  z-index: 30;
+  padding: 12px 16px;
+  border: 1px solid #f0dcc0;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(43, 36, 32, 0.12);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .save-bar.is-dirty {
+    animation: save-bar-in 180ms ease-out;
+  }
+}
+@keyframes save-bar-in {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+}
+
+/* Riga di una voce del preventivo (docs/CHANGELOG.md §349): voce, "Da",
+   "A" e la X in una riga; da telefono la voce sopra e i prezzi affiancati. */
+.quote-item-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 104px 104px 32px;
+  gap: 8px;
+  align-items: center;
+}
+.quote-item-price {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2b2420;
+}
+.quote-item-price span {
+  flex-shrink: 0;
+}
+.quote-item-name,
+.quote-item-price input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+@media (max-width: 660px) {
+  .quote-item-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 32px;
+  }
+  .quote-item-name {
+    grid-column: 1 / -1;
+  }
+}
+.slot-pill-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 14px;
+}
+
+/* "Consigli per una bio" in Modifica profilo, chiusi di serie (§349). */
+.bio-tips summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #2b2420;
+  cursor: pointer;
+  list-style: none;
+}
+.bio-tips summary::-webkit-details-marker {
+  display: none;
+}
+.bio-tips summary::after {
+  content: "›";
+  margin-left: 2px;
+  font-size: 16px;
+  color: #0e7a4c;
+  transition: transform 150ms ease;
+}
+.bio-tips[open] summary::after {
+  transform: rotate(90deg);
+}
+.bio-tips summary:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.radius-more summary {
+  color: #0e7a4c;
+  min-height: 24px;
+}
+
+/* Tabelle admin da telefono (docs/CHANGELOG.md §349): ogni riga diventa una
+   scheda corta, la prima colonna (o quella segnata .admin-cell-main) in
+   grassetto sopra e le altre in fila sotto. Prima la tabella era tagliata a
+   destra e si vedevano solo le prime due colonne. Le intestazioni restano per
+   chi usa un lettore di schermo. */
+@media (max-width: 660px) {
+  .admin-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .admin-table,
+  .admin-table tbody {
+    display: block;
+  }
+  .admin-table tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 12px;
+    row-gap: 4px;
+    padding: 12px 14px;
+    border-bottom: 1px solid #f0dcc0;
+  }
+  .admin-table tr:last-child {
+    border-bottom: none;
+  }
+  .admin-table tr:nth-child(even) {
+    background: #fdefe1;
+  }
+  .admin-table td,
+  .admin-table tr:nth-child(even) td {
+    display: block;
+    padding: 0;
+    border: none;
+    background: none;
+    font-size: 13px;
+    color: #6e6459;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .admin-table tr:not(:has(.admin-cell-main)) td:first-child,
+  .admin-table tr:nth-child(n) td.admin-cell-main {
+    order: -1;
+    flex-basis: 100%;
+    font-size: 15px;
+    font-weight: 700;
+    color: #2b2420;
   }
 }

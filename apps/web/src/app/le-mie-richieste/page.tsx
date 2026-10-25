@@ -13,7 +13,6 @@ import { SkeletonRequestList } from "@/components/Skeleton";
 import { EmptyRequestsIllustration } from "@/components/icons/EmptyStateIllustrations";
 import { CategoryCarousel } from "@/components/CategoryCarousel";
 import { mergeCounts, mergeIds, unreadBookingCounts, unreadBookingIds, unreadGuidedRequestIds, unreadQuoteCounts, unreadQuoteIds, unreadThreadCounts } from "@/lib/notificationSections";
-import { Pagination } from "@/components/ListControls";
 import { RestoreAllArchivedBar, RestoredNotice } from "@/components/RequestCardPersonalActions";
 import { highlightDeepLinkTarget } from "@/lib/deepLinkHighlight";
 import { classifyClientRequestStage, type RequestStage } from "@/lib/requestStage";
@@ -69,6 +68,8 @@ const CLIENT_TABS: { key: ClientTabKey; label: string }[] = [
   { key: "scaduta", label: "Scadute" },
   { key: "archiviate", label: "Archiviate" },
 ];
+/** Numero rosso solo dove tocca al cliente, cioè sui preventivi da rispondere (§349). */
+const ACTION_TABS: ReadonlySet<ClientTabKey> = new Set<ClientTabKey>(["in_attesa"]);
 
 type SortMode = "recenti" | "vecchie" | "aggiornamento";
 
@@ -93,7 +94,9 @@ function LeMieRichiesteContent() {
   const [zoneFilter, setZoneFilter] = useState("tutte");
   const [serviceModeFilter, setServiceModeFilter] = useState<"tutte" | "HOME" | "ONLINE">("tutte");
   const [showFiltersModal, setShowFiltersModal] = useState(false);
-  const [pageSize] = useState(5);
+  // Niente pagine fino a 10 richieste, poi "Mostra altre" (docs/CHANGELOG.md
+  // §349): `page` conta i gruppi da 10 già mostrati.
+  const pageSize = 10;
   const [page, setPage] = useState(1);
   const [openId, setOpenId] = useState<string | null>(null);
   const [justBookedId, setJustBookedId] = useState<string | null>(null);
@@ -123,13 +126,6 @@ function LeMieRichiesteContent() {
   const [pendingChatOpen, setPendingChatOpen] = useState<{ requestId: string; professionalProfileId: string } | null>(null);
 
   const listTopRef = useRef<HTMLDivElement>(null);
-  function scrollToListTop() {
-    listTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-  function goToPage(nextPage: number) {
-    setPage(nextPage);
-    scrollToListTop();
-  }
   // Scelta una scheda di stato con una sola richiesta dentro, quella si
   // apre da sola (richiesta dell'utente, docs/CHANGELOG.md §336): vedi
   // l'effetto più sotto, che legge la lista già filtrata.
@@ -226,9 +222,8 @@ function LeMieRichiesteContent() {
     if (filteredSortedRequests.length === 1) setOpenId(filteredSortedRequests[0]!.id);
   }, [filteredSortedRequests]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredSortedRequests.length / pageSize));
-  const effectivePage = Math.min(page, totalPages);
-  const visibleRequests = filteredSortedRequests.slice((effectivePage - 1) * pageSize, effectivePage * pageSize);
+  const visibleRequests = filteredSortedRequests.slice(0, page * pageSize);
+  const hiddenCount = filteredSortedRequests.length - visibleRequests.length;
 
   // Deep link da una notifica/da /chat (richiesta esplicita dell'utente) —
   // `?open=<guidedRequestId>` apre/scrolla alla card giusta, a prescindere
@@ -462,8 +457,13 @@ function LeMieRichiesteContent() {
                       <Text fontFamily="$body" fontSize={16} fontWeight="800" color={active ? "white" : brand.grafite}>
                         {tab.label}
                       </Text>
+                      {count > 0 && !ACTION_TABS.has(tab.key) ? (
+                        <Text fontFamily="$body" fontSize={14} fontWeight="600" color={active ? "rgba(255,255,255,0.85)" : brand.grafite70} marginLeft={6}>
+                          {count}
+                        </Text>
+                      ) : null}
                     </XStack>
-                    {count > 0 ? (
+                    {count > 0 && ACTION_TABS.has(tab.key) ? (
                       <YStack
                         position="absolute"
                         top={-5}
@@ -488,15 +488,21 @@ function LeMieRichiesteContent() {
               })}
             </CategoryCarousel>
 
-            <input aria-label="Cerca nelle richieste"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              placeholder="Cerca in ogni campo della richiesta..."
-              style={{ ...filterInputStyle, width: "100%" }}
-            />
+            {/* Da telefono restano solo le schede di stato e "Filtri", con
+                dentro ricerca e modalità (docs/CHANGELOG.md §349): tre file di
+                controlli spingevano la prima richiesta a metà schermo. */}
+            <YStack $xs={{ display: "none" }}>
+              <input
+                aria-label="Cerca nelle richieste"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="Cerca in ogni campo della richiesta..."
+                style={{ ...filterInputStyle, width: "100%" }}
+              />
+            </YStack>
 
             <XStack gap="$2" alignItems="center" flexWrap="wrap">
               <XStack
@@ -518,7 +524,7 @@ function LeMieRichiesteContent() {
                 </Text>
               </XStack>
 
-              <XStack borderRadius={999} borderWidth={1} borderColor={brand.filetto} overflow="hidden">
+              <XStack $xs={{ display: "none" }} borderRadius={999} borderWidth={1} borderColor={brand.filetto} overflow="hidden">
                 {(
                   [
                     { key: "tutte", label: "Tutte", icon: null },
@@ -541,6 +547,7 @@ function LeMieRichiesteContent() {
                         setPage(1);
                       }}
                       accessibilityRole="button"
+                      aria-pressed={active}
                     >
                       {opt.icon ? <Icon name={opt.icon} size={14} strokeWidth={2} color={active ? "white" : brand.grafite} /> : null}
                       <Text fontSize={16} fontWeight="700" color={active ? "white" : brand.grafite}>
@@ -593,6 +600,31 @@ function LeMieRichiesteContent() {
                   </XStack>
 
                   <YStack gap="$3">
+                    <YStack gap="$3" $gtXs={{ display: "none" }}>
+                      <input
+                        aria-label="Cerca nelle richieste"
+                        value={search}
+                        onChange={(e) => {
+                          setSearch(e.target.value);
+                          setPage(1);
+                        }}
+                        placeholder="Cerca in ogni campo della richiesta..."
+                        style={{ ...filterInputStyle, width: "100%" }}
+                      />
+                      <select
+                        aria-label="Modalità"
+                        value={serviceModeFilter}
+                        onChange={(e) => {
+                          setServiceModeFilter(e.target.value as "tutte" | "HOME" | "ONLINE");
+                          setPage(1);
+                        }}
+                        style={{ ...filterInputStyle, width: "100%" }}
+                      >
+                        <option value="tutte">A domicilio e online</option>
+                        <option value="HOME">Solo a domicilio</option>
+                        <option value="ONLINE">Solo online</option>
+                      </select>
+                    </YStack>
                     <select aria-label="Ordina per"
                       value={sortMode}
                       onChange={(e) => {
@@ -659,8 +691,6 @@ function LeMieRichiesteContent() {
           {activeStageTab === "archiviate" ? (
             <RestoreAllArchivedBar token={token} guidedRequestIds={(requests ?? []).filter((r) => r.myState.archivedAt).map((r) => r.id)} onChanged={reload} />
           ) : null}
-          <Pagination page={effectivePage} totalPages={totalPages} onPageChange={goToPage} />
-
           {requests === null ? (
             <SkeletonRequestList count={3} />
           ) : requests.length === 0 ? (
@@ -682,7 +712,7 @@ function LeMieRichiesteContent() {
             </Surface>
           ) : visibleRequests.length === 0 ? (
             <Surface>
-              <EmptyState icon="search" title="Nessuna richiesta in questa categoria" description="Cambia filtro per vedere le altre richieste." />
+              <EmptyState icon="search" title="Nessuna richiesta in questa sezione" description="Cambia filtro per vedere le altre richieste." />
             </Surface>
           ) : (
             visibleRequests.map((request) => (
@@ -719,7 +749,13 @@ function LeMieRichiesteContent() {
             ))
           )}
 
-          <Pagination page={effectivePage} totalPages={totalPages} onPageChange={goToPage} />
+          {hiddenCount > 0 ? (
+            <XStack justifyContent="center">
+              <Button variant="secondary" onPress={() => setPage((current) => current + 1)}>
+                {`Mostra altre ${Math.min(hiddenCount, pageSize)}`}
+              </Button>
+            </XStack>
+          ) : null}
         </YStack>
       </YStack>
     </YStack>

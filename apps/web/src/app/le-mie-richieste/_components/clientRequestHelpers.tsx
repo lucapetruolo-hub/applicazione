@@ -68,7 +68,7 @@ export function ClientStagePill({ stage }: { stage: RequestStage }) {
   return (
     <XStack alignItems="center" gap={6} paddingHorizontal="$3" paddingVertical={8} borderRadius={999} backgroundColor={s.bg}>
       <Icon name={s.icon} size={15} strokeWidth={2} color={s.fg} />
-      <Text fontFamily="$body" fontSize={16} fontWeight="800" color={s.fg} textTransform="uppercase">
+      <Text fontFamily="$body" fontSize={16} fontWeight="700" color={s.fg}>
         {CLIENT_STAGE_LABEL[stage]}
       </Text>
     </XStack>

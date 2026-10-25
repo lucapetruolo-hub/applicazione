@@ -8,11 +8,12 @@ import { X } from "lucide-react";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
 import {
   allItalianCityNames,
+  quotesPriceSpan,
+  formatEur,
+  formatEurCents,
   cancellationNoticeLabel,
   isLateCancellation,
-  averageQuoteTotalEurCents,
   findComuneByName,
-  formatEurCents,
   formatItalianUntil,
   formatServicePriceRange,
   isPlausiblePhoneNumber,
@@ -295,7 +296,7 @@ export function GuidedRequestCard({
   // Preventivo diventato l'intervento: il suo Contatta/Cronologia passa nella sezione dell'intervento.
   const acceptedQuote = booking ? request.quotes.find((quote) => quote.status === "ACCEPTED" && quote.professionalProfileId === booking.professionalProfileId) : undefined;
   const canEditDetails = canDelete && !hasQuote;
-  const averagePriceEurCents = useMemo(() => averageQuoteTotalEurCents(request.quotes.map((quote) => quote.items)), [request.quotes]);
+  const priceSpan = useMemo(() => quotesPriceSpan(request.quotes.map((quote) => quote.items)), [request.quotes]);
 
   function startEditing() {
     setDescription(request.description);
@@ -759,11 +760,19 @@ export function GuidedRequestCard({
     </YStack>
   ) : null;
 
-  const headingName = booking ?(booking.professionalAccountDeleted ? "Account eliminato" : booking.businessName) : request.categoryLabel;
+
+  // Ogni scheda si legge per lavoro (docs/CHANGELOG.md §349): prima la
+  // descrizione in una riga, poi "Categoria · Città · con Nome". Prima il
+  // titolo era la categoria o, dopo l'accettazione, il professionista: due
+  // schede diverse nella stessa lista.
+  const professionalName = booking ? (booking.professionalAccountDeleted ? "Account eliminato" : booking.businessName) : null;
+  const metaLine = [request.categoryLabel, request.city || (isOnline ? "Online" : null), professionalName ? `con ${professionalName}` : null]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <Surface borderLeftWidth={4} borderLeftColor={STAGE_STYLE[stage].border} gap="$0" padding={0} overflow="hidden">
-      <YStack padding="$4" gap="$2" cursor="pointer" onPress={onToggle} accessibilityRole="button">
+      <YStack padding="$4" gap="$2" cursor="pointer" onPress={onToggle} accessibilityRole="button" aria-expanded={isOpen}>
         <XStack justifyContent="space-between" alignItems="flex-start" gap="$2" flexWrap="wrap">
           <XStack gap="$2" flexWrap="wrap" flexShrink={1} minWidth={0}>
             {request.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
@@ -782,7 +791,7 @@ export function GuidedRequestCard({
             </Text>
             {stage === "completata" && booking?.finalAmountEurCents != null ? (
               <Text fontFamily="$body" fontWeight="800" fontSize={18} color={brand.grafite}>
-                {formatEurCents(booking.finalAmountEurCents)}
+                {formatEur(booking.finalAmountEurCents)}
               </Text>
             ) : null}
             {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
@@ -794,14 +803,19 @@ export function GuidedRequestCard({
             la riga dei badge va a capo e il pulsante finiva in conflitto con
             loro). */}
         <XStack alignItems="flex-start" justifyContent="space-between" gap="$2">
-          {/* Foto del professionista accanto al nome quando la richiesta è
-              diventata un lavoro (richiesta esplicita dell'utente),
-              iniziali se manca; prima il titolo è la categoria, nessuna foto. */}
-          <XStack flex={1} minWidth={0} alignItems="center" gap="$2">
+          {/* Foto del professionista accanto al lavoro quando la richiesta è
+              diventata un lavoro (richiesta esplicita dell'utente), iniziali
+              se manca. */}
+          <XStack flex={1} minWidth={0} alignItems="center" gap="$3">
             {booking && !booking.professionalAccountDeleted ? <Avatar name={booking.businessName} imageUrl={booking.professionalImageUrl} size={40} /> : null}
-            <Text flex={1} minWidth={0} fontFamily="$heading" fontWeight="800" fontSize={26} color={brand.grafite}>
-              {headingName}
-            </Text>
+            <YStack flex={1} minWidth={0} gap={2}>
+              <Text fontFamily="$heading" fontWeight="800" fontSize={20} lineHeight={26} color={brand.grafite} numberOfLines={isOpen ? undefined : 1}>
+                {request.description}
+              </Text>
+              <Text fontSize={16} color={brand.grafite70} numberOfLines={2}>
+                {metaLine}
+              </Text>
+            </YStack>
           </XStack>
           <CardActionsMenu accessibilityLabel="Azioni sulla richiesta" actions={menuActions} />
         </XStack>
@@ -816,21 +830,6 @@ export function GuidedRequestCard({
             {error}
           </Text>
         ) : null}
-        {booking ? (
-          <XStack alignItems="center" gap="$1">
-            <Icon name="wrench" size={15} color={brand.grafite70} />
-            <Text fontSize={16} color={brand.grafite70}>
-              {request.categoryLabel} · {request.city || "Online"}
-            </Text>
-          </XStack>
-        ) : (
-          <XStack alignItems="center" gap="$1">
-            <Icon name="map-pin" size={14} color={brand.grafite70} />
-            <Text fontSize={16} color={brand.grafite70}>
-              {request.city || (isOnline ? "Consulenza online" : "")}
-            </Text>
-          </XStack>
-        )}
         {request.sentWith && request.sentWith.length > 0 ? (
           // Richieste nate dallo stesso invio con più categorie (docs/CHANGELOG.md §259).
           <XStack alignItems="center" gap="$1">
@@ -845,12 +844,14 @@ export function GuidedRequestCard({
             Annullata {booking.canceledBy === "PROFESSIONAL" ? "dal professionista" : "da te"}
           </Text>
         ) : null}
-        <Text fontSize={16} color={brand.grafite} lineHeight={22}>
-          {request.description}
-        </Text>
 
-        <XStack justifyContent="center" paddingTop="$1">
-          <Icon name={isOpen ? "chevron-up" : "chevron-down"} size={18} color={brand.grafite70} />
+        {/* Scritta al posto della sola freccia (docs/CHANGELOG.md §349): una
+            freccia da sola è il controllo che si trova meno. */}
+        <XStack justifyContent="flex-end" alignItems="center" gap="$1" paddingTop="$1">
+          <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
+            {isOpen ? "Chiudi dettagli" : "Vedi dettagli"}
+          </Text>
+          <Icon name={isOpen ? "chevron-up" : "chevron-down"} size={18} color={brand.cianografiaScuro} />
         </XStack>
       </YStack>
 
@@ -906,16 +907,19 @@ export function GuidedRequestCard({
             <XStack alignItems="center" gap="$2">
               <Icon name="clock" size={14} color={brand.grafite70} strokeWidth={1.5} />
               <Text fontSize={16} color={brand.grafite70}>
-                La richiesta resta aperta ai preventivi fino {formatItalianUntil(request.openUntil)}.
+                La richiesta resta aperta ai preventivi fino {formatItalianUntil(request.openUntil, { withTime: false })}.
               </Text>
             </XStack>
           ) : null}
 
-          {!request.professionalProfileId && averagePriceEurCents !== null && !booking ? (
+          {!request.professionalProfileId && priceSpan !== null && !booking ? (
             <XStack alignItems="center" gap="$2" backgroundColor={brand.cianografiaVelo} borderRadius="$3" padding="$3">
               <Icon name="coins" size={16} color={brand.cianografiaScuro} strokeWidth={1.5} />
               <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
-                Prezzo totale medio: {formatEurCents(averagePriceEurCents)}
+                {priceSpan.count} preventivi:{" "}
+                {priceSpan.minEurCents === priceSpan.maxEurCents
+                  ? formatEur(priceSpan.minEurCents)
+                  : `da ${formatEur(priceSpan.minEurCents)} a ${formatEur(priceSpan.maxEurCents)}`}
               </Text>
             </XStack>
           ) : null}
@@ -1029,7 +1033,8 @@ export function GuidedRequestCard({
               </Text>
               {request.quotes.map(quoteCard)}
             </YStack>
-          ) : (
+          ) : statusSummary ? null : (
+            // Con il riepilogo qui sopra la frase c'era due volte (docs/CHANGELOG.md §349).
             <Text color={brand.grafite70} fontSize={16}>
               Nessun preventivo ricevuto ancora.
             </Text>

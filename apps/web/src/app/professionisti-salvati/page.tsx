@@ -5,9 +5,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ProfessionalSearchResult } from "@professionisti/shared";
-import { Button, EmptyState, ProfessionalCard, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Button, EmptyState, Icon, ProfessionalCard, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
+import { IconActionButton } from "@/components/IconActionButton";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { SkeletonProfessionalCard } from "@/components/Skeleton";
 import { EmptySavedIllustration } from "@/components/icons/EmptyStateIllustrations";
@@ -17,6 +18,11 @@ export default function ProfessionistiSalvatiPage() {
   const { user, token, isLoading } = useAuth();
   const [professionals, setProfessionals] = useState<ProfessionalSearchResult[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Tolti dai salvati in questa visita: la scheda resta con il cuore vuoto,
+  // così un tocco per sbaglio si annulla con un altro tocco (stesso controllo
+  // della ricerca, docs/CHANGELOG.md §349). Alla prossima visita non c'è più.
+  const [unsavedIds, setUnsavedIds] = useState<Set<string>>(() => new Set());
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -26,13 +32,23 @@ export default function ProfessionistiSalvatiPage() {
       .catch((err) => setError(err instanceof Error ? err.message : "Errore nel caricamento."));
   }, [token]);
 
-  async function handleRemove(professionalProfileId: string) {
+  async function handleToggle(professionalProfileId: string) {
     if (!token) return;
+    const wasSaved = !unsavedIds.has(professionalProfileId);
+    setPendingId(professionalProfileId);
     try {
-      await apiClient.unsaveProfessional(token, professionalProfileId);
-      setProfessionals((prev) => (prev ? prev.filter((p) => p.id !== professionalProfileId) : prev));
+      if (wasSaved) await apiClient.unsaveProfessional(token, professionalProfileId);
+      else await apiClient.saveProfessional(token, professionalProfileId);
+      setUnsavedIds((prev) => {
+        const next = new Set(prev);
+        if (wasSaved) next.add(professionalProfileId);
+        else next.delete(professionalProfileId);
+        return next;
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setPendingId(null);
     }
   }
 
@@ -55,7 +71,7 @@ export default function ProfessionistiSalvatiPage() {
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
-      <XStack width="100%" maxWidth={760} gap="$8" alignItems="flex-start" flexWrap="wrap">
+      <XStack width="100%" maxWidth={880} gap="$8" alignItems="flex-start" flexWrap="wrap">
         <YStack flex={1} minWidth={280} gap="$5">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
             Professionisti salvati
@@ -85,9 +101,12 @@ export default function ProfessionistiSalvatiPage() {
             />
           ) : (
             <YStack gap="$3">
-              {professionals.map((pro) => (
-                <YStack key={pro.id} gap="$2">
+              {professionals.map((pro, index) => {
+                const saved = !unsavedIds.has(pro.id);
+                return (
                   <ProfessionalCard
+                    key={pro.id}
+                    defaultExpanded={index === 0}
                     businessName={pro.businessName}
                     categoryLabel={pro.categoryLabel}
                     otherCategoryLabels={pro.categories?.filter((category) => category.slug !== pro.categorySlug).map((category) => category.label)}
@@ -106,12 +125,26 @@ export default function ProfessionistiSalvatiPage() {
                     href={professionalPath(pro)}
                     onPress={() => router.push(professionalPath(pro))}
                     icon={<ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={72} />}
+                    // Cuore pieno in alto a destra, come nella ricerca (docs/CHANGELOG.md
+                    // §349): prima "Rimuovi dai salvati" era un testo piccolo fuori dalla scheda.
+                    action={
+                      // Il clic sul cuore non deve aprire anche il profilo (clic sulla card).
+                      // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+                      <span style={{ display: "inline-flex", flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                        <IconActionButton
+                          label={saved ? "Salvato" : "Salva"}
+                          active={saved}
+                          disabled={pendingId === pro.id}
+                          size={36}
+                          onPress={() => void handleToggle(pro.id)}
+                        >
+                          <Icon name="heart" size={16} strokeWidth={2} color={saved ? "white" : brand.grafite} fill={saved ? "white" : "none"} />
+                        </IconActionButton>
+                      </span>
+                    }
                   />
-                  <Button variant="ghost" size="$2" height={36} alignSelf="flex-end" onPress={() => handleRemove(pro.id)}>
-                    Rimuovi dai salvati
-                  </Button>
-                </YStack>
-              ))}
+                );
+              })}
             </YStack>
           )}
         </YStack>

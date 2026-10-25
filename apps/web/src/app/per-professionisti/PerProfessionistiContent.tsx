@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Check } from "lucide-react";
-import { PROFESSIONAL_CATEGORIES, SUBSCRIPTION_FEATURES, SUBSCRIPTION_TIERS, type SubscriptionTier } from "@professionisti/shared";
+import { PROFESSIONAL_CATEGORIES, SUBSCRIPTION_FEATURES, SUBSCRIPTION_TIERS, type ProfessionalCategorySlug } from "@professionisti/shared";
 import { Button, ButtonArrow, Icon, Text, XStack, YStack, brand, radiusDoc, type IconName } from "@professionisti/ui";
 import { MagneticButton } from "@/components/MagneticButton";
 import { GlowLights } from "@/components/GlowLights";
@@ -239,31 +239,41 @@ function ProPhoto() {
 }
 
 /** Foto Pexels dei lavori scelte dall'utente (docs/CHANGELOG.md §233): 6195125, 6231851, 7464702, 5463575. */
-const GALLERY: { src: string; alt: string; position: string }[] = [
-  { src: "/page-photos/per-professionisti-galleria-pulizie.webp", alt: "Una squadra delle pulizie in un soggiorno", position: "40% 50%" },
-  { src: "/page-photos/per-professionisti-galleria-giardiniere.webp", alt: "Una giardiniera pota le rose", position: "60% 40%" },
-  { src: "/page-photos/per-professionisti-galleria-traslochi.webp", alt: "Un traslocatore sorride porgendo uno scatolone", position: "45% 40%" },
-  { src: "/page-photos/per-professionisti-galleria-climatizzazione.webp", alt: "Un tecnico controlla un condizionatore sul tetto", position: "40% 50%" },
+const GALLERY: { src: string; alt: string; position: string; slug: ProfessionalCategorySlug }[] = [
+  { src: "/page-photos/per-professionisti-galleria-pulizie.webp", alt: "Una squadra delle pulizie in un soggiorno", position: "40% 50%", slug: "pulizie" },
+  { src: "/page-photos/per-professionisti-galleria-giardiniere.webp", alt: "Una giardiniera pota le rose", position: "60% 40%", slug: "giardiniere" },
+  { src: "/page-photos/per-professionisti-galleria-traslochi.webp", alt: "Un traslocatore sorride porgendo uno scatolone", position: "45% 40%", slug: "traslochi" },
+  { src: "/page-photos/per-professionisti-galleria-climatizzazione.webp", alt: "Un tecnico controlla un condizionatore sul tetto", position: "40% 50%", slug: "climatizzazione" },
 ];
 
-/** Più foto nella pagina (richiesta dell'utente): una fila di mestieri diversi. */
+/**
+ * Più foto nella pagina (richiesta dell'utente): una fila di mestieri diversi.
+ * Ogni foto ha il nome del mestiere e porta alla sua pagina "Lavora con noi"
+ * (docs/CHANGELOG.md §349): senza didascalia erano solo decorazione.
+ */
 function ProGallery() {
   return (
     <Band>
       <SectionTitle lead="Idraulici, elettricisti, pulizie, traslochi, giardinieri e molti altri mestieri.">Per ogni tipo di lavoro</SectionTitle>
-      <div className="pro-gallery">
-        {GALLERY.map((photo) => (
-          <div key={photo.src} className="pro-gallery-item" style={{ border: `1px solid ${LINE}`, borderRadius: radiusDoc }}>
-            <Image
-              src={photo.src}
-              alt={photo.alt}
-              fill
-              sizes="(max-width: 768px) 50vw, 290px"
-              style={{ objectFit: "cover", objectPosition: photo.position }}
-            />
-          </div>
-        ))}
-      </div>
+      <ul className="pro-gallery">
+        {GALLERY.map((photo) => {
+          const label = PROFESSIONAL_CATEGORIES.find((category) => category.slug === photo.slug)?.label ?? photo.slug;
+          return (
+            <li key={photo.src}>
+              <Link href={`/lavora-con-noi/${photo.slug}`} className="pro-gallery-item" style={{ border: `1px solid ${LINE}`, borderRadius: radiusDoc }}>
+                <Image
+                  src={photo.src}
+                  alt={photo.alt}
+                  fill
+                  sizes="(max-width: 768px) 50vw, 290px"
+                  style={{ objectFit: "cover", objectPosition: photo.position }}
+                />
+                <span className="pro-gallery-caption">{label}</span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
     </Band>
   );
 }
@@ -277,16 +287,23 @@ function Panel({ children }: { children: ReactNode }) {
   );
 }
 
-/** Barra "segnaposto", come le anteprime astratte di efferd. */
-function Bar({ width, strong }: { width: `${number}%`; strong?: boolean }) {
-  return <YStack height={8} width={width} borderRadius={999} backgroundColor={strong ? brand.cianografiaVelo : "rgba(43,36,32,0.08)"} />;
-}
-
-const AGENDA_BARS: { width: `${number}%`; strong: boolean }[] = [
-  { width: "70%", strong: true },
-  { width: "50%", strong: false },
-  { width: "60%", strong: false },
+/**
+ * Mini-esempi veri al posto delle righe grigie finte (docs/CHANGELOG.md §349):
+ * sembravano contenuti non caricati.
+ */
+const AGENDA_EXAMPLE: { time: string; job: string; note: string; strong: boolean }[] = [
+  { time: "Gio 9:00", job: "Rubinetto cucina", note: "promemoria inviato", strong: true },
+  { time: "Gio 14:30", job: "Scarico doccia", note: "a domicilio", strong: false },
+  { time: "Ven 10:00", job: "Caldaia", note: "nuova prenotazione", strong: false },
 ];
+
+function MiniLine({ children, strong }: { children: ReactNode; strong?: boolean }) {
+  return (
+    <Text fontSize={13} lineHeight={18} color={strong ? brand.grafite : brand.grafite70} fontWeight={strong ? "600" : "400"} numberOfLines={1}>
+      {children}
+    </Text>
+  );
+}
 
 function ProBenefits() {
   return (
@@ -323,10 +340,14 @@ function ProBenefits() {
           <CellTitle>Agenda e promemoria</CellTitle>
           <CellText>Gli appuntamenti si prenotano dalla tua agenda e il cliente riceve un promemoria prima.</CellText>
           <Panel>
-            {AGENDA_BARS.map((bar, index) => (
-              <XStack key={index} alignItems="center" gap="$2">
-                <Icon name="clock" size={14} color={bar.strong ? brand.cianografiaScuro : brand.grafite70} strokeWidth={1.75} />
-                <Bar width={bar.width} strong={bar.strong} />
+            {AGENDA_EXAMPLE.map((item) => (
+              <XStack key={item.time} alignItems="center" gap="$2">
+                <Icon name="clock" size={14} color={item.strong ? brand.cianografiaScuro : brand.grafite70} strokeWidth={1.75} />
+                <YStack flex={1} minWidth={0}>
+                  <MiniLine strong={item.strong}>
+                    {item.time} · {item.job} · {item.note}
+                  </MiniLine>
+                </YStack>
               </XStack>
             ))}
           </Panel>
@@ -340,8 +361,8 @@ function ProBenefits() {
                 <Icon key={star} name="star" size={16} color={brand.ottone} fill={brand.ottone} strokeWidth={1.5} />
               ))}
             </XStack>
-            <Bar width="85%" />
-            <Bar width="55%" />
+            <MiniLine strong>«Puntuale e pulito, lo richiamerò.»</MiniLine>
+            <MiniLine>Giulia R. · Lavoro confermato</MiniLine>
           </Panel>
         </Cell>
       </Grid>
@@ -394,18 +415,13 @@ function ProSteps() {
 }
 
 /**
- * Il pulsante sotto i livelli porta al pagamento di quello scelto
- * (docs/CHANGELOG.md §177): un professionista già iscritto va dritto in
- * Abbonamento, gli altri si iscrivono e poi ci arrivano (`?livello=`).
+ * Un pulsante per livello, dentro la sua scheda (docs/CHANGELOG.md §349): prima
+ * si sceglieva la scheda e sotto restava un "Scegli un livello" spento, che
+ * diceva "non puoi andare avanti". Porta al pagamento del livello (§177): un
+ * professionista già iscritto va dritto in Abbonamento, gli altri si
+ * iscrivono e poi ci arrivano (`?livello=`).
  */
 function ProPricing({ isProfessional }: { isProfessional: boolean }) {
-  const [selectedTier, setSelectedTier] = useState<SubscriptionTier | null>(null);
-  const selectedLabel = selectedTier ? SUBSCRIPTION_TIERS.find((t) => t.tier === selectedTier)?.label : null;
-  const continueHref = selectedTier
-    ? isProfessional
-      ? `/dashboard/abbonamento?livello=${selectedTier}`
-      : `/registrati?ruolo=professionista&livello=${selectedTier}`
-    : null;
   return (
     <Band id="prezzi">
       <SectionTitle lead="I livelli cambiano solo per quanti lavori accettati al mese sono compresi. Un lavoro è accettato quando il cliente accetta il tuo preventivo o prenota dalla tua agenda.">
@@ -430,36 +446,35 @@ function ProPricing({ isProfessional }: { isProfessional: boolean }) {
       </YStack>
       <Grid>
         {SUBSCRIPTION_TIERS.map((tier) => {
-          const selected = selectedTier === tier.tier;
           const welcome = tier.tier === "BASE";
           const price = (tier.priceEurCents / 100).toFixed(0);
+          const href = isProfessional
+            ? `/dashboard/abbonamento?livello=${tier.tier}`
+            : `/registrati?ruolo=professionista&livello=${tier.tier}`;
+          const label = welcome ? `Inizia con ${tier.label}` : `Scegli ${tier.label}`;
           return (
             <YStack
               key={tier.tier}
               flex={1}
               $gtSm={{ flexBasis: 0 }}
-              backgroundColor={selected ? brand.calce : brand.gesso}
+              backgroundColor={welcome ? brand.calce : brand.gesso}
               borderTopWidth={3}
-              borderTopColor={selected ? brand.cianografia : "transparent"}
+              borderTopColor={welcome ? brand.cianografia : "transparent"}
               padding="$5"
               gap="$3"
-              cursor="pointer"
-              hoverStyle={{ backgroundColor: brand.calce }}
-              accessibilityRole="radio"
-              aria-checked={selected}
-              onPress={() => setSelectedTier(tier.tier)}
               $gtMd={{ padding: "$6" }}
             >
               <XStack alignItems="center" gap="$2" flexWrap="wrap">
-                <Text fontFamily="$heading" fontWeight="700" fontSize="$7" color={brand.grafite}>
+                <Text tag="h3" margin={0} fontFamily="$heading" fontWeight="700" fontSize="$7" color={brand.grafite}>
                   {tier.label}
                 </Text>
                 {welcome ? (
+                  // Verde, non rosso: nel sito il rosso vuol dire urgenza o errore (§349).
                   <Text
                     fontSize={13}
                     fontWeight="700"
-                    color="#FFFFFF"
-                    backgroundColor={brand.urgenza}
+                    color={brand.cianografiaScuro}
+                    backgroundColor={brand.cianografiaVelo}
                     paddingHorizontal="$2"
                     paddingVertical={2}
                     borderRadius="$10"
@@ -493,31 +508,24 @@ function ProPricing({ isProfessional }: { isProfessional: boolean }) {
               <Text fontWeight="700" color={brand.cianografiaScuro}>
                 {tier.monthlyAcceptedJobs === null ? "Lavori senza limite" : `${tier.monthlyAcceptedJobs} lavori accettati al mese`}
               </Text>
+              <YStack flex={1} />
+              <Link href={href} style={{ textDecoration: "none" }} aria-label={`${label}${isProfessional ? "" : ": iscriviti come professionista"}`}>
+                <Button variant="acquisto" width="100%">
+                  <XStack alignItems="center" gap="$2">
+                    <Text color="white" fontFamily="$body" fontWeight="600">
+                      {label}
+                    </Text>
+                    <ButtonArrow tone="red" />
+                  </XStack>
+                </Button>
+              </Link>
             </YStack>
           );
         })}
       </Grid>
-      <YStack borderTopWidth={1} borderColor={LINE} padding="$5" gap="$2" alignItems="center" $gtMd={{ padding: "$6" }}>
-        {continueHref ? (
-          <Link href={continueHref} style={{ textDecoration: "none" }}>
-            <MagneticButton>
-            <Button variant="acquisto" size="$5">
-              <XStack alignItems="center" gap="$2">
-                <Text color="white" fontFamily="$body" fontWeight="600" fontSize="$5">
-                  {isProfessional ? `Continua con ${selectedLabel}` : `Iscriviti con ${selectedLabel}`}
-                </Text>
-                <ButtonArrow tone="red" />
-              </XStack>
-            </Button>
-            </MagneticButton>
-          </Link>
-        ) : (
-          <Button variant="primary" size="$5" disabled opacity={0.5}>
-            Scegli un livello
-          </Button>
-        )}
+      <YStack borderTopWidth={1} borderColor={LINE} padding="$4" alignItems="center">
         <Text fontSize={16} color={brand.grafite70} textAlign="center">
-          {continueHref ? "Poi confermi il livello e il pagamento." : "Tocca uno dei livelli qui sopra per continuare."}
+          {isProfessional ? "Poi confermi il livello e il pagamento." : "Ti iscrivi, poi confermi il livello e il pagamento."}
         </Text>
       </YStack>
     </Band>

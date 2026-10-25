@@ -294,9 +294,10 @@ export default function DashboardStatistichePage() {
   );
 }
 
-function deltaOf(value: number, previous: number, metricKey: MetricKey): { text: string; tone: "up" | "down" | "flat" } {
+function deltaOf(value: number, previous: number): { text: string; tone: "up" | "down" | "flat" } {
   if (value === previous) return { text: "Come nel periodo prima", tone: "flat" };
-  if (previous === 0) return { text: `Prima era ${formatMetric(metricKey, 0)}`, tone: "up" };
+  // Periodo prima vuoto: niente freccia verde su tutte le tessere (docs/CHANGELOG.md §349).
+  if (previous === 0) return { text: "Primo periodo", tone: "flat" };
   const change = ((value - previous) / previous) * 100;
   return { text: `${change > 0 ? "+" : ""}${Math.round(change)}% rispetto a prima`, tone: change > 0 ? "up" : "down" };
 }
@@ -320,7 +321,7 @@ function MetricTile({
   active: boolean;
   onSelect: () => void;
 }) {
-  const delta = deltaOf(value, previous, metricKey);
+  const delta = deltaOf(value, previous);
   return (
     <button type="button" className={`pstats-kpi${active ? " is-active" : ""}`} aria-pressed={active} onClick={onSelect} title={hint}>
       <span className="pstats-kpi-label">

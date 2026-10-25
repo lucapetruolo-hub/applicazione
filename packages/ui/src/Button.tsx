@@ -72,10 +72,9 @@ export const Button = styled(TamaguiButton, {
         pressStyle: { backgroundColor: brand.filetto },
         focusStyle: { outlineWidth: 2, outlineColor: brand.cianografia, outlineStyle: "solid", outlineOffset: 2 },
       },
-      // Pulsante principale quasi nero delle regole Taste (scelta dell'utente
-      // per la nuova agenda, docs/CHANGELOG.md §288-§289): per ora solo
-      // nell'agenda e nelle pagine di accesso e registrazione, il verde
-      // resta per gli stati.
+      // Quasi nero delle regole Taste (docs/CHANGELOG.md §288-§289). Dal
+      // 24/10/2026 nessuna pagina lo usa più: l'utente ha scelto il verde per
+      // tutti i pulsanti principali, anche in accesso e registrazione (§349).
       scuro: {
         height: BUTTON_HEIGHT,
         paddingHorizontal: 24,

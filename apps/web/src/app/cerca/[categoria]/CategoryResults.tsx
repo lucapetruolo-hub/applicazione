@@ -179,6 +179,21 @@ export async function CategoryResults({
     ...(comune && citySlug && subTag ? [{ label: subTagLabel(subTag), href: `/cerca/${category.slug}/${citySlug}/${subTag}` }] : []),
   ]);
 
+  // "In breve" nella colonna dei risultati, subito sotto le schede
+  // (docs/CHANGELOG.md §349): sotto la pagina restava dopo l'altezza della
+  // mappa, con un vuoto di 900 px quando c'era un solo risultato.
+  const cityFacts =
+    comune && !loadFailed ? (
+      <CityFacts
+        categorySlug={category.slug}
+        categoryLabel={category.label}
+        city={comune.name}
+        professionals={professionals}
+        pricePageHref={await pricePagePromise}
+        subTag={subTag}
+      />
+    ) : null;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
       <JsonLd data={breadcrumbs} />
@@ -195,17 +210,8 @@ export async function CategoryResults({
         allProfessionals={allProfessionals}
         loadFailed={loadFailed}
         initialUrgentOnly={searchParams.urgente === "1"}
+        footer={cityFacts}
       />
-      {comune && !loadFailed ? (
-        <CityFacts
-          categorySlug={category.slug}
-          categoryLabel={category.label}
-          city={comune.name}
-          professionals={professionals}
-          pricePageHref={await pricePagePromise}
-          subTag={subTag}
-        />
-      ) : null}
       <PopularServicesLinks
         currentSlug={category.slug}
         city={comune?.name}

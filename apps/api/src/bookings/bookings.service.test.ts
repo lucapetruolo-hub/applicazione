@@ -74,6 +74,8 @@ function baseQuote(overrides: Record<string, unknown> = {}) {
       postalCode: "04100",
       city: "Latina",
       province: "LT",
+      description: "Rubinetto che perde",
+      category: { label: "Idraulico" },
     },
     professionalProfile: { userId: "pro-user-1" },
     ...overrides,

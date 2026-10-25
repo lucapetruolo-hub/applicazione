@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { allItalianCityNames } from "@professionisti/shared";
@@ -25,14 +24,9 @@ import { MagneticButton } from "./MagneticButton";
 export function HomeHero() {
   const router = useRouter();
   const professionalSuggestions: ProfessionalSuggestion[] = buildSearchSuggestions();
-  // Toggle "Intervento urgente?" selezionabile già in homepage (richiesta
-  // esplicita dell'utente): una volta cercato, la pagina risultati riceve il
-  // filtro già preimpostato (`?urgente=1`, letto da ResultsListWithMap) —
-  // nessun bottone equivalente serve più lì, la preselezione arriva dall'URL.
-  const [urgentOnly, setUrgentOnly] = useState(false);
 
   function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
-    navigateWithTransition(() => router.push(buildSearchDestination({ ...params, urgentOnly })));
+    navigateWithTransition(() => router.push(buildSearchDestination(params)));
   }
 
   return (
@@ -54,7 +48,7 @@ export function HomeHero() {
         <GlowLights tone="verde" radius={40} />
 
         <YStack width="100%" maxWidth={720} alignItems="center" gap="$4" position="relative">
-          <Eyebrow tone="dark">👋 Non chiamare a caso. Chiamalo giusto.</Eyebrow>
+          <Eyebrow tone="dark">Non chiamare a caso. Chiamalo giusto.</Eyebrow>
           {/* Titolo principale della pagina (h1) per Google e i lettori di schermo. */}
           <Text
             tag="h1"
@@ -84,46 +78,12 @@ export function HomeHero() {
             />
           </YStack>
 
-          {/* Toggle "Intervento urgente?" (richiesta esplicita dell'utente):
-              selezionabile già qui, prima di cercare — una volta cercato, la
-              pagina risultati riceve il filtro già preimpostato dall'URL
-              (?urgente=1), nessun bottone equivalente serve più lì. */}
-          <XStack
-            alignItems="center"
-            justifyContent="space-between"
-            gap="$3"
-            width="100%"
-            maxWidth={600}
-            marginTop="$3"
-            backgroundColor="rgba(255,255,255,0.14)"
-            borderRadius={999}
-            paddingVertical="$2"
-            paddingHorizontal="$4"
-            cursor="pointer"
-            onPress={() => setUrgentOnly((v) => !v)}
-            role="switch"
-            aria-checked={urgentOnly}
-          >
-            <XStack alignItems="center" gap="$2" flex={1} minWidth={0}>
-              <Icon name="zap" size={16} color="white" />
-              <Text fontSize={16} fontWeight="600" color="white">
-                Intervento urgente? Solo disponibili nelle prossime 24h
-              </Text>
-            </XStack>
-            <YStack
-              width={40}
-              height={24}
-              borderRadius={999}
-              backgroundColor={urgentOnly ? brand.urgenza : "rgba(255,255,255,0.35)"}
-              padding={2}
-              justifyContent="center"
-              flexShrink={0}
-            >
-              <YStack width={18} height={18} borderRadius={999} backgroundColor="white" marginLeft={urgentOnly ? 16 : 0} />
-            </YStack>
-          </XStack>
-
-          <Text fontSize={16} fontWeight="600" color="rgba(255,255,255,0.75)">
+          {/* L'interruttore "Intervento urgente? Solo disponibili nelle prossime
+              24h" è stato tolto (docs/CHANGELOG.md §349): prometteva un filtro
+              che il sito non fa (nessuno controlla chi è disponibile) ed era il
+              secondo controllo "urgente" nello stesso schermo, col link rosso
+              "Richiesta urgente" qui sotto, che resta. */}
+          <Text fontSize={16} fontWeight="600" color="rgba(255,255,255,0.75)" marginTop="$2">
             Ricerca gratuita · Nessuna registrazione
           </Text>
         </YStack>

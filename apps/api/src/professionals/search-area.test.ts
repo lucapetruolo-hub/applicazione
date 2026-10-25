@@ -31,6 +31,12 @@ describe("selectSearchArea (ricerca per luogo con raggio)", () => {
     expect([...result.keys()].sort()).toEqual(["bg1", "bg2"]);
   });
 
+  it("non si allarga oltre il limite: troppo lontano non è un'alternativa", () => {
+    // Milano-Roma sono circa 480 km, Milano-Bergamo circa 42.
+    expect(selectSearchArea(milano, [at("roma", roma)], 25, 100).size).toBe(0);
+    expect([...selectSearchArea(milano, [at("bergamo", bergamo), at("roma", roma)], 25, 100).keys()]).toEqual(["bergamo"]);
+  });
+
   it("ignora chi non ha coordinate", () => {
     expect(selectSearchArea(milano, [{ id: "x", latitude: 0, longitude: 0 }], 25).size).toBe(0);
   });

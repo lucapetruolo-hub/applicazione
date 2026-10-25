@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { PROFESSIONAL_CATEGORIES, ProfessionalSearchResult } from "@professionisti/shared";
 import { YStack } from "@professionisti/ui";
 import { CategoryIconBadge } from "@/components/CategoryIconBadge";
@@ -17,6 +18,7 @@ export function CategoryContent({
   allProfessionals,
   loadFailed,
   initialUrgentOnly,
+  footer,
 }: {
   category: Category;
   city?: string;
@@ -28,6 +30,8 @@ export function CategoryContent({
   loadFailed?: boolean;
   /** Preimpostato dall'URL (?urgente=1) quando si arriva dal toggle "Intervento urgente?" della homepage. */
   initialUrgentOnly?: boolean;
+  /** Sotto le schede, nella colonna dei risultati: "[Lavoro] a [città] in breve" (docs/CHANGELOG.md §349). */
+  footer?: ReactNode;
 }) {
   // Richiesta esplicita dell'utente: niente scheda "Ricerca / N
   // professionisti verificati trovati" (con i sotto-tag) in cima ai
@@ -62,6 +66,7 @@ export function CategoryContent({
           header={header}
           defaultMode={online ? "ONLINE" : "HOME"}
           initialUrgentOnly={initialUrgentOnly}
+          footer={footer}
         />
       </YStack>
     </YStack>

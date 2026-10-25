@@ -11,13 +11,15 @@ const SAME_DISTANCE_TOLERANCE_KM = 0.05;
  * Ricerca per luogo (richiesta esplicita dell'utente): restituisce i
  * professionisti entro `radiusKm` dal centro cercato, con la loro distanza.
  * Se nel raggio non c'è nessuno, la ricerca si allarga fino al più vicino
- * (e a chi è alla sua stessa distanza). Chi non ha coordinate (0,0) è
- * escluso: la sua posizione non è nota.
+ * (e a chi è alla sua stessa distanza), ma non oltre `maxFallbackKm`
+ * (docs/CHANGELOG.md §349): più lontano non è un'alternativa utile. Chi non
+ * ha coordinate (0,0) è escluso: la sua posizione non è nota.
  */
 export function selectSearchArea(
   center: { lat: number; lon: number },
   candidates: SearchAreaCandidate[],
   radiusKm: number,
+  maxFallbackKm: number = Number.POSITIVE_INFINITY,
 ): Map<string, number> {
   const withDistance = candidates
     .filter((c) => c.latitude !== 0 || c.longitude !== 0)
@@ -28,6 +30,7 @@ export function selectSearchArea(
   if (withDistance.length === 0) return new Map();
 
   const nearest = Math.min(...withDistance.map((c) => c.distanceKm));
+  if (nearest > maxFallbackKm) return new Map();
   return new Map(
     withDistance.filter((c) => c.distanceKm <= nearest + SAME_DISTANCE_TOLERANCE_KM).map((c) => [c.id, c.distanceKm]),
   );

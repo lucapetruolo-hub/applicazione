@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { subscriptionTierInfo, tierPriceDifferenceEurCents, type MySubscription, type SubscriptionTier } from "@professionisti/shared";
+import { formatEur as formatEurShared, subscriptionTierInfo, tierPriceDifferenceEurCents, type MySubscription, type SubscriptionTier } from "@professionisti/shared";
 import { Button, Surface, Text, YStack, brand, radiusDoc } from "@professionisti/ui";
 
 /**
@@ -13,7 +13,7 @@ import { Button, Surface, Text, YStack, brand, radiusDoc } from "@professionisti
  */
 
 function formatEur(cents: number): string {
-  return `€${(cents / 100).toLocaleString("it-IT", { minimumFractionDigits: cents % 100 ? 2 : 0 })}`;
+  return formatEurShared(cents);
 }
 
 /** Livello successivo per chi ha esaurito i lavori (il mese gratuito vale come Base). */

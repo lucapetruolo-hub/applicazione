@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { BRAND, PROFESSIONAL_CATEGORIES } from "@professionisti/shared";
 import { Icon, Logo, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { reopenCookieChoice } from "@/lib/cookieConsent";
@@ -30,12 +31,45 @@ function FooterLink({ href, children }: { href: string; children: string }) {
 // verificare a un legale prima del lancio definitivo — il titolare del
 // trattamento è indicato con segnaposto da compilare con i dati reali
 // dell'azienda (ragione sociale, P.IVA, sede) appena disponibili.
+/** Aree riservate (cliente, professionista, admin): piede corto, senza i link di marketing. */
+const RESERVED_AREAS = ["/dashboard", "/admin", "/account", "/chat", "/le-mie-richieste", "/professionisti-salvati", "/le-mie-recensioni", "/segnalazioni"];
+
+function ShortFooterLink({ href, children }: { href: string; children: string }) {
+  return (
+    <Link href={href} style={{ textDecoration: "none" }}>
+      <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+        {children}
+      </Text>
+    </Link>
+  );
+}
+
 export function SiteFooter() {
+  const pathname = usePathname();
+  // Dentro le aree riservate il piede completo (quattro colonne, "Iscriviti
+  // gratis", "Accedi") non serve a chi è già dentro e su telefono era più
+  // lungo della chat (docs/CHANGELOG.md §349): resta una riga sola.
+  if (RESERVED_AREAS.some((area) => pathname === area || pathname.startsWith(`${area}/`))) {
+    return (
+      <YStack width="100%" alignItems="center" paddingVertical="$5" paddingHorizontal="$4">
+        <XStack flexWrap="wrap" justifyContent="center" alignItems="center" columnGap="$4" rowGap="$2">
+          <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+            © {new Date().getFullYear()} {BRAND.name}
+          </Text>
+          <ShortFooterLink href="/privacy">Privacy</ShortFooterLink>
+          <ShortFooterLink href="/termini">Termini</ShortFooterLink>
+          <ShortFooterLink href="/cookie">Cookie</ShortFooterLink>
+          <ShortFooterLink href="/contatti">Aiuto</ShortFooterLink>
+        </XStack>
+      </YStack>
+    );
+  }
   return (
     <YStack width="100%" backgroundColor="transparent" alignItems="center">
       <YStack width="100%" maxWidth={1200} paddingVertical="$8" paddingHorizontal="$4" gap="$7">
-        <XStack flexWrap="wrap" gap="$7" justifyContent="space-between">
-          <YStack gap="$3" maxWidth={280}>
+        {/* Su telefono "Servizi" e "Per i clienti" stanno affiancate (docs/CHANGELOG.md §349). */}
+        <XStack flexWrap="wrap" columnGap="$5" rowGap="$6" justifyContent="space-between">
+          <YStack gap="$3" maxWidth={280} flexBasis="100%" $gtSm={{ flexBasis: "auto" }}>
             <Logo name={BRAND.name} size={22} />
             <Text fontSize={16} color={brand.grafite70}>
               Trova e prenota professionisti per la casa e la famiglia: idraulici, elettricisti,
@@ -43,7 +77,7 @@ export function SiteFooter() {
             </Text>
           </YStack>
 
-          <YStack gap="$2" minWidth={160}>
+          <YStack gap="$2" flexBasis={150} flexGrow={1} maxWidth={240}>
             <FooterColumnTitle>Servizi</FooterColumnTitle>
             {MAIN_CATEGORIES.map((category) => (
               <FooterLink key={category.slug} href={`/cerca/${category.slug}`}>
@@ -58,7 +92,7 @@ export function SiteFooter() {
             <FooterLink href="/contatti">Contatti</FooterLink>
           </YStack>
 
-          <YStack gap="$2" minWidth={160}>
+          <YStack gap="$2" flexBasis={150} flexGrow={1} maxWidth={240}>
             <FooterColumnTitle>Per i clienti</FooterColumnTitle>
             <FooterLink href="/preventivo">Richiedi preventivo</FooterLink>
             <FooterLink href="/urgente">Richiesta urgente</FooterLink>
@@ -68,7 +102,7 @@ export function SiteFooter() {
             <FooterLink href="/sicurezza">Sicurezza e truffe</FooterLink>
           </YStack>
 
-          <YStack gap="$2" minWidth={160}>
+          <YStack gap="$2" flexBasis={150} flexGrow={1} maxWidth={240}>
             <FooterColumnTitle>Per i professionisti</FooterColumnTitle>
             <FooterLink href="/registrati?ruolo=professionista">Iscriviti gratis</FooterLink>
             <FooterLink href="/per-professionisti">Piani e prezzi</FooterLink>
@@ -107,39 +141,39 @@ export function SiteFooter() {
         <XStack flexWrap="wrap" alignItems="center" gap="$4">
           <XStack alignItems="center" gap="$2">
             <Icon name="map-pin" size={14} color={brand.grafite70} strokeWidth={1.5} />
-            <Text fontFamily="$body" fontSize={16} color={brand.grafite70}>
+            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
               © {new Date().getFullYear()} {BRAND.name} · Tutti i diritti riservati.
             </Text>
           </XStack>
           <Link href="/privacy" style={{ textDecoration: "none" }}>
-            <Text fontFamily="$body" fontSize={16} color={brand.grafite70}>
+            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
               Privacy Policy
             </Text>
           </Link>
           <Link href="/termini" style={{ textDecoration: "none" }}>
-            <Text fontFamily="$body" fontSize={16} color={brand.grafite70}>
+            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
               Termini di Servizio
             </Text>
           </Link>
           <Link href="/cookie" style={{ textDecoration: "none" }}>
-            <Text fontFamily="$body" fontSize={16} color={brand.grafite70}>
+            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
               Cookie Policy
             </Text>
           </Link>
           <button type="button" onClick={reopenCookieChoice} style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}>
-            <Text fontFamily="$body" fontSize={16} color={brand.grafite70}>
+            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
               Preferenze cookie
             </Text>
           </button>
           <Link href="/accessibilita" style={{ textDecoration: "none" }}>
-            <Text fontFamily="$body" fontSize={16} color={brand.grafite70}>
+            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
               Accessibilità
             </Text>
           </Link>
           {/* Chiunque, anche senza account, può segnalare un contenuto
               illegale (DSA art. 16 c. 1, docs/CHANGELOG.md §319). */}
           <Link href="/contatti?motivo=segnalazione" style={{ textDecoration: "none" }}>
-            <Text fontFamily="$body" fontSize={16} color={brand.grafite70}>
+            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
               Segnala un contenuto illegale
             </Text>
           </Link>

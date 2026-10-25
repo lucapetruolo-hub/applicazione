@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import {
   CATEGORY_SEO_NOUN,
@@ -43,13 +44,20 @@ export function CityFacts({
   const ratingSum = professionals.reduce((sum, pro) => sum + (pro.rating ?? 0) * pro.reviewCount, 0);
   const averageRating = reviewCount > 0 ? formatRating(ratingSum / reviewCount) : null;
 
-  const facts = [
-    { value: String(professionals.length), label: professionals.length === 1 ? "professionista in zona" : "professionisti in zona" },
-    { value: String(verified), label: "con badge Verificato" },
-    averageRating
-      ? { value: `${averageRating}/5`, label: `su ${reviewCount} ${reviewCount === 1 ? "recensione" : "recensioni"}` }
-      : { value: "Gratis", label: "chiedere un preventivo" },
-  ];
+  // Niente tessere a zero e, con un solo professionista, niente numeri
+  // (docs/CHANGELOG.md §349): "0 con badge Verificato" in una pagina che deve
+  // dare fiducia ottiene l'effetto opposto, e "1 professionista in zona"
+  // sopra la sua unica scheda non dice nulla di nuovo.
+  const facts =
+    professionals.length < 2
+      ? []
+      : [
+          { value: String(professionals.length), label: "professionisti in zona" },
+          ...(verified > 0 ? [{ value: String(verified), label: "con badge Verificato" }] : []),
+          averageRating
+            ? { value: `${averageRating}/5`, label: `su ${reviewCount} ${reviewCount === 1 ? "recensione" : "recensioni"}` }
+            : { value: "Gratis", label: "chiedere un preventivo" },
+        ];
 
   // Pagine per servizio da collegare (docs/CHANGELOG.md §296): solo quelle
   // con abbastanza professionisti da essere in Google, mai pagine vuote.
@@ -99,14 +107,16 @@ export function CityFacts({
         {categoryLabel} a {city}
         {subTag ? `: ${subTagLabel(subTag).toLowerCase()}` : ""} in breve
       </h2>
-      <ul className="city-facts-list">
-        {facts.map((fact) => (
-          <li key={fact.label} className="city-facts-item">
-            <span className="city-facts-value">{fact.value}</span>
-            <span className="city-facts-label">{fact.label}</span>
-          </li>
-        ))}
-      </ul>
+      {facts.length > 0 ? (
+        <ul className="city-facts-list" style={{ "--facts-count": facts.length } as CSSProperties}>
+          {facts.map((fact) => (
+            <li key={fact.label} className="city-facts-item">
+              <span className="city-facts-value">{fact.value}</span>
+              <span className="city-facts-label">{fact.label}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {serviceLinks.length > 0 && citySlug ? (
         <>
           <h3 className="city-facts-subtitle">Specializzazioni</h3>

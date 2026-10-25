@@ -8,13 +8,16 @@ import { asScheduleChange, formatAppointmentDate, formatAppointmentTimeRange, sc
  * ambiguo), quindi una mappa statica basta, nessuna logica per ruolo.
  */
 const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
-  NEW_LEAD: { icon: "🎉", message: "Fantastico! Hai ricevuto una nuova richiesta." },
-  NEW_QUOTE: { icon: "📬", message: "Hai ricevuto un nuovo preventivo!" },
-  QUOTE_ACCEPTED: { icon: "🥳", message: "Wow, hanno accettato un tuo preventivo!" },
+  // Richieste, preventivi e accettazioni dicono chi e quale lavoro quando il
+  // payload lo porta (docs/CHANGELOG.md §349, vedi `notificationCopy`); questi
+  // sono i testi di riserva per le notifiche più vecchie.
+  NEW_LEAD: { icon: "🎉", message: "Hai ricevuto una nuova richiesta." },
+  NEW_QUOTE: { icon: "📬", message: "Hai ricevuto un nuovo preventivo." },
+  QUOTE_ACCEPTED: { icon: "🥳", message: "Il cliente ha accettato il tuo preventivo." },
   QUOTE_DATE_PROPOSED: { icon: "🗓️", message: "Il cliente ha proposto un'altra data per il preventivo." },
   QUOTE_DATE_CHANGED: { icon: "🗓️", message: "Il professionista ha modificato la data del tuo preventivo." },
   QUOTE_UPDATED: { icon: "📝", message: "Il professionista ha aggiornato il tuo preventivo (voci, note o modi di pagamento), senza cambiare data e orario." },
-  QUOTE_DATE_CONFIRMED: { icon: "✅", message: "Il professionista ha confermato la data che hai proposto!" },
+  QUOTE_DATE_CONFIRMED: { icon: "✅", message: "Il professionista ha confermato la data che hai proposto." },
   QUOTE_DATE_REJECTED: { icon: "📅", message: "Il professionista non è disponibile in quella data." },
   JOB_COMPLETED: { icon: "✅", message: "Il professionista ha segnalato il lavoro come terminato." },
   BOOKING_CANCELED_BY_PROFESSIONAL: { icon: "⚠️", message: "Un intervento è stato annullato dal professionista." },
@@ -111,13 +114,13 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   JOB_ISSUE_SANCTION: { icon: "⛔", message: "Una segnalazione accolta comporta una misura sul tuo profilo: tocca per i dettagli." },
   JOB_ISSUE_RESOLVED: { icon: "⚖️", message: "C'è una decisione su una segnalazione di un lavoro: tocca per leggerla." },
   // Abbonamento a livelli (docs/CHANGELOG.md §161).
-  SUBSCRIPTION_BONUS_MONTH: { icon: "🎁", message: "Sorpresa: ti regaliamo un altro mese gratis!" },
+  SUBSCRIPTION_BONUS_MONTH: { icon: "🎁", message: "Ti regaliamo un altro mese gratis." },
   SUBSCRIPTION_TRIAL_ENDING: { icon: "⏳", message: "Il tuo mese gratuito sta per finire: scegli un livello per restare visibile nelle ricerche." },
   SUBSCRIPTION_LIMIT_NEAR: { icon: "📈", message: "Ti stai avvicinando ai lavori compresi nel tuo livello questo mese." },
   SUBSCRIPTION_LIMIT_REACHED: { icon: "🏁", message: "Hai raggiunto i lavori compresi questo mese: il profilo è fuori dalle ricerche. Passa al livello superiore pagando solo la differenza." },
   SUBSCRIPTION_PAUSED: { icon: "⏸️", message: "Il tuo account è in pausa: scegli un livello per renderlo di nuovo visibile e operativo." },
   SUBSCRIPTION_RENEWING: { icon: "🔁", message: "Il tuo abbonamento si rinnova automaticamente tra pochi giorni." },
-  SUBSCRIPTION_RENEWED: { icon: "✅", message: "Abbonamento rinnovato: grazie!" },
+  SUBSCRIPTION_RENEWED: { icon: "✅", message: "Abbonamento rinnovato, grazie." },
   SUBSCRIPTION_ENDING: { icon: "⏳", message: "Il tuo abbonamento annullato finisce tra pochi giorni: puoi riattivarlo quando vuoi." },
   SUBSCRIPTION_PAYMENT_FAILED: { icon: "⚠️", message: "Pagamento dell'abbonamento non riuscito: controlla il metodo di pagamento." },
   CONTENT_REPORT_APPEAL_REJECTED: { icon: "📄", message: "La tua contestazione è stata esaminata: la decisione resta valida." },
@@ -156,6 +159,23 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
     return { icon: "📝", message: `Il cliente ha aggiunto una nota al preventivo, senza cambiare data e orario.${quotedNote}` };
   }
   const data = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
+  // Chi e quale lavoro (docs/CHANGELOG.md §349): senza, quattro "Hai ricevuto
+  // un nuovo preventivo" uguali andavano aperti tutti per capire di cosa.
+  const text = (value: unknown): string | null => (typeof value === "string" && value.trim() ? value.trim() : null);
+  const job = text(data.jobLabel) ?? text(data.category);
+  const jobSuffix = job ? ` · ${job}` : "";
+  if (type === "NEW_QUOTE") {
+    const from = text(data.businessName);
+    const base = from ? `Nuovo preventivo da ${from}` : "Hai ricevuto un nuovo preventivo";
+    return { icon: "📬", message: data.resent === true ? `${base}, al posto di quello che avevi rifiutato${jobSuffix}` : `${base}${jobSuffix}` };
+  }
+  if (type === "QUOTE_ACCEPTED") {
+    return { icon: "🥳", message: `${text(data.clientName) ?? "Il cliente"} ha accettato il tuo preventivo${jobSuffix}` };
+  }
+  if (type === "NEW_LEAD" && text(data.category)) {
+    const where = text(data.city) ? ` a ${text(data.city)}` : "";
+    return { icon: data.isUrgent === true ? "⚡" : "🎉", message: `${data.isUrgent === true ? "Richiesta urgente" : "Nuova richiesta"}: ${text(data.category)}${where}` };
+  }
   // Nuovo appuntamento nel testo della notifica (docs/CHANGELOG.md §228).
   const newSlot = slotLabel(data.to);
   if (change && type === "QUOTE_DATE_CHANGED") {
@@ -178,9 +198,6 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   // Importo finale diverso dal preventivo, col motivo del professionista (docs/CHANGELOG.md §228).
   if (type === "JOB_COMPLETED" && typeof data.changeReason === "string" && data.changeReason.trim()) {
     return { icon: "✅", message: `Il professionista ha segnalato il lavoro come terminato, con un importo diverso dal preventivo: "${data.changeReason.trim()}"` };
-  }
-  if (type === "NEW_QUOTE" && data.resent === true) {
-    return { icon: "📬", message: "Hai ricevuto un nuovo preventivo al posto di quello che avevi rifiutato." };
   }
   if (type === "QUOTE_REJECTED" && (data.note || data.canResend === true)) {
     const note = typeof data.note === "string" && data.note.trim() ? ` Nota: "${data.note.trim()}"` : "";

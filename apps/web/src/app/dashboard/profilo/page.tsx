@@ -36,6 +36,7 @@ import { EngagementRadiusSection } from "@/components/EngagementRadiusSection";
 import { MediaPreview } from "@/components/MediaPreview";
 import { UploadingDots } from "@/components/UploadingDots";
 import { useUnsavedChangesGuard } from "@/lib/useUnsavedChangesGuard";
+import { SaveBar } from "@/components/SaveBar";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { CategoryMultiPicker } from "@/components/CategoryMultiPicker";
 import { ProfessionalDetailContent } from "@/app/professionista/[id]/ProfessionalDetailContent";
@@ -87,6 +88,11 @@ const CANDIDATE_LANGUAGES = [
 
 const inputStyle = { padding: 12, borderRadius: 10, border: `1px solid ${brand.bordoCampo}`, fontSize: 16, fontFamily: "inherit", color: brand.grafite };
 const smallInputStyle = { ...inputStyle, padding: 10, fontSize: 16 };
+
+/** Prezzo nel campo di testo: "60" per 60,00 € e "12,50" solo con i centesimi (§349), mai "60.00". */
+function eurInputValue(cents: number): string {
+  return cents % 100 === 0 ? String(cents / 100) : (cents / 100).toFixed(2).replace(".", ",");
+}
 
 function FieldLabel({ children }: { children: string }) {
   return (
@@ -273,8 +279,8 @@ export default function DashboardProfiloPage() {
     setServices(
       profile.services.map((service) => ({
         name: service.name,
-        priceMin: service.priceMinEurCents !== null ? (service.priceMinEurCents / 100).toFixed(2) : "",
-        priceMax: service.priceMaxEurCents !== null ? (service.priceMaxEurCents / 100).toFixed(2) : "",
+        priceMin: service.priceMinEurCents !== null ? eurInputValue(service.priceMinEurCents) : "",
+        priceMax: service.priceMaxEurCents !== null ? eurInputValue(service.priceMaxEurCents) : "",
       })),
     );
   }
@@ -980,24 +986,26 @@ export default function DashboardProfiloPage() {
           <YStack gap="$2">
             <FieldLabel>Bio</FieldLabel>
             <YStack gap="$2" padding="$3" backgroundColor={brand.gesso} borderRadius="$4">
-              <XStack alignItems="center" gap="$2">
-                <Icon name="lightbulb" size={14} color={brand.cianografiaScuro} />
-                <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite}>
+              {/* Chiusi di serie (docs/CHANGELOG.md §349): sei righe sempre
+                  aperte prima del campo. */}
+              <details className="bio-tips">
+                <summary>
+                  <Icon name="lightbulb" size={14} color={brand.cianografiaScuro} />
                   Consigli per una bio più professionale
-                </Text>
-              </XStack>
-              <YStack gap="$1">
-                {BIO_TIPS.map((tip) => (
-                  <XStack key={tip} gap="$2" alignItems="flex-start">
-                    <Text fontSize={13} color={brand.cianografiaScuro}>
-                      ·
-                    </Text>
-                    <Text fontSize={13} color={brand.grafite70} flex={1}>
-                      {tip}
-                    </Text>
-                  </XStack>
-                ))}
-              </YStack>
+                </summary>
+                <YStack gap="$1" paddingTop="$2">
+                  {BIO_TIPS.map((tip) => (
+                    <XStack key={tip} gap="$2" alignItems="flex-start">
+                      <Text fontSize={13} color={brand.cianografiaScuro}>
+                        ·
+                      </Text>
+                      <Text fontSize={13} color={brand.grafite70} flex={1}>
+                        {tip}
+                      </Text>
+                    </XStack>
+                  ))}
+                </YStack>
+              </details>
               {!bio.trim() ? (
                 <Text
                   fontSize={13}
@@ -1470,9 +1478,9 @@ export default function DashboardProfiloPage() {
           </Link>
         </p>
 
-        <Button variant="primary" onPress={handleSubmit} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
-          {isSubmitting ? "Salvataggio..." : "Salva profilo"}
-        </Button>
+        {/* Con modifiche non salvate "Salva profilo" resta in fondo allo
+            schermo (SaveBar, docs/CHANGELOG.md §349): la pagina è lunga 2.600 px. */}
+        <SaveBar dirty={isDirty} saving={isSubmitting} onSave={handleSubmit} saveLabel="Salva profilo" />
       </YStack>
       )}
 

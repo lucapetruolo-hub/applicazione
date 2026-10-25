@@ -32,15 +32,19 @@ export function WeatherStrip({ days }: { days: DayAhead[] | null }) {
       </div>
     );
   }
+  // Senza meteo niente "Meteo non disponibile" (docs/CHANGELOG.md §349): un
+  // servizio che manca fa sembrare rotto il sito. Se non ce n'è per nessun
+  // giorno la riga non compare.
+  if (!days.slice(0, 3).some((day) => day.weather)) return null;
   return (
     <ul className="weather-strip" aria-label="Meteo dei prossimi giorni">
       {days.slice(0, 3).map((day, i) => {
         const look = day.weather ? CONDITION_ICONS[day.weather.condition] : null;
-        const label = day.weather ? WEATHER_CONDITION_LABEL[day.weather.condition] : "Meteo non disponibile";
+        const label = day.weather ? WEATHER_CONDITION_LABEL[day.weather.condition] : "";
         return (
           <li key={day.date}>
             {/* Tocca un giorno: l'agenda si apre su quel giorno (§333). */}
-            <Link href={`/dashboard/agenda?giorno=${day.date}`} className="weather-chip" title={day.weather ? `${label} · ${day.weather.place}` : label}>
+            <Link href={`/dashboard/agenda?giorno=${day.date}`} className="weather-chip" title={day.weather ? `${label} · ${day.weather.place}` : undefined}>
               <span className="weather-chip-day">{i < 2 ? DAY_NAMES[i] : new Date(`${day.date}T12:00:00Z`).toLocaleDateString("it-IT", { weekday: "long", timeZone: "UTC" })}</span>
               <span className="weather-chip-main">
                 {look ? <look.icon size={22} strokeWidth={2} color={look.color} aria-label={label} role="img" /> : null}
@@ -50,7 +54,7 @@ export function WeatherStrip({ days }: { days: DayAhead[] | null }) {
                   </strong>
                 ) : null}
               </span>
-              <span className="weather-chip-label">{day.weather?.away ? `${label} · ${day.weather.place}` : label}</span>
+              {label ? <span className="weather-chip-label">{day.weather?.away ? `${label} · ${day.weather.place}` : label}</span> : null}
             </Link>
           </li>
         );

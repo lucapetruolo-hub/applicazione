@@ -238,7 +238,7 @@ export function ClientEmailFirstAuth({
               onSubmitEditing={handleContinue}
             />
             {errorText}
-            <Button variant="scuro" onPress={handleContinue} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
+            <Button variant="primary" onPress={handleContinue} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
               {isSubmitting ? "Un momento..." : "Continua"}
             </Button>
           </YStack>
@@ -318,7 +318,7 @@ export function ClientEmailFirstAuth({
           ) : null}
           {isNew ? <TurnstileWidget onTokenChange={setTurnstileToken} resetSignal={turnstileReset} /> : null}
           {errorText}
-          <Button variant="scuro" onPress={handlePassword} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
+          <Button variant="primary" onPress={handlePassword} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
             {isSubmitting ? "Un momento..." : `${isNew ? "Crea account" : "Accedi"}${submitSuffix}`}
           </Button>
         </YStack>

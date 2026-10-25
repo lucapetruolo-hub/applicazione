@@ -144,9 +144,13 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
                   <Text fontWeight="700" color={brand.grafite}>
                     {entry.name}
                   </Text>
-                  <Text fontSize={13} color={brand.grafite70}>
-                    {entry.professionalCount === 1 ? "1 professionista" : `${entry.professionalCount} professionisti`}
-                  </Text>
+                  {/* Sotto i 3 professionisti il numero dice solo quanto è piccola
+                      l'offerta: resta la forbice, che è l'informazione utile (§349). */}
+                  {entry.professionalCount >= 3 ? (
+                    <Text fontSize={13} color={brand.grafite70}>
+                      {entry.professionalCount} professionisti
+                    </Text>
+                  ) : null}
                 </YStack>
                 <Text fontWeight="700" color={brand.cianografiaScuro}>
                   {formatServicePriceRange(entry.minEurCents, entry.maxEurCents)}

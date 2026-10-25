@@ -263,3 +263,17 @@ export function notificationChannelEnabled(prefs: NotificationPreferences, type:
   if (NOTIFICATION_TOPIC_INFO[topic].locked && channel !== "sms") return true;
   return prefs.topics[topic][channel];
 }
+
+/**
+ * Lavoro in poche parole per le notifiche ("Nuovo preventivo da Rossi
+ * Idraulica · Perdita sotto il lavello", docs/CHANGELOG.md §349): la prima
+ * riga della descrizione, al massimo 40 caratteri, con i puntini se tagliata.
+ */
+export function notificationJobLabel(description: string | null | undefined, maxLength = 40): string | null {
+  const firstLine = (description ?? "").split(/\r?\n/)[0]?.trim() ?? "";
+  if (!firstLine) return null;
+  if (firstLine.length <= maxLength) return firstLine;
+  const cut = firstLine.slice(0, maxLength - 1);
+  const lastSpace = cut.lastIndexOf(" ");
+  return `${(lastSpace > maxLength / 2 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
+}

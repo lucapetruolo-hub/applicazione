@@ -7,7 +7,6 @@ import { FadeInSection } from "@/components/FadeInSection";
 import { HomeFaq } from "@/components/HomeFaq";
 import { HomeHero } from "@/components/HomeHero";
 import { NewProfilesCarousel } from "@/components/NewProfilesCarousel";
-import { PlatformGuarantee } from "@/components/PlatformGuarantee";
 import { PlatformStats } from "@/components/PlatformStats";
 import { PriceEstimatorTool } from "@/components/PriceEstimatorTool";
 import { QualitySection } from "@/components/QualitySection";
@@ -23,18 +22,6 @@ export default function HomeContent({
   platformStats: { totalUsers: number; totalProfessionals: number; reviewCount?: number; averageRating?: number | null } | null;
 }) {
   const categoryRail = useCategoryStoryRail();
-  // Conteggio reale per categoria (professionals arriva già filtrato
-  // excludeDemo da apps/web/src/app/page.tsx): la riga "N professionisti"
-  // sotto ogni categoria è omessa quando il conteggio è 0, mai un numero
-  // finto (brief redesign §4.3).
-  const countBySlug = new Map<string, number>();
-  // Conta tutte le categorie del professionista (fino a 3, §217), non solo
-  // la principale: chi fa anche il dogsitter rende "Disponibile" anche quella.
-  for (const pro of professionals) {
-    for (const { slug } of pro.categories) {
-      countBySlug.set(slug, (countBySlug.get(slug) ?? 0) + 1);
-    }
-  }
 
   return (
     // Spazi tra le sezioni più stretti che nel resto del sito: la home ha
@@ -59,7 +46,7 @@ export default function HomeContent({
             titleAction={<CategoryShowAllButton state={categoryRail} />}
             maxWidth={1080}
           >
-            <CategoryStoryRail countBySlug={countBySlug} state={categoryRail} />
+            <CategoryStoryRail state={categoryRail} />
           </Section>
         </FadeInSection>
 
@@ -77,10 +64,9 @@ export default function HomeContent({
             sezione non compare, invece di restare un titolo vuoto. */}
         {professionals.length > 0 ? (
           <FadeInSection>
-            <Section
-              title="Professionisti della tua zona"
-              maxWidth={1080}
-            >
+            {/* "Cosa dicono i clienti" (docs/CHANGELOG.md §349): il titolo
+                diceva professionisti e il contenuto erano recensioni. */}
+            <Section title="Cosa dicono i clienti" maxWidth={1080}>
               <RecentReviews
                 summary={
                   platformStats?.reviewCount !== undefined && platformStats.averageRating != null
@@ -93,11 +79,10 @@ export default function HomeContent({
           </FadeInSection>
         ) : null}
 
-        {/* 5. Perché fidarsi: trasparenza e Garanzia Piattaforma. */}
+        {/* 5. Perché fidarsi: un solo blocco (docs/CHANGELOG.md §349), prima
+            tre tessere più una scheda "Come ti proteggiamo" sullo stesso tema. */}
         <FadeInSection>
-          <QualitySection>
-            <PlatformGuarantee />
-          </QualitySection>
+          <QualitySection />
         </FadeInSection>
 
         {/* 6. Prezzi e domande frequenti. */}

@@ -220,20 +220,25 @@ export function AppointmentPanel({
           ) : null}
         </div>
 
-        <div className="ag-sec">
-          {booking.guidedRequestId ? (
-            <Link className="ag-btn" style={{ width: "100%" }} href={`/dashboard/richieste?open=${booking.guidedRequestId}`}>
-              Richiesta completa
-            </Link>
-          ) : null}
-          {onOpenMessages ? (
-            <div className="ag-links" style={{ marginTop: 14 }}>
-              <button type="button" className="ag-link" onClick={onOpenMessages}>
-                Messaggi e cronologia
-              </button>
+        {/* "Richiesta completa" e "Messaggi" due link uguali (docs/CHANGELOG.md
+            §349): prima un pulsante con bordo e un link, due stili per due
+            azioni dello stesso peso. */}
+        {booking.guidedRequestId || onOpenMessages ? (
+          <div className="ag-sec">
+            <div className="ag-links">
+              {booking.guidedRequestId ? (
+                <Link className="ag-link" href={`/dashboard/richieste?open=${booking.guidedRequestId}`}>
+                  Richiesta completa
+                </Link>
+              ) : null}
+              {onOpenMessages ? (
+                <button type="button" className="ag-link" onClick={onOpenMessages}>
+                  Messaggi
+                </button>
+              ) : null}
             </div>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
 
         {error ? (
           <div className="ag-banner error" role="alert" style={{ marginTop: 16, marginBottom: 0 }}>

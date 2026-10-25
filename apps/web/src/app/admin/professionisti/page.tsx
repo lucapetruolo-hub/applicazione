@@ -243,7 +243,7 @@ export default function AdminProfessionistiPage() {
             />
             {formError ? <Text color={brand.urgenza}>{formError}</Text> : null}
             <XStack>
-              <Button size="$4" disabled={saving} onPress={() => void submit()}>
+              <Button variant="primary" size="$4" disabled={saving} onPress={() => void submit()}>
                 {saving ? "Creazione…" : "Crea profilo e link"}
               </Button>
             </XStack>

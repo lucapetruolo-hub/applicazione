@@ -96,7 +96,7 @@ export function GoogleConsentModal({
             <Button variant="secondary" flex={1} onPress={onCancel} disabled={isSubmitting}>
               Annulla
             </Button>
-            <Button variant="scuro" flex={1} onPress={handleConfirm} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
+            <Button variant="primary" flex={1} onPress={handleConfirm} disabled={isSubmitting} opacity={isSubmitting ? 0.6 : 1}>
               {isSubmitting ? "Un momento..." : "Accetta e continua"}
             </Button>
           </XStack>
