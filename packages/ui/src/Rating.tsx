@@ -6,7 +6,7 @@ export type RatingProps = {
   value: number;
   count?: number;
   size?: number;
-  /** Testo di voto e conteggio: più piccolo dove le stelle stanno sotto un nome (docs/CHANGELOG.md §340). */
+  /** Testo di voto e conteggio: più piccolo dove le stelle stanno sotto un nome (docs/CHANGELOG.md §342). */
   textSize?: number;
 };
 
@@ -35,7 +35,7 @@ export function Rating({ value, count, size = 16, textSize = 16 }: RatingProps) 
         ))}
       </XStack>
       <Text fontFamily="$mono" fontSize={textSize} fontWeight="500" color={brand.grafite}>
-        {/* Con la virgola, come in italiano (docs/CHANGELOG.md §340; stessa regola di formatRating in shared). */}
+        {/* Con la virgola, come in italiano (docs/CHANGELOG.md §342; stessa regola di formatRating in shared). */}
         {value.toFixed(1).replace(".", ",")}
       </Text>
       {count !== undefined ? (

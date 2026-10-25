@@ -334,7 +334,7 @@ export const PLACEHOLDER_PROFESSIONALS: PlaceholderProfessional[] = [
 
 /**
  * Voto medio con una cifra decimale e la virgola, come si scrive in italiano
- * ("4,7"), in tutto il sito (docs/CHANGELOG.md §340). Mai nei dati per Google
+ * ("4,7"), in tutto il sito (docs/CHANGELOG.md §342). Mai nei dati per Google
  * (JSON-LD), che vogliono il numero.
  */
 export function formatRating(value: number): string {

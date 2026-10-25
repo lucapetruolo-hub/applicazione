@@ -5,7 +5,7 @@ import { API_URL } from "../fixtures/env";
 
 /**
  * Stelle e numero di recensioni accanto al nome del professionista, dalla
- * parte del cliente (docs/CHANGELOG.md §340): nei preventivi ricevuti da più
+ * parte del cliente (docs/CHANGELOG.md §342): nei preventivi ricevuti da più
  * professionisti e nella richiesta inviata a uno solo. Le stelle portano alle
  * recensioni del profilo; senza recensioni "Nessuna recensione ancora".
  */

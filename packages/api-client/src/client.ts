@@ -231,7 +231,7 @@ export type ClientGuidedRequest = {
     categoryLabel: string;
     city: string;
     verified: boolean;
-    /** Media e numero delle recensioni (docs/CHANGELOG.md §340); null se il profilo è stato eliminato. */
+    /** Media e numero delle recensioni (docs/CHANGELOG.md §342); null se il profilo è stato eliminato. */
     reviews: ProfessionalReviewSummary | null;
     /** True se questo professionista ha rifiutato la richiesta prima di inviare un preventivo. */
     declined: boolean;
@@ -244,7 +244,7 @@ export type ClientGuidedRequest = {
     businessName: string;
     /** Foto profilo del professionista, mostrata accanto al nome; null se assente o profilo eliminato. */
     imageUrl: string | null;
-    /** Media e numero delle recensioni (docs/CHANGELOG.md §340); null se il profilo è stato eliminato. */
+    /** Media e numero delle recensioni (docs/CHANGELOG.md §342); null se il profilo è stato eliminato. */
     reviews: ProfessionalReviewSummary | null;
     /** Privato, partita IVA o azienda, badge accanto al nome (docs/CHANGELOG.md §338); null se non ancora indicato. */
     professionalKind: ProfessionalKind | null;

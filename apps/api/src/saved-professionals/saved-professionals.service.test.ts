@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { PrismaClient } from "@professionisti/database";
 import { SavedProfessionalsService } from "./saved-professionals.service";
 
-/** Professionisti salvati: la media non conta le recensioni nascoste da un admin (§144, docs/CHANGELOG.md §340). */
+/** Professionisti salvati: la media non conta le recensioni nascoste da un admin (§144, docs/CHANGELOG.md §342). */
 describe("SavedProfessionalsService.listForUser", () => {
   it("esclude le recensioni nascoste dalla media e dal numero", async () => {
     const review = (rating: number, hidden = false) => ({ status: "COMPLETED", updatedAt: new Date("2026-01-10T00:00:00Z"), review: { rating, hiddenAt: hidden ? new Date() : null } });

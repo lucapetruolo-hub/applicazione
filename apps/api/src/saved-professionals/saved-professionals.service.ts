@@ -45,7 +45,7 @@ export class SavedProfessionalsService {
     });
 
     return saved.map(({ professionalProfile: profile }) => {
-      // Recensioni nascoste da un admin escluse, come nel profilo e nella ricerca (§144, §340).
+      // Recensioni nascoste da un admin escluse, come nel profilo e nella ricerca (§144, §342).
       const { rating, count: reviewCount } = summarizeReviews(
         profile.bookings.flatMap((booking) => (booking.review && booking.review.hiddenAt === null ? [booking.review.rating] : [])),
       );

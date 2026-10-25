@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { PrismaClient } from "@professionisti/database";
 import { reviewSummariesFor, summarizeReviews } from "./review-summary";
 
-/** Stelle e numero di recensioni nelle schede del cliente (docs/CHANGELOG.md §340). */
+/** Stelle e numero di recensioni nelle schede del cliente (docs/CHANGELOG.md §342). */
 describe("summarizeReviews", () => {
   it("senza recensioni non c'è media", () => {
     expect(summarizeReviews([])).toEqual({ rating: null, count: 0 });

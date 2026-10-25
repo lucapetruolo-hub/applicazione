@@ -12,7 +12,7 @@ export function summarizeReviews(ratings: number[]): ReviewSummary {
 
 /**
  * Valutazione di più professionisti con una sola query, per le schede del
- * cliente in /le-mie-richieste (docs/CHANGELOG.md §340): un professionista
+ * cliente in /le-mie-richieste (docs/CHANGELOG.md §342): un professionista
  * senza recensioni ha `{ rating: null, count: 0 }`.
  */
 export async function reviewSummariesFor(prisma: PrismaClient, professionalProfileIds: string[]): Promise<Map<string, ReviewSummary>> {

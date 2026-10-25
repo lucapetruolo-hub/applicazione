@@ -551,21 +551,21 @@ export function ResultsListWithMap({
               fidarmi?" si forma davvero, non solo dopo aver superato
               l'intera lista. */}
           <XStack flexWrap="wrap" gap="$3" alignItems="center">
-            <XStack alignItems="center" gap="$2">
+            <XStack alignItems="center" gap="$2" flexShrink={1} minWidth={0}>
               <Icon name="badge-check" size={14} color={brand.grafite70} strokeWidth={1.5} />
-              <Text fontSize={13} fontWeight="600" color={brand.grafite70}>
+              <Text fontSize={13} fontWeight="600" color={brand.grafite70} flexShrink={1}>
                 Badge Verificato: identità controllata con documento e selfie
               </Text>
             </XStack>
-            <XStack alignItems="center" gap="$2">
+            <XStack alignItems="center" gap="$2" flexShrink={1} minWidth={0}>
               <Icon name="shield" size={14} color={brand.grafite70} strokeWidth={1.5} />
-              <Text fontSize={13} fontWeight="600" color={brand.grafite70}>
+              <Text fontSize={13} fontWeight="600" color={brand.grafite70} flexShrink={1}>
                 Recensioni solo da lavori confermati
               </Text>
             </XStack>
-            <XStack alignItems="center" gap="$2">
+            <XStack alignItems="center" gap="$2" flexShrink={1} minWidth={0}>
               <Icon name="tag" size={14} color={brand.grafite70} strokeWidth={1.5} />
-              <Text fontSize={13} fontWeight="600" color={brand.grafite70}>
+              <Text fontSize={13} fontWeight="600" color={brand.grafite70} flexShrink={1}>
                 Gratis per chi cerca
               </Text>
             </XStack>
