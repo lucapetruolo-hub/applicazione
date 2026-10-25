@@ -18,6 +18,7 @@ import {
 import { Autocomplete, Avatar, Badge, BadgeInfo, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
+import { ProfessionalReviewsSummary } from "@/components/ProfessionalReviewsLink";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { MediaPreview } from "@/components/MediaPreview";
 import { UploadingDots } from "@/components/UploadingDots";
@@ -756,10 +757,10 @@ export function GuidedRequestCard({
               </Text>
               {request.sentTo.map((professional) => (
                 <XStack key={professional.id} gap="$3" alignItems="center" backgroundColor={brand.gesso} borderRadius="$3" padding="$3" opacity={professional.declined ? 0.7 : 1}>
-                  <Link href={`/professionista/${professional.id}`} style={{ textDecoration: "none", color: "inherit", flex: 1 }}>
+                  <Link href={`/professionista/${professional.id}`} style={{ textDecoration: "none", color: "inherit", flex: 1, minWidth: 0 }}>
                     <XStack gap="$3" alignItems="center">
                       <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={44} />
-                      <YStack gap="$1" flex={1}>
+                      <YStack gap="$1" flex={1} minWidth={0}>
                         <XStack gap="$2" alignItems="center" flexWrap="wrap">
                           <Text fontWeight="600" color={brand.grafite}>
                             {professional.businessName}
@@ -778,6 +779,7 @@ export function GuidedRequestCard({
                         <Text color={brand.grafite70} fontSize={16}>
                           {professional.categoryLabel} · {professional.city}
                         </Text>
+                        <ProfessionalReviewsSummary reviews={professional.reviews} />
                         {professional.declined && professional.declineNote ? (
                           <Text color={brand.grafite70} fontSize={13}>
                             {professional.declineNote}
@@ -786,7 +788,9 @@ export function GuidedRequestCard({
                       </YStack>
                     </XStack>
                   </Link>
+                  {/* "Messaggi" leggero come nei preventivi (§338): da telefono l'icona tonda lascia spazio a nome e stelle (§342). */}
                   <ContactButton
+                    light
                     unreadCount={effectiveThreadUnread(`${request.id}:${professional.id}`)}
                     onPress={() => openTimelineForProfessional(professional.id)}
                   />
@@ -825,7 +829,6 @@ export function GuidedRequestCard({
                   unreadCount={combineUnreadCounts(quoteUnreadCounts?.get(quote.id), threadUnreadCounts?.get(`${request.id}:${quote.professionalProfileId}`))}
                   autoOpenTimeline={autoOpenChatProfessionalId === quote.professionalProfileId}
                   requestOpen={request.status !== "CLOSED"}
-                  compare={request.quotes.filter((q) => q.status === "SENT").length > 1}
                   contactInBooking={quote.status === "ACCEPTED" && booking?.professionalProfileId === quote.professionalProfileId}
                 />
               ))}

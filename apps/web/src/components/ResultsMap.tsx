@@ -1,6 +1,6 @@
 "use client";
 
-import { professionalPath } from "@professionisti/shared";
+import { formatRating, professionalPath } from "@professionisti/shared";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AdvancedMarker, Map as GoogleMap } from "@vis.gl/react-google-maps";
@@ -195,7 +195,7 @@ export function ResultsMap({
                 <>
                   {" · "}
                   <Star size={12} strokeWidth={1.5} color={brand.ottone} fill={brand.ottone} style={{ verticalAlign: "-1px" }} />{" "}
-                  {selected.rating.toFixed(1)}
+                  {formatRating(selected.rating)}
                 </>
               ) : (
                 ""
