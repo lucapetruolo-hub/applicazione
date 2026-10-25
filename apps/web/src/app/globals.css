@@ -1122,6 +1122,18 @@ button.notif-row-main:hover {
     color: #6e6459;
     padding: 4px 12px 6px;
   }
+  /* La riga del primo titolo è alta quanto il tondo, che le sta accanto:
+     prima il tondo (32px) sporgeva sotto il titolo (28px) e copriva la prima
+     voce (docs/CHANGELOG.md §337). */
+  .acct-nav-toggle + .acct-nav-group > .acct-nav-title {
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    padding-top: 0;
+    padding-bottom: 0;
+    padding-right: 44px;
+    margin-bottom: 4px;
+  }
   /* Tondo in alto a destra, sulla riga del primo titolo. */
   .acct-nav-toggle {
     position: absolute;

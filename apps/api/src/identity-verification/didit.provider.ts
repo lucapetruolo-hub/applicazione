@@ -176,7 +176,8 @@ export function diditDecision(body: Record<string, unknown>): IdentityDecision {
       }
     : null;
   const warnings = diditWarnings(body);
-  return { providerStatus, outcome, person, warnings, reason: diditReason(warnings) };
+  const documentExpiresAt = entry ? (str(entry.expiration_date) ?? str(entry.date_of_expiry))?.slice(0, 10) ?? null : null;
+  return { providerStatus, outcome, person, warnings, reason: diditReason(warnings), documentExpiresAt };
 }
 
 /**

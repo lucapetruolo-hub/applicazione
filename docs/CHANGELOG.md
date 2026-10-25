@@ -20583,7 +20583,105 @@ Richiesta dell'utente: "si potrebbe dare l'icona del meteo per 3 giorni e dire d
 - osv-scanner ora blocca la PR (`.github/workflows/security.yml`, checklist punto 40): dopo aver caricato il rapporto, un passo rifà il controllo e fallisce se trova una vulnerabilità fuori dalle eccezioni di `osv-scanner.toml`. Vale per tutte le librerie, non solo per quelle del sito e dell'API: osv-scanner non sa distinguere quelle usate solo per costruire o provare (anche `pnpm audit --prod` conta lo strumento di Expo, dipendenza dell'app), quindi quelle senza versione corretta vanno tra le eccezioni con il motivo. Provato: con il `pnpm-lock.yaml` di prima di questa PR il controllo fallisce (vitest, tinypool, ecc.), con quello nuovo passa.
 - I due avvisi rimasti (zod 3 e node-forge in `@expo/cli`) vanno chiusi a mano nella scheda Security → Dependabot di GitHub con "Vulnerable code is not actually used" / "Risk is tolerable": lo fa Luca, i thread non hanno accesso agli avvisi.
 
-## 336. Interruttore "Urgente" anche nel riepilogo della richiesta
+## 336. "Le mie richieste": l'unica richiesta si apre da sola
+
+**Richiesta esplicita dell'utente** (25/10/2026): "Se c'è solo una richiesta preventivo, nella pagina le mie richieste, la visualizzazione standard rendila già aperta".
+
+**Decisione presa**
+- In `apps/web/src/app/le-mie-richieste/page.tsx`, al primo caricamento, se il cliente ha una sola richiesta non archiviata la sua scheda si apre già (stessa scheda aperta di quando la si tocca). Con due o più resta l'elenco chiuso come prima.
+- Una volta sola per visita: se il cliente la richiude resta chiusa, anche quando la pagina si aggiorna da sola ogni 15 secondi. Un link da notifica (`?open=`) ha la precedenza.
+- L'apertura automatica non toglie il segno "da leggere" messo a mano dal menu della scheda: lo toglie solo il tocco del cliente, come prima.
+
+**Migliorie approvate da Luca** ("Effettua miglioria 1 e 3")
+- Con una sola richiesta in tutto (non archiviata) spariscono schede di stato, ricerca, filtri e domicilio/online: non servono e da telefono spingevano la scheda sotto la prima schermata. Se ci sono anche richieste archiviate restano, per poter aprire "Archiviate".
+- Scegliendo una scheda di stato (per esempio "Accettate" o "Archiviate") che contiene una sola richiesta, quella si apre da sola. Solo al cambio di scheda, non a ogni aggiornamento automatico.
+
+**Verifica**
+- Typecheck e lint del sito. Con API e database di prova: cliente con una richiesta, scheda aperta da computer (1440px) e da telefono (390px); cliente con due richieste, elenco chiuso; richiusa la scheda, resta chiusa dopo l'aggiornamento automatico. Dopo le migliorie: con una sola richiesta niente ricerca né schede di stato; cliente con una richiesta attiva e una archiviata, controlli presenti e "Archiviate" apre da sola l'archiviata; cliente con due richieste in "In attesa", nessuna aperta. Foto in `/mnt/project-files/anteprime/richiesta-unica-aperta/`.
+
+## 337. Il tondo "Riduci il menu" non copre più la prima voce
+
+**Richiesta dell'utente** (25/10/2026, con foto del menu del cliente da computer): "Il pulsante delle freccette si sovrappone, correggi".
+
+**Causa**: il tondo da 32px stava in alto a destra, sulla riga del primo titolo, che però era alta solo 28px. Il tondo sporgeva quindi sulla prima voce ("Le mie richieste" per il cliente, "Oggi" per il professionista), e si vedeva soprattutto quando la voce era attiva. Non capitava con il menu ridotto né sul tablet o sul telefono, dove il tondo è in colonna oppure non c'è.
+
+**Correzione** (`apps/web/src/app/globals.css`): la riga del primo titolo, cioè quella accanto al tondo, è alta 32px. Il testo è centrato sul tondo e ha 44px di margine a destra, così un titolo lungo non finisce sotto il tondo. Vale per tutti e due i menu.
+
+**Verifica**: in `e2e/tests/menu-laterale.spec.ts` c'è un nuovo controllo, `expectToggleFree`: il tondo non deve toccare nessuna voce né il testo di nessun titolo. Lo fanno il professionista con il menu aperto e ridotto, e il cliente prima e dopo aver ridotto il menu. Senza la correzione falliva su "Oggi" e su "Le mie richieste"; con la correzione passa. Le foto prima e dopo sono in `/mnt/project-files/anteprime/menu-ridotto/freccette/`.
+
+## 338. Significato dei badge del professionista in un fumetto, badge "Privato / Partita IVA / Azienda"
+
+**Richiesta esplicita dell'utente** (24/10/2026, thread "Spiegare i badge del professionista"): passando sopra un badge del professionista deve comparire la sua descrizione, soprattutto per "Verificato" ("è molto importante che il cliente capisca cosa è stato verificato"); poi: "far capire al cliente in che modalità si è iscritto il professionista e quindi differenziarli".
+
+**Decisione presa**:
+- Nuovo `BadgeInfo` (`packages/ui/src/BadgeInfo.web.tsx`, variante nativa in `BadgeInfo.tsx` solo per il lettore di schermo): il badge diventa un pulsante con un fumetto bianco ad angoli tondi. Si apre passando col mouse, toccando il badge da telefono (un secondo tocco lo chiude) o raggiungendolo col tasto Tab; si chiude con Esc, toccando altrove o allontanando il mouse, che può spostarsi sul fumetto senza chiuderlo (WCAG 1.4.13). Il clic sul badge non apre la scheda dei risultati che lo contiene. Il fumetto è in un portale con posizione fissa, sotto o sopra il badge secondo lo spazio, sempre dentro lo schermo. La descrizione è sempre collegata al pulsante (`aria-describedby`).
+- Testi in un solo punto (`packages/ui/src/badgeInfo.ts`), scelti dall'utente: "Verificato" → "Ha confermato la sua identità." (più "Non è una garanzia sulla qualità del lavoro."), "Sponsorizzato" → "Pacchetto di visibilità a pagamento.", "Nuovo profilo" → "Iscritto da meno di 30 giorni.", "Assicurazione RC dichiarata" → "Il professionista dichiara di possedere un'assicurazione per i danni causati durante il lavoro.", "Lavoro confermato" (recensioni) e "Identità verificata da Stripe" con frasi brevi fedeli al codice.
+- Nuovo badge `ProfessionalKindBadge` "Privato" / "Partita IVA" / "Azienda" (pillola neutra con icona, accanto a "Verificato") nel profilo, nei risultati e nei professionisti salvati, dal tipo dei dati fiscali (`professionalKind`, `professionalKindOf` in `packages/shared/src/fiscalCompleteness.ts`, aggiunto alle risposte di ricerca, profilo e salvati). Nel fumetto: per il privato "Lavora in modo occasionale, senza partita IVA." e che i diritti del consumatore non si applicano; per gli altri che si applicano. Nel profilo la riga "Privato senza partita IVA" / "Professionista con partita IVA" lascia il posto al badge, ma per il privato l'avviso sui diritti del consumatore resta scritto in chiaro (Codice del consumo art. 49-bis, §241), non solo nel fumetto.
+- Domande 36-37 per l'avvocato (cosa promette "Verificato", etichetta "Sponsorizzato").
+- Dopo la revisione dell'utente: riga sui diritti del consumatore nel fumetto solo per il privato (l'unica obbligatoria); per "Partita IVA" e "Azienda" solo la prima frase.
+- Migliorie approvate dall'utente: (1) la scritta "Badge Verificato: documento e P.IVA controllati" (piè di pagina, risultati, garanzie, domande della città) prometteva più del controllo reale (il badge può arrivare mentre la partita IVA è ancora in controllo, e il privato non ce l'ha): ora "identità controllata con documento e selfie"; (2) fumetto anche su "Verificato" nel riquadro della mappa, nei nuovi profili in home e nelle risposte di "Le mie richieste", e su "Lavoro confermato" nelle recensioni della home; (3) tolta la verifica manuale dell'admin (`POST /admin/professional-verifications/:id/verify`, `verifyProfessionalSchema`, `adminVerifyProfessional`), che il sito non usava più: "Verificato" vuol dire sempre documento e selfie; all'admin resta "Togli verifica".
+
+**Verifica**: typecheck di `packages/ui`, `apps/api`, `apps/web`; lint; sul sito compilato con database di prova, da computer (1280 px) e telefono (390 px): fumetto col mouse, al tocco (secondo tocco chiude, la pagina non cambia), con Tab ed Esc, mouse spostato sul fumetto; `confronto-pagine` prima/dopo: cambiano solo profilo e pagine dei risultati (badge in più). Anteprime in `anteprime/badge-descrizioni/`.
+
+**Seconda parte: ogni frase sulla verifica corrisponde a un controllo reale** (richiesta esplicita dell'utente, stesso thread: "come farebbe un responsabile Trust & Safety con un legale dei consumatori", tabella frase → dove → controllo → codice → test in `/mnt/project-files/analisi/badge-frasi-e-controlli.md`).
+- Testi corretti perché promettevano più del controllo: fumetto "Lavoro confermato" ("Recensione di un cliente che ha prenotato il lavoro sul sito.": la recensione si apre anche dopo una segnalazione chiusa, senza conferma di fine lavoro); garanzie in home ("Recensioni lasciate solo da clienti che hanno prenotato il lavoro sul sito", non "confermato da entrambe le parti", che il codice non chiede; soldi bloccati "fino alla tua conferma o per 7 giorni dalla fine del lavoro", come `onlineCanRelease`; titolo "Come ti proteggiamo" al posto di "Ogni intervento è coperto dalla Garanzia Piattaforma": il pagamento diretto non è coperto e "garanzia" fa pensare alla garanzia convenzionale, art. 133 Codice del consumo); descrizione per Google "Identità verificata su …" (non "Profilo verificato"); email del badge "La verifica con documento e selfie è riuscita" (con `DIDIT_SANDBOX=true` il confronto con i dati fiscali è saltato); banner dei dati fiscali "Li controlliamo in automatico" (non "subito": Openapi può riprovare dopo 30 minuti); domanda per i professionisti "Solo un cliente che ha prenotato un lavoro con te sul sito"; avviso del privato senza "con lui".
+- `publicVerified` (`apps/api/src/professional-fiscal/public-visibility.ts`): un profilo dimostrativo non mostra mai il badge ai clienti (ricerca, profilo, salvati, "Le mie richieste"); il seed li crea con `verified: true`.
+- Fumetto: la descrizione è in uno span `hidden` collegato con `aria-describedby`. Prima era dentro il pulsante e il lettore di schermo la leggeva due volte (nome "Verificato Ha confermato…" più la descrizione), trovato dalla nuova prova nel browser.
+- Badge nel tempo (decisione dell'utente del 25/10/2026, "A e B" sulla proposta): (A) da Didit si salva solo la scadenza del documento (`identity_verifications.documentExpiresAt`, da `expiration_date`); 30 giorni prima notifica ed email `IDENTITY_VERIFICATION_EXPIRING`, alla scadenza (o 5 anni dopo la verifica se la data manca) badge tolto con `revokeOverTime`, ma il professionista continua a inviare preventivi (`identityExpiredAt` sul profilo, letto da `identityVerificationNeeded`) e la pagina "Verifica identità" dice "Rinnova la verifica"; (B) ogni verifica salva se è di prova (`sandbox`, da `DIDIT_SANDBOX`) e con le chiavi vere il controllo di ogni mattina (`checkBadgesOverTime`, alle 9) toglie il badge a chi non ha una verifica approvata non di prova, quindi al lancio i badge di prova cadono da soli. La migrazione `20261025090000_badge_nel_tempo` segna come prova tutte le verifiche già fatte (Didit è stato usato solo con le chiavi di prova). Informativa privacy, punto 8: si conserva anche la data di scadenza del documento.
+- Tipo di lavoratore nel preventivo (richiesta esplicita dell'utente: "fai capire al cliente il profilo da cui è pervenuto quel preventivo che tipo di lavoratore è"): badge "Privato" / "Partita IVA" / "Azienda" con il suo fumetto accanto al nome nella scheda del preventivo in "Le mie richieste" (`professionalKind` nei preventivi del cliente). Nessuna riga in più sotto il nome (decisione dell'utente: "niente riga esplicativa"): per il privato l'avviso sui diritti del consumatore è nel fumetto del badge.
+- Migliorie approvate dall'utente ("effettua migliorie"): (1) pulsanti del preventivo da telefono: "Accetta preventivo" largo in fondo, dove arriva il pollice, "Modifica" (non più giallo) e "Rifiuta" affiancati sopra, tutti alti 48 px; da computer restano in riga nello stesso ordine; "Contatta/Cronologia" della scheda diventa "Messaggi", leggero, accanto al nome (da telefono solo l'icona tonda con il pallino dei non letti) (`ContactButton light`); (2) in Admin > Verifiche la data fino a cui vale la verifica (scadenza del documento o 5 anni) e "verifica di prova" per quelle fatte con `DIDIT_SANDBOX` (`verificationValidUntil` spostata in `identity-verification/validity.ts`).
+- Cosa già valeva e resta: badge tolto se cambiano i dati della persona o il nome dell'attività (con il documento scaduto, cambiare la persona fa tornare obbligatoria la verifica prima dei preventivi); codice fiscale o P.IVA non validi tolgono il profilo da ricerca e link dal lancio.
+
+**Verifica**: prove del badge nel tempo in `identity-verification.test.ts` e `professional-verification.service.test.ts` (scadenza letta dal documento, avviso una volta sola, badge tolto, prova senza effetti con `DIDIT_SANDBOX`), 616 test API; `badge-promesse.test.ts` (un solo punto del codice accende il badge, chiamato solo dalla verifica approvata; mai sui profili dimostrativi; badge del tipo), 599 test API; prova nel browser `e2e/tests/badge-fumetto.spec.ts` da telefono e computer (badge solo con verifica approvata, nome e descrizione per il lettore di schermo, mouse, tocco, Tab, Esc, axe senza problemi gravi); query in sola lettura per il database vero in `/mnt/project-files/analisi/badge-verifica/query-dati-veri.sql`.
+
+## 339. Pagamento con una sola scelta: niente domanda
+
+**Richiesta dell'utente**: accettando un preventivo in cui il professionista
+offre solo il pagamento diretto, il cliente vedeva "Come vuoi pagare?" con
+un'unica opzione "DIRETTO al professionista" già selezionata, come se
+dovesse scegliere.
+
+**Decisione** (`PaymentChoice`, `jobPaymentChoiceCopy`):
+- Con un solo modo offerto (diretto, tutto online o acconto online + saldo
+  diretto) niente domanda né pallino: un riquadro "Pagamento" come
+  "Messaggio del professionista", con il modo ("Direttamente al
+  professionista", "Online con carta", ...), la spiegazione e l'acconto
+  quando è online. Senza "(consigliato)": non c'è altro da confrontare.
+- Con due o più modi resta la scelta "Come vuoi pagare?"; l'opzione diretta
+  ora è "Diretto al professionista" (niente maiuscolo, regole Taste).
+
+Migliorie approvate dall'utente ("Effettua le migliorie"), e la sua domanda
+se il cliente capisce come si paga già dal preventivo, per scegliere tra più
+preventivi (prima no: lo vedeva solo premendo "Accetta preventivo"):
+- Il riquadro "Pagamento" ora è nella scheda del preventivo, sotto
+  "Totale indicativo" (`PaymentOffer`): con un solo modo il modo, la
+  spiegazione e l'acconto; con più modi "Pagamento, a tua scelta" e
+  l'elenco, con l'acconto accanto a quelli online. Online offerto ma Stripe
+  non attivo: il messaggio di prima, e "Accetta preventivo" è spento.
+- Con un solo modo "Accetta preventivo" accetta subito, senza il passaggio
+  con "Annulla" (con l'online diventa "Accetta e paga l'acconto" e porta al
+  pagamento). La scelta con i pallini resta solo con due o più modi.
+- Lavoro accettato con pagamento diretto: "Pagamento: direttamente al
+  professionista" (cliente) o "direttamente dal cliente" (professionista),
+  al posto di "Metodo di pagamento: DIRETTO · ...".
+
+**Verifica**: typecheck e lint; anteprime da computer e telefono della
+scheda vera e dei riquadri nei vari casi.
+
+Miglioria approvata dall'utente ("effettua miglioria n.2"): con più
+preventivi da valutare nella stessa richiesta, accanto al totale di ognuno
+un'etichetta corta ("Pagamento diretto", "Pagamento online", "Acconto
+online" o "Online o diretto", `jobPaymentOfferLabel`), neutra (bianca con
+filetto: non è uno stato, quindi niente colori dei badge). Con un solo
+preventivo non compare: c'è già il riquadro "Pagamento" sotto.
+
+Dopo la "versione più profonda" del compito: aggiunta la domanda 40 per
+l'avvocato (art. 49 Codice del consumo, modalità di pagamento prima
+dell'impegno). Il modo di pagamento nell'email "Nuovo preventivo" era stato
+aggiunto e poi tolto su decisione dell'utente: il cliente lo vede sul sito,
+non nell'email.
+
+## 340. Interruttore "Urgente" anche nel riepilogo della richiesta
 
 **Richiesta esplicita dell'utente** (25/10/2026, thread "Interruttore Urgente nell'ultimo passo del preventivo"): nel modulo di richiesta preventivo, all'ultimo passo, "Urgente" deve stare vicino all'opzione che inoltra la richiesta agli altri professionisti se quello scelto non risponde, facile da accendere e spegnere.
 

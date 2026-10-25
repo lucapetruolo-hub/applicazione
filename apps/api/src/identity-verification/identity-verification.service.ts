@@ -18,6 +18,9 @@ import { toTaxIdCheckView } from "../tax-id-check/tax-id-check.service";
 import { IdentityProviderError, type IdentityDecision, type IdentityProvider } from "./identity-provider";
 import { identityProviderFromEnv, identityVerificationNeeded } from "./identity-provider-env";
 import { matchDocumentToFiscal, type ExpectedPerson } from "./identity-match";
+import { verificationValidUntil } from "./validity";
+
+export { VERIFICATION_VALID_YEARS, verificationValidUntil } from "./validity";
 
 /** Tentativi al giorno: ogni verifica ha un costo, e oltre è meglio che ci scriva. */
 export const MAX_IDENTITY_ATTEMPTS_PER_DAY = 5;
@@ -101,8 +104,39 @@ export function reminderDue(input: { profileCreatedAt: Date; sent: number; lastS
 const UNCLEAR_REASON =
   "Non siamo riusciti a confermare il documento. Rifai la verifica con un documento valido, inquadrato per intero, con buona luce e senza riflessi.";
 
+export const SANDBOX_BADGE_REASON = "Il badge era stato dato con una verifica di prova: rifai la verifica con documento e selfie.";
+export const EXPIRED_BADGE_REASON = "Il documento della tua verifica è scaduto: rifalla con un documento valido. Intanto puoi continuare a inviare preventivi.";
 const DECLINED_REASON =
   "Il documento o il selfie non sono stati accettati. Usa un documento valido e non scaduto, con buona luce e senza riflessi, e riprova.";
+
+/** Avviso "il documento sta per scadere" (§338). */
+export const EXPIRY_REMINDER_DAYS = 30;
+
+export type BadgeOverTime = "KEEP" | "REMIND" | "REVOKE_SANDBOX" | "REVOKE_EXPIRED";
+
+/**
+ * Badge "Verificato" nel tempo (decisione dell'utente, docs/CHANGELOG.md
+ * §338), con le chiavi vere del fornitore: senza una verifica approvata non
+ * di prova il badge cade; alla scadenza del documento (o dopo 5 anni senza
+ * data) cade anche lui, con un avviso 30 giorni prima.
+ */
+export function badgeOverTime(
+  approved: Pick<IdentityVerification, "decidedAt" | "createdAt" | "documentExpiresAt" | "expiryRemindedAt"> | null,
+  now: Date,
+): BadgeOverTime {
+  if (!approved) return "REVOKE_SANDBOX";
+  const validUntil = verificationValidUntil(approved);
+  if (now.getTime() >= validUntil.getTime()) return "REVOKE_EXPIRED";
+  if (!approved.expiryRemindedAt && validUntil.getTime() - now.getTime() <= EXPIRY_REMINDER_DAYS * DAY_MS) return "REMIND";
+  return "KEEP";
+}
+
+/** "AAAA-MM-GG" del fornitore → fine di quel giorno in Italia (il documento vale tutto il giorno). */
+export function documentExpiry(value: string | null | undefined): Date | null {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const date = new Date(`${value}T23:59:59.000Z`);
+  return Number.isNaN(date.getTime()) ? null : new Date(date.getTime() - 2 * 60 * 60_000);
+}
 
 const FISCAL_INCLUDE = { taxIdChecks: true, representative: true } satisfies Prisma.ProfessionalFiscalProfileInclude;
 type FiscalWithChecks = Prisma.ProfessionalFiscalProfileGetPayload<{ include: typeof FISCAL_INCLUDE }>;
@@ -135,7 +169,7 @@ export class IdentityVerificationService {
   private async loadMine(userId: string) {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { userId },
-      select: { id: true, userId: true, isDemo: true, verified: true, deletedAt: true, fiscalProfile: { include: FISCAL_INCLUDE } },
+      select: { id: true, userId: true, isDemo: true, verified: true, identityExpiredAt: true, deletedAt: true, fiscalProfile: { include: FISCAL_INCLUDE } },
     });
     if (!profile || profile.deletedAt) throw new NotFoundException("Completa prima il tuo profilo professionista.");
     return profile;
@@ -160,7 +194,7 @@ export class IdentityVerificationService {
   }
 
   private buildStatus(
-    profile: { isDemo: boolean; verified: boolean; fiscalProfile: FiscalWithChecks | null },
+    profile: { isDemo: boolean; verified: boolean; identityExpiredAt: Date | null; fiscalProfile: FiscalWithChecks | null },
     latest: IdentityVerification | null,
   ): MyVerificationStatus {
     const fiscal = profile.fiscalProfile;
@@ -174,7 +208,8 @@ export class IdentityVerificationService {
         : checks.some((c) => c.status === "PENDING")
           ? "CHECKING"
           : "OK";
-    const status = profile.verified ? "APPROVED" : (latest?.status ?? "NOT_STARTED");
+    // Badge tolto dopo una verifica approvata (dati cambiati, documento scaduto, prova): si ricomincia.
+    const status = profile.verified ? "APPROVED" : latest?.status === "APPROVED" ? "NOT_STARTED" : (latest?.status ?? "NOT_STARTED");
     const available = this.provider !== null;
     const blockedReason = profile.verified
       ? null
@@ -201,6 +236,7 @@ export class IdentityVerificationService {
         standby: !profile.verified && isStandby(latest),
         canStart: !profile.verified && blockedReason === null,
         blockedReason,
+        renewal: !profile.verified && !!profile.identityExpiredAt,
       },
       verified: profile.verified,
       publicVisible: !publicVisibilityMissing({
@@ -246,6 +282,7 @@ export class IdentityVerificationService {
         providerStatus: session ? null : STANDBY_PROVIDER_STATUS,
         biometricConsentAt: new Date(),
         biometricConsentVersion: BIOMETRIC_CONSENT_VERSION,
+        sandbox: this.provider.sandbox,
       },
     });
     await this.auditLogService.record({
@@ -335,6 +372,8 @@ export class IdentityVerificationService {
     const profiles = await this.prisma.professionalProfile.findMany({
       where: {
         verified: false,
+        // Documento scaduto: ha già il suo avviso, e può continuare a lavorare (§338).
+        identityExpiredAt: null,
         isDemo: false,
         deletedAt: null,
         invitePendingAt: null,
@@ -360,6 +399,37 @@ export class IdentityVerificationService {
   }
 
   /**
+   * Badge nel tempo (§338), ogni mattina e solo con le chiavi vere del
+   * fornitore: in prova le verifiche sono tutte di prova e il badge resta.
+   */
+  @Cron("0 9 * * *", { timeZone: "Europe/Rome" })
+  async checkBadgesOverTime(now: Date = new Date()): Promise<void> {
+    if (!this.provider || this.provider.sandbox) return;
+    const profiles = await this.prisma.professionalProfile.findMany({
+      where: { verified: true, isDemo: false, deletedAt: null },
+      select: { id: true, userId: true },
+      take: 500,
+    });
+    for (const profile of profiles) {
+      const approved = await this.prisma.identityVerification.findFirst({
+        where: { professionalProfileId: profile.id, status: "APPROVED", sandbox: false },
+        orderBy: { decidedAt: "desc" },
+      });
+      const outcome = badgeOverTime(approved, now);
+      if (outcome === "REVOKE_SANDBOX") {
+        await this.professionalVerificationService.revokeOverTime(profile.id, SANDBOX_BADGE_REASON, false);
+      } else if (outcome === "REVOKE_EXPIRED") {
+        await this.professionalVerificationService.revokeOverTime(profile.id, EXPIRED_BADGE_REASON, true);
+      } else if (outcome === "REMIND" && approved) {
+        const claimed = await this.prisma.identityVerification.updateMany({ where: { id: approved.id, expiryRemindedAt: null }, data: { expiryRemindedAt: now } });
+        if (claimed.count === 1) {
+          await this.notificationsService.notify(profile.userId, "IDENTITY_VERIFICATION_EXPIRING", { expiresOn: verificationValidUntil(approved).toISOString() });
+        }
+      }
+    }
+  }
+
+  /**
    * Email "Completa il profilo" il giorno dopo l'iscrizione (decisione
    * dell'utente, docs/CHANGELOG.md §261-§262) e di nuovo dopo una settimana,
    * solo se manca ancora qualcosa.
@@ -375,7 +445,7 @@ export class IdentityVerificationService {
         user: { suspendedAt: null },
         createdAt: { lte: new Date(now.getTime() - SETUP_REMINDER_WINDOWS[0]![0] * DAY_MS), gt: new Date(now.getTime() - SETUP_REMINDER_WINDOWS[SETUP_REMINDER_WINDOWS.length - 1]![1] * DAY_MS) },
       },
-      select: { id: true, userId: true, createdAt: true, isDemo: true, verified: true, fiscalProfile: { include: FISCAL_INCLUDE } },
+      select: { id: true, userId: true, createdAt: true, isDemo: true, verified: true, identityExpiredAt: true, fiscalProfile: { include: FISCAL_INCLUDE } },
       take: 200,
     });
     for (const profile of profiles) {
@@ -463,7 +533,14 @@ export class IdentityVerificationService {
     const decided = next.status === "APPROVED" || next.status === "DECLINED";
     const updated = await this.prisma.identityVerification.update({
       where: { id: row.id },
-      data: { status: next.status, reason: next.reason, providerStatus: decision.providerStatus, decidedAt: decided ? new Date() : row.decidedAt },
+      data: {
+        status: next.status,
+        reason: next.reason,
+        providerStatus: decision.providerStatus,
+        decidedAt: decided ? new Date() : row.decidedAt,
+        // Dal documento si conserva solo la scadenza (§338).
+        ...(next.status === "APPROVED" ? { documentExpiresAt: documentExpiry(decision.documentExpiresAt), expiryRemindedAt: null } : {}),
+      },
     });
     if (next.status !== row.status) {
       await this.auditLogService.record({
