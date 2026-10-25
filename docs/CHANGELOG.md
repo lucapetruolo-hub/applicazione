@@ -20594,6 +20594,6 @@ Richiesta dell'utente: "si potrebbe dare l'icona del meteo per 3 giorni e dire d
 - Pulsante principale "Vai alle mie richieste" e link "Torna alla home".
 - La domanda sui dati in una riga tratteggiata, testo corto ("Salvare nome, telefono e indirizzo per la prossima volta?", Salva / No), pulsanti alti 44 px.
 - All'apertura la pagina torna in cima e il titolo riceve il fuoco (lettori di schermo).
-- Il tempo medio di risposta ("risponde entro 2 ore") ha un solo calcolo, `apps/web/src/lib/responseTime.ts`, usato da profilo, modulo di richiesta e questa pagina (prima tre copie con risultati diversi: "2 ore", "120 min").
+- Il tempo medio di risposta ("risponde entro 2 ore") ha un solo calcolo, `apps/web/src/lib/responseTime.ts`, usato da profilo, modulo di richiesta e questa pagina (prima tre copie con risultati diversi, es. "45 min" nel modulo e "45 minuti" nel profilo, "48 ore" invece di "2 giorni").
 
 **Verifica**: typecheck e lint di `apps/web`; foto della pagina vera da computer e da telefono, richiesta diretta e a tutta la zona. Anteprime in `/mnt/project-files/anteprime/richiesta-inviata/`.
