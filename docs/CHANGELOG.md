@@ -20582,3 +20582,13 @@ Richiesta dell'utente: "si potrebbe dare l'icona del meteo per 3 giorni e dire d
 **Migliorie approvate da Luca** ("effettua le 2 migliorie")
 - osv-scanner ora blocca la PR (`.github/workflows/security.yml`, checklist punto 40): dopo aver caricato il rapporto, un passo rifà il controllo e fallisce se trova una vulnerabilità fuori dalle eccezioni di `osv-scanner.toml`. Vale per tutte le librerie, non solo per quelle del sito e dell'API: osv-scanner non sa distinguere quelle usate solo per costruire o provare (anche `pnpm audit --prod` conta lo strumento di Expo, dipendenza dell'app), quindi quelle senza versione corretta vanno tra le eccezioni con il motivo. Provato: con il `pnpm-lock.yaml` di prima di questa PR il controllo fallisce (vitest, tinypool, ecc.), con quello nuovo passa.
 - I due avvisi rimasti (zod 3 e node-forge in `@expo/cli`) vanno chiusi a mano nella scheda Security → Dependabot di GitHub con "Vulnerable code is not actually used" / "Risk is tolerable": lo fa Luca, i thread non hanno accesso agli avvisi.
+
+## 336. Il tondo "Riduci il menu" non copre più la prima voce
+
+**Richiesta dell'utente** (25/10/2026, con foto del menu del cliente da computer): "Il pulsante delle freccette si sovrappone, correggi".
+
+**Causa**: il tondo da 32px stava in alto a destra, sulla riga del primo titolo, che però era alta solo 28px. Il tondo sporgeva quindi sulla prima voce ("Le mie richieste" per il cliente, "Oggi" per il professionista), e si vedeva soprattutto quando la voce era attiva. Non capitava con il menu ridotto né sul tablet o sul telefono, dove il tondo è in colonna oppure non c'è.
+
+**Correzione** (`apps/web/src/app/globals.css`): la riga del primo titolo, cioè quella accanto al tondo, è alta 32px. Il testo è centrato sul tondo e ha 44px di margine a destra, così un titolo lungo non finisce sotto il tondo. Vale per tutti e due i menu.
+
+**Verifica**: in `e2e/tests/menu-laterale.spec.ts` c'è un nuovo controllo, `expectToggleFree`: il tondo non deve toccare nessuna voce né il testo di nessun titolo. Lo fanno il professionista con il menu aperto e ridotto, e il cliente prima e dopo aver ridotto il menu. Senza la correzione falliva su "Oggi" e su "Le mie richieste"; con la correzione passa. Le foto prima e dopo sono in `/mnt/project-files/anteprime/menu-ridotto/freccette/`.
