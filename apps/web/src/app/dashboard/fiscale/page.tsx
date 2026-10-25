@@ -416,7 +416,7 @@ function DashboardFiscaleContent() {
 
   if (profileLoadFailed) {
     return (
-      <Section title="Dati fiscali e pagamenti">
+      <Section title="Dati fiscali e pagamenti" maxWidth={640}>
         <LoadErrorNotice
           title="Non riusciamo a caricare i tuoi dati"
           onRetry={() => {
@@ -429,8 +429,9 @@ function DashboardFiscaleContent() {
   }
 
   if (isLoading || profile === undefined) {
+    // Stessa larghezza della pagina caricata: niente salto di lato (CLS, docs/CHANGELOG.md §334).
     return (
-      <Section title="Dati fiscali e pagamenti">
+      <Section title="Dati fiscali e pagamenti" maxWidth={640}>
         <Text>Caricamento...</Text>
       </Section>
     );

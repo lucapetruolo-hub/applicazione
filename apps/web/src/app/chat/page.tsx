@@ -106,15 +106,16 @@ export default function ChatPage() {
     apiClient
       .unreadNotifications(token)
       .then((notifications) => {
-        if (notifications.length === 0) return;
+        if (notifications.length === 0) return notifications;
         setThreadUnreadCountsState((prev) => mergeCounts(prev, unreadThreadCounts(notifications)));
         // Un nuovo messaggio cambia anche l'anteprima (ultimo messaggio +
         // data/ora) mostrata in elenco, non solo il pallino — ricarica
         // l'elenco quando arriva qualcosa di nuovo.
         reload();
+        return notifications;
       })
-      .catch(() => {})
-      .finally(() => markNotificationsRead());
+      .catch(() => undefined)
+      .then((notifications) => markNotificationsRead(notifications));
   }
 
   // Push in tempo reale (CTO — SSE): un nuovo messaggio o una nuova

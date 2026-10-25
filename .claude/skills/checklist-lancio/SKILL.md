@@ -221,7 +221,7 @@ CEO sulle segnalazioni, `docs/CHANGELOG.md` §144):
 dell'utente, §113: non riformulare il testo nel frattempo — costruire
 davvero la verifica prima):
 15. ~~Claim "Profili verificati"~~ — il badge "Verificato" lo dà solo la
-    verifica di documento e selfie con Didit (docs/CHANGELOG.md §253, §331;
+    verifica di documento e selfie con Didit (docs/CHANGELOG.md §253, §335;
     la verifica manuale dell'admin è stata tolta). Prima del lancio:
     controllare nella console Didit che il flusso (`DIDIT_WORKFLOW_ID`)
     comprenda documento, prova di presenza (liveness) e confronto del volto,
@@ -443,7 +443,10 @@ Città, pagine vuote fuori da Google.
       `pnpm --filter @professionisti/web confronto-pagine` si lancia a mano.
       Farlo partire a ogni PR, con un database di prova (seed) e l'API
       avviata nella CI, insieme alle prove del punto 26. Rilanciarlo
-      comunque a mano una volta subito prima del lancio.
+      comunque a mano una volta subito prima del lancio, su tutte le pagine
+      e da telefono e computer: dopo le ultime PR va guardata anche "Oggi"
+      del professionista con il meteo dei tre giorni (PR #126,
+      docs/CHANGELOG.md §333, fotografata solo con l'API simulata).
     - **App mobile** (ora Expo 58, React 19, React Native 0.88): i pacchetti
       Android e iOS si generano, ma non è stata provata su un telefono vero.
       Prima di pubblicarla negli store: build con EAS e prova su un iPhone e
@@ -492,3 +495,9 @@ Cose decise con Luca da non fare prima del lancio, ma da non dimenticare:
   (SEO)", 22/10/2026): scheda Google Business del sito, elenchi di attività
   locali, un link "Trovami su …" che i professionisti mettono sul loro sito
   e sui social, giornali locali della città di lancio.
+- **Voci del menu del professionista con i dati veri** (24/10/2026,
+  docs/CHANGELOG.md §334): un mese dopo il lancio guardare su Vercel Web
+  Analytics quali pagine dell'area professionista si aprono di più e
+  rivedere le 7 voci fisse della colonna (`SIDEBAR_HREFS` in
+  `apps/web/src/lib/accountMenuItems.ts`, al massimo 8 con "Da completare").
+  Scelte oggi senza dati, in base a quanto spesso servono.

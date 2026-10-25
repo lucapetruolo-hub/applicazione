@@ -339,7 +339,7 @@ export function ProfessionalDetailContent({
                 <Text tag="h1" margin={0} fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} style={{ overflowWrap: "anywhere" }}>
                   {professional.businessName}
                 </Text>
-                {/* Il significato di ogni badge in un fumetto (docs/CHANGELOG.md §331). */}
+                {/* Il significato di ogni badge in un fumetto (docs/CHANGELOG.md §335). */}
                 {professional.verified ? (
                   <BadgeInfo info="verified">
                     <Badge variant="verificato">Verificato</Badge>
@@ -407,7 +407,7 @@ export function ProfessionalDetailContent({
                 </Text>
               </XStack>
               {/* Privato o professionista (Codice del consumo art. 49-bis, docs/CHANGELOG.md §241): il tipo è
-                  nel badge accanto al nome (§331); per un privato l'avviso sui diritti del consumatore resta
+                  nel badge accanto al nome (§335); per un privato l'avviso sui diritti del consumatore resta
                   sempre scritto, non solo nel fumetto. */}
               {professional.traderStatus === "PRIVATE" ? (
                 <Text fontSize={13} color={brand.grafite70}>

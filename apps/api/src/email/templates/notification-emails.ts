@@ -1387,3 +1387,33 @@ type SummaryItem = { time: string; name: string | null; place: string | null };
 function isSummaryItem(value: unknown): value is SummaryItem {
   return !!value && typeof value === "object" && typeof (value as Record<string, unknown>).time === "string";
 }
+
+/**
+ * Messaggi in chat non letti (docs/CHANGELOG.md §332): un'email sola per
+ * conversazione, mandata da `ChatMessageEmailsService` solo se dopo qualche
+ * minuto chi riceve non li ha ancora visti sul sito. Fuori da `BUILDERS`,
+ * che partono subito con la notifica. Mai il testo del messaggio: si legge
+ * sul sito, dove valgono le regole sui dati di contatto (CLAUDE.md §5 punto 9).
+ */
+export function chatMessageEmail(
+  type: "TIMELINE_MESSAGE_FROM_CLIENT" | "TIMELINE_MESSAGE_FROM_PROFESSIONAL",
+  count: number,
+  ctx: NotificationEmailContext,
+  url: string,
+): EmailContent {
+  const fromClient = type === "TIMELINE_MESSAGE_FROM_CLIENT";
+  const who = fromClient ? "Il cliente" : pro(ctx);
+  const messages = count > 1 ? `${count} messaggi` : "un messaggio";
+  return withDescription(
+    {
+      kind: "notification",
+      subject: fromClient ? `${count > 1 ? "Nuovi messaggi" : "Nuovo messaggio"} dal cliente per ${job(ctx)}` : `${pro(ctx)} ti ha scritto`,
+      greeting: ctx.name,
+      title: count > 1 ? "Nuovi messaggi in chat" : "Nuovo messaggio in chat",
+      paragraphs: [`**${who}** ti ha scritto ${messages} per **${job(ctx)}**.`],
+      details: fromClient ? jobDetails({ ...ctx, businessName: null }) : jobDetails(ctx),
+      cta: { label: count > 1 ? "Leggi i messaggi" : "Leggi il messaggio", url },
+    },
+    ctx,
+  );
+}

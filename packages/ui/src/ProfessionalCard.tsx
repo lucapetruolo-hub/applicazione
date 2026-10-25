@@ -83,7 +83,7 @@ export type ProfessionalCardProps = {
   verified?: boolean;
   /** Identità verificata da Stripe (KYC/KYB, docs/CHANGELOG.md §241): badge distinto da "Verificato". */
   stripeVerified?: boolean;
-  /** Come si è iscritto: privato, partita IVA o azienda (docs/CHANGELOG.md §331). */
+  /** Come si è iscritto: privato, partita IVA o azienda (docs/CHANGELOG.md §335). */
   professionalKind?: ProfessionalKindValue | null;
   /**
    * Boost di visibilità attivo (richiesta esplicita dell'utente, "Verbale

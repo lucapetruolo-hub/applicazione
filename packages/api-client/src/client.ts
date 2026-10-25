@@ -40,6 +40,7 @@ import type {
   CalendarFeedStatus,
   DayRoute,
   WeatherDayAlert,
+  DayAhead,
   ZoneDemand,
   ProfessionalDetail,
   ProfessionalFiscalProfileInput,
@@ -64,6 +65,7 @@ import type {
   SetFiscalVerificationInput,
   TimelineUpdateInput,
   UpdateAccountInput,
+  UpdatePreferencesInput,
   UpdateBookingMeetingLinkInput,
   UpdateBookingNoteInput,
   UpdateEngagementRadiusInput,
@@ -633,6 +635,8 @@ export type CurrentUser = {
   emailCodeValidForSeconds: number;
   /** Privato, P.IVA o azienda scelto in registrazione: precompila /dashboard/fiscale. */
   signupEntityType: ProfessionalEntityTypeValue | null;
+  /** Menu laterale ridotto a icone scelto dalla persona; null = decide lo schermo (docs/CHANGELOG.md §334). */
+  sidebarCollapsed?: boolean | null;
 };
 
 /** Recensione scritta dal cliente a un professionista, vista dal cliente stesso. */
@@ -999,6 +1003,13 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
 
     updateAccount: (token: string, input: UpdateAccountInput) =>
       request<CurrentUser>("/auth/me", {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    updatePreferences: (token: string, input: UpdatePreferencesInput) =>
+      request<{ sidebarCollapsed: boolean | null }>("/auth/me/preferences", {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
@@ -1503,6 +1514,7 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
         body: JSON.stringify({ month, template }),
       }),
     agendaWeather: (token: string) => request<WeatherDayAlert[]>("/agenda/weather", { headers: { Authorization: `Bearer ${token}` } }),
+    agendaDaysAhead: (token: string) => request<DayAhead[]>("/agenda/days-ahead", { headers: { Authorization: `Bearer ${token}` } }),
     agendaZoneDemand: (token: string) => request<ZoneDemand>("/agenda/zone-demand", { headers: { Authorization: `Bearer ${token}` } }),
     agendaDayRoute: (token: string, date: string) =>
       request<DayRoute>(`/agenda/route?date=${encodeURIComponent(date)}`, { headers: { Authorization: `Bearer ${token}` } }),

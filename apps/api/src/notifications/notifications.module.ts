@@ -4,6 +4,7 @@ import { EmailModule } from "../email/email.module";
 import { RealtimeModule } from "../realtime/realtime.module";
 import { NotificationsController } from "./notifications.controller";
 import { NotificationsService } from "./notifications.service";
+import { ChatMessageEmailsService } from "./chat-message-emails.service";
 
 @Module({
   // RealtimeModule: NotificationsService.notify pubblica ora anche un push
@@ -14,7 +15,7 @@ import { NotificationsService } from "./notifications.service";
   // NotificationsService.notify).
   imports: [AuthModule, RealtimeModule, EmailModule],
   controllers: [NotificationsController],
-  providers: [NotificationsService],
+  providers: [NotificationsService, ChatMessageEmailsService],
   exports: [NotificationsService],
 })
 export class NotificationsModule {}

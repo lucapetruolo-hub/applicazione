@@ -58,7 +58,7 @@ export function traderStatusOf(entityType: string | null | undefined): Professio
   return null;
 }
 
-/** Come si è iscritto il professionista, mostrato come badge nel profilo e nei risultati (docs/CHANGELOG.md §331). */
+/** Come si è iscritto il professionista, mostrato come badge nel profilo e nei risultati (docs/CHANGELOG.md §335). */
 export type ProfessionalKind = "PRIVATE" | "VAT" | "BUSINESS";
 
 export function professionalKindOf(entityType: string | null | undefined): ProfessionalKind | null {

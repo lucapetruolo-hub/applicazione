@@ -13,12 +13,24 @@ import {
 import { renderEmail } from "../email/email-layout";
 import { BOOKING_CALENDAR_INCLUDE, bookingCalendar, withCalendar, type BookingCalendar } from "../email/booking-calendar";
 import { adminNewReportEmail, contactReportReceivedEmail, requestSentEmail } from "../email/templates/job-emails";
+import { frontendUrl } from "../email/email-brand";
 import {
   EMPTY_EMAIL_CONTEXT,
   NOTIFICATION_EMAIL_TYPES,
+  chatMessageEmail,
   notificationEmail,
   type NotificationEmailContext,
 } from "../email/templates/notification-emails";
+
+function isChatMessageType(type: string): type is "TIMELINE_MESSAGE_FROM_CLIENT" | "TIMELINE_MESSAGE_FROM_PROFESSIONAL" {
+  return type === "TIMELINE_MESSAGE_FROM_CLIENT" || type === "TIMELINE_MESSAGE_FROM_PROFESSIONAL";
+}
+
+function payloadThread(payload: Prisma.InputJsonValue): { guidedRequestId: string; professionalProfileId: string } | null {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  const { guidedRequestId, professionalProfileId } = payload as Record<string, unknown>;
+  return typeof guidedRequestId === "string" && typeof professionalProfileId === "string" ? { guidedRequestId, professionalProfileId } : null;
+}
 
 function payloadGuidedRequestId(payload: Prisma.InputJsonValue): string | null {
   if (payload && typeof payload === "object" && !Array.isArray(payload)) {
@@ -83,6 +95,16 @@ export class NotificationsService {
     }
     if (muted || !notificationChannelEnabled(prefs, type, "inApp")) {
       await this.prisma.notification.create({ data: { userId, channel: "PUSH", type, payload, readAt: new Date() } });
+      // Messaggio in chat con il sito spento ma l'email accesa: non c'è
+      // nulla da "non leggere" per l'email ritardata (§332), parte subito.
+      if (!muted && isChatMessageType(type) && notificationChannelEnabled(prefs, type, "email")) {
+        const thread = payloadThread(payload);
+        if (thread) {
+          void this.emailChatMessages(userId, { type, ...thread, count: 1 }).catch((err: unknown) => {
+            this.logger.error(`Email del messaggio in chat non inviata: ${err instanceof Error ? err.message : String(err)}`);
+          });
+        }
+      }
       return;
     }
 
@@ -205,6 +227,26 @@ export class NotificationsService {
       }
     }
     return EMPTY_EMAIL_CONTEXT;
+  }
+
+  /**
+   * Email dei messaggi in chat non letti (docs/CHANGELOG.md §332), una per
+   * conversazione: la manda `ChatMessageEmailsService`, che ha già
+   * controllato preferenze e notifiche lette. Il link apre la chat giusta.
+   */
+  async emailChatMessages(
+    userId: string,
+    input: { type: "TIMELINE_MESSAGE_FROM_CLIENT" | "TIMELINE_MESSAGE_FROM_PROFESSIONAL"; guidedRequestId: string; professionalProfileId: string; count: number },
+  ): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true, deletedAt: true } });
+    if (!user?.email || user.deletedAt) return;
+    const context = { ...(await this.emailContext({ guidedRequestId: input.guidedRequestId, professionalProfileId: input.professionalProfileId })), name: user.name };
+    const query = `open=${input.guidedRequestId}&chat=${input.professionalProfileId}`;
+    const url =
+      input.type === "TIMELINE_MESSAGE_FROM_CLIENT"
+        ? `${frontendUrl()}/dashboard/richieste?${query}`
+        : `${frontendUrl()}/le-mie-richieste?tab=richieste&${query}`;
+    await this.emailService.send({ to: user.email, ...renderEmail(chatMessageEmail(input.type, input.count, context, url)) });
   }
 
   /**

@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { PrismaClient } from "@professionisti/database";
 
 /**
- * Badge del professionista e loro significato (docs/CHANGELOG.md §331).
+ * Badge del professionista e loro significato (docs/CHANGELOG.md §335).
  * Il badge "Verificato" compare solo con la verifica di documento e selfie
  * approvata, mai su un profilo dimostrativo; il fumetto si apre col mouse,
  * al tocco e col tasto Tab, si chiude con Esc, e il lettore di schermo

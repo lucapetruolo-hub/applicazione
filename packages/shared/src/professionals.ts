@@ -207,7 +207,7 @@ export type ProfessionalSearchResult = {
   verified: boolean;
   /** Identità verificata da Stripe (KYC/KYB), badge distinto da `verified` (docs/CHANGELOG.md §241). */
   stripeVerified: boolean;
-  /** Come si è iscritto: privato, con partita IVA o azienda (badge, docs/CHANGELOG.md §331); null se non ancora indicato. */
+  /** Come si è iscritto: privato, con partita IVA o azienda (badge, docs/CHANGELOG.md §335); null se non ancora indicato. */
   professionalKind: ProfessionalKind | null;
   rating: number | null;
   reviewCount: number;
