@@ -66,6 +66,9 @@ export default function AdminLavoriPage() {
   const [loaded, setLoaded] = useState<{ filter: Filter; rows: AdminCompletedJob[] } | null>(null);
   const rows = loaded?.filter === filter ? loaded.rows : null;
   const [error, setError] = useState<string | null>(null);
+  // Lavori senza differenze, note né foto chiusi in una riga (docs/CHANGELOG.md
+  // §346): 24 schede quasi uguali riempivano 5.000 px.
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!token) return;
@@ -99,6 +102,14 @@ export default function AdminLavoriPage() {
         <YStack gap="$3">
           {rows.map((job) => {
             const range = quoteRange(job);
+            const plain =
+              !job.changeReason &&
+              !job.direction &&
+              !job.professionalNote &&
+              !job.clientNote &&
+              job.professionalPhotoUrls.length === 0 &&
+              job.clientPhotoUrls.length === 0;
+            const showDetails = !plain || expandedIds.has(job.bookingId);
             return (
               <AdminCard key={job.bookingId} highlight={Boolean(job.changeReason)}>
                 <XStack justifyContent="space-between" gap="$2" flexWrap="wrap">
@@ -138,13 +149,28 @@ export default function AdminLavoriPage() {
                   </YStack>
                 </XStack>
 
-                {job.description ? (
+                {!showDetails ? (
+                  <XStack>
+                    <Text
+                      fontSize={13}
+                      fontWeight="700"
+                      color={brand.cianografiaScuro}
+                      cursor="pointer"
+                      accessibilityRole="button"
+                      onPress={() => setExpandedIds((prev) => new Set(prev).add(job.bookingId))}
+                    >
+                      Mostra dettagli
+                    </Text>
+                  </XStack>
+                ) : null}
+
+                {showDetails && job.description ? (
                   <Text fontSize={13} color={brand.grafite70}>
                     Richiesta: {job.description.length > 200 ? `${job.description.slice(0, 200)}…` : job.description}
                   </Text>
                 ) : null}
 
-                {job.finalItems.length > 0 ? (
+                {showDetails && job.finalItems.length > 0 ? (
                   <YStack gap={2}>
                     {job.finalItems.map((item, index) => (
                       <XStack key={index} justifyContent="space-between" gap="$2">
@@ -169,6 +195,7 @@ export default function AdminLavoriPage() {
                   </YStack>
                 ) : null}
 
+                {showDetails ? (
                 <XStack gap="$4" flexWrap="wrap" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
                   <Side
                     title="Professionista"
@@ -183,6 +210,7 @@ export default function AdminLavoriPage() {
                     photos={job.clientPhotoUrls}
                   />
                 </XStack>
+                ) : null}
               </AdminCard>
             );
           })}

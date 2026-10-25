@@ -133,7 +133,7 @@ function UtentiContent() {
                   <td>
                     <Link href={`/admin/utenti/${row.id}`}>{row.email ?? "(senza email)"}</Link>
                   </td>
-                  <td>{[row.name, row.surname].filter(Boolean).join(" ") || "—"}</td>
+                  <td className="admin-cell-main">{[row.name, row.surname].filter(Boolean).join(" ") || "—"}</td>
                   <td>{row.role === "ADMIN" ? `Admin · ${adminRolesLabel(row.adminRoles)}` : ROLE_LABEL[row.role]}</td>
                   <td>
                     {row.businessName && row.professionalProfileId && !row.deletedAt ? (

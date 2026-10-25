@@ -90,7 +90,7 @@ export default function AdminUserDetailPage() {
         </AdminCard>
       ) : null}
 
-      <div className="admin-kpi-grid">
+      <div className="admin-kpi-grid admin-kpi-grid-3">
         {[
           { label: "Richieste", value: detail.counts.requests },
           { label: "Interventi", value: detail.counts.bookings },

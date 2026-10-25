@@ -54,7 +54,6 @@ export default function AdminHomePage() {
         { href: "/admin/utenti", value: overview.newUsers7d, label: "Nuovi iscritti (7 giorni)" },
         { href: "/admin/utenti?stato=suspended", value: overview.suspendedUsers, label: "Account sospesi" },
         { href: "/admin/richieste-eliminate", value: overview.hiddenLeads, label: "Richieste eliminate dai professionisti" },
-        { href: "/admin/lista-attesa", value: overview.waitlist, label: "Iscritti alla lista d'attesa" },
       ]
     : [];
   // Richieste urgenti (docs/CHANGELOG.md §344): avviso agli admin ogni lunedì se fuori soglia.

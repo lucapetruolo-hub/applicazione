@@ -17,6 +17,35 @@ import { BRAND, formatEurCents } from "@professionisti/shared";
  * tocca Stripe/l'Agenzia delle Entrate resta gated dietro credenziali non
  * configurate in questo ambiente, coerente col resto del progetto.
  */
+/**
+ * Stati e fonti in italiano (docs/CHANGELOG.md §346): è la pagina da far vedere
+ * al commercialista, "PENDING / CONFIRMED" non diceva nulla.
+ */
+const REVENUE_SOURCE_LABEL: Record<string, string> = {
+  JOB_COMMISSION: "Commissioni sui lavori",
+  SUBSCRIPTION: "Abbonamenti",
+  VISIBILITY_BOOST: "Pacchetti di visibilità",
+  LEAD: "Richieste a pagamento",
+};
+const JOB_PAYMENT_STATUS_LABEL: Record<string, string> = {
+  PENDING: "Non ancora pagati",
+  AWAITING_CONFIRMATION: "In attesa di conferma del cliente",
+  CONFIRMED: "Confermati",
+  DISPUTED: "Contestati",
+  REFUNDED: "Rimborsati",
+  FAILED: "Non riusciti",
+};
+const DAC7_STATUS_LABEL: Record<string, string> = {
+  OPEN: "Aperto",
+  DATA_COLLECTION: "Raccolta dati",
+  VALIDATION: "In controllo",
+  READY: "Pronto",
+  EXPORTED: "Esportato",
+  SUBMITTED: "Inviato",
+  REJECTED: "Respinto",
+  CORRECTED: "Corretto",
+};
+
 export default function AdminFinanzaPage() {
   const { user, token, isLoading } = useAuth();
   const [finance, setFinance] = useState<AdminFinanceSummary | null>(null);
@@ -167,19 +196,20 @@ export default function AdminFinanzaPage() {
             </Text>
           </Link>
           <H1 size="$8">Finanza e DAC7</H1>
+          {/* Titoli delle sezioni a misura $7: dalla $6 in giù il carattere dei titoli è in maiuscolo (§346). */}
         </YStack>
 
         {error && <Text color={brand.urgenza}>{error}</Text>}
         {actionMessage && (
           <YStack backgroundColor={brand.gesso} padding="$3" borderRadius={10} maxHeight={240} style={{ overflow: "auto" as const }}>
-            <Text fontSize={12} fontFamily="$mono" style={{ whiteSpace: "pre-wrap" as const }}>
+            <Text fontSize={13} style={{ whiteSpace: "pre-wrap" as const }}>
               {actionMessage}
             </Text>
           </YStack>
         )}
 
         <YStack gap="$4">
-          <H2 size="$6">Riepilogo finanza</H2>
+          <H2 size="$7">Riepilogo finanza</H2>
           {finance === null ? (
             <YStack gap="$2" maxWidth={400}>
               <SkeletonBlock height={16} />
@@ -195,7 +225,7 @@ export default function AdminFinanzaPage() {
                 ) : (
                   finance.revenueBySource.map((r) => (
                     <XStack key={r.source} justifyContent="space-between" maxWidth={400}>
-                      <Text>{r.source}</Text>
+                      <Text>{REVENUE_SOURCE_LABEL[r.source] ?? r.source}</Text>
                       <Text fontVariant={["tabular-nums"]}>{formatEurCents(r.totalEurCents)}</Text>
                     </XStack>
                   ))
@@ -216,7 +246,7 @@ export default function AdminFinanzaPage() {
                 <Text fontWeight="700">Pagamenti del lavoro per stato</Text>
                 {finance.jobPaymentsByStatus.map((s) => (
                   <XStack key={s.status} justifyContent="space-between" maxWidth={400}>
-                    <Text>{s.status}</Text>
+                    <Text>{JOB_PAYMENT_STATUS_LABEL[s.status] ?? s.status}</Text>
                     <Text fontVariant={["tabular-nums"]}>{s.count}</Text>
                   </XStack>
                 ))}
@@ -227,7 +257,7 @@ export default function AdminFinanzaPage() {
 
         <YStack gap="$4">
           <XStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$3">
-            <H2 size="$6">Regole di commissione</H2>
+            <H2 size="$7">Regole di commissione</H2>
             <Text fontSize={12} color={brand.grafite70}>
               Mai valori fissi nel codice — ogni regola è un dato, modificabile qui senza deploy.
             </Text>
@@ -270,14 +300,15 @@ export default function AdminFinanzaPage() {
 
         <YStack gap="$4">
           <XStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$3">
-            <H2 size="$6">Impostazioni piattaforma DAC7</H2>
+            <H2 size="$7">Impostazioni piattaforma DAC7</H2>
             <Text fontSize={12} color={brand.grafite70}>
               Identità richiesta dallo schema OECD DPI (MessageSpec/Platform) — senza questi dati l&apos;export non può costruire un
               identificativo di trasmissione valido.
             </Text>
           </XStack>
           {platformSettings?.sendingEntityIn && platformSettings?.platformName && platformSettings?.platformIdValue ? null : (
-            <Text fontSize={13} color={brand.urgenza}>
+            // Avviso, non errore (docs/CHANGELOG.md §346): l'esportazione funziona lo stesso.
+            <Text fontSize={13} color={brand.ottoneScuro}>
               Dati incompleti: l&apos;export segnalerà esplicitamente questa mancanza (non blocca l&apos;esportazione, la contrassegna).
             </Text>
           )}
@@ -299,7 +330,7 @@ export default function AdminFinanzaPage() {
 
         <YStack gap="$4">
           <XStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$3">
-            <H2 size="$6">Periodi DAC7</H2>
+            <H2 size="$7">Periodi DAC7</H2>
             <Button variant="secondary" onPress={handleAggregateNow}>
               Aggiorna aggregazione ora
             </Button>
@@ -330,7 +361,7 @@ export default function AdminFinanzaPage() {
                         {p.year} {p.quarter ? `Q${p.quarter}` : "(anno intero)"}
                       </td>
                       <td>
-                        {p.status}
+                        {DAC7_STATUS_LABEL[p.status] ?? p.status}
                         {p.needsCorrectionAt ? (
                           <Text display="flex" fontSize={12} fontWeight="700" color={brand.urgenza}>
                             Da correggere

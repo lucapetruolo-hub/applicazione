@@ -31,7 +31,6 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { href: "/admin/pagamenti", label: "Pagamenti e rimborsi", icon: "credit-card", scope: "FINANCE", badge: (o) => o.pendingRefunds + o.openDisputes + o.unpaidBalances },
   { href: "/admin/richieste-generali", label: "Richieste generali", icon: "send", scope: "MODERATION", badge: (o) => o.closedGeneralRequestZones },
   { href: "/admin/richieste-eliminate", label: "Richieste eliminate", icon: "trash-2", scope: "MODERATION" },
-  { href: "/admin/lista-attesa", label: "Lista d'attesa", icon: "clock", scope: "MODERATION" },
   { href: "/admin/finanza", label: "Finanza e DAC7", icon: "coins", scope: "FINANCE" },
   { href: "/admin/statistiche", label: "Statistiche", icon: "trending-up", scope: "FINANCE" },
   { href: "/admin/registro", label: "Registro azioni", icon: "file-text", scope: "SUPER" },

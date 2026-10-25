@@ -75,7 +75,7 @@ export default function AdminStatistichePage() {
                 Statistiche
               </Text>
               <Text fontSize={13} color={brand.grafite70}>
-                Revenue Analytics — entrate generate dai lavori completati
+                Entrate dai lavori completati
               </Text>
             </YStack>
           </XStack>

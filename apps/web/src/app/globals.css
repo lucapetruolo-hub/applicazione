@@ -1930,6 +1930,12 @@ button.notif-row-main:hover {
   grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
   gap: 12px;
 }
+/* Scheda utente: sei numeri in 3+3, non 5 e 1 orfano (docs/CHANGELOG.md §346). */
+@media (min-width: 661px) {
+  .admin-kpi-grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
 .admin-trend-grid {
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
 }
@@ -5173,4 +5179,58 @@ a.admin-kpi:hover {
 .radius-more summary {
   color: #0e7a4c;
   min-height: 24px;
+}
+
+/* Tabelle admin da telefono (docs/CHANGELOG.md §346): ogni riga diventa una
+   scheda corta, la prima colonna (o quella segnata .admin-cell-main) in
+   grassetto sopra e le altre in fila sotto. Prima la tabella era tagliata a
+   destra e si vedevano solo le prime due colonne. Le intestazioni restano per
+   chi usa un lettore di schermo. */
+@media (max-width: 660px) {
+  .admin-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .admin-table,
+  .admin-table tbody {
+    display: block;
+  }
+  .admin-table tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 12px;
+    row-gap: 4px;
+    padding: 12px 14px;
+    border-bottom: 1px solid #f0dcc0;
+  }
+  .admin-table tr:last-child {
+    border-bottom: none;
+  }
+  .admin-table tr:nth-child(even) {
+    background: #fdefe1;
+  }
+  .admin-table td,
+  .admin-table tr:nth-child(even) td {
+    display: block;
+    padding: 0;
+    border: none;
+    background: none;
+    font-size: 13px;
+    color: #6e6459;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .admin-table tr:not(:has(.admin-cell-main)) td:first-child,
+  .admin-table td.admin-cell-main {
+    order: -1;
+    flex-basis: 100%;
+    font-size: 15px;
+    font-weight: 700;
+    color: #2b2420;
+  }
 }
