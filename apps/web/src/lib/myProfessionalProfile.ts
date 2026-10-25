@@ -2,7 +2,7 @@ import type { MyProfessionalProfile } from "@professionisti/shared";
 import { apiClient } from "./apiClient";
 
 // Una sola richiesta GET /professionals/me alla volta (docs/CHANGELOG.md
-// §343): all'apertura di una pagina dell'area professionista la chiedevano
+// §345): all'apertura di una pagina dell'area professionista la chiedevano
 // insieme la pagina e i pallini del menu. Chi la chiede mentre è già in
 // viaggio riceve la stessa risposta; appena arriva, la volta dopo si chiede
 // di nuovo, così non si legge mai un profilo vecchio dopo un salvataggio.

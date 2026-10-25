@@ -24,6 +24,8 @@ import {
   guidedRequestSchema,
   guidedRequestUpdateSchema,
   guidedRequestUserStateSchema,
+  requestWithdrawSchema,
+  type RequestWithdrawInput,
   timelineUpdateSchema,
   type GuidedRequestInput,
   type GuidedRequestUpdateInput,
@@ -63,6 +65,23 @@ export class GuidedRequestsController {
     private readonly timelineService: TimelineService,
     private readonly userStateService: GuidedRequestUserStateService,
   ) {}
+
+  /**
+   * Pubblico: a quanti professionisti arriverebbe la richiesta, senza e con
+   * "Urgente", per il riepilogo del modulo (docs/CHANGELOG.md §344). Solo
+   * numeri, gli stessi che la ricerca mostra già come elenco.
+   */
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @Get("reach")
+  reach(
+    @Query("categoria") categoria?: string,
+    @Query("citta") citta?: string,
+    @Query("modalita") modalita?: string,
+    @Query("professionista") professionista?: string,
+  ) {
+    const categorySlugs = (categoria ?? "").split(",").map((slug) => slug.trim()).filter(Boolean);
+    return this.guidedRequestsService.reach({ categorySlugs, city: citta, serviceMode: modalita, excludeProfileId: professionista });
+  }
 
   // Autenticato, ma comunque limitato (Fase 6): ogni richiesta fa fan-out di
   // Lead a più professionisti, un account che ne crea decine al minuto è
@@ -211,19 +230,24 @@ export class GuidedRequestsController {
     return this.guidedRequestsService.update(req.user.userId, id, body);
   }
 
+  /** "Elimina richiesta" del cliente, con motivo facoltativo (vedi GuidedRequestsService.deleteByClient, docs/CHANGELOG.md §343). */
   @UseGuards(JwtAuthGuard)
   @Delete(":id")
   @HttpCode(204)
-  remove(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
-    return this.guidedRequestsService.remove(req.user.userId, id);
+  remove(
+    @Req() req: AuthenticatedRequest,
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(requestWithdrawSchema)) body: RequestWithdrawInput,
+  ) {
+    return this.guidedRequestsService.deleteByClient(req.user.userId, id, body.reason);
   }
 
-  /** Eliminazione definitiva di una richiesta già annullata/scaduta (vedi GuidedRequestsService.permanentlyDelete). */
+  /** "Annulla" subito dopo l'eliminazione (§343). */
   @UseGuards(JwtAuthGuard)
-  @Delete(":id/permanent")
+  @Post(":id/restore")
   @HttpCode(204)
-  removePermanently(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
-    return this.guidedRequestsService.permanentlyDelete(req.user.userId, id);
+  restore(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    return this.guidedRequestsService.restoreDeletedByClient(req.user.userId, id);
   }
 
   /** Stato personale della scheda (archivia, silenzia, letta/da leggere, promemoria) — cliente o professionista. */

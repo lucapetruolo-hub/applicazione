@@ -80,7 +80,7 @@ export function ResultsMap({
   /** Notifica i confini visibili della mappa ad ogni pan/zoom, per sincronizzare la lista a sinistra. */
   onBoundsChange?: (bounds: MapBounds) => void;
 }) {
-  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §343).
+  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
   const router = useRouter();
   // Professionista selezionato cliccando un puntino: mostrato come banner in

@@ -70,7 +70,7 @@ const nextConfig = {
     // risultati devono rileggere i searchParams ad ogni navigazione, anche
     // verso lo stesso percorso con query diverse (cambio Online/Domicilio).
     staleTimes: { dynamic: 0, static: 0 },
-    // React Compiler (docs/CHANGELOG.md §343): ricorda da solo i valori e i
+    // React Compiler (docs/CHANGELOG.md §345): ricorda da solo i valori e i
     // componenti che non cambiano, così React ridisegna meno a ogni
     // aggiornamento. Tutto il sito tranne i componenti con `<style jsx>`, che
     // hanno la direttiva "use no memo": compilati perdono le classi jsx-...
@@ -108,7 +108,7 @@ const nextConfig = {
       // Il sito usa i sorgenti di packages/shared (ESM) e non dist/
       // (CommonJS): con `sideEffects: false` ogni pagina prende solo le parti
       // che usa (zod 4, elenco dei comuni...) invece di tutto il pacchetto.
-      // docs/CHANGELOG.md §326 e §343. L'API continua a usare dist/.
+      // docs/CHANGELOG.md §326 e §345. L'API continua a usare dist/.
       "@professionisti/shared$": fileURLToPath(new URL("../../packages/shared/src/index.ts", import.meta.url)),
     };
     config.resolve.extensions = [".web.js", ".web.jsx", ".web.ts", ".web.tsx", ...config.resolve.extensions];

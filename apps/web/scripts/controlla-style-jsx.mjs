@@ -1,4 +1,4 @@
-// React Compiler e `<style jsx>` non vanno d'accordo (docs/CHANGELOG.md §343):
+// React Compiler e `<style jsx>` non vanno d'accordo (docs/CHANGELOG.md §345):
 // un componente compilato perde le classi jsx-... e i suoi stili non si
 // applicano più. Ogni componente con `<style jsx>` deve quindi avere la
 // direttiva "use no memo". Controllo grezzo ma sufficiente: in ogni file il
@@ -34,6 +34,6 @@ for (const file of files) {
   if (owners.size > optOuts) errors.push(`${file.replace(root, "src")}: ${owners.size} componenti con <style jsx>, ${optOuts} "use no memo"`);
 }
 if (errors.length > 0) {
-  console.error('Componenti con <style jsx> senza "use no memo" (docs/CHANGELOG.md §343):\n' + errors.join("\n"));
+  console.error('Componenti con <style jsx> senza "use no memo" (docs/CHANGELOG.md §345):\n' + errors.join("\n"));
   process.exit(1);
 }

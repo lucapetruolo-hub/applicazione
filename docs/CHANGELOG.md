@@ -20738,7 +20738,73 @@ accorciata in "Subito dopo potrai lasciare una recensione, anche con foto".
 
 **Verifica**: prove `review-summary.test.ts` e `saved-professionals.service.test.ts` (media, recensioni nascoste escluse, una sola query); prova nel browser `e2e/tests/stelle-preventivi.spec.ts` da telefono e computer (due preventivi, uno con stelle e uno senza recensioni, clic sulle stelle che apre le recensioni, richiesta a un solo professionista). Anteprime in `anteprime/stelle-recensioni/`.
 
-## 343. Agenda più veloce sui telefoni lenti
+## 343. "Elimina richiesta" del cliente: una voce sola, conferma, Annulla, prove conservate
+
+**Richiesta esplicita dell'utente** (25/10/2026, thread "Eliminare una richiesta di preventivo dal cliente"): "se clicca su modifica in una richiesta preventivo inserisci un pulsante con elimina richiesta"; poi, sulla stessa schermata, cliccando di nuovo "Le mie richieste" nel menu laterale la pagina restava sulla modifica. Dopo un primo giro (cancellazione definitiva senza preventivi, "Richiesta eliminata", voce nel menu, conferma prima di uscire senza salvare) Luca ha chiesto la "versione profonda": "una richiesta di preventivo si deve poter togliere in modo chiaro e senza errori, senza far perdere prove alla moderazione né lasciare i professionisti senza spiegazione", con mappa degli stati, conferma e poi "i secondi con annulla", eliminazione che nasconde e cancella dopo un periodo fisso ("altrimenti si può eliminare ma rimanere nella parte admin per le prove e conseguenze"), prove automatiche, prova con 5 persone (simulata, su sua indicazione) e due domande per l'avvocato. Niente email ai professionisti (scartata da Luca).
+
+**Problemi trovati nel codice di prima** (analisi in `analisi/elimina-richiesta/mappa-stati.md`)
+- Una richiesta annullata dal cliente il professionista la vedeva "Scaduta".
+- Un preventivo su una richiesta annullata si poteva ancora accettare, e "Conferma data" poteva creare un lavoro.
+- "Elimina definitivamente" cancellava subito: una richiesta segnalata spariva con le prove e la decisione dell'admin falliva.
+
+**Decisione presa**
+- Una sola voce "Elimina richiesta" finché la richiesta non è diventata un lavoro (al posto di "Annulla richiesta" ed "Elimina definitivamente" del §130), nel modulo di modifica (pulsante rosso con bordo in fondo) e nel menu a tre linee. Con una prenotazione resta "Annulla prenotazione".
+- Conferma "Eliminare la richiesta?" con motivo facoltativo a un tocco ("Ho già trovato qualcuno", "Non mi serve più", "L'ho mandata per sbaglio", solo se la richiesta è ancora aperta), poi in basso "Richiesta eliminata · Annulla" per 8 secondi (`DeleteRequestModal`, `RequestDeletedNotice`). "Annulla" funziona per 10 minuti lato server (`REQUEST_RESTORE_WINDOW_MINUTES`).
+- Nel database la richiesta resta: `deletedByClientAt`, `withdrawReason`, `deletedWhileOpen` (migrazione `20261025150000_richieste_eliminate_dal_cliente`). Se era aperta si chiude come `CANCELED_BY_CLIENT`, i lead in attesa scadono e nella chat dei professionisti compare "Il cliente ha ritirato la richiesta."; "Annulla" rimette tutto com'era. Il cliente non la vede più (elenco, messaggi).
+- Professionisti: etichetta "Ritirata dal cliente" e "Il cliente l'ha ritirata: [motivo]." (`withdrawnByClient` nel lead); niente preventivi nuovi, modifiche, messaggi, accettazione o conferma di data su una richiesta ritirata.
+- Cancellazione vera dopo 90 giorni (`CLIENT_DELETED_REQUEST_RETENTION_DAYS`, cron delle 4), **mai se c'è una segnalazione**: resta per l'admin come prova. Admin > Richieste eliminate ha la sezione "Dai clienti" (motivo, professionisti raggiunti, preventivi, messaggi, data di cancellazione o "Tenuta: segnalata"). Il periodo di 90 giorni aspetta il parere dell'avvocato (domande 38-39 in `analisi/domande-commercialista-avvocato.md`).
+- Uscita dal modulo: "‹ Torna alla richiesta" in alto; un link alla stessa pagina (menu laterale, barra del telefono) chiude la modifica (`useInternalLinkClick`); il tasto Indietro del browser o del telefono chiude il modulo invece di cambiare pagina (passo aggiunto alla cronologia con `pushState` nativo, che Next.js affianca al suo router). Con modifiche non salvate Indietro, link e "Annulla" chiedono "Uscire senza salvare?"; chiusura o ricarica della scheda: avviso del browser.
+
+**Verifica**: 8 test dell'API (`guided-request-delete.test.ts`, 616 in tutto verdi), 4 prove nel browser in CI (`e2e/tests/elimina-richiesta.spec.ts`: dal modulo con motivo e Annulla, dal menu con un preventivo inviato dopo, uscita senza salvare anche con Indietro, decisione dell'admin su una richiesta eliminata). Prova a mano in locale su telefono e computer, anteprime 9-14 in `anteprime/elimina-richiesta/`. Prova simulata con 5 persone in `analisi/elimina-richiesta/prova-5-persone-simulata.md`: 3 su 5 al primo tentativo (chi ha un preventivo sceglie "Rifiuta"; "Archivia" accanto a "Elimina richiesta"), migliorie proposte a Luca.
+
+**Ritocchi chiesti da Luca dopo l'anteprima** ("le tre risposte a 'perché' rendile più piccole come lista da spuntare con un pallino, non come pulsanti"; "effettua le due migliorie")
+- I tre motivi sono un elenco con pallino (radio), testo 15px; toccandolo di nuovo si toglie la scelta.
+- Nella conferma di "Rifiuta" un preventivo: "Non ti serve più il lavoro? **Elimina la richiesta**", che apre la stessa conferma (chi non vuole più il lavoro sceglieva "Rifiuta").
+- Nel menu a tre linee una riga piccola sotto "Archivia" ("La ritrovi in Archiviate") ed "Elimina richiesta" ("La ritiri anche per i professionisti"): `CardAction.hint`. Anteprime 15-17.
+
+## 344. Interruttore "Urgente" anche nel riepilogo della richiesta
+
+**Richiesta esplicita dell'utente** (25/10/2026, thread "Interruttore Urgente nell'ultimo passo del preventivo"): nel modulo di richiesta preventivo, all'ultimo passo, "Urgente" deve stare vicino all'opzione che inoltra la richiesta agli altri professionisti se quello scelto non risponde, facile da accendere e spegnere.
+
+**Decisione presa**
+- Nel riepilogo (passo 3) un riquadro "Opzioni di invio" subito sopra il pulsante, con due righe a interruttore tondo: "Urgente" (rosso acceso) e, per la richiesta diretta, "Inoltra se non risponde" (verde, prima era una casella di spunta). Nella richiesta generale c'è solo "Urgente". Tutta la riga si tocca (`role="switch"`), comoda da telefono.
+- È lo stesso stato dell'interruttore "È urgente?" del passo 1, che ora usa la stessa riga a interruttore al posto della casella di spunta (stesso riquadro rosato quando è acceso).
+- Accendendo o spegnendo "Urgente" nel riepilogo cambiano subito il tempo dell'inoltro (60 minuti / 6 ore), "Cosa succede dopo l'invio", la riga del lavoro e il pulsante d'invio (rosso "Invia richiesta urgente" / verde "Invia richiesta"; anche da `/urgente`, se si spegne, il testo torna "Invia richiesta").
+- Componente `SendOptionSwitch` in `GuidedRequestForm.tsx`, stile `.guided-option*` in `globals.css` (stesso disegno di `.notif-switch`); tolte le classi `.guided-urgent-toggle` e `.guided-forward`.
+
+**Verifica**
+- Typecheck e lint di `apps/web`.
+- Prova nel browser (1366px e 390px), richiesta diretta e generale: l'interruttore acceso nel riepilogo risulta acceso anche tornando al passo 1. Anteprime in `/mnt/project-files/anteprime/urgente-riepilogo/`.
+
+**Miglioria approvata da Luca** ("Effettua miglioria 1")
+- Su `/urgente`, se il cliente spegne "Urgente", spariscono la fascia rossa "Richiesta urgente: notifichiamo subito…" e titolo e frase diventano quelli di `/preventivo` ("Richiedi un preventivo gratuito"); riaccendendolo tornano. Il modulo avvisa la pagina con `onUrgentChange`. Provato a 1366px e 390px.
+
+**Versione più approfondita** (richiesta di Luca, stesso thread): "Urgente" facile da segnare anche all'ultimo passo, ma il cliente deve sapere cosa comporta e non usarlo "per sicurezza".
+- **Promessa vera**: su `/urgente` c'era "notifichiamo subito i professionisti disponibili ora", ma nessun controllo guarda chi è disponibile adesso (la richiesta va a tutti quelli che accettano urgenze nel raggio). Luca ha scelto di correggere la scritta: "Richiesta urgente: arriva subito ai professionisti della tua zona" (fascia e descrizione della pagina). Domanda 41 per l'avvocato (Codice del consumo artt. 21-22) nel file unico.
+- **A quanti arriva**: nuova rotta pubblica `GET /guided-requests/reach` (stessa selezione del fan-out, `GuidedRequestsService.reach`, fino a 5 categorie, 60/min per IP) che restituisce quanti professionisti riceverebbero la richiesta senza e con "Urgente". Il riepilogo lo dice in una riga ("Arriva subito a N professionisti di …", "Per ora nessun professionista … ti avvisiamo appena ce n'è uno"), l'inoltro dice "altri N professionisti simili". Il numero urgente compare sotto l'interruttore solo da acceso (da spento faceva pensare che fosse già urgente). "Possono risponderti per 30/60 giorni" sostituito da "Ti avvisiamo a ogni preventivo: li confronti e scegli tu".
+- **Lettore di schermo**: una zona `role="status"` `aria-live="polite"` annuncia ogni cambio ("Urgente attivo. Arriva a 5 professionisti." / "Urgente disattivato. Se non risponde, la inoltriamo dopo 6 ore.").
+- **Due modi a confronto**: interruttore sì/no ("Solo se serve entro 24 ore") e scelta dei tempi "Oggi / In settimana / Con calma" (`URGENCY_CONTROL` in `GuidedRequestForm.tsx`, componente `UrgencyControl`, stile `.guided-timing*`), anteprime in `/mnt/project-files/anteprime/urgente-due-modi/` (e `giro2/`). Test con 10 utenti di prova simulati in due giri (`/mnt/project-files/analisi/urgente-test-utenti.md`): nel secondo giro 5 su 5 scelgono bene in entrambi i modi e sanno dire cosa succede dopo l'invio. Consigliato l'interruttore, **Luca ha scelto i tempi**: vedi sotto.
+- **Prova automatica**: `e2e/tests/richiesta-urgente.spec.ts` (stato uguale nei due passi, tempi dell'inoltro e pulsante aggiornati, annuncio, /urgente coerente, richiesta inviata con `isUrgent` giusto) con controllo axe sul riquadro e sul pulsante; gira nel job della CI con le altre prove nel browser.
+- **Misura dopo il lancio**: `apps/api/src/urgency-metrics/` calcola sugli ultimi 7 giorni quota di urgenti, minuti mediani al primo preventivo (urgenti e normali) e urgenti senza destinatari (`GET /admin/urgency-metrics`, riquadro "Richieste urgenti" nella Home admin). Ogni lunedì alle 9, solo dopo `LAUNCH_DATE` e con almeno 20 richieste, notifica `ADMIN_URGENCY_ALERT` (sito + email) agli admin senza ruoli specifici o SUPER se le urgenti superano il 30% o non ricevono il primo preventivo prima delle normali. Prova in `urgency-metrics.test.ts`.
+
+**Scelte di Luca dopo il test**
+- **"Oggi / In settimana / Con calma"** al posto dell'interruttore, al passo 1 e nel riepilogo (gruppo "Quando ti serve?", radio veri, nessuna scelta già fatta tranne "Oggi" da `/urgente`). Solo "Oggi" rende la richiesta urgente; tolti l'interruttore "Urgente" e `URGENCY_CONTROL`. "Inoltra se non risponde" resta a interruttore.
+- La scelta si salva: enum `RequestTiming` e campo `GuidedRequest.timing` (migrazione `20261025160000_quando_serve`, null per le richieste di prima), `timing` nello schema della richiesta (se c'è decide anche `isUrgent`, `withTimingUrgency`), ricopiato nel rinvio dopo una mancata presentazione. Il professionista la vede: "In settimana"/"Con calma" nella scheda in Richieste (cercabile) e "**Quando:** …" nell'email "Nuova richiesta" ("Oggi" è già il badge Urgente). Etichette in `packages/shared/src/requestTiming.ts`.
+- **Raggio delle urgenti lasciato così**: un'urgente va solo a chi la accetta nel suo raggio urgente; il riepilogo mostra quanti sono.
+- Prova nel browser aggiornata ai tempi (12 verdi in locale); anteprime finali in `/mnt/project-files/anteprime/urgente-due-modi/finale/`.
+
+**Migliorie approvate da Luca** ("Effettua le due migliorie")
+- Il cliente vede la scelta anche in "Le mie richieste": "In settimana"/"Con calma" accanto ai badge della scheda (cercabile), `timing` in `ClientGuidedRequest`; "Oggi" è già il badge Urgente.
+- Test con 5 nuovi utenti di prova che non conoscono il sito, sulla versione finale (`/mnt/project-files/analisi/urgente-test-utenti.md`, terzo giro): 5 su 5 scelgono bene e sanno dire cosa succede dopo l'invio.
+
+**Migliorie dal terzo test, approvate da Luca** ("effettua le 4 migliorie")
+- "Oggi" non sembra più già scelto: finché non lo tocchi è grigio come gli altri, rosso solo il fulmine (5 su 5 lo credevano selezionato).
+- Al passo 1, prima di scegliere, la riga "Oggi solo se serve entro 24 ore." (prima le spiegazioni comparivano solo dopo il tocco).
+- "Ti avvisiamo per email a ogni preventivo" (4 su 5 chiedevano come).
+- Al posto di "I tuoi dati di contatto restano nascosti…": "Finché non accetti un preventivo vedono solo nome, città e lavoro: telefono e via restano nascosti" (3 su 5 non sapevano se la via si vede; è quello che fa `clientNameForProfessional` e CLAUDE.md §5 punto 9).
+- Proposta non scelta: "Richiesta gratuita anche se urgente".
+
+## 345. Agenda più veloce sui telefoni lenti
 
 Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla lista delle migliorie della §323: con la prova Lighthouse che misura davvero l'agenda, §321, il TBT era al limite).
 

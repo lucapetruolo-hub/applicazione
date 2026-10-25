@@ -132,6 +132,7 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
   if (type === "DAC7_ANNUAL_NOTICE") return "/dashboard/fiscale/dac7";
   if (type === "DAC7_DATA_REMINDER" || type === "PAYOUT_IBAN_MISMATCH") return "/dashboard/fiscale";
   if (type === "ADMIN_DAC7_NEEDS_CORRECTION") return "/admin/finanza";
+  if (type === "ADMIN_URGENCY_ALERT") return "/admin";
   // Verifica fiscale e d'identità (docs/CHANGELOG.md §253).
   if (type === "TAX_ID_INVALID") return "/dashboard/fiscale";
   if (type === "PROFILE_SETUP_REMINDER") return "/dashboard";

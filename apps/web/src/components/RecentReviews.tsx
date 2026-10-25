@@ -60,7 +60,7 @@ function timeAgo(iso: string): string {
  * la barra di avanzamento e il timer restano allineati.
  */
 export function RecentReviews({ summary }: { summary: { count: number; average: number } | null }) {
-  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §343).
+  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
   const [reviews, setReviews] = useState<RecentReview[] | null>(null);
   const [active, setActive] = useState(0);

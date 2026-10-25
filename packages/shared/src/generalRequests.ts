@@ -184,3 +184,42 @@ export const closeGeneralRequestsSchema = z.object({
   city: z.string().trim().min(2, "Indica la città.").max(100),
 });
 export type CloseGeneralRequestsInput = z.infer<typeof closeGeneralRequestsSchema>;
+
+/**
+ * A quanti professionisti arriverebbe una richiesta adesso, senza e con
+ * "Urgente" (raggi diversi, docs/CHANGELOG.md §344). Per una richiesta
+ * diretta conta quelli a cui andrebbe l'inoltro, escluso il professionista
+ * scelto.
+ */
+export type GuidedRequestReach = {
+  standard: number;
+  urgent: number;
+};
+
+/**
+ * Misura delle richieste urgenti dopo il lancio (docs/CHANGELOG.md §344):
+ * ogni settimana, sugli ultimi 7 giorni, quante sono urgenti, quanto tempo
+ * passa al primo preventivo e quante urgenti non hanno trovato nessuno.
+ */
+export const URGENCY_METRICS_WINDOW_DAYS = 7;
+/** Avviso se le urgenti superano questa quota (decisione di Luca, 25/10/2026). */
+export const URGENT_SHARE_ALERT = 0.3;
+/** Sotto questo numero di richieste nella settimana i numeri non dicono niente: nessun avviso. */
+export const URGENCY_METRICS_MIN_REQUESTS = 20;
+
+export type UrgencyMetrics = {
+  since: string;
+  until: string;
+  requests: number;
+  urgent: number;
+  /** Quota di urgenti, da 0 a 1 (null senza richieste). */
+  urgentShare: number | null;
+  /** Minuti al primo preventivo, mediana (null se nessuna ha ricevuto preventivi). */
+  urgentMedianMinutesToFirstQuote: number | null;
+  standardMedianMinutesToFirstQuote: number | null;
+  /** Urgenti partite senza nessun professionista. */
+  urgentWithoutRecipients: number;
+  /** Cosa non va, già in parole; vuoto se tutto bene o troppo poche richieste. */
+  alerts: string[];
+};
+

@@ -286,7 +286,7 @@ function DashboardAgendaContent() {
   }
 
   // I dati che arrivano dall'API aggiornano la pagina con `startTransition`
-  // (docs/CHANGELOG.md §343): React disegna l'agenda a piccoli pezzi invece
+  // (docs/CHANGELOG.md §345): React disegna l'agenda a piccoli pezzi invece
   // che in un blocco unico, e su un telefono lento la pagina resta pronta a
   // rispondere al dito mentre si riempie. L'aspetto finale non cambia.
   useEffect(() => {

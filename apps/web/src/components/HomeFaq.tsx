@@ -27,7 +27,7 @@ export const FAQ_ITEMS = [
  * aggiunta.
  */
 export function HomeFaq() {
-  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §343).
+  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
   return (
     <Section maxWidth={780}>

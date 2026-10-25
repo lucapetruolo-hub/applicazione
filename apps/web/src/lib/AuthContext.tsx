@@ -101,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           saveOfflineUser(currentUser);
         }
-        // Con `startTransition` (docs/CHANGELOG.md §343): l'utente arrivato
+        // Con `startTransition` (docs/CHANGELOG.md §345): l'utente arrivato
         // ridisegna tutta la pagina (menu, intestazione, contenuto) e su un
         // telefono lento React lo fa a piccoli pezzi invece che in un blocco.
         startTransition(() => {
@@ -308,7 +308,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     // Badge, notifiche e preferenze arrivate dall'API si mostrano con
-    // `startTransition` (docs/CHANGELOG.md §343): ognuno ridisegna tutte le
+    // `startTransition` (docs/CHANGELOG.md §345): ognuno ridisegna tutte le
     // pagine che usano useAuth e su un telefono lento, in un blocco unico,
     // fermava la pagina.
     apiClient

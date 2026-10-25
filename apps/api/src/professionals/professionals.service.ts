@@ -1143,11 +1143,17 @@ export class ProfessionalsService {
           photoUrls: lead.guidedRequest.photoUrls,
           serviceMode: lead.guidedRequest.serviceMode,
           isUrgent: lead.guidedRequest.isUrgent,
+          timing: lead.guidedRequest.timing,
           // Valorizzati solo se la richiesta è nata da una fascia generica
           // dell'agenda (AvailabilitySlot.maxBookings > 1): il professionista
           // deve vedere subito per quale orario è stata richiesta.
           preferredDate: lead.guidedRequest.preferredDate?.toISOString().slice(0, 10) ?? null,
           preferredTimeSlot: lead.guidedRequest.preferredTimeSlot,
+          // Eliminata (o annullata prima del §343) dal cliente: "Ritirata dal cliente", non "Scaduta".
+          withdrawnByClient:
+            lead.guidedRequest.closedReason === "CANCELED_BY_CLIENT"
+              ? { at: (lead.guidedRequest.deletedByClientAt ?? lead.guidedRequest.updatedAt).toISOString(), reason: lead.guidedRequest.withdrawReason }
+              : null,
         },
         myState: toMyState(lead.guidedRequest.userStates?.[0]),
       };

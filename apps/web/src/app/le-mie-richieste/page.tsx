@@ -17,6 +17,7 @@ import { Pagination } from "@/components/ListControls";
 import { RestoreAllArchivedBar, RestoredNotice } from "@/components/RequestCardPersonalActions";
 import { highlightDeepLinkTarget } from "@/lib/deepLinkHighlight";
 import { classifyClientRequestStage, type RequestStage } from "@/lib/requestStage";
+import { RequestDeletedNotice } from "./_components/RequestDeletedNotice";
 import { GuidedRequestCard } from "./_components/GuidedRequestCard";
 import { clientRequestSearchText, filterInputStyle } from "./_components/clientRequestHelpers";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
@@ -617,6 +618,12 @@ function LeMieRichiesteContent() {
 
         <YStack ref={listTopRef} gap="$4">
           <RestoredNotice />
+          <RequestDeletedNotice
+            onUndo={async (guidedRequestId) => {
+              await apiClient.restoreGuidedRequest(token, guidedRequestId);
+              reload();
+            }}
+          />
           {activeStageTab === "archiviate" ? (
             <RestoreAllArchivedBar token={token} guidedRequestIds={(requests ?? []).filter((r) => r.myState.archivedAt).map((r) => r.id)} onChanged={reload} />
           ) : null}

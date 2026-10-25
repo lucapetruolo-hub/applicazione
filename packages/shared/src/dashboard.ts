@@ -1,6 +1,8 @@
+import type { RequestWithdrawReason } from "./requestWithdraw";
 import type { JobIssueSummary } from "./jobIssues";
 import type { JobPaymentChoice, JobPaymentSummary } from "./onlinePayments";
 import type { ProfessionalDetail } from "./professionals";
+import type { RequestTiming } from "./requestTiming";
 /**
  * Anteprima del proprio profilo pubblico (docs/CHANGELOG.md §252): gli stessi
  * dati della pagina pubblica e se i clienti la vedono già, o perché no.
@@ -218,9 +220,17 @@ export type ProfessionalLead = {
     /** Tipo di intervento (richiesta esplicita dell'utente: "il professionista già sa se può trattarsi di un intervento a domicilio o online") — `null` per le richieste create prima di questo campo. */
     serviceMode: "HOME" | "ONLINE" | null;
     isUrgent: boolean;
+    /** Quando serve, scelto dal cliente (§344): null per le richieste di prima. */
+    timing: RequestTiming | null;
     /** Valorizzati solo se la richiesta è nata da una fascia generica dell'agenda (vedi packages/shared/src/availability.ts). */
     preferredDate: string | null;
     preferredTimeSlot: string | null;
+    /**
+     * Il cliente ha tolto la richiesta (docs/CHANGELOG.md §343): mostrata
+     * come "Ritirata dal cliente", con il motivo se l'ha dato, al posto di
+     * "Scaduta". `null` se è ancora sua.
+     */
+    withdrawnByClient: { at: string; reason: RequestWithdrawReason | null } | null;
   };
   /** Stato personale del professionista su questa richiesta (CHANGELOG §130). */
   myState: GuidedRequestMyState;

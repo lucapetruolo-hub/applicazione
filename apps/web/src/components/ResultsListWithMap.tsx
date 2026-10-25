@@ -46,7 +46,7 @@ export function ResultsListWithMap({
   /** Preimpostato dall'URL (?urgente=1) quando si arriva dal toggle "Intervento urgente?" della homepage — evita di dover ripetere la scelta qui. */
   initialUrgentOnly?: boolean;
 }) {
-  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §343).
+  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
   const router = useRouter();
   const { canSave, savedIds, pendingId, toggleSave } = useSavedProfessionals();

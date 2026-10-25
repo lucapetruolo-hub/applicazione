@@ -550,7 +550,7 @@ const FAQ: { question: string; answer: string; paymentsLink?: boolean }[] = [
 ];
 
 function ProFaq() {
-  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §343).
+  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
   return (
     <Band>

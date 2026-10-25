@@ -19,7 +19,7 @@ export type Comune = {
 // finisce nel JavaScript di ogni pagina del sito e su un telefono lento il
 // suo peso bloccava la pagina (docs/CHANGELOG.md §320). Gli oggetti si
 // creano solo al primo uso, non all'apertura di ogni pagina: l'agenda e le
-// altre pagine che non cercano comuni non pagano più quel lavoro (§343).
+// altre pagine che non cercano comuni non pagano più quel lavoro (§345).
 let comuni: Comune[] | null = null;
 let comuniByName: Map<string, Comune> | null = null;
 let cityNames: string[] | null = null;

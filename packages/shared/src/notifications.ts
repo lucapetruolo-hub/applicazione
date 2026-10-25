@@ -101,6 +101,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "ADMIN_JOB_REFUND_FAILED",
       // Anno DAC7 già comunicato con importi cambiati dopo l'invio (docs/CHANGELOG.md §247).
       "ADMIN_DAC7_NEEDS_CORRECTION",
+      // Urgenti oltre il 30% o non più veloci delle normali, ogni lunedì (docs/CHANGELOG.md §338).
+      "ADMIN_URGENCY_ALERT",
       // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §190).
       "JOB_CONFIRM_REMINDER",
       "JOB_AUTO_CONFIRMED",

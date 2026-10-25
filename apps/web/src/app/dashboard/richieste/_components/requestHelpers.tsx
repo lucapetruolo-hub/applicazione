@@ -1,6 +1,6 @@
 "use client";
 
-import { formatAppointmentTimeRange, formatBookingAddress, formatJobDays, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
+import { REQUEST_TIMING_LABEL, formatAppointmentTimeRange, formatBookingAddress, formatJobDays, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
 import { Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { REQUEST_STAGE_STYLE, type RequestStage } from "@/lib/requestStage";
 
@@ -92,6 +92,7 @@ export function leadSearchText(lead: ProfessionalLead, stage: RequestStage | und
     gr.city,
     gr.serviceMode === "ONLINE" ? "consulenza online" : "a domicilio",
     gr.isUrgent ? "urgente" : null,
+    gr.timing ? REQUEST_TIMING_LABEL[gr.timing] : null,
     stage ? STAGE_STYLE[stage].label : null,
     lead.declineNote,
     lead.professionalNote,
@@ -109,13 +110,14 @@ export function leadSearchText(lead: ProfessionalLead, stage: RequestStage | und
     .toLowerCase();
 }
 
-export function StagePill({ stage }: { stage: RequestStage }) {
+/** `label` sostituisce il nome dello stato, per esempio "Ritirata dal cliente" su una richiesta chiusa (docs/CHANGELOG.md §343). */
+export function StagePill({ stage, label }: { stage: RequestStage; label?: string }) {
   const s = STAGE_STYLE[stage];
   return (
     <XStack alignItems="center" gap={6} paddingHorizontal="$3" paddingVertical={8} borderRadius={999} backgroundColor={s.bg}>
       <Icon name={s.icon} size={15} strokeWidth={2} color={s.fg} />
       <Text fontFamily="$body" fontSize={16} fontWeight="800" color={s.fg} textTransform="uppercase">
-        {s.label}
+        {label ?? s.label}
       </Text>
     </XStack>
   );

@@ -21,7 +21,7 @@ const buttonStyle = {
 } as const;
 
 export function CookieBanner() {
-  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §343).
+  // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
   const [visible, setVisible] = useState(false);
   const bannerRef = useRef<HTMLDivElement>(null);

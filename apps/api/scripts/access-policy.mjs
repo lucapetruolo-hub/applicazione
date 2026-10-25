@@ -39,6 +39,7 @@ const publicRoutes = [
   "GET /categories/popular",
   "POST /contact",
   "GET /general-requests/availability",
+  "GET /guided-requests/reach",
   "GET /health",
   "GET /health/features",
   "POST /identity-verification/webhook",
@@ -178,7 +179,7 @@ const owned = {
 
   "PATCH /guided-requests/:id": request({ body: () => ({ description: "Descrizione modificata da un estraneo" }) }),
   "DELETE /guided-requests/:id": request(),
-  "DELETE /guided-requests/:id/permanent": request(),
+  "POST /guided-requests/:id/restore": request(),
   // Stato personale (archiviata, silenziata): del cliente e dei professionisti che l'hanno ricevuta.
   "PATCH /guided-requests/:id/my-state": request({ owners: BOTH, body: () => ({ archived: true }) }),
   "GET /guided-requests/:id/status": request(),

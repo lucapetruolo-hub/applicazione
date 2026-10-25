@@ -687,6 +687,14 @@ enum GuidedRequestClosedReason {
   COMPLETED
 }
 
+// Perché il cliente ha tolto la richiesta (docs/CHANGELOG.md §337), mostrato
+// ai professionisti accanto a "Ritirata dal cliente".
+enum GuidedRequestWithdrawReason {
+  FOUND_ELSEWHERE
+  NO_LONGER_NEEDED
+  MISTAKE
+}
+
 // Tipo di intervento richiesto — richiesta esplicita dell'utente: "in modo
 // che il professionista già sa se può trattarsi di un intervento a
 // domicilio o online", raccolto già alla richiesta invece di scoprirlo solo
@@ -705,8 +713,16 @@ enum TrafficSource {
   OTHER
 }
 
+// Quando serve il lavoro, scelto dal cliente (docs/CHANGELOG.md §344):
+// TODAY = urgente (isUrgent resta il campo che decide raggio e inoltro).
+enum RequestTiming {
+  TODAY
+  WEEK
+  CALM
+}
+
 model GuidedRequest {
-  id                    String                     @id @default(uuid())
+  id                    String                       @id @default(uuid())
   clientId              String
   categoryId            String
   description           String
@@ -739,7 +755,9 @@ model GuidedRequest {
   addressExtra          String?
   postalCode            String?
   province              String?
-  isUrgent              Boolean                    @default(false)
+  isUrgent              Boolean                      @default(false)
+  // Null per le richieste di prima della scelta dei tempi (§344).
+  timing                RequestTiming?
   // Nullable: le richieste create prima di questa funzionalità non hanno
   // un tipo esplicito (mai un backfill retroattivo, stessa convenzione già
   // usata per altri campi opzionali di questo modello) — obbligatorio lato
@@ -749,12 +767,12 @@ model GuidedRequest {
   // (docs/CHANGELOG.md §296): solo la categoria, mai l'indirizzo di
   // provenienza. Null per le richieste di prima e se il browser non la dà.
   trafficSource         TrafficSource?
-  status                GuidedRequestStatus        @default(OPEN)
-  createdAt             DateTime                   @default(now())
+  status                GuidedRequestStatus          @default(OPEN)
+  createdAt             DateTime                     @default(now())
   // Per l'ordinamento "per ultimo aggiornamento" nelle liste richieste
   // (richiesta esplicita dell'utente) — Prisma la aggiorna da sola ad ogni
   // update() (es. modifica descrizione/città/foto).
-  updatedAt             DateTime                   @default(now()) @updatedAt
+  updatedAt             DateTime                     @default(now()) @updatedAt
   // Valorizzati solo quando la richiesta parte da una fascia "generica"
   // dell'agenda pubblica di un professionista (AvailabilitySlot.maxBookings
   // > 1): data pura (mezzanotte UTC, stessa convenzione del resto
@@ -784,6 +802,15 @@ model GuidedRequest {
   // Richiesta rimossa da un admin su segnalazione (docs/CHANGELOG.md §144):
   // chiusa e nascosta ai professionisti; il cliente la vede ancora.
   hiddenAt              DateTime?
+  // "Elimina richiesta" del cliente (docs/CHANGELOG.md §337): sparisce solo
+  // per lui. I professionisti la vedono "Ritirata dal cliente", l'admin la
+  // vede intera; la cancella davvero il job giornaliero dopo
+  // CLIENT_DELETED_REQUEST_RETENTION_DAYS, mai se è stata segnalata.
+  deletedByClientAt     DateTime?
+  // Motivo facoltativo scelto dal cliente togliendo la richiesta.
+  withdrawReason        GuidedRequestWithdrawReason?
+  // Era ancora aperta quando il cliente l'ha eliminata: "Annulla" la riapre.
+  deletedWhileOpen      Boolean                      @default(false)
   // Coda ordinata (dal più al meno prioritario) dei ProfessionalProfile.id
   // candidati NON selezionati al fan-out iniziale (oltre MAX_LEADS_PER_REQUEST,
   // vedi GuidedRequestsService) — pescata in ordine da lì ad ogni scadenza/
@@ -791,10 +818,10 @@ model GuidedRequest {
   // stesso pattern già in uso per liste ordinate in questo schema
   // (photoUrls, portfolioUrls, subTags) invece di una tabella dedicata o
   // di un campo Json: qui non serve altro che leggerla/consumarla in ordine.
-  reserveCandidateIds   String[]                   @default([])
+  reserveCandidateIds   String[]                     @default([])
   // Richiesta diretta: inoltrarla ad altri se il professionista non
   // risponde (docs/CHANGELOG.md §154) e quando è stata inoltrata.
-  forwardIfNoReply      Boolean                    @default(false)
+  forwardIfNoReply      Boolean                      @default(false)
   forwardedAt           DateTime?
   // Quando inoltrarla se il professionista scelto non ha ancora risposto:
   // 60 minuti per un'urgente, 6 ore (contate dalle 8 alle 21) per una
@@ -811,6 +838,7 @@ model GuidedRequest {
   userStates     GuidedRequestUserState[]
 
   @@index([categoryId, city, status])
+  @@index([deletedByClientAt])
   @@map("guided_requests")
 }
 
@@ -1954,26 +1982,26 @@ model JobPayment {
   // Cifra che Stripe ha tolto alla piattaforma per una contestazione in banca
   // e che abbiamo già ripreso dal conto del professionista (storno), più il
   // trasferimento con cui gliela restituiamo se la contestazione è vinta.
-  disputeRecoveredEurCents   Int       @default(0)
-  disputeReturnTransferId    String?
+  disputeRecoveredEurCents  Int       @default(0)
+  disputeReturnTransferId   String?
   // Quanto il professionista deve ancora alla piattaforma per questo lavoro
   // (rimborso o contestazione persa per colpa sua quando i soldi erano già
   // partiti, trattenuta che resta a suo carico): si riprende dai prossimi
   // lavori sbloccati, prima del bonifico.
-  professionalDebtEurCents   Int       @default(0)
+  professionalDebtEurCents  Int       @default(0)
   // Costi di Stripe Connect ripresi dal professionista allo sblocco: costo
   // del bonifico e quota mensile dell'account attivo (`connectMonthlyFeeMonth`,
   // AAAA-MM, al primo sblocco del mese).
-  connectFeesEurCents        Int       @default(0)
-  connectMonthlyFeeMonth     String?
+  connectFeesEurCents       Int       @default(0)
+  connectMonthlyFeeMonth    String?
   // Carta del cliente salvata con l'acconto per addebitare da sola il saldo
   // alla chiusura del lavoro (docs/CHANGELOG.md §267): cliente Stripe sulla
   // piattaforma e metodo di pagamento. `balanceAutoChargeFailedAt`: addebito
   // non riuscito, il cliente paga con il link.
-  clientStripeCustomerId     String?
-  savedPaymentMethodId       String?
-  balanceAutoChargedAt       DateTime?
-  balanceAutoChargeFailedAt  DateTime?
+  clientStripeCustomerId    String?
+  savedPaymentMethodId      String?
+  balanceAutoChargedAt      DateTime?
+  balanceAutoChargeFailedAt DateTime?
 
   // --- DIRECT (auto-dichiarazione + conferma cliente) ---
   directReportedAt   DateTime?
