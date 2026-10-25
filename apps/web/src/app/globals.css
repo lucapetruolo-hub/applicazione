@@ -3223,10 +3223,10 @@ a.admin-kpi:hover {
   align-items: center;
   column-gap: 4px;
   max-width: 100%;
-  padding: 3px 10px;
+  padding: 5px 12px;
   border-radius: 20px;
-  border: 1px solid #f0dcc0;
-  background: #fff;
+  /* Piena come gli altri bollini, senza bordo (docs/CHANGELOG.md §346). */
+  background: #fdefe1;
   color: #2b2420;
   font-size: 13px;
   font-weight: 700;

@@ -331,6 +331,14 @@ export type ProfessionalDetail = ProfessionalSearchResult & {
     comment: string | null;
     photoUrls: string[];
     createdAt: string;
+    /**
+     * Chi l'ha scritta: nome e iniziale del cognome, come nelle recensioni
+     * in home (docs/CHANGELOG.md §216, §346). Null per un account eliminato o
+     * senza nome. Facoltativo: un'API non ancora aggiornata non lo manda.
+     */
+    clientName?: string | null;
+    /** Il servizio del lavoro recensito (la categoria della richiesta), se noto. */
+    jobLabel?: string | null;
   }[];
   /**
    * Foto reali di lavori svolti (fino a 10), mostrate in una galleria sul

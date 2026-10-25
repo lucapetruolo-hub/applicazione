@@ -417,7 +417,7 @@ export function ProfessionalCard({
               ) : null}
               {hasLiabilityInsurance ? (
                 <BadgeInfo info="liabilityInsurance">
-                  <XStack alignItems="center" gap={4} paddingHorizontal="$2" paddingVertical={2} borderRadius="$10" backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto}>
+                  <XStack alignItems="center" gap={4} paddingHorizontal="$2" paddingVertical={2} borderRadius="$10" backgroundColor={brand.gesso}>
                     <Icon name="shield-check" size={13} color={brand.grafite} strokeWidth={2} />
                     <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite}>
                       Assicurazione RC

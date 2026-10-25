@@ -14,6 +14,12 @@ type IconActionButtonProps = {
   forceTooltip?: boolean;
   /** Diametro in px (default 40); il cuoricino sulla foto nei risultati è più piccolo. */
   size?: number;
+  /**
+   * "end": fumetto allineato al bordo destro del pulsante invece che
+   * centrato, per i pulsanti vicino al bordo destro dello schermo
+   * (docs/CHANGELOG.md §346): centrato usciva dallo schermo.
+   */
+  tooltipAlign?: "center" | "end";
 };
 
 /**
@@ -22,7 +28,7 @@ type IconActionButtonProps = {
  * Segnala nella pagina profilo, docs/CHANGELOG.md §206). Fumetto in CSS e non
  * `title` nativo: quello compare solo dopo circa un secondo.
  */
-export function IconActionButton({ label, onPress, children, active, disabled, forceTooltip, size = 40 }: IconActionButtonProps) {
+export function IconActionButton({ label, onPress, children, active, disabled, forceTooltip, size = 40, tooltipAlign = "center" }: IconActionButtonProps) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
   return (
@@ -37,7 +43,7 @@ export function IconActionButton({ label, onPress, children, active, disabled, f
       >
         {children}
       </button>
-      <span role="tooltip" className={forceTooltip ? "tip visible" : "tip"}>
+      <span role="tooltip" className={`tip${tooltipAlign === "end" ? " end" : ""}${forceTooltip ? " visible" : ""}`}>
         {label}
       </span>
       <style jsx>{`
@@ -84,6 +90,11 @@ export function IconActionButton({ label, onPress, children, active, disabled, f
           opacity: 0;
           transition: opacity 0.12s;
           z-index: 20;
+        }
+        .tip.end {
+          left: auto;
+          right: 0;
+          transform: none;
         }
         .icon-action:hover .tip,
         button:focus-visible + .tip,
