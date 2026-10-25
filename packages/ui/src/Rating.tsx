@@ -6,6 +6,8 @@ export type RatingProps = {
   value: number;
   count?: number;
   size?: number;
+  /** Testo di voto e conteggio: più piccolo dove le stelle stanno sotto un nome (docs/CHANGELOG.md §339). */
+  textSize?: number;
 };
 
 /**
@@ -16,7 +18,7 @@ export type RatingProps = {
  * mezzo-riempimento pixel-perfect per restare portabile su React Native)
  * + valore numerico in mono + conteggio recensioni tra parentesi — brief §3.
  */
-export function Rating({ value, count, size = 16 }: RatingProps) {
+export function Rating({ value, count, size = 16, textSize = 16 }: RatingProps) {
   return (
     // flexWrap: su un telefono stretto "(5 recensioni)" va a capo invece di
     // uscire dal bordo della scheda (docs/CHANGELOG.md §206).
@@ -32,11 +34,11 @@ export function Rating({ value, count, size = 16 }: RatingProps) {
           />
         ))}
       </XStack>
-      <Text fontFamily="$mono" fontSize={16} fontWeight="500" color={brand.grafite}>
+      <Text fontFamily="$mono" fontSize={textSize} fontWeight="500" color={brand.grafite}>
         {value.toFixed(1)}
       </Text>
       {count !== undefined ? (
-        <Text fontSize={16} color={brand.grafite70}>
+        <Text fontSize={textSize} color={brand.grafite70}>
           ({count} recension{count === 1 ? "e" : "i"})
         </Text>
       ) : null}

@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { Prisma, type PrismaClient, type ProfessionalProfile } from "@professionisti/database";
 import { findComuneByName, professionalKindOf, professionalRestrictions, clientPaymentOffer, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { reviewSummariesFor, type ReviewSummary } from "../reviews/review-summary";
 import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing, publicVisibilityWhere, publicVerified, stripeVerified } from "../professional-fiscal/public-visibility";
 import { NOT_ACCEPTING_REQUESTS } from "../subscriptions/subscription-rules";
 import { calculateDistanceKm } from "../common/geo.util";
@@ -430,6 +431,19 @@ export class GuidedRequestsService {
       orderBy: { createdAt: "desc" },
     });
 
+    // Stelle e numero di recensioni accanto al nome del professionista, per
+    // scegliere tra più preventivi (docs/CHANGELOG.md §339). Mai per un
+    // profilo eliminato.
+    const reviewSummaries = await reviewSummariesFor(
+      this.prisma,
+      requests.flatMap((request) => [
+        ...request.leads.map((lead) => lead.professionalProfileId),
+        ...request.quotes.map((quote) => quote.professionalProfileId),
+      ]),
+    );
+    const reviewsOf = (profile: { id: string; deletedAt: Date | null }): ReviewSummary | null =>
+      profile.deletedAt ? null : (reviewSummaries.get(profile.id) ?? { rating: null, count: 0 });
+
     return requests.map((request) => {
       // Altre richieste dello stesso invio con più categorie (§259).
       const sentWith = request.submissionGroupId
@@ -512,6 +526,7 @@ export class GuidedRequestsService {
           categoryLabel: lead.professionalProfile.category.label,
           city: lead.professionalProfile.city,
           verified: publicVerified(lead.professionalProfile),
+          reviews: reviewsOf(lead.professionalProfile),
           declined: lead.status === "DECLINED",
           declineNote: lead.declineNote,
         })),
@@ -523,6 +538,7 @@ export class GuidedRequestsService {
           // (richiesta esplicita dell'utente: riconoscere a colpo d'occhio
           // di chi si tratta). Mai per un profilo eliminato.
           imageUrl: quote.professionalProfile.deletedAt ? null : quote.professionalProfile.imageUrl,
+          reviews: reviewsOf(quote.professionalProfile),
           // Che tipo di lavoratore ha mandato il preventivo (richiesta dell'utente, §338).
           professionalKind: professionalKindOf(quote.professionalProfile.fiscalProfile?.entityType),
           items: quote.items.map((item) => ({

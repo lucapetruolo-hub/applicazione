@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { ProfessionalReviewsLink } from "@/components/ProfessionalReviewsLink";
 import type { ClientGuidedRequest } from "@professionisti/api-client";
 import { formatAppointmentTimeRange, formatJobDays, formatServicePriceRange, jobDayCount, paymentChoiceIsOnline, quotePriceTotals, scheduleChangeBetween, scheduleChangeObject, type JobPaymentChoice } from "@professionisti/shared";
 import { PaymentChoice, selectablePaymentChoices } from "@/components/PaymentChoice";
@@ -289,21 +290,25 @@ export function QuoteCard({
   return (
     <YStack backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$2">
       <XStack alignItems="center" gap="$2">
-        <XStack flex={1} alignItems="center" gap="$2" flexWrap="wrap">
-          <Link href={`/professionista/${quote.professionalProfileId}`} style={{ textDecoration: "none" }}>
-            {/* Foto accanto al nome (richiesta esplicita dell'utente), iniziali se manca. */}
-            <XStack alignItems="center" gap="$2">
-              <Avatar name={quote.businessName} imageUrl={quote.imageUrl} size={32} />
+        {/* Foto accanto al nome (richiesta esplicita dell'utente), iniziali se manca; stesso link del nome, fuori dal Tab. */}
+        <Link href={`/professionista/${quote.professionalProfileId}`} tabIndex={-1} aria-hidden style={{ textDecoration: "none", alignSelf: "flex-start" }}>
+          <Avatar name={quote.businessName} imageUrl={quote.imageUrl} size={40} />
+        </Link>
+        <YStack flex={1} minWidth={0} gap={2}>
+          <XStack alignItems="center" gap="$2" flexWrap="wrap">
+            <Link href={`/professionista/${quote.professionalProfileId}`} style={{ textDecoration: "none" }}>
               <Text fontWeight="600" color={brand.cianografiaScuro}>
                 {quote.businessName}
               </Text>
-            </XStack>
-          </Link>
-          {/* Che tipo di lavoratore ha mandato il preventivo, dove il cliente decide (richiesta dell'utente, §338). */}
-          {quote.professionalKind ? <ProfessionalKindBadge kind={quote.professionalKind} /> : null}
-          {/* Un preventivo accettato non è più una novità: le novità del lavoro sono sull'intervento (§228). */}
-          {isNew && quote.status !== "ACCEPTED" ? <Badge variant="nuovo">Nuovo</Badge> : null}
-        </XStack>
+            </Link>
+            {/* Che tipo di lavoratore ha mandato il preventivo, dove il cliente decide (richiesta dell'utente, §338). */}
+            {quote.professionalKind ? <ProfessionalKindBadge kind={quote.professionalKind} /> : null}
+            {/* Un preventivo accettato non è più una novità: le novità del lavoro sono sull'intervento (§228). */}
+            {isNew && quote.status !== "ACCEPTED" ? <Badge variant="nuovo">Nuovo</Badge> : null}
+          </XStack>
+          {/* Stelle e numero di recensioni per scegliere tra più preventivi (richiesta dell'utente, §339). */}
+          <ProfessionalReviewsLink professionalProfileId={quote.professionalProfileId} reviews={quote.reviews} />
+        </YStack>
         {/* Messaggi accanto al nome, leggero: non compete con la scelta sul preventivo (§338). */}
         {contactInBooking ? null : (
           <ContactButton
