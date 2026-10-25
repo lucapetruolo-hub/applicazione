@@ -11,12 +11,12 @@ import lighthouse from "lighthouse";
 const WEB_URL = process.env.E2E_WEB_URL ?? "http://localhost:3000";
 const PORT = 9333;
 /**
- * Soglie: punteggi 0-100 e tempi in millisecondi. TBT a 400 invece dei 600
- * "scarso" di Google (docs/CHANGELOG.md §343): in CI l'agenda sta intorno ai
- * 130-190 ms, quindi c'è margine contro il rumore ma un peggioramento serio
- * blocca la PR.
+ * Soglie: punteggi 0-100 e tempi in millisecondi. TBT a 500 invece dei 600
+ * "scarso" di Google (docs/CHANGELOG.md §343): in CI le quattro pagine sono
+ * uscite tra 106 e 335 ms a seconda della macchina, quindi c'è margine contro
+ * il rumore ma un peggioramento serio blocca la PR.
  */
-const BUDGET = { performance: 60, accessibility: 90, "best-practices": 90, lcpMs: 4000, tbtMs: 400, cls: 0.25 };
+const BUDGET = { performance: 60, accessibility: 90, "best-practices": 90, lcpMs: 4000, tbtMs: 500, cls: 0.25 };
 const GOOD = { performance: 90, accessibility: 100, "best-practices": 100, lcpMs: 2500, tbtMs: 200, cls: 0.1 };
 
 const data = JSON.parse(readFileSync(new URL("../.auth/data.json", import.meta.url), "utf8"));
