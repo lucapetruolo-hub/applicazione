@@ -6,6 +6,7 @@ import { isPlausiblePhoneNumber, normalizePhoneNumber } from "./phoneCountries";
 import { quotePaymentOfferSchema } from "./onlinePayments";
 import { contentReportReason, contentReportReasonCodes, moderationGroundCodes } from "./moderation";
 import { newPasswordSchema } from "./password";
+import { REQUEST_TIMINGS } from "./requestTiming";
 
 const categorySlugs = PROFESSIONAL_CATEGORIES.map((category) => category.slug) as [string, ...string[]];
 
@@ -333,6 +334,8 @@ export const guidedRequestSchema = z
     postalCode: z.string().max(10).optional(),
     province: z.string().max(50).optional(),
     isUrgent: z.boolean().default(false),
+    /** Quando serve (docs/CHANGELOG.md §340): se c'è, decide anche `isUrgent` ("Oggi"). */
+    timing: z.enum(REQUEST_TIMINGS).optional(),
     /**
      * Tipo di intervento (richiesta esplicita dell'utente: "in modo che il
      * professionista già sa se può trattarsi di un intervento a domicilio o

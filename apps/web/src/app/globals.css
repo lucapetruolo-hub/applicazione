@@ -2970,7 +2970,6 @@ a.admin-kpi:hover {
   overflow: hidden;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
-.guided-options.is-urgent-card:has(.guided-option.is-on),
 .guided-options.is-urgent-card:has(.guided-timing-option.is-today input:checked) {
   border-color: #c8362b;
   background: #fbeae7;
@@ -3039,11 +3038,8 @@ a.admin-kpi:hover {
 .guided-option.is-on .guided-option-track span {
   transform: translateX(18px);
 }
-.guided-option.is-ok.is-on .guided-option-track {
+.guided-option.is-on .guided-option-track {
   background: #189a63;
-}
-.guided-option.is-urgent.is-on .guided-option-track {
-  background: #c8362b;
 }
 /* Scelta dei tempi "Quando ti serve?" (§340): tre pillole, Oggi in rosso. */
 .guided-timing {

@@ -705,6 +705,14 @@ enum TrafficSource {
   OTHER
 }
 
+// Quando serve il lavoro, scelto dal cliente (docs/CHANGELOG.md §340):
+// TODAY = urgente (isUrgent resta il campo che decide raggio e inoltro).
+enum RequestTiming {
+  TODAY
+  WEEK
+  CALM
+}
+
 model GuidedRequest {
   id                    String                     @id @default(uuid())
   clientId              String
@@ -740,6 +748,8 @@ model GuidedRequest {
   postalCode            String?
   province              String?
   isUrgent              Boolean                    @default(false)
+  // Null per le richieste di prima della scelta dei tempi (§340).
+  timing                RequestTiming?
   // Nullable: le richieste create prima di questa funzionalità non hanno
   // un tipo esplicito (mai un backfill retroattivo, stessa convenzione già
   // usata per altri campi opzionali di questo modello) — obbligatorio lato

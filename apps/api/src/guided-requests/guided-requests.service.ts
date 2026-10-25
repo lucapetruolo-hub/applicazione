@@ -52,6 +52,11 @@ function addDays(date: Date, days: number): Date {
  * §224): la scadenza della richiesta, mai per le urgenti (resta la
  * dicitura di prima, decisione dell'utente §221).
  */
+/** Con la scelta dei tempi (§340) è "Oggi" a rendere urgente la richiesta. */
+function withTimingUrgency<T extends { isUrgent: boolean; timing?: GuidedRequestInput["timing"] }>(input: T): T {
+  return input.timing ? { ...input, isUrgent: input.timing === "TODAY" } : input;
+}
+
 function respondUntilForEmail(isUrgent: boolean, expiresAt: Date | null): string | null {
   return !isUrgent && expiresAt ? expiresAt.toISOString() : null;
 }
@@ -81,7 +86,8 @@ export class GuidedRequestsService {
    * controlli (categorie, zona aperta, indirizzo) si fanno tutti prima di
    * crearne una, così non resta mai una parte delle richieste a metà.
    */
-  async createForCategories(clientId: string, input: GuidedRequestInput) {
+  async createForCategories(clientId: string, rawInput: GuidedRequestInput) {
+    const input = withTimingUrgency(rawInput);
     const { extraCategorySlugs, ...rest } = input;
     const slugs = [input.categorySlug, ...(extraCategorySlugs ?? [])];
     if (slugs.length === 1) {
@@ -285,6 +291,7 @@ export class GuidedRequestsService {
               postalCode: input.postalCode?.trim() || null,
               province: input.province?.trim() || null,
               isUrgent: input.isUrgent,
+              timing: input.timing ?? null,
               serviceMode: input.serviceMode,
               professionalProfileId: targetProfile?.id,
               forwardIfNoReply: !!targetProfile && input.forwardIfNoReply,
@@ -356,6 +363,7 @@ export class GuidedRequestsService {
           guidedRequestId: guidedRequest.id,
           category: category.label,
           city: input.city ?? null,
+          timing: input.timing ?? null,
           isUrgent: input.isUrgent,
           respondUntil: respondUntilForEmail(input.isUrgent, requestExpiresAt),
         });
@@ -954,6 +962,7 @@ export class GuidedRequestsService {
         guidedRequestId: request.id,
         category: request.category.label,
         city: request.city,
+        timing: request.timing ?? null,
         isUrgent: request.isUrgent,
         respondUntil: respondUntilForEmail(request.isUrgent, request.expiresAt),
       });
@@ -1030,6 +1039,7 @@ export class GuidedRequestsService {
         guidedRequestId,
         category: request.category.label,
         city: request.city,
+        timing: request.timing ?? null,
         isUrgent: request.isUrgent,
         respondUntil: respondUntilForEmail(request.isUrgent, request.expiresAt),
       });
@@ -1081,7 +1091,7 @@ export class GuidedRequestsService {
       await this.forwardDirectRequest(guidedRequestId);
       return;
     }
-    type NotifyTarget = { userId: string; professionalProfileId: string; categoryLabel: string; city: string; isUrgent: boolean; expiresAt: Date | null };
+    type NotifyTarget = { userId: string; professionalProfileId: string; categoryLabel: string; city: string; isUrgent: boolean; timing: string | null; expiresAt: Date | null };
     let notifyTarget: NotifyTarget | null;
 
     try {
@@ -1131,6 +1141,7 @@ export class GuidedRequestsService {
             categoryLabel: request.category.label,
             city: request.city,
             isUrgent: request.isUrgent,
+            timing: request.timing,
             expiresAt: request.expiresAt,
           };
         },
@@ -1151,6 +1162,7 @@ export class GuidedRequestsService {
         guidedRequestId,
         category: notifyTarget.categoryLabel,
         city: notifyTarget.city,
+        timing: notifyTarget.timing ?? null,
         isUrgent: notifyTarget.isUrgent,
         respondUntil: respondUntilForEmail(notifyTarget.isUrgent, notifyTarget.expiresAt),
       });
