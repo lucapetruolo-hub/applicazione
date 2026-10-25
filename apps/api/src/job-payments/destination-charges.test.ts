@@ -546,3 +546,64 @@ describe("professionalPayoutTotals", () => {
     });
   });
 });
+
+describe("OnlineMoneyService: acconto trattenuto per un annullamento dentro il preavviso (§348)", () => {
+  function keptJob() {
+    return {
+      ...releasedJob({
+        onlineStage: "PAID",
+        releasedAt: null,
+        paidEurCents: 2400,
+        applicationFeeEurCents: 250,
+        payoutPendingEurCents: 0,
+        netAmountEurCents: 0,
+        stripeFeeEurCents: 60,
+        platformFeeEurCents: 120,
+        grossAmountEurCents: 2400,
+        depositKeptAt: new Date("2026-10-01T10:00:00Z"),
+        releaseDueAt: new Date("2026-10-08T10:00:00Z"),
+      }),
+      booking: {
+        id: "bk-1",
+        clientId: "client-1",
+        status: "CANCELED",
+        finalAmountEurCents: null,
+        professionalCompletedAt: null,
+        clientConfirmedCompletedAt: null,
+        issue: null,
+        professionalProfile: { id: "pro-1", userId: "pro-user-1", fiscalProfile: { stripeConnectAccountId: "acct_1", stripePayoutsEnabled: true } },
+        quote: { guidedRequestId: "gr-1" },
+      },
+    };
+  }
+
+  it("keepDeposit fissa l'acconto come importo, con la commissione del 5%, e lo sblocca dopo 7 giorni", async () => {
+    const { service, prisma } = buildService();
+    prisma.jobPayment.findUniqueOrThrow.mockResolvedValue({ id: "jp-1", paymentMethod: "MANOVIA", releasedAt: null, paidEurCents: 2400, refundedEurCents: 0, stripeFeeEurCents: 60 });
+    await expect(service.keepDeposit("jp-1")).resolves.toBe(2400);
+    expect(prisma.jobPayment.update).toHaveBeenCalledWith({
+      where: { id: "jp-1" },
+      data: expect.objectContaining({ grossAmountEurCents: 2400, platformFeeEurCents: 120, onlineStage: "PAID", depositKeptAt: expect.any(Date), releaseDueAt: expect.any(Date) }),
+    });
+  });
+
+  it("prima della scadenza resta bloccato, dopo passa al professionista senza rimborsi al cliente", async () => {
+    const { service, prisma, stripe } = buildService();
+    const job = keptJob();
+    prisma.jobPayment.findUnique.mockResolvedValue(job);
+    await expect(service.releaseIfDue("jp-1", new Date("2026-10-05T10:00:00Z"))).resolves.toBe(false);
+
+    prisma.jobPayment.findUnique.mockReset();
+    prisma.jobPayment.findUnique.mockResolvedValueOnce(job).mockResolvedValue(releasedJob({ payoutPendingEurCents: 0 }));
+    prisma.jobPayment.findUniqueOrThrow.mockResolvedValue(job);
+    prisma.jobPayment.count.mockResolvedValue(1);
+    stripe.paymentIntents.retrieve.mockImplementation(async (_pi: string, opts: { expand: string[] }) =>
+      opts.expand[0] === "latest_charge.transfer"
+        ? { latest_charge: { transfer: { id: "tr_1", amount: 2400, amount_reversed: 0 } } }
+        : { latest_charge: { application_fee: { id: "fee_1", amount: 250, amount_refunded: 0 } } },
+    );
+    await expect(service.releaseIfDue("jp-1", new Date("2026-10-09T10:00:00Z"))).resolves.toBe(true);
+    expect(stripe.refunds.create).not.toHaveBeenCalled();
+    expect(prisma.jobPayment.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ onlineStage: "RELEASED" }) }));
+  });
+});

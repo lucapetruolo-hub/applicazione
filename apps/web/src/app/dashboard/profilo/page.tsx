@@ -1142,7 +1142,7 @@ export default function DashboardProfiloPage() {
         <Surface gap="$3">
           <SectionTitle>Preavviso per annullare</SectionTitle>
           <Text fontSize={13} color={brand.grafite70}>
-            Se il cliente deve annullare, quanto prima deve avvisarti? Lo vede prima di accettare il preventivo.
+            Se il cliente deve annullare, quanto prima deve avvisarti? È già scelto nei tuoi preventivi e puoi cambiarlo ogni volta.
           </Text>
           <XStack gap="$2" flexWrap="wrap">
             {CANCELLATION_NOTICE_OPTIONS.map((hours) => (

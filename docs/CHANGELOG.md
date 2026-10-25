@@ -20902,3 +20902,22 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 **Verifica**
 - Test dell'API: preavviso copiato all'accettazione, annullamento tardivo segnato e detto al professionista.
 - `e2e/tests/preventivo-accettato.spec.ts`: preavviso di 48 ore visibile prima di Accetta e sotto l'appuntamento, invariato sul lavoro dopo un cambio nel profilo, annullamento tardivo segnato.
+
+## 348. Preavviso a ogni preventivo, acconto trattenuto se lo sceglie il professionista, "Prenota di nuovo", lavori annullati alla chiusura dell'account
+
+**Richiesta** (Luca, 25/10/2026): "dobbiamo poter dare la possibilità al professionista di cambiarlo ad ogni preventivo, magari impostando già la scelta standard sua come default, e quindi non inserire nel suo profilo pubblico. Effettua migliorie 2-3-4 (in base alla scelta del professionista)". Le migliorie: "Prenota di nuovo" dopo la recensione, lavori futuri annullati quando il professionista chiude l'account, acconto trattenuto per un annullamento tardivo.
+
+**Decisione**
+- **Preavviso nel preventivo:** `Quote.cancellationNoticeHours`, scelto nel modulo del preventivo ("Se il cliente deve annullare, quanto prima deve avvisarti?"), con già selezionato lo standard del profilo (§347). Il lavoro copia quello del preventivo; per i preventivi di prima vale lo standard. Niente sul profilo pubblico.
+- **Acconto trattenuto (4):** casella "Se annulla più tardi, l'acconto online resta a me", solo quando il preventivo offre l'acconto online (`Quote.lateCancelKeepsDeposit`).
+  - Il cliente lo legge prima di Accetta, sotto l'appuntamento e nella conferma di annullamento, con la cifra.
+  - Annullando dentro il preavviso l'acconto non si rimborsa: `OnlineMoneyService.keepDeposit` lo fissa come importo del lavoro (commissione 5%, `JobPayment.depositKeptAt`) e passa al professionista dopo i soliti 7 giorni (`releaseIfDue`). Email al professionista con la cifra.
+  - Se il cliente riapre il lavoro prima dello sblocco torna un acconto normale (`undoKeepDeposit`); dopo lo sblocco non si riapre.
+  - La domanda 42 per l'avvocato resta aperta: è una penale ammessa verso un consumatore?
+- **"Prenota di nuovo" (2):** dopo la recensione di un lavoro completato, apre una richiesta allo stesso professionista con indirizzo e contatti già scritti, senza la descrizione.
+- **Account chiuso (3):** `BookingsService.cancelFutureJobsOfClosedAccount` annulla i lavori non ancora cominciati, rimborsa l'acconto e avvisa il cliente (email senza "scrivi in chat"). `AuthService.onProfessionalAccountClosed` evita l'import circolare tra i due moduli.
+
+**Verifica**
+- Test dell'API: acconto trattenuto solo dentro il preavviso e solo se scelto, sblocco dopo la scadenza senza rimborsi, chiusura dell'account.
+- `e2e/tests/preventivo-accettato.spec.ts`: preavviso del preventivo che vince sullo standard; `schede-lavoro.spec.ts`: "Prenota di nuovo" dopo la recensione.
+- Foto del modulo in `anteprime/preventivo-accettato/preavviso/`.

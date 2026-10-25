@@ -169,6 +169,8 @@ export type ClientBooking = {
   onTheWayAt: string | null;
   /** Preavviso per annullare valido per questo lavoro, in ore: 24, 48 o 72 (docs/CHANGELOG.md §347). */
   cancellationNoticeHours: number;
+  /** Annullando dentro il preavviso l'acconto online resta al professionista (docs/CHANGELOG.md §348). */
+  lateCancelKeepsDeposit: boolean;
   /** Link per una consulenza video (Meet/Zoom/ecc.), impostato dal professionista — richiesta esplicita dell'utente. */
   meetingLink: string | null;
   /** Il professionista ha eliminato l'account (soft-delete) — richiesta esplicita dell'utente, mostra "Account eliminato" con possibilità di eliminare la prenotazione dalla lista. */
@@ -282,8 +284,10 @@ export type ClientGuidedRequest = {
     /** Modi di pagamento offerti dal professionista e percentuale dell'acconto online (docs/CHANGELOG.md §237). */
     paymentOptions: JobPaymentChoice[];
     depositPercent: number;
-    /** Preavviso per annullare scelto dal professionista, in ore: 24, 48 o 72 (docs/CHANGELOG.md §347). */
+    /** Preavviso per annullare scelto dal professionista in questo preventivo, in ore: 24, 48 o 72 (docs/CHANGELOG.md §347, §348). */
     cancellationNoticeHours: number;
+    /** Annullando dentro il preavviso l'acconto online resta al professionista (docs/CHANGELOG.md §348). */
+    lateCancelKeepsDeposit: boolean;
     /** Quando il professionista ha inviato un nuovo preventivo dopo un rifiuto, null se mai. */
     resentAt: string | null;
     notes: string | null;

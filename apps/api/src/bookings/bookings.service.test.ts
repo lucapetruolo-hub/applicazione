@@ -37,6 +37,7 @@ function buildService(prismaOverrides: Record<string, unknown> = {}) {
     recordQuoteDeposit: vi.fn(),
     refundQuoteDeposit: vi.fn().mockResolvedValue({ pending: false }),
     refundOnCancel: vi.fn(),
+    keepDepositOnLateCancel: vi.fn().mockResolvedValue(2400),
   };
 
   const service = new BookingsService(
@@ -473,7 +474,7 @@ describe("BookingsService.cancelForClient — solo prima dell'appuntamento (§34
   it("annulla un appuntamento futuro e rimborsa l'eventuale acconto", async () => {
     const { service, prisma, jobPaymentsService } = buildService({ professionalProfile: { findUnique: vi.fn().mockResolvedValue({ userId: "pro-user-1" }) } });
     prisma.booking.findUnique.mockResolvedValue({ id: "b-1", clientId: "client-1", professionalProfileId: "pro-1", status: "CONFIRMED", scheduledAt: new Date("2099-01-01T10:00:00Z"), quote: null });
-    await expect(service.cancelForClient("client-1", "b-1")).resolves.toEqual({ bookingId: "b-1", status: "CANCELED" });
+    await expect(service.cancelForClient("client-1", "b-1")).resolves.toEqual({ bookingId: "b-1", status: "CANCELED", keptDepositEurCents: 0 });
     expect(jobPaymentsService.refundOnCancel).toHaveBeenCalledWith("b-1", "client-1");
     expect(prisma.booking.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ canceledLate: false }) }));
   });
@@ -486,5 +487,41 @@ describe("BookingsService.cancelForClient — solo prima dell'appuntamento (§34
     await service.cancelForClient("client-1", "b-1");
     expect(prisma.booking.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ canceledLate: true }) }));
     expect(notificationsService.notify).toHaveBeenCalledWith("pro-user-1", "BOOKING_CANCELED_BY_CLIENT", expect.objectContaining({ lateNotice: "48 ore" }));
+  });
+
+  it("dentro il preavviso con l'acconto trattenuto nel preventivo (§348): l'acconto resta al professionista, niente rimborso", async () => {
+    const { service, prisma, notificationsService, jobPaymentsService } = buildService({ professionalProfile: { findUnique: vi.fn().mockResolvedValue({ userId: "pro-user-1" }) } });
+    const scheduledAt = new Date(wallClockNow().getTime() + 10 * 60 * 60_000);
+    prisma.booking.findUnique.mockResolvedValue({
+      id: "b-1", clientId: "client-1", professionalProfileId: "pro-1", status: "CONFIRMED", scheduledAt, cancellationNoticeHours: 24,
+      quote: { guidedRequestId: "gr-1", lateCancelKeepsDeposit: true },
+    });
+    await expect(service.cancelForClient("client-1", "b-1")).resolves.toMatchObject({ keptDepositEurCents: 2400 });
+    expect(jobPaymentsService.keepDepositOnLateCancel).toHaveBeenCalledWith("b-1");
+    expect(jobPaymentsService.refundOnCancel).not.toHaveBeenCalled();
+    expect(notificationsService.notify).toHaveBeenCalledWith("pro-user-1", "BOOKING_CANCELED_BY_CLIENT", expect.objectContaining({ keptDepositEurCents: 2400 }));
+  });
+
+  it("con l'acconto trattenuto nel preventivo ma annullando in tempo (§348) l'acconto torna al cliente", async () => {
+    const { service, prisma, jobPaymentsService } = buildService({ professionalProfile: { findUnique: vi.fn().mockResolvedValue({ userId: "pro-user-1" }) } });
+    prisma.booking.findUnique.mockResolvedValue({
+      id: "b-1", clientId: "client-1", professionalProfileId: "pro-1", status: "CONFIRMED", scheduledAt: new Date("2099-01-01T10:00:00Z"), cancellationNoticeHours: 24,
+      quote: { guidedRequestId: "gr-1", lateCancelKeepsDeposit: true },
+    });
+    await service.cancelForClient("client-1", "b-1");
+    expect(jobPaymentsService.keepDepositOnLateCancel).not.toHaveBeenCalled();
+    expect(jobPaymentsService.refundOnCancel).toHaveBeenCalledWith("b-1", "client-1");
+  });
+});
+
+describe("BookingsService.cancelFutureJobsOfClosedAccount — account chiuso (§348)", () => {
+  it("annulla i lavori futuri, rimborsa l'acconto e avvisa il cliente", async () => {
+    const { service, prisma, notificationsService, jobPaymentsService } = buildService();
+    prisma.booking.findMany.mockResolvedValue([{ id: "b-1", clientId: "client-1", quote: { guidedRequestId: "gr-1" } }]);
+    await expect(service.cancelFutureJobsOfClosedAccount("pro-1", "pro-user-1")).resolves.toBe(1);
+    expect(prisma.booking.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ professionalProfileId: "pro-1", status: { in: ["PENDING", "CONFIRMED"] } }) }));
+    expect(prisma.booking.update).toHaveBeenCalledWith({ where: { id: "b-1" }, data: expect.objectContaining({ status: "CANCELED", canceledBy: "PROFESSIONAL" }) });
+    expect(jobPaymentsService.refundOnCancel).toHaveBeenCalledWith("b-1", "pro-user-1");
+    expect(notificationsService.notify).toHaveBeenCalledWith("client-1", "BOOKING_CANCELED_BY_PROFESSIONAL", expect.objectContaining({ accountClosed: true }));
   });
 });

@@ -978,6 +978,12 @@ model Quote {
   // valgono online con acconto del 20% e diretto.
   paymentOptions           String[]    @default([])
   depositPercent           Int?
+  // Preavviso per annullare scelto in questo preventivo (24, 48 o 72 ore,
+  // di serie quello del profilo) e se, annullando dentro il preavviso,
+  // l'acconto online resta al professionista (docs/CHANGELOG.md §348).
+  // Null nei preventivi più vecchi: vale il preavviso del profilo.
+  cancellationNoticeHours  Int?
+  lateCancelKeepsDeposit   Boolean     @default(false)
   // Data alternativa proposta dal cliente (vedi QuoteStatus.MODIFICATION_REQUESTED),
   // valorizzata solo in quello stato — null altrimenti.
   clientProposedDate       DateTime?
@@ -1945,6 +1951,10 @@ model JobPayment {
   // docs/CHANGELOG.md §237): da Stripe passa solo l'acconto.
   balanceDirect          Boolean   @default(false)
   depositPaidAt          DateTime?
+  // Acconto trattenuto perché il cliente ha annullato dentro il preavviso e
+  // il preventivo lo prevedeva (docs/CHANGELOG.md §348): passa al
+  // professionista dopo i soliti giorni di blocco, come un lavoro finito.
+  depositKeptAt          DateTime?
   balancePaymentIntentId String?   @unique
   balancePaidAt          DateTime?
   paidEurCents           Int       @default(0)

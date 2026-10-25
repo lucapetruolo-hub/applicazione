@@ -172,6 +172,10 @@ export class QuotesService {
     const data = {
       paymentOptions: offer.paymentOptions,
       depositPercent: offer.paymentOptions.some(paymentChoiceIsOnline) ? offer.depositPercent : null,
+      // Preavviso per annullare (di serie quello del profilo) e acconto
+      // trattenuto, che ha senso solo con l'acconto online (docs/CHANGELOG.md §348).
+      cancellationNoticeHours: input.cancellationNoticeHours ?? existingQuote?.cancellationNoticeHours ?? professionalProfile.cancellationNoticeHours,
+      lateCancelKeepsDeposit: offer.paymentOptions.some(paymentChoiceIsOnline) ? (input.lateCancelKeepsDeposit ?? existingQuote?.lateCancelKeepsDeposit ?? false) : false,
       estimatedStartDate: new Date(input.estimatedStartDate),
       estimatedEndDate: input.estimatedEndDate ? new Date(input.estimatedEndDate) : null,
       notes: input.notes,
@@ -622,7 +626,7 @@ export class QuotesService {
               clientId: quote.guidedRequest.clientId,
               professionalProfileId: professionalProfile.id,
               scheduledAt,
-              cancellationNoticeHours: professionalProfile.cancellationNoticeHours,
+              cancellationNoticeHours: quote.cancellationNoticeHours ?? professionalProfile.cancellationNoticeHours,
               scheduledEndAt: quote.clientProposedEndDate,
               serviceMode: requestServiceMode,
               status: "CONFIRMED",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { ClientBooking } from "@professionisti/api-client";
 import { Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -31,6 +32,7 @@ export function BookingSection({
   unreadCount,
   address,
   onReportProblem,
+  rebookHref,
 }: {
   booking: ClientBooking;
   token: string;
@@ -40,6 +42,8 @@ export function BookingSection({
   address: string | null;
   /** "C'è un problema" dopo l'orario: apre la segnalazione della scheda. Null se non si può segnalare. */
   onReportProblem: (() => void) | null;
+  /** "Prenota di nuovo": nuova richiesta allo stesso professionista con indirizzo e contatti già scritti (docs/CHANGELOG.md §348). */
+  rebookHref?: string;
 }) {
   const [showClientCompleteModal, setShowClientCompleteModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -388,9 +392,19 @@ export function BookingSection({
 
       {booking.status === "CONFIRMED" || booking.status === "COMPLETED" ? (
         booking.hasReview ? (
-          <Text fontSize={13} color={brand.verificato} fontWeight="600">
-            Recensione inviata
-          </Text>
+          <YStack gap="$2" alignItems="flex-start">
+            <Text fontSize={13} color={brand.verificato} fontWeight="600">
+              Recensione inviata
+            </Text>
+            {/* Il prossimo lavoro con lo stesso professionista passa dal sito (docs/CHANGELOG.md §348). */}
+            {rebookHref && booking.status === "COMPLETED" && !booking.professionalAccountDeleted ? (
+              <Link href={rebookHref} style={{ textDecoration: "none" }}>
+                <CardButton tone="primary" arrow>
+                  Prenota di nuovo
+                </CardButton>
+              </Link>
+            ) : null}
+          </YStack>
         ) : !booking.canReview && (booking.issue?.status === "OPEN" || booking.issue?.status === "CHAT") ? (
           <Text fontSize={13} color={brand.grafite70}>
             Potrai lasciare la recensione quando la segnalazione sarà chiusa.
@@ -480,6 +494,7 @@ export function ChangeLinks({ booking, onMessage, onCancel }: { booking: ClientB
       {/* Preavviso scelto dal professionista (docs/CHANGELOG.md §347). */}
       <Text fontSize={13} color={brand.grafite70}>
         Se devi annullare, avvisa almeno {cancellationNoticeLabel(booking.cancellationNoticeHours)} prima.
+        {booking.lateCancelKeepsDeposit && booking.payment?.method === "ONLINE" && booking.payment.paidEurCents > 0 ? " Più tardi, l'acconto resta al professionista." : ""}
       </Text>
     </YStack>
   );

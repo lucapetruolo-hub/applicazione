@@ -38,6 +38,7 @@ import {
   isProfessionalCategorySlug,
   validSubTags,
   type CategoryPriceStats,
+  DEFAULT_CANCELLATION_NOTICE_HOURS,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
@@ -1099,6 +1100,9 @@ export class ProfessionalsService {
               rejectionNote: quote.status === "REJECTED" ? quote.rejectionNote : null,
               // Modi di pagamento offerti (docs/CHANGELOG.md §237), coi valori di serie per i preventivi vecchi.
               ...quotePaymentOffer(quote),
+              // Preavviso e acconto trattenuto scelti nel preventivo (docs/CHANGELOG.md §348).
+              cancellationNoticeHours: quote.cancellationNoticeHours ?? DEFAULT_CANCELLATION_NOTICE_HOURS,
+              lateCancelKeepsDeposit: quote.lateCancelKeepsDeposit,
               resentAt: quote.resentAt?.toISOString() ?? null,
               // Nuovo preventivo dopo il rifiuto del cliente, fino alla
               // scadenza della richiesta contata dal suo invio

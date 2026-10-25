@@ -434,10 +434,13 @@ export function QuoteCard({
           depositPercent={quote.depositPercent}
         />
       ) : null}
-      {/* Preavviso scelto dal professionista, detto prima di Accetta (docs/CHANGELOG.md §347). */}
+      {/* Preavviso scelto dal professionista nel preventivo, detto prima di Accetta (docs/CHANGELOG.md §347, §348). */}
       {(quote.status === "SENT" || quote.status === "MODIFICATION_REQUESTED") && !notChosen ? (
         <Text fontSize={13} color={brand.grafite70}>
           Se poi devi annullare, avvisa almeno {cancellationNoticeLabel(quote.cancellationNoticeHours)} prima.
+          {quote.lateCancelKeepsDeposit && onlinePayments && quote.paymentOptions.some(paymentChoiceIsOnline)
+            ? " Se annulli più tardi e paghi l'acconto online, l'acconto resta al professionista."
+            : ""}
         </Text>
       ) : null}
       {quote.notes ? (

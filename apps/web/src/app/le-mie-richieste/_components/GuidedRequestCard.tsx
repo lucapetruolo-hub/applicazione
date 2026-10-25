@@ -48,6 +48,12 @@ import { DeleteRequestModal } from "./DeleteRequestModal";
 import { announceRequestDeleted } from "./RequestDeletedNotice";
 import { ClientMiniTimeline, ClientStagePill, MAX_REQUEST_PHOTOS, STAGE_STYLE, ServiceBadge, formatDateTime, requestJobAddress, textareaStyle } from "./clientRequestHelpers";
 
+/** Acconto online che resta al professionista se il cliente annulla ora, dentro il preavviso (docs/CHANGELOG.md §348). */
+function keptDeposit(booking: ClientBooking): number {
+  if (!booking.lateCancelKeepsDeposit || booking.payment?.method !== "ONLINE") return 0;
+  return Math.max(0, booking.payment.paidEurCents - booking.payment.refundedEurCents);
+}
+
 export function GuidedRequestCard({
   request,
   booking,
@@ -626,6 +632,16 @@ export function GuidedRequestCard({
     ...(request.recipientPhone ? { telefono: request.recipientPhone } : {}),
     ...(request.serviceMode ? { modalita: request.serviceMode } : {}),
   }).toString()}`;
+  // "Prenota di nuovo" dopo la recensione (docs/CHANGELOG.md §348): stesso
+  // professionista, indirizzo e contatti già scritti, il lavoro nuovo da descrivere.
+  const rebookParams = new URLSearchParams(repeatHref.slice("/preventivo?".length));
+  rebookParams.delete("descrizione");
+  if (booking) {
+    rebookParams.set("professionista", booking.professionalProfileId);
+    rebookParams.set("nomeProfessionista", booking.businessName);
+    rebookParams.set("fotoProfessionista", booking.professionalImageUrl ?? "");
+  }
+  const rebookHref = `/preventivo?${rebookParams.toString()}`;
 
   // Azioni del menu hamburger, filtrate per stato: solo quelle che il
   // backend accetta davvero in quel momento (stessi confini già usati dai
@@ -699,6 +715,7 @@ export function GuidedRequestCard({
         onChanged={onChanged}
         address={requestJobAddress(request)}
         onReportProblem={booking.issueTypesAllowed.length > 0 ? () => setShowReportModal(true) : null}
+        rebookHref={rebookHref}
         unreadCount={combineUnreadCounts(
           bookingUnreadCounts?.get(booking.id),
           threadUnreadCounts?.get(`${request.id}:${booking.professionalProfileId}`),
@@ -1072,7 +1089,9 @@ export function GuidedRequestCard({
           title="Annulla prenotazione"
           description={
             booking && isLateCancellation(booking.scheduledAt, booking.cancellationNoticeHours)
-              ? `Il professionista verrà avvisato. Mancano meno di ${cancellationNoticeLabel(booking.cancellationNoticeHours)}, il preavviso che aveva chiesto.`
+              ? `Il professionista verrà avvisato. Mancano meno di ${cancellationNoticeLabel(booking.cancellationNoticeHours)}, il preavviso che aveva chiesto.${
+                  keptDeposit(booking) > 0 ? ` Come scritto nel preventivo, l'acconto di ${formatEurCents(keptDeposit(booking))} resta a lui.` : ""
+                }`
               : "Il professionista verrà avvisato dell'annullamento."
           }
           confirmLabel="Sì, annulla prenotazione"

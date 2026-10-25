@@ -138,3 +138,14 @@ test("preavviso per annullare scelto dal professionista: detto prima di Accetta,
   expect((await prisma.booking.findUniqueOrThrow({ where: { id: job.id } })).canceledLate).toBe(true);
   await page.context().close();
 });
+
+test("preavviso scelto nel preventivo (§348): vale quello del preventivo, non lo standard del profilo", async () => {
+  const client = await createClient(prisma);
+  const pro = await createProfessional(prisma, "Sara Pulizie");
+  const { quotes } = await createRequestWithQuotes(prisma, client.id, [pro.id], { start: wallDay(6, "09:00") });
+  await prisma.quote.update({ where: { id: quotes[0].id }, data: { cancellationNoticeHours: 72 } });
+  const response = await acceptQuote(client.id, quotes[0].id);
+  expect(response.status, await response.clone().text()).toBe(201);
+  const { bookingId } = (await response.json()) as { bookingId: string };
+  expect((await prisma.booking.findUniqueOrThrow({ where: { id: bookingId } })).cancellationNoticeHours).toBe(72);
+});

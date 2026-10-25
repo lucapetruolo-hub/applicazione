@@ -679,11 +679,26 @@ export class AuthService {
    * pubblico/fan-out (ogni query pubblica filtra esplicitamente
    * `deletedAt: null`), ma Booking/Lead/Quote/Review restano intatti.
    */
+  /**
+   * Chi deve sapere che un professionista ha chiuso l'account: BookingsService
+   * si registra qui (importa già AuthModule, il contrario sarebbe circolare).
+   */
+  private readonly professionalClosedHandlers: ((professionalProfileId: string, userId: string) => Promise<void>)[] = [];
+  onProfessionalAccountClosed(handler: (professionalProfileId: string, userId: string) => Promise<void>): void {
+    this.professionalClosedHandlers.push(handler);
+  }
+
   async deleteAccount(userId: string): Promise<void> {
     const before = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true } });
     const professionalProfile = await this.prisma.professionalProfile.findUnique({ where: { userId } });
     if (professionalProfile) {
       await this.prisma.professionalProfile.update({ where: { id: professionalProfile.id }, data: { deletedAt: new Date() } });
+      // I lavori futuri si annullano da soli e i clienti lo sanno subito (docs/CHANGELOG.md §348).
+      for (const handler of this.professionalClosedHandlers) {
+        await handler(professionalProfile.id, userId).catch((err: unknown) =>
+          this.logger.error(`Lavori del professionista ${professionalProfile.id} non annullati: ${(err as Error).message}`),
+        );
+      }
     }
 
     // Dispositivi usati per l'accesso (§289): non servono più a nulla.

@@ -146,6 +146,9 @@ export type ProfessionalLead = {
     /** Modi di pagamento offerti dal professionista e percentuale dell'acconto online (docs/CHANGELOG.md §237). */
     paymentOptions: JobPaymentChoice[];
     depositPercent: number;
+    /** Preavviso per annullare scelto in questo preventivo e acconto trattenuto se il cliente annulla dentro il preavviso (docs/CHANGELOG.md §348). */
+    cancellationNoticeHours: number;
+    lateCancelKeepsDeposit: boolean;
     /** Ultimo nuovo preventivo inviato dopo un rifiuto, null se mai. */
     resentAt: string | null;
     /**

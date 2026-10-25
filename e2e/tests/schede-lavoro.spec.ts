@@ -50,6 +50,7 @@ const STATES: State[] = [
       await booking(bookingId, { status: "COMPLETED", clientConfirmedCompletedAt: new Date(), finalAmountEurCents: 11000 });
       await prisma.review.create({ data: { bookingId, rating: 5, comment: "Puntuale e preciso." } });
     },
+    expectText: "Prenota di nuovo",
     absentText: ["Lascia una recensione"],
   },
   {

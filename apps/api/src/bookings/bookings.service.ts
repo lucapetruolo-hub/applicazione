@@ -1,5 +1,5 @@
 import { SubscriptionsService } from "../subscriptions/subscriptions.service";
-import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, Optional, type OnModuleInit } from "@nestjs/common";
 import { Prisma, type PrismaClient } from "@professionisti/database";
 import type Stripe from "stripe";
 import {
@@ -43,6 +43,7 @@ import { onlinePaymentsEnabled } from "../job-payments/online-payments-enabled";
 import { stripeVerified } from "../professional-fiscal/public-visibility";
 import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
 import { PROFESSIONAL_BUSY_MESSAGE, capacityAt, countOverlapping, loadCommitments, lockProfessionalAgenda } from "../agenda/commitments";
+import { AuthService } from "../auth/auth.service";
 
 /** Il cliente ha già un lavoro per questa richiesta (docs/CHANGELOG.md §346). */
 const CLIENT_CANCEL_TOO_LATE = "L'appuntamento è già cominciato e non si può più annullare. Se qualcosa non va, usa \"C'è un problema\".";
@@ -50,8 +51,11 @@ const OTHER_JOB_MESSAGE = "Hai già accettato un altro preventivo per questa ric
 
 type AcceptableQuote = Awaited<ReturnType<BookingsService["loadAcceptableQuote"]>>;
 
+/** Nota per il cliente sui lavori annullati perché il professionista ha chiuso l'account (docs/CHANGELOG.md §348). */
+export const ACCOUNT_CLOSED_NOTE = "Il professionista ha chiuso il suo account.";
+
 @Injectable()
-export class BookingsService {
+export class BookingsService implements OnModuleInit {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly notificationsService: NotificationsService,
@@ -60,7 +64,45 @@ export class BookingsService {
     private readonly jobPaymentsService: JobPaymentsService,
     private readonly subscriptionsService: SubscriptionsService,
     private readonly jobIssueOutcomeService: JobIssueOutcomeService,
+    // Facoltativo solo per i test che costruiscono il servizio a mano.
+    @Optional() private readonly authService?: AuthService,
   ) {}
+
+  onModuleInit(): void {
+    this.authService?.onProfessionalAccountClosed(async (professionalProfileId, userId) => {
+      await this.cancelFutureJobsOfClosedAccount(professionalProfileId, userId);
+    });
+  }
+
+  /**
+   * Il professionista chiude l'account (docs/CHANGELOG.md §348): i lavori non
+   * ancora cominciati si annullano subito, l'acconto torna al cliente e il
+   * cliente riceve l'avviso. Prima restavano confermati e il cliente vedeva
+   * solo "Questo appuntamento non si farà".
+   */
+  async cancelFutureJobsOfClosedAccount(professionalProfileId: string, professionalUserId: string): Promise<number> {
+    const jobs = await this.prisma.booking.findMany({
+      where: { professionalProfileId, status: { in: ["PENDING", "CONFIRMED"] }, scheduledAt: { gt: wallClockNow() } },
+      include: { quote: { select: { guidedRequestId: true } } },
+    });
+    for (const job of jobs) {
+      await this.prisma.booking.update({
+        where: { id: job.id },
+        data: { status: "CANCELED", canceledBy: "PROFESSIONAL", cancellationNote: ACCOUNT_CLOSED_NOTE },
+      });
+      await this.jobPaymentsService.refundOnCancel(job.id, professionalUserId);
+      await this.notificationsService.notify(job.clientId, "BOOKING_CANCELED_BY_PROFESSIONAL", {
+        bookingId: job.id,
+        cancellationNote: ACCOUNT_CLOSED_NOTE,
+        accountClosed: true,
+        guidedRequestId: job.quote?.guidedRequestId,
+      });
+      if (job.quote) {
+        await this.timelineService.log(job.quote.guidedRequestId, professionalProfileId, "PROFESSIONAL", "Il professionista ha chiuso l'account: l'appuntamento è annullato.");
+      }
+    }
+    return jobs.length;
+  }
 
   /**
    * Il cliente accetta un preventivo: crea la prenotazione, chiude la
@@ -260,7 +302,7 @@ export class BookingsService {
       await lockGuidedRequest(tx, quote.guidedRequestId);
       await this.assertNoOtherJob(tx, quote.guidedRequestId);
       await this.assertProfessionalFree(tx, quote);
-      const cancellationNoticeHours = await cancellationNoticeFor(tx, quote.professionalProfileId);
+      const cancellationNoticeHours = quote.cancellationNoticeHours ?? (await cancellationNoticeFor(tx, quote.professionalProfileId));
       return tx.booking.create({
       data: {
         quoteId: quote.id,
@@ -769,12 +811,13 @@ export class BookingsService {
     }
 
     // Dentro il preavviso scelto dal professionista (§347) si può ancora
-    // annullare, ma resta segnato: lo vede il professionista. L'acconto per
-    // ora torna comunque, finché l'avvocato non dice se si può trattenere.
+    // annullare, ma resta segnato: lo vede il professionista. L'acconto
+    // online resta a lui solo se l'aveva scritto nel preventivo (§348).
     const late = isLateCancellation(booking.scheduledAt, booking.cancellationNoticeHours);
     await this.prisma.booking.update({ where: { id: bookingId }, data: { status: "CANCELED", canceledBy: "CLIENT", canceledLate: late } });
-    // Lavoro pagato online (§168): l'acconto torna al cliente.
-    await this.jobPaymentsService.refundOnCancel(bookingId, clientId);
+    const keptEurCents = late && booking.quote?.lateCancelKeepsDeposit ? await this.jobPaymentsService.keepDepositOnLateCancel(bookingId) : 0;
+    // Lavoro pagato online (§168): altrimenti l'acconto torna al cliente.
+    if (keptEurCents === 0) await this.jobPaymentsService.refundOnCancel(bookingId, clientId);
     // Prima il professionista non veniva avvisato; l'email toglie anche
     // l'evento dal calendario (docs/CHANGELOG.md §235).
     const professional = await this.prisma.professionalProfile.findUnique({ where: { id: booking.professionalProfileId }, select: { userId: true } });
@@ -783,13 +826,16 @@ export class BookingsService {
         bookingId,
         guidedRequestId: booking.quote?.guidedRequestId,
         ...(late ? { lateNotice: cancellationNoticeLabel(booking.cancellationNoticeHours) } : {}),
+        ...(keptEurCents > 0 ? { keptDepositEurCents: keptEurCents } : {}),
       });
     }
     if (booking.quote) {
-      const note = late ? ` con meno di ${cancellationNoticeLabel(booking.cancellationNoticeHours)} di preavviso` : "";
+      const note = late
+        ? ` con meno di ${cancellationNoticeLabel(booking.cancellationNoticeHours)} di preavviso${keptEurCents > 0 ? `: l'acconto di ${formatEurCents(keptEurCents)} resta al professionista` : ""}`
+        : "";
       await this.timelineService.log(booking.quote.guidedRequestId, booking.professionalProfileId, "CLIENT", `Il cliente ha annullato la prenotazione${note}.`);
     }
-    return { bookingId, status: "CANCELED" as const };
+    return { bookingId, status: "CANCELED" as const, keptDepositEurCents: keptEurCents };
   }
 
   /** Evento del calendario per il cliente: link di Google Calendar e file .ics, con lo stesso UID delle email. */
@@ -844,6 +890,11 @@ export class BookingsService {
     }
     // Nel frattempo il cliente ha accettato un altro preventivo della stessa richiesta (§346).
     if (booking.quote) await this.assertNoOtherJob(this.prisma, booking.quote.guidedRequestId, booking.id);
+    // Acconto trattenuto e già passato al professionista (§348): il lavoro non torna indietro.
+    const keptAndReleased = await this.prisma.jobPayment.findFirst({ where: { bookingId, depositKeptAt: { not: null }, releasedAt: { not: null } }, select: { id: true } });
+    if (keptAndReleased) {
+      throw new ForbiddenException("L'acconto è già passato al professionista: per un nuovo appuntamento invia una nuova richiesta.");
+    }
 
     const scheduledAt = booking.scheduledAt;
     const dayStart = new Date(scheduledAt);
@@ -920,6 +971,8 @@ export class BookingsService {
       );
     }
 
+    // Acconto trattenuto per l'annullamento tardivo (§348): torna acconto.
+    await this.jobPaymentsService.undoKeptDeposit(bookingId);
     // Lavoro online con acconto già rimborsato all'annullamento: si riparte dall'acconto.
     await this.prisma.jobPayment.updateMany({
       where: { bookingId, paymentMethod: "MANOVIA", onlineStage: "REFUNDED" },
@@ -1340,6 +1393,7 @@ export class BookingsService {
       onTheWayAt: booking.onTheWayAt?.toISOString() ?? null,
       // Preavviso per annullare valido per questo lavoro (docs/CHANGELOG.md §347): 24 ore per i lavori di prima.
       cancellationNoticeHours: booking.cancellationNoticeHours ?? DEFAULT_CANCELLATION_NOTICE_HOURS,
+      lateCancelKeepsDeposit: booking.quote?.lateCancelKeepsDeposit ?? false,
       professionalCompletionPhotoUrls: booking.professionalCompletionPhotoUrls,
       clientCompletionPhotoUrls: booking.clientCompletionPhotoUrls,
     }));

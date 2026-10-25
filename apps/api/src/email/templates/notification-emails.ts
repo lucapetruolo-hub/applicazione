@@ -8,6 +8,7 @@ import {
   JOB_ISSUE_SANCTION_LABEL,
   BAD_WORK_REPORT_DAYS,
   ONLINE_LONG_HOLD_ALERT_DAYS,
+  ONLINE_RELEASE_DAYS,
   ONLINE_MAX_HOLD_DAYS,
   asScheduleChange,
   formatItalianUntil,
@@ -455,7 +456,12 @@ const BUILDERS: Record<string, Builder> = {
       paragraphs: [`Ci dispiace: **${pro(ctx)}** ha annullato l'intervento per **${job(ctx)}**.`],
       details: jobDetails(ctx, note ? [{ label: "Motivo", value: note }] : []),
       cta: { label: "Chiedi un nuovo preventivo", url: `${frontendUrl()}/preventivo` },
-      after: ["Puoi chiedere un preventivo ad altri professionisti della zona, o scrivere a questo in chat dalla richiesta."],
+      // Account chiuso (docs/CHANGELOG.md §348): non c'è più nessuno a cui scrivere.
+      after: [
+        payload.accountClosed
+          ? "Se avevi pagato un acconto online ti torna tutto. Puoi chiedere un preventivo ad altri professionisti della zona."
+          : "Puoi chiedere un preventivo ad altri professionisti della zona, o scrivere a questo in chat dalla richiesta.",
+      ],
     };
   },
   // Il cliente annulla (docs/CHANGELOG.md §235): solo lui può riaprirla.
@@ -469,6 +475,10 @@ const BUILDERS: Record<string, Builder> = {
       `Il cliente ha annullato l'intervento per **${job(ctx)}**: l'appuntamento non è più nella tua agenda.`,
       // Dentro il preavviso scelto dal professionista (docs/CHANGELOG.md §347).
       ...(typeof payload.lateNotice === "string" ? [`Ha annullato con meno di ${payload.lateNotice} di preavviso.`] : []),
+      // Acconto trattenuto come scritto nel preventivo (docs/CHANGELOG.md §348).
+      ...(typeof payload.keptDepositEurCents === "number"
+        ? [`Come scritto nel tuo preventivo, l'acconto di **${formatEur(payload.keptDepositEurCents)}** resta a te: lo ricevi tra ${ONLINE_RELEASE_DAYS} giorni.`]
+        : []),
     ],
     details: proJobDetails(ctx),
     cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda` },
