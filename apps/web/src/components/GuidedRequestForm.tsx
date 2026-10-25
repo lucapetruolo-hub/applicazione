@@ -143,6 +143,10 @@ export function GuidedRequestForm({
   // Urgenza scelta anche da qui, non solo arrivando da /urgente
   // (docs/CHANGELOG.md §154): interruttore "È urgente?" al passo 1.
   const [isUrgent, setIsUrgent] = useState(isUrgentInitial);
+  // L'urgenza si cambia anche nel riepilogo: il pulsante d'invio segue la
+  // scelta attuale, non quella con cui si è aperta la pagina.
+  const shownSubmitLabel =
+    isUrgent === isUrgentInitial ? submitLabel : isUrgent ? "Invia richiesta urgente" : "Invia richiesta";
   // Modulo in 3 passi (docs/CHANGELOG.md §154): il lavoro, dove, riepilogo.
   const [step, setStep] = useState<1 | 2 | 3>(1);
   // Richiesta diretta: inoltrarla ad altri se il professionista non
@@ -976,19 +980,22 @@ export function GuidedRequestForm({
           </XStack>
         </YStack>
 
-        <label className="guided-urgent-toggle">
-          <input type="checkbox" checked={isUrgent} onChange={(e) => setIsUrgent(e.target.checked)} />
-          <span>
-            <strong>È urgente?</strong>
-            {isUrgent ? (
-              <small>
-                {professionalProfileId
+        <div className="guided-options is-urgent-card">
+          <SendOptionSwitch
+            id="guided-urgent-1"
+            tone="urgent"
+            checked={isUrgent}
+            onToggle={() => setIsUrgent((v) => !v)}
+            title="È urgente?"
+            description={
+              isUrgent
+                ? professionalProfileId
                   ? `Sì: arriva a ${shownProfessionalName ?? "il professionista"} segnata come urgente. Se non risponde entro 60 minuti, nel riepilogo puoi scegliere di inoltrarla anche ad altri professionisti della zona.`
-                  : "Sì: la mandiamo subito a tutti i professionisti della zona, segnata come urgente."}
-              </small>
-            ) : null}
-          </span>
-        </label>
+                  : "Sì: la mandiamo subito a tutti i professionisti della zona, segnata come urgente."
+                : null
+            }
+          />
+        </div>
 
         {professionalProfileId && displaySlots.length > 0 ? (
           <YStack gap="$2">
@@ -1274,6 +1281,7 @@ export function GuidedRequestForm({
             }
             forwardIfNoReply={forwardIfNoReply}
             onToggleForward={() => setForwardIfNoReply((v) => !v)}
+            onToggleUrgent={() => setIsUrgent((v) => !v)}
             onEdit={goToStep}
           />
         ) : null}
@@ -1306,7 +1314,7 @@ export function GuidedRequestForm({
             >
               <XStack alignItems="center" gap="$2">
                 <Text color="white" fontFamily="$body" fontWeight="600">
-                  {isSubmitting ? submittingLabel : submitLabel}
+                  {isSubmitting ? submittingLabel : shownSubmitLabel}
                 </Text>
                 <ButtonArrow />
               </XStack>
@@ -1420,6 +1428,7 @@ function RequestSummary({
   slotLabel,
   forwardIfNoReply,
   onToggleForward,
+  onToggleUrgent,
   onEdit,
 }: {
   isUrgent: boolean;
@@ -1435,6 +1444,7 @@ function RequestSummary({
   slotLabel: string | null;
   forwardIfNoReply: boolean;
   onToggleForward: () => void;
+  onToggleUrgent: () => void;
   onEdit: (step: 1 | 2) => void;
 }) {
   // Richiesta diretta: il professionista scelto non ha scadenza, l'inoltro
@@ -1474,15 +1484,29 @@ function RequestSummary({
         )}
       </div>
 
-      {professionalName ? (
-        <label className="guided-forward">
-          <input type="checkbox" checked={forwardIfNoReply} onChange={onToggleForward} />
-          <span>
-            Se {professionalName} non risponde entro {forwardTime} o non è disponibile, inoltrala anche agli altri professionisti simili {forwardZone}.
-            Potrà comunque risponderti anche dopo.
-          </span>
-        </label>
-      ) : null}
+      {/* Le due scelte sull'invio insieme, subito sopra il pulsante: si
+          accendono e spengono qui senza tornare al passo 1. "Urgente" è lo
+          stesso stato dell'interruttore del passo 1. */}
+      <div className="guided-options" role="group" aria-label="Opzioni di invio">
+        <SendOptionSwitch
+          id="guided-urgent-3"
+          tone="urgent"
+          checked={isUrgent}
+          onToggle={onToggleUrgent}
+          title="Urgente"
+          description="Arriva segnata come urgente."
+        />
+        {professionalName ? (
+          <SendOptionSwitch
+            id="guided-forward"
+            tone="ok"
+            checked={forwardIfNoReply}
+            onToggle={onToggleForward}
+            title="Inoltra se non risponde"
+            description={`Se ${professionalName} non risponde entro ${forwardTime}, la mandiamo anche ad altri professionisti simili ${forwardZone}. Potrà comunque risponderti.`}
+          />
+        ) : null}
+      </div>
 
       <div className="guided-recap">
         <div>
@@ -1508,6 +1532,50 @@ function RequestSummary({
         {contact ? <p>{contact}</p> : null}
       </div>
     </YStack>
+  );
+}
+
+/**
+ * Riga con interruttore tondo (stesso disegno di quelli delle notifiche):
+ * tutta la riga si tocca, comoda da telefono. Rosso acceso per "Urgente",
+ * verde per le altre scelte.
+ */
+function SendOptionSwitch({
+  id,
+  tone,
+  checked,
+  onToggle,
+  title,
+  description,
+}: {
+  id: string;
+  tone: "urgent" | "ok";
+  checked: boolean;
+  onToggle: () => void;
+  title: string;
+  description: string | null;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-labelledby={`${id}-title`}
+      aria-describedby={description ? `${id}-desc` : undefined}
+      className={`guided-option is-${tone}${checked ? " is-on" : ""}`}
+      onClick={onToggle}
+    >
+      <span className="guided-option-text">
+        <strong id={`${id}-title`}>
+          {tone === "urgent" ? <Icon name="zap" size={15} strokeWidth={2} color={brand.urgenza} fill={checked ? brand.urgenza : "none"} /> : null}
+          {title}
+        </strong>
+        {description ? <small id={`${id}-desc`}>{description}</small> : null}
+      </span>
+      <span className="guided-option-track" aria-hidden>
+        <span />
+      </span>
+    </button>
   );
 }
 

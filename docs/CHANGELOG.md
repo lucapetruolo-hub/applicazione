@@ -20582,3 +20582,17 @@ Richiesta dell'utente: "si potrebbe dare l'icona del meteo per 3 giorni e dire d
 **Migliorie approvate da Luca** ("effettua le 2 migliorie")
 - osv-scanner ora blocca la PR (`.github/workflows/security.yml`, checklist punto 40): dopo aver caricato il rapporto, un passo rifà il controllo e fallisce se trova una vulnerabilità fuori dalle eccezioni di `osv-scanner.toml`. Vale per tutte le librerie, non solo per quelle del sito e dell'API: osv-scanner non sa distinguere quelle usate solo per costruire o provare (anche `pnpm audit --prod` conta lo strumento di Expo, dipendenza dell'app), quindi quelle senza versione corretta vanno tra le eccezioni con il motivo. Provato: con il `pnpm-lock.yaml` di prima di questa PR il controllo fallisce (vitest, tinypool, ecc.), con quello nuovo passa.
 - I due avvisi rimasti (zod 3 e node-forge in `@expo/cli`) vanno chiusi a mano nella scheda Security → Dependabot di GitHub con "Vulnerable code is not actually used" / "Risk is tolerable": lo fa Luca, i thread non hanno accesso agli avvisi.
+
+## 336. Interruttore "Urgente" anche nel riepilogo della richiesta
+
+**Richiesta esplicita dell'utente** (25/10/2026, thread "Interruttore Urgente nell'ultimo passo del preventivo"): nel modulo di richiesta preventivo, all'ultimo passo, "Urgente" deve stare vicino all'opzione che inoltra la richiesta agli altri professionisti se quello scelto non risponde, facile da accendere e spegnere.
+
+**Decisione presa**
+- Nel riepilogo (passo 3) un riquadro "Opzioni di invio" subito sopra il pulsante, con due righe a interruttore tondo: "Urgente" (rosso acceso) e, per la richiesta diretta, "Inoltra se non risponde" (verde, prima era una casella di spunta). Nella richiesta generale c'è solo "Urgente". Tutta la riga si tocca (`role="switch"`), comoda da telefono.
+- È lo stesso stato dell'interruttore "È urgente?" del passo 1, che ora usa la stessa riga a interruttore al posto della casella di spunta (stesso riquadro rosato quando è acceso).
+- Accendendo o spegnendo "Urgente" nel riepilogo cambiano subito il tempo dell'inoltro (60 minuti / 6 ore), "Cosa succede dopo l'invio", la riga del lavoro e il pulsante d'invio (rosso "Invia richiesta urgente" / verde "Invia richiesta"; anche da `/urgente`, se si spegne, il testo torna "Invia richiesta").
+- Componente `SendOptionSwitch` in `GuidedRequestForm.tsx`, stile `.guided-option*` in `globals.css` (stesso disegno di `.notif-switch`); tolte le classi `.guided-urgent-toggle` e `.guided-forward`.
+
+**Verifica**
+- Typecheck e lint di `apps/web`.
+- Prova nel browser (1366px e 390px), richiesta diretta e generale: l'interruttore acceso nel riepilogo risulta acceso anche tornando al passo 1. Anteprime in `/mnt/project-files/anteprime/urgente-riepilogo/`.

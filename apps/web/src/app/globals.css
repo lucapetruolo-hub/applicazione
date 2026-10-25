@@ -2949,49 +2949,95 @@ a.admin-kpi:hover {
   background: #189a63;
   color: #ffffff;
 }
-.guided-urgent-toggle,
-.guided-forward {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  padding: 14px;
+/* Opzioni d'invio con interruttore tondo: "È urgente?" al passo 1,
+   "Urgente" e "Inoltra se non risponde" nel riepilogo. */
+.guided-options {
   border-radius: 20px;
   border: 1px solid #f0dcc0;
   background: #ffffff;
+  overflow: hidden;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.guided-options.is-urgent-card:has(.guided-option.is-on) {
+  border-color: #c8362b;
+  background: #fbeae7;
+}
+.guided-option {
+  width: 100%;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: #2b2420;
   cursor: pointer;
 }
-.guided-urgent-toggle input,
-.guided-forward input {
-  width: 20px;
-  height: 20px;
-  margin-top: 2px;
-  accent-color: #c8362b;
-  flex-shrink: 0;
+.guided-option + .guided-option {
+  border-top: 1px solid #f0dcc0;
 }
-.guided-forward input {
-  accent-color: #189a63;
+.guided-option:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: -4px;
+  border-radius: 20px;
 }
-.guided-urgent-toggle span {
+.guided-option-text {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
-.guided-urgent-toggle strong {
+.guided-option-text strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 16px;
-  color: #2b2420;
+  font-weight: 700;
 }
-.guided-urgent-toggle small {
+.guided-option-text small {
   font-size: 13px;
+  line-height: 1.45;
   color: #6e6459;
 }
-.guided-urgent-toggle:has(input:checked) {
-  border-color: #c8362b;
-  background: #fbeae7;
+.guided-option-track {
+  flex-shrink: 0;
+  position: relative;
+  width: 44px;
+  height: 26px;
+  border-radius: 999px;
+  background: #d9cfc4;
+  transition: background 0.15s ease;
 }
-.guided-forward span {
-  font-size: 16px;
-  color: #2b2420;
-  line-height: 1.45;
+.guided-option-track span {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(43, 32, 19, 0.25);
+  transition: transform 0.15s ease;
+}
+.guided-option.is-on .guided-option-track span {
+  transform: translateX(18px);
+}
+.guided-option.is-ok.is-on .guided-option-track {
+  background: #189a63;
+}
+.guided-option.is-urgent.is-on .guided-option-track {
+  background: #c8362b;
+}
+@media (prefers-reduced-motion: reduce) {
+  .guided-options,
+  .guided-option-track,
+  .guided-option-track span {
+    transition: none;
+  }
 }
 .guided-next {
   padding: 16px;
