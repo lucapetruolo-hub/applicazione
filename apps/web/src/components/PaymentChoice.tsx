@@ -21,7 +21,7 @@ function eur(cents: number): string {
  *
  * Si apre solo quando i modi sono due o più: come si paga il cliente lo
  * legge già nella scheda del preventivo (`PaymentOffer`, docs/CHANGELOG.md
- * §336).
+ * §337).
  *
  * Senza Stripe attivo (`onlineAvailable` falso) resta solo il pagamento
  * diretto, con una riga che spiega che quello online arriverà
@@ -33,7 +33,7 @@ function eur(cents: number): string {
 
 /**
  * Riquadro "Pagamento" nella scheda del preventivo, prima di accettare
- * (docs/CHANGELOG.md §336): con un solo modo il modo, la spiegazione e
+ * (docs/CHANGELOG.md §337): con un solo modo il modo, la spiegazione e
  * l'acconto; con più modi l'elenco, la scelta si fa accettando. Così chi
  * riceve più preventivi li confronta anche su come si paga.
  */

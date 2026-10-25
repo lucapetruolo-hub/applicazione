@@ -129,7 +129,7 @@ export function QuoteCard({
   }, [quote.status, quote.previousPrice, priceTotals]);
 
   // Modi che il cliente può davvero usare: con uno solo si accetta subito,
-  // senza il passaggio della scelta (docs/CHANGELOG.md §336).
+  // senza il passaggio della scelta (docs/CHANGELOG.md §337).
   const selectablePayments = selectablePaymentChoices(quote.paymentOptions, onlinePayments);
   const onlyPayment = selectablePayments.length === 1 ? selectablePayments[0] : undefined;
 
