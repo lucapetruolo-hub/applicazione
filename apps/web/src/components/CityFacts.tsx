@@ -4,6 +4,7 @@ import {
   MIN_PROFESSIONALS_TO_INDEX_CITY,
   categorySubTags,
   comuneSlug,
+  formatRating,
   subTagLabel,
   type ProfessionalCategorySlug,
   type ProfessionalSearchResult,
@@ -40,7 +41,7 @@ export function CityFacts({
   const verified = professionals.filter((pro) => pro.verified).length;
   const reviewCount = professionals.reduce((sum, pro) => sum + pro.reviewCount, 0);
   const ratingSum = professionals.reduce((sum, pro) => sum + (pro.rating ?? 0) * pro.reviewCount, 0);
-  const averageRating = reviewCount > 0 ? (ratingSum / reviewCount).toFixed(1).replace(".", ",") : null;
+  const averageRating = reviewCount > 0 ? formatRating(ratingSum / reviewCount) : null;
 
   const facts = [
     { value: String(professionals.length), label: professionals.length === 1 ? "professionista in zona" : "professionisti in zona" },

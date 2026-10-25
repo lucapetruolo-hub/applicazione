@@ -2,6 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
 import { professionalKindOf, type ProfessionalSearchResult, type ProfessionalCategorySlug } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { summarizeReviews } from "../reviews/review-summary";
 import { countCompletedThisMonth } from "../common/completed-jobs.util";
 import { profileCategories } from "../common/profile-categories.util";
 import { publicVerified, stripeVerified } from "../professional-fiscal/public-visibility";
@@ -44,12 +45,10 @@ export class SavedProfessionalsService {
     });
 
     return saved.map(({ professionalProfile: profile }) => {
-      const reviews = profile.bookings
-        .map((booking) => booking.review)
-        .filter((review): review is NonNullable<typeof review> => review !== null);
-      const reviewCount = reviews.length;
-      const rating =
-        reviewCount > 0 ? Math.round((reviews.reduce((sum, review) => sum + review.rating, 0) / reviewCount) * 10) / 10 : null;
+      // Recensioni nascoste da un admin escluse, come nel profilo e nella ricerca (§144, §340).
+      const { rating, count: reviewCount } = summarizeReviews(
+        profile.bookings.flatMap((booking) => (booking.review && booking.review.hiddenAt === null ? [booking.review.rating] : [])),
+      );
 
       return {
         id: profile.id,

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Rating, Text, brand } from "@professionisti/ui";
 import type { ProfessionalReviewSummary } from "@professionisti/api-client";
+import { formatRating } from "@professionisti/shared";
 
 /**
  * Stelle e numero di recensioni sotto il nome del professionista nelle
@@ -23,7 +24,7 @@ export function ProfessionalReviewsSummary({ reviews }: { reviews: ProfessionalR
 /** Come sopra, con il link alle recensioni del profilo pubblico (dove la riga non è già un link). */
 export function ProfessionalReviewsLink({ professionalProfileId, reviews }: { professionalProfileId: string; reviews: ProfessionalReviewSummary | null }) {
   if (!reviews || reviews.rating === null) return <ProfessionalReviewsSummary reviews={reviews} />;
-  const label = `Valutazione ${reviews.rating.toFixed(1).replace(".", ",")} su 5, ${reviews.count} recension${reviews.count === 1 ? "e" : "i"}: vedi le recensioni`;
+  const label = `Valutazione ${formatRating(reviews.rating)} su 5, ${reviews.count} recension${reviews.count === 1 ? "e" : "i"}: vedi le recensioni`;
   return (
     <Link href={`/professionista/${professionalProfileId}#recensioni`} aria-label={label} style={{ textDecoration: "none", alignSelf: "flex-start" }}>
       <ProfessionalReviewsSummary reviews={reviews} />

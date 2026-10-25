@@ -1,5 +1,6 @@
 "use client";
 
+import { formatRating } from "@professionisti/shared";
 import { brand } from "@professionisti/ui";
 
 /**
@@ -42,7 +43,7 @@ export function StarRating({
           ))}
         </div>
       </div>
-      <span style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 700, color: brand.grafite }}>{rating.toFixed(1)}</span>
+      <span style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 700, color: brand.grafite }}>{formatRating(rating)}</span>
       {reviewCount !== undefined ? (
         <span style={{ fontSize: 14, color: brand.grafite70 }}>
           ({reviewCount} recension{reviewCount === 1 ? "e" : "i"})

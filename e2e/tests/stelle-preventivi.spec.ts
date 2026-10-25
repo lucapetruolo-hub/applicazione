@@ -107,6 +107,8 @@ test("nei preventivi ricevuti stelle e numero di recensioni accanto al nome", as
   await page.goto("/le-mie-richieste");
   const rating = page.getByRole("link", { name: "Valutazione 4,7 su 5, 3 recensioni: vedi le recensioni" });
   await expect(rating).toBeVisible();
+  // Voto con la virgola, come si scrive in italiano.
+  await expect(rating).toContainText("4,7");
   await expect(rating).toContainText("(3 recensioni)");
   // Chi non ha recensioni: la stessa scritta del profilo, senza link.
   await expect(page.getByText("Nessuna recensione ancora")).toBeVisible();

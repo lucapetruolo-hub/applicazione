@@ -35,7 +35,8 @@ export function Rating({ value, count, size = 16, textSize = 16 }: RatingProps) 
         ))}
       </XStack>
       <Text fontFamily="$mono" fontSize={textSize} fontWeight="500" color={brand.grafite}>
-        {value.toFixed(1)}
+        {/* Con la virgola, come in italiano (docs/CHANGELOG.md §340; stessa regola di formatRating in shared). */}
+        {value.toFixed(1).replace(".", ",")}
       </Text>
       {count !== undefined ? (
         <Text fontSize={textSize} color={brand.grafite70}>
