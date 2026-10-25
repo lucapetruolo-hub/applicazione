@@ -638,6 +638,10 @@ export function GuidedRequestCard({
       onError: setError,
     }),
   );
+  // "Archivia" accanto a "Elimina richiesta" si confondeva (prova simulata, §339): una riga sotto spiega la differenza.
+  for (const action of menuActions) {
+    if (action.text === "Archivia" && !booking) action.hint = "La ritrovi in Archiviate";
+  }
   // Quali segnalazioni si possono inviare lo decide il server (docs/CHANGELOG.md §164).
   if (booking && booking.issueTypesAllowed.length > 0) {
     menuActions.push({ icon: "flag", text: "Segnala un problema", tone: "danger", onPress: () => setShowReportModal(true) });
@@ -652,7 +656,7 @@ export function GuidedRequestCard({
   } else if (!booking) {
     // Una sola voce finché la richiesta non è diventata un lavoro (§339, al
     // posto di "Annulla richiesta" ed "Elimina definitivamente" del §130).
-    menuActions.push({ icon: "trash-2", text: "Elimina richiesta", tone: "danger", onPress: () => setShowDeleteModal(true) });
+    menuActions.push({ icon: "trash-2", text: "Elimina richiesta", hint: "La ritiri anche per i professionisti", tone: "danger", onPress: () => setShowDeleteModal(true) });
   }
 
   const nextAction = clientNextAction(stage, request, booking);
@@ -924,6 +928,7 @@ export function GuidedRequestCard({
                   autoOpenTimeline={autoOpenChatProfessionalId === quote.professionalProfileId}
                   requestOpen={request.status !== "CLOSED"}
                   contactInBooking={quote.status === "ACCEPTED" && booking?.professionalProfileId === quote.professionalProfileId}
+                  onDeleteRequest={!booking ? () => setShowDeleteModal(true) : undefined}
                 />
               ))}
             </YStack>

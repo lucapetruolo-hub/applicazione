@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { REQUEST_WITHDRAW_REASONS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, type RequestWithdrawReason } from "@professionisti/shared";
-import { Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Text, YStack, brand } from "@professionisti/ui";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 
 /**
@@ -34,14 +34,15 @@ export function DeleteRequestModal({
       onCancel={() => onConfirm(reason)}
     >
       {stillOpen ? (
-        <YStack gap="$2">
+        <YStack gap="$1">
           <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
             Perché? (facoltativo)
           </Text>
-          <XStack gap="$2" flexWrap="wrap" role="radiogroup" aria-label="Motivo">
+          <YStack role="radiogroup" aria-label="Motivo">
             {REQUEST_WITHDRAW_REASONS.map((value) => {
               const selected = reason === value;
               return (
+                // Elenco con pallino, non pulsanti (richiesta dell'utente): più leggero, si toglie toccandolo di nuovo.
                 <button
                   key={value}
                   type="button"
@@ -49,23 +50,41 @@ export function DeleteRequestModal({
                   aria-checked={selected}
                   onClick={() => setReason(selected ? undefined : value)}
                   style={{
-                    minHeight: 44,
-                    padding: "0 16px",
-                    borderRadius: 999,
-                    border: `1.5px solid ${selected ? brand.grafite : brand.bordoCampo}`,
-                    background: selected ? brand.grafite : brand.calce,
-                    color: selected ? "white" : brand.grafite,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    minHeight: 40,
+                    padding: 0,
+                    border: "none",
+                    background: "transparent",
+                    color: brand.grafite,
                     fontFamily: "inherit",
                     fontSize: 15,
-                    fontWeight: 600,
+                    fontWeight: selected ? 600 : 400,
+                    textAlign: "left",
                     cursor: "pointer",
                   }}
                 >
+                  <span
+                    aria-hidden
+                    style={{
+                      flexShrink: 0,
+                      width: 18,
+                      height: 18,
+                      borderRadius: 999,
+                      border: `1.5px solid ${selected ? brand.grafite : brand.bordoCampo}`,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {selected ? <span style={{ width: 10, height: 10, borderRadius: 999, background: brand.grafite }} /> : null}
+                  </span>
                   {REQUEST_WITHDRAW_REASON_CLIENT_LABEL[value]}
                 </button>
               );
             })}
-          </XStack>
+          </YStack>
         </YStack>
       ) : null}
     </CancelBookingModal>
