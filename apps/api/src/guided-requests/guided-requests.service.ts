@@ -492,6 +492,7 @@ export class GuidedRequestsService {
         photoUrls: request.photoUrls,
         serviceMode: request.serviceMode,
         isUrgent: request.isUrgent,
+        timing: request.timing,
         status: request.status,
         // Esposto ora anche qui (richiesta esplicita dell'utente,
         // /le-mie-richieste "simile alle richieste ricevute"): distingue

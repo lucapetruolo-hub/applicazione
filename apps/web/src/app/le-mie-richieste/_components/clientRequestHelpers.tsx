@@ -1,6 +1,7 @@
 "use client";
 
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
+import { REQUEST_TIMING_LABEL } from "@professionisti/shared";
 import { Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { CLIENT_STAGE_LABEL, REQUEST_STAGE_STYLE, type RequestStage } from "@/lib/requestStage";
 
@@ -42,6 +43,7 @@ export function clientRequestSearchText(request: ClientGuidedRequest, stage: Req
     request.address,
     request.serviceMode === "ONLINE" ? "consulenza online" : "a domicilio",
     request.isUrgent ? "urgente" : null,
+    request.timing ? REQUEST_TIMING_LABEL[request.timing] : null,
     stage ? CLIENT_STAGE_LABEL[stage] : null,
     request.recipientName,
     request.recipientSurname,

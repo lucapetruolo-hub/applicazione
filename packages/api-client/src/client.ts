@@ -91,6 +91,7 @@ import type {
   GeneralRequestAvailability,
   GuidedRequestReach,
   UrgencyMetrics,
+  RequestTiming,
   GeneralRequestsAdminOverview,
   GeneralRequestThresholds,
   CloseGeneralRequestsInput,
@@ -199,6 +200,8 @@ export type ClientGuidedRequest = {
   /** Tipo di intervento (richiesta esplicita dell'utente) — `null` per le richieste create prima di questo campo. */
   serviceMode: "HOME" | "ONLINE" | null;
   isUrgent: boolean;
+  /** Quando serve, scelto dal cliente (docs/CHANGELOG.md §340): null per le richieste di prima. */
+  timing: RequestTiming | null;
   status: "OPEN" | "MATCHED" | "CLOSED";
   /**
    * Perché è CLOSED (`null` finché non lo è) — richiesta esplicita

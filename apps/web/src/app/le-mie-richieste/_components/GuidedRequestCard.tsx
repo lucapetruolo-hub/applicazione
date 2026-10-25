@@ -1,6 +1,6 @@
 "use client";
 
-import type { JobPaymentChoice } from "@professionisti/shared";
+import { REQUEST_TIMING_LABEL, type JobPaymentChoice } from "@professionisti/shared";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -569,6 +569,12 @@ export function GuidedRequestCard({
             {request.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
             <ClientStagePill stage={stage} />
             <ServiceBadge online={isOnline} />
+            {/* Quando serve, scelto alla richiesta (§340): "Oggi" è già il badge Urgente. */}
+            {request.timing === "WEEK" || request.timing === "CALM" ? (
+              <Text fontSize={13} fontWeight="600" color={brand.grafite70} alignSelf="center">
+                {REQUEST_TIMING_LABEL[request.timing]}
+              </Text>
+            ) : null}
           </XStack>
           <YStack alignItems="flex-end" gap="$1">
             <Text fontSize={16} color={brand.grafite70}>

@@ -20711,3 +20711,6 @@ non nell'email.
 - La scelta si salva: enum `RequestTiming` e campo `GuidedRequest.timing` (migrazione `20261025160000_quando_serve`, null per le richieste di prima), `timing` nello schema della richiesta (se c'è decide anche `isUrgent`, `withTimingUrgency`), ricopiato nel rinvio dopo una mancata presentazione. Il professionista la vede: "In settimana"/"Con calma" nella scheda in Richieste (cercabile) e "**Quando:** …" nell'email "Nuova richiesta" ("Oggi" è già il badge Urgente). Etichette in `packages/shared/src/requestTiming.ts`.
 - **Raggio delle urgenti lasciato così**: un'urgente va solo a chi la accetta nel suo raggio urgente; il riepilogo mostra quanti sono.
 - Prova nel browser aggiornata ai tempi (12 verdi in locale); anteprime finali in `/mnt/project-files/anteprime/urgente-due-modi/finale/`.
+
+**Migliorie approvate da Luca** ("Effettua le due migliorie")
+- Il cliente vede la scelta anche in "Le mie richieste": "In settimana"/"Con calma" accanto ai badge della scheda (cercabile), `timing` in `ClientGuidedRequest`; "Oggi" è già il badge Urgente.
