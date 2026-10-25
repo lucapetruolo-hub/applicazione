@@ -72,6 +72,7 @@ export function QuoteCard({
   autoOpenTimeline,
   contactInBooking,
   requestOpen,
+  onDeleteRequest,
 }: {
   quote: ClientGuidedRequest["quotes"][number];
   /** Richiesta ancora aperta: dopo un rifiuto il professionista può inviare un nuovo preventivo (docs/CHANGELOG.md §188). */
@@ -91,6 +92,8 @@ export function QuoteCard({
   autoOpenTimeline?: boolean;
   /** Il preventivo è diventato un intervento: i messaggi stanno lì, non qui (un solo pulsante per scheda). */
   contactInBooking?: boolean;
+  /** "Non ti serve più il lavoro? Elimina la richiesta" nella conferma di Rifiuta (docs/CHANGELOG.md §343): chi non vuole più il lavoro sceglieva "Rifiuta". */
+  onDeleteRequest?: () => void;
 }) {
   const [isChoosingDate, setIsChoosingDate] = useState(false);
   const [freeSlots, setFreeSlots] = useState<FreeSlot[] | null>(null);
@@ -523,6 +526,25 @@ export function QuoteCard({
                   Annulla
                 </CardButton>
               </XStack>
+              {onDeleteRequest ? (
+                <Text fontSize={13} color={brand.grafite70}>
+                  Non ti serve più il lavoro?{" "}
+                  <Text
+                    fontSize={13}
+                    fontWeight="700"
+                    color={brand.urgenza}
+                    textDecorationLine="underline"
+                    cursor="pointer"
+                    accessibilityRole="button"
+                    onPress={() => {
+                      setConfirmingReject(false);
+                      onDeleteRequest();
+                    }}
+                  >
+                    Elimina la richiesta
+                  </Text>
+                </Text>
+              ) : null}
             </YStack>
           ) : null}
           {dateChooser}
