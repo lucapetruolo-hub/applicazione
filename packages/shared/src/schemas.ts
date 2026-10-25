@@ -496,6 +496,10 @@ export const quoteSchema = z.object({
   notes: z.string().max(2000).optional(),
   /** Modi di pagamento offerti al cliente e percentuale dell'acconto online (docs/CHANGELOG.md §237); assenti = valori di serie. */
   ...quotePaymentOfferSchema,
+  /** Preavviso per annullare di questo preventivo (docs/CHANGELOG.md §348); assente = quello del profilo. */
+  cancellationNoticeHours: z.union([z.literal(24), z.literal(48), z.literal(72)]).optional(),
+  /** Annullando dentro il preavviso l'acconto online resta al professionista; vale solo con l'acconto online. */
+  lateCancelKeepsDeposit: z.boolean().optional(),
 });
 export type QuoteInput = z.infer<typeof quoteSchema>;
 
@@ -781,6 +785,8 @@ export const professionalProfileSchema = z.object({
   yearsOfExperience: z.number().int().min(0).max(80).optional(),
   certifications: z.string().max(500).optional(),
   hasLiabilityInsurance: z.boolean().default(false),
+  // Preavviso per annullare (docs/CHANGELOG.md §347): non inviato = invariato.
+  cancellationNoticeHours: z.union([z.literal(24), z.literal(48), z.literal(72)]).optional(),
 });
 export type ProfessionalProfileInput = z.infer<typeof professionalProfileSchema>;
 

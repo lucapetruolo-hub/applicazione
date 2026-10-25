@@ -165,6 +165,13 @@ export class BookingsController {
     return this.bookingsService.notifyOnTheWay(req.user.userId, id);
   }
 
+  /** "Aggiungi al calendario" dalla scheda del cliente (docs/CHANGELOG.md §346): stesso evento delle email. */
+  @UseGuards(JwtAuthGuard)
+  @Get(":id/calendar")
+  calendar(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    return this.bookingsService.calendarForClient(req.user.userId, id);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get("me")
   listMine(@Req() req: AuthenticatedRequest) {

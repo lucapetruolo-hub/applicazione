@@ -7,6 +7,11 @@ import Image from "next/image";
 import { Camera, X } from "lucide-react";
 import {
   BRAND,
+  CANCELLATION_NOTICE_OPTIONS,
+  DEFAULT_CANCELLATION_NOTICE_HOURS,
+  cancellationNoticeLabel,
+  isCancellationNoticeHours,
+  type CancellationNoticeHours,
   MAX_PROFESSIONAL_CATEGORIES,
   NO_CATEGORY_MESSAGE,
   POPULAR_SERVICES,
@@ -22,7 +27,7 @@ import {
   type MyProfilePreview,
   type MyVerificationStatus,
   type ProfessionalCategorySlug, professionalPath } from "@professionisti/shared";
-import { Autocomplete, Button, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Autocomplete, Button, Chip, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { ImageCropModal } from "@/components/ImageCropModal";
@@ -158,6 +163,8 @@ export default function DashboardProfiloPage() {
   const [addressCoords, setAddressCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [bio, setBio] = useState("");
   const [remoteAvailable, setRemoteAvailable] = useState(false);
+  // Preavviso per annullare chiesto al cliente (docs/CHANGELOG.md §347).
+  const [cancellationNoticeHours, setCancellationNoticeHours] = useState<CancellationNoticeHours>(DEFAULT_CANCELLATION_NOTICE_HOURS);
   const [services, setServices] = useState<{ name: string; priceMin: string; priceMax: string }[]>([]);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   // Foto reali di lavori svolti (fino a MAX_PORTFOLIO_PHOTOS), mostrate in
@@ -254,6 +261,7 @@ export default function DashboardProfiloPage() {
     setAddress(profile.address ?? "");
     setBio(profile.bio ?? "");
     setRemoteAvailable(profile.remoteAvailable);
+    setCancellationNoticeHours(isCancellationNoticeHours(profile.cancellationNoticeHours) ? profile.cancellationNoticeHours : DEFAULT_CANCELLATION_NOTICE_HOURS);
     setImageUrl(profile.imageUrl);
     setPortfolioUrls(profile.portfolioUrls);
     setSpokenLanguages(profile.spokenLanguages);
@@ -336,6 +344,7 @@ export default function DashboardProfiloPage() {
     address,
     bio,
     remoteAvailable,
+    cancellationNoticeHours,
     services,
     portfolioUrls,
     spokenLanguages,
@@ -461,6 +470,7 @@ export default function DashboardProfiloPage() {
         subTags: validSubTags(subTags, categorySlugs),
         bio: bio.trim() || undefined,
         remoteAvailable,
+        cancellationNoticeHours,
         // Se l'immagine è stata caricata prima ancora di salvare il resto
         // del profilo (nessuna riga ancora sul server in quel momento), va
         // inclusa qui nel primo salvataggio vero e proprio — vedi nota in
@@ -1136,6 +1146,20 @@ export default function DashboardProfiloPage() {
             </Text>
           </YStack>
         </YStack>
+
+        <Surface gap="$3">
+          <SectionTitle>Preavviso per annullare</SectionTitle>
+          <Text fontSize={13} color={brand.grafite70}>
+            Se il cliente deve annullare, quanto prima deve avvisarti? È già scelto nei tuoi preventivi e puoi cambiarlo ogni volta.
+          </Text>
+          <XStack gap="$2" flexWrap="wrap">
+            {CANCELLATION_NOTICE_OPTIONS.map((hours) => (
+              <Chip key={hours} selected={cancellationNoticeHours === hours} onPress={() => setCancellationNoticeHours(hours)}>
+                {cancellationNoticeLabel(hours)}
+              </Chip>
+            ))}
+          </XStack>
+        </Surface>
 
         <Surface gap="$3">
           <SectionTitle>Prestazioni offerte</SectionTitle>

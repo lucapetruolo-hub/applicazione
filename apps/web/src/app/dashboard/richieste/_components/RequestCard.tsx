@@ -29,8 +29,13 @@ import {
   type ProfessionalBooking,
   type ProfessionalLead,
   REQUEST_TIMING_LABEL,
+  CANCELLATION_NOTICE_OPTIONS,
+  DEFAULT_CANCELLATION_NOTICE_HOURS,
+  cancellationNoticeLabel,
+  isCancellationNoticeHours,
+  type CancellationNoticeHours,
 } from "@professionisti/shared";
-import { Avatar, Badge, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { Avatar, Badge, Chip, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useOnlinePayments } from "@/lib/onlinePayments";
 import { formatCompetitors, leadDeadlines } from "@/lib/leadDeadline";
@@ -68,6 +73,7 @@ export function RequestCard({
   availableSlots,
   myProfileId,
   defaultPaymentOffer,
+  defaultCancellationNoticeHours,
   stripeVerified = true,
   identityVerificationNeeded = false,
   isOpen,
@@ -87,6 +93,8 @@ export function RequestCard({
   myProfileId: string | null;
   /** Modi di pagamento proposti di serie nei nuovi preventivi (docs/CHANGELOG.md §239); null = valori di sistema. */
   defaultPaymentOffer?: { paymentOptions: JobPaymentChoice[]; depositPercent: number } | null;
+  /** Preavviso per annullare standard del profilo, già scelto nei nuovi preventivi (docs/CHANGELOG.md §348). */
+  defaultCancellationNoticeHours?: number | null;
   /** Verifica su Stripe completata: senza, l'acconto online non si può offrire (docs/CHANGELOG.md §241). */
   stripeVerified?: boolean;
   /** Documento e selfie ancora da fare: il primo preventivo è bloccato (docs/CHANGELOG.md §253). */
@@ -155,6 +163,15 @@ export function RequestCard({
       setPaymentOptions(defaultPaymentOffer.paymentOptions);
       setDepositPercentDraft(String(defaultPaymentOffer.depositPercent));
     }
+  }
+  // Preavviso per annullare e acconto trattenuto, scelti a ogni preventivo (docs/CHANGELOG.md §348).
+  const standardNotice = isCancellationNoticeHours(defaultCancellationNoticeHours) ? defaultCancellationNoticeHours : DEFAULT_CANCELLATION_NOTICE_HOURS;
+  const [noticeHours, setNoticeHours] = useState<CancellationNoticeHours>(standardNotice);
+  const [keepDeposit, setKeepDeposit] = useState(false);
+  const [appliedNotice, setAppliedNotice] = useState(standardNotice);
+  if (standardNotice !== appliedNotice) {
+    setAppliedNotice(standardNotice);
+    if (!showQuoteForm) setNoticeHours(standardNotice);
   }
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [isSubmittingQuote, setIsSubmittingQuote] = useState(false);
@@ -377,6 +394,8 @@ export function RequestCard({
         paymentOptions: offered,
         ...(offered.some(paymentChoiceIsOnline) ? { depositPercent } : {}),
         ...(rememberPaymentOffer ? { rememberPaymentOffer: true } : {}),
+        cancellationNoticeHours: noticeHours,
+        lateCancelKeepsDeposit: offered.some(paymentChoiceIsOnline) && keepDeposit,
       });
       setRememberPaymentOffer(false);
       setShowQuoteForm(false);
@@ -537,6 +556,8 @@ export function RequestCard({
     setQuoteNotes(lead.quote.notes ?? "");
     setPaymentOptions(lead.quote.paymentOptions);
     setDepositPercentDraft(String(lead.quote.depositPercent));
+    setNoticeHours(isCancellationNoticeHours(lead.quote.cancellationNoticeHours) ? lead.quote.cancellationNoticeHours : standardNotice);
+    setKeepDeposit(lead.quote.lateCancelKeepsDeposit);
     setShowQuoteForm(true);
   }
 
@@ -1055,6 +1076,8 @@ export function RequestCard({
                     .map((choice) => QUOTE_PAYMENT_OPTION_LABEL[choice].toLowerCase())
                     .join("; ")}
                   {lead.quote.paymentOptions.some(paymentChoiceIsOnline) ? ` (acconto online ${lead.quote.depositPercent}%)` : ""}
+                  {`. Preavviso per annullare: ${cancellationNoticeLabel(lead.quote.cancellationNoticeHours)}`}
+                  {lead.quote.lateCancelKeepsDeposit ? ", poi l'acconto resta a te" : ""}
                 </Text>
               ) : null}
             </YStack>
@@ -1069,6 +1092,12 @@ export function RequestCard({
                 : booking.professionalProblemReport.status === "RESOLVED"
                   ? "Il nostro team l'ha accolta."
                   : "Il nostro team l'ha esaminata e chiusa senza misure."}
+            </Text>
+          ) : null}
+          {/* Annullato dal cliente dentro il preavviso che hai scelto (docs/CHANGELOG.md §347). */}
+          {booking?.status === "CANCELED" && booking.canceledBy === "CLIENT" && booking.canceledLate ? (
+            <Text fontSize={13} color={brand.urgenza} fontWeight="600">
+              Il cliente ha annullato con meno preavviso di quello che chiedi.
             </Text>
           ) : null}
           {/* Segnalazione del cliente sul lavoro (docs/CHANGELOG.md §164). */}
@@ -1521,6 +1550,29 @@ export function RequestCard({
                     Proponi questi modi anche nei prossimi preventivi
                   </label>
                 ) : null}
+              </YStack>
+
+              {/* Preavviso per annullare, scelto a ogni preventivo; di serie lo standard del profilo (docs/CHANGELOG.md §348). */}
+              <YStack gap="$2" role="group" aria-label="Preavviso per annullare">
+                <Text fontSize={16} fontWeight="700" color={brand.grafite}>
+                  Se il cliente deve annullare, quanto prima deve avvisarti?
+                </Text>
+                <XStack gap="$2" flexWrap="wrap">
+                  {CANCELLATION_NOTICE_OPTIONS.map((hours) => (
+                    <Chip key={hours} selected={noticeHours === hours} onPress={() => setNoticeHours(hours)}>
+                      {cancellationNoticeLabel(hours)}
+                    </Chip>
+                  ))}
+                </XStack>
+                {onlinePayments && paymentOptions.some(paymentChoiceIsOnline) ? (
+                  <label style={{ display: "flex", gap: 8, alignItems: "center", cursor: "pointer", fontSize: 16, color: brand.grafite }}>
+                    <input type="checkbox" checked={keepDeposit} onChange={(e) => setKeepDeposit(e.target.checked)} style={{ accentColor: brand.verificato }} />
+                    Se annulla più tardi, l&apos;acconto online resta a me
+                  </label>
+                ) : null}
+                <Text fontSize={13} color={brand.grafite70}>
+                  Il cliente lo legge prima di accettare. Lo standard lo cambi nel Profilo.
+                </Text>
               </YStack>
 
               <textarea aria-label="Messaggio per il cliente" value={quoteNotes} onChange={(e) => setQuoteNotes(e.target.value)} placeholder="Messaggio per il cliente (facoltativo)" rows={2} style={{ ...smallInputStyle, resize: "vertical" }} />

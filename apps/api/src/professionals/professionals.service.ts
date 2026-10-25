@@ -39,6 +39,7 @@ import {
   isProfessionalCategorySlug,
   validSubTags,
   type CategoryPriceStats,
+  DEFAULT_CANCELLATION_NOTICE_HOURS,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
@@ -60,6 +61,7 @@ import { ProfessionalMetricsService } from "../professional-metrics/professional
 import { TimelineService } from "../timeline/timeline.service";
 import { ProfessionalVerificationService } from "../professional-verification/professional-verification.service";
 import { clientNameForProfessional, publicClientName } from "../common/client-name.util";
+import { cancellationNoticeFor } from "../bookings/one-job-per-request";
 
 export type ProfessionalSearchParams = {
   category?: string;
@@ -598,6 +600,7 @@ export class ProfessionalsService {
       verified: profile.verified,
       verificationRequestedAt: profile.verificationRequestedAt?.toISOString() ?? null,
       remoteAvailable: profile.remoteAvailable,
+      cancellationNoticeHours: profile.cancellationNoticeHours,
       imageUrl: profile.imageUrl,
       portfolioUrls: profile.portfolioUrls,
       services: mapServices(profile.services),
@@ -717,6 +720,7 @@ export class ProfessionalsService {
         yearsOfExperience: input.yearsOfExperience ?? null,
         certifications: input.certifications,
         hasLiabilityInsurance: input.hasLiabilityInsurance,
+        cancellationNoticeHours: input.cancellationNoticeHours,
         ...declarationData,
         ...inviteData,
       },
@@ -738,6 +742,7 @@ export class ProfessionalsService {
         yearsOfExperience: input.yearsOfExperience ?? null,
         certifications: input.certifications,
         hasLiabilityInsurance: input.hasLiabilityInsurance,
+        cancellationNoticeHours: input.cancellationNoticeHours,
         ...declarationData,
         ...(options.byOperator ? { invitePendingAt: new Date() } : {}),
       },
@@ -820,6 +825,7 @@ export class ProfessionalsService {
       verified: profile.verified,
       verificationRequestedAt: profile.verificationRequestedAt?.toISOString() ?? null,
       remoteAvailable: profile.remoteAvailable,
+      cancellationNoticeHours: profile.cancellationNoticeHours,
       imageUrl: profile.imageUrl,
       portfolioUrls: profile.portfolioUrls,
       services: mapServices(savedServices),
@@ -1022,6 +1028,19 @@ export class ProfessionalsService {
         : [],
     );
     const otherQuotesPerRequest = new Map(quoteCounts.map((row) => [row.guidedRequestId, row._count._all]));
+    // Richieste in cui il cliente ha accettato il preventivo di un altro
+    // professionista (docs/CHANGELOG.md §346): il preventivo di chi non è
+    // stato scelto non resta "in attesa del cliente" per sempre.
+    const takenByOthers = new Set(
+      requestIds.length > 0
+        ? (
+            await this.prisma.booking.findMany({
+              where: { guidedRequestId: { in: requestIds }, status: { not: "CANCELED" }, professionalProfileId: { not: professionalProfileId } },
+              select: { guidedRequestId: true },
+            })
+          ).map((row) => row.guidedRequestId)
+        : [],
+    );
     return leads.map((lead) => {
       // quotes è filtrato per professionalProfileId nella query: al più una
       // voce (un professionista invia un solo preventivo per richiesta,
@@ -1092,6 +1111,9 @@ export class ProfessionalsService {
               rejectionNote: quote.status === "REJECTED" ? quote.rejectionNote : null,
               // Modi di pagamento offerti (docs/CHANGELOG.md §237), coi valori di serie per i preventivi vecchi.
               ...quotePaymentOffer(quote),
+              // Preavviso e acconto trattenuto scelti nel preventivo (docs/CHANGELOG.md §348).
+              cancellationNoticeHours: quote.cancellationNoticeHours ?? DEFAULT_CANCELLATION_NOTICE_HOURS,
+              lateCancelKeepsDeposit: quote.lateCancelKeepsDeposit,
               resentAt: quote.resentAt?.toISOString() ?? null,
               // Nuovo preventivo dopo il rifiuto del cliente, fino alla
               // scadenza della richiesta contata dal suo invio
@@ -1123,6 +1145,7 @@ export class ProfessionalsService {
               // cliente") — stesso campo già esposto lato cliente
               // (GuidedRequestsService.listForClient).
               bookingStatus: quote.booking?.status ?? null,
+              otherProfessionalChosen: quote.booking === null && takenByOthers.has(lead.guidedRequest.id),
             }
           : null,
         guidedRequest: {
@@ -1424,6 +1447,8 @@ export class ProfessionalsService {
       // Chi ha annullato — richiesta esplicita dell'utente, mostrato accanto
       // all'etichetta "Annullata".
       canceledBy: booking.canceledBy,
+      // Il cliente ha annullato dentro il preavviso scelto (docs/CHANGELOG.md §347).
+      canceledLate: booking.canceledLate,
       professionalProblemReport: booking.quote?.guidedRequestId ? (problemReportByGuidedRequestId.get(booking.quote.guidedRequestId) ?? null) : null,
       description: booking.quote?.guidedRequest?.description ?? null,
       photoUrls: booking.quote?.guidedRequest?.photoUrls ?? [],
@@ -1826,7 +1851,14 @@ export class ProfessionalsService {
             throw new ConflictException("Questa fascia è già stata prenotata.");
           }
           return tx.booking.create({
-            data: { clientId, professionalProfileId, scheduledAt, scheduledEndAt: new Date(`${input.date}T${input.endTime}:00.000Z`), status: "PENDING" },
+            data: {
+              clientId,
+              professionalProfileId,
+              scheduledAt,
+              scheduledEndAt: new Date(`${input.date}T${input.endTime}:00.000Z`),
+              status: "PENDING",
+              cancellationNoticeHours: await cancellationNoticeFor(tx, professionalProfileId),
+            },
           });
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
