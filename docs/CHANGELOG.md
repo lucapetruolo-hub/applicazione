@@ -20714,3 +20714,4 @@ non nell'email.
 
 **Migliorie approvate da Luca** ("Effettua le due migliorie")
 - Il cliente vede la scelta anche in "Le mie richieste": "In settimana"/"Con calma" accanto ai badge della scheda (cercabile), `timing` in `ClientGuidedRequest`; "Oggi" è già il badge Urgente.
+- Test con 5 nuovi utenti di prova che non conoscono il sito, sulla versione finale (`/mnt/project-files/analisi/urgente-test-utenti.md`, terzo giro): 5 su 5 scelgono bene e sanno dire cosa succede dopo l'invio.
