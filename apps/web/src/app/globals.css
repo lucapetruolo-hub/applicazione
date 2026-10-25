@@ -3092,9 +3092,6 @@ a.admin-kpi:hover {
   white-space: nowrap;
   transition: background 0.15s ease, color 0.15s ease;
 }
-.guided-timing-option.is-today span {
-  color: #c8362b;
-}
 .guided-timing-option input:checked + span {
   background: #189a63;
   color: #ffffff;

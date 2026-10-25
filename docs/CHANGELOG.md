@@ -20757,3 +20757,10 @@ accorciata in "Subito dopo potrai lasciare una recensione, anche con foto".
 **Migliorie approvate da Luca** ("Effettua le due migliorie")
 - Il cliente vede la scelta anche in "Le mie richieste": "In settimana"/"Con calma" accanto ai badge della scheda (cercabile), `timing` in `ClientGuidedRequest`; "Oggi" è già il badge Urgente.
 - Test con 5 nuovi utenti di prova che non conoscono il sito, sulla versione finale (`/mnt/project-files/analisi/urgente-test-utenti.md`, terzo giro): 5 su 5 scelgono bene e sanno dire cosa succede dopo l'invio.
+
+**Migliorie dal terzo test, approvate da Luca** ("effettua le 4 migliorie")
+- "Oggi" non sembra più già scelto: finché non lo tocchi è grigio come gli altri, rosso solo il fulmine (5 su 5 lo credevano selezionato).
+- Al passo 1, prima di scegliere, la riga "Oggi solo se serve entro 24 ore." (prima le spiegazioni comparivano solo dopo il tocco).
+- "Ti avvisiamo per email a ogni preventivo" (4 su 5 chiedevano come).
+- Al posto di "I tuoi dati di contatto restano nascosti…": "Finché non accetti un preventivo vedono solo nome, città e lavoro: telefono e via restano nascosti" (3 su 5 non sapevano se la via si vede; è quello che fa `clientNameForProfessional` e CLAUDE.md §5 punto 9).
+- Proposta non scelta: "Richiesta gratuita anche se urgente".

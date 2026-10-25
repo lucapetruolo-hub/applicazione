@@ -340,7 +340,8 @@ export function GuidedRequestForm({
         ? "Il professionista sa che ti serve entro pochi giorni."
         : timing === "CALM"
           ? "Il professionista sa che non hai fretta."
-          : null;
+          : // Prima della scelta (test, §342): tutti cercavano cosa vuol dire "Oggi".
+            "Oggi solo se serve entro 24 ore.";
   function urgencyChangeText(next: RequestTiming) {
     const nextUrgent = next === "TODAY";
     const head = `Quando: ${REQUEST_TIMING_LABEL[next]}${nextUrgent ? ", urgente" : ""}.`;
@@ -1528,7 +1529,7 @@ function RequestSummary({
               La richiesta arriva solo a {professionalName}
               {isUrgent ? " (segnata come urgente)" : ""}, che può risponderti con un preventivo senza scadenza.
             </li>
-            <li>I tuoi dati di contatto restano nascosti finché non accetti un preventivo.</li>
+            <li>Finché non accetti un preventivo vede solo nome, città e lavoro: telefono e via restano nascosti.</li>
           </ul>
         ) : (
           <ul>
@@ -1550,8 +1551,8 @@ function RequestSummary({
                 Arriva subito a {professionalsText(reachCount)} di {categoriesText} della tua zona{urgentSuffix}.
               </li>
             )}
-            <li>Ti avvisiamo a ogni preventivo: li confronti e scegli tu.</li>
-            <li>I tuoi dati di contatto restano nascosti finché non accetti un preventivo.</li>
+            <li>Ti avvisiamo per email a ogni preventivo: li confronti e scegli tu.</li>
+            <li>Finché non accetti un preventivo vedono solo nome, città e lavoro: telefono e via restano nascosti.</li>
           </ul>
         )}
       </div>
@@ -1622,7 +1623,7 @@ function UrgencyControl({
           <label key={value} className={`guided-timing-option${value === "TODAY" ? " is-today" : ""}`}>
             <input type="radio" name={idPrefix} value={value} checked={timing === value} onChange={() => onChoose(value)} />
             <span>
-              {value === "TODAY" ? <Icon name="zap" size={15} strokeWidth={2} color="currentColor" fill={timing === "TODAY" ? "currentColor" : "none"} /> : null}
+              {value === "TODAY" ? <Icon name="zap" size={15} strokeWidth={2} color={timing === "TODAY" ? "currentColor" : brand.urgenza} fill={timing === "TODAY" ? "currentColor" : "none"} /> : null}
               {REQUEST_TIMING_LABEL[value]}
             </span>
           </label>

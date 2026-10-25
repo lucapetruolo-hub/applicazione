@@ -35,6 +35,9 @@ async function goToSummary(page: Page) {
 test("stessa scelta nei due passi, tempi e pulsante aggiornati", async ({ page }) => {
   await mockReach(page);
   await page.goto(DIRECT);
+  // Nessuna scelta già fatta, ma si sa cosa vuol dire "Oggi".
+  await expect(timing(page, "Oggi")).not.toBeChecked();
+  await expect(page.getByText("Oggi solo se serve entro 24 ore.")).toBeVisible();
   // Senza una scelta non si va avanti.
   await page.getByText("Avanti", { exact: true }).click();
   await expect(page.getByText("Scegli quando ti serve.")).toBeVisible();
