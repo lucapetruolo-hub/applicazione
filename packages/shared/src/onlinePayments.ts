@@ -214,7 +214,7 @@ export function jobPaymentChoiceCopy(
 /**
  * Come si paga un preventivo, in breve, dai modi che il cliente può davvero
  * usare: l'etichetta accanto al totale quando si confrontano più preventivi
- * (docs/CHANGELOG.md §338). null se non resta nessun modo utilizzabile.
+ * (docs/CHANGELOG.md §339). null se non resta nessun modo utilizzabile.
  */
 export function jobPaymentOfferLabel(options: JobPaymentChoice[]): string | null {
   if (options.length === 0) return null;

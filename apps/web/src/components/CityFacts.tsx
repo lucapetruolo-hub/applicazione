@@ -88,7 +88,7 @@ export function CityFacts({
     },
     {
       question: "Come scelgo a chi affidare il lavoro?",
-      answer: <>Confronta i preventivi e guarda le recensioni: arrivano solo da lavori confermati. Il badge Verificato vuol dire documento e partita IVA controllati.</>,
+      answer: <>Confronta i preventivi e guarda le recensioni: arrivano solo da lavori confermati. Il badge Verificato vuol dire identità controllata con documento e selfie.</>,
     },
   ];
 
