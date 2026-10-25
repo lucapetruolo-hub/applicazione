@@ -334,7 +334,7 @@ export const guidedRequestSchema = z
     postalCode: z.string().max(10).optional(),
     province: z.string().max(50).optional(),
     isUrgent: z.boolean().default(false),
-    /** Quando serve (docs/CHANGELOG.md §342): se c'è, decide anche `isUrgent` ("Oggi"). */
+    /** Quando serve (docs/CHANGELOG.md §343): se c'è, decide anche `isUrgent` ("Oggi"). */
     timing: z.enum(REQUEST_TIMINGS).optional(),
     /**
      * Tipo di intervento (richiesta esplicita dell'utente: "in modo che il

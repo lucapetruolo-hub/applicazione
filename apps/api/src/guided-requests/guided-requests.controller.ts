@@ -66,7 +66,7 @@ export class GuidedRequestsController {
 
   /**
    * Pubblico: a quanti professionisti arriverebbe la richiesta, senza e con
-   * "Urgente", per il riepilogo del modulo (docs/CHANGELOG.md §342). Solo
+   * "Urgente", per il riepilogo del modulo (docs/CHANGELOG.md §343). Solo
    * numeri, gli stessi che la ricerca mostra già come elenco.
    */
   @Throttle({ default: { limit: 60, ttl: 60_000 } })

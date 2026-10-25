@@ -2,7 +2,6 @@
 
 import {
   jobPaymentChoiceCopy,
-  jobPaymentOfferLabel,
   onlineDepositEurCents,
   paymentChoiceIsOnline,
   type JobPaymentChoice,
@@ -104,14 +103,6 @@ export function PaymentOffer({
       ) : null}
     </YStack>
   );
-}
-
-/**
- * Etichetta corta accanto al totale, per confrontare più preventivi a colpo
- * d'occhio (docs/CHANGELOG.md §339). null se non c'è un modo utilizzabile.
- */
-export function paymentOfferShortLabel(offered: JobPaymentChoice[], onlineAvailable: boolean): string | null {
-  return jobPaymentOfferLabel(selectablePaymentChoices(offered, onlineAvailable));
 }
 
 /** Modi che il cliente può davvero scegliere: quelli offerti, senza gli online se Stripe non è attivo. */

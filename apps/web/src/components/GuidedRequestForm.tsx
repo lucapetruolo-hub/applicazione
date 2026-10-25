@@ -150,16 +150,16 @@ export function GuidedRequestForm({
   const searchParams = useSearchParams();
   const { user, token, isLoading, refreshUser } = useAuth();
   // Urgenza scelta anche da qui, non solo arrivando da /urgente
-  // (docs/CHANGELOG.md §154), al passo 1 e nel riepilogo (§342).
+  // (docs/CHANGELOG.md §154), al passo 1 e nel riepilogo (§343).
   // "Oggi" è l'urgente; "In settimana" e "Con calma" sono richieste normali.
   // Nessuna scelta preselezionata (da /urgente "Oggi"): il cliente decide
   // (nel test chi andava di fretta lasciava quella già scelta).
   const [timing, setTiming] = useState<RequestTiming | null>(isUrgentInitial ? "TODAY" : null);
   const isUrgent = timing === "TODAY";
   // Frase per il lettore di schermo quando cambia l'urgenza: cosa cambia,
-  // in poche parole (§342). Vuota all'apertura, così non legge nulla.
+  // in poche parole (§343). Vuota all'apertura, così non legge nulla.
   const [urgencyAnnouncement, setUrgencyAnnouncement] = useState("");
-  // A quanti professionisti arriva, senza e con "Urgente" (§342): chiesto
+  // A quanti professionisti arriva, senza e con "Urgente" (§343): chiesto
   // all'API entrando nel riepilogo.
   const [reach, setReach] = useState<GuidedRequestReach | null>(null);
   function chooseTiming(next: RequestTiming) {
@@ -324,7 +324,7 @@ export function GuidedRequestForm({
   }, [professionalProfileId]);
   const shownProfessionalName = professional?.businessName ?? professionalName;
   // Riga sotto "Quando ti serve?": cosa comporta la scelta e, per "Oggi" in
-  // una richiesta generale, a quanti professionisti arriva (§342).
+  // una richiesta generale, a quanti professionisti arriva (§343).
   // Le urgenti usano il raggio "urgente" di ogni professionista: nel test il
   // solo "5 invece di 12" sembrava una penalità, quindi si dice a chi va.
   const urgencyReachNote =
@@ -340,7 +340,7 @@ export function GuidedRequestForm({
         ? "Il professionista sa che ti serve entro pochi giorni."
         : timing === "CALM"
           ? "Il professionista sa che non hai fretta."
-          : // Prima della scelta (test, §342): tutti cercavano cosa vuol dire "Oggi".
+          : // Prima della scelta (test, §343): tutti cercavano cosa vuol dire "Oggi".
             "Oggi solo se serve entro 24 ore.";
   function urgencyChangeText(next: RequestTiming) {
     const nextUrgent = next === "TODAY";
@@ -1335,7 +1335,7 @@ export function GuidedRequestForm({
           />
         ) : null}
 
-        {/* Annuncia al lettore di schermo cosa cambia con l'urgenza (§342). */}
+        {/* Annuncia al lettore di schermo cosa cambia con l'urgenza (§343). */}
         <p className="sr-only" role="status" aria-live="polite">
           {urgencyAnnouncement}
         </p>
@@ -1508,7 +1508,7 @@ function RequestSummary({
   const categoriesText = new Intl.ListFormat("it-IT", { type: "conjunction" }).format(categoryLabels);
   const multiple = categoryLabels.length > 1;
   const urgentSuffix = isUrgent ? ", segnata come urgente" : "";
-  // Numero vero dei destinatari (§342): per una richiesta diretta sono quelli dell'inoltro.
+  // Numero vero dei destinatari (§343): per una richiesta diretta sono quelli dell'inoltro.
   const reachCount = reach ? (isUrgent ? reach.urgent : reach.standard) : null;
   const professionalsText = (n: number) => (n === 1 ? "1 professionista" : `${n} professionisti`);
   const forwardTargets =
@@ -1600,7 +1600,7 @@ function RequestSummary({
 }
 
 /**
- * "Quando ti serve?" (docs/CHANGELOG.md §342, scelta di Luca tra interruttore
+ * "Quando ti serve?" (docs/CHANGELOG.md §343, scelta di Luca tra interruttore
  * e tempi): solo "Oggi" rende la richiesta urgente.
  */
 function UrgencyControl({

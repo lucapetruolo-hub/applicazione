@@ -57,7 +57,7 @@ export default function AdminHomePage() {
         { href: "/admin/lista-attesa", value: overview.waitlist, label: "Iscritti alla lista d'attesa" },
       ]
     : [];
-  // Richieste urgenti (docs/CHANGELOG.md §342): avviso agli admin ogni lunedì se fuori soglia.
+  // Richieste urgenti (docs/CHANGELOG.md §343): avviso agli admin ogni lunedì se fuori soglia.
   const minutes = (value: number | null) => (value === null ? "—" : value < 120 ? `${value} min` : `${Math.round(value / 60)} ore`);
   const urgencyNumbers = urgency
     ? [

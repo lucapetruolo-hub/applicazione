@@ -660,7 +660,7 @@ export function RequestCard({
                 (ServiceBadge, "A domicilio"/"Consulenza online"). */}
             <StagePill stage={stage} />
             <ServiceBadge online={isOnline} />
-            {/* Quando serve, scelto dal cliente (§342): "Oggi" è già il badge Urgente. */}
+            {/* Quando serve, scelto dal cliente (§343): "Oggi" è già il badge Urgente. */}
             {gr.timing === "WEEK" || gr.timing === "CALM" ? (
               <Text fontSize={13} fontWeight="600" color={brand.grafite70} alignSelf="center">
                 {REQUEST_TIMING_LABEL[gr.timing]}

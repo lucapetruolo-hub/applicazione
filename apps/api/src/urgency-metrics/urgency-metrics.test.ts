@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { computeUrgencyMetrics, type UrgencySample } from "./urgency-metrics";
 
-/** Numeri delle richieste urgenti e avvisi (docs/CHANGELOG.md §342). */
+/** Numeri delle richieste urgenti e avvisi (docs/CHANGELOG.md §343). */
 const since = new Date("2026-11-02T08:00:00Z");
 const until = new Date("2026-11-09T08:00:00Z");
 
