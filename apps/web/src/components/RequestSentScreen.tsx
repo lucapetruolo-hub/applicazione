@@ -27,7 +27,7 @@ export type RequestSentScreenProps = {
 };
 
 /**
- * Pagina "Richiesta inviata" (docs/CHANGELOG.md §340): foto grande del
+ * Pagina "Richiesta inviata" (docs/CHANGELOG.md §341): foto grande del
  * professionista (o icona della categoria) con la spunta, a chi è arrivata
  * la richiesta e cosa succede dopo, in tre passi. Niente coriandoli né
  * emoji: decisione dell'utente.
