@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { ProfessionalSearchResult } from "@professionisti/shared";
-import { Avatar, Icon, Rating, Section, Text, XStack, brand } from "@professionisti/ui";
+import { Avatar, BadgeInfo, Icon, Rating, Section, Text, XStack, brand } from "@professionisti/ui";
 import { BRAND, professionalPath } from "@professionisti/shared";
 import { CategoryIcon, CATEGORY_ACCENT } from "./icons/CategoryIcons";
 import { useRevealOnScroll } from "./useRevealOnScroll";
@@ -335,12 +335,14 @@ function NewProfileCard({ pro, delayMs }: { pro: ProfessionalSearchResult; delay
               </Text>
             )}
             {pro.verified ? (
-              <XStack alignItems="center" gap={3}>
-                <Icon name="badge-check" size={13} color={brand.verificato} strokeWidth={2} />
-                <Text fontSize={13} fontWeight="700" color={brand.verificato}>
-                  Verificato
-                </Text>
-              </XStack>
+              <BadgeInfo info="verified">
+                <XStack alignItems="center" gap={3}>
+                  <Icon name="badge-check" size={13} color={brand.verificato} strokeWidth={2} />
+                  <Text fontSize={13} fontWeight="700" color={brand.verificato}>
+                    Verificato
+                  </Text>
+                </XStack>
+              </BadgeInfo>
             ) : null}
           </XStack>
           <span className="npc-cta">

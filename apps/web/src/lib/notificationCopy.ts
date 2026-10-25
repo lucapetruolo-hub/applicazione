@@ -61,6 +61,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   IDENTITY_VERIFICATION_DECLINED: { icon: "🪪", message: "La verifica dell'identità non è andata a buon fine: puoi riprovare subito." },
   // Verifica in attesa ripresa e promemoria (§256).
   IDENTITY_VERIFICATION_READY: { icon: "🪪", message: "La verifica dell'identità è di nuovo disponibile: riprendi da dove eri." },
+  IDENTITY_VERIFICATION_EXPIRING: { icon: "🪪", message: "Il documento della tua verifica sta per scadere: rinnovala per tenere il badge Verificato." },
   IDENTITY_VERIFICATION_REMINDER: { icon: "🪪", message: "Ti manca la verifica dell'identità per inviare preventivi: bastano 2 minuti." },
   // "Completa il profilo" il giorno dopo l'iscrizione (§261).
   PROFILE_SETUP_REMINDER: { icon: "📋", message: "Ti manca poco per completare il profilo: in Oggi trovi il prossimo passo." },

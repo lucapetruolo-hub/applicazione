@@ -52,7 +52,7 @@ export async function generateMetadata(props: { params: Promise<PageParams> }): 
       title: `${professional.businessName} — ${professional.categoryLabel} a ${professional.city}`,
       description: `${professional.businessName}: ${professional.categoryLabel.toLowerCase()} a ${professional.city}. ${
         professional.reviewCount > 0 ? `${professional.rating}/5 su ${professional.reviewCount} recensioni.` : professional.verified
-          ? `Profilo verificato su ${BRAND.name}.`
+          ? `Identità verificata su ${BRAND.name}.`
           : `Profilo su ${BRAND.name}.`
       }`,
     };

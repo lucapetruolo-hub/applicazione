@@ -4,11 +4,12 @@ import type { ProfessionalVerificationFilter, ProfessionalVerificationRow } from
 import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { verificationValidUntil } from "../identity-verification/validity";
 
 /**
  * Badge "Verificato" dei professionisti. Da docs/CHANGELOG.md §253 lo assegna
- * da sola la verifica di documento e selfie (Didit, `markVerifiedByProvider`);
- * all'admin restano i casi dubbi e la verifica manuale di riserva (§200).
+ * solo la verifica di documento e selfie (Didit, `markVerifiedByProvider`);
+ * all'admin resta "Togli verifica" (la verifica manuale, §200, è stata tolta nel §338).
  * Ogni cambio finisce nel registro azioni e il professionista riceve un avviso.
  */
 @Injectable()
@@ -83,36 +84,13 @@ export class ProfessionalVerificationService {
             provider: profile.identityVerifications[0].provider,
             providerSessionId: profile.identityVerifications[0].providerSessionId,
             updatedAt: profile.identityVerifications[0].updatedAt.toISOString(),
+            sandbox: profile.identityVerifications[0].sandbox,
+            documentExpiresAt: profile.identityVerifications[0].documentExpiresAt?.toISOString() ?? null,
+            validUntil: profile.identityVerifications[0].status === "APPROVED" ? verificationValidUntil(profile.identityVerifications[0]).toISOString() : null,
           }
         : null,
       taxIdChecks: (profile.fiscalProfile?.taxIdChecks ?? []).map((c) => ({ kind: c.kind, status: c.status, detail: c.detail, officialName: c.officialName })),
     }));
-  }
-
-  async verify(adminUserId: string, professionalProfileId: string, note?: string) {
-    const profile = await this.findActive(professionalProfileId);
-    if (profile.verified) throw new BadRequestException("Il profilo è già verificato.");
-    const now = new Date();
-    await this.prisma.professionalProfile.update({
-      where: { id: profile.id },
-      data: { verified: true, verifiedAt: now, verifiedByUserId: adminUserId, verificationNote: note || null, verificationRequestedAt: null },
-    });
-    await this.auditLogService.record({
-      entityType: "ProfessionalProfile",
-      entityId: profile.id,
-      fieldName: "verified",
-      oldValue: false,
-      newValue: true,
-      changedByUserId: adminUserId,
-      reason: note || "Documento d'identità e partita IVA/codice fiscale controllati",
-    });
-    // Un caso dubbio di Didit approvato da qui (docs/CHANGELOG.md §253).
-    await this.prisma.identityVerification.updateMany({
-      where: { professionalProfileId: profile.id, status: "NEEDS_REVIEW" },
-      data: { status: "APPROVED", reviewedByUserId: adminUserId, reviewNote: note || null, decidedAt: now },
-    });
-    await this.notificationsService.notify(profile.userId, "PROFILE_VERIFIED", {});
-    return { professionalProfileId: profile.id, verified: true, verifiedAt: now.toISOString() };
   }
 
   /**
@@ -124,7 +102,7 @@ export class ProfessionalVerificationService {
     if (!profile || profile.verified) return;
     await this.prisma.professionalProfile.update({
       where: { id: profile.id },
-      data: { verified: true, verifiedAt: new Date(), verifiedByUserId: null, verificationNote: null, verificationRequestedAt: null },
+      data: { verified: true, verifiedAt: new Date(), verifiedByUserId: null, verificationNote: null, verificationRequestedAt: null, identityExpiredAt: null },
     });
     await this.auditLogService.record({
       entityType: "ProfessionalProfile",
@@ -142,7 +120,7 @@ export class ProfessionalVerificationService {
     if (!profile.verified) throw new BadRequestException("Il profilo non è verificato.");
     await this.prisma.professionalProfile.update({
       where: { id: profile.id },
-      data: { verified: false, verifiedAt: null, verifiedByUserId: null, verificationNote: note },
+      data: { verified: false, verifiedAt: null, verifiedByUserId: null, verificationNote: note, identityExpiredAt: null },
     });
     await this.auditLogService.record({
       entityType: "ProfessionalProfile",
@@ -174,12 +152,18 @@ export class ProfessionalVerificationService {
   async revokeAfterOwnChange(professionalProfileId: string, changedByUserId: string, reason: string): Promise<void> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { id: professionalProfileId },
-      select: { id: true, userId: true, verified: true },
+      select: { id: true, userId: true, verified: true, identityExpiredAt: true },
     });
-    if (!profile?.verified) return;
+    if (!profile) return;
+    // Badge già tolto per documento scaduto: con la persona cambiata non vale più
+    // nemmeno la verifica vecchia, servono di nuovo documento e selfie per i preventivi.
+    if (!profile.verified) {
+      if (profile.identityExpiredAt) await this.prisma.professionalProfile.update({ where: { id: profile.id }, data: { identityExpiredAt: null } });
+      return;
+    }
     await this.prisma.professionalProfile.update({
       where: { id: profile.id },
-      data: { verified: false, verifiedAt: null, verifiedByUserId: null, verificationNote: reason },
+      data: { verified: false, verifiedAt: null, verifiedByUserId: null, verificationNote: reason, identityExpiredAt: null },
     });
     await this.auditLogService.record({
       entityType: "ProfessionalProfile",
@@ -188,6 +172,30 @@ export class ProfessionalVerificationService {
       oldValue: true,
       newValue: false,
       changedByUserId,
+      reason,
+    });
+    await this.notificationsService.notify(profile.userId, "PROFILE_VERIFICATION_REMOVED", { note: reason });
+  }
+
+  /**
+   * Badge nel tempo (decisione dell'utente, docs/CHANGELOG.md §338): tolto
+   * quando il documento della verifica scade (`expired`, il professionista
+   * continua a inviare preventivi mentre la rifà) o quando l'unica verifica
+   * approvata era una prova (`DIDIT_SANDBOX`).
+   */
+  async revokeOverTime(professionalProfileId: string, reason: string, expired: boolean): Promise<void> {
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { id: professionalProfileId }, select: { id: true, userId: true, verified: true } });
+    if (!profile?.verified) return;
+    await this.prisma.professionalProfile.update({
+      where: { id: profile.id },
+      data: { verified: false, verifiedAt: null, verifiedByUserId: null, verificationNote: reason, identityExpiredAt: expired ? new Date() : null },
+    });
+    await this.auditLogService.record({
+      entityType: "ProfessionalProfile",
+      entityId: profile.id,
+      fieldName: "verified",
+      oldValue: true,
+      newValue: false,
       reason,
     });
     await this.notificationsService.notify(profile.userId, "PROFILE_VERIFICATION_REMOVED", { note: reason });
