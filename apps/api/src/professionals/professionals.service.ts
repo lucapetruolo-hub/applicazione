@@ -1143,6 +1143,7 @@ export class ProfessionalsService {
           photoUrls: lead.guidedRequest.photoUrls,
           serviceMode: lead.guidedRequest.serviceMode,
           isUrgent: lead.guidedRequest.isUrgent,
+          timing: lead.guidedRequest.timing,
           // Valorizzati solo se la richiesta è nata da una fascia generica
           // dell'agenda (AvailabilitySlot.maxBookings > 1): il professionista
           // deve vedere subito per quale orario è stata richiesta.

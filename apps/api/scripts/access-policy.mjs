@@ -39,6 +39,7 @@ const publicRoutes = [
   "GET /categories/popular",
   "POST /contact",
   "GET /general-requests/availability",
+  "GET /guided-requests/reach",
   "GET /health",
   "GET /health/features",
   "POST /identity-verification/webhook",

@@ -32,6 +32,7 @@ async function goToAddressStep(page: Page) {
   await page.getByLabel("Descrivi il lavoro").fill("Perdita sotto il lavandino della cucina");
   const home = page.getByText("A domicilio", { exact: true }).first();
   if (await home.count()) await home.click();
+  await page.getByRole("group", { name: "Quando ti serve?" }).getByRole("radio", { name: "Con calma" }).check();
   await page.getByText("Avanti", { exact: true }).click();
   await expect(page.getByLabel("Nome", { exact: true })).toBeVisible();
 }

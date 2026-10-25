@@ -20761,3 +20761,45 @@ accorciata in "Subito dopo potrai lasciare una recensione, anche con foto".
 - I tre motivi sono un elenco con pallino (radio), testo 15px; toccandolo di nuovo si toglie la scelta.
 - Nella conferma di "Rifiuta" un preventivo: "Non ti serve più il lavoro? **Elimina la richiesta**", che apre la stessa conferma (chi non vuole più il lavoro sceglieva "Rifiuta").
 - Nel menu a tre linee una riga piccola sotto "Archivia" ("La ritrovi in Archiviate") ed "Elimina richiesta" ("La ritiri anche per i professionisti"): `CardAction.hint`. Anteprime 15-17.
+
+## 344. Interruttore "Urgente" anche nel riepilogo della richiesta
+
+**Richiesta esplicita dell'utente** (25/10/2026, thread "Interruttore Urgente nell'ultimo passo del preventivo"): nel modulo di richiesta preventivo, all'ultimo passo, "Urgente" deve stare vicino all'opzione che inoltra la richiesta agli altri professionisti se quello scelto non risponde, facile da accendere e spegnere.
+
+**Decisione presa**
+- Nel riepilogo (passo 3) un riquadro "Opzioni di invio" subito sopra il pulsante, con due righe a interruttore tondo: "Urgente" (rosso acceso) e, per la richiesta diretta, "Inoltra se non risponde" (verde, prima era una casella di spunta). Nella richiesta generale c'è solo "Urgente". Tutta la riga si tocca (`role="switch"`), comoda da telefono.
+- È lo stesso stato dell'interruttore "È urgente?" del passo 1, che ora usa la stessa riga a interruttore al posto della casella di spunta (stesso riquadro rosato quando è acceso).
+- Accendendo o spegnendo "Urgente" nel riepilogo cambiano subito il tempo dell'inoltro (60 minuti / 6 ore), "Cosa succede dopo l'invio", la riga del lavoro e il pulsante d'invio (rosso "Invia richiesta urgente" / verde "Invia richiesta"; anche da `/urgente`, se si spegne, il testo torna "Invia richiesta").
+- Componente `SendOptionSwitch` in `GuidedRequestForm.tsx`, stile `.guided-option*` in `globals.css` (stesso disegno di `.notif-switch`); tolte le classi `.guided-urgent-toggle` e `.guided-forward`.
+
+**Verifica**
+- Typecheck e lint di `apps/web`.
+- Prova nel browser (1366px e 390px), richiesta diretta e generale: l'interruttore acceso nel riepilogo risulta acceso anche tornando al passo 1. Anteprime in `/mnt/project-files/anteprime/urgente-riepilogo/`.
+
+**Miglioria approvata da Luca** ("Effettua miglioria 1")
+- Su `/urgente`, se il cliente spegne "Urgente", spariscono la fascia rossa "Richiesta urgente: notifichiamo subito…" e titolo e frase diventano quelli di `/preventivo` ("Richiedi un preventivo gratuito"); riaccendendolo tornano. Il modulo avvisa la pagina con `onUrgentChange`. Provato a 1366px e 390px.
+
+**Versione più approfondita** (richiesta di Luca, stesso thread): "Urgente" facile da segnare anche all'ultimo passo, ma il cliente deve sapere cosa comporta e non usarlo "per sicurezza".
+- **Promessa vera**: su `/urgente` c'era "notifichiamo subito i professionisti disponibili ora", ma nessun controllo guarda chi è disponibile adesso (la richiesta va a tutti quelli che accettano urgenze nel raggio). Luca ha scelto di correggere la scritta: "Richiesta urgente: arriva subito ai professionisti della tua zona" (fascia e descrizione della pagina). Domanda 41 per l'avvocato (Codice del consumo artt. 21-22) nel file unico.
+- **A quanti arriva**: nuova rotta pubblica `GET /guided-requests/reach` (stessa selezione del fan-out, `GuidedRequestsService.reach`, fino a 5 categorie, 60/min per IP) che restituisce quanti professionisti riceverebbero la richiesta senza e con "Urgente". Il riepilogo lo dice in una riga ("Arriva subito a N professionisti di …", "Per ora nessun professionista … ti avvisiamo appena ce n'è uno"), l'inoltro dice "altri N professionisti simili". Il numero urgente compare sotto l'interruttore solo da acceso (da spento faceva pensare che fosse già urgente). "Possono risponderti per 30/60 giorni" sostituito da "Ti avvisiamo a ogni preventivo: li confronti e scegli tu".
+- **Lettore di schermo**: una zona `role="status"` `aria-live="polite"` annuncia ogni cambio ("Urgente attivo. Arriva a 5 professionisti." / "Urgente disattivato. Se non risponde, la inoltriamo dopo 6 ore.").
+- **Due modi a confronto**: interruttore sì/no ("Solo se serve entro 24 ore") e scelta dei tempi "Oggi / In settimana / Con calma" (`URGENCY_CONTROL` in `GuidedRequestForm.tsx`, componente `UrgencyControl`, stile `.guided-timing*`), anteprime in `/mnt/project-files/anteprime/urgente-due-modi/` (e `giro2/`). Test con 10 utenti di prova simulati in due giri (`/mnt/project-files/analisi/urgente-test-utenti.md`): nel secondo giro 5 su 5 scelgono bene in entrambi i modi e sanno dire cosa succede dopo l'invio. Consigliato l'interruttore, **Luca ha scelto i tempi**: vedi sotto.
+- **Prova automatica**: `e2e/tests/richiesta-urgente.spec.ts` (stato uguale nei due passi, tempi dell'inoltro e pulsante aggiornati, annuncio, /urgente coerente, richiesta inviata con `isUrgent` giusto) con controllo axe sul riquadro e sul pulsante; gira nel job della CI con le altre prove nel browser.
+- **Misura dopo il lancio**: `apps/api/src/urgency-metrics/` calcola sugli ultimi 7 giorni quota di urgenti, minuti mediani al primo preventivo (urgenti e normali) e urgenti senza destinatari (`GET /admin/urgency-metrics`, riquadro "Richieste urgenti" nella Home admin). Ogni lunedì alle 9, solo dopo `LAUNCH_DATE` e con almeno 20 richieste, notifica `ADMIN_URGENCY_ALERT` (sito + email) agli admin senza ruoli specifici o SUPER se le urgenti superano il 30% o non ricevono il primo preventivo prima delle normali. Prova in `urgency-metrics.test.ts`.
+
+**Scelte di Luca dopo il test**
+- **"Oggi / In settimana / Con calma"** al posto dell'interruttore, al passo 1 e nel riepilogo (gruppo "Quando ti serve?", radio veri, nessuna scelta già fatta tranne "Oggi" da `/urgente`). Solo "Oggi" rende la richiesta urgente; tolti l'interruttore "Urgente" e `URGENCY_CONTROL`. "Inoltra se non risponde" resta a interruttore.
+- La scelta si salva: enum `RequestTiming` e campo `GuidedRequest.timing` (migrazione `20261025160000_quando_serve`, null per le richieste di prima), `timing` nello schema della richiesta (se c'è decide anche `isUrgent`, `withTimingUrgency`), ricopiato nel rinvio dopo una mancata presentazione. Il professionista la vede: "In settimana"/"Con calma" nella scheda in Richieste (cercabile) e "**Quando:** …" nell'email "Nuova richiesta" ("Oggi" è già il badge Urgente). Etichette in `packages/shared/src/requestTiming.ts`.
+- **Raggio delle urgenti lasciato così**: un'urgente va solo a chi la accetta nel suo raggio urgente; il riepilogo mostra quanti sono.
+- Prova nel browser aggiornata ai tempi (12 verdi in locale); anteprime finali in `/mnt/project-files/anteprime/urgente-due-modi/finale/`.
+
+**Migliorie approvate da Luca** ("Effettua le due migliorie")
+- Il cliente vede la scelta anche in "Le mie richieste": "In settimana"/"Con calma" accanto ai badge della scheda (cercabile), `timing` in `ClientGuidedRequest`; "Oggi" è già il badge Urgente.
+- Test con 5 nuovi utenti di prova che non conoscono il sito, sulla versione finale (`/mnt/project-files/analisi/urgente-test-utenti.md`, terzo giro): 5 su 5 scelgono bene e sanno dire cosa succede dopo l'invio.
+
+**Migliorie dal terzo test, approvate da Luca** ("effettua le 4 migliorie")
+- "Oggi" non sembra più già scelto: finché non lo tocchi è grigio come gli altri, rosso solo il fulmine (5 su 5 lo credevano selezionato).
+- Al passo 1, prima di scegliere, la riga "Oggi solo se serve entro 24 ore." (prima le spiegazioni comparivano solo dopo il tocco).
+- "Ti avvisiamo per email a ogni preventivo" (4 su 5 chiedevano come).
+- Al posto di "I tuoi dati di contatto restano nascosti…": "Finché non accetti un preventivo vedono solo nome, città e lavoro: telefono e via restano nascosti" (3 su 5 non sapevano se la via si vede; è quello che fa `clientNameForProfessional` e CLAUDE.md §5 punto 9).
+- Proposta non scelta: "Richiesta gratuita anche se urgente".

@@ -376,6 +376,7 @@ export class JobIssueOutcomeService {
         postalCode: original.postalCode ?? undefined,
         province: original.province ?? undefined,
         isUrgent: original.isUrgent,
+        timing: original.timing ?? undefined,
         serviceMode: original.serviceMode ?? "HOME",
         forwardIfNoReply: false,
       },

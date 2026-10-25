@@ -21,6 +21,7 @@ export * from "./scheduleChange";
 export * from "./brand";
 export * from "./professionalVerification";
 export * from "./generalRequests";
+export * from "./requestTiming";
 export * from "./phoneCountries";
 export * from "./requestDeadline";
 export * from "./fiscalCompleteness";

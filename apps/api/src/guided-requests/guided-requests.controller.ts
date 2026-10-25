@@ -66,6 +66,23 @@ export class GuidedRequestsController {
     private readonly userStateService: GuidedRequestUserStateService,
   ) {}
 
+  /**
+   * Pubblico: a quanti professionisti arriverebbe la richiesta, senza e con
+   * "Urgente", per il riepilogo del modulo (docs/CHANGELOG.md §344). Solo
+   * numeri, gli stessi che la ricerca mostra già come elenco.
+   */
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @Get("reach")
+  reach(
+    @Query("categoria") categoria?: string,
+    @Query("citta") citta?: string,
+    @Query("modalita") modalita?: string,
+    @Query("professionista") professionista?: string,
+  ) {
+    const categorySlugs = (categoria ?? "").split(",").map((slug) => slug.trim()).filter(Boolean);
+    return this.guidedRequestsService.reach({ categorySlugs, city: citta, serviceMode: modalita, excludeProfileId: professionista });
+  }
+
   // Autenticato, ma comunque limitato (Fase 6): ogni richiesta fa fan-out di
   // Lead a più professionisti, un account che ne crea decine al minuto è
   // spam per l'intera piattaforma, non solo per sé stesso.

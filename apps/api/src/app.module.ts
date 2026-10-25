@@ -37,6 +37,7 @@ import { TaxIdCheckModule } from "./tax-id-check/tax-id-check.module";
 import { IdentityVerificationModule } from "./identity-verification/identity-verification.module";
 import { ProfessionalVerificationModule } from "./professional-verification/professional-verification.module";
 import { GeneralRequestsAdminModule } from "./general-requests/general-requests-admin.module";
+import { UrgencyMetricsModule } from "./urgency-metrics/urgency-metrics.module";
 import { BookingRemindersModule } from "./booking-reminders/booking-reminders.module";
 import { AgendaRemindersModule } from "./agenda-reminders/agenda-reminders.module";
 import { AgendaModule } from "./agenda/agenda.module";
@@ -110,6 +111,7 @@ import { AgendaModule } from "./agenda/agenda.module";
     TaxIdCheckModule,
     IdentityVerificationModule,
     GeneralRequestsAdminModule,
+    UrgencyMetricsModule,
   ],
   controllers: [HealthController],
   // Reflector esplicito nei provider (non solo APP_GUARD): senza, il DI di
