@@ -1663,9 +1663,15 @@ button.notif-row-main:hover {
 .journey-bar-step.is-here {
   color: #2b2420;
 }
+/* Da telefono le etichette restano, più piccole (docs/CHANGELOG.md §346):
+   senza, i passi non attivi erano cerchi muti. */
 @media (max-width: 480px) {
-  .journey-bar-step:not(.is-here) span {
-    display: none;
+  .journey-bar,
+  .journey-bar-step {
+    gap: 6px;
+  }
+  .journey-bar-step {
+    font-size: 13px;
   }
 }
 /* Stato del profilo e cosa non può ancora fare: righe in un solo riquadro. */
@@ -5094,4 +5100,77 @@ a.admin-kpi:hover {
     transform: translateY(8px);
     opacity: 0;
   }
+}
+
+/* Riga di una voce del preventivo (docs/CHANGELOG.md §346): voce, "Da",
+   "A" e la X in una riga; da telefono la voce sopra e i prezzi affiancati. */
+.quote-item-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 104px 104px 32px;
+  gap: 8px;
+  align-items: center;
+}
+.quote-item-price {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2b2420;
+}
+.quote-item-price span {
+  flex-shrink: 0;
+}
+.quote-item-name,
+.quote-item-price input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+@media (max-width: 660px) {
+  .quote-item-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 32px;
+  }
+  .quote-item-name {
+    grid-column: 1 / -1;
+  }
+}
+.slot-pill-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 14px;
+}
+
+/* "Consigli per una bio" in Modifica profilo, chiusi di serie (§346). */
+.bio-tips summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #2b2420;
+  cursor: pointer;
+  list-style: none;
+}
+.bio-tips summary::-webkit-details-marker {
+  display: none;
+}
+.bio-tips summary::after {
+  content: "›";
+  margin-left: 2px;
+  font-size: 16px;
+  color: #0e7a4c;
+  transition: transform 150ms ease;
+}
+.bio-tips[open] summary::after {
+  transform: rotate(90deg);
+}
+.bio-tips summary:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.radius-more summary {
+  color: #0e7a4c;
+  min-height: 24px;
 }

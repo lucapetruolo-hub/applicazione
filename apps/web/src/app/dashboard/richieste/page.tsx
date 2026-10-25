@@ -583,7 +583,7 @@ function RichiesteContent() {
         {visibleLeads.length === 0 ? (
           <YStack gap="$3">
             <Surface>
-              <EmptyState icon="search" title="Nessuna richiesta in questa categoria" description="Cambia filtro o attendi nuove richieste dai clienti." />
+              <EmptyState icon="search" title="Nessuna richiesta in questa sezione" description="Cambia filtro o attendi nuove richieste dai clienti." />
             </Surface>
             {/* Mini-guida per i professionisti appena iscritti (tour
                 pre-lancio): senza richieste la pagina non spiegava cosa

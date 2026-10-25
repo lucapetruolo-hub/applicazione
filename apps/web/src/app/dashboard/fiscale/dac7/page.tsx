@@ -63,7 +63,7 @@ export default function Dac7SummaryPage() {
   const hasOnline = summary?.quarters.some((q) => q.onlineEurCents > 0) ?? false;
 
   return (
-    <Section title="Riepilogo DAC7" maxWidth={760}>
+    <Section title="Riepilogo annuale dei compensi (DAC7)" maxWidth={760}>
       <YStack gap="$5">
         <Link href="/dashboard/fiscale" style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 16, textDecoration: "none" }}>
           ← Dati fiscali e pagamenti

@@ -999,7 +999,7 @@ function DashboardFiscaleContent() {
             <Link href="/dashboard/fiscale/dac7" style={{ textDecoration: "none" }}>
               <XStack alignItems="center" gap="$2" paddingHorizontal="$1">
                 <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
-                  Riepilogo DAC7: i compensi che comunichiamo al fisco
+                  Riepilogo annuale dei compensi (DAC7)
                 </Text>
                 <Text color={brand.cianografiaScuro} aria-hidden>
                   →

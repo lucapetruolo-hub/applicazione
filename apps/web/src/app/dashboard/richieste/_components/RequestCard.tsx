@@ -54,6 +54,11 @@ import { ScheduleChangeBox } from "@/components/ScheduleChangeBox";
 import { DeadlinePill, MiniTimeline, QuoteItemDraft, STAGE_STYLE, ServiceBadge, StagePill, formatDateTime, formatSlotRange, slotKey, slotLabel, smallInputStyle } from "./requestHelpers";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 
+/** Orari liberi mostrati subito nel modulo del preventivo, gli altri con "Altri orari". */
+const QUOTE_SLOTS_SHOWN = 6;
+/** Durate a pillola; oltre resta un menu (docs/CHANGELOG.md §346). */
+const JOB_DAY_PILLS = [1, 2, 3, 4, 5];
+
 export function RequestCard({
   lead,
   stage,
@@ -104,11 +109,19 @@ export function RequestCard({
   const priceRange = lead.quote ? quotePriceTotals(lead.quote.items) : null;
   const deadlines = leadDeadlines(lead);
   const competitorsLabel = formatCompetitors(lead.competitors);
+  // Importo nell'intestazione: finale a lavoro completato, altrimenti la forbice del preventivo.
+  const headerAmount =
+    stage === "completata" && booking?.finalAmountEurCents != null
+      ? formatEurCents(booking.finalAmountEurCents)
+      : priceRange && (priceRange.totalMinEurCents > 0 || priceRange.totalMaxEurCents > 0)
+        ? formatEurRange(priceRange.totalMinEurCents, priceRange.totalMaxEurCents)
+        : null;
 
   const [showQuoteForm, setShowQuoteForm] = useState(false);
   const [items, setItems] = useState<QuoteItemDraft[]>([{ name: "Manodopera", priceMin: "", priceMax: "" }]);
   const modeAvailableSlots = availableSlots.filter((sl) => (isOnline ? sl.onlineAvailable : sl.homeAvailable));
   const [selectedSlotKey, setSelectedSlotKey] = useState(modeAvailableSlots[0] ? slotKey(modeAvailableSlots[0]) : "");
+  const [showAllSlots, setShowAllSlots] = useState(false);
   // Data/orario inserita a mano (richiesta esplicita dell'utente: "dai la
   // possibilità di inserire una data orario manualmente"), non solo come
   // ripiego quando l'agenda non ha fasce — sempre disponibile tramite il
@@ -551,7 +564,7 @@ export function RequestCard({
   if (stage === "da_quotare") {
     menuActions.push({
       icon: "send",
-      text: "Invia preventivo",
+      text: "Prepara il preventivo",
       onPress: () => {
         ensureOpen();
         setShowQuoteForm(true);
@@ -668,13 +681,10 @@ export function RequestCard({
               </Text>
             ) : null}
             {stage === "da_quotare" ? deadlines.map((deadline) => <DeadlinePill key={deadline.label} deadline={deadline} />) : null}
-            {stage === "da_quotare" && competitorsLabel ? (
-              <Text fontSize={13} fontWeight="600" color={brand.grafite70}>
-                {competitorsLabel}
-              </Text>
-            ) : null}
           </XStack>
-          <YStack alignItems="flex-end">
+          {/* Da telefono data e prezzo scendono sotto il nome (riga più in
+              basso): qui andavano a capo prima del nome (docs/CHANGELOG.md §346). */}
+          <YStack alignItems="flex-end" $xs={{ display: "none" }}>
             <Text fontSize={16} color={brand.grafite70}>
               Ricevuta {formatDateTime(lead.createdAt)}
             </Text>
@@ -711,6 +721,17 @@ export function RequestCard({
           </XStack>
           <CardActionsMenu accessibilityLabel="Azioni sulla richiesta" actions={menuActions} />
         </XStack>
+        <XStack $gtXs={{ display: "none" }} alignItems="baseline" gap="$2" flexWrap="wrap">
+          <Text fontSize={16} color={brand.grafite70}>
+            Ricevuta {formatDateTime(lead.createdAt)}
+          </Text>
+          {headerAmount ? (
+            <Text fontFamily="$body" fontWeight="800" fontSize={18} color={brand.grafite}>
+              {headerAmount}
+            </Text>
+          ) : null}
+          {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
+        </XStack>
         {gr.clientEmailVerified && !gr.clientAccountDeleted ? (
           <XStack alignItems="center" gap={4}>
             <Icon name="check" size={13} color={brand.verificato} strokeWidth={2.5} />
@@ -746,6 +767,16 @@ export function RequestCard({
         <Text fontSize={16} color={brand.grafite} lineHeight={22}>
           {gr.description}
         </Text>
+        {/* Sotto la descrizione con l'icona, non più piccolo in un angolo tra
+            i bollini (docs/CHANGELOG.md §346): è ciò che fa rispondere prima. */}
+        {stage === "da_quotare" && competitorsLabel ? (
+          <XStack alignItems="center" gap="$1">
+            <Icon name="user-round" size={14} color={brand.grafite70} />
+            <Text fontSize={16} fontWeight="600" color={brand.grafite70}>
+              {competitorsLabel}
+            </Text>
+          </XStack>
+        ) : null}
         <XStack alignItems="center" gap="$1">
           <Icon name="map-pin" size={14} color={brand.grafite70} />
           <Text fontSize={16} color={brand.grafite70}>
@@ -1099,9 +1130,14 @@ export function RequestCard({
           <YStack gap="$3" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
             {stage === "da_quotare" ? (
               <XStack gap="$2" flexWrap="wrap">
-                <CardButton tone="primary" onPress={() => setShowQuoteForm((v) => !v)}>
-                  Invia preventivo
-                </CardButton>
+                {/* "Prepara il preventivo", e sparisce a modulo aperto: due
+                    "Invia preventivo" con esiti diversi (uno apriva, l'altro
+                    inviava) erano un errore da un tocco (docs/CHANGELOG.md §346). */}
+                {!showQuoteForm ? (
+                  <CardButton tone="primary" onPress={() => setShowQuoteForm(true)}>
+                    Prepara il preventivo
+                  </CardButton>
+                ) : null}
                 <ContactButton onPress={openTimeline} unreadCount={effectiveUnreadCount} />
                 {!confirmingDecline ? (
                   <CardButton tone="danger" onPress={() => setConfirmingDecline(true)}>
@@ -1284,17 +1320,29 @@ export function RequestCard({
           {/* Form invio/modifica preventivo */}
           {showQuoteForm && !(identityVerificationNeeded && (!lead.quote || canResendQuote)) ? (
             <YStack gap="$3" padding="$3" borderRadius={radiusDoc} backgroundColor={brand.gesso} borderWidth={1} borderColor={brand.filetto}>
+              {/* Etichette scritte (docs/CHANGELOG.md §346): da telefono la voce
+                  sta su una riga e "Da" / "A" affiancati sotto, prima "A €"
+                  scendeva da solo a capo. */}
+              <Text fontSize={13} fontWeight="700" color={brand.grafite}>
+                Voci del preventivo
+              </Text>
               {items.map((item, index) => (
-                <XStack key={index} gap="$2" alignItems="center" flexWrap="wrap">
-                  <input aria-label="Voce del preventivo" value={item.name} onChange={(e) => updateItem(index, "name", e.target.value)} placeholder="Voce" style={{ ...smallInputStyle, flex: 1, minWidth: 140 }} />
-                  <input aria-label="Prezzo minimo in euro" value={item.priceMin} onChange={(e) => updateItem(index, "priceMin", e.target.value)} placeholder="Da €" inputMode="decimal" style={{ ...smallInputStyle, width: 80 }} />
-                  <input aria-label="Prezzo massimo in euro" value={item.priceMax} onChange={(e) => updateItem(index, "priceMax", e.target.value)} placeholder="A €" inputMode="decimal" style={{ ...smallInputStyle, width: 80 }} />
+                <div key={index} className="quote-item-row">
+                  <input aria-label="Voce del preventivo" className="quote-item-name" value={item.name} onChange={(e) => updateItem(index, "name", e.target.value)} placeholder="Es. Manodopera" style={smallInputStyle} />
+                  <label className="quote-item-price">
+                    <span>Da</span>
+                    <input aria-label="Prezzo minimo in euro" value={item.priceMin} onChange={(e) => updateItem(index, "priceMin", e.target.value)} placeholder="€" inputMode="decimal" style={{ ...smallInputStyle, width: "100%" }} />
+                  </label>
+                  <label className="quote-item-price">
+                    <span>A</span>
+                    <input aria-label="Prezzo massimo in euro" value={item.priceMax} onChange={(e) => updateItem(index, "priceMax", e.target.value)} placeholder="€" inputMode="decimal" style={{ ...smallInputStyle, width: "100%" }} />
+                  </label>
                   {items.length > 1 ? (
-                    <XStack width={32} height={32} alignItems="center" justifyContent="center" borderWidth={1} borderColor={brand.urgenza} backgroundColor={brand.urgenzaVelo} borderRadius={10} cursor="pointer" onPress={() => removeItem(index)}>
+                    <XStack width={32} height={32} alignItems="center" justifyContent="center" borderWidth={1} borderColor={brand.urgenza} backgroundColor={brand.urgenzaVelo} borderRadius={10} cursor="pointer" onPress={() => removeItem(index)} accessibilityRole="button" accessibilityLabel="Togli la voce">
                       <Icon name="x" size={14} color={brand.urgenza} />
                     </XStack>
                   ) : null}
-                </XStack>
+                </div>
               ))}
               <CardButton alignSelf="flex-start" onPress={() => setItems((prev) => [...prev, { name: "", priceMin: "", priceMax: "" }])}>
                 + Aggiungi voce
@@ -1302,23 +1350,32 @@ export function RequestCard({
 
               {modeAvailableSlots.length > 0 && !useManualDateTime ? (
                 <YStack gap="$2">
-                  <select aria-label="Orario dall'agenda" value={selectedSlotKey} onChange={(e) => setSelectedSlotKey(e.target.value)} style={smallInputStyle}>
-                    {modeAvailableSlots.map((sl) => (
-                      <option key={slotKey(sl)} value={slotKey(sl)}>
-                        {slotLabel(sl)}
-                      </option>
-                    ))}
-                  </select>
-                  <Text
-                    fontSize={13}
-                    fontWeight="600"
-                    color={brand.cianografiaScuro}
-                    cursor="pointer"
-                    accessibilityRole="button"
-                    onPress={() => setUseManualDateTime(true)}
-                  >
-                    Inserisci data e orario manualmente
+                  {/* Pillole con i prossimi orari liberi al posto del menu a
+                      tendina, che sul telefono apriva la rotella di sistema
+                      (docs/CHANGELOG.md §346). */}
+                  <Text fontSize={13} fontWeight="700" color={brand.grafite}>
+                    Quando
                   </Text>
+                  <div className="slot-pills" role="radiogroup" aria-label="Orario dall'agenda">
+                    {(showAllSlots ? modeAvailableSlots : modeAvailableSlots.slice(0, QUOTE_SLOTS_SHOWN)).map((sl) => {
+                      const key = slotKey(sl);
+                      return (
+                        <button key={key} type="button" role="radio" aria-checked={selectedSlotKey === key} className={`slot-pill${selectedSlotKey === key ? " is-on" : ""}`} onClick={() => setSelectedSlotKey(key)}>
+                          {slotLabel(sl)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <XStack gap="$4" flexWrap="wrap">
+                    {!showAllSlots && modeAvailableSlots.length > QUOTE_SLOTS_SHOWN ? (
+                      <button type="button" className="slot-more" onClick={() => setShowAllSlots(true)}>
+                        Altri orari
+                      </button>
+                    ) : null}
+                    <button type="button" className="slot-more" onClick={() => setUseManualDateTime(true)}>
+                      Altra data
+                    </button>
+                  </XStack>
                 </YStack>
               ) : (
                 <YStack gap="$2">
@@ -1360,18 +1417,33 @@ export function RequestCard({
 
               {/* Lavoro su più giorni (docs/CHANGELOG.md §310): stesso orario ogni giorno, non blocca altri lavori. */}
               <YStack gap="$1">
-                <XStack gap="$2" alignItems="center">
-                  <label htmlFor={`job-days-${gr.id}`} style={{ fontSize: 13, fontWeight: 600, color: brand.grafite }}>
-                    Durata
-                  </label>
-                  <select id={`job-days-${gr.id}`} value={jobDays} onChange={(e) => setJobDays(Number(e.target.value))} style={smallInputStyle}>
-                    {Array.from({ length: MAX_JOB_DAYS }, (_, i) => i + 1).map((n) => (
+                {/* Durata a pillole (docs/CHANGELOG.md §346); oltre 5 giorni,
+                    caso raro, resta il menu fino al massimo. */}
+                <Text fontSize={13} fontWeight="700" color={brand.grafite} id={`job-days-${gr.id}`}>
+                  Durata
+                </Text>
+                <div className="slot-pills" role="radiogroup" aria-labelledby={`job-days-${gr.id}`}>
+                  {JOB_DAY_PILLS.map((n) => (
+                    <button key={n} type="button" role="radio" aria-checked={jobDays === n} className={`slot-pill${jobDays === n ? " is-on" : ""}`} onClick={() => setJobDays(n)}>
+                      {n === 1 ? "1 giorno" : `${n} giorni`}
+                    </button>
+                  ))}
+                  <select
+                    aria-label="Più giorni"
+                    value={jobDays > JOB_DAY_PILLS.length ? jobDays : ""}
+                    onChange={(e) => setJobDays(Number(e.target.value))}
+                    className={`slot-pill slot-pill-select${jobDays > JOB_DAY_PILLS.length ? " is-on" : ""}`}
+                  >
+                    <option value="" disabled>
+                      Di più
+                    </option>
+                    {Array.from({ length: MAX_JOB_DAYS - JOB_DAY_PILLS.length }, (_, i) => i + JOB_DAY_PILLS.length + 1).map((n) => (
                       <option key={n} value={n}>
-                        {n === 1 ? "1 giorno" : `${n} giorni`}
+                        {n} giorni
                       </option>
                     ))}
                   </select>
-                </XStack>
+                </div>
                 {jobDaysPreview ? (
                   <Text fontSize={12} color={brand.grafite70}>
                     {jobDaysPreview}
@@ -1381,9 +1453,13 @@ export function RequestCard({
 
               {/* Come vuole essere pagato (docs/CHANGELOG.md §237): uno o più modi, il cliente sceglie tra questi. */}
               <YStack gap="$2" role="group" aria-label="Come vuoi essere pagato">
-                <Text fontSize={16} fontWeight="700" color={brand.grafite}>
-                  Come vuoi essere pagato?{onlinePayments ? " Puoi sceglierne più di uno: il cliente decide tra questi." : ""}
-                </Text>
+                {/* Senza pagamenti online non c'è niente da scegliere: resta
+                    solo la riga (docs/CHANGELOG.md §346). */}
+                {onlinePayments ? (
+                  <Text fontSize={16} fontWeight="700" color={brand.grafite}>
+                    Come vuoi essere pagato? Puoi sceglierne più di uno: il cliente decide tra questi.
+                  </Text>
+                ) : null}
                 {onlinePayments ? (
                   <>
                     {jobPaymentChoices.map((choice) => (
