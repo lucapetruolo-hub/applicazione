@@ -20632,3 +20632,10 @@ preventivi (prima no: lo vedeva solo premendo "Accetta preventivo"):
 
 **Verifica**: typecheck e lint; anteprime da computer e telefono della
 scheda vera e dei riquadri nei vari casi.
+
+Miglioria approvata dall'utente ("effettua miglioria n.2"): con più
+preventivi da valutare nella stessa richiesta, accanto al totale di ognuno
+un'etichetta corta ("Pagamento diretto", "Pagamento online", "Acconto
+online" o "Online o diretto", `paymentOfferShortLabel`), neutra (bianca con
+filetto: non è uno stato, quindi niente colori dei badge). Con un solo
+preventivo non compare: c'è già il riquadro "Pagamento" sotto.

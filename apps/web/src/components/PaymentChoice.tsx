@@ -105,6 +105,17 @@ export function PaymentOffer({
   );
 }
 
+/**
+ * Etichetta corta accanto al totale, per confrontare più preventivi a colpo
+ * d'occhio (docs/CHANGELOG.md §337). null se non c'è un modo utilizzabile.
+ */
+export function paymentOfferShortLabel(offered: JobPaymentChoice[], onlineAvailable: boolean): string | null {
+  const options = selectablePaymentChoices(offered, onlineAvailable);
+  if (options.length === 0) return null;
+  if (options.length > 1) return "Online o diretto";
+  return options[0] === "DIRECT" ? "Pagamento diretto" : options[0] === "ONLINE" ? "Pagamento online" : "Acconto online";
+}
+
 /** Modi che il cliente può davvero scegliere: quelli offerti, senza gli online se Stripe non è attivo. */
 export function selectablePaymentChoices(offered: JobPaymentChoice[], onlineAvailable: boolean): JobPaymentChoice[] {
   return offered.filter((choice) => onlineAvailable || !paymentChoiceIsOnline(choice));
