@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { type MyProfessionalProfile, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
 import { Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
+import { loadMyProfessionalProfile } from "@/lib/myProfessionalProfile";
 import { useAuth } from "@/lib/AuthContext";
 import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
@@ -187,7 +188,7 @@ function RichiesteContent() {
 
   useEffect(() => {
     if (!token) return;
-    Promise.all([apiClient.myLeads(token), apiClient.myProfessionalBookings(token), apiClient.myAvailableSlots(token), apiClient.getMyProfessionalProfile(token)])
+    Promise.all([apiClient.myLeads(token), apiClient.myProfessionalBookings(token), apiClient.myAvailableSlots(token), loadMyProfessionalProfile(token)])
       .then(([l, b, slots, profile]) => {
         setLeads(l);
         setBookings(b);

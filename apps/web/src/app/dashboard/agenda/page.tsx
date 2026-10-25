@@ -25,6 +25,7 @@ import {
 } from "@professionisti/shared";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
+import { loadMyProfessionalProfile } from "@/lib/myProfessionalProfile";
 import { useAuth } from "@/lib/AuthContext";
 import { CalendarShell, MonthGrid, type CalendarView } from "@/components/calendar/CalendarShell";
 import { SkeletonBlock } from "@/components/Skeleton";
@@ -98,6 +99,8 @@ export default function DashboardAgendaPage() {
 }
 
 function DashboardAgendaContent() {
+  // React Compiler solo qui (docs/CHANGELOG.md §335, vedi next.config.mjs).
+  "use memo";
   const { user, token, isLoading, refreshUser } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -445,8 +448,7 @@ function DashboardAgendaContent() {
 
   useEffect(() => {
     if (!token) return;
-    apiClient
-      .getMyProfessionalProfile(token)
+    loadMyProfessionalProfile(token)
       .then((profile) => startTransition(() => setMyProfileId(profile?.id ?? null)))
       .catch(() => {});
   }, [token]);

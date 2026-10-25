@@ -5,6 +5,7 @@ import Link from "next/link";
 import { taxIdCheckMessage, type MyVerificationStatus } from "@professionisti/shared";
 import { Button, Icon, Surface, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
+import { loadMyProfessionalProfile } from "@/lib/myProfessionalProfile";
 import { useAuth } from "@/lib/AuthContext";
 import { CardButton } from "@/components/CardButton";
 
@@ -215,8 +216,7 @@ export function useSetupJourney(
         .myVerificationStatus(token)
         .then(setStatus)
         .catch(() => setStatus(null)),
-      apiClient
-        .getMyProfessionalProfile(token)
+      loadMyProfessionalProfile(token)
         .then((profile) => setStripeVerified(profile?.stripeVerified ?? false))
         .catch(() => setStripeVerified(false)),
     ]).then(() => setSettled(true));
@@ -307,7 +307,7 @@ async function loadJourney(token: string) {
   if (journeyLoading === token) return;
   journeyLoading = token;
   try {
-    const [status, profile] = await Promise.all([apiClient.myVerificationStatus(token), apiClient.getMyProfessionalProfile(token)]);
+    const [status, profile] = await Promise.all([apiClient.myVerificationStatus(token), loadMyProfessionalProfile(token)]);
     publishJourney(token, setupJourney(status, profile?.stripeVerified ?? false));
   } catch {
     // Senza percorso nessun pallino: il menu resta com'era.

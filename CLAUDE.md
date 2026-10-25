@@ -110,6 +110,10 @@ prima discuterne e aggiornare questo file.
   pagina). Un tema nuovo va in `packages/ui/src/usedThemes.ts`, poi
   `pnpm --filter @professionisti/ui genera-default-tamagui`. Sul sito niente
   prop `animation` di Tamagui (driver vuoto, `animations.web.ts`).
+- **React Compiler** sul sito solo nei componenti con la direttiva
+  `"use memo"` (`compilationMode: "annotation"`, docs/CHANGELOG.md §335):
+  acceso ovunque rompe gli stili `<style jsx>`. Mai `"use memo"` in un
+  componente che usa `<style jsx>`.
 - Il build di produzione di `apps/mobile` avviene su **EAS Build** (cloud).
   Dal passaggio a Expo 58 (§299) `npx expo export --platform android|ios`
   funziona anche in locale ed è un buon controllo veloce che il pacchetto
