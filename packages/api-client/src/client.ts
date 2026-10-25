@@ -161,6 +161,8 @@ export type ClientBooking = {
   professionalAddress: string | null;
   /** Vero se il cliente ha già segnalato un no-show per questa prenotazione. */
   refundRequested: boolean;
+  /** Quando il professionista ha premuto "Sto arrivando" (docs/CHANGELOG.md §341), null se non ancora. */
+  onTheWayAt: string | null;
   /** Link per una consulenza video (Meet/Zoom/ecc.), impostato dal professionista — richiesta esplicita dell'utente. */
   meetingLink: string | null;
   /** Il professionista ha eliminato l'account (soft-delete) — richiesta esplicita dell'utente, mostra "Account eliminato" con possibilità di eliminare la prenotazione dalla lista. */
@@ -1498,6 +1500,10 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify(input),
       }),
+
+    /** "Aggiungi al calendario" del cliente (docs/CHANGELOG.md §341): link di Google Calendar e file .ics. */
+    bookingCalendar: (token: string, bookingId: string) =>
+      request<{ googleUrl: string | null; ics: string }>(`/bookings/${bookingId}/calendar`, { headers: { Authorization: `Bearer ${token}` } }),
 
     /** "Sto arrivando" (docs/CHANGELOG.md §288): avvisa il cliente, una volta sola. */
     notifyOnTheWay: (token: string, bookingId: string) =>

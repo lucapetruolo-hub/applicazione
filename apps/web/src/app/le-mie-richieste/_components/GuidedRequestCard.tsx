@@ -12,7 +12,9 @@ import {
   findComuneByName,
   formatEurCents,
   formatItalianUntil,
+  formatServicePriceRange,
   isPlausiblePhoneNumber,
+  quotePriceTotals,
   type GuidedRequestStatusSummary,
 } from "@professionisti/shared";
 import { Autocomplete, Avatar, Badge, BadgeInfo, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
@@ -36,7 +38,8 @@ import { clientNextAction } from "@/lib/clientNextAction";
 import { CLIENT_STAGE_LABEL, type RequestStage } from "@/lib/requestStage";
 import { BookingSection } from "./BookingSection";
 import { QuoteCard } from "./QuoteCard";
-import { ClientMiniTimeline, ClientStagePill, MAX_REQUEST_PHOTOS, STAGE_STYLE, ServiceBadge, formatDateTime, textareaStyle } from "./clientRequestHelpers";
+import { Disclosure } from "./Disclosure";
+import { ClientMiniTimeline, ClientStagePill, MAX_REQUEST_PHOTOS, STAGE_STYLE, ServiceBadge, formatDateTime, requestJobAddress, textareaStyle } from "./clientRequestHelpers";
 
 export function GuidedRequestCard({
   request,
@@ -559,6 +562,90 @@ export function GuidedRequestCard({
 
   const nextAction = clientNextAction(stage, request, booking);
 
+  // Biglietto dell'appuntamento e, sotto, la trattativa chiusa (docs/CHANGELOG.md §341).
+  const jobChosen = Boolean(booking && booking.status !== "CANCELED");
+  const otherQuotes = request.quotes.filter((quote) => quote.id !== acceptedQuote?.id);
+  const quoteCard = (quote: ClientGuidedRequest["quotes"][number]) => (
+    <QuoteCard
+      key={quote.id}
+      quote={quote}
+      token={token}
+      onChanged={onChanged}
+      onAcceptQuote={onAcceptQuote}
+      guidedRequestId={request.id}
+      serviceMode={request.serviceMode}
+      isNew={newQuoteIds?.has(quote.id)}
+      unreadCount={combineUnreadCounts(quoteUnreadCounts?.get(quote.id), threadUnreadCounts?.get(`${request.id}:${quote.professionalProfileId}`))}
+      autoOpenTimeline={autoOpenChatProfessionalId === quote.professionalProfileId}
+      requestOpen={request.status !== "CLOSED"}
+      compare={!jobChosen && request.quotes.filter((q) => q.status === "SENT").length > 1}
+      contactInBooking={quote.status === "ACCEPTED" && booking?.professionalProfileId === quote.professionalProfileId}
+      notChosen={jobChosen && quote.id !== acceptedQuote?.id}
+    />
+  );
+  const acceptedTotals = acceptedQuote ? quotePriceTotals(acceptedQuote.items) : null;
+  const bookingView = booking ? (
+    <YStack gap="$3">
+      <BookingSection
+        booking={booking}
+        token={token}
+        onChanged={onChanged}
+        address={requestJobAddress(request)}
+        onReportProblem={booking.issueTypesAllowed.length > 0 ? () => setShowReportModal(true) : null}
+        unreadCount={combineUnreadCounts(
+          bookingUnreadCounts?.get(booking.id),
+          threadUnreadCounts?.get(`${request.id}:${booking.professionalProfileId}`),
+          // Il pulsante del preventivo accettato è qui: anche i suoi non letti.
+          acceptedQuote ? quoteUnreadCounts?.get(acceptedQuote.id) : undefined,
+        )}
+      />
+      <YStack height={1} backgroundColor={brand.filetto} marginVertical="$1" />
+      {acceptedQuote && acceptedTotals ? (
+        <Disclosure
+          title="Preventivo accettato"
+          summary={[acceptedQuote.items.map((item) => item.name).join(", "), formatServicePriceRange(acceptedTotals.totalMinEurCents, acceptedTotals.totalMaxEurCents)].filter(Boolean).join(" · ")}
+        >
+          {quoteCard(acceptedQuote)}
+        </Disclosure>
+      ) : null}
+      {request.photoUrls.length > 0 ? (
+        <Disclosure title="Foto della richiesta" summary={String(request.photoUrls.length)}>
+          <XStack gap="$2" flexWrap="wrap" paddingHorizontal="$1">
+            {request.photoUrls.map((url, index) => (
+              <MediaPreview key={url} url={url} onClick={() => setOpenPhotoIndex(index)} style={{ width: 72, height: 72, borderRadius: 10, border: `1px solid ${brand.filetto}`, cursor: "pointer" }} />
+            ))}
+          </XStack>
+        </Disclosure>
+      ) : null}
+      {otherQuotes.length > 0 ? (
+        // Annullato l'appuntamento, gli altri preventivi tornano accettabili e restano aperti.
+        <Disclosure
+          muted={jobChosen}
+          defaultOpen={!jobChosen}
+          title={jobChosen ? (otherQuotes.length === 1 ? "1 altro preventivo non scelto" : `${otherQuotes.length} altri preventivi non scelti`) : "Altri preventivi ricevuti"}
+        >
+          {otherQuotes.map(quoteCard)}
+        </Disclosure>
+      ) : null}
+      {booking.status === "CONFIRMED" || booking.status === "PENDING" ? (
+        // Cambiare idea senza cercare nel menu (§341): scrivere o annullare.
+        <XStack alignItems="center" gap="$4" flexWrap="wrap" paddingHorizontal="$1" paddingTop="$1">
+          <Text fontSize={16} color={brand.grafite70}>
+            Serve cambiare?
+          </Text>
+          {booking.guidedRequestId ? (
+            <Text fontSize={16} fontWeight="600" color={brand.grafite} textDecorationLine="underline" cursor="pointer" accessibilityRole="button" onPress={() => setShowBookingChat(true)}>
+              Scrivi un messaggio
+            </Text>
+          ) : null}
+          <Text fontSize={16} fontWeight="600" color={brand.urgenza} textDecorationLine="underline" cursor="pointer" accessibilityRole="button" onPress={() => setShowCancelModal(true)}>
+            Annulla appuntamento
+          </Text>
+        </XStack>
+      ) : null}
+    </YStack>
+  ) : null;
+
   const headingName = booking ?(booking.professionalAccountDeleted ? "Account eliminato" : booking.businessName) : request.categoryLabel;
 
   return (
@@ -662,7 +749,11 @@ export function GuidedRequestCard({
 
       {isOpen ? (
         <YStack paddingHorizontal="$4" paddingBottom="$4" gap="$4" borderTopWidth={1} borderTopColor={brand.filetto}>
-          {stage !== "scaduta" && stage !== "chiusa" ? (
+          {/* Con un lavoro la scheda parte dal biglietto dell'appuntamento (§341):
+              andamento, riepiloghi e trattativa stanno sotto o spariscono. */}
+          {booking ? bookingView : null}
+
+          {stage !== "scaduta" && stage !== "chiusa" && !booking ? (
             <YStack gap="$2" paddingTop="$3">
               <Text fontSize={13} fontWeight="800" color={brand.grafite70} textTransform="uppercase">
                 Andamento
@@ -671,7 +762,7 @@ export function GuidedRequestCard({
             </YStack>
           ) : null}
 
-          {statusSummary ? (
+          {statusSummary && !booking ? (
             <YStack gap="$1" backgroundColor={brand.gesso} borderRadius="$3" padding="$3">
               {statusSummary.statusMessage ? (
                 <Text fontSize={13} color={brand.grafite70}>
@@ -701,7 +792,7 @@ export function GuidedRequestCard({
             </XStack>
           ) : null}
 
-          {!request.professionalProfileId && averagePriceEurCents !== null ? (
+          {!request.professionalProfileId && averagePriceEurCents !== null && !booking ? (
             <XStack alignItems="center" gap="$2" backgroundColor={brand.cianografiaVelo} borderRadius="$3" padding="$3">
               <Icon name="coins" size={16} color={brand.cianografiaScuro} strokeWidth={1.5} />
               <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
@@ -710,7 +801,7 @@ export function GuidedRequestCard({
             </XStack>
           ) : null}
 
-          {request.address ? (
+          {request.address && !booking ? (
             <XStack alignItems="center" gap="$1">
               <Icon name="map-pin" size={14} color={brand.grafite70} strokeWidth={1.5} />
               <Text fontSize={16} color={brand.grafite70}>
@@ -720,7 +811,7 @@ export function GuidedRequestCard({
             </XStack>
           ) : null}
 
-          {request.photoUrls.length > 0 ? (
+          {request.photoUrls.length > 0 && !booking ? (
             <XStack gap="$2" flexWrap="wrap">
               {request.photoUrls.map((url, index) => (
                 <MediaPreview key={url} url={url} onClick={() => setOpenPhotoIndex(index)} style={{ width: 72, height: 72, borderRadius: 10, border: `1px solid ${brand.filetto}`, cursor: "pointer" }} />
@@ -731,12 +822,14 @@ export function GuidedRequestCard({
           {/* "Ripeti la richiesta" e "Modifica" sulla stessa riga, con bordo
               come gli altri pulsanti della scheda (docs/CHANGELOG.md §195:
               prima il primo era solo testo e il secondo più piccolo). */}
-          <XStack gap="$2" flexWrap="wrap" alignItems="center">
-            {canDelete && canEditDetails ? <CardButton onPress={startEditing}>Modifica</CardButton> : null}
-            <Link href={repeatHref} style={{ textDecoration: "none" }}>
-              <CardButton>Ripeti la richiesta</CardButton>
-            </Link>
-          </XStack>
+          {booking ? null : (
+            <XStack gap="$2" flexWrap="wrap" alignItems="center">
+              {canDelete && canEditDetails ? <CardButton onPress={startEditing}>Modifica</CardButton> : null}
+              <Link href={repeatHref} style={{ textDecoration: "none" }}>
+                <CardButton>Ripeti la richiesta</CardButton>
+              </Link>
+            </XStack>
+          )}
           {canDelete && !canEditDetails ? (
             <Text fontSize={13} color={brand.grafite70}>
               Non modificabile: hai già ricevuto un preventivo.
@@ -749,7 +842,7 @@ export function GuidedRequestCard({
           ) : null}
 
           {/* Elenco dei destinatari solo per una richiesta diretta: una generale arriva a tutti i professionisti della zona (§211). */}
-          {request.professionalProfileId && request.sentTo.length > 0 ? (
+          {request.professionalProfileId && request.sentTo.length > 0 && !booking ? (
             <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
               <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
                 Inviata a
@@ -807,48 +900,18 @@ export function GuidedRequestCard({
             />
           ) : null}
 
-          {request.quotes.length > 0 ? (
+          {booking ? null : request.quotes.length > 0 ? (
             <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
               <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
                 Preventivi ricevuti
               </Text>
-              {request.quotes.map((quote) => (
-                <QuoteCard
-                  key={quote.id}
-                  quote={quote}
-                  token={token}
-                  onChanged={onChanged}
-                  onAcceptQuote={onAcceptQuote}
-                  guidedRequestId={request.id}
-                  serviceMode={request.serviceMode}
-                  isNew={newQuoteIds?.has(quote.id)}
-                  unreadCount={combineUnreadCounts(quoteUnreadCounts?.get(quote.id), threadUnreadCounts?.get(`${request.id}:${quote.professionalProfileId}`))}
-                  autoOpenTimeline={autoOpenChatProfessionalId === quote.professionalProfileId}
-                  requestOpen={request.status !== "CLOSED"}
-                  compare={request.quotes.filter((q) => q.status === "SENT").length > 1}
-                  contactInBooking={quote.status === "ACCEPTED" && booking?.professionalProfileId === quote.professionalProfileId}
-                />
-              ))}
+              {request.quotes.map(quoteCard)}
             </YStack>
           ) : (
             <Text color={brand.grafite70} fontSize={16}>
               Nessun preventivo ricevuto ancora.
             </Text>
           )}
-
-          {booking ? (
-            <BookingSection
-              booking={booking}
-              token={token}
-              onChanged={onChanged}
-              unreadCount={combineUnreadCounts(
-                bookingUnreadCounts?.get(booking.id),
-                threadUnreadCounts?.get(`${request.id}:${booking.professionalProfileId}`),
-                // Il pulsante del preventivo accettato è qui: anche i suoi non letti.
-                acceptedQuote ? quoteUnreadCounts?.get(acceptedQuote.id) : undefined,
-              )}
-            />
-          ) : null}
 
           {openPhotoIndex !== null ? <PhotoLightbox photos={request.photoUrls} initialIndex={openPhotoIndex} onClose={() => setOpenPhotoIndex(null)} /> : null}
 

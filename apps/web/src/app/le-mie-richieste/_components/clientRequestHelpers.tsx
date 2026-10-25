@@ -2,6 +2,7 @@
 
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
 import { Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { formatBookingAddress } from "@professionisti/shared";
 import { CLIENT_STAGE_LABEL, REQUEST_STAGE_STYLE, type RequestStage } from "@/lib/requestStage";
 
 // Foto E video (richiesta esplicita dell'utente), fino a 5 elementi
@@ -135,4 +136,18 @@ export function ClientMiniTimeline({ stage }: { stage: RequestStage }) {
       })}
     </XStack>
   );
+}
+
+/** Dove si svolge il lavoro, per il biglietto dell'appuntamento (§341); null per una consulenza online. */
+export function requestJobAddress(request: ClientGuidedRequest): string | null {
+  if (request.serviceMode === "ONLINE") return null;
+  const full = formatBookingAddress({
+    street: request.address,
+    houseNumber: request.houseNumber,
+    addressExtra: request.addressExtra,
+    postalCode: request.postalCode,
+    city: request.city,
+    province: request.province,
+  });
+  return full ?? ([request.address, request.city].filter(Boolean).join(", ") || null);
 }

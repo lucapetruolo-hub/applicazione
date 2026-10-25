@@ -18,7 +18,8 @@ import { RestoreAllArchivedBar, RestoredNotice } from "@/components/RequestCardP
 import { highlightDeepLinkTarget } from "@/lib/deepLinkHighlight";
 import { classifyClientRequestStage, type RequestStage } from "@/lib/requestStage";
 import { GuidedRequestCard } from "./_components/GuidedRequestCard";
-import { clientRequestSearchText, filterInputStyle } from "./_components/clientRequestHelpers";
+import { clientRequestSearchText, filterInputStyle, requestJobAddress } from "./_components/clientRequestHelpers";
+import { BookingConfirmed } from "./_components/BookingConfirmed";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 // Stesso intervallo/motivo già documentato in apps/web/src/app/dashboard/page.tsx.
@@ -94,6 +95,7 @@ function LeMieRichiesteContent() {
   const [pageSize] = useState(5);
   const [page, setPage] = useState(1);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [justBookedId, setJustBookedId] = useState<string | null>(null);
 
   // Simbolo "Nuovo" sulla singola card (richiesta esplicita dell'utente:
   // "rendilo evidente anche nella lista") — un aggiornamento può arrivare
@@ -155,7 +157,10 @@ function LeMieRichiesteContent() {
   const bookingByRequestId = useMemo(() => {
     const map = new Map<string, ClientBooking>();
     (bookings ?? []).forEach((b) => {
-      if (b.guidedRequestId) map.set(b.guidedRequestId, b);
+      if (!b.guidedRequestId) return;
+      // Un appuntamento annullato non copre quello nato dopo da un altro preventivo (§341).
+      const current = map.get(b.guidedRequestId);
+      if (!current || current.status === "CANCELED") map.set(b.guidedRequestId, b);
     });
     return map;
   }, [bookings]);
@@ -356,12 +361,31 @@ function LeMieRichiesteContent() {
   // preventivo resta da accettare.
   async function handleAcceptQuote(quoteId: string, paymentMethod: JobPaymentChoice) {
     if (!token) throw new Error("Devi accedere per accettare un preventivo.");
-    const { checkoutUrl } = await apiClient.acceptQuote(token, quoteId, paymentMethod);
+    const { checkoutUrl, bookingId } = await apiClient.acceptQuote(token, quoteId, paymentMethod);
     if (checkoutUrl) {
       window.location.href = checkoutUrl;
       return;
     }
+    if (bookingId) setJustBookedId(bookingId);
     reload();
+  }
+
+  // "Appuntamento prenotato" subito dopo l'accettazione (docs/CHANGELOG.md
+  // §341): col pagamento diretto dalla risposta, con l'acconto online al
+  // ritorno da Stripe, appena il lavoro compare.
+  const [confirmDismissed, setConfirmDismissed] = useState(false);
+  const paidRequestId = depositPaid && !confirmDismissed ? searchParams.get("open") : null;
+  const confirmedBooking =
+    (justBookedId ? bookings?.find((b) => b.id === justBookedId) : undefined) ??
+    (paidRequestId ? bookings?.find((b) => b.guidedRequestId === paidRequestId && b.status !== "CANCELED") : undefined);
+  const confirmedRequest = confirmedBooking ? requests?.find((r) => r.id === confirmedBooking.guidedRequestId) : undefined;
+  function closeConfirmation() {
+    setJustBookedId(null);
+    setConfirmDismissed(true);
+    if (confirmedRequest) {
+      setOpenId(confirmedRequest.id);
+      window.setTimeout(() => document.getElementById(`request-${confirmedRequest.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+    }
   }
 
   if (isLoading) return null;
@@ -377,6 +401,14 @@ function LeMieRichiesteContent() {
             <Button variant="primary">Accedi</Button>
           </Link>
         </YStack>
+      </YStack>
+    );
+  }
+
+  if (confirmedBooking && confirmedRequest) {
+    return (
+      <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$8" paddingHorizontal="$4">
+        <BookingConfirmed booking={confirmedBooking} address={requestJobAddress(confirmedRequest)} token={token} onDone={closeConfirmation} />
       </YStack>
     );
   }

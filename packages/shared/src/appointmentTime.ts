@@ -84,3 +84,36 @@ export function jobDayCount(start: DateLike, end?: DateLike | null): number {
   const lastDay = Date.parse(new Date(endDate.getTime() - 1).toISOString().slice(0, 10));
   return Math.round((lastDay - startDay) / 86_400_000) + 1;
 }
+
+/**
+ * Momento dell'appuntamento visto dal cliente (docs/CHANGELOG.md §341): la
+ * scheda del lavoro accettato cambia la riga in cima e il pulsante
+ * principale a seconda di quanto manca. `onTheWayAt` è l'ora vera in cui il
+ * professionista ha premuto "Sto arrivando" (non un'ora di parete).
+ */
+export type AppointmentMoment =
+  | { kind: "days"; days: number }
+  | { kind: "tomorrow" }
+  | { kind: "today" }
+  | { kind: "onTheWay"; since: string }
+  | { kind: "inProgress" }
+  | { kind: "over" };
+
+/** Per quanto resta in cima "sta arrivando" dopo l'avviso. */
+const ON_THE_WAY_MS = 3 * 60 * 60 * 1000;
+
+export function appointmentMoment(start: DateLike, end: DateLike | null | undefined, onTheWayAt: DateLike | null | undefined, now: Date = new Date()): AppointmentMoment {
+  const wallNow = wallClockNow(now);
+  const startDate = toDate(start);
+  // Senza fine nota l'appuntamento dura un'ora, come nel calendario.
+  const endDate = end && toDate(end).getTime() > startDate.getTime() ? toDate(end) : new Date(startDate.getTime() + 60 * 60 * 1000);
+  if (wallNow.getTime() >= endDate.getTime()) return { kind: "over" };
+  if (onTheWayAt && now.getTime() - toDate(onTheWayAt).getTime() < ON_THE_WAY_MS) {
+    return { kind: "onTheWay", since: formatAppointmentTime(wallClockNow(toDate(onTheWayAt))) };
+  }
+  if (wallNow.getTime() >= startDate.getTime()) return { kind: "inProgress" };
+  const days = Math.round((Date.parse(startDate.toISOString().slice(0, 10)) - wallClockToday(now).getTime()) / 86_400_000);
+  if (days <= 0) return { kind: "today" };
+  if (days === 1) return { kind: "tomorrow" };
+  return { kind: "days", days };
+}

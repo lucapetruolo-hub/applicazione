@@ -137,6 +137,31 @@ describe("BookingsService.createFromQuote", () => {
   });
 });
 
+describe("BookingsService.createFromQuote — un solo lavoro per richiesta (§341)", () => {
+  it("rifiuta un altro preventivo della stessa richiesta se ce n'è già uno accettato, anche col pagamento diretto", async () => {
+    const { service, prisma } = buildService();
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote({ id: "quote-2" }));
+    (prisma.booking.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "lavoro-1" });
+
+    await expect(service.createFromQuote("client-1", "quote-2")).rejects.toThrow(ConflictException);
+    expect(prisma.booking.create).not.toHaveBeenCalled();
+    expect(prisma.booking.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ quote: { guidedRequestId: "gr-1" }, status: { not: "CANCELED" } }) }),
+    );
+  });
+
+  it("non apre il pagamento dell'acconto se c'è già un lavoro per la richiesta", async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test";
+    const { service, prisma, jobPaymentsService } = buildService();
+    (prisma.quote.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(baseQuote({ paymentOptions: ["ONLINE"], depositPercent: 20 }));
+    (prisma.booking.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "lavoro-1" });
+
+    await expect(service.createFromQuote("client-1", "quote-1", "ONLINE")).rejects.toThrow(ConflictException);
+    expect(jobPaymentsService.createQuoteDepositCheckout).not.toHaveBeenCalled();
+    delete process.env.STRIPE_SECRET_KEY;
+  });
+});
+
 describe("BookingsService.createFromQuote — metodo di pagamento (§168)", () => {
   it("con l'acconto online apre il pagamento e non crea ancora la prenotazione (§240)", async () => {
     process.env.STRIPE_SECRET_KEY = "sk_test";
@@ -210,6 +235,15 @@ describe("BookingsService.reopenBooking", () => {
       quote: null,
     };
   }
+
+  it("il cliente non riapre un appuntamento se nel frattempo ha accettato un altro preventivo della richiesta (§341)", async () => {
+    const { service, prisma } = buildService();
+    (prisma.booking.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({ ...canceledBooking("CLIENT"), quote: { guidedRequestId: "gr-1" } });
+    (prisma.booking.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "lavoro-2" });
+
+    await expect(service.reopenBooking("client-1", "booking-1")).rejects.toThrow(ConflictException);
+    expect(prisma.booking.update).not.toHaveBeenCalled();
+  });
 
   it("il cliente non può riaprire un intervento annullato dal professionista", async () => {
     const { service, prisma } = buildService();

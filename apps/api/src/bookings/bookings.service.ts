@@ -29,6 +29,7 @@ import {
   type ReportProfessionalJobProblemInput,
   type CancelBookingByProfessionalInput, type ClientConfirmCompleteInput, type CompleteBookingInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { BOOKING_CALENDAR_INCLUDE, bookingCalendar } from "../email/booking-calendar";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { TimelineService } from "../timeline/timeline.service";
@@ -37,6 +38,9 @@ import { onlinePaymentsEnabled } from "../job-payments/online-payments-enabled";
 import { stripeVerified } from "../professional-fiscal/public-visibility";
 import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
 import { PROFESSIONAL_BUSY_MESSAGE, capacityAt, countOverlapping, loadCommitments, lockProfessionalAgenda } from "../agenda/commitments";
+
+/** Il cliente ha già un lavoro per questa richiesta (docs/CHANGELOG.md §341). */
+const OTHER_JOB_MESSAGE = "Hai già accettato un altro preventivo per questa richiesta. Per cambiare professionista annulla prima l'appuntamento.";
 
 type AcceptableQuote = Awaited<ReturnType<BookingsService["loadAcceptableQuote"]>>;
 
@@ -124,6 +128,11 @@ export class BookingsService {
     if (quote.status === "REJECTED" || quote.status === "WITHDRAWN") {
       throw new ForbiddenException("Questo preventivo non è più disponibile.");
     }
+    // Un solo lavoro per richiesta (docs/CHANGELOG.md §341): accettato un
+    // preventivo, gli altri della stessa richiesta non si accettano più. Prima
+    // il controllo c'era solo per l'acconto online e con il pagamento diretto
+    // nasceva un secondo lavoro.
+    await this.assertNoOtherJob(this.prisma, quote.guidedRequestId);
     // Il cliente sceglie solo tra i modi offerti dal professionista nel preventivo (docs/CHANGELOG.md §237).
     const offer = quotePaymentOffer(quote);
     if (!offer.paymentOptions.includes(paymentMethod)) {
@@ -131,6 +140,15 @@ export class BookingsService {
     }
 
     return quote;
+  }
+
+  /** La richiesta non ha già un lavoro non annullato (un preventivo accettato), escluso `exceptBookingId`. */
+  private async assertNoOtherJob(db: PrismaClient | Prisma.TransactionClient, guidedRequestId: string, exceptBookingId?: string): Promise<void> {
+    const other = await db.booking.findFirst({
+      where: { quote: { guidedRequestId }, status: { not: "CANCELED" }, ...(exceptBookingId ? { id: { not: exceptBookingId } } : {}) },
+      select: { id: true },
+    });
+    if (other) throw new ConflictException(OTHER_JOB_MESSAGE);
   }
 
   /**
@@ -232,6 +250,9 @@ export class BookingsService {
       if (await tx.booking.findUnique({ where: { quoteId: quote.id }, select: { id: true } })) {
         throw new ConflictException("Questo preventivo è già stato accettato.");
       }
+      // Due preventivi della stessa richiesta accettati insieme (§341): il secondo vede il primo.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`request:${quote.guidedRequestId}`}))`;
+      await this.assertNoOtherJob(tx, quote.guidedRequestId);
       await this.assertProfessionalFree(tx, quote);
       return tx.booking.create({
       data: {
@@ -760,6 +781,15 @@ export class BookingsService {
    * stessa cautela già applicata a QuotesService.confirmProposedDate
    * (transazione Serializable).
    */
+  /** Evento del calendario per il cliente: link di Google Calendar e file .ics, con lo stesso UID delle email. */
+  async calendarForClient(clientUserId: string, bookingId: string): Promise<{ googleUrl: string | null; ics: string }> {
+    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: BOOKING_CALENDAR_INCLUDE });
+    if (!booking || booking.clientId !== clientUserId) throw new NotFoundException("Prenotazione non trovata.");
+    if (booking.status === "CANCELED") throw new BadRequestException("Questo appuntamento è stato annullato.");
+    const calendar = bookingCalendar(booking, "client");
+    return { googleUrl: calendar.calendarUrl, ics: calendar.attachment.content };
+  }
+
   async reopenBooking(userId: string, bookingId: string) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
@@ -786,6 +816,8 @@ export class BookingsService {
     if (!isClient && booking.canceledBy !== "PROFESSIONAL") {
       throw new ForbiddenException("Il cliente ha annullato questo intervento: solo lui può riaprirlo.");
     }
+    // Nel frattempo il cliente ha accettato un altro preventivo della stessa richiesta (§341).
+    if (booking.quote) await this.assertNoOtherJob(this.prisma, booking.quote.guidedRequestId, booking.id);
 
     const scheduledAt = booking.scheduledAt;
     const dayStart = new Date(scheduledAt);
@@ -1277,6 +1309,8 @@ export class BookingsService {
       // l'eliminazione della prenotazione dalla propria lista.
       professionalAccountDeleted: booking.professionalProfile.deletedAt !== null,
       clientConfirmedCompletedAt: booking.clientConfirmedCompletedAt?.toISOString() ?? null,
+      // "Sto arrivando" del professionista, mostrato in cima alla scheda (docs/CHANGELOG.md §341).
+      onTheWayAt: booking.onTheWayAt?.toISOString() ?? null,
       professionalCompletionPhotoUrls: booking.professionalCompletionPhotoUrls,
       clientCompletionPhotoUrls: booking.clientCompletionPhotoUrls,
     }));

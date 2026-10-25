@@ -72,12 +72,15 @@ export function QuoteCard({
   contactInBooking,
   requestOpen,
   compare,
+  notChosen,
 }: {
   /** Più preventivi nella stessa richiesta: etichetta del pagamento accanto al totale (docs/CHANGELOG.md §339). */
   compare?: boolean;
   quote: ClientGuidedRequest["quotes"][number];
   /** Richiesta ancora aperta: dopo un rifiuto il professionista può inviare un nuovo preventivo (docs/CHANGELOG.md §188). */
   requestOpen?: boolean;
+  /** Per questa richiesta il cliente ha già accettato un altro preventivo: niente Accetta, Modifica, Rifiuta (docs/CHANGELOG.md §341). */
+  notChosen?: boolean;
   token: string;
   onChanged: () => void;
   onAcceptQuote: (quoteId: string, paymentMethod: JobPaymentChoice) => Promise<void>;
@@ -426,7 +429,7 @@ export function QuoteCard({
           ) : null}
         </YStack>
       ) : null}
-      {quote.status === "SENT" ? (
+      {quote.status === "SENT" && !notChosen ? (
         <PaymentOffer
           quoteMaxEurCents={priceTotals.totalMaxEurCents}
           onlineAvailable={onlinePayments}
@@ -445,7 +448,11 @@ export function QuoteCard({
         </YStack>
       ) : null}
 
-      {quote.status === "SENT" ? (
+      {notChosen && (quote.status === "SENT" || quote.status === "MODIFICATION_REQUESTED") ? (
+        <Text fontSize={13} color={brand.grafite70} fontWeight="600">
+          Non scelto: hai accettato un altro preventivo
+        </Text>
+      ) : quote.status === "SENT" ? (
         <>
           {/* Da telefono "Accetta preventivo" largo in fondo, dove arriva il
               pollice, con "Modifica" e "Rifiuta" affiancati sopra; da
