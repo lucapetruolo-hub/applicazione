@@ -13,6 +13,7 @@ import {
   passwordResetRequestSchema,
   registerSchema,
   updateAccountSchema,
+  updatePreferencesSchema,
   verifyEmailCodeSchema,
   verifyEmailSchema,
   agendaAttention,
@@ -26,6 +27,7 @@ import {
   type PasswordResetRequestInput,
   type RegisterInput,
   type UpdateAccountInput,
+  type UpdatePreferencesInput,
   type VerifyEmailCodeInput,
   type VerifyEmailInput,
 } from "@professionisti/shared";
@@ -163,6 +165,14 @@ export class AuthController {
     return this.withBusinessName(user);
   }
 
+  /** Preferenze dell'interfaccia (menu laterale ridotto, docs/CHANGELOG.md §334). */
+  @UseGuards(JwtAuthGuard)
+  @Patch("me/preferences")
+  async updatePreferences(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(updatePreferencesSchema)) body: UpdatePreferencesInput) {
+    const user = await this.prisma.user.update({ where: { id: req.user.userId }, data: { sidebarCollapsed: body.sidebarCollapsed }, select: { sidebarCollapsed: true } });
+    return { sidebarCollapsed: user.sidebarCollapsed };
+  }
+
   /**
    * Nome attività al posto del nome personale nell'header (AccountMenu),
    * richiesta esplicita dell'utente: un professionista è identificato dalla
@@ -195,6 +205,7 @@ export class AuthController {
     emailCodeAttempts: number;
     signupCategorySlugs: string[];
     signupEntityType: "PRIVATE_INDIVIDUAL" | "SOLE_PROPRIETOR" | "BUSINESS" | null;
+    sidebarCollapsed?: boolean | null;
   }) {
     const { id, phone, email, name, surname, birthDate, role, passwordHash, imageUrl, street, houseNumber, addressExtra, postalCode, city, province } = user;
     // Bug reale corretto (richiesta esplicita dell'utente: "quando faccio
@@ -273,6 +284,7 @@ export class AuthController {
       signupCategorySlugs: user.signupCategorySlugs,
       // Privato, P.IVA o azienda scelto in registrazione (§243): precompila /dashboard/fiscale.
       signupEntityType: user.signupEntityType,
+      sidebarCollapsed: user.sidebarCollapsed ?? null,
     };
   }
 

@@ -100,12 +100,12 @@ prima discuterne e aggiornare questo file.
   confronto delle pagine. React, React Native e le versioni grandi di Expo
   sono esclusi: si aggiornano a mano, insieme.
 - **Il sito usa i sorgenti di `packages/shared`** (alias in
-  `apps/web/next.config.mjs`, `sideEffects: false`, docs/CHANGELOG.md §334):
+  `apps/web/next.config.mjs`, `sideEffects: false`, docs/CHANGELOG.md §335):
   ogni pagina prende solo le parti che usa. Un modulo di `packages/shared`
   non deve contare su effetti al solo import (registrazioni, globali). L'API
   usa sempre `dist/`.
 - **Config Tamagui**: i valori di default stanno in
-  `packages/ui/src/tamaguiDefaults.ts` (generato, §334), non si importa
+  `packages/ui/src/tamaguiDefaults.ts` (generato, §335), non si importa
   `@tamagui/config` nel sito (1408 temi e animazioni di React Native in ogni
   pagina). Un tema nuovo va in `packages/ui/src/usedThemes.ts`, poi
   `pnpm --filter @professionisti/ui genera-default-tamagui`. Sul sito niente

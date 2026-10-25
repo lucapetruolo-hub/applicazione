@@ -101,7 +101,7 @@ const nextConfig = {
       // Il sito usa i sorgenti di packages/shared (ESM) e non dist/
       // (CommonJS): con `sideEffects: false` ogni pagina prende solo le parti
       // che usa (zod 4, elenco dei comuni...) invece di tutto il pacchetto.
-      // docs/CHANGELOG.md §326 e §334. L'API continua a usare dist/.
+      // docs/CHANGELOG.md §326 e §335. L'API continua a usare dist/.
       "@professionisti/shared$": fileURLToPath(new URL("../../packages/shared/src/index.ts", import.meta.url)),
     };
     config.resolve.extensions = [".web.js", ".web.jsx", ".web.ts", ".web.tsx", ...config.resolve.extensions];

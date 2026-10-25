@@ -12,7 +12,7 @@ import { MegaMenu } from "./MegaMenu";
 import { NotificationBell } from "./NotificationBell";
 import { BRAND } from "@professionisti/shared";
 
-// Caricata a parte (docs/CHANGELOG.md §334): serve solo nelle pagine dei
+// Caricata a parte (docs/CHANGELOG.md §335): serve solo nelle pagine dei
 // risultati e porta con sé l'elenco di tutti i comuni (circa 440 KB), che
 // prima finiva nel JavaScript di ogni pagina del sito.
 const HeaderSearchBar = dynamic(() => import("./HeaderSearchBar").then((module) => module.HeaderSearchBar));
