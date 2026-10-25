@@ -20634,7 +20634,54 @@ Richiesta dell'utente: "si potrebbe dare l'icona del meteo per 3 giorni e dire d
 
 **Verifica**: prove del badge nel tempo in `identity-verification.test.ts` e `professional-verification.service.test.ts` (scadenza letta dal documento, avviso una volta sola, badge tolto, prova senza effetti con `DIDIT_SANDBOX`), 616 test API; `badge-promesse.test.ts` (un solo punto del codice accende il badge, chiamato solo dalla verifica approvata; mai sui profili dimostrativi; badge del tipo), 599 test API; prova nel browser `e2e/tests/badge-fumetto.spec.ts` da telefono e computer (badge solo con verifica approvata, nome e descrizione per il lettore di schermo, mouse, tocco, Tab, Esc, axe senza problemi gravi); query in sola lettura per il database vero in `/mnt/project-files/analisi/badge-verifica/query-dati-veri.sql`.
 
-## 339. "Lavoro terminato" del cliente: solo la conferma, niente note e foto
+## 339. Pagamento con una sola scelta: niente domanda
+
+**Richiesta dell'utente**: accettando un preventivo in cui il professionista
+offre solo il pagamento diretto, il cliente vedeva "Come vuoi pagare?" con
+un'unica opzione "DIRETTO al professionista" già selezionata, come se
+dovesse scegliere.
+
+**Decisione** (`PaymentChoice`, `jobPaymentChoiceCopy`):
+- Con un solo modo offerto (diretto, tutto online o acconto online + saldo
+  diretto) niente domanda né pallino: un riquadro "Pagamento" come
+  "Messaggio del professionista", con il modo ("Direttamente al
+  professionista", "Online con carta", ...), la spiegazione e l'acconto
+  quando è online. Senza "(consigliato)": non c'è altro da confrontare.
+- Con due o più modi resta la scelta "Come vuoi pagare?"; l'opzione diretta
+  ora è "Diretto al professionista" (niente maiuscolo, regole Taste).
+
+Migliorie approvate dall'utente ("Effettua le migliorie"), e la sua domanda
+se il cliente capisce come si paga già dal preventivo, per scegliere tra più
+preventivi (prima no: lo vedeva solo premendo "Accetta preventivo"):
+- Il riquadro "Pagamento" ora è nella scheda del preventivo, sotto
+  "Totale indicativo" (`PaymentOffer`): con un solo modo il modo, la
+  spiegazione e l'acconto; con più modi "Pagamento, a tua scelta" e
+  l'elenco, con l'acconto accanto a quelli online. Online offerto ma Stripe
+  non attivo: il messaggio di prima, e "Accetta preventivo" è spento.
+- Con un solo modo "Accetta preventivo" accetta subito, senza il passaggio
+  con "Annulla" (con l'online diventa "Accetta e paga l'acconto" e porta al
+  pagamento). La scelta con i pallini resta solo con due o più modi.
+- Lavoro accettato con pagamento diretto: "Pagamento: direttamente al
+  professionista" (cliente) o "direttamente dal cliente" (professionista),
+  al posto di "Metodo di pagamento: DIRETTO · ...".
+
+**Verifica**: typecheck e lint; anteprime da computer e telefono della
+scheda vera e dei riquadri nei vari casi.
+
+Miglioria approvata dall'utente ("effettua miglioria n.2"): con più
+preventivi da valutare nella stessa richiesta, accanto al totale di ognuno
+un'etichetta corta ("Pagamento diretto", "Pagamento online", "Acconto
+online" o "Online o diretto", `jobPaymentOfferLabel`), neutra (bianca con
+filetto: non è uno stato, quindi niente colori dei badge). Con un solo
+preventivo non compare: c'è già il riquadro "Pagamento" sotto.
+
+Dopo la "versione più profonda" del compito: aggiunta la domanda 40 per
+l'avvocato (art. 49 Codice del consumo, modalità di pagamento prima
+dell'impegno). Il modo di pagamento nell'email "Nuovo preventivo" era stato
+aggiunto e poi tolto su decisione dell'utente: il cliente lo vede sul sito,
+non nell'email.
+
+## 340. "Lavoro terminato" del cliente: solo la conferma, niente note e foto
 
 Domanda dell'utente: a cosa servono la descrizione e le foto che il cliente
 scrive dopo "Lavoro terminato". Risposta: la conferma serve (sblocca i soldi
