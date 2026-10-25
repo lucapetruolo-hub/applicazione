@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { ClientBooking } from "@professionisti/api-client";
 import { Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
-import { JOB_ISSUE_LABEL, JOB_ISSUE_STATUS_LABEL, formatEurCents, formatServicePriceRange, quotePriceTotals, type AppointmentMoment } from "@professionisti/shared";
+import { cancellationNoticeLabel, JOB_ISSUE_LABEL, JOB_ISSUE_STATUS_LABEL, formatEurCents, formatServicePriceRange, quotePriceTotals, type AppointmentMoment } from "@professionisti/shared";
 import { AppointmentWhen, useAppointmentMoment } from "./AppointmentWhen";
 import { AddToCalendar } from "./AddToCalendar";
 import { UnreadDot } from "@/components/UnreadDot";
@@ -463,7 +463,8 @@ export function ChangeLinks({ booking, onMessage, onCancel }: { booking: ClientB
   const moment = useAppointmentMoment(booking);
   if ((booking.status !== "CONFIRMED" && booking.status !== "PENDING") || booking.professionalAccountDeleted || !isUpcoming(moment)) return null;
   return (
-    <XStack alignItems="center" gap="$4" flexWrap="wrap" paddingHorizontal="$1" paddingTop="$1">
+    <YStack gap="$1" paddingHorizontal="$1" paddingTop="$1">
+    <XStack alignItems="center" gap="$4" flexWrap="wrap">
       <Text fontSize={16} color={brand.grafite70}>
         Serve cambiare?
       </Text>
@@ -476,5 +477,10 @@ export function ChangeLinks({ booking, onMessage, onCancel }: { booking: ClientB
         Annulla appuntamento
       </Text>
     </XStack>
+      {/* Preavviso scelto dal professionista (docs/CHANGELOG.md §345). */}
+      <Text fontSize={13} color={brand.grafite70}>
+        Se devi annullare, avvisa almeno {cancellationNoticeLabel(booking.cancellationNoticeHours)} prima.
+      </Text>
+    </YStack>
   );
 }

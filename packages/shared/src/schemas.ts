@@ -778,6 +778,8 @@ export const professionalProfileSchema = z.object({
   yearsOfExperience: z.number().int().min(0).max(80).optional(),
   certifications: z.string().max(500).optional(),
   hasLiabilityInsurance: z.boolean().default(false),
+  // Preavviso per annullare (docs/CHANGELOG.md §345): non inviato = invariato.
+  cancellationNoticeHours: z.union([z.literal(24), z.literal(48), z.literal(72)]).optional(),
 });
 export type ProfessionalProfileInput = z.infer<typeof professionalProfileSchema>;
 

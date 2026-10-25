@@ -59,6 +59,7 @@ import { ProfessionalMetricsService } from "../professional-metrics/professional
 import { TimelineService } from "../timeline/timeline.service";
 import { ProfessionalVerificationService } from "../professional-verification/professional-verification.service";
 import { clientNameForProfessional } from "../common/client-name.util";
+import { cancellationNoticeFor } from "../bookings/one-job-per-request";
 
 export type ProfessionalSearchParams = {
   category?: string;
@@ -587,6 +588,7 @@ export class ProfessionalsService {
       verified: profile.verified,
       verificationRequestedAt: profile.verificationRequestedAt?.toISOString() ?? null,
       remoteAvailable: profile.remoteAvailable,
+      cancellationNoticeHours: profile.cancellationNoticeHours,
       imageUrl: profile.imageUrl,
       portfolioUrls: profile.portfolioUrls,
       services: mapServices(profile.services),
@@ -706,6 +708,7 @@ export class ProfessionalsService {
         yearsOfExperience: input.yearsOfExperience ?? null,
         certifications: input.certifications,
         hasLiabilityInsurance: input.hasLiabilityInsurance,
+        cancellationNoticeHours: input.cancellationNoticeHours,
         ...declarationData,
         ...inviteData,
       },
@@ -727,6 +730,7 @@ export class ProfessionalsService {
         yearsOfExperience: input.yearsOfExperience ?? null,
         certifications: input.certifications,
         hasLiabilityInsurance: input.hasLiabilityInsurance,
+        cancellationNoticeHours: input.cancellationNoticeHours,
         ...declarationData,
         ...(options.byOperator ? { invitePendingAt: new Date() } : {}),
       },
@@ -809,6 +813,7 @@ export class ProfessionalsService {
       verified: profile.verified,
       verificationRequestedAt: profile.verificationRequestedAt?.toISOString() ?? null,
       remoteAvailable: profile.remoteAvailable,
+      cancellationNoticeHours: profile.cancellationNoticeHours,
       imageUrl: profile.imageUrl,
       portfolioUrls: profile.portfolioUrls,
       services: mapServices(savedServices),
@@ -1426,6 +1431,8 @@ export class ProfessionalsService {
       // Chi ha annullato — richiesta esplicita dell'utente, mostrato accanto
       // all'etichetta "Annullata".
       canceledBy: booking.canceledBy,
+      // Il cliente ha annullato dentro il preavviso scelto (docs/CHANGELOG.md §345).
+      canceledLate: booking.canceledLate,
       professionalProblemReport: booking.quote?.guidedRequestId ? (problemReportByGuidedRequestId.get(booking.quote.guidedRequestId) ?? null) : null,
       description: booking.quote?.guidedRequest?.description ?? null,
       photoUrls: booking.quote?.guidedRequest?.photoUrls ?? [],
@@ -1828,7 +1835,14 @@ export class ProfessionalsService {
             throw new ConflictException("Questa fascia è già stata prenotata.");
           }
           return tx.booking.create({
-            data: { clientId, professionalProfileId, scheduledAt, scheduledEndAt: new Date(`${input.date}T${input.endTime}:00.000Z`), status: "PENDING" },
+            data: {
+              clientId,
+              professionalProfileId,
+              scheduledAt,
+              scheduledEndAt: new Date(`${input.date}T${input.endTime}:00.000Z`),
+              status: "PENDING",
+              cancellationNoticeHours: await cancellationNoticeFor(tx, professionalProfileId),
+            },
           });
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },

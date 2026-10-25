@@ -20811,3 +20811,21 @@ accorciata in "Subito dopo potrai lasciare una recensione, anche con foto".
   - `e2e/tests/schede-lavoro.spec.ts`: la scheda in 17 stati da telefono e computer, con le scritte che li distinguono. Le foto finiscono in `e2e/schede-results/`, tra i risultati del job "agenda-browser".
 - Da fare a mano: calendario su iPhone e Android veri, prova con 5 persone (istruzioni nell'analisi, sezione 9).
 - Dopo l'unione: confronto dei numeri a 4 settimane.
+
+## 345. Preavviso per annullare scelto dal professionista
+
+**Richiesta** (Luca, 25/10/2026, rispondendo alle scelte aperte del §344):
+- "Chiama" resta com'è: anche col numero solo dal giorno prima si accorderebbero la volta dopo, e il numero serve alla buona riuscita del lavoro;
+- "dovremmo far decidere al professionista i termini per la cancellazione, se 24 ore o 48 ore o 3 giorni";
+- nessuna email ai professionisti non scelti ("ci sono già troppe email").
+
+**Decisione**
+- `ProfessionalProfile.cancellationNoticeHours` (24, 48 o 72, di serie 24), scelto in `/dashboard/profilo` ("Preavviso per annullare"). Valori e testi in `packages/shared/src/cancellationNotice.ts`.
+- Copiato sul lavoro quando nasce (`Booking.cancellationNoticeHours`, in tutti e tre i punti che creano un lavoro): cambiarlo dopo non tocca i lavori già prenotati. I lavori di prima valgono 24 ore.
+- Il cliente lo legge sul preventivo prima di "Accetta" e sotto l'appuntamento ("avvisa almeno 48 ore prima").
+- Annullare dentro il preavviso si può ancora: la conferma lo dice, il lavoro resta segnato (`Booking.canceledLate`, azzerato riaprendo), il professionista lo legge nell'email, nella cronologia e nella scheda.
+- L'acconto online per ora torna sempre: trattenerlo aspetta il parere dell'avvocato (domanda 42, aggiornata).
+
+**Verifica**
+- Test dell'API: preavviso copiato all'accettazione, annullamento tardivo segnato e detto al professionista.
+- `e2e/tests/preventivo-accettato.spec.ts`: preavviso di 48 ore visibile prima di Accetta e sotto l'appuntamento, invariato sul lavoro dopo un cambio nel profilo, annullamento tardivo segnato.

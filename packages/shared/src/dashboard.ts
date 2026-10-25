@@ -37,6 +37,8 @@ export type MyProfessionalProfile = {
   /** Quando ha chiesto la verifica (docs/CHANGELOG.md §201); null se non l'ha chiesta o è già verificato. */
   verificationRequestedAt: string | null;
   remoteAvailable: boolean;
+  /** Preavviso per annullare scelto dal professionista: 24, 48 o 72 ore (docs/CHANGELOG.md §345). */
+  cancellationNoticeHours: number;
   imageUrl: string | null;
   /** Foto reali di lavori svolti (fino a 10), mostrate in una galleria sul profilo pubblico. */
   portfolioUrls: string[];
@@ -303,6 +305,8 @@ export type ProfessionalBooking = {
   cancellationNote: string | null;
   /** Chi ha annullato — richiesta esplicita dell'utente, mostrato accanto all'etichetta "Annullata". `null` finché non CANCELED, o per righe annullate prima di questo campo. */
   canceledBy: "CLIENT" | "PROFESSIONAL" | null;
+  /** Il cliente ha annullato dentro il preavviso scelto dal professionista (docs/CHANGELOG.md §345). */
+  canceledLate: boolean;
   /** Ultima segnalazione "Qualcosa è andato male" del professionista su questo lavoro (§197), `null` se non ne ha fatte. */
   professionalProblemReport: { reason: string; status: "OPEN" | "RESOLVED" | "DISMISSED"; createdAt: string } | null;
   /**

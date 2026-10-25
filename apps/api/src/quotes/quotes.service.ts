@@ -622,6 +622,7 @@ export class QuotesService {
               clientId: quote.guidedRequest.clientId,
               professionalProfileId: professionalProfile.id,
               scheduledAt,
+              cancellationNoticeHours: professionalProfile.cancellationNoticeHours,
               scheduledEndAt: quote.clientProposedEndDate,
               serviceMode: requestServiceMode,
               status: "CONFIRMED",

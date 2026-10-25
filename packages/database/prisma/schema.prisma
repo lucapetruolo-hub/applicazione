@@ -310,6 +310,9 @@ model ProfessionalProfile {
   // "Patentino gas F-gas, certificazione impianti elettrici CEI 64-8".
   certifications               String?
   hasLiabilityInsurance        Boolean   @default(false)
+  // Preavviso per annullare scelto dal professionista: 24, 48 o 72 ore
+  // (docs/CHANGELOG.md §345, CANCELLATION_NOTICE_OPTIONS in packages/shared).
+  cancellationNoticeHours      Int       @default(24)
   // Dichiarazione di responsabilità accettata salvando il profilo
   // (docs/CHANGELOG.md §158): quando e quale versione del testo
   // (PROFILE_DECLARATION_VERSION in packages/shared).
@@ -1072,6 +1075,11 @@ model Booking {
   clientId              String
   professionalProfileId String
   scheduledAt           DateTime
+  // Preavviso per annullare valido per questo lavoro, copiato dal profilo
+  // quando nasce (docs/CHANGELOG.md §345): null per i lavori di prima, che
+  // valgono 24 ore. canceledLate: il cliente ha annullato dentro il preavviso.
+  cancellationNoticeHours Int?
+  canceledLate            Boolean       @default(false)
   // Fine della fascia (richiesta esplicita dell'utente: mostrare tutta la
   // fascia oraria, non solo l'inizio), copiata da Quote.estimatedEndDate/
   // clientProposedEndDate al momento della creazione — null per le

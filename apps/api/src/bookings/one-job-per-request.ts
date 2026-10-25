@@ -29,3 +29,9 @@ export function isOtherJobViolation(err: unknown): boolean {
   const text = Array.isArray(target) ? target.join(",") : String(target ?? "");
   return text.includes(OTHER_JOB_INDEX) || text.includes("guidedRequestId");
 }
+
+/** Preavviso per annullare del professionista, da copiare sul lavoro che nasce (docs/CHANGELOG.md §345). */
+export async function cancellationNoticeFor(db: PrismaClient | Prisma.TransactionClient, professionalProfileId: string): Promise<number | null> {
+  const profile = await db.professionalProfile.findUnique({ where: { id: professionalProfileId }, select: { cancellationNoticeHours: true } });
+  return profile?.cancellationNoticeHours ?? null;
+}

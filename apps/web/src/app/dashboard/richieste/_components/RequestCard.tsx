@@ -1034,6 +1034,12 @@ export function RequestCard({
                   : "Il nostro team l'ha esaminata e chiusa senza misure."}
             </Text>
           ) : null}
+          {/* Annullato dal cliente dentro il preavviso che hai scelto (docs/CHANGELOG.md §345). */}
+          {booking?.status === "CANCELED" && booking.canceledBy === "CLIENT" && booking.canceledLate ? (
+            <Text fontSize={13} color={brand.urgenza} fontWeight="600">
+              Il cliente ha annullato con meno preavviso di quello che chiedi.
+            </Text>
+          ) : null}
           {/* Segnalazione del cliente sul lavoro (docs/CHANGELOG.md §164). */}
           {/* Pagamento del lavoro (docs/CHANGELOG.md §168). */}
           {booking?.payment && booking.status !== "CANCELED" ? <JobPaymentStatus payment={booking.payment} audience="professional" /> : null}

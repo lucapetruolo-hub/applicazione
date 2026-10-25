@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { PrismaClient } from "@professionisti/database";
 import { API_URL } from "../fixtures/env";
-import { acceptQuote, createClient, createProfessional, createRequestWithQuotes, pageAsClient, PHONE, testToken, wallDay } from "../fixtures/preventivi";
+import { acceptQuote, createClient, createProfessional, createRequestWithQuotes, pageAsClient, PHONE, testToken, wallDay, wallFromNow } from "../fixtures/preventivi";
 
 /**
  * Dal preventivo accettato al biglietto dell'appuntamento (docs/CHANGELOG.md
@@ -107,5 +107,34 @@ test("percorso completo: Accetta, Appuntamento prenotato, biglietto con calendar
 
   const jobs = await prisma.booking.findMany({ where: { guidedRequestId: request.id } });
   expect(jobs).toHaveLength(1);
+  await page.context().close();
+});
+
+test("preavviso per annullare scelto dal professionista: detto prima di Accetta, fissato sul lavoro, annullamento tardivo segnato", async ({ browser }) => {
+  const client = await createClient(prisma);
+  const pro = await createProfessional(prisma, "Marco Rossi Idraulica");
+  await prisma.professionalProfile.update({ where: { id: pro.id }, data: { cancellationNoticeHours: 48 } });
+  // Tra circa 30 ore: dentro le 48 ore di preavviso.
+  const { request, quotes } = await createRequestWithQuotes(prisma, client.id, [pro.id], { start: wallFromNow(30 * 60) });
+
+  const page = await pageAsClient(browser, client.id, PHONE);
+  await page.goto(`/le-mie-richieste?open=${request.id}`);
+  const card = page.locator(`#request-${request.id}`);
+  await expect(card.locator(`#quote-${quotes[0].id}`).getByText("Se poi devi annullare, avvisa almeno 48 ore prima.")).toBeVisible();
+  await card.locator(`#quote-${quotes[0].id}`).getByText("Accetta preventivo", { exact: true }).click();
+  await page.getByText("Vai all'appuntamento", { exact: true }).click();
+  await expect(card.getByText("Se devi annullare, avvisa almeno 48 ore prima.")).toBeVisible();
+
+  // Il professionista cambia idea dopo: il lavoro già prenotato resta a 48 ore.
+  await prisma.professionalProfile.update({ where: { id: pro.id }, data: { cancellationNoticeHours: 72 } });
+  const job = await prisma.booking.findFirstOrThrow({ where: { guidedRequestId: request.id } });
+  expect(job.cancellationNoticeHours).toBe(48);
+
+  // Annullare si può ancora, ma resta segnato come tardivo.
+  await card.getByText("Annulla appuntamento", { exact: true }).click();
+  await expect(page.getByRole("dialog").getByText(/Mancano meno di 48 ore/)).toBeVisible();
+  await page.getByText("Sì, annulla prenotazione", { exact: true }).click();
+  await expect.poll(async () => (await prisma.booking.findUniqueOrThrow({ where: { id: job.id } })).status).toBe("CANCELED");
+  expect((await prisma.booking.findUniqueOrThrow({ where: { id: job.id } })).canceledLate).toBe(true);
   await page.context().close();
 });

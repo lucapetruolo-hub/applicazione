@@ -8,6 +8,8 @@ import { X } from "lucide-react";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
 import {
   ALL_ITALIAN_CITY_NAMES,
+  cancellationNoticeLabel,
+  isLateCancellation,
   averageQuoteTotalEurCents,
   findComuneByName,
   formatEurCents,
@@ -1062,7 +1064,11 @@ export function GuidedRequestCard({
       {showCancelModal ? (
         <CancelBookingModal
           title="Annulla prenotazione"
-          description="Il professionista verrà avvisato dell'annullamento."
+          description={
+            booking && isLateCancellation(booking.scheduledAt, booking.cancellationNoticeHours)
+              ? `Il professionista verrà avvisato. Mancano meno di ${cancellationNoticeLabel(booking.cancellationNoticeHours)}, il preavviso che aveva chiesto.`
+              : "Il professionista verrà avvisato dell'annullamento."
+          }
           confirmLabel="Sì, annulla prenotazione"
           confirmingLabel="Annullamento..."
           showNote={false}

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ProfessionalReviewsLink } from "@/components/ProfessionalReviewsLink";
 import type { ClientGuidedRequest } from "@professionisti/api-client";
-import { formatAppointmentTimeRange, formatJobDays, formatServicePriceRange, jobDayCount, paymentChoiceIsOnline, quotePriceTotals, scheduleChangeBetween, scheduleChangeObject, type JobPaymentChoice } from "@professionisti/shared";
+import { cancellationNoticeLabel, formatAppointmentTimeRange, formatJobDays, formatServicePriceRange, jobDayCount, paymentChoiceIsOnline, quotePriceTotals, scheduleChangeBetween, scheduleChangeObject, type JobPaymentChoice } from "@professionisti/shared";
 import { PaymentChoice, PaymentOffer, selectablePaymentChoices } from "@/components/PaymentChoice";
 import { useOnlinePayments } from "@/lib/onlinePayments";
 import { Avatar, Badge, ProfessionalKindBadge, Text, XStack, YStack, brand } from "@professionisti/ui";
@@ -433,6 +433,12 @@ export function QuoteCard({
           offered={quote.paymentOptions}
           depositPercent={quote.depositPercent}
         />
+      ) : null}
+      {/* Preavviso scelto dal professionista, detto prima di Accetta (docs/CHANGELOG.md §345). */}
+      {(quote.status === "SENT" || quote.status === "MODIFICATION_REQUESTED") && !notChosen ? (
+        <Text fontSize={13} color={brand.grafite70}>
+          Se poi devi annullare, avvisa almeno {cancellationNoticeLabel(quote.cancellationNoticeHours)} prima.
+        </Text>
       ) : null}
       {quote.notes ? (
         <YStack backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$1">

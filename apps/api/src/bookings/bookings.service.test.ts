@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { BookingsService } from "./bookings.service";
+import { wallClockNow } from "@professionisti/shared";
 
 /**
  * Flusso critico: creazione della Booking dall'accettazione di un
@@ -22,6 +23,7 @@ function buildService(prismaOverrides: Record<string, unknown> = {}) {
     jobPayment: { findUniqueOrThrow: vi.fn().mockResolvedValue({ id: "jp-1" }) },
     professionalFiscalProfile: { findUnique: vi.fn().mockResolvedValue({ stripePayoutsEnabled: true }) },
     guidedRequest: { update: vi.fn() },
+    professionalProfile: { findUnique: vi.fn().mockResolvedValue({ cancellationNoticeHours: 48 }) },
     ...prismaOverrides,
   };
   // Il blocco dell'agenda (§310) gira in una transazione: qui la transazione usa lo stesso finto database.
@@ -124,6 +126,8 @@ describe("BookingsService.createFromQuote", () => {
           clientId: "client-1",
           professionalProfileId: "pro-1",
           status: "CONFIRMED",
+          // Il preavviso del professionista resta quello del giorno dell'accettazione (§345).
+          cancellationNoticeHours: 48,
         }),
       }),
     );
@@ -471,5 +475,16 @@ describe("BookingsService.cancelForClient — solo prima dell'appuntamento (§34
     prisma.booking.findUnique.mockResolvedValue({ id: "b-1", clientId: "client-1", professionalProfileId: "pro-1", status: "CONFIRMED", scheduledAt: new Date("2099-01-01T10:00:00Z"), quote: null });
     await expect(service.cancelForClient("client-1", "b-1")).resolves.toEqual({ bookingId: "b-1", status: "CANCELED" });
     expect(jobPaymentsService.refundOnCancel).toHaveBeenCalledWith("b-1", "client-1");
+    expect(prisma.booking.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ canceledLate: false }) }));
+  });
+
+  it("dentro il preavviso del professionista (§345) annulla lo stesso ma lo segna e lo dice al professionista", async () => {
+    const { service, prisma, notificationsService } = buildService({ professionalProfile: { findUnique: vi.fn().mockResolvedValue({ userId: "pro-user-1" }) } });
+    // Tra 30 ore, con 48 ore di preavviso chieste.
+    const scheduledAt = new Date(wallClockNow().getTime() + 30 * 60 * 60_000);
+    prisma.booking.findUnique.mockResolvedValue({ id: "b-1", clientId: "client-1", professionalProfileId: "pro-1", status: "CONFIRMED", scheduledAt, cancellationNoticeHours: 48, quote: null });
+    await service.cancelForClient("client-1", "b-1");
+    expect(prisma.booking.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ canceledLate: true }) }));
+    expect(notificationsService.notify).toHaveBeenCalledWith("pro-user-1", "BOOKING_CANCELED_BY_CLIENT", expect.objectContaining({ lateNotice: "48 ore" }));
   });
 });

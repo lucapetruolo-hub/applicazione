@@ -457,13 +457,17 @@ const BUILDERS: Record<string, Builder> = {
     };
   },
   // Il cliente annulla (docs/CHANGELOG.md §235): solo lui può riaprirla.
-  BOOKING_CANCELED_BY_CLIENT: (_payload, ctx) => ({
+  BOOKING_CANCELED_BY_CLIENT: (payload, ctx) => ({
     kind: "notification",
     tone: "urgent",
     subject: "Il cliente ha annullato l'intervento",
     greeting: ctx.name,
     title: "Intervento annullato",
-    paragraphs: [`Il cliente ha annullato l'intervento per **${job(ctx)}**: l'appuntamento non è più nella tua agenda.`],
+    paragraphs: [
+      `Il cliente ha annullato l'intervento per **${job(ctx)}**: l'appuntamento non è più nella tua agenda.`,
+      // Dentro il preavviso scelto dal professionista (docs/CHANGELOG.md §345).
+      ...(typeof payload.lateNotice === "string" ? [`Ha annullato con meno di ${payload.lateNotice} di preavviso.`] : []),
+    ],
     details: proJobDetails(ctx),
     cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda` },
     after: ["Se il cliente la riapre ti avvisiamo noi."],

@@ -28,10 +28,13 @@ import {
   wallClockToday,
   PROFESSIONAL_JOB_PROBLEM_REPORT_PREFIX,
   type ReportProfessionalJobProblemInput,
-  type CancelBookingByProfessionalInput, type ClientConfirmCompleteInput, type CompleteBookingInput } from "@professionisti/shared";
+  type CancelBookingByProfessionalInput, type ClientConfirmCompleteInput, type CompleteBookingInput,
+  cancellationNoticeLabel,
+  DEFAULT_CANCELLATION_NOTICE_HOURS,
+  isLateCancellation } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { BOOKING_CALENDAR_INCLUDE, bookingCalendar } from "../email/booking-calendar";
-import { hasOtherJob, isOtherJobViolation, lockGuidedRequest } from "./one-job-per-request";
+import { cancellationNoticeFor, hasOtherJob, isOtherJobViolation, lockGuidedRequest } from "./one-job-per-request";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { TimelineService } from "../timeline/timeline.service";
@@ -257,12 +260,14 @@ export class BookingsService {
       await lockGuidedRequest(tx, quote.guidedRequestId);
       await this.assertNoOtherJob(tx, quote.guidedRequestId);
       await this.assertProfessionalFree(tx, quote);
+      const cancellationNoticeHours = await cancellationNoticeFor(tx, quote.professionalProfileId);
       return tx.booking.create({
       data: {
         quoteId: quote.id,
         clientId,
         professionalProfileId: quote.professionalProfileId,
         scheduledAt: quote.estimatedStartDate,
+        cancellationNoticeHours,
         scheduledEndAt: quote.estimatedEndDate,
         serviceMode: guidedRequest.serviceMode,
         status: "CONFIRMED",
@@ -763,7 +768,11 @@ export class BookingsService {
       throw new ForbiddenException(CLIENT_CANCEL_TOO_LATE);
     }
 
-    await this.prisma.booking.update({ where: { id: bookingId }, data: { status: "CANCELED", canceledBy: "CLIENT" } });
+    // Dentro il preavviso scelto dal professionista (§345) si può ancora
+    // annullare, ma resta segnato: lo vede il professionista. L'acconto per
+    // ora torna comunque, finché l'avvocato non dice se si può trattenere.
+    const late = isLateCancellation(booking.scheduledAt, booking.cancellationNoticeHours);
+    await this.prisma.booking.update({ where: { id: bookingId }, data: { status: "CANCELED", canceledBy: "CLIENT", canceledLate: late } });
     // Lavoro pagato online (§168): l'acconto torna al cliente.
     await this.jobPaymentsService.refundOnCancel(bookingId, clientId);
     // Prima il professionista non veniva avvisato; l'email toglie anche
@@ -773,12 +782,24 @@ export class BookingsService {
       await this.notificationsService.notify(professional.userId, "BOOKING_CANCELED_BY_CLIENT", {
         bookingId,
         guidedRequestId: booking.quote?.guidedRequestId,
+        ...(late ? { lateNotice: cancellationNoticeLabel(booking.cancellationNoticeHours) } : {}),
       });
     }
     if (booking.quote) {
-      await this.timelineService.log(booking.quote.guidedRequestId, booking.professionalProfileId, "CLIENT", "Il cliente ha annullato la prenotazione.");
+      const note = late ? ` con meno di ${cancellationNoticeLabel(booking.cancellationNoticeHours)} di preavviso` : "";
+      await this.timelineService.log(booking.quote.guidedRequestId, booking.professionalProfileId, "CLIENT", `Il cliente ha annullato la prenotazione${note}.`);
     }
     return { bookingId, status: "CANCELED" as const };
+  }
+
+  /** Evento del calendario per il cliente: link di Google Calendar e file .ics, con lo stesso UID delle email. */
+  async calendarForClient(clientUserId: string, bookingId: string): Promise<{ googleUrl: string | null; ics: string }> {
+    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: BOOKING_CALENDAR_INCLUDE });
+    if (!booking) throw new NotFoundException("Prenotazione non trovata.");
+    if (booking.clientId !== clientUserId) throw new ForbiddenException("Questa prenotazione non è tua.");
+    if (booking.status === "CANCELED") throw new BadRequestException("Questo appuntamento è stato annullato.");
+    const calendar = bookingCalendar(booking, "client");
+    return { googleUrl: calendar.calendarUrl, ics: calendar.attachment.content };
   }
 
   /**
@@ -795,16 +816,6 @@ export class BookingsService {
    * stessa cautela già applicata a QuotesService.confirmProposedDate
    * (transazione Serializable).
    */
-  /** Evento del calendario per il cliente: link di Google Calendar e file .ics, con lo stesso UID delle email. */
-  async calendarForClient(clientUserId: string, bookingId: string): Promise<{ googleUrl: string | null; ics: string }> {
-    const booking = await this.prisma.booking.findUnique({ where: { id: bookingId }, include: BOOKING_CALENDAR_INCLUDE });
-    if (!booking) throw new NotFoundException("Prenotazione non trovata.");
-    if (booking.clientId !== clientUserId) throw new ForbiddenException("Questa prenotazione non è tua.");
-    if (booking.status === "CANCELED") throw new BadRequestException("Questo appuntamento è stato annullato.");
-    const calendar = bookingCalendar(booking, "client");
-    return { googleUrl: calendar.calendarUrl, ics: calendar.attachment.content };
-  }
-
   async reopenBooking(userId: string, bookingId: string) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
@@ -879,7 +890,7 @@ export class BookingsService {
           }
           await tx.booking.update({
             where: { id: bookingId },
-            data: { status: "CONFIRMED", canceledBy: null, cancellationNote: null },
+            data: { status: "CONFIRMED", canceledBy: null, cancellationNote: null, canceledLate: false },
           });
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
@@ -1327,6 +1338,8 @@ export class BookingsService {
       clientConfirmedCompletedAt: booking.clientConfirmedCompletedAt?.toISOString() ?? null,
       // "Sto arrivando" del professionista, mostrato in cima alla scheda (docs/CHANGELOG.md §344).
       onTheWayAt: booking.onTheWayAt?.toISOString() ?? null,
+      // Preavviso per annullare valido per questo lavoro (docs/CHANGELOG.md §345): 24 ore per i lavori di prima.
+      cancellationNoticeHours: booking.cancellationNoticeHours ?? DEFAULT_CANCELLATION_NOTICE_HOURS,
       professionalCompletionPhotoUrls: booking.professionalCompletionPhotoUrls,
       clientCompletionPhotoUrls: booking.clientCompletionPhotoUrls,
     }));
