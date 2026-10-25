@@ -4105,6 +4105,27 @@ a.admin-kpi:hover {
   outline: 3px solid #189a63;
   outline-offset: 2px;
 }
+/* "Chiudi" sopra la ricerca aperta da telefono (docs/CHANGELOG.md §346). */
+.search-close {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid #eadfd3;
+  border-radius: 999px;
+  background: #fff;
+  color: #2b2420;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.search-close:focus-visible {
+  outline: 3px solid #189a63;
+  outline-offset: 2px;
+}
 
 /* Categorie in home da telefono (CategoryStoryRail, docs/CHANGELOG.md §271):
    griglia a due colonne con le prime sei, le altre con "Mostra tutte". Gli
@@ -4417,7 +4438,8 @@ a.admin-kpi:hover {
   margin: 0 0 24px;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* Quante tessere ci sono davvero: quelle a zero non compaiono (§346). */
+  grid-template-columns: repeat(var(--facts-count, 3), minmax(0, 1fr));
   gap: 10px;
 }
 .city-facts-item {
@@ -4530,6 +4552,11 @@ a.admin-kpi:hover {
   .city-facts-question summary::after {
     transition: none;
   }
+}
+/* Nella colonna dei risultati, subito sotto le schede (docs/CHANGELOG.md §346). */
+.results-list-footer .city-facts {
+  max-width: none;
+  padding: 16px 0 0;
 }
 
 /* Barre "Da dove arrivano le richieste" in /admin/statistiche (CHANGELOG §296). */

@@ -312,6 +312,14 @@ export type ProfessionalSearchResult = {
  */
 export const SEARCH_RADIUS_KM = 25;
 
+/**
+ * Fin dove si allarga la ricerca per trovare il professionista più vicino
+ * (docs/CHANGELOG.md §346): oltre, la pagina dice che nella zona non c'è
+ * nessuno e invita a mandare lo stesso la richiesta. Prima si arrivava a
+ * proporre un giardiniere di Bologna a chi cercava a Latina (circa 360 km).
+ */
+export const SEARCH_FALLBACK_MAX_KM = 100;
+
 /** Dettaglio profilo, restituito da GET /professionals/:id per la pagina pubblica. */
 export type ProfessionalDetail = ProfessionalSearchResult & {
   /** Privato senza P.IVA o professionista/azienda (Codice del consumo art. 49-bis, §241); null se non ancora indicato. */

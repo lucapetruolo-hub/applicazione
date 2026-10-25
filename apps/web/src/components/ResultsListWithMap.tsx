@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronUp, Map as MapIcon, Maximize2, Minimize2, ShieldCheck, SlidersHorizontal, X, Zap } from "lucide-react";
+import { ChevronDown, ChevronUp, Info, Map as MapIcon, Maximize2, Minimize2, ShieldCheck, SlidersHorizontal, X, Zap } from "lucide-react";
 import { findComuneByName, PUBLIC_AGENDA_DAYS, SEARCH_RADIUS_KM, type ProfessionalSearchResult, professionalPath, subTagLabel } from "@professionisti/shared";
 import { Icon, ProfessionalCard, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
@@ -25,6 +25,7 @@ export function ResultsListWithMap({
   showMap,
   city,
   header,
+  footer,
   defaultMode,
   initialUrgentOnly,
 }: {
@@ -41,6 +42,13 @@ export function ResultsListWithMap({
   city?: string;
   /** Contenuto mostrato in cima alla colonna sinistra, allineato con l'inizio della mappa (titolo/filtri categoria). */
   header?: ReactNode;
+  /**
+   * Contenuto subito sotto le schede, nella stessa colonna (es. "[Lavoro] a
+   * [città] in breve", docs/CHANGELOG.md §346): fuori dalla colonna finiva
+   * sotto l'altezza della mappa e con un solo risultato lasciava un vuoto di
+   * 900 px che sembrava una pagina rotta.
+   */
+  footer?: ReactNode;
   /** Tab di default della mini-agenda di ogni card (richiesta esplicita dell'utente): "a domicilio" se cercato a domicilio, "online" se cercato online. */
   defaultMode?: "HOME" | "ONLINE";
   /** Preimpostato dall'URL (?urgente=1) quando si arriva dal toggle "Intervento urgente?" della homepage — evita di dover ripetere la scelta qui. */
@@ -547,32 +555,9 @@ export function ResultsListWithMap({
               un bottone full-width li' diventava una terza "colonna"
               schiacciata che sfalsava lista e mappa (bug segnalato
               dall'utente). */}
-          {/* Striscia segnali di fiducia (Verbale Cognitivo F1.4): stessi tre
-              badge già in fondo ad ogni pagina (SiteFooter), riproposti qui
-              vicino al primo elenco di risultati — dove la domanda "posso
-              fidarmi?" si forma davvero, non solo dopo aver superato
-              l'intera lista. */}
-          <XStack flexWrap="wrap" gap="$3" alignItems="center">
-            <XStack alignItems="center" gap="$2" flexShrink={1} minWidth={0}>
-              <Icon name="badge-check" size={14} color={brand.grafite70} strokeWidth={1.5} />
-              <Text fontSize={13} fontWeight="600" color={brand.grafite70} flexShrink={1}>
-                Badge Verificato: identità controllata con documento e selfie
-              </Text>
-            </XStack>
-            <XStack alignItems="center" gap="$2" flexShrink={1} minWidth={0}>
-              <Icon name="shield" size={14} color={brand.grafite70} strokeWidth={1.5} />
-              <Text fontSize={13} fontWeight="600" color={brand.grafite70} flexShrink={1}>
-                Recensioni solo da lavori confermati
-              </Text>
-            </XStack>
-            <XStack alignItems="center" gap="$2" flexShrink={1} minWidth={0}>
-              <Icon name="tag" size={14} color={brand.grafite70} strokeWidth={1.5} />
-              <Text fontSize={13} fontWeight="600" color={brand.grafite70} flexShrink={1}>
-                Gratis per chi cerca
-              </Text>
-            </XStack>
-          </XStack>
-
+          {/* Tolte le tre righe di fiducia sopra i risultati (docs/CHANGELOG.md
+              §346): sono già nel piè di pagina e da telefono spingevano i
+              risultati sotto il primo schermo. */}
           {/* Senza nessun risultato Filtri, Mappa e ordinamento non servono:
               resta solo il riquadro per inviare lo stesso la richiesta
               (docs/CHANGELOG.md §271). */}
@@ -602,8 +587,12 @@ export function ResultsListWithMap({
                 che spiega il criterio reale, invece di restare solo
                 un'etichetta passiva — stesso ordinamento di default,
                 invariato (boost pagato → valutazione → recensioni). */}
+            {/* Con l'icona "info" e senza la sottolineatura tratteggiata, che
+                lo faceva sembrare un link spento (docs/CHANGELOG.md §346): apre
+                la spiegazione dell'ordine, non un elenco di ordinamenti. */}
             <button type="button" className="sort-info-trigger" onClick={() => setShowSortInfo(true)}>
               Ordinato per pertinenza
+              <Info size={15} strokeWidth={1.75} aria-hidden />
             </button>
           </XStack>
           )}
@@ -616,9 +605,11 @@ export function ResultsListWithMap({
               </Text>
             </YStack>
           ) : null}
-          {(showMap ? filteredOrderedVisible : filteredProfessionals).map((pro) => (
+          {(showMap ? filteredOrderedVisible : filteredProfessionals).map((pro, index) => (
             <ProfessionalCard
               key={pro.id}
+              // Orari e prezzi aperti solo nella prima scheda (docs/CHANGELOG.md §346).
+              defaultExpanded={index === 0}
               businessName={pro.businessName}
               categoryLabel={pro.categoryLabel}
               otherCategoryLabels={pro.categories?.filter((category) => category.slug !== pro.categorySlug).map((category) => category.label)}
@@ -714,6 +705,7 @@ export function ResultsListWithMap({
               }
             />
           ))}
+          {footer ? <div className="results-list-footer">{footer}</div> : null}
         </YStack>
       </div>
 
@@ -741,14 +733,20 @@ export function ResultsListWithMap({
           gap: 8px;
         }
         .sort-info-trigger {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          min-height: 40px;
           background: none;
           border: none;
-          padding: 0;
-          font-size: 13px;
+          padding: 0 4px;
+          font-size: 14px;
+          font-weight: 600;
           color: ${brand.grafite70};
-          text-decoration: underline;
-          text-decoration-style: dotted;
           cursor: pointer;
+        }
+        .sort-info-trigger:hover {
+          color: ${brand.grafite};
         }
         @media (min-width: 700px) {
           /* Desktop: il bottone sta in cima alla colonna lista (e' spostato

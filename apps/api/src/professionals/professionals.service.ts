@@ -8,6 +8,7 @@ import {
   findComuneByName,
   PROFILE_DECLARATION_VERSION,
   PUBLIC_AGENDA_DAYS,
+  SEARCH_FALLBACK_MAX_KM,
   SEARCH_RADIUS_KM,
   type AvailabilitySlotInput,
   weekTemplateDatesKept,
@@ -150,7 +151,7 @@ export class ProfessionalsService {
         where: baseWhere,
         select: { id: true, latitude: true, longitude: true },
       });
-      distanceById = selectSearchArea(comune, candidates, SEARCH_RADIUS_KM);
+      distanceById = selectSearchArea(comune, candidates, SEARCH_RADIUS_KM, SEARCH_FALLBACK_MAX_KM);
       where = { ...baseWhere, id: { in: [...distanceById.keys()] } };
     } else if (city) {
       where = { ...baseWhere, city: { equals: city, mode: "insensitive" } };
