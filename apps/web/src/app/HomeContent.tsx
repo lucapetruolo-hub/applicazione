@@ -22,18 +22,6 @@ export default function HomeContent({
   platformStats: { totalUsers: number; totalProfessionals: number; reviewCount?: number; averageRating?: number | null } | null;
 }) {
   const categoryRail = useCategoryStoryRail();
-  // Conteggio reale per categoria (professionals arriva già filtrato
-  // excludeDemo da apps/web/src/app/page.tsx): la riga "N professionisti"
-  // sotto ogni categoria è omessa quando il conteggio è 0, mai un numero
-  // finto (brief redesign §4.3).
-  const countBySlug = new Map<string, number>();
-  // Conta tutte le categorie del professionista (fino a 3, §217), non solo
-  // la principale: chi fa anche il dogsitter rende "Disponibile" anche quella.
-  for (const pro of professionals) {
-    for (const { slug } of pro.categories) {
-      countBySlug.set(slug, (countBySlug.get(slug) ?? 0) + 1);
-    }
-  }
 
   return (
     // Spazi tra le sezioni più stretti che nel resto del sito: la home ha
@@ -58,7 +46,7 @@ export default function HomeContent({
             titleAction={<CategoryShowAllButton state={categoryRail} />}
             maxWidth={1080}
           >
-            <CategoryStoryRail countBySlug={countBySlug} state={categoryRail} />
+            <CategoryStoryRail state={categoryRail} />
           </Section>
         </FadeInSection>
 

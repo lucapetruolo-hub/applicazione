@@ -18,6 +18,7 @@ import {
   type JobPaymentChoice,
   buildWhatsAppLink,
   formatBookingAddress,
+  formatEur,
   formatEurCents,
   formatEurRange,
   quotePriceTotals,
@@ -112,7 +113,7 @@ export function RequestCard({
   // Importo nell'intestazione: finale a lavoro completato, altrimenti la forbice del preventivo.
   const headerAmount =
     stage === "completata" && booking?.finalAmountEurCents != null
-      ? formatEurCents(booking.finalAmountEurCents)
+      ? formatEur(booking.finalAmountEurCents)
       : priceRange && (priceRange.totalMinEurCents > 0 || priceRange.totalMaxEurCents > 0)
         ? formatEurRange(priceRange.totalMinEurCents, priceRange.totalMaxEurCents)
         : null;
@@ -695,7 +696,7 @@ export function RequestCard({
                 esplicita dell'utente. */}
             {stage === "completata" && booking?.finalAmountEurCents != null ? (
               <Text fontFamily="$body" fontWeight="800" fontSize={18} color={brand.grafite}>
-                {formatEurCents(booking.finalAmountEurCents)}
+                {formatEur(booking.finalAmountEurCents)}
               </Text>
             ) : priceRange && (priceRange.totalMinEurCents > 0 || priceRange.totalMaxEurCents > 0) ? (
               <Text fontFamily="$body" fontWeight="800" fontSize={18} color={brand.grafite}>

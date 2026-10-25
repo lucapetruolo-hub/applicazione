@@ -600,7 +600,8 @@ export default function AccountPage() {
           </Text>
 
           <FieldRow label="Città">
-            <YStack borderWidth={1} borderColor={brand.filetto} borderRadius="$2" backgroundColor={brand.calce}>
+            {/* Bianco con il bordo degli altri campi (docs/CHANGELOG.md §346): grigio sembrava non modificabile. */}
+            <YStack className="guided-city guided-city-inline" borderWidth={1} borderColor={brand.bordoCampo} borderRadius={10} backgroundColor="#ffffff">
               <Autocomplete
                 items={allItalianCityNames()}
                 getKey={(item) => item}

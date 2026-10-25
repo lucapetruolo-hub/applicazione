@@ -42,7 +42,10 @@ export function formatRespondUntil(respondUntil: string | null): { label: string
   if (!respondUntil) return null;
   const diffMs = new Date(respondUntil).getTime() - Date.now();
   if (diffMs <= 0) return null;
-  return { label: `Puoi rispondere fino ${formatItalianUntil(respondUntil)}`, urgent: diffMs <= 24 * 60 * 60 * 1000 };
+  // L'ora solo negli ultimi due giorni, quando conta (docs/CHANGELOG.md §346):
+  // "fino al 24 dicembre alle 19:17" non stava nella pillola da telefono.
+  const withTime = diffMs <= 2 * 24 * 60 * 60 * 1000;
+  return { label: `Puoi rispondere fino ${formatItalianUntil(respondUntil, { withTime })}`, urgent: diffMs <= 24 * 60 * 60 * 1000 };
 }
 
 /**

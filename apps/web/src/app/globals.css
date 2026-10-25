@@ -5226,7 +5226,7 @@ a.admin-kpi:hover {
     overflow-wrap: anywhere;
   }
   .admin-table tr:not(:has(.admin-cell-main)) td:first-child,
-  .admin-table td.admin-cell-main {
+  .admin-table tr:nth-child(n) td.admin-cell-main {
     order: -1;
     flex-basis: 100%;
     font-size: 15px;

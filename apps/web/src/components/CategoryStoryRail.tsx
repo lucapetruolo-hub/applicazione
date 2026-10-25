@@ -53,7 +53,7 @@ export function CategoryShowAllButton({ state }: { state: CategoryStoryRailState
 
 const RAIL_ID = "categorie-home";
 
-export function CategoryStoryRail({ countBySlug, state }: { countBySlug: Map<string, number>; state: CategoryStoryRailState }) {
+export function CategoryStoryRail({ state }: { state: CategoryStoryRailState }) {
   const { group, setGroup, showAll, setShowAll, categories } = state;
 
   return (

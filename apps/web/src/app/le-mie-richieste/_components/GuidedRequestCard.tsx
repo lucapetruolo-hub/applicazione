@@ -11,7 +11,6 @@ import {
   quotesPriceSpan,
   formatEur,
   findComuneByName,
-  formatEurCents,
   formatItalianUntil,
   isPlausiblePhoneNumber,
   type GuidedRequestStatusSummary,
@@ -693,7 +692,7 @@ export function GuidedRequestCard({
             </Text>
             {stage === "completata" && booking?.finalAmountEurCents != null ? (
               <Text fontFamily="$body" fontWeight="800" fontSize={18} color={brand.grafite}>
-                {formatEurCents(booking.finalAmountEurCents)}
+                {formatEur(booking.finalAmountEurCents)}
               </Text>
             ) : null}
             {isNew ? <Badge variant="nuovo">Nuovo</Badge> : null}
