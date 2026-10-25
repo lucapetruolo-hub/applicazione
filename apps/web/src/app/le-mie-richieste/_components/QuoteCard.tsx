@@ -6,7 +6,7 @@ import type { ClientGuidedRequest } from "@professionisti/api-client";
 import { formatAppointmentTimeRange, formatJobDays, formatServicePriceRange, jobDayCount, paymentChoiceIsOnline, quotePriceTotals, scheduleChangeBetween, scheduleChangeObject, type JobPaymentChoice } from "@professionisti/shared";
 import { PaymentChoice, selectablePaymentChoices } from "@/components/PaymentChoice";
 import { useOnlinePayments } from "@/lib/onlinePayments";
-import { Avatar, Badge, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Avatar, BADGE_INFO, Badge, ProfessionalKindBadge, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { CardButton } from "@/components/CardButton";
 import { ContactButton } from "@/components/ContactButton";
@@ -298,9 +298,17 @@ export function QuoteCard({
             </Text>
           </XStack>
         </Link>
+        {/* Che tipo di lavoratore ha mandato il preventivo, dove il cliente decide (richiesta dell'utente, §335). */}
+        {quote.professionalKind ? <ProfessionalKindBadge kind={quote.professionalKind} /> : null}
         {/* Un preventivo accettato non è più una novità: le novità del lavoro sono sull'intervento (§228). */}
         {isNew && quote.status !== "ACCEPTED" ? <Badge variant="nuovo">Nuovo</Badge> : null}
       </XStack>
+      {/* Prima di accettare il cliente deve sapere che con un privato non valgono i diritti del consumatore (art. 49-bis). */}
+      {quote.professionalKind === "PRIVATE" ? (
+        <Text fontSize={13} color={brand.grafite70}>
+          {BADGE_INFO.kindPrivate.note}
+        </Text>
+      ) : null}
       <Text fontSize={16} color={brand.grafite70}>
         Data proposta: {formatQuoteDateRange(quote.estimatedStartDate, quote.estimatedEndDate)}
       </Text>

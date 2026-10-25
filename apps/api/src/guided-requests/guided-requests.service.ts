@@ -3,7 +3,7 @@ import { GeocodingService } from "../geocoding/geocoding.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { randomUUID } from "node:crypto";
 import { Prisma, type PrismaClient, type ProfessionalProfile } from "@professionisti/database";
-import { findComuneByName, professionalRestrictions, clientPaymentOffer, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
+import { findComuneByName, professionalKindOf, professionalRestrictions, clientPaymentOffer, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing, publicVisibilityWhere, publicVerified, stripeVerified } from "../professional-fiscal/public-visibility";
 import { NOT_ACCEPTING_REQUESTS } from "../subscriptions/subscription-rules";
@@ -523,6 +523,8 @@ export class GuidedRequestsService {
           // (richiesta esplicita dell'utente: riconoscere a colpo d'occhio
           // di chi si tratta). Mai per un profilo eliminato.
           imageUrl: quote.professionalProfile.deletedAt ? null : quote.professionalProfile.imageUrl,
+          // Che tipo di lavoratore ha mandato il preventivo (richiesta dell'utente, §335).
+          professionalKind: professionalKindOf(quote.professionalProfile.fiscalProfile?.entityType),
           items: quote.items.map((item) => ({
             id: item.id,
             name: item.name,

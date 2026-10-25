@@ -2,6 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@professionisti/database";
+import { API_URL } from "../fixtures/env";
 
 /**
  * Badge del professionista e loro significato (docs/CHANGELOG.md §335).
@@ -12,6 +13,7 @@ import { PrismaClient } from "@professionisti/database";
  */
 const prisma = new PrismaClient();
 const ids = { verified: "", demo: "", unverified: "" };
+const client = { email: "" };
 const VERIFIED_TEXT = "Ha confermato la sua identità. Non è una garanzia sulla qualità del lavoro.";
 const PRIVATE_TEXT = "Lavora in modo occasionale, senza partita IVA. I diritti del consumatore, come il recesso, non si applicano.";
 
@@ -56,6 +58,18 @@ test.beforeAll(async () => {
   ids.verified = verified.id;
   ids.demo = (await profile("badge-demo", "Vetrina Idraulica", { verified: true, isDemo: true })).id;
   ids.unverified = (await profile("badge-non-verificato", "Mario Neri Idraulica", { verified: false })).id;
+
+  // Un cliente con un preventivo del professionista privato.
+  const user = await prisma.user.create({
+    data: { role: "CLIENT", email: `badge-cliente-${stamp}@test.it`, passwordHash, name: "Giulia", emailVerifiedAt: new Date(), legalConsentAt: new Date() },
+  });
+  const request = await prisma.guidedRequest.create({
+    data: { clientId: user.id, categoryId: category.id, description: "Rubinetto che perde in bagno.", city: "Latina", serviceMode: "HOME" },
+  });
+  await prisma.quote.create({
+    data: { guidedRequestId: request.id, professionalProfileId: verified.id, estimatedStartDate: new Date("2026-12-01T09:00:00Z"), status: "SENT", paymentOptions: ["DIRECT"] },
+  });
+  client.email = user.email ?? "";
 });
 
 test.afterAll(async () => {
@@ -130,4 +144,26 @@ test("badge e fumetto senza problemi gravi di accessibilità", async ({ page }) 
     .filter((violation) => violation.impact === "serious" || violation.impact === "critical")
     .flatMap((violation) => violation.nodes.map((node) => `${violation.id}: ${violation.help} → ${node.html.slice(0, 160)}`));
   expect(serious).toEqual([]);
+});
+
+test("nel preventivo il cliente vede che tipo di lavoratore lo manda", async ({ page }) => {
+  let token = "";
+  for (let attempt = 0; !token; attempt++) {
+    const response = await fetch(`${API_URL}/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: client.email, password: "Password123!" }) });
+    if (response.status === 429 && attempt < 3) {
+      await new Promise((resolve) => setTimeout(resolve, (Number(response.headers.get("retry-after")) || 20) * 1000 + 500));
+      continue;
+    }
+    expect(response.ok).toBe(true);
+    token = ((await response.json()) as { token: string }).token;
+  }
+  await page.addInitScript((value) => localStorage.setItem("professionisti_token", value), token);
+  await page.goto("/le-mie-richieste");
+  await page.getByRole("button", { name: "Guarda il preventivo" }).first().click();
+  await expect(page.getByText("Anna Verdi Idraulica").first()).toBeVisible();
+  await expect(badge(page, "Privato")).toHaveAccessibleDescription(PRIVATE_TEXT);
+  // Con un privato l'avviso sui diritti del consumatore è scritto prima di accettare (art. 49-bis).
+  await expect(page.getByText("I diritti del consumatore, come il recesso, non si applicano.", { exact: true })).toBeVisible();
+  if (process.env.E2E_SCREENSHOTS) await badge(page, "Privato").evaluate((el) => el.scrollIntoView({ block: "center" }));
+  if (process.env.E2E_SCREENSHOTS) await page.screenshot({ path: `${process.env.E2E_SCREENSHOTS}/preventivo-${test.info().project.name}.png` });
 });
