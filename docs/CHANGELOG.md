@@ -20599,5 +20599,20 @@ dovesse scegliere.
 - Con due o più modi resta la scelta "Come vuoi pagare?"; l'opzione diretta
   ora è "Diretto al professionista" (niente maiuscolo, regole Taste).
 
-**Verifica**: typecheck e lint; anteprime dei quattro casi da computer e
-telefono.
+Migliorie approvate dall'utente ("Effettua le migliorie"), e la sua domanda
+se il cliente capisce come si paga già dal preventivo, per scegliere tra più
+preventivi (prima no: lo vedeva solo premendo "Accetta preventivo"):
+- Il riquadro "Pagamento" ora è nella scheda del preventivo, sotto
+  "Totale indicativo" (`PaymentOffer`): con un solo modo il modo, la
+  spiegazione e l'acconto; con più modi "Pagamento, a tua scelta" e
+  l'elenco, con l'acconto accanto a quelli online. Online offerto ma Stripe
+  non attivo: il messaggio di prima, e "Accetta preventivo" è spento.
+- Con un solo modo "Accetta preventivo" accetta subito, senza il passaggio
+  con "Annulla" (con l'online diventa "Accetta e paga l'acconto" e porta al
+  pagamento). La scelta con i pallini resta solo con due o più modi.
+- Lavoro accettato con pagamento diretto: "Pagamento: direttamente al
+  professionista" (cliente) o "direttamente dal cliente" (professionista),
+  al posto di "Metodo di pagamento: DIRETTO · ...".
+
+**Verifica**: typecheck e lint; anteprime da computer e telefono della
+scheda vera e dei riquadri nei vari casi.
