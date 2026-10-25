@@ -20647,4 +20647,6 @@ Richiesta dell'utente: "si potrebbe dare l'icona del meteo per 3 giorni e dire d
 - All'apertura la pagina torna in cima e il titolo riceve il fuoco (lettori di schermo).
 - Il tempo medio di risposta ("risponde entro 2 ore") ha un solo calcolo, `apps/web/src/lib/responseTime.ts`, usato da profilo, modulo di richiesta e questa pagina (prima tre copie con risultati diversi, es. "45 min" nel modulo e "45 minuti" nel profilo, "48 ore" invece di "2 giorni").
 
+- In fondo a ogni pagina e sopra i risultati della ricerca la riga "Badge Verificato: identità controllata con documento e selfie" (§338) non andava a capo e da telefono faceva scorrere la pagina di lato: ora va a capo (`flexShrink` sulla riga e sul testo, testo invariato). Misurato a 360 e 390 px su home, richiesta di preventivo e ricerca: nessuno scorrimento laterale.
+
 **Verifica**: typecheck e lint di `apps/web`; foto della pagina vera da computer e da telefono, richiesta diretta e a tutta la zona. Anteprime in `/mnt/project-files/anteprime/richiesta-inviata/`.
