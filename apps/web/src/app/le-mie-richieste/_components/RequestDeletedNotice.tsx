@@ -12,7 +12,7 @@ export function announceRequestDeleted() {
 
 /**
  * "Richiesta eliminata" per qualche secondo in basso (docs/CHANGELOG.md
- * §336): fissa allo schermo e non in cima all'elenco, perché chi elimina
+ * §337): fissa allo schermo e non in cima all'elenco, perché chi elimina
  * può essere molto più in basso nella pagina.
  */
 export function RequestDeletedNotice() {

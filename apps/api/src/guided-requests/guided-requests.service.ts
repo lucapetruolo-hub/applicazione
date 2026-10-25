@@ -712,7 +712,7 @@ export class GuidedRequestsService {
    * annullata, così i professionisti vengono avvisati nella cronologia) e
    * mai se un preventivo ha già generato una prenotazione: quella documenta
    * un lavoro reale (e `Booking.quoteId` non è in cascata).
-   * Eccezione (docs/CHANGELOG.md §336, richiesta esplicita dell'utente:
+   * Eccezione (docs/CHANGELOG.md §337, richiesta esplicita dell'utente:
    * "Elimina richiesta" nel modulo di modifica): una richiesta ancora aperta
    * si elimina subito se nessuno ha mandato un preventivo, gli stessi casi
    * in cui si può modificare. Non c'è nessun lavoro né pagamento da

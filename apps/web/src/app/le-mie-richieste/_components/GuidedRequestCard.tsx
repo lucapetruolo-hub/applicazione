@@ -149,7 +149,7 @@ export function GuidedRequestCard({
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Uscita dalla modifica (docs/CHANGELOG.md §336): con modifiche non
+  // Uscita dalla modifica (docs/CHANGELOG.md §337): con modifiche non
   // salvate si chiede prima conferma; `href` è la pagina da aprire dopo,
   // null per tornare solo alla scheda.
   const isDirty =
@@ -348,7 +348,7 @@ export function GuidedRequestCard({
     }
   }
 
-  // "Elimina richiesta" dal modulo di modifica (§336): l'errore resta nel
+  // "Elimina richiesta" dal modulo di modifica (§337): l'errore resta nel
   // popup, che lo mostra da sé.
   async function handleDeleteFromEdit(): Promise<void> {
     await apiClient.deleteGuidedRequestPermanently(token, request.id);
@@ -405,7 +405,7 @@ export function GuidedRequestCard({
     return (
       <Surface gap="$3">
         <YStack gap="$2">
-          {/* Uscita sempre in vista, anche su un modulo lungo dal telefono (§336). */}
+          {/* Uscita sempre in vista, anche su un modulo lungo dal telefono (§337). */}
           <XStack
             alignSelf="flex-start"
             alignItems="center"
@@ -561,7 +561,7 @@ export function GuidedRequestCard({
             </CardButton>
           </XStack>
           {/* Eliminare è possibile solo finché non arriva un preventivo, gli
-              stessi casi in cui si può modificare (§336): staccato dai
+              stessi casi in cui si può modificare (§337): staccato dai
               pulsanti del salvataggio per non premerlo per sbaglio. */}
           <YStack borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3" marginTop="$2" alignItems="flex-start">
             <CardButton tone="danger" onPress={() => setShowDeleteModal(true)} disabled={isSaving}>
@@ -654,7 +654,7 @@ export function GuidedRequestCard({
       },
     });
   }
-  // Senza preventivi si elimina anche senza annullare (§336), come dal modulo di modifica.
+  // Senza preventivi si elimina anche senza annullare (§337), come dal modulo di modifica.
   if (canEditDetails) {
     menuActions.push({
       icon: "trash-2",

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { GuidedRequestsService } from "./guided-requests.service";
 
 /**
- * "Elimina richiesta" del cliente (docs/CHANGELOG.md §336): una richiesta
+ * "Elimina richiesta" del cliente (docs/CHANGELOG.md §337): una richiesta
  * aperta si elimina subito solo se nessuno ha mandato un preventivo; con un
  * preventivo va prima annullata, con una prenotazione mai.
  */
