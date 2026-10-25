@@ -97,7 +97,7 @@ export function journeyNavItem(attention: ReadonlySet<string>): AccountNavItem |
  * l'header, §147). Stesse voci della tendina "Il mio account". La pagina di
  * una decisione sui propri contenuti (/segnalazioni) non è nel menu, si apre
  * dall'email (docs/CHANGELOG.md §319): nessuna voce evidenziata, perché
- * nessuna è la pagina in cui sei (§346; prima restava accesa "Account").
+ * nessuna è la pagina in cui sei (§349; prima restava accesa "Account").
  */
 export const CLIENT_NAV: AccountNavGroup[] = [
   {

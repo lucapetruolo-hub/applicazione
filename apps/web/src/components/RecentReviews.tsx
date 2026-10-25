@@ -156,7 +156,7 @@ export function RecentReviews({ summary }: { summary: { count: number; average: 
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}
         >
-          {/* Senza foto niente riquadro vuoto (docs/CHANGELOG.md §346): un
+          {/* Senza foto niente riquadro vuoto (docs/CHANGELOG.md §349): un
               rettangolo di 220 px con una piccola icona sembrava un'immagine
               rotta; l'iniziale colorata sta accanto al nome, in fondo. */}
           {review.professional.imageUrl ? (

@@ -63,7 +63,7 @@ export function AdminTabs<T extends string>({ tabs, value, onChange }: { tabs: {
             accessibilityRole="button"
             aria-pressed={active}
           >
-            {/* Verde come le pillole attive dell'area cliente e professionista (§346). */}
+            {/* Verde come le pillole attive dell'area cliente e professionista (§349). */}
             <Text fontSize={14} fontWeight="700" color={active ? "#ffffff" : brand.grafite}>
               {tab.label}
             </Text>

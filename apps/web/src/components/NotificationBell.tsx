@@ -254,7 +254,7 @@ export function NotificationBell() {
 
   const newCount = history ? history.filter((item) => item.readAt === null).length : 0;
 
-  /** Toglie subito i pallini "Nuova" (§346); sul server sono già segnate lette all'apertura. */
+  /** Toglie subito i pallini "Nuova" (§349); sul server sono già segnate lette all'apertura. */
   function handleMarkAllRead() {
     const now = new Date().toISOString();
     setHistory((prev) => (prev ? prev.map((item) => (item.readAt === null ? { ...item, readAt: now } : item)) : prev));

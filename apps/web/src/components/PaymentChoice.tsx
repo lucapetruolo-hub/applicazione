@@ -10,7 +10,7 @@ import {
 import Link from "next/link";
 import { Text, YStack, brand } from "@professionisti/ui";
 
-/** Importo esatto di un pagamento, stesso formato di tutto il sito (§346). */
+/** Importo esatto di un pagamento, stesso formato di tutto il sito (§349). */
 function eur(cents: number): string {
   return formatEurCents(cents);
 }

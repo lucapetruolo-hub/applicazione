@@ -32,7 +32,7 @@ export function WeatherStrip({ days }: { days: DayAhead[] | null }) {
       </div>
     );
   }
-  // Senza meteo niente "Meteo non disponibile" (docs/CHANGELOG.md §346): un
+  // Senza meteo niente "Meteo non disponibile" (docs/CHANGELOG.md §349): un
   // servizio che manca fa sembrare rotto il sito. Se non ce n'è per nessun
   // giorno la riga non compare.
   if (!days.slice(0, 3).some((day) => day.weather)) return null;

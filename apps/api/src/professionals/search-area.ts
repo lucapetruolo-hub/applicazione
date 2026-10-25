@@ -12,7 +12,7 @@ const SAME_DISTANCE_TOLERANCE_KM = 0.05;
  * professionisti entro `radiusKm` dal centro cercato, con la loro distanza.
  * Se nel raggio non c'è nessuno, la ricerca si allarga fino al più vicino
  * (e a chi è alla sua stessa distanza), ma non oltre `maxFallbackKm`
- * (docs/CHANGELOG.md §346): più lontano non è un'alternativa utile. Chi non
+ * (docs/CHANGELOG.md §349): più lontano non è un'alternativa utile. Chi non
  * ha coordinate (0,0) è escluso: la sua posizione non è nota.
  */
 export function selectSearchArea(

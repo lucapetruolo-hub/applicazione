@@ -18,7 +18,7 @@ const KIND: Record<ProfessionalKindValue, { label: string; icon: IconName; info:
  * partita IVA o azienda, con il significato nel fumetto. Pillola neutra
  * (piena color gesso, non verde): è un'informazione, non un merito né un
  * pagamento. Piena e senza bordo come gli altri bollini: il bordo resta solo
- * alle specializzazioni (docs/CHANGELOG.md §346).
+ * alle specializzazioni (docs/CHANGELOG.md §349).
  * `md` per la scheda del profilo, accanto ai `Badge`; `sm` per le schede dei risultati.
  */
 export function ProfessionalKindBadge({ kind, size = "sm" }: { kind: ProfessionalKindValue; size?: "sm" | "md" }) {

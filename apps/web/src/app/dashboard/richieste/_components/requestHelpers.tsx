@@ -146,7 +146,7 @@ export function DeadlinePill({ deadline }: { deadline: { label: string; urgent: 
   const color = deadline.urgent ? brand.urgenza : "#B8860B";
   const bg = deadline.urgent ? "#FBEAEA" : "#FFF3D6";
   return (
-    // Può andare a capo da telefono invece di uscire dalla scheda (§346).
+    // Può andare a capo da telefono invece di uscire dalla scheda (§349).
     <XStack alignItems="center" gap={6} paddingHorizontal="$3" paddingVertical={8} borderRadius={20} backgroundColor={bg} maxWidth="100%">
       <Icon name="clock" size={15} strokeWidth={2} color={color} />
       <Text fontFamily="$body" fontSize={16} fontWeight="800" color={color} flexShrink={1}>

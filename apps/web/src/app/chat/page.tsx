@@ -341,7 +341,7 @@ function ChatThreadRow({
         </Text>
         {/* Il lavoro (docs/CHANGELOG.md §198): due chat con la stessa persona
             non sembrano più uguali. Solo la descrizione, la categoria se manca
-            (§346): "Idraulico · ..." tagliava proprio la parte che distingue. */}
+            (§349): "Idraulico · ..." tagliava proprio la parte che distingue. */}
         <Text fontSize={13} color={brand.grafite70} numberOfLines={1}>
           {thread.requestDescription?.trim() || thread.categoryLabel}
         </Text>

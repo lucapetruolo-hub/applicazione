@@ -50,7 +50,7 @@ export function describeUnknownSearch(pathname: string): UnknownSearch | null {
 }
 
 /**
- * Ricerca con una città o un servizio sconosciuti (docs/CHANGELOG.md §346):
+ * Ricerca con una città o un servizio sconosciuti (docs/CHANGELOG.md §349):
  * la pagina resta un 404 per Google, ma dice cosa non va e ha già la ricerca
  * compilata da correggere. Caricata a parte da NotFoundContent: porta con sé
  * l'elenco dei comuni, che non deve finire nella pagina "non trovata" generica.

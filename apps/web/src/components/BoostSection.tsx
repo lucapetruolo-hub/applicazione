@@ -41,7 +41,7 @@ const BOOST_OPTIONS: BoostOption[] = [
  * (docs/CHANGELOG.md §252, decisione dell'utente: tolti da "Profilo e
  * visibilità", restano solo Boost locale e Storia di successo). Gli acquisti
  * non sono ancora attivi: niente pulsante "Acquista" che fallirebbe sempre,
- * solo lo stato "In arrivo", senza prezzo (§346).
+ * solo lo stato "In arrivo", senza prezzo (§349).
  */
 export function BoostSection() {
   return (
@@ -78,7 +78,7 @@ export function BoostSection() {
                 ))}
               </ul>
             </div>
-            {/* Niente prezzo finché non si può comprare (docs/CHANGELOG.md §346):
+            {/* Niente prezzo finché non si può comprare (docs/CHANGELOG.md §349):
                 un prezzo accanto a "In arrivo" sembrava un acquisto rotto. Il
                 prezzo resta in BOOST_OPTIONS per quando si attiveranno. */}
           </article>

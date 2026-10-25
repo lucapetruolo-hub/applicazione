@@ -96,7 +96,7 @@ const PROFESSIONAL_DETAIL_INCLUDE = {
   fiscalProfile: { select: { stripePayoutsEnabled: true, fiscalDataCompleteAt: true, entityType: true } },
   extraCategories: true,
   // Nome di chi recensisce e servizio del lavoro, per l'intestazione delle
-  // recensioni sul profilo (docs/CHANGELOG.md §346).
+  // recensioni sul profilo (docs/CHANGELOG.md §349).
   bookings: {
     include: {
       review: true,

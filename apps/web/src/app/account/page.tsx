@@ -248,7 +248,7 @@ export default function AccountPage() {
   }
 
   // Modifiche ai dati del profilo non ancora salvate: la barra "Salva" resta
-  // in fondo allo schermo (SaveBar, docs/CHANGELOG.md §346).
+  // in fondo allo schermo (SaveBar, docs/CHANGELOG.md §349).
   const savedBirth = parseBirthDate(user?.birthDate ?? null);
   const profileDirty =
     Boolean(user) &&
@@ -600,7 +600,7 @@ export default function AccountPage() {
           </Text>
 
           <FieldRow label="Città">
-            {/* Bianco con il bordo degli altri campi (docs/CHANGELOG.md §346): grigio sembrava non modificabile. */}
+            {/* Bianco con il bordo degli altri campi (docs/CHANGELOG.md §349): grigio sembrava non modificabile. */}
             <YStack className="guided-city guided-city-inline" borderWidth={1} borderColor={brand.bordoCampo} borderRadius={10} backgroundColor="#ffffff">
               <Autocomplete
                 items={allItalianCityNames()}

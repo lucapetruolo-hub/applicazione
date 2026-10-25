@@ -94,7 +94,7 @@ export function EngagementRadiusSection({
         <Text fontFamily="$heading" fontWeight="800" fontSize="$5" color={brand.grafite}>
           Raggio di ingaggio
         </Text>
-        {/* Una riga e "Scopri di più" (docs/CHANGELOG.md §346), prima due paragrafi. */}
+        {/* Una riga e "Scopri di più" (docs/CHANGELOG.md §349), prima due paragrafi. */}
         <Text fontSize={13} color={brand.grafite70}>
           Fin dove ti mandiamo in automatico le richieste dei clienti vicini.
         </Text>

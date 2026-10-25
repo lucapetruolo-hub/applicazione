@@ -45,7 +45,7 @@ export function CityFacts({
   const averageRating = reviewCount > 0 ? formatRating(ratingSum / reviewCount) : null;
 
   // Niente tessere a zero e, con un solo professionista, niente numeri
-  // (docs/CHANGELOG.md §346): "0 con badge Verificato" in una pagina che deve
+  // (docs/CHANGELOG.md §349): "0 con badge Verificato" in una pagina che deve
   // dare fiducia ottiene l'effetto opposto, e "1 professionista in zona"
   // sopra la sua unica scheda non dice nulla di nuovo.
   const facts =

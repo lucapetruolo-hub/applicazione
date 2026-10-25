@@ -145,7 +145,7 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
                     {entry.name}
                   </Text>
                   {/* Sotto i 3 professionisti il numero dice solo quanto è piccola
-                      l'offerta: resta la forbice, che è l'informazione utile (§346). */}
+                      l'offerta: resta la forbice, che è l'informazione utile (§349). */}
                   {entry.professionalCount >= 3 ? (
                     <Text fontSize={13} color={brand.grafite70}>
                       {entry.professionalCount} professionisti

@@ -48,7 +48,7 @@ export function ClientEmailVerificationCard() {
           Conferma la tua email
         </Text>
         <Text color={brand.grafite70}>
-          {/* Una riga sola (docs/CHANGELOG.md §346). */}
+          {/* Una riga sola (docs/CHANGELOG.md §349). */}
           Così ricevi più risposte dai professionisti.
         </Text>
       </YStack>

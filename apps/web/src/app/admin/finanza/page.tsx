@@ -18,7 +18,7 @@ import { BRAND, formatEurCents } from "@professionisti/shared";
  * configurate in questo ambiente, coerente col resto del progetto.
  */
 /**
- * Stati e fonti in italiano (docs/CHANGELOG.md §346): è la pagina da far vedere
+ * Stati e fonti in italiano (docs/CHANGELOG.md §349): è la pagina da far vedere
  * al commercialista, "PENDING / CONFIRMED" non diceva nulla.
  */
 const REVENUE_SOURCE_LABEL: Record<string, string> = {
@@ -196,7 +196,7 @@ export default function AdminFinanzaPage() {
             </Text>
           </Link>
           <H1 size="$8">Finanza e DAC7</H1>
-          {/* Titoli delle sezioni a misura $7: dalla $6 in giù il carattere dei titoli è in maiuscolo (§346). */}
+          {/* Titoli delle sezioni a misura $7: dalla $6 in giù il carattere dei titoli è in maiuscolo (§349). */}
         </YStack>
 
         {error && <Text color={brand.urgenza}>{error}</Text>}
@@ -307,7 +307,7 @@ export default function AdminFinanzaPage() {
             </Text>
           </XStack>
           {platformSettings?.sendingEntityIn && platformSettings?.platformName && platformSettings?.platformIdValue ? null : (
-            // Avviso, non errore (docs/CHANGELOG.md §346): l'esportazione funziona lo stesso.
+            // Avviso, non errore (docs/CHANGELOG.md §349): l'esportazione funziona lo stesso.
             <Text fontSize={13} color={brand.ottoneScuro}>
               Dati incompleti: l&apos;export segnalerà esplicitamente questa mancanza (non blocca l&apos;esportazione, la contrassegna).
             </Text>

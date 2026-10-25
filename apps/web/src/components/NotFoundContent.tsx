@@ -44,7 +44,7 @@ export function NotFoundContent() {
     <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingTop="$9" paddingHorizontal="$4">
       <YStack width="100%" maxWidth={560} alignItems="center" gap="$4">
         {/* Città o servizio sconosciuti in un indirizzo di ricerca: si dice
-            cosa non va e la ricerca è già compilata (docs/CHANGELOG.md §346). */}
+            cosa non va e la ricerca è già compilata (docs/CHANGELOG.md §349). */}
         {pathname.startsWith("/cerca/") ? <UnknownSearchNotice pathname={pathname} fallback={generic} /> : generic}
       </YStack>
       <div className="not-found-services">

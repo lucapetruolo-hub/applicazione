@@ -35,7 +35,7 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
   const { user, isLoading } = useAuth();
   const pathname = usePathname();
   // Dentro un'area riservata il menu da telefono apre prima le sezioni di
-  // quell'area (docs/CHANGELOG.md §346): prima mostrava solo le voci
+  // quell'area (docs/CHANGELOG.md §349): prima mostrava solo le voci
   // pubbliche e un idraulico dal telefono non trovava "Abbonamento" né
   // "Messaggi". Le voci pubbliche restano, in fondo.
   const inAdmin = pathname.startsWith("/admin") && user?.role === "ADMIN";

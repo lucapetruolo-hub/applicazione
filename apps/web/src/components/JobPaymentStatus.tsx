@@ -13,7 +13,7 @@ import { Icon, Text, XStack, YStack, brand, type IconName } from "@professionist
 import { CardButton } from "@/components/CardButton";
 import { formatIssueDeadline } from "@/lib/leadDeadline";
 
-/** Importo esatto di un pagamento, stesso formato di tutto il sito (§346). */
+/** Importo esatto di un pagamento, stesso formato di tutto il sito (§349). */
 function eur(cents: number): string {
   return formatEurCents(cents);
 }

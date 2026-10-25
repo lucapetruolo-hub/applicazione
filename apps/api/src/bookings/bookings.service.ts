@@ -364,7 +364,7 @@ export class BookingsService implements OnModuleInit {
       bookingId: booking.id,
       guidedRequestId: quote.guidedRequestId,
       clientName: clientFullName,
-      // Quale lavoro, nel testo della notifica (docs/CHANGELOG.md §346).
+      // Quale lavoro, nel testo della notifica (docs/CHANGELOG.md §349).
       category: guidedRequest.category.label,
       jobLabel: notificationJobLabel(guidedRequest.description),
       clientPhone: booking.recipientPhone ?? client?.phone ?? null,

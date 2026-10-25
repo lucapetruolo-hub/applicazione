@@ -79,7 +79,7 @@ export function HomeHero() {
           </YStack>
 
           {/* L'interruttore "Intervento urgente? Solo disponibili nelle prossime
-              24h" è stato tolto (docs/CHANGELOG.md §346): prometteva un filtro
+              24h" è stato tolto (docs/CHANGELOG.md §349): prometteva un filtro
               che il sito non fa (nessuno controlla chi è disponibile) ed era il
               secondo controllo "urgente" nello stesso schermo, col link rosso
               "Richiesta urgente" qui sotto, che resta. */}

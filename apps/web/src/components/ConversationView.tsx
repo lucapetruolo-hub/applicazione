@@ -709,7 +709,7 @@ export function ConversationView({
                         esplicita dell'utente, §198): bianco con bordo,
                         distinto dalle nuvolette colorate. */}
                     {/* Una riga compatta con l'ora accanto, in seconda persona
-                        per chi ha fatto l'azione (docs/CHANGELOG.md §346). */}
+                        per chi ha fatto l'azione (docs/CHANGELOG.md §349). */}
                     <YStack
                       gap="$1"
                       alignItems="center"

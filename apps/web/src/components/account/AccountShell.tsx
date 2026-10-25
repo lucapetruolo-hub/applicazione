@@ -24,7 +24,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
   const { user, token, isLoading, unreadNotifications } = useAuth();
   const attention = useNavAttention();
   const [collapsed, toggleCollapsedHere] = useAccountNavCollapsed();
-  // Su telefono la barra sfuma a destra finché ci sono altre voci (§346).
+  // Su telefono la barra sfuma a destra finché ci sono altre voci (§349).
   const navRef = useRef<HTMLElement>(null);
   const moreRight = useScrollMoreRight(navRef);
   // La scelta vale su tutti i dispositivi della persona (docs/CHANGELOG.md

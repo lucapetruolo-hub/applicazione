@@ -62,7 +62,7 @@ import { ItalianDateInput } from "@/components/ItalianDateInput";
 
 /** Orari liberi mostrati subito nel modulo del preventivo, gli altri con "Altri orari". */
 const QUOTE_SLOTS_SHOWN = 6;
-/** Durate a pillola; oltre resta un menu (docs/CHANGELOG.md §346). */
+/** Durate a pillola; oltre resta un menu (docs/CHANGELOG.md §349). */
 const JOB_DAY_PILLS = [1, 2, 3, 4, 5];
 
 export function RequestCard({
@@ -705,7 +705,7 @@ export function RequestCard({
             {stage === "da_quotare" ? deadlines.map((deadline) => <DeadlinePill key={deadline.label} deadline={deadline} />) : null}
           </XStack>
           {/* Da telefono data e prezzo scendono sotto il nome (riga più in
-              basso): qui andavano a capo prima del nome (docs/CHANGELOG.md §346). */}
+              basso): qui andavano a capo prima del nome (docs/CHANGELOG.md §349). */}
           <YStack alignItems="flex-end" $xs={{ display: "none" }}>
             <Text fontSize={16} color={brand.grafite70}>
               Ricevuta {formatDateTime(lead.createdAt)}
@@ -790,7 +790,7 @@ export function RequestCard({
           {gr.description}
         </Text>
         {/* Sotto la descrizione con l'icona, non più piccolo in un angolo tra
-            i bollini (docs/CHANGELOG.md §346): è ciò che fa rispondere prima. */}
+            i bollini (docs/CHANGELOG.md §349): è ciò che fa rispondere prima. */}
         {stage === "da_quotare" && competitorsLabel ? (
           <XStack alignItems="center" gap="$1">
             <Icon name="user-round" size={14} color={brand.grafite70} />
@@ -1162,7 +1162,7 @@ export function RequestCard({
               <XStack gap="$2" flexWrap="wrap">
                 {/* "Prepara il preventivo", e sparisce a modulo aperto: due
                     "Invia preventivo" con esiti diversi (uno apriva, l'altro
-                    inviava) erano un errore da un tocco (docs/CHANGELOG.md §346). */}
+                    inviava) erano un errore da un tocco (docs/CHANGELOG.md §349). */}
                 {!showQuoteForm ? (
                   <CardButton tone="primary" onPress={() => setShowQuoteForm(true)}>
                     Prepara il preventivo
@@ -1350,7 +1350,7 @@ export function RequestCard({
           {/* Form invio/modifica preventivo */}
           {showQuoteForm && !(identityVerificationNeeded && (!lead.quote || canResendQuote)) ? (
             <YStack gap="$3" padding="$3" borderRadius={radiusDoc} backgroundColor={brand.gesso} borderWidth={1} borderColor={brand.filetto}>
-              {/* Etichette scritte (docs/CHANGELOG.md §346): da telefono la voce
+              {/* Etichette scritte (docs/CHANGELOG.md §349): da telefono la voce
                   sta su una riga e "Da" / "A" affiancati sotto, prima "A €"
                   scendeva da solo a capo. */}
               <Text fontSize={13} fontWeight="700" color={brand.grafite}>
@@ -1382,7 +1382,7 @@ export function RequestCard({
                 <YStack gap="$2">
                   {/* Pillole con i prossimi orari liberi al posto del menu a
                       tendina, che sul telefono apriva la rotella di sistema
-                      (docs/CHANGELOG.md §346). */}
+                      (docs/CHANGELOG.md §349). */}
                   <Text fontSize={13} fontWeight="700" color={brand.grafite}>
                     Quando
                   </Text>
@@ -1447,7 +1447,7 @@ export function RequestCard({
 
               {/* Lavoro su più giorni (docs/CHANGELOG.md §310): stesso orario ogni giorno, non blocca altri lavori. */}
               <YStack gap="$1">
-                {/* Durata a pillole (docs/CHANGELOG.md §346); oltre 5 giorni,
+                {/* Durata a pillole (docs/CHANGELOG.md §349); oltre 5 giorni,
                     caso raro, resta il menu fino al massimo. */}
                 <Text fontSize={13} fontWeight="700" color={brand.grafite} id={`job-days-${gr.id}`}>
                   Durata
@@ -1484,7 +1484,7 @@ export function RequestCard({
               {/* Come vuole essere pagato (docs/CHANGELOG.md §237): uno o più modi, il cliente sceglie tra questi. */}
               <YStack gap="$2" role="group" aria-label="Come vuoi essere pagato">
                 {/* Senza pagamenti online non c'è niente da scegliere: resta
-                    solo la riga (docs/CHANGELOG.md §346). */}
+                    solo la riga (docs/CHANGELOG.md §349). */}
                 {onlinePayments ? (
                   <Text fontSize={16} fontWeight="700" color={brand.grafite}>
                     Come vuoi essere pagato? Puoi sceglierne più di uno: il cliente decide tra questi.

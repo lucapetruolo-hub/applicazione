@@ -761,7 +761,7 @@ export function GuidedRequestCard({
   ) : null;
 
 
-  // Ogni scheda si legge per lavoro (docs/CHANGELOG.md §346): prima la
+  // Ogni scheda si legge per lavoro (docs/CHANGELOG.md §349): prima la
   // descrizione in una riga, poi "Categoria · Città · con Nome". Prima il
   // titolo era la categoria o, dopo l'accettazione, il professionista: due
   // schede diverse nella stessa lista.
@@ -845,7 +845,7 @@ export function GuidedRequestCard({
           </Text>
         ) : null}
 
-        {/* Scritta al posto della sola freccia (docs/CHANGELOG.md §346): una
+        {/* Scritta al posto della sola freccia (docs/CHANGELOG.md §349): una
             freccia da sola è il controllo che si trova meno. */}
         <XStack justifyContent="flex-end" alignItems="center" gap="$1" paddingTop="$1">
           <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
@@ -1034,7 +1034,7 @@ export function GuidedRequestCard({
               {request.quotes.map(quoteCard)}
             </YStack>
           ) : statusSummary ? null : (
-            // Con il riepilogo qui sopra la frase c'era due volte (docs/CHANGELOG.md §346).
+            // Con il riepilogo qui sopra la frase c'era due volte (docs/CHANGELOG.md §349).
             <Text color={brand.grafite70} fontSize={16}>
               Nessun preventivo ricevuto ancora.
             </Text>

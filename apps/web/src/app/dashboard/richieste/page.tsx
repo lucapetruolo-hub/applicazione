@@ -57,7 +57,7 @@ const TABS: { key: ProTabKey; label: string }[] = [
   { key: "scaduta", label: "Scadute" },
   { key: "archiviate", label: "Archiviate" },
 ];
-/** Numero rosso solo dove tocca al professionista (§346); altrove il numero sta nella pillola, in grigio. */
+/** Numero rosso solo dove tocca al professionista (§349); altrove il numero sta nella pillola, in grigio. */
 const ACTION_TABS: ReadonlySet<ProTabKey> = new Set<ProTabKey>(["da_quotare", "modifica_richiesta"]);
 
 type SortMode = "recenti" | "vecchie" | "aggiornamento";

@@ -113,7 +113,7 @@ export default function NotifichePage() {
             <section className="notif-card" aria-labelledby="notif-topics-title">
               <h2 id="notif-topics-title">Per argomento</h2>
               {/* Una nota sola al posto del paragrafo e dei sette "In arrivo"
-                  ripetuti sotto ogni SMS (docs/CHANGELOG.md §346). */}
+                  ripetuti sotto ogni SMS (docs/CHANGELOG.md §349). */}
               <p className="notif-note">
                 <strong>SMS</strong>: in arrivo, puoi già scegliere per cosa riceverli.
               </p>

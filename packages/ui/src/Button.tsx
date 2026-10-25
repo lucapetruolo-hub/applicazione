@@ -74,7 +74,7 @@ export const Button = styled(TamaguiButton, {
       },
       // Quasi nero delle regole Taste (docs/CHANGELOG.md §288-§289). Dal
       // 24/10/2026 nessuna pagina lo usa più: l'utente ha scelto il verde per
-      // tutti i pulsanti principali, anche in accesso e registrazione (§346).
+      // tutti i pulsanti principali, anche in accesso e registrazione (§349).
       scuro: {
         height: BUTTON_HEIGHT,
         paddingHorizontal: 24,

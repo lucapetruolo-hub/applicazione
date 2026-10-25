@@ -68,7 +68,7 @@ const CLIENT_TABS: { key: ClientTabKey; label: string }[] = [
   { key: "scaduta", label: "Scadute" },
   { key: "archiviate", label: "Archiviate" },
 ];
-/** Numero rosso solo dove tocca al cliente, cioè sui preventivi da rispondere (§346). */
+/** Numero rosso solo dove tocca al cliente, cioè sui preventivi da rispondere (§349). */
 const ACTION_TABS: ReadonlySet<ClientTabKey> = new Set<ClientTabKey>(["in_attesa"]);
 
 type SortMode = "recenti" | "vecchie" | "aggiornamento";
@@ -95,7 +95,7 @@ function LeMieRichiesteContent() {
   const [serviceModeFilter, setServiceModeFilter] = useState<"tutte" | "HOME" | "ONLINE">("tutte");
   const [showFiltersModal, setShowFiltersModal] = useState(false);
   // Niente pagine fino a 10 richieste, poi "Mostra altre" (docs/CHANGELOG.md
-  // §346): `page` conta i gruppi da 10 già mostrati.
+  // §349): `page` conta i gruppi da 10 già mostrati.
   const pageSize = 10;
   const [page, setPage] = useState(1);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -489,7 +489,7 @@ function LeMieRichiesteContent() {
             </CategoryCarousel>
 
             {/* Da telefono restano solo le schede di stato e "Filtri", con
-                dentro ricerca e modalità (docs/CHANGELOG.md §346): tre file di
+                dentro ricerca e modalità (docs/CHANGELOG.md §349): tre file di
                 controlli spingevano la prima richiesta a metà schermo. */}
             <YStack $xs={{ display: "none" }}>
               <input

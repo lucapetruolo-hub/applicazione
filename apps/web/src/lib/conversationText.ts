@@ -1,6 +1,6 @@
 /**
  * Messaggi automatici della chat in seconda persona per chi li ha fatti
- * (docs/CHANGELOG.md §346): il server li scrive in terza persona ("Il cliente
+ * (docs/CHANGELOG.md §349): il server li scrive in terza persona ("Il cliente
  * ha confermato…"), giusti per l'altra parte, ma al cliente stesso "il
  * cliente" sembrava un'altra persona. Solo la parte iniziale cambia, il resto
  * del testo resta quello del server.

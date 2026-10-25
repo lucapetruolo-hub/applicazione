@@ -89,7 +89,7 @@ const CANDIDATE_LANGUAGES = [
 const inputStyle = { padding: 12, borderRadius: 10, border: `1px solid ${brand.bordoCampo}`, fontSize: 16, fontFamily: "inherit", color: brand.grafite };
 const smallInputStyle = { ...inputStyle, padding: 10, fontSize: 16 };
 
-/** Prezzo nel campo di testo: "60" per 60,00 € e "12,50" solo con i centesimi (§346), mai "60.00". */
+/** Prezzo nel campo di testo: "60" per 60,00 € e "12,50" solo con i centesimi (§349), mai "60.00". */
 function eurInputValue(cents: number): string {
   return cents % 100 === 0 ? String(cents / 100) : (cents / 100).toFixed(2).replace(".", ",");
 }
@@ -986,7 +986,7 @@ export default function DashboardProfiloPage() {
           <YStack gap="$2">
             <FieldLabel>Bio</FieldLabel>
             <YStack gap="$2" padding="$3" backgroundColor={brand.gesso} borderRadius="$4">
-              {/* Chiusi di serie (docs/CHANGELOG.md §346): sei righe sempre
+              {/* Chiusi di serie (docs/CHANGELOG.md §349): sei righe sempre
                   aperte prima del campo. */}
               <details className="bio-tips">
                 <summary>
@@ -1479,7 +1479,7 @@ export default function DashboardProfiloPage() {
         </p>
 
         {/* Con modifiche non salvate "Salva profilo" resta in fondo allo
-            schermo (SaveBar, docs/CHANGELOG.md §346): la pagina è lunga 2.600 px. */}
+            schermo (SaveBar, docs/CHANGELOG.md §349): la pagina è lunga 2.600 px. */}
         <SaveBar dirty={isDirty} saving={isSubmitting} onSave={handleSubmit} saveLabel="Salva profilo" />
       </YStack>
       )}

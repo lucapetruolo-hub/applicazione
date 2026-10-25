@@ -84,7 +84,7 @@ function pickableSlotDay(date: string): string {
   return new Date(`${date}T00:00:00Z`).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
 }
 
-/** Quanti giorni mostra "Altri orari" alla volta (docs/CHANGELOG.md §346). */
+/** Quanti giorni mostra "Altri orari" alla volta (docs/CHANGELOG.md §349). */
 const SLOT_DAYS_PAGE = 7;
 
 function pickableSlotLabel(slot: PickableAgendaSlot): string {
@@ -95,7 +95,7 @@ function pickableSlotLabel(slot: PickableAgendaSlot): string {
   return `${dateLabel} · ${slot.startTime}–${slot.endTime} (${seatsLabel})`;
 }
 
-/** Campi del passo "Dove" che possono avere un errore sotto (docs/CHANGELOG.md §346). */
+/** Campi del passo "Dove" che possono avere un errore sotto (docs/CHANGELOG.md §349). */
 type StepField = "citta" | "indirizzo" | "nome" | "telefono" | "civico" | "cap" | "provincia";
 type StepProblem = { message: string; field?: StepField };
 
@@ -248,7 +248,7 @@ export function GuidedRequestForm({
   // dell'agenda pubblica), se presente — resta comunque modificabile.
   const [selectedSlotValue, setSelectedSlotValue] = useState(preferredDate && preferredTimeSlot ? `${preferredDate}|${preferredTimeSlot}` : "");
   // "Altri orari": quanti giorni dell'agenda sono aperti sotto i primi tre
-  // orari liberi (0 = chiusi, docs/CHANGELOG.md §346).
+  // orari liberi (0 = chiusi, docs/CHANGELOG.md §349).
   const [slotDaysShown, setSlotDaysShown] = useState(0);
   // Tipo di intervento (richiesta esplicita dell'utente: "in modo che il
   // professionista già sa se può trattarsi di un intervento a domicilio o
@@ -478,7 +478,7 @@ export function GuidedRequestForm({
   const [defaultsError, setDefaultsError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Errore sotto il campo sbagliato del passo "Dove" (docs/CHANGELOG.md
-  // §346): resta finché quel campo non cambia (`value` è il valore al momento
+  // §349): resta finché quel campo non cambia (`value` è il valore al momento
   // dell'errore), così sparisce da solo appena si corregge.
   const [fieldError, setFieldError] = useState<{ field: StepField; message: string; value: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -603,7 +603,7 @@ export function GuidedRequestForm({
                 <>
                   <p>Salvare nome, telefono e indirizzo per la prossima volta?</p>
                   <div className="request-sent-save-actions">
-                    {/* Due risposte chiare invece di "Salva / No" (docs/CHANGELOG.md §346). */}
+                    {/* Due risposte chiare invece di "Salva / No" (docs/CHANGELOG.md §349). */}
                     <Button
                       variant="primary"
                       size="$2"
@@ -1037,7 +1037,7 @@ export function GuidedRequestForm({
             <XStack justifyContent="space-between" alignItems="baseline" gap="$2">
               <FieldLabel>Categorie</FieldLabel>
               <Text fontSize={13} color={brand.grafite70} aria-live="polite">
-                {/* "Scegli fino a 3", poi "1 di 3" (docs/CHANGELOG.md §346): "Fino a 3"
+                {/* "Scegli fino a 3", poi "1 di 3" (docs/CHANGELOG.md §349): "Fino a 3"
                     da solo non diceva che si possono scegliere più tessere. */}
                 {categorySlugs.length > 0 ? `${categorySlugs.length} di ${MAX_REQUEST_CATEGORIES}` : `Scegli fino a ${MAX_REQUEST_CATEGORIES}`}
               </Text>
@@ -1126,7 +1126,7 @@ export function GuidedRequestForm({
             <FieldLabel>Data e orario dell&apos;intervento (facoltativo)</FieldLabel>
             {/* Pillole con i primi tre orari liberi e "Altri orari", al posto
                 del menu a tendina nativo che stonava con il resto del modulo
-                (docs/CHANGELOG.md §346). L'orario scelto dall'agenda resta
+                (docs/CHANGELOG.md §349). L'orario scelto dall'agenda resta
                 selezionato e in vista anche se non è tra i primi tre. */}
             <Text fontSize={13} color={brand.grafite70}>
               Scegli un orario libero o lascia senza preferenza: non è ancora una prenotazione.
@@ -1258,7 +1258,7 @@ export function GuidedRequestForm({
             </YStack>
 
             {/* Etichette sopra i campi come nel passo 1 (docs/CHANGELOG.md
-                §346): col solo segnaposto, appena scritto non si sapeva più
+                §349): col solo segnaposto, appena scritto non si sapeva più
                 cos'era "04100" o "LT". L'`aria-label` resta per i lettori di
                 schermo e per le prove. */}
             <XStack gap="$2" flexWrap="wrap">
@@ -1823,7 +1823,7 @@ function storedTrafficSource() {
 }
 
 /**
- * Orari liberi del professionista a pillole (docs/CHANGELOG.md §346): i primi
+ * Orari liberi del professionista a pillole (docs/CHANGELOG.md §349): i primi
  * tre e "Nessuna preferenza" sempre in vista, gli altri giorno per giorno con
  * "Altri orari", una settimana alla volta.
  */

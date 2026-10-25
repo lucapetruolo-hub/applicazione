@@ -6,7 +6,7 @@ import { Button, Text, XStack, brand } from "@professionisti/ui";
 /**
  * Riga "Salva" in fondo ai moduli lunghi (Account del cliente, Modifica
  * profilo del professionista). Appena cambi qualcosa resta attaccata al
- * fondo dello schermo con "Modifiche non salvate" (docs/CHANGELOG.md §346):
+ * fondo dello schermo con "Modifiche non salvate" (docs/CHANGELOG.md §349):
  * chi correggeva un campo in alto non vedeva il pulsante, 2.500 px più giù,
  * e usciva perdendo le modifiche.
  */

@@ -30,7 +30,7 @@ export function CategoryContent({
   loadFailed?: boolean;
   /** Preimpostato dall'URL (?urgente=1) quando si arriva dal toggle "Intervento urgente?" della homepage. */
   initialUrgentOnly?: boolean;
-  /** Sotto le schede, nella colonna dei risultati: "[Lavoro] a [città] in breve" (docs/CHANGELOG.md §346). */
+  /** Sotto le schede, nella colonna dei risultati: "[Lavoro] a [città] in breve" (docs/CHANGELOG.md §349). */
   footer?: ReactNode;
 }) {
   // Richiesta esplicita dell'utente: niente scheda "Ricerca / N

@@ -68,7 +68,7 @@ export function SearchHeader({
         {expanded ? (
           <YStack gap="$2">
             {/* "Chiudi" per tornare ai risultati senza cercare, e "Cerca"
-                largo quanto i campi come in home (docs/CHANGELOG.md §346). */}
+                largo quanto i campi come in home (docs/CHANGELOG.md §349). */}
             <XStack justifyContent="flex-end">
               <button type="button" className="search-close" onClick={() => setExpanded(false)}>
                 <Icon name="x" size={16} color={brand.grafite} />

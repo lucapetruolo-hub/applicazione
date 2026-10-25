@@ -192,7 +192,7 @@ function AccediForm() {
           </Text>
         </YStack>
 
-        {/* Centrato come gli altri link della scheda (docs/CHANGELOG.md §346). */}
+        {/* Centrato come gli altri link della scheda (docs/CHANGELOG.md §349). */}
         <YStack gap="$2" alignItems="center">
           <Text
             textAlign="center"

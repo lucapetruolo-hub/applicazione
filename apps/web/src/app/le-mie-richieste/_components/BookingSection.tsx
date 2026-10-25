@@ -349,7 +349,7 @@ export function BookingSection({
       ) : null}
 
       {booking.status === "COMPLETED" && booking.finalAmountEurCents !== null ? (
-        // A 16 px come il resto della scheda: a 13 era la tabella meno leggibile (docs/CHANGELOG.md §346).
+        // A 16 px come il resto della scheda: a 13 era la tabella meno leggibile (docs/CHANGELOG.md §349).
         <YStack gap="$1" paddingTop="$1" borderTopWidth={1} borderTopColor={brand.filetto}>
           <Text fontSize={16} fontWeight="600" color={brand.grafite}>
             Importo finale
@@ -394,7 +394,7 @@ export function BookingSection({
       {booking.status === "CONFIRMED" || booking.status === "COMPLETED" ? (
         booking.hasReview ? (
           <YStack gap="$2" alignItems="flex-start">
-            {/* Grigio con la spunta: in verde sembrava un link (docs/CHANGELOG.md §346). */}
+            {/* Grigio con la spunta: in verde sembrava un link (docs/CHANGELOG.md §349). */}
             <XStack alignItems="center" gap="$1">
               <Icon name="check" size={14} color={brand.grafite70} strokeWidth={2} />
               <Text fontSize={13} color={brand.grafite70} fontWeight="600">

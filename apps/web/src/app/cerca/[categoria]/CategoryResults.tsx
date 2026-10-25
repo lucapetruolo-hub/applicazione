@@ -180,7 +180,7 @@ export async function CategoryResults({
   ]);
 
   // "In breve" nella colonna dei risultati, subito sotto le schede
-  // (docs/CHANGELOG.md §346): sotto la pagina restava dopo l'altezza della
+  // (docs/CHANGELOG.md §349): sotto la pagina restava dopo l'altezza della
   // mappa, con un vuoto di 900 px quando c'era un solo risultato.
   const cityFacts =
     comune && !loadFailed ? (

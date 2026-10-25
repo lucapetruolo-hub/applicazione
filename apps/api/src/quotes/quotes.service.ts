@@ -282,7 +282,7 @@ export class QuotesService {
         guidedRequestId: lead.guidedRequestId,
         quoteId: quote.id,
         businessName: professionalProfile.businessName,
-        // Chi e quale lavoro nel testo della notifica (docs/CHANGELOG.md §346).
+        // Chi e quale lavoro nel testo della notifica (docs/CHANGELOG.md §349).
         category: lead.guidedRequest.category.label,
         jobLabel: notificationJobLabel(lead.guidedRequest.description),
       });

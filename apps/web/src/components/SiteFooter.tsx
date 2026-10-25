@@ -48,7 +48,7 @@ export function SiteFooter() {
   const pathname = usePathname();
   // Dentro le aree riservate il piede completo (quattro colonne, "Iscriviti
   // gratis", "Accedi") non serve a chi è già dentro e su telefono era più
-  // lungo della chat (docs/CHANGELOG.md §346): resta una riga sola.
+  // lungo della chat (docs/CHANGELOG.md §349): resta una riga sola.
   if (RESERVED_AREAS.some((area) => pathname === area || pathname.startsWith(`${area}/`))) {
     return (
       <YStack width="100%" alignItems="center" paddingVertical="$5" paddingHorizontal="$4">
@@ -67,7 +67,7 @@ export function SiteFooter() {
   return (
     <YStack width="100%" backgroundColor="transparent" alignItems="center">
       <YStack width="100%" maxWidth={1200} paddingVertical="$8" paddingHorizontal="$4" gap="$7">
-        {/* Su telefono "Servizi" e "Per i clienti" stanno affiancate (docs/CHANGELOG.md §346). */}
+        {/* Su telefono "Servizi" e "Per i clienti" stanno affiancate (docs/CHANGELOG.md §349). */}
         <XStack flexWrap="wrap" columnGap="$5" rowGap="$6" justifyContent="space-between">
           <YStack gap="$3" maxWidth={280} flexBasis="100%" $gtSm={{ flexBasis: "auto" }}>
             <Logo name={BRAND.name} size={22} />

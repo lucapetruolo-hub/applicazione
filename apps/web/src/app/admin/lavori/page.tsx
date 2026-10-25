@@ -67,7 +67,7 @@ export default function AdminLavoriPage() {
   const rows = loaded?.filter === filter ? loaded.rows : null;
   const [error, setError] = useState<string | null>(null);
   // Lavori senza differenze, note né foto chiusi in una riga (docs/CHANGELOG.md
-  // §346): 24 schede quasi uguali riempivano 5.000 px.
+  // §349): 24 schede quasi uguali riempivano 5.000 px.
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {

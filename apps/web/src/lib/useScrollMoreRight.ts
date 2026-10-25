@@ -2,7 +2,7 @@ import { useEffect, useState, type RefObject } from "react";
 
 /**
  * Dice se una barra che scorre in orizzontale ha ancora contenuto a destra
- * (docs/CHANGELOG.md §346): le barre a schede delle aree riservate, su
+ * (docs/CHANGELOG.md §349): le barre a schede delle aree riservate, su
  * telefono, sfumano il bordo destro finché c'è altro da vedere. Prima la
  * barra era tagliata di netto, senza nessun segnale che continuava.
  */

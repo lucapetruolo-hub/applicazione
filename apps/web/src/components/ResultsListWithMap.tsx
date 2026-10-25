@@ -44,7 +44,7 @@ export function ResultsListWithMap({
   header?: ReactNode;
   /**
    * Contenuto subito sotto le schede, nella stessa colonna (es. "[Lavoro] a
-   * [città] in breve", docs/CHANGELOG.md §346): fuori dalla colonna finiva
+   * [città] in breve", docs/CHANGELOG.md §349): fuori dalla colonna finiva
    * sotto l'altezza della mappa e con un solo risultato lasciava un vuoto di
    * 900 px che sembrava una pagina rotta.
    */
@@ -556,7 +556,7 @@ export function ResultsListWithMap({
               schiacciata che sfalsava lista e mappa (bug segnalato
               dall'utente). */}
           {/* Tolte le tre righe di fiducia sopra i risultati (docs/CHANGELOG.md
-              §346): sono già nel piè di pagina e da telefono spingevano i
+              §349): sono già nel piè di pagina e da telefono spingevano i
               risultati sotto il primo schermo. */}
           {/* Senza nessun risultato Filtri, Mappa e ordinamento non servono:
               resta solo il riquadro per inviare lo stesso la richiesta
@@ -588,7 +588,7 @@ export function ResultsListWithMap({
                 un'etichetta passiva — stesso ordinamento di default,
                 invariato (boost pagato → valutazione → recensioni). */}
             {/* Con l'icona "info" e senza la sottolineatura tratteggiata, che
-                lo faceva sembrare un link spento (docs/CHANGELOG.md §346): apre
+                lo faceva sembrare un link spento (docs/CHANGELOG.md §349): apre
                 la spiegazione dell'ordine, non un elenco di ordinamenti. */}
             <button type="button" className="sort-info-trigger" onClick={() => setShowSortInfo(true)}>
               Ordinato per pertinenza
@@ -608,7 +608,7 @@ export function ResultsListWithMap({
           {(showMap ? filteredOrderedVisible : filteredProfessionals).map((pro, index) => (
             <ProfessionalCard
               key={pro.id}
-              // Orari e prezzi aperti solo nella prima scheda (docs/CHANGELOG.md §346).
+              // Orari e prezzi aperti solo nella prima scheda (docs/CHANGELOG.md §349).
               defaultExpanded={index === 0}
               businessName={pro.businessName}
               categoryLabel={pro.categoryLabel}

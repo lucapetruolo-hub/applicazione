@@ -146,7 +146,7 @@ export type ProfessionalCardProps = {
    */
   defaultMode?: "HOME" | "ONLINE";
   /**
-   * Orari e prezzi aperti fin dall'inizio (docs/CHANGELOG.md §346): nelle
+   * Orari e prezzi aperti fin dall'inizio (docs/CHANGELOG.md §349): nelle
    * liste solo la prima scheda li mostra, le altre hanno "Vedi orari e
    * prezzi" e restano tutte della stessa altezza.
    */
@@ -216,14 +216,14 @@ export function ProfessionalCard({
   action,
 }: ProfessionalCardProps) {
   // Mestieri in grassetto, specializzazioni dopo in grigio, al massimo due
-  // righe (docs/CHANGELOG.md §346): prima era un elenco unico tutto uguale.
+  // righe (docs/CHANGELOG.md §349): prima era un elenco unico tutto uguale.
   const categoriesLine = [categoryLabel, ...(otherCategoryLabels ?? [])].join(" · ");
   const specialties = subTags && subTags.length > 0 ? subTags.slice(0, 3).join(", ") : null;
   // Richiesta esplicita dell'utente: "dai la possibilità tramite freccetta
   // di far vedere tutte le prestazioni... ora se ne vedono solo 3".
   const [showAllServices, setShowAllServices] = useState(false);
   // Orari e prezzi sotto il blocco del nome, a tutta larghezza, chiusi tranne
-  // che nella prima scheda della lista (docs/CHANGELOG.md §346): prima la
+  // che nella prima scheda della lista (docs/CHANGELOG.md §349): prima la
   // mini-agenda stava a destra e schiacciava nome, mestiere e voto in una
   // colonna di 150 px, e nella stessa lista convivevano due formati di scheda.
   const [expanded, setExpanded] = useState(defaultExpanded);
@@ -264,7 +264,7 @@ export function ProfessionalCard({
   const allowsKey = activeMode === "HOME" ? ("allowsHome" as const) : ("allowsOnline" as const);
   const availableKey = activeMode === "HOME" ? ("homeAvailable" as const) : ("onlineAvailable" as const);
   const visibleDaysRaw = allDays.slice(offset, offset + AGENDA_VISIBLE_DAYS);
-  // Solo gli orari liberi della modalità scelta (docs/CHANGELOG.md §346): in
+  // Solo gli orari liberi della modalità scelta (docs/CHANGELOG.md §349): in
   // una lista serve sapere quando il professionista è libero, gli orari al
   // completo (prima barrati) restano nell'agenda della pagina profilo.
   const visibleDays = visibleDaysRaw.map((day) => ({ ...day, times: day.times.filter((slot) => slot[allowsKey] && slot[availableKey]) }));
@@ -330,7 +330,7 @@ export function ProfessionalCard({
         <YStack gap="$2" flex={1} minWidth={0}>
           <XStack alignItems="flex-start" gap="$2">
             {/* Nome e bollini sulla stessa riga, che va a capo quando non
-                c'è spazio (docs/CHANGELOG.md §346): prima, nella colonna
+                c'è spazio (docs/CHANGELOG.md §349): prima, nella colonna
                 stretta, i bollini finivano uno sotto l'altro. */}
             <XStack flex={1} minWidth={0} alignItems="center" columnGap="$2" rowGap={6} flexWrap="wrap">
               <Text
@@ -454,7 +454,7 @@ export function ProfessionalCard({
               {distanceKm !== undefined ? `${city} · a ${distanceKm.toString().replace(".", ",")} km` : city}
             </Text>
           </XStack>
-          {/* In grigio (docs/CHANGELOG.md §346): è un dato, non un'azione, e
+          {/* In grigio (docs/CHANGELOG.md §349): è un dato, non un'azione, e
               nel resto del sito il verde vuol dire "cliccabile". */}
           {completedThisMonth && completedThisMonth > 0 ? (
             <Text fontSize={13} color={brand.grafite70}>
@@ -509,7 +509,7 @@ export function ProfessionalCard({
             <YStack gap="$2">
               <XStack alignItems="center" justifyContent="space-between" gap="$2" flexWrap="wrap">
                 {/* Segmentato come la barra di ricerca, con "Orari per:"
-                    davanti (docs/CHANGELOG.md §346): le due pillole separate
+                    davanti (docs/CHANGELOG.md §349): le due pillole separate
                     sembravano un interruttore, e "Online" grigio sembrava
                     "non offerto". */}
                 <XStack alignItems="center" gap="$2">

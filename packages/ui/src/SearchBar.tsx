@@ -80,7 +80,7 @@ export function SearchBar({
             const active = tab.key === mode;
             return (
               // Con lo spazio (schermi da 1281 px) anche il nome del modo
-              // accanto all'icona (docs/CHANGELOG.md §346): la sola casa o
+              // accanto all'icona (docs/CHANGELOG.md §349): la sola casa o
               // videocamera non diceva cosa sceglieva.
               <XStack
                 key={tab.key}

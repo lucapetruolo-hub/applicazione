@@ -9,7 +9,7 @@ import { asScheduleChange, formatAppointmentDate, formatAppointmentTimeRange, sc
  */
 const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   // Richieste, preventivi e accettazioni dicono chi e quale lavoro quando il
-  // payload lo porta (docs/CHANGELOG.md §346, vedi `notificationCopy`); questi
+  // payload lo porta (docs/CHANGELOG.md §349, vedi `notificationCopy`); questi
   // sono i testi di riserva per le notifiche più vecchie.
   NEW_LEAD: { icon: "🎉", message: "Hai ricevuto una nuova richiesta." },
   NEW_QUOTE: { icon: "📬", message: "Hai ricevuto un nuovo preventivo." },
@@ -159,7 +159,7 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
     return { icon: "📝", message: `Il cliente ha aggiunto una nota al preventivo, senza cambiare data e orario.${quotedNote}` };
   }
   const data = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
-  // Chi e quale lavoro (docs/CHANGELOG.md §346): senza, quattro "Hai ricevuto
+  // Chi e quale lavoro (docs/CHANGELOG.md §349): senza, quattro "Hai ricevuto
   // un nuovo preventivo" uguali andavano aperti tutti per capire di cosa.
   const text = (value: unknown): string | null => (typeof value === "string" && value.trim() ? value.trim() : null);
   const job = text(data.jobLabel) ?? text(data.category);

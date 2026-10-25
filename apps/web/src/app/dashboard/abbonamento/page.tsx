@@ -378,7 +378,7 @@ function AbbonamentoContent() {
                   ) : null}
                   {!current && sub && !sub.checkoutAvailable ? (
                     // Senza Stripe nessun livello si può scegliere: una riga chiara
-                    // al posto di un pulsante spento che sembra attivo (§346).
+                    // al posto di un pulsante spento che sembra attivo (§349).
                     <Text color={brand.grafite70} fontSize={16} paddingVertical="$2">
                       Disponibile dal lancio
                     </Text>

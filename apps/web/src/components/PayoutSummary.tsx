@@ -6,7 +6,7 @@ import { Icon, Text, XStack, YStack, brand, type IconName } from "@professionist
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 
-/** Importo esatto di un pagamento, stesso formato di tutto il sito (§346). */
+/** Importo esatto di un pagamento, stesso formato di tutto il sito (§349). */
 function eur(cents: number): string {
   return formatEurCents(cents);
 }

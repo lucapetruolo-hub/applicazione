@@ -266,7 +266,7 @@ export function notificationChannelEnabled(prefs: NotificationPreferences, type:
 
 /**
  * Lavoro in poche parole per le notifiche ("Nuovo preventivo da Rossi
- * Idraulica · Perdita sotto il lavello", docs/CHANGELOG.md §346): la prima
+ * Idraulica · Perdita sotto il lavello", docs/CHANGELOG.md §349): la prima
  * riga della descrizione, al massimo 40 caratteri, con i puntini se tagliata.
  */
 export function notificationJobLabel(description: string | null | undefined, maxLength = 40): string | null {

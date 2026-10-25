@@ -4,7 +4,7 @@
  * alla misura più leggibile: "entro 2 giorni", mai "entro 2880 minuti".
  * Unico punto per profilo, modulo di richiesta e "Richiesta inviata"
  * (docs/CHANGELOG.md §341). Sotto i 5 minuti le pagine dicono "risponde
- * subito" (`respondsRightAway`) invece di "entro 1 minuto" (§346).
+ * subito" (`respondsRightAway`) invece di "entro 1 minuto" (§349).
  */
 export const RIGHT_AWAY_MINUTES = 5;
 

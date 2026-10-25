@@ -221,7 +221,7 @@ export function AppointmentPanel({
         </div>
 
         {/* "Richiesta completa" e "Messaggi" due link uguali (docs/CHANGELOG.md
-            §346): prima un pulsante con bordo e un link, due stili per due
+            §349): prima un pulsante con bordo e un link, due stili per due
             azioni dello stesso peso. */}
         {booking.guidedRequestId || onOpenMessages ? (
           <div className="ag-sec">

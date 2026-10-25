@@ -95,7 +95,7 @@ export function AccountMenu() {
           {displayName ? ", il mio account" : ""}
           {unreadCount > 0 ? `, ${unreadCount} novità da visualizzare` : toDo ? ", qualcosa da completare" : ""}
         </span>
-        {/* Il numero delle novità sta solo sulla campanella accanto (§346):
+        {/* Il numero delle novità sta solo sulla campanella accanto (§349):
             due "9+" uno vicino all'altro dicevano la stessa cosa. */}
         {unreadCount === 0 && toDo ? (
           // Stesso pallino delle voci del menu: da telefono restano fuori schermo nella barra.

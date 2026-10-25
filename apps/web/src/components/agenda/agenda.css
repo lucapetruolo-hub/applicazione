@@ -73,15 +73,17 @@
   outline-offset: 2px;
 }
 /* Verde come i pulsanti principali di tutto il sito (decisione dell'utente
-   del 24/10/2026, docs/CHANGELOG.md §346): era l'unico quasi nero dell'area. */
+   del 24/10/2026, docs/CHANGELOG.md §349): era l'unico quasi nero dell'area. */
 .ag-btn.primary {
-  border-color: var(--ag-green);
-  background: var(--ag-green);
-  color: #fff;
-}
-.ag-btn.primary:hover {
   border-color: var(--ag-green-dark);
   background: var(--ag-green-dark);
+  color: #fff;
+}
+/* Il verde scuro tiene il testo bianco leggibile anche a 13 px (contrasto
+   AA, prova agenda-accessibilita): il verde chiaro basta solo sui testi grandi. */
+.ag-btn.primary:hover {
+  border-color: #0a6340;
+  background: #0a6340;
 }
 .ag-btn.danger {
   border-color: var(--ag-red);
@@ -95,7 +97,7 @@
   padding: 0 14px;
   font-size: 13px;
 }
-/* Un solo aspetto per i pulsanti spenti, pieni o con il bordo (§346). */
+/* Un solo aspetto per i pulsanti spenti, pieni o con il bordo (§349). */
 .ag-btn[disabled],
 .ag-btn[aria-disabled="true"],
 .ag-btn.primary[disabled],

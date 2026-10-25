@@ -45,7 +45,7 @@ export function ContactButton({
       </CardButton>
     );
   }
-  // "Messaggi" con bordo (docs/CHANGELOG.md §346): "Contatta/Cronologia"
+  // "Messaggi" con bordo (docs/CHANGELOG.md §349): "Contatta/Cronologia"
   // con la barra non era una parola, e pieno verde competeva con l'azione
   // principale della scheda (Invia preventivo, Lavoro terminato).
   return (

@@ -44,7 +44,7 @@ export function SiteHeader() {
   // preventivo" in alto, l'attenzione resta sul modulo.
   const isAuthPage = AUTH_PAGES.some((page) => pathname === page || pathname.startsWith(`${page}/`));
   // In home la ricerca e "Richiedi un preventivo" sono già nel primo schermo
-  // (docs/CHANGELOG.md §346): in alto restano solo "Accedi" e i link.
+  // (docs/CHANGELOG.md §349): in alto restano solo "Accedi" e i link.
   const isHome = pathname === "/";
 
   // Ordine delle categorie per la richiesta di preventivo e la registrazione,

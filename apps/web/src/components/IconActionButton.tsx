@@ -17,7 +17,7 @@ type IconActionButtonProps = {
   /**
    * "end": fumetto allineato al bordo destro del pulsante invece che
    * centrato, per i pulsanti vicino al bordo destro dello schermo
-   * (docs/CHANGELOG.md §346): centrato usciva dallo schermo.
+   * (docs/CHANGELOG.md §349): centrato usciva dallo schermo.
    */
   tooltipAlign?: "center" | "end";
 };

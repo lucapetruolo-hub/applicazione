@@ -296,7 +296,7 @@ export default function DashboardStatistichePage() {
 
 function deltaOf(value: number, previous: number): { text: string; tone: "up" | "down" | "flat" } {
   if (value === previous) return { text: "Come nel periodo prima", tone: "flat" };
-  // Periodo prima vuoto: niente freccia verde su tutte le tessere (docs/CHANGELOG.md §346).
+  // Periodo prima vuoto: niente freccia verde su tutte le tessere (docs/CHANGELOG.md §349).
   if (previous === 0) return { text: "Primo periodo", tone: "flat" };
   const change = ((value - previous) / previous) * 100;
   return { text: `${change > 0 ? "+" : ""}${Math.round(change)}% rispetto a prima`, tone: change > 0 ? "up" : "down" };

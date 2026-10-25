@@ -35,7 +35,7 @@ const POINTS: { title: string; text: string; online?: boolean }[] = [
 ];
 
 /**
- * Perché fidarsi, in un blocco solo (docs/CHANGELOG.md §346). Prima erano tre
+ * Perché fidarsi, in un blocco solo (docs/CHANGELOG.md §349). Prima erano tre
  * tessere con l'icona in un cerchio ("La trasparenza che non trovi in giro")
  * più una scheda "Come ti proteggiamo" con cinque punti e due chip "In
  * arrivo": lo stesso messaggio tre volte (col piè di pagina) e due garanzie

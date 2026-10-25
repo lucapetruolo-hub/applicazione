@@ -134,7 +134,7 @@ export default function ContattiContent({ initialReport = false }: { initialRepo
                   <Text fontSize={16} fontWeight="600" color={brand.grafite70}>
                     Chi sei?
                   </Text>
-                  {/* Quattro scelte visibili invece di un menu a tendina (docs/CHANGELOG.md §346). */}
+                  {/* Quattro scelte visibili invece di un menu a tendina (docs/CHANGELOG.md §349). */}
                   <div className="slot-pills" role="radiogroup" aria-label="Chi sei?">
                     {ROLE_OPTIONS.map((option) => (
                       <button

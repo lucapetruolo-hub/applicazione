@@ -249,7 +249,7 @@ const GALLERY: { src: string; alt: string; position: string; slug: ProfessionalC
 /**
  * Più foto nella pagina (richiesta dell'utente): una fila di mestieri diversi.
  * Ogni foto ha il nome del mestiere e porta alla sua pagina "Lavora con noi"
- * (docs/CHANGELOG.md §346): senza didascalia erano solo decorazione.
+ * (docs/CHANGELOG.md §349): senza didascalia erano solo decorazione.
  */
 function ProGallery() {
   return (
@@ -288,7 +288,7 @@ function Panel({ children }: { children: ReactNode }) {
 }
 
 /**
- * Mini-esempi veri al posto delle righe grigie finte (docs/CHANGELOG.md §346):
+ * Mini-esempi veri al posto delle righe grigie finte (docs/CHANGELOG.md §349):
  * sembravano contenuti non caricati.
  */
 const AGENDA_EXAMPLE: { time: string; job: string; note: string; strong: boolean }[] = [
@@ -415,7 +415,7 @@ function ProSteps() {
 }
 
 /**
- * Un pulsante per livello, dentro la sua scheda (docs/CHANGELOG.md §346): prima
+ * Un pulsante per livello, dentro la sua scheda (docs/CHANGELOG.md §349): prima
  * si sceglieva la scheda e sotto restava un "Scegli un livello" spento, che
  * diceva "non puoi andare avanti". Porta al pagamento del livello (§177): un
  * professionista già iscritto va dritto in Abbonamento, gli altri si
@@ -469,7 +469,7 @@ function ProPricing({ isProfessional }: { isProfessional: boolean }) {
                   {tier.label}
                 </Text>
                 {welcome ? (
-                  // Verde, non rosso: nel sito il rosso vuol dire urgenza o errore (§346).
+                  // Verde, non rosso: nel sito il rosso vuol dire urgenza o errore (§349).
                   <Text
                     fontSize={13}
                     fontWeight="700"

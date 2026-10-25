@@ -76,7 +76,7 @@ export function PagamentiContent() {
           ) : null}
         </YStack>
 
-        {/* Tre righe in cima e i dettagli sotto (docs/CHANGELOG.md §346): la
+        {/* Tre righe in cima e i dettagli sotto (docs/CHANGELOG.md §349): la
             regola dell'utente è il minimo indispensabile prima. */}
         <YStack tag="ul" margin={0} padding="$4" gap="$2" borderRadius={20} backgroundColor={brand.calce} borderWidth={1} borderColor={brand.filetto}>
           {SUMMARY.map((line) => (

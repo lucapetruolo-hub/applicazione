@@ -228,7 +228,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   text-decoration: none;
 }
 /* Nome del mestiere sulla foto, su una sfumatura scura per leggerlo su
-   qualsiasi immagine (docs/CHANGELOG.md §346). */
+   qualsiasi immagine (docs/CHANGELOG.md §349). */
 .pro-gallery-caption {
   position: absolute;
   inset: auto 0 0 0;
@@ -748,7 +748,7 @@ button.notif-row-main:hover {
 .admin-nav::-webkit-scrollbar {
   display: none;
 }
-/* Finché c'è altro a destra, il bordo sfuma (docs/CHANGELOG.md §346). */
+/* Finché c'è altro a destra, il bordo sfuma (docs/CHANGELOG.md §349). */
 @media (max-width: 999px) {
   .admin-nav[data-more-right="true"] {
     -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent);
@@ -958,7 +958,7 @@ button.notif-row-main:hover {
 .acct-nav::-webkit-scrollbar {
   display: none;
 }
-/* Finché c'è altro a destra, il bordo sfuma (docs/CHANGELOG.md §346). */
+/* Finché c'è altro a destra, il bordo sfuma (docs/CHANGELOG.md §349). */
 @media (max-width: 759px) {
   .acct-nav[data-more-right="true"] {
     -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent);
@@ -1663,7 +1663,7 @@ button.notif-row-main:hover {
 .journey-bar-step.is-here {
   color: #2b2420;
 }
-/* Da telefono le etichette restano, più piccole (docs/CHANGELOG.md §346):
+/* Da telefono le etichette restano, più piccole (docs/CHANGELOG.md §349):
    senza, i passi non attivi erano cerchi muti. */
 @media (max-width: 480px) {
   .journey-bar,
@@ -1930,7 +1930,7 @@ button.notif-row-main:hover {
   grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
   gap: 12px;
 }
-/* Scheda utente: sei numeri in 3+3, non 5 e 1 orfano (docs/CHANGELOG.md §346). */
+/* Scheda utente: sei numeri in 3+3, non 5 e 1 orfano (docs/CHANGELOG.md §349). */
 @media (min-width: 661px) {
   .admin-kpi-grid-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -3263,7 +3263,7 @@ a.admin-kpi:hover {
   max-width: 100%;
   padding: 5px 12px;
   border-radius: 20px;
-  /* Piena come gli altri bollini, senza bordo (docs/CHANGELOG.md §346). */
+  /* Piena come gli altri bollini, senza bordo (docs/CHANGELOG.md §349). */
   background: #fdefe1;
   color: #2b2420;
   font-size: 13px;
@@ -3939,7 +3939,7 @@ a.admin-kpi:hover {
    del bordo dorato animato): due colonne da telefono, di più dove c'è
    spazio; spunta verde sulle scelte, "Principale" sotto la prima. */
 /* Orari liberi del professionista a pillole nella richiesta di preventivo
-   (docs/CHANGELOG.md §346), al posto del menu a tendina nativo. */
+   (docs/CHANGELOG.md §349), al posto del menu a tendina nativo. */
 .slot-picker {
   display: flex;
   flex-direction: column;
@@ -4217,7 +4217,7 @@ a.admin-kpi:hover {
   outline: 3px solid #189a63;
   outline-offset: 2px;
 }
-/* "Chiudi" sopra la ricerca aperta da telefono (docs/CHANGELOG.md §346). */
+/* "Chiudi" sopra la ricerca aperta da telefono (docs/CHANGELOG.md §349). */
 .search-close {
   display: inline-flex;
   align-items: center;
@@ -4550,7 +4550,7 @@ a.admin-kpi:hover {
   margin: 0 0 24px;
   padding: 0;
   display: grid;
-  /* Quante tessere ci sono davvero: quelle a zero non compaiono (§346). */
+  /* Quante tessere ci sono davvero: quelle a zero non compaiono (§349). */
   grid-template-columns: repeat(var(--facts-count, 3), minmax(0, 1fr));
   gap: 10px;
 }
@@ -4665,7 +4665,7 @@ a.admin-kpi:hover {
     transition: none;
   }
 }
-/* Nella colonna dei risultati, subito sotto le schede (docs/CHANGELOG.md §346). */
+/* Nella colonna dei risultati, subito sotto le schede (docs/CHANGELOG.md §349). */
 .results-list-footer .city-facts {
   max-width: none;
   padding: 16px 0 0;
@@ -5079,7 +5079,7 @@ a.admin-kpi:hover {
 }
 
 /* Barra "Modifiche non salvate · Salva" dei moduli lunghi (SaveBar,
-   docs/CHANGELOG.md §346): ferma in fondo allo schermo solo quando c'è
+   docs/CHANGELOG.md §349): ferma in fondo allo schermo solo quando c'è
    qualcosa da salvare. */
 .save-bar {
   display: flex;
@@ -5108,7 +5108,7 @@ a.admin-kpi:hover {
   }
 }
 
-/* Riga di una voce del preventivo (docs/CHANGELOG.md §346): voce, "Da",
+/* Riga di una voce del preventivo (docs/CHANGELOG.md §349): voce, "Da",
    "A" e la X in una riga; da telefono la voce sopra e i prezzi affiancati. */
 .quote-item-row {
   display: grid;
@@ -5147,7 +5147,7 @@ a.admin-kpi:hover {
   padding-right: 14px;
 }
 
-/* "Consigli per una bio" in Modifica profilo, chiusi di serie (§346). */
+/* "Consigli per una bio" in Modifica profilo, chiusi di serie (§349). */
 .bio-tips summary {
   display: flex;
   align-items: center;
@@ -5181,7 +5181,7 @@ a.admin-kpi:hover {
   min-height: 24px;
 }
 
-/* Tabelle admin da telefono (docs/CHANGELOG.md §346): ogni riga diventa una
+/* Tabelle admin da telefono (docs/CHANGELOG.md §349): ogni riga diventa una
    scheda corta, la prima colonna (o quella segnata .admin-cell-main) in
    grassetto sopra e le altre in fila sotto. Prima la tabella era tagliata a
    destra e si vedevano solo le prime due colonne. Le intestazioni restano per

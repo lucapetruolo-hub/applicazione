@@ -44,7 +44,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
  */
 export function AdminNav({ overview, adminRoles, onOpenSearch }: { overview: AdminOverview | null; adminRoles: AdminRoleName[]; onOpenSearch: () => void }) {
   const pathname = usePathname();
-  // Su telefono la barra sfuma a destra finché ci sono altre sezioni (§346).
+  // Su telefono la barra sfuma a destra finché ci sono altre sezioni (§349).
   const navRef = useRef<HTMLElement>(null);
   const moreRight = useScrollMoreRight(navRef);
   return (

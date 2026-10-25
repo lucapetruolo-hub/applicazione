@@ -51,7 +51,7 @@ export default function LeMieRecensioniPage() {
   const { user, token, isLoading } = useAuth();
   const [sent, setSent] = useState<SentReview[] | null>(null);
   const [sentError, setSentError] = useState<string | null>(null);
-  // Lavori ancora da recensire (docs/CHANGELOG.md §346): con una recensione
+  // Lavori ancora da recensire (docs/CHANGELOG.md §349): con una recensione
   // sola la pagina era un archivio con 500 px di vuoto sotto.
   const [toReview, setToReview] = useState<ClientBooking[]>([]);
 

@@ -10,7 +10,7 @@ export function formatItalianUntil(value: Date | string, options: { withTime?: b
   const day = date.toLocaleDateString("it-IT", { day: "numeric", month: "long", timeZone: "Europe/Rome" });
   const dayArticle = day.startsWith("8 ") || day.startsWith("11 ") ? "all'" : "al ";
   // Solo il giorno dove l'ora al minuto è rumore (richiesta aperta del
-  // cliente, docs/CHANGELOG.md §346).
+  // cliente, docs/CHANGELOG.md §349).
   if (options.withTime === false) return `${dayArticle}${day}`;
   const time = date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
   const timeArticle = time.startsWith("01:") ? "all'" : "alle ";

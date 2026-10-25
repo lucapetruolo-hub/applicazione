@@ -23,7 +23,7 @@ import { useMediaQuery } from "@/lib/useMediaQuery";
 // bisogno di una ricerca aggiuntiva se non c'è disponibilità nella finestra:
 // il primo orario libero è cercato nello stesso payload già scaricato.
 const AGENDA_PREVIEW_DAYS = 4;
-// Da computer e tablet una settimana intera (docs/CHANGELOG.md §346): con 4
+// Da computer e tablet una settimana intera (docs/CHANGELOG.md §349): con 4
 // giorni la griglia occupava metà scheda e il resto restava vuoto.
 const AGENDA_PREVIEW_DAYS_WIDE = 7;
 // Larghezza MASSIMA di una colonna: le colonne si dividono lo spazio in parti
@@ -211,7 +211,7 @@ export function ProfessionalDetailContent({
   const agendaCanGoBack = agendaOffset > 0;
   const agendaCanGoForward = agendaOffset + agendaVisibleDays < totalAgendaDays;
   // Lavori completati: il totale non è mai meno di quelli del mese (i due
-  // numeri arrivano da conti diversi, docs/CHANGELOG.md §346).
+  // numeri arrivano da conti diversi, docs/CHANGELOG.md §349).
   const completedTotal = Math.max(professional.completedJobsTotal, professional.completedThisMonth);
 
   // `?salva=1`: il visitatore ha toccato il cuoricino senza essere entrato
@@ -338,7 +338,7 @@ export function ProfessionalDetailContent({
               {/* Mestieri come testo sotto il nome (da 1 a 3, docs/CHANGELOG.md
                   §217), non più pillole verdi con l'icona: nell'intestazione
                   restano due soli stili di pillola, i bollini piccoli pieni e
-                  le specializzazioni con il bordo (docs/CHANGELOG.md §346). */}
+                  le specializzazioni con il bordo (docs/CHANGELOG.md §349). */}
               <Text fontSize={16} fontWeight="600" color={brand.grafite}>
                 {(professional.categories?.length
                   ? professional.categories
@@ -347,7 +347,7 @@ export function ProfessionalDetailContent({
                   .map((category) => category.label)
                   .join(" · ")}
               </Text>
-              {/* Bollini in una riga che va a capo (docs/CHANGELOG.md §346): da
+              {/* Bollini in una riga che va a capo (docs/CHANGELOG.md §349): da
                   telefono prima ne stava uno per riga. Il significato di ogni
                   bollino è in un fumetto (docs/CHANGELOG.md §338). */}
               <XStack alignItems="center" gap={6} flexWrap="wrap">
@@ -404,7 +404,7 @@ export function ProfessionalDetailContent({
               ) : (
                 <Text color={brand.grafite70}>Nessuna recensione ancora</Text>
               )}
-              {/* Una riga sola, in grigio (docs/CHANGELOG.md §346): prima "Ha
+              {/* Una riga sola, in grigio (docs/CHANGELOG.md §349): prima "Ha
                   completato 1 intervento questo mese" in verde e "1 lavoro
                   completato in totale" una sotto l'altra. Il totale non è mai
                   meno dei lavori del mese (i due numeri arrivano da conti
@@ -426,7 +426,7 @@ export function ProfessionalDetailContent({
             </YStack>
           </XStack>
           {/* Salva, condividi e segnala in alto a destra della scheda
-              (docs/CHANGELOG.md §346): sotto la foto erano staccati dal nome.
+              (docs/CHANGELOG.md §349): sotto la foto erano staccati dal nome.
               Solo icone, con la descrizione al passaggio del mouse (richiesta
               esplicita dell'utente, docs/CHANGELOG.md §206). Da telefono in
               colonna accanto alla foto. Passaparola: per i lavori di casa la
@@ -598,7 +598,7 @@ export function ProfessionalDetailContent({
                 Agenda
               </Text>
             </XStack>
-            {/* Una riga sola (docs/CHANGELOG.md §346): gli orari al completo
+            {/* Una riga sola (docs/CHANGELOG.md §349): gli orari al completo
                 sono grigi, non serve spiegarli. */}
             <Text fontSize={13} color={brand.grafite70}>
               Tocca un orario libero per chiedere un preventivo.
@@ -608,7 +608,7 @@ export function ProfessionalDetailContent({
                 filtrano gli orari sotto in base alla modalità offerta su ogni
                 fascia. Segmentati come nella barra di ricerca, con "Orari
                 per:" davanti, come nella scheda dei risultati
-                (docs/CHANGELOG.md §346). */}
+                (docs/CHANGELOG.md §349). */}
             <XStack alignItems="center" gap="$2" flexWrap="wrap">
               <Text fontFamily="$body" fontSize={13} fontWeight="600" color={brand.grafite70}>
                 Orari per:
@@ -755,7 +755,7 @@ export function ProfessionalDetailContent({
                             justifyContent="center"
                             paddingVertical={4}
                           >
-                            {/* Al completo: grigio chiaro, senza barra (docs/CHANGELOG.md §346). */}
+                            {/* Al completo: grigio chiaro, senza barra (docs/CHANGELOG.md §349). */}
                             <Text
                               fontVariant={["tabular-nums"]}
                               fontSize={10.5}
@@ -933,7 +933,7 @@ export function ProfessionalDetailContent({
                         </XStack>
                       </BadgeInfo>
                     </XStack>
-                    {/* Chi l'ha scritta e per quale lavoro (docs/CHANGELOG.md §346):
+                    {/* Chi l'ha scritta e per quale lavoro (docs/CHANGELOG.md §349):
                         nome e iniziale del cognome come nelle recensioni in
                         home; il servizio solo se il professionista ne fa più
                         d'uno, altrimenti ripeterebbe sempre lo stesso. */}

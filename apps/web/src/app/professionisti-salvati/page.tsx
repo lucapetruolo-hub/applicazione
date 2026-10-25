@@ -20,7 +20,7 @@ export default function ProfessionistiSalvatiPage() {
   const [error, setError] = useState<string | null>(null);
   // Tolti dai salvati in questa visita: la scheda resta con il cuore vuoto,
   // così un tocco per sbaglio si annulla con un altro tocco (stesso controllo
-  // della ricerca, docs/CHANGELOG.md §346). Alla prossima visita non c'è più.
+  // della ricerca, docs/CHANGELOG.md §349). Alla prossima visita non c'è più.
   const [unsavedIds, setUnsavedIds] = useState<Set<string>>(() => new Set());
   const [pendingId, setPendingId] = useState<string | null>(null);
 
@@ -126,7 +126,7 @@ export default function ProfessionistiSalvatiPage() {
                     onPress={() => router.push(professionalPath(pro))}
                     icon={<ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={72} />}
                     // Cuore pieno in alto a destra, come nella ricerca (docs/CHANGELOG.md
-                    // §346): prima "Rimuovi dai salvati" era un testo piccolo fuori dalla scheda.
+                    // §349): prima "Rimuovi dai salvati" era un testo piccolo fuori dalla scheda.
                     action={
                       // Il clic sul cuore non deve aprire anche il profilo (clic sulla card).
                       // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
