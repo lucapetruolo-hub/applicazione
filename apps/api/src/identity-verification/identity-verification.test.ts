@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { DiditIdentityProvider, canonicalJson, diditDecision, diditReason } from "./didit.provider";
 import { matchDocumentToFiscal } from "./identity-match";
 import { identityVerificationNeeded } from "./identity-provider-env";
-import { IdentityVerificationService, STANDBY_PROVIDER_STATUS, expectedPerson, startOfRomeDay, profileSetupMissing, reminderDue, setupReminderDue } from "./identity-verification.service";
+import { EXPIRED_BADGE_REASON, IdentityVerificationService, SANDBOX_BADGE_REASON, STANDBY_PROVIDER_STATUS, badgeOverTime, documentExpiry, expectedPerson, startOfRomeDay, profileSetupMissing, reminderDue, setupReminderDue } from "./identity-verification.service";
 
 /** Verifica di documento e selfie con Didit (docs/CHANGELOG.md §253). */
 describe("Didit", () => {
@@ -107,12 +107,14 @@ describe("obbligo prima dei preventivi", () => {
   });
 
   it("solo dove la verifica è attiva, mai per demo o profili già verificati", () => {
-    expect(identityVerificationNeeded({ isDemo: false, verified: false })).toBe(false);
+    expect(identityVerificationNeeded({ isDemo: false, verified: false, identityExpiredAt: null })).toBe(false);
     process.env.DIDIT_API_KEY = "k";
     process.env.DIDIT_WORKFLOW_ID = "w";
-    expect(identityVerificationNeeded({ isDemo: false, verified: false })).toBe(true);
-    expect(identityVerificationNeeded({ isDemo: true, verified: false })).toBe(false);
-    expect(identityVerificationNeeded({ isDemo: false, verified: true })).toBe(false);
+    expect(identityVerificationNeeded({ isDemo: false, verified: false, identityExpiredAt: null })).toBe(true);
+    expect(identityVerificationNeeded({ isDemo: true, verified: false, identityExpiredAt: null })).toBe(false);
+    expect(identityVerificationNeeded({ isDemo: false, verified: true, identityExpiredAt: null })).toBe(false);
+    // Badge tolto per documento scaduto (§338): si continua a inviare preventivi mentre si rifà la verifica.
+    expect(identityVerificationNeeded({ isDemo: false, verified: false, identityExpiredAt: new Date() })).toBe(false);
   });
 });
 
@@ -303,5 +305,108 @@ describe("tentativi del giorno (§276)", () => {
     expect(startOfRomeDay(new Date("2026-12-04T23:30:00Z")).toISOString()).toBe("2026-12-04T23:00:00.000Z");
     // Giorno del cambio d'ora (25 ottobre): mezzanotte era ancora in ora legale.
     expect(startOfRomeDay(new Date("2026-10-25T12:00:00Z")).toISOString()).toBe("2026-10-24T22:00:00.000Z");
+  });
+});
+
+describe("badge Verificato nel tempo (§338)", () => {
+  const now = new Date("2026-11-01T08:00:00Z");
+  const approved = (fields: Partial<{ decidedAt: Date; documentExpiresAt: Date | null; expiryRemindedAt: Date | null }>) => ({
+    createdAt: new Date("2026-10-25T10:00:00Z"),
+    decidedAt: new Date("2026-10-25T10:00:00Z"),
+    documentExpiresAt: null,
+    expiryRemindedAt: null,
+    ...fields,
+  });
+
+  it("dal documento si legge solo la scadenza", () => {
+    const decision = diditDecision({ status: "Approved", id_verifications: [{ first_name: "Mario", expiration_date: "2031-03-15" }] });
+    expect(decision.documentExpiresAt).toBe("2031-03-15");
+    expect(diditDecision({ status: "Approved", id_verifications: [{ date_of_expiry: "2030-01-02T00:00:00Z" }] }).documentExpiresAt).toBe("2030-01-02");
+    expect(diditDecision({ status: "Approved" }).documentExpiresAt ?? null).toBeNull();
+    expect(documentExpiry("2031-03-15")?.toISOString().slice(0, 10)).toBe("2031-03-15");
+    expect(documentExpiry("non è una data")).toBeNull();
+  });
+
+  it("senza una verifica approvata con le chiavi vere il badge cade", () => {
+    expect(badgeOverTime(null, now)).toBe("REVOKE_SANDBOX");
+  });
+
+  it("avviso 30 giorni prima della scadenza, una volta sola, poi badge tolto", () => {
+    expect(badgeOverTime(approved({ documentExpiresAt: new Date("2027-05-01T00:00:00Z") }), now)).toBe("KEEP");
+    expect(badgeOverTime(approved({ documentExpiresAt: new Date("2026-11-20T00:00:00Z") }), now)).toBe("REMIND");
+    expect(badgeOverTime(approved({ documentExpiresAt: new Date("2026-11-20T00:00:00Z"), expiryRemindedAt: now }), now)).toBe("KEEP");
+    expect(badgeOverTime(approved({ documentExpiresAt: new Date("2026-10-31T00:00:00Z"), expiryRemindedAt: now }), now)).toBe("REVOKE_EXPIRED");
+  });
+
+  it("senza data di scadenza la verifica vale 5 anni", () => {
+    const old = approved({ decidedAt: new Date("2021-10-30T10:00:00Z") });
+    expect(badgeOverTime(old, now)).toBe("REVOKE_EXPIRED");
+    expect(badgeOverTime(approved({ decidedAt: new Date("2021-11-20T10:00:00Z") }), now)).toBe("REMIND");
+  });
+
+  function buildCron(sandbox: boolean, rows: Record<string, unknown>) {
+    const prisma = {
+      professionalProfile: { findMany: vi.fn().mockResolvedValue(Object.keys(rows).map((id) => ({ id, userId: `u-${id}` }))) },
+      identityVerification: {
+        findFirst: vi.fn(async ({ where }: { where: { professionalProfileId: string; sandbox: boolean } }) => {
+          expect(where.sandbox).toBe(false);
+          return rows[where.professionalProfileId] ?? null;
+        }),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      },
+    };
+    const verification = { revokeOverTime: vi.fn() };
+    const notifications = { notify: vi.fn() };
+    const service = new IdentityVerificationService(prisma as never, { record: vi.fn() } as never, notifications as never, verification as never);
+    (service as unknown as { provider: unknown }).provider = { name: "didit", sandbox };
+    return { service, prisma, verification, notifications };
+  }
+
+  it("con le chiavi vere: badge di prova e documenti scaduti tolti, avviso a chi scade presto", async () => {
+    const { service, verification, notifications } = buildCron(false, {
+      prova: null,
+      scaduto: { id: "iv-s", ...approved({ documentExpiresAt: new Date("2026-10-30T00:00:00Z") }) },
+      inScadenza: { id: "iv-i", ...approved({ documentExpiresAt: new Date("2026-11-20T00:00:00Z") }) },
+      valido: { id: "iv-v", ...approved({ documentExpiresAt: new Date("2030-01-01T00:00:00Z") }) },
+    });
+    await service.checkBadgesOverTime(now);
+    expect(verification.revokeOverTime).toHaveBeenCalledWith("prova", SANDBOX_BADGE_REASON, false);
+    expect(verification.revokeOverTime).toHaveBeenCalledWith("scaduto", EXPIRED_BADGE_REASON, true);
+    expect(verification.revokeOverTime).toHaveBeenCalledTimes(2);
+    expect(notifications.notify).toHaveBeenCalledTimes(1);
+    expect(notifications.notify).toHaveBeenCalledWith("u-inScadenza", "IDENTITY_VERIFICATION_EXPIRING", { expiresOn: "2026-11-20T00:00:00.000Z" });
+  });
+
+  it("in prova (DIDIT_SANDBOX) non si tocca nessun badge", async () => {
+    const { service, prisma, verification } = buildCron(true, { prova: null });
+    await service.checkBadgesOverTime(now);
+    expect(prisma.professionalProfile.findMany).not.toHaveBeenCalled();
+    expect(verification.revokeOverTime).not.toHaveBeenCalled();
+  });
+
+  it("verifica approvata: si salva la scadenza del documento", async () => {
+    const row = { id: "iv-1", professionalProfileId: "pp-1", provider: "didit", providerSessionId: "s", status: "STARTED", providerStatus: null, decidedAt: null };
+    const update = vi.fn(async ({ data }) => ({ ...row, ...data }));
+    const prisma = {
+      professionalProfile: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: "pp-1",
+          userId: "u-1",
+          verified: false,
+          fiscalProfile: { entityType: "PRIVATE_INDIVIDUAL", fiscalFirstName: "Mario", fiscalLastName: "Rossi", dateOfBirth: new Date("1980-01-01"), fiscalCodiceFiscale: null },
+        }),
+      },
+      identityVerification: { update },
+    };
+    const service = new IdentityVerificationService(prisma as never, { record: vi.fn() } as never, { notify: vi.fn() } as never, { markVerifiedByProvider: vi.fn() } as never);
+    await service.apply(row as never, {
+      providerStatus: "Approved",
+      outcome: "APPROVED",
+      person: { firstName: "Mario", lastName: "Rossi", dateOfBirth: "1980-01-01", personalNumber: null },
+      warnings: [],
+      reason: null,
+      documentExpiresAt: "2031-03-15",
+    });
+    expect(update.mock.calls[0]![0].data.documentExpiresAt?.toISOString().slice(0, 10)).toBe("2031-03-15");
   });
 });

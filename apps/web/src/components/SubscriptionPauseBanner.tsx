@@ -55,7 +55,7 @@ export function SubscriptionPauseBanner({ sub, showAction = true, profileStepsEl
     title = "Il tuo profilo non è ancora visibile";
     body =
       "Per comparire nelle ricerche e ricevere richieste scegli se sei privato, professionista con partita IVA o azienda e compila (o correggi) i dati fiscali: " +
-      "la legge ci chiede di raccoglierli per tutti. Li verifichiamo subito, in automatico.";
+      "la legge ci chiede di raccoglierli per tutti. Li controlliamo in automatico.";
     action = "Compila i dati fiscali";
     href = "/dashboard/fiscale";
   } else if (sub.pausedReason === "LIMIT_REACHED") {

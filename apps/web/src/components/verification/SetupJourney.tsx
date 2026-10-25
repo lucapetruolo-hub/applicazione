@@ -63,6 +63,8 @@ export function setupJourney(status: MyVerificationStatus, stripeVerified: boole
     const href = "/dashboard/verifica-identita";
     if (!fiscalReady) identityStep = { ...base, state: "locked", text: "Dopo i dati fiscali. Serve per rispondere ai preventivi." };
     else if (identity.standby) identityStep = { ...base, state: "waiting", text: "Il servizio di verifica non risponde: ti avvisiamo noi appena puoi continuare." };
+    else if (identity.renewal && identity.status !== "PROCESSING" && identity.status !== "STARTED")
+      identityStep = { ...base, state: "current", text: "Il documento è scaduto: rifai la verifica per riavere il badge.", action: { href, label: "Rinnova la verifica" } };
     else if (identity.status === "PROCESSING") identityStep = { ...base, state: "waiting", text: "Stiamo controllando documento e selfie: di solito bastano pochi minuti." };
     else if (identity.status === "DECLINED" || identity.status === "EXPIRED")
       identityStep = { ...base, state: "current", text: identity.reason ?? "Non è andata a buon fine: puoi riprovare.", action: { href, label: "Rifai la verifica" } };

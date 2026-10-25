@@ -87,7 +87,7 @@ export function SiteFooter() {
           <XStack alignItems="center" gap="$2">
             <Icon name="badge-check" size={16} color={brand.grafite70} strokeWidth={1.5} />
             <Text fontSize={13} fontWeight="600" color={brand.grafite70}>
-              Badge Verificato: documento e P.IVA controllati
+              Badge Verificato: identità controllata con documento e selfie
             </Text>
           </XStack>
           <XStack alignItems="center" gap="$2">

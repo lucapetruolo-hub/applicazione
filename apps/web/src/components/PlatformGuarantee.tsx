@@ -5,7 +5,7 @@ import { useOnlinePayments } from "@/lib/onlinePayments";
 
 const POINTS = [
   {
-    text: "Recensioni vere, lasciate solo da chi ha davvero completato un lavoro confermato da entrambe le parti",
+    text: "Recensioni lasciate solo da clienti che hanno prenotato il lavoro sul sito",
     comingSoon: false,
   },
   {
@@ -13,13 +13,13 @@ const POINTS = [
     comingSoon: false,
   },
   {
-    // Verifica manuale da admin (docs/CHANGELOG.md §200): documento e dati
-    // fiscali, non l'assicurazione RC (resta "dichiarata" sul profilo).
-    text: "Badge Verificato: abbiamo controllato documento d'identità e partita IVA del professionista",
+    // Documento e selfie con Didit (docs/CHANGELOG.md §253), non
+    // l'assicurazione RC (resta "dichiarata" sul profilo).
+    text: "Badge Verificato: abbiamo controllato l'identità del professionista con documento e selfie",
     comingSoon: false,
   },
   {
-    text: "Pagamento online protetto: acconto subito e saldo a lavoro finito, i soldi restano bloccati finché non confermi il lavoro",
+    text: "Pagamento online protetto: acconto subito e saldo a lavoro finito, i soldi restano bloccati fino alla tua conferma o per 7 giorni dalla fine del lavoro",
     comingSoon: false,
     online: true,
   },
@@ -56,7 +56,7 @@ export function PlatformGuarantee() {
   // attivo (docs/CHANGELOG.md §170).
   const onlinePayments = useOnlinePayments();
   return (
-    <Section title="Ogni intervento è coperto dalla Garanzia Piattaforma" maxWidth={880}>
+    <Section title="Come ti proteggiamo" maxWidth={880}>
       <Surface width="100%" padding="$5" gap="$4">
         {POINTS.map((point) => (
           <XStack key={point.text} alignItems="flex-start" gap="$3">

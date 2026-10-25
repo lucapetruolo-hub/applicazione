@@ -500,6 +500,7 @@ export function GuidedRequestForm({
         professionalName={professionalProfileId ? (shownProfessionalName ?? null) : null}
         professionalImageUrl={shownProfessionalImage}
         professionalVerified={professional?.verified ?? false}
+        professionalKind={professional?.professionalKind ?? null}
         avgResponseTimeMinutes={professional?.avgResponseTimeMinutes ?? null}
         categorySlug={selectedCategory?.slug ?? categorySlug}
         categoryLabels={selectedCategories.map((c) => c.label)}

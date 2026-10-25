@@ -3,7 +3,8 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Badge, Button, Text, YStack, brand } from "@professionisti/ui";
+import { Badge, BadgeInfo, Button, ProfessionalKindBadge, Text, YStack, brand } from "@professionisti/ui";
+import type { ProfessionalKind } from "@professionisti/shared";
 import { CategoryIconBadge } from "./CategoryIconBadge";
 import { formatResponseTime } from "@/lib/responseTime";
 
@@ -12,6 +13,8 @@ export type RequestSentScreenProps = {
   professionalName: string | null;
   professionalImageUrl: string | null;
   professionalVerified: boolean;
+  /** Privato / Partita IVA / Azienda, se il professionista l'ha indicato. */
+  professionalKind: ProfessionalKind | null;
   avgResponseTimeMinutes: number | null;
   categorySlug: string;
   categoryLabels: string[];
@@ -24,7 +27,7 @@ export type RequestSentScreenProps = {
 };
 
 /**
- * Pagina "Richiesta inviata" (docs/CHANGELOG.md §336): foto grande del
+ * Pagina "Richiesta inviata" (docs/CHANGELOG.md §339): foto grande del
  * professionista (o icona della categoria) con la spunta, a chi è arrivata
  * la richiesta e cosa succede dopo, in tre passi. Niente coriandoli né
  * emoji: decisione dell'utente.
@@ -33,6 +36,7 @@ export function RequestSentScreen({
   professionalName,
   professionalImageUrl,
   professionalVerified,
+  professionalKind,
   avgResponseTimeMinutes,
   categorySlug,
   categoryLabels,
@@ -101,9 +105,15 @@ export function RequestSentScreen({
           <h1 ref={headingRef} tabIndex={-1} className="request-sent-title">
             {heading}
           </h1>
-          {direct && professionalVerified ? (
+          {direct && (professionalVerified || professionalKind) ? (
+            // Stessi badge e fumetti del profilo pubblico (docs/CHANGELOG.md §338).
             <div className="request-sent-badges">
-              <Badge variant="verificato">Verificato</Badge>
+              {professionalVerified ? (
+                <BadgeInfo info="verified">
+                  <Badge variant="verificato">Verificato</Badge>
+                </BadgeInfo>
+              ) : null}
+              {professionalKind ? <ProfessionalKindBadge kind={professionalKind} size="md" /> : null}
             </div>
           ) : null}
           <Text color={brand.grafite70} textAlign="center">
