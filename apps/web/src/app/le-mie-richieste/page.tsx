@@ -127,9 +127,14 @@ function LeMieRichiesteContent() {
     setPage(nextPage);
     scrollToListTop();
   }
+  // Scelta una scheda di stato con una sola richiesta dentro, quella si
+  // apre da sola (richiesta dell'utente, docs/CHANGELOG.md §336): vedi
+  // l'effetto più sotto, che legge la lista già filtrata.
+  const autoOpenAfterTabRef = useRef(false);
   function updateStageTab(key: ClientTabKey) {
     setActiveStageTab(key);
     setPage(1);
+    if (key !== activeStageTab) autoOpenAfterTabRef.current = true;
   }
 
   // useCallback: cambia solo col token, così il poll qui sotto può
@@ -201,6 +206,19 @@ function LeMieRichiesteContent() {
     else if (sortMode === "aggiornamento") list.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     return list;
   }, [requests, activeStageTab, zoneFilter, serviceModeFilter, search, sortMode, stageByRequestId, bookingByRequestId]);
+
+  // Una sola richiesta in tutto: schede di stato, ricerca e filtri non
+  // servono e da telefono spingerebbero la scheda sotto la prima schermata
+  // (docs/CHANGELOG.md §336). Con altre richieste archiviate restano, per
+  // poterle raggiungere.
+  const singleRequest = requests !== null && requests.length === 1 && !requests[0]!.myState.archivedAt;
+
+  useEffect(() => {
+    if (!autoOpenAfterTabRef.current) return;
+    autoOpenAfterTabRef.current = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (filteredSortedRequests.length === 1) setOpenId(filteredSortedRequests[0]!.id);
+  }, [filteredSortedRequests]);
 
   const totalPages = Math.max(1, Math.ceil(filteredSortedRequests.length / pageSize));
   const effectivePage = Math.min(page, totalPages);
@@ -385,7 +403,7 @@ function LeMieRichiesteContent() {
           </Text>
         ) : null}
 
-        {requests !== null && requests.length > 0 ? (
+        {requests !== null && requests.length > 0 && !singleRequest ? (
           <>
             {/* Tab per stadio — stessa riga scorrevole di /dashboard/richieste
                 (frecce riusate da CategoryCarousel), etichette adattate al

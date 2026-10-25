@@ -20592,5 +20592,9 @@ Richiesta dell'utente: "si potrebbe dare l'icona del meteo per 3 giorni e dire d
 - Una volta sola per visita: se il cliente la richiude resta chiusa, anche quando la pagina si aggiorna da sola ogni 15 secondi. Un link da notifica (`?open=`) ha la precedenza.
 - L'apertura automatica non toglie il segno "da leggere" messo a mano dal menu della scheda: lo toglie solo il tocco del cliente, come prima.
 
+**Migliorie approvate da Luca** ("Effettua miglioria 1 e 3")
+- Con una sola richiesta in tutto (non archiviata) spariscono schede di stato, ricerca, filtri e domicilio/online: non servono e da telefono spingevano la scheda sotto la prima schermata. Se ci sono anche richieste archiviate restano, per poter aprire "Archiviate".
+- Scegliendo una scheda di stato (per esempio "Accettate" o "Archiviate") che contiene una sola richiesta, quella si apre da sola. Solo al cambio di scheda, non a ogni aggiornamento automatico.
+
 **Verifica**
-- Typecheck e lint del sito. Con API e database di prova: cliente con una richiesta, scheda aperta da computer (1440px) e da telefono (390px); cliente con due richieste, elenco chiuso; richiusa la scheda, resta chiusa dopo l'aggiornamento automatico. Foto in `/mnt/project-files/anteprime/richiesta-unica-aperta/`.
+- Typecheck e lint del sito. Con API e database di prova: cliente con una richiesta, scheda aperta da computer (1440px) e da telefono (390px); cliente con due richieste, elenco chiuso; richiusa la scheda, resta chiusa dopo l'aggiornamento automatico. Dopo le migliorie: con una sola richiesta niente ricerca né schede di stato; cliente con una richiesta attiva e una archiviata, controlli presenti e "Archiviate" apre da sola l'archiviata; cliente con due richieste in "In attesa", nessuna aperta. Foto in `/mnt/project-files/anteprime/richiesta-unica-aperta/`.
