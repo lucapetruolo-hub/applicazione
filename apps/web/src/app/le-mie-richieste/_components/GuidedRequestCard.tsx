@@ -829,6 +829,7 @@ export function GuidedRequestCard({
                   unreadCount={combineUnreadCounts(quoteUnreadCounts?.get(quote.id), threadUnreadCounts?.get(`${request.id}:${quote.professionalProfileId}`))}
                   autoOpenTimeline={autoOpenChatProfessionalId === quote.professionalProfileId}
                   requestOpen={request.status !== "CLOSED"}
+                  compare={request.quotes.filter((q) => q.status === "SENT").length > 1}
                   contactInBooking={quote.status === "ACCEPTED" && booking?.professionalProfileId === quote.professionalProfileId}
                 />
               ))}
