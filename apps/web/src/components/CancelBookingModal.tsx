@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
@@ -40,6 +40,7 @@ export function CancelBookingModal({
   // visibile. Quando false, il popup è un semplice "sei sicuro?" senza
   // testarea, `onCancel` riceve sempre `undefined`.
   showNote = true,
+  children,
 }: {
   onClose: () => void;
   onCancel: (note: string | undefined) => Promise<void>;
@@ -51,6 +52,8 @@ export function CancelBookingModal({
   /** Testo del pulsante che chiude senza confermare. */
   backLabel?: string;
   showNote?: boolean;
+  /** Contenuto in più tra la descrizione e i pulsanti, per esempio il motivo di "Elimina richiesta". */
+  children?: ReactNode;
 }) {
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -117,6 +120,8 @@ export function CancelBookingModal({
             {description}
           </Text>
         </YStack>
+
+        {children}
 
         {showNote ? (
           <YStack gap="$2">

@@ -30,6 +30,9 @@ import { stripeVerified } from "../professional-fiscal/public-visibility";
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
 import { countBookingsInSlot, countOverlapping, loadCommitments, lockProfessionalAgenda } from "../agenda/commitments";
 
+/** Preventivo su una richiesta che il cliente ha eliminato (docs/CHANGELOG.md §339). */
+const WITHDRAWN_BY_CLIENT_MESSAGE = "Il cliente ha ritirato questa richiesta.";
+
 
 /** Appuntamento "prima"/"dopo" nel payload delle notifiche, per le email (docs/CHANGELOG.md §228). */
 function slotPayload(start: Date, end: Date | null | undefined): { start: string; end: string | null } {
@@ -64,13 +67,17 @@ export class QuotesService {
       include: { guidedRequest: { include: { client: true } } },
     });
     if (!lead) {
-      // Il cliente può eliminare una richiesta senza preventivi (§337):
+      // Il cliente può eliminare una richiesta senza preventivi (§339):
       // a chi la stava ancora guardando lo si dice chiaramente.
       const requestExists = await this.prisma.guidedRequest.count({ where: { id: input.requestId } });
       if (!requestExists) {
         throw new NotFoundException("Il cliente ha eliminato questa richiesta.");
       }
       throw new ForbiddenException("Non hai ricevuto questa richiesta.");
+    }
+    // Ritirata dal cliente con "Elimina richiesta" (§339): niente preventivi nuovi né modifiche.
+    if (lead.guidedRequest.closedReason === "CANCELED_BY_CLIENT") {
+      throw new ForbiddenException(WITHDRAWN_BY_CLIENT_MESSAGE);
     }
     // Richiesta esplicita dell'utente: se il cliente ha eliminato il
     // proprio account nel frattempo, non si può più inviare o modificare un
@@ -537,6 +544,10 @@ export class QuotesService {
     }
     if (quote.status !== "MODIFICATION_REQUESTED" || !quote.clientProposedDate) {
       throw new ForbiddenException("Nessuna data proposta da confermare per questo preventivo.");
+    }
+    // Prima un lavoro poteva nascere da una richiesta già ritirata (§339).
+    if (quote.guidedRequest.closedReason === "CANCELED_BY_CLIENT") {
+      throw new ForbiddenException(WITHDRAWN_BY_CLIENT_MESSAGE);
     }
     if (quote.booking) {
       throw new ForbiddenException("Questo preventivo è già stato accettato.");

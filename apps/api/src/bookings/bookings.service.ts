@@ -124,6 +124,10 @@ export class BookingsService {
     if (quote.status === "REJECTED" || quote.status === "WITHDRAWN") {
       throw new ForbiddenException("Questo preventivo non è più disponibile.");
     }
+    // Richiesta eliminata dal cliente (§339): i suoi preventivi non si accettano più.
+    if (quote.guidedRequest.closedReason === "CANCELED_BY_CLIENT") {
+      throw new ForbiddenException("Hai eliminato questa richiesta: il preventivo non è più disponibile.");
+    }
     // Il cliente sceglie solo tra i modi offerti dal professionista nel preventivo (docs/CHANGELOG.md §237).
     const offer = quotePaymentOffer(quote);
     if (!offer.paymentOptions.includes(paymentMethod)) {

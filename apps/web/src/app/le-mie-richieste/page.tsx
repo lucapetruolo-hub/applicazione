@@ -618,7 +618,12 @@ function LeMieRichiesteContent() {
 
         <YStack ref={listTopRef} gap="$4">
           <RestoredNotice />
-          <RequestDeletedNotice />
+          <RequestDeletedNotice
+            onUndo={async (guidedRequestId) => {
+              await apiClient.restoreGuidedRequest(token, guidedRequestId);
+              reload();
+            }}
+          />
           {activeStageTab === "archiviate" ? (
             <RestoreAllArchivedBar token={token} guidedRequestIds={(requests ?? []).filter((r) => r.myState.archivedAt).map((r) => r.id)} onChanged={reload} />
           ) : null}

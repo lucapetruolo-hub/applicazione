@@ -657,7 +657,7 @@ export function RequestCard({
             {/* Ordine invertito su richiesta esplicita dell'utente: lo stato
                 della richiesta (StagePill) precede il badge di modalità
                 (ServiceBadge, "A domicilio"/"Consulenza online"). */}
-            <StagePill stage={stage} />
+            <StagePill stage={stage} label={stage === "chiusa" && gr.withdrawnByClient ? "Ritirata dal cliente" : undefined} />
             <ServiceBadge online={isOnline} />
             {stage === "da_quotare" ? deadlines.map((deadline) => <DeadlinePill key={deadline.label} deadline={deadline} />) : null}
             {stage === "da_quotare" && competitorsLabel ? (

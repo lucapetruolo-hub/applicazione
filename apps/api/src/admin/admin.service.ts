@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ContentReportTargetType, ModerationAction, Prisma, PrismaClient } from "@professionisti/database";
-import { JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource } from "@professionisti/shared";
+import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
@@ -1015,6 +1015,64 @@ export class AdminService {
   }
 
   /**
+   * Richieste eliminate dai clienti (docs/CHANGELOG.md §339): spariscono per
+   * il cliente ma restano qui, con chat e preventivi, fino alla
+   * cancellazione vera dopo CLIENT_DELETED_REQUEST_RETENTION_DAYS. Quelle
+   * segnalate da un professionista restano sempre (prove della moderazione).
+   * Mai telefono, email o indirizzo del cliente.
+   */
+  async listClientDeletedRequests(): Promise<AdminClientDeletedRequestRow[]> {
+    const requests = await this.prisma.guidedRequest.findMany({
+      where: { deletedByClientAt: { not: null } },
+      orderBy: { deletedByClientAt: "desc" },
+      take: 200,
+      select: {
+        id: true,
+        description: true,
+        city: true,
+        createdAt: true,
+        deletedByClientAt: true,
+        withdrawReason: true,
+        deletedWhileOpen: true,
+        category: { select: { label: true } },
+        client: { select: { name: true, surname: true, deletedAt: true } },
+        _count: { select: { leads: true, quotes: true, timelineEvents: { where: { automatic: false } } } },
+      },
+    });
+    const reports = requests.length
+      ? await this.prisma.contentReport.findMany({
+          where: { targetType: "GUIDED_REQUEST", targetId: { in: requests.map((r) => r.id) } },
+          select: { targetId: true, status: true },
+        })
+      : [];
+    const reportsByRequest = new Map<string, string[]>();
+    for (const report of reports) reportsByRequest.set(report.targetId, [...(reportsByRequest.get(report.targetId) ?? []), report.status]);
+    return requests.map((request) => {
+      const deletedAt = request.deletedByClientAt as Date;
+      const reportStatuses = reportsByRequest.get(request.id) ?? [];
+      return {
+        guidedRequestId: request.id,
+        categoryLabel: request.category.label,
+        city: request.city,
+        description: request.description,
+        clientName: request.client.deletedAt ? null : [request.client.name, request.client.surname].filter(Boolean).join(" ") || null,
+        clientAccountDeleted: request.client.deletedAt !== null,
+        reasonLabel: request.withdrawReason ? REQUEST_WITHDRAW_REASON_CLIENT_LABEL[request.withdrawReason] : null,
+        wasOpen: request.deletedWhileOpen,
+        professionalsReached: request._count.leads,
+        quotes: request._count.quotes,
+        messages: request._count.timelineEvents,
+        reports: reportStatuses.length,
+        openReports: reportStatuses.filter((status) => status === "OPEN").length,
+        requestCreatedAt: request.createdAt.toISOString(),
+        deletedAt: deletedAt.toISOString(),
+        // Segnalata: resta sempre (decisione dell'utente).
+        purgeAt: reportStatuses.length > 0 ? null : new Date(deletedAt.getTime() + CLIENT_DELETED_REQUEST_RETENTION_DAYS * 24 * 60 * 60_000).toISOString(),
+      };
+    });
+  }
+
+  /**
    * Lavori terminati (docs/CHANGELOG.md §163): note, foto/video di entrambe
    * le parti e motivo delle differenze dal preventivo. `filter`: "changes"
    * solo con voci aggiunte o totale fuori preventivo, "notes" solo con note.
@@ -1313,6 +1371,28 @@ export type AdminHiddenLeadRow = {
   reason: string;
   requestCreatedAt: string;
   hiddenAt: string;
+};
+
+export type AdminClientDeletedRequestRow = {
+  guidedRequestId: string;
+  categoryLabel: string;
+  city: string;
+  description: string;
+  clientName: string | null;
+  clientAccountDeleted: boolean;
+  /** Motivo scelto dal cliente, `null` se non l'ha dato. */
+  reasonLabel: string | null;
+  /** Era ancora aperta: i professionisti l'hanno vista "Ritirata dal cliente". */
+  wasOpen: boolean;
+  professionalsReached: number;
+  quotes: number;
+  messages: number;
+  reports: number;
+  openReports: number;
+  requestCreatedAt: string;
+  deletedAt: string;
+  /** Quando si cancella davvero; `null` se resta perché segnalata. */
+  purgeAt: string | null;
 };
 
 /** Stato della scheda al momento in cui è stata eliminata, in parole. */

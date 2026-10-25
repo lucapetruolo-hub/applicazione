@@ -24,6 +24,8 @@ import {
   guidedRequestSchema,
   guidedRequestUpdateSchema,
   guidedRequestUserStateSchema,
+  requestWithdrawSchema,
+  type RequestWithdrawInput,
   timelineUpdateSchema,
   type GuidedRequestInput,
   type GuidedRequestUpdateInput,
@@ -211,19 +213,24 @@ export class GuidedRequestsController {
     return this.guidedRequestsService.update(req.user.userId, id, body);
   }
 
+  /** "Elimina richiesta" del cliente, con motivo facoltativo (vedi GuidedRequestsService.deleteByClient, docs/CHANGELOG.md §339). */
   @UseGuards(JwtAuthGuard)
   @Delete(":id")
   @HttpCode(204)
-  remove(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
-    return this.guidedRequestsService.remove(req.user.userId, id);
+  remove(
+    @Req() req: AuthenticatedRequest,
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(requestWithdrawSchema)) body: RequestWithdrawInput,
+  ) {
+    return this.guidedRequestsService.deleteByClient(req.user.userId, id, body.reason);
   }
 
-  /** Eliminazione definitiva di una richiesta già annullata/scaduta (vedi GuidedRequestsService.permanentlyDelete). */
+  /** "Annulla" subito dopo l'eliminazione (§339). */
   @UseGuards(JwtAuthGuard)
-  @Delete(":id/permanent")
+  @Post(":id/restore")
   @HttpCode(204)
-  removePermanently(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
-    return this.guidedRequestsService.permanentlyDelete(req.user.userId, id);
+  restore(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    return this.guidedRequestsService.restoreDeletedByClient(req.user.userId, id);
   }
 
   /** Stato personale della scheda (archivia, silenzia, letta/da leggere, promemoria) — cliente o professionista. */

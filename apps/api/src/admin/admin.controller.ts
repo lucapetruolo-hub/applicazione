@@ -165,6 +165,13 @@ export class AdminController {
     return this.adminService.listHiddenLeads();
   }
 
+  /** Richieste eliminate dai clienti: nascoste solo a loro, cancellate dopo 90 giorni se non segnalate (docs/CHANGELOG.md §339). */
+  @RequireAdminScope("MODERATION")
+  @Get("client-deleted-requests")
+  listClientDeletedRequests() {
+    return this.adminService.listClientDeletedRequests();
+  }
+
   // Chat tra cliente e professionista (docs/CHANGELOG.md §166): moderazione,
   // perché sono conversazioni private; ogni lettura va nel registro azioni.
   @RequireAdminScope("MODERATION")

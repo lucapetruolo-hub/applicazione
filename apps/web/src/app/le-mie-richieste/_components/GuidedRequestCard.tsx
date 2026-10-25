@@ -1,6 +1,6 @@
 "use client";
 
-import type { JobPaymentChoice } from "@professionisti/shared";
+import type { JobPaymentChoice, RequestWithdrawReason } from "@professionisti/shared";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -37,6 +37,7 @@ import { clientNextAction } from "@/lib/clientNextAction";
 import { CLIENT_STAGE_LABEL, type RequestStage } from "@/lib/requestStage";
 import { BookingSection } from "./BookingSection";
 import { QuoteCard } from "./QuoteCard";
+import { DeleteRequestModal } from "./DeleteRequestModal";
 import { announceRequestDeleted } from "./RequestDeletedNotice";
 import { ClientMiniTimeline, ClientStagePill, MAX_REQUEST_PHOTOS, STAGE_STYLE, ServiceBadge, formatDateTime, textareaStyle } from "./clientRequestHelpers";
 
@@ -149,7 +150,7 @@ export function GuidedRequestCard({
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Uscita dalla modifica (docs/CHANGELOG.md §337): con modifiche non
+  // Uscita dalla modifica (docs/CHANGELOG.md §339): con modifiche non
   // salvate si chiede prima conferma; `href` è la pagina da aprire dopo,
   // null per tornare solo alla scheda.
   const isDirty =
@@ -166,17 +167,55 @@ export function GuidedRequestCard({
       province !== (request.province ?? "") ||
       photoUrls.join("\n") !== request.photoUrls.join("\n"));
   const [pendingExit, setPendingExit] = useState<{ href: string | null } | null>(null);
+  // Il tasto Indietro del browser (o del telefono) mentre si modifica
+  // riporta alla scheda, non alla pagina prima: all'apertura del modulo si
+  // aggiunge un passo nella cronologia (pushState nativo, che Next.js
+  // affianca al proprio router) e lo si toglie uscendo dal modulo.
+  const editHistoryPushedRef = useRef(false);
+  function leaveEditing() {
+    setIsEditing(false);
+    if (editHistoryPushedRef.current) {
+      editHistoryPushedRef.current = false;
+      window.history.back();
+    }
+  }
   function requestExitEditing() {
     if (isSaving) return;
     if (isDirty) setPendingExit({ href: null });
-    else setIsEditing(false);
+    else leaveEditing();
   }
   function confirmExitEditing() {
     const href = pendingExit?.href ?? null;
     setPendingExit(null);
-    setIsEditing(false);
-    if (href) router.push(href);
+    if (href) {
+      editHistoryPushedRef.current = false;
+      setIsEditing(false);
+      router.push(href);
+    } else {
+      leaveEditing();
+    }
   }
+  useEffect(() => {
+    if (!isEditing) return;
+    if (!editHistoryPushedRef.current) {
+      window.history.pushState(null, "");
+      editHistoryPushedRef.current = true;
+    }
+    function handlePopState() {
+      if (!editHistoryPushedRef.current) return;
+      editHistoryPushedRef.current = false;
+      if (isDirty) {
+        // Resta nel modulo finché non conferma di uscire senza salvare.
+        window.history.pushState(null, "");
+        editHistoryPushedRef.current = true;
+        setPendingExit({ href: null });
+      } else {
+        setIsEditing(false);
+      }
+    }
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [isEditing, isDirty]);
   // Un link del menu mentre si modifica: "Le mie richieste" riporta alla
   // scheda invece di lasciare il modulo aperto; con modifiche non salvate
   // qualunque link chiede prima conferma.
@@ -185,7 +224,11 @@ export function GuidedRequestCard({
     if (isDirty) {
       event.preventDefault();
       setPendingExit({ href: samePage ? null : `${url.pathname}${url.search}${url.hash}` });
-    } else if (samePage) {
+    } else if (samePage && url.search === window.location.search) {
+      event.preventDefault();
+      leaveEditing();
+    } else {
+      editHistoryPushedRef.current = false;
       setIsEditing(false);
     }
   }, isEditing);
@@ -318,7 +361,7 @@ export function GuidedRequestCard({
         province: province.trim() || undefined,
         photoUrls,
       });
-      setIsEditing(false);
+      leaveEditing();
       onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
@@ -327,34 +370,13 @@ export function GuidedRequestCard({
     }
   }
 
-  async function handleDelete() {
-    setError(null);
-    try {
-      await apiClient.deleteGuidedRequest(token, request.id);
-      onChanged();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
-    }
-  }
-
-  async function handlePermanentDelete() {
-    setError(null);
-    try {
-      await apiClient.deleteGuidedRequestPermanently(token, request.id);
-      announceRequestDeleted();
-      onChanged();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
-    }
-  }
-
-  // "Elimina richiesta" dal modulo di modifica (§337): l'errore resta nel
-  // popup, che lo mostra da sé.
-  async function handleDeleteFromEdit(): Promise<void> {
-    await apiClient.deleteGuidedRequestPermanently(token, request.id);
+  // "Elimina richiesta" (docs/CHANGELOG.md §339), dal modulo di modifica e
+  // dal menu: l'errore resta nel popup, che lo mostra da sé.
+  async function handleDeleteRequest(reason: RequestWithdrawReason | undefined): Promise<void> {
+    await apiClient.deleteGuidedRequest(token, request.id, reason);
     setShowDeleteModal(false);
-    setIsEditing(false);
-    announceRequestDeleted();
+    leaveEditing();
+    announceRequestDeleted(request.id);
     onChanged();
   }
 
@@ -405,7 +427,7 @@ export function GuidedRequestCard({
     return (
       <Surface gap="$3">
         <YStack gap="$2">
-          {/* Uscita sempre in vista, anche su un modulo lungo dal telefono (§337). */}
+          {/* Uscita sempre in vista, anche su un modulo lungo dal telefono (§339). */}
           <XStack
             alignSelf="flex-start"
             alignItems="center"
@@ -560,26 +582,14 @@ export function GuidedRequestCard({
               Annulla
             </CardButton>
           </XStack>
-          {/* Eliminare è possibile solo finché non arriva un preventivo, gli
-              stessi casi in cui si può modificare (§337): staccato dai
-              pulsanti del salvataggio per non premerlo per sbaglio. */}
+          {/* Staccato dai pulsanti del salvataggio per non premerlo per sbaglio (§339). */}
           <YStack borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3" marginTop="$2" alignItems="flex-start">
             <CardButton tone="danger" onPress={() => setShowDeleteModal(true)} disabled={isSaving}>
               Elimina richiesta
             </CardButton>
           </YStack>
         </YStack>
-        {showDeleteModal ? (
-          <CancelBookingModal
-            title="Eliminare la richiesta?"
-            description="Sparirà anche per i professionisti che l'hanno ricevuta. Non si può tornare indietro."
-            confirmLabel="Elimina richiesta"
-            confirmingLabel="Eliminazione..."
-            showNote={false}
-            onClose={() => setShowDeleteModal(false)}
-            onCancel={handleDeleteFromEdit}
-          />
-        ) : null}
+        {showDeleteModal ? <DeleteRequestModal stillOpen={canDelete} onClose={() => setShowDeleteModal(false)} onConfirm={handleDeleteRequest} /> : null}
         {pendingExit ? (
           <CancelBookingModal
             title="Uscire senza salvare?"
@@ -639,49 +649,10 @@ export function GuidedRequestCard({
     if (booking.canceledBy === "CLIENT") {
       menuActions.push({ icon: "rotate-ccw", text: "Riapri prenotazione", onPress: handleReopenBooking });
     }
-  } else if (canDelete) {
-    // Annulla ≠ elimina (docs/CHANGELOG.md §130): la richiesta resta visibile
-    // come "Annullata da te", i professionisti lo leggono nella cronologia.
-    menuActions.push({
-      icon: "x",
-      text: "Annulla richiesta",
-      tone: "danger",
-      onPress: handleDelete,
-      confirm: {
-        question: "Annullare questa richiesta? I professionisti contattati non potranno più inviarti preventivi. Potrai poi archiviarla o eliminarla.",
-        confirmLabel: "Sì, annulla",
-        busyLabel: "Annullamento...",
-      },
-    });
-  }
-  // Senza preventivi si elimina anche senza annullare (§337), come dal modulo di modifica.
-  if (canEditDetails) {
-    menuActions.push({
-      icon: "trash-2",
-      text: "Elimina richiesta",
-      tone: "danger",
-      onPress: handlePermanentDelete,
-      confirm: {
-        question: "Eliminare la richiesta? Sparirà anche per i professionisti che l'hanno ricevuta. Non si può tornare indietro.",
-        confirmLabel: "Elimina",
-        busyLabel: "Eliminazione...",
-      },
-    });
-  }
-  // Eliminazione definitiva: solo dopo l'annullamento o la scadenza, mai con
-  // una prenotazione (verificato anche lato API).
-  if (request.status === "CLOSED" && !booking) {
-    menuActions.push({
-      icon: "trash-2",
-      text: "Elimina definitivamente",
-      tone: "danger",
-      onPress: handlePermanentDelete,
-      confirm: {
-        question: "Eliminare per sempre questa richiesta, con preventivi e conversazioni? L'operazione non si può annullare.",
-        confirmLabel: "Elimina",
-        busyLabel: "Eliminazione...",
-      },
-    });
+  } else if (!booking) {
+    // Una sola voce finché la richiesta non è diventata un lavoro (§339, al
+    // posto di "Annulla richiesta" ed "Elimina definitivamente" del §130).
+    menuActions.push({ icon: "trash-2", text: "Elimina richiesta", tone: "danger", onPress: () => setShowDeleteModal(true) });
   }
 
   const nextAction = clientNextAction(stage, request, booking);
@@ -1020,6 +991,7 @@ export function GuidedRequestCard({
           onClose={() => setShowBookingChat(false)}
         />
       ) : null}
+      {showDeleteModal ? <DeleteRequestModal stillOpen={canDelete} onClose={() => setShowDeleteModal(false)} onConfirm={handleDeleteRequest} /> : null}
       {showCancelModal ? (
         <CancelBookingModal
           title="Annulla prenotazione"

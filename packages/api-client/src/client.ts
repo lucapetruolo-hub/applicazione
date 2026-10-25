@@ -60,6 +60,7 @@ import type {
   SetDac7RuleInput,
   PlatformDac7SettingsInput,
   PayoutIbanInput,
+  RequestWithdrawReason,
   PayoutIbanStripeCheck,
   Dac7YearSummary,
   SetFiscalVerificationInput,
@@ -558,6 +559,27 @@ export type AdminJobIssue = {
   clientCompletionNote: string | null;
   professionalCompletionPhotoUrls: string[];
   clientCompletionPhotoUrls: string[];
+};
+
+/** Richiesta eliminata da un cliente, nell'area admin (docs/CHANGELOG.md §339). */
+export type AdminClientDeletedRequest = {
+  guidedRequestId: string;
+  categoryLabel: string;
+  city: string;
+  description: string;
+  clientName: string | null;
+  clientAccountDeleted: boolean;
+  reasonLabel: string | null;
+  wasOpen: boolean;
+  professionalsReached: number;
+  quotes: number;
+  messages: number;
+  reports: number;
+  openReports: number;
+  requestCreatedAt: string;
+  deletedAt: string;
+  /** Quando si cancella davvero; `null` se resta perché segnalata. */
+  purgeAt: string | null;
 };
 
 export type AdminHiddenLead = {
@@ -1194,16 +1216,18 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
         body: JSON.stringify(input),
       }),
 
-    deleteGuidedRequest: (token: string, id: string) =>
+    /** "Elimina richiesta": sparisce per il cliente, i professionisti la vedono ritirata (docs/CHANGELOG.md §339). */
+    deleteGuidedRequest: (token: string, id: string, reason?: RequestWithdrawReason) =>
       request<null>(`/guided-requests/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ reason }),
       }),
 
-    /** Elimina definitivamente una richiesta già annullata/scaduta senza prenotazioni (`deleteGuidedRequest` invece la annulla). */
-    deleteGuidedRequestPermanently: (token: string, id: string) =>
-      request<null>(`/guided-requests/${id}/permanent`, {
-        method: "DELETE",
+    /** "Annulla" pochi secondi dopo l'eliminazione. */
+    restoreGuidedRequest: (token: string, id: string) =>
+      request<null>(`/guided-requests/${id}/restore`, {
+        method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       }),
 
@@ -1917,6 +1941,9 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
 
     adminListHiddenLeads: (token: string) =>
       request<AdminHiddenLead[]>("/admin/hidden-leads", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminListClientDeletedRequests: (token: string) =>
+      request<AdminClientDeletedRequest[]>("/admin/client-deleted-requests", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminResolveContactMessage: (token: string, id: string) =>
       request<{ id: string; resolved: boolean }>(`/admin/contact-messages/${id}`, {

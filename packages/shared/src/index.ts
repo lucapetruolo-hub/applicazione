@@ -35,3 +35,4 @@ export * from "./professionalUrl";
 export * from "./categorySeo";
 export * from "./categoryPrices";
 export * from "./trafficSource";
+export * from "./requestWithdraw";

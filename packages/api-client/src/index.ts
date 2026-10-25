@@ -8,6 +8,7 @@ export type {
   AdminConversationDetail,
   AdminJobIssue,
   AdminHiddenLead,
+  AdminClientDeletedRequest,
   AdminContentReport,
   AdminUserRow,
   AdminUsersPage,
