@@ -305,7 +305,11 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
 
 
       {showClientCompleteModal ? (
-        <ClientCompleteModal onClose={() => setShowClientCompleteModal(false)} onConfirm={handleClientConfirmComplete} />
+        <ClientCompleteModal
+          directPayment={booking.payment?.method === "DIRECT"}
+          onClose={() => setShowClientCompleteModal(false)}
+          onConfirm={handleClientConfirmComplete}
+        />
       ) : null}
       {showReviewModal ? (
         <ReviewModal

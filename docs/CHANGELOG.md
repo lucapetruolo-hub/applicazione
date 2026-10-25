@@ -20601,3 +20601,9 @@ di 3): togliere note e foto e lasciare solo la conferma, poi la recensione.
 - API, schema e colonne `clientCompletionNote`/`clientCompletionPhotoUrls`
   invariati: i lavori già chiusi le mostrano ancora in admin. Per un
   problema resta "Segnala un problema", che raccoglie le foto.
+
+**Miglioria approvata da Luca** ("effettua miglioria n.2"): col pagamento
+diretto (`payment.method === "DIRECT"`) la finestra dice anche "Confermando
+dichiari anche di aver pagato il professionista", perché la conferma vale
+come pagamento ricevuto (`JobPaymentsService.confirmDirect`). Frase di base
+accorciata in "Subito dopo potrai lasciare una recensione, anche con foto".

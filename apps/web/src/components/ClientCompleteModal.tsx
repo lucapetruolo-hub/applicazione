@@ -10,8 +10,18 @@ import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
  * la conferma: note e foto tolte (docs/CHANGELOG.md §336, decisione
  * dell'utente) perché le leggeva solo l'admin e subito dopo la recensione
  * chiede di nuovo testo e foto. Per un problema c'è "Segnala un problema".
+ * Col pagamento diretto la conferma vale anche come "ho pagato"
+ * (`JobPaymentsService.confirmDirect`): lo diciamo in mezza riga.
  */
-export function ClientCompleteModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: () => Promise<void> }) {
+export function ClientCompleteModal({
+  directPayment,
+  onClose,
+  onConfirm,
+}: {
+  directPayment: boolean;
+  onClose: () => void;
+  onConfirm: () => Promise<void>;
+}) {
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -73,7 +83,8 @@ export function ClientCompleteModal({ onClose, onConfirm }: { onClose: () => voi
             Confermi che il lavoro è terminato?
           </Text>
           <Text fontSize={16} color={brand.grafite70}>
-            Subito dopo potrai lasciare una recensione al professionista, anche con foto.
+            {directPayment ? "Confermando dichiari di aver pagato il professionista. " : ""}
+            Subito dopo potrai lasciare una recensione, anche con foto.
           </Text>
         </YStack>
 
