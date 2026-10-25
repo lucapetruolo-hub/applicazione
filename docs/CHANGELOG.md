@@ -20582,3 +20582,17 @@ Richiesta dell'utente: "si potrebbe dare l'icona del meteo per 3 giorni e dire d
 **Migliorie approvate da Luca** ("effettua le 2 migliorie")
 - osv-scanner ora blocca la PR (`.github/workflows/security.yml`, checklist punto 40): dopo aver caricato il rapporto, un passo rifà il controllo e fallisce se trova una vulnerabilità fuori dalle eccezioni di `osv-scanner.toml`. Vale per tutte le librerie, non solo per quelle del sito e dell'API: osv-scanner non sa distinguere quelle usate solo per costruire o provare (anche `pnpm audit --prod` conta lo strumento di Expo, dipendenza dell'app), quindi quelle senza versione corretta vanno tra le eccezioni con il motivo. Provato: con il `pnpm-lock.yaml` di prima di questa PR il controllo fallisce (vitest, tinypool, ecc.), con quello nuovo passa.
 - I due avvisi rimasti (zod 3 e node-forge in `@expo/cli`) vanno chiusi a mano nella scheda Security → Dependabot di GitHub con "Vulnerable code is not actually used" / "Risk is tolerable": lo fa Luca, i thread non hanno accesso agli avvisi.
+
+## 336. Pagina "Richiesta inviata" più curata
+
+**Richiesta dell'utente** (25/10/2026, con uno screenshot): la pagina dopo l'invio di una richiesta di preventivo era quasi vuota e poco curata; "migliora questa schermata". Viste tre varianti (A una colonna, B due colonne, C essenziale), l'utente ha scelto A con la foto del professionista più grande e "qualcosa che dia gioia", poi **senza coriandoli e senza emoji**, tenendo le due precisazioni proposte.
+
+**Decisione**: nuovo componente `apps/web/src/components/RequestSentScreen.tsx`, stili `.request-sent-*` in `globals.css`.
+- In alto la foto del professionista grande (136 px, 120 da telefono) con bordo bianco, alone verde e spunta verde; entra con un piccolo rimbalzo. Con "riduci movimento" la regola globale del sito la mostra già ferma. Se la richiesta va a tutti i professionisti della zona (o il professionista non ha foto) al suo posto c'è l'icona colorata della categoria.
+- "Fatto!" (o "Ci siamo quasi" se in zona non c'è ancora nessuno) e, come titolo h1, "La tua richiesta è arrivata a **nome**". Badge "Verificato" se c'è, tempo medio di risposta solo se misurato.
+- "Cosa succede adesso" in tre passi: richiesta inviata (categoria, città, badge Urgente), ricevi il preventivo, lo accetti e fissate il giorno ("solo allora vede i tuoi contatti", CLAUDE.md §5 punto 9).
+- Pulsante principale "Vai alle mie richieste" e link "Torna alla home".
+- La domanda sui dati in una riga tratteggiata, testo corto ("Salvare nome, telefono e indirizzo per la prossima volta?", Salva / No), pulsanti alti 44 px.
+- All'apertura la pagina torna in cima e il titolo riceve il fuoco (lettori di schermo).
+
+**Verifica**: typecheck e lint di `apps/web`; foto della pagina vera da computer e da telefono, richiesta diretta e a tutta la zona. Anteprime in `/mnt/project-files/anteprime/richiesta-inviata/`.
