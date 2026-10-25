@@ -523,7 +523,7 @@ export class GuidedRequestsService {
           // (richiesta esplicita dell'utente: riconoscere a colpo d'occhio
           // di chi si tratta). Mai per un profilo eliminato.
           imageUrl: quote.professionalProfile.deletedAt ? null : quote.professionalProfile.imageUrl,
-          // Che tipo di lavoratore ha mandato il preventivo (richiesta dell'utente, §336).
+          // Che tipo di lavoratore ha mandato il preventivo (richiesta dell'utente, §337).
           professionalKind: professionalKindOf(quote.professionalProfile.fiscalProfile?.entityType),
           items: quote.items.map((item) => ({
             id: item.id,
