@@ -7,7 +7,7 @@ import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 /**
  * Conferma del cliente che il lavoro è davvero terminato dal suo lato
  * (richiesta esplicita dell'utente: "servono i completed da entrambi"). Solo
- * la conferma: note e foto tolte (docs/CHANGELOG.md §336, decisione
+ * la conferma: note e foto tolte (docs/CHANGELOG.md §338, decisione
  * dell'utente) perché le leggeva solo l'admin e subito dopo la recensione
  * chiede di nuovo testo e foto. Per un problema c'è "Segnala un problema".
  * Col pagamento diretto la conferma vale anche come "ho pagato"

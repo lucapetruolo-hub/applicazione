@@ -15,6 +15,22 @@ test.skip(({ isMobile }) => isMobile, "Il menu a colonna c'è solo da tablet e c
 const nav = (page: Page) => page.getByRole("navigation", { name: "Sezioni del tuo account" });
 const navState = (page: Page) => page.evaluate(() => document.documentElement.getAttribute("data-acct-nav"));
 
+/** Il tondo "Riduci il menu" non copre né le voci né il testo dei titoli (docs/CHANGELOG.md §337). */
+async function expectToggleFree(page: Page) {
+  const covered = await page.evaluate(() => {
+    const t = document.querySelector(".acct-nav-toggle")!.getBoundingClientRect();
+    const hits = (r: DOMRect) => r.width > 0 && r.left < t.right && r.right > t.left && r.top < t.bottom && r.bottom > t.top;
+    const links = [...document.querySelectorAll(".acct-nav-link")].filter((el) => hits(el.getBoundingClientRect()));
+    const titles = [...document.querySelectorAll(".acct-nav-title")].filter((el) => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      return hits(range.getBoundingClientRect());
+    });
+    return [...links, ...titles].map((el) => el.textContent);
+  });
+  expect(covered).toEqual([]);
+}
+
 async function savePreference(page: Page, sidebarCollapsed: boolean | null) {
   const response = await page.request.patch(`${API_URL}/auth/me/preferences`, {
     headers: { Authorization: `Bearer ${e2eData().token}` },
@@ -107,6 +123,7 @@ for (const [name, width, height, collapsed] of [
       await page.reload();
     }
     await expect(nav(page)).toBeVisible();
+    if (collapsed !== null) await expectToggleFree(page);
     const results = await new AxeBuilder({ page }).include(".acct-nav").withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
     expect(results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.html.slice(0, 120)).join(" | ")}`)).toEqual([]);
   });
@@ -124,8 +141,10 @@ test("anche il cliente ha il menu laterale, riducibile e senza problemi di acces
   await page.goto("/le-mie-richieste");
   await expect(nav(page).getByRole("link", { name: "Le mie richieste" })).toHaveAttribute("aria-current", "page");
   await expect(nav(page).getByRole("link", { name: "Professionisti salvati" })).toBeVisible();
+  await expectToggleFree(page);
   await nav(page).getByRole("button", { name: "Riduci il menu a icone" }).click();
   expect(await navState(page)).toBe("collapsed");
+  await expectToggleFree(page);
   const results = await new AxeBuilder({ page }).include(".acct-nav").withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
   expect(results.violations.map((v) => v.id)).toEqual([]);
 });
