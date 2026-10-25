@@ -77,6 +77,7 @@ function RichiesteContent() {
   const [myProfileId, setMyProfileId] = useState<string | null>(null);
   // Modi di pagamento proposti di serie nei nuovi preventivi (docs/CHANGELOG.md §239).
   const [defaultPaymentOffer, setDefaultPaymentOffer] = useState<MyProfessionalProfile["defaultPaymentOffer"] | null>(null);
+  const [defaultCancellationNoticeHours, setDefaultCancellationNoticeHours] = useState<number | null>(null);
   const [stripeVerified, setStripeVerified] = useState(true);
   const [identityVerificationNeeded, setIdentityVerificationNeeded] = useState(false);
   const [profileMissing, setProfileMissing] = useState(false);
@@ -195,6 +196,7 @@ function RichiesteContent() {
         setAvailableSlots(slots);
         setMyProfileId(profile?.id ?? null);
         setDefaultPaymentOffer(profile?.defaultPaymentOffer ?? null);
+        setDefaultCancellationNoticeHours(profile?.cancellationNoticeHours ?? null);
         setStripeVerified(profile?.stripeVerified ?? true);
         setIdentityVerificationNeeded(profile?.identityVerificationNeeded ?? false);
         if (!profile) setProfileMissing(true);
@@ -635,6 +637,7 @@ function RichiesteContent() {
                   availableSlots={availableSlots}
                   myProfileId={myProfileId}
                   defaultPaymentOffer={defaultPaymentOffer}
+                  defaultCancellationNoticeHours={defaultCancellationNoticeHours}
                   stripeVerified={stripeVerified}
                   identityVerificationNeeded={identityVerificationNeeded}
                   isOpen={openId === lead.id}

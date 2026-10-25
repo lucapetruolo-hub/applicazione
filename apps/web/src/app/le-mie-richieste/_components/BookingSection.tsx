@@ -1,29 +1,50 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { ClientBooking } from "@professionisti/api-client";
-import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Icon, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
-import { JOB_ISSUE_LABEL, JOB_ISSUE_STATUS_LABEL, formatAppointmentDate, formatAppointmentTimeRange, formatEurCents, formatJobDays } from "@professionisti/shared";
+import { cancellationNoticeLabel, JOB_ISSUE_LABEL, JOB_ISSUE_STATUS_LABEL, formatEurCents, formatServicePriceRange, quotePriceTotals, type AppointmentMoment } from "@professionisti/shared";
+import { AppointmentWhen, useAppointmentMoment } from "./AppointmentWhen";
+import { AddToCalendar } from "./AddToCalendar";
+import { UnreadDot } from "@/components/UnreadDot";
 import { ClientIssueStatus } from "./ClientIssueStatus";
 import { JobPaymentStatus } from "@/components/JobPaymentStatus";
 import { TimelineModal } from "@/components/TimelineModal";
 import { ClientCompleteModal } from "@/components/ClientCompleteModal";
 import { ReviewModal } from "@/components/ReviewModal";
 import { CardButton } from "@/components/CardButton";
-import { ContactButton } from "@/components/ContactButton";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 
 /**
- * Dettagli/azioni propri della prenotazione (nata dal preventivo accettato)
- * — estratto dalla vecchia `BookingRow`, senza più il proprio header (già
- * mostrato in `GuidedRequestCard`) né la ripetizione di categoria/
- * descrizione/foto/voci del preventivo (già visibili più sopra nella stessa
- * card, essendo la stessa identica richiesta: booking/quote li denormalizzano
- * ma restano gli stessi dati, mostrarli due volte sarebbe stato ridondante
- * ora che le due liste sono un'unica card).
+ * Il lavoro nato dal preventivo accettato, in cima alla scheda come un
+ * biglietto dell'appuntamento (docs/CHANGELOG.md §346, variante C scelta
+ * dall'utente): quando, dove, chiama o scrivi, quanto e come si paga. La
+ * riga in cima e il pulsante principale cambiano col momento (tra qualche
+ * giorno, domani, sta arrivando, com'è andata). La trattativa (richiesta,
+ * preventivi) resta sotto, chiusa, in `GuidedRequestCard`.
  */
-export function BookingSection({ booking, token, onChanged, unreadCount }: { booking: ClientBooking; token: string; onChanged: () => void; unreadCount?: number }) {
+export function BookingSection({
+  booking,
+  token,
+  onChanged,
+  unreadCount,
+  address,
+  onReportProblem,
+  rebookHref,
+}: {
+  booking: ClientBooking;
+  token: string;
+  onChanged: () => void;
+  unreadCount?: number;
+  /** Dove si svolge il lavoro (dalla richiesta), null per una consulenza online. */
+  address: string | null;
+  /** "C'è un problema" dopo l'orario: apre la segnalazione della scheda. Null se non si può segnalare. */
+  onReportProblem: (() => void) | null;
+  /** "Prenota di nuovo": nuova richiesta allo stesso professionista con indirizzo e contatti già scritti (docs/CHANGELOG.md §348). */
+  rebookHref?: string;
+}) {
   const [showClientCompleteModal, setShowClientCompleteModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [isReopening, setIsReopening] = useState(false);
@@ -114,33 +135,177 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
     }
   }
 
-  const jobDays = formatJobDays(booking.scheduledAt, booking.scheduledEndAt);
+  const moment = useAppointmentMoment(booking);
+  const live = booking.status === "CONFIRMED" || booking.status === "PENDING";
+  const proGone = booking.professionalAccountDeleted;
+  const upcoming = live && !proGone && isUpcoming(moment);
+  const issueOpen = booking.issue?.status === "OPEN" || booking.issue?.status === "CHAT";
+  // "Lavoro terminato" solo da quando l'appuntamento è iniziato (§346):
+  // prima compariva già giorni prima. Se il professionista l'ha già chiuso, subito.
+  const started = moment?.kind === "inProgress" || moment?.kind === "over" || booking.status === "COMPLETED";
+  const canConfirmDone =
+    (booking.status === "CONFIRMED" || booking.status === "COMPLETED") && started && !booking.hasReview && !booking.canReview && !issueOpen && !booking.clientConfirmedCompletedAt;
+  const canWriteReview = (booking.status === "CONFIRMED" || booking.status === "COMPLETED") && booking.canReview && !booking.hasReview;
+  const onTheWay = live && moment?.kind === "onTheWay" && !canConfirmDone ? moment : null;
+  const phone = booking.professionalAccountDeleted ? null : booking.professionalPhone;
+  const totals = quotePriceTotals(booking.quoteItems);
+  const priceText = totals.totalMinEurCents > 0 || totals.totalMaxEurCents > 0 ? formatServicePriceRange(totals.totalMinEurCents, totals.totalMaxEurCents) : null;
+  // Un solo pulsante pieno per momento: quando tocca al cliente confermare o recensire, "Chiama" passa in secondo piano.
+  const stripAction = canConfirmDone || canWriteReview;
 
   return (
-    <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
-      <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70} textTransform="uppercase">
-        Intervento
-      </Text>
-      {/* Data dell'intervento come titolo della sezione (richiesta esplicita dell'utente, §228). */}
-      <Text fontFamily="$heading" fontWeight="800" fontSize={20} color={brand.grafite}>
-        {/* Lavoro su più giorni (docs/CHANGELOG.md §310): "Dal 4 al 6 novembre · ogni giorno 08:00–17:00". */}
-        {jobDays
-          ? `${jobDays.charAt(0).toUpperCase()}${jobDays.slice(1)} · ogni giorno ${formatAppointmentTimeRange(booking.scheduledAt, booking.scheduledEndAt)}`
-          : `${formatAppointmentDate(booking.scheduledAt, { weekday: "long", day: "numeric", month: "long", year: "numeric" })} · ${formatAppointmentTimeRange(booking.scheduledAt, booking.scheduledEndAt)}`}
-      </Text>
+    <YStack gap="$3" paddingTop="$3">
+      {onTheWay ? (
+        <XStack gap="$3" alignItems="center" backgroundColor={brand.cianografiaVelo} borderRadius={radiusDoc} padding="$3">
+          <Icon name="truck" size={22} color={brand.cianografiaScuro} />
+          <YStack flex={1} minWidth={0}>
+            <Text fontFamily="$heading" fontWeight="800" fontSize={18} color={brand.grafite}>
+              {booking.businessName} sta arrivando
+            </Text>
+            <Text fontSize={14} color={brand.grafite70}>
+              Partito alle {onTheWay.since}
+            </Text>
+          </YStack>
+        </XStack>
+      ) : null}
 
-      {booking.meetingLink ? (
-        <a href={booking.meetingLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none", alignSelf: "flex-start" }}>
-          <CardButton>
+      {live && proGone && isUpcoming(moment) ? (
+        <YStack gap="$1" backgroundColor={brand.gesso} borderRadius={radiusDoc} padding="$4">
+          <Text fontFamily="$heading" fontWeight="800" fontSize={18} color={brand.grafite}>
+            Questo appuntamento non si farà
+          </Text>
+          <Text fontSize={16} color={brand.grafite70}>
+            Il professionista ha chiuso il suo account. Puoi eliminare la prenotazione e ripetere la richiesta.
+          </Text>
+        </YStack>
+      ) : null}
+
+      {booking.status === "NO_SHOW" ? (
+        <YStack gap="$1" backgroundColor={brand.gesso} borderRadius={radiusDoc} padding="$4">
+          <Text fontFamily="$heading" fontWeight="800" fontSize={18} color={brand.grafite}>
+            Appuntamento segnato come mancato
+          </Text>
+          <Text fontSize={16} color={brand.grafite70}>
+            Il professionista ha segnato che non eri presente. Se non è andata così, scrivigli un messaggio.
+          </Text>
+        </YStack>
+      ) : null}
+
+      {canConfirmDone || canWriteReview ? (
+        <YStack gap="$3" backgroundColor={brand.cianografiaVelo} borderRadius={radiusDoc} padding="$4">
+          <YStack gap={2}>
+            <Text fontFamily="$heading" fontWeight="800" fontSize={20} color={brand.grafite}>
+              {canConfirmDone && moment?.kind === "inProgress" ? "Lavoro in corso" : "Com'è andata?"}
+            </Text>
+            <Text fontSize={16} color={brand.grafite70}>
+              {canConfirmDone ? "Quando ha finito, confermalo qui." : "Una recensione aiuta altri clienti a scegliere."}
+            </Text>
+          </YStack>
+          <XStack gap="$2" flexWrap="wrap">
+            {canConfirmDone ? (
+              // Turchese come dal lato del professionista (richiesta esplicita dell'utente).
+              <CardButton fill="#20B2AA" $xs={{ flex: 1 }} onPress={() => setShowClientCompleteModal(true)}>
+                Lavoro terminato
+              </CardButton>
+            ) : (
+              <CardButton tone="primary" $xs={{ flex: 1 }} onPress={() => setShowReviewModal(true)}>
+                Lascia una recensione
+              </CardButton>
+            )}
+            {canConfirmDone && onReportProblem ? (
+              <CardButton $xs={{ flex: 1 }} onPress={onReportProblem}>
+                C&apos;è un problema
+              </CardButton>
+            ) : null}
+          </XStack>
+        </YStack>
+      ) : null}
+
+      <XStack gap="$4" flexWrap="wrap" alignItems="flex-start">
+        <YStack flex={1} flexBasis={300} minWidth={0} gap="$3">
+          <AppointmentWhen booking={booking} moment={moment} />
+          {address ? (
             <XStack alignItems="center" gap="$2">
-              <Icon name="video" size={16} color={brand.grafite} strokeWidth={1.5} />
-              <Text fontFamily="$body" fontSize={16} color={brand.grafite} fontWeight="600">
-                Partecipa alla videochiamata
+              <Icon name="map-pin" size={18} color={brand.grafite70} />
+              <Text flex={1} fontSize={16} color={brand.grafite}>
+                {address}
               </Text>
             </XStack>
-          </CardButton>
-        </a>
-      ) : null}
+          ) : null}
+          {booking.meetingLink && booking.status !== "CANCELED" ? (
+            <a href={booking.meetingLink} target="_blank" rel="noreferrer" style={{ textDecoration: "none", alignSelf: "flex-start" }}>
+              <CardButton tone={stripAction ? "outline" : "primary"}>
+                <XStack alignItems="center" gap="$2">
+                  <Icon name="video" size={16} color={stripAction ? brand.grafite : "white"} strokeWidth={1.5} />
+                  <Text fontFamily="$body" fontSize={16} color={stripAction ? brand.grafite : "white"} fontWeight="600">
+                    Partecipa alla videochiamata
+                  </Text>
+                </XStack>
+              </CardButton>
+            </a>
+          ) : null}
+          {upcoming ? <AddToCalendar token={token} bookingId={booking.id} /> : null}
+        </YStack>
+
+        {booking.status !== "CANCELED" ? (
+          <YStack flex={1} flexBasis={300} minWidth={0} gap="$3" backgroundColor={brand.gesso} borderRadius={radiusDoc} padding="$4">
+            <XStack gap="$2" flexWrap="wrap">
+              {phone ? (
+                <a href={`tel:${phone.replace(/\s+/g, "")}`} style={{ textDecoration: "none", flex: 1, minWidth: 130, display: "flex" }}>
+                  <CardButton tone={stripAction ? "outline" : "primary"} flex={1}>
+                    <XStack alignItems="center" gap="$2">
+                      <Icon name="phone" size={18} color={stripAction ? brand.grafite : "white"} />
+                      <Text fontFamily="$body" fontWeight="600" fontSize="$3" color={stripAction ? brand.grafite : "white"}>
+                        Chiama
+                      </Text>
+                    </XStack>
+                  </CardButton>
+                </a>
+              ) : null}
+              {booking.guidedRequestId && !proGone ? (
+                <CardButton
+                  flex={1}
+                  minWidth={130}
+                  onPress={() => {
+                    setShowTimeline(true);
+                    dismissUnread();
+                  }}
+                >
+                  <XStack alignItems="center" gap="$2">
+                    <Icon name="message-circle" size={18} color={brand.grafite} />
+                    <Text fontFamily="$body" fontWeight="600" fontSize="$3" color={brand.grafite}>
+                      Messaggi
+                    </Text>
+                    <UnreadDot count={effectiveUnreadCount} />
+                  </XStack>
+                </CardButton>
+              ) : null}
+            </XStack>
+            {priceText || booking.payment ? <YStack height={1} backgroundColor={brand.filetto} /> : null}
+            {priceText && booking.status !== "COMPLETED" ? (
+              <XStack justifyContent="space-between" alignItems="baseline" gap="$2" flexWrap="wrap">
+                <Text fontSize={16} color={brand.grafite70}>
+                  Totale indicativo
+                </Text>
+                <Text fontSize={18} fontWeight="800" color={brand.grafite}>
+                  {priceText}
+                </Text>
+              </XStack>
+            ) : null}
+            {/* Pagamento del lavoro (docs/CHANGELOG.md §168). */}
+            {booking.payment ? (
+              <JobPaymentStatus
+                payment={booking.payment}
+                audience="client"
+                onPay={async (part) => {
+                  const { url } = await apiClient.jobPaymentCheckout(token, booking.id, part);
+                  if (url) window.location.href = url;
+                }}
+              />
+            ) : null}
+          </YStack>
+        ) : null}
+      </XStack>
 
       {/* Solo ciò che ha annullato il cliente: un intervento annullato dal professionista non si riapre. */}
       {booking.status === "CANCELED" && booking.canceledBy === "CLIENT" ? (
@@ -159,18 +324,6 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
         <Text color={brand.urgenza} fontSize={16}>
           {reopenError}
         </Text>
-      ) : null}
-
-      {/* Pagamento del lavoro (docs/CHANGELOG.md §168). */}
-      {booking.payment && booking.status !== "CANCELED" ? (
-        <JobPaymentStatus
-          payment={booking.payment}
-          audience="client"
-          onPay={async (part) => {
-            const { url } = await apiClient.jobPaymentCheckout(token, booking.id, part);
-            if (url) window.location.href = url;
-          }}
-        />
       ) : null}
 
       {booking.issue ? (
@@ -237,39 +390,21 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
         </YStack>
       ) : null}
 
-      {/* Azioni dell'intervento in fila (richiesta esplicita dell'utente):
-          Lavoro terminato (o recensione), Contatta/Cronologia. "Segnala un
-          problema" sta solo nel menu hamburger della scheda (GuidedRequestCard,
-          richiesta esplicita dell'utente, docs/CHANGELOG.md §329). Un solo
-          Contatta/Cronologia nella scheda: quello del preventivo accettato è
-          nascosto (QuoteCard, `contactInBooking`). */}
-      <XStack gap="$2" flexWrap="wrap" alignItems="center" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
-        {/* Lavoro terminato sempre per primo, turchese come lato professionista (richiesta esplicita dell'utente). */}
-        {booking.status === "CONFIRMED" || booking.status === "COMPLETED" ? (
-          booking.hasReview ? null : booking.canReview ? (
-            <CardButton compactOnPhone onPress={() => setShowReviewModal(true)}>Lascia una recensione</CardButton>
-          ) : booking.issue?.status === "OPEN" || booking.issue?.status === "CHAT" ? null : !booking.clientConfirmedCompletedAt ? (
-            <CardButton compactOnPhone fill="#20B2AA" onPress={() => setShowClientCompleteModal(true)}>
-              Lavoro terminato
-            </CardButton>
-          ) : null
-        ) : null}
-        {booking.guidedRequestId ? (
-          <ContactButton
-            compactOnPhone
-            unreadCount={effectiveUnreadCount}
-            onPress={() => {
-              setShowTimeline(true);
-              dismissUnread();
-            }}
-          />
-        ) : null}
-      </XStack>
       {booking.status === "CONFIRMED" || booking.status === "COMPLETED" ? (
         booking.hasReview ? (
-          <Text fontSize={13} color={brand.verificato} fontWeight="600">
-            Recensione inviata
-          </Text>
+          <YStack gap="$2" alignItems="flex-start">
+            <Text fontSize={13} color={brand.verificato} fontWeight="600">
+              Recensione inviata
+            </Text>
+            {/* Il prossimo lavoro con lo stesso professionista passa dal sito (docs/CHANGELOG.md §348). */}
+            {rebookHref && booking.status === "COMPLETED" && !booking.professionalAccountDeleted ? (
+              <Link href={rebookHref} style={{ textDecoration: "none" }}>
+                <CardButton tone="primary" arrow>
+                  Prenota di nuovo
+                </CardButton>
+              </Link>
+            ) : null}
+          </YStack>
         ) : !booking.canReview && (booking.issue?.status === "OPEN" || booking.issue?.status === "CHAT") ? (
           <Text fontSize={13} color={brand.grafite70}>
             Potrai lasciare la recensione quando la segnalazione sarà chiusa.
@@ -324,6 +459,43 @@ export function BookingSection({ booking, token, onChanged, unreadCount }: { boo
       {showTimeline && booking.guidedRequestId ? (
         <TimelineModal token={token} guidedRequestId={booking.guidedRequestId} professionalProfileId={booking.professionalProfileId} viewerRole="CLIENT" otherPartyName={booking.businessName} otherPartyImageUrl={booking.professionalImageUrl} onClose={() => setShowTimeline(false)} />
       ) : null}
+    </YStack>
+  );
+}
+
+/** L'appuntamento deve ancora cominciare: calendario, cambio data e annullamento hanno senso solo prima (§346). */
+function isUpcoming(moment: AppointmentMoment | null): boolean {
+  return moment !== null && moment.kind !== "inProgress" && moment.kind !== "over";
+}
+
+/**
+ * "Serve cambiare? Scrivi un messaggio · Annulla appuntamento" sotto la
+ * trattativa chiusa (§346): solo prima dell'appuntamento, quando il
+ * professionista c'è ancora. Dopo, per qualcosa che non va c'è "C'è un problema".
+ */
+export function ChangeLinks({ booking, onMessage, onCancel }: { booking: ClientBooking; onMessage: (() => void) | null; onCancel: () => void }) {
+  const moment = useAppointmentMoment(booking);
+  if ((booking.status !== "CONFIRMED" && booking.status !== "PENDING") || booking.professionalAccountDeleted || !isUpcoming(moment)) return null;
+  return (
+    <YStack gap="$1" paddingHorizontal="$1" paddingTop="$1">
+    <XStack alignItems="center" gap="$4" flexWrap="wrap">
+      <Text fontSize={16} color={brand.grafite70}>
+        Serve cambiare?
+      </Text>
+      {onMessage ? (
+        <Text fontSize={16} fontWeight="600" color={brand.grafite} textDecorationLine="underline" cursor="pointer" accessibilityRole="button" onPress={onMessage}>
+          Scrivi un messaggio
+        </Text>
+      ) : null}
+      <Text fontSize={16} fontWeight="600" color={brand.urgenza} textDecorationLine="underline" cursor="pointer" accessibilityRole="button" onPress={onCancel}>
+        Annulla appuntamento
+      </Text>
+    </XStack>
+      {/* Preavviso scelto dal professionista (docs/CHANGELOG.md §347). */}
+      <Text fontSize={13} color={brand.grafite70}>
+        Se devi annullare, avvisa almeno {cancellationNoticeLabel(booking.cancellationNoticeHours)} prima.
+        {booking.lateCancelKeepsDeposit && booking.payment?.method === "ONLINE" && booking.payment.paidEurCents > 0 ? " Più tardi, l'acconto resta al professionista." : ""}
+      </Text>
     </YStack>
   );
 }

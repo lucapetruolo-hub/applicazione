@@ -20834,3 +20834,90 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - **React Compiler su tutto il sito** (`reactCompiler: true`), tranne i 21 componenti con `<style jsx>`, che hanno la direttiva `"use no memo"` in testa. Scelto al posto di riscrivere i loro stili in file CSS: sono 19 file con circa 220 valori calcolati negli stili (colori del marchio, misure dalle props), una riscrittura lunga e rischiosa per lo stesso risultato. `apps/web/scripts/controlla-style-jsx.mjs`, dentro `pnpm lint`, fa fallire la CI se un componente con `<style jsx>` non ha `"use no memo"`. Il contenuto dell'agenda non ha più bisogno di `"use memo"`.
 - **Prova Lighthouse anche su Oggi (`/dashboard`) e Richieste (`/dashboard/richieste`)**, stesso limite. In locale TBT 509-617 ms Oggi e 378-536 ms Richieste, contro 426-440 dell'agenda nello stesso giro; in CI 335 e 282 ms (agenda 277-279 nello stesso giro). Accessibilità 96 su entrambe per due testi con contrasto basso (avviso, non blocca).
 - **Verifica**: foto di tutte le pagine contro il giro precedente sugli stessi dati, 115 identiche su 132, le altre con 1-84 pixel di sfumatura dei bordi del testo e la linea dell'ora dell'agenda (controllata a occhio); 94 prove nel browser, typecheck, lint e test verdi.
+
+## 346. Dal preventivo accettato alla recensione: biglietto dell'appuntamento, un solo lavoro per richiesta
+
+**Richiesta esplicita dell'utente** (25/10/2026, thread "Migliorare il dopo-accettazione del preventivo"): "si potrebbe modificare la visualizzazione di quando il cliente accetta uno specifico preventivo?". Tra tre varianti Luca ha scelto la C (biglietto dell'appuntamento in cima, schermata "Appuntamento prenotato", riga in cima che cambia nel tempo) "più la miglioria" (gli altri preventivi della stessa richiesta restavano accettabili). Poi la "versione profonda": rivedere cliente e professionista dal momento di "Accetta" fino alla recensione, sul sito e nelle email, con obiettivi misurabili, controllo dei dati veri, tabella di tutti i casi, confronto con i concorrenti, rischio del tasto "Chiama" e regola per annullare. Il risultato è giusto se un vincolo del database impedisce un secondo lavoro, le prove automatiche passano nella CI, una pagina di prova fotografa la scheda in ogni stato, il calendario funziona su telefoni veri e 5 persone completano i compiti. Analisi in `analisi/preventivo-accettato/analisi-profonda.md`.
+
+**Problemi trovati**
+- Con il pagamento diretto, accettare un secondo preventivo della stessa richiesta creava un secondo lavoro. Lo stesso succedeva quando il professionista confermava una data proposta dal cliente, un percorso che non aveva nessun controllo.
+- Il cliente non riceveva nessuna email accettando con il pagamento diretto. Il calendario arrivava solo col promemoria del giorno prima.
+- I professionisti non scelti restavano "In attesa del cliente" per sempre, anche in agenda.
+- "Lavoro terminato" compariva già giorni prima dell'appuntamento.
+- Il cliente poteva annullare anche a lavoro fatto, e con l'acconto online riavere i soldi.
+- Le foto della scheda in ogni stato hanno trovato altri problemi:
+  - "Annulla appuntamento" anche a lavoro finito o con una segnalazione aperta;
+  - nessuna spiegazione per l'appuntamento segnato come mancato;
+  - un appuntamento con un professionista che ha chiuso l'account ancora presentato come valido.
+
+**Decisione presa**
+- **Un solo lavoro per richiesta.**
+  - Nel codice: controllo comune in `apps/api/src/bookings/one-job-per-request.ts` (blocco sulla richiesta e "c'è già un lavoro non annullato") all'accettazione, alla conferma della data proposta e alla riapertura.
+  - Nel database: `bookings.guidedRequestId` compilato da un trigger dal preventivo, più l'indice unico parziale `bookings_one_active_job_per_request` (lavori non annullati). La migrazione è `20261025200000_un_lavoro_per_richiesta`.
+  - Se in produzione ci fosse già una richiesta con due lavori attivi, la migrazione si ferma: prima va lanciata la query 1 di `analisi/preventivo-accettato/query-dati-veri.sql`.
+  - Il rimborso dell'acconto per "altro preventivo già accettato" ora non conta i lavori annullati.
+- **Biglietto dell'appuntamento** (`BookingSection`, `AppointmentWhen`, `appointmentMoment` in `packages/shared/src/appointmentTime.ts`):
+  - in cima alla scheda: data grande e quanto manca (tra N giorni, domani, oggi, in corso);
+  - "sta arrivando" con l'ora di partenza;
+  - "Lavoro in corso" o "Com'è andata?" solo da quando l'appuntamento è cominciato;
+  - accanto: indirizzo, "Aggiungi al calendario" (Google Calendar o file .ics con lo stesso UID delle email, `GET /bookings/:id/calendar`, solo il cliente), Chiama, Messaggi, totale e pagamento.
+  - Sotto, chiusi: "Preventivo accettato", le foto e "N altri preventivi non scelti" (senza Accetta, con "Non scelto: hai accettato un altro preventivo"). Infine "Serve cambiare? Scrivi un messaggio · Annulla appuntamento", solo prima dell'orario (`ChangeLinks`).
+- **"Appuntamento prenotato"** subito dopo Accetta, o al ritorno dal pagamento dell'acconto (`BookingConfirmed`), con il cursore sul titolo.
+- **Email al cliente "Appuntamento prenotato"** con il calendario (`BOOKING_CONFIRMED`, solo email con `NotificationsService.emailOnly`, argomento "Lavori e appuntamenti"). Il calendario c'è anche nell'email "data confermata" (`QUOTE_DATE_CONFIRMED`).
+- **Professionista non scelto:** `otherProfessionalChosen` nel lead. In Richieste vede "Chiusa: il cliente ha scelto un altro professionista per questa richiesta"; dall'agenda spariscono i preventivi in attesa.
+- **Annullamento del cliente solo prima dell'orario**, sia nel server sia nel menu. Dopo resta "C'è un problema".
+- **Casi della scheda:**
+  - professionista con account chiuso e appuntamento futuro: "Questo appuntamento non si farà", senza Chiama, Messaggi né calendario;
+  - lavoro `NO_SHOW`: "Appuntamento segnato come mancato".
+- **Non deciso, proposto a Luca** (analisi, sezioni 5-6):
+  - il tasto "Chiama" solo dal giorno prima;
+  - la regola scritta per annullare e cambiare data (domande 42-43 per l'avvocato);
+  - l'email ai professionisti non scelti;
+  - l'annullamento automatico dei lavori futuri quando un professionista chiude l'account.
+
+**Verifica**
+- Test dell'API verdi, tra cui: secondo preventivo rifiutato, riapertura con un altro lavoro, annullamento dopo l'orario senza rimborso, conferma per email.
+- Momento dell'appuntamento anche ai cambi d'ora (`appointment-time.test.ts`).
+- Test dei permessi con la rotta nuova.
+- Prove nel browser in CI:
+  - `e2e/tests/preventivo-accettato.spec.ts`: due "Accetta" nello stesso istante, vincolo del database senza i controlli del codice, percorso completo con calendario, il professionista non scelto lo vede;
+  - `e2e/tests/schede-lavoro.spec.ts`: la scheda in 17 stati da telefono e computer, con le scritte che li distinguono. Le foto finiscono in `e2e/schede-results/`, tra i risultati del job "agenda-browser".
+- Da fare a mano: calendario su iPhone e Android veri, prova con 5 persone (istruzioni nell'analisi, sezione 9).
+- Dopo l'unione: confronto dei numeri a 4 settimane.
+
+## 347. Preavviso per annullare scelto dal professionista
+
+**Richiesta** (Luca, 25/10/2026, rispondendo alle scelte aperte del §346):
+- "Chiama" resta com'è: anche col numero solo dal giorno prima si accorderebbero la volta dopo, e il numero serve alla buona riuscita del lavoro;
+- "dovremmo far decidere al professionista i termini per la cancellazione, se 24 ore o 48 ore o 3 giorni";
+- nessuna email ai professionisti non scelti ("ci sono già troppe email").
+
+**Decisione**
+- `ProfessionalProfile.cancellationNoticeHours` (24, 48 o 72, di serie 24), scelto in `/dashboard/profilo` ("Preavviso per annullare"). Valori e testi in `packages/shared/src/cancellationNotice.ts`.
+- Copiato sul lavoro quando nasce (`Booking.cancellationNoticeHours`, in tutti e tre i punti che creano un lavoro): cambiarlo dopo non tocca i lavori già prenotati. I lavori di prima valgono 24 ore.
+- Il cliente lo legge sul preventivo prima di "Accetta" e sotto l'appuntamento ("avvisa almeno 48 ore prima").
+- Annullare dentro il preavviso si può ancora: la conferma lo dice, il lavoro resta segnato (`Booking.canceledLate`, azzerato riaprendo), il professionista lo legge nell'email, nella cronologia e nella scheda.
+- L'acconto online per ora torna sempre: trattenerlo aspetta il parere dell'avvocato (domanda 42, aggiornata).
+
+**Verifica**
+- Test dell'API: preavviso copiato all'accettazione, annullamento tardivo segnato e detto al professionista.
+- `e2e/tests/preventivo-accettato.spec.ts`: preavviso di 48 ore visibile prima di Accetta e sotto l'appuntamento, invariato sul lavoro dopo un cambio nel profilo, annullamento tardivo segnato.
+
+## 348. Preavviso a ogni preventivo, acconto trattenuto se lo sceglie il professionista, "Prenota di nuovo", lavori annullati alla chiusura dell'account
+
+**Richiesta** (Luca, 25/10/2026): "dobbiamo poter dare la possibilità al professionista di cambiarlo ad ogni preventivo, magari impostando già la scelta standard sua come default, e quindi non inserire nel suo profilo pubblico. Effettua migliorie 2-3-4 (in base alla scelta del professionista)". Le migliorie: "Prenota di nuovo" dopo la recensione, lavori futuri annullati quando il professionista chiude l'account, acconto trattenuto per un annullamento tardivo.
+
+**Decisione**
+- **Preavviso nel preventivo:** `Quote.cancellationNoticeHours`, scelto nel modulo del preventivo ("Se il cliente deve annullare, quanto prima deve avvisarti?"), con già selezionato lo standard del profilo (§347). Il lavoro copia quello del preventivo; per i preventivi di prima vale lo standard. Niente sul profilo pubblico.
+- **Acconto trattenuto (4):** casella "Se annulla più tardi, l'acconto online resta a me", solo quando il preventivo offre l'acconto online (`Quote.lateCancelKeepsDeposit`).
+  - Il cliente lo legge prima di Accetta, sotto l'appuntamento e nella conferma di annullamento, con la cifra.
+  - Annullando dentro il preavviso l'acconto non si rimborsa: `OnlineMoneyService.keepDeposit` lo fissa come importo del lavoro (commissione 5%, `JobPayment.depositKeptAt`) e passa al professionista dopo i soliti 7 giorni (`releaseIfDue`). Email al professionista con la cifra.
+  - Se il cliente riapre il lavoro prima dello sblocco torna un acconto normale (`undoKeepDeposit`); dopo lo sblocco non si riapre.
+  - La domanda 42 per l'avvocato resta aperta: è una penale ammessa verso un consumatore?
+- **"Prenota di nuovo" (2):** dopo la recensione di un lavoro completato, apre una richiesta allo stesso professionista con indirizzo e contatti già scritti, senza la descrizione.
+- **Account chiuso (3):** `BookingsService.cancelFutureJobsOfClosedAccount` annulla i lavori non ancora cominciati, rimborsa l'acconto e avvisa il cliente (email senza "scrivi in chat"). `AuthService.onProfessionalAccountClosed` evita l'import circolare tra i due moduli.
+
+**Verifica**
+- Test dell'API: acconto trattenuto solo dentro il preavviso e solo se scelto, sblocco dopo la scadenza senza rimborsi, chiusura dell'account.
+- `e2e/tests/preventivo-accettato.spec.ts`: preavviso del preventivo che vince sullo standard; `schede-lavoro.spec.ts`: "Prenota di nuovo" dopo la recensione.
+- Foto del modulo in `anteprime/preventivo-accettato/preavviso/`.

@@ -38,6 +38,8 @@ export type MyProfessionalProfile = {
   /** Quando ha chiesto la verifica (docs/CHANGELOG.md §201); null se non l'ha chiesta o è già verificato. */
   verificationRequestedAt: string | null;
   remoteAvailable: boolean;
+  /** Preavviso per annullare scelto dal professionista: 24, 48 o 72 ore (docs/CHANGELOG.md §347). */
+  cancellationNoticeHours: number;
   imageUrl: string | null;
   /** Foto reali di lavori svolti (fino a 10), mostrate in una galleria sul profilo pubblico. */
   portfolioUrls: string[];
@@ -144,6 +146,9 @@ export type ProfessionalLead = {
     /** Modi di pagamento offerti dal professionista e percentuale dell'acconto online (docs/CHANGELOG.md §237). */
     paymentOptions: JobPaymentChoice[];
     depositPercent: number;
+    /** Preavviso per annullare scelto in questo preventivo e acconto trattenuto se il cliente annulla dentro il preavviso (docs/CHANGELOG.md §348). */
+    cancellationNoticeHours: number;
+    lateCancelKeepsDeposit: boolean;
     /** Ultimo nuovo preventivo inviato dopo un rifiuto, null se mai. */
     resentAt: string | null;
     /**
@@ -171,6 +176,8 @@ export type ProfessionalLead = {
      * `null` finché il preventivo non è stato accettato.
      */
     bookingStatus: string | null;
+    /** Il cliente ha accettato il preventivo di un altro professionista (docs/CHANGELOG.md §346). */
+    otherProfessionalChosen: boolean;
   } | null;
   guidedRequest: {
     id: string;
@@ -304,6 +311,8 @@ export type ProfessionalBooking = {
   cancellationNote: string | null;
   /** Chi ha annullato — richiesta esplicita dell'utente, mostrato accanto all'etichetta "Annullata". `null` finché non CANCELED, o per righe annullate prima di questo campo. */
   canceledBy: "CLIENT" | "PROFESSIONAL" | null;
+  /** Il cliente ha annullato dentro il preavviso scelto dal professionista (docs/CHANGELOG.md §347). */
+  canceledLate: boolean;
   /** Ultima segnalazione "Qualcosa è andato male" del professionista su questo lavoro (§197), `null` se non ne ha fatte. */
   professionalProblemReport: { reason: string; status: "OPEN" | "RESOLVED" | "DISMISSED"; createdAt: string } | null;
   /**

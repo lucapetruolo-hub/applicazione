@@ -262,6 +262,19 @@ export class JobPaymentsService {
     }
   }
 
+  /** Annullamento dentro il preavviso con l'acconto trattenuto (docs/CHANGELOG.md §348): quanto resta al professionista, 0 se nulla. */
+  async keepDepositOnLateCancel(bookingId: string): Promise<number> {
+    const jp = await this.prisma.jobPayment.findUnique({ where: { bookingId } });
+    if (!jp || jp.paymentMethod !== "MANOVIA") return 0;
+    return this.onlineMoneyService.keepDeposit(jp.id);
+  }
+
+  /** Lavoro riaperto dal cliente: l'acconto trattenuto torna acconto, se non è già passato al professionista. */
+  async undoKeptDeposit(bookingId: string): Promise<void> {
+    const jp = await this.prisma.jobPayment.findUnique({ where: { bookingId } });
+    if (jp?.depositKeptAt) await this.onlineMoneyService.undoKeepDeposit(jp.id);
+  }
+
   async listAll() {
     return this.prisma.jobPayment.findMany({
       orderBy: { createdAt: "desc" },

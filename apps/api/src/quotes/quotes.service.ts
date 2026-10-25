@@ -29,6 +29,7 @@ import { onlinePaymentsEnabled } from "../job-payments/online-payments-enabled";
 import { stripeVerified } from "../professional-fiscal/public-visibility";
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
 import { countBookingsInSlot, countOverlapping, loadCommitments, lockProfessionalAgenda } from "../agenda/commitments";
+import { hasOtherJob, isOtherJobViolation, lockGuidedRequest } from "../bookings/one-job-per-request";
 
 /** Preventivo su una richiesta che il cliente ha eliminato (docs/CHANGELOG.md §343). */
 const WITHDRAWN_BY_CLIENT_MESSAGE = "Il cliente ha ritirato questa richiesta.";
@@ -38,6 +39,8 @@ const WITHDRAWN_BY_CLIENT_MESSAGE = "Il cliente ha ritirato questa richiesta.";
 function slotPayload(start: Date, end: Date | null | undefined): { start: string; end: string | null } {
   return { start: start.toISOString(), end: end ? end.toISOString() : null };
 }
+
+const OTHER_PROFESSIONAL_CHOSEN = "Il cliente ha già scelto un altro professionista per questa richiesta.";
 @Injectable()
 export class QuotesService {
   constructor(
@@ -169,6 +172,10 @@ export class QuotesService {
     const data = {
       paymentOptions: offer.paymentOptions,
       depositPercent: offer.paymentOptions.some(paymentChoiceIsOnline) ? offer.depositPercent : null,
+      // Preavviso per annullare (di serie quello del profilo) e acconto
+      // trattenuto, che ha senso solo con l'acconto online (docs/CHANGELOG.md §348).
+      cancellationNoticeHours: input.cancellationNoticeHours ?? existingQuote?.cancellationNoticeHours ?? professionalProfile.cancellationNoticeHours,
+      lateCancelKeepsDeposit: offer.paymentOptions.some(paymentChoiceIsOnline) ? (input.lateCancelKeepsDeposit ?? existingQuote?.lateCancelKeepsDeposit ?? false) : false,
       estimatedStartDate: new Date(input.estimatedStartDate),
       estimatedEndDate: input.estimatedEndDate ? new Date(input.estimatedEndDate) : null,
       notes: input.notes,
@@ -605,6 +612,9 @@ export class QuotesService {
           // Un lavoro già preso che si sovrappone (anche un lavoro esterno
           // o uno lungo iniziato prima) occupa la fascia (docs/CHANGELOG.md §310).
           await lockProfessionalAgenda(tx, professionalProfile.id);
+          // Nel frattempo il cliente ha accettato il preventivo di un altro professionista (§346).
+          await lockGuidedRequest(tx, quote.guidedRequestId);
+          if (await hasOtherJob(tx, quote.guidedRequestId)) throw new ConflictException(OTHER_PROFESSIONAL_CHOSEN);
           const commitments =
             (await loadCommitments(tx, [professionalProfile.id], dayStart, quote.clientProposedEndDate ?? dayEnd)).get(professionalProfile.id) ?? [];
           if (countOverlapping(commitments, scheduledAt, quote.clientProposedEndDate, requestServiceMode) >= maxBookings) {
@@ -616,6 +626,7 @@ export class QuotesService {
               clientId: quote.guidedRequest.clientId,
               professionalProfileId: professionalProfile.id,
               scheduledAt,
+              cancellationNoticeHours: quote.cancellationNoticeHours ?? professionalProfile.cancellationNoticeHours,
               scheduledEndAt: quote.clientProposedEndDate,
               serviceMode: requestServiceMode,
               status: "CONFIRMED",
@@ -649,6 +660,8 @@ export class QuotesService {
       await this.notificationsService.notify(quote.guidedRequest.clientId, "QUOTE_DATE_CONFIRMED", {
         guidedRequestId: quote.guidedRequestId,
         quoteId: quote.id,
+        // Con il calendario nell'email, come quando accetta il cliente (§346).
+        bookingId: booking.id,
       });
       // Metriche di affidabilità (CLAUDE.md §15, evento 3): il preventivo è
       // diventato una prenotazione reale ("accettato" in questo dominio).
@@ -665,6 +678,7 @@ export class QuotesService {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2034") {
         throw new ConflictException("Questa fascia non è più libera.");
       }
+      if (isOtherJobViolation(err)) throw new ConflictException(OTHER_PROFESSIONAL_CHOSEN);
       throw err;
     }
   }

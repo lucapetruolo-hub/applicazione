@@ -18,6 +18,7 @@ function buildService(prismaOverrides: Record<string, unknown> = {}) {
     lead: { findMany: vi.fn(), groupBy: vi.fn().mockResolvedValue([]) },
     quote: { groupBy: vi.fn().mockResolvedValue([]) },
     conversationEvent: { findMany: vi.fn().mockResolvedValue([]) },
+    booking: { findMany: vi.fn().mockResolvedValue([]) },
     ...prismaOverrides,
   };
   const service = new ProfessionalsService(

@@ -698,6 +698,46 @@ export class OnlineMoneyService {
   }
 
   /**
+   * Acconto trattenuto: il cliente ha annullato dentro il preavviso e il
+   * preventivo lo prevedeva (docs/CHANGELOG.md §348). L'acconto pagato vale
+   * come importo del lavoro e passa al professionista dopo i soliti giorni
+   * di blocco, con la stessa commissione. Restituisce quanto resta a lui.
+   */
+  async keepDeposit(jobPaymentId: string): Promise<number> {
+    const jp = await this.prisma.jobPayment.findUniqueOrThrow({ where: { id: jobPaymentId } });
+    const kept = jp.paidEurCents - jp.refundedEurCents;
+    if (jp.paymentMethod !== "MANOVIA" || jp.releasedAt || kept <= 0) return 0;
+    const appFee = Math.round((kept * ONLINE_APP_FEE_PERCENT) / 100);
+    await this.prisma.jobPayment.update({
+      where: { id: jp.id },
+      data: {
+        depositKeptAt: new Date(),
+        grossAmountEurCents: kept,
+        platformFeeEurCents: appFee,
+        netAmountEurCents: Math.max(0, kept - appFee - jp.stripeFeeEurCents),
+        onlineStage: "PAID",
+        releaseDueAt: new Date(Date.now() + ONLINE_RELEASE_DAYS * DAY_MS),
+      },
+    });
+    await this.auditLogService.record({
+      entityType: "JobPayment",
+      entityId: jp.id,
+      fieldName: "depositKeptAt",
+      newValue: { keptEurCents: kept },
+      reason: "Il cliente ha annullato dentro il preavviso: l'acconto resta al professionista, come previsto nel preventivo.",
+    });
+    return kept;
+  }
+
+  /** Il cliente riapre il lavoro annullato prima dello sblocco: l'acconto torna a valere come acconto. */
+  async undoKeepDeposit(jobPaymentId: string): Promise<void> {
+    await this.prisma.jobPayment.updateMany({
+      where: { id: jobPaymentId, depositKeptAt: { not: null }, releasedAt: null },
+      data: { depositKeptAt: null, onlineStage: "DEPOSIT_PAID", releaseDueAt: null, platformFeeEurCents: 0 },
+    });
+  }
+
+  /**
    * Addebito del saldo sulla carta salvata con l'acconto, senza il cliente
    * presente (off-session). Se la banca lo rifiuta o chiede di confermare,
    * il cliente paga con il link come prima. Restituisce true se è riuscito.
@@ -795,15 +835,21 @@ export class OnlineMoneyService {
       issue.refundPercent < 100 &&
       (await this.prisma.refund.count({ where: { jobPaymentId: jp.id, status: { in: ["REQUESTED", "APPROVED"] } } })) === 0;
     const issueOpen = !!issue && (OPEN_ISSUE_STATUSES.includes(issue.status) || (issue.status === "UPHELD" && !partialRefundDone));
-    const can = onlineCanRelease({
-      stage: jp.onlineStage as JobPaymentOnlineStage | null,
-      professionalCompletedAt: booking.professionalCompletedAt,
-      clientConfirmedAt: booking.clientConfirmedCompletedAt,
-      releaseDueAt: jp.releaseDueAt,
-      issueOpen,
-      now,
-    });
-    if (!can || booking.finalAmountEurCents === null) return false;
+    // Acconto trattenuto per un annullamento dentro il preavviso (§348): il
+    // lavoro non si fa, l'importo è l'acconto e si sblocca alla scadenza.
+    const keptOnCancel = !!jp.depositKeptAt && booking.status === "CANCELED";
+    const can = keptOnCancel
+      ? jp.onlineStage === "PAID" && !issueOpen && !!jp.releaseDueAt && now.getTime() >= jp.releaseDueAt.getTime()
+      : onlineCanRelease({
+          stage: jp.onlineStage as JobPaymentOnlineStage | null,
+          professionalCompletedAt: booking.professionalCompletedAt,
+          clientConfirmedAt: booking.clientConfirmedCompletedAt,
+          releaseDueAt: jp.releaseDueAt,
+          issueOpen,
+          now,
+        });
+    const finalAmountEurCents = keptOnCancel ? jp.grossAmountEurCents : booking.finalAmountEurCents;
+    if (!can || finalAmountEurCents === null) return false;
     // Contestazione in banca aperta: i soldi restano bloccati finché la banca non decide.
     if (disputeOpen(jp)) return false;
     // Contestazione vinta ma cifra non ancora restituita da Stripe: si sblocca al suo ritorno (§267).
@@ -834,7 +880,7 @@ export class OnlineMoneyService {
     const balanceUnpaid = jp.onlineStage === "AWAITING_BALANCE";
     // Col saldo diretto (§237) il dovuto online è solo l'acconto: se l'importo
     // finale è più basso, la differenza torna al cliente.
-    const onlineTarget = onlineTargetEurCents(booking.finalAmountEurCents, jp);
+    const onlineTarget = keptOnCancel ? finalAmountEurCents : onlineTargetEurCents(finalAmountEurCents, jp);
     const { payout, refundToClient } = onlinePayoutEurCents({
       finalAmountEurCents: onlineTarget,
       paidEurCents: jp.paidEurCents,

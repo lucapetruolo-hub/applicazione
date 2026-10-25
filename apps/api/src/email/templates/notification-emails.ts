@@ -8,6 +8,7 @@ import {
   JOB_ISSUE_SANCTION_LABEL,
   BAD_WORK_REPORT_DAYS,
   ONLINE_LONG_HOLD_ALERT_DAYS,
+  ONLINE_RELEASE_DAYS,
   ONLINE_MAX_HOLD_DAYS,
   asScheduleChange,
   formatItalianUntil,
@@ -455,17 +456,30 @@ const BUILDERS: Record<string, Builder> = {
       paragraphs: [`Ci dispiace: **${pro(ctx)}** ha annullato l'intervento per **${job(ctx)}**.`],
       details: jobDetails(ctx, note ? [{ label: "Motivo", value: note }] : []),
       cta: { label: "Chiedi un nuovo preventivo", url: `${frontendUrl()}/preventivo` },
-      after: ["Puoi chiedere un preventivo ad altri professionisti della zona, o scrivere a questo in chat dalla richiesta."],
+      // Account chiuso (docs/CHANGELOG.md §348): non c'è più nessuno a cui scrivere.
+      after: [
+        payload.accountClosed
+          ? "Se avevi pagato un acconto online ti torna tutto. Puoi chiedere un preventivo ad altri professionisti della zona."
+          : "Puoi chiedere un preventivo ad altri professionisti della zona, o scrivere a questo in chat dalla richiesta.",
+      ],
     };
   },
   // Il cliente annulla (docs/CHANGELOG.md §235): solo lui può riaprirla.
-  BOOKING_CANCELED_BY_CLIENT: (_payload, ctx) => ({
+  BOOKING_CANCELED_BY_CLIENT: (payload, ctx) => ({
     kind: "notification",
     tone: "urgent",
     subject: "Il cliente ha annullato l'intervento",
     greeting: ctx.name,
     title: "Intervento annullato",
-    paragraphs: [`Il cliente ha annullato l'intervento per **${job(ctx)}**: l'appuntamento non è più nella tua agenda.`],
+    paragraphs: [
+      `Il cliente ha annullato l'intervento per **${job(ctx)}**: l'appuntamento non è più nella tua agenda.`,
+      // Dentro il preavviso scelto dal professionista (docs/CHANGELOG.md §347).
+      ...(typeof payload.lateNotice === "string" ? [`Ha annullato con meno di ${payload.lateNotice} di preavviso.`] : []),
+      // Acconto trattenuto come scritto nel preventivo (docs/CHANGELOG.md §348).
+      ...(typeof payload.keptDepositEurCents === "number"
+        ? [`Come scritto nel tuo preventivo, l'acconto di **${formatEur(payload.keptDepositEurCents)}** resta a te: lo ricevi tra ${ONLINE_RELEASE_DAYS} giorni.`]
+        : []),
+    ],
     details: proJobDetails(ctx),
     cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda` },
     after: ["Se il cliente la riapre ti avvisiamo noi."],
@@ -1182,6 +1196,22 @@ const BUILDERS: Record<string, Builder> = {
     };
   },
   // "Sto arrivando" dall'agenda (§288).
+  // Conferma al cliente appena accetta (docs/CHANGELOG.md §346): prima col
+  // pagamento diretto non riceveva nulla, e il calendario arrivava solo col
+  // promemoria del giorno prima.
+  BOOKING_CONFIRMED: (payload, ctx) => ({
+    kind: "notification",
+    subject: `Appuntamento prenotato con ${pro(ctx)}`,
+    greeting: ctx.name,
+    title: "Appuntamento prenotato",
+    paragraphs: [
+      `Hai scelto **${pro(ctx)}** per **${job(ctx)}**: ha già ricevuto la conferma e i tuoi contatti.`,
+      "Ti ricordiamo l'appuntamento anche il giorno prima.",
+    ],
+    details: jobDetails(ctx),
+    cta: { label: "Apri l'appuntamento", url: `${frontendUrl()}/le-mie-richieste${str(payload.guidedRequestId) ? `?open=${str(payload.guidedRequestId)}` : ""}` },
+    after: ["Serve cambiare? Scrivi al professionista dalla richiesta, oppure annulla l'appuntamento prima dell'orario."],
+  }),
   PROFESSIONAL_ON_THE_WAY: (_payload, ctx) => ({
     kind: "notification",
     subject: `${pro(ctx)} sta arrivando`,

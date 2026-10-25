@@ -310,6 +310,9 @@ model ProfessionalProfile {
   // "Patentino gas F-gas, certificazione impianti elettrici CEI 64-8".
   certifications               String?
   hasLiabilityInsurance        Boolean   @default(false)
+  // Preavviso per annullare scelto dal professionista: 24, 48 o 72 ore
+  // (docs/CHANGELOG.md §347, CANCELLATION_NOTICE_OPTIONS in packages/shared).
+  cancellationNoticeHours      Int       @default(24)
   // Dichiarazione di responsabilità accettata salvando il profilo
   // (docs/CHANGELOG.md §158): quando e quale versione del testo
   // (PROFILE_DECLARATION_VERSION in packages/shared).
@@ -975,6 +978,12 @@ model Quote {
   // valgono online con acconto del 20% e diretto.
   paymentOptions           String[]    @default([])
   depositPercent           Int?
+  // Preavviso per annullare scelto in questo preventivo (24, 48 o 72 ore,
+  // di serie quello del profilo) e se, annullando dentro il preavviso,
+  // l'acconto online resta al professionista (docs/CHANGELOG.md §348).
+  // Null nei preventivi più vecchi: vale il preavviso del profilo.
+  cancellationNoticeHours  Int?
+  lateCancelKeepsDeposit   Boolean     @default(false)
   // Data alternativa proposta dal cliente (vedi QuoteStatus.MODIFICATION_REQUESTED),
   // valorizzata solo in quello stato — null altrimenti.
   clientProposedDate       DateTime?
@@ -1073,9 +1082,20 @@ enum BookingCanceledBy {
 model Booking {
   id                    String        @id @default(uuid())
   quoteId               String?       @unique
+  // Richiesta da cui nasce il lavoro (docs/CHANGELOG.md §346): la compila un
+  // trigger del database dal preventivo (quoteId), mai il codice. Un indice
+  // unico parziale ("bookings_one_active_job_per_request", solo nella
+  // migrazione: Prisma non descrive gli indici con WHERE) vieta un secondo
+  // lavoro non annullato sulla stessa richiesta, anche se il codice sbagliasse.
+  guidedRequestId       String?
   clientId              String
   professionalProfileId String
   scheduledAt           DateTime
+  // Preavviso per annullare valido per questo lavoro, copiato dal profilo
+  // quando nasce (docs/CHANGELOG.md §347): null per i lavori di prima, che
+  // valgono 24 ore. canceledLate: il cliente ha annullato dentro il preavviso.
+  cancellationNoticeHours Int?
+  canceledLate            Boolean       @default(false)
   // Fine della fascia (richiesta esplicita dell'utente: mostrare tutta la
   // fascia oraria, non solo l'inizio), copiata da Quote.estimatedEndDate/
   // clientProposedEndDate al momento della creazione — null per le
@@ -1931,6 +1951,10 @@ model JobPayment {
   // docs/CHANGELOG.md §237): da Stripe passa solo l'acconto.
   balanceDirect          Boolean   @default(false)
   depositPaidAt          DateTime?
+  // Acconto trattenuto perché il cliente ha annullato dentro il preavviso e
+  // il preventivo lo prevedeva (docs/CHANGELOG.md §348): passa al
+  // professionista dopo i soliti giorni di blocco, come un lavoro finito.
+  depositKeptAt          DateTime?
   balancePaymentIntentId String?   @unique
   balancePaidAt          DateTime?
   paidEurCents           Int       @default(0)

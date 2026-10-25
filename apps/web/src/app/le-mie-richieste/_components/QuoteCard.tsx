@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ProfessionalReviewsLink } from "@/components/ProfessionalReviewsLink";
 import type { ClientGuidedRequest } from "@professionisti/api-client";
-import { formatAppointmentTimeRange, formatJobDays, formatServicePriceRange, jobDayCount, paymentChoiceIsOnline, quotePriceTotals, scheduleChangeBetween, scheduleChangeObject, type JobPaymentChoice } from "@professionisti/shared";
+import { cancellationNoticeLabel, formatAppointmentTimeRange, formatJobDays, formatServicePriceRange, jobDayCount, paymentChoiceIsOnline, quotePriceTotals, scheduleChangeBetween, scheduleChangeObject, type JobPaymentChoice } from "@professionisti/shared";
 import { PaymentChoice, PaymentOffer, selectablePaymentChoices } from "@/components/PaymentChoice";
 import { useOnlinePayments } from "@/lib/onlinePayments";
 import { Avatar, Badge, ProfessionalKindBadge, Text, XStack, YStack, brand } from "@professionisti/ui";
@@ -72,11 +72,14 @@ export function QuoteCard({
   autoOpenTimeline,
   contactInBooking,
   requestOpen,
+  notChosen,
   onDeleteRequest,
 }: {
   quote: ClientGuidedRequest["quotes"][number];
   /** Richiesta ancora aperta: dopo un rifiuto il professionista può inviare un nuovo preventivo (docs/CHANGELOG.md §188). */
   requestOpen?: boolean;
+  /** Per questa richiesta il cliente ha già accettato un altro preventivo: niente Accetta, Modifica, Rifiuta (docs/CHANGELOG.md §346). */
+  notChosen?: boolean;
   token: string;
   onChanged: () => void;
   onAcceptQuote: (quoteId: string, paymentMethod: JobPaymentChoice) => Promise<void>;
@@ -296,7 +299,7 @@ export function QuoteCard({
   ) : null;
 
   return (
-    <YStack backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$2">
+    <YStack id={`quote-${quote.id}`} backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$2">
       <XStack alignItems="center" gap="$2">
         {/* Foto accanto al nome (richiesta esplicita dell'utente), iniziali se manca; stesso link del nome, fuori dal Tab. */}
         <Link href={`/professionista/${quote.professionalProfileId}`} tabIndex={-1} aria-hidden style={{ textDecoration: "none", alignSelf: "flex-start" }}>
@@ -423,13 +426,22 @@ export function QuoteCard({
           ) : null}
         </YStack>
       ) : null}
-      {quote.status === "SENT" ? (
+      {quote.status === "SENT" && !notChosen ? (
         <PaymentOffer
           quoteMaxEurCents={priceTotals.totalMaxEurCents}
           onlineAvailable={onlinePayments}
           offered={quote.paymentOptions}
           depositPercent={quote.depositPercent}
         />
+      ) : null}
+      {/* Preavviso scelto dal professionista nel preventivo, detto prima di Accetta (docs/CHANGELOG.md §347, §348). */}
+      {(quote.status === "SENT" || quote.status === "MODIFICATION_REQUESTED") && !notChosen ? (
+        <Text fontSize={13} color={brand.grafite70}>
+          Se poi devi annullare, avvisa almeno {cancellationNoticeLabel(quote.cancellationNoticeHours)} prima.
+          {quote.lateCancelKeepsDeposit && onlinePayments && quote.paymentOptions.some(paymentChoiceIsOnline)
+            ? " Se annulli più tardi e paghi l'acconto online, l'acconto resta al professionista."
+            : ""}
+        </Text>
       ) : null}
       {quote.notes ? (
         <YStack backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$1">
@@ -442,7 +454,11 @@ export function QuoteCard({
         </YStack>
       ) : null}
 
-      {quote.status === "SENT" ? (
+      {notChosen && (quote.status === "SENT" || quote.status === "MODIFICATION_REQUESTED") ? (
+        <Text fontSize={13} color={brand.grafite70} fontWeight="600">
+          Non scelto: hai accettato un altro preventivo
+        </Text>
+      ) : quote.status === "SENT" ? (
         <>
           {/* Da telefono "Accetta preventivo" largo in fondo, dove arriva il
               pollice, con "Modifica" e "Rifiuta" affiancati sopra; da

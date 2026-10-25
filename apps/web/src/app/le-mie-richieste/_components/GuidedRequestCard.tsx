@@ -8,11 +8,16 @@ import { X } from "lucide-react";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
 import {
   allItalianCityNames,
+  cancellationNoticeLabel,
+  isLateCancellation,
   averageQuoteTotalEurCents,
   findComuneByName,
   formatEurCents,
   formatItalianUntil,
+  formatServicePriceRange,
   isPlausiblePhoneNumber,
+  quotePriceTotals,
+  wallClockNow,
   type GuidedRequestStatusSummary,
 } from "@professionisti/shared";
 import { Autocomplete, Avatar, Badge, BadgeInfo, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
@@ -36,11 +41,18 @@ import { combineUnreadCounts } from "@/lib/notificationSections";
 import { useInternalLinkClick } from "@/lib/useInternalLinkClick";
 import { clientNextAction } from "@/lib/clientNextAction";
 import { CLIENT_STAGE_LABEL, type RequestStage } from "@/lib/requestStage";
-import { BookingSection } from "./BookingSection";
+import { BookingSection, ChangeLinks } from "./BookingSection";
 import { QuoteCard } from "./QuoteCard";
+import { Disclosure } from "./Disclosure";
 import { DeleteRequestModal } from "./DeleteRequestModal";
 import { announceRequestDeleted } from "./RequestDeletedNotice";
-import { ClientMiniTimeline, ClientStagePill, MAX_REQUEST_PHOTOS, STAGE_STYLE, ServiceBadge, formatDateTime, textareaStyle } from "./clientRequestHelpers";
+import { ClientMiniTimeline, ClientStagePill, MAX_REQUEST_PHOTOS, STAGE_STYLE, ServiceBadge, formatDateTime, requestJobAddress, textareaStyle } from "./clientRequestHelpers";
+
+/** Acconto online che resta al professionista se il cliente annulla ora, dentro il preavviso (docs/CHANGELOG.md §348). */
+function keptDeposit(booking: ClientBooking): number {
+  if (!booking.lateCancelKeepsDeposit || booking.payment?.method !== "ONLINE") return 0;
+  return Math.max(0, booking.payment.paidEurCents - booking.payment.refundedEurCents);
+}
 
 export function GuidedRequestCard({
   request,
@@ -620,6 +632,16 @@ export function GuidedRequestCard({
     ...(request.recipientPhone ? { telefono: request.recipientPhone } : {}),
     ...(request.serviceMode ? { modalita: request.serviceMode } : {}),
   }).toString()}`;
+  // "Prenota di nuovo" dopo la recensione (docs/CHANGELOG.md §348): stesso
+  // professionista, indirizzo e contatti già scritti, il lavoro nuovo da descrivere.
+  const rebookParams = new URLSearchParams(repeatHref.slice("/preventivo?".length));
+  rebookParams.delete("descrizione");
+  if (booking) {
+    rebookParams.set("professionista", booking.professionalProfileId);
+    rebookParams.set("nomeProfessionista", booking.businessName);
+    rebookParams.set("fotoProfessionista", booking.professionalImageUrl ?? "");
+  }
+  const rebookHref = `/preventivo?${rebookParams.toString()}`;
 
   // Azioni del menu hamburger, filtrate per stato: solo quelle che il
   // backend accetta davvero in quel momento (stessi confini già usati dai
@@ -647,7 +669,8 @@ export function GuidedRequestCard({
   if (booking && booking.issueTypesAllowed.length > 0) {
     menuActions.push({ icon: "flag", text: "Segnala un problema", tone: "danger", onPress: () => setShowReportModal(true) });
   }
-  if (booking && (booking.status === "PENDING" || booking.status === "CONFIRMED")) {
+  // Cominciato l'appuntamento non si annulla più (§346): per un problema c'è "Segnala un problema".
+  if (booking && (booking.status === "PENDING" || booking.status === "CONFIRMED") && new Date(booking.scheduledAt) > wallClockNow()) {
     menuActions.push({ icon: "x", text: "Annulla prenotazione", tone: "danger", onPress: () => setShowCancelModal(true) });
   } else if (booking?.status === "CANCELED") {
     // Un intervento annullato dal professionista non si riapre dal lato cliente.
@@ -661,6 +684,80 @@ export function GuidedRequestCard({
   }
 
   const nextAction = clientNextAction(stage, request, booking);
+
+  // Biglietto dell'appuntamento e, sotto, la trattativa chiusa (docs/CHANGELOG.md §346).
+  const jobChosen = Boolean(booking && booking.status !== "CANCELED");
+  const otherQuotes = request.quotes.filter((quote) => quote.id !== acceptedQuote?.id);
+  const quoteCard = (quote: ClientGuidedRequest["quotes"][number]) => (
+    <QuoteCard
+      key={quote.id}
+      quote={quote}
+      token={token}
+      onChanged={onChanged}
+      onAcceptQuote={onAcceptQuote}
+      guidedRequestId={request.id}
+      serviceMode={request.serviceMode}
+      isNew={newQuoteIds?.has(quote.id)}
+      unreadCount={combineUnreadCounts(quoteUnreadCounts?.get(quote.id), threadUnreadCounts?.get(`${request.id}:${quote.professionalProfileId}`))}
+      autoOpenTimeline={autoOpenChatProfessionalId === quote.professionalProfileId}
+      requestOpen={request.status !== "CLOSED"}
+      contactInBooking={quote.status === "ACCEPTED" && booking?.professionalProfileId === quote.professionalProfileId}
+      notChosen={jobChosen && quote.id !== acceptedQuote?.id}
+      onDeleteRequest={!booking ? () => setShowDeleteModal(true) : undefined}
+    />
+  );
+  const acceptedTotals = acceptedQuote ? quotePriceTotals(acceptedQuote.items) : null;
+  const bookingView = booking ? (
+    <YStack gap="$3">
+      <BookingSection
+        booking={booking}
+        token={token}
+        onChanged={onChanged}
+        address={requestJobAddress(request)}
+        onReportProblem={booking.issueTypesAllowed.length > 0 ? () => setShowReportModal(true) : null}
+        rebookHref={rebookHref}
+        unreadCount={combineUnreadCounts(
+          bookingUnreadCounts?.get(booking.id),
+          threadUnreadCounts?.get(`${request.id}:${booking.professionalProfileId}`),
+          // Il pulsante del preventivo accettato è qui: anche i suoi non letti.
+          acceptedQuote ? quoteUnreadCounts?.get(acceptedQuote.id) : undefined,
+        )}
+      />
+      <YStack height={1} backgroundColor={brand.filetto} marginVertical="$1" />
+      {acceptedQuote && acceptedTotals ? (
+        <Disclosure
+          title="Preventivo accettato"
+          summary={[acceptedQuote.items.map((item) => item.name).join(", "), formatServicePriceRange(acceptedTotals.totalMinEurCents, acceptedTotals.totalMaxEurCents)].filter(Boolean).join(" · ")}
+        >
+          {quoteCard(acceptedQuote)}
+        </Disclosure>
+      ) : null}
+      {request.photoUrls.length > 0 ? (
+        <Disclosure title="Foto della richiesta" summary={String(request.photoUrls.length)}>
+          <XStack gap="$2" flexWrap="wrap" paddingHorizontal="$1">
+            {request.photoUrls.map((url, index) => (
+              <MediaPreview key={url} url={url} onClick={() => setOpenPhotoIndex(index)} style={{ width: 72, height: 72, borderRadius: 10, border: `1px solid ${brand.filetto}`, cursor: "pointer" }} />
+            ))}
+          </XStack>
+        </Disclosure>
+      ) : null}
+      {otherQuotes.length > 0 ? (
+        // Annullato l'appuntamento, gli altri preventivi tornano accettabili e restano aperti.
+        <Disclosure
+          muted={jobChosen}
+          defaultOpen={!jobChosen}
+          title={jobChosen ? (otherQuotes.length === 1 ? "1 altro preventivo non scelto" : `${otherQuotes.length} altri preventivi non scelti`) : "Altri preventivi ricevuti"}
+        >
+          {otherQuotes.map(quoteCard)}
+        </Disclosure>
+      ) : null}
+      <ChangeLinks
+        booking={booking}
+        onMessage={booking.guidedRequestId ? () => setShowBookingChat(true) : null}
+        onCancel={() => setShowCancelModal(true)}
+      />
+    </YStack>
+  ) : null;
 
   const headingName = booking ?(booking.professionalAccountDeleted ? "Account eliminato" : booking.businessName) : request.categoryLabel;
 
@@ -771,7 +868,11 @@ export function GuidedRequestCard({
 
       {isOpen ? (
         <YStack paddingHorizontal="$4" paddingBottom="$4" gap="$4" borderTopWidth={1} borderTopColor={brand.filetto}>
-          {stage !== "scaduta" && stage !== "chiusa" ? (
+          {/* Con un lavoro la scheda parte dal biglietto dell'appuntamento (§346):
+              andamento, riepiloghi e trattativa stanno sotto o spariscono. */}
+          {booking ? bookingView : null}
+
+          {stage !== "scaduta" && stage !== "chiusa" && !booking ? (
             <YStack gap="$2" paddingTop="$3">
               <Text fontSize={13} fontWeight="800" color={brand.grafite70} textTransform="uppercase">
                 Andamento
@@ -780,7 +881,7 @@ export function GuidedRequestCard({
             </YStack>
           ) : null}
 
-          {statusSummary ? (
+          {statusSummary && !booking ? (
             <YStack gap="$1" backgroundColor={brand.gesso} borderRadius="$3" padding="$3">
               {statusSummary.statusMessage ? (
                 <Text fontSize={13} color={brand.grafite70}>
@@ -810,7 +911,7 @@ export function GuidedRequestCard({
             </XStack>
           ) : null}
 
-          {!request.professionalProfileId && averagePriceEurCents !== null ? (
+          {!request.professionalProfileId && averagePriceEurCents !== null && !booking ? (
             <XStack alignItems="center" gap="$2" backgroundColor={brand.cianografiaVelo} borderRadius="$3" padding="$3">
               <Icon name="coins" size={16} color={brand.cianografiaScuro} strokeWidth={1.5} />
               <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
@@ -819,7 +920,7 @@ export function GuidedRequestCard({
             </XStack>
           ) : null}
 
-          {request.address ? (
+          {request.address && !booking ? (
             <XStack alignItems="center" gap="$1">
               <Icon name="map-pin" size={14} color={brand.grafite70} strokeWidth={1.5} />
               <Text fontSize={16} color={brand.grafite70}>
@@ -829,7 +930,7 @@ export function GuidedRequestCard({
             </XStack>
           ) : null}
 
-          {request.photoUrls.length > 0 ? (
+          {request.photoUrls.length > 0 && !booking ? (
             <XStack gap="$2" flexWrap="wrap">
               {request.photoUrls.map((url, index) => (
                 <MediaPreview key={url} url={url} onClick={() => setOpenPhotoIndex(index)} style={{ width: 72, height: 72, borderRadius: 10, border: `1px solid ${brand.filetto}`, cursor: "pointer" }} />
@@ -840,12 +941,14 @@ export function GuidedRequestCard({
           {/* "Ripeti la richiesta" e "Modifica" sulla stessa riga, con bordo
               come gli altri pulsanti della scheda (docs/CHANGELOG.md §195:
               prima il primo era solo testo e il secondo più piccolo). */}
-          <XStack gap="$2" flexWrap="wrap" alignItems="center">
-            {canDelete && canEditDetails ? <CardButton onPress={startEditing}>Modifica</CardButton> : null}
-            <Link href={repeatHref} style={{ textDecoration: "none" }}>
-              <CardButton>Ripeti la richiesta</CardButton>
-            </Link>
-          </XStack>
+          {booking ? null : (
+            <XStack gap="$2" flexWrap="wrap" alignItems="center">
+              {canDelete && canEditDetails ? <CardButton onPress={startEditing}>Modifica</CardButton> : null}
+              <Link href={repeatHref} style={{ textDecoration: "none" }}>
+                <CardButton>Ripeti la richiesta</CardButton>
+              </Link>
+            </XStack>
+          )}
           {canDelete && !canEditDetails ? (
             <Text fontSize={13} color={brand.grafite70}>
               Non modificabile: hai già ricevuto un preventivo.
@@ -858,7 +961,7 @@ export function GuidedRequestCard({
           ) : null}
 
           {/* Elenco dei destinatari solo per una richiesta diretta: una generale arriva a tutti i professionisti della zona (§211). */}
-          {request.professionalProfileId && request.sentTo.length > 0 ? (
+          {request.professionalProfileId && request.sentTo.length > 0 && !booking ? (
             <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
               <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
                 Inviata a
@@ -919,48 +1022,18 @@ export function GuidedRequestCard({
             />
           ) : null}
 
-          {request.quotes.length > 0 ? (
+          {booking ? null : request.quotes.length > 0 ? (
             <YStack gap="$2" borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3">
               <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
                 Preventivi ricevuti
               </Text>
-              {request.quotes.map((quote) => (
-                <QuoteCard
-                  key={quote.id}
-                  quote={quote}
-                  token={token}
-                  onChanged={onChanged}
-                  onAcceptQuote={onAcceptQuote}
-                  guidedRequestId={request.id}
-                  serviceMode={request.serviceMode}
-                  isNew={newQuoteIds?.has(quote.id)}
-                  unreadCount={combineUnreadCounts(quoteUnreadCounts?.get(quote.id), threadUnreadCounts?.get(`${request.id}:${quote.professionalProfileId}`))}
-                  autoOpenTimeline={autoOpenChatProfessionalId === quote.professionalProfileId}
-                  requestOpen={request.status !== "CLOSED"}
-                  contactInBooking={quote.status === "ACCEPTED" && booking?.professionalProfileId === quote.professionalProfileId}
-                  onDeleteRequest={!booking ? () => setShowDeleteModal(true) : undefined}
-                />
-              ))}
+              {request.quotes.map(quoteCard)}
             </YStack>
           ) : (
             <Text color={brand.grafite70} fontSize={16}>
               Nessun preventivo ricevuto ancora.
             </Text>
           )}
-
-          {booking ? (
-            <BookingSection
-              booking={booking}
-              token={token}
-              onChanged={onChanged}
-              unreadCount={combineUnreadCounts(
-                bookingUnreadCounts?.get(booking.id),
-                threadUnreadCounts?.get(`${request.id}:${booking.professionalProfileId}`),
-                // Il pulsante del preventivo accettato è qui: anche i suoi non letti.
-                acceptedQuote ? quoteUnreadCounts?.get(acceptedQuote.id) : undefined,
-              )}
-            />
-          ) : null}
 
           {openPhotoIndex !== null ? <PhotoLightbox photos={request.photoUrls} initialIndex={openPhotoIndex} onClose={() => setOpenPhotoIndex(null)} /> : null}
 
@@ -1014,7 +1087,13 @@ export function GuidedRequestCard({
       {showCancelModal ? (
         <CancelBookingModal
           title="Annulla prenotazione"
-          description="Il professionista verrà avvisato dell'annullamento."
+          description={
+            booking && isLateCancellation(booking.scheduledAt, booking.cancellationNoticeHours)
+              ? `Il professionista verrà avvisato. Mancano meno di ${cancellationNoticeLabel(booking.cancellationNoticeHours)}, il preavviso che aveva chiesto.${
+                  keptDeposit(booking) > 0 ? ` Come scritto nel preventivo, l'acconto di ${formatEurCents(keptDeposit(booking))} resta a lui.` : ""
+                }`
+              : "Il professionista verrà avvisato dell'annullamento."
+          }
           confirmLabel="Sì, annulla prenotazione"
           confirmingLabel="Annullamento..."
           showNote={false}
