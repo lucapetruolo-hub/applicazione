@@ -36,8 +36,26 @@ describe("ProfessionalVerificationService", () => {
 
     expect(prisma.professionalProfile.update).toHaveBeenCalledWith({
       where: { id: "p-1" },
-      data: { verified: false, verifiedAt: null, verifiedByUserId: null, verificationNote: "Partita IVA cessata" },
+      data: { verified: false, verifiedAt: null, verifiedByUserId: null, verificationNote: "Partita IVA cessata", identityExpiredAt: null },
     });
     expect(notificationsService.notify).toHaveBeenCalledWith("u-1", "PROFILE_VERIFICATION_REMOVED", { note: "Partita IVA cessata" });
+  });
+
+  it("documento scaduto: badge tolto, ma si continuano a inviare preventivi (§335)", async () => {
+    const { service, prisma, notificationsService } = buildService();
+    prisma.professionalProfile.findUnique.mockResolvedValue({ ...activeProfile, verified: true });
+    await service.revokeOverTime("p-1", "Documento scaduto", true);
+    expect(prisma.professionalProfile.update).toHaveBeenCalledWith({
+      where: { id: "p-1" },
+      data: expect.objectContaining({ verified: false, verificationNote: "Documento scaduto", identityExpiredAt: expect.any(Date) }),
+    });
+    expect(notificationsService.notify).toHaveBeenCalledWith("u-1", "PROFILE_VERIFICATION_REMOVED", { note: "Documento scaduto" });
+  });
+
+  it("badge di prova tolto: la verifica va rifatta prima dei preventivi (§335)", async () => {
+    const { service, prisma } = buildService();
+    prisma.professionalProfile.findUnique.mockResolvedValue({ ...activeProfile, verified: true });
+    await service.revokeOverTime("p-1", "Prova", false);
+    expect(prisma.professionalProfile.update).toHaveBeenCalledWith({ where: { id: "p-1" }, data: expect.objectContaining({ verified: false, identityExpiredAt: null }) });
   });
 });

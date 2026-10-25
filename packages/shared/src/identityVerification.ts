@@ -69,6 +69,8 @@ export type MyVerificationStatus = {
     canStart: boolean;
     /** Se non si può iniziare, perché. */
     blockedReason: string | null;
+    /** Badge tolto perché il documento è scaduto: si rifà la verifica, intanto si lavora (§335). */
+    renewal: boolean;
   };
   /** Badge "Verificato". */
   verified: boolean;

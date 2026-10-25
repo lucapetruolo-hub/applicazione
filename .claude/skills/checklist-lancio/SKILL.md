@@ -227,8 +227,10 @@ davvero la verifica prima):
     comprenda documento, prova di presenza (liveness) e confronto del volto,
     perché il sito scrive "identità controllata con documento e selfie";
     lanciare `/mnt/project-files/analisi/badge-verifica/query-dati-veri.sql`
-    sul database vero (la query 1 deve dare zero righe) e togliere il badge
-    alle verifiche fatte con `DIDIT_SANDBOX=true`.
+    sul database vero il giorno dopo aver tolto `DIDIT_SANDBOX` (la query 1
+    deve dare zero righe: i badge dati in prova cadono da soli col controllo
+    delle 9, docs/CHANGELOG.md §335, e quei professionisti ricevono l'email
+    "Badge Verificato tolto").
 16. ~~Risposte di `WhatIfSection.tsx` con promesse inesistenti~~ —
     allineate alle regole reali di pagamento e segnalazioni
     (docs/CHANGELOG.md §168).
