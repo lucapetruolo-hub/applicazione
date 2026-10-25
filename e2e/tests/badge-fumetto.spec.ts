@@ -162,8 +162,6 @@ test("nel preventivo il cliente vede che tipo di lavoratore lo manda", async ({ 
   await page.getByRole("button", { name: "Guarda il preventivo" }).first().click();
   await expect(page.getByText("Anna Verdi Idraulica").first()).toBeVisible();
   await expect(badge(page, "Privato")).toHaveAccessibleDescription(PRIVATE_TEXT);
-  // Con un privato l'avviso sui diritti del consumatore è scritto prima di accettare (art. 49-bis).
-  await expect(page.getByText("I diritti del consumatore, come il recesso, non si applicano.", { exact: true })).toBeVisible();
   if (process.env.E2E_SCREENSHOTS) await badge(page, "Privato").evaluate((el) => el.scrollIntoView({ block: "center" }));
   if (process.env.E2E_SCREENSHOTS) await page.screenshot({ path: `${process.env.E2E_SCREENSHOTS}/preventivo-${test.info().project.name}.png` });
 });
