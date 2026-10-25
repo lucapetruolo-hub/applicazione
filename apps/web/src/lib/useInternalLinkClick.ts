@@ -6,7 +6,7 @@ import { useEffect, useRef } from "react";
  * Chiama `onClick` a ogni clic su un link interno del sito (menu laterale,
  * barra del telefono, intestazione), prima che Next.js cambi pagina: chi
  * chiama può chiudere un modulo aperto o fermare il cambio di pagina con
- * `event.preventDefault()` per chiedere conferma (docs/CHANGELOG.md §339).
+ * `event.preventDefault()` per chiedere conferma (docs/CHANGELOG.md §340).
  * Serve anche per "Le mie richieste" mentre si è già lì: Next.js non
  * ricarica la stessa pagina e lo stato resterebbe com'era. In ascolto in
  * fase di cattura, così arriva prima del gestore di `Link`, senza toccare

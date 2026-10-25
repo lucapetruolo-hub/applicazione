@@ -213,7 +213,7 @@ export class GuidedRequestsController {
     return this.guidedRequestsService.update(req.user.userId, id, body);
   }
 
-  /** "Elimina richiesta" del cliente, con motivo facoltativo (vedi GuidedRequestsService.deleteByClient, docs/CHANGELOG.md §339). */
+  /** "Elimina richiesta" del cliente, con motivo facoltativo (vedi GuidedRequestsService.deleteByClient, docs/CHANGELOG.md §340). */
   @UseGuards(JwtAuthGuard)
   @Delete(":id")
   @HttpCode(204)
@@ -225,7 +225,7 @@ export class GuidedRequestsController {
     return this.guidedRequestsService.deleteByClient(req.user.userId, id, body.reason);
   }
 
-  /** "Annulla" subito dopo l'eliminazione (§339). */
+  /** "Annulla" subito dopo l'eliminazione (§340). */
   @UseGuards(JwtAuthGuard)
   @Post(":id/restore")
   @HttpCode(204)

@@ -223,7 +223,7 @@ export type ProfessionalLead = {
     preferredDate: string | null;
     preferredTimeSlot: string | null;
     /**
-     * Il cliente ha tolto la richiesta (docs/CHANGELOG.md §339): mostrata
+     * Il cliente ha tolto la richiesta (docs/CHANGELOG.md §340): mostrata
      * come "Ritirata dal cliente", con il motivo se l'ha dato, al posto di
      * "Scaduta". `null` se è ancora sua.
      */

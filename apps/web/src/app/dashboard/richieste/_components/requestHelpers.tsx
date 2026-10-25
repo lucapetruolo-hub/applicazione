@@ -109,7 +109,7 @@ export function leadSearchText(lead: ProfessionalLead, stage: RequestStage | und
     .toLowerCase();
 }
 
-/** `label` sostituisce il nome dello stato, per esempio "Ritirata dal cliente" su una richiesta chiusa (docs/CHANGELOG.md §339). */
+/** `label` sostituisce il nome dello stato, per esempio "Ritirata dal cliente" su una richiesta chiusa (docs/CHANGELOG.md §340). */
 export function StagePill({ stage, label }: { stage: RequestStage; label?: string }) {
   const s = STAGE_STYLE[stage];
   return (

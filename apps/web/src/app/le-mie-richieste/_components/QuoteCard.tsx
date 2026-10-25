@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { ClientGuidedRequest } from "@professionisti/api-client";
 import { formatAppointmentTimeRange, formatJobDays, formatServicePriceRange, jobDayCount, paymentChoiceIsOnline, quotePriceTotals, scheduleChangeBetween, scheduleChangeObject, type JobPaymentChoice } from "@professionisti/shared";
-import { PaymentChoice, selectablePaymentChoices } from "@/components/PaymentChoice";
+import { PaymentChoice, PaymentOffer, paymentOfferShortLabel, selectablePaymentChoices } from "@/components/PaymentChoice";
 import { useOnlinePayments } from "@/lib/onlinePayments";
 import { Avatar, Badge, ProfessionalKindBadge, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -72,7 +72,10 @@ export function QuoteCard({
   contactInBooking,
   requestOpen,
   onDeleteRequest,
+  compare,
 }: {
+  /** Più preventivi nella stessa richiesta: etichetta del pagamento accanto al totale (docs/CHANGELOG.md §339). */
+  compare?: boolean;
   quote: ClientGuidedRequest["quotes"][number];
   /** Richiesta ancora aperta: dopo un rifiuto il professionista può inviare un nuovo preventivo (docs/CHANGELOG.md §188). */
   requestOpen?: boolean;
@@ -91,7 +94,7 @@ export function QuoteCard({
   autoOpenTimeline?: boolean;
   /** Il preventivo è diventato un intervento: i messaggi stanno lì, non qui (un solo pulsante per scheda). */
   contactInBooking?: boolean;
-  /** "Non ti serve più il lavoro? Elimina la richiesta" nella conferma di Rifiuta (docs/CHANGELOG.md §339): chi non vuole più il lavoro sceglieva "Rifiuta". */
+  /** "Non ti serve più il lavoro? Elimina la richiesta" nella conferma di Rifiuta (docs/CHANGELOG.md §340): chi non vuole più il lavoro sceglieva "Rifiuta". */
   onDeleteRequest?: () => void;
 }) {
   const [isChoosingDate, setIsChoosingDate] = useState(false);
@@ -131,11 +134,17 @@ export function QuoteCard({
     return before !== formatServicePriceRange(priceTotals.totalMinEurCents, priceTotals.totalMaxEurCents) ? before : null;
   }, [quote.status, quote.previousPrice, priceTotals]);
 
-  async function handleAccept() {
+  // Modi che il cliente può davvero usare: con uno solo si accetta subito,
+  // senza il passaggio della scelta (docs/CHANGELOG.md §339).
+  const selectablePayments = selectablePaymentChoices(quote.paymentOptions, onlinePayments);
+  const onlyPayment = selectablePayments.length === 1 ? selectablePayments[0] : undefined;
+  const paymentTag = compare && quote.status === "SENT" ? paymentOfferShortLabel(quote.paymentOptions, onlinePayments) : null;
+
+  async function handleAccept(method: JobPaymentChoice = paymentMethod) {
     setError(null);
     setIsAccepting(true);
     try {
-      await onAcceptQuote(quote.id, paymentMethod);
+      await onAcceptQuote(quote.id, method);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
@@ -405,6 +414,13 @@ export function QuoteCard({
             <Text fontSize="$6" fontWeight="800" color={brand.grafite}>
               {formatServicePriceRange(priceTotals.totalMinEurCents, priceTotals.totalMaxEurCents)}
             </Text>
+            {paymentTag ? (
+              <XStack alignSelf="center" paddingHorizontal="$3" paddingVertical={4} borderRadius={999} borderWidth={1} borderColor={brand.filetto} backgroundColor="#fff">
+                <Text fontFamily="$body" fontSize={13} fontWeight="600" color={brand.grafite}>
+                  {paymentTag}
+                </Text>
+              </XStack>
+            ) : null}
           </XStack>
           {previousPriceText ? (
             <Text fontSize={13} color={brand.ottone} fontWeight="600">
@@ -412,6 +428,14 @@ export function QuoteCard({
             </Text>
           ) : null}
         </YStack>
+      ) : null}
+      {quote.status === "SENT" ? (
+        <PaymentOffer
+          quoteMaxEurCents={priceTotals.totalMaxEurCents}
+          onlineAvailable={onlinePayments}
+          offered={quote.paymentOptions}
+          depositPercent={quote.depositPercent}
+        />
       ) : null}
       {quote.notes ? (
         <YStack backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$1">
@@ -435,14 +459,20 @@ export function QuoteCard({
             <XStack gap="$2" flexWrap="wrap" alignItems="center" $xs={{ flexDirection: "column-reverse", alignItems: "stretch" }}>
               <CardButton
                 tone="primary"
+                arrow={onlyPayment !== undefined}
+                disabled={isAccepting || selectablePayments.length === 0}
                 $xs={{ height: 48 }}
                 onPress={() => {
+                  if (onlyPayment) {
+                    void handleAccept(onlyPayment);
+                    return;
+                  }
                   // Preselezionato il primo modo offerto dal professionista (online per primo, se c'è).
-                  setPaymentMethod(selectablePaymentChoices(quote.paymentOptions, onlinePayments)[0] ?? "DIRECT");
+                  setPaymentMethod(selectablePayments[0] ?? "DIRECT");
                   setChoosingPayment(true);
                 }}
               >
-                Accetta preventivo
+                {isAccepting ? "Accettazione..." : onlyPayment && paymentChoiceIsOnline(onlyPayment) ? "Accetta e paga l'acconto" : "Accetta preventivo"}
               </CardButton>
               <XStack gap="$2">
                 <CardButton $xs={{ height: 48, flex: 1, paddingHorizontal: 12 }} onPress={startChoosingDate}>
@@ -468,8 +498,8 @@ export function QuoteCard({
                 <CardButton
                   tone="primary"
                   arrow
-                  onPress={handleAccept}
-                  disabled={isAccepting || !selectablePaymentChoices(quote.paymentOptions, onlinePayments).includes(paymentMethod)}
+                  onPress={() => void handleAccept()}
+                  disabled={isAccepting || !selectablePayments.includes(paymentMethod)}
                 >
                   {isAccepting ? "Accettazione..." : paymentChoiceIsOnline(paymentMethod) ? "Accetta e paga l'acconto" : "Accetta preventivo"}
                 </CardButton>

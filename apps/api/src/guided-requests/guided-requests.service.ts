@@ -15,7 +15,7 @@ import { GeneralRequestsService } from "../general-requests/general-requests.ser
 import { toMyState } from "./guided-request-user-state.service";
 import { computeDirectForwardAt } from "./lead-routing";
 
-/** Riga nella chat dei professionisti quando il cliente elimina una richiesta aperta (§339). */
+/** Riga nella chat dei professionisti quando il cliente elimina una richiesta aperta (§340). */
 export const WITHDRAWN_TIMELINE_MESSAGE = "Il cliente ha ritirato la richiesta.";
 
 /** Candidato compatibile con la distanza dalla richiesta (null se non calcolabile). */
@@ -406,7 +406,7 @@ export class GuidedRequestsService {
   /** Richieste (con relativi lead) inviate dal cliente autenticato. */
   async listForClient(clientId: string) {
     const requests = await this.prisma.guidedRequest.findMany({
-      // Le eliminate dal cliente restano solo per i professionisti e l'admin (§339).
+      // Le eliminate dal cliente restano solo per i professionisti e l'admin (§340).
       where: { clientId, deletedByClientAt: null },
       include: {
         category: true,
@@ -683,7 +683,7 @@ export class GuidedRequestsService {
   }
 
   /**
-   * "Elimina richiesta" del cliente (docs/CHANGELOG.md §339, decisione
+   * "Elimina richiesta" del cliente (docs/CHANGELOG.md §340, decisione
    * dell'utente): una sola azione finché la richiesta non ha portato a un
    * lavoro. Per il cliente sparisce subito; se era aperta si chiude
    * (CANCELED_BY_CLIENT, i Lead ancora in attesa diventano EXPIRED) e i
@@ -732,7 +732,7 @@ export class GuidedRequestsService {
   }
 
   /**
-   * "Annulla" subito dopo "Elimina richiesta" (§339): la richiesta torna
+   * "Annulla" subito dopo "Elimina richiesta" (§340): la richiesta torna
    * com'era, riaperta se era aperta, e sparisce la riga "ritirata" dalla
    * chat dei professionisti. Solo entro REQUEST_RESTORE_WINDOW_MINUTES.
    */
@@ -774,7 +774,7 @@ export class GuidedRequestsService {
   }
 
   /**
-   * Cancellazione vera delle richieste eliminate dai clienti (§339), una
+   * Cancellazione vera delle richieste eliminate dai clienti (§340), una
    * volta al giorno: dopo CLIENT_DELETED_REQUEST_RETENTION_DAYS, con Lead,
    * preventivi, chat e notifiche in cascata. Mai se un professionista l'ha
    * segnalata (prove per la moderazione e le sue conseguenze, decisione

@@ -563,7 +563,7 @@ export type AdminJobIssue = {
   clientCompletionPhotoUrls: string[];
 };
 
-/** Richiesta eliminata da un cliente, nell'area admin (docs/CHANGELOG.md §339). */
+/** Richiesta eliminata da un cliente, nell'area admin (docs/CHANGELOG.md §340). */
 export type AdminClientDeletedRequest = {
   guidedRequestId: string;
   categoryLabel: string;
@@ -1218,7 +1218,7 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
         body: JSON.stringify(input),
       }),
 
-    /** "Elimina richiesta": sparisce per il cliente, i professionisti la vedono ritirata (docs/CHANGELOG.md §339). */
+    /** "Elimina richiesta": sparisce per il cliente, i professionisti la vedono ritirata (docs/CHANGELOG.md §340). */
     deleteGuidedRequest: (token: string, id: string, reason?: RequestWithdrawReason) =>
       request<null>(`/guided-requests/${id}`, {
         method: "DELETE",

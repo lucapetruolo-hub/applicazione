@@ -150,7 +150,7 @@ export function GuidedRequestCard({
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Uscita dalla modifica (docs/CHANGELOG.md §339): con modifiche non
+  // Uscita dalla modifica (docs/CHANGELOG.md §340): con modifiche non
   // salvate si chiede prima conferma; `href` è la pagina da aprire dopo,
   // null per tornare solo alla scheda.
   const isDirty =
@@ -370,7 +370,7 @@ export function GuidedRequestCard({
     }
   }
 
-  // "Elimina richiesta" (docs/CHANGELOG.md §339), dal modulo di modifica e
+  // "Elimina richiesta" (docs/CHANGELOG.md §340), dal modulo di modifica e
   // dal menu: l'errore resta nel popup, che lo mostra da sé.
   async function handleDeleteRequest(reason: RequestWithdrawReason | undefined): Promise<void> {
     await apiClient.deleteGuidedRequest(token, request.id, reason);
@@ -427,7 +427,7 @@ export function GuidedRequestCard({
     return (
       <Surface gap="$3">
         <YStack gap="$2">
-          {/* Uscita sempre in vista, anche su un modulo lungo dal telefono (§339). */}
+          {/* Uscita sempre in vista, anche su un modulo lungo dal telefono (§340). */}
           <XStack
             alignSelf="flex-start"
             alignItems="center"
@@ -582,7 +582,7 @@ export function GuidedRequestCard({
               Annulla
             </CardButton>
           </XStack>
-          {/* Staccato dai pulsanti del salvataggio per non premerlo per sbaglio (§339). */}
+          {/* Staccato dai pulsanti del salvataggio per non premerlo per sbaglio (§340). */}
           <YStack borderTopWidth={1} borderTopColor={brand.filetto} paddingTop="$3" marginTop="$2" alignItems="flex-start">
             <CardButton tone="danger" onPress={() => setShowDeleteModal(true)} disabled={isSaving}>
               Elimina richiesta
@@ -638,7 +638,7 @@ export function GuidedRequestCard({
       onError: setError,
     }),
   );
-  // "Archivia" accanto a "Elimina richiesta" si confondeva (prova simulata, §339): una riga sotto spiega la differenza.
+  // "Archivia" accanto a "Elimina richiesta" si confondeva (prova simulata, §340): una riga sotto spiega la differenza.
   for (const action of menuActions) {
     if (action.text === "Archivia" && !booking) action.hint = "La ritrovi in Archiviate";
   }
@@ -654,7 +654,7 @@ export function GuidedRequestCard({
       menuActions.push({ icon: "rotate-ccw", text: "Riapri prenotazione", onPress: handleReopenBooking });
     }
   } else if (!booking) {
-    // Una sola voce finché la richiesta non è diventata un lavoro (§339, al
+    // Una sola voce finché la richiesta non è diventata un lavoro (§340, al
     // posto di "Annulla richiesta" ed "Elimina definitivamente" del §130).
     menuActions.push({ icon: "trash-2", text: "Elimina richiesta", hint: "La ritiri anche per i professionisti", tone: "danger", onPress: () => setShowDeleteModal(true) });
   }
@@ -927,6 +927,7 @@ export function GuidedRequestCard({
                   unreadCount={combineUnreadCounts(quoteUnreadCounts?.get(quote.id), threadUnreadCounts?.get(`${request.id}:${quote.professionalProfileId}`))}
                   autoOpenTimeline={autoOpenChatProfessionalId === quote.professionalProfileId}
                   requestOpen={request.status !== "CLOSED"}
+                  compare={request.quotes.filter((q) => q.status === "SENT").length > 1}
                   contactInBooking={quote.status === "ACCEPTED" && booking?.professionalProfileId === quote.professionalProfileId}
                   onDeleteRequest={!booking ? () => setShowDeleteModal(true) : undefined}
                 />

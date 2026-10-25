@@ -57,7 +57,7 @@ export class TimelineService {
       guidedRequestId,
       professionalProfileId,
     );
-    // Richiesta eliminata dal cliente (docs/CHANGELOG.md §339): la chat resta
+    // Richiesta eliminata dal cliente (docs/CHANGELOG.md §340): la chat resta
     // da leggere, ma nessuno dei due può più scrivere.
     const request = await this.prisma.guidedRequest.findUnique({ where: { id: guidedRequestId }, select: { deletedByClientAt: true } });
     if (request?.deletedByClientAt) {
@@ -109,7 +109,7 @@ export class TimelineService {
    */
   async listThreadsForUser(userId: string): Promise<ChatThreadSummary[]> {
     const events = await this.prisma.conversationEvent.findMany({
-      // Le richieste eliminate dal cliente non sono più nelle sue chat (§339).
+      // Le richieste eliminate dal cliente non sono più nelle sue chat (§340).
       where: { OR: [{ guidedRequest: { clientId: userId, deletedByClientAt: null } }, { professionalProfile: { userId } }] },
       orderBy: { createdAt: "desc" },
       include: {

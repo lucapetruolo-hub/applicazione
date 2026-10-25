@@ -11,7 +11,7 @@ import { SkeletonTableRows } from "@/components/Skeleton";
 
 /**
  * Richieste eliminate: dai clienti (nascoste a loro, cancellate dopo 90
- * giorni se non segnalate, docs/CHANGELOG.md §339) e dai professionisti
+ * giorni se non segnalate, docs/CHANGELOG.md §340) e dai professionisti
  * (nascoste a loro, mai cancellate, §143).
  */
 export default function AdminRichiesteEliminatePage() {
