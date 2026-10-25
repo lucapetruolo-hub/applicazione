@@ -15,7 +15,7 @@ test.skip(({ isMobile }) => isMobile, "Il menu a colonna c'è solo da tablet e c
 const nav = (page: Page) => page.getByRole("navigation", { name: "Sezioni del tuo account" });
 const navState = (page: Page) => page.evaluate(() => document.documentElement.getAttribute("data-acct-nav"));
 
-/** Il tondo "Riduci il menu" non copre né le voci né il testo dei titoli (docs/CHANGELOG.md §336). */
+/** Il tondo "Riduci il menu" non copre né le voci né il testo dei titoli (docs/CHANGELOG.md §337). */
 async function expectToggleFree(page: Page) {
   const covered = await page.evaluate(() => {
     const t = document.querySelector(".acct-nav-toggle")!.getBoundingClientRect();
