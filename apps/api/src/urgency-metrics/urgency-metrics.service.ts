@@ -10,7 +10,7 @@ import { computeUrgencyMetrics } from "./urgency-metrics";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Richieste urgenti dopo il lancio (docs/CHANGELOG.md §343, richiesta di
+ * Richieste urgenti dopo il lancio (docs/CHANGELOG.md §344, richiesta di
  * Luca): quota di urgenti, minuti al primo preventivo, urgenti senza
  * destinatari. Ogni lunedì avvisa gli admin se le urgenti superano il 30% o
  * non ricevono risposta prima delle normali.

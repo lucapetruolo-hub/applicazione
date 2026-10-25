@@ -658,9 +658,9 @@ export function RequestCard({
             {/* Ordine invertito su richiesta esplicita dell'utente: lo stato
                 della richiesta (StagePill) precede il badge di modalità
                 (ServiceBadge, "A domicilio"/"Consulenza online"). */}
-            <StagePill stage={stage} />
+            <StagePill stage={stage} label={stage === "chiusa" && gr.withdrawnByClient ? "Ritirata dal cliente" : undefined} />
             <ServiceBadge online={isOnline} />
-            {/* Quando serve, scelto dal cliente (§343): "Oggi" è già il badge Urgente. */}
+            {/* Quando serve, scelto dal cliente (§344): "Oggi" è già il badge Urgente. */}
             {gr.timing === "WEEK" || gr.timing === "CALM" ? (
               <Text fontSize={13} fontWeight="600" color={brand.grafite70} alignSelf="center">
                 {REQUEST_TIMING_LABEL[gr.timing]}

@@ -187,7 +187,7 @@ export type CloseGeneralRequestsInput = z.infer<typeof closeGeneralRequestsSchem
 
 /**
  * A quanti professionisti arriverebbe una richiesta adesso, senza e con
- * "Urgente" (raggi diversi, docs/CHANGELOG.md §343). Per una richiesta
+ * "Urgente" (raggi diversi, docs/CHANGELOG.md §344). Per una richiesta
  * diretta conta quelli a cui andrebbe l'inoltro, escluso il professionista
  * scelto.
  */
@@ -197,7 +197,7 @@ export type GuidedRequestReach = {
 };
 
 /**
- * Misura delle richieste urgenti dopo il lancio (docs/CHANGELOG.md §343):
+ * Misura delle richieste urgenti dopo il lancio (docs/CHANGELOG.md §344):
  * ogni settimana, sugli ultimi 7 giorni, quante sono urgenti, quanto tempo
  * passa al primo preventivo e quante urgenti non hanno trovato nessuno.
  */

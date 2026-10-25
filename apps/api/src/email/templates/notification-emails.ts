@@ -159,7 +159,7 @@ const BUILDERS: Record<string, Builder> = {
       paragraphs: [
         `Un cliente cerca un professionista per **${category}**${city ? ` a ${city}` : ""}.`,
         ...(urgent ? ["**È una richiesta urgente:** il cliente cerca qualcuno disponibile subito."] : []),
-        // Quando serve, scelto dal cliente (docs/CHANGELOG.md §343).
+        // Quando serve, scelto dal cliente (docs/CHANGELOG.md §344).
         ...(payload.timing === "WEEK" ? ["**Quando:** in settimana."] : payload.timing === "CALM" ? ["**Quando:** con calma, il cliente non ha fretta."] : []),
         ...(respondUntil ? [`**Puoi rispondere fino ${formatItalianUntil(respondUntil)}.**`] : []),
         "Chi risponde per primo ha più probabilità di aggiudicarsi il lavoro: apri la richiesta, guarda le foto e invia il tuo preventivo.",

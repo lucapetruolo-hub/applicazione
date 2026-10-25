@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { API_URL } from "../fixtures/env";
 
 /**
- * "Quando ti serve?" nella richiesta di preventivo (docs/CHANGELOG.md §343):
+ * "Quando ti serve?" nella richiesta di preventivo (docs/CHANGELOG.md §344):
  * stessa scelta al primo passo e nel riepilogo, tempi dell'inoltro e
  * pulsante che seguono la scelta ("Oggi" = urgente), numero dei
  * destinatari, annuncio al lettore di schermo, /urgente coerente e

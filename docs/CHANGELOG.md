@@ -20738,7 +20738,31 @@ accorciata in "Subito dopo potrai lasciare una recensione, anche con foto".
 
 **Verifica**: prove `review-summary.test.ts` e `saved-professionals.service.test.ts` (media, recensioni nascoste escluse, una sola query); prova nel browser `e2e/tests/stelle-preventivi.spec.ts` da telefono e computer (due preventivi, uno con stelle e uno senza recensioni, clic sulle stelle che apre le recensioni, richiesta a un solo professionista). Anteprime in `anteprime/stelle-recensioni/`.
 
-## 343. Interruttore "Urgente" anche nel riepilogo della richiesta
+## 343. "Elimina richiesta" del cliente: una voce sola, conferma, Annulla, prove conservate
+
+**Richiesta esplicita dell'utente** (25/10/2026, thread "Eliminare una richiesta di preventivo dal cliente"): "se clicca su modifica in una richiesta preventivo inserisci un pulsante con elimina richiesta"; poi, sulla stessa schermata, cliccando di nuovo "Le mie richieste" nel menu laterale la pagina restava sulla modifica. Dopo un primo giro (cancellazione definitiva senza preventivi, "Richiesta eliminata", voce nel menu, conferma prima di uscire senza salvare) Luca ha chiesto la "versione profonda": "una richiesta di preventivo si deve poter togliere in modo chiaro e senza errori, senza far perdere prove alla moderazione né lasciare i professionisti senza spiegazione", con mappa degli stati, conferma e poi "i secondi con annulla", eliminazione che nasconde e cancella dopo un periodo fisso ("altrimenti si può eliminare ma rimanere nella parte admin per le prove e conseguenze"), prove automatiche, prova con 5 persone (simulata, su sua indicazione) e due domande per l'avvocato. Niente email ai professionisti (scartata da Luca).
+
+**Problemi trovati nel codice di prima** (analisi in `analisi/elimina-richiesta/mappa-stati.md`)
+- Una richiesta annullata dal cliente il professionista la vedeva "Scaduta".
+- Un preventivo su una richiesta annullata si poteva ancora accettare, e "Conferma data" poteva creare un lavoro.
+- "Elimina definitivamente" cancellava subito: una richiesta segnalata spariva con le prove e la decisione dell'admin falliva.
+
+**Decisione presa**
+- Una sola voce "Elimina richiesta" finché la richiesta non è diventata un lavoro (al posto di "Annulla richiesta" ed "Elimina definitivamente" del §130), nel modulo di modifica (pulsante rosso con bordo in fondo) e nel menu a tre linee. Con una prenotazione resta "Annulla prenotazione".
+- Conferma "Eliminare la richiesta?" con motivo facoltativo a un tocco ("Ho già trovato qualcuno", "Non mi serve più", "L'ho mandata per sbaglio", solo se la richiesta è ancora aperta), poi in basso "Richiesta eliminata · Annulla" per 8 secondi (`DeleteRequestModal`, `RequestDeletedNotice`). "Annulla" funziona per 10 minuti lato server (`REQUEST_RESTORE_WINDOW_MINUTES`).
+- Nel database la richiesta resta: `deletedByClientAt`, `withdrawReason`, `deletedWhileOpen` (migrazione `20261025150000_richieste_eliminate_dal_cliente`). Se era aperta si chiude come `CANCELED_BY_CLIENT`, i lead in attesa scadono e nella chat dei professionisti compare "Il cliente ha ritirato la richiesta."; "Annulla" rimette tutto com'era. Il cliente non la vede più (elenco, messaggi).
+- Professionisti: etichetta "Ritirata dal cliente" e "Il cliente l'ha ritirata: [motivo]." (`withdrawnByClient` nel lead); niente preventivi nuovi, modifiche, messaggi, accettazione o conferma di data su una richiesta ritirata.
+- Cancellazione vera dopo 90 giorni (`CLIENT_DELETED_REQUEST_RETENTION_DAYS`, cron delle 4), **mai se c'è una segnalazione**: resta per l'admin come prova. Admin > Richieste eliminate ha la sezione "Dai clienti" (motivo, professionisti raggiunti, preventivi, messaggi, data di cancellazione o "Tenuta: segnalata"). Il periodo di 90 giorni aspetta il parere dell'avvocato (domande 38-39 in `analisi/domande-commercialista-avvocato.md`).
+- Uscita dal modulo: "‹ Torna alla richiesta" in alto; un link alla stessa pagina (menu laterale, barra del telefono) chiude la modifica (`useInternalLinkClick`); il tasto Indietro del browser o del telefono chiude il modulo invece di cambiare pagina (passo aggiunto alla cronologia con `pushState` nativo, che Next.js affianca al suo router). Con modifiche non salvate Indietro, link e "Annulla" chiedono "Uscire senza salvare?"; chiusura o ricarica della scheda: avviso del browser.
+
+**Verifica**: 8 test dell'API (`guided-request-delete.test.ts`, 616 in tutto verdi), 4 prove nel browser in CI (`e2e/tests/elimina-richiesta.spec.ts`: dal modulo con motivo e Annulla, dal menu con un preventivo inviato dopo, uscita senza salvare anche con Indietro, decisione dell'admin su una richiesta eliminata). Prova a mano in locale su telefono e computer, anteprime 9-14 in `anteprime/elimina-richiesta/`. Prova simulata con 5 persone in `analisi/elimina-richiesta/prova-5-persone-simulata.md`: 3 su 5 al primo tentativo (chi ha un preventivo sceglie "Rifiuta"; "Archivia" accanto a "Elimina richiesta"), migliorie proposte a Luca.
+
+**Ritocchi chiesti da Luca dopo l'anteprima** ("le tre risposte a 'perché' rendile più piccole come lista da spuntare con un pallino, non come pulsanti"; "effettua le due migliorie")
+- I tre motivi sono un elenco con pallino (radio), testo 15px; toccandolo di nuovo si toglie la scelta.
+- Nella conferma di "Rifiuta" un preventivo: "Non ti serve più il lavoro? **Elimina la richiesta**", che apre la stessa conferma (chi non vuole più il lavoro sceglieva "Rifiuta").
+- Nel menu a tre linee una riga piccola sotto "Archivia" ("La ritrovi in Archiviate") ed "Elimina richiesta" ("La ritiri anche per i professionisti"): `CardAction.hint`. Anteprime 15-17.
+
+## 344. Interruttore "Urgente" anche nel riepilogo della richiesta
 
 **Richiesta esplicita dell'utente** (25/10/2026, thread "Interruttore Urgente nell'ultimo passo del preventivo"): nel modulo di richiesta preventivo, all'ultimo passo, "Urgente" deve stare vicino all'opzione che inoltra la richiesta agli altri professionisti se quello scelto non risponde, facile da accendere e spegnere.
 

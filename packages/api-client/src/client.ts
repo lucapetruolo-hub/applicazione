@@ -61,6 +61,7 @@ import type {
   SetDac7RuleInput,
   PlatformDac7SettingsInput,
   PayoutIbanInput,
+  RequestWithdrawReason,
   PayoutIbanStripeCheck,
   Dac7YearSummary,
   SetFiscalVerificationInput,
@@ -203,7 +204,7 @@ export type ClientGuidedRequest = {
   /** Tipo di intervento (richiesta esplicita dell'utente) — `null` per le richieste create prima di questo campo. */
   serviceMode: "HOME" | "ONLINE" | null;
   isUrgent: boolean;
-  /** Quando serve, scelto dal cliente (docs/CHANGELOG.md §343): null per le richieste di prima. */
+  /** Quando serve, scelto dal cliente (docs/CHANGELOG.md §344): null per le richieste di prima. */
   timing: RequestTiming | null;
   status: "OPEN" | "MATCHED" | "CLOSED";
   /**
@@ -572,6 +573,27 @@ export type AdminJobIssue = {
   clientCompletionNote: string | null;
   professionalCompletionPhotoUrls: string[];
   clientCompletionPhotoUrls: string[];
+};
+
+/** Richiesta eliminata da un cliente, nell'area admin (docs/CHANGELOG.md §343). */
+export type AdminClientDeletedRequest = {
+  guidedRequestId: string;
+  categoryLabel: string;
+  city: string;
+  description: string;
+  clientName: string | null;
+  clientAccountDeleted: boolean;
+  reasonLabel: string | null;
+  wasOpen: boolean;
+  professionalsReached: number;
+  quotes: number;
+  messages: number;
+  reports: number;
+  openReports: number;
+  requestCreatedAt: string;
+  deletedAt: string;
+  /** Quando si cancella davvero; `null` se resta perché segnalata. */
+  purgeAt: string | null;
 };
 
 export type AdminHiddenLead = {
@@ -1208,16 +1230,18 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
         body: JSON.stringify(input),
       }),
 
-    deleteGuidedRequest: (token: string, id: string) =>
+    /** "Elimina richiesta": sparisce per il cliente, i professionisti la vedono ritirata (docs/CHANGELOG.md §343). */
+    deleteGuidedRequest: (token: string, id: string, reason?: RequestWithdrawReason) =>
       request<null>(`/guided-requests/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ reason }),
       }),
 
-    /** Elimina definitivamente una richiesta già annullata/scaduta senza prenotazioni (`deleteGuidedRequest` invece la annulla). */
-    deleteGuidedRequestPermanently: (token: string, id: string) =>
-      request<null>(`/guided-requests/${id}/permanent`, {
-        method: "DELETE",
+    /** "Annulla" pochi secondi dopo l'eliminazione. */
+    restoreGuidedRequest: (token: string, id: string) =>
+      request<null>(`/guided-requests/${id}/restore`, {
+        method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       }),
 
@@ -1683,7 +1707,7 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
       if (city?.trim()) params.set("citta", city.trim());
       return request<GeneralRequestAvailability>(`/general-requests/availability?${params.toString()}`, { cache: "no-store" });
     },
-    /** A quanti professionisti arriverebbe la richiesta, senza e con "Urgente" (docs/CHANGELOG.md §343). */
+    /** A quanti professionisti arriverebbe la richiesta, senza e con "Urgente" (docs/CHANGELOG.md §344). */
     guidedRequestReach: (input: { categorySlugs: string[]; city?: string; serviceMode?: string; professionalProfileId?: string }) => {
       const params = new URLSearchParams({ categoria: input.categorySlugs.join(",") });
       if (input.city?.trim()) params.set("citta", input.city.trim());
@@ -1936,6 +1960,9 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
 
     adminListHiddenLeads: (token: string) =>
       request<AdminHiddenLead[]>("/admin/hidden-leads", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminListClientDeletedRequests: (token: string) =>
+      request<AdminClientDeletedRequest[]>("/admin/client-deleted-requests", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminResolveContactMessage: (token: string, id: string) =>
       request<{ id: string; resolved: boolean }>(`/admin/contact-messages/${id}`, {

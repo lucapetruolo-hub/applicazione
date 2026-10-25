@@ -36,6 +36,8 @@ export type CardAction = {
   text: string;
   /** "danger" → testo/icona rossi (annulla, elimina, rifiuta). */
   tone?: "default" | "danger";
+  /** Riga piccola sotto la voce, per distinguere due voci simili (es. "Archivia" ed "Elimina richiesta"). */
+  hint?: string;
   onPress: () => void | Promise<void>;
   /** Se presente, il click mostra prima una domanda di conferma nella tendina. */
   confirm?: { question: string; confirmLabel: string; busyLabel: string };
@@ -261,9 +263,16 @@ export function CardActionsMenu({
                         accessibilityRole="button"
                       >
                         <Icon name={action.icon} size={16} color={color} />
-                        <Text fontSize={16} color={color} fontWeight="600">
-                          {action.text}
-                        </Text>
+                        <YStack>
+                          <Text fontSize={16} color={color} fontWeight="600">
+                            {action.text}
+                          </Text>
+                          {action.hint ? (
+                            <Text fontSize={13} color={brand.grafite70}>
+                              {action.hint}
+                            </Text>
+                          ) : null}
+                        </YStack>
                       </XStack>
                     );
                   })
