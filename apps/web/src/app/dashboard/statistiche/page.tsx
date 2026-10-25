@@ -171,7 +171,7 @@ export default function DashboardStatistichePage() {
 
   return (
     <YStack width="100%" alignItems="center" paddingVertical="$8" paddingHorizontal="$4">
-      <YStack width="100%" maxWidth={1000} gap="$5">
+      <YStack width="100%" maxWidth={1180} gap="$5">
         <YStack gap="$1">
           <Text fontFamily="$heading" fontWeight="800" fontSize={30} color={brand.grafite}>
             Statistiche

@@ -17,6 +17,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { ProfileMissingNotice, isProfileMissingError } from "@/components/ProfileMissingNotice";
 import { SubscriptionPauseBanner, upgradeCostText } from "@/components/SubscriptionPauseBanner";
+import { SkeletonBlock } from "@/components/Skeleton";
 
 /**
  * "Abbonamento" del professionista (docs/CHANGELOG.md §161-§162): stato del
@@ -205,15 +206,32 @@ function AbbonamentoContent() {
   const paidActive = sub?.state === "ACTIVE" || sub?.state === "PAST_DUE";
   const inTrial = sub?.state === "TRIAL";
 
+  const heading = (
+    <YStack gap="$1">
+      <Text fontFamily="$heading" fontWeight="800" fontSize={30} color={brand.grafite}>
+        Abbonamento
+      </Text>
+      <Text color={brand.grafite70}>Tutte le funzioni in ogni livello: cambia solo quanti lavori accettati al mese sono compresi.</Text>
+    </YStack>
+  );
+
+  // Finché non arriva l'abbonamento solo il titolo: prima i livelli
+  // comparivano subito e poi scendevano sotto lo stato (CLS, docs/CHANGELOG.md §334).
+  if (!sub && !loadError) {
+    return (
+      <YStack width="100%" alignItems="center" paddingVertical="$8" paddingHorizontal="$4">
+        <YStack width="100%" maxWidth={1000} gap="$5">
+          {heading}
+          <SkeletonBlock height={160} radius={16} />
+        </YStack>
+      </YStack>
+    );
+  }
+
   return (
     <YStack width="100%" alignItems="center" paddingVertical="$8" paddingHorizontal="$4">
       <YStack width="100%" maxWidth={1000} gap="$5">
-        <YStack gap="$1">
-          <Text fontFamily="$heading" fontWeight="800" fontSize={30} color={brand.grafite}>
-            Abbonamento
-          </Text>
-          <Text color={brand.grafite70}>Tutte le funzioni in ogni livello: cambia solo quanti lavori accettati al mese sono compresi.</Text>
-        </YStack>
+        {heading}
 
         {searchParams.get("attivato") ? (
           <Surface borderRadius={radiusDoc} padding="$4" backgroundColor={brand.cianografiaVelo}>

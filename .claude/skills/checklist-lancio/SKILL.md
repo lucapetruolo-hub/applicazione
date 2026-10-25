@@ -459,7 +459,7 @@ Città, pagine vuote fuori da Google.
     fuori dall'app) fatti da professionisti che non conoscono il sito, senza
     aiuto. Il test simulato del §311 non li sostituisce. Testo dei compiti e
     obiettivi nel documento "Verifica dell'agenda come un esperto UX".
-40. ~~osv-scanner bloccante~~ — fatto (docs/CHANGELOG.md §334, PR #131):
+40. ~~osv-scanner bloccante~~ — fatto (docs/CHANGELOG.md §335, PR #131):
     blocca la PR su qualunque libreria con vulnerabilità note; quelle usate
     solo per costruire o provare il codice e senza versione corretta vanno
     in `osv-scanner.toml` con il motivo (oggi zod 3 e node-forge dentro
@@ -493,3 +493,9 @@ Cose decise con Luca da non fare prima del lancio, ma da non dimenticare:
   (SEO)", 22/10/2026): scheda Google Business del sito, elenchi di attività
   locali, un link "Trovami su …" che i professionisti mettono sul loro sito
   e sui social, giornali locali della città di lancio.
+- **Voci del menu del professionista con i dati veri** (24/10/2026,
+  docs/CHANGELOG.md §334): un mese dopo il lancio guardare su Vercel Web
+  Analytics quali pagine dell'area professionista si aprono di più e
+  rivedere le 7 voci fisse della colonna (`SIDEBAR_HREFS` in
+  `apps/web/src/lib/accountMenuItems.ts`, al massimo 8 con "Da completare").
+  Scelte oggi senza dati, in base a quanto spesso servono.

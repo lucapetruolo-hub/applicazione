@@ -14,6 +14,7 @@ import { SITE_INDEXABLE } from "@/lib/siteIndexing";
 import { display, body, mono } from "./fonts";
 import "./globals.css";
 import { BRAND } from "@professionisti/shared";
+import { ACCOUNT_NAV_BOOT_SCRIPT } from "@/lib/accountNavCollapsed";
 
 const TAMAGUI_CSS_VERSION = (process.env.VERCEL_GIT_COMMIT_SHA ?? String(Date.now())).slice(0, 13);
 
@@ -43,11 +44,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="it" className={`${display.variable} ${body.variable} ${mono.variable}`}>
+    // suppressHydrationWarning: l'attributo del menu ridotto lo scrive lo
+    // script qui sotto prima che React prenda la pagina.
+    <html lang="it" className={`${display.variable} ${body.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
         {/* Stili di Tamagui in un file a parte, tenuto in cache dal browser
             (docs/CHANGELOG.md §206). `v` cambia a ogni deploy. */}
         <link rel="stylesheet" href={`/tamagui.css?v=${TAMAGUI_CSS_VERSION}`} />
+        {/* Menu laterale ridotto a icone, se scelto (lib/accountNavCollapsed.ts). */}
+        <script dangerouslySetInnerHTML={{ __html: ACCOUNT_NAV_BOOT_SCRIPT }} />
       </head>
       <body>
         {/* Sfondo sfocato di tutto il sito (docs/CHANGELOG.md §180): due forme
