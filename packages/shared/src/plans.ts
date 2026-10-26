@@ -66,6 +66,19 @@ export function upgradeFeeEurCents(input: {
   return UPGRADE_FIXED_FEE_EUR_CENTS + Math.round(difference * share * (1 + UPGRADE_SURCHARGE));
 }
 
+/**
+ * Quota di passaggio nei giorni gratuiti (prova, mese regalato, 3 mesi dei
+ * fondatori), §358: come se Base costasse il suo prezzo mensile, cioè 10 € più
+ * la differenza mensile per i giorni gratuiti che restano (su mesi di 30
+ * giorni), maggiorata del 10%. IVA esclusa.
+ */
+export function freePeriodUpgradeFeeEurCents(input: { from: SubscriptionTier; to: SubscriptionTier; remainingMs: number }): number {
+  const difference = Math.max(0, tierPeriodPriceEurCents(input.to, "MONTH") - tierPeriodPriceEurCents(input.from, "MONTH"));
+  if (difference === 0) return 0;
+  const months = Math.max(0, input.remainingMs) / (TRIAL_DAYS * 24 * 60 * 60 * 1000);
+  return UPGRADE_FIXED_FEE_EUR_CENTS + Math.round(difference * months * (1 + UPGRADE_SURCHARGE));
+}
+
 /** Funzioni comprese in ogni livello: solo ciò che il sito offre davvero oggi. */
 export const SUBSCRIPTION_FEATURES = [
   "Profilo pubblico nella ricerca della tua zona",
@@ -82,6 +95,19 @@ export const TRIAL_DAYS = 30;
 /** Mese regalato a chi non ha ancora avuto lavori: comunicato solo pochi giorni prima della scadenza. */
 export const BONUS_MONTH_DAYS = 30;
 export const BONUS_MONTH_NOTICE_DAYS = 3;
+
+/**
+ * Offerta di lancio (decisione dell'utente del 26/10/2026, docs/CHANGELOG.md
+ * §358): ai primi 100 professionisti con il profilo completo il livello Base
+ * è gratis per 3 mesi (tre periodi da 30 giorni) dal lancio, al posto del
+ * mese gratuito; niente mese regalato a sorpresa.
+ */
+export const FOUNDER_SPOTS = 100;
+export const FOUNDER_FREE_MONTHS = 3;
+export const FOUNDER_TRIAL_DAYS = FOUNDER_FREE_MONTHS * TRIAL_DAYS;
+
+/** Posti dell'offerta di lancio (`GET /subscriptions/founders`, pubblico). */
+export type FounderSpots = { total: number; left: number };
 /** Avviso quando si usa questa quota del limite mensile. */
 export const USAGE_WARNING_RATIO = 0.8;
 
@@ -95,6 +121,13 @@ export const RENEWAL_NOTICE_DAYS = 3;
  * vedi `MySubscription.limitReached`.
  */
 export type PauseReason = "TRIAL_ENDED" | "SUBSCRIPTION_ENDED";
+
+/**
+ * Errore dell'API per chi prova a mandare un preventivo o a rispondere per
+ * primo con i lavori esauriti (§357): il sito lo riconosce e apre la
+ * finestra del livello superiore invece di mostrare il testo.
+ */
+export const JOB_LIMIT_REACHED_MESSAGE = "Hai esaurito i lavori compresi nel tuo abbonamento: passa al livello superiore per rispondere.";
 
 export function subscriptionTierInfo(tier: SubscriptionTier) {
   return SUBSCRIPTION_TIERS.find((t) => t.tier === tier)!;
@@ -130,6 +163,12 @@ export type MySubscription = {
   trialEndsAt: string | null;
   /** Il mese regalato è già stato dato (viene mostrato solo dopo, mai prima). */
   bonusMonthGranted: boolean;
+  /**
+   * Tra i primi 100 professionisti (§358): 3 mesi gratis. `currentMonth` è il
+   * mese gratuito in corso (1-3), 0 se i mesi non sono ancora partiti (prima
+   * del lancio); null finiti i mesi gratuiti.
+   */
+  founder: { months: number; currentMonth: number | null } | null;
   /**
    * Lavori del periodo in corso (docs/CHANGELOG.md §357): ripartono al
    * rinnovo, non il 1° del mese. Su Plus e Pro lo stesso cliente conta una

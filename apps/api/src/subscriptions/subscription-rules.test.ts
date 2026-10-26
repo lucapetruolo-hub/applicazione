@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { upgradeFeeEurCents } from "@professionisti/shared";
+import { freePeriodUpgradeFeeEurCents, upgradeFeeEurCents } from "@professionisti/shared";
 import {
   addMonthsUtc,
   countsClientsOnce,
+  founderFreeMonths,
   hasLaunched,
   jobLimitReached,
   launchDate,
@@ -234,5 +235,39 @@ describe("quota di passaggio a un livello superiore (§356)", () => {
     ]);
     expect(upgradeQuotes({ ...base, state: "ACTIVE", tier: "PRO", trialEndsAt: null, currentPeriodStart: start, currentPeriodEnd: end })).toEqual([]);
     expect(upgradeQuotes({ ...base, state: "TRIAL_ENDED", tier: null, trialEndsAt: null })).toEqual([]);
+  });
+});
+
+describe("primi 100 professionisti: 3 mesi gratis (§358)", () => {
+  const DAY = 24 * 60 * 60 * 1000;
+  it("tre mesi dal lancio, o da oggi dopo il lancio", () => {
+    const launch = new Date("2026-11-01T23:00:00Z");
+    expect(trialEndFor(new Date("2026-10-02T10:00:00Z"), launch, 90).toISOString()).toBe("2027-01-30T23:00:00.000Z");
+    expect(trialEndFor(new Date("2026-12-01T10:00:00Z"), launch, 90).toISOString()).toBe("2027-03-01T10:00:00.000Z");
+  });
+  it("mese gratuito in corso per le tre caselle", () => {
+    const end = new Date("2027-01-30T23:00:00Z");
+    const at = (days: number) => founderFreeMonths(7, end, new Date(end.getTime() - 90 * DAY + days * DAY))?.currentMonth;
+    expect(at(-1)).toBe(0);
+    expect(at(0)).toBe(1);
+    expect(at(29.9)).toBe(1);
+    expect(at(30)).toBe(2);
+    expect(at(65)).toBe(3);
+    expect(at(90)).toBeNull();
+    expect(founderFreeMonths(7, null, NOW)).toEqual({ months: 3, currentMonth: 0 });
+    expect(founderFreeMonths(null, end, NOW)).toBeNull();
+  });
+  it("passaggio nei mesi gratis: come se Base costasse 19 €, su tutti i giorni gratuiti che restano", () => {
+    const fee = (days: number) => freePeriodUpgradeFeeEurCents({ from: "BASE", to: "PLUS", remainingMs: days * DAY });
+    expect(fee(7)).toBe(2027);
+    expect(fee(30)).toBe(5400);
+    expect(fee(75)).toBe(1000 + Math.round(4000 * 2.5 * 1.1));
+    expect(freePeriodUpgradeFeeEurCents({ from: "PRO", to: "PRO", remainingMs: 30 * DAY })).toBe(0);
+  });
+  it("con tre mesi davanti il periodo dei lavori è il mese gratuito in corso", () => {
+    const trialEndsAt = new Date(NOW.getTime() + 75 * DAY);
+    const period = usagePeriod({ plan: "FREE", status: "TRIALING", trialEndsAt, founderNumber: 3 }, NOW);
+    expect(period.start.toISOString()).toBe(new Date(trialEndsAt.getTime() - 90 * DAY).toISOString());
+    expect(period.end.toISOString()).toBe(new Date(trialEndsAt.getTime() - 60 * DAY).toISOString());
   });
 });

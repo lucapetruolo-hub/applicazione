@@ -789,6 +789,11 @@ export class ProfessionalsService {
       // Primo mese gratis per tutti (docs/CHANGELOG.md §161).
       await this.subscriptionsService.ensureTrial(profile.id);
     }
+    // Offerta di lancio (§358): uno dei primi 100 posti a chi completa il
+    // profilo da sé; un profilo creato da un operatore lo prende alla conferma.
+    if ((isFirstTimeCreation && !options.byOperator) || activatesInvite) {
+      await this.subscriptionsService.claimFounderSpot(profile.id);
+    }
     // Categorie aggiunte a un profilo già attivo (docs/CHANGELOG.md §217):
     // riceve anche le richieste aperte di quelle categorie, solo quelle.
     const profileCategoryIds = [profile.categoryId, ...profile.extraCategories.map((category) => category.id)];

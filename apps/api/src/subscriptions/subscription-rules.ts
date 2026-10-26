@@ -3,8 +3,11 @@
  * in `subscription-rules.test.ts`.
  */
 import {
+  FOUNDER_FREE_MONTHS,
+  FOUNDER_TRIAL_DAYS,
   SUBSCRIPTION_TIERS,
   TRIAL_DAYS,
+  freePeriodUpgradeFeeEurCents,
   USAGE_WARNING_RATIO,
   subscriptionTierInfo,
   upgradeFeeEurCents,
@@ -69,6 +72,7 @@ export type SubscriptionRow = {
   cancelAtPeriodEnd?: boolean;
   currentPeriodStart?: Date | null;
   currentPeriodEnd?: Date | null;
+  founderNumber?: number | null;
 };
 
 export function subscriptionState(row: SubscriptionRow | null, now: Date): MySubscription["state"] {
@@ -125,8 +129,8 @@ export function jobLimitReached(row: SubscriptionRow | null, used: number, now: 
   return limit !== null && used >= limit;
 }
 
-/** Messaggio per chi prova a mandare un preventivo o a rispondere con i lavori esauriti. */
-export const JOB_LIMIT_REACHED_MESSAGE = "Hai esaurito i lavori compresi nel tuo abbonamento: passa al livello superiore per rispondere.";
+/** Messaggio per chi prova a mandare un preventivo o a rispondere con i lavori esauriti (in shared: il sito lo riconosce). */
+export { JOB_LIMIT_REACHED_MESSAGE } from "@professionisti/shared";
 
 /** Risposta a chi prova a prenotare dall'agenda un professionista con i lavori esauriti. */
 export const NOT_BOOKABLE_ONLINE = "Questo professionista al momento non accetta prenotazioni online. Mandagli una richiesta di preventivo.";
@@ -247,10 +251,34 @@ export function hasLaunched(now: Date, launch: Date | null): boolean {
   return !!launch && now.getTime() >= launch.getTime();
 }
 
-/** Fine del mese gratuito per chi si iscrive adesso: un mese dal lancio, o da oggi se il lancio è passato. */
-export function trialEndFor(now: Date, launch: Date | null): Date {
+/**
+ * Fine del periodo gratuito per chi si iscrive adesso: dal lancio, o da oggi
+ * se il lancio è passato. Un mese, o tre per i fondatori (§358).
+ */
+export function trialEndFor(now: Date, launch: Date | null, days: number = TRIAL_DAYS): Date {
   const start = launch && launch.getTime() > now.getTime() ? launch : now;
-  return new Date(start.getTime() + TRIAL_DAYS * TRIAL_DAY_MS);
+  return new Date(start.getTime() + days * TRIAL_DAY_MS);
+}
+
+/** Giorni gratuiti di una riga: 90 per i primi 100 professionisti (§358), altrimenti 30. */
+export function trialDaysOf(row: { founderNumber?: number | null } | null): number {
+  return row?.founderNumber ? FOUNDER_TRIAL_DAYS : TRIAL_DAYS;
+}
+
+/**
+ * Mesi gratuiti dei fondatori (§358) per le tre caselle in Abbonamento:
+ * `currentMonth` 1-3 durante i mesi gratuiti, 0 se non sono ancora partiti
+ * (prima del lancio), null quando sono finiti. Null per chi non è fondatore.
+ */
+export function founderFreeMonths(founderNumber: number | null | undefined, trialEndsAt: Date | null, now: Date): MySubscription["founder"] {
+  if (!founderNumber) return null;
+  if (!trialEndsAt) return { months: FOUNDER_FREE_MONTHS, currentMonth: 0 };
+  const end = trialEndsAt.getTime();
+  const start = end - FOUNDER_TRIAL_DAYS * TRIAL_DAY_MS;
+  const t = now.getTime();
+  if (t >= end) return { months: FOUNDER_FREE_MONTHS, currentMonth: null };
+  if (t < start) return { months: FOUNDER_FREE_MONTHS, currentMonth: 0 };
+  return { months: FOUNDER_FREE_MONTHS, currentMonth: Math.min(FOUNDER_FREE_MONTHS, Math.floor((t - start) / FREE_PERIOD_MS) + 1) };
 }
 
 const MONTH_FALLBACK_MS = 30 * TRIAL_DAY_MS;
@@ -259,7 +287,8 @@ const YEAR_FALLBACK_MS = 365 * TRIAL_DAY_MS;
 /**
  * Quota di passaggio verso ogni livello sopra quello attuale (docs/CHANGELOG.md
  * §356): stessa formula dell'addebito vero (`upgradeFeeEurCents`). Durante la
- * prova si parte da Base e si conta il periodo gratuito di 30 giorni; prima
+ * prova si parte da Base e si contano tutti i giorni gratuiti che restano,
+ * a mesi di 30 giorni (`freePeriodUpgradeFeeEurCents`, §358); prima
  * del lancio la prova non scorre e non si paga niente. Con un abbonamento
  * pagato si conta il periodo di Stripe (mese o anno) fino al rinnovo.
  */
@@ -286,7 +315,7 @@ export function upgradeQuotes(input: {
       const end = input.trialEndsAt!;
       return {
         tier,
-        amountEurCents: upgradeFeeEurCents({ from, to: tier, interval: "MONTH", remainingMs: end.getTime() - input.now.getTime(), periodMs: FREE_PERIOD_MS }),
+        amountEurCents: freePeriodUpgradeFeeEurCents({ from, to: tier, remainingMs: end.getTime() - input.now.getTime() }),
         until: end.toISOString(),
       };
     }

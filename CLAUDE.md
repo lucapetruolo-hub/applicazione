@@ -308,6 +308,14 @@ prezzi Stripe nelle variabili `STRIPE_PRICE_<LIVELLO>` e
 `STRIPE_PRICE_<LIVELLO>_ANNUAL`, IVA con `STRIPE_TAX_RATE_IVA`.
 
 - **Primo mese gratis per tutti.**
+- **Offerta di lancio** (decisione dell'utente, docs/CHANGELOG.md §358): ai
+  primi 100 professionisti con il profilo completo Base gratis per **3 mesi**
+  dal lancio (`Subscription.founderNumber`, `FOUNDER_SPOTS` in
+  `packages/shared/src/plans.ts`), niente mese a sorpresa; banda "GRATIS PER
+  3 MESI" con i posti rimasti su `/per-professionisti` (`GET
+  /subscriptions/founders`) e tre caselle in Abbonamento. Nei giorni
+  gratuiti la quota di passaggio conta tutti i giorni che restano, come se
+  Base costasse 19 € (`freePeriodUpgradeFeeEurCents`).
 - **Mese regalato a sorpresa:** a chi non ha avuto nessun preventivo
   accettato si regala un altro mese, comunicato solo in prossimità della
   scadenza del primo mese (gratis o pagato), non all'iscrizione.

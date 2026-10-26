@@ -643,6 +643,9 @@ model Subscription {
   periodNoticeFor       DateTime?
   // Rinnovo mensile o annuale scelto (docs/CHANGELOG.md §356), dal prezzo Stripe.
   billingInterval       BillingInterval    @default(MONTH)
+  // Offerta di lancio (docs/CHANGELOG.md §358): numero d'ordine tra i primi
+  // 100 professionisti con il profilo completo, che hanno 3 mesi gratis.
+  founderNumber         Int?               @unique
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
 

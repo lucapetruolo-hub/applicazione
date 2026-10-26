@@ -63,7 +63,7 @@ export function SubscriptionPauseBanner({ sub, showAction = true, profileStepsEl
     action = "Compila i dati fiscali";
     href = "/dashboard/fiscale";
   } else if (sub.pausedReason === "TRIAL_ENDED") {
-    title = "Il tuo mese gratuito è finito";
+    title = sub.founder ? "I tuoi mesi gratuiti sono finiti" : "Il tuo mese gratuito è finito";
     body = "Il tuo account è in pausa: il profilo non compare nelle ricerche e non ricevi nuove richieste. Scegli un livello per renderlo di nuovo visibile e operativo.";
     action = "Riattiva il tuo account";
   } else if (sub.pausedReason === "SUBSCRIPTION_ENDED") {

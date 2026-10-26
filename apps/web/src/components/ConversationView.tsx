@@ -3,7 +3,8 @@
 import { Fragment, useEffect, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { ConversationEvent } from "@professionisti/shared";
+import { JOB_LIMIT_REACHED_MESSAGE, type ConversationEvent, type MySubscription } from "@professionisti/shared";
+import { ApiError } from "@professionisti/api-client";
 import { Avatar, Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { subscribeRealtimeEvents } from "@/lib/realtimeBus";
@@ -12,6 +13,7 @@ import { ClientProfileModal } from "@/components/ClientProfileModal";
 import { MediaPreview } from "@/components/MediaPreview";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { UploadingDots } from "@/components/UploadingDots";
+import { JobLimitModal } from "@/components/JobLimitModal";
 import { attachmentFileName, documentTypeLabel, isDocumentUrl } from "@/lib/media";
 import { personalizeEventMessage } from "@/lib/conversationText";
 
@@ -198,6 +200,20 @@ export function ConversationView({
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // Prima risposta con i lavori esauriti (docs/CHANGELOG.md §357): la stessa
+  // finestra del preventivo, con la richiesta e il livello superiore.
+  const [jobLimit, setJobLimit] = useState<{ sub: MySubscription; request: string } | null>(null);
+
+  async function openJobLimit(): Promise<boolean> {
+    try {
+      const [sub, leads] = await Promise.all([apiClient.getMySubscription(token), apiClient.myLeads(token)]);
+      const request = leads.find((lead) => lead.guidedRequest.id === guidedRequestId)?.guidedRequest;
+      setJobLimit({ sub, request: request ? `${request.categoryLabel} · ${request.city}` : "questa richiesta" });
+      return true;
+    } catch {
+      return false;
+    }
+  }
   const [openPhoto, setOpenPhoto] = useState<{ photos: string[]; index: number } | null>(null);
   // Tre input distinti al posto di un unico "+" (richiesta esplicita
   // dell'utente: "al posto del file più, metti il simbolo di una graffetta
@@ -482,6 +498,7 @@ export function ConversationView({
       setMessage("");
       setMediaUrls([]);
     } catch (err) {
+      if (viewerRole === "PROFESSIONAL" && err instanceof ApiError && err.status === 403 && err.message === JOB_LIMIT_REACHED_MESSAGE && (await openJobLimit())) return;
       setSubmitError(err instanceof Error ? err.message : "Errore durante l'invio dell'aggiornamento.");
     } finally {
       setIsSubmitting(false);
@@ -854,6 +871,18 @@ export function ConversationView({
           <Text color={brand.urgenza} fontSize={13} paddingLeft={52}>
             {mediaError}
           </Text>
+        ) : null}
+        {jobLimit ? (
+          <JobLimitModal
+            sub={jobLimit.sub}
+            request={jobLimit.request}
+            onClose={() => setJobLimit(null)}
+            onUpgraded={() => {
+              // Passaggio fatto senza lasciare il sito: il messaggio scritto parte subito.
+              setJobLimit(null);
+              void handleSubmit();
+            }}
+          />
         ) : null}
         {submitError ? (
           <Text color={brand.urgenza} fontSize={13} paddingLeft={52}>

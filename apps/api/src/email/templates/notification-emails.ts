@@ -1290,13 +1290,16 @@ const BUILDERS: Record<string, Builder> = {
     details: str(payload.date) ? [{ label: "Gratis fino al", value: formatDay(str(payload.date)) }] : undefined,
     cta: subscriptionPage(),
   }),
+  // I primi 100 professionisti hanno 3 mesi gratis (docs/CHANGELOG.md §358).
   SUBSCRIPTION_TRIAL_ENDING: (payload, ctx) => ({
     kind: "account",
-    subject: "Il tuo mese gratuito sta per finire",
+    subject: payload.founder === true ? "I tuoi 3 mesi gratis stanno per finire" : "Il tuo mese gratuito sta per finire",
     greeting: ctx.name,
-    title: "Il mese gratuito sta per finire",
+    title: payload.founder === true ? "I 3 mesi gratis stanno per finire" : "Il mese gratuito sta per finire",
     paragraphs: [
-      `Il tuo mese gratuito finisce il **${formatDay(str(payload.date))}**.`,
+      payload.founder === true
+        ? `I tuoi 3 mesi gratis finiscono il **${formatDay(str(payload.date))}**.`
+        : `Il tuo mese gratuito finisce il **${formatDay(str(payload.date))}**.`,
       "Scegli un livello per restare visibile nelle ricerche e continuare a ricevere richieste.",
     ],
     cta: { label: "Scegli un livello", url: `${frontendUrl()}/dashboard/abbonamento` },

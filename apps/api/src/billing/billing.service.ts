@@ -4,13 +4,14 @@ import type { PrismaClient } from "@professionisti/database";
 import {
   SUBSCRIPTION_TIERS,
   subscriptionTierInfo,
+  freePeriodUpgradeFeeEurCents,
   upgradeFeeEurCents,
   type BillingInterval,
   type SubscriptionTier,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service";
-import { FREE_PERIOD_MS, hasLaunched, launchDate, subscriptionState, tierOfPlan, trialEndFor } from "../subscriptions/subscription-rules";
+import { hasLaunched, launchDate, subscriptionState, tierOfPlan, trialDaysOf, trialEndFor } from "../subscriptions/subscription-rules";
 import { BookingsService } from "../bookings/bookings.service";
 import { JobPaymentsService } from "../job-payments/job-payments.service";
 import { ProfessionalFiscalService } from "../professional-fiscal/professional-fiscal.service";
@@ -226,7 +227,7 @@ export class BillingService {
     // la prova finisce un mese dopo il lancio (docs/CHANGELOG.md §170).
     const launch = launchDate();
     const preLaunchTrial = current?.status === "TRIALING" && launch !== null && !hasLaunched(now, launch);
-    const trialEndsAt = preLaunchTrial ? trialEndFor(now, launch) : current?.trialEndsAt;
+    const trialEndsAt = preLaunchTrial ? trialEndFor(now, launch, trialDaysOf(current)) : current?.trialEndsAt;
     const trialEnd =
       (preLaunchTrial || state === "TRIAL") && trialEndsAt && trialEndsAt.getTime() - now.getTime() > MIN_TRIAL_END_MS
         ? Math.floor(trialEndsAt.getTime() / 1000)
@@ -268,9 +269,9 @@ export class BillingService {
     return { url: session.url };
   }
 
-  /** Quota per avere un livello sopra Base nei giorni gratuiti che restano (periodo di 30 giorni). */
+  /** Quota per avere un livello sopra Base nei giorni gratuiti che restano (a mesi di 30 giorni, §358). */
   private trialUpgradeFee(plan: SubscriptionTier, trialEndsAt: Date, now: Date): number {
-    return upgradeFeeEurCents({ from: "BASE", to: plan, interval: "MONTH", remainingMs: trialEndsAt.getTime() - now.getTime(), periodMs: FREE_PERIOD_MS });
+    return freePeriodUpgradeFeeEurCents({ from: "BASE", to: plan, remainingMs: trialEndsAt.getTime() - now.getTime() });
   }
 
   private async upgradeTier(
@@ -298,13 +299,7 @@ export class BillingService {
     // di pagamento; il nuovo canone parte a fine periodo gratuito.
     if (subscription.status === "trialing") {
       const trialEndsAt = subscription.trial_end ? new Date(subscription.trial_end * 1000) : now;
-      const fee = upgradeFeeEurCents({
-        from: currentTier ?? "BASE",
-        to: plan,
-        interval: "MONTH",
-        remainingMs: trialEndsAt.getTime() - now.getTime(),
-        periodMs: FREE_PERIOD_MS,
-      });
+      const fee = freePeriodUpgradeFeeEurCents({ from: currentTier ?? "BASE", to: plan, remainingMs: trialEndsAt.getTime() - now.getTime() });
       if (fee === 0) return this.switchPrice(stripe, subscription.id, item.id, priceId);
       const session = await stripe.checkout.sessions.create({
         mode: "payment",

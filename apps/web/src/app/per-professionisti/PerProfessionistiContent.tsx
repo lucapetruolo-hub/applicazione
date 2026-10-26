@@ -10,7 +10,9 @@ import {
   SUBSCRIPTION_TIERS,
   formatEur,
   withVatEurCents,
+  FOUNDER_FREE_MONTHS,
   type BillingInterval,
+  type FounderSpots,
   type ProfessionalCategorySlug,
   type SubscriptionTier,
 } from "@professionisti/shared";
@@ -48,7 +50,7 @@ import { useOnlinePayments } from "@/lib/onlinePayments";
 const LINE = "rgba(43,36,32,0.12)";
 const MAX_WIDTH = 1160;
 
-export function PerProfessionistiContent() {
+export function PerProfessionistiContent({ founders = null }: { founders?: FounderSpots | null }) {
   const { user } = useAuth();
   const ctaHref = user?.isProfessional ? "/dashboard/abbonamento" : "/registrati?ruolo=professionista";
   const ctaLabel = user?.isProfessional ? "Vai al tuo abbonamento" : "Iscriviti gratis";
@@ -61,8 +63,8 @@ export function PerProfessionistiContent() {
       <ProBenefits />
       <ProGallery />
       <ProSteps />
-      <ProPricing isProfessional={Boolean(user?.isProfessional)} />
-      <ProFaq />
+      <ProPricing isProfessional={Boolean(user?.isProfessional)} founders={founders} />
+      <ProFaq founderOffer={Boolean(founders && founders.left > 0)} />
       <ProFinalCta />
     </YStack>
   );
@@ -521,9 +523,47 @@ const TIER_FOR: Record<SubscriptionTier, string> = {
  * Prezzi + IVA con l'IVA compresa in piccolo, mensile o annuale con
  * l'annuale in vista (decisioni dell'utente del 26/10/2026, §356).
  */
-function ProPricing({ isProfessional }: { isProfessional: boolean }) {
+/**
+ * Banda verde dell'offerta di lancio (§358, anteprima approvata da Luca):
+ * "GRATIS PER 3 MESI" ben in vista con i posti rimasti.
+ */
+function FounderBand({ spots }: { spots: FounderSpots }) {
+  return (
+    <XStack
+      width="100%"
+      backgroundColor={brand.cianografiaPieno}
+      paddingHorizontal="$5"
+      paddingVertical="$4"
+      gap="$4"
+      alignItems="center"
+      justifyContent="space-between"
+      $gtMd={{ paddingHorizontal: "$6", paddingVertical: "$5" }}
+    >
+      <YStack flex={1} gap="$1">
+        <Text tag="p" margin={0} fontFamily="$heading" fontWeight="800" fontSize={28} lineHeight={32} letterSpacing={-0.5} color="white" $gtSm={{ fontSize: 40, lineHeight: 44 }}>
+          GRATIS PER {FOUNDER_FREE_MONTHS} MESI
+        </Text>
+        <Text color="white" fontSize={15} lineHeight={21}>
+          Per i primi {spots.total} professionisti che si iscrivono. Poi decidi tu se continuare.
+        </Text>
+      </YStack>
+      <YStack alignItems="center" backgroundColor="rgba(255,255,255,0.14)" borderRadius={10} paddingHorizontal="$3" paddingVertical="$2" minWidth={88}>
+        <Text fontFamily="$heading" fontWeight="800" fontSize={30} lineHeight={34} color="white">
+          {spots.left}
+        </Text>
+        <Text color="white" fontSize={13}>
+          {spots.left === 1 ? "posto rimasto" : "posti rimasti"}
+        </Text>
+      </YStack>
+    </XStack>
+  );
+}
+
+function ProPricing({ isProfessional, founders }: { isProfessional: boolean; founders: FounderSpots | null }) {
   const [interval, setInterval] = useState<BillingInterval>("YEAR");
   const annual = interval === "YEAR";
+  // Offerta di lancio finché restano posti (decisione dell'utente, §358).
+  const offer = founders && founders.left > 0 ? founders : null;
   return (
     <Band id="prezzi">
       <YStack paddingHorizontal="$5" paddingVertical="$7" gap="$4" $gtMd={{ paddingHorizontal: "$6", paddingVertical: "$9" }}>
@@ -546,6 +586,7 @@ function ProPricing({ isProfessional }: { isProfessional: boolean }) {
         </YStack>
         <BillingIntervalToggle value={interval} onChange={setInterval} />
       </YStack>
+      {offer ? <FounderBand spots={offer} /> : null}
       <Grid>
         {SUBSCRIPTION_TIERS.map((tier) => {
           const welcome = tier.tier === "BASE";
@@ -584,7 +625,7 @@ function ProPricing({ isProfessional }: { isProfessional: boolean }) {
                       paddingVertical={2}
                       borderRadius="$10"
                     >
-                      Offerta di benvenuto
+                      {offer ? "Offerta di lancio" : "Offerta di benvenuto"}
                     </Text>
                   ) : null}
                 </XStack>
@@ -601,9 +642,10 @@ function ProPricing({ isProfessional }: { isProfessional: boolean }) {
                     <Text fontFamily="$heading" fontWeight="800" fontSize="$9" color={brand.cianografiaScuro}>
                       Gratis
                     </Text>
+                    {offer ? <Text color={brand.grafite70}>per {FOUNDER_FREE_MONTHS} mesi</Text> : null}
                   </XStack>
                   <Text color={brand.grafite70} fontSize={13}>
-                    il primo mese, poi {formatEur(periodPrice)} {per} + IVA
+                    {offer ? "poi" : "il primo mese, poi"} {formatEur(periodPrice)} {per} + IVA
                   </Text>
                 </YStack>
               ) : (
@@ -672,7 +714,13 @@ function ProPricing({ isProfessional }: { isProfessional: boolean }) {
 }
 
 /** Solo fatti già decisi e in funzione (CLAUDE.md §5 punto 9, §6). */
-const FAQ: { question: string; answer: string; paymentsLink?: boolean }[] = [
+const FAQ: { question: string; answer: string; paymentsLink?: boolean; founderOffer?: boolean }[] = [
+  {
+    question: "Come funzionano i 3 mesi gratis?",
+    answer:
+      "Ai primi 100 professionisti che completano il profilo il livello Base è gratis per 3 mesi, a partire dal lancio del sito. Se ti servono più lavori puoi passare a Plus o Pro anche durante i mesi gratis, pagando la quota di passaggio. Alla fine scegli tu se continuare: niente rinnovo se non scegli un livello.",
+    founderOffer: true,
+  },
   {
     question: "Quando vedo i contatti del cliente?",
     answer: "Quando il cliente accetta il tuo preventivo. Prima vedi la città, la descrizione del lavoro, le foto e la vostra chat.",
@@ -705,7 +753,7 @@ const FAQ: { question: string; answer: string; paymentsLink?: boolean }[] = [
   },
 ];
 
-function ProFaq() {
+function ProFaq({ founderOffer }: { founderOffer: boolean }) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
   return (
@@ -734,7 +782,7 @@ function ProFaq() {
         </YStack>
         <YStack backgroundColor={brand.gesso} flexGrow={1} $gtSm={{ width: "50%" }}>
           <div className="pro-faq">
-            {FAQ.map((item, index) => (
+            {FAQ.filter((item) => !item.founderOffer || founderOffer).map((item, index) => (
               <details key={item.question} className="pro-faq-item" open={index === 0}>
                 <summary>{item.question}</summary>
                 <p>

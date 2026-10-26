@@ -83,7 +83,7 @@ export function JobLimitModal({
         alignItems: "center",
         justifyContent: "center",
         padding: 16,
-        zIndex: 400,
+        zIndex: 2100,
       }}
     >
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="job-limit-title" style={{ width: "100%", maxWidth: 460, maxHeight: "100%", overflowY: "auto" }}>

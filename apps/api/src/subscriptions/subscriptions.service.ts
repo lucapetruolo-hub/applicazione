@@ -2,6 +2,8 @@ import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import {
+  FOUNDER_SPOTS,
+  FOUNDER_TRIAL_DAYS,
   BONUS_MONTH_DAYS,
   BONUS_MONTH_NOTICE_DAYS,
   RENEWAL_NOTICE_DAYS,
@@ -9,6 +11,7 @@ import {
   tierPeriodPriceEurCents,
   type MySubscription,
   type BillingInterval,
+  type FounderSpots,
   type PauseReason,
   type SubscriptionTier,
 } from "@professionisti/shared";
@@ -18,6 +21,7 @@ import { identityVerificationNeeded } from "../identity-verification/identity-pr
 import { NotificationsService } from "../notifications/notifications.service";
 import {
   countsClientsOnce,
+  founderFreeMonths,
   hasLaunched,
   jobLimitReached,
   launchDate,
@@ -26,6 +30,7 @@ import {
   periodNoticeToSend,
   subscriptionState,
   tierOfPlan,
+  trialDaysOf,
   trialEndFor,
   upgradeQuotes,
   usageNoticeToSend,
@@ -83,6 +88,46 @@ export class SubscriptionsService {
       },
       update: {},
     });
+  }
+
+  /**
+   * Offerta di lancio (decisione dell'utente, docs/CHANGELOG.md §358): ai
+   * primi 100 professionisti con il profilo completo (non quelli di prova,
+   * non i profili creati da un operatore finché non li confermano) 3 mesi
+   * gratis dal lancio al posto del mese gratuito. Idempotente; chi ha già un
+   * abbonamento Stripe o un posto non ne prende un altro. Due iscrizioni
+   * nello stesso istante: il numero è unico, la seconda riprova col successivo.
+   */
+  async claimFounderSpot(professionalProfileId: string, now = new Date()): Promise<boolean> {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const profile = await this.prisma.professionalProfile.findUnique({
+        where: { id: professionalProfileId },
+        select: { isDemo: true, deletedAt: true, invitePendingAt: true, subscription: true },
+      });
+      const sub = profile?.subscription;
+      if (!profile || !sub || profile.isDemo || profile.deletedAt || profile.invitePendingAt) return false;
+      if (sub.founderNumber) return true;
+      if (sub.status !== "TRIALING" || sub.stripeSubscriptionId) return false;
+      const last = await this.prisma.subscription.aggregate({ _max: { founderNumber: true } });
+      const next = (last._max.founderNumber ?? 0) + 1;
+      if (next > FOUNDER_SPOTS) return false;
+      // I tre mesi partono dal lancio (o da oggi dopo il lancio), mai prima della prova già data.
+      const founderEnd = trialEndFor(now, launchDate(), FOUNDER_TRIAL_DAYS);
+      const trialEndsAt = sub.trialEndsAt && sub.trialEndsAt.getTime() > founderEnd.getTime() ? sub.trialEndsAt : founderEnd;
+      try {
+        await this.prisma.subscription.update({ where: { id: sub.id }, data: { founderNumber: next, trialEndsAt } });
+        return true;
+      } catch (error) {
+        if ((error as { code?: string }).code !== "P2002") throw error;
+      }
+    }
+    return false;
+  }
+
+  /** Posti dell'offerta di lancio rimasti (pagina prezzi). */
+  async founderSpots(): Promise<FounderSpots> {
+    const last = await this.prisma.subscription.aggregate({ _max: { founderNumber: true } });
+    return { total: FOUNDER_SPOTS, left: Math.max(0, FOUNDER_SPOTS - (last._max.founderNumber ?? 0)) };
   }
 
   /**
@@ -185,7 +230,7 @@ export class SubscriptionsService {
     // un mese dopo il lancio, o non ha ancora una data se il lancio non è fissato.
     const waitingLaunch = !hasLaunched(now, launch) && (!sub || sub.status === "TRIALING");
     const state = waitingLaunch ? "TRIAL" : subscriptionState(sub, now);
-    const trialEndsAt = waitingLaunch ? (launch ? trialEndFor(now, launch) : null) : (sub?.trialEndsAt ?? null);
+    const trialEndsAt = waitingLaunch ? (launch ? trialEndFor(now, launch, trialDaysOf(sub)) : null) : (sub?.trialEndsAt ?? null);
     const tier = sub && state !== "TRIAL" && state !== "TRIAL_ENDED" ? tierOfPlan(sub.plan) : null;
     return {
       state,
@@ -195,6 +240,7 @@ export class SubscriptionsService {
       cancelAtPeriodEnd: Boolean(sub?.cancelAtPeriodEnd),
       trialEndsAt: trialEndsAt?.toISOString() ?? null,
       bonusMonthGranted: Boolean(sub?.bonusMonthGrantedAt),
+      founder: founderFreeMonths(sub?.founderNumber, trialEndsAt, now),
       usage: {
         used,
         limit: monthlyLimit(sub, now),
@@ -310,11 +356,17 @@ export class SubscriptionsService {
     const launch = launchDate();
     if (!hasLaunched(now, launch)) return 0;
     const launchTrialEnd = trialEndFor(launch!, launch);
+    // I fondatori hanno tre mesi dal lancio (§358).
+    const founderTrialEnd = trialEndFor(launch!, launch, FOUNDER_TRIAL_DAYS);
+    const founders = await this.prisma.subscription.updateMany({
+      where: { status: "TRIALING", stripeSubscriptionId: null, founderNumber: { not: null }, createdAt: { lt: launch! }, trialEndsAt: { lt: founderTrialEnd } },
+      data: { trialEndsAt: founderTrialEnd },
+    });
     const result = await this.prisma.subscription.updateMany({
-      where: { status: "TRIALING", stripeSubscriptionId: null, createdAt: { lt: launch! }, trialEndsAt: { lt: launchTrialEnd } },
+      where: { status: "TRIALING", stripeSubscriptionId: null, founderNumber: null, createdAt: { lt: launch! }, trialEndsAt: { lt: launchTrialEnd } },
       data: { trialEndsAt: launchTrialEnd },
     });
-    return result.count;
+    return founders.count + result.count;
   }
 
   /** Ogni giorno: avviso pochi giorni prima del rinnovo automatico, o della fine se annullato. */
@@ -369,7 +421,8 @@ export class SubscriptionsService {
     for (const sub of subs) {
       try {
         const userId = sub.professionalProfile.userId;
-        if (!sub.bonusMonthGrantedAt) {
+        // Ai fondatori niente mese a sorpresa: hanno già tre mesi (§358).
+        if (!sub.bonusMonthGrantedAt && !sub.founderNumber) {
           const jobs = await this.prisma.booking.count({ where: { professionalProfileId: sub.professionalProfileId } });
           if (jobs === 0) {
             const trialEndsAt = new Date(sub.trialEndsAt!.getTime() + BONUS_MONTH_DAYS * DAY_MS);
@@ -383,6 +436,7 @@ export class SubscriptionsService {
           await this.notificationsService.notify(userId, "SUBSCRIPTION_TRIAL_ENDING", {
             trialEndsAt: sub.trialEndsAt!.toISOString(),
             date: sub.trialEndsAt!.toISOString(),
+            founder: Boolean(sub.founderNumber),
           });
         }
       } catch (error) {

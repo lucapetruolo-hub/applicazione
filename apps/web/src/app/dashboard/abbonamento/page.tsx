@@ -49,6 +49,8 @@ function shortDate(iso: string): string {
   return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "Europe/Rome" });
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 function dayMonth(iso: string): string {
   return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "long", timeZone: "Europe/Rome" });
 }
@@ -80,6 +82,15 @@ function statusText(sub: MySubscription): { title: string; detail: string } {
   const trialFuture = sub.trialEndsAt && new Date(sub.trialEndsAt).getTime() > Date.now();
   switch (sub.state) {
     case "TRIAL":
+      // Primi 100 professionisti: 3 mesi gratis invece di uno (docs/CHANGELOG.md §358).
+      if (sub.founder) {
+        return {
+          title: `${sub.founder.months} mesi gratis · livello Base`,
+          detail: sub.trialEndsAt
+            ? `Sei tra i primi 100 professionisti: usi tutte le funzioni del livello Base gratis fino al ${formatDate(sub.trialEndsAt)}. Poi scegli tu se continuare.`
+            : `Sei tra i primi 100 professionisti: usi tutte le funzioni del livello Base gratis. I ${sub.founder.months} mesi partono il giorno del lancio del sito.`,
+        };
+      }
       return {
         title: sub.bonusMonthGranted ? "Mese gratuito in regalo · livello Base" : "Mese gratuito · livello Base",
         detail: sub.trialEndsAt
@@ -87,7 +98,7 @@ function statusText(sub: MySubscription): { title: string; detail: string } {
           : "Usi tutte le funzioni del livello Base gratis. Il mese gratuito inizia il giorno del lancio del sito: prima non scorre.",
       };
     case "TRIAL_ENDED":
-      return { title: "Mese gratuito terminato", detail: "Scegli il livello che fa per te qui sotto." };
+      return { title: sub.founder ? "Mesi gratuiti terminati" : "Mese gratuito terminato", detail: "Scegli il livello che fa per te qui sotto." };
     case "ACTIVE":
       if (sub.cancelAtPeriodEnd && sub.currentPeriodEnd) {
         return { title: `Livello ${tierLabel} · annullato`, detail: `Resta attivo fino al ${formatDate(sub.currentPeriodEnd)}, poi non si rinnova.` };
@@ -96,7 +107,7 @@ function statusText(sub: MySubscription): { title: string; detail: string } {
         title: `Livello ${tierLabel}`,
         detail:
           trialFuture && sub.trialEndsAt
-            ? `Il primo addebito parte alla fine del mese gratuito, il ${formatDate(sub.trialEndsAt)}, poi si rinnova in automatico ${sub.billingInterval === "YEAR" ? "ogni anno" : "ogni mese"}.`
+            ? `Il primo addebito parte alla fine ${sub.founder ? "dei mesi gratuiti" : "del mese gratuito"}, il ${formatDate(sub.trialEndsAt)}, poi si rinnova in automatico ${sub.billingInterval === "YEAR" ? "ogni anno" : "ogni mese"}.`
             : sub.currentPeriodEnd
               ? `Si rinnova in automatico il ${formatDate(sub.currentPeriodEnd)}. Ti avvisiamo qualche giorno prima.`
               : `Si rinnova in automatico ${sub.billingInterval === "YEAR" ? "ogni anno" : "ogni mese"}.`,
@@ -106,6 +117,58 @@ function statusText(sub: MySubscription): { title: string; detail: string } {
     case "CANCELED":
       return { title: "Abbonamento concluso", detail: "Scegli di nuovo un livello quando vuoi." };
   }
+}
+
+/**
+ * Tre caselle dei mesi gratuiti dei primi 100 professionisti (decisione
+ * dell'utente, docs/CHANGELOG.md §358): usato, in corso, da fare.
+ */
+function FounderMonths({ founder, trialEndsAt }: { founder: NonNullable<MySubscription["founder"]>; trialEndsAt: string | null }) {
+  const current = founder.currentMonth ?? 0;
+  const start = trialEndsAt ? new Date(trialEndsAt).getTime() - founder.months * 30 * DAY_MS : null;
+  return (
+    <YStack gap="$2">
+      <Text fontWeight="700" color={brand.grafite}>
+        {current > 0 ? `Sei nel ${current}° mese gratis su ${founder.months}` : `I tuoi ${founder.months} mesi gratis partono al lancio`}
+      </Text>
+      <XStack gap="$2">
+        {Array.from({ length: founder.months }, (_, index) => {
+          const month = index + 1;
+          const state = month < current ? "Usato" : month === current ? "In corso" : "Da fare";
+          const active = month === current;
+          return (
+            <YStack
+              key={month}
+              flex={1}
+              flexBasis={0}
+              minWidth={0}
+              borderRadius={10}
+              padding="$2.5"
+              gap={2}
+              borderWidth={active ? 2 : 1}
+              borderColor={active ? brand.cianografia : brand.filetto}
+              backgroundColor={month < current ? brand.cianografiaVelo : active ? brand.calce : brand.gesso}
+            >
+              <Text fontSize={13} color={brand.grafite70}>
+                {month}° mese
+              </Text>
+              <XStack alignItems="center" gap={4}>
+                {month < current ? <Check size={14} strokeWidth={2.5} color={brand.cianografiaScuro} /> : null}
+                <Text fontWeight="700" color={month <= current ? brand.cianografiaScuro : brand.grafite70}>
+                  {state}
+                </Text>
+              </XStack>
+              {start !== null ? (
+                <Text fontSize={13} color={brand.grafite70}>
+                  dal {shortDate(new Date(start + index * 30 * DAY_MS).toISOString())}
+                </Text>
+              ) : null}
+            </YStack>
+          );
+        })}
+      </XStack>
+    </YStack>
+  );
 }
 
 export default function AbbonamentoPage() {
@@ -311,6 +374,7 @@ function AbbonamentoContent() {
               </Text>
               <Text color={brand.grafite70}>{status.detail}</Text>
             </YStack>
+            {sub.founder && sub.founder.currentMonth !== null ? <FounderMonths founder={sub.founder} trialEndsAt={sub.trialEndsAt} /> : null}
             <YStack gap="$2">
               <XStack justifyContent="space-between" flexWrap="wrap" gap="$2">
                 <Text fontWeight="700" color={brand.grafite}>
@@ -469,7 +533,7 @@ function AbbonamentoContent() {
                   ) : null}
                   {!current && inTrial && tier.tier === "BASE" ? (
                     <Text color={brand.grafite70} fontSize={15}>
-                      Nessun addebito fino alla fine del mese gratuito.
+                      Nessun addebito fino alla fine {sub?.founder ? "dei mesi gratuiti" : "del mese gratuito"}.
                     </Text>
                   ) : null}
                   <YStack flex={1} />

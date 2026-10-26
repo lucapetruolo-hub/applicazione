@@ -21053,3 +21053,20 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - Sito: `JobLimitModal` al posto del modulo del preventivo in Richieste; Abbonamento con "Lavori dal 18 ottobre al 17 novembre: 2 su 3" e la riga sul cliente che conta una volta; banner "Hai esaurito l'abbonamento" come avviso (il profilo resta visibile); email e notifiche del limite, domande frequenti e Termini riscritti.
 
 **Verifica**: typecheck di web e api, `pnpm lint`, test dell'API (nuovi su periodo dal rinnovo, fine mese, annuale, prova, stesso cliente e limite senza pausa); pagine aperte in locale con le risposte dell'API simulate, da telefono e da computer.
+
+## 358. Primi 100 professionisti: 3 mesi gratis; finestra dei lavori esauriti anche in chat
+
+**Richiesta**: Luca, 26/10/2026, "effettua miglioria 1 e 3" dopo la seconda parte del nuovo abbonamento (§357). La miglioria 2 (togliere "Prenota online" dal profilo con i lavori esauriti) non si fa: "al professionista si deve dare la possibilità di ricevere richieste".
+
+**Miglioria 1, finestra in chat**: con i lavori esauriti la prima risposta del professionista a una richiesta nuova apre la stessa finestra del preventivo ("Hai esaurito l'abbonamento Base", la richiesta, il livello sopra, una cifra) invece del messaggio d'errore. `ConversationView` riconosce l'errore dell'API dal testo condiviso `JOB_LIMIT_REACHED_MESSAGE` (spostato in `packages/shared/src/plans.ts`); passato di livello senza lasciare il sito, il messaggio scritto parte da solo.
+
+**Miglioria 3, offerta di lancio** (decisioni del 26/10, `analisi/nuovo-modello-abbonamento.md`):
+- Ai **primi 100 professionisti con il profilo completo** il livello Base è gratis per **3 mesi** (tre periodi da 30 giorni) dal lancio, o dall'iscrizione se dopo. Nuova colonna `Subscription.founderNumber` (unica, migrazione `20261026130000_offerta_fondatori`), assegnata da `claimFounderSpot` alla creazione del profilo, o alla conferma per i profili creati da un operatore; mai ai profili di prova né a chi ha già un abbonamento Stripe. Due iscrizioni insieme: il numero è unico e la seconda riprova. `alignTrialsToLaunch` porta i fondatori iscritti prima del lancio a lancio + 90 giorni. Niente mese a sorpresa per i fondatori.
+- **Pagina prezzi**: banda verde "GRATIS PER 3 MESI" con "Per i primi 100 professionisti che si iscrivono. Poi decidi tu se continuare." e i posti rimasti; Base con prezzo barrato, "Gratis per 3 mesi" e "Offerta di lancio"; domanda frequente "Come funzionano i 3 mesi gratis?". I posti arrivano dal server (`GET /subscriptions/founders`, pubblico) e la pagina si rigenera ogni 10 minuti, così la banda non compare in ritardo spostando i prezzi; finiti i posti o con l'API ferma resta il mese gratuito.
+- **Abbonamento**: "3 mesi gratis · livello Base" e le tre caselle "Sei nel 2° mese gratis su 3" (Usato / In corso / Da fare, con la data d'inizio di ogni mese); prima del lancio "I tuoi 3 mesi gratis partono al lancio".
+- **Quota di passaggio nei giorni gratuiti**: come se Base costasse 19 €, 10 € più la differenza mensile per tutti i giorni gratuiti che restano (a mesi di 30 giorni), maggiorata del 10% (`freePeriodUpgradeFeeEurCents`). Prima la quota non andava oltre un mese: con tre mesi davanti si sarebbe pagato un mese solo per averne tre di Plus. Vale anche per il mese regalato.
+- **Testi**: Termini, email e notifica di fine periodo gratuito ("I tuoi 3 mesi gratis stanno per finire"), banner a fine prova.
+
+**Non fatto**: "i clienti dal link personale non contano", perché il link personale del professionista non esiste ancora.
+
+**Verifica**: typecheck di web e api, `pnpm lint`, test dell'API (posto successivo, posti finiti, profili esclusi, iscrizioni simultanee, posti rimasti, tre mesi dal lancio, caselle dei mesi, quota nei giorni gratuiti); pagine aperte in locale con l'API simulata, da telefono e da computer.
