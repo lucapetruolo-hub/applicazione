@@ -2182,6 +2182,18 @@ a.admin-kpi:hover {
   gap: 12px;
   align-items: start;
 }
+.admin-table-numbers td:not(:first-child),
+.admin-table-numbers th:not(:first-child) {
+  font-variant-numeric: tabular-nums;
+}
+.admin-table.admin-table-numbers tr:nth-child(n) td.is-alert {
+  color: #b02a37;
+  font-weight: 700;
+}
+.admin-table-total td {
+  font-weight: 800;
+  border-top: 1px solid #e8dfd5;
+}
 .admin-chart-head {
   display: flex;
   justify-content: space-between;
@@ -5520,6 +5532,13 @@ a.admin-kpi:hover {
     color: #6e6459;
     min-width: 0;
     overflow-wrap: anywhere;
+  }
+  /* Tabelle di numeri: ogni numero con il suo nome davanti (§369). */
+  .admin-table-numbers td[data-label]::before {
+    content: attr(data-label) ": ";
+  }
+  .admin-table-numbers tr {
+    column-gap: 16px;
   }
   .admin-table tr:not(:has(.admin-cell-main)) td:first-child,
   .admin-table tr:nth-child(n) td.admin-cell-main {

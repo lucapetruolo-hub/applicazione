@@ -2,13 +2,13 @@ import { ACTION_SHORT_LABEL, auditLabel } from "./audit-label";
 import { AdminSecurityAlertsService } from "./admin-security-alerts.service";
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ContentReportTargetType, ModerationAction, Prisma, PrismaClient } from "@professionisti/database";
-import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource, type AdminProfessionalStats } from "@professionisti/shared";
+import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource, type AdminProfessionalStats, PROFESSIONAL_ACTIVITY_DAYS } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
-import { buildProfessionalStats } from "./professional-stats";
+import { buildCategoryActivity, buildChurnByMonth, buildCoverage, buildProfessionalStats, professionalStatusOf } from "./professional-stats";
 
 export type AdminUserRow = {
   id: string;
@@ -109,20 +109,113 @@ export class AdminService {
   async getProfessionalStats(params: { category?: string; city?: string }): Promise<AdminProfessionalStats> {
     const filter = professionalFilterWhere(params);
     const active: Prisma.ProfessionalProfileWhereInput = { deletedAt: null, user: { deletedAt: null } };
-    const [rows, deleted, demo, cities] = await Promise.all([
-      this.prisma.professionalProfile.findMany({ where: { AND: [filter, active, { isDemo: false }] }, select: PROFESSIONAL_STATS_SELECT }),
+    const counted: Prisma.ProfessionalProfileWhereInput = { AND: [filter, active, { isDemo: false }] };
+    const now = new Date();
+    const since30 = new Date(now.getTime() - 30 * DAY_MS);
+    const since90 = new Date(now.getTime() - PROFESSIONAL_ACTIVITY_DAYS * DAY_MS);
+    const since12m = new Date(now.getTime() - 366 * DAY_MS);
+    // Richieste, risposte e preventivi: la categoria è quella della richiesta.
+    const requestCategory = params.category?.trim() ? { category: { slug: params.category.trim() } } : {};
+    const proAnswer = { actor: "PROFESSIONAL" as const, automatic: false };
+    const [rows, deleted, demo, cities, activeQuotes, activeMessages, requests, leads, quotes, reviews, deletedProfiles, canceled] = await Promise.all([
+      this.prisma.professionalProfile.findMany({ where: counted, select: PROFESSIONAL_STATS_SELECT }),
       this.prisma.professionalProfile.count({ where: { AND: [filter, { OR: [{ deletedAt: { not: null } }, { user: { deletedAt: { not: null } } }] }] } }),
       this.prisma.professionalProfile.count({ where: { AND: [filter, active, { isDemo: true }] } }),
       this.prisma.professionalProfile.groupBy({ by: ["city"], where: { AND: [active, { isDemo: false }] }, orderBy: { city: "asc" } }),
+      this.prisma.quote.groupBy({ by: ["professionalProfileId"], where: { createdAt: { gte: since30 }, professionalProfile: counted } }),
+      this.prisma.conversationEvent.groupBy({ by: ["professionalProfileId"], where: { ...proAnswer, createdAt: { gte: since30 }, professionalProfile: counted } }),
+      this.prisma.guidedRequest.findMany({
+        where: {
+          createdAt: { gte: since90 },
+          hiddenAt: null,
+          ...requestCategory,
+          ...(params.city?.trim() ? { city: { equals: params.city.trim(), mode: "insensitive" as const } } : {}),
+        },
+        orderBy: { createdAt: "desc" },
+        select: { city: true, category: { select: { slug: true } }, _count: { select: { quotes: true } } },
+      }),
+      this.prisma.lead.findMany({
+        where: { createdAt: { gte: since90 }, professionalProfile: counted, guidedRequest: requestCategory },
+        select: { guidedRequestId: true, professionalProfileId: true, createdAt: true, status: true, guidedRequest: { select: { category: { select: { slug: true } } } } },
+      }),
+      this.prisma.quote.findMany({
+        where: { createdAt: { gte: since90 }, professionalProfile: counted, guidedRequest: requestCategory },
+        select: { status: true, booking: { select: { id: true } }, guidedRequest: { select: { category: { select: { slug: true } } } } },
+      }),
+      this.prisma.review.findMany({
+        where: { hiddenAt: null, booking: { professionalProfile: counted } },
+        select: {
+          rating: true,
+          booking: {
+            select: {
+              quote: { select: { guidedRequest: { select: { category: { select: { slug: true } } } } } },
+              professionalProfile: { select: { category: { select: { slug: true } } } },
+            },
+          },
+        },
+      }),
+      this.prisma.professionalProfile.findMany({ where: { AND: [filter, { isDemo: false }, { deletedAt: { gte: since12m } }] }, select: { deletedAt: true } }),
+      this.prisma.subscription.findMany({
+        where: { updatedAt: { gte: since12m }, OR: [{ status: "CANCELED" }, { cancelAtPeriodEnd: true }], professionalProfile: { AND: [filter, { isDemo: false }] } },
+        select: { updatedAt: true },
+      }),
     ]);
-    return buildProfessionalStats(
-      rows.map((row) => ({
-        ...row,
-        categorySlugs: [row.category.slug, ...row.extraCategories.map((c) => c.slug)],
-      })),
-      new Date(),
-      { cityOptions: cities.map((c) => c.city).filter((c) => c.trim()), excluded: { deleted, demo } },
-    );
+
+    // Prima risposta del professionista a ogni richiesta ricevuta: preventivo o messaggio.
+    const requestIds = [...new Set(leads.map((l) => l.guidedRequestId))];
+    const [firstQuotes, firstMessages] = requestIds.length
+      ? await Promise.all([
+          this.prisma.quote.groupBy({ by: ["guidedRequestId", "professionalProfileId"], where: { guidedRequestId: { in: requestIds } }, _min: { createdAt: true } }),
+          this.prisma.conversationEvent.groupBy({ by: ["guidedRequestId", "professionalProfileId"], where: { ...proAnswer, guidedRequestId: { in: requestIds } }, _min: { createdAt: true } }),
+        ])
+      : [[], []];
+    const firstAnswer = new Map<string, Date>();
+    for (const row of [...firstQuotes, ...firstMessages]) {
+      const at = row._min.createdAt;
+      if (!at) continue;
+      const key = `${row.guidedRequestId}|${row.professionalProfileId}`;
+      const prev = firstAnswer.get(key);
+      if (!prev || at < prev) firstAnswer.set(key, at);
+    }
+
+    const statsRows = rows.map(({ category, extraCategories, agendaWeekTemplate, _count, ...row }) => ({
+      ...row,
+      categorySlugs: [category.slug, ...extraCategories.map((c) => c.slug)],
+      hasAgenda: agendaWeekTemplate !== null || _count.availabilitySlots > 0,
+      servicesCount: _count.services,
+      quotesCount: _count.quotes,
+      bookingsCount: _count.bookings,
+    }));
+    const reviewCategory = params.category?.trim();
+    return buildProfessionalStats(statsRows, now, {
+      cityOptions: cities.map((c) => c.city).filter((c) => c.trim()),
+      excluded: { deleted, demo },
+      activeIds: new Set([...activeQuotes, ...activeMessages].map((r) => r.professionalProfileId)),
+      coverage: buildCoverage(
+        requests.map((r) => ({ categorySlug: r.category.slug, city: r.city, quotes: r._count.quotes })),
+        statsRows.filter((row) => professionalStatusOf(row, now) === "VISIBLE"),
+      ),
+      byCategoryActivity: buildCategoryActivity({
+        leads: leads.map((l) => ({
+          categorySlug: l.guidedRequest.category.slug,
+          createdAt: l.createdAt,
+          answeredAt: firstAnswer.get(`${l.guidedRequestId}|${l.professionalProfileId}`) ?? null,
+          declined: l.status === "DECLINED",
+        })),
+        quotes: quotes.map((q) => ({ categorySlug: q.guidedRequest.category.slug, accepted: q.status === "ACCEPTED" || q.booking !== null })),
+        reviews: reviews
+          .map((r) => ({ categorySlug: r.booking.quote?.guidedRequest.category.slug ?? r.booking.professionalProfile.category.slug, rating: r.rating }))
+          .filter((r) => !reviewCategory || r.categorySlug === reviewCategory),
+      }),
+      churnByMonth: buildChurnByMonth(
+        {
+          deletedAt: deletedProfiles.flatMap((p) => (p.deletedAt ? [p.deletedAt] : [])),
+          pausedAt: statsRows.flatMap((row) => (row.pausedAt && row.pausedAt >= since12m ? [row.pausedAt] : [])),
+          canceledAt: canceled.map((c) => c.updatedAt),
+        },
+        now,
+      ),
+    });
   }
 
   async listUsers(params: { q?: string; role?: string; status?: string; category?: string; city?: string; page?: number }): Promise<AdminUsersPage> {
@@ -1465,6 +1558,8 @@ export type AdminReportTarget =
       ownerUserId: string;
     };
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 /** Categoria (principale o aggiuntiva) e città di un professionista, per i numeri e per la lista utenti (§368). */
 function professionalFilterWhere(params: { category?: string; city?: string }): Prisma.ProfessionalProfileWhereInput {
   const category = params.category?.trim();
@@ -1478,7 +1573,13 @@ function professionalFilterWhere(params: { category?: string; city?: string }): 
 }
 
 const PROFESSIONAL_STATS_SELECT = {
+  id: true,
   city: true,
+  imageUrl: true,
+  bio: true,
+  verified: true,
+  agendaWeekTemplate: true,
+  _count: { select: { services: true, availabilitySlots: true, quotes: true, bookings: true } },
   createdAt: true,
   suspendedAt: true,
   pausedAt: true,

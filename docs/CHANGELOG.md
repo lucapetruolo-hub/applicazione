@@ -21208,3 +21208,20 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 **Perché barre orizzontali e non torte**: con 13 categorie e 10 città una torta non si legge; le barre si confrontano a colpo d'occhio e hanno accanto numero e percentuale.
 
 **Verifica**: test dei conti (stato unico, abbonamento, categorie multiple, mesi), typecheck, lint, test dei permessi; pagine aperte in locale con l'API simulata da telefono e computer.
+
+## 369. Professionisti in numeri: attività, iscrizione, profili completi, copertura, risposte, abbandoni
+
+**Richiesta** (Luca, 26/10/2026): "vedi cos'altro può essere utile sapere come dato"; proposti 8 dati, Luca: "effettuali tutti", in una PR separata dopo aver unito la #153 (§368).
+
+**Decisione**: tutti nella stessa pagina `/admin/numeri-professionisti`, con gli stessi filtri per categoria e città.
+- **Attivi negli ultimi 30 giorni**: nuova casella in cima, chi ha mandato almeno un preventivo o un messaggio, con la quota sul totale.
+- **A che punto dell'iscrizione**: profilo creato, dati fiscali compilati, identità verificata, almeno un preventivo, almeno un lavoro accettato. Il calo tra due righe dice dove ci si ferma.
+- **Profili completi**: con la foto, la descrizione, le prestazioni con i prezzi, l'agenda, e con tutte e quattro.
+- **Copertura per categoria e città** (ultimi 90 giorni): richieste, quante senza preventivo (in rosso se ce ne sono) e professionisti visibili con sede in quella città; prima le zone con più richieste rimaste senza risposta, le prime 20. Dice dove cercare professionisti.
+- **Risposte, preventivi e recensioni per categoria** (ultimi 90 giorni, per categoria della richiesta): richieste ricevute dai professionisti, con risposta (preventivo, messaggio o rifiuto) e quota, tempo della prima risposta (a metà classifica, non la media, per non farsi spostare da un caso isolato), preventivi, accettati con la quota, recensioni e voto medio da sempre.
+- **Abbandoni negli ultimi 12 mesi**: account eliminati, messi in pausa (solo chi lo è ancora), abbonamenti annullati (nel mese dell'annullamento), con il totale.
+- Sul telefono le tabelle diventano schede con il nome di ogni numero davanti.
+
+**API**: stessi `GET /admin/professionals/stats`, campi nuovi in `AdminProfessionalStats` (`active30d`, `funnel`, `completeness`, `coverage`, `byCategoryActivity`, `churnByMonth`); conti in `apps/api/src/admin/professional-stats.ts`, letture in `AdminService.getProfessionalStats` (conteggi raggruppati, nessuna riga per messaggio). Nessuna rotta nuova, nessuna migrazione.
+
+**Verifica**: 4 test nuovi (attivi, copertura, attività per categoria, abbandoni), typecheck, lint, 717 test dell'API; query provata su un database locale; pagina aperta in locale con l'API simulata da computer e telefono.

@@ -1,11 +1,27 @@
 import { describe, expect, it } from "vitest";
 import { sharePercentLabel } from "@professionisti/shared";
-import { buildProfessionalStats, professionalPlanOf, professionalStatusOf, type ProfessionalStatsRow } from "./professional-stats";
+import {
+  buildCategoryActivity,
+  buildChurnByMonth,
+  buildCoverage,
+  buildProfessionalStats,
+  professionalPlanOf,
+  professionalStatusOf,
+  type ProfessionalStatsRow,
+} from "./professional-stats";
 
 const NOW = new Date("2026-10-26T12:00:00Z");
 
 const row = (overrides: Partial<ProfessionalStatsRow> = {}): ProfessionalStatsRow => ({
+  id: "p",
   city: "Latina",
+  imageUrl: null,
+  bio: null,
+  verified: false,
+  hasAgenda: false,
+  servicesCount: 0,
+  quotesCount: 0,
+  bookingsCount: 0,
   createdAt: new Date("2026-10-20T10:00:00Z"),
   suspendedAt: null,
   pausedAt: null,
@@ -83,6 +99,88 @@ describe("Professionisti in numeri (§368)", () => {
     expect(stats.byMonth.find((m) => m.key === "2023-06")?.count).toBe(1);
     expect(stats.byMonth.at(-1)?.key).toBe("2026-10");
     expect(stats.byMonth).toHaveLength(12 * 3 + 10);
+  });
+
+  it("attivi, passi dell'iscrizione e profili completi", () => {
+    const stats = buildProfessionalStats(
+      [
+        row({ id: "a", imageUrl: "x", bio: "Ciao", servicesCount: 2, hasAgenda: true, verified: true, quotesCount: 3, bookingsCount: 1 }),
+        row({ id: "b", imageUrl: "x", bio: "  ", fiscalProfile: null }),
+        row({ id: "c" }),
+      ],
+      NOW,
+      { cityOptions: [], excluded: { deleted: 0, demo: 0 }, activeIds: new Set(["a", "z"]) },
+    );
+    expect(stats.active30d).toBe(1);
+    expect(stats.funnel).toEqual([
+      { key: "REGISTERED", count: 3 },
+      { key: "FISCAL", count: 2 },
+      { key: "IDENTITY", count: 1 },
+      { key: "FIRST_QUOTE", count: 1 },
+      { key: "FIRST_JOB", count: 1 },
+    ]);
+    expect(stats.completeness).toEqual([
+      { key: "PHOTO", count: 2 },
+      { key: "BIO", count: 1 },
+      { key: "SERVICES", count: 1 },
+      { key: "AGENDA", count: 1 },
+      { key: "ALL", count: 1 },
+    ]);
+  });
+
+  it("copertura: prima le zone con richieste senza preventivo, città senza maiuscole", () => {
+    const coverage = buildCoverage(
+      [
+        { categorySlug: "idraulico", city: "Latina", quotes: 2 },
+        { categorySlug: "idraulico", city: "latina ", quotes: 0 },
+        { categorySlug: "fabbro", city: "Aprilia", quotes: 0 },
+        { categorySlug: "fabbro", city: "Aprilia", quotes: 0 },
+        { categorySlug: "pulizie", city: "", quotes: 0 },
+      ],
+      [
+        { city: "LATINA", categorySlugs: ["idraulico", "fabbro"] },
+        { city: "Latina", categorySlugs: ["idraulico"] },
+      ],
+    );
+    expect(coverage).toEqual([
+      { categorySlug: "fabbro", categoryLabel: "Fabbro", city: "Aprilia", requests: 2, unanswered: 2, professionals: 0 },
+      { categorySlug: "idraulico", categoryLabel: "Idraulico", city: "Latina", requests: 2, unanswered: 1, professionals: 2 },
+    ]);
+  });
+
+  it("risposte, preventivi e recensioni per categoria", () => {
+    const at = (min: number) => new Date(NOW.getTime() + min * 60_000);
+    const rows = buildCategoryActivity({
+      leads: [
+        { categorySlug: "idraulico", createdAt: NOW, answeredAt: at(10), declined: false },
+        { categorySlug: "idraulico", createdAt: NOW, answeredAt: at(30), declined: false },
+        { categorySlug: "idraulico", createdAt: NOW, answeredAt: null, declined: true },
+        { categorySlug: "idraulico", createdAt: NOW, answeredAt: null, declined: false },
+      ],
+      quotes: [
+        { categorySlug: "idraulico", accepted: true },
+        { categorySlug: "idraulico", accepted: false },
+      ],
+      reviews: [
+        { categorySlug: "fabbro", rating: 5 },
+        { categorySlug: "fabbro", rating: 4 },
+      ],
+    });
+    expect(rows).toEqual([
+      { slug: "idraulico", label: "Idraulico", leads: 4, answered: 3, medianMinutesToAnswer: 20, quotes: 2, accepted: 1, reviews: 0, avgRating: null },
+      { slug: "fabbro", label: "Fabbro", leads: 0, answered: 0, medianMinutesToAnswer: null, quotes: 0, accepted: 0, reviews: 2, avgRating: 4.5 },
+    ]);
+  });
+
+  it("abbandoni degli ultimi 12 mesi", () => {
+    const churn = buildChurnByMonth(
+      { deletedAt: [new Date("2026-10-02T10:00:00Z"), new Date("2024-01-01T10:00:00Z")], pausedAt: [new Date("2026-09-30T23:30:00Z")], canceledAt: [new Date("2026-03-05T10:00:00Z")] },
+      NOW,
+    );
+    expect(churn).toHaveLength(12);
+    expect(churn[0]?.key).toBe("2025-11");
+    expect(churn.at(-1)).toEqual({ key: "2026-10", deleted: 1, paused: 1, canceled: 0 });
+    expect(churn.find((m) => m.key === "2026-03")?.canceled).toBe(1);
   });
 
   it("percentuali leggibili", () => {

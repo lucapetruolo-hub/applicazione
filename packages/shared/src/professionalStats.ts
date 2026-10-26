@@ -39,6 +39,32 @@ export const PROFESSIONAL_ENTITY_LABEL: Record<ProfessionalEntityKey, string> = 
   UNKNOWN: "Non ancora indicato",
 };
 
+/** Giorni contati per copertura, risposte, preventivi (docs/CHANGELOG.md §369). */
+export const PROFESSIONAL_ACTIVITY_DAYS = 90;
+
+/** Passi dell'iscrizione: ognuno conta chi l'ha fatto, non chi si è fermato lì. */
+export const PROFESSIONAL_FUNNEL_KEYS = ["REGISTERED", "FISCAL", "IDENTITY", "FIRST_QUOTE", "FIRST_JOB"] as const;
+export type ProfessionalFunnelKey = (typeof PROFESSIONAL_FUNNEL_KEYS)[number];
+
+export const PROFESSIONAL_FUNNEL_LABEL: Record<ProfessionalFunnelKey, string> = {
+  REGISTERED: "Profilo creato",
+  FISCAL: "Dati fiscali compilati",
+  IDENTITY: "Identità verificata",
+  FIRST_QUOTE: "Almeno un preventivo mandato",
+  FIRST_JOB: "Almeno un lavoro accettato",
+};
+
+export const PROFESSIONAL_COMPLETENESS_KEYS = ["PHOTO", "BIO", "SERVICES", "AGENDA", "ALL"] as const;
+export type ProfessionalCompletenessKey = (typeof PROFESSIONAL_COMPLETENESS_KEYS)[number];
+
+export const PROFESSIONAL_COMPLETENESS_LABEL: Record<ProfessionalCompletenessKey, string> = {
+  PHOTO: "Con la foto",
+  BIO: "Con la descrizione",
+  SERVICES: "Con le prestazioni e i prezzi",
+  AGENDA: "Con l'agenda",
+  ALL: "Con tutte e quattro",
+};
+
 export type AdminProfessionalStats = {
   /** Professionisti con i filtri scelti. */
   total: number;
@@ -60,6 +86,35 @@ export type AdminProfessionalStats = {
   byMonth: { key: string; count: number }[];
   /** Città in cui c'è almeno un professionista, per il filtro (senza filtri applicati). */
   cityOptions: string[];
+  /** Hanno mandato un preventivo o scritto in chat negli ultimi 30 giorni. */
+  active30d: number;
+  funnel: { key: ProfessionalFunnelKey; count: number }[];
+  completeness: { key: ProfessionalCompletenessKey; count: number }[];
+  /**
+   * Richieste degli ultimi PROFESSIONAL_ACTIVITY_DAYS giorni per categoria e
+   * città, con quelle senza nessun preventivo e i professionisti visibili con
+   * sede in quella città. Prima le zone con più richieste senza preventivo.
+   */
+  coverage: { categorySlug: string; categoryLabel: string; city: string; requests: number; unanswered: number; professionals: number }[];
+  /**
+   * Per categoria della richiesta, ultimi PROFESSIONAL_ACTIVITY_DAYS giorni:
+   * richieste ricevute dai professionisti, a quante hanno risposto
+   * (preventivo, messaggio o rifiuto), minuti (mediana) alla prima risposta,
+   * preventivi mandati e accettati. Recensioni e voto medio da sempre.
+   */
+  byCategoryActivity: {
+    slug: string;
+    label: string;
+    leads: number;
+    answered: number;
+    medianMinutesToAnswer: number | null;
+    quotes: number;
+    accepted: number;
+    reviews: number;
+    avgRating: number | null;
+  }[];
+  /** Ultimi 12 mesi: profili eliminati, messi in pausa (e ancora in pausa), abbonamenti annullati. */
+  churnByMonth: { key: string; deleted: number; paused: number; canceled: number }[];
 };
 
 /** Percentuale leggibile: "<1%" per una quota piccola ma non nulla. */
