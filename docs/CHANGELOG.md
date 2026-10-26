@@ -21019,3 +21019,17 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - Modello email (`email-layout.ts`): righe "lunghe" (`long`, etichetta sopra e testo normale sotto), titolo del riquadro (`detailsTitle`), miniature (`detailImages`) e link secondario sotto il pulsante (`secondaryLink`); anche nella versione solo testo.
 
 **Verifica**: typecheck API e sito, lint, test dell'API (5 nuovi su `requestSentEmail`), anteprime a 390 e 1280 px con `email:preview`.
+
+## 358. Ricerca: un clic sulle prestazioni apre il profilo
+
+**Richiesta esplicita dell'utente** (26/10/2026): "a chi effettua una ricerca, se clicca sulla parte relativa alle prestazioni offerte, attualmente non succede niente, è sbagliato, fagli aprire almeno il profilo del professionista".
+
+**Causa**: l'area "orari e prezzi" della scheda ferma il clic (scelta del §206/§349: sull'agenda devono rispondere solo i pulsanti), e l'elenco delle prestazioni stava dentro quell'area.
+
+**Decisioni**:
+- Un clic in qualunque punto dell'elenco delle prestazioni apre il profilo, come il resto della scheda ("Mostra tutte" continua ad aprire l'elenco). Vale anche in "Professionisti salvati" (stessa scheda).
+- Provata prima una versione con ogni prestazione come link al profilo già sulla sezione "Prestazioni", con freccina e riga evidenziata: tolta su decisione dell'utente ("non serve a niente cliccare sulla singola prestazione se poi ti porta sempre al profilo"). Nessun segno in più sulle righe.
+- Da tastiera e con i lettori di schermo il profilo si apre dal link del nome, come prima: nessun punto di tabulazione in più.
+- L'agenda resta com'era: lo spazio vuoto tra gli orari non apre il profilo (richiesta del §206).
+
+**Verifica**: typecheck e lint; sito in locale con prestazioni di prova, clic a 1440 px e tocco a 390 px su una prestazione: si apre il profilo; "Mostra tutte" apre l'elenco senza cambiare pagina.
