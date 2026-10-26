@@ -37,6 +37,7 @@ import { CategoryTiles } from "@/components/CategoryTiles";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
+import { cleanPostalCode, usePostalCodeLookup } from "@/lib/usePostalCodeLookup";
 import { localPreviewUrl } from "@/lib/media";
 import { formatResponseTime, respondsRightAway } from "@/lib/responseTime";
 
@@ -471,32 +472,15 @@ export function GuidedRequestForm({
   const showHouseNumber = askHouseNumber || !houseNumber.trim();
   const showPostalCode = askPostalCode || !postalCode.trim();
   const showProvince = askProvince || !province.trim();
-  // CAP cercato da solo appena c'è il civico (§352), finché il cliente non lo
-  // cambia a mano: da lì vale il suo.
-  const [postalCodeTyped, setPostalCodeTyped] = useState(false);
-  const [postalCodeFound, setPostalCodeFound] = useState(false);
-  // CAP da via e civico quando Google non l'ha dato con l'indirizzo (§352):
-  // es. "Via Cesare Battisti, Roma" senza civico. Cercato dopo una breve
-  // pausa di battitura del civico; se non si trova resta da scrivere.
-  const needsPostalCodeLookup = serviceMode === "HOME" && (askPostalCode || chosenAddress.serviceDown) && !postalCodeTyped;
-  useEffect(() => {
-    if (!needsPostalCodeLookup || !street.trim() || !houseNumber.trim() || !city.trim()) return;
-    let cancelled = false;
-    const timer = setTimeout(() => {
-      apiClient
-        .addressPostalCode({ street: street.trim(), houseNumber: houseNumber.trim(), city: city.trim() })
-        .then(({ postalCode: found }) => {
-          if (cancelled || !found) return;
-          setPostalCode(found);
-          setPostalCodeFound(true);
-        })
-        .catch(() => undefined);
-    }, 600);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [needsPostalCodeLookup, street, houseNumber, city]);
+  // CAP cercato da solo appena c'è il civico, quando Google non l'ha dato
+  // con l'indirizzo (§352); scritto a mano vale quello del cliente.
+  const postalCodeLookup = usePostalCodeLookup({
+    enabled: serviceMode === "HOME" && (askPostalCode || chosenAddress.serviceDown),
+    street,
+    houseNumber,
+    city,
+    setPostalCode,
+  });
 
   // Istantanea dei valori reali dell'account al momento del prefill (non i
   // valori di stato, che ricadono su "" per i campi mancanti) — usata al
@@ -785,7 +769,7 @@ export function GuidedRequestForm({
     }
     // CAP scritto a mano: se è di un'altra città lo si dice subito (§352).
     // Nel dubbio o senza risposta si va avanti.
-    if (next === 3 && serviceMode === "HOME" && postalCodeTyped && postalCode.trim() && city.trim()) {
+    if (next === 3 && serviceMode === "HOME" && postalCodeLookup.typed && postalCode.trim() && city.trim()) {
       const check = await apiClient.addressPostalCodeCheck({ postalCode: postalCode.trim(), city: city.trim() }).catch(() => null);
       if (check?.matches === false) {
         setAskPostalCode(true);
@@ -1402,9 +1386,8 @@ export function GuidedRequestForm({
                       inputMode="numeric"
                       value={postalCode}
                       onChange={(e) => {
-                        setPostalCode(e.target.value.replace(/\D/g, "").slice(0, 5));
-                        setPostalCodeTyped(true);
-                        setPostalCodeFound(false);
+                        setPostalCode(cleanPostalCode(e.target.value));
+                        postalCodeLookup.onTyped();
                       }}
                       placeholder="CAP"
                       style={fieldInputStyle}
@@ -1445,8 +1428,7 @@ export function GuidedRequestForm({
                     setAskHouseNumber(!selected.houseNumber);
                     setPostalCode(selected.postalCode ?? "");
                     setAskPostalCode(!selected.postalCode);
-                    setPostalCodeTyped(false);
-                    setPostalCodeFound(false);
+                    postalCodeLookup.reset();
                     setProvince(selected.province ?? comune?.province ?? "");
                     setAskProvince(!selected.province && !comune?.province);
                     setCity(comune?.name ?? selected.locality ?? "");
@@ -1501,10 +1483,9 @@ export function GuidedRequestForm({
                             maxLength={5}
                             value={postalCode}
                             onChange={(e) => {
-                              setPostalCode(e.target.value.replace(/\D/g, "").slice(0, 5));
+                              setPostalCode(cleanPostalCode(e.target.value));
                               setAskPostalCode(true);
-                              setPostalCodeTyped(true);
-                              setPostalCodeFound(false);
+                              postalCodeLookup.onTyped();
                             }}
                             placeholder="Es. 00187"
                             style={fieldInputStyle}
@@ -1529,7 +1510,7 @@ export function GuidedRequestForm({
                         </YStack>
                       ) : null}
                     </XStack>
-                    {postalCodeFound && showPostalCode ? (
+                    {postalCodeLookup.found && showPostalCode ? (
                       <Text fontSize={13} color={brand.grafite70} role="status">
                         CAP trovato in automatico: se non è giusto, cambialo.
                       </Text>
