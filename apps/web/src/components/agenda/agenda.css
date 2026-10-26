@@ -1018,6 +1018,9 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  /* Su una riga sua: accanto a "Online" sembrava valere solo per l'online (§363). */
+  flex-basis: 100%;
+  padding-top: 4px;
 }
 .ag-wt-per-slot select {
   width: 72px;

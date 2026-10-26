@@ -21124,4 +21124,6 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - **"Online" nella fascia del giorno**: come nella settimana tipo (§362), con l'online spento nel profilo la casella non si propone; resta se la fascia ha già posti online, per poterli togliere.
 - **Riattivare l'online da Orari di lavoro**: al posto di "Online" compare "+ Online" tratteggiato (nella settimana tipo) o "+ Online · Attiva" (nella fascia). Toccandolo si accende l'online nel profilo (`POST /agenda/online/enable`, stesso effetto della casella del profilo) e la scelta "Online" si spunta; nella settimana una riga ricorda di salvare.
 
+- **"Clienti per orario" su una riga sua** (segnalato da Luca: "da cellulare ... sembra che sia solo per l'online poiché sulla stessa riga"): nella settimana tipo il numero di clienti sta sotto "Come lavori", non accanto a "Online". Anteprime 10.
+
 **Verifica**: typecheck API e sito, lint, test dell'API (nuovo caso in `starter-hours.test.ts`), prova nel browser a 390 e 1440 px: "+ Online" nella settimana e nella fascia, attivazione che spunta "Online". Anteprime 7, 8 e 9 in `anteprime/orari-di-partenza/`.
