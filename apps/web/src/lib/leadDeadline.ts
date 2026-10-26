@@ -30,6 +30,9 @@ export function formatLeadDeadline(expiresAt: string | null): { label: string; u
 export function formatForwardDeadline(forwardAt: string | null): { label: string; urgent: boolean } | null {
   const deadline = formatLeadDeadline(forwardAt);
   if (!deadline) return null;
+  // Il conto alla rovescia dice anche cosa succede dopo (richiesta
+  // dell'utente, docs/CHANGELOG.md §353): "Solo tua ancora per 6 ore" non
+  // faceva capire che poi la richiesta va anche ad altri.
   return { label: `${deadline.label}, poi va anche ad altri professionisti`, urgent: deadline.urgent };
 }
 
@@ -49,13 +52,18 @@ export function formatRespondUntil(respondUntil: string | null): { label: string
 }
 
 /**
- * Le scadenze da mostrare su una richiesta da quotare: fino a quando si può
- * rispondere e, per una richiesta diretta, quando va anche ad altri.
+ * La scadenza da mostrare su una richiesta da quotare, una sola alla volta
+ * (docs/CHANGELOG.md §352): per una richiesta diretta prima quanto manca
+ * prima che vada anche ad altri, poi fino a quando si può rispondere. Se la
+ * scadenza finale viene prima (caso raro), vince quella.
  */
 export function leadDeadlines(lead: { expiresAt: string | null; respondUntil: string | null; forwardAt: string | null }): { label: string; urgent: boolean }[] {
+  const respondAt = lead.expiresAt ?? lead.respondUntil;
   const respond = formatLeadDeadline(lead.expiresAt) ?? formatRespondUntil(lead.respondUntil);
   const forward = formatForwardDeadline(lead.forwardAt);
-  return [respond, forward].filter((d): d is { label: string; urgent: boolean } => d !== null);
+  const forwardFirst = forward && (!respond || !respondAt || new Date(lead.forwardAt!).getTime() <= new Date(respondAt).getTime());
+  const shown = forwardFirst ? forward : respond;
+  return shown ? [shown] : [];
 }
 
 /**

@@ -12,6 +12,8 @@ test("un lavoro aggiunto a mano compare in Oggi e si apre in agenda", async ({ p
   await page.clock.setFixedTime(new Date("2026-10-26T07:00:00Z"));
   await page.goto("/dashboard");
   await expect(page.locator(".today-day-head").first()).toContainText("3 lavori");
+  // "Naviga" diretto sul lavoro di oggi (§352).
+  await expect(page.getByRole("link", { name: "Naviga verso Via Isonzo 40, Latina" })).toHaveAttribute("href", /google\.com\/maps\/dir\/.*Via\+Isonzo\+40/);
   await page.getByRole("link", { name: /Condominio Aurora/ }).click();
   await expect(page).toHaveURL(/\/dashboard\/agenda\?esterno=/);
   const dialog = page.getByRole("dialog", { name: "Modifica il lavoro" });
