@@ -2148,7 +2148,7 @@ a.admin-kpi:hover {
 .admin-kpi.is-urgent .admin-kpi-value {
   color: #dc3545;
 }
-/* Professionisti in numeri (docs/CHANGELOG.md §364). */
+/* Professionisti in numeri (docs/CHANGELOG.md §368). */
 .admin-filters {
   display: flex;
   flex-wrap: wrap;

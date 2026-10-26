@@ -37,7 +37,7 @@ function UtentiContent() {
     city: searchParams.get("citta") ?? undefined,
     page: 1,
   });
-  // Categoria e città solo per i professionisti (docs/CHANGELOG.md §364).
+  // Categoria e città solo per i professionisti (docs/CHANGELOG.md §368).
   const professionalFilters = query.role === "PROFESSIONAL" || Boolean(query.category || query.city);
   const [cityOptions, setCityOptions] = useState<string[]>([]);
   useEffect(() => {

@@ -55,7 +55,7 @@ export class AdminController {
     return this.adminService.search(q);
   }
 
-  /** Professionisti in numeri, con i filtri per categoria e città (docs/CHANGELOG.md §364). */
+  /** Professionisti in numeri, con i filtri per categoria e città (docs/CHANGELOG.md §368). */
   @RequireAdminScope("ANY")
   @Get("professionals/stats")
   professionalStats(@Query("category") category?: string, @Query("city") city?: string) {

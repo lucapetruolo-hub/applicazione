@@ -11,7 +11,7 @@ import {
 import { publicVisibilityMissing } from "../professional-fiscal/public-visibility";
 import { romeMonthKey, subscriptionState, tierOfPlan, type SubscriptionRow } from "../subscriptions/subscription-rules";
 
-/** Quello che serve di un professionista per contarlo (docs/CHANGELOG.md §364). */
+/** Quello che serve di un professionista per contarlo (docs/CHANGELOG.md §368). */
 export type ProfessionalStatsRow = {
   city: string;
   createdAt: Date;

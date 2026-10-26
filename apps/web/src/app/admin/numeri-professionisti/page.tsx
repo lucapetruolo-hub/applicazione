@@ -25,7 +25,7 @@ const TOP_CITIES = 10;
 type Filters = { category?: string; city?: string };
 
 /**
- * Professionisti in numeri (richiesta dell'utente, docs/CHANGELOG.md §364):
+ * Professionisti in numeri (richiesta dell'utente, docs/CHANGELOG.md §368):
  * quanti sono e come si dividono, con quota e barra per ogni voce. Filtri
  * per categoria e città; ogni riga di categoria o città apre l'elenco in
  * Utenti con gli stessi filtri.
@@ -142,7 +142,7 @@ function StatsBody({ data, filters, scope }: { data: AdminProfessionalStats; fil
 
   const cities = data.byCity.slice(0, TOP_CITIES);
   const otherCities = data.byCity.slice(TOP_CITIES);
-  // Periodo del grafico: gli ultimi 12 mesi o un anno intero (richiesta di Luca, §364).
+  // Periodo del grafico: gli ultimi 12 mesi o un anno intero (richiesta di Luca, §368).
   const [period, setPeriod] = useState<string>("last12");
   const years = useMemo(() => [...new Set(data.byMonth.map((m) => m.key.slice(0, 4)))].reverse(), [data.byMonth]);
   const months = useMemo(() => {

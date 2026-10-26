@@ -21146,7 +21146,57 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - **Admin**: in `/admin/professionisti` la sezione "Offerta di lancio: N posti presi su 100" con l'elenco dei fondatori (numero, attività, email, comune, iscrizione, gratis fino al, livello scelto); `GET /admin/founders` (`RequireAdminScope("ANY")`).
 - **Agenda con i lavori esauriti**: rivista la scelta del §362. Controllando il sito, l'agenda pubblica non prenota mai da sola: serve al cliente per scegliere quando nella richiesta di preventivo (`GuidedRequestForm`) e per proporre un'altra data su un preventivo già mandato (`QuoteCard`). Svuotarla nascondeva l'agenda dal profilo e rompeva la proposta di data sui preventivi ancora validi. Ora resta visibile come sempre e non serve nessuna riga al suo posto; resta fermata solo la prenotazione diretta `POST /professionals/:id/agenda/book`, che il sito non usa, con un messaggio neutro ("Per questo orario manda una richiesta di preventivo al professionista."). Termini e CLAUDE.md aggiornati.
 
-## 364. Professionisti in numeri (area admin)
+## 364. Orari di partenza nell'agenda dei nuovi professionisti
+
+**Richiesta di Luca** (26/10/2026): "quando un professionista crea un nuovo profilo, standard nell'agenda dobbiamo mettere degli orari preimpostati come ad esempio 8-13 14-20 con 5 domicilio e 5 online per fascia", "dal lunedì al sabato"; serve "nel caso il professionista non imposti da subito l'agenda".
+
+**Fatto**:
+- Alla prima creazione del profilo (`PUT /professionals/me`, anche quello creato da un operatore) la settimana tipo `starterWeekTemplate` (`packages/shared/src/agendaTools.ts`) entra subito nell'agenda: dal lunedì al sabato 8–13 e 14–20, 5 clienti a domicilio e 5 online per fascia (`STARTER_SLOT_CAPACITY`). Online solo se il profilo lavora anche online (`remoteAvailable`): altrimenti i clienti vedrebbero fasce online che il professionista non offre. Funziona come una settimana tipo salvata da lui: 63 giorni riempiti e ogni notte quelli nuovi (§323).
+- Solo per i profili nuovi: `AgendaService.applyStarterHours` non fa nulla se l'agenda ha già fasce o una settimana tipo salvata. I profili esistenti restano come sono. Un errore qui non blocca mai il salvataggio del profilo (solo un log).
+- `ProfessionalProfile.agendaStarterHoursAt` (migrazione `20261026120000_orari_di_partenza`) ricorda che gli orari sono quelli di partenza. Finché è pieno:
+  - nel Calendario dell'agenda: "Orari di partenza: dal lunedì al sabato, 8–13 e 14–20. Cambiali quando vuoi." con "Rivedi gli orari", che apre "Orari di lavoro" direttamente su "La tua settimana";
+  - in "La tua settimana": "Orari di partenza. Li abbiamo messi noi e i clienti li vedono già: cambiali qui sotto e salva, quando vuoi." con "Vanno bene così" (`POST /agenda/week-template/starter/keep`).
+  - L'avviso sparisce con "Vanno bene così" o salvando la settimana (per tutti i mesi o per un mese solo).
+- La settimana proposta a chi non l'ha mai salvata (`DEFAULT_WEEK_TEMPLATE`) e l'orario pronto "Mattina e pomeriggio" passano agli stessi orari (prima lunedì-venerdì 8–13 e 14–18, 1 cliente a domicilio).
+
+**Verifica**: typecheck API e sito, lint, tutti i test dell'API (nuovi: `starter-hours.test.ts`, orari di partenza in `agenda-tools.test.ts`); prova su database locale: un professionista nuovo ha 108 fasce (lun-sab, 9 settimane) 8–13 e 14–20 con 5+5. Anteprime a 390 e 1440 px in `anteprime/orari-di-partenza/`. Prova e2e della settimana tipo aggiornata: il sabato ora è già nella proposta.
+
+## 365. Migliorie degli orari di partenza: orari online, ore in 24 ore, email di benvenuto
+
+**Richiesta di Luca** (26/10/2026): "effettua le 3 migliorie" proposte con la PR #151 (§364); sulla prima: "gli si potrebbe far comparire un avviso se vuole che siano eliminati le prenotazioni online già impostate in agenda".
+
+**Fatto**:
+- **Orari online quando si spegne "online"**: salvando il profilo con "Offro anche consulenza online" spento (prima acceso), se in agenda ci sono fasce con posti online da oggi in poi compare "Togli anche gli orari online?" con "Togli gli orari online" e "Lasciali". Togliendoli (`POST /agenda/online-slots/remove`, conteggio con `GET /agenda/online-slots`): le fasce miste restano solo a domicilio, quelle solo online si tolgono, anche nella settimana tipo così la notte non tornano. I lavori già fissati restano. Niente di automatico: decide il professionista.
+- **Ore sempre in 24 ore**: nuovo `ItalianTimeInput` (`apps/web/src/components/ItalianTimeInput.tsx`), stesso metodo di `ItalianDateInput` (§291): il campo ora del browser seguiva la lingua del browser e su un computer in inglese mostrava "01:00 PM". Usato in tutti i campi ora del sito: settimana tipo, fascia del giorno, lavoro esterno, data proposta nel preventivo e nella controproposta, orario proposto dal cliente. La regola del lint sulle etichette lo conosce come campo.
+- **Email di benvenuto del professionista**: una riga "Completato il profilo, la tua agenda parte già con degli orari: dal lunedì al sabato, 8–13 e 14–20. Li cambi quando vuoi da Agenda."
+- **Finestra dopo il primo salvataggio del profilo**: non chiede più di impostare la disponibilità (c'è già) ma dice che ci sono gli orari di partenza e propone "Controlla gli orari" (apre Orari di lavoro) o "Più tardi".
+
+**Verifica**: typecheck API e sito, lint, test dell'API (nuovo caso in `starter-hours.test.ts`), test dei permessi (230 rotte), prova nel browser con lingua inglese: ore in 24 ore, finestra "Togli anche gli orari online?" e fasce online a zero dopo "Togli gli orari online". Anteprime 4 e 5 in `anteprime/orari-di-partenza/`.
+
+## 366. Caselle leggibili e usabili da tastiera; "Online" solo per chi lavora online
+
+**Richiesta di Luca** (26/10/2026): "effettua le 2 migliorie" proposte dopo il §365.
+
+**Fatto**:
+- **Caselle fatte con Tamagui** (assicurazione e consulenza online nel profilo, specializzazioni, dichiarazione dei dati fiscali, A domicilio / Online / "ripeti per il mese" nella fascia del giorno, categoria principale): `accessibilityState` finiva nella pagina come attributo sconosciuto, quindi il lettore di schermo non sapeva se erano spuntate, e da tastiera si raggiungevano ma non si spuntavano. Ora `aria-checked` e Spazio/Invio con `keyActivate` (`apps/web/src/lib/keyActivate.ts`). Stessa correzione su `Chip` di `packages/ui` (`aria-pressed` e Spazio/Invio). Sparisce l'errore di React nella console del profilo.
+- **"Online" nella settimana tipo**: se il profilo non offre la consulenza online il pulsante non c'è (`AgendaWeekTemplateState.online`); resta visibile solo se una settimana salvata prima ha ancora l'online acceso, per poterlo spegnere. La settimana proposta a chi non l'ha mai salvata è quella di partenza con o senza online, secondo il profilo.
+
+**Verifica**: typecheck, lint, test dell'API, prova nel browser: casella "online" che cambia con Spazio, Invio e clic e annuncia lo stato; nessun errore in console; settimana senza "Online" per un profilo senza online (anteprime 6).
+
+## 367. Stelle che portano alle recensioni; "Online" da riattivare negli orari di lavoro
+
+**Richiesta di Luca** (26/10/2026): "effettua le due migliorie, ma dai la possibilita di riattivarlo dentro orari di lavoro".
+
+**Fatto**:
+- **Stelle nel preventivo**: il §357 aveva già riportato `#recensioni` con un link normale che passava dal rimando all'indirizzo con nome e città. Ora stelle, nome e foto puntano direttamente a quell'indirizzo (`professionalPath`, città del professionista aggiunta ai preventivi della richiesta): niente rimando, pagina caricata senza ricaricare tutto il sito. La prova e2e in `stelle-preventivi.spec.ts` controlla l'indirizzo esatto.
+- **"Online" nella fascia del giorno**: come nella settimana tipo (§366), con l'online spento nel profilo la casella non si propone; resta se la fascia ha già posti online, per poterli togliere.
+- **Riattivare l'online da Orari di lavoro**: al posto di "Online" compare "+ Online" tratteggiato (nella settimana tipo) o "+ Online · Attiva" (nella fascia). Toccandolo si accende l'online nel profilo (`POST /agenda/online/enable`, stesso effetto della casella del profilo) e la scelta "Online" si spunta; nella settimana una riga ricorda di salvare.
+
+- **"Clienti per orario" su una riga sua** (segnalato da Luca: "da cellulare ... sembra che sia solo per l'online poiché sulla stessa riga"): nella settimana tipo il numero di clienti sta sotto "Come lavori", non accanto a "Online". Anteprime 10.
+
+**Verifica**: typecheck API e sito, lint, test dell'API (nuovo caso in `starter-hours.test.ts`), prova nel browser a 390 e 1440 px: "+ Online" nella settimana e nella fascia, attivazione che spunta "Online". Anteprime 7, 8 e 9 in `anteprime/orari-di-partenza/`.
+
+## 368. Professionisti in numeri (area admin)
 
 **Richiesta** (Luca, 26/10/2026): in Admin vedere davvero quanti professionisti sono iscritti e come sono divisi, con le percentuali e magari un grafico; in alternativa i filtri nella lista utenti con il totale ("oppure dammi tu un suggerimento").
 

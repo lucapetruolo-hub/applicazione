@@ -1,6 +1,6 @@
 /**
  * Professionisti in numeri, area admin (richiesta dell'utente del 26/10/2026,
- * docs/CHANGELOG.md §364): quanti sono e come si dividono, con i filtri per
+ * docs/CHANGELOG.md §368): quanti sono e come si dividono, con i filtri per
  * categoria e città. Esclusi i profili eliminati e quelli dimostrativi.
  */
 

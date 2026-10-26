@@ -102,7 +102,7 @@ export class AdminService {
    * attività, senza distinzione tra maiuscole e minuscole.
    */
   /**
-   * Professionisti in numeri (docs/CHANGELOG.md §364): totale e divisione per
+   * Professionisti in numeri (docs/CHANGELOG.md §368): totale e divisione per
    * stato, categoria, città, abbonamento, forma e mese d'iscrizione, con i
    * filtri per categoria e città. Senza eliminati e dimostrativi, contati a parte.
    */
@@ -144,7 +144,7 @@ export class AdminService {
 
   private buildUserWhere(params: { q?: string; role?: string; status?: string; category?: string; city?: string }): Prisma.UserWhereInput {
     const q = params.q?.trim();
-    // Categoria e città valgono per i professionisti (docs/CHANGELOG.md §364).
+    // Categoria e città valgono per i professionisti (docs/CHANGELOG.md §368).
     const professional = params.category?.trim() || params.city?.trim() ? { professionalProfile: { is: professionalFilterWhere(params) } } : {};
     return {
       ...professional,
@@ -1465,7 +1465,7 @@ export type AdminReportTarget =
       ownerUserId: string;
     };
 
-/** Categoria (principale o aggiuntiva) e città di un professionista, per i numeri e per la lista utenti (§364). */
+/** Categoria (principale o aggiuntiva) e città di un professionista, per i numeri e per la lista utenti (§368). */
 function professionalFilterWhere(params: { category?: string; city?: string }): Prisma.ProfessionalProfileWhereInput {
   const category = params.category?.trim();
   const city = params.city?.trim();

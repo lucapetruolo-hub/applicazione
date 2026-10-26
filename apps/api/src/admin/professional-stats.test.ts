@@ -19,7 +19,7 @@ const row = (overrides: Partial<ProfessionalStatsRow> = {}): ProfessionalStatsRo
   ...overrides,
 });
 
-describe("Professionisti in numeri (§364)", () => {
+describe("Professionisti in numeri (§368)", () => {
   it("un solo stato per professionista, la sospensione prima di tutto", () => {
     expect(professionalStatusOf(row(), NOW)).toBe("VISIBLE");
     expect(professionalStatusOf(row({ pausedAt: NOW, user: { suspendedAt: NOW } }), NOW)).toBe("SUSPENDED");
