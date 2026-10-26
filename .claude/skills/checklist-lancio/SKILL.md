@@ -69,6 +69,22 @@ produzione):
    Blueprint (`render.yaml`): si cancella da solo. Finché il Blueprint
    punta ancora a lui, non modificare `render.yaml` (una risincronizzazione
    potrebbe rimettere `DATABASE_URL` sul database vecchio).
+4ter. **Quando si passa Render a pagamento: spostare API e database a
+   Francoforte** (decisione dell'utente del 26/10/2026: si fa insieme
+   all'acquisto degli abbonamenti, non prima). Oggi l'API gira in Oregon
+   (`gcp-us-west1`) e le pagine del sito a Washington (`iad1`): ogni
+   pagina aperta in Italia attraversa l'oceano due volte, e i dati
+   personali stanno negli Stati Uniti. Render non cambia zona a un
+   servizio esistente: nuovo Postgres Basic-256mb e nuova API Starter
+   (`professionisti-api-eu`) a Frankfurt, `NEXT_PUBLIC_API_URL` e Function
+   Region `fra1` su Vercel, webhook Stripe (`/billing/webhook`) e Didit
+   (`/identity-verification/webhook`), variabile `API_HEALTH_URL` di
+   GitHub Actions. Dopo: aggiornare `render.yaml` (nome, `region:
+   frankfurt`, `plan: starter`). Guida passo passo in
+   `/mnt/project-files/analisi/spostamento-render-francoforte.md`. Valutati
+   e scartati Neon gratis (un cron gira ogni minuto: supererebbe le 100 ore
+   di calcolo del piano gratuito), Cloudflare, Clerk e R2
+   (`/mnt/project-files/analisi/servizi-gratuiti-valutazione.md`).
 5. Chiavi Stripe Checkout reali (già segnalate in §9 sopra:
    `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`STRIPE_PRICE_BASE`/
    `STRIPE_PRICE_PLUS`/`STRIPE_PRICE_PRO`, con gli eventi webhook
