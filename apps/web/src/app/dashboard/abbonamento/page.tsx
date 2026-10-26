@@ -3,11 +3,17 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Check } from "lucide-react";
 import {
+  RENEWAL_NOTICE_DAYS,
   SUBSCRIPTION_FEATURES,
   SUBSCRIPTION_TIERS,
+  parseBillingInterval,
   parseSubscriptionTier,
   subscriptionTierInfo,
+  tierPeriodPriceEurCents,
+  withVatEurCents,
+  type BillingInterval,
   type MySubscription,
   type SubscriptionTier,
   formatEur as formatEurShared,
@@ -17,16 +23,31 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { ProfileMissingNotice, isProfileMissingError } from "@/components/ProfileMissingNotice";
-import { SubscriptionPauseBanner, upgradeCostText } from "@/components/SubscriptionPauseBanner";
+import { BillingIntervalToggle } from "@/components/BillingIntervalToggle";
+import { SubscriptionPauseBanner, upgradeQuoteOf } from "@/components/SubscriptionPauseBanner";
 import { SkeletonBlock } from "@/components/Skeleton";
 
 /**
  * "Abbonamento" del professionista (docs/CHANGELOG.md §161-§162): stato del
  * mese gratuito o del livello, lavori accettati nel mese rispetto al limite,
- * banner fisso se l'account è in pausa, scelta o passaggio di livello
- * pagando solo la differenza, rinnovo automatico e annullamento. Il mese
- * regalato compare solo dopo che è stato dato, mai prima (è una sorpresa).
+ * banner fisso se l'account è in pausa, scelta o passaggio di livello,
+ * rinnovo automatico e annullamento. Il mese regalato compare solo dopo che
+ * è stato dato, mai prima (è una sorpresa).
+ *
+ * Più leggibile a colpo d'occhio (decisione dell'utente, docs/CHANGELOG.md
+ * §354): ogni livello con prezzo + IVA, lavori, il riquadro "Se passi ora"
+ * con una sola cifra e un pulsante; rinnovo, cambio di livello e
+ * annullamento in tre schede da una frase. Mensile o annuale si sceglie solo
+ * finché non c'è un abbonamento pagato.
  */
+
+function perLabel(interval: BillingInterval): string {
+  return interval === "YEAR" ? "all'anno" : "al mese";
+}
+
+function shortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "Europe/Rome" });
+}
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Rome" });
@@ -61,10 +82,10 @@ function statusText(sub: MySubscription): { title: string; detail: string } {
         title: `Livello ${tierLabel}`,
         detail:
           trialFuture && sub.trialEndsAt
-            ? `Il primo addebito parte alla fine del mese gratuito, il ${formatDate(sub.trialEndsAt)}, poi si rinnova in automatico ogni mese.`
+            ? `Il primo addebito parte alla fine del mese gratuito, il ${formatDate(sub.trialEndsAt)}, poi si rinnova in automatico ${sub.billingInterval === "YEAR" ? "ogni anno" : "ogni mese"}.`
             : sub.currentPeriodEnd
               ? `Si rinnova in automatico il ${formatDate(sub.currentPeriodEnd)}. Ti avvisiamo qualche giorno prima.`
-              : "Si rinnova in automatico ogni mese.",
+              : `Si rinnova in automatico ${sub.billingInterval === "YEAR" ? "ogni anno" : "ogni mese"}.`,
       };
     case "PAST_DUE":
       return { title: `Livello ${tierLabel}: pagamento non riuscito`, detail: "Riproveremo nei prossimi giorni: controlla il metodo di pagamento." };
@@ -99,6 +120,9 @@ function AbbonamentoContent() {
   // sua card viene evidenziata e la pagina scorre fino alla scelta.
   const chosenTier = parseSubscriptionTier(searchParams.get("livello"));
   const justRegistered = searchParams.get("nuovo") === "1";
+  // Mensile o annuale scelto su /per-professionisti (`?rinnovo=`); in vista l'annuale.
+  const [chosenInterval, setChosenInterval] = useState<BillingInterval>(() => parseBillingInterval(searchParams.get("rinnovo")) ?? "YEAR");
+  const [feeDetailsOpen, setFeeDetailsOpen] = useState(false);
 
   const load = useCallback(() => {
     if (!token) return;
@@ -126,12 +150,16 @@ function AbbonamentoContent() {
     setNotice(null);
     setPendingTier(tier);
     try {
-      const { url } = await apiClient.createSubscriptionCheckout(token, tier);
+      const { url } = await apiClient.createSubscriptionCheckout(
+        token,
+        tier,
+        sub?.state === "ACTIVE" || sub?.state === "PAST_DUE" ? (sub.billingInterval ?? "MONTH") : chosenInterval,
+      );
       if (url) {
         window.location.assign(url);
         return;
       }
-      // Passaggio fatto subito, con la differenza addebitata sulla carta salvata.
+      // Passaggio fatto subito, con la quota addebitata sulla carta salvata.
       setNotice(`Fatto: ora sei al livello ${subscriptionTierInfo(tier).label}.`);
       load();
     } catch (err) {
@@ -208,6 +236,8 @@ function AbbonamentoContent() {
   const barColor = limit && used >= limit ? brand.urgenza : ratio >= 0.8 ? brand.ottone : brand.cianografia;
   const paidActive = sub?.state === "ACTIVE" || sub?.state === "PAST_DUE";
   const inTrial = sub?.state === "TRIAL";
+  // Con un abbonamento pagato il rinnovo è già deciso; altrimenti lo sceglie l'interruttore.
+  const interval: BillingInterval = paidActive ? (sub?.billingInterval ?? "MONTH") : chosenInterval;
 
   const heading = (
     <YStack gap="$1">
@@ -290,9 +320,12 @@ function AbbonamentoContent() {
 
         <div id="livelli" style={{ scrollMarginTop: 96 }} />
         <YStack gap="$3">
-          <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
-            {paidActive ? "Passa a un livello superiore" : "Scegli il tuo livello"}
-          </Text>
+          <XStack alignItems="center" justifyContent="space-between" flexWrap="wrap" gap="$3">
+            <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
+              {paidActive ? "Livelli" : "Scegli il tuo livello"}
+            </Text>
+            {paidActive ? null : <BillingIntervalToggle value={chosenInterval} onChange={setChosenInterval} />}
+          </XStack>
           {chosenTier ? (
             <Surface borderRadius={radiusDoc} padding="$4" gap="$1" backgroundColor={brand.cianografiaVelo}>
               <Text color={brand.grafite} fontWeight="700">
@@ -320,10 +353,9 @@ function AbbonamentoContent() {
               // Durante il mese gratuito Base è gratis: il prezzo barrato mostra quanto vale.
               const freeNow = inTrial && tier.tier === "BASE";
               const disabled = current || lower || pendingTier !== null || !sub?.checkoutAvailable;
-              let hint: string | null = null;
-              if (lower) hint = "Per scendere di livello annulla e sceglilo alla scadenza.";
-              else if (!current && sub && (paidActive || inTrial) && tier.tier !== "BASE") hint = upgradeCostText(sub, tier.tier);
-              else if (!current && inTrial && tier.tier === "BASE") hint = "Nessun addebito fino alla fine del mese gratuito.";
+              const periodPrice = tierPeriodPriceEurCents(tier.tier, interval);
+              const shownMonthly = interval === "YEAR" ? tier.annualMonthlyEurCents : tier.priceEurCents;
+              const quote = sub && !current && !lower ? upgradeQuoteOf(sub, tier.tier) : null;
               let label: string;
               if (current) label = "Il tuo livello";
               else if (pendingTier === tier.tier) label = "Attendi...";
@@ -336,46 +368,86 @@ function AbbonamentoContent() {
                   $gtSm={{ flex: 1, flexBasis: 0, minWidth: 0 }}
                   borderRadius={radiusDoc}
                   padding="$4"
-                  gap="$2"
+                  gap="$3"
                   borderWidth={current || chosenTier === tier.tier ? 2 : 0}
                   borderColor={current ? brand.cianografia : chosenTier === tier.tier ? brand.cianografiaScuro : "transparent"}
                 >
-                  <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
-                    {tier.label}
-                  </Text>
-                  <XStack alignItems="baseline" gap="$2" flexWrap="wrap">
-                    {freeNow ? (
-                      <>
-                        <Text fontFamily="$heading" fontSize="$6" color={brand.grafite70} textDecorationLine="line-through">
-                          {formatEur(tier.priceEurCents)}
-                        </Text>
-                        <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.cianografiaScuro}>
-                          Gratuito
-                        </Text>
-                      </>
-                    ) : (
-                      <>
-                        <Text fontFamily="$heading" fontWeight="700" fontSize="$8" color={brand.grafite}>
-                          {formatEur(tier.priceEurCents)}
-                        </Text>
-                        <Text color={brand.grafite70}>/mese</Text>
-                      </>
-                    )}
+                  <XStack alignItems="center" justifyContent="space-between" gap="$2">
+                    <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
+                      {tier.label}
+                    </Text>
+                    {current ? (
+                      <Text
+                        fontSize={13}
+                        fontWeight="700"
+                        color={brand.cianografiaScuro}
+                        backgroundColor={brand.cianografiaVelo}
+                        paddingHorizontal="$2"
+                        paddingVertical={2}
+                        borderRadius="$10"
+                      >
+                        Il tuo livello
+                      </Text>
+                    ) : null}
                   </XStack>
-                  {freeNow && sub?.trialEndsAt ? (
-                    <Text color={brand.grafite70} fontSize={16}>
-                      fino al {formatDate(sub.trialEndsAt)}, poi {formatEur(tier.priceEurCents)}/mese
+                  <YStack gap="$1">
+                    <XStack alignItems="baseline" gap="$2" flexWrap="wrap">
+                      {freeNow ? (
+                        <>
+                          <Text fontFamily="$heading" fontSize="$6" color={brand.grafite70} textDecorationLine="line-through">
+                            {formatEur(shownMonthly)}
+                          </Text>
+                          <Text fontFamily="$heading" fontWeight="800" fontSize="$9" color={brand.cianografiaScuro}>
+                            Gratis
+                          </Text>
+                        </>
+                      ) : (
+                        <>
+                          <Text fontFamily="$heading" fontWeight="800" fontSize="$9" color={brand.grafite}>
+                            {formatEur(shownMonthly)}
+                          </Text>
+                          <Text color={brand.grafite70}>al mese + IVA</Text>
+                        </>
+                      )}
+                    </XStack>
+                    <Text color={brand.grafite70} fontSize={15}>
+                      {freeNow
+                        ? `${sub?.trialEndsAt ? `fino al ${formatDate(sub.trialEndsAt)}, ` : ""}poi ${formatEur(periodPrice)} ${perLabel(interval)} + IVA`
+                        : `${interval === "YEAR" ? `${formatEur(periodPrice)} all'anno + IVA · ` : ""}IVA inclusa ${formatEur(withVatEurCents(periodPrice))}`}
+                    </Text>
+                  </YStack>
+                  <XStack alignItems="center" gap="$2">
+                    <Check size={18} strokeWidth={2.25} color={brand.cianografiaScuro} />
+                    <Text color={brand.cianografiaScuro} fontWeight="700">
+                      {tier.monthlyAcceptedJobs === null ? "Lavori senza limite" : `${tier.monthlyAcceptedJobs} lavori al mese`}
+                    </Text>
+                  </XStack>
+                  {quote && tier.tier !== "BASE" ? (
+                    // Una sola cifra (decisione dell'utente): il calcolo sta in "Cambio di livello" qui sotto.
+                    <YStack backgroundColor={brand.gesso} borderRadius={10} padding="$3" gap={2}>
+                      <Text fontSize={13} fontWeight="700" letterSpacing={0.6} textTransform="uppercase" color={brand.grafite70}>
+                        Se passi ora
+                      </Text>
+                      <Text color={brand.grafite}>
+                        <Text fontWeight="800" color={brand.grafite}>
+                          {quote.amountEurCents === 0 ? "Nessun costo" : `${formatEur(quote.amountEurCents)} + IVA`}
+                        </Text>
+                        {quote.amountEurCents > 0 && quote.until ? ` fino al ${shortDate(quote.until)}` : quote.amountEurCents === 0 ? " fino al lancio" : ""}
+                      </Text>
+                    </YStack>
+                  ) : null}
+                  {lower ? (
+                    <Text color={brand.grafite70} fontSize={15}>
+                      Per scendere di livello annulla e sceglilo alla scadenza.
                     </Text>
                   ) : null}
-                  <Text color={brand.cianografiaScuro} fontWeight="700">
-                    {tier.monthlyAcceptedJobs === null ? "Lavori senza limite" : `${tier.monthlyAcceptedJobs} lavori al mese`}
-                  </Text>
-                  {hint ? (
-                    <Text color={brand.grafite70} fontSize={16}>
-                      {hint}
+                  {!current && inTrial && tier.tier === "BASE" ? (
+                    <Text color={brand.grafite70} fontSize={15}>
+                      Nessun addebito fino alla fine del mese gratuito.
                     </Text>
                   ) : null}
-                  {!current && sub && !sub.checkoutAvailable ? (
+                  <YStack flex={1} />
+                  {lower ? null : !current && sub && !sub.checkoutAvailable ? (
                     // Senza Stripe nessun livello si può scegliere: una riga chiara
                     // al posto di un pulsante spento che sembra attivo (§349).
                     <Text color={brand.grafite70} fontSize={16} paddingVertical="$2">
@@ -404,9 +476,41 @@ function AbbonamentoContent() {
               );
             })}
           </YStack>
-          <Text color={brand.grafite70} fontSize={16}>
-            L&apos;abbonamento si rinnova in automatico ogni mese: ti avvisiamo qualche giorno prima di ogni rinnovo e puoi annullarlo quando vuoi.
-          </Text>
+          <YStack gap="$3" $gtSm={{ flexDirection: "row" }}>
+            <Surface $gtSm={{ flex: 1, flexBasis: 0, minWidth: 0 }} borderRadius={radiusDoc} padding="$4" gap="$1">
+              <Text fontWeight="700" color={brand.grafite}>
+                Rinnovo
+              </Text>
+              <Text color={brand.grafite70} fontSize={15} lineHeight={22}>
+                {interval === "YEAR" ? "Ogni anno" : "Ogni mese"} in automatico. Ti avvisiamo {RENEWAL_NOTICE_DAYS} giorni prima.
+              </Text>
+            </Surface>
+            <Surface $gtSm={{ flex: 1, flexBasis: 0, minWidth: 0 }} borderRadius={radiusDoc} padding="$4" gap="$1">
+              <Text fontWeight="700" color={brand.grafite}>
+                Cambio di livello
+              </Text>
+              <Text color={brand.grafite70} fontSize={15} lineHeight={22}>
+                10 € più i giorni che restano, con il 10% in più.{" "}
+                <button type="button" className="fee-more" aria-expanded={feeDetailsOpen} onClick={() => setFeeDetailsOpen((open) => !open)}>
+                  {feeDetailsOpen ? "Chiudi" : "Scopri di più"}
+                </button>
+              </Text>
+              {feeDetailsOpen ? (
+                <Text color={brand.grafite70} fontSize={15} lineHeight={22} marginTop="$1">
+                  Paghi 10 € più la differenza di prezzo tra i due livelli per i giorni che mancano al rinnovo, maggiorata del 10% (+ IVA). Esempio: da
+                  Base a Plus con 7 giorni rimasti su 30 paghi 20,27 € + IVA. Il nuovo livello vale da subito; al rinnovo paghi il nuovo livello intero.
+                </Text>
+              ) : null}
+            </Surface>
+            <Surface $gtSm={{ flex: 1, flexBasis: 0, minWidth: 0 }} borderRadius={radiusDoc} padding="$4" gap="$1">
+              <Text fontWeight="700" color={brand.grafite}>
+                Annulli quando vuoi
+              </Text>
+              <Text color={brand.grafite70} fontSize={15} lineHeight={22}>
+                Resta attivo fino alla fine {interval === "YEAR" ? "dell'anno" : "del mese"} già pagato.
+              </Text>
+            </Surface>
+          </YStack>
         </YStack>
 
         {paidActive && sub ? (
@@ -443,8 +547,10 @@ function AbbonamentoContent() {
               <>
                 <Text color={brand.grafite70}>
                   {sub.currentPeriodEnd && sub.tier
-                    ? `Prossimo rinnovo il ${formatDate(sub.currentPeriodEnd)}: ${formatEur(subscriptionTierInfo(sub.tier).priceEurCents)}.`
-                    : "Si rinnova ogni mese."}{" "}
+                    ? `Prossimo rinnovo il ${formatDate(sub.currentPeriodEnd)}: ${formatEur(tierPeriodPriceEurCents(sub.tier, interval))} + IVA.`
+                    : interval === "YEAR"
+                      ? "Si rinnova ogni anno."
+                      : "Si rinnova ogni mese."}{" "}
                   Se annulli, resta attivo fino alla scadenza.
                 </Text>
                 <Button variant="secondary" alignSelf="flex-start" onPress={() => setConfirmCancel(true)}>
@@ -472,9 +578,12 @@ function AbbonamentoContent() {
             Compreso in ogni livello
           </Text>
           {SUBSCRIPTION_FEATURES.map((feature) => (
-            <Text key={feature} color={brand.grafite70}>
-              · {feature}
-            </Text>
+            <XStack key={feature} gap="$2" alignItems="flex-start">
+              <Check size={16} strokeWidth={2} color={brand.cianografiaScuro} style={{ marginTop: 4, flexShrink: 0 }} />
+              <Text color={brand.grafite70} flex={1}>
+                {feature}
+              </Text>
+            </XStack>
           ))}
         </Surface>
       </YStack>
@@ -485,6 +594,17 @@ function AbbonamentoContent() {
           border-radius: 999px;
           background: ${brand.filetto};
           overflow: hidden;
+        }
+        .fee-more {
+          all: unset;
+          cursor: pointer;
+          color: ${brand.cianografiaScuro};
+          font-weight: 700;
+          text-decoration: underline;
+        }
+        .fee-more:focus-visible {
+          outline: 2px solid ${brand.cianografiaScuro};
+          outline-offset: 2px;
         }
         .usage-fill {
           height: 100%;

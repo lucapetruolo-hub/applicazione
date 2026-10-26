@@ -5,6 +5,7 @@ import type {
   ProfessionalEntityTypeValue,
   MySubscription,
   SubscriptionTier,
+  BillingInterval,
   PROFESSIONAL_CATEGORIES,
   AvailabilitySlotInput,
   BookAgendaSlotInput,
@@ -1613,11 +1614,12 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
     getMySubscription: (token: string) =>
       request<MySubscription>("/professionals/me/subscription", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
-    createSubscriptionCheckout: (token: string, plan: SubscriptionTier) =>
+    /** Scelta o passaggio di livello; `interval` conta solo per un abbonamento nuovo (il passaggio tiene il rinnovo scelto). */
+    createSubscriptionCheckout: (token: string, plan: SubscriptionTier, interval?: BillingInterval) =>
       request<{ url: string | null }>("/billing/subscription/checkout", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ plan, interval }),
       }),
 
     /** Annulla il rinnovo automatico (resta attivo fino alla scadenza) o lo riattiva. */

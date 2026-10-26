@@ -2,7 +2,17 @@
  * Regole pure dell'abbonamento a livelli (docs/CHANGELOG.md §161), testate
  * in `subscription-rules.test.ts`.
  */
-import { TRIAL_DAYS, USAGE_WARNING_RATIO, subscriptionTierInfo, type MySubscription, type PauseReason, type SubscriptionTier } from "@professionisti/shared";
+import {
+  SUBSCRIPTION_TIERS,
+  TRIAL_DAYS,
+  USAGE_WARNING_RATIO,
+  subscriptionTierInfo,
+  upgradeFeeEurCents,
+  type BillingInterval,
+  type MySubscription,
+  type PauseReason,
+  type SubscriptionTier,
+} from "@professionisti/shared";
 
 /** Risposta a chi prova a scrivere o prenotare un professionista in pausa. */
 export const NOT_ACCEPTING_REQUESTS = "Questo professionista al momento non accetta nuove richieste. Cerca altri professionisti nella tua zona.";
@@ -136,6 +146,9 @@ export function usageNoticeToSend(used: number, limit: number | null, lastNotice
 
 const TRIAL_DAY_MS = 24 * 60 * 60 * 1000;
 
+/** Un periodo gratuito (mese di prova o mese regalato): base del calcolo della quota di passaggio. */
+export const FREE_PERIOD_MS = TRIAL_DAYS * TRIAL_DAY_MS;
+
 /**
  * Data di lancio del sito (variabile `LAUNCH_DATE` su Render, formato
  * AAAA-MM-GG, mezzanotte ora solare italiana), docs/CHANGELOG.md §170: il mese
@@ -159,4 +172,52 @@ export function hasLaunched(now: Date, launch: Date | null): boolean {
 export function trialEndFor(now: Date, launch: Date | null): Date {
   const start = launch && launch.getTime() > now.getTime() ? launch : now;
   return new Date(start.getTime() + TRIAL_DAYS * TRIAL_DAY_MS);
+}
+
+const MONTH_FALLBACK_MS = 30 * TRIAL_DAY_MS;
+const YEAR_FALLBACK_MS = 365 * TRIAL_DAY_MS;
+
+/**
+ * Quota di passaggio verso ogni livello sopra quello attuale (docs/CHANGELOG.md
+ * §354): stessa formula dell'addebito vero (`upgradeFeeEurCents`). Durante la
+ * prova si parte da Base e si conta il periodo gratuito di 30 giorni; prima
+ * del lancio la prova non scorre e non si paga niente. Con un abbonamento
+ * pagato si conta il periodo di Stripe (mese o anno) fino al rinnovo.
+ */
+export function upgradeQuotes(input: {
+  state: MySubscription["state"];
+  tier: SubscriptionTier | null;
+  interval: BillingInterval;
+  waitingLaunch: boolean;
+  trialEndsAt: Date | null;
+  currentPeriodStart: Date | null;
+  currentPeriodEnd: Date | null;
+  now: Date;
+}): MySubscription["upgradeQuotes"] {
+  const paid = input.state === "ACTIVE" || input.state === "PAST_DUE";
+  if (!paid && input.state !== "TRIAL") return [];
+  const from: SubscriptionTier = paid && input.tier ? input.tier : "BASE";
+  const higher = SUBSCRIPTION_TIERS.slice(SUBSCRIPTION_TIERS.findIndex((t) => t.tier === from) + 1);
+  const trialRunning = !paid && !input.waitingLaunch && input.trialEndsAt !== null;
+  // Livello scelto durante la prova: Stripe la chiama già abbonamento, ma i giorni sono ancora gratuiti.
+  const inPaidTrial = paid && input.trialEndsAt !== null && input.trialEndsAt.getTime() > input.now.getTime();
+  return higher.map(({ tier }) => {
+    if (input.waitingLaunch && !paid) return { tier, amountEurCents: 0, until: null };
+    if (trialRunning || inPaidTrial) {
+      const end = input.trialEndsAt!;
+      return {
+        tier,
+        amountEurCents: upgradeFeeEurCents({ from, to: tier, interval: "MONTH", remainingMs: end.getTime() - input.now.getTime(), periodMs: FREE_PERIOD_MS }),
+        until: end.toISOString(),
+      };
+    }
+    const end = input.currentPeriodEnd;
+    if (!end) return { tier, amountEurCents: 0, until: null };
+    const periodMs = input.currentPeriodStart ? end.getTime() - input.currentPeriodStart.getTime() : input.interval === "YEAR" ? YEAR_FALLBACK_MS : MONTH_FALLBACK_MS;
+    return {
+      tier,
+      amountEurCents: upgradeFeeEurCents({ from, to: tier, interval: input.interval, remainingMs: end.getTime() - input.now.getTime(), periodMs }),
+      until: end.toISOString(),
+    };
+  });
 }

@@ -181,7 +181,7 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
                 </Link>
                 {!isLoading && !user?.isProfessional ? (
                   <Link href="/per-professionisti" className="mega-navlink" onClick={() => setMobileOpen(false)}>
-                    Sei un professionista?
+                    Offri i tuoi servizi
                   </Link>
                 ) : null}
                 {!isLoading && !user ? (

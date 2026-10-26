@@ -7,6 +7,7 @@ import {
   RENEWAL_NOTICE_DAYS,
   subscriptionTierInfo,
   type MySubscription,
+  type BillingInterval,
   type PauseReason,
   type SubscriptionTier,
 } from "@professionisti/shared";
@@ -26,6 +27,7 @@ import {
   subscriptionState,
   tierOfPlan,
   trialEndFor,
+  upgradeQuotes,
   usageNoticeToSend,
 } from "./subscription-rules";
 
@@ -161,9 +163,10 @@ export class SubscriptionsService {
     const waitingLaunch = !hasLaunched(now, launch) && (!sub || sub.status === "TRIALING");
     const state = waitingLaunch ? "TRIAL" : subscriptionState(sub, now);
     const trialEndsAt = waitingLaunch ? (launch ? trialEndFor(now, launch) : null) : (sub?.trialEndsAt ?? null);
+    const tier = sub && state !== "TRIAL" && state !== "TRIAL_ENDED" ? tierOfPlan(sub.plan) : null;
     return {
       state,
-      tier: sub && state !== "TRIAL" && state !== "TRIAL_ENDED" ? tierOfPlan(sub.plan) : null,
+      tier,
       pausedReason,
       currentPeriodEnd: sub?.currentPeriodEnd?.toISOString() ?? null,
       cancelAtPeriodEnd: Boolean(sub?.cancelAtPeriodEnd),
@@ -174,6 +177,17 @@ export class SubscriptionsService {
         monthlyLimit: monthlyLimit(sub, now),
         monthLabel: romeMonthLabel(now),
       },
+      billingInterval: tier && sub ? sub.billingInterval : null,
+      upgradeQuotes: upgradeQuotes({
+        state,
+        tier,
+        interval: sub?.billingInterval ?? "MONTH",
+        waitingLaunch,
+        trialEndsAt,
+        currentPeriodStart: sub?.currentPeriodStart ?? null,
+        currentPeriodEnd: sub?.currentPeriodEnd ?? null,
+        now,
+      }),
       checkoutAvailable: paymentsActive(),
       fiscalDataNeeded: publicVisibilityMissing(profile),
       identityVerificationNeeded: identityVerificationNeeded(profile),
@@ -190,7 +204,9 @@ export class SubscriptionsService {
     stripeSubscriptionId: string;
     status: "ACTIVE" | "PAST_DUE" | "CANCELED" | null;
     tier: SubscriptionTier | null;
+    interval: BillingInterval | null;
     cancelAtPeriodEnd: boolean;
+    currentPeriodStart?: Date | null;
     currentPeriodEnd: Date | null;
   }): Promise<void> {
     const row =
@@ -204,7 +220,9 @@ export class SubscriptionsService {
         stripeSubscriptionId: input.stripeSubscriptionId,
         ...(input.status ? { status: input.status } : {}),
         ...(input.tier ? { plan: input.tier } : {}),
+        ...(input.interval ? { billingInterval: input.interval } : {}),
         cancelAtPeriodEnd: input.cancelAtPeriodEnd,
+        ...(input.currentPeriodStart !== undefined ? { currentPeriodStart: input.currentPeriodStart } : {}),
         currentPeriodEnd: input.currentPeriodEnd,
       },
     });

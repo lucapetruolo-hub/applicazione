@@ -607,12 +607,18 @@ enum SubscriptionStatus {
   CANCELED
 }
 
+enum BillingInterval {
+  MONTH
+  YEAR
+}
+
 model Subscription {
   id                    String             @id @default(uuid())
   professionalProfileId String             @unique
   plan                  SubscriptionPlan   @default(FREE)
   status                SubscriptionStatus @default(ACTIVE)
   stripeSubscriptionId  String?            @unique
+  currentPeriodStart    DateTime?
   currentPeriodEnd      DateTime?
   // Prova gratuita (docs/CHANGELOG.md §161): primo mese gratis per tutti,
   // senza limite di lavori. Allungata di un mese, una volta sola, a chi non
@@ -629,6 +635,8 @@ model Subscription {
   // è già partito l'avviso di rinnovo o di fine.
   cancelAtPeriodEnd     Boolean            @default(false)
   periodNoticeFor       DateTime?
+  // Rinnovo mensile o annuale scelto (docs/CHANGELOG.md §354), dal prezzo Stripe.
+  billingInterval       BillingInterval    @default(MONTH)
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
 

@@ -117,7 +117,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   SUBSCRIPTION_BONUS_MONTH: { icon: "🎁", message: "Ti regaliamo un altro mese gratis." },
   SUBSCRIPTION_TRIAL_ENDING: { icon: "⏳", message: "Il tuo mese gratuito sta per finire: scegli un livello per restare visibile nelle ricerche." },
   SUBSCRIPTION_LIMIT_NEAR: { icon: "📈", message: "Ti stai avvicinando ai lavori compresi nel tuo livello questo mese." },
-  SUBSCRIPTION_LIMIT_REACHED: { icon: "🏁", message: "Hai raggiunto i lavori compresi questo mese: il profilo è fuori dalle ricerche. Passa al livello superiore pagando solo la differenza." },
+  SUBSCRIPTION_LIMIT_REACHED: { icon: "🏁", message: "Hai raggiunto i lavori compresi questo mese: il profilo è fuori dalle ricerche. Puoi passare al livello superiore da Abbonamento." },
   SUBSCRIPTION_PAUSED: { icon: "⏸️", message: "Il tuo account è in pausa: scegli un livello per renderlo di nuovo visibile e operativo." },
   SUBSCRIPTION_RENEWING: { icon: "🔁", message: "Il tuo abbonamento si rinnova automaticamente tra pochi giorni." },
   SUBSCRIPTION_RENEWED: { icon: "✅", message: "Abbonamento rinnovato, grazie." },

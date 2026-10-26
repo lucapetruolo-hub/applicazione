@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { formatEur as formatEurShared, subscriptionTierInfo, tierPriceDifferenceEurCents, type MySubscription, type SubscriptionTier } from "@professionisti/shared";
+import { formatEur as formatEurShared, subscriptionTierInfo, tierPeriodPriceEurCents, type MySubscription, type SubscriptionTier } from "@professionisti/shared";
 import { Button, Surface, Text, YStack, brand, radiusDoc } from "@professionisti/ui";
 
 /**
@@ -31,11 +31,22 @@ function nextMonthStartLabel(): string {
   return `1° ${next.toLocaleDateString("it-IT", { month: "long" })}`;
 }
 
+function shortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "long", timeZone: "Europe/Rome" });
+}
+
+/** Quota di passaggio adesso verso un livello (docs/CHANGELOG.md §354), o null se non si può passare. */
+export function upgradeQuoteOf(sub: MySubscription, to: SubscriptionTier) {
+  return sub.upgradeQuotes.find((quote) => quote.tier === to) ?? null;
+}
+
+/** "20,27 € + IVA fino al 31 ottobre, poi 59 € al mese + IVA." */
 export function upgradeCostText(sub: MySubscription, to: SubscriptionTier): string {
-  if (sub.state === "TRIAL") {
-    return `Paghi ora solo la differenza (${formatEur(tierPriceDifferenceEurCents("BASE", to))}), poi ${formatEur(subscriptionTierInfo(to).priceEurCents)} al mese dalla fine del mese gratuito.`;
-  }
-  return "Paghi ora solo la differenza per i giorni che mancano al rinnovo.";
+  const quote = upgradeQuoteOf(sub, to);
+  const interval = sub.billingInterval ?? "MONTH";
+  const then = `${formatEur(tierPeriodPriceEurCents(to, interval))} ${interval === "YEAR" ? "all'anno" : "al mese"} + IVA`;
+  if (!quote || quote.amountEurCents === 0) return `Nessun costo adesso, poi ${then}.`;
+  return `Paghi ora ${formatEur(quote.amountEurCents)} + IVA${quote.until ? ` fino al ${shortDate(quote.until)}` : ""}, poi ${then}.`;
 }
 
 /**

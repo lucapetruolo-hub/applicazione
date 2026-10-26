@@ -295,17 +295,23 @@ le funzionalità per tutti**, a livelli che si distinguono solo per il
 numero di **lavori accettati** al mese (Booking creato quando il cliente
 accetta il preventivo, mai i "completati", che segna il professionista).
 
-| Livello | Prezzo indicativo | Lavori accettati al mese |
-|---|---|---|
-| **Base** | ~€19/mese | 5 |
-| **Plus** | ~€39/mese | 15 |
-| **Pro** | ~€69/mese | senza limite |
+| Livello | Mensile + IVA | Annuale + IVA | Lavori accettati al mese |
+|---|---|---|---|
+| **Base** | 19 € | 190 € (16 €/mese) | 3 |
+| **Plus** | 59 € | 590 € (49 €/mese) | 10 |
+| **Pro** | 99 € | 990 € (83 €/mese) | senza limite |
+
+Prezzi e limiti decisi dall'utente il 26/10/2026 (docs/CHANGELOG.md §354),
+al posto di 19/39/69 € e 5/15 lavori: mostrati "+ IVA" con l'IVA compresa
+in piccolo, annuale (dieci mensilità, "Risparmi 2 mesi") in vista per primo;
+prezzi Stripe nelle variabili `STRIPE_PRICE_<LIVELLO>` e
+`STRIPE_PRICE_<LIVELLO>_ANNUAL`, IVA con `STRIPE_TAX_RATE_IVA`.
 
 - **Primo mese gratis per tutti.**
 - **Mese regalato a sorpresa:** a chi non ha avuto nessun preventivo
   accettato si regala un altro mese, comunicato solo in prossimità della
   scadenza del primo mese (gratis o pagato), non all'iscrizione.
-- **Il mese gratuito vale come Base** (5 lavori). Sulla pagina prezzi Base
+- **Il mese gratuito vale come Base** (3 lavori). Sulla pagina prezzi Base
   mostra "€19" barrato e "Gratuito", con la condizione in piccolo ("il
   primo mese, poi €19/mese"): il mese gratis non si annuncia altrove.
 - **Account in pausa** (`ProfessionalProfile.pausedAt`/`pausedReason`,
@@ -323,11 +329,14 @@ accetta il preventivo, mai i "completati", che segna il professionista).
   AAAA-MM-GG, docs/CHANGELOG.md §170): chi si iscrive prima ha la prova
   fino a lancio + 30 giorni. Senza la variabile la prova parte
   dall'iscrizione.
-- **Al limite:** si continua pagando solo la differenza verso il livello
-  superiore (nel mese gratuito la differenza piena verso Base, con un
-  abbonamento pagato la differenza per i giorni che mancano al rinnovo),
-  altrimenti si riparte il 1° del mese.
-- **Rinnovo automatico** mensile con avviso 3 giorni prima (sito + email);
+- **Al limite:** si passa al livello superiore pagando **10 € più la
+  differenza di prezzo per i giorni che mancano al rinnovo, maggiorata del
+  10%**, senza tetto (decisione dell'utente, §354; `upgradeFeeEurCents` in
+  `packages/shared/src/plans.ts`, nel periodo gratuito si conta da Base sui
+  suoi 30 giorni); il nuovo livello vale fino al rinnovo, poi si paga
+  intero. Una sola cifra nell'interfaccia, il calcolo in "Scopri di più" e
+  nei Termini. Altrimenti si riparte il 1° del mese.
+- **Rinnovo automatico** mensile o annuale con avviso 3 giorni prima (sito + email);
   annullabile da `/dashboard/abbonamento`, resta attivo fino alla scadenza.
   Passare a un livello inferiore non è ancora previsto.
 - Prezzi e limiti da rivedere sui dati dei primi mesi.

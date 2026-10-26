@@ -1313,7 +1313,7 @@ const BUILDERS: Record<string, Builder> = {
         used !== null && limit !== null
           ? `Questo mese hai già **${used} lavori accettati su ${limit}** compresi nel tuo livello.`
           : "Ti stai avvicinando ai lavori accettati compresi nel tuo livello per questo mese.",
-        "Al limite il profilo esce dalle ricerche fino al mese prossimo. Se pensi di averne bisogno, puoi passare al livello superiore pagando solo la differenza.",
+        "Al limite il profilo esce dalle ricerche fino al mese prossimo. Se pensi di averne bisogno, puoi passare al livello superiore: in Abbonamento trovi quanto costa adesso.",
       ],
       cta: subscriptionPage(),
     };
@@ -1326,7 +1326,7 @@ const BUILDERS: Record<string, Builder> = {
     title: "Hai raggiunto il limite del mese",
     paragraphs: [
       "Hai raggiunto i lavori accettati compresi nel tuo livello per questo mese: il tuo profilo non compare più nelle ricerche e non ricevi nuove richieste.",
-      "Passa al livello superiore pagando solo la differenza, oppure riparti dal primo del mese prossimo.",
+      "Passa al livello superiore (in Abbonamento trovi quanto costa adesso), oppure riparti dal primo del mese prossimo.",
     ],
     cta: subscriptionPage(),
   }),

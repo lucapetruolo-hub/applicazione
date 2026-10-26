@@ -137,8 +137,8 @@ notification("SUBSCRIPTION_BONUS_MONTH", "Professionista", "Abbonamento", { date
 notification("SUBSCRIPTION_LIMIT_NEAR", "Professionista", "Abbonamento", { used: 4, limit: 5 });
 notification("SUBSCRIPTION_LIMIT_REACHED", "Professionista", "Abbonamento");
 notification("SUBSCRIPTION_PAUSED", "Professionista", "Abbonamento", { reason: "TRIAL_ENDED" });
-notification("SUBSCRIPTION_RENEWING", "Professionista", "Abbonamento", { tierLabel: "Plus", amountEurCents: 3900, date: inThreeDays });
-notification("SUBSCRIPTION_RENEWED", "Professionista", "Abbonamento", { tierLabel: "Plus", amountEurCents: 3900, date: inThreeDays });
+notification("SUBSCRIPTION_RENEWING", "Professionista", "Abbonamento", { tierLabel: "Plus", amountEurCents: 5900, date: inThreeDays });
+notification("SUBSCRIPTION_RENEWED", "Professionista", "Abbonamento", { tierLabel: "Plus", amountEurCents: 5900, date: inThreeDays });
 notification("SUBSCRIPTION_ENDING", "Professionista", "Abbonamento", { tierLabel: "Plus", date: inThreeDays });
 notification("SUBSCRIPTION_PAYMENT_FAILED", "Professionista", "Abbonamento");
 

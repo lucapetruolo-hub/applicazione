@@ -133,7 +133,7 @@ export function SiteHeader() {
                 {!isLoading && !user?.isProfessional ? (
                   <Link href="/per-professionisti" style={{ textDecoration: "none" }}>
                     <Text fontSize={16} fontWeight="600" color={brand.grafite}>
-                      Sei un professionista?
+                      Offri i tuoi servizi
                     </Text>
                   </Link>
                 ) : null}
