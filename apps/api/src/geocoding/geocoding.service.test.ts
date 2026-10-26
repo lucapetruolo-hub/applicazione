@@ -85,7 +85,7 @@ describe("GeocodingService (Google Geocoding)", () => {
     });
   });
 
-  describe("CAP (§352)", () => {
+  describe("CAP (§356)", () => {
     const reply = (result: object | null) => ({ ok: true, json: async () => (result ? { status: "OK", results: [result] } : { status: "ZERO_RESULTS", results: [] }) });
     const comp = (long: string, types: string[], short = long) => ({ long_name: long, short_name: short, types });
 

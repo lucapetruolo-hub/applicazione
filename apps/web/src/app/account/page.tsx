@@ -144,7 +144,7 @@ export default function AccountPage() {
   const [province, setProvince] = useState("");
   // Prima la città, poi la via scelta dai suggerimenti di quella città (docs/CHANGELOG.md §214).
   const chosenAddress = useChosenAddress(true);
-  // Via scelta senza CAP: lo si cerca da via e civico (docs/CHANGELOG.md §352).
+  // Via scelta senza CAP: lo si cerca da via e civico (docs/CHANGELOG.md §356).
   const [askPostalCode, setAskPostalCode] = useState(false);
   const postalCodeLookup = usePostalCodeLookup({
     enabled: askPostalCode || chosenAddress.serviceDown,

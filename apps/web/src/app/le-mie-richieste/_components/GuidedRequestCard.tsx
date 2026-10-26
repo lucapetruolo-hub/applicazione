@@ -145,7 +145,7 @@ export function GuidedRequestCard({
   // Stesse regole della richiesta di preventivo (docs/CHANGELOG.md §214):
   // indirizzo solo della città scelta e preso dall'elenco dei suggerimenti.
   const chosenAddress = useChosenAddress(true);
-  // Indirizzo scelto senza CAP: lo si cerca da via e civico (docs/CHANGELOG.md §352).
+  // Indirizzo scelto senza CAP: lo si cerca da via e civico (docs/CHANGELOG.md §356).
   const [askPostalCode, setAskPostalCode] = useState(false);
   const postalCodeLookup = usePostalCodeLookup({
     enabled: request.serviceMode === "HOME" && (askPostalCode || chosenAddress.serviceDown),

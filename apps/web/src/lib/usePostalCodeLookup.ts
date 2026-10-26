@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { apiClient } from "@/lib/apiClient";
 
 /**
- * CAP cercato da solo da via e civico (docs/CHANGELOG.md §352): Google non lo
+ * CAP cercato da solo da via e civico (docs/CHANGELOG.md §356): Google non lo
  * dà con l'indirizzo scelto per una via senza civico nelle città con più CAP
  * (es. "Via Cesare Battisti, Roma"). Si cerca dopo una breve pausa di
  * battitura del civico e si mette nel campo, che resta modificabile: scritto

@@ -51,7 +51,7 @@ export class GeocodingService {
   });
 
   /**
-   * Il CAP è della città? (docs/CHANGELOG.md §352) `false` solo quando è sicuro: CAP di
+   * Il CAP è della città? (docs/CHANGELOG.md §356) `false` solo quando è sicuro: CAP di
    * un'altra provincia, o di un solo comune diverso da quello scelto. Nel
    * dubbio (CAP di più località, Google che non risponde) `null`, che non
    * blocca nessuno.
