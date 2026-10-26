@@ -332,9 +332,8 @@ function AbbonamentoContent() {
               return (
                 <Surface
                   key={tier.tier}
-                  flex={1}
-                  flexBasis={0}
-                  minWidth={0}
+                  // Larghezze uguali solo in riga: in colonna (telefono) flexBasis 0 dava altezza 0 e i riquadri si sovrapponevano.
+                  $gtSm={{ flex: 1, flexBasis: 0, minWidth: 0 }}
                   borderRadius={radiusDoc}
                   padding="$4"
                   gap="$2"

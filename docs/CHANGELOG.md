@@ -20960,3 +20960,13 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - **Mappa del raggio senza consenso**: controllata in produzione chiedendo al server l'immagine fissa con le coordinate di Latina e i raggi 20 e 35 km: torna l'immagine con il segnaposto e i due cerchi. Il testo alternativo dell'immagine parlava di "posizione dei professionisti": ora dice la zona e i due raggi (`staticAlt` in `GoogleMapGate`).
 
 **Verifica**: typecheck, lint, 654 test dell'API (4 nuovi su `auditLabel`), 71 prove nel browser su telefono (anche quella di accessibilità dell'agenda), foto a 390 px di Registro azioni, Home e Accedi senza nulla che esce dallo schermo.
+
+## 353. Abbonamento: livelli sovrapposti sul telefono
+
+**Segnalazione** (26/10/2026, thread "Versione più profonda del progetto verso il lancio"): nelle anteprime fatte con l'account professionista di Luca, in `/dashboard/abbonamento` da telefono i riquadri Base, Plus e Pro si sovrapponevano e il testo non si leggeva. Luca l'ha visto anche dal suo telefono.
+
+**Causa**: nel §349 (`b5d1428`) le tessere dei livelli hanno preso `flexBasis={0}` per avere colonne uguali su computer. Da telefono le tessere sono in colonna, e lì `flexBasis` 0 vuol dire altezza di partenza 0: con `minHeight` 0 di Tamagui ogni tessera restava alta pochi pixel e il contenuto usciva sopra quella dopo.
+
+**Correzione**: `flex: 1`, `flexBasis: 0` e `minWidth: 0` solo dentro `$gtSm`, dove le tessere sono in riga. Da telefono l'altezza torna quella del contenuto.
+
+**Verifica**: pagina aperta in locale con le risposte dell'API simulate (prova, livello Base, 1 lavoro su 5), a 390 px le tessere sono alte 207 px e una sotto l'altra; a 1440 px restano tre colonne uguali come prima.
