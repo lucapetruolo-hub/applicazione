@@ -72,6 +72,8 @@ export function GuidedRequestCard({
   bookingUnreadCounts,
   autoOpenChatProfessionalId,
   onChatAutoOpenHandled,
+  autoStartEditing,
+  onAutoEditHandled,
   onMarkedRead,
 }: {
   request: ClientGuidedRequest;
@@ -97,6 +99,10 @@ export function GuidedRequestCard({
   autoOpenChatProfessionalId?: string | null;
   /** Richiamata subito dopo aver gestito `autoOpenChatProfessionalId` — il genitore azzera il proprio stato "in sospeso" così un eventuale rimontaggio successivo non la riapre da sola. */
   onChatAutoOpenHandled?: () => void;
+  /** "Modifica richiesta" dall'email di conferma (`?modifica=1`, docs/CHANGELOG.md §355): apre subito il modulo, se la richiesta si può ancora modificare. */
+  autoStartEditing?: boolean;
+  /** Richiamata dopo aver gestito `autoStartEditing`, così un rimontaggio non riapre il modulo. */
+  onAutoEditHandled?: () => void;
   /** "Segna come letta" dal menu: spegne subito il "Nuovo" locale del genitore. */
   onMarkedRead: () => void;
 }) {
@@ -145,7 +151,7 @@ export function GuidedRequestCard({
   // Stesse regole della richiesta di preventivo (docs/CHANGELOG.md §214):
   // indirizzo solo della città scelta e preso dall'elenco dei suggerimenti.
   const chosenAddress = useChosenAddress(true);
-  // Indirizzo scelto senza CAP: lo si cerca da via e civico (docs/CHANGELOG.md §356).
+  // Indirizzo scelto senza CAP: lo si cerca da via e civico (docs/CHANGELOG.md §357).
   const [askPostalCode, setAskPostalCode] = useState(false);
   const postalCodeLookup = usePostalCodeLookup({
     enabled: request.serviceMode === "HOME" && (askPostalCode || chosenAddress.serviceDown),
@@ -325,6 +331,16 @@ export function GuidedRequestCard({
     setError(null);
     setIsEditing(true);
   }
+
+  // Link seguito una volta sola, poi avvisa la pagina: serve un effetto. Se
+  // c'è già un preventivo resta la scheda aperta con "Non modificabile".
+  useEffect(() => {
+    if (!autoStartEditing) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (canEditDetails) startEditing();
+    onAutoEditHandled?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStartEditing]);
 
   async function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];

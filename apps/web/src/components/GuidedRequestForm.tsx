@@ -465,7 +465,7 @@ export function GuidedRequestForm({
   // Stessa cosa per CAP e provincia: Google non dà il CAP di una via senza
   // civico nelle città con più CAP (es. "Via Cesare Battisti, Roma"). Senza
   // questi campi l'errore "Indica il CAP." restava nascosto e "Avanti" non
-  // faceva nulla (docs/CHANGELOG.md §355).
+  // faceva nulla (docs/CHANGELOG.md §356).
   const [askPostalCode, setAskPostalCode] = useState(false);
   const [askProvince, setAskProvince] = useState(false);
   // Restano visibili anche dopo la prima lettera scritta (il flag "ask" si accende scrivendo).
@@ -473,7 +473,7 @@ export function GuidedRequestForm({
   const showPostalCode = askPostalCode || !postalCode.trim();
   const showProvince = askProvince || !province.trim();
   // CAP cercato da solo appena c'è il civico, quando Google non l'ha dato
-  // con l'indirizzo (§356); scritto a mano vale quello del cliente.
+  // con l'indirizzo (§357); scritto a mano vale quello del cliente.
   const postalCodeLookup = usePostalCodeLookup({
     enabled: serviceMode === "HOME" && (askPostalCode || chosenAddress.serviceDown),
     street,
@@ -767,7 +767,7 @@ export function GuidedRequestForm({
         return;
       }
     }
-    // CAP scritto a mano: se è di un'altra città lo si dice subito (§356).
+    // CAP scritto a mano: se è di un'altra città lo si dice subito (§357).
     // Nel dubbio o senza risposta si va avanti.
     if (next === 3 && serviceMode === "HOME" && postalCodeLookup.typed && postalCode.trim() && city.trim()) {
       const check = await apiClient.addressPostalCodeCheck({ postalCode: postalCode.trim(), city: city.trim() }).catch(() => null);

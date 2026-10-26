@@ -21007,7 +21007,20 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: typecheck, lint, tutte le prove nel browser in locale (144 passate), foto a 360, 390 e 1366 px.
 
-## 355. "Avanti" che non faceva nulla nel passo "Dove" della richiesta
+## 355. Riepilogo della richiesta nell'email di conferma al cliente
+
+**Richiesta di Luca** (26/10/2026): "quando un cliente manda una richiesta, per email mandagli anche i dettagli della richiesta che ha mandato, in modo che se ci sono errori va a modificarla".
+
+**Fatto**:
+- L'email "Richiesta inviata" (normale, urgente, diretta, più categorie) ha un riquadro "La tua richiesta" con servizio, professionista scelto (solo richiesta diretta), quando (Oggi, urgente / In settimana / Con calma, o giorno e fascia dell'agenda), indirizzo completo (via, civico, scala/interno, CAP, città, provincia) oppure "Online", descrizione intera con gli a capo e le miniature delle foto (Cloudinary 176×176, il video col primo fotogramma; ognuna apre l'originale).
+- Pulsante "Modifica richiesta" → `/le-mie-richieste?open=<id>&modifica=1`: la pagina apre la scheda e subito il modulo di modifica. Se nel frattempo è arrivato un preventivo resta la scheda aperta con "Non modificabile: hai già ricevuto un preventivo." Sotto il pulsante il link "Segui la richiesta". Per un invio con più categorie (una richiesta per categoria) il pulsante è "Controlla le richieste" con la spiegazione che si corregge ciascuna con Modifica.
+- Dati lasciati fuori di proposito: nome e telefono di chi riceve il professionista (non servono a riconoscere un errore nel lavoro e restano nel sito) e qualunque cosa sul pagamento (decisione della PR #138).
+- Pulsante di tutte le email nel verde pieno dei pulsanti del sito (`#128552` invece di `#189A63`, scelta di Luca dopo il confronto): il bianco passa da 3,6 a 4,7 di contrasto.
+- Modello email (`email-layout.ts`): righe "lunghe" (`long`, etichetta sopra e testo normale sotto), titolo del riquadro (`detailsTitle`), miniature (`detailImages`) e link secondario sotto il pulsante (`secondaryLink`); anche nella versione solo testo.
+
+**Verifica**: typecheck API e sito, lint, test dell'API (5 nuovi su `requestSentEmail`), anteprime a 390 e 1280 px con `email:preview`.
+
+## 356. "Avanti" che non faceva nulla nel passo "Dove" della richiesta
 
 **Segnalazione dell'utente** (26/10/2026, thread "Sbloccare Avanti nella richiesta urgente"): su /urgente, passo "Dove", con nome, telefono, indirizzo "Via Cesare Battisti, Roma RM" e civico compilati, "Avanti" non andava avanti e non diceva perché.
 
@@ -21019,9 +21032,9 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: typecheck e lint di web; prova nel browser con le risposte del server simulate (via di Roma senza CAP): compare il campo CAP, senza CAP "Avanti" mostra "Indica il CAP." sotto il campo, col CAP si arriva al riepilogo.
 
-## 356. CAP compilato da solo e controllato con la città
+## 357. CAP compilato da solo e controllato con la città
 
-**Richiesta esplicita dell'utente** (26/10/2026, stesso thread del §355): "effettua le due migliorie, inserisci da solo il cap ma dai la possibilità di modificarlo".
+**Richiesta esplicita dell'utente** (26/10/2026, stesso thread del §356): "effettua le due migliorie, inserisci da solo il cap ma dai la possibilità di modificarlo".
 
 **Decisioni**:
 - **CAP da solo**: quando Google non dà il CAP con l'indirizzo scelto, appena si scrive il civico (dopo 0,6 secondi di pausa) il sito lo chiede al nostro server, `GET /address/postal-code?street=&number=&city=`, che usa la ricerca testuale di Places API (New) con la chiave server (`AddressSuggestionsService.postalCodeFor`). Via e civico vanno nel corpo della richiesta a Google, mai nell'indirizzo: con la Geocoding API (GET) CodeQL segnalava cinque `js/request-forgery` critici. Accettati solo una via dall'aspetto di una via, un civico come "12", "12A" o "12/3" e un comune dell'elenco ISTAT (si usa il suo nome dall'elenco). Il CAP compare nel campo con la riga "CAP trovato in automatico: se non è giusto, cambialo." Il campo resta modificabile; scritto a mano non viene più sovrascritto. Se il CAP non si trova o Google non risponde, si scrive a mano come prima. Vale anche con i campi separati (suggerimenti non disponibili).

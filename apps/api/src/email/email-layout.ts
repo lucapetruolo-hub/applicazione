@@ -21,8 +21,14 @@ export type EmailContent = {
   /**
    * Riquadro con i dati principali (categoria, data, importo...). Con `url`
    * il valore diventa un link (mappa, telefono, email: docs/CHANGELOG.md §234).
+   * Con `long` l'etichetta va sopra e il testo sotto, non in grassetto e con
+   * gli a capo (descrizione intera nel riepilogo della richiesta).
    */
-  details?: { label: string; value: string; url?: string }[];
+  details?: EmailDetail[];
+  /** Titolo piccolo in testa al riquadro dei dettagli ("La tua richiesta"). */
+  detailsTitle?: string;
+  /** Miniature in fondo al riquadro dei dettagli (foto della richiesta), ognuna apre l'originale. */
+  detailImages?: { label: string; images: { src: string; href: string }[] };
   /** Avviso urgente o scadenza: titolo e riquadro in rosso. */
   tone?: "default" | "urgent";
   /**
@@ -31,6 +37,8 @@ export type EmailContent = {
    */
   code?: { label: string; value: string };
   cta?: { label: string; url: string };
+  /** Link semplice sotto il pulsante, per una seconda azione meno importante. */
+  secondaryLink?: { label: string; url: string };
   /** Testo dopo il pulsante, più piccolo (scadenze del link, "se non sei stato tu"...). */
   after?: string[];
   /**
@@ -40,6 +48,8 @@ export type EmailContent = {
    */
   kind: "notification" | "account";
 };
+
+export type EmailDetail = { label: string; value: string; url?: string; long?: boolean };
 
 export type RenderedEmail = { subject: string; html: string; text: string };
 
@@ -70,17 +80,36 @@ export function renderEmail(content: EmailContent): RenderedEmail {
   const p = (text: string, size = 16, color: string = c.text) =>
     `<p style="margin:0 0 16px;font-family:${FONT};font-size:${size}px;line-height:1.55;color:${color};">${inline(text)}</p>`;
 
-  const detailsHtml = content.details?.length
-    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 20px;background:${urgent ? c.urgentTint : c.primaryTint};border-radius:14px;">` +
-      `<tr><td style="padding:14px 18px;">` +
-      content.details
+  const detailRow = (d: EmailDetail) => {
+    const value = d.url ? `<a href="${escapeHtml(d.url)}" style="color:${c.text};">${escapeHtml(d.value)}</a>` : escapeHtml(d.value);
+    return d.long
+      ? `<p style="margin:10px 0 4px;font-family:${FONT};font-size:14px;line-height:1.45;color:${c.muted};">${escapeHtml(d.label)}</p>` +
+          `<p style="margin:0 0 6px;font-family:${FONT};font-size:15px;line-height:1.5;color:${c.text};">${value.replace(/\n/g, "<br>")}</p>`
+      : `<p style="margin:4px 0;font-family:${FONT};font-size:15px;line-height:1.45;color:${c.text};"><span style="color:${c.muted};">${escapeHtml(d.label)}:</span> <strong>${value}</strong></p>`;
+  };
+  const imagesHtml = content.detailImages?.images.length
+    ? `<p style="margin:10px 0 8px;font-family:${FONT};font-size:14px;line-height:1.45;color:${c.muted};">${escapeHtml(content.detailImages.label)}</p>` +
+      `<p style="margin:0;font-size:0;line-height:0;">` +
+      content.detailImages.images
         .map(
-          (d) =>
-            `<p style="margin:4px 0;font-family:${FONT};font-size:15px;line-height:1.45;color:${c.text};"><span style="color:${c.muted};">${escapeHtml(d.label)}:</span> <strong>${d.url ? `<a href="${escapeHtml(d.url)}" style="color:${c.text};">${escapeHtml(d.value)}</a>` : escapeHtml(d.value)}</strong></p>`,
+          (image) =>
+            `<a href="${escapeHtml(image.href)}" style="display:inline-block;margin:0 8px 8px 0;text-decoration:none;">` +
+            `<img src="${escapeHtml(image.src)}" width="88" height="88" alt="Foto" style="display:block;width:88px;height:88px;border:0;border-radius:10px;object-fit:cover;background:${c.card};"></a>`,
         )
         .join("") +
-      `</td></tr></table>`
+      `</p>`
     : "";
+  const detailsHtml =
+    content.details?.length || imagesHtml
+      ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 20px;background:${urgent ? c.urgentTint : c.primaryTint};border-radius:14px;">` +
+        `<tr><td style="padding:14px 18px;">` +
+        (content.detailsTitle
+          ? `<p style="margin:2px 0 8px;font-family:${FONT};font-size:16px;line-height:1.4;font-weight:800;color:${c.text};">${escapeHtml(content.detailsTitle)}</p>`
+          : "") +
+        (content.details ?? []).map(detailRow).join("") +
+        imagesHtml +
+        `</td></tr></table>`
+      : "";
 
   const codeHtml = content.code
     ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 20px;background:${c.primaryTint};border-radius:14px;">` +
@@ -93,7 +122,10 @@ export function renderEmail(content: EmailContent): RenderedEmail {
   const ctaHtml = content.cta
     ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 24px;"><tr><td style="border-radius:999px;background:${c.primary};">` +
       `<a href="${escapeHtml(content.cta.url)}" style="display:inline-block;padding:14px 28px;font-family:${FONT};font-size:16px;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:999px;">${escapeHtml(content.cta.label)}</a>` +
-      `</td></tr></table>`
+      `</td></tr></table>` +
+      (content.secondaryLink
+        ? `<p style="margin:-12px 0 24px;font-family:${FONT};font-size:15px;line-height:1.5;"><a href="${escapeHtml(content.secondaryLink.url)}" style="color:${c.primaryDark};font-weight:700;">${escapeHtml(content.secondaryLink.label)}</a></p>`
+        : "")
     : "";
 
   const footerReason =
@@ -134,9 +166,18 @@ export function renderEmail(content: EmailContent): RenderedEmail {
     plain(content.title),
     ...(greeting ? [greeting] : []),
     ...content.paragraphs.map(plain),
-    ...(content.details?.length ? [content.details.map((d) => `${d.label}: ${d.value}${d.url && !/^(tel|mailto):/.test(d.url) ? ` (${d.url})` : ""}`).join("\n")] : []),
+    ...(content.details?.length || content.detailImages?.images.length
+      ? [
+          [
+            ...(content.detailsTitle ? [content.detailsTitle] : []),
+            ...(content.details ?? []).map((d) => `${d.label}: ${d.value}${d.url && !/^(tel|mailto):/.test(d.url) ? ` (${d.url})` : ""}`),
+            ...(content.detailImages?.images.length ? [`${content.detailImages.label}: ${content.detailImages.images.length}`] : []),
+          ].join("\n"),
+        ]
+      : []),
     ...(content.code ? [`${content.code.label}: ${content.code.value}`] : []),
     ...(content.cta ? [`${content.cta.label}: ${content.cta.url}`] : []),
+    ...(content.secondaryLink ? [`${content.secondaryLink.label}: ${content.secondaryLink.url}`] : []),
     ...(content.after ?? []).map(plain),
     EMAIL_BRAND.signature,
     "—",

@@ -27,7 +27,7 @@ export function ProfessionalReviewsLink({ professionalProfileId, reviews }: { pr
   // Link normale e non `next/link`: la pagina col solo id rimanda all'indirizzo
   // con nome e città, e nella navigazione interna di Next quel rimando perdeva
   // "#recensioni" (si apriva il profilo in cima). Il browser invece tiene il
-  // "#" anche dopo il rimando del server (docs/CHANGELOG.md §356).
+  // "#" anche dopo il rimando del server (docs/CHANGELOG.md §357).
   return (
     <a href={`/professionista/${professionalProfileId}#recensioni`} aria-label={label} style={{ textDecoration: "none", alignSelf: "flex-start" }}>
       <ProfessionalReviewsSummary reviews={reviews} />

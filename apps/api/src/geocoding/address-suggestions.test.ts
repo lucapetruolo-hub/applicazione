@@ -71,7 +71,7 @@ describe("suggerimenti di indirizzo dal server (§264)", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  describe("CAP di via e civico (§356)", () => {
+  describe("CAP di via e civico (§357)", () => {
     const reply = (place: object) => ({ ok: true, json: async () => ({ places: [place] }) });
     const comp = (text: string, types: string[]) => ({ longText: text, shortText: text, types });
 

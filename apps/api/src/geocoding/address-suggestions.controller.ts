@@ -22,7 +22,7 @@ export class AddressSuggestionsController {
     private readonly geocodingService: GeocodingService,
   ) {}
 
-  /** CAP di via e civico, per compilarlo da solo nel modulo di richiesta (§356). */
+  /** CAP di via e civico, per compilarlo da solo nel modulo di richiesta (§357). */
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Get("postal-code")
   async postalCode(@Query("street") street?: string, @Query("number") houseNumber?: string, @Query("city") city?: string) {
@@ -35,7 +35,7 @@ export class AddressSuggestionsController {
     return { postalCode: await this.addressSuggestionsService.postalCodeFor({ street, houseNumber, city: comune.name }) };
   }
 
-  /** Il CAP scritto è della città? `matches: null` quando non si sa (§356). */
+  /** Il CAP scritto è della città? `matches: null` quando non si sa (§357). */
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Get("postal-code/check")
   async postalCodeCheck(@Query("postalCode") postalCode?: string, @Query("city") city?: string) {

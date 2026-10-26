@@ -139,7 +139,7 @@ export class AddressSuggestionsService {
   }
 
   /**
-   * CAP di via e civico (docs/CHANGELOG.md §356): Google non lo dà per una via
+   * CAP di via e civico (docs/CHANGELOG.md §357): Google non lo dà per una via
    * senza civico nelle città con più CAP, il modulo di richiesta lo cerca
    * appena si scrive il civico. Places API (New), ricerca testuale: il testo
    * va nel corpo della richiesta, come per i suggerimenti. `null` se non lo
