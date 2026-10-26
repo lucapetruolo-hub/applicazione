@@ -16,6 +16,7 @@ function buildService(city: { requests?: Groups; searches?: Groups }, all: { req
       ),
       upsert: vi.fn().mockResolvedValue(undefined),
     },
+    freeSearchDay: { upsert: vi.fn().mockResolvedValue(undefined) },
     category: {
       findMany: vi.fn().mockResolvedValue([
         { id: "c1", slug: "idraulico" },
@@ -85,8 +86,23 @@ describe("CategoriesService.recordSearch", () => {
     const { service, prisma } = buildService({}, {});
     await service.recordSearch("idraulico", "  Latina ");
     const call = prisma.categorySearchDay.upsert.mock.calls[0]?.[0];
-    expect(call.create).toMatchObject({ categoryId: "c1", city: "latina", count: 1 });
-    expect(call.update).toEqual({ count: { increment: 1 } });
+    expect(call.create).toMatchObject({ categoryId: "c1", city: "latina", count: 1, emptyCount: 0 });
+    expect(call.update).toEqual({ count: { increment: 1 }, emptyCount: { increment: 0 } });
+  });
+
+  it("conta a parte le ricerche senza nessuno vicino (§370)", async () => {
+    const { service, prisma } = buildService({}, {});
+    await service.recordSearch("idraulico", "Sezze", true);
+    const call = prisma.categorySearchDay.upsert.mock.calls[0]?.[0];
+    expect(call.create).toMatchObject({ count: 1, emptyCount: 1 });
+    expect(call.update).toEqual({ count: { increment: 1 }, emptyCount: { increment: 1 } });
+  });
+
+  it("ricerca senza lavoro: conta solo se c'era una parola, mai la parola", async () => {
+    const { service, prisma } = buildService({}, {});
+    await service.recordFreeSearch(" Latina", true, false);
+    const call = prisma.freeSearchDay.upsert.mock.calls[0]?.[0];
+    expect(call.create).toEqual({ city: "latina", withText: true, day: expect.any(Date), count: 1, emptyCount: 0 });
   });
 
   it("ignora una categoria sconosciuta", async () => {

@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
 import { NotificationsModule } from "../notifications/notifications.module";
+import { SearchDemandAlertService } from "./search-demand-alert.service";
 import { ProfessionalMetricsModule } from "../professional-metrics/professional-metrics.module";
 import { AuditLogModule } from "../audit-log/audit-log.module";
 import { JobIssuesModule } from "../job-issues/job-issues.module";
@@ -22,7 +23,7 @@ import { AdminSecurityAlertsService } from "./admin-security-alerts.service";
   // GuidedRequestsModule/BookingsModule verso lo stesso servizio).
   imports: [AuthModule, EmailModule, NotificationsModule, ProfessionalMetricsModule, AuditLogModule, JobIssuesModule],
   controllers: [AdminController, AdminBootstrapController, AdminTwoFactorController],
-  providers: [AdminService, AdminGuard, AdminTwoFactorService, AdminSecurityAlertsService],
+  providers: [AdminService, AdminGuard, AdminTwoFactorService, AdminSecurityAlertsService, SearchDemandAlertService],
   // AdminGuard esportata: i nuovi controller finanza/fiscale/DAC7 (CLAUDE.md
   // §88) vivono nei propri moduli ma restano protetti dallo stesso gate
   // amministratori — stessa istanza/dipendenze (PRISMA, globale) di quella

@@ -21208,3 +21208,41 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 **Perché barre orizzontali e non torte**: con 13 categorie e 10 città una torta non si legge; le barre si confrontano a colpo d'occhio e hanno accanto numero e percentuale.
 
 **Verifica**: test dei conti (stato unico, abbonamento, categorie multiple, mesi), typecheck, lint, test dei permessi; pagine aperte in locale con l'API simulata da telefono e computer.
+
+## 369. Professionisti in numeri: attività, iscrizione, profili completi, copertura, risposte, abbandoni
+
+**Richiesta** (Luca, 26/10/2026): "vedi cos'altro può essere utile sapere come dato"; proposti 8 dati, Luca: "effettuali tutti", in una PR separata dopo aver unito la #153 (§368).
+
+**Decisione**: tutti nella stessa pagina `/admin/numeri-professionisti`, con gli stessi filtri per categoria e città.
+- **Attivi negli ultimi 30 giorni**: nuova casella in cima, chi ha mandato almeno un preventivo o un messaggio, con la quota sul totale.
+- **A che punto dell'iscrizione**: profilo creato, dati fiscali compilati, identità verificata, almeno un preventivo, almeno un lavoro accettato. Il calo tra due righe dice dove ci si ferma.
+- **Profili completi**: con la foto, la descrizione, le prestazioni con i prezzi, l'agenda, e con tutte e quattro.
+- **Copertura per categoria e città** (ultimi 90 giorni): richieste, quante senza preventivo (in rosso se ce ne sono) e professionisti visibili con sede in quella città; prima le zone con più richieste rimaste senza risposta, le prime 20. Dice dove cercare professionisti.
+- **Risposte, preventivi e recensioni per categoria** (ultimi 90 giorni, per categoria della richiesta): richieste ricevute dai professionisti, con risposta (preventivo, messaggio o rifiuto) e quota, tempo della prima risposta (a metà classifica, non la media, per non farsi spostare da un caso isolato), preventivi, accettati con la quota, recensioni e voto medio da sempre.
+- **Abbandoni negli ultimi 12 mesi**: account eliminati, messi in pausa (solo chi lo è ancora), abbonamenti annullati (nel mese dell'annullamento), con il totale.
+- Sul telefono le tabelle diventano schede con il nome di ogni numero davanti.
+
+**API**: stessi `GET /admin/professionals/stats`, campi nuovi in `AdminProfessionalStats` (`active30d`, `funnel`, `completeness`, `coverage`, `byCategoryActivity`, `churnByMonth`); conti in `apps/api/src/admin/professional-stats.ts`, letture in `AdminService.getProfessionalStats` (conteggi raggruppati, nessuna riga per messaggio). Nessuna rotta nuova, nessuna migrazione.
+
+**Verifica**: 4 test nuovi (attivi, copertura, attività per categoria, abbandoni), typecheck, lint, 717 test dell'API; query provata su un database locale; pagina aperta in locale con l'API simulata da computer e telefono.
+
+## 370. Professionisti in numeri: cosa cercano sul sito
+
+**Richiesta** (Luca, 26/10/2026): sapere da quale città viene aperto il sito e se si cerca un professionista preciso o solo una città, "così capiamo ancora meglio dove potrebbe esserci domanda".
+
+**Decisione** (scelta di Luca tra tre proposte): contare la città **cercata**, non quella di chi visita. La città di chi visita si ricava dalla connessione ed è spesso sbagliata (sul telefono molti risultano a Roma o Milano), e richiederebbe un passaggio in più nell'informativa privacy. Nella pagina `/admin/numeri-professionisti`, dopo il grafico delle iscrizioni:
+- **Cosa cercano** (ultimi 90 giorni): ricerche, quante **senza nessun professionista vicino** (nessuno entro 25 km: il più vicino mostrato come alternativa non basta), quante con un nome o una parola scritta, quante solo per città; poi le città più cercate con le ricerche rimaste senza nessuno vicino.
+- **Lavori cercati per città**: lavoro, città, ricerche, senza nessuno vicino e professionisti visibili con sede lì; prima le ricerche rimaste senza nessuno.
+- Con il filtro per lavoro le ricerche senza lavoro non contano; con il filtro per città solo quella città.
+
+**Come si conta**: come già per le ricerche per lavoro (§281), un contatore per giorno e città, mai chi cerca né il testo scritto (solo se c'era una parola). `CategorySearchDay.emptyCount` nuovo; tabella nuova `FreeSearchDay` per le ricerche senza lavoro (pagina `/cerca`, contate solo con una città o una parola). Il conteggio parte da questa versione: i giorni prima non hanno le ricerche senza nessuno vicino né quelle senza lavoro. Una pagina ricaricata conta di nuovo (detto nella pagina). Migrazione `20261026220000_ricerche_admin`.
+
+**Verifica**: test di `hasNearbyResult`, del conteggio e dei numeri della pagina; typecheck, lint, 721 test dell'API; API avviata in locale su un database nuovo con tre ricerche vere e i contatori controllati nelle tabelle; pagina aperta in locale con l'API simulata da computer e telefono.
+
+## 371. Avviso del lunedì: dove cercano e non trovano professionisti
+
+**Richiesta** (Luca, 26/10/2026, miglioria 1 proposta col §370): un avviso nell'email del lunedì quando in una città ci sono molte ricerche senza nessuno vicino.
+
+**Decisione**: ogni lunedì alle 9 (ora di Roma), solo dopo il lancio (`LAUNCH_DATE`), i super admin ricevono la notifica `ADMIN_SEARCH_DEMAND_ALERT` (campanella ed email, argomento admin) con al massimo 5 righe "Lavoro, Città: N ricerche": le zone con almeno 5 ricerche senza nessun professionista entro 25 km negli ultimi 7 giorni, dalla più scoperta. Le ricerche senza città non contano (non dicono dove reclutare). Nessun avviso se nessuna zona arriva a 5. Il pulsante porta a "Professionisti in numeri". Soglie in `packages/shared/src/professionalStats.ts` (`SEARCH_DEMAND_ALERT_*`), conti in `searchDemandZones` (`apps/api/src/admin/professional-stats.ts`), invio in `apps/api/src/admin/search-demand-alert.service.ts`, come l'avviso delle urgenti (§344).
+
+**Verifica**: test delle zone (soglia, città scritte in modo diverso, senza città) e dell'email; tutti i modelli email ancora composti anche vuoti; API avviata in locale senza errori; email aperta in locale.

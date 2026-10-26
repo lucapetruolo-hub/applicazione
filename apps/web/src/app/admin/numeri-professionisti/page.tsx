@@ -5,8 +5,12 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   FOUNDER_SPOTS,
+  PROFESSIONAL_ACTIVITY_DAYS,
+  SEARCH_RADIUS_KM,
   PROFESSIONAL_CATEGORIES,
+  PROFESSIONAL_COMPLETENESS_LABEL,
   PROFESSIONAL_ENTITY_LABEL,
+  PROFESSIONAL_FUNNEL_LABEL,
   PROFESSIONAL_PLAN_LABEL,
   PROFESSIONAL_STATUS_LABEL,
   sharePercentLabel,
@@ -168,6 +172,10 @@ function StatsBody({ data, filters, scope }: { data: AdminProfessionalStats; fil
           <span className="admin-kpi-label">Visibili nella ricerca · {sharePercentLabel(visible, data.total)}</span>
         </div>
         <div className="admin-kpi">
+          <span className="admin-kpi-value">{data.active30d}</span>
+          <span className="admin-kpi-label">Attivi negli ultimi 30 giorni · {sharePercentLabel(data.active30d, data.total)}</span>
+        </div>
+        <div className="admin-kpi">
           <span className="admin-kpi-value">{data.new30d}</span>
           <span className="admin-kpi-label">Nuovi negli ultimi 30 giorni</span>
         </div>
@@ -218,8 +226,20 @@ function StatsBody({ data, filters, scope }: { data: AdminProfessionalStats; fil
             total={data.total}
             rows={data.byEntity.map((e) => ({ key: e.key, label: PROFESSIONAL_ENTITY_LABEL[e.key], count: e.count }))}
           />
+          <BarSection
+            title="A che punto dell'iscrizione"
+            note="Ogni riga conta chi ha già fatto quel passo: il calo tra due righe è chi si è fermato prima."
+            total={data.total}
+            rows={data.funnel.map((f) => ({ key: f.key, label: PROFESSIONAL_FUNNEL_LABEL[f.key], count: f.count }))}
+          />
+          <BarSection
+            title="Profili completi"
+            total={data.total}
+            rows={data.completeness.map((c) => ({ key: c.key, label: PROFESSIONAL_COMPLETENESS_LABEL[c.key], count: c.count }))}
+          />
         </div>
       )}
+
 
       <AdminCard>
         <div className="admin-chart-head">
@@ -243,8 +263,277 @@ function StatsBody({ data, filters, scope }: { data: AdminProfessionalStats; fil
         <StatsBarChart points={months} formatValue={(v) => String(v)} ariaLabel="Professionisti iscritti per mese" />
       </AdminCard>
 
+      <SearchCard searches={data.searches} withCategory={Boolean(filters.category)} />
+      <SearchZonesCard rows={data.searches.byCategoryCity} />
+      <CoverageCard rows={data.coverage} />
+      <CategoryActivityCard rows={data.byCategoryActivity} />
+      <ChurnCard rows={data.churnByMonth} />
+
       {excluded.length ? <Text color={brand.grafite70} fontSize={13}>Non contati: {excluded.join(" e ")}.</Text> : null}
     </YStack>
+  );
+}
+
+function CardTitle({ title, note }: { title: string; note: string }) {
+  return (
+    <YStack gap="$1">
+      <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+        {title}
+      </Text>
+      <Text color={brand.grafite70} fontSize={13}>
+        {note}
+      </Text>
+    </YStack>
+  );
+}
+
+const cityName = (city: string) => city || "Senza città";
+
+/**
+ * Cosa cercano sul sito (scelta di Luca, docs/CHANGELOG.md §370): quante
+ * ricerche, quante senza nessuno vicino, per nome o solo città, e le città
+ * più cercate. Solo numeri, mai chi cerca né il testo scritto.
+ */
+function SearchCard({ searches, withCategory }: { searches: AdminProfessionalStats["searches"]; withCategory: boolean }) {
+  const figures = [
+    { key: "total", value: String(searches.total), label: "Ricerche" },
+    { key: "empty", value: `${searches.empty} · ${sharePercentLabel(searches.empty, searches.total)}`, label: "Senza nessun professionista vicino", alert: searches.empty > 0 },
+    ...(withCategory
+      ? []
+      : [
+          { key: "text", value: String(searches.withText), label: "Con un nome o una parola scritta" },
+          { key: "city", value: String(searches.cityOnly), label: "Solo per città, senza lavoro" },
+        ]),
+  ];
+  return (
+    <AdminCard>
+      <CardTitle
+        title="Cosa cercano"
+        note={`Ricerche sul sito negli ultimi ${PROFESSIONAL_ACTIVITY_DAYS} giorni. "Vicino" vuol dire entro ${SEARCH_RADIUS_KM} km. Una pagina ricaricata conta di nuovo.`}
+      />
+      {searches.total === 0 ? (
+        <Text color={brand.grafite70}>Nessuna ricerca negli ultimi {PROFESSIONAL_ACTIVITY_DAYS} giorni.</Text>
+      ) : (
+        <>
+          <div className="admin-figures">
+            {figures.map((f) => (
+              <div key={f.key} className={f.alert ? "admin-figure is-alert" : "admin-figure"}>
+                <span className="admin-figure-value">{f.value}</span>
+                <span className="admin-figure-label">{f.label}</span>
+              </div>
+            ))}
+          </div>
+          <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite}>
+            Città più cercate
+          </Text>
+          <ul className="admin-bars">
+            {searches.byCity.map((row) => (
+              <li key={row.city}>
+                <div className="admin-bars-head">
+                  <span className="admin-bars-label">
+                    {cityName(row.city)}
+                    {row.empty > 0 ? <span className="admin-bars-alert">{row.empty} senza nessuno vicino</span> : null}
+                  </span>
+                  <span className="admin-bars-value">
+                    <strong>{row.searches}</strong> · {sharePercentLabel(row.searches, searches.total)}
+                  </span>
+                </div>
+                <div className="admin-bars-track" aria-hidden="true">
+                  <div className="admin-bars-fill" style={{ width: `${Math.min(100, (row.searches / searches.total) * 100)}%` }} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </AdminCard>
+  );
+}
+
+/** Lavoro e città cercati: dove c'è domanda e quanti professionisti ci sono. */
+function SearchZonesCard({ rows }: { rows: AdminProfessionalStats["searches"]["byCategoryCity"] }) {
+  if (rows.length === 0) return null;
+  return (
+    <AdminCard>
+      <CardTitle
+        title="Lavori cercati per città"
+        note="Professionisti visibili con sede in quella città. Prima le ricerche rimaste senza nessuno vicino."
+      />
+      <div className="admin-table-wrap">
+        <table className="admin-table admin-table-numbers">
+          <thead>
+            <tr>
+              <th>Lavoro</th>
+              <th>Città</th>
+              <th>Ricerche</th>
+              <th>Senza nessuno vicino</th>
+              <th>Professionisti</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={`${row.categorySlug}-${row.city}`}>
+                <td className="admin-cell-main">{row.categoryLabel}</td>
+                <td data-label="Città">{cityName(row.city)}</td>
+                <td data-label="Ricerche">{row.searches}</td>
+                <td data-label="Senza nessuno vicino" className={row.empty > 0 ? "is-alert" : undefined}>
+                  {row.empty} · {sharePercentLabel(row.empty, row.searches)}
+                </td>
+                <td data-label="Professionisti" className={row.professionals === 0 ? "is-alert" : undefined}>
+                  {row.professionals}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </AdminCard>
+  );
+}
+
+/** Dove mancano professionisti: richieste senza preventivo per categoria e città. */
+function CoverageCard({ rows }: { rows: AdminProfessionalStats["coverage"] }) {
+  return (
+    <AdminCard>
+      <CardTitle
+        title="Copertura per categoria e città"
+        note={`Richieste degli ultimi ${PROFESSIONAL_ACTIVITY_DAYS} giorni e professionisti visibili con sede in quella città. Prima le zone con più richieste senza preventivo.`}
+      />
+      {rows.length === 0 ? (
+        <Text color={brand.grafite70}>Nessuna richiesta negli ultimi {PROFESSIONAL_ACTIVITY_DAYS} giorni.</Text>
+      ) : (
+        <div className="admin-table-wrap">
+          <table className="admin-table admin-table-numbers">
+            <thead>
+              <tr>
+                <th>Categoria</th>
+                <th>Città</th>
+                <th>Richieste</th>
+                <th>Senza preventivo</th>
+                <th>Professionisti</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={`${row.categorySlug}-${row.city}`}>
+                  <td className="admin-cell-main">{row.categoryLabel}</td>
+                  <td data-label="Città">{row.city}</td>
+                  <td data-label="Richieste">{row.requests}</td>
+                  <td data-label="Senza preventivo" className={row.unanswered > 0 ? "is-alert" : undefined}>
+                    {row.unanswered} · {sharePercentLabel(row.unanswered, row.requests)}
+                  </td>
+                  <td data-label="Professionisti" className={row.professionals === 0 ? "is-alert" : undefined}>
+                    {row.professionals}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </AdminCard>
+  );
+}
+
+/** Minuti in parole brevi: "25 min", "3 ore", "2 giorni". */
+function durationLabel(minutes: number | null): string {
+  if (minutes === null) return "—";
+  if (minutes < 60) return `${minutes} min`;
+  if (minutes < 48 * 60) return `${Math.round(minutes / 60)} ore`;
+  return `${Math.round(minutes / (24 * 60))} giorni`;
+}
+
+function CategoryActivityCard({ rows }: { rows: AdminProfessionalStats["byCategoryActivity"] }) {
+  return (
+    <AdminCard>
+      <CardTitle
+        title="Risposte, preventivi e recensioni per categoria"
+        note={`Ultimi ${PROFESSIONAL_ACTIVITY_DAYS} giorni, per categoria della richiesta. Risposta: preventivo, messaggio o rifiuto. Prima risposta: tempo a metà classifica. Recensioni e voto da sempre.`}
+      />
+      {rows.length === 0 ? (
+        <Text color={brand.grafite70}>Ancora nessuna richiesta, preventivo o recensione.</Text>
+      ) : (
+        <div className="admin-table-wrap">
+          <table className="admin-table admin-table-numbers">
+            <thead>
+              <tr>
+                <th>Categoria</th>
+                <th>Richieste ricevute</th>
+                <th>Con risposta</th>
+                <th>Prima risposta</th>
+                <th>Preventivi</th>
+                <th>Accettati</th>
+                <th>Recensioni</th>
+                <th>Voto medio</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.slug}>
+                  <td className="admin-cell-main">{row.label}</td>
+                  <td data-label="Richieste ricevute">{row.leads}</td>
+                  <td data-label="Con risposta">{row.leads ? `${row.answered} · ${sharePercentLabel(row.answered, row.leads)}` : "—"}</td>
+                  <td data-label="Prima risposta">{durationLabel(row.medianMinutesToAnswer)}</td>
+                  <td data-label="Preventivi">{row.quotes}</td>
+                  <td data-label="Accettati">{row.quotes ? `${row.accepted} · ${sharePercentLabel(row.accepted, row.quotes)}` : "—"}</td>
+                  <td data-label="Recensioni">{row.reviews}</td>
+                  <td data-label="Voto medio">{row.avgRating === null ? "—" : row.avgRating.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </AdminCard>
+  );
+}
+
+const monthLabel = (key: string) => {
+  const [year, month] = key.split("-").map(Number) as [number, number];
+  return new Intl.DateTimeFormat("it-IT", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(year, month - 1, 1)));
+};
+
+function ChurnCard({ rows }: { rows: AdminProfessionalStats["churnByMonth"] }) {
+  const totals = rows.reduce((sum, r) => ({ deleted: sum.deleted + r.deleted, paused: sum.paused + r.paused, canceled: sum.canceled + r.canceled }), {
+    deleted: 0,
+    paused: 0,
+    canceled: 0,
+  });
+  return (
+    <AdminCard>
+      <CardTitle
+        title="Abbandoni negli ultimi 12 mesi"
+        note="In pausa: solo chi lo è ancora. Abbonamenti annullati: nel mese dell'annullamento, anche se restano attivi fino alla scadenza."
+      />
+      <div className="admin-table-wrap">
+        <table className="admin-table admin-table-numbers">
+          <thead>
+            <tr>
+              <th>Mese</th>
+              <th>Account eliminati</th>
+              <th>Messi in pausa</th>
+              <th>Abbonamenti annullati</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[...rows].reverse().map((row) => (
+              <tr key={row.key}>
+                <td className="admin-cell-main">{monthLabel(row.key)}</td>
+                <td data-label="Eliminati">{row.deleted}</td>
+                <td data-label="In pausa">{row.paused}</td>
+                <td data-label="Annullati">{row.canceled}</td>
+              </tr>
+            ))}
+            <tr className="admin-table-total">
+              <td className="admin-cell-main">Totale</td>
+              <td data-label="Eliminati">{totals.deleted}</td>
+              <td data-label="In pausa">{totals.paused}</td>
+              <td data-label="Annullati">{totals.canceled}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </AdminCard>
   );
 }
 

@@ -42,6 +42,7 @@ import { VerifiedEmailGuard } from "../auth/verified-email.guard";
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { CategoriesService } from "../categories/categories.service";
 import { ProfessionalsService } from "./professionals.service";
+import { hasNearbyResult } from "./search-area";
 
 const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
 // Un video pesa naturalmente molto di più di una foto compressa: limite
@@ -59,7 +60,7 @@ export class ProfessionalsController {
   ) {}
 
   @Get("search")
-  search(
+  async search(
     @Query("category") category?: string,
     @Query("city") city?: string,
     @Query("q") q?: string,
@@ -67,19 +68,27 @@ export class ProfessionalsController {
     @Query("excludeDemo") excludeDemo?: string,
     @Query("track") track?: string,
   ) {
-    // La pagina dei risultati chiede di contare la ricerca una volta sola
-    // (`track=1`, docs/CHANGELOG.md §281): serve solo a mettere prima i lavori
-    // più cercati. Un errore qui non deve mai rompere la ricerca.
-    if (track === "1" && typeof category === "string" && category) {
-      void this.categoriesService.recordSearch(category, typeof city === "string" ? city : undefined).catch(() => undefined);
-    }
-    return this.professionalsService.search({
+    const results = await this.professionalsService.search({
       category,
       city,
       q,
       remote: remote === "1" || remote === "true",
       excludeDemo: excludeDemo === "1" || excludeDemo === "true",
     });
+    // La pagina dei risultati chiede di contare la ricerca una volta sola
+    // (`track=1`, docs/CHANGELOG.md §281): serve a mettere prima i lavori più
+    // cercati e ai numeri dell'area admin (§370), con le ricerche senza
+    // nessuno vicino. Un errore qui non deve mai rompere la ricerca.
+    if (track === "1") {
+      const cityName = typeof city === "string" ? city : undefined;
+      const empty = !hasNearbyResult(results);
+      const record =
+        typeof category === "string" && category
+          ? this.categoriesService.recordSearch(category, cityName, empty)
+          : this.categoriesService.recordFreeSearch(cityName, typeof q === "string" && q.trim() !== "", empty);
+      void record.catch(() => undefined);
+    }
+    return results;
   }
 
   // Pubblico (nessun guard, sola lettura di dati aggregati non sensibili):

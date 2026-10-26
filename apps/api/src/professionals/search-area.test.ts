@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { findComuneByName } from "@professionisti/shared";
-import { selectSearchArea, type SearchAreaCandidate } from "./search-area";
+import { hasNearbyResult, selectSearchArea, type SearchAreaCandidate } from "./search-area";
 
 const milano = findComuneByName("Milano")!;
 const monza = findComuneByName("Monza")!;
@@ -39,5 +39,14 @@ describe("selectSearchArea (ricerca per luogo con raggio)", () => {
 
   it("ignora chi non ha coordinate", () => {
     expect(selectSearchArea(milano, [{ id: "x", latitude: 0, longitude: 0 }], 25).size).toBe(0);
+  });
+});
+
+describe("hasNearbyResult (§370)", () => {
+  it("vicino solo con qualcuno nel raggio", () => {
+    expect(hasNearbyResult([])).toBe(false);
+    expect(hasNearbyResult([{ distanceKm: 40 }])).toBe(false);
+    expect(hasNearbyResult([{ distanceKm: 40 }, { distanceKm: 12 }])).toBe(true);
+    expect(hasNearbyResult([{}])).toBe(true);
   });
 });
