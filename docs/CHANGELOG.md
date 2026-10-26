@@ -21046,3 +21046,17 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - **Stelle del preventivo che portano alle recensioni** (trovato dalla CI su questa PR): il link `/professionista/<id>#recensioni` (§342) passava dal rimando all'indirizzo con nome e città (§295), e nella navigazione interna di Next il `#recensioni` si perdeva: il profilo si apriva in cima. La prova `stelle-preventivi` passava solo quando controllava l'indirizzo prima del rimando. Ora è un link normale (`<a>`), il browser tiene il `#` dopo il rimando; la prova si aspetta l'indirizzo con nome e città.
 
 **Verifica**: typecheck di web e api, lint di web, 18 test della geocodifica e dei suggerimenti (3 nuovi sul CAP); prova nel browser con le risposte del server simulate: CAP trovato dopo il civico, CAP di Latina con Roma bloccato con il messaggio, CAP corretto a mano arriva al riepilogo.
+
+## 358. Ricerca: un clic sulle prestazioni apre il profilo
+
+**Richiesta esplicita dell'utente** (26/10/2026): "a chi effettua una ricerca, se clicca sulla parte relativa alle prestazioni offerte, attualmente non succede niente, è sbagliato, fagli aprire almeno il profilo del professionista".
+
+**Causa**: l'area "orari e prezzi" della scheda ferma il clic (scelta del §206/§349: sull'agenda devono rispondere solo i pulsanti), e l'elenco delle prestazioni stava dentro quell'area.
+
+**Decisioni**:
+- Un clic in qualunque punto dell'elenco delle prestazioni apre il profilo, come il resto della scheda ("Mostra tutte" continua ad aprire l'elenco). Vale anche in "Professionisti salvati" (stessa scheda).
+- Provata prima una versione con ogni prestazione come link al profilo già sulla sezione "Prestazioni", con freccina e riga evidenziata: tolta su decisione dell'utente ("non serve a niente cliccare sulla singola prestazione se poi ti porta sempre al profilo"). Nessun segno in più sulle righe.
+- Da tastiera e con i lettori di schermo il profilo si apre dal link del nome, come prima: nessun punto di tabulazione in più.
+- L'agenda resta com'era: lo spazio vuoto tra gli orari non apre il profilo (richiesta del §206).
+
+**Verifica**: typecheck e lint; sito in locale con prestazioni di prova, clic a 1440 px e tocco a 390 px su una prestazione: si apre il profilo; "Mostra tutte" apre l'elenco senza cambiare pagina.
