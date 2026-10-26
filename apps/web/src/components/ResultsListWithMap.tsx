@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, Info, Map as MapIcon, Maximize2, Minimize2, ShieldCheck, SlidersHorizontal, X, Zap } from "lucide-react";
 import { findComuneByName, PUBLIC_AGENDA_DAYS, SEARCH_RADIUS_KM, type ProfessionalSearchResult, professionalPath, subTagLabel } from "@professionisti/shared";
-import { Icon, ProfessionalCard, Text, XStack, YStack, brand, professionalServiceHref } from "@professionisti/ui";
+import { Icon, ProfessionalCard, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { useMediaQuery } from "@/lib/useMediaQuery";
@@ -639,14 +639,6 @@ export function ResultsListWithMap({
               onPress={() =>
                 navigateWithTransition(() =>
                   router.push(`${professionalPath(pro)}${defaultMode === "ONLINE" ? "?modalita=ONLINE" : ""}`),
-                )
-              }
-              // Clic su una prestazione: profilo aperto sull'elenco delle
-              // prestazioni con quella riga in evidenza (richiesta esplicita
-              // dell'utente: prima il clic non faceva nulla).
-              onServicePress={(serviceId) =>
-                navigateWithTransition(() =>
-                  router.push(professionalServiceHref(`${professionalPath(pro)}${defaultMode === "ONLINE" ? "?modalita=ONLINE" : ""}`, serviceId)),
                 )
               }
               // Click su un orario libero della mini-agenda (o sul bottone
