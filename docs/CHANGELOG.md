@@ -20961,7 +20961,53 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: typecheck, lint, 654 test dell'API (4 nuovi su `auditLabel`), 71 prove nel browser su telefono (anche quella di accessibilità dell'agenda), foto a 390 px di Registro azioni, Home e Accedi senza nulla che esce dallo schermo.
 
-## 353. Abbonamento: livelli sovrapposti sul telefono
+## 351. "Lavoro" usciva dalla colonna del menu ridotto
+
+**Richiesta esplicita dell'utente** (26/10/2026, thread "Migliorare la pagina Oggi del professionista", con una foto di `/dashboard` a schermo intero): "la scritta «lavoro» sfora la colonna a sinistra, correggi".
+
+**Causa**: col menu ridotto a icone i titoli dei gruppi si nascondono con `html[data-acct-nav="collapsed"] .acct-nav-title`. Il primo titolo però ha una regola più specifica, aggiunta nel §337 per allinearlo al tondo (`.acct-nav-toggle + .acct-nav-group > .acct-nav-title { display: flex }`), che vinceva: "Lavoro" restava visibile nella colonna da 64 px e ne usciva a sinistra.
+
+**Decisione**: la regola che nasconde i titoli col menu ridotto vale anche per il primo, con la stessa specificità (`globals.css`). Nessun altro cambiamento.
+
+**Verifica**: sito in locale con un professionista di prova a 1366 px (menu ridotto da solo): `display` del primo titolo `flex` prima, `none` dopo; foto del menu ridotto senza la scritta. Menu aperto e tablet invariati (le regole toccate valgono solo col menu ridotto).
+
+## 352. Pagina "Oggi" del professionista: richieste prima, una scadenza, Naviga
+
+**Richiesta esplicita dell'utente** (26/10/2026, stesso thread del §351): dopo l'analisi della pagina (`analisi/oggi-migliorie.md`) "effettua le migliorie: 1-2-3-4-6-8-10" e poi "anche la 5". Non scelte: 7 ("Ciao Luca" invece del nome dell'attività) e 9 (scheda unica per "Aumenta la tua visibilità").
+
+**Decisioni** (`apps/web/src/app/dashboard/page.tsx`, `globals.css`, `lib/leadDeadline.ts`):
+1. **Telefono, "Invia preventivo"** sotto il testo e largo quanto la scheda: accanto schiacciava la descrizione in 4-5 righe.
+2. **Una scadenza alla volta**: su una richiesta diretta comparivano "Puoi rispondere fino al 25 dicembre" e "Rispondi entro 6 ore, poi va anche ad altri professionisti", che sembravano in contrasto. Ora solo il conto alla rovescia; passato quel tempo compare la data finale (la scritta "Solo tua ancora per 6 ore" provata qui è stata tolta nel §353). Vale anche per le pillole di Richieste e lavori (stessa funzione `leadDeadlines`).
+3. **Richieste prima sul telefono**: con richieste in attesa, "Da rispondere ora" viene subito dopo i lavori di oggi e domani, prima di "Completa il profilo" e dell'avviso sull'agenda (prima erano due schermate più giù). Sul computer le colonne non cambiano.
+4. **Niente doppione**: tolta la tessera "Richieste da rispondere", il numero sta in un tondo rosso accanto a "Da rispondere ora". "Date da confermare" e "Messaggi non letti" compaiono solo se sopra zero.
+5. **"Urgente"** con l'etichetta rossa di Richieste e lavori (`Badge`), non più l'emoji 🔴.
+6. **"Il tuo andamento" vuoto** (nessuna visita, risposta o recensione): una riga invece di tre tessere con "0" e "—". Con i dati, da telefono una tessera per riga, nome a sinistra e numero a destra.
+8. **"Naviga"** verde sui lavori di oggi confermati con un indirizzo (anche quelli aggiunti a mano): apre Google Maps come in agenda. L'indirizzo era già visibile (lavoro confermato, CLAUDE.md §5 punto 9).
+10. **Meteo più basso sul computer**: giorno, icona e gradi su una riga (circa 46 px invece di 92). La descrizione ("Nuvoloso") resta nel fumetto e nel testo dell'icona per gli screen reader. Telefono invariato.
+
+**Verifica**: typecheck e lint; sito in locale con professionista di prova (richiesta urgente, richiesta diretta, lavoro oggi e domani, con e senza visite), foto a 390, 1366 e 1600 px, nessuna pagina più larga dello schermo.
+
+## 353. "Oggi": Sto arrivando, recensioni, conto alla rovescia con il perché
+
+**Richiesta esplicita dell'utente** (26/10/2026, stesso thread): "effettua migliorie delle recensioni e del naviga, e in più ripristina il conteggio per il professionista per fargli capire che se non risponde va anche ad altri la richiesta".
+
+**Decisioni**:
+- **Conto alla rovescia**: torna "Rispondi entro 6 ore, poi va anche ad altri professionisti" (`formatForwardDeadline`). Resta una scadenza alla volta (§352): la data finale compare dopo.
+- **"Sto arrivando"** accanto a "Naviga" sugli appuntamenti di oggi confermati a domicilio, come nell'agenda (`notifyOnTheWay`); inviato diventa "Avvisato alle 13:40", se non parte "Avviso non inviato, riprova.". Da telefono i due pulsanti stanno sotto la riga, larghi quanto la scheda: allineati al testo "Sto arrivando" usciva dalla scheda a 390 px.
+- **Recensioni**: senza recensioni la tessera dice "Nessuna ancora" (più piccolo, su una riga) invece di "—" e "0 recensioni".
+- **Prove automatiche**: il link "Naviga" si chiamava "Naviga verso <cliente>" e la prova di Oggi trovava due link col nome del cliente; ora "Naviga verso <indirizzo>", controllato nella prova (`oggi-meteo.spec.ts`). Aggiunto in `menu-laterale.spec.ts` il controllo del §351 (nessun titolo col menu ridotto).
+
+**Verifica**: typecheck, lint, tutte le prove nel browser in locale (144 passate), foto a 390, 1366 e 1600 px.
+
+## 354. "Oggi": Chiama accanto a Sto arrivando
+
+**Richiesta esplicita dell'utente** (26/10/2026, stesso thread): "effettua miglioria", cioè l'ultima proposta: "Chiama" accanto a "Sto arrivando", come in agenda.
+
+**Decisioni**: sui lavori di oggi un pulsante "Chiama" con bordo (`tel:`), col telefono di chi riceve il lavoro o del cliente, solo a lavoro confermato (CLAUDE.md §5 punto 9), e col telefono scritto nei lavori aggiunti a mano. Da telefono solo l'icona (nome per gli screen reader "Chiama <numero>", non il nome del cliente, che le prove usano per trovare la riga); sotto i 380 px "Sto arrivando" perde l'icona del furgone, così i tre pulsanti stanno su una riga anche a 360 px.
+
+**Verifica**: typecheck, lint, tutte le prove nel browser in locale (144 passate), foto a 360, 390 e 1366 px.
+
+## 355. Abbonamento: livelli sovrapposti sul telefono
 
 **Segnalazione** (26/10/2026, thread "Versione più profonda del progetto verso il lancio"): nelle anteprime fatte con l'account professionista di Luca, in `/dashboard/abbonamento` da telefono i riquadri Base, Plus e Pro si sovrapponevano e il testo non si leggeva. Luca l'ha visto anche dal suo telefono.
 
@@ -20971,7 +21017,7 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: pagina aperta in locale con le risposte dell'API simulate (prova, livello Base, 1 lavoro su 5), a 390 px le tessere sono alte 207 px e una sotto l'altra; a 1440 px restano tre colonne uguali come prima.
 
-## 354. Nuovi prezzi dell'abbonamento: + IVA, mensile o annuale, quota di passaggio
+## 356. Nuovi prezzi dell'abbonamento: + IVA, mensile o annuale, quota di passaggio
 
 **Richiesta esplicita dell'utente** (26/10/2026, thread "Versione più profonda del progetto verso il lancio", poi "Portare il nuovo abbonamento nel sito"): Luca ha scelto "Tutto il nuovo modello" per portare nel sito le decisioni del 26/10 (spec in `analisi/nuovo-modello-abbonamento.md` nei file del progetto). Questa è la prima parte (prezzi e pagine); seguono le regole al limite e i 3 mesi gratis ai primi 100.
 
@@ -20988,7 +21034,7 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: typecheck di web e api, `pnpm lint`, 660 test dell'API (nuovi su quota di passaggio e `upgradeQuotes`: Base → Plus con 30, 20, 7 e 1 giorno rimasti 54 €, 39,33 €, 20,27 €, 11,47 €); pagine aperte in locale con le risposte dell'API simulate, da telefono e da computer.
 
-## 355. Lavori esauriti: si resta nella ricerca, i lavori ripartono al rinnovo
+## 357. Lavori esauriti: si resta nella ricerca, i lavori ripartono al rinnovo
 
 **Richiesta**: seconda parte del nuovo abbonamento (Luca, 26/10/2026, "Tutto il nuovo modello", poi "continua"; scheda di decisione "Al rinnovo").
 
@@ -20996,7 +21042,7 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - I lavori si azzerano **al rinnovo**, non il 1° del mese: lavori, livello e quota di passaggio seguono la stessa data. Con l'annuale i lavori ripartono ogni mese dal giorno di attivazione; nel periodo gratuito a blocchi di 30 giorni che finiscono alla fine della prova.
 - Finiti i lavori il profilo **resta nella ricerca** e riceve le richieste (prima andava in pausa), ma non può mandare preventivi nuovi né rispondere per primo a una richiesta. I preventivi già mandati restano validi.
 - Su **Plus e Pro lo stesso cliente conta una volta** per periodo. Detto solo ai professionisti (pagina prezzi su Plus, Abbonamento, domande frequenti, Termini), mai ai clienti.
-- Finestra al limite: titolo "Hai esaurito l'abbonamento Base", la richiesta a cui si sta rispondendo, il livello sopra con una sola cifra (la quota del §354) e la data, pulsanti "Passa a Plus e rispondi" e "Aspetto il [data]".
+- Finestra al limite: titolo "Hai esaurito l'abbonamento Base", la richiesta a cui si sta rispondendo, il livello sopra con una sola cifra (la quota del §356) e la data, pulsanti "Passa a Plus e rispondi" e "Aspetto il [data]".
 
 **Scelta nostra, da confermare con Luca**: al limite l'agenda non si prenota online (la prenotazione crea un lavoro senza preventivo, quindi supererebbe il limite); il cliente vede "al momento non accetta prenotazioni online" e può mandare una richiesta.
 

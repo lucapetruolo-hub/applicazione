@@ -8,7 +8,7 @@ import { Button, Surface, Text, YStack, brand, radiusDoc } from "@professionisti
  * Banner fisso (non si chiude) quando l'account è in pausa per
  * l'abbonamento, in Home e nella pagina Abbonamento (decisione dell'utente,
  * docs/CHANGELOG.md §162): profilo fuori dalla ricerca e niente nuove
- * richieste. Avvisa anche dei lavori esauriti (§355) e di un pagamento non
+ * richieste. Avvisa anche dei lavori esauriti (§357) e di un pagamento non
  * riuscito, che non mettono in pausa.
  */
 
@@ -28,7 +28,7 @@ function shortDate(iso: string): string {
   return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "long", timeZone: "Europe/Rome" });
 }
 
-/** Quota di passaggio adesso verso un livello (docs/CHANGELOG.md §354), o null se non si può passare. */
+/** Quota di passaggio adesso verso un livello (docs/CHANGELOG.md §356), o null se non si può passare. */
 export function upgradeQuoteOf(sub: MySubscription, to: SubscriptionTier) {
   return sub.upgradeQuotes.find((quote) => quote.tier === to) ?? null;
 }
@@ -71,7 +71,7 @@ export function SubscriptionPauseBanner({ sub, showAction = true, profileStepsEl
     body = "Rendi di nuovo visibile e operativo il tuo account: finché non scegli un livello il profilo non compare nelle ricerche e non ricevi nuove richieste.";
     action = "Riattiva il tuo account";
   } else if (sub.limitReached) {
-    // Lavori esauriti: il profilo resta nella ricerca, si fermano solo i preventivi nuovi (docs/CHANGELOG.md §355).
+    // Lavori esauriti: il profilo resta nella ricerca, si fermano solo i preventivi nuovi (docs/CHANGELOG.md §357).
     const next = nextTierOf(sub);
     tone = "warn";
     title = `Hai esaurito l'abbonamento ${subscriptionTierInfo(sub.tier ?? "BASE").label}`;

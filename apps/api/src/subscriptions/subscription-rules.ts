@@ -104,7 +104,7 @@ export function monthlyLimit(row: SubscriptionRow | null, now: Date): number | n
  * (docs/CHANGELOG.md §162). Un pagamento non riuscito non mette in pausa:
  * Stripe riprova per qualche giorno e, se non va, chiude l'abbonamento.
  * I lavori esauriti non mettono più in pausa (decisione dell'utente,
- * docs/CHANGELOG.md §355): vedi `jobLimitReached`.
+ * docs/CHANGELOG.md §357): vedi `jobLimitReached`.
  */
 export function pauseReason(row: SubscriptionRow | null, now: Date): PauseReason | null {
   const state = subscriptionState(row, now);
@@ -115,7 +115,7 @@ export function pauseReason(row: SubscriptionRow | null, now: Date): PauseReason
 
 /**
  * Lavori del periodo esauriti (decisione dell'utente, docs/CHANGELOG.md
- * §355): il profilo resta nella ricerca e riceve le richieste, ma non può
+ * §357): il profilo resta nella ricerca e riceve le richieste, ma non può
  * mandare preventivi nuovi né la prima risposta a una richiesta, e l'agenda
  * non si prenota online. Solo con un abbonamento in corso (prova o livello).
  */
@@ -133,7 +133,7 @@ export const NOT_BOOKABLE_ONLINE = "Questo professionista al momento non accetta
 
 /**
  * Su Plus e Pro lo stesso cliente conta una volta per periodo (decisione
- * dell'utente, §355); su Base e nel periodo gratuito conta ogni lavoro.
+ * dell'utente, §357); su Base e nel periodo gratuito conta ogni lavoro.
  */
 export function countsClientsOnce(row: SubscriptionRow | null, now: Date): boolean {
   const state = subscriptionState(row, now);
@@ -157,7 +157,7 @@ export function addMonthsUtc(date: Date, months: number): Date {
 
 /**
  * Periodo in cui si contano i lavori (decisione dell'utente del 26/10/2026,
- * docs/CHANGELOG.md §355): i lavori ripartono al rinnovo, non il 1° del mese,
+ * docs/CHANGELOG.md §357): i lavori ripartono al rinnovo, non il 1° del mese,
  * così lavori, livello e quota di passaggio seguono la stessa data.
  * - Periodo gratuito: blocchi di 30 giorni che finiscono alla fine della
  *   prova (con il mese regalato sono due).
@@ -258,7 +258,7 @@ const YEAR_FALLBACK_MS = 365 * TRIAL_DAY_MS;
 
 /**
  * Quota di passaggio verso ogni livello sopra quello attuale (docs/CHANGELOG.md
- * §354): stessa formula dell'addebito vero (`upgradeFeeEurCents`). Durante la
+ * §356): stessa formula dell'addebito vero (`upgradeFeeEurCents`). Durante la
  * prova si parte da Base e si conta il periodo gratuito di 30 giorni; prima
  * del lancio la prova non scorre e non si paga niente. Con un abbonamento
  * pagato si conta il periodo di Stripe (mese o anno) fino al rinnovo.

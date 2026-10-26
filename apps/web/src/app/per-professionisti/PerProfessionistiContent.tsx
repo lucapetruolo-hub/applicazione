@@ -258,7 +258,7 @@ const PAYMENT_STEPS: { title: string; text: string }[] = [
 
 /**
  * Il pagamento online come vantaggio in cima (decisione dell'utente,
- * docs/CHANGELOG.md §354), detto in modo esatto: il cliente paga prima, ma i
+ * docs/CHANGELOG.md §356), detto in modo esatto: il cliente paga prima, ma i
  * soldi restano bloccati e il bonifico parte dopo la conferma. Mai "ricevi i
  * soldi prima". Si vede solo con i pagamenti online attivi (§170).
  */
@@ -519,7 +519,7 @@ const TIER_FOR: Record<SubscriptionTier, string> = {
  * iscrivono e poi ci arrivano (`?livello=`, con `&rinnovo=` mensile o annuale).
  *
  * Prezzi + IVA con l'IVA compresa in piccolo, mensile o annuale con
- * l'annuale in vista (decisioni dell'utente del 26/10/2026, §354).
+ * l'annuale in vista (decisioni dell'utente del 26/10/2026, §356).
  */
 function ProPricing({ isProfessional }: { isProfessional: boolean }) {
   const [interval, setInterval] = useState<BillingInterval>("YEAR");
@@ -623,7 +623,7 @@ function ProPricing({ isProfessional }: { isProfessional: boolean }) {
                 {tier.monthlyAcceptedJobs === null ? "Lavori senza limite" : `${tier.monthlyAcceptedJobs} lavori accettati al mese`}
               </Text>
               {tier.tier === "PLUS" ? (
-                // Su Plus e Pro lo stesso cliente conta una volta (§355): su Pro non c'è limite, si dice solo qui.
+                // Su Plus e Pro lo stesso cliente conta una volta (§357): su Pro non c'è limite, si dice solo qui.
                 <Text color={brand.grafite70} fontSize={15} marginTop={-8}>
                   Lo stesso cliente conta una volta al mese
                 </Text>

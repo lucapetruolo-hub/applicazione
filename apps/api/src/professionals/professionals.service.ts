@@ -1698,7 +1698,7 @@ export class ProfessionalsService {
    */
   async getPublicAgenda(professionalProfileId: string): Promise<ProfessionalAgenda> {
     // Stessi filtri della pagina pubblica; in pausa, bloccato per le
-    // richieste o con i lavori esauriti (§355) non si prenota, quindi nessuna
+    // richieste o con i lavori esauriti (§357) non si prenota, quindi nessuna
     // fascia (CLAUDE.md §5.11, §293).
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { id: professionalProfileId },
@@ -1802,7 +1802,7 @@ export class ProfessionalsService {
     if (profile.pausedAt || professionalRestrictions(profile, new Date()).blocked) {
       throw new ConflictException(NOT_ACCEPTING_REQUESTS);
     }
-    // Lavori esauriti (§355): riceve le richieste ma l'agenda non si prenota online.
+    // Lavori esauriti (§357): riceve le richieste ma l'agenda non si prenota online.
     if (profile.jobLimitReachedAt) {
       throw new ConflictException(NOT_BOOKABLE_ONLINE);
     }

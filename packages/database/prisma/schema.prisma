@@ -341,11 +341,11 @@ model ProfessionalProfile {
   // ricerca e dallo smistamento, niente richieste dirette o prenotazioni
   // dall'agenda; il profilo pubblico resta raggiungibile dal link. Motivo:
   // TRIAL_ENDED o SUBSCRIPTION_ENDED (`PauseReason` in packages/shared;
-  // LIMIT_REACHED solo nelle righe vecchie, prima del §355). Tenuto aggiornato
+  // LIMIT_REACHED solo nelle righe vecchie, prima del §357). Tenuto aggiornato
   // da SubscriptionsService.syncPause.
   pausedAt             DateTime?
   pausedReason         String?
-  // Lavori del periodo esauriti (docs/CHANGELOG.md §355): resta nella ricerca
+  // Lavori del periodo esauriti (docs/CHANGELOG.md §357): resta nella ricerca
   // e riceve le richieste, ma niente preventivi nuovi, prima risposta a una
   // richiesta né prenotazioni online dall'agenda. Tenuto aggiornato da
   // SubscriptionsService.syncPause.
@@ -641,7 +641,7 @@ model Subscription {
   // è già partito l'avviso di rinnovo o di fine.
   cancelAtPeriodEnd     Boolean            @default(false)
   periodNoticeFor       DateTime?
-  // Rinnovo mensile o annuale scelto (docs/CHANGELOG.md §354), dal prezzo Stripe.
+  // Rinnovo mensile o annuale scelto (docs/CHANGELOG.md §356), dal prezzo Stripe.
   billingInterval       BillingInterval    @default(MONTH)
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt

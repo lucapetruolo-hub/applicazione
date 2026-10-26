@@ -9,7 +9,7 @@
 
 /**
  * Prezzi IVA esclusa (decisione dell'utente del 26/10/2026, docs/CHANGELOG.md
- * §354): mostrati "+ IVA", l'IVA si aggiunge in fattura. L'annuale costa
+ * §356): mostrati "+ IVA", l'IVA si aggiunge in fattura. L'annuale costa
  * dieci mensilità ("Risparmi 2 mesi"); `annualMonthlyEurCents` è il prezzo
  * al mese arrotondato all'euro da mostrare accanto al totale annuo.
  */
@@ -91,7 +91,7 @@ export const RENEWAL_NOTICE_DAYS = 3;
 /**
  * Perché un account professionista è in pausa (docs/CHANGELOG.md §162):
  * fuori dalla ricerca e senza nuove richieste finché non si sceglie o
- * rinnova un livello. I lavori esauriti non mettono più in pausa (§355):
+ * rinnova un livello. I lavori esauriti non mettono più in pausa (§357):
  * vedi `MySubscription.limitReached`.
  */
 export type PauseReason = "TRIAL_ENDED" | "SUBSCRIPTION_ENDED";
@@ -131,7 +131,7 @@ export type MySubscription = {
   /** Il mese regalato è già stato dato (viene mostrato solo dopo, mai prima). */
   bonusMonthGranted: boolean;
   /**
-   * Lavori del periodo in corso (docs/CHANGELOG.md §355): ripartono al
+   * Lavori del periodo in corso (docs/CHANGELOG.md §357): ripartono al
    * rinnovo, non il 1° del mese. Su Plus e Pro lo stesso cliente conta una
    * volta per periodo (`countsClientsOnce`).
    */
@@ -145,7 +145,7 @@ export type MySubscription = {
     countsClientsOnce: boolean;
   };
   /**
-   * Lavori del periodo esauriti (§355): il profilo resta nella ricerca e
+   * Lavori del periodo esauriti (§357): il profilo resta nella ricerca e
    * riceve le richieste, ma non può mandare preventivi nuovi né rispondere
    * per primo a una richiesta finché non passa al livello superiore o non
    * ripartono i lavori.
@@ -155,7 +155,7 @@ export type MySubscription = {
   billingInterval: BillingInterval | null;
   /**
    * Quanto costa adesso passare a ciascun livello superiore (IVA esclusa) e
-   * fino a quando vale prima del rinnovo (docs/CHANGELOG.md §354). Vuoto se
+   * fino a quando vale prima del rinnovo (docs/CHANGELOG.md §356). Vuoto se
    * non c'è un livello superiore o non si può passare (prova finita,
    * abbonamento concluso). `amountEurCents` 0 prima del lancio, quando la
    * prova non scorre ancora.

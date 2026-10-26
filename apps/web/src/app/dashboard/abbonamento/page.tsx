@@ -35,7 +35,7 @@ import { SkeletonBlock } from "@/components/Skeleton";
  * è stato dato, mai prima (è una sorpresa).
  *
  * Più leggibile a colpo d'occhio (decisione dell'utente, docs/CHANGELOG.md
- * §354): ogni livello con prezzo + IVA, lavori, il riquadro "Se passi ora"
+ * §356): ogni livello con prezzo + IVA, lavori, il riquadro "Se passi ora"
  * con una sola cifra e un pulsante; rinnovo, cambio di livello e
  * annullamento in tre schede da una frase. Mensile o annuale si sceglie solo
  * finché non c'è un abbonamento pagato.
@@ -55,7 +55,7 @@ function dayMonth(iso: string): string {
 
 /**
  * "Lavori dal 18 ottobre al 17 novembre": i lavori ripartono al rinnovo, non
- * il 1° del mese (decisione dell'utente, docs/CHANGELOG.md §355).
+ * il 1° del mese (decisione dell'utente, docs/CHANGELOG.md §357).
  */
 function usagePeriodLabel(sub: MySubscription): string {
   // Il rinnovo cade di giorno: l'ultimo giorno intero del periodo è quello prima.
@@ -442,7 +442,7 @@ function AbbonamentoContent() {
                     </Text>
                   </XStack>
                   {tier.tier === "PLUS" ? (
-                    // Su Plus e Pro lo stesso cliente conta una volta (§355); su Pro non c'è limite, quindi si dice solo su Plus.
+                    // Su Plus e Pro lo stesso cliente conta una volta (§357); su Pro non c'è limite, quindi si dice solo su Plus.
                     <XStack alignItems="center" gap="$2">
                       <Check size={18} strokeWidth={2.25} color={brand.cianografiaScuro} />
                       <Text color={brand.grafite}>Lo stesso cliente conta una volta al mese</Text>

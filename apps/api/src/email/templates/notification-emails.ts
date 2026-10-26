@@ -1314,7 +1314,7 @@ const BUILDERS: Record<string, Builder> = {
         used !== null && limit !== null
           ? `Hai già **${used} lavori accettati su ${limit}** compresi nel tuo livello${until ? ` fino al ${until}` : ""}.`
           : "Ti stai avvicinando ai lavori accettati compresi nel tuo livello.",
-        // Al limite si resta nella ricerca (decisione dell'utente, docs/CHANGELOG.md §355).
+        // Al limite si resta nella ricerca (decisione dell'utente, docs/CHANGELOG.md §357).
         "Quando li finisci resti nella ricerca e ricevi le richieste, ma per mandare preventivi dovrai passare al livello superiore: in Abbonamento trovi quanto costa adesso.",
       ],
       cta: subscriptionPage(),

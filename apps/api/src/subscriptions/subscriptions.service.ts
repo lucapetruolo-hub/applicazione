@@ -55,11 +55,11 @@ function pausesActive(now: Date): boolean {
  * Abbonamento unico a livelli (CLAUDE.md §6, docs/CHANGELOG.md §161):
  * prova gratuita di un mese per tutti, mese regalato a sorpresa a chi non
  * ha ancora avuto lavori, conteggio dei lavori accettati del periodo (dal
- * rinnovo, §355) con avvisi all'80% e al 100%. Account in pausa (fuori dalla
+ * rinnovo, §357) con avvisi all'80% e al 100%. Account in pausa (fuori dalla
  * ricerca, niente nuove richieste) a fine prova senza livello o ad
  * abbonamento concluso (docs/CHANGELOG.md §162); a lavori esauriti resta
  * nella ricerca ma non può mandare preventivi né rispondere per primo
- * (`jobLimitReachedAt`, §355). Rinnovo automatico via Stripe con avviso
+ * (`jobLimitReachedAt`, §357). Rinnovo automatico via Stripe con avviso
  * prima di ogni rinnovo.
  */
 @Injectable()
@@ -87,7 +87,7 @@ export class SubscriptionsService {
 
   /**
    * Lavori accettati nel periodo in corso (dal rinnovo, docs/CHANGELOG.md
-   * §355): prenotazioni nate nel periodo, tranne quelle annullate dal
+   * §357): prenotazioni nate nel periodo, tranne quelle annullate dal
    * cliente (il professionista non ne ha colpa). Su Plus e Pro lo stesso
    * cliente conta una volta.
    */
@@ -135,7 +135,7 @@ export class SubscriptionsService {
 
   /**
    * Mette in pausa o riattiva il profilo secondo l'abbonamento, e segna o
-   * toglie i lavori esauriti del periodo (§355). Avvisa quando va in pausa
+   * toglie i lavori esauriti del periodo (§357). Avvisa quando va in pausa
    * per fine prova o fine abbonamento (il limite raggiunto ha già il suo
    * avviso). I profili dimostrativi non vanno mai in pausa né al limite, e
    * nessuno ci va finché i pagamenti non sono attivi (senza
@@ -282,7 +282,7 @@ export class SubscriptionsService {
 
   /**
    * Ogni ora: mette in pausa chi ha finito la prova o l'abbonamento e
-   * toglie il limite a chi riparte col periodo nuovo (al rinnovo, §355). Scrive solo quando lo stato cambia;
+   * toglie il limite a chi riparte col periodo nuovo (al rinnovo, §357). Scrive solo quando lo stato cambia;
    * i profili sono pochi alla scala di lancio (CLAUDE.md §7).
    */
   @Cron(CronExpression.EVERY_HOUR)

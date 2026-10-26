@@ -82,7 +82,7 @@ describe("account in pausa", () => {
   });
 });
 
-describe("lavori esauriti (§355)", () => {
+describe("lavori esauriti (§357)", () => {
   it("mese gratuito: libero fino al 3° lavoro, al limite dal 3°", () => {
     const row = { plan: "FREE", status: "TRIALING", trialEndsAt: future };
     expect(jobLimitReached(row, 2, NOW)).toBe(false);
@@ -100,7 +100,7 @@ describe("lavori esauriti (§355)", () => {
   });
 });
 
-describe("periodo dei lavori: riparte al rinnovo (§355)", () => {
+describe("periodo dei lavori: riparte al rinnovo (§357)", () => {
   const iso = (p: { start: Date; end: Date }) => [p.start.toISOString(), p.end.toISOString()];
   it("mensile: dal giorno dell'abbonamento al rinnovo", () => {
     const row = {
@@ -195,7 +195,7 @@ describe("prova gratuita dalla data di lancio (docs/CHANGELOG.md §170)", () => 
   });
 });
 
-describe("quota di passaggio a un livello superiore (§354)", () => {
+describe("quota di passaggio a un livello superiore (§356)", () => {
   const DAY = 24 * 60 * 60 * 1000;
   const month = 30 * DAY;
   it("10 € + differenza per i giorni rimasti, maggiorata del 10%, senza tetto", () => {

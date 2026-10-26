@@ -353,7 +353,7 @@ function RegistratiForm() {
   // Livello toccato su /per-professionisti (docs/CHANGELOG.md §177): dopo
   // l'iscrizione si va dritti al pagamento di quel livello.
   const chosenTier = parseSubscriptionTier(searchParams.get("livello"));
-  // Mensile o annuale scelto insieme al livello (docs/CHANGELOG.md §354).
+  // Mensile o annuale scelto insieme al livello (docs/CHANGELOG.md §356).
   const chosenInterval = parseBillingInterval(searchParams.get("rinnovo"));
   const role = isProfessional ? "PROFESSIONAL" : "CLIENT";
   const entityChoice = entityChoiceFromParam(searchParams.get("tipo"));
