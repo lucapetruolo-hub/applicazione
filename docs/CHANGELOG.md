@@ -20960,3 +20960,15 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - **Mappa del raggio senza consenso**: controllata in produzione chiedendo al server l'immagine fissa con le coordinate di Latina e i raggi 20 e 35 km: torna l'immagine con il segnaposto e i due cerchi. Il testo alternativo dell'immagine parlava di "posizione dei professionisti": ora dice la zona e i due raggi (`staticAlt` in `GoogleMapGate`).
 
 **Verifica**: typecheck, lint, 654 test dell'API (4 nuovi su `auditLabel`), 71 prove nel browser su telefono (anche quella di accessibilità dell'agenda), foto a 390 px di Registro azioni, Home e Accedi senza nulla che esce dallo schermo.
+
+## 351. "Avanti" che non faceva nulla nel passo "Dove" della richiesta
+
+**Segnalazione dell'utente** (26/10/2026, thread "Sbloccare Avanti nella richiesta urgente"): su /urgente, passo "Dove", con nome, telefono, indirizzo "Via Cesare Battisti, Roma RM" e civico compilati, "Avanti" non andava avanti e non diceva perché.
+
+**Causa**: scegliendo una via senza civico in una città con più CAP, Google non dà il CAP (provato sul server in produzione: `postalCode: null` per "Via Cesare Battisti, Roma"). Il controllo del passo chiedeva "Indica il CAP." sotto il campo CAP, ma con i suggerimenti attivi quel campo non c'è nel modulo (c'è solo nel caso "suggerimenti non disponibili"): l'errore non compariva da nessuna parte. Vale per la richiesta normale e per quella urgente (stesso `GuidedRequestForm`).
+
+**Decisioni**:
+- Accanto al "Numero civico" (che già compariva quando Google non lo dà) compaiono anche "CAP" e, se manca, "Provincia", uno accanto all'altro. Il CAP accetta solo 5 cifre. Restano visibili mentre si scrive.
+- Rete di sicurezza: se un errore riguarda un campo che non è sulla pagina, il messaggio compare nella riga rossa sopra i pulsanti (`focusGuidedField` dice se ha trovato il campo). Copre anche "Scegli la città dall'elenco dei comuni", che a domicilio con i suggerimenti non ha un campo città.
+
+**Verifica**: typecheck e lint di web; prova nel browser con le risposte del server simulate (via di Roma senza CAP): compare il campo CAP, senza CAP "Avanti" mostra "Indica il CAP." sotto il campo, col CAP si arriva al riepilogo.
