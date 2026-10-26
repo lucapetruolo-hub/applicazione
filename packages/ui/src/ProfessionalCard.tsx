@@ -720,7 +720,23 @@ export function ProfessionalCard({
           ) : null}
 
           {expanded && hasServices ? (
-            <YStack gap="$1" {...(hasAgenda ? { paddingTop: "$3", borderTopWidth: 1, borderTopColor: brand.filetto } : null)}>
+            // Un clic sulle prestazioni apre il profilo come il resto della
+            // scheda (richiesta esplicita dell'utente, docs/CHANGELOG.md
+            // §358): l'area qui sopra ferma il clic per l'agenda, non per i
+            // prezzi. Da tastiera il profilo si apre dal link del nome.
+            <YStack
+              gap="$1"
+              {...(hasAgenda ? { paddingTop: "$3", borderTopWidth: 1, borderTopColor: brand.filetto } : null)}
+              cursor={onPress ? "pointer" : undefined}
+              onPress={
+                onPress
+                  ? (e: unknown) => {
+                      stop(e);
+                      onPress();
+                    }
+                  : undefined
+              }
+            >
               {(showAllServices ? serviceList : serviceList.slice(0, 3)).map((service) => (
                 <PriceLine key={service.id} label={service.name} price={formatServicePrice(service.priceMinEurCents, service.priceMaxEurCents)} />
               ))}

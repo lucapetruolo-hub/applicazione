@@ -21020,7 +21020,21 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: typecheck API e sito, lint, test dell'API (5 nuovi su `requestSentEmail`), anteprime a 390 e 1280 px con `email:preview`.
 
-## 356. Area admin: verifica in due passaggi, login admin più corto, email a ogni accesso, bootstrap solo per il primo admin
+## 358. Ricerca: un clic sulle prestazioni apre il profilo
+
+**Richiesta esplicita dell'utente** (26/10/2026): "a chi effettua una ricerca, se clicca sulla parte relativa alle prestazioni offerte, attualmente non succede niente, è sbagliato, fagli aprire almeno il profilo del professionista".
+
+**Causa**: l'area "orari e prezzi" della scheda ferma il clic (scelta del §206/§349: sull'agenda devono rispondere solo i pulsanti), e l'elenco delle prestazioni stava dentro quell'area.
+
+**Decisioni**:
+- Un clic in qualunque punto dell'elenco delle prestazioni apre il profilo, come il resto della scheda ("Mostra tutte" continua ad aprire l'elenco). Vale anche in "Professionisti salvati" (stessa scheda).
+- Provata prima una versione con ogni prestazione come link al profilo già sulla sezione "Prestazioni", con freccina e riga evidenziata: tolta su decisione dell'utente ("non serve a niente cliccare sulla singola prestazione se poi ti porta sempre al profilo"). Nessun segno in più sulle righe.
+- Da tastiera e con i lettori di schermo il profilo si apre dal link del nome, come prima: nessun punto di tabulazione in più.
+- L'agenda resta com'era: lo spazio vuoto tra gli orari non apre il profilo (richiesta del §206).
+
+**Verifica**: typecheck e lint; sito in locale con prestazioni di prova, clic a 1440 px e tocco a 390 px su una prestazione: si apre il profilo; "Mostra tutte" apre l'elenco senza cambiare pagina.
+
+## 359. Area admin: verifica in due passaggi, login admin più corto, email a ogni accesso, bootstrap solo per il primo admin
 
 **Richiesta esplicita dell'utente** (26/10/2026, thread "Rafforzare la sicurezza dell'area admin"): "effettua le 3 migliorie", cioè le tre proposte dopo la spiegazione di come si entra nell'area admin: verifica in due passaggi per gli admin, togliere il codice di bootstrap, sessione admin più corta con avviso a ogni accesso. Sul bootstrap Luca ha precisato che il database gratuito di Render si azzera e il primo admin va ricreato: `ADMIN_BOOTSTRAP_SECRET` resta su Render fino al lancio (punto 28 della checklist).
 
@@ -21036,4 +21050,3 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - **Dopo il deploy**: chi è già admin, aprendo l'area admin, trova subito l'attivazione. Va fatta subito, prima che possa farla qualcun altro con la password rubata.
 
 **Verifica**: typecheck e lint di API, sito ed e2e; 670 test dell'API (nuovi `admin-two-factor.test.ts` e `admin-security-alerts.test.ts` con gli esempi ufficiali di RFC 6238, 4 nuovi su `AdminGuard`); prova nel browser nuova `e2e/tests/admin-due-passaggi.spec.ts` (attivazione con codice sbagliato e giusto, altro dispositivo bloccato fino al codice, telefono perso con il codice via email e collegamento del telefono nuovo) e le prove admin esistenti (segnalazioni, richieste eliminate) passate con la verifica; test dei permessi (`access-matrix.mjs`) con gli admin già verificati, un controllo nuovo per rotta admin (super admin senza codice dell'app: 403) e le rotte `/admin/2fa` riservate agli admin (`role: "admin"` in `access-policy.mjs`); con l'API locale: login admin di 7 giorni e cliente di 30, `/admin/overview` 403 con `ADMIN_2FA_SETUP`, bootstrap rifiutato con un admin già presente. Foto a 390 px e 1280 px in `anteprime/admin-due-passaggi/`.
-
