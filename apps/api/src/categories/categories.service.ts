@@ -31,18 +31,35 @@ export class CategoriesService {
   /**
    * Una ricerca per categoria (docs/CHANGELOG.md §281): contatore per giorno
    * e città, mai la singola ricerca né chi cerca. Una categoria sconosciuta
-   * non conta.
+   * non conta. `empty`: nessun professionista entro il raggio (§370).
    */
-  async recordSearch(categorySlug: string, city?: string): Promise<void> {
+  async recordSearch(categorySlug: string, city?: string, empty = false): Promise<void> {
     const category = await this.prisma.category.findUnique({ where: { slug: categorySlug }, select: { id: true } });
     if (!category) return;
     const day = new Date();
     day.setUTCHours(0, 0, 0, 0);
     const normalizedCity = normalizeCity(city);
+    const emptyCount = empty ? 1 : 0;
     await this.prisma.categorySearchDay.upsert({
       where: { categoryId_city_day: { categoryId: category.id, city: normalizedCity, day } },
-      create: { categoryId: category.id, city: normalizedCity, day, count: 1 },
-      update: { count: { increment: 1 } },
+      create: { categoryId: category.id, city: normalizedCity, day, count: 1, emptyCount },
+      update: { count: { increment: 1 }, emptyCount: { increment: emptyCount } },
+    });
+  }
+
+  /**
+   * Una ricerca senza lavoro scelto (§370): solo città, o con una parola
+   * scritta. Si conta solo che c'era una parola, mai la parola.
+   */
+  async recordFreeSearch(city: string | undefined, withText: boolean, empty: boolean): Promise<void> {
+    const day = new Date();
+    day.setUTCHours(0, 0, 0, 0);
+    const normalizedCity = normalizeCity(city);
+    const emptyCount = empty ? 1 : 0;
+    await this.prisma.freeSearchDay.upsert({
+      where: { city_withText_day: { city: normalizedCity, withText, day } },
+      create: { city: normalizedCity, withText, day, count: 1, emptyCount },
+      update: { count: { increment: 1 }, emptyCount: { increment: emptyCount } },
     });
   }
 

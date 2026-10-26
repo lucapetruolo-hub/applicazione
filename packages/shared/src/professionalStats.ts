@@ -115,6 +115,27 @@ export type AdminProfessionalStats = {
   }[];
   /** Ultimi 12 mesi: profili eliminati, messi in pausa (e ancora in pausa), abbonamenti annullati. */
   churnByMonth: { key: string; deleted: number; paused: number; canceled: number }[];
+  /** Cosa cercano sul sito (§370). */
+  searches: AdminSearchStats;
+};
+
+/**
+ * Ricerche degli ultimi PROFESSIONAL_ACTIVITY_DAYS giorni (docs/CHANGELOG.md
+ * §370), contate per giorno e città, mai chi cerca né il testo scritto.
+ * `empty`: nessun professionista entro il raggio. Una pagina ricaricata
+ * conta di nuovo.
+ */
+export type AdminSearchStats = {
+  total: number;
+  empty: number;
+  /** Senza lavoro scelto, con una parola scritta (di solito un nome). */
+  withText: number;
+  /** Senza lavoro scelto né parole: solo la città. */
+  cityOnly: number;
+  /** Città cercate, dalla più cercata ("" = senza città). */
+  byCity: { city: string; searches: number; empty: number }[];
+  /** Lavoro e città cercati, prima quelli con più ricerche senza nessuno vicino. */
+  byCategoryCity: { categorySlug: string; categoryLabel: string; city: string; searches: number; empty: number; professionals: number }[];
 };
 
 /** Percentuale leggibile: "<1%" per una quota piccola ma non nulla. */

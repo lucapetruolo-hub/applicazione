@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { sharePercentLabel } from "@professionisti/shared";
 import {
   buildCategoryActivity,
+  buildSearchStats,
   buildChurnByMonth,
   buildCoverage,
   buildProfessionalStats,
@@ -188,5 +189,36 @@ describe("Professionisti in numeri (§368)", () => {
     expect(sharePercentLabel(1, 300)).toBe("<1%");
     expect(sharePercentLabel(0, 3)).toBe("0%");
     expect(sharePercentLabel(2, 0)).toBe("0%");
+  });
+
+  it("cosa cercano: città e lavori cercati, senza nessuno vicino, per nome o solo città (§370)", () => {
+    const stats = buildSearchStats(
+      {
+        categoryDays: [
+          { categorySlug: "fabbro", city: "aprilia", count: 4, emptyCount: 4 },
+          { categorySlug: "fabbro", city: "aprilia", count: 2, emptyCount: 1 },
+          { categorySlug: "idraulico", city: "latina", count: 9, emptyCount: 0 },
+          { categorySlug: "idraulico", city: "", count: 1, emptyCount: 0 },
+        ],
+        freeDays: [
+          { city: "latina", withText: true, count: 3, emptyCount: 1 },
+          { city: "latina", withText: false, count: 2, emptyCount: 0 },
+          { city: "borgo sabotino", withText: false, count: 1, emptyCount: 1 },
+        ],
+      },
+      [
+        { city: "Latina", categorySlugs: ["idraulico"] },
+        { city: "LATINA", categorySlugs: ["idraulico", "fabbro"] },
+      ],
+    );
+    expect(stats).toMatchObject({ total: 22, empty: 7, withText: 3, cityOnly: 3 });
+    expect(stats.byCity[0]).toEqual({ city: "Latina", searches: 14, empty: 1 });
+    expect(stats.byCity.find((c) => c.city === "Aprilia")).toEqual({ city: "Aprilia", searches: 6, empty: 5 });
+    // Non un comune: iniziali maiuscole.
+    expect(stats.byCity.find((c) => c.city === "Borgo Sabotino")?.searches).toBe(1);
+    expect(stats.byCategoryCity[0]).toEqual({ categorySlug: "fabbro", categoryLabel: "Fabbro", city: "Aprilia", searches: 6, empty: 5, professionals: 0 });
+    expect(stats.byCategoryCity.find((z) => z.categorySlug === "idraulico" && z.city === "Latina")?.professionals).toBe(2);
+    // Senza città: i professionisti di quel lavoro ovunque.
+    expect(stats.byCategoryCity.find((z) => z.categorySlug === "idraulico" && z.city === "")?.professionals).toBe(2);
   });
 });

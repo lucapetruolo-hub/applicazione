@@ -21225,3 +21225,16 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 **API**: stessi `GET /admin/professionals/stats`, campi nuovi in `AdminProfessionalStats` (`active30d`, `funnel`, `completeness`, `coverage`, `byCategoryActivity`, `churnByMonth`); conti in `apps/api/src/admin/professional-stats.ts`, letture in `AdminService.getProfessionalStats` (conteggi raggruppati, nessuna riga per messaggio). Nessuna rotta nuova, nessuna migrazione.
 
 **Verifica**: 4 test nuovi (attivi, copertura, attività per categoria, abbandoni), typecheck, lint, 717 test dell'API; query provata su un database locale; pagina aperta in locale con l'API simulata da computer e telefono.
+
+## 370. Professionisti in numeri: cosa cercano sul sito
+
+**Richiesta** (Luca, 26/10/2026): sapere da quale città viene aperto il sito e se si cerca un professionista preciso o solo una città, "così capiamo ancora meglio dove potrebbe esserci domanda".
+
+**Decisione** (scelta di Luca tra tre proposte): contare la città **cercata**, non quella di chi visita. La città di chi visita si ricava dalla connessione ed è spesso sbagliata (sul telefono molti risultano a Roma o Milano), e richiederebbe un passaggio in più nell'informativa privacy. Nella pagina `/admin/numeri-professionisti`, dopo il grafico delle iscrizioni:
+- **Cosa cercano** (ultimi 90 giorni): ricerche, quante **senza nessun professionista vicino** (nessuno entro 25 km: il più vicino mostrato come alternativa non basta), quante con un nome o una parola scritta, quante solo per città; poi le città più cercate con le ricerche rimaste senza nessuno vicino.
+- **Lavori cercati per città**: lavoro, città, ricerche, senza nessuno vicino e professionisti visibili con sede lì; prima le ricerche rimaste senza nessuno.
+- Con il filtro per lavoro le ricerche senza lavoro non contano; con il filtro per città solo quella città.
+
+**Come si conta**: come già per le ricerche per lavoro (§281), un contatore per giorno e città, mai chi cerca né il testo scritto (solo se c'era una parola). `CategorySearchDay.emptyCount` nuovo; tabella nuova `FreeSearchDay` per le ricerche senza lavoro (pagina `/cerca`, contate solo con una città o una parola). Il conteggio parte da questa versione: i giorni prima non hanno le ricerche senza nessuno vicino né quelle senza lavoro. Una pagina ricaricata conta di nuovo (detto nella pagina). Migrazione `20261026220000_ricerche_admin`.
+
+**Verifica**: test di `hasNearbyResult`, del conteggio e dei numeri della pagina; typecheck, lint, 721 test dell'API; API avviata in locale su un database nuovo con tre ricerche vere e i contatori controllati nelle tabelle; pagina aperta in locale con l'API simulata da computer e telefono.

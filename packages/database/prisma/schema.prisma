@@ -2369,19 +2369,38 @@ model ProfileViewDay {
 
 // Ricerche per categoria (docs/CHANGELOG.md §281): contatore per giorno e
 // città, mai la singola ricerca né chi cerca. Serve solo a mettere prima i
-// lavori più cercati nella scelta dei lavori. `city` minuscola, "" se la
-// ricerca era senza città.
+// lavori più cercati nella scelta dei lavori e, dal §370, ai numeri
+// dell'area admin. `city` minuscola, "" se la ricerca era senza città.
 model CategorySearchDay {
   categoryId String
   city       String
   day        DateTime @db.Date
   count      Int      @default(0)
+  /// Ricerche senza nessun professionista entro il raggio (§370).
+  emptyCount Int      @default(0)
 
   category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@id([categoryId, city, day])
   @@index([day])
   @@map("category_search_days")
+}
+
+// Ricerche senza lavoro scelto (docs/CHANGELOG.md §370): solo città, o con
+// una parola scritta (di solito un nome). Contatore per giorno e città, mai
+// il testo scritto né chi cerca. `city` minuscola, "" se senza città.
+model FreeSearchDay {
+  city       String
+  /// C'era una parola scritta nella ricerca (mai salvata).
+  withText   Boolean
+  day        DateTime @db.Date
+  count      Int      @default(0)
+  /// Ricerche senza nessun professionista entro il raggio.
+  emptyCount Int      @default(0)
+
+  @@id([city, withText, day])
+  @@index([day])
+  @@map("free_search_days")
 }
 
 // ---------------------------------------------------------------------------

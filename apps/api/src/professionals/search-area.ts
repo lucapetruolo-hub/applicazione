@@ -1,4 +1,5 @@
 import { calculateDistanceKm } from "../common/geo.util";
+import { SEARCH_RADIUS_KM } from "@professionisti/shared";
 
 export type SearchAreaCandidate = { id: string; latitude: number; longitude: number };
 
@@ -34,4 +35,14 @@ export function selectSearchArea(
   return new Map(
     withDistance.filter((c) => c.distanceKm <= nearest + SAME_DISTANCE_TOLERANCE_KM).map((c) => [c.id, c.distanceKm]),
   );
+}
+
+/**
+ * La ricerca ha trovato qualcuno davvero vicino (docs/CHANGELOG.md §370):
+ * almeno un risultato entro il raggio. Il più vicino fuori raggio, mostrato
+ * come alternativa, non basta. Senza distanza (città non riconosciuta) vale
+ * qualunque risultato.
+ */
+export function hasNearbyResult(results: { distanceKm?: number }[], radiusKm: number = SEARCH_RADIUS_KM): boolean {
+  return results.some((r) => r.distanceKm === undefined || r.distanceKm <= radiusKm);
 }

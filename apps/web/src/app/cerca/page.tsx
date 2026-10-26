@@ -50,7 +50,8 @@ export default async function CercaPage(props: { searchParams: Promise<PageSearc
   // "nessun professionista" (docs/CHANGELOG.md §284).
   let loadFailed = false;
   try {
-    professionals = await apiClient.searchProfessionals({ city, q: searchParams.q, remote: isOnline });
+    // Contata solo con una città o una parola scritta, mai il testo (§370).
+    professionals = await apiClient.searchProfessionals({ city, q: searchParams.q, remote: isOnline, track: Boolean(city?.trim() || searchParams.q?.trim()) });
   } catch {
     loadFailed = true;
   }

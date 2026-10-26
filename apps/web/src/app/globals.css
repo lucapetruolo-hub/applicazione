@@ -2244,6 +2244,39 @@ a.admin-kpi:hover {
   border-radius: 999px;
   background: #128552;
 }
+/* Cosa cercano (docs/CHANGELOG.md §370). */
+.admin-bars-alert {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #b02a37;
+}
+.admin-figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: 16px;
+  padding-bottom: 12px;
+}
+.admin-figure {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.admin-figure-value {
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #2b2420;
+  font-variant-numeric: tabular-nums;
+}
+.admin-figure-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6e6459;
+}
+.admin-figure.is-alert .admin-figure-value {
+  color: #b02a37;
+}
 .admin-bars .is-zero .admin-bars-head {
   color: #9c8e7f;
 }

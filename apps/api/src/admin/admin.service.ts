@@ -8,7 +8,7 @@ import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
-import { buildCategoryActivity, buildChurnByMonth, buildCoverage, buildProfessionalStats, professionalStatusOf } from "./professional-stats";
+import { buildCategoryActivity, buildChurnByMonth, buildCoverage, buildProfessionalStats, buildSearchStats, professionalStatusOf } from "./professional-stats";
 
 export type AdminUserRow = {
   id: string;
@@ -161,6 +161,18 @@ export class AdminService {
       }),
     ]);
 
+    // Ricerche sul sito (§370): contatori per giorno, città salvata in minuscolo.
+    const searchCity = params.city?.trim() ? { city: params.city.trim().toLowerCase() } : {};
+    const searchDay = { day: { gte: new Date(Date.UTC(since90.getUTCFullYear(), since90.getUTCMonth(), since90.getUTCDate())) } };
+    const [categorySearchDays, freeSearchDays] = await Promise.all([
+      this.prisma.categorySearchDay.findMany({
+        where: { ...searchDay, ...searchCity, ...requestCategory },
+        select: { city: true, count: true, emptyCount: true, category: { select: { slug: true } } },
+      }),
+      // Con un lavoro scelto nel filtro le ricerche senza lavoro non c'entrano.
+      params.category?.trim() ? Promise.resolve([]) : this.prisma.freeSearchDay.findMany({ where: { ...searchDay, ...searchCity }, select: { city: true, withText: true, count: true, emptyCount: true } }),
+    ]);
+
     // Prima risposta del professionista a ogni richiesta ricevuta: preventivo o messaggio.
     const requestIds = [...new Set(leads.map((l) => l.guidedRequestId))];
     const [firstQuotes, firstMessages] = requestIds.length
@@ -186,6 +198,7 @@ export class AdminService {
       quotesCount: _count.quotes,
       bookingsCount: _count.bookings,
     }));
+    const visibleRows = statsRows.filter((row) => professionalStatusOf(row, now) === "VISIBLE");
     const reviewCategory = params.category?.trim();
     return buildProfessionalStats(statsRows, now, {
       cityOptions: cities.map((c) => c.city).filter((c) => c.trim()),
@@ -193,7 +206,7 @@ export class AdminService {
       activeIds: new Set([...activeQuotes, ...activeMessages].map((r) => r.professionalProfileId)),
       coverage: buildCoverage(
         requests.map((r) => ({ categorySlug: r.category.slug, city: r.city, quotes: r._count.quotes })),
-        statsRows.filter((row) => professionalStatusOf(row, now) === "VISIBLE"),
+        visibleRows,
       ),
       byCategoryActivity: buildCategoryActivity({
         leads: leads.map((l) => ({
@@ -214,6 +227,13 @@ export class AdminService {
           canceledAt: canceled.map((c) => c.updatedAt),
         },
         now,
+      ),
+      searches: buildSearchStats(
+        {
+          categoryDays: categorySearchDays.map((d) => ({ categorySlug: d.category.slug, city: d.city, count: d.count, emptyCount: d.emptyCount })),
+          freeDays: freeSearchDays,
+        },
+        visibleRows,
       ),
     });
   }

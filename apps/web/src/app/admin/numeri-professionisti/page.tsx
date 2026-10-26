@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import {
   FOUNDER_SPOTS,
   PROFESSIONAL_ACTIVITY_DAYS,
+  SEARCH_RADIUS_KM,
   PROFESSIONAL_CATEGORIES,
   PROFESSIONAL_COMPLETENESS_LABEL,
   PROFESSIONAL_ENTITY_LABEL,
@@ -262,6 +263,8 @@ function StatsBody({ data, filters, scope }: { data: AdminProfessionalStats; fil
         <StatsBarChart points={months} formatValue={(v) => String(v)} ariaLabel="Professionisti iscritti per mese" />
       </AdminCard>
 
+      <SearchCard searches={data.searches} withCategory={Boolean(filters.category)} />
+      <SearchZonesCard rows={data.searches.byCategoryCity} />
       <CoverageCard rows={data.coverage} />
       <CategoryActivityCard rows={data.byCategoryActivity} />
       <ChurnCard rows={data.churnByMonth} />
@@ -281,6 +284,110 @@ function CardTitle({ title, note }: { title: string; note: string }) {
         {note}
       </Text>
     </YStack>
+  );
+}
+
+const cityName = (city: string) => city || "Senza città";
+
+/**
+ * Cosa cercano sul sito (scelta di Luca, docs/CHANGELOG.md §370): quante
+ * ricerche, quante senza nessuno vicino, per nome o solo città, e le città
+ * più cercate. Solo numeri, mai chi cerca né il testo scritto.
+ */
+function SearchCard({ searches, withCategory }: { searches: AdminProfessionalStats["searches"]; withCategory: boolean }) {
+  const figures = [
+    { key: "total", value: String(searches.total), label: "Ricerche" },
+    { key: "empty", value: `${searches.empty} · ${sharePercentLabel(searches.empty, searches.total)}`, label: "Senza nessun professionista vicino", alert: searches.empty > 0 },
+    ...(withCategory
+      ? []
+      : [
+          { key: "text", value: String(searches.withText), label: "Con un nome o una parola scritta" },
+          { key: "city", value: String(searches.cityOnly), label: "Solo per città, senza lavoro" },
+        ]),
+  ];
+  return (
+    <AdminCard>
+      <CardTitle
+        title="Cosa cercano"
+        note={`Ricerche sul sito negli ultimi ${PROFESSIONAL_ACTIVITY_DAYS} giorni. "Vicino" vuol dire entro ${SEARCH_RADIUS_KM} km. Una pagina ricaricata conta di nuovo.`}
+      />
+      {searches.total === 0 ? (
+        <Text color={brand.grafite70}>Nessuna ricerca negli ultimi {PROFESSIONAL_ACTIVITY_DAYS} giorni.</Text>
+      ) : (
+        <>
+          <div className="admin-figures">
+            {figures.map((f) => (
+              <div key={f.key} className={f.alert ? "admin-figure is-alert" : "admin-figure"}>
+                <span className="admin-figure-value">{f.value}</span>
+                <span className="admin-figure-label">{f.label}</span>
+              </div>
+            ))}
+          </div>
+          <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite}>
+            Città più cercate
+          </Text>
+          <ul className="admin-bars">
+            {searches.byCity.map((row) => (
+              <li key={row.city}>
+                <div className="admin-bars-head">
+                  <span className="admin-bars-label">
+                    {cityName(row.city)}
+                    {row.empty > 0 ? <span className="admin-bars-alert">{row.empty} senza nessuno vicino</span> : null}
+                  </span>
+                  <span className="admin-bars-value">
+                    <strong>{row.searches}</strong> · {sharePercentLabel(row.searches, searches.total)}
+                  </span>
+                </div>
+                <div className="admin-bars-track" aria-hidden="true">
+                  <div className="admin-bars-fill" style={{ width: `${Math.min(100, (row.searches / searches.total) * 100)}%` }} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </AdminCard>
+  );
+}
+
+/** Lavoro e città cercati: dove c'è domanda e quanti professionisti ci sono. */
+function SearchZonesCard({ rows }: { rows: AdminProfessionalStats["searches"]["byCategoryCity"] }) {
+  if (rows.length === 0) return null;
+  return (
+    <AdminCard>
+      <CardTitle
+        title="Lavori cercati per città"
+        note="Professionisti visibili con sede in quella città. Prima le ricerche rimaste senza nessuno vicino."
+      />
+      <div className="admin-table-wrap">
+        <table className="admin-table admin-table-numbers">
+          <thead>
+            <tr>
+              <th>Lavoro</th>
+              <th>Città</th>
+              <th>Ricerche</th>
+              <th>Senza nessuno vicino</th>
+              <th>Professionisti</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={`${row.categorySlug}-${row.city}`}>
+                <td className="admin-cell-main">{row.categoryLabel}</td>
+                <td data-label="Città">{cityName(row.city)}</td>
+                <td data-label="Ricerche">{row.searches}</td>
+                <td data-label="Senza nessuno vicino" className={row.empty > 0 ? "is-alert" : undefined}>
+                  {row.empty} · {sharePercentLabel(row.empty, row.searches)}
+                </td>
+                <td data-label="Professionisti" className={row.professionals === 0 ? "is-alert" : undefined}>
+                  {row.professionals}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </AdminCard>
   );
 }
 

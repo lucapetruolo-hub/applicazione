@@ -11,6 +11,7 @@ import {
   type ProfessionalFunnelKey,
   type ProfessionalPlanKey,
   type ProfessionalStatusKey,
+  findComuneByName,
 } from "@professionisti/shared";
 import { publicVisibilityMissing } from "../professional-fiscal/public-visibility";
 import { romeMonthKey, subscriptionState, tierOfPlan, type SubscriptionRow } from "../subscriptions/subscription-rules";
@@ -114,6 +115,7 @@ export type ProfessionalStatsExtra = {
   coverage?: AdminProfessionalStats["coverage"];
   byCategoryActivity?: AdminProfessionalStats["byCategoryActivity"];
   churnByMonth?: AdminProfessionalStats["churnByMonth"];
+  searches?: AdminProfessionalStats["searches"];
 };
 
 export function buildProfessionalStats(rows: ProfessionalStatsRow[], now: Date, extra: ProfessionalStatsExtra): AdminProfessionalStats {
@@ -161,6 +163,7 @@ export function buildProfessionalStats(rows: ProfessionalStatsRow[], now: Date, 
     coverage: extra.coverage ?? [],
     byCategoryActivity: extra.byCategoryActivity ?? [],
     churnByMonth: extra.churnByMonth ?? [],
+    searches: extra.searches ?? { total: 0, empty: 0, withText: 0, cityOnly: 0, byCity: [], byCategoryCity: [] },
   };
 }
 
@@ -248,4 +251,82 @@ export function buildChurnByMonth(input: { deletedAt: Date[]; pausedAt: Date[]; 
   const paused = count(input.pausedAt);
   const canceled = count(input.canceledAt);
   return keys.map((key) => ({ key, deleted: deleted.get(key) ?? 0, paused: paused.get(key) ?? 0, canceled: canceled.get(key) ?? 0 }));
+}
+
+/** Città mostrate nelle ricerche, e righe di lavoro + città (§370). */
+export const SEARCH_CITY_ROWS = 15;
+export const SEARCH_ZONE_ROWS = 20;
+
+/** Città salvata in minuscolo: il nome del comune se lo è, altrimenti con le iniziali maiuscole. */
+function searchCityLabel(city: string): string {
+  if (!city) return "";
+  return findComuneByName(city)?.name ?? city.replace(/(^|[\s'-])(\p{L})/gu, (_, sep: string, ch: string) => sep + ch.toUpperCase());
+}
+
+/**
+ * Cosa cercano sul sito (docs/CHANGELOG.md §370), dai contatori per giorno:
+ * ricerche per lavoro e città e ricerche senza lavoro (solo città, o con una
+ * parola scritta). Per ogni lavoro + città anche i professionisti visibili
+ * con sede lì, come nella copertura.
+ */
+export function buildSearchStats(
+  input: {
+    categoryDays: { categorySlug: string; city: string; count: number; emptyCount: number }[];
+    freeDays: { city: string; withText: boolean; count: number; emptyCount: number }[];
+  },
+  visibleProfessionals: { city: string; categorySlugs: string[] }[],
+): AdminProfessionalStats["searches"] {
+  const norm = (city: string) => city.trim().toLowerCase();
+  const cities = new Map<string, { searches: number; empty: number }>();
+  const zones = new Map<string, { categorySlug: string; city: string; searches: number; empty: number }>();
+  const addCity = (city: string, count: number, empty: number) => {
+    const entry = cities.get(norm(city)) ?? { searches: 0, empty: 0 };
+    entry.searches += count;
+    entry.empty += empty;
+    cities.set(norm(city), entry);
+  };
+  let total = 0;
+  let empty = 0;
+  let withText = 0;
+  let cityOnly = 0;
+  for (const day of input.categoryDays) {
+    total += day.count;
+    empty += day.emptyCount;
+    addCity(day.city, day.count, day.emptyCount);
+    const key = `${day.categorySlug}|${norm(day.city)}`;
+    const zone = zones.get(key) ?? { categorySlug: day.categorySlug, city: norm(day.city), searches: 0, empty: 0 };
+    zone.searches += day.count;
+    zone.empty += day.emptyCount;
+    zones.set(key, zone);
+  }
+  for (const day of input.freeDays) {
+    total += day.count;
+    empty += day.emptyCount;
+    if (day.withText) withText += day.count;
+    else cityOnly += day.count;
+    addCity(day.city, day.count, day.emptyCount);
+  }
+  return {
+    total,
+    empty,
+    withText,
+    cityOnly,
+    byCity: [...cities.entries()]
+      .map(([city, c]) => ({ city: searchCityLabel(city), ...c }))
+      .sort((a, b) => b.searches - a.searches || a.city.localeCompare(b.city, "it"))
+      .slice(0, SEARCH_CITY_ROWS),
+    byCategoryCity: [...zones.values()]
+      .map((zone) => ({
+        categorySlug: zone.categorySlug,
+        categoryLabel: categoryLabel(zone.categorySlug),
+        city: searchCityLabel(zone.city),
+        searches: zone.searches,
+        empty: zone.empty,
+        professionals: zone.city
+          ? visibleProfessionals.filter((p) => norm(p.city) === zone.city && p.categorySlugs.includes(zone.categorySlug)).length
+          : visibleProfessionals.filter((p) => p.categorySlugs.includes(zone.categorySlug)).length,
+      }))
+      .sort((a, b) => b.empty - a.empty || b.searches - a.searches || a.city.localeCompare(b.city, "it"))
+      .slice(0, SEARCH_ZONE_ROWS),
+  };
 }
