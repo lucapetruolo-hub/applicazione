@@ -43,6 +43,7 @@ import { ProfessionalDetailContent } from "@/app/professionista/[id]/Professiona
 import { journeyCurrent, setupJourney } from "@/components/verification/SetupJourney";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 import { localPreviewUrl } from "@/lib/media";
+import { keyActivate } from "@/lib/keyActivate";
 
 const MAX_PORTFOLIO_PHOTOS = 10;
 
@@ -998,6 +999,7 @@ export default function DashboardProfiloPage() {
                           backgroundColor={selected ? brand.cianografiaVelo : brand.calce}
                           cursor="pointer"
                           onPress={() => setSubTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))}
+                          onKeyDown={keyActivate(() => setSubTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag])))}
                           accessibilityRole="checkbox"
                           aria-checked={selected}
                           accessibilityLabel={subTagLabel(tag)}
@@ -1114,8 +1116,9 @@ export default function DashboardProfiloPage() {
             gap="$3"
             cursor="pointer"
             onPress={() => setHasLiabilityInsurance((v) => !v)}
+            onKeyDown={keyActivate(() => setHasLiabilityInsurance((v) => !v))}
             accessibilityRole="checkbox"
-            accessibilityState={{ checked: hasLiabilityInsurance }}
+            aria-checked={hasLiabilityInsurance}
           >
             <YStack
               width={22}
@@ -1151,8 +1154,9 @@ export default function DashboardProfiloPage() {
           borderRadius="$4"
           cursor="pointer"
           onPress={() => setRemoteAvailable((v) => !v)}
+          onKeyDown={keyActivate(() => setRemoteAvailable((v) => !v))}
           accessibilityRole="checkbox"
-          accessibilityState={{ checked: remoteAvailable }}
+          aria-checked={remoteAvailable}
         >
           <YStack
             width={22}

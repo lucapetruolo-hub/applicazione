@@ -3,6 +3,7 @@
 import { MAX_PROFESSIONAL_CATEGORIES, PROFESSIONAL_CATEGORIES, type ProfessionalCategorySlug } from "@professionisti/shared";
 import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { CategoryTiles } from "@/components/CategoryTiles";
+import { keyActivate } from "@/lib/keyActivate";
 
 /**
  * Scelta delle categorie del professionista, da 1 a 3 (docs/CHANGELOG.md
@@ -72,8 +73,9 @@ export function CategoryMultiPicker({
                 backgroundColor={isPrimary ? brand.ottoneVelo : brand.calce}
                 cursor={isPrimary ? "default" : "pointer"}
                 onPress={isPrimary ? undefined : () => onChange([slug, ...value.filter((item) => item !== slug)])}
+                onKeyDown={keyActivate(isPrimary ? undefined : () => onChange([slug, ...value.filter((item) => item !== slug)]))}
                 accessibilityRole="radio"
-                accessibilityState={{ checked: isPrimary }}
+                aria-checked={isPrimary}
               >
                 {isPrimary ? <Icon name="star" size={13} color={brand.ottoneScuro} /> : null}
                 <Text fontSize={13} fontWeight="600" color={isPrimary ? brand.ottoneScuro : brand.grafite}>

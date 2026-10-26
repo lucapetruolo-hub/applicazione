@@ -55,7 +55,14 @@ export type AgendaWeekTemplateMonth = z.infer<typeof agendaWeekTemplateMonthSche
  * il nuovo professionista non ha confermato o cambiato gli orari di partenza
  * (docs/CHANGELOG.md §356).
  */
-export type AgendaWeekTemplateState = { template: AgendaWeekTemplate; active: boolean; changedDays: number; starter: boolean };
+export type AgendaWeekTemplateState = {
+  template: AgendaWeekTemplate;
+  active: boolean;
+  changedDays: number;
+  starter: boolean;
+  /** Il profilo offre anche la consulenza online: senza, la settimana non propone "Online" (§357). */
+  online: boolean;
+};
 
 /** Clienti per fascia negli orari di partenza, a domicilio e online (decisione dell'utente, §356). */
 export const STARTER_SLOT_CAPACITY = 5;

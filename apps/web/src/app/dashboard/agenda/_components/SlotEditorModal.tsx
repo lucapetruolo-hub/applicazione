@@ -5,6 +5,7 @@ import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { SlotDraft } from "./agendaHelpers";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 import { ItalianTimeInput } from "@/components/ItalianTimeInput";
+import { keyActivate } from "@/lib/keyActivate";
 
 /**
  * Casellina di spunta (richiesta esplicita dell'utente): in modalità
@@ -252,8 +253,9 @@ export function SlotEditorModal({
               borderRadius="$3"
               cursor="pointer"
               onPress={() => onAllowsHomeChange(!allowsHome)}
+              onKeyDown={keyActivate(() => onAllowsHomeChange(!allowsHome))}
               accessibilityRole="checkbox"
-              accessibilityState={{ checked: allowsHome }}
+              aria-checked={allowsHome}
             >
               <YStack
                 width={22}
@@ -292,8 +294,9 @@ export function SlotEditorModal({
               borderRadius="$3"
               cursor="pointer"
               onPress={() => onAllowsOnlineChange(!allowsOnline)}
+              onKeyDown={keyActivate(() => onAllowsOnlineChange(!allowsOnline))}
               accessibilityRole="checkbox"
-              accessibilityState={{ checked: allowsOnline }}
+              aria-checked={allowsOnline}
             >
               <YStack
                 width={22}
@@ -336,8 +339,9 @@ export function SlotEditorModal({
             borderRadius="$3"
             cursor="pointer"
             onPress={() => onRepeatForMonthChange(!repeatForMonth)}
+            onKeyDown={keyActivate(() => onRepeatForMonthChange(!repeatForMonth))}
             accessibilityRole="checkbox"
-            accessibilityState={{ checked: repeatForMonth }}
+            aria-checked={repeatForMonth}
           >
             <YStack
               width={22}

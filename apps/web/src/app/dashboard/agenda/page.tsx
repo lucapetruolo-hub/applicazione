@@ -234,6 +234,7 @@ function DashboardAgendaContent() {
   const [weekTemplateActive, setWeekTemplateActive] = useState(false);
   // Orari di partenza del profilo nuovo, finché non li conferma o li cambia (§356).
   const [starterHours, setStarterHours] = useState(false);
+  const [offersOnline, setOffersOnline] = useState(true);
   // Dopo "Salva la settimana" il server cambia le fasce dei prossimi giorni: si rileggono.
   const [slotsReload, setSlotsReload] = useState(0);
   const [savingTemplate, setSavingTemplate] = useState(false);
@@ -423,6 +424,7 @@ function DashboardAgendaContent() {
           setWeekTemplate(state.template);
           setWeekTemplateActive(state.active);
           setStarterHours(state.starter);
+          setOffersOnline(state.online);
         }),
       )
       .catch(() => {});
@@ -1600,6 +1602,7 @@ function DashboardAgendaContent() {
       if (!month) setWeekTemplate(state.template);
       setWeekTemplateActive(state.active);
       setStarterHours(state.starter);
+      setOffersOnline(state.online);
       setSlotsReload((n) => n + 1);
       const where = month ? `a ${templateMonths.find((m) => m.key === month)?.label ?? month}` : "a tutti i mesi";
       setTemplateNotice(
@@ -1972,6 +1975,7 @@ function DashboardAgendaContent() {
                 active={weekTemplateActive}
                 starter={starterHours}
                 onKeepStarter={() => void keepStarterHours()}
+                online={offersOnline}
                 months={templateMonths}
                 onSave={changeWeekTemplate}
                 saving={savingTemplate}

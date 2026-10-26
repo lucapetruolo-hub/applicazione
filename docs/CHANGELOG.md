@@ -21046,3 +21046,13 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - **Finestra dopo il primo salvataggio del profilo**: non chiede più di impostare la disponibilità (c'è già) ma dice che ci sono gli orari di partenza e propone "Controlla gli orari" (apre Orari di lavoro) o "Più tardi".
 
 **Verifica**: typecheck API e sito, lint, test dell'API (nuovo caso in `starter-hours.test.ts`), test dei permessi (230 rotte), prova nel browser con lingua inglese: ore in 24 ore, finestra "Togli anche gli orari online?" e fasce online a zero dopo "Togli gli orari online". Anteprime 4 e 5 in `anteprime/orari-di-partenza/`.
+
+## 358. Caselle leggibili e usabili da tastiera; "Online" solo per chi lavora online
+
+**Richiesta di Luca** (26/10/2026): "effettua le 2 migliorie" proposte dopo il §357.
+
+**Fatto**:
+- **Caselle fatte con Tamagui** (assicurazione e consulenza online nel profilo, specializzazioni, dichiarazione dei dati fiscali, A domicilio / Online / "ripeti per il mese" nella fascia del giorno, categoria principale): `accessibilityState` finiva nella pagina come attributo sconosciuto, quindi il lettore di schermo non sapeva se erano spuntate, e da tastiera si raggiungevano ma non si spuntavano. Ora `aria-checked` e Spazio/Invio con `keyActivate` (`apps/web/src/lib/keyActivate.ts`). Stessa correzione su `Chip` di `packages/ui` (`aria-pressed` e Spazio/Invio). Sparisce l'errore di React nella console del profilo.
+- **"Online" nella settimana tipo**: se il profilo non offre la consulenza online il pulsante non c'è (`AgendaWeekTemplateState.online`); resta visibile solo se una settimana salvata prima ha ancora l'online acceso, per poterlo spegnere. La settimana proposta a chi non l'ha mai salvata è quella di partenza con o senza online, secondo il profilo.
+
+**Verifica**: typecheck, lint, test dell'API, prova nel browser: casella "online" che cambia con Spazio, Invio e clic e annuncia lo stato; nessun errore in console; settimana senza "Online" per un profilo senza online (anteprime 6).

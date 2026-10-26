@@ -235,6 +235,7 @@ export function WeekTemplateEditor({
   active,
   starter = false,
   onKeepStarter,
+  online = true,
   months,
   onSave,
   saving,
@@ -244,6 +245,8 @@ export function WeekTemplateEditor({
   /** Orari di partenza messi alla creazione del profilo e non ancora confermati (§356). */
   starter?: boolean;
   onKeepStarter?: () => void;
+  /** Il profilo offre la consulenza online: senza, "Online" non si propone (§357). */
+  online?: boolean;
   /** Mesi che si possono scegliere per salvare la settimana solo lì: `key` AAAA-MM. */
   months: { key: string; label: string }[];
   onSave: (next: AgendaWeekTemplate, month: string | null) => Promise<boolean>;
@@ -344,14 +347,17 @@ export function WeekTemplateEditor({
               >
                 {draft.mode.allowsHome ? <Check size={15} aria-hidden /> : null} A domicilio
               </button>
-              <button
-                type="button"
-                className={`ag-wt-chip${draft.mode.allowsOnline ? " is-on" : ""}`}
-                aria-pressed={draft.mode.allowsOnline}
-                onClick={() => update({ mode: { ...draft.mode, allowsOnline: !draft.mode.allowsOnline } })}
-              >
-                {draft.mode.allowsOnline ? <Check size={15} aria-hidden /> : null} Online
-              </button>
+              {/* Si vede ancora se una settimana vecchia ha l'online acceso, per poterlo spegnere. */}
+              {online || draft.mode.allowsOnline ? (
+                <button
+                  type="button"
+                  className={`ag-wt-chip${draft.mode.allowsOnline ? " is-on" : ""}`}
+                  aria-pressed={draft.mode.allowsOnline}
+                  onClick={() => update({ mode: { ...draft.mode, allowsOnline: !draft.mode.allowsOnline } })}
+                >
+                  {draft.mode.allowsOnline ? <Check size={15} aria-hidden /> : null} Online
+                </button>
+              ) : null}
               <label className="ag-wt-per-slot">
                 <span className="ag-muted">Clienti per orario</span>
                 <select className="ag-input" value={draft.mode.perSlot} onChange={(e) => update({ mode: { ...draft.mode, perSlot: Number(e.target.value) } })}>

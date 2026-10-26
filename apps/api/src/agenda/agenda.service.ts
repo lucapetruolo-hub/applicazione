@@ -7,7 +7,6 @@ import {
   findComuneByName,
   italianComuni,
   jobOccurrenceOn,
-  DEFAULT_WEEK_TEMPLATE,
   starterWeekTemplate,
   PUBLIC_AGENDA_DAYS,
   wallClockToday,
@@ -80,15 +79,16 @@ export class AgendaService {
   async weekTemplate(userId: string): Promise<AgendaWeekTemplateState> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { userId },
-      select: { agendaWeekTemplate: true, agendaTemplateFilledUntil: true, agendaStarterHoursAt: true },
+      select: { agendaWeekTemplate: true, agendaTemplateFilledUntil: true, agendaStarterHoursAt: true, remoteAvailable: true },
     });
     if (!profile) throw new NotFoundException("Profilo professionista non trovato.");
     const parsed = agendaWeekTemplateSchema.safeParse(profile.agendaWeekTemplate);
     return {
-      template: parsed.success ? parsed.data : DEFAULT_WEEK_TEMPLATE,
+      template: parsed.success ? parsed.data : starterWeekTemplate(profile.remoteAvailable),
       active: profile.agendaTemplateFilledUntil !== null,
       changedDays: 0,
       starter: profile.agendaStarterHoursAt !== null,
+      online: profile.remoteAvailable,
     };
   }
 
@@ -163,14 +163,14 @@ export class AgendaService {
   async saveWeekTemplate(userId: string, template: AgendaWeekTemplate): Promise<AgendaWeekTemplateState> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { userId },
-      select: { id: true, agendaWeekTemplate: true, agendaTemplateFilledUntil: true },
+      select: { id: true, agendaWeekTemplate: true, agendaTemplateFilledUntil: true, remoteAvailable: true },
     });
     if (!profile) throw new NotFoundException("Profilo professionista non trovato.");
     const previousParsed = agendaWeekTemplateSchema.safeParse(profile.agendaWeekTemplate);
     // Prima attivazione: nessun giorno "già riempito", la settimana di prima non conta.
     const previous = profile.agendaTemplateFilledUntil && previousParsed.success ? previousParsed.data : null;
     const changedDays = await this.syncWeekTemplate(profile.id, template, previous, profile.agendaTemplateFilledUntil, new Date(), true);
-    return { template, active: true, changedDays, starter: false };
+    return { template, active: true, changedDays, starter: false, online: profile.remoteAvailable };
   }
 
   /**
@@ -183,7 +183,7 @@ export class AgendaService {
   async saveWeekTemplateForMonth(userId: string, template: AgendaWeekTemplate, month: string, now = new Date()): Promise<AgendaWeekTemplateState> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { userId },
-      select: { id: true, agendaWeekTemplate: true, agendaTemplateFilledUntil: true },
+      select: { id: true, agendaWeekTemplate: true, agendaTemplateFilledUntil: true, remoteAvailable: true },
     });
     if (!profile) throw new NotFoundException("Profilo professionista non trovato.");
     const today = wallClockToday(now);
@@ -213,7 +213,7 @@ export class AgendaService {
       return sync.changedDays;
     });
     const saved = agendaWeekTemplateSchema.safeParse(profile.agendaTemplateFilledUntil ? profile.agendaWeekTemplate : template);
-    return { template: saved.success ? saved.data : template, active: profile.agendaTemplateFilledUntil !== null, changedDays, starter: false };
+    return { template: saved.success ? saved.data : template, active: profile.agendaTemplateFilledUntil !== null, changedDays, starter: false, online: profile.remoteAvailable };
   }
 
   /** Ogni notte la settimana tipo riempie i giorni che entrano nei prossimi 63. */

@@ -16,6 +16,7 @@ import { OnlinePaymentsCard } from "@/components/OnlinePaymentsCard";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { FiscalWhyModal } from "@/components/verification/FiscalWhyModal";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
+import { keyActivate } from "@/lib/keyActivate";
 
 const isPersonType = (type: string) => type === "PRIVATE_INDIVIDUAL" || type === "SOLE_PROPRIETOR";
 
@@ -825,8 +826,9 @@ function DashboardFiscaleContent() {
                   marginTop="$2"
                   cursor="pointer"
                   onPress={() => setDeclarationAccepted((v) => !v)}
+                  onKeyDown={keyActivate(() => setDeclarationAccepted((v) => !v))}
                   accessibilityRole="checkbox"
-                  accessibilityState={{ checked: declarationAccepted }}
+                  aria-checked={declarationAccepted}
                 >
                   <YStack
                     width={20}
