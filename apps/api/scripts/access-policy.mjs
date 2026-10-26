@@ -14,6 +14,9 @@
 //   `params`, `query` e `body` usano i dati di prova (`f`) creati dal test.
 //   `ownerPassesCheck`: per i proprietari basta superare il controllo (dopo
 //   la rotta usa un servizio esterno spento nel test).
+// - self con `role: "admin"`: verifica in due passaggi dell'admin (§356),
+//   prima del codice e quindi senza AdminGuard. Clienti e professionisti
+//   devono ricevere 403.
 
 const BOTH = ["clientA", "proA"];
 const STRANGERS = ["clientB", "proB"];
@@ -228,11 +231,21 @@ function quoteBody(f) {
   return { requestId: f.requestA, estimatedStartDate: start, items: [{ name: "Manodopera", priceMinEurCents: 5000, priceMaxEurCents: 8000 }] };
 }
 
+const selfAdmin = [
+  "GET /admin/2fa",
+  "POST /admin/2fa/enable",
+  "POST /admin/2fa/reset-code",
+  "POST /admin/2fa/reset-code/confirm",
+  "POST /admin/2fa/setup",
+  "POST /admin/2fa/verify",
+];
+
 export const POLICY = {
   ...Object.fromEntries(publicRoutes.map((key) => [key, { kind: "public" }])),
   "SSE /realtime/stream": { kind: "ticket" },
   ...Object.fromEntries(selfAny.map((key) => [key, { kind: "self" }])),
   ...Object.fromEntries(selfProfessional.map((key) => [key, { kind: "self", role: "professional" }])),
+  ...Object.fromEntries(selfAdmin.map((key) => [key, { kind: "self", role: "admin" }])),
   ...owned,
 };
 

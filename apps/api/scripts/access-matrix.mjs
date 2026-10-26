@@ -59,6 +59,7 @@ async function resetDatabase() {
 async function seed() {
   const category = await prisma.category.findFirstOrThrow({ orderBy: { slug: "asc" } });
   const verified = new Date();
+  const twoFactorSince = new Date(Date.now() - 60_000);
   const user = (key, role, extra = {}) =>
     prisma.user.create({ data: { email: `${key.toLowerCase()}@prova.it`, name: key, role, emailVerifiedAt: verified, ...extra } });
   const users = {
@@ -66,9 +67,10 @@ async function seed() {
     clientB: await user("clientB", "CLIENT"),
     proA: await user("proA", "PROFESSIONAL"),
     proB: await user("proB", "PROFESSIONAL"),
-    adminSuper: await user("adminSuper", "ADMIN", { adminRoles: ["SUPER"] }),
-    adminModerator: await user("adminModerator", "ADMIN", { adminRoles: ["MODERATOR"] }),
-    adminFinance: await user("adminFinance", "ADMIN", { adminRoles: ["FINANCE"] }),
+    // Verifica in due passaggi già attivata (docs/CHANGELOG.md §356).
+    adminSuper: await user("adminSuper", "ADMIN", { adminRoles: ["SUPER"], adminTotpEnabledAt: twoFactorSince }),
+    adminModerator: await user("adminModerator", "ADMIN", { adminRoles: ["MODERATOR"], adminTotpEnabledAt: twoFactorSince }),
+    adminFinance: await user("adminFinance", "ADMIN", { adminRoles: ["FINANCE"], adminTotpEnabledAt: twoFactorSince }),
   };
   const profile = (u, name) =>
     prisma.professionalProfile.create({
@@ -213,7 +215,12 @@ async function main() {
   const base = `http://127.0.0.1:${app.getHttpServer().address().port}`;
   const { users, ids } = await seed();
   const jwt = app.get(JwtService, { strict: false });
-  const tokens = Object.fromEntries(Object.entries(users).map(([key, u]) => [key, jwt.sign({ sub: u.id, sv: u.sessionVersion })]));
+  // Gli admin hanno appena dato il codice dell'app (`amfa`); `adminSuperNoCode` è lo stesso super admin senza codice.
+  const amfa = Math.floor(Date.now() / 1000);
+  const tokens = Object.fromEntries(
+    Object.entries(users).map(([key, u]) => [key, jwt.sign({ sub: u.id, sv: u.sessionVersion, ...(u.role === "ADMIN" ? { amfa } : {}) })]),
+  );
+  tokens.adminSuperNoCode = jwt.sign({ sub: users.adminSuper.id, sv: users.adminSuper.sessionVersion });
 
   const routes = listRoutes(app);
   const failures = [];
@@ -257,6 +264,9 @@ async function main() {
         if (allowed) expect(route, status !== 401 && status !== 403, `${actor} (permesso ${scope}) riceve ${status}`);
         else expect(route, status === 403, `${actor} riceve ${status}, atteso 403 (permesso ${scope})`);
       }
+      // Senza il codice della verifica in due passaggi nessuna rotta admin risponde, neanche al super admin.
+      const noCode = await call(base, route, url, { token: tokens.adminSuperNoCode, body: route.httpMethod === "GET" ? undefined : {} });
+      expect(route, noCode === 403, `super admin senza codice dell'app riceve ${noCode}, atteso 403`);
       continue;
     }
 
@@ -264,6 +274,13 @@ async function main() {
       // Una risposta vuota o di soli zeri va bene: il cliente non vede dati di nessuno.
       const { status, text } = await call(base, route, url, { token: tokens.clientA, body: {}, readBody: true });
       expect(route, !ok(status) || !carriesData(text), `un cliente riceve ${status} con dei dati: dovrebbe essere riservata ai professionisti`);
+    }
+
+    if (policy.kind === "self" && policy.role === "admin") {
+      for (const actor of ["clientA", "proA"]) {
+        const status = await call(base, route, url, { token: tokens[actor], body: { code: "123456" } });
+        expect(route, status === 403, `${actor} riceve ${status}, atteso 403: riservata agli admin`);
+      }
     }
 
     if (policy.kind === "owned") {
