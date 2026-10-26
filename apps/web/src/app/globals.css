@@ -1,0 +1,5445 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #2b2420;
+}
+
+/* Tamagui inietta `body { background: var(--background) }` (grigio chiaro)
+   dopo questo file: prima lo coprivano i contenitori color gesso delle
+   pagine, ora trasparenti per lo sfondo sfocato (docs/CHANGELOG.md §180).
+   `html body` vince per specificità. */
+html body {
+  background: #fdefe1;
+}
+
+a {
+  color: inherit;
+}
+
+/* I pulsanti e i campi non ereditano il carattere della pagina: senza questa
+   regola "Richiedi preventivo", "Cerca" e "Vedi tutte" uscivano in Arial
+   (docs/CHANGELOG.md §305). */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+/* Testo dei pulsanti a 16 px come il testo base (sistema unico, §305): la
+   misura "$3" di Tamagui li scriveva a 13 px. I pulsanti piccoli ($1-$2)
+   restano compatti. */
+span.is_Button._fos-f-size-3,
+span.is_Button._fos-f-size-true {
+  font-size: 16px;
+}
+/* Nell'intestazione dei telefoni stretti lo spazio non basta: 15 px. */
+@media (max-width: 400px) {
+  .site-header-cta span.is_Button {
+    font-size: 15px;
+  }
+}
+
+/* Skip link (Fase 6, accessibilità): fuori schermo finché non riceve il
+   focus da tastiera (Tab), poi torna visibile in alto a sinistra. */
+.skip-link {
+  position: absolute;
+  top: -48px;
+  left: 8px;
+  z-index: 1000;
+  background: #128552;
+  color: #ffffff;
+  padding: 12px 16px;
+  border-radius: 20px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.skip-link:focus {
+  top: 8px;
+}
+
+/* Motion (brief redesign, fase "motion"): un utente con
+   prefers-reduced-motion: reduce non deve vedere nessuna delle transizioni/
+   animazioni del sito (FadeInSection, hover di CategoryTile, apertura del
+   mega-menu, header sticky, skip link...) — prima nessuna regola globale lo
+   rispettava, l'unico punto che lo faceva (la Scheda Intervento dell'hero,
+   via matchMedia in JS) è stato rimosso insieme al resto di quel
+   componente. Una sola regola qui copre tutto il sito in un colpo, senza
+   dover ripetere un controllo `matchMedia` in ogni componente che anima
+   qualcosa: le transizioni diventano istantanee (la UI raggiunge comunque
+   lo stato finale corretto, es. il contenuto di FadeInSection resta
+   visibile), non vengono nascoste o disabilitate. */
+/* View Transitions API tra pagine (ricerca→profilo, header — scope
+   deliberato, vedi apps/web/src/lib/viewTransition.ts): durata coerente
+   con `motionBase` (220ms) già usato altrove nel sito invece del cross-fade
+   di default del browser (~250ms senza controllo esplicito). Gli
+   pseudo-elementi `::view-transition-*` non sono selezionabili da `*`
+   (non fanno parte dell'albero DOM), servono regole esplicite — anche per
+   il guard `prefers-reduced-motion` sotto, la regola universale `*` più in
+   basso non li copre. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 220ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Pulsanti "vivi" (docs/CHANGELOG.md §233): ogni pulsante si schiaccia un
+   poco quando lo premi (scale .97, anche su telefono); la freccia delle
+   azioni principali ruota in 350ms al passaggio del mouse. Con "riduci
+   movimento" la regola sopra rende le transizioni istantanee. */
+button.is_Button {
+  transition:
+    transform 150ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
+  transform: scale(0.97);
+}
+.button-arrow {
+  transition: transform 350ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@media (hover: hover) {
+  button.is_Button:hover .button-arrow {
+    transform: rotate(-45deg);
+  }
+}
+
+/* Magnete e alone del pulsante principale della home (MagneticButton). */
+.magnet {
+  display: inline-flex;
+  transform: translate(var(--tx), var(--ty));
+  transition: transform 450ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.magnet--block {
+  display: flex;
+}
+/* Il Button di Tamagui sta dentro un tema con `display: contents`. */
+.magnet--block button.is_Button {
+  flex: 1;
+}
+.magnet[data-active="true"] {
+  transition-duration: 120ms;
+}
+.magnet[data-active="true"] button.is_Button {
+  background-image: radial-gradient(circle 90px at var(--mx) var(--my), rgba(255, 255, 255, 0.3), transparent 70%);
+}
+
+/* "Richiedi un preventivo a [nome]" nel profilo pubblico (ProfileQuoteCta):
+   da computer largo quanto il testo, da telefono tutta la larghezza e, quando
+   il pulsante non è sullo schermo, una barra fissa in basso. */
+.profile-cta {
+  align-self: flex-start;
+  max-width: 100%;
+}
+.profile-cta-bar {
+  display: none;
+}
+@media (max-width: 767px) {
+  .profile-cta {
+    align-self: stretch;
+  }
+  .profile-cta-bar {
+    display: block;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 -1px 0 rgba(26, 21, 19, 0.08);
+    transform: translateY(110%);
+    visibility: hidden;
+    transition:
+      transform 250ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      visibility 0s linear 250ms;
+  }
+  /* Spazio in fondo alla pagina, così la barra non copre il piè di pagina. */
+  body:has(.profile-cta-bar) {
+    padding-bottom: 72px;
+  }
+  .profile-cta-bar[data-visible="true"] {
+    transform: translateY(0);
+    visibility: visible;
+    transition:
+      transform 250ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      visibility 0s;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .profile-cta-bar,
+  .profile-cta-bar[data-visible="true"] {
+    transition: none;
+  }
+}
+
+/* Foto dei mestieri in /per-professionisti (ProGallery): 2 colonne su
+   telefono, 4 da tablet in su. */
+.pro-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0 16px 24px;
+}
+@media (min-width: 768px) {
+  .pro-gallery {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+    padding: 0 24px 32px;
+  }
+}
+.pro-gallery {
+  list-style: none;
+  margin: 0;
+}
+.pro-gallery-item {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  color: #fff;
+  text-decoration: none;
+}
+/* Nome del mestiere sulla foto, su una sfumatura scura per leggerlo su
+   qualsiasi immagine (docs/CHANGELOG.md §349). */
+.pro-gallery-caption {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 28px 12px 10px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0));
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.pro-gallery-item:hover .pro-gallery-caption {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.pro-gallery-item:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+
+/* Stato di caricamento (fase "motion"): un pulsare lento e simmetrico,
+   `ease-in-out` invece della curva direzionale `motionEasing` (pensata per
+   una transizione che parte e arriva a riposo una sola volta, non per un
+   ciclo che va avanti e indietro all'infinito). Applicata via className
+   diretto sul componente (`LoadingState`, apps/web/src/components) invece
+   di `<style jsx>` scoped: stesso pattern già in uso per `.bp-grid`, dato
+   che i componenti Tamagui inoltrano `className` al nodo DOM sottostante
+   su web (react-native-web). */
+@keyframes loading-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.loading-pulse {
+  animation: loading-pulse 1.4s ease-in-out infinite;
+}
+
+/* Skeleton "a scheletro" (Skeleton.tsx): base + fascia più chiara che
+   scorre in loop, stessa tinta `grafite` diluita già usata per gli
+   hairline del resto del sito (mai un grigio generico fuori palette).
+   `prefers-reduced-motion` collassa la durata tramite la regola globale
+   più sotto in questo file, nessun guard aggiuntivo necessario. */
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+.skeleton-shimmer {
+  background: linear-gradient(
+    100deg,
+    rgba(43, 32, 19, 0.1) 20%,
+    rgba(43, 32, 19, 0.045) 40%,
+    rgba(43, 32, 19, 0.045) 60%,
+    rgba(43, 32, 19, 0.1) 80%
+  );
+  background-size: 300% 100%;
+  animation: skeleton-shimmer 1.8s ease-in-out infinite;
+}
+
+/* Tre pallini che rimbalzano in sequenza (richiesta esplicita dell'utente:
+   "dai un segnale all'utente che stai caricando, ad esempio con
+   un'animazione dei pallini") — segnale di caricamento file più
+   riconoscibile del semplice "…" statico usato prima in ogni punto del
+   sito con un upload in corso (foto/video sulla richiesta guidata,
+   recensioni, lavoro completato, chat, portfolio, immagine profilo).
+   `animation-delay` sfalsato sui tre pallini (`.uploading-dot:nth-child`)
+   dà l'effetto "in sequenza"; `prefers-reduced-motion` è già gestito dalla
+   regola globale più sotto in questo file (le durate collassano a
+   istantanee), nessun guard aggiuntivo necessario. */
+@keyframes uploading-dot-bounce {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+.uploading-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.uploading-dot {
+  border-radius: 50%;
+  animation: uploading-dot-bounce 1.1s ease-in-out infinite;
+}
+.uploading-dot:nth-child(1) {
+  animation-delay: 0ms;
+}
+.uploading-dot:nth-child(2) {
+  animation-delay: 150ms;
+}
+.uploading-dot:nth-child(3) {
+  animation-delay: 300ms;
+}
+
+/* Riga categorie scorrevole in homepage (CategoryCarousel, richiesta
+   esplicita dell'utente: "si può scorrere a destra e sinistra sia con una
+   freccetta che scorrendo col dito"): scorrimento nativo del browser (touch
+   swipe già funzionante di suo), solo la scrollbar visiva viene nascosta —
+   le freccette restano il modo di scorrere via mouse. */
+.category-carousel-track {
+  scrollbar-width: none;
+}
+.category-carousel-track::-webkit-scrollbar {
+  display: none;
+}
+/* Le freccette servono solo a chi non può scorrere col dito: su un
+   dispositivo touch-only (nessun hover reale) restano fuori, lo swipe
+   nativo basta ed evita di occupare spazio inutile ai lati della riga. */
+@media (hover: none) {
+  .category-carousel-arrow {
+    /* !important: la freccetta imposta display:flex in linea (per centrare
+       l'icona) — un inline style vince sempre su una regola esterna senza
+       !important, indipendentemente dalla media query, quindi qui serve
+       esplicitamente per nascondere davvero la freccetta su un dispositivo
+       touch-only. */
+    display: none !important;
+  }
+}
+
+/* /admin — menu laterale desktop (richiesta esplicita dell'utente: "un
+   menu laterale che non va a modificare l'attuale posizione dell'elenco
+   centrale") + tabelle a colonne ("dovranno essere in formato colonna in
+   modo da poter copiare ad esempio solo le e-mail"). `position: fixed`
+   tiene il menu fuori dal flusso di layout: la colonna centrale (già
+   centrata a sé, `maxWidth={800}`) resta esattamente dov'era, il menu si
+   sovrappone al margine sinistro invece di spingerla. Una vera `<table>`
+   HTML rende ogni cella selezionabile/copiabile senza trascinare i campi
+   vicini — un flex con testo concatenato non lo garantisce (un
+   triplo-click su un indirizzo email lì selezionerebbe anche il nome
+   affiancato). Visibile solo da una larghezza per cui c'è margine
+   sufficiente a sinistra della colonna centrale senza sovrapporla. */
+/* Campanella e pannello delle notifiche (components/NotificationBell.tsx,
+   docs/CHANGELOG.md §316): stesso sistema del sito, testo a 16 px,
+   arrotondamento 12, bianco pieno con ombra leggera. Sul telefono il
+   pannello è fisso sotto l'intestazione e largo quanto lo schermo: ancorato
+   alla campanella usciva dal bordo sinistro, perché a destra della
+   campanella c'è ancora il menu dell'account. */
+.notif {
+  position: relative;
+}
+.notif-bell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 150ms ease, transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.notif-bell:hover,
+.notif-bell.is-open {
+  background: #fdefe1;
+}
+.notif-bell:active {
+  transform: scale(0.94);
+}
+.notif-bell:focus-visible {
+  outline: 2px solid #0e7a4c;
+  outline-offset: 2px;
+}
+.notif-badge {
+  position: absolute;
+  top: 4px;
+  right: 2px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  border: 2px solid #fff;
+  background: #c8362b;
+  color: #fff;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 700;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+@keyframes notif-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.notif-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 1000;
+  width: 400px;
+  max-height: min(600px, calc(100dvh - 96px));
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #f0dcc0;
+  border-radius: 20px;
+  box-shadow: 0 16px 40px rgba(43, 36, 32, 0.14), 0 2px 6px rgba(43, 36, 32, 0.06);
+  overflow: hidden;
+  transform-origin: top right;
+  animation: notif-panel-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  outline: none;
+}
+@media (max-width: 480px) {
+  .notif-panel {
+    position: fixed;
+    top: 68px;
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-height: calc(100dvh - 84px);
+  }
+}
+.notif-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 12px 12px 20px;
+  border-bottom: 1px solid #f0dcc0;
+}
+.notif-title {
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 700;
+  color: #2b2420;
+}
+.notif-new {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #dcf3e7;
+  color: #0e7a4c;
+  font-size: 13px;
+  font-weight: 600;
+}
+.notif-clear {
+  margin-left: auto;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #6e6459;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.notif-clear:hover {
+  background: #fdefe1;
+  color: #2b2420;
+}
+.notif-clear.is-confirm {
+  background: #fbe4e1;
+  color: #a12a21;
+}
+.notif-clear:focus-visible,
+.notif-row-main:focus-visible,
+.notif-row-delete:focus-visible,
+.notif-settings:focus-visible {
+  outline: 2px solid #0e7a4c;
+  outline-offset: -2px;
+}
+.notif-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 8px;
+}
+.notif-group {
+  margin: 0;
+  padding: 14px 20px 6px;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: #6e6459;
+}
+.notif-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.notif-row {
+  position: relative;
+}
+.notif-row-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+  padding: 12px 52px 12px 20px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  box-sizing: border-box;
+}
+button.notif-row-main {
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+button.notif-row-main:hover {
+  background: #fdf8f2;
+}
+.notif-row + .notif-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 74px;
+  right: 0;
+  height: 1px;
+  background: #f0dcc0;
+}
+.notif-row-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+.notif-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.notif-row-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 18px;
+}
+.notif-row-topic {
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.notif-row-time {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: #6e6459;
+  font-variant-numeric: tabular-nums;
+}
+.notif-row-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #128552;
+}
+.notif-row-message {
+  font-size: 16px;
+  line-height: 22px;
+  color: #2b2420;
+  overflow-wrap: anywhere;
+}
+.notif-row.is-unread .notif-row-message {
+  font-weight: 600;
+}
+.notif-row-delete {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease, background-color 120ms ease;
+}
+.notif-row:hover .notif-row-delete,
+.notif-row:focus-within .notif-row-delete {
+  opacity: 1;
+}
+.notif-row-delete:hover {
+  background: #fdefe1;
+}
+/* Sul telefono non c'è il passaggio del mouse: la "x" resta visibile. */
+@media (hover: none) {
+  .notif-row-delete {
+    opacity: 1;
+  }
+}
+.notif-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 40px 24px 32px;
+  text-align: center;
+}
+.notif-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 6px;
+  border-radius: 12px;
+  background: #fdefe1;
+}
+.notif-empty-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2b2420;
+}
+.notif-empty-text {
+  font-size: 15px;
+  line-height: 22px;
+  color: #6e6459;
+}
+.notif-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 16px 20px;
+}
+.notif-loading-row {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.notif-loading-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.notif-foot {
+  border-top: 1px solid #f0dcc0;
+  padding: 6px 12px;
+}
+.notif-settings {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 8px;
+  border-radius: 10px;
+  color: #0e7a4c;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.notif-settings:hover {
+  background: #fdf8f2;
+}
+@media (prefers-reduced-motion: reduce) {
+  .notif-panel {
+    animation: none;
+  }
+  .notif-bell,
+  .notif-row-delete,
+  button.notif-row-main {
+    transition: none;
+  }
+  .notif-bell:active {
+    transform: none;
+  }
+}
+
+/* Area admin (docs/CHANGELOG.md §144): menu sempre visibile — barra
+   orizzontale scorrevole su telefono, colonna fissa a sinistra da 1000px. */
+.admin-shell {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 16px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.admin-main {
+  min-width: 0;
+  flex: 1;
+}
+.admin-nav {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 8px;
+  scrollbar-width: none;
+}
+.admin-nav::-webkit-scrollbar {
+  display: none;
+}
+/* Finché c'è altro a destra, il bordo sfuma (docs/CHANGELOG.md §349). */
+@media (max-width: 999px) {
+  .admin-nav[data-more-right="true"] {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent);
+  }
+}
+.admin-nav-title {
+  display: none;
+}
+.admin-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  color: #2b2420;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.admin-nav-link:hover {
+  background: #fdefe1;
+}
+.admin-nav-link.is-active {
+  background: #efe9e2;
+  color: #2b2420;
+  font-weight: 700;
+}
+.admin-nav-badge {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: #dc3545;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+@media (min-width: 1000px) {
+  .admin-shell {
+    flex-direction: row;
+    align-items: flex-start;
+    padding: 32px 24px;
+    gap: 24px;
+  }
+  .admin-nav {
+    position: sticky;
+    top: 96px;
+    flex-direction: column;
+    width: 240px;
+    flex-shrink: 0;
+    overflow-x: visible;
+    padding: 12px;
+  }
+  .admin-kbd {
+    display: inline-block;
+  }
+  .admin-nav-title {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #6e6459;
+    padding: 4px 12px 8px;
+  }
+}
+.admin-nav-search {
+  border: none;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  color: #6e6459;
+}
+.admin-kbd {
+  display: none;
+  margin-left: auto;
+  font-size: 11px;
+  font-family: inherit;
+  border: 1px solid #f0dcc0;
+  border-radius: 10px;
+  padding: 1px 6px;
+  color: #6e6459;
+  background: #ffffff;
+}
+/* Ricerca globale ⌘K (docs/CHANGELOG.md §145). */
+.admin-palette-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(43, 36, 32, 0.35);
+  z-index: 2000;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 12vh 16px 16px;
+}
+.admin-palette {
+  width: 100%;
+  max-width: 560px;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(43, 36, 32, 0.25);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 70vh;
+}
+.admin-palette-input {
+  border: none;
+  border-bottom: 1px solid #f0dcc0;
+  padding: 16px 18px;
+  font: inherit;
+  font-size: 16px;
+  outline: none;
+}
+.admin-palette-list {
+  overflow-y: auto;
+  padding: 6px;
+}
+.admin-palette-group {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6e6459;
+  padding: 10px 12px 4px;
+}
+.admin-palette-item {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.admin-palette-item.is-active {
+  background: #fdefe1;
+}
+.admin-palette-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2b2420;
+}
+.admin-palette-subtitle {
+  font-size: 12px;
+  color: #6e6459;
+}
+.admin-palette-empty,
+.admin-palette-hint {
+  padding: 12px 18px;
+  font-size: 13px;
+  color: #6e6459;
+}
+.admin-palette-hint {
+  border-top: 1px solid #f0dcc0;
+  font-size: 12px;
+}
+/* Pagine personali (docs/CHANGELOG.md §147): menu a sezioni del
+   professionista (barra scorrevole su telefono, colonna da 1000px) e barra
+   di schede del cliente. Le pagine dentro restano centrate come prima. */
+.acct-shell {
+  width: 100%;
+  /* 1600 e non più 1320 (docs/CHANGELOG.md §334): su uno schermo da 1920px
+     agenda e messaggi restavano in una striscia centrale con 600px vuoti. */
+  max-width: 1600px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+.acct-main {
+  min-width: 0;
+  flex: 1;
+  /* Le pagine dentro possono adattarsi allo spazio vero, che cambia col menu
+     ridotto (docs/CHANGELOG.md §334). Non trattiene gli elementi fissi. */
+  container: acct-main / inline-size;
+  /* Il piè di pagina resta sotto lo schermo mentre la pagina carica: prima
+     compariva in alto e poi veniva spinto giù (CLS 0,14, docs/CHANGELOG.md §321). */
+  min-height: 100vh;
+}
+.acct-nav {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  background: #ffffff;
+  padding: 8px 12px;
+  border-bottom: 1px solid #f0dcc0;
+  scrollbar-width: none;
+  position: sticky;
+  top: 64px;
+  /* Sotto l'header (z-index 40), non sopra: altrimenti la tendina
+     "Il mio account" finiva dietro questa barra (docs/CHANGELOG.md §148). */
+  z-index: 30;
+}
+.acct-nav::-webkit-scrollbar {
+  display: none;
+}
+/* Finché c'è altro a destra, il bordo sfuma (docs/CHANGELOG.md §349). */
+@media (max-width: 759px) {
+  .acct-nav[data-more-right="true"] {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent);
+  }
+}
+.acct-nav-group {
+  display: contents;
+}
+.acct-nav-title {
+  display: none;
+}
+/* Nome breve sotto l'icona: solo nella colonna stretta del tablet. */
+.acct-nav-short {
+  display: none;
+}
+/* Sul telefono, nella barra che scorre, il nome breve ("Richieste",
+   "Salvati"): con quello intero si vedevano due voci sole (docs/CHANGELOG.md
+   §334). Il nome intero resta per gli screen reader. */
+@media (max-width: 759px) {
+  .acct-nav .acct-nav-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .acct-nav .acct-nav-short {
+    display: inline;
+  }
+}
+/* Tasto "Riduci il menu" (docs/CHANGELOG.md §334): solo con la colonna. */
+.acct-nav-toggle,
+.acct-nav-tip {
+  display: none;
+}
+.acct-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  color: #2b2420;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 15px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.acct-nav-link > svg {
+  flex-shrink: 0;
+}
+.acct-nav-link:hover {
+  background: #fdefe1;
+}
+/* Voce attiva grigio chiaro, non più quasi nera (regola accettata
+   dall'utente il 22/10, docs/CHANGELOG.md §306): il nero pieno pesava più
+   del contenuto della pagina. */
+.acct-nav-link.is-active {
+  background: #efe9e2;
+  color: #2b2420;
+  font-weight: 700;
+}
+.acct-nav-badge {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: #dc3545;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Pallino "da fare" senza numero (es. agenda senza disponibilità). */
+/* Nome accanto alla foto nell'intestazione (AccountMenu, docs/CHANGELOG.md §319). */
+.acct-trigger-name {
+  display: flex;
+  min-width: 0;
+  max-width: 180px;
+}
+.acct-trigger-name-sr {
+  display: none;
+}
+@media (max-width: 520px) {
+  .acct-trigger-name {
+    display: none;
+  }
+  .acct-trigger-name-sr {
+    display: block;
+  }
+}
+
+.acct-nav-dot {
+  margin-left: auto;
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: #dc3545;
+  box-shadow: 0 0 0 2px #ffffff;
+}
+/* Colonna a sinistra da 760px (tablet in verticale compreso, docs/CHANGELOG.md
+   §334): prima, fino a 1000px, era una barra che scorreva di lato e
+   nascondeva metà delle voci. */
+@media (min-width: 760px) {
+  .acct-shell {
+    flex-direction: row;
+    align-items: flex-start;
+    padding: 24px 16px 0;
+    gap: 8px;
+  }
+  .acct-nav {
+    position: sticky;
+    top: 88px;
+    flex-direction: column;
+    width: 256px;
+    flex-shrink: 0;
+    overflow-x: visible;
+    padding: 12px;
+    border: none;
+    border-radius: 20px;
+  }
+  .acct-nav-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .acct-nav-group + .acct-nav-group {
+    margin-top: 10px;
+  }
+}
+/* Tablet in verticale: colonna stretta con icona e nome breve sotto, come la
+   "navigation rail" di Material. Niente fumetti: col dito non si passa sopra. */
+@media (min-width: 760px) and (max-width: 999px) {
+  .acct-nav {
+    width: 96px;
+    padding: 8px 4px;
+  }
+  .acct-nav-group + .acct-nav-group {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #f0dcc0;
+  }
+  .acct-nav-link {
+    position: relative;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 0 8px;
+    min-height: 56px;
+    justify-content: center;
+    text-align: center;
+    white-space: normal;
+  }
+  .acct-nav-link > svg {
+    width: 20px;
+    height: 20px;
+  }
+  /* Il nome intero resta per gli screen reader, si vede quello breve. */
+  .acct-nav-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .acct-nav-short {
+    display: block;
+    font-size: 12px;
+    line-height: 1.2;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+  .acct-nav .acct-nav-badge {
+    position: absolute;
+    top: 4px;
+    right: 12px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    font-size: 11px;
+    box-shadow: 0 0 0 2px #ffffff;
+  }
+  .acct-nav .acct-nav-dot {
+    position: absolute;
+    top: 9px;
+    right: 22px;
+  }
+}
+@media (min-width: 1000px) {
+  .acct-nav-title {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #6e6459;
+    padding: 4px 12px 6px;
+  }
+  /* La riga del primo titolo è alta quanto il tondo, che le sta accanto:
+     prima il tondo (32px) sporgeva sotto il titolo (28px) e copriva la prima
+     voce (docs/CHANGELOG.md §337). */
+  .acct-nav-toggle + .acct-nav-group > .acct-nav-title {
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    padding-top: 0;
+    padding-bottom: 0;
+    padding-right: 44px;
+    margin-bottom: 4px;
+  }
+  /* Tondo in alto a destra, sulla riga del primo titolo. */
+  .acct-nav-toggle {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    border: 1px solid #f0dcc0;
+    border-radius: 999px;
+    background: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    transition: background-color 150ms ease;
+  }
+  .acct-nav-toggle:hover {
+    background: #fdefe1;
+  }
+  .acct-nav-toggle:focus-visible,
+  .acct-nav-link:focus-visible {
+    outline: 2px solid #2b2420;
+    outline-offset: 2px;
+  }
+  /* Etichetta a fumetto: nome del tasto e, col menu ridotto, delle voci. */
+  .acct-nav-tip,
+  html[data-acct-nav="collapsed"] .acct-nav-label {
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: #2b2420;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(43, 36, 32, 0.18);
+    z-index: 1;
+  }
+  .acct-nav-tip {
+    display: none;
+  }
+  .acct-nav-toggle:hover .acct-nav-tip,
+  .acct-nav-toggle:focus-visible .acct-nav-tip {
+    display: block;
+  }
+  .acct-nav-tip kbd {
+    margin-left: 6px;
+    padding: 0 5px;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 12px;
+  }
+  /* Si può passare col puntatore sopra il fumetto senza che sparisca
+     (WCAG 1.4.13): un ponte invisibile copre lo spazio tra icona e fumetto. */
+  html[data-acct-nav="collapsed"] .acct-nav-label::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 100%;
+    width: 12px;
+  }
+  /* Esc chiude il fumetto (useAccountNavKeys). */
+  html[data-acct-tips="hidden"] .acct-nav-toggle .acct-nav-tip {
+    display: none;
+  }
+  html[data-acct-tips="hidden"][data-acct-nav="collapsed"] .acct-nav .acct-nav-link .acct-nav-label {
+    opacity: 0;
+    pointer-events: none;
+  }
+  /* Menu ridotto a sole icone: stessa colonna, larga quanto un'icona. */
+  html[data-acct-nav="collapsed"] .acct-nav {
+    width: 64px;
+    padding: 12px 8px;
+    align-items: center;
+  }
+  html[data-acct-nav="collapsed"] .acct-nav-toggle {
+    position: relative;
+    top: auto;
+    right: auto;
+    margin-bottom: 8px;
+    flex-shrink: 0;
+  }
+  html[data-acct-nav="collapsed"] .acct-nav-group {
+    align-items: center;
+  }
+  /* I titoli dei gruppi diventano una riga di separazione. Anche il primo,
+     che ha una regola più specifica accanto al tondo: prima "Lavoro"
+     restava visibile e usciva dalla colonna stretta. */
+  html[data-acct-nav="collapsed"] .acct-nav-title,
+  html[data-acct-nav="collapsed"] .acct-nav-toggle + .acct-nav-group > .acct-nav-title {
+    display: none;
+  }
+  html[data-acct-nav="collapsed"] .acct-nav-group + .acct-nav-group {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #f0dcc0;
+  }
+  html[data-acct-nav="collapsed"] .acct-nav-link {
+    position: relative;
+    width: 48px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+  html[data-acct-nav="collapsed"] .acct-nav-link > svg {
+    width: 20px;
+    height: 20px;
+  }
+  /* Il nome resta nella pagina (lo leggono gli screen reader) ma si vede
+     solo passando sopra o arrivando col tasto Tab. */
+  html[data-acct-nav="collapsed"] .acct-nav-label {
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+  html[data-acct-nav="collapsed"] .acct-nav-link:hover .acct-nav-label,
+  html[data-acct-nav="collapsed"] .acct-nav-link:focus-visible .acct-nav-label {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  /* Numeri e pallini restano, sull'angolo dell'icona. */
+  html[data-acct-nav="collapsed"] .acct-nav .acct-nav-badge {
+    position: absolute;
+    top: 3px;
+    right: 2px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    font-size: 11px;
+    box-shadow: 0 0 0 2px #ffffff;
+  }
+  html[data-acct-nav="collapsed"] .acct-nav .acct-nav-dot {
+    position: absolute;
+    top: 9px;
+    right: 9px;
+  }
+}
+@media (min-width: 1000px) and (prefers-reduced-motion: reduce) {
+  .acct-nav-toggle,
+  html[data-acct-nav="collapsed"] .acct-nav-label {
+    transition: none;
+  }
+}
+/* Home "Oggi" del professionista (docs/CHANGELOG.md §147). */
+/* Due colonne quando il contenuto è largo almeno 960px (docs/CHANGELOG.md
+   §334): conta lo spazio vero della pagina, che cambia col menu ridotto,
+   non la larghezza della finestra. */
+.today-wrap {
+  container-type: inline-size;
+}
+.today-grid,
+.today-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.today-slot:empty {
+  display: none;
+}
+.today-col {
+  display: contents;
+}
+@container (min-width: 960px) {
+  .today-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr);
+    align-items: start;
+  }
+  .today-col {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    min-width: 0;
+  }
+}
+/* Sempre 3 riquadri affiancati (anche su telefono, più compatti): con
+   auto-fill restava una colonna vuota su desktop e su telefono si
+   impilavano occupando mezza pagina. */
+.today-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (max-width: 599px) {
+  .today-kpis {
+    gap: 8px;
+  }
+  .today-kpis .admin-kpi {
+    padding: 12px;
+  }
+  .today-kpis .admin-kpi-value {
+    font-size: 22px;
+  }
+  .today-kpis .admin-kpi-label {
+    font-size: 13px;
+  }
+}
+.today-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.today-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: #ffffff;
+  text-decoration: none;
+  color: #2b2420;
+  border: 1px solid transparent;
+}
+.today-row:hover {
+  border-color: #f0dcc0;
+}
+.today-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+  font-size: 16px;
+}
+.today-row-sub {
+  color: #6e6459;
+  font-size: 16px;
+}
+.today-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.today-deadline {
+  color: #8a6d00;
+}
+.today-deadline.is-urgent {
+  color: #dc3545;
+}
+.today-competitors {
+  color: #6e6459;
+}
+.today-row-cta {
+  flex-shrink: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  background: #128552;
+  padding: 8px 12px;
+  border-radius: 999px;
+}
+.today-time {
+  flex-shrink: 0;
+  min-width: 56px;
+  font-weight: 800;
+  font-size: 16px;
+}
+.today-empty {
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: #ffffff;
+  color: #6e6459;
+  font-size: 16px;
+}
+/* "Nessuna ancora" al posto di un numero: più piccolo, su una riga (§353). */
+.today-kpis .admin-kpi-value.is-text {
+  font-size: 18px;
+  line-height: 1.2;
+}
+/* Numero accanto al titolo "Da rispondere ora" (§352), al posto della tessera. */
+.today-count {
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: #dc3545;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Date da confermare e messaggi: solo le tessere sopra zero, larghe uguali. */
+.today-kpis.today-counters {
+  grid-template-columns: none;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+}
+/* Lavoro di oggi con "Naviga" accanto (§352). */
+.today-appt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 20px;
+  background: #ffffff;
+  border: 1px solid transparent;
+}
+.today-appt:hover {
+  border-color: #f0dcc0;
+}
+.today-appt > .today-row {
+  flex: 1;
+  min-width: 0;
+  border: none;
+}
+.today-appt-actions {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-right: 16px;
+}
+.today-nav {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: #128552;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.today-nav:hover {
+  background: #0e7a4c;
+}
+.today-nav:focus-visible {
+  outline: 2px solid #2b2420;
+  outline-offset: 2px;
+}
+/* "Sto arrivando" con bordo, accanto a "Naviga" verde (§353). */
+.today-nav.is-secondary {
+  background: #ffffff;
+  color: #2b2420;
+  box-shadow: inset 0 0 0 1px #2b2420;
+}
+.today-nav.is-secondary:hover {
+  background: #fdefe1;
+}
+.today-nav.is-secondary:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.today-nav.is-done {
+  background: #e6f4ec;
+  color: #0e7a4c;
+  cursor: default;
+}
+.today-nav-error {
+  flex-basis: 100%;
+  text-align: right;
+  color: #dc3545;
+  font-size: 14px;
+  font-weight: 600;
+}
+@media (max-width: 520px) {
+  .today-row {
+    flex-wrap: wrap;
+  }
+  /* "Invia preventivo" sotto il testo, largo quanto la scheda (§352): accanto
+     schiacciava la descrizione in una colonna stretta. */
+  .today-row-main {
+    flex-basis: 100%;
+  }
+  .today-row-cta {
+    flex-basis: 100%;
+    text-align: center;
+    padding: 12px;
+  }
+  .today-row .today-time + .today-row-main {
+    flex-basis: 0;
+  }
+  .today-appt {
+    flex-wrap: wrap;
+    gap: 0;
+  }
+  .today-appt > .today-row {
+    flex-basis: 100%;
+  }
+  /* Sotto la riga, larghi quanto la scheda: allineati al testo (86 px a
+     sinistra) "Sto arrivando" usciva dalla scheda a 390 px. */
+  .today-appt-actions {
+    flex-basis: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    justify-content: flex-start;
+    margin: -6px 0 0;
+    padding: 0 16px 14px;
+  }
+  .today-nav-error {
+    text-align: left;
+  }
+  /* Tre pulsanti in una riga anche a 360 px: "Chiama" solo icona. */
+  .today-nav {
+    padding: 0 12px;
+  }
+  .today-nav.is-call {
+    width: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+  .today-nav.is-call .today-nav-text {
+    display: none;
+  }
+  /* Andamento: una tessera per riga, nome a sinistra e numero a destra. */
+  .today-kpis.today-insights {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .today-insights .admin-kpi {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 12px;
+  }
+  .today-insights .admin-kpi > :nth-child(3) {
+    grid-column: 1 / -1;
+  }
+}
+/* Telefoni stretti (360 px): senza l'icona del furgone i tre pulsanti
+   restano su una riga. */
+@media (max-width: 379px) {
+  .today-nav.is-secondary:not(.is-call) svg {
+    display: none;
+  }
+}
+/* "Oggi": meteo dei prossimi tre giorni e lavori raggruppati per giorno (docs/CHANGELOG.md §333). */
+.weather-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 4px;
+  padding: 0;
+  list-style: none;
+}
+.weather-strip > li {
+  min-width: 0;
+}
+.weather-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  height: 100%;
+  padding: 12px 14px;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  background: #ffffff;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 150ms ease-out;
+}
+.weather-chip:hover {
+  border-color: #f0dcc0;
+}
+.weather-chip:focus-visible {
+  outline: 3px solid #189a63;
+  outline-offset: 2px;
+}
+.weather-chip.is-loading {
+  min-height: 92px;
+  background: #fbf3ea;
+}
+.weather-chip-day {
+  font-weight: 800;
+  font-size: 15px;
+  color: #2b2420;
+  text-transform: capitalize;
+}
+.weather-chip-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.weather-chip-main strong {
+  white-space: nowrap;
+  font-size: 20px;
+  font-weight: 800;
+  color: #2b2420;
+  font-variant-numeric: tabular-nums;
+}
+.weather-chip-main strong span {
+  font-size: 15px;
+  font-weight: 600;
+  color: #6e6459;
+}
+.weather-chip-label {
+  font-size: 14px;
+  color: #6e6459;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.today-day-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  margin: 8px 4px 0;
+  font-size: 15px;
+  color: #6e6459;
+}
+.today-day-head strong {
+  font-size: 16px;
+  color: #2b2420;
+}
+@media (max-width: 640px) {
+  .weather-chip {
+    padding: 10px 12px;
+  }
+  .weather-chip-label {
+    display: none;
+  }
+}
+/* Computer: giorno, icona e gradi su una riga sola (§352), metà altezza.
+   La descrizione resta nel fumetto e nel testo dell'icona. */
+@media (min-width: 641px) {
+  .weather-chip {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+  }
+  .weather-chip.is-loading {
+    min-height: 48px;
+  }
+  .weather-chip-label {
+    display: none;
+  }
+}
+/* "Profilo pubblico": anteprima del profilo pubblico (docs/CHANGELOG.md §252). */
+.profile-preview-frame {
+  border-radius: 20px;
+  background: #fdefe1;
+  border: 1px solid #f0dcc0;
+  box-shadow: 0 12px 32px rgba(43, 32, 19, 0.08);
+  overflow: hidden;
+}
+@media (max-width: 599px) {
+  /* Sul telefono l'anteprima usa quasi tutta la larghezza, come la pagina vera. */
+  .profile-preview-frame {
+    margin: 0 -12px;
+    border-radius: 20px;
+  }
+}
+.profile-preview-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #f0dcc0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #6e6459;
+}
+.profile-preview-bar > span:last-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.profile-preview-dots {
+  display: inline-flex;
+  gap: 6px;
+}
+.profile-preview-dots i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #f0dcc0;
+}
+/* Avanzamento di "Completa il profilo" in Oggi (docs/CHANGELOG.md §259). */
+.readiness-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: #f0e6da;
+  overflow: hidden;
+}
+.readiness-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #128552;
+  transition: width 0.3s ease;
+}
+/* Percorso "Completa il profilo" (docs/CHANGELOG.md §261): passi in verticale
+   uniti da una linea, e la barra "Passo N di 3" in cima alle pagine dei passi. */
+.journey {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.journey-step {
+  position: relative;
+  display: flex;
+  gap: 12px;
+}
+.journey-step:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 17px;
+  top: 40px;
+  bottom: 4px;
+  width: 2px;
+  border-radius: 2px;
+  background: #f0e6da;
+}
+.journey-step.is-done:not(:last-child)::before {
+  background: #b9e6cf;
+}
+.journey-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.journey-bar {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.journey-bar-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #6e6459;
+}
+.journey-bar-step:not(:last-child) {
+  flex: 1 1 auto;
+}
+.journey-bar-step span {
+  white-space: nowrap;
+}
+.journey-bar-step:not(:last-child)::after {
+  content: "";
+  flex: 1;
+  min-width: 8px;
+  height: 2px;
+  border-radius: 2px;
+  background: #f0e6da;
+}
+.journey-bar-step.is-here {
+  color: #2b2420;
+}
+/* Da telefono le etichette restano, più piccole (docs/CHANGELOG.md §349):
+   senza, i passi non attivi erano cerchi muti. */
+@media (max-width: 480px) {
+  .journey-bar,
+  .journey-bar-step {
+    gap: 6px;
+  }
+  .journey-bar-step {
+    font-size: 13px;
+  }
+}
+/* Stato del profilo e cosa non può ancora fare: righe in un solo riquadro. */
+.profile-status {
+  display: flex;
+  flex-direction: column;
+  border-radius: 20px;
+  background: #ffffff;
+}
+.profile-status .profile-visibility {
+  background: transparent;
+  border-radius: 0;
+}
+.profile-status-next {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding: 14px 16px;
+  border-top: 1px solid #f0e6da;
+}
+.profile-status-next-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6e6459;
+}
+.profile-status-next-title {
+  display: block;
+  font-weight: 800;
+  color: #2b2420;
+}
+.profile-status .profile-visibility + .profile-visibility {
+  border-top: 1px solid #f0e6da;
+}
+.profile-visibility {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: #ffffff;
+  font-size: 16px;
+}
+.profile-visibility-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.profile-visibility.is-ok .profile-visibility-dot {
+  background: #128552;
+  box-shadow: 0 0 0 4px #dcf3e7;
+}
+.profile-visibility.is-warn .profile-visibility-dot {
+  background: #d9a441;
+  box-shadow: 0 0 0 4px #f6ecd9;
+}
+.profile-visibility.is-off .profile-visibility-dot {
+  background: #c8362b;
+  box-shadow: 0 0 0 4px #fbeae7;
+}
+.profile-visibility-text {
+  flex: 1 1 0;
+  min-width: 0;
+  font-weight: 700;
+  color: #2b2420;
+}
+.profile-visibility .profile-visibility-link {
+  margin-left: auto;
+}
+.profile-verify-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f6f1ea;
+  color: #6e6459;
+  border: 1px solid transparent;
+}
+.profile-verify-chip.is-verified {
+  background: #e6efe3;
+  color: #3d6b3e;
+}
+.profile-verify-chip.is-action {
+  background: #ffffff;
+  border-color: #189a63;
+  color: #0e7a4c;
+  cursor: pointer;
+}
+.profile-verify-chip.is-action:hover {
+  background: #dcf3e7;
+}
+.profile-verify-chip.is-action:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.profile-visibility-link {
+  font: inherit;
+  font-weight: 700;
+  color: #0e7a4c;
+  text-decoration: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.profile-visibility-link:hover {
+  text-decoration: underline;
+}
+.profile-back-link {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0e7a4c;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.profile-back-link:hover {
+  text-decoration: underline;
+}
+/* Pacchetti di visibilità in fondo alla Home "Oggi" (docs/CHANGELOG.md §252). */
+.boost-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+@media (max-width: 640px) {
+  .boost-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.boost-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 20px;
+  background: #ffffff;
+  color: #2b2420;
+  box-shadow: 0 8px 24px rgba(43, 32, 19, 0.06);
+}
+.boost-card.is-green {
+  background: linear-gradient(160deg, #dcf3e7 0%, #ffffff 58%);
+}
+.boost-card.is-gold {
+  background: linear-gradient(160deg, #f6ecd9 0%, #ffffff 58%);
+}
+.boost-card-glow {
+  position: absolute;
+  right: -18px;
+  bottom: -22px;
+  opacity: 0.09;
+  pointer-events: none;
+  display: flex;
+}
+.boost-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.boost-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+}
+.is-green .boost-card-icon {
+  background: #128552;
+  box-shadow: 0 6px 14px rgba(24, 154, 99, 0.3);
+}
+.is-gold .boost-card-icon {
+  background: #d9a441;
+  box-shadow: 0 6px 14px rgba(217, 164, 65, 0.35);
+}
+.boost-card-soon {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid #f0dcc0;
+  color: #6e6459;
+}
+.boost-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.boost-card-body h3 {
+  margin: 0;
+  font-family: var(--font-display), sans-serif;
+  font-size: 19px;
+  font-weight: 800;
+}
+.boost-card-body p {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.45;
+  color: #6e6459;
+}
+.boost-card-body ul {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.boost-card-body li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.boost-card-price {
+  margin-top: auto;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding-top: 14px;
+  border-top: 1px dashed #f0dcc0;
+}
+.boost-card-price strong {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.boost-card-price span {
+  font-size: 16px;
+  color: #6e6459;
+}
+/* Griglia dei contatori della home admin. */
+.admin-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 12px;
+}
+/* Scheda utente: sei numeri in 3+3, non 5 e 1 orfano (docs/CHANGELOG.md §349). */
+@media (min-width: 661px) {
+  .admin-kpi-grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.admin-trend-grid {
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+}
+.admin-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 20px;
+  background: #ffffff;
+  text-decoration: none;
+  color: #2b2420;
+  border: 1px solid transparent;
+}
+a.admin-kpi:hover {
+  border-color: #f0dcc0;
+}
+.admin-kpi-value {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+}
+.admin-kpi-label {
+  font-size: 13px;
+  color: #6e6459;
+  font-weight: 600;
+}
+.admin-kpi.is-urgent .admin-kpi-value {
+  color: #dc3545;
+}
+.admin-input {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #9c8e7f;
+  font: inherit;
+  font-size: 14px;
+  background: #ffffff;
+  color: #2b2420;
+  box-sizing: border-box;
+}
+.admin-textarea {
+  width: 100%;
+  min-height: 90px;
+  resize: vertical;
+}
+.admin-table-wrap {
+  overflow-x: auto;
+  border-radius: 20px;
+  background: #ffffff;
+}
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.admin-table th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6e6459;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f0dcc0;
+  white-space: nowrap;
+}
+.admin-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f0dcc0;
+  vertical-align: top;
+}
+.admin-table tr:last-child td {
+  border-bottom: none;
+}
+.admin-table tr:nth-child(even) td {
+  background: #fdefe1;
+}
+
+/* Griglia KPI di /admin/statistiche (menu "Statistiche", Revenue Analytics)
+   — CSS grid nativo, non tentato via prop Tamagui: stesso principio già in
+   uso per .cal-week-grid, un div grezzo con className resta il pattern più
+   affidabile per il layout che Tamagui/react-native-web non copre bene. Si
+   adatta da 4 colonne a 1 sola su mobile senza media query esplicite. */
+.stats-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  width: 100%;
+}
+
+/* Evidenziazione dell'elemento raggiunto da un deep link (click su una
+   notifica) — richiesta esplicita dell'utente: "evidenziandola leggermente
+   per qualche secondo con transizione della luce", poi rafforzata su una
+   richiesta successiva ("evidenzia maggiormente"): picco più intenso
+   (sfondo 0.14→0.26, bagliore 3px/0.35→5px/0.55) sostenuto per un tratto
+   prima di sfumare, invece di iniziare già a scendere dal primo frame. Una
+   dissolvenza di sfondo+bagliore verde smeraldo (stesso accento
+   cianografia già usato in tutto il sito), mai un bordo/riquadro fisso —
+   si spegne da sola, la classe viene rimossa via JS dopo il timeout
+   (apps/web/src/lib/deepLinkHighlight.ts). */
+@keyframes deep-link-highlight {
+  0% {
+    background-color: rgba(24, 154, 99, 0.26);
+    box-shadow: 0 0 0 5px rgba(24, 154, 99, 0.55);
+  }
+  20% {
+    background-color: rgba(24, 154, 99, 0.26);
+    box-shadow: 0 0 0 5px rgba(24, 154, 99, 0.55);
+  }
+  75% {
+    background-color: rgba(24, 154, 99, 0.1);
+    box-shadow: 0 0 0 4px rgba(24, 154, 99, 0.2);
+  }
+  100% {
+    background-color: rgba(24, 154, 99, 0);
+    box-shadow: 0 0 0 0 rgba(24, 154, 99, 0);
+  }
+}
+.deep-link-highlight {
+  animation: deep-link-highlight 2.5s ease-out;
+  border-radius: 20px;
+}
+
+/* /registrati — pagina di registrazione resa più "innovativa" (richiesta
+   esplicita dell'utente, stesso principio già seguito per la campanella
+   notifiche qui sopra: ingresso animato invece di comparire di scatto, un
+   tocco di profondità in più). Due forme sfumate decorative dietro la card
+   del form — mai testo/contenuto reale dentro, solo colore — vivono nel
+   proprio contenitore assoluto con `overflow:hidden` dedicato, mai
+   sull'intera pagina scrollabile: stesso bug già documentato altrove in
+   questo file (§20, "il menu a tendina dell'hero veniva tagliato da un
+   overflow:hidden messo troppo in alto nell'albero") evitato fin dalla
+   prima stesura invece di dover essere corretto in un secondo momento. */
+/* Versione di tutto il sito (docs/CHANGELOG.md §180): fissa sullo schermo,
+   dietro a ogni contenuto (z-index -1 sopra il fondo pesca del body). */
+.site-blobs {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: -1;
+}
+.auth-page-blobs {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.auth-page-blob {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(70px);
+}
+.auth-page-blob--one {
+  width: 380px;
+  height: 380px;
+  top: -160px;
+  right: -110px;
+  background: #128552;
+  opacity: 0.28;
+}
+.auth-page-blob--two {
+  width: 320px;
+  height: 320px;
+  bottom: -140px;
+  left: -110px;
+  background: #d9a441;
+  opacity: 0.18;
+}
+@keyframes auth-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.auth-card-in {
+  animation: auth-card-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* Card di scelta ruolo: senza ombra (docs/CHANGELOG.md §176, l'utente non
+   vuole ombre), al passaggio del mouse cambiano solo posizione e bordo. */
+.auth-role-card {
+  transition:
+    transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.auth-role-card:hover {
+  transform: translateY(-2px);
+  border-color: #189a63;
+}
+/* Le schede di scelta sono link veri (docs/CHANGELOG.md §278): fuoco da
+   tastiera visibile e risposta al tocco. */
+.auth-role-card-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 20px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.auth-role-card-link:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.auth-role-card-link:active .auth-role-card {
+  transform: scale(0.98);
+  border-color: #189a63;
+}
+
+/* Intestazione dei passi della registrazione (docs/CHANGELOG.md §278):
+   "Indietro" in alto a sinistra, numero del passo a destra, barra sotto. */
+.auth-step-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  margin: -12px -8px 0;
+}
+.auth-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 44px;
+  padding: 0 10px 0 4px;
+  border: none;
+  border-radius: 20px;
+  background: none;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2b2420;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.auth-back:hover {
+  background: #fdefe1;
+}
+.auth-back:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 1px;
+}
+.auth-step-count {
+  margin-left: auto;
+  padding-right: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0e7a4c;
+}
+.auth-step-bar {
+  display: flex;
+  gap: 6px;
+}
+.auth-step-bar span {
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: #f0dcc0;
+}
+.auth-step-bar span.is-done {
+  background: #128552;
+}
+
+/* Tendina "Il mio account" nell'header, a gruppi (docs/CHANGELOG.md §148). */
+.acct-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(300px, calc(100vw - 32px));
+  max-height: calc(100vh - 88px);
+  overflow-y: auto;
+  background: #ffffff;
+  border: 1px solid #f0dcc0;
+  border-radius: 20px;
+  box-shadow: 0 12px 32px rgba(43, 32, 19, 0.12);
+  z-index: 1000;
+  padding: 8px;
+}
+.acct-menu-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 12px;
+  border-bottom: 1px solid #f0dcc0;
+  margin-bottom: 4px;
+}
+.acct-menu-head-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.acct-menu-head-text strong {
+  font-size: 16px;
+  color: #2b2420;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.acct-menu-head-text span {
+  font-size: 13px;
+  color: #6e6459;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.acct-menu-title {
+  display: block;
+  padding: 10px 8px 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #6e6459;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.acct-menu-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 8px;
+  border-radius: 10px;
+  color: #2b2420;
+  text-decoration: none;
+  font-size: 16px;
+  font-weight: 600;
+  background: none;
+  border: none;
+  width: 100%;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+.acct-menu-link:hover {
+  background: #fdefe1;
+}
+.acct-menu-link.is-active {
+  background: #fdefe1;
+}
+.acct-menu-logout {
+  margin-top: 4px;
+  border-top: 1px solid #f0dcc0;
+  padding-top: 4px;
+}
+.acct-menu-logout .acct-menu-link {
+  color: #dc3545;
+}
+/* Su telefono la tendina si aggancia ai bordi dello schermo, non al nome:
+   per il cliente il nome non è all'estrema destra (c'è "Preventivo") e la
+   tendina usciva dallo schermo a sinistra. */
+@media (max-width: 599px) {
+  .acct-menu {
+    position: fixed;
+    top: 60px;
+    left: 16px;
+    right: 16px;
+    width: auto;
+    max-height: calc(100vh - 76px);
+  }
+}
+
+/* Statistiche del professionista (docs/CHANGELOG.md §149). */
+.pstats-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+.pstats-presets {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  max-width: 100%;
+}
+.pstats-presets::-webkit-scrollbar {
+  display: none;
+}
+.pstats-preset {
+  flex-shrink: 0;
+  border: 1px solid #f0dcc0;
+  background: #ffffff;
+  color: #2b2420;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.pstats-preset:hover {
+  background: #fdefe1;
+}
+.pstats-preset.is-active {
+  background: #2b2420;
+  border-color: #2b2420;
+  color: #ffffff;
+}
+.pstats-custom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+.pstats-custom label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #6e6459;
+}
+.pstats-custom input {
+  font: inherit;
+  font-size: 16px;
+  padding: 7px 10px;
+  border: 1px solid #9c8e7f;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #2b2420;
+}
+.pstats-apply {
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: none;
+  background: #128552;
+  color: #ffffff;
+  cursor: pointer;
+}
+.pstats-error {
+  font-size: 16px;
+  color: #dc3545;
+  font-weight: 600;
+}
+.pstats-period {
+  font-size: 16px;
+  color: #6e6459;
+  flex-basis: 100%;
+}
+.pstats-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+/* Con la pagina larga (menu ridotto) le sei tessere stanno su una riga e il
+   grafico sale (docs/CHANGELOG.md §334). */
+@container acct-main (min-width: 1140px) {
+  .pstats-kpis {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+.pstats-kpi {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 20px;
+  background: #ffffff;
+  border: 2px solid transparent;
+  text-align: left;
+  font: inherit;
+  color: #2b2420;
+  cursor: pointer;
+}
+.pstats-kpi:hover {
+  border-color: #f0dcc0;
+}
+.pstats-kpi.is-active {
+  border-color: #0e7a4c;
+}
+.pstats-kpi-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #6e6459;
+}
+.pstats-kpi-value {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.pstats-kpi-delta {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6e6459;
+}
+.pstats-kpi-delta.is-up {
+  color: #128052;
+}
+.pstats-kpi-delta.is-down {
+  color: #c42a39;
+}
+.pstats-card {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.pstats-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.pstats-card-head h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #2b2420;
+}
+.pstats-card-head p {
+  margin: 4px 0 0;
+  font-size: 16px;
+  color: #6e6459;
+}
+.pstats-card-head strong {
+  font-size: 22px;
+  color: #2b2420;
+  white-space: nowrap;
+}
+.pstats-table summary {
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0e7a4c;
+}
+.pstats-table-scroll {
+  overflow-x: auto;
+  margin-top: 10px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+.pstats-table table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 16px;
+}
+.pstats-table th,
+.pstats-table td {
+  padding: 6px 10px;
+  text-align: right;
+  border-bottom: 1px solid #f0dcc0;
+  white-space: nowrap;
+}
+.pstats-table th:first-child {
+  text-align: left;
+}
+.pstats-table thead th {
+  position: sticky;
+  top: 0;
+  background: #ffffff;
+  color: #6e6459;
+}
+.pstats-ratios {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.pstats-ratio {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  border-radius: 20px;
+  background: #f7f6f4;
+}
+.pstats-ratio-value {
+  font-size: 24px;
+  font-weight: 800;
+  color: #2b2420;
+}
+.pstats-ratio-detail {
+  font-size: 13px;
+  color: #6e6459;
+}
+@media (max-width: 799px) {
+  .pstats-ratios {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 599px) {
+  .pstats-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .pstats-kpi {
+    padding: 12px;
+  }
+  .pstats-kpi-value {
+    font-size: 22px;
+  }
+  .pstats-card {
+    padding: 14px;
+  }
+  .pstats-card-head {
+    flex-direction: column;
+  }
+}
+
+/* Niente zoom automatico toccando un campo di testo (richiesta esplicita
+   dell'utente, docs/CHANGELOG.md §150): Safari su iPhone/iPad ingrandisce
+   la pagina se il testo del campo è sotto i 16px e poi la vista resta
+   spostata. Sui dispositivi touch ogni campo scrive quindi a 16px (vince
+   anche sugli stili inline). Lo zoom con due dita resta possibile: non
+   usiamo maximum-scale/user-scalable, servirebbero a chi vede poco. */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* Campi email/password dei moduli di accesso (AuthField, docs/CHANGELOG.md
+   §151): stesso aspetto di `Field` di packages/ui. */
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.auth-field-label {
+  font-size: 16px;
+  font-weight: 700;
+  color: #6e6459;
+}
+.auth-field-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* brand.bordoCampo: 3,2:1 su bianco (docs/CHANGELOG.md §278). */
+  border: 1px solid #9c8e7f;
+  border-radius: 20px;
+  background: #ffffff;
+  padding: 0 12px;
+}
+.auth-field-box.has-error {
+  border-color: #c8362b;
+}
+.auth-field-box:focus-within {
+  outline: 2px solid #189a63;
+  outline-offset: 1px;
+}
+.auth-field-slot {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
+.auth-field-box input {
+  flex: 1;
+  min-width: 0;
+  height: 48px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: 16px;
+  color: #2b2420;
+  padding: 0;
+}
+.auth-field-box input::placeholder {
+  color: #9a9087;
+}
+.auth-field-hint,
+.auth-field-error {
+  font-size: 16px;
+  color: #6e6459;
+}
+.auth-field-error {
+  color: #c8362b;
+}
+
+/* Regole della password nuova sotto il campo (PasswordRules,
+   docs/CHANGELOG.md §289): verde solo per lo stato "fatto", rosso per
+   quello che manca dopo un invio, sempre con un'icona oltre al colore. */
+.pw-rules {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pw-rule {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 18px;
+  color: #6e6459;
+  transition: color 150ms ease;
+}
+.pw-rule-icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border-radius: 50%;
+  border: 1.5px solid #9c8e7f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+.pw-rule.is-ok {
+  color: #0e7a4c;
+}
+.pw-rule.is-ok .pw-rule-icon {
+  background: #128552;
+  border-color: #189a63;
+}
+.pw-rule.is-missing {
+  color: #c8362b;
+}
+.pw-rule.is-missing .pw-rule-icon {
+  border-color: #c8362b;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pw-rule,
+  .pw-rule-icon {
+    transition: none;
+  }
+}
+
+/* Impostazioni notifiche (docs/CHANGELOG.md §152). */
+.notif-status {
+  font-size: 16px;
+  font-weight: 600;
+  min-height: 18px;
+  color: #6e6459;
+}
+.notif-status.is-saved {
+  color: #128052;
+}
+.notif-status.is-error {
+  color: #c8362b;
+}
+.notif-card {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.notif-card h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #2b2420;
+}
+.notif-note {
+  margin: 0;
+  font-size: 16px;
+  color: #6e6459;
+  line-height: 1.5;
+}
+.notif-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-top: 1px solid #f0dcc0;
+}
+.notif-switch-row > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+}
+.notif-switch-row strong,
+.notif-topic strong {
+  font-size: 16px;
+  color: #2b2420;
+}
+.notif-switch-row small,
+.notif-topic small {
+  font-size: 13px;
+  color: #6e6459;
+}
+.notif-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-top: 4px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0e7a4c;
+  cursor: pointer;
+}
+.notif-switch {
+  flex-shrink: 0;
+  width: 44px;
+  height: 26px;
+  border-radius: 999px;
+  border: none;
+  background: #d9cfc4;
+  position: relative;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s ease;
+}
+.notif-switch span {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(43, 32, 19, 0.25);
+  transition: transform 0.15s ease;
+}
+.notif-switch.is-on {
+  background: #128552;
+}
+.notif-switch.is-on span {
+  transform: translateX(18px);
+}
+.notif-switch:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.notif-switch:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.notif-grid-head,
+.notif-grid-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px 72px 72px;
+  gap: 8px;
+  align-items: center;
+}
+.notif-grid-head {
+  font-size: 13px;
+  font-weight: 700;
+  color: #6e6459;
+  padding-bottom: 6px;
+}
+.notif-grid-head span:not(:first-child) {
+  text-align: center;
+}
+.notif-grid-row {
+  padding: 12px 0;
+  border-top: 1px solid #f0dcc0;
+}
+.notif-topic {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.notif-topic > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.notif-topic-icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.notif-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.notif-cell small {
+  font-size: 13px;
+  color: #6e6459;
+  text-align: center;
+}
+.notif-cell-label {
+  display: none;
+}
+@media (max-width: 599px) {
+  .notif-card {
+    padding: 14px;
+  }
+  .notif-grid-head {
+    display: none;
+  }
+  .notif-grid-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .notif-topic {
+    grid-column: 1 / -1;
+  }
+  .notif-cell-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: #6e6459;
+  }
+}
+
+/* Popup delle notifiche (docs/CHANGELOG.md §152). */
+.toast-stack {
+  position: fixed;
+  top: 76px;
+  right: 16px;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  width: min(380px, calc(100vw - 32px));
+  pointer-events: none;
+}
+.toast-card,
+.toast-more {
+  pointer-events: auto;
+}
+.toast-card {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  background: #ffffff;
+  border-radius: 20px;
+  border-left: 4px solid #189a63;
+  box-shadow: 0 10px 28px rgba(43, 32, 19, 0.18);
+  animation: toast-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+  overflow: hidden;
+}
+.toast-card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 4px 12px 12px;
+  background: none;
+  border: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: #2b2420;
+}
+.toast-card-icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.toast-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.toast-card-title {
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.toast-card-message {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.toast-card-cta {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0e7a4c;
+  margin-top: 2px;
+}
+.toast-card-close {
+  background: none;
+  border: none;
+  padding: 12px;
+  cursor: pointer;
+  display: inline-flex;
+}
+.toast-more {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: #6e6459;
+  background: #ffffff;
+  border: 1px solid #f0dcc0;
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast-card {
+    animation: none;
+  }
+}
+@media (max-width: 599px) {
+  .toast-stack {
+    top: 12px;
+    right: 0;
+    left: 0;
+    margin: 0 auto;
+    align-items: stretch;
+  }
+}
+
+/* Richiesta di preventivo in 3 passi (docs/CHANGELOG.md §154). */
+.guided-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 6px;
+}
+.guided-steps li {
+  flex: 1;
+  min-width: 0;
+}
+.guided-steps button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: none;
+  border-top: 3px solid #f0dcc0;
+  background: none;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  color: #6e6459;
+  text-align: left;
+  cursor: default;
+}
+.guided-steps li.is-current button {
+  border-top-color: #189a63;
+  color: #2b2420;
+}
+.guided-steps li.is-done button {
+  border-top-color: #189a63;
+  cursor: pointer;
+}
+.guided-step-dot {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  background: #f0dcc0;
+  color: #2b2420;
+}
+.guided-steps li.is-current .guided-step-dot,
+.guided-steps li.is-done .guided-step-dot {
+  background: #128552;
+  color: #ffffff;
+}
+/* Opzioni d'invio con interruttore tondo: "È urgente?" al passo 1,
+   "Urgente" e "Inoltra se non risponde" nel riepilogo. */
+.guided-options {
+  border-radius: 20px;
+  border: 1px solid #f0dcc0;
+  background: #ffffff;
+  overflow: hidden;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.guided-options.is-urgent-card:has(.guided-timing-option.is-today input:checked) {
+  border-color: #c8362b;
+  background: #fbeae7;
+}
+.guided-option {
+  width: 100%;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: #2b2420;
+  cursor: pointer;
+}
+.guided-option + .guided-option {
+  border-top: 1px solid #f0dcc0;
+}
+.guided-option:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: -4px;
+  border-radius: 20px;
+}
+.guided-option-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.guided-option-text strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 700;
+}
+.guided-option-text small {
+  font-size: 13px;
+  line-height: 1.45;
+  color: #6e6459;
+}
+.guided-option-track {
+  flex-shrink: 0;
+  position: relative;
+  width: 44px;
+  height: 26px;
+  border-radius: 999px;
+  background: #d9cfc4;
+  transition: background 0.15s ease;
+}
+.guided-option-track span {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(43, 32, 19, 0.25);
+  transition: transform 0.15s ease;
+}
+.guided-option.is-on .guided-option-track span {
+  transform: translateX(18px);
+}
+.guided-option.is-on .guided-option-track {
+  background: #128552;
+}
+/* Scelta dei tempi "Quando ti serve?" (§344): tre pillole, Oggi in rosso. */
+.guided-timing {
+  margin: 0;
+  border: none;
+  padding: 14px 16px;
+  min-width: 0;
+}
+.guided-timing legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+  margin-bottom: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #2b2420;
+}
+.guided-timing-options {
+  clear: both;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid #f0dcc0;
+  background: #fbf6f0;
+}
+.guided-timing-option {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+.guided-timing-option input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.guided-timing-option span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #6e6459;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.guided-timing-option input:checked + span {
+  background: #128552;
+  color: #ffffff;
+}
+.guided-timing-option.is-today input:checked + span {
+  background: #c8362b;
+}
+.guided-timing-option input:focus-visible + span {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.guided-timing-desc {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #6e6459;
+}
+.guided-option + .guided-timing,
+.guided-timing + .guided-option {
+  border-top: 1px solid #f0dcc0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .guided-options,
+  .guided-option-track,
+  .guided-option-track span,
+  .guided-timing-option span {
+    transition: none;
+  }
+}
+.guided-next {
+  padding: 16px;
+  border-radius: 14px;
+  background: #dcf3e7;
+  color: #0e4f33;
+}
+.guided-next strong {
+  font-size: 16px;
+}
+.guided-next ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 16px;
+  line-height: 1.5;
+}
+.guided-recap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 20px;
+  background: #ffffff;
+  border: 1px solid #f0dcc0;
+}
+.guided-recap > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+}
+.guided-recap > div span {
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6e6459;
+}
+.guided-recap button {
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0e7a4c;
+  cursor: pointer;
+  padding: 0;
+}
+.guided-recap p {
+  margin: 0;
+  font-size: 16px;
+  color: #2b2420;
+}
+.guided-recap-text {
+  white-space: pre-wrap;
+  color: #6e6459 !important;
+}
+.guided-city input {
+  background-color: #ffffff !important;
+}
+/* Città tra i campi separati dell'indirizzo (§324): alta come gli altri. */
+.guided-city-inline input {
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 12px !important;
+  border-width: 0 !important;
+  border-radius: 6px !important;
+  font-size: 16px !important;
+  line-height: normal !important;
+}
+@media (max-width: 599px) {
+  .guided-steps button {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    font-size: 13px;
+  }
+}
+
+/* Badge "Assicurazione RC dichiarata" nel profilo pubblico (docs/CHANGELOG.md §157).
+   Su una colonna stretta (telefono, accanto alla foto da 140px) "dichiarata"
+   va a capo da sola, mai spezzando "Assicurazione RC". */
+.rc-badge {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 4px;
+  max-width: 100%;
+  padding: 5px 12px;
+  border-radius: 20px;
+  /* Piena come gli altri bollini, senza bordo (docs/CHANGELOG.md §349). */
+  background: #fdefe1;
+  color: #2b2420;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.rc-badge > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.rc-badge small {
+  font-size: 13px;
+  font-weight: 500;
+  color: #6e6459;
+}
+
+/* Dichiarazione di responsabilità sopra "Salva profilo", accettata cliccando
+   il bottone (docs/CHANGELOG.md §158-§159). */
+.profile-declaration-note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #6e6459;
+}
+.profile-declaration-note a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+/* Categorie della homepage a schede verticali con foto (CategoryStoryRail,
+   docs/CHANGELOG.md §219). Colori dai token di packages/ui/src/tokens.ts:
+   verde #189A63 per i pieni, #0E7A4C (cianografiaScuro) per i testi piccoli
+   sul chiaro, grafite #2B2420. */
+.story-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.story-filter {
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 9px 15px;
+  border-radius: 999px;
+  border: 1px solid #eadfd3;
+  background: #fff;
+  color: #2b2420;
+  cursor: pointer;
+}
+/* Sul telefono i filtri stanno su una riga sola da scorrere, invece di
+   andare a capo su due righe (docs/CHANGELOG.md §219). */
+@media (max-width: 700px) {
+  .story-filters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin: 0 -24px;
+    padding: 0 24px 2px;
+  }
+  .story-filters::-webkit-scrollbar {
+    display: none;
+  }
+  .story-filter {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+}
+.story-filter[aria-pressed="true"] {
+  background: #128552;
+  border-color: #189a63;
+  color: #fff;
+}
+.story-card {
+  position: relative;
+  flex-shrink: 0;
+  scroll-snap-align: start;
+  width: 230px;
+  height: 340px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #f6ecd9;
+  text-decoration: none;
+  color: #fff;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+.story-card:hover,
+.story-card:focus-visible {
+  transform: translateY(-6px);
+  box-shadow: 0 18px 30px rgba(43, 36, 32, 0.25);
+}
+.story-card:focus-visible {
+  outline: 3px solid #189a63;
+  outline-offset: 2px;
+}
+.story-card-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 60px;
+}
+.story-card-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 40px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: linear-gradient(to top, rgba(20, 14, 10, 0.82), rgba(20, 14, 10, 0));
+}
+.story-card-title {
+  font-family: var(--font-display), sans-serif;
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 1.15;
+}
+.story-card-more {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 16px;
+  line-height: 1.3;
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition: opacity 160ms ease, max-height 160ms ease;
+}
+.story-card-cta {
+  font-weight: 700;
+}
+.story-card:hover .story-card-more,
+.story-card:focus-visible .story-card-more {
+  opacity: 1;
+  max-height: 120px;
+}
+/* Senza hover (telefono) la descrizione resta sempre visibile: non c'è un
+   "passaggio sopra" per scoprirla, solo il tocco che apre la ricerca. */
+@media (hover: none) {
+  .story-card-more {
+    opacity: 1;
+    max-height: none;
+  }
+  .story-card-cta {
+    display: none;
+  }
+}
+.story-card-other {
+  position: relative;
+  background: #128552;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 20px;
+}
+/* Testo e icona sopra le luci sfumate (GlowLights). */
+.story-card-other > :not(.glow-lights) {
+  position: relative;
+}
+
+@media (max-width: 700px) {
+  .story-card {
+    width: 170px;
+    height: 250px;
+  }
+  .story-card-title {
+    font-size: 17px;
+  }
+}
+
+/* Sezione "Per chi offre servizi" con foto a lato (ProCtaSection). */
+.pro-cta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  max-width: 1112px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #2b2420;
+}
+.pro-cta-photo {
+  position: relative;
+  min-height: 420px;
+}
+@media (max-width: 860px) {
+  .pro-cta {
+    grid-template-columns: 1fr;
+    border-radius: 20px;
+  }
+  .pro-cta-photo {
+    min-height: 220px;
+    order: -1;
+  }
+}
+
+/* "Come funziona" con richiesta e preventivo d'esempio (QuoteExampleSection). */
+.qx {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 56px minmax(0, 1.1fr);
+  align-items: center;
+  gap: 8px;
+}
+.qx-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.qx-label {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6e6459;
+}
+.qx-bubble {
+  background: #fff;
+  border: 1px solid #f0dcc0;
+}
+/* "La riga del preventivo", il segno grafico del sito (docs/CHANGELOG.md
+   §305): foglio color carta con righe leggere, voce a sinistra, puntini di
+   guida, cifre in carattere a larghezza fissa in colonna, riga piena sopra
+   il totale. */
+.qx-quote {
+  background-color: #fff9f1;
+  background-image: repeating-linear-gradient(transparent 0 31px, rgba(185, 165, 140, 0.16) 31px 32px);
+  border: 1px solid #e6d3bc;
+}
+.qx-bubble {
+  border-radius: 22px 22px 22px 6px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.qx-request {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.45;
+  color: #2b2420;
+}
+.qx-rest {
+  opacity: 0;
+}
+.qx-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  margin-left: 1px;
+  vertical-align: -0.15em;
+  background: #128552;
+  animation: qx-blink 0.8s steps(1) infinite;
+}
+@keyframes qx-blink {
+  50% {
+    opacity: 0;
+  }
+}
+.qx-photo {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #f6ecd9;
+}
+.qx-meta {
+  font-size: 13px;
+  color: #6e6459;
+}
+.qx-arrow {
+  display: flex;
+  justify-content: center;
+}
+.qx-quote {
+  border-radius: 20px;
+  padding: 22px;
+}
+.qx-quote-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #f0e6dc;
+}
+.qx-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #dcf3e7;
+  color: #0e7a4c;
+  font-family: var(--font-display), sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.qx-name {
+  display: block;
+  font-weight: 700;
+  font-size: 17px;
+  color: #2b2420;
+}
+.qx-sub {
+  display: block;
+  font-size: 13px;
+  color: #6e6459;
+}
+.qx-example {
+  font-size: 13px;
+  font-weight: 700;
+  color: #8a6a1f;
+  background: #f6ecd9;
+  border-radius: 999px;
+  padding: 3px 10px;
+  flex-shrink: 0;
+}
+.qx-row,
+.qx-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 320ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.qx-row {
+  align-items: baseline;
+  gap: 8px;
+  padding: 11px 0;
+  font-size: 16px;
+  color: #2b2420;
+}
+.qx-row > span:first-child {
+  min-width: 0;
+}
+.qx-leader {
+  flex: 1;
+  min-width: 16px;
+  border-bottom: 2px dotted #b9a58c;
+  transform: translateY(-4px);
+}
+.qx-value {
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.qx-total {
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 2px solid #2b2420;
+  font-family: var(--font-display), sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  color: #2b2420;
+}
+.qx.is-on .qx-row,
+.qx.is-on .qx-total {
+  opacity: 1;
+  transform: none;
+}
+.qx-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.qx-steps {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+.qx-steps li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.qx-step-number {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: #dcf3e7;
+  color: #0e7a4c;
+  font-family: var(--font-display), sans-serif;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.qx-cta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.qx-cta-button {
+  display: inline-block;
+  background: #128552;
+  color: #fff;
+  font-weight: 700;
+  padding: 13px 24px;
+  border-radius: 999px;
+  text-decoration: none;
+}
+@media (max-width: 860px) {
+  .qx {
+    grid-template-columns: 1fr;
+  }
+  .qx-arrow {
+    transform: rotate(90deg);
+  }
+  .qx-steps {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+/* "Per chi offre servizi": luci sfocate e notifiche sopra la foto (idea presa
+   dal sito Volt, docs/CHANGELOG.md §219). */
+.pro-cta {
+  position: relative;
+  isolation: isolate;
+}
+.pro-cta-notif {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 300px;
+  max-width: calc(100% - 32px);
+  padding: 12px 16px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  color: #2b2420;
+  animation: pro-cta-float 5s ease-in-out infinite alternate;
+}
+.pro-cta-notif-top {
+  top: 28px;
+  right: 20px;
+  animation-delay: -2.5s;
+}
+.pro-cta-notif-bottom {
+  bottom: 28px;
+  left: 20px;
+}
+.pro-cta-notif-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.pro-cta-notif strong {
+  display: block;
+  font-size: 16px;
+}
+.pro-cta-notif small {
+  display: block;
+  font-size: 13px;
+  color: #6e6459;
+}
+@media (max-width: 860px) {
+  .pro-cta-notif-top {
+    display: none;
+  }
+  .pro-cta-notif-bottom {
+    bottom: 16px;
+    left: 16px;
+  }
+}
+@keyframes pro-cta-float {
+  to {
+    transform: translateY(-8px);
+  }
+}
+
+/* Entrata a cascata: gli elementi di una griglia marcata con
+   `data-stagger` entrano dal basso uno dopo l'altro quando la loro
+   FadeInSection arriva sullo schermo (docs/CHANGELOG.md §219). */
+.fade-in-section [data-stagger] > * {
+  opacity: 0;
+  transform: translateY(22px) scale(0.98);
+  transition:
+    opacity 480ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 480ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.fade-in-section.is-visible [data-stagger] > * {
+  opacity: 1;
+  transform: none;
+}
+.fade-in-section [data-stagger] > *:nth-child(2) {
+  transition-delay: 110ms;
+}
+.fade-in-section [data-stagger] > *:nth-child(3) {
+  transition-delay: 220ms;
+}
+.fade-in-section [data-stagger] > *:nth-child(4) {
+  transition-delay: 330ms;
+}
+.fade-in-section [data-stagger] > *:nth-child(n + 5) {
+  transition-delay: 440ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pro-cta-notif,
+  .qx-caret {
+    animation: none;
+  }
+  .fade-in-section [data-stagger] > *,
+  .qx-row,
+  .qx-total {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-in-section {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* Codice di conferma email a 6 cifre (EmailCodeForm, docs/CHANGELOG.md
+   §243): un solo input vero, trasparente, sopra sei caselle disegnate. */
+.email-code {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto;
+  cursor: text;
+}
+.email-code-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border: none;
+  font-size: 16px;
+  z-index: 1;
+  cursor: text;
+}
+.email-code-boxes {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+.email-code-box {
+  height: 56px;
+  border: 1px solid #9c8e7f;
+  border-radius: 12px;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  font-weight: 800;
+  color: #2b2420;
+  font-variant-numeric: tabular-nums;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+.email-code-box.is-filled {
+  border-color: #189a63;
+}
+.email-code-box.is-active {
+  outline: 2px solid #189a63;
+  outline-offset: 1px;
+}
+.email-code-box.is-active::after {
+  content: "";
+  width: 2px;
+  height: 26px;
+  background: #128552;
+  animation: email-code-caret 1s steps(1) infinite;
+}
+.email-code-boxes.is-expired .email-code-box {
+  border-style: dashed;
+  background: #f3f2ef;
+}
+.email-code-boxes.is-error .email-code-box {
+  border-color: #c8362b;
+  background: #fbeae7;
+}
+.email-code-boxes.is-error {
+  animation: email-code-shake 0.3s ease;
+}
+.email-code-boxes.is-done .email-code-box {
+  border-color: #189a63;
+  background: #dcf3e7;
+  color: #0e7a4c;
+}
+@keyframes email-code-caret {
+  50% {
+    opacity: 0;
+  }
+}
+@keyframes email-code-shake {
+  25% {
+    transform: translateX(-6px);
+  }
+  75% {
+    transform: translateX(6px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .email-code-boxes.is-error,
+  .email-code-box.is-active::after {
+    animation: none;
+  }
+}
+@media (max-width: 360px) {
+  .email-code-boxes {
+    gap: 6px;
+  }
+  .email-code-box {
+    height: 50px;
+    font-size: 22px;
+  }
+}
+
+/* Verifica in due passaggi dell'area admin (AdminTwoFactorGate,
+   docs/CHANGELOG.md §359). */
+.admin-2fa-qr {
+  padding: 12px;
+  background: #ffffff;
+  border: 1px solid #f0dcc0;
+  border-radius: 20px;
+  line-height: 0;
+}
+.admin-2fa-qr img {
+  width: 196px;
+  height: 196px;
+}
+.admin-2fa-key {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #2b2420;
+  background: #ffffff;
+  border: 1px solid #9c8e7f;
+  border-radius: 10px;
+  padding: 10px 14px;
+  text-align: center;
+  word-break: break-all;
+  user-select: all;
+}
+/* Pulsante che si presenta come un link (es. "Cambia" nel riepilogo del
+   tipo in registrazione, docs/CHANGELOG.md §243). */
+.link-button {
+  background: none;
+  border: none;
+  padding: 8px 4px;
+  margin: -8px -4px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0e7a4c;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.link-button:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+/* Registrazione del professionista (docs/CHANGELOG.md §248, richiesta
+   dell'utente). Caselle obbligatorie non spuntate: riga rossa con una
+   scossa breve. Con "riduci movimento" resta ferma.
+   Scelta dei lavori a tessere (§279, stile A scelto dall'utente al posto
+   del bordo dorato animato): due colonne da telefono, di più dove c'è
+   spazio; spunta verde sulle scelte, "Principale" sotto la prima. */
+/* Orari liberi del professionista a pillole nella richiesta di preventivo
+   (docs/CHANGELOG.md §349), al posto del menu a tendina nativo. */
+.slot-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.slot-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.slot-pill {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid #f0dcc0;
+  border-radius: 999px;
+  background: #fff;
+  color: #2b2420;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.slot-pill:hover {
+  border-color: #189a63;
+}
+.slot-pill.is-on {
+  border-color: #189a63;
+  background: #128552;
+  color: #fff;
+}
+.slot-pill:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.slot-more {
+  align-self: flex-start;
+  min-height: 40px;
+  padding: 0 2px;
+  border: none;
+  background: none;
+  color: #0e7a4c;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.slot-more:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.slot-days {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+}
+.slot-day {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.slot-day-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #6e6459;
+  text-transform: capitalize;
+}
+
+.cat-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+  gap: 10px;
+}
+.cat-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 96px;
+  padding: 12px 8px;
+  border: 1px solid #f0dcc0;
+  border-radius: 20px;
+  background: #ffffff;
+  font: inherit;
+  color: #2b2420;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 0.15s cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.cat-tile:hover:not(:disabled) {
+  border-color: #189a63;
+}
+.cat-tile:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.cat-tile:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.cat-tile.is-on {
+  /* 2px con 1px di padding in meno: la tessera non cambia misura. */
+  border: 2px solid #189a63;
+  padding: 11px 7px;
+  background: #f2fbf6;
+}
+.cat-tile:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.cat-tile-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cat-tile-label {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+}
+.cat-tile-primary {
+  margin-top: -2px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fff3d6;
+  color: #8a5a00;
+  font-size: 13px;
+  font-weight: 700;
+}
+.cat-tile-check {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #128552;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Tessere vuote finché non arriva l'ordine dei più cercati (§324): stessa
+   misura delle vere, così la pagina non salta; poi compaiono con una
+   dissolvenza breve, mai riordinate davanti a chi guarda. */
+.cat-tile.cat-tile-placeholder {
+  cursor: default;
+  border-color: #f3e7d6;
+}
+.cat-tile-placeholder .cat-tile-icon {
+  background-color: transparent;
+}
+.cat-tile-placeholder-label {
+  width: 64%;
+  height: 14px;
+  border-radius: 6px;
+}
+@keyframes cat-tiles-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.cat-tiles-ready {
+  animation: cat-tiles-in 0.18s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cat-tile {
+    transition: none;
+  }
+  .cat-tiles-ready {
+    animation: none;
+  }
+}
+.consent-invalid {
+  animation: email-code-shake 0.3s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .consent-invalid {
+    animation: none;
+  }
+}
+/* Link-pulsante nel modulo dei dati fiscali (Modifica, fuori dall'Italia). */
+.fiscal-link-button {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0e7a4c;
+  cursor: pointer;
+}
+.fiscal-link-button:hover {
+  text-decoration: underline;
+}
+
+/* Link secondari sotto la ricerca in home (docs/CHANGELOG.md §271): area di
+   tocco alta almeno 44px anche se il testo è su una riga sola. */
+.hero-secondary-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 4px;
+  font-weight: 700;
+  font-size: 16px;
+  color: #0e7a4c; /* brand.cianografiaScuro */
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+.hero-secondary-link-urgent {
+  color: #c8362b;
+}
+.hero-secondary-link:hover {
+  text-decoration-thickness: 2px;
+}
+.hero-secondary-link:focus-visible {
+  outline: 3px solid #189a63;
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+/* Testo letto da Google e dai lettori di schermo ma non mostrato (es. il
+   titolo h1 delle pagine di ricerca, docs/CHANGELOG.md §271). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Barra della ricerca fatta, da telefono nelle pagine di ricerca
+   (SearchHeader, docs/CHANGELOG.md §271): un tocco riapre il modulo. */
+.search-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 18px;
+  border: 1px solid #eadfd3;
+  border-radius: 999px;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  touch-action: manipulation;
+}
+.search-summary:active {
+  background: #faf6f0;
+}
+.search-summary:focus-visible {
+  outline: 3px solid #189a63;
+  outline-offset: 2px;
+}
+/* "Chiudi" sopra la ricerca aperta da telefono (docs/CHANGELOG.md §349). */
+.search-close {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid #eadfd3;
+  border-radius: 999px;
+  background: #fff;
+  color: #2b2420;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.search-close:focus-visible {
+  outline: 3px solid #189a63;
+  outline-offset: 2px;
+}
+
+/* Categorie in home da telefono (CategoryStoryRail, docs/CHANGELOG.md §271):
+   griglia a due colonne con le prime sei, le altre con "Mostra tutte". Gli
+   !important vincono sugli stili in linea della riga da scorrere
+   (CategoryCarousel), che da computer restano com'erano. */
+.story-show-all {
+  display: none;
+}
+@media (max-width: 700px) {
+  .story-rail .category-carousel-track {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    overflow: visible !important;
+    padding-top: 0 !important;
+  }
+  .story-rail .category-carousel-arrow {
+    display: none !important;
+  }
+  .story-rail .story-card {
+    width: auto;
+    height: 200px;
+  }
+  .story-rail .story-card:hover,
+  .story-rail .story-card:focus-visible {
+    transform: none;
+  }
+  .story-rail .story-card-more {
+    display: none;
+  }
+  .story-rail .story-card-other {
+    grid-column: 1 / -1;
+    height: auto;
+    min-height: 112px;
+  }
+  .story-rail:not(.show-all) .story-card.is-extra {
+    display: none;
+  }
+  .story-show-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 44px;
+    padding: 0 4px;
+    border: 0;
+    background: none;
+    color: #0e7a4c;
+    font: inherit;
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .story-show-all:focus-visible {
+    outline: 3px solid #189a63;
+    outline-offset: 2px;
+  }
+}
+
+/* "Servizi più richiesti a [città]" in fondo ai risultati di una categoria
+   (docs/CHANGELOG.md §282): link alle pagine categoria+città, per i
+   clienti e per Google. Pillole che vanno a capo, area di tocco 44px. */
+.popular-services {
+  width: 100%;
+  max-width: 1200px;
+  box-sizing: border-box;
+  padding: 8px 16px 48px;
+}
+.popular-services-title {
+  margin: 0 0 14px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #2b2420;
+  text-wrap: balance;
+}
+.popular-services-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.popular-services-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 16px 6px 6px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #f0dcc0;
+  color: #2b2420;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: border-color 150ms cubic-bezier(0.2, 0.8, 0.2, 1), background-color 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.popular-services-link:hover {
+  border-color: #189a63;
+  background: #f2fbf6;
+}
+.popular-services-link:focus-visible {
+  outline: 2px solid #0e7a4c;
+  outline-offset: 2px;
+}
+.popular-services-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+@media (min-width: 661px) {
+  .popular-services {
+    padding: 8px 24px 64px;
+  }
+}
+
+/* Luci sfumate (components/GlowLights.tsx, docs/CHANGELOG.md §305-§306): tre
+   luci che si muovono piano e una grana leggera. Le luci stanno sui bordi,
+   lontano dal testo, così il contrasto resta sopra 4,5:1. Il colore delle
+   luci cambia col tono del fondo. */
+.glow-lights {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.glow-lights::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.16;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.glow-lights--verde {
+  background:
+    radial-gradient(120% 90% at 50% 120%, rgba(6, 70, 44, 0.55), transparent 60%),
+    linear-gradient(160deg, #1fae70 0%, #189a63 42%, #0f7f50 100%);
+}
+.glow-lights--scuro {
+  background: #2b2420;
+}
+.glow-lights--chiaro::after {
+  opacity: 0.08;
+  mix-blend-mode: multiply;
+}
+.glow-lights__light {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  will-change: transform;
+}
+.glow-lights__light--one {
+  width: 520px;
+  height: 520px;
+  top: -260px;
+  left: -160px;
+  background: radial-gradient(circle, rgba(140, 255, 200, 0.55), transparent 65%);
+  animation: glow-lights-drift-one 18s ease-in-out infinite alternate;
+}
+.glow-lights__light--two {
+  width: 460px;
+  height: 460px;
+  bottom: -260px;
+  right: -140px;
+  background: radial-gradient(circle, rgba(217, 164, 65, 0.6), transparent 65%);
+  animation: glow-lights-drift-two 22s ease-in-out infinite alternate;
+}
+.glow-lights__light--three {
+  width: 380px;
+  height: 380px;
+  top: -200px;
+  right: 8%;
+  background: radial-gradient(circle, rgba(64, 200, 220, 0.4), transparent 65%);
+  animation: glow-lights-drift-three 26s ease-in-out infinite alternate;
+}
+/* Sul fondo scuro: verde e arancio caldo, più intensi. */
+.glow-lights--scuro .glow-lights__light--one {
+  background: radial-gradient(circle, rgba(24, 154, 99, 0.75), transparent 65%);
+}
+.glow-lights--scuro .glow-lights__light--two {
+  background: radial-gradient(circle, rgba(255, 138, 61, 0.45), transparent 65%);
+}
+.glow-lights--scuro .glow-lights__light--three {
+  background: radial-gradient(circle, rgba(64, 200, 220, 0.25), transparent 65%);
+}
+/* Sul fondo pesca: luci tenui, verde e ottone. */
+.glow-lights--chiaro .glow-lights__light--one {
+  background: radial-gradient(circle, rgba(24, 154, 99, 0.3), transparent 65%);
+}
+.glow-lights--chiaro .glow-lights__light--two {
+  background: radial-gradient(circle, rgba(217, 164, 65, 0.35), transparent 65%);
+}
+.glow-lights--chiaro .glow-lights__light--three {
+  background: radial-gradient(circle, rgba(64, 200, 220, 0.18), transparent 65%);
+}
+@keyframes glow-lights-drift-one {
+  to { transform: translate(120px, 60px) scale(1.1); }
+}
+@keyframes glow-lights-drift-two {
+  to { transform: translate(-140px, -40px) scale(1.15); }
+}
+@keyframes glow-lights-drift-three {
+  to { transform: translate(-160px, 50px) scale(0.9); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .glow-lights__light {
+    animation: none;
+  }
+}
+
+/* Percorso "Home › Idraulico › Latina › Nome" sopra il profilo pubblico
+   (docs/CHANGELOG.md §295). Testo piccolo e discreto, link con area di
+   tocco comoda; l'ultima voce si accorcia con i puntini sui telefoni. */
+.breadcrumbs {
+  width: 100%;
+  font-size: 13px;
+  line-height: 18px;
+  color: #6e6459;
+}
+.breadcrumbs-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 2px;
+  min-width: 0;
+}
+.breadcrumbs-item {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+.breadcrumbs-item:last-child {
+  flex: 1 1 0;
+}
+.breadcrumbs-sep {
+  padding: 0 8px;
+  color: #a89c8f;
+}
+.breadcrumbs-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  color: #6e6459;
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+.breadcrumbs-link:hover {
+  color: #2b2420;
+  text-decoration: underline;
+}
+.breadcrumbs-link:focus-visible {
+  outline: 2px solid #0e7a4c;
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+.breadcrumbs-current {
+  color: #2b2420;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* Pagina "non trovata" (docs/CHANGELOG.md §295): servizi centrati sotto ai
+   pulsanti, stessa pillola dei risultati. */
+.not-found-services {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: 40px;
+}
+.not-found-services .popular-services {
+  max-width: 760px;
+}
+.not-found-services .popular-services-title {
+  text-align: center;
+}
+.not-found-services .popular-services-list {
+  justify-content: center;
+}
+
+/* "[Lavoro] a [città] in breve" in fondo alle pagine categoria+città
+   (docs/CHANGELOG.md §296): tre numeri veri e le domande frequenti, aperte
+   una alla volta. Stessi bordi e colori di "Servizi più richiesti". */
+.city-facts {
+  width: 100%;
+  max-width: 1200px;
+  box-sizing: border-box;
+  padding: 8px 16px 32px;
+}
+.city-facts-title {
+  margin: 0 0 14px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #2b2420;
+  text-wrap: balance;
+}
+.city-facts-list {
+  list-style: none;
+  margin: 0 0 24px;
+  padding: 0;
+  display: grid;
+  /* Quante tessere ci sono davvero: quelle a zero non compaiono (§349). */
+  grid-template-columns: repeat(var(--facts-count, 3), minmax(0, 1fr));
+  gap: 10px;
+}
+.city-facts-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: #fff;
+  border: 1px solid #f0dcc0;
+  min-width: 0;
+}
+.city-facts-value {
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 800;
+  color: #2b2420;
+  font-variant-numeric: tabular-nums;
+}
+.city-facts-label {
+  font-size: 16px;
+  line-height: 22px;
+  color: #6e6459;
+}
+.city-facts-subtitle {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #2b2420;
+}
+.city-facts-faq {
+  display: flex;
+  flex-direction: column;
+  border-radius: 20px;
+  background: #fff;
+  border: 1px solid #f0dcc0;
+  overflow: hidden;
+}
+.city-facts-question + .city-facts-question {
+  border-top: 1px solid #f0dcc0;
+}
+.city-facts-question summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding: 12px 16px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2b2420;
+  cursor: pointer;
+  list-style: none;
+}
+.city-facts-question summary::-webkit-details-marker {
+  display: none;
+}
+.city-facts-question summary::after {
+  content: "";
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid #6e6459;
+  border-bottom: 2px solid #6e6459;
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.city-facts-question[open] summary::after {
+  transform: rotate(-135deg) translateY(-2px);
+}
+.city-facts-question summary:hover {
+  background: #fdf8f2;
+}
+.city-facts-question summary:focus-visible {
+  outline: 2px solid #0e7a4c;
+  outline-offset: -2px;
+}
+.city-facts-question p {
+  margin: 0;
+  padding: 0 16px 14px;
+  font-size: 16px;
+  line-height: 24px;
+  color: #6e6459;
+}
+.city-facts-question a {
+  color: #0e7a4c;
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+@media (max-width: 520px) {
+  .city-facts-list {
+    grid-template-columns: 1fr;
+  }
+  .city-facts-item {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8px;
+    padding: 12px 14px;
+  }
+  .city-facts-value {
+    font-size: 18px;
+  }
+}
+@media (min-width: 661px) {
+  .city-facts {
+    padding: 8px 24px 40px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .city-facts-question summary::after {
+    transition: none;
+  }
+}
+/* Nella colonna dei risultati, subito sotto le schede (docs/CHANGELOG.md §349). */
+.results-list-footer .city-facts {
+  max-width: none;
+  padding: 16px 0 0;
+}
+
+/* Barre "Da dove arrivano le richieste" in /admin/statistiche (CHANGELOG §296). */
+.traffic-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: #f5eadb;
+  overflow: hidden;
+}
+.traffic-bar-fill {
+  height: 100%;
+  min-width: 2px;
+  border-radius: 999px;
+  background: #c9b39a;
+}
+.traffic-bar-fill--google {
+  background: #2b2420;
+}
+
+/* Pagina "Quanto costa" /prezzi/[categoria] (docs/CHANGELOG.md §296): numeri
+   e domande con gli stessi riquadri delle pagine città. */
+.price-page {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: 48px 16px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.price-page-title {
+  margin: 0;
+  font-size: clamp(28px, 5vw, 40px);
+  line-height: 1.2;
+  font-weight: 800;
+  color: #2b2420;
+  text-wrap: balance;
+}
+.price-page-lead {
+  margin: 0;
+  font-size: 18px;
+  line-height: 26px;
+  color: #2b2420;
+}
+.price-page .city-facts-list {
+  margin: 0;
+}
+.price-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid #f0dcc0;
+  border-radius: 20px;
+  background: #fff;
+  overflow: hidden;
+  font-size: 16px;
+}
+.price-table th,
+.price-table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-top: 1px solid #f0dcc0;
+}
+.price-table thead th {
+  border-top: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6e6459;
+}
+.price-table tbody th {
+  font-weight: 500;
+  color: #2b2420;
+}
+.price-table td {
+  white-space: nowrap;
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #2b2420;
+}
+.price-page-note {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #6e6459;
+}
+.price-page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+}
+.price-page-cta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 22px;
+  border-radius: 999px;
+  background: #128552;
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background-color 150ms ease, transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.price-page-cta:hover {
+  background: #0e7a4c;
+}
+.price-page-cta:active {
+  transform: scale(0.97);
+}
+@media (prefers-reduced-motion: reduce) {
+  .price-page-cta {
+    transition: none;
+  }
+  .price-page-cta:active {
+    transform: none;
+  }
+}
+.price-page-link {
+  color: #0e7a4c;
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+.price-page-cta:focus-visible,
+.price-page-link:focus-visible {
+  outline: 2px solid #0e7a4c;
+  outline-offset: 3px;
+}
+
+/* "Lavora con noi" /lavora-con-noi/[categoria] (docs/CHANGELOG.md §296). */
+.work-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  counter-reset: work-step;
+}
+.work-steps .city-facts-item {
+  counter-increment: work-step;
+  gap: 6px;
+}
+.work-step-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #2b2420;
+}
+.work-step-title::before {
+  content: counter(work-step) ". ";
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 620px) {
+  .work-steps {
+    grid-template-columns: 1fr;
+  }
+  /* Sul telefono i riquadri delle pagine città vanno in riga: qui titolo sopra il testo. */
+  .work-steps .city-facts-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+.work-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 14px;
+  max-width: 640px;
+  font-size: 16px;
+  line-height: 24px;
+  color: #6e6459;
+}
+.work-links a {
+  color: #2b2420;
+  text-underline-offset: 3px;
+}
+.work-links a:focus-visible {
+  outline: 2px solid #0e7a4c;
+  outline-offset: 2px;
+}
+/* Link alle pagine per servizio nelle pagine città (docs/CHANGELOG.md §296). */
+.city-facts-services {
+  list-style: none;
+  margin: 0 0 24px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.city-facts-services a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid #f0dcc0;
+  background: #fff;
+  color: #2b2420;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.city-facts-services a:hover {
+  background: #fdf8f2;
+}
+.city-facts-services a:focus-visible {
+  outline: 2px solid #0e7a4c;
+  outline-offset: 2px;
+}
+
+/* Pagina "Richiesta inviata" (docs/CHANGELOG.md §341). */
+.request-sent-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+}
+.request-sent-photo {
+  position: relative;
+  width: 136px;
+  height: 136px;
+  margin-bottom: 4px;
+  animation: request-sent-pop 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.request-sent-photo::before {
+  content: "";
+  position: absolute;
+  inset: -22px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(24, 154, 99, 0.18), transparent 70%);
+}
+.request-sent-photo > img,
+.request-sent-photo > div {
+  position: relative;
+  width: 136px !important;
+  height: 136px !important;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 5px solid #ffffff;
+  box-shadow: 0 10px 30px rgba(24, 154, 99, 0.22);
+}
+.request-sent-check {
+  position: absolute;
+  right: 2px;
+  bottom: 6px;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: #128552;
+  color: #ffffff;
+  border: 4px solid #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: request-sent-pop 420ms 300ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes request-sent-pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.request-sent-yay {
+  margin: 4px 0 0;
+  font-size: 34px;
+  line-height: 1.15;
+  font-weight: 700;
+  color: #2b2420;
+}
+.request-sent-title {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.4;
+  font-weight: 500;
+  color: #2b2420;
+  text-wrap: balance;
+}
+.request-sent-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+.request-sent-title:focus {
+  outline: none;
+}
+.request-sent-steps {
+  list-style: none;
+  margin: 0;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 1px 2px rgba(43, 36, 32, 0.06), 0 8px 24px rgba(43, 36, 32, 0.06);
+}
+.request-sent-steps li {
+  display: flex;
+  gap: 14px;
+  position: relative;
+  padding-bottom: 18px;
+}
+.request-sent-steps li:last-child {
+  padding-bottom: 0;
+}
+.request-sent-steps li:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 13px;
+  top: 30px;
+  bottom: 2px;
+  width: 2px;
+  background: #f0dcc0;
+}
+.request-sent-steps li.is-done:not(:last-child)::before {
+  background: #128552;
+}
+.request-sent-steps li > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.request-sent-steps strong {
+  font-size: 16px;
+  color: #2b2420;
+}
+.request-sent-steps li > div > span {
+  font-size: 15px;
+  color: #6e6459;
+}
+.request-sent-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.request-sent-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  background: #ffffff;
+  border: 2px solid #f0dcc0;
+  color: #6e6459;
+}
+.request-sent-steps li.is-done .request-sent-dot {
+  background: #128552;
+  border-color: #189a63;
+  color: #ffffff;
+}
+.request-sent-home {
+  color: #0e7a4c;
+  font-weight: 600;
+  text-decoration: none;
+  padding: 10px 4px;
+}
+.request-sent-home:hover {
+  text-decoration: underline;
+}
+.request-sent-save {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px 16px;
+  border-radius: 20px;
+  border: 1px dashed #d9c6ae;
+}
+.request-sent-save p {
+  margin: 0;
+  flex: 1;
+  min-width: 220px;
+  font-size: 15px;
+  color: #2b2420;
+}
+.request-sent-save .request-sent-saved {
+  color: #3d6b3e;
+  font-weight: 600;
+}
+.request-sent-save-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+@media (max-width: 700px) {
+  .request-sent-photo,
+  .request-sent-photo > img,
+  .request-sent-photo > div {
+    width: 120px !important;
+    height: 120px !important;
+  }
+  .request-sent-yay {
+    font-size: 30px;
+  }
+}
+
+/* Barra "Modifiche non salvate · Salva" dei moduli lunghi (SaveBar,
+   docs/CHANGELOG.md §349): ferma in fondo allo schermo solo quando c'è
+   qualcosa da salvare. */
+.save-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.save-bar.is-dirty {
+  position: sticky;
+  bottom: 12px;
+  z-index: 30;
+  padding: 12px 16px;
+  border: 1px solid #f0dcc0;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(43, 36, 32, 0.12);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .save-bar.is-dirty {
+    animation: save-bar-in 180ms ease-out;
+  }
+}
+@keyframes save-bar-in {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+}
+
+/* Riga di una voce del preventivo (docs/CHANGELOG.md §349): voce, "Da",
+   "A" e la X in una riga; da telefono la voce sopra e i prezzi affiancati. */
+.quote-item-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 104px 104px 32px;
+  gap: 8px;
+  align-items: center;
+}
+.quote-item-price {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2b2420;
+}
+.quote-item-price span {
+  flex-shrink: 0;
+}
+.quote-item-name,
+.quote-item-price input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+@media (max-width: 660px) {
+  .quote-item-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 32px;
+  }
+  .quote-item-name {
+    grid-column: 1 / -1;
+  }
+}
+.slot-pill-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 14px;
+}
+
+/* "Consigli per una bio" in Modifica profilo, chiusi di serie (§349). */
+.bio-tips summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #2b2420;
+  cursor: pointer;
+  list-style: none;
+}
+.bio-tips summary::-webkit-details-marker {
+  display: none;
+}
+.bio-tips summary::after {
+  content: "›";
+  margin-left: 2px;
+  font-size: 16px;
+  color: #0e7a4c;
+  transition: transform 150ms ease;
+}
+.bio-tips[open] summary::after {
+  transform: rotate(90deg);
+}
+.bio-tips summary:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.radius-more summary {
+  color: #0e7a4c;
+  min-height: 24px;
+}
+
+/* Tabelle admin da telefono (docs/CHANGELOG.md §349): ogni riga diventa una
+   scheda corta, la prima colonna (o quella segnata .admin-cell-main) in
+   grassetto sopra e le altre in fila sotto. Prima la tabella era tagliata a
+   destra e si vedevano solo le prime due colonne. Le intestazioni restano per
+   chi usa un lettore di schermo. */
+@media (max-width: 660px) {
+  .admin-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .admin-table,
+  .admin-table tbody {
+    display: block;
+  }
+  .admin-table tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 12px;
+    row-gap: 4px;
+    padding: 12px 14px;
+    border-bottom: 1px solid #f0dcc0;
+  }
+  .admin-table tr:last-child {
+    border-bottom: none;
+  }
+  .admin-table tr:nth-child(even) {
+    background: #fdefe1;
+  }
+  .admin-table td,
+  .admin-table tr:nth-child(even) td {
+    display: block;
+    padding: 0;
+    border: none;
+    background: none;
+    font-size: 13px;
+    color: #6e6459;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .admin-table tr:not(:has(.admin-cell-main)) td:first-child,
+  .admin-table tr:nth-child(n) td.admin-cell-main {
+    order: -1;
+    flex-basis: 100%;
+    font-size: 15px;
+    font-weight: 700;
+    color: #2b2420;
+  }
+}

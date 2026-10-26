@@ -1,0 +1,2517 @@
+// Schema Prisma — fonte di verità per il data model.
+// Regola (CLAUDE.md §5.3): ogni nuova entità di dominio va riflessa qui
+// prima di essere propagata ai client (apps/web, apps/mobile, apps/api).
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+// Estensione PostGIS non ancora richiesta qui: la ricerca è oggi filtrata per
+// città come stringa (vedi CLAUDE.md §9), non per raggio geografico. Il
+// requisito "extensions = [postgis]" bloccherebbe il deploy su un Postgres
+// gestito standard (es. Railway) che non la include di default — da
+// reintrodurre insieme al geocoding reale degli indirizzi professionista.
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Utenti
+// ---------------------------------------------------------------------------
+
+enum AdminRole {
+  SUPER
+  MODERATOR
+  FINANCE
+}
+
+enum UserRole {
+  CLIENT
+  PROFESSIONAL
+  ADMIN
+}
+
+model User {
+  id                         String                  @id @default(uuid())
+  role                       UserRole                @default(CLIENT)
+  // Login via email+password o Google (CLAUDE.md §8): con l'email+password
+  // passwordHash è popolato; con Google resta nullo (nessuna password da
+  // gestire per quell'account).
+  email                      String?                 @unique
+  passwordHash               String?
+  phone                      String?                 @unique
+  googleId                   String?                 @unique
+  // Nullable: al primo accesso (Google senza scope profilo) il nome
+  // potrebbe non essere noto, va completato in un secondo momento.
+  name                       String?
+  surname                    String?
+  birthDate                  DateTime?
+  // Immagine profilo, facoltativa — richiesta esplicita dell'utente: prima
+  // solo ProfessionalProfile.imageUrl esisteva, i client non potevano
+  // impostarne una. Stesso percorso Cloudinary (POST /auth/me/image),
+  // nessun nuovo servizio di storage.
+  imageUrl                   String?
+  // Indirizzo di default dell'account (richiesta esplicita dell'utente:
+  // "possono essere inserite nella finestra impostazioni dell'account, in
+  // modo che quando si richiede un preventivo escano automaticamente
+  // compilate già nei campi") — facoltativo, editabile in /account.
+  // GuidedRequestForm li usa solo come prefill iniziale del form, restano
+  // sempre modificabili per singola richiesta (un cliente può avere lavori
+  // in indirizzi diversi da una richiesta all'altra, stesso principio già
+  // documentato per GuidedRequest.address prima di questo campo).
+  street                     String?
+  houseNumber                String?
+  addressExtra               String?
+  postalCode                 String?
+  city                       String?
+  province                   String?
+  // Menu laterale dell'area professionista ridotto a icone (docs/CHANGELOG.md
+  // §334): scelta della persona, uguale su tutti i suoi dispositivi. Null =
+  // nessuna scelta, decide la larghezza dello schermo.
+  sidebarCollapsed           Boolean?
+  createdAt                  DateTime                @default(now())
+  updatedAt                  DateTime                @updatedAt
+  // Soft-delete (richiesta esplicita dell'utente): DELETE /auth/me non
+  // cancella più fisicamente la riga. Le richieste guidate/lead/preventivi/
+  // prenotazioni/recensioni create da questo utente hanno FK dirette su
+  // User (onDelete: Cascade) — una vera delete le avrebbe cancellate con
+  // lui, ma il professionista deve poter continuare a vederle ("account
+  // eliminato" invece che scomparse nel nulla). `deletedAt` valorizzato +
+  // PII anonimizzata (email/telefono/googleId/nome/cognome/immagine/
+  // password) al posto della delete: la riga resta solo come ancora per le
+  // FK, il login torna impossibile (email non più corrispondente, password
+  // azzerata, googleId azzerato) senza dover cancellare nulla a cascata.
+  deletedAt                  DateTime?
+  // Sospensione decisa da un admin su una segnalazione (docs/CHANGELOG.md
+  // §144, DSA art. 17/23): l'account non può più accedere né usare l'API
+  // (JwtAuthGuard legge questo campo a ogni richiesta). Revocabile
+  // ("Annulla misura"), a differenza di `deletedAt`.
+  suspendedAt                DateTime?
+  // Motivazione dell'ultima sospensione decisa dalla scheda utente (senza
+  // segnalazione, docs/CHANGELOG.md §145) — mostrata all'admin; all'utente
+  // arriva via notifica/email. `null` per le sospensioni da segnalazione (la
+  // motivazione sta su ContentReport).
+  suspensionNote             String?
+  // Aree di competenza di un ADMIN, combinabili (docs/CHANGELOG.md §145-§146):
+  // SUPER vede e fa tutto (e assegna i ruoli), MODERATOR segnalazioni/
+  // messaggi/utenti, FINANCE finanza/rimborsi/DAC7/statistiche — es.
+  // [MODERATOR, FINANCE] vede entrambe. Lista vuota su un ADMIN vale come
+  // SUPER (nessun admin esistente perde l'accesso). Ignorato se role != ADMIN.
+  adminRoles                 AdminRole[]             @default([])
+  // Preferenze di notifica per argomento e canale (docs/CHANGELOG.md §152):
+  // JSON validato da `notificationPreferencesSchema` (packages/shared),
+  // null = valori predefiniti (`resolveNotificationPreferences`).
+  notificationPrefs          Json?
+  // Accettazione esplicita di Privacy Policy e Termini di Servizio in fase
+  // di registrazione (richiesta esplicita dell'utente, "Verbale di
+  // Conformità" — art. 7 GDPR, onere della prova dell'informativa/consenso):
+  // prima nessun atto tracciato esisteva, l'account veniva creato senza che
+  // l'utente confermasse mai di aver letto le informative. `legalConsentAt`
+  // è nullo per gli account creati prima di questa funzionalità (mai
+  // retroattivo). `legalConsentVersion` è la stringa "aggiornato al" mostrata
+  // in quel momento su /privacy e /termini (LegalPage.updatedAt) — se le
+  // informative cambiano, la versione accettata resta tracciata per quella
+  // specifica registrazione, non sovrascritta.
+  legalConsentAt             DateTime?
+  legalConsentVersion        String?
+  // Conferma dell'indirizzo email (docs/CHANGELOG.md §178): nullo finché
+  // l'utente non apre il link ricevuto. Gli account Google e quelli creati
+  // da un operatore risultano già confermati. Del link si salva solo
+  // l'impronta SHA-256, come per ProfileInvite.
+  emailVerifiedAt            DateTime?
+  emailTokenHash             String?                 @unique
+  // Categorie (da 1 a 3) scelte da un professionista nella registrazione
+  // (docs/CHANGELOG.md §217): precompilano il profilo in /dashboard/profilo,
+  // dove poi vivono davvero (ProfessionalProfile.category/extraCategories).
+  signupCategorySlugs        String[]                @default([])
+  // Tipo scelto da un professionista nella registrazione (privato, P.IVA,
+  // azienda, docs/CHANGELOG.md §243): precompila /dashboard/fiscale, dove
+  // poi vive davvero (ProfessionalFiscalProfile.entityType).
+  signupEntityType           ProfessionalEntityType?
+  // Codice di 6 cifre nella stessa email del link di conferma (§243):
+  // impronta SHA-256, valido 15 minuti, al massimo 5 tentativi, un nuovo
+  // invio solo dopo 60 secondi da `emailCodeSentAt`.
+  emailCodeHash              String?
+  emailCodeExpiresAt         DateTime?
+  emailCodeAttempts          Int                     @default(0)
+  emailCodeSentAt            DateTime?
+  emailTokenExpiresAt        DateTime?
+  // Recupero password (docs/CHANGELOG.md §185): impronta SHA-256 del link
+  // mandato via email, valido 60 minuti e una volta sola.
+  passwordResetTokenHash     String?                 @unique
+  passwordResetExpiresAt     DateTime?
+  // Codice di 6 cifre nella stessa email (§245): si scrive sul sito in
+  // alternativa al link. Impronta SHA-256, 15 minuti, al massimo 5 tentativi.
+  passwordResetCodeHash      String?
+  passwordResetCodeExpiresAt DateTime?
+  passwordResetCodeAttempts  Int                     @default(0)
+  // Limite di password sbagliate sul singolo account (docs/CHANGELOG.md
+  // §289): alla decima di fila l'accesso con password resta chiuso fino a
+  // `loginLockedUntil` (15 minuti) e il titolare riceve un'email. Si azzera
+  // con un accesso riuscito o con il recupero della password.
+  failedLoginCount           Int                     @default(0)
+  loginLockedUntil           DateTime?
+  // Versione delle sessioni (controllo sicurezza, docs/CHANGELOG.md §292):
+  // ogni token porta il numero di quando è stato emesso; cambiare o
+  // reimpostare la password lo aumenta e chiude gli accessi sugli altri
+  // dispositivi.
+  sessionVersion             Int                     @default(0)
+  // Verifica in due passaggi per l'area admin (docs/CHANGELOG.md §359): chiave
+  // dell'app di autenticazione cifrata come gli IBAN (FISCAL_DATA_KEY),
+  // attiva da `adminTotpEnabledAt`; `adminTotpLastStep` impedisce di usare
+  // due volte lo stesso codice. Telefono perso: codice di 6 cifre via email
+  // (solo l'impronta, 15 minuti) che azzera la verifica.
+  adminTotpSecret            String?
+  adminTotpEnabledAt         DateTime?
+  adminTotpLastStep          Int?
+  adminResetCodeHash         String?
+  adminResetCodeExpiresAt    DateTime?
+  adminResetCodeSentAt       DateTime?
+
+  professionalProfile ProfessionalProfile?
+  guidedRequests      GuidedRequest[]
+  bookingsAsClient    Booking[]
+  notifications       Notification[]
+  savedProfessionals  SavedProfessional[]
+  contentReports      ContentReport[]
+  guidedRequestStates GuidedRequestUserState[]
+  profileInvites      ProfileInvite[]
+  loginDevices        LoginDevice[]
+
+  @@map("users")
+}
+
+// Dispositivi da cui un professionista ha già fatto l'accesso
+// (docs/CHANGELOG.md §289): da uno nuovo parte l'email "Nuovo accesso" a chi
+// incassa online. Del codice del dispositivo (casuale, salvato nel browser)
+// si tiene solo l'impronta SHA-256.
+model LoginDevice {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceHash  String
+  // Browser e sistema, per riconoscerlo nell'email (es. "Chrome su Windows").
+  label       String
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+
+  @@unique([userId, deviceHash])
+  @@map("login_devices")
+}
+
+// ---------------------------------------------------------------------------
+// Categorie (specchio di packages/shared/src/categories.ts, gestibile da admin)
+// ---------------------------------------------------------------------------
+
+model Category {
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  label     String
+  subTags   String[]
+  createdAt DateTime @default(now())
+
+  professionalProfiles      ProfessionalProfile[] @relation("ProfessionalPrimaryCategory")
+  // Categorie aggiuntive scelte dal professionista (fino a 2 oltre la
+  // principale, docs/CHANGELOG.md §217).
+  extraProfessionalProfiles ProfessionalProfile[] @relation("ProfessionalExtraCategories")
+  guidedRequests            GuidedRequest[]
+  feeRules                  PlatformFeeRule[]
+  generalRequestBlocks      GeneralRequestBlock[]
+  searchDays                CategorySearchDay[]
+
+  @@map("categories")
+}
+
+// ---------------------------------------------------------------------------
+// Profilo professionista
+// ---------------------------------------------------------------------------
+
+model ProfessionalProfile {
+  id                           String    @id @default(uuid())
+  userId                       String    @unique
+  categoryId                   String
+  subTags                      String[]
+  businessName                 String
+  // Cliente Stripe del professionista per abbonamento e boost, uno solo e
+  // riusato (docs/CHANGELOG.md §238): carta, fatture e Customer Portal in un
+  // unico posto. Distinto dall'account Connect con cui riceve i pagamenti.
+  stripeCustomerId             String?   @unique
+  // Modi di pagamento proposti di serie nei nuovi preventivi, salvati dal
+  // modulo del preventivo con "usa anche per i prossimi" (docs/CHANGELOG.md
+  // §239). Vuoto = diretto + online con acconto del 20%.
+  defaultPaymentOptions        String[]  @default([])
+  defaultDepositPercent        Int?
+  // Agenda (docs/CHANGELOG.md §288): link segreto del calendario da
+  // collegare a Google/iPhone (null = collegamento spento) e settimana tipo
+  // usata da "Orari di lavoro" per riempire un mese in un colpo.
+  calendarFeedToken            String?   @unique
+  agendaWeekTemplate           Json?
+  // Settimana tipo che vale per tutte le settimane (docs/CHANGELOG.md
+  // §323): ultimo giorno già riempito dalla settimana tipo (null = mai
+  // salvata dal nuovo editor). Ogni notte si riempiono i giorni nuovi fino
+  // a 63 giorni da oggi; i giorni già passati da qui non si riempiono più,
+  // così un giorno svuotato a mano resta vuoto.
+  agendaTemplateFilledUntil    DateTime?
+  city                         String
+  latitude                     Float
+  longitude                    Float
+  bio                          String?
+  // Indirizzo del negozio/laboratorio (facoltativo: molti professionisti a
+  // domicilio non ne hanno uno da mostrare pubblicamente), mostrato nella
+  // card risultati e nel profilo pubblico come su miodottore.it.
+  address                      String?
+  imageUrl                     String?
+  // Foto reali di lavori svolti (fino a 10), mostrate in una galleria sul
+  // profilo pubblico — richiesta esplicita dell'utente: "in modo che gli
+  // utenti aprendo l'account del professionista possano avere un'idea dei
+  // lavori svolti". Stesso pattern/limite di GuidedRequest.photoUrls,
+  // stesso upload Cloudinary già in uso per l'immagine profilo.
+  portfolioUrls                String[]  @default([])
+  verified                     Boolean   @default(false)
+  // Verifica manuale fatta da un admin in /admin/verifiche (docs/CHANGELOG.md
+  // §200): documento d'identità e partita IVA (o codice fiscale) controllati.
+  // Il badge "Verificato" segue `verified`; questi campi dicono chi e quando.
+  verifiedAt                   DateTime?
+  verifiedByUserId             String?
+  verificationNote             String?
+  // Il professionista ha premuto "Richiedi la verifica" in /dashboard/profilo
+  // (docs/CHANGELOG.md §201): azzerato quando un admin verifica il profilo.
+  verificationRequestedAt      DateTime?
+  // Badge tolto perché il documento della verifica è scaduto (§338): il
+  // professionista continua a inviare preventivi mentre rifà la verifica.
+  identityExpiredAt            DateTime?
+  // Profilo di esempio creato dal seed script (packages/database/prisma/seed.ts,
+  // PLACEHOLDER_PROFESSIONALS), mai un professionista reale — usato per
+  // escludere questi profili dalle sezioni pubbliche che dichiarano
+  // esplicitamente di mostrare dati reali (redesign "Scheda Intervento"
+  // §4.6: mai spacciare vetrine finte per vere, CLAUDE.md §10).
+  isDemo                       Boolean   @default(false)
+  // Consulenza a distanza (video/telefono) oltre all'intervento a domicilio
+  // (CLAUDE.md §1: "eventualmente consulenza da remoto" nei piani SaaS).
+  remoteAvailable              Boolean   @default(false)
+  // Raggio (km, max 25) entro cui il professionista riceve richieste dal
+  // fan-out delle richieste guidate — richiesta esplicita dell'utente: due
+  // raggi indipendenti, uno per le richieste standard e uno per quelle
+  // urgenti (GuidedRequest.isUrgent), così un professionista può scegliere
+  // di coprire una zona più ampia solo per gli interventi urgenti (o
+  // viceversa) invece di un unico raggio fisso per tutti. Editabili in
+  // /dashboard/profilo (EngagementRadiusMap), usati da
+  // GuidedRequestsService per il filtro geografico del fan-out.
+  engagementRadiusKm           Float     @default(25)
+  urgentEngagementRadiusKm     Float     @default(25)
+  // Lingue parlate (richiesta esplicita dell'utente, filtro "Lingua parlata"
+  // nel pannello filtri di ricerca): pre-compilato con "Italiano" come unica
+  // lingua di default alla creazione del profilo, rimovibile/estendibile in
+  // /dashboard/profilo. Array libero (non un enum): non c'è un elenco fisso
+  // di lingue nel progetto, coerente con `subTags`/`portfolioUrls` sopra.
+  spokenLanguages              String[]  @default(["Italiano"])
+  // Segnali di fiducia dichiarati dal professionista (CEO, consiglio
+  // esperti — CPO: "anni di esperienza, certificazioni, assicurazione RC
+  // come campi strutturati", oggi solo testo libero nella bio, non
+  // filtrabile né mostrato in modo riconoscibile). Nessuna verifica
+  // documentale dietro — stesso principio già seguito per le qualifiche
+  // professionali nel resto del prodotto (autodichiarate, mai un vero
+  // KYC): non va mai confuso con `verified` (quello richiederebbe una
+  // verifica reale, oggi inesistente, CLAUDE.md §10 checklist punto 15).
+  yearsOfExperience            Int?
+  // Testo libero breve (non un elenco strutturato di documenti caricati:
+  // fuori scope finché non esiste un flusso di verifica reale) — es.
+  // "Patentino gas F-gas, certificazione impianti elettrici CEI 64-8".
+  certifications               String?
+  hasLiabilityInsurance        Boolean   @default(false)
+  // Preavviso per annullare scelto dal professionista: 24, 48 o 72 ore
+  // (docs/CHANGELOG.md §347, CANCELLATION_NOTICE_OPTIONS in packages/shared).
+  cancellationNoticeHours      Int       @default(24)
+  // Dichiarazione di responsabilità accettata salvando il profilo
+  // (docs/CHANGELOG.md §158): quando e quale versione del testo
+  // (PROFILE_DECLARATION_VERSION in packages/shared).
+  profileDeclarationAcceptedAt DateTime?
+  profileDeclarationVersion    String?
+  createdAt                    DateTime  @default(now())
+  updatedAt                    DateTime  @updatedAt
+
+  // Soft-delete (richiesta esplicita dell'utente, simmetrica a User.deletedAt
+  // già in uso per il cliente — CLAUDE.md §16): prima l'eliminazione
+  // dell'account professionista cancellava per davvero questa riga, che in
+  // cascata (onDelete: Cascade su Booking.professionalProfileId e simili)
+  // portava via anche tutte le prenotazioni/recensioni del cliente con lui
+  // — un cliente non vedeva più nulla dei propri "Lavori accettati" passati.
+  // Ora si marca solo `deletedAt`: il profilo sparisce da ricerca/profilo
+  // pubblico/fan-out (ovunque filtrato esplicitamente), ma Booking/Lead/
+  // Quote/Review restano intatti — lo stesso principio "traccia completa"
+  // già applicato al soft-delete del cliente.
+  deletedAt            DateTime?
+  // Profilo tolto da ricerca/profilo pubblico/fan-out da un admin su una
+  // segnalazione (docs/CHANGELOG.md §144). Il professionista continua ad
+  // accedere alla dashboard (a meno che anche `User.suspendedAt` sia
+  // valorizzato). Filtrato ovunque insieme a `deletedAt`.
+  suspendedAt          DateTime?
+  // Account in pausa per l'abbonamento (docs/CHANGELOG.md §162): fuori dalla
+  // ricerca e dallo smistamento, niente richieste dirette o prenotazioni
+  // dall'agenda; il profilo pubblico resta raggiungibile dal link. Motivo:
+  // TRIAL_ENDED, SUBSCRIPTION_ENDED o LIMIT_REACHED (`PauseReason` in
+  // packages/shared). Tenuto aggiornato da SubscriptionsService.syncPause.
+  pausedAt             DateTime?
+  pausedReason         String?
+  // Profilo creato da un operatore al telefono (docs/CHANGELOG.md §170):
+  // fuori dalla ricerca e dallo smistamento finché il professionista non apre
+  // il link d'invito, imposta la password e salva il profilo accettando la
+  // dichiarazione. Da filtrare come `pausedAt` in ogni nuovo punto che mostra
+  // professionisti o assegna richieste.
+  invitePendingAt      DateTime?
+  // Misure progressive sulle segnalazioni accolte (docs/CHANGELOG.md §167,
+  // decisione dell'utente): alla 2ª segnalazione accolta in 30 giorni il
+  // profilo scende nello smistamento e nella ricerca per 14 giorni
+  // (`demotedUntil`); alla 3ª non riceve nuove richieste per 14 giorni
+  // (`requestsBlockedUntil`). Regole in packages/shared/src/jobIssues.ts.
+  demotedUntil         DateTime?
+  requestsBlockedUntil DateTime?
+
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Categoria principale: la prima scelta, usata dove serve una sola
+  // categoria (avatar, statistiche di zona, commissioni). Le altre (fino a 2,
+  // in tutto massimo 3 — MAX_PROFESSIONAL_CATEGORIES in packages/shared)
+  // stanno in `extraCategories` e valgono per ricerca e smistamento come la
+  // principale (docs/CHANGELOG.md §217).
+  category        Category   @relation("ProfessionalPrimaryCategory", fields: [categoryId], references: [id])
+  extraCategories Category[] @relation("ProfessionalExtraCategories")
+
+  subscription           Subscription?
+  visibilityBoosts       VisibilityBoost[]
+  leads                  Lead[]
+  quotes                 Quote[]
+  bookings               Booking[]
+  payments               Payment[]
+  savedBy                SavedProfessional[]
+  services               ProfessionalService[]
+  availabilitySlots      AvailabilitySlot[]
+  availabilityExceptions AvailabilityException[]
+  guidedRequests         GuidedRequest[]
+  metrics                ProfessionalMetrics?
+  profileViews           ProfileViewDay[]
+  timelineEvents         ConversationEvent[]
+  externalJobs           ExternalJob[]
+  // Dati fiscali/pagamenti — vedi la sezione dedicata in fondo a questo
+  // file ("MANOVIA — fiscale, pagamenti, DAC7"). Modello separato,
+  // deliberatamente MAI incluso in ProfessionalSearchResult/ProfessionalDetail
+  // (separazione dati pubblici/fiscali richiesta esplicitamente dalla
+  // specifica).
+  fiscalProfile          ProfessionalFiscalProfile?
+  feeRules               PlatformFeeRule[]
+  revenueEntries         ManoviaRevenue[]
+  dac7Records            Dac7Record[]
+  // Verifica di documento e selfie (Didit, docs/CHANGELOG.md §253): un tentativo per riga.
+  identityVerifications  IdentityVerification[]
+
+  @@index([categoryId, city])
+  @@map("professional_profiles")
+}
+
+// Metriche di affidabilità (CLAUDE.md §15) — tabella collegata 1:1,
+// separata dai dati anagrafici del profilo: aggiornata ad ogni evento
+// operativo (richiesta ricevuta, prima risposta, lavoro accettato/
+// completato, recensione, appuntamento onorato/mancato), a differenza dei
+// campi di ProfessionalProfile che il professionista modifica lui stesso.
+// Creata alla prima occorrenza di uno di questi eventi (nessuna riga finché
+// non succede nulla), non alla creazione del profilo — un professionista
+// che si è appena iscritto senza ancora aver ricevuto nulla non ha
+// metriche da mostrare, `null`/riga assente è lo stato corretto, non "zero
+// finto". Nessun trigger/middleware Prisma: ogni aggiornamento è scritto
+// esplicitamente nel service che esegue l'azione corrispondente
+// (ProfessionalMetricsService, richiamato da lì), stessa convenzione già
+// in uso in tutto il progetto (es. NotificationsService.notify()).
+model ProfessionalMetrics {
+  id                     String   @id @default(uuid())
+  professionalProfileId  String   @unique
+  // Media mobile dei minuti trascorsi tra la ricezione di un Lead e il
+  // primo preventivo inviato per quello stesso Lead — misura la reattività
+  // DI QUESTO professionista, non l'età della richiesta originale (che può
+  // essere più vecchia se il Lead è nato da un'espansione, CLAUDE.md §14).
+  avgResponseTimeMinutes Float?
+  // Denominatore della media mobile sopra (il numero di prime-risposte già
+  // misurate) — non coincide con totalRequestsReceived: un professionista
+  // può ricevere Lead senza mai rispondere, quelli non contano nella media.
+  totalResponsesMeasured Int      @default(0)
+  // Lead ricevuti in totale (fan-out iniziale + espansione + coinvolgimento
+  // a posteriori, CLAUDE.md §14) — non "richieste create", quelle di per sé
+  // possono generare più Lead per più professionisti diversi.
+  totalRequestsReceived  Int      @default(0)
+  // Preventivi che sono diventati una Booking reale (Quote → Booking,
+  // "accettato" nel vocabolario di questo dominio — vedi
+  // BookingsService.createFromQuote/QuotesService.confirmProposedDate).
+  acceptedRequests       Int      @default(0)
+  // Bookings segnate COMPLETED (BookingsService.completeWithFinalAmount).
+  completedJobs          Int      @default(0)
+  // Bookings create da un preventivo accettato — stesso momento di
+  // acceptedRequests, campo distinto perché lo STEP 3 (formula del
+  // punteggio) li usa con significati diversi (tasso di completamento =
+  // completedJobs/acceptedJobs).
+  acceptedJobs           Int      @default(0)
+  // Media reale delle recensioni ricevute (ricalcolata da zero ad ogni
+  // nuova recensione, non una media mobile: il numero di recensioni per
+  // professionista resta basso abbastanza da non giustificare
+  // l'approssimazione, e una media esatta è più corretta).
+  avgRating              Float?
+  reviewCount            Int      @default(0)
+  // COMPLETED = onorato, NO_SHOW = mancato (BookingStatus) — CANCELED
+  // volutamente escluso da entrambi i contatori: un annullamento (da
+  // cliente o professionista) non è né un appuntamento onorato né uno
+  // mancato dal professionista, è un evento diverso.
+  honoredAppointments    Int      @default(0)
+  totalAppointments      Int      @default(0)
+  lastActivityAt         DateTime @default(now())
+  // Calcolato (STEP 3), non impostato manualmente — vedi
+  // calculateReliabilityScore in professional-metrics.service.ts. `null`
+  // finché completedJobs < 3 (troppo pochi dati per essere significativo,
+  // richiesta esplicita dell'utente). Deliberatamente NON usato oggi per
+  // ordinare o filtrare nulla (selectLeadCandidates in
+  // GuidedRequestsService riusa invece il rating live dalle recensioni,
+  // §14) — solo calcolato e salvato, in vista di un utilizzo futuro.
+  reliabilityScore       Float?
+  updatedAt              DateTime @default(now()) @updatedAt
+
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@map("professional_metrics")
+}
+
+// Prestazioni offerte dal professionista con prezzo facoltativo (mostrate
+// nella card risultati e nel profilo pubblico, come le voci "Colloquio
+// psicologico — 60€" nel riferimento miodottore.it fornito dall'utente).
+// Salvate come lista semplice (nessun editing granulare per singola voce):
+// ad ogni salvataggio del profilo l'intera lista viene sostituita, coerente
+// con la scala attesa (poche voci a professionista).
+model ProfessionalService {
+  id                    String   @id @default(uuid())
+  professionalProfileId String
+  name                  String
+  // Range invece di prezzo fisso: molti lavori (es. "sostituzione caldaia")
+  // hanno un costo che varia da caso a caso, un prezzo unico era fuorviante.
+  // Se solo priceMinEurCents è impostato viene mostrato come prezzo singolo
+  // (vedi formatServicePriceRange in packages/shared).
+  priceMinEurCents      Int?
+  priceMaxEurCents      Int?
+  createdAt             DateTime @default(now())
+
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@map("professional_services")
+}
+
+// Disponibilità settimanale ricorrente (non date specifiche): il
+// professionista indica in quali giorni della settimana e fasce orarie è
+// disponibile, mostrata poi come agenda nel profilo pubblico (CLAUDE.md §8:
+// "Notifiche quasi istantanee..." e agenda digitale come feature core SaaS).
+// dayOfWeek segue la convenzione di JS `Date.getUTCDay()` (0=domenica...
+// 6=sabato) apposta, per confrontare senza conversioni la disponibilità
+// ricorrente con le prenotazioni reali (Booking.scheduledAt) quando si
+// calcola l'agenda pubblica.
+model AvailabilitySlot {
+  id                    String    @id @default(uuid())
+  professionalProfileId String
+  dayOfWeek             Int
+  startTime             String
+  endTime               String
+  // Se valorizzata, la fascia vale SOLO per questa data esatta (non
+  // ricorrente) — nuovo comportamento di default richiesto esplicitamente
+  // dall'utente: aggiungere una fascia da una colonna del calendario la
+  // lega a quella data specifica, non più a "ogni <dayOfWeek> per sempre".
+  // La spunta "ripeti per tutti i <giorno> del mese" nell'editor crea una
+  // riga per ciascuna data del mese corrente con lo stesso giorno della
+  // settimana, invece di introdurre un concetto di ricorrenza aperta.
+  // `date === null` resta il comportamento storico (ricorrenza settimanale
+  // indefinita per dayOfWeek) — non più creabile dalla UI, ma le fasce già
+  // esistenti create prima di questa funzionalità continuano a funzionare
+  // così: nessuna migrazione distruttiva dei dati esistenti.
+  date                  DateTime?
+  // Tipo/i di intervento accettati su questa fascia (richiesta esplicita
+  // dell'utente: due caselle "A domicilio"/"Online" nel popup di modifica,
+  // almeno una obbligatoria) — con capienza INDIPENDENTE per tipo: un
+  // professionista che spunta entrambe le caselle sulla stessa fascia
+  // gestisce due pool di prenotazioni separati sullo stesso orario (es. 2
+  // clienti in presenza + 5 in videochiamata), non un'unica capienza
+  // condivisa. `homeMaxBookings`/`onlineMaxBookings` valorizzati solo
+  // quando il rispettivo `allowsHome`/`allowsOnline` è vero — null
+  // altrimenti (nessuna capienza da rispettare per un tipo non offerto su
+  // quella fascia). Sostituisce il precedente campo unico `maxBookings`
+  // (`db push --accept-data-loss`, stesso pattern già in uso in questo
+  // progetto per ogni cambio di schema): una fascia esistente perde il
+  // proprio valore di capienza, ricade sul default 1 lato applicativo
+  // (`homeMaxBookings ?? 1`, coerente col vecchio default del campo
+  // rimosso) finché il professionista non la riapre e la risalva.
+  allowsHome            Boolean   @default(true)
+  allowsOnline          Boolean   @default(false)
+  homeMaxBookings       Int?
+  onlineMaxBookings     Int?
+  // Nata dalla settimana tipo (docs/CHANGELOG.md §323): si aggiorna quando
+  // cambia la settimana tipo. Diventa false appena il professionista cambia
+  // a mano gli orari di quel giorno.
+  fromWeekTemplate      Boolean   @default(false)
+  createdAt             DateTime  @default(now())
+
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@map("availability_slots")
+}
+
+// Giorno di chiusura straordinaria (ferie, festività, imprevisto): una data
+// specifica in cui il professionista non è disponibile nonostante la
+// ricorrenza settimanale di AvailabilitySlot lo preveda. Modello separato
+// invece di un campo su AvailabilitySlot: la ricorrenza settimanale e le
+// eccezioni puntuali hanno cicli di vita indipendenti (la prima cambia di
+// rado, le seconde si aggiungono/rimuovono una alla volta) — confonderle in
+// un'unica entità avrebbe reso "sostituisci tutta la lista ad ogni
+// salvataggio" (pattern già in uso per gli slot) scomodo per un'aggiunta
+// estemporanea di un solo giorno. `date` normalizzata a mezzanotte UTC
+// (stessa convenzione "data pura, nessun fuso" già in uso per
+// ProfessionalAgendaDay/scheduledAt in questo modulo).
+model AvailabilityException {
+  id                    String   @id @default(uuid())
+  professionalProfileId String
+  date                  DateTime
+  createdAt             DateTime @default(now())
+
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([professionalProfileId, date])
+  @@map("availability_exceptions")
+}
+
+// ---------------------------------------------------------------------------
+// Professionisti salvati dal cliente (preferiti) — sezione account cliente
+// ---------------------------------------------------------------------------
+
+model SavedProfessional {
+  id                    String   @id @default(uuid())
+  userId                String
+  professionalProfileId String
+  createdAt             DateTime @default(now())
+
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, professionalProfileId])
+  @@map("saved_professionals")
+}
+
+// ---------------------------------------------------------------------------
+// Monetizzazione — abbonamenti SaaS (CLAUDE.md §6)
+// ---------------------------------------------------------------------------
+
+// Livelli dell'abbonamento unico (docs/CHANGELOG.md §161, CLAUDE.md §6):
+// BASE, PLUS, PRO. FREE e BUSINESS restano solo per compatibilità con le
+// righe già esistenti: BUSINESS vale come PRO, FREE come nessun livello.
+enum SubscriptionPlan {
+  FREE
+  PRO
+  BUSINESS
+  BASE
+  PLUS
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+model Subscription {
+  id                    String             @id @default(uuid())
+  professionalProfileId String             @unique
+  plan                  SubscriptionPlan   @default(FREE)
+  status                SubscriptionStatus @default(ACTIVE)
+  stripeSubscriptionId  String?            @unique
+  currentPeriodEnd      DateTime?
+  // Prova gratuita (docs/CHANGELOG.md §161): primo mese gratis per tutti,
+  // senza limite di lavori. Allungata di un mese, una volta sola, a chi non
+  // ha ancora avuto lavori (bonusMonthGrantedAt), comunicato solo pochi
+  // giorni prima della scadenza.
+  trialEndsAt           DateTime?
+  bonusMonthGrantedAt   DateTime?
+  trialEndingNotifiedAt DateTime?
+  // Ultimo avviso sul limite mensile inviato, es. "2026-09:80" o
+  // "2026-09:100": evita di ripeterlo a ogni lavoro accettato.
+  usageNoticeKey        String?
+  // Rinnovo automatico (docs/CHANGELOG.md §162): annullato = attivo fino a
+  // currentPeriodEnd, poi non si rinnova. periodNoticeFor = scadenza per cui
+  // è già partito l'avviso di rinnovo o di fine.
+  cancelAtPeriodEnd     Boolean            @default(false)
+  periodNoticeFor       DateTime?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+// ---------------------------------------------------------------------------
+// Monetizzazione — pacchetti di visibilità (CLAUDE.md §6)
+// ---------------------------------------------------------------------------
+
+enum VisibilityBoostType {
+  BOOST_LOCALE
+  BADGE_REPUTAZIONE
+  STORIA_SUCCESSO
+}
+
+enum VisibilityBoostStatus {
+  ACTIVE
+  EXPIRED
+  CANCELED
+}
+
+model VisibilityBoost {
+  id                    String                @id @default(uuid())
+  professionalProfileId String
+  type                  VisibilityBoostType
+  status                VisibilityBoostStatus @default(ACTIVE)
+  startsAt              DateTime              @default(now())
+  endsAt                DateTime?
+  stripePaymentId       String?
+
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@index([professionalProfileId, status])
+  @@map("visibility_boosts")
+}
+
+// ---------------------------------------------------------------------------
+// Richiesta guidata cliente → lead ai professionisti (CLAUDE.md §7-8)
+// ---------------------------------------------------------------------------
+
+enum GuidedRequestStatus {
+  OPEN
+  MATCHED
+  CLOSED
+}
+
+// Perché la richiesta è passata a CLOSED — nullable, valorizzato solo in
+// quel momento: distingue nella UI/nell'endpoint di stato aggregato
+// (GuidedRequestsService.getStatus) "nessuno ha risposto in tempo" da
+// "il cliente ha annullato" da "si è conclusa con una prenotazione",
+// invece di un'unica etichetta generica "CLOSED" che oggi non dice il
+// motivo.
+enum GuidedRequestClosedReason {
+  EXPIRED
+  CANCELED_BY_CLIENT
+  COMPLETED
+}
+
+// Perché il cliente ha tolto la richiesta (docs/CHANGELOG.md §337), mostrato
+// ai professionisti accanto a "Ritirata dal cliente".
+enum GuidedRequestWithdrawReason {
+  FOUND_ELSEWHERE
+  NO_LONGER_NEEDED
+  MISTAKE
+}
+
+// Tipo di intervento richiesto — richiesta esplicita dell'utente: "in modo
+// che il professionista già sa se può trattarsi di un intervento a
+// domicilio o online", raccolto già alla richiesta invece di scoprirlo solo
+// in trattativa.
+enum ServiceMode {
+  HOME
+  ONLINE
+}
+
+/// Provenienza della visita che porta a una richiesta (docs/CHANGELOG.md §296).
+enum TrafficSource {
+  GOOGLE
+  OTHER_SEARCH
+  SOCIAL
+  DIRECT
+  OTHER
+}
+
+// Quando serve il lavoro, scelto dal cliente (docs/CHANGELOG.md §344):
+// TODAY = urgente (isUrgent resta il campo che decide raggio e inoltro).
+enum RequestTiming {
+  TODAY
+  WEEK
+  CALM
+}
+
+model GuidedRequest {
+  id                    String                       @id @default(uuid())
+  clientId              String
+  categoryId            String
+  description           String
+  photoUrls             String[]
+  city                  String
+  // Via (indirizzo del luogo dell'intervento), facoltativo a livello DB —
+  // obbligatorio lato Zod alla creazione (guidedRequestSchema). Sulla
+  // richiesta (non sul profilo cliente): un cliente può avere lavori in
+  // indirizzi diversi da una richiesta all'altra. Mai mostrato in
+  // ricerca/profilo pubblico — solo al professionista che ha in mano un
+  // preventivo/prenotazione collegati a questa richiesta.
+  address               String?
+  // Destinatario + resto dell'indirizzo strutturato (numero civico,
+  // dettagli, CAP, provincia — city esiste già sopra), raccolti insieme al
+  // resto della richiesta fin dall'invio (richiesta esplicita dell'utente:
+  // "voglio che li inserisca subito appena [invia] un preventivo... ma
+  // verranno visualizzati al professionista... solo quando si è conclusa
+  // la trattativa e confermato l'appuntamento") — prima raccolti solo
+  // all'accettazione del preventivo (vedi Booking.recipientName e affini,
+  // ancora presenti lì: `BookingsService.createFromQuote` li copia da qui
+  // sul Booking al momento della creazione, non più da un input separato
+  // del cliente). Nascosti al professionista in ProfessionalLead
+  // (ProfessionalsService.getMyLeads) finché non esiste un Booking:
+  // restano visibili solo `address`/`city` sopra, come già prima di
+  // questo campo.
+  recipientName         String?
+  recipientSurname      String?
+  recipientPhone        String?
+  houseNumber           String?
+  addressExtra          String?
+  postalCode            String?
+  province              String?
+  isUrgent              Boolean                      @default(false)
+  // Null per le richieste di prima della scelta dei tempi (§344).
+  timing                RequestTiming?
+  // Nullable: le richieste create prima di questa funzionalità non hanno
+  // un tipo esplicito (mai un backfill retroattivo, stessa convenzione già
+  // usata per altri campi opzionali di questo modello) — obbligatorio lato
+  // Zod alla creazione di una richiesta nuova (guidedRequestSchema).
+  serviceMode           ServiceMode?
+  // Da dove è arrivato il cliente nella visita che porta alla richiesta
+  // (docs/CHANGELOG.md §296): solo la categoria, mai l'indirizzo di
+  // provenienza. Null per le richieste di prima e se il browser non la dà.
+  trafficSource         TrafficSource?
+  status                GuidedRequestStatus          @default(OPEN)
+  createdAt             DateTime                     @default(now())
+  // Per l'ordinamento "per ultimo aggiornamento" nelle liste richieste
+  // (richiesta esplicita dell'utente) — Prisma la aggiorna da sola ad ogni
+  // update() (es. modifica descrizione/città/foto).
+  updatedAt             DateTime                     @default(now()) @updatedAt
+  // Valorizzati solo quando la richiesta parte da una fascia "generica"
+  // dell'agenda pubblica di un professionista (AvailabilitySlot.maxBookings
+  // > 1): data pura (mezzanotte UTC, stessa convenzione del resto
+  // dell'agenda) + fascia oraria testuale "HH:MM-HH:MM". Servono a contare
+  // quante richieste sono già state inviate per quella fascia specifica
+  // (capienza massima) e a mostrarla al professionista nel lead.
+  // professionalProfileId denormalizzato (oltre al Lead che nasce comunque
+  // dal fan-out) perché qui serve un riferimento diretto e univoco per
+  // contare la capienza senza passare da un join su Lead.
+  preferredDate         DateTime?
+  preferredTimeSlot     String?
+  professionalProfileId String?
+  // Stesso valore per le richieste nate da un unico invio con più categorie
+  // (docs/CHANGELOG.md §259): il cliente le vede "inviate insieme".
+  submissionGroupId     String?
+  // Scadenza della richiesta nel suo complesso (non del singolo Lead, vedi
+  // Lead.expiresAt sotto) — oltre questa data, se ancora OPEN/MATCHED senza
+  // esito, il job schedulato la chiude (closedReason EXPIRED). Nullable:
+  // le richieste create prima di questa funzionalità non ne hanno una e
+  // non scadono mai retroattivamente, stessa convenzione già usata per
+  // AvailabilitySlot.date (nullable = comportamento storico invariato).
+  expiresAt             DateTime?
+  // Perché è CLOSED — vedi GuidedRequestClosedReason sopra. Nullable finché
+  // la richiesta è aperta, e per le righe chiuse prima dell'introduzione di
+  // questo campo (nessun backfill retroattivo).
+  closedReason          GuidedRequestClosedReason?
+  // Richiesta rimossa da un admin su segnalazione (docs/CHANGELOG.md §144):
+  // chiusa e nascosta ai professionisti; il cliente la vede ancora.
+  hiddenAt              DateTime?
+  // "Elimina richiesta" del cliente (docs/CHANGELOG.md §337): sparisce solo
+  // per lui. I professionisti la vedono "Ritirata dal cliente", l'admin la
+  // vede intera; la cancella davvero il job giornaliero dopo
+  // CLIENT_DELETED_REQUEST_RETENTION_DAYS, mai se è stata segnalata.
+  deletedByClientAt     DateTime?
+  // Motivo facoltativo scelto dal cliente togliendo la richiesta.
+  withdrawReason        GuidedRequestWithdrawReason?
+  // Era ancora aperta quando il cliente l'ha eliminata: "Annulla" la riapre.
+  deletedWhileOpen      Boolean                      @default(false)
+  // Coda ordinata (dal più al meno prioritario) dei ProfessionalProfile.id
+  // candidati NON selezionati al fan-out iniziale (oltre MAX_LEADS_PER_REQUEST,
+  // vedi GuidedRequestsService) — pescata in ordine da lì ad ogni scadenza/
+  // rifiuto di un Lead per creare il successivo. Array nativo Postgres,
+  // stesso pattern già in uso per liste ordinate in questo schema
+  // (photoUrls, portfolioUrls, subTags) invece di una tabella dedicata o
+  // di un campo Json: qui non serve altro che leggerla/consumarla in ordine.
+  reserveCandidateIds   String[]                     @default([])
+  // Richiesta diretta: inoltrarla ad altri se il professionista non
+  // risponde (docs/CHANGELOG.md §154) e quando è stata inoltrata.
+  forwardIfNoReply      Boolean                      @default(false)
+  forwardedAt           DateTime?
+  // Quando inoltrarla se il professionista scelto non ha ancora risposto:
+  // 60 minuti per un'urgente, 6 ore (contate dalle 8 alle 21) per una
+  // normale. Il professionista scelto non ha scadenza (docs/CHANGELOG.md §209).
+  forwardAt             DateTime?
+
+  client              User                 @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  category            Category             @relation(fields: [categoryId], references: [id])
+  professionalProfile ProfessionalProfile? @relation(fields: [professionalProfileId], references: [id], onDelete: SetNull)
+
+  leads          Lead[]
+  quotes         Quote[]
+  timelineEvents ConversationEvent[]
+  userStates     GuidedRequestUserState[]
+
+  @@index([categoryId, city, status])
+  @@index([deletedByClientAt])
+  @@map("guided_requests")
+}
+
+// Stato personale di una scheda richiesta, per utente (CHANGELOG §130,
+// richiesta esplicita dell'utente: azioni del menu hamburger sulle schede di
+// /le-mie-richieste e /dashboard/richieste). Una riga per coppia
+// (utente, richiesta), valida sia per il cliente sia per ogni professionista
+// che l'ha ricevuta: ognuno archivia/silenzia/segna/programma per sé, senza
+// effetti sull'altra parte. Riga creata solo alla prima azione (upsert).
+model GuidedRequestUserState {
+  id              String    @id @default(uuid())
+  userId          String
+  guidedRequestId String
+  // Scheda spostata nel tab "Archiviate" (null = visibile normalmente).
+  archivedAt      DateTime?
+  // Notifiche di questa richiesta create già lette: restano nella
+  // cronologia della campanella ma niente badge/toast (NotificationsService.notify).
+  mutedAt         DateTime?
+  // "Segna come da leggere": badge "Nuovo" finché l'utente non la segna
+  // come letta o non apre la scheda.
+  markedUnreadAt  DateTime?
+  // Promemoria programmato: il job RequestRemindersService crea una
+  // notifica REQUEST_REMINDER a quest'ora e azzera il campo.
+  remindAt        DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @default(now()) @updatedAt
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guidedRequest GuidedRequest @relation(fields: [guidedRequestId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, guidedRequestId])
+  @@index([remindAt])
+  @@map("guided_request_user_states")
+}
+
+// Modello a pagamento per lead qualificato, fase iniziale prima dell'upsell
+// ad abbonamento flat (CLAUDE.md §7.3).
+enum LeadStatus {
+  PENDING
+  PAID
+  CONVERTED
+  // Il professionista ha rifiutato la richiesta prima di inviare un
+  // preventivo (richiesta esplicita dell'utente: un pop-up con nota
+  // facoltativa per il cliente) — distinto dal ritiro di un preventivo già
+  // inviato (Quote.WITHDRAWN), che riguarda uno stadio successivo.
+  DECLINED
+  // Il professionista non ha risposto entro expiresAt — distinto da
+  // DECLINED (rifiuto attivo, con nota per il cliente): qui semplicemente
+  // il tempo è scaduto, il cliente non deve leggere "ha rifiutato" per un
+  // professionista che magari non ha nemmeno visto la richiesta. Innesca
+  // l'espansione verso il prossimo candidato in coda (vedi
+  // GuidedRequest.reserveCandidateIds).
+  EXPIRED
+}
+
+model Lead {
+  id                     String     @id @default(uuid())
+  guidedRequestId        String
+  professionalProfileId  String
+  priceEurCents          Int
+  status                 LeadStatus @default(PENDING)
+  // Nota facoltativa lasciata dal professionista quando rifiuta la
+  // richiesta (es. "non copro quella zona"), mostrata al cliente.
+  declineNote            String?
+  // Nota privata del professionista sulla richiesta, mai vista dal cliente
+  // (pagina /dashboard/richieste) — a differenza di Booking.professionalNote,
+  // valorizzabile fin dalla ricezione del lead, prima ancora che esista un
+  // preventivo/prenotazione.
+  professionalNote       String?
+  // Scadenza del singolo Lead (non della GuidedRequest nel suo complesso,
+  // vedi GuidedRequest.expiresAt): passato questo momento senza una Quote
+  // collegata, il job schedulato lo marca EXPIRED e pesca il prossimo
+  // candidato dalla coda di riserva. Nullable per lo stesso motivo di
+  // GuidedRequest.expiresAt (righe esistenti create prima di questa
+  // funzionalità, mai retroattivamente scadute).
+  expiresAt              DateTime?
+  // True se questo Lead è nato da un'espansione (scadenza o rifiuto di un
+  // Lead precedente, o coinvolgimento di un professionista iscritto dopo),
+  // non dal fan-out iniziale — utile solo per capire a colpo d'occhio
+  // l'origine di un Lead in eventuali audit/debug, non usato oggi in UI.
+  wasExpanded            Boolean    @default(false)
+  // "Elimina" dal menu della scheda in /dashboard/richieste (docs/CHANGELOG.md
+  // §143): la richiesta sparisce solo per il professionista, mai cancellata
+  // dal database — resta visibile agli admin (/admin, "Richieste eliminate")
+  // e conserva prezzo del lead e metriche di risposta.
+  hiddenByProfessionalAt DateTime?
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime   @default(now()) @updatedAt
+
+  guidedRequest       GuidedRequest       @relation(fields: [guidedRequestId], references: [id], onDelete: Cascade)
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([guidedRequestId, professionalProfileId])
+  @@map("leads")
+}
+
+// ---------------------------------------------------------------------------
+// Preventivo strutturato in-app (CLAUDE.md §8)
+// ---------------------------------------------------------------------------
+
+enum QuoteStatus {
+  SENT
+  ACCEPTED
+  REJECTED
+  // Il cliente ha proposto una data diversa da estimatedStartDate (scelta
+  // tra le fasce libere dell'agenda del professionista): resta così finché
+  // il professionista non conferma (→ ACCEPTED, crea la Booking) o rifiuta
+  // (torna a SENT). Mai una prenotazione automatica sulla sola richiesta
+  // del cliente: evita che due clienti "vincano" la stessa fascia solo
+  // proponendola, la capienza va sempre validata di nuovo alla conferma.
+  MODIFICATION_REQUESTED
+  // Il professionista ritira un preventivo già inviato (richiesta esplicita
+  // dell'utente) — distinto da REJECTED (che significa "il cliente lo ha
+  // rifiutato"): stesso stato finale ("non più valido"), ma il messaggio
+  // mostrato all'altra parte deve essere diverso a seconda di chi ha agito.
+  WITHDRAWN
+}
+
+model Quote {
+  id                       String      @id @default(uuid())
+  guidedRequestId          String
+  professionalProfileId    String
+  estimatedStartDate       DateTime
+  // Fine della fascia scelta dall'agenda del professionista (richiesta
+  // esplicita dell'utente: "non visualizzare solo il primo orario ma
+  // tutta la fascia d'orario") — nullable: null quando la data è stata
+  // indicata a mano (nessuna agenda impostata, vecchio input libero) o per
+  // i preventivi creati prima di questa funzionalità, casi in cui non
+  // esiste una fascia con fine nota.
+  estimatedEndDate         DateTime?
+  // Modi di pagamento offerti dal professionista (JobPaymentChoice in
+  // packages/shared: DIRECT, ONLINE, MIXED) e percentuale dell'acconto online
+  // (1-100), docs/CHANGELOG.md §237. Vuoto/null nei preventivi più vecchi:
+  // valgono online con acconto del 20% e diretto.
+  paymentOptions           String[]    @default([])
+  depositPercent           Int?
+  // Preavviso per annullare scelto in questo preventivo (24, 48 o 72 ore,
+  // di serie quello del profilo) e se, annullando dentro il preavviso,
+  // l'acconto online resta al professionista (docs/CHANGELOG.md §348).
+  // Null nei preventivi più vecchi: vale il preavviso del profilo.
+  cancellationNoticeHours  Int?
+  lateCancelKeepsDeposit   Boolean     @default(false)
+  // Data alternativa proposta dal cliente (vedi QuoteStatus.MODIFICATION_REQUESTED),
+  // valorizzata solo in quello stato — null altrimenti.
+  clientProposedDate       DateTime?
+  // Fine della fascia proposta dal cliente, stesso motivo di estimatedEndDate.
+  clientProposedEndDate    DateTime?
+  // Dettagli facoltativi scritti dal cliente insieme alla data proposta
+  // (es. "posso solo dopo le 17" o "meglio se venite con il furgone"),
+  // mostrati al professionista quando deve confermare/rifiutare.
+  clientProposedNote       String?
+  // Nota lasciata dal professionista quando modifica direttamente
+  // l'orario proposto dal cliente durante la trattativa (invece di
+  // confermarlo o rifiutarlo semplicemente) — richiesta esplicita
+  // dell'utente: "Modifica (in giallo)... con una casella di testo dove si
+  // può scrivere qualcosa e inviare". Distinta da `notes` (voci/dettagli
+  // del preventivo, mai sovrascritti da questo flusso). Azzerata quando il
+  // cliente propone una nuova data (negoziazione ripartita da capo) o
+  // quando il professionista modifica di nuovo (sostituita).
+  professionalCounterNote  String?
+  // Nota del cliente scritta con "Modifica" senza cambiare data e orario
+  // (docs/CHANGELOG.md §196): il preventivo resta SENT, quindi il cliente
+  // può ancora accettarlo. Azzerata quando una delle due parti cambia
+  // davvero data o orario.
+  clientNote               String?
+  // Totale indicativo prima dell'ultima modifica dei prezzi da parte del
+  // professionista: il cliente vede il vecchio sbarrato accanto al nuovo e
+  // non accetta un aumento senza accorgersene (docs/CHANGELOG.md §196).
+  previousPriceMinEurCents Int?
+  previousPriceMaxEurCents Int?
+  // Nota facoltativa scritta dal cliente quando rifiuta il preventivo
+  // (docs/CHANGELOG.md §188), mostrata al professionista. Valorizzata solo
+  // in REJECTED: azzerata quando il professionista invia un nuovo
+  // preventivo (resta comunque nella cronologia della conversazione).
+  rejectionNote            String?
+  // Quando il professionista ha inviato l'ultimo nuovo preventivo dopo un
+  // rifiuto del cliente (docs/CHANGELOG.md §188). `createdAt` resta il
+  // primo invio: i tempi della richiesta si contano sempre dal suo invio.
+  resentAt                 DateTime?
+  // Appuntamento che il professionista ha appena sostituito (modifica del
+  // preventivo o risposta a una proposta del cliente): il cliente vede
+  // "prima → ora" come il professionista vede la proposta del cliente
+  // (docs/CHANGELOG.md §186). Azzerato quando il cliente propone una data.
+  previousStartDate        DateTime?
+  previousEndDate          DateTime?
+  notes                    String?
+  status                   QuoteStatus @default(SENT)
+  createdAt                DateTime    @default(now())
+  updatedAt                DateTime    @default(now()) @updatedAt
+
+  guidedRequest       GuidedRequest       @relation(fields: [guidedRequestId], references: [id], onDelete: Cascade)
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+  items               QuoteItem[]
+
+  booking Booking?
+
+  @@map("quotes")
+}
+
+// Voce di un preventivo (es. "Manodopera", "Materiali", "Trasporto"), ognuna
+// col proprio range di prezzo — sostituisce i due campi fissi
+// laborEurCents/materialsEurCents: un preventivo può avere quante voci
+// servono, non solo manodopera+materiali (CLAUDE.md, richiesta esplicita
+// dell'utente). Stesso pattern range min/max di ProfessionalService.
+model QuoteItem {
+  id               String @id @default(uuid())
+  quoteId          String
+  name             String
+  priceMinEurCents Int?
+  priceMaxEurCents Int?
+
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@map("quote_items")
+}
+
+// ---------------------------------------------------------------------------
+// Prenotazione, recensione (solo da prenotazione confermata — CLAUDE.md §8)
+// ---------------------------------------------------------------------------
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELED
+  NO_SHOW
+}
+
+// Chi ha annullato la prenotazione — richiesta esplicita dell'utente:
+// "Lavori accettati" deve far capire non solo che è stata annullata ma
+// anche da chi (cliente o professionista), non solo dal messaggio
+// "Annullata" da solo.
+enum BookingCanceledBy {
+  CLIENT
+  PROFESSIONAL
+}
+
+model Booking {
+  id                    String        @id @default(uuid())
+  quoteId               String?       @unique
+  // Richiesta da cui nasce il lavoro (docs/CHANGELOG.md §346): la compila un
+  // trigger del database dal preventivo (quoteId), mai il codice. Un indice
+  // unico parziale ("bookings_one_active_job_per_request", solo nella
+  // migrazione: Prisma non descrive gli indici con WHERE) vieta un secondo
+  // lavoro non annullato sulla stessa richiesta, anche se il codice sbagliasse.
+  guidedRequestId       String?
+  clientId              String
+  professionalProfileId String
+  scheduledAt           DateTime
+  // Preavviso per annullare valido per questo lavoro, copiato dal profilo
+  // quando nasce (docs/CHANGELOG.md §347): null per i lavori di prima, che
+  // valgono 24 ore. canceledLate: il cliente ha annullato dentro il preavviso.
+  cancellationNoticeHours Int?
+  canceledLate            Boolean       @default(false)
+  // Fine della fascia (richiesta esplicita dell'utente: mostrare tutta la
+  // fascia oraria, non solo l'inizio), copiata da Quote.estimatedEndDate/
+  // clientProposedEndDate al momento della creazione — null per le
+  // prenotazioni dirette da agenda pubblica (bookAgendaSlot, che già
+  // conosce la fascia esatta ma non passa da questo campo) o per date
+  // indicate a mano senza agenda impostata.
+  scheduledEndAt        DateTime?
+  status                BookingStatus @default(PENDING)
+  // Promemoria automatico anti no-show (CEO, tattico — CLAUDE.md §1: "core,
+  // non accessoria"): email inviata via BookingRemindersService quando
+  // scheduledAt è entro ~24 ore, null finché non è ancora partito. Evita
+  // di reinviarlo a ogni passaggio del cron (EVERY_30_MINUTES) sulla
+  // stessa prenotazione.
+  reminderSentAt        DateTime?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  // Indirizzo di lavoro strutturato, raccolto in una schermata dedicata
+  // all'accettazione del preventivo (richiesta esplicita dell'utente: nome,
+  // cognome, telefono, indirizzo, civico, CAP, città, provincia in campi
+  // separati, tutti obbligatori tranne addressExtra). Nullable a livello DB
+  // perché le prenotazioni dirette da agenda pubblica (bookAgendaSlot) non
+  // passano da questa schermata; obbligatori lato Zod/API solo nel percorso
+  // di accettazione preventivo (acceptQuoteSchema). Sostituisce, per le
+  // prenotazioni create da questo momento in poi, il precedente indirizzo
+  // libero di GuidedRequest.address come fonte principale mostrata al
+  // professionista.
+  recipientName    String?
+  recipientSurname String?
+  recipientPhone   String?
+  street           String?
+  houseNumber      String?
+  addressExtra     String?
+  postalCode       String?
+  city             String?
+  province         String?
+
+  // Importo finale esatto (richiesta esplicita dell'utente: "segnala lavoro
+  // terminato" apre una finestra dove inserire l'importo preciso seguendo le
+  // voci del preventivo, più eventuali voci aggiuntive) — valorizzato solo
+  // al completamento, somma di BookingFinalItem, denormalizzato qui per
+  // mostrarlo senza dover sempre fare la join. Le voci del preventivo
+  // (QuoteItem, range min/max) non vengono mai modificate: rappresentano
+  // l'offerta originale, l'importo finale è un dato separato.
+  finalAmountEurCents Int?
+  finalItems          BookingFinalItem[]
+
+  // Foto/video del lavoro terminato, allegate da ciascuna parte al momento
+  // della propria conferma "Lavoro terminato" (richiesta esplicita
+  // dell'utente: "sia che professionista che cliente cliccano su lavoro
+  // terminato dai la possibilità di inserire delle foto") — distinte dalle
+  // foto della recensione (Review/ClientReview sotto, legate al giudizio
+  // scritto, non alla sola documentazione del lavoro).
+  professionalCompletionPhotoUrls String[]  @default([])
+  clientCompletionPhotoUrls       String[]  @default([])
+  // Note a lavoro terminato e motivo delle differenze dal preventivo
+  // (docs/CHANGELOG.md §163): lette dall'admin in /admin/lavori.
+  professionalCompletionNote      String?
+  completionChangeReason          String?
+  clientCompletionNote            String?
+  // Quando il professionista ha segnato il lavoro come terminato: parte da
+  // qui la finestra per segnalare un lavoro fatto male (docs/CHANGELOG.md §164).
+  professionalCompletedAt         DateTime?
+  // Dichiarazione del professionista sull'importo a "lavoro terminato"
+  // (DAC7, docs/CHANGELOG.md §246): data e versione del testo accettato,
+  // testo diverso per privato e partita IVA (`completionDeclaration`).
+  completionDeclarationAcceptedAt DateTime?
+  completionDeclarationVersion    String?
+  // Conferma del cliente che il lavoro è davvero terminato dal suo lato —
+  // richiesta esplicita dell'utente ("servono i completed da entrambi").
+  // Indipendente da `status` (che resta COMPLETED solo grazie
+  // all'azione del professionista, l'unico che imposta l'importo finale):
+  // null finché il cliente non conferma dal proprio lato. Sblocca la
+  // possibilità per il cliente di scrivere la propria recensione
+  // (ReviewsService.create) — lo stesso principio "prima confermi, poi
+  // recensisci" non serve lato professionista perché la sua stessa azione
+  // di completamento È già la sua conferma.
+  clientConfirmedCompletedAt      DateTime?
+  // Quando solo una parte ha cliccato "Lavoro terminato" (docs/CHANGELOG.md
+  // §190): promemoria inviati all'altra parte, e quando il lavoro è stato
+  // chiuso d'ufficio allo scadere del termine per segnalare un problema.
+  completionReminderCount         Int       @default(0)
+  completionAutoClosedAt          DateTime?
+
+  // Nota per il cliente quando il professionista annulla un intervento già
+  // confermato (richiesta esplicita dell'utente) — facoltativa, distinta
+  // dall'annullamento lato cliente (cancelForClient), che non ne raccoglie una.
+  cancellationNote String?
+
+  // Chi ha annullato — richiesta esplicita dell'utente: "Lavori accettati"
+  // deve far capire da chi è stata annullata, non solo che lo è stata.
+  // Null finché non CANCELED, o per righe annullate prima di questo campo.
+  // Valorizzato in tutti e tre i percorsi che possono portare a CANCELED:
+  // cancelForClient (CLIENT), cancelByProfessional e updateStatus quando lo
+  // stato passa a CANCELED dal calendario (PROFESSIONAL in entrambi i casi).
+  canceledBy BookingCanceledBy?
+
+  // Nota privata del professionista per ricordare dettagli sulla
+  // prenotazione (es. "portare il pezzo di ricambio", richiesta esplicita
+  // dell'utente) — mai mostrata al cliente, a differenza di
+  // cancellationNote sopra. Modificabile liberamente finché la prenotazione
+  // esiste, indipendentemente dallo stato.
+  professionalNote String?
+
+  // Link per una consulenza video (es. Google Meet), facoltativo — richiesta
+  // esplicita dell'utente per la "consulenza online" già prevista in
+  // CLAUDE.md §1 (ProfessionalProfile.remoteAvailable). Impostabile dal
+  // professionista su qualunque prenotazione (nessun vincolo su
+  // remoteAvailable: anche un lavoro tipicamente in presenza può iniziare
+  // con una videochiamata di sopralluogo), mostrato al cliente come link
+  // cliccabile quando presente. Nessuna integrazione reale con Google
+  // Meet/Calendar: il professionista incolla qui il link della propria
+  // videochiamata (Meet, Zoom, ecc. — nessun vincolo di piattaforma),
+  // stesso principio pragmatico già seguito per WhatsApp (nessuna API,
+  // solo un link wa.me costruito dal numero già raccolto).
+  meetingLink String?
+
+  // Il cliente segnala che il professionista non si è presentato
+  // all'appuntamento (dopo la data/ora prevista) e chiede un rimborso —
+  // richiesta esplicita dell'utente. Puramente informativo/di notifica:
+  // nessun pagamento reale da rimborsare in piattaforma (non ancora
+  // attivo, CLAUDE.md §9) — il rimborso vero va concordato direttamente
+  // con il professionista nel frattempo, stesso principio già seguito per
+  // "Vai al pagamento". Non tocca `status`: quello resta CONFIRMED finché
+  // il professionista stesso non lo segna completato/annullato, il
+  // professionista può ancora contestare la segnalazione.
+  refundRequested   Boolean   @default(false)
+  refundRequestedAt DateTime?
+
+  // Copiato da GuidedRequest.serviceMode al momento della creazione (mai
+  // ricalcolato dopo: il tipo di intervento resta fisso una volta scelto
+  // alla richiesta, solo data/ora si negoziano) — usato per contare la
+  // capienza home/online indipendente di una fascia agenda
+  // (countBookingsInSlot). Null per le prenotazioni dirette da agenda
+  // pubblica (bookAgendaSlot, dormiente da CLAUDE.md §20 — nessuna
+  // GuidedRequest collegata) o per prenotazioni create prima di questo
+  // campo.
+  serviceMode ServiceMode?
+
+  // "Sto arrivando" dall'agenda (docs/CHANGELOG.md §288): il cliente riceve
+  // l'avviso una volta sola per appuntamento.
+  onTheWayAt DateTime?
+
+  quote               Quote?              @relation(fields: [quoteId], references: [id])
+  client              User                @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  issue      JobIssue?
+  review     Review?
+  // Pagamento del lavoro (MANOVIA/DIRETTO, lordo/commissione/netto) — vedi
+  // JobPayment in fondo a questo file. Nullable: una Booking creata prima
+  // di questa funzionalità, o una diretta da agenda pubblica (bookAgendaSlot,
+  // dormiente da CLAUDE.md §20), può non averne ancora una.
+  jobPayment JobPayment?
+
+  @@index([professionalProfileId, scheduledAt])
+  @@map("bookings")
+}
+
+// Voce dell'importo finale di un lavoro completato (richiesta esplicita
+// dell'utente): segue le voci del preventivo originale ma con un prezzo
+// esatto invece di un range, più eventuali voci aggiunte in questa fase
+// (es. materiale extra non preventivato). Stesso pattern di QuoteItem.
+model BookingFinalItem {
+  id            String @id @default(uuid())
+  bookingId     String
+  name          String
+  priceEurCents Int
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("booking_final_items")
+}
+
+// Lavoro preso al di fuori della piattaforma (richiesta esplicita
+// dell'utente: "dai la possibilità di inserire un lavoro preso al di
+// fuori della piattaforma, dove poter inserire tutti i dati utili per
+// effettuare l'intervento") — inserito a mano dal professionista, mai da
+// un cliente. Modello separato da `Booking` invece di rendere `Booking.
+// clientId` opzionale: un `Booking` porta con sé garanzie che presuppongono
+// sempre un vero account cliente (recensioni doppio cieco, notifiche al
+// cliente, visibilità in /le-mie-richieste, cronologia condivisa) che qui
+// non hanno senso — nessun cliente reale da notificare o con cui
+// conversare, solo un promemoria strutturato per il professionista stesso.
+enum ExternalJobStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELED
+}
+
+model ExternalJob {
+  id                    String            @id @default(uuid())
+  professionalProfileId String
+  clientName            String
+  clientPhone           String?
+  address               String?
+  description           String?
+  scheduledAt           DateTime
+  scheduledEndAt        DateTime?
+  priceEurCents         Int?
+  // Nota privata (mai vista da nessun altro, non esiste un cliente con cui
+  // condividerla) — stesso concetto di Booking.professionalNote.
+  notes                 String?
+  status                ExternalJobStatus @default(SCHEDULED)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@index([professionalProfileId, scheduledAt])
+  @@map("external_jobs")
+}
+
+model Review {
+  id        String    @id @default(uuid())
+  bookingId String    @unique
+  rating    Int
+  comment   String?
+  // Foto del lavoro svolto, opzionali (fino a 3, stesso limite/pattern di
+  // GuidedRequest.photoUrls): caricate su Cloudinary dal cliente al momento
+  // della recensione, mostrate poi nella sezione recensioni del professionista.
+  photoUrls String[]  @default([])
+  // Nascosta da un admin su segnalazione (docs/CHANGELOG.md §144): esclusa
+  // da profilo pubblico, ricerca, home e media voti. La riga resta.
+  hiddenAt  DateTime?
+  createdAt DateTime  @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("reviews")
+}
+
+// ---------------------------------------------------------------------------
+// Pagamenti (lead, abbonamento, boost — CLAUDE.md §1, §6)
+// ---------------------------------------------------------------------------
+
+enum PaymentType {
+  LEAD
+  SUBSCRIPTION
+  VISIBILITY_BOOST
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+model Payment {
+  id                    String        @id @default(uuid())
+  professionalProfileId String
+  type                  PaymentType
+  amountEurCents        Int
+  status                PaymentStatus @default(PENDING)
+  stripePaymentIntentId String?       @unique
+  createdAt             DateTime      @default(now())
+
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+// ---------------------------------------------------------------------------
+// Notifiche — promemoria automatici anti no-show (CLAUDE.md §1)
+// ---------------------------------------------------------------------------
+
+enum NotificationChannel {
+  PUSH
+  EMAIL
+  SMS
+}
+
+model Notification {
+  id        String              @id @default(uuid())
+  userId    String
+  channel   NotificationChannel
+  type      String
+  payload   Json
+  sentAt    DateTime?
+  readAt    DateTime?
+  createdAt DateTime            @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, sentAt])
+  @@map("notifications")
+}
+
+// ---------------------------------------------------------------------------
+// Cronologia conversazione cliente↔professionista (richiesta esplicita
+// dell'utente: "tieni traccia delle varie conversazioni e aggiornamenti...
+// così ognuno cliccando ad esempio sul preventivo possa vedere la
+// cronologia completa"). Una riga per ogni evento del ciclo di vita di una
+// coppia (richiesta guidata, professionista) — non riusa il modello
+// Notification esistente: quello è per-utente ed effimero (badge/toast,
+// marcato "letto"), qui serve uno storico permanente, leggibile da
+// entrambe le parti, con il testo dell'evento già scritto in chiaro
+// (incluse eventuali note libere) invece di un payload da ricostruire lato
+// client. `message` è testo semplice pronto per la UI, mai ricalcolato:
+// coerente con come il resto del progetto tratta gli eventi "già accaduti"
+// (es. Booking.cancellationNote), non un secondo motore di traduzione
+// type→testo come notificationCopy.ts (quello serve solo notifiche fisse,
+// qui il testo varia con i dettagli reali dell'evento, es. la data
+// proposta o la nota del professionista).
+// ---------------------------------------------------------------------------
+
+enum ConversationEventActor {
+  CLIENT
+  PROFESSIONAL
+  SYSTEM
+}
+
+model ConversationEvent {
+  id                    String                 @id @default(uuid())
+  guidedRequestId       String
+  professionalProfileId String
+  actor                 ConversationEventActor
+  message               String
+  // Foto/video allegati a un aggiornamento inserito a mano da cliente o
+  // professionista (richiesta esplicita dell'utente: "dai la possibilità
+  // ad entrambi di inserire foto e video dell'aggiornamento dei lavori") —
+  // sempre vuoto per gli eventi generati automaticamente dal ciclo di vita
+  // (invio preventivo, accettazione, ecc.), stesso pattern array nativo
+  // già in uso per GuidedRequest.photoUrls/Review.photoUrls, fino a 5.
+  mediaUrls             String[]               @default([])
+  // Vero per i messaggi scritti dal sistema a nome di una parte
+  // (TimelineService.log: "Il cliente ha accettato il preventivo", ecc.),
+  // falso per quelli scritti a mano (addUpdate): la chat mostra i primi
+  // centrati e in grigio, non come nuvoletta (docs/CHANGELOG.md §198).
+  automatic             Boolean                @default(false)
+  createdAt             DateTime               @default(now())
+
+  guidedRequest       GuidedRequest       @relation(fields: [guidedRequestId], references: [id], onDelete: Cascade)
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@index([guidedRequestId, professionalProfileId, createdAt])
+  @@map("conversation_events")
+}
+
+// ---------------------------------------------------------------------------
+// Waitlist "in costruzione" — homepage, sezione professionisti in evidenza
+// quando non ci sono ancora abbastanza profili reali (redesign "Scheda
+// Intervento" §4.6): cattura l'email di chi vuole essere avvisato quando la
+// sua zona è coperta, invece di un form decorativo che non fa nulla.
+// ---------------------------------------------------------------------------
+
+model WaitlistSignup {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+
+  @@map("waitlist_signups")
+}
+
+// ---------------------------------------------------------------------------
+// Messaggio di contatto (richiesta esplicita dell'utente: colonna "Contatti"
+// nel footer al posto dell'elenco categorie "Servizi", ispirata a un
+// riferimento screenshot). Nessun account richiesto per inviarlo (stesso
+// principio già seguito per WaitlistSignup, sopra) — l'invio email reale
+// (Resend/Twilio) resta rimandato (CLAUDE.md §9): il messaggio viene
+// comunque salvato per davvero e reso visibile in /admin, non un form
+// finto che non fa nulla.
+enum ContactMessageRole {
+  CLIENT
+  PROFESSIONAL
+  OTHER
+  // Segnalazione di un contenuto illegale da chi non ha un account (DSA
+  // art. 16 c. 1, "qualsiasi persona", docs/CHANGELOG.md §319).
+  REPORT_ILLEGAL
+}
+
+model ContactMessage {
+  id        String             @id @default(uuid())
+  role      ContactMessageRole
+  email     String
+  content   String
+  resolved  Boolean            @default(false)
+  createdAt DateTime           @default(now())
+
+  @@index([resolved, createdAt])
+  @@map("contact_messages")
+}
+
+// ---------------------------------------------------------------------------
+// Segnalazione contenuti (notice-and-action, richiesta esplicita dell'utente
+// — "Verbale di Conformità": Reg. (UE) 2022/2065 (Digital Services Act),
+// art. 16, richiede un meccanismo per segnalare contenuti illeciti anche a
+// piattaforme piccole; rafforza anche l'esenzione di responsabilità come
+// hosting passivo, che presuppone la rimozione tempestiva una volta a
+// conoscenza. Prima non esisteva alcun modo di segnalare un profilo, una
+// recensione o una foto come illecita.
+// ---------------------------------------------------------------------------
+
+enum ContentReportTargetType {
+  PROFESSIONAL_PROFILE
+  REVIEW
+  // Richiesta di un cliente segnalata dal professionista che l'ha ricevuta
+  // (CHANGELOG §130) — solo chi ha un Lead su quella richiesta può segnalarla.
+  GUIDED_REQUEST
+}
+
+enum ContentReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+// Misura presa risolvendo una segnalazione (docs/CHANGELOG.md §144 — DSA
+// art. 17: la motivazione deve dire quale restrizione è stata applicata).
+// Le misure compatibili con ciascun tipo di contenuto sono in
+// `MODERATION_ACTIONS_BY_TARGET` (packages/shared).
+enum ModerationAction {
+  // Solo un avvertimento all'autore, il contenuto resta.
+  WARN
+  // Chiede all'autore di correggere il contenuto (profilo con dati falsi).
+  REQUEST_CORRECTION
+  // Nasconde recensione / recensione sul cliente / richiesta.
+  HIDE_CONTENT
+  // Toglie il profilo del professionista da ricerca e pagina pubblica.
+  SUSPEND_PROFILE
+  // Sospende l'account dell'autore (niente accesso, profilo non visibile).
+  SUSPEND_USER
+}
+
+model ContentReport {
+  id                    String                  @id @default(uuid())
+  reporterId            String
+  targetType            ContentReportTargetType
+  targetId              String
+  reason                String
+  details               String?
+  // Chi segnala dice che il contenuto è illegale (DSA art. 16, docs/CHANGELOG.md
+  // §319): solo allora riceve l'esito della decisione (art. 16 c. 5); per una
+  // violazione dei Termini basta la conferma di presa in carico.
+  claimsIllegal         Boolean                 @default(false)
+  // Dichiarazione di buona fede di chi segnala un contenuto illegale (art. 16 c. 2 lett. d).
+  goodFaithAt           DateTime?
+  status                ContentReportStatus     @default(OPEN)
+  createdAt             DateTime                @default(now())
+  resolvedAt            DateTime?
+  // Motivazione scritta dalla decisione admin (DSA art. 16/17: "notice and
+  // action" + "statement of reasons") — obbligatoria per RESOLVED (la
+  // motivazione che va comunicata a chi ha subito la segnalazione accolta),
+  // facoltativa per DISMISSED. `null` per le segnalazioni già decise prima
+  // dell'introduzione di questo campo.
+  resolutionNote        String?
+  // Misura applicata (solo RESOLVED). `null` per DISMISSED e per le
+  // segnalazioni decise prima di docs/CHANGELOG.md §144.
+  action                ModerationAction?
+  // Legge o punto dei Termini su cui si basa la misura (DSA art. 17 c. 3
+  // lett. d-e), chiave di `MODERATION_GROUNDS` in packages/shared.
+  ground                String?
+  // L'admin ha segnalato il caso alle autorità (DSA art. 18: sospetto reato
+  // che minaccia vita o sicurezza delle persone).
+  authoritiesNotifiedAt DateTime?
+  // "Annulla misura" (ricorso accolto, errore): la misura viene tolta, la
+  // segnalazione resta nell'archivio con la motivazione dell'annullamento.
+  revertedAt            DateTime?
+  revertNote            String?
+  // Autore del contenuto al momento della decisione: destinatario della
+  // motivazione (DSA art. 17), salvato per mostrargli le decisioni che lo
+  // riguardano in /segnalazioni senza ricalcolarlo dal contenuto (che può
+  // nel frattempo sparire). Nessuna relazione: se l'utente elimina
+  // l'account la segnalazione resta comunque nello storico.
+  contentOwnerId        String?
+  // Contestazione dell'autore (reclamo interno, DSA art. 20). Esito:
+  // "Annulla misura" (revertedAt) oppure ricorso respinto (sotto).
+  appealText            String?
+  appealedAt            DateTime?
+  appealRejectedAt      DateTime?
+  appealRejectNote      String?
+  // Foto/video allegati dal professionista a "Qualcosa è andato male"
+  // (docs/CHANGELOG.md §197), mostrati come anteprime nel pannello admin.
+  photoUrls             String[]                @default([])
+
+  reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  // Verifica anti-spam "stesso account, stesso contenuto, ultime 24 ore"
+  // (ContentReportsService.create) — senza questo indice quella query
+  // farebbe una scansione sequenziale dell'intera tabella una volta
+  // cresciuta.
+  @@index([reporterId, targetType, targetId, createdAt])
+  @@index([contentOwnerId])
+  @@map("content_reports")
+}
+
+// ---------------------------------------------------------------------------
+// MANOVIA — fiscale, pagamenti, DAC7, fatture, rimborsi, contestazioni,
+// audit log (CLAUDE.md §88). Specifica tecnica fornita per intero
+// dall'utente (attribuita a un consulente esterno, "ChatGPT" — usa
+// letteralmente "Manovia" per riferirsi a questo stesso sito), 75 sezioni:
+// distingue pagamento mediato dalla piattaforma ("MANOVIA", con commissione
+// trattenuta via Stripe Connect) da pagamento diretto cliente↔professionista
+// fuori piattaforma ("DIRECT", commissione zero ma il lavoro resta comunque
+// tracciato — mai eliminato); introduce la distinzione professionista
+// persona fisica/impresa con dati fiscali completi; DAC7 (rendicontazione
+// fiscale UE per piattaforme digitali di servizi, anche offline); commissioni
+// configurabili e mai hardcoded, con storico versionato; audit log su ogni
+// dato finanziario/fiscale; separazione rigorosa tra dati pubblici e dati
+// fiscali. Richiesta esplicita dell'utente di implementare l'intera
+// specifica ("Bisogna implementare tutto"), confermato esplicitamente di
+// procedere PRIMA di avere una validazione scritta di un commercialista sui
+// ~20 punti che la specifica stessa segnala come da confermare prima del
+// lancio reale (es. il ruolo fiscale esatto di Manovia — intermediario,
+// mandatario, commissionario; chi emette fattura al cliente; se la
+// "consideration" DAC7 include anche i pagamenti diretti; trattamento IVA
+// della commissione) — "Non ancora, procediamo comunque", risposta esplicita
+// dell'utente.
+//
+// Stato di attivazione — stesso principio già seguito in questo progetto
+// per Stripe/Cloudinary (CLAUDE.md §9): il modello dati e la logica sono
+// completi, ma nessun movimento di denaro reale (Stripe Connect) né alcun
+// invio reale di una dichiarazione DAC7 può avvenire finché non esistono
+// SIA le credenziali reali SIA — soprattutto qui, a differenza di
+// Stripe/Cloudinary — una validazione scritta di un commercialista sui
+// punti fiscali sopra: un errore di configurazione su quei due può solo
+// bloccare una funzionalità, un errore su questi può esporre l'utente/la
+// piattaforma a conseguenze fiscali reali. Ogni percorso che tocca denaro
+// reale risponde con un errore esplicito ("non configurato") invece di un
+// crash silenzioso, mai eseguito realmente in questo ambiente di sviluppo.
+//
+// Decisione architetturale esplicita: nessun modello "Job" parallelo creato
+// — il concetto di "Job" della specifica (REQUESTED→...→CLOSED) coincide
+// con il ciclo di vita GuidedRequest→Quote→Booking già esistente in questo
+// progetto (una Booking confermata È il job). Introdurre una seconda
+// entità avrebbe duplicato lo stato in due fonti di verità diverse per lo
+// stesso concetto — esattamente il tipo di duplicazione che il resto di
+// questo file evita sistematicamente. JobPayment (sotto) si collega quindi
+// 1:1 a Booking, non a una nuova tabella.
+//
+// Decisione architetturale esplicita sui ruoli: la specifica elenca ruoli
+// aggiuntivi (SUPER_ADMIN, ACCOUNTANT/TAX_OPERATOR, SUPPORT) — non
+// introdotti in questo giro: l'area admin esistente (UserRole.ADMIN,
+// AdminGuard, CLAUDE.md §9 "Pannello admin minimale") resta l'unico
+// gate per le nuove viste finanza/DAC7, coerente con la scala e la
+// filosofia "minimale" già scelta per l'intero pannello admin — introdurre
+// una gerarchia di permessi granulare per un pannello con un solo
+// amministratore reale oggi sarebbe uno scope aggiuntivo non richiesto.
+// ---------------------------------------------------------------------------
+
+// Tre categorie, non due — richiesta esplicita dell'utente ("Privato",
+// "Professionista", "Azienda"): PRIVATE_INDIVIDUAL e SOLE_PROPRIETOR sono
+// entrambe persone fisiche (nessuna personalità giuridica propria, tassate
+// IRPEF) — la sola differenza è il possesso di una Partita IVA, che decide
+// quali campi la UI richiede (vatNumber/businessRegistrationNumber solo per
+// SOLE_PROPRIETOR). BUSINESS resta la sola categoria con personalità
+// giuridica separata (SRL/SPA/ecc., IRES) — unica con un legale
+// rappresentante (FiscalRepresentative) distinto dalla persona stessa.
+enum ProfessionalEntityType {
+  PRIVATE_INDIVIDUAL // Privato — persona fisica, senza P.IVA
+  SOLE_PROPRIETOR // Professionista — persona fisica con P.IVA (libero professionista/ditta individuale, non una società a sé)
+  BUSINESS // Azienda — impresa/società con personalità giuridica propria (SRL, SPA, ecc.)
+}
+
+enum FiscalVerificationStatus {
+  UNVERIFIED
+  PENDING_VERIFICATION
+  VERIFIED
+  REJECTED
+  REQUIRES_UPDATE
+}
+
+// Dati fiscali del professionista — modello separato da ProfessionalProfile
+// (mai incluso in un endpoint pubblico/di ricerca): la specifica richiede
+// esplicitamente una separazione rigorosa tra dati pubblici del profilo e
+// dati fiscali. Un solo modello copre sia persona fisica che impresa
+// (campi dell'altra categoria restano null), invece di due tabelle
+// separate: `entityType` decide quali campi sono pertinenti, evitando una
+// join in più nei pochi punti che leggono "qualunque tipo di professionista".
+model ProfessionalFiscalProfile {
+  id                    String                  @id @default(uuid())
+  professionalProfileId String                  @unique
+  entityType            ProfessionalEntityType?
+
+  // --- Persona fisica ---
+  fiscalFirstName     String?
+  fiscalLastName      String?
+  fiscalCodiceFiscale String?
+  dateOfBirth         DateTime?
+  placeOfBirth        String?
+  countryOfBirth      String?
+
+  // --- Impresa/società ---
+  businessName               String? // Ragione sociale
+  legalForm                  String? // Es. "Ditta individuale", "SRL"
+  vatNumber                  String? // Partita IVA
+  businessRegistrationNumber String? // Numero di iscrizione al Registro delle Imprese (REA/CCIAA)
+  // Codice LEI (Legal Entity Identifier) — sempre facoltativo, richiesto solo
+  // se l'entità lo possiede già (nessuna entità italiana è mai obbligata ad
+  // averne uno solo per operare su Manovia). Solo per BUSINESS.
+  leiCode                    String?
+  // Stati membri UE aggiuntivi in cui l'entità ha una stabile organizzazione
+  // (oltre alla residenza fiscale principale sotto) — campo DAC7 aggiuntivo
+  // per un'entità con presenza in più paesi UE, quasi sempre vuoto. Codici
+  // ISO a 2 lettere.
+  additionalEuStates         String[] @default([])
+
+  // --- Comuni a entrambi (residenza fiscale — richiesta DAC7 sempre,
+  // indipendentemente dal possesso di P.IVA, principio generale DAC7) ---
+  taxResidenceCountry    String? // Codice ISO del paese di residenza fiscale
+  foreignTin             String? // TIN estero, se la residenza fiscale è fuori Italia
+  // Stato di rilascio del codice fiscale/NIF/P.IVA (può differire dalla
+  // residenza fiscale — es. un cittadino straniero con codice fiscale
+  // italiano ma residenza fiscale nel proprio paese). Determina anche quale
+  // algoritmo di validazione applicare in UI (CLAUDE.md, fiscalValidation.ts
+  // di packages/shared): italiano se "IT", solo un controllo di forma
+  // generico altrimenti.
+  fiscalIdIssuingCountry String?
+  registeredStreet       String? // Via/Piazza (senza numero civico)
+  registeredHouseNumber  String? // Numero civico, campo separato dalla via
+  registeredCity         String?
+  registeredPostalCode   String?
+  registeredProvince     String?
+  registeredCountry      String?
+
+  // Distinto esplicitamente dal KYC di Stripe Connect (stripeChargesEnabled/
+  // stripePayoutsEnabled sotto) — la specifica lo richiede esplicitamente:
+  // "non trattare mai la verifica KYC di Stripe come equivalente automatico
+  // della verifica fiscale Manovia". Impostabile solo da un admin.
+  verificationStatus FiscalVerificationStatus @default(UNVERIFIED)
+  verificationNote   String? // Motivo di un REJECTED/REQUIRES_UPDATE, mostrato al professionista
+  verifiedAt         DateTime?
+
+  // Dichiarazione richiesta esplicitamente dall'utente al salvataggio dei
+  // dati fiscali ("salvando i dati si dichiara che le informazioni fornite
+  // sono corrette e che svolgo l'attività... nel rispetto degli obblighi
+  // fiscali applicabili alla mia situazione") — stesso pattern già in uso
+  // per il consenso di registrazione (`User.legalConsentAt`/
+  // `legalConsentVersion`, CLAUDE.md §48): timestamp + versione del testo
+  // accettato, mai solo un booleano (una versione futura del testo può
+  // richiedere una nuova accettazione).
+  fiscalDeclarationAcceptedAt DateTime?
+  fiscalDeclarationVersion    String?
+
+  // Dati minimi per essere pubblici compilati (docs/CHANGELOG.md §241,
+  // `fiscalDataMissing` in packages/shared): aggiornato a ogni salvataggio.
+  fiscalDataCompleteAt DateTime?
+
+  // --- Stripe Connect (onboarding per i pagamenti MANOVIA-mediati) ---
+  stripeConnectAccountId   String?   @unique
+  stripeChargesEnabled     Boolean   @default(false)
+  stripePayoutsEnabled     Boolean   @default(false)
+  stripeRequirementsStatus String? // riassunto testuale dei requisiti mancanti restituiti da Stripe
+  // Bonifici verso la banca impostati in manuale su Stripe (docs/CHANGELOG.md §249):
+  // i soldi dei lavori restano bloccati sul suo conto Stripe fino allo sblocco.
+  stripeManualPayoutsAt    DateTime?
+  // Saldo negativo coperto dalla sua banca (`debit_negative_balances`, §268):
+  // se rimborsi o contestazioni superano i soldi sul suo conto Stripe li
+  // preleva dal suo conto bancario, non dalla piattaforma.
+  stripeNegativeDebitAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  professionalProfile ProfessionalProfile        @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+  representative      FiscalRepresentative?
+  // Controllo di codice fiscale e partita IVA all'Agenzia delle Entrate e al
+  // Registro Imprese (Openapi, docs/CHANGELOG.md §253).
+  taxIdChecks         TaxIdCheck[]
+  payoutAccount       ProfessionalPayoutAccount?
+
+  @@map("professional_fiscal_profiles")
+}
+
+// Legale rappresentante di un'impresa/società — sub-entità separata
+// dall'azienda/venditore stessa (richiesta esplicita della specifica), mai
+// confusa con l'entità fiscale principale: esiste solo quando entityType
+// è BUSINESS.
+model FiscalRepresentative {
+  id              String   @id @default(uuid())
+  fiscalProfileId String   @unique
+  firstName       String
+  lastName        String
+  codiceFiscale   String?
+  role            String? // es. "Amministratore unico"
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  fiscalProfile ProfessionalFiscalProfile @relation(fields: [fiscalProfileId], references: [id], onDelete: Cascade)
+
+  @@map("fiscal_representatives")
+}
+
+// --- Verifica fiscale e d'identità (docs/CHANGELOG.md §253) -----------------
+// Decisioni dell'utente del 14/10/2026: profilo pubblico dopo i dati fiscali
+// e il controllo con Openapi; documento e selfie (Didit) obbligatori prima di
+// inviare preventivi; Didit al posto della verifica manuale, l'admin guarda
+// solo i casi dubbi. I fornitori sono sostituibili: un solo punto parla con
+// ciascuno (apps/api/src/tax-id-check, apps/api/src/identity-verification).
+
+enum TaxIdKind {
+  CODICE_FISCALE
+  PARTITA_IVA
+}
+
+enum TaxIdCheckStatus {
+  PENDING // da controllare: servizio non raggiungibile o non configurato, si riprova
+  VALID // esiste (CF) o è attiva (P.IVA)
+  INVALID // inesistente o cessata: il profilo non è pubblico finché non si corregge
+  REVIEW // non trovata nel registro (es. alcuni liberi professionisti): la guarda un admin, non blocca
+}
+
+// Un controllo per tipo di dato: si ripete (e si paga) solo se il valore cambia.
+model TaxIdCheck {
+  id              String           @id @default(uuid())
+  fiscalProfileId String
+  kind            TaxIdKind
+  // Il dato controllato, maiuscolo e senza spazi.
+  value           String
+  status          TaxIdCheckStatus @default(PENDING)
+  provider        String?
+  // Esito leggibile (es. "ATTIVA", "CESSATA") e ragione sociale ufficiale
+  // per la P.IVA, quando il registro la restituisce.
+  detail          String?
+  officialName    String?
+  attempts        Int              @default(0)
+  checkedAt       DateTime?
+  nextAttemptAt   DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  fiscalProfile ProfessionalFiscalProfile @relation(fields: [fiscalProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([fiscalProfileId, kind])
+  @@index([status, nextAttemptAt])
+  @@map("tax_id_checks")
+}
+
+enum IdentityVerificationStatus {
+  STARTED // sessione creata, il professionista non ha ancora finito
+  PROCESSING // finita, il fornitore sta decidendo
+  APPROVED // documento e selfie validi e intestati alla persona dei dati fiscali
+  NEEDS_REVIEW // caso dubbio: decide un admin in /admin/verifiche
+  DECLINED // rifiutata dal fornitore o dall'admin: si può riprovare
+  EXPIRED // abbandonata o scaduta: si può riprovare
+}
+
+// Un tentativo di verifica. Foto e selfie restano sul fornitore: qui solo
+// esito, date e l'id della sessione per ritrovarla nella sua console.
+model IdentityVerification {
+  id                      String                     @id @default(uuid())
+  professionalProfileId   String
+  provider                String
+  providerSessionId       String                     @unique
+  sessionUrl              String?
+  status                  IdentityVerificationStatus @default(STARTED)
+  providerStatus          String?
+  // Perché è un caso dubbio o rifiutato, in parole semplici (mai i dati letti dal documento).
+  reason                  String?
+  // Consenso esplicito al trattamento del selfie (GDPR art. 9), con la versione del testo.
+  biometricConsentAt      DateTime
+  biometricConsentVersion String
+  decidedAt               DateTime?
+  reviewedByUserId        String?
+  reviewNote              String?
+  // Fatta con l'ambiente di prova del fornitore (DIDIT_SANDBOX): documento
+  // finto, non dà il badge quando il sito usa le chiavi vere (§338).
+  sandbox                 Boolean                    @default(false)
+  // Scadenza del documento letta dal fornitore, l'unico dato del documento
+  // che si conserva: alla scadenza il badge si toglie (§338).
+  documentExpiresAt       DateTime?
+  // Avviso "il documento sta per scadere" già mandato.
+  expiryRemindedAt        DateTime?
+  createdAt               DateTime                   @default(now())
+  updatedAt               DateTime                   @updatedAt
+
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@index([professionalProfileId, createdAt])
+  @@index([status])
+  @@map("identity_verifications")
+}
+
+// IBAN del conto su cui il professionista riceve i pagamenti online
+// (DAC7, docs/CHANGELOG.md §246): chiesto solo a chi attiva i pagamenti
+// online. Tabella a parte perché non finisca per sbaglio nelle risposte che
+// leggono i dati fiscali: l'IBAN intero è solo cifrato (AES-256-GCM, chiave
+// `FISCAL_DATA_KEY`) e si legge in chiaro solo per il file DAC7.
+model ProfessionalPayoutAccount {
+  id              String    @id @default(uuid())
+  fiscalProfileId String    @unique
+  ibanEncrypted   String
+  ibanCountry     String
+  ibanLast4       String
+  holderName      String
+  // Confronto con il conto indicato a Stripe (paese e ultime 4 cifre):
+  // MATCH, MISMATCH o UNAVAILABLE (Stripe non risponde o non ha ancora il conto).
+  stripeCheck     String?
+  stripeCheckedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  fiscalProfile ProfessionalFiscalProfile @relation(fields: [fiscalProfileId], references: [id], onDelete: Cascade)
+
+  @@map("professional_payout_accounts")
+}
+
+enum JobPaymentMethod {
+  MANOVIA // Pagamento mediato dalla piattaforma (Stripe Connect, commissione trattenuta automaticamente)
+  DIRECT // Pagamento diretto fuori piattaforma — commissione zero, ma il lavoro resta comunque tracciato (mai eliminato)
+}
+
+enum JobPaymentStatus {
+  PENDING // Creato, nessun pagamento ancora avvenuto
+  AWAITING_CONFIRMATION // DIRECT: il professionista ha auto-dichiarato l'importo, in attesa di conferma del cliente
+  CONFIRMED // MANOVIA: transfer riuscito — DIRECT: confermato dal cliente
+  DISPUTED
+  REFUNDED
+  FAILED
+}
+
+// Pagamento del LAVORO (distinto da Payment sopra, che è per lead/
+// abbonamento/boost pagati dal professionista a Manovia — un concetto
+// diverso). 1:1 con una Booking, sempre creata quando una Booking viene
+// confermata, anche per un pagamento DIRECT (richiesta esplicita della
+// specifica: "non eliminare mai un job solo perché il pagamento è
+// diretto"). Importo sempre spezzato in tre — lordo/commissione/netto — mai
+// un solo valore, per non perdere la componente di commissione una volta
+// applicata la regola.
+model JobPayment {
+  id            String           @id @default(uuid())
+  bookingId     String           @unique
+  paymentMethod JobPaymentMethod
+  status        JobPaymentStatus @default(PENDING)
+
+  grossAmountEurCents Int // Importo totale del servizio (quanto paga il cliente)
+  platformFeeEurCents Int    @default(0) // Commissione Manovia — 0 per DIRECT
+  netAmountEurCents   Int // Quanto riceve il professionista (gross - fee)
+  currency            String @default("EUR")
+
+  // Regola di commissione applicata, fissata (snapshot) al momento della
+  // creazione — mai ricalcolata retroattivamente se la regola cambia dopo
+  // (richiesta esplicita della specifica).
+  appliedFeeRuleId String?
+
+  // --- MANOVIA (Stripe Connect) ---
+  stripePaymentIntentId String? @unique
+  stripeTransferId      String? @unique
+
+  // --- Pagamento online con acconto e saldo (docs/CHANGELOG.md §168) ---
+  // Il cliente sceglie il metodo accettando il preventivo. Online: acconto
+  // del 20% dell'importo massimo subito (`stripePaymentIntentId`), saldo a
+  // lavoro chiuso (`balancePaymentIntentId`); Manovia trattiene i soldi e li
+  // trasferisce al professionista alla conferma del cliente o 7 giorni dopo
+  // la chiusura (`releaseDueAt`), meno il costo Stripe e la commissione.
+  // Fasi (`onlineStage`, `JobPaymentOnlineStage` in packages/shared):
+  // AWAITING_DEPOSIT, DEPOSIT_PAID, AWAITING_BALANCE, PAID, RELEASED, REFUNDED.
+  onlineStage            String?
+  depositEurCents        Int?
+  // Acconto online e saldo pagato direttamente al professionista (MIXED,
+  // docs/CHANGELOG.md §237): da Stripe passa solo l'acconto.
+  balanceDirect          Boolean   @default(false)
+  depositPaidAt          DateTime?
+  // Acconto trattenuto perché il cliente ha annullato dentro il preavviso e
+  // il preventivo lo prevedeva (docs/CHANGELOG.md §348): passa al
+  // professionista dopo i soliti giorni di blocco, come un lavoro finito.
+  depositKeptAt          DateTime?
+  balancePaymentIntentId String?   @unique
+  balancePaidAt          DateTime?
+  paidEurCents           Int       @default(0)
+  stripeFeeEurCents      Int       @default(0)
+  refundedEurCents       Int       @default(0)
+  releaseDueAt           DateTime?
+  releasedAt             DateTime?
+  // Saldo non pagato entro 7 giorni: il professionista riceve l'acconto e il
+  // caso arriva al nostro team.
+  balanceUnpaidAt        DateTime?
+  // Contestazione aperta dal cliente presso la sua banca (chargeback,
+  // docs/CHANGELOG.md §236): finché è aperta i soldi non passano al
+  // professionista. Stato Stripe: needs_response, under_review, won, lost, ...
+  stripeDisputeId        String?   @unique
+  stripeDisputeStatus    String?
+  stripeDisputedAt       DateTime?
+
+  // --- Soldi bloccati sul conto Stripe del professionista (docs/CHANGELOG.md §249) ---
+  // Acconto e saldo addebitati "a destinazione" sul conto del professionista
+  // (`stripeDestinationAccountId`; null = vecchio modello, soldi in custodia
+  // sulla piattaforma e trasferimento allo sblocco). La piattaforma trattiene
+  // commissione e costo della carta come application fee
+  // (`applicationFeeEurCents`, quanto ne tiene ancora: il conguaglio si
+  // restituisce al professionista). I bonifici verso la sua banca sono
+  // manuali: partono solo allo sblocco (`payoutPendingEurCents` finché i
+  // soldi non sono disponibili su Stripe, poi `payoutSentEurCents`).
+  // `stripeDirectCharge` (§268, decisione dell'utente del 20/10/2026): il
+  // pagamento è nato direttamente sul conto del professionista (addebito
+  // diretto, header Stripe-Account): rimborsi e contestazioni Stripe li prende
+  // dal suo saldo, non da quello della piattaforma. False = addebito a
+  // destinazione (§249) o vecchio modello.
+  // `refundWaitingEurCents` (§270): rimborsi chiesti ma in attesa di fondi sul
+  // conto Stripe del professionista; tornano a zero quando Stripe li completa.
+  stripeDestinationAccountId String?
+  stripeDirectCharge         Boolean   @default(false)
+  refundWaitingEurCents      Int       @default(0)
+  applicationFeeEurCents     Int       @default(0)
+  payoutPendingEurCents      Int       @default(0)
+  payoutSentEurCents         Int       @default(0)
+  stripePayoutId             String?
+  payoutSentAt               DateTime?
+  payoutPaidAt               DateTime?
+  payoutFailedAt             DateTime?
+  payoutFailureMessage       String?
+  /// Avviso al team Finanza: soldi bloccati da più di 80 giorni (Stripe li paga comunque dopo 90, docs/CHANGELOG.md §249).
+  longHoldAlertedAt          DateTime?
+
+  // --- Contestazioni, debiti e costi Stripe a carico del professionista (docs/CHANGELOG.md §267) ---
+  // Cifra che Stripe ha tolto alla piattaforma per una contestazione in banca
+  // e che abbiamo già ripreso dal conto del professionista (storno), più il
+  // trasferimento con cui gliela restituiamo se la contestazione è vinta.
+  disputeRecoveredEurCents  Int       @default(0)
+  disputeReturnTransferId   String?
+  // Quanto il professionista deve ancora alla piattaforma per questo lavoro
+  // (rimborso o contestazione persa per colpa sua quando i soldi erano già
+  // partiti, trattenuta che resta a suo carico): si riprende dai prossimi
+  // lavori sbloccati, prima del bonifico.
+  professionalDebtEurCents  Int       @default(0)
+  // Costi di Stripe Connect ripresi dal professionista allo sblocco: costo
+  // del bonifico e quota mensile dell'account attivo (`connectMonthlyFeeMonth`,
+  // AAAA-MM, al primo sblocco del mese).
+  connectFeesEurCents       Int       @default(0)
+  connectMonthlyFeeMonth    String?
+  // Carta del cliente salvata con l'acconto per addebitare da sola il saldo
+  // alla chiusura del lavoro (docs/CHANGELOG.md §267): cliente Stripe sulla
+  // piattaforma e metodo di pagamento. `balanceAutoChargeFailedAt`: addebito
+  // non riuscito, il cliente paga con il link.
+  clientStripeCustomerId    String?
+  savedPaymentMethodId      String?
+  balanceAutoChargedAt      DateTime?
+  balanceAutoChargeFailedAt DateTime?
+
+  // --- DIRECT (auto-dichiarazione + conferma cliente) ---
+  directReportedAt   DateTime?
+  directReportedById String? // User.id di chi ha dichiarato l'importo (di norma il professionista)
+  directConfirmedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  booking        Booking          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  appliedFeeRule PlatformFeeRule? @relation(fields: [appliedFeeRuleId], references: [id])
+  revenueEntries ManoviaRevenue[]
+  refunds        Refund[]
+  disputes       Dispute[]
+  invoices       Invoice[]
+
+  @@map("job_payments")
+}
+
+// Regola di commissione — mai hardcoded nel codice (richiesta esplicita
+// della specifica, §75). Percentuale in basis points (1000 = 10,00%) +
+// eventuale importo fisso, con min/max opzionali, e finestra di validità
+// temporale: una nuova regola con `effectiveFrom` più recente rimpiazza
+// quella precedente per i NUOVI JobPayment — quelli già creati restano
+// legati alla regola già applicata via JobPayment.appliedFeeRuleId, mai
+// ricalcolati. Scope opzionale per categoria o per singolo professionista
+// (entrambi null = regola globale di default).
+model PlatformFeeRule {
+  id                    String    @id @default(uuid())
+  name                  String
+  percentageBasisPoints Int       @default(0)
+  fixedFeeEurCents      Int       @default(0)
+  minFeeEurCents        Int?
+  maxFeeEurCents        Int?
+  categoryId            String?
+  professionalProfileId String?
+  effectiveFrom         DateTime  @default(now())
+  effectiveTo           DateTime?
+  createdAt             DateTime  @default(now())
+
+  category            Category?            @relation(fields: [categoryId], references: [id])
+  professionalProfile ProfessionalProfile? @relation(fields: [professionalProfileId], references: [id])
+  jobPayments         JobPayment[]
+
+  @@index([professionalProfileId, effectiveFrom])
+  @@index([categoryId, effectiveFrom])
+  @@map("platform_fee_rules")
+}
+
+enum ManoviaRevenueSource {
+  JOB_COMMISSION
+  SUBSCRIPTION
+  VISIBILITY_BOOST
+  LEAD
+}
+
+// Ricavo REALE di Manovia, distinto dal denaro che transita per un
+// JobPayment (che nella maggior parte dei casi va al professionista) —
+// richiesta esplicita della specifica: "manovia_revenue separata dai
+// pagamenti del job". Una riga per ogni volta che Manovia trattiene o
+// incassa qualcosa di proprio.
+model ManoviaRevenue {
+  id                    String               @id @default(uuid())
+  source                ManoviaRevenueSource
+  amountEurCents        Int
+  professionalProfileId String?
+  jobPaymentId          String?
+  subscriptionId        String?
+  visibilityBoostId     String?
+  paymentId             String?
+  recordedAt            DateTime             @default(now())
+
+  professionalProfile ProfessionalProfile? @relation(fields: [professionalProfileId], references: [id])
+  jobPayment          JobPayment?          @relation(fields: [jobPaymentId], references: [id])
+
+  @@index([source, recordedAt])
+  @@map("manovia_revenue")
+}
+
+enum Dac7ReportingStatus {
+  OPEN
+  DATA_COLLECTION
+  VALIDATION
+  READY
+  EXPORTED
+  SUBMITTED
+  REJECTED
+  CORRECTED
+}
+
+// Periodo di rendicontazione DAC7 — creato automaticamente da un job
+// schedulato (stesso principio già in uso per la scadenza dei Lead,
+// CLAUDE.md §14) per ogni trimestre solare (aggregazione interna) e per
+// l'anno intero (la dichiarazione vera è annuale, scadenza 31 gennaio
+// dell'anno successivo, calcolata mai hardcodata). `reportVersion`
+// incrementa ad ogni correzione dopo un SUBMITTED/REJECTED — mai
+// sovrascritto in place (richiesta esplicita della specifica).
+model Dac7ReportingPeriod {
+  id                String              @id @default(uuid())
+  year              Int
+  quarter           Int? // 1-4, null = aggregato annuale
+  status            Dac7ReportingStatus @default(OPEN)
+  reportVersion     Int                 @default(1)
+  generatedAt       DateTime?
+  submittedAt       DateTime?
+  exportFileUrl     String?
+  // Importi cambiati dopo l'invio (rimborso, lavoro riaperto): da correggere
+  // (docs/CHANGELOG.md §247). Si azzera con la correzione.
+  needsCorrectionAt DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  records Dac7Record[]
+
+  @@unique([year, quarter])
+  @@map("dac7_reporting_periods")
+}
+
+// Aggregato per professionista+periodo — "consideration" nel senso DAC7
+// (compenso al netto della commissione piattaforma). Se il professionista
+// non ha ancora un ProfessionalFiscalProfile VERIFIED al momento della
+// generazione, la riga viene comunque creata (mai perdere il dato
+// aggregato) ma segnalata (`missingFiscalData`) per la validazione manuale
+// prima dell'invio — mai bloccare la sola raccolta dati per un dato
+// fiscale incompleto.
+model Dac7Record {
+  id                          String    @id @default(uuid())
+  reportingPeriodId           String
+  professionalProfileId       String
+  considerationEurCents       Int       @default(0)
+  numberOfTransactions        Int       @default(0)
+  feesWithheldEurCents        Int       @default(0)
+  // Di cui pagati direttamente al professionista e online (docs/CHANGELOG.md §246).
+  directConsiderationEurCents Int       @default(0)
+  onlineConsiderationEurCents Int       @default(0)
+  missingFiscalData           Boolean   @default(false)
+  // Avviso annuale al professionista con i dati comunicati (solo sulle righe dell'anno).
+  sellerNotifiedAt            DateTime?
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
+
+  reportingPeriod     Dac7ReportingPeriod @relation(fields: [reportingPeriodId], references: [id], onDelete: Cascade)
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([reportingPeriodId, professionalProfileId])
+  @@map("dac7_records")
+}
+
+// Configurazione delle regole DAC7 — mai hardcoded nel codice (richiesta
+// esplicita della specifica, §75). Riga singola di configurazione attiva
+// alla volta: cambiarla influenza solo i FUTURI calcoli, i Dac7Record già
+// generati non vengono mai ricalcolati automaticamente.
+// Identità della piattaforma richiesta dallo schema OECD DPI (v1) usato
+// dalla dichiarazione DAC7 reale — MessageSpec/Platform del tracciato XML
+// (vedi il commento in cima a Dac7Service): SendingEntityIN, PlatformName,
+// PlatformID. Nessuno di questi era raccolto da nessuna parte del sistema
+// prima di questo modello — un dato di Manovia stessa, non del
+// professionista, quindi mai hardcoded nel codice (stesso principio già
+// seguito per PlatformFeeRule/Dac7Rule) e configurabile solo da admin.
+// Riga singola (stesso pattern `findFirst() ?? create({})` di Dac7Rule).
+model PlatformDac7Settings {
+  id                  String   @id @default(uuid())
+  sendingEntityIn     String? // P.IVA/identificativo fiscale di Manovia stessa (es. "IT01234567890")
+  platformName        String?
+  platformIdValue     String? // Numero di registrazione della piattaforma presso l'autorità competente
+  platformIdType      String   @default("OECD201") // Codice lista OECD del tipo di identificativo — vedi disclaimer in Dac7Service
+  transmittingCountry String   @default("IT")
+  receivingCountry    String   @default("IT")
+  // Contatore progressivo per costruire un MessageRefId univoco ad ogni
+  // esportazione (mai riutilizzato) — incrementato da Dac7Service.
+  messageSequence     Int      @default(0)
+  updatedAt           DateTime @updatedAt
+
+  @@map("platform_dac7_settings")
+}
+
+model Dac7Rule {
+  id                    String   @id @default(uuid())
+  // Se true, la "consideration" DAC7 include anche i pagamenti DIRECT (non
+  // mediati da Manovia) — punto esplicitamente segnalato dalla specifica
+  // come da confermare con un commercialista prima del lancio (§74):
+  // default prudenziale `true` (la guida DAC7 UE considera "facilitata"
+  // un'attività anche quando il pagamento avviene fuori piattaforma), ma
+  // resta un valore di configurazione modificabile da admin, mai
+  // un'assunzione fissa nel codice.
+  includeDirectPayments Boolean  @default(true)
+  updatedAt             DateTime @updatedAt
+
+  @@map("dac7_rules")
+}
+
+enum InvoiceType {
+  MANOVIA_TO_PROFESSIONAL // Fattura/nota Manovia verso il professionista per la commissione trattenuta
+  PROFESSIONAL_TO_CLIENT // Riferimento al documento che il professionista emette al cliente — Manovia non lo emette mai
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  VOID
+}
+
+model Invoice {
+  id                    String        @id @default(uuid())
+  type                  InvoiceType
+  jobPaymentId          String?
+  professionalProfileId String
+  amountEurCents        Int
+  status                InvoiceStatus @default(DRAFT)
+  issuedAt              DateTime?
+  documentUrl           String?
+  createdAt             DateTime      @default(now())
+
+  jobPayment JobPayment? @relation(fields: [jobPaymentId], references: [id])
+
+  @@map("invoices")
+}
+
+enum RefundStatus {
+  REQUESTED
+  APPROVED
+  PROCESSED
+  REJECTED
+}
+
+model Refund {
+  id             String       @id @default(uuid())
+  jobPaymentId   String
+  amountEurCents Int
+  reason         String?
+  status         RefundStatus @default(REQUESTED)
+  requestedById  String
+  stripeRefundId String?
+  createdAt      DateTime     @default(now())
+  processedAt    DateTime?
+
+  jobPayment JobPayment @relation(fields: [jobPaymentId], references: [id], onDelete: Cascade)
+
+  @@map("refunds")
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED_CLIENT
+  RESOLVED_PROFESSIONAL
+  CLOSED
+}
+
+model Dispute {
+  id             String        @id @default(uuid())
+  jobPaymentId   String
+  openedById     String
+  reason         String
+  status         DisputeStatus @default(OPEN)
+  resolutionNote String?
+  createdAt      DateTime      @default(now())
+  resolvedAt     DateTime?
+
+  jobPayment JobPayment @relation(fields: [jobPaymentId], references: [id], onDelete: Cascade)
+
+  @@map("disputes")
+}
+
+// Log di audit generico per ogni modifica a un dato finanziario/fiscale —
+// richiesta esplicita della specifica ("mai sovrascrivere un dato fiscale
+// senza uno storico versionato", "ogni cambio di payment_method deve
+// produrre un audit log"). Punto unico di scrittura (AuditLogService.record,
+// stessa convenzione di NotificationsService.notify()), mai un
+// trigger/middleware Prisma. `entityType`+`entityId` identificano la riga
+// toccata (es. "JobPayment"/<id>), `fieldName` la singola colonna quando
+// pertinente (null per un evento sull'intera riga, es. creazione). Nessuna
+// relazione Prisma verso User per `changedByUserId` (stessa scelta per
+// `requestedById`/`openedById`/`directReportedById` sopra): sono
+// riferimenti di sola tracciabilità, non vincoli referenziali — evita di
+// appesantire il modello User con altre quattro relazioni inverse per
+// colonne che servono solo a un log.
+model AuditLog {
+  id              String   @id @default(uuid())
+  entityType      String
+  entityId        String
+  fieldName       String?
+  oldValue        String?
+  newValue        String?
+  changedByUserId String?
+  reason          String?
+  createdAt       DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@map("audit_logs")
+}
+
+// Visite al profilo pubblico, contate per giorno (docs/CHANGELOG.md §147):
+// servono alla Home "Oggi" del professionista ("12 visite, la media della
+// tua zona è 28", CLAUDE.md §8). Un contatore per profilo e giorno, mai la
+// singola visita: nessun dato personale di chi guarda (niente IP, niente
+// utente), e la tabella resta piccola.
+model ProfileViewDay {
+  professionalProfileId String
+  day                   DateTime @db.Date
+  count                 Int      @default(0)
+
+  professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
+
+  @@id([professionalProfileId, day])
+  @@index([day])
+  @@map("profile_view_days")
+}
+
+// Ricerche per categoria (docs/CHANGELOG.md §281): contatore per giorno e
+// città, mai la singola ricerca né chi cerca. Serve solo a mettere prima i
+// lavori più cercati nella scelta dei lavori. `city` minuscola, "" se la
+// ricerca era senza città.
+model CategorySearchDay {
+  categoryId String
+  city       String
+  day        DateTime @db.Date
+  count      Int      @default(0)
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([categoryId, city, day])
+  @@index([day])
+  @@map("category_search_days")
+}
+
+// ---------------------------------------------------------------------------
+// Segnalazioni di un problema sul lavoro (docs/CHANGELOG.md §164)
+// ---------------------------------------------------------------------------
+
+enum JobIssueType {
+  NO_SHOW
+  BAD_WORK
+}
+
+enum JobIssueStatus {
+  // Prima fase: cliente e professionista provano a risolvere in chat (§165).
+  CHAT
+  RESOLVED
+  OPEN
+  UPHELD
+  REJECTED
+  // Pagamento diretto (§168): cliente e professionista non si sono
+  // accordati; niente decisione del nostro team, il cliente può recensire.
+  UNRESOLVED
+}
+
+// Il cliente segnala che il professionista non si è presentato o che il
+// lavoro non è andato bene; il professionista può rispondere, un admin
+// decide. Una sola segnalazione per lavoro.
+model JobIssue {
+  id                          String         @id @default(uuid())
+  bookingId                   String         @unique
+  type                        JobIssueType
+  description                 String
+  photoUrls                   String[]       @default([])
+  status                      JobIssueStatus @default(OPEN)
+  professionalResponse        String?
+  professionalRespondedAt     DateTime?
+  resolutionNote              String?
+  resolvedAt                  DateTime?
+  resolvedByUserId            String?
+  // Controversie standard sul modello Amazon A-Z (§167): passaggio al
+  // nostro team (CLIENT = il cliente dice "non abbiamo risolto",
+  // PRO_NO_REPLY = il professionista non ha scritto in chat entro 48 ore).
+  // Da `escalatedAt` il professionista ha 72 ore per dare la sua versione.
+  escalatedAt                 DateTime?
+  escalationReason            String?
+  // Richiesta di informazioni dell'admin: 72 ore per rispondere.
+  infoRequestText             String?
+  infoRequestedAt             DateTime?
+  infoResponse                String?
+  infoRespondedAt             DateTime?
+  // Decisione automatica a favore del cliente se il professionista non
+  // risponde in tempo: NO_EVIDENCE o NO_INFO (null = decisa da un admin).
+  autoDecision                String?
+  // Misura applicata al professionista con la decisione "accolta":
+  // WARNING, DEMOTED o BLOCKED (vedi ProfessionalProfile.demotedUntil).
+  sanction                    String?
+  // Percentuale di quanto pagato online rimborsata al cliente quando la
+  // segnalazione è accolta: 100, 50 o 20 (docs/CHANGELOG.md §267).
+  refundPercent               Int?
+  // Ricorso del professionista entro 30 giorni dalla decisione, esaminato
+  // da un admin diverso da chi ha deciso. ACCEPTED ribalta la decisione.
+  appealText                  String?
+  appealedAt                  DateTime?
+  appealDecision              String?
+  appealNote                  String?
+  appealResolvedAt            DateTime?
+  appealResolvedByUserId      String?
+  // Richiesta nuova inviata ad altri professionisti dopo una mancata
+  // presentazione accolta (pulsante del cliente).
+  redispatchedGuidedRequestId String?
+  createdAt                   DateTime       @default(now())
+  updatedAt                   DateTime       @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("job_issues")
+}
+
+// Eventi Stripe già ricevuti (docs/CHANGELOG.md §170): Stripe ripete un
+// webhook quando non riceve risposta in tempo (succede col risveglio lento
+// di Render), e senza questa tabella ogni ripetizione registrava di nuovo
+// pagamenti e boost. `processedAt` nullo = evento in lavorazione.
+model StripeWebhookEvent {
+  id          String    @id
+  type        String
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+
+  @@map("stripe_webhook_events")
+}
+
+// Link d'invito per un profilo creato da un operatore (docs/CHANGELOG.md
+// §170): il professionista lo apre, sceglie la password ed entra. Si salva
+// solo l'impronta SHA-256 del codice, mai il codice stesso.
+model ProfileInvite {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash       String    @unique
+  /// Copia cifrata (AES-256-GCM) del codice, per mostrare il link
+  /// all'operatore da "Visualizza link" (docs/CHANGELOG.md §172).
+  tokenCiphertext String?
+  createdByUserId String
+  expiresAt       DateTime
+  usedAt          DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@index([userId])
+  @@map("profile_invites")
+}
+
+// Richieste generali chiuse per una categoria in una città (docs/CHANGELOG.md
+// §211): in automatico quando i professionisti della zona ne ricevono troppe
+// o rispondono poco, oppure a mano dall'area admin. Una riga per coppia
+// categoria+città: riaprire valorizza reopenedAt (e keepOpenUntil, per non
+// farla richiudere subito dal controllo automatico).
+model GeneralRequestBlock {
+  id               String    @id @default(uuid())
+  categoryId       String
+  // Nome ufficiale del comune (generalRequestCityKey in packages/shared).
+  city             String
+  closedAt         DateTime  @default(now())
+  // null = chiusura automatica.
+  closedByUserId   String?
+  reason           String
+  // LOAD, RESPONSES o MANUAL (GeneralRequestCloseTrigger); null sulle righe
+  // create prima di §213.
+  closeTrigger     String?
+  reopenedAt       DateTime?
+  reopenedByUserId String?
+  keepOpenUntil    DateTime?
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, city])
+  @@map("general_request_blocks")
+}
+
+// Soglie della chiusura automatica delle richieste generali, modificabili da
+// /admin/richieste-generali (docs/CHANGELOG.md §212). Riga singola (stesso
+// pattern `findFirst() ?? create({})` di PlatformDac7Settings); i default
+// coincidono con DEFAULT_GENERAL_REQUEST_THRESHOLDS in packages/shared.
+model GeneralRequestSettings {
+  id                 String   @id @default(uuid())
+  autoCloseEnabled   Boolean  @default(true)
+  maxWeeklyPerPro    Float    @default(10)
+  minResponsePercent Int      @default(33)
+  minMeasuredLeads   Int      @default(20)
+  keepOpenDays       Int      @default(30)
+  updatedAt          DateTime @updatedAt
+  updatedByUserId    String?
+
+  @@map("general_request_settings")
+}
