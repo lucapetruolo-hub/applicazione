@@ -198,7 +198,7 @@ export function NewProfilesCarousel({
           top: 0;
           bottom: 0;
           border-radius: 2px;
-          background: ${brand.cianografia};
+          background: ${brand.cianografiaPieno};
           transition: left 120ms linear;
         }
         .npc-arrows {
@@ -262,7 +262,7 @@ export function NewProfilesCarousel({
           display: flex;
           padding: 4px 10px;
           border-radius: 999px;
-          background: ${brand.cianografia};
+          background: ${brand.cianografiaPieno};
         }
         .npc-root :global(.npc-photo) {
           position: absolute;

@@ -96,7 +96,7 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
               href="/preventivo"
               style={{
                 display: "inline-block",
-                backgroundColor: brand.cianografia,
+                backgroundColor: brand.cianografiaPieno,
                 color: "#fff",
                 fontWeight: 700,
                 fontSize: 16,

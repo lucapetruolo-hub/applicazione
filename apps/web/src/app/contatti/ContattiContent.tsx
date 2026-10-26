@@ -212,7 +212,7 @@ export default function ContattiContent({ initialReport = false }: { initialRepo
                     padding: "17px 32px",
                     borderRadius: 999,
                     border: "none",
-                    backgroundColor: brand.cianografia,
+                    backgroundColor: brand.cianografiaPieno,
                     color: "white",
                     fontSize: 18,
                     fontWeight: 700,

@@ -1193,7 +1193,7 @@ function DashboardAgendaContent() {
           </>
         ) : null}
         {daySlots.slice(0, 4).map((s, i) => (
-          <YStack key={i} width={6} height={6} borderRadius={3} backgroundColor={brand.cianografia} />
+          <YStack key={i} width={6} height={6} borderRadius={3} backgroundColor={brand.cianografiaPieno} />
         ))}
         {daySlots.length > 4 ? (
           <Text fontFamily="$body" fontSize={11} color={brand.grafite70}>

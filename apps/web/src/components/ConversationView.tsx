@@ -1037,7 +1037,7 @@ export function ConversationView({
           width: 36px;
           height: 36px;
           border: none;
-          background: ${brand.cianografia};
+          background: ${brand.cianografiaPieno};
         }
         .composer-send:not(:disabled):hover {
           background: ${brand.cianografiaScuro};

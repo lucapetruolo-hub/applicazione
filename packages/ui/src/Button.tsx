@@ -36,7 +36,7 @@ export const Button = styled(TamaguiButton, {
         height: BUTTON_HEIGHT,
         paddingHorizontal: 24,
         borderRadius: PILL,
-        backgroundColor: brand.cianografia,
+        backgroundColor: brand.cianografiaPieno,
         color: "white",
         fontFamily: "$body",
         fontWeight: "600",

@@ -143,7 +143,7 @@ function ConfermaEmail() {
                 borderRadius={28}
                 alignItems="center"
                 justifyContent="center"
-                backgroundColor={brand.cianografia}
+                backgroundColor={brand.cianografiaPieno}
               >
                 <Text color={brand.calce} fontSize="$7" fontWeight="800">
                   ✓
@@ -156,7 +156,7 @@ function ConfermaEmail() {
                 href={nextHref}
                 style={{
                   color: brand.calce,
-                  backgroundColor: brand.cianografia,
+                  backgroundColor: brand.cianografiaPieno,
                   borderRadius: 999,
                   padding: "10px 24px",
                   fontWeight: 700,

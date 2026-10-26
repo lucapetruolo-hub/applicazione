@@ -862,7 +862,7 @@ export function ResultsListWithMap({
           padding: 14px 20px;
           border-radius: 999px;
           border: none;
-          background: ${brand.cianografia};
+          background: ${brand.cianografiaPieno};
           color: #ffffff;
           font-size: 15px;
           font-weight: 700;
@@ -916,7 +916,7 @@ export function ResultsListWithMap({
           transition: background 150ms ease;
         }
         .filters-switch.on {
-          background: ${brand.cianografia};
+          background: ${brand.cianografiaPieno};
         }
         .filters-switch-knob {
           position: absolute;
@@ -947,7 +947,7 @@ export function ResultsListWithMap({
           cursor: pointer;
         }
         .filters-pill.active {
-          background: ${brand.cianografia};
+          background: ${brand.cianografiaPieno};
           border-color: ${brand.cianografia};
           color: #ffffff;
         }

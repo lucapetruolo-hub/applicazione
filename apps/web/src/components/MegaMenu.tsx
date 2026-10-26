@@ -322,7 +322,7 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
         }
         :global(.mega-footer) {
           display: block;
-          background: #189a63;
+          background: #128552;
           color: #ffffff;
           padding: 14px 24px;
           font-size: 14px;
@@ -486,7 +486,7 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
         :global(.mega-drawer-cta a) {
           display: block;
           text-align: center;
-          background: #189a63;
+          background: #128552;
           color: white;
           padding: 12px;
           border-radius: 14px;

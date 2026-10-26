@@ -20,6 +20,7 @@ const BRAND_VARIABLES = [
   `--ag-muted: ${brand.grafite70};`,
   `--ag-green: ${brand.cianografia};`,
   `--ag-green-dark: ${brand.cianografiaScuro};`,
+  `--ag-green-fill: ${brand.cianografiaPieno};`,
   `--ag-green-veil: ${brand.cianografiaVelo};`,
   `--ag-brass: ${brand.ottone};`,
   `--ag-brass-dark: ${brand.ottoneScuro};`,

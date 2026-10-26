@@ -36,7 +36,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
           type="button"
           onClick={retry}
           disabled={isPending}
-          style={{ background: "#189a63", color: "#fff", border: "none", borderRadius: 999, padding: "10px 20px", fontWeight: 700, cursor: "pointer" }}
+          style={{ background: "#128552", color: "#fff", border: "none", borderRadius: 999, padding: "10px 20px", fontWeight: 700, cursor: "pointer" }}
         >
           {isPending ? "Caricamento…" : "Riprova"}
         </button>

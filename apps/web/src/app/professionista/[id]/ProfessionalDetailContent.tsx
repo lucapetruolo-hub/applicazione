@@ -821,7 +821,7 @@ export function ProfessionalDetailContent({
                   paddingHorizontal="$4"
                   paddingVertical="$2"
                   borderRadius="$10"
-                  backgroundColor={brand.cianografia}
+                  backgroundColor={brand.cianografiaPieno}
                   cursor="pointer"
                   accessibilityRole="button"
                   // Porta la griglia sul giorno del primo orario libero, che

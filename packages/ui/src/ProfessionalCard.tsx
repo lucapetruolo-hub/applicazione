@@ -694,7 +694,7 @@ export function ProfessionalCard({
                     paddingHorizontal="$3"
                     paddingVertical={6}
                     borderRadius="$10"
-                    backgroundColor={brand.cianografia}
+                    backgroundColor={brand.cianografiaPieno}
                     cursor="pointer"
                     accessibilityRole="button"
                     accessibilityLabel="Mostra orari disponibili"

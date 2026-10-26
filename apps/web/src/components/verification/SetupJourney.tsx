@@ -93,7 +93,7 @@ export const journeyCurrent = (steps: JourneyStep[]) => steps.find((step) => ste
 
 const STATE_STYLE: Record<JourneyStepState, { color: string; background: string }> = {
   done: { color: brand.verificato, background: brand.cianografiaVelo },
-  current: { color: "#FFFFFF", background: brand.cianografia },
+  current: { color: "#FFFFFF", background: brand.cianografiaPieno },
   waiting: { color: brand.ottoneScuro, background: brand.ottoneVelo },
   locked: { color: brand.grafite70, background: brand.gesso },
 };

@@ -114,7 +114,7 @@ export function ProCtaSection() {
             </span>
           </div>
           <div className="pro-cta-notif pro-cta-notif-bottom" aria-hidden>
-            <span className="pro-cta-notif-icon" style={{ background: brand.cianografia }}>
+            <span className="pro-cta-notif-icon" style={{ background: brand.cianografiaPieno }}>
               <Icon name="bell-ring" size={18} color="white" strokeWidth={2} />
             </span>
             <span>

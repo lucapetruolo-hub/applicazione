@@ -37,7 +37,7 @@ export function BookingConfirmed({ booking, address, token, onDone }: { booking:
       <YStack alignItems="center" gap="$3">
         <YStack position="relative" padding={6} borderRadius={999} backgroundColor={brand.cianografiaVelo}>
           <Avatar name={booking.businessName} imageUrl={booking.professionalImageUrl} size={88} />
-          <XStack position="absolute" right={0} bottom={0} width={32} height={32} borderRadius={999} backgroundColor={brand.cianografia} borderWidth={3} borderColor={brand.gesso} alignItems="center" justifyContent="center">
+          <XStack position="absolute" right={0} bottom={0} width={32} height={32} borderRadius={999} backgroundColor={brand.cianografiaPieno} borderWidth={3} borderColor={brand.gesso} alignItems="center" justifyContent="center">
             <Icon name="check" size={16} color="white" strokeWidth={3} />
           </XStack>
         </YStack>

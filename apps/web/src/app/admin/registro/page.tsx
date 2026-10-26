@@ -16,6 +16,13 @@ const ENTITY_LABEL: Record<string, string> = {
   Dispute: "Contestazione pagamento",
   JobPayment: "Pagamento",
   ProfessionalFiscalProfile: "Dati fiscali",
+  ProfessionalProfile: "Profilo",
+  IdentityVerification: "Verifica identità",
+  JobIssue: "Problema sul lavoro",
+  Conversation: "Conversazione",
+  FiscalRepresentative: "Legale rappresentante",
+  GeneralRequestSettings: "Richieste generali",
+  GeneralRequestBlock: "Richieste generali chiuse",
 };
 
 /**
@@ -77,26 +84,29 @@ export default function AdminRegistroPage() {
           <table className="admin-table">
             <thead>
               <tr>
-                <th>Quando</th>
-                <th>Chi</th>
-                <th>Su cosa</th>
                 <th>Azione</th>
+                <th>Su cosa</th>
+                <th>Chi</th>
+                <th>Quando</th>
                 <th>Motivo</th>
               </tr>
             </thead>
             <tbody>
               {data.rows.map((row) => (
                 <tr key={row.id}>
-                  <td style={{ whiteSpace: "nowrap" }}>{formatAdminDate(row.createdAt, true)}</td>
-                  <td>{row.changedByEmail ?? "Sistema"}</td>
+                  {/* La frase dell'azione per prima e in grassetto, anche da
+                      telefono; il valore grezzo resta solo nel database
+                      (docs/CHANGELOG.md §350). */}
+                  <td className="admin-cell-main">{row.label}</td>
                   <td>
                     {row.entityType === "User" ? (
                       <Link href={`/admin/utenti/${row.entityId}`}>{row.entityLabel ?? "Utente"}</Link>
                     ) : (
-                      (ENTITY_LABEL[row.entityType] ?? row.entityType)
+                      (ENTITY_LABEL[row.entityType] ?? "Altro")
                     )}
                   </td>
-                  <td>{row.label}</td>
+                  <td>{row.changedByEmail ?? "Sistema"}</td>
+                  <td style={{ whiteSpace: "nowrap" }}>{formatAdminDate(row.createdAt, true)}</td>
                   <td>{row.reason ?? "—"}</td>
                 </tr>
               ))}

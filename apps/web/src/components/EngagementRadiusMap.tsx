@@ -33,6 +33,7 @@ export function EngagementRadiusMap({ latitude, longitude, engagementRadiusKm, u
     <div style={{ height: 360, width: "100%", borderRadius: 10, overflow: "hidden" }}>
       <GoogleMapGate
         staticMap={{ markers: [[latitude, longitude]], center: [latitude, longitude], zoom: 9, radiiKm: [engagementRadiusKm, urgentEngagementRadiusKm] }}
+        staticAlt={`Mappa della tua zona: raggio di ${engagementRadiusKm} km per le richieste e di ${urgentEngagementRadiusKm} km per quelle urgenti`}
       >
         <GoogleMap
           defaultCenter={center}
