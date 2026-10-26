@@ -8,6 +8,7 @@ import {
   italianComuni,
   jobOccurrenceOn,
   DEFAULT_WEEK_TEMPLATE,
+  starterWeekTemplate,
   PUBLIC_AGENDA_DAYS,
   wallClockToday,
   weekTemplateSync,
@@ -79,11 +80,38 @@ export class AgendaService {
   async weekTemplate(userId: string): Promise<AgendaWeekTemplateState> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { userId },
-      select: { agendaWeekTemplate: true, agendaTemplateFilledUntil: true },
+      select: { agendaWeekTemplate: true, agendaTemplateFilledUntil: true, agendaStarterHoursAt: true },
     });
     if (!profile) throw new NotFoundException("Profilo professionista non trovato.");
     const parsed = agendaWeekTemplateSchema.safeParse(profile.agendaWeekTemplate);
-    return { template: parsed.success ? parsed.data : DEFAULT_WEEK_TEMPLATE, active: profile.agendaTemplateFilledUntil !== null, changedDays: 0 };
+    return {
+      template: parsed.success ? parsed.data : DEFAULT_WEEK_TEMPLATE,
+      active: profile.agendaTemplateFilledUntil !== null,
+      changedDays: 0,
+      starter: profile.agendaStarterHoursAt !== null,
+    };
+  }
+
+  /**
+   * Orari di partenza di un profilo appena creato (richiesta dell'utente,
+   * docs/CHANGELOG.md §356): la settimana tipo dal lunedì al sabato 8–13 e
+   * 14–20 entra subito nell'agenda, come se l'avesse salvata lui. Solo se
+   * l'agenda è ancora vuota: un profilo con orari suoi non si tocca.
+   */
+  async applyStarterHours(professionalProfileId: string, remoteAvailable: boolean): Promise<void> {
+    const [profile, slotCount] = await Promise.all([
+      this.prisma.professionalProfile.findUnique({ where: { id: professionalProfileId }, select: { agendaTemplateFilledUntil: true } }),
+      this.prisma.availabilitySlot.count({ where: { professionalProfileId } }),
+    ]);
+    if (!profile || profile.agendaTemplateFilledUntil || slotCount > 0) return;
+    await this.syncWeekTemplate(professionalProfileId, starterWeekTemplate(remoteAvailable), null, null);
+    await this.prisma.professionalProfile.update({ where: { id: professionalProfileId }, data: { agendaStarterHoursAt: new Date() } });
+  }
+
+  /** "Vanno bene così": il professionista tiene gli orari di partenza e l'avviso sparisce. */
+  async keepStarterHours(userId: string): Promise<AgendaWeekTemplateState> {
+    await this.prisma.professionalProfile.updateMany({ where: { userId }, data: { agendaStarterHoursAt: null } });
+    return this.weekTemplate(userId);
   }
 
   /**
@@ -99,8 +127,8 @@ export class AgendaService {
     const previousParsed = agendaWeekTemplateSchema.safeParse(profile.agendaWeekTemplate);
     // Prima attivazione: nessun giorno "già riempito", la settimana di prima non conta.
     const previous = profile.agendaTemplateFilledUntil && previousParsed.success ? previousParsed.data : null;
-    const changedDays = await this.syncWeekTemplate(profile.id, template, previous, profile.agendaTemplateFilledUntil);
-    return { template, active: true, changedDays };
+    const changedDays = await this.syncWeekTemplate(profile.id, template, previous, profile.agendaTemplateFilledUntil, new Date(), true);
+    return { template, active: true, changedDays, starter: false };
   }
 
   /**
@@ -133,13 +161,17 @@ export class AgendaService {
     const changedDays = await this.prisma.$transaction(async (tx) => {
       const sync = await this.computeSync(tx, profile.id, template, null, null, dates, new Date(`${dates[0]}T00:00:00.000Z`), end);
       await this.applySync(tx, profile.id, sync, false);
-      if (!profile.agendaTemplateFilledUntil) {
-        await tx.professionalProfile.update({ where: { id: profile.id }, data: { agendaWeekTemplate: template as unknown as Prisma.InputJsonValue } });
-      }
+      await tx.professionalProfile.update({
+        where: { id: profile.id },
+        data: {
+          agendaStarterHoursAt: null,
+          ...(profile.agendaTemplateFilledUntil ? {} : { agendaWeekTemplate: template as unknown as Prisma.InputJsonValue }),
+        },
+      });
       return sync.changedDays;
     });
     const saved = agendaWeekTemplateSchema.safeParse(profile.agendaTemplateFilledUntil ? profile.agendaWeekTemplate : template);
-    return { template: saved.success ? saved.data : template, active: profile.agendaTemplateFilledUntil !== null, changedDays };
+    return { template: saved.success ? saved.data : template, active: profile.agendaTemplateFilledUntil !== null, changedDays, starter: false };
   }
 
   /** Ogni notte la settimana tipo riempie i giorni che entrano nei prossimi 63. */
@@ -166,6 +198,7 @@ export class AgendaService {
     previous: AgendaWeekTemplate | null,
     filledUntil: Date | null,
     now = new Date(),
+    clearStarter = false,
   ): Promise<number> {
     const today = wallClockToday(now);
     const dates: string[] = [];
@@ -183,7 +216,11 @@ export class AgendaService {
       const nextFilledUntil = filledUntil && filledUntil > lastDate ? filledUntil : lastDate;
       await tx.professionalProfile.update({
         where: { id: professionalProfileId },
-        data: { agendaWeekTemplate: template as unknown as Prisma.InputJsonValue, agendaTemplateFilledUntil: nextFilledUntil },
+        data: {
+          agendaWeekTemplate: template as unknown as Prisma.InputJsonValue,
+          agendaTemplateFilledUntil: nextFilledUntil,
+          ...(clearStarter ? { agendaStarterHoursAt: null } : {}),
+        },
       });
       return sync.changedDays;
     });

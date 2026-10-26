@@ -21019,3 +21019,18 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - Modello email (`email-layout.ts`): righe "lunghe" (`long`, etichetta sopra e testo normale sotto), titolo del riquadro (`detailsTitle`), miniature (`detailImages`) e link secondario sotto il pulsante (`secondaryLink`); anche nella versione solo testo.
 
 **Verifica**: typecheck API e sito, lint, test dell'API (5 nuovi su `requestSentEmail`), anteprime a 390 e 1280 px con `email:preview`.
+
+## 356. Orari di partenza nell'agenda dei nuovi professionisti
+
+**Richiesta di Luca** (26/10/2026): "quando un professionista crea un nuovo profilo, standard nell'agenda dobbiamo mettere degli orari preimpostati come ad esempio 8-13 14-20 con 5 domicilio e 5 online per fascia", "dal lunedì al sabato"; serve "nel caso il professionista non imposti da subito l'agenda".
+
+**Fatto**:
+- Alla prima creazione del profilo (`PUT /professionals/me`, anche quello creato da un operatore) la settimana tipo `starterWeekTemplate` (`packages/shared/src/agendaTools.ts`) entra subito nell'agenda: dal lunedì al sabato 8–13 e 14–20, 5 clienti a domicilio e 5 online per fascia (`STARTER_SLOT_CAPACITY`). Online solo se il profilo lavora anche online (`remoteAvailable`): altrimenti i clienti vedrebbero fasce online che il professionista non offre. Funziona come una settimana tipo salvata da lui: 63 giorni riempiti e ogni notte quelli nuovi (§323).
+- Solo per i profili nuovi: `AgendaService.applyStarterHours` non fa nulla se l'agenda ha già fasce o una settimana tipo salvata. I profili esistenti restano come sono. Un errore qui non blocca mai il salvataggio del profilo (solo un log).
+- `ProfessionalProfile.agendaStarterHoursAt` (migrazione `20261026120000_orari_di_partenza`) ricorda che gli orari sono quelli di partenza. Finché è pieno:
+  - nel Calendario dell'agenda: "Orari di partenza: dal lunedì al sabato, 8–13 e 14–20. Cambiali quando vuoi." con "Rivedi gli orari", che apre "Orari di lavoro" direttamente su "La tua settimana";
+  - in "La tua settimana": "Orari di partenza. Li abbiamo messi noi e i clienti li vedono già: cambiali qui sotto e salva, quando vuoi." con "Vanno bene così" (`POST /agenda/week-template/starter/keep`).
+  - L'avviso sparisce con "Vanno bene così" o salvando la settimana (per tutti i mesi o per un mese solo).
+- La settimana proposta a chi non l'ha mai salvata (`DEFAULT_WEEK_TEMPLATE`) e l'orario pronto "Mattina e pomeriggio" passano agli stessi orari (prima lunedì-venerdì 8–13 e 14–18, 1 cliente a domicilio).
+
+**Verifica**: typecheck API e sito, lint, tutti i test dell'API (nuovi: `starter-hours.test.ts`, orari di partenza in `agenda-tools.test.ts`); prova su database locale: un professionista nuovo ha 108 fasce (lun-sab, 9 settimane) 8–13 e 14–20 con 5+5. Anteprime a 390 e 1440 px in `anteprime/orari-di-partenza/`. Prova e2e della settimana tipo aggiornata: il sabato ora è già nella proposta.

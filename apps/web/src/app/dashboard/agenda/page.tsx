@@ -38,7 +38,7 @@ import { AgendaTimeGrid, WeatherIcon, type AgendaDayNote, type AgendaFreeBand, t
 import { AgendaMiniMonth } from "@/components/agenda/AgendaMiniMonth";
 import { AppointmentPanel } from "@/components/agenda/AppointmentPanel";
 import { CalendarLinkModal } from "@/components/agenda/CalendarLinkModal";
-import { WeekTemplateEditor } from "@/components/agenda/WeekTemplateEditor";
+import { starterDaysLabel, WeekTemplateEditor } from "@/components/agenda/WeekTemplateEditor";
 import { ZoneDemandCard } from "@/components/agenda/ZoneDemandCard";
 import { DayRouteSection } from "@/components/agenda/DayRouteSection";
 import { readAgendaOffline, saveAgendaOffline } from "@/lib/agendaOffline";
@@ -232,6 +232,8 @@ function DashboardAgendaContent() {
   const [cancelingBooking, setCancelingBooking] = useState<ProfessionalBooking | null>(null);
   const [weekTemplate, setWeekTemplate] = useState<AgendaWeekTemplate | null>(null);
   const [weekTemplateActive, setWeekTemplateActive] = useState(false);
+  // Orari di partenza del profilo nuovo, finché non li conferma o li cambia (§356).
+  const [starterHours, setStarterHours] = useState(false);
   // Dopo "Salva la settimana" il server cambia le fasce dei prossimi giorni: si rileggono.
   const [slotsReload, setSlotsReload] = useState(0);
   const [savingTemplate, setSavingTemplate] = useState(false);
@@ -420,6 +422,7 @@ function DashboardAgendaContent() {
         startTransition(() => {
           setWeekTemplate(state.template);
           setWeekTemplateActive(state.active);
+          setStarterHours(state.starter);
         }),
       )
       .catch(() => {});
@@ -1578,6 +1581,16 @@ function DashboardAgendaContent() {
     return { key: toIsoDate(month).slice(0, 7), label: `${monthLabel(month).toLowerCase()} ${month.getUTCFullYear()}` };
   });
 
+  async function keepStarterHours() {
+    if (!token) return;
+    setStarterHours(false);
+    try {
+      await apiClient.keepAgendaStarterHours(token);
+    } catch {
+      setStarterHours(true);
+    }
+  }
+
   async function changeWeekTemplate(next: AgendaWeekTemplate, month: string | null = null): Promise<boolean> {
     if (!token) return false;
     setTemplateNotice(null);
@@ -1586,6 +1599,7 @@ function DashboardAgendaContent() {
       const state = month ? await apiClient.saveAgendaWeekTemplateForMonth(token, next, month) : await apiClient.saveAgendaWeekTemplate(token, next);
       if (!month) setWeekTemplate(state.template);
       setWeekTemplateActive(state.active);
+      setStarterHours(state.starter);
       setSlotsReload((n) => n + 1);
       const where = month ? `a ${templateMonths.find((m) => m.key === month)?.label ?? month}` : "a tutti i mesi";
       setTemplateNotice(
@@ -1718,6 +1732,25 @@ function DashboardAgendaContent() {
         {offlineSavedAt ? (
           <div className="ag-banner warn" role="status">
             Senza connessione: agenda aggiornata alle {new Date(offlineSavedAt).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}.
+          </div>
+        ) : null}
+
+        {starterHours && slots.length > 0 && activeTab !== "orari" ? (
+          <div className="ag-banner info ag-wt-starter" style={{ marginTop: 0 }} role="status">
+            <span>
+              {weekTemplate ? <>Orari di partenza: {starterDaysLabel(weekTemplate)}. </> : null}Cambiali quando vuoi.
+            </span>
+            <button
+              type="button"
+              className="ag-btn sm"
+              onClick={() => {
+                setActiveTab("orari");
+                // Dritto alla settimana, non a "Chiudi un giorno" che sta sopra.
+                requestAnimationFrame(() => document.querySelector(".ag-wt")?.scrollIntoView({ block: "start" }));
+              }}
+            >
+              Rivedi gli orari
+            </button>
           </div>
         ) : null}
 
@@ -1933,7 +1966,16 @@ function DashboardAgendaContent() {
             </div>
 
             {weekTemplate ? (
-              <WeekTemplateEditor key={JSON.stringify(weekTemplate)} template={weekTemplate} active={weekTemplateActive} months={templateMonths} onSave={changeWeekTemplate} saving={savingTemplate} />
+              <WeekTemplateEditor
+                key={JSON.stringify(weekTemplate)}
+                template={weekTemplate}
+                active={weekTemplateActive}
+                starter={starterHours}
+                onKeepStarter={() => void keepStarterHours()}
+                months={templateMonths}
+                onSave={changeWeekTemplate}
+                saving={savingTemplate}
+              />
             ) : (
               <SkeletonBlock height={360} radius={20} />
             )}

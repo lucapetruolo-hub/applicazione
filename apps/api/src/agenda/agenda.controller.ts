@@ -32,6 +32,11 @@ export class AgendaController {
     return this.agendaService.saveWeekTemplateForMonth(req.user.userId, body.template, body.month);
   }
 
+  @Post("week-template/starter/keep")
+  keepStarterHours(@Req() req: AuthenticatedRequest) {
+    return this.agendaService.keepStarterHours(req.user.userId);
+  }
+
   @Get("weather")
   weather(@Req() req: AuthenticatedRequest) {
     return this.agendaService.weather(req.user.userId);

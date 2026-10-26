@@ -2,6 +2,7 @@ import { CategoriesModule } from "../categories/categories.module";
 import { ProfessionalVerificationModule } from "../professional-verification/professional-verification.module";
 import { SubscriptionsModule } from "../subscriptions/subscriptions.module";
 import { Module } from "@nestjs/common";
+import { AgendaModule } from "../agenda/agenda.module";
 import { AuthModule } from "../auth/auth.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { GuidedRequestsModule } from "../guided-requests/guided-requests.module";
@@ -11,7 +12,7 @@ import { ProfessionalsController } from "./professionals.controller";
 import { ProfessionalsService } from "./professionals.service";
 
 @Module({
-  imports: [AuthModule, NotificationsModule, GuidedRequestsModule, ProfessionalMetricsModule, TimelineModule, SubscriptionsModule, ProfessionalVerificationModule, CategoriesModule],
+  imports: [AuthModule, NotificationsModule, GuidedRequestsModule, ProfessionalMetricsModule, TimelineModule, SubscriptionsModule, ProfessionalVerificationModule, CategoriesModule, AgendaModule],
   controllers: [ProfessionalsController],
   providers: [ProfessionalsService],
   exports: [ProfessionalsService],

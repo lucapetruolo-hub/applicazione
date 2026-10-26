@@ -810,6 +810,8 @@
 /* Settimana tipo in tre passi (docs/CHANGELOG.md §323). */
 .ag-wt {
   padding: 20px;
+  /* "Rivedi gli orari" la porta in cima, sotto l'intestazione fissa (§356). */
+  scroll-margin-top: 136px;
 }
 .ag-wt-body {
   display: grid;
@@ -840,6 +842,10 @@
   margin-bottom: 2px;
   font-weight: 600;
   font-size: 16px;
+}
+.ag-wt-starter {
+  flex-wrap: wrap;
+  margin: 14px 0 0;
 }
 .ag-wt-hint {
   font-size: 14px;

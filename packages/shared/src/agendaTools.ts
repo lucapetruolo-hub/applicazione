@@ -51,21 +51,34 @@ export type AgendaWeekTemplateMonth = z.infer<typeof agendaWeekTemplateMonthSche
 /**
  * Settimana tipo con il suo stato (docs/CHANGELOG.md §323): `active` dopo il
  * primo "Salva la settimana", da lì vale per tutte le settimane;
- * `changedDays` = giorni aggiornati dall'ultimo salvataggio.
+ * `changedDays` = giorni aggiornati dall'ultimo salvataggio; `starter` finché
+ * il nuovo professionista non ha confermato o cambiato gli orari di partenza
+ * (docs/CHANGELOG.md §356).
  */
-export type AgendaWeekTemplateState = { template: AgendaWeekTemplate; active: boolean; changedDays: number };
+export type AgendaWeekTemplateState = { template: AgendaWeekTemplate; active: boolean; changedDays: number; starter: boolean };
 
-/** Settimana tipo proposta la prima volta: dal lunedì al venerdì 8–13 e 14–18, a domicilio. */
-export const DEFAULT_WEEK_TEMPLATE: AgendaWeekTemplate = {
-  days: [0, 1, 2, 3, 4, 5, 6].map((day) =>
-    day === 0 || day === 6
-      ? []
-      : [
-          { start: "08:00", end: "13:00", allowsHome: true, allowsOnline: false, homeMax: 1, onlineMax: null },
-          { start: "14:00", end: "18:00", allowsHome: true, allowsOnline: false, homeMax: 1, onlineMax: null },
-        ],
-  ),
-};
+/** Clienti per fascia negli orari di partenza, a domicilio e online (decisione dell'utente, §356). */
+export const STARTER_SLOT_CAPACITY = 5;
+
+/**
+ * Orari di partenza di ogni nuovo profilo (richiesta dell'utente,
+ * docs/CHANGELOG.md §356): dal lunedì al sabato 8–13 e 14–20, 5 clienti a
+ * domicilio e 5 online per fascia. Online solo per chi lavora anche online.
+ */
+export function starterWeekTemplate(online: boolean): AgendaWeekTemplate {
+  const slot = (start: string, end: string) => ({
+    start,
+    end,
+    allowsHome: true,
+    allowsOnline: online,
+    homeMax: STARTER_SLOT_CAPACITY,
+    onlineMax: online ? STARTER_SLOT_CAPACITY : null,
+  });
+  return { days: [0, 1, 2, 3, 4, 5, 6].map((day) => (day === 0 ? [] : [slot("08:00", "13:00"), slot("14:00", "20:00")])) };
+}
+
+/** Settimana tipo proposta a chi non l'ha mai salvata: gli stessi orari di partenza dei nuovi profili. */
+export const DEFAULT_WEEK_TEMPLATE: AgendaWeekTemplate = starterWeekTemplate(true);
 
 /** Calendario collegato (Google, iPhone): `token` serve a comporre il link, `null` se spento. */
 export type CalendarFeedStatus = { token: string | null };

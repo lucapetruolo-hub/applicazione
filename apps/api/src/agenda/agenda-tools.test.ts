@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { agendaWeekTemplateSchema, dayRouteMapsUrl, DEFAULT_WEEK_TEMPLATE, weekTemplateCovers } from "@professionisti/shared";
+import { agendaWeekTemplateSchema, dayRouteMapsUrl, DEFAULT_WEEK_TEMPLATE, starterWeekTemplate, weekTemplateCovers } from "@professionisti/shared";
 import { comuniWithinRadius, firstHomeCity, zoneDemandTips } from "./agenda.service";
 import { dayForecasts, weatherAlertKind, weatherAlerts, weatherCondition } from "./weather.service";
 import { comuneInAddress, estimateLeg, legTiming } from "./day-route.service";
@@ -91,6 +91,19 @@ describe("settimana tipo", () => {
     };
     expect(agendaWeekTemplateSchema.safeParse(overlapping).success).toBe(false);
   });
+
+  it("orari di partenza: dal lunedì al sabato 8–13 e 14–20, 5 a domicilio e 5 online (§356)", () => {
+    const online = starterWeekTemplate(true);
+    expect(agendaWeekTemplateSchema.safeParse(online).success).toBe(true);
+    expect(online.days[0]).toEqual([]);
+    for (const day of [1, 2, 3, 4, 5, 6]) {
+      expect(online.days[day]!.map((s) => `${s.start}-${s.end}`)).toEqual(["08:00-13:00", "14:00-20:00"]);
+      expect(online.days[day]!.every((s) => s.homeMax === 5 && s.onlineMax === 5 && s.allowsHome && s.allowsOnline)).toBe(true);
+    }
+    const homeOnly = starterWeekTemplate(false);
+    expect(agendaWeekTemplateSchema.safeParse(homeOnly).success).toBe(true);
+    expect(homeOnly.days.flat().every((s) => !s.allowsOnline && s.onlineMax === null && s.homeMax === 5)).toBe(true);
+  });
 });
 
 describe("calendario collegato", () => {
@@ -135,8 +148,9 @@ describe("zoneDemandTips", () => {
 describe("weekTemplateCovers", () => {
   it("riconosce la parte del giorno già coperta", () => {
     expect(weekTemplateCovers(DEFAULT_WEEK_TEMPLATE, 1, "morning")).toBe(true);
-    expect(weekTemplateCovers(DEFAULT_WEEK_TEMPLATE, 6, "morning")).toBe(false);
-    expect(weekTemplateCovers(DEFAULT_WEEK_TEMPLATE, 1, "evening")).toBe(false);
+    expect(weekTemplateCovers(DEFAULT_WEEK_TEMPLATE, 0, "morning")).toBe(false);
+    expect(weekTemplateCovers(DEFAULT_WEEK_TEMPLATE, 1, "evening")).toBe(true);
+    expect(weekTemplateCovers({ days: DEFAULT_WEEK_TEMPLATE.days.map((d) => d.slice(0, 1)) }, 1, "evening")).toBe(false);
   });
 });
 

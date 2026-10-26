@@ -30,6 +30,7 @@ function buildService(prismaOverrides: Record<string, unknown> = {}) {
     {} as never, // timelineService
     {} as never, // subscriptionsService
     {} as never, // professionalVerificationService
+    {} as never, // agendaService
   );
   return { service, prisma };
 }
@@ -179,7 +180,7 @@ describe("ProfessionalsService.deleteLead — nasconde, non cancella (docs/CHANG
       guidedRequestUserState: { upsert: vi.fn().mockReturnValue("state-upsert") },
       $transaction: vi.fn().mockResolvedValue([]),
     };
-    const service = new ProfessionalsService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never);
+    const service = new ProfessionalsService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never);
     return { service, prisma };
   }
 
@@ -225,7 +226,7 @@ describe("agenda pubblica (§293)", () => {
       externalJob: { findMany: vi.fn().mockResolvedValue([]) },
       availabilityException: { findMany: vi.fn().mockResolvedValue([]) },
     };
-    return { prisma, service: new ProfessionalsService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never) };
+    return { prisma, service: new ProfessionalsService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never) };
   };
 
   it("non esiste per un profilo eliminato o sospeso", async () => {

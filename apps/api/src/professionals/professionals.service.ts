@@ -1,5 +1,5 @@
 import { SubscriptionsService } from "../subscriptions/subscriptions.service";
-import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { Prisma, type PrismaClient } from "@professionisti/database";
 import {
   quotePaymentOffer,
@@ -50,6 +50,7 @@ import { GeocodingService } from "../geocoding/geocoding.service";
 import { selectSearchArea } from "./search-area";
 import { acceptedQuoteStats, declaredServiceStats, quoteMidpointEurCents } from "./category-prices";
 import { slotAppliesOnDate } from "../common/availability.util";
+import { AgendaService } from "../agenda/agenda.service";
 import { countBookingsInSlot, loadCommitments, lockProfessionalAgenda, type Commitment } from "../agenda/commitments";
 import { countCompletedThisMonth } from "../common/completed-jobs.util";
 import { profileCategories } from "../common/profile-categories.util";
@@ -120,7 +121,10 @@ export class ProfessionalsService {
     private readonly timelineService: TimelineService,
     private readonly subscriptionsService: SubscriptionsService,
     private readonly professionalVerificationService: ProfessionalVerificationService,
+    private readonly agendaService: AgendaService,
   ) {}
+
+  private readonly logger = new Logger(ProfessionalsService.name);
 
   async search({ category, city, q, remote, excludeDemo }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
     const baseWhere: Prisma.ProfessionalProfileWhereInput = {
@@ -788,6 +792,13 @@ export class ProfessionalsService {
     if (isFirstTimeCreation) {
       // Primo mese gratis per tutti (docs/CHANGELOG.md §161).
       await this.subscriptionsService.ensureTrial(profile.id);
+      // Orari di partenza nell'agenda (docs/CHANGELOG.md §356): non devono
+      // mai bloccare il salvataggio del profilo.
+      try {
+        await this.agendaService.applyStarterHours(profile.id, profile.remoteAvailable);
+      } catch (err) {
+        this.logger.error(`Orari di partenza non messi per ${profile.id}`, err instanceof Error ? err.stack : String(err));
+      }
     }
     // Categorie aggiunte a un profilo già attivo (docs/CHANGELOG.md §217):
     // riceve anche le richieste aperte di quelle categorie, solo quelle.

@@ -14,7 +14,7 @@ type Range = { start: string; end: string };
 type Mode = { allowsHome: boolean; allowsOnline: boolean; perSlot: number };
 
 const PRESETS: { id: string; label: string; ranges: Range[] }[] = [
-  { id: "split", label: "Mattina e pomeriggio", ranges: [{ start: "08:00", end: "13:00" }, { start: "14:00", end: "18:00" }] },
+  { id: "split", label: "Mattina e pomeriggio", ranges: [{ start: "08:00", end: "13:00" }, { start: "14:00", end: "20:00" }] },
   { id: "continuous", label: "Orario continuato", ranges: [{ start: "08:00", end: "17:00" }] },
   { id: "morning", label: "Solo la mattina", ranges: [{ start: "08:00", end: "13:00" }] },
 ];
@@ -75,6 +75,23 @@ export function templateFromDraft(draft: Draft): AgendaWeekTemplate {
       draft.workDays.includes(day) ? [...(draft.special[day] ?? draft.base)].sort((a, b) => a.start.localeCompare(b.start)).map(toSlot) : [],
     ),
   };
+}
+
+/** "dal lunedì al sabato, 8–13 e 14–20": giorni di lavoro e orari più comuni, per l'avviso degli orari di partenza (§356). */
+export function starterDaysLabel(template: AgendaWeekTemplate): string {
+  const { workDays, base } = draftFromTemplate(template);
+  if (workDays.length === 0) return "nessun giorno";
+  const names = workDays.map((day) => WEEKDAY_FULL_LABELS[day]!.toLowerCase());
+  const positions = workDays.map((day) => WEEK_ORDER.indexOf(day));
+  const consecutive = positions.every((pos, i) => i === 0 || pos === positions[i - 1]! + 1);
+  const days =
+    workDays.length === 1
+      ? names[0]!
+      : consecutive && workDays.length > 2
+        ? `dal ${names[0]} al ${names[names.length - 1]}`
+        : `${names.slice(0, -1).join(", ")} e ${names[names.length - 1]}`;
+  // "14–20" non si spezza a capo sul telefono.
+  return `${days}, ${rangesLabel(base).replaceAll("–", "\u2060–\u2060")}`;
 }
 
 function rangesError(ranges: Range[]): string | null {
@@ -213,12 +230,17 @@ function WeekPreview({ template }: { template: AgendaWeekTemplate }) {
 export function WeekTemplateEditor({
   template,
   active,
+  starter = false,
+  onKeepStarter,
   months,
   onSave,
   saving,
 }: {
   template: AgendaWeekTemplate;
   active: boolean;
+  /** Orari di partenza messi alla creazione del profilo e non ancora confermati (§356). */
+  starter?: boolean;
+  onKeepStarter?: () => void;
   /** Mesi che si possono scegliere per salvare la settimana solo lì: `key` AAAA-MM. */
   months: { key: string; label: string }[];
   onSave: (next: AgendaWeekTemplate, month: string | null) => Promise<boolean>;
@@ -265,6 +287,18 @@ export function WeekTemplateEditor({
       <p className="ag-muted" style={{ fontSize: 14, marginTop: 4 }}>
         Vale per tutti i mesi o per il mese che scegli in fondo. Un giorno diverso lo cambi in &quot;Giorno per giorno&quot;.
       </p>
+      {starter ? (
+        <div className="ag-banner info ag-wt-starter" role="status">
+          <span>
+            <b>Orari di partenza.</b> Li abbiamo messi noi e i clienti li vedono già: cambiali qui sotto e salva, quando vuoi.
+          </span>
+          {onKeepStarter ? (
+            <button type="button" className="ag-btn sm" onClick={onKeepStarter}>
+              Vanno bene così
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="ag-wt-body">
         <div className="ag-wt-steps">

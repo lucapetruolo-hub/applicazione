@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_WEEK_TEMPLATE, weekTemplateDatesKept, weekTemplateSync, type AgendaWeekTemplate, type WeekTemplateExistingSlot } from "@professionisti/shared";
+import { weekTemplateDatesKept, weekTemplateSync, type AgendaWeekTemplate, type WeekTemplateExistingSlot } from "@professionisti/shared";
 
 // Lunedì 2 novembre 2026 → domenica 8 novembre.
 const WEEK = ["2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05", "2026-11-06", "2026-11-07", "2026-11-08"];
 const MORNING = { start: "08:00", end: "13:00", allowsHome: true, allowsOnline: false, homeMax: 1, onlineMax: null };
 const AFTERNOON = { start: "14:00", end: "18:00", allowsHome: true, allowsOnline: false, homeMax: 1, onlineMax: null };
+// Dal lunedì al venerdì mattina e pomeriggio.
+const WEEKDAYS: AgendaWeekTemplate = { days: [0, 1, 2, 3, 4, 5, 6].map((d) => (d === 0 || d === 6 ? [] : [MORNING, AFTERNOON])) };
 const ONLY_MORNINGS: AgendaWeekTemplate = { days: [0, 1, 2, 3, 4, 5, 6].map((d) => (d === 0 || d === 6 ? [] : [MORNING])) };
 
 let nextId = 0;
@@ -16,7 +18,7 @@ const none = new Set<string>();
 describe("settimana tipo per tutte le settimane (§323)", () => {
   it("la prima volta riempie i giorni vuoti e lascia quelli con orari messi a mano", () => {
     const manual = slot("2026-11-03", { ...MORNING, start: "09:00" }, false);
-    const sync = weekTemplateSync({ template: DEFAULT_WEEK_TEMPLATE, previous: null, dates: WEEK, filledUntil: null, existing: [manual], closedDates: none, bookedDates: none });
+    const sync = weekTemplateSync({ template: WEEKDAYS, previous: null, dates: WEEK, filledUntil: null, existing: [manual], closedDates: none, bookedDates: none });
     expect(sync.deleteIds).toEqual([]);
     expect(new Set(sync.added.map((a) => a.date))).toEqual(new Set(["2026-11-02", "2026-11-04", "2026-11-05", "2026-11-06"]));
     expect(sync.added).toHaveLength(8);
@@ -26,7 +28,7 @@ describe("settimana tipo per tutte le settimane (§323)", () => {
   it("i giorni chiusi e quelli con vecchie fasce ricorrenti restano come sono", () => {
     const recurring: WeekTemplateExistingSlot = { ...MORNING, id: "r", date: null, dayOfWeek: 1, fromWeekTemplate: false };
     const sync = weekTemplateSync({
-      template: DEFAULT_WEEK_TEMPLATE,
+      template: WEEKDAYS,
       previous: null,
       dates: WEEK,
       filledUntil: null,
@@ -48,7 +50,7 @@ describe("settimana tipo per tutte le settimane (§323)", () => {
     ];
     const sync = weekTemplateSync({
       template: ONLY_MORNINGS,
-      previous: DEFAULT_WEEK_TEMPLATE,
+      previous: WEEKDAYS,
       dates: WEEK,
       filledUntil: "2026-11-08",
       existing,
@@ -60,10 +62,10 @@ describe("settimana tipo per tutte le settimane (§323)", () => {
   });
 
   it("un giorno svuotato a mano resta vuoto, un giorno libero che diventa di lavoro si riempie", () => {
-    const withSaturday: AgendaWeekTemplate = { days: DEFAULT_WEEK_TEMPLATE.days.map((d, i) => (i === 6 ? [MORNING] : d)) };
+    const withSaturday: AgendaWeekTemplate = { days: WEEKDAYS.days.map((d, i) => (i === 6 ? [MORNING] : d)) };
     const sync = weekTemplateSync({
       template: withSaturday,
-      previous: DEFAULT_WEEK_TEMPLATE,
+      previous: WEEKDAYS,
       dates: WEEK,
       filledUntil: "2026-11-08",
       existing: [],
