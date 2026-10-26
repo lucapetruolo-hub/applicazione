@@ -249,7 +249,7 @@ function SuspendPanel({ detail, token, onChanged }: { detail: AdminUserDetail; t
 
 /**
  * Verifica in due passaggi di un altro admin (docs/CHANGELOG.md §351): se ha
- * perso il telefono e i codici di recupero, un super admin la azzera e lui
+ * perso il telefono e non riceve l'email col codice, un super admin la azzera e lui
  * la riattiva al prossimo ingresso. Le sue sessioni aperte si chiudono.
  */
 function TwoFactorResetPanel({ detail, token, onChanged }: { detail: AdminUserDetail; token: string; onChanged: () => void }) {
@@ -281,7 +281,7 @@ function TwoFactorResetPanel({ detail, token, onChanged }: { detail: AdminUserDe
       </XStack>
       <Text fontSize="$3" color={brand.grafite70}>
         {detail.adminTwoFactorEnabled
-          ? "Se ha perso il telefono e i codici di recupero, azzerala: lo faremo uscire da tutti i dispositivi e la riattiverà al prossimo ingresso."
+          ? "Se ha perso il telefono e non riceve l'email con il codice, azzerala: lo faremo uscire da tutti i dispositivi e la riattiverà al prossimo ingresso."
           : "La attiverà da solo la prossima volta che apre l'area admin."}
       </Text>
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}

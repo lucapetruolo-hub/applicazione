@@ -14,7 +14,6 @@ const TOTP_WINDOW = 1;
 
 /** Dopo il codice l'area admin resta aperta per queste ore, poi lo richiede. */
 export const ADMIN_2FA_VALID_HOURS = 8;
-export const ADMIN_RECOVERY_CODE_COUNT = 10;
 
 const BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
@@ -99,25 +98,17 @@ export function groupedSecret(secret: string): string {
   return secret.replace(/(.{4})/g, "$1 ").trim();
 }
 
-// Senza lettere e cifre che si confondono (0/O, 1/I/L).
-const RECOVERY_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+/** Telefono perso: codice di 6 cifre via email che azzera la verifica. */
+export const ADMIN_RESET_CODE_MINUTES = 15;
+export const ADMIN_RESET_CODE_RESEND_SECONDS = 60;
 
-/** Codici di recupero monouso, "ABCD-EFGH": si mostrano una volta sola. */
-export function newRecoveryCodes(): string[] {
-  return Array.from({ length: ADMIN_RECOVERY_CODE_COUNT }, () => {
-    const chars = Array.from({ length: 8 }, () => RECOVERY_ALPHABET[randomInt(RECOVERY_ALPHABET.length)]).join("");
-    return `${chars.slice(0, 4)}-${chars.slice(4)}`;
-  });
+export function newResetCode(): string {
+  return String(randomInt(0, 1_000_000)).padStart(6, "0");
 }
 
-export function normalizeRecoveryCode(typed: string): string {
-  const clean = typed.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  return clean.length === 8 ? `${clean.slice(0, 4)}-${clean.slice(4)}` : clean;
-}
-
-/** Nel database solo l'impronta: chi legge la tabella non può usarli. */
-export function hashRecoveryCode(code: string): string {
-  return createHash("sha256").update(`admin-recovery:${normalizeRecoveryCode(code)}`).digest("hex");
+/** Nel database solo l'impronta, legata all'utente: chi legge la tabella non può usarla. */
+export function hashResetCode(userId: string, code: string): string {
+  return createHash("sha256").update(`admin-reset:${userId}:${code.replace(/\s/g, "")}`).digest("hex");
 }
 
 /** Il token porta l'ora del codice (`amfa`, secondi): vale per ADMIN_2FA_VALID_HOURS e solo se dopo l'attivazione. */

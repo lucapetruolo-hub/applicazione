@@ -140,9 +140,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         key={twoFactor.enabled ? "verifica" : "attivazione"}
         token={token}
         enabled={twoFactor.enabled}
+        email={twoFactor.email}
         onVerified={async (newToken) => {
           await login(newToken);
           setTwoFactor({ ...twoFactor, enabled: true, verified: true });
+        }}
+        onReset={async (newToken) => {
+          await login(newToken);
+          setTwoFactor({ ...twoFactor, enabled: false, verified: false });
         }}
       />
     );

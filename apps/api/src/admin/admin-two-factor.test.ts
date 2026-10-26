@@ -2,11 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   base32Decode,
   base32Encode,
-  hashRecoveryCode,
+  hashResetCode,
   isAdminVerificationFresh,
   matchTotp,
-  newRecoveryCodes,
-  normalizeRecoveryCode,
+  newResetCode,
   otpauthUrl,
   totpCode,
   totpStep,
@@ -57,18 +56,14 @@ describe("codici TOTP", () => {
   });
 });
 
-describe("codici di recupero", () => {
-  it("sono 10, diversi, nel formato ABCD-EFGH senza lettere ambigue", () => {
-    const codes = newRecoveryCodes();
-    expect(codes).toHaveLength(10);
-    expect(new Set(codes).size).toBe(10);
-    for (const code of codes) expect(code).toMatch(/^[A-HJKMNP-Z2-9]{4}-[A-HJKMNP-Z2-9]{4}$/);
+describe("codice via email per il telefono perso", () => {
+  it("ha 6 cifre", () => {
+    for (let i = 0; i < 50; i++) expect(newResetCode()).toMatch(/^\d{6}$/);
   });
-
-  it("si riconoscono anche scritti in minuscolo o senza trattino", () => {
-    expect(normalizeRecoveryCode("abcd efgh")).toBe("ABCD-EFGH");
-    expect(hashRecoveryCode("abcdefgh")).toBe(hashRecoveryCode("ABCD-EFGH"));
-    expect(hashRecoveryCode("ABCD-EFGH")).not.toContain("ABCD");
+  it("l'impronta dipende dall'utente e non contiene il codice", () => {
+    expect(hashResetCode("u1", "123456")).toBe(hashResetCode("u1", "123 456"));
+    expect(hashResetCode("u1", "123456")).not.toBe(hashResetCode("u2", "123456"));
+    expect(hashResetCode("u1", "123456")).not.toContain("123456");
   });
 });
 

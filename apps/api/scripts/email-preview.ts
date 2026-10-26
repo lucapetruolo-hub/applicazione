@@ -14,6 +14,7 @@ import {
   newDeviceLoginEmail,
   adminAccessEmail,
   adminCodeLockedEmail,
+  adminResetCodeEmail,
   passwordResetEmail,
   profileInviteEmail,
   verifyEmailEmail,
@@ -58,7 +59,8 @@ add("accesso-bloccato", "Account", "Tutti", loginLockedEmail("Giulia", 15));
 add("nuovo-accesso", "Account", "Professionista", newDeviceLoginEmail("Marco", { label: "Chrome su Android", at: new Date("2026-10-24T09:30:00Z") }));
 add("admin-accesso", "Account", "Admin", adminAccessEmail("Luca", { label: "Safari su Mac", at: new Date("2026-10-26T09:30:00Z") }));
 add("admin-due-passaggi-attivata", "Account", "Admin", adminAccessEmail("Luca", { label: "Safari su Mac", at: new Date("2026-10-26T09:30:00Z"), justEnabled: true }));
-add("admin-codice-recupero", "Account", "Admin", adminAccessEmail("Luca", { label: "Chrome su Windows", at: new Date("2026-10-26T09:30:00Z"), recoveryCodesLeft: 9 }));
+add("admin-codice-telefono-perso", "Account", "Admin", adminResetCodeEmail("Luca", "482913", 15));
+add("admin-due-passaggi-azzerata", "Account", "Admin", adminAccessEmail("Luca", { label: "Chrome su Windows", at: new Date("2026-10-26T09:30:00Z"), resetByEmail: true }));
 add("admin-codici-sbagliati", "Account", "Admin", adminCodeLockedEmail("Luca", 15));
 add("account-eliminato", "Account", "Tutti", accountDeletedEmail("Giulia"));
 add("profilo-creato-al-telefono", "Account", "Professionista", profileInviteEmail("Marco", "Idraulica Rossi", `${site}/completa-profilo?codice=esempio`, 7));

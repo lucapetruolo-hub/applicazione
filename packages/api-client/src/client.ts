@@ -897,7 +897,7 @@ function extractErrorCode(body: unknown): string | undefined {
 }
 
 /** Stato della verifica in due passaggi dell'admin collegato (docs/CHANGELOG.md §351). */
-export type AdminTwoFactorStatus = { enabled: boolean; verified: boolean; recoveryCodesLeft: number };
+export type AdminTwoFactorStatus = { enabled: boolean; verified: boolean; email: string | null };
 export type AdminTwoFactorSetup = { secret: string; otpauthUrl: string; qrCode: string };
 
 function extractErrorMessage(body: unknown, fallback: string): string {
@@ -1826,13 +1826,22 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
     adminTwoFactorSetup: (token: string) =>
       request<AdminTwoFactorSetup>("/admin/2fa/setup", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
     adminTwoFactorEnable: (token: string, code: string) =>
-      request<{ token: string; recoveryCodes: string[] }>("/admin/2fa/enable", {
+      request<{ token: string }>("/admin/2fa/enable", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({ code }),
       }),
     adminTwoFactorVerify: (token: string, code: string) =>
       request<{ token: string }>("/admin/2fa/verify", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ code }) }),
+    /** Telefono perso: codice via email, poi la verifica si azzera e si ricollega l'app. */
+    adminTwoFactorSendResetCode: (token: string) =>
+      request<{ email: string | null }>("/admin/2fa/reset-code", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+    adminTwoFactorConfirmResetCode: (token: string, code: string) =>
+      request<{ token: string }>("/admin/2fa/reset-code/confirm", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ code }),
+      }),
     adminTwoFactorReset: (token: string, userId: string) =>
       request<{ ok: boolean }>(`/admin/2fa/reset/${userId}`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 

@@ -3,22 +3,35 @@
 import { useEffect, useRef, useState } from "react";
 import type { AdminTwoFactorSetup } from "@professionisti/api-client";
 import { Button, H1, Icon, Paragraph, Text, XStack, YStack, brand } from "@professionisti/ui";
-import { AuthField } from "@/components/AuthField";
 import { apiClient } from "@/lib/apiClient";
-import { downloadTextFile, errorMessage } from "./adminUi";
+import { errorMessage } from "./adminUi";
 
 /**
  * Verifica in due passaggi dell'area admin (docs/CHANGELOG.md §351). Al
  * primo ingresso si collega l'app di autenticazione (codice QR o chiave
- * scritta a mano) e si salvano i codici di recupero; poi a ogni ingresso,
- * e di nuovo dopo 8 ore, si scrive il codice dell'app. Riuscito il codice,
- * `onVerified` riceve il token nuovo che apre l'area admin.
+ * scritta a mano); poi a ogni ingresso, e di nuovo dopo 8 ore, si scrive il
+ * codice dell'app. Riuscito il codice, `onVerified` riceve il token nuovo che
+ * apre l'area admin. Telefono perso: codice via email, la verifica si azzera
+ * (`onReset`) e si ricollega l'app come la prima volta.
  */
-export function AdminTwoFactorGate({ token, enabled, onVerified }: { token: string; enabled: boolean; onVerified: (token: string) => Promise<void> }) {
+export function AdminTwoFactorGate({
+  token,
+  enabled,
+  email,
+  onVerified,
+  onReset,
+}: {
+  token: string;
+  enabled: boolean;
+  /** Email dell'account mascherata ("l***@gmail.com"). */
+  email: string | null;
+  onVerified: (token: string) => Promise<void>;
+  onReset: (token: string) => Promise<void>;
+}) {
   return (
     <YStack width="100%" alignItems="center" paddingVertical="$8" paddingHorizontal="$4">
       <YStack width="100%" maxWidth={460} gap="$5">
-        {enabled ? <VerifyStep token={token} onVerified={onVerified} /> : <SetupStep token={token} onVerified={onVerified} />}
+        {enabled ? <VerifyStep token={token} email={email} onVerified={onVerified} onReset={onReset} /> : <SetupStep token={token} onVerified={onVerified} />}
       </YStack>
     </YStack>
   );
@@ -45,8 +58,6 @@ function SetupStep({ token, onVerified }: { token: string; onVerified: (token: s
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showKey, setShowKey] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [result, setResult] = useState<{ token: string; recoveryCodes: string[] } | null>(null);
-
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -65,8 +76,6 @@ function SetupStep({ token, onVerified }: { token: string; onVerified: (token: s
       cancelled = true;
     };
   }, [token, attempt]);
-
-  if (result) return <RecoveryCodes codes={result.recoveryCodes} onDone={() => onVerified(result.token)} />;
 
   return (
     <>
@@ -128,7 +137,7 @@ function SetupStep({ token, onVerified }: { token: string; onVerified: (token: s
         <CodeBoxes
           disabled={!setup}
           submit={async (code) => {
-            setResult(await apiClient.adminTwoFactorEnable(token, code));
+            await onVerified((await apiClient.adminTwoFactorEnable(token, code)).token);
           }}
         />
       </YStack>
@@ -151,98 +160,20 @@ function StepTitle({ number, text }: { number: number; text: string }) {
   );
 }
 
-function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () => Promise<void> }) {
-  const [saved, setSaved] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [opening, setOpening] = useState(false);
-  const text = `Codici di recupero dell'area admin\nOgni codice vale una volta sola.\n\n${codes.join("\n")}\n`;
+function VerifyStep({
+  token,
+  email,
+  onVerified,
+  onReset,
+}: {
+  token: string;
+  email: string | null;
+  onVerified: (token: string) => Promise<void>;
+  onReset: (token: string) => Promise<void>;
+}) {
+  const [lostPhone, setLostPhone] = useState(false);
 
-  return (
-    <>
-      <Heading title="Salva i codici di recupero" text="Se perdi il telefono, ognuno di questi codici ti fa entrare una volta al posto dell'app. Non li mostreremo più." />
-      <ul className="admin-2fa-codes" aria-label="Codici di recupero">
-        {codes.map((code) => (
-          <li key={code}>{code}</li>
-        ))}
-      </ul>
-      <XStack gap="$3" flexWrap="wrap" justifyContent="center">
-        <Button variant="secondary" onPress={() => downloadTextFile("codici-recupero-admin.txt", text, "text/plain;charset=utf-8")}>
-          Scarica
-        </Button>
-        <Button variant="secondary" onPress={() => void navigator.clipboard?.writeText(text).then(() => setCopied(true))}>
-          {copied ? "Copiati" : "Copia"}
-        </Button>
-      </XStack>
-      <label className="admin-2fa-check">
-        <input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} />
-        <span>Li ho salvati in un posto sicuro</span>
-      </label>
-      <Button
-        variant="primary"
-        disabled={!saved || opening}
-        opacity={!saved || opening ? 0.6 : 1}
-        onPress={() => {
-          setOpening(true);
-          void onDone().finally(() => setOpening(false));
-        }}
-      >
-        {opening ? "Apro l'area admin..." : "Continua"}
-      </Button>
-    </>
-  );
-}
-
-function VerifyStep({ token, onVerified }: { token: string; onVerified: (token: string) => Promise<void> }) {
-  const [useRecovery, setUseRecovery] = useState(false);
-  const [recoveryCode, setRecoveryCode] = useState("");
-  const [recoveryError, setRecoveryError] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
-
-  async function submitRecovery() {
-    if (sending) return;
-    if (recoveryCode.replace(/[^a-z0-9]/gi, "").length !== 8) {
-      setRecoveryError("Il codice di recupero ha 8 caratteri, ad esempio ABCD-EFGH.");
-      return;
-    }
-    setSending(true);
-    setRecoveryError(null);
-    try {
-      await onVerified((await apiClient.adminTwoFactorVerify(token, recoveryCode)).token);
-    } catch (err) {
-      setRecoveryError(errorMessage(err));
-      setSending(false);
-    }
-  }
-
-  if (useRecovery) {
-    return (
-      <>
-        <Heading title="Usa un codice di recupero" text="Scrivi uno dei codici che hai salvato quando hai attivato la verifica. Ognuno vale una volta sola." />
-        <AuthField
-          label="Codice di recupero"
-          value={recoveryCode}
-          onChangeText={(value) => {
-            setRecoveryCode(value);
-            setRecoveryError(null);
-          }}
-          placeholder="ABCD-EFGH"
-          autoCapitalize="none"
-          autoComplete="off"
-          nativeID="codice-recupero-admin"
-          error={recoveryError ?? undefined}
-          onSubmitEditing={submitRecovery}
-        />
-        <Button variant="primary" onPress={submitRecovery} disabled={sending} opacity={sending ? 0.6 : 1}>
-          {sending ? "Controllo..." : "Entra"}
-        </Button>
-        <XStack justifyContent="center">
-          <button type="button" className="link-button" onClick={() => setUseRecovery(false)}>
-            Usa il codice dell&apos;app
-          </button>
-        </XStack>
-      </>
-    );
-  }
+  if (lostPhone) return <LostPhoneStep token={token} email={email} onReset={onReset} onBack={() => setLostPhone(false)} />;
 
   return (
     <>
@@ -256,8 +187,67 @@ function VerifyStep({ token, onVerified }: { token: string; onVerified: (token: 
         <Text fontSize={14} color={brand.grafite70} textAlign="center">
           Il codice vale 8 ore su questo dispositivo.
         </Text>
-        <button type="button" className="link-button" onClick={() => setUseRecovery(true)}>
-          Non hai il telefono? Usa un codice di recupero
+        <button type="button" className="link-button" onClick={() => setLostPhone(true)}>
+          Ho perso il telefono
+        </button>
+      </YStack>
+    </>
+  );
+}
+
+/** Telefono perso: codice via email, poi si collega il telefono nuovo. */
+function LostPhoneStep({ token, email, onReset, onBack }: { token: string; email: string | null; onReset: (token: string) => Promise<void>; onBack: () => void }) {
+  const [sentTo, setSentTo] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function send() {
+    setSending(true);
+    setError(null);
+    try {
+      setSentTo((await apiClient.adminTwoFactorSendResetCode(token)).email ?? email ?? "la tua email");
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <>
+      <Heading
+        title="Hai perso il telefono?"
+        text={
+          sentTo
+            ? `Ti abbiamo mandato un codice di 6 cifre a ${sentTo}. Vale 15 minuti.`
+            : `Ti mandiamo un codice${email ? ` a ${email}` : " via email"}. Poi colleghi l'app sul telefono nuovo.`
+        }
+      />
+      {sentTo ? (
+        <CodeBoxes
+          label="Codice di 6 cifre ricevuto per email"
+          submit={async (code) => {
+            await onReset((await apiClient.adminTwoFactorConfirmResetCode(token, code)).token);
+          }}
+        />
+      ) : (
+        <Button variant="primary" onPress={send} disabled={sending} opacity={sending ? 0.6 : 1}>
+          {sending ? "Invio..." : "Mandami il codice"}
+        </Button>
+      )}
+      {error ? (
+        <Text fontSize={16} color={brand.urgenza} textAlign="center">
+          {error}
+        </Text>
+      ) : null}
+      <YStack gap="$2" alignItems="center">
+        {sentTo ? (
+          <button type="button" className="link-button" onClick={send} disabled={sending}>
+            Non è arrivato? Mandalo di nuovo
+          </button>
+        ) : null}
+        <button type="button" className="link-button" onClick={onBack}>
+          Ho l&apos;app: scrivo il codice
         </button>
       </YStack>
     </>
@@ -267,7 +257,15 @@ function VerifyStep({ token, onVerified }: { token: string; onVerified: (token: 
 const CODE_LENGTH = 6;
 
 /** Sei caselle con un solo campo vero sopra (stesso disegno di EmailCodeForm): parte da solo alla sesta cifra. */
-function CodeBoxes({ submit, disabled = false }: { submit: (code: string) => Promise<void>; disabled?: boolean }) {
+function CodeBoxes({
+  submit,
+  disabled = false,
+  label = `Codice di ${CODE_LENGTH} cifre dell'app`,
+}: {
+  submit: (code: string) => Promise<void>;
+  disabled?: boolean;
+  label?: string;
+}) {
   const [code, setCode] = useState("");
   const [state, setState] = useState<"idle" | "checking" | "error" | "done">("idle");
   const [message, setMessage] = useState<string | null>(null);
@@ -313,7 +311,7 @@ function CodeBoxes({ submit, disabled = false }: { submit: (code: string) => Pro
           pattern="[0-9]*"
           autoComplete="one-time-code"
           maxLength={CODE_LENGTH + 2}
-          aria-label={`Codice di ${CODE_LENGTH} cifre dell'app`}
+          aria-label={label}
           aria-invalid={state === "error" ? true : undefined}
           aria-describedby="admin-2fa-status"
           disabled={disabled || state === "checking" || state === "done"}

@@ -5,19 +5,20 @@ import qrcode from "qrcode-generator";
 import { PRISMA } from "../prisma/prisma.module";
 import { EmailService } from "../email/email.service";
 import { EMAIL_BRAND } from "../email/email-brand";
-import { adminAccessEmail, adminCodeLockedEmail } from "../email/templates/account-emails";
+import { adminAccessEmail, adminCodeLockedEmail, adminResetCodeEmail } from "../email/templates/account-emails";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { encryptFiscal, readFiscal } from "../common/fiscal-crypto";
 import { sessionExpiresIn, sessionTokenPayload } from "../auth/jwt-auth.guard";
 import { loginDeviceLabel } from "../auth/login-device";
 import {
   groupedSecret,
-  hashRecoveryCode,
+  ADMIN_RESET_CODE_MINUTES,
+  ADMIN_RESET_CODE_RESEND_SECONDS,
+  hashResetCode,
   isAdminVerificationFresh,
   matchTotp,
-  newRecoveryCodes,
+  newResetCode,
   newTotpSecret,
-  normalizeRecoveryCode,
   otpauthUrl,
 } from "./admin-two-factor";
 
@@ -36,7 +37,9 @@ type AdminUser = {
   adminTotpSecret: string | null;
   adminTotpEnabledAt: Date | null;
   adminTotpLastStep: number | null;
-  adminRecoveryCodes: string[];
+  adminResetCodeHash: string | null;
+  adminResetCodeExpiresAt: Date | null;
+  adminResetCodeSentAt: Date | null;
 };
 
 /**
@@ -70,7 +73,9 @@ export class AdminTwoFactorService {
         adminTotpSecret: true,
         adminTotpEnabledAt: true,
         adminTotpLastStep: true,
-        adminRecoveryCodes: true,
+        adminResetCodeHash: true,
+        adminResetCodeExpiresAt: true,
+        adminResetCodeSentAt: true,
       },
     });
     if (user?.role !== "ADMIN") throw new ForbiddenException("Accesso riservato agli amministratori.");
@@ -82,7 +87,7 @@ export class AdminTwoFactorService {
     return {
       enabled: Boolean(user.adminTotpEnabledAt),
       verified: isAdminVerificationFresh(adminVerifiedAt, user.adminTotpEnabledAt),
-      recoveryCodesLeft: user.adminRecoveryCodes.length,
+      email: maskEmail(user.email),
     };
   }
 
@@ -96,7 +101,7 @@ export class AdminTwoFactorService {
     return { secret: groupedSecret(secret), otpauthUrl: url, qrCode: qrDataUrl(url) };
   }
 
-  /** Primo codice giusto: la verifica diventa attiva e arrivano i codici di recupero (mostrati una volta sola). */
+  /** Primo codice giusto: la verifica diventa attiva e l'area admin si apre. */
   async enable(userId: string, typed: string, userAgent: string | undefined) {
     const user = await this.adminUser(userId);
     if (user.adminTotpEnabledAt) throw new ConflictException("La verifica in due passaggi è già attiva.");
@@ -107,23 +112,16 @@ export class AdminTwoFactorService {
     if (step === null) return this.recordFailure(user);
 
     const now = new Date();
-    const recoveryCodes = newRecoveryCodes();
     await this.prisma.user.update({
       where: { id: user.id },
-      data: {
-        adminTotpEnabledAt: now,
-        adminTotpLastStep: step,
-        adminRecoveryCodes: recoveryCodes.map(hashRecoveryCode),
-        failedLoginCount: 0,
-        loginLockedUntil: null,
-      },
+      data: { adminTotpEnabledAt: now, adminTotpLastStep: step, failedLoginCount: 0, loginLockedUntil: null },
     });
     await this.auditLogService.record({ entityType: "User", entityId: user.id, fieldName: "adminTwoFactor", newValue: "ENABLED", changedByUserId: user.id });
     await this.notify(user, { label: loginDeviceLabel(userAgent), at: now, justEnabled: true });
-    return { token: this.verifiedToken(user, now), recoveryCodes };
+    return { token: this.verifiedToken(user, now) };
   }
 
-  /** Codice dell'app o codice di recupero: token nuovo con l'area admin aperta. */
+  /** Codice dell'app: token nuovo con l'area admin aperta. */
   async verify(userId: string, typed: string, userAgent: string | undefined) {
     const user = await this.adminUser(userId);
     if (!user.adminTotpEnabledAt) throw new BadRequestException("Prima attiva la verifica in due passaggi.");
@@ -143,19 +141,74 @@ export class AdminTwoFactorService {
       return { token: this.verifiedToken(user, now) };
     }
 
-    const recoveryHash = /^\d+$/.test(typed.trim()) ? null : hashRecoveryCode(normalizeRecoveryCode(typed));
-    if (recoveryHash && user.adminRecoveryCodes.includes(recoveryHash)) {
-      const left = user.adminRecoveryCodes.filter((hash) => hash !== recoveryHash);
-      const saved = await this.prisma.user.updateMany({
-        where: { id: user.id, adminRecoveryCodes: { has: recoveryHash } },
-        data: { adminRecoveryCodes: left, failedLoginCount: 0, loginLockedUntil: null },
-      });
-      if (saved.count === 0) return this.recordFailure(user);
-      await this.notify(user, { label: loginDeviceLabel(userAgent), at: now, recoveryCodesLeft: left.length });
-      return { token: this.verifiedToken(user, now) };
-    }
-
     return this.recordFailure(user);
+  }
+
+  /**
+   * Telefono perso, primo passo: codice di 6 cifre all'email dell'account,
+   * valido ADMIN_RESET_CODE_MINUTES minuti. Serve quindi password ed email:
+   * chi ha rubato solo la password resta fuori.
+   */
+  async sendResetCode(userId: string) {
+    const user = await this.adminUser(userId);
+    if (!user.adminTotpEnabledAt) throw new BadRequestException("La verifica in due passaggi non è attiva.");
+    if (!user.email) throw new BadRequestException("Questo account non ha un'email: chiedi a un altro super admin di azzerare la verifica.");
+    this.assertNotLocked(user);
+    const now = new Date();
+    if (user.adminResetCodeSentAt && now.getTime() - user.adminResetCodeSentAt.getTime() < ADMIN_RESET_CODE_RESEND_SECONDS * 1000) {
+      throw new HttpException("Ti abbiamo appena mandato un codice: aspetta un minuto prima di chiederne un altro.", HttpStatus.TOO_MANY_REQUESTS);
+    }
+    const code = newResetCode();
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        adminResetCodeHash: hashResetCode(user.id, code),
+        adminResetCodeExpiresAt: new Date(now.getTime() + ADMIN_RESET_CODE_MINUTES * 60 * 1000),
+        adminResetCodeSentAt: now,
+      },
+    });
+    await this.emailService.send({ to: user.email, ...adminResetCodeEmail(user.name, code, ADMIN_RESET_CODE_MINUTES) });
+    return { email: maskEmail(user.email) };
+  }
+
+  /**
+   * Telefono perso, secondo passo: codice giusto, la verifica si azzera e il
+   * sito mostra subito il collegamento della nuova app (stesso percorso della
+   * prima volta). Le altre sessioni aperte di questo admin si chiudono.
+   */
+  async confirmResetCode(userId: string, typed: string, userAgent: string | undefined) {
+    const user = await this.adminUser(userId);
+    this.assertNotLocked(user);
+    const now = new Date();
+    const valid =
+      user.adminResetCodeHash !== null &&
+      user.adminResetCodeExpiresAt !== null &&
+      user.adminResetCodeExpiresAt > now &&
+      user.adminResetCodeHash === hashResetCode(user.id, typed);
+    if (!valid) {
+      if (user.adminResetCodeExpiresAt && user.adminResetCodeExpiresAt <= now) {
+        throw new BadRequestException("Il codice è scaduto: chiedine uno nuovo.");
+      }
+      return this.recordFailure(user);
+    }
+    const updated = await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        adminTotpSecret: null,
+        adminTotpEnabledAt: null,
+        adminTotpLastStep: null,
+        adminResetCodeHash: null,
+        adminResetCodeExpiresAt: null,
+        failedLoginCount: 0,
+        loginLockedUntil: null,
+        sessionVersion: { increment: 1 },
+      },
+      select: { sessionVersion: true },
+    });
+    await this.auditLogService.record({ entityType: "User", entityId: user.id, fieldName: "adminTwoFactor", newValue: "RESET_BY_EMAIL", changedByUserId: user.id });
+    await this.notify(user, { label: loginDeviceLabel(userAgent), at: now, resetByEmail: true });
+    // Token nuovo per questo dispositivo: gli altri restano fuori.
+    return { token: this.jwt.sign(sessionTokenPayload({ id: user.id, sessionVersion: updated.sessionVersion }), { expiresIn: sessionExpiresIn(user.role) }) };
   }
 
   /**
@@ -175,7 +228,8 @@ export class AdminTwoFactorService {
         adminTotpSecret: null,
         adminTotpEnabledAt: null,
         adminTotpLastStep: null,
-        adminRecoveryCodes: [],
+        adminResetCodeHash: null,
+        adminResetCodeExpiresAt: null,
         sessionVersion: { increment: 1 },
       },
     });
@@ -223,6 +277,13 @@ export class AdminTwoFactorService {
       this.logger.warn(`Email di accesso admin non inviata: ${error instanceof Error ? error.message : error}`);
     }
   }
+}
+
+/** "l***@gmail.com": abbastanza per riconoscere la propria casella. */
+function maskEmail(email: string | null): string | null {
+  if (!email) return null;
+  const [name = "", domain = ""] = email.split("@");
+  return `${name.slice(0, 1)}***@${domain}`;
 }
 
 function lockedMessage(lockedUntil: Date): string {

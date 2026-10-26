@@ -39,7 +39,20 @@ export class AdminTwoFactorController {
     return this.twoFactor.verify(req.user.userId, body.code, req.headers["user-agent"]);
   }
 
-  /** Telefono perso: solo un altro super admin, già passato dal codice. */
+  /** Telefono perso: codice via email, poi si ricollega l'app. */
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @Post("reset-code")
+  sendResetCode(@Req() req: AuthenticatedRequest) {
+    return this.twoFactor.sendResetCode(req.user.userId);
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post("reset-code/confirm")
+  confirmResetCode(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(adminTwoFactorCodeSchema)) body: AdminTwoFactorCodeInput) {
+    return this.twoFactor.confirmResetCode(req.user.userId, body.code, req.headers["user-agent"]);
+  }
+
+  /** Telefono perso e niente email: un altro super admin, già passato dal codice. */
   @UseGuards(AdminGuard)
   @RequireAdminScope("SUPER")
   @Post("reset/:userId")

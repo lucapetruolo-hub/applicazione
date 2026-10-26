@@ -160,29 +160,45 @@ export function newDeviceLoginEmail(name: string | null, device: { label: string
  */
 export function adminAccessEmail(
   name: string | null,
-  access: { label: string; at: Date; recoveryCodesLeft?: number; justEnabled?: boolean },
+  access: { label: string; at: Date; justEnabled?: boolean; resetByEmail?: boolean },
 ): RenderedEmail {
   const site = frontendUrl();
   const when = `**${access.label}**, ${LOGIN_TIME.format(access.at)}`;
-  const recovery =
-    access.recoveryCodesLeft === undefined
-      ? []
-      : [`Per entrare è stato usato un codice di recupero: te ne restano ${access.recoveryCodesLeft}.`];
   return renderEmail({
     kind: "account",
-    subject: access.justEnabled ? "Verifica in due passaggi attivata" : "Accesso all'area admin",
+    subject: access.justEnabled ? "Verifica in due passaggi attivata" : access.resetByEmail ? "Verifica in due passaggi azzerata" : "Accesso all'area admin",
     preheader: `Da ${access.label}.`,
     greeting: name,
-    title: access.justEnabled ? "Verifica in due passaggi attivata" : "Accesso all'area admin",
+    title: access.justEnabled ? "Verifica in due passaggi attivata" : access.resetByEmail ? "Verifica in due passaggi azzerata" : "Accesso all'area admin",
     paragraphs: [
       access.justEnabled
         ? `Hai attivato la verifica in due passaggi per l'area admin da ${when}. Da ora per entrare servirà anche il codice dell'app.`
-        : `Qualcuno è entrato nell'area admin con il tuo account da ${when}.`,
-      ...recovery,
+        : access.resetByEmail
+          ? `Con il codice ricevuto per email è stata azzerata la verifica in due passaggi dell'area admin, da ${when}. Al prossimo ingresso andrà collegata di nuovo l'app.`
+          : `Qualcuno è entrato nell'area admin con il tuo account da ${when}.`,
       "Se eri tu, non devi fare nulla.",
     ],
     cta: { label: "Non ero io: cambia la password", url: `${site}/password-dimenticata` },
     after: [`Cambiare la password chiude l'accesso su tutti i dispositivi. Per qualsiasi dubbio scrivici a ${EMAIL_BRAND.supportEmail}.`],
+  });
+}
+
+/** Telefono perso: codice per azzerare la verifica in due passaggi dell'area admin (§351). */
+export function adminResetCodeEmail(name: string | null, code: string, minutes: number): RenderedEmail {
+  const site = frontendUrl();
+  return renderEmail({
+    kind: "account",
+    subject: `${code} è il codice per l'area admin`,
+    preheader: `Vale ${minutes} minuti.`,
+    greeting: name,
+    title: "Hai perso il telefono?",
+    paragraphs: [
+      `Scrivi questo codice nell'area admin per collegare un nuovo telefono. Vale ${minutes} minuti.`,
+      `**${code}**`,
+      "Se non l'hai chiesto tu, qualcuno conosce la tua password: cambiala subito.",
+    ],
+    cta: { label: "Cambia la password", url: `${site}/password-dimenticata` },
+    after: [`Per qualsiasi dubbio scrivici a ${EMAIL_BRAND.supportEmail}.`],
   });
 }
 

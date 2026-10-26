@@ -361,7 +361,7 @@ aperti solo:
       si azzera e il primo admin va ricreato; dal docs/CHANGELOG.md §351
       `/admin/promuovi` funziona solo se non esiste nessun admin.
     - **Verifica in due passaggi degli admin** (§351): attivarla appena va in
-      linea e salvare i codici di recupero; prima del lancio avere almeno due
+      linea (telefono perso: codice via email); prima del lancio avere almeno due
       super admin, così uno può azzerare la verifica dell'altro.
     - **Repo GitHub privato** (Settings → General → Danger Zone).
     - ~~**Avvisi di sicurezza di Dependabot**~~ — fatto (24/10/2026,

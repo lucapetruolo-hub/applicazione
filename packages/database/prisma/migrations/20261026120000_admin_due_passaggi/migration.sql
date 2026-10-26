@@ -2,4 +2,6 @@
 ALTER TABLE "users" ADD COLUMN "adminTotpSecret" TEXT;
 ALTER TABLE "users" ADD COLUMN "adminTotpEnabledAt" TIMESTAMP(3);
 ALTER TABLE "users" ADD COLUMN "adminTotpLastStep" INTEGER;
-ALTER TABLE "users" ADD COLUMN "adminRecoveryCodes" TEXT[] DEFAULT ARRAY[]::TEXT[];
+ALTER TABLE "users" ADD COLUMN "adminResetCodeHash" TEXT;
+ALTER TABLE "users" ADD COLUMN "adminResetCodeExpiresAt" TIMESTAMP(3);
+ALTER TABLE "users" ADD COLUMN "adminResetCodeSentAt" TIMESTAMP(3);
