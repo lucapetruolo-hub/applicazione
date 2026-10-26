@@ -59,6 +59,8 @@ const publicRoutes = [
   "GET /professionals/services/price-index",
   "GET /reviews/recent",
   "GET /stats/platform",
+  // Posti rimasti dell'offerta di lancio, solo due numeri (§363).
+  "GET /subscriptions/founders",
   "POST /waitlist",
 ];
 
