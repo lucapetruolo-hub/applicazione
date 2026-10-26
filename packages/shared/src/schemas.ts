@@ -919,6 +919,15 @@ export const adminBootstrapSchema = z.object({
 export type AdminBootstrapInput = z.infer<typeof adminBootstrapSchema>;
 
 /**
+ * Codice della verifica in due passaggi dell'area admin (docs/CHANGELOG.md
+ * §359): le 6 cifre dell'app o quelle ricevute per email se si è perso il telefono.
+ */
+export const adminTwoFactorCodeSchema = z.object({
+  code: z.string().trim().min(6, "Scrivi il codice di 6 cifre.").max(20),
+});
+export type AdminTwoFactorCodeInput = z.infer<typeof adminTwoFactorCodeSchema>;
+
+/**
  * Segnalazione di un contenuto (richiesta esplicita dell'utente, "Verbale di
  * Conformità" — meccanismo di notice-and-action, Reg. (UE) 2022/2065 art.
  * 16): un profilo professionista, una recensione del cliente o una

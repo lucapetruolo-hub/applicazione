@@ -30,7 +30,7 @@ function buildService(report: Record<string, unknown>, overrides: Record<string,
   const notifications = { notify: vi.fn() };
   const metrics = { recomputeReviews: vi.fn() };
   const audit = { record: vi.fn() };
-  const service = new AdminService(prisma as never, notifications as never, metrics as never, audit as never, {} as never);
+  const service = new AdminService(prisma as never, notifications as never, metrics as never, audit as never, {} as never, {} as never);
   return { service, prisma, tx, notifications, metrics, audit };
 }
 
@@ -152,8 +152,9 @@ describe("AdminService — sospensione dalla scheda utente e ruoli admin (docs/C
     };
     const notifications = { notify: vi.fn() };
     const audit = { record: vi.fn() };
-    const service = new AdminService(prisma as never, notifications as never, {} as never, audit as never, {} as never);
-    return { service, prisma, notifications, audit };
+    const securityAlerts = { adminRolesChanged: vi.fn().mockResolvedValue(undefined) };
+    const service = new AdminService(prisma as never, notifications as never, {} as never, audit as never, {} as never, securityAlerts as never);
+    return { service, prisma, notifications, audit, securityAlerts };
   }
 
   it("sospende, avvisa l'utente con la motivazione e registra l'azione", async () => {
@@ -181,9 +182,11 @@ describe("AdminService — sospensione dalla scheda utente e ruoli admin (docs/C
   });
 
   it("assegna insieme moderatore e finanza (docs/CHANGELOG.md §146)", async () => {
-    const { service, prisma } = build({ id: "u2", role: "CLIENT", adminRoles: [], deletedAt: null, professionalProfile: null });
+    const { service, prisma, securityAlerts } = build({ id: "u2", role: "CLIENT", adminRoles: [], deletedAt: null, professionalProfile: null });
     await service.setAdminRoles("admin-1", "u2", ["FINANCE", "MODERATOR"]);
     expect(prisma.user.update).toHaveBeenCalledWith({ where: { id: "u2" }, data: { role: "ADMIN", adminRoles: ["MODERATOR", "FINANCE"] } });
+    // Avviso a tutti i super admin (docs/CHANGELOG.md §359).
+    expect(securityAlerts.adminRolesChanged).toHaveBeenCalledWith("admin-1", "u2", ["MODERATOR", "FINANCE"]);
   });
 
   it("nessuno cambia il proprio ruolo", async () => {

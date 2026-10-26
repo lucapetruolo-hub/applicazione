@@ -84,4 +84,26 @@ describe("GeocodingService (Google Geocoding)", () => {
       await expect(new GeocodingService().assertAddressInCity(input)).resolves.toBeUndefined();
     });
   });
+
+  describe("CAP (§357)", () => {
+    const reply = (result: object | null) => ({ ok: true, json: async () => (result ? { status: "OK", results: [result] } : { status: "ZERO_RESULTS", results: [] }) });
+    const comp = (long: string, types: string[], short = long) => ({ long_name: long, short_name: short, types });
+
+    it("controllo: CAP della città, di un'altra provincia, o dubbio", async () => {
+      vi.stubEnv("GOOGLE_MAPS_API_KEY", "test-key");
+      const service = new GeocodingService();
+      const roma = { geometry: { location: { lat: 0, lng: 0 } }, address_components: [comp("Roma", ["locality"]), comp("Città Metropolitana di Roma Capitale", ["administrative_area_level_2"], "RM")] };
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply(roma)));
+      expect(await service.postalCodeMatchesCity({ postalCode: "00187", city: "Roma" })).toBe(true);
+      expect(await service.postalCodeMatchesCity({ postalCode: "00187", city: "Latina" })).toBe(false);
+      const piuLocalita = { geometry: { location: { lat: 0, lng: 0 } }, postcode_localities: ["Sermoneta", "Bassiano"], address_components: [comp("Provincia di Latina", ["administrative_area_level_2"], "LT")] };
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply(piuLocalita)));
+      expect(await service.postalCodeMatchesCity({ postalCode: "04013", city: "Sezze" })).toBeNull();
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply(null)));
+      expect(await service.postalCodeMatchesCity({ postalCode: "99999", city: "Roma" })).toBeNull();
+      const url = new URL(String((globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0]![0]));
+      expect(url.searchParams.get("components")).toBe("postal_code:99999|country:IT");
+      expect(url.searchParams.has("address")).toBe(false);
+    });
+  });
 });

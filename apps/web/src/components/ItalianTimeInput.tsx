@@ -4,7 +4,7 @@ import type { CSSProperties } from "react";
 
 /**
  * Campo ora che mostra sempre 24 ore, "14:00" e mai "02:00 PM"
- * (docs/CHANGELOG.md §357): come per ItalianDateInput, il campo ora del
+ * (docs/CHANGELOG.md §361): come per ItalianDateInput, il campo ora del
  * browser segue la lingua del browser, non quella del sito. Resta il campo
  * nativo (selettore del telefono, tastiera, accessibilità): il suo testo è
  * nascosto e sopra si scrive l'ora. Valore e onChange come il campo nativo (HH:MM).

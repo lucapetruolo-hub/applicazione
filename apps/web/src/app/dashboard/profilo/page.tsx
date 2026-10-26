@@ -240,7 +240,7 @@ export default function DashboardProfiloPage() {
   // "Torna all'anteprima" con modifiche non salvate: stesso popup dei link.
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   // "Online" salvato l'ultima volta: spegnendolo si chiede se togliere gli
-  // orari online dall'agenda (richiesta dell'utente, docs/CHANGELOG.md §357).
+  // orari online dall'agenda (richiesta dell'utente, docs/CHANGELOG.md §361).
   const [savedRemoteAvailable, setSavedRemoteAvailable] = useState(false);
   const [onlineSlotsPrompt, setOnlineSlotsPrompt] = useState(false);
   const [removingOnlineSlots, setRemovingOnlineSlots] = useState(false);
@@ -1581,7 +1581,7 @@ export default function DashboardProfiloPage() {
 
       {onlineSlotsPrompt ? (
         // Spenta la consulenza online (richiesta dell'utente, docs/CHANGELOG.md
-        // §357): gli orari online restano finché non sceglie di toglierli.
+        // §361): gli orari online restano finché non sceglie di toglierli.
         <div
           role="presentation"
           onClick={closeOnBackdrop(() => void closeOnlineSlotsPrompt(false))}

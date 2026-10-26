@@ -1,7 +1,7 @@
 /**
  * Spazio e Invio su una casella fatta con un riquadro di Tamagui
  * (role="checkbox" o "radio"), come su una casella vera: senza, da tastiera
- * si raggiungeva ma non si spuntava (docs/CHANGELOG.md §358). L'evento è
+ * si raggiungeva ma non si spuntava (docs/CHANGELOG.md §362). L'evento è
  * quello del browser, ma Tamagui lo tipizza come quello di React Native.
  */
 export function keyActivate(action: (() => void) | undefined) {

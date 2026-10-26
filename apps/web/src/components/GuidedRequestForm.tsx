@@ -37,6 +37,7 @@ import { CategoryTiles } from "@/components/CategoryTiles";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
+import { cleanPostalCode, postalCodeCityProblem, usePostalCodeLookup } from "@/lib/usePostalCodeLookup";
 import { localPreviewUrl } from "@/lib/media";
 import { formatResponseTime, respondsRightAway } from "@/lib/responseTime";
 
@@ -100,13 +101,15 @@ type StepField = "citta" | "indirizzo" | "nome" | "telefono" | "civico" | "cap" 
 type StepProblem = { message: string; field?: StepField };
 
 /** Porta il campo sbagliato al centro dello schermo e ci mette il cursore. */
-function focusGuidedField(field: StepField) {
-  if (typeof document === "undefined") return;
+/** Porta al campo; false se il campo non è sulla pagina. */
+function focusGuidedField(field: StepField): boolean {
+  if (typeof document === "undefined") return false;
   const anchor = document.getElementById(`guided-field-${field}`);
-  if (!anchor) return;
+  if (!anchor) return false;
   anchor.scrollIntoView({ behavior: "smooth", block: "center" });
   const input = anchor.matches("input, textarea") ? anchor : anchor.querySelector<HTMLElement>("input, textarea");
   input?.focus({ preventScroll: true });
+  return true;
 }
 
 const fieldInputStyle = {
@@ -459,6 +462,26 @@ export function GuidedRequestForm({
   });
   // Indirizzo scelto senza numero civico (es. solo la via): lo si chiede a parte.
   const [askHouseNumber, setAskHouseNumber] = useState(false);
+  // Stessa cosa per CAP e provincia: Google non dà il CAP di una via senza
+  // civico nelle città con più CAP (es. "Via Cesare Battisti, Roma"). Senza
+  // questi campi l'errore "Indica il CAP." restava nascosto e "Avanti" non
+  // faceva nulla (docs/CHANGELOG.md §356).
+  const [askPostalCode, setAskPostalCode] = useState(false);
+  const [askProvince, setAskProvince] = useState(false);
+  // Restano visibili anche dopo la prima lettera scritta (il flag "ask" si accende scrivendo).
+  const showHouseNumber = askHouseNumber || !houseNumber.trim();
+  const showPostalCode = askPostalCode || !postalCode.trim();
+  const showProvince = askProvince || !province.trim();
+  // CAP cercato da solo appena c'è il civico, quando Google non l'ha dato
+  // con l'indirizzo (§357); scritto a mano vale quello del cliente.
+  const postalCodeLookup = usePostalCodeLookup({
+    enabled: serviceMode === "HOME" && (askPostalCode || chosenAddress.serviceDown),
+    street,
+    houseNumber,
+    city,
+    setPostalCode,
+  });
+
   // Istantanea dei valori reali dell'account al momento del prefill (non i
   // valori di stato, che ricadono su "" per i campi mancanti) — usata al
   // momento dell'invio per capire se il cliente ha modificato o aggiunto
@@ -685,8 +708,12 @@ export function GuidedRequestForm({
     }
     const field = problem.field;
     setFieldError({ field, message: problem.message, value: fieldValue(field) });
-    // Dopo il render: il campo può stare in un passo appena riaperto.
-    setTimeout(() => focusGuidedField(field), 50);
+    // Dopo il render: il campo può stare in un passo appena riaperto. Se il
+    // campo non è sulla pagina, il messaggio va nella riga rossa in fondo:
+    // un "Avanti" che non fa nulla senza dire perché non deve più capitare.
+    setTimeout(() => {
+      if (!focusGuidedField(field)) setError(problem.message);
+    }, 50);
   }
 
   function fieldErrorFor(field: StepField): ReactNode {
@@ -737,6 +764,16 @@ export function GuidedRequestForm({
       if (problem) {
         showProblem(problem);
         if (validateStep(1)) setStep(1);
+        return;
+      }
+    }
+    // CAP scritto a mano: se è di un'altra città lo si dice subito (§357).
+    // Nel dubbio o senza risposta si va avanti.
+    if (next === 3 && serviceMode === "HOME" && postalCodeLookup.typed && postalCode.trim() && city.trim()) {
+      const problem = await postalCodeCityProblem(postalCode, city);
+      if (problem) {
+        setAskPostalCode(true);
+        showProblem({ message: problem, field: "cap" });
         return;
       }
     }
@@ -1348,7 +1385,10 @@ export function GuidedRequestForm({
                       aria-invalid={fieldInvalid("cap")}
                       inputMode="numeric"
                       value={postalCode}
-                      onChange={(e) => setPostalCode(e.target.value)}
+                      onChange={(e) => {
+                        setPostalCode(cleanPostalCode(e.target.value));
+                        postalCodeLookup.onTyped();
+                      }}
                       placeholder="CAP"
                       style={fieldInputStyle}
                     />
@@ -1387,7 +1427,10 @@ export function GuidedRequestForm({
                     setHouseNumber(selected.houseNumber ?? "");
                     setAskHouseNumber(!selected.houseNumber);
                     setPostalCode(selected.postalCode ?? "");
+                    setAskPostalCode(!selected.postalCode);
+                    postalCodeLookup.reset();
                     setProvince(selected.province ?? comune?.province ?? "");
+                    setAskProvince(!selected.province && !comune?.province);
                     setCity(comune?.name ?? selected.locality ?? "");
                     setAddressVerified(true);
                   }}
@@ -1407,19 +1450,74 @@ export function GuidedRequestForm({
                   </Text>
                 ) : null}
                 {fieldErrorFor("indirizzo")}
-                {chosenAddress.chosen && (askHouseNumber || !houseNumber.trim()) ? (
+                {chosenAddress.chosen && (showHouseNumber || showPostalCode || showProvince) ? (
+                  // Pezzi che Google non ha dato: si chiedono qui, uno accanto all'altro.
                   <YStack gap="$1" marginTop={6}>
-                    <FieldLabel>Numero civico</FieldLabel>
-                    <input
-                      id="guided-field-civico"
-                      aria-label="Numero civico"
-                      aria-invalid={fieldInvalid("civico")}
-                      value={houseNumber}
-                      onChange={(e) => setHouseNumber(e.target.value)}
-                      placeholder="Numero civico"
-                      style={{ ...fieldInputStyle, maxWidth: 180 }}
-                    />
+                    <XStack gap="$2" flexWrap="wrap">
+                      {showHouseNumber ? (
+                        <YStack flex={1} flexBasis={0} minWidth={110} maxWidth={180} gap="$1">
+                          <FieldLabel>Numero civico</FieldLabel>
+                          <input
+                            id="guided-field-civico"
+                            aria-label="Numero civico"
+                            aria-invalid={fieldInvalid("civico")}
+                            value={houseNumber}
+                            onChange={(e) => {
+                              setHouseNumber(e.target.value);
+                              setAskHouseNumber(true);
+                            }}
+                            placeholder="Numero civico"
+                            style={fieldInputStyle}
+                          />
+                        </YStack>
+                      ) : null}
+                      {showPostalCode ? (
+                        <YStack flex={1} flexBasis={0} minWidth={110} maxWidth={180} gap="$1">
+                          <FieldLabel>CAP</FieldLabel>
+                          <input
+                            id="guided-field-cap"
+                            aria-label="CAP"
+                            aria-invalid={fieldInvalid("cap")}
+                            inputMode="numeric"
+                            autoComplete="postal-code"
+                            maxLength={5}
+                            value={postalCode}
+                            onChange={(e) => {
+                              setPostalCode(cleanPostalCode(e.target.value));
+                              setAskPostalCode(true);
+                              postalCodeLookup.onTyped();
+                            }}
+                            placeholder="Es. 00187"
+                            style={fieldInputStyle}
+                          />
+                        </YStack>
+                      ) : null}
+                      {showProvince ? (
+                        <YStack flex={1} flexBasis={0} minWidth={110} maxWidth={180} gap="$1">
+                          <FieldLabel>Provincia</FieldLabel>
+                          <input
+                            id="guided-field-provincia"
+                            aria-label="Provincia"
+                            aria-invalid={fieldInvalid("provincia")}
+                            value={province}
+                            onChange={(e) => {
+                              setProvince(e.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2));
+                              setAskProvince(true);
+                            }}
+                            placeholder="Es. RM"
+                            style={fieldInputStyle}
+                          />
+                        </YStack>
+                      ) : null}
+                    </XStack>
+                    {postalCodeLookup.found && showPostalCode ? (
+                      <Text fontSize={13} color={brand.grafite70} role="status">
+                        CAP trovato in automatico: se non è giusto, cambialo.
+                      </Text>
+                    ) : null}
                     {fieldErrorFor("civico")}
+                    {fieldErrorFor("cap")}
+                    {fieldErrorFor("provincia")}
                   </YStack>
                 ) : null}
               </YStack>

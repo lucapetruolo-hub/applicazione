@@ -31,6 +31,7 @@ import { UploadingDots } from "@/components/UploadingDots";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
+import { cleanPostalCode, postalCodeCityProblem, usePostalCodeLookup } from "@/lib/usePostalCodeLookup";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { ReportIssueModal } from "@/components/ReportIssueModal";
 import { TimelineModal } from "@/components/TimelineModal";
@@ -150,6 +151,15 @@ export function GuidedRequestCard({
   // Stesse regole della richiesta di preventivo (docs/CHANGELOG.md §214):
   // indirizzo solo della città scelta e preso dall'elenco dei suggerimenti.
   const chosenAddress = useChosenAddress(true);
+  // Indirizzo scelto senza CAP: lo si cerca da via e civico (docs/CHANGELOG.md §357).
+  const [askPostalCode, setAskPostalCode] = useState(false);
+  const postalCodeLookup = usePostalCodeLookup({
+    enabled: request.serviceMode === "HOME" && (askPostalCode || chosenAddress.serviceDown),
+    street: address,
+    houseNumber,
+    city,
+    setPostalCode,
+  });
   const cityComune = findComuneByName(city);
   function changeCity(next: string) {
     const changed = next.trim().toLowerCase() !== city.trim().toLowerCase();
@@ -376,6 +386,14 @@ export function GuidedRequestCard({
       setError("Controlla il numero di telefono: sembra incompleto o troppo lungo.");
       return;
     }
+    // CAP scritto a mano: se è di un'altra città lo si dice prima di salvare (§357).
+    if (request.serviceMode === "HOME" && postalCodeLookup.typed) {
+      const problem = await postalCodeCityProblem(postalCode, city);
+      if (problem) {
+        setError(problem);
+        return;
+      }
+    }
     setIsSaving(true);
     try {
       await apiClient.updateGuidedRequest(token, request.id, {
@@ -501,7 +519,10 @@ export function GuidedRequestCard({
               if (comune || selected.locality) setCity(comune?.name ?? selected.locality ?? "");
               setAddress(selected.street ?? selected.address);
               setHouseNumber(selected.houseNumber ?? "");
-              if (selected.postalCode) setPostalCode(selected.postalCode);
+              // Senza CAP non resta quello del vecchio indirizzo: si cerca da via e civico.
+              setPostalCode(selected.postalCode ?? "");
+              setAskPostalCode(!selected.postalCode);
+              postalCodeLookup.reset();
               if (selected.province) setProvince(selected.province);
               chosenAddress.setChosen(true);
             }}
@@ -530,12 +551,28 @@ export function GuidedRequestCard({
               <input aria-label="Numero civico" value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} placeholder="Numero civico" style={textareaStyle} />
             </YStack>
             <YStack flex={1} minWidth={120}>
-              <input aria-label="CAP" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="CAP" style={textareaStyle} />
+              <input
+                aria-label="CAP"
+                inputMode="numeric"
+                autoComplete="postal-code"
+                value={postalCode}
+                onChange={(e) => {
+                  setPostalCode(cleanPostalCode(e.target.value));
+                  postalCodeLookup.onTyped();
+                }}
+                placeholder="CAP"
+                style={textareaStyle}
+              />
             </YStack>
             <YStack flex={1} minWidth={120}>
               <input aria-label="Provincia" value={province} onChange={(e) => setProvince(e.target.value)} placeholder="Provincia" style={textareaStyle} />
             </YStack>
           </XStack>
+          {postalCodeLookup.found ? (
+            <Text fontSize={13} color={brand.grafite70} role="status">
+              CAP trovato in automatico: se non è giusto, cambialo.
+            </Text>
+          ) : null}
           <input aria-label="Scala, piano, interno" value={addressExtra} onChange={(e) => setAddressExtra(e.target.value)} placeholder="Scala, piano, interno (facoltativo)" style={textareaStyle} />
 
           <YStack gap="$1">

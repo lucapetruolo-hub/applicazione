@@ -21,7 +21,7 @@ import {
 } from "../email/templates/account-emails";
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { GeocodingService } from "../geocoding/geocoding.service";
-import { SUSPENDED_ACCOUNT_MESSAGE, sessionTokenPayload } from "./jwt-auth.guard";
+import { SUSPENDED_ACCOUNT_MESSAGE, sessionExpiresIn, sessionTokenPayload } from "./jwt-auth.guard";
 import { googleNameFields, googleNameRepair } from "./google-name";
 import { assertPasswordWithoutEmail } from "./password-checks";
 import { loginDeviceHash, loginDeviceLabel, type LoginDeviceInfo } from "./login-device";
@@ -827,7 +827,7 @@ export class AuthService {
     };
   }
 
-  private issueToken(user: { id: string; sessionVersion: number }): string {
-    return this.jwt.sign(sessionTokenPayload(user));
+  private issueToken(user: { id: string; sessionVersion: number; role: string }): string {
+    return this.jwt.sign(sessionTokenPayload(user), { expiresIn: sessionExpiresIn(user.role) });
   }
 }

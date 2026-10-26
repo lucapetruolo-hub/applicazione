@@ -53,23 +53,23 @@ export type AgendaWeekTemplateMonth = z.infer<typeof agendaWeekTemplateMonthSche
  * primo "Salva la settimana", da lì vale per tutte le settimane;
  * `changedDays` = giorni aggiornati dall'ultimo salvataggio; `starter` finché
  * il nuovo professionista non ha confermato o cambiato gli orari di partenza
- * (docs/CHANGELOG.md §356).
+ * (docs/CHANGELOG.md §360).
  */
 export type AgendaWeekTemplateState = {
   template: AgendaWeekTemplate;
   active: boolean;
   changedDays: number;
   starter: boolean;
-  /** Il profilo offre anche la consulenza online: senza, la settimana non propone "Online" (§357). */
+  /** Il profilo offre anche la consulenza online: senza, la settimana non propone "Online" (§361). */
   online: boolean;
 };
 
-/** Clienti per fascia negli orari di partenza, a domicilio e online (decisione dell'utente, §356). */
+/** Clienti per fascia negli orari di partenza, a domicilio e online (decisione dell'utente, §360). */
 export const STARTER_SLOT_CAPACITY = 5;
 
 /**
  * Orari di partenza di ogni nuovo profilo (richiesta dell'utente,
- * docs/CHANGELOG.md §356): dal lunedì al sabato 8–13 e 14–20, 5 clienti a
+ * docs/CHANGELOG.md §360): dal lunedì al sabato 8–13 e 14–20, 5 clienti a
  * domicilio e 5 online per fascia. Online solo per chi lavora anche online.
  */
 export function starterWeekTemplate(online: boolean): AgendaWeekTemplate {

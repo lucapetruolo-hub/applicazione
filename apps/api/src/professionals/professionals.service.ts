@@ -792,7 +792,7 @@ export class ProfessionalsService {
     if (isFirstTimeCreation) {
       // Primo mese gratis per tutti (docs/CHANGELOG.md §161).
       await this.subscriptionsService.ensureTrial(profile.id);
-      // Orari di partenza nell'agenda (docs/CHANGELOG.md §356): non devono
+      // Orari di partenza nell'agenda (docs/CHANGELOG.md §360): non devono
       // mai bloccare il salvataggio del profilo.
       try {
         await this.agendaService.applyStarterHours(profile.id, profile.remoteAvailable);

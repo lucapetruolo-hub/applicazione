@@ -1,5 +1,7 @@
 export { ApiError, createApiClient } from "./client";
 export type {
+  AdminTwoFactorSetup,
+  AdminTwoFactorStatus,
   ApiClient,
   ApiClientConfig,
   AdminContactMessage,

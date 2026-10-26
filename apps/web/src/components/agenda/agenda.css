@@ -810,7 +810,7 @@
 /* Settimana tipo in tre passi (docs/CHANGELOG.md §323). */
 .ag-wt {
   padding: 20px;
-  /* "Rivedi gli orari" la porta in cima, sotto l'intestazione fissa (§356). */
+  /* "Rivedi gli orari" la porta in cima, sotto l'intestazione fissa (§360). */
   scroll-margin-top: 136px;
 }
 .ag-wt-body {
@@ -1005,7 +1005,7 @@
   border-color: var(--ag-ink);
   background: #f6f1ec;
 }
-/* "+ Online" quando l'online è spento nel profilo (§359). */
+/* "+ Online" quando l'online è spento nel profilo (§363). */
 .ag-wt-chip.is-add {
   border-style: dashed;
   color: var(--ag-muted);
