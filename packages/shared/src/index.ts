@@ -38,3 +38,4 @@ export * from "./categoryPrices";
 export * from "./trafficSource";
 export * from "./requestWithdraw";
 export * from "./cancellationNotice";
+export * from "./professionalStats";

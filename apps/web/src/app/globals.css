@@ -2148,6 +2148,93 @@ a.admin-kpi:hover {
 .admin-kpi.is-urgent .admin-kpi-value {
   color: #dc3545;
 }
+/* Professionisti in numeri (docs/CHANGELOG.md §368). */
+.admin-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.admin-filters .admin-input {
+  min-width: 200px;
+  flex: 1 1 200px;
+  max-width: 320px;
+}
+.admin-link-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid #9c8e7f;
+  background: #ffffff;
+  color: #2b2420;
+  font-weight: 700;
+  font-size: 14px;
+  text-decoration: none;
+}
+.admin-link-button:hover {
+  border-color: #2b2420;
+}
+.admin-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
+  gap: 12px;
+  align-items: start;
+}
+.admin-chart-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.admin-bars {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.admin-bars-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 14px;
+  color: #2b2420;
+}
+.admin-bars-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.admin-bars-label a {
+  color: #0e7a4c;
+}
+.admin-bars-value {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: #6e6459;
+}
+.admin-bars-value strong {
+  color: #2b2420;
+}
+.admin-bars-track {
+  margin-top: 6px;
+  height: 8px;
+  border-radius: 999px;
+  background: #f1ece6;
+  overflow: hidden;
+}
+.admin-bars-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: #128552;
+}
+.admin-bars .is-zero .admin-bars-head {
+  color: #9c8e7f;
+}
 .admin-input {
   padding: 10px 12px;
   border-radius: 10px;

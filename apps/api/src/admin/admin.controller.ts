@@ -55,10 +55,24 @@ export class AdminController {
     return this.adminService.search(q);
   }
 
+  /** Professionisti in numeri, con i filtri per categoria e città (docs/CHANGELOG.md §368). */
+  @RequireAdminScope("ANY")
+  @Get("professionals/stats")
+  professionalStats(@Query("category") category?: string, @Query("city") city?: string) {
+    return this.adminService.getProfessionalStats({ category, city });
+  }
+
   @RequireAdminScope("ANY")
   @Get("users")
-  listUsers(@Query("q") q?: string, @Query("role") role?: string, @Query("status") status?: string, @Query("page") page?: string) {
-    return this.adminService.listUsers({ q, role, status, page: page ? Number(page) || 1 : 1 });
+  listUsers(
+    @Query("q") q?: string,
+    @Query("role") role?: string,
+    @Query("status") status?: string,
+    @Query("category") category?: string,
+    @Query("city") city?: string,
+    @Query("page") page?: string,
+  ) {
+    return this.adminService.listUsers({ q, role, status, category, city, page: page ? Number(page) || 1 : 1 });
   }
 
   // Tutti gli utenti con i contatti in un file: solo moderatori (controllo sicurezza, §292).
@@ -66,8 +80,14 @@ export class AdminController {
   @Get("users/export.csv")
   @Header("Content-Type", "text/csv; charset=utf-8")
   @Header("Content-Disposition", 'attachment; filename="utenti.csv"')
-  exportUsers(@Query("q") q?: string, @Query("role") role?: string, @Query("status") status?: string) {
-    return this.adminService.exportUsersCsv({ q, role, status });
+  exportUsers(
+    @Query("q") q?: string,
+    @Query("role") role?: string,
+    @Query("status") status?: string,
+    @Query("category") category?: string,
+    @Query("city") city?: string,
+  ) {
+    return this.adminService.exportUsersCsv({ q, role, status, category, city });
   }
 
   /** Scheda utente con cronologia (docs/CHANGELOG.md §145). */

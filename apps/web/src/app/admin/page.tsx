@@ -50,7 +50,7 @@ export default function AdminHomePage() {
   const numbers = overview
     ? [
         { href: "/admin/utenti?ruolo=CLIENT", value: overview.clients, label: "Clienti" },
-        { href: "/admin/utenti?ruolo=PROFESSIONAL", value: overview.professionals, label: "Professionisti" },
+        { href: "/admin/numeri-professionisti", value: overview.professionals, label: "Professionisti" },
         { href: "/admin/utenti", value: overview.newUsers7d, label: "Nuovi iscritti (7 giorni)" },
         { href: "/admin/utenti?stato=suspended", value: overview.suspendedUsers, label: "Account sospesi" },
         { href: "/admin/richieste-eliminate", value: overview.hiddenLeads, label: "Richieste eliminate dai professionisti" },

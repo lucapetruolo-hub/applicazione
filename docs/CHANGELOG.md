@@ -21195,3 +21195,16 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - **"Clienti per orario" su una riga sua** (segnalato da Luca: "da cellulare ... sembra che sia solo per l'online poiché sulla stessa riga"): nella settimana tipo il numero di clienti sta sotto "Come lavori", non accanto a "Online". Anteprime 10.
 
 **Verifica**: typecheck API e sito, lint, test dell'API (nuovo caso in `starter-hours.test.ts`), prova nel browser a 390 e 1440 px: "+ Online" nella settimana e nella fascia, attivazione che spunta "Online". Anteprime 7, 8 e 9 in `anteprime/orari-di-partenza/`.
+
+## 368. Professionisti in numeri (area admin)
+
+**Richiesta** (Luca, 26/10/2026): in Admin vedere davvero quanti professionisti sono iscritti e come sono divisi, con le percentuali e magari un grafico; in alternativa i filtri nella lista utenti con il totale ("oppure dammi tu un suggerimento").
+
+**Decisione**: tutte e due le cose, collegate.
+- **Pagina `/admin/numeri-professionisti`** ("Professionisti in numeri", nel menu dopo Utenti, per ogni admin; il riquadro "Professionisti" della Home porta qui). In cima totale, visibili nella ricerca con la percentuale, nuovi negli ultimi 30 giorni, nell'offerta di lancio. Sotto, barre orizzontali con numero e quota sul totale: per categoria (tutte, anche a zero; un professionista ne ha fino a 3, quindi la somma supera il totale e la pagina lo dice), per città (le prime 10, le altre in una riga), stato del profilo (uno solo per professionista: sospeso, bloccato per segnalazioni, creato al telefono da confermare, in pausa, dati fiscali da completare, visibile), abbonamento (mese gratuito, offerta di lancio, Base, Plus, Pro, senza abbonamento) e come lavorano (privati, Partita IVA, aziende, non indicato). In fondo il grafico delle iscrizioni per mese (ora di Roma), con la scelta del periodo: ultimi 12 mesi o un anno intero, dal primo anno con iscrizioni (richiesta di Luca), e il totale del periodo. Filtri per categoria e città: tutti i numeri si ricalcolano. Eliminati e profili dimostrativi non contano e sono indicati a parte.
+- **Lista Utenti**: con "Professionisti" compaiono i filtri Categoria e Città, il numero dei risultati in alto e il link "Vedi i numeri e le percentuali"; ogni categoria o città della pagina dei numeri apre la lista già filtrata. Anche l'esportazione CSV usa i filtri.
+- **API**: `GET /admin/professionals/stats?category=&city=` (`@RequireAdminScope("ANY")`), conti in `apps/api/src/admin/professional-stats.ts`; `GET /admin/users` e l'esportazione accettano `category` e `city`. Tipi ed etichette in `packages/shared/src/professionalStats.ts`.
+
+**Perché barre orizzontali e non torte**: con 13 categorie e 10 città una torta non si legge; le barre si confrontano a colpo d'occhio e hanno accanto numero e percentuale.
+
+**Verifica**: test dei conti (stato unico, abbonamento, categorie multiple, mesi), typecheck, lint, test dei permessi; pagine aperte in locale con l'API simulata da telefono e computer.
