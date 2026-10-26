@@ -70,10 +70,19 @@ describe("Professionisti in numeri (§364)", () => {
       { key: "UNKNOWN", count: 1 },
     ]);
     expect(stats.byStatus.reduce((sum, s) => sum + s.count, 0)).toBe(3);
-    expect(stats.byMonth).toHaveLength(12);
-    expect(stats.byMonth[0]).toEqual({ key: "2025-11", count: 0 });
-    expect(stats.byMonth[11]).toEqual({ key: "2026-10", count: 2 });
+    // Da gennaio dell'anno degli ultimi 12 mesi (2025) a ottobre 2026.
+    expect(stats.byMonth).toHaveLength(22);
+    expect(stats.byMonth[0]).toEqual({ key: "2025-01", count: 0 });
+    expect(stats.byMonth.at(-1)).toEqual({ key: "2026-10", count: 2 });
     expect(stats.byMonth.find((m) => m.key === "2026-05")?.count).toBe(1);
+  });
+
+  it("mesi dal primo anno con iscrizioni, per scegliere un anno nel grafico", () => {
+    const stats = buildProfessionalStats([row({ createdAt: new Date("2023-06-10T10:00:00Z") })], NOW, { cityOptions: [], excluded: { deleted: 0, demo: 0 } });
+    expect(stats.byMonth[0]).toEqual({ key: "2023-01", count: 0 });
+    expect(stats.byMonth.find((m) => m.key === "2023-06")?.count).toBe(1);
+    expect(stats.byMonth.at(-1)?.key).toBe("2026-10");
+    expect(stats.byMonth).toHaveLength(12 * 3 + 10);
   });
 
   it("percentuali leggibili", () => {

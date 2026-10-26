@@ -53,7 +53,10 @@ export type AdminProfessionalStats = {
   byCity: { city: string; count: number }[];
   byPlan: { key: ProfessionalPlanKey; count: number }[];
   byEntity: { key: ProfessionalEntityKey; count: number }[];
-  /** Iscrizioni per mese (ora di Roma), ultimi 12 mesi dal più vecchio. Chiave "2026-10". */
+  /**
+   * Iscrizioni per mese (ora di Roma), dal più vecchio: da gennaio dell'anno
+   * della prima iscrizione (almeno gli ultimi 12 mesi) al mese in corso. Chiave "2026-10".
+   */
   byMonth: { key: string; count: number }[];
   /** Città in cui c'è almeno un professionista, per il filtro (senza filtri applicati). */
   cityOptions: string[];

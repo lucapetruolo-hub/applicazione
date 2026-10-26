@@ -2182,6 +2182,13 @@ a.admin-kpi:hover {
   gap: 12px;
   align-items: start;
 }
+.admin-chart-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+}
 .admin-bars {
   list-style: none;
   margin: 4px 0 0;

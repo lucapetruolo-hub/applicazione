@@ -142,15 +142,19 @@ function StatsBody({ data, filters, scope }: { data: AdminProfessionalStats; fil
 
   const cities = data.byCity.slice(0, TOP_CITIES);
   const otherCities = data.byCity.slice(TOP_CITIES);
-  const months = useMemo(
-    () =>
-      data.byMonth.map((m) => {
-        const [year, month] = m.key.split("-").map(Number) as [number, number];
-        const label = new Intl.DateTimeFormat("it-IT", { month: "short", year: "2-digit", timeZone: "UTC" }).format(new Date(Date.UTC(year, month - 1, 1)));
-        return { key: m.key, label, value: m.count };
-      }),
-    [data.byMonth],
-  );
+  // Periodo del grafico: gli ultimi 12 mesi o un anno intero (richiesta di Luca, §364).
+  const [period, setPeriod] = useState<string>("last12");
+  const years = useMemo(() => [...new Set(data.byMonth.map((m) => m.key.slice(0, 4)))].reverse(), [data.byMonth]);
+  const months = useMemo(() => {
+    const shown = period === "last12" ? data.byMonth.slice(-12) : data.byMonth.filter((m) => m.key.startsWith(`${period}-`));
+    return shown.map((m) => {
+      const [year, month] = m.key.split("-").map(Number) as [number, number];
+      const date = new Date(Date.UTC(year, month - 1, 1));
+      const label = new Intl.DateTimeFormat("it-IT", period === "last12" ? { month: "short", year: "2-digit", timeZone: "UTC" } : { month: "short", timeZone: "UTC" }).format(date);
+      return { key: m.key, label, value: m.count };
+    });
+  }, [data.byMonth, period]);
+  const periodTotal = months.reduce((sum, m) => sum + m.value, 0);
 
   return (
     <YStack gap="$5">
@@ -218,9 +222,24 @@ function StatsBody({ data, filters, scope }: { data: AdminProfessionalStats; fil
       )}
 
       <AdminCard>
-        <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
-          Iscrizioni negli ultimi 12 mesi
-        </Text>
+        <div className="admin-chart-head">
+          <YStack gap="$1">
+            <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+              Iscrizioni per mese
+            </Text>
+            <Text color={brand.grafite70} fontSize={13}>
+              {periodTotal === 1 ? "1 professionista" : `${periodTotal} professionisti`} {period === "last12" ? "negli ultimi 12 mesi" : `nel ${period}`}
+            </Text>
+          </YStack>
+          <select aria-label="Periodo del grafico" className="admin-input" value={period} onChange={(e) => setPeriod(e.target.value)}>
+            <option value="last12">Ultimi 12 mesi</option>
+            {years.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
+        </div>
         <StatsBarChart points={months} formatValue={(v) => String(v)} ariaLabel="Professionisti iscritti per mese" />
       </AdminCard>
 

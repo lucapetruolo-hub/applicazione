@@ -51,14 +51,20 @@ function entityOf(row: ProfessionalStatsRow): ProfessionalEntityKey {
   return type === "PRIVATE_INDIVIDUAL" || type === "SOLE_PROPRIETOR" || type === "BUSINESS" ? type : "UNKNOWN";
 }
 
-/** Ultimi 12 mesi, dal più vecchio, come chiavi "AAAA-MM" dell'ora di Roma. */
-function lastTwelveMonthKeys(now: Date): string[] {
-  const current = romeMonthKey(now);
-  const [year, month] = current.split("-").map(Number) as [number, number];
-  return Array.from({ length: 12 }, (_, i) => {
-    const d = new Date(Date.UTC(year, month - 1 - (11 - i), 1));
-    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
-  });
+/**
+ * Tutti i mesi dal gennaio dell'anno della prima iscrizione (almeno dagli
+ * ultimi 12 mesi) a quello in corso, come chiavi "AAAA-MM" dell'ora di Roma:
+ * la pagina sceglie gli ultimi 12 mesi o un anno intero.
+ */
+function monthKeysSince(firstKey: string | null, now: Date): string[] {
+  const [year, month] = romeMonthKey(now).split("-").map(Number) as [number, number];
+  const lastYear = new Date(Date.UTC(year, month - 12, 1));
+  const firstYear = Math.min(lastYear.getUTCFullYear(), firstKey ? Number(firstKey.slice(0, 4)) : year);
+  const keys: string[] = [];
+  for (let d = new Date(Date.UTC(firstYear, 0, 1)); d.getUTCFullYear() < year || d.getUTCMonth() < month; d.setUTCMonth(d.getUTCMonth() + 1)) {
+    keys.push(`${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`);
+  }
+  return keys;
 }
 
 /**
@@ -101,7 +107,7 @@ export function buildProfessionalStats(
     byCity: [...city.entries()].map(([name, count]) => ({ city: name, count })).sort((a, b) => b.count - a.count || a.city.localeCompare(b.city, "it")),
     byPlan: PROFESSIONAL_PLAN_KEYS.map((key) => ({ key, count: plan.get(key) ?? 0 })),
     byEntity: PROFESSIONAL_ENTITY_KEYS.map((key) => ({ key, count: entity.get(key) ?? 0 })),
-    byMonth: lastTwelveMonthKeys(now).map((key) => ({ key, count: month.get(key) ?? 0 })),
+    byMonth: monthKeysSince([...month.keys()].sort()[0] ?? null, now).map((key) => ({ key, count: month.get(key) ?? 0 })),
     cityOptions: extra.cityOptions,
   };
 }
