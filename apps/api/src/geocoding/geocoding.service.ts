@@ -27,7 +27,7 @@ type GoogleGeocodeResponse = {
 /** Tipi di risultato che indicano una via o un civico, non solo un comune o una zona. */
 const STREET_LEVEL_TYPES = ["street_address", "route", "premise", "subpremise"];
 
-function normalizePlaceName(name: string): string {
+export function normalizePlaceName(name: string): string {
   return name
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -36,48 +36,32 @@ function normalizePlaceName(name: string): string {
     .trim();
 }
 
-/** Tetto giornaliero di CAP cercati e controllati dal modulo di richiesta (rotte aperte a tutti, §293). */
+const DIGITS = "0123456789";
+
+/** Tetto giornaliero di CAP controllati dal modulo di richiesta (rotte aperte a tutti, §293). */
 const POSTAL_CODE_DAILY_LIMIT = 2000;
 
 @Injectable()
 export class GeocodingService {
   private readonly logger = new Logger(GeocodingService.name);
   private readonly postalCodeBudget = new DailyBudget(POSTAL_CODE_DAILY_LIMIT, () => {
-    const message = "Tetto giornaliero dei CAP cercati raggiunto: fino a mezzanotte il CAP si scrive a mano.";
+    const message = "Tetto giornaliero dei CAP controllati raggiunto: fino a mezzanotte il CAP non si controlla.";
     this.logger.error(message);
     opsAlert("postal-code-budget", message);
   });
 
   /**
-   * CAP di via e civico (docs/CHANGELOG.md §352): Google non lo dà per una via
-   * senza civico nelle città con più CAP, il modulo di richiesta lo cerca
-   * appena si scrive il civico. `null` se non lo trova o Google non risponde:
-   * il cliente lo scrive a mano.
-   */
-  async postalCodeFor(input: { street: string; houseNumber: string; city: string }): Promise<string | null> {
-    const apiKey = process.env.GOOGLE_MAPS_API_KEY?.trim();
-    if (!apiKey || !input.street.trim() || !input.houseNumber.trim() || !input.city.trim()) return null;
-    if (!this.postalCodeBudget.take()) return null;
-    const data = await this.fetchGeocode(`${input.street.trim()} ${input.houseNumber.trim()}, ${input.city.trim()}`, apiKey);
-    const result = data?.status === "OK" ? data.results[0] : undefined;
-    if (!result || !result.types?.some((t) => STREET_LEVEL_TYPES.includes(t))) return null;
-    const component = (type: string) => result.address_components?.find((c) => c.types.includes(type))?.long_name;
-    const comune = component("administrative_area_level_3") ?? component("locality");
-    if (!comune || normalizePlaceName(comune) !== normalizePlaceName(input.city)) return null;
-    const postalCode = component("postal_code");
-    return postalCode && /^\d{5}$/.test(postalCode) ? postalCode : null;
-  }
-
-  /**
-   * Il CAP è della città? (§352) `false` solo quando è sicuro: CAP di
+   * Il CAP è della città? (docs/CHANGELOG.md §352) `false` solo quando è sicuro: CAP di
    * un'altra provincia, o di un solo comune diverso da quello scelto. Nel
    * dubbio (CAP di più località, Google che non risponde) `null`, che non
    * blocca nessuno.
    */
   async postalCodeMatchesCity(input: { postalCode: string; city: string }): Promise<boolean | null> {
     const apiKey = process.env.GOOGLE_MAPS_API_KEY?.trim();
-    const postalCode = input.postalCode.trim();
-    if (!apiKey || !/^\d{5}$/.test(postalCode) || !input.city.trim()) return null;
+    if (!apiKey || !/^\d{5}$/.test(input.postalCode.trim()) || !input.city.trim()) return null;
+    // Il CAP ricostruito cifra per cifra: nell'indirizzo chiesto a Google non
+    // finisce mai il testo arrivato dal browser.
+    const postalCode = [...input.postalCode.trim()].map((digit) => DIGITS.indexOf(digit)).join("");
     if (!this.postalCodeBudget.take()) return null;
     const data = await this.fetchGeocode("", apiKey, `postal_code:${postalCode}|country:IT`);
     const result = data?.status === "OK" ? data.results[0] : undefined;

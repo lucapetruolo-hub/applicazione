@@ -1,9 +1,13 @@
 import { BadRequestException, Controller, Get, Param, Query } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
+import { findComuneByName } from "@professionisti/shared";
 import { AddressSuggestionsService } from "./address-suggestions.service";
 import { GeocodingService } from "./geocoding.service";
 
 const SESSION = /^[A-Za-z0-9-]{8,64}$/;
+const STREET = /^[\p{L}\p{N}' .,°/-]{2,120}$/u;
+const HOUSE_NUMBER = /^[0-9]{1,5}[A-Za-z]?(?:\/[0-9A-Za-z]{1,3})?$/;
+const POSTAL_CODE = /^[0-9]{5}$/;
 
 /**
  * Suggerimenti di indirizzo per i moduli del sito (docs/CHANGELOG.md §264).
@@ -22,20 +26,20 @@ export class AddressSuggestionsController {
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Get("postal-code")
   async postalCode(@Query("street") street?: string, @Query("number") houseNumber?: string, @Query("city") city?: string) {
-    const postalCode = await this.geocodingService.postalCodeFor({
-      street: (street ?? "").slice(0, 200),
-      houseNumber: (houseNumber ?? "").slice(0, 20),
-      city: (city ?? "").slice(0, 100),
-    });
-    return { postalCode };
+    // Solo valori dall'aspetto di un indirizzo e un comune dell'elenco ISTAT:
+    // finiscono nell'indirizzo chiesto a Google.
+    const comune = findComuneByName(city ?? "");
+    if (!comune || !street || !STREET.test(street) || !houseNumber || !HOUSE_NUMBER.test(houseNumber)) return { postalCode: null };
+    return { postalCode: await this.addressSuggestionsService.postalCodeFor({ street, houseNumber, city: comune.name }) };
   }
 
   /** Il CAP scritto è della città? `matches: null` quando non si sa (§352). */
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Get("postal-code/check")
   async postalCodeCheck(@Query("postalCode") postalCode?: string, @Query("city") city?: string) {
-    const matches = await this.geocodingService.postalCodeMatchesCity({ postalCode: (postalCode ?? "").slice(0, 10), city: (city ?? "").slice(0, 100) });
-    return { matches };
+    const comune = findComuneByName(city ?? "");
+    if (!comune || !postalCode || !POSTAL_CODE.test(postalCode)) return { matches: null };
+    return { matches: await this.geocodingService.postalCodeMatchesCity({ postalCode, city: comune.name }) };
   }
 
   /** Se i suggerimenti funzionano, senza chiamare Google (§324). */
