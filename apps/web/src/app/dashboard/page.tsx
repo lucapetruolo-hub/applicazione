@@ -2,7 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Check, Navigation, Truck } from "lucide-react";
+import { Check, Navigation, Phone, Truck } from "lucide-react";
 import { AGENDA_LOOKAHEAD_DAYS, formatAppointmentDate, formatAppointmentTime, jobOccurrences, navigateUrl, scheduleChangeBetween, wallClockNow, wallClockToday, type AgendaAttention, type DayAhead, type ExternalJob, type MySubscription, type ProfessionalBooking, type ProfessionalInsights, type ProfessionalLead } from "@professionisti/shared";
 import { Badge, Button, Icon, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -144,7 +144,7 @@ export default function DashboardTodayPage() {
   // Un lavoro su più giorni compare oggi e domani con l'orario di quel giorno (§310).
   // `navigateTo`: indirizzo per "Naviga" (§352), solo a lavoro confermato.
   // `onTheWay`: "Sto arrivando" (§353), solo per un appuntamento confermato a domicilio.
-  type UpcomingRow = { key: string; href: string; at: string; title: string; sub: string; job: DayJobRow; navigateTo: string | null; onTheWay: { bookingId: string; sentAt: string | null } | null };
+  type UpcomingRow = { key: string; href: string; at: string; title: string; sub: string; job: DayJobRow; navigateTo: string | null; onTheWay: { bookingId: string; sentAt: string | null } | null; phone: string | null };
   const inWindow = (start: Date) => start >= startToday && start < endTomorrow;
   const upcoming: UpcomingRow[] = [
     ...(bookings ?? [])
@@ -169,6 +169,8 @@ export default function DashboardTodayPage() {
                   : booking.address
                 : null,
             onTheWay: booking.status === "CONFIRMED" && booking.serviceMode !== "ONLINE" ? { bookingId: booking.id, sentAt: booking.onTheWayAt ?? null } : null,
+            // Telefono solo a lavoro confermato (CLAUDE.md §5 punto 9).
+            phone: booking.status === "CONFIRMED" ? (booking.recipientPhone ?? booking.clientPhone) : null,
           })),
       ),
     // Anche i lavori aggiunti a mano in agenda (§333).
@@ -186,6 +188,7 @@ export default function DashboardTodayPage() {
             job: { start: occurrence.start.toISOString(), end: occurrence.end?.toISOString() ?? null, city: cityOfAddress(job.address), online: false },
             navigateTo: job.address,
             onTheWay: null,
+            phone: job.clientPhone,
           })),
       ),
   ].sort((a, b) => a.at.localeCompare(b.at));
@@ -247,7 +250,7 @@ export default function DashboardTodayPage() {
                   ) : upcoming.length === 0 ? (
                     <EmptyLine text="Nessun appuntamento oggi e domani." />
                   ) : (
-                    upcoming.map(({ key, href, at, title, sub, navigateTo, onTheWay }, index) => (
+                    upcoming.map(({ key, href, at, title, sub, navigateTo, onTheWay, phone }, index) => (
                       <Fragment key={key}>
                         {/* I lavori raggruppati per giorno, con il riepilogo sopra (§333). */}
                         {index === 0 || upcoming[index - 1]!.at.slice(0, 10) !== at.slice(0, 10) ? (
@@ -266,7 +269,7 @@ export default function DashboardTodayPage() {
                           </Link>
                           {/* "Naviga" e "Sto arrivando" diretti sui lavori di oggi
                               (§352-§353): prima serviva aprire l'agenda e poi l'appuntamento. */}
-                          {at.slice(0, 10) === startToday.toISOString().slice(0, 10) && (navigateTo || onTheWay) ? (
+                          {at.slice(0, 10) === startToday.toISOString().slice(0, 10) && (navigateTo || onTheWay || phone) ? (
                             <div className="today-appt-actions">
                               {navigateTo ? (
                                 <a className="today-nav" href={navigateUrl(navigateTo)} target="_blank" rel="noreferrer" aria-label={`Naviga verso ${navigateTo}`}>
@@ -283,6 +286,12 @@ export default function DashboardTodayPage() {
                                     <Truck size={16} aria-hidden /> {onTheWaySending === onTheWay.bookingId ? "Invio..." : "Sto arrivando"}
                                   </button>
                                 )
+                              ) : null}
+                              {/* "Chiama" come in agenda (§354); da telefono solo l'icona. */}
+                              {phone ? (
+                                <a className="today-nav is-secondary is-call" href={`tel:${phone.replace(/\s+/g, "")}`} aria-label={`Chiama ${phone}`}>
+                                  <Phone size={16} aria-hidden /> <span className="today-nav-text">Chiama</span>
+                                </a>
                               ) : null}
                               {onTheWay && onTheWayError === onTheWay.bookingId ? (
                                 <span className="today-nav-error" role="alert">

@@ -20998,3 +20998,11 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - **Prove automatiche**: il link "Naviga" si chiamava "Naviga verso <cliente>" e la prova di Oggi trovava due link col nome del cliente; ora "Naviga verso <indirizzo>", controllato nella prova (`oggi-meteo.spec.ts`). Aggiunto in `menu-laterale.spec.ts` il controllo del §351 (nessun titolo col menu ridotto).
 
 **Verifica**: typecheck, lint, tutte le prove nel browser in locale (144 passate), foto a 390, 1366 e 1600 px.
+
+## 354. "Oggi": Chiama accanto a Sto arrivando
+
+**Richiesta esplicita dell'utente** (26/10/2026, stesso thread): "effettua miglioria", cioè l'ultima proposta: "Chiama" accanto a "Sto arrivando", come in agenda.
+
+**Decisioni**: sui lavori di oggi un pulsante "Chiama" con bordo (`tel:`), col telefono di chi riceve il lavoro o del cliente, solo a lavoro confermato (CLAUDE.md §5 punto 9), e col telefono scritto nei lavori aggiunti a mano. Da telefono solo l'icona (nome per gli screen reader "Chiama <numero>", non il nome del cliente, che le prove usano per trovare la riga); sotto i 380 px "Sto arrivando" perde l'icona del furgone, così i tre pulsanti stanno su una riga anche a 360 px.
+
+**Verifica**: typecheck, lint, tutte le prove nel browser in locale (144 passate), foto a 360, 390 e 1366 px.

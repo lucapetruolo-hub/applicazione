@@ -1584,6 +1584,18 @@ button.notif-row-main:hover {
   .today-nav-error {
     text-align: left;
   }
+  /* Tre pulsanti in una riga anche a 360 px: "Chiama" solo icona. */
+  .today-nav {
+    padding: 0 12px;
+  }
+  .today-nav.is-call {
+    width: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+  .today-nav.is-call .today-nav-text {
+    display: none;
+  }
   /* Andamento: una tessera per riga, nome a sinistra e numero a destra. */
   .today-kpis.today-insights {
     grid-template-columns: minmax(0, 1fr);
@@ -1596,6 +1608,13 @@ button.notif-row-main:hover {
   }
   .today-insights .admin-kpi > :nth-child(3) {
     grid-column: 1 / -1;
+  }
+}
+/* Telefoni stretti (360 px): senza l'icona del furgone i tre pulsanti
+   restano su una riga. */
+@media (max-width: 379px) {
+  .today-nav.is-secondary:not(.is-call) svg {
+    display: none;
   }
 }
 /* "Oggi": meteo dei prossimi tre giorni e lavori raggruppati per giorno (docs/CHANGELOG.md §333). */
