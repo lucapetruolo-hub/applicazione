@@ -72,6 +72,18 @@ function lowestServicePrice(services: ProfessionalCardService[]): number | null 
   return prices.length > 0 ? Math.min(...prices) : null;
 }
 
+/**
+ * Indirizzo del profilo aperto su una prestazione (`?prestazione=<id>#prestazioni`):
+ * la pagina profilo scorre fino all'elenco e mette in evidenza quella riga.
+ * Esportato perché chi usa la card navighi allo stesso indirizzo del link.
+ */
+export function professionalServiceHref(href: string, serviceId: string): string {
+  const [path] = href.split("#");
+  return `${path}${path!.includes("?") ? "&" : "?"}prestazione=${encodeURIComponent(serviceId)}#prestazioni`;
+}
+
+type LinkPressEvent = { metaKey?: boolean; ctrlKey?: boolean; shiftKey?: boolean; button?: number; preventDefault?: () => void; stopPropagation?: () => void };
+
 type StopPropagationEvent = { stopPropagation?: () => void } | undefined;
 
 function stop(e: unknown) {
@@ -175,6 +187,13 @@ export type ProfessionalCardProps = {
    * (docs/CHANGELOG.md §206).
    */
   onAgendaPress?: (date: string, mode: "HOME" | "ONLINE") => void;
+  /**
+   * Clic su una prestazione (richiesta esplicita dell'utente: prima non
+   * succedeva nulla): apre il profilo già sull'elenco delle prestazioni, con
+   * quella riga in evidenza (`professionalServiceHref`). Senza, la riga apre
+   * il profilo come il resto della card (`onPress`).
+   */
+  onServicePress?: (serviceId: string) => void;
   /** Slot opzionale per un'icona/badge categoria (passato da chi consuma il componente, così l'icona custom resta web-only senza sporcare packages/ui). */
   icon?: ReactNode;
   /**
@@ -212,6 +231,7 @@ export function ProfessionalCard({
   href,
   onSlotPress,
   onAgendaPress,
+  onServicePress,
   icon,
   action,
 }: ProfessionalCardProps) {
@@ -721,9 +741,43 @@ export function ProfessionalCard({
 
           {expanded && hasServices ? (
             <YStack gap="$1" {...(hasAgenda ? { paddingTop: "$3", borderTopWidth: 1, borderTopColor: brand.filetto } : null)}>
-              {(showAllServices ? serviceList : serviceList.slice(0, 3)).map((service) => (
-                <PriceLine key={service.id} label={service.name} price={formatServicePrice(service.priceMinEurCents, service.priceMaxEurCents)} />
-              ))}
+              {(showAllServices ? serviceList : serviceList.slice(0, 3)).map((service) => {
+                const line = <PriceLine label={service.name} price={formatServicePrice(service.priceMinEurCents, service.priceMaxEurCents)} />;
+                const openService = onServicePress ? () => onServicePress(service.id) : onPress;
+                if (!openService) return <YStack key={service.id}>{line}</YStack>;
+                // Ogni prestazione apre il profilo su quella prestazione: link
+                // vero con `href` (Ctrl/Cmd+clic per un'altra scheda, Tab e
+                // Invio da tastiera), altrimenti un pulsante.
+                return (
+                  <XStack
+                    key={service.id}
+                    {...(href
+                      ? { tag: "a", href: professionalServiceHref(href, service.id), style: { textDecoration: "none" } }
+                      : { tag: "button", accessibilityRole: "button" as const, borderWidth: 0, backgroundColor: "transparent", width: "100%" })}
+                    alignItems="center"
+                    gap="$2"
+                    marginHorizontal="$-2"
+                    paddingHorizontal="$2"
+                    borderRadius="$4"
+                    cursor="pointer"
+                    hoverStyle={{ backgroundColor: brand.gesso }}
+                    pressStyle={{ backgroundColor: brand.gesso }}
+                    focusStyle={{ outlineWidth: 2, outlineColor: brand.cianografia, outlineStyle: "solid", outlineOffset: 0 }}
+                    onPress={(e: LinkPressEvent) => {
+                      e.stopPropagation?.();
+                      // Con Ctrl/Cmd/Maiusc il browser apre un'altra scheda da sé.
+                      if (href && (e.metaKey || e.ctrlKey || e.shiftKey)) return;
+                      e.preventDefault?.();
+                      openService();
+                    }}
+                  >
+                    <YStack flex={1} minWidth={0}>
+                      {line}
+                    </YStack>
+                    <Icon name="chevron-right" size={16} color={brand.grafite70} strokeWidth={2} />
+                  </XStack>
+                );
+              })}
               {serviceList.length > 3 ? (
                 <XStack
                   alignItems="center"

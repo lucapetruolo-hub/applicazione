@@ -179,6 +179,16 @@ export function ProfessionalDetailContent({
     window.requestAnimationFrame(() => document.getElementById("agenda")?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }, [appliedAgendaDate]);
 
+  // Arrivo dalla scheda nei risultati con un clic su una prestazione
+  // (`?prestazione=<id>#prestazioni`): la pagina scorre all'elenco e quella
+  // riga resta in evidenza.
+  const requestedServiceId = searchParams.get("prestazione");
+  const highlightedServiceId = professional.services.some((service) => service.id === requestedServiceId) ? requestedServiceId : null;
+  useEffect(() => {
+    if (!highlightedServiceId) return;
+    window.requestAnimationFrame(() => document.getElementById("prestazioni")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }, [highlightedServiceId]);
+
   const agendaVisibleDays = useMediaQuery("(min-width: 661px)") ? AGENDA_PREVIEW_DAYS_WIDE : AGENDA_PREVIEW_DAYS;
   const totalAgendaDays = agendaPreview?.allDays.length ?? 0;
   const maxAgendaOffset = Math.max(0, totalAgendaDays - agendaVisibleDays);
@@ -864,7 +874,8 @@ export function ProfessionalDetailContent({
         )}
 
         {professional.services.length > 0 ? (
-          <YStack gap="$3">
+          // L'ancora #prestazioni sta sul titolo (scheda nei risultati, clic su una prestazione).
+          <YStack gap="$3" id="prestazioni" style={{ scrollMarginTop: 96 }}>
             <XStack alignItems="center" gap="$2">
               <Icon name="receipt-text" size={18} strokeWidth={1.5} color={brand.cianografiaScuro} />
               <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
@@ -873,7 +884,14 @@ export function ProfessionalDetailContent({
             </XStack>
             <Surface padding={0} overflow="hidden">
               {professional.services.map((service, index) => (
-                <YStack key={service.id} paddingHorizontal="$4" paddingVertical="$3" borderTopWidth={index === 0 ? 0 : 1} borderTopColor={brand.filetto}>
+                <YStack
+                  key={service.id}
+                  paddingHorizontal="$4"
+                  paddingVertical="$3"
+                  borderTopWidth={index === 0 ? 0 : 1}
+                  borderTopColor={brand.filetto}
+                  backgroundColor={service.id === highlightedServiceId ? brand.cianografiaVelo : undefined}
+                >
                   <PriceLine
                     label={service.name}
                     labelColor={brand.grafite}

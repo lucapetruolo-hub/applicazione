@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ProfessionalSearchResult } from "@professionisti/shared";
-import { Button, EmptyState, Icon, ProfessionalCard, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Button, EmptyState, Icon, ProfessionalCard, Text, XStack, YStack, brand, professionalServiceHref } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { IconActionButton } from "@/components/IconActionButton";
@@ -124,6 +124,7 @@ export default function ProfessionistiSalvatiPage() {
                     services={pro.services}
                     href={professionalPath(pro)}
                     onPress={() => router.push(professionalPath(pro))}
+                    onServicePress={(serviceId) => router.push(professionalServiceHref(professionalPath(pro), serviceId))}
                     icon={<ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={72} />}
                     // Cuore pieno in alto a destra, come nella ricerca (docs/CHANGELOG.md
                     // §349): prima "Rimuovi dai salvati" era un testo piccolo fuori dalla scheda.

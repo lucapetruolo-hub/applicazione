@@ -21019,3 +21019,17 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - Modello email (`email-layout.ts`): righe "lunghe" (`long`, etichetta sopra e testo normale sotto), titolo del riquadro (`detailsTitle`), miniature (`detailImages`) e link secondario sotto il pulsante (`secondaryLink`); anche nella versione solo testo.
 
 **Verifica**: typecheck API e sito, lint, test dell'API (5 nuovi su `requestSentEmail`), anteprime a 390 e 1280 px con `email:preview`.
+
+## 358. Ricerca: un clic su una prestazione apre il profilo
+
+**Richiesta esplicita dell'utente** (26/10/2026): "a chi effettua una ricerca, se clicca sulla parte relativa alle prestazioni offerte, attualmente non succede niente, è sbagliato, fagli aprire almeno il profilo del professionista".
+
+**Causa**: l'area "orari e prezzi" della scheda ferma il clic (scelta del §206/§349: sull'agenda devono rispondere solo i pulsanti), e le righe delle prestazioni non avevano un'azione propria.
+
+**Decisioni**:
+- Ogni prestazione nella scheda è un link al profilo già sulla sezione "Prestazioni", con quella riga in verde chiaro (`?prestazione=<id>#prestazioni`, `professionalServiceHref` in `packages/ui`). Una freccina a destra della riga e lo sfondo al passaggio del mouse dicono che si può cliccare.
+- Link vero: Ctrl/Cmd+clic apre un'altra scheda, da tastiera ci si arriva con Tab e si apre con Invio, contorno verde quando ha il focus.
+- Vale anche in "Professionisti salvati" (stessa scheda). La modalità "Online" della ricerca resta nell'indirizzo.
+- L'agenda resta com'era: lo spazio vuoto tra gli orari non apre il profilo (richiesta del §206).
+
+**Verifica**: typecheck e lint; sito in locale con prestazioni di prova, clic col mouse a 1440 px, tocco a 390 px e Invio da tastiera: il profilo si apre sulle prestazioni con la riga giusta in evidenza.

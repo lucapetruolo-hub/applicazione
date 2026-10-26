@@ -3,7 +3,7 @@ export type { AppTamaguiConfig } from "./config";
 export { Button, BUTTON_HEIGHT } from "./Button";
 export { ButtonArrow } from "./ButtonArrow";
 export type { ButtonArrowProps } from "./ButtonArrow";
-export { ProfessionalCard } from "./ProfessionalCard";
+export { ProfessionalCard, professionalServiceHref } from "./ProfessionalCard";
 export { PriceLine } from "./PriceLine";
 export { CategoryCard } from "./CategoryCard";
 export { SearchBar } from "./SearchBar";
