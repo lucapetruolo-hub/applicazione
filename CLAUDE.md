@@ -312,7 +312,7 @@ prezzi Stripe nelle variabili `STRIPE_PRICE_<LIVELLO>` e
   primi 100 professionisti con il profilo completo Base gratis per **3 mesi**
   dal lancio (`Subscription.founderNumber`, `FOUNDER_SPOTS` in
   `packages/shared/src/plans.ts`), niente mese a sorpresa; banda "GRATIS PER
-  3 MESI" con i posti rimasti su `/per-professionisti` (`GET
+  3 MESI" con "100 posti", mai il conto alla rovescia, su `/per-professionisti` (`GET
   /subscriptions/founders`) e tre caselle in Abbonamento. Nei giorni
   gratuiti la quota di passaggio conta tutti i giorni che restano, come se
   Base costasse 19 € (`freePeriodUpgradeFeeEurCents`).

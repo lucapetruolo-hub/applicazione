@@ -525,7 +525,8 @@ const TIER_FOR: Record<SubscriptionTier, string> = {
  */
 /**
  * Banda verde dell'offerta di lancio (§359, anteprima approvata da Luca):
- * "GRATIS PER 3 MESI" ben in vista con i posti rimasti.
+ * "GRATIS PER 3 MESI" ben in vista con il numero dei posti, 100, mai il
+ * conto alla rovescia (decisione dell'utente).
  */
 function FounderBand({ spots }: { spots: FounderSpots }) {
   return (
@@ -549,10 +550,10 @@ function FounderBand({ spots }: { spots: FounderSpots }) {
       </YStack>
       <YStack alignItems="center" backgroundColor="rgba(255,255,255,0.14)" borderRadius={10} paddingHorizontal="$3" paddingVertical="$2" minWidth={88}>
         <Text fontFamily="$heading" fontWeight="800" fontSize={30} lineHeight={34} color="white">
-          {spots.left}
+          {spots.total}
         </Text>
         <Text color="white" fontSize={13}>
-          {spots.left === 1 ? "posto rimasto" : "posti rimasti"}
+          posti
         </Text>
       </YStack>
     </XStack>
