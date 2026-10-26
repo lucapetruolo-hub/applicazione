@@ -75,15 +75,15 @@
 /* Verde come i pulsanti principali di tutto il sito (decisione dell'utente
    del 24/10/2026, docs/CHANGELOG.md §349): era l'unico quasi nero dell'area. */
 .ag-btn.primary {
-  border-color: var(--ag-green-dark);
-  background: var(--ag-green-dark);
+  border-color: var(--ag-green-fill);
+  background: var(--ag-green-fill);
   color: #fff;
 }
-/* Il verde scuro tiene il testo bianco leggibile anche a 13 px (contrasto
-   AA, prova agenda-accessibilita): il verde chiaro basta solo sui testi grandi. */
+/* Verde pieno come i pulsanti di tutto il sito: tiene il testo bianco
+   leggibile anche a 13 px (contrasto AA, docs/CHANGELOG.md §350). */
 .ag-btn.primary:hover {
-  border-color: #0a6340;
-  background: #0a6340;
+  border-color: var(--ag-green-dark);
+  background: var(--ag-green-dark);
 }
 .ag-btn.danger {
   border-color: var(--ag-red);
@@ -333,7 +333,7 @@
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: var(--ag-green);
+  background: var(--ag-green-fill);
   transform: translateX(-50%);
 }
 .ag-mini-grid button.today.has::after {
@@ -371,7 +371,7 @@
   font-size: 12px;
 }
 .ag-swatch-conf {
-  background: var(--ag-green);
+  background: var(--ag-green-fill);
 }
 .ag-swatch-done {
   background: var(--ag-teal);
@@ -658,7 +658,7 @@
   width: 4px;
   margin: 4px auto 0;
   border-radius: 50%;
-  background: var(--ag-green);
+  background: var(--ag-green-fill);
 }
 .ag-strip button.on u {
   background: #fff;
@@ -1259,7 +1259,7 @@
   transition: transform 150ms ease;
 }
 .ag-switch[aria-checked="true"] i {
-  background: var(--ag-green);
+  background: var(--ag-green-fill);
 }
 .ag-switch[aria-checked="true"] i::after {
   transform: translateX(18px);

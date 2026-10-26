@@ -67,7 +67,7 @@ export function IconActionButton({ label, onPress, children, active, disabled, f
           border-color: ${brand.cianografia};
         }
         button.active {
-          background: ${brand.cianografia};
+          background: ${brand.cianografiaPieno};
           border-color: ${brand.cianografia};
         }
         button:disabled {

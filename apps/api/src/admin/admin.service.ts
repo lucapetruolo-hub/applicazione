@@ -1,3 +1,4 @@
+import { ACTION_SHORT_LABEL, auditLabel } from "./audit-label";
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ContentReportTargetType, ModerationAction, Prisma, PrismaClient } from "@professionisti/database";
 import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource } from "@professionisti/shared";
@@ -252,7 +253,7 @@ export class AdminService {
       ...audit.map((a) => ({
         at: a.createdAt.toISOString(),
         kind: "admin",
-        text: `${auditLabel(a.fieldName, a.newValue)}${a.reason ? `: ${a.reason}` : ""}${a.changedByUserId ? ` (${adminEmails.get(a.changedByUserId) ?? "admin"})` : ""}`,
+        text: `${auditLabel(a)}${a.reason ? `: ${a.reason}` : ""}${a.changedByUserId ? ` (${adminEmails.get(a.changedByUserId) ?? "admin"})` : ""}`,
       })),
     ].sort((a, b) => b.at.localeCompare(a.at));
 
@@ -391,7 +392,7 @@ export class AdminService {
         fieldName: r.fieldName,
         oldValue: r.oldValue,
         newValue: r.newValue,
-        label: auditLabel(r.fieldName, r.newValue),
+        label: auditLabel(r),
         reason: r.reason,
         changedByEmail: r.changedByUserId ? (users.get(r.changedByUserId) ?? null) : null,
       })),
@@ -1464,38 +1465,6 @@ function startOfIsoWeek(date: Date): Date {
   const day = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() - day + 1);
   return d;
-}
-
-const ACTION_SHORT_LABEL: Record<string, string> = {
-  WARN: "avvertimento",
-  REQUEST_CORRECTION: "richiesta di correzione",
-  HIDE_CONTENT: "contenuto nascosto",
-  SUSPEND_PROFILE: "profilo tolto dalla ricerca",
-  SUSPEND_USER: "account sospeso",
-};
-const ROLE_SHORT_LABEL: Record<string, string> = {
-  SUPER: "super admin",
-  MODERATOR: "moderatore",
-  FINANCE: "finanza",
-  CLIENT: "cliente (non più admin)",
-  PROFESSIONAL: "professionista (non più admin)",
-};
-
-/** Frase leggibile per una riga del registro. */
-function auditLabel(fieldName: string | null, newValue: string | null): string {
-  if (fieldName === "suspendedAt") return newValue === "SUSPENDED" ? "Account sospeso" : "Account riattivato";
-  if (fieldName === "adminRole" || fieldName === "adminRoles") {
-    const labels = (newValue ?? "").replace(/"/g, "").replace(/[[\]]/g, "").split(/[+,]/).filter(Boolean).map((v) => ROLE_SHORT_LABEL[v] ?? v);
-    return `Ruolo cambiato in ${labels.join(" + ") || "—"}`;
-  }
-  if (fieldName === "revert") return "Misura annullata";
-  if (fieldName === "appeal") return "Contestazione respinta";
-  if (fieldName === "status" && newValue?.startsWith("RESOLVED")) {
-    const action = newValue.split(":")[1] ?? "";
-    return `Segnalazione accolta: ${ACTION_SHORT_LABEL[action] ?? action}`;
-  }
-  if (fieldName === "status" && newValue === "DISMISSED") return "Segnalazione non accolta";
-  return [fieldName, newValue].filter(Boolean).join(" → ") || "Modifica";
 }
 
 export type AdminCompletedJobRow = {

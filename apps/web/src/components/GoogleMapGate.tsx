@@ -46,7 +46,7 @@ function useGoogleAuthFailure(): boolean {
 /** Cosa mostrare nell'immagine fissa della mappa (docs/CHANGELOG.md §265). */
 export type StaticMapSpec = { markers: [number, number][]; center?: [number, number]; zoom?: number; radiiKm?: number[] };
 
-export function GoogleMapGate({ children, staticMap }: { children: ReactNode; staticMap?: StaticMapSpec }) {
+export function GoogleMapGate({ children, staticMap, staticAlt }: { children: ReactNode; staticMap?: StaticMapSpec; staticAlt?: string }) {
   const consent = useCookieConsent();
   const authFailed = useGoogleAuthFailure();
 
@@ -54,7 +54,7 @@ export function GoogleMapGate({ children, staticMap }: { children: ReactNode; st
     return <MapPlaceholder text="Mappa non configurata (manca la chiave Google Maps)." />;
   }
   if (!consent) {
-    if (staticMap) return <StaticMapPreview spec={staticMap} />;
+    if (staticMap) return <StaticMapPreview spec={staticMap} alt={staticAlt} />;
     return (
       <MapPlaceholder text="La mappa è fornita da Google Maps: per mostrarla serve il tuo consenso ai servizi Google.">
         <button type="button" className="map-consent-button" onClick={grantCookieConsent}>
@@ -92,7 +92,7 @@ export function GoogleMapGate({ children, staticMap }: { children: ReactNode; st
  * nulla di Google nel browser. Toccandola si attiva la mappa interattiva
  * (consenso). Se l'immagine non arriva resta il riquadro con il pulsante.
  */
-function StaticMapPreview({ spec }: { spec: StaticMapSpec }) {
+function StaticMapPreview({ spec, alt = "Mappa con la posizione dei professionisti" }: { spec: StaticMapSpec; alt?: string }) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
   const boxRef = useRef<HTMLDivElement>(null);
@@ -132,7 +132,7 @@ function StaticMapPreview({ spec }: { spec: StaticMapSpec }) {
     <div ref={boxRef} className="static-map">
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element -- immagine del nostro server
-        <img src={src} alt="Mappa con la posizione dei professionisti" onError={() => setFailed(true)} />
+        <img src={src} alt={alt} onError={() => setFailed(true)} />
       ) : null}
       <button type="button" className="static-map-button" onClick={grantCookieConsent}>
         <MapPin size={16} strokeWidth={2} aria-hidden />
@@ -261,7 +261,7 @@ function MapPlaceholder({ text, children }: { text: string; children?: ReactNode
           word-break: break-word;
         }
         .map-placeholder :global(.map-consent-button) {
-          background: #189a63;
+          background: #128552;
           color: #ffffff;
           border: none;
           border-radius: 999px;

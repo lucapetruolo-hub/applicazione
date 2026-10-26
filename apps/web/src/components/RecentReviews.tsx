@@ -354,7 +354,7 @@ export function RecentReviews({ summary }: { summary: { count: number; average: 
         }
         .rr-b :global(.rr-cta) {
           flex-shrink: 0;
-          background: ${brand.cianografia};
+          background: ${brand.cianografiaPieno};
           color: ${brand.calce};
           font-weight: 700;
           font-size: 14px;
@@ -371,7 +371,7 @@ export function RecentReviews({ summary }: { summary: { count: number; average: 
         .rr-progress-bar {
           display: block;
           height: 100%;
-          background: ${brand.cianografia};
+          background: ${brand.cianografiaPieno};
           transform-origin: left center;
           animation: rr-progress ${ROTATE_MS}ms linear both;
         }
@@ -455,7 +455,7 @@ export function RecentReviews({ summary }: { summary: { count: number; average: 
         }
         .rr-dot--active::after {
           width: 22px;
-          background: ${brand.cianografia};
+          background: ${brand.cianografiaPieno};
         }
       `}</style>
     </Section>

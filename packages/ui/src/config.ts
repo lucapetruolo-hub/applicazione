@@ -84,6 +84,7 @@ const customTokens = createTokens({
     filetto: brand.filetto,
     cianografia: brand.cianografia,
     cianografiaScuro: brand.cianografiaScuro,
+    cianografiaPieno: brand.cianografiaPieno,
     cianografiaVelo: brand.cianografiaVelo,
     verificato: brand.verificato,
     urgenza: brand.urgenza,

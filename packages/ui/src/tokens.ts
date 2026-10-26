@@ -25,6 +25,10 @@ export const brand = {
   // Sfondi, hero e pulsanti restano su cianografia (docs/CHANGELOG.md §172,
   // scelta dell'utente).
   cianografiaScuro: "#0E7A4C",
+  // Sfondo dei pulsanti e delle aree piene con testo bianco (docs/CHANGELOG.md
+  // §350): cianografia con il bianco sopra ha contrasto 3,6:1, sotto il 4,5:1
+  // che serve ai testi di 16 px; questo tono, appena più scuro, arriva a 4,7:1.
+  cianografiaPieno: "#128552",
   cianografiaVelo: "#DCF3E7",
   // Verde muto, volutamente distinto dal verde smeraldo (cianografia,
   // usato per i CTA): un badge "Verificato" non deve confondersi con un
