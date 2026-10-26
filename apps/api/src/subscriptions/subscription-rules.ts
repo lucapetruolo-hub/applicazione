@@ -2,7 +2,20 @@
  * Regole pure dell'abbonamento a livelli (docs/CHANGELOG.md §161), testate
  * in `subscription-rules.test.ts`.
  */
-import { TRIAL_DAYS, USAGE_WARNING_RATIO, subscriptionTierInfo, type MySubscription, type PauseReason, type SubscriptionTier } from "@professionisti/shared";
+import {
+  FOUNDER_FREE_MONTHS,
+  FOUNDER_TRIAL_DAYS,
+  SUBSCRIPTION_TIERS,
+  TRIAL_DAYS,
+  freePeriodUpgradeFeeEurCents,
+  USAGE_WARNING_RATIO,
+  subscriptionTierInfo,
+  upgradeFeeEurCents,
+  type BillingInterval,
+  type MySubscription,
+  type PauseReason,
+  type SubscriptionTier,
+} from "@professionisti/shared";
 
 /** Risposta a chi prova a scrivere o prenotare un professionista in pausa. */
 export const NOT_ACCEPTING_REQUESTS = "Questo professionista al momento non accetta nuove richieste. Cerca altri professionisti nella tua zona.";
@@ -57,7 +70,9 @@ export type SubscriptionRow = {
   status: string;
   trialEndsAt: Date | null;
   cancelAtPeriodEnd?: boolean;
+  currentPeriodStart?: Date | null;
   currentPeriodEnd?: Date | null;
+  founderNumber?: number | null;
 };
 
 export function subscriptionState(row: SubscriptionRow | null, now: Date): MySubscription["state"] {
@@ -75,8 +90,9 @@ export function subscriptionState(row: SubscriptionRow | null, now: Date): MySub
 }
 
 /**
- * Limite mensile di lavori accettati. Il mese gratuito vale come il livello
- * Base (decisione dell'utente, docs/CHANGELOG.md §162); Pro senza limite.
+ * Limite di lavori accettati per periodo (un mese dal rinnovo). Il mese
+ * gratuito vale come il livello Base (decisione dell'utente,
+ * docs/CHANGELOG.md §162); Pro senza limite.
  */
 export function monthlyLimit(row: SubscriptionRow | null, now: Date): number | null {
   const state = subscriptionState(row, now);
@@ -88,18 +104,100 @@ export function monthlyLimit(row: SubscriptionRow | null, now: Date): number | n
 
 /**
  * Perché l'account è in pausa (fuori dalla ricerca, niente nuove richieste),
- * o null se è operativo. Decisione dell'utente, docs/CHANGELOG.md §162: prova
- * finita senza livello, abbonamento concluso, o lavori del mese esauriti. Un
- * pagamento non riuscito non mette in pausa: Stripe riprova per qualche
- * giorno e, se non va, chiude l'abbonamento.
+ * o null se è operativo: prova finita senza livello o abbonamento concluso
+ * (docs/CHANGELOG.md §162). Un pagamento non riuscito non mette in pausa:
+ * Stripe riprova per qualche giorno e, se non va, chiude l'abbonamento.
+ * I lavori esauriti non mettono più in pausa (decisione dell'utente,
+ * docs/CHANGELOG.md §362): vedi `jobLimitReached`.
  */
-export function pauseReason(row: SubscriptionRow | null, acceptedJobsThisMonth: number, now: Date): PauseReason | null {
+export function pauseReason(row: SubscriptionRow | null, now: Date): PauseReason | null {
   const state = subscriptionState(row, now);
   if (state === "TRIAL_ENDED") return "TRIAL_ENDED";
   if (state === "CANCELED") return "SUBSCRIPTION_ENDED";
-  const limit = monthlyLimit(row, now);
-  if (limit !== null && acceptedJobsThisMonth >= limit) return "LIMIT_REACHED";
   return null;
+}
+
+/**
+ * Lavori del periodo esauriti (decisione dell'utente, docs/CHANGELOG.md
+ * §362): il profilo resta nella ricerca e riceve le richieste, ma non può
+ * mandare preventivi nuovi né la prima risposta a una richiesta, né essere
+ * prenotato direttamente (l'agenda resta visibile per le richieste, §363).
+ * Solo con un abbonamento in corso (prova o livello).
+ */
+export function jobLimitReached(row: SubscriptionRow | null, used: number, now: Date): boolean {
+  if (pauseReason(row, now)) return false;
+  const limit = monthlyLimit(row, now);
+  return limit !== null && used >= limit;
+}
+
+/** Messaggio per chi prova a mandare un preventivo o a rispondere con i lavori esauriti (in shared: il sito lo riconosce). */
+export { JOB_LIMIT_REACHED_MESSAGE } from "@professionisti/shared";
+
+/**
+ * Risposta a chi prova a prenotare direttamente (solo API, il sito passa
+ * sempre da una richiesta) un professionista con i lavori esauriti: niente
+ * frasi che lo facciano sembrare non disponibile (decisione dell'utente, §363).
+ */
+export const NOT_BOOKABLE_ONLINE = "Per questo orario manda una richiesta di preventivo al professionista.";
+
+/**
+ * Su Plus e Pro lo stesso cliente conta una volta per periodo (decisione
+ * dell'utente, §362); su Base e nel periodo gratuito conta ogni lavoro.
+ */
+export function countsClientsOnce(row: SubscriptionRow | null, now: Date): boolean {
+  const state = subscriptionState(row, now);
+  if (state !== "ACTIVE" && state !== "PAST_DUE") return false;
+  const tier = row ? tierOfPlan(row.plan) : null;
+  return tier === "PLUS" || tier === "PRO";
+}
+
+function daysInMonthUtc(year: number, month: number): number {
+  return new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+}
+
+/** Stessa ora e stesso giorno del mese `months` mesi dopo; il 31 diventa l'ultimo giorno dei mesi più corti, come fa Stripe. */
+export function addMonthsUtc(date: Date, months: number): Date {
+  const total = date.getUTCMonth() + months;
+  const year = date.getUTCFullYear() + Math.floor(total / 12);
+  const month = ((total % 12) + 12) % 12;
+  const day = Math.min(date.getUTCDate(), daysInMonthUtc(year, month));
+  return new Date(Date.UTC(year, month, day, date.getUTCHours(), date.getUTCMinutes(), date.getUTCSeconds(), date.getUTCMilliseconds()));
+}
+
+/**
+ * Periodo in cui si contano i lavori (decisione dell'utente del 26/10/2026,
+ * docs/CHANGELOG.md §362): i lavori ripartono al rinnovo, non il 1° del mese,
+ * così lavori, livello e quota di passaggio seguono la stessa data.
+ * - Periodo gratuito: blocchi di 30 giorni che finiscono alla fine della
+ *   prova (con il mese regalato sono due).
+ * - Abbonamento pagato: un mese alla volta dall'inizio del periodo di Stripe
+ *   (con l'annuale, ogni mese dalla data dell'abbonamento).
+ * - Altrimenti (prova finita, abbonamento concluso, dati mancanti): il mese
+ *   di calendario.
+ */
+export function usagePeriod(row: SubscriptionRow | null, now: Date): { start: Date; end: Date } {
+  const t = now.getTime();
+  if (row?.trialEndsAt && row.trialEndsAt.getTime() > t && row.status !== "CANCELED") {
+    const end = row.trialEndsAt.getTime();
+    const blocks = Math.max(1, Math.ceil((end - t) / FREE_PERIOD_MS));
+    const start = end - blocks * FREE_PERIOD_MS;
+    return { start: new Date(start), end: new Date(start + FREE_PERIOD_MS) };
+  }
+  const state = subscriptionState(row, now);
+  const anchor = row?.currentPeriodStart ?? null;
+  if ((state === "ACTIVE" || state === "PAST_DUE") && anchor && anchor.getTime() <= t) {
+    let months = (now.getUTCFullYear() - anchor.getUTCFullYear()) * 12 + (now.getUTCMonth() - anchor.getUTCMonth());
+    while (months > 0 && addMonthsUtc(anchor, months).getTime() > t) months--;
+    while (addMonthsUtc(anchor, months + 1).getTime() <= t) months++;
+    return { start: addMonthsUtc(anchor, months), end: addMonthsUtc(anchor, months + 1) };
+  }
+  const start = romeMonthStart(now);
+  return { start, end: romeMonthStart(new Date(start.getTime() + 32 * TRIAL_DAY_MS)) };
+}
+
+/** Chiave del periodo per gli avvisi del limite, es. "2026-10-18". */
+export function usagePeriodKey(period: { start: Date }): string {
+  return period.start.toISOString().slice(0, 10);
 }
 
 /**
@@ -123,18 +221,21 @@ export function periodNoticeToSend(
 
 /**
  * Quale avviso mandare dopo un nuovo lavoro accettato: "100" al limite,
- * "80" vicino al limite, null se nessuno o se già mandato questo mese.
+ * "80" vicino al limite, null se nessuno o se già mandato in questo periodo.
  */
-export function usageNoticeToSend(used: number, limit: number | null, lastNoticeKey: string | null, monthKey: string): "80" | "100" | null {
+export function usageNoticeToSend(used: number, limit: number | null, lastNoticeKey: string | null, periodKey: string): "80" | "100" | null {
   if (limit === null || limit <= 0) return null;
-  if (used >= limit) return lastNoticeKey === `${monthKey}:100` ? null : "100";
+  if (used >= limit) return lastNoticeKey === `${periodKey}:100` ? null : "100";
   if (used >= Math.ceil(limit * USAGE_WARNING_RATIO)) {
-    return lastNoticeKey === `${monthKey}:80` || lastNoticeKey === `${monthKey}:100` ? null : "80";
+    return lastNoticeKey === `${periodKey}:80` || lastNoticeKey === `${periodKey}:100` ? null : "80";
   }
   return null;
 }
 
 const TRIAL_DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Un periodo gratuito (mese di prova o mese regalato): base del calcolo della quota di passaggio. */
+export const FREE_PERIOD_MS = TRIAL_DAYS * TRIAL_DAY_MS;
 
 /**
  * Data di lancio del sito (variabile `LAUNCH_DATE` su Render, formato
@@ -155,8 +256,81 @@ export function hasLaunched(now: Date, launch: Date | null): boolean {
   return !!launch && now.getTime() >= launch.getTime();
 }
 
-/** Fine del mese gratuito per chi si iscrive adesso: un mese dal lancio, o da oggi se il lancio è passato. */
-export function trialEndFor(now: Date, launch: Date | null): Date {
+/**
+ * Fine del periodo gratuito per chi si iscrive adesso: dal lancio, o da oggi
+ * se il lancio è passato. Un mese, o tre per i fondatori (§363).
+ */
+export function trialEndFor(now: Date, launch: Date | null, days: number = TRIAL_DAYS): Date {
   const start = launch && launch.getTime() > now.getTime() ? launch : now;
-  return new Date(start.getTime() + TRIAL_DAYS * TRIAL_DAY_MS);
+  return new Date(start.getTime() + days * TRIAL_DAY_MS);
+}
+
+/** Giorni gratuiti di una riga: 90 per i primi 100 professionisti (§363), altrimenti 30. */
+export function trialDaysOf(row: { founderNumber?: number | null } | null): number {
+  return row?.founderNumber ? FOUNDER_TRIAL_DAYS : TRIAL_DAYS;
+}
+
+/**
+ * Mesi gratuiti dei fondatori (§363) per le tre caselle in Abbonamento:
+ * `currentMonth` 1-3 durante i mesi gratuiti, 0 se non sono ancora partiti
+ * (prima del lancio), null quando sono finiti. Null per chi non è fondatore.
+ */
+export function founderFreeMonths(founderNumber: number | null | undefined, trialEndsAt: Date | null, now: Date): MySubscription["founder"] {
+  if (!founderNumber) return null;
+  if (!trialEndsAt) return { months: FOUNDER_FREE_MONTHS, currentMonth: 0 };
+  const end = trialEndsAt.getTime();
+  const start = end - FOUNDER_TRIAL_DAYS * TRIAL_DAY_MS;
+  const t = now.getTime();
+  if (t >= end) return { months: FOUNDER_FREE_MONTHS, currentMonth: null };
+  if (t < start) return { months: FOUNDER_FREE_MONTHS, currentMonth: 0 };
+  return { months: FOUNDER_FREE_MONTHS, currentMonth: Math.min(FOUNDER_FREE_MONTHS, Math.floor((t - start) / FREE_PERIOD_MS) + 1) };
+}
+
+const MONTH_FALLBACK_MS = 30 * TRIAL_DAY_MS;
+const YEAR_FALLBACK_MS = 365 * TRIAL_DAY_MS;
+
+/**
+ * Quota di passaggio verso ogni livello sopra quello attuale (docs/CHANGELOG.md
+ * §361): stessa formula dell'addebito vero (`upgradeFeeEurCents`). Durante la
+ * prova si parte da Base e si contano tutti i giorni gratuiti che restano,
+ * a mesi di 30 giorni (`freePeriodUpgradeFeeEurCents`, §363); prima
+ * del lancio la prova non scorre e non si paga niente. Con un abbonamento
+ * pagato si conta il periodo di Stripe (mese o anno) fino al rinnovo.
+ */
+export function upgradeQuotes(input: {
+  state: MySubscription["state"];
+  tier: SubscriptionTier | null;
+  interval: BillingInterval;
+  waitingLaunch: boolean;
+  trialEndsAt: Date | null;
+  currentPeriodStart: Date | null;
+  currentPeriodEnd: Date | null;
+  now: Date;
+}): MySubscription["upgradeQuotes"] {
+  const paid = input.state === "ACTIVE" || input.state === "PAST_DUE";
+  if (!paid && input.state !== "TRIAL") return [];
+  const from: SubscriptionTier = paid && input.tier ? input.tier : "BASE";
+  const higher = SUBSCRIPTION_TIERS.slice(SUBSCRIPTION_TIERS.findIndex((t) => t.tier === from) + 1);
+  const trialRunning = !paid && !input.waitingLaunch && input.trialEndsAt !== null;
+  // Livello scelto durante la prova: Stripe la chiama già abbonamento, ma i giorni sono ancora gratuiti.
+  const inPaidTrial = paid && input.trialEndsAt !== null && input.trialEndsAt.getTime() > input.now.getTime();
+  return higher.map(({ tier }) => {
+    if (input.waitingLaunch && !paid) return { tier, amountEurCents: 0, until: null };
+    if (trialRunning || inPaidTrial) {
+      const end = input.trialEndsAt!;
+      return {
+        tier,
+        amountEurCents: freePeriodUpgradeFeeEurCents({ from, to: tier, remainingMs: end.getTime() - input.now.getTime() }),
+        until: end.toISOString(),
+      };
+    }
+    const end = input.currentPeriodEnd;
+    if (!end) return { tier, amountEurCents: 0, until: null };
+    const periodMs = input.currentPeriodStart ? end.getTime() - input.currentPeriodStart.getTime() : input.interval === "YEAR" ? YEAR_FALLBACK_MS : MONTH_FALLBACK_MS;
+    return {
+      tier,
+      amountEurCents: upgradeFeeEurCents({ from, to: tier, interval: input.interval, remainingMs: end.getTime() - input.now.getTime(), periodMs }),
+      until: end.toISOString(),
+    };
+  });
 }

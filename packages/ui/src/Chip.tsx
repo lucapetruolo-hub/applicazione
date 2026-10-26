@@ -22,7 +22,7 @@ export function Chip({ children, selected = false, onPress }: ChipProps) {
       onPress={onPress}
       accessibilityRole={onPress ? "button" : undefined}
       // Sul sito "accessibilityState" finiva nella pagina come attributo
-      // sconosciuto: il lettore di schermo non sapeva se era scelto (§362).
+      // sconosciuto: il lettore di schermo non sapeva se era scelto (§366).
       aria-pressed={onPress ? selected : undefined}
       onKeyDown={
         onPress

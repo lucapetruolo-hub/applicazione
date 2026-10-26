@@ -25,7 +25,7 @@ export function ProfessionalReviewsSummary({ reviews }: { reviews: ProfessionalR
  * Come sopra, con il link alle recensioni del profilo pubblico (dove la riga
  * non è già un link). Punta già all'indirizzo con nome e città: niente
  * rimando, che nella navigazione interna di Next perdeva "#recensioni"
- * (docs/CHANGELOG.md §357, §363).
+ * (docs/CHANGELOG.md §357, §367).
  */
 export function ProfessionalReviewsLink({ professional, reviews }: { professional: { id: string; businessName: string; city: string | null }; reviews: ProfessionalReviewSummary | null }) {
   if (!reviews || reviews.rating === null) return <ProfessionalReviewsSummary reviews={reviews} />;

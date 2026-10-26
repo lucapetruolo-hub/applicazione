@@ -92,7 +92,7 @@ describe("settimana tipo", () => {
     expect(agendaWeekTemplateSchema.safeParse(overlapping).success).toBe(false);
   });
 
-  it("orari di partenza: dal lunedì al sabato 8–13 e 14–20, 5 a domicilio e 5 online (§360)", () => {
+  it("orari di partenza: dal lunedì al sabato 8–13 e 14–20, 5 a domicilio e 5 online (§364)", () => {
     const online = starterWeekTemplate(true);
     expect(agendaWeekTemplateSchema.safeParse(online).success).toBe(true);
     expect(online.days[0]).toEqual([]);

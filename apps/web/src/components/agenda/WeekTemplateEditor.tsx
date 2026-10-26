@@ -78,7 +78,7 @@ export function templateFromDraft(draft: Draft): AgendaWeekTemplate {
   };
 }
 
-/** "dal lunedì al sabato, 8–13 e 14–20": giorni di lavoro e orari più comuni, per l'avviso degli orari di partenza (§360). */
+/** "dal lunedì al sabato, 8–13 e 14–20": giorni di lavoro e orari più comuni, per l'avviso degli orari di partenza (§364). */
 export function starterDaysLabel(template: AgendaWeekTemplate): string {
   const { workDays, base } = draftFromTemplate(template);
   if (workDays.length === 0) return "nessun giorno";
@@ -243,12 +243,12 @@ export function WeekTemplateEditor({
 }: {
   template: AgendaWeekTemplate;
   active: boolean;
-  /** Orari di partenza messi alla creazione del profilo e non ancora confermati (§360). */
+  /** Orari di partenza messi alla creazione del profilo e non ancora confermati (§364). */
   starter?: boolean;
   onKeepStarter?: () => void;
-  /** Il profilo offre la consulenza online: senza, "Online" non si propone (§361). */
+  /** Il profilo offre la consulenza online: senza, "Online" non si propone (§365). */
   online?: boolean;
-  /** Riattiva l'online nel profilo da qui (§363); true se è andato a buon fine. */
+  /** Riattiva l'online nel profilo da qui (§367); true se è andato a buon fine. */
   onEnableOnline?: () => Promise<boolean>;
   /** Mesi che si possono scegliere per salvare la settimana solo lì: `key` AAAA-MM. */
   months: { key: string; label: string }[];
@@ -372,7 +372,7 @@ export function WeekTemplateEditor({
                   {draft.mode.allowsOnline ? <Check size={15} aria-hidden /> : null} Online
                 </button>
               ) : onEnableOnline ? (
-                // Online spento nel profilo: si riattiva da qui (richiesta dell'utente, §363).
+                // Online spento nel profilo: si riattiva da qui (richiesta dell'utente, §367).
                 <button type="button" className="ag-wt-chip is-add" onClick={() => void enableOnline()} disabled={enablingOnline} aria-label="Attiva l'online: lavori anche in videochiamata">
                   <Plus size={15} aria-hidden /> {enablingOnline ? "Attivo…" : "Online"}
                 </button>

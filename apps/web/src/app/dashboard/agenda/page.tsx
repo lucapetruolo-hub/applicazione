@@ -232,7 +232,7 @@ function DashboardAgendaContent() {
   const [cancelingBooking, setCancelingBooking] = useState<ProfessionalBooking | null>(null);
   const [weekTemplate, setWeekTemplate] = useState<AgendaWeekTemplate | null>(null);
   const [weekTemplateActive, setWeekTemplateActive] = useState(false);
-  // Orari di partenza del profilo nuovo, finché non li conferma o li cambia (§360).
+  // Orari di partenza del profilo nuovo, finché non li conferma o li cambia (§364).
   const [starterHours, setStarterHours] = useState(false);
   const [offersOnline, setOffersOnline] = useState(true);
   // Dopo "Salva la settimana" il server cambia le fasce dei prossimi giorni: si rileggono.
@@ -1593,7 +1593,7 @@ function DashboardAgendaContent() {
     }
   }
 
-  // "+ Online" dagli orari di lavoro: accende l'online nel profilo (§363).
+  // "+ Online" dagli orari di lavoro: accende l'online nel profilo (§367).
   async function enableOnline(): Promise<boolean> {
     if (!token) return false;
     try {

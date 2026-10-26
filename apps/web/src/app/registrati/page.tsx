@@ -7,6 +7,7 @@ import Link from "next/link";
 import {
   NO_CATEGORY_MESSAGE,
   PASSWORD_CONTAINS_EMAIL_MESSAGE,
+  parseBillingInterval,
   parseSubscriptionTier,
   isMissingRulesProblem,
   isProfessionalCategorySlug,
@@ -98,7 +99,7 @@ function ChoiceCard({ href, replace, icon, title, text }: { href: string; replac
  * Scelta cliente/professionista prima del form vero e proprio — richiesta
  * esplicita dell'utente: cliccando "Registrati" da /accedi (unico punto
  * d'ingresso che arriva qui senza un ruolo già deciso, a differenza dei
- * link "Iscriviti gratis"/"Sei un professionista?" sparsi nel sito che
+ * link "Iscriviti gratis"/"Offri i tuoi servizi" sparsi nel sito che
  * passano già `?ruolo=professionista`) si finiva sempre sulla
  * registrazione cliente, senza poter scegliere. `ruolo=cliente` è un
  * valore nuovo nell'URL (prima l'assenza del parametro significava
@@ -352,6 +353,8 @@ function RegistratiForm() {
   // Livello toccato su /per-professionisti (docs/CHANGELOG.md §177): dopo
   // l'iscrizione si va dritti al pagamento di quel livello.
   const chosenTier = parseSubscriptionTier(searchParams.get("livello"));
+  // Mensile o annuale scelto insieme al livello (docs/CHANGELOG.md §361).
+  const chosenInterval = parseBillingInterval(searchParams.get("rinnovo"));
   const role = isProfessional ? "PROFESSIONAL" : "CLIENT";
   const entityChoice = entityChoiceFromParam(searchParams.get("tipo"));
 
@@ -440,7 +443,7 @@ function RegistratiForm() {
     // Un professionista che accede di nuovo (non isNewUser) va dritto in
     // Dashboard come già prima.
     if (chosenTier) {
-      router.push(`/dashboard/abbonamento?livello=${chosenTier}${isNewUser ? "&nuovo=1" : ""}`);
+      router.push(`/dashboard/abbonamento?livello=${chosenTier}${chosenInterval ? `&rinnovo=${chosenInterval}` : ""}${isNewUser ? "&nuovo=1" : ""}`);
       return;
     }
     // Il tipo è già scelto (§243): un nuovo account va dritto al profilo.

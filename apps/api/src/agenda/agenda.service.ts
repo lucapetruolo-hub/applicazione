@@ -94,7 +94,7 @@ export class AgendaService {
 
   /**
    * Orari di partenza di un profilo appena creato (richiesta dell'utente,
-   * docs/CHANGELOG.md §360): la settimana tipo dal lunedì al sabato 8–13 e
+   * docs/CHANGELOG.md §364): la settimana tipo dal lunedì al sabato 8–13 e
    * 14–20 entra subito nell'agenda, come se l'avesse salvata lui. Solo se
    * l'agenda è ancora vuota: un profilo con orari suoi non si tocca.
    */
@@ -108,7 +108,7 @@ export class AgendaService {
     await this.prisma.professionalProfile.update({ where: { id: professionalProfileId }, data: { agendaStarterHoursAt: new Date() } });
   }
 
-  /** Fasce con posti online da oggi in poi: il profilo chiede se toglierle quando si spegne "online" (§361). */
+  /** Fasce con posti online da oggi in poi: il profilo chiede se toglierle quando si spegne "online" (§365). */
   async onlineSlotCount(userId: string, now = new Date()): Promise<{ count: number }> {
     const professionalProfileId = await this.requireProfileId(userId);
     const count = await this.prisma.availabilitySlot.count({ where: this.futureOnlineSlots(professionalProfileId, now) });
@@ -117,7 +117,7 @@ export class AgendaService {
 
   /**
    * Il professionista non lavora più online e sceglie di togliere gli orari
-   * online (richiesta dell'utente, docs/CHANGELOG.md §361): dalle fasce da
+   * online (richiesta dell'utente, docs/CHANGELOG.md §365): dalle fasce da
    * oggi in poi e dalla settimana tipo sparisce la parte online, le fasce
    * solo online si tolgono. I lavori già fissati restano.
    */
@@ -142,7 +142,7 @@ export class AgendaService {
 
   /**
    * "Attiva l'online" dagli orari di lavoro (richiesta dell'utente,
-   * docs/CHANGELOG.md §363): stesso effetto della casella "Lavoro anche
+   * docs/CHANGELOG.md §367): stesso effetto della casella "Lavoro anche
    * online" del profilo, senza dover passare di là.
    */
   async enableOnline(userId: string): Promise<{ online: true }> {

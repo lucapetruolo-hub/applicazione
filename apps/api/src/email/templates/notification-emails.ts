@@ -1290,13 +1290,16 @@ const BUILDERS: Record<string, Builder> = {
     details: str(payload.date) ? [{ label: "Gratis fino al", value: formatDay(str(payload.date)) }] : undefined,
     cta: subscriptionPage(),
   }),
+  // I primi 100 professionisti hanno 3 mesi gratis (docs/CHANGELOG.md §363).
   SUBSCRIPTION_TRIAL_ENDING: (payload, ctx) => ({
     kind: "account",
-    subject: "Il tuo mese gratuito sta per finire",
+    subject: payload.founder === true ? "I tuoi 3 mesi gratis stanno per finire" : "Il tuo mese gratuito sta per finire",
     greeting: ctx.name,
-    title: "Il mese gratuito sta per finire",
+    title: payload.founder === true ? "I 3 mesi gratis stanno per finire" : "Il mese gratuito sta per finire",
     paragraphs: [
-      `Il tuo mese gratuito finisce il **${formatDay(str(payload.date))}**.`,
+      payload.founder === true
+        ? `I tuoi 3 mesi gratis finiscono il **${formatDay(str(payload.date))}**.`
+        : `Il tuo mese gratuito finisce il **${formatDay(str(payload.date))}**.`,
       "Scegli un livello per restare visibile nelle ricerche e continuare a ricevere richieste.",
     ],
     cta: { label: "Scegli un livello", url: `${frontendUrl()}/dashboard/abbonamento` },
@@ -1304,32 +1307,38 @@ const BUILDERS: Record<string, Builder> = {
   SUBSCRIPTION_LIMIT_NEAR: (payload, ctx) => {
     const used = typeof payload.used === "number" ? payload.used : null;
     const limit = typeof payload.limit === "number" ? payload.limit : null;
+    const until = str(payload.until) ? formatDay(str(payload.until)) : null;
     return {
       kind: "account",
       subject: "Ti stai avvicinando ai lavori compresi nel tuo livello",
       greeting: ctx.name,
-      title: "Quasi al limite del mese",
+      title: "Quasi al limite",
       paragraphs: [
         used !== null && limit !== null
-          ? `Questo mese hai già **${used} lavori accettati su ${limit}** compresi nel tuo livello.`
-          : "Ti stai avvicinando ai lavori accettati compresi nel tuo livello per questo mese.",
-        "Al limite il profilo esce dalle ricerche fino al mese prossimo. Se pensi di averne bisogno, puoi passare al livello superiore pagando solo la differenza.",
+          ? `Hai già **${used} lavori accettati su ${limit}** compresi nel tuo livello${until ? ` fino al ${until}` : ""}.`
+          : "Ti stai avvicinando ai lavori accettati compresi nel tuo livello.",
+        // Al limite si resta nella ricerca (decisione dell'utente, docs/CHANGELOG.md §362).
+        "Quando li finisci resti nella ricerca e ricevi le richieste, ma per mandare preventivi dovrai passare al livello superiore: in Abbonamento trovi quanto costa adesso.",
       ],
       cta: subscriptionPage(),
     };
   },
-  SUBSCRIPTION_LIMIT_REACHED: (_payload, ctx) => ({
-    kind: "account",
-    tone: "urgent",
-    subject: "Hai raggiunto i lavori compresi nel tuo livello",
-    greeting: ctx.name,
-    title: "Hai raggiunto il limite del mese",
-    paragraphs: [
-      "Hai raggiunto i lavori accettati compresi nel tuo livello per questo mese: il tuo profilo non compare più nelle ricerche e non ricevi nuove richieste.",
-      "Passa al livello superiore pagando solo la differenza, oppure riparti dal primo del mese prossimo.",
-    ],
-    cta: subscriptionPage(),
-  }),
+  SUBSCRIPTION_LIMIT_REACHED: (payload, ctx) => {
+    const tier = str(payload.tierLabel) ?? "Base";
+    const until = str(payload.until) ? formatDay(str(payload.until)) : null;
+    return {
+      kind: "account",
+      tone: "urgent",
+      subject: `Hai esaurito l'abbonamento ${tier}`,
+      greeting: ctx.name,
+      title: `Hai esaurito l'abbonamento ${tier}`,
+      paragraphs: [
+        "Hai usato tutti i lavori compresi nel tuo livello. Il tuo profilo resta nella ricerca e continui a ricevere le richieste, ma per mandare un preventivo o rispondere a una richiesta nuova passa al livello superiore.",
+        `I lavori già presi e i preventivi già mandati restano validi.${until ? ` I lavori ripartono il **${until}**.` : ""}`,
+      ],
+      cta: subscriptionPage(),
+    };
+  },
   SUBSCRIPTION_PAUSED: (payload, ctx) => ({
     kind: "account",
     tone: "urgent",
@@ -1356,7 +1365,7 @@ const BUILDERS: Record<string, Builder> = {
         `Il tuo abbonamento ${tier} si rinnova automaticamente il **${date}**.`.replace(/\s+/g, " "),
         "Se non vuoi rinnovarlo puoi annullarlo dalla pagina Abbonamento: resta attivo fino a quella data.",
       ],
-      details: typeof payload.amountEurCents === "number" ? [{ label: "Importo", value: `${formatEur(payload.amountEurCents)} al mese` }] : undefined,
+      details: typeof payload.amountEurCents === "number" ? [{ label: "Importo", value: `${formatEur(payload.amountEurCents)} ${payload.interval === "YEAR" ? "all'anno" : "al mese"} + IVA` }] : undefined,
       cta: subscriptionPage(),
     };
   },

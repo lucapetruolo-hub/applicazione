@@ -255,7 +255,7 @@ model ProfessionalProfile {
   // così un giorno svuotato a mano resta vuoto.
   agendaTemplateFilledUntil    DateTime?
   // Orari di partenza messi alla creazione del profilo (docs/CHANGELOG.md
-  // §360): finché il professionista non li conferma o salva la sua
+  // §364): finché il professionista non li conferma o salva la sua
   // settimana, l'agenda gli ricorda che sono un punto di partenza.
   agendaStarterHoursAt         DateTime?
   city                         String
@@ -355,10 +355,16 @@ model ProfessionalProfile {
   // Account in pausa per l'abbonamento (docs/CHANGELOG.md §162): fuori dalla
   // ricerca e dallo smistamento, niente richieste dirette o prenotazioni
   // dall'agenda; il profilo pubblico resta raggiungibile dal link. Motivo:
-  // TRIAL_ENDED, SUBSCRIPTION_ENDED o LIMIT_REACHED (`PauseReason` in
-  // packages/shared). Tenuto aggiornato da SubscriptionsService.syncPause.
+  // TRIAL_ENDED o SUBSCRIPTION_ENDED (`PauseReason` in packages/shared;
+  // LIMIT_REACHED solo nelle righe vecchie, prima del §362). Tenuto aggiornato
+  // da SubscriptionsService.syncPause.
   pausedAt             DateTime?
   pausedReason         String?
+  // Lavori del periodo esauriti (docs/CHANGELOG.md §362): resta nella ricerca
+  // e riceve le richieste, ma niente preventivi nuovi, prima risposta a una
+  // richiesta né prenotazioni online dall'agenda. Tenuto aggiornato da
+  // SubscriptionsService.syncPause.
+  jobLimitReachedAt    DateTime?
   // Profilo creato da un operatore al telefono (docs/CHANGELOG.md §170):
   // fuori dalla ricerca e dallo smistamento finché il professionista non apre
   // il link d'invito, imposta la password e salva il profilo accettando la
@@ -622,12 +628,18 @@ enum SubscriptionStatus {
   CANCELED
 }
 
+enum BillingInterval {
+  MONTH
+  YEAR
+}
+
 model Subscription {
   id                    String             @id @default(uuid())
   professionalProfileId String             @unique
   plan                  SubscriptionPlan   @default(FREE)
   status                SubscriptionStatus @default(ACTIVE)
   stripeSubscriptionId  String?            @unique
+  currentPeriodStart    DateTime?
   currentPeriodEnd      DateTime?
   // Prova gratuita (docs/CHANGELOG.md §161): primo mese gratis per tutti,
   // senza limite di lavori. Allungata di un mese, una volta sola, a chi non
@@ -644,6 +656,11 @@ model Subscription {
   // è già partito l'avviso di rinnovo o di fine.
   cancelAtPeriodEnd     Boolean            @default(false)
   periodNoticeFor       DateTime?
+  // Rinnovo mensile o annuale scelto (docs/CHANGELOG.md §361), dal prezzo Stripe.
+  billingInterval       BillingInterval    @default(MONTH)
+  // Offerta di lancio (docs/CHANGELOG.md §363): numero d'ordine tra i primi
+  // 100 professionisti con il profilo completo, che hanno 3 mesi gratis.
+  founderNumber         Int?               @unique
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
 

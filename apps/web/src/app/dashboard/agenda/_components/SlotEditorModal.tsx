@@ -153,7 +153,7 @@ export function SlotEditorModal({
   onEndChange: (v: string) => void;
   onAllowsHomeChange: (v: boolean) => void;
   onAllowsOnlineChange: (v: boolean) => void;
-  /** Il profilo offre l'online: senza, "Online" si propone solo da riattivare (§363). */
+  /** Il profilo offre l'online: senza, "Online" si propone solo da riattivare (§367). */
   offersOnline?: boolean;
   /** Accende l'online nel profilo; true se è andato a buon fine. */
   onEnableOnline?: () => Promise<boolean>;
@@ -302,7 +302,7 @@ export function SlotEditorModal({
                 />
               ) : null}
             </XStack>
-            {/* Con l'online spento nel profilo la casella non si propone, si può riattivare da qui (richiesta dell'utente, §363). */}
+            {/* Con l'online spento nel profilo la casella non si propone, si può riattivare da qui (richiesta dell'utente, §367). */}
             {offersOnline || allowsOnline ? (
               <XStack
                 alignItems="center"

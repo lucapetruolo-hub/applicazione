@@ -36,7 +36,7 @@ export type EmailVerification = { link: string; hours: number; code: string; cod
 const COMPLETE_PROFILE_TEXT =
   "**Poi bastano pochi minuti:** completa il profilo con la tua attività, la zona in cui lavori e qualche foto. Più è completo, più richieste ricevi.";
 
-// Orari di partenza dell'agenda (docs/CHANGELOG.md §361), gli stessi di `starterWeekTemplate`.
+// Orari di partenza dell'agenda (docs/CHANGELOG.md §365), gli stessi di `starterWeekTemplate`.
 const STARTER_HOURS_TEXT = "Completato il profilo, la tua agenda parte già con degli orari: dal lunedì al sabato, 8–13 e 14–20. Li cambi quando vuoi da Agenda.";
 
 export function welcomeProfessionalEmail(name: string | null, verify: EmailVerification | null): RenderedEmail {

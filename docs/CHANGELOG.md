@@ -21078,7 +21078,75 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: typecheck e lint di API, sito ed e2e; 670 test dell'API (nuovi `admin-two-factor.test.ts` e `admin-security-alerts.test.ts` con gli esempi ufficiali di RFC 6238, 4 nuovi su `AdminGuard`); prova nel browser nuova `e2e/tests/admin-due-passaggi.spec.ts` (attivazione con codice sbagliato e giusto, altro dispositivo bloccato fino al codice, telefono perso con il codice via email e collegamento del telefono nuovo) e le prove admin esistenti (segnalazioni, richieste eliminate) passate con la verifica; test dei permessi (`access-matrix.mjs`) con gli admin già verificati, un controllo nuovo per rotta admin (super admin senza codice dell'app: 403) e le rotte `/admin/2fa` riservate agli admin (`role: "admin"` in `access-policy.mjs`); con l'API locale: login admin di 7 giorni e cliente di 30, `/admin/overview` 403 con `ADMIN_2FA_SETUP`, bootstrap rifiutato con un admin già presente. Foto a 390 px e 1280 px in `anteprime/admin-due-passaggi/`.
 
-## 360. Orari di partenza nell'agenda dei nuovi professionisti
+## 360. Abbonamento: livelli sovrapposti sul telefono
+
+**Segnalazione** (26/10/2026, thread "Versione più profonda del progetto verso il lancio"): nelle anteprime fatte con l'account professionista di Luca, in `/dashboard/abbonamento` da telefono i riquadri Base, Plus e Pro si sovrapponevano e il testo non si leggeva. Luca l'ha visto anche dal suo telefono.
+
+**Causa**: nel §349 (`b5d1428`) le tessere dei livelli hanno preso `flexBasis={0}` per avere colonne uguali su computer. Da telefono le tessere sono in colonna, e lì `flexBasis` 0 vuol dire altezza di partenza 0: con `minHeight` 0 di Tamagui ogni tessera restava alta pochi pixel e il contenuto usciva sopra quella dopo.
+
+**Correzione**: `flex: 1`, `flexBasis: 0` e `minWidth: 0` solo dentro `$gtSm`, dove le tessere sono in riga. Da telefono l'altezza torna quella del contenuto.
+
+**Verifica**: pagina aperta in locale con le risposte dell'API simulate (prova, livello Base, 1 lavoro su 5), a 390 px le tessere sono alte 207 px e una sotto l'altra; a 1440 px restano tre colonne uguali come prima.
+
+## 361. Nuovi prezzi dell'abbonamento: + IVA, mensile o annuale, quota di passaggio
+
+**Richiesta esplicita dell'utente** (26/10/2026, thread "Versione più profonda del progetto verso il lancio", poi "Portare il nuovo abbonamento nel sito"): Luca ha scelto "Tutto il nuovo modello" per portare nel sito le decisioni del 26/10 (spec in `analisi/nuovo-modello-abbonamento.md` nei file del progetto). Questa è la prima parte (prezzi e pagine); seguono le regole al limite e i 3 mesi gratis ai primi 100.
+
+**Decisioni**:
+- **Livelli**: Base 19 €/3 lavori, Plus 59 €/10, Pro 99 €/senza limite, tutti + IVA (prima 19/39/69 € e 5/15 lavori). Annuale a dieci mensilità: 190/590/990 €, mostrato come 16/49/83 € al mese. `SUBSCRIPTION_TIERS` in `packages/shared/src/plans.ts`.
+- **IVA**: prezzi mostrati "+ IVA" con l'IVA compresa in piccolo; su Stripe si aggiunge con un'aliquota (`STRIPE_TAX_RATE_IVA`) sulle righe del Checkout e come aliquota predefinita dell'abbonamento. Senza la variabile il checkout si ferma con un errore chiaro invece di incassare senza IVA.
+- **Mensile o annuale**: interruttore `BillingIntervalToggle` (annuale in vista, "Risparmi 2 mesi") su `/per-professionisti` e in Abbonamento finché non c'è un abbonamento pagato; il valore passa in `?rinnovo=` anche attraverso `/registrati`. `POST /billing/subscription/checkout` accetta `interval`, prezzi in `STRIPE_PRICE_<LIVELLO>` e `STRIPE_PRICE_<LIVELLO>_ANNUAL`. Nuova colonna `Subscription.billingInterval` e `currentPeriodStart` (migrazione `20261026110058_abbonamento_annuale_periodo`). Il limite di lavori resta mensile anche con l'annuale.
+- **Passaggio a un livello superiore**: 10 € più la differenza di prezzo per i giorni che mancano al rinnovo, maggiorata del 10%, senza tetto (Luca: "lascia così"). Prima si pagava solo la differenza, e conveniva restare su Base e salire solo all'occorrenza. `upgradeFeeEurCents` in shared; con abbonamento pagato la quota è una fattura a parte pagata subito con la carta salvata, poi il prezzo cambia senza ripartizione di Stripe (`proration_behavior: none`); nel periodo gratuito un Checkout di pagamento della quota (da Base, su 30 giorni). `GET /professionals/me/subscription` restituisce `upgradeQuotes` (cifra e data) calcolati con la stessa formula (`upgradeQuotes` in `subscription-rules.ts`).
+- **Pagina per chi offre servizi**: link "Sei un professionista?" diventa "Offri i tuoi servizi" (intestazione e menu); titolo "Trova nuovi clienti nella tua zona." con "Con o senza partita IVA"; nuova sezione "Il cliente paga l'acconto prima. Tu lavori tranquillo." in tre punti, detta in modo esatto (i soldi restano bloccati e il bonifico parte alla conferma, mai "ricevi i soldi prima"), visibile solo con i pagamenti online attivi; prezzi con interruttore, una riga "a chi serve" per livello, "Compreso in ogni livello" sotto le schede; domande frequenti su quota di passaggio, mensile o annuale, IVA.
+- **Abbonamento** (`/dashboard/abbonamento`): ogni livello con prezzo + IVA, lavori, riquadro "Se passi ora" con una sola cifra e la data, un pulsante; sotto tre schede da una frase (Rinnovo, Cambio di livello con "Scopri di più" sul calcolo, Annulli quando vuoi); elenco delle funzioni con le spunte. Il banner della pausa usa la stessa cifra.
+- **Testi**: Termini (sezione professionisti) con mensile/annuale, IVA esclusa e quota di passaggio, data aggiornata; email e notifica del limite senza "pagando solo la differenza".
+
+**Da fare per andare dal vivo** (Render e Stripe): creare su Stripe i prezzi nuovi mensili e annuali e l'aliquota IVA 22%, impostare `STRIPE_PRICE_BASE`/`PLUS`/`PRO`, `STRIPE_PRICE_BASE_ANNUAL`/`PLUS_ANNUAL`/`PRO_ANNUAL`, `STRIPE_TAX_RATE_IVA`. Domanda 43 al commercialista (IVA, annuale) ancora aperta.
+
+**Verifica**: typecheck di web e api, `pnpm lint`, 660 test dell'API (nuovi su quota di passaggio e `upgradeQuotes`: Base → Plus con 30, 20, 7 e 1 giorno rimasti 54 €, 39,33 €, 20,27 €, 11,47 €); pagine aperte in locale con le risposte dell'API simulate, da telefono e da computer.
+
+## 362. Lavori esauriti: si resta nella ricerca, i lavori ripartono al rinnovo
+
+**Richiesta**: seconda parte del nuovo abbonamento (Luca, 26/10/2026, "Tutto il nuovo modello", poi "continua"; scheda di decisione "Al rinnovo").
+
+**Decisioni dell'utente**:
+- I lavori si azzerano **al rinnovo**, non il 1° del mese: lavori, livello e quota di passaggio seguono la stessa data. Con l'annuale i lavori ripartono ogni mese dal giorno di attivazione; nel periodo gratuito a blocchi di 30 giorni che finiscono alla fine della prova.
+- Finiti i lavori il profilo **resta nella ricerca** e riceve le richieste (prima andava in pausa), ma non può mandare preventivi nuovi né rispondere per primo a una richiesta. I preventivi già mandati restano validi.
+- Su **Plus e Pro lo stesso cliente conta una volta** per periodo. Detto solo ai professionisti (pagina prezzi su Plus, Abbonamento, domande frequenti, Termini), mai ai clienti.
+- Finestra al limite: titolo "Hai esaurito l'abbonamento Base", la richiesta a cui si sta rispondendo, il livello sopra con una sola cifra (la quota del §361) e la data, pulsanti "Passa a Plus e rispondi" e "Aspetto il [data]".
+
+**Scelta nostra, da confermare con Luca**: al limite l'agenda non si prenota online (la prenotazione crea un lavoro senza preventivo, quindi supererebbe il limite); il cliente vede "al momento non accetta prenotazioni online" e può mandare una richiesta.
+
+**Cosa cambia**:
+- `apps/api/src/subscriptions/subscription-rules.ts`: `usagePeriod` (finestre mensili da `currentPeriodStart`, `addMonthsUtc` con il giorno fermato a fine mese come Stripe), `jobLimitReached`, `countsClientsOnce`; `pauseReason` senza `LIMIT_REACHED`.
+- `subscriptions.service.ts`: `countUsedJobs` conta le prenotazioni del periodo (non quelle annullate dal cliente; clienti distinti su Plus e Pro); `syncPause` tiene aggiornato `ProfessionalProfile.jobLimitReachedAt` (migrazione `20261026120000_limite_lavori_senza_pausa`). `GET /professionals/me/subscription` restituisce `usage.used/limit/periodStart/periodEnd/countsClientsOnce` e `limitReached`.
+- Blocchi lato server con `jobLimitReachedAt`: preventivo nuovo o rimandato (`quotes.service.ts`), prima risposta del professionista in chat (`timeline.service.ts`), agenda pubblica vuota e prenotazione rifiutata (`professionals.service.ts`).
+- Sito: `JobLimitModal` al posto del modulo del preventivo in Richieste; Abbonamento con "Lavori dal 18 ottobre al 17 novembre: 2 su 3" e la riga sul cliente che conta una volta; banner "Hai esaurito l'abbonamento" come avviso (il profilo resta visibile); email e notifiche del limite, domande frequenti e Termini riscritti.
+
+**Verifica**: typecheck di web e api, `pnpm lint`, test dell'API (nuovi su periodo dal rinnovo, fine mese, annuale, prova, stesso cliente e limite senza pausa); pagine aperte in locale con le risposte dell'API simulate, da telefono e da computer.
+
+## 363. Primi 100 professionisti: 3 mesi gratis; finestra dei lavori esauriti anche in chat
+
+**Richiesta**: Luca, 26/10/2026, "effettua miglioria 1 e 3" dopo la seconda parte del nuovo abbonamento (§362). La miglioria 2 (togliere "Prenota online" dal profilo con i lavori esauriti) non si fa: "al professionista si deve dare la possibilità di ricevere richieste".
+
+**Miglioria 1, finestra in chat**: con i lavori esauriti la prima risposta del professionista a una richiesta nuova apre la stessa finestra del preventivo ("Hai esaurito l'abbonamento Base", la richiesta, il livello sopra, una cifra) invece del messaggio d'errore. `ConversationView` riconosce l'errore dell'API dal testo condiviso `JOB_LIMIT_REACHED_MESSAGE` (spostato in `packages/shared/src/plans.ts`); passato di livello senza lasciare il sito, il messaggio scritto parte da solo.
+
+**Miglioria 3, offerta di lancio** (decisioni del 26/10, `analisi/nuovo-modello-abbonamento.md`):
+- Ai **primi 100 professionisti con il profilo completo** il livello Base è gratis per **3 mesi** (tre periodi da 30 giorni) dal lancio, o dall'iscrizione se dopo. Nuova colonna `Subscription.founderNumber` (unica, migrazione `20261026130000_offerta_fondatori`), assegnata da `claimFounderSpot` alla creazione del profilo, o alla conferma per i profili creati da un operatore; mai ai profili di prova né a chi ha già un abbonamento Stripe. Due iscrizioni insieme: il numero è unico e la seconda riprova. `alignTrialsToLaunch` porta i fondatori iscritti prima del lancio a lancio + 90 giorni. Niente mese a sorpresa per i fondatori.
+- **Pagina prezzi**: banda verde "GRATIS PER 3 MESI" con "Per i primi 100 professionisti che si iscrivono. Poi decidi tu se continuare." e il riquadro "100 posti", senza conto alla rovescia dei posti rimasti (decisione dell'utente prima di unire: solo il numero 100); Base con prezzo barrato, "Gratis per 3 mesi" e "Offerta di lancio"; domanda frequente "Come funzionano i 3 mesi gratis?". Il server dice se restano posti (`GET /subscriptions/founders`, pubblico; il conto resta solo in Admin) e la pagina si rigenera ogni 10 minuti, così la banda non compare in ritardo spostando i prezzi; finiti i posti o con l'API ferma resta il mese gratuito.
+- **Abbonamento**: "3 mesi gratis · livello Base" e le tre caselle "Sei nel 2° mese gratis su 3" (Usato / In corso / Da fare, con la data d'inizio di ogni mese); prima del lancio "I tuoi 3 mesi gratis partono al lancio".
+- **Quota di passaggio nei giorni gratuiti**: come se Base costasse 19 €, 10 € più la differenza mensile per tutti i giorni gratuiti che restano (a mesi di 30 giorni), maggiorata del 10% (`freePeriodUpgradeFeeEurCents`). Prima la quota non andava oltre un mese: con tre mesi davanti si sarebbe pagato un mese solo per averne tre di Plus. Vale anche per il mese regalato.
+- **Testi**: Termini, email e notifica di fine periodo gratuito ("I tuoi 3 mesi gratis stanno per finire"), banner a fine prova.
+
+**Non fatto**: "i clienti dal link personale non contano", perché il link personale del professionista non esiste ancora.
+
+**Verifica**: typecheck di web e api, `pnpm lint`, test dell'API (posto successivo, posti finiti, profili esclusi, iscrizioni simultanee, posti rimasti, tre mesi dal lancio, caselle dei mesi, quota nei giorni gratuiti); pagine aperte in locale con l'API simulata, da telefono e da computer.
+
+**Aggiunte dopo (Luca: "effettua le 2 migliorie", senza scritte che facciano sembrare il professionista non disponibile)**:
+- **Admin**: in `/admin/professionisti` la sezione "Offerta di lancio: N posti presi su 100" con l'elenco dei fondatori (numero, attività, email, comune, iscrizione, gratis fino al, livello scelto); `GET /admin/founders` (`RequireAdminScope("ANY")`).
+- **Agenda con i lavori esauriti**: rivista la scelta del §362. Controllando il sito, l'agenda pubblica non prenota mai da sola: serve al cliente per scegliere quando nella richiesta di preventivo (`GuidedRequestForm`) e per proporre un'altra data su un preventivo già mandato (`QuoteCard`). Svuotarla nascondeva l'agenda dal profilo e rompeva la proposta di data sui preventivi ancora validi. Ora resta visibile come sempre e non serve nessuna riga al suo posto; resta fermata solo la prenotazione diretta `POST /professionals/:id/agenda/book`, che il sito non usa, con un messaggio neutro ("Per questo orario manda una richiesta di preventivo al professionista."). Termini e CLAUDE.md aggiornati.
+
+## 364. Orari di partenza nell'agenda dei nuovi professionisti
 
 **Richiesta di Luca** (26/10/2026): "quando un professionista crea un nuovo profilo, standard nell'agenda dobbiamo mettere degli orari preimpostati come ad esempio 8-13 14-20 con 5 domicilio e 5 online per fascia", "dal lunedì al sabato"; serve "nel caso il professionista non imposti da subito l'agenda".
 
@@ -21093,9 +21161,9 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: typecheck API e sito, lint, tutti i test dell'API (nuovi: `starter-hours.test.ts`, orari di partenza in `agenda-tools.test.ts`); prova su database locale: un professionista nuovo ha 108 fasce (lun-sab, 9 settimane) 8–13 e 14–20 con 5+5. Anteprime a 390 e 1440 px in `anteprime/orari-di-partenza/`. Prova e2e della settimana tipo aggiornata: il sabato ora è già nella proposta.
 
-## 361. Migliorie degli orari di partenza: orari online, ore in 24 ore, email di benvenuto
+## 365. Migliorie degli orari di partenza: orari online, ore in 24 ore, email di benvenuto
 
-**Richiesta di Luca** (26/10/2026): "effettua le 3 migliorie" proposte con la PR #151 (§360); sulla prima: "gli si potrebbe far comparire un avviso se vuole che siano eliminati le prenotazioni online già impostate in agenda".
+**Richiesta di Luca** (26/10/2026): "effettua le 3 migliorie" proposte con la PR #151 (§364); sulla prima: "gli si potrebbe far comparire un avviso se vuole che siano eliminati le prenotazioni online già impostate in agenda".
 
 **Fatto**:
 - **Orari online quando si spegne "online"**: salvando il profilo con "Offro anche consulenza online" spento (prima acceso), se in agenda ci sono fasce con posti online da oggi in poi compare "Togli anche gli orari online?" con "Togli gli orari online" e "Lasciali". Togliendoli (`POST /agenda/online-slots/remove`, conteggio con `GET /agenda/online-slots`): le fasce miste restano solo a domicilio, quelle solo online si tolgono, anche nella settimana tipo così la notte non tornano. I lavori già fissati restano. Niente di automatico: decide il professionista.
@@ -21105,9 +21173,9 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: typecheck API e sito, lint, test dell'API (nuovo caso in `starter-hours.test.ts`), test dei permessi (230 rotte), prova nel browser con lingua inglese: ore in 24 ore, finestra "Togli anche gli orari online?" e fasce online a zero dopo "Togli gli orari online". Anteprime 4 e 5 in `anteprime/orari-di-partenza/`.
 
-## 362. Caselle leggibili e usabili da tastiera; "Online" solo per chi lavora online
+## 366. Caselle leggibili e usabili da tastiera; "Online" solo per chi lavora online
 
-**Richiesta di Luca** (26/10/2026): "effettua le 2 migliorie" proposte dopo il §361.
+**Richiesta di Luca** (26/10/2026): "effettua le 2 migliorie" proposte dopo il §365.
 
 **Fatto**:
 - **Caselle fatte con Tamagui** (assicurazione e consulenza online nel profilo, specializzazioni, dichiarazione dei dati fiscali, A domicilio / Online / "ripeti per il mese" nella fascia del giorno, categoria principale): `accessibilityState` finiva nella pagina come attributo sconosciuto, quindi il lettore di schermo non sapeva se erano spuntate, e da tastiera si raggiungevano ma non si spuntavano. Ora `aria-checked` e Spazio/Invio con `keyActivate` (`apps/web/src/lib/keyActivate.ts`). Stessa correzione su `Chip` di `packages/ui` (`aria-pressed` e Spazio/Invio). Sparisce l'errore di React nella console del profilo.
@@ -21115,13 +21183,13 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: typecheck, lint, test dell'API, prova nel browser: casella "online" che cambia con Spazio, Invio e clic e annuncia lo stato; nessun errore in console; settimana senza "Online" per un profilo senza online (anteprime 6).
 
-## 363. Stelle che portano alle recensioni; "Online" da riattivare negli orari di lavoro
+## 367. Stelle che portano alle recensioni; "Online" da riattivare negli orari di lavoro
 
 **Richiesta di Luca** (26/10/2026): "effettua le due migliorie, ma dai la possibilita di riattivarlo dentro orari di lavoro".
 
 **Fatto**:
 - **Stelle nel preventivo**: il §357 aveva già riportato `#recensioni` con un link normale che passava dal rimando all'indirizzo con nome e città. Ora stelle, nome e foto puntano direttamente a quell'indirizzo (`professionalPath`, città del professionista aggiunta ai preventivi della richiesta): niente rimando, pagina caricata senza ricaricare tutto il sito. La prova e2e in `stelle-preventivi.spec.ts` controlla l'indirizzo esatto.
-- **"Online" nella fascia del giorno**: come nella settimana tipo (§362), con l'online spento nel profilo la casella non si propone; resta se la fascia ha già posti online, per poterli togliere.
+- **"Online" nella fascia del giorno**: come nella settimana tipo (§366), con l'online spento nel profilo la casella non si propone; resta se la fascia ha già posti online, per poterli togliere.
 - **Riattivare l'online da Orari di lavoro**: al posto di "Online" compare "+ Online" tratteggiato (nella settimana tipo) o "+ Online · Attiva" (nella fascia). Toccandolo si accende l'online nel profilo (`POST /agenda/online/enable`, stesso effetto della casella del profilo) e la scelta "Online" si spunta; nella settimana una riga ricorda di salvare.
 
 - **"Clienti per orario" su una riga sua** (segnalato da Luca: "da cellulare ... sembra che sia solo per l'online poiché sulla stessa riga"): nella settimana tipo il numero di clienti sta sotto "Come lavori", non accanto a "Online". Anteprime 10.

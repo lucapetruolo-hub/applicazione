@@ -116,7 +116,7 @@ test("nei preventivi ricevuti stelle e numero di recensioni accanto al nome", as
 
   // Le stelle portano alle recensioni del profilo pubblico.
   await rating.click();
-  // Direttamente all'indirizzo con nome e città, con "#recensioni" (§363).
+  // Direttamente all'indirizzo con nome e città, con "#recensioni" (§367).
   await expect(page).toHaveURL(new RegExp(`/professionista/luigi-bianchi-idraulica-latina-${ids.withReviews}#recensioni$`));
   await expect(page.getByText("Lavoro fatto bene.").first()).toBeInViewport();
 });

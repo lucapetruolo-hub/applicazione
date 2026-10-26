@@ -34,6 +34,7 @@ import {
   cancellationNoticeLabel,
   isCancellationNoticeHours,
   type CancellationNoticeHours,
+  type MySubscription,
 } from "@professionisti/shared";
 import { Avatar, Badge, Chip, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -60,6 +61,7 @@ import { ScheduleChangeBox } from "@/components/ScheduleChangeBox";
 import { DeadlinePill, MiniTimeline, QuoteItemDraft, STAGE_STYLE, ServiceBadge, StagePill, formatDateTime, formatSlotRange, slotKey, slotLabel, smallInputStyle } from "./requestHelpers";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { ItalianTimeInput } from "@/components/ItalianTimeInput";
+import { JobLimitModal } from "@/components/JobLimitModal";
 
 /** Orari liberi mostrati subito nel modulo del preventivo, gli altri con "Altri orari". */
 const QUOTE_SLOTS_SHOWN = 6;
@@ -77,6 +79,8 @@ export function RequestCard({
   defaultCancellationNoticeHours,
   stripeVerified = true,
   identityVerificationNeeded = false,
+  subscription = null,
+  onSubscriptionChanged,
   isOpen,
   onToggle,
   onChanged,
@@ -100,6 +104,10 @@ export function RequestCard({
   stripeVerified?: boolean;
   /** Documento e selfie ancora da fare: il primo preventivo è bloccato (docs/CHANGELOG.md §253). */
   identityVerificationNeeded?: boolean;
+  /** Abbonamento: con i lavori esauriti un preventivo nuovo apre la finestra del livello superiore (docs/CHANGELOG.md §362). */
+  subscription?: MySubscription | null;
+  /** Il professionista è passato al livello superiore senza lasciare il sito: il genitore ricarica l'abbonamento. */
+  onSubscriptionChanged?: () => void;
   isOpen: boolean;
   onToggle: () => void;
   onChanged: () => void;
@@ -297,6 +305,11 @@ export function RequestCard({
   const whatsAppLink = buildWhatsAppLink(revealedPhone);
   const quoteWithdrawn = lead.quote?.status === "WITHDRAWN";
   const canResendQuote = lead.quote?.status === "REJECTED" && lead.quote.canResend;
+  // Un preventivo nuovo (o rimandato) è fermo per la verifica dell'identità
+  // (§253) o per i lavori esauriti (§362); quello già inviato resta modificabile.
+  const newQuote = !lead.quote || canResendQuote;
+  const identityBlocked = identityVerificationNeeded && newQuote;
+  const limitBlocked = !identityBlocked && !!subscription?.limitReached && newQuote;
   // "Elimina" su ogni richiesta scaduta o chiusa (docs/CHANGELOG.md §143):
   // la nasconde solo al professionista, resta visibile agli admin.
   const canDelete = stage === "scaduta" || stage === "chiusa";
@@ -1329,7 +1342,7 @@ export function RequestCard({
           {/* Prima del primo preventivo serve la verifica dell'identità
               (docs/CHANGELOG.md §253): al posto del modulo, cosa fare. Un
               preventivo già inviato resta modificabile. */}
-          {showQuoteForm && identityVerificationNeeded && (!lead.quote || canResendQuote) ? (
+          {showQuoteForm && identityBlocked ? (
             <YStack gap="$2.5" padding="$3" borderRadius={radiusDoc} backgroundColor={brand.ottoneVelo} borderWidth={1} borderColor={brand.ottone}>
               <XStack gap="$2" alignItems="center">
                 <Icon name="id-card" size={20} color={brand.grafite} strokeWidth={1.8} />
@@ -1348,8 +1361,16 @@ export function RequestCard({
               </XStack>
             </YStack>
           ) : null}
+          {showQuoteForm && limitBlocked && subscription ? (
+            <JobLimitModal
+              sub={subscription}
+              request={`${gr.categoryLabel} · ${gr.city}`}
+              onClose={() => setShowQuoteForm(false)}
+              onUpgraded={() => onSubscriptionChanged?.()}
+            />
+          ) : null}
           {/* Form invio/modifica preventivo */}
-          {showQuoteForm && !(identityVerificationNeeded && (!lead.quote || canResendQuote)) ? (
+          {showQuoteForm && !identityBlocked && !limitBlocked ? (
             <YStack gap="$3" padding="$3" borderRadius={radiusDoc} backgroundColor={brand.gesso} borderWidth={1} borderColor={brand.filetto}>
               {/* Etichette scritte (docs/CHANGELOG.md §349): da telefono la voce
                   sta su una riga e "Da" / "A" affiancati sotto, prima "A €"

@@ -1,15 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { formatEur as formatEurShared, subscriptionTierInfo, tierPriceDifferenceEurCents, type MySubscription, type SubscriptionTier } from "@professionisti/shared";
+import { formatEur as formatEurShared, subscriptionTierInfo, tierPeriodPriceEurCents, type MySubscription, type SubscriptionTier } from "@professionisti/shared";
 import { Button, Surface, Text, YStack, brand, radiusDoc } from "@professionisti/ui";
 
 /**
  * Banner fisso (non si chiude) quando l'account è in pausa per
  * l'abbonamento, in Home e nella pagina Abbonamento (decisione dell'utente,
  * docs/CHANGELOG.md §162): profilo fuori dalla ricerca e niente nuove
- * richieste. Avvisa anche di un pagamento non riuscito, che non mette ancora
- * in pausa.
+ * richieste. Avvisa anche dei lavori esauriti (§362) e di un pagamento non
+ * riuscito, che non mettono in pausa.
  */
 
 function formatEur(cents: number): string {
@@ -24,18 +24,22 @@ export function nextTierOf(sub: MySubscription): SubscriptionTier | null {
   return null;
 }
 
-/** "1° ottobre": quando ripartono i lavori del mese. */
-function nextMonthStartLabel(): string {
-  const now = new Date();
-  const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  return `1° ${next.toLocaleDateString("it-IT", { month: "long" })}`;
+function shortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "long", timeZone: "Europe/Rome" });
 }
 
+/** Quota di passaggio adesso verso un livello (docs/CHANGELOG.md §361), o null se non si può passare. */
+export function upgradeQuoteOf(sub: MySubscription, to: SubscriptionTier) {
+  return sub.upgradeQuotes.find((quote) => quote.tier === to) ?? null;
+}
+
+/** "20,27 € + IVA fino al 31 ottobre, poi 59 € al mese + IVA." */
 export function upgradeCostText(sub: MySubscription, to: SubscriptionTier): string {
-  if (sub.state === "TRIAL") {
-    return `Paghi ora solo la differenza (${formatEur(tierPriceDifferenceEurCents("BASE", to))}), poi ${formatEur(subscriptionTierInfo(to).priceEurCents)} al mese dalla fine del mese gratuito.`;
-  }
-  return "Paghi ora solo la differenza per i giorni che mancano al rinnovo.";
+  const quote = upgradeQuoteOf(sub, to);
+  const interval = sub.billingInterval ?? "MONTH";
+  const then = `${formatEur(tierPeriodPriceEurCents(to, interval))} ${interval === "YEAR" ? "all'anno" : "al mese"} + IVA`;
+  if (!quote || quote.amountEurCents === 0) return `Nessun costo adesso, poi ${then}.`;
+  return `Paghi ora ${formatEur(quote.amountEurCents)} + IVA${quote.until ? ` fino al ${shortDate(quote.until)}` : ""}, poi ${then}.`;
 }
 
 /**
@@ -58,23 +62,23 @@ export function SubscriptionPauseBanner({ sub, showAction = true, profileStepsEl
       "la legge ci chiede di raccoglierli per tutti. Li controlliamo in automatico.";
     action = "Compila i dati fiscali";
     href = "/dashboard/fiscale";
-  } else if (sub.pausedReason === "LIMIT_REACHED") {
-    const limit = sub.usage.monthlyLimit ?? 0;
-    const next = nextTierOf(sub);
-    title = `Hai raggiunto i ${limit} lavori compresi ${sub.state === "TRIAL" ? "nel mese gratuito" : `nel livello ${sub.tier ? subscriptionTierInfo(sub.tier).label : ""}`}`;
-    body =
-      `Fino al ${nextMonthStartLabel()} il tuo profilo non compare nelle ricerche e non puoi ricevere nuove richieste. ` +
-      "Le richieste e i lavori già in corso restano attivi." +
-      (next ? ` Passa a ${subscriptionTierInfo(next).label} per continuare a lavorare subito: ${upgradeCostText(sub, next).replace(/^P/, "p")}` : "");
-    action = next ? `Passa a ${subscriptionTierInfo(next).label}` : "Vai all'abbonamento";
   } else if (sub.pausedReason === "TRIAL_ENDED") {
-    title = "Il tuo mese gratuito è finito";
+    title = sub.founder ? "I tuoi mesi gratuiti sono finiti" : "Il tuo mese gratuito è finito";
     body = "Il tuo account è in pausa: il profilo non compare nelle ricerche e non ricevi nuove richieste. Scegli un livello per renderlo di nuovo visibile e operativo.";
     action = "Riattiva il tuo account";
   } else if (sub.pausedReason === "SUBSCRIPTION_ENDED") {
     title = "Abbonamento concluso";
     body = "Rendi di nuovo visibile e operativo il tuo account: finché non scegli un livello il profilo non compare nelle ricerche e non ricevi nuove richieste.";
     action = "Riattiva il tuo account";
+  } else if (sub.limitReached) {
+    // Lavori esauriti: il profilo resta nella ricerca, si fermano solo i preventivi nuovi (docs/CHANGELOG.md §362).
+    const next = nextTierOf(sub);
+    tone = "warn";
+    title = `Hai esaurito l'abbonamento ${subscriptionTierInfo(sub.tier ?? "BASE").label}`;
+    body =
+      `Il tuo profilo resta visibile e ricevi le richieste, ma fino al ${shortDate(sub.usage.periodEnd)} non puoi mandare preventivi nuovi. ` +
+      (next ? `Passa a ${subscriptionTierInfo(next).label} per rispondere subito: ${upgradeCostText(sub, next).replace(/^P/, "p")}` : "");
+    action = next ? `Passa a ${subscriptionTierInfo(next).label}` : "Vai all'abbonamento";
   } else if (sub.identityVerificationNeeded && showAction && !profileStepsElsewhere) {
     // Documento e selfie prima del primo preventivo (docs/CHANGELOG.md §253).
     tone = "warn";

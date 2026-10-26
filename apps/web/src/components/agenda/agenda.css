@@ -810,7 +810,7 @@
 /* Settimana tipo in tre passi (docs/CHANGELOG.md §323). */
 .ag-wt {
   padding: 20px;
-  /* "Rivedi gli orari" la porta in cima, sotto l'intestazione fissa (§360). */
+  /* "Rivedi gli orari" la porta in cima, sotto l'intestazione fissa (§364). */
   scroll-margin-top: 136px;
 }
 .ag-wt-body {
@@ -1005,7 +1005,7 @@
   border-color: var(--ag-ink);
   background: #f6f1ec;
 }
-/* "+ Online" quando l'online è spento nel profilo (§363). */
+/* "+ Online" quando l'online è spento nel profilo (§367). */
 .ag-wt-chip.is-add {
   border-style: dashed;
   color: var(--ag-muted);
@@ -1018,7 +1018,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  /* Su una riga sua: accanto a "Online" sembrava valere solo per l'online (§363). */
+  /* Su una riga sua: accanto a "Online" sembrava valere solo per l'online (§367). */
   flex-basis: 100%;
   padding-top: 4px;
 }

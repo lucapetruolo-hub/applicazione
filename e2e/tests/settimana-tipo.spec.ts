@@ -25,7 +25,7 @@ test("salvata, la settimana riempie i prossimi giorni senza scegliere un mese", 
   await expect(week.getByRole("button", { name: "Venerdì" })).toHaveAttribute("aria-pressed", "true");
   await expect(week.getByRole("button", { name: /^Applica/ })).toHaveCount(0);
 
-  // 1. Il sabato c'è già nella proposta (§360). 2. Solo la mattina. 3. Il venerdì fino alle 12.
+  // 1. Il sabato c'è già nella proposta (§364). 2. Solo la mattina. 3. Il venerdì fino alle 12.
   await expect(week.getByRole("button", { name: "Sabato" })).toHaveAttribute("aria-pressed", "true");
   await expect(week.getByRole("button", { name: "Domenica" })).toHaveAttribute("aria-pressed", "false");
   await week.getByRole("radio", { name: /Solo la mattina/ }).check();

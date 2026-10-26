@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { AgendaService } from "./agenda.service";
 
-/** Orari di partenza dei nuovi profili (docs/CHANGELOG.md §360). */
+/** Orari di partenza dei nuovi profili (docs/CHANGELOG.md §364). */
 function build({ filledUntil = null as Date | null, slotCount = 0 } = {}) {
   const tx = {
     availabilitySlot: { findMany: vi.fn().mockResolvedValue([]), createMany: vi.fn(), deleteMany: vi.fn() },
@@ -47,7 +47,7 @@ describe("orari di partenza", () => {
   });
 });
 
-describe("togliere gli orari online (§361)", () => {
+describe("togliere gli orari online (§365)", () => {
   it("toglie la parte online dalle fasce da oggi in poi e dalla settimana tipo", async () => {
     const template = {
       days: [
@@ -79,7 +79,7 @@ describe("togliere gli orari online (§361)", () => {
   });
 });
 
-describe("riattivare l'online dagli orari di lavoro (§363)", () => {
+describe("riattivare l'online dagli orari di lavoro (§367)", () => {
   it("accende il lavoro online nel profilo", async () => {
     const { service, prisma } = build();
     prisma.professionalProfile.findUnique.mockResolvedValue({ id: "pro-1" });
