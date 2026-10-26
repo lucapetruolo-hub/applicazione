@@ -20960,3 +20960,13 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - **Mappa del raggio senza consenso**: controllata in produzione chiedendo al server l'immagine fissa con le coordinate di Latina e i raggi 20 e 35 km: torna l'immagine con il segnaposto e i due cerchi. Il testo alternativo dell'immagine parlava di "posizione dei professionisti": ora dice la zona e i due raggi (`staticAlt` in `GoogleMapGate`).
 
 **Verifica**: typecheck, lint, 654 test dell'API (4 nuovi su `auditLabel`), 71 prove nel browser su telefono (anche quella di accessibilità dell'agenda), foto a 390 px di Registro azioni, Home e Accedi senza nulla che esce dallo schermo.
+
+## 351. "Lavoro" usciva dalla colonna del menu ridotto
+
+**Richiesta esplicita dell'utente** (26/10/2026, thread "Migliorare la pagina Oggi del professionista", con una foto di `/dashboard` a schermo intero): "la scritta «lavoro» sfora la colonna a sinistra, correggi".
+
+**Causa**: col menu ridotto a icone i titoli dei gruppi si nascondono con `html[data-acct-nav="collapsed"] .acct-nav-title`. Il primo titolo però ha una regola più specifica, aggiunta nel §337 per allinearlo al tondo (`.acct-nav-toggle + .acct-nav-group > .acct-nav-title { display: flex }`), che vinceva: "Lavoro" restava visibile nella colonna da 64 px e ne usciva a sinistra.
+
+**Decisione**: la regola che nasconde i titoli col menu ridotto vale anche per il primo, con la stessa specificità (`globals.css`). Nessun altro cambiamento.
+
+**Verifica**: sito in locale con un professionista di prova a 1366 px (menu ridotto da solo): `display` del primo titolo `flex` prima, `none` dopo; foto del menu ridotto senza la scritta. Menu aperto e tablet invariati (le regole toccate valgono solo col menu ridotto).

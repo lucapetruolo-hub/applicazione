@@ -1266,8 +1266,11 @@ button.notif-row-main:hover {
   html[data-acct-nav="collapsed"] .acct-nav-group {
     align-items: center;
   }
-  /* I titoli dei gruppi diventano una riga di separazione. */
-  html[data-acct-nav="collapsed"] .acct-nav-title {
+  /* I titoli dei gruppi diventano una riga di separazione. Anche il primo,
+     che ha una regola più specifica accanto al tondo: prima "Lavoro"
+     restava visibile e usciva dalla colonna stretta. */
+  html[data-acct-nav="collapsed"] .acct-nav-title,
+  html[data-acct-nav="collapsed"] .acct-nav-toggle + .acct-nav-group > .acct-nav-title {
     display: none;
   }
   html[data-acct-nav="collapsed"] .acct-nav-group + .acct-nav-group {
