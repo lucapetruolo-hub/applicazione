@@ -78,3 +78,12 @@ describe("togliere gli orari online (§357)", () => {
     expect(saved.days[1]).toEqual([{ start: "08:00", end: "13:00", allowsHome: true, allowsOnline: false, homeMax: 5, onlineMax: null }]);
   });
 });
+
+describe("riattivare l'online dagli orari di lavoro (§359)", () => {
+  it("accende il lavoro online nel profilo", async () => {
+    const { service, prisma } = build();
+    prisma.professionalProfile.findUnique.mockResolvedValue({ id: "pro-1" });
+    await expect(service.enableOnline("user-1")).resolves.toEqual({ online: true });
+    expect(prisma.professionalProfile.update).toHaveBeenCalledWith({ where: { id: "pro-1" }, data: { remoteAvailable: true } });
+  });
+});

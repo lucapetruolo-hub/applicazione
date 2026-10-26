@@ -254,6 +254,8 @@ export type ClientGuidedRequest = {
     id: string;
     professionalProfileId: string;
     businessName: string;
+    /** Città del profilo, per il link all'indirizzo leggibile `professionalPath` (docs/CHANGELOG.md §359). */
+    city: string | null;
     /** Foto profilo del professionista, mostrata accanto al nome; null se assente o profilo eliminato. */
     imageUrl: string | null;
     /** Media e numero delle recensioni (docs/CHANGELOG.md §342); null se il profilo è stato eliminato. */
@@ -1571,6 +1573,8 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
     agendaOnlineSlots: (token: string) => request<{ count: number }>("/agenda/online-slots", { headers: { Authorization: `Bearer ${token}` } }),
     removeAgendaOnlineSlots: (token: string) =>
       request<{ count: number }>("/agenda/online-slots/remove", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+    enableAgendaOnline: (token: string) =>
+      request<{ online: true }>("/agenda/online/enable", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
     agendaWeather: (token: string) => request<WeatherDayAlert[]>("/agenda/weather", { headers: { Authorization: `Bearer ${token}` } }),
     agendaDaysAhead: (token: string) => request<DayAhead[]>("/agenda/days-ahead", { headers: { Authorization: `Bearer ${token}` } }),
     agendaZoneDemand: (token: string) => request<ZoneDemand>("/agenda/zone-demand", { headers: { Authorization: `Bearer ${token}` } }),

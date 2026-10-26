@@ -1593,6 +1593,18 @@ function DashboardAgendaContent() {
     }
   }
 
+  // "+ Online" dagli orari di lavoro: accende l'online nel profilo (§359).
+  async function enableOnline(): Promise<boolean> {
+    if (!token) return false;
+    try {
+      await apiClient.enableAgendaOnline(token);
+      setOffersOnline(true);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async function changeWeekTemplate(next: AgendaWeekTemplate, month: string | null = null): Promise<boolean> {
     if (!token) return false;
     setTemplateNotice(null);
@@ -1976,6 +1988,7 @@ function DashboardAgendaContent() {
                 starter={starterHours}
                 onKeepStarter={() => void keepStarterHours()}
                 online={offersOnline}
+                onEnableOnline={enableOnline}
                 months={templateMonths}
                 onSave={changeWeekTemplate}
                 saving={savingTemplate}
@@ -2154,6 +2167,8 @@ function DashboardAgendaContent() {
           onEndChange={setDraftEnd}
           onAllowsHomeChange={setDraftAllowsHome}
           onAllowsOnlineChange={setDraftAllowsOnline}
+          offersOnline={offersOnline}
+          onEnableOnline={enableOnline}
           onHomeMaxChange={setDraftHomeMax}
           onOnlineMaxChange={setDraftOnlineMax}
           onSave={() => commitSlotEdit(editingDayOfWeek()!)}

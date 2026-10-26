@@ -108,6 +108,7 @@ const selfProfessional = [
   "POST /agenda/week-template/starter/keep",
   "GET /agenda/online-slots",
   "POST /agenda/online-slots/remove",
+  "POST /agenda/online/enable",
   "GET /agenda/zone-demand",
   "POST /billing/boost/checkout",
   "POST /billing/portal",

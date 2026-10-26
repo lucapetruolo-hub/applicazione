@@ -47,6 +47,11 @@ export class AgendaController {
     return this.agendaService.removeOnlineSlots(req.user.userId);
   }
 
+  @Post("online/enable")
+  enableOnline(@Req() req: AuthenticatedRequest) {
+    return this.agendaService.enableOnline(req.user.userId);
+  }
+
   @Get("weather")
   weather(@Req() req: AuthenticatedRequest) {
     return this.agendaService.weather(req.user.userId);

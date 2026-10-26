@@ -1005,6 +1005,15 @@
   border-color: var(--ag-ink);
   background: #f6f1ec;
 }
+/* "+ Online" quando l'online è spento nel profilo (§359). */
+.ag-wt-chip.is-add {
+  border-style: dashed;
+  color: var(--ag-muted);
+}
+.ag-wt-chip.is-add:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
 .ag-wt-per-slot {
   display: inline-flex;
   align-items: center;

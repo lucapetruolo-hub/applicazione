@@ -140,6 +140,17 @@ export class AgendaService {
     return { count };
   }
 
+  /**
+   * "Attiva l'online" dagli orari di lavoro (richiesta dell'utente,
+   * docs/CHANGELOG.md §359): stesso effetto della casella "Lavoro anche
+   * online" del profilo, senza dover passare di là.
+   */
+  async enableOnline(userId: string): Promise<{ online: true }> {
+    const professionalProfileId = await this.requireProfileId(userId);
+    await this.prisma.professionalProfile.update({ where: { id: professionalProfileId }, data: { remoteAvailable: true } });
+    return { online: true };
+  }
+
   private futureOnlineSlots(professionalProfileId: string, now: Date) {
     return { professionalProfileId, allowsOnline: true, OR: [{ date: null }, { date: { gte: wallClockToday(now) } }] };
   }

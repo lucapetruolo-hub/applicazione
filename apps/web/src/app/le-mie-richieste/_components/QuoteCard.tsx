@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ProfessionalReviewsLink } from "@/components/ProfessionalReviewsLink";
 import type { ClientGuidedRequest } from "@professionisti/api-client";
-import { cancellationNoticeLabel, formatAppointmentTimeRange, formatJobDays, formatServicePriceRange, jobDayCount, paymentChoiceIsOnline, quotePriceTotals, scheduleChangeBetween, scheduleChangeObject, type JobPaymentChoice } from "@professionisti/shared";
+import { cancellationNoticeLabel, formatAppointmentTimeRange, formatJobDays, formatServicePriceRange, jobDayCount, paymentChoiceIsOnline, professionalPath, quotePriceTotals, scheduleChangeBetween, scheduleChangeObject, type JobPaymentChoice } from "@professionisti/shared";
 import { PaymentChoice, PaymentOffer, selectablePaymentChoices } from "@/components/PaymentChoice";
 import { useOnlinePayments } from "@/lib/onlinePayments";
 import { Avatar, Badge, ProfessionalKindBadge, Text, XStack, YStack, brand } from "@professionisti/ui";
@@ -303,12 +303,12 @@ export function QuoteCard({
     <YStack id={`quote-${quote.id}`} backgroundColor={brand.gesso} borderRadius="$3" padding="$3" gap="$2">
       <XStack alignItems="center" gap="$2">
         {/* Foto accanto al nome (richiesta esplicita dell'utente), iniziali se manca; stesso link del nome, fuori dal Tab. */}
-        <Link href={`/professionista/${quote.professionalProfileId}`} tabIndex={-1} aria-hidden style={{ textDecoration: "none", alignSelf: "flex-start" }}>
+        <Link href={professionalPath({ id: quote.professionalProfileId, businessName: quote.businessName, city: quote.city })} tabIndex={-1} aria-hidden style={{ textDecoration: "none", alignSelf: "flex-start" }}>
           <Avatar name={quote.businessName} imageUrl={quote.imageUrl} size={40} />
         </Link>
         <YStack flex={1} minWidth={0} gap={2}>
           <XStack alignItems="center" gap="$2" flexWrap="wrap">
-            <Link href={`/professionista/${quote.professionalProfileId}`} style={{ textDecoration: "none" }}>
+            <Link href={professionalPath({ id: quote.professionalProfileId, businessName: quote.businessName, city: quote.city })} style={{ textDecoration: "none" }}>
               <Text fontWeight="600" color={brand.cianografiaScuro}>
                 {quote.businessName}
               </Text>
@@ -319,7 +319,7 @@ export function QuoteCard({
             {isNew && quote.status !== "ACCEPTED" ? <Badge variant="nuovo">Nuovo</Badge> : null}
           </XStack>
           {/* Stelle e numero di recensioni per scegliere tra più preventivi (richiesta dell'utente, §342). */}
-          <ProfessionalReviewsLink professionalProfileId={quote.professionalProfileId} reviews={quote.reviews} />
+          <ProfessionalReviewsLink professional={{ id: quote.professionalProfileId, businessName: quote.businessName, city: quote.city }} reviews={quote.reviews} />
         </YStack>
         {/* Messaggi accanto al nome, leggero: non compete con la scelta sul preventivo (§338). */}
         {contactInBooking ? null : (

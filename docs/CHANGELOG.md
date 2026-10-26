@@ -21056,3 +21056,14 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - **"Online" nella settimana tipo**: se il profilo non offre la consulenza online il pulsante non c'è (`AgendaWeekTemplateState.online`); resta visibile solo se una settimana salvata prima ha ancora l'online acceso, per poterlo spegnere. La settimana proposta a chi non l'ha mai salvata è quella di partenza con o senza online, secondo il profilo.
 
 **Verifica**: typecheck, lint, test dell'API, prova nel browser: casella "online" che cambia con Spazio, Invio e clic e annuncia lo stato; nessun errore in console; settimana senza "Online" per un profilo senza online (anteprime 6).
+
+## 359. Stelle che portano alle recensioni; "Online" da riattivare negli orari di lavoro
+
+**Richiesta di Luca** (26/10/2026): "effettua le due migliorie, ma dai la possibilita di riattivarlo dentro orari di lavoro".
+
+**Fatto**:
+- **Stelle nel preventivo**: il link puntava all'indirizzo col solo id e il passaggio all'indirizzo col nome perdeva `#recensioni`, quindi si apriva il profilo dall'alto. Ora stelle, nome e foto puntano già all'indirizzo col nome (`professionalPath`, città del professionista aggiunta ai preventivi della richiesta). La prova e2e in `stelle-preventivi.spec.ts` controlla l'indirizzo finale.
+- **"Online" nella fascia del giorno**: come nella settimana tipo (§358), con l'online spento nel profilo la casella non si propone; resta se la fascia ha già posti online, per poterli togliere.
+- **Riattivare l'online da Orari di lavoro**: al posto di "Online" compare "+ Online" tratteggiato (nella settimana tipo) o "+ Online · Attiva" (nella fascia). Toccandolo si accende l'online nel profilo (`POST /agenda/online/enable`, stesso effetto della casella del profilo) e la scelta "Online" si spunta; nella settimana una riga ricorda di salvare.
+
+**Verifica**: typecheck API e sito, lint, test dell'API (nuovo caso in `starter-hours.test.ts`), prova nel browser a 390 e 1440 px: "+ Online" nella settimana e nella fascia, attivazione che spunta "Online". Anteprime 7, 8 e 9 in `anteprime/orari-di-partenza/`.

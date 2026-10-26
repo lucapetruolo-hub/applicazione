@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Rating, Text, brand } from "@professionisti/ui";
 import type { ProfessionalReviewSummary } from "@professionisti/api-client";
-import { formatRating } from "@professionisti/shared";
+import { formatRating, professionalPath } from "@professionisti/shared";
 
 /**
  * Stelle e numero di recensioni sotto il nome del professionista nelle
@@ -21,12 +21,16 @@ export function ProfessionalReviewsSummary({ reviews }: { reviews: ProfessionalR
   return <Rating value={reviews.rating} count={reviews.count} size={13} textSize={13} />;
 }
 
-/** Come sopra, con il link alle recensioni del profilo pubblico (dove la riga non è già un link). */
-export function ProfessionalReviewsLink({ professionalProfileId, reviews }: { professionalProfileId: string; reviews: ProfessionalReviewSummary | null }) {
+/**
+ * Come sopra, con il link alle recensioni del profilo pubblico (dove la riga
+ * non è già un link). Punta già all'indirizzo leggibile: il passaggio
+ * dall'indirizzo col solo id perdeva "#recensioni" (docs/CHANGELOG.md §359).
+ */
+export function ProfessionalReviewsLink({ professional, reviews }: { professional: { id: string; businessName: string; city: string | null }; reviews: ProfessionalReviewSummary | null }) {
   if (!reviews || reviews.rating === null) return <ProfessionalReviewsSummary reviews={reviews} />;
   const label = `Valutazione ${formatRating(reviews.rating)} su 5, ${reviews.count} recension${reviews.count === 1 ? "e" : "i"}: vedi le recensioni`;
   return (
-    <Link href={`/professionista/${professionalProfileId}#recensioni`} aria-label={label} style={{ textDecoration: "none", alignSelf: "flex-start" }}>
+    <Link href={`${professionalPath(professional)}#recensioni`} aria-label={label} style={{ textDecoration: "none", alignSelf: "flex-start" }}>
       <ProfessionalReviewsSummary reviews={reviews} />
     </Link>
   );

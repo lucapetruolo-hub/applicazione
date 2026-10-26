@@ -236,6 +236,7 @@ export function WeekTemplateEditor({
   starter = false,
   onKeepStarter,
   online = true,
+  onEnableOnline,
   months,
   onSave,
   saving,
@@ -247,6 +248,8 @@ export function WeekTemplateEditor({
   onKeepStarter?: () => void;
   /** Il profilo offre la consulenza online: senza, "Online" non si propone (§357). */
   online?: boolean;
+  /** Riattiva l'online nel profilo da qui (§359); true se è andato a buon fine. */
+  onEnableOnline?: () => Promise<boolean>;
   /** Mesi che si possono scegliere per salvare la settimana solo lì: `key` AAAA-MM. */
   months: { key: string; label: string }[];
   onSave: (next: AgendaWeekTemplate, month: string | null) => Promise<boolean>;
@@ -258,6 +261,8 @@ export function WeekTemplateEditor({
   // "" = tutti i mesi; altrimenti un mese solo (richiesta dell'utente, docs/CHANGELOG.md §327).
   const [scope, setScope] = useState("");
   const [savedMonth, setSavedMonth] = useState<string | null>(null);
+  const [enablingOnline, setEnablingOnline] = useState(false);
+  const [onlineNotice, setOnlineNotice] = useState<"enabled" | "error" | null>(null);
   // Una settimana cambiata da fuori (es. "Aggiungi alla settimana tipo" da
   // Richieste in zona) arriva con un nuovo `key` e riparte da qui.
   const savedKey = JSON.stringify(template);
@@ -277,6 +282,15 @@ export function WeekTemplateEditor({
     const special = { ...draft.special };
     if (!workDays.includes(day)) delete special[day];
     update({ workDays, special });
+  }
+  async function enableOnline() {
+    if (!onEnableOnline || enablingOnline) return;
+    setEnablingOnline(true);
+    const ok = await onEnableOnline();
+    setEnablingOnline(false);
+    setOnlineNotice(ok ? "enabled" : "error");
+    if (!ok) return;
+    setDraft((d) => ({ ...d, mode: { ...d.mode, allowsOnline: true } }));
   }
   function setSpecial(day: number, ranges: Range[] | null) {
     const special = { ...draft.special };
@@ -357,6 +371,11 @@ export function WeekTemplateEditor({
                 >
                   {draft.mode.allowsOnline ? <Check size={15} aria-hidden /> : null} Online
                 </button>
+              ) : onEnableOnline ? (
+                // Online spento nel profilo: si riattiva da qui (richiesta dell'utente, §359).
+                <button type="button" className="ag-wt-chip is-add" onClick={() => void enableOnline()} disabled={enablingOnline} aria-label="Attiva l'online: lavori anche in videochiamata">
+                  <Plus size={15} aria-hidden /> {enablingOnline ? "Attivo…" : "Online"}
+                </button>
               ) : null}
               <label className="ag-wt-per-slot">
                 <span className="ag-muted">Clienti per orario</span>
@@ -369,6 +388,11 @@ export function WeekTemplateEditor({
                 </select>
               </label>
             </div>
+            {onlineNotice ? (
+              <p className="ag-wt-hint ag-muted" role="status">
+                {onlineNotice === "enabled" ? "Online attivato anche nel profilo. Salva per aggiungerlo agli orari." : "Online non attivato, riprova."}
+              </p>
+            ) : null}
             {!draft.mode.allowsHome && !draft.mode.allowsOnline ? (
               <p className="ag-wt-error" role="alert">
                 Scegli almeno A domicilio oppure Online.

@@ -124,6 +124,8 @@ export function SlotEditorModal({
   onEndChange,
   onAllowsHomeChange,
   onAllowsOnlineChange,
+  offersOnline = true,
+  onEnableOnline,
   onHomeMaxChange,
   onOnlineMaxChange,
   onSave,
@@ -151,6 +153,10 @@ export function SlotEditorModal({
   onEndChange: (v: string) => void;
   onAllowsHomeChange: (v: boolean) => void;
   onAllowsOnlineChange: (v: boolean) => void;
+  /** Il profilo offre l'online: senza, "Online" si propone solo da riattivare (§359). */
+  offersOnline?: boolean;
+  /** Accende l'online nel profilo; true se è andato a buon fine. */
+  onEnableOnline?: () => Promise<boolean>;
   onHomeMaxChange: (v: string) => void;
   onOnlineMaxChange: (v: string) => void;
   onSave: () => void;
@@ -172,6 +178,18 @@ export function SlotEditorModal({
   // cellulare quella "×" si sovrapponeva al riquadro della fascia, poco
   // chiara — richiesta esplicita dell'utente.
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [enablingOnline, setEnablingOnline] = useState(false);
+  const [onlineError, setOnlineError] = useState(false);
+
+  async function enableOnline() {
+    if (!onEnableOnline || enablingOnline) return;
+    setEnablingOnline(true);
+    setOnlineError(false);
+    const ok = await onEnableOnline();
+    setEnablingOnline(false);
+    if (ok) onAllowsOnlineChange(true);
+    else setOnlineError(true);
+  }
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -284,47 +302,74 @@ export function SlotEditorModal({
                 />
               ) : null}
             </XStack>
-            <XStack
-              alignItems="center"
-              gap="$3"
-              padding="$3"
-              backgroundColor={brand.gesso}
-              borderWidth={1}
-              borderColor={brand.filetto}
-              borderRadius="$3"
-              cursor="pointer"
-              onPress={() => onAllowsOnlineChange(!allowsOnline)}
-              onKeyDown={keyActivate(() => onAllowsOnlineChange(!allowsOnline))}
-              accessibilityRole="checkbox"
-              aria-checked={allowsOnline}
-            >
-              <YStack
-                width={22}
-                height={22}
-                borderRadius="$2"
-                borderWidth={2}
-                borderColor={allowsOnline ? brand.cianografia : brand.filetto}
-                backgroundColor={allowsOnline ? brand.cianografia : brand.calce}
+            {/* Con l'online spento nel profilo la casella non si propone, si può riattivare da qui (richiesta dell'utente, §359). */}
+            {offersOnline || allowsOnline ? (
+              <XStack
                 alignItems="center"
-                justifyContent="center"
+                gap="$3"
+                padding="$3"
+                backgroundColor={brand.gesso}
+                borderWidth={1}
+                borderColor={brand.filetto}
+                borderRadius="$3"
+                cursor="pointer"
+                onPress={() => onAllowsOnlineChange(!allowsOnline)}
+                onKeyDown={keyActivate(() => onAllowsOnlineChange(!allowsOnline))}
+                accessibilityRole="checkbox"
+                aria-checked={allowsOnline}
               >
-                {allowsOnline ? <Icon name="check" size={14} strokeWidth={2} color="white" /> : null}
-              </YStack>
-              <Text flex={1} fontSize="$3" color={brand.grafite}>
-                Online
-              </Text>
-              {allowsOnline ? (
-                <input aria-label="Posti online"
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={onlineMax}
-                  onClick={(e) => e.stopPropagation()}
-                  onChange={(e) => onOnlineMaxChange(e.target.value)}
-                  style={modalMaxInputStyle}
-                />
-              ) : null}
-            </XStack>
+                <YStack
+                  width={22}
+                  height={22}
+                  borderRadius="$2"
+                  borderWidth={2}
+                  borderColor={allowsOnline ? brand.cianografia : brand.filetto}
+                  backgroundColor={allowsOnline ? brand.cianografia : brand.calce}
+                  alignItems="center"
+                  justifyContent="center"
+                >
+                  {allowsOnline ? <Icon name="check" size={14} strokeWidth={2} color="white" /> : null}
+                </YStack>
+                <Text flex={1} fontSize="$3" color={brand.grafite}>
+                  Online
+                </Text>
+                {allowsOnline ? (
+                  <input aria-label="Posti online"
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={onlineMax}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => onOnlineMaxChange(e.target.value)}
+                    style={modalMaxInputStyle}
+                  />
+                ) : null}
+              </XStack>
+            ) : onEnableOnline ? (
+              <XStack
+                alignItems="center"
+                gap="$3"
+                padding="$3"
+                borderWidth={1}
+                borderStyle="dashed"
+                borderColor={brand.filetto}
+                borderRadius="$3"
+                cursor={enablingOnline ? "progress" : "pointer"}
+                onPress={() => void enableOnline()}
+                onKeyDown={keyActivate(() => void enableOnline())}
+                accessibilityRole="button"
+                aria-label="Attiva l'online: lavori anche in videochiamata"
+                aria-disabled={enablingOnline}
+              >
+                <Icon name="plus" size={18} strokeWidth={2} color={brand.grafite70} />
+                <Text flex={1} fontSize="$3" color={brand.grafite70}>
+                  {onlineError ? "Online non attivato, riprova" : "Online"}
+                </Text>
+                <Text fontSize="$3" fontWeight="600" color={brand.cianografiaScuro}>
+                  {enablingOnline ? "Attivo…" : "Attiva"}
+                </Text>
+              </XStack>
+            ) : null}
           </YStack>
         </YStack>
 
