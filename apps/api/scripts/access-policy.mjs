@@ -105,6 +105,7 @@ const selfProfessional = [
   "GET /agenda/week-template",
   "PUT /agenda/week-template",
   "PUT /agenda/week-template/month",
+  "POST /agenda/week-template/starter/keep",
   "GET /agenda/zone-demand",
   "POST /billing/boost/checkout",
   "POST /billing/portal",
