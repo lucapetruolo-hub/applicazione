@@ -254,6 +254,10 @@ model ProfessionalProfile {
   // a 63 giorni da oggi; i giorni già passati da qui non si riempiono più,
   // così un giorno svuotato a mano resta vuoto.
   agendaTemplateFilledUntil    DateTime?
+  // Orari di partenza messi alla creazione del profilo (docs/CHANGELOG.md
+  // §364): finché il professionista non li conferma o salva la sua
+  // settimana, l'agenda gli ricorda che sono un punto di partenza.
+  agendaStarterHoursAt         DateTime?
   city                         String
   latitude                     Float
   longitude                    Float

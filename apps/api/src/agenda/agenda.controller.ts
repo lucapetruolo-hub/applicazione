@@ -32,6 +32,26 @@ export class AgendaController {
     return this.agendaService.saveWeekTemplateForMonth(req.user.userId, body.template, body.month);
   }
 
+  @Post("week-template/starter/keep")
+  keepStarterHours(@Req() req: AuthenticatedRequest) {
+    return this.agendaService.keepStarterHours(req.user.userId);
+  }
+
+  @Get("online-slots")
+  onlineSlotCount(@Req() req: AuthenticatedRequest) {
+    return this.agendaService.onlineSlotCount(req.user.userId);
+  }
+
+  @Post("online-slots/remove")
+  removeOnlineSlots(@Req() req: AuthenticatedRequest) {
+    return this.agendaService.removeOnlineSlots(req.user.userId);
+  }
+
+  @Post("online/enable")
+  enableOnline(@Req() req: AuthenticatedRequest) {
+    return this.agendaService.enableOnline(req.user.userId);
+  }
+
   @Get("weather")
   weather(@Req() req: AuthenticatedRequest) {
     return this.agendaService.weather(req.user.userId);

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Check, Plus, X } from "lucide-react";
 import { agendaWeekTemplateSchema, type AgendaWeekTemplate, type WeekTemplateSlot } from "@professionisti/shared";
 import { WEEKDAY_FULL_LABELS } from "@/app/dashboard/agenda/_components/agendaHelpers";
+import { ItalianTimeInput } from "@/components/ItalianTimeInput";
 
 /** Lunedì per primo, come in tutto il calendario. */
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
@@ -14,7 +15,7 @@ type Range = { start: string; end: string };
 type Mode = { allowsHome: boolean; allowsOnline: boolean; perSlot: number };
 
 const PRESETS: { id: string; label: string; ranges: Range[] }[] = [
-  { id: "split", label: "Mattina e pomeriggio", ranges: [{ start: "08:00", end: "13:00" }, { start: "14:00", end: "18:00" }] },
+  { id: "split", label: "Mattina e pomeriggio", ranges: [{ start: "08:00", end: "13:00" }, { start: "14:00", end: "20:00" }] },
   { id: "continuous", label: "Orario continuato", ranges: [{ start: "08:00", end: "17:00" }] },
   { id: "morning", label: "Solo la mattina", ranges: [{ start: "08:00", end: "13:00" }] },
 ];
@@ -77,6 +78,23 @@ export function templateFromDraft(draft: Draft): AgendaWeekTemplate {
   };
 }
 
+/** "dal lunedì al sabato, 8–13 e 14–20": giorni di lavoro e orari più comuni, per l'avviso degli orari di partenza (§364). */
+export function starterDaysLabel(template: AgendaWeekTemplate): string {
+  const { workDays, base } = draftFromTemplate(template);
+  if (workDays.length === 0) return "nessun giorno";
+  const names = workDays.map((day) => WEEKDAY_FULL_LABELS[day]!.toLowerCase());
+  const positions = workDays.map((day) => WEEK_ORDER.indexOf(day));
+  const consecutive = positions.every((pos, i) => i === 0 || pos === positions[i - 1]! + 1);
+  const days =
+    workDays.length === 1
+      ? names[0]!
+      : consecutive && workDays.length > 2
+        ? `dal ${names[0]} al ${names[names.length - 1]}`
+        : `${names.slice(0, -1).join(", ")} e ${names[names.length - 1]}`;
+  // "14–20" non si spezza a capo sul telefono.
+  return `${days}, ${rangesLabel(base).replaceAll("–", "\u2060–\u2060")}`;
+}
+
 function rangesError(ranges: Range[]): string | null {
   if (ranges.some((r) => r.end <= r.start)) return "L'orario di fine deve essere dopo quello di inizio.";
   const sorted = [...ranges].sort((a, b) => a.start.localeCompare(b.start));
@@ -118,13 +136,14 @@ function RangesEditor({ ranges, onChange, label }: { ranges: Range[]; onChange: 
             <span className="ag-muted ag-wt-word" aria-hidden>
               Dalle
             </span>
-            <input
-              type="time"
-              className="ag-input ag-wt-time"
+            <ItalianTimeInput
+              className="ag-input"
+              wrapperClassName="ag-wt-time"
+              padX={8}
               value={range.start}
               step={900}
-              aria-label={`${label}: inizio ${index + 1}° orario`}
-              onChange={(e) => onChange(ranges.map((r, i) => (i === index ? { ...r, start: e.target.value } : r)))}
+              ariaLabel={`${label}: inizio ${index + 1}° orario`}
+              onChange={(value) => onChange(ranges.map((r, i) => (i === index ? { ...r, start: value } : r)))}
             />
           </label>
           <label>
@@ -134,13 +153,14 @@ function RangesEditor({ ranges, onChange, label }: { ranges: Range[]; onChange: 
             <span className="ag-muted ag-wt-dash" aria-hidden>
               –
             </span>
-            <input
-              type="time"
-              className="ag-input ag-wt-time"
+            <ItalianTimeInput
+              className="ag-input"
+              wrapperClassName="ag-wt-time"
+              padX={8}
               value={range.end}
               step={900}
-              aria-label={`${label}: fine ${index + 1}° orario`}
-              onChange={(e) => onChange(ranges.map((r, i) => (i === index ? { ...r, end: e.target.value } : r)))}
+              ariaLabel={`${label}: fine ${index + 1}° orario`}
+              onChange={(value) => onChange(ranges.map((r, i) => (i === index ? { ...r, end: value } : r)))}
             />
           </label>
           {ranges.length > 1 ? (
@@ -213,12 +233,23 @@ function WeekPreview({ template }: { template: AgendaWeekTemplate }) {
 export function WeekTemplateEditor({
   template,
   active,
+  starter = false,
+  onKeepStarter,
+  online = true,
+  onEnableOnline,
   months,
   onSave,
   saving,
 }: {
   template: AgendaWeekTemplate;
   active: boolean;
+  /** Orari di partenza messi alla creazione del profilo e non ancora confermati (§364). */
+  starter?: boolean;
+  onKeepStarter?: () => void;
+  /** Il profilo offre la consulenza online: senza, "Online" non si propone (§365). */
+  online?: boolean;
+  /** Riattiva l'online nel profilo da qui (§367); true se è andato a buon fine. */
+  onEnableOnline?: () => Promise<boolean>;
   /** Mesi che si possono scegliere per salvare la settimana solo lì: `key` AAAA-MM. */
   months: { key: string; label: string }[];
   onSave: (next: AgendaWeekTemplate, month: string | null) => Promise<boolean>;
@@ -230,6 +261,8 @@ export function WeekTemplateEditor({
   // "" = tutti i mesi; altrimenti un mese solo (richiesta dell'utente, docs/CHANGELOG.md §327).
   const [scope, setScope] = useState("");
   const [savedMonth, setSavedMonth] = useState<string | null>(null);
+  const [enablingOnline, setEnablingOnline] = useState(false);
+  const [onlineNotice, setOnlineNotice] = useState<"enabled" | "error" | null>(null);
   // Una settimana cambiata da fuori (es. "Aggiungi alla settimana tipo" da
   // Richieste in zona) arriva con un nuovo `key` e riparte da qui.
   const savedKey = JSON.stringify(template);
@@ -250,6 +283,15 @@ export function WeekTemplateEditor({
     if (!workDays.includes(day)) delete special[day];
     update({ workDays, special });
   }
+  async function enableOnline() {
+    if (!onEnableOnline || enablingOnline) return;
+    setEnablingOnline(true);
+    const ok = await onEnableOnline();
+    setEnablingOnline(false);
+    setOnlineNotice(ok ? "enabled" : "error");
+    if (!ok) return;
+    setDraft((d) => ({ ...d, mode: { ...d.mode, allowsOnline: true } }));
+  }
   function setSpecial(day: number, ranges: Range[] | null) {
     const special = { ...draft.special };
     if (ranges) special[day] = ranges;
@@ -265,6 +307,18 @@ export function WeekTemplateEditor({
       <p className="ag-muted" style={{ fontSize: 14, marginTop: 4 }}>
         Vale per tutti i mesi o per il mese che scegli in fondo. Un giorno diverso lo cambi in &quot;Giorno per giorno&quot;.
       </p>
+      {starter ? (
+        <div className="ag-banner info ag-wt-starter" role="status">
+          <span>
+            <b>Orari di partenza.</b> Li abbiamo messi noi e i clienti li vedono già: cambiali qui sotto e salva, quando vuoi.
+          </span>
+          {onKeepStarter ? (
+            <button type="button" className="ag-btn sm" onClick={onKeepStarter}>
+              Vanno bene così
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="ag-wt-body">
         <div className="ag-wt-steps">
@@ -307,14 +361,22 @@ export function WeekTemplateEditor({
               >
                 {draft.mode.allowsHome ? <Check size={15} aria-hidden /> : null} A domicilio
               </button>
-              <button
-                type="button"
-                className={`ag-wt-chip${draft.mode.allowsOnline ? " is-on" : ""}`}
-                aria-pressed={draft.mode.allowsOnline}
-                onClick={() => update({ mode: { ...draft.mode, allowsOnline: !draft.mode.allowsOnline } })}
-              >
-                {draft.mode.allowsOnline ? <Check size={15} aria-hidden /> : null} Online
-              </button>
+              {/* Si vede ancora se una settimana vecchia ha l'online acceso, per poterlo spegnere. */}
+              {online || draft.mode.allowsOnline ? (
+                <button
+                  type="button"
+                  className={`ag-wt-chip${draft.mode.allowsOnline ? " is-on" : ""}`}
+                  aria-pressed={draft.mode.allowsOnline}
+                  onClick={() => update({ mode: { ...draft.mode, allowsOnline: !draft.mode.allowsOnline } })}
+                >
+                  {draft.mode.allowsOnline ? <Check size={15} aria-hidden /> : null} Online
+                </button>
+              ) : onEnableOnline ? (
+                // Online spento nel profilo: si riattiva da qui (richiesta dell'utente, §367).
+                <button type="button" className="ag-wt-chip is-add" onClick={() => void enableOnline()} disabled={enablingOnline} aria-label="Attiva l'online: lavori anche in videochiamata">
+                  <Plus size={15} aria-hidden /> {enablingOnline ? "Attivo…" : "Online"}
+                </button>
+              ) : null}
               <label className="ag-wt-per-slot">
                 <span className="ag-muted">Clienti per orario</span>
                 <select className="ag-input" value={draft.mode.perSlot} onChange={(e) => update({ mode: { ...draft.mode, perSlot: Number(e.target.value) } })}>
@@ -326,6 +388,11 @@ export function WeekTemplateEditor({
                 </select>
               </label>
             </div>
+            {onlineNotice ? (
+              <p className="ag-wt-hint ag-muted" role="status">
+                {onlineNotice === "enabled" ? "Online attivato anche nel profilo. Salva per aggiungerlo agli orari." : "Online non attivato, riprova."}
+              </p>
+            ) : null}
             {!draft.mode.allowsHome && !draft.mode.allowsOnline ? (
               <p className="ag-wt-error" role="alert">
                 Scegli almeno A domicilio oppure Online.

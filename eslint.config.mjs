@@ -47,8 +47,8 @@ export default tseslint.config(
         "error",
         { ...jsxA11y.flatConfigs.recommended.rules["jsx-a11y/no-noninteractive-element-to-interactive-role"][1], img: ["button"] },
       ],
-      // ItalianDateInput contiene un <input type="date"> (docs/CHANGELOG.md §291).
-      "jsx-a11y/label-has-associated-control": ["error", { controlComponents: ["ItalianDateInput"], depth: 3 }],
+      // ItalianDateInput e ItalianTimeInput contengono un <input> nativo (docs/CHANGELOG.md §291, §365).
+      "jsx-a11y/label-has-associated-control": ["error", { controlComponents: ["ItalianDateInput", "ItalianTimeInput"], depth: 3 }],
     },
   },
 );

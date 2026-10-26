@@ -573,6 +573,8 @@ export class GuidedRequestsService {
           id: quote.id,
           professionalProfileId: quote.professionalProfileId,
           businessName: quote.professionalProfile.businessName,
+          // Per il link diretto all'indirizzo leggibile del profilo (§367).
+          city: quote.professionalProfile.city,
           // Foto profilo accanto al nome nella scheda del preventivo
           // (richiesta esplicita dell'utente: riconoscere a colpo d'occhio
           // di chi si tratta). Mai per un profilo eliminato.

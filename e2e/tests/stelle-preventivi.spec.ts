@@ -116,8 +116,8 @@ test("nei preventivi ricevuti stelle e numero di recensioni accanto al nome", as
 
   // Le stelle portano alle recensioni del profilo pubblico.
   await rating.click();
-  // Dopo il rimando all'indirizzo con nome e città resta "#recensioni".
-  await expect(page).toHaveURL(new RegExp(`/professionista/[a-z0-9-]*${ids.withReviews}#recensioni$`));
+  // Direttamente all'indirizzo con nome e città, con "#recensioni" (§367).
+  await expect(page).toHaveURL(new RegExp(`/professionista/luigi-bianchi-idraulica-latina-${ids.withReviews}#recensioni$`));
   await expect(page.getByText("Lavoro fatto bene.").first()).toBeInViewport();
 });
 

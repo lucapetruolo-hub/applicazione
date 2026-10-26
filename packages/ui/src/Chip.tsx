@@ -21,7 +21,19 @@ export function Chip({ children, selected = false, onPress }: ChipProps) {
       cursor={onPress ? "pointer" : undefined}
       onPress={onPress}
       accessibilityRole={onPress ? "button" : undefined}
-      accessibilityState={onPress ? { selected } : undefined}
+      // Sul sito "accessibilityState" finiva nella pagina come attributo
+      // sconosciuto: il lettore di schermo non sapeva se era scelto (§366).
+      aria-pressed={onPress ? selected : undefined}
+      onKeyDown={
+        onPress
+          ? (event: unknown) => {
+              const keyEvent = event as { key?: string; preventDefault?: () => void };
+              if (keyEvent.key !== " " && keyEvent.key !== "Enter") return;
+              keyEvent.preventDefault?.();
+              onPress();
+            }
+          : undefined
+      }
       pressStyle={onPress ? { backgroundColor: brand.cianografiaVelo } : undefined}
     >
       <Text fontSize={16} fontWeight="600" color={selected ? brand.cianografiaScuro : brand.grafite}>

@@ -36,6 +36,9 @@ export type EmailVerification = { link: string; hours: number; code: string; cod
 const COMPLETE_PROFILE_TEXT =
   "**Poi bastano pochi minuti:** completa il profilo con la tua attività, la zona in cui lavori e qualche foto. Più è completo, più richieste ricevi.";
 
+// Orari di partenza dell'agenda (docs/CHANGELOG.md §365), gli stessi di `starterWeekTemplate`.
+const STARTER_HOURS_TEXT = "Completato il profilo, la tua agenda parte già con degli orari: dal lunedì al sabato, 8–13 e 14–20. Li cambi quando vuoi da Agenda.";
+
 export function welcomeProfessionalEmail(name: string | null, verify: EmailVerification | null): RenderedEmail {
   const site = frontendUrl();
   return renderEmail({
@@ -47,12 +50,12 @@ export function welcomeProfessionalEmail(name: string | null, verify: EmailVerif
     paragraphs: [
       "Grazie per esserti iscritto. Qui i clienti della tua zona ti trovano, ti chiedono un preventivo e ti scelgono anche per le recensioni dei lavori fatti.",
       // Con la conferma il codice segue subito l'invito a scriverlo; il resto va dopo il pulsante.
-      ...(verify ? ["**Prima di tutto conferma il tuo indirizzo email:** scrivi questo codice sul sito, oppure premi il pulsante qui sotto."] : [COMPLETE_PROFILE_TEXT]),
+      ...(verify ? ["**Prima di tutto conferma il tuo indirizzo email:** scrivi questo codice sul sito, oppure premi il pulsante qui sotto."] : [COMPLETE_PROFILE_TEXT, STARTER_HOURS_TEXT]),
     ],
     ...(verify ? { code: { label: "Il tuo codice", value: verify.code } } : {}),
     cta: verify ? { label: "Conferma la mia email", url: verify.link } : { label: "Completa il profilo", url: `${site}/dashboard/profilo` },
     after: verify
-      ? [verifyValidity(verify), COMPLETE_PROFILE_TEXT, "Se non ti sei iscritto tu, ignora questo messaggio."]
+      ? [verifyValidity(verify), COMPLETE_PROFILE_TEXT, STARTER_HOURS_TEXT, "Se non ti sei iscritto tu, ignora questo messaggio."]
       : ["Se non ti sei iscritto tu, scrivici e chiuderemo l'account."],
   });
 }

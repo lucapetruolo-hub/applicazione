@@ -12,5 +12,6 @@ import { WeatherService } from "./weather.service";
   imports: [AuthModule, GeocodingModule],
   controllers: [AgendaController, CalendarFeedController],
   providers: [AgendaService, CalendarFeedService, DayRouteService, WeatherService],
+  exports: [AgendaService],
 })
 export class AgendaModule {}
