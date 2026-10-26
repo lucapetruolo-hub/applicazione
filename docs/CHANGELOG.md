@@ -20972,3 +20972,14 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - Rete di sicurezza: se un errore riguarda un campo che non è sulla pagina, il messaggio compare nella riga rossa sopra i pulsanti (`focusGuidedField` dice se ha trovato il campo). Copre anche "Scegli la città dall'elenco dei comuni", che a domicilio con i suggerimenti non ha un campo città.
 
 **Verifica**: typecheck e lint di web; prova nel browser con le risposte del server simulate (via di Roma senza CAP): compare il campo CAP, senza CAP "Avanti" mostra "Indica il CAP." sotto il campo, col CAP si arriva al riepilogo.
+
+## 352. CAP compilato da solo e controllato con la città
+
+**Richiesta esplicita dell'utente** (26/10/2026, stesso thread del §351): "effettua le due migliorie, inserisci da solo il cap ma dai la possibilità di modificarlo".
+
+**Decisioni**:
+- **CAP da solo**: quando Google non dà il CAP con l'indirizzo scelto, appena si scrive il civico (dopo 0,6 secondi di pausa) il sito lo chiede al nostro server, `GET /address/postal-code?street=&number=&city=`, che usa la Geocoding API con la chiave server (`GeocodingService.postalCodeFor`). Il CAP compare nel campo con la riga "CAP trovato in automatico: se non è giusto, cambialo." Il campo resta modificabile; scritto a mano non viene più sovrascritto. Se il CAP non si trova o Google non risponde, si scrive a mano come prima. Vale anche con i campi separati (suggerimenti non disponibili).
+- **CAP della città**: un CAP scritto a mano si controlla quando si preme "Avanti", con `GET /address/postal-code/check?postalCode=&city=` (`postalCodeMatchesCity`, geocodifica del solo CAP). Blocca solo quando è sicuro: CAP di un'altra provincia, oppure di un solo comune diverso da quello scelto. Messaggio sotto il campo: "Il CAP 04100 non risulta di Roma: controllalo." Nel dubbio (CAP di più località) o senza risposta di Google si va avanti.
+- Le due rotte sono aperte a tutti come i suggerimenti: limite di 30 al minuto per IP e un tetto giornaliero comune di 2000 chiamate (`DailyBudget`, avviso su Sentry al tetto).
+
+**Verifica**: typecheck di web e api, lint di web, 18 test della geocodifica (3 nuovi sul CAP); prova nel browser con le risposte del server simulate: CAP trovato dopo il civico, CAP di Latina con Roma bloccato con il messaggio, CAP corretto a mano arriva al riepilogo.

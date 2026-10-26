@@ -471,6 +471,33 @@ export function GuidedRequestForm({
   const showHouseNumber = askHouseNumber || !houseNumber.trim();
   const showPostalCode = askPostalCode || !postalCode.trim();
   const showProvince = askProvince || !province.trim();
+  // CAP cercato da solo appena c'è il civico (§352), finché il cliente non lo
+  // cambia a mano: da lì vale il suo.
+  const [postalCodeTyped, setPostalCodeTyped] = useState(false);
+  const [postalCodeFound, setPostalCodeFound] = useState(false);
+  // CAP da via e civico quando Google non l'ha dato con l'indirizzo (§352):
+  // es. "Via Cesare Battisti, Roma" senza civico. Cercato dopo una breve
+  // pausa di battitura del civico; se non si trova resta da scrivere.
+  const needsPostalCodeLookup = serviceMode === "HOME" && (askPostalCode || chosenAddress.serviceDown) && !postalCodeTyped;
+  useEffect(() => {
+    if (!needsPostalCodeLookup || !street.trim() || !houseNumber.trim() || !city.trim()) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      apiClient
+        .addressPostalCode({ street: street.trim(), houseNumber: houseNumber.trim(), city: city.trim() })
+        .then(({ postalCode: found }) => {
+          if (cancelled || !found) return;
+          setPostalCode(found);
+          setPostalCodeFound(true);
+        })
+        .catch(() => undefined);
+    }, 600);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [needsPostalCodeLookup, street, houseNumber, city]);
+
   // Istantanea dei valori reali dell'account al momento del prefill (non i
   // valori di stato, che ricadono su "" per i campi mancanti) — usata al
   // momento dell'invio per capire se il cliente ha modificato o aggiunto
@@ -753,6 +780,16 @@ export function GuidedRequestForm({
       if (problem) {
         showProblem(problem);
         if (validateStep(1)) setStep(1);
+        return;
+      }
+    }
+    // CAP scritto a mano: se è di un'altra città lo si dice subito (§352).
+    // Nel dubbio o senza risposta si va avanti.
+    if (next === 3 && serviceMode === "HOME" && postalCodeTyped && postalCode.trim() && city.trim()) {
+      const check = await apiClient.addressPostalCodeCheck({ postalCode: postalCode.trim(), city: city.trim() }).catch(() => null);
+      if (check?.matches === false) {
+        setAskPostalCode(true);
+        showProblem({ message: `Il CAP ${postalCode.trim()} non risulta di ${city.trim()}: controllalo.`, field: "cap" });
         return;
       }
     }
@@ -1364,7 +1401,11 @@ export function GuidedRequestForm({
                       aria-invalid={fieldInvalid("cap")}
                       inputMode="numeric"
                       value={postalCode}
-                      onChange={(e) => setPostalCode(e.target.value)}
+                      onChange={(e) => {
+                        setPostalCode(e.target.value.replace(/\D/g, "").slice(0, 5));
+                        setPostalCodeTyped(true);
+                        setPostalCodeFound(false);
+                      }}
                       placeholder="CAP"
                       style={fieldInputStyle}
                     />
@@ -1404,6 +1445,8 @@ export function GuidedRequestForm({
                     setAskHouseNumber(!selected.houseNumber);
                     setPostalCode(selected.postalCode ?? "");
                     setAskPostalCode(!selected.postalCode);
+                    setPostalCodeTyped(false);
+                    setPostalCodeFound(false);
                     setProvince(selected.province ?? comune?.province ?? "");
                     setAskProvince(!selected.province && !comune?.province);
                     setCity(comune?.name ?? selected.locality ?? "");
@@ -1460,6 +1503,8 @@ export function GuidedRequestForm({
                             onChange={(e) => {
                               setPostalCode(e.target.value.replace(/\D/g, "").slice(0, 5));
                               setAskPostalCode(true);
+                              setPostalCodeTyped(true);
+                              setPostalCodeFound(false);
                             }}
                             placeholder="Es. 00187"
                             style={fieldInputStyle}
@@ -1484,6 +1529,11 @@ export function GuidedRequestForm({
                         </YStack>
                       ) : null}
                     </XStack>
+                    {postalCodeFound && showPostalCode ? (
+                      <Text fontSize={13} color={brand.grafite70} role="status">
+                        CAP trovato in automatico: se non è giusto, cambialo.
+                      </Text>
+                    ) : null}
                     {fieldErrorFor("civico")}
                     {fieldErrorFor("cap")}
                     {fieldErrorFor("provincia")}

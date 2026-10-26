@@ -1784,6 +1784,15 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
       return `${baseUrl}/maps/static?${query.toString()}`;
     },
     /** Dettagli dell'indirizzo scelto: coordinate e pezzi (via, civico, CAP, comune, provincia). */
+    /** CAP di via e civico; `null` se non si trova (§352). */
+    addressPostalCode: (params: { street: string; houseNumber: string; city: string }) =>
+      request<{ postalCode: string | null }>(
+        `/address/postal-code?${new URLSearchParams({ street: params.street, number: params.houseNumber, city: params.city }).toString()}`,
+        { cache: "no-store" },
+      ),
+    /** Il CAP è della città? `null` se non si sa (§352). */
+    addressPostalCodeCheck: (params: { postalCode: string; city: string }) =>
+      request<{ matches: boolean | null }>(`/address/postal-code/check?${new URLSearchParams(params).toString()}`, { cache: "no-store" }),
     addressPlace: (id: string, session: string) =>
       request<AddressPlace>(`/address/place/${encodeURIComponent(id)}?session=${encodeURIComponent(session)}`, { cache: "no-store" }),
     /** Stato dei tre passi: dati fiscali, controllo Agenzia delle Entrate, documento e selfie (docs/CHANGELOG.md §253). */

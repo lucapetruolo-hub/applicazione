@@ -1,6 +1,7 @@
 import { BadRequestException, Controller, Get, Param, Query } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 import { AddressSuggestionsService } from "./address-suggestions.service";
+import { GeocodingService } from "./geocoding.service";
 
 const SESSION = /^[A-Za-z0-9-]{8,64}$/;
 
@@ -12,7 +13,30 @@ const SESSION = /^[A-Za-z0-9-]{8,64}$/;
  */
 @Controller("address")
 export class AddressSuggestionsController {
-  constructor(private readonly addressSuggestionsService: AddressSuggestionsService) {}
+  constructor(
+    private readonly addressSuggestionsService: AddressSuggestionsService,
+    private readonly geocodingService: GeocodingService,
+  ) {}
+
+  /** CAP di via e civico, per compilarlo da solo nel modulo di richiesta (§352). */
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Get("postal-code")
+  async postalCode(@Query("street") street?: string, @Query("number") houseNumber?: string, @Query("city") city?: string) {
+    const postalCode = await this.geocodingService.postalCodeFor({
+      street: (street ?? "").slice(0, 200),
+      houseNumber: (houseNumber ?? "").slice(0, 20),
+      city: (city ?? "").slice(0, 100),
+    });
+    return { postalCode };
+  }
+
+  /** Il CAP scritto è della città? `matches: null` quando non si sa (§352). */
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Get("postal-code/check")
+  async postalCodeCheck(@Query("postalCode") postalCode?: string, @Query("city") city?: string) {
+    const matches = await this.geocodingService.postalCodeMatchesCity({ postalCode: (postalCode ?? "").slice(0, 10), city: (city ?? "").slice(0, 100) });
+    return { matches };
+  }
 
   /** Se i suggerimenti funzionano, senza chiamare Google (§324). */
   @Throttle({ default: { limit: 60, ttl: 60_000 } })
