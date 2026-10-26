@@ -17,7 +17,7 @@ describe("requestSentEmail", () => {
   });
 });
 
-// Riepilogo di quello che il cliente ha inviato e "Modifica richiesta" (docs/CHANGELOG.md §351).
+// Riepilogo di quello che il cliente ha inviato e "Modifica richiesta" (docs/CHANGELOG.md §355).
 describe("requestSentEmail: riepilogo", () => {
   const base = { name: "Anna", category: "Idraulico", city: "Roma", isUrgent: false, sentTo: 4, direct: false };
   const summary = {

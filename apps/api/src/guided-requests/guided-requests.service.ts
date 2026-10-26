@@ -66,7 +66,7 @@ function respondUntilForEmail(isUrgent: boolean, expiresAt: Date | null): string
   return !isUrgent && expiresAt ? expiresAt.toISOString() : null;
 }
 
-/** Riepilogo per l'email di conferma al cliente (docs/CHANGELOG.md §351). */
+/** Riepilogo per l'email di conferma al cliente (docs/CHANGELOG.md §355). */
 function requestSummary(request: {
   timing?: RequestSummary["timing"];
   serviceMode?: RequestSummary["serviceMode"];

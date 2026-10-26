@@ -124,7 +124,7 @@ function LeMieRichiesteContent() {
   // professionista.
   const consumedRequestOpenRef = useRef<string | null>(null);
   const [pendingChatOpen, setPendingChatOpen] = useState<{ requestId: string; professionalProfileId: string } | null>(null);
-  // "Modifica richiesta" dall'email di conferma (`&modifica=1`, docs/CHANGELOG.md §351).
+  // "Modifica richiesta" dall'email di conferma (`&modifica=1`, docs/CHANGELOG.md §355).
   const [pendingEditId, setPendingEditId] = useState<string | null>(null);
 
   const listTopRef = useRef<HTMLDivElement>(null);

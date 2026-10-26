@@ -55,10 +55,13 @@ test("parte ridotto fino a 1366px e aperto sopra", async ({ page }) => {
   await page.goto("/dashboard");
   await expect(nav(page).getByRole("button", { name: "Espandi il menu" })).toBeVisible();
   expect(await navState(page)).toBe("collapsed");
+  // Ridotto, nessun titolo di gruppo: "Lavoro" usciva dalla colonna (§351).
+  await expect(nav(page).locator(".acct-nav-title").first()).toBeHidden();
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await expect(nav(page).getByRole("button", { name: "Riduci il menu a icone" })).toBeVisible();
   expect(await navState(page)).toBeNull();
+  await expect(nav(page).locator(".acct-nav-title").first()).toBeVisible();
 });
 
 test("la scelta resta ricaricando, già prima che la pagina sia pronta, e sull'account", async ({ page }) => {

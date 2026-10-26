@@ -98,7 +98,7 @@ export function GuidedRequestCard({
   autoOpenChatProfessionalId?: string | null;
   /** Richiamata subito dopo aver gestito `autoOpenChatProfessionalId` — il genitore azzera il proprio stato "in sospeso" così un eventuale rimontaggio successivo non la riapre da sola. */
   onChatAutoOpenHandled?: () => void;
-  /** "Modifica richiesta" dall'email di conferma (`?modifica=1`, docs/CHANGELOG.md §351): apre subito il modulo, se la richiesta si può ancora modificare. */
+  /** "Modifica richiesta" dall'email di conferma (`?modifica=1`, docs/CHANGELOG.md §355): apre subito il modulo, se la richiesta si può ancora modificare. */
   autoStartEditing?: boolean;
   /** Richiamata dopo aver gestito `autoStartEditing`, così un rimontaggio non riapre il modulo. */
   onAutoEditHandled?: () => void;

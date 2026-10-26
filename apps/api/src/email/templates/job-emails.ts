@@ -11,7 +11,7 @@ import { formatJobDays, REQUEST_TIMING_LABEL, type RequestTiming } from "@profes
 
 /**
  * Quello che il cliente ha scritto nella richiesta, per il riepilogo
- * nell'email di conferma (docs/CHANGELOG.md §351): così vede subito un errore
+ * nell'email di conferma (docs/CHANGELOG.md §355): così vede subito un errore
  * e lo corregge. Mai il nome e il telefono di chi apre la porta.
  */
 export type RequestSummary = {
