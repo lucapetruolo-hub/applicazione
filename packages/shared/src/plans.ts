@@ -91,9 +91,10 @@ export const RENEWAL_NOTICE_DAYS = 3;
 /**
  * Perché un account professionista è in pausa (docs/CHANGELOG.md §162):
  * fuori dalla ricerca e senza nuove richieste finché non si sceglie o
- * rinnova un livello, o finché non passa al livello superiore / al mese dopo.
+ * rinnova un livello. I lavori esauriti non mettono più in pausa (§355):
+ * vedi `MySubscription.limitReached`.
  */
-export type PauseReason = "TRIAL_ENDED" | "SUBSCRIPTION_ENDED" | "LIMIT_REACHED";
+export type PauseReason = "TRIAL_ENDED" | "SUBSCRIPTION_ENDED";
 
 export function subscriptionTierInfo(tier: SubscriptionTier) {
   return SUBSCRIPTION_TIERS.find((t) => t.tier === tier)!;
@@ -129,14 +130,27 @@ export type MySubscription = {
   trialEndsAt: string | null;
   /** Il mese regalato è già stato dato (viene mostrato solo dopo, mai prima). */
   bonusMonthGranted: boolean;
+  /**
+   * Lavori del periodo in corso (docs/CHANGELOG.md §355): ripartono al
+   * rinnovo, non il 1° del mese. Su Plus e Pro lo stesso cliente conta una
+   * volta per periodo (`countsClientsOnce`).
+   */
   usage: {
-    /** Lavori accettati nel mese corrente (ora italiana). */
-    acceptedJobsThisMonth: number;
-    /** null = nessun limite (prova, livello Pro). */
-    monthlyLimit: number | null;
-    /** Es. "settembre 2026". */
-    monthLabel: string;
+    used: number;
+    /** null = nessun limite (Pro). */
+    limit: number | null;
+    periodStart: string;
+    /** Inizio del periodo successivo: i lavori ripartono qui. */
+    periodEnd: string;
+    countsClientsOnce: boolean;
   };
+  /**
+   * Lavori del periodo esauriti (§355): il profilo resta nella ricerca e
+   * riceve le richieste, ma non può mandare preventivi nuovi né rispondere
+   * per primo a una richiesta finché non passa al livello superiore o non
+   * ripartono i lavori.
+   */
+  limitReached: boolean;
   /** Rinnovo dell'abbonamento pagato; null durante e dopo la prova se non ne è stato scelto uno. */
   billingInterval: BillingInterval | null;
   /**

@@ -315,8 +315,8 @@ prezzi Stripe nelle variabili `STRIPE_PRICE_<LIVELLO>` e
   mostra "€19" barrato e "Gratuito", con la condizione in piccolo ("il
   primo mese, poi €19/mese"): il mese gratis non si annuncia altrove.
 - **Account in pausa** (`ProfessionalProfile.pausedAt`/`pausedReason`,
-  docs/CHANGELOG.md §162): a fine mese gratuito senza livello, ad
-  abbonamento concluso e ai lavori del mese esauriti il profilo esce dalla
+  docs/CHANGELOG.md §162): a fine mese gratuito senza livello e ad
+  abbonamento concluso il profilo esce dalla
   ricerca e dallo smistamento, non accetta richieste dirette né prenotazioni
   (resta visibile dal link); banner fisso in Home e in Abbonamento. Ogni
   nuovo punto che mostra professionisti o assegna richieste deve filtrare
@@ -335,7 +335,17 @@ prezzi Stripe nelle variabili `STRIPE_PRICE_<LIVELLO>` e
   `packages/shared/src/plans.ts`, nel periodo gratuito si conta da Base sui
   suoi 30 giorni); il nuovo livello vale fino al rinnovo, poi si paga
   intero. Una sola cifra nell'interfaccia, il calcolo in "Scopri di più" e
-  nei Termini. Altrimenti si riparte il 1° del mese.
+  nei Termini. Altrimenti si aspetta il rinnovo.
+- **Lavori esauriti** (decisioni dell'utente, docs/CHANGELOG.md §355): i
+  lavori si contano per periodo e **ripartono al rinnovo** (annuale: ogni
+  mese dal giorno di attivazione), mai il 1° del mese; su Plus e Pro lo
+  stesso cliente conta una volta per periodo (detto solo ai professionisti).
+  Al limite il profilo **resta nella ricerca** e riceve le richieste, ma
+  non manda preventivi nuovi, non risponde per primo in chat e l'agenda non
+  si prenota online (`ProfessionalProfile.jobLimitReachedAt`, non
+  `pausedAt`); i preventivi già mandati restano validi. Finestra "Hai
+  esaurito l'abbonamento Base" con la richiesta, il livello sopra e una
+  sola cifra (`JobLimitModal`).
 - **Rinnovo automatico** mensile o annuale con avviso 3 giorni prima (sito + email);
   annullabile da `/dashboard/abbonamento`, resta attivo fino alla scadenza.
   Passare a un livello inferiore non è ancora previsto.

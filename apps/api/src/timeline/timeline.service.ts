@@ -5,6 +5,7 @@ import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { RealtimeService } from "../realtime/realtime.service";
 import { clientNameForProfessional } from "../common/client-name.util";
+import { JOB_LIMIT_REACHED_MESSAGE } from "../subscriptions/subscription-rules";
 
 export type TimelineActor = "CLIENT" | "PROFESSIONAL" | "SYSTEM";
 
@@ -63,6 +64,7 @@ export class TimelineService {
     if (request?.deletedByClientAt) {
       throw new ForbiddenException("Il cliente ha ritirato questa richiesta: non si possono più inviare messaggi.");
     }
+    if (actor === "PROFESSIONAL") await this.assertCanReply(guidedRequestId, professionalProfileId);
     const event = await this.prisma.conversationEvent.create({
       data: { guidedRequestId, professionalProfileId, actor, message: message.trim(), mediaUrls },
     });
@@ -78,6 +80,23 @@ export class TimelineService {
     await this.notificationsService.notify(recipientUserId, notificationType, { guidedRequestId, professionalProfileId });
     this.publishChatMessage(guidedRequestId, professionalProfileId, event, { clientUserId, professionalUserId });
     return this.serializeEvent(event);
+  }
+
+  /**
+   * Lavori del periodo esauriti (decisione dell'utente, docs/CHANGELOG.md
+   * §355): il professionista non può rispondere per primo a una richiesta.
+   * Le conversazioni in cui ha già scritto o mandato un preventivo restano
+   * aperte, così come i lavori già presi.
+   */
+  private async assertCanReply(guidedRequestId: string, professionalProfileId: string): Promise<void> {
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { id: professionalProfileId }, select: { jobLimitReachedAt: true } });
+    if (!profile?.jobLimitReachedAt) return;
+    const pair = { guidedRequestId, professionalProfileId };
+    const [ownMessage, quote] = await Promise.all([
+      this.prisma.conversationEvent.findFirst({ where: { ...pair, actor: "PROFESSIONAL", automatic: false }, select: { id: true } }),
+      this.prisma.quote.findFirst({ where: pair, select: { id: true } }),
+    ]);
+    if (!ownMessage && !quote) throw new ForbiddenException(JOB_LIMIT_REACHED_MESSAGE);
   }
 
   /**

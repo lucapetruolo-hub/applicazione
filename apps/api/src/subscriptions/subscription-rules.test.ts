@@ -1,6 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { upgradeFeeEurCents } from "@professionisti/shared";
-import { hasLaunched, launchDate, monthlyLimit, pauseReason, periodNoticeToSend, romeMonthKey, romeMonthStart, subscriptionState, tierOfPlan, trialEndFor, upgradeQuotes, usageNoticeToSend } from "./subscription-rules";
+import {
+  addMonthsUtc,
+  countsClientsOnce,
+  hasLaunched,
+  jobLimitReached,
+  launchDate,
+  monthlyLimit,
+  pauseReason,
+  periodNoticeToSend,
+  romeMonthKey,
+  romeMonthStart,
+  subscriptionState,
+  tierOfPlan,
+  trialEndFor,
+  upgradeQuotes,
+  usageNoticeToSend,
+  usagePeriod,
+} from "./subscription-rules";
 
 const NOW = new Date("2026-09-28T10:00:00Z");
 const future = new Date("2026-10-10T00:00:00Z");
@@ -54,19 +71,69 @@ it("livello scelto durante la prova: vale subito il limite del livello", () => {
 });
 
 describe("account in pausa", () => {
-  it("mese gratuito: operativo fino al 3° lavoro, in pausa al 3°", () => {
-    const row = { plan: "FREE", status: "TRIALING", trialEndsAt: future };
-    expect(pauseReason(row, 2, NOW)).toBeNull();
-    expect(pauseReason(row, 3, NOW)).toBe("LIMIT_REACHED");
-  });
   it("prova finita senza livello o abbonamento concluso: in pausa", () => {
-    expect(pauseReason({ plan: "FREE", status: "TRIALING", trialEndsAt: past }, 0, NOW)).toBe("TRIAL_ENDED");
-    expect(pauseReason({ plan: "BASE", status: "CANCELED", trialEndsAt: null }, 0, NOW)).toBe("SUBSCRIPTION_ENDED");
-    expect(pauseReason(null, 0, NOW)).toBe("TRIAL_ENDED");
+    expect(pauseReason({ plan: "FREE", status: "TRIALING", trialEndsAt: past }, NOW)).toBe("TRIAL_ENDED");
+    expect(pauseReason({ plan: "BASE", status: "CANCELED", trialEndsAt: null }, NOW)).toBe("SUBSCRIPTION_ENDED");
+    expect(pauseReason(null, NOW)).toBe("TRIAL_ENDED");
   });
-  it("Pro non va mai in pausa per il limite; un pagamento non riuscito non mette in pausa", () => {
-    expect(pauseReason({ plan: "PRO", status: "ACTIVE", trialEndsAt: null }, 500, NOW)).toBeNull();
-    expect(pauseReason({ plan: "PLUS", status: "PAST_DUE", trialEndsAt: null }, 3, NOW)).toBeNull();
+  it("i lavori esauriti e un pagamento non riuscito non mettono in pausa", () => {
+    expect(pauseReason({ plan: "FREE", status: "TRIALING", trialEndsAt: future }, NOW)).toBeNull();
+    expect(pauseReason({ plan: "PLUS", status: "PAST_DUE", trialEndsAt: null }, NOW)).toBeNull();
+  });
+});
+
+describe("lavori esauriti (§355)", () => {
+  it("mese gratuito: libero fino al 3° lavoro, al limite dal 3°", () => {
+    const row = { plan: "FREE", status: "TRIALING", trialEndsAt: future };
+    expect(jobLimitReached(row, 2, NOW)).toBe(false);
+    expect(jobLimitReached(row, 3, NOW)).toBe(true);
+  });
+  it("Pro senza limite; in pausa conta la pausa, non il limite", () => {
+    expect(jobLimitReached({ plan: "PRO", status: "ACTIVE", trialEndsAt: null }, 500, NOW)).toBe(false);
+    expect(jobLimitReached({ plan: "FREE", status: "TRIALING", trialEndsAt: past }, 9, NOW)).toBe(false);
+  });
+  it("lo stesso cliente conta una volta solo su Plus e Pro", () => {
+    expect(countsClientsOnce({ plan: "FREE", status: "TRIALING", trialEndsAt: future }, NOW)).toBe(false);
+    expect(countsClientsOnce({ plan: "BASE", status: "ACTIVE", trialEndsAt: null }, NOW)).toBe(false);
+    expect(countsClientsOnce({ plan: "PLUS", status: "ACTIVE", trialEndsAt: null }, NOW)).toBe(true);
+    expect(countsClientsOnce({ plan: "PRO", status: "PAST_DUE", trialEndsAt: null }, NOW)).toBe(true);
+  });
+});
+
+describe("periodo dei lavori: riparte al rinnovo (§355)", () => {
+  const iso = (p: { start: Date; end: Date }) => [p.start.toISOString(), p.end.toISOString()];
+  it("mensile: dal giorno dell'abbonamento al rinnovo", () => {
+    const row = {
+      plan: "BASE",
+      status: "ACTIVE",
+      trialEndsAt: null,
+      currentPeriodStart: new Date("2026-09-18T08:00:00Z"),
+      currentPeriodEnd: new Date("2026-10-18T08:00:00Z"),
+    };
+    expect(iso(usagePeriod(row, NOW))).toEqual(["2026-09-18T08:00:00.000Z", "2026-10-18T08:00:00.000Z"]);
+  });
+  it("annuale: un mese alla volta dalla data dell'abbonamento", () => {
+    const row = {
+      plan: "PLUS",
+      status: "ACTIVE",
+      trialEndsAt: null,
+      currentPeriodStart: new Date("2026-01-31T08:00:00Z"),
+      currentPeriodEnd: new Date("2027-01-31T08:00:00Z"),
+    };
+    expect(iso(usagePeriod(row, new Date("2026-03-05T10:00:00Z")))).toEqual(["2026-02-28T08:00:00.000Z", "2026-03-31T08:00:00.000Z"]);
+    expect(iso(usagePeriod(row, NOW))).toEqual(["2026-08-31T08:00:00.000Z", "2026-09-30T08:00:00.000Z"]);
+  });
+  it("periodo gratuito: blocchi di 30 giorni che finiscono a fine prova", () => {
+    const trialEndsAt = new Date("2026-11-20T10:00:00Z");
+    const row = { plan: "FREE", status: "TRIALING", trialEndsAt };
+    expect(iso(usagePeriod(row, NOW))).toEqual(["2026-09-21T10:00:00.000Z", "2026-10-21T10:00:00.000Z"]);
+    expect(iso(usagePeriod(row, new Date("2026-11-01T00:00:00Z")))).toEqual(["2026-10-21T10:00:00.000Z", "2026-11-20T10:00:00.000Z"]);
+  });
+  it("senza date utili: il mese di calendario", () => {
+    expect(usagePeriod({ plan: "BASE", status: "CANCELED", trialEndsAt: null }, NOW).start.toISOString()).toBe("2026-08-31T22:00:00.000Z");
+  });
+  it("31 gennaio + 1 mese = ultimo di febbraio, come Stripe", () => {
+    expect(addMonthsUtc(new Date("2027-01-31T08:00:00Z"), 1).toISOString()).toBe("2027-02-28T08:00:00.000Z");
   });
 });
 

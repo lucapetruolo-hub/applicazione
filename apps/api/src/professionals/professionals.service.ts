@@ -45,7 +45,7 @@ import { PRISMA } from "../prisma/prisma.module";
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
 import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing, publicVisibilityWhere, publicVerified, stripeVerified } from "../professional-fiscal/public-visibility";
 import { quoteResendWindow } from "../quotes/quote-resend";
-import { NOT_ACCEPTING_REQUESTS } from "../subscriptions/subscription-rules";
+import { NOT_ACCEPTING_REQUESTS, NOT_BOOKABLE_ONLINE } from "../subscriptions/subscription-rules";
 import { GeocodingService } from "../geocoding/geocoding.service";
 import { selectSearchArea } from "./search-area";
 import { acceptedQuoteStats, declaredServiceStats, quoteMidpointEurCents } from "./category-prices";
@@ -1697,16 +1697,17 @@ export class ProfessionalsService {
    * dipendenza per un confronto di sola data.
    */
   async getPublicAgenda(professionalProfileId: string): Promise<ProfessionalAgenda> {
-    // Stessi filtri della pagina pubblica; in pausa o bloccato per le
-    // richieste non si prenota, quindi nessuna fascia (CLAUDE.md §5.11, §293).
+    // Stessi filtri della pagina pubblica; in pausa, bloccato per le
+    // richieste o con i lavori esauriti (§355) non si prenota, quindi nessuna
+    // fascia (CLAUDE.md §5.11, §293).
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { id: professionalProfileId },
-      select: { deletedAt: true, suspendedAt: true, invitePendingAt: true, pausedAt: true, requestsBlockedUntil: true, ...PUBLIC_VISIBILITY_SELECT },
+      select: { deletedAt: true, suspendedAt: true, invitePendingAt: true, pausedAt: true, jobLimitReachedAt: true, requestsBlockedUntil: true, ...PUBLIC_VISIBILITY_SELECT },
     });
     if (!profile || profile.deletedAt || profile.suspendedAt || profile.invitePendingAt || publicVisibilityMissing(profile)) {
       throw new NotFoundException("Professionista non trovato.");
     }
-    if (profile.pausedAt || (profile.requestsBlockedUntil && profile.requestsBlockedUntil > new Date())) return { days: [] };
+    if (profile.pausedAt || profile.jobLimitReachedAt || (profile.requestsBlockedUntil && profile.requestsBlockedUntil > new Date())) return { days: [] };
 
     const startOfToday = wallClockToday();
     const endWindow = new Date(startOfToday);
@@ -1793,13 +1794,17 @@ export class ProfessionalsService {
   async bookAgendaSlot(clientId: string, professionalProfileId: string, input: BookAgendaSlotInput): Promise<{ bookingId: string }> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { id: professionalProfileId },
-      select: { id: true, deletedAt: true, suspendedAt: true, invitePendingAt: true, pausedAt: true, demotedUntil: true, requestsBlockedUntil: true, ...PUBLIC_VISIBILITY_SELECT },
+      select: { id: true, deletedAt: true, suspendedAt: true, invitePendingAt: true, pausedAt: true, jobLimitReachedAt: true, demotedUntil: true, requestsBlockedUntil: true, ...PUBLIC_VISIBILITY_SELECT },
     });
     if (!profile || profile.deletedAt || profile.suspendedAt || profile.invitePendingAt || publicVisibilityMissing(profile)) {
       throw new NotFoundException("Professionista non trovato.");
     }
     if (profile.pausedAt || professionalRestrictions(profile, new Date()).blocked) {
       throw new ConflictException(NOT_ACCEPTING_REQUESTS);
+    }
+    // Lavori esauriti (§355): riceve le richieste ma l'agenda non si prenota online.
+    if (profile.jobLimitReachedAt) {
+      throw new ConflictException(NOT_BOOKABLE_ONLINE);
     }
 
     const date = parseIsoDateUtc(input.date);

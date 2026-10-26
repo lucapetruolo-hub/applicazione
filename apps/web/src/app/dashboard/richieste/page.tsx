@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { type MyProfessionalProfile, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
+import { type MyProfessionalProfile, type MySubscription, type ProfessionalAvailableSlot, type ProfessionalBooking, type ProfessionalLead } from "@professionisti/shared";
 import { Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { loadMyProfessionalProfile } from "@/lib/myProfessionalProfile";
@@ -82,6 +82,7 @@ function RichiesteContent() {
   const [defaultCancellationNoticeHours, setDefaultCancellationNoticeHours] = useState<number | null>(null);
   const [stripeVerified, setStripeVerified] = useState(true);
   const [identityVerificationNeeded, setIdentityVerificationNeeded] = useState(false);
+  const [subscription, setSubscription] = useState<MySubscription | null>(null);
   const [profileMissing, setProfileMissing] = useState(false);
   // API in errore ≠ profilo mancante (prima diceva "Crea prima il tuo
   // profilo", docs/CHANGELOG.md §285).
@@ -188,6 +189,19 @@ function RichiesteContent() {
       setBookings(b);
     });
   }, [token]);
+
+  // Abbonamento a parte: se non arriva le richieste si vedono lo stesso, e il
+  // server ferma comunque un preventivo oltre il limite (docs/CHANGELOG.md §355).
+  const reloadSubscription = useCallback(() => {
+    if (!token) return;
+    apiClient
+      .getMySubscription(token)
+      .then(setSubscription)
+      .catch(() => setSubscription(null));
+  }, [token]);
+  useEffect(() => {
+    reloadSubscription();
+  }, [reloadSubscription, loadAttempt]);
 
   useEffect(() => {
     if (!token) return;
@@ -647,6 +661,8 @@ function RichiesteContent() {
                   defaultCancellationNoticeHours={defaultCancellationNoticeHours}
                   stripeVerified={stripeVerified}
                   identityVerificationNeeded={identityVerificationNeeded}
+                  subscription={subscription}
+                  onSubscriptionChanged={reloadSubscription}
                   isOpen={openId === lead.id}
                   onToggle={() => {
                     const opening = openId !== lead.id;

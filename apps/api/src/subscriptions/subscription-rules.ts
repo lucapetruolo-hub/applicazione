@@ -67,6 +67,7 @@ export type SubscriptionRow = {
   status: string;
   trialEndsAt: Date | null;
   cancelAtPeriodEnd?: boolean;
+  currentPeriodStart?: Date | null;
   currentPeriodEnd?: Date | null;
 };
 
@@ -85,8 +86,9 @@ export function subscriptionState(row: SubscriptionRow | null, now: Date): MySub
 }
 
 /**
- * Limite mensile di lavori accettati. Il mese gratuito vale come il livello
- * Base (decisione dell'utente, docs/CHANGELOG.md §162); Pro senza limite.
+ * Limite di lavori accettati per periodo (un mese dal rinnovo). Il mese
+ * gratuito vale come il livello Base (decisione dell'utente,
+ * docs/CHANGELOG.md §162); Pro senza limite.
  */
 export function monthlyLimit(row: SubscriptionRow | null, now: Date): number | null {
   const state = subscriptionState(row, now);
@@ -98,18 +100,95 @@ export function monthlyLimit(row: SubscriptionRow | null, now: Date): number | n
 
 /**
  * Perché l'account è in pausa (fuori dalla ricerca, niente nuove richieste),
- * o null se è operativo. Decisione dell'utente, docs/CHANGELOG.md §162: prova
- * finita senza livello, abbonamento concluso, o lavori del mese esauriti. Un
- * pagamento non riuscito non mette in pausa: Stripe riprova per qualche
- * giorno e, se non va, chiude l'abbonamento.
+ * o null se è operativo: prova finita senza livello o abbonamento concluso
+ * (docs/CHANGELOG.md §162). Un pagamento non riuscito non mette in pausa:
+ * Stripe riprova per qualche giorno e, se non va, chiude l'abbonamento.
+ * I lavori esauriti non mettono più in pausa (decisione dell'utente,
+ * docs/CHANGELOG.md §355): vedi `jobLimitReached`.
  */
-export function pauseReason(row: SubscriptionRow | null, acceptedJobsThisMonth: number, now: Date): PauseReason | null {
+export function pauseReason(row: SubscriptionRow | null, now: Date): PauseReason | null {
   const state = subscriptionState(row, now);
   if (state === "TRIAL_ENDED") return "TRIAL_ENDED";
   if (state === "CANCELED") return "SUBSCRIPTION_ENDED";
-  const limit = monthlyLimit(row, now);
-  if (limit !== null && acceptedJobsThisMonth >= limit) return "LIMIT_REACHED";
   return null;
+}
+
+/**
+ * Lavori del periodo esauriti (decisione dell'utente, docs/CHANGELOG.md
+ * §355): il profilo resta nella ricerca e riceve le richieste, ma non può
+ * mandare preventivi nuovi né la prima risposta a una richiesta, e l'agenda
+ * non si prenota online. Solo con un abbonamento in corso (prova o livello).
+ */
+export function jobLimitReached(row: SubscriptionRow | null, used: number, now: Date): boolean {
+  if (pauseReason(row, now)) return false;
+  const limit = monthlyLimit(row, now);
+  return limit !== null && used >= limit;
+}
+
+/** Messaggio per chi prova a mandare un preventivo o a rispondere con i lavori esauriti. */
+export const JOB_LIMIT_REACHED_MESSAGE = "Hai esaurito i lavori compresi nel tuo abbonamento: passa al livello superiore per rispondere.";
+
+/** Risposta a chi prova a prenotare dall'agenda un professionista con i lavori esauriti. */
+export const NOT_BOOKABLE_ONLINE = "Questo professionista al momento non accetta prenotazioni online. Mandagli una richiesta di preventivo.";
+
+/**
+ * Su Plus e Pro lo stesso cliente conta una volta per periodo (decisione
+ * dell'utente, §355); su Base e nel periodo gratuito conta ogni lavoro.
+ */
+export function countsClientsOnce(row: SubscriptionRow | null, now: Date): boolean {
+  const state = subscriptionState(row, now);
+  if (state !== "ACTIVE" && state !== "PAST_DUE") return false;
+  const tier = row ? tierOfPlan(row.plan) : null;
+  return tier === "PLUS" || tier === "PRO";
+}
+
+function daysInMonthUtc(year: number, month: number): number {
+  return new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+}
+
+/** Stessa ora e stesso giorno del mese `months` mesi dopo; il 31 diventa l'ultimo giorno dei mesi più corti, come fa Stripe. */
+export function addMonthsUtc(date: Date, months: number): Date {
+  const total = date.getUTCMonth() + months;
+  const year = date.getUTCFullYear() + Math.floor(total / 12);
+  const month = ((total % 12) + 12) % 12;
+  const day = Math.min(date.getUTCDate(), daysInMonthUtc(year, month));
+  return new Date(Date.UTC(year, month, day, date.getUTCHours(), date.getUTCMinutes(), date.getUTCSeconds(), date.getUTCMilliseconds()));
+}
+
+/**
+ * Periodo in cui si contano i lavori (decisione dell'utente del 26/10/2026,
+ * docs/CHANGELOG.md §355): i lavori ripartono al rinnovo, non il 1° del mese,
+ * così lavori, livello e quota di passaggio seguono la stessa data.
+ * - Periodo gratuito: blocchi di 30 giorni che finiscono alla fine della
+ *   prova (con il mese regalato sono due).
+ * - Abbonamento pagato: un mese alla volta dall'inizio del periodo di Stripe
+ *   (con l'annuale, ogni mese dalla data dell'abbonamento).
+ * - Altrimenti (prova finita, abbonamento concluso, dati mancanti): il mese
+ *   di calendario.
+ */
+export function usagePeriod(row: SubscriptionRow | null, now: Date): { start: Date; end: Date } {
+  const t = now.getTime();
+  if (row?.trialEndsAt && row.trialEndsAt.getTime() > t && row.status !== "CANCELED") {
+    const end = row.trialEndsAt.getTime();
+    const blocks = Math.max(1, Math.ceil((end - t) / FREE_PERIOD_MS));
+    const start = end - blocks * FREE_PERIOD_MS;
+    return { start: new Date(start), end: new Date(start + FREE_PERIOD_MS) };
+  }
+  const state = subscriptionState(row, now);
+  const anchor = row?.currentPeriodStart ?? null;
+  if ((state === "ACTIVE" || state === "PAST_DUE") && anchor && anchor.getTime() <= t) {
+    let months = (now.getUTCFullYear() - anchor.getUTCFullYear()) * 12 + (now.getUTCMonth() - anchor.getUTCMonth());
+    while (months > 0 && addMonthsUtc(anchor, months).getTime() > t) months--;
+    while (addMonthsUtc(anchor, months + 1).getTime() <= t) months++;
+    return { start: addMonthsUtc(anchor, months), end: addMonthsUtc(anchor, months + 1) };
+  }
+  const start = romeMonthStart(now);
+  return { start, end: romeMonthStart(new Date(start.getTime() + 32 * TRIAL_DAY_MS)) };
+}
+
+/** Chiave del periodo per gli avvisi del limite, es. "2026-10-18". */
+export function usagePeriodKey(period: { start: Date }): string {
+  return period.start.toISOString().slice(0, 10);
 }
 
 /**
@@ -133,13 +212,13 @@ export function periodNoticeToSend(
 
 /**
  * Quale avviso mandare dopo un nuovo lavoro accettato: "100" al limite,
- * "80" vicino al limite, null se nessuno o se già mandato questo mese.
+ * "80" vicino al limite, null se nessuno o se già mandato in questo periodo.
  */
-export function usageNoticeToSend(used: number, limit: number | null, lastNoticeKey: string | null, monthKey: string): "80" | "100" | null {
+export function usageNoticeToSend(used: number, limit: number | null, lastNoticeKey: string | null, periodKey: string): "80" | "100" | null {
   if (limit === null || limit <= 0) return null;
-  if (used >= limit) return lastNoticeKey === `${monthKey}:100` ? null : "100";
+  if (used >= limit) return lastNoticeKey === `${periodKey}:100` ? null : "100";
   if (used >= Math.ceil(limit * USAGE_WARNING_RATIO)) {
-    return lastNoticeKey === `${monthKey}:80` || lastNoticeKey === `${monthKey}:100` ? null : "80";
+    return lastNoticeKey === `${periodKey}:80` || lastNoticeKey === `${periodKey}:100` ? null : "80";
   }
   return null;
 }

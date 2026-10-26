@@ -20987,3 +20987,23 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 **Da fare per andare dal vivo** (Render e Stripe): creare su Stripe i prezzi nuovi mensili e annuali e l'aliquota IVA 22%, impostare `STRIPE_PRICE_BASE`/`PLUS`/`PRO`, `STRIPE_PRICE_BASE_ANNUAL`/`PLUS_ANNUAL`/`PRO_ANNUAL`, `STRIPE_TAX_RATE_IVA`. Domanda 43 al commercialista (IVA, annuale) ancora aperta.
 
 **Verifica**: typecheck di web e api, `pnpm lint`, 660 test dell'API (nuovi su quota di passaggio e `upgradeQuotes`: Base → Plus con 30, 20, 7 e 1 giorno rimasti 54 €, 39,33 €, 20,27 €, 11,47 €); pagine aperte in locale con le risposte dell'API simulate, da telefono e da computer.
+
+## 355. Lavori esauriti: si resta nella ricerca, i lavori ripartono al rinnovo
+
+**Richiesta**: seconda parte del nuovo abbonamento (Luca, 26/10/2026, "Tutto il nuovo modello", poi "continua"; scheda di decisione "Al rinnovo").
+
+**Decisioni dell'utente**:
+- I lavori si azzerano **al rinnovo**, non il 1° del mese: lavori, livello e quota di passaggio seguono la stessa data. Con l'annuale i lavori ripartono ogni mese dal giorno di attivazione; nel periodo gratuito a blocchi di 30 giorni che finiscono alla fine della prova.
+- Finiti i lavori il profilo **resta nella ricerca** e riceve le richieste (prima andava in pausa), ma non può mandare preventivi nuovi né rispondere per primo a una richiesta. I preventivi già mandati restano validi.
+- Su **Plus e Pro lo stesso cliente conta una volta** per periodo. Detto solo ai professionisti (pagina prezzi su Plus, Abbonamento, domande frequenti, Termini), mai ai clienti.
+- Finestra al limite: titolo "Hai esaurito l'abbonamento Base", la richiesta a cui si sta rispondendo, il livello sopra con una sola cifra (la quota del §354) e la data, pulsanti "Passa a Plus e rispondi" e "Aspetto il [data]".
+
+**Scelta nostra, da confermare con Luca**: al limite l'agenda non si prenota online (la prenotazione crea un lavoro senza preventivo, quindi supererebbe il limite); il cliente vede "al momento non accetta prenotazioni online" e può mandare una richiesta.
+
+**Cosa cambia**:
+- `apps/api/src/subscriptions/subscription-rules.ts`: `usagePeriod` (finestre mensili da `currentPeriodStart`, `addMonthsUtc` con il giorno fermato a fine mese come Stripe), `jobLimitReached`, `countsClientsOnce`; `pauseReason` senza `LIMIT_REACHED`.
+- `subscriptions.service.ts`: `countUsedJobs` conta le prenotazioni del periodo (non quelle annullate dal cliente; clienti distinti su Plus e Pro); `syncPause` tiene aggiornato `ProfessionalProfile.jobLimitReachedAt` (migrazione `20261026120000_limite_lavori_senza_pausa`). `GET /professionals/me/subscription` restituisce `usage.used/limit/periodStart/periodEnd/countsClientsOnce` e `limitReached`.
+- Blocchi lato server con `jobLimitReachedAt`: preventivo nuovo o rimandato (`quotes.service.ts`), prima risposta del professionista in chat (`timeline.service.ts`), agenda pubblica vuota e prenotazione rifiutata (`professionals.service.ts`).
+- Sito: `JobLimitModal` al posto del modulo del preventivo in Richieste; Abbonamento con "Lavori dal 18 ottobre al 17 novembre: 2 su 3" e la riga sul cliente che conta una volta; banner "Hai esaurito l'abbonamento" come avviso (il profilo resta visibile); email e notifiche del limite, domande frequenti e Termini riscritti.
+
+**Verifica**: typecheck di web e api, `pnpm lint`, test dell'API (nuovi su periodo dal rinnovo, fine mese, annuale, prova, stesso cliente e limite senza pausa); pagine aperte in locale con le risposte dell'API simulate, da telefono e da computer.

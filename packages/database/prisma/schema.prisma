@@ -340,10 +340,16 @@ model ProfessionalProfile {
   // Account in pausa per l'abbonamento (docs/CHANGELOG.md §162): fuori dalla
   // ricerca e dallo smistamento, niente richieste dirette o prenotazioni
   // dall'agenda; il profilo pubblico resta raggiungibile dal link. Motivo:
-  // TRIAL_ENDED, SUBSCRIPTION_ENDED o LIMIT_REACHED (`PauseReason` in
-  // packages/shared). Tenuto aggiornato da SubscriptionsService.syncPause.
+  // TRIAL_ENDED o SUBSCRIPTION_ENDED (`PauseReason` in packages/shared;
+  // LIMIT_REACHED solo nelle righe vecchie, prima del §355). Tenuto aggiornato
+  // da SubscriptionsService.syncPause.
   pausedAt             DateTime?
   pausedReason         String?
+  // Lavori del periodo esauriti (docs/CHANGELOG.md §355): resta nella ricerca
+  // e riceve le richieste, ma niente preventivi nuovi, prima risposta a una
+  // richiesta né prenotazioni online dall'agenda. Tenuto aggiornato da
+  // SubscriptionsService.syncPause.
+  jobLimitReachedAt    DateTime?
   // Profilo creato da un operatore al telefono (docs/CHANGELOG.md §170):
   // fuori dalla ricerca e dallo smistamento finché il professionista non apre
   // il link d'invito, imposta la password e salva il profilo accettando la

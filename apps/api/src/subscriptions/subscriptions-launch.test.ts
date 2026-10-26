@@ -45,7 +45,7 @@ describe("SubscriptionsService e data di lancio", () => {
     const { service, prisma } = buildService();
     prisma.professionalProfile.findUnique.mockResolvedValue(trialEnded);
 
-    await expect(service.syncPause("pro-1", new Date("2026-10-02T10:00:00Z"), 0)).resolves.toBeNull();
+    await expect(service.syncPause("pro-1", new Date("2026-10-02T10:00:00Z"), 0)).resolves.toEqual({ reason: null, limitReached: false });
     expect(prisma.professionalProfile.update).not.toHaveBeenCalled();
   });
 
@@ -55,7 +55,7 @@ describe("SubscriptionsService e data di lancio", () => {
     const { service, prisma } = buildService();
     prisma.professionalProfile.findUnique.mockResolvedValue(trialEnded);
 
-    await expect(service.syncPause("pro-1", new Date("2026-10-02T10:00:00Z"), 0)).resolves.toBe("TRIAL_ENDED");
+    await expect(service.syncPause("pro-1", new Date("2026-10-02T10:00:00Z"), 0)).resolves.toEqual({ reason: "TRIAL_ENDED", limitReached: false });
   });
 
   it("al lancio allunga le prove iniziate prima, fino a un mese dopo il lancio", async () => {

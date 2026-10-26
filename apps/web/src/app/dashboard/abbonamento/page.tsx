@@ -49,6 +49,20 @@ function shortDate(iso: string): string {
   return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "short", timeZone: "Europe/Rome" });
 }
 
+function dayMonth(iso: string): string {
+  return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "long", timeZone: "Europe/Rome" });
+}
+
+/**
+ * "Lavori dal 18 ottobre al 17 novembre": i lavori ripartono al rinnovo, non
+ * il 1° del mese (decisione dell'utente, docs/CHANGELOG.md §355).
+ */
+function usagePeriodLabel(sub: MySubscription): string {
+  // Il rinnovo cade di giorno: l'ultimo giorno intero del periodo è quello prima.
+  const lastDay = new Date(new Date(sub.usage.periodEnd).getTime() - 24 * 60 * 60 * 1000).toISOString();
+  return `Lavori dal ${dayMonth(sub.usage.periodStart)} al ${dayMonth(lastDay)}`;
+}
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Rome" });
 }
@@ -230,8 +244,8 @@ function AbbonamentoContent() {
   }
 
   const status = sub ? statusText(sub) : null;
-  const used = sub?.usage.acceptedJobsThisMonth ?? 0;
-  const limit = sub?.usage.monthlyLimit ?? null;
+  const used = sub?.usage.used ?? 0;
+  const limit = sub?.usage.limit ?? null;
   const ratio = limit ? Math.min(1, used / limit) : 0;
   const barColor = limit && used >= limit ? brand.urgenza : ratio >= 0.8 ? brand.ottone : brand.cianografia;
   const paidActive = sub?.state === "ACTIVE" || sub?.state === "PAST_DUE";
@@ -300,7 +314,7 @@ function AbbonamentoContent() {
             <YStack gap="$2">
               <XStack justifyContent="space-between" flexWrap="wrap" gap="$2">
                 <Text fontWeight="700" color={brand.grafite}>
-                  Lavori accettati a {sub.usage.monthLabel}
+                  {usagePeriodLabel(sub)}
                 </Text>
                 <Text color={brand.grafite70}>{limit === null ? `${used} · senza limite` : `${used} su ${limit}`}</Text>
               </XStack>
@@ -311,7 +325,12 @@ function AbbonamentoContent() {
               ) : null}
               {limit !== null && used < limit && used >= Math.ceil(limit * 0.8) ? (
                 <Text color={brand.grafite70} fontSize={16}>
-                  Ti restano {limit - used} {limit - used === 1 ? "lavoro" : "lavori"} questo mese. Raggiunto il limite il profilo esce dalle ricerche fino al mese prossimo.
+                  Ti {limit - used === 1 ? "resta 1 lavoro" : `restano ${limit - used} lavori`}, poi ripartono il {dayMonth(sub.usage.periodEnd)}. Finiti i lavori resti nelle ricerche, ma per mandare preventivi nuovi serve il livello superiore.
+                </Text>
+              ) : null}
+              {sub.usage.countsClientsOnce ? (
+                <Text color={brand.grafite70} fontSize={16}>
+                  Lo stesso cliente conta una volta sola in questo periodo.
                 </Text>
               ) : null}
             </YStack>
@@ -422,6 +441,13 @@ function AbbonamentoContent() {
                       {tier.monthlyAcceptedJobs === null ? "Lavori senza limite" : `${tier.monthlyAcceptedJobs} lavori al mese`}
                     </Text>
                   </XStack>
+                  {tier.tier === "PLUS" ? (
+                    // Su Plus e Pro lo stesso cliente conta una volta (§355); su Pro non c'è limite, quindi si dice solo su Plus.
+                    <XStack alignItems="center" gap="$2">
+                      <Check size={18} strokeWidth={2.25} color={brand.cianografiaScuro} />
+                      <Text color={brand.grafite}>Lo stesso cliente conta una volta al mese</Text>
+                    </XStack>
+                  ) : null}
                   {quote && tier.tier !== "BASE" ? (
                     // Una sola cifra (decisione dell'utente): il calcolo sta in "Cambio di livello" qui sotto.
                     <YStack backgroundColor={brand.gesso} borderRadius={10} padding="$3" gap={2}>

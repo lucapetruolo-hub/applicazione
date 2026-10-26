@@ -622,6 +622,12 @@ function ProPricing({ isProfessional }: { isProfessional: boolean }) {
               <Text fontWeight="700" color={brand.cianografiaScuro}>
                 {tier.monthlyAcceptedJobs === null ? "Lavori senza limite" : `${tier.monthlyAcceptedJobs} lavori accettati al mese`}
               </Text>
+              {tier.tier === "PLUS" ? (
+                // Su Plus e Pro lo stesso cliente conta una volta (§355): su Pro non c'è limite, si dice solo qui.
+                <Text color={brand.grafite70} fontSize={15} marginTop={-8}>
+                  Lo stesso cliente conta una volta al mese
+                </Text>
+              ) : null}
               <YStack flex={1} />
               <Link href={href} style={{ textDecoration: "none" }} aria-label={`${label}${isProfessional ? "" : ": iscriviti come professionista"}`}>
                 <Button variant="acquisto" width="100%">
@@ -674,7 +680,7 @@ const FAQ: { question: string; answer: string; paymentsLink?: boolean }[] = [
   {
     question: "Cosa succede se arrivo al limite di lavori del mio livello?",
     answer:
-      "Ti avvisiamo prima. Puoi passare al livello sopra quando vuoi: paghi 10 € più la differenza di prezzo per i giorni che mancano al rinnovo, maggiorata del 10% (+ IVA). Altrimenti i lavori ripartono il primo del mese.",
+      "Ti avvisiamo prima. Resti nelle ricerche e ricevi le richieste, ma per mandare preventivi nuovi passi al livello sopra: paghi 10 € più la differenza di prezzo per i giorni che mancano al rinnovo, maggiorata del 10% (+ IVA). Altrimenti aspetti il rinnovo, quando i lavori ripartono. I preventivi già mandati restano validi. Su Plus e Pro lo stesso cliente conta una volta al mese.",
   },
   {
     question: "Meglio mensile o annuale?",
