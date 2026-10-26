@@ -85,6 +85,7 @@ import type {
   OperatorProfileInviteInput,
   PendingProfileInvite,
   AdminFounders,
+  AdminProfessionalStats,
   ProfessionalVerificationFilter,
   ProfessionalVerificationRow,
   MyVerificationStatus,
@@ -403,7 +404,26 @@ export type AdminReportTarget =
 
 /** Pagina di `/admin/users` con ricerca e filtri (docs/CHANGELOG.md §144). */
 export type AdminUsersPage = { total: number; page: number; pageSize: number; rows: AdminUserRow[] };
-export type AdminUsersQuery = { q?: string; role?: "CLIENT" | "PROFESSIONAL" | "ADMIN"; status?: "active" | "suspended" | "deleted"; page?: number };
+export type AdminUsersQuery = {
+  q?: string;
+  role?: "CLIENT" | "PROFESSIONAL" | "ADMIN";
+  status?: "active" | "suspended" | "deleted";
+  /** Solo professionisti di questa categoria o città (docs/CHANGELOG.md §364). */
+  category?: string;
+  city?: string;
+  page?: number;
+};
+
+function adminUsersParams(query: AdminUsersQuery): URLSearchParams {
+  const params = new URLSearchParams();
+  if (query.q) params.set("q", query.q);
+  if (query.role) params.set("role", query.role);
+  if (query.status) params.set("status", query.status);
+  if (query.category) params.set("category", query.category);
+  if (query.city) params.set("city", query.city);
+  if (query.page && query.page > 1) params.set("page", String(query.page));
+  return params;
+}
 
 /** Contatori della home admin (docs/CHANGELOG.md §144). */
 export type AdminOverview = {
@@ -1657,12 +1677,7 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
       }),
 
     adminListUsers: (token: string, query: AdminUsersQuery = {}) => {
-      const params = new URLSearchParams();
-      if (query.q) params.set("q", query.q);
-      if (query.role) params.set("role", query.role);
-      if (query.status) params.set("status", query.status);
-      if (query.page && query.page > 1) params.set("page", String(query.page));
-      const qs = params.toString();
+      const qs = adminUsersParams(query).toString();
       return request<AdminUsersPage>(`/admin/users${qs ? `?${qs}` : ""}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
     },
 
@@ -1699,10 +1714,7 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
 
     /** Scarica un CSV admin (utenti con filtri o lista d'attesa) come testo. */
     adminDownloadCsv: async (token: string, kind: "users" | "waitlist", query: Omit<AdminUsersQuery, "page"> = {}) => {
-      const params = new URLSearchParams();
-      if (query.q) params.set("q", query.q);
-      if (query.role) params.set("role", query.role);
-      if (query.status) params.set("status", query.status);
+      const params = adminUsersParams(query);
       const path = kind === "users" ? "/admin/users/export.csv" : "/admin/waitlist/export.csv";
       const response = await fetch(`${baseUrl}${path}${params.toString() ? `?${params}` : ""}`, { headers: { Authorization: `Bearer ${token}` } });
       if (!response.ok) throw new Error(`Esportazione non riuscita (${response.status}).`);
@@ -1714,6 +1726,12 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
       request<{ email: string; createdAt: string }[]>("/admin/waitlist", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     /** Primi 100 professionisti dell'offerta di lancio (docs/CHANGELOG.md §363). */
+    /** Professionisti in numeri, con i filtri per categoria e città (docs/CHANGELOG.md §364). */
+    adminProfessionalStats: (token: string, filters: { category?: string; city?: string } = {}) => {
+      const qs = adminUsersParams(filters).toString();
+      return request<AdminProfessionalStats>(`/admin/professionals/stats${qs ? `?${qs}` : ""}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+    },
+
     adminListFounders: (token: string) => request<AdminFounders>("/admin/founders", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     /** Profili creati al telefono da un operatore (docs/CHANGELOG.md §170). */

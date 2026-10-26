@@ -7,7 +7,7 @@ import type { AdminUsersPage, AdminUsersQuery } from "@professionisti/api-client
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { adminRolesLabel } from "@professionisti/shared";
+import { PROFESSIONAL_CATEGORIES, adminRolesLabel } from "@professionisti/shared";
 import { AdminPageHeader, AdminPill, downloadTextFile, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { SkeletonTableRows } from "@/components/Skeleton";
 
@@ -33,8 +33,20 @@ function UtentiContent() {
   const [query, setQuery] = useState<AdminUsersQuery>({
     role: (searchParams.get("ruolo") as AdminUsersQuery["role"]) ?? undefined,
     status: (searchParams.get("stato") as AdminUsersQuery["status"]) ?? undefined,
+    category: searchParams.get("categoria") ?? undefined,
+    city: searchParams.get("citta") ?? undefined,
     page: 1,
   });
+  // Categoria e città solo per i professionisti (docs/CHANGELOG.md §364).
+  const professionalFilters = query.role === "PROFESSIONAL" || Boolean(query.category || query.city);
+  const [cityOptions, setCityOptions] = useState<string[]>([]);
+  useEffect(() => {
+    if (!token || !professionalFilters || cityOptions.length) return;
+    apiClient
+      .adminProfessionalStats(token)
+      .then((stats) => setCityOptions(stats.cityOptions))
+      .catch(() => setCityOptions([]));
+  }, [token, professionalFilters, cityOptions.length]);
   const [error, setError] = useState<string | null>(null);
   // Risultati insieme alla ricerca da cui arrivano: a ogni ricerca nuova si
   // torna allo scheletro finché non arrivano quelli nuovi.
@@ -65,7 +77,7 @@ function UtentiContent() {
     if (!token) return;
     setExporting(true);
     try {
-      const csv = await apiClient.adminDownloadCsv(token, "users", { q: query.q, role: query.role, status: query.status });
+      const csv = await apiClient.adminDownloadCsv(token, "users", { q: query.q, role: query.role, status: query.status, category: query.category, city: query.city });
       downloadTextFile("utenti.csv", csv);
     } catch (err) {
       setError(errorMessage(err));
@@ -78,7 +90,7 @@ function UtentiContent() {
     <YStack>
       <AdminPageHeader
         title="Utenti"
-        description={data ? `${data.total} risultati. Apri un utente per vedere la sua scheda.` : "Cerca per email, nome o nome dell'attività."}
+        description={data ? `${data.total} ${data.total === 1 ? "risultato" : "risultati"}. Apri un utente per vedere la sua scheda.` : "Cerca per email, nome o nome dell'attività."}
         right={
           <Button variant="secondary" size="$3" disabled={exporting} onPress={exportCsv}>
             {exporting ? "Esportazione…" : "Esporta CSV"}
@@ -90,7 +102,11 @@ function UtentiContent() {
         <select aria-label="Ruolo"
           className="admin-input"
           value={query.role ?? ""}
-          onChange={(e) => setQuery((prev) => ({ ...prev, role: (e.target.value || undefined) as AdminUsersQuery["role"], page: 1 }))}
+          onChange={(e) => {
+            const role = (e.target.value || undefined) as AdminUsersQuery["role"];
+            // Categoria e città restano solo sui professionisti.
+            setQuery((prev) => ({ ...prev, role, ...(role === "PROFESSIONAL" ? {} : { category: undefined, city: undefined }), page: 1 }));
+          }}
         >
           <option value="">Tutti i ruoli</option>
           <option value="CLIENT">Clienti</option>
@@ -107,7 +123,40 @@ function UtentiContent() {
           <option value="suspended">Sospesi</option>
           <option value="deleted">Eliminati</option>
         </select>
+        {professionalFilters ? (
+          <>
+            <select aria-label="Categoria"
+              className="admin-input"
+              value={query.category ?? ""}
+              onChange={(e) => setQuery((prev) => ({ ...prev, category: e.target.value || undefined, page: 1 }))}
+            >
+              <option value="">Tutte le categorie</option>
+              {PROFESSIONAL_CATEGORIES.map((c) => (
+                <option key={c.slug} value={c.slug}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+            <select aria-label="Città"
+              className="admin-input"
+              value={query.city ?? ""}
+              onChange={(e) => setQuery((prev) => ({ ...prev, city: e.target.value || undefined, page: 1 }))}
+            >
+              <option value="">Tutte le città</option>
+              {[...new Set([...(query.city ? [query.city] : []), ...cityOptions])].map((city) => (
+                <option key={city} value={city}>
+                  {city}
+                </option>
+              ))}
+            </select>
+          </>
+        ) : null}
       </XStack>
+      {query.role === "PROFESSIONAL" ? (
+        <Link href={`/admin/numeri-professionisti${query.category || query.city ? `?${new URLSearchParams({ ...(query.category ? { categoria: query.category } : {}), ...(query.city ? { citta: query.city } : {}) })}` : ""}`} style={{ marginBottom: 12, alignSelf: "flex-start" }}>
+          Vedi i numeri e le percentuali
+        </Link>
+      ) : null}
 
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       {data === null && !error ? (

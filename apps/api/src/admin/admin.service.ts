@@ -2,12 +2,13 @@ import { ACTION_SHORT_LABEL, auditLabel } from "./audit-label";
 import { AdminSecurityAlertsService } from "./admin-security-alerts.service";
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ContentReportTargetType, ModerationAction, Prisma, PrismaClient } from "@professionisti/database";
-import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource } from "@professionisti/shared";
+import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource, type AdminProfessionalStats } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
+import { buildProfessionalStats } from "./professional-stats";
 
 export type AdminUserRow = {
   id: string;
@@ -100,7 +101,31 @@ export class AdminService {
    * eliminato sembrava attivo). Ricerca su email, nome, cognome e nome
    * attività, senza distinzione tra maiuscole e minuscole.
    */
-  async listUsers(params: { q?: string; role?: string; status?: string; page?: number }): Promise<AdminUsersPage> {
+  /**
+   * Professionisti in numeri (docs/CHANGELOG.md §364): totale e divisione per
+   * stato, categoria, città, abbonamento, forma e mese d'iscrizione, con i
+   * filtri per categoria e città. Senza eliminati e dimostrativi, contati a parte.
+   */
+  async getProfessionalStats(params: { category?: string; city?: string }): Promise<AdminProfessionalStats> {
+    const filter = professionalFilterWhere(params);
+    const active: Prisma.ProfessionalProfileWhereInput = { deletedAt: null, user: { deletedAt: null } };
+    const [rows, deleted, demo, cities] = await Promise.all([
+      this.prisma.professionalProfile.findMany({ where: { AND: [filter, active, { isDemo: false }] }, select: PROFESSIONAL_STATS_SELECT }),
+      this.prisma.professionalProfile.count({ where: { AND: [filter, { OR: [{ deletedAt: { not: null } }, { user: { deletedAt: { not: null } } }] }] } }),
+      this.prisma.professionalProfile.count({ where: { AND: [filter, active, { isDemo: true }] } }),
+      this.prisma.professionalProfile.groupBy({ by: ["city"], where: { AND: [active, { isDemo: false }] }, orderBy: { city: "asc" } }),
+    ]);
+    return buildProfessionalStats(
+      rows.map((row) => ({
+        ...row,
+        categorySlugs: [row.category.slug, ...row.extraCategories.map((c) => c.slug)],
+      })),
+      new Date(),
+      { cityOptions: cities.map((c) => c.city).filter((c) => c.trim()), excluded: { deleted, demo } },
+    );
+  }
+
+  async listUsers(params: { q?: string; role?: string; status?: string; category?: string; city?: string; page?: number }): Promise<AdminUsersPage> {
     const pageSize = 50;
     const page = Math.max(1, Math.floor(params.page ?? 1));
     const where = this.buildUserWhere(params);
@@ -117,9 +142,12 @@ export class AdminService {
     return { total, page, pageSize, rows: users.map(toUserRow) };
   }
 
-  private buildUserWhere(params: { q?: string; role?: string; status?: string }): Prisma.UserWhereInput {
+  private buildUserWhere(params: { q?: string; role?: string; status?: string; category?: string; city?: string }): Prisma.UserWhereInput {
     const q = params.q?.trim();
+    // Categoria e città valgono per i professionisti (docs/CHANGELOG.md §364).
+    const professional = params.category?.trim() || params.city?.trim() ? { professionalProfile: { is: professionalFilterWhere(params) } } : {};
     return {
+      ...professional,
       ...(params.role === "CLIENT" || params.role === "PROFESSIONAL" || params.role === "ADMIN" ? { role: params.role } : {}),
       ...(params.status === "active" ? { deletedAt: null, suspendedAt: null } : {}),
       ...(params.status === "suspended" ? { suspendedAt: { not: null } } : {}),
@@ -138,7 +166,7 @@ export class AdminService {
   }
 
   /** Tutti gli utenti con gli stessi filtri della tabella, in CSV (docs/CHANGELOG.md §145). */
-  async exportUsersCsv(params: { q?: string; role?: string; status?: string }): Promise<string> {
+  async exportUsersCsv(params: { q?: string; role?: string; status?: string; category?: string; city?: string }): Promise<string> {
     const users = await this.prisma.user.findMany({ where: this.buildUserWhere(params), orderBy: { createdAt: "desc" }, select: USER_ROW_SELECT });
     const rows = users.map(toUserRow).map((u) => [
       u.email ?? "",
@@ -1436,6 +1464,35 @@ export type AdminReportTarget =
       state: string;
       ownerUserId: string;
     };
+
+/** Categoria (principale o aggiuntiva) e città di un professionista, per i numeri e per la lista utenti (§364). */
+function professionalFilterWhere(params: { category?: string; city?: string }): Prisma.ProfessionalProfileWhereInput {
+  const category = params.category?.trim();
+  const city = params.city?.trim();
+  return {
+    AND: [
+      ...(category ? [{ OR: [{ category: { slug: category } }, { extraCategories: { some: { slug: category } } }] }] : []),
+      ...(city ? [{ city: { equals: city, mode: "insensitive" as const } }] : []),
+    ],
+  };
+}
+
+const PROFESSIONAL_STATS_SELECT = {
+  city: true,
+  createdAt: true,
+  suspendedAt: true,
+  pausedAt: true,
+  invitePendingAt: true,
+  requestsBlockedUntil: true,
+  isDemo: true,
+  category: { select: { slug: true } },
+  extraCategories: { select: { slug: true } },
+  user: { select: { suspendedAt: true } },
+  fiscalProfile: { select: { entityType: true, fiscalDataCompleteAt: true, taxIdChecks: { where: { status: "INVALID" }, select: { status: true } } } },
+  subscription: {
+    select: { plan: true, status: true, trialEndsAt: true, cancelAtPeriodEnd: true, currentPeriodStart: true, currentPeriodEnd: true, founderNumber: true },
+  },
+} satisfies Prisma.ProfessionalProfileSelect;
 
 const USER_ROW_SELECT = {
   id: true,

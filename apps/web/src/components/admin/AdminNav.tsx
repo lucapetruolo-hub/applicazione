@@ -23,6 +23,7 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { href: "/admin/segnalazioni", label: "Segnalazioni", icon: "flag", scope: "MODERATION", badge: (o) => o.openReports + o.pendingAppeals },
   { href: "/admin/messaggi", label: "Messaggi", icon: "mail", scope: "MODERATION", badge: (o) => o.openMessages },
   { href: "/admin/utenti", label: "Utenti", icon: "user-round", scope: "ANY" },
+  { href: "/admin/numeri-professionisti", label: "Professionisti in numeri", icon: "briefcase", scope: "ANY" },
   { href: "/admin/professionisti", label: "Profili da confermare", icon: "user-round", scope: "MODERATION" },
   { href: "/admin/verifiche", label: "Verifica profili", icon: "badge-check", scope: "MODERATION", badge: (o) => o.verificationRequests },
   { href: "/admin/chat", label: "Chat", icon: "message-circle", scope: "MODERATION" },
