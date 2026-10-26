@@ -158,6 +158,17 @@ model User {
   // reimpostare la password lo aumenta e chiude gli accessi sugli altri
   // dispositivi.
   sessionVersion             Int                     @default(0)
+  // Verifica in due passaggi per l'area admin (docs/CHANGELOG.md §359): chiave
+  // dell'app di autenticazione cifrata come gli IBAN (FISCAL_DATA_KEY),
+  // attiva da `adminTotpEnabledAt`; `adminTotpLastStep` impedisce di usare
+  // due volte lo stesso codice. Telefono perso: codice di 6 cifre via email
+  // (solo l'impronta, 15 minuti) che azzera la verifica.
+  adminTotpSecret            String?
+  adminTotpEnabledAt         DateTime?
+  adminTotpLastStep          Int?
+  adminResetCodeHash         String?
+  adminResetCodeExpiresAt    DateTime?
+  adminResetCodeSentAt       DateTime?
 
   professionalProfile ProfessionalProfile?
   guidedRequests      GuidedRequest[]

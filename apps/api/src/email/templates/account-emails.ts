@@ -154,6 +154,91 @@ export function newDeviceLoginEmail(name: string | null, device: { label: string
   });
 }
 
+/**
+ * Ogni ingresso nell'area admin con il codice della verifica in due passaggi
+ * (docs/CHANGELOG.md §359): l'admin vede subito un accesso che non ha fatto.
+ */
+export function adminAccessEmail(
+  name: string | null,
+  access: { label: string; at: Date; justEnabled?: boolean; resetByEmail?: boolean },
+): RenderedEmail {
+  const site = frontendUrl();
+  const when = `**${access.label}**, ${LOGIN_TIME.format(access.at)}`;
+  return renderEmail({
+    kind: "account",
+    subject: access.justEnabled ? "Verifica in due passaggi attivata" : access.resetByEmail ? "Verifica in due passaggi azzerata" : "Accesso all'area admin",
+    preheader: `Da ${access.label}.`,
+    greeting: name,
+    title: access.justEnabled ? "Verifica in due passaggi attivata" : access.resetByEmail ? "Verifica in due passaggi azzerata" : "Accesso all'area admin",
+    paragraphs: [
+      access.justEnabled
+        ? `Hai attivato la verifica in due passaggi per l'area admin da ${when}. Da ora per entrare servirà anche il codice dell'app.`
+        : access.resetByEmail
+          ? `Con il codice ricevuto per email è stata azzerata la verifica in due passaggi dell'area admin, da ${when}. Al prossimo ingresso andrà collegata di nuovo l'app.`
+          : `Qualcuno è entrato nell'area admin con il tuo account da ${when}.`,
+      "Se eri tu, non devi fare nulla.",
+    ],
+    cta: { label: "Non ero io: cambia la password", url: `${site}/password-dimenticata` },
+    after: [`Cambiare la password chiude l'accesso su tutti i dispositivi. Per qualsiasi dubbio scrivici a ${EMAIL_BRAND.supportEmail}.`],
+  });
+}
+
+/** Telefono perso: codice per azzerare la verifica in due passaggi dell'area admin (§359). */
+export function adminResetCodeEmail(name: string | null, code: string, minutes: number): RenderedEmail {
+  const site = frontendUrl();
+  return renderEmail({
+    kind: "account",
+    subject: `${code} è il codice per l'area admin`,
+    preheader: `Vale ${minutes} minuti.`,
+    greeting: name,
+    title: "Hai perso il telefono?",
+    paragraphs: [
+      `Scrivi questo codice nell'area admin per collegare un nuovo telefono. Vale ${minutes} minuti.`,
+      `**${code}**`,
+      "Se non l'hai chiesto tu, qualcuno conosce la tua password: cambiala subito.",
+    ],
+    cta: { label: "Cambia la password", url: `${site}/password-dimenticata` },
+    after: [`Per qualsiasi dubbio scrivici a ${EMAIL_BRAND.supportEmail}.`],
+  });
+}
+
+/**
+ * Avviso a tutti i super admin (docs/CHANGELOG.md §359): un admin nominato o
+ * tolto, una verifica in due passaggi azzerata. Se non l'ha fatto nessuno di
+ * loro, un account admin è in mani sbagliate.
+ */
+export function adminSecurityAlertEmail(name: string | null, alert: { title: string; text: string; at: Date }): RenderedEmail {
+  const site = frontendUrl();
+  return renderEmail({
+    kind: "account",
+    subject: `Area admin: ${alert.title.toLowerCase()}`,
+    preheader: alert.text,
+    greeting: name,
+    title: alert.title,
+    paragraphs: [`${alert.text}, ${LOGIN_TIME.format(alert.at)}.`, "Ti avvisiamo perché sei super admin. Se nessuno di voi l'ha deciso, un account admin potrebbe essere in mani sbagliate: togli subito il ruolo a quell'account e cambia la tua password."],
+    cta: { label: "Apri il registro azioni", url: `${site}/admin/registro` },
+    after: [`Per qualsiasi dubbio scrivici a ${EMAIL_BRAND.supportEmail}.`],
+  });
+}
+
+/** Troppi codici sbagliati per l'area admin: accesso fermo per qualche minuto (§359). */
+export function adminCodeLockedEmail(name: string | null, minutes: number): RenderedEmail {
+  const site = frontendUrl();
+  return renderEmail({
+    kind: "account",
+    subject: "Troppi codici sbagliati per l'area admin",
+    preheader: `Per sicurezza l'accesso è fermo per ${minutes} minuti.`,
+    greeting: name,
+    title: "Troppi codici sbagliati",
+    paragraphs: [
+      `Con il tuo account sono stati scritti più volte codici sbagliati per entrare nell'area admin. Per sicurezza l'accesso è fermo per ${minutes} minuti.`,
+      "Chi ci prova conosce già la tua password: se non eri tu, cambiala subito.",
+    ],
+    cta: { label: "Cambia la password", url: `${site}/password-dimenticata` },
+    after: [`Per qualsiasi dubbio scrivici a ${EMAIL_BRAND.supportEmail}.`],
+  });
+}
+
 export function accountDeletedEmail(name: string | null): RenderedEmail {
   return renderEmail({
     kind: "account",

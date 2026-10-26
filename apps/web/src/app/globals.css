@@ -4093,6 +4093,33 @@ a.admin-kpi:hover {
   }
 }
 
+/* Verifica in due passaggi dell'area admin (AdminTwoFactorGate,
+   docs/CHANGELOG.md §359). */
+.admin-2fa-qr {
+  padding: 12px;
+  background: #ffffff;
+  border: 1px solid #f0dcc0;
+  border-radius: 20px;
+  line-height: 0;
+}
+.admin-2fa-qr img {
+  width: 196px;
+  height: 196px;
+}
+.admin-2fa-key {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #2b2420;
+  background: #ffffff;
+  border: 1px solid #9c8e7f;
+  border-radius: 10px;
+  padding: 10px 14px;
+  text-align: center;
+  word-break: break-all;
+  user-select: all;
+}
 /* Pulsante che si presenta come un link (es. "Cambia" nel riepilogo del
    tipo in registrazione, docs/CHANGELOG.md §243). */
 .link-button {

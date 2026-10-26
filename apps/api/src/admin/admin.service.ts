@@ -1,5 +1,6 @@
 import { ACTION_SHORT_LABEL, auditLabel } from "./audit-label";
-import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { AdminSecurityAlertsService } from "./admin-security-alerts.service";
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ContentReportTargetType, ModerationAction, Prisma, PrismaClient } from "@professionisti/database";
 import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
@@ -59,6 +60,7 @@ export class AdminService {
     private readonly professionalMetricsService: ProfessionalMetricsService,
     private readonly auditLogService: AuditLogService,
     private readonly jobIssueOutcomeService: JobIssueOutcomeService,
+    private readonly securityAlerts: AdminSecurityAlertsService,
   ) {}
 
   /**
@@ -269,6 +271,8 @@ export class AdminService {
       deletedAt: user.deletedAt?.toISOString() ?? null,
       suspendedAt: user.suspendedAt?.toISOString() ?? null,
       suspensionNote: user.suspensionNote,
+      // Solo se è attiva, mai la chiave (docs/CHANGELOG.md §359).
+      adminTwoFactorEnabled: user.role === "ADMIN" && Boolean(user.adminTotpEnabledAt),
       professionalProfile: user.professionalProfile
         ? {
             id: user.professionalProfile.id,
@@ -363,6 +367,8 @@ export class AdminService {
       newValue: nextRoles.length ? nextRoles.join("+") : data.role,
       changedByUserId: adminUserId,
     });
+    // Email a tutti i super admin (§359): un admin nominato da un account rubato si vede subito.
+    await this.securityAlerts.adminRolesChanged(adminUserId, userId, nextRoles);
     return { id: userId, role: data.role, adminRoles: data.adminRoles };
   }
 
@@ -584,6 +590,13 @@ export class AdminService {
   async promoteToAdmin(typedEmail: string): Promise<{ email: string; role: string }> {
     // Email degli account in minuscolo (§330).
     const email = typedEmail.trim().toLowerCase();
+    // Solo per il primissimo admin (docs/CHANGELOG.md §359): se ne esiste già
+    // uno il codice non serve più, gli altri si nominano da Utenti. Con un
+    // database nuovo (quello gratuito di Render scade) torna a funzionare.
+    const admins = await this.prisma.user.count({ where: { role: "ADMIN", deletedAt: null } });
+    if (admins > 0) {
+      throw new ForbiddenException("Esiste già un amministratore: i nuovi admin si nominano dalla pagina Utenti dell'area admin.");
+    }
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user) {
       throw new NotFoundException("Nessun utente registrato con questa email.");

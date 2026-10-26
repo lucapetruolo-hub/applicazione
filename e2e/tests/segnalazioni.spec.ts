@@ -2,6 +2,7 @@ import { expect, test, type Browser } from "@playwright/test";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@professionisti/database";
 import { API_URL, WEB_URL } from "../fixtures/env";
+import { testToken } from "../fixtures/preventivi";
 
 /**
  * Percorso delle segnalazioni secondo il DSA (docs/CHANGELOG.md §319): chi
@@ -13,6 +14,7 @@ import { API_URL, WEB_URL } from "../fixtures/env";
 const PASSWORD = "Password123!";
 const prisma = new PrismaClient();
 const people = { reporter: "", author: "", admin: "" };
+let adminId = "";
 let profileId = "";
 let reviewId = "";
 
@@ -28,7 +30,7 @@ test.beforeAll(async () => {
   const category = await prisma.category.findFirstOrThrow({ where: { slug: "elettricista" } });
   const user = (role: "CLIENT" | "PROFESSIONAL" | "ADMIN", key: string, name: string) =>
     prisma.user.create({
-      data: { role, email: `${key}-${stamp}@test.it`, passwordHash, name, emailVerifiedAt: new Date(), legalConsentAt: new Date(), ...(role === "ADMIN" ? { adminRoles: ["SUPER"] } : {}) },
+      data: { role, email: `${key}-${stamp}@test.it`, passwordHash, name, emailVerifiedAt: new Date(), legalConsentAt: new Date(), ...(role === "ADMIN" ? { adminRoles: ["SUPER"], adminTotpEnabledAt: new Date() } : {}) },
     });
   const pro = await user("PROFESSIONAL", "pro-segnalato", "Luigi");
   const author = await user("CLIENT", "autore", "Carla");
@@ -42,6 +44,7 @@ test.beforeAll(async () => {
   Object.assign(people, { reporter: reporter.email, author: author.email, admin: admin.email });
   profileId = profile.id;
   reviewId = review.id;
+  adminId = admin.id;
 });
 
 test.afterAll(async () => {
@@ -49,8 +52,9 @@ test.afterAll(async () => {
 });
 
 async function pageAs(browser: Browser, email: string | null) {
-  let token: string | null = null;
-  if (email) {
+  // L'admin entra già passato dal codice della verifica in due passaggi (§359).
+  let token: string | null = email === people.admin ? testToken(adminId, { amfa: Math.floor(Date.now() / 1000) }) : null;
+  if (email && !token) {
     // L'accesso ha un limite di 10 al minuto per indirizzo: le altre prove
     // appena eseguite possono averlo esaurito, si aspetta e si riprova.
     for (let attempt = 0; !token; attempt++) {
