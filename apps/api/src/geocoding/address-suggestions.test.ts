@@ -70,4 +70,29 @@ describe("suggerimenti di indirizzo dal server (§264)", () => {
     expect(service.available(Date.now() + 6 * 60_000)).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  describe("CAP di via e civico (§357)", () => {
+    const reply = (place: object) => ({ ok: true, json: async () => ({ places: [place] }) });
+    const comp = (text: string, types: string[]) => ({ longText: text, shortText: text, types });
+
+    it("trova il CAP con il testo nel corpo della richiesta, non nell'indirizzo", async () => {
+      process.env.GOOGLE_MAPS_API_KEY = "k";
+      const fetchMock = vi.fn().mockResolvedValue(reply({ types: ["street_address"], addressComponents: [comp("Roma", ["administrative_area_level_3"]), comp("00187", ["postal_code"])] }));
+      vi.stubGlobal("fetch", fetchMock);
+      expect(await new AddressSuggestionsService().postalCodeFor({ street: "Via Cesare Battisti", houseNumber: "12", city: "Roma" })).toBe("00187");
+      expect(String(fetchMock.mock.calls[0]![0])).toBe("https://places.googleapis.com/v1/places:searchText");
+      expect(JSON.parse(String(fetchMock.mock.calls[0]![1].body)).textQuery).toBe("Via Cesare Battisti 12, Roma");
+    });
+
+    it("nessun CAP per un altro comune, senza chiave o se Google non risponde", async () => {
+      process.env.GOOGLE_MAPS_API_KEY = "k";
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply({ types: ["street_address"], addressComponents: [comp("Fonte Nuova", ["administrative_area_level_3"]), comp("00013", ["postal_code"])] })));
+      const service = new AddressSuggestionsService();
+      expect(await service.postalCodeFor({ street: "Via Roma", houseNumber: "1", city: "Roma" })).toBeNull();
+      vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("rete")));
+      expect(await service.postalCodeFor({ street: "Via Roma", houseNumber: "1", city: "Roma" })).toBeNull();
+      delete process.env.GOOGLE_MAPS_API_KEY;
+      expect(await service.postalCodeFor({ street: "Via Roma", houseNumber: "1", city: "Roma" })).toBeNull();
+    });
+  });
 });

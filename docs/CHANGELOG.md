@@ -21020,6 +21020,33 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: typecheck API e sito, lint, test dell'API (5 nuovi su `requestSentEmail`), anteprime a 390 e 1280 px con `email:preview`.
 
+## 356. "Avanti" che non faceva nulla nel passo "Dove" della richiesta
+
+**Segnalazione dell'utente** (26/10/2026, thread "Sbloccare Avanti nella richiesta urgente"): su /urgente, passo "Dove", con nome, telefono, indirizzo "Via Cesare Battisti, Roma RM" e civico compilati, "Avanti" non andava avanti e non diceva perché.
+
+**Causa**: scegliendo una via senza civico in una città con più CAP, Google non dà il CAP (provato sul server in produzione: `postalCode: null` per "Via Cesare Battisti, Roma"). Il controllo del passo chiedeva "Indica il CAP." sotto il campo CAP, ma con i suggerimenti attivi quel campo non c'è nel modulo (c'è solo nel caso "suggerimenti non disponibili"): l'errore non compariva da nessuna parte. Vale per la richiesta normale e per quella urgente (stesso `GuidedRequestForm`).
+
+**Decisioni**:
+- Accanto al "Numero civico" (che già compariva quando Google non lo dà) compaiono anche "CAP" e, se manca, "Provincia", uno accanto all'altro. Il CAP accetta solo 5 cifre. Restano visibili mentre si scrive.
+- Rete di sicurezza: se un errore riguarda un campo che non è sulla pagina, il messaggio compare nella riga rossa sopra i pulsanti (`focusGuidedField` dice se ha trovato il campo). Copre anche "Scegli la città dall'elenco dei comuni", che a domicilio con i suggerimenti non ha un campo città.
+
+**Verifica**: typecheck e lint di web; prova nel browser con le risposte del server simulate (via di Roma senza CAP): compare il campo CAP, senza CAP "Avanti" mostra "Indica il CAP." sotto il campo, col CAP si arriva al riepilogo.
+
+## 357. CAP compilato da solo e controllato con la città
+
+**Richiesta esplicita dell'utente** (26/10/2026, stesso thread del §356): "effettua le due migliorie, inserisci da solo il cap ma dai la possibilità di modificarlo".
+
+**Decisioni**:
+- **CAP da solo**: quando Google non dà il CAP con l'indirizzo scelto, appena si scrive il civico (dopo 0,6 secondi di pausa) il sito lo chiede al nostro server, `GET /address/postal-code?street=&number=&city=`, che usa la ricerca testuale di Places API (New) con la chiave server (`AddressSuggestionsService.postalCodeFor`). Via e civico vanno nel corpo della richiesta a Google, mai nell'indirizzo: con la Geocoding API (GET) CodeQL segnalava cinque `js/request-forgery` critici. Accettati solo una via dall'aspetto di una via, un civico come "12", "12A" o "12/3" e un comune dell'elenco ISTAT (si usa il suo nome dall'elenco). Il CAP compare nel campo con la riga "CAP trovato in automatico: se non è giusto, cambialo." Il campo resta modificabile; scritto a mano non viene più sovrascritto. Se il CAP non si trova o Google non risponde, si scrive a mano come prima. Vale anche con i campi separati (suggerimenti non disponibili).
+- **Anche in "Modifica richiesta" e in Impostazioni dell'account** (seconda richiesta dell'utente, "effettua le migliorie"): stessa ricerca del CAP (`apps/web/src/lib/usePostalCodeLookup.ts`, usato dai tre moduli). Prima, scegliendo una via senza CAP, restava il CAP del vecchio indirizzo: ora il campo si svuota e si ricompila da via e civico. Il CAP accetta solo 5 cifre anche lì.
+- **CAP della città**: un CAP scritto a mano si controlla quando si preme "Avanti", con `GET /address/postal-code/check?postalCode=&city=` (`GeocodingService.postalCodeMatchesCity`, geocodifica del solo CAP, ricostruito cifra per cifra prima di metterlo nell'indirizzo). Blocca solo quando è sicuro: CAP di un'altra provincia, oppure di un solo comune diverso da quello scelto. Messaggio sotto il campo: "Il CAP 04100 non risulta di Roma: controllalo." Nel dubbio (CAP di più località) o senza risposta di Google si va avanti.
+- Le due rotte sono aperte a tutti come i suggerimenti: limite di 30 al minuto per IP e un tetto giornaliero di 2000 chiamate ciascuna (`DailyBudget`, avviso su Sentry al tetto). Aggiunte alle rotte pubbliche del test dei permessi (`apps/api/scripts/access-policy.mjs`).
+
+- **Controllo del CAP anche al salvataggio** di Impostazioni dell'account e di "Modifica richiesta" (terza richiesta dell'utente): un CAP scritto a mano di un'altra città ferma il salvataggio con lo stesso messaggio. Un CAP già salvato e non toccato non si ricontrolla. Funzione comune `postalCodeCityProblem` in `usePostalCodeLookup.ts`.
+- **Stelle del preventivo che portano alle recensioni** (trovato dalla CI su questa PR): il link `/professionista/<id>#recensioni` (§342) passava dal rimando all'indirizzo con nome e città (§295), e nella navigazione interna di Next il `#recensioni` si perdeva: il profilo si apriva in cima. La prova `stelle-preventivi` passava solo quando controllava l'indirizzo prima del rimando. Ora è un link normale (`<a>`), il browser tiene il `#` dopo il rimando; la prova si aspetta l'indirizzo con nome e città.
+
+**Verifica**: typecheck di web e api, lint di web, 18 test della geocodifica e dei suggerimenti (3 nuovi sul CAP); prova nel browser con le risposte del server simulate: CAP trovato dopo il civico, CAP di Latina con Roma bloccato con il messaggio, CAP corretto a mano arriva al riepilogo.
+
 ## 358. Ricerca: un clic sulle prestazioni apre il profilo
 
 **Richiesta esplicita dell'utente** (26/10/2026): "a chi effettua una ricerca, se clicca sulla parte relativa alle prestazioni offerte, attualmente non succede niente, è sbagliato, fagli aprire almeno il profilo del professionista".

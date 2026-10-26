@@ -13,6 +13,7 @@ import { UploadingDots } from "@/components/UploadingDots";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
+import { cleanPostalCode, postalCodeCityProblem, usePostalCodeLookup } from "@/lib/usePostalCodeLookup";
 import { SaveBar } from "@/components/SaveBar";
 import { ClientEmailVerificationCard } from "@/components/ClientEmailVerificationCard";
 import { PASSWORD_RULES_ATTRIBUTE, PasswordMatchHint, PasswordRules } from "@/components/PasswordRules";
@@ -143,6 +144,15 @@ export default function AccountPage() {
   const [province, setProvince] = useState("");
   // Prima la città, poi la via scelta dai suggerimenti di quella città (docs/CHANGELOG.md §214).
   const chosenAddress = useChosenAddress(true);
+  // Via scelta senza CAP: lo si cerca da via e civico (docs/CHANGELOG.md §357).
+  const [askPostalCode, setAskPostalCode] = useState(false);
+  const postalCodeLookup = usePostalCodeLookup({
+    enabled: askPostalCode || chosenAddress.serviceDown,
+    street,
+    houseNumber,
+    city: addressCity,
+    setPostalCode,
+  });
   const cityComune = findComuneByName(addressCity);
   function changeCity(next: string) {
     const changed = next.trim().toLowerCase() !== addressCity.trim().toLowerCase();
@@ -330,6 +340,14 @@ export default function AccountPage() {
         return;
       }
       birthDate = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+    // CAP scritto a mano: se è di un'altra città lo si dice prima di salvare (§357).
+    if (postalCodeLookup.typed) {
+      const problem = await postalCodeCityProblem(postalCode, addressCity);
+      if (problem) {
+        setProfileError(problem);
+        return;
+      }
     }
 
     setIsSavingProfile(true);
@@ -630,7 +648,10 @@ export default function AccountPage() {
                   if (comune || selected.locality) setAddressCity(comune?.name ?? selected.locality ?? "");
                   setStreet(selected.street ?? selected.address);
                   setHouseNumber(selected.houseNumber ?? "");
-                  if (selected.postalCode) setPostalCode(selected.postalCode);
+                  // Senza CAP non resta quello della via di prima: si cerca da via e civico.
+                  setPostalCode(selected.postalCode ?? "");
+                  setAskPostalCode(!selected.postalCode);
+                  postalCodeLookup.reset();
                   if (selected.province) setProvince(selected.province);
                   chosenAddress.setChosen(true);
                 }}
@@ -661,7 +682,25 @@ export default function AccountPage() {
           </FieldRow>
 
           <FieldRow label="CAP">
-            <input aria-label="CAP" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="CAP" style={{ ...inputStyle, maxWidth: 140 }} />
+            <YStack gap="$1" width="100%">
+              <input
+                aria-label="CAP"
+                inputMode="numeric"
+                autoComplete="postal-code"
+                value={postalCode}
+                onChange={(e) => {
+                  setPostalCode(cleanPostalCode(e.target.value));
+                  postalCodeLookup.onTyped();
+                }}
+                placeholder="CAP"
+                style={{ ...inputStyle, maxWidth: 140 }}
+              />
+              {postalCodeLookup.found ? (
+                <Text fontSize={13} color={brand.grafite70} role="status">
+                  CAP trovato in automatico: se non è giusto, cambialo.
+                </Text>
+              ) : null}
+            </YStack>
           </FieldRow>
 
           <FieldRow label="Provincia">

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Rating, Text, brand } from "@professionisti/ui";
 import type { ProfessionalReviewSummary } from "@professionisti/api-client";
 import { formatRating } from "@professionisti/shared";
@@ -25,9 +24,13 @@ export function ProfessionalReviewsSummary({ reviews }: { reviews: ProfessionalR
 export function ProfessionalReviewsLink({ professionalProfileId, reviews }: { professionalProfileId: string; reviews: ProfessionalReviewSummary | null }) {
   if (!reviews || reviews.rating === null) return <ProfessionalReviewsSummary reviews={reviews} />;
   const label = `Valutazione ${formatRating(reviews.rating)} su 5, ${reviews.count} recension${reviews.count === 1 ? "e" : "i"}: vedi le recensioni`;
+  // Link normale e non `next/link`: la pagina col solo id rimanda all'indirizzo
+  // con nome e città, e nella navigazione interna di Next quel rimando perdeva
+  // "#recensioni" (si apriva il profilo in cima). Il browser invece tiene il
+  // "#" anche dopo il rimando del server (docs/CHANGELOG.md §357).
   return (
-    <Link href={`/professionista/${professionalProfileId}#recensioni`} aria-label={label} style={{ textDecoration: "none", alignSelf: "flex-start" }}>
+    <a href={`/professionista/${professionalProfileId}#recensioni`} aria-label={label} style={{ textDecoration: "none", alignSelf: "flex-start" }}>
       <ProfessionalReviewsSummary reviews={reviews} />
-    </Link>
+    </a>
   );
 }

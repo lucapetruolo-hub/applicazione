@@ -1,4 +1,7 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { findComuneByName } from "@professionisti/shared";
+import { DailyBudget } from "../common/daily-budget";
+import { opsAlert } from "../common/ops-alert";
 
 export type GeocodedPoint = { latitude: number; longitude: number };
 
@@ -16,13 +19,15 @@ type GoogleGeocodeResponse = {
     geometry: { location: { lat: number; lng: number } };
     types?: string[];
     address_components?: { long_name: string; short_name: string; types: string[] }[];
+    /** Per un CAP che copre più località (es. un CAP di più comuni piccoli). */
+    postcode_localities?: string[];
   }[];
 };
 
 /** Tipi di risultato che indicano una via o un civico, non solo un comune o una zona. */
 const STREET_LEVEL_TYPES = ["street_address", "route", "premise", "subpremise"];
 
-function normalizePlaceName(name: string): string {
+export function normalizePlaceName(name: string): string {
   return name
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -31,9 +36,50 @@ function normalizePlaceName(name: string): string {
     .trim();
 }
 
+const DIGITS = "0123456789";
+
+/** Tetto giornaliero di CAP controllati dal modulo di richiesta (rotte aperte a tutti, §293). */
+const POSTAL_CODE_DAILY_LIMIT = 2000;
+
 @Injectable()
 export class GeocodingService {
   private readonly logger = new Logger(GeocodingService.name);
+  private readonly postalCodeBudget = new DailyBudget(POSTAL_CODE_DAILY_LIMIT, () => {
+    const message = "Tetto giornaliero dei CAP controllati raggiunto: fino a mezzanotte il CAP non si controlla.";
+    this.logger.error(message);
+    opsAlert("postal-code-budget", message);
+  });
+
+  /**
+   * Il CAP è della città? (docs/CHANGELOG.md §357) `false` solo quando è sicuro: CAP di
+   * un'altra provincia, o di un solo comune diverso da quello scelto. Nel
+   * dubbio (CAP di più località, Google che non risponde) `null`, che non
+   * blocca nessuno.
+   */
+  async postalCodeMatchesCity(input: { postalCode: string; city: string }): Promise<boolean | null> {
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY?.trim();
+    if (!apiKey || !/^\d{5}$/.test(input.postalCode.trim()) || !input.city.trim()) return null;
+    // Il CAP ricostruito cifra per cifra: nell'indirizzo chiesto a Google non
+    // finisce mai il testo arrivato dal browser.
+    const postalCode = [...input.postalCode.trim()].map((digit) => DIGITS.indexOf(digit)).join("");
+    if (!this.postalCodeBudget.take()) return null;
+    const data = await this.fetchGeocode("", apiKey, `postal_code:${postalCode}|country:IT`);
+    const result = data?.status === "OK" ? data.results[0] : undefined;
+    if (!result) return null;
+    const component = (type: string, short = false) => {
+      const found = result.address_components?.find((c) => c.types.includes(type));
+      return short ? found?.short_name : found?.long_name;
+    };
+    const city = normalizePlaceName(input.city);
+    const names = [component("administrative_area_level_3"), component("locality"), ...(result.postcode_localities ?? [])].filter((n): n is string => Boolean(n));
+    if (names.some((name) => normalizePlaceName(name) === city)) return true;
+    const capProvince = component("administrative_area_level_2", true);
+    const cityProvince = findComuneByName(input.city)?.province;
+    if (capProvince && cityProvince && capProvince.toUpperCase() !== cityProvince.toUpperCase()) return false;
+    const comune = component("administrative_area_level_3");
+    if (comune && !result.postcode_localities?.length) return false;
+    return null;
+  }
 
   // Google Geocoding API (docs/CHANGELOG.md §133, al posto di Nominatim):
   // stessa scelta di provider della mappa, indirizzi e numeri civici
@@ -76,10 +122,10 @@ export class GeocodingService {
     }
   }
 
-  private async fetchGeocode(query: string, apiKey: string): Promise<GoogleGeocodeResponse | null> {
+  private async fetchGeocode(query: string, apiKey: string, components = "country:IT"): Promise<GoogleGeocodeResponse | null> {
     const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
-    url.searchParams.set("address", query);
-    url.searchParams.set("components", "country:IT");
+    if (query) url.searchParams.set("address", query);
+    url.searchParams.set("components", components);
     url.searchParams.set("language", "it");
     url.searchParams.set("key", apiKey);
     const controller = new AbortController();
