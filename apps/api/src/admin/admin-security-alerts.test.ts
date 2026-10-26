@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { AdminSecurityAlertsService, personLabel, roleChangeAlert } from "./admin-security-alerts.service";
 
-/** Avvisi ai super admin (docs/CHANGELOG.md §351). */
+/** Avvisi ai super admin (docs/CHANGELOG.md §356). */
 const marta = { name: "Marta", surname: "Rossi", email: "marta@esempio.it" };
 const luca = { name: "Luca", surname: null, email: "luca@esempio.it" };
 

@@ -20961,7 +20961,66 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: typecheck, lint, 654 test dell'API (4 nuovi su `auditLabel`), 71 prove nel browser su telefono (anche quella di accessibilità dell'agenda), foto a 390 px di Registro azioni, Home e Accedi senza nulla che esce dallo schermo.
 
-## 351. Area admin: verifica in due passaggi, login admin più corto, email a ogni accesso, bootstrap solo per il primo admin
+## 351. "Lavoro" usciva dalla colonna del menu ridotto
+
+**Richiesta esplicita dell'utente** (26/10/2026, thread "Migliorare la pagina Oggi del professionista", con una foto di `/dashboard` a schermo intero): "la scritta «lavoro» sfora la colonna a sinistra, correggi".
+
+**Causa**: col menu ridotto a icone i titoli dei gruppi si nascondono con `html[data-acct-nav="collapsed"] .acct-nav-title`. Il primo titolo però ha una regola più specifica, aggiunta nel §337 per allinearlo al tondo (`.acct-nav-toggle + .acct-nav-group > .acct-nav-title { display: flex }`), che vinceva: "Lavoro" restava visibile nella colonna da 64 px e ne usciva a sinistra.
+
+**Decisione**: la regola che nasconde i titoli col menu ridotto vale anche per il primo, con la stessa specificità (`globals.css`). Nessun altro cambiamento.
+
+**Verifica**: sito in locale con un professionista di prova a 1366 px (menu ridotto da solo): `display` del primo titolo `flex` prima, `none` dopo; foto del menu ridotto senza la scritta. Menu aperto e tablet invariati (le regole toccate valgono solo col menu ridotto).
+
+## 352. Pagina "Oggi" del professionista: richieste prima, una scadenza, Naviga
+
+**Richiesta esplicita dell'utente** (26/10/2026, stesso thread del §351): dopo l'analisi della pagina (`analisi/oggi-migliorie.md`) "effettua le migliorie: 1-2-3-4-6-8-10" e poi "anche la 5". Non scelte: 7 ("Ciao Luca" invece del nome dell'attività) e 9 (scheda unica per "Aumenta la tua visibilità").
+
+**Decisioni** (`apps/web/src/app/dashboard/page.tsx`, `globals.css`, `lib/leadDeadline.ts`):
+1. **Telefono, "Invia preventivo"** sotto il testo e largo quanto la scheda: accanto schiacciava la descrizione in 4-5 righe.
+2. **Una scadenza alla volta**: su una richiesta diretta comparivano "Puoi rispondere fino al 25 dicembre" e "Rispondi entro 6 ore, poi va anche ad altri professionisti", che sembravano in contrasto. Ora solo il conto alla rovescia; passato quel tempo compare la data finale (la scritta "Solo tua ancora per 6 ore" provata qui è stata tolta nel §353). Vale anche per le pillole di Richieste e lavori (stessa funzione `leadDeadlines`).
+3. **Richieste prima sul telefono**: con richieste in attesa, "Da rispondere ora" viene subito dopo i lavori di oggi e domani, prima di "Completa il profilo" e dell'avviso sull'agenda (prima erano due schermate più giù). Sul computer le colonne non cambiano.
+4. **Niente doppione**: tolta la tessera "Richieste da rispondere", il numero sta in un tondo rosso accanto a "Da rispondere ora". "Date da confermare" e "Messaggi non letti" compaiono solo se sopra zero.
+5. **"Urgente"** con l'etichetta rossa di Richieste e lavori (`Badge`), non più l'emoji 🔴.
+6. **"Il tuo andamento" vuoto** (nessuna visita, risposta o recensione): una riga invece di tre tessere con "0" e "—". Con i dati, da telefono una tessera per riga, nome a sinistra e numero a destra.
+8. **"Naviga"** verde sui lavori di oggi confermati con un indirizzo (anche quelli aggiunti a mano): apre Google Maps come in agenda. L'indirizzo era già visibile (lavoro confermato, CLAUDE.md §5 punto 9).
+10. **Meteo più basso sul computer**: giorno, icona e gradi su una riga (circa 46 px invece di 92). La descrizione ("Nuvoloso") resta nel fumetto e nel testo dell'icona per gli screen reader. Telefono invariato.
+
+**Verifica**: typecheck e lint; sito in locale con professionista di prova (richiesta urgente, richiesta diretta, lavoro oggi e domani, con e senza visite), foto a 390, 1366 e 1600 px, nessuna pagina più larga dello schermo.
+
+## 353. "Oggi": Sto arrivando, recensioni, conto alla rovescia con il perché
+
+**Richiesta esplicita dell'utente** (26/10/2026, stesso thread): "effettua migliorie delle recensioni e del naviga, e in più ripristina il conteggio per il professionista per fargli capire che se non risponde va anche ad altri la richiesta".
+
+**Decisioni**:
+- **Conto alla rovescia**: torna "Rispondi entro 6 ore, poi va anche ad altri professionisti" (`formatForwardDeadline`). Resta una scadenza alla volta (§352): la data finale compare dopo.
+- **"Sto arrivando"** accanto a "Naviga" sugli appuntamenti di oggi confermati a domicilio, come nell'agenda (`notifyOnTheWay`); inviato diventa "Avvisato alle 13:40", se non parte "Avviso non inviato, riprova.". Da telefono i due pulsanti stanno sotto la riga, larghi quanto la scheda: allineati al testo "Sto arrivando" usciva dalla scheda a 390 px.
+- **Recensioni**: senza recensioni la tessera dice "Nessuna ancora" (più piccolo, su una riga) invece di "—" e "0 recensioni".
+- **Prove automatiche**: il link "Naviga" si chiamava "Naviga verso <cliente>" e la prova di Oggi trovava due link col nome del cliente; ora "Naviga verso <indirizzo>", controllato nella prova (`oggi-meteo.spec.ts`). Aggiunto in `menu-laterale.spec.ts` il controllo del §351 (nessun titolo col menu ridotto).
+
+**Verifica**: typecheck, lint, tutte le prove nel browser in locale (144 passate), foto a 390, 1366 e 1600 px.
+
+## 354. "Oggi": Chiama accanto a Sto arrivando
+
+**Richiesta esplicita dell'utente** (26/10/2026, stesso thread): "effettua miglioria", cioè l'ultima proposta: "Chiama" accanto a "Sto arrivando", come in agenda.
+
+**Decisioni**: sui lavori di oggi un pulsante "Chiama" con bordo (`tel:`), col telefono di chi riceve il lavoro o del cliente, solo a lavoro confermato (CLAUDE.md §5 punto 9), e col telefono scritto nei lavori aggiunti a mano. Da telefono solo l'icona (nome per gli screen reader "Chiama <numero>", non il nome del cliente, che le prove usano per trovare la riga); sotto i 380 px "Sto arrivando" perde l'icona del furgone, così i tre pulsanti stanno su una riga anche a 360 px.
+
+**Verifica**: typecheck, lint, tutte le prove nel browser in locale (144 passate), foto a 360, 390 e 1366 px.
+
+## 355. Riepilogo della richiesta nell'email di conferma al cliente
+
+**Richiesta di Luca** (26/10/2026): "quando un cliente manda una richiesta, per email mandagli anche i dettagli della richiesta che ha mandato, in modo che se ci sono errori va a modificarla".
+
+**Fatto**:
+- L'email "Richiesta inviata" (normale, urgente, diretta, più categorie) ha un riquadro "La tua richiesta" con servizio, professionista scelto (solo richiesta diretta), quando (Oggi, urgente / In settimana / Con calma, o giorno e fascia dell'agenda), indirizzo completo (via, civico, scala/interno, CAP, città, provincia) oppure "Online", descrizione intera con gli a capo e le miniature delle foto (Cloudinary 176×176, il video col primo fotogramma; ognuna apre l'originale).
+- Pulsante "Modifica richiesta" → `/le-mie-richieste?open=<id>&modifica=1`: la pagina apre la scheda e subito il modulo di modifica. Se nel frattempo è arrivato un preventivo resta la scheda aperta con "Non modificabile: hai già ricevuto un preventivo." Sotto il pulsante il link "Segui la richiesta". Per un invio con più categorie (una richiesta per categoria) il pulsante è "Controlla le richieste" con la spiegazione che si corregge ciascuna con Modifica.
+- Dati lasciati fuori di proposito: nome e telefono di chi riceve il professionista (non servono a riconoscere un errore nel lavoro e restano nel sito) e qualunque cosa sul pagamento (decisione della PR #138).
+- Pulsante di tutte le email nel verde pieno dei pulsanti del sito (`#128552` invece di `#189A63`, scelta di Luca dopo il confronto): il bianco passa da 3,6 a 4,7 di contrasto.
+- Modello email (`email-layout.ts`): righe "lunghe" (`long`, etichetta sopra e testo normale sotto), titolo del riquadro (`detailsTitle`), miniature (`detailImages`) e link secondario sotto il pulsante (`secondaryLink`); anche nella versione solo testo.
+
+**Verifica**: typecheck API e sito, lint, test dell'API (5 nuovi su `requestSentEmail`), anteprime a 390 e 1280 px con `email:preview`.
+
+## 356. Area admin: verifica in due passaggi, login admin più corto, email a ogni accesso, bootstrap solo per il primo admin
 
 **Richiesta esplicita dell'utente** (26/10/2026, thread "Rafforzare la sicurezza dell'area admin"): "effettua le 3 migliorie", cioè le tre proposte dopo la spiegazione di come si entra nell'area admin: verifica in due passaggi per gli admin, togliere il codice di bootstrap, sessione admin più corta con avviso a ogni accesso. Sul bootstrap Luca ha precisato che il database gratuito di Render si azzera e il primo admin va ricreato: `ADMIN_BOOTSTRAP_SECRET` resta su Render fino al lancio (punto 28 della checklist).
 
@@ -20977,3 +21036,4 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - **Dopo il deploy**: chi è già admin, aprendo l'area admin, trova subito l'attivazione. Va fatta subito, prima che possa farla qualcun altro con la password rubata.
 
 **Verifica**: typecheck e lint di API, sito ed e2e; 670 test dell'API (nuovi `admin-two-factor.test.ts` e `admin-security-alerts.test.ts` con gli esempi ufficiali di RFC 6238, 4 nuovi su `AdminGuard`); prova nel browser nuova `e2e/tests/admin-due-passaggi.spec.ts` (attivazione con codice sbagliato e giusto, altro dispositivo bloccato fino al codice, telefono perso con il codice via email e collegamento del telefono nuovo) e le prove admin esistenti (segnalazioni, richieste eliminate) passate con la verifica; con l'API locale: login admin di 7 giorni e cliente di 30, `/admin/overview` 403 con `ADMIN_2FA_SETUP`, bootstrap rifiutato con un admin già presente. Foto a 390 px e 1280 px in `anteprime/admin-due-passaggi/`.
+

@@ -358,9 +358,9 @@ aperti solo:
     - **Togliere `ADMIN_BOOTSTRAP_SECRET` da Render** prima del lancio, quando
       il database è quello a pagamento e il primo admin esiste (gli altri si
       nominano da `/admin/utenti`). Fino ad allora resta: il database gratuito
-      si azzera e il primo admin va ricreato; dal docs/CHANGELOG.md §351
+      si azzera e il primo admin va ricreato; dal docs/CHANGELOG.md §356
       `/admin/promuovi` funziona solo se non esiste nessun admin.
-    - **Verifica in due passaggi degli admin** (§351): attivarla appena va in
+    - **Verifica in due passaggi degli admin** (§356): attivarla appena va in
       linea (telefono perso: codice via email); prima del lancio avere almeno due
       super admin, così uno può azzerare la verifica dell'altro.
     - **Repo GitHub privato** (Settings → General → Danger Zone).

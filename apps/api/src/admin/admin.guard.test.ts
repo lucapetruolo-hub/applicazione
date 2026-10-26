@@ -49,7 +49,7 @@ describe("AdminGuard — ruoli admin", () => {
   });
 });
 
-/** Verifica in due passaggi obbligatoria (docs/CHANGELOG.md §351). */
+/** Verifica in due passaggi obbligatoria (docs/CHANGELOG.md §356). */
 describe("AdminGuard — verifica in due passaggi", () => {
   const codeOf = async (promise: Promise<unknown>) => {
     const error = await promise.catch((e: unknown) => e);

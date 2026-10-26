@@ -24,7 +24,7 @@ export function roleChangeAlert(target: Person, actor: Person | null, roles: Adm
 }
 
 /**
- * Avvisi per email a tutti i super admin (docs/CHANGELOG.md §351, scelta di
+ * Avvisi per email a tutti i super admin (docs/CHANGELOG.md §356, scelta di
  * Luca): chi entra con un account admin rubato e si crea complici o azzera
  * una verifica viene visto subito dagli altri. Un invio fallito non blocca
  * mai l'azione (resta nei log).

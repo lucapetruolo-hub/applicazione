@@ -6,7 +6,7 @@ import { PRISMA } from "../prisma/prisma.module";
 
 /**
  * `adminVerifiedAt`: quando (secondi) è stato dato il codice della verifica in
- * due passaggi dell'area admin, se il token lo porta (docs/CHANGELOG.md §351).
+ * due passaggi dell'area admin, se il token lo porta (docs/CHANGELOG.md §356).
  */
 export type AuthenticatedRequest = Request & { user: { userId: string; adminVerifiedAt?: number } };
 
@@ -22,7 +22,7 @@ export function sessionTokenPayload(user: { id: string; sessionVersion: number }
 }
 
 /**
- * Durata del login: 30 giorni, 7 per gli admin (docs/CHANGELOG.md §351). Un
+ * Durata del login: 30 giorni, 7 per gli admin (docs/CHANGELOG.md §356). Un
  * account admin rubato resta aperto meno a lungo; l'area admin chiede in più
  * il codice della verifica in due passaggi ogni ADMIN_2FA_VALID_HOURS ore.
  */

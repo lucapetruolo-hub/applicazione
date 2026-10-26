@@ -52,7 +52,7 @@ test.afterAll(async () => {
 });
 
 async function pageAs(browser: Browser, email: string | null) {
-  // L'admin entra già passato dal codice della verifica in due passaggi (§351).
+  // L'admin entra già passato dal codice della verifica in due passaggi (§356).
   let token: string | null = email === people.admin ? testToken(adminId, { amfa: Math.floor(Date.now() / 1000) }) : null;
   if (email && !token) {
     // L'accesso ha un limite di 10 al minuto per indirizzo: le altre prove

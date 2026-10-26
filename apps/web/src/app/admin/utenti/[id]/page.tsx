@@ -248,7 +248,7 @@ function SuspendPanel({ detail, token, onChanged }: { detail: AdminUserDetail; t
 }
 
 /**
- * Verifica in due passaggi di un altro admin (docs/CHANGELOG.md §351): se ha
+ * Verifica in due passaggi di un altro admin (docs/CHANGELOG.md §356): se ha
  * perso il telefono e non riceve l'email col codice, un super admin la azzera e lui
  * la riattiva al prossimo ingresso. Le sue sessioni aperte si chiudono.
  */

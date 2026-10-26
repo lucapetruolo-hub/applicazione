@@ -1,7 +1,7 @@
 import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 
 /**
- * Verifica in due passaggi per l'area admin (docs/CHANGELOG.md §351): codici
+ * Verifica in due passaggi per l'area admin (docs/CHANGELOG.md §356): codici
  * a 6 cifre che cambiano ogni 30 secondi (TOTP, RFC 6238), gli stessi di
  * Google Authenticator, Microsoft Authenticator, 1Password o del portachiavi
  * dell'iPhone. Scritta con `node:crypto`, senza librerie: sono poche righe.

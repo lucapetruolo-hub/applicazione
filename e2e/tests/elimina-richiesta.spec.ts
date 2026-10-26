@@ -244,7 +244,7 @@ test("l'admin decide su una richiesta eliminata, che resta come prova", async ()
   expect(reportResponse.ok).toBe(true);
   const { id: reportId } = (await reportResponse.json()) as { id: string };
 
-  // Già passato dal codice della verifica in due passaggi (§351).
+  // Già passato dal codice della verifica in due passaggi (§356).
   const adminToken = testToken(adminId, { amfa: Math.floor(Date.now() / 1000) });
   const admin = (path: string, init: RequestInit = {}) =>
     fetch(`${API_URL}${path}`, { ...init, headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` } });

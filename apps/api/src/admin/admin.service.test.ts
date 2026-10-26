@@ -185,7 +185,7 @@ describe("AdminService — sospensione dalla scheda utente e ruoli admin (docs/C
     const { service, prisma, securityAlerts } = build({ id: "u2", role: "CLIENT", adminRoles: [], deletedAt: null, professionalProfile: null });
     await service.setAdminRoles("admin-1", "u2", ["FINANCE", "MODERATOR"]);
     expect(prisma.user.update).toHaveBeenCalledWith({ where: { id: "u2" }, data: { role: "ADMIN", adminRoles: ["MODERATOR", "FINANCE"] } });
-    // Avviso a tutti i super admin (docs/CHANGELOG.md §351).
+    // Avviso a tutti i super admin (docs/CHANGELOG.md §356).
     expect(securityAlerts.adminRolesChanged).toHaveBeenCalledWith("admin-1", "u2", ["MODERATOR", "FINANCE"]);
   });
 

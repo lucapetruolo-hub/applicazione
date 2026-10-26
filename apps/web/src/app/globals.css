@@ -1266,8 +1266,11 @@ button.notif-row-main:hover {
   html[data-acct-nav="collapsed"] .acct-nav-group {
     align-items: center;
   }
-  /* I titoli dei gruppi diventano una riga di separazione. */
-  html[data-acct-nav="collapsed"] .acct-nav-title {
+  /* I titoli dei gruppi diventano una riga di separazione. Anche il primo,
+     che ha una regola più specifica accanto al tondo: prima "Lavoro"
+     restava visibile e usciva dalla colonna stretta. */
+  html[data-acct-nav="collapsed"] .acct-nav-title,
+  html[data-acct-nav="collapsed"] .acct-nav-toggle + .acct-nav-group > .acct-nav-title {
     display: none;
   }
   html[data-acct-nav="collapsed"] .acct-nav-group + .acct-nav-group {
@@ -1443,12 +1446,175 @@ button.notif-row-main:hover {
   color: #6e6459;
   font-size: 16px;
 }
+/* "Nessuna ancora" al posto di un numero: più piccolo, su una riga (§353). */
+.today-kpis .admin-kpi-value.is-text {
+  font-size: 18px;
+  line-height: 1.2;
+}
+/* Numero accanto al titolo "Da rispondere ora" (§352), al posto della tessera. */
+.today-count {
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: #dc3545;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Date da confermare e messaggi: solo le tessere sopra zero, larghe uguali. */
+.today-kpis.today-counters {
+  grid-template-columns: none;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+}
+/* Lavoro di oggi con "Naviga" accanto (§352). */
+.today-appt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 20px;
+  background: #ffffff;
+  border: 1px solid transparent;
+}
+.today-appt:hover {
+  border-color: #f0dcc0;
+}
+.today-appt > .today-row {
+  flex: 1;
+  min-width: 0;
+  border: none;
+}
+.today-appt-actions {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-right: 16px;
+}
+.today-nav {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: #128552;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.today-nav:hover {
+  background: #0e7a4c;
+}
+.today-nav:focus-visible {
+  outline: 2px solid #2b2420;
+  outline-offset: 2px;
+}
+/* "Sto arrivando" con bordo, accanto a "Naviga" verde (§353). */
+.today-nav.is-secondary {
+  background: #ffffff;
+  color: #2b2420;
+  box-shadow: inset 0 0 0 1px #2b2420;
+}
+.today-nav.is-secondary:hover {
+  background: #fdefe1;
+}
+.today-nav.is-secondary:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.today-nav.is-done {
+  background: #e6f4ec;
+  color: #0e7a4c;
+  cursor: default;
+}
+.today-nav-error {
+  flex-basis: 100%;
+  text-align: right;
+  color: #dc3545;
+  font-size: 14px;
+  font-weight: 600;
+}
 @media (max-width: 520px) {
   .today-row {
     flex-wrap: wrap;
   }
+  /* "Invia preventivo" sotto il testo, largo quanto la scheda (§352): accanto
+     schiacciava la descrizione in una colonna stretta. */
+  .today-row-main {
+    flex-basis: 100%;
+  }
   .today-row-cta {
-    margin-left: auto;
+    flex-basis: 100%;
+    text-align: center;
+    padding: 12px;
+  }
+  .today-row .today-time + .today-row-main {
+    flex-basis: 0;
+  }
+  .today-appt {
+    flex-wrap: wrap;
+    gap: 0;
+  }
+  .today-appt > .today-row {
+    flex-basis: 100%;
+  }
+  /* Sotto la riga, larghi quanto la scheda: allineati al testo (86 px a
+     sinistra) "Sto arrivando" usciva dalla scheda a 390 px. */
+  .today-appt-actions {
+    flex-basis: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    justify-content: flex-start;
+    margin: -6px 0 0;
+    padding: 0 16px 14px;
+  }
+  .today-nav-error {
+    text-align: left;
+  }
+  /* Tre pulsanti in una riga anche a 360 px: "Chiama" solo icona. */
+  .today-nav {
+    padding: 0 12px;
+  }
+  .today-nav.is-call {
+    width: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+  .today-nav.is-call .today-nav-text {
+    display: none;
+  }
+  /* Andamento: una tessera per riga, nome a sinistra e numero a destra. */
+  .today-kpis.today-insights {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .today-insights .admin-kpi {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 12px;
+  }
+  .today-insights .admin-kpi > :nth-child(3) {
+    grid-column: 1 / -1;
+  }
+}
+/* Telefoni stretti (360 px): senza l'icona del furgone i tre pulsanti
+   restano su una riga. */
+@media (max-width: 379px) {
+  .today-nav.is-secondary:not(.is-call) svg {
+    display: none;
   }
 }
 /* "Oggi": meteo dei prossimi tre giorni e lavori raggruppati per giorno (docs/CHANGELOG.md §333). */
@@ -1534,6 +1700,22 @@ button.notif-row-main:hover {
 @media (max-width: 640px) {
   .weather-chip {
     padding: 10px 12px;
+  }
+  .weather-chip-label {
+    display: none;
+  }
+}
+/* Computer: giorno, icona e gradi su una riga sola (§352), metà altezza.
+   La descrizione resta nel fumetto e nel testo dell'icona. */
+@media (min-width: 641px) {
+  .weather-chip {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+  }
+  .weather-chip.is-loading {
+    min-height: 48px;
   }
   .weather-chip-label {
     display: none;
@@ -3912,7 +4094,7 @@ a.admin-kpi:hover {
 }
 
 /* Verifica in due passaggi dell'area admin (AdminTwoFactorGate,
-   docs/CHANGELOG.md §351). */
+   docs/CHANGELOG.md §356). */
 .admin-2fa-qr {
   padding: 12px;
   background: #ffffff;

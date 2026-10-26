@@ -442,7 +442,7 @@ Una riga per voce; dettaglio completo (endpoint, file, bug corretti) in
 - [x] Abbonamenti Stripe e boost di visibilità (codice pronto, servono le chiavi reali: skill `checklist-lancio`)
 - [x] Area account cliente, professionisti salvati, cancellazione account
 - [x] Area professionista e cliente a sezioni (`AccountShell`), preferenze di notifica
-- [x] Area admin: moderazione segnalazioni, ruoli admin, registro azioni, chat in sola lettura, bootstrap del primo admin (solo se non esiste nessun admin), verifica in due passaggi obbligatoria con codice ogni 8 ore e login admin di 7 giorni (docs/CHANGELOG.md §351)
+- [x] Area admin: moderazione segnalazioni, ruoli admin, registro azioni, chat in sola lettura, bootstrap del primo admin (solo se non esiste nessun admin), verifica in due passaggi obbligatoria con codice ogni 8 ore e login admin di 7 giorni (docs/CHANGELOG.md §356)
 - [x] Smistamento delle richieste: a tutti i professionisti nel raggio, senza scadenza per rispondere (docs/CHANGELOG.md §210); richieste generali spegnibili (`GENERAL_REQUESTS_ENABLED=false` su Render) e chiuse in automatico per categoria e città (§211)
 - [x] Segnalazioni di problemi sul lavoro e controversie (modello A-Z)
 - [x] Pagamento online dei lavori con Stripe (serve Stripe Connect per andare live)

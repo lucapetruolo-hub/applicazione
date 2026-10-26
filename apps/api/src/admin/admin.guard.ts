@@ -17,7 +17,7 @@ export const RequireAdminScope = (scope: AdminScope) => SetMetadata(ADMIN_SCOPE_
 
 /**
  * Codici che il sito legge per mostrare l'attivazione o la richiesta del
- * codice della verifica in due passaggi (docs/CHANGELOG.md §351).
+ * codice della verifica in due passaggi (docs/CHANGELOG.md §356).
  */
 export const ADMIN_2FA_SETUP_CODE = "ADMIN_2FA_SETUP";
 export const ADMIN_2FA_REQUIRED_CODE = "ADMIN_2FA_REQUIRED";
@@ -42,7 +42,7 @@ export class AdminGuard implements CanActivate {
     if (user?.role !== "ADMIN") {
       throw new ForbiddenException("Accesso riservato agli amministratori.");
     }
-    // Verifica in due passaggi obbligatoria (docs/CHANGELOG.md §351): la
+    // Verifica in due passaggi obbligatoria (docs/CHANGELOG.md §356): la
     // password da sola non apre più l'area admin. Il codice vale
     // ADMIN_2FA_VALID_HOURS ore, poi va ridato.
     if (!user.adminTotpEnabledAt) {

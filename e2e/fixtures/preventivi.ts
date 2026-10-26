@@ -11,7 +11,7 @@ import { API_URL, WEB_URL } from "./env";
 
 /**
  * Accesso di prova firmato come l'API (stesso JWT_SECRET): niente limite sugli accessi.
- * `amfa`: per un admin, l'ora (secondi) del codice della verifica in due passaggi (§351).
+ * `amfa`: per un admin, l'ora (secondi) del codice della verifica in due passaggi (§356).
  */
 export function testToken(userId: string, extra: { amfa?: number } = {}): string {
   const part = (value: object) => Buffer.from(JSON.stringify(value)).toString("base64url");

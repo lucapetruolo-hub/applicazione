@@ -7,7 +7,7 @@ import { AdminGuard, RequireAdminScope } from "./admin.guard";
 import { AdminTwoFactorService } from "./admin-two-factor.service";
 
 /**
- * Verifica in due passaggi dell'area admin (docs/CHANGELOG.md §351). Fuori
+ * Verifica in due passaggi dell'area admin (docs/CHANGELOG.md §356). Fuori
  * da AdminGuard tranne l'azzeramento: servono proprio a un admin che non ha
  * ancora dato il codice. Il servizio controlla comunque che sia un admin.
  */

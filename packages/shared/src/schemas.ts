@@ -920,7 +920,7 @@ export type AdminBootstrapInput = z.infer<typeof adminBootstrapSchema>;
 
 /**
  * Codice della verifica in due passaggi dell'area admin (docs/CHANGELOG.md
- * §351): le 6 cifre dell'app o un codice di recupero "ABCD-EFGH".
+ * §356): le 6 cifre dell'app o quelle ricevute per email se si è perso il telefono.
  */
 export const adminTwoFactorCodeSchema = z.object({
   code: z.string().trim().min(6, "Scrivi il codice di 6 cifre.").max(20),

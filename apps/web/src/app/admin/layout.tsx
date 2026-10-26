@@ -28,7 +28,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [searchOpen, setSearchOpen] = useState(false);
   const isAdmin = user?.role === "ADMIN";
   const adminRoles = isAdmin ? (user?.adminRoles ?? []) : [];
-  // Verifica in due passaggi (docs/CHANGELOG.md §351): riletta a ogni cambio
+  // Verifica in due passaggi (docs/CHANGELOG.md §356): riletta a ogni cambio
   // pagina, così dopo 8 ore il codice viene richiesto alla navigazione
   // successiva invece di far fallire le pagine una per una.
   const [twoFactor, setTwoFactor] = useState<AdminTwoFactorStatus | null>(null);

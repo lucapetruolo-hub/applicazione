@@ -350,7 +350,7 @@ export type AdminUserDetail = {
   deletedAt: string | null;
   suspendedAt: string | null;
   suspensionNote: string | null;
-  /** Verifica in due passaggi attiva (solo per gli admin, docs/CHANGELOG.md §351). */
+  /** Verifica in due passaggi attiva (solo per gli admin, docs/CHANGELOG.md §356). */
   adminTwoFactorEnabled: boolean;
   professionalProfile: { id: string; businessName: string; categoryLabel: string; city: string; suspendedAt: string | null } | null;
   counts: { requests: number; bookings: number; reviewsWritten: number; reviewsReceived: number; reportsMade: number; reportsReceived: number };
@@ -881,7 +881,7 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
-    /** Codice che l'API aggiunge per alcuni casi, es. "ADMIN_2FA_REQUIRED" (docs/CHANGELOG.md §351). */
+    /** Codice che l'API aggiunge per alcuni casi, es. "ADMIN_2FA_REQUIRED" (docs/CHANGELOG.md §356). */
     readonly code?: string,
   ) {
     super(message);
@@ -896,7 +896,7 @@ function extractErrorCode(body: unknown): string | undefined {
   return undefined;
 }
 
-/** Stato della verifica in due passaggi dell'admin collegato (docs/CHANGELOG.md §351). */
+/** Stato della verifica in due passaggi dell'admin collegato (docs/CHANGELOG.md §356). */
 export type AdminTwoFactorStatus = { enabled: boolean; verified: boolean; email: string | null };
 export type AdminTwoFactorSetup = { secret: string; otpauthUrl: string; qrCode: string };
 
@@ -1820,7 +1820,7 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
     acceptProfileInvite: (input: AcceptProfileInviteInput) =>
       request<AuthResult>("/auth/invite/accept", { method: "POST", body: JSON.stringify(input) }),
 
-    /** Verifica in due passaggi dell'area admin (docs/CHANGELOG.md §351). */
+    /** Verifica in due passaggi dell'area admin (docs/CHANGELOG.md §356). */
     adminTwoFactorStatus: (token: string) =>
       request<AdminTwoFactorStatus>("/admin/2fa", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
     adminTwoFactorSetup: (token: string) =>

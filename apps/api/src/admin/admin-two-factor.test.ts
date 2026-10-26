@@ -11,7 +11,7 @@ import {
   totpStep,
 } from "./admin-two-factor";
 
-/** Verifica in due passaggi dell'area admin (docs/CHANGELOG.md §351). */
+/** Verifica in due passaggi dell'area admin (docs/CHANGELOG.md §356). */
 // Chiave degli esempi ufficiali di RFC 6238 ("12345678901234567890").
 const RFC_SECRET = base32Encode(Buffer.from("12345678901234567890"));
 

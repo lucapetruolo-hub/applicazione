@@ -271,7 +271,7 @@ export class AdminService {
       deletedAt: user.deletedAt?.toISOString() ?? null,
       suspendedAt: user.suspendedAt?.toISOString() ?? null,
       suspensionNote: user.suspensionNote,
-      // Solo se è attiva, mai la chiave (docs/CHANGELOG.md §351).
+      // Solo se è attiva, mai la chiave (docs/CHANGELOG.md §356).
       adminTwoFactorEnabled: user.role === "ADMIN" && Boolean(user.adminTotpEnabledAt),
       professionalProfile: user.professionalProfile
         ? {
@@ -367,7 +367,7 @@ export class AdminService {
       newValue: nextRoles.length ? nextRoles.join("+") : data.role,
       changedByUserId: adminUserId,
     });
-    // Email a tutti i super admin (§351): un admin nominato da un account rubato si vede subito.
+    // Email a tutti i super admin (§356): un admin nominato da un account rubato si vede subito.
     await this.securityAlerts.adminRolesChanged(adminUserId, userId, nextRoles);
     return { id: userId, role: data.role, adminRoles: data.adminRoles };
   }
@@ -590,7 +590,7 @@ export class AdminService {
   async promoteToAdmin(typedEmail: string): Promise<{ email: string; role: string }> {
     // Email degli account in minuscolo (§330).
     const email = typedEmail.trim().toLowerCase();
-    // Solo per il primissimo admin (docs/CHANGELOG.md §351): se ne esiste già
+    // Solo per il primissimo admin (docs/CHANGELOG.md §356): se ne esiste già
     // uno il codice non serve più, gli altri si nominano da Utenti. Con un
     // database nuovo (quello gratuito di Render scade) torna a funzionare.
     const admins = await this.prisma.user.count({ where: { role: "ADMIN", deletedAt: null } });

@@ -7,7 +7,7 @@ import { apiClient } from "@/lib/apiClient";
 import { errorMessage } from "./adminUi";
 
 /**
- * Verifica in due passaggi dell'area admin (docs/CHANGELOG.md §351). Al
+ * Verifica in due passaggi dell'area admin (docs/CHANGELOG.md §356). Al
  * primo ingresso si collega l'app di autenticazione (codice QR o chiave
  * scritta a mano); poi a ogni ingresso, e di nuovo dopo 8 ore, si scrive il
  * codice dell'app. Riuscito il codice, `onVerified` riceve il token nuovo che

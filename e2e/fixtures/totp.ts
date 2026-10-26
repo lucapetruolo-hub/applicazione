@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 
-/** Il codice di 6 cifre che mostrerebbe l'app di autenticazione (RFC 6238), per le prove dell'area admin (§351). */
+/** Il codice di 6 cifre che mostrerebbe l'app di autenticazione (RFC 6238), per le prove dell'area admin (§356). */
 export function totpNow(secret: string, offsetSteps = 0): string {
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
   let bits = 0;

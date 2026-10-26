@@ -44,7 +44,7 @@ type AdminUser = {
 };
 
 /**
- * Verifica in due passaggi dell'area admin (docs/CHANGELOG.md §351): la si
+ * Verifica in due passaggi dell'area admin (docs/CHANGELOG.md §356): la si
  * attiva la prima volta che si apre l'area admin, poi il codice dell'app
  * serve ogni ADMIN_2FA_VALID_HOURS ore. Riuscito il codice, il sito riceve
  * un token nuovo che lo ricorda (`amfa`) e l'admin un'email.

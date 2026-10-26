@@ -6,7 +6,7 @@ import { testToken } from "../fixtures/preventivi";
 import { totpNow } from "../fixtures/totp";
 
 /**
- * Verifica in due passaggi dell'area admin (docs/CHANGELOG.md §351): al
+ * Verifica in due passaggi dell'area admin (docs/CHANGELOG.md §356): al
  * primo ingresso si collega l'app; da un altro dispositivo l'area admin
  * chiede il codice prima di mostrare qualunque cosa; con il telefono perso
  * un codice via email azzera la verifica e si ricollega l'app.

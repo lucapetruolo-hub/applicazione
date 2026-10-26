@@ -156,7 +156,7 @@ export function newDeviceLoginEmail(name: string | null, device: { label: string
 
 /**
  * Ogni ingresso nell'area admin con il codice della verifica in due passaggi
- * (docs/CHANGELOG.md §351): l'admin vede subito un accesso che non ha fatto.
+ * (docs/CHANGELOG.md §356): l'admin vede subito un accesso che non ha fatto.
  */
 export function adminAccessEmail(
   name: string | null,
@@ -183,7 +183,7 @@ export function adminAccessEmail(
   });
 }
 
-/** Telefono perso: codice per azzerare la verifica in due passaggi dell'area admin (§351). */
+/** Telefono perso: codice per azzerare la verifica in due passaggi dell'area admin (§356). */
 export function adminResetCodeEmail(name: string | null, code: string, minutes: number): RenderedEmail {
   const site = frontendUrl();
   return renderEmail({
@@ -203,7 +203,7 @@ export function adminResetCodeEmail(name: string | null, code: string, minutes: 
 }
 
 /**
- * Avviso a tutti i super admin (docs/CHANGELOG.md §351): un admin nominato o
+ * Avviso a tutti i super admin (docs/CHANGELOG.md §356): un admin nominato o
  * tolto, una verifica in due passaggi azzerata. Se non l'ha fatto nessuno di
  * loro, un account admin è in mani sbagliate.
  */
@@ -221,7 +221,7 @@ export function adminSecurityAlertEmail(name: string | null, alert: { title: str
   });
 }
 
-/** Troppi codici sbagliati per l'area admin: accesso fermo per qualche minuto (§351). */
+/** Troppi codici sbagliati per l'area admin: accesso fermo per qualche minuto (§356). */
 export function adminCodeLockedEmail(name: string | null, minutes: number): RenderedEmail {
   const site = frontendUrl();
   return renderEmail({
