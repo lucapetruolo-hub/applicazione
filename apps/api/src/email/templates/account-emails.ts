@@ -202,6 +202,25 @@ export function adminResetCodeEmail(name: string | null, code: string, minutes: 
   });
 }
 
+/**
+ * Avviso a tutti i super admin (docs/CHANGELOG.md §351): un admin nominato o
+ * tolto, una verifica in due passaggi azzerata. Se non l'ha fatto nessuno di
+ * loro, un account admin è in mani sbagliate.
+ */
+export function adminSecurityAlertEmail(name: string | null, alert: { title: string; text: string; at: Date }): RenderedEmail {
+  const site = frontendUrl();
+  return renderEmail({
+    kind: "account",
+    subject: `Area admin: ${alert.title.toLowerCase()}`,
+    preheader: alert.text,
+    greeting: name,
+    title: alert.title,
+    paragraphs: [`${alert.text}, ${LOGIN_TIME.format(alert.at)}.`, "Ti avvisiamo perché sei super admin. Se nessuno di voi l'ha deciso, un account admin potrebbe essere in mani sbagliate: togli subito il ruolo a quell'account e cambia la tua password."],
+    cta: { label: "Apri il registro azioni", url: `${site}/admin/registro` },
+    after: [`Per qualsiasi dubbio scrivici a ${EMAIL_BRAND.supportEmail}.`],
+  });
+}
+
 /** Troppi codici sbagliati per l'area admin: accesso fermo per qualche minuto (§351). */
 export function adminCodeLockedEmail(name: string | null, minutes: number): RenderedEmail {
   const site = frontendUrl();

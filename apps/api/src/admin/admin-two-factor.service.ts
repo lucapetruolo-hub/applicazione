@@ -7,6 +7,7 @@ import { EmailService } from "../email/email.service";
 import { EMAIL_BRAND } from "../email/email-brand";
 import { adminAccessEmail, adminCodeLockedEmail, adminResetCodeEmail } from "../email/templates/account-emails";
 import { AuditLogService } from "../audit-log/audit-log.service";
+import { AdminSecurityAlertsService } from "./admin-security-alerts.service";
 import { encryptFiscal, readFiscal } from "../common/fiscal-crypto";
 import { sessionExpiresIn, sessionTokenPayload } from "../auth/jwt-auth.guard";
 import { loginDeviceLabel } from "../auth/login-device";
@@ -57,6 +58,7 @@ export class AdminTwoFactorService {
     private readonly jwt: JwtService,
     private readonly emailService: EmailService,
     private readonly auditLogService: AuditLogService,
+    private readonly securityAlerts: AdminSecurityAlertsService,
   ) {}
 
   private async adminUser(userId: string): Promise<AdminUser> {
@@ -207,6 +209,7 @@ export class AdminTwoFactorService {
     });
     await this.auditLogService.record({ entityType: "User", entityId: user.id, fieldName: "adminTwoFactor", newValue: "RESET_BY_EMAIL", changedByUserId: user.id });
     await this.notify(user, { label: loginDeviceLabel(userAgent), at: now, resetByEmail: true });
+    await this.securityAlerts.twoFactorReset(user.id, user.id);
     // Token nuovo per questo dispositivo: gli altri restano fuori.
     return { token: this.jwt.sign(sessionTokenPayload({ id: user.id, sessionVersion: updated.sessionVersion }), { expiresIn: sessionExpiresIn(user.role) }) };
   }
@@ -234,6 +237,7 @@ export class AdminTwoFactorService {
       },
     });
     await this.auditLogService.record({ entityType: "User", entityId: targetUserId, fieldName: "adminTwoFactor", newValue: "RESET", changedByUserId: adminUserId });
+    await this.securityAlerts.twoFactorReset(adminUserId, targetUserId);
     return { ok: true };
   }
 

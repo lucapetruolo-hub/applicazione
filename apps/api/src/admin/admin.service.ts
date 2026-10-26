@@ -1,4 +1,5 @@
 import { ACTION_SHORT_LABEL, auditLabel } from "./audit-label";
+import { AdminSecurityAlertsService } from "./admin-security-alerts.service";
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ContentReportTargetType, ModerationAction, Prisma, PrismaClient } from "@professionisti/database";
 import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource } from "@professionisti/shared";
@@ -59,6 +60,7 @@ export class AdminService {
     private readonly professionalMetricsService: ProfessionalMetricsService,
     private readonly auditLogService: AuditLogService,
     private readonly jobIssueOutcomeService: JobIssueOutcomeService,
+    private readonly securityAlerts: AdminSecurityAlertsService,
   ) {}
 
   /**
@@ -365,6 +367,8 @@ export class AdminService {
       newValue: nextRoles.length ? nextRoles.join("+") : data.role,
       changedByUserId: adminUserId,
     });
+    // Email a tutti i super admin (§351): un admin nominato da un account rubato si vede subito.
+    await this.securityAlerts.adminRolesChanged(adminUserId, userId, nextRoles);
     return { id: userId, role: data.role, adminRoles: data.adminRoles };
   }
 

@@ -15,6 +15,7 @@ import {
   adminAccessEmail,
   adminCodeLockedEmail,
   adminResetCodeEmail,
+  adminSecurityAlertEmail,
   passwordResetEmail,
   profileInviteEmail,
   verifyEmailEmail,
@@ -61,6 +62,12 @@ add("admin-accesso", "Account", "Admin", adminAccessEmail("Luca", { label: "Safa
 add("admin-due-passaggi-attivata", "Account", "Admin", adminAccessEmail("Luca", { label: "Safari su Mac", at: new Date("2026-10-26T09:30:00Z"), justEnabled: true }));
 add("admin-codice-telefono-perso", "Account", "Admin", adminResetCodeEmail("Luca", "482913", 15));
 add("admin-due-passaggi-azzerata", "Account", "Admin", adminAccessEmail("Luca", { label: "Chrome su Windows", at: new Date("2026-10-26T09:30:00Z"), resetByEmail: true }));
+add(
+  "admin-avviso-super-admin",
+  "Account",
+  "Super admin",
+  adminSecurityAlertEmail("Luca", { title: "Nuovo amministratore", text: "Marta Rossi (marta@esempio.it) è diventata admin (Moderatore). L'ha deciso Luca Petruolo (luca@esempio.it)", at: new Date("2026-10-26T09:30:00Z") }),
+);
 add("admin-codici-sbagliati", "Account", "Admin", adminCodeLockedEmail("Luca", 15));
 add("account-eliminato", "Account", "Tutti", accountDeletedEmail("Giulia"));
 add("profilo-creato-al-telefono", "Account", "Professionista", profileInviteEmail("Marco", "Idraulica Rossi", `${site}/completa-profilo?codice=esempio`, 7));
