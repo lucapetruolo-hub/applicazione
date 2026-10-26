@@ -5,6 +5,7 @@ import type { ExternalJob, ExternalJobInput } from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
+import { ItalianTimeInput } from "@/components/ItalianTimeInput";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 const inputStyle = { padding: 10, borderRadius: 10, border: `1px solid ${brand.bordoCampo}`, fontSize: 14, fontFamily: "inherit", color: brand.grafite };
@@ -261,13 +262,13 @@ export function ExternalJobModal({
               <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
                 Ora inizio *
               </Text>
-              <input aria-label="Ora di inizio" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} style={inputStyle} />
+              <ItalianTimeInput ariaLabel="Ora di inizio" value={startTime} onChange={setStartTime} style={inputStyle} padX={10} />
             </YStack>
             <YStack gap="$1" flex={1} minWidth={100}>
               <Text fontFamily="$body" fontWeight="700" fontSize={11} color={brand.grafite70}>
                 Ora fine
               </Text>
-              <input aria-label="Ora di fine" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} style={inputStyle} />
+              <ItalianTimeInput ariaLabel="Ora di fine" value={endTime} onChange={setEndTime} style={inputStyle} padX={10} />
             </YStack>
           </XStack>
 

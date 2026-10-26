@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { SlotDraft } from "./agendaHelpers";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
+import { ItalianTimeInput } from "@/components/ItalianTimeInput";
 
 /**
  * Casellina di spunta (richiesta esplicita dell'utente): in modalità
@@ -224,11 +225,11 @@ export function SlotEditorModal({
             Orario
           </Text>
           <XStack gap="$2" alignItems="center" flexWrap="wrap">
-            <input aria-label="Ora di inizio" type="time" value={start} onChange={(e) => onStartChange(e.target.value)} style={modalTimeInputStyle} />
+            <ItalianTimeInput ariaLabel="Ora di inizio" value={start} onChange={onStartChange} style={modalTimeInputStyle} />
             <Text fontSize="$3" color={brand.grafite70}>
               –
             </Text>
-            <input aria-label="Ora di fine" type="time" value={end} onChange={(e) => onEndChange(e.target.value)} style={modalTimeInputStyle} />
+            <ItalianTimeInput ariaLabel="Ora di fine" value={end} onChange={onEndChange} style={modalTimeInputStyle} />
           </XStack>
         </YStack>
 

@@ -1568,6 +1568,9 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
       }),
     keepAgendaStarterHours: (token: string) =>
       request<AgendaWeekTemplateState>("/agenda/week-template/starter/keep", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+    agendaOnlineSlots: (token: string) => request<{ count: number }>("/agenda/online-slots", { headers: { Authorization: `Bearer ${token}` } }),
+    removeAgendaOnlineSlots: (token: string) =>
+      request<{ count: number }>("/agenda/online-slots/remove", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
     agendaWeather: (token: string) => request<WeatherDayAlert[]>("/agenda/weather", { headers: { Authorization: `Bearer ${token}` } }),
     agendaDaysAhead: (token: string) => request<DayAhead[]>("/agenda/days-ahead", { headers: { Authorization: `Bearer ${token}` } }),
     agendaZoneDemand: (token: string) => request<ZoneDemand>("/agenda/zone-demand", { headers: { Authorization: `Bearer ${token}` } }),

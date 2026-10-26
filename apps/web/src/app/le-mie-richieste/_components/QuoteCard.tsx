@@ -16,6 +16,7 @@ import { TimelineModal } from "@/components/TimelineModal";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 import { textareaStyle } from "./clientRequestHelpers";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
+import { ItalianTimeInput } from "@/components/ItalianTimeInput";
 
 export function formatQuoteDate(iso: string): string {
   const date = new Date(iso);
@@ -270,8 +271,8 @@ export function QuoteCard({
             <YStack gap="$2">
               <XStack gap="$2" flexWrap="wrap">
                 <ItalianDateInput ariaLabel="Data" value={manualDate} onChange={setManualDate} style={{ ...textareaStyle, flex: 1, minWidth: 130 }} />
-                <input aria-label="Ora di inizio" type="time" value={manualStartTime} onChange={(e) => setManualStartTime(e.target.value)} style={{ ...textareaStyle, flex: 1, minWidth: 100 }} />
-                <input aria-label="Ora di fine" type="time" value={manualEndTime} onChange={(e) => setManualEndTime(e.target.value)} style={{ ...textareaStyle, flex: 1, minWidth: 100 }} />
+                <ItalianTimeInput ariaLabel="Ora di inizio" value={manualStartTime} onChange={setManualStartTime} style={{ ...textareaStyle, flex: 1, minWidth: 100 }} padX={10} />
+                <ItalianTimeInput ariaLabel="Ora di fine" value={manualEndTime} onChange={setManualEndTime} style={{ ...textareaStyle, flex: 1, minWidth: 100 }} padX={10} />
               </XStack>
               <Text fontSize={13} color={brand.grafite70}>
                 Il professionista dovrà confermare questo orario prima che diventi un appuntamento.

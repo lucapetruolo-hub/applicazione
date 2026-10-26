@@ -46,3 +46,35 @@ describe("orari di partenza", () => {
     }
   });
 });
+
+describe("togliere gli orari online (§357)", () => {
+  it("toglie la parte online dalle fasce da oggi in poi e dalla settimana tipo", async () => {
+    const template = {
+      days: [
+        [],
+        [
+          { start: "08:00", end: "13:00", allowsHome: true, allowsOnline: true, homeMax: 5, onlineMax: 5 },
+          { start: "18:00", end: "20:00", allowsHome: false, allowsOnline: true, homeMax: null, onlineMax: 2 },
+        ],
+        [],
+        [],
+        [],
+        [],
+        [],
+      ],
+    };
+    const tx = { availabilitySlot: { deleteMany: vi.fn(), updateMany: vi.fn() }, professionalProfile: { update: vi.fn() } };
+    const prisma = {
+      professionalProfile: { findUnique: vi.fn().mockResolvedValue({ id: "pro-1", agendaWeekTemplate: template }) },
+      availabilitySlot: { count: vi.fn().mockResolvedValue(12) },
+      $transaction: vi.fn((fn: (t: typeof tx) => unknown) => fn(tx)),
+    };
+    const service = new AgendaService(prisma as never, {} as never);
+    expect(await service.removeOnlineSlots("user-1", new Date("2026-10-26T10:00:00.000Z"))).toEqual({ count: 12 });
+    const future = { professionalProfileId: "pro-1", allowsOnline: true, OR: [{ date: null }, { date: { gte: new Date("2026-10-26T00:00:00.000Z") } }] };
+    expect(tx.availabilitySlot.deleteMany).toHaveBeenCalledWith({ where: { ...future, allowsHome: false } });
+    expect(tx.availabilitySlot.updateMany).toHaveBeenCalledWith({ where: future, data: { allowsOnline: false, onlineMaxBookings: null } });
+    const saved = tx.professionalProfile.update.mock.calls[0]![0].data.agendaWeekTemplate as typeof template;
+    expect(saved.days[1]).toEqual([{ start: "08:00", end: "13:00", allowsHome: true, allowsOnline: false, homeMax: 5, onlineMax: null }]);
+  });
+});

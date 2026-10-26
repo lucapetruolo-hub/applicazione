@@ -37,6 +37,16 @@ export class AgendaController {
     return this.agendaService.keepStarterHours(req.user.userId);
   }
 
+  @Get("online-slots")
+  onlineSlotCount(@Req() req: AuthenticatedRequest) {
+    return this.agendaService.onlineSlotCount(req.user.userId);
+  }
+
+  @Post("online-slots/remove")
+  removeOnlineSlots(@Req() req: AuthenticatedRequest) {
+    return this.agendaService.removeOnlineSlots(req.user.userId);
+  }
+
   @Get("weather")
   weather(@Req() req: AuthenticatedRequest) {
     return this.agendaService.weather(req.user.userId);

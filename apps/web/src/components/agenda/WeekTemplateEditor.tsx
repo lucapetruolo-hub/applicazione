@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Check, Plus, X } from "lucide-react";
 import { agendaWeekTemplateSchema, type AgendaWeekTemplate, type WeekTemplateSlot } from "@professionisti/shared";
 import { WEEKDAY_FULL_LABELS } from "@/app/dashboard/agenda/_components/agendaHelpers";
+import { ItalianTimeInput } from "@/components/ItalianTimeInput";
 
 /** Lunedì per primo, come in tutto il calendario. */
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
@@ -135,13 +136,14 @@ function RangesEditor({ ranges, onChange, label }: { ranges: Range[]; onChange: 
             <span className="ag-muted ag-wt-word" aria-hidden>
               Dalle
             </span>
-            <input
-              type="time"
-              className="ag-input ag-wt-time"
+            <ItalianTimeInput
+              className="ag-input"
+              wrapperClassName="ag-wt-time"
+              padX={8}
               value={range.start}
               step={900}
-              aria-label={`${label}: inizio ${index + 1}° orario`}
-              onChange={(e) => onChange(ranges.map((r, i) => (i === index ? { ...r, start: e.target.value } : r)))}
+              ariaLabel={`${label}: inizio ${index + 1}° orario`}
+              onChange={(value) => onChange(ranges.map((r, i) => (i === index ? { ...r, start: value } : r)))}
             />
           </label>
           <label>
@@ -151,13 +153,14 @@ function RangesEditor({ ranges, onChange, label }: { ranges: Range[]; onChange: 
             <span className="ag-muted ag-wt-dash" aria-hidden>
               –
             </span>
-            <input
-              type="time"
-              className="ag-input ag-wt-time"
+            <ItalianTimeInput
+              className="ag-input"
+              wrapperClassName="ag-wt-time"
+              padX={8}
               value={range.end}
               step={900}
-              aria-label={`${label}: fine ${index + 1}° orario`}
-              onChange={(e) => onChange(ranges.map((r, i) => (i === index ? { ...r, end: e.target.value } : r)))}
+              ariaLabel={`${label}: fine ${index + 1}° orario`}
+              onChange={(value) => onChange(ranges.map((r, i) => (i === index ? { ...r, end: value } : r)))}
             />
           </label>
           {ranges.length > 1 ? (

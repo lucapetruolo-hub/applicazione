@@ -108,6 +108,48 @@ export class AgendaService {
     await this.prisma.professionalProfile.update({ where: { id: professionalProfileId }, data: { agendaStarterHoursAt: new Date() } });
   }
 
+  /** Fasce con posti online da oggi in poi: il profilo chiede se toglierle quando si spegne "online" (§357). */
+  async onlineSlotCount(userId: string, now = new Date()): Promise<{ count: number }> {
+    const professionalProfileId = await this.requireProfileId(userId);
+    const count = await this.prisma.availabilitySlot.count({ where: this.futureOnlineSlots(professionalProfileId, now) });
+    return { count };
+  }
+
+  /**
+   * Il professionista non lavora più online e sceglie di togliere gli orari
+   * online (richiesta dell'utente, docs/CHANGELOG.md §357): dalle fasce da
+   * oggi in poi e dalla settimana tipo sparisce la parte online, le fasce
+   * solo online si tolgono. I lavori già fissati restano.
+   */
+  async removeOnlineSlots(userId: string, now = new Date()): Promise<{ count: number }> {
+    const professionalProfileId = await this.requireProfileId(userId);
+    const future = this.futureOnlineSlots(professionalProfileId, now);
+    const count = await this.prisma.availabilitySlot.count({ where: future });
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { id: professionalProfileId }, select: { agendaWeekTemplate: true } });
+    const parsed = agendaWeekTemplateSchema.safeParse(profile?.agendaWeekTemplate);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.availabilitySlot.deleteMany({ where: { ...future, allowsHome: false } });
+      await tx.availabilitySlot.updateMany({ where: future, data: { allowsOnline: false, onlineMaxBookings: null } });
+      if (parsed.success) {
+        const template: AgendaWeekTemplate = {
+          days: parsed.data.days.map((slots) => slots.filter((slot) => slot.allowsHome).map((slot) => ({ ...slot, allowsOnline: false, onlineMax: null }))),
+        };
+        await tx.professionalProfile.update({ where: { id: professionalProfileId }, data: { agendaWeekTemplate: template as unknown as Prisma.InputJsonValue } });
+      }
+    });
+    return { count };
+  }
+
+  private futureOnlineSlots(professionalProfileId: string, now: Date) {
+    return { professionalProfileId, allowsOnline: true, OR: [{ date: null }, { date: { gte: wallClockToday(now) } }] };
+  }
+
+  private async requireProfileId(userId: string): Promise<string> {
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { userId }, select: { id: true } });
+    if (!profile) throw new NotFoundException("Profilo professionista non trovato.");
+    return profile.id;
+  }
+
   /** "Vanno bene così": il professionista tiene gli orari di partenza e l'avviso sparisce. */
   async keepStarterHours(userId: string): Promise<AgendaWeekTemplateState> {
     await this.prisma.professionalProfile.updateMany({ where: { userId }, data: { agendaStarterHoursAt: null } });

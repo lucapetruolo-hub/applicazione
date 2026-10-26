@@ -938,6 +938,9 @@
 }
 .ag-wt-time {
   width: 108px;
+}
+.ag-wt-time input,
+.ag-wt-time .it-time-text {
   padding: 0 8px;
   font-size: 15px;
 }

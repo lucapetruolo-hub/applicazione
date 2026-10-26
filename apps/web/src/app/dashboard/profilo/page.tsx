@@ -238,6 +238,11 @@ export default function DashboardProfiloPage() {
   const [verification, setVerification] = useState<MyVerificationStatus | null>(null);
   // "Torna all'anteprima" con modifiche non salvate: stesso popup dei link.
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  // "Online" salvato l'ultima volta: spegnendolo si chiede se togliere gli
+  // orari online dall'agenda (richiesta dell'utente, docs/CHANGELOG.md §357).
+  const [savedRemoteAvailable, setSavedRemoteAvailable] = useState(false);
+  const [onlineSlotsPrompt, setOnlineSlotsPrompt] = useState(false);
+  const [removingOnlineSlots, setRemovingOnlineSlots] = useState(false);
 
   const loadPreview = useCallback(() => {
     if (!token) return;
@@ -261,6 +266,7 @@ export default function DashboardProfiloPage() {
     setAddress(profile.address ?? "");
     setBio(profile.bio ?? "");
     setRemoteAvailable(profile.remoteAvailable);
+    setSavedRemoteAvailable(profile.remoteAvailable);
     setCancellationNoticeHours(isCancellationNoticeHours(profile.cancellationNoticeHours) ? profile.cancellationNoticeHours : DEFAULT_CANCELLATION_NOTICE_HOURS);
     setImageUrl(profile.imageUrl);
     setPortfolioUrls(profile.portfolioUrls);
@@ -488,6 +494,7 @@ export default function DashboardProfiloPage() {
         })),
       });
       setSaved(true);
+      setSavedRemoteAvailable(remoteAvailable);
       setNeedsConfirmation(false);
       setSavedSnapshot(formSnapshot);
       return true;
@@ -500,7 +507,15 @@ export default function DashboardProfiloPage() {
   }
 
   async function handleSubmit() {
+    const onlineTurnedOff = savedRemoteAvailable && !remoteAvailable;
     if (!(await saveProfile())) return;
+    if (onlineTurnedOff && token) {
+      const { count } = await apiClient.agendaOnlineSlots(token).catch(() => ({ count: 0 }));
+      if (count > 0) {
+        setOnlineSlotsPrompt(true);
+        return;
+      }
+    }
     // Solo alla primissima creazione del profilo (richiesta esplicita
     // dell'utente, F4.1): invece di tornare subito alla dashboard,
     // propone di impostare già ora i giorni/le fasce orarie di
@@ -513,6 +528,23 @@ export default function DashboardProfiloPage() {
       // Salvato: si torna all'anteprima aggiornata (docs/CHANGELOG.md §252).
       showSavedPreview();
     }
+  }
+
+  async function closeOnlineSlotsPrompt(remove: boolean) {
+    if (remove && token) {
+      setRemovingOnlineSlots(true);
+      try {
+        await apiClient.removeAgendaOnlineSlots(token);
+      } catch {
+        setRemovingOnlineSlots(false);
+        setError("Orari online non tolti: riprova da Agenda, Orari di lavoro.");
+        setOnlineSlotsPrompt(false);
+        return;
+      }
+      setRemovingOnlineSlots(false);
+    }
+    setOnlineSlotsPrompt(false);
+    showSavedPreview();
   }
 
   function showSavedPreview() {
@@ -1543,6 +1575,47 @@ export default function DashboardProfiloPage() {
         </div>
       ) : null}
 
+      {onlineSlotsPrompt ? (
+        // Spenta la consulenza online (richiesta dell'utente, docs/CHANGELOG.md
+        // §357): gli orari online restano finché non sceglie di toglierli.
+        <div
+          role="presentation"
+          onClick={closeOnBackdrop(() => void closeOnlineSlotsPrompt(false))}
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(43,32,19,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+            zIndex: 300,
+          }}
+        >
+          <div role="dialog" aria-modal="true" aria-label="Orari online in agenda" style={{ width: "100%", maxWidth: 420 }}>
+            <YStack width="100%" backgroundColor={brand.calce} borderRadius="$5" padding="$5" gap="$4">
+              <YStack gap="$2">
+                <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+                  Togli anche gli orari online?
+                </Text>
+                <Text fontSize={16} color={brand.grafite70}>
+                  Non offri più la consulenza online, ma in agenda ci sono ancora orari con posti online che i clienti possono
+                  prenotare. I lavori già fissati restano.
+                </Text>
+              </YStack>
+              <XStack gap="$3" flexWrap="wrap">
+                <Button flex={1} variant="primary" onPress={() => void closeOnlineSlotsPrompt(true)} disabled={removingOnlineSlots} opacity={removingOnlineSlots ? 0.6 : 1}>
+                  {removingOnlineSlots ? "Tolgo..." : "Togli gli orari online"}
+                </Button>
+                <Button flex={1} variant="ghost" onPress={() => void closeOnlineSlotsPrompt(false)} disabled={removingOnlineSlots}>
+                  Lasciali
+                </Button>
+              </XStack>
+            </YStack>
+          </div>
+        </div>
+      ) : null}
+
       {showAgendaPrompt ? (
         // Stesso pattern overlay già in uso ovunque nel prodotto
         // (role="dialog", backdrop, stopPropagation) — richiesta esplicita
@@ -1563,7 +1636,7 @@ export default function DashboardProfiloPage() {
             zIndex: 300,
           }}
         >
-          <div role="dialog" aria-modal="true" aria-label="Imposta la tua disponibilità" style={{ width: "100%", maxWidth: 420 }}>
+          <div role="dialog" aria-modal="true" aria-label="Profilo salvato" style={{ width: "100%", maxWidth: 420 }}>
             <YStack width="100%" backgroundColor={brand.calce} borderRadius="$5" padding="$5" gap="$4">
               <YStack gap="$2">
                 <XStack alignItems="center" gap="$2">
@@ -1573,13 +1646,13 @@ export default function DashboardProfiloPage() {
                   </Text>
                 </XStack>
                 <Text fontSize={16} color={brand.grafite70}>
-                  Vuoi impostare già ora i giorni e le fasce orarie in cui sei disponibile? Comparirà sul tuo
-                  profilo pubblico e i clienti potranno contattarti con molta più facilità.
+                  Nella tua agenda ci sono già degli orari di partenza: dal lunedì al sabato, 8–13 e 14–20. I clienti li
+                  vedono sul tuo profilo. Vuoi controllarli adesso?
                 </Text>
               </YStack>
               <XStack gap="$3" flexWrap="wrap">
-                <Button variant="primary" onPress={() => router.push("/dashboard/agenda")}>
-                  Sì, imposta la disponibilità
+                <Button variant="primary" onPress={() => router.push("/dashboard/agenda?tab=orari")}>
+                  Controlla gli orari
                 </Button>
                 <Button variant="ghost" onPress={() => router.push("/dashboard")}>
                   Più tardi

@@ -21034,3 +21034,15 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - La settimana proposta a chi non l'ha mai salvata (`DEFAULT_WEEK_TEMPLATE`) e l'orario pronto "Mattina e pomeriggio" passano agli stessi orari (prima lunedì-venerdì 8–13 e 14–18, 1 cliente a domicilio).
 
 **Verifica**: typecheck API e sito, lint, tutti i test dell'API (nuovi: `starter-hours.test.ts`, orari di partenza in `agenda-tools.test.ts`); prova su database locale: un professionista nuovo ha 108 fasce (lun-sab, 9 settimane) 8–13 e 14–20 con 5+5. Anteprime a 390 e 1440 px in `anteprime/orari-di-partenza/`. Prova e2e della settimana tipo aggiornata: il sabato ora è già nella proposta.
+
+## 357. Migliorie degli orari di partenza: orari online, ore in 24 ore, email di benvenuto
+
+**Richiesta di Luca** (26/10/2026): "effettua le 3 migliorie" proposte con la PR #151 (§356); sulla prima: "gli si potrebbe far comparire un avviso se vuole che siano eliminati le prenotazioni online già impostate in agenda".
+
+**Fatto**:
+- **Orari online quando si spegne "online"**: salvando il profilo con "Offro anche consulenza online" spento (prima acceso), se in agenda ci sono fasce con posti online da oggi in poi compare "Togli anche gli orari online?" con "Togli gli orari online" e "Lasciali". Togliendoli (`POST /agenda/online-slots/remove`, conteggio con `GET /agenda/online-slots`): le fasce miste restano solo a domicilio, quelle solo online si tolgono, anche nella settimana tipo così la notte non tornano. I lavori già fissati restano. Niente di automatico: decide il professionista.
+- **Ore sempre in 24 ore**: nuovo `ItalianTimeInput` (`apps/web/src/components/ItalianTimeInput.tsx`), stesso metodo di `ItalianDateInput` (§291): il campo ora del browser seguiva la lingua del browser e su un computer in inglese mostrava "01:00 PM". Usato in tutti i campi ora del sito: settimana tipo, fascia del giorno, lavoro esterno, data proposta nel preventivo e nella controproposta, orario proposto dal cliente. La regola del lint sulle etichette lo conosce come campo.
+- **Email di benvenuto del professionista**: una riga "Completato il profilo, la tua agenda parte già con degli orari: dal lunedì al sabato, 8–13 e 14–20. Li cambi quando vuoi da Agenda."
+- **Finestra dopo il primo salvataggio del profilo**: non chiede più di impostare la disponibilità (c'è già) ma dice che ci sono gli orari di partenza e propone "Controlla gli orari" (apre Orari di lavoro) o "Più tardi".
+
+**Verifica**: typecheck API e sito, lint, test dell'API (nuovo caso in `starter-hours.test.ts`), test dei permessi (230 rotte), prova nel browser con lingua inglese: ore in 24 ore, finestra "Togli anche gli orari online?" e fasce online a zero dopo "Togli gli orari online". Anteprime 4 e 5 in `anteprime/orari-di-partenza/`.
