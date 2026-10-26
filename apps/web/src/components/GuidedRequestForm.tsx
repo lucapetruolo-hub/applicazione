@@ -37,7 +37,7 @@ import { CategoryTiles } from "@/components/CategoryTiles";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
-import { cleanPostalCode, usePostalCodeLookup } from "@/lib/usePostalCodeLookup";
+import { cleanPostalCode, postalCodeCityProblem, usePostalCodeLookup } from "@/lib/usePostalCodeLookup";
 import { localPreviewUrl } from "@/lib/media";
 import { formatResponseTime, respondsRightAway } from "@/lib/responseTime";
 
@@ -770,10 +770,10 @@ export function GuidedRequestForm({
     // CAP scritto a mano: se è di un'altra città lo si dice subito (§357).
     // Nel dubbio o senza risposta si va avanti.
     if (next === 3 && serviceMode === "HOME" && postalCodeLookup.typed && postalCode.trim() && city.trim()) {
-      const check = await apiClient.addressPostalCodeCheck({ postalCode: postalCode.trim(), city: city.trim() }).catch(() => null);
-      if (check?.matches === false) {
+      const problem = await postalCodeCityProblem(postalCode, city);
+      if (problem) {
         setAskPostalCode(true);
-        showProblem({ message: `Il CAP ${postalCode.trim()} non risulta di ${city.trim()}: controllalo.`, field: "cap" });
+        showProblem({ message: problem, field: "cap" });
         return;
       }
     }

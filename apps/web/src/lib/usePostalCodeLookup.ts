@@ -63,3 +63,13 @@ export function usePostalCodeLookup(input: {
 export function cleanPostalCode(value: string): string {
   return value.replace(/\D/g, "").slice(0, 5);
 }
+
+/**
+ * Messaggio se il CAP scritto a mano non è della città (§357); `null` se va
+ * bene, nel dubbio o se il server non risponde: non blocca mai per sbaglio.
+ */
+export async function postalCodeCityProblem(postalCode: string, city: string): Promise<string | null> {
+  if (!postalCode.trim() || !city.trim()) return null;
+  const check = await apiClient.addressPostalCodeCheck({ postalCode: postalCode.trim(), city: city.trim() }).catch(() => null);
+  return check?.matches === false ? `Il CAP ${postalCode.trim()} non risulta di ${city.trim()}: controllalo.` : null;
+}

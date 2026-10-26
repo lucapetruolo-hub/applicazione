@@ -31,7 +31,7 @@ import { UploadingDots } from "@/components/UploadingDots";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
-import { cleanPostalCode, usePostalCodeLookup } from "@/lib/usePostalCodeLookup";
+import { cleanPostalCode, postalCodeCityProblem, usePostalCodeLookup } from "@/lib/usePostalCodeLookup";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { ReportIssueModal } from "@/components/ReportIssueModal";
 import { TimelineModal } from "@/components/TimelineModal";
@@ -385,6 +385,14 @@ export function GuidedRequestCard({
     if (recipientPhone.trim() && !isPlausiblePhoneNumber(recipientPhone)) {
       setError("Controlla il numero di telefono: sembra incompleto o troppo lungo.");
       return;
+    }
+    // CAP scritto a mano: se è di un'altra città lo si dice prima di salvare (§357).
+    if (request.serviceMode === "HOME" && postalCodeLookup.typed) {
+      const problem = await postalCodeCityProblem(postalCode, city);
+      if (problem) {
+        setError(problem);
+        return;
+      }
     }
     setIsSaving(true);
     try {

@@ -13,7 +13,7 @@ import { UploadingDots } from "@/components/UploadingDots";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { ADDRESS_NOT_CHOSEN_MESSAGE, useChosenAddress } from "@/lib/useChosenAddress";
-import { cleanPostalCode, usePostalCodeLookup } from "@/lib/usePostalCodeLookup";
+import { cleanPostalCode, postalCodeCityProblem, usePostalCodeLookup } from "@/lib/usePostalCodeLookup";
 import { SaveBar } from "@/components/SaveBar";
 import { ClientEmailVerificationCard } from "@/components/ClientEmailVerificationCard";
 import { PASSWORD_RULES_ATTRIBUTE, PasswordMatchHint, PasswordRules } from "@/components/PasswordRules";
@@ -340,6 +340,14 @@ export default function AccountPage() {
         return;
       }
       birthDate = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+    // CAP scritto a mano: se è di un'altra città lo si dice prima di salvare (§357).
+    if (postalCodeLookup.typed) {
+      const problem = await postalCodeCityProblem(postalCode, addressCity);
+      if (problem) {
+        setProfileError(problem);
+        return;
+      }
     }
 
     setIsSavingProfile(true);
