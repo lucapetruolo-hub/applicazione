@@ -84,7 +84,7 @@ export class TimelineService {
 
   /**
    * Lavori del periodo esauriti (decisione dell'utente, docs/CHANGELOG.md
-   * §358): il professionista non può rispondere per primo a una richiesta.
+   * §362): il professionista non può rispondere per primo a una richiesta.
    * Le conversazioni in cui ha già scritto o mandato un preventivo restano
    * aperte, così come i lavori già presi.
    */

@@ -108,7 +108,7 @@ export function monthlyLimit(row: SubscriptionRow | null, now: Date): number | n
  * (docs/CHANGELOG.md §162). Un pagamento non riuscito non mette in pausa:
  * Stripe riprova per qualche giorno e, se non va, chiude l'abbonamento.
  * I lavori esauriti non mettono più in pausa (decisione dell'utente,
- * docs/CHANGELOG.md §358): vedi `jobLimitReached`.
+ * docs/CHANGELOG.md §362): vedi `jobLimitReached`.
  */
 export function pauseReason(row: SubscriptionRow | null, now: Date): PauseReason | null {
   const state = subscriptionState(row, now);
@@ -119,9 +119,9 @@ export function pauseReason(row: SubscriptionRow | null, now: Date): PauseReason
 
 /**
  * Lavori del periodo esauriti (decisione dell'utente, docs/CHANGELOG.md
- * §358): il profilo resta nella ricerca e riceve le richieste, ma non può
+ * §362): il profilo resta nella ricerca e riceve le richieste, ma non può
  * mandare preventivi nuovi né la prima risposta a una richiesta, né essere
- * prenotato direttamente (l'agenda resta visibile per le richieste, §359).
+ * prenotato direttamente (l'agenda resta visibile per le richieste, §363).
  * Solo con un abbonamento in corso (prova o livello).
  */
 export function jobLimitReached(row: SubscriptionRow | null, used: number, now: Date): boolean {
@@ -136,13 +136,13 @@ export { JOB_LIMIT_REACHED_MESSAGE } from "@professionisti/shared";
 /**
  * Risposta a chi prova a prenotare direttamente (solo API, il sito passa
  * sempre da una richiesta) un professionista con i lavori esauriti: niente
- * frasi che lo facciano sembrare non disponibile (decisione dell'utente, §359).
+ * frasi che lo facciano sembrare non disponibile (decisione dell'utente, §363).
  */
 export const NOT_BOOKABLE_ONLINE = "Per questo orario manda una richiesta di preventivo al professionista.";
 
 /**
  * Su Plus e Pro lo stesso cliente conta una volta per periodo (decisione
- * dell'utente, §358); su Base e nel periodo gratuito conta ogni lavoro.
+ * dell'utente, §362); su Base e nel periodo gratuito conta ogni lavoro.
  */
 export function countsClientsOnce(row: SubscriptionRow | null, now: Date): boolean {
   const state = subscriptionState(row, now);
@@ -166,7 +166,7 @@ export function addMonthsUtc(date: Date, months: number): Date {
 
 /**
  * Periodo in cui si contano i lavori (decisione dell'utente del 26/10/2026,
- * docs/CHANGELOG.md §358): i lavori ripartono al rinnovo, non il 1° del mese,
+ * docs/CHANGELOG.md §362): i lavori ripartono al rinnovo, non il 1° del mese,
  * così lavori, livello e quota di passaggio seguono la stessa data.
  * - Periodo gratuito: blocchi di 30 giorni che finiscono alla fine della
  *   prova (con il mese regalato sono due).
@@ -258,20 +258,20 @@ export function hasLaunched(now: Date, launch: Date | null): boolean {
 
 /**
  * Fine del periodo gratuito per chi si iscrive adesso: dal lancio, o da oggi
- * se il lancio è passato. Un mese, o tre per i fondatori (§359).
+ * se il lancio è passato. Un mese, o tre per i fondatori (§363).
  */
 export function trialEndFor(now: Date, launch: Date | null, days: number = TRIAL_DAYS): Date {
   const start = launch && launch.getTime() > now.getTime() ? launch : now;
   return new Date(start.getTime() + days * TRIAL_DAY_MS);
 }
 
-/** Giorni gratuiti di una riga: 90 per i primi 100 professionisti (§359), altrimenti 30. */
+/** Giorni gratuiti di una riga: 90 per i primi 100 professionisti (§363), altrimenti 30. */
 export function trialDaysOf(row: { founderNumber?: number | null } | null): number {
   return row?.founderNumber ? FOUNDER_TRIAL_DAYS : TRIAL_DAYS;
 }
 
 /**
- * Mesi gratuiti dei fondatori (§359) per le tre caselle in Abbonamento:
+ * Mesi gratuiti dei fondatori (§363) per le tre caselle in Abbonamento:
  * `currentMonth` 1-3 durante i mesi gratuiti, 0 se non sono ancora partiti
  * (prima del lancio), null quando sono finiti. Null per chi non è fondatore.
  */
@@ -291,9 +291,9 @@ const YEAR_FALLBACK_MS = 365 * TRIAL_DAY_MS;
 
 /**
  * Quota di passaggio verso ogni livello sopra quello attuale (docs/CHANGELOG.md
- * §357): stessa formula dell'addebito vero (`upgradeFeeEurCents`). Durante la
+ * §361): stessa formula dell'addebito vero (`upgradeFeeEurCents`). Durante la
  * prova si parte da Base e si contano tutti i giorni gratuiti che restano,
- * a mesi di 30 giorni (`freePeriodUpgradeFeeEurCents`, §359); prima
+ * a mesi di 30 giorni (`freePeriodUpgradeFeeEurCents`, §363); prima
  * del lancio la prova non scorre e non si paga niente. Con un abbonamento
  * pagato si conta il periodo di Stripe (mese o anno) fino al rinnovo.
  */

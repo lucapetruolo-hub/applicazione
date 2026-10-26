@@ -51,7 +51,7 @@ export default function AdminProfessionistiPage() {
   // Link aperto da "Visualizza link" (nessuna email inviata ora).
   const [linkViewed, setLinkViewed] = useState(false);
 
-  // Primi 100 professionisti dell'offerta di lancio (docs/CHANGELOG.md §359).
+  // Primi 100 professionisti dell'offerta di lancio (docs/CHANGELOG.md §363).
   const [founders, setFounders] = useState<AdminFounders | null>(null);
   const [foundersError, setFoundersError] = useState<string | null>(null);
   useEffect(() => {
@@ -163,7 +163,7 @@ export default function AdminProfessionistiPage() {
         description="Crea il profilo di un professionista mentre sei al telefono con lui. Gli arriva un link per scegliere la password e confermare i dati: fino ad allora il profilo non compare nella ricerca."
       />
       {founders ? (
-        // Chi recluta al telefono vede subito quanti posti dell'offerta restano (§359).
+        // Chi recluta al telefono vede subito quanti posti dell'offerta restano (§363).
         <Text color={brand.grafite}>
           Offerta di lancio: <Text fontWeight="700">{founders.total - founders.taken} posti rimasti</Text> su {founders.total}.{" "}
           <a href="#fondatori" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>

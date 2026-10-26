@@ -103,7 +103,7 @@ export function RequestCard({
   stripeVerified?: boolean;
   /** Documento e selfie ancora da fare: il primo preventivo è bloccato (docs/CHANGELOG.md §253). */
   identityVerificationNeeded?: boolean;
-  /** Abbonamento: con i lavori esauriti un preventivo nuovo apre la finestra del livello superiore (docs/CHANGELOG.md §358). */
+  /** Abbonamento: con i lavori esauriti un preventivo nuovo apre la finestra del livello superiore (docs/CHANGELOG.md §362). */
   subscription?: MySubscription | null;
   /** Il professionista è passato al livello superiore senza lasciare il sito: il genitore ricarica l'abbonamento. */
   onSubscriptionChanged?: () => void;
@@ -305,7 +305,7 @@ export function RequestCard({
   const quoteWithdrawn = lead.quote?.status === "WITHDRAWN";
   const canResendQuote = lead.quote?.status === "REJECTED" && lead.quote.canResend;
   // Un preventivo nuovo (o rimandato) è fermo per la verifica dell'identità
-  // (§253) o per i lavori esauriti (§358); quello già inviato resta modificabile.
+  // (§253) o per i lavori esauriti (§362); quello già inviato resta modificabile.
   const newQuote = !lead.quote || canResendQuote;
   const identityBlocked = identityVerificationNeeded && newQuote;
   const limitBlocked = !identityBlocked && !!subscription?.limitReached && newQuote;

@@ -14,9 +14,9 @@ function dayMonth(iso: string): string {
 
 /**
  * Finestra al limite dei lavori (decisione dell'utente, docs/CHANGELOG.md
- * §358): si apre quando il professionista prova a mandare un preventivo a
+ * §362): si apre quando il professionista prova a mandare un preventivo a
  * una richiesta nuova con i lavori del periodo esauriti. Mostra la richiesta,
- * il livello sopra con una sola cifra (la quota di passaggio, §357) e la
+ * il livello sopra con una sola cifra (la quota di passaggio, §361) e la
  * data in cui i lavori ripartono. Con un abbonamento pagato il passaggio è
  * immediato e si torna al preventivo; altrimenti si paga su Stripe.
  */

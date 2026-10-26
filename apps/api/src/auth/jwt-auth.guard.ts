@@ -4,17 +4,30 @@ import type { PrismaClient } from "@professionisti/database";
 import type { Request } from "express";
 import { PRISMA } from "../prisma/prisma.module";
 
-export type AuthenticatedRequest = Request & { user: { userId: string } };
+/**
+ * `adminVerifiedAt`: quando (secondi) è stato dato il codice della verifica in
+ * due passaggi dell'area admin, se il token lo porta (docs/CHANGELOG.md §359).
+ */
+export type AuthenticatedRequest = Request & { user: { userId: string; adminVerifiedAt?: number } };
 
 /**
  * Contenuto del token di accesso: l'utente e la versione delle sessioni di
  * quando è stato emesso (controllo sicurezza, docs/CHANGELOG.md §292). I token
  * emessi prima non hanno `sv` e valgono come versione 0.
  */
-export type SessionTokenPayload = { sub: string; sv?: number };
+export type SessionTokenPayload = { sub: string; sv?: number; amfa?: number };
 
 export function sessionTokenPayload(user: { id: string; sessionVersion: number }): SessionTokenPayload {
   return { sub: user.id, sv: user.sessionVersion };
+}
+
+/**
+ * Durata del login: 30 giorni, 7 per gli admin (docs/CHANGELOG.md §359). Un
+ * account admin rubato resta aperto meno a lungo; l'area admin chiede in più
+ * il codice della verifica in due passaggi ogni ADMIN_2FA_VALID_HOURS ore.
+ */
+export function sessionExpiresIn(role: string): "7d" | "30d" {
+  return role === "ADMIN" ? "7d" : "30d";
 }
 
 /** Il token è stato emesso prima dell'ultimo cambio o recupero della password. */
@@ -63,7 +76,7 @@ export class JwtAuthGuard implements CanActivate {
       throw new ForbiddenException(SUSPENDED_ACCOUNT_MESSAGE);
     }
 
-    (request as AuthenticatedRequest).user = { userId };
+    (request as AuthenticatedRequest).user = { userId, ...(typeof payload.amfa === "number" ? { adminVerifiedAt: payload.amfa } : {}) };
     return true;
   }
 }

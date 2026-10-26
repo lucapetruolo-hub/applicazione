@@ -2,6 +2,7 @@ import { Injectable, Logger, ServiceUnavailableException } from "@nestjs/common"
 import type { AddressPlace, AddressSuggestion } from "@professionisti/shared";
 import { DailyBudget } from "../common/daily-budget";
 import { opsAlert } from "../common/ops-alert";
+import { normalizePlaceName } from "./geocoding.service";
 
 type GoogleAutocompleteResponse = {
   suggestions?: {
@@ -19,10 +20,15 @@ type GooglePlaceResponse = {
   addressComponents?: { longText: string; shortText: string; types: string[] }[];
 };
 
+type GoogleTextSearchResponse = {
+  places?: { types?: string[]; addressComponents?: { longText: string; shortText: string; types: string[] }[] }[];
+};
+
 const TIMEOUT_MS = 5000;
 /** Tetti giornalieri (§293): ben sopra l'uso normale di oggi, sotto una bolletta a sorpresa. */
 const SUGGESTIONS_DAILY_LIMIT = 5000;
 const PLACES_DAILY_LIMIT = 2000;
+const POSTAL_CODE_DAILY_LIMIT = 2000;
 /**
  * Dopo un errore di Google, per qualche minuto il sito apre il modulo già con
  * i campi separati (§324): meglio che vederlo cambiare mentre si scrive.
@@ -45,6 +51,10 @@ export class AddressSuggestionsService {
   );
   private readonly placesBudget = new DailyBudget(PLACES_DAILY_LIMIT, () =>
     this.alert("address-place-budget", "Tetto giornaliero dei dettagli di indirizzo raggiunto: fino a mezzanotte si scrive l'indirizzo a mano."),
+  );
+
+  private readonly postalCodeBudget = new DailyBudget(POSTAL_CODE_DAILY_LIMIT, () =>
+    this.alert("postal-code-budget", "Tetto giornaliero dei CAP cercati raggiunto: fino a mezzanotte il CAP si scrive a mano."),
   );
 
   /** Nel log e, una volta l'ora, su Sentry: il cliente vede solo i campi separati (§324). */
@@ -126,6 +136,31 @@ export class AddressSuggestionsService {
       if (!p) return [];
       return [{ id: p.placeId, main: p.structuredFormat?.mainText?.text ?? p.text?.text ?? "", secondary: p.structuredFormat?.secondaryText?.text ?? "" }];
     });
+  }
+
+  /**
+   * CAP di via e civico (docs/CHANGELOG.md §357): Google non lo dà per una via
+   * senza civico nelle città con più CAP, il modulo di richiesta lo cerca
+   * appena si scrive il civico. Places API (New), ricerca testuale: il testo
+   * va nel corpo della richiesta, come per i suggerimenti. `null` se non lo
+   * trova, se l'indirizzo è di un altro comune o se Google non risponde: il
+   * cliente lo scrive a mano.
+   */
+  async postalCodeFor(input: { street: string; houseNumber: string; city: string }): Promise<string | null> {
+    const key = process.env.GOOGLE_MAPS_API_KEY?.trim();
+    if (!key || !this.postalCodeBudget.take()) return null;
+    const data = await this.call<GoogleTextSearchResponse>("https://places.googleapis.com/v1/places:searchText", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": "places.types,places.addressComponents" },
+      body: JSON.stringify({ textQuery: `${input.street} ${input.houseNumber}, ${input.city}`, languageCode: "it", regionCode: "it", pageSize: 1 }),
+    }).catch(() => null);
+    const place = data?.places?.[0];
+    if (!place?.types?.some((t) => t === "street_address" || t === "premise" || t === "subpremise")) return null;
+    const component = (type: string) => place.addressComponents?.find((c) => c.types.includes(type))?.longText;
+    const comune = component("administrative_area_level_3") ?? component("locality");
+    if (!comune || normalizePlaceName(comune) !== normalizePlaceName(input.city)) return null;
+    const postalCode = component("postal_code");
+    return postalCode && /^\d{5}$/.test(postalCode) ? postalCode : null;
   }
 
   async place(id: string, session: string): Promise<AddressPlace> {

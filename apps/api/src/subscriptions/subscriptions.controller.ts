@@ -3,7 +3,7 @@ import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard"
 import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
 import { SubscriptionsService } from "./subscriptions.service";
 
-/** Posti rimasti dell'offerta di lancio, per la pagina prezzi (pubblico, §359). */
+/** Posti rimasti dell'offerta di lancio, per la pagina prezzi (pubblico, §363). */
 @Controller("subscriptions")
 export class FounderSpotsController {
   constructor(private readonly subscriptionsService: SubscriptionsService) {}
@@ -14,7 +14,7 @@ export class FounderSpotsController {
   }
 }
 
-/** Area admin: i primi 100 professionisti dell'offerta di lancio (§359). */
+/** Area admin: i primi 100 professionisti dell'offerta di lancio (§363). */
 @UseGuards(JwtAuthGuard, AdminGuard)
 @Controller("admin/founders")
 export class AdminFoundersController {

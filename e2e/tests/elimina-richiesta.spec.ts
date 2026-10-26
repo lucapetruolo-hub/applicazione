@@ -2,6 +2,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@professionisti/database";
 import { API_URL, WEB_URL } from "../fixtures/env";
+import { testToken } from "../fixtures/preventivi";
 
 /**
  * "Elimina richiesta" del cliente (docs/CHANGELOG.md §343): una sola voce,
@@ -17,7 +18,7 @@ let stamp = 0;
 let categoryId = "";
 let profileId = "";
 let proEmail = "";
-let adminEmail = "";
+let adminId = "";
 
 test.beforeEach(({}, testInfo) => {
   test.skip(testInfo.project.name !== "telefono-italia", "Basta un telefono: il percorso non dipende dal fuso.");
@@ -37,6 +38,7 @@ test.beforeAll(async () => {
     data: {
       role: "ADMIN",
       adminRoles: ["SUPER"],
+      adminTotpEnabledAt: new Date(),
       email: `admin-elimina-${stamp}@test.it`,
       passwordHash,
       name: "Admin",
@@ -49,7 +51,7 @@ test.beforeAll(async () => {
   });
   profileId = profile.id;
   proEmail = `pro-elimina-${stamp}@test.it`;
-  adminEmail = `admin-elimina-${stamp}@test.it`;
+  adminId = admin.id;
 });
 
 test.afterAll(async () => {
@@ -242,7 +244,8 @@ test("l'admin decide su una richiesta eliminata, che resta come prova", async ()
   expect(reportResponse.ok).toBe(true);
   const { id: reportId } = (await reportResponse.json()) as { id: string };
 
-  const adminToken = await login(adminEmail);
+  // Già passato dal codice della verifica in due passaggi (§359).
+  const adminToken = testToken(adminId, { amfa: Math.floor(Date.now() / 1000) });
   const admin = (path: string, init: RequestInit = {}) =>
     fetch(`${API_URL}${path}`, { ...init, headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` } });
   const target = (await (await admin(`/admin/reports/${reportId}/target`)).json()) as { exists: boolean; text: string };

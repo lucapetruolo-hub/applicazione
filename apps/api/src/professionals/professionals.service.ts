@@ -789,7 +789,7 @@ export class ProfessionalsService {
       // Primo mese gratis per tutti (docs/CHANGELOG.md §161).
       await this.subscriptionsService.ensureTrial(profile.id);
     }
-    // Offerta di lancio (§359): uno dei primi 100 posti a chi completa il
+    // Offerta di lancio (§363): uno dei primi 100 posti a chi completa il
     // profilo da sé; un profilo creato da un operatore lo prende alla conferma.
     if ((isFirstTimeCreation && !options.byOperator) || activatesInvite) {
       await this.subscriptionsService.claimFounderSpot(profile.id);
@@ -1704,7 +1704,7 @@ export class ProfessionalsService {
   async getPublicAgenda(professionalProfileId: string): Promise<ProfessionalAgenda> {
     // Stessi filtri della pagina pubblica; in pausa o bloccato per le
     // richieste non si prenota, quindi nessuna fascia (CLAUDE.md §5.11,
-    // §293). Con i lavori esauriti l'agenda resta (§359): serve al cliente
+    // §293). Con i lavori esauriti l'agenda resta (§363): serve al cliente
     // per scegliere quando nella richiesta, e il professionista deve poter
     // ricevere richieste (decisione dell'utente).
     const profile = await this.prisma.professionalProfile.findUnique({
@@ -1809,7 +1809,7 @@ export class ProfessionalsService {
     if (profile.pausedAt || professionalRestrictions(profile, new Date()).blocked) {
       throw new ConflictException(NOT_ACCEPTING_REQUESTS);
     }
-    // Lavori esauriti (§358): niente prenotazione diretta, solo richieste (§359).
+    // Lavori esauriti (§362): niente prenotazione diretta, solo richieste (§363).
     if (profile.jobLimitReachedAt) {
       throw new ConflictException(NOT_BOOKABLE_ONLINE);
     }

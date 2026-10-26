@@ -21020,7 +21020,65 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: typecheck API e sito, lint, test dell'API (5 nuovi su `requestSentEmail`), anteprime a 390 e 1280 px con `email:preview`.
 
-## 356. Abbonamento: livelli sovrapposti sul telefono
+## 356. "Avanti" che non faceva nulla nel passo "Dove" della richiesta
+
+**Segnalazione dell'utente** (26/10/2026, thread "Sbloccare Avanti nella richiesta urgente"): su /urgente, passo "Dove", con nome, telefono, indirizzo "Via Cesare Battisti, Roma RM" e civico compilati, "Avanti" non andava avanti e non diceva perché.
+
+**Causa**: scegliendo una via senza civico in una città con più CAP, Google non dà il CAP (provato sul server in produzione: `postalCode: null` per "Via Cesare Battisti, Roma"). Il controllo del passo chiedeva "Indica il CAP." sotto il campo CAP, ma con i suggerimenti attivi quel campo non c'è nel modulo (c'è solo nel caso "suggerimenti non disponibili"): l'errore non compariva da nessuna parte. Vale per la richiesta normale e per quella urgente (stesso `GuidedRequestForm`).
+
+**Decisioni**:
+- Accanto al "Numero civico" (che già compariva quando Google non lo dà) compaiono anche "CAP" e, se manca, "Provincia", uno accanto all'altro. Il CAP accetta solo 5 cifre. Restano visibili mentre si scrive.
+- Rete di sicurezza: se un errore riguarda un campo che non è sulla pagina, il messaggio compare nella riga rossa sopra i pulsanti (`focusGuidedField` dice se ha trovato il campo). Copre anche "Scegli la città dall'elenco dei comuni", che a domicilio con i suggerimenti non ha un campo città.
+
+**Verifica**: typecheck e lint di web; prova nel browser con le risposte del server simulate (via di Roma senza CAP): compare il campo CAP, senza CAP "Avanti" mostra "Indica il CAP." sotto il campo, col CAP si arriva al riepilogo.
+
+## 357. CAP compilato da solo e controllato con la città
+
+**Richiesta esplicita dell'utente** (26/10/2026, stesso thread del §356): "effettua le due migliorie, inserisci da solo il cap ma dai la possibilità di modificarlo".
+
+**Decisioni**:
+- **CAP da solo**: quando Google non dà il CAP con l'indirizzo scelto, appena si scrive il civico (dopo 0,6 secondi di pausa) il sito lo chiede al nostro server, `GET /address/postal-code?street=&number=&city=`, che usa la ricerca testuale di Places API (New) con la chiave server (`AddressSuggestionsService.postalCodeFor`). Via e civico vanno nel corpo della richiesta a Google, mai nell'indirizzo: con la Geocoding API (GET) CodeQL segnalava cinque `js/request-forgery` critici. Accettati solo una via dall'aspetto di una via, un civico come "12", "12A" o "12/3" e un comune dell'elenco ISTAT (si usa il suo nome dall'elenco). Il CAP compare nel campo con la riga "CAP trovato in automatico: se non è giusto, cambialo." Il campo resta modificabile; scritto a mano non viene più sovrascritto. Se il CAP non si trova o Google non risponde, si scrive a mano come prima. Vale anche con i campi separati (suggerimenti non disponibili).
+- **Anche in "Modifica richiesta" e in Impostazioni dell'account** (seconda richiesta dell'utente, "effettua le migliorie"): stessa ricerca del CAP (`apps/web/src/lib/usePostalCodeLookup.ts`, usato dai tre moduli). Prima, scegliendo una via senza CAP, restava il CAP del vecchio indirizzo: ora il campo si svuota e si ricompila da via e civico. Il CAP accetta solo 5 cifre anche lì.
+- **CAP della città**: un CAP scritto a mano si controlla quando si preme "Avanti", con `GET /address/postal-code/check?postalCode=&city=` (`GeocodingService.postalCodeMatchesCity`, geocodifica del solo CAP, ricostruito cifra per cifra prima di metterlo nell'indirizzo). Blocca solo quando è sicuro: CAP di un'altra provincia, oppure di un solo comune diverso da quello scelto. Messaggio sotto il campo: "Il CAP 04100 non risulta di Roma: controllalo." Nel dubbio (CAP di più località) o senza risposta di Google si va avanti.
+- Le due rotte sono aperte a tutti come i suggerimenti: limite di 30 al minuto per IP e un tetto giornaliero di 2000 chiamate ciascuna (`DailyBudget`, avviso su Sentry al tetto). Aggiunte alle rotte pubbliche del test dei permessi (`apps/api/scripts/access-policy.mjs`).
+
+- **Controllo del CAP anche al salvataggio** di Impostazioni dell'account e di "Modifica richiesta" (terza richiesta dell'utente): un CAP scritto a mano di un'altra città ferma il salvataggio con lo stesso messaggio. Un CAP già salvato e non toccato non si ricontrolla. Funzione comune `postalCodeCityProblem` in `usePostalCodeLookup.ts`.
+- **Stelle del preventivo che portano alle recensioni** (trovato dalla CI su questa PR): il link `/professionista/<id>#recensioni` (§342) passava dal rimando all'indirizzo con nome e città (§295), e nella navigazione interna di Next il `#recensioni` si perdeva: il profilo si apriva in cima. La prova `stelle-preventivi` passava solo quando controllava l'indirizzo prima del rimando. Ora è un link normale (`<a>`), il browser tiene il `#` dopo il rimando; la prova si aspetta l'indirizzo con nome e città.
+
+**Verifica**: typecheck di web e api, lint di web, 18 test della geocodifica e dei suggerimenti (3 nuovi sul CAP); prova nel browser con le risposte del server simulate: CAP trovato dopo il civico, CAP di Latina con Roma bloccato con il messaggio, CAP corretto a mano arriva al riepilogo.
+
+## 358. Ricerca: un clic sulle prestazioni apre il profilo
+
+**Richiesta esplicita dell'utente** (26/10/2026): "a chi effettua una ricerca, se clicca sulla parte relativa alle prestazioni offerte, attualmente non succede niente, è sbagliato, fagli aprire almeno il profilo del professionista".
+
+**Causa**: l'area "orari e prezzi" della scheda ferma il clic (scelta del §206/§349: sull'agenda devono rispondere solo i pulsanti), e l'elenco delle prestazioni stava dentro quell'area.
+
+**Decisioni**:
+- Un clic in qualunque punto dell'elenco delle prestazioni apre il profilo, come il resto della scheda ("Mostra tutte" continua ad aprire l'elenco). Vale anche in "Professionisti salvati" (stessa scheda).
+- Provata prima una versione con ogni prestazione come link al profilo già sulla sezione "Prestazioni", con freccina e riga evidenziata: tolta su decisione dell'utente ("non serve a niente cliccare sulla singola prestazione se poi ti porta sempre al profilo"). Nessun segno in più sulle righe.
+- Da tastiera e con i lettori di schermo il profilo si apre dal link del nome, come prima: nessun punto di tabulazione in più.
+- L'agenda resta com'era: lo spazio vuoto tra gli orari non apre il profilo (richiesta del §206).
+
+**Verifica**: typecheck e lint; sito in locale con prestazioni di prova, clic a 1440 px e tocco a 390 px su una prestazione: si apre il profilo; "Mostra tutte" apre l'elenco senza cambiare pagina.
+
+## 359. Area admin: verifica in due passaggi, login admin più corto, email a ogni accesso, bootstrap solo per il primo admin
+
+**Richiesta esplicita dell'utente** (26/10/2026, thread "Rafforzare la sicurezza dell'area admin"): "effettua le 3 migliorie", cioè le tre proposte dopo la spiegazione di come si entra nell'area admin: verifica in due passaggi per gli admin, togliere il codice di bootstrap, sessione admin più corta con avviso a ogni accesso. Sul bootstrap Luca ha precisato che il database gratuito di Render si azzera e il primo admin va ricreato: `ADMIN_BOOTSTRAP_SECRET` resta su Render fino al lancio (punto 28 della checklist).
+
+**Decisioni**:
+- **Verifica in due passaggi obbligatoria** per tutta l'area admin: `AdminGuard` rifiuta con `code: "ADMIN_2FA_SETUP"` chi non l'ha attivata e con `"ADMIN_2FA_REQUIRED"` chi non ha dato il codice nelle ultime 8 ore (`ADMIN_2FA_VALID_HOURS`). Codici a 6 cifre ogni 30 secondi (TOTP, RFC 6238) scritti con `node:crypto` in `apps/api/src/admin/admin-two-factor.ts`, validi in qualunque app (Google o Microsoft Authenticator, Password dell'iPhone); lo stesso codice non vale due volte (`adminTotpLastStep`). Il codice QR lo disegna l'API con `qrcode-generator` (nessuna dipendenza, MIT), il sito lo mostra come immagine. La chiave è cifrata come gli IBAN (`FISCAL_DATA_KEY`).
+- **Rotte** `apps/api/src/admin/admin-two-factor.controller.ts` (`/admin/2fa`, `/setup`, `/enable`, `/verify`, 5 al minuto): riuscito il codice, l'API dà un token nuovo con `amfa` (ora del codice) che `JwtAuthGuard` passa ad `AdminGuard`. Cinque codici sbagliati di fila fermano l'account per 15 minuti con email ("Troppi codici sbagliati": chi ci prova conosce già la password).
+- **Telefono perso** (scelta di Luca sulla card, dopo "è troppo complessa la soluzione se si perde il telefono": niente codici di recupero da salvare, né un codice fisso scelto dall'admin, che sarebbe solo una seconda password): "Ho perso il telefono" manda un codice di 6 cifre all'email dell'account (`/admin/2fa/reset-code`, 15 minuti, uno al minuto, nel database solo l'impronta); scritto il codice (`/reset-code/confirm`) la verifica si azzera, le altre sessioni si chiudono, arriva l'email "Verifica in due passaggi azzerata" e il sito mostra subito il collegamento del telefono nuovo. Servono quindi password ed email: chi ha rubato solo la password resta fuori. Senza email un altro super admin azzera la verifica dalla scheda utente (`/admin/2fa/reset/:id`). Righe nel registro azioni per attivazione e azzeramenti.
+- **Sito**: `AdminTwoFactorGate` nel layout di `/admin`, prima di mostrare menu e dati; stato riletto a ogni cambio pagina, così dopo 8 ore il codice viene chiesto alla navigazione successiva. Sei caselle come `EmailCodeForm` (incolla, `one-time-code`, parte alla sesta cifra); riuscito il primo codice l'area admin si apre subito. Link "Sei sul telefono? Apri nell'app" (`otpauth://`), chiave da scrivere a mano con il promemoria che la O è sempre una lettera. `ApiError` ha ora `code`.
+- **Login degli admin più corto**: 7 giorni invece di 30 (`sessionExpiresIn` in `jwt-auth.guard.ts`), più il codice ogni 8 ore.
+- **Email a ogni ingresso nell'area admin** (`adminAccessEmail`: dispositivo e ora, "Non ero io: cambia la password"), all'attivazione e all'azzeramento. Messaggio di servizio, parte sempre; un errore d'invio non blocca l'accesso.
+- **Avviso a tutti i super admin** (Luca, dopo "e se un hacker entra lo stesso nell'account super admin?": "effettua solo miglioria 2"): quando si nomina o si toglie un admin, si cambiano i suoi ruoli o si azzera una verifica in due passaggi (da un altro super admin o con il codice via email), tutti i super admin ricevono un'email con chi l'ha fatto, a chi e quando, e il pulsante "Apri il registro azioni" (`AdminSecurityAlertsService`, `adminSecurityAlertEmail`). Così un account rubato che si crea un complice o toglie la verifica a un altro non passa inosservato. Un errore d'invio non blocca mai l'azione. Scartate per ora: chiedere di nuovo il codice dell'app sulle azioni pericolose, un solo super admin.
+- **Bootstrap**: `/admin/promuovi` rifiuta se esiste già un admin ("i nuovi admin si nominano dalla pagina Utenti"); con un database nuovo, senza admin, torna a funzionare da solo.
+- **Dopo il deploy**: chi è già admin, aprendo l'area admin, trova subito l'attivazione. Va fatta subito, prima che possa farla qualcun altro con la password rubata.
+
+**Verifica**: typecheck e lint di API, sito ed e2e; 670 test dell'API (nuovi `admin-two-factor.test.ts` e `admin-security-alerts.test.ts` con gli esempi ufficiali di RFC 6238, 4 nuovi su `AdminGuard`); prova nel browser nuova `e2e/tests/admin-due-passaggi.spec.ts` (attivazione con codice sbagliato e giusto, altro dispositivo bloccato fino al codice, telefono perso con il codice via email e collegamento del telefono nuovo) e le prove admin esistenti (segnalazioni, richieste eliminate) passate con la verifica; test dei permessi (`access-matrix.mjs`) con gli admin già verificati, un controllo nuovo per rotta admin (super admin senza codice dell'app: 403) e le rotte `/admin/2fa` riservate agli admin (`role: "admin"` in `access-policy.mjs`); con l'API locale: login admin di 7 giorni e cliente di 30, `/admin/overview` 403 con `ADMIN_2FA_SETUP`, bootstrap rifiutato con un admin già presente. Foto a 390 px e 1280 px in `anteprime/admin-due-passaggi/`.
+
+## 360. Abbonamento: livelli sovrapposti sul telefono
 
 **Segnalazione** (26/10/2026, thread "Versione più profonda del progetto verso il lancio"): nelle anteprime fatte con l'account professionista di Luca, in `/dashboard/abbonamento` da telefono i riquadri Base, Plus e Pro si sovrapponevano e il testo non si leggeva. Luca l'ha visto anche dal suo telefono.
 
@@ -21030,7 +21088,7 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: pagina aperta in locale con le risposte dell'API simulate (prova, livello Base, 1 lavoro su 5), a 390 px le tessere sono alte 207 px e una sotto l'altra; a 1440 px restano tre colonne uguali come prima.
 
-## 357. Nuovi prezzi dell'abbonamento: + IVA, mensile o annuale, quota di passaggio
+## 361. Nuovi prezzi dell'abbonamento: + IVA, mensile o annuale, quota di passaggio
 
 **Richiesta esplicita dell'utente** (26/10/2026, thread "Versione più profonda del progetto verso il lancio", poi "Portare il nuovo abbonamento nel sito"): Luca ha scelto "Tutto il nuovo modello" per portare nel sito le decisioni del 26/10 (spec in `analisi/nuovo-modello-abbonamento.md` nei file del progetto). Questa è la prima parte (prezzi e pagine); seguono le regole al limite e i 3 mesi gratis ai primi 100.
 
@@ -21047,7 +21105,7 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: typecheck di web e api, `pnpm lint`, 660 test dell'API (nuovi su quota di passaggio e `upgradeQuotes`: Base → Plus con 30, 20, 7 e 1 giorno rimasti 54 €, 39,33 €, 20,27 €, 11,47 €); pagine aperte in locale con le risposte dell'API simulate, da telefono e da computer.
 
-## 358. Lavori esauriti: si resta nella ricerca, i lavori ripartono al rinnovo
+## 362. Lavori esauriti: si resta nella ricerca, i lavori ripartono al rinnovo
 
 **Richiesta**: seconda parte del nuovo abbonamento (Luca, 26/10/2026, "Tutto il nuovo modello", poi "continua"; scheda di decisione "Al rinnovo").
 
@@ -21055,7 +21113,7 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - I lavori si azzerano **al rinnovo**, non il 1° del mese: lavori, livello e quota di passaggio seguono la stessa data. Con l'annuale i lavori ripartono ogni mese dal giorno di attivazione; nel periodo gratuito a blocchi di 30 giorni che finiscono alla fine della prova.
 - Finiti i lavori il profilo **resta nella ricerca** e riceve le richieste (prima andava in pausa), ma non può mandare preventivi nuovi né rispondere per primo a una richiesta. I preventivi già mandati restano validi.
 - Su **Plus e Pro lo stesso cliente conta una volta** per periodo. Detto solo ai professionisti (pagina prezzi su Plus, Abbonamento, domande frequenti, Termini), mai ai clienti.
-- Finestra al limite: titolo "Hai esaurito l'abbonamento Base", la richiesta a cui si sta rispondendo, il livello sopra con una sola cifra (la quota del §357) e la data, pulsanti "Passa a Plus e rispondi" e "Aspetto il [data]".
+- Finestra al limite: titolo "Hai esaurito l'abbonamento Base", la richiesta a cui si sta rispondendo, il livello sopra con una sola cifra (la quota del §361) e la data, pulsanti "Passa a Plus e rispondi" e "Aspetto il [data]".
 
 **Scelta nostra, da confermare con Luca**: al limite l'agenda non si prenota online (la prenotazione crea un lavoro senza preventivo, quindi supererebbe il limite); il cliente vede "al momento non accetta prenotazioni online" e può mandare una richiesta.
 
@@ -21067,9 +21125,9 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: typecheck di web e api, `pnpm lint`, test dell'API (nuovi su periodo dal rinnovo, fine mese, annuale, prova, stesso cliente e limite senza pausa); pagine aperte in locale con le risposte dell'API simulate, da telefono e da computer.
 
-## 359. Primi 100 professionisti: 3 mesi gratis; finestra dei lavori esauriti anche in chat
+## 363. Primi 100 professionisti: 3 mesi gratis; finestra dei lavori esauriti anche in chat
 
-**Richiesta**: Luca, 26/10/2026, "effettua miglioria 1 e 3" dopo la seconda parte del nuovo abbonamento (§358). La miglioria 2 (togliere "Prenota online" dal profilo con i lavori esauriti) non si fa: "al professionista si deve dare la possibilità di ricevere richieste".
+**Richiesta**: Luca, 26/10/2026, "effettua miglioria 1 e 3" dopo la seconda parte del nuovo abbonamento (§362). La miglioria 2 (togliere "Prenota online" dal profilo con i lavori esauriti) non si fa: "al professionista si deve dare la possibilità di ricevere richieste".
 
 **Miglioria 1, finestra in chat**: con i lavori esauriti la prima risposta del professionista a una richiesta nuova apre la stessa finestra del preventivo ("Hai esaurito l'abbonamento Base", la richiesta, il livello sopra, una cifra) invece del messaggio d'errore. `ConversationView` riconosce l'errore dell'API dal testo condiviso `JOB_LIMIT_REACHED_MESSAGE` (spostato in `packages/shared/src/plans.ts`); passato di livello senza lasciare il sito, il messaggio scritto parte da solo.
 
@@ -21086,5 +21144,5 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Aggiunte dopo (Luca: "effettua le 2 migliorie", senza scritte che facciano sembrare il professionista non disponibile)**:
 - **Admin**: in `/admin/professionisti` la sezione "Offerta di lancio: N posti presi su 100" con l'elenco dei fondatori (numero, attività, email, comune, iscrizione, gratis fino al, livello scelto); `GET /admin/founders` (`RequireAdminScope("ANY")`).
-- **Agenda con i lavori esauriti**: rivista la scelta del §358. Controllando il sito, l'agenda pubblica non prenota mai da sola: serve al cliente per scegliere quando nella richiesta di preventivo (`GuidedRequestForm`) e per proporre un'altra data su un preventivo già mandato (`QuoteCard`). Svuotarla nascondeva l'agenda dal profilo e rompeva la proposta di data sui preventivi ancora validi. Ora resta visibile come sempre e non serve nessuna riga al suo posto; resta fermata solo la prenotazione diretta `POST /professionals/:id/agenda/book`, che il sito non usa, con un messaggio neutro ("Per questo orario manda una richiesta di preventivo al professionista."). Termini e CLAUDE.md aggiornati.
+- **Agenda con i lavori esauriti**: rivista la scelta del §362. Controllando il sito, l'agenda pubblica non prenota mai da sola: serve al cliente per scegliere quando nella richiesta di preventivo (`GuidedRequestForm`) e per proporre un'altra data su un preventivo già mandato (`QuoteCard`). Svuotarla nascondeva l'agenda dal profilo e rompeva la proposta di data sui preventivi ancora validi. Ora resta visibile come sempre e non serve nessuna riga al suo posto; resta fermata solo la prenotazione diretta `POST /professionals/:id/agenda/book`, che il sito non usa, con un messaggio neutro ("Per questo orario manda una richiesta di preventivo al professionista."). Termini e CLAUDE.md aggiornati.
 

@@ -61,11 +61,11 @@ function pausesActive(now: Date): boolean {
  * Abbonamento unico a livelli (CLAUDE.md §6, docs/CHANGELOG.md §161):
  * prova gratuita di un mese per tutti, mese regalato a sorpresa a chi non
  * ha ancora avuto lavori, conteggio dei lavori accettati del periodo (dal
- * rinnovo, §358) con avvisi all'80% e al 100%. Account in pausa (fuori dalla
+ * rinnovo, §362) con avvisi all'80% e al 100%. Account in pausa (fuori dalla
  * ricerca, niente nuove richieste) a fine prova senza livello o ad
  * abbonamento concluso (docs/CHANGELOG.md §162); a lavori esauriti resta
  * nella ricerca ma non può mandare preventivi né rispondere per primo
- * (`jobLimitReachedAt`, §358). Rinnovo automatico via Stripe con avviso
+ * (`jobLimitReachedAt`, §362). Rinnovo automatico via Stripe con avviso
  * prima di ogni rinnovo.
  */
 @Injectable()
@@ -92,7 +92,7 @@ export class SubscriptionsService {
   }
 
   /**
-   * Offerta di lancio (decisione dell'utente, docs/CHANGELOG.md §359): ai
+   * Offerta di lancio (decisione dell'utente, docs/CHANGELOG.md §363): ai
    * primi 100 professionisti con il profilo completo (non quelli di prova,
    * non i profili creati da un operatore finché non li confermano) 3 mesi
    * gratis dal lancio al posto del mese gratuito. Idempotente; chi ha già un
@@ -125,7 +125,7 @@ export class SubscriptionsService {
     return false;
   }
 
-  /** Fondatori in ordine di posto, per l'area admin (§359). */
+  /** Fondatori in ordine di posto, per l'area admin (§363). */
   async listFounders(now = new Date()): Promise<AdminFounders> {
     const subs = await this.prisma.subscription.findMany({
       where: { founderNumber: { not: null } },
@@ -157,7 +157,7 @@ export class SubscriptionsService {
 
   /**
    * Lavori accettati nel periodo in corso (dal rinnovo, docs/CHANGELOG.md
-   * §358): prenotazioni nate nel periodo, tranne quelle annullate dal
+   * §362): prenotazioni nate nel periodo, tranne quelle annullate dal
    * cliente (il professionista non ne ha colpa). Su Plus e Pro lo stesso
    * cliente conta una volta.
    */
@@ -205,7 +205,7 @@ export class SubscriptionsService {
 
   /**
    * Mette in pausa o riattiva il profilo secondo l'abbonamento, e segna o
-   * toglie i lavori esauriti del periodo (§358). Avvisa quando va in pausa
+   * toglie i lavori esauriti del periodo (§362). Avvisa quando va in pausa
    * per fine prova o fine abbonamento (il limite raggiunto ha già il suo
    * avviso). I profili dimostrativi non vanno mai in pausa né al limite, e
    * nessuno ci va finché i pagamenti non sono attivi (senza
@@ -353,7 +353,7 @@ export class SubscriptionsService {
 
   /**
    * Ogni ora: mette in pausa chi ha finito la prova o l'abbonamento e
-   * toglie il limite a chi riparte col periodo nuovo (al rinnovo, §358). Scrive solo quando lo stato cambia;
+   * toglie il limite a chi riparte col periodo nuovo (al rinnovo, §362). Scrive solo quando lo stato cambia;
    * i profili sono pochi alla scala di lancio (CLAUDE.md §7).
    */
   @Cron(CronExpression.EVERY_HOUR)
@@ -381,7 +381,7 @@ export class SubscriptionsService {
     const launch = launchDate();
     if (!hasLaunched(now, launch)) return 0;
     const launchTrialEnd = trialEndFor(launch!, launch);
-    // I fondatori hanno tre mesi dal lancio (§359).
+    // I fondatori hanno tre mesi dal lancio (§363).
     const founderTrialEnd = trialEndFor(launch!, launch, FOUNDER_TRIAL_DAYS);
     const founders = await this.prisma.subscription.updateMany({
       where: { status: "TRIALING", stripeSubscriptionId: null, founderNumber: { not: null }, createdAt: { lt: launch! }, trialEndsAt: { lt: founderTrialEnd } },
@@ -446,7 +446,7 @@ export class SubscriptionsService {
     for (const sub of subs) {
       try {
         const userId = sub.professionalProfile.userId;
-        // Ai fondatori niente mese a sorpresa: hanno già tre mesi (§359).
+        // Ai fondatori niente mese a sorpresa: hanno già tre mesi (§363).
         if (!sub.bonusMonthGrantedAt && !sub.founderNumber) {
           const jobs = await this.prisma.booking.count({ where: { professionalProfileId: sub.professionalProfileId } });
           if (jobs === 0) {

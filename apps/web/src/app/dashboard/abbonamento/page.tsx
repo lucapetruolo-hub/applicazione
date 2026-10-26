@@ -35,7 +35,7 @@ import { SkeletonBlock } from "@/components/Skeleton";
  * è stato dato, mai prima (è una sorpresa).
  *
  * Più leggibile a colpo d'occhio (decisione dell'utente, docs/CHANGELOG.md
- * §357): ogni livello con prezzo + IVA, lavori, il riquadro "Se passi ora"
+ * §361): ogni livello con prezzo + IVA, lavori, il riquadro "Se passi ora"
  * con una sola cifra e un pulsante; rinnovo, cambio di livello e
  * annullamento in tre schede da una frase. Mensile o annuale si sceglie solo
  * finché non c'è un abbonamento pagato.
@@ -57,7 +57,7 @@ function dayMonth(iso: string): string {
 
 /**
  * "Lavori dal 18 ottobre al 17 novembre": i lavori ripartono al rinnovo, non
- * il 1° del mese (decisione dell'utente, docs/CHANGELOG.md §358).
+ * il 1° del mese (decisione dell'utente, docs/CHANGELOG.md §362).
  */
 function usagePeriodLabel(sub: MySubscription): string {
   // Il rinnovo cade di giorno: l'ultimo giorno intero del periodo è quello prima.
@@ -82,7 +82,7 @@ function statusText(sub: MySubscription): { title: string; detail: string } {
   const trialFuture = sub.trialEndsAt && new Date(sub.trialEndsAt).getTime() > Date.now();
   switch (sub.state) {
     case "TRIAL":
-      // Primi 100 professionisti: 3 mesi gratis invece di uno (docs/CHANGELOG.md §359).
+      // Primi 100 professionisti: 3 mesi gratis invece di uno (docs/CHANGELOG.md §363).
       if (sub.founder) {
         return {
           title: `${sub.founder.months} mesi gratis · livello Base`,
@@ -121,7 +121,7 @@ function statusText(sub: MySubscription): { title: string; detail: string } {
 
 /**
  * Tre caselle dei mesi gratuiti dei primi 100 professionisti (decisione
- * dell'utente, docs/CHANGELOG.md §359): usato, in corso, da fare.
+ * dell'utente, docs/CHANGELOG.md §363): usato, in corso, da fare.
  */
 function FounderMonths({ founder, trialEndsAt }: { founder: NonNullable<MySubscription["founder"]>; trialEndsAt: string | null }) {
   const current = founder.currentMonth ?? 0;
@@ -506,7 +506,7 @@ function AbbonamentoContent() {
                     </Text>
                   </XStack>
                   {tier.tier === "PLUS" ? (
-                    // Su Plus e Pro lo stesso cliente conta una volta (§358); su Pro non c'è limite, quindi si dice solo su Plus.
+                    // Su Plus e Pro lo stesso cliente conta una volta (§362); su Pro non c'è limite, quindi si dice solo su Plus.
                     <XStack alignItems="center" gap="$2">
                       <Check size={18} strokeWidth={2.25} color={brand.cianografiaScuro} />
                       <Text color={brand.grafite}>Lo stesso cliente conta una volta al mese</Text>

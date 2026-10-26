@@ -134,7 +134,7 @@ export class QuotesService {
     }
 
     // Lavori del periodo esauriti (decisione dell'utente, docs/CHANGELOG.md
-    // §358): niente preventivi nuovi finché non passa al livello superiore o
+    // §362): niente preventivi nuovi finché non passa al livello superiore o
     // non ripartono i lavori. Un preventivo già mandato resta modificabile.
     if ((!existingQuote || isResend) && professionalProfile.jobLimitReachedAt) {
       throw new ForbiddenException(JOB_LIMIT_REACHED_MESSAGE);
