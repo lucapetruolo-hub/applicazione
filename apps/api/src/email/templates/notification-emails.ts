@@ -10,6 +10,8 @@ import {
   ONLINE_LONG_HOLD_ALERT_DAYS,
   ONLINE_RELEASE_DAYS,
   ONLINE_MAX_HOLD_DAYS,
+  SEARCH_DEMAND_ALERT_DAYS,
+  SEARCH_RADIUS_KM,
   asScheduleChange,
   formatItalianUntil,
   moderationActionOwnerText,
@@ -925,6 +927,24 @@ const BUILDERS: Record<string, Builder> = {
       "Numeri degli ultimi 7 giorni, nella Home dell'area admin.",
     ],
     cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin` },
+  }),
+  ADMIN_SEARCH_DEMAND_ALERT: (payload) => ({
+    kind: "notification",
+    subject: "Dove cercano e non trovano professionisti",
+    title: "Ricerche senza professionisti vicino",
+    paragraphs: [
+      `Negli ultimi ${SEARCH_DEMAND_ALERT_DAYS} giorni queste ricerche non hanno trovato nessun professionista entro ${SEARCH_RADIUS_KM} km:`,
+      ...(Array.isArray(payload.zones)
+        ? payload.zones.flatMap((zone) => {
+            if (!zone || typeof zone !== "object") return [];
+            const z = zone as Record<string, unknown>;
+            if (typeof z.categoryLabel !== "string" || typeof z.city !== "string" || typeof z.empty !== "number") return [];
+            return [`**${z.categoryLabel}, ${z.city}**: ${z.empty} ${z.empty === 1 ? "ricerca" : "ricerche"}`];
+          })
+        : []),
+      "Lì conviene cercare nuovi professionisti.",
+    ],
+    cta: { label: "Vedi i numeri", url: `${frontendUrl()}/admin/numeri-professionisti` },
   }),
   ADMIN_JOB_BALANCE_UNPAID: () => ({
     kind: "notification",

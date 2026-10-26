@@ -21238,3 +21238,11 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 **Come si conta**: come già per le ricerche per lavoro (§281), un contatore per giorno e città, mai chi cerca né il testo scritto (solo se c'era una parola). `CategorySearchDay.emptyCount` nuovo; tabella nuova `FreeSearchDay` per le ricerche senza lavoro (pagina `/cerca`, contate solo con una città o una parola). Il conteggio parte da questa versione: i giorni prima non hanno le ricerche senza nessuno vicino né quelle senza lavoro. Una pagina ricaricata conta di nuovo (detto nella pagina). Migrazione `20261026220000_ricerche_admin`.
 
 **Verifica**: test di `hasNearbyResult`, del conteggio e dei numeri della pagina; typecheck, lint, 721 test dell'API; API avviata in locale su un database nuovo con tre ricerche vere e i contatori controllati nelle tabelle; pagina aperta in locale con l'API simulata da computer e telefono.
+
+## 371. Avviso del lunedì: dove cercano e non trovano professionisti
+
+**Richiesta** (Luca, 26/10/2026, miglioria 1 proposta col §370): un avviso nell'email del lunedì quando in una città ci sono molte ricerche senza nessuno vicino.
+
+**Decisione**: ogni lunedì alle 9 (ora di Roma), solo dopo il lancio (`LAUNCH_DATE`), i super admin ricevono la notifica `ADMIN_SEARCH_DEMAND_ALERT` (campanella ed email, argomento admin) con al massimo 5 righe "Lavoro, Città: N ricerche": le zone con almeno 5 ricerche senza nessun professionista entro 25 km negli ultimi 7 giorni, dalla più scoperta. Le ricerche senza città non contano (non dicono dove reclutare). Nessun avviso se nessuna zona arriva a 5. Il pulsante porta a "Professionisti in numeri". Soglie in `packages/shared/src/professionalStats.ts` (`SEARCH_DEMAND_ALERT_*`), conti in `searchDemandZones` (`apps/api/src/admin/professional-stats.ts`), invio in `apps/api/src/admin/search-demand-alert.service.ts`, come l'avviso delle urgenti (§344).
+
+**Verifica**: test delle zone (soglia, città scritte in modo diverso, senza città) e dell'email; tutti i modelli email ancora composti anche vuoti; API avviata in locale senza errori; email aperta in locale.

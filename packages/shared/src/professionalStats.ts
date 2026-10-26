@@ -138,6 +138,15 @@ export type AdminSearchStats = {
   byCategoryCity: { categorySlug: string; categoryLabel: string; city: string; searches: number; empty: number; professionals: number }[];
 };
 
+/**
+ * Avviso del lunedì agli admin (docs/CHANGELOG.md §371): lavoro + città con
+ * almeno tante ricerche senza nessun professionista vicino negli ultimi
+ * SEARCH_DEMAND_ALERT_DAYS giorni. Al massimo SEARCH_DEMAND_ALERT_ROWS righe.
+ */
+export const SEARCH_DEMAND_ALERT_DAYS = 7;
+export const SEARCH_DEMAND_ALERT_MIN_EMPTY = 5;
+export const SEARCH_DEMAND_ALERT_ROWS = 5;
+
 /** Percentuale leggibile: "<1%" per una quota piccola ma non nulla. */
 export function sharePercentLabel(count: number, total: number): string {
   if (total <= 0 || count <= 0) return "0%";

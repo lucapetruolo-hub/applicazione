@@ -3,6 +3,7 @@ import { sharePercentLabel } from "@professionisti/shared";
 import {
   buildCategoryActivity,
   buildSearchStats,
+  searchDemandZones,
   buildChurnByMonth,
   buildCoverage,
   buildProfessionalStats,
@@ -220,5 +221,19 @@ describe("Professionisti in numeri (§368)", () => {
     expect(stats.byCategoryCity.find((z) => z.categorySlug === "idraulico" && z.city === "Latina")?.professionals).toBe(2);
     // Senza città: i professionisti di quel lavoro ovunque.
     expect(stats.byCategoryCity.find((z) => z.categorySlug === "idraulico" && z.city === "")?.professionals).toBe(2);
+  });
+
+  it("avviso del lunedì: zone con almeno 5 ricerche senza nessuno vicino (§371)", () => {
+    const zones = searchDemandZones([
+      { categorySlug: "fabbro", city: "aprilia", count: 4, emptyCount: 4 },
+      { categorySlug: "fabbro", city: "Aprilia", count: 3, emptyCount: 2 },
+      { categorySlug: "idraulico", city: "sezze", count: 5, emptyCount: 5 },
+      { categorySlug: "idraulico", city: "latina", count: 30, emptyCount: 4 },
+      { categorySlug: "pulizie", city: "", count: 9, emptyCount: 9 },
+    ]);
+    expect(zones).toEqual([
+      { categoryLabel: "Fabbro", city: "Aprilia", searches: 7, empty: 6 },
+      { categoryLabel: "Idraulico", city: "Sezze", searches: 5, empty: 5 },
+    ]);
   });
 });

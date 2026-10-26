@@ -215,4 +215,14 @@ describe("promemoria del giorno prima (docs/CHANGELOG.md §234)", () => {
       expect(email.text).toContain(value);
     }
   });
+
+  it("avviso delle ricerche senza professionisti vicino: una riga per zona (§371)", () => {
+    const email = renderEmail(
+      notificationEmail("ADMIN_SEARCH_DEMAND_ALERT", { zones: [{ categoryLabel: "Fabbro", city: "Aprilia", searches: 7, empty: 6 }, { categoryLabel: "Idraulico", city: "Sezze", searches: 1, empty: 1 }] }, ctx)!,
+    );
+    expect(email.text).toContain("Fabbro, Aprilia: 6 ricerche");
+    expect(email.text).toContain("Idraulico, Sezze: 1 ricerca");
+    expect(email.text).toContain("/admin/numeri-professionisti");
+  });
 });
+

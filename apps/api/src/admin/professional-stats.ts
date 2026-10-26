@@ -11,6 +11,8 @@ import {
   type ProfessionalFunnelKey,
   type ProfessionalPlanKey,
   type ProfessionalStatusKey,
+  SEARCH_DEMAND_ALERT_MIN_EMPTY,
+  SEARCH_DEMAND_ALERT_ROWS,
   findComuneByName,
 } from "@professionisti/shared";
 import { publicVisibilityMissing } from "../professional-fiscal/public-visibility";
@@ -329,4 +331,33 @@ export function buildSearchStats(
       .sort((a, b) => b.empty - a.empty || b.searches - a.searches || a.city.localeCompare(b.city, "it"))
       .slice(0, SEARCH_ZONE_ROWS),
   };
+}
+
+/** Una riga dell'avviso del lunedì: lavoro e città con ricerche senza nessuno vicino (§371). */
+export type SearchDemandZone = { categoryLabel: string; city: string; searches: number; empty: number };
+
+/**
+ * Zone (lavoro + città) con almeno SEARCH_DEMAND_ALERT_MIN_EMPTY ricerche
+ * senza nessun professionista vicino, dalla più scoperta (§371). Le ricerche
+ * senza città non dicono dove reclutare: non contano.
+ */
+export function searchDemandZones(
+  categoryDays: { categorySlug: string; city: string; count: number; emptyCount: number }[],
+  minEmpty: number = SEARCH_DEMAND_ALERT_MIN_EMPTY,
+): SearchDemandZone[] {
+  const zones = new Map<string, { categorySlug: string; city: string; searches: number; empty: number }>();
+  for (const day of categoryDays) {
+    const city = day.city.trim().toLowerCase();
+    if (!city) continue;
+    const key = `${day.categorySlug}|${city}`;
+    const zone = zones.get(key) ?? { categorySlug: day.categorySlug, city, searches: 0, empty: 0 };
+    zone.searches += day.count;
+    zone.empty += day.emptyCount;
+    zones.set(key, zone);
+  }
+  return [...zones.values()]
+    .filter((zone) => zone.empty >= minEmpty)
+    .sort((a, b) => b.empty - a.empty || b.searches - a.searches || a.city.localeCompare(b.city, "it"))
+    .slice(0, SEARCH_DEMAND_ALERT_ROWS)
+    .map((zone) => ({ categoryLabel: categoryLabel(zone.categorySlug), city: searchCityLabel(zone.city), searches: zone.searches, empty: zone.empty }));
 }
