@@ -2,13 +2,26 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Check } from "lucide-react";
-import { PROFESSIONAL_CATEGORIES, SUBSCRIPTION_FEATURES, SUBSCRIPTION_TIERS, type ProfessionalCategorySlug } from "@professionisti/shared";
+import {
+  PROFESSIONAL_CATEGORIES,
+  SUBSCRIPTION_FEATURES,
+  SUBSCRIPTION_TIERS,
+  formatEur,
+  withVatEurCents,
+  FOUNDER_FREE_MONTHS,
+  type BillingInterval,
+  type FounderSpots,
+  type ProfessionalCategorySlug,
+  type SubscriptionTier,
+} from "@professionisti/shared";
 import { Button, ButtonArrow, Icon, Text, XStack, YStack, brand, radiusDoc, type IconName } from "@professionisti/ui";
+import { BillingIntervalToggle } from "@/components/BillingIntervalToggle";
 import { MagneticButton } from "@/components/MagneticButton";
 import { GlowLights } from "@/components/GlowLights";
 import { useAuth } from "@/lib/AuthContext";
+import { useOnlinePayments } from "@/lib/onlinePayments";
 
 /**
  * Pagina di presentazione per chi offre un servizio (docs/CHANGELOG.md §173,
@@ -37,7 +50,7 @@ import { useAuth } from "@/lib/AuthContext";
 const LINE = "rgba(43,36,32,0.12)";
 const MAX_WIDTH = 1160;
 
-export function PerProfessionistiContent() {
+export function PerProfessionistiContent({ founders = null }: { founders?: FounderSpots | null }) {
   const { user } = useAuth();
   const ctaHref = user?.isProfessional ? "/dashboard/abbonamento" : "/registrati?ruolo=professionista";
   const ctaLabel = user?.isProfessional ? "Vai al tuo abbonamento" : "Iscriviti gratis";
@@ -46,11 +59,12 @@ export function PerProfessionistiContent() {
     <YStack width="100%" alignItems="center" backgroundColor="transparent">
       <ProHero ctaHref={ctaHref} ctaLabel={ctaLabel} />
       <ProPhoto />
+      <ProOnlinePayment />
       <ProBenefits />
       <ProGallery />
       <ProSteps />
-      <ProPricing isProfessional={Boolean(user?.isProfessional)} />
-      <ProFaq />
+      <ProPricing isProfessional={Boolean(user?.isProfessional)} founders={founders} />
+      <ProFaq founderOffer={Boolean(founders && founders.left > 0)} />
       <ProFinalCta />
     </YStack>
   );
@@ -155,7 +169,7 @@ function ProHero({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
         <YStack position="relative" width="100%" maxWidth={760} alignItems="center" gap="$4" paddingHorizontal="$4" paddingVertical="$10" $gtMd={{ paddingVertical: 120 }}>
           <XStack borderWidth={1} borderColor={LINE} borderRadius={999} backgroundColor={brand.calce} overflow="hidden" alignItems="center">
             <Text fontSize={13} color={brand.grafite} paddingHorizontal="$3" paddingVertical={6}>
-              Per i professionisti
+              Con o senza partita IVA
             </Text>
             <Link href="#prezzi" style={{ textDecoration: "none", borderLeft: `1px solid ${LINE}` }}>
               <XStack alignItems="center" gap="$1" paddingHorizontal="$3" paddingVertical={6} hoverStyle={{ backgroundColor: brand.cianografiaVelo }}>
@@ -178,7 +192,7 @@ function ProHero({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
             color={brand.grafite}
             $gtSm={{ fontSize: 54, lineHeight: 56 }}
           >
-            Fatti trovare dai clienti della tua zona.
+            Trova nuovi clienti nella tua zona.
           </Text>
 
           <Text fontSize="$6" lineHeight={28} color={brand.grafite70} textAlign="center" maxWidth={560}>
@@ -233,6 +247,84 @@ function ProPhoto() {
             style={{ objectFit: "cover", objectPosition: "50% 25%" }}
           />
         </div>
+      </YStack>
+    </Band>
+  );
+}
+
+const PAYMENT_STEPS: { title: string; text: string }[] = [
+  { title: "Scegli tu quanto in anticipo", text: "Dall'1 al 100% del preventivo." },
+  { title: "Il lavoro si conferma solo a pagamento", text: "Il cliente paga con carta quando accetta il preventivo." },
+  { title: "Il bonifico parte alla conferma", text: "Quando il cliente conferma il lavoro, o 7 giorni dopo la fine." },
+];
+
+/**
+ * Il pagamento online come vantaggio in cima (decisione dell'utente,
+ * docs/CHANGELOG.md §361), detto in modo esatto: il cliente paga prima, ma i
+ * soldi restano bloccati e il bonifico parte dopo la conferma. Mai "ricevi i
+ * soldi prima". Si vede solo con i pagamenti online attivi (§170).
+ */
+function ProOnlinePayment() {
+  const onlinePayments = useOnlinePayments();
+  if (!onlinePayments) return null;
+  return (
+    <Band>
+      <YStack gap="$6" padding="$5" paddingVertical="$7" $gtSm={{ flexDirection: "row", alignItems: "center" }} $gtMd={{ padding: "$8" }}>
+        <YStack gap="$3" $gtSm={{ flex: 1, flexBasis: 0, minWidth: 0 }}>
+          <Text fontSize={13} fontWeight="700" letterSpacing={0.6} textTransform="uppercase" color={brand.cianografiaScuro}>
+            Pagamento online
+          </Text>
+          <Text
+            tag="h2"
+            fontFamily="$heading"
+            fontWeight="700"
+            fontSize={30}
+            lineHeight={34}
+            letterSpacing={-0.5}
+            color={brand.grafite}
+            $gtSm={{ fontSize: 38, lineHeight: 42 }}
+          >
+            Il cliente paga l&apos;acconto prima. Tu lavori tranquillo.
+          </Text>
+          <Text color={brand.grafite70} fontSize="$5" lineHeight={26}>
+            Il lavoro è confermato solo quando il cliente ha pagato.
+          </Text>
+          <Text color={brand.grafite70} fontSize={15} lineHeight={22}>
+            5% più il costo della carta, solo sui pagamenti online. Il pagamento diretto resta gratis.{" "}
+            <Link href="/per-professionisti/pagamenti" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
+              Scopri di più
+            </Link>
+          </Text>
+        </YStack>
+        <YStack tag="ol" margin={0} padding={0} gap="$3" $gtSm={{ flex: 1, flexBasis: 0, minWidth: 0 }}>
+          {PAYMENT_STEPS.map((step, index) => (
+            <XStack
+              tag="li"
+              key={step.title}
+              gap="$3"
+              alignItems="flex-start"
+              backgroundColor={brand.calce}
+              borderWidth={1}
+              borderColor={LINE}
+              borderRadius={20}
+              padding="$4"
+            >
+              <XStack width={32} height={32} borderRadius={999} backgroundColor={brand.cianografiaVelo} alignItems="center" justifyContent="center" flexShrink={0}>
+                <Text fontWeight="700" color={brand.cianografiaScuro}>
+                  {index + 1}
+                </Text>
+              </XStack>
+              <YStack flex={1} minWidth={0} gap={2}>
+                <Text fontWeight="700" color={brand.grafite}>
+                  {step.title}
+                </Text>
+                <Text color={brand.grafite70} lineHeight={22}>
+                  {step.text}
+                </Text>
+              </YStack>
+            </XStack>
+          ))}
+        </YStack>
       </YStack>
     </Band>
   );
@@ -414,44 +506,98 @@ function ProSteps() {
   );
 }
 
+/** A chi serve ogni livello, una riga sotto il nome. */
+const TIER_FOR: Record<SubscriptionTier, string> = {
+  BASE: "Per iniziare",
+  PLUS: "Per chi lavora tutte le settimane",
+  PRO: "Tutti i clienti che arrivano",
+};
+
 /**
  * Un pulsante per livello, dentro la sua scheda (docs/CHANGELOG.md §349): prima
  * si sceglieva la scheda e sotto restava un "Scegli un livello" spento, che
  * diceva "non puoi andare avanti". Porta al pagamento del livello (§177): un
  * professionista già iscritto va dritto in Abbonamento, gli altri si
- * iscrivono e poi ci arrivano (`?livello=`).
+ * iscrivono e poi ci arrivano (`?livello=`, con `&rinnovo=` mensile o annuale).
+ *
+ * Prezzi + IVA con l'IVA compresa in piccolo, mensile o annuale con
+ * l'annuale in vista (decisioni dell'utente del 26/10/2026, §361).
  */
-function ProPricing({ isProfessional }: { isProfessional: boolean }) {
+/**
+ * Banda verde dell'offerta di lancio (§363, anteprima approvata da Luca):
+ * "GRATIS PER 3 MESI" ben in vista con il numero dei posti, 100, mai il
+ * conto alla rovescia (decisione dell'utente).
+ */
+function FounderBand({ spots }: { spots: FounderSpots }) {
   return (
-    <Band id="prezzi">
-      <SectionTitle lead="I livelli cambiano solo per quanti lavori accettati al mese sono compresi. Un lavoro è accettato quando il cliente accetta il tuo preventivo o prenota dalla tua agenda.">
-        Un solo abbonamento, tutte le funzioni
-      </SectionTitle>
-      <YStack borderBottomWidth={1} borderColor={LINE} padding="$5" paddingTop={0} gap="$3" $gtMd={{ padding: "$6", paddingTop: 0 }}>
-        <CellTitle>Compreso in ogni livello</CellTitle>
-        <YStack gap="$2" $gtSm={{ flexDirection: "row", flexWrap: "wrap" }}>
-          {SUBSCRIPTION_FEATURES.map((feature) => (
-            <XStack key={feature} gap="$2" alignItems="flex-start" $gtSm={{ width: "50%" }} paddingRight="$3">
-              <Check size={16} strokeWidth={2} color={brand.cianografiaScuro} />
-              <Text color={brand.grafite70} flex={1}>
-                {feature}
-              </Text>
-            </XStack>
-          ))}
-        </YStack>
-        <Text color={brand.grafite70} marginTop="$2" maxWidth={720} lineHeight={22}>
-          Se ti avvicini al limite del tuo livello ti avvisiamo prima, e puoi passare al livello superiore pagando solo la differenza.
-          L&apos;abbonamento si rinnova in automatico ogni mese e lo annulli quando vuoi.
+    <XStack
+      width="100%"
+      backgroundColor={brand.cianografiaPieno}
+      paddingHorizontal="$5"
+      paddingVertical="$4"
+      gap="$4"
+      alignItems="center"
+      justifyContent="space-between"
+      $gtMd={{ paddingHorizontal: "$6", paddingVertical: "$5" }}
+    >
+      <YStack flex={1} gap="$1">
+        <Text tag="p" margin={0} fontFamily="$heading" fontWeight="800" fontSize={28} lineHeight={32} letterSpacing={-0.5} color="white" $gtSm={{ fontSize: 40, lineHeight: 44 }}>
+          GRATIS PER {FOUNDER_FREE_MONTHS} MESI
+        </Text>
+        <Text color="white" fontSize={15} lineHeight={21}>
+          Per i primi {spots.total} professionisti che si iscrivono. Poi decidi tu se continuare.
         </Text>
       </YStack>
+      <YStack alignItems="center" backgroundColor="rgba(255,255,255,0.14)" borderRadius={10} paddingHorizontal="$3" paddingVertical="$2" minWidth={88}>
+        <Text fontFamily="$heading" fontWeight="800" fontSize={30} lineHeight={34} color="white">
+          {spots.total}
+        </Text>
+        <Text color="white" fontSize={13}>
+          posti
+        </Text>
+      </YStack>
+    </XStack>
+  );
+}
+
+function ProPricing({ isProfessional, founders }: { isProfessional: boolean; founders: FounderSpots | null }) {
+  const [interval, setInterval] = useState<BillingInterval>("YEAR");
+  const annual = interval === "YEAR";
+  // Offerta di lancio finché restano posti (decisione dell'utente, §363).
+  const offer = founders && founders.left > 0 ? founders : null;
+  return (
+    <Band id="prezzi">
+      <YStack paddingHorizontal="$5" paddingVertical="$7" gap="$4" $gtMd={{ paddingHorizontal: "$6", paddingVertical: "$9" }}>
+        <YStack gap="$2">
+          <Text
+            tag="h2"
+            fontFamily="$heading"
+            fontWeight="700"
+            fontSize={34}
+            lineHeight={38}
+            letterSpacing={-0.5}
+            color={brand.grafite}
+            $gtSm={{ fontSize: 46, lineHeight: 50 }}
+          >
+            Un solo abbonamento, tutte le funzioni
+          </Text>
+          <Text color={brand.grafite70} fontSize="$5" lineHeight={26} maxWidth={620}>
+            I livelli cambiano solo per quanti lavori accettati al mese sono compresi.
+          </Text>
+        </YStack>
+        <BillingIntervalToggle value={interval} onChange={setInterval} />
+      </YStack>
+      {offer ? <FounderBand spots={offer} /> : null}
       <Grid>
         {SUBSCRIPTION_TIERS.map((tier) => {
           const welcome = tier.tier === "BASE";
-          const price = (tier.priceEurCents / 100).toFixed(0);
+          const monthlyShown = annual ? tier.annualMonthlyEurCents : tier.priceEurCents;
+          const periodPrice = annual ? tier.annualPriceEurCents : tier.priceEurCents;
+          const per = annual ? "all'anno" : "al mese";
           const href = isProfessional
-            ? `/dashboard/abbonamento?livello=${tier.tier}`
-            : `/registrati?ruolo=professionista&livello=${tier.tier}`;
-          const label = welcome ? `Inizia con ${tier.label}` : `Scegli ${tier.label}`;
+            ? `/dashboard/abbonamento?livello=${tier.tier}&rinnovo=${interval}`
+            : `/registrati?ruolo=professionista&livello=${tier.tier}&rinnovo=${interval}`;
+          const label = welcome && !isProfessional ? "Inizia gratis" : `Scegli ${tier.label}`;
           return (
             <YStack
               key={tier.tier}
@@ -464,50 +610,67 @@ function ProPricing({ isProfessional }: { isProfessional: boolean }) {
               gap="$3"
               $gtMd={{ padding: "$6" }}
             >
-              <XStack alignItems="center" gap="$2" flexWrap="wrap">
-                <Text tag="h3" margin={0} fontFamily="$heading" fontWeight="700" fontSize="$7" color={brand.grafite}>
-                  {tier.label}
-                </Text>
-                {welcome ? (
-                  // Verde, non rosso: nel sito il rosso vuol dire urgenza o errore (§349).
-                  <Text
-                    fontSize={13}
-                    fontWeight="700"
-                    color={brand.cianografiaScuro}
-                    backgroundColor={brand.cianografiaVelo}
-                    paddingHorizontal="$2"
-                    paddingVertical={2}
-                    borderRadius="$10"
-                  >
-                    Offerta di benvenuto
+              <YStack gap={2}>
+                <XStack alignItems="center" gap="$2" flexWrap="wrap">
+                  <Text tag="h3" margin={0} fontFamily="$heading" fontWeight="700" fontSize="$7" color={brand.grafite}>
+                    {tier.label}
                   </Text>
-                ) : null}
-              </XStack>
+                  {welcome ? (
+                    // Verde, non rosso: nel sito il rosso vuol dire urgenza o errore (§349).
+                    <Text
+                      fontSize={13}
+                      fontWeight="700"
+                      color={brand.cianografiaScuro}
+                      backgroundColor={brand.cianografiaVelo}
+                      paddingHorizontal="$2"
+                      paddingVertical={2}
+                      borderRadius="$10"
+                    >
+                      {offer ? "Offerta di lancio" : "Offerta di benvenuto"}
+                    </Text>
+                  ) : null}
+                </XStack>
+                <Text color={brand.grafite70} fontSize={15}>
+                  {TIER_FOR[tier.tier]}
+                </Text>
+              </YStack>
               {welcome ? (
                 <YStack gap="$1">
                   <XStack alignItems="baseline" gap="$2" flexWrap="wrap">
                     <Text fontFamily="$heading" fontSize="$7" color={brand.grafite70} textDecorationLine="line-through">
-                      €{price}
+                      {formatEur(monthlyShown)}
                     </Text>
                     <Text fontFamily="$heading" fontWeight="800" fontSize="$9" color={brand.cianografiaScuro}>
-                      Gratuito
+                      Gratis
                     </Text>
+                    {offer ? <Text color={brand.grafite70}>per {FOUNDER_FREE_MONTHS} mesi</Text> : null}
                   </XStack>
                   <Text color={brand.grafite70} fontSize={13}>
-                    il primo mese, poi €{price}/mese
+                    {offer ? "poi" : "il primo mese, poi"} {formatEur(periodPrice)} {per} + IVA
                   </Text>
                 </YStack>
               ) : (
-                <XStack alignItems="baseline" gap="$1">
-                  <Text fontFamily="$heading" fontWeight="700" fontSize="$9" color={brand.grafite}>
-                    €{price}
+                <YStack gap="$1">
+                  <XStack alignItems="baseline" gap="$2" flexWrap="wrap">
+                    <Text fontFamily="$heading" fontWeight="700" fontSize="$9" color={brand.grafite}>
+                      {formatEur(monthlyShown)}
+                    </Text>
+                    <Text color={brand.grafite70}>al mese + IVA</Text>
+                  </XStack>
+                  <Text color={brand.grafite70} fontSize={13}>
+                    {annual ? `${formatEur(periodPrice)} all'anno + IVA. ` : ""}IVA inclusa: {formatEur(withVatEurCents(periodPrice))} {per}
                   </Text>
-                  <Text color={brand.grafite70}>/mese</Text>
-                </XStack>
+                </YStack>
               )}
               <Text fontWeight="700" color={brand.cianografiaScuro}>
                 {tier.monthlyAcceptedJobs === null ? "Lavori senza limite" : `${tier.monthlyAcceptedJobs} lavori accettati al mese`}
               </Text>
+              {tier.tier === "PLUS" ? (
+                // Su Plus e Pro lo stesso cliente conta una volta (§362): su Pro non c'è limite, si dice solo qui.
+                <Text color={brand.grafite70} fontSize={15} marginTop={-8}>
+                  Lo stesso cliente conta una volta al mese
+                </Text>
+              ) : null}
               <YStack flex={1} />
               <Link href={href} style={{ textDecoration: "none" }} aria-label={`${label}${isProfessional ? "" : ": iscriviti come professionista"}`}>
                 <Button variant="acquisto" width="100%">
@@ -519,12 +682,31 @@ function ProPricing({ isProfessional }: { isProfessional: boolean }) {
                   </XStack>
                 </Button>
               </Link>
+              <Text fontSize={13} color={brand.grafite70} textAlign="center">
+                {annual ? "Annulli il rinnovo quando vuoi" : "Nessun vincolo, annulli quando vuoi"}
+              </Text>
             </YStack>
           );
         })}
       </Grid>
-      <YStack borderTopWidth={1} borderColor={LINE} padding="$4" alignItems="center">
-        <Text fontSize={16} color={brand.grafite70} textAlign="center">
+      <YStack borderTopWidth={1} borderColor={LINE} padding="$5" gap="$3" $gtMd={{ padding: "$6" }}>
+        <CellTitle>Compreso in ogni livello</CellTitle>
+        <YStack gap="$2" $gtSm={{ flexDirection: "row", flexWrap: "wrap" }}>
+          {SUBSCRIPTION_FEATURES.map((feature) => (
+            <XStack key={feature} gap="$2" alignItems="flex-start" $gtSm={{ width: "50%" }} paddingRight="$3">
+              <Check size={16} strokeWidth={2} color={brand.cianografiaScuro} />
+              <Text color={brand.grafite70} flex={1}>
+                {feature}
+              </Text>
+            </XStack>
+          ))}
+        </YStack>
+      </YStack>
+      <YStack borderTopWidth={1} borderColor={LINE} padding="$4" alignItems="center" gap="$1">
+        <Text fontSize={15} color={brand.grafite70} textAlign="center">
+          Prezzi IVA esclusa: l&apos;IVA del 22% si aggiunge in fattura.
+        </Text>
+        <Text fontSize={15} color={brand.grafite70} textAlign="center">
           {isProfessional ? "Poi confermi il livello e il pagamento." : "Ti iscrivi, poi confermi il livello e il pagamento."}
         </Text>
       </YStack>
@@ -533,18 +715,33 @@ function ProPricing({ isProfessional }: { isProfessional: boolean }) {
 }
 
 /** Solo fatti già decisi e in funzione (CLAUDE.md §5 punto 9, §6). */
-const FAQ: { question: string; answer: string; paymentsLink?: boolean }[] = [
+const FAQ: { question: string; answer: string; paymentsLink?: boolean; founderOffer?: boolean }[] = [
+  {
+    question: "Come funzionano i 3 mesi gratis?",
+    answer:
+      "Ai primi 100 professionisti che completano il profilo il livello Base è gratis per 3 mesi, a partire dal lancio del sito. Se ti servono più lavori puoi passare a Plus o Pro anche durante i mesi gratis, pagando la quota di passaggio. Alla fine scegli tu se continuare: niente rinnovo se non scegli un livello.",
+    founderOffer: true,
+  },
   {
     question: "Quando vedo i contatti del cliente?",
     answer: "Quando il cliente accetta il tuo preventivo. Prima vedi la città, la descrizione del lavoro, le foto e la vostra chat.",
   },
   {
     question: "Cosa succede se arrivo al limite di lavori del mio livello?",
-    answer: "Ti avvisiamo prima. Puoi passare al livello superiore pagando solo la differenza, altrimenti i lavori ripartono il primo del mese.",
+    answer:
+      "Ti avvisiamo prima. Resti nelle ricerche e ricevi le richieste, ma per mandare preventivi nuovi passi al livello sopra: paghi 10 € più la differenza di prezzo per i giorni che mancano al rinnovo, maggiorata del 10% (+ IVA). Altrimenti aspetti il rinnovo, quando i lavori ripartono. I preventivi già mandati restano validi. Su Plus e Pro lo stesso cliente conta una volta al mese.",
+  },
+  {
+    question: "Meglio mensile o annuale?",
+    answer: "Con l'annuale paghi 10 mesi invece di 12. Il limite di lavori resta mensile e puoi passare a un livello superiore anche durante l'anno.",
+  },
+  {
+    question: "I prezzi comprendono l'IVA?",
+    answer: "No: sono IVA esclusa e l'IVA del 22% si aggiunge in fattura. Sotto ogni prezzo trovi anche il totale con l'IVA.",
   },
   {
     question: "Posso annullare l'abbonamento?",
-    answer: "Sì, quando vuoi dalla pagina Abbonamento. Resta attivo fino alla scadenza del mese in corso.",
+    answer: "Sì, quando vuoi dalla pagina Abbonamento. Resta attivo fino alla fine del mese o dell'anno già pagato.",
   },
   {
     question: "Chi può lasciarmi una recensione?",
@@ -557,7 +754,7 @@ const FAQ: { question: string; answer: string; paymentsLink?: boolean }[] = [
   },
 ];
 
-function ProFaq() {
+function ProFaq({ founderOffer }: { founderOffer: boolean }) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
   return (
@@ -586,7 +783,7 @@ function ProFaq() {
         </YStack>
         <YStack backgroundColor={brand.gesso} flexGrow={1} $gtSm={{ width: "50%" }}>
           <div className="pro-faq">
-            {FAQ.map((item, index) => (
+            {FAQ.filter((item) => !item.founderOffer || founderOffer).map((item, index) => (
               <details key={item.question} className="pro-faq-item" open={index === 0}>
                 <summary>{item.question}</summary>
                 <p>

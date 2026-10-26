@@ -45,7 +45,7 @@ import { PRISMA } from "../prisma/prisma.module";
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
 import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing, publicVisibilityWhere, publicVerified, stripeVerified } from "../professional-fiscal/public-visibility";
 import { quoteResendWindow } from "../quotes/quote-resend";
-import { NOT_ACCEPTING_REQUESTS } from "../subscriptions/subscription-rules";
+import { NOT_ACCEPTING_REQUESTS, NOT_BOOKABLE_ONLINE } from "../subscriptions/subscription-rules";
 import { GeocodingService } from "../geocoding/geocoding.service";
 import { selectSearchArea } from "./search-area";
 import { acceptedQuoteStats, declaredServiceStats, quoteMidpointEurCents } from "./category-prices";
@@ -788,6 +788,11 @@ export class ProfessionalsService {
     if (isFirstTimeCreation) {
       // Primo mese gratis per tutti (docs/CHANGELOG.md §161).
       await this.subscriptionsService.ensureTrial(profile.id);
+    }
+    // Offerta di lancio (§363): uno dei primi 100 posti a chi completa il
+    // profilo da sé; un profilo creato da un operatore lo prende alla conferma.
+    if ((isFirstTimeCreation && !options.byOperator) || activatesInvite) {
+      await this.subscriptionsService.claimFounderSpot(profile.id);
     }
     // Categorie aggiunte a un profilo già attivo (docs/CHANGELOG.md §217):
     // riceve anche le richieste aperte di quelle categorie, solo quelle.
@@ -1698,7 +1703,10 @@ export class ProfessionalsService {
    */
   async getPublicAgenda(professionalProfileId: string): Promise<ProfessionalAgenda> {
     // Stessi filtri della pagina pubblica; in pausa o bloccato per le
-    // richieste non si prenota, quindi nessuna fascia (CLAUDE.md §5.11, §293).
+    // richieste non si prenota, quindi nessuna fascia (CLAUDE.md §5.11,
+    // §293). Con i lavori esauriti l'agenda resta (§363): serve al cliente
+    // per scegliere quando nella richiesta, e il professionista deve poter
+    // ricevere richieste (decisione dell'utente).
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { id: professionalProfileId },
       select: { deletedAt: true, suspendedAt: true, invitePendingAt: true, pausedAt: true, requestsBlockedUntil: true, ...PUBLIC_VISIBILITY_SELECT },
@@ -1793,13 +1801,17 @@ export class ProfessionalsService {
   async bookAgendaSlot(clientId: string, professionalProfileId: string, input: BookAgendaSlotInput): Promise<{ bookingId: string }> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { id: professionalProfileId },
-      select: { id: true, deletedAt: true, suspendedAt: true, invitePendingAt: true, pausedAt: true, demotedUntil: true, requestsBlockedUntil: true, ...PUBLIC_VISIBILITY_SELECT },
+      select: { id: true, deletedAt: true, suspendedAt: true, invitePendingAt: true, pausedAt: true, jobLimitReachedAt: true, demotedUntil: true, requestsBlockedUntil: true, ...PUBLIC_VISIBILITY_SELECT },
     });
     if (!profile || profile.deletedAt || profile.suspendedAt || profile.invitePendingAt || publicVisibilityMissing(profile)) {
       throw new NotFoundException("Professionista non trovato.");
     }
     if (profile.pausedAt || professionalRestrictions(profile, new Date()).blocked) {
       throw new ConflictException(NOT_ACCEPTING_REQUESTS);
+    }
+    // Lavori esauriti (§362): niente prenotazione diretta, solo richieste (§363).
+    if (profile.jobLimitReachedAt) {
+      throw new ConflictException(NOT_BOOKABLE_ONLINE);
     }
 
     const date = parseIsoDateUtc(input.date);

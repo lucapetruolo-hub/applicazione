@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { FounderSpots } from "@professionisti/shared";
 import { PerProfessionistiContent } from "./PerProfessionistiContent";
 
 export const metadata: Metadata = {
@@ -7,6 +8,23 @@ export const metadata: Metadata = {
   alternates: { canonical: "/per-professionisti" },
 };
 
-export default function PerProfessionistiPage() {
-  return <PerProfessionistiContent />;
+// Posti dell'offerta di lancio aggiornati ogni 10 minuti (docs/CHANGELOG.md
+// §363): letti dal server così la banda non compare dopo, spostando i prezzi.
+export const revalidate = 600;
+
+async function loadFounderSpots(): Promise<FounderSpots | null> {
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}/subscriptions/founders`, {
+      next: { revalidate },
+      signal: AbortSignal.timeout(3000),
+    });
+    return res.ok ? ((await res.json()) as FounderSpots) : null;
+  } catch {
+    // API addormentata o irraggiungibile: niente banda, resta il mese gratuito.
+    return null;
+  }
+}
+
+export default async function PerProfessionistiPage() {
+  return <PerProfessionistiContent founders={await loadFounderSpots()} />;
 }

@@ -31,6 +31,7 @@ import { stripeVerified } from "../professional-fiscal/public-visibility";
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
 import { countBookingsInSlot, countOverlapping, loadCommitments, lockProfessionalAgenda } from "../agenda/commitments";
 import { hasOtherJob, isOtherJobViolation, lockGuidedRequest } from "../bookings/one-job-per-request";
+import { JOB_LIMIT_REACHED_MESSAGE } from "../subscriptions/subscription-rules";
 
 /** Preventivo su una richiesta che il cliente ha eliminato (docs/CHANGELOG.md §343). */
 const WITHDRAWN_BY_CLIENT_MESSAGE = "Il cliente ha ritirato questa richiesta.";
@@ -130,6 +131,13 @@ export class QuotesService {
     // modificabile.
     if ((!existingQuote || isResend) && identityVerificationNeeded(professionalProfile)) {
       throw new ForbiddenException(IDENTITY_REQUIRED_FOR_QUOTES_MESSAGE);
+    }
+
+    // Lavori del periodo esauriti (decisione dell'utente, docs/CHANGELOG.md
+    // §362): niente preventivi nuovi finché non passa al livello superiore o
+    // non ripartono i lavori. Un preventivo già mandato resta modificabile.
+    if ((!existingQuote || isResend) && professionalProfile.jobLimitReachedAt) {
+      throw new ForbiddenException(JOB_LIMIT_REACHED_MESSAGE);
     }
 
     // Modi di pagamento offerti al cliente (docs/CHANGELOG.md §237). Senza

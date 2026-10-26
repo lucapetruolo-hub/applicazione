@@ -5,6 +5,7 @@ import type {
   ProfessionalEntityTypeValue,
   MySubscription,
   SubscriptionTier,
+  BillingInterval,
   PROFESSIONAL_CATEGORIES,
   AvailabilitySlotInput,
   BookAgendaSlotInput,
@@ -83,6 +84,7 @@ import type {
   AcceptProfileInviteInput,
   OperatorProfileInviteInput,
   PendingProfileInvite,
+  AdminFounders,
   ProfessionalVerificationFilter,
   ProfessionalVerificationRow,
   MyVerificationStatus,
@@ -1628,11 +1630,12 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
     getMySubscription: (token: string) =>
       request<MySubscription>("/professionals/me/subscription", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
-    createSubscriptionCheckout: (token: string, plan: SubscriptionTier) =>
+    /** Scelta o passaggio di livello; `interval` conta solo per un abbonamento nuovo (il passaggio tiene il rinnovo scelto). */
+    createSubscriptionCheckout: (token: string, plan: SubscriptionTier, interval?: BillingInterval) =>
       request<{ url: string | null }>("/billing/subscription/checkout", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ plan, interval }),
       }),
 
     /** Annulla il rinnovo automatico (resta attivo fino alla scadenza) o lo riattiva. */
@@ -1709,6 +1712,9 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
     /** Email raccolte dal riquadro "Arriviamo presto nella tua zona" in homepage (richiesta esplicita dell'utente). */
     adminListWaitlist: (token: string) =>
       request<{ email: string; createdAt: string }[]>("/admin/waitlist", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    /** Primi 100 professionisti dell'offerta di lancio (docs/CHANGELOG.md §363). */
+    adminListFounders: (token: string) => request<AdminFounders>("/admin/founders", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     /** Profili creati al telefono da un operatore (docs/CHANGELOG.md §170). */
     adminListProfileInvites: (token: string) =>

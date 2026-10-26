@@ -7,13 +7,77 @@
  * quando il professionista segna "completato".
  */
 
+/**
+ * Prezzi IVA esclusa (decisione dell'utente del 26/10/2026, docs/CHANGELOG.md
+ * §361): mostrati "+ IVA", l'IVA si aggiunge in fattura. L'annuale costa
+ * dieci mensilità ("Risparmi 2 mesi"); `annualMonthlyEurCents` è il prezzo
+ * al mese arrotondato all'euro da mostrare accanto al totale annuo.
+ */
 export const SUBSCRIPTION_TIERS = [
-  { tier: "BASE", label: "Base", priceEurCents: 1900, monthlyAcceptedJobs: 5 },
-  { tier: "PLUS", label: "Plus", priceEurCents: 3900, monthlyAcceptedJobs: 15 },
-  { tier: "PRO", label: "Pro", priceEurCents: 6900, monthlyAcceptedJobs: null },
+  { tier: "BASE", label: "Base", priceEurCents: 1900, annualPriceEurCents: 19000, annualMonthlyEurCents: 1600, monthlyAcceptedJobs: 3 },
+  { tier: "PLUS", label: "Plus", priceEurCents: 5900, annualPriceEurCents: 59000, annualMonthlyEurCents: 4900, monthlyAcceptedJobs: 10 },
+  { tier: "PRO", label: "Pro", priceEurCents: 9900, annualPriceEurCents: 99000, annualMonthlyEurCents: 8300, monthlyAcceptedJobs: null },
 ] as const;
 
 export type SubscriptionTier = (typeof SUBSCRIPTION_TIERS)[number]["tier"];
+
+/** Rinnovo mensile o annuale; l'annuale è quello mostrato per primo. */
+export type BillingInterval = "MONTH" | "YEAR";
+
+export function parseBillingInterval(value: string | null | undefined): BillingInterval | null {
+  return value === "MONTH" || value === "YEAR" ? value : null;
+}
+
+/** IVA italiana aggiunta ai prezzi dell'abbonamento. */
+export const VAT_RATE = 0.22;
+
+export function withVatEurCents(cents: number): number {
+  return Math.round(cents * (1 + VAT_RATE));
+}
+
+/** Prezzo del livello per un periodo intero (un mese o un anno), IVA esclusa. */
+export function tierPeriodPriceEurCents(tier: SubscriptionTier, interval: BillingInterval): number {
+  const info = subscriptionTierInfo(tier);
+  return interval === "YEAR" ? info.annualPriceEurCents : info.priceEurCents;
+}
+
+/**
+ * Passaggio a un livello superiore prima del rinnovo (decisione dell'utente
+ * del 26/10/2026): 10 € fissi più la differenza di prezzo per i giorni che
+ * restano, maggiorata del 10%. Senza tetto: con quasi tutto il periodo
+ * davanti costa più della differenza piena, e spinge a scegliere subito il
+ * livello giusto. IVA esclusa.
+ */
+export const UPGRADE_FIXED_FEE_EUR_CENTS = 1000;
+export const UPGRADE_SURCHARGE = 0.1;
+
+export function upgradeFeeEurCents(input: {
+  from: SubscriptionTier;
+  to: SubscriptionTier;
+  interval: BillingInterval;
+  /** Millisecondi da adesso al rinnovo (o alla fine del periodo gratuito in corso). */
+  remainingMs: number;
+  /** Durata dell'intero periodo in millisecondi. */
+  periodMs: number;
+}): number {
+  const difference = Math.max(0, tierPeriodPriceEurCents(input.to, input.interval) - tierPeriodPriceEurCents(input.from, input.interval));
+  if (difference === 0 || input.periodMs <= 0) return 0;
+  const share = Math.min(1, Math.max(0, input.remainingMs / input.periodMs));
+  return UPGRADE_FIXED_FEE_EUR_CENTS + Math.round(difference * share * (1 + UPGRADE_SURCHARGE));
+}
+
+/**
+ * Quota di passaggio nei giorni gratuiti (prova, mese regalato, 3 mesi dei
+ * fondatori), §363: come se Base costasse il suo prezzo mensile, cioè 10 € più
+ * la differenza mensile per i giorni gratuiti che restano (su mesi di 30
+ * giorni), maggiorata del 10%. IVA esclusa.
+ */
+export function freePeriodUpgradeFeeEurCents(input: { from: SubscriptionTier; to: SubscriptionTier; remainingMs: number }): number {
+  const difference = Math.max(0, tierPeriodPriceEurCents(input.to, "MONTH") - tierPeriodPriceEurCents(input.from, "MONTH"));
+  if (difference === 0) return 0;
+  const months = Math.max(0, input.remainingMs) / (TRIAL_DAYS * 24 * 60 * 60 * 1000);
+  return UPGRADE_FIXED_FEE_EUR_CENTS + Math.round(difference * months * (1 + UPGRADE_SURCHARGE));
+}
 
 /** Funzioni comprese in ogni livello: solo ciò che il sito offre davvero oggi. */
 export const SUBSCRIPTION_FEATURES = [
@@ -31,6 +95,38 @@ export const TRIAL_DAYS = 30;
 /** Mese regalato a chi non ha ancora avuto lavori: comunicato solo pochi giorni prima della scadenza. */
 export const BONUS_MONTH_DAYS = 30;
 export const BONUS_MONTH_NOTICE_DAYS = 3;
+
+/**
+ * Offerta di lancio (decisione dell'utente del 26/10/2026, docs/CHANGELOG.md
+ * §363): ai primi 100 professionisti con il profilo completo il livello Base
+ * è gratis per 3 mesi (tre periodi da 30 giorni) dal lancio, al posto del
+ * mese gratuito; niente mese regalato a sorpresa.
+ */
+export const FOUNDER_SPOTS = 100;
+export const FOUNDER_FREE_MONTHS = 3;
+export const FOUNDER_TRIAL_DAYS = FOUNDER_FREE_MONTHS * TRIAL_DAYS;
+
+/** Posti dell'offerta di lancio (`GET /subscriptions/founders`, pubblico). */
+export type FounderSpots = { total: number; left: number };
+
+/** Elenco dei fondatori per l'area admin (`GET /admin/founders`, §363). */
+export type AdminFounders = {
+  total: number;
+  taken: number;
+  rows: {
+    number: number;
+    businessName: string;
+    email: string;
+    city: string;
+    /** Iscrizione del profilo. */
+    joinedAt: string;
+    /** Fine dei mesi gratuiti; null prima del lancio, quando non scorrono ancora. */
+    freeUntil: string | null;
+    /** Livello già scelto (pagherà a fine mesi gratuiti), null se nessuno. */
+    tier: SubscriptionTier | null;
+    deleted: boolean;
+  }[];
+};
 /** Avviso quando si usa questa quota del limite mensile. */
 export const USAGE_WARNING_RATIO = 0.8;
 
@@ -40,14 +136,17 @@ export const RENEWAL_NOTICE_DAYS = 3;
 /**
  * Perché un account professionista è in pausa (docs/CHANGELOG.md §162):
  * fuori dalla ricerca e senza nuove richieste finché non si sceglie o
- * rinnova un livello, o finché non passa al livello superiore / al mese dopo.
+ * rinnova un livello. I lavori esauriti non mettono più in pausa (§362):
+ * vedi `MySubscription.limitReached`.
  */
-export type PauseReason = "TRIAL_ENDED" | "SUBSCRIPTION_ENDED" | "LIMIT_REACHED";
+export type PauseReason = "TRIAL_ENDED" | "SUBSCRIPTION_ENDED";
 
-/** Differenza di prezzo mensile tra due livelli (mai negativa). */
-export function tierPriceDifferenceEurCents(from: SubscriptionTier, to: SubscriptionTier): number {
-  return Math.max(0, subscriptionTierInfo(to).priceEurCents - subscriptionTierInfo(from).priceEurCents);
-}
+/**
+ * Errore dell'API per chi prova a mandare un preventivo o a rispondere per
+ * primo con i lavori esauriti (§362): il sito lo riconosce e apre la
+ * finestra del livello superiore invece di mostrare il testo.
+ */
+export const JOB_LIMIT_REACHED_MESSAGE = "Hai esaurito i lavori compresi nel tuo abbonamento: passa al livello superiore per rispondere.";
 
 export function subscriptionTierInfo(tier: SubscriptionTier) {
   return SUBSCRIPTION_TIERS.find((t) => t.tier === tier)!;
@@ -83,14 +182,43 @@ export type MySubscription = {
   trialEndsAt: string | null;
   /** Il mese regalato è già stato dato (viene mostrato solo dopo, mai prima). */
   bonusMonthGranted: boolean;
+  /**
+   * Tra i primi 100 professionisti (§363): 3 mesi gratis. `currentMonth` è il
+   * mese gratuito in corso (1-3), 0 se i mesi non sono ancora partiti (prima
+   * del lancio); null finiti i mesi gratuiti.
+   */
+  founder: { months: number; currentMonth: number | null } | null;
+  /**
+   * Lavori del periodo in corso (docs/CHANGELOG.md §362): ripartono al
+   * rinnovo, non il 1° del mese. Su Plus e Pro lo stesso cliente conta una
+   * volta per periodo (`countsClientsOnce`).
+   */
   usage: {
-    /** Lavori accettati nel mese corrente (ora italiana). */
-    acceptedJobsThisMonth: number;
-    /** null = nessun limite (prova, livello Pro). */
-    monthlyLimit: number | null;
-    /** Es. "settembre 2026". */
-    monthLabel: string;
+    used: number;
+    /** null = nessun limite (Pro). */
+    limit: number | null;
+    periodStart: string;
+    /** Inizio del periodo successivo: i lavori ripartono qui. */
+    periodEnd: string;
+    countsClientsOnce: boolean;
   };
+  /**
+   * Lavori del periodo esauriti (§362): il profilo resta nella ricerca e
+   * riceve le richieste, ma non può mandare preventivi nuovi né rispondere
+   * per primo a una richiesta finché non passa al livello superiore o non
+   * ripartono i lavori.
+   */
+  limitReached: boolean;
+  /** Rinnovo dell'abbonamento pagato; null durante e dopo la prova se non ne è stato scelto uno. */
+  billingInterval: BillingInterval | null;
+  /**
+   * Quanto costa adesso passare a ciascun livello superiore (IVA esclusa) e
+   * fino a quando vale prima del rinnovo (docs/CHANGELOG.md §361). Vuoto se
+   * non c'è un livello superiore o non si può passare (prova finita,
+   * abbonamento concluso). `amountEurCents` 0 prima del lancio, quando la
+   * prova non scorre ancora.
+   */
+  upgradeQuotes: { tier: SubscriptionTier; amountEurCents: number; until: string | null }[];
   /** Pagamenti attivi su questo ambiente (chiave Stripe presente). */
   checkoutAvailable: boolean;
   /** Profilo non visibile finché non compila tipo e dati fiscali (docs/CHANGELOG.md §241). */

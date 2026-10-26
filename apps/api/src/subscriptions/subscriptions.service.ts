@@ -2,11 +2,17 @@ import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import {
+  FOUNDER_SPOTS,
+  FOUNDER_TRIAL_DAYS,
   BONUS_MONTH_DAYS,
   BONUS_MONTH_NOTICE_DAYS,
   RENEWAL_NOTICE_DAYS,
   subscriptionTierInfo,
+  tierPeriodPriceEurCents,
   type MySubscription,
+  type BillingInterval,
+  type AdminFounders,
+  type FounderSpots,
   type PauseReason,
   type SubscriptionTier,
 } from "@professionisti/shared";
@@ -15,18 +21,23 @@ import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing } from "../profession
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
 import { NotificationsService } from "../notifications/notifications.service";
 import {
+  countsClientsOnce,
+  founderFreeMonths,
   hasLaunched,
+  jobLimitReached,
   launchDate,
   monthlyLimit,
   pauseReason,
   periodNoticeToSend,
-  romeMonthKey,
-  romeMonthLabel,
-  romeMonthStart,
   subscriptionState,
   tierOfPlan,
+  trialDaysOf,
   trialEndFor,
+  upgradeQuotes,
   usageNoticeToSend,
+  usagePeriod,
+  usagePeriodKey,
+  type SubscriptionRow,
 } from "./subscription-rules";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -49,11 +60,13 @@ function pausesActive(now: Date): boolean {
 /**
  * Abbonamento unico a livelli (CLAUDE.md §6, docs/CHANGELOG.md §161):
  * prova gratuita di un mese per tutti, mese regalato a sorpresa a chi non
- * ha ancora avuto lavori, conteggio dei lavori accettati del mese con
- * avvisi all'80% e al 100%. Account in pausa (fuori dalla ricerca, niente
- * nuove richieste) a fine prova senza livello, ad abbonamento concluso o a
- * lavori del mese esauriti (docs/CHANGELOG.md §162). Rinnovo automatico via
- * Stripe con avviso prima di ogni rinnovo.
+ * ha ancora avuto lavori, conteggio dei lavori accettati del periodo (dal
+ * rinnovo, §362) con avvisi all'80% e al 100%. Account in pausa (fuori dalla
+ * ricerca, niente nuove richieste) a fine prova senza livello o ad
+ * abbonamento concluso (docs/CHANGELOG.md §162); a lavori esauriti resta
+ * nella ricerca ma non può mandare preventivi né rispondere per primo
+ * (`jobLimitReachedAt`, §362). Rinnovo automatico via Stripe con avviso
+ * prima di ogni rinnovo.
  */
 @Injectable()
 export class SubscriptionsService {
@@ -79,17 +92,85 @@ export class SubscriptionsService {
   }
 
   /**
-   * Lavori accettati nel mese (ora italiana): prenotazioni nate nel mese,
-   * tranne quelle annullate dal cliente (il professionista non ne ha colpa).
+   * Offerta di lancio (decisione dell'utente, docs/CHANGELOG.md §363): ai
+   * primi 100 professionisti con il profilo completo (non quelli di prova,
+   * non i profili creati da un operatore finché non li confermano) 3 mesi
+   * gratis dal lancio al posto del mese gratuito. Idempotente; chi ha già un
+   * abbonamento Stripe o un posto non ne prende un altro. Due iscrizioni
+   * nello stesso istante: il numero è unico, la seconda riprova col successivo.
    */
-  countAcceptedJobsThisMonth(professionalProfileId: string, now = new Date()): Promise<number> {
-    return this.prisma.booking.count({
-      where: {
-        professionalProfileId,
-        createdAt: { gte: romeMonthStart(now) },
-        NOT: { status: "CANCELED", canceledBy: "CLIENT" },
-      },
+  async claimFounderSpot(professionalProfileId: string, now = new Date()): Promise<boolean> {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const profile = await this.prisma.professionalProfile.findUnique({
+        where: { id: professionalProfileId },
+        select: { isDemo: true, deletedAt: true, invitePendingAt: true, subscription: true },
+      });
+      const sub = profile?.subscription;
+      if (!profile || !sub || profile.isDemo || profile.deletedAt || profile.invitePendingAt) return false;
+      if (sub.founderNumber) return true;
+      if (sub.status !== "TRIALING" || sub.stripeSubscriptionId) return false;
+      const last = await this.prisma.subscription.aggregate({ _max: { founderNumber: true } });
+      const next = (last._max.founderNumber ?? 0) + 1;
+      if (next > FOUNDER_SPOTS) return false;
+      // I tre mesi partono dal lancio (o da oggi dopo il lancio), mai prima della prova già data.
+      const founderEnd = trialEndFor(now, launchDate(), FOUNDER_TRIAL_DAYS);
+      const trialEndsAt = sub.trialEndsAt && sub.trialEndsAt.getTime() > founderEnd.getTime() ? sub.trialEndsAt : founderEnd;
+      try {
+        await this.prisma.subscription.update({ where: { id: sub.id }, data: { founderNumber: next, trialEndsAt } });
+        return true;
+      } catch (error) {
+        if ((error as { code?: string }).code !== "P2002") throw error;
+      }
+    }
+    return false;
+  }
+
+  /** Fondatori in ordine di posto, per l'area admin (§363). */
+  async listFounders(now = new Date()): Promise<AdminFounders> {
+    const subs = await this.prisma.subscription.findMany({
+      where: { founderNumber: { not: null } },
+      orderBy: { founderNumber: "asc" },
+      include: { professionalProfile: { select: { businessName: true, city: true, createdAt: true, deletedAt: true, user: { select: { email: true } } } } },
     });
+    const waitingLaunch = !hasLaunched(now, launchDate());
+    return {
+      total: FOUNDER_SPOTS,
+      taken: subs.length,
+      rows: subs.map((sub) => ({
+        number: sub.founderNumber!,
+        businessName: sub.professionalProfile.businessName,
+        email: sub.professionalProfile.user.email ?? "",
+        city: sub.professionalProfile.city,
+        joinedAt: sub.professionalProfile.createdAt.toISOString(),
+        freeUntil: waitingLaunch ? null : (sub.trialEndsAt?.toISOString() ?? null),
+        tier: tierOfPlan(sub.plan),
+        deleted: Boolean(sub.professionalProfile.deletedAt),
+      })),
+    };
+  }
+
+  /** Posti dell'offerta di lancio rimasti (pagina prezzi). */
+  async founderSpots(): Promise<FounderSpots> {
+    const last = await this.prisma.subscription.aggregate({ _max: { founderNumber: true } });
+    return { total: FOUNDER_SPOTS, left: Math.max(0, FOUNDER_SPOTS - (last._max.founderNumber ?? 0)) };
+  }
+
+  /**
+   * Lavori accettati nel periodo in corso (dal rinnovo, docs/CHANGELOG.md
+   * §362): prenotazioni nate nel periodo, tranne quelle annullate dal
+   * cliente (il professionista non ne ha colpa). Su Plus e Pro lo stesso
+   * cliente conta una volta.
+   */
+  async countUsedJobs(professionalProfileId: string, row: SubscriptionRow | null, now = new Date()): Promise<number> {
+    const period = usagePeriod(row, now);
+    const where = {
+      professionalProfileId,
+      createdAt: { gte: period.start, lt: period.end },
+      NOT: { status: "CANCELED" as const, canceledBy: "CLIENT" as const },
+    };
+    if (!countsClientsOnce(row, now)) return this.prisma.booking.count({ where });
+    const clients = await this.prisma.booking.findMany({ where, select: { clientId: true }, distinct: ["clientId"] });
+    return clients.length;
   }
 
   /** Dopo ogni nuovo lavoro accettato: avviso vicino o al limite, una volta al mese. Mai un errore verso chi chiama. */
@@ -101,20 +182,21 @@ export class SubscriptionsService {
         include: { professionalProfile: { select: { userId: true } } },
       });
       if (!sub) return;
-      const used = await this.countAcceptedJobsThisMonth(professionalProfileId, now);
-      // Senza pagamenti attivi o prima del lancio non c'è pausa né livello superiore: niente avvisi sul limite.
+      const used = await this.countUsedJobs(professionalProfileId, sub, now);
+      // Senza pagamenti attivi o prima del lancio non c'è limite né livello superiore: niente avvisi.
       if (!pausesActive(now)) return;
       await this.syncPause(professionalProfileId, now, used);
       const limit = monthlyLimit(sub, now);
       if (limit === null) return;
-      const monthKey = romeMonthKey(now);
-      const notice = usageNoticeToSend(used, limit, sub.usageNoticeKey, monthKey);
+      const period = usagePeriod(sub, now);
+      const periodKey = usagePeriodKey(period);
+      const notice = usageNoticeToSend(used, limit, sub.usageNoticeKey, periodKey);
       if (!notice) return;
-      await this.prisma.subscription.update({ where: { id: sub.id }, data: { usageNoticeKey: `${monthKey}:${notice}` } });
+      await this.prisma.subscription.update({ where: { id: sub.id }, data: { usageNoticeKey: `${periodKey}:${notice}` } });
       await this.notificationsService.notify(
         sub.professionalProfile.userId,
         notice === "100" ? "SUBSCRIPTION_LIMIT_REACHED" : "SUBSCRIPTION_LIMIT_NEAR",
-        { used, limit, tier: tierOfPlan(sub.plan) },
+        { used, limit, tier: tierOfPlan(sub.plan), tierLabel: subscriptionTierInfo(tierOfPlan(sub.plan) ?? "BASE").label, until: period.end.toISOString() },
       );
     } catch (error) {
       this.logger.error(`Avviso limite abbonamento non riuscito per ${professionalProfileId}`, error as Error);
@@ -122,30 +204,42 @@ export class SubscriptionsService {
   }
 
   /**
-   * Mette in pausa o riattiva il profilo secondo l'abbonamento e i lavori del
-   * mese. Avvisa quando va in pausa per fine prova o fine abbonamento (il
-   * limite raggiunto ha già il suo avviso). I profili dimostrativi non vanno
-   * mai in pausa, e nessuno ci va finché i pagamenti non sono attivi
-   * (senza STRIPE_SECRET_KEY non si può scegliere un livello: a fine prova
-   * la ricerca resterebbe vuota). Restituisce il motivo attuale.
+   * Mette in pausa o riattiva il profilo secondo l'abbonamento, e segna o
+   * toglie i lavori esauriti del periodo (§362). Avvisa quando va in pausa
+   * per fine prova o fine abbonamento (il limite raggiunto ha già il suo
+   * avviso). I profili dimostrativi non vanno mai in pausa né al limite, e
+   * nessuno ci va finché i pagamenti non sono attivi (senza
+   * STRIPE_SECRET_KEY non si può scegliere un livello: a fine prova la
+   * ricerca resterebbe vuota). Restituisce il motivo della pausa e il limite.
    */
-  async syncPause(professionalProfileId: string, now = new Date(), acceptedJobsThisMonth?: number): Promise<PauseReason | null> {
+  async syncPause(
+    professionalProfileId: string,
+    now = new Date(),
+    usedJobs?: number,
+  ): Promise<{ reason: PauseReason | null; limitReached: boolean }> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { id: professionalProfileId },
-      select: { userId: true, isDemo: true, deletedAt: true, pausedReason: true, subscription: true },
+      select: { userId: true, isDemo: true, deletedAt: true, pausedReason: true, jobLimitReachedAt: true, subscription: true },
     });
-    if (!profile || profile.deletedAt) return null;
-    const used = acceptedJobsThisMonth ?? (await this.countAcceptedJobsThisMonth(professionalProfileId, now));
-    const reason = profile.isDemo || !pausesActive(now) ? null : pauseReason(profile.subscription, used, now);
-    if (reason === profile.pausedReason) return reason;
+    if (!profile || profile.deletedAt) return { reason: null, limitReached: false };
+    const active = !profile.isDemo && pausesActive(now);
+    const reason = active ? pauseReason(profile.subscription, now) : null;
+    const used = active && !reason ? (usedJobs ?? (await this.countUsedJobs(professionalProfileId, profile.subscription, now))) : 0;
+    const limitReached = active && jobLimitReached(profile.subscription, used, now);
+    const pauseChanged = reason !== profile.pausedReason;
+    const limitChanged = limitReached !== Boolean(profile.jobLimitReachedAt);
+    if (!pauseChanged && !limitChanged) return { reason, limitReached };
     await this.prisma.professionalProfile.update({
       where: { id: professionalProfileId },
-      data: { pausedAt: reason ? now : null, pausedReason: reason },
+      data: {
+        ...(pauseChanged ? { pausedAt: reason ? now : null, pausedReason: reason } : {}),
+        ...(limitChanged ? { jobLimitReachedAt: limitReached ? now : null } : {}),
+      },
     });
-    if (reason === "TRIAL_ENDED" || reason === "SUBSCRIPTION_ENDED") {
+    if (pauseChanged && (reason === "TRIAL_ENDED" || reason === "SUBSCRIPTION_ENDED")) {
       await this.notificationsService.notify(profile.userId, "SUBSCRIPTION_PAUSED", { reason });
     }
-    return reason;
+    return { reason, limitReached };
   }
 
   async getMySubscription(userId: string): Promise<MySubscription> {
@@ -153,27 +247,44 @@ export class SubscriptionsService {
     if (!profile) throw new NotFoundException("Profilo professionista non trovato. Completa prima il tuo profilo.");
     const now = new Date();
     const sub = await this.prisma.subscription.findUnique({ where: { professionalProfileId: profile.id } });
-    const used = await this.countAcceptedJobsThisMonth(profile.id, now);
-    const pausedReason = await this.syncPause(profile.id, now, used);
+    const used = await this.countUsedJobs(profile.id, sub, now);
+    const { reason: pausedReason, limitReached } = await this.syncPause(profile.id, now, used);
+    const period = usagePeriod(sub, now);
     const launch = launchDate();
     // Prima del lancio la prova non scorre (docs/CHANGELOG.md §170): finisce
     // un mese dopo il lancio, o non ha ancora una data se il lancio non è fissato.
     const waitingLaunch = !hasLaunched(now, launch) && (!sub || sub.status === "TRIALING");
     const state = waitingLaunch ? "TRIAL" : subscriptionState(sub, now);
-    const trialEndsAt = waitingLaunch ? (launch ? trialEndFor(now, launch) : null) : (sub?.trialEndsAt ?? null);
+    const trialEndsAt = waitingLaunch ? (launch ? trialEndFor(now, launch, trialDaysOf(sub)) : null) : (sub?.trialEndsAt ?? null);
+    const tier = sub && state !== "TRIAL" && state !== "TRIAL_ENDED" ? tierOfPlan(sub.plan) : null;
     return {
       state,
-      tier: sub && state !== "TRIAL" && state !== "TRIAL_ENDED" ? tierOfPlan(sub.plan) : null,
+      tier,
       pausedReason,
       currentPeriodEnd: sub?.currentPeriodEnd?.toISOString() ?? null,
       cancelAtPeriodEnd: Boolean(sub?.cancelAtPeriodEnd),
       trialEndsAt: trialEndsAt?.toISOString() ?? null,
       bonusMonthGranted: Boolean(sub?.bonusMonthGrantedAt),
+      founder: founderFreeMonths(sub?.founderNumber, trialEndsAt, now),
       usage: {
-        acceptedJobsThisMonth: used,
-        monthlyLimit: monthlyLimit(sub, now),
-        monthLabel: romeMonthLabel(now),
+        used,
+        limit: monthlyLimit(sub, now),
+        periodStart: period.start.toISOString(),
+        periodEnd: period.end.toISOString(),
+        countsClientsOnce: countsClientsOnce(sub, now),
       },
+      limitReached,
+      billingInterval: tier && sub ? sub.billingInterval : null,
+      upgradeQuotes: upgradeQuotes({
+        state,
+        tier,
+        interval: sub?.billingInterval ?? "MONTH",
+        waitingLaunch,
+        trialEndsAt,
+        currentPeriodStart: sub?.currentPeriodStart ?? null,
+        currentPeriodEnd: sub?.currentPeriodEnd ?? null,
+        now,
+      }),
       checkoutAvailable: paymentsActive(),
       fiscalDataNeeded: publicVisibilityMissing(profile),
       identityVerificationNeeded: identityVerificationNeeded(profile),
@@ -190,7 +301,9 @@ export class SubscriptionsService {
     stripeSubscriptionId: string;
     status: "ACTIVE" | "PAST_DUE" | "CANCELED" | null;
     tier: SubscriptionTier | null;
+    interval: BillingInterval | null;
     cancelAtPeriodEnd: boolean;
+    currentPeriodStart?: Date | null;
     currentPeriodEnd: Date | null;
   }): Promise<void> {
     const row =
@@ -204,7 +317,9 @@ export class SubscriptionsService {
         stripeSubscriptionId: input.stripeSubscriptionId,
         ...(input.status ? { status: input.status } : {}),
         ...(input.tier ? { plan: input.tier } : {}),
+        ...(input.interval ? { billingInterval: input.interval } : {}),
         cancelAtPeriodEnd: input.cancelAtPeriodEnd,
+        ...(input.currentPeriodStart !== undefined ? { currentPeriodStart: input.currentPeriodStart } : {}),
         currentPeriodEnd: input.currentPeriodEnd,
       },
     });
@@ -238,7 +353,7 @@ export class SubscriptionsService {
 
   /**
    * Ogni ora: mette in pausa chi ha finito la prova o l'abbonamento e
-   * riattiva chi riparte col mese nuovo. Scrive solo quando lo stato cambia;
+   * toglie il limite a chi riparte col periodo nuovo (al rinnovo, §362). Scrive solo quando lo stato cambia;
    * i profili sono pochi alla scala di lancio (CLAUDE.md §7).
    */
   @Cron(CronExpression.EVERY_HOUR)
@@ -266,11 +381,17 @@ export class SubscriptionsService {
     const launch = launchDate();
     if (!hasLaunched(now, launch)) return 0;
     const launchTrialEnd = trialEndFor(launch!, launch);
+    // I fondatori hanno tre mesi dal lancio (§363).
+    const founderTrialEnd = trialEndFor(launch!, launch, FOUNDER_TRIAL_DAYS);
+    const founders = await this.prisma.subscription.updateMany({
+      where: { status: "TRIALING", stripeSubscriptionId: null, founderNumber: { not: null }, createdAt: { lt: launch! }, trialEndsAt: { lt: founderTrialEnd } },
+      data: { trialEndsAt: founderTrialEnd },
+    });
     const result = await this.prisma.subscription.updateMany({
-      where: { status: "TRIALING", stripeSubscriptionId: null, createdAt: { lt: launch! }, trialEndsAt: { lt: launchTrialEnd } },
+      where: { status: "TRIALING", stripeSubscriptionId: null, founderNumber: null, createdAt: { lt: launch! }, trialEndsAt: { lt: launchTrialEnd } },
       data: { trialEndsAt: launchTrialEnd },
     });
-    return result.count;
+    return founders.count + result.count;
   }
 
   /** Ogni giorno: avviso pochi giorni prima del rinnovo automatico, o della fine se annullato. */
@@ -292,7 +413,8 @@ export class SubscriptionsService {
         const tier = tierOfPlan(sub.plan);
         await this.notificationsService.notify(sub.professionalProfile.userId, notice === "ENDING" ? "SUBSCRIPTION_ENDING" : "SUBSCRIPTION_RENEWING", {
           tierLabel: tier ? subscriptionTierInfo(tier).label : "",
-          amountEurCents: tier ? subscriptionTierInfo(tier).priceEurCents : null,
+          amountEurCents: tier ? tierPeriodPriceEurCents(tier, sub.billingInterval) : null,
+          interval: sub.billingInterval,
           date: sub.currentPeriodEnd!.toISOString(),
         });
       } catch (error) {
@@ -324,7 +446,8 @@ export class SubscriptionsService {
     for (const sub of subs) {
       try {
         const userId = sub.professionalProfile.userId;
-        if (!sub.bonusMonthGrantedAt) {
+        // Ai fondatori niente mese a sorpresa: hanno già tre mesi (§363).
+        if (!sub.bonusMonthGrantedAt && !sub.founderNumber) {
           const jobs = await this.prisma.booking.count({ where: { professionalProfileId: sub.professionalProfileId } });
           if (jobs === 0) {
             const trialEndsAt = new Date(sub.trialEndsAt!.getTime() + BONUS_MONTH_DAYS * DAY_MS);
@@ -338,6 +461,7 @@ export class SubscriptionsService {
           await this.notificationsService.notify(userId, "SUBSCRIPTION_TRIAL_ENDING", {
             trialEndsAt: sub.trialEndsAt!.toISOString(),
             date: sub.trialEndsAt!.toISOString(),
+            founder: Boolean(sub.founderNumber),
           });
         }
       } catch (error) {
