@@ -30,10 +30,10 @@ export function formatLeadDeadline(expiresAt: string | null): { label: string; u
 export function formatForwardDeadline(forwardAt: string | null): { label: string; urgent: boolean } | null {
   const deadline = formatLeadDeadline(forwardAt);
   if (!deadline) return null;
-  // "Solo tua ancora per 6 ore" (docs/CHANGELOG.md §352): prima "Rispondi
-  // entro 6 ore, poi va anche ad altri professionisti", accanto a "Puoi
-  // rispondere fino al 25 dicembre", sembravano due scadenze in contrasto.
-  return { label: deadline.label.replace("Rispondi entro", "Solo tua ancora per"), urgent: deadline.urgent };
+  // Il conto alla rovescia dice anche cosa succede dopo (richiesta
+  // dell'utente, docs/CHANGELOG.md §353): "Solo tua ancora per 6 ore" non
+  // faceva capire che poi la richiesta va anche ad altri.
+  return { label: `${deadline.label}, poi va anche ad altri professionisti`, urgent: deadline.urgent };
 }
 
 /**
@@ -53,8 +53,8 @@ export function formatRespondUntil(respondUntil: string | null): { label: string
 
 /**
  * La scadenza da mostrare su una richiesta da quotare, una sola alla volta
- * (docs/CHANGELOG.md §352): per una richiesta diretta prima quanto resta
- * "solo tua", passata quella fino a quando si può rispondere. Se la
+ * (docs/CHANGELOG.md §352): per una richiesta diretta prima quanto manca
+ * prima che vada anche ad altri, poi fino a quando si può rispondere. Se la
  * scadenza finale viene prima (caso raro), vince quella.
  */
 export function leadDeadlines(lead: { expiresAt: string | null; respondUntil: string | null; forwardAt: string | null }): { label: string; urgent: boolean }[] {

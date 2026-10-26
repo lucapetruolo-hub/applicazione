@@ -20977,7 +20977,7 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Decisioni** (`apps/web/src/app/dashboard/page.tsx`, `globals.css`, `lib/leadDeadline.ts`):
 1. **Telefono, "Invia preventivo"** sotto il testo e largo quanto la scheda: accanto schiacciava la descrizione in 4-5 righe.
-2. **Una scadenza alla volta**: su una richiesta diretta comparivano "Puoi rispondere fino al 25 dicembre" e "Rispondi entro 6 ore, poi va anche ad altri professionisti", che sembravano in contrasto. Ora "Solo tua ancora per 6 ore"; passato quel tempo compare la data finale. Vale anche per le pillole di Richieste e lavori (stessa funzione `leadDeadlines`).
+2. **Una scadenza alla volta**: su una richiesta diretta comparivano "Puoi rispondere fino al 25 dicembre" e "Rispondi entro 6 ore, poi va anche ad altri professionisti", che sembravano in contrasto. Ora solo il conto alla rovescia; passato quel tempo compare la data finale (la scritta "Solo tua ancora per 6 ore" provata qui è stata tolta nel §353). Vale anche per le pillole di Richieste e lavori (stessa funzione `leadDeadlines`).
 3. **Richieste prima sul telefono**: con richieste in attesa, "Da rispondere ora" viene subito dopo i lavori di oggi e domani, prima di "Completa il profilo" e dell'avviso sull'agenda (prima erano due schermate più giù). Sul computer le colonne non cambiano.
 4. **Niente doppione**: tolta la tessera "Richieste da rispondere", il numero sta in un tondo rosso accanto a "Da rispondere ora". "Date da confermare" e "Messaggi non letti" compaiono solo se sopra zero.
 5. **"Urgente"** con l'etichetta rossa di Richieste e lavori (`Badge`), non più l'emoji 🔴.
@@ -20986,3 +20986,15 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 10. **Meteo più basso sul computer**: giorno, icona e gradi su una riga (circa 46 px invece di 92). La descrizione ("Nuvoloso") resta nel fumetto e nel testo dell'icona per gli screen reader. Telefono invariato.
 
 **Verifica**: typecheck e lint; sito in locale con professionista di prova (richiesta urgente, richiesta diretta, lavoro oggi e domani, con e senza visite), foto a 390, 1366 e 1600 px, nessuna pagina più larga dello schermo.
+
+## 353. "Oggi": Sto arrivando, recensioni, conto alla rovescia con il perché
+
+**Richiesta esplicita dell'utente** (26/10/2026, stesso thread): "effettua migliorie delle recensioni e del naviga, e in più ripristina il conteggio per il professionista per fargli capire che se non risponde va anche ad altri la richiesta".
+
+**Decisioni**:
+- **Conto alla rovescia**: torna "Rispondi entro 6 ore, poi va anche ad altri professionisti" (`formatForwardDeadline`). Resta una scadenza alla volta (§352): la data finale compare dopo.
+- **"Sto arrivando"** accanto a "Naviga" sugli appuntamenti di oggi confermati a domicilio, come nell'agenda (`notifyOnTheWay`); inviato diventa "Avvisato alle 13:40", se non parte "Avviso non inviato, riprova.". Da telefono i due pulsanti stanno sotto la riga, larghi quanto la scheda: allineati al testo "Sto arrivando" usciva dalla scheda a 390 px.
+- **Recensioni**: senza recensioni la tessera dice "Nessuna ancora" (più piccolo, su una riga) invece di "—" e "0 recensioni".
+- **Prove automatiche**: il link "Naviga" si chiamava "Naviga verso <cliente>" e la prova di Oggi trovava due link col nome del cliente; ora "Naviga verso <indirizzo>", controllato nella prova (`oggi-meteo.spec.ts`). Aggiunto in `menu-laterale.spec.ts` il controllo del §351 (nessun titolo col menu ridotto).
+
+**Verifica**: typecheck, lint, tutte le prove nel browser in locale (144 passate), foto a 390, 1366 e 1600 px.

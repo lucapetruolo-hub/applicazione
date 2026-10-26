@@ -2,8 +2,8 @@
 
 import { Fragment, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Navigation } from "lucide-react";
-import { AGENDA_LOOKAHEAD_DAYS, formatAppointmentDate, formatAppointmentTime, jobOccurrences, navigateUrl, scheduleChangeBetween, wallClockToday, type AgendaAttention, type DayAhead, type ExternalJob, type MySubscription, type ProfessionalBooking, type ProfessionalInsights, type ProfessionalLead } from "@professionisti/shared";
+import { Check, Navigation, Truck } from "lucide-react";
+import { AGENDA_LOOKAHEAD_DAYS, formatAppointmentDate, formatAppointmentTime, jobOccurrences, navigateUrl, scheduleChangeBetween, wallClockNow, wallClockToday, type AgendaAttention, type DayAhead, type ExternalJob, type MySubscription, type ProfessionalBooking, type ProfessionalInsights, type ProfessionalLead } from "@professionisti/shared";
 import { Badge, Button, Icon, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { loadMyProfessionalProfile } from "@/lib/myProfessionalProfile";
@@ -48,6 +48,9 @@ export default function DashboardTodayPage() {
   const [insightsFailed, setInsightsFailed] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [, setTick] = useState(0);
+  // "Sto arrivando" in corso o non riuscito, per appuntamento (§353).
+  const [onTheWaySending, setOnTheWaySending] = useState<string | null>(null);
+  const [onTheWayError, setOnTheWayError] = useState<string | null>(null);
   const journey = useSetupJourney(user?.isProfessional ? token : null);
 
   useEffect(() => {
@@ -140,7 +143,8 @@ export default function DashboardTodayPage() {
   endTomorrow.setUTCDate(endTomorrow.getUTCDate() + 2);
   // Un lavoro su più giorni compare oggi e domani con l'orario di quel giorno (§310).
   // `navigateTo`: indirizzo per "Naviga" (§352), solo a lavoro confermato.
-  type UpcomingRow = { key: string; href: string; at: string; title: string; sub: string; job: DayJobRow; navigateTo: string | null };
+  // `onTheWay`: "Sto arrivando" (§353), solo per un appuntamento confermato a domicilio.
+  type UpcomingRow = { key: string; href: string; at: string; title: string; sub: string; job: DayJobRow; navigateTo: string | null; onTheWay: { bookingId: string; sentAt: string | null } | null };
   const inWindow = (start: Date) => start >= startToday && start < endTomorrow;
   const upcoming: UpcomingRow[] = [
     ...(bookings ?? [])
@@ -164,6 +168,7 @@ export default function DashboardTodayPage() {
                   ? `${booking.street} ${booking.houseNumber}, ${[booking.postalCode, booking.city].filter(Boolean).join(" ")}`
                   : booking.address
                 : null,
+            onTheWay: booking.status === "CONFIRMED" && booking.serviceMode !== "ONLINE" ? { bookingId: booking.id, sentAt: booking.onTheWayAt ?? null } : null,
           })),
       ),
     // Anche i lavori aggiunti a mano in agenda (§333).
@@ -180,9 +185,25 @@ export default function DashboardTodayPage() {
             sub: [job.address, job.description].filter(Boolean).join(" · ") || "Lavoro aggiunto da te",
             job: { start: occurrence.start.toISOString(), end: occurrence.end?.toISOString() ?? null, city: cityOfAddress(job.address), online: false },
             navigateTo: job.address,
+            onTheWay: null,
           })),
       ),
   ].sort((a, b) => a.at.localeCompare(b.at));
+
+  /** Avvisa il cliente che stai arrivando, come dall'agenda (§353). */
+  async function sendOnTheWay(bookingId: string) {
+    if (!token) return;
+    setOnTheWaySending(bookingId);
+    setOnTheWayError(null);
+    try {
+      const result = await apiClient.notifyOnTheWay(token, bookingId);
+      setBookings((list) => list?.map((b) => (b.id === bookingId ? { ...b, onTheWayAt: result.onTheWayAt } : b)) ?? list);
+    } catch {
+      setOnTheWayError(bookingId);
+    } finally {
+      setOnTheWaySending(null);
+    }
+  }
 
   const loading = leads === null || bookings === null || externalJobs === null;
   // Tutto quello che sta sotto "Oggi e domani" compare insieme, quando sono
@@ -226,7 +247,7 @@ export default function DashboardTodayPage() {
                   ) : upcoming.length === 0 ? (
                     <EmptyLine text="Nessun appuntamento oggi e domani." />
                   ) : (
-                    upcoming.map(({ key, href, at, title, sub, navigateTo }, index) => (
+                    upcoming.map(({ key, href, at, title, sub, navigateTo, onTheWay }, index) => (
                       <Fragment key={key}>
                         {/* I lavori raggruppati per giorno, con il riepilogo sopra (§333). */}
                         {index === 0 || upcoming[index - 1]!.at.slice(0, 10) !== at.slice(0, 10) ? (
@@ -243,12 +264,32 @@ export default function DashboardTodayPage() {
                               <span className="today-row-sub">{sub}</span>
                             </span>
                           </Link>
-                          {/* "Naviga" diretto sui lavori di oggi (§352): prima
-                              serviva aprire l'agenda e poi l'appuntamento. */}
-                          {navigateTo && at.slice(0, 10) === startToday.toISOString().slice(0, 10) ? (
-                            <a className="today-nav" href={navigateUrl(navigateTo)} target="_blank" rel="noreferrer" aria-label={`Naviga verso ${title}`}>
-                              <Navigation size={16} aria-hidden /> Naviga
-                            </a>
+                          {/* "Naviga" e "Sto arrivando" diretti sui lavori di oggi
+                              (§352-§353): prima serviva aprire l'agenda e poi l'appuntamento. */}
+                          {at.slice(0, 10) === startToday.toISOString().slice(0, 10) && (navigateTo || onTheWay) ? (
+                            <div className="today-appt-actions">
+                              {navigateTo ? (
+                                <a className="today-nav" href={navigateUrl(navigateTo)} target="_blank" rel="noreferrer" aria-label={`Naviga verso ${navigateTo}`}>
+                                  <Navigation size={16} aria-hidden /> Naviga
+                                </a>
+                              ) : null}
+                              {onTheWay ? (
+                                onTheWay.sentAt ? (
+                                  <span className="today-nav is-done" aria-live="polite">
+                                    <Check size={16} aria-hidden /> Avvisato alle {formatAppointmentTime(wallClockNow(new Date(onTheWay.sentAt)))}
+                                  </span>
+                                ) : (
+                                  <button type="button" className="today-nav is-secondary" disabled={onTheWaySending === onTheWay.bookingId} onClick={() => void sendOnTheWay(onTheWay.bookingId)}>
+                                    <Truck size={16} aria-hidden /> {onTheWaySending === onTheWay.bookingId ? "Invio..." : "Sto arrivando"}
+                                  </button>
+                                )
+                              ) : null}
+                              {onTheWay && onTheWayError === onTheWay.bookingId ? (
+                                <span className="today-nav-error" role="alert">
+                                  Avviso non inviato, riprova.
+                                </span>
+                              ) : null}
+                            </div>
                           ) : null}
                         </div>
                       </Fragment>
@@ -428,7 +469,7 @@ function LeadToAnswerRow({ lead }: { lead: ProfessionalLead }) {
 }
 
 function InsightsGrid({ insights }: { insights: ProfessionalInsights }) {
-  const cells: { label: string; value: string; compare: string | null }[] = [
+  const cells: { label: string; value: string; compare: string | null; isText?: boolean }[] = [
     {
       label: "Visite al profilo (30 giorni)",
       value: String(insights.profileViews30d),
@@ -439,18 +480,21 @@ function InsightsGrid({ insights }: { insights: ProfessionalInsights }) {
       value: insights.avgResponseTimeMinutes !== null ? formatMinutes(insights.avgResponseTimeMinutes) : "—",
       compare: insights.areaAvgResponseTimeMinutes !== null ? `Media della zona: ${formatMinutes(insights.areaAvgResponseTimeMinutes)}` : null,
     },
-    {
-      label: "Recensioni",
-      value: insights.rating !== null ? `${insights.rating.toLocaleString("it-IT")} ★` : "—",
-      compare: `${insights.reviewCount} recension${insights.reviewCount === 1 ? "e" : "i"}`,
-    },
+    // Senza recensioni "Nessuna ancora", non "—" e "0 recensioni" (§353).
+    insights.reviewCount === 0
+      ? { label: "Recensioni", value: "Nessuna ancora", compare: null, isText: true }
+      : {
+          label: "Recensioni",
+          value: insights.rating !== null ? `${insights.rating.toLocaleString("it-IT")} ★` : "—",
+          compare: `${insights.reviewCount} recension${insights.reviewCount === 1 ? "e" : "i"}`,
+        },
   ];
   return (
     <div className="today-kpis today-insights">
       {cells.map((cell) => (
         <div key={cell.label} className="admin-kpi">
           <span className="admin-kpi-label">{cell.label}</span>
-          <span className="admin-kpi-value">{cell.value}</span>
+          <span className={cell.isText ? "admin-kpi-value is-text" : "admin-kpi-value"}>{cell.value}</span>
           {cell.compare ? <span style={{ fontSize: 13, color: "#6e6459", fontWeight: 600 }}>{cell.compare}</span> : null}
         </div>
       ))}
