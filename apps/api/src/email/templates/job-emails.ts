@@ -2,20 +2,43 @@ import { calendarDetail } from "../booking-calendar";
 import { frontendUrl } from "../email-brand";
 import { renderEmail, type RenderedEmail } from "../email-layout";
 import { descriptionDetail, formatAppointmentDay, formatAppointmentTime } from "../email-format";
-import { formatJobDays } from "@professionisti/shared";
+import { formatJobDays, REQUEST_TIMING_LABEL, type RequestTiming } from "@professionisti/shared";
 
 /**
  * Email legate a una richiesta o a un appuntamento che non nascono da una
  * notifica del sito (docs/CHANGELOG.md §185).
  */
 
-/** Conferma al cliente che la richiesta è partita. */
+/**
+ * Quello che il cliente ha scritto nella richiesta, per il riepilogo
+ * nell'email di conferma (docs/CHANGELOG.md §351): così vede subito un errore
+ * e lo corregge. Mai il nome e il telefono di chi apre la porta.
+ */
+export type RequestSummary = {
+  timing?: RequestTiming | null;
+  /** Giorno e fascia scelti nell'agenda del professionista, se la richiesta parte da lì. */
+  preferredDate?: Date | null;
+  preferredTimeSlot?: string | null;
+  serviceMode?: "HOME" | "ONLINE" | null;
+  address?: string | null;
+  houseNumber?: string | null;
+  addressExtra?: string | null;
+  postalCode?: string | null;
+  province?: string | null;
+  photoUrls?: string[];
+  /** Professionista scelto dal suo profilo (richiesta diretta). */
+  businessName?: string | null;
+};
+
+/** Conferma al cliente che la richiesta è partita, con il riepilogo e "Modifica richiesta". */
 export function requestSentEmail(input: {
   name: string | null;
   /** Una o più categorie già unite ("Idraulico ed Elettricista"). */
   category: string;
   /** Richieste nate dallo stesso invio, una per categoria (docs/CHANGELOG.md §259). */
   requestsCount?: number;
+  /** La richiesta da aprire col pulsante; assente per un invio con più categorie. */
+  requestId?: string | null;
   city: string | null;
   isUrgent: boolean;
   /** Professionisti che l'hanno ricevuta subito; 0 se in zona per ora non c'è nessuno. */
@@ -23,6 +46,7 @@ export function requestSentEmail(input: {
   /** Richiesta inviata a un professionista scelto dal suo profilo. */
   direct: boolean;
   description?: string | null;
+  summary?: RequestSummary;
 }): RenderedEmail {
   const where = input.city ? ` a ${input.city}` : "";
   const count = input.requestsCount ?? 1;
@@ -47,16 +71,81 @@ export function requestSentEmail(input: {
           `Abbiamo ricevuto la tua richiesta per **${input.category}${where}**.`,
           "Per ora in zona non ci sono professionisti disponibili: la teniamo aperta e la inviamo appena se ne iscrive uno. Ti scriviamo noi.",
         ];
+  const summary = input.summary ?? {};
+  const requestsUrl = `${frontendUrl()}/le-mie-richieste`;
+  const editable = count === 1 && Boolean(input.requestId);
   return renderEmail({
     kind: "notification",
     subject: `${count > 1 ? "Richieste inviate" : "Richiesta inviata"}: ${input.category}${where}`,
     greeting: input.name,
     title: count > 1 ? "Abbiamo ricevuto le tue richieste" : "Abbiamo ricevuto la tua richiesta",
     paragraphs,
-    details: input.description?.trim() ? descriptionDetail(input.description) : undefined,
-    cta: { label: count > 1 ? "Segui le richieste" : "Segui la richiesta", url: `${frontendUrl()}/le-mie-richieste` },
-    after: ["I tuoi contatti restano riservati: il professionista vede telefono e indirizzo solo dopo che hai accettato il suo preventivo."],
+    detailsTitle: count > 1 ? "Cosa hai inviato" : "La tua richiesta",
+    details: [
+      { label: count > 1 ? "Servizi" : "Servizio", value: input.category },
+      ...(summary.businessName ? [{ label: "Inviata a", value: summary.businessName }] : []),
+      ...whenDetail(summary, input.isUrgent),
+      ...requestPlaceDetail(summary, input.city),
+      ...(input.description?.trim() ? [{ label: "Descrizione", value: input.description.trim(), long: true }] : []),
+    ],
+    detailImages: requestPhotos(summary.photoUrls),
+    cta: editable
+      ? { label: "Modifica richiesta", url: `${requestsUrl}?open=${encodeURIComponent(input.requestId!)}&modifica=1` }
+      : { label: count > 1 ? "Controlla le richieste" : "Segui la richiesta", url: requestsUrl },
+    secondaryLink: editable ? { label: "Segui la richiesta", url: `${requestsUrl}?open=${encodeURIComponent(input.requestId!)}` } : undefined,
+    after: [
+      count > 1
+        ? "C'è un errore? Ogni categoria ha la sua richiesta: aprila e tocca Modifica, finché non ricevi un preventivo."
+        : "C'è un errore? Puoi correggere la richiesta finché non ricevi un preventivo.",
+      "I tuoi contatti restano riservati: il professionista vede telefono e indirizzo solo dopo che hai accettato il suo preventivo.",
+    ],
   });
+}
+
+/** "Oggi, urgente", "In settimana", "Con calma", o il giorno e la fascia scelti nell'agenda. */
+function whenDetail(summary: RequestSummary, isUrgent: boolean): { label: string; value: string }[] {
+  if (summary.preferredDate) {
+    const slot = summary.preferredTimeSlot?.replace("-", "–");
+    return [{ label: "Quando", value: `${formatAppointmentDay(summary.preferredDate)}${slot ? `, ${slot}` : ""}` }];
+  }
+  if (summary.timing === "TODAY" || (!summary.timing && isUrgent)) return [{ label: "Quando", value: "Oggi, urgente" }];
+  if (summary.timing) return [{ label: "Quando", value: REQUEST_TIMING_LABEL[summary.timing] }];
+  return [];
+}
+
+/** "Via Roma 12, scala B, 20121 Milano (MI)", oppure "Online". */
+function requestPlaceDetail(summary: RequestSummary, city: string | null): { label: string; value: string }[] {
+  if (summary.serviceMode === "ONLINE") return [{ label: "Dove", value: city?.trim() ? `Online (${city.trim()})` : "Online" }];
+  const street = [summary.address?.trim(), summary.houseNumber?.trim()].filter(Boolean).join(" ");
+  const town = [summary.postalCode?.trim(), city?.trim()].filter(Boolean).join(" ");
+  const province = summary.province?.trim();
+  const parts = [street, summary.addressExtra?.trim(), town ? `${town}${province ? ` (${province})` : ""}` : ""].filter(Boolean);
+  return parts.length ? [{ label: "Indirizzo", value: parts.join(", ") }] : [];
+}
+
+/**
+ * Miniature delle foto (e dei video, col primo fotogramma) ritagliate da
+ * Cloudinary a 176×176, per gli schermi ad alta densità. Un indirizzo non di
+ * Cloudinary si mostra così com'è, un video non di Cloudinary si salta.
+ */
+function requestPhotos(urls: string[] | undefined): { label: string; images: { src: string; href: string }[] } | undefined {
+  const images = (urls ?? []).flatMap((url) => {
+    const thumb = cloudinaryThumbnail(url);
+    return thumb ? [{ src: thumb, href: url }] : [];
+  });
+  return images.length ? { label: images.length === 1 ? "Foto" : `Foto (${images.length})`, images } : undefined;
+}
+
+const THUMBNAIL = "c_fill,w_176,h_176,q_auto";
+
+function cloudinaryThumbnail(url: string): string | null {
+  const isVideo = /\.(mp4|webm|mov|m4v|avi|mkv|ogv)(\?|$)/i.test(url);
+  if (url.startsWith("https://res.cloudinary.com/")) {
+    if (url.includes("/image/upload/")) return url.replace("/image/upload/", `/image/upload/${THUMBNAIL}/`);
+    if (url.includes("/video/upload/")) return url.replace("/video/upload/", `/video/upload/${THUMBNAIL},so_0/`).replace(/\.[a-z0-9]+(\?.*)?$/i, ".jpg");
+    return null;
+  }
+  return isVideo ? null : url;
 }
 
 /** Promemoria del giorno prima (anti no-show), al cliente. */

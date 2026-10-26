@@ -124,6 +124,8 @@ function LeMieRichiesteContent() {
   // professionista.
   const consumedRequestOpenRef = useRef<string | null>(null);
   const [pendingChatOpen, setPendingChatOpen] = useState<{ requestId: string; professionalProfileId: string } | null>(null);
+  // "Modifica richiesta" dall'email di conferma (`&modifica=1`, docs/CHANGELOG.md §351).
+  const [pendingEditId, setPendingEditId] = useState<string | null>(null);
 
   const listTopRef = useRef<HTMLDivElement>(null);
   // Scelta una scheda di stato con una sola richiesta dentro, quella si
@@ -261,6 +263,7 @@ function LeMieRichiesteContent() {
     setOpenId(targetId);
     const chatParam = searchParams.get("chat");
     if (chatParam) setPendingChatOpen({ requestId: targetId, professionalProfileId: chatParam });
+    if (searchParams.get("modifica") === "1") setPendingEditId(targetId);
     setPage(Math.floor(index / pageSize) + 1);
     setTimeout(() => {
       const elementId = `request-${targetId}`;
@@ -744,6 +747,8 @@ function LeMieRichiesteContent() {
                   bookingUnreadCounts={bookingUnreadCounts}
                   autoOpenChatProfessionalId={pendingChatOpen && pendingChatOpen.requestId === request.id ? pendingChatOpen.professionalProfileId : null}
                   onChatAutoOpenHandled={() => setPendingChatOpen((prev) => (prev && prev.requestId === request.id ? null : prev))}
+                  autoStartEditing={pendingEditId === request.id}
+                  onAutoEditHandled={() => setPendingEditId((prev) => (prev === request.id ? null : prev))}
                 />
               </div>
             ))

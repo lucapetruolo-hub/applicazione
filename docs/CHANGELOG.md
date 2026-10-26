@@ -20960,3 +20960,15 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - **Mappa del raggio senza consenso**: controllata in produzione chiedendo al server l'immagine fissa con le coordinate di Latina e i raggi 20 e 35 km: torna l'immagine con il segnaposto e i due cerchi. Il testo alternativo dell'immagine parlava di "posizione dei professionisti": ora dice la zona e i due raggi (`staticAlt` in `GoogleMapGate`).
 
 **Verifica**: typecheck, lint, 654 test dell'API (4 nuovi su `auditLabel`), 71 prove nel browser su telefono (anche quella di accessibilità dell'agenda), foto a 390 px di Registro azioni, Home e Accedi senza nulla che esce dallo schermo.
+
+## 351. Riepilogo della richiesta nell'email di conferma al cliente
+
+**Richiesta di Luca** (26/10/2026): "quando un cliente manda una richiesta, per email mandagli anche i dettagli della richiesta che ha mandato, in modo che se ci sono errori va a modificarla".
+
+**Fatto**:
+- L'email "Richiesta inviata" (normale, urgente, diretta, più categorie) ha un riquadro "La tua richiesta" con servizio, professionista scelto (solo richiesta diretta), quando (Oggi, urgente / In settimana / Con calma, o giorno e fascia dell'agenda), indirizzo completo (via, civico, scala/interno, CAP, città, provincia) oppure "Online", descrizione intera con gli a capo e le miniature delle foto (Cloudinary 176×176, il video col primo fotogramma; ognuna apre l'originale).
+- Pulsante "Modifica richiesta" → `/le-mie-richieste?open=<id>&modifica=1`: la pagina apre la scheda e subito il modulo di modifica. Se nel frattempo è arrivato un preventivo resta la scheda aperta con "Non modificabile: hai già ricevuto un preventivo." Sotto il pulsante il link "Segui la richiesta". Per un invio con più categorie (una richiesta per categoria) il pulsante è "Controlla le richieste" con la spiegazione che si corregge ciascuna con Modifica.
+- Dati lasciati fuori di proposito: nome e telefono di chi riceve il professionista (non servono a riconoscere un errore nel lavoro e restano nel sito) e qualunque cosa sul pagamento (decisione della PR #138).
+- Modello email (`email-layout.ts`): righe "lunghe" (`long`, etichetta sopra e testo normale sotto), titolo del riquadro (`detailsTitle`), miniature (`detailImages`) e link secondario sotto il pulsante (`secondaryLink`); anche nella versione solo testo.
+
+**Verifica**: typecheck API e sito, lint, test dell'API (5 nuovi su `requestSentEmail`), anteprime a 390 e 1280 px con `email:preview`.
