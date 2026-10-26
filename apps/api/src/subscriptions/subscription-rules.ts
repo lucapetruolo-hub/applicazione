@@ -120,8 +120,9 @@ export function pauseReason(row: SubscriptionRow | null, now: Date): PauseReason
 /**
  * Lavori del periodo esauriti (decisione dell'utente, docs/CHANGELOG.md
  * §357): il profilo resta nella ricerca e riceve le richieste, ma non può
- * mandare preventivi nuovi né la prima risposta a una richiesta, e l'agenda
- * non si prenota online. Solo con un abbonamento in corso (prova o livello).
+ * mandare preventivi nuovi né la prima risposta a una richiesta, né essere
+ * prenotato direttamente (l'agenda resta visibile per le richieste, §358).
+ * Solo con un abbonamento in corso (prova o livello).
  */
 export function jobLimitReached(row: SubscriptionRow | null, used: number, now: Date): boolean {
   if (pauseReason(row, now)) return false;
@@ -132,8 +133,12 @@ export function jobLimitReached(row: SubscriptionRow | null, used: number, now: 
 /** Messaggio per chi prova a mandare un preventivo o a rispondere con i lavori esauriti (in shared: il sito lo riconosce). */
 export { JOB_LIMIT_REACHED_MESSAGE } from "@professionisti/shared";
 
-/** Risposta a chi prova a prenotare dall'agenda un professionista con i lavori esauriti. */
-export const NOT_BOOKABLE_ONLINE = "Questo professionista al momento non accetta prenotazioni online. Mandagli una richiesta di preventivo.";
+/**
+ * Risposta a chi prova a prenotare direttamente (solo API, il sito passa
+ * sempre da una richiesta) un professionista con i lavori esauriti: niente
+ * frasi che lo facciano sembrare non disponibile (decisione dell'utente, §358).
+ */
+export const NOT_BOOKABLE_ONLINE = "Per questo orario manda una richiesta di preventivo al professionista.";
 
 /**
  * Su Plus e Pro lo stesso cliente conta una volta per periodo (decisione

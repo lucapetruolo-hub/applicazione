@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import {
   allItalianCityNames,
+  subscriptionTierInfo,
+  type AdminFounders,
   operatorProfileInviteSchema,
   type PendingProfileInvite,
   type ProfessionalCategorySlug,
@@ -48,6 +50,17 @@ export default function AdminProfessionistiPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   // Link aperto da "Visualizza link" (nessuna email inviata ora).
   const [linkViewed, setLinkViewed] = useState(false);
+
+  // Primi 100 professionisti dell'offerta di lancio (docs/CHANGELOG.md §358).
+  const [founders, setFounders] = useState<AdminFounders | null>(null);
+  const [foundersError, setFoundersError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!token) return;
+    apiClient
+      .adminListFounders(token)
+      .then(setFounders)
+      .catch((err) => setFoundersError(errorMessage(err)));
+  }, [token]);
 
   const loadPending = useCallback(() => {
     if (!token) return;
@@ -149,6 +162,15 @@ export default function AdminProfessionistiPage() {
         title="Profili da confermare"
         description="Crea il profilo di un professionista mentre sei al telefono con lui. Gli arriva un link per scegliere la password e confermare i dati: fino ad allora il profilo non compare nella ricerca."
       />
+      {founders ? (
+        // Chi recluta al telefono vede subito quanti posti dell'offerta restano (§358).
+        <Text color={brand.grafite}>
+          Offerta di lancio: <Text fontWeight="700">{founders.total - founders.taken} posti rimasti</Text> su {founders.total}.{" "}
+          <a href="#fondatori" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
+            Vedi l&apos;elenco
+          </a>
+        </Text>
+      ) : null}
 
       {link ? (
         <AdminCard highlight>
@@ -310,6 +332,48 @@ export default function AdminProfessionistiPage() {
                         )}
                       </XStack>
                     </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+      </YStack>
+
+      <YStack gap="$2" id="fondatori" style={{ scrollMarginTop: 96 }}>
+        <Text fontWeight="700" color={brand.grafite}>
+          {founders ? `Offerta di lancio: ${founders.taken} posti presi su ${founders.total}` : "Offerta di lancio"}
+        </Text>
+        <Text color={brand.grafite70}>I primi {founders?.total ?? 100} professionisti con il profilo completo hanno Base gratis per 3 mesi dal lancio.</Text>
+        {foundersError ? <Text color={brand.urgenza}>{foundersError}</Text> : null}
+        {founders === null && !foundersError ? (
+          <SkeletonTableRows rows={3} cols={5} />
+        ) : founders && founders.rows.length === 0 ? (
+          <Text color={brand.grafite70}>Ancora nessun posto preso.</Text>
+        ) : founders ? (
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>N.</th>
+                  <th>Attività</th>
+                  <th>Email</th>
+                  <th>Comune</th>
+                  <th>Iscritto il</th>
+                  <th>Gratis fino al</th>
+                  <th>Livello scelto</th>
+                </tr>
+              </thead>
+              <tbody>
+                {founders.rows.map((row) => (
+                  <tr key={row.number}>
+                    <td>{row.number}</td>
+                    <td>{row.deleted ? `${row.businessName} (account chiuso)` : row.businessName}</td>
+                    <td>{row.email}</td>
+                    <td>{row.city}</td>
+                    <td>{formatAdminDate(row.joinedAt)}</td>
+                    <td>{row.freeUntil ? formatAdminDate(row.freeUntil) : "Parte al lancio"}</td>
+                    <td>{row.tier ? subscriptionTierInfo(row.tier).label : "Nessuno"}</td>
                   </tr>
                 ))}
               </tbody>

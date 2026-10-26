@@ -21070,3 +21070,8 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 **Non fatto**: "i clienti dal link personale non contano", perché il link personale del professionista non esiste ancora.
 
 **Verifica**: typecheck di web e api, `pnpm lint`, test dell'API (posto successivo, posti finiti, profili esclusi, iscrizioni simultanee, posti rimasti, tre mesi dal lancio, caselle dei mesi, quota nei giorni gratuiti); pagine aperte in locale con l'API simulata, da telefono e da computer.
+
+**Aggiunte dopo (Luca: "effettua le 2 migliorie", senza scritte che facciano sembrare il professionista non disponibile)**:
+- **Admin**: in `/admin/professionisti` la sezione "Offerta di lancio: N posti presi su 100" con l'elenco dei fondatori (numero, attività, email, comune, iscrizione, gratis fino al, livello scelto); `GET /admin/founders` (`@RequireAdminScope("ANY")`).
+- **Agenda con i lavori esauriti**: rivista la scelta del §357. Controllando il sito, l'agenda pubblica non prenota mai da sola: serve al cliente per scegliere quando nella richiesta di preventivo (`GuidedRequestForm`) e per proporre un'altra data su un preventivo già mandato (`QuoteCard`). Svuotarla nascondeva l'agenda dal profilo e rompeva la proposta di data sui preventivi ancora validi. Ora resta visibile come sempre e non serve nessuna riga al suo posto; resta fermata solo la prenotazione diretta `POST /professionals/:id/agenda/book`, che il sito non usa, con un messaggio neutro ("Per questo orario manda una richiesta di preventivo al professionista."). Termini e CLAUDE.md aggiornati.
+

@@ -148,4 +148,23 @@ describe("SubscriptionsService e primi 100 professionisti", () => {
 
     await expect(service.founderSpots()).resolves.toEqual({ total: 100, left: 63 });
   });
+
+  it("elenco per l'admin: prima del lancio i mesi gratis non hanno ancora una fine", async () => {
+    process.env.LAUNCH_DATE = "2026-11-02";
+    const { service, prisma } = buildService();
+    Object.assign(prisma.subscription, {
+      findMany: vi.fn().mockResolvedValue([
+        {
+          founderNumber: 1,
+          plan: "PLUS",
+          trialEndsAt: new Date("2027-01-30T23:00:00Z"),
+          professionalProfile: { businessName: "Rossi Idraulica", city: "Latina", createdAt: new Date("2026-10-20T10:00:00Z"), deletedAt: null, user: { email: "rossi@example.com" } },
+        },
+      ]),
+    });
+
+    const list = await service.listFounders(new Date("2026-10-26T10:00:00Z"));
+    expect(list).toMatchObject({ total: 100, taken: 1 });
+    expect(list.rows[0]).toMatchObject({ number: 1, businessName: "Rossi Idraulica", freeUntil: null, tier: "PLUS", deleted: false });
+  });
 });

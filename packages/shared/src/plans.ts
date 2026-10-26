@@ -108,6 +108,25 @@ export const FOUNDER_TRIAL_DAYS = FOUNDER_FREE_MONTHS * TRIAL_DAYS;
 
 /** Posti dell'offerta di lancio (`GET /subscriptions/founders`, pubblico). */
 export type FounderSpots = { total: number; left: number };
+
+/** Elenco dei fondatori per l'area admin (`GET /admin/founders`, §358). */
+export type AdminFounders = {
+  total: number;
+  taken: number;
+  rows: {
+    number: number;
+    businessName: string;
+    email: string;
+    city: string;
+    /** Iscrizione del profilo. */
+    joinedAt: string;
+    /** Fine dei mesi gratuiti; null prima del lancio, quando non scorrono ancora. */
+    freeUntil: string | null;
+    /** Livello già scelto (pagherà a fine mesi gratuiti), null se nessuno. */
+    tier: SubscriptionTier | null;
+    deleted: boolean;
+  }[];
+};
 /** Avviso quando si usa questa quota del limite mensile. */
 export const USAGE_WARNING_RATIO = 0.8;
 

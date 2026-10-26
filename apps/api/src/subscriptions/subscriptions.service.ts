@@ -11,6 +11,7 @@ import {
   tierPeriodPriceEurCents,
   type MySubscription,
   type BillingInterval,
+  type AdminFounders,
   type FounderSpots,
   type PauseReason,
   type SubscriptionTier,
@@ -122,6 +123,30 @@ export class SubscriptionsService {
       }
     }
     return false;
+  }
+
+  /** Fondatori in ordine di posto, per l'area admin (§358). */
+  async listFounders(now = new Date()): Promise<AdminFounders> {
+    const subs = await this.prisma.subscription.findMany({
+      where: { founderNumber: { not: null } },
+      orderBy: { founderNumber: "asc" },
+      include: { professionalProfile: { select: { businessName: true, city: true, createdAt: true, deletedAt: true, user: { select: { email: true } } } } },
+    });
+    const waitingLaunch = !hasLaunched(now, launchDate());
+    return {
+      total: FOUNDER_SPOTS,
+      taken: subs.length,
+      rows: subs.map((sub) => ({
+        number: sub.founderNumber!,
+        businessName: sub.professionalProfile.businessName,
+        email: sub.professionalProfile.user.email ?? "",
+        city: sub.professionalProfile.city,
+        joinedAt: sub.professionalProfile.createdAt.toISOString(),
+        freeUntil: waitingLaunch ? null : (sub.trialEndsAt?.toISOString() ?? null),
+        tier: tierOfPlan(sub.plan),
+        deleted: Boolean(sub.professionalProfile.deletedAt),
+      })),
+    };
   }
 
   /** Posti dell'offerta di lancio rimasti (pagina prezzi). */

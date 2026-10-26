@@ -349,8 +349,9 @@ prezzi Stripe nelle variabili `STRIPE_PRICE_<LIVELLO>` e
   mese dal giorno di attivazione), mai il 1° del mese; su Plus e Pro lo
   stesso cliente conta una volta per periodo (detto solo ai professionisti).
   Al limite il profilo **resta nella ricerca** e riceve le richieste, ma
-  non manda preventivi nuovi, non risponde per primo in chat e l'agenda non
-  si prenota online (`ProfessionalProfile.jobLimitReachedAt`, non
+  non manda preventivi nuovi e non risponde per primo in chat; l'agenda
+  resta visibile per chi chiede un preventivo (§358)
+  (`ProfessionalProfile.jobLimitReachedAt`, non
   `pausedAt`); i preventivi già mandati restano validi. Finestra "Hai
   esaurito l'abbonamento Base" con la richiesta, il livello sopra e una
   sola cifra (`JobLimitModal`).
