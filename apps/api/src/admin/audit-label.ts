@@ -195,6 +195,7 @@ export function auditLabel(row: { entityType: string; fieldName: string | null; 
     const labels = (raw ?? "").replace(/"/g, "").replace(/[[\]]/g, "").split(/[+,]/).filter(Boolean).map((r) => ROLE_SHORT_LABEL[r] ?? r);
     return `Ruolo cambiato in ${labels.join(" + ") || "—"}`;
   }
+  if (fieldName === "adminTwoFactor") return value === "RESET" ? "Verifica in due passaggi azzerata" : "Verifica in due passaggi attivata";
   if (fieldName === "profileInvite") {
     return v.businessName ? `Profilo creato per ${asText(v.businessName)}${v.city ? ` a ${asText(v.city)}` : ""}` : "Profilo creato da un operatore confermato";
   }

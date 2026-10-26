@@ -9,11 +9,14 @@ import { API_URL, WEB_URL } from "./env";
  * database di prova, accettazione fatta dall'API vera.
  */
 
-/** Accesso di prova firmato come l'API (stesso JWT_SECRET): niente limite sugli accessi. */
-export function testToken(userId: string): string {
+/**
+ * Accesso di prova firmato come l'API (stesso JWT_SECRET): niente limite sugli accessi.
+ * `amfa`: per un admin, l'ora (secondi) del codice della verifica in due passaggi (§351).
+ */
+export function testToken(userId: string, extra: { amfa?: number } = {}): string {
   const part = (value: object) => Buffer.from(JSON.stringify(value)).toString("base64url");
   const now = Math.floor(Date.now() / 1000);
-  const body = `${part({ alg: "HS256", typ: "JWT" })}.${part({ sub: userId, sv: 0, iat: now, exp: now + 3600 })}`;
+  const body = `${part({ alg: "HS256", typ: "JWT" })}.${part({ sub: userId, sv: 0, iat: now, exp: now + 3600, ...extra })}`;
   const signature = createHmac("sha256", process.env.JWT_SECRET ?? "e2e-secret").update(body).digest("base64url");
   return `${body}.${signature}`;
 }

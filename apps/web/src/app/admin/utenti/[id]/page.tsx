@@ -112,6 +112,10 @@ export default function AdminUserDetailPage() {
 
       {adminCan(myRoles, "SUPER") && !detail.deletedAt && !isSelf ? <AdminRolePanel detail={detail} token={token ?? ""} onChanged={reload} /> : null}
 
+      {adminCan(myRoles, "SUPER") && !detail.deletedAt && !isSelf && detail.role === "ADMIN" ? (
+        <TwoFactorResetPanel detail={detail} token={token ?? ""} onChanged={reload} />
+      ) : null}
+
       {detail.reportsReceived.length > 0 ? (
         <YStack gap="$2">
           <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
@@ -239,6 +243,66 @@ function SuspendPanel({ detail, token, onChanged }: { detail: AdminUserDetail; t
           </Button>
         </XStack>
       )}
+    </AdminCard>
+  );
+}
+
+/**
+ * Verifica in due passaggi di un altro admin (docs/CHANGELOG.md §351): se ha
+ * perso il telefono e i codici di recupero, un super admin la azzera e lui
+ * la riattiva al prossimo ingresso. Le sue sessioni aperte si chiudono.
+ */
+function TwoFactorResetPanel({ detail, token, onChanged }: { detail: AdminUserDetail; token: string; onChanged: () => void }) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function reset() {
+    setBusy(true);
+    setError(null);
+    try {
+      await apiClient.adminTwoFactorReset(token, detail.id);
+      setConfirming(false);
+      onChanged();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <AdminCard>
+      <XStack gap="$2" alignItems="center" flexWrap="wrap">
+        <Text fontWeight="700" color={brand.grafite}>
+          Verifica in due passaggi
+        </Text>
+        <AdminPill tone={detail.adminTwoFactorEnabled ? "ok" : "warn"}>{detail.adminTwoFactorEnabled ? "Attiva" : "Da attivare"}</AdminPill>
+      </XStack>
+      <Text fontSize="$3" color={brand.grafite70}>
+        {detail.adminTwoFactorEnabled
+          ? "Se ha perso il telefono e i codici di recupero, azzerala: lo faremo uscire da tutti i dispositivi e la riattiverà al prossimo ingresso."
+          : "La attiverà da solo la prossima volta che apre l'area admin."}
+      </Text>
+      {error ? <Text color={brand.urgenza}>{error}</Text> : null}
+      {detail.adminTwoFactorEnabled ? (
+        confirming ? (
+          <XStack gap="$2" flexWrap="wrap">
+            <Button variant="primary" size="$3" disabled={busy} onPress={reset}>
+              {busy ? "…" : "Conferma azzeramento"}
+            </Button>
+            <Button variant="secondary" size="$3" onPress={() => setConfirming(false)}>
+              Annulla
+            </Button>
+          </XStack>
+        ) : (
+          <XStack>
+            <Button variant="secondary" size="$3" onPress={() => setConfirming(true)}>
+              Azzera la verifica
+            </Button>
+          </XStack>
+        )
+      ) : null}
     </AdminCard>
   );
 }

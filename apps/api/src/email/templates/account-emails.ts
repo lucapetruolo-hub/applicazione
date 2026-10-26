@@ -154,6 +154,56 @@ export function newDeviceLoginEmail(name: string | null, device: { label: string
   });
 }
 
+/**
+ * Ogni ingresso nell'area admin con il codice della verifica in due passaggi
+ * (docs/CHANGELOG.md §351): l'admin vede subito un accesso che non ha fatto.
+ */
+export function adminAccessEmail(
+  name: string | null,
+  access: { label: string; at: Date; recoveryCodesLeft?: number; justEnabled?: boolean },
+): RenderedEmail {
+  const site = frontendUrl();
+  const when = `**${access.label}**, ${LOGIN_TIME.format(access.at)}`;
+  const recovery =
+    access.recoveryCodesLeft === undefined
+      ? []
+      : [`Per entrare è stato usato un codice di recupero: te ne restano ${access.recoveryCodesLeft}.`];
+  return renderEmail({
+    kind: "account",
+    subject: access.justEnabled ? "Verifica in due passaggi attivata" : "Accesso all'area admin",
+    preheader: `Da ${access.label}.`,
+    greeting: name,
+    title: access.justEnabled ? "Verifica in due passaggi attivata" : "Accesso all'area admin",
+    paragraphs: [
+      access.justEnabled
+        ? `Hai attivato la verifica in due passaggi per l'area admin da ${when}. Da ora per entrare servirà anche il codice dell'app.`
+        : `Qualcuno è entrato nell'area admin con il tuo account da ${when}.`,
+      ...recovery,
+      "Se eri tu, non devi fare nulla.",
+    ],
+    cta: { label: "Non ero io: cambia la password", url: `${site}/password-dimenticata` },
+    after: [`Cambiare la password chiude l'accesso su tutti i dispositivi. Per qualsiasi dubbio scrivici a ${EMAIL_BRAND.supportEmail}.`],
+  });
+}
+
+/** Troppi codici sbagliati per l'area admin: accesso fermo per qualche minuto (§351). */
+export function adminCodeLockedEmail(name: string | null, minutes: number): RenderedEmail {
+  const site = frontendUrl();
+  return renderEmail({
+    kind: "account",
+    subject: "Troppi codici sbagliati per l'area admin",
+    preheader: `Per sicurezza l'accesso è fermo per ${minutes} minuti.`,
+    greeting: name,
+    title: "Troppi codici sbagliati",
+    paragraphs: [
+      `Con il tuo account sono stati scritti più volte codici sbagliati per entrare nell'area admin. Per sicurezza l'accesso è fermo per ${minutes} minuti.`,
+      "Chi ci prova conosce già la tua password: se non eri tu, cambiala subito.",
+    ],
+    cta: { label: "Cambia la password", url: `${site}/password-dimenticata` },
+    after: [`Per qualsiasi dubbio scrivici a ${EMAIL_BRAND.supportEmail}.`],
+  });
+}
+
 export function accountDeletedEmail(name: string | null): RenderedEmail {
   return renderEmail({
     kind: "account",

@@ -8,6 +8,9 @@ import { AdminController } from "./admin.controller";
 import { AdminBootstrapController } from "./admin-bootstrap.controller";
 import { AdminService } from "./admin.service";
 import { AdminGuard } from "./admin.guard";
+import { EmailModule } from "../email/email.module";
+import { AdminTwoFactorController } from "./admin-two-factor.controller";
+import { AdminTwoFactorService } from "./admin-two-factor.service";
 
 @Module({
   // NotificationsModule: AdminService.resolveContentReport notifica ora sia
@@ -16,9 +19,9 @@ import { AdminGuard } from "./admin.guard";
   // import esplicito Nest non risolve la dipendenza NotificationsService
   // iniettata in AdminService (stesso pattern già in uso per QuotesModule/
   // GuidedRequestsModule/BookingsModule verso lo stesso servizio).
-  imports: [AuthModule, NotificationsModule, ProfessionalMetricsModule, AuditLogModule, JobIssuesModule],
-  controllers: [AdminController, AdminBootstrapController],
-  providers: [AdminService, AdminGuard],
+  imports: [AuthModule, EmailModule, NotificationsModule, ProfessionalMetricsModule, AuditLogModule, JobIssuesModule],
+  controllers: [AdminController, AdminBootstrapController, AdminTwoFactorController],
+  providers: [AdminService, AdminGuard, AdminTwoFactorService],
   // AdminGuard esportata: i nuovi controller finanza/fiscale/DAC7 (CLAUDE.md
   // §88) vivono nei propri moduli ma restano protetti dallo stesso gate
   // amministratori — stessa istanza/dipendenze (PRISMA, globale) di quella

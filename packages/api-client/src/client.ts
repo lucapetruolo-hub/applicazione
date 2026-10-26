@@ -350,6 +350,8 @@ export type AdminUserDetail = {
   deletedAt: string | null;
   suspendedAt: string | null;
   suspensionNote: string | null;
+  /** Verifica in due passaggi attiva (solo per gli admin, docs/CHANGELOG.md §351). */
+  adminTwoFactorEnabled: boolean;
   professionalProfile: { id: string; businessName: string; categoryLabel: string; city: string; suspendedAt: string | null } | null;
   counts: { requests: number; bookings: number; reviewsWritten: number; reviewsReceived: number; reportsMade: number; reportsReceived: number };
   reportsMade: AdminReportRow[];
@@ -879,11 +881,24 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    /** Codice che l'API aggiunge per alcuni casi, es. "ADMIN_2FA_REQUIRED" (docs/CHANGELOG.md §351). */
+    readonly code?: string,
   ) {
     super(message);
     this.name = "ApiError";
   }
 }
+
+function extractErrorCode(body: unknown): string | undefined {
+  if (body && typeof body === "object" && typeof (body as Record<string, unknown>).code === "string") {
+    return (body as Record<string, string>).code;
+  }
+  return undefined;
+}
+
+/** Stato della verifica in due passaggi dell'admin collegato (docs/CHANGELOG.md §351). */
+export type AdminTwoFactorStatus = { enabled: boolean; verified: boolean; recoveryCodesLeft: number };
+export type AdminTwoFactorSetup = { secret: string; otpauthUrl: string; qrCode: string };
 
 function extractErrorMessage(body: unknown, fallback: string): string {
   if (body && typeof body === "object") {
@@ -921,7 +936,7 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
     const body = await response.json().catch(() => null);
 
     if (!response.ok) {
-      throw new ApiError(extractErrorMessage(body, `Richiesta API fallita: ${response.status} ${response.statusText}`), response.status);
+      throw new ApiError(extractErrorMessage(body, `Richiesta API fallita: ${response.status} ${response.statusText}`), response.status, extractErrorCode(body));
     }
 
     return body as T;
@@ -1804,6 +1819,22 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
     getProfileInvite: (code: string) => request<ProfileInvitePreview>(`/auth/invite/${encodeURIComponent(code)}`, { cache: "no-store" }),
     acceptProfileInvite: (input: AcceptProfileInviteInput) =>
       request<AuthResult>("/auth/invite/accept", { method: "POST", body: JSON.stringify(input) }),
+
+    /** Verifica in due passaggi dell'area admin (docs/CHANGELOG.md §351). */
+    adminTwoFactorStatus: (token: string) =>
+      request<AdminTwoFactorStatus>("/admin/2fa", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    adminTwoFactorSetup: (token: string) =>
+      request<AdminTwoFactorSetup>("/admin/2fa/setup", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+    adminTwoFactorEnable: (token: string, code: string) =>
+      request<{ token: string; recoveryCodes: string[] }>("/admin/2fa/enable", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ code }),
+      }),
+    adminTwoFactorVerify: (token: string, code: string) =>
+      request<{ token: string }>("/admin/2fa/verify", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ code }) }),
+    adminTwoFactorReset: (token: string, userId: string) =>
+      request<{ ok: boolean }>(`/admin/2fa/reset/${userId}`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
     adminBootstrapPromote: (email: string, secret: string) =>
       request<{ email: string; role: string }>("/admin/bootstrap", {

@@ -355,8 +355,14 @@ aperti solo:
       risponde "pagina non trovata" finché da quel browser non si visita una
       volta `https://<sito>/<ADMIN_ENTRY_PATH>`. Conservare il link: se si
       perde, basta cambiarlo su Vercel e rifare il deploy.
-    - **Togliere `ADMIN_BOOTSTRAP_SECRET` da Render** appena creato il primo
-      admin (gli altri si nominano da `/admin/utenti`).
+    - **Togliere `ADMIN_BOOTSTRAP_SECRET` da Render** prima del lancio, quando
+      il database è quello a pagamento e il primo admin esiste (gli altri si
+      nominano da `/admin/utenti`). Fino ad allora resta: il database gratuito
+      si azzera e il primo admin va ricreato; dal docs/CHANGELOG.md §351
+      `/admin/promuovi` funziona solo se non esiste nessun admin.
+    - **Verifica in due passaggi degli admin** (§351): attivarla appena va in
+      linea e salvare i codici di recupero; prima del lancio avere almeno due
+      super admin, così uno può azzerare la verifica dell'altro.
     - **Repo GitHub privato** (Settings → General → Danger Zone).
     - ~~**Avvisi di sicurezza di Dependabot**~~ — fatto (24/10/2026,
       docs/CHANGELOG.md §302): accesi "Dependabot alerts" e "Dependabot
