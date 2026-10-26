@@ -21006,3 +21006,16 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 **Decisioni**: sui lavori di oggi un pulsante "Chiama" con bordo (`tel:`), col telefono di chi riceve il lavoro o del cliente, solo a lavoro confermato (CLAUDE.md §5 punto 9), e col telefono scritto nei lavori aggiunti a mano. Da telefono solo l'icona (nome per gli screen reader "Chiama <numero>", non il nome del cliente, che le prove usano per trovare la riga); sotto i 380 px "Sto arrivando" perde l'icona del furgone, così i tre pulsanti stanno su una riga anche a 360 px.
 
 **Verifica**: typecheck, lint, tutte le prove nel browser in locale (144 passate), foto a 360, 390 e 1366 px.
+
+## 355. Riepilogo della richiesta nell'email di conferma al cliente
+
+**Richiesta di Luca** (26/10/2026): "quando un cliente manda una richiesta, per email mandagli anche i dettagli della richiesta che ha mandato, in modo che se ci sono errori va a modificarla".
+
+**Fatto**:
+- L'email "Richiesta inviata" (normale, urgente, diretta, più categorie) ha un riquadro "La tua richiesta" con servizio, professionista scelto (solo richiesta diretta), quando (Oggi, urgente / In settimana / Con calma, o giorno e fascia dell'agenda), indirizzo completo (via, civico, scala/interno, CAP, città, provincia) oppure "Online", descrizione intera con gli a capo e le miniature delle foto (Cloudinary 176×176, il video col primo fotogramma; ognuna apre l'originale).
+- Pulsante "Modifica richiesta" → `/le-mie-richieste?open=<id>&modifica=1`: la pagina apre la scheda e subito il modulo di modifica. Se nel frattempo è arrivato un preventivo resta la scheda aperta con "Non modificabile: hai già ricevuto un preventivo." Sotto il pulsante il link "Segui la richiesta". Per un invio con più categorie (una richiesta per categoria) il pulsante è "Controlla le richieste" con la spiegazione che si corregge ciascuna con Modifica.
+- Dati lasciati fuori di proposito: nome e telefono di chi riceve il professionista (non servono a riconoscere un errore nel lavoro e restano nel sito) e qualunque cosa sul pagamento (decisione della PR #138).
+- Pulsante di tutte le email nel verde pieno dei pulsanti del sito (`#128552` invece di `#189A63`, scelta di Luca dopo il confronto): il bianco passa da 3,6 a 4,7 di contrasto.
+- Modello email (`email-layout.ts`): righe "lunghe" (`long`, etichetta sopra e testo normale sotto), titolo del riquadro (`detailsTitle`), miniature (`detailImages`) e link secondario sotto il pulsante (`secondaryLink`); anche nella versione solo testo.
+
+**Verifica**: typecheck API e sito, lint, test dell'API (5 nuovi su `requestSentEmail`), anteprime a 390 e 1280 px con `email:preview`.
