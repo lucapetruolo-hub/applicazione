@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 // Posti dell'offerta di lancio aggiornati ogni 10 minuti (docs/CHANGELOG.md
-// §358): letti dal server così la banda non compare dopo, spostando i prezzi.
+// §359): letti dal server così la banda non compare dopo, spostando i prezzi.
 export const revalidate = 600;
 
 async function loadFounderSpots(): Promise<FounderSpots | null> {

@@ -83,7 +83,7 @@ describe("account in pausa", () => {
   });
 });
 
-describe("lavori esauriti (§357)", () => {
+describe("lavori esauriti (§358)", () => {
   it("mese gratuito: libero fino al 3° lavoro, al limite dal 3°", () => {
     const row = { plan: "FREE", status: "TRIALING", trialEndsAt: future };
     expect(jobLimitReached(row, 2, NOW)).toBe(false);
@@ -101,7 +101,7 @@ describe("lavori esauriti (§357)", () => {
   });
 });
 
-describe("periodo dei lavori: riparte al rinnovo (§357)", () => {
+describe("periodo dei lavori: riparte al rinnovo (§358)", () => {
   const iso = (p: { start: Date; end: Date }) => [p.start.toISOString(), p.end.toISOString()];
   it("mensile: dal giorno dell'abbonamento al rinnovo", () => {
     const row = {
@@ -196,7 +196,7 @@ describe("prova gratuita dalla data di lancio (docs/CHANGELOG.md §170)", () => 
   });
 });
 
-describe("quota di passaggio a un livello superiore (§356)", () => {
+describe("quota di passaggio a un livello superiore (§357)", () => {
   const DAY = 24 * 60 * 60 * 1000;
   const month = 30 * DAY;
   it("10 € + differenza per i giorni rimasti, maggiorata del 10%, senza tetto", () => {
@@ -238,7 +238,7 @@ describe("quota di passaggio a un livello superiore (§356)", () => {
   });
 });
 
-describe("primi 100 professionisti: 3 mesi gratis (§358)", () => {
+describe("primi 100 professionisti: 3 mesi gratis (§359)", () => {
   const DAY = 24 * 60 * 60 * 1000;
   it("tre mesi dal lancio, o da oggi dopo il lancio", () => {
     const launch = new Date("2026-11-01T23:00:00Z");

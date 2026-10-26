@@ -200,7 +200,7 @@ export function ConversationView({
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  // Prima risposta con i lavori esauriti (docs/CHANGELOG.md §357): la stessa
+  // Prima risposta con i lavori esauriti (docs/CHANGELOG.md §358): la stessa
   // finestra del preventivo, con la richiesta e il livello superiore.
   const [jobLimit, setJobLimit] = useState<{ sub: MySubscription; request: string } | null>(null);
 

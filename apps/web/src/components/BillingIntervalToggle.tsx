@@ -5,7 +5,7 @@ import { brand } from "@professionisti/ui";
 
 /**
  * Interruttore Mensile / Annuale dei prezzi dell'abbonamento (docs/CHANGELOG.md
- * §356, decisione dell'utente): l'annuale è quello mostrato per primo e dice
+ * §357, decisione dell'utente): l'annuale è quello mostrato per primo e dice
  * quanto si risparmia. Usato nella pagina prezzi e in Abbonamento.
  */
 export function BillingIntervalToggle({ value, onChange }: { value: BillingInterval; onChange: (value: BillingInterval) => void }) {

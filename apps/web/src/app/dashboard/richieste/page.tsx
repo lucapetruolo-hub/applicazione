@@ -191,7 +191,7 @@ function RichiesteContent() {
   }, [token]);
 
   // Abbonamento a parte: se non arriva le richieste si vedono lo stesso, e il
-  // server ferma comunque un preventivo oltre il limite (docs/CHANGELOG.md §357).
+  // server ferma comunque un preventivo oltre il limite (docs/CHANGELOG.md §358).
   const reloadSubscription = useCallback(() => {
     if (!token) return;
     apiClient

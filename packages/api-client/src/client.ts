@@ -1698,7 +1698,7 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
     adminListWaitlist: (token: string) =>
       request<{ email: string; createdAt: string }[]>("/admin/waitlist", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
-    /** Primi 100 professionisti dell'offerta di lancio (docs/CHANGELOG.md §358). */
+    /** Primi 100 professionisti dell'offerta di lancio (docs/CHANGELOG.md §359). */
     adminListFounders: (token: string) => request<AdminFounders>("/admin/founders", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     /** Profili creati al telefono da un operatore (docs/CHANGELOG.md §170). */

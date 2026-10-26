@@ -21007,7 +21007,20 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: typecheck, lint, tutte le prove nel browser in locale (144 passate), foto a 360, 390 e 1366 px.
 
-## 355. Abbonamento: livelli sovrapposti sul telefono
+## 355. Riepilogo della richiesta nell'email di conferma al cliente
+
+**Richiesta di Luca** (26/10/2026): "quando un cliente manda una richiesta, per email mandagli anche i dettagli della richiesta che ha mandato, in modo che se ci sono errori va a modificarla".
+
+**Fatto**:
+- L'email "Richiesta inviata" (normale, urgente, diretta, più categorie) ha un riquadro "La tua richiesta" con servizio, professionista scelto (solo richiesta diretta), quando (Oggi, urgente / In settimana / Con calma, o giorno e fascia dell'agenda), indirizzo completo (via, civico, scala/interno, CAP, città, provincia) oppure "Online", descrizione intera con gli a capo e le miniature delle foto (Cloudinary 176×176, il video col primo fotogramma; ognuna apre l'originale).
+- Pulsante "Modifica richiesta" → `/le-mie-richieste?open=<id>&modifica=1`: la pagina apre la scheda e subito il modulo di modifica. Se nel frattempo è arrivato un preventivo resta la scheda aperta con "Non modificabile: hai già ricevuto un preventivo." Sotto il pulsante il link "Segui la richiesta". Per un invio con più categorie (una richiesta per categoria) il pulsante è "Controlla le richieste" con la spiegazione che si corregge ciascuna con Modifica.
+- Dati lasciati fuori di proposito: nome e telefono di chi riceve il professionista (non servono a riconoscere un errore nel lavoro e restano nel sito) e qualunque cosa sul pagamento (decisione della PR #138).
+- Pulsante di tutte le email nel verde pieno dei pulsanti del sito (`#128552` invece di `#189A63`, scelta di Luca dopo il confronto): il bianco passa da 3,6 a 4,7 di contrasto.
+- Modello email (`email-layout.ts`): righe "lunghe" (`long`, etichetta sopra e testo normale sotto), titolo del riquadro (`detailsTitle`), miniature (`detailImages`) e link secondario sotto il pulsante (`secondaryLink`); anche nella versione solo testo.
+
+**Verifica**: typecheck API e sito, lint, test dell'API (5 nuovi su `requestSentEmail`), anteprime a 390 e 1280 px con `email:preview`.
+
+## 356. Abbonamento: livelli sovrapposti sul telefono
 
 **Segnalazione** (26/10/2026, thread "Versione più profonda del progetto verso il lancio"): nelle anteprime fatte con l'account professionista di Luca, in `/dashboard/abbonamento` da telefono i riquadri Base, Plus e Pro si sovrapponevano e il testo non si leggeva. Luca l'ha visto anche dal suo telefono.
 
@@ -21017,7 +21030,7 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: pagina aperta in locale con le risposte dell'API simulate (prova, livello Base, 1 lavoro su 5), a 390 px le tessere sono alte 207 px e una sotto l'altra; a 1440 px restano tre colonne uguali come prima.
 
-## 356. Nuovi prezzi dell'abbonamento: + IVA, mensile o annuale, quota di passaggio
+## 357. Nuovi prezzi dell'abbonamento: + IVA, mensile o annuale, quota di passaggio
 
 **Richiesta esplicita dell'utente** (26/10/2026, thread "Versione più profonda del progetto verso il lancio", poi "Portare il nuovo abbonamento nel sito"): Luca ha scelto "Tutto il nuovo modello" per portare nel sito le decisioni del 26/10 (spec in `analisi/nuovo-modello-abbonamento.md` nei file del progetto). Questa è la prima parte (prezzi e pagine); seguono le regole al limite e i 3 mesi gratis ai primi 100.
 
@@ -21034,7 +21047,7 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: typecheck di web e api, `pnpm lint`, 660 test dell'API (nuovi su quota di passaggio e `upgradeQuotes`: Base → Plus con 30, 20, 7 e 1 giorno rimasti 54 €, 39,33 €, 20,27 €, 11,47 €); pagine aperte in locale con le risposte dell'API simulate, da telefono e da computer.
 
-## 357. Lavori esauriti: si resta nella ricerca, i lavori ripartono al rinnovo
+## 358. Lavori esauriti: si resta nella ricerca, i lavori ripartono al rinnovo
 
 **Richiesta**: seconda parte del nuovo abbonamento (Luca, 26/10/2026, "Tutto il nuovo modello", poi "continua"; scheda di decisione "Al rinnovo").
 
@@ -21042,7 +21055,7 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - I lavori si azzerano **al rinnovo**, non il 1° del mese: lavori, livello e quota di passaggio seguono la stessa data. Con l'annuale i lavori ripartono ogni mese dal giorno di attivazione; nel periodo gratuito a blocchi di 30 giorni che finiscono alla fine della prova.
 - Finiti i lavori il profilo **resta nella ricerca** e riceve le richieste (prima andava in pausa), ma non può mandare preventivi nuovi né rispondere per primo a una richiesta. I preventivi già mandati restano validi.
 - Su **Plus e Pro lo stesso cliente conta una volta** per periodo. Detto solo ai professionisti (pagina prezzi su Plus, Abbonamento, domande frequenti, Termini), mai ai clienti.
-- Finestra al limite: titolo "Hai esaurito l'abbonamento Base", la richiesta a cui si sta rispondendo, il livello sopra con una sola cifra (la quota del §356) e la data, pulsanti "Passa a Plus e rispondi" e "Aspetto il [data]".
+- Finestra al limite: titolo "Hai esaurito l'abbonamento Base", la richiesta a cui si sta rispondendo, il livello sopra con una sola cifra (la quota del §357) e la data, pulsanti "Passa a Plus e rispondi" e "Aspetto il [data]".
 
 **Scelta nostra, da confermare con Luca**: al limite l'agenda non si prenota online (la prenotazione crea un lavoro senza preventivo, quindi supererebbe il limite); il cliente vede "al momento non accetta prenotazioni online" e può mandare una richiesta.
 
@@ -21054,9 +21067,9 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: typecheck di web e api, `pnpm lint`, test dell'API (nuovi su periodo dal rinnovo, fine mese, annuale, prova, stesso cliente e limite senza pausa); pagine aperte in locale con le risposte dell'API simulate, da telefono e da computer.
 
-## 358. Primi 100 professionisti: 3 mesi gratis; finestra dei lavori esauriti anche in chat
+## 359. Primi 100 professionisti: 3 mesi gratis; finestra dei lavori esauriti anche in chat
 
-**Richiesta**: Luca, 26/10/2026, "effettua miglioria 1 e 3" dopo la seconda parte del nuovo abbonamento (§357). La miglioria 2 (togliere "Prenota online" dal profilo con i lavori esauriti) non si fa: "al professionista si deve dare la possibilità di ricevere richieste".
+**Richiesta**: Luca, 26/10/2026, "effettua miglioria 1 e 3" dopo la seconda parte del nuovo abbonamento (§358). La miglioria 2 (togliere "Prenota online" dal profilo con i lavori esauriti) non si fa: "al professionista si deve dare la possibilità di ricevere richieste".
 
 **Miglioria 1, finestra in chat**: con i lavori esauriti la prima risposta del professionista a una richiesta nuova apre la stessa finestra del preventivo ("Hai esaurito l'abbonamento Base", la richiesta, il livello sopra, una cifra) invece del messaggio d'errore. `ConversationView` riconosce l'errore dell'API dal testo condiviso `JOB_LIMIT_REACHED_MESSAGE` (spostato in `packages/shared/src/plans.ts`); passato di livello senza lasciare il sito, il messaggio scritto parte da solo.
 
@@ -21072,6 +21085,6 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 **Verifica**: typecheck di web e api, `pnpm lint`, test dell'API (posto successivo, posti finiti, profili esclusi, iscrizioni simultanee, posti rimasti, tre mesi dal lancio, caselle dei mesi, quota nei giorni gratuiti); pagine aperte in locale con l'API simulata, da telefono e da computer.
 
 **Aggiunte dopo (Luca: "effettua le 2 migliorie", senza scritte che facciano sembrare il professionista non disponibile)**:
-- **Admin**: in `/admin/professionisti` la sezione "Offerta di lancio: N posti presi su 100" con l'elenco dei fondatori (numero, attività, email, comune, iscrizione, gratis fino al, livello scelto); `GET /admin/founders` (`@RequireAdminScope("ANY")`).
-- **Agenda con i lavori esauriti**: rivista la scelta del §357. Controllando il sito, l'agenda pubblica non prenota mai da sola: serve al cliente per scegliere quando nella richiesta di preventivo (`GuidedRequestForm`) e per proporre un'altra data su un preventivo già mandato (`QuoteCard`). Svuotarla nascondeva l'agenda dal profilo e rompeva la proposta di data sui preventivi ancora validi. Ora resta visibile come sempre e non serve nessuna riga al suo posto; resta fermata solo la prenotazione diretta `POST /professionals/:id/agenda/book`, che il sito non usa, con un messaggio neutro ("Per questo orario manda una richiesta di preventivo al professionista."). Termini e CLAUDE.md aggiornati.
+- **Admin**: in `/admin/professionisti` la sezione "Offerta di lancio: N posti presi su 100" con l'elenco dei fondatori (numero, attività, email, comune, iscrizione, gratis fino al, livello scelto); `GET /admin/founders` (`RequireAdminScope("ANY")`).
+- **Agenda con i lavori esauriti**: rivista la scelta del §358. Controllando il sito, l'agenda pubblica non prenota mai da sola: serve al cliente per scegliere quando nella richiesta di preventivo (`GuidedRequestForm`) e per proporre un'altra data su un preventivo già mandato (`QuoteCard`). Svuotarla nascondeva l'agenda dal profilo e rompeva la proposta di data sui preventivi ancora validi. Ora resta visibile come sempre e non serve nessuna riga al suo posto; resta fermata solo la prenotazione diretta `POST /professionals/:id/agenda/book`, che il sito non usa, con un messaggio neutro ("Per questo orario manda una richiesta di preventivo al professionista."). Termini e CLAUDE.md aggiornati.
 

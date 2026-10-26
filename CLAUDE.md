@@ -301,14 +301,14 @@ accetta il preventivo, mai i "completati", che segna il professionista).
 | **Plus** | 59 € | 590 € (49 €/mese) | 10 |
 | **Pro** | 99 € | 990 € (83 €/mese) | senza limite |
 
-Prezzi e limiti decisi dall'utente il 26/10/2026 (docs/CHANGELOG.md §356),
+Prezzi e limiti decisi dall'utente il 26/10/2026 (docs/CHANGELOG.md §357),
 al posto di 19/39/69 € e 5/15 lavori: mostrati "+ IVA" con l'IVA compresa
 in piccolo, annuale (dieci mensilità, "Risparmi 2 mesi") in vista per primo;
 prezzi Stripe nelle variabili `STRIPE_PRICE_<LIVELLO>` e
 `STRIPE_PRICE_<LIVELLO>_ANNUAL`, IVA con `STRIPE_TAX_RATE_IVA`.
 
 - **Primo mese gratis per tutti.**
-- **Offerta di lancio** (decisione dell'utente, docs/CHANGELOG.md §358): ai
+- **Offerta di lancio** (decisione dell'utente, docs/CHANGELOG.md §359): ai
   primi 100 professionisti con il profilo completo Base gratis per **3 mesi**
   dal lancio (`Subscription.founderNumber`, `FOUNDER_SPOTS` in
   `packages/shared/src/plans.ts`), niente mese a sorpresa; banda "GRATIS PER
@@ -339,18 +339,18 @@ prezzi Stripe nelle variabili `STRIPE_PRICE_<LIVELLO>` e
   dall'iscrizione.
 - **Al limite:** si passa al livello superiore pagando **10 € più la
   differenza di prezzo per i giorni che mancano al rinnovo, maggiorata del
-  10%**, senza tetto (decisione dell'utente, §356; `upgradeFeeEurCents` in
+  10%**, senza tetto (decisione dell'utente, §357; `upgradeFeeEurCents` in
   `packages/shared/src/plans.ts`, nel periodo gratuito si conta da Base sui
   suoi 30 giorni); il nuovo livello vale fino al rinnovo, poi si paga
   intero. Una sola cifra nell'interfaccia, il calcolo in "Scopri di più" e
   nei Termini. Altrimenti si aspetta il rinnovo.
-- **Lavori esauriti** (decisioni dell'utente, docs/CHANGELOG.md §357): i
+- **Lavori esauriti** (decisioni dell'utente, docs/CHANGELOG.md §358): i
   lavori si contano per periodo e **ripartono al rinnovo** (annuale: ogni
   mese dal giorno di attivazione), mai il 1° del mese; su Plus e Pro lo
   stesso cliente conta una volta per periodo (detto solo ai professionisti).
   Al limite il profilo **resta nella ricerca** e riceve le richieste, ma
   non manda preventivi nuovi e non risponde per primo in chat; l'agenda
-  resta visibile per chi chiede un preventivo (§358)
+  resta visibile per chi chiede un preventivo (§359)
   (`ProfessionalProfile.jobLimitReachedAt`, non
   `pausedAt`); i preventivi già mandati restano validi. Finestra "Hai
   esaurito l'abbonamento Base" con la richiesta, il livello sopra e una

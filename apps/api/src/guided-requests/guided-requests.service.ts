@@ -15,6 +15,7 @@ import { TimelineService } from "../timeline/timeline.service";
 import { GeneralRequestsService } from "../general-requests/general-requests.service";
 import { toMyState } from "./guided-request-user-state.service";
 import { computeDirectForwardAt } from "./lead-routing";
+import type { RequestSummary } from "../email/templates/job-emails";
 
 /** Riga nella chat dei professionisti quando il cliente elimina una richiesta aperta (§343). */
 export const WITHDRAWN_TIMELINE_MESSAGE = "Il cliente ha ritirato la richiesta.";
@@ -63,6 +64,21 @@ function withTimingUrgency<T extends { isUrgent: boolean; timing?: GuidedRequest
 
 function respondUntilForEmail(isUrgent: boolean, expiresAt: Date | null): string | null {
   return !isUrgent && expiresAt ? expiresAt.toISOString() : null;
+}
+
+/** Riepilogo per l'email di conferma al cliente (docs/CHANGELOG.md §355). */
+function requestSummary(request: {
+  timing?: RequestSummary["timing"];
+  serviceMode?: RequestSummary["serviceMode"];
+  address?: string | null;
+  houseNumber?: string | null;
+  addressExtra?: string | null;
+  postalCode?: string | null;
+  province?: string | null;
+  photoUrls?: string[];
+}): RequestSummary {
+  const { timing, serviceMode, address, houseNumber, addressExtra, postalCode, province, photoUrls } = request;
+  return { timing, serviceMode, address, houseNumber, addressExtra, postalCode, province, photoUrls };
 }
 
 /** "Idraulico, Elettricista e Muratore". */
@@ -122,6 +138,7 @@ export class GuidedRequestsService {
       sentTo: requests.reduce((sum, r) => sum + r.matchedProfessionals, 0),
       direct: false,
       description: input.description,
+      summary: requestSummary(input),
     });
     return {
       guidedRequestId: requests[0]!.guidedRequestId,
@@ -188,6 +205,7 @@ export class GuidedRequestsService {
       pausedAt: Date | null;
       demotedUntil: Date | null;
       requestsBlockedUntil: Date | null;
+      businessName: string;
       category: NonNullable<typeof category>;
       extraCategories: { id: string }[];
       isDemo: boolean;
@@ -204,6 +222,7 @@ export class GuidedRequestsService {
           pausedAt: true,
           demotedUntil: true,
           requestsBlockedUntil: true,
+          businessName: true,
           category: true,
           extraCategories: { select: { id: true } },
           ...PUBLIC_VISIBILITY_SELECT,
@@ -396,11 +415,18 @@ export class GuidedRequestsService {
     // Conferma al cliente che la richiesta è partita (docs/CHANGELOG.md §185).
     if (!opts.submissionGroupId) this.notificationsService.emailRequestSent(clientId, {
       category: category.label,
-      city: input.city ?? null,
+      requestId: guidedRequest.id,
+      city: guidedRequest.city || null,
       isUrgent: input.isUrgent,
       sentTo: leadRecipients.length,
       direct: Boolean(input.professionalProfileId),
       description: guidedRequest.description,
+      summary: {
+        ...requestSummary(guidedRequest),
+        preferredDate: guidedRequest.preferredDate,
+        preferredTimeSlot: guidedRequest.preferredTimeSlot,
+        businessName: targetProfile?.businessName ?? null,
+      },
     });
 
     return {

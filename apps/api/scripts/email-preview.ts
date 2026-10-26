@@ -58,8 +58,24 @@ add("account-eliminato", "Account", "Tutti", accountDeletedEmail("Giulia"));
 add("profilo-creato-al-telefono", "Account", "Professionista", profileInviteEmail("Marco", "Idraulica Rossi", `${site}/completa-profilo?codice=esempio`, 7));
 
 // Richieste
-add("richiesta-inviata", "Richieste", "Cliente", requestSentEmail({ name: "Giulia", category: "Idraulico", city: "Milano", isUrgent: false, sentTo: 3, direct: false }));
-add("richiesta-inviata-diretta", "Richieste", "Cliente", requestSentEmail({ name: "Giulia", category: "Idraulico", city: "Milano", isUrgent: false, sentTo: 1, direct: true }));
+const requestSummary = {
+  timing: "WEEK" as const,
+  serviceMode: "HOME" as const,
+  address: "Via Paolo Sarpi",
+  houseNumber: "14",
+  addressExtra: "scala B, interno 6",
+  postalCode: "20154",
+  province: "MI",
+  photoUrls: [
+    "https://res.cloudinary.com/demo/image/upload/sample.jpg",
+    "https://res.cloudinary.com/demo/image/upload/cld-sample-5.jpg",
+  ],
+};
+const requestDescription = "Il rubinetto della cucina perde sotto il lavandino, anche da chiuso.\nMeglio di pomeriggio, dopo le 15.";
+add("richiesta-inviata", "Richieste", "Cliente", requestSentEmail({ name: "Giulia", category: "Idraulico", requestId: "esempio", city: "Milano", isUrgent: false, sentTo: 3, direct: false, description: requestDescription, summary: requestSummary }));
+add("richiesta-inviata-urgente", "Richieste", "Cliente", requestSentEmail({ name: "Giulia", category: "Idraulico", requestId: "esempio", city: "Milano", isUrgent: true, sentTo: 2, direct: false, description: "Perdita d'acqua dal soffitto del bagno.", summary: { ...requestSummary, timing: "TODAY", photoUrls: [] } }));
+add("richiesta-inviata-piu-categorie", "Richieste", "Cliente", requestSentEmail({ name: "Giulia", category: "Idraulico ed Elettricista", requestsCount: 2, city: "Milano", isUrgent: false, sentTo: 5, direct: false, description: requestDescription, summary: requestSummary }));
+add("richiesta-inviata-diretta", "Richieste", "Cliente", requestSentEmail({ name: "Giulia", category: "Idraulico", requestId: "esempio", city: "Milano", isUrgent: false, sentTo: 1, direct: true, description: requestDescription, summary: { ...requestSummary, preferredDate: new Date("2026-11-03T00:00:00.000Z"), preferredTimeSlot: "14:00-18:00", businessName: "Idraulica Rossi" } }));
 add("richiesta-inviata-nessuno", "Richieste", "Cliente", requestSentEmail({ name: "Giulia", category: "Idraulico", city: "Milano", isUrgent: false, sentTo: 0, direct: false }));
 notification("NEW_LEAD", "Professionista", "Richieste", { category: "Idraulico", city: "Milano", isUrgent: false });
 add("new_lead_urgente", "Richieste", "Professionista", renderEmail(notificationEmail("NEW_LEAD", { category: "Idraulico", city: "Milano", isUrgent: true }, forPro)!));

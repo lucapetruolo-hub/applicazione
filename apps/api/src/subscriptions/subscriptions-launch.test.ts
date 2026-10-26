@@ -68,7 +68,7 @@ describe("SubscriptionsService e data di lancio", () => {
     const { service, prisma } = buildService();
 
     await expect(service.alignTrialsToLaunch(new Date("2026-11-03T10:00:00Z"))).resolves.toBe(4);
-    // Prima i fondatori (tre mesi dal lancio, §358), poi gli altri (un mese).
+    // Prima i fondatori (tre mesi dal lancio, §359), poi gli altri (un mese).
     const founders = prisma.subscription.updateMany.mock.calls[0]![0];
     expect(founders.where.founderNumber).toEqual({ not: null });
     expect(founders.data.trialEndsAt.toISOString()).toBe("2027-01-30T23:00:00.000Z");
@@ -89,7 +89,7 @@ describe("SubscriptionsService e data di lancio", () => {
   });
 });
 
-/** Offerta di lancio (§358): 3 mesi gratis ai primi 100 professionisti. */
+/** Offerta di lancio (§359): 3 mesi gratis ai primi 100 professionisti. */
 describe("SubscriptionsService e primi 100 professionisti", () => {
   const trialing = { id: "s-1", status: "TRIALING", stripeSubscriptionId: null, founderNumber: null, trialEndsAt: new Date("2026-12-01T23:00:00Z") };
   const profile = (overrides: Record<string, unknown> = {}) => ({ isDemo: false, deletedAt: null, invitePendingAt: null, subscription: trialing, ...overrides });

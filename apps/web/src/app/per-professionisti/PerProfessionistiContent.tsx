@@ -260,7 +260,7 @@ const PAYMENT_STEPS: { title: string; text: string }[] = [
 
 /**
  * Il pagamento online come vantaggio in cima (decisione dell'utente,
- * docs/CHANGELOG.md §356), detto in modo esatto: il cliente paga prima, ma i
+ * docs/CHANGELOG.md §357), detto in modo esatto: il cliente paga prima, ma i
  * soldi restano bloccati e il bonifico parte dopo la conferma. Mai "ricevi i
  * soldi prima". Si vede solo con i pagamenti online attivi (§170).
  */
@@ -521,10 +521,10 @@ const TIER_FOR: Record<SubscriptionTier, string> = {
  * iscrivono e poi ci arrivano (`?livello=`, con `&rinnovo=` mensile o annuale).
  *
  * Prezzi + IVA con l'IVA compresa in piccolo, mensile o annuale con
- * l'annuale in vista (decisioni dell'utente del 26/10/2026, §356).
+ * l'annuale in vista (decisioni dell'utente del 26/10/2026, §357).
  */
 /**
- * Banda verde dell'offerta di lancio (§358, anteprima approvata da Luca):
+ * Banda verde dell'offerta di lancio (§359, anteprima approvata da Luca):
  * "GRATIS PER 3 MESI" ben in vista con i posti rimasti.
  */
 function FounderBand({ spots }: { spots: FounderSpots }) {
@@ -562,7 +562,7 @@ function FounderBand({ spots }: { spots: FounderSpots }) {
 function ProPricing({ isProfessional, founders }: { isProfessional: boolean; founders: FounderSpots | null }) {
   const [interval, setInterval] = useState<BillingInterval>("YEAR");
   const annual = interval === "YEAR";
-  // Offerta di lancio finché restano posti (decisione dell'utente, §358).
+  // Offerta di lancio finché restano posti (decisione dell'utente, §359).
   const offer = founders && founders.left > 0 ? founders : null;
   return (
     <Band id="prezzi">
@@ -665,7 +665,7 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
                 {tier.monthlyAcceptedJobs === null ? "Lavori senza limite" : `${tier.monthlyAcceptedJobs} lavori accettati al mese`}
               </Text>
               {tier.tier === "PLUS" ? (
-                // Su Plus e Pro lo stesso cliente conta una volta (§357): su Pro non c'è limite, si dice solo qui.
+                // Su Plus e Pro lo stesso cliente conta una volta (§358): su Pro non c'è limite, si dice solo qui.
                 <Text color={brand.grafite70} fontSize={15} marginTop={-8}>
                   Lo stesso cliente conta una volta al mese
                 </Text>

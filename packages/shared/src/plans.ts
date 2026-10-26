@@ -9,7 +9,7 @@
 
 /**
  * Prezzi IVA esclusa (decisione dell'utente del 26/10/2026, docs/CHANGELOG.md
- * §356): mostrati "+ IVA", l'IVA si aggiunge in fattura. L'annuale costa
+ * §357): mostrati "+ IVA", l'IVA si aggiunge in fattura. L'annuale costa
  * dieci mensilità ("Risparmi 2 mesi"); `annualMonthlyEurCents` è il prezzo
  * al mese arrotondato all'euro da mostrare accanto al totale annuo.
  */
@@ -68,7 +68,7 @@ export function upgradeFeeEurCents(input: {
 
 /**
  * Quota di passaggio nei giorni gratuiti (prova, mese regalato, 3 mesi dei
- * fondatori), §358: come se Base costasse il suo prezzo mensile, cioè 10 € più
+ * fondatori), §359: come se Base costasse il suo prezzo mensile, cioè 10 € più
  * la differenza mensile per i giorni gratuiti che restano (su mesi di 30
  * giorni), maggiorata del 10%. IVA esclusa.
  */
@@ -98,7 +98,7 @@ export const BONUS_MONTH_NOTICE_DAYS = 3;
 
 /**
  * Offerta di lancio (decisione dell'utente del 26/10/2026, docs/CHANGELOG.md
- * §358): ai primi 100 professionisti con il profilo completo il livello Base
+ * §359): ai primi 100 professionisti con il profilo completo il livello Base
  * è gratis per 3 mesi (tre periodi da 30 giorni) dal lancio, al posto del
  * mese gratuito; niente mese regalato a sorpresa.
  */
@@ -109,7 +109,7 @@ export const FOUNDER_TRIAL_DAYS = FOUNDER_FREE_MONTHS * TRIAL_DAYS;
 /** Posti dell'offerta di lancio (`GET /subscriptions/founders`, pubblico). */
 export type FounderSpots = { total: number; left: number };
 
-/** Elenco dei fondatori per l'area admin (`GET /admin/founders`, §358). */
+/** Elenco dei fondatori per l'area admin (`GET /admin/founders`, §359). */
 export type AdminFounders = {
   total: number;
   taken: number;
@@ -136,14 +136,14 @@ export const RENEWAL_NOTICE_DAYS = 3;
 /**
  * Perché un account professionista è in pausa (docs/CHANGELOG.md §162):
  * fuori dalla ricerca e senza nuove richieste finché non si sceglie o
- * rinnova un livello. I lavori esauriti non mettono più in pausa (§357):
+ * rinnova un livello. I lavori esauriti non mettono più in pausa (§358):
  * vedi `MySubscription.limitReached`.
  */
 export type PauseReason = "TRIAL_ENDED" | "SUBSCRIPTION_ENDED";
 
 /**
  * Errore dell'API per chi prova a mandare un preventivo o a rispondere per
- * primo con i lavori esauriti (§357): il sito lo riconosce e apre la
+ * primo con i lavori esauriti (§358): il sito lo riconosce e apre la
  * finestra del livello superiore invece di mostrare il testo.
  */
 export const JOB_LIMIT_REACHED_MESSAGE = "Hai esaurito i lavori compresi nel tuo abbonamento: passa al livello superiore per rispondere.";
@@ -183,13 +183,13 @@ export type MySubscription = {
   /** Il mese regalato è già stato dato (viene mostrato solo dopo, mai prima). */
   bonusMonthGranted: boolean;
   /**
-   * Tra i primi 100 professionisti (§358): 3 mesi gratis. `currentMonth` è il
+   * Tra i primi 100 professionisti (§359): 3 mesi gratis. `currentMonth` è il
    * mese gratuito in corso (1-3), 0 se i mesi non sono ancora partiti (prima
    * del lancio); null finiti i mesi gratuiti.
    */
   founder: { months: number; currentMonth: number | null } | null;
   /**
-   * Lavori del periodo in corso (docs/CHANGELOG.md §357): ripartono al
+   * Lavori del periodo in corso (docs/CHANGELOG.md §358): ripartono al
    * rinnovo, non il 1° del mese. Su Plus e Pro lo stesso cliente conta una
    * volta per periodo (`countsClientsOnce`).
    */
@@ -203,7 +203,7 @@ export type MySubscription = {
     countsClientsOnce: boolean;
   };
   /**
-   * Lavori del periodo esauriti (§357): il profilo resta nella ricerca e
+   * Lavori del periodo esauriti (§358): il profilo resta nella ricerca e
    * riceve le richieste, ma non può mandare preventivi nuovi né rispondere
    * per primo a una richiesta finché non passa al livello superiore o non
    * ripartono i lavori.
@@ -213,7 +213,7 @@ export type MySubscription = {
   billingInterval: BillingInterval | null;
   /**
    * Quanto costa adesso passare a ciascun livello superiore (IVA esclusa) e
-   * fino a quando vale prima del rinnovo (docs/CHANGELOG.md §356). Vuoto se
+   * fino a quando vale prima del rinnovo (docs/CHANGELOG.md §357). Vuoto se
    * non c'è un livello superiore o non si può passare (prova finita,
    * abbonamento concluso). `amountEurCents` 0 prima del lancio, quando la
    * prova non scorre ancora.

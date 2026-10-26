@@ -1290,7 +1290,7 @@ const BUILDERS: Record<string, Builder> = {
     details: str(payload.date) ? [{ label: "Gratis fino al", value: formatDay(str(payload.date)) }] : undefined,
     cta: subscriptionPage(),
   }),
-  // I primi 100 professionisti hanno 3 mesi gratis (docs/CHANGELOG.md §358).
+  // I primi 100 professionisti hanno 3 mesi gratis (docs/CHANGELOG.md §359).
   SUBSCRIPTION_TRIAL_ENDING: (payload, ctx) => ({
     kind: "account",
     subject: payload.founder === true ? "I tuoi 3 mesi gratis stanno per finire" : "Il tuo mese gratuito sta per finire",
@@ -1317,7 +1317,7 @@ const BUILDERS: Record<string, Builder> = {
         used !== null && limit !== null
           ? `Hai già **${used} lavori accettati su ${limit}** compresi nel tuo livello${until ? ` fino al ${until}` : ""}.`
           : "Ti stai avvicinando ai lavori accettati compresi nel tuo livello.",
-        // Al limite si resta nella ricerca (decisione dell'utente, docs/CHANGELOG.md §357).
+        // Al limite si resta nella ricerca (decisione dell'utente, docs/CHANGELOG.md §358).
         "Quando li finisci resti nella ricerca e ricevi le richieste, ma per mandare preventivi dovrai passare al livello superiore: in Abbonamento trovi quanto costa adesso.",
       ],
       cta: subscriptionPage(),

@@ -26,7 +26,7 @@ const BOOST_PRICES_EUR_CENTS: Record<string, number> = {
 };
 const BOOST_DURATION_DAYS = 30;
 
-// Abbonamento unico a livelli (CLAUDE.md §6, docs/CHANGELOG.md §161, §356):
+// Abbonamento unico a livelli (CLAUDE.md §6, docs/CHANGELOG.md §161, §357):
 // un prezzo Stripe mensile e uno annuale per livello, IVA esclusa.
 const SUBSCRIPTION_PRICE_ENV: Record<SubscriptionTier, Record<BillingInterval, string>> = {
   BASE: { MONTH: "STRIPE_PRICE_BASE", YEAR: "STRIPE_PRICE_BASE_ANNUAL" },
@@ -34,7 +34,7 @@ const SUBSCRIPTION_PRICE_ENV: Record<SubscriptionTier, Record<BillingInterval, s
   PRO: { MONTH: "STRIPE_PRICE_PRO", YEAR: "STRIPE_PRICE_PRO_ANNUAL" },
 };
 // Aliquota IVA del 22% creata su Stripe (Tax rate, esclusa dal prezzo): si
-// aggiunge a canone e quote di passaggio, che sul sito sono "+ IVA" (§356).
+// aggiunge a canone e quote di passaggio, che sul sito sono "+ IVA" (§357).
 const TAX_RATE_ENV = "STRIPE_TAX_RATE_IVA";
 // Stripe accetta un `trial_end` solo almeno 48 ore nel futuro.
 const MIN_TRIAL_END_MS = 48 * 60 * 60 * 1000;
@@ -189,7 +189,7 @@ export class BillingService {
   }
 
   /**
-   * Scelta o cambio di livello (docs/CHANGELOG.md §162, §356). Restituisce
+   * Scelta o cambio di livello (docs/CHANGELOG.md §162, §357). Restituisce
    * l'URL di una pagina di pagamento Stripe, oppure `url: null` se il cambio
    * è già fatto (addebito sulla carta salvata). Prezzi IVA esclusa, l'IVA si
    * aggiunge con l'aliquota di `STRIPE_TAX_RATE_IVA`.
@@ -269,7 +269,7 @@ export class BillingService {
     return { url: session.url };
   }
 
-  /** Quota per avere un livello sopra Base nei giorni gratuiti che restano (a mesi di 30 giorni, §358). */
+  /** Quota per avere un livello sopra Base nei giorni gratuiti che restano (a mesi di 30 giorni, §359). */
   private trialUpgradeFee(plan: SubscriptionTier, trialEndsAt: Date, now: Date): number {
     return freePeriodUpgradeFeeEurCents({ from: "BASE", to: plan, remainingMs: trialEndsAt.getTime() - now.getTime() });
   }
@@ -527,7 +527,7 @@ export class BillingService {
       }
 
       // Quota pagata per un livello superiore durante il periodo gratuito
-      // (docs/CHANGELOG.md §162, §356): il nuovo prezzo vale dal primo rinnovo,
+      // (docs/CHANGELOG.md §162, §357): il nuovo prezzo vale dal primo rinnovo,
       // con il rinnovo già scelto (mensile o annuale).
       if (metadata.kind === "tier_upgrade" && metadata.professionalProfileId && metadata.stripeSubscriptionId && metadata.plan) {
         const subscription = await stripe.subscriptions.retrieve(metadata.stripeSubscriptionId);
