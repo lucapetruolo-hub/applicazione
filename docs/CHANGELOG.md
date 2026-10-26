@@ -20970,3 +20970,19 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 **Decisione**: la regola che nasconde i titoli col menu ridotto vale anche per il primo, con la stessa specificità (`globals.css`). Nessun altro cambiamento.
 
 **Verifica**: sito in locale con un professionista di prova a 1366 px (menu ridotto da solo): `display` del primo titolo `flex` prima, `none` dopo; foto del menu ridotto senza la scritta. Menu aperto e tablet invariati (le regole toccate valgono solo col menu ridotto).
+
+## 352. Pagina "Oggi" del professionista: richieste prima, una scadenza, Naviga
+
+**Richiesta esplicita dell'utente** (26/10/2026, stesso thread del §351): dopo l'analisi della pagina (`analisi/oggi-migliorie.md`) "effettua le migliorie: 1-2-3-4-6-8-10" e poi "anche la 5". Non scelte: 7 ("Ciao Luca" invece del nome dell'attività) e 9 (scheda unica per "Aumenta la tua visibilità").
+
+**Decisioni** (`apps/web/src/app/dashboard/page.tsx`, `globals.css`, `lib/leadDeadline.ts`):
+1. **Telefono, "Invia preventivo"** sotto il testo e largo quanto la scheda: accanto schiacciava la descrizione in 4-5 righe.
+2. **Una scadenza alla volta**: su una richiesta diretta comparivano "Puoi rispondere fino al 25 dicembre" e "Rispondi entro 6 ore, poi va anche ad altri professionisti", che sembravano in contrasto. Ora "Solo tua ancora per 6 ore"; passato quel tempo compare la data finale. Vale anche per le pillole di Richieste e lavori (stessa funzione `leadDeadlines`).
+3. **Richieste prima sul telefono**: con richieste in attesa, "Da rispondere ora" viene subito dopo i lavori di oggi e domani, prima di "Completa il profilo" e dell'avviso sull'agenda (prima erano due schermate più giù). Sul computer le colonne non cambiano.
+4. **Niente doppione**: tolta la tessera "Richieste da rispondere", il numero sta in un tondo rosso accanto a "Da rispondere ora". "Date da confermare" e "Messaggi non letti" compaiono solo se sopra zero.
+5. **"Urgente"** con l'etichetta rossa di Richieste e lavori (`Badge`), non più l'emoji 🔴.
+6. **"Il tuo andamento" vuoto** (nessuna visita, risposta o recensione): una riga invece di tre tessere con "0" e "—". Con i dati, da telefono una tessera per riga, nome a sinistra e numero a destra.
+8. **"Naviga"** verde sui lavori di oggi confermati con un indirizzo (anche quelli aggiunti a mano): apre Google Maps come in agenda. L'indirizzo era già visibile (lavoro confermato, CLAUDE.md §5 punto 9).
+10. **Meteo più basso sul computer**: giorno, icona e gradi su una riga (circa 46 px invece di 92). La descrizione ("Nuvoloso") resta nel fumetto e nel testo dell'icona per gli screen reader. Telefono invariato.
+
+**Verifica**: typecheck e lint; sito in locale con professionista di prova (richiesta urgente, richiesta diretta, lavoro oggi e domani, con e senza visite), foto a 390, 1366 e 1600 px, nessuna pagina più larga dello schermo.

@@ -2,8 +2,9 @@
 
 import { Fragment, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { AGENDA_LOOKAHEAD_DAYS, formatAppointmentDate, formatAppointmentTime, jobOccurrences, scheduleChangeBetween, wallClockToday, type AgendaAttention, type DayAhead, type ExternalJob, type MySubscription, type ProfessionalBooking, type ProfessionalInsights, type ProfessionalLead } from "@professionisti/shared";
-import { Button, Icon, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
+import { Navigation } from "lucide-react";
+import { AGENDA_LOOKAHEAD_DAYS, formatAppointmentDate, formatAppointmentTime, jobOccurrences, navigateUrl, scheduleChangeBetween, wallClockToday, type AgendaAttention, type DayAhead, type ExternalJob, type MySubscription, type ProfessionalBooking, type ProfessionalInsights, type ProfessionalLead } from "@professionisti/shared";
+import { Badge, Button, Icon, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { loadMyProfessionalProfile } from "@/lib/myProfessionalProfile";
 import { useAuth } from "@/lib/AuthContext";
@@ -138,7 +139,8 @@ export default function DashboardTodayPage() {
   const endTomorrow = new Date(startToday);
   endTomorrow.setUTCDate(endTomorrow.getUTCDate() + 2);
   // Un lavoro su più giorni compare oggi e domani con l'orario di quel giorno (§310).
-  type UpcomingRow = { key: string; href: string; at: string; title: string; sub: string; job: DayJobRow };
+  // `navigateTo`: indirizzo per "Naviga" (§352), solo a lavoro confermato.
+  type UpcomingRow = { key: string; href: string; at: string; title: string; sub: string; job: DayJobRow; navigateTo: string | null };
   const inWindow = (start: Date) => start >= startToday && start < endTomorrow;
   const upcoming: UpcomingRow[] = [
     ...(bookings ?? [])
@@ -156,6 +158,12 @@ export default function DashboardTodayPage() {
               ([booking.street && booking.houseNumber ? `${booking.street} ${booking.houseNumber}` : null, booking.city ?? booking.address, booking.items[0]?.name].filter(Boolean).join(" · ") || "Intervento") +
               (booking.status === "PENDING" ? " · da confermare" : ""),
             job: { start: occurrence.start.toISOString(), end: occurrence.end?.toISOString() ?? null, city: booking.city, online: booking.serviceMode === "ONLINE" },
+            navigateTo:
+              booking.status === "CONFIRMED" && booking.serviceMode !== "ONLINE"
+                ? booking.street && booking.houseNumber
+                  ? `${booking.street} ${booking.houseNumber}, ${[booking.postalCode, booking.city].filter(Boolean).join(" ")}`
+                  : booking.address
+                : null,
           })),
       ),
     // Anche i lavori aggiunti a mano in agenda (§333).
@@ -171,6 +179,7 @@ export default function DashboardTodayPage() {
             title: job.clientName,
             sub: [job.address, job.description].filter(Boolean).join(" · ") || "Lavoro aggiunto da te",
             job: { start: occurrence.start.toISOString(), end: occurrence.end?.toISOString() ?? null, city: cityOfAddress(job.address), online: false },
+            navigateTo: job.address,
           })),
       ),
   ].sort((a, b) => a.at.localeCompare(b.at));
@@ -217,7 +226,7 @@ export default function DashboardTodayPage() {
                   ) : upcoming.length === 0 ? (
                     <EmptyLine text="Nessun appuntamento oggi e domani." />
                   ) : (
-                    upcoming.map(({ key, href, at, title, sub }, index) => (
+                    upcoming.map(({ key, href, at, title, sub, navigateTo }, index) => (
                       <Fragment key={key}>
                         {/* I lavori raggruppati per giorno, con il riepilogo sopra (§333). */}
                         {index === 0 || upcoming[index - 1]!.at.slice(0, 10) !== at.slice(0, 10) ? (
@@ -226,13 +235,22 @@ export default function DashboardTodayPage() {
                             <span>{jobsHeadline(upcoming.filter((row) => row.at.slice(0, 10) === at.slice(0, 10)).map((row) => row.job))}</span>
                           </div>
                         ) : null}
-                        <Link href={href} className="today-row">
-                          <span className="today-time">{formatAppointmentTime(at)}</span>
-                          <span className="today-row-main">
-                            <strong>{title}</strong>
-                            <span className="today-row-sub">{sub}</span>
-                          </span>
-                        </Link>
+                        <div className="today-appt">
+                          <Link href={href} className="today-row">
+                            <span className="today-time">{formatAppointmentTime(at)}</span>
+                            <span className="today-row-main">
+                              <strong>{title}</strong>
+                              <span className="today-row-sub">{sub}</span>
+                            </span>
+                          </Link>
+                          {/* "Naviga" diretto sui lavori di oggi (§352): prima
+                              serviva aprire l'agenda e poi l'appuntamento. */}
+                          {navigateTo && at.slice(0, 10) === startToday.toISOString().slice(0, 10) ? (
+                            <a className="today-nav" href={navigateUrl(navigateTo)} target="_blank" rel="noreferrer" aria-label={`Naviga verso ${title}`}>
+                              <Navigation size={16} aria-hidden /> Naviga
+                            </a>
+                          ) : null}
+                        </div>
                       </Fragment>
                     ))
                   )}
@@ -241,7 +259,9 @@ export default function DashboardTodayPage() {
               </div>
               {!ready ? null : (
                 <>
-                  <div className="today-slot" style={{ order: 4 }}>
+                  {/* Con richieste in attesa vengono subito dopo i lavori (§352):
+                      su telefono erano due schermate più giù, sotto il percorso. */}
+                  <div className="today-slot" style={{ order: toAnswer.length > 0 ? 2 : 4 }}>
                     {/* Richieste e lavori non caricati: "Riprova" invece di scheletri
                         infiniti e di un messaggio tecnico (docs/CHANGELOG.md §286). */}
                     {error ? (
@@ -258,13 +278,16 @@ export default function DashboardTodayPage() {
                       />
                     ) : (
                       <>
-                        <div className="today-kpis">
-                          <TodayCounter href="/dashboard/richieste?stage=da_quotare" icon="file-text" value={toAnswer.length} label="Richieste da rispondere" urgent={toAnswer.length > 0} loading={loading} />
-                          <TodayCounter href="/dashboard/richieste?stage=modifica_richiesta" icon="calendar" value={datesToConfirm.length} label="Date da confermare" urgent={datesToConfirm.length > 0} loading={loading} />
-                          <TodayCounter href="/chat" icon="message-circle" value={unreadMessages} label="Messaggi non letti" urgent={unreadMessages > 0} loading={false} />
-                        </div>
+                        {/* Il numero delle richieste sta nel titolo qui sotto, che
+                            le elenca (§352); le altre tessere solo se c'è qualcosa. */}
+                        {datesToConfirm.length > 0 || unreadMessages > 0 ? (
+                          <div className="today-kpis today-counters">
+                            {datesToConfirm.length > 0 ? <TodayCounter href="/dashboard/richieste?stage=modifica_richiesta" icon="calendar" value={datesToConfirm.length} label="Date da confermare" urgent loading={loading} /> : null}
+                            {unreadMessages > 0 ? <TodayCounter href="/chat" icon="message-circle" value={unreadMessages} label="Messaggi non letti" urgent loading={false} /> : null}
+                          </div>
+                        ) : null}
 
-                        <TodaySection title="Da rispondere ora" action={{ href: "/dashboard/richieste", label: "Tutte le richieste" }}>
+                        <TodaySection title="Da rispondere ora" count={toAnswer.length} action={{ href: "/dashboard/richieste", label: "Tutte le richieste" }}>
                           {toAnswer.length === 0 ? (
                             <EmptyLine text="Nessuna richiesta in attesa: ti avvisiamo appena ne arriva una nuova." />
                           ) : (
@@ -300,10 +323,11 @@ export default function DashboardTodayPage() {
                 </>
                 )}
               </div>
-              <div className="today-slot" style={{ order: 5 }}>
+              <div className="today-slot" style={{ order: 6 }}>
                 {insightsFailed ? null : (
-                  <TodaySection title="Il tuo andamento" subtitle={insights ? `Rispetto agli altri professionisti di ${insights.areaLabel}` : undefined}>
-                    {insights ? <InsightsGrid insights={insights} /> : <Skeletons />}
+                  <TodaySection title="Il tuo andamento" subtitle={insights && !insightsEmpty(insights) ? `Rispetto agli altri professionisti di ${insights.areaLabel}` : undefined}>
+                    {/* Senza dati una riga, non tre tessere con "0" e "—" (§352). */}
+                    {!insights ? <Skeletons /> : insightsEmpty(insights) ? <EmptyLine text="I tuoi numeri compaiono con le prime visite al profilo e le prime risposte." /> : <InsightsGrid insights={insights} />}
                   </TodaySection>
                 )}
 
@@ -315,15 +339,15 @@ export default function DashboardTodayPage() {
             <div className="today-col">
               {ready ? (
                 <>
-                  <div className="today-slot" style={{ order: 2 }}>
+                  <div className="today-slot" style={{ order: 3 }}>
                     <SetupJourneyCard steps={journey.steps} />
                   </div>
                   {user.agendaAttention ? (
-                    <div className="today-slot" style={{ order: 3 }}>
+                    <div className="today-slot" style={{ order: 5 }}>
                       <AgendaNotice attention={user.agendaAttention} />
                     </div>
                   ) : null}
-                  <div className="today-slot" style={{ order: 6 }}>
+                  <div className="today-slot" style={{ order: 7 }}>
                     {/* Pacchetti di visibilità in fondo alla pagina (docs/CHANGELOG.md §252). */}
                     <BoostSection />
                   </div>
@@ -347,16 +371,19 @@ function TodayCounter({ href, icon, value, label, urgent, loading }: { href: str
   );
 }
 
-function TodaySection({ title, subtitle, action, children }: { title: string; subtitle?: string; action?: { href: string; label: string }; children: React.ReactNode }) {
+function TodaySection({ title, subtitle, count, action, children }: { title: string; subtitle?: string; count?: number; action?: { href: string; label: string }; children: React.ReactNode }) {
   return (
     <YStack gap="$3">
       <XStack justifyContent="space-between" alignItems="flex-end" gap="$2" flexWrap="wrap">
         {/* flexShrink: senza, il sottotitolo lungo su una riga allargava la
             pagina a 470px su telefono (docs/CHANGELOG.md §349, bug 1). */}
         <YStack flex={1} flexShrink={1} minWidth={0}>
-          <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
-            {title}
-          </Text>
+          <XStack alignItems="center" gap="$2">
+            <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+              {title}
+            </Text>
+            {count ? <span className="today-count">{count}</span> : null}
+          </XStack>
           {subtitle ? (
             <Text fontSize={13} color={brand.grafite70}>
               {subtitle}
@@ -380,8 +407,9 @@ function LeadToAnswerRow({ lead }: { lead: ProfessionalLead }) {
   return (
     <Link href={`/dashboard/richieste?open=${lead.guidedRequest.id}`} className="today-row">
       <span className="today-row-main">
+        {/* Etichetta "Urgente" come in Richieste e lavori, non più l'emoji 🔴 (§352). */}
+        {lead.guidedRequest.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
         <strong>
-          {lead.guidedRequest.isUrgent ? "🔴 " : ""}
           {lead.guidedRequest.categoryLabel} · {lead.guidedRequest.city}
         </strong>
         <span className="today-row-sub">{truncate(lead.guidedRequest.description, 110)}</span>
@@ -418,7 +446,7 @@ function InsightsGrid({ insights }: { insights: ProfessionalInsights }) {
     },
   ];
   return (
-    <div className="today-kpis">
+    <div className="today-kpis today-insights">
       {cells.map((cell) => (
         <div key={cell.label} className="admin-kpi">
           <span className="admin-kpi-label">{cell.label}</span>
@@ -428,6 +456,11 @@ function InsightsGrid({ insights }: { insights: ProfessionalInsights }) {
       ))}
     </div>
   );
+}
+
+/** Profilo nuovo: nessuna visita, nessuna risposta, nessuna recensione. */
+function insightsEmpty(insights: ProfessionalInsights): boolean {
+  return insights.profileViews30d === 0 && insights.avgResponseTimeMinutes === null && insights.reviewCount === 0;
 }
 
 /** Agenda vuota o senza disponibilità nei prossimi giorni: una riga sola, sparisce appena se ne aggiunge una. */
