@@ -28,8 +28,10 @@ export class AddressSuggestionsController {
   async postalCode(@Query("street") street?: string, @Query("number") houseNumber?: string, @Query("city") city?: string) {
     // Solo valori dall'aspetto di un indirizzo e un comune dell'elenco ISTAT:
     // finiscono nell'indirizzo chiesto a Google.
-    const comune = findComuneByName(city ?? "");
-    if (!comune || !street || !STREET.test(street) || !houseNumber || !HOUSE_NUMBER.test(houseNumber)) return { postalCode: null };
+    // `?street=a&street=b` arriva come elenco: si accettano solo testi.
+    if (typeof street !== "string" || typeof houseNumber !== "string" || typeof city !== "string") return { postalCode: null };
+    const comune = findComuneByName(city);
+    if (!comune || !STREET.test(street) || !HOUSE_NUMBER.test(houseNumber)) return { postalCode: null };
     return { postalCode: await this.addressSuggestionsService.postalCodeFor({ street, houseNumber, city: comune.name }) };
   }
 
@@ -37,8 +39,9 @@ export class AddressSuggestionsController {
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Get("postal-code/check")
   async postalCodeCheck(@Query("postalCode") postalCode?: string, @Query("city") city?: string) {
-    const comune = findComuneByName(city ?? "");
-    if (!comune || !postalCode || !POSTAL_CODE.test(postalCode)) return { matches: null };
+    if (typeof postalCode !== "string" || typeof city !== "string") return { matches: null };
+    const comune = findComuneByName(city);
+    if (!comune || !POSTAL_CODE.test(postalCode)) return { matches: null };
     return { matches: await this.geocodingService.postalCodeMatchesCity({ postalCode, city: comune.name }) };
   }
 
