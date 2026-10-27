@@ -184,7 +184,7 @@ export function PdfButton({ load, fileName, label = "Scarica PDF", variant, befo
 
   return (
     <YStack gap="$2">
-      <Button alignSelf="flex-start" variant={variant} disabled={busy} onPress={() => void download()}>
+      <Button alignSelf="flex-start" variant={variant ?? "primary"} disabled={busy} onPress={() => void download()}>
         {busy ? "Preparo il PDF…" : label}
       </Button>
       {error ? (

@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Put, Req, UseGuards } from "@nestjs/common";
-import { accountantSettingsSchema, courtesyNumberSchema, type AccountantSettingsInput, type CourtesyNumberInput } from "@professionisti/shared";
+import { accountantSettingsSchema, courtesyNumberSchema, type AccountantSettingsInput, type CourtesyNumberInput, type DocumentsOverview } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { InvoicesService } from "./invoices.service";
@@ -19,8 +19,9 @@ export class AccountingController {
   ) {}
 
   @Get()
-  overview(@Req() req: AuthenticatedRequest) {
-    return this.invoicesService.overview(req.user.userId);
+  async overview(@Req() req: AuthenticatedRequest): Promise<DocumentsOverview> {
+    const [overview, clientDocuments] = await Promise.all([this.invoicesService.overview(req.user.userId), this.courtesyCopyService.listForProfessional(req.user.userId)]);
+    return { ...overview, clientDocuments };
   }
 
   @Get("invoices/:id")

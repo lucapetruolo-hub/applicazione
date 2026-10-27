@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import type { CourtesyCopyView } from "@professionisti/shared";
+import { courtesyAmountChanged, type CourtesyCopyView } from "@professionisti/shared";
 import { Field, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -60,9 +60,22 @@ export default function CourtesyCopyPage() {
   }
 
   const receipt = copy.kind === "RECEIPT";
+  const amountChanged = courtesyAmountChanged(copy.pdfTotalEurCents ?? null, copy.totalEurCents);
   return (
     <DocumentPage back={back} title={receipt ? "Ricevuta per prestazione occasionale" : "Copia di cortesia della fattura"}>
       <div data-print-hide>
+        {/* L'importo è cambiato dopo il PDF scaricato, per esempio per un rimborso (docs/CHANGELOG.md §377). */}
+        {amountChanged ? (
+          <YStack paddingBottom="$3">
+            <NoteBox tone="sand">
+              <Text fontSize={16} fontWeight="700" color={brand.grafite} role="status">
+                L&apos;importo è cambiato: sul PDF che hai scaricato c&apos;era {eur(copy.pdfTotalEurCents ?? 0)}, ora è{" "}
+                {copy.totalEurCents !== null ? eur(copy.totalEurCents) : "da scrivere"}. Scarica di nuovo il documento e dallo al cliente al posto di quello
+                vecchio.
+              </Text>
+            </NoteBox>
+          </YStack>
+        ) : null}
         <NoteBox>
           <Text fontSize={16} color={brand.grafite}>
             {receipt

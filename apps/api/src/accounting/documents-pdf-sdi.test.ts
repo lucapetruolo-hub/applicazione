@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { courtesyDocumentLabel } from "@professionisti/shared";
+import { courtesyAmountChanged, courtesyDocumentLabel, courtesyTotalEurCents, courtesyYearTotals, type CourtesyDocumentSummary } from "@professionisti/shared";
+import { courtesyDocumentSummary } from "./courtesy-documents";
 import { pdfText, renderDocumentPdf } from "./document-pdf";
 import { courtesyPdfModel, dac7PdfModel, invoicePdfModel, pdfFileName, statementPdfModel } from "./document-pdf-models";
 import { sandboxTestInvoiceXml, sdiCompanyOf, type IssuerSnapshot } from "./invoice-documents";
@@ -187,6 +188,39 @@ describe("numero della copia di cortesia", () => {
     const second = prisma.courtesyDocument.findMany.mock.calls[1]![0].where;
     expect(second).toMatchObject({ kind: "INVOICE", year: 2026 });
     expect(second.OR).not.toContainEqual(expect.objectContaining({ number: expect.anything() }));
+  });
+
+  it("sulla copia c'è l'importo dell'ultimo PDF, e si scrive \"Pagato online\" senza dire con cosa", async () => {
+    const { service, prisma } = build("PRIVATE_INDIVIDUAL", { number: 2, year: 2026, ownNumber: null, pdfTotalEurCents: 12000 }, null);
+    prisma.booking.findUnique.mockResolvedValueOnce({
+      ...(await prisma.booking.findUnique()),
+      jobPayment: { paymentMethod: "MANOVIA", paidEurCents: 12000, refundedEurCents: 2000, grossAmountEurCents: 12000, balancePaidAt: null, directReportedAt: null },
+    });
+    const copy = await service.forProfessional("u1", "b1");
+    expect(copy).toMatchObject({ totalEurCents: 10000, pdfTotalEurCents: 12000, paidHow: "Pagato online" });
+    expect(courtesyAmountChanged(copy.pdfTotalEurCents ?? null, copy.totalEurCents)).toBe(true);
+  });
+
+  it("documenti del professionista: importo cambiato dopo il PDF e totali dell'anno", () => {
+    const booking = (refunded: number) => ({
+      jobPayment: { paymentMethod: "MANOVIA", paidEurCents: 12000, refundedEurCents: refunded, grossAmountEurCents: 12000 },
+      client: { name: "Anna", surname: "Bianchi", deletedAt: null },
+      quote: { guidedRequest: { category: { label: "Idraulico" } } },
+    });
+    const doc = { bookingId: "b1", kind: "RECEIPT", number: 4, year: 2026, ownNumber: null, pdfDownloadedAt: new Date("2026-10-20T10:00:00Z"), pdfTotalEurCents: 12000 };
+    expect(courtesyDocumentSummary(doc, booking(0))).toMatchObject({ label: "Ricevuta n. 4/2026", customerName: "Anna Bianchi", jobLabel: "Idraulico", totalEurCents: 12000, amountChanged: false });
+    expect(courtesyDocumentSummary(doc, booking(2000)).amountChanged).toBe(true);
+    // Mai "cambiato" prima del primo PDF.
+    expect(courtesyAmountChanged(null, 5000)).toBe(false);
+    expect(courtesyTotalEurCents(null)).toBeNull();
+
+    const summary = (year: number, kind: "RECEIPT" | "INVOICE", total: number | null): CourtesyDocumentSummary => ({
+      bookingId: `${year}-${kind}-${total}`, kind, label: "", year, customerName: null, jobLabel: null, totalEurCents: total, pdfDownloadedAt: null, pdfTotalEurCents: null, amountChanged: false,
+    });
+    expect(courtesyYearTotals([summary(2026, "RECEIPT", 10000), summary(2026, "RECEIPT", 5000), summary(2026, "RECEIPT", null), summary(2027, "INVOICE", 3000)])).toEqual([
+      { year: 2027, kind: "INVOICE", count: 1, totalEurCents: 3000, missingAmounts: 0 },
+      { year: 2026, kind: "RECEIPT", count: 3, totalEurCents: 15000, missingAmounts: 1 },
+    ]);
   });
 
   it("nome del documento nelle liste", () => {

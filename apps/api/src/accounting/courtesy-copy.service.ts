@@ -5,10 +5,12 @@ import {
   clientInvoiceLines,
   courtesyDocumentLabel,
   courtesyReceiptNumber,
+  courtesyTotalEurCents,
   professionalChargesVat,
   splitVatEurCents,
   type AdminCourtesyDocumentRow,
   type CourtesyCopyView,
+  type CourtesyDocumentSummary,
   type CourtesyNumberInput,
   type InvoiceParty,
 } from "@professionisti/shared";
@@ -18,6 +20,7 @@ import { invoiceRequestView } from "../client-invoice-requests/client-invoice-re
 import { InvoicesService } from "./invoices.service";
 import { recipientFromFiscal, recipientParty } from "./invoice-documents";
 import { romeMonthOf } from "./accounting-dates";
+import { COURTESY_DOCUMENT_FIELDS, courtesyDocumentSummary } from "./courtesy-documents";
 
 /**
  * Copia di cortesia del documento che il professionista dà al cliente
@@ -58,6 +61,27 @@ export class CourtesyCopyService {
       update: downloaded,
     });
     return copy;
+  }
+
+  /** I documenti dati ai clienti, dal più recente: in "Fatture e documenti" col totale dell'anno (§377). */
+  async listForProfessional(userId: string): Promise<CourtesyDocumentSummary[]> {
+    const professionalProfileId = await this.invoicesService.profileIdOf(userId);
+    const documents = await this.prisma.courtesyDocument.findMany({
+      where: { professionalProfileId, booking: { status: { not: "CANCELED" } } },
+      orderBy: [{ year: "desc" }, { createdAt: "desc" }],
+      take: 500,
+      select: {
+        ...COURTESY_DOCUMENT_FIELDS,
+        booking: {
+          select: {
+            jobPayment: { select: { paymentMethod: true, paidEurCents: true, refundedEurCents: true, grossAmountEurCents: true } },
+            client: { select: { name: true, surname: true, deletedAt: true } },
+            quote: { select: { guidedRequest: { select: { category: { select: { label: true } } } } } },
+          },
+        },
+      },
+    });
+    return documents.map((doc) => courtesyDocumentSummary(doc, doc.booking));
   }
 
   /** La stessa copia vista dall'admin: solo se il professionista l'ha preparata, senza dare numeri nuovi, e resta nel registro azioni. */
@@ -203,10 +227,11 @@ export class CourtesyCopyService {
       description,
       totalEurCents: total,
       vat: vat ? { taxableEurCents: vat.taxableEurCents, vatEurCents: vat.vatEurCents + vat.roundingEurCents, ratePercent: 22 } : null,
-      paidHow: jp ? (jp.paymentMethod === "MANOVIA" ? "Pagato online con carta" : "Pagato direttamente al professionista") : null,
+      paidHow: jp ? (jp.paymentMethod === "MANOVIA" ? "Pagato online" : "Pagato direttamente al professionista") : null,
       notes,
       invoiceRequested: !!request,
       number,
+      pdfTotalEurCents: saved?.pdfTotalEurCents ?? null,
     };
   }
 
@@ -254,10 +279,4 @@ export class CourtesyCopyService {
 /** Anno del documento, in ora italiana. */
 function yearOf(date: Date | string): number {
   return Number(romeMonthOf(new Date(date)).slice(0, 4));
-}
-
-/** Importo del documento: quanto è stato pagato online (meno i rimborsi), o il totale del lavoro. */
-function courtesyTotalEurCents(jp: { paymentMethod: string; paidEurCents: number; refundedEurCents: number; grossAmountEurCents: number } | null): number | null {
-  if (!jp) return null;
-  return jp.paymentMethod === "MANOVIA" && jp.paidEurCents > 0 ? jp.paidEurCents - jp.refundedEurCents : jp.grossAmountEurCents;
 }

@@ -376,6 +376,8 @@ export function statementCsv(rows: StatementCsvRow[]): string {
 
 export type DocumentsOverview = {
   invoices: PlatformInvoiceSummary[];
+  /** Ricevute e copie di cortesia date ai clienti, dalla più recente (§377). */
+  clientDocuments: CourtesyDocumentSummary[];
   /** Mesi con un estratto (AAAA-MM), dal più recente. */
   months: string[];
   /** Le fatture partono solo con i dati della nostra società (Admin → Finanza). */
@@ -516,6 +518,8 @@ export type CourtesyCopyView = {
    * professionista ha scritto (null finché non lo scrive).
    */
   number: string | null;
+  /** Importo sull'ultimo PDF scaricato, null se non l'ha mai scaricato: se è diverso da oggi va rifatto (§377). */
+  pdfTotalEurCents?: number | null;
 };
 
 /** Numero della fattura scritto dal professionista sulla copia di cortesia (vuoto per toglierlo). */
@@ -563,6 +567,52 @@ export type AdminCourtesyDocumentRow = {
 };
 
 export const adminCourtesyDocumentKinds = ["RECEIPT", "INVOICE"] as const;
+
+/**
+ * Un documento dato a un cliente, visto dal professionista (docs/CHANGELOG.md
+ * §377): in "Fatture e documenti" con il totale dell'anno, e sul lavoro se
+ * l'importo è cambiato dopo che ha scaricato il PDF (un rimborso, per esempio).
+ */
+export type CourtesyDocumentSummary = {
+  bookingId: string;
+  kind: "INVOICE" | "RECEIPT";
+  label: string;
+  year: number;
+  customerName: string | null;
+  jobLabel: string | null;
+  /** Importo di oggi; null se non è noto. */
+  totalEurCents: number | null;
+  pdfDownloadedAt: string | null;
+  /** Importo sull'ultimo PDF scaricato. */
+  pdfTotalEurCents: number | null;
+  /** L'importo di oggi non è quello del PDF scaricato: va rifatto. */
+  amountChanged: boolean;
+};
+
+/** Importo del documento: quanto è stato pagato online (meno i rimborsi), o il totale del lavoro. */
+export function courtesyTotalEurCents(jp: { paymentMethod: string; paidEurCents: number; refundedEurCents: number; grossAmountEurCents: number } | null): number | null {
+  if (!jp) return null;
+  return jp.paymentMethod === "MANOVIA" && jp.paidEurCents > 0 ? jp.paidEurCents - jp.refundedEurCents : jp.grossAmountEurCents;
+}
+
+/** L'importo è cambiato dopo il PDF scaricato (mai prima del primo PDF). */
+export function courtesyAmountChanged(pdfTotalEurCents: number | null, totalEurCents: number | null): boolean {
+  return pdfTotalEurCents !== null && pdfTotalEurCents !== totalEurCents;
+}
+
+/** Totali per anno dei documenti dati ai clienti, dal più recente: per la dichiarazione dei redditi. */
+export function courtesyYearTotals(documents: CourtesyDocumentSummary[]): { year: number; kind: "INVOICE" | "RECEIPT"; count: number; totalEurCents: number; missingAmounts: number }[] {
+  const totals = new Map<string, { year: number; kind: "INVOICE" | "RECEIPT"; count: number; totalEurCents: number; missingAmounts: number }>();
+  for (const doc of documents) {
+    const key = `${doc.year}:${doc.kind}`;
+    const row = totals.get(key) ?? { year: doc.year, kind: doc.kind, count: 0, totalEurCents: 0, missingAmounts: 0 };
+    row.count += 1;
+    if (doc.totalEurCents === null) row.missingAmounts += 1;
+    else row.totalEurCents += doc.totalEurCents;
+    totals.set(key, row);
+  }
+  return [...totals.values()].sort((a, b) => b.year - a.year || (a.kind === "RECEIPT" ? -1 : 1));
+}
 
 /** Sopra questa cifra, senza IVA, serve la marca da bollo da 2 €. */
 export const STAMP_DUTY_THRESHOLD_EUR_CENTS = 7747;

@@ -217,7 +217,7 @@ export function AdminInvoicesSection({ token }: { token: string }) {
           />
         ))}
       </div>
-      <Button alignSelf="flex-start" disabled={pending} opacity={pending ? 0.6 : 1} onPress={() => void saveSettings()}>
+      <Button variant="primary" alignSelf="flex-start" disabled={pending} opacity={pending ? 0.6 : 1} onPress={() => void saveSettings()}>
         Salva i dati della società
       </Button>
 

@@ -6,8 +6,10 @@ import {
   INVOICE_SOURCE_LABEL,
   accountantSettingsSchema,
   accountingMonthLabel,
+  courtesyYearTotals,
   formatEurCents,
   freePeriodSummary,
+  type CourtesyDocumentSummary,
   type DocumentsOverview,
   type MySubscription,
 } from "@professionisti/shared";
@@ -147,11 +149,82 @@ export default function DocumentsPage() {
               )}
             </YStack>
 
+            <ClientDocuments documents={data.clientDocuments ?? []} />
+
             {token ? <AccountantCard token={token} initial={data.accountant} /> : null}
           </>
         )}
       </YStack>
     </Section>
+  );
+}
+
+/**
+ * Ricevute e copie di fattura date ai clienti (docs/CHANGELOG.md §377), col
+ * totale dell'anno: le ricevute per prestazione occasionale vanno nella
+ * dichiarazione dei redditi. Se l'importo è cambiato dopo il PDF, lo dice.
+ */
+function ClientDocuments({ documents }: { documents: CourtesyDocumentSummary[] }) {
+  const totals = courtesyYearTotals(documents);
+  return (
+    <YStack gap="$3">
+      <Text tag="h2" fontFamily="$heading" fontSize={22} fontWeight="800" color={brand.grafite}>
+        Documenti dati ai clienti
+      </Text>
+      {documents.length === 0 ? (
+        <Text fontSize={16} color={brand.grafite70}>
+          Le ricevute e le copie delle fatture che prepari per i clienti, dalla scheda del lavoro, le trovi qui.
+        </Text>
+      ) : (
+        <>
+          <XStack gap="$3" flexWrap="wrap">
+            {totals.map((row) => (
+              <Surface key={`${row.year}-${row.kind}`} borderRadius={radiusDoc} padding="$4" gap={2} flexGrow={1} flexBasis={220}>
+                <Text fontSize={13} fontWeight="800" color={brand.grafite70} textTransform="uppercase" letterSpacing={0.5}>
+                  {row.kind === "RECEIPT" ? "Ricevute" : "Fatture"} {row.year}
+                </Text>
+                <Text fontFamily="$heading" fontSize={26} fontWeight="800" color={brand.grafite} fontVariant={["tabular-nums"]}>
+                  {formatEurCents(row.totalEurCents)}
+                </Text>
+                <Text fontSize={15} color={brand.grafite70}>
+                  {row.count === 1 ? "1 documento" : `${row.count} documenti`}
+                  {row.missingAmounts > 0 ? `, ${row.missingAmounts} senza importo` : ""}
+                </Text>
+              </Surface>
+            ))}
+          </XStack>
+          {totals.some((row) => row.kind === "RECEIPT") ? (
+            <Text fontSize={16} color={brand.grafite70}>
+              Il totale delle ricevute dell&apos;anno va nella dichiarazione dei redditi: dallo al tuo commercialista.
+            </Text>
+          ) : null}
+          <Surface borderRadius={radiusDoc} padding="$2">
+            {documents.map((doc, index) => (
+              <Link key={doc.bookingId} href={`/dashboard/documenti/cortesia/${doc.bookingId}`} style={{ textDecoration: "none" }}>
+                <XStack justifyContent="space-between" alignItems="center" gap="$3" padding="$3" borderTopWidth={index === 0 ? 0 : 1} borderColor={brand.filetto}>
+                  <YStack flex={1} minWidth={0} gap={2}>
+                    <Text fontSize={16} fontWeight="700" color={brand.grafite}>
+                      {doc.label}
+                    </Text>
+                    <Text fontSize={13} color={brand.grafite70}>
+                      {[doc.customerName, doc.jobLabel].filter(Boolean).join(" · ") || "Lavoro"}
+                    </Text>
+                    {doc.amountChanged ? (
+                      <Text fontSize={13} fontWeight="700" color={brand.ottoneScuro}>
+                        L&apos;importo è cambiato dopo il PDF: rifallo
+                      </Text>
+                    ) : null}
+                  </YStack>
+                  <Text fontSize={16} fontWeight="800" color={brand.grafite} fontVariant={["tabular-nums"]}>
+                    {doc.totalEurCents !== null ? formatEurCents(doc.totalEurCents) : "—"}
+                  </Text>
+                </XStack>
+              </Link>
+            ))}
+          </Surface>
+        </>
+      )}
+    </YStack>
   );
 }
 
@@ -213,7 +286,7 @@ function AccountantCard({ token, initial }: { token: string; initial: DocumentsO
         Mandagli l&apos;estratto ogni mese, in PDF e nel foglio di calcolo
       </ConsentCheckbox>
       <XStack gap="$3" alignItems="center" flexWrap="wrap">
-        <Button alignSelf="flex-start" disabled={!dirty || pending} opacity={!dirty || pending ? 0.6 : 1} onPress={() => void save()}>
+        <Button variant="primary" alignSelf="flex-start" disabled={!dirty || pending} opacity={!dirty || pending ? 0.6 : 1} onPress={() => void save()}>
           {pending ? "Salvataggio..." : "Salva"}
         </Button>
         {done && !dirty ? (

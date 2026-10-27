@@ -1106,7 +1106,15 @@ export function RequestCard({
           {/* Copia di cortesia anche senza richiesta, a lavoro terminato (§374). */}
           {booking && !booking.invoiceRequest && booking.status === "COMPLETED" ? (
             <Link href={`/dashboard/documenti/cortesia/${booking.id}`} style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 13 }}>
-              Prepara la ricevuta o la copia della fattura per il cliente
+              {booking.courtesyDocument ? `Apri: ${booking.courtesyDocument.label}` : "Prepara la ricevuta o la copia della fattura per il cliente"}
+            </Link>
+          ) : null}
+          {/* Importo cambiato dopo il PDF scaricato, per esempio per un rimborso: il documento va rifatto (§377). */}
+          {booking?.courtesyDocument?.amountChanged && booking.status !== "CANCELED" ? (
+            <Link href={`/dashboard/documenti/cortesia/${booking.id}`} style={{ textDecoration: "none" }}>
+              <Text fontSize={13} fontWeight="700" color={brand.ottoneScuro}>
+                L&apos;importo è cambiato dopo il PDF: rifai {booking.courtesyDocument.kind === "RECEIPT" ? "la ricevuta" : "la copia della fattura"} per il cliente →
+              </Text>
             </Link>
           ) : null}
           {/* Segnalazione del professionista sul lavoro (§197): ultima inviata e a che punto è. */}

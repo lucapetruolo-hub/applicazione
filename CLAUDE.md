@@ -491,7 +491,7 @@ Una riga per voce; dettaglio completo (endpoint, file, bug corretti) in
 - [x] Smistamento delle richieste: a tutti i professionisti nel raggio, senza scadenza per rispondere (docs/CHANGELOG.md §210); richieste generali spegnibili (`GENERAL_REQUESTS_ENABLED=false` su Render) e chiuse in automatico per categoria e città (§211)
 - [x] Segnalazioni di problemi sul lavoro e controversie (modello A-Z)
 - [x] Pagamento online dei lavori con Stripe (serve Stripe Connect per andare live)
-- [x] Fatture e documenti: fattura del mese delle trattenute, fatture dell'abbonamento, estratto mensile (anche al commercialista), fattura chiesta dal cliente al professionista, copia di cortesia con numero della ricevuta (elenco in Admin → Documenti ai clienti), PDF fatti dal server, quadratura con Stripe (invio allo SdI con `OPENAPI_TOKEN_SDI`, prova in Finanza)
+- [x] Fatture e documenti: fattura del mese delle trattenute, fatture dell'abbonamento, estratto mensile (anche al commercialista), fattura chiesta dal cliente al professionista, copia di cortesia con numero della ricevuta (elenco con il totale dell'anno per il professionista e in Admin → Documenti ai clienti), PDF fatti dal server, quadratura con Stripe (invio allo SdI con `OPENAPI_TOKEN_SDI`, prova in Finanza)
 - [x] Profilo creato da un operatore al telefono (`/admin/professionisti` → link `/completa-profilo`; fuori dalla ricerca finché non è confermato, `invitePendingAt`)
 - [x] Verifica dei professionisti: codice fiscale e partita IVA controllati (formato, coerenza con nome e data, Openapi); documento + selfie con Didit obbligatori prima del primo preventivo, danno il badge "Verificato"; `/admin/verifiche` solo per guardare, ricontrollare e togliere il badge (docs/CHANGELOG.md §253-§255)
 

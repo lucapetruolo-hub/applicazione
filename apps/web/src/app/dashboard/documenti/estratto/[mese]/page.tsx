@@ -188,7 +188,7 @@ export default function StatementPage() {
       <div data-print-hide>
         <YStack gap="$2">
           <XStack gap="$3" flexWrap="wrap">
-            <Button onPress={() => void downloadCsv()}>Scarica per il commercialista</Button>
+            <Button variant="primary" onPress={() => void downloadCsv()}>Scarica per il commercialista</Button>
             <PdfButton variant="secondary" load={() => apiClient.documentsStatementPdf(token ?? "", statement.month)} fileName={`estratto-${statement.month}.pdf`} />
           </XStack>
           <Text fontSize={16} color={brand.grafite70}>
