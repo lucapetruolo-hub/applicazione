@@ -31,7 +31,7 @@ export function HeaderSearchBar() {
   const citySlugFromPath = pathname.split("/")[3];
   const city = searchParams.get("citta") ?? (citySlugFromPath ? findComuneBySlug(citySlugFromPath)?.name : undefined) ?? "";
   const category = categorySlugFromPath && isProfessionalCategorySlug(categorySlugFromPath) ? PROFESSIONAL_CATEGORIES.find((c) => c.slug === categorySlugFromPath) : undefined;
-  const query = category ? category.label : (searchParams.get("q") ?? "");
+  const query = category ? category.label : (searchParams.get("problema") ?? searchParams.get("q") ?? "");
 
   const searchHints = useSearchBarHints(query);
 

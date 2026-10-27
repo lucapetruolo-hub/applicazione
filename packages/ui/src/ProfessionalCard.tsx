@@ -183,6 +183,8 @@ export type ProfessionalCardProps = {
    * la propagazione del clic, altrimenti si aprirebbe anche il profilo.
    */
   action?: ReactNode;
+  /** Riga "Perché" quando si arriva dalla descrizione del problema (docs/CHANGELOG.md §387). */
+  reason?: string | null;
 };
 
 export function ProfessionalCard({
@@ -214,6 +216,7 @@ export function ProfessionalCard({
   onAgendaPress,
   icon,
   action,
+  reason,
 }: ProfessionalCardProps) {
   // Mestieri in grassetto, specializzazioni dopo in grigio, al massimo due
   // righe (docs/CHANGELOG.md §349): prima era un elenco unico tutto uguale.
@@ -459,6 +462,14 @@ export function ProfessionalCard({
           {completedThisMonth && completedThisMonth > 0 ? (
             <Text fontSize={13} color={brand.grafite70}>
               Ha completato {completedThisMonth} {completedThisMonth === 1 ? "intervento" : "interventi"} questo mese
+            </Text>
+          ) : null}
+          {reason ? (
+            <Text fontSize={16} lineHeight={22} color={brand.grafite}>
+              <Text fontFamily="$body" fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
+                Perché:{" "}
+              </Text>
+              {reason}
             </Text>
           ) : null}
         </YStack>

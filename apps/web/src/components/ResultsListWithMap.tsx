@@ -28,6 +28,8 @@ export function ResultsListWithMap({
   footer,
   defaultMode,
   initialUrgentOnly,
+  reasonFor,
+  merit = false,
 }: {
   /** Risultati della ricerca corrente (es. filtrati per città): usati per il primo render e come base della mappa. */
   professionals: ProfessionalSearchResult[];
@@ -53,6 +55,10 @@ export function ResultsListWithMap({
   defaultMode?: "HOME" | "ONLINE";
   /** Preimpostato dall'URL (?urgente=1) quando si arriva dal toggle "Intervento urgente?" della homepage — evita di dover ripetere la scelta qui. */
   initialUrgentOnly?: boolean;
+  /** Riga "Perché" di ogni scheda, dalla descrizione del problema (docs/CHANGELOG.md §387). */
+  reasonFor?: (pro: ProfessionalSearchResult) => string | null;
+  /** Ordine senza i pacchetti di visibilità (dalla descrizione del problema, decisione di Luca, §387). */
+  merit?: boolean;
 }) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
@@ -506,13 +512,23 @@ export function ResultsListWithMap({
                   dei pagamenti vanno dichiarati (Codice del Consumo art. 22,
                   Reg. UE 2019/1150 art. 5). Se cambia l'ordinamento, cambia
                   anche questo testo. */}
-              <p>I risultati sono ordinati sempre nello stesso modo:</p>
+              <p>
+                {merit
+                  ? "Partendo dal problema che hai descritto, i pacchetti di visibilità a pagamento non contano. I risultati sono ordinati così:"
+                  : "I risultati sono ordinati sempre nello stesso modo:"}
+              </p>
               <ol>
-                <li>
-                  prima i professionisti che hanno pagato un pacchetto di visibilità: sono segnati con l&apos;etichetta
-                  &quot;Sponsorizzato&quot;;
-                </li>
-                <li>poi, a parità di posizione, la valutazione media più alta;</li>
+                {merit ? (
+                  <li>prima la valutazione media più alta;</li>
+                ) : (
+                  <>
+                    <li>
+                      prima i professionisti che hanno pagato un pacchetto di visibilità: sono segnati con l&apos;etichetta
+                      &quot;Sponsorizzato&quot;;
+                    </li>
+                    <li>poi, a parità di posizione, la valutazione media più alta;</li>
+                  </>
+                )}
                 <li>a parità di valutazione, il numero di recensioni ricevute;</li>
                 <li>se hai cercato un luogo, a parità di tutto il più vicino.</li>
               </ol>
@@ -610,6 +626,7 @@ export function ResultsListWithMap({
               key={pro.id}
               // Orari e prezzi aperti solo nella prima scheda (docs/CHANGELOG.md §349).
               defaultExpanded={index === 0}
+              reason={reasonFor?.(pro)}
               businessName={pro.businessName}
               categoryLabel={pro.categoryLabel}
               otherCategoryLabels={pro.categories?.filter((category) => category.slug !== pro.categorySlug).map((category) => category.label)}
@@ -622,7 +639,7 @@ export function ResultsListWithMap({
               verified={pro.verified}
               stripeVerified={pro.stripeVerified}
               professionalKind={pro.professionalKind}
-              boosted={pro.boosted}
+              boosted={merit ? false : pro.boosted}
               isNewProfile={pro.isNewProfile}
               hasLiabilityInsurance={pro.hasLiabilityInsurance}
               remoteAvailable={pro.remoteAvailable}

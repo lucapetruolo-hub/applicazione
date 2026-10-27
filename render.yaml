@@ -124,6 +124,11 @@ services:
       # del browser NEXT_PUBLIC_GOOGLE_MAPS_API_KEY impostata su Vercel.
       - key: GOOGLE_MAPS_API_KEY
         sync: false
+      # Dal problema scritto ai mestieri (docs/CHANGELOG.md §387): Claude
+      # Haiku solo quando il dizionario ha un dubbio. Senza, resta il
+      # dizionario. PROBLEM_MATCH_AI_DAILY_LIMIT cambia il tetto (3000).
+      - key: ANTHROPIC_API_KEY
+        sync: false
       # Error tracking (apps/api/src/instrument.ts): DSN del progetto Sentry,
       # senza il quale gli errori restano solo nei log di Render.
       - key: SENTRY_DSN

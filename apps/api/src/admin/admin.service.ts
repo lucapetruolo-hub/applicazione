@@ -51,6 +51,7 @@ export type AdminOverview = {
   verificationRequests: number;
   /** Zone con le richieste generali chiuse (docs/CHANGELOG.md §213). */
   closedGeneralRequestZones: number;
+  openProblemTakeovers: number;
 };
 
 @Injectable()
@@ -711,7 +712,7 @@ export class AdminService {
    */
   async getOverview(): Promise<AdminOverview> {
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const [openReports, pendingAppeals, openMessages, pendingRefunds, openDisputes, newUsers7d, clients, professionals, suspendedUsers, hiddenLeads, waitlist, openJobIssues, jobIssueAppeals, unpaidBalances, verificationRequests, closedGeneralRequestZones] =
+    const [openReports, pendingAppeals, openMessages, pendingRefunds, openDisputes, newUsers7d, clients, professionals, suspendedUsers, hiddenLeads, waitlist, openJobIssues, jobIssueAppeals, unpaidBalances, verificationRequests, closedGeneralRequestZones, openProblemTakeovers] =
       await Promise.all([
         this.prisma.contentReport.count({ where: { status: "OPEN" } }),
         this.prisma.contentReport.count({ where: { appealedAt: { not: null }, appealRejectedAt: null, revertedAt: null } }),
@@ -732,6 +733,8 @@ export class AdminService {
           where: { verificationRequestedAt: { not: null }, verified: false, deletedAt: null, invitePendingAt: null },
         }),
         this.prisma.generalRequestBlock.count({ where: { reopenedAt: null } }),
+        // "Ce ne occupiamo noi" da seguire (docs/CHANGELOG.md §387).
+        this.prisma.problemTakeover.count({ where: { status: "OPEN" } }),
       ]);
     return {
       openReports,
@@ -751,6 +754,7 @@ export class AdminService {
       unpaidBalances,
       verificationRequests,
       closedGeneralRequestZones,
+      openProblemTakeovers,
     };
   }
 

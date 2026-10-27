@@ -183,6 +183,7 @@ model User {
   guidedRequestStates GuidedRequestUserState[]
   profileInvites      ProfileInvite[]
   loginDevices        LoginDevice[]
+  problemTakeovers    ProblemTakeover[]
 
   @@map("users")
 }
@@ -2663,4 +2664,75 @@ model SiteAdviceDone {
   doneById String?
 
   @@map("site_advice_done")
+}
+
+// ---------------------------------------------------------------------------
+// Dal problema scritto ai mestieri (docs/CHANGELOG.md §387)
+// ---------------------------------------------------------------------------
+
+/// Descrizioni scritte dai clienti nella ricerca, senza contatti (email,
+/// telefono, indirizzo tolti prima di salvare) né chi le ha scritte: servono
+/// alla pagina admin "Mestieri richiesti". Cancellate dopo 12 mesi.
+model ProblemDescription {
+  id           String   @id @default(uuid())
+  text         String
+  city         String?
+  /// Mestieri proposti, in ordine (slug di categoria).
+  categories   String[]
+  safety       String?
+  outOfService String?
+  /// "dizionario", "parola" (insegnata in admin) o "ia".
+  source       String
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("problem_descriptions")
+}
+
+/// Parole insegnate al dizionario dall'admin: una parola che compare nella
+/// descrizione porta a un mestiere o a un lavoro fuori servizio.
+model ProblemWord {
+  id           String   @id @default(uuid())
+  /// Minuscole e senza accenti, come `normalizeProblemText`.
+  word         String   @unique
+  categorySlug String?
+  outOfService String?
+  createdById  String?
+  createdAt    DateTime @default(now())
+
+  @@map("problem_words")
+}
+
+enum ProblemTakeoverStatus {
+  OPEN
+  DONE
+}
+
+/// "Ce ne occupiamo noi": lavori che nessun professionista del sito fa,
+/// presi in carico dalla piattaforma (pagina admin "Richieste da seguire").
+model ProblemTakeover {
+  id           String                @id @default(uuid())
+  userId       String
+  description  String
+  city         String?
+  outOfService String?
+  status       ProblemTakeoverStatus @default(OPEN)
+  handledAt    DateTime?
+  createdAt    DateTime              @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@map("problem_takeovers")
+}
+
+/// Nome di una prestazione scritto a mano unito a un nome suggerito
+/// dall'admin ("Unisci a…"): chiave = `serviceNameKey` del nome scritto.
+model ServiceNameAlias {
+  key         String   @id
+  canonical   String
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@map("service_name_aliases")
 }

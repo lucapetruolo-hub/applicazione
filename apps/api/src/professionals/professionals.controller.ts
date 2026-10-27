@@ -36,6 +36,8 @@ import {
   type UpdateEngagementRadiusInput,
   type UpdateLeadNoteInput,
   isBotUserAgent,
+  OUT_OF_SERVICE_LABELS,
+  type ProblemOutOfService,
 } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { MulterExceptionFilter } from "../common/multer-exception.filter";
@@ -71,6 +73,10 @@ export class ProfessionalsController {
     @Query("remote") remote?: string,
     @Query("excludeDemo") excludeDemo?: string,
     @Query("track") track?: string,
+    // Dalla descrizione del problema (docs/CHANGELOG.md §387): niente boost,
+    // e per un lavoro fuori dalle categorie chi lo dichiara.
+    @Query("merito") merito?: string,
+    @Query("offre") offre?: string,
   ) {
     const results = await this.professionalsService.search({
       category,
@@ -78,6 +84,8 @@ export class ProfessionalsController {
       q,
       remote: remote === "1" || remote === "true",
       excludeDemo: excludeDemo === "1" || excludeDemo === "true",
+      merit: merito === "1",
+      offers: typeof offre === "string" && offre in OUT_OF_SERVICE_LABELS ? (offre as ProblemOutOfService) : undefined,
     });
     // La pagina dei risultati chiede di contare la ricerca una volta sola
     // (`track=1`, docs/CHANGELOG.md §281): serve a mettere prima i lavori più

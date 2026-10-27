@@ -41,6 +41,8 @@ import {
   validSubTags,
   type CategoryPriceStats,
   DEFAULT_CANCELLATION_NOTICE_HOURS,
+  OUT_OF_SERVICE_KEYWORDS,
+  type ProblemOutOfService,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
@@ -72,6 +74,13 @@ export type ProfessionalSearchParams = {
   remote?: boolean;
   /** Esclude i profili demo del seed (isDemo) — usato dalla homepage per non mostrare vetrine finte come reali. */
   excludeDemo?: boolean;
+  /**
+   * Dalla descrizione del problema (docs/CHANGELOG.md §387): ordine per voto,
+   * recensioni e distanza, senza il boost a pagamento (decisione di Luca).
+   */
+  merit?: boolean;
+  /** Lavoro fuori dalle categorie: chi lo dichiara nelle prestazioni, nei patentini o nella descrizione. */
+  offers?: ProblemOutOfService;
 };
 
 // Giorni della griglia mostrata in card: colonne giorno consecutive (un
@@ -215,9 +224,26 @@ export class ProfessionalsService {
     };
   }
 
-  async search({ category, city, q, remote, excludeDemo }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
+  async search({ category, city, q, remote, excludeDemo, merit, offers }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
+    const publicWhere = this.publicSearchWhere(category, excludeDemo);
+    const offerKeywords = offers ? OUT_OF_SERVICE_KEYWORDS[offers] : [];
     const baseWhere: Prisma.ProfessionalProfileWhereInput = {
-      ...this.publicSearchWhere(category, excludeDemo),
+      ...publicWhere,
+      // Nell'AND: l'OR in cima è già usato da publicSearchWhere.
+      ...(offerKeywords.length > 0
+        ? {
+            AND: [
+              ...(Array.isArray(publicWhere.AND) ? publicWhere.AND : []),
+              {
+                OR: offerKeywords.flatMap((word) => [
+                  { services: { some: { name: { contains: word, mode: "insensitive" as const } } } },
+                  { certifications: { contains: word, mode: "insensitive" as const } },
+                  { bio: { contains: word, mode: "insensitive" as const } },
+                ]),
+              },
+            ],
+          }
+        : {}),
       ...(q ? { businessName: { contains: q, mode: "insensitive" } } : {}),
       ...(remote ? { remoteAvailable: true } : {}),
     };
@@ -312,7 +338,7 @@ export class ProfessionalsService {
     results.sort((a, b) => {
       const demotedDiff = Number(demotedIds.has(a.id)) - Number(demotedIds.has(b.id));
       if (demotedDiff !== 0) return demotedDiff;
-      if (a.boosted !== b.boosted) return a.boosted ? -1 : 1;
+      if (!merit && a.boosted !== b.boosted) return a.boosted ? -1 : 1;
       const ratingDiff = (b.rating ?? 0) - (a.rating ?? 0);
       if (ratingDiff !== 0) return ratingDiff;
       const reviewDiff = b.reviewCount - a.reviewCount;

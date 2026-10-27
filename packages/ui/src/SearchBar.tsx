@@ -13,6 +13,8 @@ export type ProfessionalSuggestion = {
   subtitle: string;
   categorySlug: string;
   city: string;
+  /** Riga in grassetto al posto del nome (la descrizione del problema, docs/CHANGELOG.md §387). */
+  title?: string;
 };
 
 export type SearchMode = "domicilio" | "online";
@@ -212,7 +214,7 @@ export function SearchBar({
             maxResults={professionalSuggestions.length}
             renderItem={(item) => (
               <YStack gap="$1">
-                <Text fontWeight="600">{item.name}</Text>
+                <Text fontWeight="600">{item.title ?? item.name}</Text>
                 <Text fontSize={13} color="$color10">
                   {item.subtitle}
                 </Text>
@@ -327,7 +329,7 @@ export function SearchBar({
           maxResults={professionalSuggestions.length}
           renderItem={(item) => (
             <YStack gap="$1">
-              <Text fontWeight="600">{item.name}</Text>
+              <Text fontWeight="600">{item.title ?? item.name}</Text>
               <Text fontSize={13} color="$color10">
                 {item.subtitle}
               </Text>
