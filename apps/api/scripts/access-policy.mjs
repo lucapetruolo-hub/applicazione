@@ -52,6 +52,9 @@ const publicRoutes = [
   "GET /professionals/:id",
   "GET /professionals/:id/agenda",
   "POST /professionals/:id/views",
+  // Conteggi dell'andamento del sito (§372): passi della richiesta e invii falliti, senza account.
+  "POST /site/step",
+  "POST /site/failure",
   "GET /professionals/languages/popular",
   // Prezzi aggregati della pagina "Quanto costa", mai sotto le soglie (§296).
   "GET /professionals/prices/:category",

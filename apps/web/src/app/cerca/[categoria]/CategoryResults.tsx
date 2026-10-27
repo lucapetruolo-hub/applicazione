@@ -11,6 +11,7 @@ import {
 } from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { SITE_INDEXABLE } from "@/lib/siteIndexing";
+import { shouldCountVisit } from "@/lib/serverCounting";
 import { breadcrumbJsonLd } from "@/lib/jsonLd";
 import { JsonLd } from "@/components/JsonLd";
 import { PopularServicesLinks } from "@/components/PopularServicesLinks";
@@ -151,7 +152,7 @@ export async function CategoryResults({
   // "nessun professionista" (docs/CHANGELOG.md §284).
   let loadFailed = false;
   try {
-    professionals = withSubTag(await apiClient.searchProfessionals({ category: category.slug, city, remote: isOnline, track: true }), subTag);
+    professionals = withSubTag(await apiClient.searchProfessionals({ category: category.slug, city, remote: isOnline, track: await shouldCountVisit() }), subTag);
   } catch {
     loadFailed = true;
   }

@@ -4,7 +4,8 @@ import { useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Camera, Download, Trash2, Eye, EyeOff } from "lucide-react";
-import { allItalianCityNames, findComuneByName, isMissingRulesProblem, isPlausiblePhoneNumber, passwordProblem } from "@professionisti/shared";
+import { allItalianCityNames, findComuneByName, isMissingRulesProblem, isPlausiblePhoneNumber, passwordProblem, CLIENT_CHURN_REASONS, PRO_CHURN_REASONS, type ChurnReason } from "@professionisti/shared";
+import { ChurnReasonPicker } from "@/components/ChurnReasonPicker";
 import { Autocomplete, Avatar, Button, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -191,6 +192,7 @@ export default function AccountPage() {
 
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleteReason, setDeleteReason] = useState<ChurnReason | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   // Esportazione dati personali (richiesta esplicita dell'utente, "Verbale
@@ -436,7 +438,7 @@ export default function AccountPage() {
 
     setIsDeleting(true);
     try {
-      await apiClient.deleteAccount(token as string);
+      await apiClient.deleteAccount(token as string, deleteReason ?? undefined);
       logout();
       router.push("/");
     } catch (err) {
@@ -927,6 +929,11 @@ export default function AccountPage() {
                 Questa azione è definitiva: verranno eliminati il tuo profilo, le richieste, le prenotazioni e le
                 recensioni collegate al tuo account. Scrivi <Text fontWeight="800">ELIMINA</Text> per confermare.
               </Text>
+              <ChurnReasonPicker
+                reasons={user?.role === "PROFESSIONAL" ? PRO_CHURN_REASONS : CLIENT_CHURN_REASONS}
+                value={deleteReason}
+                onChange={setDeleteReason}
+              />
               <input aria-label="Scrivi ELIMINA per confermare"
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
@@ -957,6 +964,7 @@ export default function AccountPage() {
                   onPress={() => {
                     setIsConfirmingDelete(false);
                     setDeleteConfirmText("");
+                    setDeleteReason(null);
                     setDeleteError(null);
                   }}
                 >

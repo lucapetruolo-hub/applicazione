@@ -2277,8 +2277,203 @@ a.admin-kpi:hover {
 .admin-figure.is-alert .admin-figure-value {
   color: #b02a37;
 }
+/* Andamento del sito: consigli già pronti per il super admin (docs/CHANGELOG.md §372). */
+.site-advice-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.site-advice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px 16px 20px;
+  border-radius: 20px;
+  background: #ffffff;
+  border: 1px solid #f0dcc0;
+  border-left: 6px solid #128552;
+}
+.site-advice.is-urgent {
+  border-left-color: #b02a37;
+}
+.site-advice.is-important {
+  border-left-color: #b5651d;
+}
+.site-advice-level {
+  align-self: flex-start;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #e3f3ea;
+  color: #0e6b42;
+}
+.site-advice.is-urgent .site-advice-level {
+  background: #fbeae8;
+  color: #b02a37;
+}
+.site-advice.is-important .site-advice-level {
+  background: #fdf0e1;
+  color: #8a4a12;
+}
+.site-advice-title {
+  margin: 2px 0 0;
+  font-size: 18px;
+  line-height: 1.3;
+  font-weight: 800;
+  color: #2b2420;
+}
+.site-advice-todo {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.45;
+  color: #2b2420;
+}
+.site-advice-why {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #6e6459;
+}
+.site-advice-why span {
+  font-weight: 700;
+}
+.site-advice-items {
+  margin: 4px 0 0;
+  padding: 0 0 0 18px;
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+  color: #6e6459;
+}
+.site-advice-items a {
+  color: #0e6b42;
+  font-weight: 700;
+}
+.site-advice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+.site-advice-done {
+  cursor: pointer;
+  font-family: inherit;
+}
+.site-advice-done:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.site-advice-more a {
+  font-weight: 700;
+  color: #0e6b42;
+}
+.site-done {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 18px;
+  border-radius: 20px;
+  border: 1px dashed #d9cfc4;
+}
+.site-done .site-notes .site-note-delete {
+  color: #0e6b42;
+}
+.site-advice-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 18px 20px;
+  border-radius: 20px;
+  background: #e3f3ea;
+  color: #2b2420;
+  font-size: 15px;
+}
+.site-advice-empty span {
+  color: #4f463d;
+  font-size: 14px;
+}
+.site-status {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.site-status.is-green {
+  background: #e3f3ea;
+  color: #0e6b42;
+}
+.site-status.is-yellow {
+  background: #fdf0e1;
+  color: #8a4a12;
+}
+.site-status.is-red,
+.site-status.is-no_professionals {
+  background: #fbeae8;
+  color: #b02a37;
+}
+.site-notes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+}
+.site-notes li {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.site-notes time {
+  font-weight: 700;
+  color: #6e6459;
+  font-variant-numeric: tabular-nums;
+}
+.site-note-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.site-note-form .admin-input:last-of-type {
+  flex: 1 1 220px;
+}
+.site-notes .site-note-delete {
+  margin: 0;
+  font-size: 14px;
+  color: #b02a37;
+}
+.site-note-form .admin-link-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.site-progress {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+}
+.site-progress li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.site-progress .is-done {
+  color: #0e6b42;
+  font-weight: 700;
+}
 .admin-bars .is-zero .admin-bars-head {
-  color: #9c8e7f;
+  /* Grigio leggibile (AA, §372): prima #9c8e7f, contrasto 3,2:1. */
+  color: #6e6459;
 }
 .admin-input {
   padding: 10px 12px;

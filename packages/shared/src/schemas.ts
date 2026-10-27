@@ -80,6 +80,8 @@ export const googleVerifySchema = z.object({
   // Tipo del professionista (docs/CHANGELOG.md §243), obbligatorio come le
   // categorie solo quando la chiamata crea un nuovo account professionista.
   entityType: z.enum(["PRIVATE_INDIVIDUAL", "SOLE_PROPRIETOR", "BUSINESS"]).optional(),
+  // Da dove arrivava la visita, se la chiamata crea un account (docs/CHANGELOG.md §372).
+  signupSource: trafficSourceSchema.optional(),
 });
 export type GoogleVerifyInput = z.infer<typeof googleVerifySchema>;
 
@@ -186,6 +188,8 @@ export const registerSchema = emailPasswordSchema.extend({
   // Privato, P.IVA o azienda (docs/CHANGELOG.md §243): obbligatorio solo per
   // un professionista, precompila i dati fiscali.
   entityType: z.enum(["PRIVATE_INDIVIDUAL", "SOLE_PROPRIETOR", "BUSINESS"]).optional(),
+  // Da dove arrivava la visita (Google, social...), docs/CHANGELOG.md §372.
+  signupSource: trafficSourceSchema.optional(),
 }).superRefine((data, ctx) => {
   if (data.role === "PROFESSIONAL" && !data.entityType) {
     ctx.addIssue({ code: "custom", message: NO_ENTITY_TYPE_MESSAGE, path: ["entityType"] });

@@ -18,6 +18,7 @@ import { ReviewsModule } from "./reviews/reviews.module";
 import { BillingModule } from "./billing/billing.module";
 import { SavedProfessionalsModule } from "./saved-professionals/saved-professionals.module";
 import { AdminModule } from "./admin/admin.module";
+import { SiteCountsModule } from "./site-counts/site-counts.module";
 import { WaitlistModule } from "./waitlist/waitlist.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { StatsModule } from "./stats/stats.module";
@@ -78,6 +79,7 @@ import { AgendaModule } from "./agenda/agenda.module";
     BillingModule,
     SavedProfessionalsModule,
     AdminModule,
+    SiteCountsModule,
     WaitlistModule,
     NotificationsModule,
     StatsModule,

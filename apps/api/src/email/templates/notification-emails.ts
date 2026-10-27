@@ -11,6 +11,8 @@ import {
   ONLINE_RELEASE_DAYS,
   ONLINE_MAX_HOLD_DAYS,
   SEARCH_DEMAND_ALERT_DAYS,
+  SITE_ADVICE_LEVEL_LABEL,
+  type SiteAdviceLevel,
   SEARCH_RADIUS_KM,
   asScheduleChange,
   formatItalianUntil,
@@ -946,6 +948,25 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: { label: "Vedi i numeri", url: `${frontendUrl()}/admin/numeri-professionisti` },
   }),
+  // Consigli della settimana dai numeri del sito (docs/CHANGELOG.md §372).
+  ADMIN_WEEKLY_ADVICE: (payload) => {
+    const items = Array.isArray(payload.advice)
+      ? payload.advice.flatMap((item) => {
+          if (!item || typeof item !== "object") return [];
+          const a = item as Record<string, unknown>;
+          if (typeof a.title !== "string" || typeof a.todo !== "string") return [];
+          const level = typeof a.level === "string" && a.level in SITE_ADVICE_LEVEL_LABEL ? SITE_ADVICE_LEVEL_LABEL[a.level as SiteAdviceLevel] : null;
+          return [`${level ? `${level} · ` : ""}**${a.title}**. ${a.todo}`];
+        })
+      : [];
+    return {
+      kind: "notification",
+      subject: items.length === 1 ? "Una cosa da fare questa settimana" : `${items.length} cose da fare questa settimana`,
+      title: "Cosa fare questa settimana",
+      paragraphs: ["Dai numeri del sito, ecco cosa conviene fare:", ...items],
+      cta: { label: "Vedi i consigli", url: `${frontendUrl()}/admin/andamento` },
+    };
+  },
   ADMIN_JOB_BALANCE_UNPAID: () => ({
     kind: "notification",
     tone: "urgent",

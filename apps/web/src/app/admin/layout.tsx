@@ -12,6 +12,7 @@ import { AdminCommandPalette } from "@/components/admin/AdminCommandPalette";
 import { adminCan } from "@professionisti/shared";
 import { AdminOverviewContext } from "@/components/admin/AdminOverviewContext";
 import { AdminTwoFactorGate } from "@/components/admin/AdminTwoFactorGate";
+import { disableCountingForAdminOnce } from "@/lib/siteCounts";
 
 /**
  * Guscio comune dell'area admin (docs/CHANGELOG.md §144, scelta "A"
@@ -53,6 +54,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       cancelled = true;
     };
   }, [token, isAdmin, pathname, twoFactorAttempt]);
+
+  // Un admin che prova il sito non deve finire nei numeri (docs/CHANGELOG.md §372).
+  useEffect(() => {
+    if (verified) disableCountingForAdminOnce();
+  }, [verified]);
 
   // ⌘K / Ctrl+K apre la ricerca globale ovunque nel pannello.
   useEffect(() => {

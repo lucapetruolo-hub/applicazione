@@ -14,12 +14,12 @@ import {
   isPlausiblePhoneNumber,
   isProfessionalCategorySlug,
   normalizePhoneNumber,
-  trafficSourceSchema,
   type ProfessionalAgenda,
   type ProfessionalCategorySlug,
   type ProfessionalDetail,
   type GuidedRequestReach,
   type RequestTiming,
+  type RequestStepKey,
   REQUEST_TIMINGS,
   REQUEST_TIMING_LABEL,
 } from "@professionisti/shared";
@@ -28,7 +28,8 @@ import { MagneticButton } from "./MagneticButton";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { MediaPreview } from "@/components/MediaPreview";
-import { TRAFFIC_SOURCE_STORAGE_KEY } from "@/components/TrafficSourceTracker";
+import { storedTrafficSource } from "@/lib/storedTrafficSource";
+import { countRequestStep } from "@/lib/siteCounts";
 import { InlineAuthGate } from "@/components/InlineAuthGate";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { RequestSentScreen } from "@/components/RequestSentScreen";
@@ -506,6 +507,22 @@ export function GuidedRequestForm({
   const [fieldError, setFieldError] = useState<{ field: StepField; message: string; value: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ matchedProfessionals: number; requestsCount: number } | null>(null);
+  // Andamento del sito (docs/CHANGELOG.md §372): ogni passo raggiunto conta
+  // una volta per pagina aperta, con il lavoro scelto e se arriva dalla
+  // pagina di un professionista. Dice dove ci si ferma.
+  const requestOrigin = professionalProfileId ? "PROFILE" : "GENERAL";
+  const countedSteps = useRef(new Set<RequestStepKey>());
+  const countStepOnce = (key: RequestStepKey) => {
+    if (countedSteps.current.has(key)) return;
+    countedSteps.current.add(key);
+    countRequestStep(key, categorySlug, requestOrigin);
+  };
+  useEffect(() => {
+    const key: RequestStepKey = step === 1 ? "LAVORO" : step === 2 ? "DOVE" : "RIEPILOGO";
+    if (countedSteps.current.has(key)) return;
+    countedSteps.current.add(key);
+    countRequestStep(key, categorySlug, requestOrigin);
+  }, [step, categorySlug, requestOrigin]);
   // Una foto/video selezionato prima di autenticarsi (`file` valorizzato)
   // resta locale — anteprima via `URL.createObjectURL`, mai caricata su
   // Cloudinary finché non esiste un token — e viene caricata solo al
@@ -811,6 +828,7 @@ export function GuidedRequestForm({
     // il resto del modulo resta compilabile da anonimo.
     if (!user || !token) {
       setShowAuthGate(true);
+      countStepOnce("ACCESSO");
       return;
     }
     await doSubmit(token);
@@ -881,6 +899,7 @@ export function GuidedRequestForm({
         setAccountDataDiffers(differs);
       }
       setResult({ matchedProfessionals: response.matchedProfessionals, requestsCount: response.requests?.length ?? 1 });
+      countStepOnce("INVIATA");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
@@ -1616,7 +1635,10 @@ export function GuidedRequestForm({
     </YStack>
     {showAuthGate ? (
       <InlineAuthGate
-        onAuthenticated={() => setPendingSubmit(true)}
+        onAuthenticated={() => {
+          countStepOnce("ACCESSO_FATTO");
+          setPendingSubmit(true);
+        }}
         onClose={() => setShowAuthGate(false)}
       />
     ) : null}
@@ -1910,15 +1932,6 @@ function SendOptionSwitch({
   );
 }
 
-/** Provenienza della visita salvata da `TrafficSourceTracker`, se valida. */
-function storedTrafficSource() {
-  try {
-    const parsed = trafficSourceSchema.safeParse(window.sessionStorage.getItem(TRAFFIC_SOURCE_STORAGE_KEY));
-    return parsed.success ? parsed.data : undefined;
-  } catch {
-    return undefined;
-  }
-}
 
 /**
  * Orari liberi del professionista a pillole (docs/CHANGELOG.md §349): i primi

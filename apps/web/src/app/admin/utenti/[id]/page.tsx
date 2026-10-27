@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import type { AdminRoleName, AdminUserDetail } from "@professionisti/api-client";
 import { ADMIN_ROLE_DESCRIPTION, ADMIN_ROLE_LABEL, CONTENT_REPORT_TARGET_LABEL, adminCan, adminRolesLabel, moderationActionAdminLabel } from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
@@ -115,6 +115,8 @@ export default function AdminUserDetailPage() {
       {adminCan(myRoles, "SUPER") && !detail.deletedAt && !isSelf && detail.role === "ADMIN" ? (
         <TwoFactorResetPanel detail={detail} token={token ?? ""} onChanged={reload} />
       ) : null}
+
+      {adminCan(myRoles, "SUPER") && !isSelf && detail.role !== "ADMIN" ? <DeleteTestAccountPanel detail={detail} token={token ?? ""} /> : null}
 
       {detail.reportsReceived.length > 0 ? (
         <YStack gap="$2">
@@ -240,6 +242,82 @@ function SuspendPanel({ detail, token, onChanged }: { detail: AdminUserDetail; t
         <XStack>
           <Button variant={suspended ? "primary" : "secondary"} size="$3" onPress={() => setOpen(true)}>
             {suspended ? "Riattiva account" : "Sospendi account"}
+          </Button>
+        </XStack>
+      )}
+    </AdminCard>
+  );
+}
+
+/**
+ * Elimina un account di prova (richiesta di Luca, docs/CHANGELOG.md §372):
+ * solo super admin, per sempre, con tutto quello che ha creato. Si scrive
+ * ELIMINA per confermare. Il server rifiuta gli account con pagamenti
+ * online veri: quelli non sono di prova.
+ */
+function DeleteTestAccountPanel({ detail, token }: { detail: AdminUserDetail; token: string }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function remove() {
+    setBusy(true);
+    setError(null);
+    try {
+      await apiClient.adminDeleteTestAccount(token, detail.id);
+      router.push("/admin/utenti");
+    } catch (err) {
+      setError(errorMessage(err));
+      setBusy(false);
+    }
+  }
+
+  return (
+    <AdminCard>
+      <Text fontWeight="700" color={brand.grafite}>
+        Account di prova
+      </Text>
+      <Text fontSize="$3" color={brand.grafite70}>
+        Se questo account è servito solo per provare il sito, eliminalo: spariscono per sempre l&apos;account, le richieste, i preventivi, i messaggi e le
+        recensioni che ha creato, e i numeri tornano puliti. Per un utente vero usa invece la sospensione.
+      </Text>
+      {open ? (
+        <YStack gap="$2" padding="$3" borderRadius={10} backgroundColor="#FBEAE8">
+          <Text color={brand.grafite}>
+            Non si può annullare. Scrivi <Text fontWeight="800">ELIMINA</Text> per confermare.
+          </Text>
+          <input
+            aria-label="Scrivi ELIMINA per confermare"
+            className="admin-input"
+            style={{ maxWidth: 240 }}
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder="ELIMINA"
+          />
+          {error ? <Text color={brand.urgenza}>{error}</Text> : null}
+          <XStack gap="$2" flexWrap="wrap">
+            <Button variant="urgent" size="$3" disabled={busy || confirmText.trim().toUpperCase() !== "ELIMINA"} opacity={busy ? 0.6 : 1} onPress={remove}>
+              {busy ? "Eliminazione..." : "Elimina per sempre"}
+            </Button>
+            <Button
+              variant="secondary"
+              size="$3"
+              onPress={() => {
+                setOpen(false);
+                setConfirmText("");
+                setError(null);
+              }}
+            >
+              Annulla
+            </Button>
+          </XStack>
+        </YStack>
+      ) : (
+        <XStack>
+          <Button variant="secondary" size="$3" onPress={() => setOpen(true)}>
+            Elimina account di prova
           </Button>
         </XStack>
       )}
