@@ -3,7 +3,7 @@ import { JwtService } from "@nestjs/jwt";
 import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import * as bcrypt from "bcryptjs";
 import { OAuth2Client } from "google-auth-library";
-import { EMAIL_CODE_LENGTH, LEGAL_CONSENT_VERSION, NO_CATEGORY_MESSAGE, NO_ENTITY_TYPE_MESSAGE, type EmailStatus, type ProfessionalEntityTypeValue } from "@professionisti/shared";
+import { EMAIL_CODE_LENGTH, LEGAL_CONSENT_VERSION, NO_CATEGORY_MESSAGE, NO_ENTITY_TYPE_MESSAGE, type ChurnReason, type EmailStatus, type ProfessionalEntityTypeValue, type TrafficSource } from "@professionisti/shared";
 import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
@@ -21,6 +21,7 @@ import {
 } from "../email/templates/account-emails";
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { GeocodingService } from "../geocoding/geocoding.service";
+import { SiteCountsService } from "../site-counts/site-counts.service";
 import { SUSPENDED_ACCOUNT_MESSAGE, sessionExpiresIn, sessionTokenPayload } from "./jwt-auth.guard";
 import { googleNameFields, googleNameRepair } from "./google-name";
 import { assertPasswordWithoutEmail } from "./password-checks";
@@ -98,6 +99,7 @@ export class AuthService {
     private readonly cloudinaryService: CloudinaryService,
     // Facoltativo solo per i test che costruiscono il servizio a mano.
     @Optional() private readonly geocodingService?: GeocodingService,
+    @Optional() private readonly siteCounts?: SiteCountsService,
   ) {
     this.googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
   }
@@ -138,6 +140,7 @@ export class AuthService {
     categorySlugs: string[] = [],
     entityType?: ProfessionalEntityTypeValue,
     device?: LoginDeviceInfo,
+    signupSource?: TrafficSource,
   ): Promise<AuthResult> {
     const existingUser = await this.prisma.user.findUnique({ where: { email } });
     if (existingUser) {
@@ -164,6 +167,8 @@ export class AuthService {
         signupCategorySlugs: role === "PROFESSIONAL" ? [...new Set(categorySlugs)] : [],
         // Privato, P.IVA o azienda (docs/CHANGELOG.md §243): già controllato da `registerSchema`.
         signupEntityType: role === "PROFESSIONAL" ? (entityType ?? null) : null,
+        // Da dove arrivava la visita (docs/CHANGELOG.md §372): dice dove reclutare.
+        signupSource: signupSource ?? null,
       },
     });
     // Benvenuto (docs/CHANGELOG.md §185). Al professionista contiene anche
@@ -266,6 +271,7 @@ export class AuthService {
     categorySlugs: string[] = [],
     entityType?: ProfessionalEntityTypeValue,
     device?: LoginDeviceInfo,
+    signupSource?: TrafficSource,
   ): Promise<AuthResult> {
     if (!this.googleClient) {
       throw new BadRequestException("Login con Google non configurato su questo ambiente.");
@@ -330,6 +336,7 @@ export class AuthService {
           role: role ?? "CLIENT",
           signupCategorySlugs: role === "PROFESSIONAL" ? [...new Set(categorySlugs)] : [],
           signupEntityType: role === "PROFESSIONAL" ? (entityType ?? null) : null,
+          signupSource: signupSource ?? null,
           legalConsentAt: new Date(),
           legalConsentVersion: LEGAL_CONSENT_VERSION,
           // Google ha già verificato l'indirizzo: nessun link da confermare.
@@ -688,9 +695,13 @@ export class AuthService {
     this.professionalClosedHandlers.push(handler);
   }
 
-  async deleteAccount(userId: string): Promise<void> {
-    const before = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true } });
+  async deleteAccount(userId: string, reason?: ChurnReason): Promise<void> {
+    const before = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true, role: true } });
     const professionalProfile = await this.prisma.professionalProfile.findUnique({ where: { userId } });
+    // Motivo scelto da un elenco, facoltativo (§372): solo il conteggio, mai chi l'ha scelto.
+    if (reason && before && before.role !== "ADMIN") {
+      await this.siteCounts?.recordChurnReason(before.role === "PROFESSIONAL" ? "PRO_ACCOUNT" : "CLIENT_ACCOUNT", reason).catch(() => undefined);
+    }
     if (professionalProfile) {
       await this.prisma.professionalProfile.update({ where: { id: professionalProfile.id }, data: { deletedAt: new Date() } });
       // I lavori futuri si annullano da soli e i clienti lo sanno subito (docs/CHANGELOG.md §348).
@@ -703,7 +714,7 @@ export class AuthService {
 
     // Dispositivi usati per l'accesso (§289): non servono più a nulla.
     await this.prisma.loginDevice.deleteMany({ where: { userId } });
-    // Dati per la fattura chiesti ai professionisti (docs/CHANGELOG.md §372):
+    // Dati per la fattura chiesti ai professionisti (docs/CHANGELOG.md §374):
     // il professionista li ha già ricevuti, qui non servono più.
     await this.prisma.clientInvoiceRequest.deleteMany({ where: { clientId: userId } });
     await this.prisma.user.update({

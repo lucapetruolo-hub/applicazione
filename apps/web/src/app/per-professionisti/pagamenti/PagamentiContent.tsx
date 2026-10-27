@@ -14,7 +14,7 @@ const EXAMPLE = onlineFeeExample();
  * Stesse regole dei Termini (punto 5) e di /dashboard/fiscale (§168):
  * acconto 20% del massimo, saldo a lavoro chiuso, soldi bloccati fino alla
  * conferma o 7 giorni, accredito meno la trattenuta unica del 7% + IVA, con
- * commissioni Stripe comprese (§372), con un esempio in euro; pagamento diretto
+ * commissioni Stripe comprese (§374), con un esempio in euro; pagamento diretto
  * senza commissione. Finché Stripe non è attivo la pagina
  * dice "in arrivo" invece di promettere un pagamento che non c'è.
  */
@@ -63,7 +63,7 @@ function Point({ n, title, children, list }: { n: number; title: string; childre
   );
 }
 
-/** Le commissioni Stripe una per una, già dentro la trattenuta (richiesta di Luca, docs/CHANGELOG.md §372). */
+/** Le commissioni Stripe una per una, già dentro la trattenuta (richiesta di Luca, docs/CHANGELOG.md §374). */
 const STRIPE_FEES = ["Commissione Stripe per il pagamento: la paghiamo noi", "Commissione Stripe per i bonifici verso la tua banca: la paghiamo noi"];
 
 const SUMMARY = [

@@ -9,7 +9,7 @@ import { encryptFiscal, readFiscal } from "./fiscal-crypto";
  * all'avvio vengono cifrati (`FiscalEncryptionMigrationService`).
  * Campi: codice fiscale del titolare e del legale rappresentante, e il valore
  * controllato con Openapi (codice fiscale o P.IVA), il codice fiscale che il
- * cliente scrive per la fattura (docs/CHANGELOG.md §372).
+ * cliente scrive per la fattura (docs/CHANGELOG.md §374).
  */
 const ENCRYPTED_FIELDS = {
   professionalFiscalProfile: "fiscalCodiceFiscale",

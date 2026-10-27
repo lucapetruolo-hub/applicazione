@@ -2,7 +2,7 @@ import { escapeXml } from "../dac7/dac7-xml.util";
 
 /**
  * Fattura elettronica (FatturaPA 1.2.2, formato FPR12 tra privati) delle
- * nostre fatture al professionista (docs/CHANGELOG.md §372). Solo ciò che ci
+ * nostre fatture al professionista (docs/CHANGELOG.md §374). Solo ciò che ci
  * serve: una sola aliquota (22%), nessuna ritenuta, nessun bollo.
  * - TD24 fattura differita per le trattenute del mese, pagate con
  *   trattenuta su somme già riscosse (MP22);

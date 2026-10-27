@@ -7,7 +7,7 @@ import { clientInvoiceLines, type ClientInvoiceRequestView } from "@professionis
 
 /**
  * "Il cliente chiede la fattura" sulla scheda del lavoro del professionista
- * (decisione dell'utente del 27/10/2026, docs/CHANGELOG.md §372): i dati da
+ * (decisione dell'utente del 27/10/2026, docs/CHANGELOG.md §374): i dati da
  * copiare nel suo programma delle fatture. La fattura la fa lui.
  */
 export function ProfessionalInvoiceRequestBox({ request, courtesyHref }: { request: ClientInvoiceRequestView; courtesyHref?: string }) {

@@ -49,7 +49,7 @@ describe("pagamento online: acconto, saldo, accredito (§168)", () => {
     expect(acceptQuoteSchema.parse({}).paymentMethod).toBe("DIRECT");
     expect(acceptQuoteSchema.parse({ paymentMethod: "ONLINE" }).paymentMethod).toBe("ONLINE");
   });
-  it("riepilogo: il professionista vede la trattenuta unica con l'IVA e quanto riceve (§372)", () => {
+  it("riepilogo: il professionista vede la trattenuta unica con l'IVA e quanto riceve (§374)", () => {
     const jp = {
       paymentMethod: "MANOVIA",
       onlineStage: "PAID",

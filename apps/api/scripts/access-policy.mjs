@@ -52,6 +52,9 @@ const publicRoutes = [
   "GET /professionals/:id",
   "GET /professionals/:id/agenda",
   "POST /professionals/:id/views",
+  // Conteggi dell'andamento del sito (§372): passi della richiesta e invii falliti, senza account.
+  "POST /site/step",
+  "POST /site/failure",
   "GET /professionals/languages/popular",
   // Prezzi aggregati della pagina "Quanto costa", mai sotto le soglie (§296).
   "GET /professionals/prices/:category",
@@ -77,7 +80,7 @@ const selfAny = [
   "POST /auth/verify-email/resend",
   "POST /bookings/completion-photos",
   "GET /bookings/me",
-  // Ultimi dati per la fattura usati dal cliente, per precompilare (§372).
+  // Ultimi dati per la fattura usati dal cliente, per precompilare (§374).
   "GET /client-invoice-requests/last",
   "POST /guided-requests",
   "GET /guided-requests/chat-threads",
@@ -119,7 +122,7 @@ const selfProfessional = [
   "POST /agenda/online-slots/remove",
   "POST /agenda/online/enable",
   "GET /agenda/zone-demand",
-  // Fatture e documenti del professionista (§372).
+  // Fatture e documenti del professionista (§374).
   "GET /documents",
   "PUT /documents/accountant",
   "POST /billing/boost/checkout",
@@ -194,11 +197,11 @@ const owned = {
   "PATCH /bookings/:id/status": booking({ body: () => ({ status: "CANCELED" }) }),
   "POST /bookings/from-quote/:quoteId": { kind: "owned", owners: ["clientA"], params: (f) => ({ quoteId: f.quoteA }) },
 
-  // Fattura chiesta dal cliente al professionista, sul lavoro accettato (§372).
+  // Fattura chiesta dal cliente al professionista, sul lavoro accettato (§374).
   "PUT /client-invoice-requests/:quoteId": { kind: "owned", owners: ["clientA"], params: (f) => ({ quoteId: f.quoteDone }) },
   "DELETE /client-invoice-requests/:quoteId": { kind: "owned", owners: ["clientA"], params: (f) => ({ quoteId: f.quoteDone }) },
 
-  // Le nostre fatture al professionista e la copia di cortesia del suo documento: solo lui (§372).
+  // Le nostre fatture al professionista e la copia di cortesia del suo documento: solo lui (§374).
   "GET /documents/invoices/:id": invoice,
   "GET /documents/invoices/:id/xml": invoice,
   "GET /documents/invoices/:id/pdf": invoice,

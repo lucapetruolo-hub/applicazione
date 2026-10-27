@@ -11,6 +11,8 @@ import {
   ONLINE_RELEASE_DAYS,
   ONLINE_MAX_HOLD_DAYS,
   SEARCH_DEMAND_ALERT_DAYS,
+  SITE_ADVICE_LEVEL_LABEL,
+  type SiteAdviceLevel,
   SEARCH_RADIUS_KM,
   asScheduleChange,
   formatItalianUntil,
@@ -246,7 +248,7 @@ const BUILDERS: Record<string, Builder> = {
     const clientName = str(payload.clientName);
     const clientPhone = str(payload.clientPhone);
     const clientAddress = str(payload.clientAddress);
-    // Fattura chiesta dal cliente accettando (docs/CHANGELOG.md §372): i dati
+    // Fattura chiesta dal cliente accettando (docs/CHANGELOG.md §374): i dati
     // nel riquadro, pronti da copiare nel programma delle fatture.
     const invoiceLines = Array.isArray(payload.invoiceLines) ? payload.invoiceLines.filter((line): line is string => typeof line === "string") : [];
     const details = [
@@ -951,7 +953,7 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: { label: "Vedi i numeri", url: `${frontendUrl()}/admin/numeri-professionisti` },
   }),
-  // Documenti contabili (docs/CHANGELOG.md §372).
+  // Documenti contabili (docs/CHANGELOG.md §374).
   JOB_INVOICE_REQUESTED: (payload, ctx) => {
     const invoiceLines = Array.isArray(payload.invoiceLines) ? payload.invoiceLines.filter((line): line is string => typeof line === "string") : [];
     return {
@@ -980,6 +982,25 @@ const BUILDERS: Record<string, Builder> = {
       title: sdi ? "Fattura da correggere" : "Trattenute che non tornano",
       paragraphs: sdi ? alerts : [...alerts, "Confronta le trattenute del mese con il resoconto di Stripe."],
       cta: { label: "Apri Finanza", url: `${frontendUrl()}/admin/finanza` },
+    };
+  },
+  // Consigli della settimana dai numeri del sito (docs/CHANGELOG.md §372).
+  ADMIN_WEEKLY_ADVICE: (payload) => {
+    const items = Array.isArray(payload.advice)
+      ? payload.advice.flatMap((item) => {
+          if (!item || typeof item !== "object") return [];
+          const a = item as Record<string, unknown>;
+          if (typeof a.title !== "string" || typeof a.todo !== "string") return [];
+          const level = typeof a.level === "string" && a.level in SITE_ADVICE_LEVEL_LABEL ? SITE_ADVICE_LEVEL_LABEL[a.level as SiteAdviceLevel] : null;
+          return [`${level ? `${level} · ` : ""}**${a.title}**. ${a.todo}`];
+        })
+      : [];
+    return {
+      kind: "notification",
+      subject: items.length === 1 ? "Una cosa da fare questa settimana" : `${items.length} cose da fare questa settimana`,
+      title: "Cosa fare questa settimana",
+      paragraphs: ["Dai numeri del sito, ecco cosa conviene fare:", ...items],
+      cta: { label: "Vedi i consigli", url: `${frontendUrl()}/admin/andamento` },
     };
   },
   ADMIN_JOB_BALANCE_UNPAID: () => ({
@@ -1467,7 +1488,7 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: subscriptionPage(),
   }),
-  // Documenti del mese (docs/CHANGELOG.md §372): stesso riepilogo della
+  // Documenti del mese (docs/CHANGELOG.md §374): stesso riepilogo della
   // pagina, col totale in cima. I mesi gratis compaiono a 0 €.
   MONTHLY_DOCUMENTS_READY: (payload, ctx) => {
     const month = str(payload.monthLabel) ?? "del mese";

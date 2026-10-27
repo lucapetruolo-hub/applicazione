@@ -18,7 +18,10 @@ import {
   type MySubscription,
   type SubscriptionTier,
   formatEur as formatEurShared,
+  PRO_CHURN_REASONS,
+  type ChurnReason,
 } from "@professionisti/shared";
+import { ChurnReasonPicker } from "@/components/ChurnReasonPicker";
 import { Button, ButtonArrow, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -193,6 +196,7 @@ function AbbonamentoContent() {
 
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelReason, setCancelReason] = useState<ChurnReason | null>(null);
   const [renewalPending, setRenewalPending] = useState(false);
   // Livello toccato su /per-professionisti (docs/CHANGELOG.md §177): la
   // sua card viene evidenziata e la pagina scorre fino alla scelta.
@@ -267,7 +271,7 @@ function AbbonamentoContent() {
     setCheckoutError(null);
     setRenewalPending(true);
     try {
-      await apiClient.setSubscriptionRenewal(token, renew);
+      await apiClient.setSubscriptionRenewal(token, renew, renew ? undefined : (cancelReason ?? undefined));
       setConfirmCancel(false);
       setNotice(renew ? "Rinnovo automatico riattivato." : "Abbonamento annullato: resta attivo fino alla scadenza.");
       load();
@@ -376,7 +380,7 @@ function AbbonamentoContent() {
               <Text color={brand.grafite70}>{status.detail}</Text>
             </YStack>
             {sub.founder && sub.founder.currentMonth !== null ? <FounderMonths founder={sub.founder} trialEndsAt={sub.trialEndsAt} /> : null}
-            {/* Riepilogo a 0 € del mese gratuito (docs/CHANGELOG.md §372): non è una fattura. */}
+            {/* Riepilogo a 0 € del mese gratuito (docs/CHANGELOG.md §374): non è una fattura. */}
             {freePeriodSummary(sub, new Date()) ? (
               <Link href="/dashboard/documenti/mese-gratuito" style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 16 }}>
                 Riepilogo del mese: 0 € →
@@ -631,6 +635,7 @@ function AbbonamentoContent() {
                   Vuoi davvero annullare? L&apos;abbonamento resta attivo
                   {sub.currentPeriodEnd ? ` fino al ${formatDate(sub.currentPeriodEnd)}` : " fino alla scadenza"}, poi non si rinnova e il tuo profilo esce dalle ricerche.
                 </Text>
+                <ChurnReasonPicker reasons={PRO_CHURN_REASONS} value={cancelReason} onChange={setCancelReason} />
                 <XStack gap="$2" flexWrap="wrap">
                   <Button variant="urgent" disabled={renewalPending} opacity={renewalPending ? 0.6 : 1} onPress={() => setRenewal(false)}>
                     {renewalPending ? "Attendi..." : "Sì, annulla l'abbonamento"}
@@ -658,7 +663,7 @@ function AbbonamentoContent() {
           </Surface>
         ) : null}
 
-        {/* Le fatture sono le nostre, in "Fatture e documenti" (docs/CHANGELOG.md §372): da Stripe solo la carta. */}
+        {/* Le fatture sono le nostre, in "Fatture e documenti" (docs/CHANGELOG.md §374): da Stripe solo la carta. */}
         <Surface borderRadius={radiusDoc} padding="$5" gap="$3">
           <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
             Fatture e documenti

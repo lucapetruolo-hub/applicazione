@@ -191,6 +191,8 @@ export function auditLabel(row: { entityType: string; fieldName: string | null; 
   const v = asRecord(value);
 
   if (fieldName === "suspendedAt") return value === "SUSPENDED" ? "Account sospeso" : "Account riattivato";
+  if (fieldName === "testAccount") return "Account di prova eliminato per sempre";
+  if (fieldName === "adviceDone") return raw === "UNDONE" ? "Consiglio di Andamento del sito riaperto" : `Consiglio segnato come fatto: ${raw ?? ""}`;
   if (fieldName === "adminRole" || fieldName === "adminRoles") {
     const labels = (raw ?? "").replace(/"/g, "").replace(/[[\]]/g, "").split(/[+,]/).filter(Boolean).map((r) => ROLE_SHORT_LABEL[r] ?? r);
     return `Ruolo cambiato in ${labels.join(" + ") || "—"}`;

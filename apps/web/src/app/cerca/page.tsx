@@ -3,6 +3,7 @@ import type { ProfessionalSearchResult } from "@professionisti/shared";
 import { apiClient } from "../../lib/apiClient";
 import { SearchHeader } from "@/components/SearchHeader";
 import { CercaContent } from "./CercaContent";
+import { shouldCountVisit } from "@/lib/serverCounting";
 
 type PageSearchParams = { citta?: string; online?: string; q?: string; urgente?: string };
 
@@ -51,7 +52,7 @@ export default async function CercaPage(props: { searchParams: Promise<PageSearc
   let loadFailed = false;
   try {
     // Contata solo con una città o una parola scritta, mai il testo (§370).
-    professionals = await apiClient.searchProfessionals({ city, q: searchParams.q, remote: isOnline, track: Boolean(city?.trim() || searchParams.q?.trim()) });
+    professionals = await apiClient.searchProfessionals({ city, q: searchParams.q, remote: isOnline, track: Boolean(city?.trim() || searchParams.q?.trim()) && (await shouldCountVisit()) });
   } catch {
     loadFailed = true;
   }

@@ -2,9 +2,9 @@
 
 import { useEffect } from "react";
 import { trafficSourceFromReferrer } from "@professionisti/shared";
+import { TRAFFIC_SOURCE_STORAGE_KEY } from "@/lib/storedTrafficSource";
 
-/** Chiave di sessionStorage con la provenienza della visita (docs/CHANGELOG.md §296). */
-export const TRAFFIC_SOURCE_STORAGE_KEY = "traffic_source";
+export { TRAFFIC_SOURCE_STORAGE_KEY };
 
 /**
  * Ricorda da dove è arrivata la visita (Google, social, diretto...) alla

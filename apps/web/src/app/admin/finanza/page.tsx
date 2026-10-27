@@ -256,7 +256,7 @@ export default function AdminFinanzaPage() {
           )}
         </YStack>
 
-        {/* Le nostre fatture ai professionisti (docs/CHANGELOG.md §372). */}
+        {/* Le nostre fatture ai professionisti (docs/CHANGELOG.md §374). */}
         <AdminInvoicesSection token={token} />
 
         <YStack gap="$4">

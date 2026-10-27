@@ -23,7 +23,7 @@ const TILES: Array<{ key: keyof Omit<ProfessionalPayoutTotals, "hasFailed">; lab
  * Riepilogo dei pagamenti online del professionista (docs/CHANGELOG.md
  * §249): quanto è bloccato in attesa della conferma dei clienti, quanto è
  * sbloccato, in arrivo e già arrivato in banca, al netto della trattenuta
- * unica con l'IVA (§372). Non compare finché non ha ricevuto pagamenti online.
+ * unica con l'IVA (§374). Non compare finché non ha ricevuto pagamenti online.
  */
 export function PayoutSummary() {
   const { token } = useAuth();

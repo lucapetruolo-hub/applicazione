@@ -743,7 +743,7 @@ export function GuidedRequestCard({
   // Biglietto dell'appuntamento e, sotto, la trattativa chiusa (docs/CHANGELOG.md §346).
   const jobChosen = Boolean(booking && booking.status !== "CANCELED");
   const otherQuotes = request.quotes.filter((quote) => quote.id !== acceptedQuote?.id);
-  // Nome e indirizzo della richiesta per precompilare la fattura (docs/CHANGELOG.md §372).
+  // Nome e indirizzo della richiesta per precompilare la fattura (docs/CHANGELOG.md §374).
   const invoiceDefaults = {
     name: [request.recipientName, request.recipientSurname].filter(Boolean).join(" "),
     street: request.address ?? "",
@@ -789,7 +789,7 @@ export function GuidedRequestCard({
           acceptedQuote ? quoteUnreadCounts?.get(acceptedQuote.id) : undefined,
         )}
       />
-      {/* Fattura chiesta al professionista dopo l'accettazione, o i dati già mandati (docs/CHANGELOG.md §372). */}
+      {/* Fattura chiesta al professionista dopo l'accettazione, o i dati già mandati (docs/CHANGELOG.md §374). */}
       {acceptedQuote && booking.status !== "CANCELED" && !booking.professionalAccountDeleted ? (
         <ClientInvoiceRequestPanel
           token={token}

@@ -80,6 +80,8 @@ export const googleVerifySchema = z.object({
   // Tipo del professionista (docs/CHANGELOG.md §243), obbligatorio come le
   // categorie solo quando la chiamata crea un nuovo account professionista.
   entityType: z.enum(["PRIVATE_INDIVIDUAL", "SOLE_PROPRIETOR", "BUSINESS"]).optional(),
+  // Da dove arrivava la visita, se la chiamata crea un account (docs/CHANGELOG.md §372).
+  signupSource: trafficSourceSchema.optional(),
 });
 export type GoogleVerifyInput = z.infer<typeof googleVerifySchema>;
 
@@ -186,6 +188,8 @@ export const registerSchema = emailPasswordSchema.extend({
   // Privato, P.IVA o azienda (docs/CHANGELOG.md §243): obbligatorio solo per
   // un professionista, precompila i dati fiscali.
   entityType: z.enum(["PRIVATE_INDIVIDUAL", "SOLE_PROPRIETOR", "BUSINESS"]).optional(),
+  // Da dove arrivava la visita (Google, social...), docs/CHANGELOG.md §372.
+  signupSource: trafficSourceSchema.optional(),
 }).superRefine((data, ctx) => {
   if (data.role === "PROFESSIONAL" && !data.entityType) {
     ctx.addIssue({ code: "custom", message: NO_ENTITY_TYPE_MESSAGE, path: ["entityType"] });
@@ -1068,7 +1072,7 @@ export const professionalFiscalProfileSchema = z.object({
   registeredPostalCode: z.string().max(12).optional(),
   registeredProvince: z.string().max(50).optional(),
   registeredCountry: z.string().max(2).optional(),
-  /** Applica l'IVA nelle sue fatture: lo dice solo chi ha la P.IVA come persona (docs/CHANGELOG.md §372). */
+  /** Applica l'IVA nelle sue fatture: lo dice solo chi ha la P.IVA come persona (docs/CHANGELOG.md §374). */
   chargesVat: z.boolean().optional(),
   /** Codice destinatario o PEC per ricevere le nostre fatture, facoltativo: vuoto lo cancella. */
   invoiceRecipient: z.string().trim().max(254).optional(),

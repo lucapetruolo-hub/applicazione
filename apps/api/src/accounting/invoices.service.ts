@@ -106,7 +106,7 @@ function summaryOf(row: Invoice): PlatformInvoiceSummary {
 
 /**
  * Le nostre fatture al professionista (decisioni dell'utente del 27/10/2026,
- * docs/CHANGELOG.md §372): una al mese per le trattenute sui pagamenti online
+ * docs/CHANGELOG.md §374): una al mese per le trattenute sui pagamenti online
  * (serie COM, fattura differita), una per ogni abbonamento, quota di
  * passaggio o pacchetto di visibilità pagato (serie ABB). Numerazione senza
  * buchi per serie e anno, mai cancellate: un mese con più restituito che
@@ -472,7 +472,7 @@ export class InvoicesService {
 
   /**
    * Prova d'invio nella prova di Openapi (`OPENAPI_SANDBOX=true`, docs/CHANGELOG.md
-   * §374): registra la società, manda una fattura di prova da 1 € (mai salvata
+   * §375): registra la società, manda una fattura di prova da 1 € (mai salvata
    * tra le nostre e senza numero della serie), fa arrivare un esito finto e lo
    * legge. In produzione non parte: la fattura arriverebbe davvero all'Agenzia.
    */

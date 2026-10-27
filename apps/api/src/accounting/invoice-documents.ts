@@ -253,7 +253,7 @@ export function sdiCompanyOf(i: IssuerSnapshot): SdiCompany {
 }
 
 /**
- * Fattura di prova per la prova di Openapi (docs/CHANGELOG.md §374): da noi a
+ * Fattura di prova per la prova di Openapi (docs/CHANGELOG.md §375): da noi a
  * un cliente inventato con un codice fiscale valido, 1 € più IVA. Numero e
  * progressivo d'invio a parte ("PROVA-…"), mai quelli delle nostre serie.
  */

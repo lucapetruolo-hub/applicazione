@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
 import { ProfessionalMetricsModule } from "../professional-metrics/professional-metrics.module";
 import { EmailModule } from "../email/email.module";
+import { SiteCountsModule } from "../site-counts/site-counts.module";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { JwtAuthGuard } from "./jwt-auth.guard";
@@ -15,6 +16,7 @@ import { VerifiedEmailGuard } from "./verified-email.guard";
     }),
     ProfessionalMetricsModule,
     EmailModule,
+    SiteCountsModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtAuthGuard, VerifiedEmailGuard],

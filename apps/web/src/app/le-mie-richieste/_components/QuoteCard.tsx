@@ -96,9 +96,9 @@ export function QuoteCard({
   invoiceDefaults,
 }: {
   quote: ClientGuidedRequest["quotes"][number];
-  /** Categoria della richiesta: avviso sulle detrazioni per i lavori in casa (docs/CHANGELOG.md §372). */
+  /** Categoria della richiesta: avviso sulle detrazioni per i lavori in casa (docs/CHANGELOG.md §374). */
   categorySlug?: string;
-  /** Nome e indirizzo della richiesta, per precompilare i dati della fattura (§372). */
+  /** Nome e indirizzo della richiesta, per precompilare i dati della fattura (§374). */
   invoiceDefaults?: Partial<InvoiceDraft>;
   /** Richiesta ancora aperta: dopo un rifiuto il professionista può inviare un nuovo preventivo (docs/CHANGELOG.md §188). */
   requestOpen?: boolean;
@@ -142,7 +142,7 @@ export function QuoteCard({
   // Nota facoltativa per il professionista al rifiuto (docs/CHANGELOG.md §188).
   const [rejectNote, setRejectNote] = useState("");
   const [showTimeline, setShowTimeline] = useState(false);
-  // Fattura chiesta al professionista accettando (docs/CHANGELOG.md §372).
+  // Fattura chiesta al professionista accettando (docs/CHANGELOG.md §374).
   const [invoiceWanted, setInvoiceWanted] = useState(!!quote.invoiceRequest);
   const [invoiceDraft, setInvoiceDraft] = useState<InvoiceDraft>(() => (quote.invoiceRequest ? invoiceDraftFromView(quote.invoiceRequest) : emptyInvoiceDraft(invoiceDefaults)));
   const [invoiceErrors, setInvoiceErrors] = useState<Partial<Record<keyof InvoiceDraft, string>>>({});
@@ -173,7 +173,7 @@ export function QuoteCard({
     const next = !invoiceWanted;
     setInvoiceWanted(next);
     setInvoiceErrors({});
-    // Gli ultimi dati usati, per non riscriverli (docs/CHANGELOG.md §372).
+    // Gli ultimi dati usati, per non riscriverli (docs/CHANGELOG.md §374).
     if (next && !quote.invoiceRequest && !invoiceDraft.taxCode && !invoiceDraft.vatNumber) {
       const last = await apiClient.lastClientInvoiceRequest(token).catch(() => null);
       if (last?.invoiceRequest) setInvoiceDraft(invoiceDraftFromView(last.invoiceRequest));
@@ -469,7 +469,7 @@ export function QuoteCard({
             <Text fontSize="$6" fontWeight="800" color={brand.grafite}>
               {formatServicePriceRange(priceTotals.totalMinEurCents, priceTotals.totalMaxEurCents)}
             </Text>
-            {/* "IVA inclusa" solo per chi la applica, altrimenti "Prezzo finale" (docs/CHANGELOG.md §372). */}
+            {/* "IVA inclusa" solo per chi la applica, altrimenti "Prezzo finale" (docs/CHANGELOG.md §374). */}
             <Text fontSize={13} color={brand.grafite70}>
               {quotePriceTaxNote(quote.chargesVat ?? null)}
             </Text>
@@ -520,7 +520,7 @@ export function QuoteCard({
               computer tutti in riga (richiesta dell'utente, §338). Durante
               accettazione, modifica o rifiuto restano solo i pulsanti di
               quel passaggio (docs/CHANGELOG.md §225). */}
-          {/* Fattura chiesta al professionista, non a noi (richiesta dell'utente del 27/10/2026, §372). */}
+          {/* Fattura chiesta al professionista, non a noi (richiesta dell'utente del 27/10/2026, §374). */}
           {!isChoosingDate && !confirmingReject ? (
             <YStack gap="$3" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
               <InvoiceRequestToggle professionalName={quote.businessName} checked={invoiceWanted} onToggle={() => void toggleInvoice()} />
@@ -566,7 +566,7 @@ export function QuoteCard({
                 offered={quote.paymentOptions}
                 depositPercent={quote.depositPercent}
               />
-              {/* Detrazioni per i lavori in casa (domanda 28 al commercialista): di solito serve il bonifico parlante (§372). */}
+              {/* Detrazioni per i lavori in casa (domanda 28 al commercialista): di solito serve il bonifico parlante (§374). */}
               {categoryMayHaveTaxBonus(categorySlug) && selectablePayments.some(paymentChoiceIsOnline) ? (
                 <Text fontSize={13} color={brand.grafite70}>
                   {TAX_BONUS_PAYMENT_NOTE.short}{" "}

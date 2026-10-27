@@ -8,9 +8,9 @@ import { downloadBlobFile } from "@/components/admin/adminUi";
 
 /**
  * Pezzi comuni delle pagine di "Fatture e documenti" (docs/CHANGELOG.md
- * §372), come nelle anteprime approvate: titolo, scheda bianca, righe con
+ * §374), come nelle anteprime approvate: titolo, scheda bianca, righe con
  * l'importo a destra, riquadri "Da" e "Per". Il PDF lo prepara il server
- * (§374); stampando la pagina esce solo `.print-document`, senza menu né
+ * (§375); stampando la pagina esce solo `.print-document`, senza menu né
  * pulsanti (globals.css).
  */
 export function DocumentPage({ back, title, subtitle, children }: { back: { href: string; label: string }; title: string; subtitle?: string | null; children: ReactNode }) {
@@ -162,7 +162,7 @@ export const documentDate = accountingDateLabel;
 
 /**
  * "Scarica PDF": il file lo prepara il nostro server (docs/CHANGELOG.md
- * §374), uguale su telefono e computer. `before` gira prima (es. salvare il
+ * §375), uguale su telefono e computer. `before` gira prima (es. salvare il
  * numero della fattura).
  */
 export function PdfButton({ load, fileName, label = "Scarica PDF", variant, before }: { load: () => Promise<Blob>; fileName: string; label?: string; variant?: "secondary"; before?: () => Promise<void> }) {

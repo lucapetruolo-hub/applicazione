@@ -14,11 +14,11 @@ function day(iso: string): string {
 
 /**
  * Copia di cortesia del documento del lavoro (decisione dell'utente del
- * 27/10/2026, docs/CHANGELOG.md §372): la fattura vera la fa il
+ * 27/10/2026, docs/CHANGELOG.md §374): la fattura vera la fa il
  * professionista col suo programma, la ricevuta per prestazione occasionale
  * la firma lui. Noi non mandiamo nulla all'Agenzia delle Entrate. Il numero
  * della ricevuta lo diamo noi, quello della fattura lo scrive lui e lo
- * teniamo per la prossima volta (§374).
+ * teniamo per la prossima volta (§375).
  */
 export default function CourtesyCopyPage() {
   const { bookingId } = useParams<{ bookingId: string }>();

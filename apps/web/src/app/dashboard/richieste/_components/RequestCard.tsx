@@ -1099,11 +1099,11 @@ export function RequestCard({
             </YStack>
           ) : null}
 
-          {/* Fattura chiesta dal cliente (docs/CHANGELOG.md §372): i dati da copiare, e la copia di cortesia. */}
+          {/* Fattura chiesta dal cliente (docs/CHANGELOG.md §374): i dati da copiare, e la copia di cortesia. */}
           {booking?.invoiceRequest && booking.status !== "CANCELED" ? (
             <ProfessionalInvoiceRequestBox request={booking.invoiceRequest} courtesyHref={`/dashboard/documenti/cortesia/${booking.id}`} />
           ) : null}
-          {/* Copia di cortesia anche senza richiesta, a lavoro terminato (§372). */}
+          {/* Copia di cortesia anche senza richiesta, a lavoro terminato (§374). */}
           {booking && !booking.invoiceRequest && booking.status === "COMPLETED" ? (
             <Link href={`/dashboard/documenti/cortesia/${booking.id}`} style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 13 }}>
               Prepara la ricevuta o la copia della fattura per il cliente
@@ -1391,7 +1391,7 @@ export function RequestCard({
                 <Text fontSize={13} fontWeight="700" color={brand.grafite}>
                   Voci del preventivo
                 </Text>
-                {/* Il cliente vede il prezzo finale, "IVA inclusa" solo se la applichi (docs/CHANGELOG.md §372). */}
+                {/* Il cliente vede il prezzo finale, "IVA inclusa" solo se la applichi (docs/CHANGELOG.md §374). */}
                 <Text fontSize={13} color={brand.grafite70}>
                   {quotePriceHelp(null)}
                 </Text>

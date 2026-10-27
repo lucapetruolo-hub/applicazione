@@ -552,7 +552,7 @@ export class Dac7Service implements OnModuleInit {
     return { years: list, maskedIban: payout ? maskIban(payout.ibanCountry, payout.ibanLast4) : null };
   }
 
-  /** Nome sul riepilogo in PDF: ragione sociale o nome dei dati fiscali (docs/CHANGELOG.md §374). */
+  /** Nome sul riepilogo in PDF: ragione sociale o nome dei dati fiscali (docs/CHANGELOG.md §375). */
   async fiscalNameOf(userId: string): Promise<string | null> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { userId },

@@ -4,7 +4,7 @@ import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { ClientInvoiceRequestsService } from "./client-invoice-requests.service";
 
-/** Fattura chiesta dal cliente al professionista (docs/CHANGELOG.md §372). */
+/** Fattura chiesta dal cliente al professionista (docs/CHANGELOG.md §374). */
 @Controller("client-invoice-requests")
 @UseGuards(JwtAuthGuard)
 export class ClientInvoiceRequestsController {

@@ -6,7 +6,7 @@ import { FOUNDER_FREE_MONTHS, TRIAL_DAYS, subscriptionTierInfo, type MySubscript
 
 /**
  * Documenti contabili e fiscali (decisioni dell'utente del 26-27/10/2026,
- * docs/CHANGELOG.md §372). Il professionista documenta il lavoro al cliente
+ * docs/CHANGELOG.md §374). Il professionista documenta il lavoro al cliente
  * (fattura, documento commerciale o ricevuta per prestazione occasionale):
  * noi gli prepariamo solo una copia di cortesia, mai inviata all'Agenzia.
  * Noi fatturiamo a lui le trattenute sui pagamenti online (una fattura al
@@ -427,15 +427,15 @@ export type PlatformInvoiceSettingsInput = z.infer<typeof platformInvoiceSetting
 export type PlatformInvoiceSettingsView = Partial<Record<keyof PlatformInvoiceSettingsInput, string | null>> & {
   ready: boolean;
   sdiConfigured: boolean;
-  /** Openapi nell'ambiente di prova (`OPENAPI_SANDBOX=true`): si può fare la prova d'invio (§374). */
+  /** Openapi nell'ambiente di prova (`OPENAPI_SANDBOX=true`): si può fare la prova d'invio (§375). */
   sdiSandbox: boolean;
 };
 
-/** Prova d'invio allo SdI nella prova di Openapi, passo per passo (Admin → Finanza, docs/CHANGELOG.md §374). */
+/** Prova d'invio allo SdI nella prova di Openapi, passo per passo (Admin → Finanza, docs/CHANGELOG.md §375). */
 export type SdiSandboxTestResult = { ok: boolean; steps: { label: string; ok: boolean; detail: string | null }[] };
 
 // --- Mesi gratuiti: riepilogo a 0 € (non è una fattura) ----------------------
-// Decisione dell'utente del 27/10/2026 (docs/CHANGELOG.md §372): un
+// Decisione dell'utente del 27/10/2026 (docs/CHANGELOG.md §374): un
 // documento con le voci e uno sconto che porta a 0 €, nel sito e
 // nell'email del mese. Stesse parole del sito: "Offerta di lancio",
 // "Mese gratuito", "Mese regalato".
@@ -511,7 +511,7 @@ export type CourtesyCopyView = {
   /** Il cliente ha chiesto la fattura con i suoi dati. */
   invoiceRequested: boolean;
   /**
-   * Numero del documento (docs/CHANGELOG.md §374): per la ricevuta il nostro
+   * Numero del documento (docs/CHANGELOG.md §375): per la ricevuta il nostro
    * progressivo dell'anno ("4/2026"), per la fattura quello che il
    * professionista ha scritto (null finché non lo scrive).
    */
@@ -537,7 +537,7 @@ export function courtesyDocumentLabel(doc: { kind: string; number: number | null
 
 /**
  * Un documento dato a un cliente, in Admin → Documenti ai clienti
- * (docs/CHANGELOG.md §375): per l'assistenza e le segnalazioni, con chi l'ha
+ * (docs/CHANGELOG.md §376): per l'assistenza e le segnalazioni, con chi l'ha
  * preparato, per chi, e se il PDF scaricato aveva un importo diverso da oggi.
  */
 export type AdminCourtesyDocumentRow = {

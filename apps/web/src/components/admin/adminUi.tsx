@@ -90,7 +90,7 @@ export function downloadTextFile(filename: string, content: string, type = "text
   downloadBlobFile(filename, new Blob([content], { type }));
 }
 
-/** Salva un file arrivato dal server (es. i PDF dei documenti, docs/CHANGELOG.md §374). */
+/** Salva un file arrivato dal server (es. i PDF dei documenti, docs/CHANGELOG.md §375). */
 export function downloadBlobFile(filename: string, blob: Blob) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");

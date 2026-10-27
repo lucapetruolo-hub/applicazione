@@ -1498,7 +1498,7 @@ export class ProfessionalsService {
       issue: toJobIssueSummary(booking.issue, { paidOnline: jobPaidOnline(booking.jobPayment), assisted: booking.jobPayment?.paymentMethod !== "DIRECT" }),
       // Pagamento del lavoro (§168), con commissione, costo Stripe e quanto riceve.
       payment: toJobPaymentSummary(booking.jobPayment, booking.finalAmountEurCents, true),
-      // Fattura chiesta dal cliente (docs/CHANGELOG.md §372): c'è la Booking, quindi il preventivo è accettato.
+      // Fattura chiesta dal cliente (docs/CHANGELOG.md §374): c'è la Booking, quindi il preventivo è accettato.
       invoiceRequest: booking.quote?.invoiceRequest ? invoiceRequestView(booking.quote.invoiceRequest) : null,
     }));
   }

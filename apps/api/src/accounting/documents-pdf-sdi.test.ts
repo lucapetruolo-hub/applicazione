@@ -6,8 +6,8 @@ import { sandboxTestInvoiceXml, sdiCompanyOf, type IssuerSnapshot } from "./invo
 import { OpenapiSdiProvider, sdiOutcomeFromNotifications, sdiRejectionMessage } from "./sdi-provider";
 import { CourtesyCopyService } from "./courtesy-copy.service";
 
-// PDF, numero della copia di cortesia e invio allo SdI (docs/CHANGELOG.md §374);
-// elenco dei documenti ai clienti in Admin (§375).
+// PDF, numero della copia di cortesia e invio allo SdI (docs/CHANGELOG.md §375);
+// elenco dei documenti ai clienti in Admin (§376).
 
 const issuer: IssuerSnapshot = {
   companyName: "Professionisti S.r.l.",

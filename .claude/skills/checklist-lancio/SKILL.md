@@ -230,13 +230,13 @@ CEO sulle segnalazioni, `docs/CHANGELOG.md` §144):
     JSON/XML interna, non il formato ufficiale validato.
 13. ~~Percentuale di commissione MANOVIA~~ — dal 27/10/2026 trattenuta
     unica del 7% + IVA tutto compreso sui pagamenti online (docs/CHANGELOG.md
-    §372, prima 5% più i costi di Stripe, §168). Se Luca sceglie un'altra
+    §374, prima 5% più i costi di Stripe, §168). Se Luca sceglie un'altra
     percentuale: `ONLINE_APP_FEE_PERCENT` e la regola in Admin → Finanza.
-14. **Fatture della piattaforma** (fatto il codice, docs/CHANGELOG.md §372):
+14. **Fatture della piattaforma** (fatto il codice, docs/CHANGELOG.md §374):
     prima del lancio (a) compilare i dati della società e "Fatture da" in
     Admin → Finanza → "Le nostre fatture", PEC compresa (Openapi la usa per
     la conservazione); (b) `OPENAPI_TOKEN_SDI` su Render con
-    `OPENAPI_SANDBOX=true`, poi in Finanza "Prova l'invio allo SdI" (§374:
+    `OPENAPI_SANDBOX=true`, poi in Finanza "Prova l'invio allo SdI" (§375:
     registra la società, manda una fattura da 1 €, simula e legge l'esito)
     e solo con tutti i passi verdi togliere la sandbox; (c) nella dashboard di Stripe spegnere le email di fatture e
     ricevute ai clienti (le fatture valide sono le nostre) e lo storico

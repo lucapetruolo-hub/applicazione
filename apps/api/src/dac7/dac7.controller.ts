@@ -82,7 +82,7 @@ export class ProfessionalDac7Controller {
     return this.dac7Service.summaryForProfessional(req.user.userId);
   }
 
-  /** Il riepilogo di un anno in PDF (docs/CHANGELOG.md §374). */
+  /** Il riepilogo di un anno in PDF (docs/CHANGELOG.md §375). */
   @Get(":year/pdf")
   async pdf(@Req() req: AuthenticatedRequest, @Param("year", ParseIntPipe) year: number) {
     const [{ years, maskedIban }, who] = await Promise.all([this.dac7Service.summaryForProfessional(req.user.userId), this.dac7Service.fiscalNameOf(req.user.userId)]);

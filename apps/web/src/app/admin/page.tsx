@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { AdminTrends } from "@professionisti/api-client";
-import { adminCan, type AdminScope, type UrgencyMetrics } from "@professionisti/shared";
+import { adminCan, type AdminScope, type SiteAdvice, type UrgencyMetrics } from "@professionisti/shared";
 import { Text, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { AdminTrendTile } from "@/components/admin/AdminTrendTile";
 import { useAdminOverview } from "@/components/admin/AdminOverviewContext";
 import { AdminPageHeader } from "@/components/admin/adminUi";
+import { SiteAdviceList } from "@/components/admin/SiteAdviceList";
 import { SkeletonSummaryRow } from "@/components/Skeleton";
 
 /**
@@ -23,6 +24,9 @@ export default function AdminHomePage() {
   const adminRoles = user?.adminRoles ?? [];
   const [trends, setTrends] = useState<AdminTrends | null>(null);
   const [urgency, setUrgency] = useState<UrgencyMetrics | null>(null);
+  // Consigli della settimana (docs/CHANGELOG.md §372): in Home per il super admin.
+  const isSuper = adminCan(adminRoles, "SUPER");
+  const [advice, setAdvice] = useState<SiteAdvice[] | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -35,6 +39,14 @@ export default function AdminHomePage() {
       .then(setUrgency)
       .catch(() => setUrgency(null));
   }, [token]);
+
+  useEffect(() => {
+    if (!token || !isSuper) return;
+    apiClient
+      .adminSiteStats(token)
+      .then((stats) => setAdvice(stats.advice))
+      .catch(() => setAdvice(null));
+  }, [token, isSuper]);
 
   const todo = (
     overview
@@ -93,6 +105,15 @@ export default function AdminHomePage() {
           </div>
         )}
       </YStack>
+
+      {isSuper && advice ? (
+        <YStack gap="$3">
+          <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+            Cosa fare questa settimana
+          </Text>
+          <SiteAdviceList advice={advice} limit={3} />
+        </YStack>
+      ) : null}
 
       <YStack gap="$3">
         <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>

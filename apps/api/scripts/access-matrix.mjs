@@ -115,7 +115,7 @@ async function seed() {
   });
   await prisma.jobPayment.create({ data: { bookingId: bookingA.id, paymentMethod: "DIRECT", grossAmountEurCents: 10000, netAmountEurCents: 10000 } });
 
-  // Fattura delle trattenute di proA (§372).
+  // Fattura delle trattenute di proA (§374).
   const invoiceA = await prisma.invoice.create({
     data: {
       type: "MANOVIA_TO_PROFESSIONAL",

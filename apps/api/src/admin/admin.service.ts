@@ -473,6 +473,45 @@ export class AdminService {
   }
 
   /**
+   * Elimina per sempre un account di prova e tutto quello che ha creato
+   * (richiesta di Luca, docs/CHANGELOG.md §372): richieste, preventivi,
+   * lavori, recensioni, profilo. Così non resta nei numeri dell'andamento.
+   * Solo super admin, mai un admin né sé stessi, mai un account con soldi
+   * veri passati online. Per un utente vero resta l'eliminazione normale.
+   */
+  async deleteTestAccount(adminUserId: string, userId: string) {
+    const target = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true, email: true, professionalProfile: { select: { id: true } } },
+    });
+    if (!target) throw new NotFoundException("Utente non trovato.");
+    if (target.id === adminUserId) throw new BadRequestException("Non puoi eliminare il tuo stesso account.");
+    if (target.role === "ADMIN") throw new BadRequestException("Togli prima il ruolo di amministratore a questo account.");
+    const paidOnline = await this.prisma.jobPayment.count({
+      where: {
+        depositPaidAt: { not: null },
+        booking: { OR: [{ clientId: userId }, ...(target.professionalProfile ? [{ professionalProfileId: target.professionalProfile.id }] : [])] },
+      },
+    });
+    if (paidOnline > 0) throw new BadRequestException("Questo account ha pagamenti online veri: non è un account di prova. Usa la sospensione.");
+    try {
+      await this.prisma.user.delete({ where: { id: userId } });
+    } catch {
+      throw new BadRequestException("Non si può eliminare: ha dati collegati che vanno tenuti. Usa la sospensione.");
+    }
+    await this.auditLogService.record({
+      entityType: "User",
+      entityId: userId,
+      fieldName: "testAccount",
+      oldValue: target.email ?? null,
+      newValue: "DELETED",
+      changedByUserId: adminUserId,
+      reason: "Account di prova eliminato",
+    });
+    return { id: userId, deleted: true };
+  }
+
+  /**
    * Assegna o toglie i ruoli di amministratore (solo super admin,
    * docs/CHANGELOG.md §145-§146). I ruoli si combinano (es. Moderatore +
    * Finanza); lista vuota = non più admin: torna professionista se ha un
@@ -1596,7 +1635,7 @@ function professionalFilterWhere(params: { category?: string; city?: string }): 
   };
 }
 
-const PROFESSIONAL_STATS_SELECT = {
+export const PROFESSIONAL_STATS_SELECT = {
   id: true,
   city: true,
   imageUrl: true,
@@ -1685,7 +1724,7 @@ export type AdminCompletedJobRow = {
   professionalPhotoUrls: string[];
   clientPhotoUrls: string[];
   paymentLabel: string;
-  /** Ricevuta o copia di cortesia preparata dal professionista (§375). */
+  /** Ricevuta o copia di cortesia preparata dal professionista (§376). */
   courtesyDocumentLabel: string | null;
 };
 

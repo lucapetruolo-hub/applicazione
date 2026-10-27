@@ -20,7 +20,7 @@ import { documentDate } from "./_components/DocumentParts";
 
 /**
  * "Fatture e documenti" del professionista (decisioni dell'utente del
- * 27/10/2026, docs/CHANGELOG.md §372): le nostre fatture, l'estratto di ogni
+ * 27/10/2026, docs/CHANGELOG.md §374): le nostre fatture, l'estratto di ogni
  * mese e il commercialista a cui mandarlo. Si arriva da Abbonamento e da
  * Dati fiscali, senza una voce nel menu.
  */
