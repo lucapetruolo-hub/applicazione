@@ -12,7 +12,10 @@ import {
   GUIDE_RED_SHARE,
   MIN_CASES_FOR_PERCENT,
   MIN_CASES_PER_ROW,
+  MISSING_SERVICE_MIN_PROFESSIONALS,
   REQUEST_STEP_LABEL,
+  SERVICE_GAP_MAX_OFFERED,
+  SERVICE_GAP_MIN_SEARCHES,
   SITE_COUNTERS_RETENTION_MONTHS,
   SUBMIT_FAILURE_KIND_LABEL,
   SUBMIT_FORM_LABEL,
@@ -178,6 +181,7 @@ export default function AdminAndamentoPage() {
           <ProfessionalCohortsCard data={data} />
           <FailuresCard data={data} />
           <UnknownJobsCard data={data} />
+          <PopularServicesCard data={data} />
           <SourcesCard data={data} />
           <ChurnReasonsCard data={data} />
           <LaunchCard data={data} />
@@ -698,6 +702,55 @@ function UnknownJobsCard({ data }: { data: AdminSiteStats }) {
             key: j.term,
             label: `«${j.term}» · in ${j.days} giorni`,
             count: j.searches,
+          }))}
+          total={0}
+        />
+      )}
+    </AdminCard>
+  );
+}
+
+function PopularServicesCard({ data }: { data: AdminSiteStats }) {
+  return (
+    <AdminCard>
+      <CardTitle
+        title="Prestazioni più cercate"
+        note="Ricerche scritte negli ultimi 90 giorni che corrispondono a una prestazione suggerita, per lavoro, e quanti professionisti di quel lavoro la offrono. Si conta solo il nome della prestazione, mai quello che ha scritto il cliente."
+      />
+      {data.popularServices.length === 0 ? (
+        <Text color={brand.grafite70}>Ancora nessuna ricerca di una prestazione.</Text>
+      ) : (
+        data.popularServices.slice(0, 6).map((category) => (
+          <YStack key={category.categorySlug} gap="$1">
+            <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite} marginTop="$2">
+              {category.categoryLabel}
+            </Text>
+            <Bars
+              rows={category.services.slice(0, 5).map((s) => ({
+                key: s.service,
+                label: `${s.service} · la offrono ${s.offeredBy}`,
+                count: s.searches,
+                note: s.searches >= SERVICE_GAP_MIN_SEARCHES && s.offeredBy <= SERVICE_GAP_MAX_OFFERED ? "pochi la offrono" : undefined,
+              }))}
+              total={category.services.reduce((sum, s) => sum + s.searches, 0)}
+            />
+          </YStack>
+        ))
+      )}
+      <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite} marginTop="$3">
+        Scritte a mano dai professionisti, non suggerite
+      </Text>
+      <Text color={brand.grafite70} fontSize={13}>
+        {`Prestazioni scritte da almeno ${MISSING_SERVICE_MIN_PROFESSIONALS} professionisti che il sito non propone: aggiungerle all'elenco le rende un clic e somma bene i prezzi medi.`}
+      </Text>
+      {data.missingServices.length === 0 ? (
+        <Text color={brand.grafite70}>Nessuna per ora.</Text>
+      ) : (
+        <Bars
+          rows={data.missingServices.map((m) => ({
+            key: `${m.categorySlug}-${m.name}`,
+            label: `${m.name} · ${m.categoryLabel}`,
+            count: m.professionals,
           }))}
           total={0}
         />

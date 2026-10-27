@@ -21,13 +21,15 @@ ecosystem = "npm"
 vulnerability.ignore = true
 reason = "Solo in @expo/cli, strumento di sviluppo; nessuna versione corretta disponibile"
 
-# deepmerge non ha una versione corretta (GHSA-gcqx-w48m-w2h4, ultima colpita
-# 4.3.1 = ultima pubblicata). Lo usano solo @expo/config e la CLI di React
-# Native, strumenti di sviluppo dell'app: non finisce nell'app, nel sito o
-# nell'API (docs/CHANGELOG.md §384).
+# deepmerge non ha una versione corretta (GHSA-gcqx-w48m-w2h4, docs/CHANGELOG.md
+# §384, eccezione approvata da Luca il 27/10/2026). Il difetto scatta solo
+# unendo un oggetto scritto da chi attacca. Nell'API lo usa html-to-text (via
+# @react-email/render, testo semplice delle email) solo per unire le sue
+# opzioni fisse, mai il contenuto; il resto è in strumenti di sviluppo
+# (@expo/config, CLI di React Native, fork-ts-checker).
 [[PackageOverrides]]
 name = "deepmerge"
 version = "4.3.1"
 ecosystem = "npm"
 vulnerability.ignore = true
-reason = "Solo in @expo/config e CLI di React Native, strumenti di sviluppo; nessuna versione corretta disponibile"
+reason = "Nessuna versione corretta; unisce solo opzioni fisse (html-to-text) e strumenti di sviluppo, mai dati delle persone"

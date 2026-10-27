@@ -21317,6 +21317,21 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: il pnpm di `/usr/bin` esiste sulla macchina di Render (è proprio il file che `corepack enable` cercava di cancellare); il deploy su Render dopo l'unione.
 
+## 384. Andamento del sito: prestazioni più cercate
+
+**Richiesta** (Luca, 27/10/2026): "nell'analisi di cosa implementare in base ai numeri può essere utile vedere quali servizi sono più cercati per poi implementarli standard alle rispettive categorie". Scelta sulla scheda: "Sì, tutti e due i modi".
+
+**Decisione**:
+- L'elenco delle prestazioni suggerite (`POPULAR_SERVICES`) lo allarga il thread "Proporre i professionisti dalla descrizione del problema", con le frasi raccolte lì; qui solo i numeri che dopo il lancio dicono cosa aggiungere. Accordo tra i due thread: questo thread legge l'elenco e non lo modifica.
+- **Ricerche sulle prestazioni**: una ricerca scritta (`/cerca?q=`) si confronta con le prestazioni dell'elenco (`matchPopularServices` in `packages/shared/src/serviceSearch.ts`: ogni parola cercata deve stare nel nome, "perdite" vale "perdita"; più di 3 prestazioni trovate = parola troppo generica, non si conta). Si salva per giorno solo il nome preso dall'elenco, mai il testo del cliente (`ServiceSearchDay`, migrazione `20261027180000_prestazioni_cercate`, cancellato dopo 25 mesi come gli altri contatori). Robot e "Non contare" esclusi come nel §372.
+- **Riquadro "Prestazioni più cercate"** in `/admin/andamento`: per lavoro, le 5 più cercate negli ultimi 90 giorni con quanti professionisti di quel lavoro le offrono (anche scritte più lunghe, `offersPopularService`); sotto, le prestazioni scritte a mano da almeno 3 professionisti diversi che non sono tra quelle suggerite dei loro lavori (dati che c'erano già, nessun contatore nuovo).
+- **Due consigli** (livello "Quando hai tempo", al massimo 2 per tipo): "Cercano «X», pochi la offrono" da 10 ricerche in 90 giorni con al massimo 2 professionisti che la offrono, e "Aggiungi «X» alle prestazioni suggerite di <lavoro>" con il lavoro più comune tra chi l'ha scritta.
+- Informativa privacy, punto 9: aggiunte le prestazioni cercate (nome dell'elenco, mai il testo).
+- **osv-scanner**: il 27/10 è comparsa una segnalazione su `deepmerge` 4.3.1 (GHSA-gcqx-w48m-w2h4, nessuna versione corretta), rossa su tutte le PR. Eccezione in `osv-scanner.toml` approvata da Luca: nell'API lo usa solo html-to-text per unire le proprie opzioni fisse, mai il contenuto delle email; il resto sono strumenti di sviluppo. Da togliere quando esce una versione corretta.
+- **Chi chiamare** (miglioria scelta da Luca): sotto "Cercano «X», pochi la offrono" l'elenco dei professionisti visibili di quel lavoro che non la offrono ancora (nome, città, link alla scheda), al massimo 10 con il link a tutti quelli del lavoro; se non ce n'è nessuno, il consiglio dice di cercarne di nuovi e porta a "Crea un profilo".
+
+**Verifica**: test di confronto, conteggio, riquadro e consigli (`site-stats.test.ts`, `site-counts.service.test.ts`); typecheck, lint e test dell'API; prove nel browser `conteggi.spec.ts` ("sturatura" a Latina conta 1 su "Sturatura scarichi" di Idraulico, 0 per Googlebot, il testo scritto non si salva) e `andamento-sito.spec.ts` (riquadro visibile su telefono e computer, axe senza errori).
+
 ## 383. Barra di ricerca: errori di battitura, frazioni, città con professionisti prima, tastiera
 
 **Richiesta** (Luca, 27/10/2026, thread "abbinamento problema"): elenchi che compaiono subito al clic su "Cosa cerchi" e "Città" (le città più cercate per prime), mentre si scrive prima ciò che rispetta di più quello che si è scritto, senza titoletti negli elenchi; poi "effettua migliorie 1-2-3 (senza i numeri) 4": errori di battitura, frazioni col loro comune, città senza professionisti più in basso senza mostrare numeri, tastiera e lettore di schermo.
@@ -21330,7 +21345,7 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: test di `searchMatch` (7) e di `coveredComuni`; prova nel browser su computer e telefono (elenco al clic, frecce e Invio, Esc, "Latna", frazioni "borgo"); typecheck e lint.
 
-## 384. Barra di ricerca: frazioni dei comuni vicini, "Vicino a me" che spiega quando non trova la posizione
+## 389. Barra di ricerca: frazioni dei comuni vicini, "Vicino a me" che spiega quando non trova la posizione
 
 **Richiesta** (Luca, 27/10/2026, "Effettua le migliorie" proposte col §383).
 
@@ -21340,8 +21355,6 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - Bug trovato provando: l'intestazione `Permissions-Policy` del sito aveva `geolocation=()`, che blocca la posizione anche dopo il permesso dell'utente; ora `geolocation=(self)` (solo il nostro sito, sempre dopo il clic e la richiesta del browser).
 
 **Verifica**: nel browser con posizione negata (messaggio, elenco aperto) e concessa (Latina compilata, elenco chiuso); intestazione controllata; typecheck, lint, test.
-
-Aggiunta del 27/10 sera: osv-scanner ha cominciato a segnalare `deepmerge` 4.3.1 (GHSA-gcqx-w48m-w2h4), senza versione corretta; lo usano solo `@expo/config` e la CLI di React Native, strumenti di sviluppo dell'app. Eccezione in `osv-scanner.toml` con il motivo, come per zod 3 e node-forge.
 
 ## 385. Barra fissa "Richiedi un preventivo" anche da computer
 

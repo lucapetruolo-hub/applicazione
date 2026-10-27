@@ -96,6 +96,10 @@ export class ProfessionalsController {
       if (!category && typeof q === "string" && q.trim() && results.length === 0) {
         void this.siteCounts.recordUnknownJobSearch(q).catch(() => undefined);
       }
+      // Prestazioni più cercate (§384): solo il nome preso dal nostro elenco.
+      if (typeof q === "string" && q.trim()) {
+        void this.siteCounts.recordServiceSearch(q, typeof category === "string" ? category : undefined).catch(() => undefined);
+      }
     }
     return results;
   }

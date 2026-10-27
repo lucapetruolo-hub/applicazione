@@ -43,3 +43,4 @@ export * from "./cancellationNotice";
 export * from "./professionalStats";
 export * from "./siteStats";
 export * from "./siteCounting";
+export * from "./serviceSearch";
