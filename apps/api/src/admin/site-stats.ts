@@ -277,7 +277,7 @@ export type SiteServiceRow = { profileId: string; name: string; categorySlugs: s
 const isCategorySlug = (slug: string): slug is ProfessionalCategorySlug => slug in POPULAR_SERVICES;
 
 /**
- * Prestazioni dell'elenco cercate negli ultimi 90 giorni, per lavoro (§378),
+ * Prestazioni dell'elenco cercate negli ultimi 90 giorni, per lavoro (§384),
  * con quanti professionisti di quel lavoro le offrono. Prima i lavori più cercati.
  */
 export function buildPopularServices(searches: { categorySlug: string; service: string; searches: number }[], services: SiteServiceRow[]): AdminSiteStats["popularServices"] {
@@ -301,7 +301,7 @@ export function buildPopularServices(searches: { categorySlug: string; service: 
 /**
  * Prestazioni scritte a mano da almeno MISSING_SERVICE_MIN_PROFESSIONALS
  * professionisti e che non ci sono tra quelle suggerite dei loro lavori
- * (§378): vanno aggiunte all'elenco, così si scelgono con un clic e i prezzi
+ * (§384): vanno aggiunte all'elenco, così si scelgono con un clic e i prezzi
  * medi si sommano. Il lavoro è quello più comune tra chi l'ha scritta.
  */
 export function buildMissingServices(services: SiteServiceRow[]): AdminSiteStats["missingServices"] {
@@ -526,7 +526,7 @@ export function buildSiteAdvice(input: SiteAdviceInput): SiteAdvice[] {
     });
   }
 
-  // Prestazioni (§378): cercate ma offerte da pochi, e scritte a mano ma non suggerite.
+  // Prestazioni (§384): cercate ma offerte da pochi, e scritte a mano ma non suggerite.
   const gaps = input.popularServices
     .flatMap((c) => c.services.map((s) => ({ ...s, categorySlug: c.categorySlug, categoryLabel: c.categoryLabel })))
     .filter((s) => s.searches >= SERVICE_GAP_MIN_SEARCHES && s.offeredBy <= SERVICE_GAP_MAX_OFFERED)

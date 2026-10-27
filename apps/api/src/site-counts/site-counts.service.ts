@@ -95,7 +95,7 @@ export class SiteCountsService {
 
   /**
    * Una ricerca scritta che corrisponde a prestazioni dell'elenco suggerito
-   * (§378): si conta il nome dell'elenco, mai il testo cercato.
+   * (§384): si conta il nome dell'elenco, mai il testo cercato.
    */
   async recordServiceSearch(text: string, categorySlug?: string): Promise<void> {
     const matches = matchPopularServices(text, categorySlug?.trim().toLowerCase() || undefined);

@@ -1,7 +1,7 @@
 import { POPULAR_SERVICES, type ProfessionalCategorySlug } from "./categories";
 
 /**
- * Prestazioni più cercate (docs/CHANGELOG.md §378): una ricerca scritta si
+ * Prestazioni più cercate (docs/CHANGELOG.md §384): una ricerca scritta si
  * confronta con le prestazioni suggerite di `POPULAR_SERVICES` e si conta
  * solo il nome preso dall'elenco, mai il testo scritto dal cliente.
  */

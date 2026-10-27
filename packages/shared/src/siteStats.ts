@@ -185,9 +185,9 @@ export type SiteAdvice = {
 /** Giorni in cui un consiglio segnato come fatto non torna (§372): il tempo di vedere se è servito. */
 export const SITE_ADVICE_DONE_DAYS = 14;
 
-/** Professionisti diversi che devono aver scritto a mano la stessa prestazione per consigliarla (§378). */
+/** Professionisti diversi che devono aver scritto a mano la stessa prestazione per consigliarla (§384). */
 export const MISSING_SERVICE_MIN_PROFESSIONALS = 3;
-/** Ricerche in 90 giorni da cui una prestazione offerta da pochi diventa un consiglio (§378). */
+/** Ricerche in 90 giorni da cui una prestazione offerta da pochi diventa un consiglio (§384). */
 export const SERVICE_GAP_MIN_SEARCHES = 10;
 /** Sotto questi professionisti una prestazione cercata è "offerta da pochi". */
 export const SERVICE_GAP_MAX_OFFERED = 2;
@@ -232,7 +232,7 @@ export type AdminSiteStats = {
   unknownJobs: { term: string; days: number; searches: number }[];
   /**
    * Prestazioni dell'elenco suggerito cercate negli ultimi 90 giorni, per
-   * lavoro (§378), con quanti professionisti le offrono.
+   * lavoro (§384), con quanti professionisti le offrono.
    */
   popularServices: { categorySlug: string; categoryLabel: string; services: { service: string; searches: number; offeredBy: number }[] }[];
   /** Prestazioni scritte a mano da almeno MISSING_SERVICE_MIN_PROFESSIONALS professionisti e assenti dall'elenco suggerito. */

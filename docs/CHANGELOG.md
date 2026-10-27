@@ -21317,7 +21317,7 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: il pnpm di `/usr/bin` esiste sulla macchina di Render (è proprio il file che `corepack enable` cercava di cancellare); il deploy su Render dopo l'unione.
 
-## 378. Andamento del sito: prestazioni più cercate
+## 384. Andamento del sito: prestazioni più cercate
 
 **Richiesta** (Luca, 27/10/2026): "nell'analisi di cosa implementare in base ai numeri può essere utile vedere quali servizi sono più cercati per poi implementarli standard alle rispettive categorie". Scelta sulla scheda: "Sì, tutti e due i modi".
 
