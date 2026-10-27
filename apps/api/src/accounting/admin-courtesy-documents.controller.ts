@@ -19,7 +19,8 @@ export class AdminCourtesyDocumentsController {
   constructor(private readonly courtesyCopyService: CourtesyCopyService) {}
 
   @Get()
-  list(@Query("q") q?: string, @Query("kind") kind?: string, @Query("year") year?: string, @Query("bookingId") bookingId?: string) {
+  list(@Query("q") rawQ?: unknown, @Query("kind") rawKind?: unknown, @Query("year") rawYear?: unknown, @Query("bookingId") rawBookingId?: unknown) {
+    const [q, kind, year, bookingId] = [rawQ, rawKind, rawYear, rawBookingId].map(single);
     const parsedKind = adminCourtesyDocumentKinds.find((value) => value === kind);
     if (kind && !parsedKind) throw new BadRequestException("Tipo di documento non valido.");
     const parsedYear = year ? Number(year) : undefined;
@@ -32,4 +33,11 @@ export class AdminCourtesyDocumentsController {
     const copy = await this.courtesyCopyService.forAdmin(bookingId, req.user.userId);
     return pdfResponse(await renderDocumentPdf(courtesyPdfModel(copy)), pdfFileName(courtesyPdfBaseName(copy)));
   }
+}
+
+/** Un parametro dell'indirizzo scritto una volta sola: `?q=a&q=b` arriva come elenco e non vale. */
+function single(value: unknown): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value === "string") return value;
+  throw new BadRequestException("Parametro non valido.");
 }
