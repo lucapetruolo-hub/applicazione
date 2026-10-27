@@ -1,6 +1,14 @@
 import { Body, Controller, Headers, HttpCode, Post } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
-import { isBotUserAgent, siteFailureEventSchema, siteStepEventSchema, type SiteFailureEvent, type SiteStepEvent } from "@professionisti/shared";
+import {
+  isBotUserAgent,
+  priceToolStepEventSchema,
+  siteFailureEventSchema,
+  siteStepEventSchema,
+  type PriceToolStepEvent,
+  type SiteFailureEvent,
+  type SiteStepEvent,
+} from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { SiteCountsService } from "./site-counts.service";
 
@@ -21,6 +29,15 @@ export class SiteCountsController {
   async step(@Body(new ZodValidationPipe(siteStepEventSchema)) body: SiteStepEvent, @Headers("user-agent") userAgent?: string): Promise<void> {
     if (isBotUserAgent(userAgent)) return;
     await this.siteCounts.recordStep(body.step, body.categorySlug, body.origin).catch(() => undefined);
+  }
+
+  /** Un passo dalle voci di "Quanto costa" (§389). */
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @Post("price-tool")
+  @HttpCode(204)
+  async priceTool(@Body(new ZodValidationPipe(priceToolStepEventSchema)) body: PriceToolStepEvent, @Headers("user-agent") userAgent?: string): Promise<void> {
+    if (isBotUserAgent(userAgent)) return;
+    await this.siteCounts.recordPriceToolStep(body.step).catch(() => undefined);
   }
 
   @Throttle({ default: { limit: 30, ttl: 60_000 } })

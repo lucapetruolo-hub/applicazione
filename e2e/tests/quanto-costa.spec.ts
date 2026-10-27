@@ -58,7 +58,16 @@ test("ogni voce ha lo stesso numero di professionisti dell'elenco che apre", asy
   expect(ours).toEqual({ name: SERVICE, professionalCount: 3, price: { pricedCount: 3, lowEurCents: 900, medianEurCents: 1000, highEurCents: 1300, unit: "JOB" } });
 });
 
+/** Passi contati oggi dalle voci di "Quanto costa" (§389). */
+async function priceToolCounts(): Promise<Record<string, number>> {
+  const day = new Date();
+  day.setUTCHours(0, 0, 0, 0);
+  const rows = await prisma.priceToolStepDay.findMany({ where: { day } });
+  return Object.fromEntries(rows.map((r) => [r.step, r.count]));
+}
+
 test("dalla voce all'elenco filtrato, alla richiesta con il lavoro scritto, e ritorno a tutti", async ({ page }) => {
+  const before = await priceToolCounts();
   await page.goto("/");
   const tool = page.getByLabel("Cerca un lavoro per conoscere il prezzo medio");
   await tool.fill(SERVICE.slice(0, 30));
@@ -67,6 +76,7 @@ test("dalla voce all'elenco filtrato, alla richiesta con il lavoro scritto, e ri
   await entry.click();
 
   await expect(page).toHaveURL(/\/cerca\?servizio=/);
+  await expect.poll(async () => (await priceToolCounts()).VOCE ?? 0).toBe((before.VOCE ?? 0) + 1);
   await expect(page.getByRole("link", { name: `Togli il filtro ${SERVICE}` })).toBeVisible();
   for (const name of names) await expect(page.getByRole("link", { name, exact: true })).toBeVisible();
   await expect(page.getByText(/^In pausa/)).toHaveCount(0);
@@ -83,6 +93,7 @@ test("dalla voce all'elenco filtrato, alla richiesta con il lavoro scritto, e ri
   // Il profilo porta con sé la prestazione: la richiesta parte con il lavoro scritto.
   await page.getByRole("link", { name: names[0]!, exact: true }).click();
   await expect(page).toHaveURL(/servizio=/);
+  await expect.poll(async () => (await priceToolCounts()).PROFILO ?? 0).toBeGreaterThan(before.PROFILO ?? 0);
   await page.getByRole("link", { name: `Richiedi un preventivo a ${names[0]}` }).first().click();
   await expect(page).toHaveURL(/descrizione=/);
   await expect(page.getByLabel("Descrivi il lavoro")).toHaveValue(`${SERVICE}. `);

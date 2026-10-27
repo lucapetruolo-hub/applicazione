@@ -1,4 +1,4 @@
-import { NO_COUNT_COOKIE, type RequestOrigin, type RequestStepKey, type SubmitFailureKind, type SubmitFormKey } from "@professionisti/shared";
+import { NO_COUNT_COOKIE, type PriceToolStepKey, type RequestOrigin, type RequestStepKey, type SubmitFailureKind, type SubmitFormKey } from "@professionisti/shared";
 
 /**
  * Conteggi dell'andamento del sito mandati dal browser (docs/CHANGELOG.md
@@ -57,7 +57,7 @@ export function chooseCountingDisabled(disabled: boolean): void {
   setCountingDisabled(disabled);
 }
 
-function send(path: "step" | "failure", body: object): void {
+function send(path: "step" | "failure" | "price-tool", body: object): void {
   if (isCountingDisabled()) return;
   // `keepalive`: parte anche se la pagina cambia subito dopo (invio riuscito).
   void fetch(`${API_URL}/site/${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), keepalive: true }).catch(
@@ -68,6 +68,47 @@ function send(path: "step" | "failure", body: object): void {
 /** `origin`: PROFILE se la richiesta parte dalla pagina di un professionista. */
 export function countRequestStep(step: RequestStepKey, categorySlug?: string | null, origin: RequestOrigin = "GENERAL"): void {
   send("step", { step, origin, ...(categorySlug ? { categorySlug } : {}) });
+}
+
+/**
+ * Chi arriva da una voce di "Quanto costa" (§389): un segno solo in questa
+ * scheda del browser (sessionStorage, nessun cookie), per contare il
+ * profilo aperto e la richiesta inviata che partono da lì.
+ */
+const PRICE_TOOL_KEY = "da_quanto_costa";
+
+function fromPriceTool(): boolean {
+  try {
+    return window.sessionStorage.getItem(PRICE_TOOL_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** Voce toccata: si conta e si segna la scheda. */
+export function countPriceToolEntry(): void {
+  try {
+    window.sessionStorage.setItem(PRICE_TOOL_KEY, "1");
+  } catch {
+    // Senza sessionStorage si conta solo la voce.
+  }
+  send("price-tool", { step: "VOCE" satisfies PriceToolStepKey });
+}
+
+/** Profilo aperto dall'elenco di una voce: conta solo se la scheda è partita da lì. */
+export function countPriceToolProfile(): void {
+  if (fromPriceTool()) send("price-tool", { step: "PROFILO" satisfies PriceToolStepKey });
+}
+
+/** Richiesta inviata: conta una volta, poi il segno si toglie. */
+export function countPriceToolRequest(): void {
+  if (!fromPriceTool()) return;
+  send("price-tool", { step: "RICHIESTA" satisfies PriceToolStepKey });
+  try {
+    window.sessionStorage.removeItem(PRICE_TOOL_KEY);
+  } catch {
+    // Ignorato.
+  }
 }
 
 /** Modulo a cui appartiene una chiamata all'API, solo per gli invii che contano. */

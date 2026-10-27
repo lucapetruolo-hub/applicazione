@@ -7,6 +7,7 @@ import { Search } from "lucide-react";
 import { Section, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { readLastSearchCity } from "@/lib/lastSearchCity";
+import { countPriceToolEntry } from "@/lib/siteCounts";
 
 type PriceEntry = ServicePriceIndexEntry;
 
@@ -155,6 +156,8 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
                   // Il clic non toglie il fuoco al campo: l'elenco aperto non si
                   // richiude (e non sposta le voci) tra la pressione e il rilascio.
                   onMouseDown={(event) => event.preventDefault()}
+                  // Conteggio anonimo della voce toccata (§389), per l'Andamento del sito.
+                  onClick={countPriceToolEntry}
                 >
                   <YStack gap={2} flex={1} minWidth={0}>
                     <Text fontSize={16} fontWeight="600" color={brand.grafite}>

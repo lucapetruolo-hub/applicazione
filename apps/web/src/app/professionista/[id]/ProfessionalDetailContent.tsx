@@ -16,7 +16,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { hasRecentlyReported, markReported } from "@/lib/reportedContent";
 import { formatResponseTime, respondsRightAway } from "@/lib/responseTime";
 import { useMediaQuery } from "@/lib/useMediaQuery";
-import { isCountingDisabled } from "@/lib/siteCounts";
+import { countPriceToolProfile, isCountingDisabled } from "@/lib/siteCounts";
 
 // Colonne fisse Oggi + 3 giorni (stessa griglia della mini-agenda di ricerca,
 // vedi ProfessionalCard in packages/ui) — qui costruita a partire dai giorni
@@ -173,6 +173,10 @@ export function ProfessionalDetailContent({
   // con la prestazione già scritta nella descrizione.
   const requestedService = searchParams.get("servizio")?.trim();
   const serviceDescriptionParam = requestedService ? `&descrizione=${encodeURIComponent(`${requestedService}. `)}` : "";
+  // Profilo aperto dall'elenco di una voce (§389): contato solo se la scheda del browser è partita da "Quanto costa".
+  useEffect(() => {
+    if (requestedService) countPriceToolProfile();
+  }, [requestedService]);
   const [appliedAgendaDate, setAppliedAgendaDate] = useState<string | null>(null);
   if (agendaPreview && requestedAgendaDate && appliedAgendaDate !== requestedAgendaDate) {
     setAppliedAgendaDate(requestedAgendaDate);

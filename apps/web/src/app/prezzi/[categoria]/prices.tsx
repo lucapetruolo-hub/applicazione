@@ -16,6 +16,7 @@ import {
 import { apiClient } from "@/lib/apiClient";
 import { breadcrumbJsonLd } from "@/lib/jsonLd";
 import { JsonLd } from "@/components/JsonLd";
+import { PriceToolLink } from "./PriceToolLink";
 
 /**
  * "Quanto costa un [lavoro]" (docs/CHANGELOG.md §296, strategia SEO Latina):
@@ -172,9 +173,9 @@ export function PricesView({ data }: { data: PricesData }) {
               {declared.services.map((service) => (
                 <tr key={service.name}>
                   <th scope="row">
-                    <Link className="price-table-link" href={serviceListHref(service.name, comune)} aria-label={`${service.name}, ${formatServicePrice(service.minEurCents, service.maxEurCents, service.unit)}: vedi chi lo fa`}>
+                    <PriceToolLink href={serviceListHref(service.name, comune)} label={`${service.name}, ${formatServicePrice(service.minEurCents, service.maxEurCents, service.unit)}: vedi chi lo fa`}>
                       {service.name}
-                    </Link>
+                    </PriceToolLink>
                   </th>
                   <td>
                     {formatServicePrice(service.minEurCents, service.maxEurCents, service.unit)}
