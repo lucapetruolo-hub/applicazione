@@ -21316,3 +21316,38 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 **Decisione**: il comando di build in `render.yaml` non chiama più `corepack enable`: `pnpm install --frozen-lockfile && pnpm --filter @professionisti/api build`. pnpm prende la versione dal campo `packageManager` (10.33.0). Se il servizio non segue il Blueprint, lo stesso comando va scritto a mano in Render → Settings → Build Command.
 
 **Verifica**: il pnpm di `/usr/bin` esiste sulla macchina di Render (è proprio il file che `corepack enable` cercava di cancellare); il deploy su Render dopo l'unione.
+
+## 385. Barra fissa "Richiedi un preventivo" anche da computer
+
+**Richiesta di Luca (27/10/2026):** avere anche da computer la barra fissa in
+basso "Richiedi un preventivo a [nome]" che sul telefono segue la pagina
+(§325).
+
+**Parere e decisione:** da computer il profilo ha una colonna sola, senza
+colonna laterale: il pulsante sta sotto l'agenda (a circa 1.065 px su uno
+schermo 1440×900) e non si vede mentre si leggono prestazioni e recensioni,
+quindi la barra non ripete niente. Da computer però non è un pulsante largo
+tutto lo schermo (sembrerebbe una fascia pubblicitaria): la barra è allineata
+alla colonna della pagina (828 px), con foto, nome, stelle e "Risponde
+entro…" a sinistra e il pulsante verde con freccia e magnete a destra. Come
+sul telefono compare solo quando il pulsante della pagina non è sullo
+schermo. Sul telefono, su richiesta di Luca, la barra ha la foto del
+professionista a sinistra del pulsante (il nome non ci starebbe senza
+tagliarlo), per far capire che la richiesta va proprio a lui.
+
+**Pulsante in alto (decisione di Luca):** nel profilo di un
+professionista che accetta richieste (quello con la barra in basso)
+"Richiedi preventivo" in alto a destra non compare più, da computer e da
+telefono (`body:has(.profile-cta-bar) .site-header-cta-link` in
+globals.css, così non lampeggia al caricamento); resta nei profili in pausa,
+dove è l'unico modo di chiedere un preventivo. Portava alla richiesta generica, non a quel professionista, e
+confondeva accanto a "Richiedi un preventivo a [nome]" (come in home e nelle
+pagine di accesso, §279 e §349). Supera la proposta non scelta del §325.
+
+**File:** `apps/web/src/components/ProfileQuoteCta.tsx` (prop `summary`),
+`apps/web/src/components/SiteHeader.tsx` (classe `site-header-cta-link`),
+`apps/web/src/app/professionista/[id]/ProfessionalDetailContent.tsx`,
+`apps/web/src/app/globals.css` (`.profile-cta-bar` fuori dalla media query).
+
+**Verifica:** build di produzione col profilo vero, fotografato a 1440, 1024
+e 390 px (anteprime in `anteprime/barra-preventivo-computer/`).
