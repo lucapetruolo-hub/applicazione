@@ -77,6 +77,8 @@ const selfAny = [
   "POST /auth/verify-email/resend",
   "POST /bookings/completion-photos",
   "GET /bookings/me",
+  // Ultimi dati per la fattura usati dal cliente, per precompilare (§372).
+  "GET /client-invoice-requests/last",
   "POST /guided-requests",
   "GET /guided-requests/chat-threads",
   "GET /guided-requests/me",
@@ -117,6 +119,9 @@ const selfProfessional = [
   "POST /agenda/online-slots/remove",
   "POST /agenda/online/enable",
   "GET /agenda/zone-demand",
+  // Fatture e documenti del professionista (§372).
+  "GET /documents",
+  "PUT /documents/accountant",
   "POST /billing/boost/checkout",
   "POST /billing/portal",
   "POST /billing/subscription/cancel",
@@ -158,6 +163,9 @@ const request = (extra = {}) => ({ kind: "owned", owners: ["clientA"], params: (
 const quote = (extra = {}) => ({ kind: "owned", owners: ["clientA"], params: (f) => ({ id: f.quoteA }), ...extra });
 const lead = { kind: "owned", owners: ["proA"], params: (f) => ({ id: f.leadA }) };
 const externalJob = { kind: "owned", owners: ["proA"], params: (f) => ({ id: f.externalJobA }) };
+const invoice = { kind: "owned", owners: ["proA"], strangers: ["clientA", "clientB", "proB"], params: (f) => ({ id: f.invoiceA }) };
+// Estratto di un mese: dati di chi chiama, il mese non è di nessuno.
+const statement = { kind: "self", role: "professional", params: () => ({ month: "2026-09" }) };
 
 const owned = {
   "DELETE /bookings/:id": booking(),
@@ -184,6 +192,15 @@ const owned = {
   "PATCH /bookings/:id/report-no-show": booking(),
   "PATCH /bookings/:id/status": booking({ body: () => ({ status: "CANCELED" }) }),
   "POST /bookings/from-quote/:quoteId": { kind: "owned", owners: ["clientA"], params: (f) => ({ quoteId: f.quoteA }) },
+
+  // Fattura chiesta dal cliente al professionista, sul lavoro accettato (§372).
+  "PUT /client-invoice-requests/:quoteId": { kind: "owned", owners: ["clientA"], params: (f) => ({ quoteId: f.quoteDone }) },
+  "DELETE /client-invoice-requests/:quoteId": { kind: "owned", owners: ["clientA"], params: (f) => ({ quoteId: f.quoteDone }) },
+
+  // Le nostre fatture al professionista e la copia di cortesia del suo documento: solo lui (§372).
+  "GET /documents/invoices/:id": invoice,
+  "GET /documents/invoices/:id/xml": invoice,
+  "GET /documents/courtesy/:bookingId": { kind: "owned", owners: ["proA"], strangers: ["clientA", "clientB", "proB"], params: (f) => ({ bookingId: f.bookingA }) },
 
   "DELETE /external-jobs/:id": externalJob,
   "PATCH /external-jobs/:id": externalJob,
@@ -254,6 +271,8 @@ export const POLICY = {
   ...Object.fromEntries(selfAny.map((key) => [key, { kind: "self" }])),
   ...Object.fromEntries(selfProfessional.map((key) => [key, { kind: "self", role: "professional" }])),
   ...Object.fromEntries(selfAdmin.map((key) => [key, { kind: "self", role: "admin" }])),
+  "GET /documents/statements/:month": statement,
+  "GET /documents/statements/:month/csv": statement,
   ...owned,
 };
 

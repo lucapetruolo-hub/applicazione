@@ -115,6 +115,25 @@ async function seed() {
   });
   await prisma.jobPayment.create({ data: { bookingId: bookingA.id, paymentMethod: "DIRECT", grossAmountEurCents: 10000, netAmountEurCents: 10000 } });
 
+  // Fattura delle trattenute di proA (§372).
+  const invoiceA = await prisma.invoice.create({
+    data: {
+      type: "MANOVIA_TO_PROFESSIONAL",
+      source: "JOB_FEES",
+      professionalProfileId: profileA.id,
+      series: "COM",
+      year: 2026,
+      number: 1,
+      periodMonth: "2026-09",
+      amountEurCents: 854,
+      taxableEurCents: 700,
+      vatEurCents: 154,
+      status: "ISSUED",
+      issuedAt: new Date(),
+      xml: "<FatturaElettronica/>",
+    },
+  });
+
   const notificationA = await prisma.notification.create({ data: { userId: users.clientA.id, channel: "PUSH", type: "QUOTE_RECEIVED", payload: {} } });
   const externalJobA = await prisma.externalJob.create({ data: { professionalProfileId: profileA.id, clientName: "Cliente esterno", scheduledAt: start } });
   const reportA = await prisma.contentReport.create({
@@ -138,7 +157,9 @@ async function seed() {
       requestA: requestA.id,
       leadA: leadA.id,
       quoteA: quoteA.id,
+      quoteDone: quoteDone.id,
       bookingA: bookingA.id,
+      invoiceA: invoiceA.id,
       notificationA: notificationA.id,
       externalJobA: externalJobA.id,
       reportA: reportA.id,

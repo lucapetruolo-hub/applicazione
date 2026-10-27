@@ -134,6 +134,9 @@ export class ClientInvoiceRequestsService {
 
   /** Il cliente non vuole più la fattura. */
   async removeForClient(clientId: string, quoteId: string): Promise<void> {
+    const quote = await this.prisma.quote.findUnique({ where: { id: quoteId }, select: { guidedRequest: { select: { clientId: true } } } });
+    if (!quote) throw new NotFoundException("Preventivo non trovato.");
+    if (quote.guidedRequest.clientId !== clientId) throw new ForbiddenException("Questo preventivo non è associato a una tua richiesta.");
     await this.prisma.clientInvoiceRequest.deleteMany({ where: { quoteId, clientId } });
   }
 }
