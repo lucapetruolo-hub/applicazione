@@ -127,6 +127,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "NEW_REVIEW",
       // Il cliente chiede la fattura dopo l'accettazione, o cambia i dati (docs/CHANGELOG.md §378).
       "JOB_INVOICE_REQUESTED",
+      // Il 15 dicembre: documenti dati ai clienti da sistemare prima del riepilogo dell'anno (docs/CHANGELOG.md §384).
+      "CLIENT_DOCUMENTS_TO_FIX",
       // Trattenute del mese che non tornano con Stripe (docs/CHANGELOG.md §378).
       "ADMIN_FEE_RECONCILIATION",
     ],

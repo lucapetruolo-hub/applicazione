@@ -8,10 +8,12 @@ import { sandboxTestInvoiceXml, sdiCompanyOf, type IssuerSnapshot } from "./invo
 import { OpenapiSdiProvider, sdiOutcomeFromNotifications, sdiRejectionMessage } from "./sdi-provider";
 import { CourtesyCopyService } from "./courtesy-copy.service";
 import { StatementsService, accountantStatementEmail } from "./statements.service";
+import { renderEmail } from "../email/email-layout";
+import { notificationEmail } from "../email/templates/notification-emails";
 
 // PDF, numero della copia di cortesia e invio allo SdI (docs/CHANGELOG.md §379);
 // elenco dei documenti ai clienti in Admin (§380); riepilogo dell'anno (§382),
-// che a gennaio va anche al commercialista (§383).
+// che a gennaio va anche al commercialista (§383); avviso di dicembre (§384).
 
 const issuer: IssuerSnapshot = {
   companyName: "Professionisti S.r.l.",
@@ -127,7 +129,7 @@ describe("numero della copia di cortesia", () => {
     };
     const invoices = { profileIdOf: vi.fn().mockResolvedValue("pro-1") };
     const audit = { record: vi.fn().mockResolvedValue(undefined) };
-    return { service: new CourtesyCopyService(prisma as never, invoices as never, audit as never), prisma, audit };
+    return { service: new CourtesyCopyService(prisma as never, invoices as never, audit as never, {} as never), prisma, audit };
   }
 
   it("la prima ricevuta dell'anno prende il numero 1, la successiva il 4 dopo il 3", async () => {
@@ -260,7 +262,7 @@ describe("riepilogo dell'anno per il commercialista", () => {
       courtesyDocument: { findMany: vi.fn().mockResolvedValue(documents) },
     };
     const invoices = { profileIdOf: vi.fn().mockResolvedValue("pro-1") };
-    return { service: new CourtesyCopyService(prisma as never, invoices as never, { record: vi.fn() } as never), prisma };
+    return { service: new CourtesyCopyService(prisma as never, invoices as never, { record: vi.fn() } as never, {} as never), prisma };
   }
 
   it("ricevute in ordine di numero, fatture con l'IVA, bollo e clienti con partita IVA", async () => {
@@ -369,6 +371,69 @@ describe("riepilogo dell'anno al commercialista a gennaio", () => {
     expect(alone.title).toBe("Riepilogo del 2026");
     expect(alone.paragraphs).toEqual(["Le mandiamo il **riepilogo del 2026** di **Mario Rossi**, come ci ha chiesto: i documenti dati ai clienti nell'anno (le ricevute per prestazione occasionale), in PDF e nel foglio di calcolo. A dicembre non ci sono stati movimenti, quindi niente estratto del mese."]);
     expect(alone.details).toEqual([{ label: "Ricevute del 2026", value: "50,00 €" }]);
+  });
+});
+
+describe("documenti da sistemare a dicembre", () => {
+  const doc = (professionalProfileId: string, bookingId: string, number: number, pdfTotalEurCents: number | null, grossAmountEurCents: number | null) => ({
+    bookingId,
+    professionalProfileId,
+    kind: "RECEIPT",
+    number,
+    year: 2026,
+    ownNumber: null,
+    pdfDownloadedAt: pdfTotalEurCents !== null ? new Date("2026-06-02T09:00:00Z") : null,
+    pdfTotalEurCents,
+    booking: {
+      jobPayment: grossAmountEurCents !== null ? { paymentMethod: "DIRECT", paidEurCents: 0, refundedEurCents: 0, grossAmountEurCents } : null,
+      client: { name: "Anna", surname: "Bianchi", deletedAt: null },
+      quote: { guidedRequest: { category: { label: "Idraulico" } } },
+    },
+  });
+
+  it("il 15 dicembre avvisa solo chi ha documenti con l'importo cambiato o senza importo", async () => {
+    const prisma = {
+      courtesyDocument: {
+        findMany: vi.fn().mockResolvedValue([
+          doc("p1", "b1", 1, 10000, 8000),
+          doc("p1", "b2", 2, null, 5000),
+          doc("p1", "b3", 3, null, null),
+          doc("p2", "b4", 1, 5000, 5000),
+          doc("p3", "b5", 1, 9000, 7000),
+        ]),
+      },
+      // p3 ha chiuso l'account: non torna dalla ricerca.
+      professionalProfile: { findMany: vi.fn().mockResolvedValue([{ id: "p1", userId: "u1", fiscalProfile: { accountantStatementsAt: new Date(), accountantEmail: "studio@esempio.it" } }]) },
+    };
+    const notifications = { notify: vi.fn().mockResolvedValue(undefined) };
+    const service = new CourtesyCopyService(prisma as never, {} as never, {} as never, notifications as never);
+
+    expect(await service.remindDocumentsToFix(new Date("2026-12-15T08:00:00Z"))).toBe(1);
+    expect(prisma.courtesyDocument.findMany.mock.calls[0]![0].where).toEqual({ year: 2026, booking: { status: { not: "CANCELED" } } });
+    expect(prisma.professionalProfile.findMany.mock.calls[0]![0].where).toEqual({ id: { in: ["p1", "p3"] }, user: { deletedAt: null } });
+    expect(notifications.notify).toHaveBeenCalledTimes(1);
+    expect(notifications.notify).toHaveBeenCalledWith("u1", "CLIENT_DOCUMENTS_TO_FIX", {
+      year: 2026,
+      accountant: true,
+      documents: [
+        { label: "Ricevuta n. 1/2026", customerName: "Anna Bianchi", reason: "AMOUNT_CHANGED" },
+        { label: "Ricevuta n. 3/2026", customerName: "Anna Bianchi", reason: "MISSING_AMOUNT" },
+      ],
+    });
+  });
+
+  it("email con l'elenco e cosa fare", () => {
+    const ctx = { name: "Mario", category: null, city: null, businessName: null, when: null, proposedWhen: null };
+    const payload = { year: 2026, accountant: true, documents: [{ label: "Ricevuta n. 1/2026", customerName: "Anna Bianchi", reason: "AMOUNT_CHANGED" }, { label: "Ricevuta n. 3/2026", customerName: null, reason: "MISSING_AMOUNT" }] };
+    const email = renderEmail(notificationEmail("CLIENT_DOCUMENTS_TO_FIX", payload, ctx)!);
+    expect(email.subject).toBe("Documenti da sistemare prima di fine anno");
+    expect(email.text).toContain("Prima del riepilogo del 2026 ci sono 2 documenti dati ai clienti da sistemare.");
+    expect(email.text).toContain("Ricevuta n. 1/2026, Anna Bianchi: Importo cambiato dopo il PDF");
+    expect(email.text).toContain("Ricevuta n. 3/2026: Senza importo");
+    expect(email.text).toContain("Il 1° gennaio il riepilogo parte da solo al tuo commercialista.");
+    const single = renderEmail(notificationEmail("CLIENT_DOCUMENTS_TO_FIX", { ...payload, accountant: false, documents: payload.documents.slice(0, 1) }, ctx)!);
+    expect(single.subject).toBe("Un documento da sistemare prima di fine anno");
+    expect(single.text).toContain("Poi scarica il riepilogo dell'anno per il tuo commercialista.");
   });
 });
 

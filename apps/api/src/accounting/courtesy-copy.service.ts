@@ -1,4 +1,5 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { Cron } from "@nestjs/schedule";
 import type { Prisma, PrismaClient } from "@professionisti/database";
 import {
   STAMP_DUTY_THRESHOLD_EUR_CENTS,
@@ -18,6 +19,7 @@ import {
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
+import { NotificationsService } from "../notifications/notifications.service";
 import { invoiceRequestView } from "../client-invoice-requests/client-invoice-requests.service";
 import { InvoicesService } from "./invoices.service";
 import { professionalFiscalName, recipientFromFiscal, recipientParty } from "./invoice-documents";
@@ -35,10 +37,13 @@ import { COURTESY_DOCUMENT_FIELDS, courtesyDocumentSummary } from "./courtesy-do
  */
 @Injectable()
 export class CourtesyCopyService {
+  private readonly logger = new Logger(CourtesyCopyService.name);
+
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly invoicesService: InvoicesService,
     private readonly auditLogService: AuditLogService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async forProfessional(userId: string, bookingId: string): Promise<CourtesyCopyView> {
@@ -153,6 +158,60 @@ export class CourtesyCopyService {
       receipts: receipts.sort((a, b) => a.sort - b.sort || a.row.date.localeCompare(b.row.date)).map((r) => r.row),
       invoices: invoices.sort((a, b) => a.date.localeCompare(b.date)),
     };
+  }
+
+  /**
+   * Il 15 dicembre alle 9 (docs/CHANGELOG.md §384): a chi ha documenti
+   * dell'anno da sistemare, con l'importo cambiato dopo il PDF o senza
+   * importo, un avviso con l'elenco, così il riepilogo dell'anno (anche
+   * quello che a gennaio parte al commercialista) arriva pulito.
+   */
+  @Cron("0 9 15 12 *", { timeZone: "Europe/Rome" })
+  async remindDocumentsToFix(now: Date = new Date()): Promise<number> {
+    const year = Number(romeMonthOf(now).slice(0, 4));
+    const documents = await this.prisma.courtesyDocument.findMany({
+      where: { year, booking: { status: { not: "CANCELED" } } },
+      orderBy: { createdAt: "asc" },
+      select: {
+        ...COURTESY_DOCUMENT_FIELDS,
+        professionalProfileId: true,
+        booking: {
+          select: {
+            jobPayment: { select: { paymentMethod: true, paidEurCents: true, refundedEurCents: true, grossAmountEurCents: true } },
+            client: { select: { name: true, surname: true, deletedAt: true } },
+            quote: { select: { guidedRequest: { select: { category: { select: { label: true } } } } } },
+          },
+        },
+      },
+    });
+    const toFix = new Map<string, CourtesyDocumentSummary[]>();
+    for (const doc of documents) {
+      const summary = courtesyDocumentSummary(doc, doc.booking);
+      if (summary.amountChanged || summary.totalEurCents === null) toFix.set(doc.professionalProfileId, [...(toFix.get(doc.professionalProfileId) ?? []), summary]);
+    }
+    if (toFix.size === 0) return 0;
+    const profiles = await this.prisma.professionalProfile.findMany({
+      where: { id: { in: [...toFix.keys()] }, user: { deletedAt: null } },
+      select: { id: true, userId: true, fiscalProfile: { select: { accountantStatementsAt: true, accountantEmail: true } } },
+    });
+    let sent = 0;
+    for (const profile of profiles) {
+      try {
+        await this.notificationsService.notify(profile.userId, "CLIENT_DOCUMENTS_TO_FIX", {
+          year,
+          accountant: !!profile.fiscalProfile?.accountantStatementsAt && !!profile.fiscalProfile.accountantEmail,
+          documents: (toFix.get(profile.id) ?? []).map((doc) => ({
+            label: doc.label,
+            customerName: doc.customerName,
+            reason: doc.amountChanged ? "AMOUNT_CHANGED" : "MISSING_AMOUNT",
+          })),
+        });
+        sent += 1;
+      } catch (err) {
+        this.logger.error(`Avviso dei documenti da sistemare non mandato (${profile.id}): ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+    return sent;
   }
 
   /** La stessa copia vista dall'admin: solo se il professionista l'ha preparata, senza dare numeri nuovi, e resta nel registro azioni. */

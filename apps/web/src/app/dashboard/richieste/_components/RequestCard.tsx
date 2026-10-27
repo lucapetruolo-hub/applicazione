@@ -1113,7 +1113,7 @@ export function RequestCard({
           {booking?.courtesyDocument?.amountChanged && booking.status !== "CANCELED" ? (
             <Link href={`/dashboard/documenti/cortesia/${booking.id}`} style={{ textDecoration: "none" }}>
               <Text fontSize={13} fontWeight="700" color={brand.ottoneScuro}>
-                L&apos;importo è cambiato dopo il PDF: rifai {booking.courtesyDocument.kind === "RECEIPT" ? "la ricevuta" : "la copia della fattura"} per il cliente →
+                L&apos;importo è cambiato dopo il PDF: scarica di nuovo {booking.courtesyDocument.kind === "RECEIPT" ? "la ricevuta" : "la copia della fattura"} e ridalla al cliente →
               </Text>
             </Link>
           ) : null}

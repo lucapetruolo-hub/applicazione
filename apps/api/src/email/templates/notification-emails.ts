@@ -971,6 +971,34 @@ const BUILDERS: Record<string, Builder> = {
       cta: proRequests("Apri il lavoro"),
     };
   },
+  // Il 15 dicembre (docs/CHANGELOG.md §384): documenti dati ai clienti da
+  // sistemare prima del riepilogo dell'anno, uno per riga.
+  CLIENT_DOCUMENTS_TO_FIX: (payload, ctx) => {
+    const documents = Array.isArray(payload.documents)
+      ? payload.documents.flatMap((doc) => {
+          if (!doc || typeof doc !== "object") return [];
+          const d = doc as Record<string, unknown>;
+          if (typeof d.label !== "string") return [];
+          return [{ label: typeof d.customerName === "string" ? `${d.label}, ${d.customerName}` : d.label, value: d.reason === "MISSING_AMOUNT" ? "Senza importo" : "Importo cambiato dopo il PDF" }];
+        })
+      : [];
+    const year = typeof payload.year === "number" ? ` del ${payload.year}` : " dell'anno";
+    return {
+      kind: "notification",
+      subject: documents.length === 1 ? "Un documento da sistemare prima di fine anno" : "Documenti da sistemare prima di fine anno",
+      greeting: ctx.name,
+      title: "Documenti da sistemare",
+      paragraphs: [
+        documents.length === 1
+          ? `Prima del riepilogo${year} c'è un documento dato a un cliente da sistemare.`
+          : `Prima del riepilogo${year} ci sono ${documents.length > 0 ? `${documents.length} ` : ""}documenti dati ai clienti da sistemare.`,
+        "Se l'importo è cambiato, per esempio dopo un rimborso, scarica di nuovo il PDF dal lavoro e ridallo al cliente. Se manca l'importo, chiudi il lavoro con il prezzo finale.",
+        payload.accountant === true ? "Il 1° gennaio il riepilogo parte da solo al tuo commercialista." : "Poi scarica il riepilogo dell'anno per il tuo commercialista.",
+      ],
+      details: documents.length > 0 ? documents : undefined,
+      cta: { label: "Apri Fatture e documenti", url: `${frontendUrl()}/dashboard/documenti` },
+    };
+  },
   // Quadratura del mese o fattura scartata dallo SdI (`kind: "sdi"`).
   ADMIN_FEE_RECONCILIATION: (payload) => {
     const alerts = Array.isArray(payload.alerts) ? payload.alerts.filter((a): a is string => typeof a === "string") : [];

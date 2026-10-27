@@ -216,7 +216,11 @@ function ClientDocuments({ token, documents }: { token: string; documents: Court
                     </Text>
                     {doc.amountChanged ? (
                       <Text fontSize={13} fontWeight="700" color={brand.ottoneScuro}>
-                        L&apos;importo è cambiato dopo il PDF: rifallo
+                        L&apos;importo è cambiato dopo il PDF: scaricalo di nuovo e ridallo al cliente
+                      </Text>
+                    ) : doc.totalEurCents === null ? (
+                      <Text fontSize={13} fontWeight="700" color={brand.ottoneScuro}>
+                        Senza importo: chiudi il lavoro con il prezzo finale
                       </Text>
                     ) : null}
                   </YStack>

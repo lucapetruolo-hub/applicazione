@@ -136,7 +136,7 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
   if (type === "ADMIN_SEARCH_DEMAND_ALERT") return "/admin/numeri-professionisti";
   if (type === "ADMIN_WEEKLY_ADVICE") return "/admin/andamento";
   // Documenti contabili (docs/CHANGELOG.md §378).
-  if (type === "MONTHLY_DOCUMENTS_READY") return "/dashboard/documenti";
+  if (type === "MONTHLY_DOCUMENTS_READY" || type === "CLIENT_DOCUMENTS_TO_FIX") return "/dashboard/documenti";
   if (type === "ADMIN_FEE_RECONCILIATION") return "/admin/finanza";
   // Verifica fiscale e d'identità (docs/CHANGELOG.md §253).
   if (type === "TAX_ID_INVALID") return "/dashboard/fiscale";

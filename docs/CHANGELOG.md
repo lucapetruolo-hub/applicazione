@@ -21397,3 +21397,13 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - Il riepilogo per il professionista dal sito resta com'era (anno senza documenti: 404).
 
 **Verifica**: test nuovi sull'invio del 1° gennaio (estratto e riepilogo insieme, solo riepilogo, nessuna email senza movimenti né documenti), sugli altri mesi (riepilogo mai chiesto) e sui testi dell'email; 798 test dell'API, typecheck e lint di API e sito.
+
+## 384. Avviso del 15 dicembre: documenti dati ai clienti da sistemare
+
+**Richiesta** (Luca, 27/10/2026, la miglioria proposta dopo il §383): "effettua questa miglioria se lo ritieni", dopo aver chiesto come si "rifà" un documento che prepariamo noi.
+
+**Decisione**:
+- **Avviso del 15 dicembre alle 9** (`CourtesyCopyService.remindDocumentsToFix`, notifica `CLIENT_DOCUMENTS_TO_FIX` nell'argomento "Lavori e appuntamenti", sul sito e per email): a chi ha documenti dell'anno con l'importo cambiato dopo il PDF scaricato o senza importo, l'elenco uno per riga ("Ricevuta n. 4/2026, Anna Bianchi: Importo cambiato dopo il PDF") e cosa fare: scaricare di nuovo il PDF dal lavoro e ridarlo al cliente, oppure chiudere il lavoro con il prezzo finale. Con la spunta del commercialista l'email dice che il 1° gennaio il riepilogo parte da solo, senza la spunta di scaricarlo. Restano fuori i lavori annullati e gli account chiusi; chi non ha niente da sistemare non riceve nulla. Un clic porta a Fatture e documenti.
+- **Parole più chiare** (Luca non capiva come si "rifà" un documento che prepariamo noi): il documento si aggiorna da solo, va solo scaricato di nuovo e ridato al cliente. Nell'elenco di Fatture e documenti "L'importo è cambiato dopo il PDF: scaricalo di nuovo e ridallo al cliente" e, nuova, "Senza importo: chiudi il lavoro con il prezzo finale"; nella scheda del lavoro "scarica di nuovo la ricevuta e ridalla al cliente"; nel PDF del riepilogo il plurale giusto.
+
+**Verifica**: test nuovi sull'avviso (solo i documenti da sistemare, account chiusi fuori, spunta del commercialista) e sull'email (una o più righe, con e senza commercialista); il test comune delle email (argomento, payload vuoto) passa anche per il tipo nuovo; 800 test dell'API, typecheck e lint di API e sito.

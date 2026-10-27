@@ -130,6 +130,8 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   // Documenti contabili (docs/CHANGELOG.md §378).
   JOB_INVOICE_REQUESTED: { icon: "🧾", message: "Un cliente ti chiede la fattura: trovi i dati nella scheda del lavoro." },
   MONTHLY_DOCUMENTS_READY: { icon: "🧾", message: "I documenti del mese sono pronti in Fatture e documenti." },
+  // Il 15 dicembre (§384).
+  CLIENT_DOCUMENTS_TO_FIX: { icon: "🧾", message: "Hai documenti dati ai clienti da sistemare prima del riepilogo dell'anno." },
   ADMIN_FEE_RECONCILIATION: { icon: "⚠️", message: "Ci sono fatture o trattenute da controllare in Finanza." },
 };
 

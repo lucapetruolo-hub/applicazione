@@ -240,7 +240,7 @@ export function courtesyYearPdfModel(summary: CourtesyYearSummary, now: Date = n
   const missing = receipts.missingAmounts + invoices.missingAmounts;
   const changed = receipts.amountChanged + invoices.amountChanged;
   const warnings = [
-    changed > 0 ? `${changed === 1 ? "1 documento ha" : `${changed} documenti hanno`} l'importo cambiato dopo il PDF: rifallo e dallo al cliente al posto di quello vecchio.` : null,
+    changed > 0 ? `${changed === 1 ? "1 documento ha" : `${changed} documenti hanno`} l'importo cambiato dopo il PDF: ${changed === 1 ? "scaricalo di nuovo e dallo al cliente al posto di quello vecchio" : "scaricali di nuovo e dalli ai clienti al posto di quelli vecchi"}.` : null,
     missing > 0 ? `${missing === 1 ? "1 documento è" : `${missing} documenti sono`} senza importo: il lavoro non ha ancora il prezzo finale.` : null,
   ].filter((line): line is string => !!line);
   if (warnings.length > 0) blocks.push({ type: "note", tone: "sand", lines: warnings });
