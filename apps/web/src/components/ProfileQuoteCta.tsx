@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { BUTTON_HEIGHT, Button, ButtonArrow, Text, XStack } from "@professionisti/ui";
 import { MagneticButton } from "./MagneticButton";
@@ -10,10 +10,12 @@ import { MagneticButton } from "./MagneticButton";
  * magnete e stessa pressione del pulsante "Cerca", con la freccia delle
  * azioni principali. Su telefono occupa tutta la larghezza e, quando esce
  * dallo schermo, ricompare in una barra fissa in basso (`.profile-cta-bar`
- * in globals.css): sul telefono il pulsante sta sotto la scheda, oltre la
- * prima schermata.
+ * in globals.css): il pulsante sta sotto l'agenda, oltre la prima schermata.
+ * Da computer la barra è allineata alla pagina e a sinistra mostra
+ * `summary` (foto, nome, stelle): un pulsante largo tutto lo schermo
+ * sembrerebbe una fascia pubblicitaria (docs/CHANGELOG.md §383).
  */
-export function ProfileQuoteCta({ href, name, preview = false }: { href: string; name: string; preview?: boolean }) {
+export function ProfileQuoteCta({ href, name, summary, preview = false }: { href: string; name: string; summary?: ReactNode; preview?: boolean }) {
   const anchorRef = useRef<HTMLDivElement>(null);
   const [showBar, setShowBar] = useState(false);
 
@@ -49,16 +51,21 @@ export function ProfileQuoteCta({ href, name, preview = false }: { href: string;
       </div>
       {preview ? null : (
         <div className="profile-cta-bar" data-visible={showBar ? "true" : undefined} aria-hidden={!showBar}>
-          <Link href={href} style={{ textDecoration: "none", display: "block" }} tabIndex={showBar ? undefined : -1}>
-            <Button variant="primary" width="100%" tabIndex={-1}>
-              <XStack alignItems="center" gap="$2" minWidth={0} maxWidth="100%" flexShrink={1}>
-                <Text color="white" fontFamily="$body" fontSize={16} fontWeight="600" numberOfLines={1} flexShrink={1}>
-                  Richiedi un preventivo
-                </Text>
-                <ButtonArrow />
-              </XStack>
-            </Button>
-          </Link>
+          <div className="profile-cta-bar-inner">
+            {summary ? <div className="profile-cta-bar-summary">{summary}</div> : null}
+            <Link href={href} className="profile-cta-bar-link" style={{ textDecoration: "none", display: "block" }} tabIndex={showBar ? undefined : -1}>
+              <MagneticButton block>
+                <Button variant="primary" width="100%" tabIndex={-1}>
+                  <XStack alignItems="center" gap="$2" minWidth={0} maxWidth="100%" flexShrink={1}>
+                    <Text color="white" fontFamily="$body" fontSize={16} fontWeight="600" numberOfLines={1} flexShrink={1}>
+                      Richiedi un preventivo
+                    </Text>
+                    <ButtonArrow />
+                  </XStack>
+                </Button>
+              </MagneticButton>
+            </Link>
+          </div>
         </div>
       )}
     </>
