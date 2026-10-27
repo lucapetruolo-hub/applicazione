@@ -206,6 +206,9 @@ const owned = {
   "GET /documents/invoices/:id/xml": invoice,
   "GET /documents/invoices/:id/pdf": invoice,
   "GET /documents/courtesy/:bookingId": courtesy,
+  // Documenti di un lavoro dal menu della richiesta: le due parti; la copia in PDF solo il cliente (§385).
+  "GET /documents/jobs/:bookingId": { kind: "owned", owners: BOTH, params: (f) => ({ bookingId: f.bookingA }) },
+  "GET /documents/jobs/:bookingId/copy/pdf": { kind: "owned", owners: ["clientA"], strangers: ["clientB", "proB", "proA"], params: (f) => ({ bookingId: f.bookingA }) },
   "GET /documents/courtesy/:bookingId/pdf": courtesy,
   "PUT /documents/courtesy/:bookingId/number": courtesy,
 

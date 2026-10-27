@@ -60,6 +60,7 @@ import { CardButton } from "@/components/CardButton";
 import { ContactButton } from "@/components/ContactButton";
 import { ScheduleChangeBox } from "@/components/ScheduleChangeBox";
 import { ProfessionalInvoiceRequestBox } from "@/components/ProfessionalInvoiceRequestBox";
+import { JobDocumentsModal } from "@/components/JobDocumentsModal";
 import { DeadlinePill, MiniTimeline, QuoteItemDraft, STAGE_STYLE, ServiceBadge, StagePill, formatDateTime, formatSlotRange, slotKey, slotLabel, smallInputStyle } from "./requestHelpers";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { ItalianTimeInput } from "@/components/ItalianTimeInput";
@@ -240,6 +241,7 @@ export function RequestCard({
 
   const [showClientProfile, setShowClientProfile] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showDocuments, setShowDocuments] = useState(false);
   const [showProblemModal, setShowProblemModal] = useState(false);
   const [menuError, setMenuError] = useState<string | null>(null);
   // "Nuovo": aggiornamenti non letti arrivati in questa pagina, o scheda
@@ -663,6 +665,8 @@ export function RequestCard({
   }
   if (booking) {
     menuActions.push({ icon: "calendar", text: "Vedi in agenda", onPress: () => router.push(`/dashboard/agenda?booking=${booking.id}`) });
+    // Documenti contabili del lavoro (docs/CHANGELOG.md §385).
+    menuActions.push({ icon: "file-text", text: "Documenti", onPress: () => setShowDocuments(true) });
   }
   if (canDelete) {
     menuActions.push({
@@ -1749,6 +1753,7 @@ export function RequestCard({
         />
       ) : null}
       {showCancelModal && booking ? <CancelBookingModal onClose={() => setShowCancelModal(false)} onCancel={handleCancelBooking} /> : null}
+      {showDocuments && booking ? <JobDocumentsModal token={token} bookingId={booking.id} onClose={() => setShowDocuments(false)} /> : null}
       {showReportModal ? (
         <ReportContentModal
           targetType="GUIDED_REQUEST"

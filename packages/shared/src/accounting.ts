@@ -645,6 +645,39 @@ export type CourtesyYearSummary = {
   invoices: CourtesyYearRow[];
 };
 
+/** Un movimento di soldi del lavoro, nei documenti della richiesta (docs/CHANGELOG.md §385). */
+export type JobDocumentMovement = {
+  /** Data (ISO). */
+  date: string;
+  label: string;
+  /** Per chi guarda: positivo se entra, negativo se esce. */
+  amountEurCents: number;
+  /** Fattura delle nostre trattenute che lo contiene (solo per il professionista). */
+  invoice: { id: string; number: string } | null;
+};
+
+/**
+ * I documenti contabili di un lavoro, dal menu della richiesta (decisione
+ * dell'utente del 27/10/2026, docs/CHANGELOG.md §385), per il professionista
+ * e per il cliente.
+ */
+export type JobDocumentsView = {
+  audience: "PROFESSIONAL" | "CLIENT";
+  bookingId: string;
+  /**
+   * Ricevuta o copia della fattura per il cliente. Il cliente la vede solo
+   * dopo che il professionista ha scaricato il PDF, con lo stesso importo.
+   */
+  clientDocument: { label: string; kind: "RECEIPT" | "INVOICE"; amountChanged: boolean } | null;
+  /** Il professionista la può già preparare: lavoro terminato o fattura chiesta. */
+  clientDocumentAvailable: boolean;
+  /** Il cliente ha chiesto la fattura al professionista. */
+  invoiceRequested: boolean;
+  movements: JobDocumentMovement[];
+  /** Solo per il professionista: gli estratti dei mesi dei movimenti ("2026-10"). */
+  statementMonths: { month: string; label: string }[];
+};
+
 /** Totale e conteggi di una parte del riepilogo dell'anno. */
 export function courtesyYearPart(rows: CourtesyYearRow[]): { totalEurCents: number; vatEurCents: number; withVatNumber: number; stampDuty: number; missingAmounts: number; amountChanged: number } {
   return rows.reduce(

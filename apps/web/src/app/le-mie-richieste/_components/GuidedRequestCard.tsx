@@ -46,6 +46,7 @@ import { CLIENT_STAGE_LABEL, type RequestStage } from "@/lib/requestStage";
 import { BookingSection, ChangeLinks } from "./BookingSection";
 import { QuoteCard } from "./QuoteCard";
 import { ClientInvoiceRequestPanel } from "@/components/ClientInvoiceRequestForm";
+import { JobDocumentsModal } from "@/components/JobDocumentsModal";
 import { Disclosure } from "./Disclosure";
 import { DeleteRequestModal } from "./DeleteRequestModal";
 import { announceRequestDeleted } from "./RequestDeletedNotice";
@@ -283,6 +284,7 @@ export function GuidedRequestCard({
   // dell'utente, docs/CHANGELOG.md §329): modale e chat della prenotazione
   // stanno qui, così si aprono anche da una scheda chiusa.
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showDocuments, setShowDocuments] = useState(false);
   const [showBookingChat, setShowBookingChat] = useState(false);
   // Conferma breve dopo "Copia riepilogo" (nessun toast globale per azioni locali).
   const [notice, setNotice] = useState<string | null>(null);
@@ -705,6 +707,8 @@ export function GuidedRequestCard({
   if (canEditDetails) menuActions.push({ icon: "pencil", text: "Modifica richiesta", onPress: startEditing });
   menuActions.push({ icon: "send", text: "Ripeti la richiesta", onPress: () => router.push(repeatHref) });
   menuActions.push({ icon: "share-2", text: "Condividi riepilogo", onPress: handleShare });
+  // Documenti contabili del lavoro: pagamenti e copia della ricevuta o fattura (docs/CHANGELOG.md §385).
+  if (booking) menuActions.push({ icon: "file-text", text: "Documenti", onPress: () => setShowDocuments(true) });
   menuActions.push(
     ...buildPersonalStateActions({
       token,
@@ -1127,6 +1131,7 @@ export function GuidedRequestCard({
 
       {/* Fuori dal blocco espanso: "Segnala un problema" e "Annulla
           prenotazione" si aprono anche dal menu hamburger di una scheda chiusa. */}
+      {showDocuments && booking ? <JobDocumentsModal token={token} bookingId={booking.id} onClose={() => setShowDocuments(false)} /> : null}
       {showReportModal && booking ? (
         <ReportIssueModal
           businessName={booking.businessName}

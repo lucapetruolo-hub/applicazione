@@ -138,7 +138,7 @@ export function statementPdfModel(statement: MonthlyStatement, who: string | nul
 }
 
 /** Copia di cortesia della fattura, o ricevuta per prestazione occasionale, da dare al cliente. */
-export function courtesyPdfModel(copy: CourtesyCopyView): PdfDocumentModel {
+export function courtesyPdfModel(copy: CourtesyCopyView, audience: "professional" | "client" = "professional"): PdfDocumentModel {
   const receipt = copy.kind === "RECEIPT";
   const total = copy.totalEurCents !== null ? eur(copy.totalEurCents) : "______";
   const blocks: PdfBlock[] = [
@@ -172,10 +172,12 @@ export function courtesyPdfModel(copy: CourtesyCopyView): PdfDocumentModel {
     blocks.push({ type: "totals", rows: [], total: { label: "Totale", value: total, detail: copy.paidHow } });
   }
   if (copy.notes.length > 0) blocks.push({ type: "text", muted: true, lines: copy.notes });
-  if (receipt) blocks.push({ type: "signature", label: "Firma" });
+  // Al cliente (§385) la ricevuta è una copia: l'originale firmato glielo dà il professionista.
+  if (receipt && audience === "client") blocks.push({ type: "text", muted: true, lines: ["Copia: la ricevuta originale firmata, con la marca da bollo quando serve, te la dà il professionista."] });
+  else if (receipt) blocks.push({ type: "signature", label: "Firma" });
   else blocks.push({ type: "text", muted: true, lines: ["Copia di cortesia: il documento valido è la fattura elettronica inviata all'Agenzia delle Entrate."] });
 
-  return { title: receipt ? "Ricevuta per prestazione occasionale" : "Copia di cortesia della fattura", blocks };
+  return { title: receipt ? (audience === "client" ? "Copia della ricevuta per prestazione occasionale" : "Ricevuta per prestazione occasionale") : "Copia di cortesia della fattura", blocks };
 }
 
 /** Riepilogo DAC7 di un anno: quello che comunichiamo al fisco. */

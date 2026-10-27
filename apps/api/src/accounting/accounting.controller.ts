@@ -5,6 +5,7 @@ import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard"
 import { InvoicesService } from "./invoices.service";
 import { StatementsService } from "./statements.service";
 import { CourtesyCopyService } from "./courtesy-copy.service";
+import { JobDocumentsService } from "./job-documents.service";
 import { pdfResponse, renderDocumentPdf } from "./document-pdf";
 import { courtesyPdfBaseName, courtesyPdfModel, courtesyYearPdfModel, invoicePdfModel, pdfFileName } from "./document-pdf-models";
 
@@ -16,7 +17,21 @@ export class AccountingController {
     private readonly invoicesService: InvoicesService,
     private readonly statementsService: StatementsService,
     private readonly courtesyCopyService: CourtesyCopyService,
+    private readonly jobDocumentsService: JobDocumentsService,
   ) {}
+
+  /** I documenti di un lavoro, dal menu della richiesta: del professionista o del cliente (§385). */
+  @Get("jobs/:bookingId")
+  jobDocuments(@Req() req: AuthenticatedRequest, @Param("bookingId") bookingId: string) {
+    return this.jobDocumentsService.forUser(req.user.userId, bookingId);
+  }
+
+  /** La copia del documento del professionista, per il cliente (§385). */
+  @Get("jobs/:bookingId/copy/pdf")
+  async jobCopyPdf(@Req() req: AuthenticatedRequest, @Param("bookingId") bookingId: string) {
+    const copy = await this.courtesyCopyService.forClient(req.user.userId, bookingId);
+    return pdfResponse(await renderDocumentPdf(courtesyPdfModel(copy, "client")), pdfFileName(`copia-${courtesyPdfBaseName(copy)}`));
+  }
 
   @Get()
   async overview(@Req() req: AuthenticatedRequest): Promise<DocumentsOverview> {

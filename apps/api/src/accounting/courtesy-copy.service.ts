@@ -4,6 +4,7 @@ import type { Prisma, PrismaClient } from "@professionisti/database";
 import {
   STAMP_DUTY_THRESHOLD_EUR_CENTS,
   clientInvoiceLines,
+  courtesyAmountChanged,
   courtesyDocumentLabel,
   courtesyReceiptNumber,
   courtesyTotalEurCents,
@@ -52,6 +53,21 @@ export class CourtesyCopyService {
     // Solo il professionista del lavoro, e solo dopo l'accettazione (CLAUDE.md §5 punto 9).
     if (!booking || booking.professionalProfileId !== professionalProfileId || booking.status === "CANCELED") throw new NotFoundException("Lavoro non trovato.");
     return this.build(booking, true);
+  }
+
+  /**
+   * La copia per il cliente, dai documenti della sua richiesta (decisione
+   * dell'utente, docs/CHANGELOG.md §385): solo dopo che il professionista ha
+   * scaricato il PDF e con lo stesso importo, senza dare numeri nuovi.
+   */
+  async forClient(clientUserId: string, bookingId: string): Promise<CourtesyCopyView> {
+    const [booking, saved] = await Promise.all([
+      this.loadBooking(bookingId),
+      this.prisma.courtesyDocument.findUnique({ where: { bookingId }, select: { pdfDownloadedAt: true, pdfTotalEurCents: true } }),
+    ]);
+    if (!booking || booking.clientId !== clientUserId || booking.status === "CANCELED" || !saved?.pdfDownloadedAt) throw new NotFoundException("Documento non trovato.");
+    if (courtesyAmountChanged(saved.pdfTotalEurCents, courtesyTotalEurCents(booking.jobPayment))) throw new NotFoundException("Documento non trovato.");
+    return this.build(booking, false, "client");
   }
 
   /**
@@ -303,8 +319,16 @@ export class CourtesyCopyService {
     });
   }
 
-  /** `assignNumber`: la prima volta che il professionista apre la ricevuta le diamo il numero; l'admin non ne dà mai. */
-  private async build(booking: NonNullable<Awaited<ReturnType<CourtesyCopyService["loadBooking"]>>>, assignNumber: boolean): Promise<CourtesyCopyView> {
+  /**
+   * `assignNumber`: la prima volta che il professionista apre la ricevuta le
+   * diamo il numero; l'admin e il cliente non ne danno mai. Al cliente
+   * niente consiglio sulla ritenuta, che è per il professionista.
+   */
+  private async build(
+    booking: NonNullable<Awaited<ReturnType<CourtesyCopyService["loadBooking"]>>>,
+    assignNumber: boolean,
+    audience: "professional" | "client" = "professional",
+  ): Promise<CourtesyCopyView> {
     const bookingId = booking.id;
     const professionalProfileId = booking.professionalProfileId;
     const saved = await this.prisma.courtesyDocument.findUnique({ where: { bookingId } });
@@ -345,7 +369,7 @@ export class CourtesyCopyService {
     if (!chargesVat && total !== null && total > STAMP_DUTY_THRESHOLD_EUR_CENTS) {
       notes.push(kind === "RECEIPT" ? "Marca da bollo da 2 € sull'originale (importo oltre 77,47 €)." : "Imposta di bollo da 2 € assolta in modo virtuale (importo oltre 77,47 €).");
     }
-    if (kind === "RECEIPT" && request?.kind === "VAT") {
+    if (kind === "RECEIPT" && request?.kind === "VAT" && audience === "professional") {
       notes.push("Se il cliente è un'azienda o ha la partita IVA, di solito trattiene il 20% di ritenuta d'acconto e la versa per te: chiedi al tuo commercialista.");
     }
 
