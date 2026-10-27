@@ -1,0 +1,57 @@
+name: Versione di Node
+
+# Node.js non è una libreria: Dependabot e osv-scanner non lo vedono
+# (docs/CHANGELOG.md §373). Ogni giorno questo controllo guarda se è uscita
+# una correzione di sicurezza di Node 22 più nuova di quella in .nvmrc e, se
+# sì, apre una segnalazione (issue) con cosa fare; GitHub la manda per email.
+# Sulle PR che cambiano .nvmrc controlla solo che la versione esista.
+on:
+  schedule:
+    - cron: "23 5 * * *"
+  pull_request:
+    paths:
+      - .nvmrc
+      - scripts/controlla-node.mjs
+      - .github/workflows/node.yml
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  controlla:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Confronto con nodejs.org
+        id: node
+        run: node scripts/controlla-node.mjs
+
+      - name: Segnalazione
+        if: ${{ github.event_name != 'pull_request' && steps.node.outputs.aggiornare == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ATTUALE: ${{ steps.node.outputs.attuale }}
+          ULTIMA: ${{ steps.node.outputs.ultima }}
+          SICUREZZA: ${{ steps.node.outputs.sicurezza }}
+        run: |
+          titolo="Aggiornare Node.js a $ULTIMA (correzione di sicurezza)"
+          if gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$titolo\" in:title" --json number --jq '.[0].number' | grep -q .; then
+            echo "Segnalazione già aperta."
+            exit 0
+          fi
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "$titolo" --body "$(cat <<EOF
+          È uscita una correzione di sicurezza di Node.js ($SICUREZZA). Oggi usiamo $ATTUALE.
+
+          Cosa fare:
+          1. Chiedere a Claude di portare \`.nvmrc\` a $ULTIMA e unire la PR quando la CI è verde.
+          2. Render ricostruisce l'API da solo dopo l'unione. Nei log del deploy deve comparire \`(Node v$ULTIMA)\`.
+          3. Vercel aggiorna Node da solo: basta il prossimo deploy del sito.
+
+          Note sulla versione: https://nodejs.org/en/blog/release/v$ULTIMA
+          EOF
+          )"

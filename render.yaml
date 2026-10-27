@@ -21,6 +21,9 @@ services:
   - type: web
     name: professionisti-api
     runtime: node
+    # Versione di Node: quella esatta di .nvmrc (docs/CHANGELOG.md §373).
+    # Non impostare NODE_VERSION nella dashboard: avrebbe la precedenza su
+    # .nvmrc e l'API resterebbe su una versione vecchia.
     plan: free
     branch: claude/professionisti-platform-architecture-xr9gmn
     healthCheckPath: /health
