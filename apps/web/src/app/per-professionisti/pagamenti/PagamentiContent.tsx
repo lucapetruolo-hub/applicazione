@@ -38,16 +38,33 @@ function P({ children }: { children: ReactNode }) {
   );
 }
 
-function Point({ n, title, children }: { n: number; title: string; children: ReactNode }) {
+function Point({ n, title, children, list }: { n: number; title: string; children: ReactNode; list?: string[] }) {
   return (
     <YStack gap="$1" paddingLeft="$3" borderLeftWidth={3} borderLeftColor={brand.filetto}>
       <Text fontWeight="700" color={brand.grafite}>
         {n}. {title}
       </Text>
       <P>{children}</P>
+      {list ? (
+        <YStack tag="ul" margin={0} padding={0} gap="$1">
+          {list.map((item) => (
+            <XStack key={item} tag="li" gap="$2" alignItems="flex-start">
+              <YStack paddingTop={3} flexShrink={0}>
+                <Icon name="check" size={16} color={brand.cianografiaScuro} strokeWidth={2} />
+              </YStack>
+              <Text fontSize={16} color={brand.grafite70} lineHeight={24} flex={1}>
+                {item}
+              </Text>
+            </XStack>
+          ))}
+        </YStack>
+      ) : null}
     </YStack>
   );
 }
+
+/** Le commissioni Stripe una per una, già dentro la trattenuta (richiesta di Luca, docs/CHANGELOG.md §372). */
+const STRIPE_FEES = ["Commissione Stripe per il pagamento: la paghiamo noi", "Commissione Stripe per i bonifici verso la tua banca: la paghiamo noi"];
 
 const SUMMARY = [
   "Nel preventivo scegli tu i modi: online con carta, direttamente a te, o tutti e due.",
@@ -111,9 +128,8 @@ export function PagamentiContent() {
             quando il cliente conferma che il lavoro è finito, oppure 7 giorni dopo la chiusura se non conferma e non segnala problemi, e
             parte il bonifico verso la tua banca. Con una segnalazione aperta resta bloccato finché non si chiude.
           </Point>
-          <Point n={4} title="Costi">
-            Da quanto il cliente paga online tratteniamo il {ONLINE_APP_FEE_PERCENT}% più l&apos;IVA, tutto compreso: la commissione
-            Stripe per il pagamento e quella per i bonifici verso la tua banca le paghiamo noi. Su un lavoro da{" "}
+          <Point n={4} title="Costi" list={STRIPE_FEES}>
+            Da quanto il cliente paga online tratteniamo il {ONLINE_APP_FEE_PERCENT}% più l&apos;IVA, tutto compreso. Su un lavoro da{" "}
             {formatEurCents(EXAMPLE.amountEurCents)} tratteniamo{" "}
             {formatEurCents(EXAMPLE.feeEurCents)} ({formatEurCents(EXAMPLE.taxableEurCents)} + {formatEurCents(EXAMPLE.vatEurCents)} di IVA) e
             ti arrivano {formatEurCents(EXAMPLE.netEurCents)}. Ogni mese ti mandiamo la fattura delle trattenute. Su quanto ti paga
