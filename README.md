@@ -7,7 +7,7 @@ leggerlo prima di contribuire.
 
 ## Requisiti
 
-- Node.js ≥ 20 (vedi `.nvmrc`)
+- Node.js 22 (versione esatta in `.nvmrc`)
 - pnpm ≥ 10 (`corepack enable` oppure `npm i -g pnpm`)
 - PostgreSQL con estensione PostGIS (per `apps/api` in locale)
 

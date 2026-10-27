@@ -21268,3 +21268,17 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 **API**: `POST /site/step`, `POST /site/failure` (pubbliche, limitate), `GET /admin/site-stats`, `POST /admin/site-notes`, `DELETE /admin/site-notes/:id` (`@RequireAdminScope("ANY")`), `DELETE /admin/users/:id/test-account` (`SUPER`); motivo facoltativo in `DELETE /auth/me` e nell'annullamento dell'abbonamento; `signupSource` in registrazione e accesso con Google.
 
 **Verifica**: test dei conti e dei consigli (`site-stats.test.ts`), dei conteggi (`site-counts.service.test.ts`) e dell'eliminazione (`admin.service.test.ts`); typecheck, lint, test dell'API; test dei permessi delle rotte; prove nel browser `e2e/tests/conteggi.spec.ts` (ricerca e passi della richiesta +1 per un cliente, 0 per Googlebot e con "Non contare", invio fallito +1, passi inviati uguali alle richieste salvate) e `e2e/tests/andamento-sito.spec.ts` (pagina su telefono e computer senza scorrimento laterale né errori axe, cookie messo all'admin, account di prova eliminato con le sue richieste). Lighthouse prima/dopo su `/`, `/preventivo` e `/cerca/idraulico/latina`: dopo la correzione di zod pagine +1 kB e punteggi nel rumore della macchina. Le query per i dati veri di Render sono in `analisi/dati-decisioni/query-dati-veri.sql`.
+
+## 373. Node.js 22.23.4 dopo l'avviso di sicurezza di Render
+
+**Richiesta** (Luca, 27/10/2026): avviso di Render sul certificato eMudhra compromesso e sulle correzioni di sicurezza di Node.js del 21/10 (controllo del nome nei certificati TLS aggirabile, Brotli); "e migliorie per fare in modo che siamo sempre aggiornati per eventuali altri attacchi". PHP non lo usiamo.
+
+**Decisione**:
+- `.nvmrc` da `22` a **`22.23.4`** (verificata su nodejs.org, l'ultima 22.x, uscita il 20/10 come correzione di sicurezza). Render la legge da lì: con `22` dipendeva da quale 22.x Render avesse in quel momento. La CI (`ci.yml`, `zod.yml`, che era ancora su Node 20) usa `node-version-file: .nvmrc`, quindi prova la stessa versione dell'API in linea.
+- `engines.node` resta `22.x`: Vercel non permette di fissare la versione esatta e aggiorna da sé le correzioni di Node 22 a ogni deploy.
+- L'API scrive la versione di Node nel log di avvio (`API in ascolto su 0.0.0.0:<porta> (Node v22.23.4)`): nei log di Render si vede se l'aggiornamento è arrivato davvero. Una `NODE_VERSION` impostata nella dashboard di Render avrebbe la precedenza su `.nvmrc` (nota in `render.yaml`).
+- **Restare aggiornati**: Node non è una libreria, quindi Dependabot e osv-scanner non lo vedono. Nuovo controllo giornaliero `.github/workflows/node.yml` con `scripts/controlla-node.mjs`: se dopo la versione di `.nvmrc` esce una correzione di sicurezza di Node 22, apre una segnalazione (issue) con i passi; sulle PR che cambiano `.nvmrc` controlla che la versione esista.
+
+**Certificati e chiamate HTTPS in uscita**: Stripe, Resend, Cloudinary, Google (accesso, Maps, Routes, Places), Openapi, VIES, Didit, Turnstile, Open-Meteo e Sentry passano tutti dal `fetch`/`https` di Node, che usa l'elenco di certificati incluso in Node: con Node 22.23.4 eMudhra non è più fidato. Nessuna libreria porta certificati propri (nessun file `.pem`/`.crt` nelle dipendenze), nessun `rejectUnauthorized: false`, `NODE_TLS_REJECT_UNAUTHORIZED` o `ca:` personalizzato nel codice. Il database è raggiunto dall'indirizzo interno di Render.
+
+**Verifica**: `node scripts/controlla-node.mjs` con 22.23.4 (nessun aggiornamento), 22.23.2 (`aggiornare=true`, ultima 22.23.4), 22.99.0 e `22` (errore); CI della PR.
