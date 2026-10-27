@@ -1,7 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { PrismaClient } from "@professionisti/database";
-import type { ServicePriceIndexEntry } from "@professionisti/shared";
 import { API_URL } from "../fixtures/env";
 import { createProfessional } from "../fixtures/preventivi";
 
@@ -14,6 +13,13 @@ import { createProfessional } from "../fixtures/preventivi";
  */
 // Come un cliente che non ha ancora un account.
 test.use({ storageState: { cookies: [], origins: [] } });
+
+/** Voce restituita da `/professionals/services/price-index` (`ServicePriceIndexEntry` in packages/shared). */
+type ServicePriceIndexEntry = {
+  name: string;
+  professionalCount: number;
+  price: { pricedCount: number; lowEurCents: number; medianEurCents: number; highEurCents: number } | null;
+};
 
 const prisma = new PrismaClient();
 const SERVICE = `Tinteggiatura pareti prova ${Date.now()}`;
