@@ -1,6 +1,8 @@
 "use client";
+"use no memo";
 
 import Link from "next/link";
+import { X } from "lucide-react";
 import type { ProfessionalSearchResult } from "@professionisti/shared";
 import { Text, XStack, YStack, brand } from "@professionisti/ui";
 import { EmptySearchResults } from "@/components/EmptySearchResults";
@@ -59,25 +61,66 @@ export function CercaContent({
     const query = params.toString();
     return query ? `/cerca?${query}` : "/cerca";
   })();
+  // Il filtro si toglie dalla ✕ sulla pastiglia, come nei filtri dei grandi
+  // siti: un link "Mostra tutti" si capiva come "tutti quelli del servizio"
+  // (Luca, §383).
   const serviceBar = service ? (
-    <XStack
-      alignItems="center"
-      justifyContent="space-between"
-      flexWrap="wrap"
-      gap="$2"
-      backgroundColor={brand.calce}
-      borderWidth={1}
-      borderColor={brand.filetto}
-      borderRadius={10}
-      paddingVertical="$3"
-      paddingHorizontal="$4"
-    >
-      <Text fontSize={16} color={brand.grafite} flexShrink={1}>
-        Chi offre <Text fontWeight="700">{service}</Text>
+    <XStack alignItems="center" flexWrap="wrap" gap="$2">
+      <Text fontSize={15} color={brand.grafite70}>
+        Servizio
       </Text>
-      <Link href={allHref} style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 15, textDecoration: "underline", textUnderlineOffset: 3 }}>
-        Mostra tutti i professionisti
+      <Link href={allHref} className="service-chip" aria-label={`Togli il filtro ${service}`}>
+        <span className="service-chip-label">{service}</span>
+        <span className="service-chip-x" aria-hidden="true">
+          <X size={14} strokeWidth={2.4} />
+        </span>
       </Link>
+      <style jsx>{`
+        :global(.service-chip) {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          min-height: 40px;
+          max-width: 100%;
+          padding: 6px 6px 6px 14px;
+          border-radius: 999px;
+          border: 1px solid ${brand.cianografia};
+          background-color: ${brand.cianografiaVelo};
+          color: ${brand.cianografiaScuro};
+          font-weight: 700;
+          font-size: 15px;
+          text-decoration: none;
+          transition: background-color 0.15s ease;
+        }
+        :global(.service-chip:hover) {
+          background-color: #c9ecd9;
+        }
+        :global(.service-chip:focus-visible) {
+          outline: 2px solid ${brand.cianografiaScuro};
+          outline-offset: 2px;
+        }
+        .service-chip-label {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .service-chip-x {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          width: 28px;
+          height: 28px;
+          border-radius: 999px;
+          background-color: ${brand.cianografiaPieno};
+          color: #fff;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          :global(.service-chip) {
+            transition: none;
+          }
+        }
+      `}</style>
     </XStack>
   ) : null;
   const header =
