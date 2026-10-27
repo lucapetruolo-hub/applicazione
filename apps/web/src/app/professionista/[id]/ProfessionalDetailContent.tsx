@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { BRAND, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, formatServicePriceRange, subTagLabel, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
 import { Badge, BadgeInfo, Button, ProfessionalKindBadge, Chip, EmptyState, Icon, PriceLine, Rating, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
@@ -70,11 +70,19 @@ export function ProfessionalDetailContent({
   professional,
   preview = false,
   breadcrumbs,
+  query = {},
 }: {
   professional: ProfessionalDetail;
   preview?: boolean;
   /** Percorso "Home › Categoria › Città › Nome" sopra la scheda (solo pagina pubblica). */
   breadcrumbs?: ReactNode;
+  /**
+   * `?modalita=`, `?data=` e `?salva=` letti dal server e passati qui, non con
+   * useSearchParams: quello chiedeva un <Suspense> e il profilo arrivava dopo
+   * il piè di pagina, che su una rete lenta saliva in cima e poi scendeva
+   * (Lighthouse CLS 0,93, docs/CHANGELOG.md §386).
+   */
+  query?: { modalita?: string; data?: string; salva?: string };
 }) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
@@ -140,8 +148,7 @@ export function ProfessionalDetailContent({
   // esplicita dell'utente: "una volta che si clicca sul profilo, fai
   // visualizzare l'agenda già nella sezione online"), altrimenti "A
   // domicilio" come sempre. Resta comunque modificabile con i due tab.
-  const searchParams = useSearchParams();
-  const initialAgendaMode: "HOME" | "ONLINE" = searchParams.get("modalita") === "ONLINE" ? "ONLINE" : "HOME";
+  const initialAgendaMode: "HOME" | "ONLINE" = query.modalita === "ONLINE" ? "ONLINE" : "HOME";
   const [agendaMode, setAgendaMode] = useState<"HOME" | "ONLINE">(initialAgendaMode);
 
   const agendaPreview = useMemo(() => {
@@ -168,7 +175,7 @@ export function ProfessionalDetailContent({
   // §206): la griglia parte da quel giorno e la pagina scorre fino
   // all'agenda. Fatto qui e non con il solo `#agenda` perché l'agenda arriva
   // dopo il caricamento della pagina e il browser non trova ancora l'ancora.
-  const requestedAgendaDate = searchParams.get("data");
+  const requestedAgendaDate = query.data ?? null;
   const [appliedAgendaDate, setAppliedAgendaDate] = useState<string | null>(null);
   if (agendaPreview && requestedAgendaDate && appliedAgendaDate !== requestedAgendaDate) {
     setAppliedAgendaDate(requestedAgendaDate);
@@ -218,7 +225,7 @@ export function ProfessionalDetailContent({
   // `?salva=1`: il visitatore ha toccato il cuoricino senza essere entrato
   // ed è tornato qui dopo l'accesso, quindi il profilo si salva da solo
   // (docs/CHANGELOG.md §208).
-  const saveAfterLogin = searchParams.get("salva") === "1";
+  const saveAfterLogin = query.salva === "1";
   useEffect(() => {
     if (!token || user?.role !== "CLIENT") return;
     apiClient

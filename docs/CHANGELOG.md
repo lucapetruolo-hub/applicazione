@@ -21385,9 +21385,21 @@ focus e del proprio profilo falliscono. Lighthouse misura anche il profilo
 pubblico (`e2e/lighthouse/agenda.mjs`, nuovo profilo di prova in
 `global-setup`). Tutte le 170 prove nel browser verdi su un database pulito.
 
+**Profilo che arrivava dopo il piè di pagina** (trovato dalla nuova misura
+Lighthouse in CI, CLS 0,93): il contenuto del profilo stava in un
+`<Suspense>` (serviva a `useSearchParams` per `?modalita=`, `?data=`,
+`?salva=`) e arrivava dopo il piè di pagina, che su una rete lenta compariva
+in cima e poi veniva spinto giù. Ora la pagina server passa questi valori
+come prop (`query`) e il `<Suspense>` non c'è più: il profilo arriva
+nell'ordine della pagina, visibile anche prima che parta JavaScript (meglio
+anche per Google). Su rete lenta simulata lo spostamento scende da 0,90 a
+0,02 (telefono) e 0,04 (computer).
+
 **Visto ma non toccato** (prima di questa modifica, non dovuto alla barra):
-caricando il profilo la pagina si sposta un poco (Lighthouse CLS 0,001 da
-telefono, circa 0,04 da computer: la scheda sale di 16 px all'avvio e il menu
-"Servizi" dell'intestazione cambia larghezza); il colore delle briciole di
-pane in cima al profilo non ha abbastanza contrasto (axe, Lighthouse
-accessibilità 96).
+gli stili `<style jsx>` non arrivano nell'HTML del server (manca il registro
+di styled-jsx per l'App Router), quindi i componenti che li usano restano
+senza stile finché non parte JavaScript: nel profilo i pulsanti Salva e
+Condividi mostrano per un attimo le scritte e la scheda sale di 16 px
+(lo spostamento di 0,04 da computer). Il colore delle briciole di pane in
+cima al profilo non ha abbastanza contrasto (axe, Lighthouse accessibilità
+96).
