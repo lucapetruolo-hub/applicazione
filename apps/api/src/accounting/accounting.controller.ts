@@ -1,12 +1,12 @@
-import { Body, Controller, Get, Param, Put, Req, UseGuards } from "@nestjs/common";
-import { accountantSettingsSchema, courtesyNumberSchema, type AccountantSettingsInput, type CourtesyNumberInput, type DocumentsOverview } from "@professionisti/shared";
+import { Body, Controller, Get, Param, ParseIntPipe, Put, Req, UseGuards } from "@nestjs/common";
+import { accountantSettingsSchema, courtesyNumberSchema, courtesyYearCsv, type AccountantSettingsInput, type CourtesyNumberInput, type DocumentsOverview } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { InvoicesService } from "./invoices.service";
 import { StatementsService } from "./statements.service";
 import { CourtesyCopyService } from "./courtesy-copy.service";
 import { pdfResponse, renderDocumentPdf } from "./document-pdf";
-import { courtesyPdfBaseName, courtesyPdfModel, invoicePdfModel, pdfFileName } from "./document-pdf-models";
+import { courtesyPdfBaseName, courtesyPdfModel, courtesyYearPdfModel, invoicePdfModel, pdfFileName } from "./document-pdf-models";
 
 /** Pagina "Fatture e documenti" del professionista (docs/CHANGELOG.md §378). */
 @Controller("documents")
@@ -60,6 +60,19 @@ export class AccountingController {
   @Put("accountant")
   accountant(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(accountantSettingsSchema)) body: AccountantSettingsInput) {
     return this.statementsService.updateAccountant(req.user.userId, body);
+  }
+
+  /** Riepilogo dell'anno dei documenti dati ai clienti, per il commercialista (docs/CHANGELOG.md §382). */
+  @Get("client-documents/:year/pdf")
+  async clientDocumentsYearPdf(@Req() req: AuthenticatedRequest, @Param("year", ParseIntPipe) year: number) {
+    const summary = await this.courtesyCopyService.yearSummaryForProfessional(req.user.userId, year);
+    return pdfResponse(await renderDocumentPdf(courtesyYearPdfModel(summary)), `documenti-clienti-${year}.pdf`);
+  }
+
+  @Get("client-documents/:year/csv")
+  async clientDocumentsYearCsv(@Req() req: AuthenticatedRequest, @Param("year", ParseIntPipe) year: number): Promise<{ fileName: string; csv: string }> {
+    const summary = await this.courtesyCopyService.yearSummaryForProfessional(req.user.userId, year);
+    return { fileName: `documenti-clienti-${year}.csv`, csv: courtesyYearCsv(summary) };
   }
 
   /** Copia di cortesia del documento del lavoro, da dare al cliente (mai mandata all'Agenzia). */

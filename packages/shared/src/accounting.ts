@@ -617,6 +617,63 @@ export function courtesyYearTotals(documents: CourtesyDocumentSummary[]): { year
 /** Sopra questa cifra, senza IVA, serve la marca da bollo da 2 €. */
 export const STAMP_DUTY_THRESHOLD_EUR_CENTS = 7747;
 
+/** Un documento nel riepilogo dell'anno per il commercialista (docs/CHANGELOG.md §382). */
+export type CourtesyYearRow = {
+  /** "4/2026" per la ricevuta, il numero della sua fattura; null se non l'ha scritto. */
+  number: string | null;
+  /** Data del documento (ISO). */
+  date: string;
+  /** Il nome sul documento: quello dei dati per la fattura, o del cliente. */
+  customerName: string | null;
+  /** Il cliente ha chiesto il documento intestato a una partita IVA. */
+  customerHasVatNumber: boolean;
+  jobLabel: string | null;
+  totalEurCents: number | null;
+  /** IVA compresa nel totale, solo per chi la applica. */
+  vatEurCents: number | null;
+  /** Oltre 77,47 € senza IVA: marca da bollo da 2 €. */
+  stampDuty: boolean;
+  amountChanged: boolean;
+};
+
+/** Le ricevute e le copie delle fatture di un anno, da dare al commercialista. */
+export type CourtesyYearSummary = {
+  year: number;
+  /** Nome del professionista per il commercialista. */
+  who: string | null;
+  receipts: CourtesyYearRow[];
+  invoices: CourtesyYearRow[];
+};
+
+/** Totale e conteggi di una parte del riepilogo dell'anno. */
+export function courtesyYearPart(rows: CourtesyYearRow[]): { totalEurCents: number; vatEurCents: number; withVatNumber: number; stampDuty: number; missingAmounts: number; amountChanged: number } {
+  return rows.reduce(
+    (acc, row) => ({
+      totalEurCents: acc.totalEurCents + (row.totalEurCents ?? 0),
+      vatEurCents: acc.vatEurCents + (row.vatEurCents ?? 0),
+      withVatNumber: acc.withVatNumber + (row.customerHasVatNumber ? 1 : 0),
+      stampDuty: acc.stampDuty + (row.stampDuty ? 1 : 0),
+      missingAmounts: acc.missingAmounts + (row.totalEurCents === null ? 1 : 0),
+      amountChanged: acc.amountChanged + (row.amountChanged ? 1 : 0),
+    }),
+    { totalEurCents: 0, vatEurCents: 0, withVatNumber: 0, stampDuty: 0, missingAmounts: 0, amountChanged: 0 },
+  );
+}
+
+/** Giorno in ora italiana, come nell'estratto: "2026-10-27". */
+function romeDayIso(iso: string): string {
+  return new Date(iso).toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
+}
+
+/** Il riepilogo dell'anno nel foglio di calcolo (come l'estratto: punto e virgola, importi all'italiana). */
+export function courtesyYearCsv(summary: CourtesyYearSummary): string {
+  const header = ["Documento", "Numero", "Data", "Cliente", "Cliente con partita IVA", "Lavoro", "Importo", "di cui IVA", "Marca da bollo"];
+  const line = (kind: string, r: CourtesyYearRow) =>
+    [kind, r.number ?? "", romeDayIso(r.date), r.customerName ?? "", r.customerHasVatNumber ? "Sì" : "No", r.jobLabel ?? "", csvAmount(r.totalEurCents), csvAmount(r.vatEurCents), r.stampDuty ? "Sì" : "No"].map(csvCell).join(";");
+  const body = [...summary.receipts.map((r) => line("Ricevuta per prestazione occasionale", r)), ...summary.invoices.map((r) => line("Copia della fattura", r))];
+  return `\ufeff${[header.join(";"), ...body].join("\r\n")}\r\n`;
+}
+
 /** Quadratura del mese tra il nostro registro delle trattenute e Stripe (Admin → Finanza). */
 export type FeeReconciliation = {
   month: string;

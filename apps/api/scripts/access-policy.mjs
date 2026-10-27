@@ -282,6 +282,9 @@ export const POLICY = {
   "GET /documents/statements/:month/csv": statement,
   "GET /documents/statements/:month/pdf": statement,
   "GET /professionals/me/dac7/:year/pdf": { kind: "self", role: "professional", params: () => ({ year: "2026" }) },
+  // Riepilogo dell'anno dei documenti dati ai clienti: dati di chi chiama (§382).
+  "GET /documents/client-documents/:year/pdf": { kind: "self", role: "professional", params: () => ({ year: "2026" }) },
+  "GET /documents/client-documents/:year/csv": { kind: "self", role: "professional", params: () => ({ year: "2026" }) },
   ...owned,
 };
 

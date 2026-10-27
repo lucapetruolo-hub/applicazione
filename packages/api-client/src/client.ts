@@ -1577,6 +1577,10 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       request<CourtesyCopyView>(`/documents/courtesy/${encodeURIComponent(bookingId)}/number`, { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
 
     courtesyCopyPdf: (token: string, bookingId: string) => downloadFile(`/documents/courtesy/${encodeURIComponent(bookingId)}/pdf`, token),
+    /** Riepilogo dell'anno dei documenti dati ai clienti, per il commercialista (docs/CHANGELOG.md §382). */
+    clientDocumentsYearPdf: (token: string, year: number) => downloadFile(`/documents/client-documents/${year}/pdf`, token),
+    clientDocumentsYearCsv: (token: string, year: number) =>
+      request<{ fileName: string; csv: string }>(`/documents/client-documents/${year}/csv`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     // --- Admin → Finanza: le nostre fatture ---
     adminInvoiceSettings: (token: string) =>

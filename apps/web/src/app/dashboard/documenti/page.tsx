@@ -18,7 +18,8 @@ import { ConsentCheckbox } from "@/components/ConsentCheckbox";
 import { LearnMore } from "@/components/LearnMore";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { documentDate } from "./_components/DocumentParts";
+import { downloadTextFile } from "@/components/admin/adminUi";
+import { PdfButton, documentDate } from "./_components/DocumentParts";
 
 /**
  * "Fatture e documenti" del professionista (decisioni dell'utente del
@@ -149,7 +150,7 @@ export default function DocumentsPage() {
               )}
             </YStack>
 
-            <ClientDocuments documents={data.clientDocuments ?? []} />
+            <ClientDocuments token={token ?? ""} documents={data.clientDocuments ?? []} />
 
             {token ? <AccountantCard token={token} initial={data.accountant} /> : null}
           </>
@@ -164,8 +165,9 @@ export default function DocumentsPage() {
  * totale dell'anno: le ricevute per prestazione occasionale vanno nella
  * dichiarazione dei redditi. Se l'importo è cambiato dopo il PDF, lo dice.
  */
-function ClientDocuments({ documents }: { documents: CourtesyDocumentSummary[] }) {
+function ClientDocuments({ token, documents }: { token: string; documents: CourtesyDocumentSummary[] }) {
   const totals = courtesyYearTotals(documents);
+  const years = [...new Set(totals.map((row) => row.year))];
   return (
     <YStack gap="$3">
       <Text tag="h2" fontFamily="$heading" fontSize={22} fontWeight="800" color={brand.grafite}>
@@ -195,9 +197,12 @@ function ClientDocuments({ documents }: { documents: CourtesyDocumentSummary[] }
           </XStack>
           {totals.some((row) => row.kind === "RECEIPT") ? (
             <Text fontSize={16} color={brand.grafite70}>
-              Il totale delle ricevute dell&apos;anno va nella dichiarazione dei redditi: dallo al tuo commercialista.
+              Il totale delle ricevute dell&apos;anno va nella dichiarazione dei redditi: scarica il riepilogo e dallo al tuo commercialista.
             </Text>
           ) : null}
+          {years.map((year) => (
+            <YearDownloads key={year} token={token} year={year} />
+          ))}
           <Surface borderRadius={radiusDoc} padding="$2">
             {documents.map((doc, index) => (
               <Link key={doc.bookingId} href={`/dashboard/documenti/cortesia/${doc.bookingId}`} style={{ textDecoration: "none" }}>
@@ -224,6 +229,37 @@ function ClientDocuments({ documents }: { documents: CourtesyDocumentSummary[] }
           </Surface>
         </>
       )}
+    </YStack>
+  );
+}
+
+/** Riepilogo dell'anno per il commercialista, in PDF e nel foglio di calcolo (docs/CHANGELOG.md §382). */
+function YearDownloads({ token, year }: { token: string; year: number }) {
+  const [csvError, setCsvError] = useState<string | null>(null);
+
+  async function downloadCsv() {
+    setCsvError(null);
+    try {
+      const file = await apiClient.clientDocumentsYearCsv(token, year);
+      downloadTextFile(file.fileName, file.csv);
+    } catch (e) {
+      setCsvError(e instanceof Error ? e.message : "Non riusciamo a preparare il file: riprova tra poco.");
+    }
+  }
+
+  return (
+    <YStack gap="$2">
+      <XStack gap="$3" flexWrap="wrap" alignItems="flex-start">
+        <PdfButton label={`Scarica il riepilogo del ${year}`} load={() => apiClient.clientDocumentsYearPdf(token, year)} fileName={`documenti-clienti-${year}.pdf`} />
+        <Button variant="secondary" onPress={() => void downloadCsv()}>
+          Foglio di calcolo
+        </Button>
+      </XStack>
+      {csvError ? (
+        <Text fontSize={16} color={brand.urgenza} role="alert">
+          {csvError}
+        </Text>
+      ) : null}
     </YStack>
   );
 }

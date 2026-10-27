@@ -15,6 +15,7 @@ export type PdfParty = { label: string; name: string; lines: string[] };
 export type PdfRow = { label: string; detail?: string | null; value: string } | { group: string };
 
 export type PdfBlock =
+  | { type: "heading"; text: string }
   | { type: "highlight"; label: string; value: string; detail?: string | null; badge?: string | null }
   | { type: "meta"; items: { label: string; value: string }[] }
   | { type: "parties"; parties: PdfParty[] }
@@ -130,6 +131,13 @@ function titleBlock(w: Writer, model: PdfDocumentModel): void {
     w.y += w.write(model.subtitle, MARGIN, w.y, CONTENT_WIDTH, { size: 11, color: COLORS.muted });
   }
   w.y += GAP + 4;
+}
+
+/** Titolo di una parte del documento (es. "Ricevute" e "Copie delle fatture" nel riepilogo dell'anno). */
+function heading(w: Writer, block: Extract<PdfBlock, { type: "heading" }>): void {
+  // Il titolo non resta da solo in fondo alla pagina: con sé almeno una riga.
+  w.ensure(60);
+  w.y += w.write(block.text, MARGIN, w.y, CONTENT_WIDTH, { font: BOLD, size: 14 }) + 8;
 }
 
 function highlight(w: Writer, block: Extract<PdfBlock, { type: "highlight" }>): void {
@@ -313,7 +321,8 @@ export function renderDocumentPdf(model: PdfDocumentModel): Promise<Buffer> {
 
   titleBlock(w, model);
   for (const block of model.blocks) {
-    if (block.type === "highlight") highlight(w, block);
+    if (block.type === "heading") heading(w, block);
+    else if (block.type === "highlight") highlight(w, block);
     else if (block.type === "meta") meta(w, block);
     else if (block.type === "parties") parties(w, block);
     else if (block.type === "tiles") tiles(w, block);

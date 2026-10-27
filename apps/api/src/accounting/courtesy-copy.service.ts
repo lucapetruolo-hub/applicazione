@@ -12,13 +12,15 @@ import {
   type CourtesyCopyView,
   type CourtesyDocumentSummary,
   type CourtesyNumberInput,
+  type CourtesyYearRow,
+  type CourtesyYearSummary,
   type InvoiceParty,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { invoiceRequestView } from "../client-invoice-requests/client-invoice-requests.service";
 import { InvoicesService } from "./invoices.service";
-import { recipientFromFiscal, recipientParty } from "./invoice-documents";
+import { professionalFiscalName, recipientFromFiscal, recipientParty } from "./invoice-documents";
 import { romeMonthOf } from "./accounting-dates";
 import { COURTESY_DOCUMENT_FIELDS, courtesyDocumentSummary } from "./courtesy-documents";
 
@@ -82,6 +84,70 @@ export class CourtesyCopyService {
       },
     });
     return documents.map((doc) => courtesyDocumentSummary(doc, doc.booking));
+  }
+
+  /**
+   * Riepilogo dell'anno per il commercialista (docs/CHANGELOG.md §382): le
+   * ricevute in ordine di numero, le copie delle fatture in ordine di data,
+   * con gli importi di oggi. Restano fuori i lavori annullati.
+   */
+  async yearSummaryForProfessional(userId: string, year: number): Promise<CourtesyYearSummary> {
+    const professionalProfileId = await this.invoicesService.profileIdOf(userId);
+    const [profile, documents] = await Promise.all([
+      this.prisma.professionalProfile.findUnique({
+        where: { id: professionalProfileId },
+        select: { businessName: true, fiscalProfile: { select: { entityType: true, chargesVat: true, businessName: true, fiscalFirstName: true, fiscalLastName: true } } },
+      }),
+      this.prisma.courtesyDocument.findMany({
+        where: { professionalProfileId, year, booking: { status: { not: "CANCELED" } } },
+        orderBy: { createdAt: "asc" },
+        select: {
+          ...COURTESY_DOCUMENT_FIELDS,
+          booking: {
+            select: {
+              scheduledAt: true,
+              professionalCompletedAt: true,
+              jobPayment: { select: { paymentMethod: true, paidEurCents: true, refundedEurCents: true, grossAmountEurCents: true, balancePaidAt: true, directReportedAt: true } },
+              client: { select: { name: true, surname: true, deletedAt: true } },
+              quote: { select: { invoiceRequest: true, guidedRequest: { select: { category: { select: { label: true } } } } } },
+            },
+          },
+        },
+      }),
+    ]);
+    if (documents.length === 0) throw new NotFoundException("Nessun documento dato ai clienti in quell'anno.");
+
+    const fiscal = profile?.fiscalProfile;
+    const chargesVat = professionalChargesVat(fiscal?.entityType, fiscal?.chargesVat);
+    const receipts: { sort: number; row: CourtesyYearRow }[] = [];
+    const invoices: CourtesyYearRow[] = [];
+    for (const doc of documents) {
+      const booking = doc.booking;
+      const summary = courtesyDocumentSummary(doc, booking);
+      const total = summary.totalEurCents;
+      const request = booking.quote?.invoiceRequest ? invoiceRequestView(booking.quote.invoiceRequest) : null;
+      const receipt = summary.kind === "RECEIPT";
+      const vat = !receipt && chargesVat && total !== null ? splitVatEurCents(total) : null;
+      const row: CourtesyYearRow = {
+        number: receipt ? (doc.number !== null ? courtesyReceiptNumber(doc.number, doc.year) : null) : doc.ownNumber,
+        date: courtesyDateOf(booking).toISOString(),
+        customerName: request?.name ?? summary.customerName,
+        customerHasVatNumber: request?.kind === "VAT",
+        jobLabel: summary.jobLabel,
+        totalEurCents: total,
+        vatEurCents: vat ? vat.vatEurCents + vat.roundingEurCents : null,
+        stampDuty: !(chargesVat && !receipt) && total !== null && total > STAMP_DUTY_THRESHOLD_EUR_CENTS,
+        amountChanged: summary.amountChanged,
+      };
+      if (receipt) receipts.push({ sort: doc.number ?? Number.MAX_SAFE_INTEGER, row });
+      else invoices.push(row);
+    }
+    return {
+      year,
+      who: professionalFiscalName(fiscal, profile?.businessName),
+      receipts: receipts.sort((a, b) => a.sort - b.sort || a.row.date.localeCompare(b.row.date)).map((r) => r.row),
+      invoices: invoices.sort((a, b) => a.date.localeCompare(b.date)),
+    };
   }
 
   /** La stessa copia vista dall'admin: solo se il professionista l'ha preparata, senza dare numeri nuovi, e resta nel registro azioni. */
@@ -195,7 +261,7 @@ export class CourtesyCopyService {
     const jp = booking.jobPayment;
     const total = courtesyTotalEurCents(jp);
     const vat = chargesVat && total !== null ? splitVatEurCents(total) : null;
-    const date = booking.professionalCompletedAt ?? jp?.balancePaidAt ?? jp?.directReportedAt ?? booking.scheduledAt;
+    const date = courtesyDateOf(booking);
     const number =
       kind === "RECEIPT"
         ? saved?.number
@@ -274,6 +340,11 @@ export class CourtesyCopyService {
     }
     throw new ConflictException("Non riusciamo a dare il numero alla ricevuta: riprova tra un attimo.");
   }
+}
+
+/** Data del documento: lavoro terminato, saldo pagato o pagamento segnato, altrimenti l'appuntamento. */
+function courtesyDateOf(booking: { professionalCompletedAt: Date | null; scheduledAt: Date; jobPayment: { balancePaidAt: Date | null; directReportedAt: Date | null } | null }): Date {
+  return booking.professionalCompletedAt ?? booking.jobPayment?.balancePaidAt ?? booking.jobPayment?.directReportedAt ?? booking.scheduledAt;
 }
 
 /** Anno del documento, in ora italiana. */

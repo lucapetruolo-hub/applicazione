@@ -2,6 +2,7 @@ import {
   DAC7_QUARTER_LABEL,
   accountingDateLabel,
   accountingMonthLabel,
+  courtesyYearPart,
   dac7YearStatus,
   formatEurCents,
   platformInvoiceNote,
@@ -9,6 +10,8 @@ import {
   platformInvoiceSubtitle,
   platformInvoiceTechnicalNotes,
   type CourtesyCopyView,
+  type CourtesyYearRow,
+  type CourtesyYearSummary,
   type Dac7YearSummary,
   type MonthlyStatement,
   type PlatformInvoiceView,
@@ -212,6 +215,102 @@ export function dac7PdfModel(summary: Dac7YearSummary, maskedIban: string | null
     ],
   });
   return { title: "Riepilogo annuale dei compensi (DAC7)", subtitle: `${who ? `${who}. ` : ""}Compensi ${summary.year}.`, blocks };
+}
+
+/**
+ * Riepilogo dell'anno dei documenti dati ai clienti, per il commercialista
+ * (docs/CHANGELOG.md §382): il totale delle ricevute va nella dichiarazione
+ * dei redditi; le copie delle fatture servono solo a controllare.
+ */
+export function courtesyYearPdfModel(summary: CourtesyYearSummary, now: Date = new Date()): PdfDocumentModel {
+  const receipts = courtesyYearPart(summary.receipts);
+  const invoices = courtesyYearPart(summary.invoices);
+  const count = summary.receipts.length + summary.invoices.length;
+  const blocks: PdfBlock[] = [
+    {
+      type: "tiles",
+      tiles: [
+        ...(summary.receipts.length > 0 ? [{ label: "Ricevute", value: eur(receipts.totalEurCents) }] : []),
+        ...(summary.invoices.length > 0 ? [{ label: "Fatture", value: eur(invoices.totalEurCents) }] : []),
+        { label: "Documenti", value: String(count) },
+      ],
+    },
+  ];
+  // Prima le cose da sistemare: un documento da rifare o senza importo.
+  const missing = receipts.missingAmounts + invoices.missingAmounts;
+  const changed = receipts.amountChanged + invoices.amountChanged;
+  const warnings = [
+    changed > 0 ? `${changed === 1 ? "1 documento ha" : `${changed} documenti hanno`} l'importo cambiato dopo il PDF: rifallo e dallo al cliente al posto di quello vecchio.` : null,
+    missing > 0 ? `${missing === 1 ? "1 documento è" : `${missing} documenti sono`} senza importo: il lavoro non ha ancora il prezzo finale.` : null,
+  ].filter((line): line is string => !!line);
+  if (warnings.length > 0) blocks.push({ type: "note", tone: "sand", lines: warnings });
+
+  const tableOf = (rows: CourtesyYearRow[]): PdfBlock => ({
+    type: "table",
+    columns: [
+      { label: "Numero", width: 13 },
+      { label: "Data", width: 13 },
+      { label: "Cliente", width: 30 },
+      { label: "Lavoro", width: 24 },
+      { label: "Importo", width: 20, align: "right" },
+    ],
+    rows: rows.map((row) => ({
+      cells: [row.number ?? "—", accountingShortDate(row.date), row.customerName ?? "—", row.jobLabel ?? "Lavoro", row.totalEurCents !== null ? eur(row.totalEurCents) : "—"],
+      details: [
+        null,
+        null,
+        row.customerHasVatNumber ? "Con partita IVA" : null,
+        row.amountChanged ? "Importo cambiato dopo il PDF" : null,
+        row.vatEurCents !== null ? `di cui IVA ${eur(row.vatEurCents)}` : row.stampDuty ? "Bollo da 2 €" : null,
+      ],
+    })),
+  });
+
+  if (summary.receipts.length > 0) {
+    const lines = [
+      "Il totale delle ricevute va nella dichiarazione dei redditi: sono i compensi delle prestazioni occasionali dell'anno.",
+      receipts.withVatNumber > 0
+        ? `${receipts.withVatNumber === 1 ? "1 ricevuta è a un cliente" : `${receipts.withVatNumber} ricevute sono a clienti`} con partita IVA: di solito trattengono il 20% di ritenuta d'acconto e la versano per te.`
+        : null,
+      receipts.stampDuty > 0 ? `${receipts.stampDuty === 1 ? "1 ricevuta supera" : `${receipts.stampDuty} ricevute superano`} 77,47 €: sull'originale va la marca da bollo da 2 €.` : null,
+    ].filter((line): line is string => !!line);
+    blocks.push(
+      { type: "heading", text: "Ricevute per prestazione occasionale" },
+      tableOf(summary.receipts),
+      { type: "totals", rows: [], total: { label: "Totale ricevute", value: eur(receipts.totalEurCents) } },
+      { type: "note", tone: "green", lines },
+    );
+  }
+  if (summary.invoices.length > 0) {
+    blocks.push(
+      { type: "heading", text: "Copie delle fatture" },
+      tableOf(summary.invoices),
+      {
+        type: "totals",
+        rows: invoices.vatEurCents > 0 ? [{ label: "di cui IVA", value: eur(invoices.vatEurCents) }] : [],
+        total: { label: "Totale fatture", value: eur(invoices.totalEurCents) },
+      },
+      { type: "note", tone: "green", lines: ["Le fatture valide sono quelle del tuo programma di fatturazione: questo elenco serve a controllare che ci siano tutte."] },
+    );
+  }
+  blocks.push({
+    type: "text",
+    muted: true,
+    lines: [
+      `Preparato il ${accountingDateLabel(now.toISOString())} con i documenti fatti sul sito. Gli importi sono quelli di oggi, dopo eventuali rimborsi; restano fuori i lavori annullati.`,
+      "Non è un documento fiscale: valgono le ricevute e le fatture che hai dato ai clienti.",
+    ],
+  });
+  return {
+    title: `Documenti dati ai clienti nel ${summary.year}`,
+    subtitle: `${summary.who ? `${summary.who}. ` : ""}Ricevute e copie delle fatture, da dare al commercialista.`,
+    blocks,
+  };
+}
+
+/** "27/10/2026", in ora italiana. */
+function accountingShortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Europe/Rome" });
 }
 
 /** Nome del file: "fattura-COM-2026-0017.pdf", "estratto-2026-09.pdf". */
