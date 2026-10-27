@@ -57,7 +57,7 @@ export class FeeReconciliationService {
         alerts.push(`Trattenute restituite: Stripe ${formatEurCents(stripe.applicationFeeRefundsEurCents)}, nostro registro ${formatEurCents(ledger.returnsEurCents)}.`);
       }
       if (stripe.stripeFeesEurCents > ledger.cardFeesEurCents * 1.1 + TOLERANCE_EUR_CENTS) {
-        alerts.push(`Costi addebitati da Stripe ${formatEurCents(stripe.stripeFeesEurCents)}, più della stima delle carte (${formatEurCents(ledger.cardFeesEurCents)}): conviene ricontrollare la trattenuta.`);
+        alerts.push(`Costi addebitati da Stripe ${formatEurCents(stripe.stripeFeesEurCents)}, più della nostra stima (${formatEurCents(ledger.cardFeesEurCents)}): conviene ricontrollare la trattenuta.`);
       }
     }
     return { month, ledger, stripe, alerts };

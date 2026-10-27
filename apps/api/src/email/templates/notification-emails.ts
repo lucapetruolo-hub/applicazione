@@ -733,7 +733,7 @@ const BUILDERS: Record<string, Builder> = {
     greeting: ctx.name,
     title: "Pagamento sbloccato",
     paragraphs: [
-      `Abbiamo sbloccato il pagamento del lavoro per **${job(ctx)}**, già al netto della nostra trattenuta (carta e bonifico compresi). La trovi nella fattura del mese.`,
+      `Abbiamo sbloccato il pagamento del lavoro per **${job(ctx)}**, già al netto della nostra trattenuta (commissioni di Stripe comprese). La trovi nella fattura del mese.`,
       ...(typeof payload.debtRecoveredEurCents === "number" && payload.debtRecoveredEurCents > 0
         ? [`Abbiamo trattenuto ${formatEur(payload.debtRecoveredEurCents)} che dovevi restituire per un lavoro precedente.`]
         : []),

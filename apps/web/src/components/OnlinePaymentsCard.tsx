@@ -61,7 +61,7 @@ export function OnlinePaymentsCard({
               </Link>
             </Text>
             <Text fontSize={13} color={brand.grafite70}>
-              Costo: {ONLINE_APP_FEE_PERCENT}% + IVA, carta e bonifico compresi. Su {formatEurCents(EXAMPLE.amountEurCents)} ti arrivano{" "}
+              Costo: {ONLINE_APP_FEE_PERCENT}% + IVA, commissioni di Stripe comprese. Su {formatEurCents(EXAMPLE.amountEurCents)} ti arrivano{" "}
               {formatEurCents(EXAMPLE.netEurCents)}.
             </Text>
             {error ? (
