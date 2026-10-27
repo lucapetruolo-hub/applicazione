@@ -103,7 +103,7 @@ export class JobPaymentsService {
     if (existing?.paymentMethod === "MANOVIA") {
       const rule = await this.feeRulesService.resolveRule({ professionalProfileId: existing.booking.professionalProfileId, categoryId: null });
       // Col saldo diretto la commissione vale solo sulla parte pagata online
-      // (§237). La regola è IVA esclusa: trattenuta con l'IVA (§377).
+      // (§237). La regola è IVA esclusa: trattenuta con l'IVA (§378).
       const onlineTarget = onlineTargetEurCents(params.grossAmountEurCents, existing);
       const fee = this.feeRulesService.computeFee(onlineTarget, rule);
       const appFee = Math.min(onlineTarget, fee + vatOnEurCents(fee));

@@ -6,7 +6,7 @@ import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
 import { InvoicesService } from "./invoices.service";
 import { FeeReconciliationService } from "./fee-reconciliation.service";
 
-/** Admin → Finanza: dati della nostra società e le fatture emesse (docs/CHANGELOG.md §377). */
+/** Admin → Finanza: dati della nostra società e le fatture emesse (docs/CHANGELOG.md §378). */
 @UseGuards(JwtAuthGuard, AdminGuard)
 @RequireAdminScope("FINANCE")
 @Controller("admin/invoices")
@@ -32,7 +32,7 @@ export class AdminAccountingController {
     return this.feeReconciliationService.reconcile(month);
   }
 
-  /** Prova d'invio allo SdI nella prova di Openapi (docs/CHANGELOG.md §378). */
+  /** Prova d'invio allo SdI nella prova di Openapi (docs/CHANGELOG.md §379). */
   @Post("sdi-test")
   sdiTest() {
     return this.invoicesService.adminSdiSandboxTest();

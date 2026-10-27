@@ -18,7 +18,7 @@ const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1
 
 /**
  * Riepilogo a 0 € del mese gratuito in corso (decisione dell'utente del
- * 27/10/2026, docs/CHANGELOG.md §377, anteprima 6): le voci e lo sconto che
+ * 27/10/2026, docs/CHANGELOG.md §378, anteprima 6): le voci e lo sconto che
  * le porta a zero. Non è una fattura.
  */
 export default function FreeMonthPage() {

@@ -248,7 +248,7 @@ const BUILDERS: Record<string, Builder> = {
     const clientName = str(payload.clientName);
     const clientPhone = str(payload.clientPhone);
     const clientAddress = str(payload.clientAddress);
-    // Fattura chiesta dal cliente accettando (docs/CHANGELOG.md §377): i dati
+    // Fattura chiesta dal cliente accettando (docs/CHANGELOG.md §378): i dati
     // nel riquadro, pronti da copiare nel programma delle fatture.
     const invoiceLines = Array.isArray(payload.invoiceLines) ? payload.invoiceLines.filter((line): line is string => typeof line === "string") : [];
     const details = [
@@ -953,7 +953,7 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: { label: "Vedi i numeri", url: `${frontendUrl()}/admin/numeri-professionisti` },
   }),
-  // Documenti contabili (docs/CHANGELOG.md §377).
+  // Documenti contabili (docs/CHANGELOG.md §378).
   JOB_INVOICE_REQUESTED: (payload, ctx) => {
     const invoiceLines = Array.isArray(payload.invoiceLines) ? payload.invoiceLines.filter((line): line is string => typeof line === "string") : [];
     return {
@@ -1488,7 +1488,7 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: subscriptionPage(),
   }),
-  // Documenti del mese (docs/CHANGELOG.md §377): stesso riepilogo della
+  // Documenti del mese (docs/CHANGELOG.md §378): stesso riepilogo della
   // pagina, col totale in cima. I mesi gratis compaiono a 0 €.
   MONTHLY_DOCUMENTS_READY: (payload, ctx) => {
     const month = str(payload.monthLabel) ?? "del mese";

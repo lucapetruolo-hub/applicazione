@@ -5779,7 +5779,7 @@ a.admin-kpi:hover {
 }
 
 /* Fatture, estratti e copie di cortesia da stampare o salvare in PDF
-   (docs/CHANGELOG.md §377): si stampa solo il documento, senza intestazione
+   (docs/CHANGELOG.md §378): si stampa solo il documento, senza intestazione
    del sito, menu né pulsanti. */
 @media print {
   body * {

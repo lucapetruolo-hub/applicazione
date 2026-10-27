@@ -380,7 +380,7 @@ function AbbonamentoContent() {
               <Text color={brand.grafite70}>{status.detail}</Text>
             </YStack>
             {sub.founder && sub.founder.currentMonth !== null ? <FounderMonths founder={sub.founder} trialEndsAt={sub.trialEndsAt} /> : null}
-            {/* Riepilogo a 0 € del mese gratuito (docs/CHANGELOG.md §377): non è una fattura. */}
+            {/* Riepilogo a 0 € del mese gratuito (docs/CHANGELOG.md §378): non è una fattura. */}
             {freePeriodSummary(sub, new Date()) ? (
               <Link href="/dashboard/documenti/mese-gratuito" style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 16 }}>
                 Riepilogo del mese: 0 € →
@@ -663,7 +663,7 @@ function AbbonamentoContent() {
           </Surface>
         ) : null}
 
-        {/* Le fatture sono le nostre, in "Fatture e documenti" (docs/CHANGELOG.md §377): da Stripe solo la carta. */}
+        {/* Le fatture sono le nostre, in "Fatture e documenti" (docs/CHANGELOG.md §378): da Stripe solo la carta. */}
         <Surface borderRadius={radiusDoc} padding="$5" gap="$3">
           <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
             Fatture e documenti

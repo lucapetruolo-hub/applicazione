@@ -1099,17 +1099,17 @@ export function RequestCard({
             </YStack>
           ) : null}
 
-          {/* Fattura chiesta dal cliente (docs/CHANGELOG.md §377): i dati da copiare, e la copia di cortesia. */}
+          {/* Fattura chiesta dal cliente (docs/CHANGELOG.md §378): i dati da copiare, e la copia di cortesia. */}
           {booking?.invoiceRequest && booking.status !== "CANCELED" ? (
             <ProfessionalInvoiceRequestBox request={booking.invoiceRequest} courtesyHref={`/dashboard/documenti/cortesia/${booking.id}`} />
           ) : null}
-          {/* Copia di cortesia anche senza richiesta, a lavoro terminato (§377). */}
+          {/* Copia di cortesia anche senza richiesta, a lavoro terminato (§378). */}
           {booking && !booking.invoiceRequest && booking.status === "COMPLETED" ? (
             <Link href={`/dashboard/documenti/cortesia/${booking.id}`} style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 13 }}>
               {booking.courtesyDocument ? `Apri: ${booking.courtesyDocument.label}` : "Prepara la ricevuta o la copia della fattura per il cliente"}
             </Link>
           ) : null}
-          {/* Importo cambiato dopo il PDF scaricato, per esempio per un rimborso: il documento va rifatto (§380). */}
+          {/* Importo cambiato dopo il PDF scaricato, per esempio per un rimborso: il documento va rifatto (§381). */}
           {booking?.courtesyDocument?.amountChanged && booking.status !== "CANCELED" ? (
             <Link href={`/dashboard/documenti/cortesia/${booking.id}`} style={{ textDecoration: "none" }}>
               <Text fontSize={13} fontWeight="700" color={brand.ottoneScuro}>
@@ -1399,7 +1399,7 @@ export function RequestCard({
                 <Text fontSize={13} fontWeight="700" color={brand.grafite}>
                   Voci del preventivo
                 </Text>
-                {/* Il cliente vede il prezzo finale, "IVA inclusa" solo se la applichi (docs/CHANGELOG.md §377). */}
+                {/* Il cliente vede il prezzo finale, "IVA inclusa" solo se la applichi (docs/CHANGELOG.md §378). */}
                 <Text fontSize={13} color={brand.grafite70}>
                   {quotePriceHelp(null)}
                 </Text>

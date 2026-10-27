@@ -143,7 +143,7 @@ describe("pagamenti sul conto del professionista", () => {
     expect(options).toEqual({});
   });
 
-  it("registra il pagamento diretto con la trattenuta unica e stima il costo della carta, a nostro carico (§377)", async () => {
+  it("registra il pagamento diretto con la trattenuta unica e stima il costo della carta, a nostro carico (§378)", async () => {
     const { service, prisma, stripe } = buildService();
     const job = { id: "jp-1", bookingId: "bk-1", paymentMethod: "MANOVIA", paidEurCents: 0, refundedEurCents: 0, stripeFeeEurCents: 0, applicationFeeEurCents: 0, stripePaymentIntentId: null, balancePaymentIntentId: null, balanceDirect: false, depositEurCents: 10000, releasedAt: null, booking: { finalAmountEurCents: null, professionalProfileId: "pro-1", quoteId: null } };
     prisma.jobPayment.findUnique.mockResolvedValue(job);
@@ -318,7 +318,7 @@ describe("contestazioni in banca con l'addebito diretto", () => {
     await service.handleStripeDispute(dispute({ status: "lost" }));
 
     expect(stripe.applicationFees.createRefund).not.toHaveBeenCalled();
-    // 20 € + 4,40 € di IVA: un costo ribaddebitato, nella fattura del mese (§377).
+    // 20 € + 4,40 € di IVA: un costo ribaddebitato, nella fattura del mese (§378).
     expect(prisma.jobPayment.update).toHaveBeenCalledWith(expect.objectContaining({ data: { professionalDebtEurCents: { increment: 2440 } } }));
     expect(prisma.platformFeeEntry.upsert).toHaveBeenCalledWith(expect.objectContaining({ where: { dedupeKey: "COSTS:dp_1" }, create: expect.objectContaining({ kind: "COSTS", grossEurCents: 2440 }) }));
   });

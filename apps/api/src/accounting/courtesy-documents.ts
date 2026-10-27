@@ -1,7 +1,7 @@
 import type { Prisma } from "@professionisti/database";
 import { courtesyAmountChanged, courtesyDocumentLabel, courtesyTotalEurCents, type CourtesyDocumentSummary } from "@professionisti/shared";
 
-/** Campi del documento che servono al riepilogo (docs/CHANGELOG.md §380). */
+/** Campi del documento che servono al riepilogo (docs/CHANGELOG.md §381). */
 export const COURTESY_DOCUMENT_FIELDS = {
   bookingId: true,
   kind: true,

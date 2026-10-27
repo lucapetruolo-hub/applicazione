@@ -39,7 +39,7 @@ export default function Dac7SummaryPage() {
   const hasOnline = summary?.quarters.some((q) => q.onlineEurCents > 0) ?? false;
 
   return (
-    // Stampabile come i documenti di "Fatture e documenti" (docs/CHANGELOG.md §377); il PDF lo prepara il server (§378).
+    // Stampabile come i documenti di "Fatture e documenti" (docs/CHANGELOG.md §378); il PDF lo prepara il server (§379).
     <div className="print-document">
       <Section title="Riepilogo annuale dei compensi (DAC7)" maxWidth={760}>
         <YStack gap="$5">

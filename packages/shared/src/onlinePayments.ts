@@ -92,7 +92,7 @@ export const ONLINE_RELEASE_DAYS = 7;
 /**
  * Trattenuta unica sui pagamenti online, IVA esclusa, a carico del
  * professionista (decisione dell'utente del 27/10/2026, docs/CHANGELOG.md
- * §377): tutto compreso, carta e bonifici di Stripe li paghiamo noi. Prima
+ * §378): tutto compreso, carta e bonifici di Stripe li paghiamo noi. Prima
  * era il 5% più i costi di Stripe. Il valore reale è nelle regole di
  * commissione in admin; questo è quello di partenza e della trattenuta al
  * pagamento.
@@ -102,7 +102,7 @@ export const ONLINE_APP_FEE_PERCENT = 7;
 const ONLINE_FEE_VAT_BASIS_POINTS = 2200;
 /**
  * Costo massimo della carta su Stripe (carte extra europee, 3,25% + €0,25):
- * solo per le stime, non è più a carico del professionista (§377).
+ * solo per le stime, non è più a carico del professionista (§378).
  */
 export const ONLINE_CARD_FEE_MAX_BASIS_POINTS = 325;
 export const ONLINE_CARD_FEE_MAX_FIXED_EUR_CENTS = 25;
@@ -129,7 +129,7 @@ export function onlineFeeExample(amountEurCents = 20_000): { amountEurCents: num
 
 /**
  * Trattenuta della piattaforma su un pagamento addebitato sul conto Stripe
- * del professionista (application fee, docs/CHANGELOG.md §249): dal §377 è
+ * del professionista (application fee, docs/CHANGELOG.md §249): dal §378 è
  * già quella definitiva, trattenuta unica con l'IVA. Se la regola in admin è
  * più bassa, la differenza torna al professionista allo sblocco.
  */
@@ -173,7 +173,7 @@ export function accountDebitGrossEurCents(amountEurCents: number): number {
 /**
  * Costi di Stripe Connect per i bonifici verso la banca dei professionisti
  * (listino Stripe per l'Italia): 0,25% + €0,10 per bonifico e €2 al mese per
- * ogni account che riceve almeno un bonifico in quel mese. Dal §377 sono
+ * ogni account che riceve almeno un bonifico in quel mese. Dal §378 sono
  * nostri, dentro la trattenuta unica (prima a carico del professionista,
  * §267): servono solo alla quadratura mensile dei costi.
  */
@@ -315,9 +315,9 @@ export type JobPaymentSummary = {
   releaseDueAt: string | null;
   releasedAt: string | null;
   balanceUnpaid: boolean;
-  /** Solo per il professionista: trattenuta (con l'IVA, §377), e quanto riceve. */
+  /** Solo per il professionista: trattenuta (con l'IVA, §378), e quanto riceve. */
   appFeeEurCents?: number;
-  /** Costo della carta a suo carico: solo sui pagamenti di prima della trattenuta unica (§377). */
+  /** Costo della carta a suo carico: solo sui pagamenti di prima della trattenuta unica (§378). */
   stripeFeeEurCents?: number;
   payoutEurCents?: number;
   /** Solo per il professionista: dov'è il bonifico verso la sua banca (null se non c'è nulla da ricevere). */
@@ -328,7 +328,7 @@ export type JobPaymentSummary = {
 
 /**
  * Accettazione di un preventivo con il metodo di pagamento scelto e, se il
- * cliente la chiede, i dati per la fattura del professionista (§377).
+ * cliente la chiede, i dati per la fattura del professionista (§378).
  */
 export const acceptQuoteSchema = z.object({
   paymentMethod: z.enum(jobPaymentChoices).default("DIRECT"),
@@ -414,7 +414,7 @@ export function toJobPaymentSummary(
   };
   if (forProfessional && method === "ONLINE") {
     const base = onlineTarget ?? collected;
-    // Trattenuta unica con l'IVA (§377); `stripeFeeEurCents` solo sui pagamenti di prima.
+    // Trattenuta unica con l'IVA (§378); `stripeFeeEurCents` solo sui pagamenti di prima.
     const appFee = stage === "RELEASED" ? jp.platformFeeEurCents : jp.platformFeeEurCents || onlineFeeWithVatEurCents(base);
     summary.appFeeEurCents = appFee;
     summary.stripeFeeEurCents = jp.stripeFeeEurCents;

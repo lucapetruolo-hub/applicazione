@@ -12,7 +12,7 @@ import { FeeReconciliationService } from "./fee-reconciliation.service";
 import { InvoicesService } from "./invoices.service";
 import { StatementsService } from "./statements.service";
 
-/** Fatture, estratti e copie di cortesia (docs/CHANGELOG.md §377). */
+/** Fatture, estratti e copie di cortesia (docs/CHANGELOG.md §378). */
 @Module({
   imports: [AuthModule, AdminModule, AuditLogModule, EmailModule, NotificationsModule],
   controllers: [AccountingController, AdminAccountingController, AdminCourtesyDocumentsController],

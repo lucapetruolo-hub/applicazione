@@ -11,7 +11,7 @@ import { InvoicesService } from "./invoices.service";
 const TOLERANCE_EUR_CENTS = 100;
 
 /**
- * Quadratura del mese (docs/CHANGELOG.md §377): le trattenute del nostro
+ * Quadratura del mese (docs/CHANGELOG.md §378): le trattenute del nostro
  * registro, che finiscono nelle fatture, contro quelle che Stripe ha davvero
  * incassato e restituito; e il costo vero delle carte che Stripe ci addebita
  * contro la nostra stima (con l'addebito diretto Stripe non lo dà per

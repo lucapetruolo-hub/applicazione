@@ -22,7 +22,7 @@ import { documentDate } from "./_components/DocumentParts";
 
 /**
  * "Fatture e documenti" del professionista (decisioni dell'utente del
- * 27/10/2026, docs/CHANGELOG.md §377): le nostre fatture, l'estratto di ogni
+ * 27/10/2026, docs/CHANGELOG.md §378): le nostre fatture, l'estratto di ogni
  * mese e il commercialista a cui mandarlo. Si arriva da Abbonamento e da
  * Dati fiscali, senza una voce nel menu.
  */
@@ -160,7 +160,7 @@ export default function DocumentsPage() {
 }
 
 /**
- * Ricevute e copie di fattura date ai clienti (docs/CHANGELOG.md §380), col
+ * Ricevute e copie di fattura date ai clienti (docs/CHANGELOG.md §381), col
  * totale dell'anno: le ricevute per prestazione occasionale vanno nella
  * dichiarazione dei redditi. Se l'importo è cambiato dopo il PDF, lo dice.
  */

@@ -178,7 +178,7 @@ function DashboardFiscaleContent() {
   // già dichiarato non deve ri-confermarlo ad ogni singola modifica, il
   // testo resta comunque sempre visibile accanto al bottone "Salva".
   const [declarationAccepted, setDeclarationAccepted] = useState(false);
-  // IVA nelle sue fatture e codice destinatario o PEC (docs/CHANGELOG.md §377).
+  // IVA nelle sue fatture e codice destinatario o PEC (docs/CHANGELOG.md §378).
   const [chargesVat, setChargesVat] = useState<boolean | null>(null);
   const [invoiceRecipient, setInvoiceRecipient] = useState("");
   const [vatSaving, setVatSaving] = useState(false);
@@ -411,7 +411,7 @@ function DashboardFiscaleContent() {
   }
 
   // Risposta veloce dal riepilogo, per chi aveva già compilato i dati prima
-  // della domanda sull'IVA (docs/CHANGELOG.md §377).
+  // della domanda sull'IVA (docs/CHANGELOG.md §378).
   async function saveChargesVat(value: boolean) {
     if (!token) return;
     setVatSaving(true);
@@ -1010,7 +1010,7 @@ function DashboardFiscaleContent() {
                 ) : null}
                 {invoiceRecipient ? <Text color={brand.grafite70}>{invoiceRecipient.includes("@") ? `PEC ${invoiceRecipient}` : `Codice destinatario ${invoiceRecipient}`}</Text> : null}
               </YStack>
-              {/* Chi aveva compilato i dati prima della domanda (§377): una risposta, senza riaprire il modulo. */}
+              {/* Chi aveva compilato i dati prima della domanda (§378): una risposta, senza riaprire il modulo. */}
               {entityType === "SOLE_PROPRIETOR" && chargesVat === null ? (
                 <YStack gap="$2" padding="$3" borderRadius={20} backgroundColor={brand.gesso}>
                   <Text fontSize={16} fontWeight="700" color={brand.grafite}>
@@ -1094,7 +1094,7 @@ function DashboardFiscaleContent() {
               )}
             </div>
 
-            {/* Fatture, estratti e documenti (docs/CHANGELOG.md §377): da qui e da Abbonamento, senza una voce di menu. */}
+            {/* Fatture, estratti e documenti (docs/CHANGELOG.md §378): da qui e da Abbonamento, senza una voce di menu. */}
             <Link href="/dashboard/documenti" style={{ textDecoration: "none" }}>
               <XStack alignItems="center" gap="$2" paddingHorizontal="$1">
                 <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>

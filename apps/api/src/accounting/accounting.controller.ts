@@ -8,7 +8,7 @@ import { CourtesyCopyService } from "./courtesy-copy.service";
 import { pdfResponse, renderDocumentPdf } from "./document-pdf";
 import { courtesyPdfBaseName, courtesyPdfModel, invoicePdfModel, pdfFileName } from "./document-pdf-models";
 
-/** Pagina "Fatture e documenti" del professionista (docs/CHANGELOG.md §377). */
+/** Pagina "Fatture e documenti" del professionista (docs/CHANGELOG.md §378). */
 @Controller("documents")
 @UseGuards(JwtAuthGuard)
 export class AccountingController {

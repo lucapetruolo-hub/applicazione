@@ -45,7 +45,7 @@ export type EmailContent = {
    * Perché arriva l'email: "notification" aggiunge il link alle preferenze di
    * notifica (si possono spegnere), "account" dice che è un messaggio di
    * servizio che arriva sempre, "external" è per chi non è iscritto (il
-   * commercialista di un professionista, docs/CHANGELOG.md §377).
+   * commercialista di un professionista, docs/CHANGELOG.md §378).
    */
   kind: "notification" | "account" | "external";
 };

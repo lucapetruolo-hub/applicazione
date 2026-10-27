@@ -9,7 +9,7 @@ import { PRISMA } from "../prisma/prisma.module";
 // "assente" verrebbe letta come 0%, silenziosamente sbagliato). Trattenuta
 // unica del 7% IVA esclusa sui pagamenti online, a carico del professionista
 // e con dentro carta e bonifici di Stripe (decisione dell'utente del
-// 27/10/2026, docs/CHANGELOG.md §377; prima 5% più i costi di Stripe, §168):
+// 27/10/2026, docs/CHANGELOG.md §378; prima 5% più i costi di Stripe, §168):
 // resta un DATO in tabella, modificabile da /admin senza deploy.
 const DEFAULT_GLOBAL_RULE_NAME = "Trattenuta unica (default)";
 const DEFAULT_GLOBAL_RULE_BASIS_POINTS = ONLINE_APP_FEE_PERCENT * 100;

@@ -15,7 +15,7 @@ import { BillingService } from "./billing.service";
   // la conferma di un pagamento MANOVIA del lavoro e la sincronizzazione
   // dello stato Stripe Connect (CLAUDE.md §88) — un solo endpoint webhook,
   // mai due paralleli sullo stesso account Stripe.
-  // AccountingModule: le nostre fatture per abbonamenti, passaggi e visibilità (§377).
+  // AccountingModule: le nostre fatture per abbonamenti, passaggi e visibilità (§378).
   imports: [AuthModule, BookingsModule, JobPaymentsModule, ProfessionalFiscalModule, SubscriptionsModule, SiteCountsModule, AccountingModule],
   controllers: [BillingController],
   providers: [BillingService],

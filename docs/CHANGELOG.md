@@ -21309,7 +21309,15 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: lo script con `.nvmrc` 24.22.1 (`nuova` vuoto, Node 26 non ancora LTS) e 22.23.4 (`nuova=24`); YAML del workflow letto senza errori.
 
-## 377. Documenti contabili: trattenuta unica, fatture del mese, estratto, richiesta di fattura del cliente
+## 377. Build di Render con Node 24: senza "corepack enable"
+
+**Problema** (Luca, 27/10/2026, dopo l'unione del §374): il deploy dell'API su Render falliva subito con `Internal Error: EROFS: read-only file system, unlink '/usr/bin/pnpm'`. Con Node 24 Render ha già pnpm in `/usr/bin`, che è di sola lettura, e `corepack enable` provava a sostituirlo. Il deploy fallito ha lasciato in linea la versione precedente (Node 22.23.4).
+
+**Decisione**: il comando di build in `render.yaml` non chiama più `corepack enable`: `pnpm install --frozen-lockfile && pnpm --filter @professionisti/api build`. pnpm prende la versione dal campo `packageManager` (10.33.0). Se il servizio non segue il Blueprint, lo stesso comando va scritto a mano in Render → Settings → Build Command.
+
+**Verifica**: il pnpm di `/usr/bin` esiste sulla macchina di Render (è proprio il file che `corepack enable` cercava di cancellare); il deploy su Render dopo l'unione.
+
+## 378. Documenti contabili: trattenuta unica, fatture del mese, estratto, richiesta di fattura del cliente
 
 **Richiesta** (Luca, 27/10/2026, dopo l'analisi in `analisi/contabilita-versione-profonda.md` e le anteprime di `analisi/mappa-documenti.md`): fare tutti i ritocchi e tutte le migliorie proposte, con tre precisazioni: la fattura del professionista al cliente la prepariamo **solo come cortesia** e non la mandiamo noi all'Agenzia delle Entrate; l'estratto al commercialista parte solo **con la spunta**; il cliente può chiedere la fattura anche intestata a una partita IVA, il professionista lo deve vedere **già all'accettazione** e il cliente deve capire che la chiede **al professionista, non a noi**.
 
@@ -21332,9 +21340,9 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: test di date (anche col cambio d'ora), bozza e nota di credito, totali e arrotondamento, destinatario dai dati fiscali, XML, progressivo d'invio, esiti SdI, foglio di calcolo, riepilogo dei mesi gratis ed emissione del mese con il database simulato; typecheck di API e sito, lint, 745 test dell'API.
 
-## 378. Documenti contabili: PDF dal server, numero della ricevuta, prova dell'invio allo SdI
+## 379. Documenti contabili: PDF dal server, numero della ricevuta, prova dell'invio allo SdI
 
-**Richiesta** (Luca, 27/10/2026, dopo l'elenco delle migliorie del §377): "Effettua le 3 migliorie (magari il numero automatico può essere utile a noi che ne pensi?)". Le tre: provare l'invio delle fatture nella prova di Openapi, un PDF fatto dal server al posto della stampa del browser, il numero automatico nella copia di cortesia.
+**Richiesta** (Luca, 27/10/2026, dopo l'elenco delle migliorie del §378): "Effettua le 3 migliorie (magari il numero automatico può essere utile a noi che ne pensi?)". Le tre: provare l'invio delle fatture nella prova di Openapi, un PDF fatto dal server al posto della stampa del browser, il numero automatico nella copia di cortesia.
 
 **Decisione**:
 - **PDF dal server** con pdfkit (`apps/api/src/accounting/document-pdf.ts`, contenuti in `document-pdf-models.ts`): fattura o nota di credito, estratto del mese, copia di cortesia e riepilogo DAC7 di un anno, con le stesse parti e parole delle pagine e i colori della palette. Font standard del PDF (Helvetica), i caratteri che non sa scrivere si sostituiscono (`pdfText`). Rotte `GET /documents/invoices/:id/pdf`, `/documents/statements/:month/pdf`, `/documents/courtesy/:bookingId/pdf`, `/professionals/me/dac7/:year/pdf`; sul sito "Scarica PDF" (`PdfButton`) scarica il file invece di aprire la stampa. L'estratto al commercialista arriva col PDF oltre al foglio di calcolo. Testi in comune spostati in `packages/shared` (`platformInvoiceSubtitle`, `platformInvoiceTechnicalNotes`, `accountingDateLabel`, `dac7YearStatus`).
@@ -21343,9 +21351,9 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: test nuovi (`documents-pdf-sdi.test.ts`) su PDF di ogni documento e caratteri sostituiti, numero della ricevuta (primo, successivo, stesso lavoro, due copie insieme), numero della fattura salvato, chiamate a Openapi con `fetch` finto (registrazione una sola volta, invio XML, esito non ancora arrivato, società sospesa, simulazione solo nella prova), motivo dello scarto, fattura di prova; PDF guardati uno per uno; test dei permessi con le 5 rotte nuove; 758 test dell'API, typecheck e lint di API e sito. La prova vera con Openapi la fa Luca dal pulsante (serve il suo account, checklist di lancio punto 14).
 
-## 379. Admin: documenti dati ai clienti
+## 380. Admin: documenti dati ai clienti
 
-**Richiesta** (Luca, 27/10/2026, sulla miglioria proposta dopo il §378): "Effettua la Miglioria, deve essere tutto già pronto per il lancio". La miglioria: l'elenco delle ricevute e delle copie di cortesia in Admin, per l'assistenza.
+**Richiesta** (Luca, 27/10/2026, sulla miglioria proposta dopo il §379): "Effettua la Miglioria, deve essere tutto già pronto per il lancio". La miglioria: l'elenco delle ricevute e delle copie di cortesia in Admin, per l'assistenza.
 
 **Decisione**:
 - **Nuova sezione "Documenti ai clienti"** (`/admin/documenti-clienti`, nel menu dopo "Lavori terminati", per ogni admin come "Problemi segnalati"): ricevute per prestazione occasionale e copie di cortesia delle fatture che i professionisti hanno preparato, le più recenti per prime. Per ognuna il nome ("Ricevuta n. 4/2026", "Fattura n. 12/A", `courtesyDocumentLabel`), quando è stata preparata, professionista, cliente, lavoro con appuntamento e chat, importo, se il cliente aveva chiesto la fattura, se il lavoro è stato annullato. Ricerca per numero (anche solo "4" o "4/2026"), numero della fattura, nome del professionista o del cliente; filtri per tipo e anno. "Apri PDF" scarica lo stesso PDF del professionista (`GET /admin/courtesy-documents/:bookingId/pdf`) e resta nel registro azioni come la lettura delle chat, perché ci sono i dati del cliente. L'admin non dà mai numeri nuovi e vede solo i documenti già preparati. I parametri della ricerca scritti due volte nell'indirizzo (`?q=a&q=b`) si rifiutano (avviso di CodeQL).
@@ -21354,13 +21362,13 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: test nuovi su data e importo del PDF scaricato, vista admin (niente numeri nuovi, documento non preparato non trovato, voce nel registro), ricerca per numero e nome, nome del documento; voce del registro "Documento dato al cliente aperto da un admin"; test dei permessi con le 2 rotte admin nuove (269 rotte, 1105 controlli, nessun problema); migrazione uguale allo schema (`prisma migrate diff`); 762 test dell'API, typecheck e lint di API e sito; pagina guardata da computer e da telefono con i dati di prova.
 
-## 380. Documenti dati ai clienti anche per il professionista, avviso se l'importo cambia, "Pagato online"
+## 381. Documenti dati ai clienti anche per il professionista, avviso se l'importo cambia, "Pagato online"
 
-**Richiesta** (Luca, 27/10/2026): "effettua le tre migliorie", proposte dopo il §379: l'elenco dei documenti dati ai clienti anche per il professionista, un avviso quando l'importo cambia dopo il PDF scaricato, "Pagato online" senza la parola "carta".
+**Richiesta** (Luca, 27/10/2026): "effettua le tre migliorie", proposte dopo il §380: l'elenco dei documenti dati ai clienti anche per il professionista, un avviso quando l'importo cambia dopo il PDF scaricato, "Pagato online" senza la parola "carta".
 
 **Decisione**:
 - **"Documenti dati ai clienti" in Fatture e documenti** (`/dashboard/documenti`, `clientDocuments` in `GET /documents`): ricevute e copie di cortesia preparate dal professionista, dalla più recente, con cliente, lavoro e importo, e in alto una casella per anno e tipo con il totale (`courtesyYearTotals` in `packages/shared/src/accounting.ts`). Sotto le ricevute una riga: "Il totale delle ricevute dell'anno va nella dichiarazione dei redditi: dallo al tuo commercialista." Ogni riga apre la copia del lavoro. Restano fuori i lavori annullati. L'importo è quello del documento (`courtesyTotalEurCents`: pagato online meno rimborsi, altrimenti il prezzo del preventivo).
-- **Avviso se l'importo cambia** (`courtesyAmountChanged`, sui dati `pdfTotalEurCents` del §379): nella pagina della copia un riquadro "L'importo è cambiato: sul PDF che hai scaricato c'era X, ora è Y. Scarica di nuovo il documento e dallo al cliente al posto di quello vecchio."; nella scheda del lavoro in Richieste e lavori e nell'elenco una riga "L'importo è cambiato dopo il PDF: rifallo". Nessuna email: lo vede quando apre il lavoro o i documenti. Nella scheda del lavoro il collegamento dice il nome del documento ("Apri: Ricevuta n. 4/2026") quando è già stato preparato.
+- **Avviso se l'importo cambia** (`courtesyAmountChanged`, sui dati `pdfTotalEurCents` del §380): nella pagina della copia un riquadro "L'importo è cambiato: sul PDF che hai scaricato c'era X, ora è Y. Scarica di nuovo il documento e dallo al cliente al posto di quello vecchio."; nella scheda del lavoro in Richieste e lavori e nell'elenco una riga "L'importo è cambiato dopo il PDF: rifallo". Nessuna email: lo vede quando apre il lavoro o i documenti. Nella scheda del lavoro il collegamento dice il nome del documento ("Apri: Ricevuta n. 4/2026") quando è già stato preparato.
 - **"Pagato online"** al posto di "Pagato online con carta" nella copia e nel PDF (si paga anche con altri metodi di Stripe).
 - **Pulsanti verdi**: alcuni pulsanti delle pagine dei documenti ("Scarica PDF", "Scarica per il commercialista", "Salva" dell'email del commercialista e delle impostazioni in Admin → Finanza) erano senza `variant` e comparivano nel blu di Tamagui: ora `variant="primary"`, come nel resto del sito.
 

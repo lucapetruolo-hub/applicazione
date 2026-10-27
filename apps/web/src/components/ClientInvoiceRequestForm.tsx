@@ -18,7 +18,7 @@ import { keyActivate } from "@/lib/keyActivate";
 
 /**
  * Fattura chiesta dal cliente al professionista (decisione dell'utente del
- * 27/10/2026, docs/CHANGELOG.md §377): la fa il professionista, noi gli
+ * 27/10/2026, docs/CHANGELOG.md §378): la fa il professionista, noi gli
  * passiamo i dati. Si apre dalla casella "Chiedi la fattura a …" quando si
  * accetta il preventivo, o dopo, dalla scheda del lavoro.
  */

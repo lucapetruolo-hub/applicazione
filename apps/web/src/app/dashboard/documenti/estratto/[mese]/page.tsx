@@ -19,7 +19,7 @@ function shortDate(iso: string): string {
 const amount = (cents: number) => (cents === 0 ? "—" : eur(cents));
 
 /**
- * Estratto del mese (docs/CHANGELOG.md §377), come nell'anteprima approvata:
+ * Estratto del mese (docs/CHANGELOG.md §378), come nell'anteprima approvata:
  * i quattro totali, una riga per lavoro, i soldi ancora bloccati e il file
  * per il commercialista.
  */

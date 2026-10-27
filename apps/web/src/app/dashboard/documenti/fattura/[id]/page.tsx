@@ -32,9 +32,9 @@ function groupLines(lines: PlatformInvoiceLine[]): { group: string | null; lines
 }
 
 /**
- * Una nostra fattura al professionista (docs/CHANGELOG.md §377), come
+ * Una nostra fattura al professionista (docs/CHANGELOG.md §378), come
  * nell'anteprima approvata: totale in cima, "Da" e "Per", righe per lavoro,
- * imponibile e IVA. "Scarica PDF" lo prepara il server (§378), "Scarica
+ * imponibile e IVA. "Scarica PDF" lo prepara il server (§379), "Scarica
  * XML" dà la fattura elettronica per il commercialista.
  */
 export default function InvoicePage() {

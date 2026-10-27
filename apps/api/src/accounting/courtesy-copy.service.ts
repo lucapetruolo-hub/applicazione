@@ -24,12 +24,12 @@ import { COURTESY_DOCUMENT_FIELDS, courtesyDocumentSummary } from "./courtesy-do
 
 /**
  * Copia di cortesia del documento che il professionista dà al cliente
- * (decisione dell'utente del 27/10/2026, docs/CHANGELOG.md §377): fattura
+ * (decisione dell'utente del 27/10/2026, docs/CHANGELOG.md §378): fattura
  * per chi ha la partita IVA, ricevuta per prestazione occasionale per il
  * privato. Solo una pagina da stampare: il documento valido lo emette lui,
  * noi non mandiamo nulla all'Agenzia delle Entrate. Il numero della
- * ricevuta lo diamo noi, quello della fattura lo scrive lui (§378); l'elenco
- * dei documenti preparati lo vede l'admin per l'assistenza (§379).
+ * ricevuta lo diamo noi, quello della fattura lo scrive lui (§379); l'elenco
+ * dei documenti preparati lo vede l'admin per l'assistenza (§380).
  */
 @Injectable()
 export class CourtesyCopyService {
@@ -49,7 +49,7 @@ export class CourtesyCopyService {
 
   /**
    * Il PDF scaricato dal professionista: ci segniamo quando e con che
-   * importo, così in assistenza si sa cosa ha in mano il cliente (§379).
+   * importo, così in assistenza si sa cosa ha in mano il cliente (§380).
    */
   async forProfessionalPdf(userId: string, bookingId: string): Promise<CourtesyCopyView> {
     const copy = await this.forProfessional(userId, bookingId);
@@ -63,7 +63,7 @@ export class CourtesyCopyService {
     return copy;
   }
 
-  /** I documenti dati ai clienti, dal più recente: in "Fatture e documenti" col totale dell'anno (§380). */
+  /** I documenti dati ai clienti, dal più recente: in "Fatture e documenti" col totale dell'anno (§381). */
   async listForProfessional(userId: string): Promise<CourtesyDocumentSummary[]> {
     const professionalProfileId = await this.invoicesService.profileIdOf(userId);
     const documents = await this.prisma.courtesyDocument.findMany({
@@ -93,7 +93,7 @@ export class CourtesyCopyService {
   }
 
   /**
-   * Admin → Documenti ai clienti (docs/CHANGELOG.md §379): i più recenti per
+   * Admin → Documenti ai clienti (docs/CHANGELOG.md §380): i più recenti per
    * primi. `q` cerca il numero ("4/2026", "12/A") o il nome del
    * professionista o del cliente.
    */

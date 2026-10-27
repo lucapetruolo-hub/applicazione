@@ -80,7 +80,7 @@ const selfAny = [
   "POST /auth/verify-email/resend",
   "POST /bookings/completion-photos",
   "GET /bookings/me",
-  // Ultimi dati per la fattura usati dal cliente, per precompilare (§377).
+  // Ultimi dati per la fattura usati dal cliente, per precompilare (§378).
   "GET /client-invoice-requests/last",
   "POST /guided-requests",
   "GET /guided-requests/chat-threads",
@@ -122,7 +122,7 @@ const selfProfessional = [
   "POST /agenda/online-slots/remove",
   "POST /agenda/online/enable",
   "GET /agenda/zone-demand",
-  // Fatture e documenti del professionista (§377).
+  // Fatture e documenti del professionista (§378).
   "GET /documents",
   "PUT /documents/accountant",
   "POST /billing/boost/checkout",
@@ -197,11 +197,11 @@ const owned = {
   "PATCH /bookings/:id/status": booking({ body: () => ({ status: "CANCELED" }) }),
   "POST /bookings/from-quote/:quoteId": { kind: "owned", owners: ["clientA"], params: (f) => ({ quoteId: f.quoteA }) },
 
-  // Fattura chiesta dal cliente al professionista, sul lavoro accettato (§377).
+  // Fattura chiesta dal cliente al professionista, sul lavoro accettato (§378).
   "PUT /client-invoice-requests/:quoteId": { kind: "owned", owners: ["clientA"], params: (f) => ({ quoteId: f.quoteDone }) },
   "DELETE /client-invoice-requests/:quoteId": { kind: "owned", owners: ["clientA"], params: (f) => ({ quoteId: f.quoteDone }) },
 
-  // Le nostre fatture al professionista e la copia di cortesia del suo documento: solo lui (§377).
+  // Le nostre fatture al professionista e la copia di cortesia del suo documento: solo lui (§378).
   "GET /documents/invoices/:id": invoice,
   "GET /documents/invoices/:id/xml": invoice,
   "GET /documents/invoices/:id/pdf": invoice,

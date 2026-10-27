@@ -59,7 +59,7 @@ function lastMonth(): string {
 }
 
 /**
- * Admin → Finanza, "Le nostre fatture" (docs/CHANGELOG.md §377): i dati
+ * Admin → Finanza, "Le nostre fatture" (docs/CHANGELOG.md §378): i dati
  * della società che le emette, le fatture emesse con il loro stato allo SdI,
  * l'XML da scaricare e il giro del mese da rilanciare a mano.
  */
@@ -293,7 +293,7 @@ export function AdminInvoicesSection({ token }: { token: string }) {
 }
 
 /**
- * Quadratura del mese (docs/CHANGELOG.md §377): le trattenute del nostro
+ * Quadratura del mese (docs/CHANGELOG.md §378): le trattenute del nostro
  * registro accanto a quelle che Stripe ha davvero incassato, e il costo vero
  * delle carte accanto alla nostra stima.
  */

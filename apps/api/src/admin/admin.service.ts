@@ -1724,7 +1724,7 @@ export type AdminCompletedJobRow = {
   professionalPhotoUrls: string[];
   clientPhotoUrls: string[];
   paymentLabel: string;
-  /** Ricevuta o copia di cortesia preparata dal professionista (§379). */
+  /** Ricevuta o copia di cortesia preparata dal professionista (§380). */
   courtesyDocumentLabel: string | null;
 };
 
