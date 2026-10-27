@@ -1,10 +1,12 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, Req, UseGuards } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 import {
+  addStandardServiceSchema,
   mergeServiceNameSchema,
   problemMatchRequestSchema,
   problemTakeoverSchema,
   teachProblemWordSchema,
+  type AddStandardServiceInput,
   type MergeServiceNameInput,
   type ProblemMatchRequest,
   type ProblemTakeoverInput,
@@ -16,6 +18,7 @@ import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
 import { ProblemMatchService } from "./problem-match.service";
 import { ProblemMatchAdminService } from "./problem-match-admin.service";
 import { ProblemTakeoverService } from "./problem-takeover.service";
+import { ServiceNamesService } from "./service-names.service";
 
 @Controller("problem-match")
 export class ProblemMatchController {
@@ -39,6 +42,17 @@ export class ProblemMatchController {
   @Post("takeover")
   takeover(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(problemTakeoverSchema)) body: ProblemTakeoverInput) {
     return this.problemTakeoverService.create(req.user.userId, body);
+  }
+}
+
+/** Prestazioni standard aggiunte dall'admin (§388): pubbliche, servono all'iscrizione e al profilo. */
+@Controller("service-names")
+export class ServiceNamesController {
+  constructor(private readonly serviceNamesService: ServiceNamesService) {}
+
+  @Get("standard")
+  standard() {
+    return this.serviceNamesService.standardByCategory();
   }
 }
 
@@ -77,6 +91,18 @@ export class AdminProblemMatchController {
   @Post("service-names/merge")
   merge(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(mergeServiceNameSchema)) body: MergeServiceNameInput) {
     return this.adminService.mergeServiceName(req.user.userId, body);
+  }
+
+  @RequireAdminScope("MODERATION")
+  @Post("service-names/standard")
+  addStandard(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(addStandardServiceSchema)) body: AddStandardServiceInput) {
+    return this.adminService.addStandardService(req.user.userId, body);
+  }
+
+  @RequireAdminScope("MODERATION")
+  @Delete("service-names/standard/:id")
+  removeStandard(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    return this.adminService.removeStandardService(req.user.userId, id);
   }
 
   @RequireAdminScope("MODERATION")

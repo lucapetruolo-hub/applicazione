@@ -257,6 +257,8 @@ export function auditLabel(row: { entityType: string; fieldName: string | null; 
       return v.word ? `Parola insegnata al dizionario: «${asText(v.word)}»` : "Parola tolta dal dizionario";
     case "ServiceNameAlias":
       return v.canonical ? `Prestazione «${asText(v.name)}» unita a «${asText(v.canonical)}»` : "Unione di prestazioni annullata";
+    case "StandardServiceName":
+      return v.name ? `Prestazione «${asText(v.name)}» aggiunta alle standard (${asText(v.categorySlug)})` : "Prestazione tolta dalle standard";
     case "ProblemTakeover":
       return value === "DONE" ? "Richiesta da seguire segnata come fatta" : "Richiesta da seguire riaperta";
     default:

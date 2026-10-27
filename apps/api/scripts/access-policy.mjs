@@ -51,6 +51,8 @@ const publicRoutes = [
   "GET /maps/static",
   // Dal problema scritto ai mestieri (§387): dizionario, poi IA nei casi dubbi, con tetto giornaliero.
   "POST /problem-match",
+  // Prestazioni standard aggiunte dall'admin (§388), mostrate in iscrizione e nel profilo.
+  "GET /service-names/standard",
   "GET /professionals/:id",
   "GET /professionals/:id/agenda",
   "POST /professionals/:id/views",

@@ -383,10 +383,21 @@ export type ProblemMatchAdminOverview = {
 };
 export type ServiceNamesAdminOverview = {
   minProfessionals: number;
+  /** Tutti i nomi standard, per "Unisci a…". */
   suggested: readonly string[];
-  names: { name: string; variants: string[]; professionalCount: number }[];
+  /** "Prestazioni per mestiere" (§388). */
+  categories: {
+    slug: string;
+    label: string;
+    /** `id` solo per quelle aggiunte dall'admin (si possono togliere). */
+    standard: { name: string; id: string | null; professionalCount: number }[];
+    handwritten: { name: string; variants: string[]; professionalCount: number }[];
+  }[];
   aliases: { key: string; canonical: string }[];
 };
+export type StandardServiceAdmin = { id: string; categorySlug: string; name: string };
+/** Prestazioni standard aggiunte dall'admin, per categoria (`GET /service-names/standard`). */
+export type StandardServicesByCategory = Partial<Record<string, string[]>>;
 /** Pagina admin "Richieste da seguire". */
 export type ProblemTakeoverAdmin = {
   id: string;

@@ -30,3 +30,10 @@ export const mergeServiceNameSchema = z.object({
   canonical: z.string().trim().min(1).max(120),
 });
 export type MergeServiceNameInput = z.infer<typeof mergeServiceNameSchema>;
+
+/** "Aggiungi alle standard": il nome entra tra le prestazioni suggerite di una categoria (§388). */
+export const addStandardServiceSchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  categorySlug: z.string().trim().min(1).max(40),
+});
+export type AddStandardServiceInput = z.infer<typeof addStandardServiceSchema>;

@@ -2736,3 +2736,17 @@ model ServiceNameAlias {
 
   @@map("service_name_aliases")
 }
+
+/// Prestazione aggiunta dall'admin tra quelle standard di una categoria
+/// (docs/CHANGELOG.md §388): compare tra le suggerite in iscrizione e nel
+/// profilo, accanto a `POPULAR_SERVICES`.
+model StandardServiceName {
+  id           String   @id @default(cuid())
+  categorySlug String
+  name         String
+  createdById  String?
+  createdAt    DateTime @default(now())
+
+  @@unique([categorySlug, name])
+  @@map("standard_service_names")
+}

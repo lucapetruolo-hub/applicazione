@@ -146,9 +146,7 @@ export class ProblemMatchService {
     const words = await this.taughtWords();
     if (words.length === 0) return null;
     const normalized = normalizeProblemText(description);
-    const hit = words
-      .filter((entry) => normalized.includes(` ${entry.word}`))
-      .sort((a, b) => b.word.length - a.word.length)[0];
+    const hit = words.filter((entry) => normalized.includes(` ${entry.word}`)).sort((a, b) => b.word.length - a.word.length)[0];
     if (!hit) return null;
     const outOfService = hit.outOfService && hit.outOfService in OUT_OF_SERVICE_LABELS ? (hit.outOfService as ProblemOutOfService) : null;
     const category = hit.categorySlug && isProfessionalCategorySlug(hit.categorySlug) ? hit.categorySlug : null;

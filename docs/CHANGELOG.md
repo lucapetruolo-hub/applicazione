@@ -21409,3 +21409,14 @@ e 390 px (anteprime in `anteprime/barra-preventivo-computer/`).
 - Rimandato a una seconda PR: scegliere fino a 3 professionisti a cui mandare la richiesta (oggi tutti o uno).
 
 **Verifica**: test del dizionario sul banco di prova, dei nomi delle prestazioni, del servizio con l'IA simulata (sicuro senza IA, dubbio con IA, IA che non risponde, tetto, sicurezza che resta, parola insegnata, descrizione salvata senza contatti), dei nomi uniti e di "Ce ne occupiamo noi"; test dei permessi su tutte le rotte; typecheck e lint; API e sito avviati in locale con i professionisti di prova: rubinetto, gas, macchia di umido e lavatrice provati da computer e telefono, barra con "Ti serve: Idraulico". L'IA vera non è misurata: manca la chiave.
+
+## 388. Prestazioni per mestiere in admin, aggiunte alle standard
+
+**Richiesta** (Luca, 27/10/2026, stesso thread del §387): "voglio che si inserisca la prestazione fra quelle standard che il professionista può selezionare in fase di iscrizione o quando va a modificare il profilo", poi "uno schemino fatto bene con i vari professionisti e i servizi che gli mettiamo standard e quelli inseriti da loro con il numero vicino con un + vicino". Insieme: togliere "Piccoli lavori idraulici" e "Piccoli lavori elettrici" da Tutto Fare.
+
+**Decisione**:
+- In "Mestieri richiesti" la seconda scheda diventa **"Prestazioni per mestiere"**: un riquadro per mestiere con le prestazioni **standard** (le nostre di `POPULAR_SERVICES` e quelle aggiunte dall'admin, toglibili con ✕) e quelle **scritte dai professionisti**, ognuna con quanti professionisti la usano (una prestazione conta in tutti i mestieri del professionista). Sulle scritte a mano: **+** la aggiunge alle standard del mestiere, "Unisci a…" la dichiara uguale a una standard; da 3 professionisti in su "Da valutare". Spunta "Solo i mestieri con prestazioni scritte a mano".
+- Modello `StandardServiceName` (migrazione `20261027180000_prestazioni_standard`), rotte admin `POST /admin/problem-match/service-names/standard` e `DELETE …/standard/:id` (MODERATION, nel registro azioni) e pubblica `GET /service-names/standard`. Il profilo (`/dashboard/profilo`, che è anche il primo passo dopo l'iscrizione) le aggiunge alle suggerite della categoria e al `datalist`; un nome aggiunto raccoglie le sue varianti in `ServiceNamesService.canonicalizer()`, ma un'unione fatta a mano vince. Non si aggiunge un doppione di una standard della stessa categoria.
+- Tutto Fare: al posto dei lavori sugli impianti (DM 37/2008, spettano agli installatori abilitati) "Montaggio tende e bastoni" e "Sigillatura con silicone (bagno e cucina)".
+
+**Verifica**: test del quadro per mestiere (conteggi, mestieri in più, aggiunta che toglie dalle scritte a mano, doppioni e categoria sconosciuta rifiutati), test dei permessi (266 rotte), typecheck e lint, 772 test API; pagina provata nel browser da computer e telefono con dati di prova.

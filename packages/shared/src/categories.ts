@@ -284,8 +284,10 @@ export const POPULAR_SERVICES: Record<ProfessionalCategorySlug, string[]> = {
     "Piccole riparazioni domestiche",
     "Montaggio mobili",
     "Manutenzione generale casa",
-    "Piccoli lavori idraulici",
-    "Piccoli lavori elettrici",
+    // Niente "piccoli lavori idraulici/elettrici": per il DM 37/2008 i lavori
+    // sugli impianti spettano agli installatori abilitati (§388, decisione di Luca).
+    "Montaggio tende e bastoni",
+    "Sigillatura con silicone (bagno e cucina)",
     "Montaggio zanzariere",
     "Riparazione tapparelle",
     "Montaggio mobili IKEA",

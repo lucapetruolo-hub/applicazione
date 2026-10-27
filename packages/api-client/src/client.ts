@@ -113,6 +113,8 @@ import type {
   ProblemWordAdmin,
   TeachProblemWordInput,
   ServiceNamesAdminOverview,
+  StandardServiceAdmin,
+  StandardServicesByCategory,
   MergeServiceNameInput,
   ProblemTakeoverAdmin,
 } from "@professionisti/shared";
@@ -1882,6 +1884,12 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       request<ProblemWordAdmin>("/admin/problem-match/words", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
     adminForgetProblemWord: (token: string, id: string) =>
       request<void>(`/admin/problem-match/words/${encodeURIComponent(id)}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),
+    /** Prestazioni standard aggiunte dall'admin (§388), da unire a `POPULAR_SERVICES`. */
+    standardServices: () => request<StandardServicesByCategory>("/service-names/standard", { cache: "no-store" }),
+    adminAddStandardService: (token: string, input: { name: string; categorySlug: string }) =>
+      request<StandardServiceAdmin>("/admin/problem-match/service-names/standard", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+    adminRemoveStandardService: (token: string, id: string) =>
+      request<void>(`/admin/problem-match/service-names/standard/${encodeURIComponent(id)}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),
     adminServiceNames: (token: string) =>
       request<ServiceNamesAdminOverview>("/admin/problem-match/service-names", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
     adminMergeServiceName: (token: string, input: MergeServiceNameInput) =>

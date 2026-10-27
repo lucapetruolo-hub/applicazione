@@ -22,6 +22,7 @@ import {
   categorySubTags,
   subTagLabel,
   validSubTags,
+  type StandardServicesByCategory,
   allItalianCityNames,
   PROFILE_DECLARATION_TEXT,
   findComuneByName,
@@ -170,6 +171,8 @@ export default function DashboardProfiloPage() {
   const [remoteAvailable, setRemoteAvailable] = useState(false);
   // Le prestazioni suggerite sono fino a 10 per categoria: a riposo le prime 8.
   const [showAllSuggested, setShowAllSuggested] = useState(false);
+  // Prestazioni aggiunte dall'admin tra le standard (docs/CHANGELOG.md §388).
+  const [standardServices, setStandardServices] = useState<StandardServicesByCategory>({});
   // Preavviso per annullare chiesto al cliente (docs/CHANGELOG.md §347).
   const [cancellationNoticeHours, setCancellationNoticeHours] = useState<CancellationNoticeHours>(DEFAULT_CANCELLATION_NOTICE_HOURS);
   const [services, setServices] = useState<{ name: string; priceMin: string; priceMax: string }[]>([]);
@@ -300,6 +303,7 @@ export default function DashboardProfiloPage() {
 
   useEffect(() => {
     apiClient.getLanguagePopularity().then(setLanguagePopularity).catch(() => undefined);
+    apiClient.standardServices().then(setStandardServices).catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -609,7 +613,10 @@ export default function DashboardProfiloPage() {
   // prestazioni cliccabili.
   // Suggerite di tutte le categorie scelte (docs/CHANGELOG.md §217), senza doppioni.
   const suggestedServices = [
-    ...new Set([...categorySlugs.flatMap((slug) => POPULAR_SERVICES[slug]), ...(remoteAvailable ? ["Consulenza online"] : [])]),
+    ...new Set([
+      ...categorySlugs.flatMap((slug) => [...POPULAR_SERVICES[slug], ...(standardServices[slug] ?? [])]),
+      ...(remoteAvailable ? ["Consulenza online"] : []),
+    ]),
   ].filter((name) => !services.some((service) => canonicalServiceName(service.name) === name));
   const visibleSuggestedServices = showAllSuggested ? suggestedServices : suggestedServices.slice(0, SUGGESTED_IDLE_COUNT);
 
@@ -1260,7 +1267,7 @@ export default function DashboardProfiloPage() {
               uno, la sua prestazione si somma alle altre uguali nella ricerca e
               nei prezzi medi (docs/CHANGELOG.md §387). */}
           <datalist id="prestazioni-suggerite">
-            {ALL_SUGGESTED_SERVICES.map((name) => (
+            {[...new Set([...ALL_SUGGESTED_SERVICES, ...Object.values(standardServices).flatMap((names) => names ?? [])])].map((name) => (
               <option key={name} value={name} />
             ))}
           </datalist>

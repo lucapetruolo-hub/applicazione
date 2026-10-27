@@ -3,9 +3,13 @@ import type { PrismaClient } from "@professionisti/database";
 import {
   ALL_SUGGESTED_SERVICES,
   OUT_OF_SERVICE_LABELS,
+  POPULAR_SERVICES,
+  PROFESSIONAL_CATEGORIES,
   isProfessionalCategorySlug,
   normalizeProblemText,
   serviceNameKey,
+  type AddStandardServiceInput,
+  type ServiceNamesAdminOverview,
   type TeachProblemWordInput,
 } from "@professionisti/shared";
 import { AuditLogService } from "../audit-log/audit-log.service";
@@ -61,7 +65,8 @@ export class ProblemMatchAdminService {
       if (row.source === "ia") ai += 1;
       if (!first && !row.outOfService) none += 1;
     }
-    const sorted = (map: Map<string, number>) => [...map.entries()].map(([key, count]) => ({ key, count })).sort((a, b) => b.count - a.count);
+    const sorted = (map: Map<string, number>) =>
+      [...map.entries()].map(([key, count]) => ({ key, count })).sort((a, b) => b.count - a.count);
 
     return {
       lastMonth: { total: lastMonth.length, safety, ai, none, byCategory: sorted(byCategory), byOutOfService: sorted(byOutOfService) },
@@ -84,7 +89,8 @@ export class ProblemMatchAdminService {
     if (word.length < 3) throw new BadRequestException("Scrivi almeno 3 lettere.");
     const categorySlug = input.categorySlug && isProfessionalCategorySlug(input.categorySlug) ? input.categorySlug : null;
     const outOfService = input.outOfService && input.outOfService in OUT_OF_SERVICE_LABELS ? input.outOfService : null;
-    if (Boolean(categorySlug) === Boolean(outOfService)) throw new BadRequestException("Scegli un mestiere oppure un lavoro fuori servizio.");
+    if (Boolean(categorySlug) === Boolean(outOfService))
+      throw new BadRequestException("Scegli un mestiere oppure un lavoro fuori servizio.");
     const saved = await this.prisma.problemWord.upsert({
       where: { word },
       create: { word, categorySlug, outOfService, createdById: adminUserId },
@@ -105,40 +111,121 @@ export class ProblemMatchAdminService {
     const existing = await this.prisma.problemWord.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException();
     await this.prisma.problemWord.delete({ where: { id } });
-    await this.auditLogService.record({ entityType: "ProblemWord", entityId: id, fieldName: "word", oldValue: existing.word, changedByUserId: adminUserId });
+    await this.auditLogService.record({
+      entityType: "ProblemWord",
+      entityId: id,
+      fieldName: "word",
+      oldValue: existing.word,
+      changedByUserId: adminUserId,
+    });
     this.problemMatchService.forgetTaughtWords();
     return { ok: true as const };
   }
 
-  /** Nomi delle prestazioni scritti a mano, raggruppati: quelli di almeno 3 professionisti si propongono da unire. */
-  async handwrittenServices() {
-    const [services, aliases, canonical] = await Promise.all([
+  /**
+   * "Prestazioni per mestiere" (§388, richiesta di Luca): per ogni mestiere le
+   * prestazioni standard (le nostre e quelle aggiunte dall'admin) e quelle
+   * scritte a mano dai professionisti, ognuna con quanti la usano.
+   */
+  async handwrittenServices(): Promise<ServiceNamesAdminOverview> {
+    const [services, aliases, standard, canonical] = await Promise.all([
       this.prisma.professionalService.findMany({
         where: { professionalProfile: { isDemo: false, deletedAt: null } },
-        select: { name: true, professionalProfileId: true },
+        select: {
+          name: true,
+          professionalProfileId: true,
+          professionalProfile: { select: { category: { select: { slug: true } }, extraCategories: { select: { slug: true } } } },
+        },
       }),
       this.prisma.serviceNameAlias.findMany({ orderBy: { createdAt: "desc" } }),
+      this.prisma.standardServiceName.findMany({ orderBy: { createdAt: "asc" } }),
       this.serviceNamesService.canonicalizer(),
     ]);
-    const suggested = new Set(ALL_SUGGESTED_SERVICES);
-    const groups = new Map<string, { name: string; variants: Set<string>; professionals: Set<string> }>();
+
+    type Group = { name: string; variants: Set<string>; professionals: Set<string> };
+    // Per mestiere: nome (chiave) → chi lo usa. Una prestazione conta in tutti i mestieri del professionista.
+    const usage = new Map<string, Map<string, Group>>();
     for (const service of services) {
       const name = canonical(service.name);
-      if (!name || suggested.has(name)) continue;
+      if (!name) continue;
       const key = serviceNameKey(name);
-      const group = groups.get(key) ?? { name, variants: new Set<string>(), professionals: new Set<string>() };
-      group.variants.add(service.name.trim());
-      group.professionals.add(service.professionalProfileId);
-      groups.set(key, group);
+      const profile = service.professionalProfile;
+      for (const slug of new Set([profile.category.slug, ...profile.extraCategories.map((c) => c.slug)])) {
+        const byName = usage.get(slug) ?? new Map<string, Group>();
+        const group = byName.get(key) ?? { name, variants: new Set<string>(), professionals: new Set<string>() };
+        group.variants.add(service.name.trim());
+        group.professionals.add(service.professionalProfileId);
+        byName.set(key, group);
+        usage.set(slug, byName);
+      }
     }
+
+    const categories = PROFESSIONAL_CATEGORIES.map((category) => {
+      const byName = usage.get(category.slug) ?? new Map<string, Group>();
+      const added = standard.filter((row) => row.categorySlug === category.slug);
+      const standardRows = [
+        ...POPULAR_SERVICES[category.slug].map((name) => ({ name, id: null as string | null })),
+        ...added.map((row) => ({ name: row.name, id: row.id as string | null })),
+      ].map((row) => ({ ...row, professionalCount: byName.get(serviceNameKey(row.name))?.professionals.size ?? 0 }));
+      const standardKeys = new Set(standardRows.map((row) => serviceNameKey(row.name)));
+      const handwritten = [...byName.entries()]
+        .filter(([key]) => !standardKeys.has(key))
+        .map(([, group]) => ({ name: group.name, variants: [...group.variants], professionalCount: group.professionals.size }))
+        .sort((a, b) => b.professionalCount - a.professionalCount || a.name.localeCompare(b.name, "it"));
+      return { slug: category.slug, label: category.label, standard: standardRows, handwritten };
+    });
+
     return {
       minProfessionals: HANDWRITTEN_SUGGEST_MIN,
-      suggested: ALL_SUGGESTED_SERVICES,
-      names: [...groups.values()]
-        .map((group) => ({ name: group.name, variants: [...group.variants], professionalCount: group.professionals.size }))
-        .sort((a, b) => b.professionalCount - a.professionalCount || a.name.localeCompare(b.name, "it")),
+      suggested: [...new Set([...ALL_SUGGESTED_SERVICES, ...standard.map((row) => row.name)])].sort((a, b) => a.localeCompare(b, "it")),
+      categories,
       aliases: aliases.map((row) => ({ key: row.key, canonical: row.canonical })),
     };
+  }
+
+  /** "Aggiungi alle standard" (§388): il nome compare tra le prestazioni suggerite della categoria. */
+  async addStandardService(adminUserId: string, input: AddStandardServiceInput) {
+    if (!isProfessionalCategorySlug(input.categorySlug)) throw new BadRequestException("Categoria sconosciuta.");
+    const name = input.name.trim().replace(/\s+/g, " ");
+    const displayName = name.charAt(0).toLocaleUpperCase("it") + name.slice(1);
+    const key = serviceNameKey(displayName);
+    if (!key) throw new BadRequestException("Nome mancante.");
+    if (POPULAR_SERVICES[input.categorySlug].some((popular) => serviceNameKey(popular) === key)) {
+      throw new BadRequestException("È già tra le prestazioni standard di questa categoria.");
+    }
+    const existing = await this.prisma.standardServiceName.findMany({
+      where: { categorySlug: input.categorySlug },
+      select: { name: true },
+    });
+    if (existing.some((row) => serviceNameKey(row.name) === key))
+      throw new BadRequestException("È già tra le prestazioni standard di questa categoria.");
+    const saved = await this.prisma.standardServiceName.create({
+      data: { categorySlug: input.categorySlug, name: displayName, createdById: adminUserId },
+    });
+    await this.auditLogService.record({
+      entityType: "StandardServiceName",
+      entityId: saved.id,
+      fieldName: "name",
+      newValue: { name: displayName, categorySlug: input.categorySlug },
+      changedByUserId: adminUserId,
+    });
+    this.serviceNamesService.forget();
+    return { id: saved.id, categorySlug: saved.categorySlug, name: saved.name };
+  }
+
+  async removeStandardService(adminUserId: string, id: string) {
+    const existing = await this.prisma.standardServiceName.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException();
+    await this.prisma.standardServiceName.delete({ where: { id } });
+    await this.auditLogService.record({
+      entityType: "StandardServiceName",
+      entityId: id,
+      fieldName: "name",
+      oldValue: { name: existing.name, categorySlug: existing.categorySlug },
+      changedByUserId: adminUserId,
+    });
+    this.serviceNamesService.forget();
+    return { ok: true as const };
   }
 
   async mergeServiceName(adminUserId: string, input: { name: string; canonical: string }) {
@@ -166,7 +253,13 @@ export class ProblemMatchAdminService {
     const existing = await this.prisma.serviceNameAlias.findUnique({ where: { key } });
     if (!existing) throw new NotFoundException();
     await this.prisma.serviceNameAlias.delete({ where: { key } });
-    await this.auditLogService.record({ entityType: "ServiceNameAlias", entityId: key, fieldName: "canonical", oldValue: existing.canonical, changedByUserId: adminUserId });
+    await this.auditLogService.record({
+      entityType: "ServiceNameAlias",
+      entityId: key,
+      fieldName: "canonical",
+      oldValue: existing.canonical,
+      changedByUserId: adminUserId,
+    });
     this.serviceNamesService.forget();
     return { ok: true as const };
   }
