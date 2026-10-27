@@ -851,6 +851,30 @@ export function ProfessionalDetailContent({
             href={`/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&nomeProfessionista=${encodeURIComponent(professional.businessName)}&fotoProfessionista=${encodeURIComponent(professional.imageUrl ?? "")}`}
             name={professional.businessName}
             preview={preview}
+            summary={
+              <XStack alignItems="center" gap="$3" minWidth={0}>
+                <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={40} />
+                {/* Sul telefono resta solo la foto: il nome accanto al pulsante non ci starebbe. */}
+                <div className="profile-cta-bar-text">
+                <YStack gap={2} minWidth={0} flexShrink={1}>
+                  <Text fontSize={16} fontWeight="600" color={brand.grafite} numberOfLines={1}>
+                    {professional.businessName}
+                  </Text>
+                  <XStack alignItems="center" columnGap="$2" flexWrap="wrap">
+                    {professional.rating !== null ? <Rating value={professional.rating} count={professional.reviewCount} size={13} textSize={13} /> : null}
+                    {professional.avgResponseTimeMinutes !== null ? (
+                      <Text fontSize={13} color={brand.grafite70}>
+                        {professional.rating !== null ? "· " : ""}
+                        {respondsRightAway(professional.avgResponseTimeMinutes)
+                          ? "Risponde subito"
+                          : `Risponde entro ${formatResponseTime(professional.avgResponseTimeMinutes)}`}
+                      </Text>
+                    ) : null}
+                  </XStack>
+                </YStack>
+                </div>
+              </XStack>
+            }
           />
         ) : (
           <Surface gap="$2">

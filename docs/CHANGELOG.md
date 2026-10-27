@@ -21330,3 +21330,38 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - **Chi chiamare** (miglioria scelta da Luca): sotto "Cercano «X», pochi la offrono" l'elenco dei professionisti visibili di quel lavoro che non la offrono ancora (nome, città, link alla scheda), al massimo 10 con il link a tutti quelli del lavoro; se non ce n'è nessuno, il consiglio dice di cercarne di nuovi e porta a "Crea un profilo".
 
 **Verifica**: test di confronto, conteggio, riquadro e consigli (`site-stats.test.ts`, `site-counts.service.test.ts`); typecheck, lint e test dell'API; prove nel browser `conteggi.spec.ts` ("sturatura" a Latina conta 1 su "Sturatura scarichi" di Idraulico, 0 per Googlebot, il testo scritto non si salva) e `andamento-sito.spec.ts` (riquadro visibile su telefono e computer, axe senza errori).
+
+## 385. Barra fissa "Richiedi un preventivo" anche da computer
+
+**Richiesta di Luca (27/10/2026):** avere anche da computer la barra fissa in
+basso "Richiedi un preventivo a [nome]" che sul telefono segue la pagina
+(§325).
+
+**Parere e decisione:** da computer il profilo ha una colonna sola, senza
+colonna laterale: il pulsante sta sotto l'agenda (a circa 1.065 px su uno
+schermo 1440×900) e non si vede mentre si leggono prestazioni e recensioni,
+quindi la barra non ripete niente. Da computer però non è un pulsante largo
+tutto lo schermo (sembrerebbe una fascia pubblicitaria): la barra è allineata
+alla colonna della pagina (828 px), con foto, nome, stelle e "Risponde
+entro…" a sinistra e il pulsante verde con freccia e magnete a destra. Come
+sul telefono compare solo quando il pulsante della pagina non è sullo
+schermo. Sul telefono, su richiesta di Luca, la barra ha la foto del
+professionista a sinistra del pulsante (il nome non ci starebbe senza
+tagliarlo), per far capire che la richiesta va proprio a lui.
+
+**Pulsante in alto (decisione di Luca):** nel profilo di un
+professionista che accetta richieste (quello con la barra in basso)
+"Richiedi preventivo" in alto a destra non compare più, da computer e da
+telefono (`body:has(.profile-cta-bar) .site-header-cta-link` in
+globals.css, così non lampeggia al caricamento); resta nei profili in pausa,
+dove è l'unico modo di chiedere un preventivo. Portava alla richiesta generica, non a quel professionista, e
+confondeva accanto a "Richiedi un preventivo a [nome]" (come in home e nelle
+pagine di accesso, §279 e §349). Supera la proposta non scelta del §325.
+
+**File:** `apps/web/src/components/ProfileQuoteCta.tsx` (prop `summary`),
+`apps/web/src/components/SiteHeader.tsx` (classe `site-header-cta-link`),
+`apps/web/src/app/professionista/[id]/ProfessionalDetailContent.tsx`,
+`apps/web/src/app/globals.css` (`.profile-cta-bar` fuori dalla media query).
+
+**Verifica:** build di produzione col profilo vero, fotografato a 1440, 1024
+e 390 px (anteprime in `anteprime/barra-preventivo-computer/`).
