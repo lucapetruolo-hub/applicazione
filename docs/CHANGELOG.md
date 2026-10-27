@@ -21246,3 +21246,16 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 **Decisione**: ogni lunedì alle 9 (ora di Roma), solo dopo il lancio (`LAUNCH_DATE`), i super admin ricevono la notifica `ADMIN_SEARCH_DEMAND_ALERT` (campanella ed email, argomento admin) con al massimo 5 righe "Lavoro, Città: N ricerche": le zone con almeno 5 ricerche senza nessun professionista entro 25 km negli ultimi 7 giorni, dalla più scoperta. Le ricerche senza città non contano (non dicono dove reclutare). Nessun avviso se nessuna zona arriva a 5. Il pulsante porta a "Professionisti in numeri". Soglie in `packages/shared/src/professionalStats.ts` (`SEARCH_DEMAND_ALERT_*`), conti in `searchDemandZones` (`apps/api/src/admin/professional-stats.ts`), invio in `apps/api/src/admin/search-demand-alert.service.ts`, come l'avviso delle urgenti (§344).
 
 **Verifica**: test delle zone (soglia, città scritte in modo diverso, senza città) e dell'email; tutti i modelli email ancora composti anche vuoti; API avviata in locale senza errori; email aperta in locale.
+
+## 372. Barra di ricerca: errori di battitura, frazioni, città con professionisti prima, tastiera
+
+**Richiesta** (Luca, 27/10/2026, thread "abbinamento problema"): elenchi che compaiono subito al clic su "Cosa cerchi" e "Città" (le città più cercate per prime), mentre si scrive prima ciò che rispetta di più quello che si è scritto, senza titoletti negli elenchi; poi "effettua migliorie 1-2-3 (senza i numeri) 4": errori di battitura, frazioni col loro comune, città senza professionisti più in basso senza mostrare numeri, tastiera e lettore di schermo.
+
+**Decisione**:
+- Ordine dei suggerimenti in `packages/ui/src/searchMatch.ts` (stesso codice per sito e app): prima chi inizia con le lettere scritte, poi chi ha una parola che inizia così, poi chi le contiene; solo se non c'è niente di questo, chi somiglia con un errore di battitura (nessuno sotto le 4 lettere, uno fino a 7, due da 8; "Latna" → Latina, "sabuadia" → Sabaudia). Accenti, maiuscole e apostrofi non contano.
+- "Città" vuota: "Vicino a me" (posizione del browser solo dopo il clic, comune più vicino col dataset ISTAT, `nearestComune`), l'ultima città cercata da questo browser (`localStorage`, nessun dato al server) e le più cercate degli ultimi 90 giorni (ricerche per lavoro §370, ricerche libere, richieste guidate ×3), da `GET /professionals/city-hints?category=`, in cache 5 minuti. Senza dati solo "Vicino a me", mai comuni a caso.
+- A parità di corrispondenza le città con almeno un professionista visibile entro 25 km (per il lavoro scelto se c'è, `coveredComuni` in `search-area.ts`, filtri pubblici di `publicSearchWhere`, profili demo esclusi) vengono prima. Nessun numero mostrato.
+- Frazioni in `packages/shared/src/frazioni.ts` (per ora Latina Scalo, Latina Lido e i 12 borghi di Latina): compaiono con il comune sotto e cercano nel comune.
+- Tastiera: frecce, Invio, Esc; `role="combobox"`/`listbox`/`option` con `aria-activedescendant` e un annuncio del numero di suggerimenti per il lettore di schermo.
+
+**Verifica**: test di `searchMatch` (7) e di `coveredComuni`; prova nel browser su computer e telefono (elenco al clic, frecce e Invio, Esc, "Latna", frazioni "borgo"); typecheck e lint.

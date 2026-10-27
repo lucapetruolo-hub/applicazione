@@ -7,7 +7,7 @@ export { ProfessionalCard } from "./ProfessionalCard";
 export { PriceLine } from "./PriceLine";
 export { CategoryCard } from "./CategoryCard";
 export { SearchBar } from "./SearchBar";
-export type { SearchBarProps, ProfessionalSuggestion, SearchMode } from "./SearchBar";
+export type { SearchBarProps, ProfessionalSuggestion, SearchMode, CityAlias } from "./SearchBar";
 export { Autocomplete } from "./Autocomplete";
 export type { AutocompleteProps } from "./Autocomplete";
 export { Hero } from "./Hero";

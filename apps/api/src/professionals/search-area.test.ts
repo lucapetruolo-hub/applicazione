@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { findComuneByName } from "@professionisti/shared";
-import { hasNearbyResult, selectSearchArea, type SearchAreaCandidate } from "./search-area";
+import { findComuneByName, italianComuni } from "@professionisti/shared";
+import { coveredComuni, hasNearbyResult, selectSearchArea, type SearchAreaCandidate } from "./search-area";
 
 const milano = findComuneByName("Milano")!;
 const monza = findComuneByName("Monza")!;
@@ -48,5 +48,24 @@ describe("hasNearbyResult (§370)", () => {
     expect(hasNearbyResult([{ distanceKm: 40 }])).toBe(false);
     expect(hasNearbyResult([{ distanceKm: 40 }, { distanceKm: 12 }])).toBe(true);
     expect(hasNearbyResult([{}])).toBe(true);
+  });
+});
+
+describe("coveredComuni (città con professionisti vicini, §372)", () => {
+  const latina = findComuneByName("Latina")!;
+  const sabaudia = findComuneByName("Sabaudia")!;
+
+  it("tiene i comuni entro il raggio, prima i più serviti", () => {
+    const names = coveredComuni(italianComuni(), [{ latitude: latina.lat, longitude: latina.lon }, { latitude: sabaudia.lat, longitude: sabaudia.lon }], 25).map((c) => c.name);
+    expect(names).toContain("Latina");
+    expect(names).toContain("Sabaudia");
+    expect(names).not.toContain("Milano");
+    // Latina è vicina a tutti e due, Sabaudia anche: entrambe prima di un comune servito da uno solo.
+    const served = coveredComuni(italianComuni(), [{ latitude: latina.lat, longitude: latina.lon }], 25).map((c) => c.name);
+    expect(served.length).toBeLessThan(names.length);
+  });
+
+  it("senza posizione (0,0) nessun comune", () => {
+    expect(coveredComuni(italianComuni(), [{ latitude: 0, longitude: 0 }], 25)).toEqual([]);
   });
 });

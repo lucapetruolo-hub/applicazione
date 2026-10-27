@@ -46,3 +46,31 @@ export function selectSearchArea(
 export function hasNearbyResult(results: { distanceKm?: number }[], radiusKm: number = SEARCH_RADIUS_KM): boolean {
   return results.some((r) => r.distanceKm === undefined || r.distanceKm <= radiusKm);
 }
+
+/**
+ * Comuni con almeno un professionista entro `radiusKm` dal loro centro
+ * (docs/CHANGELOG.md §372), dal più al meno servito. Solo i nomi escono
+ * dal server, mai il numero né la posizione dei professionisti.
+ */
+export function coveredComuni<C extends { name: string; lat: number; lon: number }>(
+  comuni: readonly C[],
+  professionals: readonly { latitude: number; longitude: number }[],
+  radiusKm: number,
+): C[] {
+  const located = professionals.filter((p) => p.latitude !== 0 || p.longitude !== 0);
+  if (located.length === 0) return [];
+  // Un grado di latitudine è ~111 km: un primo filtro a rettangolo evita il
+  // calcolo della distanza per quasi tutti i ~7900 comuni.
+  const latSpan = radiusKm / 111;
+  const counted: { comune: C; count: number }[] = [];
+  for (const comune of comuni) {
+    const lonSpan = radiusKm / (111 * Math.max(Math.cos((comune.lat * Math.PI) / 180), 0.1));
+    let count = 0;
+    for (const p of located) {
+      if (Math.abs(p.latitude - comune.lat) > latSpan || Math.abs(p.longitude - comune.lon) > lonSpan) continue;
+      if (calculateDistanceKm(comune.lat, comune.lon, p.latitude, p.longitude) <= radiusKm) count++;
+    }
+    if (count > 0) counted.push({ comune, count });
+  }
+  return counted.sort((a, b) => b.count - a.count || a.comune.name.localeCompare(b.comune.name, "it")).map((c) => c.comune);
+}

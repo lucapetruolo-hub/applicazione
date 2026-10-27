@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type ReactNode } from "react";
+import { useId, useMemo, useState, type ReactNode } from "react";
 import { Text, XStack, YStack } from "tamagui";
 import { Autocomplete } from "./Autocomplete";
 import { Button } from "./Button";
@@ -16,6 +16,11 @@ export type ProfessionalSuggestion = {
 };
 
 export type SearchMode = "domicilio" | "online";
+
+/** Una frazione o località che porta al suo comune ("Borgo Sabotino" → Latina, §372). */
+export type CityAlias = { name: string; city: string };
+
+type CityOption = { key: string; label: string; city: string; detail?: string };
 
 export type SearchBarProps = {
   onSearch: (params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) => void;
@@ -48,7 +53,88 @@ export type SearchBarProps = {
    * docs/CHANGELOG.md §233). Senza, il pulsante resta com'è.
    */
   wrapSearchButton?: (button: ReactNode) => ReactNode;
+  /** Frazioni e località cercabili nel campo "Città": scegliendole si cerca nel loro comune. */
+  cityAliases?: readonly CityAlias[];
+  /** Elenco del campo "Città" vuoto, appena cliccato (ultima usata, poi le più cercate). */
+  cityDefaults?: readonly string[];
+  /**
+   * Città con professionisti vicini per il lavoro scelto: mentre si scrive
+   * vengono prima delle altre, senza numeri (decisione dell'utente, §372).
+   */
+  preferredCities?: readonly string[];
+  /** "Vicino a me": restituisce il comune della posizione, o `null` se non disponibile. */
+  onNearMe?: () => Promise<string | null>;
+  /** Avvisa quando cambia il testo di "Cosa cerchi" (per chiedere le città adatte a quel lavoro). */
+  onQueryChange?: (query: string) => void;
 };
+
+function useCityField({
+  citySuggestions,
+  cityAliases,
+  cityDefaults,
+  preferredCities,
+  onNearMe,
+  setCity,
+}: {
+  citySuggestions: readonly string[];
+  cityAliases: readonly CityAlias[];
+  cityDefaults: readonly string[];
+  preferredCities: readonly string[];
+  onNearMe?: () => Promise<string | null>;
+  setCity: (city: string) => void;
+}) {
+  const [locating, setLocating] = useState<"idle" | "busy" | "failed">("idle");
+  const options = useMemo<CityOption[]>(
+    () => [
+      ...citySuggestions.map((city) => ({ key: city, label: city, city })),
+      ...cityAliases.map((alias) => ({ key: `${alias.name}|${alias.city}`, label: alias.name, city: alias.city, detail: alias.city })),
+    ],
+    [citySuggestions, cityAliases],
+  );
+  const preferred = useMemo(() => new Set(preferredCities.map((city) => city.toLowerCase())), [preferredCities]);
+  const emptyItems = useMemo(() => cityDefaults.map((city) => ({ key: `default|${city}`, label: city, city })), [cityDefaults]);
+  const leadingAction = onNearMe
+    ? {
+        label: "Vicino a me",
+        description:
+          locating === "busy" ? "Cerco la tua posizione…" : locating === "failed" ? "Posizione non disponibile: scrivi la città" : "Usa la tua posizione",
+        onPress: () => {
+          setLocating("busy");
+          void onNearMe().then((city) => {
+            if (city) {
+              setCity(city);
+              setLocating("idle");
+            } else {
+              setLocating("failed");
+            }
+          });
+        },
+      }
+    : undefined;
+  return {
+    items: options,
+    // Senza città più cercate (sito appena aperto, server che non risponde)
+    // il campo vuoto mostra solo "Vicino a me", non comuni a caso.
+    emptyItems,
+    leadingAction,
+    getKey: (item: CityOption) => item.key,
+    getLabel: (item: CityOption) => item.label,
+    priority: preferred.size > 0 ? (item: CityOption) => (preferred.has(item.city.toLowerCase()) ? 0 : 1) : undefined,
+    onSelect: (item: CityOption) => setCity(item.city),
+    renderItem: (item: CityOption) =>
+      item.detail ? (
+        <YStack gap="$1">
+          <Text>{item.label}</Text>
+          <Text fontSize={13} color="$color10">
+            {item.detail}
+          </Text>
+        </YStack>
+      ) : (
+        <Text>{item.label}</Text>
+      ),
+    maxResults: 30,
+  };
+}
 
 const MODE_TABS: { key: SearchMode; label: string; icon: IconName }[] = [
   { key: "domicilio", label: "A domicilio", icon: "house" },
@@ -65,12 +151,18 @@ export function SearchBar({
   searchOnModeChange = false,
   compact = false,
   wrapSearchButton = (button) => button,
+  cityAliases = [],
+  cityDefaults = [],
+  preferredCities = [],
+  onNearMe,
+  onQueryChange,
 }: SearchBarProps) {
   const [query, setQuery] = useState(initialQuery);
   const [city, setCity] = useState(initialCity);
   const [mode, setMode] = useState<SearchMode>(initialMode);
   const [selectedProfessional, setSelectedProfessional] = useState<ProfessionalSuggestion | undefined>();
   const fieldId = useId();
+  const cityField = useCityField({ citySuggestions, cityAliases, cityDefaults, preferredCities, onNearMe, setCity });
 
   if (compact) {
     return (
@@ -128,17 +220,7 @@ export function SearchBar({
           />
         </XStack>
         <XStack width={150}>
-          <Autocomplete
-            items={citySuggestions}
-            getKey={(item) => item}
-            getLabel={(item) => item}
-            onSelect={(selectedCity) => setCity(selectedCity)}
-            value={city}
-            onChangeText={setCity}
-            placeholder="Città"
-            size="$3"
-            minChars={3}
-          />
+          <Autocomplete {...cityField} value={city} onChangeText={setCity} placeholder="Città" size="$3" />
         </XStack>
         {wrapSearchButton(
           <Button
@@ -176,6 +258,7 @@ export function SearchBar({
 
   function handleSelectProfessional(professional: ProfessionalSuggestion) {
     setQuery(professional.name);
+    onQueryChange?.(professional.name);
     if (professional.city) {
       setCity(professional.city);
     }
@@ -184,6 +267,7 @@ export function SearchBar({
 
   function handleQueryChange(text: string) {
     setQuery(text);
+    onQueryChange?.(text);
     setSelectedProfessional(undefined);
   }
 
@@ -251,17 +335,13 @@ export function SearchBar({
         />
         <XStack width={1} height={44} marginBottom={4} backgroundColor={brand.filetto} display="none" $gtSm={{ display: "flex" }} />
         <Autocomplete
-          items={citySuggestions}
-          getKey={(item) => item}
-          getLabel={(item) => item}
-          onSelect={(selectedCity) => setCity(selectedCity)}
+          {...cityField}
           value={city}
           onChangeText={setCity}
           label={mode === "online" ? "Città (facoltativa)" : "Città"}
           id={`${fieldId}-citta`}
           placeholder="Es. Milano"
           size="$5"
-          minChars={3}
         />
         {wrapSearchButton(
           <Button
