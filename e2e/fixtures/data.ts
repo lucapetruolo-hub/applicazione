@@ -10,6 +10,8 @@ export type E2eData = {
   externalJob: { id: string; wallClock: string };
   /** Lavoro dal 3 al 5 novembre 2026, ogni giorno 08:00–17:00. */
   multiDayBookingId: string;
+  /** Profilo pubblico di un altro professionista, con la barra "Richiedi un preventivo" (§386). */
+  publicProfileId: string;
 };
 
 export const DATA_FILE = fileURLToPath(new URL("../.auth/data.json", import.meta.url));

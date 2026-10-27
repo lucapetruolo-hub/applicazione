@@ -851,6 +851,7 @@ export function ProfessionalDetailContent({
             href={`/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&nomeProfessionista=${encodeURIComponent(professional.businessName)}&fotoProfessionista=${encodeURIComponent(professional.imageUrl ?? "")}`}
             name={professional.businessName}
             preview={preview}
+            withBar={user?.professionalProfileId !== professional.id}
             summary={
               <XStack alignItems="center" gap="$3" minWidth={0}>
                 <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={40} />

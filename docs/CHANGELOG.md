@@ -21351,3 +21351,43 @@ pagine di accesso, §279 e §349). Supera la proposta non scelta del §325.
 
 **Verifica:** build di produzione col profilo vero, fotografato a 1440, 1024
 e 390 px (anteprime in `anteprime/barra-preventivo-computer/`).
+
+## 386. Barra "Richiedi un preventivo": casi limite e prove
+
+**Richiesta di Luca (27/10/2026)**, dalla versione più profonda del compito
+(`analisi/barra-preventivo-versione-profonda.md`): sistemare i casi limite
+della barra del §385 e provarla con strumenti che non dipendono da noi.
+
+**Fatto:**
+- **Focus da tastiera mai sotto la barra** (WCAG 2.2, 2.4.11): con la barra
+  visibile la pagina ha `scroll-padding-bottom` (88 px), come per il banner
+  dei cookie del §271. Prima, da computer, passando col tasto Tab sui link in
+  fondo alla pagina (Privacy Policy, Termini, Cookie Policy, Preferenze
+  cookie, Accessibilità, Segnala un contenuto illegale) il focus finiva
+  coperto dalla barra.
+- **Il lettore di schermo sente il nome**: il link della barra si chiama
+  "Richiedi un preventivo a [nome]", anche dove il nome non si vede.
+- **Niente barra al professionista sul proprio profilo**: `GET /auth/me`
+  restituisce anche `professionalProfileId`; il pulsante nella pagina resta,
+  così vede il profilo come lo vede un cliente.
+- **Telefono in orizzontale e finestre basse** (altezza fino a 500 px): barra
+  più sottile (60 px invece di 72).
+- Nome lunghissimo e profilo senza foto: controllati, niente esce dallo
+  schermo (nome tagliato con i puntini da computer, icona della categoria al
+  posto della foto).
+
+**Prove:** `e2e/tests/barra-preventivo.spec.ts` (telefono e computer):
+compare quando il pulsante non si vede e sparisce quando si vede, assente sul
+profilo in pausa e sul proprio profilo, focus mai coperto, nessuno
+spostamento della pagina mentre compare e sparisce (CLS 0), axe-core senza
+errori, nome lunghissimo dentro lo schermo. Tolte le correzioni, le prove del
+focus e del proprio profilo falliscono. Lighthouse misura anche il profilo
+pubblico (`e2e/lighthouse/agenda.mjs`, nuovo profilo di prova in
+`global-setup`). Tutte le 170 prove nel browser verdi su un database pulito.
+
+**Visto ma non toccato** (prima di questa modifica, non dovuto alla barra):
+caricando il profilo la pagina si sposta un poco (Lighthouse CLS 0,001 da
+telefono, circa 0,04 da computer: la scheda sale di 16 px all'avvio e il menu
+"Servizi" dell'intestazione cambia larghezza); il colore delle briciole di
+pane in cima al profilo non ha abbastanza contrasto (axe, Lighthouse
+accessibilità 96).

@@ -203,11 +203,27 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
 body:has(.profile-cta-bar) {
   padding-bottom: 72px;
 }
+/* Scorrendo verso un elemento scelto col tasto Tab, il browser lo tiene
+   sopra la barra (WCAG 2.2 "focus non coperto", come il banner dei cookie
+   del §271), §386. */
+html:has(.profile-cta-bar[data-visible="true"]) {
+  scroll-padding-bottom: 88px;
+}
 /* Nel profilo con la barra, "Richiedi preventivo" in alto (richiesta
    generica, non a questo professionista) confondeva: non compare. Resta nei
    profili in pausa, che non hanno la barra. */
 body:has(.profile-cta-bar) .site-header-cta-link {
   display: none;
+}
+/* Telefono in orizzontale e finestre basse: barra più sottile (§386). */
+@media (max-height: 500px) {
+  .profile-cta-bar {
+    padding-top: 6px;
+    padding-bottom: calc(6px + env(safe-area-inset-bottom));
+  }
+  body:has(.profile-cta-bar) {
+    padding-bottom: 60px;
+  }
 }
 @media (max-width: 767px) {
   .profile-cta {

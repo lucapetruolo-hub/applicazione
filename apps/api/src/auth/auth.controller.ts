@@ -259,6 +259,8 @@ export class AuthController {
       hasPassword: Boolean(passwordHash),
       imageUrl,
       businessName: professionalProfile?.businessName ?? null,
+      // Per riconoscere il proprio profilo pubblico (niente barra "Richiedi un preventivo", docs/CHANGELOG.md §386).
+      professionalProfileId: professionalProfile?.id ?? null,
       // Immagine profilo pubblica del professionista, richiesta esplicita
       // dell'utente: mostrata al posto delle iniziali nell'icona
       // dell'header (AccountMenu) quando disponibile — `User.imageUrl`

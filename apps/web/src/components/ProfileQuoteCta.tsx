@@ -13,21 +13,34 @@ import { MagneticButton } from "./MagneticButton";
  * in globals.css): il pulsante sta sotto l'agenda, oltre la prima schermata.
  * Da computer la barra è allineata alla pagina e a sinistra mostra
  * `summary` (foto, nome, stelle): un pulsante largo tutto lo schermo
- * sembrerebbe una fascia pubblicitaria (docs/CHANGELOG.md §385).
+ * sembrerebbe una fascia pubblicitaria (docs/CHANGELOG.md §385). Niente
+ * barra (`withBar` falso) per il professionista sul proprio profilo (§386).
  */
-export function ProfileQuoteCta({ href, name, summary, preview = false }: { href: string; name: string; summary?: ReactNode; preview?: boolean }) {
+export function ProfileQuoteCta({
+  href,
+  name,
+  summary,
+  preview = false,
+  withBar = true,
+}: {
+  href: string;
+  name: string;
+  summary?: ReactNode;
+  preview?: boolean;
+  withBar?: boolean;
+}) {
   const anchorRef = useRef<HTMLDivElement>(null);
   const [showBar, setShowBar] = useState(false);
 
   useEffect(() => {
     const el = anchorRef.current;
-    if (!el || preview || typeof IntersectionObserver === "undefined") return;
+    if (!el || preview || !withBar || typeof IntersectionObserver === "undefined") return;
     // La barra compare solo dopo che il pulsante è uscito dallo schermo verso
     // l'alto o prima di arrivarci: mai insieme al pulsante visibile.
     const observer = new IntersectionObserver(([entry]) => setShowBar(entry ? !entry.isIntersecting : false), { threshold: 0 });
     observer.observe(el);
     return () => observer.disconnect();
-  }, [preview]);
+  }, [preview, withBar]);
 
   const button = (
     // Altezza libera: con un nome lungo, su telefono il testo va su due righe
@@ -49,11 +62,18 @@ export function ProfileQuoteCta({ href, name, summary, preview = false }: { href
           <MagneticButton block>{button}</MagneticButton>
         </Link>
       </div>
-      {preview ? null : (
+      {preview || !withBar ? null : (
         <div className="profile-cta-bar" data-visible={showBar ? "true" : undefined} aria-hidden={!showBar}>
           <div className="profile-cta-bar-inner">
             {summary ? <div className="profile-cta-bar-summary">{summary}</div> : null}
-            <Link href={href} className="profile-cta-bar-link" style={{ textDecoration: "none", display: "block" }} tabIndex={showBar ? undefined : -1}>
+            {/* Il lettore di schermo sente anche il nome, che sul telefono non si vede (§386). */}
+            <Link
+              href={href}
+              className="profile-cta-bar-link"
+              aria-label={`Richiedi un preventivo a ${name}`}
+              style={{ textDecoration: "none", display: "block" }}
+              tabIndex={showBar ? undefined : -1}
+            >
               <MagneticButton block>
                 <Button variant="primary" width="100%" tabIndex={-1}>
                   <XStack alignItems="center" gap="$2" minWidth={0} maxWidth="100%" flexShrink={1}>

@@ -101,6 +101,25 @@ export default async function globalSetup(): Promise<void> {
       },
     });
 
+    // Profilo pubblico di un altro professionista, con la barra "Richiedi un
+    // preventivo" (docs/CHANGELOG.md §386): lo misura Lighthouse.
+    const otherPro = await prisma.user.create({
+      data: { role: "PROFESSIONAL", email: `pro-pubblico-e2e-${stamp}@test.it`, passwordHash: await bcrypt.hash(PASSWORD, 10), name: "Lucia", surname: "Neri", emailVerifiedAt: new Date(), legalConsentAt: new Date() },
+    });
+    const publicProfile = await prisma.professionalProfile.create({
+      data: {
+        userId: otherPro.id,
+        categoryId: category.id,
+        businessName: "Lucia Neri Idraulica",
+        city: "Latina",
+        latitude: 41.4677,
+        longitude: 12.9036,
+        bio: "Riparazioni, perdite d'acqua, caldaie e scarichi.",
+        services: { create: Array.from({ length: 12 }, (_, i) => ({ name: `Prestazione ${i + 1}`, priceMinEurCents: 5000 + i * 1000 })) },
+        fiscalProfile: { create: { entityType: "PRIVATE_INDIVIDUAL", fiscalFirstName: "Lucia", fiscalLastName: "Neri" } },
+      },
+    });
+
     const response = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -109,7 +128,7 @@ export default async function globalSetup(): Promise<void> {
     if (!response.ok) throw new Error(`Accesso di prova non riuscito: ${response.status} ${await response.text()}`);
     const { token } = (await response.json()) as { token: string };
 
-    const data: E2eData = { token, userId: pro.id, bookings, externalJob: { id: externalJob.id, wallClock: "2026-10-26 17:00" }, multiDayBookingId: multiDay.id };
+    const data: E2eData = { token, userId: pro.id, bookings, externalJob: { id: externalJob.id, wallClock: "2026-10-26 17:00" }, multiDayBookingId: multiDay.id, publicProfileId: publicProfile.id };
     mkdirSync(dirname(DATA_FILE), { recursive: true });
     writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
     // Sessione già aperta e banner cookie già chiuso, come per un professionista che torna sul sito.
