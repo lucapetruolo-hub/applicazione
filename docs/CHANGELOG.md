@@ -21341,6 +21341,8 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: nel browser con posizione negata (messaggio, elenco aperto) e concessa (Latina compilata, elenco chiuso); intestazione controllata; typecheck, lint, test.
 
+Aggiunta del 27/10 sera: osv-scanner ha cominciato a segnalare `deepmerge` 4.3.1 (GHSA-gcqx-w48m-w2h4), senza versione corretta; lo usano solo `@expo/config` e la CLI di React Native, strumenti di sviluppo dell'app. Eccezione in `osv-scanner.toml` con il motivo, come per zod 3 e node-forge.
+
 ## 385. Barra fissa "Richiedi un preventivo" anche da computer
 
 **Richiesta di Luca (27/10/2026):** avere anche da computer la barra fissa in

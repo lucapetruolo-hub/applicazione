@@ -20,3 +20,14 @@ version = "1.4.0"
 ecosystem = "npm"
 vulnerability.ignore = true
 reason = "Solo in @expo/cli, strumento di sviluppo; nessuna versione corretta disponibile"
+
+# deepmerge non ha una versione corretta (GHSA-gcqx-w48m-w2h4, ultima colpita
+# 4.3.1 = ultima pubblicata). Lo usano solo @expo/config e la CLI di React
+# Native, strumenti di sviluppo dell'app: non finisce nell'app, nel sito o
+# nell'API (docs/CHANGELOG.md §384).
+[[PackageOverrides]]
+name = "deepmerge"
+version = "4.3.1"
+ecosystem = "npm"
+vulnerability.ignore = true
+reason = "Solo in @expo/config e CLI di React Native, strumenti di sviluppo; nessuna versione corretta disponibile"
