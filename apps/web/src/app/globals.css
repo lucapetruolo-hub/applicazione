@@ -5043,7 +5043,10 @@ a.admin-kpi:hover {
   width: 100%;
   font-size: 13px;
   line-height: 18px;
-  color: #6e6459;
+  /* Più scuro del grigio caldo #6e6459: le briciole stanno sopra le forme
+     sfumate dello sfondo, e sul verde chiaro quel grigio arrivava a 3,6:1
+     (serve 4,5:1). #4f463e resta sopra 5:1 anche lì (docs/CHANGELOG.md §387). */
+  color: #4f463e;
 }
 .breadcrumbs-list {
   list-style: none;
@@ -5071,7 +5074,7 @@ a.admin-kpi:hover {
   display: inline-flex;
   align-items: center;
   min-height: 32px;
-  color: #6e6459;
+  color: #4f463e;
   text-decoration: none;
   text-underline-offset: 3px;
 }

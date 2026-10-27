@@ -163,13 +163,13 @@ test.describe("chi visita il profilo", () => {
     expect(await page.evaluate(() => (window as unknown as { __shifts: number[] }).__shifts)).toEqual([]);
   });
 
-  test("barra visibile senza problemi gravi di accessibilità", async ({ page }) => {
+  test("barra e briciole di pane senza problemi gravi di accessibilità", async ({ page }) => {
     await page.goto(`/professionista/${ids.active}`);
     await waitForProfile(page, "Anna Verdi Idraulica");
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     await expect(bar(page)).toHaveAttribute("data-visible", "true");
     await page.evaluate(() => Promise.all(document.getAnimations().map((animation) => animation.finished.catch(() => undefined))));
-    const results = await new AxeBuilder({ page }).include(".profile-cta-bar").include(".profile-cta").withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
+    const results = await new AxeBuilder({ page }).include(".profile-cta-bar").include(".profile-cta").include(".breadcrumbs").withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
     expect(results.violations.map((violation) => `${violation.id}: ${violation.help}`)).toEqual([]);
   });
 });

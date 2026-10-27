@@ -21403,3 +21403,25 @@ Condividi mostrano per un attimo le scritte e la scheda sale di 16 px
 (lo spostamento di 0,04 da computer). Il colore delle briciole di pane in
 cima al profilo non ha abbastanza contrasto (axe, Lighthouse accessibilità
 96).
+
+## 387. Stili già nella prima versione della pagina e briciole di pane leggibili
+
+**Richiesta di Luca** (27/10/2026, thread "Barra fissa Richiedi un preventivo
+anche da computer"): fare le prime due migliorie proposte dopo il §386.
+
+**1. Registro di styled-jsx.** Con l'App Router gli stili `<style jsx>` non
+arrivavano nell'HTML del server: i componenti che li usano (22 file, tra cui
+risultati con mappa, mega menu, agenda, pulsanti Salva/Condividi del profilo)
+restavano senza stile finché non partiva JavaScript, poi si sistemavano
+spostando la pagina. Aggiunto `apps/web/src/app/StyledJsxRegistry.tsx`
+(schema ufficiale di Next.js: `createStyleRegistry` + `useServerInsertedHTML`)
+attorno ai `Providers` in `layout.tsx`. Ora gli stili sono nell'HTML della
+risposta. Su rete lenta simulata lo spostamento del profilo all'apertura
+scende da 0,04 (computer) e 0,02 (telefono) a 0, senza avvisi di
+idratazione.
+
+**2. Briciole di pane.** Il grigio caldo `#6e6459`, sopra le forme sfumate
+verdi dello sfondo, arrivava a 3,56:1 (axe, serve 4,5:1). Ora `#4f463e`,
+sopra 5:1 anche sul verde; l'ultima voce resta in grassetto e più scura.
+axe sull'intera pagina del profilo (WCAG 2.2 AA): zero errori, da computer e
+da telefono.
