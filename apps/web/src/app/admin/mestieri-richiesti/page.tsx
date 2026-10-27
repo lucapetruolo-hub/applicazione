@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   OUT_OF_SERVICE_LABELS,
   PROFESSIONAL_CATEGORIES,
@@ -35,7 +36,17 @@ function targetLabel(categorySlug: string | null, outOfService: string | null): 
  * insegnare al dizionario e i nomi delle prestazioni da unire.
  */
 export default function AdminMestieriRichiestiPage() {
-  const [tab, setTab] = useState<Tab>("descrizioni");
+  return (
+    <Suspense fallback={null}>
+      <MestieriRichiesti />
+    </Suspense>
+  );
+}
+
+function MestieriRichiesti() {
+  // "Andamento del sito" porta qui con ?scheda=prestazioni (§388).
+  const searchParams = useSearchParams();
+  const [tab, setTab] = useState<Tab>(searchParams.get("scheda") === "prestazioni" ? "prestazioni" : "descrizioni");
   return (
     <YStack>
       <AdminPageHeader

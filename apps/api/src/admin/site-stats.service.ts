@@ -290,7 +290,10 @@ export class SiteStatsService {
       serviceSearches.map((r) => ({ categorySlug: r.categorySlug, service: r.service, searches: r._sum.count ?? 0 })),
       serviceList,
     );
-    const missingServices = buildMissingServices(serviceList);
+    const standardRows = await this.prisma.standardServiceName.findMany({ select: { categorySlug: true, name: true } });
+    const standardByCategory: Record<string, string[]> = {};
+    for (const row of standardRows) (standardByCategory[row.categorySlug] ??= []).push(row.name);
+    const missingServices = buildMissingServices(serviceList, standardByCategory);
     const sources = new Map<SignupSourceKey, number>();
     for (const u of signups) {
       const key: SignupSourceKey = u._count.profileInvites > 0 ? "INVITE" : (u.signupSource ?? "unknown");
