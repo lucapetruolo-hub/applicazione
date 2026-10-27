@@ -21333,7 +21333,17 @@ entro…" a sinistra e il pulsante verde con freccia e magnete a destra. Come
 sul telefono compare solo quando il pulsante della pagina non è sullo
 schermo. Sul telefono non cambia nulla (la parte a sinistra è nascosta).
 
+**Pulsante in alto (decisione di Luca):** nel profilo di un
+professionista che accetta richieste (quello con la barra in basso)
+"Richiedi preventivo" in alto a destra non compare più, da computer e da
+telefono (`body:has(.profile-cta-bar) .site-header-cta-link` in
+globals.css, così non lampeggia al caricamento); resta nei profili in pausa,
+dove è l'unico modo di chiedere un preventivo. Portava alla richiesta generica, non a quel professionista, e
+confondeva accanto a "Richiedi un preventivo a [nome]" (come in home e nelle
+pagine di accesso, §279 e §349). Supera la proposta non scelta del §325.
+
 **File:** `apps/web/src/components/ProfileQuoteCta.tsx` (prop `summary`),
+`apps/web/src/components/SiteHeader.tsx` (classe `site-header-cta-link`),
 `apps/web/src/app/professionista/[id]/ProfessionalDetailContent.tsx`,
 `apps/web/src/app/globals.css` (`.profile-cta-bar` fuori dalla media query).
 
