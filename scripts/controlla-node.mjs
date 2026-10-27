@@ -3,16 +3,22 @@
 // Legge la versione esatta in .nvmrc (usata da Render e dalla CI) e la
 // confronta con l'elenco ufficiale delle versioni di nodejs.org:
 // - esce con errore se la versione in .nvmrc non esiste (o non è esatta);
-// - stampa `aggiornare=true` se nella stessa versione principale (22.x) è
+// - stampa `aggiornare=true` se nella stessa versione principale (es. 24.x) è
 //   uscita dopo una correzione di sicurezza, con la versione più recente da
 //   usare in `ultima`. Il workflow aggiunge queste righe a GITHUB_OUTPUT; i
-//   messaggi per chi legge vanno sull'altra uscita (stderr).
+//   messaggi per chi legge vanno sull'altra uscita (stderr);
+// - stampa `scade=true` se mancano meno di 6 mesi alla fine del supporto di
+//   quella versione principale (calendario ufficiale di Node.js), con la
+//   data in `fine` (docs/CHANGELOG.md §375);
+// - stampa in `nuova` la versione principale più recente già diventata LTS
+//   (stabile, per la produzione) se è più nuova di quella in uso, per
+//   passarci subito (§376).
 // Uso in locale: `node scripts/controlla-node.mjs`.
 import { readFileSync } from "node:fs";
 
 const attuale = readFileSync(new URL("../.nvmrc", import.meta.url), "utf8").trim();
 if (!/^\d+\.\d+\.\d+$/.test(attuale)) {
-  console.error(`.nvmrc deve contenere una versione esatta (es. 22.23.4), trovato "${attuale}".`);
+  console.error(`.nvmrc deve contenere una versione esatta (es. 24.22.1), trovato "${attuale}".`);
   process.exit(1);
 }
 const principale = attuale.split(".")[0];
@@ -47,7 +53,34 @@ if (sicurezza.length > 0) {
   console.error(`Correzioni di sicurezza uscite dopo: ${sicurezza.map((v) => v.version).join(", ")}.`);
 }
 
+// Fine del supporto dal calendario ufficiale. Se non risponde, il controllo
+// delle correzioni resta valido: si salta solo questa parte.
+let fine = "";
+let nuova = "";
+try {
+  const calendario = await fetch("https://raw.githubusercontent.com/nodejs/Release/main/schedule.json", {
+    signal: AbortSignal.timeout(30_000),
+  });
+  /** @type {Record<string, { lts?: string; end?: string }>} */
+  const versioniPrincipali = calendario.ok ? await calendario.json() : {};
+  const data = versioniPrincipali[`v${principale}`]?.end;
+  if (typeof data === "string" && /^\d{4}-\d{2}-\d{2}$/.test(data)) fine = data;
+  const lts = Object.entries(versioniPrincipali)
+    .map(([nome, v]) => ({ numero: Number(nome.replace(/^v/, "")), lts: v.lts }))
+    .filter((v) => Number.isInteger(v.numero) && v.numero > Number(principale))
+    .filter((v) => typeof v.lts === "string" && Date.parse(v.lts) <= Date.now())
+    .sort((a, b) => b.numero - a.numero);
+  if (lts.length > 0) nuova = String(lts[0].numero);
+} catch {
+  // nessuna data: niente avviso di scadenza oggi
+}
+const SEI_MESI_MS = 183 * 24 * 60 * 60 * 1000;
+const scade = fine !== "" && Date.parse(fine) - Date.now() < SEI_MESI_MS;
+if (fine) console.error(`Node ${principale} riceve correzioni fino al ${fine}.`);
+if (nuova) console.error(`È uscita Node ${nuova} LTS, più nuova di quella in uso.`);
+
 console.log(
-  `aggiornare=${sicurezza.length > 0}\nattuale=${attuale}\nultima=${ultima.version.replace(/^v/, "")}\n` +
+  `scade=${scade}\nfine=${fine}\nnuova=${nuova}\n` +
+    `aggiornare=${sicurezza.length > 0}\nattuale=${attuale}\nultima=${ultima.version.replace(/^v/, "")}\n` +
     `sicurezza=${sicurezza.map((v) => v.version).join(", ")}`,
 );

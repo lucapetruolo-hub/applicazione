@@ -21282,3 +21282,29 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 **Certificati e chiamate HTTPS in uscita**: Stripe, Resend, Cloudinary, Google (accesso, Maps, Routes, Places), Openapi, VIES, Didit, Turnstile, Open-Meteo e Sentry passano tutti dal `fetch`/`https` di Node, che usa l'elenco di certificati incluso in Node: con Node 22.23.4 eMudhra non è più fidato. Nessuna libreria porta certificati propri (nessun file `.pem`/`.crt` nelle dipendenze), nessun `rejectUnauthorized: false`, `NODE_TLS_REJECT_UNAUTHORIZED` o `ca:` personalizzato nel codice. Il database è raggiunto dall'indirizzo interno di Render.
 
 **Verifica**: `node scripts/controlla-node.mjs` con 22.23.4 (nessun aggiornamento), 22.23.2 (`aggiornare=true`, ultima 22.23.4), 22.99.0 e `22` (errore); CI della PR.
+
+## 374. Node.js 24
+
+**Richiesta** (Luca, 27/10/2026, miglioria proposta col §373): passare a Node 24 prima che Node 22 smetta di ricevere correzioni (30/04/2027).
+
+**Decisione**: `.nvmrc` a **`24.22.1`** (ultima 24.x su nodejs.org, correzione di sicurezza del 20/10, la stessa raccomandata da Render), `engines.node` `24.x` (Vercel passa a Node 24 da qui), `@types/node` `^24.19.2` in `apps/web`, `apps/api`, `packages/database`. Il controllo giornaliero del §373 segue da solo la versione principale di `.nvmrc`. Node 24 riceve correzioni fino al 30/04/2028.
+
+**Verifica**: con Node 24.22.1 typecheck, lint e 723 test dell'API (con tutti i compiti in parallelo un test a proprietà dell'agenda supera i 5 secondi anche con Node 22: dipende dal carico, non dalla versione), build di API e sito; confronto delle pagine pubbliche (computer e telefono, con l'API e il database di prova) tra il sito costruito e servito con Node 22 e con Node 24: 52 foto identiche su 64; le altre con pochi pixel (cursore nei campi, puntino del menu, bordi dietro il banner dei cookie) e `/per-professionisti` con la banda dell'offerta di lancio solo nel secondo giro (la pagina si rigenera ogni 10 minuti e nel primo giro era stata costruita con l'API spenta, non dipende da Node); `npx expo export --platform android` riuscito con Node 24; CI della PR.
+
+## 375. Test dell'agenda più tollerante e avviso di fine supporto di Node
+
+**Richiesta** (Luca, 27/10/2026, le due migliorie proposte col §374).
+
+**Decisione**:
+- Il test a proprietà "applicare la settimana tipo a un mese…" (`apps/api/src/agenda/agenda-properties.test.ts`) ha un limite di 30 secondi invece dei 5 predefiniti: da solo dura circa 2 secondi, ma con la macchina carica (tutti i controlli in parallelo) li superava, con Node 22 come con Node 24. Il controllo resta lo stesso, con lo stesso numero di casi.
+- `scripts/controlla-node.mjs` legge anche il calendario ufficiale di Node.js (`nodejs/Release`, `schedule.json`) e stampa `scade=true` quando alla fine del supporto della versione principale di `.nvmrc` mancano meno di 6 mesi; il controllo giornaliero `.github/workflows/node.yml` apre allora una segnalazione con i passi per passare alla LTS successiva. Se il calendario non risponde, si salta solo questa parte. Con Node 24 la segnalazione arriverà verso fine ottobre 2027 (fine supporto 30/04/2028).
+
+**Verifica**: il test in 723 test dell'API; lo script con Node 24.22.1 (`fine=2028-04-30`, `scade=false`) e con 22.23.4 (`fine=2027-04-30`, a 185 giorni, `scade=false`).
+
+## 376. Avviso appena esce una nuova versione stabile di Node
+
+**Richiesta** (Luca, 27/10/2026): non aspettare la fine del supporto, "ancora meglio appena esce un aggiornamento".
+
+**Decisione**: `scripts/controlla-node.mjs` stampa in `nuova` la versione principale più recente già diventata **LTS** secondo il calendario ufficiale (le versioni dispari e quelle pari prima dell'LTS non sono pensate per la produzione), se è più nuova di `.nvmrc`; il controllo giornaliero apre allora la segnalazione "Passare a Node N: è uscita la nuova versione stabile", con i passi. Il thread che fa il passaggio controlla prima che Render, Vercel ed Expo supportino già la versione nuova. Resta anche l'avviso 6 mesi prima della scadenza (§375), utile se il passaggio si rimanda. Node 26 diventa LTS il 28/10/2026: la prima segnalazione arriverà a unione fatta.
+
+**Verifica**: lo script con `.nvmrc` 24.22.1 (`nuova` vuoto, Node 26 non ancora LTS) e 22.23.4 (`nuova=24`); YAML del workflow letto senza errori.
