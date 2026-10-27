@@ -5,6 +5,10 @@ import {
   type AdminRoleUpdateInput,
   resolveContentReportSchema,
   siteNoteSchema,
+  siteAdviceDoneSchema,
+  siteAdviceUndoSchema,
+  type SiteAdviceDoneInput,
+  type SiteAdviceUndoInput,
   type SiteNoteInput,
   resolveJobIssueSchema,
   resolveJobIssueAppealSchema,
@@ -50,6 +54,21 @@ export class AdminController {
   @HttpCode(204)
   async deleteSiteNote(@Param("id") id: string): Promise<void> {
     await this.siteStatsService.deleteNote(id);
+  }
+
+  /** "Fatto" su un consiglio della settimana (super admin): non torna per 14 giorni (§372). */
+  @RequireAdminScope("SUPER")
+  @Post("site-advice/done")
+  @HttpCode(204)
+  async markSiteAdviceDone(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(siteAdviceDoneSchema)) body: SiteAdviceDoneInput): Promise<void> {
+    await this.siteStatsService.markAdviceDone(req.user.userId, body);
+  }
+
+  @RequireAdminScope("SUPER")
+  @Post("site-advice/undo")
+  @HttpCode(204)
+  async undoSiteAdviceDone(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(siteAdviceUndoSchema)) body: SiteAdviceUndoInput): Promise<void> {
+    await this.siteStatsService.undoAdviceDone(req.user.userId, body);
   }
 
   /** Contatori della home admin (docs/CHANGELOG.md §144). */

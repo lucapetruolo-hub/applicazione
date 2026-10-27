@@ -508,19 +508,21 @@ export function GuidedRequestForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ matchedProfessionals: number; requestsCount: number } | null>(null);
   // Andamento del sito (docs/CHANGELOG.md §372): ogni passo raggiunto conta
-  // una volta per pagina aperta, con il lavoro scelto. Dice dove ci si ferma.
+  // una volta per pagina aperta, con il lavoro scelto e se arriva dalla
+  // pagina di un professionista. Dice dove ci si ferma.
+  const requestOrigin = professionalProfileId ? "PROFILE" : "GENERAL";
   const countedSteps = useRef(new Set<RequestStepKey>());
   const countStepOnce = (key: RequestStepKey) => {
     if (countedSteps.current.has(key)) return;
     countedSteps.current.add(key);
-    countRequestStep(key, categorySlug);
+    countRequestStep(key, categorySlug, requestOrigin);
   };
   useEffect(() => {
     const key: RequestStepKey = step === 1 ? "LAVORO" : step === 2 ? "DOVE" : "RIEPILOGO";
     if (countedSteps.current.has(key)) return;
     countedSteps.current.add(key);
-    countRequestStep(key, categorySlug);
-  }, [step, categorySlug]);
+    countRequestStep(key, categorySlug, requestOrigin);
+  }, [step, categorySlug, requestOrigin]);
   // Una foto/video selezionato prima di autenticarsi (`file` valorizzato)
   // resta locale — anteprima via `URL.createObjectURL`, mai caricata su
   // Cloudinary finché non esiste un token — e viene caricata solo al

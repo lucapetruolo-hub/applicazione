@@ -119,6 +119,7 @@ const baseInput = (overrides: Partial<SiteAdviceInput> = {}): SiteAdviceInput =>
   cells: [],
   searchZones: [],
   requestSteps: [],
+  profileViews: 0,
   failures: [],
   unknownJobs: [],
   churnReasons: [],
@@ -132,6 +133,13 @@ const baseInput = (overrides: Partial<SiteAdviceInput> = {}): SiteAdviceInput =>
 });
 
 describe("consigli", () => {
+  it("profili molto visti ma senza richieste: completarli", () => {
+    const lavoro = (fromProfile: number) => [{ key: "LAVORO" as const, count: 20, fromProfile }];
+    expect(buildSiteAdvice(baseInput({ profileViews: 90, requestSteps: lavoro(0) }))).toEqual([]);
+    expect(buildSiteAdvice(baseInput({ profileViews: 200, requestSteps: lavoro(10) }))).toEqual([]);
+    expect(buildSiteAdvice(baseInput({ profileViews: 200, requestSteps: lavoro(2) }))[0]).toMatchObject({ key: "profiles-no-requests", level: "TIP" });
+  });
+
   it("niente da fare: nessun consiglio", () => {
     expect(buildSiteAdvice(baseInput())).toEqual([]);
   });
@@ -157,8 +165,8 @@ describe("consigli", () => {
 
   it("passo della richiesta: solo con almeno 30 persone e metà che si ferma", () => {
     const steps = (lavoro: number, dove: number) => [
-      { key: "LAVORO" as const, count: lavoro },
-      { key: "DOVE" as const, count: dove },
+      { key: "LAVORO" as const, count: lavoro, fromProfile: 0 },
+      { key: "DOVE" as const, count: dove, fromProfile: 0 },
     ];
     expect(buildSiteAdvice(baseInput({ requestSteps: steps(20, 2) }))).toEqual([]);
     expect(buildSiteAdvice(baseInput({ requestSteps: steps(40, 25) }))).toEqual([]);

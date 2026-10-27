@@ -215,6 +215,10 @@ const STEP_TRANSITIONS: [RequestStepKey, RequestStepKey][] = [
 export const STEP_ADVICE_MIN_ENTERED = 30;
 /** Quota che si ferma oltre la quale conviene semplificare il passo. */
 export const STEP_ADVICE_MIN_DROP = 0.5;
+/** Visite ai profili prima di dire che i profili non portano richieste. */
+export const PROFILE_ADVICE_MIN_VIEWS = 100;
+/** Sotto questa quota di richieste iniziate dal profilo sulle visite, i profili non convincono. */
+export const PROFILE_ADVICE_MAX_SHARE = 0.03;
 /** Invii non riusciti in 7 giorni per un "errore del sito". */
 export const FAILURE_ADVICE_SERVER = 5;
 export const FAILURE_ADVICE_OTHER = 10;
@@ -233,7 +237,9 @@ export type SiteAdviceInput = {
   cells: AdminSiteStats["cells"];
   /** Zone con ricerche senza nessuno vicino negli ultimi 7 giorni (§371). */
   searchZones: SearchDemandZone[];
-  requestSteps: { key: RequestStepKey; count: number }[];
+  requestSteps: { key: RequestStepKey; count: number; fromProfile: number }[];
+  /** Visite ai profili pubblici nelle ultime 4 settimane. */
+  profileViews: number;
   /** Ultimi 7 giorni. */
   failures: { form: SubmitFormKey; kind: SubmitFailureKind; count: number }[];
   unknownJobs: AdminSiteStats["unknownJobs"];
@@ -365,6 +371,19 @@ export function buildSiteAdvice(input: SiteAdviceInput): SiteAdvice[] {
       todo: isAccess
         ? "Rendi la registrazione più corta o fai capire meglio perché serve. Tra 4 settimane guarda se il numero è sceso."
         : "Semplifica quel passo: meno campi e frasi più chiare. Tra 4 settimane guarda se il numero è sceso.",
+    });
+  }
+
+  // Profili visti ma senza richieste: la pagina del professionista non convince.
+  const fromProfile = input.requestSteps.find((st) => st.key === "LAVORO")?.fromProfile ?? 0;
+  if (input.profileViews >= PROFILE_ADVICE_MIN_VIEWS && fromProfile / input.profileViews < PROFILE_ADVICE_MAX_SHARE) {
+    advice.push({
+      key: "profiles-no-requests",
+      level: "TIP",
+      title: "Molti guardano i profili ma pochi chiedono un preventivo",
+      why: `Nelle ultime 4 settimane i profili sono stati aperti ${input.profileViews} volte e solo ${fromProfile} volte qualcuno ha iniziato una richiesta da lì.`,
+      todo: "Chiedi ai professionisti di completare il profilo: foto, prezzi delle prestazioni e orari dell'agenda. Un profilo completo convince di più.",
+      link: { label: "Vedi i profili incompleti", href: "/admin/numeri-professionisti" },
     });
   }
 

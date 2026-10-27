@@ -89,6 +89,7 @@ import type {
   AdminSiteStats,
   ChurnReason,
   SiteNoteInput,
+  SiteAdviceDoneInput,
   ProfessionalVerificationFilter,
   ProfessionalVerificationRow,
   MyVerificationStatus,
@@ -1785,6 +1786,13 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
 
     adminAddSiteNote: (token: string, input: SiteNoteInput) =>
       request<{ id: string }>("/admin/site-notes", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
+    /** "Fatto" su un consiglio della settimana: non torna per 14 giorni (solo super admin). */
+    adminMarkSiteAdviceDone: (token: string, input: SiteAdviceDoneInput) =>
+      request<void>("/admin/site-advice/done", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
+    adminUndoSiteAdviceDone: (token: string, key: string) =>
+      request<void>("/admin/site-advice/undo", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ key }) }),
 
     adminDeleteSiteNote: (token: string, id: string) =>
       request<void>(`/admin/site-notes/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),

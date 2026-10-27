@@ -123,9 +123,14 @@ export type ChurnReasonBody = z.infer<typeof churnReasonBodySchema>;
 /** Da dove arrivano i professionisti: le provenienze delle richieste più l'invito al telefono. */
 export type SignupSourceKey = TrafficSource | "INVITE" | "unknown";
 
+/** Da dove parte una richiesta: a tutti i professionisti della zona o dalla pagina di uno di loro. */
+export const REQUEST_ORIGINS = ["GENERAL", "PROFILE"] as const;
+export type RequestOrigin = (typeof REQUEST_ORIGINS)[number];
+
 export const siteStepEventSchema = z.object({
   step: z.enum(REQUEST_STEP_KEYS),
   categorySlug: z.string().max(60).optional(),
+  origin: z.enum(REQUEST_ORIGINS).optional(),
 });
 export type SiteStepEvent = z.infer<typeof siteStepEventSchema>;
 
@@ -177,6 +182,17 @@ export type SiteAdvice = {
   link?: { label: string; href: string };
 };
 
+/** Giorni in cui un consiglio segnato come fatto non torna (§372): il tempo di vedere se è servito. */
+export const SITE_ADVICE_DONE_DAYS = 14;
+
+export const siteAdviceDoneSchema = z.object({
+  key: z.string().trim().min(1).max(200),
+  title: z.string().trim().min(1).max(300),
+});
+export type SiteAdviceDoneInput = z.infer<typeof siteAdviceDoneSchema>;
+export const siteAdviceUndoSchema = z.object({ key: z.string().trim().min(1).max(200) });
+export type SiteAdviceUndoInput = z.infer<typeof siteAdviceUndoSchema>;
+
 /** Stato di una casella lavoro × città per il numero guida. */
 export type GuideCellStatus = "GREEN" | "YELLOW" | "RED" | "NO_PROFESSIONALS";
 
@@ -200,7 +216,8 @@ export type AdminSiteStats = {
   otherCells: { cells: number; requests: number; withQuote: number } | null;
   /** Percorso del cliente negli ultimi SITE_STATS_WINDOW_DAYS giorni. */
   clientFunnel: { key: ClientFunnelKey; count: number }[];
-  requestSteps: { key: RequestStepKey; count: number }[];
+  /** Totale, e quanti dalla pagina di un professionista (`fromProfile`). */
+  requestSteps: { key: RequestStepKey; count: number; fromProfile: number }[];
   clientCohorts: { weekStart: string; clients: number; withQuote: number; accepted: number; reviewed: number; returned: number }[];
   professionalCohorts: { weekStart: string; registered: number; fiscal: number; identity: number; firstQuote: number; active: number }[];
   submitFailures: { form: SubmitFormKey; kind: SubmitFailureKind; count: number }[];
@@ -216,6 +233,8 @@ export type AdminSiteStats = {
   /** A che punto è la tappa silenziosa (GOOGLE_OPENING_TARGETS). */
   launch: { visibleProfessionals: number; clientsWithRequest: number; acceptedJobs: number; paidOnline: number; greenWeeks: number; ready: boolean };
   advice: SiteAdvice[];
+  /** Consigli segnati come fatti negli ultimi SITE_ADVICE_DONE_DAYS giorni: non sono in `advice`. */
+  doneAdvice: { key: string; title: string; doneAt: string; until: string }[];
 };
 
 export const CLIENT_FUNNEL_KEYS = ["SEARCHES", "PROFILE_VIEWS", "REQUEST_STARTED", "REQUEST_SENT", "WITH_QUOTE", "ACCEPTED", "COMPLETED", "REVIEWED"] as const;

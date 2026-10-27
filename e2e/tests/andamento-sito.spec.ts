@@ -82,6 +82,28 @@ for (const device of [
   });
 }
 
+test("\"Fatto\" toglie un consiglio e \"Riapri\" lo riporta", async ({ browser }) => {
+  // Sei invii della richiesta falliti oggi per un errore del sito: il consiglio "l'invio non riesce".
+  const day = new Date();
+  day.setUTCHours(0, 0, 0, 0);
+  const where = { form_kind_day: { form: "RICHIESTA", kind: "SERVER", day } };
+  await prisma.submitFailureDay.upsert({ where, create: { form: "RICHIESTA", kind: "SERVER", day, count: 6 }, update: { count: { increment: 6 } } });
+  await prisma.siteAdviceDone.deleteMany({ where: { key: "failure-server:RICHIESTA" } });
+
+  const { context, page } = await adminPage(browser, { width: 390, height: 844, isMobile: true });
+  await page.goto("/admin/andamento");
+  const title = "Richiesta di preventivo: l'invio non riesce";
+  await expect(page.getByRole("heading", { name: title })).toBeVisible();
+  await page.getByRole("button", { name: `Fatto: ${title}` }).click();
+  await expect(page.getByRole("heading", { name: title })).toHaveCount(0);
+  await expect(page.getByText("Fatti di recente")).toBeVisible();
+  await page.getByRole("button", { name: `Riapri: ${title}` }).click();
+  await expect(page.getByRole("heading", { name: title })).toBeVisible();
+
+  await prisma.submitFailureDay.update({ where, data: { count: { decrement: 6 } } });
+  await context.close();
+});
+
 test("account di prova eliminato per sempre con le sue richieste", async ({ browser }) => {
   const client = await createClient(prisma, "Prova");
   const category = await prisma.category.findFirstOrThrow({ where: { slug: "idraulico" } });

@@ -1,4 +1,4 @@
-import { NO_COUNT_COOKIE, type RequestStepKey, type SubmitFailureKind, type SubmitFormKey } from "@professionisti/shared";
+import { NO_COUNT_COOKIE, type RequestOrigin, type RequestStepKey, type SubmitFailureKind, type SubmitFormKey } from "@professionisti/shared";
 
 /**
  * Conteggi dell'andamento del sito mandati dal browser (docs/CHANGELOG.md
@@ -65,8 +65,9 @@ function send(path: "step" | "failure", body: object): void {
   );
 }
 
-export function countRequestStep(step: RequestStepKey, categorySlug?: string | null): void {
-  send("step", { step, ...(categorySlug ? { categorySlug } : {}) });
+/** `origin`: PROFILE se la richiesta parte dalla pagina di un professionista. */
+export function countRequestStep(step: RequestStepKey, categorySlug?: string | null, origin: RequestOrigin = "GENERAL"): void {
+  send("step", { step, origin, ...(categorySlug ? { categorySlug } : {}) });
 }
 
 /** Modulo a cui appartiene una chiamata all'API, solo per gli invii che contano. */

@@ -2353,12 +2353,33 @@ a.admin-kpi:hover {
   color: #0e6b42;
   font-weight: 700;
 }
-.site-advice-action {
-  align-self: flex-start;
+.site-advice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-top: 6px;
+}
+.site-advice-done {
+  cursor: pointer;
+  font-family: inherit;
+}
+.site-advice-done:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 .site-advice-more a {
   font-weight: 700;
+  color: #0e6b42;
+}
+.site-done {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 18px;
+  border-radius: 20px;
+  border: 1px dashed #d9cfc4;
+}
+.site-done .site-notes .site-note-delete {
   color: #0e6b42;
 }
 .site-advice-empty {

@@ -2417,10 +2417,12 @@ model FreeSearchDay {
 model RequestStepDay {
   step         String
   categorySlug String
+  /// GENERAL: richiesta a tutti i professionisti della zona; PROFILE: dalla pagina di un professionista (§372).
+  origin       String   @default("GENERAL")
   day          DateTime @db.Date
   count        Int      @default(0)
 
-  @@id([step, categorySlug, day])
+  @@id([step, categorySlug, origin, day])
   @@index([day])
   @@map("request_step_days")
 }
@@ -2635,4 +2637,16 @@ model GeneralRequestSettings {
   updatedByUserId    String?
 
   @@map("general_request_settings")
+}
+
+// Consigli di "Andamento del sito" segnati come fatti dal super admin
+// (docs/CHANGELOG.md §372): per 14 giorni non tornano né nella pagina né
+// nell'email del lunedì, il tempo di vedere se l'azione ha funzionato.
+model SiteAdviceDone {
+  key      String   @id
+  title    String
+  doneAt   DateTime @default(now())
+  doneById String?
+
+  @@map("site_advice_done")
 }

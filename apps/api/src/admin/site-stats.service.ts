@@ -7,6 +7,7 @@ import {
   CLIENT_FUNNEL_KEYS,
   REQUEST_STEP_KEYS,
   SEARCH_DEMAND_ALERT_DAYS,
+  SITE_ADVICE_DONE_DAYS,
   SITE_AUTOMATIC_NOTES,
   SITE_COHORT_WEEKS,
   SITE_STATS_WEEKS,
@@ -20,12 +21,15 @@ import {
   type ClientFunnelKey,
   type RequestStepKey,
   type SignupSourceKey,
+  type SiteAdviceDoneInput,
+  type SiteAdviceUndoInput,
   type SiteNoteInput,
   type SubmitFailureKind,
   type SubmitFormKey,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
+import { AuditLogService } from "../audit-log/audit-log.service";
 import { identityVerificationRequired } from "../identity-verification/identity-provider-env";
 import { hasLaunched, launchDate } from "../subscriptions/subscription-rules";
 import { PROFESSIONAL_STATS_SELECT } from "./admin.service";
@@ -65,6 +69,7 @@ export class SiteStatsService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly notificationsService: NotificationsService,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   async getStats(now: Date = new Date()): Promise<AdminSiteStats> {
@@ -96,7 +101,7 @@ export class SiteStatsService {
       this.prisma.categorySearchDay.findMany({ where: { day: { gte: windowDay } }, select: { city: true, count: true, emptyCount: true, day: true, category: { select: { slug: true } } } }),
       this.prisma.freeSearchDay.aggregate({ where: { day: { gte: windowDay } }, _sum: { count: true } }),
       this.prisma.profileViewDay.aggregate({ where: { day: { gte: windowDay } }, _sum: { count: true } }),
-      this.prisma.requestStepDay.groupBy({ by: ["step"], where: { day: { gte: windowDay } }, _sum: { count: true } }),
+      this.prisma.requestStepDay.groupBy({ by: ["step", "origin"], where: { day: { gte: windowDay } }, _sum: { count: true } }),
       this.prisma.professionalProfile.findMany({
         where: proCounted,
         select: { ...PROFESSIONAL_STATS_SELECT, businessName: true, user: { select: { suspendedAt: true, email: true, name: true, surname: true } } },
@@ -151,7 +156,13 @@ export class SiteStatsService {
     const guideWeekly = buildGuideWeekly(requests, now, SITE_STATS_WEEKS);
 
     // Percorso del cliente.
-    const steps = new Map(stepDays.map((s) => [s.step as RequestStepKey, s._sum.count ?? 0]));
+    const steps = new Map<RequestStepKey, number>();
+    const stepsFromProfile = new Map<RequestStepKey, number>();
+    for (const day of stepDays) {
+      const key = day.step as RequestStepKey;
+      steps.set(key, (steps.get(key) ?? 0) + (day._sum.count ?? 0));
+      if (day.origin === "PROFILE") stepsFromProfile.set(key, (stepsFromProfile.get(key) ?? 0) + (day._sum.count ?? 0));
+    }
     const groups = new Map<string, SiteRequestRow[]>();
     for (const r of inWindow) groups.set(r.groupKey, [...(groups.get(r.groupKey) ?? []), r]);
     const groupList = [...groups.values()];
@@ -294,10 +305,11 @@ export class SiteStatsService {
     ]);
     const launchBase = { visibleProfessionals: visible.length, clientsWithRequest, acceptedJobs, paidOnline, greenWeeks: greenWeeksInARow(guideWeekly) };
     const launchStatus = { ...launchBase, ready: launchReady(launchBase) };
-    const requestSteps = REQUEST_STEP_KEYS.map((key) => ({ key, count: steps.get(key) ?? 0 }));
+    const requestSteps = REQUEST_STEP_KEYS.map((key) => ({ key, count: steps.get(key) ?? 0, fromProfile: stepsFromProfile.get(key) ?? 0 }));
 
-    const advice = buildSiteAdvice({
+    const allAdvice = buildSiteAdvice({
       now,
+      profileViews: funnelCounts.PROFILE_VIEWS,
       launch,
       cells,
       searchZones: searchDemandZones(searchDays.filter((d) => d.day >= since7Day).map((d) => ({ categorySlug: d.category.slug, city: d.city, count: d.count, emptyCount: d.emptyCount }))),
@@ -312,6 +324,16 @@ export class SiteStatsService {
       requestsInWindow: inWindow.length,
       prices: { paying, atLimit30d, trialsEnded: trials.length, trialsConverted: trials.filter((t) => t.stripeSubscriptionId).length },
     });
+    // Consigli segnati come fatti: fuori per SITE_ADVICE_DONE_DAYS giorni, anche dall'email del lunedì.
+    const doneRows = await this.prisma.siteAdviceDone.findMany({ where: { doneAt: { gte: new Date(now.getTime() - SITE_ADVICE_DONE_DAYS * DAY_MS) } }, orderBy: { doneAt: "desc" } });
+    const doneKeys = new Set(doneRows.map((d) => d.key));
+    const advice = allAdvice.filter((a) => !doneKeys.has(a.key));
+    const doneAdvice = doneRows.map((d) => ({
+      key: d.key,
+      title: d.title,
+      doneAt: d.doneAt.toISOString(),
+      until: new Date(d.doneAt.getTime() + SITE_ADVICE_DONE_DAYS * DAY_MS).toISOString(),
+    }));
 
     const automaticNotes = [...SITE_AUTOMATIC_NOTES, ...(launch ? [{ day: isoDay(launch), text: "Lancio del sito" }] : [])]
       .filter((n) => n.day >= isoDay(weeksStart))
@@ -335,12 +357,30 @@ export class SiteStatsService {
       reconciliation,
       launch: launchStatus,
       advice,
+      doneAdvice,
     };
   }
 
   async addNote(input: SiteNoteInput): Promise<{ id: string }> {
     const note = await this.prisma.siteNote.create({ data: { day: new Date(`${input.day}T00:00:00Z`), text: input.text.trim() } });
     return { id: note.id };
+  }
+
+  /** "Fatto" su un consiglio: non torna per SITE_ADVICE_DONE_DAYS giorni; scritto nel registro azioni. */
+  async markAdviceDone(adminUserId: string, input: SiteAdviceDoneInput): Promise<void> {
+    await this.prisma.siteAdviceDone.upsert({
+      where: { key: input.key },
+      create: { key: input.key, title: input.title, doneById: adminUserId },
+      update: { title: input.title, doneById: adminUserId, doneAt: new Date() },
+    });
+    await this.auditLogService.record({ entityType: "SiteAdvice", entityId: input.key, fieldName: "adviceDone", newValue: input.title, changedByUserId: adminUserId });
+  }
+
+  /** Annulla "Fatto": il consiglio torna subito se i numeri lo dicono ancora. */
+  async undoAdviceDone(adminUserId: string, input: SiteAdviceUndoInput): Promise<void> {
+    const deleted = await this.prisma.siteAdviceDone.deleteMany({ where: { key: input.key } });
+    if (deleted.count === 0) throw new NotFoundException("Consiglio non trovato.");
+    await this.auditLogService.record({ entityType: "SiteAdvice", entityId: input.key, fieldName: "adviceDone", newValue: "UNDONE", changedByUserId: adminUserId });
   }
 
   async deleteNote(id: string): Promise<void> {

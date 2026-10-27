@@ -20,7 +20,7 @@ export class SiteCountsController {
   @HttpCode(204)
   async step(@Body(new ZodValidationPipe(siteStepEventSchema)) body: SiteStepEvent, @Headers("user-agent") userAgent?: string): Promise<void> {
     if (isBotUserAgent(userAgent)) return;
-    await this.siteCounts.recordStep(body.step, body.categorySlug).catch(() => undefined);
+    await this.siteCounts.recordStep(body.step, body.categorySlug, body.origin).catch(() => undefined);
   }
 
   @Throttle({ default: { limit: 30, ttl: 60_000 } })

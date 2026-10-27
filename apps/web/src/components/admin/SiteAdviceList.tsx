@@ -14,7 +14,11 @@ export function visibleAdvice(advice: SiteAdvice[]): SiteAdvice[] {
   return SITE_INDEXABLE ? advice.filter((a) => a.key !== "google-ready") : advice;
 }
 
-export function SiteAdviceList({ advice, limit }: { advice: SiteAdvice[]; limit?: number }) {
+/**
+ * `onDone`: pulsante "Fatto" (solo super admin, nella pagina Andamento): il
+ * consiglio sparisce per 14 giorni, anche dall'email del lunedì.
+ */
+export function SiteAdviceList({ advice, limit, onDone, pendingKey }: { advice: SiteAdvice[]; limit?: number; onDone?: (item: SiteAdvice) => void; pendingKey?: string | null }) {
   const shown = visibleAdvice(advice);
   const list = limit ? shown.slice(0, limit) : shown;
   if (list.length === 0) {
@@ -46,10 +50,25 @@ export function SiteAdviceList({ advice, limit }: { advice: SiteAdvice[]; limit?
               ))}
             </ul>
           ) : null}
-          {item.link ? (
-            <Link href={item.link.href} className="admin-link-button site-advice-action">
-              {item.link.label}
-            </Link>
+          {item.link || onDone ? (
+            <div className="site-advice-actions">
+              {item.link ? (
+                <Link href={item.link.href} className="admin-link-button">
+                  {item.link.label}
+                </Link>
+              ) : null}
+              {onDone ? (
+                <button
+                  type="button"
+                  className="admin-link-button site-advice-done"
+                  disabled={pendingKey === item.key}
+                  onClick={() => onDone(item)}
+                  aria-label={`Fatto: ${item.title}`}
+                >
+                  {pendingKey === item.key ? "Attendi..." : "Fatto"}
+                </button>
+              ) : null}
+            </div>
           ) : null}
         </li>
       ))}

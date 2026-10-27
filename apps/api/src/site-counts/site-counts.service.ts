@@ -3,10 +3,12 @@ import { Inject, Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import {
+  SITE_ADVICE_DONE_DAYS,
   SITE_COUNTERS_RETENTION_MONTHS,
   normalizeJobTerm,
   type ChurnKind,
   type ChurnReason,
+  type RequestOrigin,
   type RequestStepKey,
   type SubmitFailureKind,
   type SubmitFormKey,
@@ -47,12 +49,12 @@ export class SiteCountsService {
 
   constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
 
-  async recordStep(step: RequestStepKey, categorySlug?: string): Promise<void> {
+  async recordStep(step: RequestStepKey, categorySlug?: string, origin: RequestOrigin = "GENERAL"): Promise<void> {
     const slug = categorySlug?.trim().toLowerCase() ?? "";
     const day = today();
     await this.prisma.requestStepDay.upsert({
-      where: { step_categorySlug_day: { step, categorySlug: slug, day } },
-      create: { step, categorySlug: slug, day, count: 1 },
+      where: { step_categorySlug_origin_day: { step, categorySlug: slug, origin, day } },
+      create: { step, categorySlug: slug, origin, day, count: 1 },
       update: { count: { increment: 1 } },
     });
   }
@@ -115,6 +117,8 @@ export class SiteCountsService {
       this.prisma.submitFailureDay.deleteMany({ where: before }),
       this.prisma.unknownJobSearchDay.deleteMany({ where: before }),
       this.prisma.churnReasonDay.deleteMany({ where: before }),
+      // Consigli segnati come fatti: servono solo per SITE_ADVICE_DONE_DAYS giorni.
+      this.prisma.siteAdviceDone.deleteMany({ where: { doneAt: { lt: new Date(now.getTime() - SITE_ADVICE_DONE_DAYS * DAY_MS) } } }),
     ]);
     const kept = await this.prisma.unknownJobSearchDay.findMany({ distinct: ["termHash"], select: { termHash: true } });
     const orphans = await this.prisma.unknownJobTerm.deleteMany({ where: { termHash: { notIn: kept.map((d) => d.termHash) } } });

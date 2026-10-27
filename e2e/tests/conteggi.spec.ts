@@ -1,7 +1,7 @@
 import { expect, test, type Browser, type BrowserContext } from "@playwright/test";
 import { PrismaClient } from "@professionisti/database";
 import { API_URL, WEB_URL } from "../fixtures/env";
-import { createClient, testToken } from "../fixtures/preventivi";
+import { createClient, createProfessional, testToken } from "../fixtures/preventivi";
 
 /**
  * Conteggi dell'andamento del sito (docs/CHANGELOG.md §372): su un percorso
@@ -32,8 +32,8 @@ async function searchCount(): Promise<number> {
   return rows._sum.count ?? 0;
 }
 
-async function stepCounts(): Promise<Record<string, number>> {
-  const rows = await prisma.requestStepDay.groupBy({ by: ["step"], where: { day: today() }, _sum: { count: true } });
+async function stepCounts(origin?: "GENERAL" | "PROFILE"): Promise<Record<string, number>> {
+  const rows = await prisma.requestStepDay.groupBy({ by: ["step"], where: { day: today(), ...(origin ? { origin } : {}) }, _sum: { count: true } });
   return Object.fromEntries(rows.map((r) => [r.step, r._sum.count ?? 0]));
 }
 
@@ -116,6 +116,20 @@ test.describe("passi della richiesta", () => {
     });
     // Riconciliazione: richieste contate dal browser = righe salvate.
     expect(delta("INVIATA")).toBe((await prisma.guidedRequest.count({ where: { clientId: client.id } })) - savedBefore);
+    await context.close();
+  });
+
+  test("dalla pagina di un professionista: il passo conta come richiesta dal profilo", async ({ browser }) => {
+    const professional = await createProfessional(prisma, "Paolo Verdi Idraulica");
+    const client = await createClient(prisma);
+    const context = await newContext(browser, { clientId: client.id });
+    const page = await context.newPage();
+    const before = { profile: await stepCounts("PROFILE"), general: await stepCounts("GENERAL") };
+    await page.goto(`${REQUEST_URL}&professionista=${professional.id}&nomeProfessionista=Paolo%20Verdi`);
+    await expect(page.getByRole("group", { name: "Quando ti serve?" })).toBeVisible();
+    await settle();
+    expect((await stepCounts("PROFILE")).LAVORO ?? 0).toBe((before.profile.LAVORO ?? 0) + 1);
+    expect((await stepCounts("GENERAL")).LAVORO ?? 0).toBe(before.general.LAVORO ?? 0);
     await context.close();
   });
 

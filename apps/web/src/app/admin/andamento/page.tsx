@@ -61,6 +61,22 @@ export default function AdminAndamentoPage() {
   useEffect(load, [load]);
 
   const isSuper = adminCan(user?.adminRoles ?? [], "SUPER");
+  const [pendingKey, setPendingKey] = useState<string | null>(null);
+  const [adviceError, setAdviceError] = useState<string | null>(null);
+
+  // "Fatto" e "Riapri": la scheda sparisce o torna subito, poi si ricaricano i numeri.
+  async function changeDone(key: string, action: () => Promise<void>) {
+    setPendingKey(key);
+    setAdviceError(null);
+    try {
+      await action();
+      load();
+    } catch (err) {
+      setAdviceError(errorMessage(err));
+    } finally {
+      setPendingKey(null);
+    }
+  }
 
   return (
     <YStack gap="$5">
@@ -87,7 +103,45 @@ export default function AdminAndamentoPage() {
               >
                 Cosa fare questa settimana
               </Text>
-              <SiteAdviceList advice={data.advice} />
+              <SiteAdviceList
+                advice={data.advice}
+                pendingKey={pendingKey}
+                onDone={
+                  isSuper && token
+                    ? (item) => changeDone(item.key, () => apiClient.adminMarkSiteAdviceDone(token, { key: item.key, title: item.title }))
+                    : undefined
+                }
+              />
+              {adviceError ? <Text color={brand.urgenza}>{adviceError}</Text> : null}
+              {data.doneAdvice.length ? (
+                <div className="site-done">
+                  <Text fontWeight="700" color={brand.grafite}>
+                    Fatti di recente
+                  </Text>
+                  <Text color={brand.grafite70} fontSize={13}>
+                    Tornano dopo 14 giorni solo se i numeri dicono ancora la stessa cosa.
+                  </Text>
+                  <ul className="site-notes">
+                    {data.doneAdvice.map((d) => (
+                      <li key={d.key}>
+                        <span>{d.title}</span>
+                        <time dateTime={d.doneAt}>fatto il {formatAdminDate(d.doneAt)}</time>
+                        {isSuper && token ? (
+                          <button
+                            type="button"
+                            className="notif-link site-note-delete"
+                            disabled={pendingKey === d.key}
+                            onClick={() => changeDone(d.key, () => apiClient.adminUndoSiteAdviceDone(token, d.key))}
+                            aria-label={`Riapri: ${d.title}`}
+                          >
+                            Riapri
+                          </button>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
               {!isSuper ? (
                 <Text color={brand.grafite70} fontSize={13}>
                   Alcune azioni (come eliminare un account di prova) le può fare
@@ -450,6 +504,16 @@ function StepsCard({ data }: { data: AdminSiteStats }) {
       count: s.count,
     })),
   );
+  // Le richieste partite dalla pagina di un professionista, a parte: dicono se i profili convincono.
+  const fromProfile = withDrops(
+    data.requestSteps.map((s) => ({
+      key: `profilo-${s.key}`,
+      label: REQUEST_STEP_LABEL[s.key],
+      count: s.fromProfile,
+    })),
+  );
+  const profileViews = data.clientFunnel.find((f) => f.key === "PROFILE_VIEWS")?.count ?? 0;
+  const startedFromProfile = data.requestSteps.find((s) => s.key === "LAVORO")?.fromProfile ?? 0;
   return (
     <AdminCard>
       <CardTitle
@@ -457,6 +521,15 @@ function StepsCard({ data }: { data: AdminSiteStats }) {
         note="Quante volte è stato raggiunto ogni passo del modulo di richiesta. Chi era già entrato salta l'accesso: per questo quel passo può essere più basso."
       />
       <Bars rows={rows} total={0} steps />
+      <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite} marginTop="$3">
+        Di queste, dalla pagina di un professionista
+      </Text>
+      <Text color={brand.grafite70} fontSize={13}>
+        {profileViews > 0
+          ? `Profili aperti ${profileViews} volte: ${startedFromProfile} richieste iniziate da lì (${ratioLabel(startedFromProfile, profileViews)}).`
+          : "Nessun profilo aperto in questo periodo."}
+      </Text>
+      <Bars rows={fromProfile} total={0} steps />
     </AdminCard>
   );
 }
