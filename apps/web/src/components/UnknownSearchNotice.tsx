@@ -2,10 +2,10 @@
 
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { allItalianCityNames, findComuneBySlug, isProfessionalCategorySlug, PROFESSIONAL_CATEGORIES } from "@professionisti/shared";
+import { findComuneBySlug, isProfessionalCategorySlug, PROFESSIONAL_CATEGORIES } from "@professionisti/shared";
 import { Icon, SearchBar, Text, YStack, brand, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
 import { buildSearchDestination } from "@/lib/searchNavigation";
-import { buildSearchSuggestions } from "@/lib/searchSuggestions";
+import { rememberSearchCity, useSearchBarHints } from "@/lib/useSearchBarHints";
 import { navigateWithTransition } from "@/lib/viewTransition";
 import { MagneticButton } from "./MagneticButton";
 
@@ -58,9 +58,11 @@ export function describeUnknownSearch(pathname: string): UnknownSearch | null {
 export function UnknownSearchNotice({ pathname, fallback }: { pathname: string; fallback: ReactNode }) {
   const router = useRouter();
   const unknown = describeUnknownSearch(pathname);
+  const searchHints = useSearchBarHints(unknown?.query ?? "");
   if (!unknown) return <>{fallback}</>;
 
   function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
+    rememberSearchCity(params.city);
     const destination = buildSearchDestination(params);
     navigateWithTransition(() => router.push(destination));
   }
@@ -84,8 +86,7 @@ export function UnknownSearchNotice({ pathname, fallback }: { pathname: string; 
           onSearch={handleSearch}
           initialQuery={unknown.query}
           initialCity={unknown.city}
-          professionalSuggestions={buildSearchSuggestions()}
-          citySuggestions={allItalianCityNames()}
+          {...searchHints}
         />
       </YStack>
     </YStack>

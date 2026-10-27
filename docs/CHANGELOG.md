@@ -21332,6 +21332,30 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: test di confronto, conteggio, riquadro e consigli (`site-stats.test.ts`, `site-counts.service.test.ts`); typecheck, lint e test dell'API; prove nel browser `conteggi.spec.ts` ("sturatura" a Latina conta 1 su "Sturatura scarichi" di Idraulico, 0 per Googlebot, il testo scritto non si salva) e `andamento-sito.spec.ts` (riquadro visibile su telefono e computer, axe senza errori).
 
+## 383. Barra di ricerca: errori di battitura, frazioni, città con professionisti prima, tastiera
+
+**Richiesta** (Luca, 27/10/2026, thread "abbinamento problema"): elenchi che compaiono subito al clic su "Cosa cerchi" e "Città" (le città più cercate per prime), mentre si scrive prima ciò che rispetta di più quello che si è scritto, senza titoletti negli elenchi; poi "effettua migliorie 1-2-3 (senza i numeri) 4": errori di battitura, frazioni col loro comune, città senza professionisti più in basso senza mostrare numeri, tastiera e lettore di schermo.
+
+**Decisione**:
+- Ordine dei suggerimenti in `packages/ui/src/searchMatch.ts` (stesso codice per sito e app): prima chi inizia con le lettere scritte, poi chi ha una parola che inizia così, poi chi le contiene; solo se non c'è niente di questo, chi somiglia con un errore di battitura (nessuno sotto le 4 lettere, uno fino a 7, due da 8; "Latna" → Latina, "sabuadia" → Sabaudia). Accenti, maiuscole e apostrofi non contano.
+- "Città" vuota: "Vicino a me" (posizione del browser solo dopo il clic, comune più vicino col dataset ISTAT, `nearestComune`), l'ultima città cercata da questo browser (`localStorage`, nessun dato al server) e le più cercate degli ultimi 90 giorni (ricerche per lavoro §370, ricerche libere, richieste guidate ×3), da `GET /professionals/city-hints?category=`, in cache 5 minuti. Senza dati solo "Vicino a me", mai comuni a caso.
+- A parità di corrispondenza le città con almeno un professionista visibile entro 25 km (per il lavoro scelto se c'è, `coveredComuni` in `search-area.ts`, filtri pubblici di `publicSearchWhere`, profili demo esclusi) vengono prima. Nessun numero mostrato.
+- Frazioni in `packages/shared/src/frazioni.ts` (per ora Latina Scalo, Latina Lido e i 12 borghi di Latina): compaiono con il comune sotto e cercano nel comune.
+- Tastiera: frecce, Invio, Esc; `role="combobox"`/`listbox`/`option` con `aria-activedescendant` e un annuncio del numero di suggerimenti per il lettore di schermo.
+
+**Verifica**: test di `searchMatch` (7) e di `coveredComuni`; prova nel browser su computer e telefono (elenco al clic, frecce e Invio, Esc, "Latna", frazioni "borgo"); typecheck e lint.
+
+## 389. Barra di ricerca: frazioni dei comuni vicini, "Vicino a me" che spiega quando non trova la posizione
+
+**Richiesta** (Luca, 27/10/2026, "Effettua le migliorie" proposte col §383).
+
+**Decisione**:
+- Frazioni di Aprilia, Sabaudia, Cisterna di Latina, Pontinia e Terracina (riquadro "Frazioni" delle voci di Wikipedia) in `packages/shared/src/frazioni.ts`, con il comune sotto. Isolabella e San Vito sono anche comuni (Piemonte, Sardegna): compaiono tutte e due, distinte dal comune scritto sotto.
+- "Vicino a me": l'elenco resta aperto con "Cerco la tua posizione…" e, se non la trova, con "Posizione non disponibile: scrivi la città"; si chiude solo quando la trova (`leadingAction.onPress` può restituire una Promise).
+- Bug trovato provando: l'intestazione `Permissions-Policy` del sito aveva `geolocation=()`, che blocca la posizione anche dopo il permesso dell'utente; ora `geolocation=(self)` (solo il nostro sito, sempre dopo il clic e la richiesta del browser).
+
+**Verifica**: nel browser con posizione negata (messaggio, elenco aperto) e concessa (Latina compilata, elenco chiuso); intestazione controllata; typecheck, lint, test.
+
 ## 385. Barra fissa "Richiedi un preventivo" anche da computer
 
 **Richiesta di Luca (27/10/2026):** avere anche da computer la barra fissa in

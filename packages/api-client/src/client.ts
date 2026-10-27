@@ -1185,6 +1185,9 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     mySavedProfessionals: (token: string) =>
       request<ProfessionalSearchResult[]>("/saved-professionals/me", { headers: { Authorization: `Bearer ${token}` } }),
 
+    /** Campo "Città": più cercate e comuni con professionisti vicini per un lavoro (docs/CHANGELOG.md §383). */
+    getCityHints: (category?: string) =>
+      request<{ popular: string[]; covered: string[] }>(`/professionals/city-hints${category ? `?category=${encodeURIComponent(category)}` : ""}`),
     searchProfessionals: (params: { category?: string; city?: string; q?: string; remote?: boolean; excludeDemo?: boolean; track?: boolean } = {}) => {
       const query = new URLSearchParams();
       if (params.category) query.set("category", params.category);
