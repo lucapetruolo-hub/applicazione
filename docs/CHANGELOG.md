@@ -21278,3 +21278,11 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - `scripts/controlla-node.mjs` legge anche il calendario ufficiale di Node.js (`nodejs/Release`, `schedule.json`) e stampa `scade=true` quando alla fine del supporto della versione principale di `.nvmrc` mancano meno di 6 mesi; il controllo giornaliero `.github/workflows/node.yml` apre allora una segnalazione con i passi per passare alla LTS successiva. Se il calendario non risponde, si salta solo questa parte. Con Node 24 la segnalazione arriverà verso fine ottobre 2027 (fine supporto 30/04/2028).
 
 **Verifica**: il test in 723 test dell'API; lo script con Node 24.22.1 (`fine=2028-04-30`, `scade=false`) e con 22.23.4 (`fine=2027-04-30`, a 185 giorni, `scade=false`).
+
+## 376. Avviso appena esce una nuova versione stabile di Node
+
+**Richiesta** (Luca, 27/10/2026): non aspettare la fine del supporto, "ancora meglio appena esce un aggiornamento".
+
+**Decisione**: `scripts/controlla-node.mjs` stampa in `nuova` la versione principale più recente già diventata **LTS** secondo il calendario ufficiale (le versioni dispari e quelle pari prima dell'LTS non sono pensate per la produzione), se è più nuova di `.nvmrc`; il controllo giornaliero apre allora la segnalazione "Passare a Node N: è uscita la nuova versione stabile", con i passi. Il thread che fa il passaggio controlla prima che Render, Vercel ed Expo supportino già la versione nuova. Resta anche l'avviso 6 mesi prima della scadenza (§375), utile se il passaggio si rimanda. Node 26 diventa LTS il 28/10/2026: la prima segnalazione arriverà a unione fatta.
+
+**Verifica**: lo script con `.nvmrc` 24.22.1 (`nuova` vuoto, Node 26 non ancora LTS) e 22.23.4 (`nuova=24`); YAML del workflow letto senza errori.

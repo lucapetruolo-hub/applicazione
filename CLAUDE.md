@@ -97,9 +97,10 @@ prima discuterne e aggiornare questo file.
   `.nvmrc` con la versione esatta (oggi 24.22.1), letta da Render e dalla CI;
   `engines.node` è `24.x` per Vercel, che aggiorna da sé le correzioni.
   Il controllo giornaliero `.github/workflows/node.yml` apre una
-  segnalazione quando esce una correzione di sicurezza di Node 24. Node 24
-  riceve correzioni fino al 30/04/2028: il passaggio a Node 26 va fatto
-  prima, in un thread dedicato.
+  segnalazione quando esce una correzione di sicurezza di Node 24, appena
+  una versione più nuova diventa LTS (decisione di Luca: passarci subito,
+  §376) e 6 mesi prima della fine del supporto (§375). Il passaggio a una
+  nuova versione principale si fa in un thread dedicato.
 - **Aggiornamenti delle dipendenze** (docs/CHANGELOG.md §302): Dependabot
   (`.github/dependabot.yml`) apre una PR al mese con gli aggiornamenti
   piccoli raggruppati, da unire se la CI è verde; gli aggiornamenti grandi
