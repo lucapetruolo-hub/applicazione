@@ -18,7 +18,7 @@ test.use({ storageState: { cookies: [], origins: [] } });
 type ServicePriceIndexEntry = {
   name: string;
   professionalCount: number;
-  price: { pricedCount: number; lowEurCents: number; medianEurCents: number; highEurCents: number } | null;
+  price: { pricedCount: number; lowEurCents: number; medianEurCents: number; highEurCents: number; unit: string } | null;
 };
 
 const prisma = new PrismaClient();
@@ -55,14 +55,14 @@ test("ogni voce ha lo stesso numero di professionisti dell'elenco che apre", asy
     expect(results.length, entry.name).toBe(entry.professionalCount);
   }
   const ours = entries.find((entry) => entry.name.toLowerCase() === SERVICE.toLowerCase());
-  expect(ours).toEqual({ name: SERVICE, professionalCount: 3, price: { pricedCount: 3, lowEurCents: 900, medianEurCents: 1000, highEurCents: 1300 } });
+  expect(ours).toEqual({ name: SERVICE, professionalCount: 3, price: { pricedCount: 3, lowEurCents: 900, medianEurCents: 1000, highEurCents: 1300, unit: "JOB" } });
 });
 
 test("dalla voce all'elenco filtrato, alla richiesta con il lavoro scritto, e ritorno a tutti", async ({ page }) => {
   await page.goto("/");
   const tool = page.getByLabel("Cerca un lavoro per conoscere il prezzo medio");
   await tool.fill(SERVICE.slice(0, 30));
-  const entry = page.getByRole("link", { name: new RegExp(`^${SERVICE}, in media 10.€, di solito 9–13.€`) });
+  const entry = page.getByRole("link", { name: new RegExp(`^${SERVICE}, in media 10.€ a lavoro, di solito 9–13.€`) });
   await expect(entry).toBeVisible();
   await entry.click();
 

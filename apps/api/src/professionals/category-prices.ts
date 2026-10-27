@@ -1,7 +1,9 @@
 import {
   MIN_ACCEPTED_QUOTES_FOR_PRICES,
   MIN_PROFESSIONALS_FOR_DECLARED_PRICES,
+  SERVICE_PRICE_UNITS,
   type CategoryPriceStats,
+  type ServicePriceUnit,
 } from "@professionisti/shared";
 import { serviceGroupKey } from "./service-group-key";
 
@@ -48,35 +50,58 @@ export function acceptedQuoteStats(quotes: { totalEurCents: number; updatedAt: D
 }
 
 /**
+ * Unità più usata tra i prezzi della voce (a pari merito vince l'ordine di
+ * `SERVICE_PRICE_UNITS`, "a lavoro" per primo): 10 € al m² e 1.500 € a
+ * lavoro non si mettono nella stessa mediana (§383).
+ */
+export function dominantPriceUnit(units: ServicePriceUnit[]): ServicePriceUnit {
+  const counts = new Map<ServicePriceUnit, number>();
+  for (const unit of units) counts.set(unit, (counts.get(unit) ?? 0) + 1);
+  return SERVICE_PRICE_UNITS.reduce((best, unit) => ((counts.get(unit) ?? 0) > (counts.get(best) ?? 0) ? unit : best), SERVICE_PRICE_UNITS[0]);
+}
+
+/**
  * Prestazioni dichiarate, raggruppate per nome (come il "Quanto costa in
  * media" della home), con almeno 2 professionisti per voce: una voce di uno
  * solo direbbe il suo prezzo, non quello della zona. Null sotto la soglia di
  * professionisti con prezzi.
  */
-export function declaredServiceStats(services: (PriceRange & { name: string; professionalProfileId: string })[]): CategoryPriceStats["declared"] {
+export function declaredServiceStats(
+  services: (PriceRange & { name: string; professionalProfileId: string; priceUnit: ServicePriceUnit })[],
+): CategoryPriceStats["declared"] {
   const professionals = new Set<string>();
-  const groups = new Map<string, { name: string; professionals: Set<string>; minEurCents: number; maxEurCents: number }>();
+  const groups = new Map<string, { name: string; rows: { professionalProfileId: string; low: number; high: number; unit: ServicePriceUnit }[] }>();
   for (const service of services) {
     const low = service.priceMinEurCents ?? service.priceMaxEurCents;
     const high = service.priceMaxEurCents ?? service.priceMinEurCents;
     const key = serviceGroupKey(service.name);
     if (low === null || high === null || !key) continue;
     professionals.add(service.professionalProfileId);
-    const group = groups.get(key);
-    if (group) {
-      group.professionals.add(service.professionalProfileId);
-      group.minEurCents = Math.min(group.minEurCents, low);
-      group.maxEurCents = Math.max(group.maxEurCents, high);
-    } else {
-      groups.set(key, { name: service.name.trim(), professionals: new Set([service.professionalProfileId]), minEurCents: low, maxEurCents: high });
-    }
+    const group = groups.get(key) ?? { name: service.name.trim(), rows: [] };
+    group.rows.push({ professionalProfileId: service.professionalProfileId, low, high, unit: service.priceUnit });
+    groups.set(key, group);
   }
   if (professionals.size < MIN_PROFESSIONALS_FOR_DECLARED_PRICES) return null;
   return {
     professionalCount: professionals.size,
     services: [...groups.values()]
-      .filter((group) => group.professionals.size >= 2)
-      .map((group) => ({ name: group.name, professionalCount: group.professionals.size, minEurCents: group.minEurCents, maxEurCents: group.maxEurCents }))
+      .flatMap((group) => {
+        // Solo i prezzi con l'unità più usata nella voce (§383): "8 € al m²"
+        // e "1.500 € a lavoro" non stanno nella stessa forbice.
+        const unit = dominantPriceUnit(group.rows.map((row) => row.unit));
+        const rows = group.rows.filter((row) => row.unit === unit);
+        const professionalCount = new Set(rows.map((row) => row.professionalProfileId)).size;
+        if (professionalCount < 2) return [];
+        return [
+          {
+            name: group.name,
+            professionalCount,
+            minEurCents: Math.min(...rows.map((row) => row.low)),
+            maxEurCents: Math.max(...rows.map((row) => row.high)),
+            unit,
+          },
+        ];
+      })
       .sort((a, b) => b.professionalCount - a.professionalCount || a.name.localeCompare(b.name, "it"))
       .slice(0, 12),
   };

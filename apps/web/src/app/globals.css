@@ -5275,9 +5275,47 @@ a.admin-kpi:hover {
   font-weight: 600;
   color: #6e6459;
 }
+.price-table thead th:last-child {
+  text-align: right;
+}
 .price-table tbody th {
   font-weight: 500;
   color: #2b2420;
+}
+/* Ogni riga apre chi offre il lavoro (docs/CHANGELOG.md §383): il link sul
+   nome copre tutta la riga. */
+.price-table tbody tr {
+  position: relative;
+  transition: background-color 0.15s ease;
+}
+.price-table tbody tr:hover {
+  background: #dcf3e7;
+}
+.price-table-link {
+  color: #2b2420;
+  text-decoration: none;
+}
+.price-table-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.price-table-link:focus-visible {
+  outline: none;
+}
+.price-table tbody tr:has(.price-table-link:focus-visible) {
+  outline: 2px solid #0e7a4c;
+  outline-offset: -2px;
+}
+.price-table-chevron {
+  margin-left: 8px;
+  vertical-align: -3px;
+  color: #0e7a4c;
+}
+@media (prefers-reduced-motion: reduce) {
+  .price-table tbody tr {
+    transition: none;
+  }
 }
 .price-table td {
   white-space: nowrap;

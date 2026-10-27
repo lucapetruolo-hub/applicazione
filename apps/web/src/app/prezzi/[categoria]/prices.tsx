@@ -5,6 +5,7 @@ import {
   italianComuni,
   PROFESSIONAL_CATEGORIES,
   comuneSlug,
+  formatServicePrice,
   formatServicePriceRange,
   hasCategoryPrices,
   isProfessionalCategorySlug,
@@ -53,6 +54,13 @@ function provinceName(comune: Comune): string {
 /** Percorso della pagina: nazionale o della città. */
 export function pricesPath(data: Pick<PricesData, "category" | "comune">): string {
   return data.comune ? `/prezzi/${data.category.slug}/${comuneSlug(data.comune.name)}` : `/prezzi/${data.category.slug}`;
+}
+
+/** Elenco di chi offre il lavoro (§383), nella città della pagina se c'è. */
+function serviceListHref(name: string, comune?: Comune): string {
+  const params = new URLSearchParams({ servizio: name });
+  if (comune) params.set("citta", comune.name);
+  return `/cerca?${params.toString()}`;
 }
 
 /** Euro tondi: in una fascia di prezzo i centesimi sono rumore. */
@@ -158,10 +166,22 @@ export function PricesView({ data }: { data: PricesData }) {
               </tr>
             </thead>
             <tbody>
+              {/* Ogni lavoro apre chi lo offre, come le voci del "Quanto costa in
+                  media" della home (richiesta di Luca, docs/CHANGELOG.md §383);
+                  nella pagina di una città, già in quella città. */}
               {declared.services.map((service) => (
                 <tr key={service.name}>
-                  <th scope="row">{service.name}</th>
-                  <td>{formatServicePriceRange(service.minEurCents, service.maxEurCents)}</td>
+                  <th scope="row">
+                    <Link className="price-table-link" href={serviceListHref(service.name, comune)} aria-label={`${service.name}, ${formatServicePrice(service.minEurCents, service.maxEurCents, service.unit)}: vedi chi lo fa`}>
+                      {service.name}
+                    </Link>
+                  </th>
+                  <td>
+                    {formatServicePrice(service.minEurCents, service.maxEurCents, service.unit)}
+                    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" className="price-table-chevron">
+                      <path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -2,7 +2,7 @@
 "use no memo";
 
 import { useEffect, useState, type FocusEvent, type ReactNode } from "react";
-import { formatServicePriceRange, type ServicePriceIndexEntry } from "@professionisti/shared";
+import { SERVICE_PRICE_UNIT_LABEL, formatServicePriceRange, type ServicePriceIndexEntry } from "@professionisti/shared";
 import { Search } from "lucide-react";
 import { Section, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -151,7 +151,7 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
                   key={entry.name}
                   href={entryHref(entry.name, lastCity)}
                   className="price-row"
-                  aria-label={`${entry.name}, ${entry.price ? `in media ${formatServicePriceRange(entry.price.medianEurCents, null)}, di solito ${formatServicePriceRange(entry.price.lowEurCents, entry.price.highEurCents)}` : "prezzo su preventivo"}: vedi chi lo fa`}
+                  aria-label={`${entry.name}, ${entry.price ? `in media ${formatServicePriceRange(entry.price.medianEurCents, null)} ${SERVICE_PRICE_UNIT_LABEL[entry.price.unit]}, di solito ${formatServicePriceRange(entry.price.lowEurCents, entry.price.highEurCents)}` : "prezzo su preventivo"}: vedi chi lo fa`}
                   // Il clic non toglie il fuoco al campo: l'elenco aperto non si
                   // richiude (e non sposta le voci) tra la pressione e il rilascio.
                   onMouseDown={(event) => event.preventDefault()}
@@ -173,8 +173,13 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
                         minimo e massimo; sotto i 3 prezzi nessuna cifra (§383). */}
                     {entry.price ? (
                       <YStack alignItems="flex-end" gap={2}>
+                        {/* Con l'unità (§383): "10 €" da solo poteva essere al m² o a lavoro. */}
                         <Text fontSize={17} fontWeight="700" color={brand.cianografiaScuro}>
                           {formatServicePriceRange(entry.price.medianEurCents, null)}
+                          <Text fontSize={13} fontWeight="400" color={brand.grafite70}>
+                            {"\u00A0"}
+                            {SERVICE_PRICE_UNIT_LABEL[entry.price.unit]}
+                          </Text>
                         </Text>
                         {entry.price.highEurCents > entry.price.lowEurCents ? (
                           <Text fontSize={13} color={brand.grafite70}>

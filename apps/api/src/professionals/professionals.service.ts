@@ -28,6 +28,7 @@ import {
   type ProfessionalLead,
   type ProfessionalSearchResult,
   type ProfessionalServiceItem,
+  type ServicePriceUnit,
   type ProfessionalCategorySlug,
   type ProfessionalProfileSelfInput,
   type UpdateEngagementRadiusInput,
@@ -90,13 +91,14 @@ export type ProfessionalSearchParams = {
 // esplicita dell'utente: frecce per almeno due mesi, docs/CHANGELOG.md §206).
 
 function mapServices(
-  services: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[],
+  services: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null; priceUnit: ServicePriceUnit }[],
 ): ProfessionalServiceItem[] {
   return services.map((service) => ({
     id: service.id,
     name: service.name,
     priceMinEurCents: service.priceMinEurCents,
     priceMaxEurCents: service.priceMaxEurCents,
+    priceUnit: service.priceUnit,
   }));
 }
 
@@ -304,7 +306,7 @@ export class ProfessionalsService {
         // offre, e il numero mostrato deve coincidere (docs/CHANGELOG.md §383).
         professionalProfile: { isDemo: false, ...searchableProfileWhere(), AND: [publicVisibilityWhere()] },
       },
-      select: { name: true, professionalProfileId: true, priceMinEurCents: true, priceMaxEurCents: true },
+      select: { name: true, professionalProfileId: true, priceMinEurCents: true, priceMaxEurCents: true, priceUnit: true },
     });
     return buildServicePriceIndex(services);
   }
@@ -356,6 +358,7 @@ export class ProfessionalsService {
           name: true,
           priceMinEurCents: true,
           priceMaxEurCents: true,
+          priceUnit: true,
           professionalProfileId: true,
           professionalProfile: { select: { city: true } },
         },
@@ -774,6 +777,7 @@ export class ProfessionalsService {
           name: service.name.trim(),
           priceMinEurCents: service.priceMinEurCents ?? null,
           priceMaxEurCents: service.priceMaxEurCents ?? null,
+          priceUnit: service.priceUnit ?? "JOB",
         })),
       }),
     ]);

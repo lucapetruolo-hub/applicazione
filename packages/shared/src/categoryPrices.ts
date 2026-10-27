@@ -1,3 +1,5 @@
+import type { ServicePriceUnit } from "./professionals";
+
 /**
  * Pagine "Quanto costa un [lavoro]" (`/prezzi/[categoria]`, docs/CHANGELOG.md
  * §296, strategia SEO Latina): prezzi veri del sito, mai stime inventate.
@@ -25,7 +27,8 @@ export type CategoryPriceStats = {
   /** Prezzi delle prestazioni dichiarati dai professionisti, null sotto `MIN_PROFESSIONALS_FOR_DECLARED_PRICES`. */
   declared: {
     professionalCount: number;
-    services: { name: string; professionalCount: number; minEurCents: number; maxEurCents: number }[];
+    /** `unit`: l'unità più usata dai professionisti della voce; i prezzi contano solo quelli con quell'unità (§383). */
+    services: { name: string; professionalCount: number; minEurCents: number; maxEurCents: number; unit: ServicePriceUnit }[];
   } | null;
 };
 
@@ -52,5 +55,5 @@ export type ServicePriceIndexEntry = {
    * professionisti sta tra `lowEurCents` e `highEurCents` (1° e 3° quartile).
    * Null sotto `MIN_PROFESSIONALS_FOR_SERVICE_PRICE` professionisti con un prezzo.
    */
-  price: { pricedCount: number; lowEurCents: number; medianEurCents: number; highEurCents: number } | null;
+  price: { pricedCount: number; lowEurCents: number; medianEurCents: number; highEurCents: number; unit: ServicePriceUnit } | null;
 };

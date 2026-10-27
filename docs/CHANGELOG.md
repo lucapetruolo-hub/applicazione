@@ -21329,6 +21329,10 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **"Quanto costa" nella barra in alto** (Luca: "ora che è un tool importante inseriamolo anche nella barra fissa sopra"): link "Quanto costa" dopo "Come funziona" nella barra da computer, nel menu da telefono e nel piè di pagina (Per i clienti), che porta a `/#quanto-costa` nella home (ancora con `scrollMarginTop` 72 come "Come funziona"). Anteprime in `anteprime/quanto-costa-finestra/`. Tolto "Prezzi" dalla barra e dal menu da telefono: portava all'abbonamento dei professionisti e accanto a "Quanto costa" si confondeva (decisione di Luca: resta dentro "Offri i tuoi servizi", dove la pagina ha già "Vedi i prezzi" in alto).
 
+**Unità del prezzo** (migliorie scelte da Luca dopo il test di compito simulato, dove "10 €" per una tinteggiatura non diceva se era al m² o a lavoro): ogni prestazione ha ora `priceUnit` (`ServicePriceUnit`: a lavoro, all'ora, al giorno, al m², migrazione `20261027230000_unita_prezzo_prestazioni`, le prestazioni già salvate restano "a lavoro"). In `/dashboard/profilo` un menu accanto al prezzo (sul telefono va a capo insieme alla ✕). L'unità si vede nella scheda dei risultati, nel profilo, nel "Quanto costa in media" ("10 € al m²") e nelle pagine `/prezzi`. Prezzo medio e forbice di una voce contano solo i prezzi con l'unità più usata nella voce (`dominantPriceUnit`, a pari merito "a lavoro"): 10 € al m² e 1.500 € a lavoro non stanno nella stessa mediana.
+
+**Pagine "Quanto costa [mestiere] (a [città])" cliccabili**: ogni riga della tabella "Prezzi dei lavori più comuni" apre `/cerca?servizio=<lavoro>` (nella città della pagina se c'è), con la freccia e lo sfondo verde chiaro al passaggio come nella home; tutta la riga si tocca.
+
 ## 385. "Quanto costa in media": prezzi onesti e richiesta già pronta
 
 **Richiesta** (Luca, 27/10/2026, versione più profonda del §383, `analisi/quanto-costa-versione-profonda.md`): rendere lo strumento uno che porta lavoro e dice prezzi onesti; dati veri prima del codice; prove con un test automatico, axe, anteprime e un test con 5 persone (simulate).

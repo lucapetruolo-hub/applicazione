@@ -507,11 +507,21 @@ model ProfessionalService {
   // (vedi formatServicePriceRange in packages/shared).
   priceMinEurCents      Int?
   priceMaxEurCents      Int?
+  // A cosa si riferisce il prezzo (docs/CHANGELOG.md §383, richiesta di
+  // Luca): "10 €" per una tinteggiatura può essere al m² o a lavoro.
+  priceUnit             ServicePriceUnit @default(JOB)
   createdAt             DateTime @default(now())
 
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
 
   @@map("professional_services")
+}
+
+enum ServicePriceUnit {
+  JOB
+  HOUR
+  DAY
+  SQUARE_METER
 }
 
 // Disponibilità settimanale ricorrente (non date specifiche): il

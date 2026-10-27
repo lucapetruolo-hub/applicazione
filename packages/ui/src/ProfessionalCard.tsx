@@ -15,6 +15,19 @@ export type ProfessionalCardService = {
   name: string;
   priceMinEurCents: number | null;
   priceMaxEurCents: number | null;
+  /** A cosa si riferisce il prezzo (docs/CHANGELOG.md §383); senza, nessuna unità mostrata. */
+  priceUnit?: ProfessionalCardPriceUnit;
+};
+
+export type ProfessionalCardPriceUnit = "JOB" | "HOUR" | "DAY" | "SQUARE_METER";
+
+// Stesse parole di SERVICE_PRICE_UNIT_LABEL in packages/shared (duplicate per
+// lo stesso motivo di formatAmount qui sotto).
+const PRICE_UNIT_LABEL: Record<ProfessionalCardPriceUnit, string> = {
+  JOB: "a lavoro",
+  HOUR: "all'ora",
+  DAY: "al giorno",
+  SQUARE_METER: "al m²",
 };
 
 /**
@@ -58,18 +71,23 @@ function formatAmount(cents: number): string {
   return cents % 100 === 0 ? euros : `${euros},${(cents % 100).toString().padStart(2, "0")}`;
 }
 
-function formatServicePrice(priceMinEurCents: number | null, priceMaxEurCents: number | null): string {
+function formatServicePrice(priceMinEurCents: number | null, priceMaxEurCents: number | null, unit?: ProfessionalCardPriceUnit): string {
+  const suffix = unit ? `\u00A0${PRICE_UNIT_LABEL[unit]}` : "";
   if (priceMinEurCents !== null && priceMaxEurCents !== null && priceMaxEurCents > priceMinEurCents) {
-    return `${formatAmount(priceMinEurCents)}–${formatAmount(priceMaxEurCents)}\u00A0€`;
+    return `${formatAmount(priceMinEurCents)}–${formatAmount(priceMaxEurCents)}\u00A0€${suffix}`;
   }
   const single = priceMinEurCents ?? priceMaxEurCents;
-  return single !== null ? `${formatAmount(single)}\u00A0€` : "Su richiesta";
+  return single !== null ? `${formatAmount(single)}\u00A0€${suffix}` : "Su richiesta";
 }
 
-/** Prezzo più basso tra le prestazioni ("da 40 €" sulla scheda chiusa), o null se nessuna ha un prezzo. */
-function lowestServicePrice(services: ProfessionalCardService[]): number | null {
-  const prices = services.map((service) => service.priceMinEurCents ?? service.priceMaxEurCents).filter((price): price is number => price !== null);
-  return prices.length > 0 ? Math.min(...prices) : null;
+/** Prestazione col prezzo più basso ("da 40 € a lavoro" sulla scheda chiusa), o null se nessuna ha un prezzo. */
+function lowestServicePrice(services: ProfessionalCardService[]): { cents: number; unit?: ProfessionalCardPriceUnit } | null {
+  let lowest: { cents: number; unit?: ProfessionalCardPriceUnit } | null = null;
+  for (const service of services) {
+    const cents = service.priceMinEurCents ?? service.priceMaxEurCents;
+    if (cents !== null && (lowest === null || cents < lowest.cents)) lowest = { cents, unit: service.priceUnit };
+  }
+  return lowest;
 }
 
 type StopPropagationEvent = { stopPropagation?: () => void } | undefined;
@@ -511,9 +529,9 @@ export function ProfessionalCard({
               </Text>
               {/* Con una prestazione cercata (§383) il suo prezzo, non il più basso. */}
               {!expanded && highlighted
-                ? ` · ${highlighted.name.trim()}: ${formatServicePrice(highlighted.priceMinEurCents, highlighted.priceMaxEurCents).toLowerCase()}`
+                ? ` · ${highlighted.name.trim()}: ${formatServicePrice(highlighted.priceMinEurCents, highlighted.priceMaxEurCents, highlighted.priceUnit).toLowerCase()}`
                 : !expanded && lowestPrice !== null
-                  ? ` · da ${formatAmount(lowestPrice)} €`
+                  ? ` · da ${formatAmount(lowestPrice.cents)} €${lowestPrice.unit ? ` ${PRICE_UNIT_LABEL[lowestPrice.unit]}` : ""}`
                   : null}
             </Text>
             <Icon name={expanded ? "chevron-up" : "chevron-down"} size={18} color={brand.cianografiaScuro} strokeWidth={2} />
@@ -754,10 +772,10 @@ export function ProfessionalCard({
               {(showAllServices ? serviceList : serviceList.slice(0, 3)).map((service) =>
                 service === highlighted ? (
                   <YStack key={service.id} backgroundColor={brand.cianografiaVelo} borderRadius={10} paddingHorizontal="$2" marginHorizontal={-8}>
-                    <PriceLine label={service.name} labelColor={brand.grafite} price={formatServicePrice(service.priceMinEurCents, service.priceMaxEurCents)} />
+                    <PriceLine label={service.name} labelColor={brand.grafite} price={formatServicePrice(service.priceMinEurCents, service.priceMaxEurCents, service.priceUnit)} />
                   </YStack>
                 ) : (
-                  <PriceLine key={service.id} label={service.name} price={formatServicePrice(service.priceMinEurCents, service.priceMaxEurCents)} />
+                  <PriceLine key={service.id} label={service.name} price={formatServicePrice(service.priceMinEurCents, service.priceMaxEurCents, service.priceUnit)} />
                 ),
               )}
               {serviceList.length > 3 ? (

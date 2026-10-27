@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BRAND, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, formatServicePriceRange, subTagLabel, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
+import { BRAND, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, formatServicePrice, subTagLabel, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
 import { Badge, BadgeInfo, Button, ProfessionalKindBadge, Chip, EmptyState, Icon, PriceLine, Rating, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
@@ -882,7 +882,7 @@ export function ProfessionalDetailContent({
                   <PriceLine
                     label={service.name}
                     labelColor={brand.grafite}
-                    price={formatServicePriceRange(service.priceMinEurCents, service.priceMaxEurCents)}
+                    price={formatServicePrice(service.priceMinEurCents, service.priceMaxEurCents, service.priceUnit)}
                   />
                 </YStack>
               ))}
