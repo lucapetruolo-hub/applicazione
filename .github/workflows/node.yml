@@ -29,7 +29,7 @@ jobs:
 
       - name: Confronto con nodejs.org
         id: node
-        run: node scripts/controlla-node.mjs
+        run: node scripts/controlla-node.mjs >> "$GITHUB_OUTPUT"
 
       - name: Segnalazione
         if: ${{ github.event_name != 'pull_request' && steps.node.outputs.aggiornare == 'true' }}

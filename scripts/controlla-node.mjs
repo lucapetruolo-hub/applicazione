@@ -3,11 +3,12 @@
 // Legge la versione esatta in .nvmrc (usata da Render e dalla CI) e la
 // confronta con l'elenco ufficiale delle versioni di nodejs.org:
 // - esce con errore se la versione in .nvmrc non esiste (o non è esatta);
-// - scrive in GITHUB_OUTPUT `aggiornare=true` se nella stessa versione
-//   principale (22.x) è uscita dopo una correzione di sicurezza, con la
-//   versione più recente da usare in `ultima`.
+// - stampa `aggiornare=true` se nella stessa versione principale (22.x) è
+//   uscita dopo una correzione di sicurezza, con la versione più recente da
+//   usare in `ultima`. Il workflow aggiunge queste righe a GITHUB_OUTPUT; i
+//   messaggi per chi legge vanno sull'altra uscita (stderr).
 // Uso in locale: `node scripts/controlla-node.mjs`.
-import { appendFileSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 
 const attuale = readFileSync(new URL("../.nvmrc", import.meta.url), "utf8").trim();
 if (!/^\d+\.\d+\.\d+$/.test(attuale)) {
@@ -41,15 +42,12 @@ const ultima = stessaPrincipale[0];
 const piuNuove = stessaPrincipale.filter((v) => confronta(v.version, attuale) > 0);
 const sicurezza = piuNuove.filter((v) => v.security);
 
-console.log(`In uso: Node ${attuale}. Ultima ${principale}.x: ${ultima.version} (${ultima.date}).`);
+console.error(`In uso: Node ${attuale}. Ultima ${principale}.x: ${ultima.version} (${ultima.date}).`);
 if (sicurezza.length > 0) {
-  console.log(`Correzioni di sicurezza uscite dopo: ${sicurezza.map((v) => v.version).join(", ")}.`);
+  console.error(`Correzioni di sicurezza uscite dopo: ${sicurezza.map((v) => v.version).join(", ")}.`);
 }
 
-if (process.env.GITHUB_OUTPUT) {
-  appendFileSync(
-    process.env.GITHUB_OUTPUT,
-    `aggiornare=${sicurezza.length > 0}\nattuale=${attuale}\nultima=${ultima.version.replace(/^v/, "")}\n` +
-      `sicurezza=${sicurezza.map((v) => v.version).join(", ")}\n`,
-  );
-}
+console.log(
+  `aggiornare=${sicurezza.length > 0}\nattuale=${attuale}\nultima=${ultima.version.replace(/^v/, "")}\n` +
+    `sicurezza=${sicurezza.map((v) => v.version).join(", ")}`,
+);
