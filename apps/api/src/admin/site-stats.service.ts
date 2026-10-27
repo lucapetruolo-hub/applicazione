@@ -340,6 +340,8 @@ export class SiteStatsService {
       unknownJobs,
       popularServices,
       missingServices,
+      contacts: visible.map((p) => ({ id: p.id, name: proName(p), city: p.city, href: userHref(p), categorySlugs: p.categorySlugs })),
+      services: serviceList,
       churnReasons,
       stalled,
       silent,

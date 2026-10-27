@@ -238,6 +238,10 @@ const MAX_ADVICE = 8;
 
 export type StalledProfessional = { name: string; step: "FISCAL" | "IDENTITY"; days: number; href: string };
 export type SilentProfessional = { name: string; requests: number; href: string };
+/** Professionista visibile, per sapere chi chiamare su una prestazione cercata (§384). */
+export type ContactProfessional = { id: string; name: string; city: string; href: string; categorySlugs: string[] };
+/** Quanti professionisti da chiamare si mostrano sotto un consiglio sulle prestazioni. */
+export const SERVICE_GAP_MAX_CONTACTS = 10;
 
 export type SiteAdviceInput = {
   now: Date;
@@ -253,6 +257,9 @@ export type SiteAdviceInput = {
   unknownJobs: AdminSiteStats["unknownJobs"];
   popularServices: AdminSiteStats["popularServices"];
   missingServices: AdminSiteStats["missingServices"];
+  /** Professionisti visibili e le loro prestazioni: chi chiamare quando una prestazione cercata la offrono in pochi. */
+  contacts: ContactProfessional[];
+  services: SiteServiceRow[];
   churnReasons: { kind: ChurnKind; reason: ChurnReason; count: number }[];
   stalled: StalledProfessional[];
   silent: SilentProfessional[];
@@ -533,12 +540,21 @@ export function buildSiteAdvice(input: SiteAdviceInput): SiteAdvice[] {
     .sort((a, b) => b.searches - a.searches)
     .slice(0, 2);
   for (const gap of gaps) {
+    const offering = new Set(input.services.filter((row) => offersPopularService(row.name, gap.service)).map((row) => row.profileId));
+    const toCall = input.contacts
+      .filter((p) => p.categorySlugs.includes(gap.categorySlug) && !offering.has(p.id))
+      .sort((a, b) => a.city.localeCompare(b.city, "it") || a.name.localeCompare(b.name, "it"));
     advice.push({
       key: `service-gap:${gap.categorySlug}:${normalizeServiceName(gap.service)}`,
       level: "TIP",
       title: `Cercano «${gap.service}», pochi la offrono`,
       why: `Cercata ${plural(gap.searches, "volta", "volte")} negli ultimi 90 giorni; tra i professionisti di ${gap.categoryLabel} la offrono in ${gap.offeredBy}.`,
-      todo: `Quando senti i professionisti di ${gap.categoryLabel}, chiedi se la fanno e falla aggiungere al profilo con il prezzo: così compaiono a chi la cerca.`,
+      todo:
+        toCall.length > 0
+          ? `Chiama questi professionisti di ${gap.categoryLabel}: chiedi se la fanno e falla aggiungere al profilo con il prezzo, così compaiono a chi la cerca.`
+          : `Nessun professionista di ${gap.categoryLabel} da chiamare: cercane di nuovi che la facciano.`,
+      items: toCall.length > 0 ? toCall.slice(0, SERVICE_GAP_MAX_CONTACTS).map((p) => ({ label: p.name, detail: p.city, href: p.href })) : undefined,
+      link: toCall.length > SERVICE_GAP_MAX_CONTACTS ? { label: `Tutti i professionisti di ${gap.categoryLabel} (${toCall.length})`, href: `/admin/utenti?categoria=${gap.categorySlug}` } : toCall.length === 0 ? RECRUIT_LINK : undefined,
     });
   }
   for (const missing of input.missingServices.slice(0, 2)) {

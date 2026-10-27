@@ -126,6 +126,8 @@ const baseInput = (overrides: Partial<SiteAdviceInput> = {}): SiteAdviceInput =>
   unknownJobs: [],
   popularServices: [],
   missingServices: [],
+  contacts: [],
+  services: [],
   churnReasons: [],
   stalled: [],
   silent: [],
@@ -331,5 +333,28 @@ describe("prestazioni più cercate", () => {
     expect(keys).toContain("service-gap:idraulico:sturatura scarichi");
     expect(keys).toContain("missing-service:tuttofare:montaggio tende");
     expect(keys.filter((k) => k.startsWith("service-gap:"))).toHaveLength(1);
+  });
+
+  it("pochi la offrono: elenca chi chiamare tra i professionisti di quel lavoro che non la fanno", () => {
+    const gap = (offeredBy: number) => [
+      { categorySlug: "idraulico", categoryLabel: "Idraulico", services: [{ service: "Sturatura scarichi", searches: 12, offeredBy }] },
+    ];
+    const contact = (id: string, name: string, city: string, categorySlugs = ["idraulico"]) => ({ id, name, city, href: `/admin/utenti?q=${id}`, categorySlugs });
+    const advice = buildSiteAdvice(
+      baseInput({
+        popularServices: gap(1),
+        contacts: [contact("a", "Rossi", "Sezze"), contact("b", "Bianchi", "Latina"), contact("c", "Verdi", "Latina"), contact("d", "Neri", "Latina", ["elettricista"])],
+        services: [{ profileId: "c", name: "Sturatura scarichi e tubi", categorySlugs: ["idraulico"] }],
+      }),
+    ).find((a) => a.key.startsWith("service-gap:"));
+    expect(advice?.items).toEqual([
+      { label: "Bianchi", detail: "Latina", href: "/admin/utenti?q=b" },
+      { label: "Rossi", detail: "Sezze", href: "/admin/utenti?q=a" },
+    ]);
+    expect(advice?.todo).toMatch(/^Chiama questi professionisti di Idraulico/);
+
+    const none = buildSiteAdvice(baseInput({ popularServices: gap(0) })).find((a) => a.key.startsWith("service-gap:"));
+    expect(none?.items).toBeUndefined();
+    expect(none?.link?.href).toBe("/admin/professionisti");
   });
 });
