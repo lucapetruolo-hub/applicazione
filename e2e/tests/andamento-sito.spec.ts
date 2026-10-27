@@ -69,6 +69,7 @@ for (const device of [
     await expect(page.getByRole("heading", { name: "Cosa fare questa settimana" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Il numero guida" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Lavori e città" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Prestazioni più cercate" })).toBeVisible();
     // Nessuna riga più larga dello schermo.
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     // Chi entra in admin non viene più contato.
