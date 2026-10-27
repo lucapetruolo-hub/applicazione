@@ -151,9 +151,9 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
 
 /* "Richiedi un preventivo a [nome]" nel profilo pubblico (ProfileQuoteCta):
    da computer largo quanto il testo, da telefono tutta la larghezza. Quando
-   il pulsante non è sullo schermo compare una barra fissa in basso: da
-   telefono solo il pulsante, da computer (§383) allineata alla colonna della
-   pagina (860 px) con foto, nome e stelle a sinistra e il pulsante a destra. */
+   il pulsante non è sullo schermo compare una barra fissa in basso con la
+   foto a sinistra e il pulsante a destra (§383); da computer è allineata
+   alla colonna della pagina (860 px) e accanto alla foto ha nome e stelle. */
 .profile-cta {
   align-self: flex-start;
   max-width: 100%;
@@ -193,6 +193,9 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
   flex: 1;
   min-width: 0;
 }
+.profile-cta-bar-text {
+  min-width: 0;
+}
 .profile-cta-bar-link {
   flex-shrink: 0;
 }
@@ -211,6 +214,9 @@ body:has(.profile-cta-bar) .site-header-cta-link {
     align-self: stretch;
   }
   .profile-cta-bar-summary {
+    flex: 0 0 auto;
+  }
+  .profile-cta-bar-text {
     display: none;
   }
   .profile-cta-bar-link {

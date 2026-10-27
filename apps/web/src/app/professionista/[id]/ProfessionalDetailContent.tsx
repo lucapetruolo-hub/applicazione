@@ -854,6 +854,8 @@ export function ProfessionalDetailContent({
             summary={
               <XStack alignItems="center" gap="$3" minWidth={0}>
                 <ProfessionalAvatar imageUrl={professional.imageUrl} categorySlug={professional.categorySlug} size={40} />
+                {/* Sul telefono resta solo la foto: il nome accanto al pulsante non ci starebbe. */}
+                <div className="profile-cta-bar-text">
                 <YStack gap={2} minWidth={0} flexShrink={1}>
                   <Text fontSize={16} fontWeight="600" color={brand.grafite} numberOfLines={1}>
                     {professional.businessName}
@@ -870,6 +872,7 @@ export function ProfessionalDetailContent({
                     ) : null}
                   </XStack>
                 </YStack>
+                </div>
               </XStack>
             }
           />

@@ -21331,7 +21331,9 @@ tutto lo schermo (sembrerebbe una fascia pubblicitaria): la barra è allineata
 alla colonna della pagina (828 px), con foto, nome, stelle e "Risponde
 entro…" a sinistra e il pulsante verde con freccia e magnete a destra. Come
 sul telefono compare solo quando il pulsante della pagina non è sullo
-schermo. Sul telefono non cambia nulla (la parte a sinistra è nascosta).
+schermo. Sul telefono, su richiesta di Luca, la barra ha la foto del
+professionista a sinistra del pulsante (il nome non ci starebbe senza
+tagliarlo), per far capire che la richiesta va proprio a lui.
 
 **Pulsante in alto (decisione di Luca):** nel profilo di un
 professionista che accetta richieste (quello con la barra in basso)
