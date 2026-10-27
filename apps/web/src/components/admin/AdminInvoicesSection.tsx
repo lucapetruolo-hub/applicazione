@@ -271,7 +271,7 @@ function ReconciliationBox({ data }: { data: FeeReconciliation }) {
   const rows: [string, number, number | null][] = [
     ["Trattenute incassate", data.ledger.holdsEurCents, data.stripe?.applicationFeesEurCents ?? null],
     ["Trattenute restituite", data.ledger.returnsEurCents, data.stripe?.applicationFeeRefundsEurCents ?? null],
-    ["Commissioni di Stripe", data.ledger.cardFeesEurCents, data.stripe?.stripeFeesEurCents ?? null],
+    ["Commissioni Stripe", data.ledger.cardFeesEurCents, data.stripe?.stripeFeesEurCents ?? null],
   ];
   return (
     <YStack gap="$2" padding="$3" borderRadius={10} borderWidth={1} borderColor={data.alerts.length ? brand.urgenza : brand.filetto}>

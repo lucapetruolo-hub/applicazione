@@ -14,7 +14,7 @@ const EXAMPLE = onlineFeeExample();
  * Stesse regole dei Termini (punto 5) e di /dashboard/fiscale (§168):
  * acconto 20% del massimo, saldo a lavoro chiuso, soldi bloccati fino alla
  * conferma o 7 giorni, accredito meno la trattenuta unica del 7% + IVA, con
- * commissioni di Stripe comprese (§372), con un esempio in euro; pagamento diretto
+ * commissioni Stripe comprese (§372), con un esempio in euro; pagamento diretto
  * senza commissione. Finché Stripe non è attivo la pagina
  * dice "in arrivo" invece di promettere un pagamento che non c'è.
  */
@@ -52,7 +52,7 @@ function Point({ n, title, children }: { n: number; title: string; children: Rea
 const SUMMARY = [
   "Nel preventivo scegli tu i modi: online con carta, direttamente a te, o tutti e due.",
   "Online il cliente paga un acconto quando accetta e il saldo a lavoro chiuso, sul tuo conto Stripe.",
-  `Online tratteniamo il ${ONLINE_APP_FEE_PERCENT}% + IVA, commissioni di Stripe comprese; il pagamento diretto non ha commissioni.`,
+  `Online tratteniamo il ${ONLINE_APP_FEE_PERCENT}% + IVA, commissioni Stripe comprese; il pagamento diretto non ha commissioni.`,
 ];
 
 export function PagamentiContent() {
@@ -112,8 +112,9 @@ export function PagamentiContent() {
             parte il bonifico verso la tua banca. Con una segnalazione aperta resta bloccato finché non si chiude.
           </Point>
           <Point n={4} title="Costi">
-            Da quanto il cliente paga online tratteniamo il {ONLINE_APP_FEE_PERCENT}% più l&apos;IVA, tutto compreso: le commissioni di
-            Stripe le paghiamo noi. Su un lavoro da {formatEurCents(EXAMPLE.amountEurCents)} tratteniamo{" "}
+            Da quanto il cliente paga online tratteniamo il {ONLINE_APP_FEE_PERCENT}% più l&apos;IVA, tutto compreso: la commissione
+            Stripe per il pagamento e quella per i bonifici verso la tua banca le paghiamo noi. Su un lavoro da{" "}
+            {formatEurCents(EXAMPLE.amountEurCents)} tratteniamo{" "}
             {formatEurCents(EXAMPLE.feeEurCents)} ({formatEurCents(EXAMPLE.taxableEurCents)} + {formatEurCents(EXAMPLE.vatEurCents)} di IVA) e
             ti arrivano {formatEurCents(EXAMPLE.netEurCents)}. Ogni mese ti mandiamo la fattura delle trattenute. Su quanto ti paga
             direttamente non c&apos;è commissione. Il cliente non paga costi in più.

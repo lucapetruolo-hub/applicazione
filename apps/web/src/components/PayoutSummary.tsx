@@ -76,7 +76,7 @@ export function PayoutSummary() {
         </Text>
       ) : (
         <Text fontSize={13} color={brand.grafite70}>
-          Importi al netto della trattenuta ({ONLINE_APP_FEE_PERCENT}% + IVA), che comprende le commissioni di Stripe.{" "}
+          Importi al netto della trattenuta ({ONLINE_APP_FEE_PERCENT}% + IVA), che comprende le commissioni Stripe per il pagamento e per il bonifico.{" "}
           <Link href="/dashboard/documenti" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
             Estratto e fatture
           </Link>
