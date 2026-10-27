@@ -44,10 +44,13 @@ export type EmailContent = {
   /**
    * Perché arriva l'email: "notification" aggiunge il link alle preferenze di
    * notifica (si possono spegnere), "account" dice che è un messaggio di
-   * servizio che arriva sempre.
+   * servizio che arriva sempre, "external" è per chi non è iscritto (il
+   * commercialista di un professionista, docs/CHANGELOG.md §372).
    */
-  kind: "notification" | "account";
+  kind: "notification" | "account" | "external";
 };
+
+const EXTERNAL_FOOTER = "Ricevi questa email perché un professionista iscritto ha indicato il tuo indirizzo.";
 
 export type EmailDetail = { label: string; value: string; url?: string; long?: boolean };
 
@@ -131,7 +134,9 @@ export function renderEmail(content: EmailContent): RenderedEmail {
   const footerReason =
     content.kind === "notification"
       ? `Ricevi questa email per le notifiche del tuo account. Puoi scegliere quali ricevere dalle <a href="${site}/account/notifiche" style="color:${c.muted};">preferenze di notifica</a>.`
-      : "Questa è un'email di servizio sul tuo account: arriva anche se hai spento le notifiche.";
+      : content.kind === "external"
+        ? EXTERNAL_FOOTER
+        : "Questa è un'email di servizio sul tuo account: arriva anche se hai spento le notifiche.";
 
   const html =
     `<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
@@ -183,7 +188,9 @@ export function renderEmail(content: EmailContent): RenderedEmail {
     "—",
     content.kind === "notification"
       ? `Ricevi questa email per le notifiche del tuo account. Preferenze di notifica: ${site}/account/notifiche`
-      : "Questa è un'email di servizio sul tuo account: arriva anche se hai spento le notifiche.",
+      : content.kind === "external"
+        ? EXTERNAL_FOOTER
+        : "Questa è un'email di servizio sul tuo account: arriva anche se hai spento le notifiche.",
     `Aiuto: ${EMAIL_BRAND.supportEmail}`,
   ];
 

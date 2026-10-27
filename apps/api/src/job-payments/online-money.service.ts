@@ -5,7 +5,6 @@ import type { PrismaClient } from "@professionisti/database";
 import {
   accountDebitGrossEurCents,
   estimatedCardFeeEurCents,
-  formatEurCents,
   ONLINE_LONG_HOLD_ALERT_DAYS,
   ONLINE_RELEASE_DAYS,
   onlineApplicationFeeHoldEurCents,
@@ -34,6 +33,14 @@ const CLOSED_DISPUTE_STATUSES = ["won", "lost", "warning_closed", "prevented"];
 const PROFESSIONAL_FAULT_DISPUTE_REASONS = ["product_not_received", "product_unacceptable"];
 // Commissione di Stripe su una contestazione se non si legge dall'evento.
 const STRIPE_DISPUTE_FEE_EUR_CENTS = 2000;
+
+/** Riga dell'estratto per una trattenuta restituita, senza i dettagli interni del motivo. */
+function feeReturnLabel(reason: string): string {
+  if (reason.startsWith("Conguaglio")) return "Trattenuta restituita: importo finale più basso";
+  if (reason.startsWith("Rimborso")) return "Trattenuta restituita: rimborso al cliente";
+  if (reason.startsWith("Contestazione")) return "Trattenuta restituita: contestazione in banca";
+  return "Trattenuta restituita";
+}
 
 /** Commissione di Stripe sulla contestazione, ribaddebitata con l'IVA (§372). */
 function disputeFeeWithVatEurCents(dispute: Stripe.Dispute): number {
@@ -499,7 +506,9 @@ export class OnlineMoneyService {
     });
     // Dal §372 la trattenuta è già quella definitiva: va nell'estratto e
     // nella fattura del mese del professionista.
-    if (charge.destination) await this.recordFeeEntry(jp.id, jp.booking.professionalProfileId, "HOLD", charge.applicationFeeAmount, `${part === "deposit" ? "Acconto" : "Saldo"} di ${formatEurCents(amount)}`, `HOLD:${paymentIntentId}`);
+    if (charge.destination) {
+      await this.recordFeeEntry(jp.id, jp.booking.professionalProfileId, "HOLD", charge.applicationFeeAmount, part === "deposit" ? "Acconto online" : "Saldo online", `HOLD:${paymentIntentId}`, amount, charge.fee);
+    }
     await this.auditLogService.record({
       entityType: "JobPayment",
       entityId: jp.id,
@@ -544,14 +553,14 @@ export class OnlineMoneyService {
         where: { id: jp.id },
         data: { balancePaymentIntentId: paymentIntentId, applicationFeeEurCents: { increment: charge.applicationFeeAmount } },
       });
-      await this.recordFeeEntry(jp.id, jp.booking.professionalProfile.id, "HOLD", charge.applicationFeeAmount, `Saldo di ${formatEurCents(amount)}`, `HOLD:${paymentIntentId}`);
+      await this.recordFeeEntry(jp.id, jp.booking.professionalProfile.id, "HOLD", charge.applicationFeeAmount, "Saldo online", `HOLD:${paymentIntentId}`, amount, charge.fee);
       const extra = charge.applicationFeeAmount - appFee;
       const returned = extra > 0 ? await this.returnApplicationFee(jp.id, extra, "Conguaglio del saldo pagato in ritardo.") : 0;
       held = charge.applicationFeeAmount - returned;
       payout = Math.max(0, amount - held);
     } else {
       payout = Math.max(0, amount - appFee);
-      await this.recordFeeEntry(jp.id, jp.booking.professionalProfile.id, "HOLD", appFee, `Saldo di ${formatEurCents(amount)}`, `HOLD:${paymentIntentId}`);
+      await this.recordFeeEntry(jp.id, jp.booking.professionalProfile.id, "HOLD", appFee, "Saldo online", `HOLD:${paymentIntentId}`, amount, charge.fee);
       const destination = jp.booking.professionalProfile.fiscalProfile?.stripeConnectAccountId;
       transfer =
         payout > 0 && destination
@@ -969,7 +978,7 @@ export class OnlineMoneyService {
         },
       });
       // Col vecchio modello (soldi sulla piattaforma) la trattenuta si conosce solo adesso.
-      if (!destinationModel) await this.recordFeeEntry(jp.id, booking.professionalProfile.id, "HOLD", appFee, `Lavoro di ${formatEurCents(onlineTarget)}`, `RELEASE:${jp.id}`);
+      if (!destinationModel) await this.recordFeeEntry(jp.id, booking.professionalProfile.id, "HOLD", appFee, "Pagamento online", `RELEASE:${jp.id}`, onlineTarget, jp.cardFeeEurCents + jp.stripeFeeEurCents);
       await this.recordRevenue(jp.id, booking.professionalProfile.id, appFee);
       await this.auditLogService.record({
         entityType: "JobPayment",
@@ -1406,7 +1415,7 @@ export class OnlineMoneyService {
         if (!fault && lostAmount > proShare) await this.returnApplicationFee(jp.id, lostAmount - proShare, `Contestazione in banca persa (${dispute.id}): la nostra parte torna al professionista.`);
       }
       if (fault) costs += disputeFeeWithVatEurCents(dispute);
-      await this.chargeCosts(jp.id, costs, `Contestazione in banca persa (${dispute.id})`, `COSTS:${dispute.id}`);
+      await this.chargeCosts(jp.id, costs, "Costi della contestazione in banca persa", `COSTS:${dispute.id}`);
       if (costs > 0) await this.addProfessionalDebt(jp.id, costs, `Contestazione in banca persa (${dispute.id}).`);
       return costs;
     }
@@ -1432,7 +1441,7 @@ export class OnlineMoneyService {
       costs += disputeFeeWithVatEurCents(dispute) + (jp.releasedAt ? 0 : faultCosts);
       if (jp.releasedAt) debt += faultCosts;
     }
-    await this.chargeCosts(jp.id, costs, `Contestazione in banca persa (${dispute.id})`, `COSTS:${dispute.id}`);
+    await this.chargeCosts(jp.id, costs, "Costi della contestazione in banca persa", `COSTS:${dispute.id}`);
     if (debt + costs > 0) await this.addProfessionalDebt(jp.id, debt + costs, `Contestazione in banca persa (${dispute.id}).`);
     return debt + costs;
   }
@@ -1671,7 +1680,7 @@ export class OnlineMoneyService {
       changedByUserId: byUserId,
       reason,
     });
-    await this.chargeCosts(jp.id, costs, `Rimborso al cliente: ${reason}`, `COSTS:refund-${jp.id}-${after.refundedEurCents}`);
+    await this.chargeCosts(jp.id, costs, "Trattenuta sul lavoro rimborsato al cliente", `COSTS:refund-${jp.id}-${after.refundedEurCents}`);
     if (debt + costs > 0) await this.addProfessionalDebt(jp.id, debt + costs, `Rimborso al cliente: ${reason}`);
     return amount;
   }
@@ -1815,6 +1824,8 @@ export class OnlineMoneyService {
     grossEurCents: number,
     description: string,
     dedupeKey: string,
+    paymentEurCents = 0,
+    cardFeeEurCents = 0,
   ): Promise<void> {
     if (grossEurCents === 0) return;
     try {
@@ -1826,7 +1837,7 @@ export class OnlineMoneyService {
       const taxable = sign * splitVatEurCents(Math.abs(grossEurCents)).taxableEurCents;
       await this.prisma.platformFeeEntry.upsert({
         where: { dedupeKey },
-        create: { professionalProfileId: proId, jobPaymentId, kind, grossEurCents, taxableEurCents: taxable, vatEurCents: grossEurCents - taxable, description, dedupeKey },
+        create: { professionalProfileId: proId, jobPaymentId, kind, grossEurCents, taxableEurCents: taxable, vatEurCents: grossEurCents - taxable, paymentEurCents, cardFeeEurCents, description, dedupeKey },
         update: {},
       });
     } catch (err) {
@@ -1872,7 +1883,7 @@ export class OnlineMoneyService {
         { amount: part, metadata: { jobPaymentId, reason: reason.slice(0, 450) } },
         { idempotencyKey: `job-fee-return-${fee.id}-${fee.amount_refunded}-${part}` },
       );
-      await this.recordFeeEntry(jp.id, null, "RETURN", -part, reason, `RETURN:${fee.id}-${fee.amount_refunded}-${part}`);
+      await this.recordFeeEntry(jp.id, null, "RETURN", -part, feeReturnLabel(reason), `RETURN:${fee.id}-${fee.amount_refunded}-${part}`);
       remaining -= part;
     }
     const returned = Math.min(amountEurCents, jp.applicationFeeEurCents) - remaining;

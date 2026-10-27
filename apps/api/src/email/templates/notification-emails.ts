@@ -969,17 +969,19 @@ const BUILDERS: Record<string, Builder> = {
       cta: proRequests("Apri il lavoro"),
     };
   },
-  ADMIN_FEE_RECONCILIATION: (payload) => ({
-    kind: "notification",
-    tone: "urgent",
-    subject: `Trattenute di ${str(payload.month) ?? "questo mese"} da controllare`,
-    title: "Trattenute che non tornano",
-    paragraphs: [
-      ...(Array.isArray(payload.alerts) ? payload.alerts.filter((a): a is string => typeof a === "string") : []),
-      "Confronta le fatture del mese con il resoconto di Stripe prima di mandarle.",
-    ],
-    cta: { label: "Apri Finanza", url: `${frontendUrl()}/admin/finanza` },
-  }),
+  // Quadratura del mese o fattura scartata dallo SdI (`kind: "sdi"`).
+  ADMIN_FEE_RECONCILIATION: (payload) => {
+    const alerts = Array.isArray(payload.alerts) ? payload.alerts.filter((a): a is string => typeof a === "string") : [];
+    const sdi = payload.kind === "sdi";
+    return {
+      kind: "notification",
+      tone: "urgent",
+      subject: sdi ? "Fattura scartata dallo SdI" : `Trattenute di ${str(payload.month) ?? "questo mese"} da controllare`,
+      title: sdi ? "Fattura da correggere" : "Trattenute che non tornano",
+      paragraphs: sdi ? alerts : [...alerts, "Confronta le trattenute del mese con il resoconto di Stripe."],
+      cta: { label: "Apri Finanza", url: `${frontendUrl()}/admin/finanza` },
+    };
+  },
   ADMIN_JOB_BALANCE_UNPAID: () => ({
     kind: "notification",
     tone: "urgent",

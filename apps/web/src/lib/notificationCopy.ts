@@ -129,7 +129,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   // Documenti contabili (docs/CHANGELOG.md §372).
   JOB_INVOICE_REQUESTED: { icon: "🧾", message: "Un cliente ti chiede la fattura: trovi i dati nella scheda del lavoro." },
   MONTHLY_DOCUMENTS_READY: { icon: "🧾", message: "I documenti del mese sono pronti in Fatture e documenti." },
-  ADMIN_FEE_RECONCILIATION: { icon: "⚠️", message: "Le trattenute del mese non tornano con Stripe: controlla in Finanza." },
+  ADMIN_FEE_RECONCILIATION: { icon: "⚠️", message: "Ci sono fatture o trattenute da controllare in Finanza." },
 };
 
 const DEFAULT_COPY = { icon: "🔔", message: "Hai una nuova notifica." };

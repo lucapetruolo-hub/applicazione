@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Check } from "lucide-react";
 import {
   RENEWAL_NOTICE_DAYS,
+  freePeriodSummary,
   SUBSCRIPTION_FEATURES,
   SUBSCRIPTION_TIERS,
   parseBillingInterval,
@@ -375,6 +376,12 @@ function AbbonamentoContent() {
               <Text color={brand.grafite70}>{status.detail}</Text>
             </YStack>
             {sub.founder && sub.founder.currentMonth !== null ? <FounderMonths founder={sub.founder} trialEndsAt={sub.trialEndsAt} /> : null}
+            {/* Riepilogo a 0 € del mese gratuito (docs/CHANGELOG.md §372): non è una fattura. */}
+            {freePeriodSummary(sub, new Date()) ? (
+              <Link href="/dashboard/documenti/mese-gratuito" style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 16 }}>
+                Riepilogo del mese: 0 € →
+              </Link>
+            ) : null}
             <YStack gap="$2">
               <XStack justifyContent="space-between" flexWrap="wrap" gap="$2">
                 <Text fontWeight="700" color={brand.grafite}>
@@ -651,17 +658,23 @@ function AbbonamentoContent() {
           </Surface>
         ) : null}
 
-        {sub?.checkoutAvailable ? (
-          <Surface borderRadius={radiusDoc} padding="$5" gap="$3">
-            <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
-              Carta e fatture
-            </Text>
-            <Text color={brand.grafite70}>Cambia la carta di pagamento e scarica le fatture di abbonamento e visibilità, su una pagina sicura di Stripe.</Text>
-            <Button variant="secondary" alignSelf="flex-start" disabled={portalPending} opacity={portalPending ? 0.6 : 1} onPress={openPortal}>
-              {portalPending ? "Apertura..." : "Gestisci carta e fatture"}
-            </Button>
-          </Surface>
-        ) : null}
+        {/* Le fatture sono le nostre, in "Fatture e documenti" (docs/CHANGELOG.md §372): da Stripe solo la carta. */}
+        <Surface borderRadius={radiusDoc} padding="$5" gap="$3">
+          <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
+            Fatture e documenti
+          </Text>
+          <Text color={brand.grafite70}>Le fatture dell&apos;abbonamento e delle trattenute, e l&apos;estratto di ogni mese per il commercialista.</Text>
+          <XStack gap="$3" flexWrap="wrap">
+            <Link href="/dashboard/documenti" style={{ textDecoration: "none" }}>
+              <Button variant="secondary">Apri Fatture e documenti</Button>
+            </Link>
+            {sub?.checkoutAvailable ? (
+              <Button variant="secondary" disabled={portalPending} opacity={portalPending ? 0.6 : 1} onPress={openPortal}>
+                {portalPending ? "Apertura..." : "Cambia la carta"}
+              </Button>
+            ) : null}
+          </XStack>
+        </Surface>
 
         <Surface borderRadius={radiusDoc} padding="$5" gap="$2">
           <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>

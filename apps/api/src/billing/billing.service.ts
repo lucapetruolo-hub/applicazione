@@ -11,6 +11,7 @@ import {
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service";
+import { InvoicesService } from "../accounting/invoices.service";
 import { hasLaunched, launchDate, subscriptionState, tierOfPlan, trialDaysOf, trialEndFor } from "../subscriptions/subscription-rules";
 import { BookingsService } from "../bookings/bookings.service";
 import { JobPaymentsService } from "../job-payments/job-payments.service";
@@ -69,6 +70,7 @@ export class BillingService {
     private readonly bookingsService: BookingsService,
     private readonly professionalFiscalService: ProfessionalFiscalService,
     private readonly subscriptionsService: SubscriptionsService,
+    private readonly invoicesService: InvoicesService,
   ) {
     this.stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
   }
@@ -318,7 +320,8 @@ export class BillingService {
         success_url: `${this.frontendUrl()}/dashboard/abbonamento?attivato=1`,
         cancel_url: `${this.frontendUrl()}/dashboard/abbonamento`,
         metadata: { kind: "tier_upgrade", professionalProfileId, stripeSubscriptionId, plan, interval },
-        invoice_creation: { enabled: true },
+        // La fattura di Stripe diventa la nostra fattura elettronica (§372).
+        invoice_creation: { enabled: true, invoice_data: { metadata: { kind: "tier_upgrade_fee", professionalProfileId } } },
       });
       return { url: session.url };
     }
@@ -416,11 +419,9 @@ export class BillingService {
       success_url: `${this.frontendUrl()}/dashboard?boost=attivato`,
       cancel_url: `${this.frontendUrl()}/dashboard`,
       metadata: { kind: "boost", boostType, professionalProfileId: profile.id },
-      // Genera una ricevuta Stripe reale, scaricabile dal professionista
-      // (CEO, consiglio esperti). NON sostituisce la fattura elettronica SDI:
-      // finché l'account Stripe di Manovia non ha i dati societari reali
-      // (checklist di lancio, punto 1) il documento porta i dati provvisori.
-      invoice_creation: { enabled: true },
+      // Niente fattura di Stripe: la fattura elettronica la emettiamo noi al
+      // pagamento (docs/CHANGELOG.md §372), una ricevuta di Stripe in più
+      // sembrerebbe un secondo documento fiscale.
     });
 
     return { url: session.url };
@@ -579,6 +580,7 @@ export class BillingService {
             stripePaymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : undefined,
           },
         });
+        await this.invoicesService.issueForBoostCheckout(session, metadata.professionalProfileId, `Pacchetto di visibilità ${metadata.boostType}, ${BOOST_DURATION_DAYS} giorni`);
       }
     }
 
@@ -642,6 +644,8 @@ export class BillingService {
     // pagato o non riuscito, cambio di livello, annullamento, fine.
     if (event.type === "invoice.payment_failed" || event.type === "invoice.paid") {
       const invoice = event.data.object as Stripe.Invoice;
+      // Abbonamento, rinnovo o quota di passaggio pagati: la nostra fattura (§372).
+      if (event.type === "invoice.paid") await this.invoicesService.issueForStripeInvoice(invoice, (priceId) => this.priceOf(priceId));
       const stripeSubscriptionId = invoiceSubscriptionId(invoice);
       if (stripeSubscriptionId) {
         const renewal = invoice.billing_reason === "subscription_cycle";

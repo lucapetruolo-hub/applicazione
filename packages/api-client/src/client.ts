@@ -104,6 +104,15 @@ import type {
   ProfessionalPayoutTotals,
   ClientInvoiceRequestInput,
   ClientInvoiceRequestView,
+  AccountantSettingsInput,
+  CourtesyCopyView,
+  DocumentsOverview,
+  MonthlyStatement,
+  PlatformInvoiceAdminRow,
+  PlatformInvoiceSettingsInput,
+  PlatformInvoiceSettingsView,
+  PlatformInvoiceView,
+  FeeReconciliation,
 } from "@professionisti/shared";
 
 export type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW";
@@ -1480,6 +1489,54 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       }),
+
+    // --- Fatture e documenti del professionista (docs/CHANGELOG.md §372) ---
+    documentsOverview: (token: string) =>
+      request<DocumentsOverview>("/documents", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    documentsInvoice: (token: string, id: string) =>
+      request<PlatformInvoiceView>(`/documents/invoices/${encodeURIComponent(id)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    /** La fattura elettronica (XML) come testo, da salvare. */
+    documentsInvoiceXml: (token: string, id: string) =>
+      request<{ fileName: string; xml: string }>(`/documents/invoices/${encodeURIComponent(id)}/xml`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    documentsStatement: (token: string, month: string) =>
+      request<MonthlyStatement>(`/documents/statements/${encodeURIComponent(month)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    documentsStatementCsv: (token: string, month: string) =>
+      request<{ fileName: string; csv: string }>(`/documents/statements/${encodeURIComponent(month)}/csv`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    updateAccountant: (token: string, input: AccountantSettingsInput) =>
+      request<{ email: string | null; enabled: boolean }>("/documents/accountant", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
+    courtesyCopy: (token: string, bookingId: string) =>
+      request<CourtesyCopyView>(`/documents/courtesy/${encodeURIComponent(bookingId)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    // --- Admin → Finanza: le nostre fatture ---
+    adminInvoiceSettings: (token: string) =>
+      request<PlatformInvoiceSettingsView>("/admin/invoices/settings", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminUpdateInvoiceSettings: (token: string, input: PlatformInvoiceSettingsInput) =>
+      request<PlatformInvoiceSettingsView>("/admin/invoices/settings", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
+    adminInvoices: (token: string, month?: string) =>
+      request<PlatformInvoiceAdminRow[]>(`/admin/invoices${month ? `?month=${encodeURIComponent(month)}` : ""}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminInvoice: (token: string, id: string) =>
+      request<PlatformInvoiceView>(`/admin/invoices/${encodeURIComponent(id)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminInvoiceXml: (token: string, id: string) =>
+      request<{ fileName: string; xml: string }>(`/admin/invoices/${encodeURIComponent(id)}/xml`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminRunInvoiceMonth: (token: string, month: string) =>
+      request<{ issued: number }>(`/admin/invoices/run/${encodeURIComponent(month)}`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+
+    adminFeeReconciliation: (token: string, month: string) =>
+      request<FeeReconciliation>(`/admin/invoices/reconciliation/${encodeURIComponent(month)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminResendInvoice: (token: string, id: string) =>
+      request<PlatformInvoiceAdminRow>(`/admin/invoices/${encodeURIComponent(id)}/resend`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
     /** Checkout Stripe dell'acconto o del saldo di un lavoro pagato online. */
     jobPaymentCheckout: (token: string, bookingId: string, part: "deposit" | "balance") =>

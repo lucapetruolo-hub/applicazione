@@ -2,6 +2,7 @@ import { z } from "zod";
 import "./zod";
 import { isValidCodiceFiscale, isValidPartitaIva } from "./fiscalValidation";
 import type { ProfessionalCategorySlug } from "./categories";
+import { FOUNDER_FREE_MONTHS, TRIAL_DAYS, subscriptionTierInfo, type MySubscription } from "./plans";
 
 /**
  * Documenti contabili e fiscali (decisioni dell'utente del 26-27/10/2026,
@@ -185,4 +186,309 @@ export function categoryMayHaveTaxBonus(slug: string | null | undefined): boolea
 export const TAX_BONUS_PAYMENT_NOTE = {
   short: "Vuoi la detrazione per i lavori in casa? Di solito serve il bonifico parlante, non la carta.",
   more: "Per i bonus su ristrutturazioni e risparmio energetico la legge chiede di pagare con un bonifico \"parlante\" (con la causale del bonus). Se ti interessa, scegli il pagamento diretto e chiedi al professionista i dati per il bonifico.",
+};
+
+// --- Le nostre fatture al professionista ------------------------------------
+// Trattenute del mese (fattura differita, serie COM), abbonamento, quote di
+// passaggio e pacchetti di visibilità (fattura immediata, serie ABB):
+// numerazioni separate, domanda 61 al commercialista. Senza i dati della
+// nostra società (Admin → Finanza) nessuna fattura: solo l'estratto.
+
+export const platformInvoiceSources = ["JOB_FEES", "SUBSCRIPTION", "UPGRADE_FEE", "VISIBILITY_BOOST"] as const;
+export type PlatformInvoiceSource = (typeof platformInvoiceSources)[number];
+
+export const INVOICE_SERIES: Record<PlatformInvoiceSource, string> = {
+  JOB_FEES: "COM",
+  SUBSCRIPTION: "ABB",
+  UPGRADE_FEE: "ABB",
+  VISIBILITY_BOOST: "ABB",
+};
+
+export const INVOICE_SOURCE_LABEL: Record<PlatformInvoiceSource, string> = {
+  JOB_FEES: "Trattenute sui pagamenti online",
+  SUBSCRIPTION: "Abbonamento",
+  UPGRADE_FEE: "Passaggio al livello superiore",
+  VISIBILITY_BOOST: "Pacchetto di visibilità",
+};
+
+export const invoiceSdiStatuses = ["NOT_SENT", "SENT", "DELIVERED", "REJECTED"] as const;
+export type InvoiceSdiStatusValue = (typeof invoiceSdiStatuses)[number];
+
+/** "COM/2026/0017". */
+export function invoiceNumberLabel(series: string | null, year: number | null, number: number | null): string {
+  if (!series || !year || !number) return "—";
+  return `${series}/${year}/${String(number).padStart(4, "0")}`;
+}
+
+const MONTHS_IT = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
+
+/** "2026-10" → "ottobre 2026". */
+export function accountingMonthLabel(month: string): string {
+  const match = /^(\d{4})-(\d{2})$/.exec(month);
+  if (!match) return month;
+  return `${MONTHS_IT[Number(match[2]) - 1] ?? match[2]} ${match[1]}`;
+}
+
+/** Mese valido nell'indirizzo (AAAA-MM). */
+export function isAccountingMonth(value: string): boolean {
+  return /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
+}
+
+/** Una riga della fattura: imponibile, con il gruppo (il lavoro) per le trattenute. */
+export type PlatformInvoiceLine = { description: string; detail?: string | null; group?: string | null; taxableEurCents: number };
+
+/** Intestazione di chi emette o riceve, già in righe da mostrare. */
+export type InvoiceParty = { name: string; lines: string[] };
+
+export type PlatformInvoiceSummary = {
+  id: string;
+  number: string;
+  source: PlatformInvoiceSource;
+  creditNote: boolean;
+  issuedAt: string;
+  periodMonth: string | null;
+  totalEurCents: number;
+  sdiStatus: InvoiceSdiStatusValue;
+};
+
+export type PlatformInvoiceView = PlatformInvoiceSummary & {
+  issuer: InvoiceParty;
+  recipient: InvoiceParty;
+  lines: PlatformInvoiceLine[];
+  taxableEurCents: number;
+  vatEurCents: number;
+  roundingEurCents: number;
+  vatRatePercent: number;
+  relatedNumber: string | null;
+  /** Il professionista recupera l'IVA (ordinario o società)? null se non lo sappiamo. */
+  vatRecoverable: boolean | null;
+  /** Quanto ha pagato online il cliente nel mese (solo trattenute), per la percentuale. */
+  onlinePaidEurCents: number | null;
+};
+
+/** Spiegazione sotto il totale di una nostra fattura, in parole semplici. */
+export function platformInvoiceNote(invoice: Pick<PlatformInvoiceView, "source" | "creditNote" | "vatRecoverable">): string {
+  if (invoice.creditNote) return "Nota di credito: una trattenuta ti è stata restituita. Non devi fare nulla.";
+  const paid = invoice.source === "JOB_FEES" ? "È già stata trattenuta dai pagamenti online: non devi pagare nulla." : "È già stata pagata con la carta.";
+  if (invoice.vatRecoverable === false) return `${paid} Senza partita IVA, o nel regime forfettario, l'IVA è un costo: non si recupera.`;
+  if (invoice.vatRecoverable === true) return `${paid} L'IVA la recuperi nella tua dichiarazione IVA.`;
+  return paid;
+}
+
+/** Dove trova l'originale elettronico. */
+export function platformInvoiceOriginalNote(hasRecipientCode: boolean): string {
+  return hasRecipientCode
+    ? "L'originale elettronico arriva al tuo programma delle fatture, con il codice destinatario o la PEC che ci hai dato."
+    : "L'originale elettronico è nella tua area riservata dell'Agenzia delle Entrate, in Fatture e Corrispettivi.";
+}
+
+// --- Estratto del mese ------------------------------------------------------
+
+export type MonthlyStatementRow = {
+  jobPaymentId: string | null;
+  date: string;
+  job: string;
+  client: string | null;
+  onlineEurCents: number;
+  directEurCents: number;
+  /** Trattenute del mese su questo lavoro, con l'IVA (negative se restituite). */
+  feesEurCents: number;
+  payoutEurCents: number | null;
+  payoutNote: string;
+};
+
+export type MonthlyStatement = {
+  month: string;
+  monthLabel: string;
+  totals: { onlineEurCents: number; directEurCents: number; feesEurCents: number; payoutsArrivedEurCents: number };
+  rows: MonthlyStatementRow[];
+  /** Soldi ancora bloccati in attesa della conferma dei clienti, per questi lavori. */
+  blockedEurCents: number;
+  feeInvoice: { id: string; number: string } | null;
+  /** Il documento che il professionista dà al cliente per ogni pagamento. */
+  documentHint: string;
+};
+
+/** Il documento del lavoro che il professionista dà al cliente, per tipo. */
+export function clientDocumentHint(entityType: string | null | undefined): string {
+  if (entityType === "PRIVATE_INDIVIDUAL") return "Per ogni lavoro ricordati di dare al cliente la ricevuta per prestazione occasionale.";
+  if (entityType === "SOLE_PROPRIETOR" || entityType === "BUSINESS") return "Per ogni pagamento ricordati di fare la fattura al cliente.";
+  return "Per ogni pagamento ricordati di dare al cliente la fattura o la ricevuta.";
+}
+
+/** Una riga dell'estratto per il commercialista (foglio di calcolo, una riga per movimento). */
+export type StatementCsvRow = {
+  date: string;
+  kind: string;
+  job: string;
+  client: string;
+  amountEurCents: number;
+  taxableEurCents: number | null;
+  vatEurCents: number | null;
+  document: string;
+};
+
+/** Centesimi all'italiana per il foglio di calcolo: "1234,50". */
+function csvAmount(cents: number | null): string {
+  if (cents === null) return "";
+  const sign = cents < 0 ? "-" : "";
+  const abs = Math.abs(cents);
+  return `${sign}${Math.floor(abs / 100)},${String(abs % 100).padStart(2, "0")}`;
+}
+
+function csvCell(value: string): string {
+  return /[";\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
+
+/** Foglio di calcolo (CSV con il punto e virgola, come lo apre Excel in italiano). */
+export function statementCsv(rows: StatementCsvRow[]): string {
+  const header = ["Data", "Movimento", "Lavoro", "Cliente", "Importo", "Imponibile", "IVA", "Documento"];
+  const body = rows.map((r) =>
+    [r.date, r.kind, r.job, r.client, csvAmount(r.amountEurCents), csvAmount(r.taxableEurCents), csvAmount(r.vatEurCents), r.document].map(csvCell).join(";"),
+  );
+  return `﻿${[header.join(";"), ...body].join("\r\n")}\r\n`;
+}
+
+// --- Pagina "Fatture e documenti" ----------------------------------------
+
+export type DocumentsOverview = {
+  invoices: PlatformInvoiceSummary[];
+  /** Mesi con un estratto (AAAA-MM), dal più recente. */
+  months: string[];
+  /** Le fatture partono solo con i dati della nostra società (Admin → Finanza). */
+  invoicesActive: boolean;
+  accountant: { email: string | null; enabled: boolean };
+};
+
+/** Commercialista del professionista: l'estratto del mese gli arriva per email se c'è la spunta. */
+export const accountantSettingsSchema = z
+  .object({
+    email: z.string().trim().toLowerCase().max(254).optional(),
+    enabled: z.boolean(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value.email)) {
+      ctx.addIssue({ code: "custom", path: ["email"], message: "L'email del commercialista non sembra valida." });
+    }
+    if (value.enabled && !value.email) {
+      ctx.addIssue({ code: "custom", path: ["email"], message: "Scrivi l'email del commercialista." });
+    }
+  });
+export type AccountantSettingsInput = z.infer<typeof accountantSettingsSchema>;
+
+/** Dati della nostra società per le fatture, da Admin → Finanza. */
+export const platformInvoiceSettingsSchema = z.object({
+  companyName: z.string().trim().min(2, "Scrivi la ragione sociale.").max(200),
+  vatNumber: z.string().trim().refine((v) => isValidPartitaIva(v), "La partita IVA non sembra valida (11 cifre)."),
+  taxCode: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .refine((v) => !v || isValidPartitaIva(v) || isValidCodiceFiscale(v), "Il codice fiscale non sembra valido.")
+    .optional(),
+  street: z.string().trim().min(2, "Scrivi la via della sede.").max(200),
+  houseNumber: z.string().trim().max(20).optional(),
+  postalCode: z.string().trim().regex(/^\d{5}$/, "Il CAP ha 5 cifre."),
+  city: z.string().trim().min(2, "Scrivi il comune.").max(120),
+  province: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/, "La provincia è la sigla di 2 lettere."),
+  taxRegime: z.string().trim().regex(/^RF\d{2}$/, "Il regime fiscale è un codice come RF01."),
+  reaOffice: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/, "L'ufficio REA è la sigla della provincia.").optional().or(z.literal("")),
+  reaNumber: z.string().trim().max(20).optional(),
+  shareCapital: z.string().trim().max(20).optional(),
+  pecEmail: z.string().trim().toLowerCase().max(254).optional(),
+  /** Da quando emettere le fatture (AAAA-MM-GG): prima solo l'estratto. */
+  invoicesFrom: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, "Data nel formato AAAA-MM-GG.").optional().or(z.literal("")),
+});
+export type PlatformInvoiceSettingsInput = z.infer<typeof platformInvoiceSettingsSchema>;
+
+export type PlatformInvoiceSettingsView = Partial<Record<keyof PlatformInvoiceSettingsInput, string | null>> & { ready: boolean; sdiConfigured: boolean };
+
+// --- Mesi gratuiti: riepilogo a 0 € (non è una fattura) ----------------------
+// Decisione dell'utente del 27/10/2026 (docs/CHANGELOG.md §372): un
+// documento con le voci e uno sconto che porta a 0 €, nel sito e
+// nell'email del mese. Stesse parole del sito: "Offerta di lancio",
+// "Mese gratuito", "Mese regalato".
+
+export type FreePeriodSummary = {
+  label: "Offerta di lancio" | "Mese gratuito" | "Mese regalato";
+  detail: string;
+  /** Mese gratuito in corso e quanti in tutto (1 di 3 per l'offerta di lancio). */
+  month: number;
+  months: number;
+  from: string;
+  to: string;
+  /** Prezzo di Base al mese, IVA esclusa, che lo sconto porta a 0. */
+  baseMonthEurCents: number;
+};
+
+const FREE_MONTH_MS = TRIAL_DAYS * 24 * 60 * 60 * 1000;
+
+/**
+ * Riepilogo del mese gratuito in corso, o null se non è in un periodo
+ * gratuito (o prima del lancio, quando i mesi gratuiti non sono partiti).
+ */
+export function freePeriodSummary(sub: Pick<MySubscription, "state" | "trialEndsAt" | "bonusMonthGranted" | "founder">, now: Date): FreePeriodSummary | null {
+  if (sub.state !== "TRIAL" || !sub.trialEndsAt) return null;
+  const end = new Date(sub.trialEndsAt).getTime();
+  const t = now.getTime();
+  const baseMonthEurCents = subscriptionTierInfo("BASE").priceEurCents;
+  const iso = (ms: number) => new Date(ms).toISOString();
+  if (sub.founder) {
+    const start = end - FOUNDER_FREE_MONTHS * FREE_MONTH_MS;
+    if (t < start || t >= end) return null;
+    const month = Math.min(FOUNDER_FREE_MONTHS, Math.floor((t - start) / FREE_MONTH_MS) + 1);
+    const from = start + (month - 1) * FREE_MONTH_MS;
+    return { label: "Offerta di lancio", detail: `Primi 100 professionisti, ${FOUNDER_FREE_MONTHS} mesi`, month, months: FOUNDER_FREE_MONTHS, from: iso(from), to: iso(from + FREE_MONTH_MS), baseMonthEurCents };
+  }
+  const bonus = sub.bonusMonthGranted && t >= end - FREE_MONTH_MS;
+  const from = end - FREE_MONTH_MS;
+  if (t < (sub.bonusMonthGranted ? end - 2 * FREE_MONTH_MS : from) || t >= end) return null;
+  if (bonus) return { label: "Mese regalato", detail: "Un mese in più, regalato da noi", month: 1, months: 1, from: iso(from), to: iso(end), baseMonthEurCents };
+  const first = sub.bonusMonthGranted ? end - 2 * FREE_MONTH_MS : from;
+  return { label: "Mese gratuito", detail: "Il primo mese, per tutti", month: 1, months: 1, from: iso(first), to: iso(first + FREE_MONTH_MS), baseMonthEurCents };
+}
+
+/** Una nostra fattura nella lista di Admin → Finanza. */
+export type PlatformInvoiceAdminRow = PlatformInvoiceSummary & {
+  professionalProfileId: string;
+  recipientName: string;
+  sdiMessage: string | null;
+  /** XML pronto: senza dati completi del professionista non c'è, e la fattura va sistemata. */
+  hasXml: boolean;
+};
+
+// --- Copia di cortesia del documento del lavoro ---------------------------------
+// Decisione dell'utente del 27/10/2026: la prepariamo noi come cortesia, il
+// documento valido lo emette il professionista (fattura elettronica dal suo
+// programma, o ricevuta per prestazione occasionale firmata). Non la mandiamo
+// mai all'Agenzia delle Entrate.
+
+export type CourtesyCopyView = {
+  /** Fattura per chi ha la partita IVA, ricevuta per prestazione occasionale per il privato. */
+  kind: "INVOICE" | "RECEIPT";
+  issuer: InvoiceParty;
+  customer: InvoiceParty;
+  date: string;
+  description: string;
+  /** null se l'importo finale non è noto (si scrive a mano). */
+  totalEurCents: number | null;
+  /** Solo per chi applica l'IVA: scorporo al 22%. */
+  vat: { taxableEurCents: number; vatEurCents: number; ratePercent: number } | null;
+  paidHow: string | null;
+  /** Righe da riportare nel documento (regime forfettario, marca da bollo, ritenuta). */
+  notes: string[];
+  /** Il cliente ha chiesto la fattura con i suoi dati. */
+  invoiceRequested: boolean;
+};
+
+/** Sopra questa cifra, senza IVA, serve la marca da bollo da 2 €. */
+export const STAMP_DUTY_THRESHOLD_EUR_CENTS = 7747;
+
+/** Quadratura del mese tra il nostro registro delle trattenute e Stripe (Admin → Finanza). */
+export type FeeReconciliation = {
+  month: string;
+  ledger: { holdsEurCents: number; returnsEurCents: number; costsEurCents: number; cardFeesEurCents: number };
+  /** null senza Stripe configurato. */
+  stripe: { applicationFeesEurCents: number; applicationFeeRefundsEurCents: number; stripeFeesEurCents: number } | null;
+  alerts: string[];
 };

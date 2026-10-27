@@ -5582,3 +5582,30 @@ a.admin-kpi:hover {
     color: #2b2420;
   }
 }
+
+/* Fatture, estratti e copie di cortesia da stampare o salvare in PDF
+   (docs/CHANGELOG.md §372): si stampa solo il documento, senza intestazione
+   del sito, menu né pulsanti. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-document,
+  .print-document * {
+    visibility: visible;
+  }
+  .print-document {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  .print-document [data-print-hide] {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+  }
+}

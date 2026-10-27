@@ -57,7 +57,10 @@ export class EmailService {
         subject: params.subject,
         html: params.html,
         ...(params.text ? { text: params.text } : {}),
-        ...(params.attachments?.length ? { attachments: params.attachments } : {}),
+        // Resend vuole il contenuto in base64: un testo (il .ics, il CSV) va codificato (§372).
+        ...(params.attachments?.length
+          ? { attachments: params.attachments.map((a) => ({ ...a, content: Buffer.from(a.content, "utf8").toString("base64") })) }
+          : {}),
       });
       if (result.error) {
         this.logger.error(`Invio email fallito a ${params.to}: ${result.error.message}`);

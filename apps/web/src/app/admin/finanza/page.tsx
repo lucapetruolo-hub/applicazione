@@ -7,6 +7,7 @@ import { Button, Field, H1, H2, Paragraph, Text, XStack, YStack, brand } from "@
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { SkeletonBlock, SkeletonTableRows } from "@/components/Skeleton";
+import { AdminInvoicesSection } from "@/components/admin/AdminInvoicesSection";
 import { BRAND, formatEurCents } from "@professionisti/shared";
 
 /**
@@ -254,6 +255,9 @@ export default function AdminFinanzaPage() {
             </YStack>
           )}
         </YStack>
+
+        {/* Le nostre fatture ai professionisti (docs/CHANGELOG.md §372). */}
+        <AdminInvoicesSection token={token} />
 
         <YStack gap="$4">
           <XStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$3">

@@ -2357,8 +2357,10 @@ model Invoice {
   vatRateBasisPoints    Int              @default(2200)
   /// Righe della fattura: [{ description, taxableEurCents, vatEurCents }].
   lines                 Json?
-  /// Dati del professionista al momento dell'emissione.
+  /// Dati del professionista al momento dell'emissione (codice fiscale cifrato).
   recipient             Json?
+  /// I nostri dati al momento dell'emissione.
+  issuer                Json?
   status                InvoiceStatus    @default(DRAFT)
   issuedAt              DateTime?
   documentUrl           String?
@@ -2370,7 +2372,9 @@ model Invoice {
   sdiId                 String?
   sdiMessage            String?
   sdiSentAt             DateTime?
-  /// FatturaPA XML generato all'emissione.
+  /// Invii allo SdI: dopo uno scarto il file va rimandato con un nome nuovo.
+  sdiAttempts           Int              @default(0)
+  /// FatturaPA XML generato all'emissione, cifrato come il codice fiscale che contiene.
   xml                   String?
   createdAt             DateTime         @default(now())
 
@@ -2410,6 +2414,10 @@ model PlatformFeeEntry {
   grossEurCents         Int
   taxableEurCents       Int
   vatEurCents           Int
+  /// Per le trattenute: quanto ha pagato online il cliente (per l'estratto).
+  paymentEurCents       Int                  @default(0)
+  /// Nostro costo della carta per quel pagamento (stimato con l'addebito diretto), per la quadratura del mese.
+  cardFeeEurCents       Int                  @default(0)
   description           String
   /// Chiave contro i doppioni (es. "HOLD:<pi>", "RETURN:<refund>").
   dedupeKey             String?              @unique
