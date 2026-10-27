@@ -21246,3 +21246,17 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 **Decisione**: ogni lunedì alle 9 (ora di Roma), solo dopo il lancio (`LAUNCH_DATE`), i super admin ricevono la notifica `ADMIN_SEARCH_DEMAND_ALERT` (campanella ed email, argomento admin) con al massimo 5 righe "Lavoro, Città: N ricerche": le zone con almeno 5 ricerche senza nessun professionista entro 25 km negli ultimi 7 giorni, dalla più scoperta. Le ricerche senza città non contano (non dicono dove reclutare). Nessun avviso se nessuna zona arriva a 5. Il pulsante porta a "Professionisti in numeri". Soglie in `packages/shared/src/professionalStats.ts` (`SEARCH_DEMAND_ALERT_*`), conti in `searchDemandZones` (`apps/api/src/admin/professional-stats.ts`), invio in `apps/api/src/admin/search-demand-alert.service.ts`, come l'avviso delle urgenti (§344).
 
 **Verifica**: test delle zone (soglia, città scritte in modo diverso, senza città) e dell'email; tutti i modelli email ancora composti anche vuoti; API avviata in locale senza errori; email aperta in locale.
+
+## 373. Node.js 22.23.4 dopo l'avviso di sicurezza di Render
+
+**Richiesta** (Luca, 27/10/2026): avviso di Render sul certificato eMudhra compromesso e sulle correzioni di sicurezza di Node.js del 21/10 (controllo del nome nei certificati TLS aggirabile, Brotli); "e migliorie per fare in modo che siamo sempre aggiornati per eventuali altri attacchi". PHP non lo usiamo.
+
+**Decisione**:
+- `.nvmrc` da `22` a **`22.23.4`** (verificata su nodejs.org, l'ultima 22.x, uscita il 20/10 come correzione di sicurezza). Render la legge da lì: con `22` dipendeva da quale 22.x Render avesse in quel momento. La CI (`ci.yml`, `zod.yml`, che era ancora su Node 20) usa `node-version-file: .nvmrc`, quindi prova la stessa versione dell'API in linea.
+- `engines.node` resta `22.x`: Vercel non permette di fissare la versione esatta e aggiorna da sé le correzioni di Node 22 a ogni deploy.
+- L'API scrive la versione di Node nel log di avvio (`API in ascolto su 0.0.0.0:<porta> (Node v22.23.4)`): nei log di Render si vede se l'aggiornamento è arrivato davvero. Una `NODE_VERSION` impostata nella dashboard di Render avrebbe la precedenza su `.nvmrc` (nota in `render.yaml`).
+- **Restare aggiornati**: Node non è una libreria, quindi Dependabot e osv-scanner non lo vedono. Nuovo controllo giornaliero `.github/workflows/node.yml` con `scripts/controlla-node.mjs`: se dopo la versione di `.nvmrc` esce una correzione di sicurezza di Node 22, apre una segnalazione (issue) con i passi; sulle PR che cambiano `.nvmrc` controlla che la versione esista.
+
+**Certificati e chiamate HTTPS in uscita**: Stripe, Resend, Cloudinary, Google (accesso, Maps, Routes, Places), Openapi, VIES, Didit, Turnstile, Open-Meteo e Sentry passano tutti dal `fetch`/`https` di Node, che usa l'elenco di certificati incluso in Node: con Node 22.23.4 eMudhra non è più fidato. Nessuna libreria porta certificati propri (nessun file `.pem`/`.crt` nelle dipendenze), nessun `rejectUnauthorized: false`, `NODE_TLS_REJECT_UNAUTHORIZED` o `ca:` personalizzato nel codice. Il database è raggiunto dall'indirizzo interno di Render.
+
+**Verifica**: `node scripts/controlla-node.mjs` con 22.23.4 (nessun aggiornamento), 22.23.2 (`aggiornare=true`, ultima 22.23.4), 22.99.0 e `22` (errore); CI della PR.
