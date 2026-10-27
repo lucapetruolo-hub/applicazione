@@ -20,13 +20,13 @@ export class AccountingController {
     private readonly jobDocumentsService: JobDocumentsService,
   ) {}
 
-  /** I documenti di un lavoro, dal menu della richiesta: del professionista o del cliente (§385). */
+  /** I documenti di un lavoro, dal menu della richiesta: del professionista o del cliente (§386). */
   @Get("jobs/:bookingId")
   jobDocuments(@Req() req: AuthenticatedRequest, @Param("bookingId") bookingId: string) {
     return this.jobDocumentsService.forUser(req.user.userId, bookingId);
   }
 
-  /** La copia del documento del professionista, per il cliente (§385). */
+  /** La copia del documento del professionista, per il cliente (§386). */
   @Get("jobs/:bookingId/copy/pdf")
   async jobCopyPdf(@Req() req: AuthenticatedRequest, @Param("bookingId") bookingId: string) {
     const copy = await this.courtesyCopyService.forClient(req.user.userId, bookingId);

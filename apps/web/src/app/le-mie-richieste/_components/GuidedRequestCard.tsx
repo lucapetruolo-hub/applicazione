@@ -707,7 +707,7 @@ export function GuidedRequestCard({
   if (canEditDetails) menuActions.push({ icon: "pencil", text: "Modifica richiesta", onPress: startEditing });
   menuActions.push({ icon: "send", text: "Ripeti la richiesta", onPress: () => router.push(repeatHref) });
   menuActions.push({ icon: "share-2", text: "Condividi riepilogo", onPress: handleShare });
-  // Documenti contabili del lavoro: pagamenti e copia della ricevuta o fattura (docs/CHANGELOG.md §385).
+  // Documenti contabili del lavoro: pagamenti e copia della ricevuta o fattura (docs/CHANGELOG.md §386).
   if (booking) menuActions.push({ icon: "file-text", text: "Documenti", onPress: () => setShowDocuments(true) });
   menuActions.push(
     ...buildPersonalStateActions({

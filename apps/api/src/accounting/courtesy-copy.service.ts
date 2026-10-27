@@ -57,7 +57,7 @@ export class CourtesyCopyService {
 
   /**
    * La copia per il cliente, dai documenti della sua richiesta (decisione
-   * dell'utente, docs/CHANGELOG.md §385): solo dopo che il professionista ha
+   * dell'utente, docs/CHANGELOG.md §386): solo dopo che il professionista ha
    * scaricato il PDF e con lo stesso importo, senza dare numeri nuovi.
    */
   async forClient(clientUserId: string, bookingId: string): Promise<CourtesyCopyView> {

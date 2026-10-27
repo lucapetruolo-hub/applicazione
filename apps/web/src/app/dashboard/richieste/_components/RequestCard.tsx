@@ -665,7 +665,7 @@ export function RequestCard({
   }
   if (booking) {
     menuActions.push({ icon: "calendar", text: "Vedi in agenda", onPress: () => router.push(`/dashboard/agenda?booking=${booking.id}`) });
-    // Documenti contabili del lavoro (docs/CHANGELOG.md §385).
+    // Documenti contabili del lavoro (docs/CHANGELOG.md §386).
     menuActions.push({ icon: "file-text", text: "Documenti", onPress: () => setShowDocuments(true) });
   }
   if (canDelete) {

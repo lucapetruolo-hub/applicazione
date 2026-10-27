@@ -150,47 +150,77 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
 }
 
 /* "Richiedi un preventivo a [nome]" nel profilo pubblico (ProfileQuoteCta):
-   da computer largo quanto il testo, da telefono tutta la larghezza e, quando
-   il pulsante non è sullo schermo, una barra fissa in basso. */
+   da computer largo quanto il testo, da telefono tutta la larghezza. Quando
+   il pulsante non è sullo schermo compare una barra fissa in basso con la
+   foto a sinistra e il pulsante a destra (§385); da computer è allineata
+   alla colonna della pagina (860 px) e accanto alla foto ha nome e stelle. */
 .profile-cta {
   align-self: flex-start;
   max-width: 100%;
 }
 .profile-cta-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 -1px 0 rgba(26, 21, 19, 0.08);
+  transform: translateY(110%);
+  visibility: hidden;
+  transition:
+    transform 250ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    visibility 0s linear 250ms;
+}
+.profile-cta-bar[data-visible="true"] {
+  transform: translateY(0);
+  visibility: visible;
+  transition:
+    transform 250ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    visibility 0s;
+}
+.profile-cta-bar-inner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 828px;
+  margin: 0 auto;
+}
+.profile-cta-bar-summary {
+  flex: 1;
+  min-width: 0;
+}
+.profile-cta-bar-text {
+  min-width: 0;
+}
+.profile-cta-bar-link {
+  flex-shrink: 0;
+}
+/* Spazio in fondo alla pagina, così la barra non copre il piè di pagina. */
+body:has(.profile-cta-bar) {
+  padding-bottom: 72px;
+}
+/* Nel profilo con la barra, "Richiedi preventivo" in alto (richiesta
+   generica, non a questo professionista) confondeva: non compare. Resta nei
+   profili in pausa, che non hanno la barra. */
+body:has(.profile-cta-bar) .site-header-cta-link {
   display: none;
 }
 @media (max-width: 767px) {
   .profile-cta {
     align-self: stretch;
   }
-  .profile-cta-bar {
-    display: block;
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 40;
-    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-    background: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    box-shadow: 0 -1px 0 rgba(26, 21, 19, 0.08);
-    transform: translateY(110%);
-    visibility: hidden;
-    transition:
-      transform 250ms cubic-bezier(0.2, 0.8, 0.2, 1),
-      visibility 0s linear 250ms;
+  .profile-cta-bar-summary {
+    flex: 0 0 auto;
   }
-  /* Spazio in fondo alla pagina, così la barra non copre il piè di pagina. */
-  body:has(.profile-cta-bar) {
-    padding-bottom: 72px;
+  .profile-cta-bar-text {
+    display: none;
   }
-  .profile-cta-bar[data-visible="true"] {
-    transform: translateY(0);
-    visibility: visible;
-    transition:
-      transform 250ms cubic-bezier(0.2, 0.8, 0.2, 1),
-      visibility 0s;
+  .profile-cta-bar-link {
+    flex: 1;
   }
 }
 @media (prefers-reduced-motion: reduce) {

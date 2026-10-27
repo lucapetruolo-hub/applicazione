@@ -645,7 +645,7 @@ export type CourtesyYearSummary = {
   invoices: CourtesyYearRow[];
 };
 
-/** Un movimento di soldi del lavoro, nei documenti della richiesta (docs/CHANGELOG.md §385). */
+/** Un movimento di soldi del lavoro, nei documenti della richiesta (docs/CHANGELOG.md §386). */
 export type JobDocumentMovement = {
   /** Data (ISO). */
   date: string;
@@ -658,7 +658,7 @@ export type JobDocumentMovement = {
 
 /**
  * I documenti contabili di un lavoro, dal menu della richiesta (decisione
- * dell'utente del 27/10/2026, docs/CHANGELOG.md §385), per il professionista
+ * dell'utente del 27/10/2026, docs/CHANGELOG.md §386), per il professionista
  * e per il cliente.
  */
 export type JobDocumentsView = {

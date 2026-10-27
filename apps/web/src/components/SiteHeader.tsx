@@ -167,8 +167,10 @@ export function SiteHeader() {
               risultava vero per un istante anche per un professionista già
               loggato, facendo comparire il bottone per un breve lampo ad
               ogni caricamento di pagina prima di sparire. */}
+          {/* Nascosto anche nel profilo di un professionista che accetta
+              richieste (`.site-header-cta-link` in globals.css, §385). */}
           {!isLoading && !user?.isProfessional && !isAuthPage && !isHome ? (
-            <Link href="/preventivo" style={{ textDecoration: "none" }}>
+            <Link href="/preventivo" className="site-header-cta-link" style={{ textDecoration: "none" }}>
               {/* paddingHorizontal ridotto sotto $xs (≤660px): a 320px (iPhone
                   SE, il più stretto tra i telefoni comuni) il bottone a piena
                   dimensione sforava ancora di qualche px anche dopo aver

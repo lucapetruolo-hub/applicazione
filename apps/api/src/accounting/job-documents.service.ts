@@ -14,7 +14,7 @@ import { romeMonthOf } from "./accounting-dates";
 
 /**
  * I documenti contabili di un lavoro, dalla voce "Documenti" del menu della
- * richiesta (decisione dell'utente del 27/10/2026, docs/CHANGELOG.md §385).
+ * richiesta (decisione dell'utente del 27/10/2026, docs/CHANGELOG.md §386).
  * Il professionista vede la sua ricevuta o copia della fattura, i movimenti
  * con le nostre trattenute e gli estratti dei mesi. Il cliente vede i suoi
  * pagamenti e la copia del documento solo dopo che il professionista ha

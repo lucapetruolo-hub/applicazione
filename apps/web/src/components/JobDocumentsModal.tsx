@@ -10,7 +10,7 @@ import { downloadBlobFile } from "@/components/admin/adminUi";
 
 /**
  * "Documenti" dal menu di una richiesta con un lavoro accettato (decisione
- * dell'utente del 27/10/2026, docs/CHANGELOG.md §385), uguale per
+ * dell'utente del 27/10/2026, docs/CHANGELOG.md §386), uguale per
  * professionista e cliente: la ricevuta o la copia della fattura e i soldi
  * del lavoro. Il professionista vede anche le nostre trattenute, le fatture
  * che le contengono e gli estratti dei mesi; il cliente la copia solo dopo

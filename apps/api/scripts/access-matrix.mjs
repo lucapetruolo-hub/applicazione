@@ -114,7 +114,7 @@ async function seed() {
     },
   });
   await prisma.jobPayment.create({ data: { bookingId: bookingA.id, paymentMethod: "DIRECT", grossAmountEurCents: 10000, netAmountEurCents: 10000 } });
-  // Copia del documento già scaricata da proA: il cliente la può aprire (§385).
+  // Copia del documento già scaricata da proA: il cliente la può aprire (§386).
   await prisma.courtesyDocument.create({ data: { bookingId: bookingA.id, professionalProfileId: profileA.id, kind: "INVOICE", year: 2026, ownNumber: "1/A", pdfDownloadedAt: new Date(), pdfTotalEurCents: 10000 } });
 
   // Fattura delle trattenute di proA (§378).

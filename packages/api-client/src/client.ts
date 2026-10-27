@@ -1582,10 +1582,10 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     clientDocumentsYearPdf: (token: string, year: number) => downloadFile(`/documents/client-documents/${year}/pdf`, token),
     clientDocumentsYearCsv: (token: string, year: number) =>
       request<{ fileName: string; csv: string }>(`/documents/client-documents/${year}/csv`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
-    /** I documenti di un lavoro, dal menu della richiesta, per il professionista o il cliente (docs/CHANGELOG.md §385). */
+    /** I documenti di un lavoro, dal menu della richiesta, per il professionista o il cliente (docs/CHANGELOG.md §386). */
     jobDocuments: (token: string, bookingId: string) =>
       request<JobDocumentsView>(`/documents/jobs/${encodeURIComponent(bookingId)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
-    /** La copia del documento del professionista, per il cliente (§385). */
+    /** La copia del documento del professionista, per il cliente (§386). */
     jobDocumentCopyPdf: (token: string, bookingId: string) => downloadFile(`/documents/jobs/${encodeURIComponent(bookingId)}/copy/pdf`, token),
 
     // --- Admin → Finanza: le nostre fatture ---

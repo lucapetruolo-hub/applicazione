@@ -4,7 +4,7 @@ import { JobDocumentsService } from "./job-documents.service";
 import { CourtesyCopyService } from "./courtesy-copy.service";
 import { courtesyPdfModel } from "./document-pdf-models";
 
-// Documenti di un lavoro dal menu della richiesta (docs/CHANGELOG.md §385).
+// Documenti di un lavoro dal menu della richiesta (docs/CHANGELOG.md §386).
 
 const paid = {
   paymentMethod: "MANOVIA",

@@ -172,7 +172,7 @@ export function courtesyPdfModel(copy: CourtesyCopyView, audience: "professional
     blocks.push({ type: "totals", rows: [], total: { label: "Totale", value: total, detail: copy.paidHow } });
   }
   if (copy.notes.length > 0) blocks.push({ type: "text", muted: true, lines: copy.notes });
-  // Al cliente (§385) la ricevuta è una copia: l'originale firmato glielo dà il professionista.
+  // Al cliente (§386) la ricevuta è una copia: l'originale firmato glielo dà il professionista.
   if (receipt && audience === "client") blocks.push({ type: "text", muted: true, lines: ["Copia: la ricevuta originale firmata, con la marca da bollo quando serve, te la dà il professionista."] });
   else if (receipt) blocks.push({ type: "signature", label: "Firma" });
   else blocks.push({ type: "text", muted: true, lines: ["Copia di cortesia: il documento valido è la fattura elettronica inviata all'Agenzia delle Entrate."] });
