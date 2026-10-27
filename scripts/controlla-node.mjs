@@ -6,7 +6,10 @@
 // - stampa `aggiornare=true` se nella stessa versione principale (es. 24.x) è
 //   uscita dopo una correzione di sicurezza, con la versione più recente da
 //   usare in `ultima`. Il workflow aggiunge queste righe a GITHUB_OUTPUT; i
-//   messaggi per chi legge vanno sull'altra uscita (stderr).
+//   messaggi per chi legge vanno sull'altra uscita (stderr);
+// - stampa `scade=true` se mancano meno di 6 mesi alla fine del supporto di
+//   quella versione principale (calendario ufficiale di Node.js), con la
+//   data in `fine` (docs/CHANGELOG.md §375).
 // Uso in locale: `node scripts/controlla-node.mjs`.
 import { readFileSync } from "node:fs";
 
@@ -47,7 +50,24 @@ if (sicurezza.length > 0) {
   console.error(`Correzioni di sicurezza uscite dopo: ${sicurezza.map((v) => v.version).join(", ")}.`);
 }
 
+// Fine del supporto dal calendario ufficiale. Se non risponde, il controllo
+// delle correzioni resta valido: si salta solo questa parte.
+let fine = "";
+try {
+  const calendario = await fetch("https://raw.githubusercontent.com/nodejs/Release/main/schedule.json", {
+    signal: AbortSignal.timeout(30_000),
+  });
+  const data = calendario.ok ? (await calendario.json())[`v${principale}`]?.end : undefined;
+  if (typeof data === "string" && /^\d{4}-\d{2}-\d{2}$/.test(data)) fine = data;
+} catch {
+  // nessuna data: niente avviso di scadenza oggi
+}
+const SEI_MESI_MS = 183 * 24 * 60 * 60 * 1000;
+const scade = fine !== "" && Date.parse(fine) - Date.now() < SEI_MESI_MS;
+if (fine) console.error(`Node ${principale} riceve correzioni fino al ${fine}.`);
+
 console.log(
-  `aggiornare=${sicurezza.length > 0}\nattuale=${attuale}\nultima=${ultima.version.replace(/^v/, "")}\n` +
+  `scade=${scade}\nfine=${fine}\n` +
+    `aggiornare=${sicurezza.length > 0}\nattuale=${attuale}\nultima=${ultima.version.replace(/^v/, "")}\n` +
     `sicurezza=${sicurezza.map((v) => v.version).join(", ")}`,
 );
