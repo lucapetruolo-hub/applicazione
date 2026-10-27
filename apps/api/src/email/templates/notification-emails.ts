@@ -246,12 +246,16 @@ const BUILDERS: Record<string, Builder> = {
     const clientName = str(payload.clientName);
     const clientPhone = str(payload.clientPhone);
     const clientAddress = str(payload.clientAddress);
+    // Fattura chiesta dal cliente accettando (docs/CHANGELOG.md §372): i dati
+    // nel riquadro, pronti da copiare nel programma delle fatture.
+    const invoiceLines = Array.isArray(payload.invoiceLines) ? payload.invoiceLines.filter((line): line is string => typeof line === "string") : [];
     const details = [
       ...(ctx.category ? [{ label: "Lavoro", value: ctx.city ? `${ctx.category}, ${ctx.city}` : ctx.category }] : []),
       ...(ctx.when ? [{ label: "Appuntamento", value: formatAppointmentSpan(ctx.when, str(payload.scheduledEndAt)) }] : []),
       ...(clientName ? [{ label: "Cliente", value: clientName }] : []),
       ...(clientPhone ? [{ label: "Telefono", value: clientPhone }] : []),
       ...(clientAddress ? [{ label: "Indirizzo", value: clientAddress }] : []),
+      ...(invoiceLines.length > 0 ? [{ label: "Fattura a", value: invoiceLines.join("\n"), long: true }] : []),
     ];
     return {
       kind: "notification",
@@ -263,6 +267,7 @@ const BUILDERS: Record<string, Builder> = {
         clientName || clientPhone || clientAddress
           ? "Qui sotto trovi i dati del cliente e dell'appuntamento, già nella tua agenda."
           : "Nella richiesta ora trovi i suoi contatti e l'indirizzo dell'intervento. L'appuntamento è già nella tua agenda.",
+        ...(payload.invoiceRequested === true ? ["**Il cliente ti chiede la fattura.** I dati sono qui sotto e nella scheda del lavoro."] : []),
       ],
       details: details.length > 0 ? details : undefined,
       cta: proRequests("Apri il lavoro"),
@@ -728,7 +733,7 @@ const BUILDERS: Record<string, Builder> = {
     greeting: ctx.name,
     title: "Pagamento sbloccato",
     paragraphs: [
-      `Abbiamo sbloccato il pagamento del lavoro per **${job(ctx)}**, già al netto della commissione, del costo della carta e del costo del bonifico.`,
+      `Abbiamo sbloccato il pagamento del lavoro per **${job(ctx)}**, già al netto della nostra trattenuta (carta e bonifico compresi). La trovi nella fattura del mese.`,
       ...(typeof payload.debtRecoveredEurCents === "number" && payload.debtRecoveredEurCents > 0
         ? [`Abbiamo trattenuto ${formatEur(payload.debtRecoveredEurCents)} che dovevi restituire per un lavoro precedente.`]
         : []),
@@ -945,6 +950,35 @@ const BUILDERS: Record<string, Builder> = {
       "Lì conviene cercare nuovi professionisti.",
     ],
     cta: { label: "Vedi i numeri", url: `${frontendUrl()}/admin/numeri-professionisti` },
+  }),
+  // Documenti contabili (docs/CHANGELOG.md §372).
+  JOB_INVOICE_REQUESTED: (payload, ctx) => {
+    const invoiceLines = Array.isArray(payload.invoiceLines) ? payload.invoiceLines.filter((line): line is string => typeof line === "string") : [];
+    return {
+      kind: "notification",
+      subject: payload.changed === true ? "Il cliente ha cambiato i dati per la fattura" : "Il cliente ti chiede la fattura",
+      greeting: ctx.name,
+      title: payload.changed === true ? "Dati per la fattura cambiati" : "Ti chiede la fattura",
+      paragraphs: [
+        payload.changed === true
+          ? `Il cliente ha cambiato i dati per la fattura del lavoro **${job(ctx)}**.`
+          : `Il cliente ti chiede la fattura per il lavoro **${job(ctx)}**.`,
+        "La fai tu, col tuo programma delle fatture: qui sotto i dati da copiare.",
+      ],
+      details: invoiceLines.length > 0 ? [{ label: "Fattura a", value: invoiceLines.join("\n"), long: true }] : undefined,
+      cta: proRequests("Apri il lavoro"),
+    };
+  },
+  ADMIN_FEE_RECONCILIATION: (payload) => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: `Trattenute di ${str(payload.month) ?? "questo mese"} da controllare`,
+    title: "Trattenute che non tornano",
+    paragraphs: [
+      ...(Array.isArray(payload.alerts) ? payload.alerts.filter((a): a is string => typeof a === "string") : []),
+      "Confronta le fatture del mese con il resoconto di Stripe prima di mandarle.",
+    ],
+    cta: { label: "Apri Finanza", url: `${frontendUrl()}/admin/finanza` },
   }),
   ADMIN_JOB_BALANCE_UNPAID: () => ({
     kind: "notification",
@@ -1431,6 +1465,32 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: subscriptionPage(),
   }),
+  // Documenti del mese (docs/CHANGELOG.md §372): stesso riepilogo della
+  // pagina, col totale in cima. I mesi gratis compaiono a 0 €.
+  MONTHLY_DOCUMENTS_READY: (payload, ctx) => {
+    const month = str(payload.monthLabel) ?? "del mese";
+    const lines = Array.isArray(payload.lines)
+      ? payload.lines.flatMap((line) => {
+          if (!line || typeof line !== "object") return [];
+          const l = line as Record<string, unknown>;
+          return typeof l.label === "string" && typeof l.amountEurCents === "number" ? [{ label: l.label, value: formatEur(l.amountEurCents) }] : [];
+        })
+      : [];
+    return {
+      kind: "account",
+      subject: `I tuoi documenti di ${month}`,
+      greeting: ctx.name,
+      title: `Documenti di ${month}`,
+      paragraphs: [
+        typeof payload.totalEurCents === "number"
+          ? `Questo mese ti abbiamo addebitato **${formatEur(payload.totalEurCents)}** in tutto, IVA compresa.`
+          : "Il riepilogo del mese è pronto.",
+        "Fatture ed estratto sono nella pagina Fatture e documenti, da scaricare o girare al commercialista.",
+      ],
+      details: lines.length > 0 ? lines : undefined,
+      cta: { label: "Apri Fatture e documenti", url: `${frontendUrl()}/dashboard/documenti` },
+    };
+  },
 };
 
 /** Tipi di notifica che partono anche via email. */

@@ -52,7 +52,7 @@ describe("toJobPaymentSummary con saldo diretto", () => {
         paidEurCents: 10000,
         refundedEurCents: 0,
         platformFeeEurCents: 0,
-        stripeFeeEurCents: 300,
+        stripeFeeEurCents: 0,
         netAmountEurCents: 0,
         releaseDueAt: null,
         releasedAt: null,
@@ -61,7 +61,8 @@ describe("toJobPaymentSummary con saldo diretto", () => {
       50000,
       true,
     );
-    expect(summary).toMatchObject({ method: "ONLINE", balanceDirect: true, balanceDueEurCents: 0, directBalanceEurCents: 40000, appFeeEurCents: 500, payoutEurCents: 9200 - 33 });
+    // Trattenuta solo sui 100 € passati online: 7% + IVA = 8,54 €.
+    expect(summary).toMatchObject({ method: "ONLINE", balanceDirect: true, balanceDueEurCents: 0, directBalanceEurCents: 40000, appFeeEurCents: 854, payoutEurCents: 10000 - 854 });
   });
 });
 

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatEurCents, type ProfessionalPayoutTotals } from "@professionisti/shared";
+import Link from "next/link";
+import { formatEurCents, ONLINE_APP_FEE_PERCENT, type ProfessionalPayoutTotals } from "@professionisti/shared";
 import { Icon, Text, XStack, YStack, brand, type IconName } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -21,8 +22,8 @@ const TILES: Array<{ key: keyof Omit<ProfessionalPayoutTotals, "hasFailed">; lab
 /**
  * Riepilogo dei pagamenti online del professionista (docs/CHANGELOG.md
  * §249): quanto è bloccato in attesa della conferma dei clienti, quanto è
- * sbloccato, in arrivo e già arrivato in banca, al netto di commissione,
- * costo della carta e costo del bonifico (§267). Non compare finché non ha ricevuto pagamenti online.
+ * sbloccato, in arrivo e già arrivato in banca, al netto della trattenuta
+ * unica con l'IVA (§372). Non compare finché non ha ricevuto pagamenti online.
  */
 export function PayoutSummary() {
   const { token } = useAuth();
@@ -75,7 +76,10 @@ export function PayoutSummary() {
         </Text>
       ) : (
         <Text fontSize={13} color={brand.grafite70}>
-          Importi al netto di commissione, costo della carta e costo del bonifico.
+          Importi al netto della trattenuta ({ONLINE_APP_FEE_PERCENT}% + IVA), che comprende carta e bonifico.{" "}
+          <Link href="/dashboard/documenti" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
+            Estratto e fatture
+          </Link>
         </Text>
       )}
     </YStack>

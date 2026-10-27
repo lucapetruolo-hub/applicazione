@@ -8,12 +8,14 @@ import { encryptFiscal, readFiscal } from "./fiscal-crypto";
  * testo in chiaro. I valori salvati prima restano leggibili (`readFiscal`) e
  * all'avvio vengono cifrati (`FiscalEncryptionMigrationService`).
  * Campi: codice fiscale del titolare e del legale rappresentante, e il valore
- * controllato con Openapi (codice fiscale o P.IVA).
+ * controllato con Openapi (codice fiscale o P.IVA), il codice fiscale che il
+ * cliente scrive per la fattura (docs/CHANGELOG.md §372).
  */
 const ENCRYPTED_FIELDS = {
   professionalFiscalProfile: "fiscalCodiceFiscale",
   fiscalRepresentative: "codiceFiscale",
   taxIdCheck: "value",
+  clientInvoiceRequest: "taxCode",
 } as const;
 
 type EncryptedModel = keyof typeof ENCRYPTED_FIELDS;
@@ -56,6 +58,7 @@ export const fiscalEncryptionExtension = Prisma.defineExtension({
     professionalFiscalProfile: encryptingQuery("professionalFiscalProfile"),
     fiscalRepresentative: encryptingQuery("fiscalRepresentative"),
     taxIdCheck: encryptingQuery("taxIdCheck"),
+    clientInvoiceRequest: encryptingQuery("clientInvoiceRequest"),
   },
   result: {
     professionalFiscalProfile: {
@@ -66,6 +69,9 @@ export const fiscalEncryptionExtension = Prisma.defineExtension({
     },
     taxIdCheck: {
       value: { needs: { value: true }, compute: (row) => readFiscal(row.value) ?? "" },
+    },
+    clientInvoiceRequest: {
+      taxCode: { needs: { taxCode: true }, compute: (row) => readFiscal(row.taxCode) },
     },
   },
 });

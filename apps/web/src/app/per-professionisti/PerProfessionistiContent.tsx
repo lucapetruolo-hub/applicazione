@@ -11,6 +11,7 @@ import {
   formatEur,
   withVatEurCents,
   FOUNDER_FREE_MONTHS,
+  ONLINE_APP_FEE_PERCENT,
   type BillingInterval,
   type FounderSpots,
   type ProfessionalCategorySlug,
@@ -290,7 +291,7 @@ function ProOnlinePayment() {
             Il lavoro è confermato solo quando il cliente ha pagato.
           </Text>
           <Text color={brand.grafite70} fontSize={15} lineHeight={22}>
-            5% più il costo della carta, solo sui pagamenti online. Il pagamento diretto resta gratis.{" "}
+            {ONLINE_APP_FEE_PERCENT}% + IVA tutto compreso, solo sui pagamenti online. Il pagamento diretto resta gratis.{" "}
             <Link href="/per-professionisti/pagamenti" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
               Scopri di più
             </Link>

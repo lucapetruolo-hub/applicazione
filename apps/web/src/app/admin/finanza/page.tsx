@@ -22,7 +22,7 @@ import { BRAND, formatEurCents } from "@professionisti/shared";
  * al commercialista, "PENDING / CONFIRMED" non diceva nulla.
  */
 const REVENUE_SOURCE_LABEL: Record<string, string> = {
-  JOB_COMMISSION: "Commissioni sui lavori",
+  JOB_COMMISSION: "Trattenute sui lavori (IVA esclusa)",
   SUBSCRIPTION: "Abbonamenti",
   VISIBILITY_BOOST: "Pacchetti di visibilità",
   LEAD: "Richieste a pagamento",
@@ -270,7 +270,7 @@ export default function AdminFinanzaPage() {
                 <thead>
                   <tr>
                     <th>Nome</th>
-                    <th>%</th>
+                    <th>% (IVA esclusa)</th>
                     <th>Fisso</th>
                     <th>Min/Max</th>
                     <th>Ambito</th>

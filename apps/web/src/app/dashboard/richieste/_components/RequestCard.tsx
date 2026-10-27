@@ -21,6 +21,7 @@ import {
   formatEur,
   formatEurCents,
   formatEurRange,
+  quotePriceHelp,
   quotePriceTotals,
   scheduleChangeBetween,
   scheduleChangeOf,
@@ -58,6 +59,7 @@ import { ProfessionalProblemModal } from "@/components/ProfessionalProblemModal"
 import { CardButton } from "@/components/CardButton";
 import { ContactButton } from "@/components/ContactButton";
 import { ScheduleChangeBox } from "@/components/ScheduleChangeBox";
+import { ProfessionalInvoiceRequestBox } from "@/components/ProfessionalInvoiceRequestBox";
 import { DeadlinePill, MiniTimeline, QuoteItemDraft, STAGE_STYLE, ServiceBadge, StagePill, formatDateTime, formatSlotRange, slotKey, slotLabel, smallInputStyle } from "./requestHelpers";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { ItalianTimeInput } from "@/components/ItalianTimeInput";
@@ -1097,6 +1099,16 @@ export function RequestCard({
             </YStack>
           ) : null}
 
+          {/* Fattura chiesta dal cliente (docs/CHANGELOG.md §372): i dati da copiare, e la copia di cortesia. */}
+          {booking?.invoiceRequest && booking.status !== "CANCELED" ? (
+            <ProfessionalInvoiceRequestBox request={booking.invoiceRequest} courtesyHref={`/dashboard/documenti/cortesia/${booking.id}`} />
+          ) : null}
+          {/* Copia di cortesia anche senza richiesta, a lavoro terminato (§372). */}
+          {booking && !booking.invoiceRequest && booking.status === "COMPLETED" ? (
+            <Link href={`/dashboard/documenti/cortesia/${booking.id}`} style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 13 }}>
+              Prepara la ricevuta o la copia della fattura per il cliente
+            </Link>
+          ) : null}
           {/* Segnalazione del professionista sul lavoro (§197): ultima inviata e a che punto è. */}
           {booking?.professionalProblemReport ? (
             <Text fontSize={13} color={brand.grafite70}>
@@ -1375,9 +1387,15 @@ export function RequestCard({
               {/* Etichette scritte (docs/CHANGELOG.md §349): da telefono la voce
                   sta su una riga e "Da" / "A" affiancati sotto, prima "A €"
                   scendeva da solo a capo. */}
-              <Text fontSize={13} fontWeight="700" color={brand.grafite}>
-                Voci del preventivo
-              </Text>
+              <YStack gap={2}>
+                <Text fontSize={13} fontWeight="700" color={brand.grafite}>
+                  Voci del preventivo
+                </Text>
+                {/* Il cliente vede il prezzo finale, "IVA inclusa" solo se la applichi (docs/CHANGELOG.md §372). */}
+                <Text fontSize={13} color={brand.grafite70}>
+                  {quotePriceHelp(null)}
+                </Text>
+              </YStack>
               {items.map((item, index) => (
                 <div key={index} className="quote-item-row">
                   <input aria-label="Voce del preventivo" className="quote-item-name" value={item.name} onChange={(e) => updateItem(index, "name", e.target.value)} placeholder="Es. Manodopera" style={smallInputStyle} />

@@ -7,7 +7,7 @@ import type { UnreadNotification } from "./AuthContext";
  * l'aggiornamento"), non solo il totale nell'header.
  */
 const PROFESSIONAL_RICHIESTE_TYPES = new Set(["NEW_LEAD", "QUOTE_DATE_PROPOSED", "QUOTE_REJECTED", "TIMELINE_MESSAGE_FROM_CLIENT"]);
-const PROFESSIONAL_LAVORI_TYPES = new Set(["QUOTE_ACCEPTED", "BOOKING_NO_SHOW_REPORTED", "BOOKING_CANCELED_BY_CLIENT", "BOOKING_REOPENED_BY_CLIENT", "JOB_ISSUE_REPORTED", "JOB_ISSUE_SETTLED", "JOB_ISSUE_ESCALATED", "JOB_ISSUE_AUTO_ESCALATED", "JOB_ISSUE_INFO_REQUESTED", "JOB_ISSUE_UNRESOLVED", "JOB_DEPOSIT_PAID", "JOB_BALANCE_PAID", "JOB_PAYOUT_SENT", "NEW_REVIEW", "JOB_CLOSE_REMINDER", "JOB_CLOSE_EXPIRED"]);
+const PROFESSIONAL_LAVORI_TYPES = new Set(["QUOTE_ACCEPTED", "JOB_INVOICE_REQUESTED", "BOOKING_NO_SHOW_REPORTED", "BOOKING_CANCELED_BY_CLIENT", "BOOKING_REOPENED_BY_CLIENT", "JOB_ISSUE_REPORTED", "JOB_ISSUE_SETTLED", "JOB_ISSUE_ESCALATED", "JOB_ISSUE_AUTO_ESCALATED", "JOB_ISSUE_INFO_REQUESTED", "JOB_ISSUE_UNRESOLVED", "JOB_DEPOSIT_PAID", "JOB_BALANCE_PAID", "JOB_PAYOUT_SENT", "NEW_REVIEW", "JOB_CLOSE_REMINDER", "JOB_CLOSE_EXPIRED"]);
 const CLIENT_RICHIESTE_TYPES = new Set([
   "NEW_QUOTE",
   "QUOTE_DATE_CONFIRMED",
@@ -134,6 +134,9 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
   if (type === "ADMIN_DAC7_NEEDS_CORRECTION") return "/admin/finanza";
   if (type === "ADMIN_URGENCY_ALERT") return "/admin";
   if (type === "ADMIN_SEARCH_DEMAND_ALERT") return "/admin/numeri-professionisti";
+  // Documenti contabili (docs/CHANGELOG.md §372).
+  if (type === "MONTHLY_DOCUMENTS_READY") return "/dashboard/documenti";
+  if (type === "ADMIN_FEE_RECONCILIATION") return "/admin/finanza";
   // Verifica fiscale e d'identità (docs/CHANGELOG.md §253).
   if (type === "TAX_ID_INVALID") return "/dashboard/fiscale";
   if (type === "PROFILE_SETUP_REMINDER") return "/dashboard";

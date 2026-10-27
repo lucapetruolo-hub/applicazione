@@ -4,18 +4,18 @@ import Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
 import {
   accountDebitGrossEurCents,
-  connectFeeMonth,
-  connectFeesForReleaseEurCents,
-  connectPayoutFeeEurCents,
   estimatedCardFeeEurCents,
-  ONLINE_APP_FEE_PERCENT,
+  formatEurCents,
   ONLINE_LONG_HOLD_ALERT_DAYS,
   ONLINE_RELEASE_DAYS,
   onlineApplicationFeeHoldEurCents,
+  onlineFeeWithVatEurCents,
   onlineBalanceDueEurCents,
   onlineTargetEurCents,
   onlineCanRelease,
   onlinePayoutEurCents,
+  splitVatEurCents,
+  vatOnEurCents,
   type JobPaymentOnlineStage,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
@@ -34,6 +34,12 @@ const CLOSED_DISPUTE_STATUSES = ["won", "lost", "warning_closed", "prevented"];
 const PROFESSIONAL_FAULT_DISPUTE_REASONS = ["product_not_received", "product_unacceptable"];
 // Commissione di Stripe su una contestazione se non si legge dall'evento.
 const STRIPE_DISPUTE_FEE_EUR_CENTS = 2000;
+
+/** Commissione di Stripe sulla contestazione, ribaddebitata con l'IVA (§372). */
+function disputeFeeWithVatEurCents(dispute: Stripe.Dispute): number {
+  const fee = (dispute.balance_transactions ?? []).reduce((sum, bt) => sum + Math.max(0, bt.fee), 0) || STRIPE_DISPUTE_FEE_EUR_CENTS;
+  return fee + vatOnEurCents(fee);
+}
 
 // Il bonifico non riuscito si riprova una volta al giorno (dati bancari da sistemare).
 const PAYOUT_RETRY_AFTER_FAILURE_MS = DAY_MS;
@@ -99,7 +105,8 @@ function disputeOpen(jp: { stripeDisputeId: string | null; stripeDisputeStatus: 
  * in custodia sul conto della piattaforma (decisione del 14/10/2026). Così
  * Stripe prende rimborsi e contestazioni dal saldo del professionista, non
  * dal nostro; se va in negativo li preleva dalla sua banca. La piattaforma
- * trattiene commissione e costo della carta come application fee. I bonifici dal conto Stripe del
+ * trattiene la trattenuta unica con l'IVA come application fee (§372: carta
+ * e bonifici di Stripe li paghiamo noi). I bonifici dal conto Stripe del
  * professionista alla sua banca sono manuali: i soldi restano bloccati lì
  * finché il cliente non conferma il lavoro o per 7 giorni dalla chiusura
  * (Stripe li paga comunque dopo 90 giorni), poi il sito fa partire il
@@ -473,7 +480,8 @@ export class OnlineMoneyService {
       where: { id: jp.id },
       data: {
         paidEurCents: paid,
-        stripeFeeEurCents: jp.stripeFeeEurCents + charge.fee,
+        // Il costo della carta è nostro, dentro la trattenuta unica (§372).
+        cardFeeEurCents: { increment: charge.fee },
         onlineStage: stage,
         status: "PENDING",
         ...(charge.destination
@@ -489,12 +497,9 @@ export class OnlineMoneyService {
         ...(part === "deposit" ? { stripePaymentIntentId: paymentIntentId, depositPaidAt: new Date() } : { balancePaymentIntentId: paymentIntentId, balancePaidAt: new Date() }),
       },
     });
-    // La trattenuta conteneva il costo massimo della carta: appena Stripe dà
-    // quello reale, la differenza torna sul conto del professionista.
-    if (charge.destination && charge.fee > 0) {
-      const extra = charge.applicationFeeAmount - (Math.round((amount * ONLINE_APP_FEE_PERCENT) / 100) + charge.fee);
-      if (extra > 0) await this.returnApplicationFee(jp.id, extra, "Conguaglio del costo della carta.").catch((err) => this.logger.warn(`Conguaglio non riuscito per ${jp.id}: ${(err as Error).message}`));
-    }
+    // Dal §372 la trattenuta è già quella definitiva: va nell'estratto e
+    // nella fattura del mese del professionista.
+    if (charge.destination) await this.recordFeeEntry(jp.id, jp.booking.professionalProfileId, "HOLD", charge.applicationFeeAmount, `${part === "deposit" ? "Acconto" : "Saldo"} di ${formatEurCents(amount)}`, `HOLD:${paymentIntentId}`);
     await this.auditLogService.record({
       entityType: "JobPayment",
       entityId: jp.id,
@@ -528,27 +533,25 @@ export class OnlineMoneyService {
         },
       },
     });
-    const appFee = Math.round((amount * ONLINE_APP_FEE_PERCENT) / 100);
+    const appFee = onlineFeeWithVatEurCents(amount);
     let payout: number;
     let transfer: Stripe.Transfer | null = null;
     let held = 0;
-    let connectFees = 0;
     if (charge.destination) {
       // I soldi sono già sul conto del professionista: la piattaforma tiene
-      // commissione, costo della carta e costo del bonifico (§267) e il resto
-      // parte subito verso la banca.
+      // la trattenuta unica (§372) e il resto parte subito verso la banca.
       await this.prisma.jobPayment.update({
         where: { id: jp.id },
         data: { balancePaymentIntentId: paymentIntentId, applicationFeeEurCents: { increment: charge.applicationFeeAmount } },
       });
-      const toBank = Math.max(0, amount - appFee - charge.fee);
-      const extra = charge.applicationFeeAmount - (appFee + charge.fee + connectPayoutFeeEurCents(toBank));
+      await this.recordFeeEntry(jp.id, jp.booking.professionalProfile.id, "HOLD", charge.applicationFeeAmount, `Saldo di ${formatEurCents(amount)}`, `HOLD:${paymentIntentId}`);
+      const extra = charge.applicationFeeAmount - appFee;
       const returned = extra > 0 ? await this.returnApplicationFee(jp.id, extra, "Conguaglio del saldo pagato in ritardo.") : 0;
       held = charge.applicationFeeAmount - returned;
-      connectFees = Math.max(0, Math.min(connectPayoutFeeEurCents(toBank), held - appFee - charge.fee));
       payout = Math.max(0, amount - held);
     } else {
-      payout = Math.max(0, amount - appFee - charge.fee);
+      payout = Math.max(0, amount - appFee);
+      await this.recordFeeEntry(jp.id, jp.booking.professionalProfile.id, "HOLD", appFee, `Saldo di ${formatEurCents(amount)}`, `HOLD:${paymentIntentId}`);
       const destination = jp.booking.professionalProfile.fiscalProfile?.stripeConnectAccountId;
       transfer =
         payout > 0 && destination
@@ -561,23 +564,21 @@ export class OnlineMoneyService {
             )
           : null;
     }
-    const platformFee = charge.destination ? Math.max(0, held - charge.fee - connectFees) : appFee;
+    const platformFee = charge.destination ? held : appFee;
     await this.prisma.jobPayment.update({
       where: { id: jp.id },
       data: {
         balancePaymentIntentId: paymentIntentId,
         balancePaidAt: new Date(),
         paidEurCents: { increment: amount },
-        stripeFeeEurCents: { increment: charge.fee },
+        cardFeeEurCents: { increment: charge.fee },
         platformFeeEurCents: { increment: platformFee },
         netAmountEurCents: { increment: payout },
-        ...(charge.destination ? { payoutPendingEurCents: { increment: payout }, connectFeesEurCents: { increment: connectFees } } : {}),
+        ...(charge.destination ? { payoutPendingEurCents: { increment: payout } } : {}),
         balanceUnpaidAt: null,
       },
     });
-    await this.prisma.manoviaRevenue.create({
-      data: { source: "JOB_COMMISSION", amountEurCents: platformFee, jobPaymentId: jp.id, professionalProfileId: jp.booking.professionalProfile.id },
-    });
+    await this.recordRevenue(jp.id, jp.booking.professionalProfile.id, platformFee);
     await this.auditLogService.record({
       entityType: "JobPayment",
       entityId: jp.id,
@@ -707,7 +708,7 @@ export class OnlineMoneyService {
     const jp = await this.prisma.jobPayment.findUniqueOrThrow({ where: { id: jobPaymentId } });
     const kept = jp.paidEurCents - jp.refundedEurCents;
     if (jp.paymentMethod !== "MANOVIA" || jp.releasedAt || kept <= 0) return 0;
-    const appFee = Math.round((kept * ONLINE_APP_FEE_PERCENT) / 100);
+    const appFee = onlineFeeWithVatEurCents(kept);
     await this.prisma.jobPayment.update({
       where: { id: jp.id },
       data: {
@@ -905,16 +906,14 @@ export class OnlineMoneyService {
       if (refundToClient > 0) await this.refundAcrossPayments(jp.id, refundToClient, "Differenza tra acconto e importo finale.", { beforeRelease: true });
       let netPayout = payout;
       let transfer: Stripe.Transfer | null = null;
-      let connectFees = 0;
       let debtRecovered = 0;
       // Parte già presa da Stripe dal suo saldo per rimborsi o contestazioni di altri lavori (§268).
       let takenByStripe = 0;
-      let monthlyFeeMonth: string | null = null;
       if (destinationModel) {
         // Il professionista ha già tutto sul suo conto meno la trattenuta: la
-        // piattaforma tiene solo commissione e costo della carta e restituisce
-        // il resto. Se la trattenuta fosse più bassa (regola di commissione
-        // più alta del 5%), la differenza resta a carico della piattaforma.
+        // piattaforma tiene la trattenuta unica (§372) e restituisce il resto.
+        // Se la trattenuta fosse più bassa (regola di commissione più alta
+        // del 7%), la differenza resta a carico della piattaforma.
         const fresh = await this.prisma.jobPayment.findUniqueOrThrow({ where: { id: jp.id } });
         const collected = fresh.paidEurCents - fresh.refundedEurCents;
         const keep = Math.max(0, collected - payout);
@@ -931,30 +930,22 @@ export class OnlineMoneyService {
           takenByStripe = Math.max(0, gross - free);
           gross -= takenByStripe;
         }
-        // Prima del bonifico si riprendono (§267) quanto il professionista ci
+        // Prima del bonifico si riprende (§267) quanto il professionista ci
         // deve per lavori precedenti (rimborsi o contestazioni dopo il
-        // bonifico) e i costi di Stripe Connect: bonifico e quota mensile.
+        // bonifico). I costi dei bonifici di Stripe sono nostri (§372).
         const debts = await this.professionalDebts(booking.professionalProfile.id);
-        const debtTake = Math.min(
+        const toTake = Math.min(
           debts.reduce((sum, d) => sum + d.professionalDebtEurCents, 0),
           gross,
         );
-        const month = connectFeeMonth(now);
-        const monthlyDone =
-          (await this.prisma.jobPayment.count({ where: { booking: { professionalProfileId: booking.professionalProfile.id }, connectMonthlyFeeMonth: month } })) > 0;
-        const fees = connectFeesForReleaseEurCents(gross - debtTake, !monthlyDone);
-        const toTake = debtTake + fees;
         // Si tiene prima dalla parte di trattenuta da restituire, poi si
         // storna dal conto del professionista. Lo storno va prima della
         // restituzione: se non riesce, nessun soldo si è ancora mosso.
         const retained = Math.min(Math.max(0, extra), toTake);
         const reversed = toTake - retained > 0 ? await this.reverseFromProfessional(jp.id, toTake - retained, "release") : 0;
         if (extra - retained > 0) await this.returnApplicationFee(jp.id, extra - retained, "Conguaglio allo sblocco.");
-        const taken = retained + reversed;
-        connectFees = Math.min(fees, taken);
-        debtRecovered = taken - connectFees;
-        if (!monthlyDone && connectFees > 0) monthlyFeeMonth = month;
-        netPayout = gross - taken;
+        debtRecovered = retained + reversed;
+        netPayout = gross - debtRecovered;
       } else if (payout > 0) {
         transfer = await stripe.transfers.create(
           { amount: payout, currency: "eur", destination: account!.stripeConnectAccountId!, transfer_group: booking.id },
@@ -964,7 +955,7 @@ export class OnlineMoneyService {
       moneyMoved = true;
       if (debtRecovered > 0) await this.settleDebts(booking.professionalProfile.id, debtRecovered, jp.id);
       const after = await this.prisma.jobPayment.findUniqueOrThrow({ where: { id: jp.id } });
-      const appFee = after.paidEurCents - after.refundedEurCents - netPayout - after.stripeFeeEurCents - connectFees - debtRecovered - takenByStripe;
+      const appFee = Math.max(0, after.paidEurCents - after.refundedEurCents - netPayout - after.stripeFeeEurCents - debtRecovered - takenByStripe);
       await this.prisma.jobPayment.update({
         where: { id: jp.id },
         data: {
@@ -972,15 +963,14 @@ export class OnlineMoneyService {
           status: "CONFIRMED",
           stripeTransferId: transfer?.id ?? null,
           netAmountEurCents: netPayout,
-          platformFeeEurCents: Math.max(0, appFee),
-          ...(destinationModel ? { payoutPendingEurCents: netPayout, connectFeesEurCents: { increment: connectFees } } : {}),
-          ...(monthlyFeeMonth ? { connectMonthlyFeeMonth: monthlyFeeMonth } : {}),
+          platformFeeEurCents: appFee,
+          ...(destinationModel ? { payoutPendingEurCents: netPayout } : {}),
           ...(balanceUnpaid ? { balanceUnpaidAt: now } : {}),
         },
       });
-      await this.prisma.manoviaRevenue.create({
-        data: { source: "JOB_COMMISSION", amountEurCents: Math.max(0, appFee), jobPaymentId: jp.id, professionalProfileId: booking.professionalProfile.id },
-      });
+      // Col vecchio modello (soldi sulla piattaforma) la trattenuta si conosce solo adesso.
+      if (!destinationModel) await this.recordFeeEntry(jp.id, booking.professionalProfile.id, "HOLD", appFee, `Lavoro di ${formatEurCents(onlineTarget)}`, `RELEASE:${jp.id}`);
+      await this.recordRevenue(jp.id, booking.professionalProfile.id, appFee);
       await this.auditLogService.record({
         entityType: "JobPayment",
         entityId: jp.id,
@@ -993,7 +983,6 @@ export class OnlineMoneyService {
           balanceUnpaid,
           transferId: transfer?.id ?? null,
           destination: jp.stripeDestinationAccountId,
-          connectFees,
           debtRecovered,
           takenByStripe,
         },
@@ -1008,7 +997,6 @@ export class OnlineMoneyService {
         guidedRequestId: booking.quote?.guidedRequestId ?? null,
         amountEurCents: netPayout,
         balanceUnpaid,
-        connectFeesEurCents: connectFees,
         debtRecoveredEurCents: debtRecovered,
       });
       if (balanceUnpaid) await this.reportUnpaidBalance(booking.id, booking.clientId, booking.quote?.guidedRequestId ?? null);
@@ -1405,19 +1393,22 @@ export class OnlineMoneyService {
     const early = jp.disputeRecoveredEurCents;
     const fault = PROFESSIONAL_FAULT_DISPUTE_REASONS.includes(dispute.reason);
     let debt = 0;
+    // Costi ribaddebitati con l'IVA (§372): vanno anche nella fattura del mese.
+    let costs = 0;
     if (jp.stripeDirectCharge) {
       await this.prisma.jobPayment.update({ where: { id: jp.id }, data: { disputeRecoveredEurCents: 0 } });
       if (!jp.releasedAt) {
         await this.keepProfessionalBalancePositive(await this.prisma.jobPayment.findUniqueOrThrow({ where: { id: jp.id } }));
-        if (fault) debt += this.faultCostsEurCents(jp, lostAmount);
+        if (fault) costs += this.faultCostsEurCents(jp, lostAmount);
       } else {
         const proShare = Math.min(lostAmount, jp.netAmountEurCents);
         await this.prisma.jobPayment.update({ where: { id: jp.id }, data: { netAmountEurCents: { decrement: proShare } } });
         if (!fault && lostAmount > proShare) await this.returnApplicationFee(jp.id, lostAmount - proShare, `Contestazione in banca persa (${dispute.id}): la nostra parte torna al professionista.`);
       }
-      if (fault) debt += (dispute.balance_transactions ?? []).reduce((sum, bt) => sum + Math.max(0, bt.fee), 0) || STRIPE_DISPUTE_FEE_EUR_CENTS;
-      if (debt > 0) await this.addProfessionalDebt(jp.id, debt, `Contestazione in banca persa (${dispute.id}).`);
-      return debt;
+      if (fault) costs += disputeFeeWithVatEurCents(dispute);
+      await this.chargeCosts(jp.id, costs, `Contestazione in banca persa (${dispute.id})`, `COSTS:${dispute.id}`);
+      if (costs > 0) await this.addProfessionalDebt(jp.id, costs, `Contestazione in banca persa (${dispute.id}).`);
+      return costs;
     }
     if (!jp.releasedAt) {
       const rest = Math.max(0, lostAmount - early);
@@ -1435,30 +1426,32 @@ export class OnlineMoneyService {
         data: { disputeRecoveredEurCents: 0, payoutPendingEurCents: { decrement: got }, netAmountEurCents: { decrement: got + early } },
       });
     }
-    if (PROFESSIONAL_FAULT_DISPUTE_REASONS.includes(dispute.reason)) {
-      const fee = (dispute.balance_transactions ?? []).reduce((sum, bt) => sum + Math.max(0, bt.fee), 0) || STRIPE_DISPUTE_FEE_EUR_CENTS;
-      debt += fee + this.faultCostsEurCents(jp, lostAmount);
+    if (fault) {
+      const faultCosts = this.faultCostsEurCents(jp, lostAmount);
+      // Dopo lo sblocco è la sua parte della cifra persa, non un costo nuovo.
+      costs += disputeFeeWithVatEurCents(dispute) + (jp.releasedAt ? 0 : faultCosts);
+      if (jp.releasedAt) debt += faultCosts;
     }
-    if (debt > 0) await this.addProfessionalDebt(jp.id, debt, `Contestazione in banca persa (${dispute.id}).`);
-    return debt;
+    await this.chargeCosts(jp.id, costs, `Contestazione in banca persa (${dispute.id})`, `COSTS:${dispute.id}`);
+    if (debt + costs > 0) await this.addProfessionalDebt(jp.id, debt + costs, `Contestazione in banca persa (${dispute.id}).`);
+    return debt + costs;
   }
 
   /**
    * Quello che la piattaforma rimetterebbe su una cifra rimborsata o persa
-   * (costo della carta e del bonifico che Stripe non restituisce, e la nostra
-   * commissione già trattenuta, che resta a noi: decisione dell'utente,
-   * §267), da mettere a carico del professionista quando è colpa sua.
+   * (la trattenuta unica, che copre anche la carta che Stripe non
+   * restituisce e resta a noi: decisioni dell'utente, §267 e §372), da
+   * mettere a carico del professionista quando è colpa sua.
    */
   private faultCostsEurCents(
     jp: { releasedAt: Date | null; netAmountEurCents: number; paidEurCents: number; refundedEurCents: number; platformFeeEurCents: number; stripeFeeEurCents: number },
     amount: number,
   ): number {
     if (jp.releasedAt) return Math.max(0, amount - Math.min(amount, jp.netAmountEurCents));
-    // Prima dello sblocco commissione e costo della carta li paga già lui
-    // allo sblocco; se tutto torna al cliente lo sblocco non c'è più (e la
-    // trattenuta gli è stata restituita): diventano un suo debito.
-    const heldCommission = Math.round((jp.paidEurCents * ONLINE_APP_FEE_PERCENT) / 100);
-    return jp.refundedEurCents + amount >= jp.paidEurCents ? jp.stripeFeeEurCents + heldCommission : 0;
+    // Prima dello sblocco la trattenuta la paga già lui allo sblocco; se
+    // tutto torna al cliente lo sblocco non c'è più (e la trattenuta gli è
+    // stata restituita): diventa un suo debito.
+    return jp.refundedEurCents + amount >= jp.paidEurCents ? jp.stripeFeeEurCents + onlineFeeWithVatEurCents(jp.paidEurCents) : 0;
   }
 
   /** Debito del professionista verso la piattaforma, recuperato dai suoi sblocchi successivi (§267). */
@@ -1623,7 +1616,11 @@ export class OnlineMoneyService {
     const available = jp.paidEurCents - jp.refundedEurCents;
     const amount = amountEurCents === "ALL" ? available : Math.min(amountEurCents, available);
     if (amount <= 0) return 0;
-    let debt = opts.professionalFault && jp.stripeDestinationAccountId ? this.faultCostsEurCents(jp, amount) : 0;
+    const faultCosts = opts.professionalFault && jp.stripeDestinationAccountId ? this.faultCostsEurCents(jp, amount) : 0;
+    // Prima dello sblocco è la trattenuta che resta a noi (un costo con l'IVA,
+    // §372); dopo è la sua parte del rimborso.
+    let costs = jp.releasedAt ? 0 : faultCosts;
+    let debt = jp.releasedAt ? faultCosts : 0;
     let feeToReturn = 0;
     if (jp.stripeDestinationAccountId) {
       if (jp.releasedAt && jp.netAmountEurCents > 0 && jp.stripeDirectCharge) {
@@ -1637,6 +1634,7 @@ export class OnlineMoneyService {
           data: { netAmountEurCents: { decrement: proShare }, payoutPendingEurCents: { decrement: Math.min(amount, jp.payoutPendingEurCents) } },
         });
         debt = 0;
+        costs = 0;
         if (!opts.professionalFault) feeToReturn = amount - proShare;
       } else if (jp.releasedAt && jp.netAmountEurCents > 0) {
         const proShare = Math.min(amount, jp.netAmountEurCents);
@@ -1673,7 +1671,8 @@ export class OnlineMoneyService {
       changedByUserId: byUserId,
       reason,
     });
-    if (debt > 0) await this.addProfessionalDebt(jp.id, debt, `Rimborso al cliente: ${reason}`);
+    await this.chargeCosts(jp.id, costs, `Rimborso al cliente: ${reason}`, `COSTS:refund-${jp.id}-${after.refundedEurCents}`);
+    if (debt + costs > 0) await this.addProfessionalDebt(jp.id, debt + costs, `Rimborso al cliente: ${reason}`);
     return amount;
   }
 
@@ -1804,6 +1803,50 @@ export class OnlineMoneyService {
   }
 
   /**
+   * Movimento della trattenuta per l'estratto e la fattura del mese del
+   * professionista (§372), con l'IVA dentro: positivo trattenuto, negativo
+   * restituito. Idempotente su `dedupeKey`. Un errore qui non ferma mai il
+   * flusso dei soldi: lo segnala la quadratura mensile.
+   */
+  private async recordFeeEntry(
+    jobPaymentId: string,
+    professionalProfileId: string | null,
+    kind: "HOLD" | "RETURN" | "COSTS",
+    grossEurCents: number,
+    description: string,
+    dedupeKey: string,
+  ): Promise<void> {
+    if (grossEurCents === 0) return;
+    try {
+      const proId =
+        professionalProfileId ??
+        (await this.prisma.booking.findFirst({ where: { jobPayment: { id: jobPaymentId } }, select: { professionalProfileId: true } }))?.professionalProfileId;
+      if (!proId) return;
+      const sign = grossEurCents < 0 ? -1 : 1;
+      const taxable = sign * splitVatEurCents(Math.abs(grossEurCents)).taxableEurCents;
+      await this.prisma.platformFeeEntry.upsert({
+        where: { dedupeKey },
+        create: { professionalProfileId: proId, jobPaymentId, kind, grossEurCents, taxableEurCents: taxable, vatEurCents: grossEurCents - taxable, description, dedupeKey },
+        update: {},
+      });
+    } catch (err) {
+      this.logger.error(`Movimento della trattenuta non registrato (${dedupeKey}): ${(err as Error).message}`);
+    }
+  }
+
+  /** Costi messi a carico del professionista, con l'IVA (§372). */
+  private async chargeCosts(jobPaymentId: string, costsEurCents: number, description: string, dedupeKey: string): Promise<void> {
+    if (costsEurCents > 0) await this.recordFeeEntry(jobPaymentId, null, "COSTS", costsEurCents, description, dedupeKey);
+  }
+
+  /** Ricavo della piattaforma su un lavoro, IVA esclusa (§372: l'IVA va allo Stato). */
+  private async recordRevenue(jobPaymentId: string, professionalProfileId: string, feeWithVatEurCents: number): Promise<void> {
+    await this.prisma.manoviaRevenue.create({
+      data: { source: "JOB_COMMISSION", amountEurCents: splitVatEurCents(Math.max(0, feeWithVatEurCents)).taxableEurCents, jobPaymentId, professionalProfileId },
+    });
+  }
+
+  /**
    * Restituisce al professionista parte della trattenuta della piattaforma
    * (rimborso dell'application fee sul suo conto Stripe), spalmata sui due
    * pagamenti. Restituisce quanto restituito.
@@ -1829,6 +1872,7 @@ export class OnlineMoneyService {
         { amount: part, metadata: { jobPaymentId, reason: reason.slice(0, 450) } },
         { idempotencyKey: `job-fee-return-${fee.id}-${fee.amount_refunded}-${part}` },
       );
+      await this.recordFeeEntry(jp.id, null, "RETURN", -part, reason, `RETURN:${fee.id}-${fee.amount_refunded}-${part}`);
       remaining -= part;
     }
     const returned = Math.min(amountEurCents, jp.applicationFeeEurCents) - remaining;

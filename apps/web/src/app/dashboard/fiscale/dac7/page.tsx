@@ -75,8 +75,8 @@ export default function Dac7SummaryPage() {
             e ti avvisiamo per email.
           </Text>
           <Text fontSize={16} color={brand.grafite70}>
-            Gli importi sono quelli che indichi a &quot;Lavoro terminato&quot;. Quelli online sono al netto della commissione, che comunichiamo a
-            parte.
+            Gli importi sono quelli che indichi a &quot;Lavoro terminato&quot;. Quelli online sono al netto della nostra trattenuta (con
+            l&apos;IVA), che comunichiamo a parte.
           </Text>
         </LearnMore>
 
@@ -155,7 +155,7 @@ export default function Dac7SummaryPage() {
                         <YStack gap={4}>
                           <QuarterRow label="Pagati direttamente" value={formatEurCents(quarter.directEurCents)} />
                           <QuarterRow label="Pagati online" value={formatEurCents(quarter.onlineEurCents)} />
-                          {quarter.feesEurCents > 0 ? <QuarterRow label="Commissioni" value={formatEurCents(quarter.feesEurCents)} muted /> : null}
+                          {quarter.feesEurCents > 0 ? <QuarterRow label="Trattenute (con IVA)" value={formatEurCents(quarter.feesEurCents)} muted /> : null}
                           <QuarterRow label="Lavori" value={String(quarter.jobs)} muted />
                         </YStack>
                       )}

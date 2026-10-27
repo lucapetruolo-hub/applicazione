@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { type JobPaymentChoice } from "@professionisti/shared";
+import { type ClientInvoiceRequestInput, type JobPaymentChoice } from "@professionisti/shared";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
@@ -358,9 +358,9 @@ function LeMieRichiesteContent() {
   // Con l'acconto online si va al checkout Stripe: il lavoro si conferma
   // solo a pagamento riuscito (docs/CHANGELOG.md §240), fino ad allora il
   // preventivo resta da accettare.
-  async function handleAcceptQuote(quoteId: string, paymentMethod: JobPaymentChoice) {
+  async function handleAcceptQuote(quoteId: string, paymentMethod: JobPaymentChoice, invoiceRequest?: ClientInvoiceRequestInput) {
     if (!token) throw new Error("Devi accedere per accettare un preventivo.");
-    const { checkoutUrl, bookingId } = await apiClient.acceptQuote(token, quoteId, paymentMethod);
+    const { checkoutUrl, bookingId } = await apiClient.acceptQuote(token, quoteId, paymentMethod, invoiceRequest);
     if (checkoutUrl) {
       window.location.href = checkoutUrl;
       return;

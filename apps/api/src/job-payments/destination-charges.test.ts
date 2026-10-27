@@ -22,8 +22,9 @@ function buildService() {
     },
     refund: { count: vi.fn().mockResolvedValue(0) },
     professionalFiscalProfile: { findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
-    booking: { findUnique: vi.fn() },
+    booking: { findUnique: vi.fn(), findFirst: vi.fn().mockResolvedValue({ professionalProfileId: "pro-1" }) },
     manoviaRevenue: { create: vi.fn() },
+    platformFeeEntry: { upsert: vi.fn() },
     professionalProfile: { findUnique: vi.fn() },
     quote: { findUnique: vi.fn() },
     user: { findMany: vi.fn().mockResolvedValue([]) },
@@ -86,10 +87,11 @@ function releasedJob(overrides: Record<string, unknown> = {}) {
 }
 
 describe("trattenuta sul pagamento", () => {
-  it("copre commissione del 5% e costo massimo della carta, mai più dell'importo", () => {
-    // 5% di 100 € = 5 €, carta al massimo 3,25% + 0,25 € = 3,50 €.
-    expect(onlineApplicationFeeHoldEurCents(10000)).toBe(850);
-    expect(onlineApplicationFeeHoldEurCents(10)).toBe(10);
+  it("è la trattenuta unica del 7% più l'IVA, già definitiva (§372)", () => {
+    // 7% di 100 € = 7 €, più il 22% di IVA = 8,54 €. Carta e bonifici sono nostri.
+    expect(onlineApplicationFeeHoldEurCents(10000)).toBe(854);
+    expect(onlineApplicationFeeHoldEurCents(10)).toBe(1);
+    expect(onlineApplicationFeeHoldEurCents(0)).toBe(0);
   });
 });
 
@@ -106,7 +108,7 @@ describe("OnlineMoneyService.createQuoteDepositCheckout", () => {
     );
     const [params, options] = stripe.checkout.sessions.create.mock.calls[0]!;
     expect(options).toEqual({ stripeAccount: "acct_1" });
-    expect(params.payment_intent_data).toMatchObject({ application_fee_amount: 850, metadata: { stripeAccount: "acct_1" } });
+    expect(params.payment_intent_data).toMatchObject({ application_fee_amount: 854, metadata: { stripeAccount: "acct_1" } });
     expect(params.payment_intent_data.transfer_data).toBeUndefined();
   });
 
@@ -123,24 +125,24 @@ describe("OnlineMoneyService.createQuoteDepositCheckout", () => {
 });
 
 describe("OnlineMoneyService.recordCheckoutPayment", () => {
-  it("registra il conto del professionista e restituisce subito la parte di trattenuta oltre il costo reale della carta", async () => {
+  it("registra il conto del professionista, la trattenuta nell'estratto e il costo della carta a nostro carico", async () => {
     const { service, prisma, stripe } = buildService();
     const job = { id: "jp-1", bookingId: "bk-1", paymentMethod: "MANOVIA", paidEurCents: 0, refundedEurCents: 0, stripeFeeEurCents: 0, applicationFeeEurCents: 0, stripePaymentIntentId: null, balancePaymentIntentId: null, balanceDirect: false, depositEurCents: 10000, releasedAt: null, booking: { finalAmountEurCents: null, professionalProfileId: "pro-1", quoteId: null } };
     prisma.jobPayment.findUnique.mockResolvedValue(job);
-    prisma.jobPayment.findUniqueOrThrow.mockResolvedValue({ ...job, applicationFeeEurCents: 850, stripePaymentIntentId: "pi_dep" });
-    stripe.paymentIntents.retrieve.mockImplementation(async (_pi: string, opts: { expand: string[] }) =>
-      opts.expand[0] === "latest_charge.application_fee"
-        ? { latest_charge: { application_fee: { id: "fee_1", amount: 850, amount_refunded: 0 } } }
-        : { transfer_data: { destination: "acct_1" }, latest_charge: { id: "ch_1", application_fee_amount: 850, balance_transaction: { fee: 175 } } },
-    );
+    stripe.paymentIntents.retrieve.mockResolvedValue({ transfer_data: { destination: "acct_1" }, latest_charge: { id: "ch_1", application_fee_amount: 854, balance_transaction: { fee: 175 } } });
 
     await service.recordCheckoutPayment("jp-1", "deposit", { payment_intent: "pi_dep", amount_total: 10000 } as never, { notify: false });
 
     expect(prisma.jobPayment.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ stripeDestinationAccountId: "acct_1", applicationFeeEurCents: 850, stripeFeeEurCents: 175 }) }),
+      expect.objectContaining({ data: expect.objectContaining({ stripeDestinationAccountId: "acct_1", applicationFeeEurCents: 854, cardFeeEurCents: { increment: 175 } }) }),
     );
-    // Trattenuto 8,50 €, dovuti 5 € di commissione + 1,75 € di carta: tornano 1,75 €.
-    expect(stripe.applicationFees.createRefund).toHaveBeenCalledWith("fee_1", expect.objectContaining({ amount: 175 }), { idempotencyKey: "job-fee-return-fee_1-0-175" });
+    // La trattenuta è già quella definitiva: niente conguaglio.
+    expect(stripe.applicationFees.createRefund).not.toHaveBeenCalled();
+    expect(prisma.platformFeeEntry.upsert).toHaveBeenCalledWith({
+      where: { dedupeKey: "HOLD:pi_dep" },
+      create: expect.objectContaining({ professionalProfileId: "pro-1", jobPaymentId: "jp-1", kind: "HOLD", grossEurCents: 854, taxableEurCents: 700, vatEurCents: 154 }),
+      update: {},
+    });
   });
 });
 
@@ -198,7 +200,7 @@ describe("OnlineMoneyService.releaseIfDue con i soldi sul conto del professionis
   it("non trasferisce nulla: restituisce il conguaglio della trattenuta e prepara il bonifico", async () => {
     const { service, prisma, stripe } = buildService();
     const job = {
-      ...releasedJob({ onlineStage: "PAID", releasedAt: null, payoutPendingEurCents: 0, netAmountEurCents: 0, applicationFeeEurCents: 675, stripeFeeEurCents: 175, platformFeeEurCents: 400, releaseDueAt: null }),
+      ...releasedJob({ onlineStage: "PAID", releasedAt: null, payoutPendingEurCents: 0, netAmountEurCents: 0, applicationFeeEurCents: 854, stripeFeeEurCents: 0, platformFeeEurCents: 683, releaseDueAt: null }),
       booking: {
         id: "bk-1",
         clientId: "client-1",
@@ -212,37 +214,39 @@ describe("OnlineMoneyService.releaseIfDue con i soldi sul conto del professionis
     };
     prisma.jobPayment.findUnique.mockResolvedValueOnce(job).mockResolvedValue(releasedJob({ payoutPendingEurCents: 0 }));
     // Dopo il rimborso dei 20 € in più al cliente: pagati 100 €, rimborsati 20 €.
-    const afterRefund = { ...job, refundedEurCents: 2000, applicationFeeEurCents: 675 };
+    const afterRefund = { ...job, refundedEurCents: 2000, applicationFeeEurCents: 854 };
     prisma.jobPayment.findUniqueOrThrow.mockResolvedValue(afterRefund);
     prisma.jobPayment.update.mockResolvedValue(afterRefund);
     stripe.paymentIntents.retrieve.mockImplementation(async (_pi: string, opts: { expand: string[] }) =>
       opts.expand[0] === "latest_charge.application_fee"
-        ? { latest_charge: { application_fee: { id: "fee_1", amount: 850, amount_refunded: 175 } } }
+        ? { latest_charge: { application_fee: { id: "fee_1", amount: 854, amount_refunded: 0 } } }
         : opts.expand[0] === "latest_charge.transfer"
           ? { latest_charge: { transfer: { id: "tr_1", amount: 10000, amount_reversed: 2000 } } }
           : { transfer_data: { destination: "acct_1" }, latest_charge: { amount: 10000, amount_refunded: 0 } },
     );
-    // Il professionista ha già avuto un bonifico questo mese: niente quota mensile Connect.
-    prisma.jobPayment.count.mockResolvedValue(1);
 
     await expect(service.releaseIfDue("jp-1")).resolves.toBe(true);
 
     expect(stripe.transfers.create).not.toHaveBeenCalled();
     // La differenza torna al cliente, ripresa dal conto del professionista.
     expect(stripe.refunds.create).toHaveBeenCalledWith(expect.objectContaining({ payment_intent: "pi_dep", amount: 2000, reverse_transfer: true }), expect.anything());
-    // Restano 80 €: dovuti 4 € di commissione + 1,75 € di carta = 5,75 €, trattenuti 6,75 €: 1 € in più.
-    // Il bonifico da 74,25 € costa 0,29 € (0,25% + 0,10 €), a carico del professionista: tornano 0,71 €.
-    expect(stripe.applicationFees.createRefund).toHaveBeenCalledWith("fee_1", expect.objectContaining({ amount: 71 }), expect.anything());
+    // Restano 80 €: dovuti 6,83 € (7% + IVA), trattenuti 8,54 €: tornano 1,71 €. Il bonifico è a nostro carico.
+    expect(stripe.applicationFees.createRefund).toHaveBeenCalledWith("fee_1", expect.objectContaining({ amount: 171 }), expect.anything());
     expect(stripe.transfers.createReversal).not.toHaveBeenCalled();
     expect(prisma.jobPayment.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ onlineStage: "RELEASED", payoutPendingEurCents: 8000 - 575 - 29, connectFeesEurCents: { increment: 29 } }) }),
+      expect.objectContaining({ data: expect.objectContaining({ onlineStage: "RELEASED", payoutPendingEurCents: 8000 - 683, platformFeeEurCents: 683 }) }),
     );
+    expect(prisma.platformFeeEntry.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { dedupeKey: "RETURN:fee_1-0-171" }, create: expect.objectContaining({ kind: "RETURN", grossEurCents: -171, taxableEurCents: -140, vatEurCents: -31 }) }),
+    );
+    // Ricavo IVA esclusa: 6,83 € con l'IVA sono 5,60 €.
+    expect(prisma.manoviaRevenue.create).toHaveBeenCalledWith({ data: expect.objectContaining({ amountEurCents: 560 }) });
   });
 
-  it("al primo sblocco del mese prende anche la quota Connect e il debito di un lavoro precedente", async () => {
+  it("prima del bonifico riprende il debito di un lavoro precedente, senza costi Connect (§372)", async () => {
     const { service, prisma, stripe, notificationsService } = buildService();
     const job = {
-      ...releasedJob({ onlineStage: "PAID", releasedAt: null, payoutPendingEurCents: 0, netAmountEurCents: 0, applicationFeeEurCents: 675, stripeFeeEurCents: 175, platformFeeEurCents: 500, releaseDueAt: null }),
+      ...releasedJob({ onlineStage: "PAID", releasedAt: null, payoutPendingEurCents: 0, netAmountEurCents: 0, applicationFeeEurCents: 854, stripeFeeEurCents: 0, platformFeeEurCents: 854, releaseDueAt: null }),
       booking: {
         id: "bk-1",
         clientId: "client-1",
@@ -261,20 +265,19 @@ describe("OnlineMoneyService.releaseIfDue con i soldi sul conto del professionis
     stripe.paymentIntents.retrieve.mockImplementation(async (_pi: string, opts: { expand: string[] }) =>
       opts.expand[0] === "latest_charge.transfer"
         ? { latest_charge: { transfer: { id: "tr_1", amount: 10000, amount_reversed: 0 } } }
-        : { latest_charge: { application_fee: { id: "fee_1", amount: 850, amount_refunded: 175 } } },
+        : { latest_charge: { application_fee: { id: "fee_1", amount: 854, amount_refunded: 0 } } },
     );
 
     await expect(service.releaseIfDue("jp-1", new Date("2026-10-15T10:00:00Z"))).resolves.toBe(true);
 
-    // Sul conto 93,25 €: 10 € di debito, poi bonifico da 83,25 € che costa 0,31 € + 2 € di quota mensile.
-    // Nessuna trattenuta in più da restituire (dovuti 6,75 €): si stornano 12,31 € dal suo conto.
+    // Sul conto 91,46 €: si stornano solo i 10 € di debito, il bonifico da 81,46 € è a nostro carico.
     expect(stripe.applicationFees.createRefund).not.toHaveBeenCalled();
-    expect(stripe.transfers.createReversal).toHaveBeenCalledWith("tr_1", expect.objectContaining({ amount: 1231 }), expect.anything());
+    expect(stripe.transfers.createReversal).toHaveBeenCalledWith("tr_1", expect.objectContaining({ amount: 1000 }), expect.anything());
     expect(prisma.jobPayment.updateMany).toHaveBeenCalledWith({ where: { id: "jp-old", professionalDebtEurCents: { gte: 1000 } }, data: { professionalDebtEurCents: { decrement: 1000 } } });
     expect(prisma.jobPayment.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ payoutPendingEurCents: 9325 - 1231, connectMonthlyFeeMonth: "2026-10", platformFeeEurCents: 500 }) }),
+      expect.objectContaining({ data: expect.objectContaining({ payoutPendingEurCents: 9146 - 1000, platformFeeEurCents: 854 }) }),
     );
-    expect(notificationsService.notify).toHaveBeenCalledWith("pro-user-1", "JOB_PAYOUT_SENT", expect.objectContaining({ debtRecoveredEurCents: 1000, connectFeesEurCents: 231 }));
+    expect(notificationsService.notify).toHaveBeenCalledWith("pro-user-1", "JOB_PAYOUT_SENT", expect.objectContaining({ debtRecoveredEurCents: 1000 }));
   });
 
   it("dopo una segnalazione accolta con rimborso parziale sblocca il resto", async () => {
@@ -352,9 +355,9 @@ describe("OnlineMoneyService.refundOnline per colpa del professionista (§267)",
     expect(notificationsService.notify).toHaveBeenCalledWith("pro-user-1", "JOB_PAYMENT_DEBT", expect.objectContaining({ amountEurCents: 9675 }));
   });
 
-  it("con il rimborso totale prima dello sblocco commissione e costo della carta diventano un suo debito", async () => {
+  it("con il rimborso totale prima dello sblocco la trattenuta diventa un suo debito, in fattura come costo", async () => {
     const { service, prisma, stripe } = buildService();
-    const job = releasedJob({ onlineStage: "PAID", releasedAt: null, payoutPendingEurCents: 0, netAmountEurCents: 0 });
+    const job = releasedJob({ onlineStage: "PAID", releasedAt: null, payoutPendingEurCents: 0, netAmountEurCents: 0, applicationFeeEurCents: 854, stripeFeeEurCents: 0 });
     prisma.jobPayment.findUnique.mockResolvedValue(job);
     prisma.jobPayment.findUniqueOrThrow.mockResolvedValue({ ...job, refundedEurCents: 10000 });
     prisma.jobPayment.update.mockResolvedValue({ ...job, refundedEurCents: 10000, applicationFeeEurCents: 0 });
@@ -362,7 +365,8 @@ describe("OnlineMoneyService.refundOnline per colpa del professionista (§267)",
 
     await service.refundOnline("jp-1", "ALL", "Segnalazione accolta.", null, { professionalFault: true });
 
-    expect(prisma.jobPayment.update).toHaveBeenCalledWith(expect.objectContaining({ data: { professionalDebtEurCents: { increment: 175 + 500 } } }));
+    expect(prisma.jobPayment.update).toHaveBeenCalledWith(expect.objectContaining({ data: { professionalDebtEurCents: { increment: 854 } } }));
+    expect(prisma.platformFeeEntry.upsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({ kind: "COSTS", grossEurCents: 854 }) }));
   });
 
   it("senza colpa (annullamento) nessun debito per il costo della carta", async () => {
@@ -411,7 +415,7 @@ describe("OnlineMoneyService.handleStripeDisputeFunds (§267)", () => {
     expect(prisma.jobPayment.update).toHaveBeenCalledWith({ where: { id: "jp-1" }, data: { disputeRecoveredEurCents: 0, disputeReturnTransferId: "tr_back" } });
   });
 
-  it("persa dopo il bonifico: la parte del professionista e la commissione di Stripe diventano un suo debito", async () => {
+  it("persa dopo il bonifico: la parte del professionista e la commissione di Stripe con l'IVA diventano un suo debito", async () => {
     const { service, prisma } = buildService();
     const job = releasedJob({ payoutPendingEurCents: 0, payoutSentEurCents: 9325, stripeDisputeId: "dp_1", stripeDisputeStatus: "under_review" });
     prisma.jobPayment.findFirst.mockResolvedValue(job);
@@ -419,8 +423,11 @@ describe("OnlineMoneyService.handleStripeDisputeFunds (§267)", () => {
 
     await service.handleStripeDispute(dispute({ status: "lost", balance_transactions: [{ fee: 2000 }] }));
 
-    // 93,25 € già in banca + 20 € di commissione di Stripe + 6,75 € di trattenuta.
-    expect(prisma.jobPayment.update).toHaveBeenCalledWith(expect.objectContaining({ data: { professionalDebtEurCents: { increment: 9325 + 2000 + 675 } } }));
+    // 93,25 € già in banca + 6,75 € di trattenuta + 20 € di commissione di Stripe con l'IVA (24,40 €).
+    expect(prisma.jobPayment.update).toHaveBeenCalledWith(expect.objectContaining({ data: { professionalDebtEurCents: { increment: 9325 + 675 + 2440 } } }));
+    expect(prisma.platformFeeEntry.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { dedupeKey: "COSTS:dp_1" }, create: expect.objectContaining({ kind: "COSTS", grossEurCents: 2440, taxableEurCents: 2000, vatEurCents: 440 }) }),
+    );
   });
 
   it("persa per frode: la commissione di Stripe resta a noi", async () => {
@@ -577,13 +584,13 @@ describe("OnlineMoneyService: acconto trattenuto per un annullamento dentro il p
     };
   }
 
-  it("keepDeposit fissa l'acconto come importo, con la commissione del 5%, e lo sblocca dopo 7 giorni", async () => {
+  it("keepDeposit fissa l'acconto come importo, con la trattenuta del 7% + IVA, e lo sblocca dopo 7 giorni", async () => {
     const { service, prisma } = buildService();
     prisma.jobPayment.findUniqueOrThrow.mockResolvedValue({ id: "jp-1", paymentMethod: "MANOVIA", releasedAt: null, paidEurCents: 2400, refundedEurCents: 0, stripeFeeEurCents: 60 });
     await expect(service.keepDeposit("jp-1")).resolves.toBe(2400);
     expect(prisma.jobPayment.update).toHaveBeenCalledWith({
       where: { id: "jp-1" },
-      data: expect.objectContaining({ grossAmountEurCents: 2400, platformFeeEurCents: 120, onlineStage: "PAID", depositKeptAt: expect.any(Date), releaseDueAt: expect.any(Date) }),
+      data: expect.objectContaining({ grossAmountEurCents: 2400, platformFeeEurCents: 205, netAmountEurCents: 2400 - 205 - 60, onlineStage: "PAID", depositKeptAt: expect.any(Date), releaseDueAt: expect.any(Date) }),
     });
   });
 

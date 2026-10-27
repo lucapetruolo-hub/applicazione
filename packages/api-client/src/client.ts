@@ -102,6 +102,8 @@ import type {
   ProfileInviteLink,
   ProfileInvitePreview,
   ProfessionalPayoutTotals,
+  ClientInvoiceRequestInput,
+  ClientInvoiceRequestView,
 } from "@professionisti/shared";
 
 export type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW";
@@ -265,6 +267,10 @@ export type ClientGuidedRequest = {
     reviews: ProfessionalReviewSummary | null;
     /** Privato, partita IVA o azienda, badge accanto al nome (docs/CHANGELOG.md §338); null se non ancora indicato. */
     professionalKind: ProfessionalKind | null;
+    /** Applica l'IVA: "IVA inclusa" accanto al totale, altrimenti "Prezzo finale" (docs/CHANGELOG.md §372). */
+    chargesVat?: boolean | null;
+    /** Fattura chiesta a questo professionista (docs/CHANGELOG.md §372). */
+    invoiceRequest?: ClientInvoiceRequestView | null;
     items: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
     /** Data+ora di invio del preventivo (richiesta esplicita dell'utente), visibile sia al cliente che al professionista. */
     sentAt: string;
@@ -782,6 +788,12 @@ export type ProfessionalFiscalProfile = {
   fiscalDeclarationAcceptedAt: string | null;
   /** Dati minimi per essere pubblici compilati (docs/CHANGELOG.md §241). */
   fiscalDataCompleteAt: string | null;
+  /** Applica l'IVA nelle sue fatture (chi ha la P.IVA come persona, docs/CHANGELOG.md §372). */
+  chargesVat: boolean | null;
+  sdiRecipientCode: string | null;
+  pecEmail: string | null;
+  accountantEmail: string | null;
+  accountantStatementsAt: string | null;
   stripeConnectAccountId: string | null;
   stripeChargesEnabled: boolean;
   stripePayoutsEnabled: boolean;
@@ -1442,11 +1454,31 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
      * della richiesta (richiesta esplicita dell'utente). Con il metodo di
      * pagamento scelto dal cliente (§168).
      */
-    acceptQuote: (token: string, quoteId: string, paymentMethod: JobPaymentChoice) =>
+    acceptQuote: (token: string, quoteId: string, paymentMethod: JobPaymentChoice, invoiceRequest?: ClientInvoiceRequestInput) =>
       request<{ bookingId: string | null; paymentMethod: JobPaymentChoice; checkoutUrl: string | null }>(`/bookings/from-quote/${quoteId}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ paymentMethod }),
+        body: JSON.stringify({ paymentMethod, invoiceRequest }),
+      }),
+
+    /** Fattura chiesta al professionista (docs/CHANGELOG.md §372): ultimi dati usati, per precompilare. */
+    lastClientInvoiceRequest: (token: string) =>
+      request<{ invoiceRequest: ClientInvoiceRequestView | null }>("/client-invoice-requests/last", {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    /** Chiede la fattura per un lavoro già accettato, o cambia i dati: il professionista viene avvisato. */
+    saveClientInvoiceRequest: (token: string, quoteId: string, input: ClientInvoiceRequestInput) =>
+      request<ClientInvoiceRequestView>(`/client-invoice-requests/${quoteId}`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    removeClientInvoiceRequest: (token: string, quoteId: string) =>
+      request<{ ok: true }>(`/client-invoice-requests/${quoteId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
       }),
 
     /** Checkout Stripe dell'acconto o del saldo di un lavoro pagato online. */

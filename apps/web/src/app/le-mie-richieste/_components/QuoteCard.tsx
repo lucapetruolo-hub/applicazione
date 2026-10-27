@@ -4,7 +4,23 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ProfessionalReviewsLink } from "@/components/ProfessionalReviewsLink";
 import type { ClientGuidedRequest } from "@professionisti/api-client";
-import { cancellationNoticeLabel, formatAppointmentTimeRange, formatJobDays, formatServicePriceRange, jobDayCount, paymentChoiceIsOnline, professionalPath, quotePriceTotals, scheduleChangeBetween, scheduleChangeObject, type JobPaymentChoice } from "@professionisti/shared";
+import {
+  TAX_BONUS_PAYMENT_NOTE,
+  cancellationNoticeLabel,
+  categoryMayHaveTaxBonus,
+  formatAppointmentTimeRange,
+  formatJobDays,
+  formatServicePriceRange,
+  jobDayCount,
+  paymentChoiceIsOnline,
+  professionalPath,
+  quotePriceTaxNote,
+  quotePriceTotals,
+  scheduleChangeBetween,
+  scheduleChangeObject,
+  type ClientInvoiceRequestInput,
+  type JobPaymentChoice,
+} from "@professionisti/shared";
 import { PaymentChoice, PaymentOffer, selectablePaymentChoices } from "@/components/PaymentChoice";
 import { useOnlinePayments } from "@/lib/onlinePayments";
 import { Avatar, Badge, ProfessionalKindBadge, Text, XStack, YStack, brand } from "@professionisti/ui";
@@ -17,6 +33,7 @@ import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 import { textareaStyle } from "./clientRequestHelpers";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { ItalianTimeInput } from "@/components/ItalianTimeInput";
+import { InvoiceRequestFields, InvoiceRequestToggle, emptyInvoiceDraft, invoiceDraftFromView, parseInvoiceDraft, type InvoiceDraft } from "@/components/ClientInvoiceRequestForm";
 
 export function formatQuoteDate(iso: string): string {
   const date = new Date(iso);
@@ -75,15 +92,21 @@ export function QuoteCard({
   requestOpen,
   notChosen,
   onDeleteRequest,
+  categorySlug,
+  invoiceDefaults,
 }: {
   quote: ClientGuidedRequest["quotes"][number];
+  /** Categoria della richiesta: avviso sulle detrazioni per i lavori in casa (docs/CHANGELOG.md §372). */
+  categorySlug?: string;
+  /** Nome e indirizzo della richiesta, per precompilare i dati della fattura (§372). */
+  invoiceDefaults?: Partial<InvoiceDraft>;
   /** Richiesta ancora aperta: dopo un rifiuto il professionista può inviare un nuovo preventivo (docs/CHANGELOG.md §188). */
   requestOpen?: boolean;
   /** Per questa richiesta il cliente ha già accettato un altro preventivo: niente Accetta, Modifica, Rifiuta (docs/CHANGELOG.md §346). */
   notChosen?: boolean;
   token: string;
   onChanged: () => void;
-  onAcceptQuote: (quoteId: string, paymentMethod: JobPaymentChoice) => Promise<void>;
+  onAcceptQuote: (quoteId: string, paymentMethod: JobPaymentChoice, invoiceRequest?: ClientInvoiceRequestInput) => Promise<void>;
   /** Richiesta di origine, per i messaggi. */
   guidedRequestId: string;
   /** Modalità della richiesta originale — filtra le fasce proponibili a quelle che offrono questa modalità. */
@@ -119,6 +142,11 @@ export function QuoteCard({
   // Nota facoltativa per il professionista al rifiuto (docs/CHANGELOG.md §188).
   const [rejectNote, setRejectNote] = useState("");
   const [showTimeline, setShowTimeline] = useState(false);
+  // Fattura chiesta al professionista accettando (docs/CHANGELOG.md §372).
+  const [invoiceWanted, setInvoiceWanted] = useState(!!quote.invoiceRequest);
+  const [invoiceDraft, setInvoiceDraft] = useState<InvoiceDraft>(() => (quote.invoiceRequest ? invoiceDraftFromView(quote.invoiceRequest) : emptyInvoiceDraft(invoiceDefaults)));
+  const [invoiceErrors, setInvoiceErrors] = useState<Partial<Record<keyof InvoiceDraft, string>>>({});
+  const [taxBonusOpen, setTaxBonusOpen] = useState(false);
   const [effectiveUnreadCount, dismissUnread] = useDismissableUnreadCount(unreadCount);
   const autoOpenedTimelineRef = useRef(false);
   useEffect(() => {
@@ -141,11 +169,33 @@ export function QuoteCard({
   const selectablePayments = selectablePaymentChoices(quote.paymentOptions, onlinePayments);
   const onlyPayment = selectablePayments.length === 1 ? selectablePayments[0] : undefined;
 
+  async function toggleInvoice() {
+    const next = !invoiceWanted;
+    setInvoiceWanted(next);
+    setInvoiceErrors({});
+    // Gli ultimi dati usati, per non riscriverli (docs/CHANGELOG.md §372).
+    if (next && !quote.invoiceRequest && !invoiceDraft.taxCode && !invoiceDraft.vatNumber) {
+      const last = await apiClient.lastClientInvoiceRequest(token).catch(() => null);
+      if (last?.invoiceRequest) setInvoiceDraft(invoiceDraftFromView(last.invoiceRequest));
+    }
+  }
+
   async function handleAccept(method: JobPaymentChoice = paymentMethod) {
     setError(null);
+    let invoiceRequest: ClientInvoiceRequestInput | undefined;
+    if (invoiceWanted) {
+      const parsed = parseInvoiceDraft(invoiceDraft);
+      if (!parsed.ok) {
+        setInvoiceErrors(parsed.errors);
+        setError("Controlla i dati per la fattura.");
+        return;
+      }
+      setInvoiceErrors({});
+      invoiceRequest = parsed.data;
+    }
     setIsAccepting(true);
     try {
-      await onAcceptQuote(quote.id, method);
+      await onAcceptQuote(quote.id, method, invoiceRequest);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {
@@ -419,6 +469,10 @@ export function QuoteCard({
             <Text fontSize="$6" fontWeight="800" color={brand.grafite}>
               {formatServicePriceRange(priceTotals.totalMinEurCents, priceTotals.totalMaxEurCents)}
             </Text>
+            {/* "IVA inclusa" solo per chi la applica, altrimenti "Prezzo finale" (docs/CHANGELOG.md §372). */}
+            <Text fontSize={13} color={brand.grafite70}>
+              {quotePriceTaxNote(quote.chargesVat ?? null)}
+            </Text>
           </XStack>
           {previousPriceText ? (
             <Text fontSize={13} color={brand.ottone} fontWeight="600">
@@ -466,6 +520,13 @@ export function QuoteCard({
               computer tutti in riga (richiesta dell'utente, §338). Durante
               accettazione, modifica o rifiuto restano solo i pulsanti di
               quel passaggio (docs/CHANGELOG.md §225). */}
+          {/* Fattura chiesta al professionista, non a noi (richiesta dell'utente del 27/10/2026, §372). */}
+          {!isChoosingDate && !confirmingReject ? (
+            <YStack gap="$3" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
+              <InvoiceRequestToggle professionalName={quote.businessName} checked={invoiceWanted} onToggle={() => void toggleInvoice()} />
+              {invoiceWanted ? <InvoiceRequestFields draft={invoiceDraft} onChange={setInvoiceDraft} errors={invoiceErrors} /> : null}
+            </YStack>
+          ) : null}
           {!choosingPayment && !isChoosingDate && !confirmingReject ? (
             <XStack gap="$2" flexWrap="wrap" alignItems="center" $xs={{ flexDirection: "column-reverse", alignItems: "stretch" }}>
               <CardButton
@@ -505,6 +566,19 @@ export function QuoteCard({
                 offered={quote.paymentOptions}
                 depositPercent={quote.depositPercent}
               />
+              {/* Detrazioni per i lavori in casa (domanda 28 al commercialista): di solito serve il bonifico parlante (§372). */}
+              {categoryMayHaveTaxBonus(categorySlug) && selectablePayments.some(paymentChoiceIsOnline) ? (
+                <Text fontSize={13} color={brand.grafite70}>
+                  {TAX_BONUS_PAYMENT_NOTE.short}{" "}
+                  {taxBonusOpen ? (
+                    TAX_BONUS_PAYMENT_NOTE.more
+                  ) : (
+                    <Text fontSize={13} fontWeight="700" color={brand.cianografiaScuro} textDecorationLine="underline" cursor="pointer" accessibilityRole="button" onPress={() => setTaxBonusOpen(true)}>
+                      Scopri di più
+                    </Text>
+                  )}
+                </Text>
+              ) : null}
               <XStack gap="$2" flexWrap="wrap">
                 <CardButton
                   tone="primary"

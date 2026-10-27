@@ -42,6 +42,7 @@ import {
   DEFAULT_CANCELLATION_NOTICE_HOURS,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { invoiceRequestView } from "../client-invoice-requests/client-invoice-requests.service";
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
 import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing, publicVisibilityWhere, publicVerified, stripeVerified } from "../professional-fiscal/public-visibility";
 import { quoteResendWindow } from "../quotes/quote-resend";
@@ -1360,6 +1361,7 @@ export class ProfessionalsService {
           include: {
             items: true,
             guidedRequest: { select: { address: true, description: true, photoUrls: true, serviceMode: true, category: { select: { slug: true, label: true } } } },
+            invoiceRequest: true,
           },
         },
         finalItems: true,
@@ -1496,6 +1498,8 @@ export class ProfessionalsService {
       issue: toJobIssueSummary(booking.issue, { paidOnline: jobPaidOnline(booking.jobPayment), assisted: booking.jobPayment?.paymentMethod !== "DIRECT" }),
       // Pagamento del lavoro (§168), con commissione, costo Stripe e quanto riceve.
       payment: toJobPaymentSummary(booking.jobPayment, booking.finalAmountEurCents, true),
+      // Fattura chiesta dal cliente (docs/CHANGELOG.md §372): c'è la Booking, quindi il preventivo è accettato.
+      invoiceRequest: booking.quote?.invoiceRequest ? invoiceRequestView(booking.quote.invoiceRequest) : null,
     }));
   }
 

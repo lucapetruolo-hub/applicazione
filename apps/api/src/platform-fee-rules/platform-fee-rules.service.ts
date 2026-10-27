@@ -1,17 +1,21 @@
 import { Inject, Injectable, Logger, type OnModuleInit } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
+import { ONLINE_APP_FEE_PERCENT } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 
-// Nome della regola globale di default, seminata all'avvio se non esiste
-// già alcuna regola (stesso principio di CategoriesSeedService: un ambiente
-// nuovo non deve mai trovarsi senza NESSUNA regola di commissione — una
-// commissione "assente" verrebbe letta come 0%, silenziosamente sbagliato).
-// La percentuale è il 5% sui pagamenti online, pagato dal professionista
-// (decisione dell'utente, docs/CHANGELOG.md §168; prima era un 10% di prova):
-// resta comunque un DATO in tabella, mai una costante nel codice,
-// modificabile da /admin senza deploy.
-const DEFAULT_GLOBAL_RULE_NAME = "Commissione standard (default)";
-const DEFAULT_GLOBAL_RULE_BASIS_POINTS = 500; // 5,00%
+// Regola globale di default, seminata all'avvio se non esiste già alcuna
+// regola (stesso principio di CategoriesSeedService: un ambiente nuovo non
+// deve mai trovarsi senza NESSUNA regola di commissione — una commissione
+// "assente" verrebbe letta come 0%, silenziosamente sbagliato). Trattenuta
+// unica del 7% IVA esclusa sui pagamenti online, a carico del professionista
+// e con dentro carta e bonifici di Stripe (decisione dell'utente del
+// 27/10/2026, docs/CHANGELOG.md §372; prima 5% più i costi di Stripe, §168):
+// resta un DATO in tabella, modificabile da /admin senza deploy.
+const DEFAULT_GLOBAL_RULE_NAME = "Trattenuta unica (default)";
+const DEFAULT_GLOBAL_RULE_BASIS_POINTS = ONLINE_APP_FEE_PERCENT * 100;
+// Regola di default di prima (§168): se è ancora quella in vigore, all'avvio
+// si chiude e la sostituisce la trattenuta unica. Mai modificata sul posto.
+const PREVIOUS_DEFAULT_RULE = { name: "Commissione standard (default)", percentageBasisPoints: 500 };
 
 @Injectable()
 export class PlatformFeeRulesService implements OnModuleInit {
@@ -22,11 +26,30 @@ export class PlatformFeeRulesService implements OnModuleInit {
   async onModuleInit() {
     const anyRule = await this.prisma.platformFeeRule.findFirst();
     if (!anyRule) {
-      await this.prisma.platformFeeRule.create({
-        data: { name: DEFAULT_GLOBAL_RULE_NAME, percentageBasisPoints: DEFAULT_GLOBAL_RULE_BASIS_POINTS },
-      });
-      this.logger.log(`Regola di commissione globale di default creata (${DEFAULT_GLOBAL_RULE_BASIS_POINTS / 100}%).`);
+      await this.createDefaultRule();
+      return;
     }
+    const now = new Date();
+    const current = await this.prisma.platformFeeRule.findFirst({
+      where: { categoryId: null, professionalProfileId: null, effectiveFrom: { lte: now }, OR: [{ effectiveTo: null }, { effectiveTo: { gt: now } }] },
+      orderBy: { effectiveFrom: "desc" },
+    });
+    if (
+      current &&
+      current.name === PREVIOUS_DEFAULT_RULE.name &&
+      current.percentageBasisPoints === PREVIOUS_DEFAULT_RULE.percentageBasisPoints &&
+      current.fixedFeeEurCents === 0
+    ) {
+      await this.prisma.platformFeeRule.update({ where: { id: current.id }, data: { effectiveTo: now } });
+      await this.createDefaultRule();
+    }
+  }
+
+  private async createDefaultRule() {
+    await this.prisma.platformFeeRule.create({
+      data: { name: DEFAULT_GLOBAL_RULE_NAME, percentageBasisPoints: DEFAULT_GLOBAL_RULE_BASIS_POINTS },
+    });
+    this.logger.log(`Regola di commissione globale di default creata (${DEFAULT_GLOBAL_RULE_BASIS_POINTS / 100}% + IVA).`);
   }
 
   /**
@@ -66,7 +89,7 @@ export class PlatformFeeRulesService implements OnModuleInit {
     return globalRule;
   }
 
-  /** Applica una regola a un importo lordo — mai una divisione/percentuale scritta a mano altrove nel progetto. */
+  /** Applica una regola a un importo lordo (commissione IVA esclusa) — mai una divisione/percentuale scritta a mano altrove nel progetto. */
   computeFee(grossAmountEurCents: number, rule: { percentageBasisPoints: number; fixedFeeEurCents: number; minFeeEurCents: number | null; maxFeeEurCents: number | null } | null): number {
     if (!rule) return 0;
     let fee = Math.round((grossAmountEurCents * rule.percentageBasisPoints) / 10_000) + rule.fixedFeeEurCents;

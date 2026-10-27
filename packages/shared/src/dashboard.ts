@@ -3,6 +3,7 @@ import type { JobIssueSummary } from "./jobIssues";
 import type { JobPaymentChoice, JobPaymentSummary } from "./onlinePayments";
 import type { ProfessionalDetail } from "./professionals";
 import type { RequestTiming } from "./requestTiming";
+import type { ClientInvoiceRequestView } from "./accounting";
 /**
  * Anteprima del proprio profilo pubblico (docs/CHANGELOG.md §252): gli stessi
  * dati della pagina pubblica e se i clienti la vedono già, o perché no.
@@ -365,6 +366,8 @@ export type ProfessionalBooking = {
   issue: JobIssueSummary | null;
   /** Pagamento del lavoro (§168), con commissione, costo Stripe e quanto riceve il professionista. */
   payment: JobPaymentSummary | null;
+  /** Il cliente chiede la fattura: i dati da copiare (docs/CHANGELOG.md §372). Facoltativa solo per un'API non ancora aggiornata. */
+  invoiceRequest?: ClientInvoiceRequestView | null;
 };
 
 /**

@@ -32,7 +32,8 @@ import {
   type CancelBookingByProfessionalInput, type ClientConfirmCompleteInput, type CompleteBookingInput,
   cancellationNoticeLabel,
   DEFAULT_CANCELLATION_NOTICE_HOURS,
-  isLateCancellation } from "@professionisti/shared";
+  isLateCancellation,
+  type ClientInvoiceRequestInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { BOOKING_CALENDAR_INCLUDE, bookingCalendar } from "../email/booking-calendar";
 import { cancellationNoticeFor, hasOtherJob, isOtherJobViolation, lockGuidedRequest } from "./one-job-per-request";
@@ -45,6 +46,7 @@ import { stripeVerified } from "../professional-fiscal/public-visibility";
 import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
 import { PROFESSIONAL_BUSY_MESSAGE, capacityAt, countOverlapping, loadCommitments, lockProfessionalAgenda } from "../agenda/commitments";
 import { AuthService } from "../auth/auth.service";
+import { ClientInvoiceRequestsService } from "../client-invoice-requests/client-invoice-requests.service";
 
 /** Il cliente ha già un lavoro per questa richiesta (docs/CHANGELOG.md §346). */
 const CLIENT_CANCEL_TOO_LATE = "L'appuntamento è già cominciato e non si può più annullare. Se qualcosa non va, usa \"C'è un problema\".";
@@ -67,6 +69,7 @@ export class BookingsService implements OnModuleInit {
     private readonly jobIssueOutcomeService: JobIssueOutcomeService,
     // Facoltativo solo per i test che costruiscono il servizio a mano.
     @Optional() private readonly authService?: AuthService,
+    @Optional() private readonly clientInvoiceRequestsService?: ClientInvoiceRequestsService,
   ) {}
 
   onModuleInit(): void {
@@ -115,11 +118,19 @@ export class BookingsService implements OnModuleInit {
    * questi campi arrivavano da un input separato raccolto solo qui, in una
    * schermata dedicata all'accettazione).
    */
-  async createFromQuote(clientId: string, quoteId: string, paymentMethod: JobPaymentChoice = "DIRECT"): Promise<{ bookingId: string | null; paymentMethod: JobPaymentChoice; checkoutUrl: string | null }> {
+  async createFromQuote(
+    clientId: string,
+    quoteId: string,
+    paymentMethod: JobPaymentChoice = "DIRECT",
+    invoiceRequest?: ClientInvoiceRequestInput,
+  ): Promise<{ bookingId: string | null; paymentMethod: JobPaymentChoice; checkoutUrl: string | null }> {
     const quote = await this.loadAcceptableQuote(clientId, quoteId, paymentMethod);
     if (paymentChoiceIsOnline(paymentMethod) && !onlinePaymentsEnabled()) {
       throw new BadRequestException("Il pagamento online non è ancora disponibile: scegli il pagamento diretto al professionista.");
     }
+    // Fattura chiesta al professionista (docs/CHANGELOG.md §372): salvata ora,
+    // anche prima dell'acconto online, e letta quando nasce il lavoro.
+    await this.clientInvoiceRequestsService?.saveAtAcceptance(clientId, quote.id, invoiceRequest);
     // Con l'acconto online il lavoro si conferma solo a pagamento riuscito
     // (decisione dell'utente, docs/CHANGELOG.md §240): fino ad allora il
     // preventivo resta in attesa e i contatti del cliente restano nascosti
@@ -360,7 +371,10 @@ export class BookingsService implements OnModuleInit {
     const clientFullName =
       [booking.recipientName, booking.recipientSurname].filter(Boolean).join(" ") || [client?.name, client?.surname].filter(Boolean).join(" ") || null;
     const clientAddress = formatBookingAddress(booking) ?? (guidedRequest.address ? `${guidedRequest.address}${guidedRequest.city ? `, ${guidedRequest.city}` : ""}` : null);
+    // Fattura chiesta accettando (docs/CHANGELOG.md §372): detta subito, coi dati da copiare.
+    const invoice = (await this.clientInvoiceRequestsService?.forAcceptedNotice(quote.id)) ?? {};
     await this.notificationsService.notify(quote.professionalProfile.userId, "QUOTE_ACCEPTED", {
+      ...invoice,
       bookingId: booking.id,
       guidedRequestId: quote.guidedRequestId,
       clientName: clientFullName,
