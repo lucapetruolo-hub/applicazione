@@ -130,11 +130,9 @@ export function SiteHeader() {
                     Quanto costa
                   </Text>
                 </Link>
-                <Link href="/per-professionisti#prezzi" style={{ textDecoration: "none" }}>
-                  <Text fontSize={16} fontWeight="600" color={brand.grafite}>
-                    Prezzi
-                  </Text>
-                </Link>
+                {/* "Prezzi" (abbonamento dei professionisti) tolto da qui: accanto a
+                    "Quanto costa" si confondeva, resta in "Offri i tuoi servizi"
+                    (decisione di Luca, docs/CHANGELOG.md §383). */}
                 {/* Ingresso alla presentazione per chi offre un servizio, come
                     "Diventa un sitter" su Rover (docs/CHANGELOG.md §173). */}
                 {!isLoading && !user?.isProfessional ? (
