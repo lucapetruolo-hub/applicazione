@@ -123,6 +123,13 @@ export function SiteHeader() {
                     Come funziona
                   </Text>
                 </Link>
+                {/* Strumento "Quanto costa in media" della home (richiesta di
+                    Luca, docs/CHANGELOG.md §383). */}
+                <Link href="/#quanto-costa" style={{ textDecoration: "none" }}>
+                  <Text fontSize={16} fontWeight="600" color={brand.grafite}>
+                    Quanto costa
+                  </Text>
+                </Link>
                 <Link href="/per-professionisti#prezzi" style={{ textDecoration: "none" }}>
                   <Text fontSize={16} fontWeight="600" color={brand.grafite}>
                     Prezzi

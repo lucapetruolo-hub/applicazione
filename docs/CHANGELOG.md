@@ -21327,6 +21327,8 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Ritocco della finestra** (Luca: "a livello di design quella finestra non mi convince"): campo e voci ora stanno in un unico riquadro bianco con angoli da 20 px e ombra leggera, con la lente nel campo; al posto del bordo nero del fuoco un anello verde attorno a tutto il riquadro. Le voci sono separate da righe sottili a tutta larghezza (prima ogni voce aveva un bordo in alto con gli angoli arrotondati, che sembrava una scheda tagliata), nome a peso medio e prezzo più grande. Anteprime da telefono e computer in `anteprime/quanto-costa-finestra/`.
 
+**"Quanto costa" nella barra in alto** (Luca: "ora che è un tool importante inseriamolo anche nella barra fissa sopra"): link "Quanto costa" dopo "Come funziona" nella barra da computer, nel menu da telefono e nel piè di pagina (Per i clienti), che porta a `/#quanto-costa` nella home (ancora con `scrollMarginTop` 72 come "Come funziona"). Anteprime in `anteprime/quanto-costa-finestra/`.
+
 ## 385. "Quanto costa in media": prezzi onesti e richiesta già pronta
 
 **Richiesta** (Luca, 27/10/2026, versione più profonda del §383, `analisi/quanto-costa-versione-profonda.md`): rendere lo strumento uno che porta lavoro e dice prezzi onesti; dati veri prima del codice; prove con un test automatico, axe, anteprime e un test con 5 persone (simulate).
