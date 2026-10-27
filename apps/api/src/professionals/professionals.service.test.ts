@@ -268,7 +268,7 @@ describe("voci di \"Quanto costa in media\" (§383)", () => {
 
   it("il prezzo medio conta solo chi compare nella ricerca", async () => {
     const { prisma, service } = build([]);
-    await service.getServicePriceIndex();
+    await expect(service.getServicePriceIndex()).resolves.toEqual([]);
     const profileWhere = prisma.professionalService.findMany.mock.calls[0]![0].where.professionalProfile;
     expect(profileWhere).toMatchObject({ isDemo: false, deletedAt: null, suspendedAt: null, pausedAt: null, invitePendingAt: null });
   });

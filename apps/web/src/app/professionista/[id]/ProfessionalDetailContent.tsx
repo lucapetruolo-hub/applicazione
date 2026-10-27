@@ -169,6 +169,10 @@ export function ProfessionalDetailContent({
   // all'agenda. Fatto qui e non con il solo `#agenda` perché l'agenda arriva
   // dopo il caricamento della pagina e il browser non trova ancora l'ancora.
   const requestedAgendaDate = searchParams.get("data");
+  // Arrivati da una voce di "Quanto costa in media" (§383): la richiesta parte
+  // con la prestazione già scritta nella descrizione.
+  const requestedService = searchParams.get("servizio")?.trim();
+  const serviceDescriptionParam = requestedService ? `&descrizione=${encodeURIComponent(`${requestedService}. `)}` : "";
   const [appliedAgendaDate, setAppliedAgendaDate] = useState<string | null>(null);
   if (agendaPreview && requestedAgendaDate && appliedAgendaDate !== requestedAgendaDate) {
     setAppliedAgendaDate(requestedAgendaDate);
@@ -780,7 +784,7 @@ export function ProfessionalDetailContent({
                       // un riquadro con foto+nome invece del sottotitolo
                       // generico. Nomi distinti da "nome"/"foto" per non
                       // collidere col "nome" del CLIENTE nello stesso form.
-                      const href = `/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&nomeProfessionista=${encodeURIComponent(professional.businessName)}&fotoProfessionista=${encodeURIComponent(professional.imageUrl ?? "")}&data=${day.date}&fasciaOraria=${slot.startTime}-${slot.endTime}&modalita=${agendaMode}`;
+                      const href = `/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&nomeProfessionista=${encodeURIComponent(professional.businessName)}&fotoProfessionista=${encodeURIComponent(professional.imageUrl ?? "")}&data=${day.date}&fasciaOraria=${slot.startTime}-${slot.endTime}&modalita=${agendaMode}${serviceDescriptionParam}`;
                       return (
                         <XStack
                           key={day.date}
@@ -848,7 +852,7 @@ export function ProfessionalDetailContent({
             profilo resta visibile dal link, ma senza agenda né richieste. */}
         {professional.acceptingRequests ? (
           <ProfileQuoteCta
-            href={`/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&nomeProfessionista=${encodeURIComponent(professional.businessName)}&fotoProfessionista=${encodeURIComponent(professional.imageUrl ?? "")}`}
+            href={`/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&nomeProfessionista=${encodeURIComponent(professional.businessName)}&fotoProfessionista=${encodeURIComponent(professional.imageUrl ?? "")}${serviceDescriptionParam}`}
             name={professional.businessName}
             preview={preview}
           />

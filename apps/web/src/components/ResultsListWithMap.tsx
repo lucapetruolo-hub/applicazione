@@ -19,6 +19,29 @@ import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 // questo — niente da indicizzare in una mappa interattiva).
 const ResultsMap = dynamic(() => import("./ResultsMap").then((mod) => mod.ResultsMap), { ssr: false });
 
+/** Nome della prestazione cercata (`?servizio=`) che il professionista offre, se c'è (§383). */
+function matchedServiceName(pro: ProfessionalSearchResult): string | undefined {
+  return pro.matchedServiceId ? pro.services.find((service) => service.id === pro.matchedServiceId)?.name : undefined;
+}
+
+/**
+ * Indirizzo del profilo. Arrivando da una voce di "Quanto costa in media" porta
+ * con sé la prestazione, così "Richiedi preventivo" sul profilo parte con il
+ * lavoro già scritto (§383).
+ */
+function profileHref(pro: ProfessionalSearchResult, extra: Record<string, string>): string {
+  const service = matchedServiceName(pro);
+  const params = new URLSearchParams({ ...extra, ...(service ? { servizio: service } : {}) });
+  const query = params.toString();
+  return `${professionalPath(pro)}${query ? `?${query}` : ""}`;
+}
+
+/** Descrizione della richiesta già scritta con la prestazione cercata (§383). */
+function serviceDescriptionParam(pro: ProfessionalSearchResult): string {
+  const service = matchedServiceName(pro);
+  return service ? `&descrizione=${encodeURIComponent(`${service}. `)}` : "";
+}
+
 export function ResultsListWithMap({
   professionals,
   allProfessionals,
@@ -627,6 +650,7 @@ export function ResultsListWithMap({
               hasLiabilityInsurance={pro.hasLiabilityInsurance}
               remoteAvailable={pro.remoteAvailable}
               services={pro.services}
+              highlightServiceId={pro.matchedServiceId}
               availabilityPreview={pro.availabilityPreview}
               availabilityFrom={pro.availabilityFrom}
               availabilityDays={PUBLIC_AGENDA_DAYS}
@@ -635,10 +659,10 @@ export function ResultsListWithMap({
               // con l'agenda su quel tab (richiesta esplicita dell'utente) —
               // letto da ProfessionalDetailContent via `?modalita=`, stesso
               // parametro già usato per precompilare /preventivo.
-              href={`${professionalPath(pro)}${defaultMode === "ONLINE" ? "?modalita=ONLINE" : ""}`}
+              href={profileHref(pro, defaultMode === "ONLINE" ? { modalita: "ONLINE" } : {})}
               onPress={() =>
                 navigateWithTransition(() =>
-                  router.push(`${professionalPath(pro)}${defaultMode === "ONLINE" ? "?modalita=ONLINE" : ""}`),
+                  router.push(profileHref(pro, defaultMode === "ONLINE" ? { modalita: "ONLINE" } : {})),
                 )
               }
               // Click su un orario libero della mini-agenda (o sul bottone
@@ -662,7 +686,7 @@ export function ResultsListWithMap({
                     // GuidedRequestForm. Nomi distinti da "nome"/"foto" per
                     // non collidere con il "nome" del CLIENTE (prefill di
                     // "Ripeti la richiesta", stesso form).
-                    `/preventivo?categoria=${pro.categorySlug}&professionista=${pro.id}&nomeProfessionista=${encodeURIComponent(pro.businessName)}&fotoProfessionista=${encodeURIComponent(pro.imageUrl ?? "")}&data=${date}&fasciaOraria=${time}-${endTime}&modalita=${mode}`,
+                    `/preventivo?categoria=${pro.categorySlug}&professionista=${pro.id}&nomeProfessionista=${encodeURIComponent(pro.businessName)}&fotoProfessionista=${encodeURIComponent(pro.imageUrl ?? "")}&data=${date}&fasciaOraria=${time}-${endTime}&modalita=${mode}${serviceDescriptionParam(pro)}`,
                   ),
                 )
               }
@@ -671,7 +695,7 @@ export function ResultsListWithMap({
               // (richiesta esplicita dell'utente, docs/CHANGELOG.md §206).
               onAgendaPress={(date, mode) =>
                 navigateWithTransition(() =>
-                  router.push(`${professionalPath(pro)}?data=${date}${mode === "ONLINE" ? "&modalita=ONLINE" : ""}#agenda`),
+                  router.push(`${profileHref(pro, { data: date, ...(mode === "ONLINE" ? { modalita: "ONLINE" } : {}) })}#agenda`),
                 )
               }
               // Cuoricino piccolo nell'angolo della foto (richiesta esplicita

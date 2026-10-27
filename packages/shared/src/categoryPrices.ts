@@ -33,3 +33,24 @@ export type CategoryPriceStats = {
 export function hasCategoryPrices(stats: CategoryPriceStats | null | undefined): boolean {
   return !!stats && (stats.quotes !== null || stats.declared !== null);
 }
+
+/**
+ * "Quanto costa in media" della home (docs/CHANGELOG.md §383): le cifre di
+ * una voce compaiono solo da questi professionisti con un prezzo in su. Con
+ * uno o due si leggerebbe il prezzo di un singolo professionista, e la
+ * mediana di due numeri non dice niente.
+ */
+export const MIN_PROFESSIONALS_FOR_SERVICE_PRICE = 3;
+
+/** Una voce del "Quanto costa in media": chi la offre e, se bastano, i prezzi. */
+export type ServicePriceIndexEntry = {
+  name: string;
+  /** Professionisti visibili in ricerca che offrono la voce: sono quelli che apre il clic. */
+  professionalCount: number;
+  /**
+   * Prezzo di ogni professionista = centro della sua fascia. Metà dei
+   * professionisti sta tra `lowEurCents` e `highEurCents` (1° e 3° quartile).
+   * Null sotto `MIN_PROFESSIONALS_FOR_SERVICE_PRICE` professionisti con un prezzo.
+   */
+  price: { pricedCount: number; lowEurCents: number; medianEurCents: number; highEurCents: number } | null;
+};

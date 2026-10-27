@@ -13,13 +13,13 @@ export function SearchHeader({
   initialQuery,
   initialCity,
   initialMode,
-  serviceLabel,
+  service,
 }: {
   initialQuery: string;
   initialCity: string;
   initialMode: SearchMode;
-  /** Prestazione scelta in "Quanto costa in media": la barra chiusa dice quella (docs/CHANGELOG.md §383). */
-  serviceLabel?: string;
+  /** Prestazione filtrata (voce di "Quanto costa in media", §383): resta cambiando città o modalità. */
+  service?: string;
 }) {
   const router = useRouter();
   // Da telefono il modulo completo occupava tutto il primo schermo e i
@@ -30,7 +30,7 @@ export function SearchHeader({
   const professionalSuggestions: ProfessionalSuggestion[] = buildSearchSuggestions();
 
   function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
-    const destination = buildSearchDestination(params);
+    const destination = buildSearchDestination({ ...params, service });
     // Richiesta esplicita dell'utente: cambiare "Online/A domicilio" dalla
     // barra di ricerca di una pagina risultati deve aggiornare SUBITO la
     // lista. Next.js 14 tiene in cache client-side (Router Cache) le pagine
@@ -48,7 +48,7 @@ export function SearchHeader({
     });
   }
 
-  const what = initialQuery.trim() || serviceLabel || "Tutti i professionisti";
+  const what = initialQuery.trim() || "Tutti i professionisti";
   const where = [initialCity.trim() || (initialMode === "online" ? null : "Ovunque"), initialMode === "online" ? "Online" : "A domicilio"]
     .filter(Boolean)
     .join(" · ");

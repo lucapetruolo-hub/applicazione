@@ -1,13 +1,23 @@
 "use client";
 "use no memo";
 
+import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
-import type { ProfessionalSearchResult } from "@professionisti/shared";
+import { allItalianCityNames, type ProfessionalSearchResult } from "@professionisti/shared";
 import { Text, XStack, YStack, brand } from "@professionisti/ui";
 import { EmptySearchResults } from "@/components/EmptySearchResults";
 import { ResultsListWithMap } from "@/components/ResultsListWithMap";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
+import { saveLastSearchCity } from "@/lib/lastSearchCity";
+
+/** Suggerimenti di comuni mentre si scrive: pochi, per non riempire la pagina. */
+function citySuggestions(text: string): string[] {
+  const typed = text.trim().toLowerCase();
+  if (typed.length < 2) return [];
+  return allItalianCityNames().filter((name) => name.toLowerCase().startsWith(typed)).slice(0, 8);
+}
 
 export function CercaContent({
   city,
@@ -32,6 +42,11 @@ export function CercaContent({
   /** Preimpostato dall'URL (?urgente=1) quando si arriva dal toggle "Intervento urgente?" della homepage. */
   initialUrgentOnly?: boolean;
 }) {
+  // Per le voci di "Quanto costa in media" della home (§383).
+  useEffect(() => {
+    saveLastSearchCity(city);
+  }, [city]);
+
   const title = service
     ? city
       ? `Chi offre "${service}" a ${city}`
@@ -61,6 +76,17 @@ export function CercaContent({
     const query = params.toString();
     return query ? `/cerca?${query}` : "/cerca";
   })();
+  const router = useRouter();
+  const [cityText, setCityText] = useState("");
+  const submitCity = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const chosen = cityText.trim();
+    if (!chosen || !service) return;
+    const params = new URLSearchParams({ servizio: service, citta: chosen });
+    if (online) params.set("online", "1");
+    router.push(`/cerca?${params.toString()}`);
+  };
+
   // Il filtro si toglie dalla ✕ sulla pastiglia, come nei filtri dei grandi
   // siti: un link "Mostra tutti" si capiva come "tutti quelli del servizio"
   // (Luca, §383).
@@ -75,6 +101,30 @@ export function CercaContent({
           <X size={14} strokeWidth={2.4} />
         </span>
       </Link>
+      {/* Senza città l'elenco è di tutta Italia: si chiede dove, senza
+          obbligare (§383). Con la città la si cambia dalla barra di ricerca,
+          che tiene il servizio. */}
+      {!city ? (
+        <form className="service-city" onSubmit={submitCity} role="search" aria-label="Cerca vicino a te">
+          <input
+            className="service-city-input"
+            value={cityText}
+            onChange={(event) => setCityText(event.target.value)}
+            placeholder="In che città?"
+            aria-label="In che città ti serve?"
+            list="service-city-list"
+            autoComplete="address-level2"
+          />
+          <datalist id="service-city-list">
+            {citySuggestions(cityText).map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
+          <button type="submit" className="service-city-button" disabled={!cityText.trim()}>
+            Cerca vicino
+          </button>
+        </form>
+      ) : null}
       <style jsx>{`
         :global(.service-chip) {
           display: inline-flex;
@@ -114,6 +164,46 @@ export function CercaContent({
           border-radius: 999px;
           background-color: ${brand.cianografiaPieno};
           color: #fff;
+        }
+        .service-city {
+          display: flex;
+          gap: 8px;
+          flex: 1 1 260px;
+          min-width: 0;
+        }
+        .service-city-input {
+          flex: 1;
+          min-width: 0;
+          min-height: 40px;
+          padding: 0 14px;
+          border-radius: 999px;
+          border: 1px solid ${brand.bordoCampo};
+          background-color: ${brand.calce};
+          color: ${brand.grafite};
+          font-size: 16px;
+          font-family: inherit;
+        }
+        .service-city-button {
+          min-height: 40px;
+          padding: 0 16px;
+          border-radius: 999px;
+          border: none;
+          background-color: ${brand.cianografiaPieno};
+          color: #fff;
+          font-weight: 700;
+          font-size: 15px;
+          font-family: inherit;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+        .service-city-button:disabled {
+          opacity: 0.5;
+          cursor: default;
+        }
+        .service-city-button:focus-visible,
+        .service-city-input:focus-visible {
+          outline: 2px solid ${brand.cianografiaScuro};
+          outline-offset: 2px;
         }
         @media (prefers-reduced-motion: reduce) {
           :global(.service-chip) {

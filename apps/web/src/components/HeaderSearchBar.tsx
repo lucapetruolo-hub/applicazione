@@ -31,12 +31,14 @@ export function HeaderSearchBar() {
   const citySlugFromPath = pathname.split("/")[3];
   const city = searchParams.get("citta") ?? (citySlugFromPath ? findComuneBySlug(citySlugFromPath)?.name : undefined) ?? "";
   const category = categorySlugFromPath && isProfessionalCategorySlug(categorySlugFromPath) ? PROFESSIONAL_CATEGORIES.find((c) => c.slug === categorySlugFromPath) : undefined;
-  const query = category ? category.label : (searchParams.get("q") ?? "");
+  // Prestazione filtrata da "Quanto costa in media" (§383): scritta nel campo e tenuta cambiando città.
+  const service = searchParams.get("servizio")?.trim() || undefined;
+  const query = category ? category.label : (searchParams.get("q") ?? service ?? "");
 
   const professionalSuggestions: ProfessionalSuggestion[] = buildSearchSuggestions();
 
   function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
-    const destination = buildSearchDestination(params);
+    const destination = buildSearchDestination({ ...params, service });
     navigateWithTransition(() => {
       router.push(destination);
       router.refresh();

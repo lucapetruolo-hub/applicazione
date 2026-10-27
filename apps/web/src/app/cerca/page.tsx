@@ -77,7 +77,7 @@ export default async function CercaPage(props: { searchParams: Promise<PageSearc
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
-      <SearchHeader initialQuery={searchParams.q ?? ""} initialCity={city ?? ""} initialMode={isOnline ? "online" : "domicilio"} serviceLabel={service} />
+      <SearchHeader initialQuery={searchParams.q ?? service ?? ""} initialCity={city ?? ""} initialMode={isOnline ? "online" : "domicilio"} service={service} />
       {/* Key che cambia con i search params: forza il remount completo del
           contenuto quando si cambia modalita'/citta'/testo, cosi' la lista si
           aggiorna sempre anche navigando verso lo stesso percorso. */}

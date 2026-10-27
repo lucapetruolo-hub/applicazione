@@ -2,16 +2,19 @@
 "use no memo";
 
 import { useEffect, useState, type FocusEvent, type ReactNode } from "react";
-import { formatServicePriceRange } from "@professionisti/shared";
+import { formatServicePriceRange, type ServicePriceIndexEntry } from "@professionisti/shared";
 import { Section, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
+import { readLastSearchCity } from "@/lib/lastSearchCity";
 
-type PriceEntry = {
-  name: string;
-  professionalCount: number;
-  minEurCents: number;
-  maxEurCents: number;
-};
+type PriceEntry = ServicePriceIndexEntry;
+
+/** Indirizzo dell'elenco di chi offre la voce, nella città dell'ultima ricerca se c'è (§383). */
+function entryHref(name: string, city: string | null): string {
+  const params = new URLSearchParams({ servizio: name });
+  if (city) params.set("citta", city);
+  return `/cerca?${params.toString()}`;
+}
 
 /**
  * Micro-tool "Quanto costa in media" (richiesta esplicita dell'utente):
@@ -47,11 +50,17 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
     if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setIsFocused(false);
   };
   const showFullList = isFocused || query.trim().length > 0;
+  // Città dell'ultima ricerca su questo browser: il clic apre già la zona
+  // giusta, senza obbligarla (si cambia dalla pagina dei risultati).
+  const [lastCity, setLastCity] = useState<string | null>(null);
 
   useEffect(() => {
     apiClient
       .getServicePriceIndex()
-      .then(setEntries)
+      .then((loaded) => {
+        setLastCity(readLastSearchCity());
+        setEntries(loaded);
+      })
       .catch(() => setEntries([]));
   }, []);
 
@@ -67,7 +76,8 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
   // "Più inserite" = da più professionisti diversi (professionalCount) —
   // ordinamento usato solo per l'elenco a riposo (i primi 10), l'elenco
   // completo filtrato dalla ricerca resta nell'ordine restituito dall'API.
-  const mostAdded = [...(entries ?? [])].sort((a, b) => b.professionalCount - a.professionalCount);
+  // Prima le voci con i prezzi: sono quelle che rispondono alla domanda.
+  const mostAdded = [...(entries ?? [])].sort((a, b) => Number(b.price !== null) - Number(a.price !== null) || b.professionalCount - a.professionalCount);
 
   const filtered = (entries ?? []).filter((entry) => entry.name.toLowerCase().includes(query.trim().toLowerCase()));
   const visibleEntries = showFullList ? filtered : mostAdded.slice(0, IDLE_VISIBLE_COUNT);
@@ -76,8 +86,7 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
     <Section title="Quanto costa in media?" maxWidth={780}>
       <YStack width="100%" gap="$3">
         <Text fontSize={16} color={brand.grafite70}>
-          Range di prezzo calcolato dalle prestazioni inserite davvero dai professionisti sulla piattaforma — scrivi per
-          cercare.
+          Prezzi veri dei professionisti del sito. Tocca un lavoro per vedere chi lo fa.
         </Text>
         <div
           onFocus={() => setIsFocused(true)}
@@ -147,9 +156,9 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
                 // (richiesta di Luca, docs/CHANGELOG.md §383).
                 <a
                   key={entry.name}
-                  href={`/cerca?servizio=${encodeURIComponent(entry.name)}`}
+                  href={entryHref(entry.name, lastCity)}
                   className={index === 0 ? "price-row price-row-first" : "price-row"}
-                  aria-label={`${entry.name}, ${formatServicePriceRange(entry.minEurCents, entry.maxEurCents)}: vedi chi lo fa`}
+                  aria-label={`${entry.name}, ${entry.price ? `in media ${formatServicePriceRange(entry.price.medianEurCents, null)}, di solito ${formatServicePriceRange(entry.price.lowEurCents, entry.price.highEurCents)}` : "prezzo su preventivo"}: vedi chi lo fa`}
                   // Il clic non toglie il fuoco al campo: l'elenco aperto non si
                   // richiude (e non sposta le voci) tra la pressione e il rilascio.
                   onMouseDown={(event) => event.preventDefault()}
@@ -167,9 +176,24 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
                     ) : null}
                   </YStack>
                   <XStack alignItems="center" gap="$2" flexShrink={0}>
-                    <Text fontWeight="700" color={brand.cianografiaScuro}>
-                      {formatServicePriceRange(entry.minEurCents, entry.maxEurCents)}
-                    </Text>
+                    {/* Mediana e intervallo tipico (metà dei professionisti), mai
+                        minimo e massimo; sotto i 3 prezzi nessuna cifra (§383). */}
+                    {entry.price ? (
+                      <YStack alignItems="flex-end" gap={2}>
+                        <Text fontWeight="700" color={brand.cianografiaScuro}>
+                          {formatServicePriceRange(entry.price.medianEurCents, null)}
+                        </Text>
+                        {entry.price.highEurCents > entry.price.lowEurCents ? (
+                          <Text fontSize={13} color={brand.grafite70}>
+                            di solito {formatServicePriceRange(entry.price.lowEurCents, entry.price.highEurCents)}
+                          </Text>
+                        ) : null}
+                      </YStack>
+                    ) : (
+                      <Text fontSize={14} color={brand.grafite70}>
+                        Su preventivo
+                      </Text>
+                    )}
                     <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" className="price-row-chevron">
                       <path
                         d="M6 3.5 10.5 8 6 12.5"

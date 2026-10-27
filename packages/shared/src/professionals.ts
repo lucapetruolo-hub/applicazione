@@ -300,6 +300,12 @@ export type ProfessionalSearchResult = {
    * cercato: presente solo nelle ricerche con una città riconosciuta
    * (`SEARCH_RADIUS_KM`).
    */
+  /**
+   * Ricerca per prestazione (`?servizio=`, voce di "Quanto costa in media",
+   * docs/CHANGELOG.md §383): la prestazione del professionista che
+   * corrisponde, da mettere in evidenza nella scheda.
+   */
+  matchedServiceId?: string;
   distanceKm?: number;
 };
 

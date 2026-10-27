@@ -26,6 +26,7 @@ import type {
   GuidedRequestInput,
   TrafficSource,
   CategoryPriceStats,
+  ServicePriceIndexEntry,
   GuidedRequestMyState,
   GuidedRequestStatusSummary,
   GuidedRequestUserStateInput,
@@ -1208,9 +1209,9 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       });
     },
 
-    /** Micro-tool "Quanto costa in media" (homepage): range di prezzo reale per prestazione, mai un dato finto. */
+    /** Micro-tool "Quanto costa in media" (homepage): prezzi veri per prestazione, mai un dato finto (docs/CHANGELOG.md §383). */
     getServicePriceIndex: () =>
-      request<{ name: string; professionalCount: number; minEurCents: number; maxEurCents: number }[]>(
+      request<ServicePriceIndexEntry[]>(
         "/professionals/services/price-index",
         { cache: "no-store" },
       ),

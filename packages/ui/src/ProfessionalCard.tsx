@@ -175,6 +175,12 @@ export type ProfessionalCardProps = {
    * (docs/CHANGELOG.md §206).
    */
   onAgendaPress?: (date: string, mode: "HOME" | "ONLINE") => void;
+  /**
+   * Prestazione cercata (voce di "Quanto costa in media", docs/CHANGELOG.md
+   * §383): prima nell'elenco, in evidenza, e il suo prezzo al posto di
+   * "da … €" sulla scheda chiusa.
+   */
+  highlightServiceId?: string;
   /** Slot opzionale per un'icona/badge categoria (passato da chi consuma il componente, così l'icona custom resta web-only senza sporcare packages/ui). */
   icon?: ReactNode;
   /**
@@ -214,6 +220,7 @@ export function ProfessionalCard({
   onAgendaPress,
   icon,
   action,
+  highlightServiceId,
 }: ProfessionalCardProps) {
   // Mestieri in grassetto, specializzazioni dopo in grigio, al massimo due
   // righe (docs/CHANGELOG.md §349): prima era un elenco unico tutto uguale.
@@ -296,7 +303,9 @@ export function ProfessionalCard({
   const canGoForward = offset + AGENDA_VISIBLE_DAYS < totalDays;
 
   const hasAgenda = totalDays > 0;
-  const serviceList = services ?? [];
+  const highlighted = services?.find((service) => service.id === highlightServiceId);
+  // La prestazione cercata in cima: si vede anche con l'elenco ridotto a 3.
+  const serviceList = highlighted ? [highlighted, ...(services ?? []).filter((service) => service !== highlighted)] : (services ?? []);
   const hasServices = serviceList.length > 0;
   const lowestPrice = hasServices ? lowestServicePrice(serviceList) : null;
   const detailsLabel = [hasAgenda ? "orari" : null, hasServices ? (lowestPrice !== null ? "prezzi" : "prestazioni") : null]
@@ -500,7 +509,12 @@ export function ProfessionalCard({
               <Text fontFamily="$body" fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
                 {expanded ? `Nascondi ${detailsLabel}` : `Vedi ${detailsLabel}`}
               </Text>
-              {!expanded && lowestPrice !== null ? ` · da ${formatAmount(lowestPrice)} €` : null}
+              {/* Con una prestazione cercata (§383) il suo prezzo, non il più basso. */}
+              {!expanded && highlighted
+                ? ` · ${highlighted.name.trim()}: ${formatServicePrice(highlighted.priceMinEurCents, highlighted.priceMaxEurCents).toLowerCase()}`
+                : !expanded && lowestPrice !== null
+                  ? ` · da ${formatAmount(lowestPrice)} €`
+                  : null}
             </Text>
             <Icon name={expanded ? "chevron-up" : "chevron-down"} size={18} color={brand.cianografiaScuro} strokeWidth={2} />
           </XStack>
@@ -737,9 +751,15 @@ export function ProfessionalCard({
                   : undefined
               }
             >
-              {(showAllServices ? serviceList : serviceList.slice(0, 3)).map((service) => (
-                <PriceLine key={service.id} label={service.name} price={formatServicePrice(service.priceMinEurCents, service.priceMaxEurCents)} />
-              ))}
+              {(showAllServices ? serviceList : serviceList.slice(0, 3)).map((service) =>
+                service === highlighted ? (
+                  <YStack key={service.id} backgroundColor={brand.cianografiaVelo} borderRadius={10} paddingHorizontal="$2" marginHorizontal={-8}>
+                    <PriceLine label={service.name} labelColor={brand.grafite} price={formatServicePrice(service.priceMinEurCents, service.priceMaxEurCents)} />
+                  </YStack>
+                ) : (
+                  <PriceLine key={service.id} label={service.name} price={formatServicePrice(service.priceMinEurCents, service.priceMaxEurCents)} />
+                ),
+              )}
               {serviceList.length > 3 ? (
                 <XStack
                   alignItems="center"

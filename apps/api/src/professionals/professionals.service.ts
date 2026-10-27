@@ -14,6 +14,7 @@ import {
   weekTemplateDatesKept,
   type BookAgendaSlotInput,
   type DeclineLeadInput,
+  type ServicePriceIndexEntry,
   type MyAvailability,
   type MyProfessionalProfile,
   type MyProfilePreview,
@@ -49,6 +50,8 @@ import { NOT_ACCEPTING_REQUESTS, NOT_BOOKABLE_ONLINE } from "../subscriptions/su
 import { GeocodingService } from "../geocoding/geocoding.service";
 import { selectSearchArea } from "./search-area";
 import { acceptedQuoteStats, declaredServiceStats, quoteMidpointEurCents } from "./category-prices";
+import { buildServicePriceIndex } from "./service-price-index";
+import { serviceGroupKey } from "./service-group-key";
 import { slotAppliesOnDate } from "../common/availability.util";
 import { AgendaService } from "../agenda/agenda.service";
 import { countBookingsInSlot, loadCommitments, lockProfessionalAgenda, type Commitment } from "../agenda/commitments";
@@ -116,14 +119,10 @@ function searchableProfileWhere(): Prisma.ProfessionalProfileWhereInput {
   };
 }
 
-/**
- * Chiave con cui si riconoscono le prestazioni uguali: la usano sia il prezzo
- * medio (una voce per chiave) sia la ricerca che si apre cliccando la voce
- * (docs/CHANGELOG.md §383), così l'elenco mostra sempre chi è contato nella
- * voce. Per unire anche i nomi simili basta cambiare solo questa funzione.
- */
-export function serviceGroupKey(name: string): string {
-  return name.trim().toLowerCase();
+/** La prestazione che corrisponde alla voce cercata, da evidenziare nella scheda (§383). */
+function matchedServiceField(services: { id: string; name: string }[], serviceKey: string): { matchedServiceId?: string } {
+  const match = services.find((item) => serviceGroupKey(item.name) === serviceKey);
+  return match ? { matchedServiceId: match.id } : {};
 }
 
 /** Dati letti per la pagina pubblica del professionista e per la sua anteprima in dashboard. */
@@ -255,6 +254,7 @@ export class ProfessionalsService {
         createdAt: profile.createdAt.toISOString(),
         completedThisMonth: countCompletedThisMonth(profile.bookings),
         isNewProfile: computeIsNewProfile(profile.createdAt),
+        ...(serviceKey ? matchedServiceField(profile.services, serviceKey) : {}),
         ...(distanceById?.has(profile.id) ? { distanceKm: Math.round(distanceById.get(profile.id)! * 10) / 10 } : {}),
       } satisfies ProfessionalSearchResult;
     });
@@ -292,53 +292,21 @@ export class ProfessionalsService {
   }
 
   /**
-   * "Quanto costa in media" (richiesta esplicita dell'utente, micro-tool
-   * homepage): range di prezzo basso-alto per ogni prestazione realmente
-   * inserita dai professionisti in `/dashboard/profilo`, mai un dato
-   * inventato. Raggruppa per nome (case/trim-insensitive: la stessa
-   * prestazione può essere scritta con maiuscole diverse da professionisti
-   * diversi, ma resta testo libero — nessuna normalizzazione oltre
-   * lowercase/trim, non una fuzzy-match che rischierebbe di unire voci
-   * davvero diverse). Esclude i professionisti demo/eliminati (stessa
-   * esclusione già applicata ovunque nel prodotto) e le voci senza alcun
-   * prezzo impostato (min e max entrambi assenti — "Su richiesta": non ha
-   * un range da mostrare in questo tool, mostrarne uno sarebbe un dato
-   * finto). Calcolato in un'unica query, filtrato/ordinato lato client
-   * (stesso principio già in uso per `ListControls`/pannello filtri
-   * ricerca — scala di lancio §7, nessun query param di ricerca lato
-   * server necessario).
+   * "Quanto costa in media" della home: ogni prestazione inserita dai
+   * professionisti visibili in ricerca, mai un dato inventato. Raggruppamento,
+   * mediana e soglie in `buildServicePriceIndex` (docs/CHANGELOG.md §383);
+   * prima erano minimo e massimo delle sole voci con un prezzo.
    */
-  async getServicePriceIndex(): Promise<{ name: string; professionalCount: number; minEurCents: number; maxEurCents: number }[]> {
+  async getServicePriceIndex(): Promise<ServicePriceIndexEntry[]> {
     const services = await this.prisma.professionalService.findMany({
       where: {
         // Solo chi compare nella ricerca: ogni voce porta all'elenco di chi la
         // offre, e il numero mostrato deve coincidere (docs/CHANGELOG.md §383).
         professionalProfile: { isDemo: false, ...searchableProfileWhere(), AND: [publicVisibilityWhere()] },
-        OR: [{ priceMinEurCents: { not: null } }, { priceMaxEurCents: { not: null } }],
       },
-      select: { name: true, priceMinEurCents: true, priceMaxEurCents: true },
+      select: { name: true, professionalProfileId: true, priceMinEurCents: true, priceMaxEurCents: true },
     });
-
-    const groups = new Map<string, { label: string; professionalCount: number; minEurCents: number; maxEurCents: number }>();
-    for (const service of services) {
-      const key = serviceGroupKey(service.name);
-      if (!key) continue;
-      const low = service.priceMinEurCents ?? service.priceMaxEurCents;
-      const high = service.priceMaxEurCents ?? service.priceMinEurCents;
-      if (low === null || high === null || low === undefined || high === undefined) continue;
-      const existing = groups.get(key);
-      if (existing) {
-        existing.professionalCount += 1;
-        existing.minEurCents = Math.min(existing.minEurCents, low);
-        existing.maxEurCents = Math.max(existing.maxEurCents, high);
-      } else {
-        groups.set(key, { label: service.name.trim(), professionalCount: 1, minEurCents: low, maxEurCents: high });
-      }
-    }
-
-    return Array.from(groups.values())
-      .map((g) => ({ name: g.label, professionalCount: g.professionalCount, minEurCents: g.minEurCents, maxEurCents: g.maxEurCents }))
-      .sort((a, b) => a.name.localeCompare(b.name, "it"));
+    return buildServicePriceIndex(services);
   }
 
   /**

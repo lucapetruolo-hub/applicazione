@@ -3,6 +3,7 @@ import {
   MIN_PROFESSIONALS_FOR_DECLARED_PRICES,
   type CategoryPriceStats,
 } from "@professionisti/shared";
+import { serviceGroupKey } from "./service-group-key";
 
 type PriceRange = { priceMinEurCents: number | null; priceMaxEurCents: number | null };
 
@@ -25,7 +26,7 @@ export function quoteMidpointEurCents(items: PriceRange[]): number | null {
 }
 
 /** Quantile con interpolazione lineare su valori già ordinati. */
-function quantile(sorted: number[], q: number): number {
+export function quantile(sorted: number[], q: number): number {
   const position = (sorted.length - 1) * q;
   const low = sorted[Math.floor(position)] ?? 0;
   const high = sorted[Math.ceil(position)] ?? low;
@@ -58,7 +59,7 @@ export function declaredServiceStats(services: (PriceRange & { name: string; pro
   for (const service of services) {
     const low = service.priceMinEurCents ?? service.priceMaxEurCents;
     const high = service.priceMaxEurCents ?? service.priceMinEurCents;
-    const key = service.name.trim().toLowerCase();
+    const key = serviceGroupKey(service.name);
     if (low === null || high === null || !key) continue;
     professionals.add(service.professionalProfileId);
     const group = groups.get(key);
