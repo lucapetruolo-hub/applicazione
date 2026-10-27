@@ -1,24 +1,28 @@
-import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
 import {
   STAMP_DUTY_THRESHOLD_EUR_CENTS,
   clientInvoiceLines,
+  courtesyReceiptNumber,
   professionalChargesVat,
   splitVatEurCents,
   type CourtesyCopyView,
+  type CourtesyNumberInput,
   type InvoiceParty,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { invoiceRequestView } from "../client-invoice-requests/client-invoice-requests.service";
 import { InvoicesService } from "./invoices.service";
 import { recipientFromFiscal, recipientParty } from "./invoice-documents";
+import { romeMonthOf } from "./accounting-dates";
 
 /**
  * Copia di cortesia del documento che il professionista dà al cliente
  * (decisione dell'utente del 27/10/2026, docs/CHANGELOG.md §372): fattura
  * per chi ha la partita IVA, ricevuta per prestazione occasionale per il
  * privato. Solo una pagina da stampare: il documento valido lo emette lui,
- * noi non mandiamo nulla all'Agenzia delle Entrate.
+ * noi non mandiamo nulla all'Agenzia delle Entrate. Il numero della
+ * ricevuta lo diamo noi, quello della fattura lo scrive lui (§374).
  */
 @Injectable()
 export class CourtesyCopyService {
@@ -40,6 +44,7 @@ export class CourtesyCopyService {
     });
     // Solo il professionista del lavoro, e solo dopo l'accettazione (CLAUDE.md §5 punto 9).
     if (!booking || booking.professionalProfileId !== professionalProfileId || booking.status === "CANCELED") throw new NotFoundException("Lavoro non trovato.");
+    const saved = await this.prisma.courtesyDocument.findUnique({ where: { bookingId } });
 
     const fiscal = booking.professionalProfile.fiscalProfile;
     const issuerSnapshot = recipientFromFiscal(fiscal, booking.professionalProfile.businessName);
@@ -57,6 +62,13 @@ export class CourtesyCopyService {
     const jp = booking.jobPayment;
     const total = jp ? (jp.paymentMethod === "MANOVIA" && jp.paidEurCents > 0 ? jp.paidEurCents - jp.refundedEurCents : jp.grossAmountEurCents) : null;
     const vat = chargesVat && total !== null ? splitVatEurCents(total) : null;
+    const date = booking.professionalCompletedAt ?? jp?.balancePaidAt ?? jp?.directReportedAt ?? booking.scheduledAt;
+    const number =
+      kind === "RECEIPT"
+        ? saved?.number
+          ? courtesyReceiptNumber(saved.number, saved.year)
+          : await this.assignReceiptNumber(bookingId, professionalProfileId, Number(romeMonthOf(date).slice(0, 4)))
+        : (saved?.ownNumber ?? null);
     const guided = booking.quote?.guidedRequest;
     const description = [guided?.category.label, guided?.description.split(/\r?\n/)[0]?.trim()].filter(Boolean).join(": ") || "Lavoro";
 
@@ -76,13 +88,55 @@ export class CourtesyCopyService {
       kind,
       issuer: recipientParty({ ...issuerSnapshot, sdiRecipientCode: null, pecEmail: null }),
       customer,
-      date: (booking.professionalCompletedAt ?? jp?.balancePaidAt ?? jp?.directReportedAt ?? booking.scheduledAt).toISOString(),
+      date: date.toISOString(),
       description,
       totalEurCents: total,
       vat: vat ? { taxableEurCents: vat.taxableEurCents, vatEurCents: vat.vatEurCents + vat.roundingEurCents, ratePercent: 22 } : null,
       paidHow: jp ? (jp.paymentMethod === "MANOVIA" ? "Pagato online con carta" : "Pagato direttamente al professionista") : null,
       notes,
       invoiceRequested: !!request,
+      number,
     };
+  }
+
+  /** Il numero della fattura del professionista, da riportare sulla copia (vuoto per toglierlo). */
+  async setOwnNumber(userId: string, bookingId: string, input: CourtesyNumberInput): Promise<CourtesyCopyView> {
+    const copy = await this.forProfessional(userId, bookingId);
+    if (copy.kind === "INVOICE") {
+      const ownNumber = input.number?.trim() || null;
+      const professionalProfileId = await this.invoicesService.profileIdOf(userId);
+      const year = Number(romeMonthOf(new Date(copy.date)).slice(0, 4));
+      await this.prisma.courtesyDocument.upsert({
+        where: { bookingId },
+        create: { bookingId, professionalProfileId, kind: "INVOICE", year, ownNumber },
+        update: { kind: "INVOICE", ownNumber },
+      });
+      return { ...copy, number: ownNumber };
+    }
+    return copy;
+  }
+
+  /**
+   * Prossimo numero della ricevuta del professionista per l'anno, dato una
+   * volta sola per lavoro: riaprendo la copia resta lo stesso. Due copie
+   * aperte nello stesso istante si contendono il numero: chi perde prende
+   * il successivo.
+   */
+  private async assignReceiptNumber(bookingId: string, professionalProfileId: string, year: number): Promise<string> {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const last = await this.prisma.courtesyDocument.aggregate({ where: { professionalProfileId, year, number: { not: null } }, _max: { number: true } });
+      const number = (last._max.number ?? 0) + 1;
+      try {
+        const saved = await this.prisma.courtesyDocument.upsert({
+          where: { bookingId },
+          create: { bookingId, professionalProfileId, kind: "RECEIPT", year, number },
+          update: { kind: "RECEIPT", year, number },
+        });
+        return courtesyReceiptNumber(saved.number ?? number, saved.year);
+      } catch (err) {
+        if ((err as { code?: string }).code !== "P2002") throw err;
+      }
+    }
+    throw new ConflictException("Non riusciamo a dare il numero alla ricevuta: riprova tra un attimo.");
   }
 }

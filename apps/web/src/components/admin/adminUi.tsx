@@ -87,12 +87,18 @@ export function errorMessage(err: unknown): string {
 
 /** Fa scaricare al browser un testo come file (CSV admin). */
 export function downloadTextFile(filename: string, content: string, type = "text/csv;charset=utf-8") {
-  const url = URL.createObjectURL(new Blob([content], { type }));
+  downloadBlobFile(filename, new Blob([content], { type }));
+}
+
+/** Salva un file arrivato dal server (es. i PDF dei documenti, docs/CHANGELOG.md §374). */
+export function downloadBlobFile(filename: string, blob: Blob) {
+  const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
   document.body.appendChild(link);
   link.click();
   link.remove();
-  URL.revokeObjectURL(url);
+  // Safari legge il file dopo il clic: l'indirizzo resta valido ancora un momento.
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
 }

@@ -1,15 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
-import { Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
-import { formatEurCents, type InvoiceParty } from "@professionisti/shared";
+import { useState, type ReactNode } from "react";
+import { Button, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { accountingDateLabel, formatEurCents, type InvoiceParty } from "@professionisti/shared";
+import { downloadBlobFile } from "@/components/admin/adminUi";
 
 /**
  * Pezzi comuni delle pagine di "Fatture e documenti" (docs/CHANGELOG.md
  * §372), come nelle anteprime approvate: titolo, scheda bianca, righe con
- * l'importo a destra, riquadri "Da" e "Per". Si stampa (o si salva in PDF)
- * solo `.print-document`: niente menu né pulsanti (globals.css).
+ * l'importo a destra, riquadri "Da" e "Per". Il PDF lo prepara il server
+ * (§374); stampando la pagina esce solo `.print-document`, senza menu né
+ * pulsanti (globals.css).
  */
 export function DocumentPage({ back, title, subtitle, children }: { back: { href: string; label: string }; title: string; subtitle?: string | null; children: ReactNode }) {
   return (
@@ -156,6 +158,40 @@ export function LoadingDocument() {
   );
 }
 
-export function documentDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Rome" });
+export const documentDate = accountingDateLabel;
+
+/**
+ * "Scarica PDF": il file lo prepara il nostro server (docs/CHANGELOG.md
+ * §374), uguale su telefono e computer. `before` gira prima (es. salvare il
+ * numero della fattura).
+ */
+export function PdfButton({ load, fileName, label = "Scarica PDF", variant, before }: { load: () => Promise<Blob>; fileName: string; label?: string; variant?: "secondary"; before?: () => Promise<void> }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function download() {
+    setBusy(true);
+    setError(null);
+    try {
+      await before?.();
+      downloadBlobFile(fileName, await load());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Non riusciamo a preparare il PDF: riprova tra poco.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <YStack gap="$2">
+      <Button alignSelf="flex-start" variant={variant} disabled={busy} onPress={() => void download()}>
+        {busy ? "Preparo il PDF…" : label}
+      </Button>
+      {error ? (
+        <Text fontSize={16} color={brand.urgenza} role="alert">
+          {error}
+        </Text>
+      ) : null}
+    </YStack>
+  );
 }

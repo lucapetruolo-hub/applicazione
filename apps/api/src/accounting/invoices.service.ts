@@ -23,6 +23,7 @@ import {
   type PlatformInvoiceSource,
   type PlatformInvoiceSummary,
   type PlatformInvoiceView,
+  type SdiSandboxTestResult,
   type SubscriptionTier,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
@@ -30,7 +31,7 @@ import { NotificationsService } from "../notifications/notifications.service";
 import { encryptFiscal, readFiscal } from "../common/fiscal-crypto";
 import { subscriptionState } from "../subscriptions/subscription-rules";
 import { lastDayOfMonth, previousMonth, romeDayIso, romeDayLabel, romeDayStart, romeMonthOf, romeMonthRange } from "./accounting-dates";
-import { buildFatturaPaXml, fatturaPaFileName } from "./invoice-xml";
+import { buildFatturaPaXml } from "./invoice-xml";
 import {
   fatturaPaCustomer,
   fatturaPaIssuer,
@@ -42,6 +43,8 @@ import {
   recipientFromFiscal,
   recipientName,
   recipientParty,
+  sandboxTestInvoiceXml,
+  sdiCompanyOf,
   sdiProgressive,
   xmlLineDescription,
   type IssuerSnapshot,
@@ -51,6 +54,10 @@ import { sdiProviderFromEnv, type SdiProvider } from "./sdi-provider";
 
 /** Lo SdI accetta una fattura entro 12 giorni dalla sua data: dopo non si riprova da soli. */
 const SDI_RETRY_DAYS = 12;
+/** Per quanti giorni dall'invio leggiamo l'esito: lo SdI risponde entro 5 giorni. */
+const SDI_OUTCOME_DAYS = 30;
+/** Nella prova d'invio, attesa tra una lettura dell'esito simulato e l'altra. */
+const SDI_TEST_WAIT_MS = 1500;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 type NewInvoice = {
@@ -138,6 +145,7 @@ export class InvoicesService {
       invoicesFrom: row?.invoicesFrom ? romeDayIso(row.invoicesFrom) : null,
       ready: !!issuerSnapshot(row),
       sdiConfigured: !!this.sdi,
+      sdiSandbox: !!this.sdi?.sandbox,
     };
   }
 
@@ -274,7 +282,8 @@ export class InvoicesService {
     });
     if (!this.sdi) return;
     try {
-      const { sdiId } = await this.sdi.send(xml, fatturaPaFileName(issuer.taxCode ?? issuer.vatNumber, progressive));
+      await this.sdi.ensureRegistered(sdiCompanyOf(issuer));
+      const { sdiId } = await this.sdi.send(xml);
       await this.prisma.invoice.update({ where: { id: invoiceId }, data: { sdiStatus: "SENT", sdiId, sdiSentAt: new Date(), sdiMessage: null, sdiAttempts: { increment: 1 } } });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -438,16 +447,81 @@ export class InvoicesService {
       take: 50,
     });
     for (const invoice of pending) await this.prepareAndSend(invoice.id);
-    try {
-      for (const note of await this.sdi.notifications()) {
-        const invoice = await this.prisma.invoice.findFirst({ where: { sdiId: note.sdiId }, select: { id: true, sdiStatus: true } });
-        if (!invoice || invoice.sdiStatus === note.status) continue;
+    // Esiti: Openapi li dà fattura per fattura (`/invoices_notifications/{uuid}`), per quelle inviate negli ultimi 30 giorni.
+    const sent = await this.prisma.invoice.findMany({
+      where: { sdiStatus: "SENT", sdiId: { not: null }, sdiSentAt: { gte: new Date(now.getTime() - SDI_OUTCOME_DAYS * DAY_MS) } },
+      select: { id: true, sdiId: true, series: true, year: true, number: true },
+      orderBy: { sdiSentAt: "asc" },
+      take: 100,
+    });
+    for (const invoice of sent) {
+      if (!invoice.sdiId) continue;
+      try {
+        const note = await this.sdi.outcome(invoice.sdiId);
+        if (!note) continue;
         await this.prisma.invoice.update({ where: { id: invoice.id }, data: { sdiStatus: note.status, sdiMessage: note.status === "REJECTED" ? (note.message ?? "Scartata dallo SdI") : null } });
-        if (note.status === "REJECTED") await this.notifyFinanceAdmins("ADMIN_FEE_RECONCILIATION", { kind: "sdi", month: null, alerts: [`Una fattura è stata scartata dallo SdI: ${note.message ?? "motivo non indicato"}. Correggi e rimandala da Finanza.`] });
+        if (note.status === "REJECTED") {
+          const number = invoiceNumberLabel(invoice.series, invoice.year, invoice.number);
+          await this.notifyFinanceAdmins("ADMIN_FEE_RECONCILIATION", { kind: "sdi", month: null, alerts: [`La fattura ${number} è stata scartata dallo SdI: ${note.message ?? "motivo non indicato"}. Correggi e rimandala da Finanza.`] });
+        }
+      } catch (err) {
+        this.logger.warn(`Esito SdI non letto: ${err instanceof Error ? err.message : String(err)}`);
       }
-    } catch (err) {
-      this.logger.warn(`Esiti SdI non letti: ${err instanceof Error ? err.message : String(err)}`);
     }
+  }
+
+  /**
+   * Prova d'invio nella prova di Openapi (`OPENAPI_SANDBOX=true`, docs/CHANGELOG.md
+   * §374): registra la società, manda una fattura di prova da 1 € (mai salvata
+   * tra le nostre e senza numero della serie), fa arrivare un esito finto e lo
+   * legge. In produzione non parte: la fattura arriverebbe davvero all'Agenzia.
+   */
+  async adminSdiSandboxTest(now: Date = new Date()): Promise<SdiSandboxTestResult> {
+    const steps: SdiSandboxTestResult["steps"] = [];
+    const stop = (label: string, detail: string): SdiSandboxTestResult => ({ ok: false, steps: [...steps, { label, ok: false, detail }] });
+    const sdi = this.sdi;
+    if (!sdi) return stop("Collegamento a Openapi", "Manca OPENAPI_TOKEN_SDI su Render.");
+    if (!sdi.sandbox) return stop("Ambiente di prova", "La prova si fa solo con OPENAPI_SANDBOX=true su Render: in produzione la fattura di prova arriverebbe davvero all'Agenzia.");
+    const issuer = issuerSnapshot(await this.prisma.platformInvoiceSettings.findUnique({ where: { id: "default" } }));
+    if (!issuer) return stop("Dati della società", "Compila e salva prima i dati della società qui sopra.");
+    if (!issuer.pecEmail) return stop("Dati della società", "Scrivi la PEC della società: Openapi la usa per la conservazione delle fatture.");
+
+    /** Un passo: se non riesce si ferma lì, col motivo. */
+    const attempt = async (label: string, run: () => Promise<string | null>): Promise<boolean> => {
+      try {
+        steps.push({ label, ok: true, detail: await run() });
+        return true;
+      } catch (err) {
+        steps.push({ label, ok: false, detail: err instanceof Error ? err.message : String(err) });
+        return false;
+      }
+    };
+
+    let sdiId = "";
+    const passed =
+      (await attempt("Società registrata su Openapi", async () => {
+        await sdi.ensureRegistered(sdiCompanyOf(issuer));
+        return null;
+      })) &&
+      (await attempt("Fattura di prova inviata", async () => {
+        sdiId = (await sdi.send(sandboxTestInvoiceXml(issuer, now))).sdiId;
+        return `Identificativo Openapi: ${sdiId}`;
+      })) &&
+      (await attempt("Esito di consegna simulato", async () => {
+        await sdi.simulateOutcome(sdiId, "RC");
+        return null;
+      }));
+    if (!passed) return { ok: false, steps };
+    const read = await attempt("Esito letto", async () => {
+      for (let i = 0; i < 4; i += 1) {
+        const note = await sdi.outcome(sdiId);
+        if (note?.status === "DELIVERED") return "Consegnata: l'invio e la lettura degli esiti funzionano.";
+        if (note?.status === "REJECTED") throw new Error(`Scartata: ${note.message ?? "motivo non indicato"}`);
+        await new Promise((resolve) => setTimeout(resolve, SDI_TEST_WAIT_MS));
+      }
+      throw new Error("L'esito non è ancora arrivato: riprova tra un minuto.");
+    });
+    return { ok: read, steps };
   }
 
   // --- Giro del mese ---------------------------------------------------------

@@ -6,7 +6,9 @@ import {
   type InvoiceParty,
   type PlatformInvoiceLine,
 } from "@professionisti/shared";
-import type { FatturaPaIssuer, FatturaPaParty } from "./invoice-xml";
+import { buildFatturaPaXml, type FatturaPaIssuer, type FatturaPaParty } from "./invoice-xml";
+import type { SdiCompany } from "./sdi-provider";
+import { romeDayIso } from "./accounting-dates";
 
 /** I nostri dati fotografati sulla fattura. */
 export type IssuerSnapshot = {
@@ -132,6 +134,14 @@ export function recipientFromFiscal(fiscal: FiscalRow | null, fallbackName: stri
 }
 
 /** Ci sono i dati che lo SdI chiede (nome, indirizzo, partita IVA o codice fiscale)? */
+/** Il nome con cui il commercialista conosce il professionista: ragione sociale, nome dei dati fiscali o nome del profilo. */
+export function professionalFiscalName(
+  fiscal: { businessName: string | null; fiscalFirstName: string | null; fiscalLastName: string | null } | null | undefined,
+  profileName: string | null | undefined,
+): string | null {
+  return fiscal?.businessName || [fiscal?.fiscalFirstName, fiscal?.fiscalLastName].filter(Boolean).join(" ") || profileName || null;
+}
+
 export function recipientComplete(r: RecipientSnapshot): boolean {
   const named = !!r.companyName || (!!r.firstName && !!r.lastName);
   return named && !!r.street && !!r.postalCode && !!r.city && (!!r.vatNumber || !!r.taxCode);
@@ -234,4 +244,45 @@ export function xmlLineDescription(line: PlatformInvoiceLine): string {
 export function sdiProgressive(series: string, year: number, number: number, attempt: number): string {
   const base = `${series.slice(0, 1)}${String(year).slice(2)}${String(number).padStart(5, "0")}`;
   return attempt > 0 ? `${base}${attempt.toString(36).toUpperCase().padStart(2, "0").slice(-2)}` : base;
+}
+
+/** La nostra società come la vuole il fornitore dello SdI (partita IVA senza "IT", PEC per la conservazione). */
+export function sdiCompanyOf(i: IssuerSnapshot): SdiCompany {
+  if (!i.pecEmail) throw new Error("Scrivi la PEC della società in Admin → Finanza: Openapi la usa per la conservazione delle fatture.");
+  return { fiscalId: i.vatNumber.replace(/^IT/i, ""), name: i.companyName, email: i.pecEmail };
+}
+
+/**
+ * Fattura di prova per la prova di Openapi (docs/CHANGELOG.md §374): da noi a
+ * un cliente inventato con un codice fiscale valido, 1 € più IVA. Numero e
+ * progressivo d'invio a parte ("PROVA-…"), mai quelli delle nostre serie.
+ */
+export function sandboxTestInvoiceXml(i: IssuerSnapshot, now: Date): string {
+  const stamp = now.getTime().toString(36).toUpperCase().slice(-6);
+  return buildFatturaPaXml({
+    progressive: `P${stamp}`,
+    recipientCode: null,
+    recipientPec: null,
+    issuer: fatturaPaIssuer(i),
+    customer: {
+      companyName: null,
+      firstName: "Mario",
+      lastName: "Rossi",
+      vatNumber: null,
+      taxCode: "RSSMRA80A01H501U",
+      address: { street: "Via di prova", houseNumber: "1", postalCode: "00100", city: "Roma", province: "RM", country: "IT" },
+    },
+    documentType: "TD01",
+    date: romeDayIso(now),
+    number: `PROVA-${stamp}`,
+    lines: [{ description: "Prova di invio: non è una fattura vera", taxableEurCents: 100 }],
+    vatRateBasisPoints: PLATFORM_VAT_RATE_BASIS_POINTS,
+    taxableEurCents: 100,
+    vatEurCents: 22,
+    roundingEurCents: 0,
+    totalEurCents: 122,
+    paymentMethod: "MP08",
+    related: null,
+    causale: ["Prova di invio nella prova di Openapi."],
+  });
 }

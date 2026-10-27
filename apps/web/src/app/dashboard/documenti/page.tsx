@@ -210,7 +210,7 @@ function AccountantCard({ token, initial }: { token: string; initial: DocumentsO
           setDone(false);
         }}
       >
-        Mandagli l&apos;estratto ogni mese, con il foglio di calcolo
+        Mandagli l&apos;estratto ogni mese, in PDF e nel foglio di calcolo
       </ConsentCheckbox>
       <XStack gap="$3" alignItems="center" flexWrap="wrap">
         <Button alignSelf="flex-start" disabled={!dirty || pending} opacity={!dirty || pending ? 0.6 : 1} onPress={() => void save()}>

@@ -43,8 +43,8 @@ export class EmailService {
     subject: string;
     html: string;
     text?: string;
-    /** Allegati, es. il file .ics dei promemoria (docs/CHANGELOG.md §235). */
-    attachments?: { filename: string; content: string; contentType?: string }[];
+    /** Allegati, es. il file .ics dei promemoria (docs/CHANGELOG.md §235) o il PDF dell'estratto (§374). */
+    attachments?: { filename: string; content: string | Buffer; contentType?: string }[];
   }): Promise<boolean> {
     if (!this.resend) {
       this.logger.warn(`RESEND_API_KEY non configurata: email "${params.subject}" a ${params.to} non inviata.`);
@@ -57,9 +57,9 @@ export class EmailService {
         subject: params.subject,
         html: params.html,
         ...(params.text ? { text: params.text } : {}),
-        // Resend vuole il contenuto in base64: un testo (il .ics, il CSV) va codificato (§372).
+        // Resend vuole il contenuto in base64: un testo (il .ics, il CSV) va codificato (§372), un PDF è già in byte (§374).
         ...(params.attachments?.length
-          ? { attachments: params.attachments.map((a) => ({ ...a, content: Buffer.from(a.content, "utf8").toString("base64") })) }
+          ? { attachments: params.attachments.map((a) => ({ ...a, content: (typeof a.content === "string" ? Buffer.from(a.content, "utf8") : a.content).toString("base64") })) }
           : {}),
       });
       if (result.error) {

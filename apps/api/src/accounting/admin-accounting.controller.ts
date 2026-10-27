@@ -32,6 +32,12 @@ export class AdminAccountingController {
     return this.feeReconciliationService.reconcile(month);
   }
 
+  /** Prova d'invio allo SdI nella prova di Openapi (docs/CHANGELOG.md §374). */
+  @Post("sdi-test")
+  sdiTest() {
+    return this.invoicesService.adminSdiSandboxTest();
+  }
+
   @Get()
   list(@Query("month") month?: string) {
     return this.invoicesService.adminList(month);

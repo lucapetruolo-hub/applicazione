@@ -21,6 +21,9 @@ import { renderEmail, type EmailContent } from "../email/email-layout";
 import { EMAIL_BRAND } from "../email/email-brand";
 import { previousMonth, romeDayIso, romeDayLabel, romeMonthOf, romeMonthRange } from "./accounting-dates";
 import { InvoicesService } from "./invoices.service";
+import { renderDocumentPdf } from "./document-pdf";
+import { statementPdfModel } from "./document-pdf-models";
+import { professionalFiscalName } from "./invoice-documents";
 
 const BOOKING_SELECT = {
   scheduledAt: true,
@@ -85,6 +88,22 @@ export class StatementsService {
     this.requireMonth(month);
     const { csvRows } = await this.build(await this.invoicesService.profileIdOf(userId), month);
     return { fileName: `estratto-${month}.csv`, csv: statementCsv(csvRows) };
+  }
+
+  /** L'estratto in PDF, col nome del professionista (serve al commercialista). */
+  async pdfFor(userId: string, month: string): Promise<{ fileName: string; pdf: Buffer }> {
+    this.requireMonth(month);
+    const professionalProfileId = await this.invoicesService.profileIdOf(userId);
+    const [{ statement }, who] = await Promise.all([this.build(professionalProfileId, month), this.whoOf(professionalProfileId)]);
+    return { fileName: `estratto-${month}.pdf`, pdf: await renderDocumentPdf(statementPdfModel(statement, who)) };
+  }
+
+  private async whoOf(professionalProfileId: string): Promise<string | null> {
+    const profile = await this.prisma.professionalProfile.findUnique({
+      where: { id: professionalProfileId },
+      select: { businessName: true, fiscalProfile: { select: { businessName: true, fiscalFirstName: true, fiscalLastName: true } } },
+    });
+    return professionalFiscalName(profile?.fiscalProfile, profile?.businessName);
   }
 
   /** Il commercialista e la spunta per mandargli l'estratto ogni mese. */
@@ -230,8 +249,8 @@ export class StatementsService {
 
   /**
    * Il 1° del mese alle 8 (dopo le fatture delle 7): l'estratto del mese
-   * prima al commercialista di chi ha messo la spunta, col foglio di calcolo
-   * allegato. Solo se nel mese c'è stato qualche movimento.
+   * prima al commercialista di chi ha messo la spunta, col PDF e il foglio di
+   * calcolo allegati. Solo se nel mese c'è stato qualche movimento.
    */
   @Cron("0 8 1 * *", { timeZone: "Europe/Rome" })
   async sendAccountantStatements(now: Date = new Date()): Promise<number> {
@@ -252,14 +271,17 @@ export class StatementsService {
       try {
         const { statement, csvRows, movements } = await this.build(r.professionalProfileId, month);
         if (movements === 0) continue;
-        const who = r.businessName || [r.fiscalFirstName, r.fiscalLastName].filter(Boolean).join(" ") || r.professionalProfile.businessName;
+        const who = professionalFiscalName(r, r.professionalProfile.businessName) ?? "";
         const email = renderEmail(accountantStatementEmail(who, statement));
         const ok = await this.emailService.send({
           to: r.accountantEmail!,
           subject: email.subject,
           html: email.html,
           text: email.text,
-          attachments: [{ filename: `estratto-${month}.csv`, content: statementCsv(csvRows), contentType: "text/csv; charset=utf-8" }],
+          attachments: [
+            { filename: `estratto-${month}.pdf`, content: await renderDocumentPdf(statementPdfModel(statement, who)), contentType: "application/pdf" },
+            { filename: `estratto-${month}.csv`, content: statementCsv(csvRows), contentType: "text/csv; charset=utf-8" },
+          ],
         });
         if (ok) sent += 1;
       } catch (err) {
@@ -279,7 +301,7 @@ export function accountantStatementEmail(who: string, statement: MonthlyStatemen
     greeting: null,
     title: `Estratto di ${statement.monthLabel}`,
     paragraphs: [
-      `Le mandiamo l'estratto di **${statement.monthLabel}** di **${who}**, come ci ha chiesto. In allegato il foglio di calcolo con ogni movimento.`,
+      `Le mandiamo l'estratto di **${statement.monthLabel}** di **${who}**, come ci ha chiesto. In allegato l'estratto in PDF e il foglio di calcolo con ogni movimento.`,
       statement.feeInvoice ? `La fattura delle nostre trattenute è la ${statement.feeInvoice.number}.` : "Le fatture elettroniche arrivano anche al cassetto fiscale del professionista.",
     ],
     details: [

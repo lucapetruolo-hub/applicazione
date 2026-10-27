@@ -1,10 +1,12 @@
 import { Body, Controller, Get, Param, Put, Req, UseGuards } from "@nestjs/common";
-import { accountantSettingsSchema, type AccountantSettingsInput } from "@professionisti/shared";
+import { accountantSettingsSchema, courtesyNumberSchema, type AccountantSettingsInput, type CourtesyNumberInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { InvoicesService } from "./invoices.service";
 import { StatementsService } from "./statements.service";
 import { CourtesyCopyService } from "./courtesy-copy.service";
+import { pdfResponse, renderDocumentPdf } from "./document-pdf";
+import { courtesyPdfModel, invoicePdfModel, pdfFileName } from "./document-pdf-models";
 
 /** Pagina "Fatture e documenti" del professionista (docs/CHANGELOG.md §372). */
 @Controller("documents")
@@ -32,6 +34,12 @@ export class AccountingController {
     return this.invoicesService.xmlForProfessional(req.user.userId, id);
   }
 
+  @Get("invoices/:id/pdf")
+  async invoicePdf(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    const invoice = await this.invoicesService.invoiceForProfessional(req.user.userId, id);
+    return pdfResponse(await renderDocumentPdf(invoicePdfModel(invoice)), pdfFileName(`${invoice.creditNote ? "nota-di-credito" : "fattura"}-${invoice.number}`));
+  }
+
   @Get("statements/:month")
   statement(@Req() req: AuthenticatedRequest, @Param("month") month: string) {
     return this.statementsService.statementFor(req.user.userId, month);
@@ -40,6 +48,12 @@ export class AccountingController {
   @Get("statements/:month/csv")
   statementCsv(@Req() req: AuthenticatedRequest, @Param("month") month: string) {
     return this.statementsService.csvFor(req.user.userId, month);
+  }
+
+  @Get("statements/:month/pdf")
+  async statementPdf(@Req() req: AuthenticatedRequest, @Param("month") month: string) {
+    const { fileName, pdf } = await this.statementsService.pdfFor(req.user.userId, month);
+    return pdfResponse(pdf, fileName);
   }
 
   @Put("accountant")
@@ -51,5 +65,18 @@ export class AccountingController {
   @Get("courtesy/:bookingId")
   courtesy(@Req() req: AuthenticatedRequest, @Param("bookingId") bookingId: string) {
     return this.courtesyCopyService.forProfessional(req.user.userId, bookingId);
+  }
+
+  /** Il numero della sua fattura, da riportare sulla copia (la ricevuta lo ha già da noi). */
+  @Put("courtesy/:bookingId/number")
+  courtesyNumber(@Req() req: AuthenticatedRequest, @Param("bookingId") bookingId: string, @Body(new ZodValidationPipe(courtesyNumberSchema)) body: CourtesyNumberInput) {
+    return this.courtesyCopyService.setOwnNumber(req.user.userId, bookingId, body);
+  }
+
+  @Get("courtesy/:bookingId/pdf")
+  async courtesyPdf(@Req() req: AuthenticatedRequest, @Param("bookingId") bookingId: string) {
+    const copy = await this.courtesyCopyService.forProfessional(req.user.userId, bookingId);
+    const base = copy.kind === "RECEIPT" ? `ricevuta-${copy.number ?? ""}` : `fattura-cortesia-${copy.number ?? copy.date.slice(0, 10)}`;
+    return pdfResponse(await renderDocumentPdf(courtesyPdfModel(copy)), pdfFileName(base));
   }
 }

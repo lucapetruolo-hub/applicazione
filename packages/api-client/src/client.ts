@@ -106,6 +106,7 @@ import type {
   ClientInvoiceRequestView,
   AccountantSettingsInput,
   CourtesyCopyView,
+  CourtesyNumberInput,
   DocumentsOverview,
   MonthlyStatement,
   PlatformInvoiceAdminRow,
@@ -113,6 +114,7 @@ import type {
   PlatformInvoiceSettingsView,
   PlatformInvoiceView,
   FeeReconciliation,
+  SdiSandboxTestResult,
 } from "@professionisti/shared";
 
 export type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW";
@@ -987,6 +989,16 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
     return body as T;
   }
 
+  /** Un file fatto dal server (i PDF dei documenti, docs/CHANGELOG.md §374), da salvare col browser. */
+  async function downloadFile(path: string, token: string): Promise<Blob> {
+    const response = await fetch(`${baseUrl}${path}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+    if (!response.ok) {
+      const body = await response.json().catch(() => null);
+      throw new ApiError(extractErrorMessage(body, "Non riusciamo a preparare il PDF: riprova tra poco."), response.status, extractErrorCode(body));
+    }
+    return response.blob();
+  }
+
   async function uploadFile<T>(path: string, token: string, file: Blob, fieldName: string): Promise<T> {
     const formData = new FormData();
     formData.append(fieldName, file);
@@ -1501,17 +1513,27 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
     documentsInvoiceXml: (token: string, id: string) =>
       request<{ fileName: string; xml: string }>(`/documents/invoices/${encodeURIComponent(id)}/xml`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
+    documentsInvoicePdf: (token: string, id: string) => downloadFile(`/documents/invoices/${encodeURIComponent(id)}/pdf`, token),
+
     documentsStatement: (token: string, month: string) =>
       request<MonthlyStatement>(`/documents/statements/${encodeURIComponent(month)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     documentsStatementCsv: (token: string, month: string) =>
       request<{ fileName: string; csv: string }>(`/documents/statements/${encodeURIComponent(month)}/csv`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
+    documentsStatementPdf: (token: string, month: string) => downloadFile(`/documents/statements/${encodeURIComponent(month)}/pdf`, token),
+
     updateAccountant: (token: string, input: AccountantSettingsInput) =>
       request<{ email: string | null; enabled: boolean }>("/documents/accountant", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
 
     courtesyCopy: (token: string, bookingId: string) =>
       request<CourtesyCopyView>(`/documents/courtesy/${encodeURIComponent(bookingId)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    /** Il numero della fattura del professionista sulla copia di cortesia (docs/CHANGELOG.md §374). */
+    setCourtesyNumber: (token: string, bookingId: string, input: CourtesyNumberInput) =>
+      request<CourtesyCopyView>(`/documents/courtesy/${encodeURIComponent(bookingId)}/number`, { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
+    courtesyCopyPdf: (token: string, bookingId: string) => downloadFile(`/documents/courtesy/${encodeURIComponent(bookingId)}/pdf`, token),
 
     // --- Admin → Finanza: le nostre fatture ---
     adminInvoiceSettings: (token: string) =>
@@ -1534,6 +1556,10 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
 
     adminFeeReconciliation: (token: string, month: string) =>
       request<FeeReconciliation>(`/admin/invoices/reconciliation/${encodeURIComponent(month)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    /** Prova d'invio allo SdI nella prova di Openapi (docs/CHANGELOG.md §374). */
+    adminSdiSandboxTest: (token: string) =>
+      request<SdiSandboxTestResult>("/admin/invoices/sdi-test", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
     adminResendInvoice: (token: string, id: string) =>
       request<PlatformInvoiceAdminRow>(`/admin/invoices/${encodeURIComponent(id)}/resend`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
@@ -2239,6 +2265,8 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
 
     myDac7Summary: (token: string) =>
       request<{ years: Dac7YearSummary[]; maskedIban: string | null }>("/professionals/me/dac7", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    myDac7Pdf: (token: string, year: number) => downloadFile(`/professionals/me/dac7/${year}/pdf`, token),
 
     adminFiscalProfile: (token: string, professionalProfileId: string) =>
       request<AdminFiscalView>(`/admin/professionals/${professionalProfileId}/fiscal`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),

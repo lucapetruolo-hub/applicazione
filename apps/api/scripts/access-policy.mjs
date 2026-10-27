@@ -166,6 +166,7 @@ const externalJob = { kind: "owned", owners: ["proA"], params: (f) => ({ id: f.e
 const invoice = { kind: "owned", owners: ["proA"], strangers: ["clientA", "clientB", "proB"], params: (f) => ({ id: f.invoiceA }) };
 // Estratto di un mese: dati di chi chiama, il mese non è di nessuno.
 const statement = { kind: "self", role: "professional", params: () => ({ month: "2026-09" }) };
+const courtesy = { kind: "owned", owners: ["proA"], strangers: ["clientA", "clientB", "proB"], params: (f) => ({ bookingId: f.bookingA }) };
 
 const owned = {
   "DELETE /bookings/:id": booking(),
@@ -200,7 +201,10 @@ const owned = {
   // Le nostre fatture al professionista e la copia di cortesia del suo documento: solo lui (§372).
   "GET /documents/invoices/:id": invoice,
   "GET /documents/invoices/:id/xml": invoice,
-  "GET /documents/courtesy/:bookingId": { kind: "owned", owners: ["proA"], strangers: ["clientA", "clientB", "proB"], params: (f) => ({ bookingId: f.bookingA }) },
+  "GET /documents/invoices/:id/pdf": invoice,
+  "GET /documents/courtesy/:bookingId": courtesy,
+  "GET /documents/courtesy/:bookingId/pdf": courtesy,
+  "PUT /documents/courtesy/:bookingId/number": courtesy,
 
   "DELETE /external-jobs/:id": externalJob,
   "PATCH /external-jobs/:id": externalJob,
@@ -273,6 +277,8 @@ export const POLICY = {
   ...Object.fromEntries(selfAdmin.map((key) => [key, { kind: "self", role: "admin" }])),
   "GET /documents/statements/:month": statement,
   "GET /documents/statements/:month/csv": statement,
+  "GET /documents/statements/:month/pdf": statement,
+  "GET /professionals/me/dac7/:year/pdf": { kind: "self", role: "professional", params: () => ({ year: "2026" }) },
   ...owned,
 };
 

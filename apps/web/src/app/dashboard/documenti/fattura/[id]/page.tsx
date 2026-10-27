@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
-  INVOICE_SOURCE_LABEL,
   accountingMonthLabel,
   platformInvoiceNote,
   platformInvoiceOriginalNote,
+  platformInvoiceSubtitle,
+  platformInvoiceTechnicalNotes,
   type PlatformInvoiceLine,
   type PlatformInvoiceView,
 } from "@professionisti/shared";
@@ -16,15 +17,7 @@ import { LearnMore } from "@/components/LearnMore";
 import { downloadTextFile } from "@/components/admin/adminUi";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { AmountRow, BigTotal, DocumentPage, GroupHeading, LoadingDocument, NoteBox, PartyBoxes, documentDate, eur } from "../../_components/DocumentParts";
-
-function subtitleOf(invoice: PlatformInvoiceView): string {
-  if (invoice.source === "JOB_FEES") {
-    const month = invoice.periodMonth ? accountingMonthLabel(invoice.periodMonth) : "";
-    return invoice.creditNote ? `Trattenute restituite di ${month}.` : `Trattenute sui pagamenti online di ${month}.`;
-  }
-  return `${INVOICE_SOURCE_LABEL[invoice.source]}, del ${documentDate(invoice.issuedAt)}.`;
-}
+import { AmountRow, BigTotal, DocumentPage, GroupHeading, LoadingDocument, NoteBox, PartyBoxes, PdfButton, eur } from "../../_components/DocumentParts";
 
 /** Righe raggruppate per lavoro, nell'ordine in cui arrivano. */
 function groupLines(lines: PlatformInvoiceLine[]): { group: string | null; lines: PlatformInvoiceLine[] }[] {
@@ -41,8 +34,8 @@ function groupLines(lines: PlatformInvoiceLine[]): { group: string | null; lines
 /**
  * Una nostra fattura al professionista (docs/CHANGELOG.md §372), come
  * nell'anteprima approvata: totale in cima, "Da" e "Per", righe per lavoro,
- * imponibile e IVA. "Scarica PDF" stampa la pagina, "Scarica XML" dà la
- * fattura elettronica per il commercialista.
+ * imponibile e IVA. "Scarica PDF" lo prepara il server (§374), "Scarica
+ * XML" dà la fattura elettronica per il commercialista.
  */
 export default function InvoicePage() {
   const { id } = useParams<{ id: string }>();
@@ -90,7 +83,7 @@ export default function InvoicePage() {
   const hasRecipientCode = invoice.recipient.lines.some((line) => line.startsWith("Codice destinatario") || line.startsWith("PEC"));
 
   return (
-    <DocumentPage back={back} title={`${invoice.creditNote ? "Nota di credito" : "Fattura"} n. ${invoice.number}`} subtitle={subtitleOf(invoice)}>
+    <DocumentPage back={back} title={`${invoice.creditNote ? "Nota di credito" : "Fattura"} n. ${invoice.number}`} subtitle={platformInvoiceSubtitle(invoice)}>
       <BigTotal
         label={invoice.creditNote ? "Totale restituito" : jobFees ? "Totale trattenuto" : "Totale pagato"}
         value={eur(invoice.totalEurCents)}
@@ -148,13 +141,11 @@ export default function InvoicePage() {
 
       <YStack gap="$2" borderTopWidth={1} borderColor={brand.filetto} paddingTop="$3">
         <LearnMore fontSize={16} summary="Dati per il commercialista">
-          <Text fontSize={16} color={brand.grafite70}>
-            Tipo di documento: {invoice.creditNote ? "TD04, nota di credito" : jobFees ? "TD24, fattura differita del mese" : "TD01, fattura"}
-            {invoice.relatedNumber ? `, collegata alla fattura ${invoice.relatedNumber}` : ""}.
-          </Text>
-          <Text fontSize={16} color={brand.grafite70}>
-            Pagamento: {jobFees ? "trattenuto dagli incassi dei pagamenti online (MP22)" : "carta (MP08)"}. Data: {documentDate(invoice.issuedAt)}.
-          </Text>
+          {platformInvoiceTechnicalNotes(invoice).map((line) => (
+            <Text key={line} fontSize={16} color={brand.grafite70}>
+              {line}
+            </Text>
+          ))}
         </LearnMore>
         <Text fontSize={16} color={brand.grafite70}>
           {platformInvoiceOriginalNote(hasRecipientCode)}
@@ -164,7 +155,7 @@ export default function InvoicePage() {
       <div data-print-hide>
         <YStack gap="$2">
           <XStack gap="$3" flexWrap="wrap">
-            <Button onPress={() => window.print()}>Scarica PDF</Button>
+            <PdfButton load={() => apiClient.documentsInvoicePdf(token ?? "", invoice.id)} fileName={`${invoice.creditNote ? "nota-di-credito" : "fattura"}-${invoice.number.replace(/\//g, "-")}.pdf`} />
             <Button variant="secondary" onPress={() => void downloadXml()}>
               Scarica XML
             </Button>

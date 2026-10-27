@@ -229,6 +229,11 @@ export function accountingMonthLabel(month: string): string {
   return `${MONTHS_IT[Number(match[2]) - 1] ?? match[2]} ${match[1]}`;
 }
 
+/** "2026-10-31T…" → "31 ottobre 2026", all'ora di Roma (pagine dei documenti e PDF). */
+export function accountingDateLabel(iso: string): string {
+  return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Rome" });
+}
+
 /** Mese valido nell'indirizzo (AAAA-MM). */
 export function isAccountingMonth(value: string): boolean {
   return /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
@@ -273,6 +278,24 @@ export function platformInvoiceNote(invoice: Pick<PlatformInvoiceView, "source" 
   if (invoice.vatRecoverable === false) return `${paid} Senza partita IVA, o nel regime forfettario, l'IVA è un costo: non si recupera.`;
   if (invoice.vatRecoverable === true) return `${paid} L'IVA la recuperi nella tua dichiarazione IVA.`;
   return paid;
+}
+
+/** Riga sotto il titolo di una nostra fattura: di cosa è e di quando. */
+export function platformInvoiceSubtitle(invoice: Pick<PlatformInvoiceView, "source" | "creditNote" | "periodMonth" | "issuedAt">): string {
+  if (invoice.source === "JOB_FEES") {
+    const month = invoice.periodMonth ? accountingMonthLabel(invoice.periodMonth) : "";
+    return invoice.creditNote ? `Trattenute restituite di ${month}.` : `Trattenute sui pagamenti online di ${month}.`;
+  }
+  return `${INVOICE_SOURCE_LABEL[invoice.source]}, del ${accountingDateLabel(invoice.issuedAt)}.`;
+}
+
+/** "Dati per il commercialista": tipo di documento, pagamento e data. */
+export function platformInvoiceTechnicalNotes(invoice: Pick<PlatformInvoiceView, "source" | "creditNote" | "relatedNumber" | "issuedAt">): string[] {
+  const jobFees = invoice.source === "JOB_FEES";
+  return [
+    `Tipo di documento: ${invoice.creditNote ? "TD04, nota di credito" : jobFees ? "TD24, fattura differita del mese" : "TD01, fattura"}${invoice.relatedNumber ? `, collegata alla fattura ${invoice.relatedNumber}` : ""}.`,
+    `Pagamento: ${jobFees ? "trattenuto dagli incassi dei pagamenti online (MP22)" : "carta (MP08)"}. Data: ${accountingDateLabel(invoice.issuedAt)}.`,
+  ];
 }
 
 /** Dove trova l'originale elettronico. */
@@ -401,7 +424,15 @@ export const platformInvoiceSettingsSchema = z.object({
 });
 export type PlatformInvoiceSettingsInput = z.infer<typeof platformInvoiceSettingsSchema>;
 
-export type PlatformInvoiceSettingsView = Partial<Record<keyof PlatformInvoiceSettingsInput, string | null>> & { ready: boolean; sdiConfigured: boolean };
+export type PlatformInvoiceSettingsView = Partial<Record<keyof PlatformInvoiceSettingsInput, string | null>> & {
+  ready: boolean;
+  sdiConfigured: boolean;
+  /** Openapi nell'ambiente di prova (`OPENAPI_SANDBOX=true`): si può fare la prova d'invio (§374). */
+  sdiSandbox: boolean;
+};
+
+/** Prova d'invio allo SdI nella prova di Openapi, passo per passo (Admin → Finanza, docs/CHANGELOG.md §374). */
+export type SdiSandboxTestResult = { ok: boolean; steps: { label: string; ok: boolean; detail: string | null }[] };
 
 // --- Mesi gratuiti: riepilogo a 0 € (non è una fattura) ----------------------
 // Decisione dell'utente del 27/10/2026 (docs/CHANGELOG.md §372): un
@@ -479,7 +510,24 @@ export type CourtesyCopyView = {
   notes: string[];
   /** Il cliente ha chiesto la fattura con i suoi dati. */
   invoiceRequested: boolean;
+  /**
+   * Numero del documento (docs/CHANGELOG.md §374): per la ricevuta il nostro
+   * progressivo dell'anno ("4/2026"), per la fattura quello che il
+   * professionista ha scritto (null finché non lo scrive).
+   */
+  number: string | null;
 };
+
+/** Numero della fattura scritto dal professionista sulla copia di cortesia (vuoto per toglierlo). */
+export const courtesyNumberSchema = z.object({
+  number: z.string().trim().max(30, "Il numero può avere al massimo 30 caratteri.").optional(),
+});
+export type CourtesyNumberInput = z.infer<typeof courtesyNumberSchema>;
+
+/** Numero della ricevuta come si scrive sul documento: "4/2026". */
+export function courtesyReceiptNumber(number: number, year: number): string {
+  return `${number}/${year}`;
+}
 
 /** Sopra questa cifra, senza IVA, serve la marca da bollo da 2 €. */
 export const STAMP_DUTY_THRESHOLD_EUR_CENTS = 7747;

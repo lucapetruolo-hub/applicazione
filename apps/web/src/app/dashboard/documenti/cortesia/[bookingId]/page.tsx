@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import type { CourtesyCopyView } from "@professionisti/shared";
-import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Field, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { AmountRow, DocumentPage, LoadingDocument, NoteBox, PartyBoxes, eur } from "../../_components/DocumentParts";
+import { AmountRow, DocumentPage, LoadingDocument, NoteBox, PartyBoxes, PdfButton, eur } from "../../_components/DocumentParts";
 
 function day(iso: string): string {
   return new Date(iso).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Europe/Rome" });
@@ -16,24 +16,36 @@ function day(iso: string): string {
  * Copia di cortesia del documento del lavoro (decisione dell'utente del
  * 27/10/2026, docs/CHANGELOG.md §372): la fattura vera la fa il
  * professionista col suo programma, la ricevuta per prestazione occasionale
- * la firma lui. Noi non mandiamo nulla all'Agenzia delle Entrate.
+ * la firma lui. Noi non mandiamo nulla all'Agenzia delle Entrate. Il numero
+ * della ricevuta lo diamo noi, quello della fattura lo scrive lui e lo
+ * teniamo per la prossima volta (§374).
  */
 export default function CourtesyCopyPage() {
   const { bookingId } = useParams<{ bookingId: string }>();
   const { token } = useAuth();
   const [copy, setCopy] = useState<CourtesyCopyView | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+  const [ownNumber, setOwnNumber] = useState("");
 
   useEffect(() => {
     if (!token || !bookingId) return;
     apiClient
       .courtesyCopy(token, bookingId)
-      .then(setCopy)
+      .then((result) => {
+        setCopy(result);
+        if (result.kind === "INVOICE") setOwnNumber(result.number ?? "");
+      })
       .catch((e) => {
         setCopy(null);
         setError(e instanceof Error ? e.message : "Non riusciamo a preparare il documento.");
       });
   }, [token, bookingId]);
+
+  /** Prima del PDF salva il numero della fattura, se è cambiato. */
+  async function saveNumber() {
+    if (!token || !copy || copy.kind !== "INVOICE" || ownNumber.trim() === (copy.number ?? "")) return;
+    setCopy(await apiClient.setCourtesyNumber(token, bookingId, { number: ownNumber.trim() }));
+  }
 
   const back = { href: "/dashboard/richieste", label: "Richieste" };
   if (copy === undefined) return <LoadingDocument />;
@@ -54,7 +66,7 @@ export default function CourtesyCopyPage() {
         <NoteBox>
           <Text fontSize={16} color={brand.grafite}>
             {receipt
-              ? "Stampala, scrivi il numero, firmala e dalla al cliente. Tienine una copia per te."
+              ? "Stampala, firmala e dalla al cliente. Tienine una copia per te. Il numero lo diamo noi, uno dopo l'altro ogni anno."
               : "La fattura vera la fai tu col tuo programma delle fatture, con il tuo numero: questa è la copia da dare al cliente. Noi non mandiamo nulla all'Agenzia delle Entrate."}
           </Text>
           {copy.vat ? (
@@ -68,11 +80,23 @@ export default function CourtesyCopyPage() {
             </Text>
           ) : null}
         </NoteBox>
+        {receipt ? null : (
+          <YStack paddingTop="$3" maxWidth={320}>
+            <Field
+              label="Numero della tua fattura"
+              accessibilityLabel="Numero della tua fattura"
+              value={ownNumber}
+              onChangeText={setOwnNumber}
+              maxLength={30}
+              autoComplete="off"
+            />
+          </YStack>
+        )}
       </div>
 
       <XStack justifyContent="space-between" gap="$3" flexWrap="wrap">
         <Text fontSize={16} color={brand.grafite}>
-          Numero: ______
+          Numero: {(receipt ? copy.number : ownNumber.trim()) || "______"}
         </Text>
         <Text fontSize={16} color={brand.grafite}>
           Data: {day(copy.date)}
@@ -119,9 +143,11 @@ export default function CourtesyCopyPage() {
       )}
 
       <div data-print-hide>
-        <Button alignSelf="flex-start" onPress={() => window.print()}>
-          Stampa o salva in PDF
-        </Button>
+        <PdfButton
+          before={saveNumber}
+          load={() => apiClient.courtesyCopyPdf(token ?? "", bookingId)}
+          fileName={receipt ? `ricevuta-${(copy.number ?? "").replace(/\//g, "-")}.pdf` : `fattura-cortesia-${(ownNumber.trim() || day(copy.date)).replace(/[^\w-]+/g, "-")}.pdf`}
+        />
       </div>
     </DocumentPage>
   );

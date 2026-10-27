@@ -10,6 +10,7 @@ import {
   type PlatformInvoiceAdminRow,
   type PlatformInvoiceSettingsInput,
   type PlatformInvoiceSettingsView,
+  type SdiSandboxTestResult,
 } from "@professionisti/shared";
 import { Button, Field, H2, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -71,6 +72,7 @@ export function AdminInvoicesSection({ token }: { token: string }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [reconciliation, setReconciliation] = useState<FeeReconciliation | null>(null);
+  const [sdiTest, setSdiTest] = useState<SdiSandboxTestResult | null>(null);
 
   const load = useCallback(() => {
     apiClient
@@ -138,6 +140,19 @@ export function AdminInvoicesSection({ token }: { token: string }) {
     }
   }
 
+  async function runSdiTest() {
+    setPending(true);
+    setError(null);
+    setSdiTest(null);
+    try {
+      setSdiTest(await apiClient.adminSdiSandboxTest(token));
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setPending(false);
+    }
+  }
+
   async function downloadXml(id: string) {
     try {
       const file = await apiClient.adminInvoiceXml(token, id);
@@ -163,8 +178,23 @@ export function AdminInvoicesSection({ token }: { token: string }) {
       {settings ? (
         <Text color={brand.grafite70}>
           {settings.ready ? "Dati della società completi: le fatture partono." : "Mancano i dati della società: per ora i professionisti vedono solo gli estratti."}{" "}
-          {settings.sdiConfigured ? "Invio allo SdI con Openapi attivo." : "Invio allo SdI spento (manca OPENAPI_TOKEN_SDI su Render): scarica l'XML e caricalo a mano."}
+          {settings.sdiConfigured
+            ? settings.sdiSandbox
+              ? "Invio allo SdI con Openapi nella prova (OPENAPI_SANDBOX=true): niente arriva davvero all'Agenzia."
+              : "Invio allo SdI con Openapi attivo."
+            : "Invio allo SdI spento (manca OPENAPI_TOKEN_SDI su Render): scarica l'XML e caricalo a mano."}
         </Text>
+      ) : null}
+      {settings?.sdiSandbox ? (
+        <YStack gap="$2">
+          <Button alignSelf="flex-start" variant="secondary" disabled={pending} opacity={pending ? 0.6 : 1} onPress={() => void runSdiTest()}>
+            Prova l&apos;invio allo SdI
+          </Button>
+          <Text fontSize={13} color={brand.grafite70}>
+            Manda a Openapi una fattura di prova da 1 € e legge l&apos;esito. Salva prima i dati della società, PEC compresa.
+          </Text>
+          {sdiTest ? <SdiTestBox result={sdiTest} /> : null}
+        </YStack>
       ) : null}
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       {message ? <Text color={brand.cianografiaScuro}>{message}</Text> : null}
@@ -267,6 +297,23 @@ export function AdminInvoicesSection({ token }: { token: string }) {
  * registro accanto a quelle che Stripe ha davvero incassato, e il costo vero
  * delle carte accanto alla nostra stima.
  */
+/** Esito della prova d'invio, passo per passo. */
+function SdiTestBox({ result }: { result: SdiSandboxTestResult }) {
+  return (
+    <YStack gap="$2" padding="$3" borderRadius={10} backgroundColor={result.ok ? brand.cianografiaVelo : brand.urgenzaVelo} role="status">
+      <Text fontWeight="800" color={brand.grafite}>
+        {result.ok ? "La prova è andata a buon fine." : "La prova si è fermata."}
+      </Text>
+      {result.steps.map((step) => (
+        <Text key={step.label} color={brand.grafite}>
+          {step.ok ? "✓" : "✗"} {step.label}
+          {step.detail ? `: ${step.detail}` : ""}
+        </Text>
+      ))}
+    </YStack>
+  );
+}
+
 function ReconciliationBox({ data }: { data: FeeReconciliation }) {
   const rows: [string, number, number | null][] = [
     ["Trattenute incassate", data.ledger.holdsEurCents, data.stripe?.applicationFeesEurCents ?? null],

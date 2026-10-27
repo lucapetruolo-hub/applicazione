@@ -8,7 +8,7 @@ import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { downloadTextFile } from "@/components/admin/adminUi";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { DocumentPage, LoadingDocument, NoteBox, eur } from "../../_components/DocumentParts";
+import { DocumentPage, LoadingDocument, NoteBox, PdfButton, eur } from "../../_components/DocumentParts";
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
@@ -189,9 +189,7 @@ export default function StatementPage() {
         <YStack gap="$2">
           <XStack gap="$3" flexWrap="wrap">
             <Button onPress={() => void downloadCsv()}>Scarica per il commercialista</Button>
-            <Button variant="secondary" onPress={() => window.print()}>
-              Scarica PDF
-            </Button>
+            <PdfButton variant="secondary" load={() => apiClient.documentsStatementPdf(token ?? "", statement.month)} fileName={`estratto-${statement.month}.pdf`} />
           </XStack>
           <Text fontSize={16} color={brand.grafite70}>
             Il file per il commercialista è un foglio di calcolo con una riga per movimento.

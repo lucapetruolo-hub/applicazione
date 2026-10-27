@@ -1308,16 +1308,43 @@ model Booking {
   client              User                @relation(fields: [clientId], references: [id], onDelete: Cascade)
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
 
-  issue      JobIssue?
-  review     Review?
+  issue            JobIssue?
+  review           Review?
   // Pagamento del lavoro (MANOVIA/DIRETTO, lordo/commissione/netto) — vedi
   // JobPayment in fondo a questo file. Nullable: una Booking creata prima
   // di questa funzionalità, o una diretta da agenda pubblica (bookAgendaSlot,
   // dormiente da CLAUDE.md §20), può non averne ancora una.
-  jobPayment JobPayment?
+  jobPayment       JobPayment?
+  // Copia di cortesia del documento dato al cliente (docs/CHANGELOG.md §374).
+  courtesyDocument CourtesyDocument?
 
   @@index([professionalProfileId, scheduledAt])
   @@map("bookings")
+}
+
+// Copia di cortesia del documento del lavoro (decisione dell'utente del
+// 27/10/2026, docs/CHANGELOG.md §374): il numero della ricevuta per
+// prestazione occasionale lo diamo noi, progressivo per professionista e
+// anno e sempre lo stesso per quel lavoro; per la fattura il professionista
+// scrive il numero del suo programma. Ci resta l'elenco dei documenti dati
+// ai clienti, utile per l'assistenza e le segnalazioni.
+model CourtesyDocument {
+  id                    String   @id @default(uuid())
+  bookingId             String   @unique
+  professionalProfileId String
+  kind                  String // INVOICE | RECEIPT (CourtesyCopyView in packages/shared)
+  year                  Int
+  /// Ricevute: il nostro progressivo dell'anno (1, 2, 3...).
+  number                Int?
+  /// Fatture: il numero del programma delle fatture del professionista.
+  ownNumber             String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@unique([professionalProfileId, year, number])
+  @@map("courtesy_documents")
 }
 
 // Voce dell'importo finale di un lavoro completato (richiesta esplicita

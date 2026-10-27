@@ -1,0 +1,229 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { pdfText, renderDocumentPdf } from "./document-pdf";
+import { courtesyPdfModel, dac7PdfModel, invoicePdfModel, pdfFileName, statementPdfModel } from "./document-pdf-models";
+import { sandboxTestInvoiceXml, sdiCompanyOf, type IssuerSnapshot } from "./invoice-documents";
+import { OpenapiSdiProvider, sdiOutcomeFromNotifications, sdiRejectionMessage } from "./sdi-provider";
+import { CourtesyCopyService } from "./courtesy-copy.service";
+
+// PDF, numero della copia di cortesia e invio allo SdI (docs/CHANGELOG.md §374).
+
+const issuer: IssuerSnapshot = {
+  companyName: "Professionisti S.r.l.",
+  vatNumber: "12345678903",
+  taxCode: null,
+  street: "Via Milano",
+  houseNumber: "2",
+  postalCode: "20100",
+  city: "Milano",
+  province: "MI",
+  country: "IT",
+  taxRegime: "RF01",
+  reaOffice: null,
+  reaNumber: null,
+  shareCapital: null,
+  pecEmail: "societa@pec.it",
+};
+
+const party = { name: "Mario Rossi", lines: ["Via Roma 1, 00100 Roma (RM)"] };
+
+describe("PDF dei documenti", () => {
+  it("i caratteri che il PDF non sa scrivere si sostituiscono", () => {
+    expect(pdfText("−12,00 € → fine")).toBe("-12,00 € -> fine");
+    expect(pdfText("Perché è così… «sì»")).toBe("Perché è così… «sì»");
+    expect(pdfText("Città ✓ ok")).toBe("Città  ok");
+  });
+
+  it("nome del file senza barre né spazi", () => {
+    expect(pdfFileName("fattura-COM/2026/0017")).toBe("fattura-COM-2026-0017.pdf");
+    expect(pdfFileName("ricevuta-4/2026")).toBe("ricevuta-4-2026.pdf");
+  });
+
+  it("fattura, estratto, copia di cortesia e DAC7 diventano PDF", async () => {
+    const invoice = invoicePdfModel({
+      id: "i",
+      number: "COM/2026/0017",
+      source: "JOB_FEES",
+      creditNote: false,
+      periodMonth: "2026-09",
+      issuedAt: "2026-09-30T10:00:00Z",
+      totalEurCents: 854,
+      sdiStatus: "SENT",
+      issuer: party,
+      recipient: { name: "Idraulica Rossi", lines: ["Codice destinatario ABC1234"] },
+      lines: [{ description: "Trattenuta sull'acconto", detail: null, group: "Idraulico, perdita", taxableEurCents: 700 }],
+      taxableEurCents: 700,
+      vatEurCents: 154,
+      roundingEurCents: 0,
+      vatRatePercent: 22,
+      relatedNumber: null,
+      vatRecoverable: true,
+      onlinePaidEurCents: 10000,
+    } as never);
+    expect(invoice.title).toBe("Fattura n. COM/2026/0017");
+    expect(JSON.stringify(invoice.blocks)).toContain("L'IVA la recuperi nella tua dichiarazione IVA.");
+
+    const statement = statementPdfModel(
+      {
+        month: "2026-09",
+        monthLabel: "settembre 2026",
+        totals: { onlineEurCents: 10000, directEurCents: 0, feesEurCents: 854, payoutsArrivedEurCents: 0 },
+        rows: [{ jobPaymentId: "j", date: "2026-09-12T10:00:00Z", job: "Idraulico, perdita", client: "Anna", onlineEurCents: 10000, directEurCents: 0, feesEurCents: 854, payoutEurCents: null, payoutNote: "In attesa della conferma del cliente" }],
+        blockedEurCents: 9146,
+        feeInvoice: null,
+        documentHint: "Per ogni pagamento ricordati di fare la fattura al cliente.",
+      },
+      "Idraulica Rossi",
+    );
+    expect(statement.subtitle).toContain("Idraulica Rossi");
+
+    const receipt = courtesyPdfModel({ kind: "RECEIPT", issuer: party, customer: party, date: "2026-10-20T10:00:00Z", description: "Pulizie", totalEurCents: 18000, vat: null, paidHow: null, notes: [], invoiceRequested: false, number: "4/2026" });
+    expect(JSON.stringify(receipt.blocks)).toContain("4/2026");
+    expect(receipt.blocks.some((b) => b.type === "signature")).toBe(true);
+
+    const dac7 = dac7PdfModel({ year: 2026, quarters: [{ quarter: 3, directEurCents: 1000, onlineEurCents: 0, feesEurCents: 0, jobs: 1 }], totalEurCents: 1000, submittedAt: null, notifiedAt: null }, null, "Mario Rossi", new Date("2026-10-27T10:00:00Z"));
+    expect(JSON.stringify(dac7.blocks)).toContain("Anno in corso");
+
+    for (const model of [invoice, statement, receipt, dac7]) {
+      const pdf = await renderDocumentPdf(model);
+      expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+      expect(pdf.length).toBeGreaterThan(1000);
+    }
+  });
+});
+
+describe("numero della copia di cortesia", () => {
+  function build(kind: "PRIVATE_INDIVIDUAL" | "SOLE_PROPRIETOR", saved: Record<string, unknown> | null, lastNumber: number | null) {
+    const prisma = {
+      booking: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: "b1",
+          professionalProfileId: "pro-1",
+          status: "COMPLETED",
+          professionalCompletedAt: new Date("2026-10-20T10:00:00Z"),
+          scheduledAt: new Date("2026-10-19T10:00:00Z"),
+          street: "Via Roma",
+          houseNumber: "1",
+          postalCode: "00100",
+          city: "Roma",
+          province: "RM",
+          client: { name: "Anna", surname: "Bianchi" },
+          jobPayment: null,
+          professionalProfile: { businessName: "Mario", fiscalProfile: { entityType: kind, fiscalFirstName: "Mario", fiscalLastName: "Rossi", chargesVat: false } },
+          quote: null,
+        }),
+      },
+      courtesyDocument: {
+        findUnique: vi.fn().mockResolvedValue(saved),
+        aggregate: vi.fn().mockResolvedValue({ _max: { number: lastNumber } }),
+        upsert: vi.fn().mockImplementation(({ create }) => Promise.resolve(create)),
+      },
+    };
+    const invoices = { profileIdOf: vi.fn().mockResolvedValue("pro-1") };
+    return { service: new CourtesyCopyService(prisma as never, invoices as never), prisma };
+  }
+
+  it("la prima ricevuta dell'anno prende il numero 1, la successiva il 4 dopo il 3", async () => {
+    const first = build("PRIVATE_INDIVIDUAL", null, null);
+    expect((await first.service.forProfessional("u1", "b1")).number).toBe("1/2026");
+    const next = build("PRIVATE_INDIVIDUAL", null, 3);
+    expect((await next.service.forProfessional("u1", "b1")).number).toBe("4/2026");
+    expect(next.prisma.courtesyDocument.upsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({ kind: "RECEIPT", year: 2026, number: 4 }) }));
+  });
+
+  it("riaprendo la stessa ricevuta il numero resta lo stesso", async () => {
+    const { service, prisma } = build("PRIVATE_INDIVIDUAL", { number: 2, year: 2026, ownNumber: null }, 9);
+    expect((await service.forProfessional("u1", "b1")).number).toBe("2/2026");
+    expect(prisma.courtesyDocument.upsert).not.toHaveBeenCalled();
+  });
+
+  it("due copie aperte insieme: chi perde il numero prende il successivo", async () => {
+    const { service, prisma } = build("PRIVATE_INDIVIDUAL", null, 3);
+    prisma.courtesyDocument.aggregate.mockResolvedValueOnce({ _max: { number: 3 } }).mockResolvedValueOnce({ _max: { number: 4 } });
+    prisma.courtesyDocument.upsert.mockRejectedValueOnce(Object.assign(new Error("unique"), { code: "P2002" }));
+    expect((await service.forProfessional("u1", "b1")).number).toBe("5/2026");
+  });
+
+  it("per la fattura il numero è quello del professionista, e si salva", async () => {
+    const { service, prisma } = build("SOLE_PROPRIETOR", null, null);
+    expect((await service.forProfessional("u1", "b1")).number).toBeNull();
+    expect(prisma.courtesyDocument.aggregate).not.toHaveBeenCalled();
+    expect((await service.setOwnNumber("u1", "b1", { number: " 12/A " })).number).toBe("12/A");
+    expect(prisma.courtesyDocument.upsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({ kind: "INVOICE", ownNumber: "12/A" }) }));
+  });
+});
+
+describe("invio allo SdI con Openapi", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  function stubFetch(responses: { status: number; body: unknown }[]) {
+    const calls: { url: string; init: RequestInit }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string, init: RequestInit) => {
+        calls.push({ url, init });
+        const next = responses.shift() ?? { status: 500, body: null };
+        return Promise.resolve(new Response(JSON.stringify(next.body), { status: next.status, headers: { "Content-Type": "application/json" } }));
+      }),
+    );
+    return calls;
+  }
+
+  it("motivo dello scarto, con uno o più errori", () => {
+    expect(sdiRejectionMessage({ lista_errori: { Errore: { Codice: "00305", Descrizione: "IdFiscaleIVA del cessionario non valido" } } })).toBe("00305: IdFiscaleIVA del cessionario non valido");
+    expect(sdiRejectionMessage({ lista_errori: { Errore: [{ Codice: "00400", Descrizione: "A" }, { Descrizione: "B" }] } })).toBe("00400: A; B");
+    expect(sdiRejectionMessage({})).toBeNull();
+  });
+
+  it("vale l'ultimo esito della fattura", () => {
+    const body = {
+      data: [
+        { type: "NS", created_at: "2026-10-01T10:00:00+00:00", message: { lista_errori: { Errore: { Codice: "00305", Descrizione: "X" } } } },
+        { type: "RC", created_at: "2026-10-02T10:00:00+00:00", message: {} },
+      ],
+    };
+    expect(sdiOutcomeFromNotifications("u1", body)).toEqual({ sdiId: "u1", status: "DELIVERED", message: null });
+    expect(sdiOutcomeFromNotifications("u1", { data: [body.data[0]] })).toEqual({ sdiId: "u1", status: "REJECTED", message: "00305: X" });
+    expect(sdiOutcomeFromNotifications("u1", { data: [] })).toBeNull();
+  });
+
+  it("registra la società una volta sola, poi manda l'XML e legge l'esito della fattura", async () => {
+    const calls = stubFetch([
+      { status: 404, body: { success: false, message: "Fiscal ID not found or not registered" } },
+      { status: 200, body: { success: true, data: { fiscal_id: "12345678903", active: true } } },
+      { status: 200, body: { success: true, data: { uuid: "abc-123" } } },
+      { status: 404, body: { success: false } },
+    ]);
+    const provider = new OpenapiSdiProvider("tok", true);
+    await provider.ensureRegistered(sdiCompanyOf(issuer));
+    await provider.ensureRegistered(sdiCompanyOf(issuer));
+    expect((await provider.send("<xml/>")).sdiId).toBe("abc-123");
+    expect(await provider.outcome("abc-123")).toBeNull();
+
+    expect(calls.map((c) => `${c.init.method} ${c.url}`)).toEqual([
+      "GET https://test.sdi.openapi.it/business_registry_configurations/12345678903",
+      "POST https://test.sdi.openapi.it/business_registry_configurations",
+      "POST https://test.sdi.openapi.it/invoices_legal_storage",
+      "GET https://test.sdi.openapi.it/invoices_notifications/abc-123",
+    ]);
+    expect(JSON.parse(String(calls[1]!.init.body))).toEqual({ fiscal_id: "12345678903", name: "Professionisti S.r.l.", email: "societa@pec.it", apply_signature: false, apply_legal_storage: true });
+    expect((calls[2]!.init.headers as Record<string, string>)["Content-Type"]).toBe("application/xml");
+  });
+
+  it("società sospesa e simulazione solo nella prova", async () => {
+    stubFetch([{ status: 200, body: { data: { active: false } } }]);
+    await expect(new OpenapiSdiProvider("tok", false).ensureRegistered(sdiCompanyOf(issuer))).rejects.toThrow("sospesa");
+    await expect(new OpenapiSdiProvider("tok", false).simulateOutcome("abc", "RC")).rejects.toThrow("solo nella prova");
+  });
+
+  it("senza PEC la società non si registra", () => {
+    expect(() => sdiCompanyOf({ ...issuer, pecEmail: null })).toThrow("PEC");
+  });
+
+  it("fattura di prova: cliente inventato, numero fuori dalle nostre serie", () => {
+    const xml = sandboxTestInvoiceXml(issuer, new Date("2026-10-27T10:00:00Z"));
+    expect(xml).toContain("<TipoDocumento>TD01</TipoDocumento>");
+    expect(xml).toContain("<CodiceFiscale>RSSMRA80A01H501U</CodiceFiscale>");
+    expect(xml).toMatch(/<Numero>PROVA-[0-9A-Z]+<\/Numero>/);
+    expect(xml).toContain("<ImportoTotaleDocumento>1.22</ImportoTotaleDocumento>");
+  });
+});

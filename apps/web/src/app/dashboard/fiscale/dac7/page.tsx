@@ -2,36 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { dac7AnnualDeadline, formatEurCents, type Dac7YearSummary } from "@professionisti/shared";
+import { DAC7_QUARTER_LABEL, accountingDateLabel, dac7YearStatus, formatEurCents, type Dac7YearSummary } from "@professionisti/shared";
 import { Badge, Button, EmptyState, Section, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { LearnMore } from "@/components/LearnMore";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-
-const QUARTER_LABEL: Record<1 | 2 | 3 | 4, string> = { 1: "Gen – Mar", 2: "Apr – Giu", 3: "Lug – Set", 4: "Ott – Dic" };
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" });
-}
-
-function yearStatus(summary: Dac7YearSummary): { variant: "verificato" | "nuovo" | "urgente"; label: string; detail: string } {
-  const currentYear = new Date().getFullYear();
-  if (summary.submittedAt) {
-    return {
-      variant: "verificato",
-      label: "Comunicato al fisco",
-      detail: `Inviato il ${formatDate(summary.submittedAt)}.`,
-    };
-  }
-  if (summary.year >= currentYear) {
-    return { variant: "nuovo", label: "Anno in corso", detail: "Si aggiorna ogni notte." };
-  }
-  return {
-    variant: "nuovo",
-    label: "In preparazione",
-    detail: `Da comunicare entro il ${formatDate(dac7AnnualDeadline(summary.year))}.`,
-  };
-}
+import { PdfButton } from "../../documenti/_components/DocumentParts";
 
 /**
  * Riepilogo DAC7 per il professionista (docs/CHANGELOG.md §246): cosa
@@ -63,7 +39,7 @@ export default function Dac7SummaryPage() {
   const hasOnline = summary?.quarters.some((q) => q.onlineEurCents > 0) ?? false;
 
   return (
-    // Stampabile come i documenti di "Fatture e documenti" (docs/CHANGELOG.md §372).
+    // Stampabile come i documenti di "Fatture e documenti" (docs/CHANGELOG.md §372); il PDF lo prepara il server (§374).
     <div className="print-document">
       <Section title="Riepilogo annuale dei compensi (DAC7)" maxWidth={760}>
         <YStack gap="$5">
@@ -128,14 +104,14 @@ export default function Dac7SummaryPage() {
                     <Text fontSize={16} fontWeight="700" color={brand.grafite70}>
                       Compensi {summary.year}
                     </Text>
-                    <Badge variant={yearStatus(summary).variant}>{yearStatus(summary).label}</Badge>
+                    <Badge variant={dac7YearStatus(summary).variant}>{dac7YearStatus(summary).label}</Badge>
                   </XStack>
                   <Text fontFamily="$heading" fontSize={32} fontWeight="800" color={brand.grafite}>
                     {formatEurCents(summary.totalEurCents)}
                   </Text>
                   <Text fontSize={16} color={brand.grafite70}>
-                    {yearStatus(summary).detail}
-                    {summary.notifiedAt ? ` Ti abbiamo inviato l'avviso il ${formatDate(summary.notifiedAt)}.` : ""}
+                    {dac7YearStatus(summary).detail}
+                    {summary.notifiedAt ? ` Ti abbiamo inviato l'avviso il ${accountingDateLabel(summary.notifiedAt)}.` : ""}
                   </Text>
                 </YStack>
               </Surface>
@@ -152,7 +128,7 @@ export default function Dac7SummaryPage() {
                             {q}° trimestre
                           </Text>
                           <Text fontSize={13} color={brand.grafite70}>
-                            {QUARTER_LABEL[q]}
+                            {DAC7_QUARTER_LABEL[q]}
                           </Text>
                         </XStack>
                         {empty ? (
@@ -191,9 +167,7 @@ export default function Dac7SummaryPage() {
               ) : null}
 
               <div data-print-hide>
-                <Button alignSelf="flex-start" variant="secondary" onPress={() => window.print()}>
-                  Scarica PDF
-                </Button>
+                <PdfButton variant="secondary" load={() => apiClient.myDac7Pdf(token ?? "", summary.year)} fileName={`riepilogo-dac7-${summary.year}.pdf`} />
               </div>
             </YStack>
           )}
