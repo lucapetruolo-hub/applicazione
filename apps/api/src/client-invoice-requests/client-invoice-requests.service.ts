@@ -66,7 +66,7 @@ function rowData(input: ClientInvoiceRequestInput) {
 
 /**
  * Fattura chiesta dal cliente al professionista (decisione dell'utente del
- * 27/10/2026, docs/CHANGELOG.md §374): la fa il professionista, noi gli
+ * 27/10/2026, docs/CHANGELOG.md §377): la fa il professionista, noi gli
  * passiamo i dati. Si chiede accettando il preventivo o dopo, dalla scheda
  * del lavoro. Il professionista la legge nell'avviso "Preventivo accettato"
  * e sulla scheda del lavoro, mai prima dell'accettazione (CLAUDE.md §5

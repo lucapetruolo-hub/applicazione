@@ -714,7 +714,7 @@ export class AuthService {
 
     // Dispositivi usati per l'accesso (§289): non servono più a nulla.
     await this.prisma.loginDevice.deleteMany({ where: { userId } });
-    // Dati per la fattura chiesti ai professionisti (docs/CHANGELOG.md §374):
+    // Dati per la fattura chiesti ai professionisti (docs/CHANGELOG.md §377):
     // il professionista li ha già ricevuti, qui non servono più.
     await this.prisma.clientInvoiceRequest.deleteMany({ where: { clientId: userId } });
     await this.prisma.user.update({

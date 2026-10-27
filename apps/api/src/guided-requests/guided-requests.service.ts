@@ -457,7 +457,7 @@ export class GuidedRequestsService {
             professionalProfile: { include: { fiscalProfile: { select: { stripePayoutsEnabled: true, entityType: true, chargesVat: true } } } },
             items: true,
             booking: { select: { status: true } },
-            // Fattura chiesta al professionista (docs/CHANGELOG.md §374).
+            // Fattura chiesta al professionista (docs/CHANGELOG.md §377).
             invoiceRequest: true,
           },
         },
@@ -585,7 +585,7 @@ export class GuidedRequestsService {
           reviews: reviewsOf(quote.professionalProfile),
           // Che tipo di lavoratore ha mandato il preventivo (richiesta dell'utente, §338).
           professionalKind: professionalKindOf(quote.professionalProfile.fiscalProfile?.entityType),
-          // "IVA inclusa" solo per chi la applica, altrimenti "Prezzo finale" (docs/CHANGELOG.md §374).
+          // "IVA inclusa" solo per chi la applica, altrimenti "Prezzo finale" (docs/CHANGELOG.md §377).
           chargesVat: professionalChargesVat(quote.professionalProfile.fiscalProfile?.entityType, quote.professionalProfile.fiscalProfile?.chargesVat),
           invoiceRequest: quote.invoiceRequest ? invoiceRequestView(quote.invoiceRequest) : null,
           items: quote.items.map((item) => ({

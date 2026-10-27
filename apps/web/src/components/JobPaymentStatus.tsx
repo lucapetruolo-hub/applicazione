@@ -256,7 +256,7 @@ export function JobPaymentStatus({
     if (payment.refundWaitingEurCents > 0) rows.push({ label: "Di cui in attesa di fondi", value: eur(payment.refundWaitingEurCents), muted: true });
     if (payment.balanceDirect && payment.directBalanceEurCents !== null) rows.push({ label: "Saldo che ti paga direttamente", value: eur(payment.directBalanceEurCents), muted: true });
     if (stage !== "REFUNDED" && payment.payoutEurCents !== undefined) {
-      // Trattenuta unica con l'IVA, commissioni Stripe comprese (§374); a parte solo sui pagamenti di prima.
+      // Trattenuta unica con l'IVA, commissioni Stripe comprese (§377); a parte solo sui pagamenti di prima.
       rows.push({ label: `Trattenuta ${BRAND.name} ${ONLINE_APP_FEE_PERCENT}% + IVA`, value: `−${eur(payment.appFeeEurCents ?? 0)}`, muted: true });
       if ((payment.stripeFeeEurCents ?? 0) > 0) rows.push({ label: "Commissione Stripe per il pagamento", value: `−${eur(payment.stripeFeeEurCents ?? 0)}`, muted: true });
       rows.push({ label: stage === "RELEASED" ? "Ti arriva in banca" : "Ti arriverà in banca", value: eur(payment.payoutEurCents), strong: true });
@@ -303,7 +303,7 @@ export function JobPaymentStatus({
         </YStack>
       ) : null}
 
-      {/* La ricevuta di Stripe non è un documento fiscale (docs/CHANGELOG.md §374). */}
+      {/* La ricevuta di Stripe non è un documento fiscale (docs/CHANGELOG.md §377). */}
       {audience === "client" && payment.paidEurCents > 0 ? (
         <Text fontSize={13} color={brand.grafite70} lineHeight={20}>
           La ricevuta del pagamento non è la fattura: il documento del lavoro te lo dà il professionista.

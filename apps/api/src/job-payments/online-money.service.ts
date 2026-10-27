@@ -42,7 +42,7 @@ function feeReturnLabel(reason: string): string {
   return "Trattenuta restituita";
 }
 
-/** Commissione di Stripe sulla contestazione, ribaddebitata con l'IVA (§374). */
+/** Commissione di Stripe sulla contestazione, ribaddebitata con l'IVA (§377). */
 function disputeFeeWithVatEurCents(dispute: Stripe.Dispute): number {
   const fee = (dispute.balance_transactions ?? []).reduce((sum, bt) => sum + Math.max(0, bt.fee), 0) || STRIPE_DISPUTE_FEE_EUR_CENTS;
   return fee + vatOnEurCents(fee);
@@ -112,7 +112,7 @@ function disputeOpen(jp: { stripeDisputeId: string | null; stripeDisputeStatus: 
  * in custodia sul conto della piattaforma (decisione del 14/10/2026). Così
  * Stripe prende rimborsi e contestazioni dal saldo del professionista, non
  * dal nostro; se va in negativo li preleva dalla sua banca. La piattaforma
- * trattiene la trattenuta unica con l'IVA come application fee (§374: carta
+ * trattiene la trattenuta unica con l'IVA come application fee (§377: carta
  * e bonifici di Stripe li paghiamo noi). I bonifici dal conto Stripe del
  * professionista alla sua banca sono manuali: i soldi restano bloccati lì
  * finché il cliente non conferma il lavoro o per 7 giorni dalla chiusura
@@ -487,7 +487,7 @@ export class OnlineMoneyService {
       where: { id: jp.id },
       data: {
         paidEurCents: paid,
-        // Il costo della carta è nostro, dentro la trattenuta unica (§374).
+        // Il costo della carta è nostro, dentro la trattenuta unica (§377).
         cardFeeEurCents: { increment: charge.fee },
         onlineStage: stage,
         status: "PENDING",
@@ -504,7 +504,7 @@ export class OnlineMoneyService {
         ...(part === "deposit" ? { stripePaymentIntentId: paymentIntentId, depositPaidAt: new Date() } : { balancePaymentIntentId: paymentIntentId, balancePaidAt: new Date() }),
       },
     });
-    // Dal §374 la trattenuta è già quella definitiva: va nell'estratto e
+    // Dal §377 la trattenuta è già quella definitiva: va nell'estratto e
     // nella fattura del mese del professionista.
     if (charge.destination) {
       await this.recordFeeEntry(jp.id, jp.booking.professionalProfileId, "HOLD", charge.applicationFeeAmount, part === "deposit" ? "Acconto online" : "Saldo online", `HOLD:${paymentIntentId}`, amount, charge.fee);
@@ -548,7 +548,7 @@ export class OnlineMoneyService {
     let held = 0;
     if (charge.destination) {
       // I soldi sono già sul conto del professionista: la piattaforma tiene
-      // la trattenuta unica (§374) e il resto parte subito verso la banca.
+      // la trattenuta unica (§377) e il resto parte subito verso la banca.
       await this.prisma.jobPayment.update({
         where: { id: jp.id },
         data: { balancePaymentIntentId: paymentIntentId, applicationFeeEurCents: { increment: charge.applicationFeeAmount } },
@@ -920,7 +920,7 @@ export class OnlineMoneyService {
       let takenByStripe = 0;
       if (destinationModel) {
         // Il professionista ha già tutto sul suo conto meno la trattenuta: la
-        // piattaforma tiene la trattenuta unica (§374) e restituisce il resto.
+        // piattaforma tiene la trattenuta unica (§377) e restituisce il resto.
         // Se la trattenuta fosse più bassa (regola di commissione più alta
         // del 7%), la differenza resta a carico della piattaforma.
         const fresh = await this.prisma.jobPayment.findUniqueOrThrow({ where: { id: jp.id } });
@@ -941,7 +941,7 @@ export class OnlineMoneyService {
         }
         // Prima del bonifico si riprende (§267) quanto il professionista ci
         // deve per lavori precedenti (rimborsi o contestazioni dopo il
-        // bonifico). I costi dei bonifici di Stripe sono nostri (§374).
+        // bonifico). I costi dei bonifici di Stripe sono nostri (§377).
         const debts = await this.professionalDebts(booking.professionalProfile.id);
         const toTake = Math.min(
           debts.reduce((sum, d) => sum + d.professionalDebtEurCents, 0),
@@ -1402,7 +1402,7 @@ export class OnlineMoneyService {
     const early = jp.disputeRecoveredEurCents;
     const fault = PROFESSIONAL_FAULT_DISPUTE_REASONS.includes(dispute.reason);
     let debt = 0;
-    // Costi ribaddebitati con l'IVA (§374): vanno anche nella fattura del mese.
+    // Costi ribaddebitati con l'IVA (§377): vanno anche nella fattura del mese.
     let costs = 0;
     if (jp.stripeDirectCharge) {
       await this.prisma.jobPayment.update({ where: { id: jp.id }, data: { disputeRecoveredEurCents: 0 } });
@@ -1449,7 +1449,7 @@ export class OnlineMoneyService {
   /**
    * Quello che la piattaforma rimetterebbe su una cifra rimborsata o persa
    * (la trattenuta unica, che copre anche la carta che Stripe non
-   * restituisce e resta a noi: decisioni dell'utente, §267 e §374), da
+   * restituisce e resta a noi: decisioni dell'utente, §267 e §377), da
    * mettere a carico del professionista quando è colpa sua.
    */
   private faultCostsEurCents(
@@ -1627,7 +1627,7 @@ export class OnlineMoneyService {
     if (amount <= 0) return 0;
     const faultCosts = opts.professionalFault && jp.stripeDestinationAccountId ? this.faultCostsEurCents(jp, amount) : 0;
     // Prima dello sblocco è la trattenuta che resta a noi (un costo con l'IVA,
-    // §374); dopo è la sua parte del rimborso.
+    // §377); dopo è la sua parte del rimborso.
     let costs = jp.releasedAt ? 0 : faultCosts;
     let debt = jp.releasedAt ? faultCosts : 0;
     let feeToReturn = 0;
@@ -1813,7 +1813,7 @@ export class OnlineMoneyService {
 
   /**
    * Movimento della trattenuta per l'estratto e la fattura del mese del
-   * professionista (§374), con l'IVA dentro: positivo trattenuto, negativo
+   * professionista (§377), con l'IVA dentro: positivo trattenuto, negativo
    * restituito. Idempotente su `dedupeKey`. Un errore qui non ferma mai il
    * flusso dei soldi: lo segnala la quadratura mensile.
    */
@@ -1845,12 +1845,12 @@ export class OnlineMoneyService {
     }
   }
 
-  /** Costi messi a carico del professionista, con l'IVA (§374). */
+  /** Costi messi a carico del professionista, con l'IVA (§377). */
   private async chargeCosts(jobPaymentId: string, costsEurCents: number, description: string, dedupeKey: string): Promise<void> {
     if (costsEurCents > 0) await this.recordFeeEntry(jobPaymentId, null, "COSTS", costsEurCents, description, dedupeKey);
   }
 
-  /** Ricavo della piattaforma su un lavoro, IVA esclusa (§374: l'IVA va allo Stato). */
+  /** Ricavo della piattaforma su un lavoro, IVA esclusa (§377: l'IVA va allo Stato). */
   private async recordRevenue(jobPaymentId: string, professionalProfileId: string, feeWithVatEurCents: number): Promise<void> {
     await this.prisma.manoviaRevenue.create({
       data: { source: "JOB_COMMISSION", amountEurCents: splitVatEurCents(Math.max(0, feeWithVatEurCents)).taxableEurCents, jobPaymentId, professionalProfileId },

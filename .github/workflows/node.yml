@@ -2,8 +2,10 @@ name: Versione di Node
 
 # Node.js non è una libreria: Dependabot e osv-scanner non lo vedono
 # (docs/CHANGELOG.md §373). Ogni giorno questo controllo guarda se è uscita
-# una correzione di sicurezza di Node 22 più nuova di quella in .nvmrc e, se
+# una correzione di sicurezza della stessa versione principale di Node (oggi 24) più nuova di quella in .nvmrc e, se
 # sì, apre una segnalazione (issue) con cosa fare; GitHub la manda per email.
+# Ne apre una anche 6 mesi prima che quella versione smetta di ricevere
+# correzioni (§375) e una appena esce una versione LTS più nuova (§376).
 # Sulle PR che cambiano .nvmrc controlla solo che la versione esista.
 on:
   schedule:
@@ -54,4 +56,51 @@ jobs:
 
           Note sulla versione: https://nodejs.org/en/blog/release/v$ULTIMA
           EOF
+          )"
+
+      - name: Fine del supporto
+        if: ${{ github.event_name != 'pull_request' && steps.node.outputs.scade == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ATTUALE: ${{ steps.node.outputs.attuale }}
+          FINE: ${{ steps.node.outputs.fine }}
+        run: |
+          principale="${ATTUALE%%.*}"
+          titolo="Passare a una versione di Node più nuova: Node $principale riceve correzioni solo fino al $FINE"
+          if gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$titolo\" in:title" --json number --jq '.[0].number' | grep -q .; then
+            echo "Segnalazione già aperta."
+            exit 0
+          fi
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "$titolo" --body "$(cat <<FINE_TESTO
+          Node $principale riceve correzioni di sicurezza fino al $FINE. Mancano meno di 6 mesi.
+
+          Cosa fare:
+          1. Chiedere a Claude, in un thread dedicato, di passare alla versione LTS successiva di Node (come per Node 24, docs/CHANGELOG.md §374): \`.nvmrc\`, \`engines.node\`, tipi di Node, prove e confronto delle pagine.
+          2. Dopo l'unione: su Vercel impostare la nuova versione in Settings → Build and Deployment → Node.js Version e fare Redeploy; nei log di Render controllare la riga \`(Node v...)\`.
+
+          Calendario ufficiale: https://github.com/nodejs/Release#release-schedule
+          FINE_TESTO
+          )"
+
+      - name: Nuova versione stabile
+        if: ${{ github.event_name != 'pull_request' && steps.node.outputs.nuova != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ATTUALE: ${{ steps.node.outputs.attuale }}
+          NUOVA: ${{ steps.node.outputs.nuova }}
+        run: |
+          titolo="Passare a Node $NUOVA: è uscita la nuova versione stabile"
+          if gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$titolo\" in:title" --json number --jq '.[0].number' | grep -q .; then
+            echo "Segnalazione già aperta."
+            exit 0
+          fi
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "$titolo" --body "$(cat <<FINE_TESTO
+          Node $NUOVA è diventata una versione LTS (stabile, adatta alla produzione). Oggi usiamo $ATTUALE.
+
+          Cosa fare:
+          1. Chiedere a Claude, in un thread dedicato, di passare a Node $NUOVA (come per Node 24, docs/CHANGELOG.md §374): \`.nvmrc\`, \`engines.node\`, tipi di Node, prove e confronto delle pagine. Il thread controlla prima che Render, Vercel ed Expo supportino già Node $NUOVA.
+          2. Dopo l'unione: su Vercel impostare la nuova versione in Settings → Build and Deployment → Node.js Version e fare Redeploy; nei log di Render controllare la riga \`(Node v$NUOVA...)\`.
+
+          Calendario ufficiale: https://github.com/nodejs/Release#release-schedule
+          FINE_TESTO
           )"

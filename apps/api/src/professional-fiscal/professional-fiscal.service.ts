@@ -49,7 +49,7 @@ const FISCAL_FIELDS = [
   "registeredCountry",
 ] as const;
 
-/** Campi per i documenti (§374): nel registro delle modifiche, ma senza toccare la verifica. */
+/** Campi per i documenti (§377): nel registro delle modifiche, ma senza toccare la verifica. */
 const DOCUMENT_FIELDS = ["chargesVat", "sdiRecipientCode", "pecEmail"] as const;
 
 /**
@@ -161,7 +161,7 @@ export class ProfessionalFiscalService {
     }
 
     // IVA nelle sue fatture e codice destinatario o PEC (docs/CHANGELOG.md
-    // §374): servono ai documenti, non cambiano la persona né la verifica.
+    // §377): servono ai documenti, non cambiano la persona né la verifica.
     if (input.chargesVat !== undefined) data.chargesVat = input.chargesVat;
     if (input.invoiceRecipient !== undefined) {
       const recipient = parseInvoiceRecipient(input.invoiceRecipient);

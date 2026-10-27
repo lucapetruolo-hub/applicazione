@@ -60,7 +60,7 @@ function payoutNoteOf(jp: PaymentInfo): string {
 
 /**
  * Estratto del mese per il professionista e il suo commercialista
- * (decisioni dell'utente del 27/10/2026, docs/CHANGELOG.md §374): pagamenti
+ * (decisioni dell'utente del 27/10/2026, docs/CHANGELOG.md §377): pagamenti
  * online e diretti, trattenute con l'IVA, bonifici arrivati, fatture
  * dell'abbonamento. In pagina, in CSV e, con la spunta, per email al
  * commercialista il 1° del mese.

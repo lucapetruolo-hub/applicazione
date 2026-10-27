@@ -56,7 +56,7 @@ Implicazioni tecniche dirette:
 | Anti-bot registrazione | **Cloudflare Turnstile** (`apps/web/src/components/TurnstileWidget.tsx`, `apps/api/src/auth/turnstile.ts`) | Deciso dall'utente il 06/10/2026, implementato in docs/CHANGELOG.md §204: sulla registrazione con email e password (`/registrati` e `InlineAuthGate`), su "Password dimenticata" e sul modulo `/contatti`; Google Sign-In escluso. Gratuito, senza cookie di profilazione (nessun consenso nel banner), citato nell'informativa privacy. Spento senza chiavi (`NEXT_PUBLIC_TURNSTILE_SITE_KEY` su Vercel, `TURNSTILE_SECRET_KEY` su Render). Se Cloudflare non risponde la registrazione passa (resta il limite di 5/min per IP). Nessun proxy/WAF Cloudflare davanti a Vercel |
 | Controllo codice fiscale e partita IVA | **VIES** (gratis, solo P.IVA) poi **Openapi** (`apps/api/src/tax-id-check/`, `OPENAPI_TOKEN_RISK` e `OPENAPI_TOKEN_COMPANY` su Render, un token per servizio) | Decisione dell'utente del 14/10/2026 (docs/CHANGELOG.md §253-§254): la P.IVA prima con VIES e, se non conferma (non valida, lenta oltre 5s, non risponde), subito Openapi (Registro Imprese); CF del titolare con Openapi (Agenzia delle Entrate); CF del legale rappresentante solo controlli gratuiti, lo conferma il documento (§255). Nell'interfaccia solo "Verifica P.IVA" / "Verifica codice fiscale", senza nominare enti (decisione dell'utente). Un esito "non valido" toglie il profilo dalla ricerca (`publicVisibilityWhere`); Openapi irraggiungibile o senza chiave non blocca mai (riprova ogni 30 minuti). Fornitore sostituibile dietro `TaxIdProvider` |
 | Verifica identità (documento + selfie) | **Didit** (`apps/api/src/identity-verification/`, `DIDIT_API_KEY`/`DIDIT_WORKFLOW_ID`/`DIDIT_WEBHOOK_SECRET` su Render) | Decisione dell'utente del 14/10/2026 (docs/CHANGELOG.md §253): obbligatoria prima del primo preventivo, sostituisce la verifica manuale; nessun caso passa all'admin: se non conferma, il professionista riceve il motivo e la rifà (decisione dell'utente, §255). Consenso biometrico esplicito (art. 9 GDPR) prima di iniziare; si conserva solo l'esito, mai immagini. Fornitore sostituibile dietro `IdentityProvider`. Senza chiavi non è richiesta |
-| Fatture della piattaforma allo SdI | **Openapi** (`apps/api/src/accounting/sdi-provider.ts`, `OPENAPI_TOKEN_SDI` e `OPENAPI_SANDBOX` su Render) | Decisione dell'utente del 27/10/2026 (docs/CHANGELOG.md §374): stesso fornitore della verifica di P.IVA e codice fiscale. XML FatturaPA generato da noi (`invoice-xml.ts`), cifrato nel database; senza chiave le fatture si emettono comunque e l'XML si scarica da Admin → Finanza. Dati della società e data di partenza in Admin → Finanza: finché mancano partono solo gli estratti. Fornitore sostituibile dietro `SdiProvider`; con `OPENAPI_SANDBOX=true` il pulsante "Prova l'invio allo SdI" in Finanza (§375). PDF dei documenti fatti dal nostro server con **pdfkit** (`apps/api/src/accounting/document-pdf.ts`, §375), non dalla stampa del browser |
+| Fatture della piattaforma allo SdI | **Openapi** (`apps/api/src/accounting/sdi-provider.ts`, `OPENAPI_TOKEN_SDI` e `OPENAPI_SANDBOX` su Render) | Decisione dell'utente del 27/10/2026 (docs/CHANGELOG.md §377): stesso fornitore della verifica di P.IVA e codice fiscale. XML FatturaPA generato da noi (`invoice-xml.ts`), cifrato nel database; senza chiave le fatture si emettono comunque e l'XML si scarica da Admin → Finanza. Dati della società e data di partenza in Admin → Finanza: finché mancano partono solo gli estratti. Fornitore sostituibile dietro `SdiProvider`; con `OPENAPI_SANDBOX=true` il pulsante "Prova l'invio allo SdI" in Finanza (§378). PDF dei documenti fatti dal nostro server con **pdfkit** (`apps/api/src/accounting/document-pdf.ts`, §378), non dalla stampa del browser |
 | Code/cache | **Redis** (BullMQ) | Job asincroni: invio reminder, sync ranking di visibilità |
 | Monorepo | **Turborepo** + **pnpm workspaces** | Build cache e task orchestration tra app/pacchetti condivisi |
 | Error tracking e statistiche | **Sentry** (solo `apps/api`, `SENTRY_DSN`) + **Vercel Web Analytics** (`apps/web`, senza cookie) | Decisi con l'utente (consiglio CEO, docs/CHANGELOG.md §132): prima un 500, un cron fallito o un'email non inviata non li vedeva nessuno, e non esisteva nessuna misura delle visite. Piani gratuiti, nessuna carta. Uptime: `.github/workflows/uptime.yml` |
@@ -94,11 +94,14 @@ prima discuterne e aggiornare questo file.
   shared, non `dist/`, per non caricare nel browser tutto zod) e `pnpm --filter @professionisti/shared confronto-zod` confronta
   le validazioni prima/dopo un aggiornamento, anche da solo nelle PR che
   cambiano la versione di zod (`.github/workflows/zod.yml`, docs/CHANGELOG.md §326).
-- **Versione di Node.js** (docs/CHANGELOG.md §373): una sola fonte,
-  `.nvmrc` con la versione esatta (oggi 22.23.4), letta da Render e dalla CI;
-  `engines.node` resta `22.x` per Vercel, che aggiorna da sé le correzioni.
+- **Versione di Node.js** (docs/CHANGELOG.md §373-§374): una sola fonte,
+  `.nvmrc` con la versione esatta (oggi 24.22.1), letta da Render e dalla CI;
+  `engines.node` è `24.x` per Vercel, che aggiorna da sé le correzioni.
   Il controllo giornaliero `.github/workflows/node.yml` apre una
-  segnalazione quando esce una correzione di sicurezza di Node 22.
+  segnalazione quando esce una correzione di sicurezza di Node 24, appena
+  una versione più nuova diventa LTS (decisione di Luca: passarci subito,
+  §376) e 6 mesi prima della fine del supporto (§375). Il passaggio a una
+  nuova versione principale si fa in un thread dedicato.
 - **Aggiornamenti delle dipendenze** (docs/CHANGELOG.md §302): Dependabot
   (`.github/dependabot.yml`) apre una PR al mese con gli aggiornamenti
   piccoli raggruppati, da unire se la CI è verde; gli aggiornamenti grandi
@@ -373,14 +376,14 @@ prezzi Stripe nelle variabili `STRIPE_PRICE_<LIVELLO>` e
   (acconto, 20% del massimo se non cambiato, saldo a lavoro chiuso, soldi addebitati
   sul conto Stripe del professionista meno la **trattenuta unica del 7% + IVA**,
   tutto compreso (carta e bonifici di Stripe a carico nostro, docs/CHANGELOG.md
-  §374, prima 5% più i costi di Stripe), mai in custodia sulla piattaforma, e bloccati lì con i bonifici in manuale
+  §377, prima 5% più i costi di Stripe), mai in custodia sulla piattaforma, e bloccati lì con i bonifici in manuale
   fino alla conferma o per 7 giorni (massimo 90, regola Stripe),
   docs/CHANGELOG.md §249; assistenza e rimborso sulle segnalazioni accolte)
   oppure **diretto** (nessun rimborso né decisione nostra: le segnalazioni
   restano tra le parti, il cliente può comunque recensire). Il pagamento
   diretto non paga commissione.
 - **Documenti contabili** (decisioni dell'utente del 27/10/2026,
-  docs/CHANGELOG.md §374): una fattura al mese delle trattenute (serie `COM`,
+  docs/CHANGELOG.md §377): una fattura al mese delle trattenute (serie `COM`,
   nota di credito se il mese è negativo) e una per ogni pagamento
   dell'abbonamento, quota di passaggio o pacchetto (serie `ABB`), dalla
   pagina "Fatture e documenti" (`/dashboard/documenti`, nessuna voce di

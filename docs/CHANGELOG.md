@@ -21283,7 +21283,33 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: `node scripts/controlla-node.mjs` con 22.23.4 (nessun aggiornamento), 22.23.2 (`aggiornare=true`, ultima 22.23.4), 22.99.0 e `22` (errore); CI della PR.
 
-## 374. Documenti contabili: trattenuta unica, fatture del mese, estratto, richiesta di fattura del cliente
+## 374. Node.js 24
+
+**Richiesta** (Luca, 27/10/2026, miglioria proposta col §373): passare a Node 24 prima che Node 22 smetta di ricevere correzioni (30/04/2027).
+
+**Decisione**: `.nvmrc` a **`24.22.1`** (ultima 24.x su nodejs.org, correzione di sicurezza del 20/10, la stessa raccomandata da Render), `engines.node` `24.x` (Vercel passa a Node 24 da qui), `@types/node` `^24.19.2` in `apps/web`, `apps/api`, `packages/database`. Il controllo giornaliero del §373 segue da solo la versione principale di `.nvmrc`. Node 24 riceve correzioni fino al 30/04/2028.
+
+**Verifica**: con Node 24.22.1 typecheck, lint e 723 test dell'API (con tutti i compiti in parallelo un test a proprietà dell'agenda supera i 5 secondi anche con Node 22: dipende dal carico, non dalla versione), build di API e sito; confronto delle pagine pubbliche (computer e telefono, con l'API e il database di prova) tra il sito costruito e servito con Node 22 e con Node 24: 52 foto identiche su 64; le altre con pochi pixel (cursore nei campi, puntino del menu, bordi dietro il banner dei cookie) e `/per-professionisti` con la banda dell'offerta di lancio solo nel secondo giro (la pagina si rigenera ogni 10 minuti e nel primo giro era stata costruita con l'API spenta, non dipende da Node); `npx expo export --platform android` riuscito con Node 24; CI della PR.
+
+## 375. Test dell'agenda più tollerante e avviso di fine supporto di Node
+
+**Richiesta** (Luca, 27/10/2026, le due migliorie proposte col §374).
+
+**Decisione**:
+- Il test a proprietà "applicare la settimana tipo a un mese…" (`apps/api/src/agenda/agenda-properties.test.ts`) ha un limite di 30 secondi invece dei 5 predefiniti: da solo dura circa 2 secondi, ma con la macchina carica (tutti i controlli in parallelo) li superava, con Node 22 come con Node 24. Il controllo resta lo stesso, con lo stesso numero di casi.
+- `scripts/controlla-node.mjs` legge anche il calendario ufficiale di Node.js (`nodejs/Release`, `schedule.json`) e stampa `scade=true` quando alla fine del supporto della versione principale di `.nvmrc` mancano meno di 6 mesi; il controllo giornaliero `.github/workflows/node.yml` apre allora una segnalazione con i passi per passare alla LTS successiva. Se il calendario non risponde, si salta solo questa parte. Con Node 24 la segnalazione arriverà verso fine ottobre 2027 (fine supporto 30/04/2028).
+
+**Verifica**: il test in 723 test dell'API; lo script con Node 24.22.1 (`fine=2028-04-30`, `scade=false`) e con 22.23.4 (`fine=2027-04-30`, a 185 giorni, `scade=false`).
+
+## 376. Avviso appena esce una nuova versione stabile di Node
+
+**Richiesta** (Luca, 27/10/2026): non aspettare la fine del supporto, "ancora meglio appena esce un aggiornamento".
+
+**Decisione**: `scripts/controlla-node.mjs` stampa in `nuova` la versione principale più recente già diventata **LTS** secondo il calendario ufficiale (le versioni dispari e quelle pari prima dell'LTS non sono pensate per la produzione), se è più nuova di `.nvmrc`; il controllo giornaliero apre allora la segnalazione "Passare a Node N: è uscita la nuova versione stabile", con i passi. Il thread che fa il passaggio controlla prima che Render, Vercel ed Expo supportino già la versione nuova. Resta anche l'avviso 6 mesi prima della scadenza (§375), utile se il passaggio si rimanda. Node 26 diventa LTS il 28/10/2026: la prima segnalazione arriverà a unione fatta.
+
+**Verifica**: lo script con `.nvmrc` 24.22.1 (`nuova` vuoto, Node 26 non ancora LTS) e 22.23.4 (`nuova=24`); YAML del workflow letto senza errori.
+
+## 377. Documenti contabili: trattenuta unica, fatture del mese, estratto, richiesta di fattura del cliente
 
 **Richiesta** (Luca, 27/10/2026, dopo l'analisi in `analisi/contabilita-versione-profonda.md` e le anteprime di `analisi/mappa-documenti.md`): fare tutti i ritocchi e tutte le migliorie proposte, con tre precisazioni: la fattura del professionista al cliente la prepariamo **solo come cortesia** e non la mandiamo noi all'Agenzia delle Entrate; l'estratto al commercialista parte solo **con la spunta**; il cliente può chiedere la fattura anche intestata a una partita IVA, il professionista lo deve vedere **già all'accettazione** e il cliente deve capire che la chiede **al professionista, non a noi**.
 
@@ -21306,9 +21332,9 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: test di date (anche col cambio d'ora), bozza e nota di credito, totali e arrotondamento, destinatario dai dati fiscali, XML, progressivo d'invio, esiti SdI, foglio di calcolo, riepilogo dei mesi gratis ed emissione del mese con il database simulato; typecheck di API e sito, lint, 745 test dell'API.
 
-## 375. Documenti contabili: PDF dal server, numero della ricevuta, prova dell'invio allo SdI
+## 378. Documenti contabili: PDF dal server, numero della ricevuta, prova dell'invio allo SdI
 
-**Richiesta** (Luca, 27/10/2026, dopo l'elenco delle migliorie del §374): "Effettua le 3 migliorie (magari il numero automatico può essere utile a noi che ne pensi?)". Le tre: provare l'invio delle fatture nella prova di Openapi, un PDF fatto dal server al posto della stampa del browser, il numero automatico nella copia di cortesia.
+**Richiesta** (Luca, 27/10/2026, dopo l'elenco delle migliorie del §377): "Effettua le 3 migliorie (magari il numero automatico può essere utile a noi che ne pensi?)". Le tre: provare l'invio delle fatture nella prova di Openapi, un PDF fatto dal server al posto della stampa del browser, il numero automatico nella copia di cortesia.
 
 **Decisione**:
 - **PDF dal server** con pdfkit (`apps/api/src/accounting/document-pdf.ts`, contenuti in `document-pdf-models.ts`): fattura o nota di credito, estratto del mese, copia di cortesia e riepilogo DAC7 di un anno, con le stesse parti e parole delle pagine e i colori della palette. Font standard del PDF (Helvetica), i caratteri che non sa scrivere si sostituiscono (`pdfText`). Rotte `GET /documents/invoices/:id/pdf`, `/documents/statements/:month/pdf`, `/documents/courtesy/:bookingId/pdf`, `/professionals/me/dac7/:year/pdf`; sul sito "Scarica PDF" (`PdfButton`) scarica il file invece di aprire la stampa. L'estratto al commercialista arriva col PDF oltre al foglio di calcolo. Testi in comune spostati in `packages/shared` (`platformInvoiceSubtitle`, `platformInvoiceTechnicalNotes`, `accountingDateLabel`, `dac7YearStatus`).
@@ -21317,9 +21343,9 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: test nuovi (`documents-pdf-sdi.test.ts`) su PDF di ogni documento e caratteri sostituiti, numero della ricevuta (primo, successivo, stesso lavoro, due copie insieme), numero della fattura salvato, chiamate a Openapi con `fetch` finto (registrazione una sola volta, invio XML, esito non ancora arrivato, società sospesa, simulazione solo nella prova), motivo dello scarto, fattura di prova; PDF guardati uno per uno; test dei permessi con le 5 rotte nuove; 758 test dell'API, typecheck e lint di API e sito. La prova vera con Openapi la fa Luca dal pulsante (serve il suo account, checklist di lancio punto 14).
 
-## 376. Admin: documenti dati ai clienti
+## 379. Admin: documenti dati ai clienti
 
-**Richiesta** (Luca, 27/10/2026, sulla miglioria proposta dopo il §375): "Effettua la Miglioria, deve essere tutto già pronto per il lancio". La miglioria: l'elenco delle ricevute e delle copie di cortesia in Admin, per l'assistenza.
+**Richiesta** (Luca, 27/10/2026, sulla miglioria proposta dopo il §378): "Effettua la Miglioria, deve essere tutto già pronto per il lancio". La miglioria: l'elenco delle ricevute e delle copie di cortesia in Admin, per l'assistenza.
 
 **Decisione**:
 - **Nuova sezione "Documenti ai clienti"** (`/admin/documenti-clienti`, nel menu dopo "Lavori terminati", per ogni admin come "Problemi segnalati"): ricevute per prestazione occasionale e copie di cortesia delle fatture che i professionisti hanno preparato, le più recenti per prime. Per ognuna il nome ("Ricevuta n. 4/2026", "Fattura n. 12/A", `courtesyDocumentLabel`), quando è stata preparata, professionista, cliente, lavoro con appuntamento e chat, importo, se il cliente aveva chiesto la fattura, se il lavoro è stato annullato. Ricerca per numero (anche solo "4" o "4/2026"), numero della fattura, nome del professionista o del cliente; filtri per tipo e anno. "Apri PDF" scarica lo stesso PDF del professionista (`GET /admin/courtesy-documents/:bookingId/pdf`) e resta nel registro azioni come la lettura delle chat, perché ci sono i dati del cliente. L'admin non dà mai numeri nuovi e vede solo i documenti già preparati. I parametri della ricerca scritti due volte nell'indirizzo (`?q=a&q=b`) si rifiutano (avviso di CodeQL).
@@ -21328,13 +21354,13 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: test nuovi su data e importo del PDF scaricato, vista admin (niente numeri nuovi, documento non preparato non trovato, voce nel registro), ricerca per numero e nome, nome del documento; voce del registro "Documento dato al cliente aperto da un admin"; test dei permessi con le 2 rotte admin nuove (269 rotte, 1105 controlli, nessun problema); migrazione uguale allo schema (`prisma migrate diff`); 762 test dell'API, typecheck e lint di API e sito; pagina guardata da computer e da telefono con i dati di prova.
 
-## 377. Documenti dati ai clienti anche per il professionista, avviso se l'importo cambia, "Pagato online"
+## 380. Documenti dati ai clienti anche per il professionista, avviso se l'importo cambia, "Pagato online"
 
-**Richiesta** (Luca, 27/10/2026): "effettua le tre migliorie", proposte dopo il §376: l'elenco dei documenti dati ai clienti anche per il professionista, un avviso quando l'importo cambia dopo il PDF scaricato, "Pagato online" senza la parola "carta".
+**Richiesta** (Luca, 27/10/2026): "effettua le tre migliorie", proposte dopo il §379: l'elenco dei documenti dati ai clienti anche per il professionista, un avviso quando l'importo cambia dopo il PDF scaricato, "Pagato online" senza la parola "carta".
 
 **Decisione**:
 - **"Documenti dati ai clienti" in Fatture e documenti** (`/dashboard/documenti`, `clientDocuments` in `GET /documents`): ricevute e copie di cortesia preparate dal professionista, dalla più recente, con cliente, lavoro e importo, e in alto una casella per anno e tipo con il totale (`courtesyYearTotals` in `packages/shared/src/accounting.ts`). Sotto le ricevute una riga: "Il totale delle ricevute dell'anno va nella dichiarazione dei redditi: dallo al tuo commercialista." Ogni riga apre la copia del lavoro. Restano fuori i lavori annullati. L'importo è quello del documento (`courtesyTotalEurCents`: pagato online meno rimborsi, altrimenti il prezzo del preventivo).
-- **Avviso se l'importo cambia** (`courtesyAmountChanged`, sui dati `pdfTotalEurCents` del §376): nella pagina della copia un riquadro "L'importo è cambiato: sul PDF che hai scaricato c'era X, ora è Y. Scarica di nuovo il documento e dallo al cliente al posto di quello vecchio."; nella scheda del lavoro in Richieste e lavori e nell'elenco una riga "L'importo è cambiato dopo il PDF: rifallo". Nessuna email: lo vede quando apre il lavoro o i documenti. Nella scheda del lavoro il collegamento dice il nome del documento ("Apri: Ricevuta n. 4/2026") quando è già stato preparato.
+- **Avviso se l'importo cambia** (`courtesyAmountChanged`, sui dati `pdfTotalEurCents` del §379): nella pagina della copia un riquadro "L'importo è cambiato: sul PDF che hai scaricato c'era X, ora è Y. Scarica di nuovo il documento e dallo al cliente al posto di quello vecchio."; nella scheda del lavoro in Richieste e lavori e nell'elenco una riga "L'importo è cambiato dopo il PDF: rifallo". Nessuna email: lo vede quando apre il lavoro o i documenti. Nella scheda del lavoro il collegamento dice il nome del documento ("Apri: Ricevuta n. 4/2026") quando è già stato preparato.
 - **"Pagato online"** al posto di "Pagato online con carta" nella copia e nel PDF (si paga anche con altri metodi di Stripe).
 - **Pulsanti verdi**: alcuni pulsanti delle pagine dei documenti ("Scarica PDF", "Scarica per il commercialista", "Salva" dell'email del commercialista e delle impostazioni in Admin → Finanza) erano senza `variant` e comparivano nel blu di Tamagui: ora `variant="primary"`, come nel resto del sito.
 

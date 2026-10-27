@@ -16,7 +16,7 @@ import {
 import type { PdfBlock, PdfDocumentModel, PdfRow } from "./document-pdf";
 
 /**
- * Contenuto dei PDF (docs/CHANGELOG.md §375): le stesse parti e le stesse
+ * Contenuto dei PDF (docs/CHANGELOG.md §378): le stesse parti e le stesse
  * parole delle pagine di "Fatture e documenti", senza i pulsanti e le
  * spiegazioni che servono solo sul sito.
  */

@@ -4,7 +4,7 @@ import { EMAIL_BRAND, frontendUrl } from "../email/email-brand";
 
 /**
  * PDF dei documenti fatto dal nostro server (decisione dell'utente del
- * 27/10/2026, docs/CHANGELOG.md §375), al posto della stampa del browser:
+ * 27/10/2026, docs/CHANGELOG.md §378), al posto della stampa del browser:
  * stesso aspetto su telefono e computer, e si allega alle email. Un modello
  * a blocchi (totale grande, "Da" e "Per", righe, totali, tabella, riquadri)
  * con gli stessi colori delle pagine di "Fatture e documenti". Caratteri

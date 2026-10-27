@@ -1072,7 +1072,7 @@ export const professionalFiscalProfileSchema = z.object({
   registeredPostalCode: z.string().max(12).optional(),
   registeredProvince: z.string().max(50).optional(),
   registeredCountry: z.string().max(2).optional(),
-  /** Applica l'IVA nelle sue fatture: lo dice solo chi ha la P.IVA come persona (docs/CHANGELOG.md §374). */
+  /** Applica l'IVA nelle sue fatture: lo dice solo chi ha la P.IVA come persona (docs/CHANGELOG.md §377). */
   chargesVat: z.boolean().optional(),
   /** Codice destinatario o PEC per ricevere le nostre fatture, facoltativo: vuoto lo cancella. */
   invoiceRecipient: z.string().trim().max(254).optional(),

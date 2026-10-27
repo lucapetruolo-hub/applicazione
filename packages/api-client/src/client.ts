@@ -283,9 +283,9 @@ export type ClientGuidedRequest = {
     reviews: ProfessionalReviewSummary | null;
     /** Privato, partita IVA o azienda, badge accanto al nome (docs/CHANGELOG.md §338); null se non ancora indicato. */
     professionalKind: ProfessionalKind | null;
-    /** Applica l'IVA: "IVA inclusa" accanto al totale, altrimenti "Prezzo finale" (docs/CHANGELOG.md §374). */
+    /** Applica l'IVA: "IVA inclusa" accanto al totale, altrimenti "Prezzo finale" (docs/CHANGELOG.md §377). */
     chargesVat?: boolean | null;
-    /** Fattura chiesta a questo professionista (docs/CHANGELOG.md §374). */
+    /** Fattura chiesta a questo professionista (docs/CHANGELOG.md §377). */
     invoiceRequest?: ClientInvoiceRequestView | null;
     items: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
     /** Data+ora di invio del preventivo (richiesta esplicita dell'utente), visibile sia al cliente che al professionista. */
@@ -596,7 +596,7 @@ export type AdminCompletedJob = {
   clientPhotoUrls: string[];
   /** Come è stato pagato il lavoro, in una riga (docs/CHANGELOG.md §239). */
   paymentLabel: string;
-  /** Ricevuta o copia di cortesia preparata dal professionista, es. "Ricevuta n. 4/2026" (§376). */
+  /** Ricevuta o copia di cortesia preparata dal professionista, es. "Ricevuta n. 4/2026" (§379). */
   courtesyDocumentLabel: string | null;
 };
 
@@ -818,7 +818,7 @@ export type ProfessionalFiscalProfile = {
   fiscalDeclarationAcceptedAt: string | null;
   /** Dati minimi per essere pubblici compilati (docs/CHANGELOG.md §241). */
   fiscalDataCompleteAt: string | null;
-  /** Applica l'IVA nelle sue fatture (chi ha la P.IVA come persona, docs/CHANGELOG.md §374). */
+  /** Applica l'IVA nelle sue fatture (chi ha la P.IVA come persona, docs/CHANGELOG.md §377). */
   chargesVat: boolean | null;
   sdiRecipientCode: string | null;
   pecEmail: string | null;
@@ -1023,7 +1023,7 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     return body as T;
   }
 
-  /** Un file fatto dal server (i PDF dei documenti, docs/CHANGELOG.md §375), da salvare col browser. */
+  /** Un file fatto dal server (i PDF dei documenti, docs/CHANGELOG.md §378), da salvare col browser. */
   async function downloadFile(path: string, token: string): Promise<Blob> {
     const response = await fetch(`${baseUrl}${path}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
     if (!response.ok) {
@@ -1525,7 +1525,7 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
         body: JSON.stringify({ paymentMethod, invoiceRequest }),
       }),
 
-    /** Fattura chiesta al professionista (docs/CHANGELOG.md §374): ultimi dati usati, per precompilare. */
+    /** Fattura chiesta al professionista (docs/CHANGELOG.md §377): ultimi dati usati, per precompilare. */
     lastClientInvoiceRequest: (token: string) =>
       request<{ invoiceRequest: ClientInvoiceRequestView | null }>("/client-invoice-requests/last", {
         headers: { Authorization: `Bearer ${token}` },
@@ -1545,7 +1545,7 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
         headers: { Authorization: `Bearer ${token}` },
       }),
 
-    // --- Fatture e documenti del professionista (docs/CHANGELOG.md §374) ---
+    // --- Fatture e documenti del professionista (docs/CHANGELOG.md §377) ---
     documentsOverview: (token: string) =>
       request<DocumentsOverview>("/documents", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
@@ -1572,7 +1572,7 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     courtesyCopy: (token: string, bookingId: string) =>
       request<CourtesyCopyView>(`/documents/courtesy/${encodeURIComponent(bookingId)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
-    /** Il numero della fattura del professionista sulla copia di cortesia (docs/CHANGELOG.md §375). */
+    /** Il numero della fattura del professionista sulla copia di cortesia (docs/CHANGELOG.md §378). */
     setCourtesyNumber: (token: string, bookingId: string, input: CourtesyNumberInput) =>
       request<CourtesyCopyView>(`/documents/courtesy/${encodeURIComponent(bookingId)}/number`, { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
 
@@ -1600,14 +1600,14 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     adminFeeReconciliation: (token: string, month: string) =>
       request<FeeReconciliation>(`/admin/invoices/reconciliation/${encodeURIComponent(month)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
-    /** Prova d'invio allo SdI nella prova di Openapi (docs/CHANGELOG.md §375). */
+    /** Prova d'invio allo SdI nella prova di Openapi (docs/CHANGELOG.md §378). */
     adminSdiSandboxTest: (token: string) =>
       request<SdiSandboxTestResult>("/admin/invoices/sdi-test", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
     adminResendInvoice: (token: string, id: string) =>
       request<PlatformInvoiceAdminRow>(`/admin/invoices/${encodeURIComponent(id)}/resend`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
-    /** Admin → Documenti ai clienti (docs/CHANGELOG.md §376). */
+    /** Admin → Documenti ai clienti (docs/CHANGELOG.md §379). */
     adminCourtesyDocuments: (token: string, filter: { q?: string; kind?: "RECEIPT" | "INVOICE"; year?: number; bookingId?: string } = {}) => {
       const params = new URLSearchParams();
       if (filter.q?.trim()) params.set("q", filter.q.trim());

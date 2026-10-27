@@ -87,7 +87,7 @@ function releasedJob(overrides: Record<string, unknown> = {}) {
 }
 
 describe("trattenuta sul pagamento", () => {
-  it("è la trattenuta unica del 7% più l'IVA, già definitiva (§374)", () => {
+  it("è la trattenuta unica del 7% più l'IVA, già definitiva (§377)", () => {
     // 7% di 100 € = 7 €, più il 22% di IVA = 8,54 €. Carta e bonifici sono nostri.
     expect(onlineApplicationFeeHoldEurCents(10000)).toBe(854);
     expect(onlineApplicationFeeHoldEurCents(10)).toBe(1);
@@ -243,7 +243,7 @@ describe("OnlineMoneyService.releaseIfDue con i soldi sul conto del professionis
     expect(prisma.manoviaRevenue.create).toHaveBeenCalledWith({ data: expect.objectContaining({ amountEurCents: 560 }) });
   });
 
-  it("prima del bonifico riprende il debito di un lavoro precedente, senza costi Connect (§374)", async () => {
+  it("prima del bonifico riprende il debito di un lavoro precedente, senza costi Connect (§377)", async () => {
     const { service, prisma, stripe, notificationsService } = buildService();
     const job = {
       ...releasedJob({ onlineStage: "PAID", releasedAt: null, payoutPendingEurCents: 0, netAmountEurCents: 0, applicationFeeEurCents: 854, stripeFeeEurCents: 0, platformFeeEurCents: 854, releaseDueAt: null }),

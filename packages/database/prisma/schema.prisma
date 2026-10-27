@@ -1079,7 +1079,7 @@ model Quote {
 }
 
 // Fattura chiesta dal cliente accettando il preventivo (decisione dell'utente
-// del 27/10/2026, docs/CHANGELOG.md §374): a nome suo con il codice fiscale, o
+// del 27/10/2026, docs/CHANGELOG.md §377): a nome suo con il codice fiscale, o
 // intestata a una partita IVA. Legata al preventivo perché con l'acconto
 // online il lavoro nasce solo dopo il pagamento. Il professionista la vede
 // solo dopo l'accettazione, come gli altri contatti (CLAUDE.md §5 punto 9).
@@ -1319,7 +1319,7 @@ model Booking {
   // di questa funzionalità, o una diretta da agenda pubblica (bookAgendaSlot,
   // dormiente da CLAUDE.md §20), può non averne ancora una.
   jobPayment       JobPayment?
-  // Copia di cortesia del documento dato al cliente (docs/CHANGELOG.md §375).
+  // Copia di cortesia del documento dato al cliente (docs/CHANGELOG.md §378).
   courtesyDocument CourtesyDocument?
 
   @@index([professionalProfileId, scheduledAt])
@@ -1327,7 +1327,7 @@ model Booking {
 }
 
 // Copia di cortesia del documento del lavoro (decisione dell'utente del
-// 27/10/2026, docs/CHANGELOG.md §375): il numero della ricevuta per
+// 27/10/2026, docs/CHANGELOG.md §378): il numero della ricevuta per
 // prestazione occasionale lo diamo noi, progressivo per professionista e
 // anno e sempre lo stesso per quel lavoro; per la fattura il professionista
 // scrive il numero del suo programma. Ci resta l'elenco dei documenti dati
@@ -1342,7 +1342,7 @@ model CourtesyDocument {
   number                Int?
   /// Fatture: il numero del programma delle fatture del professionista.
   ownNumber             String?
-  /// Ultima volta che il professionista ha scaricato il PDF (Admin → Documenti ai clienti, §376).
+  /// Ultima volta che il professionista ha scaricato il PDF (Admin → Documenti ai clienti, §379).
   pdfDownloadedAt       DateTime?
   /// Importo scritto su quel PDF: se il lavoro cambia dopo, l'admin lo vede.
   pdfTotalEurCents      Int?
@@ -1837,7 +1837,7 @@ model ProfessionalFiscalProfile {
   // `fiscalDataMissing` in packages/shared): aggiornato a ogni salvataggio.
   fiscalDataCompleteAt DateTime?
 
-  // --- Documenti contabili (docs/CHANGELOG.md §374) ---
+  // --- Documenti contabili (docs/CHANGELOG.md §377) ---
   // Applica l'IVA nelle sue fatture: lo dice solo chi ha la P.IVA come
   // persona (no = forfettario); l'azienda sempre, il privato mai
   // (`professionalChargesVat` in packages/shared). Decide "IVA inclusa" o
@@ -2074,9 +2074,9 @@ model JobPayment {
   balancePaidAt          DateTime?
   paidEurCents           Int       @default(0)
   // Costo della carta a carico del professionista: solo per i pagamenti
-  // fatti prima della trattenuta unica (docs/CHANGELOG.md §374), poi 0.
+  // fatti prima della trattenuta unica (docs/CHANGELOG.md §377), poi 0.
   stripeFeeEurCents      Int       @default(0)
-  // Costo della carta pagato da noi (trattenuta unica, §374): stimato al
+  // Costo della carta pagato da noi (trattenuta unica, §377): stimato al
   // pagamento con l'addebito diretto, poi confrontato col report di Stripe.
   cardFeeEurCents        Int       @default(0)
   refundedEurCents       Int       @default(0)
@@ -2349,7 +2349,7 @@ enum InvoiceStatus {
   VOID
 }
 
-/// Cosa fattura una nostra fattura al professionista (docs/CHANGELOG.md §374).
+/// Cosa fattura una nostra fattura al professionista (docs/CHANGELOG.md §377).
 enum InvoiceSource {
   JOB_FEES // Trattenute del mese sui pagamenti online (una fattura al mese)
   SUBSCRIPTION // Abbonamento (mensile o annuale)
@@ -2366,7 +2366,7 @@ enum InvoiceSdiStatus {
   REJECTED
 }
 
-/// Le nostre fatture al professionista (docs/CHANGELOG.md §374). Numerate per
+/// Le nostre fatture al professionista (docs/CHANGELOG.md §377). Numerate per
 /// serie e anno senza buchi (`InvoiceCounter`), mai cancellate: una correzione
 /// è una nota di credito (`creditNote`, `relatedInvoiceId`). Nessuna relazione
 /// col profilo: la fattura resta anche se l'account viene chiuso (10 anni),
@@ -2439,7 +2439,7 @@ enum PlatformFeeEntryKind {
 }
 
 /// Ogni movimento della trattenuta sui soldi del professionista, con l'IVA
-/// dentro (docs/CHANGELOG.md §374). La fattura del mese li somma; un mese col
+/// dentro (docs/CHANGELOG.md §377). La fattura del mese li somma; un mese col
 /// totale negativo diventa una nota di credito.
 model PlatformFeeEntry {
   id                    String               @id @default(uuid())

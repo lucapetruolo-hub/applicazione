@@ -366,9 +366,9 @@ export type ProfessionalBooking = {
   issue: JobIssueSummary | null;
   /** Pagamento del lavoro (§168), con commissione, costo Stripe e quanto riceve il professionista. */
   payment: JobPaymentSummary | null;
-  /** Il cliente chiede la fattura: i dati da copiare (docs/CHANGELOG.md §374). Facoltativa solo per un'API non ancora aggiornata. */
+  /** Il cliente chiede la fattura: i dati da copiare (docs/CHANGELOG.md §377). Facoltativa solo per un'API non ancora aggiornata. */
   invoiceRequest?: ClientInvoiceRequestView | null;
-  /** Ricevuta o copia di cortesia già preparata, e se l'importo è cambiato dopo il PDF (docs/CHANGELOG.md §377). */
+  /** Ricevuta o copia di cortesia già preparata, e se l'importo è cambiato dopo il PDF (docs/CHANGELOG.md §380). */
   courtesyDocument?: CourtesyDocumentSummary | null;
 };
 

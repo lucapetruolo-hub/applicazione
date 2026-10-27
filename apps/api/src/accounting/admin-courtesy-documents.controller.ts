@@ -7,7 +7,7 @@ import { pdfResponse, renderDocumentPdf } from "./document-pdf";
 import { courtesyPdfBaseName, courtesyPdfModel, pdfFileName } from "./document-pdf-models";
 
 /**
- * Admin → Documenti ai clienti (docs/CHANGELOG.md §376): ricevute e copie di
+ * Admin → Documenti ai clienti (docs/CHANGELOG.md §379): ricevute e copie di
  * cortesia preparate dai professionisti, per l'assistenza e le segnalazioni
  * sul lavoro. Come "Problemi segnalati", la vede ogni admin; ogni PDF aperto
  * resta nel registro azioni, come le chat (ci sono i dati del cliente).

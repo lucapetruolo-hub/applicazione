@@ -14,7 +14,7 @@ import { PayoutSummary } from "@/components/PayoutSummary";
  * compare solo a pagamenti attivi (es. il conto bancario dei bonifici).
  * `step` è il passo prima di Stripe (l'IBAN, §250): aperto da "Attiva",
  * prende il posto del pulsante dentro lo stesso banner. Prima di attivare,
- * il costo con un esempio in euro (§374).
+ * il costo con un esempio in euro (§377).
  */
 
 const EXAMPLE = onlineFeeExample();

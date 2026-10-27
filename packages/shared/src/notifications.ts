@@ -125,9 +125,9 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "AGENDA_TOMORROW_SUMMARY",
       // Nuova recensione ricevuta dal professionista (docs/CHANGELOG.md §185).
       "NEW_REVIEW",
-      // Il cliente chiede la fattura dopo l'accettazione, o cambia i dati (docs/CHANGELOG.md §374).
+      // Il cliente chiede la fattura dopo l'accettazione, o cambia i dati (docs/CHANGELOG.md §377).
       "JOB_INVOICE_REQUESTED",
-      // Trattenute del mese che non tornano con Stripe (docs/CHANGELOG.md §374).
+      // Trattenute del mese che non tornano con Stripe (docs/CHANGELOG.md §377).
       "ADMIN_FEE_RECONCILIATION",
     ],
     activeChannels: ["inApp", "email"],
@@ -191,7 +191,7 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "SUBSCRIPTION_RENEWED",
       "SUBSCRIPTION_ENDING",
       "SUBSCRIPTION_PAYMENT_FAILED",
-      // Fattura del mese e estratto pronti in "Fatture e documenti" (docs/CHANGELOG.md §374).
+      // Fattura del mese e estratto pronti in "Fatture e documenti" (docs/CHANGELOG.md §377).
       "MONTHLY_DOCUMENTS_READY",
     ],
     locked: true,

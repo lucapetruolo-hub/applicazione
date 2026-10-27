@@ -43,7 +43,7 @@ export class EmailService {
     subject: string;
     html: string;
     text?: string;
-    /** Allegati, es. il file .ics dei promemoria (docs/CHANGELOG.md §235) o il PDF dell'estratto (§375). */
+    /** Allegati, es. il file .ics dei promemoria (docs/CHANGELOG.md §235) o il PDF dell'estratto (§378). */
     attachments?: { filename: string; content: string | Buffer; contentType?: string }[];
   }): Promise<boolean> {
     if (!this.resend) {
@@ -57,7 +57,7 @@ export class EmailService {
         subject: params.subject,
         html: params.html,
         ...(params.text ? { text: params.text } : {}),
-        // Resend vuole il contenuto in base64: un testo (il .ics, il CSV) va codificato (§374), un PDF è già in byte (§375).
+        // Resend vuole il contenuto in base64: un testo (il .ics, il CSV) va codificato (§377), un PDF è già in byte (§378).
         ...(params.attachments?.length
           ? { attachments: params.attachments.map((a) => ({ ...a, content: (typeof a.content === "string" ? Buffer.from(a.content, "utf8") : a.content).toString("base64") })) }
           : {}),

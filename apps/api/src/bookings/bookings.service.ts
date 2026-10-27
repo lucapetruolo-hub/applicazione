@@ -128,7 +128,7 @@ export class BookingsService implements OnModuleInit {
     if (paymentChoiceIsOnline(paymentMethod) && !onlinePaymentsEnabled()) {
       throw new BadRequestException("Il pagamento online non è ancora disponibile: scegli il pagamento diretto al professionista.");
     }
-    // Fattura chiesta al professionista (docs/CHANGELOG.md §374): salvata ora,
+    // Fattura chiesta al professionista (docs/CHANGELOG.md §377): salvata ora,
     // anche prima dell'acconto online, e letta quando nasce il lavoro.
     await this.clientInvoiceRequestsService?.saveAtAcceptance(clientId, quote.id, invoiceRequest);
     // Con l'acconto online il lavoro si conferma solo a pagamento riuscito
@@ -371,7 +371,7 @@ export class BookingsService implements OnModuleInit {
     const clientFullName =
       [booking.recipientName, booking.recipientSurname].filter(Boolean).join(" ") || [client?.name, client?.surname].filter(Boolean).join(" ") || null;
     const clientAddress = formatBookingAddress(booking) ?? (guidedRequest.address ? `${guidedRequest.address}${guidedRequest.city ? `, ${guidedRequest.city}` : ""}` : null);
-    // Fattura chiesta accettando (docs/CHANGELOG.md §374): detta subito, coi dati da copiare.
+    // Fattura chiesta accettando (docs/CHANGELOG.md §377): detta subito, coi dati da copiare.
     const invoice = (await this.clientInvoiceRequestsService?.forAcceptedNotice(quote.id)) ?? {};
     await this.notificationsService.notify(quote.professionalProfile.userId, "QUOTE_ACCEPTED", {
       ...invoice,

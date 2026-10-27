@@ -112,7 +112,7 @@ import { AgendaModule } from "./agenda/agenda.module";
     ProfileInvitesModule,
     ProfessionalVerificationModule,
     ClientInvoiceRequestsModule,
-    // Fatture, estratti e copie di cortesia (docs/CHANGELOG.md §374).
+    // Fatture, estratti e copie di cortesia (docs/CHANGELOG.md §377).
     AccountingModule,
     // Verifica fiscale (Openapi) e d'identità (Didit), docs/CHANGELOG.md §253.
     TaxIdCheckModule,

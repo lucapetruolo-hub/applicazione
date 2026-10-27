@@ -320,7 +320,7 @@ export class BillingService {
         success_url: `${this.frontendUrl()}/dashboard/abbonamento?attivato=1`,
         cancel_url: `${this.frontendUrl()}/dashboard/abbonamento`,
         metadata: { kind: "tier_upgrade", professionalProfileId, stripeSubscriptionId, plan, interval },
-        // La fattura di Stripe diventa la nostra fattura elettronica (§374).
+        // La fattura di Stripe diventa la nostra fattura elettronica (§377).
         invoice_creation: { enabled: true, invoice_data: { metadata: { kind: "tier_upgrade_fee", professionalProfileId } } },
       });
       return { url: session.url };
@@ -420,7 +420,7 @@ export class BillingService {
       cancel_url: `${this.frontendUrl()}/dashboard`,
       metadata: { kind: "boost", boostType, professionalProfileId: profile.id },
       // Niente fattura di Stripe: la fattura elettronica la emettiamo noi al
-      // pagamento (docs/CHANGELOG.md §374), una ricevuta di Stripe in più
+      // pagamento (docs/CHANGELOG.md §377), una ricevuta di Stripe in più
       // sembrerebbe un secondo documento fiscale.
     });
 
@@ -644,7 +644,7 @@ export class BillingService {
     // pagato o non riuscito, cambio di livello, annullamento, fine.
     if (event.type === "invoice.payment_failed" || event.type === "invoice.paid") {
       const invoice = event.data.object as Stripe.Invoice;
-      // Abbonamento, rinnovo o quota di passaggio pagati: la nostra fattura (§374).
+      // Abbonamento, rinnovo o quota di passaggio pagati: la nostra fattura (§377).
       if (event.type === "invoice.paid") await this.invoicesService.issueForStripeInvoice(invoice, (priceId) => this.priceOf(priceId));
       const stripeSubscriptionId = invoiceSubscriptionId(invoice);
       if (stripeSubscriptionId) {

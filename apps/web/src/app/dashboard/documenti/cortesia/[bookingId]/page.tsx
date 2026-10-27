@@ -14,11 +14,11 @@ function day(iso: string): string {
 
 /**
  * Copia di cortesia del documento del lavoro (decisione dell'utente del
- * 27/10/2026, docs/CHANGELOG.md §374): la fattura vera la fa il
+ * 27/10/2026, docs/CHANGELOG.md §377): la fattura vera la fa il
  * professionista col suo programma, la ricevuta per prestazione occasionale
  * la firma lui. Noi non mandiamo nulla all'Agenzia delle Entrate. Il numero
  * della ricevuta lo diamo noi, quello della fattura lo scrive lui e lo
- * teniamo per la prossima volta (§375).
+ * teniamo per la prossima volta (§378).
  */
 export default function CourtesyCopyPage() {
   const { bookingId } = useParams<{ bookingId: string }>();
@@ -64,7 +64,7 @@ export default function CourtesyCopyPage() {
   return (
     <DocumentPage back={back} title={receipt ? "Ricevuta per prestazione occasionale" : "Copia di cortesia della fattura"}>
       <div data-print-hide>
-        {/* L'importo è cambiato dopo il PDF scaricato, per esempio per un rimborso (docs/CHANGELOG.md §377). */}
+        {/* L'importo è cambiato dopo il PDF scaricato, per esempio per un rimborso (docs/CHANGELOG.md §380). */}
         {amountChanged ? (
           <YStack paddingBottom="$3">
             <NoteBox tone="sand">

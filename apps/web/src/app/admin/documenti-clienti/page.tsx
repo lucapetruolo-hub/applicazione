@@ -16,7 +16,7 @@ type Query = { q: string; kind: Kind; year: number | null; bookingId: string | n
 const FIRST_YEAR = 2026;
 
 /**
- * Documenti ai clienti (docs/CHANGELOG.md §376): ricevute per prestazione
+ * Documenti ai clienti (docs/CHANGELOG.md §379): ricevute per prestazione
  * occasionale (col numero dato da noi) e copie di cortesia delle fatture
  * preparate dai professionisti. Serve all'assistenza e ai problemi
  * segnalati: chi l'ha dato, a chi, con che importo. `?lavoro=` arriva da

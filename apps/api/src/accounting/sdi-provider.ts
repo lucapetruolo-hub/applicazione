@@ -12,7 +12,7 @@ export type SdiCompany = { fiscalId: string; name: string; email: string };
 
 /**
  * Invio delle nostre fatture allo SdI tramite un intermediario (docs/CHANGELOG.md
- * §374, §375). Sostituibile come `TaxIdProvider` e `IdentityProvider`.
+ * §377, §378). Sostituibile come `TaxIdProvider` e `IdentityProvider`.
  */
 export interface SdiProvider {
   readonly name: string;
