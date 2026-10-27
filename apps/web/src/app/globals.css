@@ -152,7 +152,7 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
 /* "Richiedi un preventivo a [nome]" nel profilo pubblico (ProfileQuoteCta):
    da computer largo quanto il testo, da telefono tutta la larghezza. Quando
    il pulsante non è sullo schermo compare una barra fissa in basso con la
-   foto a sinistra e il pulsante a destra (§383); da computer è allineata
+   foto a sinistra e il pulsante a destra (§385); da computer è allineata
    alla colonna della pagina (860 px) e accanto alla foto ha nome e stelle. */
 .profile-cta {
   align-self: flex-start;

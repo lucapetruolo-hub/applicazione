@@ -21317,7 +21317,7 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: il pnpm di `/usr/bin` esiste sulla macchina di Render (è proprio il file che `corepack enable` cercava di cancellare); il deploy su Render dopo l'unione.
 
-## 383. Barra fissa "Richiedi un preventivo" anche da computer
+## 385. Barra fissa "Richiedi un preventivo" anche da computer
 
 **Richiesta di Luca (27/10/2026):** avere anche da computer la barra fissa in
 basso "Richiedi un preventivo a [nome]" che sul telefono segue la pagina

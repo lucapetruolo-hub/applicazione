@@ -13,7 +13,7 @@ import { MagneticButton } from "./MagneticButton";
  * in globals.css): il pulsante sta sotto l'agenda, oltre la prima schermata.
  * Da computer la barra è allineata alla pagina e a sinistra mostra
  * `summary` (foto, nome, stelle): un pulsante largo tutto lo schermo
- * sembrerebbe una fascia pubblicitaria (docs/CHANGELOG.md §383).
+ * sembrerebbe una fascia pubblicitaria (docs/CHANGELOG.md §385).
  */
 export function ProfileQuoteCta({ href, name, summary, preview = false }: { href: string; name: string; summary?: ReactNode; preview?: boolean }) {
   const anchorRef = useRef<HTMLDivElement>(null);
