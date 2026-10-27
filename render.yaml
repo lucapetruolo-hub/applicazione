@@ -39,7 +39,10 @@ services:
     # Il database esistente (nato con db push, senza storico migrazioni)
     # viene "baselinato" in automatico al primo avvio: vedi
     # packages/database/scripts/migrate-deploy.mjs e CLAUDE.md §2.
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @professionisti/api build
+    # Niente "corepack enable": con Node 24 Render ha già pnpm in /usr/bin
+    # (cartella di sola lettura) e il comando falliva con EROFS
+    # (docs/CHANGELOG.md §377). pnpm legge la versione da "packageManager".
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @professionisti/api build
     startCommand: pnpm --filter @professionisti/api start
     # Rebuild automatico solo quando cambia qualcosa che può influenzare l'API
     buildFilter:

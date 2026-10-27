@@ -21308,3 +21308,11 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 **Decisione**: `scripts/controlla-node.mjs` stampa in `nuova` la versione principale più recente già diventata **LTS** secondo il calendario ufficiale (le versioni dispari e quelle pari prima dell'LTS non sono pensate per la produzione), se è più nuova di `.nvmrc`; il controllo giornaliero apre allora la segnalazione "Passare a Node N: è uscita la nuova versione stabile", con i passi. Il thread che fa il passaggio controlla prima che Render, Vercel ed Expo supportino già la versione nuova. Resta anche l'avviso 6 mesi prima della scadenza (§375), utile se il passaggio si rimanda. Node 26 diventa LTS il 28/10/2026: la prima segnalazione arriverà a unione fatta.
 
 **Verifica**: lo script con `.nvmrc` 24.22.1 (`nuova` vuoto, Node 26 non ancora LTS) e 22.23.4 (`nuova=24`); YAML del workflow letto senza errori.
+
+## 377. Build di Render con Node 24: senza "corepack enable"
+
+**Problema** (Luca, 27/10/2026, dopo l'unione del §374): il deploy dell'API su Render falliva subito con `Internal Error: EROFS: read-only file system, unlink '/usr/bin/pnpm'`. Con Node 24 Render ha già pnpm in `/usr/bin`, che è di sola lettura, e `corepack enable` provava a sostituirlo. Il deploy fallito ha lasciato in linea la versione precedente (Node 22.23.4).
+
+**Decisione**: il comando di build in `render.yaml` non chiama più `corepack enable`: `pnpm install --frozen-lockfile && pnpm --filter @professionisti/api build`. pnpm prende la versione dal campo `packageManager` (10.33.0). Se il servizio non segue il Blueprint, lo stesso comando va scritto a mano in Render → Settings → Build Command.
+
+**Verifica**: il pnpm di `/usr/bin` esiste sulla macchina di Render (è proprio il file che `corepack enable` cercava di cancellare); il deploy su Render dopo l'unione.
