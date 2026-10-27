@@ -38,6 +38,8 @@ import {
   buildClientCohorts,
   buildGuideCells,
   buildGuideWeekly,
+  buildMissingServices,
+  buildPopularServices,
   buildProfessionalCohorts,
   buildSiteAdvice,
   greenWeeksInARow,
@@ -46,6 +48,7 @@ import {
   reconcile,
   weekStarts,
   type SiteRequestRow,
+  type SiteServiceRow,
   type StalledProfessional,
 } from "./site-stats";
 
@@ -84,7 +87,7 @@ export class SiteStatsService {
     const notAdmin = { client: { role: { not: "ADMIN" as const } } };
     const proCounted: Prisma.ProfessionalProfileWhereInput = { deletedAt: null, user: { deletedAt: null }, isDemo: false };
 
-    const [requestRows, searchDays, freeSearches, profileViews, stepDays, proRows, failureDays, terms, termDays, signups, churnDays, notes] = await Promise.all([
+    const [requestRows, searchDays, freeSearches, profileViews, stepDays, proRows, failureDays, terms, termDays, signups, churnDays, notes, serviceSearches, serviceRows] = await Promise.all([
       this.prisma.guidedRequest.findMany({
         where: { createdAt: { gte: weeksStart < windowStart ? weeksStart : windowStart }, hiddenAt: null, ...notAdmin },
         select: {
@@ -115,6 +118,15 @@ export class SiteStatsService {
       }),
       this.prisma.churnReasonDay.groupBy({ by: ["kind", "reason"], where: { day: { gte: dayStart(since90) } }, _sum: { count: true } }),
       this.prisma.siteNote.findMany({ where: { day: { gte: dayStart(weeksStart) } }, orderBy: { day: "asc" } }),
+      this.prisma.serviceSearchDay.groupBy({ by: ["categorySlug", "service"], where: { day: { gte: dayStart(since90) } }, _sum: { count: true } }),
+      this.prisma.professionalService.findMany({
+        where: { professionalProfile: proCounted },
+        select: {
+          name: true,
+          professionalProfileId: true,
+          professionalProfile: { select: { category: { select: { slug: true } }, extraCategories: { select: { slug: true } } } },
+        },
+      }),
     ]);
 
     const requests: SiteRequestRow[] = requestRows.map((r) => {
@@ -269,6 +281,16 @@ export class SiteStatsService {
       })
       .sort((a, b) => b.days - a.days || b.searches - a.searches || a.term.localeCompare(b.term, "it"))
       .slice(0, 20);
+    const serviceList: SiteServiceRow[] = serviceRows.map((r) => ({
+      profileId: r.professionalProfileId,
+      name: r.name,
+      categorySlugs: [r.professionalProfile.category.slug, ...r.professionalProfile.extraCategories.map((c) => c.slug)],
+    }));
+    const popularServices = buildPopularServices(
+      serviceSearches.map((r) => ({ categorySlug: r.categorySlug, service: r.service, searches: r._sum.count ?? 0 })),
+      serviceList,
+    );
+    const missingServices = buildMissingServices(serviceList);
     const sources = new Map<SignupSourceKey, number>();
     for (const u of signups) {
       const key: SignupSourceKey = u._count.profileInvites > 0 ? "INVITE" : (u.signupSource ?? "unknown");
@@ -316,6 +338,8 @@ export class SiteStatsService {
       requestSteps,
       failures: sumFailures(since7Day),
       unknownJobs,
+      popularServices,
+      missingServices,
       churnReasons,
       stalled,
       silent,
@@ -351,6 +375,8 @@ export class SiteStatsService {
       professionalCohorts,
       submitFailures: sumFailures(windowDay),
       unknownJobs,
+      popularServices,
+      missingServices,
       signupSources,
       churnReasons,
       notes: [...automaticNotes, ...notes.map((n) => ({ id: n.id, day: isoDay(n.day), text: n.text }))].sort((a, b) => a.day.localeCompare(b.day)),

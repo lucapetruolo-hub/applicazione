@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { isBotUserAgent, normalizeJobTerm, ratioLabel, romeWeekStart } from "@professionisti/shared";
+import { isBotUserAgent, matchPopularServices, normalizeJobTerm, offersPopularService, ratioLabel, romeWeekStart } from "@professionisti/shared";
 import {
   buildClientCohorts,
   buildGuideCells,
   buildGuideWeekly,
+  buildMissingServices,
+  buildPopularServices,
   buildProfessionalCohorts,
   buildSiteAdvice,
   greenWeeksInARow,
@@ -122,6 +124,8 @@ const baseInput = (overrides: Partial<SiteAdviceInput> = {}): SiteAdviceInput =>
   profileViews: 0,
   failures: [],
   unknownJobs: [],
+  popularServices: [],
+  missingServices: [],
   churnReasons: [],
   stalled: [],
   silent: [],
@@ -245,5 +249,87 @@ describe("conti d'appoggio", () => {
     expect(romeWeekStart(new Date("2026-10-27T12:00:00Z"))).toBe("2026-10-26");
     expect(romeWeekStart(new Date("2026-10-25T23:30:00Z"))).toBe("2026-10-26");
     expect(romeWeekStart(new Date("2026-10-25T21:30:00Z"))).toBe("2026-10-19");
+  });
+});
+
+describe("prestazioni più cercate", () => {
+  it("una ricerca trova la prestazione dell'elenco, mai il testo scritto", () => {
+    expect(matchPopularServices("sturatura", "idraulico")).toEqual([{ categorySlug: "idraulico", service: "Sturatura scarichi" }]);
+    expect(matchPopularServices("Perdite d'acqua")).toContainEqual({ categorySlug: "idraulico", service: "Riparazione perdita d'acqua" });
+    expect(matchPopularServices("rubinet", "idraulico")).toEqual([{ categorySlug: "idraulico", service: "Sostituzione rubinetteria" }]);
+    expect(matchPopularServices("mario rossi via roma 3")).toEqual([]);
+    expect(matchPopularServices("sturatura", "elettricista")).toEqual([]);
+  });
+
+  it("una parola troppo generica non conta", () => {
+    expect(matchPopularServices("riparazione")).toEqual([]);
+    expect(matchPopularServices("di")).toEqual([]);
+  });
+
+  it("chi offre la prestazione, anche scritta più lunga", () => {
+    expect(offersPopularService("Sturatura scarichi e tubi", "Sturatura scarichi")).toBe(true);
+    expect(offersPopularService("Sturature", "Sturatura scarichi")).toBe(false);
+  });
+
+  it("cercate per lavoro, con quanti la offrono", () => {
+    const result = buildPopularServices(
+      [
+        { categorySlug: "idraulico", service: "Sturatura scarichi", searches: 12 },
+        { categorySlug: "idraulico", service: "Installazione scaldabagno", searches: 3 },
+        { categorySlug: "idraulico", service: "Non in elenco", searches: 50 },
+      ],
+      [
+        { profileId: "p1", name: "Sturatura scarichi", categorySlugs: ["idraulico"] },
+        { profileId: "p2", name: "sturatura scarichi cucina", categorySlugs: ["idraulico", "tuttofare"] },
+        { profileId: "p3", name: "Sturatura scarichi", categorySlugs: ["tuttofare"] },
+      ],
+    );
+    expect(result).toEqual([
+      {
+        categorySlug: "idraulico",
+        categoryLabel: "Idraulico",
+        services: [
+          { service: "Sturatura scarichi", searches: 12, offeredBy: 2 },
+          { service: "Installazione scaldabagno", searches: 3, offeredBy: 0 },
+        ],
+      },
+    ]);
+  });
+
+  it("scritte a mano da 3 professionisti e non suggerite", () => {
+    const rows = [
+      { profileId: "p1", name: "Montaggio tende", categorySlugs: ["tuttofare"] },
+      { profileId: "p2", name: "montaggio  tende", categorySlugs: ["tuttofare", "imbianchino"] },
+      { profileId: "p3", name: "Montaggio tende!", categorySlugs: ["imbianchino", "tuttofare"] },
+      { profileId: "p3", name: "Montaggio tende", categorySlugs: ["imbianchino", "tuttofare"] },
+      { profileId: "p1", name: "Sturatura scarichi", categorySlugs: ["idraulico"] },
+      { profileId: "p2", name: "Sturatura scarichi", categorySlugs: ["idraulico"] },
+      { profileId: "p3", name: "Sturatura scarichi", categorySlugs: ["idraulico"] },
+      { profileId: "p4", name: "Lucidatura parquet", categorySlugs: ["pulizie"] },
+    ];
+    expect(buildMissingServices(rows)).toEqual([{ categorySlug: "tuttofare", categoryLabel: "Tutto Fare", name: "Montaggio tende", professionals: 3 }]);
+  });
+
+  it("diventano consigli solo sopra le soglie", () => {
+    const advice = buildSiteAdvice(
+      baseInput({
+        popularServices: [
+          {
+            categorySlug: "idraulico",
+            categoryLabel: "Idraulico",
+            services: [
+              { service: "Sturatura scarichi", searches: 12, offeredBy: 1 },
+              { service: "Installazione scaldabagno", searches: 30, offeredBy: 5 },
+              { service: "Sostituzione caldaia", searches: 4, offeredBy: 0 },
+            ],
+          },
+        ],
+        missingServices: [{ categorySlug: "tuttofare", categoryLabel: "Tutto Fare", name: "Montaggio tende", professionals: 3 }],
+      }),
+    );
+    const keys = advice.map((a) => a.key);
+    expect(keys).toContain("service-gap:idraulico:sturatura scarichi");
+    expect(keys).toContain("missing-service:tuttofare:montaggio tende");
+    expect(keys.filter((k) => k.startsWith("service-gap:"))).toHaveLength(1);
   });
 });

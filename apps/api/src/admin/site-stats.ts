@@ -3,19 +3,27 @@ import {
   GUIDE_GREEN_SHARE,
   GUIDE_QUOTE_HOURS,
   MIN_CASES_PER_ROW,
+  MISSING_SERVICE_MIN_PROFESSIONALS,
+  POPULAR_SERVICES,
   PRICE_ADVICE_MIN_DAYS_FROM_LAUNCH,
   PRICE_ADVICE_MIN_PAYING,
   PROFESSIONAL_CATEGORIES,
   REQUEST_STEP_SHORT,
   SEARCH_RADIUS_KM,
+  SERVICE_GAP_MAX_OFFERED,
+  SERVICE_GAP_MIN_SEARCHES,
   SUBMIT_FORM_LABEL,
   guideCellStatus,
+  isPopularService,
+  normalizeServiceName,
+  offersPopularService,
   ratioLabel,
   romeWeekStart,
   type AdminSiteStats,
   type ChurnKind,
   type ChurnReason,
   type GuideCellStatus,
+  type ProfessionalCategorySlug,
   type RequestStepKey,
   type SiteAdvice,
   type SubmitFailureKind,
@@ -243,6 +251,8 @@ export type SiteAdviceInput = {
   /** Ultimi 7 giorni. */
   failures: { form: SubmitFormKey; kind: SubmitFailureKind; count: number }[];
   unknownJobs: AdminSiteStats["unknownJobs"];
+  popularServices: AdminSiteStats["popularServices"];
+  missingServices: AdminSiteStats["missingServices"];
   churnReasons: { kind: ChurnKind; reason: ChurnReason; count: number }[];
   stalled: StalledProfessional[];
   silent: SilentProfessional[];
@@ -261,6 +271,67 @@ const RECRUIT_LINK = { label: "Crea un profilo e mandagli il link", href: "/admi
  * decisioni anche non capendo niente di tutti quei numeri"). Ogni regola ha
  * una soglia scritta qui sopra; prima i "Fallo subito".
  */
+/** Una prestazione scritta da un professionista, con i suoi lavori (il principale per primo). */
+export type SiteServiceRow = { profileId: string; name: string; categorySlugs: string[] };
+
+const isCategorySlug = (slug: string): slug is ProfessionalCategorySlug => slug in POPULAR_SERVICES;
+
+/**
+ * Prestazioni dell'elenco cercate negli ultimi 90 giorni, per lavoro (§378),
+ * con quanti professionisti di quel lavoro le offrono. Prima i lavori più cercati.
+ */
+export function buildPopularServices(searches: { categorySlug: string; service: string; searches: number }[], services: SiteServiceRow[]): AdminSiteStats["popularServices"] {
+  const byCategory = new Map<string, { service: string; searches: number; offeredBy: number }[]>();
+  for (const s of searches) {
+    if (!isCategorySlug(s.categorySlug) || !POPULAR_SERVICES[s.categorySlug].includes(s.service) || s.searches <= 0) continue;
+    const offeredBy = new Set(
+      services.filter((row) => row.categorySlugs.includes(s.categorySlug) && offersPopularService(row.name, s.service)).map((row) => row.profileId),
+    ).size;
+    byCategory.set(s.categorySlug, [...(byCategory.get(s.categorySlug) ?? []), { service: s.service, searches: s.searches, offeredBy }]);
+  }
+  return [...byCategory.entries()]
+    .map(([slug, list]) => ({
+      categorySlug: slug,
+      categoryLabel: categoryLabel(slug),
+      services: list.sort((a, b) => b.searches - a.searches || a.service.localeCompare(b.service, "it")),
+    }))
+    .sort((a, b) => b.services.reduce((n, s) => n + s.searches, 0) - a.services.reduce((n, s) => n + s.searches, 0));
+}
+
+/**
+ * Prestazioni scritte a mano da almeno MISSING_SERVICE_MIN_PROFESSIONALS
+ * professionisti e che non ci sono tra quelle suggerite dei loro lavori
+ * (§378): vanno aggiunte all'elenco, così si scelgono con un clic e i prezzi
+ * medi si sommano. Il lavoro è quello più comune tra chi l'ha scritta.
+ */
+export function buildMissingServices(services: SiteServiceRow[]): AdminSiteStats["missingServices"] {
+  const groups = new Map<string, { names: Map<string, number>; profiles: Set<string>; slugs: Map<string, number> }>();
+  for (const row of services) {
+    const key = normalizeServiceName(row.name);
+    if (key.length < 4 || key.length > 60 || key === "consulenza online") continue;
+    const slugs = row.categorySlugs.filter(isCategorySlug);
+    if (slugs.length === 0 || slugs.some((slug) => isPopularService(row.name, slug))) continue;
+    const group = groups.get(key) ?? { names: new Map(), profiles: new Set(), slugs: new Map() };
+    if (!group.profiles.has(row.profileId)) {
+      group.profiles.add(row.profileId);
+      for (const slug of slugs) group.slugs.set(slug, (group.slugs.get(slug) ?? 0) + 1);
+    }
+    const shown = row.name.trim();
+    group.names.set(shown, (group.names.get(shown) ?? 0) + 1);
+    groups.set(key, group);
+  }
+  const mostCommon = (map: Map<string, number>) => [...map.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "it"))[0]?.[0] ?? "";
+  return [...groups.values()]
+    .filter((g) => g.profiles.size >= MISSING_SERVICE_MIN_PROFESSIONALS)
+    .map((g) => {
+      const slug = mostCommon(g.slugs);
+      const name = mostCommon(g.names);
+      return { categorySlug: slug, categoryLabel: categoryLabel(slug), name: name.charAt(0).toUpperCase() + name.slice(1), professionals: g.profiles.size };
+    })
+    .sort((a, b) => b.professionals - a.professionals || a.name.localeCompare(b.name, "it"))
+    .slice(0, 20);
+}
+
 export function buildSiteAdvice(input: SiteAdviceInput): SiteAdvice[] {
   const advice: SiteAdvice[] = [];
 
@@ -452,6 +523,31 @@ export function buildSiteAdvice(input: SiteAdviceInput): SiteAdvice[] {
       title: `Cercano «${job.term}», un lavoro che non c'è`,
       why: `Cercato in ${job.days} giorni diversi negli ultimi 90.`,
       todo: "Valuta se aggiungerlo: guarda quanto è cercato su Google (Keyword Planner) e se trovi professionisti a Latina.",
+    });
+  }
+
+  // Prestazioni (§378): cercate ma offerte da pochi, e scritte a mano ma non suggerite.
+  const gaps = input.popularServices
+    .flatMap((c) => c.services.map((s) => ({ ...s, categorySlug: c.categorySlug, categoryLabel: c.categoryLabel })))
+    .filter((s) => s.searches >= SERVICE_GAP_MIN_SEARCHES && s.offeredBy <= SERVICE_GAP_MAX_OFFERED)
+    .sort((a, b) => b.searches - a.searches)
+    .slice(0, 2);
+  for (const gap of gaps) {
+    advice.push({
+      key: `service-gap:${gap.categorySlug}:${normalizeServiceName(gap.service)}`,
+      level: "TIP",
+      title: `Cercano «${gap.service}», pochi la offrono`,
+      why: `Cercata ${plural(gap.searches, "volta", "volte")} negli ultimi 90 giorni; tra i professionisti di ${gap.categoryLabel} la offrono in ${gap.offeredBy}.`,
+      todo: `Quando senti i professionisti di ${gap.categoryLabel}, chiedi se la fanno e falla aggiungere al profilo con il prezzo: così compaiono a chi la cerca.`,
+    });
+  }
+  for (const missing of input.missingServices.slice(0, 2)) {
+    advice.push({
+      key: `missing-service:${missing.categorySlug}:${normalizeServiceName(missing.name)}`,
+      level: "TIP",
+      title: `Aggiungi «${missing.name}» alle prestazioni suggerite di ${missing.categoryLabel}`,
+      why: `L'hanno scritta a mano ${missing.professionals} professionisti, ma non è tra quelle che il sito propone.`,
+      todo: "Chiedi di aggiungerla all'elenco delle prestazioni suggerite: chi si iscrive la sceglie con un clic e i prezzi medi di «Quanto costa» si sommano bene.",
     });
   }
 

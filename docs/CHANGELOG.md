@@ -21316,3 +21316,16 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 **Decisione**: il comando di build in `render.yaml` non chiama più `corepack enable`: `pnpm install --frozen-lockfile && pnpm --filter @professionisti/api build`. pnpm prende la versione dal campo `packageManager` (10.33.0). Se il servizio non segue il Blueprint, lo stesso comando va scritto a mano in Render → Settings → Build Command.
 
 **Verifica**: il pnpm di `/usr/bin` esiste sulla macchina di Render (è proprio il file che `corepack enable` cercava di cancellare); il deploy su Render dopo l'unione.
+
+## 378. Andamento del sito: prestazioni più cercate
+
+**Richiesta** (Luca, 27/10/2026): "nell'analisi di cosa implementare in base ai numeri può essere utile vedere quali servizi sono più cercati per poi implementarli standard alle rispettive categorie". Scelta sulla scheda: "Sì, tutti e due i modi".
+
+**Decisione**:
+- L'elenco delle prestazioni suggerite (`POPULAR_SERVICES`) lo allarga il thread "Proporre i professionisti dalla descrizione del problema", con le frasi raccolte lì; qui solo i numeri che dopo il lancio dicono cosa aggiungere. Accordo tra i due thread: questo thread legge l'elenco e non lo modifica.
+- **Ricerche sulle prestazioni**: una ricerca scritta (`/cerca?q=`) si confronta con le prestazioni dell'elenco (`matchPopularServices` in `packages/shared/src/serviceSearch.ts`: ogni parola cercata deve stare nel nome, "perdite" vale "perdita"; più di 3 prestazioni trovate = parola troppo generica, non si conta). Si salva per giorno solo il nome preso dall'elenco, mai il testo del cliente (`ServiceSearchDay`, migrazione `20261027180000_prestazioni_cercate`, cancellato dopo 25 mesi come gli altri contatori). Robot e "Non contare" esclusi come nel §372.
+- **Riquadro "Prestazioni più cercate"** in `/admin/andamento`: per lavoro, le 5 più cercate negli ultimi 90 giorni con quanti professionisti di quel lavoro le offrono (anche scritte più lunghe, `offersPopularService`); sotto, le prestazioni scritte a mano da almeno 3 professionisti diversi che non sono tra quelle suggerite dei loro lavori (dati che c'erano già, nessun contatore nuovo).
+- **Due consigli** (livello "Quando hai tempo", al massimo 2 per tipo): "Cercano «X», pochi la offrono" da 10 ricerche in 90 giorni con al massimo 2 professionisti che la offrono, e "Aggiungi «X» alle prestazioni suggerite di <lavoro>" con il lavoro più comune tra chi l'ha scritta.
+- Informativa privacy, punto 9: aggiunte le prestazioni cercate (nome dell'elenco, mai il testo).
+
+**Verifica**: test di confronto, conteggio, riquadro e consigli (`site-stats.test.ts`, `site-counts.service.test.ts`); typecheck, lint e test dell'API; prove nel browser `conteggi.spec.ts` ("sturatura" a Latina conta 1 su "Sturatura scarichi" di Idraulico, 0 per Googlebot, il testo scritto non si salva) e `andamento-sito.spec.ts` (riquadro visibile su telefono e computer, axe senza errori).
