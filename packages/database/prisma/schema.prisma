@@ -2471,6 +2471,20 @@ model UnknownJobTerm {
   @@map("unknown_job_terms")
 }
 
+// Ricerche scritte che corrispondono a una prestazione dell'elenco suggerito
+// (POPULAR_SERVICES, docs/CHANGELOG.md §378): si salva il nome dell'elenco,
+// mai il testo scritto dal cliente. Tenute 25 mesi come gli altri contatori.
+model ServiceSearchDay {
+  categorySlug String
+  service      String
+  day          DateTime @db.Date
+  count        Int      @default(0)
+
+  @@id([categorySlug, service, day])
+  @@index([day])
+  @@map("service_search_days")
+}
+
 // Motivo scelto da un elenco quando si elimina l'account o si annulla
 // l'abbonamento (facoltativo, mai testo libero, mai chi l'ha scelto).
 model ChurnReasonDay {

@@ -87,6 +87,31 @@ test.describe("ricerca", () => {
   }
 });
 
+async function serviceSearchCount(): Promise<number> {
+  const row = await prisma.serviceSearchDay.findFirst({ where: { categorySlug: "idraulico", service: "Sturatura scarichi", day: today() } });
+  return row?.count ?? 0;
+}
+
+test.describe("prestazioni cercate", () => {
+  for (const [name, options, expected] of [
+    ["un cliente conta 1 sulla prestazione dell'elenco", {}, 1],
+    ["un robot conta 0", { userAgent: GOOGLEBOT }, 0],
+  ] as const) {
+    test(name, async ({ browser }) => {
+      const context = await newContext(browser, options);
+      const page = await context.newPage();
+      const before = await serviceSearchCount();
+      await page.goto("/cerca?q=sturatura&citta=Latina");
+      await expect(page.locator("h1").first()).toBeVisible();
+      await settle();
+      expect(await serviceSearchCount()).toBe(before + expected);
+      // Il testo scritto non si salva mai: solo il nome dell'elenco.
+      expect(await prisma.serviceSearchDay.count({ where: { service: { contains: "sturatura" } } })).toBe(0);
+      await context.close();
+    });
+  }
+});
+
 test.describe("passi della richiesta", () => {
   test("un percorso noto: ogni passo sale di 1 e la richiesta salvata torna con il conteggio", async ({ browser }) => {
     const client = await createClient(prisma);

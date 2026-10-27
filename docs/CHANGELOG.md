@@ -21333,7 +21333,56 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Pagine "Quanto costa [mestiere] (a [città])" cliccabili**: ogni riga della tabella "Prezzi dei lavori più comuni" apre `/cerca?servizio=<lavoro>` (nella città della pagina se c'è), con la freccia e lo sfondo verde chiaro al passaggio come nella home; tutta la riga si tocca.
 
-## 385. "Quanto costa in media": prezzi onesti e richiesta già pronta
+## 384. Andamento del sito: prestazioni più cercate
+
+**Richiesta** (Luca, 27/10/2026): "nell'analisi di cosa implementare in base ai numeri può essere utile vedere quali servizi sono più cercati per poi implementarli standard alle rispettive categorie". Scelta sulla scheda: "Sì, tutti e due i modi".
+
+**Decisione**:
+- L'elenco delle prestazioni suggerite (`POPULAR_SERVICES`) lo allarga il thread "Proporre i professionisti dalla descrizione del problema", con le frasi raccolte lì; qui solo i numeri che dopo il lancio dicono cosa aggiungere. Accordo tra i due thread: questo thread legge l'elenco e non lo modifica.
+- **Ricerche sulle prestazioni**: una ricerca scritta (`/cerca?q=`) si confronta con le prestazioni dell'elenco (`matchPopularServices` in `packages/shared/src/serviceSearch.ts`: ogni parola cercata deve stare nel nome, "perdite" vale "perdita"; più di 3 prestazioni trovate = parola troppo generica, non si conta). Si salva per giorno solo il nome preso dall'elenco, mai il testo del cliente (`ServiceSearchDay`, migrazione `20261027180000_prestazioni_cercate`, cancellato dopo 25 mesi come gli altri contatori). Robot e "Non contare" esclusi come nel §372.
+- **Riquadro "Prestazioni più cercate"** in `/admin/andamento`: per lavoro, le 5 più cercate negli ultimi 90 giorni con quanti professionisti di quel lavoro le offrono (anche scritte più lunghe, `offersPopularService`); sotto, le prestazioni scritte a mano da almeno 3 professionisti diversi che non sono tra quelle suggerite dei loro lavori (dati che c'erano già, nessun contatore nuovo).
+- **Due consigli** (livello "Quando hai tempo", al massimo 2 per tipo): "Cercano «X», pochi la offrono" da 10 ricerche in 90 giorni con al massimo 2 professionisti che la offrono, e "Aggiungi «X» alle prestazioni suggerite di <lavoro>" con il lavoro più comune tra chi l'ha scritta.
+- Informativa privacy, punto 9: aggiunte le prestazioni cercate (nome dell'elenco, mai il testo).
+- **osv-scanner**: il 27/10 è comparsa una segnalazione su `deepmerge` 4.3.1 (GHSA-gcqx-w48m-w2h4, nessuna versione corretta), rossa su tutte le PR. Eccezione in `osv-scanner.toml` approvata da Luca: nell'API lo usa solo html-to-text per unire le proprie opzioni fisse, mai il contenuto delle email; il resto sono strumenti di sviluppo. Da togliere quando esce una versione corretta.
+- **Chi chiamare** (miglioria scelta da Luca): sotto "Cercano «X», pochi la offrono" l'elenco dei professionisti visibili di quel lavoro che non la offrono ancora (nome, città, link alla scheda), al massimo 10 con il link a tutti quelli del lavoro; se non ce n'è nessuno, il consiglio dice di cercarne di nuovi e porta a "Crea un profilo".
+
+**Verifica**: test di confronto, conteggio, riquadro e consigli (`site-stats.test.ts`, `site-counts.service.test.ts`); typecheck, lint e test dell'API; prove nel browser `conteggi.spec.ts` ("sturatura" a Latina conta 1 su "Sturatura scarichi" di Idraulico, 0 per Googlebot, il testo scritto non si salva) e `andamento-sito.spec.ts` (riquadro visibile su telefono e computer, axe senza errori).
+
+## 385. Barra fissa "Richiedi un preventivo" anche da computer
+
+**Richiesta di Luca (27/10/2026):** avere anche da computer la barra fissa in
+basso "Richiedi un preventivo a [nome]" che sul telefono segue la pagina
+(§325).
+
+**Parere e decisione:** da computer il profilo ha una colonna sola, senza
+colonna laterale: il pulsante sta sotto l'agenda (a circa 1.065 px su uno
+schermo 1440×900) e non si vede mentre si leggono prestazioni e recensioni,
+quindi la barra non ripete niente. Da computer però non è un pulsante largo
+tutto lo schermo (sembrerebbe una fascia pubblicitaria): la barra è allineata
+alla colonna della pagina (828 px), con foto, nome, stelle e "Risponde
+entro…" a sinistra e il pulsante verde con freccia e magnete a destra. Come
+sul telefono compare solo quando il pulsante della pagina non è sullo
+schermo. Sul telefono, su richiesta di Luca, la barra ha la foto del
+professionista a sinistra del pulsante (il nome non ci starebbe senza
+tagliarlo), per far capire che la richiesta va proprio a lui.
+
+**Pulsante in alto (decisione di Luca):** nel profilo di un
+professionista che accetta richieste (quello con la barra in basso)
+"Richiedi preventivo" in alto a destra non compare più, da computer e da
+telefono (`body:has(.profile-cta-bar) .site-header-cta-link` in
+globals.css, così non lampeggia al caricamento); resta nei profili in pausa,
+dove è l'unico modo di chiedere un preventivo. Portava alla richiesta generica, non a quel professionista, e
+confondeva accanto a "Richiedi un preventivo a [nome]" (come in home e nelle
+pagine di accesso, §279 e §349). Supera la proposta non scelta del §325.
+
+**File:** `apps/web/src/components/ProfileQuoteCta.tsx` (prop `summary`),
+`apps/web/src/components/SiteHeader.tsx` (classe `site-header-cta-link`),
+`apps/web/src/app/professionista/[id]/ProfessionalDetailContent.tsx`,
+`apps/web/src/app/globals.css` (`.profile-cta-bar` fuori dalla media query).
+
+**Verifica:** build di produzione col profilo vero, fotografato a 1440, 1024
+e 390 px (anteprime in `anteprime/barra-preventivo-computer/`).
+## 389. "Quanto costa in media": prezzi onesti e richiesta già pronta
 
 **Richiesta** (Luca, 27/10/2026, versione più profonda del §383, `analisi/quanto-costa-versione-profonda.md`): rendere lo strumento uno che porta lavoro e dice prezzi onesti; dati veri prima del codice; prove con un test automatico, axe, anteprime e un test con 5 persone (simulate).
 
