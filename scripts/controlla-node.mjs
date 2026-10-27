@@ -3,7 +3,7 @@
 // Legge la versione esatta in .nvmrc (usata da Render e dalla CI) e la
 // confronta con l'elenco ufficiale delle versioni di nodejs.org:
 // - esce con errore se la versione in .nvmrc non esiste (o non è esatta);
-// - stampa `aggiornare=true` se nella stessa versione principale (22.x) è
+// - stampa `aggiornare=true` se nella stessa versione principale (es. 24.x) è
 //   uscita dopo una correzione di sicurezza, con la versione più recente da
 //   usare in `ultima`. Il workflow aggiunge queste righe a GITHUB_OUTPUT; i
 //   messaggi per chi legge vanno sull'altra uscita (stderr).
@@ -12,7 +12,7 @@ import { readFileSync } from "node:fs";
 
 const attuale = readFileSync(new URL("../.nvmrc", import.meta.url), "utf8").trim();
 if (!/^\d+\.\d+\.\d+$/.test(attuale)) {
-  console.error(`.nvmrc deve contenere una versione esatta (es. 22.23.4), trovato "${attuale}".`);
+  console.error(`.nvmrc deve contenere una versione esatta (es. 24.22.1), trovato "${attuale}".`);
   process.exit(1);
 }
 const principale = attuale.split(".")[0];
