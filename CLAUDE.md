@@ -391,6 +391,7 @@ prezzi Stripe nelle variabili `STRIPE_PRICE_<LIVELLO>` e
   fattura a zero). La fattura del professionista al cliente la fa lui:
   noi diamo solo i dati chiesti dal cliente e una copia di cortesia, **mai
   nulla all'Agenzia delle Entrate per conto del professionista**. L'estratto
+  (e a gennaio il riepilogo dell'anno dei documenti dati ai clienti, §383)
   va al commercialista solo con la spunta del professionista.
 
 ### Pacchetti di visibilità

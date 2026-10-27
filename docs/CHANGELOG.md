@@ -21385,3 +21385,15 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - La data del documento (lavoro terminato, saldo pagato, pagamento segnato, altrimenti l'appuntamento) è in un punto solo (`courtesyDateOf`), uguale per la copia e per il riepilogo.
 
 **Verifica**: test nuovi su ordine delle ricevute, cliente con partita IVA, bollo, IVA della fattura, importo cambiato, forfettario, anno vuoto, righe del foglio di calcolo (data in ora italiana) e PDF; PDF guardato pagina per pagina; 795 test dell'API, typecheck e lint di API e sito; test dei permessi con le 2 rotte nuove (279 rotte, 1152 controlli, nessun problema); rotte provate con l'API vera in locale (PDF, foglio di calcolo, anno vuoto 404, anno non valido 400); pagina guardata da computer e da telefono.
+
+## 383. Il riepilogo dell'anno arriva da solo al commercialista a gennaio
+
+**Richiesta** (Luca, 27/10/2026, la prima delle migliorie proposte col §382): "effettua la prima miglioria", cioè mandare il riepilogo dell'anno al commercialista insieme all'estratto di dicembre, solo per chi ha messo la spunta.
+
+**Decisione**:
+- **Invio del 1° gennaio** (`StatementsService.sendAccountantStatements`, stesso invio delle 8 dell'estratto): se il mese chiuso è dicembre, all'email del commercialista si aggiungono il PDF e il foglio di calcolo del riepilogo dell'anno (`documenti-clienti-<anno>.pdf` e `.csv`, gli stessi del §382, da `CourtesyCopyService.yearSummaryForProfile`). Solo con la spunta, come l'estratto. Se a dicembre non ci sono movimenti ma nell'anno ci sono documenti, parte lo stesso un'email con il solo riepilogo; senza movimenti e senza documenti non parte niente.
+- **Email** (`accountantStatementEmail`): oggetto "Estratto di dicembre 2026 e riepilogo del 2026 di <nome>" oppure "Riepilogo del 2026 di <nome>"; una riga dice cosa c'è nel riepilogo (ricevute per prestazione occasionale, copie delle fatture) e nei dettagli i due totali dell'anno. Con il solo riepilogo: "A dicembre non ci sono stati movimenti, quindi niente estratto del mese".
+- **Sul sito**: la spunta diventa "Mandagli l'estratto ogni mese e a gennaio il riepilogo dell'anno, in PDF e nel foglio di calcolo"; la frase sulle ricevute dice "scarica il riepilogo per il tuo commercialista, o metti la spunta qui sotto e gli arriva da solo a gennaio".
+- Il riepilogo per il professionista dal sito resta com'era (anno senza documenti: 404).
+
+**Verifica**: test nuovi sull'invio del 1° gennaio (estratto e riepilogo insieme, solo riepilogo, nessuna email senza movimenti né documenti), sugli altri mesi (riepilogo mai chiesto) e sui testi dell'email; 798 test dell'API, typecheck e lint di API e sito.

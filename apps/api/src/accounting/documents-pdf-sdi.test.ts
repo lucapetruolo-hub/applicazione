@@ -1,15 +1,17 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NotFoundException } from "@nestjs/common";
-import { courtesyAmountChanged, courtesyDocumentLabel, courtesyTotalEurCents, courtesyYearCsv, courtesyYearTotals, type CourtesyDocumentSummary } from "@professionisti/shared";
+import { courtesyAmountChanged, courtesyDocumentLabel, courtesyTotalEurCents, courtesyYearCsv, courtesyYearTotals, type CourtesyDocumentSummary, type CourtesyYearSummary, type MonthlyStatement } from "@professionisti/shared";
 import { courtesyDocumentSummary } from "./courtesy-documents";
 import { pdfText, renderDocumentPdf } from "./document-pdf";
 import { courtesyPdfModel, courtesyYearPdfModel, dac7PdfModel, invoicePdfModel, pdfFileName, statementPdfModel } from "./document-pdf-models";
 import { sandboxTestInvoiceXml, sdiCompanyOf, type IssuerSnapshot } from "./invoice-documents";
 import { OpenapiSdiProvider, sdiOutcomeFromNotifications, sdiRejectionMessage } from "./sdi-provider";
 import { CourtesyCopyService } from "./courtesy-copy.service";
+import { StatementsService, accountantStatementEmail } from "./statements.service";
 
 // PDF, numero della copia di cortesia e invio allo SdI (docs/CHANGELOG.md §379);
-// elenco dei documenti ai clienti in Admin (§380); riepilogo dell'anno (§382).
+// elenco dei documenti ai clienti in Admin (§380); riepilogo dell'anno (§382),
+// che a gennaio va anche al commercialista (§383).
 
 const issuer: IssuerSnapshot = {
   companyName: "Professionisti S.r.l.",
@@ -304,6 +306,69 @@ describe("riepilogo dell'anno per il commercialista", () => {
     expect(JSON.stringify(courtesyYearPdfModel(summary).blocks)).not.toContain("Ricevute per prestazione occasionale");
 
     await expect(build([]).service.yearSummaryForProfessional("user-1", 2025)).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
+describe("riepilogo dell'anno al commercialista a gennaio", () => {
+  const statement: MonthlyStatement = {
+    month: "2026-12",
+    monthLabel: "dicembre 2026",
+    totals: { onlineEurCents: 20000, directEurCents: 0, feesEurCents: 1708, payoutsArrivedEurCents: 18292 },
+    rows: [],
+    blockedEurCents: 0,
+    feeInvoice: { id: "inv-1", number: "COM/2026/0012" },
+    documentHint: "",
+  };
+  const row = { number: "1/2026", date: "2026-06-02T09:00:00.000Z", customerName: "Anna Bianchi", customerHasVatNumber: false, jobLabel: "Idraulico", totalEurCents: 5000, vatEurCents: null, stampDuty: false, amountChanged: false };
+  const yearly = (receipts: (typeof row)[]): CourtesyYearSummary => ({ year: 2026, who: "Mario Rossi", receipts, invoices: [] });
+
+  function build(movementsByProfile: Record<string, number>, yearlyByProfile: Record<string, CourtesyYearSummary>) {
+    const recipient = (id: string) => ({ professionalProfileId: id, accountantEmail: `studio-${id}@esempio.it`, fiscalFirstName: "Mario", fiscalLastName: "Rossi", businessName: null, professionalProfile: { businessName: null } });
+    const prisma = { professionalFiscalProfile: { findMany: vi.fn().mockResolvedValue(Object.keys(movementsByProfile).map(recipient)) } };
+    const email = { send: vi.fn().mockResolvedValue(true) };
+    const courtesy = { yearSummaryForProfile: vi.fn((id: string) => Promise.resolve(yearlyByProfile[id] ?? yearly([]))) };
+    const service = new StatementsService(prisma as never, email as never, {} as never, courtesy as never);
+    vi.spyOn(service, "build").mockImplementation((id: string) => Promise.resolve({ statement, csvRows: [], movements: movementsByProfile[id] ?? 0 }));
+    return { service, email, courtesy };
+  }
+
+  it("il 1° gennaio parte con l'estratto di dicembre, o da solo se dicembre è vuoto", async () => {
+    const { service, email, courtesy } = build({ a: 3, b: 0, c: 0 }, { a: yearly([row]), b: yearly([row]) });
+    const sent = await service.sendAccountantStatements(new Date("2027-01-01T07:00:00Z"));
+
+    expect(sent).toBe(2);
+    expect(courtesy.yearSummaryForProfile).toHaveBeenCalledWith("a", 2026);
+    const byTo = (to: string) => email.send.mock.calls.find(([p]) => p.to === to)?.[0];
+    // Con i movimenti di dicembre: estratto e riepilogo nella stessa email.
+    const withStatement = byTo("studio-a@esempio.it");
+    expect(withStatement.subject).toBe("Estratto di dicembre 2026 e riepilogo del 2026 di Mario Rossi");
+    expect(withStatement.attachments.map((a: { filename: string }) => a.filename)).toEqual(["estratto-2026-12.pdf", "estratto-2026-12.csv", "documenti-clienti-2026.pdf", "documenti-clienti-2026.csv"]);
+    // Dicembre senza movimenti: solo il riepilogo.
+    const onlyYearly = byTo("studio-b@esempio.it");
+    expect(onlyYearly.subject).toBe("Riepilogo del 2026 di Mario Rossi");
+    expect(onlyYearly.attachments.map((a: { filename: string }) => a.filename)).toEqual(["documenti-clienti-2026.pdf", "documenti-clienti-2026.csv"]);
+    expect(onlyYearly.attachments[1].content).toContain("Ricevuta per prestazione occasionale;1/2026");
+    // Niente movimenti e nessun documento: nessuna email.
+    expect(byTo("studio-c@esempio.it")).toBeUndefined();
+  });
+
+  it("negli altri mesi il riepilogo non c'è", async () => {
+    const { service, email, courtesy } = build({ a: 2, b: 0 }, { a: yearly([row]), b: yearly([row]) });
+    expect(await service.sendAccountantStatements(new Date("2027-02-01T07:00:00Z"))).toBe(1);
+    expect(courtesy.yearSummaryForProfile).not.toHaveBeenCalled();
+    expect(email.send.mock.calls[0]![0].attachments).toHaveLength(2);
+  });
+
+  it("testo dell'email con e senza estratto", () => {
+    const both = accountantStatementEmail("Mario Rossi", statement, { ...yearly([row]), invoices: [{ ...row, number: "12/A", totalEurCents: 12200, vatEurCents: 2200 }] });
+    expect(both.paragraphs.join(" ")).toContain("C'è anche il **riepilogo del 2026**: i documenti dati ai clienti nell'anno (le ricevute per prestazione occasionale e le copie delle fatture), in PDF e nel foglio di calcolo.");
+    expect(both.details).toContainEqual({ label: "Ricevute del 2026", value: "50,00 €" });
+    expect(both.details).toContainEqual({ label: "Copie delle fatture del 2026", value: "122,00 €" });
+
+    const alone = accountantStatementEmail("Mario Rossi", null, yearly([row]));
+    expect(alone.title).toBe("Riepilogo del 2026");
+    expect(alone.paragraphs).toEqual(["Le mandiamo il **riepilogo del 2026** di **Mario Rossi**, come ci ha chiesto: i documenti dati ai clienti nell'anno (le ricevute per prestazione occasionale), in PDF e nel foglio di calcolo. A dicembre non ci sono stati movimenti, quindi niente estratto del mese."]);
+    expect(alone.details).toEqual([{ label: "Ricevute del 2026", value: "50,00 €" }]);
   });
 });
 

@@ -5,12 +5,15 @@ import {
   INVOICE_SOURCE_LABEL,
   accountingMonthLabel,
   clientDocumentHint,
+  courtesyYearCsv,
+  courtesyYearPart,
   invoiceNumberLabel,
   isAccountingMonth,
   notificationJobLabel,
   onlineFeeWithVatEurCents,
   statementCsv,
   type AccountantSettingsInput,
+  type CourtesyYearSummary,
   type MonthlyStatement,
   type MonthlyStatementRow,
   type StatementCsvRow,
@@ -22,7 +25,8 @@ import { EMAIL_BRAND } from "../email/email-brand";
 import { previousMonth, romeDayIso, romeDayLabel, romeMonthOf, romeMonthRange } from "./accounting-dates";
 import { InvoicesService } from "./invoices.service";
 import { renderDocumentPdf } from "./document-pdf";
-import { statementPdfModel } from "./document-pdf-models";
+import { courtesyYearPdfModel, statementPdfModel } from "./document-pdf-models";
+import { CourtesyCopyService } from "./courtesy-copy.service";
 import { professionalFiscalName } from "./invoice-documents";
 
 const BOOKING_SELECT = {
@@ -73,6 +77,7 @@ export class StatementsService {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly emailService: EmailService,
     private readonly invoicesService: InvoicesService,
+    private readonly courtesyCopyService: CourtesyCopyService,
   ) {}
 
   private requireMonth(month: string): void {
@@ -250,11 +255,14 @@ export class StatementsService {
   /**
    * Il 1° del mese alle 8 (dopo le fatture delle 7): l'estratto del mese
    * prima al commercialista di chi ha messo la spunta, col PDF e il foglio di
-   * calcolo allegati. Solo se nel mese c'è stato qualche movimento.
+   * calcolo allegati. Solo se nel mese c'è stato qualche movimento. A gennaio
+   * anche il riepilogo dell'anno prima dei documenti dati ai clienti (§383),
+   * pure senza movimenti a dicembre.
    */
   @Cron("0 8 1 * *", { timeZone: "Europe/Rome" })
   async sendAccountantStatements(now: Date = new Date()): Promise<number> {
     const month = previousMonth(romeMonthOf(now));
+    const closedYear = month.endsWith("-12") ? Number(month.slice(0, 4)) : null;
     const recipients = await this.prisma.professionalFiscalProfile.findMany({
       where: { accountantStatementsAt: { not: null }, accountantEmail: { not: null }, professionalProfile: { user: { deletedAt: null } } },
       select: {
@@ -270,19 +278,25 @@ export class StatementsService {
     for (const r of recipients) {
       try {
         const { statement, csvRows, movements } = await this.build(r.professionalProfileId, month);
-        if (movements === 0) continue;
+        const yearly = closedYear !== null ? await this.courtesyCopyService.yearSummaryForProfile(r.professionalProfileId, closedYear) : null;
+        const withYearly = yearly && yearly.receipts.length + yearly.invoices.length > 0 ? yearly : null;
+        if (movements === 0 && !withYearly) continue;
         const who = professionalFiscalName(r, r.professionalProfile.businessName) ?? "";
-        const email = renderEmail(accountantStatementEmail(who, statement));
-        const ok = await this.emailService.send({
-          to: r.accountantEmail!,
-          subject: email.subject,
-          html: email.html,
-          text: email.text,
-          attachments: [
+        const email = renderEmail(accountantStatementEmail(who, movements > 0 ? statement : null, withYearly));
+        const attachments: { filename: string; content: string | Buffer; contentType: string }[] = [];
+        if (movements > 0) {
+          attachments.push(
             { filename: `estratto-${month}.pdf`, content: await renderDocumentPdf(statementPdfModel(statement, who)), contentType: "application/pdf" },
             { filename: `estratto-${month}.csv`, content: statementCsv(csvRows), contentType: "text/csv; charset=utf-8" },
-          ],
-        });
+          );
+        }
+        if (withYearly) {
+          attachments.push(
+            { filename: `documenti-clienti-${withYearly.year}.pdf`, content: await renderDocumentPdf(courtesyYearPdfModel(withYearly, now)), contentType: "application/pdf" },
+            { filename: `documenti-clienti-${withYearly.year}.csv`, content: courtesyYearCsv(withYearly), contentType: "text/csv; charset=utf-8" },
+          );
+        }
+        const ok = await this.emailService.send({ to: r.accountantEmail!, subject: email.subject, html: email.html, text: email.text, attachments });
         if (ok) sent += 1;
       } catch (err) {
         this.logger.error(`Estratto di ${month} non mandato al commercialista (${r.professionalProfileId}): ${err instanceof Error ? err.message : String(err)}`);
@@ -292,23 +306,44 @@ export class StatementsService {
   }
 }
 
-/** Email al commercialista: chi è il cliente, i totali, e perché la riceve. */
-export function accountantStatementEmail(who: string, statement: MonthlyStatement): EmailContent {
+/**
+ * Email al commercialista: chi è il cliente, i totali, e perché la riceve. A
+ * gennaio c'è anche (o solo) il riepilogo dell'anno dei documenti dati ai
+ * clienti (§383).
+ */
+export function accountantStatementEmail(who: string, statement: MonthlyStatement | null, yearly: CourtesyYearSummary | null = null): EmailContent {
   const eur = (cents: number) => `${(cents / 100).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+  const yearlyParts = yearly
+    ? [
+        yearly.receipts.length > 0 ? { what: "le ricevute per prestazione occasionale", label: `Ricevute del ${yearly.year}`, rows: yearly.receipts } : null,
+        yearly.invoices.length > 0 ? { what: "le copie delle fatture", label: `Copie delle fatture del ${yearly.year}`, rows: yearly.invoices } : null,
+      ].filter((part) => part !== null)
+    : [];
+  const yearlyWhat = `i documenti dati ai clienti nell'anno (${yearlyParts.map((p) => p.what).join(" e ")}), in PDF e nel foglio di calcolo`;
   return {
     kind: "external",
-    subject: `Estratto di ${statement.monthLabel} di ${who}`,
+    subject: statement
+      ? `Estratto di ${statement.monthLabel}${yearly ? ` e riepilogo del ${yearly.year}` : ""} di ${who}`
+      : `Riepilogo del ${yearly?.year ?? ""} di ${who}`,
     greeting: null,
-    title: `Estratto di ${statement.monthLabel}`,
-    paragraphs: [
-      `Le mandiamo l'estratto di **${statement.monthLabel}** di **${who}**, come ci ha chiesto. In allegato l'estratto in PDF e il foglio di calcolo con ogni movimento.`,
-      statement.feeInvoice ? `La fattura delle nostre trattenute è la ${statement.feeInvoice.number}.` : "Le fatture elettroniche arrivano anche al cassetto fiscale del professionista.",
-    ],
+    title: statement ? `Estratto di ${statement.monthLabel}` : `Riepilogo del ${yearly?.year ?? ""}`,
+    paragraphs: statement
+      ? [
+          `Le mandiamo l'estratto di **${statement.monthLabel}** di **${who}**, come ci ha chiesto. In allegato l'estratto in PDF e il foglio di calcolo con ogni movimento.`,
+          ...(yearly ? [`C'è anche il **riepilogo del ${yearly.year}**: ${yearlyWhat}.`] : []),
+          statement.feeInvoice ? `La fattura delle nostre trattenute è la ${statement.feeInvoice.number}.` : "Le fatture elettroniche arrivano anche al cassetto fiscale del professionista.",
+        ]
+      : [`Le mandiamo il **riepilogo del ${yearly?.year ?? ""}** di **${who}**, come ci ha chiesto: ${yearlyWhat}. A dicembre non ci sono stati movimenti, quindi niente estratto del mese.`],
     details: [
-      { label: "Pagamenti online dei clienti", value: eur(statement.totals.onlineEurCents) },
-      { label: "Pagamenti diretti dichiarati", value: eur(statement.totals.directEurCents) },
-      { label: "Nostre trattenute (IVA compresa)", value: eur(statement.totals.feesEurCents) },
-      { label: "Bonifici arrivati in banca", value: eur(statement.totals.payoutsArrivedEurCents) },
+      ...(statement
+        ? [
+            { label: "Pagamenti online dei clienti", value: eur(statement.totals.onlineEurCents) },
+            { label: "Pagamenti diretti dichiarati", value: eur(statement.totals.directEurCents) },
+            { label: "Nostre trattenute (IVA compresa)", value: eur(statement.totals.feesEurCents) },
+            { label: "Bonifici arrivati in banca", value: eur(statement.totals.payoutsArrivedEurCents) },
+          ]
+        : []),
+      ...yearlyParts.map((part) => ({ label: part.label, value: eur(courtesyYearPart(part.rows).totalEurCents) })),
     ],
     after: [`La riceve perché ${who} ha indicato questo indirizzo nel suo profilo su ${EMAIL_BRAND.name}. Per non riceverla più basta che tolga la spunta.`],
   };

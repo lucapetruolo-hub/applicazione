@@ -197,7 +197,7 @@ function ClientDocuments({ token, documents }: { token: string; documents: Court
           </XStack>
           {totals.some((row) => row.kind === "RECEIPT") ? (
             <Text fontSize={16} color={brand.grafite70}>
-              Il totale delle ricevute dell&apos;anno va nella dichiarazione dei redditi: scarica il riepilogo e dallo al tuo commercialista.
+              Il totale delle ricevute dell&apos;anno va nella dichiarazione dei redditi: scarica il riepilogo per il tuo commercialista, o metti la spunta qui sotto e gli arriva da solo a gennaio.
             </Text>
           ) : null}
           {years.map((year) => (
@@ -264,7 +264,7 @@ function YearDownloads({ token, year }: { token: string; year: number }) {
   );
 }
 
-/** Il commercialista: l'estratto gli arriva per email il 1° del mese, solo con la spunta. */
+/** Il commercialista: l'estratto gli arriva per email il 1° del mese, solo con la spunta; a gennaio anche il riepilogo dell'anno (§383). */
 function AccountantCard({ token, initial }: { token: string; initial: DocumentsOverview["accountant"] }) {
   const [email, setEmail] = useState(initial.email ?? "");
   const [enabled, setEnabled] = useState(initial.enabled);
@@ -319,7 +319,7 @@ function AccountantCard({ token, initial }: { token: string; initial: DocumentsO
           setDone(false);
         }}
       >
-        Mandagli l&apos;estratto ogni mese, in PDF e nel foglio di calcolo
+        Mandagli l&apos;estratto ogni mese e a gennaio il riepilogo dell&apos;anno, in PDF e nel foglio di calcolo
       </ConsentCheckbox>
       <XStack gap="$3" alignItems="center" flexWrap="wrap">
         <Button variant="primary" alignSelf="flex-start" disabled={!dirty || pending} opacity={!dirty || pending ? 0.6 : 1} onPress={() => void save()}>

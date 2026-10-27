@@ -92,7 +92,13 @@ export class CourtesyCopyService {
    * con gli importi di oggi. Restano fuori i lavori annullati.
    */
   async yearSummaryForProfessional(userId: string, year: number): Promise<CourtesyYearSummary> {
-    const professionalProfileId = await this.invoicesService.profileIdOf(userId);
+    const summary = await this.yearSummaryForProfile(await this.invoicesService.profileIdOf(userId), year);
+    if (summary.receipts.length + summary.invoices.length === 0) throw new NotFoundException("Nessun documento dato ai clienti in quell'anno.");
+    return summary;
+  }
+
+  /** Lo stesso riepilogo per profilo, anche vuoto: a gennaio va al commercialista con l'estratto (§383). */
+  async yearSummaryForProfile(professionalProfileId: string, year: number): Promise<CourtesyYearSummary> {
     const [profile, documents] = await Promise.all([
       this.prisma.professionalProfile.findUnique({
         where: { id: professionalProfileId },
@@ -115,7 +121,6 @@ export class CourtesyCopyService {
         },
       }),
     ]);
-    if (documents.length === 0) throw new NotFoundException("Nessun documento dato ai clienti in quell'anno.");
 
     const fiscal = profile?.fiscalProfile;
     const chargesVat = professionalChargesVat(fiscal?.entityType, fiscal?.chargesVat);
