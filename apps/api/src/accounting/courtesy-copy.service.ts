@@ -3,6 +3,7 @@ import { Cron } from "@nestjs/schedule";
 import type { Prisma, PrismaClient } from "@professionisti/database";
 import {
   STAMP_DUTY_THRESHOLD_EUR_CENTS,
+  accountingDateLabel,
   clientInvoiceLines,
   courtesyAmountChanged,
   courtesyDocumentLabel,
@@ -24,7 +25,7 @@ import { NotificationsService } from "../notifications/notifications.service";
 import { invoiceRequestView } from "../client-invoice-requests/client-invoice-requests.service";
 import { InvoicesService } from "./invoices.service";
 import { professionalFiscalName, recipientFromFiscal, recipientParty } from "./invoice-documents";
-import { romeMonthOf } from "./accounting-dates";
+import { romeMonthOf, romeMonthRange } from "./accounting-dates";
 import { COURTESY_DOCUMENT_FIELDS, courtesyDocumentSummary } from "./courtesy-documents";
 
 /**
@@ -73,17 +74,47 @@ export class CourtesyCopyService {
   /**
    * Il PDF scaricato dal professionista: ci segniamo quando e con che
    * importo, così in assistenza si sa cosa ha in mano il cliente (§380).
+   * Al primo PDF, o se l'importo è cambiato, avvisiamo il cliente che la
+   * copia è nei documenti della richiesta (§387).
    */
   async forProfessionalPdf(userId: string, bookingId: string): Promise<CourtesyCopyView> {
     const copy = await this.forProfessional(userId, bookingId);
     const professionalProfileId = await this.invoicesService.profileIdOf(userId);
+    const previous = await this.prisma.courtesyDocument.findUnique({ where: { bookingId }, select: { pdfDownloadedAt: true, pdfTotalEurCents: true } });
     const downloaded = { pdfDownloadedAt: new Date(), pdfTotalEurCents: copy.totalEurCents };
-    await this.prisma.courtesyDocument.upsert({
+    const saved = await this.prisma.courtesyDocument.upsert({
       where: { bookingId },
       create: { bookingId, professionalProfileId, kind: copy.kind, year: yearOf(copy.date), ownNumber: copy.kind === "INVOICE" ? copy.number : null, ...downloaded },
       update: downloaded,
+      select: { kind: true, number: true, year: true, ownNumber: true },
     });
+    const updated = !!previous?.pdfDownloadedAt;
+    if (copy.totalEurCents !== null && (!updated || courtesyAmountChanged(previous?.pdfTotalEurCents ?? null, copy.totalEurCents))) {
+      await this.notifyClientDocumentReady(bookingId, saved, updated);
+    }
     return copy;
+  }
+
+  private async notifyClientDocumentReady(bookingId: string, doc: { kind: string; number: number | null; year: number; ownNumber: string | null }, updated: boolean): Promise<void> {
+    try {
+      const booking = await this.prisma.booking.findUnique({
+        where: { id: bookingId },
+        select: { clientId: true, quote: { select: { guidedRequestId: true, guidedRequest: { select: { category: { select: { label: true } } } } } } },
+      });
+      if (!booking) return;
+      const kind = doc.kind === "RECEIPT" ? "RECEIPT" : "INVOICE";
+      await this.notificationsService.notify(booking.clientId, "JOB_DOCUMENT_READY", {
+        bookingId,
+        guidedRequestId: booking.quote?.guidedRequestId ?? null,
+        category: booking.quote?.guidedRequest.category.label ?? null,
+        kind,
+        // Come nei documenti della richiesta: senza il numero, "Copia della fattura".
+        label: kind === "INVOICE" && !doc.ownNumber ? "Copia della fattura" : courtesyDocumentLabel(doc),
+        updated,
+      });
+    } catch (err) {
+      this.logger.error(`Avviso al cliente della copia pronta non mandato (${bookingId}): ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   /** I documenti dati ai clienti, dal più recente: in "Fatture e documenti" col totale dell'anno (§381). */
@@ -180,30 +211,67 @@ export class CourtesyCopyService {
    * Il 15 dicembre alle 9 (docs/CHANGELOG.md §384): a chi ha documenti
    * dell'anno da sistemare, con l'importo cambiato dopo il PDF o senza
    * importo, un avviso con l'elenco, così il riepilogo dell'anno (anche
-   * quello che a gennaio parte al commercialista) arriva pulito.
+   * quello che a gennaio parte al commercialista) arriva pulito. Per chi fa
+   * le ricevute anche i lavori terminati senza ricevuta o con la ricevuta
+   * mai scaricata (§387): nel riepilogo mancherebbero o il cliente non l'ha.
    */
   @Cron("0 9 15 12 *", { timeZone: "Europe/Rome" })
   async remindDocumentsToFix(now: Date = new Date()): Promise<number> {
     const year = Number(romeMonthOf(now).slice(0, 4));
-    const documents = await this.prisma.courtesyDocument.findMany({
-      where: { year, booking: { status: { not: "CANCELED" } } },
-      orderBy: { createdAt: "asc" },
-      select: {
-        ...COURTESY_DOCUMENT_FIELDS,
-        professionalProfileId: true,
-        booking: {
-          select: {
-            jobPayment: { select: { paymentMethod: true, paidEurCents: true, refundedEurCents: true, grossAmountEurCents: true } },
-            client: { select: { name: true, surname: true, deletedAt: true } },
-            quote: { select: { guidedRequest: { select: { category: { select: { label: true } } } } } },
+    const range = { gte: romeMonthRange(`${year}-01`).start, lt: romeMonthRange(`${year}-12`).end };
+    const [documents, withoutReceipt] = await Promise.all([
+      this.prisma.courtesyDocument.findMany({
+        where: { year, booking: { status: { not: "CANCELED" } } },
+        orderBy: { createdAt: "asc" },
+        select: {
+          ...COURTESY_DOCUMENT_FIELDS,
+          professionalProfileId: true,
+          booking: {
+            select: {
+              status: true,
+              jobPayment: { select: { paymentMethod: true, paidEurCents: true, refundedEurCents: true, grossAmountEurCents: true } },
+              client: { select: { name: true, surname: true, deletedAt: true } },
+              quote: { select: { guidedRequest: { select: { category: { select: { label: true } } } } } },
+            },
           },
         },
-      },
-    });
-    const toFix = new Map<string, CourtesyDocumentSummary[]>();
+      }),
+      this.prisma.booking.findMany({
+        where: {
+          status: "COMPLETED",
+          courtesyDocument: { is: null },
+          professionalProfile: { fiscalProfile: { is: { entityType: "PRIVATE_INDIVIDUAL" } } },
+          OR: [{ professionalCompletedAt: range }, { professionalCompletedAt: null, scheduledAt: range }],
+        },
+        select: {
+          professionalProfileId: true,
+          professionalCompletedAt: true,
+          scheduledAt: true,
+          jobPayment: { select: { balancePaidAt: true, directReportedAt: true } },
+          client: { select: { name: true, surname: true, deletedAt: true } },
+          quote: { select: { guidedRequest: { select: { category: { select: { label: true } } } } } },
+        },
+      }),
+    ]);
+    type Row = { label: string; customerName: string | null; reason: "AMOUNT_CHANGED" | "MISSING_AMOUNT" | "NOT_DOWNLOADED" | "NO_RECEIPT" };
+    const toFix = new Map<string, Row[]>();
+    const add = (profileId: string, row: Row) => toFix.set(profileId, [...(toFix.get(profileId) ?? []), row]);
     for (const doc of documents) {
       const summary = courtesyDocumentSummary(doc, doc.booking);
-      if (summary.amountChanged || summary.totalEurCents === null) toFix.set(doc.professionalProfileId, [...(toFix.get(doc.professionalProfileId) ?? []), summary]);
+      const reason = summary.amountChanged
+        ? "AMOUNT_CHANGED"
+        : summary.totalEurCents === null
+          ? "MISSING_AMOUNT"
+          : summary.kind === "RECEIPT" && !summary.pdfDownloadedAt && doc.booking.status === "COMPLETED"
+            ? "NOT_DOWNLOADED"
+            : null;
+      if (reason) add(doc.professionalProfileId, { label: summary.label, customerName: summary.customerName, reason });
+    }
+    const missing = withoutReceipt.map((booking) => ({ booking, date: courtesyDateOf(booking) })).filter(({ date }) => yearOf(date) === year);
+    for (const { booking, date } of missing.sort((a, b) => a.date.getTime() - b.date.getTime())) {
+      const job = booking.quote?.guidedRequest?.category.label ?? "Lavoro";
+      const customerName = booking.client.deletedAt ? null : [booking.client.name, booking.client.surname].filter(Boolean).join(" ") || null;
+      add(booking.professionalProfileId, { label: `${job} del ${accountingDateLabel(date.toISOString())}`, customerName, reason: "NO_RECEIPT" });
     }
     if (toFix.size === 0) return 0;
     const profiles = await this.prisma.professionalProfile.findMany({
@@ -216,11 +284,7 @@ export class CourtesyCopyService {
         await this.notificationsService.notify(profile.userId, "CLIENT_DOCUMENTS_TO_FIX", {
           year,
           accountant: !!profile.fiscalProfile?.accountantStatementsAt && !!profile.fiscalProfile.accountantEmail,
-          documents: (toFix.get(profile.id) ?? []).map((doc) => ({
-            label: doc.label,
-            customerName: doc.customerName,
-            reason: doc.amountChanged ? "AMOUNT_CHANGED" : "MISSING_AMOUNT",
-          })),
+          documents: toFix.get(profile.id) ?? [],
         });
         sent += 1;
       } catch (err) {

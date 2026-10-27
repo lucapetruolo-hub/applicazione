@@ -972,31 +972,69 @@ const BUILDERS: Record<string, Builder> = {
     };
   },
   // Il 15 dicembre (docs/CHANGELOG.md §384): documenti dati ai clienti da
-  // sistemare prima del riepilogo dell'anno, uno per riga.
+  // sistemare prima del riepilogo dell'anno, uno per riga; dal §387 anche i
+  // lavori terminati senza ricevuta o con la ricevuta mai scaricata.
   CLIENT_DOCUMENTS_TO_FIX: (payload, ctx) => {
-    const documents = Array.isArray(payload.documents)
+    const reasons: Record<string, string> = {
+      AMOUNT_CHANGED: "Importo cambiato dopo il PDF",
+      MISSING_AMOUNT: "Senza importo",
+      NOT_DOWNLOADED: "Ricevuta mai scaricata",
+      NO_RECEIPT: "Manca la ricevuta",
+    };
+    const rows = Array.isArray(payload.documents)
       ? payload.documents.flatMap((doc) => {
           if (!doc || typeof doc !== "object") return [];
           const d = doc as Record<string, unknown>;
           if (typeof d.label !== "string") return [];
-          return [{ label: typeof d.customerName === "string" ? `${d.label}, ${d.customerName}` : d.label, value: d.reason === "MISSING_AMOUNT" ? "Senza importo" : "Importo cambiato dopo il PDF" }];
+          const reason = typeof d.reason === "string" && d.reason in reasons ? d.reason : "AMOUNT_CHANGED";
+          return [{ reason, label: typeof d.customerName === "string" ? `${d.label}, ${d.customerName}` : d.label, value: reasons[reason]! }];
         })
       : [];
+    const has = (...kinds: string[]) => rows.some((row) => kinds.includes(row.reason));
     const year = typeof payload.year === "number" ? ` del ${payload.year}` : " dell'anno";
+    // Solo ricevute da fare: si preparano dal lavoro, in Richieste.
+    const onlyMissing = rows.length > 0 && rows.every((row) => row.reason === "NO_RECEIPT");
     return {
       kind: "notification",
-      subject: documents.length === 1 ? "Un documento da sistemare prima di fine anno" : "Documenti da sistemare prima di fine anno",
+      subject: rows.length === 1 ? "Un documento da sistemare prima di fine anno" : "Documenti da sistemare prima di fine anno",
       greeting: ctx.name,
       title: "Documenti da sistemare",
       paragraphs: [
-        documents.length === 1
+        rows.length === 1
           ? `Prima del riepilogo${year} c'è un documento dato a un cliente da sistemare.`
-          : `Prima del riepilogo${year} ci sono ${documents.length > 0 ? `${documents.length} ` : ""}documenti dati ai clienti da sistemare.`,
-        "Se l'importo è cambiato, per esempio dopo un rimborso, scarica di nuovo il PDF dal lavoro e ridallo al cliente. Se manca l'importo, chiudi il lavoro con il prezzo finale.",
+          : `Prima del riepilogo${year} ci sono ${rows.length > 0 ? `${rows.length} ` : ""}documenti dati ai clienti da sistemare.`,
+        ...(rows.length === 0 || has("AMOUNT_CHANGED") ? ["Se l'importo è cambiato, per esempio dopo un rimborso, scarica di nuovo il PDF dal lavoro e ridallo al cliente."] : []),
+        ...(rows.length === 0 || has("MISSING_AMOUNT") ? ["Se manca l'importo, chiudi il lavoro con il prezzo finale."] : []),
+        ...(has("NO_RECEIPT", "NOT_DOWNLOADED")
+          ? ["Se manca la ricevuta, preparala dal lavoro, scarica il PDF e dalla al cliente. Se l'hai fatta a mano, dillo al tuo commercialista: nel riepilogo non c'è."]
+          : []),
         payload.accountant === true ? "Il 1° gennaio il riepilogo parte da solo al tuo commercialista." : "Poi scarica il riepilogo dell'anno per il tuo commercialista.",
       ],
-      details: documents.length > 0 ? documents : undefined,
-      cta: { label: "Apri Fatture e documenti", url: `${frontendUrl()}/dashboard/documenti` },
+      details: rows.length > 0 ? rows.map(({ label, value }) => ({ label, value })) : undefined,
+      cta: onlyMissing ? { label: "Apri le richieste", url: `${frontendUrl()}/dashboard/richieste` } : { label: "Apri Fatture e documenti", url: `${frontendUrl()}/dashboard/documenti` },
+    };
+  },
+  // Al cliente (docs/CHANGELOG.md §387): il professionista ha scaricato la
+  // ricevuta o la copia della fattura, che ora è nei documenti della richiesta.
+  JOB_DOCUMENT_READY: (payload, ctx) => {
+    const receipt = payload.kind === "RECEIPT";
+    const label = str(payload.label);
+    const updated = payload.updated === true;
+    const guidedRequestId = str(payload.guidedRequestId);
+    const what = receipt ? "la ricevuta" : "la copia della fattura";
+    return {
+      kind: "notification",
+      subject: updated ? (receipt ? "Ricevuta aggiornata" : "Copia della fattura aggiornata") : receipt ? "La ricevuta del lavoro è pronta" : "La copia della fattura è pronta",
+      greeting: ctx.name,
+      title: updated ? (receipt ? "Ricevuta aggiornata" : "Copia della fattura aggiornata") : receipt ? "Ricevuta pronta" : "Copia della fattura pronta",
+      paragraphs: [
+        updated
+          ? `${pro(ctx)} ha aggiornato ${what} per **${job(ctx)}**, per esempio dopo un rimborso.`
+          : `${pro(ctx)} ha preparato ${what} per **${job(ctx)}**.`,
+        receipt ? "L'originale firmato te lo dà il professionista: una copia la trovi nei documenti della richiesta." : "La fattura valida te la dà il professionista: una copia la trovi nei documenti della richiesta.",
+      ],
+      details: jobDetails(ctx, label ? [{ label: "Documento", value: label }] : []),
+      cta: { label: "Apri i documenti", url: `${frontendUrl()}/le-mie-richieste?tab=lavori${guidedRequestId ? `&open=${guidedRequestId}&documenti=1` : ""}` },
     };
   },
   // Quadratura del mese o fattura scartata dallo SdI (`kind: "sdi"`).

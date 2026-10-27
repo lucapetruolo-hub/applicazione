@@ -117,8 +117,14 @@ notification("CLIENT_DOCUMENTS_TO_FIX", "Professionista", "Lavori e appuntamenti
   documents: [
     { label: "Ricevuta n. 4/2026", customerName: "Anna Bianchi", reason: "AMOUNT_CHANGED" },
     { label: "Fattura n. 12/A", customerName: "Bar Sport S.r.l.", reason: "MISSING_AMOUNT" },
+    // Lavori terminati senza ricevuta o con la ricevuta mai scaricata (§387).
+    { label: "Ricevuta n. 6/2026", customerName: "Luca Verdi", reason: "NOT_DOWNLOADED" },
+    { label: "Idraulico del 12 novembre 2026", customerName: "Sara Neri", reason: "NO_RECEIPT" },
   ],
 });
+// Copia della ricevuta pronta per il cliente (§387).
+notification("JOB_DOCUMENT_READY", "Cliente", "Lavori e appuntamenti", { kind: "RECEIPT", label: "Ricevuta n. 4/2026", guidedRequestId: "preview", updated: false });
+add("job_document_ready_aggiornata", "Lavori e appuntamenti", "Cliente", renderEmail(notificationEmail("JOB_DOCUMENT_READY", { kind: "INVOICE", label: "Fattura n. 12/A", guidedRequestId: "preview", updated: true }, forClient)!));
 notification("QUOTE_REJECTED", "Professionista", "Preventivi e date", {
   note: "Il prezzo è più alto di quanto pensavo, e mi servirebbe prima di venerdì.",
   canResend: true,

@@ -23,7 +23,7 @@ const CLIENT_RICHIESTE_TYPES = new Set([
   "REQUEST_MATCHED_LATER",
   "TIMELINE_MESSAGE_FROM_PROFESSIONAL",
 ]);
-const CLIENT_LAVORI_TYPES = new Set(["JOB_COMPLETED", "PROFESSIONAL_ON_THE_WAY", "JOB_CONFIRM_REMINDER", "JOB_AUTO_CONFIRMED", "BOOKING_CANCELED_BY_PROFESSIONAL", "BOOKING_REOPENED_BY_PROFESSIONAL"]);
+const CLIENT_LAVORI_TYPES = new Set(["JOB_COMPLETED", "JOB_DOCUMENT_READY", "PROFESSIONAL_ON_THE_WAY", "JOB_CONFIRM_REMINDER", "JOB_AUTO_CONFIRMED", "BOOKING_CANCELED_BY_PROFESSIONAL", "BOOKING_REOPENED_BY_PROFESSIONAL"]);
 // Messaggi di chat non letti, indipendentemente dal ruolo — un viewer
 // riceve sempre e solo il tipo pertinente al proprio lato (mai entrambi),
 // quindi sommare i due insiemi è sicuro. Usato per il pallino sulla voce
@@ -138,6 +138,11 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
   // Documenti contabili (docs/CHANGELOG.md §378).
   if (type === "MONTHLY_DOCUMENTS_READY" || type === "CLIENT_DOCUMENTS_TO_FIX") return "/dashboard/documenti";
   if (type === "ADMIN_FEE_RECONCILIATION") return "/admin/finanza";
+  // Copia del documento per il cliente (§387): apre subito i documenti della richiesta.
+  if (type === "JOB_DOCUMENT_READY") {
+    const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
+    return guidedRequestId ? `/le-mie-richieste?tab=lavori&open=${guidedRequestId}&documenti=1` : "/le-mie-richieste?tab=lavori";
+  }
   // Verifica fiscale e d'identità (docs/CHANGELOG.md §253).
   if (type === "TAX_ID_INVALID") return "/dashboard/fiscale";
   if (type === "PROFILE_SETUP_REMINDER") return "/dashboard";

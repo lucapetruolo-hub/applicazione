@@ -402,6 +402,7 @@ describe("documenti da sistemare a dicembre", () => {
           doc("p3", "b5", 1, 9000, 7000),
         ]),
       },
+      booking: { findMany: vi.fn().mockResolvedValue([]) },
       // p3 ha chiuso l'account: non torna dalla ricerca.
       professionalProfile: { findMany: vi.fn().mockResolvedValue([{ id: "p1", userId: "u1", fiscalProfile: { accountantStatementsAt: new Date(), accountantEmail: "studio@esempio.it" } }]) },
     };
@@ -434,6 +435,59 @@ describe("documenti da sistemare a dicembre", () => {
     const single = renderEmail(notificationEmail("CLIENT_DOCUMENTS_TO_FIX", { ...payload, accountant: false, documents: payload.documents.slice(0, 1) }, ctx)!);
     expect(single.subject).toBe("Un documento da sistemare prima di fine anno");
     expect(single.text).toContain("Poi scarica il riepilogo dell'anno per il tuo commercialista.");
+  });
+
+  it("per chi fa le ricevute anche i lavori terminati senza ricevuta o con la ricevuta mai scaricata (§387)", async () => {
+    const completed = (bookingId: string, at: string | null, scheduledAt: string) => ({
+      professionalProfileId: "p1",
+      professionalCompletedAt: at ? new Date(at) : null,
+      scheduledAt: new Date(scheduledAt),
+      jobPayment: null,
+      client: { name: "Sara", surname: "Neri", deletedAt: null },
+      quote: { guidedRequest: { category: { label: "Idraulico" } } },
+    });
+    const notDownloaded = { ...doc("p1", "b6", 6, null, 5000), booking: { ...doc("p1", "b6", 6, null, 5000).booking, status: "COMPLETED" } };
+    const notFinished = { ...doc("p1", "b7", 7, null, 5000), booking: { ...doc("p1", "b7", 7, null, 5000).booking, status: "CONFIRMED" } };
+    const prisma = {
+      courtesyDocument: { findMany: vi.fn().mockResolvedValue([notDownloaded, notFinished]) },
+      booking: {
+        findMany: vi.fn().mockResolvedValue([
+          completed("b8", "2026-11-12T10:00:00Z", "2026-11-12T08:00:00Z"),
+          // Terminato a Capodanno 2027 alle 0:30 di Roma: è dell'anno dopo.
+          completed("b9", "2026-12-31T23:30:00Z", "2026-12-31T20:00:00Z"),
+          completed("b10", null, "2026-03-02T08:00:00Z"),
+        ]),
+      },
+      professionalProfile: { findMany: vi.fn().mockResolvedValue([{ id: "p1", userId: "u1", fiscalProfile: null }]) },
+    };
+    const notifications = { notify: vi.fn().mockResolvedValue(undefined) };
+    const service = new CourtesyCopyService(prisma as never, {} as never, {} as never, notifications as never);
+
+    expect(await service.remindDocumentsToFix(new Date("2026-12-15T08:00:00Z"))).toBe(1);
+    const where = prisma.booking.findMany.mock.calls[0]![0].where;
+    expect(where).toMatchObject({ status: "COMPLETED", courtesyDocument: { is: null }, professionalProfile: { fiscalProfile: { is: { entityType: "PRIVATE_INDIVIDUAL" } } } });
+    expect(where.OR[0].professionalCompletedAt).toEqual({ gte: new Date("2025-12-31T23:00:00Z"), lt: new Date("2026-12-31T23:00:00Z") });
+    expect(notifications.notify.mock.calls[0]![2].documents).toEqual([
+      { label: "Ricevuta n. 6/2026", customerName: "Anna Bianchi", reason: "NOT_DOWNLOADED" },
+      { label: "Idraulico del 2 marzo 2026", customerName: "Sara Neri", reason: "NO_RECEIPT" },
+      { label: "Idraulico del 12 novembre 2026", customerName: "Sara Neri", reason: "NO_RECEIPT" },
+    ]);
+  });
+
+  it("email con le ricevute da fare: cosa fare e il link alle richieste", () => {
+    const ctx = { name: "Mario", category: null, city: null, businessName: null, when: null, proposedWhen: null };
+    const missing = renderEmail(notificationEmail("CLIENT_DOCUMENTS_TO_FIX", { year: 2026, accountant: false, documents: [{ label: "Idraulico del 12 novembre 2026", customerName: "Sara Neri", reason: "NO_RECEIPT" }] }, ctx)!);
+    expect(missing.text).toContain("Idraulico del 12 novembre 2026, Sara Neri: Manca la ricevuta");
+    expect(missing.text).toContain("Se manca la ricevuta, preparala dal lavoro, scarica il PDF e dalla al cliente. Se l'hai fatta a mano, dillo al tuo commercialista: nel riepilogo non c'è.");
+    expect(missing.text).not.toContain("Se l'importo è cambiato");
+    expect(missing.text).toContain("/dashboard/richieste");
+    const mixed = renderEmail(
+      notificationEmail("CLIENT_DOCUMENTS_TO_FIX", { year: 2026, accountant: false, documents: [{ label: "Ricevuta n. 6/2026", customerName: null, reason: "NOT_DOWNLOADED" }, { label: "Ricevuta n. 1/2026", customerName: null, reason: "AMOUNT_CHANGED" }] }, ctx)!,
+    );
+    expect(mixed.text).toContain("Ricevuta n. 6/2026: Ricevuta mai scaricata");
+    expect(mixed.text).toContain("Se l'importo è cambiato");
+    expect(mixed.text).not.toContain("Se manca l'importo");
+    expect(mixed.text).toContain("/dashboard/documenti");
   });
 });
 

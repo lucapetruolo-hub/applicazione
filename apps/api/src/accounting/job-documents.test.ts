@@ -4,7 +4,7 @@ import { JobDocumentsService } from "./job-documents.service";
 import { CourtesyCopyService } from "./courtesy-copy.service";
 import { courtesyPdfModel } from "./document-pdf-models";
 
-// Documenti di un lavoro dal menu della richiesta (docs/CHANGELOG.md §386).
+// Documenti di un lavoro dal menu della richiesta (docs/CHANGELOG.md §386) e avviso al cliente (§387).
 
 const paid = {
   paymentMethod: "MANOVIA",
@@ -138,5 +138,50 @@ describe("copia per il cliente", () => {
     await expect(build(loaded(), { ...saved, pdfDownloadedAt: null }).forClient("client-1", "b1")).rejects.toBeInstanceOf(NotFoundException);
     await expect(build(loaded(), { ...saved, pdfTotalEurCents: 9000 }).forClient("client-1", "b1")).rejects.toBeInstanceOf(NotFoundException);
     await expect(build(loaded({ status: "CANCELED" }), saved).forClient("client-1", "b1")).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  describe("avviso al cliente quando il professionista scarica il PDF", () => {
+    function download(previous: { pdfDownloadedAt: Date | null; pdfTotalEurCents: number | null } | null, over: Record<string, unknown> = {}) {
+      const booking = loaded({ quote: { ...loaded().quote, guidedRequestId: "g1" }, ...over });
+      const prisma = {
+        booking: { findUnique: vi.fn().mockResolvedValue(booking) },
+        courtesyDocument: {
+          findUnique: vi.fn().mockResolvedValue(previous ? { ...saved, ...previous } : null),
+          upsert: vi.fn().mockResolvedValue({ kind: "RECEIPT", number: 4, year: 2026, ownNumber: null }),
+        },
+      };
+      const notifications = { notify: vi.fn().mockResolvedValue(undefined) };
+      const service = new CourtesyCopyService(prisma as never, { profileIdOf: vi.fn().mockResolvedValue("p1") } as never, {} as never, notifications as never);
+      return { service, notifications };
+    }
+
+    it("al primo PDF il cliente sa che la copia è pronta", async () => {
+      const { service, notifications } = download({ pdfDownloadedAt: null, pdfTotalEurCents: null });
+      await service.forProfessionalPdf("pro-1", "b1");
+      expect(notifications.notify).toHaveBeenCalledWith("client-1", "JOB_DOCUMENT_READY", {
+        bookingId: "b1",
+        guidedRequestId: "g1",
+        category: "Idraulico",
+        kind: "RECEIPT",
+        label: "Ricevuta n. 4/2026",
+        updated: false,
+      });
+    });
+
+    it("di nuovo con lo stesso importo niente avviso, con un importo diverso l'avviso della copia aggiornata", async () => {
+      const same = download({ pdfDownloadedAt: new Date(), pdfTotalEurCents: 10000 });
+      await same.service.forProfessionalPdf("pro-1", "b1");
+      expect(same.notifications.notify).not.toHaveBeenCalled();
+
+      const changed = download({ pdfDownloadedAt: new Date(), pdfTotalEurCents: 12000 });
+      await changed.service.forProfessionalPdf("pro-1", "b1");
+      expect(changed.notifications.notify.mock.calls[0]![2]).toMatchObject({ updated: true });
+    });
+
+    it("senza importo niente avviso: prima il lavoro va chiuso con il prezzo finale", async () => {
+      const { service, notifications } = download({ pdfDownloadedAt: null, pdfTotalEurCents: null }, { jobPayment: null });
+      await service.forProfessionalPdf("pro-1", "b1");
+      expect(notifications.notify).not.toHaveBeenCalled();
+    });
   });
 });

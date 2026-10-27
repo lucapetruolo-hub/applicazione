@@ -76,6 +76,8 @@ export function GuidedRequestCard({
   onChatAutoOpenHandled,
   autoStartEditing,
   onAutoEditHandled,
+  autoOpenDocuments,
+  onAutoDocumentsHandled,
   onMarkedRead,
 }: {
   request: ClientGuidedRequest;
@@ -105,6 +107,10 @@ export function GuidedRequestCard({
   autoStartEditing?: boolean;
   /** Richiamata dopo aver gestito `autoStartEditing`, così un rimontaggio non riapre il modulo. */
   onAutoEditHandled?: () => void;
+  /** "Apri i documenti" dall'avviso della copia pronta (`?documenti=1`, docs/CHANGELOG.md §387): apre subito i documenti del lavoro. */
+  autoOpenDocuments?: boolean;
+  /** Richiamata dopo aver gestito `autoOpenDocuments`. */
+  onAutoDocumentsHandled?: () => void;
   /** "Segna come letta" dal menu: spegne subito il "Nuovo" locale del genitore. */
   onMarkedRead: () => void;
 }) {
@@ -344,6 +350,15 @@ export function GuidedRequestCard({
     onAutoEditHandled?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStartEditing]);
+
+  // Stesso principio per i documenti: si aprono solo se c'è già il lavoro.
+  useEffect(() => {
+    if (!autoOpenDocuments) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (booking) setShowDocuments(true);
+    onAutoDocumentsHandled?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpenDocuments]);
 
   async function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
