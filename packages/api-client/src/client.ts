@@ -1185,11 +1185,13 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     mySavedProfessionals: (token: string) =>
       request<ProfessionalSearchResult[]>("/saved-professionals/me", { headers: { Authorization: `Bearer ${token}` } }),
 
-    searchProfessionals: (params: { category?: string; city?: string; q?: string; remote?: boolean; excludeDemo?: boolean; track?: boolean } = {}) => {
+    searchProfessionals: (params: { category?: string; city?: string; q?: string; remote?: boolean; service?: string; excludeDemo?: boolean; track?: boolean } = {}) => {
       const query = new URLSearchParams();
       if (params.category) query.set("category", params.category);
       if (params.city) query.set("city", params.city);
       if (params.q) query.set("q", params.q);
+      // Nome di una prestazione, dalle voci di "Quanto costa in media" (docs/CHANGELOG.md §383).
+      if (params.service) query.set("service", params.service);
       if (params.remote) query.set("remote", "1");
       if (params.excludeDemo) query.set("excludeDemo", "1");
       // Conta la ricerca per i lavori più cercati (docs/CHANGELOG.md §281): solo dalla pagina dei risultati, una volta.

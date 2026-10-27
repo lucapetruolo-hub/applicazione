@@ -13,10 +13,13 @@ export function SearchHeader({
   initialQuery,
   initialCity,
   initialMode,
+  serviceLabel,
 }: {
   initialQuery: string;
   initialCity: string;
   initialMode: SearchMode;
+  /** Prestazione scelta in "Quanto costa in media": la barra chiusa dice quella (docs/CHANGELOG.md §383). */
+  serviceLabel?: string;
 }) {
   const router = useRouter();
   // Da telefono il modulo completo occupava tutto il primo schermo e i
@@ -45,7 +48,7 @@ export function SearchHeader({
     });
   }
 
-  const what = initialQuery.trim() || "Tutti i professionisti";
+  const what = initialQuery.trim() || serviceLabel || "Tutti i professionisti";
   const where = [initialCity.trim() || (initialMode === "online" ? null : "Ovunque"), initialMode === "online" ? "Online" : "A domicilio"]
     .filter(Boolean)
     .join(" · ");

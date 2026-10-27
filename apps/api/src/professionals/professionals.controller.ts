@@ -68,6 +68,7 @@ export class ProfessionalsController {
     @Query("city") city?: string,
     @Query("q") q?: string,
     @Query("remote") remote?: string,
+    @Query("service") service?: string,
     @Query("excludeDemo") excludeDemo?: string,
     @Query("track") track?: string,
   ) {
@@ -76,6 +77,7 @@ export class ProfessionalsController {
       city,
       q,
       remote: remote === "1" || remote === "true",
+      service: typeof service === "string" ? service.slice(0, 120) : undefined,
       excludeDemo: excludeDemo === "1" || excludeDemo === "true",
     });
     // La pagina dei risultati chiede di contare la ricerca una volta sola
