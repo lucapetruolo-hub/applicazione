@@ -3,7 +3,7 @@
  * prima ciò che inizia con le lettere scritte, poi ciò che ha una parola che
  * inizia così ("Cisterna di Latina" per "lat"), poi ciò che le contiene, e
  * infine ciò che le somiglia con un errore di battitura ("Latna" → Latina,
- * docs/CHANGELOG.md §372). Accenti, maiuscole e apostrofi non contano.
+ * docs/CHANGELOG.md §383). Accenti, maiuscole e apostrofi non contano.
  * Funzioni pure, senza dipendenze: girano uguali su web e app.
  */
 

@@ -169,7 +169,7 @@ export function buildProfessionalStats(rows: ProfessionalStatsRow[], now: Date, 
   };
 }
 
-const categoryLabel = (slug: string) => PROFESSIONAL_CATEGORIES.find((c) => c.slug === slug)?.label ?? slug;
+export const categoryLabel = (slug: string) => PROFESSIONAL_CATEGORIES.find((c) => c.slug === slug)?.label ?? slug;
 
 /** Righe di copertura mostrate: le zone più scoperte prima. */
 export const COVERAGE_ROWS = 20;
@@ -260,7 +260,7 @@ export const SEARCH_CITY_ROWS = 15;
 export const SEARCH_ZONE_ROWS = 20;
 
 /** Città salvata in minuscolo: il nome del comune se lo è, altrimenti con le iniziali maiuscole. */
-function searchCityLabel(city: string): string {
+export function searchCityLabel(city: string): string {
   if (!city) return "";
   return findComuneByName(city)?.name ?? city.replace(/(^|[\s'-])(\p{L})/gu, (_, sep: string, ch: string) => sep + ch.toUpperCase());
 }

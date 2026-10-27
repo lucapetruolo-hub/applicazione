@@ -140,7 +140,9 @@ describe("fasce orarie generate a caso", () => {
       ),
       { numRuns: RUNS },
     );
-  });
+    // Il test più lento del file (circa 2 secondi): con la macchina carica
+    // superava i 5 secondi predefiniti (docs/CHANGELOG.md §375).
+  }, 30_000);
 
   it("un impegno occupa tutte e sole le fasce con cui ha almeno un minuto in comune; un lavoro su più giorni non ne occupa nessuna", () => {
     const base = Date.parse("2026-10-24T00:00:00.000Z") / 60000;

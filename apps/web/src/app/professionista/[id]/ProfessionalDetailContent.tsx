@@ -16,6 +16,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { hasRecentlyReported, markReported } from "@/lib/reportedContent";
 import { formatResponseTime, respondsRightAway } from "@/lib/responseTime";
 import { useMediaQuery } from "@/lib/useMediaQuery";
+import { isCountingDisabled } from "@/lib/siteCounts";
 
 // Colonne fisse Oggi + 3 giorni (stessa griglia della mini-agenda di ricerca,
 // vedi ProfessionalCard in packages/ui) — qui costruita a partire dai giorni
@@ -86,7 +87,7 @@ export function ProfessionalDetailContent({
   // Si aspetta la sessione così il server riconosce il titolare che guarda
   // il proprio profilo e non la conta. Mai bloccante: errori ignorati.
   useEffect(() => {
-    if (isAuthLoading || preview) return;
+    if (isAuthLoading || preview || isCountingDisabled()) return;
     const key = `profile_view:${professional.id}`;
     try {
       if (window.sessionStorage.getItem(key)) return;

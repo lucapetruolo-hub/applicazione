@@ -1,5 +1,5 @@
 /**
- * Frazioni e località cercabili nel campo "Città" (docs/CHANGELOG.md §372):
+ * Frazioni e località cercabili nel campo "Città" (docs/CHANGELOG.md §383):
  * chi abita a Borgo Sabotino scrive "Borgo Sabotino", non "Latina".
  * Scegliendole si cerca nel loro comune, che resta l'unico luogo che la
  * ricerca conosce. Per ora solo la zona del lancio (Latina e i comuni vicini,

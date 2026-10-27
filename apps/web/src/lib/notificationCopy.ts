@@ -104,6 +104,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   ADMIN_DAC7_NEEDS_CORRECTION: { icon: "⚠️", message: "DAC7: importi cambiati dopo l'invio, l'anno va corretto." },
   ADMIN_URGENCY_ALERT: { icon: "⚡", message: "Richieste urgenti fuori soglia questa settimana: guarda i numeri nell'area admin." },
   ADMIN_SEARCH_DEMAND_ALERT: { icon: "🔎", message: "Questa settimana alcune ricerche non hanno trovato nessun professionista vicino: guarda dove." },
+  ADMIN_WEEKLY_ADVICE: { icon: "💡", message: "Sono pronti i consigli della settimana: cosa fare, già deciso dai numeri." },
   ADMIN_STRIPE_DISPUTE: { icon: "⚠️", message: "Contestazione in banca su un pagamento: rispondi con le prove dalla Dashboard Stripe." },
   ADMIN_JOB_BALANCE_UNPAID: { icon: "⚠️", message: "Un cliente non ha pagato il saldo di un lavoro entro 7 giorni." },
   // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §190).

@@ -28,7 +28,7 @@ async function bootstrap() {
   // dal proxy pubblico che si connette via IPv4 — da qui "Application
   // failed to respond" pur con il processo avviato correttamente.
   await app.listen(port, "0.0.0.0");
-  console.log(`API in ascolto su 0.0.0.0:${port}`);
+  console.log(`API in ascolto su 0.0.0.0:${port} (Node ${process.version})`);
 }
 
 bootstrap();

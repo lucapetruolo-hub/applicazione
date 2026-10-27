@@ -1,4 +1,5 @@
 import { CategoriesModule } from "../categories/categories.module";
+import { SiteCountsModule } from "../site-counts/site-counts.module";
 import { ProfessionalVerificationModule } from "../professional-verification/professional-verification.module";
 import { SubscriptionsModule } from "../subscriptions/subscriptions.module";
 import { Module } from "@nestjs/common";
@@ -12,7 +13,7 @@ import { ProfessionalsController } from "./professionals.controller";
 import { ProfessionalsService } from "./professionals.service";
 
 @Module({
-  imports: [AuthModule, NotificationsModule, GuidedRequestsModule, ProfessionalMetricsModule, TimelineModule, SubscriptionsModule, ProfessionalVerificationModule, CategoriesModule, AgendaModule],
+  imports: [AuthModule, NotificationsModule, GuidedRequestsModule, ProfessionalMetricsModule, TimelineModule, SubscriptionsModule, ProfessionalVerificationModule, CategoriesModule, AgendaModule, SiteCountsModule],
   controllers: [ProfessionalsController],
   providers: [ProfessionalsService],
   exports: [ProfessionalsService],

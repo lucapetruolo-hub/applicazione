@@ -130,6 +130,10 @@ model User {
   // azienda, docs/CHANGELOG.md §243): precompila /dashboard/fiscale, dove
   // poi vive davvero (ProfessionalFiscalProfile.entityType).
   signupEntityType           ProfessionalEntityType?
+  // Da dove è arrivata la visita in cui ci si è iscritti (Google, social,
+  // diretto..., docs/CHANGELOG.md §372): stessa categoria delle richieste
+  // (§296), mai l'indirizzo di provenienza. Dice dove reclutare.
+  signupSource               TrafficSource?
   // Codice di 6 cifre nella stessa email del link di conferma (§243):
   // impronta SHA-256, valido 15 minuti, al massimo 5 tentativi, un nuovo
   // invio solo dopo 60 secondi da `emailCodeSentAt`.
@@ -2404,6 +2408,85 @@ model FreeSearchDay {
 }
 
 // ---------------------------------------------------------------------------
+// Andamento del sito (docs/CHANGELOG.md §372): contatori per giorno, mai chi
+// è la persona. Tenuti 25 mesi, poi cancellati (SiteStatsRetentionService).
+// ---------------------------------------------------------------------------
+
+// Passi della richiesta di preventivo raggiunti (REQUEST_STEP_KEYS in
+// packages/shared/src/siteStats.ts), per lavoro ("" se non ancora scelto).
+model RequestStepDay {
+  step         String
+  categorySlug String
+  /// GENERAL: richiesta a tutti i professionisti della zona; PROFILE: dalla pagina di un professionista (§372).
+  origin       String   @default("GENERAL")
+  day          DateTime @db.Date
+  count        Int      @default(0)
+
+  @@id([step, categorySlug, origin, day])
+  @@index([day])
+  @@map("request_step_days")
+}
+
+// Invii non riusciti nel browser, per modulo e tipo di errore (rete,
+// server, dati non validi): oggi un errore nel browser non lo vede nessuno.
+model SubmitFailureDay {
+  form  String
+  kind  String
+  day   DateTime @db.Date
+  count Int      @default(0)
+
+  @@id([form, kind, day])
+  @@index([day])
+  @@map("submit_failure_days")
+}
+
+// Parole cercate che non corrispondono a nessun lavoro (es. "antennista"):
+// per giorno si salva solo l'impronta della parola; la parola compare in
+// UnknownJobTerm solo quando è stata cercata in almeno 3 giorni diversi.
+model UnknownJobSearchDay {
+  termHash String
+  day      DateTime @db.Date
+  count    Int      @default(0)
+
+  @@id([termHash, day])
+  @@index([day])
+  @@map("unknown_job_search_days")
+}
+
+model UnknownJobTerm {
+  termHash   String   @id
+  term       String
+  revealedAt DateTime @default(now())
+
+  @@map("unknown_job_terms")
+}
+
+// Motivo scelto da un elenco quando si elimina l'account o si annulla
+// l'abbonamento (facoltativo, mai testo libero, mai chi l'ha scelto).
+model ChurnReasonDay {
+  kind   String
+  reason String
+  day    DateTime @db.Date
+  count  Int      @default(0)
+
+  @@id([kind, reason, day])
+  @@index([day])
+  @@map("churn_reason_days")
+}
+
+// Note sul grafico dell'andamento (es. "chiamati 20 idraulici a Latina"),
+// scritte da un admin. Lancio e cambi di prezzo si aggiungono da soli.
+model SiteNote {
+  id        String   @id @default(uuid())
+  day       DateTime @db.Date
+  text      String
+  createdAt DateTime @default(now())
+
+  @@index([day])
+  @@map("site_notes")
+}
+
+// ---------------------------------------------------------------------------
 // Segnalazioni di un problema sul lavoro (docs/CHANGELOG.md §164)
 // ---------------------------------------------------------------------------
 
@@ -2554,4 +2637,16 @@ model GeneralRequestSettings {
   updatedByUserId    String?
 
   @@map("general_request_settings")
+}
+
+// Consigli di "Andamento del sito" segnati come fatti dal super admin
+// (docs/CHANGELOG.md §372): per 14 giorni non tornano né nella pagina né
+// nell'email del lunedì, il tempo di vedere se l'azione ha funzionato.
+model SiteAdviceDone {
+  key      String   @id
+  title    String
+  doneAt   DateTime @default(now())
+  doneById String?
+
+  @@map("site_advice_done")
 }

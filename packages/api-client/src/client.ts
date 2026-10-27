@@ -86,6 +86,10 @@ import type {
   PendingProfileInvite,
   AdminFounders,
   AdminProfessionalStats,
+  AdminSiteStats,
+  ChurnReason,
+  SiteNoteInput,
+  SiteAdviceDoneInput,
   ProfessionalVerificationFilter,
   ProfessionalVerificationRow,
   MyVerificationStatus,
@@ -312,6 +316,17 @@ export type ApiClientConfig = {
    * che incassa online riceve un'email (docs/CHANGELOG.md §289).
    */
   deviceId?: () => string | null;
+  /**
+   * Da dove è arrivata la visita (Google, social...), mandata con una nuova
+   * registrazione: dice da dove arrivano i professionisti (docs/CHANGELOG.md §372).
+   */
+  trafficSource?: () => TrafficSource | undefined;
+  /**
+   * Chiamata quando una richiesta all'API non riesce (rete assente o
+   * risposta d'errore): il sito conta gli invii falliti per modulo, mai chi
+   * è la persona (§372). `status` è `null` se la rete non ha risposto.
+   */
+  onFailure?: (failure: { method: string; path: string; status: number | null }) => void;
 };
 
 export type AuthResult = { token: string; isNewUser: boolean };
@@ -942,24 +957,39 @@ function extractErrorMessage(body: unknown, fallback: string): string {
  * Client tipizzato unico per chiamare apps/api da apps/web e apps/mobile —
  * niente logica di business duplicata nei due frontend (CLAUDE.md §3).
  */
-export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
+export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }: ApiClientConfig) {
   function deviceHeaders(): Record<string, string> {
     const id = deviceId?.();
     return id ? { "X-Device-Id": id } : {};
   }
 
+  function reportFailure(init: RequestInit | undefined, path: string, status: number | null) {
+    try {
+      onFailure?.({ method: init?.method ?? "GET", path, status });
+    } catch {
+      // Contare un errore non deve mai cambiare l'errore che vede la persona.
+    }
+  }
+
   async function request<T>(path: string, init?: RequestInit): Promise<T> {
-    const response = await fetch(`${baseUrl}${path}`, {
-      ...init,
-      headers: {
-        "Content-Type": "application/json",
-        ...init?.headers,
-      },
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${baseUrl}${path}`, {
+        ...init,
+        headers: {
+          "Content-Type": "application/json",
+          ...init?.headers,
+        },
+      });
+    } catch (err) {
+      reportFailure(init, path, null);
+      throw err;
+    }
 
     const body = await response.json().catch(() => null);
 
     if (!response.ok) {
+      reportFailure(init, path, response.status);
       throw new ApiError(extractErrorMessage(body, `Richiesta API fallita: ${response.status} ${response.statusText}`), response.status, extractErrorCode(body));
     }
 
@@ -970,15 +1000,22 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
     const formData = new FormData();
     formData.append(fieldName, file);
 
-    const response = await fetch(`${baseUrl}${path}`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData,
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${baseUrl}${path}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+    } catch (err) {
+      reportFailure({ method: "POST" }, path, null);
+      throw err;
+    }
 
     const body = await response.json().catch(() => null);
 
     if (!response.ok) {
+      reportFailure({ method: "POST" }, path, response.status);
       throw new ApiError(extractErrorMessage(body, `Richiesta API fallita: ${response.status} ${response.statusText}`), response.status);
     }
 
@@ -1021,7 +1058,7 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
       request<AuthResult>("/auth/register", {
         method: "POST",
         headers: deviceHeaders(),
-        body: JSON.stringify({ email, password, name, role, acceptedLegalTerms, declaredAdult, turnstileToken, categorySlugs, entityType }),
+        body: JSON.stringify({ email, password, name, role, acceptedLegalTerms, declaredAdult, turnstileToken, categorySlugs, entityType, signupSource: trafficSource?.() }),
       }),
 
     emailStatus: (email: string) =>
@@ -1054,7 +1091,7 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
       request<AuthResult>("/auth/google/verify", {
         method: "POST",
         headers: deviceHeaders(),
-        body: JSON.stringify({ idToken, role, createIfMissing, acceptedLegalTerms, declaredAdult, categorySlugs, entityType }),
+        body: JSON.stringify({ idToken, role, createIfMissing, acceptedLegalTerms, declaredAdult, categorySlugs, entityType, signupSource: trafficSource?.() }),
       }),
 
     /** Recupero password (docs/CHANGELOG.md §185): risponde sempre `success`, che l'account esista o no. */
@@ -1113,10 +1150,12 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
     logoutOtherDevices: (token: string) =>
       request<{ token: string }>("/auth/logout-others", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
-    deleteAccount: (token: string) =>
+    /** `reason`: motivo scelto da un elenco, facoltativo (docs/CHANGELOG.md §372). */
+    deleteAccount: (token: string, reason?: ChurnReason) =>
       request<{ success: boolean }>("/auth/me", {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ reason }),
       }),
 
     /**
@@ -1146,7 +1185,7 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
     mySavedProfessionals: (token: string) =>
       request<ProfessionalSearchResult[]>("/saved-professionals/me", { headers: { Authorization: `Bearer ${token}` } }),
 
-    /** Campo "Città": più cercate e comuni con professionisti vicini per un lavoro (docs/CHANGELOG.md §372). */
+    /** Campo "Città": più cercate e comuni con professionisti vicini per un lavoro (docs/CHANGELOG.md §383). */
     getCityHints: (category?: string) =>
       request<{ popular: string[]; covered: string[] }>(`/professionals/city-hints${category ? `?category=${encodeURIComponent(category)}` : ""}`),
     searchProfessionals: (params: { category?: string; city?: string; q?: string; remote?: boolean; excludeDemo?: boolean; track?: boolean } = {}) => {
@@ -1671,10 +1710,11 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
       }),
 
     /** Annulla il rinnovo automatico (resta attivo fino alla scadenza) o lo riattiva. */
-    setSubscriptionRenewal: (token: string, renew: boolean) =>
+    setSubscriptionRenewal: (token: string, renew: boolean, reason?: ChurnReason) =>
       request<{ ok: true }>(`/billing/subscription/${renew ? "resume" : "cancel"}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(renew ? {} : { reason }),
       }),
 
     /** Customer Portal di Stripe: carta e fatture di abbonamento e boost. */
@@ -1743,6 +1783,26 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
       const qs = adminUsersParams(filters).toString();
       return request<AdminProfessionalStats>(`/admin/professionals/stats${qs ? `?${qs}` : ""}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
     },
+
+    /** Andamento del sito e consigli della settimana (docs/CHANGELOG.md §372). */
+    adminSiteStats: (token: string) => request<AdminSiteStats>("/admin/site-stats", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminAddSiteNote: (token: string, input: SiteNoteInput) =>
+      request<{ id: string }>("/admin/site-notes", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
+    /** "Fatto" su un consiglio della settimana: non torna per 14 giorni (solo super admin). */
+    adminMarkSiteAdviceDone: (token: string, input: SiteAdviceDoneInput) =>
+      request<void>("/admin/site-advice/done", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
+    adminUndoSiteAdviceDone: (token: string, key: string) =>
+      request<void>("/admin/site-advice/undo", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ key }) }),
+
+    adminDeleteSiteNote: (token: string, id: string) =>
+      request<void>(`/admin/site-notes/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),
+
+    /** Elimina per sempre un account di prova e tutto quello che ha creato (solo super admin). */
+    adminDeleteTestAccount: (token: string, id: string) =>
+      request<{ id: string; deleted: true }>(`/admin/users/${id}/test-account`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),
 
     adminListFounders: (token: string) => request<AdminFounders>("/admin/founders", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 

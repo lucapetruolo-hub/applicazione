@@ -35,6 +35,7 @@ import {
   type ProfessionalProfileSelfInput,
   type UpdateEngagementRadiusInput,
   type UpdateLeadNoteInput,
+  isBotUserAgent,
 } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { MulterExceptionFilter } from "../common/multer-exception.filter";
@@ -42,6 +43,7 @@ import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard"
 import { VerifiedEmailGuard } from "../auth/verified-email.guard";
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { CategoriesService } from "../categories/categories.service";
+import { SiteCountsService } from "../site-counts/site-counts.service";
 import { ProfessionalsService } from "./professionals.service";
 import { hasNearbyResult } from "./search-area";
 
@@ -58,6 +60,7 @@ export class ProfessionalsController {
     private readonly cloudinaryService: CloudinaryService,
     private readonly jwtService: JwtService,
     private readonly categoriesService: CategoriesService,
+    private readonly siteCounts: SiteCountsService,
   ) {}
 
   @Get("search")
@@ -88,6 +91,11 @@ export class ProfessionalsController {
           ? this.categoriesService.recordSearch(category, cityName, empty)
           : this.categoriesService.recordFreeSearch(cityName, typeof q === "string" && q.trim() !== "", empty);
       void record.catch(() => undefined);
+      // Una parola che non trova né un lavoro né un professionista (es.
+      // "antennista", §372): dice quale lavoro manca sul sito.
+      if (!category && typeof q === "string" && q.trim() && results.length === 0) {
+        void this.siteCounts.recordUnknownJobSearch(q).catch(() => undefined);
+      }
     }
     return results;
   }
@@ -111,7 +119,7 @@ export class ProfessionalsController {
     return this.professionalsService.getCategoryPriceStats(category, city?.trim() || undefined);
   }
 
-  // Pubblico, solo nomi di comuni: suggerimenti del campo "Città" (docs/CHANGELOG.md §372).
+  // Pubblico, solo nomi di comuni: suggerimenti del campo "Città" (docs/CHANGELOG.md §383).
   @Get("city-hints")
   getCityHints(@Query("category") category?: string) {
     return this.professionalsService.getCityHints(typeof category === "string" && isProfessionalCategorySlug(category) ? category : undefined);
@@ -306,7 +314,8 @@ export class ProfessionalsController {
    */
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post(":id/views")
-  async recordView(@Param("id") id: string, @Headers("authorization") authorization?: string) {
+  async recordView(@Param("id") id: string, @Headers("authorization") authorization?: string, @Headers("user-agent") userAgent?: string) {
+    if (isBotUserAgent(userAgent)) return { ok: true };
     let viewerUserId: string | null = null;
     if (authorization?.startsWith("Bearer ")) {
       try {

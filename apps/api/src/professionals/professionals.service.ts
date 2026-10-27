@@ -93,7 +93,7 @@ function mapServices(
 }
 
 /** Dati letti per la pagina pubblica del professionista e per la sua anteprima in dashboard. */
-/** Campo "Città" (§372): periodo delle più cercate, quante, quanto si tengono in memoria. */
+/** Campo "Città" (§383): periodo delle più cercate, quante, quanto si tengono in memoria. */
 const CITY_HINTS_WINDOW_DAYS = 90;
 const CITY_HINTS_POPULAR = 6;
 const CITY_HINTS_CACHE_MS = 5 * 60 * 1000;
@@ -133,7 +133,7 @@ export class ProfessionalsService {
   private readonly logger = new Logger(ProfessionalsService.name);
 
   /**
-   * Suggerimenti del campo "Città" (docs/CHANGELOG.md §372): `covered` sono
+   * Suggerimenti del campo "Città" (docs/CHANGELOG.md §383): `covered` sono
    * i comuni con almeno un professionista visibile del lavoro scelto entro
    * il raggio della ricerca (prima quelli con più professionisti vicini,
    * senza mai dire quanti), `popular` le città più cercate per quel lavoro

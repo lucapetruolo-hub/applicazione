@@ -21247,7 +21247,77 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: test delle zone (soglia, città scritte in modo diverso, senza città) e dell'email; tutti i modelli email ancora composti anche vuoti; API avviata in locale senza errori; email aperta in locale.
 
-## 372. Barra di ricerca: errori di battitura, frazioni, città con professionisti prima, tastiera
+## 372. Andamento del sito: i numeri giusti per decidere e i consigli già pronti
+
+**Richiesta** (Luca, 27/10/2026): "sapere con i numeri dove il sito perde clienti e professionisti e dove c'è domanda senza offerta, per decidere cosa fare ogni settimana. Non voglio più dati: voglio i dati giusti per le decisioni." Piano approvato (decisioni, numero guida, conteggi: `analisi/dati-decisioni/piano.md` nei file del progetto). Poi: "Lascia gli account di prova, ma dai la possibilità da admin di eliminarli; fai tutto quello che ritieni utile da esperto del settore, e fai in modo che arrivino già le soluzioni al superadmin [...] facendo finta che possa prendere decisioni anche non capendo niente di tutti quei numeri".
+
+**Decisione**:
+- **Numero guida**: richieste con almeno un preventivo entro 24 ore, per lavoro e città. Non contano le richieste ancora nelle prime 24 ore né quelle eliminate dal cliente prima; le richieste mandate insieme (più lavori) sono un invio solo. Verde da 70%, rosso sotto 40% (`GUIDE_*` in `packages/shared/src/siteStats.ts`).
+- **Consigli già decisi** (`siteAdvice` in `apps/api/src/admin/site-stats.ts`): in cima a `/admin/andamento` ("Cosa fare questa settimana"), i primi 3 nella Home admin per il super admin, e ogni lunedì alle 9 in un'unica email ai super admin (`ADMIN_WEEKLY_ADVICE`, prende il posto dell'avviso del §371, che resta solo nello storico). Ogni consiglio dice cosa fare, perché in una riga con il numero, a chi (nomi con link) e dove farlo, con tre livelli ("Fallo subito", "Questa settimana", "Quando hai tempo"). Regole: invii che non riescono (errore del sito, dati rifiutati, connessione); lavoro e città con clienti senza risposta o senza professionisti; ricerche senza nessuno vicino; professionisti che non rispondono e professionisti fermi a metà iscrizione (con i nomi); il passo della richiesta dove si perdono di più; motivi di abbandono (poche richieste, sito difficile, costa troppo); prezzi (lavori del mese finiti, pochi che scelgono un livello dopo il periodo gratuito) solo da 90 giorni dopo il lancio e 30 paganti; lavori cercati che non esistono; tappe per aprire il sito a Google (nascosto se il sito è già aperto); conteggi che non tornano; nessuna richiesta in 4 settimane. Nessun consiglio: "Questa settimana non c'è niente da cambiare".
+- **I numeri dietro i consigli** (stessa pagina, sotto): numero guida con grafico settimanale e note; lavori e città con lo stato colorato; percorso del cliente e passi della richiesta (quota sul passo prima, "Qui si perdono di più"); clienti per settimana della prima richiesta e professionisti per settimana di iscrizione; invii non riusciti; lavori cercati che non esistono; da dove arrivano i professionisti; perché se ne vanno; tappe prima di aprire a Google; controllo dei conteggi; note sul grafico (aggiungi/elimina; lancio e nuovi prezzi già segnati); interruttore "Non contare questo browser". Sotto 30 casi "7 su 9" invece della percentuale, righe con meno di 3 casi messe insieme.
+- **Conteggi nuovi, solo per giorno e mai chi è la persona, senza cookie di profilazione** (migrazione `20261027100000_andamento_sito`): passi del modulo di richiesta (`request_step_days`, dal browser), invii non riusciti per modulo e tipo di errore (`submit_failure_days`, da `createApiClient({ onFailure })`), parole cercate che non sono un lavoro (`unknown_job_search_days` con la sola impronta; la parola in `unknown_job_terms` solo dopo 3 giorni diversi, mai con cifre, "@" o più di tre parole), motivo facoltativo di chi elimina l'account o annulla l'abbonamento (`churn_reason_days`, elenco fisso, mai testo libero), provenienza della registrazione (`User.signupSource`), note (`site_notes`). Tutti i contatori, anche quelli dei §147/§281/§370, si cancellano dopo 25 mesi (cron delle 3).
+- **Chi non si conta**: robot (nome del browser, `isBotUserAgent`, anche nelle pagine di ricerca fatte dal server e nelle visite ai profili) e chi ha il cookie tecnico `non_contare` (messo da solo al primo ingresso in admin, poi l'interruttore decide).
+- **Account di prova**: niente segno; il super admin li elimina per sempre dalla scheda utente ("Elimina account di prova", si scrive ELIMINA) con tutto quello che hanno creato. Rifiutato per admin, per sé stessi e per chi ha pagamenti online veri. Scritto nel registro azioni.
+- Informativa privacy, nuovo punto 9 "Conteggi per migliorare il sito"; domanda 64 per l'avvocato (`analisi/domande-commercialista-avvocato.md`).
+- `packages/shared`: `trafficSources.ts` e `siteCounting.ts` senza zod, perché `apiClient` li porta in ogni pagina: con lo schema zod ogni pagina pesava 25 kB in più (trovato col confronto prima/dopo). Il grigio delle righe a zero nelle barre admin passa da `#9c8e7f` a `#6e6459` (contrasto AA).
+
+**Migliorie scelte da Luca dopo la PR** ("Effettua migliorie 1 e 2"):
+- **"Fatto" sui consigli** (solo super admin): il consiglio sparisce dalla pagina e dall'email del lunedì per 14 giorni (`SITE_ADVICE_DONE_DAYS`), il tempo di vedere se l'azione è servita; poi torna solo se i numeri dicono ancora la stessa cosa. Sotto i consigli, "Fatti di recente" con "Riapri". Tabella `site_advice_done`, rotte `POST /admin/site-advice/done` e `/undo` (`SUPER`), scritto nel registro azioni.
+- **Richieste dalla pagina di un professionista contate a parte**: i passi della richiesta hanno la provenienza (`request_step_days.origin`, GENERAL o PROFILE), la pagina mostra i passi delle richieste partite da un profilo e quante volte un profilo aperto porta a una richiesta. Consiglio nuovo "Molti guardano i profili ma pochi chiedono un preventivo" (da 100 visite in 4 settimane, sotto il 3%). Migrazione `20261027150000_consigli_fatti`.
+
+**API**: `POST /site/step`, `POST /site/failure` (pubbliche, limitate), `GET /admin/site-stats`, `POST /admin/site-notes`, `DELETE /admin/site-notes/:id` (`@RequireAdminScope("ANY")`), `DELETE /admin/users/:id/test-account` (`SUPER`); motivo facoltativo in `DELETE /auth/me` e nell'annullamento dell'abbonamento; `signupSource` in registrazione e accesso con Google.
+
+**Verifica**: test dei conti e dei consigli (`site-stats.test.ts`), dei conteggi (`site-counts.service.test.ts`) e dell'eliminazione (`admin.service.test.ts`); typecheck, lint, test dell'API; test dei permessi delle rotte; prove nel browser `e2e/tests/conteggi.spec.ts` (ricerca e passi della richiesta +1 per un cliente, 0 per Googlebot e con "Non contare", invio fallito +1, passi inviati uguali alle richieste salvate) e `e2e/tests/andamento-sito.spec.ts` (pagina su telefono e computer senza scorrimento laterale né errori axe, cookie messo all'admin, account di prova eliminato con le sue richieste). Lighthouse prima/dopo su `/`, `/preventivo` e `/cerca/idraulico/latina`: dopo la correzione di zod pagine +1 kB e punteggi nel rumore della macchina. Le query per i dati veri di Render sono in `analisi/dati-decisioni/query-dati-veri.sql`.
+
+## 373. Node.js 22.23.4 dopo l'avviso di sicurezza di Render
+
+**Richiesta** (Luca, 27/10/2026): avviso di Render sul certificato eMudhra compromesso e sulle correzioni di sicurezza di Node.js del 21/10 (controllo del nome nei certificati TLS aggirabile, Brotli); "e migliorie per fare in modo che siamo sempre aggiornati per eventuali altri attacchi". PHP non lo usiamo.
+
+**Decisione**:
+- `.nvmrc` da `22` a **`22.23.4`** (verificata su nodejs.org, l'ultima 22.x, uscita il 20/10 come correzione di sicurezza). Render la legge da lì: con `22` dipendeva da quale 22.x Render avesse in quel momento. La CI (`ci.yml`, `zod.yml`, che era ancora su Node 20) usa `node-version-file: .nvmrc`, quindi prova la stessa versione dell'API in linea.
+- `engines.node` resta `22.x`: Vercel non permette di fissare la versione esatta e aggiorna da sé le correzioni di Node 22 a ogni deploy.
+- L'API scrive la versione di Node nel log di avvio (`API in ascolto su 0.0.0.0:<porta> (Node v22.23.4)`): nei log di Render si vede se l'aggiornamento è arrivato davvero. Una `NODE_VERSION` impostata nella dashboard di Render avrebbe la precedenza su `.nvmrc` (nota in `render.yaml`).
+- **Restare aggiornati**: Node non è una libreria, quindi Dependabot e osv-scanner non lo vedono. Nuovo controllo giornaliero `.github/workflows/node.yml` con `scripts/controlla-node.mjs`: se dopo la versione di `.nvmrc` esce una correzione di sicurezza di Node 22, apre una segnalazione (issue) con i passi; sulle PR che cambiano `.nvmrc` controlla che la versione esista.
+
+**Certificati e chiamate HTTPS in uscita**: Stripe, Resend, Cloudinary, Google (accesso, Maps, Routes, Places), Openapi, VIES, Didit, Turnstile, Open-Meteo e Sentry passano tutti dal `fetch`/`https` di Node, che usa l'elenco di certificati incluso in Node: con Node 22.23.4 eMudhra non è più fidato. Nessuna libreria porta certificati propri (nessun file `.pem`/`.crt` nelle dipendenze), nessun `rejectUnauthorized: false`, `NODE_TLS_REJECT_UNAUTHORIZED` o `ca:` personalizzato nel codice. Il database è raggiunto dall'indirizzo interno di Render.
+
+**Verifica**: `node scripts/controlla-node.mjs` con 22.23.4 (nessun aggiornamento), 22.23.2 (`aggiornare=true`, ultima 22.23.4), 22.99.0 e `22` (errore); CI della PR.
+
+## 374. Node.js 24
+
+**Richiesta** (Luca, 27/10/2026, miglioria proposta col §373): passare a Node 24 prima che Node 22 smetta di ricevere correzioni (30/04/2027).
+
+**Decisione**: `.nvmrc` a **`24.22.1`** (ultima 24.x su nodejs.org, correzione di sicurezza del 20/10, la stessa raccomandata da Render), `engines.node` `24.x` (Vercel passa a Node 24 da qui), `@types/node` `^24.19.2` in `apps/web`, `apps/api`, `packages/database`. Il controllo giornaliero del §373 segue da solo la versione principale di `.nvmrc`. Node 24 riceve correzioni fino al 30/04/2028.
+
+**Verifica**: con Node 24.22.1 typecheck, lint e 723 test dell'API (con tutti i compiti in parallelo un test a proprietà dell'agenda supera i 5 secondi anche con Node 22: dipende dal carico, non dalla versione), build di API e sito; confronto delle pagine pubbliche (computer e telefono, con l'API e il database di prova) tra il sito costruito e servito con Node 22 e con Node 24: 52 foto identiche su 64; le altre con pochi pixel (cursore nei campi, puntino del menu, bordi dietro il banner dei cookie) e `/per-professionisti` con la banda dell'offerta di lancio solo nel secondo giro (la pagina si rigenera ogni 10 minuti e nel primo giro era stata costruita con l'API spenta, non dipende da Node); `npx expo export --platform android` riuscito con Node 24; CI della PR.
+
+## 375. Test dell'agenda più tollerante e avviso di fine supporto di Node
+
+**Richiesta** (Luca, 27/10/2026, le due migliorie proposte col §374).
+
+**Decisione**:
+- Il test a proprietà "applicare la settimana tipo a un mese…" (`apps/api/src/agenda/agenda-properties.test.ts`) ha un limite di 30 secondi invece dei 5 predefiniti: da solo dura circa 2 secondi, ma con la macchina carica (tutti i controlli in parallelo) li superava, con Node 22 come con Node 24. Il controllo resta lo stesso, con lo stesso numero di casi.
+- `scripts/controlla-node.mjs` legge anche il calendario ufficiale di Node.js (`nodejs/Release`, `schedule.json`) e stampa `scade=true` quando alla fine del supporto della versione principale di `.nvmrc` mancano meno di 6 mesi; il controllo giornaliero `.github/workflows/node.yml` apre allora una segnalazione con i passi per passare alla LTS successiva. Se il calendario non risponde, si salta solo questa parte. Con Node 24 la segnalazione arriverà verso fine ottobre 2027 (fine supporto 30/04/2028).
+
+**Verifica**: il test in 723 test dell'API; lo script con Node 24.22.1 (`fine=2028-04-30`, `scade=false`) e con 22.23.4 (`fine=2027-04-30`, a 185 giorni, `scade=false`).
+
+## 376. Avviso appena esce una nuova versione stabile di Node
+
+**Richiesta** (Luca, 27/10/2026): non aspettare la fine del supporto, "ancora meglio appena esce un aggiornamento".
+
+**Decisione**: `scripts/controlla-node.mjs` stampa in `nuova` la versione principale più recente già diventata **LTS** secondo il calendario ufficiale (le versioni dispari e quelle pari prima dell'LTS non sono pensate per la produzione), se è più nuova di `.nvmrc`; il controllo giornaliero apre allora la segnalazione "Passare a Node N: è uscita la nuova versione stabile", con i passi. Il thread che fa il passaggio controlla prima che Render, Vercel ed Expo supportino già la versione nuova. Resta anche l'avviso 6 mesi prima della scadenza (§375), utile se il passaggio si rimanda. Node 26 diventa LTS il 28/10/2026: la prima segnalazione arriverà a unione fatta.
+
+**Verifica**: lo script con `.nvmrc` 24.22.1 (`nuova` vuoto, Node 26 non ancora LTS) e 22.23.4 (`nuova=24`); YAML del workflow letto senza errori.
+
+## 377. Build di Render con Node 24: senza "corepack enable"
+
+**Problema** (Luca, 27/10/2026, dopo l'unione del §374): il deploy dell'API su Render falliva subito con `Internal Error: EROFS: read-only file system, unlink '/usr/bin/pnpm'`. Con Node 24 Render ha già pnpm in `/usr/bin`, che è di sola lettura, e `corepack enable` provava a sostituirlo. Il deploy fallito ha lasciato in linea la versione precedente (Node 22.23.4).
+
+**Decisione**: il comando di build in `render.yaml` non chiama più `corepack enable`: `pnpm install --frozen-lockfile && pnpm --filter @professionisti/api build`. pnpm prende la versione dal campo `packageManager` (10.33.0). Se il servizio non segue il Blueprint, lo stesso comando va scritto a mano in Render → Settings → Build Command.
+
+**Verifica**: il pnpm di `/usr/bin` esiste sulla macchina di Render (è proprio il file che `corepack enable` cercava di cancellare); il deploy su Render dopo l'unione.
+
+## 383. Barra di ricerca: errori di battitura, frazioni, città con professionisti prima, tastiera
 
 **Richiesta** (Luca, 27/10/2026, thread "abbinamento problema"): elenchi che compaiono subito al clic su "Cosa cerchi" e "Città" (le città più cercate per prime), mentre si scrive prima ciò che rispetta di più quello che si è scritto, senza titoletti negli elenchi; poi "effettua migliorie 1-2-3 (senza i numeri) 4": errori di battitura, frazioni col loro comune, città senza professionisti più in basso senza mostrare numeri, tastiera e lettore di schermo.
 
@@ -21260,9 +21330,9 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: test di `searchMatch` (7) e di `coveredComuni`; prova nel browser su computer e telefono (elenco al clic, frecce e Invio, Esc, "Latna", frazioni "borgo"); typecheck e lint.
 
-## 373. Barra di ricerca: frazioni dei comuni vicini, "Vicino a me" che spiega quando non trova la posizione
+## 384. Barra di ricerca: frazioni dei comuni vicini, "Vicino a me" che spiega quando non trova la posizione
 
-**Richiesta** (Luca, 27/10/2026, "Effettua le migliorie" proposte col §372).
+**Richiesta** (Luca, 27/10/2026, "Effettua le migliorie" proposte col §383).
 
 **Decisione**:
 - Frazioni di Aprilia, Sabaudia, Cisterna di Latina, Pontinia e Terracina (riquadro "Frazioni" delle voci di Wikipedia) in `packages/shared/src/frazioni.ts`, con il comune sotto. Isolabella e San Vito sono anche comuni (Piemonte, Sardegna): compaiono tutte e due, distinte dal comune scritto sotto.

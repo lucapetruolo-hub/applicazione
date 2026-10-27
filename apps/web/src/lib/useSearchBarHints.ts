@@ -8,7 +8,7 @@ import { cachedPopularOrder, loadPopularOrder } from "@/lib/categoryOrder";
 import { buildSearchSuggestions } from "@/lib/searchSuggestions";
 
 /*
- * Suggerimenti della barra di ricerca (docs/CHANGELOG.md §372, richieste
+ * Suggerimenti della barra di ricerca (docs/CHANGELOG.md §383, richieste
  * dell'utente): al clic su "Cosa cerchi" i lavori più cercati prima; al clic
  * su "Città" "Vicino a me", l'ultima città usata e le più cercate; mentre si
  * scrive, prima le città con professionisti del lavoro scelto (senza numeri).

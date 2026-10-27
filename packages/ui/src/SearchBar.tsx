@@ -17,7 +17,7 @@ export type ProfessionalSuggestion = {
 
 export type SearchMode = "domicilio" | "online";
 
-/** Una frazione o località che porta al suo comune ("Borgo Sabotino" → Latina, §372). */
+/** Una frazione o località che porta al suo comune ("Borgo Sabotino" → Latina, §383). */
 export type CityAlias = { name: string; city: string };
 
 type CityOption = { key: string; label: string; city: string; detail?: string };
@@ -59,7 +59,7 @@ export type SearchBarProps = {
   cityDefaults?: readonly string[];
   /**
    * Città con professionisti vicini per il lavoro scelto: mentre si scrive
-   * vengono prima delle altre, senza numeri (decisione dell'utente, §372).
+   * vengono prima delle altre, senza numeri (decisione dell'utente, §383).
    */
   preferredCities?: readonly string[];
   /** "Vicino a me": restituisce il comune della posizione, o `null` se non disponibile. */

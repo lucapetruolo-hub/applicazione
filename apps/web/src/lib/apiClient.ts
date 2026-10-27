@@ -1,4 +1,6 @@
 import { createApiClient } from "@professionisti/api-client";
+import { countSubmitFailure } from "./siteCounts";
+import { storedTrafficSource } from "./storedTrafficSource";
 
 const DEVICE_ID_KEY = "login-device-id";
 
@@ -25,4 +27,9 @@ function deviceId(): string | null {
 export const apiClient = createApiClient({
   baseUrl: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001",
   deviceId,
+  // Andamento del sito (docs/CHANGELOG.md §372): provenienza delle iscrizioni e invii non riusciti.
+  trafficSource: storedTrafficSource,
+  onFailure: (failure) => {
+    if (typeof window !== "undefined") countSubmitFailure(failure);
+  },
 });

@@ -51,7 +51,7 @@ describe("hasNearbyResult (§370)", () => {
   });
 });
 
-describe("coveredComuni (città con professionisti vicini, §372)", () => {
+describe("coveredComuni (città con professionisti vicini, §383)", () => {
   const latina = findComuneByName("Latina")!;
   const sabaudia = findComuneByName("Sabaudia")!;
 

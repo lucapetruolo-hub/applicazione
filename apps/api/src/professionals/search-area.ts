@@ -49,7 +49,7 @@ export function hasNearbyResult(results: { distanceKm?: number }[], radiusKm: nu
 
 /**
  * Comuni con almeno un professionista entro `radiusKm` dal loro centro
- * (docs/CHANGELOG.md §372), dal più al meno servito. Solo i nomi escono
+ * (docs/CHANGELOG.md §383), dal più al meno servito. Solo i nomi escono
  * dal server, mai il numero né la posizione dei professionisti.
  */
 export function coveredComuni<C extends { name: string; lat: number; lon: number }>(

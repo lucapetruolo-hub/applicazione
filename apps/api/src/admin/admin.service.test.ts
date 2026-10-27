@@ -194,3 +194,31 @@ describe("AdminService — sospensione dalla scheda utente e ruoli admin (docs/C
     await expect(service.setAdminRoles("admin-1", "admin-1", [])).rejects.toThrow("tuo stesso ruolo");
   });
 });
+
+/** Account di prova eliminati dal super admin (richiesta di Luca, docs/CHANGELOG.md §372). */
+describe("AdminService.deleteTestAccount", () => {
+  function build(user: Record<string, unknown> | null, paidOnline = 0) {
+    return buildService(
+      {},
+      {
+        user: { findUnique: vi.fn().mockResolvedValue(user), delete: vi.fn().mockResolvedValue({}) },
+        jobPayment: { count: vi.fn().mockResolvedValue(paidOnline) },
+      },
+    );
+  }
+
+  it("elimina l'account e lo scrive nel registro", async () => {
+    const { service, prisma, audit } = build({ id: "u-1", role: "CLIENT", email: "prova@example.com", professionalProfile: null });
+    await expect(service.deleteTestAccount("admin-1", "u-1")).resolves.toEqual({ id: "u-1", deleted: true });
+    expect((prisma as unknown as { user: { delete: ReturnType<typeof vi.fn> } }).user.delete).toHaveBeenCalledWith({ where: { id: "u-1" } });
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ fieldName: "testAccount", newValue: "DELETED", changedByUserId: "admin-1" }));
+  });
+
+  it("rifiuta un admin, sé stessi e chi ha pagamenti online veri", async () => {
+    await expect(build({ id: "a-2", role: "ADMIN", email: null, professionalProfile: null }).service.deleteTestAccount("admin-1", "a-2")).rejects.toThrow(/amministratore/);
+    await expect(build({ id: "admin-1", role: "CLIENT", email: null, professionalProfile: null }).service.deleteTestAccount("admin-1", "admin-1")).rejects.toThrow(/stesso/);
+    const paid = build({ id: "u-2", role: "PROFESSIONAL", email: null, professionalProfile: { id: "p-2" } }, 1);
+    await expect(paid.service.deleteTestAccount("admin-1", "u-2")).rejects.toThrow(/pagamenti online/);
+    expect((paid.prisma as unknown as { user: { delete: ReturnType<typeof vi.fn> } }).user.delete).not.toHaveBeenCalled();
+  });
+});

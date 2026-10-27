@@ -30,7 +30,7 @@ export type AutocompleteProps<T> = {
    * si cerca "Borgo Sabotino", si mostra anche il comune).
    */
   getSearchText?: (item: T) => string;
-  /** A parità di corrispondenza, più bassa prima (es. città con professionisti, §372). */
+  /** A parità di corrispondenza, più bassa prima (es. città con professionisti, §383). */
   priority?: (item: T) => number;
   /** Elenco mostrato a campo vuoto, al posto dei primi `maxResults` di `items` (es. ultima città usata e più cercate). */
   emptyItems?: T[];
@@ -111,7 +111,7 @@ export function Autocomplete<T>({
   // niente. Mentre si scrive l'ordine è quello di `rankSearchMatches`:
   // prima chi inizia con le lettere scritte (non "Fabrica di Roma" prima di
   // "Roma", bug segnalato dall'utente), poi le parole, poi chi le contiene,
-  // infine chi somiglia con un errore di battitura (§372).
+  // infine chi somiglia con un errore di battitura (§383).
   const filtered =
     trimmedQuery.length === 0
       ? (emptyItems ?? items).slice(0, maxResults)

@@ -88,7 +88,7 @@ export function findComuneBySlug(slug: string): Comune | undefined {
   return getSlugIndex().bySlug.get(slug);
 }
 
-/** Comune più vicino a una posizione ("Vicino a me" nel campo "Città", docs/CHANGELOG.md §372). */
+/** Comune più vicino a una posizione ("Vicino a me" nel campo "Città", docs/CHANGELOG.md §383). */
 export function nearestComune(lat: number, lon: number): Comune | undefined {
   let best: Comune | undefined;
   let bestScore = Number.POSITIVE_INFINITY;

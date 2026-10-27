@@ -107,6 +107,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "ADMIN_URGENCY_ALERT",
       // Lavori e città con molte ricerche senza nessun professionista vicino, ogni lunedì (docs/CHANGELOG.md §371).
       "ADMIN_SEARCH_DEMAND_ALERT",
+      // Cosa fare questa settimana, consigli dai numeri del sito, ogni lunedì (docs/CHANGELOG.md §372).
+      "ADMIN_WEEKLY_ADVICE",
       // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §190).
       "JOB_CONFIRM_REMINDER",
       "JOB_AUTO_CONFIRMED",
