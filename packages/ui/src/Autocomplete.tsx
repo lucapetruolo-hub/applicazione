@@ -35,7 +35,12 @@ export type AutocompleteProps<T> = {
   /** Elenco mostrato a campo vuoto, al posto dei primi `maxResults` di `items` (es. ultima città usata e più cercate). */
   emptyItems?: T[];
   /** Riga in cima a campo vuoto, prima dell'elenco (es. "Vicino a me"). */
-  leadingAction?: { label: string; description?: string; onPress: () => void };
+  leadingAction?: {
+    label: string;
+    description?: string;
+    /** Se restituisce una Promise, l'elenco resta aperto finché non risponde `true` (es. posizione trovata). */
+    onPress: () => void | Promise<boolean>;
+  };
 };
 
 /**
@@ -66,6 +71,7 @@ export function Autocomplete<T>({
   const [highlighted, setHighlighted] = useState(-1);
   const listboxId = `${useId().replace(/:/g, "")}-elenco`;
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<{ focus?: () => void; blur?: () => void; isFocused?: () => boolean } | null>(null);
 
   // Chiudi il dropdown anche al click/tap fuori dal campo (web): il blur
   // ritardato da solo non basta — con il dropdown aperto a z-index alto il
@@ -120,7 +126,20 @@ export function Autocomplete<T>({
 
   function choose(index: number) {
     if (action && index === 0) {
-      action.onPress();
+      const result = action.onPress();
+      if (result instanceof Promise) {
+        // "Vicino a me": l'elenco resta aperto con "Cerco la tua posizione…"
+        // e, se non la trova, con il motivo; si chiude solo quando la trova.
+        inputRef.current?.focus?.();
+        setIsFocused(true);
+        void result.then((done) => {
+          if (done) {
+            setIsFocused(false);
+            inputRef.current?.blur?.();
+          }
+        });
+        return;
+      }
     } else {
       const item = filtered[index - (action ? 1 : 0)];
       if (item !== undefined) onSelect(item);
@@ -170,6 +189,7 @@ export function Autocomplete<T>({
         </Label>
       ) : null}
       <Input
+        ref={inputRef as never}
         id={id}
         flex={1}
         size={size}
@@ -184,7 +204,11 @@ export function Autocomplete<T>({
         accessibilityLabel={label ? undefined : placeholder}
         autoComplete="off"
         onFocus={() => setIsFocused(true)}
-        onBlur={() => setTimeout(() => setIsFocused(false), 150)}
+        onBlur={() =>
+          setTimeout(() => {
+            if (!inputRef.current?.isFocused?.()) setIsFocused(false);
+          }, 150)
+        }
         onKeyPress={(event) => handleKey(event.nativeEvent.key, () => event.preventDefault())}
         {...comboboxProps}
       />

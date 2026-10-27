@@ -21259,3 +21259,14 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - Tastiera: frecce, Invio, Esc; `role="combobox"`/`listbox`/`option` con `aria-activedescendant` e un annuncio del numero di suggerimenti per il lettore di schermo.
 
 **Verifica**: test di `searchMatch` (7) e di `coveredComuni`; prova nel browser su computer e telefono (elenco al clic, frecce e Invio, Esc, "Latna", frazioni "borgo"); typecheck e lint.
+
+## 373. Barra di ricerca: frazioni dei comuni vicini, "Vicino a me" che spiega quando non trova la posizione
+
+**Richiesta** (Luca, 27/10/2026, "Effettua le migliorie" proposte col §372).
+
+**Decisione**:
+- Frazioni di Aprilia, Sabaudia, Cisterna di Latina, Pontinia e Terracina (riquadro "Frazioni" delle voci di Wikipedia) in `packages/shared/src/frazioni.ts`, con il comune sotto. Isolabella e San Vito sono anche comuni (Piemonte, Sardegna): compaiono tutte e due, distinte dal comune scritto sotto.
+- "Vicino a me": l'elenco resta aperto con "Cerco la tua posizione…" e, se non la trova, con "Posizione non disponibile: scrivi la città"; si chiude solo quando la trova (`leadingAction.onPress` può restituire una Promise).
+- Bug trovato provando: l'intestazione `Permissions-Policy` del sito aveva `geolocation=()`, che blocca la posizione anche dopo il permesso dell'utente; ora `geolocation=(self)` (solo il nostro sito, sempre dopo il clic e la richiesta del browser).
+
+**Verifica**: nel browser con posizione negata (messaggio, elenco aperto) e concessa (Latina compilata, elenco chiuso); intestazione controllata; typecheck, lint, test.

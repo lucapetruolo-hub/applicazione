@@ -100,13 +100,14 @@ function useCityField({
           locating === "busy" ? "Cerco la tua posizione…" : locating === "failed" ? "Posizione non disponibile: scrivi la città" : "Usa la tua posizione",
         onPress: () => {
           setLocating("busy");
-          void onNearMe().then((city) => {
+          return onNearMe().then((city) => {
             if (city) {
               setCity(city);
               setLocating("idle");
-            } else {
-              setLocating("failed");
+              return true;
             }
+            setLocating("failed");
+            return false;
           });
         },
       }
