@@ -52,6 +52,7 @@ const publicRoutes = [
   "GET /professionals/:id",
   "GET /professionals/:id/agenda",
   "POST /professionals/:id/views",
+  "GET /professionals/city-hints",
   "GET /professionals/languages/popular",
   // Prezzi aggregati della pagina "Quanto costa", mai sotto le soglie (§296).
   "GET /professionals/prices/:category",
