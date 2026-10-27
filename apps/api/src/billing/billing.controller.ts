@@ -3,6 +3,8 @@ import { z } from "zod";
 import type { Request } from "express";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
+import { churnReasonBodySchema, type ChurnReasonBody } from "@professionisti/shared";
+import { SiteCountsService } from "../site-counts/site-counts.service";
 import { BillingService } from "./billing.service";
 
 const subscriptionCheckoutSchema = z.object({ plan: z.enum(["BASE", "PLUS", "PRO"]), interval: z.enum(["MONTH", "YEAR"]).optional() });
@@ -10,7 +12,10 @@ const boostCheckoutSchema = z.object({ type: z.enum(["BOOST_LOCALE", "BADGE_REPU
 
 @Controller("billing")
 export class BillingController {
-  constructor(private readonly billingService: BillingService) {}
+  constructor(
+    private readonly billingService: BillingService,
+    private readonly siteCounts: SiteCountsService,
+  ) {}
 
   @UseGuards(JwtAuthGuard)
   @Post("subscription/checkout")
@@ -23,8 +28,11 @@ export class BillingController {
 
   @UseGuards(JwtAuthGuard)
   @Post("subscription/cancel")
-  cancelSubscription(@Req() req: AuthenticatedRequest) {
-    return this.billingService.setCancelAtPeriodEnd(req.user.userId, true);
+  async cancelSubscription(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(churnReasonBodySchema)) body: ChurnReasonBody) {
+    const result = await this.billingService.setCancelAtPeriodEnd(req.user.userId, true);
+    // Motivo scelto da un elenco, facoltativo (docs/CHANGELOG.md §372): solo il conteggio.
+    if (body.reason) await this.siteCounts.recordChurnReason("SUBSCRIPTION", body.reason).catch(() => undefined);
+    return result;
   }
 
   @UseGuards(JwtAuthGuard)

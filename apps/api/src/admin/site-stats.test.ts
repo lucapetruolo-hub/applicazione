@@ -1,0 +1,241 @@
+import { describe, expect, it } from "vitest";
+import { isBotUserAgent, normalizeJobTerm, ratioLabel, romeWeekStart } from "@professionisti/shared";
+import {
+  buildClientCohorts,
+  buildGuideCells,
+  buildGuideWeekly,
+  buildProfessionalCohorts,
+  buildSiteAdvice,
+  greenWeeksInARow,
+  guideOutcome,
+  launchReady,
+  reconcile,
+  type SiteAdviceInput,
+  type SiteRequestRow,
+} from "./site-stats";
+
+const NOW = new Date("2026-10-27T12:00:00Z");
+const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 60 * 60 * 1000);
+const daysAgo = (d: number) => hoursAgo(d * 24);
+
+let n = 0;
+const request = (overrides: Partial<SiteRequestRow> = {}): SiteRequestRow => ({
+  groupKey: `g${++n}`,
+  clientId: `c${n}`,
+  categorySlug: "idraulico",
+  city: "Latina",
+  createdAt: daysAgo(3),
+  firstQuoteAt: null,
+  deletedByClientAt: null,
+  accepted: false,
+  completed: false,
+  reviewed: false,
+  ...overrides,
+});
+
+const quoted = (createdAt: Date, afterHours: number) => request({ createdAt, firstQuoteAt: new Date(createdAt.getTime() + afterHours * 3_600_000) });
+
+describe("numero guida", () => {
+  it("conta il preventivo entro 24 ore, non dopo", () => {
+    expect(guideOutcome(quoted(daysAgo(3), 5), NOW)).toBe("yes");
+    expect(guideOutcome(quoted(daysAgo(3), 30), NOW)).toBe("no");
+    expect(guideOutcome(request(), NOW)).toBe("no");
+  });
+
+  it("una richiesta nelle prime 24 ore senza preventivo non conta ancora", () => {
+    expect(guideOutcome(request({ createdAt: hoursAgo(5) }), NOW)).toBeNull();
+    expect(guideOutcome(quoted(hoursAgo(5), 1), NOW)).toBe("yes");
+  });
+
+  it("eliminata dal cliente prima delle 24 ore senza preventivo non conta", () => {
+    const createdAt = daysAgo(3);
+    expect(guideOutcome(request({ createdAt, deletedByClientAt: new Date(createdAt.getTime() + 3_600_000) }), NOW)).toBeNull();
+    expect(guideOutcome(request({ createdAt, deletedByClientAt: daysAgo(1) }), NOW)).toBe("no");
+  });
+
+  it("caselle: prima le rosse, quelle piccole accorpate", () => {
+    const rows = [
+      ...Array.from({ length: 4 }, () => request({ city: "Latina" })),
+      quoted(daysAgo(2), 2),
+      ...Array.from({ length: 3 }, () => quoted(daysAgo(2), 2)).map((r) => ({ ...r, categorySlug: "elettricista" })),
+      request({ city: "Aprilia", categorySlug: "fabbro" }),
+    ];
+    const visible = [
+      { city: "Latina", categorySlugs: ["idraulico"] },
+      { city: "latina", categorySlugs: ["elettricista"] },
+    ];
+    const { cells, otherCells } = buildGuideCells(rows, [{ categorySlug: "pulizie", city: "latina", emptyCount: 4 }], visible, NOW);
+    expect(cells.map((c) => [c.categorySlug, c.status, c.requests, c.withQuote])).toEqual([
+      ["idraulico", "RED", 5, 1],
+      ["pulizie", "NO_PROFESSIONALS", 0, 0],
+      ["elettricista", "GREEN", 3, 3],
+    ]);
+    expect(cells[0]!.city).toBe("Latina");
+    expect(otherCells).toEqual({ cells: 1, requests: 1, withQuote: 0 });
+  });
+
+  it("settimane: l'ultima è in corso e non conta per le settimane verdi", () => {
+    const rows = [quoted(daysAgo(8), 1), quoted(daysAgo(15), 1), request({ createdAt: daysAgo(22) }), quoted(daysAgo(1), 1)];
+    const weekly = buildGuideWeekly(rows, NOW, 4);
+    expect(weekly.map((w) => [w.requests, w.withQuote])).toEqual([
+      [1, 0],
+      [1, 1],
+      [1, 1],
+      [1, 1],
+    ]);
+    expect(greenWeeksInARow(weekly)).toBe(2);
+  });
+});
+
+describe("coorti", () => {
+  it("clienti: preventivo alla prima richiesta, lavoro, recensione, ritorno entro 90 giorni", () => {
+    const first = daysAgo(10);
+    const rows = [
+      { ...quoted(first, 2), clientId: "a", groupKey: "a1", accepted: true, reviewed: true },
+      { ...request({ createdAt: daysAgo(3) }), clientId: "a", groupKey: "a2" },
+      { ...request({ createdAt: daysAgo(9) }), clientId: "b", groupKey: "b1" },
+    ];
+    const cohorts = buildClientCohorts(rows, new Map([["a", first], ["b", daysAgo(9)]]), NOW, 3);
+    expect(cohorts[0]).toMatchObject({ clients: 2, withQuote: 1, accepted: 1, reviewed: 1, returned: 1 });
+  });
+
+  it("professionisti: primo preventivo entro 14 giorni", () => {
+    const createdAt = daysAgo(5);
+    const cohorts = buildProfessionalCohorts(
+      [
+        { createdAt, fiscalDone: true, identityDone: false, firstQuoteAt: daysAgo(1), activeLast30d: true },
+        { createdAt, fiscalDone: false, identityDone: false, firstQuoteAt: null, activeLast30d: false },
+      ],
+      NOW,
+      2,
+    );
+    expect(cohorts[0]).toMatchObject({ registered: 2, fiscal: 1, identity: 0, firstQuote: 1, active: 1 });
+  });
+});
+
+const baseInput = (overrides: Partial<SiteAdviceInput> = {}): SiteAdviceInput => ({
+  now: NOW,
+  launch: new Date("2026-09-01T00:00:00Z"),
+  cells: [],
+  searchZones: [],
+  requestSteps: [],
+  failures: [],
+  unknownJobs: [],
+  churnReasons: [],
+  stalled: [],
+  silent: [],
+  launchStatus: { visibleProfessionals: 0, clientsWithRequest: 0, acceptedJobs: 0, paidOnline: 0, greenWeeks: 0, ready: false },
+  reconciliation: { days: 14, counted: 10, saved: 10, ok: true },
+  requestsInWindow: 5,
+  prices: { paying: 0, atLimit30d: 0, trialsEnded: 0, trialsConverted: 0 },
+  ...overrides,
+});
+
+describe("consigli", () => {
+  it("niente da fare: nessun consiglio", () => {
+    expect(buildSiteAdvice(baseInput())).toEqual([]);
+  });
+
+  it("casella rossa: reclutare, in parole semplici e prima di tutto", () => {
+    const advice = buildSiteAdvice(
+      baseInput({
+        cells: [{ categorySlug: "idraulico", categoryLabel: "Idraulico", city: "Latina", requests: 9, withQuote: 2, emptySearches: 0, professionals: 1, status: "RED" }],
+        unknownJobs: [{ term: "antennista", days: 4, searches: 6 }],
+      }),
+    );
+    expect(advice[0]).toMatchObject({ level: "URGENT", title: "Idraulico a Latina: servono più professionisti" });
+    expect(advice[0]!.why).toContain("2 su 9");
+    expect(advice[1]).toMatchObject({ level: "TIP", title: "Cercano «antennista», un lavoro che non c'è" });
+  });
+
+  it("ricerche senza nessuno vicino: un consiglio solo se la casella non è già da reclutare", () => {
+    const zone = { categoryLabel: "Idraulico", city: "Latina", searches: 8, empty: 6 };
+    const red = { categorySlug: "idraulico", categoryLabel: "Idraulico", city: "Latina", requests: 3, withQuote: 0, emptySearches: 6, professionals: 0, status: "NO_PROFESSIONALS" as const };
+    expect(buildSiteAdvice(baseInput({ cells: [red], searchZones: [zone] })).map((a) => a.key)).toEqual(["recruit:idraulico:latina"]);
+    expect(buildSiteAdvice(baseInput({ searchZones: [zone] })).map((a) => a.key)).toEqual(["search:idraulico:latina"]);
+  });
+
+  it("passo della richiesta: solo con almeno 30 persone e metà che si ferma", () => {
+    const steps = (lavoro: number, dove: number) => [
+      { key: "LAVORO" as const, count: lavoro },
+      { key: "DOVE" as const, count: dove },
+    ];
+    expect(buildSiteAdvice(baseInput({ requestSteps: steps(20, 2) }))).toEqual([]);
+    expect(buildSiteAdvice(baseInput({ requestSteps: steps(40, 25) }))).toEqual([]);
+    expect(buildSiteAdvice(baseInput({ requestSteps: steps(40, 10) }))[0]).toMatchObject({ title: "Molti si fermano al passo «Il lavoro» della richiesta" });
+  });
+
+  it("errori del sito: urgente da 5 in una settimana", () => {
+    const advice = buildSiteAdvice(baseInput({ failures: [{ form: "RICHIESTA", kind: "SERVER", count: 5 }] }));
+    expect(advice[0]).toMatchObject({ level: "URGENT", title: "Richiesta di preventivo: l'invio non riesce" });
+  });
+
+  it("professionisti da chiamare, con i nomi", () => {
+    const advice = buildSiteAdvice(
+      baseInput({
+        stalled: [{ name: "Rossi Idraulica", step: "FISCAL", days: 12, href: "/admin/utenti?q=rossi" }],
+        silent: [{ name: "Bianchi Luce", requests: 4, href: "/admin/utenti?q=bianchi" }],
+      }),
+    );
+    expect(advice.map((a) => a.title)).toEqual(["1 professionista non risponde alle richieste", "1 professionista è fermo a metà iscrizione"]);
+    expect(advice[1]!.items?.[0]).toMatchObject({ label: "Rossi Idraulica", detail: "Mancano i dati fiscali · iscritto da 12 giorni" });
+  });
+
+  it("prezzi: niente consigli prima di 3 mesi dal lancio e 30 paganti", () => {
+    const prices = { paying: 40, atLimit30d: 20, trialsEnded: 20, trialsConverted: 2 };
+    expect(buildSiteAdvice(baseInput({ prices, launch: new Date("2026-10-01T00:00:00Z") }))).toEqual([]);
+    expect(buildSiteAdvice(baseInput({ prices: { ...prices, paying: 20 }, launch: new Date("2026-06-01T00:00:00Z") }))).toEqual([]);
+    expect(buildSiteAdvice(baseInput({ prices, launch: new Date("2026-06-01T00:00:00Z") })).map((a) => a.key)).toEqual(["price:limit", "price:trial"]);
+  });
+
+  it("aprire a Google quando la tappa silenziosa è raggiunta", () => {
+    const status = { visibleProfessionals: 10, clientsWithRequest: 10, acceptedJobs: 5, paidOnline: 1, greenWeeks: 4 };
+    expect(launchReady(status)).toBe(true);
+    expect(launchReady({ ...status, greenWeeks: 3 })).toBe(false);
+    expect(buildSiteAdvice(baseInput({ launchStatus: { ...status, ready: true } }))[0]!.key).toBe("google-ready");
+  });
+
+  it("nessuna richiesta dopo il lancio: lo dice", () => {
+    expect(buildSiteAdvice(baseInput({ requestsInWindow: 0 })).map((a) => a.key)).toEqual(["no-requests"]);
+    expect(buildSiteAdvice(baseInput({ requestsInWindow: 0, launch: null }))).toEqual([]);
+  });
+});
+
+describe("conti d'appoggio", () => {
+  it("confronto dei conteggi: torna entro 2 o il 10%", () => {
+    expect(reconcile(9, 10, 14).ok).toBe(true);
+    expect(reconcile(40, 50, 14).ok).toBe(true);
+    expect(reconcile(30, 50, 14).ok).toBe(false);
+    expect(reconcile(55, 50, 14).ok).toBe(true);
+    expect(reconcile(60, 50, 14).ok).toBe(false);
+  });
+
+  it("percentuale solo da 30 casi", () => {
+    expect(ratioLabel(7, 9)).toBe("7 su 9");
+    expect(ratioLabel(21, 30)).toBe("70%");
+    expect(ratioLabel(0, 0)).toBe("—");
+  });
+
+  it("robot e browser senza schermo non contano", () => {
+    expect(isBotUserAgent("Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)")).toBe(true);
+    expect(isBotUserAgent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/140.0.0.0 Safari/537.36")).toBe(true);
+    expect(isBotUserAgent("facebookexternalhit/1.1")).toBe(true);
+    expect(isBotUserAgent(undefined)).toBe(true);
+    expect(isBotUserAgent("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1")).toBe(false);
+  });
+
+  it("parole cercate: solo quelle che possono essere un lavoro", () => {
+    expect(normalizeJobTerm("  Antennista ")).toBe("antennista");
+    expect(normalizeJobTerm("tecnico  caldaie")).toBe("tecnico caldaie");
+    expect(normalizeJobTerm("3331234567")).toBeNull();
+    expect(normalizeJobTerm("mario@rossi.it")).toBeNull();
+    expect(normalizeJobTerm("ho bisogno di un idraulico subito")).toBeNull();
+    expect(normalizeJobTerm("ab")).toBeNull();
+  });
+
+  it("settimana: il lunedì in ora di Roma", () => {
+    expect(romeWeekStart(new Date("2026-10-27T12:00:00Z"))).toBe("2026-10-26");
+    expect(romeWeekStart(new Date("2026-10-25T23:30:00Z"))).toBe("2026-10-26");
+    expect(romeWeekStart(new Date("2026-10-25T21:30:00Z"))).toBe("2026-10-19");
+  });
+});

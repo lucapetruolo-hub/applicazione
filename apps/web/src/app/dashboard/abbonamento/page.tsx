@@ -17,7 +17,10 @@ import {
   type MySubscription,
   type SubscriptionTier,
   formatEur as formatEurShared,
+  PRO_CHURN_REASONS,
+  type ChurnReason,
 } from "@professionisti/shared";
+import { ChurnReasonPicker } from "@/components/ChurnReasonPicker";
 import { Button, ButtonArrow, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -192,6 +195,7 @@ function AbbonamentoContent() {
 
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelReason, setCancelReason] = useState<ChurnReason | null>(null);
   const [renewalPending, setRenewalPending] = useState(false);
   // Livello toccato su /per-professionisti (docs/CHANGELOG.md §177): la
   // sua card viene evidenziata e la pagina scorre fino alla scelta.
@@ -266,7 +270,7 @@ function AbbonamentoContent() {
     setCheckoutError(null);
     setRenewalPending(true);
     try {
-      await apiClient.setSubscriptionRenewal(token, renew);
+      await apiClient.setSubscriptionRenewal(token, renew, renew ? undefined : (cancelReason ?? undefined));
       setConfirmCancel(false);
       setNotice(renew ? "Rinnovo automatico riattivato." : "Abbonamento annullato: resta attivo fino alla scadenza.");
       load();
@@ -624,6 +628,7 @@ function AbbonamentoContent() {
                   Vuoi davvero annullare? L&apos;abbonamento resta attivo
                   {sub.currentPeriodEnd ? ` fino al ${formatDate(sub.currentPeriodEnd)}` : " fino alla scadenza"}, poi non si rinnova e il tuo profilo esce dalle ricerche.
                 </Text>
+                <ChurnReasonPicker reasons={PRO_CHURN_REASONS} value={cancelReason} onChange={setCancelReason} />
                 <XStack gap="$2" flexWrap="wrap">
                   <Button variant="urgent" disabled={renewalPending} opacity={renewalPending ? 0.6 : 1} onPress={() => setRenewal(false)}>
                     {renewalPending ? "Attendi..." : "Sì, annulla l'abbonamento"}

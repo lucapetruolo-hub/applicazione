@@ -224,5 +224,24 @@ describe("promemoria del giorno prima (docs/CHANGELOG.md §234)", () => {
     expect(email.text).toContain("Idraulico, Sezze: 1 ricerca");
     expect(email.text).toContain("/admin/numeri-professionisti");
   });
+
+  it("consigli della settimana: cosa fare, una riga per consiglio (§372)", () => {
+    const email = renderEmail(
+      notificationEmail(
+        "ADMIN_WEEKLY_ADVICE",
+        {
+          advice: [
+            { level: "URGENT", title: "Idraulico a Latina: servono più professionisti", todo: "Cerca professionisti a Latina." },
+            { level: "TIP", title: "Cercano «antennista», un lavoro che non c'è", todo: "Valuta se aggiungerlo." },
+          ],
+        },
+        ctx,
+      )!,
+    );
+    expect(email.subject).toBe("2 cose da fare questa settimana");
+    expect(email.text).toContain("Fallo subito · Idraulico a Latina: servono più professionisti. Cerca professionisti a Latina.");
+    expect(email.text).toContain("Quando hai tempo · Cercano «antennista»");
+    expect(email.text).toContain("/admin/andamento");
+  });
 });
 

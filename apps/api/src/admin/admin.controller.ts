@@ -1,9 +1,11 @@
-import { Body, Controller, Get, Header, Param, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Header, HttpCode, Param, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
 import {
   adminRoleUpdateSchema,
   contentReportDecisionNoteSchema,
   type AdminRoleUpdateInput,
   resolveContentReportSchema,
+  siteNoteSchema,
+  type SiteNoteInput,
   resolveJobIssueSchema,
   resolveJobIssueAppealSchema,
   jobIssueInfoRequestSchema,
@@ -17,6 +19,7 @@ import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { AdminGuard, RequireAdminScope } from "./admin.guard";
 import { AdminService } from "./admin.service";
+import { SiteStatsService } from "./site-stats.service";
 import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
 
 @UseGuards(JwtAuthGuard, AdminGuard)
@@ -25,7 +28,29 @@ export class AdminController {
   constructor(
     private readonly adminService: AdminService,
     private readonly jobIssueOutcomeService: JobIssueOutcomeService,
+    private readonly siteStatsService: SiteStatsService,
   ) {}
+
+  /** Andamento del sito e consigli della settimana (docs/CHANGELOG.md §372). */
+  @RequireAdminScope("ANY")
+  @Get("site-stats")
+  siteStats() {
+    return this.siteStatsService.getStats();
+  }
+
+  /** Nota sul grafico dell'andamento (es. "chiamati 20 idraulici a Latina"). */
+  @RequireAdminScope("ANY")
+  @Post("site-notes")
+  addSiteNote(@Body(new ZodValidationPipe(siteNoteSchema)) body: SiteNoteInput) {
+    return this.siteStatsService.addNote(body);
+  }
+
+  @RequireAdminScope("ANY")
+  @Delete("site-notes/:id")
+  @HttpCode(204)
+  async deleteSiteNote(@Param("id") id: string): Promise<void> {
+    await this.siteStatsService.deleteNote(id);
+  }
 
   /** Contatori della home admin (docs/CHANGELOG.md §144). */
   @RequireAdminScope("ANY")
@@ -107,6 +132,13 @@ export class AdminController {
   @Post("users/:id/reactivate")
   reactivateUser(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(contentReportDecisionNoteSchema)) body: ContentReportDecisionNoteInput) {
     return this.adminService.reactivateUser(req.user.userId, id, body.note);
+  }
+
+  /** Elimina per sempre un account di prova e tutto quello che ha creato (docs/CHANGELOG.md §372) — solo super admin. */
+  @RequireAdminScope("SUPER")
+  @Delete("users/:id/test-account")
+  deleteTestAccount(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    return this.adminService.deleteTestAccount(req.user.userId, id);
   }
 
   /** Assegna/toglie il ruolo admin — solo super admin. */

@@ -1,13 +1,13 @@
 import { z } from "zod";
 import "./zod";
+// Elenco e tipo in un file senza zod: il sito li usa in ogni pagina (§372).
+import { TRAFFIC_SOURCES, type TrafficSource } from "./trafficSources";
 
 /**
  * Da dove arriva chi manda una richiesta di preventivo (docs/CHANGELOG.md
  * §296, strategia SEO): l'unica prova che Google porta lavoro vero. Solo una
  * categoria, mai l'indirizzo di provenienza né dati personali.
  */
-export const TRAFFIC_SOURCES = ["GOOGLE", "OTHER_SEARCH", "SOCIAL", "DIRECT", "OTHER"] as const;
-export type TrafficSource = (typeof TRAFFIC_SOURCES)[number];
 export const trafficSourceSchema = z.enum(TRAFFIC_SOURCES);
 
 export const TRAFFIC_SOURCE_LABELS: Record<TrafficSource, string> = {

@@ -29,8 +29,10 @@ export default function AdminUtentiPage() {
 function UtentiContent() {
   const { token } = useAuth();
   const searchParams = useSearchParams();
-  const [q, setQ] = useState("");
+  // `?q=` arriva dai consigli di Andamento del sito (§372): apre già la ricerca.
+  const [q, setQ] = useState(searchParams.get("q") ?? "");
   const [query, setQuery] = useState<AdminUsersQuery>({
+    q: searchParams.get("q")?.trim() || undefined,
     role: (searchParams.get("ruolo") as AdminUsersQuery["role"]) ?? undefined,
     status: (searchParams.get("stato") as AdminUsersQuery["status"]) ?? undefined,
     category: searchParams.get("categoria") ?? undefined,

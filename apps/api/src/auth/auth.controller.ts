@@ -4,6 +4,7 @@ import type { Request } from "express";
 import { Throttle } from "@nestjs/throttler";
 import {
   changePasswordSchema,
+  churnReasonBodySchema,
   emailPasswordSchema,
   emailStatusSchema,
   googleVerifySchema,
@@ -19,6 +20,7 @@ import {
   agendaAttention,
   type AgendaAttention,
   type ChangePasswordInput,
+  type ChurnReasonBody,
   type EmailPasswordInput,
   type EmailStatusInput,
   type GoogleVerifyInput,
@@ -67,7 +69,7 @@ export class AuthController {
     // `acceptedLegalTerms`/`declaredAdult` sono già garantite `=== true` da
     // `registerSchema` stesso (Zod `.refine`) prima di arrivare qui —
     // `register()` registra sempre il consenso, nessun controllo aggiuntivo.
-    return this.authService.register(body.email, body.password, body.name, body.role, body.categorySlugs, body.entityType, loginDevice(req));
+    return this.authService.register(body.email, body.password, body.name, body.role, body.categorySlugs, body.entityType, loginDevice(req), body.signupSource);
   }
 
   // Rivela se un'email è registrata (docs/CHANGELOG.md §176): limite stretto
@@ -90,7 +92,7 @@ export class AuthController {
     return this.authService.verifyGoogleToken(body.idToken, body.role, body.createIfMissing, {
       acceptedLegalTerms: body.acceptedLegalTerms === true,
       declaredAdult: body.declaredAdult === true,
-    }, body.categorySlugs, body.entityType, loginDevice(req));
+    }, body.categorySlugs, body.entityType, loginDevice(req), body.signupSource);
   }
 
   // Recupero password (docs/CHANGELOG.md §185): stessa risposta che
@@ -340,8 +342,8 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Delete("me")
-  async deleteMe(@Req() req: AuthenticatedRequest) {
-    await this.authService.deleteAccount(req.user.userId);
+  async deleteMe(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(churnReasonBodySchema)) body: ChurnReasonBody) {
+    await this.authService.deleteAccount(req.user.userId, body.reason);
     return { success: true };
   }
 

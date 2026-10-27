@@ -4,6 +4,7 @@ import { BookingsModule } from "../bookings/bookings.module";
 import { JobPaymentsModule } from "../job-payments/job-payments.module";
 import { ProfessionalFiscalModule } from "../professional-fiscal/professional-fiscal.module";
 import { SubscriptionsModule } from "../subscriptions/subscriptions.module";
+import { SiteCountsModule } from "../site-counts/site-counts.module";
 import { BillingController } from "./billing.controller";
 import { BillingService } from "./billing.service";
 
@@ -13,7 +14,7 @@ import { BillingService } from "./billing.service";
   // la conferma di un pagamento MANOVIA del lavoro e la sincronizzazione
   // dello stato Stripe Connect (CLAUDE.md §88) — un solo endpoint webhook,
   // mai due paralleli sullo stesso account Stripe.
-  imports: [AuthModule, BookingsModule, JobPaymentsModule, ProfessionalFiscalModule, SubscriptionsModule],
+  imports: [AuthModule, BookingsModule, JobPaymentsModule, ProfessionalFiscalModule, SubscriptionsModule, SiteCountsModule],
   controllers: [BillingController],
   providers: [BillingService],
 })
