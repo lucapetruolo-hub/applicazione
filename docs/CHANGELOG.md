@@ -21425,3 +21425,10 @@ verdi dello sfondo, arrivava a 3,56:1 (axe, serve 4,5:1). Ora `#4f463e`,
 sopra 5:1 anche sul verde; l'ultima voce resta in grassetto e più scura.
 axe sull'intera pagina del profilo (WCAG 2.2 AA): zero errori, da computer e
 da telefono.
+
+**3. Controllo delle librerie.** Nella stessa sera osv-scanner ha iniziato a
+segnalare `deepmerge` 4.3.1 (GHSA-gcqx-w48m-w2h4), rosso anche sul ramo
+principale. Non esiste una versione corretta e lo usano solo `@expo/config`
+e la CLI di React Native, strumenti di sviluppo dell'app: aggiunto a
+`osv-scanner.toml` con il motivo, come `node-forge` (§335). Da togliere
+quando esce una versione corretta.
