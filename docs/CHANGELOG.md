@@ -21325,6 +21325,8 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: test API (ricerca per voce senza badare a maiuscole e spazi, prezzo medio solo con professionisti visibili), typecheck e lint; sito in build di produzione con un'API finta, clic su una voce da computer e da telefono (iPhone 13) fino all'elenco filtrato.
 
+**Ritocco della finestra** (Luca: "a livello di design quella finestra non mi convince"): campo e voci ora stanno in un unico riquadro bianco con angoli da 20 px e ombra leggera, con la lente nel campo; al posto del bordo nero del fuoco un anello verde attorno a tutto il riquadro. Le voci sono separate da righe sottili a tutta larghezza (prima ogni voce aveva un bordo in alto con gli angoli arrotondati, che sembrava una scheda tagliata), nome a peso medio e prezzo più grande. Anteprime da telefono e computer in `anteprime/quanto-costa-finestra/`.
+
 ## 385. "Quanto costa in media": prezzi onesti e richiesta già pronta
 
 **Richiesta** (Luca, 27/10/2026, versione più profonda del §383, `analisi/quanto-costa-versione-profonda.md`): rendere lo strumento uno che porta lavoro e dice prezzi onesti; dati veri prima del codice; prove con un test automatico, axe, anteprime e un test con 5 persone (simulate).

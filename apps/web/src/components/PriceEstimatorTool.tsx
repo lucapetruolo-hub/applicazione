@@ -3,7 +3,8 @@
 
 import { useEffect, useState, type FocusEvent, type ReactNode } from "react";
 import { formatServicePriceRange, type ServicePriceIndexEntry } from "@professionisti/shared";
-import { Section, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Search } from "lucide-react";
+import { Section, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { readLastSearchCity } from "@/lib/lastSearchCity";
 
@@ -88,29 +89,23 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
         <Text fontSize={16} color={brand.grafite70}>
           Prezzi veri dei professionisti del sito. Tocca un lavoro per vedere chi lo fa.
         </Text>
-        <div
-          onFocus={() => setIsFocused(true)}
-          onBlur={handleBlur}
-          style={{ display: "flex", flexDirection: "column", gap: 12 }}
-        >
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Es. sostituzione caldaia, tinteggiatura, trasloco..."
-            aria-label="Cerca un lavoro per conoscere il prezzo medio"
-            style={{
-              padding: 14,
-              borderRadius: 999,
-              border: `1px solid ${brand.bordoCampo}`,
-              fontSize: 16,
-              fontFamily: "inherit",
-              color: brand.grafite,
-              backgroundColor: brand.calce,
-            }}
-          />
+        {/* Campo e voci in un unico riquadro bianco (Luca: "quella finestra
+            non mi convince", §383): si legge come una finestra sola, il campo
+            non ha più il bordo nero del fuoco ma un anello verde sul riquadro. */}
+        <div className="price-panel" onFocus={() => setIsFocused(true)} onBlur={handleBlur}>
+          <label className="price-search">
+            <Search size={20} strokeWidth={2} aria-hidden="true" className="price-search-icon" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Es. sostituzione caldaia, tinteggiatura, trasloco..."
+              aria-label="Cerca un lavoro per conoscere il prezzo medio"
+              className="price-search-input"
+            />
+          </label>
 
           {isEmpty ? (
-            <YStack width="100%" gap="$3" alignItems="flex-start">
+            <YStack width="100%" gap="$3" alignItems="flex-start" padding="$4">
               <Text fontSize={16} color={brand.grafite70}>
                 I prezzi medi appariranno qui non appena i professionisti inseriranno le loro prestazioni. Nel frattempo
                 puoi chiedere un preventivo gratuito: è il modo più preciso per sapere quanto costa il tuo lavoro.
@@ -132,15 +127,13 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
               </a>
             </YStack>
           ) : entries === null ? (
-            <Text fontSize={16} color={brand.grafite70}>
-              Caricamento...
-            </Text>
+            <p className="price-message">Caricamento...</p>
           ) : visibleEntries.length === 0 ? (
-            <Text fontSize={16} color={brand.grafite70}>
-              Nessuna prestazione trovata per {'"'}
+            <p className="price-message">
+              Nessun lavoro trovato per {'"'}
               {query}
               {'"'}.
-            </Text>
+            </p>
           ) : (
             <YStack
               width="100%"
@@ -151,20 +144,20 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
               maxHeight={showFullList ? 420 : undefined}
               overflow={showFullList ? "scroll" : "visible"}
             >
-              {visibleEntries.map((entry, index) => (
+              {visibleEntries.map((entry) => (
                 // Ogni voce apre i professionisti che offrono quella prestazione
                 // (richiesta di Luca, docs/CHANGELOG.md §383).
                 <a
                   key={entry.name}
                   href={entryHref(entry.name, lastCity)}
-                  className={index === 0 ? "price-row price-row-first" : "price-row"}
+                  className="price-row"
                   aria-label={`${entry.name}, ${entry.price ? `in media ${formatServicePriceRange(entry.price.medianEurCents, null)}, di solito ${formatServicePriceRange(entry.price.lowEurCents, entry.price.highEurCents)}` : "prezzo su preventivo"}: vedi chi lo fa`}
                   // Il clic non toglie il fuoco al campo: l'elenco aperto non si
                   // richiude (e non sposta le voci) tra la pressione e il rilascio.
                   onMouseDown={(event) => event.preventDefault()}
                 >
                   <YStack gap={2} flex={1} minWidth={0}>
-                    <Text fontWeight="700" color={brand.grafite}>
+                    <Text fontSize={16} fontWeight="600" color={brand.grafite}>
                       {entry.name}
                     </Text>
                     {/* Sotto i 3 professionisti il numero dice solo quanto è piccola
@@ -180,7 +173,7 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
                         minimo e massimo; sotto i 3 prezzi nessuna cifra (§383). */}
                     {entry.price ? (
                       <YStack alignItems="flex-end" gap={2}>
-                        <Text fontWeight="700" color={brand.cianografiaScuro}>
+                        <Text fontSize={17} fontWeight="700" color={brand.cianografiaScuro}>
                           {formatServicePriceRange(entry.price.medianEurCents, null)}
                         </Text>
                         {entry.price.highEurCents > entry.price.lowEurCents ? (
@@ -213,27 +206,68 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
       </YStack>
       {children}
       <style jsx>{`
+        .price-panel {
+          display: flex;
+          flex-direction: column;
+          background: ${brand.calce};
+          border: 1px solid ${brand.filetto};
+          border-radius: ${radiusDoc}px;
+          box-shadow: 0 6px 24px rgba(43, 32, 19, 0.06);
+          overflow: hidden;
+          transition: box-shadow 0.15s ease, border-color 0.15s ease;
+        }
+        .price-panel:focus-within {
+          border-color: ${brand.cianografia};
+          box-shadow: 0 0 0 3px ${brand.cianografiaVelo}, 0 6px 24px rgba(43, 32, 19, 0.06);
+        }
+        .price-search {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 0 18px;
+          min-height: 56px;
+          border-bottom: 1px solid ${brand.filetto};
+          cursor: text;
+        }
+        .price-panel :global(.price-search-icon) {
+          color: ${brand.grafite70};
+          flex-shrink: 0;
+        }
+        .price-search-input {
+          flex: 1;
+          min-width: 0;
+          border: 0;
+          outline: none;
+          background: transparent;
+          padding: 16px 0;
+          font-size: 16px;
+          font-family: inherit;
+          color: ${brand.grafite};
+        }
+        .price-search-input::placeholder {
+          color: ${brand.grafite70};
+        }
+        .price-message {
+          margin: 0;
+          padding: 18px;
+          font-size: 16px;
+          color: ${brand.grafite70};
+        }
         .price-row {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 12px;
-          padding: 12px 10px;
-          border-top: 1px solid ${brand.filetto};
-          border-radius: 10px;
+          gap: 16px;
+          padding: 14px 18px;
           text-decoration: none;
           color: inherit;
           transition: background-color 0.15s ease;
         }
-        .price-row-first {
-          border-top-color: transparent;
+        .price-row + .price-row {
+          box-shadow: inset 0 1px 0 ${brand.filetto};
         }
         .price-row:hover {
           background-color: ${brand.cianografiaVelo};
-          border-top-color: transparent;
-        }
-        .price-row:hover + :global(.price-row) {
-          border-top-color: transparent;
         }
         .price-row:focus-visible {
           outline: 2px solid ${brand.cianografiaScuro};
@@ -247,6 +281,7 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
           transform: translateX(2px);
         }
         @media (prefers-reduced-motion: reduce) {
+          .price-panel,
           .price-row,
           .price-row-chevron {
             transition: none;
