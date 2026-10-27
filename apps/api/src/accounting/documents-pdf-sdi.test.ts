@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { courtesyDocumentLabel } from "@professionisti/shared";
 import { pdfText, renderDocumentPdf } from "./document-pdf";
 import { courtesyPdfModel, dac7PdfModel, invoicePdfModel, pdfFileName, statementPdfModel } from "./document-pdf-models";
 import { sandboxTestInvoiceXml, sdiCompanyOf, type IssuerSnapshot } from "./invoice-documents";
 import { OpenapiSdiProvider, sdiOutcomeFromNotifications, sdiRejectionMessage } from "./sdi-provider";
 import { CourtesyCopyService } from "./courtesy-copy.service";
 
-// PDF, numero della copia di cortesia e invio allo SdI (docs/CHANGELOG.md §374).
+// PDF, numero della copia di cortesia e invio allo SdI (docs/CHANGELOG.md §374);
+// elenco dei documenti ai clienti in Admin (§375).
 
 const issuer: IssuerSnapshot = {
   companyName: "Professionisti S.r.l.",
@@ -116,10 +118,12 @@ describe("numero della copia di cortesia", () => {
         findUnique: vi.fn().mockResolvedValue(saved),
         aggregate: vi.fn().mockResolvedValue({ _max: { number: lastNumber } }),
         upsert: vi.fn().mockImplementation(({ create }) => Promise.resolve(create)),
+        findMany: vi.fn().mockResolvedValue([]),
       },
     };
     const invoices = { profileIdOf: vi.fn().mockResolvedValue("pro-1") };
-    return { service: new CourtesyCopyService(prisma as never, invoices as never), prisma };
+    const audit = { record: vi.fn().mockResolvedValue(undefined) };
+    return { service: new CourtesyCopyService(prisma as never, invoices as never, audit as never), prisma, audit };
   }
 
   it("la prima ricevuta dell'anno prende il numero 1, la successiva il 4 dopo il 3", async () => {
@@ -149,6 +153,46 @@ describe("numero della copia di cortesia", () => {
     expect(prisma.courtesyDocument.aggregate).not.toHaveBeenCalled();
     expect((await service.setOwnNumber("u1", "b1", { number: " 12/A " })).number).toBe("12/A");
     expect(prisma.courtesyDocument.upsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({ kind: "INVOICE", ownNumber: "12/A" }) }));
+  });
+
+  it("scaricando il PDF ci segniamo quando e con che importo", async () => {
+    const { service, prisma } = build("SOLE_PROPRIETOR", { number: null, year: 2026, ownNumber: "7" }, null);
+    await service.forProfessionalPdf("u1", "b1");
+    expect(prisma.courtesyDocument.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ kind: "INVOICE", year: 2026, ownNumber: "7", pdfTotalEurCents: null, pdfDownloadedAt: expect.any(Date) }),
+        update: { pdfDownloadedAt: expect.any(Date), pdfTotalEurCents: null },
+      }),
+    );
+  });
+
+  it("l'admin vede solo i documenti preparati, non dà numeri nuovi e resta nel registro", async () => {
+    const missing = build("PRIVATE_INDIVIDUAL", null, 3);
+    await expect(missing.service.forAdmin("b1", "admin-1")).rejects.toThrow("Documento non trovato.");
+    expect(missing.prisma.courtesyDocument.upsert).not.toHaveBeenCalled();
+
+    const { service, prisma, audit } = build("PRIVATE_INDIVIDUAL", { id: "d1", number: 2, year: 2026, ownNumber: null }, 9);
+    expect((await service.forAdmin("b1", "admin-1")).number).toBe("2/2026");
+    expect(prisma.courtesyDocument.upsert).not.toHaveBeenCalled();
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ entityType: "CourtesyDocument", entityId: "b1", fieldName: "read", changedByUserId: "admin-1" }));
+  });
+
+  it("ricerca per numero della ricevuta, numero della fattura o nome", async () => {
+    const { service, prisma } = build("PRIVATE_INDIVIDUAL", null, null);
+    await service.adminList({ q: "4/2026" });
+    const where = prisma.courtesyDocument.findMany.mock.calls[0]![0].where;
+    expect(where.OR).toContainEqual({ kind: "RECEIPT", number: 4, year: 2026 });
+    expect(where.OR).toContainEqual({ ownNumber: { contains: "4/2026", mode: "insensitive" } });
+    await service.adminList({ q: "Rossi", kind: "INVOICE", year: 2026 });
+    const second = prisma.courtesyDocument.findMany.mock.calls[1]![0].where;
+    expect(second).toMatchObject({ kind: "INVOICE", year: 2026 });
+    expect(second.OR).not.toContainEqual(expect.objectContaining({ number: expect.anything() }));
+  });
+
+  it("nome del documento nelle liste", () => {
+    expect(courtesyDocumentLabel({ kind: "RECEIPT", number: 4, year: 2026, ownNumber: null })).toBe("Ricevuta n. 4/2026");
+    expect(courtesyDocumentLabel({ kind: "INVOICE", number: null, year: 2026, ownNumber: "12/A" })).toBe("Fattura n. 12/A");
+    expect(courtesyDocumentLabel({ kind: "INVOICE", number: null, year: 2026, ownNumber: null })).toBe("Fattura, numero non ancora scritto");
   });
 });
 

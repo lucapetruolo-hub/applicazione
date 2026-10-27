@@ -2,7 +2,7 @@ import { ACTION_SHORT_LABEL, auditLabel } from "./audit-label";
 import { AdminSecurityAlertsService } from "./admin-security-alerts.service";
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ContentReportTargetType, ModerationAction, Prisma, PrismaClient } from "@professionisti/database";
-import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource, type AdminProfessionalStats, PROFESSIONAL_ACTIVITY_DAYS } from "@professionisti/shared";
+import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, courtesyDocumentLabel, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource, type AdminProfessionalStats, PROFESSIONAL_ACTIVITY_DAYS } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
@@ -1246,6 +1246,7 @@ export class AdminService {
       include: {
         finalItems: true,
         jobPayment: true,
+        courtesyDocument: { select: { kind: true, number: true, year: true, ownNumber: true } },
         professionalProfile: { select: { id: true, userId: true, businessName: true } },
         client: { select: { id: true, name: true, surname: true, deletedAt: true } },
         quote: {
@@ -1288,6 +1289,7 @@ export class AdminService {
         clientPhotoUrls: booking.clientCompletionPhotoUrls,
         // Come è stato pagato, saldo diretto compreso (docs/CHANGELOG.md §239).
         paymentLabel: jobPaymentAdminLabel(toJobPaymentSummary(booking.jobPayment, booking.finalAmountEurCents)),
+        courtesyDocumentLabel: booking.courtesyDocument ? courtesyDocumentLabel(booking.courtesyDocument) : null,
       };
     });
   }
@@ -1318,6 +1320,7 @@ export class AdminService {
             client: { select: { id: true, name: true, surname: true, deletedAt: true } },
             quote: { select: { guidedRequest: { select: { id: true, city: true, description: true, category: { select: { label: true } } } } } },
             jobPayment: { select: { paymentMethod: true, status: true } },
+            courtesyDocument: { select: { kind: true, number: true, year: true, ownNumber: true } },
           },
         },
       },
@@ -1382,6 +1385,7 @@ export class AdminService {
         clientCompletionNote: booking.clientCompletionNote,
         professionalCompletionPhotoUrls: booking.professionalCompletionPhotoUrls,
         clientCompletionPhotoUrls: booking.clientCompletionPhotoUrls,
+        courtesyDocumentLabel: booking.courtesyDocument ? courtesyDocumentLabel(booking.courtesyDocument) : null,
       };
     });
   }
@@ -1681,6 +1685,8 @@ export type AdminCompletedJobRow = {
   professionalPhotoUrls: string[];
   clientPhotoUrls: string[];
   paymentLabel: string;
+  /** Ricevuta o copia di cortesia preparata dal professionista (§375). */
+  courtesyDocumentLabel: string | null;
 };
 
 export type AdminJobIssueRow = {
@@ -1703,6 +1709,7 @@ export type AdminJobIssueRow = {
   clientCompletionNote: string | null;
   professionalCompletionPhotoUrls: string[];
   clientCompletionPhotoUrls: string[];
+  courtesyDocumentLabel: string | null;
 };
 
 export type AdminConversationRow = {

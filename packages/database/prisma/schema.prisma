@@ -1338,12 +1338,17 @@ model CourtesyDocument {
   number                Int?
   /// Fatture: il numero del programma delle fatture del professionista.
   ownNumber             String?
+  /// Ultima volta che il professionista ha scaricato il PDF (Admin → Documenti ai clienti, §375).
+  pdfDownloadedAt       DateTime?
+  /// Importo scritto su quel PDF: se il lavoro cambia dopo, l'admin lo vede.
+  pdfTotalEurCents      Int?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@unique([professionalProfileId, year, number])
+  @@index([createdAt])
   @@map("courtesy_documents")
 }
 

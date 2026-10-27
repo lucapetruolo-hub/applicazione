@@ -529,6 +529,41 @@ export function courtesyReceiptNumber(number: number, year: number): string {
   return `${number}/${year}`;
 }
 
+/** Come si chiama il documento nelle liste: "Ricevuta n. 4/2026", "Fattura n. 12/A". */
+export function courtesyDocumentLabel(doc: { kind: string; number: number | null; year: number; ownNumber: string | null }): string {
+  if (doc.kind === "RECEIPT") return doc.number ? `Ricevuta n. ${courtesyReceiptNumber(doc.number, doc.year)}` : "Ricevuta senza numero";
+  return doc.ownNumber ? `Fattura n. ${doc.ownNumber}` : "Fattura, numero non ancora scritto";
+}
+
+/**
+ * Un documento dato a un cliente, in Admin → Documenti ai clienti
+ * (docs/CHANGELOG.md §375): per l'assistenza e le segnalazioni, con chi l'ha
+ * preparato, per chi, e se il PDF scaricato aveva un importo diverso da oggi.
+ */
+export type AdminCourtesyDocumentRow = {
+  bookingId: string;
+  kind: "INVOICE" | "RECEIPT";
+  label: string;
+  year: number;
+  /** Quando il professionista l'ha preparato la prima volta. */
+  createdAt: string;
+  pdfDownloadedAt: string | null;
+  /** Importo sull'ultimo PDF scaricato. */
+  pdfTotalEurCents: number | null;
+  /** Importo del lavoro oggi (dopo rimborsi o cambi): null se non è noto. */
+  totalEurCents: number | null;
+  invoiceRequested: boolean;
+  categoryLabel: string | null;
+  city: string | null;
+  scheduledAt: string;
+  bookingCanceled: boolean;
+  guidedRequestId: string | null;
+  professional: { profileId: string; userId: string; businessName: string };
+  client: { userId: string; name: string | null; accountDeleted: boolean };
+};
+
+export const adminCourtesyDocumentKinds = ["RECEIPT", "INVOICE"] as const;
+
 /** Sopra questa cifra, senza IVA, serve la marca da bollo da 2 €. */
 export const STAMP_DUTY_THRESHOLD_EUR_CENTS = 7747;
 

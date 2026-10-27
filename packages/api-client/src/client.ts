@@ -115,6 +115,7 @@ import type {
   PlatformInvoiceView,
   FeeReconciliation,
   SdiSandboxTestResult,
+  AdminCourtesyDocumentRow,
 } from "@professionisti/shared";
 
 export type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW";
@@ -580,6 +581,8 @@ export type AdminCompletedJob = {
   clientPhotoUrls: string[];
   /** Come è stato pagato il lavoro, in una riga (docs/CHANGELOG.md §239). */
   paymentLabel: string;
+  /** Ricevuta o copia di cortesia preparata dal professionista, es. "Ricevuta n. 4/2026" (§375). */
+  courtesyDocumentLabel: string | null;
 };
 
 /** Chat tra cliente e professionista vista dall'admin (docs/CHANGELOG.md §166). */
@@ -626,6 +629,7 @@ export type AdminJobIssue = {
   clientCompletionNote: string | null;
   professionalCompletionPhotoUrls: string[];
   clientCompletionPhotoUrls: string[];
+  courtesyDocumentLabel: string | null;
 };
 
 /** Richiesta eliminata da un cliente, nell'area admin (docs/CHANGELOG.md §343). */
@@ -1563,6 +1567,19 @@ export function createApiClient({ baseUrl, deviceId }: ApiClientConfig) {
 
     adminResendInvoice: (token: string, id: string) =>
       request<PlatformInvoiceAdminRow>(`/admin/invoices/${encodeURIComponent(id)}/resend`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+
+    /** Admin → Documenti ai clienti (docs/CHANGELOG.md §375). */
+    adminCourtesyDocuments: (token: string, filter: { q?: string; kind?: "RECEIPT" | "INVOICE"; year?: number; bookingId?: string } = {}) => {
+      const params = new URLSearchParams();
+      if (filter.q?.trim()) params.set("q", filter.q.trim());
+      if (filter.kind) params.set("kind", filter.kind);
+      if (filter.year) params.set("year", String(filter.year));
+      if (filter.bookingId) params.set("bookingId", filter.bookingId);
+      const query = params.toString();
+      return request<AdminCourtesyDocumentRow[]>(`/admin/courtesy-documents${query ? `?${query}` : ""}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+    },
+
+    adminCourtesyDocumentPdf: (token: string, bookingId: string) => downloadFile(`/admin/courtesy-documents/${encodeURIComponent(bookingId)}/pdf`, token),
 
     /** Checkout Stripe dell'acconto o del saldo di un lavoro pagato online. */
     jobPaymentCheckout: (token: string, bookingId: string, part: "deposit" | "balance") =>

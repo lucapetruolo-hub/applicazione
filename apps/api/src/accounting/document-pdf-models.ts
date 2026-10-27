@@ -215,6 +215,11 @@ export function dac7PdfModel(summary: Dac7YearSummary, maskedIban: string | null
 }
 
 /** Nome del file: "fattura-COM-2026-0017.pdf", "estratto-2026-09.pdf". */
+/** Nome del file della copia di cortesia: "ricevuta-4-2026", "fattura-cortesia-12-A". */
+export function courtesyPdfBaseName(copy: CourtesyCopyView): string {
+  return copy.kind === "RECEIPT" ? `ricevuta-${copy.number ?? ""}` : `fattura-cortesia-${copy.number ?? copy.date.slice(0, 10)}`;
+}
+
 export function pdfFileName(base: string): string {
   return `${base.replace(/[^\w.-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "")}.pdf`;
 }

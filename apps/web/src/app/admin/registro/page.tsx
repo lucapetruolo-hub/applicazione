@@ -20,6 +20,7 @@ const ENTITY_LABEL: Record<string, string> = {
   IdentityVerification: "Verifica identità",
   JobIssue: "Problema sul lavoro",
   Conversation: "Conversazione",
+  CourtesyDocument: "Documento al cliente",
   FiscalRepresentative: "Legale rappresentante",
   GeneralRequestSettings: "Richieste generali",
   GeneralRequestBlock: "Richieste generali chiuse",

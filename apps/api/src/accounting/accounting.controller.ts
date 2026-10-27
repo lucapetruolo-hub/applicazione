@@ -6,7 +6,7 @@ import { InvoicesService } from "./invoices.service";
 import { StatementsService } from "./statements.service";
 import { CourtesyCopyService } from "./courtesy-copy.service";
 import { pdfResponse, renderDocumentPdf } from "./document-pdf";
-import { courtesyPdfModel, invoicePdfModel, pdfFileName } from "./document-pdf-models";
+import { courtesyPdfBaseName, courtesyPdfModel, invoicePdfModel, pdfFileName } from "./document-pdf-models";
 
 /** Pagina "Fatture e documenti" del professionista (docs/CHANGELOG.md §372). */
 @Controller("documents")
@@ -75,8 +75,7 @@ export class AccountingController {
 
   @Get("courtesy/:bookingId/pdf")
   async courtesyPdf(@Req() req: AuthenticatedRequest, @Param("bookingId") bookingId: string) {
-    const copy = await this.courtesyCopyService.forProfessional(req.user.userId, bookingId);
-    const base = copy.kind === "RECEIPT" ? `ricevuta-${copy.number ?? ""}` : `fattura-cortesia-${copy.number ?? copy.date.slice(0, 10)}`;
-    return pdfResponse(await renderDocumentPdf(courtesyPdfModel(copy)), pdfFileName(base));
+    const copy = await this.courtesyCopyService.forProfessionalPdf(req.user.userId, bookingId);
+    return pdfResponse(await renderDocumentPdf(courtesyPdfModel(copy)), pdfFileName(courtesyPdfBaseName(copy)));
   }
 }

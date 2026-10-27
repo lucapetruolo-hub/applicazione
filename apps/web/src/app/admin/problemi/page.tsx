@@ -121,6 +121,11 @@ export default function AdminProblemiPage() {
                       Leggi la chat
                     </Link>
                   ) : null}
+                  {row.courtesyDocumentLabel ? (
+                    <Link href={`/admin/documenti-clienti?lavoro=${row.bookingId}`} style={{ fontSize: 13, fontWeight: 700 }}>
+                      {row.courtesyDocumentLabel}
+                    </Link>
+                  ) : null}
                   <PhaseDeadline row={row} />
                   {row.issue.escalationReason ? (
                     <Text fontSize={13} color={brand.grafite70}>

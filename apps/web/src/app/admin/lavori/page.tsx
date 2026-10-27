@@ -129,6 +129,11 @@ export default function AdminLavoriPage() {
                         Leggi la chat
                       </Link>
                     ) : null}
+                    {job.courtesyDocumentLabel ? (
+                      <Link href={`/admin/documenti-clienti?lavoro=${job.bookingId}`} style={{ fontSize: 13, fontWeight: 700 }}>
+                        {job.courtesyDocumentLabel}
+                      </Link>
+                    ) : null}
                   </YStack>
                   <YStack alignItems="flex-end" gap="$1">
                     {job.finalAmountEurCents !== null ? (
