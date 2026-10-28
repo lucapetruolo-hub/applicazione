@@ -21,11 +21,15 @@ test("T2 e T3: in Oggi il prossimo lavoro sta in cima e apre l'appuntamento", as
   await expect(page.getByRole("dialog", { name: /Appuntamento con Giulia Bianchi/ })).toBeVisible();
 });
 
-test("T4: la domenica sera domani è nella striscia dei giorni", async ({ page }) => {
+// Domenica senza lavori l'agenda del telefono si apre sulla settimana che comincia domani
+// (docs/changelog/2026-10-28-agenda-orari-in-vista.md): il lavoro di lunedì si vede senza toccare nulla.
+test("T4: la domenica sera il lavoro di domani si vede subito", async ({ page }) => {
   await page.clock.setFixedTime(new Date("2026-10-25T18:00:00Z"));
   await page.goto("/dashboard/agenda");
-  await page.getByRole("group", { name: "Giorni della settimana" }).first().getByRole("button", { name: /Lun 26/ }).click();
   await expect(page.getByRole("button", { name: /Giulia Bianchi ?, 09:00–10:30/ }).first()).toBeVisible();
+  // Dalla settimana si apre il giorno con un tocco.
+  await page.getByRole("button", { name: /Lun 26.*apri il giorno/i }).click();
+  await expect(page.getByRole("group", { name: "Giorni della settimana" }).first().getByRole("button", { name: /Lun 26/, pressed: true })).toBeVisible();
 });
 
 test("T1: chiudere un giorno sta in cima a Orari di lavoro e basta la data", async ({ page }) => {
@@ -43,7 +47,6 @@ test("T9 e T11: il tasto per aggiungere un lavoro ha la scritta; Lavoro completa
   await page.clock.setFixedTime(new Date("2026-10-25T18:00:00Z"));
   await page.goto("/dashboard/agenda");
   await expect(page.getByRole("button", { name: "Aggiungi lavoro" })).toContainText("Aggiungi lavoro");
-  await page.getByRole("group", { name: "Giorni della settimana" }).first().getByRole("button", { name: /Lun 26/ }).click();
   await page.getByRole("button", { name: /Giulia Bianchi ?, 09:00–10:30/ }).first().click();
   const dialog = page.getByRole("dialog", { name: /Appuntamento con/ });
   await expect(dialog).toBeVisible();
