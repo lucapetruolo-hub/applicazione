@@ -21502,3 +21502,19 @@ e 390 px (anteprime in `anteprime/barra-preventivo-computer/`).
 - **Avviso del 15 dicembre** (`remindDocumentsToFix`): per chi fa le ricevute (prestazione occasionale) anche i lavori terminati nell'anno senza ricevuta ("Idraulico del 12 novembre 2026, Sara Neri: Manca la ricevuta") e le ricevute con il numero ma mai scaricate ("Ricevuta mai scaricata"), perché nel riepilogo per il commercialista mancherebbero o il cliente non le ha. L'email dice solo le istruzioni che servono: "Se manca la ricevuta, preparala dal lavoro, scarica il PDF e dalla al cliente. Se l'hai fatta a mano, dillo al tuo commercialista: nel riepilogo non c'è." Se ci sono solo ricevute da fare il pulsante è "Apri le richieste", altrimenti resta "Apri Fatture e documenti". Le copie delle fatture restano fuori: la fattura il professionista la fa col suo programma e la nostra copia è facoltativa.
 
 **Verifica**: test nuovi sull'avviso al cliente (primo PDF, stesso importo, importo cambiato, senza importo), sull'avviso di dicembre (lavori senza ricevuta dell'anno all'ora di Roma, ricevute mai scaricate solo a lavoro terminato) e sulle email; 810 test dell'API, typecheck e lint di API e sito; test dei permessi (281 rotte, 1164 controlli, nessun problema). Provato con l'API e il sito veri in locale: il PDF scaricato dal professionista crea una sola notifica al cliente, una seconda con l'importo cambiato, e il link apre la finestra dei documenti da computer e da telefono; email guardate nell'anteprima.
+
+## 400. Controlli delle PR più veloci
+
+**Richiesta** (Luca, 28/10/2026): con molte PR aperte i controlli rallentavano tutto; ha scelto di renderli più veloci senza indebolire quelli di sicurezza.
+
+**Misure prima** (ultime 5 PR): la CI durava 7:35-9:55 minuti, sempre per colpa del job `agenda-browser` (prove nel browser 4:16, Lighthouse 1:18, build 1:12); `typecheck-build-test` 4:15-4:34 (build 1:34, seconda build del sito per il SEO aperto 1:04); test dei permessi 1 minuto; sicurezza al massimo 1:45 (CodeQL). Nessuna attesa in coda: i job partivano già in parallelo e le librerie di pnpm erano già in cache.
+
+**Decisione**:
+- `agenda-browser` diviso in tre job in parallelo, ognuno col suo database: telefono in Italia; New York e Tokyo; misure dei compiti (`--no-deps`, cambiano i dati) con Lighthouse.
+- Il controllo SEO del sito aperto ha un job suo (`seo-sito-aperto`) invece di rifare la build in coda.
+- Typecheck, lint, build e test in un solo comando turbo, che li fa in parallelo per pacchetto.
+- Cache della build di Next.js (`apps/web/.next/cache`) tra un giro e l'altro.
+- Un nuovo push sulla stessa PR ferma il giro vecchio (CI e sicurezza); sul ramo principale mai.
+- Una PR che cambia solo testi (`.md`, skill in `.claude/`) salta la CI. I controlli di sicurezza (CodeQL, Semgrep, gitleaks, osv-scanner) girano sempre e restano bloccanti.
+
+**Verifica**: tempi misurati sulla PR stessa (vedi descrizione della PR).
