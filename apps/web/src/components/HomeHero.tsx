@@ -83,7 +83,7 @@ export function HomeHero() {
               che il sito non fa (nessuno controlla chi è disponibile) ed era il
               secondo controllo "urgente" nello stesso schermo, col link rosso
               "Richiesta urgente" qui sotto, che resta. */}
-          <Text fontSize={16} fontWeight="600" color="rgba(255,255,255,0.75)" marginTop="$2">
+          <Text fontSize={16} fontWeight="600" color="rgba(255,255,255,0.75)" marginTop="$2" textAlign="center">
             Ricerca gratuita · Nessuna registrazione
           </Text>
 

@@ -122,6 +122,10 @@ test.describe("chi visita il profilo", () => {
     await page.locator(".site-header-cta-link").click();
     await expect(page).toHaveURL(/\/preventivo$/);
     await expect(page.locator(".site-header-cta-link")).toHaveCount(0);
+    // Nemmeno nella richiesta urgente, dove porterebbe a una richiesta diversa.
+    await page.goto("/urgente");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.locator(".site-header-cta-link")).toHaveCount(0);
   });
 
   test("nome lunghissimo e profilo senza foto: niente esce dallo schermo", async ({ page }) => {

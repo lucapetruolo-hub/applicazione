@@ -64,3 +64,15 @@ neutra per troppi mestieri diversi), testo e ricerca al centro come prima.
 
 **Verifica**: typecheck e lint di web; prove nel browser come sopra; foto a 390, 320 e 1440 px in
 `anteprime/hero-meno-metallico/fatto/`, nessuno scorrimento orizzontale.
+
+## Due migliorie approvate da Luca
+
+**Richiesta** (Luca, 28/10/2026): "effettua le 2 migliorie" (le prime due dell'elenco prima di unire).
+- Schede "A domicilio" / "Online" della ricerca: da telefono occupano tutta la larghezza; sotto i 390 px sono larghe
+  quanto il testo, a 15 px e su una riga. A 320 px "Online" usciva dal riquadro bianco (`SearchBar`). Di passaggio
+  "Ricerca gratuita · Nessuna registrazione" è centrata anche quando va a capo.
+- "Richiedi preventivo" in alto non compare neanche su `/urgente`, dove porterebbe a una richiesta diversa da quella
+  che si sta compilando (`SiteHeader`, prova in `barra-preventivo.spec.ts`).
+
+**Verifica**: typecheck e lint; prove nel browser; foto a 320, 360, 390 e 412 px in
+`anteprime/hero-meno-metallico/fatto/` (schede dentro il riquadro, nessuno scorrimento orizzontale).

@@ -45,8 +45,9 @@ export function SiteHeader() {
   const isAuthPage = AUTH_PAGES.some((page) => pathname === page || pathname.startsWith(`${page}/`));
   // In home è tornato (richiesta di Luca, docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md,
   // dopo il §349): resta a portata di mano anche scorrendo. Non compare solo
-  // dentro la richiesta stessa, dove porterebbe alla pagina già aperta.
-  const isQuotePage = pathname === "/preventivo";
+  // dentro una richiesta: su /preventivo porterebbe alla pagina già aperta, su
+  // /urgente a una richiesta diversa da quella che si sta compilando.
+  const isQuotePage = pathname === "/preventivo" || pathname === "/urgente";
 
   // Ordine delle categorie per la richiesta di preventivo e la registrazione,
   // chiesto a pagina ferma: aprendole le tessere compaiono subito in ordine (§324).

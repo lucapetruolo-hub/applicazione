@@ -285,7 +285,18 @@ export function SearchBar({
       shadowOffset={{ width: 0, height: 0 }}
       shadowOpacity={1}
     >
-      <XStack gap="$2" backgroundColor={brand.gesso} borderRadius="$10" padding="$1" alignSelf="flex-start">
+      {/* Da telefono le due schede occupano tutta la larghezza a metà ciascuna,
+          sotto i 390 px larghe quanto il testo, su una riga: a 320 px "Online" usciva dal riquadro
+          (docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md). */}
+      <XStack
+        gap="$2"
+        backgroundColor={brand.gesso}
+        borderRadius="$10"
+        padding="$1"
+        alignSelf="flex-start"
+        $xs={{ alignSelf: "stretch" }}
+        $xxs={{ gap: "$1" }}
+      >
         {MODE_TABS.map((tab) => {
           const active = tab.key === mode;
           return (
@@ -297,13 +308,16 @@ export function SearchBar({
               backgroundColor={active ? brand.cianografia : "transparent"}
               cursor="pointer"
               alignItems="center"
+              justifyContent="center"
+              $xs={{ flexGrow: 1, flexBasis: 0 }}
+              $xxs={{ flexBasis: "auto", paddingHorizontal: "$2", gap: "$1" }}
               gap="$2"
               onPress={() => handleModeChange(tab.key)}
               accessibilityRole="button"
               accessibilityLabel={tab.label}
             >
               <Icon name={tab.icon} size={15} color={active ? "white" : brand.grafite70} />
-              <Text fontSize={16} fontWeight="600" color={active ? "white" : brand.grafite70}>
+              <Text fontSize={16} $xxs={{ fontSize: 15 }} whiteSpace="nowrap" fontWeight="600" color={active ? "white" : brand.grafite70}>
                 {tab.label}
               </Text>
             </XStack>
