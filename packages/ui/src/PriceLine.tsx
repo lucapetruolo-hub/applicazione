@@ -6,8 +6,10 @@ import { brand } from "./tokens";
  * destra con le cifre tabellari, in colonna. Senza puntini di guida in mezzo,
  * tolti su richiesta dell'utente (§316). Dal §349 anche le cifre sono nel
  * carattere del sito (niente monospace, regola unica dei numeri).
+ * L'unità ("al m²") sta prima del prezzo, in piccolo: così le cifre finiscono
+ * tutte sullo stesso bordo destro (richiesta di Luca, docs/CHANGELOG.md §399).
  */
-export function PriceLine({ label, price, labelColor = brand.grafite70 }: { label: string; price: string; labelColor?: string }) {
+export function PriceLine({ label, price, unit, labelColor = brand.grafite70 }: { label: string; price: string; unit?: string; labelColor?: string }) {
   const isAmount = /\d/.test(price);
   return (
     <XStack alignItems="flex-start" gap="$3" paddingVertical={3}>
@@ -15,6 +17,11 @@ export function PriceLine({ label, price, labelColor = brand.grafite70 }: { labe
         {label}
       </Text>
       <YStack flex={1} minWidth={12} />
+      {unit ? (
+        <Text fontSize={13} color={brand.grafite70} flexShrink={0} numberOfLines={1} marginTop={2}>
+          {unit}
+        </Text>
+      ) : null}
       <Text
         fontFamily="$body"
         fontVariant={isAmount ? ["tabular-nums"] : undefined}

@@ -12,6 +12,7 @@ export function buildSearchDestination({
   professional,
   mode,
   urgentOnly,
+  service,
 }: {
   query: string;
   city: string;
@@ -19,11 +20,24 @@ export function buildSearchDestination({
   mode: SearchMode;
   /** Preseleziona il filtro "Intervento urgente?" (disponibilità nelle prossime 24h) già in pagina risultati, richiesta esplicita dell'utente dalla homepage. */
   urgentOnly?: boolean;
+  /**
+   * Prestazione già filtrata (voce di "Quanto costa in media", §398): resta
+   * se si cambia solo città o modalità, cioè se "Cosa cerchi?" è vuoto o
+   * dice ancora la stessa prestazione. Un lavoro nuovo è una ricerca nuova.
+   */
+  service?: string;
 }): string {
   const isOnline = mode === "online";
   const params = new URLSearchParams();
   if (isOnline) params.set("online", "1");
   if (urgentOnly) params.set("urgente", "1");
+
+  const serviceName = service?.trim();
+  if (serviceName && !professional && (!query.trim() || query.trim().toLowerCase() === serviceName.toLowerCase())) {
+    params.set("servizio", serviceName);
+    if (city.trim()) params.set("citta", city.trim());
+    return `/cerca?${params.toString()}`;
+  }
 
   const categorySlug = professional?.categorySlug ?? findCategoryByQuery(query)?.slug;
   if (categorySlug) {

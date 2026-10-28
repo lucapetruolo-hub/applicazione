@@ -507,11 +507,21 @@ model ProfessionalService {
   // (vedi formatServicePriceRange in packages/shared).
   priceMinEurCents      Int?
   priceMaxEurCents      Int?
+  // A cosa si riferisce il prezzo (docs/CHANGELOG.md §398, richiesta di
+  // Luca): "10 €" per una tinteggiatura può essere al m² o a lavoro.
+  priceUnit             ServicePriceUnit @default(JOB)
   createdAt             DateTime @default(now())
 
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
 
   @@map("professional_services")
+}
+
+enum ServicePriceUnit {
+  JOB
+  HOUR
+  DAY
+  SQUARE_METER
 }
 
 // Disponibilità settimanale ricorrente (non date specifiche): il
@@ -2641,6 +2651,19 @@ model RequestStepDay {
   @@id([step, categorySlug, origin, day])
   @@index([day])
   @@map("request_step_days")
+}
+
+// Passi dalle voci di "Quanto costa" (docs/CHANGELOG.md §399): voce
+// toccata, profilo aperto dall'elenco, richiesta inviata. Solo il passo.
+model PriceToolStepDay {
+  /// VOCE, PROFILO o RICHIESTA (PRICE_TOOL_STEP_KEYS in packages/shared).
+  step  String
+  day   DateTime @db.Date
+  count Int      @default(0)
+
+  @@id([step, day])
+  @@index([day])
+  @@map("price_tool_step_days")
 }
 
 // Invii non riusciti nel browser, per modulo e tipo di errore (rete,

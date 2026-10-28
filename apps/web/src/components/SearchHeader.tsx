@@ -12,10 +12,13 @@ export function SearchHeader({
   initialQuery,
   initialCity,
   initialMode,
+  service,
 }: {
   initialQuery: string;
   initialCity: string;
   initialMode: SearchMode;
+  /** Prestazione filtrata (voce di "Quanto costa in media", §398): resta cambiando città o modalità. */
+  service?: string;
 }) {
   const router = useRouter();
   // Da telefono il modulo completo occupava tutto il primo schermo e i
@@ -27,7 +30,7 @@ export function SearchHeader({
 
   function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
     rememberSearchCity(params.city);
-    const destination = buildSearchDestination(params);
+    const destination = buildSearchDestination({ ...params, service });
     // Richiesta esplicita dell'utente: cambiare "Online/A domicilio" dalla
     // barra di ricerca di una pagina risultati deve aggiornare SUBITO la
     // lista. Next.js 14 tiene in cache client-side (Router Cache) le pagine

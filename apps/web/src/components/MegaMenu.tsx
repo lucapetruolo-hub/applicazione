@@ -176,8 +176,8 @@ export function MegaMenu({ mobileOnly = false }: { mobileOnly?: boolean } = {}) 
                 <Link href="/#come-funziona" className="mega-navlink" onClick={() => setMobileOpen(false)}>
                   Come funziona
                 </Link>
-                <Link href="/per-professionisti#prezzi" className="mega-navlink" onClick={() => setMobileOpen(false)}>
-                  Prezzi
+                <Link href="/#quanto-costa" className="mega-navlink" onClick={() => setMobileOpen(false)}>
+                  Quanto costa
                 </Link>
                 {!isLoading && !user?.isProfessional ? (
                   <Link href="/per-professionisti" className="mega-navlink" onClick={() => setMobileOpen(false)}>
