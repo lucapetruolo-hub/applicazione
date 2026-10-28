@@ -2,13 +2,25 @@
 
 import { useEffect, useState } from "react";
 import type { AdminDispute, AdminRefund } from "@professionisti/api-client";
-import { ONLINE_LIMIT_FREE_DAYS, ONLINE_LIMIT_FREE_JOBS, ONLINE_LIMIT_REASON_MAX, formatEur, formatEurCents, type AdminOnlineLimitRow, type AdminUnpaidBalance } from "@professionisti/shared";
+import {
+  ONLINE_LIMIT_FREE_DAYS,
+  ONLINE_LIMIT_FREE_JOBS,
+  ONLINE_LIMIT_REASON_MAX,
+  bankDisputeReasonLabel,
+  bankDisputeStatusLabel,
+  formatEur,
+  formatEurCents,
+  type AdminBankDispute,
+  type AdminOnlineLimitRow,
+  type AdminUnpaidBalance,
+} from "@professionisti/shared";
 import Link from "next/link";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { useAdminOverview } from "@/components/admin/AdminOverviewContext";
 import { AdminCard, AdminPageHeader, AdminPill, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
+import { PdfButton } from "@/app/dashboard/documenti/_components/DocumentParts";
 
 const REFUND_STATUS: Record<AdminRefund["status"], { label: string; tone: "warn" | "ok" | "neutral" | "danger" }> = {
   REQUESTED: { label: "Da decidere", tone: "warn" },
@@ -39,12 +51,20 @@ export default function AdminPagamentiPage() {
   const [disputes, setDisputes] = useState<AdminDispute[] | null>(null);
   const [unpaid, setUnpaid] = useState<AdminUnpaidBalance[] | null>(null);
   const [limits, setLimits] = useState<AdminOnlineLimitRow[] | null>(null);
+  const [bankDisputes, setBankDisputes] = useState<AdminBankDispute[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   function reload() {
     if (!token) return;
-    Promise.all([apiClient.adminListRefunds(token), apiClient.adminListDisputes(token), apiClient.adminListUnpaidBalances(token), apiClient.adminListOnlineLimits(token)])
-      .then(([r, d, u, l]) => {
+    Promise.all([
+      apiClient.adminListRefunds(token),
+      apiClient.adminListDisputes(token),
+      apiClient.adminListUnpaidBalances(token),
+      apiClient.adminListOnlineLimits(token),
+      apiClient.adminListBankDisputes(token),
+    ])
+      .then(([r, d, u, l, b]) => {
+        setBankDisputes(b);
         setRefunds(r);
         setDisputes(d);
         setUnpaid(u);
@@ -66,6 +86,18 @@ export default function AdminPagamentiPage() {
         description="Saldi dei pagamenti online non pagati, rimborsi e contestazioni. I rimborsi delle segnalazioni accolte e degli annullamenti partono da soli; qui restano quelli da controllare."
       />
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
+
+      <YStack gap="$3">
+        <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+          Contestazioni in banca
+        </Text>
+        <Text fontSize={13} color={brand.grafite70}>
+          Clienti che hanno contestato un pagamento online con la loro banca. Rileggi le prove già scritte dal sito e mandale prima della
+          scadenza: con le prove parte anche il riepilogo PDF del lavoro.
+        </Text>
+        {bankDisputes && bankDisputes.length === 0 ? <Text color={brand.grafite70}>Nessuna contestazione in banca aperta.</Text> : null}
+        {bankDisputes?.map((row) => <BankDisputeCard key={row.jobPaymentId} row={row} token={token ?? ""} onChanged={reload} />)}
+      </YStack>
 
       <YStack gap="$3">
         <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
@@ -375,6 +407,124 @@ function OnlineLimitCard({ row, token, onChanged }: { row: AdminOnlineLimitRow; 
         </YStack>
       ) : null}
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
+    </AdminCard>
+  );
+}
+
+function BankDisputeCard({ row, token, onChanged }: { row: AdminBankDispute; token: string; onChanged: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [draft, setDraft] = useState(row.draft);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const set = (field: keyof AdminBankDispute["draft"]) => (e: { target: { value: string } }) => setDraft((d) => ({ ...d, [field]: e.target.value }));
+
+  async function save(submit: boolean) {
+    setError(null);
+    setSaved(false);
+    if (draft.explanation.trim().length < 20) {
+      setError("Spiega in qualche riga perché il pagamento è dovuto.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await apiClient.adminSaveBankDisputeEvidence(token, row.jobPaymentId, { ...draft, submit });
+      setConfirming(false);
+      if (submit) onChanged();
+      else setSaved(true);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <AdminCard>
+      <XStack gap="$2" alignItems="center" flexWrap="wrap">
+        <AdminPill tone={row.submitted ? "neutral" : "warn"}>{bankDisputeStatusLabel(row.status)}</AdminPill>
+        <Text fontWeight="800" color={brand.grafite}>
+          {formatEurCents(row.amountEurCents)}
+        </Text>
+        <Text color={brand.grafite}>{bankDisputeReasonLabel(row.reason)}</Text>
+      </XStack>
+      <Text fontSize={13} color={brand.grafite70}>
+        {row.businessName} · cliente {row.clientName}
+        {row.dueBy && !row.submitted ? ` · prove entro il ${formatAdminDate(row.dueBy)}` : ""}
+      </Text>
+      {row.submitted ? (
+        <Text fontSize={13} color={brand.grafite70}>
+          Prove mandate: la banca decide di solito entro 2-3 mesi. L&apos;esito arriva da solo.
+        </Text>
+      ) : open ? (
+        <YStack gap="$2">
+          <label>
+            <Text fontSize={13} color={brand.grafite70}>
+              Spiegazione per la banca
+            </Text>
+            <textarea aria-label="Spiegazione per la banca" className="admin-input admin-textarea" rows={9} value={draft.explanation} onChange={set("explanation")} />
+          </label>
+          <label>
+            <Text fontSize={13} color={brand.grafite70}>
+              Lavoro fatto
+            </Text>
+            <input aria-label="Lavoro fatto" className="admin-input" value={draft.productDescription} onChange={set("productDescription")} />
+          </label>
+          <XStack gap="$2" flexWrap="wrap">
+            <label style={{ flex: 1, minWidth: 180 }}>
+              <Text fontSize={13} color={brand.grafite70}>
+                Cliente
+              </Text>
+              <input aria-label="Nome del cliente" className="admin-input" value={draft.customerName ?? ""} onChange={set("customerName")} />
+            </label>
+            <label style={{ flex: 1, minWidth: 180 }}>
+              <Text fontSize={13} color={brand.grafite70}>
+                Email del cliente
+              </Text>
+              <input aria-label="Email del cliente" className="admin-input" value={draft.customerEmail ?? ""} onChange={set("customerEmail")} />
+            </label>
+            <label style={{ flex: 1, minWidth: 140 }}>
+              <Text fontSize={13} color={brand.grafite70}>
+                Giorno del lavoro
+              </Text>
+              <input aria-label="Giorno del lavoro" className="admin-input" value={draft.serviceDate ?? ""} onChange={set("serviceDate")} />
+            </label>
+          </XStack>
+          <PdfButton load={() => apiClient.adminBankDisputePdf(token, row.jobPaymentId)} fileName="riepilogo-lavoro.pdf" label="Guarda il riepilogo PDF" variant="secondary" />
+          {error ? <Text color={brand.urgenza}>{error}</Text> : null}
+          {saved ? <Text color={brand.grafite70}>Salvate su Stripe, non ancora mandate alla banca.</Text> : null}
+          {confirming ? (
+            <YStack gap="$2">
+              <Text color={brand.grafite}>Dopo l&apos;invio le prove non si possono più cambiare.</Text>
+              <XStack gap="$2" flexWrap="wrap">
+                <Button variant="primary" size="$3" disabled={busy} onPress={() => save(true)}>
+                  {busy ? "…" : "Conferma l'invio"}
+                </Button>
+                <Button variant="secondary" size="$3" onPress={() => setConfirming(false)}>
+                  Annulla
+                </Button>
+              </XStack>
+            </YStack>
+          ) : (
+            <XStack gap="$2" flexWrap="wrap">
+              <Button variant="primary" size="$3" disabled={busy} onPress={() => setConfirming(true)}>
+                Manda alla banca
+              </Button>
+              <Button variant="secondary" size="$3" disabled={busy} onPress={() => save(false)}>
+                {busy ? "…" : "Salva senza mandare"}
+              </Button>
+              <Button variant="secondary" size="$3" onPress={() => setOpen(false)}>
+                Chiudi
+              </Button>
+            </XStack>
+          )}
+        </YStack>
+      ) : (
+        <Button variant="primary" size="$3" alignSelf="flex-start" onPress={() => setOpen(true)}>
+          Prepara le prove
+        </Button>
+      )}
     </AdminCard>
   );
 }

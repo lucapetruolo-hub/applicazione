@@ -77,6 +77,8 @@ import type {
   JobIssueSummary,
   JobPaymentSummary,
   AdminOnlineLimitRow,
+  AdminBankDispute,
+  BankDisputeEvidenceInput,
   AdminUnpaidBalance,
   JobPaymentChoice,
   JobIssueType,
@@ -2490,6 +2492,19 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({ removed, reason }),
+      }),
+
+    /** Contestazioni in banca (docs/changelog/2026-10-28-stripe-prova.md). */
+    adminListBankDisputes: (token: string) =>
+      request<AdminBankDispute[]>("/admin/bank-disputes", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminBankDisputePdf: (token: string, jobPaymentId: string) => downloadFile(`/admin/bank-disputes/${encodeURIComponent(jobPaymentId)}/pdf`, token),
+
+    adminSaveBankDisputeEvidence: (token: string, jobPaymentId: string, input: BankDisputeEvidenceInput) =>
+      request<AdminBankDispute>(`/admin/bank-disputes/${encodeURIComponent(jobPaymentId)}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
       }),
 
     adminListUnpaidBalances: (token: string) =>

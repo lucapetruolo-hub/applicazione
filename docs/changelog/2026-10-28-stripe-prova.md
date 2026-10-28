@@ -118,3 +118,28 @@ Due correzioni nate dalle prove:
 **Verifica**: caso nuovo in `billing-webhook.test.ts` (contestazione
 rimandata) e in `direct-charges.test.ts` (Checkout in euro); tutti i test
 dell'API (898) e `tsc`.
+
+## Migliorie: Adaptive Pricing in checklist e prove delle contestazioni dal sito
+
+Richiesta di Luca ("effettua le due migliorie": il sito va pronto per il
+lancio, non per i numeri di oggi):
+
+1. **Checklist di lancio**: spegnere l'Adaptive Pricing anche nelle
+   impostazioni di Stripe (seconda sicurezza oltre a `EUR_ONLY`); la chiave
+   limitata `rk_` deve poter scrivere contestazioni e file degli account
+   collegati.
+2. **Contestazioni in banca da Admin → Pagamenti**
+   (`BankDisputesService`, `GET/PATCH /admin/bank-disputes`, scope FINANCE):
+   elenco delle contestazioni aperte con importo, motivo in parole semplici
+   e scadenza letti da Stripe; prove già scritte dal sito (lavoro, cliente,
+   giorno, spiegazione con richiesta, pagamento, appuntamento, chiusura,
+   conferma del cliente, segnalazioni); un PDF "Riepilogo del lavoro" (date,
+   richiesta, preventivo, pagamenti, voci finali e gli ultimi 80 messaggi
+   tra cliente e professionista) caricato su Stripe come documentazione del
+   servizio. "Salva senza mandare" o "Manda alla banca" con conferma: dopo
+   l'invio le prove non si cambiano più. Tutto sul conto del professionista
+   (addebito diretto) e nel registro azioni.
+
+**Verifica**: `bank-disputes.test.ts` (elenco e bozza, invio con PDF sul
+conto giusto, prove già consegnate, messaggi nel PDF, testi); PDF
+controllato a occhio; tutti i test dell'API, `tsc` di API e sito, `pnpm lint`.
