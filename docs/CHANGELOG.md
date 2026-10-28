@@ -21511,4 +21511,6 @@ e 390 px (anteprime in `anteprime/barra-preventivo-computer/`).
 - **Foto più grande** nella scheda dei risultati (`ResultsListWithMap`, costante `RESULT_PHOTO`): larga 120 px da computer e 96 px sul telefono, prima tonda da 88 px, dove la colonna del nome è già stretta. Senza foto, l'icona della categoria cresce allo stesso modo.
 - **Foto verticale con gli angoli arrotondati** (scelta di Luca tra le anteprime in `anteprime/foto-risultati/`, al posto della tonda): `ProfessionalAvatar` e `CategoryIconBadge` accettano `shape="portrait"` (rettangolo 3:4 con angoli di 20 px, come il resto del sito) e `mobileSize`; nei risultati 120×160 px da computer e 96×128 sul telefono. Il cuoricino entra di 6 px nell'angolo arrotondato. Per tornare alla tonda basta `shape: "circle"` in `RESULT_PHOTO`.
 
-**Verifica**: anteprime da computer (1440 px) e telefono (390 px) con il sito avviato in locale; typecheck e lint del sito.
+- **Migliorie approvate** ("effettua le 2 migliorie"): la stessa foto (costante `CARD_PHOTO` in `ProfessionalAvatar.tsx`, unica per tutte le schede) anche in "Professionisti salvati", al posto della tonda da 72 px, e nella sagoma di caricamento della scheda (`SkeletonProfessionalCard`), con la stessa forma, misura e spaziatura della scheda vera, così non salta quando arrivano i dati.
+
+**Verifica**: anteprime da computer (1440 px) e telefono (390 px) con il sito avviato in locale, anche di "Professionisti salvati" e della sua sagoma di caricamento; typecheck e lint del sito.

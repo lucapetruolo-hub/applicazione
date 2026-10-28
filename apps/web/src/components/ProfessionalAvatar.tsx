@@ -22,6 +22,14 @@ export function avatarHeight(width: number, shape: ProfessionalAvatarShape): num
   return shape === "portrait" ? Math.round((width * 4) / 3) : width;
 }
 
+/**
+ * Foto nella scheda del professionista (risultati di ricerca, salvati e la
+ * sua sagoma di caricamento), docs/CHANGELOG.md §400: rettangolo verticale
+ * 3:4 con angoli di 20px (scelto da Luca), più stretto sul telefono per
+ * lasciare spazio al nome. "circle" per tornare alla foto tonda.
+ */
+export const CARD_PHOTO: { size: number; mobileSize: number; shape: ProfessionalAvatarShape } = { size: 120, mobileSize: 96, shape: "portrait" };
+
 /** Immagine profilo del professionista se presente, altrimenti l'icona categoria colorata. */
 export function ProfessionalAvatar({ imageUrl, categorySlug, size = 44, mobileSize, shape = "circle" }: ProfessionalAvatarProps) {
   if (!imageUrl) {
