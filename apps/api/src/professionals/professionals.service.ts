@@ -53,6 +53,7 @@ import { COURTESY_DOCUMENT_FIELDS, courtesyDocumentSummary } from "../accounting
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
 import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing, publicVisibilityWhere, publicVerified, stripeVerified } from "../professional-fiscal/public-visibility";
 import { quoteResendWindow } from "../quotes/quote-resend";
+import { onlineLimitFields, professionalOnlineLimit } from "../job-payments/online-limit";
 import { NOT_ACCEPTING_REQUESTS, NOT_BOOKABLE_ONLINE } from "../subscriptions/subscription-rules";
 import { GeocodingService } from "../geocoding/geocoding.service";
 import { coveredComuni, selectSearchArea } from "./search-area";
@@ -747,6 +748,7 @@ export class ProfessionalsService {
       // Modi di pagamento di serie nei nuovi preventivi (docs/CHANGELOG.md §239).
       defaultPaymentOffer: quotePaymentOffer({ paymentOptions: profile.defaultPaymentOptions, depositPercent: profile.defaultDepositPercent }),
       stripeVerified: stripeVerified(profile.fiscalProfile),
+      ...onlineLimitFields(await professionalOnlineLimit(this.prisma, profile.id)),
       identityVerificationNeeded: identityVerificationNeeded(profile),
     };
   }
@@ -982,6 +984,7 @@ export class ProfessionalsService {
       profileDeclarationAccepted: profile.profileDeclarationVersion === PROFILE_DECLARATION_VERSION,
       defaultPaymentOffer: quotePaymentOffer({ paymentOptions: profile.defaultPaymentOptions, depositPercent: profile.defaultDepositPercent }),
       stripeVerified: stripeVerified(await this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId: profile.id }, select: { stripePayoutsEnabled: true } })),
+      ...onlineLimitFields(await professionalOnlineLimit(this.prisma, profile.id)),
       identityVerificationNeeded: identityVerificationNeeded(profile),
     };
   }

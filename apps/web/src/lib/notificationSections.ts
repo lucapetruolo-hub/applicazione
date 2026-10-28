@@ -126,7 +126,7 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
   // Decisione su una segnalazione (docs/CHANGELOG.md §164): arriva a
   // entrambe le parti, il lato è nel payload come per i promemoria.
   // Anche le notifiche delle controversie (§167): senza `audience` sono del professionista.
-  if (type === "JOB_ISSUE_SANCTION") return "/dashboard/richieste";
+  if (type === "JOB_ISSUE_SANCTION" || type === "ONLINE_LIMIT_LIFTED") return "/dashboard/richieste";
   // Pagamenti online dei lavori (§168).
   if (type === "JOB_PAYOUT_ACCOUNT_NEEDED" || type === "JOB_PAYOUT_FAILED") return "/dashboard/fiscale";
   if (type === "DAC7_ANNUAL_NOTICE") return "/dashboard/fiscale/dac7";

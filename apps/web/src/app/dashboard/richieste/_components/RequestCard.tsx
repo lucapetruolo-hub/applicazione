@@ -14,6 +14,8 @@ import {
   ONLINE_DEPOSIT_PERCENT,
   QUOTE_PAYMENT_OPTION_LABEL,
   jobPaymentChoices,
+  onlineLimitHint,
+  onlineLimitProblem,
   paymentChoiceIsOnline,
   type JobPaymentChoice,
   buildWhatsAppLink,
@@ -36,6 +38,7 @@ import {
   isCancellationNoticeHours,
   type CancellationNoticeHours,
   type MySubscription,
+  type MyProfessionalProfile,
 } from "@professionisti/shared";
 import { Avatar, Badge, Chip, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -81,6 +84,8 @@ export function RequestCard({
   defaultPaymentOffer,
   defaultCancellationNoticeHours,
   stripeVerified = true,
+  onlineLimitEurCents = null,
+  onlineLimitProgress = null,
   identityVerificationNeeded = false,
   subscription = null,
   onSubscriptionChanged,
@@ -105,6 +110,10 @@ export function RequestCard({
   defaultCancellationNoticeHours?: number | null;
   /** Verifica su Stripe completata: senza, l'acconto online non si può offrire (docs/CHANGELOG.md §241). */
   stripeVerified?: boolean;
+  /** Tetto a lavoro per i pagamenti online, null = nessuno (docs/changelog/2026-10-28-tetto-pagamenti-online.md). */
+  onlineLimitEurCents?: number | null;
+  /** Lavori pagati online e primo lavoro, per dire quanto manca a togliere il tetto. */
+  onlineLimitProgress?: MyProfessionalProfile["onlineLimitProgress"] | null;
   /** Documento e selfie ancora da fare: il primo preventivo è bloccato (docs/CHANGELOG.md §253). */
   identityVerificationNeeded?: boolean;
   /** Abbonamento: con i lavori esauriti un preventivo nuovo apre la finestra del livello superiore (docs/CHANGELOG.md §362). */
@@ -137,6 +146,8 @@ export function RequestCard({
       : priceRange && (priceRange.totalMinEurCents > 0 || priceRange.totalMaxEurCents > 0)
         ? formatEurRange(priceRange.totalMinEurCents, priceRange.totalMaxEurCents)
         : null;
+
+  const limitHint = onlineLimitHint({ limitEurCents: onlineLimitEurCents, cleanJobs: onlineLimitProgress?.cleanJobs ?? 0, firstCleanJobAt: onlineLimitProgress?.firstCleanJobAt ?? null });
 
   const [showQuoteForm, setShowQuoteForm] = useState(false);
   const [items, setItems] = useState<QuoteItemDraft[]>([{ name: "Manodopera", priceMin: "", priceMax: "" }]);
@@ -399,6 +410,12 @@ export function RequestCard({
     const depositPercent = Number(depositPercentDraft.trim());
     if (offered.some(paymentChoiceIsOnline) && (!Number.isInteger(depositPercent) || depositPercent < MIN_DEPOSIT_PERCENT || depositPercent > MAX_DEPOSIT_PERCENT)) {
       return setQuoteError(`L'acconto online va da ${MIN_DEPOSIT_PERCENT} a ${MAX_DEPOSIT_PERCENT}%, senza decimali.`);
+    }
+    // Tetto ai pagamenti online: stesso controllo dell'API, detto prima di inviare.
+    if (offered.some(paymentChoiceIsOnline)) {
+      const { totalMaxEurCents } = quotePriceTotals(parsed.map((item) => ({ priceMinEurCents: item.priceMinEurCents ?? null, priceMaxEurCents: item.priceMaxEurCents ?? null })));
+      const limitProblem = onlineLimitProblem({ paymentOptions: offered, depositPercent, totalMaxEurCents, limitEurCents: onlineLimitEurCents });
+      if (limitProblem) return setQuoteError(limitProblem);
     }
 
     setIsSubmittingQuote(true);
@@ -1573,6 +1590,11 @@ export function RequestCard({
                           % dell&apos;importo massimo
                         </Text>
                       </XStack>
+                    ) : null}
+                    {paymentOptions.some(paymentChoiceIsOnline) && limitHint ? (
+                      <Text fontSize={13} color={brand.grafite70}>
+                        {limitHint}
+                      </Text>
                     ) : null}
                   </>
                 ) : (

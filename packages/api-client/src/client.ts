@@ -76,6 +76,7 @@ import type {
   JobIssueResponseInput,
   JobIssueSummary,
   JobPaymentSummary,
+  AdminOnlineLimitRow,
   AdminUnpaidBalance,
   JobPaymentChoice,
   JobIssueType,
@@ -2479,6 +2480,17 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       }),
 
     adminFinanceSummary: (token: string) => request<AdminFinanceSummary>("/admin/finance/summary", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    /** Tetto ai pagamenti online (docs/changelog/2026-10-28-tetto-pagamenti-online.md). */
+    adminListOnlineLimits: (token: string) =>
+      request<AdminOnlineLimitRow[]>("/admin/online-limits", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminSetOnlineLimit: (token: string, professionalProfileId: string, removed: boolean, reason?: string) =>
+      request<unknown>(`/admin/online-limits/${professionalProfileId}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ removed, reason }),
+      }),
 
     adminListUnpaidBalances: (token: string) =>
       request<AdminUnpaidBalance[]>("/admin/unpaid-balances", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),

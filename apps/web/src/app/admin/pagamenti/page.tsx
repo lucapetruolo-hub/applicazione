@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { AdminDispute, AdminRefund } from "@professionisti/api-client";
-import { formatEurCents, type AdminUnpaidBalance } from "@professionisti/shared";
+import { ONLINE_LIMIT_FREE_DAYS, ONLINE_LIMIT_FREE_JOBS, ONLINE_LIMIT_REASON_MAX, formatEur, formatEurCents, type AdminOnlineLimitRow, type AdminUnpaidBalance } from "@professionisti/shared";
 import Link from "next/link";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -38,15 +38,17 @@ export default function AdminPagamentiPage() {
   const [refunds, setRefunds] = useState<AdminRefund[] | null>(null);
   const [disputes, setDisputes] = useState<AdminDispute[] | null>(null);
   const [unpaid, setUnpaid] = useState<AdminUnpaidBalance[] | null>(null);
+  const [limits, setLimits] = useState<AdminOnlineLimitRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   function reload() {
     if (!token) return;
-    Promise.all([apiClient.adminListRefunds(token), apiClient.adminListDisputes(token), apiClient.adminListUnpaidBalances(token)])
-      .then(([r, d, u]) => {
+    Promise.all([apiClient.adminListRefunds(token), apiClient.adminListDisputes(token), apiClient.adminListUnpaidBalances(token), apiClient.adminListOnlineLimits(token)])
+      .then(([r, d, u, l]) => {
         setRefunds(r);
         setDisputes(d);
         setUnpaid(u);
+        setLimits(l);
         setError(null);
       })
       .catch((err) => setError(errorMessage(err)));
@@ -91,6 +93,18 @@ export default function AdminPagamentiPage() {
         </Text>
         {disputes && disputes.length === 0 ? <Text color={brand.grafite70}>Nessuna contestazione.</Text> : null}
         {disputes?.map((dispute) => <DisputeCard key={dispute.id} dispute={dispute} token={token ?? ""} onChanged={reload} />)}
+      </YStack>
+
+      <YStack gap="$3">
+        <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+          Tetto ai pagamenti online
+        </Text>
+        <Text fontSize={13} color={brand.grafite70}>
+          Online si chiede al massimo un tetto a lavoro finché il professionista non ha {ONLINE_LIMIT_FREE_JOBS} lavori pagati online senza
+          contestazioni e {ONLINE_LIMIT_FREE_DAYS} giorni dal primo. Puoi toglierlo a chi conosci; una contestazione in banca persa lo rimette.
+        </Text>
+        {limits && limits.length === 0 ? <Text color={brand.grafite70}>Nessun professionista con i pagamenti online attivi.</Text> : null}
+        {limits?.map((row) => <OnlineLimitCard key={row.professionalProfileId} row={row} token={token ?? ""} onChanged={reload} />)}
       </YStack>
     </YStack>
   );
@@ -278,6 +292,89 @@ function UnpaidCard({ row, token, onChanged }: { row: AdminUnpaidBalance; token:
           Chiudi il saldo
         </Button>
       )}
+    </AdminCard>
+  );
+}
+
+function OnlineLimitCard({ row, token, onChanged }: { row: AdminOnlineLimitRow; token: string; onChanged: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // Togliere il tetto chiede un motivo, che resta nel registro azioni.
+  const [askReason, setAskReason] = useState(false);
+  const [reason, setReason] = useState("");
+  const removedByAdmin = row.removedByAdminAt !== null;
+
+  async function save(removed: boolean) {
+    setError(null);
+    if (removed && reason.trim().length < 3) {
+      setError("Scrivi perché togli il tetto.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await apiClient.adminSetOnlineLimit(token, row.professionalProfileId, removed, removed ? reason.trim() : undefined);
+      setAskReason(false);
+      setReason("");
+      onChanged();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <AdminCard>
+      <XStack justifyContent="space-between" gap="$2" flexWrap="wrap" alignItems="center">
+        <XStack gap="$2" alignItems="center" flexWrap="wrap">
+          <AdminPill tone={row.limitEurCents === null ? "ok" : "neutral"}>{row.limitEurCents === null ? "Nessun tetto" : `Fino a ${formatEur(row.limitEurCents)}`}</AdminPill>
+          <Text fontWeight="700" color={brand.grafite}>
+            {row.businessName} · {row.city}
+          </Text>
+        </XStack>
+        {askReason ? null : (
+          <Button
+            variant="secondary"
+            size="$3"
+            disabled={busy || (row.limitEurCents === null && !removedByAdmin)}
+            onPress={() => (removedByAdmin ? save(false) : setAskReason(true))}
+          >
+            {busy ? "…" : removedByAdmin ? "Rimetti il tetto" : "Togli il tetto"}
+          </Button>
+        )}
+      </XStack>
+      <Text fontSize={13} color={brand.grafite70}>
+        {row.cleanJobs} lavori pagati online senza contestazioni{row.firstCleanJobAt ? `, il primo il ${formatAdminDate(row.firstCleanJobAt)}` : ""}
+        {removedByAdmin ? ` · tetto tolto il ${formatAdminDate(row.removedByAdminAt)}` : ""}
+      </Text>
+      {askReason ? (
+        <YStack gap="$2">
+          <textarea
+            aria-label="Perché togli il tetto"
+            className="admin-input admin-textarea"
+            maxLength={ONLINE_LIMIT_REASON_MAX}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Perché togli il tetto (es. professionista conosciuto, lavori grandi già fatti)"
+          />
+          <XStack gap="$2">
+            <Button variant="primary" size="$3" disabled={busy} onPress={() => save(true)}>
+              {busy ? "…" : "Togli il tetto"}
+            </Button>
+            <Button
+              variant="secondary"
+              size="$3"
+              onPress={() => {
+                setAskReason(false);
+                setError(null);
+              }}
+            >
+              Annulla
+            </Button>
+          </XStack>
+        </YStack>
+      ) : null}
+      {error ? <Text color={brand.urgenza}>{error}</Text> : null}
     </AdminCard>
   );
 }

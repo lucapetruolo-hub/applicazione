@@ -391,6 +391,11 @@ prezzi Stripe nelle variabili `STRIPE_PRICE_<LIVELLO>` e
   oppure **diretto** (nessun rimborso né decisione nostra: le segnalazioni
   restano tra le parti, il cliente può comunque recensire). Il pagamento
   diretto non paga commissione.
+  **Tetto online** (decisione di Luca, docs/changelog/2026-10-28-tetto-pagamenti-online.md):
+  al massimo 2.000 € a lavoro chiesti online finché il professionista non ha
+  10 lavori pagati online senza contestazioni e 120 giorni dal primo
+  (`packages/shared/src/onlineLimit.ts`); l'admin lo può togliere, una
+  contestazione persa lo rimette.
 - **Documenti contabili** (decisioni dell'utente del 27/10/2026,
   docs/CHANGELOG.md §378): una fattura al mese delle trattenute (serie `COM`,
   nota di credito se il mese è negativo) e una per ogni pagamento

@@ -252,6 +252,13 @@ model ProfessionalProfile {
   // §239). Vuoto = diretto + online con acconto del 20%.
   defaultPaymentOptions        String[]  @default([])
   defaultDepositPercent        Int?
+  // Tetto ai pagamenti online tolto a mano dall'admin (packages/shared/src/onlineLimit.ts,
+  // docs/changelog/2026-10-28-tetto-pagamenti-online.md). Una contestazione
+  // in banca persa lo azzera: il tetto torna.
+  onlineLimitRemovedAt         DateTime?
+  // Email "limite tolto" già mandata (null = tetto ancora attivo o email da
+  // mandare): si azzera quando il tetto torna.
+  onlineLimitLiftNotifiedAt    DateTime?
   // Agenda (docs/CHANGELOG.md §288): link segreto del calendario da
   // collegare a Google/iPhone (null = collegamento spento) e settimana tipo
   // usata da "Orari di lavoro" per riempire un mese in un colpo.

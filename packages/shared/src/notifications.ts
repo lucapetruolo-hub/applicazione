@@ -103,6 +103,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "ADMIN_JOB_REFUND_FAILED",
       // Stato del conto Stripe di un professionista non riletto (docs/changelog/2026-10-28-stripe-prova.md).
       "ADMIN_STRIPE_ACCOUNT_UNREADABLE",
+      // Tetto ai pagamenti online tolto (docs/changelog/2026-10-28-tetto-pagamenti-online.md).
+      "ONLINE_LIMIT_LIFTED",
       // Anno DAC7 già comunicato con importi cambiati dopo l'invio (docs/CHANGELOG.md §247).
       "ADMIN_DAC7_NEEDS_CORRECTION",
       // Urgenti oltre il 30% o non più veloci delle normali, ogni lunedì (docs/CHANGELOG.md §338).

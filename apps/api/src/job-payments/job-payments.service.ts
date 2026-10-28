@@ -1,4 +1,4 @@
-import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
+import { ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
@@ -11,10 +11,12 @@ import {
   professionalPayoutTotals,
   toJobPaymentSummary,
   vatOnEurCents,
+  type AdminOnlineLimitRow,
   type JobPaymentChoice,
   type ProfessionalPayoutTotals,
 } from "@professionisti/shared";
 import { OnlineMoneyService } from "./online-money.service";
+import { professionalOnlineLimit } from "./online-limit";
 
 /**
  * Pagamento del lavoro (JobPayment) — CLAUDE.md §88, docs/CHANGELOG.md §168.
@@ -293,6 +295,57 @@ export class JobPaymentsService {
    * JobPayment, che nella maggior parte va al professionista) più i
    * conteggi di JobPayment per metodo/stato, utili a colpo d'occhio.
    */
+  /**
+   * Tetto ai pagamenti online dei professionisti con i pagamenti online
+   * attivi (docs/changelog/2026-10-28-tetto-pagamenti-online.md), per
+   * Admin → Pagamenti: chi ce l'ha ancora prima, poi gli altri.
+   */
+  async listOnlineLimits(): Promise<AdminOnlineLimitRow[]> {
+    const profiles = await this.prisma.professionalProfile.findMany({
+      where: { fiscalProfile: { stripePayoutsEnabled: true }, deletedAt: null },
+      select: { id: true, businessName: true, city: true },
+      orderBy: { businessName: "asc" },
+    });
+    const rows = await Promise.all(
+      profiles.map(async (profile) => {
+        const limit = await professionalOnlineLimit(this.prisma, profile.id);
+        return {
+          professionalProfileId: profile.id,
+          businessName: profile.businessName,
+          city: profile.city,
+          limitEurCents: limit.limitEurCents,
+          cleanJobs: limit.cleanJobs,
+          firstCleanJobAt: limit.firstCleanJobAt?.toISOString() ?? null,
+          removedByAdminAt: limit.removedAt?.toISOString() ?? null,
+        };
+      }),
+    );
+    return rows.sort((a, b) => Number(a.limitEurCents === null) - Number(b.limitEurCents === null));
+  }
+
+  /**
+   * L'admin toglie (con un motivo) o rimette il tetto a un professionista;
+   * resta nel registro azioni. L'email "limite tolto" parte dal controllo
+   * orario (OnlineMoneyService.notifyOnlineLimitsLifted).
+   */
+  async setOnlineLimitRemoved(adminUserId: string, professionalProfileId: string, removed: boolean, reason?: string) {
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { id: professionalProfileId }, select: { id: true, userId: true } });
+    if (!profile) throw new NotFoundException("Professionista non trovato.");
+    await this.prisma.professionalProfile.update({
+      where: { id: profile.id },
+      data: removed ? { onlineLimitRemovedAt: new Date() } : { onlineLimitRemovedAt: null, onlineLimitLiftNotifiedAt: null },
+    });
+    await this.auditLogService.record({
+      entityType: "User",
+      entityId: profile.userId,
+      fieldName: "onlineLimitRemovedAt",
+      newValue: removed ? "REMOVED" : "RESTORED",
+      changedByUserId: adminUserId,
+      reason: removed ? (reason ?? null) : null,
+    });
+    return professionalOnlineLimit(this.prisma, profile.id);
+  }
+
   async financeSummary() {
     const [revenueBySource, jobPaymentsByMethod, jobPaymentsByStatus] = await Promise.all([
       this.prisma.manoviaRevenue.groupBy({ by: ["source"], _sum: { amountEurCents: true } }),

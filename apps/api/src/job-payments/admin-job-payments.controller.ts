@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Req, UseGuards } from "@nestjs/common";
-import { closeUnpaidBalanceSchema, decideRefundSchema, resolveDisputeSchema, type DecideRefundInput, type ResolveDisputeInput } from "@professionisti/shared";
+import { closeUnpaidBalanceSchema, decideRefundSchema, resolveDisputeSchema, setOnlineLimitSchema, type DecideRefundInput, type ResolveDisputeInput, type SetOnlineLimitInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
@@ -39,6 +39,17 @@ export class AdminJobPaymentsController {
   @Patch("unpaid-balances/:id")
   closeUnpaidBalance(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(closeUnpaidBalanceSchema)) body: { note: string }) {
     return this.onlineMoneyService.closeUnpaidBalance(req.user.userId, id, body.note.trim());
+  }
+
+  /** Tetto ai pagamenti online (docs/changelog/2026-10-28-tetto-pagamenti-online.md). */
+  @Get("online-limits")
+  listOnlineLimits() {
+    return this.jobPaymentsService.listOnlineLimits();
+  }
+
+  @Patch("online-limits/:professionalProfileId")
+  setOnlineLimit(@Req() req: AuthenticatedRequest, @Param("professionalProfileId") id: string, @Body(new ZodValidationPipe(setOnlineLimitSchema)) body: SetOnlineLimitInput) {
+    return this.jobPaymentsService.setOnlineLimitRemoved(req.user.userId, id, body.removed, body.reason);
   }
 
   @Get("refunds")

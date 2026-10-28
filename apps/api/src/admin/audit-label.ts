@@ -206,6 +206,7 @@ export function auditLabel(row: { entityType: string; fieldName: string | null; 
     if (value === "RESET_BY_EMAIL") return "Verifica in due passaggi azzerata con il codice via email";
     return "Verifica in due passaggi attivata";
   }
+  if (fieldName === "onlineLimitRemovedAt") return value === "REMOVED" ? "Tolto il tetto ai pagamenti online" : "Rimesso il tetto ai pagamenti online";
   if (fieldName === "profileInvite") {
     return v.businessName ? `Profilo creato per ${asText(v.businessName)}${v.city ? ` a ${asText(v.city)}` : ""}` : "Profilo creato da un operatore confermato";
   }
