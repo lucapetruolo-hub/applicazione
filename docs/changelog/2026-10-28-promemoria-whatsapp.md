@@ -67,6 +67,17 @@ lavori esterni dell'agenda non ricevono nulla (domanda 70 per l'avvocato).
   canale non si accende (decisione di Luca del 28/10): all'accensione
   vanno cambiate in WhatsApp (checklist di lancio, punto 22).
 
+- **Secondo giro** (Luca: "effettua le 2 migliorie"):
+  - in Account, sotto il telefono, una riga dice che quel numero riceve i
+    promemoria WhatsApp; cambiandolo, la riga avvisa che si fermano finché
+    non si conferma quello nuovo in Notifiche;
+  - sotto un appuntamento in arrivo del cliente il link "Ricevi il
+    promemoria anche su WhatsApp", solo a canale acceso e promemoria
+    spenti, che porta alla scheda WhatsApp di Notifiche (`#whatsapp`);
+  - la terza proposta (promemoria ai clienti dei lavori esterni) aspetta la
+    domanda 70 per l'avvocato: segnata nel punto 22 della checklist di
+    lancio.
+
 Modelli da far approvare a Meta: `docs/whatsapp-modelli.md`.
 
 ## Verifica

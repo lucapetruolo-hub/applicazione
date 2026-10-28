@@ -3580,6 +3580,13 @@ a.admin-kpi:hover {
   font-size: 16px;
   color: #c8362b;
 }
+.whatsapp-reminder-link {
+  align-self: flex-start;
+  text-decoration: none;
+}
+.whatsapp-reminder-link:hover span {
+  text-decoration: underline;
+}
 .whatsapp-list {
   margin: 0;
   padding-left: 18px;

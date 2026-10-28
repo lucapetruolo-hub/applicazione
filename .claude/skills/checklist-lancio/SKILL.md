@@ -333,6 +333,10 @@ prima del lancio"):
     (`QuoteExampleSection.tsx`) e aggiungere in `/sicurezza` che il codice
     WhatsApp si scrive solo sul sito (riproporlo a Luca). Se al lancio non
     è acceso, togliere "e SMS" dalla frase.
+    Da riprendere quando l'avvocato risponde alla domanda 70 (Luca,
+    28/10/2026): promemoria WhatsApp anche ai clienti dei lavori esterni
+    dell'agenda (non iscritti al sito), mandato per conto del professionista.
+    Oggi quei clienti non ricevono nulla.
 23. **Conferma email obbligatoria per i professionisti** (docs/CHANGELOG.md §178, mai per i clienti): già nel
     codice, ma spenta. Dopo aver verificato il dominio su Resend (punto
     5bis) e provato che il link arriva a un indirizzo qualunque, impostare

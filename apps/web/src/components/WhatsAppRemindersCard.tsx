@@ -9,6 +9,7 @@ import {
 import { Button, Icon, Text, YStack, brand } from "@professionisti/ui";
 import { EmailCodeForm } from "@/components/EmailCodeForm";
 import { apiClient } from "@/lib/apiClient";
+import { forgetWhatsAppStatus } from "@/lib/useWhatsAppStatus";
 
 /**
  * Promemoria su WhatsApp in Notifiche (docs/changelog/2026-10-28-promemoria-whatsapp.md).
@@ -43,11 +44,21 @@ export function WhatsAppRemindersCard({
     };
   }, [token]);
 
+  // Arrivati da "Ricevi il promemoria anche su WhatsApp" (#whatsapp): la
+  // scheda compare dopo il caricamento, il browser da solo non ci scorre.
+  const loaded = status !== null;
+  useEffect(() => {
+    if (loaded && window.location.hash === "#whatsapp") {
+      document.getElementById("whatsapp")?.scrollIntoView({ block: "start" });
+    }
+  }, [loaded]);
+
   async function run(task: () => Promise<WhatsAppStatus>) {
     setBusy(true);
     setError(null);
     try {
       setStatus(await task());
+      forgetWhatsAppStatus();
       return true;
     } catch (err) {
       setError(
@@ -151,6 +162,7 @@ export function WhatsAppRemindersCard({
           tip="Il messaggio arriva da Professionisti, con il pulsante «Copia codice»."
           submitCode={async (code) => {
             setStatus(await apiClient.confirmWhatsAppCode(token, code));
+            forgetWhatsAppStatus();
           }}
           onVerified={() => undefined}
           onRequestNewCode={() => void sendCode()}
@@ -183,7 +195,8 @@ export function WhatsAppRemindersCard({
         <p className="notif-note">
           Il promemoria del giorno prima e gli avvisi sull&apos;appuntamento,
           anche su WhatsApp. Ti mandiamo un codice al{" "}
-          <strong style={{ whiteSpace: "nowrap" }}>{status.phone}</strong> per confermare che è il tuo.
+          <strong style={{ whiteSpace: "nowrap" }}>{status.phone}</strong> per
+          confermare che è il tuo.
         </p>
         <Button
           variant="primary"
@@ -205,7 +218,11 @@ export function WhatsAppRemindersCard({
   }
 
   return (
-    <section className="notif-card" aria-labelledby="notif-whatsapp-title">
+    <section
+      id="whatsapp"
+      className="notif-card"
+      aria-labelledby="notif-whatsapp-title"
+    >
       <h2 id="notif-whatsapp-title" className="notif-card-title">
         <span
           className="notif-topic-icon"

@@ -8,6 +8,7 @@ import { apiClient } from "@/lib/apiClient";
 import { cancellationNoticeLabel, JOB_ISSUE_LABEL, JOB_ISSUE_STATUS_LABEL, formatEurCents, formatServicePriceRange, quotePriceTotals, type AppointmentMoment } from "@professionisti/shared";
 import { AppointmentWhen, useAppointmentMoment } from "./AppointmentWhen";
 import { AddToCalendar } from "./AddToCalendar";
+import { WhatsAppReminderLink } from "@/components/WhatsAppReminderLink";
 import { UnreadDot } from "@/components/UnreadDot";
 import { ClientIssueStatus } from "./ClientIssueStatus";
 import { JobPaymentStatus } from "@/components/JobPaymentStatus";
@@ -245,6 +246,7 @@ export function BookingSection({
             </a>
           ) : null}
           {upcoming ? <AddToCalendar token={token} bookingId={booking.id} /> : null}
+          {upcoming ? <WhatsAppReminderLink token={token} /> : null}
         </YStack>
 
         {booking.status !== "CANCELED" ? (

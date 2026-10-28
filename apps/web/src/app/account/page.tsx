@@ -8,6 +8,7 @@ import { allItalianCityNames, findComuneByName, isMissingRulesProblem, isPlausib
 import { ChurnReasonPicker } from "@/components/ChurnReasonPicker";
 import { Autocomplete, Avatar, Button, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
+import { useWhatsAppStatus } from "@/lib/useWhatsAppStatus";
 import { useAuth } from "@/lib/AuthContext";
 import { ImageCropModal } from "@/components/ImageCropModal";
 import { UploadingDots } from "@/components/UploadingDots";
@@ -125,6 +126,7 @@ function parseBirthDate(iso: string | null) {
 export default function AccountPage() {
   const router = useRouter();
   const { user, token, isLoading, refreshUser, login, logout } = useAuth();
+  const whatsApp = useWhatsAppStatus(token);
 
   const [name, setName] = useState("");
   const [surname, setSurname] = useState("");
@@ -609,6 +611,14 @@ export default function AccountPage() {
 
           <FieldRow label="Telefono">
             <PhoneNumberInput value={phone} onChange={setPhone} style={inputStyle} placeholder="Es. 333 1234567" />
+            {/* Promemoria su WhatsApp legati al numero confermato (docs/changelog/2026-10-28-promemoria-whatsapp.md). */}
+            {whatsApp?.verified ? (
+              <Text fontSize={13} color={phone.trim() !== (user?.phone ?? "") ? brand.grafite : brand.grafite70} marginTop="$1">
+                {phone.trim() !== (user?.phone ?? "")
+                  ? "Cambiando numero i promemoria su WhatsApp si fermano: dopo il salvataggio confermi quello nuovo in Notifiche."
+                  : "Su questo numero ricevi i promemoria WhatsApp. Se lo cambi, lo confermi di nuovo in Notifiche."}
+              </Text>
+            ) : null}
           </FieldRow>
         </Surface>
 
