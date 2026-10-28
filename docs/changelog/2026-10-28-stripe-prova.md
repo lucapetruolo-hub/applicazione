@@ -191,3 +191,18 @@ stesso giro orario dell'avviso al team.
 
 **Verifica**: `bank-disputes.test.ts` (finestra dei 5 giorni, solo chi non
 ha scritto, una volta sola); tutti i test dell'API, `tsc`, `pnpm lint`.
+
+## Parole di prova di Stripe nelle contestazioni
+
+Prova dal vivo del 28/10 (Luca ha mandato le prove con `losing_evidence`
+all'inizio della spiegazione): la contestazione è rimasta "decide la
+banca", perché Stripe di prova la chiude solo se il testo è esattamente
+`losing_evidence` o `winning_evidence`, e il modulo admin chiede almeno 20
+caratteri. Ora, solo con chiavi `sk_test_`/`rk_test_`, se la spiegazione
+contiene una delle due parole a Stripe va solo quella
+(`stripeTestKeyword`); con le chiavi vere il testo parte sempre intero.
+Nella stessa prova la cifra della contestazione (91,46 €) risulta ripresa
+dal conto del professionista.
+
+**Verifica**: `bank-disputes.test.ts` (chiave di prova, chiave vera, testo
+normale); test dell'API e `tsc`.
