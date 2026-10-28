@@ -28,7 +28,8 @@ const arrowStyle = {
  * funzionante di suo su un contenitore overflow-x scrollabile) — le
  * freccette invocano solo `scrollBy` su un ref, nascoste via CSS su
  * dispositivi touch-only (vedi .category-carousel-arrow in globals.css) dove
- * lo swipe basta.
+ * lo swipe basta. I bordi sfumano dal lato dove c'è altro da vedere
+ * (`.scroll-fade`, docs/changelog/2026-10-28-micro-interazioni.md).
  */
 export function CategoryCarousel({ children, className, id }: { children: ReactNode; className?: string; id?: string }) {
   const trackRef = useRef<HTMLDivElement>(null);
@@ -53,7 +54,7 @@ export function CategoryCarousel({ children, className, id }: { children: ReactN
 
       <div
         ref={trackRef}
-        className="category-carousel-track"
+        className="category-carousel-track scroll-fade"
         style={{
           display: "flex",
           gap: 12,

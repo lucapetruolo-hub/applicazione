@@ -457,7 +457,7 @@ export function ProfessionalDetailContent({
                   §208): al tocco porta all'accesso. Nascosto solo a
                   professionisti e admin, che non salvano profili. */}
               {!user || user.role === "CLIENT" ? (
-                <IconActionButton label={isSaved ? "Salvato" : "Salva"} active={isSaved} disabled={isSaving} onPress={handleToggleSave} tooltipAlign="end">
+                <IconActionButton label={isSaved ? "Salvato" : "Salva"} active={isSaved} disabled={isSaving} celebrate onPress={handleToggleSave} tooltipAlign="end">
                   <Icon name="heart" size={17} strokeWidth={1.5} color={isSaved ? "white" : brand.grafite} fill={isSaved ? "white" : "none"} />
                 </IconActionButton>
               ) : null}
@@ -504,7 +504,7 @@ export function ProfessionalDetailContent({
             </XStack>
             {/* Su telefono le foto scorrono in una riga sola invece di andare
                 a capo (richiesta esplicita dell'utente, §208). */}
-            <div className="portfolio-row">
+            <div className="portfolio-row scroll-fade">
               {(professional.portfolioUrls ?? []).map((url, photoIndex) => (
                 <YStack
                   key={url}
@@ -539,6 +539,15 @@ export function ProfessionalDetailContent({
                 .portfolio-row > :global(*) {
                   flex-shrink: 0;
                   scroll-snap-align: start;
+                }
+              }
+              /* Da computer le foto vanno a capo: niente sfumatura, che
+                 taglierebbe anche il contorno del focus. */
+              @media (min-width: 661px) {
+                .portfolio-row {
+                  -webkit-mask-image: none;
+                  mask-image: none;
+                  animation: none;
                 }
               }
             `}</style>
