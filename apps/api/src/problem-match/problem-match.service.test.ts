@@ -144,7 +144,7 @@ describe("ProblemMatchService con OpenRouter", () => {
     expect(body.provider).toMatchObject({ only: ["anthropic"], allow_fallbacks: false, data_collection: "deny" });
   });
 
-  // Senza credito su OpenRouter (docs/CHANGELOG.md §403).
+  // Senza credito su OpenRouter (docs/changelog/2026-10-28-ia-gratuita-fino-al-lancio.md).
   it("di base usa il modello gratuito, senza i vincoli di Anthropic, e accetta il JSON tra ```", async () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "");
     vi.stubEnv("OPENROUTER_API_KEY", "or-test");

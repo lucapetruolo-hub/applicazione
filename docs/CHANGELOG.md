@@ -1,5 +1,10 @@
 # Professionisti — Changelog dettagliato
 
+> **Voci nuove**: dal 28/10/2026 ogni voce va in un file suo in
+> `docs/changelog/` (`AAAA-MM-GG-argomento.md`, istruzioni in
+> `docs/changelog/README.md`), non più in fondo a questo file, che resta
+> l'archivio delle sezioni fino alla §399.
+
 > **Cosa è questo file**: lo storico completo, sezione per sezione, di ogni
 > modifica fatta al prodotto dalla Fase 0 del redesign in poi (§10 in avanti —
 > §1-9, le regole architetturali vive, restano in `CLAUDE.md`). Ogni voce
@@ -21791,13 +21796,17 @@ azioni), typecheck e lint; API e sito avviati su un database locale con
 
 **Verifica**: anteprime da computer (1440 px) e telefono (390 px) con il sito avviato in locale, anche di "Professionisti salvati" e della sua sagoma di caricamento; typecheck e lint del sito.
 
-## 403. L'IA dei casi dubbi con un modello gratuito fino al lancio
+## 403. Preventivi da rispondere in cima a "Oggi"
 
-**Richiesta** (Luca, 28/10/2026, stesso thread del §392): dopo l'unione la prova in produzione rispondeva sempre il dizionario, perché la chiave di OpenRouter ha il limite di spesa a 0 $; Luca: "devi usare qualche intelligenza artificiale gratuita che non richiede credito".
+**Richiesta** (Luca, 28/10/2026): "nella pagina professionista oggi, quando c'è da rispondere ad un preventivo deve essere in cima a tutto perché è la cosa più importante".
 
-**Decisione**:
-- Senza `OPENROUTER_MODEL` OpenRouter usa `google/gemma-4-31b-it:free` (Gemma 4 31B di Google, gratuito, risposta in JSON). Con `OPENROUTER_MODEL=anthropic/claude-haiku-5.5` e un po' di credito torna Claude Haiku con i vincoli del §394.
-- Con un modello `:free` non si può chiedere "solo server di Anthropic" né `data_collection: "deny"`: i fornitori gratuiti possono usare i testi (già senza email, telefoni, indirizzi e link). Va bene solo prima del lancio, quando i testi sono prove; al lancio si passa ad Anthropic (checklist punto 42). Luca deve attivare i modelli gratuiti nelle impostazioni Privacy di OpenRouter.
-- Ragionamento spento per stare nei 3 secondi; il JSON tra ```json e ``` viene accettato. I modelli gratuiti di OpenRouter danno al massimo 50 richieste al giorno senza credito: oltre resta il dizionario.
+**Decisione**: con almeno una richiesta da quotare, "Da rispondere ora" sta subito sotto il saluto, sopra meteo, lavori di oggi e domani e percorso del profilo, a tutta larghezza anche sul computer (prima su telefono veniva dopo i lavori, §352, e sul computer stava nella colonna di sinistra sotto "Oggi e domani"). Restano sopra solo gli avvisi di account in pausa o con limitazioni, che spiegano perché non si può rispondere. Senza richieste la pagina resta com'era, con la riga "Nessuna richiesta in attesa" sotto i lavori. Finché richieste e lavori non arrivano si vede uno scheletro senza titolo, così "Oggi e domani" non scivola giù quando compaiono le richieste (CLS, §334).
 
-**Verifica**: test con `fetch` finto per il modello gratuito (nessun vincolo di fornitore, JSON tra ```). Prova vera in produzione dopo l'attivazione da parte di Luca.
+**Verifica**: typecheck e lint; prova Playwright in `e2e/tests/oggi-meteo.spec.ts` (le richieste stanno sopra "Oggi e domani", telefono e computer); anteprime con e senza richieste, da computer e telefono, in `anteprime/oggi-preventivi-in-cima/`.
+
+**Migliorie scelte da Luca** ("effettua le 3 migliorie"):
+- In cima, sotto le richieste, anche "Date proposte dai clienti" (anche loro sono risposte da dare). La tessera "Date da confermare" è tolta perché ripeteva lo stesso numero; resta solo "Messaggi non letti" quando ce ne sono.
+- Da telefono si vedono le prime 3 richieste e sotto "Vedi tutte le N richieste", così i lavori di oggi restano vicini; dal computer le prime 5, e il pulsante compare solo se ce ne sono di più.
+- I nomi delle voci del menu ridotto, visti nelle anteprime anche senza puntatore sopra, non si vedono nella pagina vera: era la foto a pagina intera di Playwright, che ridimensiona la finestra e ferma l'effetto di dissolvenza a metà. `confronto-pagine` già spegne gli effetti (`reducedMotion: "reduce"`); così ora anche le anteprime. Nessuna modifica al sito.
+
+Anteprime `migliorie-computer.png` e `migliorie-telefono.png` in `anteprime/oggi-preventivi-in-cima/`.
