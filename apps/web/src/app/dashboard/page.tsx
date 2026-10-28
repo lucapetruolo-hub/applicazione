@@ -14,7 +14,7 @@ import { formatCompetitors, leadDeadlines } from "@/lib/leadDeadline";
 import { accountMenuUnreadCounts } from "@/lib/notificationSections";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { CardButton } from "@/components/CardButton";
-import { SkeletonBlock, SkeletonSummaryRow } from "@/components/Skeleton";
+import { SkeletonSummaryRow } from "@/components/Skeleton";
 import { SubscriptionPauseBanner } from "@/components/SubscriptionPauseBanner";
 import { IssueSanctionBanner } from "@/components/IssueSanctionBanner";
 import { BoostSection } from "@/components/BoostSection";
@@ -24,9 +24,9 @@ import { WeatherStrip, jobsHeadline, type DayJobRow } from "@/components/DaysAhe
 /**
  * Home "Oggi" del professionista (docs/CHANGELOG.md §147, decisione esplicita
  * dell'utente): una lista di cose da fare, non un secondo elenco di
- * richieste (quello vive in "Richieste e lavori"). In cima le richieste da
- * rispondere con la scadenza — in un mercato locale vince chi risponde per
- * primo (CLAUDE.md §8) — poi gli appuntamenti di oggi e domani, poi i propri
+ * richieste (quello vive in "Richieste e lavori"). In cima, sopra tutto, le
+ * richieste da rispondere con la scadenza (§403) — in un mercato locale vince
+ * chi risponde per primo (CLAUDE.md §8) — poi gli appuntamenti di oggi e domani, poi i propri
  * numeri rispetto alla zona, in fondo i pacchetti di visibilità. Modelli: Thumbtack Pro/Angi Pro per i lead,
  * Fresha/Treatwell per la giornata.
  */
@@ -215,6 +215,8 @@ export default function DashboardTodayPage() {
   // Un errore si mostra subito.
   const ready = (!loading || Boolean(error)) && journey.settled;
   const greetingName = user.businessName ?? user.name ?? "";
+  const showToAnswerOnTop = !loading && !error && toAnswer.length > 0;
+  const showDatesOnTop = !loading && !error && datesToConfirm.length > 0;
 
   return (
     <YStack width="100%" alignItems="center" paddingVertical="$6" paddingHorizontal="$4">
@@ -232,6 +234,48 @@ export default function DashboardTodayPage() {
 
         {subscription ? <SubscriptionPauseBanner sub={subscription} profileStepsElsewhere /> : null}
         {restrictions ? <IssueSanctionBanner {...restrictions} /> : null}
+        {/* Preventivi da mandare e date proposte dai clienti in cima a tutto,
+            sopra meteo e lavori, a tutta larghezza anche sul computer
+            (docs/CHANGELOG.md §403, Luca: "è la cosa più importante"). Senza
+            nulla a cui rispondere la pagina resta com'era. */}
+        {showToAnswerOnTop ? (
+          <TodaySection title="Da rispondere ora" count={toAnswer.length} action={{ href: "/dashboard/richieste", label: "Tutte le richieste" }}>
+            {/* Da telefono le prime 3, dal computer le prime 5: sotto restano
+                vicini i lavori di oggi (§403). */}
+            {toAnswer.slice(0, 5).map((lead, index) => (
+              <LeadToAnswerRow key={lead.id} lead={lead} extra={index >= PHONE_TO_ANSWER} />
+            ))}
+            {toAnswer.length > PHONE_TO_ANSWER ? (
+              <Link href="/dashboard/richieste" className={`today-more${toAnswer.length > 5 ? "" : " is-phone-only"}`}>
+                Vedi tutte le {toAnswer.length} richieste →
+              </Link>
+            ) : null}
+          </TodaySection>
+        ) : null}
+        {showDatesOnTop ? (
+          <TodaySection title="Date proposte dai clienti" count={datesToConfirm.length}>
+            {datesToConfirm.map((lead) => (
+              <Link key={lead.id} href={`/dashboard/richieste?open=${lead.guidedRequest.id}`} className="today-row">
+                <span className="today-row-main">
+                  <strong>
+                    {lead.guidedRequest.categoryLabel} · {lead.guidedRequest.clientName ?? "Cliente"}
+                  </strong>
+                  <span className="today-row-sub">
+                    {/* Stessa data e stesso orario: solo una nota (docs/CHANGELOG.md §196). */}
+                    {scheduleChangeBetween(
+                      { start: lead.quote!.estimatedStartDate, end: lead.quote!.estimatedEndDate },
+                      { start: lead.quote!.clientProposedDate!, end: lead.quote!.clientProposedEndDate },
+                    )
+                      ? "Nuova data proposta"
+                      : "Nota aggiunta, stessa data"}
+                    : {formatDateTime(lead.quote!.clientProposedDate!)}
+                  </span>
+                </span>
+                <span className="today-row-cta">Rispondi</span>
+              </Link>
+            ))}
+          </TodaySection>
+        ) : null}
         {/* Due colonne quando c'è spazio (docs/CHANGELOG.md §334): a sinistra il
             lavoro (appuntamenti, richieste, andamento), a destra percorso del
             profilo, avvisi e visibilità. Stretto, `today-col` non conta e `order` rimette tutto
@@ -242,12 +286,15 @@ export default function DashboardTodayPage() {
               <div className="today-slot" style={{ order: 1 }}>
                 {/* Il prossimo lavoro prima di tutto il resto: mezz'ora prima deve vedersi
                     senza scorrere (T2 del test dei compiti, docs/CHANGELOG.md §311). */}
-                {error ? null : (
+                {/* Finché richieste e lavori non arrivano solo uno scheletro senza
+                    titolo: con le richieste in cima, "Oggi e domani" già disegnato
+                    sarebbe poi scivolato giù (CLS, §334, §403). */}
+                {error ? null : loading ? (
+                  <Skeletons />
+                ) : (
                 <TodaySection title="Oggi e domani" action={{ href: "/dashboard/agenda", label: "Apri l'agenda" }}>
                   {daysAhead === "failed" ? null : <WeatherStrip days={daysAhead} />}
-                  {loading ? (
-                    <LineSkeleton />
-                  ) : upcoming.length === 0 ? (
+                  {upcoming.length === 0 ? (
                     <EmptyLine text="Nessun appuntamento oggi e domani." />
                   ) : (
                     upcoming.map(({ key, href, at, title, sub, navigateTo, onTheWay, phone }, index) => (
@@ -309,8 +356,8 @@ export default function DashboardTodayPage() {
               </div>
               {!ready ? null : (
                 <>
-                  {/* Con richieste in attesa vengono subito dopo i lavori (§352):
-                      su telefono erano due schermate più giù, sotto il percorso. */}
+                  {/* Richieste e date proposte sono salite in cima (§403): qui restano
+                      i messaggi non letti e, senza richieste, la riga vuota. */}
                   <div className="today-slot" style={{ order: toAnswer.length > 0 ? 2 : 4 }}>
                     {/* Richieste e lavori non caricati: "Riprova" invece di scheletri
                         infiniti e di un messaggio tecnico (docs/CHANGELOG.md §286). */}
@@ -330,45 +377,20 @@ export default function DashboardTodayPage() {
                       <>
                         {/* Il numero delle richieste sta nel titolo qui sotto, che
                             le elenca (§352); le altre tessere solo se c'è qualcosa. */}
-                        {datesToConfirm.length > 0 || unreadMessages > 0 ? (
+                        {/* "Date da confermare" non è più una tessera: le date sono
+                            elencate in cima (§403). */}
+                        {unreadMessages > 0 ? (
                           <div className="today-kpis today-counters">
-                            {datesToConfirm.length > 0 ? <TodayCounter href="/dashboard/richieste?stage=modifica_richiesta" icon="calendar" value={datesToConfirm.length} label="Date da confermare" urgent loading={loading} /> : null}
-                            {unreadMessages > 0 ? <TodayCounter href="/chat" icon="message-circle" value={unreadMessages} label="Messaggi non letti" urgent loading={false} /> : null}
+                            <TodayCounter href="/chat" icon="message-circle" value={unreadMessages} label="Messaggi non letti" urgent loading={false} />
                           </div>
                         ) : null}
 
-                        <TodaySection title="Da rispondere ora" count={toAnswer.length} action={{ href: "/dashboard/richieste", label: "Tutte le richieste" }}>
-                          {toAnswer.length === 0 ? (
+                        {toAnswer.length === 0 ? (
+                          <TodaySection title="Da rispondere ora" action={{ href: "/dashboard/richieste", label: "Tutte le richieste" }}>
                             <EmptyLine text="Nessuna richiesta in attesa: ti avvisiamo appena ne arriva una nuova." />
-                          ) : (
-                            toAnswer.slice(0, 5).map((lead) => <LeadToAnswerRow key={lead.id} lead={lead} />)
-                          )}
-                        </TodaySection>
-
-                        {datesToConfirm.length > 0 ? (
-                          <TodaySection title="Date proposte dai clienti">
-                            {datesToConfirm.map((lead) => (
-                              <Link key={lead.id} href={`/dashboard/richieste?open=${lead.guidedRequest.id}`} className="today-row">
-                                <span className="today-row-main">
-                                  <strong>
-                                    {lead.guidedRequest.categoryLabel} · {lead.guidedRequest.clientName ?? "Cliente"}
-                                  </strong>
-                                  <span className="today-row-sub">
-                                    {/* Stessa data e stesso orario: solo una nota (docs/CHANGELOG.md §196). */}
-                                    {scheduleChangeBetween(
-                                      { start: lead.quote!.estimatedStartDate, end: lead.quote!.estimatedEndDate },
-                                      { start: lead.quote!.clientProposedDate!, end: lead.quote!.clientProposedEndDate },
-                                    )
-                                      ? "Nuova data proposta"
-                                      : "Nota aggiunta, stessa data"}
-                                    : {formatDateTime(lead.quote!.clientProposedDate!)}
-                                  </span>
-                                </span>
-                                <span className="today-row-cta">Rispondi</span>
-                              </Link>
-                            ))}
                           </TodaySection>
                         ) : null}
+
 
                 </>
                 )}
@@ -451,11 +473,14 @@ function TodaySection({ title, subtitle, count, action, children }: { title: str
   );
 }
 
-function LeadToAnswerRow({ lead }: { lead: ProfessionalLead }) {
+/** Richieste mostrate da telefono in "Da rispondere ora"; le altre con "Vedi tutte" (§403). */
+const PHONE_TO_ANSWER = 3;
+
+function LeadToAnswerRow({ lead, extra = false }: { lead: ProfessionalLead; extra?: boolean }) {
   const deadlines = leadDeadlines(lead);
   const competitors = formatCompetitors(lead.competitors);
   return (
-    <Link href={`/dashboard/richieste?open=${lead.guidedRequest.id}`} className="today-row">
+    <Link href={`/dashboard/richieste?open=${lead.guidedRequest.id}`} className={extra ? "today-row is-phone-hidden" : "today-row"}>
       <span className="today-row-main">
         {/* Etichetta "Urgente" come in Richieste e lavori, non più l'emoji 🔴 (§352). */}
         {lead.guidedRequest.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
@@ -578,17 +603,6 @@ function Skeletons() {
       <SkeletonSummaryRow />
       <SkeletonSummaryRow />
     </YStack>
-  );
-}
-
-/** Alta quanto `EmptyLine`, il caso più comune: niente salto quando arriva (§334). */
-function LineSkeleton() {
-  return (
-    <div className="today-empty" aria-hidden>
-      <div style={{ height: 24, display: "flex", alignItems: "center" }}>
-        <SkeletonBlock width="55%" />
-      </div>
-    </div>
   );
 }
 

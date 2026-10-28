@@ -81,7 +81,7 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
   // Prima le voci con i prezzi: sono quelle che rispondono alla domanda.
   const mostAdded = [...(entries ?? [])].sort((a, b) => Number(b.price !== null) - Number(a.price !== null) || b.professionalCount - a.professionalCount);
 
-  // Con le parole di chi scrive: plurali, accenti e sinonimi compresi (§405,
+  // Con le parole di chi scrive: plurali, accenti e sinonimi compresi (docs/changelog/2026-10-28-quanto-costa-sinonimi.md,
   // dalla prova con 5 persone: "perdite" e "imbiancatura" non trovavano nulla).
   const filtered = (entries ?? []).filter((entry) => serviceNameMatches(entry.name, query));
   const visibleEntries = showFullList ? filtered : mostAdded.slice(0, IDLE_VISIBLE_COUNT);
@@ -105,7 +105,7 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
               aria-label="Cerca un lavoro per conoscere il prezzo medio"
               className="price-search-input"
               enterKeyHint="go"
-              // Invio apre la prima voce trovata (§405): chi scrive e preme
+              // Invio apre la prima voce trovata (docs/changelog/2026-10-28-quanto-costa-sinonimi.md): chi scrive e preme
               // Invio si aspetta di andare avanti, non che non succeda nulla.
               onKeyDown={(event) => {
                 const first = filtered[0];
@@ -148,7 +148,7 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
                 {query.trim()}
                 {'"'}.
               </Text>
-              {/* Mai un vicolo cieco (§405): il preventivo dice il prezzo vero. */}
+              {/* Mai un vicolo cieco (docs/changelog/2026-10-28-quanto-costa-sinonimi.md): il preventivo dice il prezzo vero. */}
               <a href={`/preventivo?descrizione=${encodeURIComponent(`${query.trim()}. `)}`} className="price-empty-link">
                 Chiedi un preventivo gratuito
               </a>

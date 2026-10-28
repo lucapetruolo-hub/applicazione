@@ -264,7 +264,7 @@ export class ProfessionalsService {
   }
 
   async search({ category, city, q, remote, service, excludeDemo, merit, offers }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
-    // Sinonimi compresi (§405): "perdite" trova chi ha scritto "Riparazione perdita d'acqua".
+    // Sinonimi compresi (docs/changelog/2026-10-28-quanto-costa-sinonimi.md): "perdite" trova chi ha scritto "Riparazione perdita d'acqua".
     const canonicalize = service ? await this.serviceNamesService.canonicalizer() : null;
     const serviceKey = service && canonicalize ? serviceGroupKey(service, canonicalize) : "";
     const serviceProfileIds = serviceKey && canonicalize ? await this.profileIdsWithService(serviceKey, canonicalize) : null;
@@ -416,7 +416,7 @@ export class ProfessionalsService {
       where: {
         // Solo chi compare nella ricerca: ogni voce porta all'elenco di chi la
         // offre, e il numero mostrato deve coincidere (docs/CHANGELOG.md §398).
-        // Gli account di prova restano nella ricerca ma non nei prezzi (§405, decisione di Luca).
+        // Gli account di prova restano nella ricerca ma non nei prezzi (docs/changelog/2026-10-28-quanto-costa-sinonimi.md, decisione di Luca).
         professionalProfile: { isDemo: false, user: COUNTED_USER, ...searchableProfileWhere(), AND: [publicVisibilityWhere()] },
       },
       select: { name: true, professionalProfileId: true, priceMinEurCents: true, priceMaxEurCents: true, priceUnit: true },
@@ -445,7 +445,7 @@ export class ProfessionalsService {
       this.prisma.quote.findMany({
         where: {
           status: "ACCEPTED",
-          // Né preventivi di un account di prova, da una parte o dall'altra (§405).
+          // Né preventivi di un account di prova, da una parte o dall'altra (docs/changelog/2026-10-28-quanto-costa-sinonimi.md).
           guidedRequest: { category: { slug: categorySlug }, client: COUNTED_USER },
           professionalProfile: { isDemo: false, user: COUNTED_USER },
         },

@@ -1,5 +1,10 @@
 # Professionisti — Changelog dettagliato
 
+> **Voci nuove**: dal 28/10/2026 ogni voce va in un file suo in
+> `docs/changelog/` (`AAAA-MM-GG-argomento.md`, istruzioni in
+> `docs/changelog/README.md`), non più in fondo a questo file, che resta
+> l'archivio delle sezioni fino alla §399.
+
 > **Cosa è questo file**: lo storico completo, sezione per sezione, di ogni
 > modifica fatta al prodotto dalla Fase 0 del redesign in poi (§10 in avanti —
 > §1-9, le regole architetturali vive, restano in `CLAUDE.md`). Ogni voce
@@ -21791,43 +21796,17 @@ azioni), typecheck e lint; API e sito avviati su un database locale con
 
 **Verifica**: anteprime da computer (1440 px) e telefono (390 px) con il sito avviato in locale, anche di "Professionisti salvati" e della sua sagoma di caricamento; typecheck e lint del sito.
 
-## 405. "Quanto costa in media": sinonimi e account di prova
+## 403. Preventivi da rispondere in cima a "Oggi"
 
-**Richiesta** (Luca, 28/10/2026, dopo il §398-§399): "effettua la prima
-modifica" (i sinonimi) e, per il conteggio, "quando un account viene segnato
-dalla sezione admin come prova non far comparire i dati degli account di
-prova".
+**Richiesta** (Luca, 28/10/2026): "nella pagina professionista oggi, quando c'è da rispondere ad un preventivo deve essere in cima a tutto perché è la cosa più importante".
 
-**Sinonimi.** La chiave unica delle prestazioni (`serviceGroupKey`,
-`apps/api/src/professionals/service-group-key.ts`) ora passa dai nomi del
-§392: prima le unioni fatte dall'admin ("Unisci a…") e le prestazioni
-standard (§388), poi la tabella di `packages/shared/src/serviceNames.ts`.
-"riparazione perdite", "Perdita acqua" e "Riparazione perdita d'acqua" sono
-una sola voce, con il nome suggerito, nel "Quanto costa in media" della
-home, nelle prestazioni delle pagine /prezzi e nella ricerca che si apre
-cliccando una voce (stessa chiave ovunque, così l'elenco mostra sempre chi è
-contato). Il profilo continua a mostrare il nome scritto dal professionista.
-`ServiceNamesService` sta ora in un modulo suo (`ServiceNamesModule`) usato
-sia dall'abbinamento del problema sia dai professionisti: una sola istanza,
-così un'unione fatta dall'admin vale subito ovunque.
+**Decisione**: con almeno una richiesta da quotare, "Da rispondere ora" sta subito sotto il saluto, sopra meteo, lavori di oggi e domani e percorso del profilo, a tutta larghezza anche sul computer (prima su telefono veniva dopo i lavori, §352, e sul computer stava nella colonna di sinistra sotto "Oggi e domani"). Restano sopra solo gli avvisi di account in pausa o con limitazioni, che spiegano perché non si può rispondere. Senza richieste la pagina resta com'era, con la riga "Nessuna richiesta in attesa" sotto i lavori. Finché richieste e lavori non arrivano si vede uno scheletro senza titolo, così "Oggi e domani" non scivola giù quando compaiono le richieste (CLS, §334).
 
-**Account di prova.** I loro prezzi non entrano nelle medie del "Quanto
-costa in media" né nelle pagine /prezzi (prestazioni dichiarate e preventivi
-accettati, sia del professionista sia del cliente), con `COUNTED_USER` del
-§395. Restano nella ricerca come deciso nel §395. I passi del percorso
-("Voce cliccata", "Profilo aperto", "Richiesta inviata") erano già a posto:
-un browser che entra con un account di prova smette da solo di essere
-contato e i conteggi partono dal lancio (§395).
+**Verifica**: typecheck e lint; prova Playwright in `e2e/tests/oggi-meteo.spec.ts` (le richieste stanno sopra "Oggi e domani", telefono e computer); anteprime con e senza richieste, da computer e telefono, in `anteprime/oggi-preventivi-in-cima/`.
 
-**Verifica**: 864 test API (nuovi: sinonimi nella stessa voce, unione
-dell'admin, ricerca con sinonimi, account di prova esclusi), typecheck e
-lint di API e sito.
+**Migliorie scelte da Luca** ("effettua le 3 migliorie"):
+- In cima, sotto le richieste, anche "Date proposte dai clienti" (anche loro sono risposte da dare). La tessera "Date da confermare" è tolta perché ripeteva lo stesso numero; resta solo "Messaggi non letti" quando ce ne sono.
+- Da telefono si vedono le prime 3 richieste e sotto "Vedi tutte le N richieste", così i lavori di oggi restano vicini; dal computer le prime 5, e il pulsante compare solo se ce ne sono di più.
+- I nomi delle voci del menu ridotto, visti nelle anteprime anche senza puntatore sopra, non si vedono nella pagina vera: era la foto a pagina intera di Playwright, che ridimensiona la finestra e ferma l'effetto di dissolvenza a metà. `confronto-pagine` già spegne gli effetti (`reducedMotion: "reduce"`); così ora anche le anteprime. Nessuna modifica al sito.
 
-**Migliorie dopo (28/10/2026, "effettua le due migliorie").**
-- Sinonimi allungati a tutte le prestazioni suggerite, mai con una parola che può voler dire due lavori diversi ("caldaia" da sola resta com'è). Un test controlla che ogni sinonimo porti a un nome suggerito.
-- Prova simulata con 5 persone (`analisi/quanto-costa/prova-5-persone.md`, foto in `anteprime/quanto-costa-prova5/`). Ne sono uscite tre correzioni:
-  - la casella di "Quanto costa" trovava solo il testo esatto: "perdite", "umidita", "imbiancatura" e "condizionatore" non davano nulla. Ora usa `serviceNameMatches` (plurali, accenti, sinonimi, parola non finita);
-  - Invio nella casella apre la prima voce trovata;
-  - quando non si trova nulla compare "Chiedi un preventivo gratuito" con la parola già scritta, invece di un vicolo cieco.
-
-  La prova con persone vere resta da fare prima del lancio.
+Anteprime `migliorie-computer.png` e `migliorie-telefono.png` in `anteprime/oggi-preventivi-in-cima/`.

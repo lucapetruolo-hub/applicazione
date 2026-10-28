@@ -28,7 +28,7 @@ test("nessun sinonimo porta a un nome che non esiste tra i suggeriti", () => {
   }
 });
 
-test("ogni sinonimo porta a una prestazione suggerita e una variante non ha due significati (§405)", () => {
+test("ogni sinonimo porta a una prestazione suggerita e una variante non ha due significati", () => {
   const suggested = new Set(Object.values(POPULAR_SERVICES).flat());
   for (const variant of ["cambio caldaia", "dichiarazione di conformità", "controsoffitto", "Copia chiavi", "Ricarica gas", "parquet", "doposcuola", "dog walking", "umidità"]) {
     assert.ok(suggested.has(canonicalServiceName(variant)), variant);
@@ -39,7 +39,7 @@ test("ogni sinonimo porta a una prestazione suggerita e una variante non ha due 
   assert.equal(canonicalServiceName("caldaia"), "caldaia");
 });
 
-test("la casella di \"Quanto costa\" trova le voci con le parole di chi scrive (§405)", () => {
+test("la casella di \"Quanto costa\" trova le voci con le parole di chi scrive", () => {
   assert.ok(serviceNameMatches("Riparazione perdita d'acqua", "perdite"));
   assert.ok(serviceNameMatches("Riparazione perdita d'acqua", "perd"));
   assert.ok(serviceNameMatches("Risanamento umidità e infiltrazioni", "umidita"));

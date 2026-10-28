@@ -19,7 +19,7 @@ type OfferedService = {
  * professionisti visibili, con quanti la offrono e, da
  * `MIN_PROFESSIONALS_FOR_SERVICE_PRICE` professionisti con un prezzo in su,
  * mediana e intervallo tipico al posto di minimo e massimo (un solo prezzo
- * strano allargava la forbice). I sinonimi contano nella stessa voce (§405).
+ * strano allargava la forbice). I sinonimi contano nella stessa voce (docs/changelog/2026-10-28-quanto-costa-sinonimi.md).
  */
 export function buildServicePriceIndex(services: OfferedService[], canonicalize: ServiceCanonicalizer = canonicalServiceName): ServicePriceIndexEntry[] {
   const groups = new Map<string, { name: string; professionals: Set<string>; priceByProfessional: Map<string, { midpoint: number; unit: ServicePriceUnit }> }>();
@@ -28,7 +28,7 @@ export function buildServicePriceIndex(services: OfferedService[], canonicalize:
     if (!key) continue;
     let group = groups.get(key);
     if (!group) {
-      // Il nome della voce è quello suggerito quando il testo ne è un sinonimo (§405).
+      // Il nome della voce è quello suggerito quando il testo ne è un sinonimo (docs/changelog/2026-10-28-quanto-costa-sinonimi.md).
       group = { name: canonicalize(service.name).trim(), professionals: new Set(), priceByProfessional: new Map() };
       groups.set(key, group);
     }

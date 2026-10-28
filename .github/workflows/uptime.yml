@@ -34,11 +34,15 @@ jobs:
       - name: API /health
         if: ${{ vars.API_HEALTH_URL != '' }}
         # --retry: il primo tentativo dopo uno sleep può superare il minuto
-        # (cold start di Render), non è un sito giù.
-        run: curl --fail --silent --show-error --max-time 90 --retry 2 --retry-delay 10 "${{ vars.API_HEALTH_URL }}"
+        # (cold start di Render), non è un sito giù. Si riprova per circa due
+        # minuti: il 25/10/2026 Render ha risposto "troppe richieste" (429)
+        # per una ventina di secondi e il controllo è diventato rosso senza
+        # che il sito fosse giù (docs/changelog/2026-10-28-prove-ripetute.md).
+        # Un sito davvero giù fallisce lo stesso a ogni tentativo.
+        run: curl --fail --silent --show-error --max-time 90 --retry 5 --retry-delay 15 --retry-max-time 120 "${{ vars.API_HEALTH_URL }}"
       - name: Sito web
         if: ${{ vars.SITE_URL != '' }}
-        run: curl --fail --silent --show-error --output /dev/null --max-time 30 --retry 2 --retry-delay 10 "${{ vars.SITE_URL }}"
+        run: curl --fail --silent --show-error --output /dev/null --max-time 30 --retry 5 --retry-delay 15 --retry-max-time 120 "${{ vars.SITE_URL }}"
       # Suggerimenti di indirizzo (docs/CHANGELOG.md §324): il 24/10/2026 Google
       # rifiutava la chiave e lo si è scoperto solo provando il sito. Una
       # volta al giorno (una sola chiamata a pagamento): se la chiave è

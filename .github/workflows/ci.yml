@@ -8,12 +8,48 @@ name: CI
 # Al push solo sul ramo principale: sugli altri rami la CI parte già con la
 # PR, e prima partiva due volte per ogni modifica (due email per ogni
 # errore, docs/CHANGELOG.md §322).
+# Velocità (docs/changelog/2026-10-28-controlli-pr-veloci.md): prove nel
+# browser in quattro job paralleli, controllo SEO del sito aperto in un job
+# suo, cache di Next.js tra un giro e l'altro, e un nuovo push sulla stessa
+# PR ferma il giro vecchio. Gira anche sulle PR di solo testo: con i
+# controlli obbligatori sul ramo principale, un workflow saltato lascerebbe
+# la PR in attesa per sempre.
 on:
   push:
     branches: ["claude/professionisti-platform-architecture-xr9gmn"]
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  # Changelog senza conflitti (docs/changelog/README.md): una voce per file in
+  # docs/changelog/. Blocca un nome sbagliato, avvisa se una PR scrive ancora
+  # una sezione numerata in fondo a docs/CHANGELOG.md.
+  changelog:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Voci del changelog
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          bad=$(git diff --name-only --diff-filter=A "$BASE"...HEAD -- docs/changelog \
+            | grep -v '^docs/changelog/README.md$' \
+            | grep -Ev '^docs/changelog/[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9-]+\.md$' || true)
+          if [ -n "$bad" ]; then
+            echo "::error::Nome del file non valido, usa AAAA-MM-GG-argomento.md (docs/changelog/README.md): $bad"
+            exit 1
+          fi
+          if git diff "$BASE"...HEAD -- docs/CHANGELOG.md | grep -qE '^\+## [0-9]+\.'; then
+            echo "::warning file=docs/CHANGELOG.md::Voce nuova in fondo a docs/CHANGELOG.md: spostala in un file suo in docs/changelog/ (docs/changelog/README.md), così le PR non vanno in conflitto tra loro."
+          fi
+          echo "Changelog in ordine"
+
   typecheck-build-test:
     runs-on: ubuntu-latest
     steps:
@@ -31,12 +67,25 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Cache di Next.js
+        uses: actions/cache@v5
+        with:
+          path: apps/web/.next/cache
+          key: next-build-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            next-build-${{ hashFiles('pnpm-lock.yaml') }}-
+            next-build-
+
+      # Quattro passi in fila, non un solo comando turbo: lo script build di
+      # apps/api ricompila database e shared, e in parallelo riscriveva i file
+      # mentre i test dell'API li leggevano (test rosso a caso,
+      # docs/changelog/2026-10-28-controlli-pr-veloci.md).
+      # DATABASE_URL fittizia: "prisma generate" (eseguito dallo step
+      # "build" dei package a monte, dipendenza di typecheck in
+      # turbo.json) legge lo schema per generare il client TS — non
+      # apre mai una connessione reale, ma l'URL deve comunque essere
+      # una stringa presente e sintatticamente valida.
       - name: Typecheck
-        # DATABASE_URL fittizia: "prisma generate" (eseguito dallo step
-        # "build" dei package a monte, dipendenza di typecheck in
-        # turbo.json) legge lo schema per generare il client TS — non
-        # apre mai una connessione reale, ma l'URL deve comunque essere
-        # una stringa presente e sintatticamente valida.
         env:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
         run: pnpm turbo run typecheck
@@ -50,6 +99,11 @@ jobs:
         env:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
         run: pnpm turbo run build
+
+      - name: Test
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+        run: pnpm turbo run test
 
       # Il build compila anche con un import circolare tra moduli Nest, ma
       # l'API poi non parte (docs/CHANGELOG.md §218): qui si costruisce il
@@ -65,32 +119,76 @@ jobs:
       - name: Avvio API (stream in tempo reale)
         run: node apps/api/scripts/check-realtime.mjs
 
-      - name: Test
-        env:
-          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
-        run: pnpm turbo run test
-
-      # Controllo SEO (docs/CHANGELOG.md §296) contro un'API finta: prima il
-      # sito privato appena costruito (tutto noindex, sitemap vuota), poi una
-      # build col sito aperto (un H1, canonical, titolo, nessun noindex per
-      # sbaglio, dati strutturati, redirect dei profili, 404, sitemap).
+      # Controllo SEO (docs/CHANGELOG.md §296) contro un'API finta sul sito
+      # privato appena costruito (tutto noindex, sitemap vuota). Il sito
+      # aperto si controlla nel job seo-sito-aperto, in parallelo.
       - name: Controllo SEO (sito privato)
         run: node apps/web/scripts/seo-check/run.mjs private
 
-      - name: Controllo SEO (sito aperto)
+  # Controllo SEO col sito aperto (docs/CHANGELOG.md §296): un H1, canonical,
+  # titolo, nessun noindex per sbaglio, dati strutturati, redirect dei
+  # profili, 404, sitemap. Serve una build diversa del sito, per questo ha un
+  # job suo invece di rifare la build in coda all'altro.
+  seo-sito-aperto:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.33.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache di Next.js
+        uses: actions/cache@v5
+        with:
+          path: apps/web/.next/cache
+          key: next-seo-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            next-seo-${{ hashFiles('pnpm-lock.yaml') }}-
+            next-seo-
+
+      - name: Build del sito aperto
         env:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
           NEXT_PUBLIC_SITE_INDEXABLE: "true"
-        run: |
-          pnpm --filter @professionisti/web build
-          node apps/web/scripts/seo-check/run.mjs public
+          CI_BUILD_SENZA_CONTROLLI: "1"
+        run: pnpm turbo run build --filter=@professionisti/web
+
+      - name: Controllo SEO (sito aperto)
+        run: node apps/web/scripts/seo-check/run.mjs public
 
   # Agenda nel browser (docs/CHANGELOG.md §309): API e sito veri su un
   # database di prova, aperti da un telefono in Italia, a New York e a Tokyo,
   # con appuntamenti prima e dopo i cambi d'ora; accessibilità (axe), agenda
   # senza rete, link del calendario e Lighthouse su telefono lento.
+  # Quattro job in parallelo, ognuno col suo database
+  # (docs/changelog/2026-10-28-controlli-pr-veloci.md): il telefono in Italia,
+  # dove gira la maggior parte delle prove, diviso a metà per file; New York e
+  # Tokyo insieme; le misure dei compiti (cambiano i dati) con Lighthouse.
   agenda-browser:
+    name: agenda-browser (${{ matrix.nome }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - nome: telefono-italia-1
+            progetti: --project=telefono-italia --shard=1/2
+          - nome: telefono-italia-2
+            progetti: --project=telefono-italia --shard=2/2
+          - nome: new-york-tokyo
+            progetti: --project=telefono-new-york --project=computer-tokyo
+          - nome: misure-lighthouse
+            progetti: --project=misure --no-deps
+            lighthouse: true
     services:
       postgres:
         image: postgres:16
@@ -123,10 +221,21 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Cache di Next.js
+        uses: actions/cache@v5
+        with:
+          path: apps/web/.next/cache
+          key: next-agenda-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            next-agenda-${{ hashFiles('pnpm-lock.yaml') }}-
+            next-agenda-
+
       - name: Build API e pacchetti
         run: pnpm turbo run build --filter=@professionisti/api --filter=@professionisti/api-client
 
       - name: Build sito
+        env:
+          CI_BUILD_SENZA_CONTROLLI: "1"
         run: pnpm --filter @professionisti/web build
 
       - name: Migrazioni sul database di prova
@@ -138,9 +247,10 @@ jobs:
       - name: Prove nel browser
         env:
           CI: "true"
-        run: pnpm --filter @professionisti/e2e e2e
+        run: pnpm --filter @professionisti/e2e exec playwright test ${{ matrix.progetti }}
 
       - name: Lighthouse su telefono lento
+        if: matrix.lighthouse
         run: |
           PORT=3001 EMAIL_VERIFICATION_REQUIRED=false FRONTEND_URL=http://localhost:3000 node apps/api/dist/main.js > api.log 2>&1 &
           pnpm --filter @professionisti/web start > web.log 2>&1 &
@@ -151,7 +261,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: agenda-browser
+          name: agenda-browser-${{ matrix.nome }}
           path: |
             e2e/playwright-report/
             e2e/test-results/
