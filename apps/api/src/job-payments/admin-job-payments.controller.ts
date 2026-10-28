@@ -92,8 +92,8 @@ export class AdminJobPaymentsController {
   }
 
   @Get("refunds")
-  listRefunds() {
-    return this.refundsService.listAll();
+  listRefunds(@Query("q") q?: string) {
+    return this.refundsService.listAll(q ?? "");
   }
 
   @Patch("refunds/:id")
@@ -102,8 +102,8 @@ export class AdminJobPaymentsController {
   }
 
   @Get("disputes")
-  listDisputes() {
-    return this.disputesService.listAll();
+  listDisputes(@Query("q") q?: string) {
+    return this.disputesService.listAll(q ?? "");
   }
 
   @Patch("disputes/:id")

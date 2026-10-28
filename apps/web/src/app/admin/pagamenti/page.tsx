@@ -54,31 +54,55 @@ export default function AdminPagamentiPage() {
   const [limits, setLimits] = useState<AdminOnlineLimitRow[] | null>(null);
   const [bankDisputes, setBankDisputes] = useState<AdminBankDispute[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Ricerca nei rimborsi e nelle contestazioni, anche quelli chiusi
+  // (docs/changelog/2026-10-28-stripe-prova.md).
+  const [refundQuery, setRefundQuery] = useState("");
+  const [disputeQuery, setDisputeQuery] = useState("");
+  const refundSearch = useDebounced(refundQuery);
+  const disputeSearch = useDebounced(disputeQuery);
+  const [reloads, setReloads] = useState(0);
 
-  function reload() {
+  // Dopo una decisione si ricaricano anche rimborsi e contestazioni (`reloads`);
+  // al primo caricamento li chiedono già i loro effetti.
+  function reload(withLists = true) {
     if (!token) return;
-    Promise.all([
-      apiClient.adminListRefunds(token),
-      apiClient.adminListDisputes(token),
-      apiClient.adminListUnpaidBalances(token),
-      apiClient.adminListOnlineLimits(token),
-      apiClient.adminListBankDisputes(token),
-    ])
-      .then(([r, d, u, l, b]) => {
+    Promise.all([apiClient.adminListUnpaidBalances(token), apiClient.adminListOnlineLimits(token), apiClient.adminListBankDisputes(token)])
+      .then(([u, l, b]) => {
         setBankDisputes(b);
-        setRefunds(r);
-        setDisputes(d);
         setUnpaid(u);
         setLimits(l);
         setError(null);
+        if (withLists) setReloads((n) => n + 1);
       })
       .catch((err) => setError(errorMessage(err)));
     refresh();
   }
   useEffect(() => {
-    reload();
+    reload(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
+  useEffect(() => {
+    if (!token) return;
+    let alive = true;
+    apiClient
+      .adminListRefunds(token, refundSearch)
+      .then((r) => alive && setRefunds(r))
+      .catch((err) => alive && setError(errorMessage(err)));
+    return () => {
+      alive = false;
+    };
+  }, [token, refundSearch, reloads]);
+  useEffect(() => {
+    if (!token) return;
+    let alive = true;
+    apiClient
+      .adminListDisputes(token, disputeSearch)
+      .then((d) => alive && setDisputes(d))
+      .catch((err) => alive && setError(errorMessage(err)));
+    return () => {
+      alive = false;
+    };
+  }, [token, disputeSearch, reloads]);
 
   return (
     <YStack gap="$6">
@@ -118,7 +142,10 @@ export default function AdminPagamentiPage() {
         <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
           Rimborsi
         </Text>
-        {refunds && refunds.length === 0 ? <Text color={brand.grafite70}>Nessuna richiesta di rimborso.</Text> : null}
+        <SearchBox label="Cerca nei rimborsi" value={refundQuery} onChange={setRefundQuery} placeholder="Cliente, professionista, motivo, cifra o codice" />
+        {refunds && refunds.length === 0 ? (
+          <Text color={brand.grafite70}>{refundSearch ? "Nessun rimborso trovato." : "Nessuna richiesta di rimborso."}</Text>
+        ) : null}
         {refunds?.map((refund) => <RefundCard key={refund.id} refund={refund} token={token ?? ""} onChanged={reload} />)}
       </YStack>
 
@@ -126,7 +153,10 @@ export default function AdminPagamentiPage() {
         <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
           Contestazioni
         </Text>
-        {disputes && disputes.length === 0 ? <Text color={brand.grafite70}>Nessuna contestazione.</Text> : null}
+        <SearchBox label="Cerca nelle contestazioni" value={disputeQuery} onChange={setDisputeQuery} placeholder="Cliente, professionista, motivo, cifra o codice" />
+        {disputes && disputes.length === 0 ? (
+          <Text color={brand.grafite70}>{disputeSearch ? "Nessuna contestazione trovata." : "Nessuna contestazione."}</Text>
+        ) : null}
         {disputes?.map((dispute) => <DisputeCard key={dispute.id} dispute={dispute} token={token ?? ""} onChanged={reload} />)}
       </YStack>
 
@@ -566,23 +596,21 @@ function BankDisputeArchive({ token, reloadKey }: { token: string; reloadKey: un
   const [rows, setRows] = useState<AdminBankDisputeArchiveRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const search = useDebounced(query);
   useEffect(() => {
     let alive = true;
-    const timer = setTimeout(() => {
-      apiClient
-        .adminBankDisputesArchive(token, query)
-        .then((list) => {
-          if (!alive) return;
-          setRows(list);
-          setError(null);
-        })
-        .catch((err) => alive && setError(errorMessage(err)));
-    }, 300);
+    apiClient
+      .adminBankDisputesArchive(token, search)
+      .then((list) => {
+        if (!alive) return;
+        setRows(list);
+        setError(null);
+      })
+      .catch((err) => alive && setError(errorMessage(err)));
     return () => {
       alive = false;
-      clearTimeout(timer);
     };
-  }, [token, query, reloadKey]);
+  }, [token, search, reloadKey]);
 
   return (
     <YStack gap="$3">
@@ -592,19 +620,11 @@ function BankDisputeArchive({ token, reloadKey }: { token: string; reloadKey: un
       <Text fontSize={13} color={brand.grafite70}>
         Tutte, anche quelle chiuse: cosa è stato mandato alla banca, da chi e quando, e com&apos;è finita.
       </Text>
-      <input
-        type="search"
-        aria-label="Cerca nelle contestazioni"
-        className="admin-input"
-        placeholder="Cliente, professionista, email, cifra o codice"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        style={{ maxWidth: 420 }}
-      />
+      <SearchBox label="Cerca nelle contestazioni in banca" value={query} onChange={setQuery} placeholder="Cliente, professionista, email, cifra o codice" />
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       {rows === null ? <Text color={brand.grafite70}>Caricamento…</Text> : null}
       {rows && rows.length === 0 ? (
-        <Text color={brand.grafite70}>{query.trim() ? "Nessuna contestazione trovata." : "Nessuna contestazione in banca finora."}</Text>
+        <Text color={brand.grafite70}>{search ? "Nessuna contestazione trovata." : "Nessuna contestazione in banca finora."}</Text>
       ) : null}
       {rows?.map((row) => <BankDisputeArchiveCard key={row.jobPaymentId} row={row} token={token} />)}
     </YStack>
@@ -707,6 +727,30 @@ function ArchiveText({ title, text }: { title: string; text: string }) {
         {text}
       </Text>
     </YStack>
+  );
+}
+
+/** Testo cercato dopo una breve pausa di scrittura, per non chiedere al server a ogni lettera. */
+function useDebounced(value: string): string {
+  const [debounced, setDebounced] = useState(value.trim());
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [value]);
+  return debounced;
+}
+
+function SearchBox({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder: string }) {
+  return (
+    <input
+      type="search"
+      aria-label={label}
+      className="admin-input"
+      placeholder={placeholder}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      style={{ maxWidth: 420 }}
+    />
   );
 }
 

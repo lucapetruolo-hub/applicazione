@@ -246,3 +246,23 @@ senza che deve andare a cliccare tutte le pagine".
 mandate, bozza salvata che torna nel modulo, ricerca per nome e cognome e
 per cifra, cronologia); tutti i test dell'API (916), `tsc` di API e sito,
 eslint.
+
+## Ricerca anche in rimborsi, contestazioni e problemi sul lavoro
+
+Richiesta di Luca ("Effettua la prima miglioria"): come per le
+contestazioni in banca, poter risalire ai casi passati. Un solo campo di
+ricerca (`apps/api/src/admin/admin-search.ts`) trova il lavoro per cliente
+(anche nome e cognome insieme), email, professionista, descrizione della
+richiesta o codice, più il motivo e la cifra in euro dove ci sono:
+
+- Admin → Pagamenti: casella di ricerca su **Rimborsi** e **Contestazioni**
+  (`GET /admin/refunds?q=`, `/admin/disputes?q=`), che elencano già anche
+  quelli chiusi.
+- Admin → Problemi segnalati: con la ricerca (`GET /admin/job-issues?q=`)
+  si cerca in tutte le segnalazioni, aperte, in chat, con ricorso e chiuse,
+  e la pagina lo dice.
+- Le contestazioni in banca usano la stessa ricerca.
+
+**Verifica**: `admin-search.test.ts` (testo vuoto, nome e cognome insieme,
+cifre come "220,50 €" e "1.200"); tutti i test dell'API (919), `tsc` di API
+e sito, eslint.

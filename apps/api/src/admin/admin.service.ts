@@ -4,6 +4,7 @@ import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundEx
 import type { ContentReportTargetType, ModerationAction, Prisma, PrismaClient } from "@professionisti/database";
 import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, courtesyDocumentLabel, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource, type AdminProfessionalStats, PROFESSIONAL_ACTIVITY_DAYS, BANK_DISPUTE_OPEN_STATUSES } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { bookingSearchWhere } from "./admin-search";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { AuditLogService } from "../audit-log/audit-log.service";
@@ -1384,17 +1385,21 @@ export class AdminService {
    * decidere: descrizione e foto del cliente, versione del professionista,
    * note e foto a lavoro terminato, importi.
    */
-  async listJobIssues(view: "open" | "chat" | "appeals" | "closed", adminUserId: string): Promise<AdminJobIssueRow[]> {
+  async listJobIssues(view: "open" | "chat" | "appeals" | "closed", adminUserId: string, q = ""): Promise<AdminJobIssueRow[]> {
+    // Con la ricerca si cerca in tutte le segnalazioni, aperte e chiuse (archivio,
+    // docs/changelog/2026-10-28-stripe-prova.md).
+    const booking = bookingSearchWhere(q);
     const issues = await this.prisma.jobIssue.findMany({
-      where:
-        view === "open"
+      where: booking
+        ? { OR: [{ booking }, { description: { contains: q.trim(), mode: "insensitive" } }] }
+        : view === "open"
           ? { status: "OPEN" }
           : view === "chat"
             ? { status: "CHAT" }
             : view === "appeals"
               ? { appealedAt: { not: null }, appealDecision: null }
               : { status: { in: ["UPHELD", "REJECTED", "RESOLVED", "UNRESOLVED"] } },
-      orderBy: view === "closed" ? { createdAt: "desc" } : view === "appeals" ? { appealedAt: "asc" } : { createdAt: "asc" },
+      orderBy: booking || view === "closed" ? { createdAt: "desc" } : view === "appeals" ? { appealedAt: "asc" } : { createdAt: "asc" },
       take: 200,
       include: {
         booking: {

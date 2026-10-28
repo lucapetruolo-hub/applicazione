@@ -2278,8 +2278,12 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
         cache: "no-store",
       }),
 
-    adminListJobIssues: (token: string, view: "open" | "chat" | "appeals" | "closed") =>
-      request<AdminJobIssue[]>(`/admin/job-issues?view=${view}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    /** Con `q` cerca in tutte le segnalazioni, aperte e chiuse. */
+    adminListJobIssues: (token: string, view: "open" | "chat" | "appeals" | "closed", q = "") =>
+      request<AdminJobIssue[]>(`/admin/job-issues?view=${view}${q.trim() ? `&q=${encodeURIComponent(q.trim())}` : ""}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }),
 
     adminResolveJobIssue: (token: string, id: string, input: ResolveJobIssueInput) =>
       request<{ id: string; status: string }>(`/admin/job-issues/${id}`, {
@@ -2544,12 +2548,14 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
 
     adminListJobPayments: (token: string) => request<JobPayment[]>("/admin/job-payments", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
-    adminListRefunds: (token: string) => request<AdminRefund[]>("/admin/refunds", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    adminListRefunds: (token: string, q = "") =>
+      request<AdminRefund[]>(`/admin/refunds${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ""}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminDecideRefund: (token: string, id: string, input: DecideRefundInput) =>
       request<unknown>(`/admin/refunds/${id}`, { method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
 
-    adminListDisputes: (token: string) => request<AdminDispute[]>("/admin/disputes", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    adminListDisputes: (token: string, q = "") =>
+      request<AdminDispute[]>(`/admin/disputes${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ""}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminResolveDispute: (token: string, id: string, input: ResolveDisputeInput) =>
       request<unknown>(`/admin/disputes/${id}`, { method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),

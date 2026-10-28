@@ -13,6 +13,7 @@ import {
   type ProfessionalBankDispute,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { bookingSearchWhere, searchEurCents } from "../admin/admin-search";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { renderDocumentPdf, type PdfBlock, type PdfDocumentModel } from "../accounting/document-pdf";
 
@@ -219,21 +220,11 @@ export class BankDisputesService {
   async archive(query = ""): Promise<AdminBankDisputeArchiveRow[]> {
     const q = query.trim().slice(0, 100);
     const where: Prisma.JobPaymentWhereInput = { stripeDisputeId: { not: null } };
-    if (q) {
+    const booking = bookingSearchWhere(q);
+    if (booking) {
+      const cents = searchEurCents(q);
       const text = { contains: q, mode: "insensitive" as const };
-      const or: Prisma.JobPaymentWhereInput[] = [
-        { stripeDisputeId: text },
-        { bookingId: text },
-        { booking: { client: { OR: [{ name: text }, { surname: text }, { email: text }] } } },
-        { booking: { professionalProfile: { businessName: text } } },
-      ];
-      const words = q.split(/\s+/).filter(Boolean);
-      if (words.length > 1) {
-        or.push({ booking: { client: { AND: words.map((w) => ({ OR: [{ name: { contains: w, mode: "insensitive" as const } }, { surname: { contains: w, mode: "insensitive" as const } }] })) } } });
-      }
-      const euros = Number(q.replace(/[€\s]/g, "").replace(/\./g, "").replace(",", "."));
-      if (Number.isFinite(euros) && euros > 0) or.push({ paidEurCents: Math.round(euros * 100) });
-      where.OR = or;
+      where.OR = [{ stripeDisputeId: text }, { booking }, ...(cents ? [{ paidEurCents: cents }] : [])];
     }
     const jobs = await this.prisma.jobPayment.findMany({ where, include: JOB_INCLUDE, orderBy: { stripeDisputedAt: "desc" }, take: 100 });
     // Cronologia: ogni passaggio registrato (apertura, prove, spiegazione del
