@@ -198,6 +198,12 @@ const owned = {
   "GET /bookings/:id/job-payment": booking(),
   "POST /bookings/:id/job-payment/checkout/:part": booking({ params: (f) => ({ id: f.bookingA, part: "deposit" }) }),
   "POST /bookings/:id/job-payment/dispute": booking({ body: () => ({ reason: "Il lavoro non è stato svolto come concordato." }) }),
+  // Spiegazione sulla contestazione in banca: solo il professionista del lavoro.
+  "PATCH /bookings/:id/job-payment/bank-dispute-note": booking({
+    owners: ["proA"],
+    strangers: ["clientA", "clientB", "proB"],
+    body: () => ({ note: "Il lavoro è stato fatto il giorno concordato.", photoUrls: [] }),
+  }),
   "POST /bookings/:id/job-payment/refund": booking({ body: () => ({ reason: "Il lavoro non è stato svolto come concordato." }) }),
   "PATCH /bookings/:id/meeting-link": booking({ body: () => ({ meetingLink: "https://meet.google.com/abc-defg-hij" }) }),
   "PATCH /bookings/:id/note": booking({ body: () => ({ note: "Nota di prova" }) }),

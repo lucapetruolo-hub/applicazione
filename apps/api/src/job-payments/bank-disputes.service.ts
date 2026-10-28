@@ -320,8 +320,9 @@ export class BankDisputesService {
    */
   async saveProfessionalNote(userId: string, bookingId: string, input: BankDisputeProNoteInput): Promise<ProfessionalBankDispute> {
     const job = await this.prisma.jobPayment.findUnique({ where: { bookingId }, include: JOB_INCLUDE });
-    if (!job?.stripeDisputeId) throw new NotFoundException("Su questo lavoro non c'è una contestazione in banca.");
+    if (!job) throw new NotFoundException("Lavoro non trovato.");
     if (job.booking.professionalProfile.userId !== userId) throw new ForbiddenException("Questo lavoro non è tuo.");
+    if (!job.stripeDisputeId) throw new NotFoundException("Su questo lavoro non c'è una contestazione in banca.");
     if (!(BANK_DISPUTE_OPEN_STATUSES as readonly string[]).includes(job.stripeDisputeStatus ?? "")) {
       throw new BadRequestException("Le prove sono già state mandate alla banca: ora decide lei.");
     }
