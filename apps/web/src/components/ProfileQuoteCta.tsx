@@ -15,9 +15,9 @@ import { MagneticButton } from "./MagneticButton";
  * Da computer la barra è allineata alla pagina e a sinistra mostra
  * `summary` (foto, nome, stelle): un pulsante largo tutto lo schermo
  * sembrerebbe una fascia pubblicitaria (docs/CHANGELOG.md §385). Niente
- * barra (`withBar` falso) per il professionista sul proprio profilo (§386).
+ * barra (`withBar` falso) per il professionista sul proprio profilo (§392).
  * I due link portano `da=pagina` o `da=barra`: Andamento del sito conta da
- * quale pulsante parte la richiesta (§391).
+ * quale pulsante parte la richiesta (§394).
  */
 export function ProfileQuoteCta({
   href,
@@ -70,7 +70,7 @@ export function ProfileQuoteCta({
         <div className="profile-cta-bar" data-visible={showBar ? "true" : undefined} aria-hidden={!showBar}>
           <div className="profile-cta-bar-inner">
             {summary ? <div className="profile-cta-bar-summary">{summary}</div> : null}
-            {/* Il lettore di schermo sente anche il nome, che sul telefono non si vede (§386). */}
+            {/* Il lettore di schermo sente anche il nome, che sul telefono non si vede (§392). */}
             <Link
               href={withSource(PROFILE_REQUEST_SOURCE_PARAM.BARRA)}
               className="profile-cta-bar-link"

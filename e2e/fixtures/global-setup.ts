@@ -102,7 +102,7 @@ export default async function globalSetup(): Promise<void> {
     });
 
     // Profilo pubblico di un altro professionista, con la barra "Richiedi un
-    // preventivo" (docs/CHANGELOG.md §386): lo misura Lighthouse.
+    // preventivo" (docs/CHANGELOG.md §392): lo misura Lighthouse.
     const otherPro = await prisma.user.create({
       data: { role: "PROFESSIONAL", email: `pro-pubblico-e2e-${stamp}@test.it`, passwordHash: await bcrypt.hash(PASSWORD, 10), name: "Lucia", surname: "Neri", emailVerifiedAt: new Date(), legalConsentAt: new Date() },
     });

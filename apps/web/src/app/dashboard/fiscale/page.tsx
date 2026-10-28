@@ -5,7 +5,21 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button, Field, Icon, Surface, Section, Text, XStack, YStack, brand, Badge, radiusDoc } from "@professionisti/ui";
 import type { ProfessionalFiscalProfile, FiscalVerificationStatus, PayoutIbanView } from "@professionisti/api-client";
-import { birthDateFromCodiceFiscale, birthPlaceFromCodiceFiscale, checkFiscalId, findComuneByName, isValidCodiceFiscale, fiscalFieldErrors, professionalFiscalProfileSchema, sexFromCodiceFiscale, taxIdCheckMessage, type MyVerificationStatus, type TaxIdKind } from "@professionisti/shared";
+import {
+  birthDateFromCodiceFiscale,
+  birthPlaceFromCodiceFiscale,
+  checkFiscalId,
+  findComuneByName,
+  invoiceRecipientText,
+  isValidCodiceFiscale,
+  fiscalFieldErrors,
+  parseInvoiceRecipient,
+  professionalFiscalProfileSchema,
+  sexFromCodiceFiscale,
+  taxIdCheckMessage,
+  type MyVerificationStatus,
+  type TaxIdKind,
+} from "@professionisti/shared";
 import { apiClient } from "@/lib/apiClient";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { ProfileMissingNotice, isProfileMissingError } from "@/components/ProfileMissingNotice";
@@ -164,6 +178,10 @@ function DashboardFiscaleContent() {
   // già dichiarato non deve ri-confermarlo ad ogni singola modifica, il
   // testo resta comunque sempre visibile accanto al bottone "Salva".
   const [declarationAccepted, setDeclarationAccepted] = useState(false);
+  // IVA nelle sue fatture e codice destinatario o PEC (docs/CHANGELOG.md §378).
+  const [chargesVat, setChargesVat] = useState<boolean | null>(null);
+  const [invoiceRecipient, setInvoiceRecipient] = useState("");
+  const [vatSaving, setVatSaving] = useState(false);
   const [additionalEuStatesText, setAdditionalEuStatesText] = useState("");
   const [repFields, setRepFields] = useState<{ firstName: string; lastName: string; codiceFiscale: string; role: string }>({
     firstName: "",
@@ -238,6 +256,8 @@ function DashboardFiscaleContent() {
           setAdditionalEuStatesText((data.additionalEuStates ?? []).join(", "));
           setAbroad(!!data.taxResidenceCountry && data.taxResidenceCountry.toUpperCase() !== "IT");
           setDeclarationAccepted(!!data.fiscalDeclarationAcceptedAt);
+          setChargesVat(data.chargesVat ?? null);
+          setInvoiceRecipient(invoiceRecipientText(data.sdiRecipientCode, data.pecEmail));
           if (data.representative) {
             setRepFields({
               firstName: data.representative.firstName,
@@ -317,6 +337,8 @@ function DashboardFiscaleContent() {
       // casella non è spuntata (vedi sotto), quindi questo ramo invia
       // sempre `true` quando raggiunto.
       fiscalDeclarationAccepted: declarationAccepted || undefined,
+      chargesVat: entityType === "SOLE_PROPRIETOR" && chargesVat !== null ? chargesVat : undefined,
+      invoiceRecipient: entityType === "SOLE_PROPRIETOR" || entityType === "BUSINESS" ? invoiceRecipient.trim() : undefined,
     };
 
     // Validato qui con la STESSA `professionalFiscalProfileSchema` già usata
@@ -385,6 +407,22 @@ function DashboardFiscaleContent() {
       setStripeError(e instanceof Error ? e.message : "Impossibile avviare l'attivazione dei pagamenti.");
     } finally {
       setStripeLoading(false);
+    }
+  }
+
+  // Risposta veloce dal riepilogo, per chi aveva già compilato i dati prima
+  // della domanda sull'IVA (docs/CHANGELOG.md §378).
+  async function saveChargesVat(value: boolean) {
+    if (!token) return;
+    setVatSaving(true);
+    try {
+      const updated = await apiClient.updateMyFiscalProfile(token, { chargesVat: value });
+      setProfile(updated);
+      setChargesVat(value);
+    } catch {
+      // Resta la domanda: si può riprovare.
+    } finally {
+      setVatSaving(false);
     }
   }
 
@@ -472,6 +510,8 @@ function DashboardFiscaleContent() {
   };
   const cfOfficial = officialCheck("CODICE_FISCALE", fields.fiscalCodiceFiscale);
   const vatOfficial = officialCheck("PARTITA_IVA", fields.vatNumber);
+  const recipientCheck = parseInvoiceRecipient(invoiceRecipient);
+  const recipientError = recipientCheck.ok ? undefined : recipientCheck.error;
   const hasLiveErrors = liveErrors.length > 0 || !!cfCheck.message || !!pivaCheck.message;
 
   // Solo i dati che servono davvero (richiesta dell'utente, docs/CHANGELOG.md
@@ -487,6 +527,7 @@ function DashboardFiscaleContent() {
     if (!filled("fiscalCodiceFiscale") && !(abroad && filled("foreignTin"))) step1Missing.push("Codice fiscale");
     if (askBirthDate && !/^\d{4}-\d{2}-\d{2}$/.test(fields.dateOfBirth ?? "")) step1Missing.push("Data di nascita");
     if (entityType === "SOLE_PROPRIETOR" && !filled("vatNumber")) step1Missing.push("Partita IVA");
+    if (entityType === "SOLE_PROPRIETOR" && chargesVat === null) step1Missing.push("IVA nelle fatture");
   } else if (entityType === "BUSINESS") {
     if (!filled("businessName")) step1Missing.push("Ragione sociale");
     if (!filled("vatNumber")) step1Missing.push("Partita IVA");
@@ -663,7 +704,27 @@ function DashboardFiscaleContent() {
                         ) : null}
                       </YStack>
                     ) : null}
-                    {entityType === "SOLE_PROPRIETOR" ? vatField : null}
+                    {entityType === "SOLE_PROPRIETOR" ? (
+                      <>
+                        {vatField}
+                        <YStack gap="$2">
+                          <Text fontSize={16} fontWeight="700" color={brand.grafite}>
+                            Nelle tue fatture applichi l&apos;IVA?
+                          </Text>
+                          <XStack gap="$2" flexWrap="wrap">
+                            <Button variant={chargesVat === true ? "primary" : "secondary"} aria-pressed={chargesVat === true} onPress={() => setChargesVat(true)}>
+                              Sì
+                            </Button>
+                            <Button variant={chargesVat === false ? "primary" : "secondary"} aria-pressed={chargesVat === false} onPress={() => setChargesVat(false)}>
+                              No
+                            </Button>
+                          </XStack>
+                          <Text fontSize={16} color={brand.grafite70}>
+                            No se sei nel regime forfettario. Serve a mostrare bene i prezzi ai clienti.
+                          </Text>
+                        </YStack>
+                      </>
+                    ) : null}
                   </>
                 ) : null}
 
@@ -820,6 +881,19 @@ function DashboardFiscaleContent() {
                   )}
                 </XStack>
 
+                {entityType === "SOLE_PROPRIETOR" || entityType === "BUSINESS" ? (
+                  <Field
+                    label="Codice destinatario o PEC (facoltativo)"
+                    accessibilityLabel="Codice destinatario o PEC"
+                    value={invoiceRecipient}
+                    onChangeText={setInvoiceRecipient}
+                    autoCapitalize="none"
+                    placeholder="es. M5UXCR1"
+                    hint={recipientError ? undefined : "Per ricevere le nostre fatture. Lo trovi nel tuo programma delle fatture."}
+                    error={recipientError}
+                  />
+                ) : null}
+
                 <XStack
                   alignItems="flex-start"
                   gap="$2"
@@ -859,8 +933,8 @@ function DashboardFiscaleContent() {
                   <Button
                     variant="primary"
                     onPress={handleSave}
-                    disabled={saving || step2Missing.length > 0 || !declarationAccepted || hasLiveErrors}
-                    opacity={saving || step2Missing.length > 0 || !declarationAccepted || hasLiveErrors ? 0.45 : 1}
+                    disabled={saving || step2Missing.length > 0 || !declarationAccepted || hasLiveErrors || !!recipientError}
+                    opacity={saving || step2Missing.length > 0 || !declarationAccepted || hasLiveErrors || !!recipientError ? 0.45 : 1}
                   >
                     {saving ? "Salvataggio..." : "Salva"}
                   </Button>
@@ -931,7 +1005,30 @@ function DashboardFiscaleContent() {
                     .filter(Boolean)
                     .join(", ")}
                 </Text>
+                {entityType === "SOLE_PROPRIETOR" && chargesVat !== null ? (
+                  <Text color={brand.grafite70}>{chargesVat ? "Applichi l'IVA nelle fatture" : "Fatture senza IVA (forfettario)"}</Text>
+                ) : null}
+                {invoiceRecipient ? <Text color={brand.grafite70}>{invoiceRecipient.includes("@") ? `PEC ${invoiceRecipient}` : `Codice destinatario ${invoiceRecipient}`}</Text> : null}
               </YStack>
+              {/* Chi aveva compilato i dati prima della domanda (§378): una risposta, senza riaprire il modulo. */}
+              {entityType === "SOLE_PROPRIETOR" && chargesVat === null ? (
+                <YStack gap="$2" padding="$3" borderRadius={20} backgroundColor={brand.gesso}>
+                  <Text fontSize={16} fontWeight="700" color={brand.grafite}>
+                    Nelle tue fatture applichi l&apos;IVA?
+                  </Text>
+                  <Text fontSize={16} color={brand.grafite70}>
+                    No se sei nel regime forfettario. Serve a mostrare bene i prezzi ai clienti.
+                  </Text>
+                  <XStack gap="$2">
+                    <Button variant="secondary" disabled={vatSaving} onPress={() => void saveChargesVat(true)}>
+                      Sì
+                    </Button>
+                    <Button variant="secondary" disabled={vatSaving} onPress={() => void saveChargesVat(false)}>
+                      No
+                    </Button>
+                  </XStack>
+                </YStack>
+              ) : null}
             </Surface>
 
             {nextStep?.key === "identity" && nextStep.action ? (
@@ -996,6 +1093,18 @@ function DashboardFiscaleContent() {
                 </OnlinePaymentsCard>
               )}
             </div>
+
+            {/* Fatture, estratti e documenti (docs/CHANGELOG.md §378): da qui e da Abbonamento, senza una voce di menu. */}
+            <Link href="/dashboard/documenti" style={{ textDecoration: "none" }}>
+              <XStack alignItems="center" gap="$2" paddingHorizontal="$1">
+                <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
+                  Fatture e documenti
+                </Text>
+                <Text color={brand.cianografiaScuro} aria-hidden>
+                  →
+                </Text>
+              </XStack>
+            </Link>
 
             {/* Riepilogo di quanto comunichiamo al fisco (docs/CHANGELOG.md §246). */}
             <Link href="/dashboard/fiscale/dac7" style={{ textDecoration: "none" }}>

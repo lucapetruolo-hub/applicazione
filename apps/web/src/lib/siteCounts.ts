@@ -73,7 +73,7 @@ function send(path: "step" | "failure" | "profile-view", body: object): void {
   );
 }
 
-/** TELEFONO fino a 767 px, come la barra "Richiedi un preventivo"; il resto è COMPUTER (§391). */
+/** TELEFONO fino a 767 px, come la barra "Richiedi un preventivo"; il resto è COMPUTER (§394). */
 export function deviceKind(): DeviceKind {
   return typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches ? "TELEFONO" : "COMPUTER";
 }
@@ -81,13 +81,13 @@ export function deviceKind(): DeviceKind {
 /**
  * `origin`: PROFILE se la richiesta parte dalla pagina di un professionista;
  * allora vanno anche il pulsante da cui è partita (`source`) e il
- * dispositivo (§391).
+ * dispositivo (§394).
  */
 export function countRequestStep(step: RequestStepKey, categorySlug?: string | null, origin: RequestOrigin = "GENERAL", source?: ProfileRequestSource): void {
   send("step", { step, origin, ...(categorySlug ? { categorySlug } : {}), ...(origin === "PROFILE" ? { source: source ?? "ALTRO", device: deviceKind() } : {}) });
 }
 
-/** Profilo pubblico aperto, solo il dispositivo (§391). */
+/** Profilo pubblico aperto, solo il dispositivo (§394). */
 export function countProfileView(): void {
   send("profile-view", { device: deviceKind() });
 }

@@ -1072,9 +1072,42 @@ model Quote {
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
   items               QuoteItem[]
 
-  booking Booking?
+  booking        Booking?
+  invoiceRequest ClientInvoiceRequest?
 
   @@map("quotes")
+}
+
+// Fattura chiesta dal cliente accettando il preventivo (decisione dell'utente
+// del 27/10/2026, docs/CHANGELOG.md §378): a nome suo con il codice fiscale, o
+// intestata a una partita IVA. Legata al preventivo perché con l'acconto
+// online il lavoro nasce solo dopo il pagamento. Il professionista la vede
+// solo dopo l'accettazione, come gli altri contatti (CLAUDE.md §5 punto 9).
+// Codice fiscale cifrato come quello dei professionisti.
+model ClientInvoiceRequest {
+  id                 String    @id @default(uuid())
+  quoteId            String    @unique
+  clientId           String
+  kind               String // PERSON | VAT (ClientInvoiceKind in packages/shared)
+  name               String
+  taxCode            String?
+  vatNumber          String?
+  sdiRecipientCode   String?
+  pecEmail           String?
+  street             String
+  houseNumber        String?
+  postalCode         String
+  city               String
+  province           String?
+  // Il professionista ha aperto la scheda del lavoro dopo la richiesta.
+  professionalSeenAt DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@map("client_invoice_requests")
 }
 
 // Voce di un preventivo (es. "Manodopera", "Materiali", "Trasporto"), ognuna
@@ -1116,17 +1149,17 @@ enum BookingCanceledBy {
 }
 
 model Booking {
-  id                    String        @id @default(uuid())
-  quoteId               String?       @unique
+  id                      String        @id @default(uuid())
+  quoteId                 String?       @unique
   // Richiesta da cui nasce il lavoro (docs/CHANGELOG.md §346): la compila un
   // trigger del database dal preventivo (quoteId), mai il codice. Un indice
   // unico parziale ("bookings_one_active_job_per_request", solo nella
   // migrazione: Prisma non descrive gli indici con WHERE) vieta un secondo
   // lavoro non annullato sulla stessa richiesta, anche se il codice sbagliasse.
-  guidedRequestId       String?
-  clientId              String
-  professionalProfileId String
-  scheduledAt           DateTime
+  guidedRequestId         String?
+  clientId                String
+  professionalProfileId   String
+  scheduledAt             DateTime
   // Preavviso per annullare valido per questo lavoro, copiato dal profilo
   // quando nasce (docs/CHANGELOG.md §347): null per i lavori di prima, che
   // valgono 24 ore. canceledLate: il cliente ha annullato dentro il preavviso.
@@ -1138,16 +1171,16 @@ model Booking {
   // prenotazioni dirette da agenda pubblica (bookAgendaSlot, che già
   // conosce la fascia esatta ma non passa da questo campo) o per date
   // indicate a mano senza agenda impostata.
-  scheduledEndAt        DateTime?
-  status                BookingStatus @default(PENDING)
+  scheduledEndAt          DateTime?
+  status                  BookingStatus @default(PENDING)
   // Promemoria automatico anti no-show (CEO, tattico — CLAUDE.md §1: "core,
   // non accessoria"): email inviata via BookingRemindersService quando
   // scheduledAt è entro ~24 ore, null finché non è ancora partito. Evita
   // di reinviarlo a ogni passaggio del cron (EVERY_30_MINUTES) sulla
   // stessa prenotazione.
-  reminderSentAt        DateTime?
-  createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
+  reminderSentAt          DateTime?
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
 
   // Indirizzo di lavoro strutturato, raccolto in una schermata dedicata
   // all'accettazione del preventivo (richiesta esplicita dell'utente: nome,
@@ -1279,16 +1312,48 @@ model Booking {
   client              User                @relation(fields: [clientId], references: [id], onDelete: Cascade)
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
 
-  issue      JobIssue?
-  review     Review?
+  issue            JobIssue?
+  review           Review?
   // Pagamento del lavoro (MANOVIA/DIRETTO, lordo/commissione/netto) — vedi
   // JobPayment in fondo a questo file. Nullable: una Booking creata prima
   // di questa funzionalità, o una diretta da agenda pubblica (bookAgendaSlot,
   // dormiente da CLAUDE.md §20), può non averne ancora una.
-  jobPayment JobPayment?
+  jobPayment       JobPayment?
+  // Copia di cortesia del documento dato al cliente (docs/CHANGELOG.md §379).
+  courtesyDocument CourtesyDocument?
 
   @@index([professionalProfileId, scheduledAt])
   @@map("bookings")
+}
+
+// Copia di cortesia del documento del lavoro (decisione dell'utente del
+// 27/10/2026, docs/CHANGELOG.md §379): il numero della ricevuta per
+// prestazione occasionale lo diamo noi, progressivo per professionista e
+// anno e sempre lo stesso per quel lavoro; per la fattura il professionista
+// scrive il numero del suo programma. Ci resta l'elenco dei documenti dati
+// ai clienti, utile per l'assistenza e le segnalazioni.
+model CourtesyDocument {
+  id                    String   @id @default(uuid())
+  bookingId             String   @unique
+  professionalProfileId String
+  kind                  String // INVOICE | RECEIPT (CourtesyCopyView in packages/shared)
+  year                  Int
+  /// Ricevute: il nostro progressivo dell'anno (1, 2, 3...).
+  number                Int?
+  /// Fatture: il numero del programma delle fatture del professionista.
+  ownNumber             String?
+  /// Ultima volta che il professionista ha scaricato il PDF (Admin → Documenti ai clienti, §380).
+  pdfDownloadedAt       DateTime?
+  /// Importo scritto su quel PDF: se il lavoro cambia dopo, l'admin lo vede.
+  pdfTotalEurCents      Int?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@unique([professionalProfileId, year, number])
+  @@index([createdAt])
+  @@map("courtesy_documents")
 }
 
 // Voce dell'importo finale di un lavoro completato (richiesta esplicita
@@ -1772,6 +1837,20 @@ model ProfessionalFiscalProfile {
   // `fiscalDataMissing` in packages/shared): aggiornato a ogni salvataggio.
   fiscalDataCompleteAt DateTime?
 
+  // --- Documenti contabili (docs/CHANGELOG.md §378) ---
+  // Applica l'IVA nelle sue fatture: lo dice solo chi ha la P.IVA come
+  // persona (no = forfettario); l'azienda sempre, il privato mai
+  // (`professionalChargesVat` in packages/shared). Decide "IVA inclusa" o
+  // "Prezzo finale" nel preventivo e la copia di cortesia della sua fattura.
+  chargesVat             Boolean?
+  // Dove riceve le nostre fatture elettroniche, facoltativo: senza, vanno
+  // nella sua area dell'Agenzia delle Entrate (codice 0000000) e nel sito.
+  sdiRecipientCode       String?
+  pecEmail               String?
+  // Estratto del mese al suo commercialista, solo se lo chiede lui (spunta).
+  accountantEmail        String?
+  accountantStatementsAt DateTime?
+
   // --- Stripe Connect (onboarding per i pagamenti MANOVIA-mediati) ---
   stripeConnectAccountId   String?   @unique
   stripeChargesEnabled     Boolean   @default(false)
@@ -1994,7 +2073,12 @@ model JobPayment {
   balancePaymentIntentId String?   @unique
   balancePaidAt          DateTime?
   paidEurCents           Int       @default(0)
+  // Costo della carta a carico del professionista: solo per i pagamenti
+  // fatti prima della trattenuta unica (docs/CHANGELOG.md §378), poi 0.
   stripeFeeEurCents      Int       @default(0)
+  // Costo della carta pagato da noi (trattenuta unica, §378): stimato al
+  // pagamento con l'addebito diretto, poi confrontato col report di Stripe.
+  cardFeeEurCents        Int       @default(0)
   refundedEurCents       Int       @default(0)
   releaseDueAt           DateTime?
   releasedAt             DateTime?
@@ -2071,12 +2155,13 @@ model JobPayment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  booking        Booking          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  appliedFeeRule PlatformFeeRule? @relation(fields: [appliedFeeRuleId], references: [id])
+  booking        Booking            @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  appliedFeeRule PlatformFeeRule?   @relation(fields: [appliedFeeRuleId], references: [id])
   revenueEntries ManoviaRevenue[]
   refunds        Refund[]
   disputes       Dispute[]
   invoices       Invoice[]
+  feeEntries     PlatformFeeEntry[]
 
   @@map("job_payments")
 }
@@ -2264,20 +2349,151 @@ enum InvoiceStatus {
   VOID
 }
 
+/// Cosa fattura una nostra fattura al professionista (docs/CHANGELOG.md §378).
+enum InvoiceSource {
+  JOB_FEES // Trattenute del mese sui pagamenti online (una fattura al mese)
+  SUBSCRIPTION // Abbonamento (mensile o annuale)
+  UPGRADE_FEE // Quota di passaggio al livello superiore
+  VISIBILITY_BOOST // Pacchetto di visibilità
+}
+
+/// Invio allo SdI tramite il fornitore (Openapi). Senza chiavi resta NOT_SENT
+/// e l'admin scarica l'XML.
+enum InvoiceSdiStatus {
+  NOT_SENT
+  SENT
+  DELIVERED
+  REJECTED
+}
+
+/// Le nostre fatture al professionista (docs/CHANGELOG.md §378). Numerate per
+/// serie e anno senza buchi (`InvoiceCounter`), mai cancellate: una correzione
+/// è una nota di credito (`creditNote`, `relatedInvoiceId`). Nessuna relazione
+/// col profilo: la fattura resta anche se l'account viene chiuso (10 anni),
+/// con i dati del destinatario fotografati in `recipient`.
 model Invoice {
-  id                    String        @id @default(uuid())
+  id                    String           @id @default(uuid())
   type                  InvoiceType
+  source                InvoiceSource    @default(JOB_FEES)
+  creditNote            Boolean          @default(false)
+  relatedInvoiceId      String?
   jobPaymentId          String?
   professionalProfileId String
+  /// Serie della numerazione: COM (trattenute), ABB (abbonamento, passaggi, visibilità).
+  series                String?
+  year                  Int?
+  number                Int?
+  /// Mese delle trattenute (AAAA-MM) per le fatture JOB_FEES.
+  periodMonth           String?
+  /// Totale con l'IVA (valore assoluto, anche per le note di credito).
   amountEurCents        Int
-  status                InvoiceStatus @default(DRAFT)
+  taxableEurCents       Int              @default(0)
+  vatEurCents           Int              @default(0)
+  roundingEurCents      Int              @default(0)
+  vatRateBasisPoints    Int              @default(2200)
+  /// Righe della fattura: [{ description, taxableEurCents, vatEurCents }].
+  lines                 Json?
+  /// Dati del professionista al momento dell'emissione (codice fiscale cifrato).
+  recipient             Json?
+  /// I nostri dati al momento dell'emissione.
+  issuer                Json?
+  status                InvoiceStatus    @default(DRAFT)
   issuedAt              DateTime?
   documentUrl           String?
-  createdAt             DateTime      @default(now())
+  /// Chiave contro i doppioni (es. "JOB_FEES:<profilo>:2026-11", "SUB:<id fattura Stripe>").
+  dedupeKey             String?          @unique
+  stripeInvoiceId       String?
+  stripePaymentIntentId String?
+  sdiStatus             InvoiceSdiStatus @default(NOT_SENT)
+  sdiId                 String?
+  sdiMessage            String?
+  sdiSentAt             DateTime?
+  /// Invii allo SdI: dopo uno scarto il file va rimandato con un nome nuovo.
+  sdiAttempts           Int              @default(0)
+  /// FatturaPA XML generato all'emissione, cifrato come il codice fiscale che contiene.
+  xml                   String?
+  createdAt             DateTime         @default(now())
+
+  jobPayment JobPayment?        @relation(fields: [jobPaymentId], references: [id])
+  feeEntries PlatformFeeEntry[]
+
+  @@unique([series, year, number])
+  @@index([professionalProfileId, issuedAt])
+  @@map("invoices")
+}
+
+/// Ultimo numero usato per serie e anno (numerazione senza buchi).
+model InvoiceCounter {
+  series String
+  year   Int
+  last   Int    @default(0)
+
+  @@id([series, year])
+  @@map("invoice_counters")
+}
+
+enum PlatformFeeEntryKind {
+  HOLD // Trattenuta su un incasso online (acconto o saldo)
+  RETURN // Trattenuta restituita (rimborso, conguaglio)
+  COSTS // Costi ribaddebitati (es. contestazione persa)
+}
+
+/// Ogni movimento della trattenuta sui soldi del professionista, con l'IVA
+/// dentro (docs/CHANGELOG.md §378). La fattura del mese li somma; un mese col
+/// totale negativo diventa una nota di credito.
+model PlatformFeeEntry {
+  id                    String               @id @default(uuid())
+  professionalProfileId String
+  jobPaymentId          String?
+  kind                  PlatformFeeEntryKind
+  /// Con l'IVA, col segno: positivo trattenuto, negativo restituito.
+  grossEurCents         Int
+  taxableEurCents       Int
+  vatEurCents           Int
+  /// Per le trattenute: quanto ha pagato online il cliente (per l'estratto).
+  paymentEurCents       Int                  @default(0)
+  /// Nostro costo della carta per quel pagamento (stimato con l'addebito diretto), per la quadratura del mese.
+  cardFeeEurCents       Int                  @default(0)
+  description           String
+  /// Chiave contro i doppioni (es. "HOLD:<pi>", "RETURN:<refund>").
+  dedupeKey             String?              @unique
+  occurredAt            DateTime             @default(now())
+  invoiceId             String?
+  createdAt             DateTime             @default(now())
 
   jobPayment JobPayment? @relation(fields: [jobPaymentId], references: [id])
+  invoice    Invoice?    @relation(fields: [invoiceId], references: [id])
 
-  @@map("invoices")
+  @@index([professionalProfileId, occurredAt])
+  @@index([invoiceId])
+  @@map("platform_fee_entries")
+}
+
+/// Dati della nostra azienda per le fatture, modificabili dall'admin (una
+/// sola riga, id "default"). Senza ragione sociale e partita IVA nessuna
+/// fattura viene emessa: il professionista vede solo l'estratto.
+model PlatformInvoiceSettings {
+  id           String    @id @default("default")
+  companyName  String?
+  vatNumber    String?
+  taxCode      String?
+  street       String?
+  houseNumber  String?
+  postalCode   String?
+  city         String?
+  province     String?
+  country      String    @default("IT")
+  /// Regime fiscale FatturaPA (RF01 = ordinario).
+  taxRegime    String    @default("RF01")
+  reaOffice    String?
+  reaNumber    String?
+  shareCapital String?
+  pecEmail     String?
+  /// Da quando emettere le fatture (prima solo estratto).
+  invoicesFrom DateTime?
+  updatedAt    DateTime  @updatedAt
+
+  @@map("platform_invoice_settings")
 }
 
 enum RefundStatus {
@@ -2428,7 +2644,7 @@ model RequestStepDay {
 }
 
 // Richieste partite da un profilo, per pulsante e dispositivo (docs/CHANGELOG.md
-// §391): visite al profilo (`source` ""), richieste iniziate e inviate, con
+// §394): visite al profilo (`source` ""), richieste iniziate e inviate, con
 // il pulsante da cui sono partite. Si conta solo dal lancio (`LAUNCH_DATE`),
 // mai chi è la persona né quale profilo.
 model ProfileRequestSourceDay {

@@ -512,7 +512,7 @@ export function GuidedRequestForm({
   // una volta per pagina aperta, con il lavoro scelto e se arriva dalla
   // pagina di un professionista. Dice dove ci si ferma.
   const requestOrigin = professionalProfileId ? "PROFILE" : "GENERAL";
-  // Da quale pulsante del profilo è partita (§391): `da=` nell'indirizzo.
+  // Da quale pulsante del profilo è partita (§394): `da=` nell'indirizzo.
   const requestSource = profileRequestSourceOf(searchParams.get("da"));
   const countedSteps = useRef(new Set<RequestStepKey>());
   const countStepOnce = (key: RequestStepKey) => {

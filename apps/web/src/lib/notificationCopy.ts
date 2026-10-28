@@ -127,6 +127,14 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   SUBSCRIPTION_ENDING: { icon: "⏳", message: "Il tuo abbonamento annullato finisce tra pochi giorni: puoi riattivarlo quando vuoi." },
   SUBSCRIPTION_PAYMENT_FAILED: { icon: "⚠️", message: "Pagamento dell'abbonamento non riuscito: controlla il metodo di pagamento." },
   CONTENT_REPORT_APPEAL_REJECTED: { icon: "📄", message: "La tua contestazione è stata esaminata: la decisione resta valida." },
+  // Documenti contabili (docs/CHANGELOG.md §378).
+  JOB_INVOICE_REQUESTED: { icon: "🧾", message: "Un cliente ti chiede la fattura: trovi i dati nella scheda del lavoro." },
+  MONTHLY_DOCUMENTS_READY: { icon: "🧾", message: "I documenti del mese sono pronti in Fatture e documenti." },
+  // Il 15 dicembre (§391).
+  CLIENT_DOCUMENTS_TO_FIX: { icon: "🧾", message: "Hai documenti dati ai clienti da sistemare prima del riepilogo dell'anno." },
+  // Al cliente, copia della ricevuta o della fattura (§387): il testo dipende dal payload, vedi sotto.
+  JOB_DOCUMENT_READY: { icon: "🧾", message: "Il professionista ha preparato il documento del lavoro: trovi una copia nei documenti della richiesta." },
+  ADMIN_FEE_RECONCILIATION: { icon: "⚠️", message: "Ci sono fatture o trattenute da controllare in Finanza." },
 };
 
 const DEFAULT_COPY = { icon: "🔔", message: "Hai una nuova notifica." };
@@ -173,7 +181,8 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
     return { icon: "📬", message: data.resent === true ? `${base}, al posto di quello che avevi rifiutato${jobSuffix}` : `${base}${jobSuffix}` };
   }
   if (type === "QUOTE_ACCEPTED") {
-    return { icon: "🥳", message: `${text(data.clientName) ?? "Il cliente"} ha accettato il tuo preventivo${jobSuffix}` };
+    // Fattura chiesta dal cliente, detta subito (docs/CHANGELOG.md §378).
+    return { icon: "🥳", message: `${text(data.clientName) ?? "Il cliente"} ha accettato il tuo preventivo${jobSuffix}${data.invoiceRequested === true ? " e ti chiede la fattura" : ""}` };
   }
   if (type === "NEW_LEAD" && text(data.category)) {
     const where = text(data.city) ? ` a ${text(data.city)}` : "";
@@ -201,6 +210,10 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   // Importo finale diverso dal preventivo, col motivo del professionista (docs/CHANGELOG.md §228).
   if (type === "JOB_COMPLETED" && typeof data.changeReason === "string" && data.changeReason.trim()) {
     return { icon: "✅", message: `Il professionista ha segnalato il lavoro come terminato, con un importo diverso dal preventivo: "${data.changeReason.trim()}"` };
+  }
+  if (type === "JOB_DOCUMENT_READY") {
+    const what = data.kind === "RECEIPT" ? "la ricevuta" : "la copia della fattura";
+    return { icon: "🧾", message: `Il professionista ha ${data.updated === true ? "aggiornato" : "preparato"} ${what}: la trovi nei documenti della richiesta${jobSuffix}` };
   }
   if (type === "QUOTE_REJECTED" && (data.note || data.canResend === true)) {
     const note = typeof data.note === "string" && data.note.trim() ? ` Nota: "${data.note.trim()}"` : "";

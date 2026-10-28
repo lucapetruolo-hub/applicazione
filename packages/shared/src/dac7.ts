@@ -214,3 +214,16 @@ export type Dac7YearSummary = {
 export function dac7AnnualDeadline(year: number): string {
   return `${year + 1}-01-31`;
 }
+
+export const DAC7_QUARTER_LABEL: Record<1 | 2 | 3 | 4, string> = { 1: "Gen – Mar", 2: "Apr – Giu", 3: "Lug – Set", 4: "Ott – Dic" };
+
+function dac7DateLabel(iso: string): string {
+  return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Rome" });
+}
+
+/** A che punto è l'anno: comunicato, in corso o in preparazione (pagina e PDF del riepilogo). */
+export function dac7YearStatus(summary: Pick<Dac7YearSummary, "year" | "submittedAt">, now: Date = new Date()): { variant: "verificato" | "nuovo"; label: string; detail: string } {
+  if (summary.submittedAt) return { variant: "verificato", label: "Comunicato al fisco", detail: `Inviato il ${dac7DateLabel(summary.submittedAt)}.` };
+  if (summary.year >= now.getFullYear()) return { variant: "nuovo", label: "Anno in corso", detail: "Si aggiorna ogni notte." };
+  return { variant: "nuovo", label: "In preparazione", detail: `Da comunicare entro il ${dac7DateLabel(dac7AnnualDeadline(summary.year))}.` };
+}

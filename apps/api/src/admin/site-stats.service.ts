@@ -336,7 +336,7 @@ export class SiteStatsService {
     const launchBase = { visibleProfessionals: visible.length, clientsWithRequest, acceptedJobs, paidOnline, greenWeeks: greenWeeksInARow(guideWeekly) };
     const launchStatus = { ...launchBase, ready: launchReady(launchBase) };
     const requestSteps = REQUEST_STEP_KEYS.map((key) => ({ key, count: steps.get(key) ?? 0, fromProfile: stepsFromProfile.get(key) ?? 0 }));
-    // Richieste dai profili per pulsante e dispositivo, tutto dal lancio (§391).
+    // Richieste dai profili per pulsante e dispositivo, tutto dal lancio (§394).
     const profileSourcesStarted = hasLaunched(now, launch);
     const profileSourceRows = profileSourcesStarted && launch
       ? await this.prisma.profileRequestSourceDay.groupBy({ by: ["event", "source", "device"], where: { day: { gte: dayStart(launch) } }, _sum: { count: true } })

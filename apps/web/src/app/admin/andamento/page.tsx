@@ -543,14 +543,14 @@ function StepsCard({ data }: { data: AdminSiteStats }) {
   );
 }
 
-/** "12 (4%)": il numero e sempre anche la percentuale, come chiesto da Luca (§391). */
+/** "12 (4%)": il numero e sempre anche la percentuale, come chiesto da Luca (§394). */
 function countWithShare(part: number, total: number): string {
   return total > 0 ? `${part} (${Math.round((part / total) * 100)}%)` : String(part);
 }
 
 /**
  * Da quale pulsante del profilo partono le richieste, per computer e
- * telefono, tutto dal lancio (docs/CHANGELOG.md §391): dice se la barra in
+ * telefono, tutto dal lancio (docs/CHANGELOG.md §394): dice se la barra in
  * basso porta richieste in più o le toglie al pulsante nella pagina e agli
  * orari dell'agenda.
  */

@@ -129,7 +129,7 @@ export type RequestOrigin = (typeof REQUEST_ORIGINS)[number];
 
 /**
  * Da quale pulsante parte una richiesta da un profilo (docs/CHANGELOG.md
- * §391), letto da `da=` nell'indirizzo di /preventivo: barra in basso,
+ * §394), letto da `da=` nell'indirizzo di /preventivo: barra in basso,
  * pulsante nella pagina, orario dell'agenda del profilo, orario nei
  * risultati di ricerca; ALTRO per link senza `da` (vecchi o copiati).
  */
@@ -171,7 +171,7 @@ export const siteStepEventSchema = z.object({
   step: z.enum(REQUEST_STEP_KEYS),
   categorySlug: z.string().max(60).optional(),
   origin: z.enum(REQUEST_ORIGINS).optional(),
-  /** Solo con origin PROFILE (§391). */
+  /** Solo con origin PROFILE (§394). */
   source: z.enum(PROFILE_REQUEST_SOURCES).optional(),
   device: z.enum(DEVICE_KINDS).optional(),
 });
@@ -183,7 +183,7 @@ export const siteFailureEventSchema = z.object({
 });
 export type SiteFailureEvent = z.infer<typeof siteFailureEventSchema>;
 
-/** Profilo pubblico aperto, solo il dispositivo (§391). */
+/** Profilo pubblico aperto, solo il dispositivo (§394). */
 export const siteProfileViewEventSchema = z.object({ device: z.enum(DEVICE_KINDS) });
 export type SiteProfileViewEvent = z.infer<typeof siteProfileViewEventSchema>;
 
@@ -273,7 +273,7 @@ export type AdminSiteStats = {
   /** Totale, e quanti dalla pagina di un professionista (`fromProfile`). */
   requestSteps: { key: RequestStepKey; count: number; fromProfile: number }[];
   /**
-   * Richieste dai profili per pulsante e dispositivo, dal lancio (§391).
+   * Richieste dai profili per pulsante e dispositivo, dal lancio (§394).
    * `since` è il giorno del lancio (AAAA-MM-GG), null se `LAUNCH_DATE` non
    * è impostata; `started` false prima del lancio (righe vuote).
    */

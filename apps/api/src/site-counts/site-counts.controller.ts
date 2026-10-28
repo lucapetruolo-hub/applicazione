@@ -39,7 +39,7 @@ export class SiteCountsController {
     await this.siteCounts.recordFailure(body.form, body.kind).catch(() => undefined);
   }
 
-  /** Profilo pubblico aperto, solo il dispositivo (§391). */
+  /** Profilo pubblico aperto, solo il dispositivo (§394). */
   @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @Post("profile-view")
   @HttpCode(204)

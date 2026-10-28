@@ -5,7 +5,7 @@ import { useServerInsertedHTML } from "next/navigation";
 import { StyleRegistry, createStyleRegistry } from "styled-jsx";
 
 /**
- * Stili `<style jsx>` già nell'HTML del server (docs/CHANGELOG.md §390).
+ * Stili `<style jsx>` già nell'HTML del server (docs/CHANGELOG.md §393).
  * Senza questo registro l'App Router li aggiungeva solo dopo il JavaScript:
  * all'apertura le parti che li usano comparivano senza stile e poi si
  * spostavano (es. "Salva/Condividi" nel profilo, 16 px di salto).

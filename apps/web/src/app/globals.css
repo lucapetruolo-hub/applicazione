@@ -205,7 +205,7 @@ body:has(.profile-cta-bar) {
 }
 /* Scorrendo verso un elemento scelto col tasto Tab, il browser lo tiene
    sopra la barra (WCAG 2.2 "focus non coperto", come il banner dei cookie
-   del §271), §386. */
+   del §271), §392. */
 html:has(.profile-cta-bar[data-visible="true"]) {
   scroll-padding-bottom: 88px;
 }
@@ -215,7 +215,7 @@ html:has(.profile-cta-bar[data-visible="true"]) {
 body:has(.profile-cta-bar) .site-header-cta-link {
   display: none;
 }
-/* Telefono in orizzontale e finestre basse: barra più sottile (§386). */
+/* Telefono in orizzontale e finestre basse: barra più sottile (§392). */
 @media (max-height: 500px) {
   .profile-cta-bar {
     padding-top: 6px;
@@ -5045,7 +5045,7 @@ a.admin-kpi:hover {
   line-height: 18px;
   /* Più scuro del grigio caldo #6e6459: le briciole stanno sopra le forme
      sfumate dello sfondo, e sul verde chiaro quel grigio arrivava a 3,6:1
-     (serve 4,5:1). #4f463e resta sopra 5:1 anche lì (docs/CHANGELOG.md §390). */
+     (serve 4,5:1). #4f463e resta sopra 5:1 anche lì (docs/CHANGELOG.md §393). */
   color: #4f463e;
 }
 .breadcrumbs-list {
@@ -5824,5 +5824,32 @@ a.admin-kpi:hover {
     font-size: 15px;
     font-weight: 700;
     color: #2b2420;
+  }
+}
+
+/* Fatture, estratti e copie di cortesia da stampare o salvare in PDF
+   (docs/CHANGELOG.md §378): si stampa solo il documento, senza intestazione
+   del sito, menu né pulsanti. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-document,
+  .print-document * {
+    visibility: visible;
+  }
+  .print-document {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  .print-document [data-print-hide] {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
   }
 }
