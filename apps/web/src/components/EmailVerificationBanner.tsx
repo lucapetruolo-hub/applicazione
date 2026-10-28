@@ -10,8 +10,10 @@ import { useAuth } from "@/lib/AuthContext";
  * (docs/CHANGELOG.md §178). Compare solo quando l'API richiede davvero la
  * conferma (`EMAIL_VERIFICATION_REQUIRED=true` su Render): prima che il
  * dominio d'invio sia verificato su Resend, l'email non arriverebbe. Porta a
- * /conferma-email, dove si scrive il codice di 6 cifre o se ne chiede uno
- * nuovo (§243); nascosto dove il codice è già sullo schermo.
+ * /conferma-email, dove si aspetta il tocco sul pulsante dell'email (con il
+ * codice di riserva) o se ne chiede una nuova
+ * (docs/changelog/2026-10-28-verifica-email-con-link.md); nascosto dove
+ * l'attesa è già sullo schermo.
  */
 export function EmailVerificationBanner() {
   const { user, token } = useAuth();
@@ -33,10 +35,10 @@ export function EmailVerificationBanner() {
       alignItems="center"
     >
       <Text fontSize={16} color={brand.grafite} textAlign="center">
-        Conferma la tua email per salvare il profilo e inviare preventivi: ti abbiamo mandato un codice a <Text fontWeight="700">{user.email}</Text>.
+        Conferma la tua email per salvare il profilo e inviare preventivi: premi il pulsante nell&apos;email che ti abbiamo mandato a <Text fontWeight="700">{user.email}</Text>.
       </Text>
       <Link href="/conferma-email" style={{ color: brand.cianografiaScuro, fontWeight: 700, textDecoration: "underline" }}>
-        Inserisci il codice
+        Non è arrivata?
       </Link>
     </XStack>
   );

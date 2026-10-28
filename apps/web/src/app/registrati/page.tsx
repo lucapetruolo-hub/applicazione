@@ -605,6 +605,7 @@ function RegistratiForm() {
           token={codeStep.token}
           email={codeStep.email}
           initialResendSeconds={codeStep.resendIn}
+          linkFirst
           allowChangeEmail
           onEmailChanged={(next) => {
             setCodeStep((step) => (step ? { ...step, email: next } : step));

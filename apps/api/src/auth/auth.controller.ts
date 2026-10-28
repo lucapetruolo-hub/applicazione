@@ -38,7 +38,7 @@ import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { MulterExceptionFilter } from "../common/multer-exception.filter";
 import { PRISMA } from "../prisma/prisma.module";
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
-import { AuthService, emailCodeResendWait, emailCodeValidFor } from "./auth.service";
+import { AuthService, emailCodeResendWait, emailCodeValidFor, emailLinkValidFor } from "./auth.service";
 import { JwtAuthGuard, type AuthenticatedRequest } from "./jwt-auth.guard";
 import { isEmailVerificationRequired } from "./verified-email.guard";
 import { assertTurnstile } from "./turnstile";
@@ -205,6 +205,7 @@ export class AuthController {
     emailCodeHash: string | null;
     emailCodeExpiresAt: Date | null;
     emailCodeAttempts: number;
+    emailTokenExpiresAt: Date | null;
     signupCategorySlugs: string[];
     signupEntityType: "PRIVATE_INDIVIDUAL" | "SOLE_PROPRIETOR" | "BUSINESS" | null;
     sidebarCollapsed?: boolean | null;
@@ -286,6 +287,9 @@ export class AuthController {
       emailCodeResendInSeconds: user.emailVerifiedAt ? 0 : emailCodeResendWait(user.emailCodeSentAt),
       // Secondi di validità del codice in corso, 0 se scaduto o mai mandato.
       emailCodeValidForSeconds: user.emailVerifiedAt ? 0 : emailCodeValidFor(user),
+      // Secondi di validità del pulsante dell'email, 0 se scaduto o mai mandato
+      // (docs/changelog/2026-10-28-verifica-email-con-link.md).
+      emailLinkValidForSeconds: user.emailVerifiedAt ? 0 : emailLinkValidFor(user.emailTokenExpiresAt),
       // Categorie scelte in registrazione (docs/CHANGELOG.md §217): solo per
       // precompilare il primo profilo in /dashboard/profilo.
       signupCategorySlugs: user.signupCategorySlugs,
