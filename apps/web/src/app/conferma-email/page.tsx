@@ -1,10 +1,12 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Surface, Text, YStack, brand, radiusDocLg } from "@professionisti/ui";
+import { Button, Text, YStack, brand } from "@professionisti/ui";
+import { AuthCard, AuthPageBackground } from "@/components/AuthPageBackground";
+import { AuthIconBadge } from "@/components/AuthStepHeader";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { EmailCodeForm } from "@/components/EmailCodeForm";
@@ -18,7 +20,10 @@ export default function ConfermaEmailPage() {
   );
 }
 
-/** Con `?token=` è il pulsante dell'email; senza, si scrive il codice di 6 cifre (docs/CHANGELOG.md §243). */
+/**
+ * Con `?token=` è il pulsante dell'email; senza, l'attesa della conferma con
+ * il codice di riserva (docs/changelog/2026-10-28-verifica-email-con-link.md).
+ */
 function ConfermaEmailRouter() {
   const token = useSearchParams().get("token");
   return token ? <ConfermaEmail /> : <ConfermaConCodice />;
@@ -36,11 +41,14 @@ function ConfermaConCodice() {
   const nextHref = user.isProfessional ? "/dashboard" : "/account";
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
-      <Surface floating width="100%" maxWidth={440} borderRadius={radiusDocLg} padding="$6" gap="$5">
-        <Text tag="h1" fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
-          Conferma la tua email
-        </Text>
+    <AuthPageBackground>
+      <AuthCard maxWidth={440}>
+        <YStack alignItems="center" gap="$3">
+          <AuthIconBadge icon="mail" />
+          <Text tag="h1" fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
+            Conferma la tua email
+          </Text>
+        </YStack>
         {user.emailVerified ? (
           <YStack gap="$4" alignItems="center">
             <Text color={brand.grafite70} textAlign="center">
@@ -56,6 +64,8 @@ function ConfermaConCodice() {
             email={user.email ?? ""}
             initialResendSeconds={user.emailCodeResendInSeconds ?? 0}
             initialValidForSeconds={user.emailCodeValidForSeconds ?? 0}
+            initialLinkValidForSeconds={user.emailLinkValidForSeconds ?? 0}
+            linkFirst
             allowChangeEmail={user.isProfessional}
             onEmailChanged={() => void refreshUser().catch(() => {})}
             onVerified={async () => {
@@ -64,62 +74,157 @@ function ConfermaConCodice() {
             }}
           />
         )}
-      </Surface>
-    </YStack>
+      </AuthCard>
+    </AuthPageBackground>
   );
 }
 
 /**
- * Link ricevuto via email dopo la registrazione (docs/CHANGELOG.md §178).
- * Il codice vale una volta sola: il ref evita la seconda chiamata che React
- * fa in sviluppo, che fallirebbe con "link non valido".
+ * Pulsante dell'email di conferma (docs/CHANGELOG.md §178,
+ * docs/changelog/2026-10-28-verifica-email-con-link.md). Aprire il link non
+ * conferma nulla: serve un tocco su "Conferma la mia email", così gli
+ * antivirus della posta che aprono i link da soli non lo consumano. Con
+ * l'accesso già fatto in questo browser (un antivirus non ce l'ha) conferma
+ * da sola. Il ref evita la seconda chiamata che React fa in sviluppo.
  */
 function ConfermaEmail() {
   const token = useSearchParams().get("token") ?? "";
-  const { user, refreshUser } = useAuth();
+  const { user, token: sessionToken, isLoading, refreshUser } = useAuth();
+  const [state, setState] = useState<"ready" | "checking" | "done" | "error">("ready");
   const [confirmedEmail, setConfirmedEmail] = useState<string | null>(null);
+  const [alreadyVerified, setAlreadyVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // "retry": nessuna risposta sul link (rete, troppi tentativi): si riprova, il link è ancora buono.
+  const [errorKind, setErrorKind] = useState<"expired" | "invalid" | "retry">("invalid");
+  const [resend, setResend] = useState<"idle" | "sending" | "sent">("idle");
+  const [resendError, setResendError] = useState<string | null>(null);
   const [popupOpen, setPopupOpen] = useState(false);
   const started = useRef(false);
 
-  useEffect(() => {
+  const confirm = useCallback(() => {
     if (started.current) return;
     started.current = true;
-    // Qui il token c'è sempre: senza, ConfermaEmailRouter mostra ConfermaConCodice.
+    setState("checking");
     apiClient
       .verifyEmail(token)
       .then((result) => {
         setConfirmedEmail(result.email);
-        setPopupOpen(true);
+        setAlreadyVerified(result.alreadyVerified);
+        setState("done");
+        if (!result.alreadyVerified) setPopupOpen(true);
         void refreshUser();
       })
-      .catch((err) => setError(err instanceof Error ? err.message : "Link non valido."));
+      .catch((err) => {
+        const status = (err as { status?: number }).status;
+        const message = err instanceof Error ? err.message : "";
+        if (status === 400) {
+          setErrorKind(message.startsWith("Il link è scaduto") ? "expired" : "invalid");
+          setError(message);
+        } else {
+          setErrorKind("retry");
+          setError("Non siamo riusciti a controllare il link. Riprova tra qualche istante: è ancora buono.");
+          started.current = false;
+        }
+        setState("error");
+      });
   }, [token, refreshUser]);
+
+  // Accesso già fatto in questo browser: conferma senza chiedere il tocco.
+  useEffect(() => {
+    if (!isLoading && user) confirm();
+  }, [isLoading, user, confirm]);
+
+  async function sendNewEmail() {
+    if (!sessionToken) return;
+    setResend("sending");
+    setResendError(null);
+    try {
+      const result = await apiClient.resendVerificationEmail(sessionToken);
+      if (result.alreadyVerified) {
+        await refreshUser().catch(() => {});
+        setConfirmedEmail(user?.email ?? null);
+        setAlreadyVerified(true);
+        setState("done");
+        return;
+      }
+      setResend("sent");
+    } catch (err) {
+      setResend("idle");
+      setResendError(err instanceof Error ? err.message : "Invio non riuscito, riprova tra poco.");
+    }
+  }
 
   const nextHref = user?.isProfessional ? "/dashboard" : user ? "/le-mie-richieste" : "/accedi";
   const nextLabel = user ? "Continua" : "Vai all'accesso";
 
   return (
-    <YStack width="100%" alignItems="center" backgroundColor="transparent" paddingVertical="$9" paddingHorizontal="$4">
-      <Surface floating width="100%" maxWidth={420} borderRadius={radiusDocLg} padding="$6" gap="$4">
-        <Text fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite}>
-          Conferma email
-        </Text>
-        {confirmedEmail ? (
-          <Text color={brand.grafite70}>
-            Grazie! L&apos;indirizzo <Text fontWeight="700">{confirmedEmail}</Text> è confermato.
-          </Text>
-        ) : error ? (
-          <Text color={brand.urgenza}>{error}</Text>
+    <AuthPageBackground>
+      <AuthCard maxWidth={440}>
+        {state === "done" ? (
+          <YStack gap="$4" alignItems="center">
+            <AuthIconBadge icon="check" />
+            <Text tag="h1" fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
+              {alreadyVerified ? "Email già confermata" : "Email confermata"}
+            </Text>
+            <Text fontSize={16} color={brand.grafite70} textAlign="center">
+              L&apos;indirizzo <Text fontWeight="700">{confirmedEmail}</Text> è confermato.
+              {user ? null : " Se ti sei iscritto da un altro dispositivo, lì la pagina si aggiorna da sola."}
+            </Text>
+            <Link href={nextHref} className="auth-primary-link">
+              {nextLabel}
+            </Link>
+          </YStack>
+        ) : state === "error" ? (
+          <YStack gap="$4" alignItems="center">
+            <AuthIconBadge icon="mail" />
+            <Text tag="h1" fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
+              {errorKind === "expired" ? "Il link è scaduto" : errorKind === "invalid" ? "Questo link non vale più" : "Conferma non riuscita"}
+            </Text>
+            <Text fontSize={16} color={brand.grafite70} textAlign="center" role="alert">
+              {errorKind === "expired"
+                ? "Il pulsante dell'email vale 48 ore. Chiedi una nuova email: arriva in pochi secondi."
+                : errorKind === "invalid"
+                  ? "Forse ti abbiamo mandato un'email più recente: apri l'ultima che hai ricevuto, oppure chiedine una nuova."
+                  : error}
+            </Text>
+            {errorKind === "retry" ? (
+              <Button variant="primary" width="100%" onPress={confirm}>
+                Riprova
+              </Button>
+            ) : resend === "sent" ? (
+              <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro} textAlign="center" role="status">
+                Ti abbiamo mandato una nuova email a {user?.email}. Apri quella e premi il pulsante.
+              </Text>
+            ) : user && sessionToken ? (
+              <Button variant="primary" width="100%" onPress={() => void sendNewEmail()} disabled={resend === "sending"} opacity={resend === "sending" ? 0.6 : 1}>
+                {resend === "sending" ? "Invio..." : "Mandami una nuova email"}
+              </Button>
+            ) : (
+              <Link href="/accedi?redirect=/conferma-email" className="auth-primary-link">
+                Accedi per riceverne una nuova
+              </Link>
+            )}
+            {resendError ? (
+              <Text fontSize={16} color={brand.urgenza} textAlign="center">
+                {resendError}
+              </Text>
+            ) : null}
+          </YStack>
         ) : (
-          <Text color={brand.grafite70}>Controllo il link...</Text>
+          <YStack gap="$4" alignItems="center">
+            <AuthIconBadge icon="mail" />
+            <Text tag="h1" fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center">
+              Conferma la tua email
+            </Text>
+            <Text fontSize={16} color={brand.grafite70} textAlign="center">
+              Premi il pulsante per confermare che l&apos;indirizzo è tuo.
+            </Text>
+            <Button variant="primary" width="100%" onPress={confirm} disabled={state === "checking" || isLoading} opacity={state === "checking" ? 0.6 : 1}>
+              {state === "checking" ? "Conferma in corso..." : "Conferma la mia email"}
+            </Button>
+          </YStack>
         )}
-        {confirmedEmail || error ? (
-          <Link href={nextHref} style={{ color: brand.cianografia }}>
-            {nextLabel}
-          </Link>
-        ) : null}
-      </Surface>
+      </AuthCard>
       {popupOpen && confirmedEmail ? (
         <div
           role="presentation"
@@ -152,6 +257,11 @@ function ConfermaEmail() {
               <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite} textAlign="center">
                 Email verificata con successo
               </Text>
+              {user ? null : (
+                <Text fontSize={16} color={brand.grafite70} textAlign="center">
+                  Se ti sei iscritto da un altro dispositivo, lì la pagina si aggiorna da sola.
+                </Text>
+              )}
               <Link
                 href={nextHref}
                 style={{
@@ -169,6 +279,6 @@ function ConfermaEmail() {
           </div>
         </div>
       ) : null}
-    </YStack>
+    </AuthPageBackground>
   );
 }

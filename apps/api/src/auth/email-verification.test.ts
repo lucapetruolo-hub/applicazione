@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { BadRequestException, ForbiddenException, HttpException } from "@nestjs/common";
 import { createHash } from "node:crypto";
-import { AuthService, emailCodeValidFor } from "./auth.service";
+import { AuthService, emailCodeValidFor, emailLinkValidFor } from "./auth.service";
 import { VerifiedEmailGuard } from "./verified-email.guard";
 
 /**
@@ -11,7 +11,7 @@ import { VerifiedEmailGuard } from "./verified-email.guard";
  */
 function buildService() {
   const prisma = {
-    user: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn().mockResolvedValue({}) },
+    user: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn().mockResolvedValue({}), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
   };
   const emailService = { send: vi.fn().mockResolvedValue(true) };
   const jwt = { sign: vi.fn().mockReturnValue("jwt-token") };
@@ -57,25 +57,53 @@ describe("conferma email", () => {
     expect(prisma.user.update).not.toHaveBeenCalled();
   });
 
-  it("conferma l'email e annulla il codice", async () => {
+  it("il pulsante conferma l'email una volta sola e annulla il codice di riserva", async () => {
     const { service, prisma } = buildService();
-    prisma.user.findUnique.mockResolvedValue({ id: "u-1", email: "mario@example.it", deletedAt: null, emailTokenExpiresAt: new Date(Date.now() + 60_000) });
+    const tokenHash = createHash("sha256").update("a".repeat(43)).digest("hex");
+    prisma.user.findUnique.mockResolvedValue({ id: "u-1", email: "mario@example.it", deletedAt: null, emailVerifiedAt: null, emailTokenExpiresAt: new Date(Date.now() + 60_000) });
 
-    await expect(service.verifyEmail("a".repeat(43))).resolves.toEqual({ email: "mario@example.it" });
-    expect(prisma.user.update).toHaveBeenCalledWith({
-      where: { id: "u-1" },
-      data: expect.objectContaining({ emailVerifiedAt: expect.any(Date), emailTokenHash: null, emailTokenExpiresAt: null, emailCodeHash: null }),
+    await expect(service.verifyEmail("a".repeat(43))).resolves.toEqual({ email: "mario@example.it", alreadyVerified: false });
+    // Condizionato: due tocchi insieme confermano una volta sola.
+    expect(prisma.user.updateMany).toHaveBeenCalledWith({
+      where: { id: "u-1", emailTokenHash: tokenHash, emailVerifiedAt: null },
+      data: expect.objectContaining({ emailVerifiedAt: expect.any(Date), emailCodeHash: null }),
     });
+    // Il link resta salvato: riaperto dice "già confermata" invece di "non valido".
+    expect(prisma.user.updateMany.mock.calls[0]![0].data).not.toHaveProperty("emailTokenHash");
   });
 
-  it("rifiuta un link scaduto o sconosciuto", async () => {
+  it("riaperto dopo la conferma (anche dall'antivirus della posta) dice già confermata e non cambia nulla", async () => {
     const { service, prisma } = buildService();
-    prisma.user.findUnique.mockResolvedValue({ id: "u-1", email: "mario@example.it", deletedAt: null, emailTokenExpiresAt: new Date(Date.now() - 1) });
-    await expect(service.verifyEmail("a".repeat(43))).rejects.toBeInstanceOf(BadRequestException);
+    prisma.user.findUnique.mockResolvedValue({ id: "u-1", email: "mario@example.it", deletedAt: null, emailVerifiedAt: new Date(), emailTokenExpiresAt: new Date(Date.now() - 1) });
+
+    await expect(service.verifyEmail("a".repeat(43))).resolves.toEqual({ email: "mario@example.it", alreadyVerified: true });
+    expect(prisma.user.update).not.toHaveBeenCalled();
+    expect(prisma.user.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("rifiuta un link scaduto o sconosciuto, con due messaggi diversi", async () => {
+    const { service, prisma } = buildService();
+    prisma.user.findUnique.mockResolvedValue({ id: "u-1", email: "mario@example.it", deletedAt: null, emailVerifiedAt: null, emailTokenExpiresAt: new Date(Date.now() - 1) });
+    await expect(service.verifyEmail("a".repeat(43))).rejects.toThrow("Il link è scaduto");
 
     prisma.user.findUnique.mockResolvedValue(null);
+    await expect(service.verifyEmail("a".repeat(43))).rejects.toThrow("non vale più");
+
+    prisma.user.findUnique.mockResolvedValue({ id: "u-1", email: "deleted-u-1@deleted.invalid", deletedAt: new Date(), emailVerifiedAt: null, emailTokenExpiresAt: new Date(Date.now() + 60_000) });
     await expect(service.verifyEmail("a".repeat(43))).rejects.toBeInstanceOf(BadRequestException);
     expect(prisma.user.update).not.toHaveBeenCalled();
+    expect(prisma.user.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("cambiando l'email il link mandato al vecchio indirizzo smette di valere", async () => {
+    const { service, prisma } = buildService();
+    prisma.user.findUnique.mockResolvedValue(null);
+    prisma.user.update.mockResolvedValue({ id: "u-1", email: "nuova@example.it", name: "Mario", role: "PROFESSIONAL" });
+
+    await service.updateAccount("u-1", { email: "nuova@example.it" } as never);
+    expect(prisma.user.update.mock.calls[0]![0].data).toEqual(
+      expect.objectContaining({ email: "nuova@example.it", emailVerifiedAt: null, emailTokenHash: null, emailTokenExpiresAt: null }),
+    );
   });
 
   it("non rispedisce il link a chi ha già confermato", async () => {
@@ -103,7 +131,7 @@ describe("conferma email", () => {
   describe("codice di 6 cifre (§243)", () => {
     function codeFromEmail(emailService: { send: ReturnType<typeof vi.fn> }): string {
       const text: string = emailService.send.mock.calls[0]![0].text;
-      return /Il tuo codice: (\d{6})/.exec(text)![1]!;
+      return /codice sul sito: (\d{6})/.exec(text)![1]!;
     }
 
     async function registered() {
@@ -120,11 +148,14 @@ describe("conferma email", () => {
       return { ...ctx, code, stored, account };
     }
 
-    it("arriva nella stessa email del link, nell'oggetto e nel testo; si salva solo l'impronta", async () => {
+    it("arriva di riserva sotto il pulsante, non nell'oggetto; si salva solo l'impronta", async () => {
       const { emailService, code, stored } = await registered();
       const sent = emailService.send.mock.calls[0]![0];
-      expect(sent.subject).toContain(code);
+      // Il pulsante è la cosa da fare: l'oggetto non porta più il codice.
+      expect(sent.subject).not.toContain(code);
+      expect(sent.subject).toContain("Conferma la tua email");
       expect(sent.html).toContain("conferma-email?token=");
+      expect(sent.html.indexOf("Conferma la mia email")).toBeLessThan(sent.html.indexOf(code));
       expect(stored.emailCodeHash).toBe(createHash("sha256").update(`u-1:${code}`).digest("hex"));
       expect(stored.emailCodeExpiresAt.getTime() - Date.now()).toBeGreaterThan(14 * 60_000);
       expect(stored.emailCodeExpiresAt.getTime() - Date.now()).toBeLessThanOrEqual(15 * 60_000);
@@ -144,7 +175,7 @@ describe("conferma email", () => {
       await expect(service.verifyEmailCode("u-1", code)).resolves.toEqual({ email: "mario@example.it" });
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: "u-1" },
-        data: expect.objectContaining({ emailVerifiedAt: expect.any(Date), emailCodeHash: null, emailTokenHash: null }),
+        data: expect.objectContaining({ emailVerifiedAt: expect.any(Date), emailCodeHash: null }),
       });
     });
 
@@ -193,5 +224,14 @@ describe("validità del codice per /auth/me (§244)", () => {
     expect(emailCodeValidFor({ ...base, emailCodeExpiresAt: new Date(now.getTime() - 1000) }, now)).toBe(0);
     expect(emailCodeValidFor({ ...base, emailCodeHash: null }, now)).toBe(0);
     expect(emailCodeValidFor({ ...base, emailCodeAttempts: 5 }, now)).toBe(0);
+  });
+});
+
+describe("validità del pulsante per /auth/me", () => {
+  const now = new Date("2026-10-28T10:00:00Z");
+  it("restituisce i secondi che restano, 0 se scaduto o mai mandato", () => {
+    expect(emailLinkValidFor(new Date(now.getTime() + 90_000), now)).toBe(90);
+    expect(emailLinkValidFor(new Date(now.getTime() - 1000), now)).toBe(0);
+    expect(emailLinkValidFor(null, now)).toBe(0);
   });
 });

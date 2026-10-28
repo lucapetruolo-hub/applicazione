@@ -32,10 +32,12 @@ export type EmailContent = {
   /** Avviso urgente o scadenza: titolo e riquadro in rosso. */
   tone?: "default" | "urgent";
   /**
-   * Codice da copiare (conferma email, docs/CHANGELOG.md §243): grande, a
-   * cifre distanziate, prima del pulsante.
+   * Codice da copiare (docs/CHANGELOG.md §243): grande, a cifre distanziate,
+   * prima del pulsante. Con `backup` è la riserva del pulsante (conferma
+   * email, docs/changelog/2026-10-28-verifica-email-con-link.md): più
+   * piccolo e dopo il pulsante, che resta la cosa da fare.
    */
-  code?: { label: string; value: string };
+  code?: { label: string; value: string; backup?: boolean };
   cta?: { label: string; url: string };
   /** Link semplice sotto il pulsante, per una seconda azione meno importante. */
   secondaryLink?: { label: string; url: string };
@@ -114,7 +116,7 @@ export function renderEmail(content: EmailContent): RenderedEmail {
         `</td></tr></table>`
       : "";
 
-  const codeHtml = content.code
+  const codeHtml = content.code && !content.code.backup
     ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 20px;background:${c.primaryTint};border-radius:14px;">` +
       `<tr><td align="center" style="padding:16px 18px;">` +
       `<p style="margin:0 0 6px;font-family:${FONT};font-size:14px;color:${c.muted};">${escapeHtml(content.code.label)}</p>` +
@@ -129,6 +131,14 @@ export function renderEmail(content: EmailContent): RenderedEmail {
       (content.secondaryLink
         ? `<p style="margin:-12px 0 24px;font-family:${FONT};font-size:15px;line-height:1.5;"><a href="${escapeHtml(content.secondaryLink.url)}" style="color:${c.primaryDark};font-weight:700;">${escapeHtml(content.secondaryLink.label)}</a></p>`
         : "")
+    : "";
+
+  const backupCodeHtml = content.code?.backup
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:-8px 0 20px;background:${c.primaryTint};border-radius:14px;">` +
+      `<tr><td style="padding:12px 16px;">` +
+      `<p style="margin:0 0 4px;font-family:${FONT};font-size:14px;line-height:1.4;color:${c.muted};">${escapeHtml(content.code.label)}</p>` +
+      `<p style="margin:0;font-family:'SFMono-Regular',Menlo,Consolas,monospace;font-size:20px;line-height:1.2;font-weight:800;letter-spacing:4px;color:${c.text};">${escapeHtml(content.code.value)}</p>` +
+      `</td></tr></table>`
     : "";
 
   const footerReason =
@@ -158,6 +168,7 @@ export function renderEmail(content: EmailContent): RenderedEmail {
     detailsHtml +
     codeHtml +
     ctaHtml +
+    backupCodeHtml +
     (content.after ?? []).map((text) => p(text, 14, c.muted)).join("") +
     p(EMAIL_BRAND.signature, 15, c.muted).replace("margin:0 0 16px", "margin:8px 0 0") +
     `</td></tr>` +
@@ -180,8 +191,9 @@ export function renderEmail(content: EmailContent): RenderedEmail {
           ].join("\n"),
         ]
       : []),
-    ...(content.code ? [`${content.code.label}: ${content.code.value}`] : []),
+    ...(content.code && !content.code.backup ? [`${content.code.label}: ${content.code.value}`] : []),
     ...(content.cta ? [`${content.cta.label}: ${content.cta.url}`] : []),
+    ...(content.code?.backup ? [`${content.code.label} ${content.code.value}`] : []),
     ...(content.secondaryLink ? [`${content.secondaryLink.label}: ${content.secondaryLink.url}`] : []),
     ...(content.after ?? []).map(plain),
     EMAIL_BRAND.signature,

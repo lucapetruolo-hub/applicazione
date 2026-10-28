@@ -765,6 +765,8 @@ export type CurrentUser = {
   emailCodeResendInSeconds: number;
   /** Secondi di validità del codice in corso: 0 se scaduto, finito o mai mandato. */
   emailCodeValidForSeconds: number;
+  /** Secondi di validità del pulsante nell'email di conferma: 0 se scaduto o mai mandato. */
+  emailLinkValidForSeconds: number;
   /** Privato, P.IVA o azienda scelto in registrazione: precompila /dashboard/fiscale. */
   signupEntityType: ProfessionalEntityTypeValue | null;
   /** Menu laterale ridotto a icone scelto dalla persona; null = decide lo schermo (docs/CHANGELOG.md §334). */
@@ -1166,7 +1168,7 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       request<AuthResult>("/auth/password-reset/confirm", { method: "POST", body: JSON.stringify({ token, password }) }),
 
     verifyEmail: (token: string) =>
-      request<{ email: string }>("/auth/verify-email", { method: "POST", body: JSON.stringify({ token }) }),
+      request<{ email: string; alreadyVerified: boolean }>("/auth/verify-email", { method: "POST", body: JSON.stringify({ token }) }),
 
     /** Codice di 6 cifre arrivato con l'email di conferma (docs/CHANGELOG.md §243). */
     verifyEmailCode: (token: string, code: string) =>
