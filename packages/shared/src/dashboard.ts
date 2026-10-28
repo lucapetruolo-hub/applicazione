@@ -23,6 +23,8 @@ export type MyProfessionalProfile = {
   stripeVerified: boolean;
   /** Tetto a lavoro per i pagamenti online, null = nessun tetto (docs/changelog/2026-10-28-tetto-pagamenti-online.md). */
   onlineLimitEurCents: number | null;
+  /** A che punto è per togliere il tetto: lavori pagati online senza contestazioni e il primo. */
+  onlineLimitProgress: { cleanJobs: number; firstCleanJobAt: string | null };
   /** Deve ancora verificare l'identità (documento e selfie) prima di inviare preventivi (docs/CHANGELOG.md §253). */
   identityVerificationNeeded: boolean;
   businessName: string;

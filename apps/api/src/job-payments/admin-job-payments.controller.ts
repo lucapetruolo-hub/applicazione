@@ -49,7 +49,7 @@ export class AdminJobPaymentsController {
 
   @Patch("online-limits/:professionalProfileId")
   setOnlineLimit(@Req() req: AuthenticatedRequest, @Param("professionalProfileId") id: string, @Body(new ZodValidationPipe(setOnlineLimitSchema)) body: SetOnlineLimitInput) {
-    return this.jobPaymentsService.setOnlineLimitRemoved(req.user.userId, id, body.removed);
+    return this.jobPaymentsService.setOnlineLimitRemoved(req.user.userId, id, body.removed, body.reason);
   }
 
   @Get("refunds")

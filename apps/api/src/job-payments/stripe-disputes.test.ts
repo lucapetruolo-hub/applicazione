@@ -12,7 +12,7 @@ function buildService(transfersStatus = "active") {
     jobPayment: { findUnique: vi.fn(), findFirst: vi.fn(), findUniqueOrThrow: vi.fn(), update: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
     manoviaRevenue: { create: vi.fn() },
     professionalFiscalProfile: { updateMany: vi.fn() },
-    professionalProfile: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    professionalProfile: { update: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
     user: { findMany: vi.fn().mockResolvedValue([{ id: "admin-1", adminRoles: [] }]) },
   };
   const auditLogService = { record: vi.fn() };
@@ -130,10 +130,10 @@ describe("OnlineMoneyService.handleStripeDispute", () => {
       where: { id: "jp-1" },
       data: expect.objectContaining({ stripeDisputeStatus: "lost", refundedEurCents: 8000, status: "PENDING" }),
     });
-    // Il tetto ai pagamenti online torna se l'admin l'aveva tolto (docs/changelog/2026-10-28-tetto-pagamenti-online.md).
-    expect(prisma.professionalProfile.updateMany).toHaveBeenCalledWith({
-      where: { id: "pro-1", onlineLimitRemovedAt: { not: null } },
-      data: { onlineLimitRemovedAt: null },
+    // Il tetto ai pagamenti online torna, anche se l'admin l'aveva tolto (docs/changelog/2026-10-28-tetto-pagamenti-online.md).
+    expect(prisma.professionalProfile.update).toHaveBeenCalledWith({
+      where: { id: "pro-1" },
+      data: { onlineLimitRemovedAt: null, onlineLimitLiftNotifiedAt: null },
     });
 
     prisma.jobPayment.update.mockClear();

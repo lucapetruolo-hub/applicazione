@@ -45,3 +45,24 @@ si fa comunque, per decisione di Luca.
 `online-limit-completion.test.ts` (chiusura sopra il tetto) e il caso nuovo
 in `stripe-disputes.test.ts`. Tutti i test dell'API (894), `tsc` e lint di
 API e sito.
+
+## Migliorie (richiesta di Luca: "effettua le 3 migliorie")
+
+- **A che punto sei**: sotto l'acconto nel preventivo la riga dice quanti
+  lavori pagati online ha il professionista ("ne hai 3") o, con 10 lavori
+  ma meno di 120 giorni, il giorno in cui il limite sparisce
+  (`onlineLimitHint`, `MyProfessionalProfile.onlineLimitProgress`).
+- **Email "limite tolto"** (`ONLINE_LIMIT_LIFTED`, argomento "Lavori e
+  appuntamenti"): una volta sola, dal controllo orario degli sblocchi
+  (`OnlineMoneyService.notifyOnlineLimitsLifted`), sia per i 10 lavori e
+  120 giorni sia per il tetto tolto dall'admin.
+  `ProfessionalProfile.onlineLimitLiftNotifiedAt` segna l'invio e si azzera
+  quando il tetto torna (contestazione persa o "Rimetti il tetto"), così
+  l'email può ripartire. Migrazione `20261028140000_tetto_online_avviso`.
+- **Motivo dell'admin**: "Togli il tetto" chiede un motivo (3-300
+  caratteri), salvato nella colonna "Motivo" del registro azioni.
+
+**Verifica**: `online-limit-lifted.test.ts` (email una volta sola, tetto
+tolto dall'admin, nessuna email con il tetto ancora attivo), frasi e
+motivo in `online-limit.test.ts`. Tutti i test dell'API (897), `tsc` di API
+e sito, `pnpm lint`.

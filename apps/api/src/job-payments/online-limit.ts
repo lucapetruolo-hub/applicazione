@@ -52,3 +52,11 @@ export async function professionalOnlineLimit(prisma: PrismaClient, professional
   const clean = cleanOnlineJobs(payments);
   return { ...clean, removedAt, limitEurCents: onlineLimitEurCents({ ...clean, removedByAdmin: !!removedAt, now }) };
 }
+
+/** Campi del tetto nel profilo del professionista (MyProfessionalProfile). */
+export function onlineLimitFields(limit: ProfessionalOnlineLimit) {
+  return {
+    onlineLimitEurCents: limit.limitEurCents,
+    onlineLimitProgress: { cleanJobs: limit.cleanJobs, firstCleanJobAt: limit.firstCleanJobAt?.toISOString() ?? null },
+  };
+}

@@ -82,6 +82,7 @@ function RichiesteContent() {
   const [defaultCancellationNoticeHours, setDefaultCancellationNoticeHours] = useState<number | null>(null);
   const [stripeVerified, setStripeVerified] = useState(true);
   const [onlineLimitEurCents, setOnlineLimitEurCents] = useState<number | null>(null);
+  const [onlineLimitProgress, setOnlineLimitProgress] = useState<MyProfessionalProfile["onlineLimitProgress"] | null>(null);
   const [identityVerificationNeeded, setIdentityVerificationNeeded] = useState(false);
   const [subscription, setSubscription] = useState<MySubscription | null>(null);
   const [profileMissing, setProfileMissing] = useState(false);
@@ -216,6 +217,7 @@ function RichiesteContent() {
         setDefaultCancellationNoticeHours(profile?.cancellationNoticeHours ?? null);
         setStripeVerified(profile?.stripeVerified ?? true);
         setOnlineLimitEurCents(profile?.onlineLimitEurCents ?? null);
+        setOnlineLimitProgress(profile?.onlineLimitProgress ?? null);
         setIdentityVerificationNeeded(profile?.identityVerificationNeeded ?? false);
         if (!profile) setProfileMissing(true);
       })
@@ -663,6 +665,7 @@ function RichiesteContent() {
                   defaultCancellationNoticeHours={defaultCancellationNoticeHours}
                   stripeVerified={stripeVerified}
                   onlineLimitEurCents={onlineLimitEurCents}
+                  onlineLimitProgress={onlineLimitProgress}
                   identityVerificationNeeded={identityVerificationNeeded}
                   subscription={subscription}
                   onSubscriptionChanged={reloadSubscription}

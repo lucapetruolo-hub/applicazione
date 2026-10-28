@@ -93,14 +93,23 @@ describe("onlineLimitProblem", () => {
 });
 
 describe("testi del tetto", () => {
-  it("riga del modulo e frase della chiusura", () => {
-    expect(onlineLimitHint(null)).toBeNull();
-    expect(onlineLimitHint(200_000)).toMatch(/fino a 2\.000\u00A0€ per lavoro/);
+  it("riga del modulo con i lavori fatti o il giorno in cui il limite sparisce", () => {
+    expect(onlineLimitHint({ limitEurCents: null, cleanJobs: 0, firstCleanJobAt: null })).toBeNull();
+    expect(onlineLimitHint({ limitEurCents: 200_000, cleanJobs: 3, firstCleanJobAt: daysAgo(30).toISOString() })).toBe(
+      "Online puoi chiedere fino a 2.000\u00A0€ per lavoro. Il limite sparisce dopo 10 lavori pagati online: ne hai 3.",
+    );
+    // 10 lavori, il primo 100 giorni fa: mancano 20 giorni (17 novembre).
+    expect(onlineLimitHint({ limitEurCents: 200_000, cleanJobs: 10, firstCleanJobAt: daysAgo(100).toISOString() })).toMatch(
+      /Hai già 10 lavori pagati online: il limite sparisce il 17 novembre 2026\.$/,
+    );
     expect(onlineLimitCompletionProblem(200_000)).toMatch(/Indica 2\.000\u00A0€ e fatti pagare il resto direttamente/);
   });
 
-  it("l'admin manda solo vero o falso", () => {
-    expect(setOnlineLimitSchema.safeParse({ removed: true }).success).toBe(true);
+  it("l'admin manda vero o falso, e per togliere il tetto un motivo", () => {
+    expect(setOnlineLimitSchema.safeParse({ removed: true, reason: "Conosciuto da anni" }).success).toBe(true);
+    expect(setOnlineLimitSchema.safeParse({ removed: true }).success).toBe(false);
+    expect(setOnlineLimitSchema.safeParse({ removed: true, reason: "  " }).success).toBe(false);
+    expect(setOnlineLimitSchema.safeParse({ removed: false }).success).toBe(true);
     expect(setOnlineLimitSchema.safeParse({ removed: "si" }).success).toBe(false);
   });
 });

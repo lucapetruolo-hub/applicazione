@@ -60,14 +60,32 @@ export function onlineLimitCompletionProblem(limitEurCents: number): string {
   return `Questo lavoro si paga online e online puoi incassare fino a ${amount}. Indica ${amount} e fatti pagare il resto direttamente dal cliente.`;
 }
 
-/** Riga per il modulo del preventivo, sotto i modi di pagamento. */
-export function onlineLimitHint(limitEurCents: number | null): string | null {
-  if (limitEurCents === null) return null;
-  return `Online puoi chiedere fino a ${formatEur(limitEurCents)} per lavoro. Il limite sparisce dopo ${ONLINE_LIMIT_FREE_JOBS} lavori pagati online.`;
+/** Giorno in cui passano i 120 giorni dal primo lavoro pagato online. */
+export function onlineLimitFreeDaysReachedAt(firstCleanJobAt: Date): Date {
+  return new Date(firstCleanJobAt.getTime() + ONLINE_LIMIT_FREE_DAYS * 86_400_000);
 }
 
-/** Admin → Pagamenti: togliere o rimettere il tetto a un professionista. */
-export const setOnlineLimitSchema = z.object({ removed: z.boolean() });
+/**
+ * Riga per il modulo del preventivo, sotto i modi di pagamento, con il punto
+ * in cui è il professionista: lavori fatti o, se bastano, il giorno in cui il
+ * limite sparisce.
+ */
+export function onlineLimitHint(input: { limitEurCents: number | null; cleanJobs: number; firstCleanJobAt: string | null }): string | null {
+  if (input.limitEurCents === null) return null;
+  const head = `Online puoi chiedere fino a ${formatEur(input.limitEurCents)} per lavoro.`;
+  if (input.cleanJobs >= ONLINE_LIMIT_FREE_JOBS && input.firstCleanJobAt) {
+    const day = onlineLimitFreeDaysReachedAt(new Date(input.firstCleanJobAt)).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Rome" });
+    return `${head} Hai già ${ONLINE_LIMIT_FREE_JOBS} lavori pagati online: il limite sparisce il ${day}.`;
+  }
+  return `${head} Il limite sparisce dopo ${ONLINE_LIMIT_FREE_JOBS} lavori pagati online: ne hai ${input.cleanJobs}.`;
+}
+
+export const ONLINE_LIMIT_REASON_MAX = 300;
+
+/** Admin → Pagamenti: togliere il tetto chiede un motivo, che resta nel registro azioni. */
+export const setOnlineLimitSchema = z
+  .object({ removed: z.boolean(), reason: z.string().trim().max(ONLINE_LIMIT_REASON_MAX).optional() })
+  .refine((v) => !v.removed || (v.reason?.length ?? 0) >= 3, { message: "Scrivi perché togli il tetto.", path: ["reason"] });
 export type SetOnlineLimitInput = z.infer<typeof setOnlineLimitSchema>;
 
 export type AdminOnlineLimitRow = {

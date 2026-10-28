@@ -38,6 +38,7 @@ import {
   isCancellationNoticeHours,
   type CancellationNoticeHours,
   type MySubscription,
+  type MyProfessionalProfile,
 } from "@professionisti/shared";
 import { Avatar, Badge, Chip, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -84,6 +85,7 @@ export function RequestCard({
   defaultCancellationNoticeHours,
   stripeVerified = true,
   onlineLimitEurCents = null,
+  onlineLimitProgress = null,
   identityVerificationNeeded = false,
   subscription = null,
   onSubscriptionChanged,
@@ -110,6 +112,8 @@ export function RequestCard({
   stripeVerified?: boolean;
   /** Tetto a lavoro per i pagamenti online, null = nessuno (docs/changelog/2026-10-28-tetto-pagamenti-online.md). */
   onlineLimitEurCents?: number | null;
+  /** Lavori pagati online e primo lavoro, per dire quanto manca a togliere il tetto. */
+  onlineLimitProgress?: MyProfessionalProfile["onlineLimitProgress"] | null;
   /** Documento e selfie ancora da fare: il primo preventivo è bloccato (docs/CHANGELOG.md §253). */
   identityVerificationNeeded?: boolean;
   /** Abbonamento: con i lavori esauriti un preventivo nuovo apre la finestra del livello superiore (docs/CHANGELOG.md §362). */
@@ -142,6 +146,8 @@ export function RequestCard({
       : priceRange && (priceRange.totalMinEurCents > 0 || priceRange.totalMaxEurCents > 0)
         ? formatEurRange(priceRange.totalMinEurCents, priceRange.totalMaxEurCents)
         : null;
+
+  const limitHint = onlineLimitHint({ limitEurCents: onlineLimitEurCents, cleanJobs: onlineLimitProgress?.cleanJobs ?? 0, firstCleanJobAt: onlineLimitProgress?.firstCleanJobAt ?? null });
 
   const [showQuoteForm, setShowQuoteForm] = useState(false);
   const [items, setItems] = useState<QuoteItemDraft[]>([{ name: "Manodopera", priceMin: "", priceMax: "" }]);
@@ -1585,9 +1591,9 @@ export function RequestCard({
                         </Text>
                       </XStack>
                     ) : null}
-                    {paymentOptions.some(paymentChoiceIsOnline) && onlineLimitHint(onlineLimitEurCents) ? (
+                    {paymentOptions.some(paymentChoiceIsOnline) && limitHint ? (
                       <Text fontSize={13} color={brand.grafite70}>
-                        {onlineLimitHint(onlineLimitEurCents)}
+                        {limitHint}
                       </Text>
                     ) : null}
                   </>

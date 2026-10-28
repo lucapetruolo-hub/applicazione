@@ -2485,11 +2485,11 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     adminListOnlineLimits: (token: string) =>
       request<AdminOnlineLimitRow[]>("/admin/online-limits", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
-    adminSetOnlineLimit: (token: string, professionalProfileId: string, removed: boolean) =>
+    adminSetOnlineLimit: (token: string, professionalProfileId: string, removed: boolean, reason?: string) =>
       request<unknown>(`/admin/online-limits/${professionalProfileId}`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ removed }),
+        body: JSON.stringify({ removed, reason }),
       }),
 
     adminListUnpaidBalances: (token: string) =>

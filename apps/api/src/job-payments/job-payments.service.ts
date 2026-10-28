@@ -323,17 +323,25 @@ export class JobPaymentsService {
     return rows.sort((a, b) => Number(a.limitEurCents === null) - Number(b.limitEurCents === null));
   }
 
-  /** L'admin toglie o rimette il tetto a un professionista; resta nel registro azioni. */
-  async setOnlineLimitRemoved(adminUserId: string, professionalProfileId: string, removed: boolean) {
+  /**
+   * L'admin toglie (con un motivo) o rimette il tetto a un professionista;
+   * resta nel registro azioni. L'email "limite tolto" parte dal controllo
+   * orario (OnlineMoneyService.notifyOnlineLimitsLifted).
+   */
+  async setOnlineLimitRemoved(adminUserId: string, professionalProfileId: string, removed: boolean, reason?: string) {
     const profile = await this.prisma.professionalProfile.findUnique({ where: { id: professionalProfileId }, select: { id: true, userId: true } });
     if (!profile) throw new NotFoundException("Professionista non trovato.");
-    await this.prisma.professionalProfile.update({ where: { id: profile.id }, data: { onlineLimitRemovedAt: removed ? new Date() : null } });
+    await this.prisma.professionalProfile.update({
+      where: { id: profile.id },
+      data: removed ? { onlineLimitRemovedAt: new Date() } : { onlineLimitRemovedAt: null, onlineLimitLiftNotifiedAt: null },
+    });
     await this.auditLogService.record({
       entityType: "User",
       entityId: profile.userId,
       fieldName: "onlineLimitRemovedAt",
       newValue: removed ? "REMOVED" : "RESTORED",
       changedByUserId: adminUserId,
+      reason: removed ? (reason ?? null) : null,
     });
     return professionalOnlineLimit(this.prisma, profile.id);
   }

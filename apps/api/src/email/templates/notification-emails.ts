@@ -14,6 +14,7 @@ import {
   SITE_ADVICE_LEVEL_LABEL,
   type SiteAdviceLevel,
   SEARCH_RADIUS_KM,
+  ONLINE_LIMIT_FREE_JOBS,
   asScheduleChange,
   formatItalianUntil,
   moderationActionOwnerText,
@@ -743,6 +744,20 @@ const BUILDERS: Record<string, Builder> = {
     ],
     details: typeof payload.amountEurCents === "number" ? [{ label: "Bonifico", value: formatEur(payload.amountEurCents) }] : undefined,
     cta: proRequests("Apri il lavoro"),
+  }),
+  // Tetto ai pagamenti online tolto (docs/changelog/2026-10-28-tetto-pagamenti-online.md).
+  ONLINE_LIMIT_LIFTED: (payload, ctx) => ({
+    kind: "notification",
+    subject: "Ora puoi chiedere online qualsiasi importo",
+    greeting: ctx.name,
+    title: "Limite tolto",
+    paragraphs: [
+      payload.byAdmin === true
+        ? "Abbiamo tolto il limite ai tuoi pagamenti online."
+        : `Hai ${ONLINE_LIMIT_FREE_JOBS} lavori pagati online senza contestazioni: il limite ai pagamenti online non c'è più.`,
+      "Da oggi nei preventivi puoi chiedere online qualsiasi importo, acconto e saldo.",
+    ],
+    cta: proRequests("Apri le richieste"),
   }),
   JOB_PAYOUT_FAILED: (payload, ctx) => ({
     kind: "notification",

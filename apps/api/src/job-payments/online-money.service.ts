@@ -21,6 +21,7 @@ import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { readStripeConnectStatus } from "../professional-fiscal/stripe-connect-status";
+import { professionalOnlineLimit } from "./online-limit";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const OPEN_ISSUE_STATUSES = ["CHAT", "OPEN"];
@@ -1245,12 +1246,13 @@ export class OnlineMoneyService {
         ...statusData,
       },
     });
-    // Contestazione persa: se l'admin aveva tolto il tetto ai pagamenti
-    // online, torna (docs/changelog/2026-10-28-tetto-pagamenti-online.md).
+    // Contestazione persa: il tetto ai pagamenti online torna, anche se
+    // l'admin l'aveva tolto, e l'email "limite tolto" potrà ripartire
+    // (docs/changelog/2026-10-28-tetto-pagamenti-online.md).
     if (justClosed && lost) {
-      await this.prisma.professionalProfile.updateMany({
-        where: { id: jp.booking.professionalProfileId, onlineLimitRemovedAt: { not: null } },
-        data: { onlineLimitRemovedAt: null },
+      await this.prisma.professionalProfile.update({
+        where: { id: jp.booking.professionalProfileId },
+        data: { onlineLimitRemovedAt: null, onlineLimitLiftNotifiedAt: null },
       });
     }
     // Addebito sul conto del professionista (§249, §267): la cifra persa si
@@ -1558,7 +1560,30 @@ export class OnlineMoneyService {
     }
     await this.runPayouts(now);
     await this.alertLongHolds(now);
+    await this.notifyOnlineLimitsLifted(now).catch((err) => this.logger.error(`Avvisi "limite tolto" non riusciti: ${(err as Error).message}`));
     return released;
+  }
+
+  /**
+   * Email "limite tolto" (docs/changelog/2026-10-28-tetto-pagamenti-online.md):
+   * una volta sola a chi non ha più il tetto ai pagamenti online, per i 10
+   * lavori e 120 giorni o perché l'ha tolto l'admin.
+   */
+  async notifyOnlineLimitsLifted(now: Date = new Date()): Promise<number> {
+    const profiles = await this.prisma.professionalProfile.findMany({
+      where: { onlineLimitLiftNotifiedAt: null, deletedAt: null, fiscalProfile: { stripePayoutsEnabled: true } },
+      select: { id: true, userId: true },
+    });
+    let sent = 0;
+    for (const profile of profiles) {
+      const limit = await professionalOnlineLimit(this.prisma, profile.id, now);
+      if (limit.limitEurCents !== null) continue;
+      const claimed = await this.prisma.professionalProfile.updateMany({ where: { id: profile.id, onlineLimitLiftNotifiedAt: null }, data: { onlineLimitLiftNotifiedAt: now } });
+      if (claimed.count === 0) continue;
+      await this.notificationsService.notify(profile.userId, "ONLINE_LIMIT_LIFTED", { byAdmin: !!limit.removedAt });
+      sent += 1;
+    }
+    return sent;
   }
 
   /**
