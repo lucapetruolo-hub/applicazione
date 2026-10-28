@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@professionisti/database";
-import { API_URL } from "../fixtures/env";
+import { testToken } from "../fixtures/preventivi";
 
 /**
  * Badge del professionista e loro significato (docs/CHANGELOG.md §338).
@@ -13,7 +13,7 @@ import { API_URL } from "../fixtures/env";
  */
 const prisma = new PrismaClient();
 const ids = { verified: "", demo: "", unverified: "" };
-const client = { email: "" };
+const client = { id: "" };
 const VERIFIED_TEXT = "Ha confermato la sua identità. Non è una garanzia sulla qualità del lavoro.";
 const PRIVATE_TEXT = "Lavora in modo occasionale, senza partita IVA. I diritti del consumatore, come il recesso, non si applicano.";
 
@@ -69,7 +69,7 @@ test.beforeAll(async () => {
   await prisma.quote.create({
     data: { guidedRequestId: request.id, professionalProfileId: verified.id, estimatedStartDate: new Date("2026-12-01T09:00:00Z"), status: "SENT", paymentOptions: ["DIRECT"] },
   });
-  client.email = user.email ?? "";
+  client.id = user.id;
 });
 
 test.afterAll(async () => {
@@ -147,19 +147,11 @@ test("badge e fumetto senza problemi gravi di accessibilità", async ({ page }) 
 });
 
 test("nel preventivo il cliente vede che tipo di lavoratore lo manda", async ({ page }) => {
-  // L'accesso ha un limite al minuto per indirizzo: dopo gli altri test può
-  // servire aspettare un giro intero prima di entrare.
-  test.setTimeout(180_000);
-  let token = "";
-  for (let attempt = 0; !token; attempt++) {
-    const response = await fetch(`${API_URL}/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: client.email, password: "Password123!" }) });
-    if (response.status === 429 && attempt < 6) {
-      await new Promise((resolve) => setTimeout(resolve, (Number(response.headers.get("retry-after")) || 20) * 1000 + 500));
-      continue;
-    }
-    expect(response.ok).toBe(true);
-    token = ((await response.json()) as { token: string }).token;
-  }
+  // Accesso firmato come l'API: con il login vero la prova aspettava fino a un
+  // minuto il limite di accessi riempito dalle prove precedenti
+  // (docs/changelog/2026-10-28-controlli-pr-veloci.md). Il login vero lo prova
+  // la preparazione delle prove (global-setup).
+  const token = testToken(client.id);
   await page.addInitScript((value) => localStorage.setItem("professionisti_token", value), token);
   await page.goto("/le-mie-richieste");
   // Con una sola richiesta la scheda si apre da sola (§336), altrimenti si apre dall'elenco.

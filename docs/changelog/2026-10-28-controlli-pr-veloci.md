@@ -25,3 +25,7 @@
 - La cache di Next.js non veniva mai ritrovata: la chiave conteneva l'impronta di `pnpm-lock.yaml`, che cambia a quasi ogni unione nel ramo principale. Ora, se manca quella esatta, si riprende l'ultima cache del job (Next.js scarta da solo le parti cambiate).
 - Nelle build delle prove nel browser e del SEO niente lint e controllo dei tipi dentro `next build` (`CI_BUILD_SENZA_CONTROLLI=1`, ~25 s a job): li fa già `typecheck-build-test`, e Vercel e quella build li fanno sempre.
 - `actions/cache` da v4 a v5 (la v4 usa Node 20, in dismissione sui runner di GitHub).
+
+## Terzo giro (28/10)
+
+**Una prova aspettava un minuto** (Luca: "fai la 1"): "nel preventivo il cliente vede che tipo di lavoratore lo manda" (`e2e/tests/badge-fumetto.spec.ts`) entrava come cliente con il login vero a metà giro, trovava pieno il limite di accessi al minuto e aspettava fino a 60 secondi. Ora usa l'accesso firmato come l'API (`testToken`, già usato da altre prove). Il limite di accessi dell'API non cambia; il login vero resta provato dalla preparazione delle prove (`global-setup.ts`).
