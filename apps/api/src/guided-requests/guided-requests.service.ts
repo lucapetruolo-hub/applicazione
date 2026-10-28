@@ -175,6 +175,46 @@ export class GuidedRequestsService {
   }
 
   /**
+   * Professionisti scelti dal cliente nei risultati (docs/CHANGELOG.md §390):
+   * gli stessi controlli di una richiesta diretta, per ognuno. Uno che nel
+   * frattempo non accetta più richieste blocca l'invio con il suo nome, così
+   * il cliente lo toglie dalla scelta invece di credere di averlo raggiunto.
+   */
+  private async loadChosenProfiles(ids: string[], categoryId: string) {
+    const profiles = await this.prisma.professionalProfile.findMany({
+      where: { id: { in: ids } },
+      select: {
+        id: true,
+        userId: true,
+        deletedAt: true,
+        suspendedAt: true,
+        invitePendingAt: true,
+        pausedAt: true,
+        demotedUntil: true,
+        requestsBlockedUntil: true,
+        businessName: true,
+        categoryId: true,
+        extraCategories: { select: { id: true } },
+        ...PUBLIC_VISIBILITY_SELECT,
+      },
+    });
+    const now = new Date();
+    return ids.map((id) => {
+      const profile = profiles.find((candidate) => candidate.id === id);
+      if (!profile || profile.deletedAt || profile.suspendedAt || profile.invitePendingAt || publicVisibilityMissing(profile)) {
+        throw new NotFoundException("Uno dei professionisti scelti non è più sul sito: torna ai risultati e scegline un altro.");
+      }
+      if (profile.pausedAt || professionalRestrictions(profile, now).blocked) {
+        throw new ConflictException(`${profile.businessName} al momento non accetta nuove richieste: toglilo dalla scelta.`);
+      }
+      if (profile.categoryId !== categoryId && !profile.extraCategories.some((extra) => extra.id === categoryId)) {
+        throw new BadRequestException(`${profile.businessName} non fa questo lavoro: toglilo dalla scelta.`);
+      }
+      return profile;
+    });
+  }
+
+  /**
    * `opts.excludeProfileId`: professionista da escludere dallo smistamento
    * (richiesta rinviata ad altri dopo una mancata presentazione accolta,
    * docs/CHANGELOG.md §167). `opts.checksDone`: zona e indirizzo già
@@ -193,9 +233,13 @@ export class GuidedRequestsService {
     if (!opts.checksDone) await this.assertAddressInCity(input);
     // Non vale per il rinvio fatto dal sistema dopo una mancata
     // presentazione (excludeProfileId, §167).
-    if (!input.professionalProfileId && !opts.excludeProfileId && !opts.checksDone) {
+    // Professionisti scelti dai risultati (§390): come una richiesta diretta,
+    // vale anche dove le richieste generali sono chiuse.
+    const chosenIds = input.professionalProfileId ? [] : (input.professionalProfileIds ?? []);
+    if (!input.professionalProfileId && chosenIds.length === 0 && !opts.excludeProfileId && !opts.checksDone) {
       await this.assertGeneralRequestsOpen(category, input.city ?? null);
     }
+    const chosenProfiles = chosenIds.length > 0 ? await this.loadChosenProfiles(chosenIds, category.id) : [];
 
     let targetProfile: {
       id: string;
@@ -319,6 +363,7 @@ export class GuidedRequestsService {
               professionalProfileId: targetProfile?.id,
               forwardIfNoReply: !!targetProfile && input.forwardIfNoReply,
               forwardAt: targetProfile && input.forwardIfNoReply ? computeDirectForwardAt(input.isUrgent) : null,
+              chosenProfileIds: chosenProfiles.map((profile) => profile.id),
               preferredDate: resolvedSlot?.date,
               preferredTimeSlot: resolvedSlot ? input.preferredTimeSlot : undefined,
               submissionGroupId: opts.submissionGroupId,
@@ -347,7 +392,13 @@ export class GuidedRequestsService {
           distanceKm: null,
           radiusKm: null,
         }))
-      : await this.matchProfilesForFanOut(category.id, input.city ?? "", input.isUrgent, {
+      : chosenProfiles.length > 0
+        ? (await this.prisma.professionalProfile.findMany({ where: { id: { in: chosenProfiles.map((chosen) => chosen.id) } } })).map((profile) => ({
+            profile,
+            distanceKm: null,
+            radiusKm: null,
+          }))
+        : await this.matchProfilesForFanOut(category.id, input.city ?? "", input.isUrgent, {
           excludeProfileId: opts.excludeProfileId,
           remoteOnly: input.serviceMode === "ONLINE",
         });
@@ -400,7 +451,9 @@ export class GuidedRequestsService {
       // thread per ogni professionista che ha davvero ricevuto il Lead.
       const receivedMessage = input.professionalProfileId
         ? "Il cliente ha inviato una richiesta di preventivo direttamente a te."
-        : "Il cliente ha inviato una richiesta di preventivo, ricevuta anche da te.";
+        : chosenProfiles.length > 0
+          ? `Il cliente ha scelto te e ${chosenProfiles.length === 2 ? "un altro professionista" : `altri ${chosenProfiles.length - 1} professionisti`} per questa richiesta di preventivo.`
+          : "Il cliente ha inviato una richiesta di preventivo, ricevuta anche da te.";
       await Promise.all(
         leadRecipients.map((profile) => this.timelineService.log(guidedRequest.id, profile.id, "CLIENT", receivedMessage)),
       );
@@ -420,12 +473,13 @@ export class GuidedRequestsService {
       isUrgent: input.isUrgent,
       sentTo: leadRecipients.length,
       direct: Boolean(input.professionalProfileId),
+      chosen: chosenProfiles.length,
       description: guidedRequest.description,
       summary: {
         ...requestSummary(guidedRequest),
         preferredDate: guidedRequest.preferredDate,
         preferredTimeSlot: guidedRequest.preferredTimeSlot,
-        businessName: targetProfile?.businessName ?? null,
+        businessName: targetProfile?.businessName ?? (chosenProfiles.length > 0 ? joinItalian(chosenProfiles.map((profile) => profile.businessName)) : null),
       },
     });
 
@@ -1042,6 +1096,8 @@ export class GuidedRequestsService {
         status: { in: ["OPEN", "MATCHED"] },
         categoryId: { in: profile.categoryIds },
         professionalProfileId: null,
+        // Scelti dal cliente (§390): solo a loro, mai a chi si iscrive dopo.
+        chosenProfileIds: { isEmpty: true },
         OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
       },
       include: { category: true },

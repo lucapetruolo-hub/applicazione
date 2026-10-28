@@ -286,6 +286,8 @@ export type PasswordResetCodeInput = z.infer<typeof passwordResetCodeSchema>;
 /** Categorie scelte insieme in una richiesta di preventivo generale (docs/CHANGELOG.md §259). */
 export const MAX_REQUEST_CATEGORIES = 3;
 const tooManyRequestCategoriesMessage = `Puoi scegliere al massimo ${MAX_REQUEST_CATEGORIES} categorie.`;
+/** Professionisti scelti dai risultati per una sola richiesta (docs/CHANGELOG.md §390, decisione di Luca: fino a 5). */
+export const MAX_CHOSEN_PROFESSIONALS = 5;
 
 /** Richiesta guidata cliente: foto + poche domande → categoria/prezzo stimato (CLAUDE.md §8). */
 export const guidedRequestSchema = z
@@ -349,6 +351,16 @@ export const guidedRequestSchema = z
     /** Se presente, la richiesta va solo a questo professionista (partita dal suo profilo pubblico), non in fan-out. */
     professionalProfileId: z.guid().optional(),
     /**
+     * Da 2 a 5 professionisti scelti dai risultati (docs/CHANGELOG.md §390):
+     * una sola richiesta, che arriva solo a loro. Mai insieme a
+     * `professionalProfileId` (un solo professionista è una richiesta diretta).
+     */
+    professionalProfileIds: z
+      .array(z.guid())
+      .min(2, "Scegli almeno 2 professionisti.")
+      .max(MAX_CHOSEN_PROFESSIONALS, `Puoi scegliere al massimo ${MAX_CHOSEN_PROFESSIONALS} professionisti.`)
+      .optional(),
+    /**
      * Richiesta diretta a un professionista: se non risponde in tempo o
      * rifiuta, inoltrala ad altri professionisti simili (docs/CHANGELOG.md
      * §154, decisione dell'utente: casella attiva di default, il cliente
@@ -379,6 +391,14 @@ export const guidedRequestSchema = z
   .refine((data) => !data.professionalProfileId || data.extraCategorySlugs.length === 0, {
     message: "Una richiesta a un professionista scelto ha una sola categoria.",
     path: ["extraCategorySlugs"],
+  })
+  .refine((data) => !data.professionalProfileIds || (!data.professionalProfileId && data.extraCategorySlugs.length === 0 && !data.preferredDate), {
+    message: "Una richiesta ai professionisti scelti ha una sola categoria e nessuna fascia oraria.",
+    path: ["professionalProfileIds"],
+  })
+  .refine((data) => !data.professionalProfileIds || new Set(data.professionalProfileIds).size === data.professionalProfileIds.length, {
+    message: "Ogni professionista va scelto una volta sola.",
+    path: ["professionalProfileIds"],
   })
   .refine((data) => new Set([data.categorySlug, ...data.extraCategorySlugs]).size === data.extraCategorySlugs.length + 1, {
     message: "Ogni categoria va scelta una volta sola.",

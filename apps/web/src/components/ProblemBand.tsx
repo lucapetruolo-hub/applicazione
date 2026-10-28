@@ -12,14 +12,16 @@ import {
 import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
+import type { ChosenPro } from "./ChosenProsBar";
 import { InlineAuthGate } from "./InlineAuthGate";
 
 /**
  * Banda in cima ai risultati quando il cliente descrive il problema invece
  * di scegliere il mestiere (docs/CHANGELOG.md §387, decisioni di Luca):
  * avviso di sicurezza (solo dal dizionario), "Ti serve un…", una domanda
- * con le risposte da cliccare, "Chiedi preventivo a tutti"; per un lavoro
- * che nessuna categoria copre, chi lo dichiara oppure "Ce ne occupiamo noi".
+ * con le risposte da cliccare, "Chiedi preventivo a tutti" oppure a chi si
+ * sceglie con "Scegli" (fino a 5, §390); per un lavoro che nessuna categoria
+ * copre, chi lo dichiara oppure "Ce ne occupiamo noi".
  */
 
 function categoryLabel(slug: string): string {
@@ -57,6 +59,9 @@ export function ProblemBand({
   chosen,
   count,
   questionDone,
+  chosenPros = [],
+  maxChosen,
+  onClearChosen,
 }: {
   description: string;
   city?: string;
@@ -66,6 +71,11 @@ export function ProblemBand({
   count: number;
   /** Il cliente ha già risposto alla domanda o ha scelto il mestiere. */
   questionDone: boolean;
+  /** Professionisti scelti con "Scegli" (§390): il pulsante per inviare sta nella barra in basso. */
+  chosenPros?: ChosenPro[];
+  /** Assente quando nei risultati non si può scegliere (meno di 2 schede). */
+  maxChosen?: number;
+  onClearChosen?: () => void;
 }) {
   const others = result.categories.filter((slug) => slug !== chosen);
   const quoteParams = new URLSearchParams({ descrizione: description });
@@ -158,19 +168,37 @@ export function ProblemBand({
       ) : null}
 
       {/* Dopo la domanda: prima si sceglie la persona giusta, poi si chiede il preventivo. */}
-      {chosen ? (
+      {chosen && chosenPros.length > 0 ? (
         <XStack gap="$3" alignItems="center" flexWrap="wrap" justifyContent="space-between">
-          <Text fontSize={16} color={brand.grafite}>
-            {count === 0
-              ? "Per ora nessuno vicino: invia lo stesso la richiesta, ti avvisiamo appena c'è qualcuno."
-              : count === 1
-                ? "1 professionista qui sotto."
-                : `${count} professionisti qui sotto.`}
+          <Text fontSize={16} color={brand.grafite} role="status">
+            {chosenPros.length === 1
+              ? `Hai scelto ${chosenPros[0]!.businessName}: puoi aggiungerne altri, fino a ${maxChosen}.`
+              : `Hai scelto ${chosenPros.length} professionisti su ${maxChosen}: la richiesta arriva solo a loro.`}
           </Text>
-          <Link href={quoteHref} style={{ textDecoration: "none" }}>
-            <Button variant="primary">{count > 1 ? "Chiedi preventivo a tutti" : "Chiedi un preventivo"}</Button>
-          </Link>
+          <Button variant="secondary" onPress={onClearChosen}>
+            Annulla la scelta
+          </Button>
         </XStack>
+      ) : chosen ? (
+        <YStack gap="$2">
+          <XStack gap="$3" alignItems="center" flexWrap="wrap" justifyContent="space-between">
+            <Text fontSize={16} color={brand.grafite}>
+              {count === 0
+                ? "Per ora nessuno vicino: invia lo stesso la richiesta, ti avvisiamo appena c'è qualcuno."
+                : count === 1
+                  ? "1 professionista qui sotto."
+                  : `${count} professionisti qui sotto.`}
+            </Text>
+            <Link href={quoteHref} style={{ textDecoration: "none" }}>
+              <Button variant="primary">{count > 1 ? "Chiedi preventivo a tutti" : "Chiedi un preventivo"}</Button>
+            </Link>
+          </XStack>
+          {maxChosen ? (
+            <Text fontSize={16} color={brand.grafite70}>
+              Oppure scegli tu fino a {maxChosen} professionisti con «Scegli» sulle schede.
+            </Text>
+          ) : null}
+        </YStack>
       ) : null}
 
       {result.outOfService ? (

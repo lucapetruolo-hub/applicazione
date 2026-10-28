@@ -21406,7 +21406,7 @@ e 390 px (anteprime in `anteprime/barra-preventivo-computer/`).
 - **Prestazioni suggerite** (richiesta di Luca): `POPULAR_SERVICES` da 5 a 6-10 voci per categoria con i lavori più chiesti nelle 769 frasi; "Riparazione elettrodomestici" a Tutto Fare ed Elettricista. Nel profilo le prime 8 e "Altre N".
 - **Nomi simili in una voce** (le tre migliorie scelte da Luca): mentre scrive il nome di una prestazione il professionista vede i nomi suggeriti (`datalist`); `canonicalServiceName` in `packages/shared/src/serviceNames.ts` porta varianti, plurali e sinonimi al nome suggerito; in "Mestieri richiesti" i nomi scritti a mano (in evidenza da 3 professionisti in su) si uniscono con "Unisci a…" (`ServiceNameAlias`, `ServiceNamesService.canonicalizer()` per chi somma le prestazioni). Sul profilo resta il nome scritto dal professionista.
 - Migrazione `20261027170616_abbinamento_problema`: `problem_descriptions`, `problem_words`, `problem_takeovers`, `service_name_aliases`.
-- Rimandato a una seconda PR: scegliere fino a 3 professionisti a cui mandare la richiesta (oggi tutti o uno).
+- Rimandato a una seconda PR: scegliere fino a 3 professionisti a cui mandare la richiesta (oggi tutti o uno). Fatto nel §390, fino a 5 (decisione di Luca).
 
 **Verifica**: test del dizionario sul banco di prova, dei nomi delle prestazioni, del servizio con l'IA simulata (sicuro senza IA, dubbio con IA, IA che non risponde, tetto, sicurezza che resta, parola insegnata, descrizione salvata senza contatti), dei nomi uniti e di "Ce ne occupiamo noi"; test dei permessi su tutte le rotte; typecheck e lint; API e sito avviati in locale con i professionisti di prova: rubinetto, gas, macchia di umido e lavatrice provati da computer e telefono, barra con "Ti serve: Idraulico". L'IA vera non è misurata: manca la chiave.
 
@@ -21421,3 +21421,15 @@ e 390 px (anteprime in `anteprime/barra-preventivo-computer/`).
 - Tutto Fare: al posto dei lavori sugli impianti (DM 37/2008, spettano agli installatori abilitati) "Montaggio tende e bastoni" e "Sigillatura con silicone (bagno e cucina)".
 
 **Verifica**: test del quadro per mestiere (conteggi, mestieri in più, aggiunta che toglie dalle scritte a mano, doppioni e categoria sconosciuta rifiutati), test dei permessi (266 rotte), typecheck e lint, 772 test API; pagina provata nel browser da computer e telefono con dati di prova.
+
+## 390. Scegliere fino a 5 professionisti dai risultati
+
+**Richiesta** (Luca, 27/10/2026, stesso thread del §387): "scegliere fino a 5 professionisti" a cui mandare la richiesta partita dalla descrizione del problema, invece di tutti o uno; il 28/10 "effettua le migliorie come hai ritenuto".
+
+**Decisione**:
+- Nei risultati di `/cerca?problema=`, con un mestiere deciso e almeno 2 professionisti, ogni scheda ha **"Scegli"** (diventa "Scelto", al sesto resta spento con il motivo). La banda dice "Oppure scegli tu fino a 5…" sotto "Chiedi preventivo a tutti"; dopo la prima scelta mostra quanti ne hai scelto e "Annulla la scelta". In basso compare una barra fissa (come quella del profilo, §385) con le foto, i nomi e "Chiedi preventivo ai N scelti".
+- Con uno solo scelto è la richiesta diretta di sempre (`professionista=`). Con 2-5 il modulo riceve `scelti=` e mostra "Stai inviando la richiesta ai N professionisti che hai scelto" con nomi e stelle, senza la scelta delle categorie; chi nel frattempo non accetta richieste è detto per nome. Riepilogo, pagina "Richiesta inviata" ed email di conferma dicono a chi è arrivata.
+- Una sola richiesta: `guidedRequestSchema.professionalProfileIds` (da 2 a `MAX_CHOSEN_PROFESSIONALS` = 5, mai con un professionista singolo, altre categorie o una fascia oraria) e `GuidedRequest.chosenProfileIds` (migrazione `20261028080000_professionisti_scelti`). Ogni scelto passa gli stessi controlli della richiesta diretta (visibile, non in pausa né bloccato, del mestiere della richiesta); se uno non va, l'invio si ferma con il suo nome. Vale anche dove le richieste generali sono chiuse (§211), come la richiesta diretta, e conta tra le richieste dirette per riaprirle; non conta nel carico delle generali né arriva a chi si iscrive dopo (§271).
+- La cronologia del professionista dice "Il cliente ha scelto te e altri N professionisti". Il boost resta fuori, come nel resto dei risultati dal problema.
+
+**Verifica**: test della richiesta ai scelti (solo a loro anche con le generali chiuse, pausa, altro mestiere, profilo sparito), dello schema e dell'email; 789 test API, test dei permessi (266 rotte), typecheck e lint; nel browser da computer e telefono scelta di 2 idraulici su 6 a Roma, modulo, invio e "Richiesta inviata", con 2 richieste ricevute nel database.

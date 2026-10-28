@@ -39,3 +39,29 @@ describe("guidedRequestSchema: più categorie", () => {
     expect(guidedRequestSchema.safeParse({ ...direct, extraCategorySlugs: ["elettricista"] }).success).toBe(false);
   });
 });
+
+// Da 2 a 5 professionisti scelti dai risultati (docs/CHANGELOG.md §390).
+describe("guidedRequestSchema: professionisti scelti", () => {
+  const base = { categorySlug: "idraulico", description: "Rifare il bagno di casa", serviceMode: "ONLINE" as const, city: "Latina" };
+  const id = (n: number) => `0b6f7c1e-5d2a-4c3b-9a8e-1f2d3c4b5a6${n}`;
+
+  it("da 2 a 5: accettata", () => {
+    expect(guidedRequestSchema.safeParse({ ...base, professionalProfileIds: [id(1), id(2)] }).success).toBe(true);
+    expect(guidedRequestSchema.safeParse({ ...base, professionalProfileIds: [1, 2, 3, 4, 5].map(id) }).success).toBe(true);
+  });
+
+  it("uno solo o più di 5: rifiutata", () => {
+    expect(guidedRequestSchema.safeParse({ ...base, professionalProfileIds: [id(1)] }).success).toBe(false);
+    expect(guidedRequestSchema.safeParse({ ...base, professionalProfileIds: [1, 2, 3, 4, 5, 6].map(id) }).success).toBe(false);
+  });
+
+  it("lo stesso professionista due volte: rifiutata", () => {
+    expect(guidedRequestSchema.safeParse({ ...base, professionalProfileIds: [id(1), id(1)] }).success).toBe(false);
+  });
+
+  it("mai insieme a un professionista singolo o ad altre categorie", () => {
+    const chosen = { ...base, professionalProfileIds: [id(1), id(2)] };
+    expect(guidedRequestSchema.safeParse({ ...chosen, professionalProfileId: id(3) }).success).toBe(false);
+    expect(guidedRequestSchema.safeParse({ ...chosen, extraCategorySlugs: ["elettricista"] }).success).toBe(false);
+  });
+});

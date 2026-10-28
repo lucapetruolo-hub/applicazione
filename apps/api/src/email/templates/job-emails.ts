@@ -45,6 +45,8 @@ export function requestSentEmail(input: {
   sentTo: number;
   /** Richiesta inviata a un professionista scelto dal suo profilo. */
   direct: boolean;
+  /** Professionisti scelti dal cliente nei risultati, da 2 a 5 (docs/CHANGELOG.md §390). */
+  chosen?: number;
   description?: string | null;
   summary?: RequestSummary;
 }): RenderedEmail {
@@ -61,6 +63,11 @@ export function requestSentEmail(input: {
     ? [
         `Abbiamo inviato la tua richiesta per **${input.category}${where}** al professionista che hai scelto.`,
         "Ti scriviamo appena ti manda un preventivo. Intanto puoi scrivergli in chat dalla richiesta.",
+      ]
+    : input.chosen && input.chosen > 1
+    ? [
+        `Abbiamo inviato la tua richiesta per **${input.category}${where}** ai ${input.chosen} professionisti che hai scelto${input.isUrgent ? ", segnalandola come urgente" : ""}.`,
+        "Ti scriviamo a ogni preventivo: potrai confrontarli, fare domande in chat e scegliere con calma.",
       ]
     : input.sentTo > 0
       ? [

@@ -867,6 +867,10 @@ model GuidedRequest {
   // 60 minuti per un'urgente, 6 ore (contate dalle 8 alle 21) per una
   // normale. Il professionista scelto non ha scadenza (docs/CHANGELOG.md §209).
   forwardAt             DateTime?
+  // Da 2 a 5 professionisti scelti dal cliente nei risultati (docs/CHANGELOG.md
+  // §390): la richiesta arriva solo a loro, mai a chi si iscrive dopo né ad
+  // altri. Vuoto per le richieste generali e per quelle a un solo professionista.
+  chosenProfileIds      String[]                     @default([])
 
   client              User                 @relation(fields: [clientId], references: [id], onDelete: Cascade)
   category            Category             @relation(fields: [categoryId], references: [id])

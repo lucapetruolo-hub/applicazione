@@ -486,7 +486,7 @@ Una riga per voce; dettaglio completo (endpoint, file, bug corretti) in
 - [x] Segnalazioni di problemi sul lavoro e controversie (modello A-Z)
 - [x] Pagamento online dei lavori con Stripe (serve Stripe Connect per andare live)
 - [x] Profilo creato da un operatore al telefono (`/admin/professionisti` → link `/completa-profilo`; fuori dalla ricerca finché non è confermato, `invitePendingAt`)
-- [x] Dal problema scritto ai professionisti adatti: dizionario + IA nei dubbi, avviso di sicurezza, domanda cliccabile, "Ce ne occupiamo noi", admin "Mestieri richiesti" e "Richieste da seguire" (docs/CHANGELOG.md §387); manca la scelta di fino a 3 professionisti
+- [x] Dal problema scritto ai professionisti adatti: dizionario + IA nei dubbi, avviso di sicurezza, domanda cliccabile, "Ce ne occupiamo noi", admin "Mestieri richiesti" e "Richieste da seguire" e scelta di fino a 5 professionisti (docs/CHANGELOG.md §387, §390)
 - [x] Verifica dei professionisti: codice fiscale e partita IVA controllati (formato, coerenza con nome e data, Openapi); documento + selfie con Didit obbligatori prima del primo preventivo, danno il badge "Verificato"; `/admin/verifiche` solo per guardare, ricontrollare e togliere il badge (docs/CHANGELOG.md §253-§255)
 
 ---

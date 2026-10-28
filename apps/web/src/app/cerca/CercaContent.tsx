@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import {
+  MAX_CHOSEN_PROFESSIONALS,
   OUT_OF_SERVICE_KEYWORDS,
   normalizeProblemText,
   type ProblemMatchResult,
@@ -12,6 +14,7 @@ import { EmptySearchResults } from "@/components/EmptySearchResults";
 import { ResultsListWithMap } from "@/components/ResultsListWithMap";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { ProblemBand } from "@/components/ProblemBand";
+import { ChosenProsBar, chosenRequestHref, type ChosenPro } from "@/components/ChosenProsBar";
 
 /** Ricerca partita dalla descrizione del problema (docs/CHANGELOG.md §387). */
 export type ProblemSearch = {
@@ -59,17 +62,32 @@ export function CercaContent({
   initialUrgentOnly?: boolean;
   problem?: ProblemSearch;
 }) {
+  // "Scegli" sulle schede (docs/CHANGELOG.md §390): solo con un mestiere
+  // deciso e almeno due professionisti, altrimenti non c'è niente da scegliere.
+  const canChoose = Boolean(problem?.chosen) && professionals.length >= 2;
+  const [chosenPros, setChosenPros] = useState<ChosenPro[]>([]);
+  const chosenIds = new Set(chosenPros.map((pro) => pro.id));
+  function toggleChosen(pro: ProfessionalSearchResult) {
+    setChosenPros((current) =>
+      current.some((item) => item.id === pro.id)
+        ? current.filter((item) => item.id !== pro.id)
+        : current.length < MAX_CHOSEN_PROFESSIONALS
+          ? [...current, { id: pro.id, businessName: pro.businessName, imageUrl: pro.imageUrl ?? null, categorySlug: pro.categorySlug }]
+          : current,
+    );
+  }
+
   const title = problem
     ? `Chi ti serve per «${problem.description.slice(0, 60)}»`
     : online
-    ? city
-      ? `Consulenze online a ${city}`
-      : "Consulenze online disponibili"
-    : city
-      ? `Professionisti a ${city}`
-      : q
-        ? `Risultati per "${q}"`
-        : "Tutti i professionisti";
+      ? city
+        ? `Consulenze online a ${city}`
+        : "Consulenze online disponibili"
+      : city
+        ? `Professionisti a ${city}`
+        : q
+          ? `Risultati per "${q}"`
+          : "Tutti i professionisti";
 
   // Richiesta esplicita dell'utente: niente scheda "Ricerca / N
   // professionisti verificati trovati" in cima ai risultati — la lista parla
@@ -82,8 +100,15 @@ export function CercaContent({
       chosen={problem.chosen}
       count={professionals.length}
       questionDone={problem.questionDone}
+      chosenPros={chosenPros}
+      maxChosen={canChoose ? MAX_CHOSEN_PROFESSIONALS : undefined}
+      onClearChosen={() => setChosenPros([])}
     />
-  ) : loadFailed ? <LoadErrorNotice title="Non riusciamo a caricare i professionisti" /> : professionals.length > 0 ? null : <EmptySearchResults title={title} online={Boolean(online)} city={city} />;
+  ) : loadFailed ? (
+    <LoadErrorNotice title="Non riusciamo a caricare i professionisti" />
+  ) : professionals.length > 0 ? null : (
+    <EmptySearchResults title={title} online={Boolean(online)} city={city} />
+  );
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent">
@@ -100,8 +125,25 @@ export function CercaContent({
           initialUrgentOnly={initialUrgentOnly}
           merit={Boolean(problem)}
           reasonFor={problem ? (pro) => problemReason(problem, pro) : undefined}
+          selection={
+            canChoose
+              ? {
+                  selectedIds: chosenIds,
+                  canAdd: chosenPros.length < MAX_CHOSEN_PROFESSIONALS,
+                  max: MAX_CHOSEN_PROFESSIONALS,
+                  onToggle: toggleChosen,
+                }
+              : undefined
+          }
         />
       </YStack>
+      {problem?.chosen && chosenPros.length > 0 ? (
+        <ChosenProsBar
+          chosen={chosenPros}
+          max={MAX_CHOSEN_PROFESSIONALS}
+          href={chosenRequestHref(chosenPros, problem.chosen, problem.description, city)}
+        />
+      ) : null}
     </YStack>
   );
 }
