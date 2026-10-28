@@ -14,7 +14,6 @@ import {
   type PrismaClient,
 } from "@professionisti/database";
 import {
-  BRAND,
   notificationJobLabel,
   WHATSAPP_DIGEST_DEFAULT_HOUR,
   WHATSAPP_MESSAGE_TYPES,
@@ -469,7 +468,6 @@ export class WhatsAppService {
                 : (job.city ?? request?.city ?? job.professionalProfile.city),
           };
         }),
-        BRAND.name,
       );
       try {
         await this.enqueue({
@@ -483,7 +481,7 @@ export class WhatsAppService {
           idempotencyKey: `professional-day:${userId}:${day}`,
           bookingId: first.id,
           urgent: true,
-          // Dice "domani": dopo mezzanotte non parte più.
+          // Un riepilogo rimasto indietro non parte il giorno stesso dei lavori.
           expiresAt: wallClockToInstant(from, now),
           now,
         });

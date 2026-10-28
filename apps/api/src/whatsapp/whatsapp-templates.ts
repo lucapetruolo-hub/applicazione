@@ -17,8 +17,7 @@ import {
  *
  * Il giorno si scrive sempre per intero ("giovedì 5 novembre"), mai
  * "domani": un promemoria trattenuto dalle ore di silenzio può arrivare la
- * mattina stessa dell'appuntamento. Unica eccezione il riepilogo della sera
- * al professionista, che dopo mezzanotte non parte più.
+ * mattina stessa dell'appuntamento.
  */
 export const WHATSAPP_FOOTER =
   "Messaggio automatico, le risposte non vengono lette";
@@ -42,7 +41,7 @@ const AGENDA_BUTTON = {
   text: "Apri l'agenda",
   exampleSuffix: "dashboard/agenda",
 };
-const EXAMPLE_DAY = "MARTEDÌ 13 OTTOBRE";
+const EXAMPLE_DAY = "giovedì 5 novembre";
 const EXAMPLE_JOBS = [
   ["08:30", "Perdita sotto il lavandino · Latina"],
   ["11:00", "Sostituzione rubinetto · Sabaudia"],
@@ -51,30 +50,28 @@ const EXAMPLE_JOBS = [
 const DAY_END =
   "\n\nIndirizzi e contatti dei clienti sono nella tua agenda. Buon lavoro!";
 
-/** Righe numerate dei lavori: "1. *{{n}}* · {{n+1}}", a partire dalla variabile `from`. */
+/** Righe dei lavori: "• *{{n}}* · {{n+1}}" (ora in grassetto), dalla variabile `from`. */
 function jobLines(count: number, from: number): string {
   return Array.from(
     { length: count },
-    (_, i) => `${i + 1}. *{{${from + i * 2}}}* · {{${from + i * 2 + 1}}}`,
+    (_, i) => `• *{{${from + i * 2}}}* · {{${from + i * 2 + 1}}}`,
   ).join("\n");
 }
 
 /**
- * Riepilogo della sera al professionista (Luca, 28/10/2026): "Buonasera,
- * Professionisti ti ricorda gli appuntamenti per domani, *MARTEDÌ 13
- * OTTOBRE*:" e l'elenco numerato con l'ora in grassetto, poi cosa e dove.
- * Un modello per 1, 2 e 3 lavori e uno per 4 o più (i primi tre e "e altri
- * N"): Meta non accetta variabili vuote né a capo dentro una variabile. Si
- * paga a messaggio, non a caratteri. Qui "domani" è giusto: parte solo la
- * sera prima, all'ora scelta, e dopo mezzanotte non parte più.
+ * Riepilogo della sera al professionista (Luca, 28/10/2026): "*I tuoi 3
+ * lavori di giovedì 5 novembre*" e un lavoro per riga con l'ora in
+ * grassetto, poi cosa e dove. Un modello per 1, 2 e 3 lavori e uno per 4 o
+ * più (i primi tre e "e altri N"): Meta non accetta variabili vuote né a
+ * capo dentro una variabile. Si paga a messaggio, non a caratteri.
  */
 export const PROFESSIONAL_DAY_TEMPLATES: readonly WhatsAppTemplateDefinition[] =
   [
     {
       name: "riepilogo_lavori_1",
       category: "utility",
-      body: `Buonasera, {{1}} ti ricorda l'appuntamento per domani, *{{2}}*:\n\n${jobLines(1, 3)}\n\nIndirizzo e contatti del cliente sono nella tua agenda. Buon lavoro!`,
-      example: ["Professionisti", EXAMPLE_DAY, ...EXAMPLE_JOBS[0]],
+      body: `*Il tuo lavoro di {{1}}*\n\n${jobLines(1, 2)}\n\nIndirizzo e contatti del cliente sono nella tua agenda. Buon lavoro!`,
+      example: [EXAMPLE_DAY, ...EXAMPLE_JOBS[0]],
       urlButton: AGENDA_BUTTON,
       stopButton: true,
       footer: WHATSAPP_FOOTER,
@@ -82,13 +79,8 @@ export const PROFESSIONAL_DAY_TEMPLATES: readonly WhatsAppTemplateDefinition[] =
     {
       name: "riepilogo_lavori_2",
       category: "utility",
-      body: `Buonasera, {{1}} ti ricorda gli appuntamenti per domani, *{{2}}*:\n\n${jobLines(2, 3)}${DAY_END}`,
-      example: [
-        "Professionisti",
-        EXAMPLE_DAY,
-        ...EXAMPLE_JOBS[0],
-        ...EXAMPLE_JOBS[1],
-      ],
+      body: `*I tuoi 2 lavori di {{1}}*\n\n${jobLines(2, 2)}${DAY_END}`,
+      example: [EXAMPLE_DAY, ...EXAMPLE_JOBS[0], ...EXAMPLE_JOBS[1]],
       urlButton: AGENDA_BUTTON,
       stopButton: true,
       footer: WHATSAPP_FOOTER,
@@ -96,8 +88,8 @@ export const PROFESSIONAL_DAY_TEMPLATES: readonly WhatsAppTemplateDefinition[] =
     {
       name: "riepilogo_lavori_3",
       category: "utility",
-      body: `Buonasera, {{1}} ti ricorda gli appuntamenti per domani, *{{2}}*:\n\n${jobLines(3, 3)}${DAY_END}`,
-      example: ["Professionisti", EXAMPLE_DAY, ...EXAMPLE_JOBS.flat()],
+      body: `*I tuoi 3 lavori di {{1}}*\n\n${jobLines(3, 2)}${DAY_END}`,
+      example: [EXAMPLE_DAY, ...EXAMPLE_JOBS.flat()],
       urlButton: AGENDA_BUTTON,
       stopButton: true,
       footer: WHATSAPP_FOOTER,
@@ -105,14 +97,8 @@ export const PROFESSIONAL_DAY_TEMPLATES: readonly WhatsAppTemplateDefinition[] =
     {
       name: "riepilogo_lavori_piu",
       category: "utility",
-      body: `Buonasera, {{1}} ti ricorda i {{2}} appuntamenti per domani, *{{3}}*:\n\n${jobLines(3, 4)}\n…e {{10}}.${DAY_END}`,
-      example: [
-        "Professionisti",
-        "5",
-        EXAMPLE_DAY,
-        ...EXAMPLE_JOBS.flat(),
-        "altri 2 appuntamenti",
-      ],
+      body: `*I tuoi {{1}} lavori di {{2}}*\n\n${jobLines(3, 3)}\n…e {{9}}.${DAY_END}`,
+      example: ["5", EXAMPLE_DAY, ...EXAMPLE_JOBS.flat(), "altri 2 lavori"],
       urlButton: AGENDA_BUTTON,
       stopButton: true,
       footer: WHATSAPP_FOOTER,
@@ -233,30 +219,25 @@ export function professionalDayJobParams(
 }
 
 /** Il modello giusto per il numero di lavori e le sue variabili. */
-export function professionalDayMessage(
-  jobs: ProfessionalDayJob[],
-  brandName: string,
-): {
+export function professionalDayMessage(jobs: ProfessionalDayJob[]): {
   template: WhatsAppTemplateDefinition;
   bodyParams: string[];
 } {
-  const day = whatsappDay(jobs[0]!.scheduledAt).toLocaleUpperCase("it-IT");
+  const day = whatsappDay(jobs[0]!.scheduledAt);
   const lines = jobs.slice(0, 3).flatMap(professionalDayJobParams);
-  const brand = whatsappName(brandName);
   if (jobs.length <= 3)
     return {
       template: PROFESSIONAL_DAY_TEMPLATES[jobs.length - 1]!,
-      bodyParams: [brand, day, ...lines],
+      bodyParams: [day, ...lines],
     };
   const others = jobs.length - 3;
   return {
     template: PROFESSIONAL_DAY_TEMPLATES[3]!,
     bodyParams: [
-      brand,
       String(jobs.length),
       day,
       ...lines,
-      others === 1 ? "un altro appuntamento" : `altri ${others} appuntamenti`,
+      others === 1 ? "un altro lavoro" : `altri ${others} lavori`,
     ],
   };
 }

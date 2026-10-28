@@ -58,40 +58,40 @@ cliente. Dice "domani": parte solo la sera prima e dopo mezzanotte no.
 - Testi (gli asterischi fanno il grassetto, gli a capo vanno lasciati):
 
   `riepilogo_lavori_1`
-  > Buonasera, {{1}} ti ricorda l'appuntamento per domani, \*{{2}}\*:
+  > \*Il tuo lavoro di {{1}}\*
   >
-  > 1\. \*{{3}}\* · {{4}}
+  > • \*{{2}}\* · {{3}}
   >
   > Indirizzo e contatti del cliente sono nella tua agenda. Buon lavoro!
 
   `riepilogo_lavori_2`
-  > Buonasera, {{1}} ti ricorda gli appuntamenti per domani, \*{{2}}\*:
+  > \*I tuoi 2 lavori di {{1}}\*
   >
-  > 1\. \*{{3}}\* · {{4}}
-  > 2\. \*{{5}}\* · {{6}}
+  > • \*{{2}}\* · {{3}}
+  > • \*{{4}}\* · {{5}}
   >
   > Indirizzi e contatti dei clienti sono nella tua agenda. Buon lavoro!
 
   `riepilogo_lavori_3`
-  > Buonasera, {{1}} ti ricorda gli appuntamenti per domani, \*{{2}}\*:
+  > \*I tuoi 3 lavori di {{1}}\*
   >
-  > 1\. \*{{3}}\* · {{4}}
-  > 2\. \*{{5}}\* · {{6}}
-  > 3\. \*{{7}}\* · {{8}}
+  > • \*{{2}}\* · {{3}}
+  > • \*{{4}}\* · {{5}}
+  > • \*{{6}}\* · {{7}}
   >
   > Indirizzi e contatti dei clienti sono nella tua agenda. Buon lavoro!
 
   `riepilogo_lavori_piu`
-  > Buonasera, {{1}} ti ricorda i {{2}} appuntamenti per domani, \*{{3}}\*:
+  > \*I tuoi {{1}} lavori di {{2}}\*
   >
-  > 1\. \*{{4}}\* · {{5}}
-  > 2\. \*{{6}}\* · {{7}}
-  > 3\. \*{{8}}\* · {{9}}
-  > …e {{10}}.
+  > • \*{{3}}\* · {{4}}
+  > • \*{{5}}\* · {{6}}
+  > • \*{{7}}\* · {{8}}
+  > …e {{9}}.
   >
   > Indirizzi e contatti dei clienti sono nella tua agenda. Buon lavoro!
 
-- Esempio delle variabili: il nome del sito = "Professionisti" (`BRAND.name`); il giorno = "MARTEDÌ 13 OTTOBRE"; per ogni lavoro l'ora = "08:30" e il resto = "Perdita sotto il lavandino · Latina"; nel quarto modello {{2}} = "5" e {{10}} = "altri 2 appuntamenti"
+- Esempio delle variabili: il giorno = "giovedì 5 novembre"; per ogni lavoro l'ora = "08:30" e il resto = "Perdita sotto il lavandino · Latina"; nel quarto modello {{1}} = "5" e {{9}} = "altri 2 lavori"
 - Piè di pagina: "Messaggio automatico, le risposte non vengono lette"
 - Pulsante 1, "Visita il sito web", URL dinamico: testo "Apri l'agenda", indirizzo `https://<dominio>/{{1}}`, esempio `https://<dominio>/dashboard/agenda`
 - Pulsante 2, risposta rapida: "Non ricevere più"

@@ -456,8 +456,7 @@ describe("WhatsAppService: riepilogo della sera al professionista", () => {
     expect(sent[0]).toMatchObject({
       template: "riepilogo_lavori_3",
       bodyParams: [
-        "Professionisti",
-        "SABATO 16 GENNAIO",
+        "sabato 16 gennaio",
         "08:30",
         "Idraulico · Sabaudia",
         "11:00",

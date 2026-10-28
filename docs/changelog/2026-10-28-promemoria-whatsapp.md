@@ -116,15 +116,12 @@ lavori esterni dell'agenda non ricevono nulla (domanda 70 per l'avvocato).
   senza contatti né vie, altrimenti il mestiere, e il comune o "online"),
   "Buon lavoro!". Quattro modelli (1, 2, 3, 4 o più con "e altri N"), stesso
   costo di prima. Mai nome o via del cliente: restano nell'agenda.
-- **Sesto giro** (Luca: "Buonasera, *nome sito* ti ricorda gli
-  appuntamenti per domani *MARTEDÌ 13 OTTOBRE* e poi l'elenco numerato con
-  l'inizio in grassetto"): il riepilogo ora apre con "Buonasera, {{nome del
-  sito}} ti ricorda gli appuntamenti per domani, *MARTEDÌ 13 OTTOBRE*:",
-  elenco numerato "1. *08:30* · Perdita sotto il lavandino · Latina",
-  riga vuota, "Indirizzi e contatti dei clienti sono nella tua agenda.
-  Buon lavoro!" e i due pulsanti. Il nome del sito arriva da `BRAND.name`.
-  "Domani" va bene perché il riepilogo scade a mezzanotte: un messaggio
-  rimasto indietro non parte la mattina dopo.
+- **Sesto giro** (Luca): provata l'apertura "Buonasera, Professionisti ti
+  ricorda gli appuntamenti per domani, *MARTEDÌ 13 OTTOBRE*" con elenco
+  numerato; Luca ha preferito la versione di prima con solo l'ora in
+  grassetto: "*I tuoi 3 lavori di giovedì 5 novembre*", "• *08:30* ·
+  Perdita sotto il lavandino · Latina". Il riepilogo scade a mezzanotte:
+  rimasto indietro, non parte il giorno stesso dei lavori.
 
 Modelli da far approvare a Meta: `docs/whatsapp-modelli.md`.
 
