@@ -75,10 +75,20 @@ export function emailCodeValidFor(
   return Math.max(0, Math.floor((user.emailCodeExpiresAt.getTime() - now.getTime()) / 1000));
 }
 
-/** Campi da azzerare quando l'email risulta confermata, in qualunque modo. */
+/** Secondi di validità che restano al pulsante dell'email (0 = scaduto o mai mandato). */
+export function emailLinkValidFor(expiresAt: Date | null, now = new Date()): number {
+  if (!expiresAt) return 0;
+  return Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
+}
+
+/**
+ * Campi da azzerare quando l'email risulta confermata, in qualunque modo. Il
+ * link resta salvato fino a quando se ne manda uno nuovo: riaperto (da chi lo
+ * apre due volte o dall'antivirus della posta) dice "già confermata" invece
+ * di "non valido", e non può più cambiare nulla
+ * (docs/changelog/2026-10-28-verifica-email-con-link.md).
+ */
 const CLEARED_EMAIL_CHECKS = {
-  emailTokenHash: null,
-  emailTokenExpiresAt: null,
   emailCodeHash: null,
   emailCodeExpiresAt: null,
   emailCodeAttempts: 0,
@@ -426,8 +436,9 @@ export class AuthService {
       data: {
         ...rest,
         ...(birthDate ? { birthDate: new Date(birthDate) } : {}),
-        // Un indirizzo nuovo va confermato di nuovo (docs/CHANGELOG.md §178).
-        ...(emailChanged ? { emailVerifiedAt: null } : {}),
+        // Un indirizzo nuovo va confermato di nuovo (docs/CHANGELOG.md §178),
+        // e il link mandato al vecchio non deve poterlo confermare.
+        ...(emailChanged ? { emailVerifiedAt: null, emailTokenHash: null, emailTokenExpiresAt: null, emailCodeHash: null } : {}),
       },
     });
     if (emailChanged && updated.email && updated.role !== "CLIENT") {
@@ -438,8 +449,8 @@ export class AuthService {
 
   /**
    * Conferma email (docs/CHANGELOG.md §178, §243): genera un nuovo link e un
-   * nuovo codice di 6 cifre (quelli precedenti smettono di valere) e li manda
-   * nella stessa email. Non blocca mai il chiamante se l'email non parte:
+   * nuovo codice di 6 cifre di riserva (quelli precedenti smettono di valere)
+   * e li manda nella stessa email. Non blocca mai il chiamante se l'email non parte:
    * l'utente può farla rispedire.
    */
   private async sendVerificationEmail(userId: string, email: string, name: string | null, mode: "welcome" | "verify"): Promise<void> {
@@ -469,7 +480,7 @@ export class AuthService {
     });
   }
 
-  /** Nuovo codice e nuovo link, al massimo uno ogni EMAIL_CODE_RESEND_SECONDS secondi. */
+  /** Nuovo link e nuovo codice, al massimo uno ogni EMAIL_CODE_RESEND_SECONDS secondi. */
   async resendVerificationEmail(userId: string): Promise<{ alreadyVerified: boolean }> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user?.email || user.deletedAt !== null) {
@@ -478,22 +489,35 @@ export class AuthService {
     if (user.emailVerifiedAt) return { alreadyVerified: true };
     const wait = emailCodeResendWait(user.emailCodeSentAt);
     if (wait > 0) {
-      throw new HttpException(`Ti abbiamo appena mandato un codice. Puoi chiederne un altro tra ${wait} secondi.`, HttpStatus.TOO_MANY_REQUESTS);
+      throw new HttpException(`Ti abbiamo appena mandato un'email. Puoi chiederne un'altra tra ${wait} secondi.`, HttpStatus.TOO_MANY_REQUESTS);
     }
     await this.sendVerificationEmail(user.id, user.email, user.name, "verify");
     return { alreadyVerified: false };
   }
 
-  async verifyEmail(token: string): Promise<{ email: string }> {
-    const user = await this.prisma.user.findUnique({ where: { emailTokenHash: hashEmailToken(token) } });
-    if (!user?.email || user.deletedAt !== null || !user.emailTokenExpiresAt || user.emailTokenExpiresAt < new Date()) {
-      throw new BadRequestException("Il link di conferma non è valido o è scaduto. Accedi e chiedi un nuovo link.");
+  /**
+   * Pulsante dell'email (docs/changelog/2026-10-28-verifica-email-con-link.md).
+   * La pagina lo chiama solo dopo un tocco (o da sola se l'accesso è già
+   * fatto), mai all'apertura del link: gli antivirus della posta che aprono i
+   * link da soli non confermano nulla. Conferma una volta sola: riaperto dopo,
+   * risponde "già confermata" senza cambiare nulla.
+   */
+  async verifyEmail(token: string): Promise<{ email: string; alreadyVerified: boolean }> {
+    const tokenHash = hashEmailToken(token);
+    const user = await this.prisma.user.findUnique({ where: { emailTokenHash: tokenHash } });
+    if (!user?.email || user.deletedAt !== null || !user.emailTokenExpiresAt) {
+      throw new BadRequestException("Questo link non vale più: forse ti abbiamo mandato un'email più recente. Apri l'ultima che hai ricevuto, oppure chiedine una nuova.");
     }
-    await this.prisma.user.update({
-      where: { id: user.id },
+    if (user.emailVerifiedAt) return { email: user.email, alreadyVerified: true };
+    if (user.emailTokenExpiresAt < new Date()) {
+      throw new BadRequestException(`Il link è scaduto: vale ${EMAIL_TOKEN_HOURS} ore. Chiedine uno nuovo, arriva in pochi secondi.`);
+    }
+    // Condizionato: due tocchi insieme confermano una volta sola.
+    await this.prisma.user.updateMany({
+      where: { id: user.id, emailTokenHash: tokenHash, emailVerifiedAt: null },
       data: { emailVerifiedAt: new Date(), ...CLEARED_EMAIL_CHECKS },
     });
-    return { email: user.email };
+    return { email: user.email, alreadyVerified: false };
   }
 
   /**

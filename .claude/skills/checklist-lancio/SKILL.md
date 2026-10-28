@@ -313,11 +313,14 @@ prima del lancio"):
     5bis) e provato che il link arriva a un indirizzo qualunque, impostare
     `EMAIL_VERIFICATION_REQUIRED=true` su Render. Prima di allora nessuno
     tranne il titolare dell'account Resend riceverebbe il link.
-    Dal §243 la stessa email porta anche un **codice di 6 cifre**, che il
-    professionista scrive subito dopo la registrazione: provarlo da telefono
-    con una casella Gmail e una Outlook (arrivo in pochi secondi, codice
-    visibile nell'anteprima della notifica, niente spam). Finché la variabile
-    è spenta, la schermata del codice mostra "Lo faccio dopo".
+    Dal 28/10/2026 (`docs/changelog/2026-10-28-verifica-email-con-link.md`)
+    la cosa da fare è il **pulsante** dell'email; il codice di 6 cifre resta
+    in piccolo sotto, di riserva. Provare da telefono con una casella Gmail e
+    una Outlook (arrivo in pochi secondi, niente spam, pulsante che apre la
+    pagina con "Conferma la mia email" anche dal browser interno dell'app di
+    posta) e, con una casella aziendale con antivirus dei link (es. Outlook
+    con Safe Links), che l'email resta da confermare finché non si tocca il
+    pulsante. Finché la variabile è spenta, l'attesa mostra "Lo faccio dopo".
     Stato al 19/10/2026: la variabile è su `false` su Render, in attesa del
     dominio (punto 5bis). Dopo il dominio, prima di riaccenderla, provare anche
     che la conferma da un altro dispositivo funziona: registrazione dal PC, link
@@ -516,7 +519,8 @@ Città, pagine vuote fuori da Google.
     OpenRouter (`OPENROUTER_API_KEY` su Render). Prima del lancio: creare
     l'account Anthropic intestato all'azienda, mettere `ANTHROPIC_API_KEY`
     su Render e togliere `OPENROUTER_API_KEY` (e `OPENROUTER_MODEL` se c'è).
-    Il codice non cambia.
+    Il codice non cambia. Da docs/changelog/2026-10-28-ia-gratuita-fino-al-lancio.md OpenRouter usa un modello gratuito, che
+    può tenere i testi: al lancio non deve restare acceso.
 
 ## Da fare dopo il lancio
 

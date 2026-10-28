@@ -27,10 +27,14 @@ export function welcomeClientEmail(name: string | null): RenderedEmail {
 }
 
 /**
- * Benvenuto del professionista: quando serve, contiene anche il link di
+ * Benvenuto del professionista: quando serve, contiene anche il pulsante di
  * conferma dell'email (una sola email invece di due).
  */
-/** Link e codice di conferma dell'email (docs/CHANGELOG.md §178, §243). */
+/**
+ * Conferma dell'email (docs/CHANGELOG.md §178, §243): il pulsante è la cosa
+ * da fare, il codice resta in piccolo sotto come riserva per chi non riesce
+ * ad aprire il link (docs/changelog/2026-10-28-verifica-email-con-link.md).
+ */
 export type EmailVerification = { link: string; hours: number; code: string; codeMinutes: number };
 
 const COMPLETE_PROFILE_TEXT =
@@ -39,20 +43,28 @@ const COMPLETE_PROFILE_TEXT =
 // Orari di partenza dell'agenda (docs/CHANGELOG.md §365), gli stessi di `starterWeekTemplate`.
 const STARTER_HOURS_TEXT = "Completato il profilo, la tua agenda parte già con degli orari: dal lunedì al sabato, 8–13 e 14–20. Li cambi quando vuoi da Agenda.";
 
+function backupCode(verify: EmailVerification) {
+  return { label: "Il pulsante non si apre? Scrivi questo codice sul sito:", value: verify.code, backup: true };
+}
+
+function verifyValidity(verify: EmailVerification): string {
+  return `Il pulsante vale ${verify.hours} ore, il codice ${verify.codeMinutes} minuti. Non dare il codice a nessuno: non te lo chiederemo mai al telefono.`;
+}
+
 export function welcomeProfessionalEmail(name: string | null, verify: EmailVerification | null): RenderedEmail {
   const site = frontendUrl();
   return renderEmail({
     kind: "account",
-    subject: verify ? `${verify.code} è il tuo codice per ${EMAIL_BRAND.name}` : `Benvenuto su ${EMAIL_BRAND.name}`,
-    preheader: verify ? `Benvenuto! Inserisci il codice ${verify.code} per confermare la tua email.` : "Completa il profilo per iniziare a ricevere richieste.",
+    subject: verify ? `Conferma la tua email per ${EMAIL_BRAND.name}` : `Benvenuto su ${EMAIL_BRAND.name}`,
+    preheader: verify ? "Benvenuto! Premi il pulsante per confermare la tua email." : "Completa il profilo per iniziare a ricevere richieste.",
     greeting: name,
     title: `Benvenuto su ${EMAIL_BRAND.name}!`,
     paragraphs: [
       "Grazie per esserti iscritto. Qui i clienti della tua zona ti trovano, ti chiedono un preventivo e ti scelgono anche per le recensioni dei lavori fatti.",
-      // Con la conferma il codice segue subito l'invito a scriverlo; il resto va dopo il pulsante.
-      ...(verify ? ["**Prima di tutto conferma il tuo indirizzo email:** scrivi questo codice sul sito, oppure premi il pulsante qui sotto."] : [COMPLETE_PROFILE_TEXT, STARTER_HOURS_TEXT]),
+      // Con la conferma il pulsante segue subito l'invito; il resto va dopo.
+      ...(verify ? ["**Prima di tutto conferma il tuo indirizzo email** con il pulsante qui sotto."] : [COMPLETE_PROFILE_TEXT, STARTER_HOURS_TEXT]),
     ],
-    ...(verify ? { code: { label: "Il tuo codice", value: verify.code } } : {}),
+    ...(verify ? { code: backupCode(verify) } : {}),
     cta: verify ? { label: "Conferma la mia email", url: verify.link } : { label: "Completa il profilo", url: `${site}/dashboard/profilo` },
     after: verify
       ? [verifyValidity(verify), COMPLETE_PROFILE_TEXT, STARTER_HOURS_TEXT, "Se non ti sei iscritto tu, ignora questo messaggio."]
@@ -60,20 +72,16 @@ export function welcomeProfessionalEmail(name: string | null, verify: EmailVerif
   });
 }
 
-function verifyValidity(verify: EmailVerification): string {
-  return `Il codice vale ${verify.codeMinutes} minuti, il pulsante ${verify.hours} ore. Non dare il codice a nessuno: non te lo chiederemo mai al telefono.`;
-}
-
 /** Conferma dell'email rispedita, o dopo un cambio di indirizzo. */
 export function verifyEmailEmail(name: string | null, verify: EmailVerification): RenderedEmail {
   return renderEmail({
     kind: "account",
-    subject: `${verify.code} è il tuo codice per ${EMAIL_BRAND.name}`,
-    preheader: `Inserisci il codice ${verify.code} per confermare la tua email.`,
+    subject: `Conferma la tua email per ${EMAIL_BRAND.name}`,
+    preheader: "Premi il pulsante per confermare il tuo indirizzo email.",
     greeting: name,
     title: "Conferma il tuo indirizzo email",
-    paragraphs: ["Per confermare che questo indirizzo è tuo scrivi il codice sul sito, oppure premi il pulsante qui sotto."],
-    code: { label: "Il tuo codice", value: verify.code },
+    paragraphs: ["Premi il pulsante qui sotto per confermare che questo indirizzo è tuo."],
+    code: backupCode(verify),
     cta: { label: "Conferma la mia email", url: verify.link },
     after: [verifyValidity(verify), "Se non hai chiesto tu questa email, ignorala: il tuo account non cambia."],
   });
@@ -83,19 +91,21 @@ export type PasswordResetEmail = { link: string; minutes: number; code: string; 
 
 /** Recupero password: codice da scrivere sul sito oppure pulsante (§185, codice dal §245). */
 export function passwordResetEmail(name: string | null, reset: PasswordResetEmail): RenderedEmail {
+  // Il pulsante è la cosa da fare, il codice resta in piccolo sotto: serve
+  // quando l'email si legge sul telefono e la password si cambia dal
+  // computer (docs/changelog/2026-10-28-verifica-email-con-link.md). Niente
+  // codice nell'oggetto: si vedrebbe anche dalla schermata bloccata.
   return renderEmail({
     kind: "account",
-    subject: `${reset.code} è il codice per reimpostare la password`,
-    preheader: `Inserisci il codice ${reset.code} per scegliere una nuova password.`,
+    subject: "Reimposta la tua password",
+    preheader: "Premi il pulsante per scegliere una nuova password.",
     greeting: name,
     title: "Reimposta la tua password",
-    paragraphs: [
-      "Abbiamo ricevuto una richiesta per reimpostare la password del tuo account. Scrivi il codice sul sito, oppure premi il pulsante qui sotto.",
-    ],
-    code: { label: "Il tuo codice", value: reset.code },
+    paragraphs: ["Abbiamo ricevuto una richiesta per reimpostare la password del tuo account. Premi il pulsante qui sotto per sceglierne una nuova."],
     cta: { label: "Scegli una nuova password", url: reset.link },
+    code: { label: "Il pulsante non si apre? Scrivi questo codice sul sito:", value: reset.code, backup: true },
     after: [
-      `Il codice vale ${reset.codeMinutes} minuti, il pulsante ${reset.minutes} minuti. Non dare il codice a nessuno: non te lo chiederemo mai al telefono.`,
+      `Il pulsante vale ${reset.minutes} minuti, il codice ${reset.codeMinutes} minuti. Non dare il codice a nessuno: non te lo chiederemo mai al telefono.`,
       "Se non l'hai chiesto tu, ignora questa email: la tua password resta quella di prima.",
     ],
   });

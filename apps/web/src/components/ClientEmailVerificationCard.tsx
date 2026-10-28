@@ -16,7 +16,7 @@ export function ClientEmailVerificationCard() {
   const { user, token, refreshUser } = useAuth();
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
-  const [timing, setTiming] = useState<{ resendIn: number; validFor?: number }>({ resendIn: 60 });
+  const [timing, setTiming] = useState<{ resendIn: number; validFor?: number; linkValidFor?: number }>({ resendIn: 60 });
 
   if (!user || !token || user.isProfessional || user.emailVerified || !user.email) return null;
 
@@ -28,11 +28,11 @@ export function ClientEmailVerificationCard() {
       setTiming({ resendIn: 60 });
       setState("sent");
     } catch (err) {
-      // Un codice mandato da poco (es. da un'altra scheda) è ancora buono:
-      // si apre il riquadro per scriverlo invece di un errore senza uscita.
+      // Un'email mandata da poco (es. da un'altra scheda) è ancora buona:
+      // si apre l'attesa della conferma invece di un errore senza uscita.
       const me = await apiClient.me(token).catch(() => null);
-      if (me && me.emailCodeValidForSeconds > 0) {
-        setTiming({ resendIn: me.emailCodeResendInSeconds, validFor: me.emailCodeValidForSeconds });
+      if (me && me.emailLinkValidForSeconds > 0) {
+        setTiming({ resendIn: me.emailCodeResendInSeconds, validFor: me.emailCodeValidForSeconds, linkValidFor: me.emailLinkValidForSeconds });
         setState("sent");
         return;
       }
@@ -58,12 +58,14 @@ export function ClientEmailVerificationCard() {
           email={user.email}
           initialResendSeconds={timing.resendIn}
           initialValidForSeconds={timing.validFor}
+          initialLinkValidForSeconds={timing.linkValidFor}
+          linkFirst
           onVerified={() => void refreshUser().catch(() => {})}
         />
       ) : (
         <YStack gap="$2" alignItems="flex-start">
           <Button variant="primary" onPress={send} disabled={state === "sending"} opacity={state === "sending" ? 0.6 : 1}>
-            {state === "sending" ? "Invio..." : "Mandami il codice di conferma"}
+            {state === "sending" ? "Invio..." : "Mandami l'email di conferma"}
           </Button>
           {state === "error" ? (
             <Text color={brand.urgenza} fontSize={16}>

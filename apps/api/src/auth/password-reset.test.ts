@@ -76,15 +76,17 @@ describe("recupero password", () => {
 describe("recupero password con il codice di 6 cifre (§245)", () => {
   const codeHash = (code: string) => createHash("sha256").update(`u-1:${code}`).digest("hex");
 
-  it("mette il codice nell'oggetto e nel testo, e ne salva solo l'impronta", async () => {
+  it("mette il pulsante prima e il codice di riserva sotto, mai nell'oggetto, e ne salva solo l'impronta", async () => {
     const { service, prisma, emailService } = buildService();
     prisma.user.findUnique.mockResolvedValue({ id: "u-1", email: "mario@example.it", name: "Mario", deletedAt: null });
 
     await service.requestPasswordReset("mario@example.it");
 
     const sent = emailService.send.mock.calls[0]![0];
-    const code = /^(\d{6}) è il codice per reimpostare la password$/.exec(sent.subject)![1]!;
-    expect(sent.text).toContain(code);
+    expect(sent.subject).toBe("Reimposta la tua password");
+    const code = /codice sul sito: (\d{6})/.exec(sent.text)![1]!;
+    expect(sent.subject).not.toContain(code);
+    expect(sent.text.indexOf("Scegli una nuova password")).toBeLessThan(sent.text.indexOf(code));
     const stored = prisma.user.update.mock.calls[0]![0].data;
     expect(stored.passwordResetCodeHash).toBe(codeHash(code));
     expect(stored.passwordResetCodeAttempts).toBe(0);

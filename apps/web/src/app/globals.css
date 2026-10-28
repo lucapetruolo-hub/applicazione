@@ -4643,6 +4643,55 @@ a.admin-kpi:hover {
   outline-offset: 2px;
   border-radius: 10px;
 }
+/* Link con l'aspetto del pulsante verde principale (Button variant
+   "primary"): "Continua" dopo la conferma dell'email
+   (docs/changelog/2026-10-28-verifica-email-con-link.md). */
+.auth-primary-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 10px 24px;
+  border-radius: 999px;
+  background: #128552;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.auth-primary-link:hover {
+  background: #0e7a4c;
+}
+.auth-primary-link:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+/* "Apri Gmail" e simili nell'attesa della conferma email
+   (docs/changelog/2026-10-28-verifica-email-con-link.md): pillola chiara,
+   seconda azione dopo il pulsante dell'email. */
+.email-webmail-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: 1px solid #b8dcc9;
+  background: #dcf3e7;
+  color: #0e7a4c;
+  font-size: 16px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.email-webmail-link:hover {
+  background: #cdeedc;
+}
+.email-webmail-link:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
 
 /* Registrazione del professionista (docs/CHANGELOG.md §248, richiesta
    dell'utente). Caselle obbligatorie non spuntate: riga rossa con una

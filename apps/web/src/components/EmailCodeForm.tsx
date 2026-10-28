@@ -13,6 +13,18 @@ const CODE_VALID_SECONDS = 15 * 60;
 /** Ogni quanto controllare se l'email è già stata confermata altrove (link sul telefono). */
 const EMAIL_VERIFIED_POLL_MS = 3000;
 
+/** Posta via web dei fornitori più usati, per aprirla con un tocco. */
+function webmailFor(email: string): { label: string; url: string } | null {
+  const domain = email.split("@")[1]?.toLowerCase() ?? "";
+  if (domain === "gmail.com" || domain === "googlemail.com") return { label: "Apri Gmail", url: "https://mail.google.com/" };
+  if (/^(outlook|hotmail|live|msn)\./.test(domain)) return { label: "Apri Outlook", url: "https://outlook.live.com/mail/" };
+  if (/^yahoo\./.test(domain)) return { label: "Apri Yahoo Mail", url: "https://mail.yahoo.com/" };
+  if (domain === "libero.it" || domain === "inwind.it" || domain === "iol.it" || domain === "blu.it") return { label: "Apri Libero Mail", url: "https://mail.libero.it/" };
+  if (domain === "virgilio.it" || domain === "alice.it" || domain === "tim.it") return { label: "Apri la posta Virgilio", url: "https://mail.virgilio.it/" };
+  if (domain === "icloud.com" || domain === "me.com" || domain === "mac.com") return { label: "Apri iCloud Mail", url: "https://www.icloud.com/mail" };
+  return null;
+}
+
 /**
  * Inserimento del codice di 6 cifre arrivato con l'email di conferma
  * (docs/CHANGELOG.md §243). Un solo `<input>` vero (incolla, riempimento
@@ -25,6 +37,12 @@ const EMAIL_VERIFIED_POLL_MS = 3000;
  * Usato dopo la registrazione del professionista, in /conferma-email, nel
  * riquadro facoltativo del cliente in /account e, con `submitCode` e
  * `onRequestNewCode`, in "Password dimenticata" (§245).
+ *
+ * Con `linkFirst` (conferma email, docs/changelog/2026-10-28-verifica-email-con-link.md)
+ * la cosa da fare è il pulsante nell'email: la pagina lo dice e si aggiorna
+ * da sola quando si conferma, anche da un altro dispositivo. Le caselle del
+ * codice restano di riserva dietro "Il pulsante non si apre?". Anche in
+ * "Password dimenticata", con le sue frasi (`linkIntro`, `linkButton`, ...).
  */
 export function EmailCodeForm({
   token,
@@ -39,6 +57,12 @@ export function EmailCodeForm({
   intro = "Abbiamo mandato un codice di",
   doneLabel = "Email confermata",
   tip = "Non la trovi? Guarda anche in Spam o Promozioni. Nella stessa email c'è anche un pulsante che conferma con un tocco.",
+  linkFirst = false,
+  initialLinkValidForSeconds,
+  linkIntro = "Ti abbiamo mandato un'email a",
+  linkButton = "Conferma la mia email",
+  linkHint = "Questa pagina si aggiorna da sola, anche se confermi dal telefono.",
+  linkTip = "Non la trovi? Guarda anche in Spam o Promozioni. Il pulsante vale 48 ore.",
 }: {
   token: string;
   email: string;
@@ -59,6 +83,18 @@ export function EmailCodeForm({
   intro?: string;
   doneLabel?: string;
   tip?: string;
+  /** Prima il pulsante dell'email, il codice solo di riserva (conferma email). */
+  linkFirst?: boolean;
+  /** Secondi di validità del pulsante dell'email, da /auth/me. Assente: appena mandato. */
+  initialLinkValidForSeconds?: number;
+  /** Con `linkFirst`: inizio della frase prima dell'indirizzo. */
+  linkIntro?: string;
+  /** Con `linkFirst`: la scritta del pulsante nell'email. */
+  linkButton?: string;
+  /** Con `linkFirst`: la frase dopo "Aprila e premi ...". */
+  linkHint?: string;
+  /** Con `linkFirst`: la riga in piccolo in fondo. */
+  linkTip?: string;
 }) {
   const [code, setCode] = useState("");
   const [state, setState] = useState<CheckState>("idle");
@@ -72,6 +108,8 @@ export function EmailCodeForm({
   const [newEmail, setNewEmail] = useState(email);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [savingEmail, setSavingEmail] = useState(false);
+  // Con il pulsante in primo piano le caselle si aprono solo a richiesta.
+  const [showCode, setShowCode] = useState(!linkFirst);
   const inputRef = useRef<HTMLInputElement>(null);
   const autoResent = useRef(false);
   const expired = validFor <= 0 && state !== "done";
@@ -80,8 +118,8 @@ export function EmailCodeForm({
   // Di nuovo dopo un codice sbagliato o dopo un codice nuovo, quando il
   // campo torna attivo.
   useEffect(() => {
-    if (!expired && (state === "idle" || state === "error")) inputRef.current?.focus();
-  }, [state, expired]);
+    if (showCode && !expired && (state === "idle" || state === "error")) inputRef.current?.focus();
+  }, [state, expired, showCode]);
 
 
   useEffect(() => {
@@ -99,8 +137,11 @@ export function EmailCodeForm({
   // Codice già scaduto all'arrivo (email vecchia, tentativi finiti): invece
   // di far scrivere un codice che non può funzionare, ne mandiamo subito uno
   // nuovo. Una volta sola, e solo se l'attesa tra due invii è passata.
+  // Con il pulsante in primo piano conta la scadenza del pulsante (48 ore),
+  // non quella del codice di riserva.
+  const linkExpired = linkFirst && initialLinkValidForSeconds !== undefined && initialLinkValidForSeconds <= 0;
   useEffect(() => {
-    if (autoResent.current || validFor > 0 || resendIn > 0) return;
+    if (autoResent.current || (linkFirst ? !linkExpired : validFor > 0) || resendIn > 0) return;
     autoResent.current = true;
     void resend(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -244,7 +285,7 @@ export function EmailCodeForm({
           onSubmitEditing={saveEmail}
         />
         <Button variant="primary" onPress={saveEmail} disabled={savingEmail} opacity={savingEmail ? 0.6 : 1}>
-          {savingEmail ? "Invio del codice..." : "Manda il codice a questa email"}
+          {savingEmail ? "Invio..." : linkFirst ? "Manda l'email a questo indirizzo" : "Manda il codice a questa email"}
         </Button>
         <Button variant="ghost" onPress={() => setEditingEmail(false)}>
           Annulla
@@ -253,45 +294,83 @@ export function EmailCodeForm({
     );
   }
 
+  const webmail = linkFirst ? webmailFor(email) : null;
+  const newLabel = linkFirst ? "una nuova email" : "un nuovo codice";
+  const codeExpiredNow = expired && (!linkFirst || showCode);
+
+  const codeBoxes = (
+    <div className="email-code">
+      <input
+        ref={inputRef}
+        className="email-code-input"
+        value={code}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        inputMode="numeric"
+        pattern="[0-9]*"
+        autoComplete="one-time-code"
+        maxLength={EMAIL_CODE_LENGTH + 2}
+        aria-label={`Codice di ${EMAIL_CODE_LENGTH} cifre`}
+        aria-invalid={state === "error" ? true : undefined}
+        aria-describedby="email-code-status"
+        disabled={state === "checking" || state === "done" || expired}
+      />
+      <div className={boxesClass} aria-hidden="true">
+        {Array.from({ length: EMAIL_CODE_LENGTH }, (_, i) => (
+          <span
+            key={i}
+            className={`email-code-box${code[i] ? " is-filled" : ""}${focused && !expired && i === Math.min(code.length, EMAIL_CODE_LENGTH - 1) && state === "idle" ? " is-active" : ""}`}
+          >
+            {code[i] ?? ""}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <YStack gap="$4">
-      <Text fontSize={16} color={brand.grafite70} textAlign="center">
-        {intro} {EMAIL_CODE_LENGTH} cifre a<br />
-        <Text fontWeight="700" color={brand.grafite}>
-          {email}
+      {linkFirst ? (
+        <YStack gap="$3" alignItems="center">
+          <Text fontSize={16} color={brand.grafite70} textAlign="center">
+            {linkIntro}
+            <br />
+            <Text fontWeight="700" color={brand.grafite}>
+              {email}
+            </Text>
+          </Text>
+          <Text fontSize={16} color={brand.grafite} textAlign="center">
+            Aprila e premi <Text fontWeight="700">{linkButton}</Text>. {linkHint}
+          </Text>
+          {webmail && state !== "done" ? (
+            <a className="email-webmail-link" href={webmail.url} target="_blank" rel="noopener noreferrer">
+              <Icon name="mail" size={18} color={brand.cianografiaScuro} />
+              {webmail.label}
+            </a>
+          ) : null}
+        </YStack>
+      ) : (
+        <Text fontSize={16} color={brand.grafite70} textAlign="center">
+          {intro} {EMAIL_CODE_LENGTH} cifre a<br />
+          <Text fontWeight="700" color={brand.grafite}>
+            {email}
+          </Text>
         </Text>
-      </Text>
+      )}
 
-      <div className="email-code">
-        <input
-          ref={inputRef}
-          className="email-code-input"
-          value={code}
-          onChange={(e) => onChange(e.target.value)}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          inputMode="numeric"
-          pattern="[0-9]*"
-          autoComplete="one-time-code"
-          maxLength={EMAIL_CODE_LENGTH + 2}
-          aria-label={`Codice di ${EMAIL_CODE_LENGTH} cifre`}
-          aria-invalid={state === "error" ? true : undefined}
-          aria-describedby="email-code-status"
-          disabled={state === "checking" || state === "done" || expired}
-        />
-        <div className={boxesClass} aria-hidden="true">
-          {Array.from({ length: EMAIL_CODE_LENGTH }, (_, i) => (
-            <span
-              key={i}
-              className={`email-code-box${code[i] ? " is-filled" : ""}${focused && !expired && i === Math.min(code.length, EMAIL_CODE_LENGTH - 1) && state === "idle" ? " is-active" : ""}`}
-            >
-              {code[i] ?? ""}
-            </span>
-          ))}
-        </div>
-      </div>
+      {showCode ? (
+        <YStack gap="$2">
+          {linkFirst ? (
+            <Text fontSize={16} color={brand.grafite70} textAlign="center">
+              Scrivi il codice di {EMAIL_CODE_LENGTH} cifre che trovi sotto il pulsante:
+            </Text>
+          ) : null}
+          {codeBoxes}
+        </YStack>
+      ) : null}
 
-      <div id="email-code-status" role="status" aria-live="polite" style={{ minHeight: 22, textAlign: "center" }}>
+      <div id="email-code-status" role="status" aria-live="polite" style={{ minHeight: linkFirst ? 0 : 22, textAlign: "center" }}>
         {state === "checking" ? (
           <Text fontSize={16} color={brand.grafite70}>
             Controllo il codice...
@@ -303,25 +382,25 @@ export function EmailCodeForm({
               {doneLabel}
             </Text>
           </XStack>
-        ) : resendState === "sending" && validFor <= 0 ? (
+        ) : resendState === "sending" && (linkFirst ? linkExpired : validFor <= 0) && autoResent.current ? (
           <Text fontSize={16} color={brand.grafite70}>
-            Il codice di prima è scaduto: te ne mandiamo uno nuovo...
+            {linkFirst ? "Il link di prima è scaduto: ti mandiamo una nuova email..." : "Il codice di prima è scaduto: te ne mandiamo uno nuovo..."}
           </Text>
         ) : message ? (
           <Text fontSize={16} color={brand.urgenza}>
             {message}
           </Text>
-        ) : expired ? (
+        ) : codeExpiredNow ? (
           <Text fontSize={16} color={brand.urgenza}>
-            Il codice è scaduto. Chiedine uno nuovo qui sotto.
+            {linkFirst ? "Il codice è scaduto: chiedi una nuova email qui sotto, oppure usa il pulsante." : "Il codice è scaduto. Chiedine uno nuovo qui sotto."}
           </Text>
         ) : resendState === "renewed" ? (
           <Text fontSize={16} color={brand.cianografiaScuro} fontWeight="600">
-            Il codice di prima era scaduto: te ne abbiamo mandato uno nuovo.
+            {linkFirst ? "Il link di prima era scaduto: ti abbiamo mandato una nuova email." : "Il codice di prima era scaduto: te ne abbiamo mandato uno nuovo."}
           </Text>
         ) : resendState === "sent" ? (
           <Text fontSize={16} color={brand.cianografiaScuro} fontWeight="600">
-            Nuovo codice inviato. Quello di prima non vale più.
+            {linkFirst ? "Nuova email inviata. Quella di prima non vale più." : "Nuovo codice inviato. Quello di prima non vale più."}
           </Text>
         ) : null}
       </div>
@@ -330,28 +409,28 @@ export function EmailCodeForm({
         {/* La durata accanto al conto alla rovescia: senza, il minuto di
             attesa per un nuovo invio sembrava la scadenza del codice (§250). */}
         {/* Durata e nuovo invio in una riga sola (docs/CHANGELOG.md §278). */}
-        {!expired && state !== "done" ? (
+        {showCode && !expired && state !== "done" ? (
           <Text fontSize={16} color={brand.grafite70} textAlign="center">
-            Vale ancora {validMinutes === 1 ? "1 minuto" : `${validMinutes} minuti`}
+            {linkFirst ? "Il codice vale" : "Vale"} ancora {validMinutes === 1 ? "1 minuto" : `${validMinutes} minuti`}
             {resendIn > 0 ? (
               <>
                 {" · "}
                 <Text fontSize={16} color={brand.grafite70} style={{ whiteSpace: "nowrap" }}>
-                  nuovo codice tra {minutes}:{seconds}
+                  {linkFirst ? "nuova email" : "nuovo codice"} tra {minutes}:{seconds}
                 </Text>
               </>
             ) : null}
           </Text>
         ) : null}
-        {resendIn > 0 ? (
-          expired ? (
+        {state === "done" ? null : resendIn > 0 ? (
+          codeExpiredNow || (linkFirst && !showCode) ? (
             <Text fontSize={16} color={brand.grafite70} textAlign="center">
-              Puoi chiederne un altro tra {minutes}:{seconds}
+              Puoi chiedere {newLabel} tra {minutes}:{seconds}
             </Text>
           ) : null
         ) : (
-          <Button variant={expired ? "primary" : "ghost"} onPress={() => void resend()} disabled={resendState === "sending"} opacity={resendState === "sending" ? 0.6 : 1}>
-            {resendState === "sending" ? "Invio..." : "Mandami un nuovo codice"}
+          <Button variant={codeExpiredNow && !linkFirst ? "primary" : "ghost"} onPress={() => void resend()} disabled={resendState === "sending"} opacity={resendState === "sending" ? 0.6 : 1}>
+            {resendState === "sending" ? "Invio..." : linkFirst ? "Mandami una nuova email" : "Mandami un nuovo codice"}
           </Button>
         )}
         {resendError ? (
@@ -359,7 +438,12 @@ export function EmailCodeForm({
             {resendError}
           </Text>
         ) : null}
-        {allowChangeEmail ? (
+        {linkFirst && !showCode && state !== "done" ? (
+          <button type="button" className="link-button" onClick={() => setShowCode(true)}>
+            Il pulsante non si apre? Usa il codice
+          </button>
+        ) : null}
+        {allowChangeEmail && state !== "done" ? (
           <button
             type="button"
             className="link-button"
@@ -374,7 +458,7 @@ export function EmailCodeForm({
       </YStack>
 
       <Text fontSize={13} color={brand.grafite70} textAlign="center">
-        {tip}
+        {linkFirst ? linkTip : tip}
       </Text>
     </YStack>
   );
