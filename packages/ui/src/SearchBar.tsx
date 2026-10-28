@@ -179,6 +179,7 @@ export function SearchBar({
               // videocamera non diceva cosa sceglieva.
               <XStack
                 key={tab.key}
+                className="press-scale"
                 minWidth={28}
                 height={28}
                 gap={5}
@@ -291,6 +292,7 @@ export function SearchBar({
           return (
             <XStack
               key={tab.key}
+              className="press-scale"
               paddingHorizontal="$3"
               paddingVertical="$2"
               borderRadius="$10"

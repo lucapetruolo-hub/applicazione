@@ -44,3 +44,24 @@ anteprima), pulsante che si allarga e scatti nella lightbox (proposti).
 metà e fine; cuoricino durante il battito e dopo; finestra "Segnala" mentre
 entra e aperta, telefono e computer). Con "riduci movimento" emulato la
 sfumatura resta (`--scroll-fade-start` 40px a metà riga).
+
+## Secondo giro (Luca: "effettua miglioria 1 e 2")
+
+4. **Pressione sulle scelte a pillola**: "Quando ti serve?" e "A domicilio /
+   Online" (`.press-scale` sulle schede di `SearchBar` in `packages/ui`) si
+   stringono al 95% mentre sono premute; la scelta non ancora presa si
+   colora appena di verde. Adattata dal reel: lì il pulsante premuto si
+   allarga e spinge gli altri, qui si stringe, così il testo non scappa
+   sotto il dito. Con "riduci movimento" resta solo il colore.
+5. **Foto a tutto schermo, una per gesto** (`PhotoLightbox`): tutte le foto
+   in una riga larga quanto lo schermo con `scroll-snap-type: x mandatory` e
+   `scroll-snap-stop: always`, quindi da telefono si scorre col dito e uno
+   scorrimento veloce non salta foto. Le frecce e i tasti freccia scorrono la
+   stessa riga, il numero "2 / 5" segue (letto dal lettore di schermo con
+   `aria-live`). Prima si cambiava foto solo con le frecce. Il video lasciato
+   scorrendo si ferma; foto lontane caricate solo quando servono
+   (`loading="lazy"`).
+
+**Verifica**: lint e typecheck verdi; provata la lightbox con 4 foto (gesto,
+frecce, tastiera) e la pressione su "Con calma"; foto `4-*` e `5-*` in
+`/mnt/project-files/anteprime/micro-interazioni/`.
