@@ -95,7 +95,9 @@ export class ProfessionalFiscalService {
     // Di ritorno dalla verifica Stripe il webhook può non essere ancora
     // arrivato: lo stato si rilegge da Stripe finché l'account non è attivo.
     if (fiscalProfile?.stripeConnectAccountId && !fiscalProfile.stripePayoutsEnabled) {
-      await this.refreshStripeConnectStatus(fiscalProfile.stripeConnectAccountId).catch(() => undefined);
+      await this.refreshStripeConnectStatus(fiscalProfile.stripeConnectAccountId).catch((err: unknown) => {
+        this.logger.warn(`Stato Stripe non riletto per ${fiscalProfile.stripeConnectAccountId}: ${err instanceof Error ? err.message : String(err)}`);
+      });
     }
     return this.prisma.professionalFiscalProfile.findUnique({
       where: { professionalProfileId },
@@ -388,8 +390,11 @@ export class ProfessionalFiscalService {
    */
   private async ensureMerchantConfiguration(stripeAccountId: string): Promise<void> {
     if (!this.stripe) return;
-    const account = await this.stripe.v2.core.accounts.retrieve(stripeAccountId, { include: ["configuration.merchant"] });
-    if (account.configuration?.merchant?.capabilities?.card_payments) return;
+    // `applied_configurations` e non `include: ["configuration.merchant"]`:
+    // con la Dashboard Express Stripe non fa leggere la configurazione alla
+    // piattaforma dopo l'iscrizione (vedi readStripeConnectStatus).
+    const account = await this.stripe.v2.core.accounts.retrieve(stripeAccountId);
+    if (account.applied_configurations?.includes("merchant")) return;
     await this.stripe.v2.core.accounts.update(stripeAccountId, {
       configuration: { merchant: { capabilities: { card_payments: { requested: true } } } },
     });
