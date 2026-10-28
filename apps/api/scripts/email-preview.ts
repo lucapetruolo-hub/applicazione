@@ -158,6 +158,8 @@ notification("JOB_PAYOUT_FAILED", "Professionista", "Pagamenti dei lavori", { am
 notification("ADMIN_JOB_BALANCE_UNPAID", "Admin", "Pagamenti dei lavori");
 notification("JOB_STRIPE_DISPUTE", "Professionista", "Pagamenti dei lavori");
 notification("ADMIN_STRIPE_DISPUTE", "Admin", "Pagamenti dei lavori");
+notification("ADMIN_STRIPE_DISPUTE_DUE", "Admin", "Pagamenti dei lavori");
+notification("JOB_STRIPE_DISPUTE_NOTE_DUE", "Professionista", "Pagamenti dei lavori");
 notification("JOB_PAYMENT_DEBT", "Professionista", "Pagamenti dei lavori", { amountEurCents: 2650 });
 notification("ADMIN_JOB_PAYMENT_LONG_HOLD", "Admin", "Pagamenti dei lavori");
 notification("JOB_REFUND_PENDING", "Cliente", "Pagamenti dei lavori", { amountEurCents: 3600 });

@@ -1,5 +1,7 @@
-import { BadRequestException, Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
 import {
+  bankDisputeProNoteSchema,
+  type BankDisputeProNoteInput,
   requestRefundSchema,
   openDisputeSchema,
   type RequestRefundInput,
@@ -10,6 +12,7 @@ import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard"
 import { JobPaymentsService } from "./job-payments.service";
 import { RefundsService } from "./refunds.service";
 import { DisputesService } from "./disputes.service";
+import { BankDisputesService } from "./bank-disputes.service";
 
 /**
  * Endpoint del pagamento del lavoro, sempre scoped a una Booking — CLAUDE.md
@@ -24,6 +27,7 @@ export class JobPaymentsController {
     private readonly jobPaymentsService: JobPaymentsService,
     private readonly refundsService: RefundsService,
     private readonly disputesService: DisputesService,
+    private readonly bankDisputesService: BankDisputesService,
   ) {}
 
   @UseGuards(JwtAuthGuard)
@@ -50,6 +54,13 @@ export class JobPaymentsController {
   @Post("dispute")
   openDispute(@Req() req: AuthenticatedRequest, @Param("id") bookingId: string, @Body(new ZodValidationPipe(openDisputeSchema)) body: OpenDisputeInput) {
     return this.disputesService.open(req.user.userId, bookingId, body.reason);
+  }
+
+  /** Spiegazione e foto del professionista su una contestazione in banca (docs/changelog/2026-10-28-stripe-prova.md). */
+  @UseGuards(JwtAuthGuard)
+  @Patch("bank-dispute-note")
+  saveBankDisputeNote(@Req() req: AuthenticatedRequest, @Param("id") bookingId: string, @Body(new ZodValidationPipe(bankDisputeProNoteSchema)) body: BankDisputeProNoteInput) {
+    return this.bankDisputesService.saveProfessionalNote(req.user.userId, bookingId, body);
   }
 }
 

@@ -18,6 +18,7 @@ export * from "./completion";
 export * from "./jobIssues";
 export * from "./onlinePayments";
 export * from "./onlineLimit";
+export * from "./bankDisputes";
 export * from "./profileInvites";
 export * from "./scheduleChange";
 export * from "./brand";

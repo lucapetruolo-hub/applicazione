@@ -77,6 +77,10 @@ import type {
   JobIssueSummary,
   JobPaymentSummary,
   AdminOnlineLimitRow,
+  AdminBankDispute,
+  BankDisputeEvidenceInput,
+  BankDisputeProNoteInput,
+  ProfessionalBankDispute,
   AdminUnpaidBalance,
   JobPaymentChoice,
   JobIssueType,
@@ -2328,6 +2332,14 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       }),
 
     /** Il professionista segnala un problema sull'intervento (§197). */
+    /** Spiegazione e foto del professionista su una contestazione in banca. */
+    saveBankDisputeNote: (token: string, bookingId: string, input: BankDisputeProNoteInput) =>
+      request<ProfessionalBankDispute>(`/bookings/${encodeURIComponent(bookingId)}/job-payment/bank-dispute-note`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
     reportProfessionalJobProblem: (token: string, bookingId: string, input: ReportProfessionalJobProblemInput) =>
       request<{ id: string }>(`/bookings/${bookingId}/professional-problem`, {
         method: "POST",
@@ -2511,6 +2523,19 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({ removed, reason }),
+      }),
+
+    /** Contestazioni in banca (docs/changelog/2026-10-28-stripe-prova.md). */
+    adminListBankDisputes: (token: string) =>
+      request<AdminBankDispute[]>("/admin/bank-disputes", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminBankDisputePdf: (token: string, jobPaymentId: string) => downloadFile(`/admin/bank-disputes/${encodeURIComponent(jobPaymentId)}/pdf`, token),
+
+    adminSaveBankDisputeEvidence: (token: string, jobPaymentId: string, input: BankDisputeEvidenceInput) =>
+      request<AdminBankDispute>(`/admin/bank-disputes/${encodeURIComponent(jobPaymentId)}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
       }),
 
     adminListUnpaidBalances: (token: string) =>

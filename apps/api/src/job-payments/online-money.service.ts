@@ -3,6 +3,9 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
 import {
+  BANK_DISPUTE_OPEN_STATUSES,
+  BANK_DISPUTE_PRO_REMINDER_DAYS,
+  BANK_DISPUTE_REMINDER_DAYS,
   accountDebitGrossEurCents,
   estimatedCardFeeEurCents,
   ONLINE_LONG_HOLD_ALERT_DAYS,
@@ -147,6 +150,14 @@ export function statementSuffix(businessName: string): string | null {
   return /[A-Za-z]/.test(clean) ? clean.toUpperCase() : null;
 }
 
+/**
+ * Sempre in euro (docs/changelog/2026-10-28-stripe-prova.md): con l'Adaptive
+ * Pricing di Stripe un cliente con la carta o la connessione dall'estero paga
+ * nella sua valuta, e importi, rimborsi e contestazioni non tornano più con i
+ * centesimi di euro dei nostri conti.
+ */
+export const EUR_ONLY = { adaptive_pricing: { enabled: false } } as const;
+
 @Injectable()
 export class OnlineMoneyService {
   private readonly logger = new Logger(OnlineMoneyService.name);
@@ -213,6 +224,7 @@ export class OnlineMoneyService {
     const session = await this.requireStripe().checkout.sessions.create({
       mode: "payment",
       ...saveCard.session,
+      ...EUR_ONLY,
       line_items: [
         {
           price_data: {
@@ -264,6 +276,7 @@ export class OnlineMoneyService {
     const session = await this.requireStripe().checkout.sessions.create({
       mode: "payment",
       ...saveCard.session,
+      ...EUR_ONLY,
       expires_at: Math.floor(Date.now() / 1000) + 60 * 60,
       line_items: [
         {
@@ -1242,6 +1255,7 @@ export class OnlineMoneyService {
         stripeDisputeId: dispute.id,
         stripeDisputeStatus: dispute.status,
         stripeDisputedAt: jp.stripeDisputedAt ?? new Date(),
+        stripeDisputeDueBy: dispute.evidence_details?.due_by ? new Date(dispute.evidence_details.due_by * 1000) : null,
         refundedEurCents: refunded,
         ...statusData,
       },
@@ -1561,7 +1575,39 @@ export class OnlineMoneyService {
     await this.runPayouts(now);
     await this.alertLongHolds(now);
     await this.notifyOnlineLimitsLifted(now).catch((err) => this.logger.error(`Avvisi "limite tolto" non riusciti: ${(err as Error).message}`));
+    await this.remindDisputeDeadlines(now).catch((err) => this.logger.error(`Avvisi sulle scadenze delle contestazioni non riusciti: ${(err as Error).message}`));
     return released;
+  }
+
+  /**
+   * Contestazioni in banca con le prove non ancora mandate a 3 giorni dalla
+   * scadenza (docs/changelog/2026-10-28-stripe-prova.md): senza prove la
+   * banca dà ragione al cliente da sola. Un avviso per contestazione al team
+   * Finanza, con la spiegazione del professionista se l'ha scritta.
+   */
+  async remindDisputeDeadlines(now: Date = new Date()): Promise<number> {
+    const rows = await this.prisma.jobPayment.findMany({
+      where: {
+        stripeDisputeId: { not: null },
+        stripeDisputeStatus: { in: [...BANK_DISPUTE_OPEN_STATUSES] },
+        disputeReminderSentAt: null,
+        stripeDisputeDueBy: { gt: now, lte: new Date(now.getTime() + BANK_DISPUTE_REMINDER_DAYS * DAY_MS) },
+      },
+      select: { id: true, bookingId: true, stripeDisputeDueBy: true, disputeProNoteAt: true, booking: { select: { quote: { select: { guidedRequestId: true } } } } },
+    });
+    let sent = 0;
+    for (const row of rows) {
+      const claimed = await this.prisma.jobPayment.updateMany({ where: { id: row.id, disputeReminderSentAt: null }, data: { disputeReminderSentAt: now } });
+      if (claimed.count === 0) continue;
+      await this.notifyFinanceAdmins("ADMIN_STRIPE_DISPUTE_DUE", {
+        bookingId: row.bookingId,
+        guidedRequestId: row.booking.quote?.guidedRequestId ?? null,
+        dueBy: row.stripeDisputeDueBy?.toISOString() ?? null,
+        professionalNote: !!row.disputeProNoteAt,
+      });
+      sent += 1;
+    }
+    return sent + (await this.remindProfessionalDisputeNotes(now));
   }
 
   /**
@@ -1581,6 +1627,36 @@ export class OnlineMoneyService {
       const claimed = await this.prisma.professionalProfile.updateMany({ where: { id: profile.id, onlineLimitLiftNotifiedAt: null }, data: { onlineLimitLiftNotifiedAt: now } });
       if (claimed.count === 0) continue;
       await this.notificationsService.notify(profile.userId, "ONLINE_LIMIT_LIFTED", { byAdmin: !!limit.removedAt });
+      sent += 1;
+    }
+    return sent;
+  }
+
+  /**
+   * Promemoria al professionista che non ha ancora scritto la sua spiegazione
+   * sulla contestazione, 5 giorni prima della scadenza delle prove: una volta
+   * sola, perché le prove migliori le ha lui.
+   */
+  async remindProfessionalDisputeNotes(now: Date = new Date()): Promise<number> {
+    const rows = await this.prisma.jobPayment.findMany({
+      where: {
+        stripeDisputeId: { not: null },
+        stripeDisputeStatus: { in: [...BANK_DISPUTE_OPEN_STATUSES] },
+        disputeProNoteAt: null,
+        disputeProReminderSentAt: null,
+        stripeDisputeDueBy: { gt: now, lte: new Date(now.getTime() + BANK_DISPUTE_PRO_REMINDER_DAYS * DAY_MS) },
+      },
+      select: { id: true, bookingId: true, stripeDisputeDueBy: true, booking: { select: { professionalProfile: { select: { userId: true } }, quote: { select: { guidedRequestId: true } } } } },
+    });
+    let sent = 0;
+    for (const row of rows) {
+      const claimed = await this.prisma.jobPayment.updateMany({ where: { id: row.id, disputeProReminderSentAt: null }, data: { disputeProReminderSentAt: now } });
+      if (claimed.count === 0) continue;
+      await this.notificationsService.notify(row.booking.professionalProfile.userId, "JOB_STRIPE_DISPUTE_NOTE_DUE", {
+        bookingId: row.bookingId,
+        guidedRequestId: row.booking.quote?.guidedRequestId ?? null,
+        dueBy: row.stripeDisputeDueBy?.toISOString() ?? null,
+      });
       sent += 1;
     }
     return sent;

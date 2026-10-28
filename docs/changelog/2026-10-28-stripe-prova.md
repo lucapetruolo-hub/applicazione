@@ -85,3 +85,109 @@ perché Stripe può usarlo per mandare un codice via SMS; per l'azienda va
 bene anche un fisso. Verifica: un caso nuovo in
 `stripe-account-prefill.test.ts` (fisso di Latina, prefisso inesistente) e
 la build dell'API che carica la libreria da `dist/`.
+
+## Prove dal vivo con gli account di prova (28/10, dopo "ok express")
+
+Luca ha scelto di restare su Express con le perdite a carico nostro: Stripe
+non permette Express con le perdite a carico suo (errore
+`account_express_dashboard_with_stripe_loss_liable`). Prove sul sito vero,
+con le chiavi di prova e gli account `prova.design.*`:
+
+- tetto: rifiutati un preventivo di 2.500 € tutto online e una chiusura a
+  2.100 €;
+- acconto di 50 € pagato e rimborsato per intero all'annullamento;
+- lavoro tutto online: acconto, saldo addebitato da solo sulla carta,
+  conferma del cliente, sblocco e bonifico di 201,21 € (220 € meno 7% + IVA);
+- link "Apri Stripe" del professionista funzionante.
+
+Due correzioni nate dalle prove:
+
+1. **Contestazione arrivata prima del pagamento**: con la carta di prova
+   0259 Stripe ha mandato `charge.dispute.created` 2 secondi prima della
+   conferma del pagamento; il sito non trovava il lavoro, lo trattava come
+   un abbonamento e non avvisava il professionista finché non arrivava un
+   aggiornamento. Ora una contestazione sul conto di un professionista
+   (`event.account`) senza lavoro risponde con un errore e Stripe la rimanda
+   più tardi; lo stesso per `funds_withdrawn`/`funds_reinstated`.
+2. **Sempre in euro**: il browser della prova risultava negli Stati Uniti e
+   Stripe (Adaptive Pricing) ha fatto pagare in dollari; la contestazione è
+   arrivata come 48,08 €. Tutti i Checkout (lavori, abbonamento, quota di
+   passaggio, pacchetti) hanno `adaptive_pricing: { enabled: false }`
+   (`EUR_ONLY`), così importi, rimborsi e contestazioni restano in euro.
+
+**Verifica**: caso nuovo in `billing-webhook.test.ts` (contestazione
+rimandata) e in `direct-charges.test.ts` (Checkout in euro); tutti i test
+dell'API (898) e `tsc`.
+
+## Migliorie: Adaptive Pricing in checklist e prove delle contestazioni dal sito
+
+Richiesta di Luca ("effettua le due migliorie": il sito va pronto per il
+lancio, non per i numeri di oggi):
+
+1. **Checklist di lancio**: spegnere l'Adaptive Pricing anche nelle
+   impostazioni di Stripe (seconda sicurezza oltre a `EUR_ONLY`); la chiave
+   limitata `rk_` deve poter scrivere contestazioni e file degli account
+   collegati.
+2. **Contestazioni in banca da Admin → Pagamenti**
+   (`BankDisputesService`, `GET/PATCH /admin/bank-disputes`, scope FINANCE):
+   elenco delle contestazioni aperte con importo, motivo in parole semplici
+   e scadenza letti da Stripe; prove già scritte dal sito (lavoro, cliente,
+   giorno, spiegazione con richiesta, pagamento, appuntamento, chiusura,
+   conferma del cliente, segnalazioni); un PDF "Riepilogo del lavoro" (date,
+   richiesta, preventivo, pagamenti, voci finali e gli ultimi 80 messaggi
+   tra cliente e professionista) caricato su Stripe come documentazione del
+   servizio. "Salva senza mandare" o "Manda alla banca" con conferma: dopo
+   l'invio le prove non si cambiano più. Tutto sul conto del professionista
+   (addebito diretto) e nel registro azioni.
+
+**Verifica**: `bank-disputes.test.ts` (elenco e bozza, invio con PDF sul
+conto giusto, prove già consegnate, messaggi nel PDF, testi); PDF
+controllato a occhio; tutti i test dell'API, `tsc` di API e sito, `pnpm lint`.
+
+## Migliorie: avviso della scadenza, foto nel PDF, spiegazione del professionista
+
+Richiesta di Luca ("effettua le migliorie"), le tre proposte dopo le prove
+dal sito:
+
+1. **Avviso 3 giorni prima della scadenza** (`remindDisputeDeadlines` nel
+   giro orario di `runReleases`, tipo `ADMIN_STRIPE_DISPUTE_DUE` al team
+   Finanza): senza prove la banca dà ragione al cliente da sola. La
+   scadenza di Stripe (`evidence_details.due_by`) si salva su
+   `JobPayment.stripeDisputeDueBy` dal webhook (e, per le contestazioni già
+   aperte, alla prima lettura in Admin → Pagamenti); `disputeReminderSentAt`
+   fa partire l'avviso una volta sola. L'email dice se il professionista ha
+   già scritto la sua spiegazione. Corretto anche il testo di
+   `ADMIN_STRIPE_DISPUTE`, che rimandava ancora alla Dashboard Stripe.
+2. **Foto nel PDF** (blocco `images` in `document-pdf.ts`, due per riga con
+   didascalia): foto del professionista al lavoro terminato, del cliente
+   alla conferma e quelle aggiunte alla contestazione, al massimo 20.
+   Scaricate solo dal nostro cloud Cloudinary (mai da un indirizzo
+   qualsiasi), ridotte e in JPEG, i video come fotogramma; una foto che non
+   arriva resta come link. Nel PDF anche la nota del cliente alla conferma.
+3. **Spiegazione del professionista** (`PATCH
+   /bookings/:id/job-payment/bank-dispute-note`, `BankDisputeNotePanel`
+   sotto il pagamento nella scheda del lavoro): testo e fino a 10 foto,
+   modificabili finché le prove non partono; poi la scheda dice che decide
+   la banca, e l'esito. In Admin → Pagamenti la spiegazione compare sopra le
+   prove da rileggere, entra nella bozza ("Il professionista spiega: ...") e
+   nel PDF. L'email `JOB_STRIPE_DISPUTE` gli dice dove scriverla. Nuovi campi
+   `disputeProNote`, `disputeProPhotoUrls`, `disputeProNoteAt` (migrazione
+   `20261028170000_contestazioni_prove`).
+
+**Verifica**: `bank-disputes.test.ts` (scadenza salvata, foto solo da
+Cloudinary con link per le altre, spiegazione nella bozza e nel PDF,
+salvataggio solo del professionista del lavoro e non dopo l'invio,
+riepilogo del pagamento, avviso una volta sola al team Finanza, PDF con una
+foto rotta); tutti i test dell'API, `tsc` di API e sito, `pnpm lint`.
+
+## Miglioria: promemoria al professionista
+
+Richiesta di Luca ("effettua la miglioria 1"): 5 giorni prima della
+scadenza delle prove, il professionista che non ha ancora scritto la sua
+spiegazione riceve `JOB_STRIPE_DISPUTE_NOTE_DUE` (sito ed email, con il
+link alla scheda del lavoro), una volta sola (`disputeProReminderSentAt`,
+migrazione `20261028180000_contestazioni_promemoria_pro`). Parte nello
+stesso giro orario dell'avviso al team.
+
+**Verifica**: `bank-disputes.test.ts` (finestra dei 5 giorni, solo chi non
+ha scritto, una volta sola); tutti i test dell'API, `tsc`, `pnpm lint`.
