@@ -21482,6 +21482,60 @@ pagine di accesso, §279 e §349). Supera la proposta non scelta del §325.
 **Verifica:** build di produzione col profilo vero, fotografato a 1440, 1024
 e 390 px (anteprime in `anteprime/barra-preventivo-computer/`).
 
+## 392. Dal problema scritto ai professionisti adatti
+
+**Richiesta** (Luca, 26-27/10/2026, thread "abbinamento problema"): una sezione dove il cliente descrive il problema e gli si propongono i professionisti adatti. Fase 1 (banco di prova di 769 frasi vere, numeri in `analisi/abbinamento-problema/fase1-numeri.md`), poi "facciamo subito dizionario e poi qualsiasi minimo problemino si attiva ai". Aggiunte di Luca: risultati nella pagina di ricerca esistente con banda, domanda, avviso di sicurezza, "Chiedi preventivo a tutti" e riga "Perché"; il boost a pagamento fuori da questa lista; prima del "fuori servizio" cercare chi dichiara il lavoro nelle prestazioni, nei patentini o nella descrizione; "Ce ne occupiamo noi" con "No grazie, non serve" e "Prendete in carico la richiesta" (con accesso, senza scadenza); pagine admin "Mestieri richiesti" e "Richieste da seguire"; zanzariere = Tutto Fare; elettrodomestici: installarli è idraulico o elettricista, ripararli è di chi lo dichiara (Tutto Fare o Elettricista), altrimenti "Ce ne occupiamo noi".
+
+**Decisione**:
+- **Dizionario** in `packages/shared/src/problemMatch.ts` (`matchProblem`): parole con il loro peso per mestiere, confini del DM 37/2008 (impianti elettrici, gas, acqua, riscaldamento), avvisi di sicurezza (gas, scintille, acqua sull'impianto, monossido), lavori che non copriamo (elettrodomestici guasti, antenne, tende da sole, disinfestazione, spurghi, spazzacamino, vetri, antifurto, ascensori, badante) e una domanda con risposte cliccabili per le coppie ambigue (macchie e umidità, acqua calda, porte e tapparelle, motori, trasporti, dove si sente il gas). `confident` è falso al minimo dubbio. Banco di prova in `packages/shared/test-data/banco-problemi.csv`, provato da `problemMatch.test.ts`: sulle frasi di lavoro 91% al primo posto, 100% degli avvisi di sicurezza, quando è sicuro sbaglia 1 volta su 287; sul mucchio chiuso (201 frasi mai guardate) 89% e nessun pericolo mancato.
+- **Intelligenza artificiale** (`POST /problem-match`, `apps/api/src/problem-match/`): se il dizionario non è sicuro, Claude Haiku (`claude-haiku-5-5`, risposta in uno schema fisso con i soli 13 mestieri e i lavori fuori servizio, sforzo basso, 3 secondi al massimo). Prima di mandarlo si tolgono email, telefoni, indirizzi e link. L'avviso di sicurezza resta sempre del dizionario, e un pericolo vince su "fuori servizio". Senza `ANTHROPIC_API_KEY`, oltre 3000 chiamate al giorno (`PROBLEM_MATCH_AI_DAILY_LIMIT`), con una risposta non valida o se Anthropic non risponde, resta il dizionario. Le stesse frasi non si richiedono (500 in memoria). Costo: circa 0,1 centesimi a dubbio.
+- **Barra di ricerca**: scrivendo una frase compare "Ti serve: Idraulico" (solo se il dizionario è sicuro, altrimenti "Trova chi ti serve"); "Cerca" con una descrizione porta a `/cerca?problema=…` (`looksLikeProblem` in `apps/web/src/lib/searchNavigation.ts`).
+- **Banda nei risultati** (`apps/web/src/components/ProblemBand.tsx`): avviso di sicurezza con i testi delle fonti ufficiali (`packages/shared/src/problemSafetyTexts.ts`, da far rileggere all'avvocato), "Ti serve un idraulico" con il motivo, "Oppure" con gli altri mestieri, la domanda con le risposte cliccabili e "Non lo so", poi "Chiedi preventivo a tutti" (richiesta guidata con mestiere, città e descrizione già scritti). Ogni scheda ha la riga "Perché: offre «…»" quando una sua prestazione somiglia al problema.
+- **Senza boost**: dalla descrizione la ricerca è `merito=1` (voto, recensioni, distanza), niente etichetta "Sponsorizzato", e "Ordinato per pertinenza" lo dice.
+- **Lavori che non copriamo**: si cercano i professionisti che li dichiarano (`offre=` sulla ricerca, parole di `OUT_OF_SERVICE_KEYWORDS` in prestazioni, patentini e descrizione); se non c'è nessuno, "Ce ne occupiamo noi" (`POST /problem-match/takeover`, con accesso; la stessa richiesta due volte resta una).
+- **Admin**: "Mestieri richiesti" (descrizioni degli ultimi 30 giorni senza contatti, tenute 12 mesi, filtri per lavori non coperti, decise dall'IA, non capite; "Insegna una parola", che vince su dizionario e IA) e "Richieste da seguire" (con contatti del cliente, "Fatto", numero rosso nel menu). Ogni modifica va nel registro azioni.
+- **Prestazioni suggerite** (richiesta di Luca): `POPULAR_SERVICES` da 5 a 6-10 voci per categoria con i lavori più chiesti nelle 769 frasi; "Riparazione elettrodomestici" a Tutto Fare ed Elettricista. Nel profilo le prime 8 e "Altre N".
+- **Nomi simili in una voce** (le tre migliorie scelte da Luca): mentre scrive il nome di una prestazione il professionista vede i nomi suggeriti (`datalist`); `canonicalServiceName` in `packages/shared/src/serviceNames.ts` porta varianti, plurali e sinonimi al nome suggerito; in "Mestieri richiesti" i nomi scritti a mano (in evidenza da 3 professionisti in su) si uniscono con "Unisci a…" (`ServiceNameAlias`, `ServiceNamesService.canonicalizer()` per chi somma le prestazioni). Sul profilo resta il nome scritto dal professionista.
+- Migrazione `20261027170616_abbinamento_problema`: `problem_descriptions`, `problem_words`, `problem_takeovers`, `service_name_aliases`.
+- Rimandato a una seconda PR: scegliere fino a 3 professionisti a cui mandare la richiesta (oggi tutti o uno). Fatto nel §393, fino a 5 (decisione di Luca).
+
+**Verifica**: test del dizionario sul banco di prova, dei nomi delle prestazioni, del servizio con l'IA simulata (sicuro senza IA, dubbio con IA, IA che non risponde, tetto, sicurezza che resta, parola insegnata, descrizione salvata senza contatti), dei nomi uniti e di "Ce ne occupiamo noi"; test dei permessi su tutte le rotte; typecheck e lint; API e sito avviati in locale con i professionisti di prova: rubinetto, gas, macchia di umido e lavatrice provati da computer e telefono, barra con "Ti serve: Idraulico". L'IA vera non è misurata: manca la chiave.
+
+## 388. Prestazioni per mestiere in admin, aggiunte alle standard
+
+**Richiesta** (Luca, 27/10/2026, stesso thread del §392): "voglio che si inserisca la prestazione fra quelle standard che il professionista può selezionare in fase di iscrizione o quando va a modificare il profilo", poi "uno schemino fatto bene con i vari professionisti e i servizi che gli mettiamo standard e quelli inseriti da loro con il numero vicino con un + vicino". Insieme: togliere "Piccoli lavori idraulici" e "Piccoli lavori elettrici" da Tutto Fare.
+
+**Decisione**:
+- In "Mestieri richiesti" la seconda scheda diventa **"Prestazioni per mestiere"**: un riquadro per mestiere con le prestazioni **standard** (le nostre di `POPULAR_SERVICES` e quelle aggiunte dall'admin, toglibili con ✕) e quelle **scritte dai professionisti**, ognuna con quanti professionisti la usano (una prestazione conta in tutti i mestieri del professionista). Sulle scritte a mano: **+** la aggiunge alle standard del mestiere, "Unisci a…" la dichiara uguale a una standard; da 3 professionisti in su "Da valutare". Spunta "Solo i mestieri con prestazioni scritte a mano".
+- Modello `StandardServiceName` (migrazione `20261027180000_prestazioni_standard`), rotte admin `POST /admin/problem-match/service-names/standard` e `DELETE …/standard/:id` (MODERATION, nel registro azioni) e pubblica `GET /service-names/standard`. Il profilo (`/dashboard/profilo`, che è anche il primo passo dopo l'iscrizione) le aggiunge alle suggerite della categoria e al `datalist`; un nome aggiunto raccoglie le sue varianti in `ServiceNamesService.canonicalizer()`, ma un'unione fatta a mano vince. Non si aggiunge un doppione di una standard della stessa categoria.
+- Con "Andamento del sito" (§384, altro thread, unito nello stesso giorno): le prestazioni scritte a mano già aggiunte alle standard non compaiono più tra quelle "da aggiungere", e il consiglio porta a "Prestazioni per mestiere" (`/admin/mestieri-richiesti?scheda=prestazioni`).
+- Tutto Fare: al posto dei lavori sugli impianti (DM 37/2008, spettano agli installatori abilitati) "Montaggio tende e bastoni" e "Sigillatura con silicone (bagno e cucina)".
+
+**Verifica**: test del quadro per mestiere (conteggi, mestieri in più, aggiunta che toglie dalle scritte a mano, doppioni e categoria sconosciuta rifiutati), test dei permessi (266 rotte), typecheck e lint, 772 test API; pagina provata nel browser da computer e telefono con dati di prova.
+
+## 393. Scegliere fino a 5 professionisti dai risultati
+
+**Richiesta** (Luca, 27/10/2026, stesso thread del §392): "scegliere fino a 5 professionisti" a cui mandare la richiesta partita dalla descrizione del problema, invece di tutti o uno; il 28/10 "effettua le migliorie come hai ritenuto".
+
+**Decisione**:
+- Nei risultati di `/cerca?problema=`, con un mestiere deciso e almeno 2 professionisti, ogni scheda ha **"Scegli"** (diventa "Scelto", al sesto resta spento con il motivo). La banda dice "Oppure scegli tu fino a 5…" sotto "Chiedi preventivo a tutti"; dopo la prima scelta mostra quanti ne hai scelto e "Annulla la scelta". In basso compare una barra fissa (come quella del profilo, §385) con le foto, i nomi e "Chiedi preventivo ai N scelti".
+- Con uno solo scelto è la richiesta diretta di sempre (`professionista=`). Con 2-5 il modulo riceve `scelti=` e mostra "Stai inviando la richiesta ai N professionisti che hai scelto" con nomi e stelle, senza la scelta delle categorie; chi nel frattempo non accetta richieste è detto per nome. Riepilogo, pagina "Richiesta inviata" ed email di conferma dicono a chi è arrivata.
+- Una sola richiesta: `guidedRequestSchema.professionalProfileIds` (da 2 a `MAX_CHOSEN_PROFESSIONALS` = 5, mai con un professionista singolo, altre categorie o una fascia oraria) e `GuidedRequest.chosenProfileIds` (migrazione `20261028080000_professionisti_scelti`). Ogni scelto passa gli stessi controlli della richiesta diretta (visibile, non in pausa né bloccato, del mestiere della richiesta); se uno non va, l'invio si ferma con il suo nome. Vale anche dove le richieste generali sono chiuse (§211), come la richiesta diretta, e conta tra le richieste dirette per riaprirle; non conta nel carico delle generali né arriva a chi si iscrive dopo (§271).
+- La cronologia del professionista dice "Il cliente ha scelto te e altri N professionisti". Il boost resta fuori, come nel resto dei risultati dal problema.
+
+**Verifica**: test della richiesta ai scelti (solo a loro anche con le generali chiuse, pausa, altro mestiere, profilo sparito), dello schema e dell'email; 789 test API, test dei permessi (266 rotte), typecheck e lint; nel browser da computer e telefono scelta di 2 idraulici su 6 a Roma, modulo, invio e "Richiesta inviata", con 2 richieste ricevute nel database.
+
+## 394. L'IA dei casi dubbi attraverso OpenRouter fino al lancio
+
+**Richiesta** (Luca, 28/10/2026, stesso thread del §392): "fai in modo che funzioni OpenRouter ma lascia tutto il resto, perché prima del lancio modificheremo con Anthropic".
+
+**Decisione**:
+- `ProblemMatchService` sceglie chi risponde nei casi dubbi con `aiProvider()`: Anthropic se c'è `ANTHROPIC_API_KEY` (come prima, invariato), altrimenti OpenRouter se c'è `OPENROUTER_API_KEY`, altrimenti solo il dizionario. Con entrambe vince Anthropic, così al lancio basta aggiungere la chiave Anthropic e togliere quella di OpenRouter.
+- Con OpenRouter: stesso modello (`anthropic/claude-haiku-5.5`, cambiabile con `OPENROUTER_MODEL`), stesse istruzioni, stesso testo senza contatti, stesso tetto giornaliero e stessi 3 secondi. Risposta strutturata con uno schema JSON; la risposta si ricontrolla con lo stesso schema zod e, se non torna, resta il dizionario. Nessuna nuova dipendenza (chiamata con `fetch`).
+- Per i dati: `provider.only = ["anthropic"]` senza ripieghi su altri fornitori, `data_collection: "deny"` (OpenRouter non usa i testi), e solo fornitori che accettano la risposta strutturata. Aggiunto alla domanda 68 per l'avvocato; nella checklist di lancio il punto 42 per il passaggio ad Anthropic.
+
+**Verifica**: test con `fetch` finto (indirizzo, chiave, modello, fornitore solo Anthropic, elenco tagliato a 3, chiave rifiutata e risposta sbagliata che lasciano il dizionario, Anthropic che vince con entrambe le chiavi). La prova vera sulle 769 frasi si fa appena c'è la chiave su Render.
+
 ## 386. "Documenti" nel menu di ogni richiesta, per professionista e cliente
 
 **Richiesta** (Luca, 27/10/2026): "ad ogni richiesta preventivo nel menu ad hamburger per esempio sia lato pro che cliente possa andare a vedere [...] i documenti contabili relativi a quella richiesta". Sulla scheda di decisione ha scelto che il cliente veda la copia del documento **solo dopo che il professionista l'ha scaricata**.
@@ -21502,6 +21556,110 @@ e 390 px (anteprime in `anteprime/barra-preventivo-computer/`).
 - **Avviso del 15 dicembre** (`remindDocumentsToFix`): per chi fa le ricevute (prestazione occasionale) anche i lavori terminati nell'anno senza ricevuta ("Idraulico del 12 novembre 2026, Sara Neri: Manca la ricevuta") e le ricevute con il numero ma mai scaricate ("Ricevuta mai scaricata"), perché nel riepilogo per il commercialista mancherebbero o il cliente non le ha. L'email dice solo le istruzioni che servono: "Se manca la ricevuta, preparala dal lavoro, scarica il PDF e dalla al cliente. Se l'hai fatta a mano, dillo al tuo commercialista: nel riepilogo non c'è." Se ci sono solo ricevute da fare il pulsante è "Apri le richieste", altrimenti resta "Apri Fatture e documenti". Le copie delle fatture restano fuori: la fattura il professionista la fa col suo programma e la nostra copia è facoltativa.
 
 **Verifica**: test nuovi sull'avviso al cliente (primo PDF, stesso importo, importo cambiato, senza importo), sull'avviso di dicembre (lavori senza ricevuta dell'anno all'ora di Roma, ricevute mai scaricate solo a lavoro terminato) e sulle email; 810 test dell'API, typecheck e lint di API e sito; test dei permessi (281 rotte, 1164 controlli, nessun problema). Provato con l'API e il sito veri in locale: il PDF scaricato dal professionista crea una sola notifica al cliente, una seconda con l'importo cambiato, e il link apre la finestra dei documenti da computer e da telefono; email guardate nell'anteprima.
+
+## 398. Voci di "Quanto costa in media" cliccabili
+
+**Richiesta** (Luca, 27/10/2026): nello strumento "Quanto costa in media?" della homepage ogni voce deve essere cliccabile e aprire tutti i professionisti che hanno inserito quel servizio.
+
+**Decisione**: ogni voce è un link a `/cerca?servizio=<nome>`, con una freccia accanto al prezzo e lo sfondo verde chiaro al passaggio del mouse (il clic non toglie il fuoco al campo di ricerca, così l'elenco aperto non si richiude tra pressione e rilascio). L'API accetta `GET /professionals/search?service=<nome>` e tiene solo chi ha una prestazione della stessa voce: la chiave è una sola funzione, `serviceGroupKey` (oggi minuscole e spazi ai lati), usata sia dal prezzo medio sia dalla ricerca, così l'elenco mostra sempre chi è contato nella voce; quando arriverà l'unione dei nomi simili (`canonicalServiceName`, thread "descrivi il problema") basterà cambiare quella funzione. Il prezzo medio ora conta solo i professionisti che compaiono nella ricerca (in pausa, bloccati, non confermati o senza dati fiscali esclusi, regola §5.11): prima contava anche quelli, e il numero "5 professionisti" non avrebbe coinciso con l'elenco. In `/cerca` sopra i risultati "Servizio" e una pastiglia verde col nome del servizio e una ✕ che toglie il filtro (tiene città e modalità; prima era un link "Mostra tutti i professionisti", che Luca ha giudicato ambiguo: sembrava "tutti quelli del servizio"), la barra chiusa da telefono dice il servizio, la pagina resta fuori da Google come le altre ricerche filtrate. Le prestazioni si salvano senza spazi ai lati. Nessun link sulle singole prestazioni nella scheda dei risultati (scelta di Luca, §358).
+
+**Verifica**: test API (ricerca per voce senza badare a maiuscole e spazi, prezzo medio solo con professionisti visibili), typecheck e lint; sito in build di produzione con un'API finta, clic su una voce da computer e da telefono (iPhone 13) fino all'elenco filtrato.
+
+**Ritocco della finestra** (Luca: "a livello di design quella finestra non mi convince"): campo e voci ora stanno in un unico riquadro bianco con angoli da 20 px e ombra leggera, con la lente nel campo; al posto del bordo nero del fuoco un anello verde attorno a tutto il riquadro. Le voci sono separate da righe sottili a tutta larghezza (prima ogni voce aveva un bordo in alto con gli angoli arrotondati, che sembrava una scheda tagliata), nome a peso medio e prezzo più grande. Anteprime da telefono e computer in `anteprime/quanto-costa-finestra/`.
+
+**"Quanto costa" nella barra in alto** (Luca: "ora che è un tool importante inseriamolo anche nella barra fissa sopra"): link "Quanto costa" dopo "Come funziona" nella barra da computer, nel menu da telefono e nel piè di pagina (Per i clienti), che porta a `/#quanto-costa` nella home (ancora con `scrollMarginTop` 72 come "Come funziona"). Anteprime in `anteprime/quanto-costa-finestra/`. Tolto "Prezzi" dalla barra e dal menu da telefono: portava all'abbonamento dei professionisti e accanto a "Quanto costa" si confondeva (decisione di Luca: resta dentro "Offri i tuoi servizi", dove la pagina ha già "Vedi i prezzi" in alto).
+
+**Unità del prezzo** (migliorie scelte da Luca dopo il test di compito simulato, dove "10 €" per una tinteggiatura non diceva se era al m² o a lavoro): ogni prestazione ha ora `priceUnit` (`ServicePriceUnit`: a lavoro, all'ora, al giorno, al m², migrazione `20261027230000_unita_prezzo_prestazioni`, le prestazioni già salvate restano "a lavoro"). In `/dashboard/profilo` un menu accanto al prezzo (sul telefono va a capo insieme alla ✕). L'unità si vede nella scheda dei risultati, nel profilo, nel "Quanto costa in media" ("10 € al m²") e nelle pagine `/prezzi`. Prezzo medio e forbice di una voce contano solo i prezzi con l'unità più usata nella voce (`dominantPriceUnit`, a pari merito "a lavoro"): 10 € al m² e 1.500 € a lavoro non stanno nella stessa mediana.
+
+**Pagine "Quanto costa [mestiere] (a [città])" cliccabili**: ogni riga della tabella "Prezzi dei lavori più comuni" apre `/cerca?servizio=<lavoro>` (nella città della pagina se c'è), con la freccia e lo sfondo verde chiaro al passaggio come nella home; tutta la riga si tocca.
+
+## 399. "Quanto costa in media": prezzi onesti e richiesta già pronta
+
+**Richiesta** (Luca, 27/10/2026, versione più profonda del §398, `analisi/quanto-costa-versione-profonda.md`): rendere lo strumento uno che porta lavoro e dice prezzi onesti; dati veri prima del codice; prove con un test automatico, axe, anteprime e un test con 5 persone (simulate).
+
+**Dati** (`analisi/quanto-costa/analisi-dati.md`): in produzione 3 professionisti di prova, 38 prestazioni, 6 con un prezzo, nessuna variante dello stesso nome; prezzi poco credibili ("Sostituzione caldaia 90 €"). Solo 295 delle 718 frasi dei clienti contengono una parola delle prestazioni suggerite: i clienti descrivono il problema, i professionisti il lavoro.
+
+**Decisione**:
+- Voci (`buildServicePriceIndex`, `apps/api/src/professionals/service-price-index.ts`): ogni prestazione dei professionisti visibili, anche senza prezzo, contando i professionisti e non le righe. Le cifre compaiono da `MIN_PROFESSIONALS_FOR_SERVICE_PRICE` (3) professionisti con un prezzo: mediana del centro delle fasce e "di solito" tra 1° e 3° quartile, in euro tondi. Sotto: "Su preventivo". Prima del tool vengono le voci con i prezzi. La chiave unica `serviceGroupKey` (`service-group-key.ts`) vale anche per le pagine "Quanto costa" (§296).
+- Città: il clic apre l'elenco nella città dell'ultima ricerca fatta su quel browser (`lastSearchCity.ts`, archiviazione locale, mai inviata); senza città la pagina chiede "In che città?" con i comuni suggeriti, senza obbligarla.
+- Il filtro del servizio resta se si cambia città o modalità dalla barra (in alto su computer, "Modifica" su telefono), dove il servizio è scritto in "Cosa cerchi?"; un lavoro nuovo è una ricerca nuova (`buildSearchDestination`).
+- Scheda: la prestazione cercata sta in cima, su fondo verde chiaro, e da chiusa la scheda dice il suo prezzo al posto di "da … €" (`matchedServiceId` nel risultato della ricerca).
+- "Richiedi un preventivo" (orario libero nella scheda o pulsante del profilo) parte con la prestazione già scritta nella descrizione (`?descrizione=`); il profilo la riceve con `?servizio=`.
+- Il conteggio dei tre passi (voce toccata, profilo aperto, richiesta inviata) arriva dopo l'unione della PR #163, che tocca gli stessi file dell'Andamento del sito.
+
+**Verifica**: test dell'API (`service-price-index.test.ts`, ricerca per voce, prezzo medio solo con professionisti visibili); `e2e/tests/quanto-costa.spec.ts` su database vero, da telefono e computer: per ogni voce il numero coincide con l'elenco, un professionista in pausa non conta, mediana 10 € e "di solito 9–13 €", città chiesta e filtro tenuto, descrizione già scritta, ✕ che toglie solo il servizio, axe senza problemi gravi; anteprime in `anteprime/quanto-costa-profondo/`; test di compito con 5 persone simulate in `analisi/quanto-costa/test-5-persone-simulato.md` (5 su 5, problema principale: il prezzo non dice l'unità).
+
+**Conteggio dei passi di "Quanto costa"** (punto 4 della richiesta, dopo l'unione della PR #163): tabella `PriceToolStepDay` (passo e giorno, migrazione `20261027233000_passi_quanto_costa`, cancellata dopo 25 mesi con gli altri contatori), `POST /site/price-tool` con i soliti filtri (robot scartati, niente conteggio con "non_contare"). Si contano: voce toccata (home e pagine `/prezzi`), profilo aperto da quell'elenco, richiesta inviata partita da lì. Per collegare i tre passi la scheda del browser tiene un segno in `sessionStorage` (`da_quanto_costa`), nessun cookie; il segno si toglie all'invio della richiesta. In `/admin/andamento` il riquadro "Dallo strumento «Quanto costa»" con le tre barre e quante delle richieste inviate sono partite da una voce. Informativa privacy, punto 9, aggiornata. Prova Playwright: voce e profilo contati in `quanto-costa.spec.ts`.
+
+**Prezzi sempre a destra** (Luca, 28/10: "i prezzi sempre sulla parte destra così è più ordinato, e quindi le unità di misura prima"): l'unità sta prima del prezzo, in piccolo e grigia, e le cifre finiscono tutte sullo stesso bordo destro, nel "Quanto costa in media", nelle pagine `/prezzi`, nella scheda dei risultati e nel profilo (`PriceLine` ha la prop `unit`). Nella frase della scheda chiusa ("da 8 € al m²") l'unità resta dopo, perché è una frase. Nel modulo delle prestazioni in `/dashboard/profilo` lo stesso ordine: prima l'unità, poi "Da € a A €" con la ✕ (sul telefono prezzo e ✕ vanno a capo insieme).
+
+## 395. Numeri contati solo dal lancio e account di prova
+
+**Richiesta di Luca (28/10/2026)**: "tutti i numeri per le statistiche e
+decisioni devono essere azzerati nel momento del lancio, così le prove che
+faccio prima non vanno a contrastare i dati reali". Approvate le migliorie
+proposte ("effettua le migliorie nel modo che ritieni").
+
+**Deciso:** niente si cancella al lancio (non si potrebbe annullare). Ogni
+numero conta da `LAUNCH_DATE`: i dati di prima restano nel database ma non
+entrano nei conti. Prima del lancio (o senza data) si vede tutto, prove
+comprese, così le pagine si possono provare.
+- `apps/api/src/site-counts/counted.ts`: `countingFrom` (il lancio se è
+  passato, altrimenti `null`), `sinceLaunch` e `daySinceLaunch` (per i
+  contatori per giorno: il lancio è la mezzanotte di Roma, il primo giorno
+  contato è la data del lancio), `COUNTED_USER`.
+- **Attività dal lancio, iscritti da sempre**: richieste, ricerche, visite,
+  passi della richiesta, invii non riusciti, preventivi, risposte,
+  recensioni, abbandoni e pagamenti contano dal lancio; i professionisti
+  iscritti prima restano contati (sono veri, reclutati al telefono, §7).
+  Vale per Andamento del sito, consigli e email del lunedì, Professionisti
+  in numeri, andamento settimanale e provenienza delle richieste, richieste
+  urgenti, visite e media della zona nella Home del professionista.
+- **Account di prova** (`User.testAccountAt`, migrazione
+  `20261028080000_account_di_prova`): interruttore "Account di prova" nella
+  scheda utente, solo super admin (`PATCH /admin/users/:id/test-account`,
+  nel modulo `test-accounts` perché serve `SubscriptionsService`), scritto
+  nel registro azioni. L'account resta normale ma non conta mai: fuori da
+  tutti i numeri sopra, dai contatori della Home admin, dai numeri pubblici
+  della homepage, dalle visite ai profili (né chi guarda né chi è
+  guardato; anche un admin che guarda un profilo non conta più). Filtro
+  "Account di prova" in Utenti e, su richiesta di Luca, una casella "Di
+  prova" su ogni riga dell'elenco (solo super admin) per segnarli uno alla
+  volta senza aprire la scheda. Entrando con un account
+  di prova il browser smette da solo di contare ("Non contare questo
+  browser"). L'eliminazione per sempre del §372 resta, sotto l'interruttore.
+- **Primi 100** (§363): un account di prova non prende un posto; segnarlo
+  libera il suo, togliere il segno lo fa riprovare. I posti si contano
+  (non più l'ultimo numero dato), l'elenco admin numera per posizione.
+- In cima ad Andamento e Numeri: "Dati di prova" con la data da cui si
+  riparte da zero, poi "Dati veri" con la data del lancio; dettaglio in
+  "Scopri di più". Il giallo delle etichette admin "attenzione" passa da `#8A6D00`
+  (4,4:1, axe in CI) a `#7A5F00` (5,5:1).
+
+**Migliorie dopo (Luca: "effettua le 4 migliorie"):**
+- **Professionisti di prova fuori dalla ricerca dal lancio**:
+  `publicVisibilityWhere` aggiunge `user.testAccountAt = null` dopo
+  `LAUNCH_DATE`, quindi niente ricerca, vetrina, recensioni in homepage né
+  smistamento delle richieste; prima del lancio restano, per le prove.
+  Dopo il lancio una prova completa (cliente di prova che chiede a un
+  professionista di prova) passa dal link diretto del profilo.
+- **"Dal lancio (data)" al posto di "ultimi 90 giorni"** (o 30 giorni, 12
+  mesi) nelle schede di Professionisti in numeri quando il lancio è più
+  recente; "Recensioni e voto dal lancio" invece di "da sempre".
+- **Consigli**: nelle prime 4 settimane dopo il lancio dicono "Dal lancio"
+  invece di "Nelle ultime 4 settimane".
+- **Giallo leggibile anche fuori dall'admin**: "In attesa del cliente"
+  (`requestStage.ts`) e le scadenze in Oggi (`.today-deadline`) passano a
+  `#7A5F00`.
+
+**Da fare a mano (Luca):** segnare "Account di prova" sugli account usati
+per le prove; tenere acceso "Non contare questo browser" (Andamento del
+sito) su telefono e computer usati per provare.
+
+**Verifica:** prove unitarie (`counted.test.ts`, primi 100, registro
+azioni), typecheck e lint; API e sito avviati su un database locale con
+`LAUNCH_DATE` prima e dopo oggi, anteprime in
+`anteprime/numeri-dal-lancio/`.
 
 ## 400. Foto più grande nei risultati di ricerca
 

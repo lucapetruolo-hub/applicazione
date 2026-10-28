@@ -69,3 +69,21 @@ describe("requestSentEmail: riepilogo", () => {
     expect(email.text).not.toContain("modifica=1");
   });
 });
+
+// Professionisti scelti dai risultati (docs/CHANGELOG.md §393).
+describe("requestSentEmail: professionisti scelti", () => {
+  it("dice quanti sono e a chi è arrivata", () => {
+    const email = requestSentEmail({
+      name: "Anna",
+      category: "Idraulico",
+      city: "Roma",
+      isUrgent: false,
+      sentTo: 3,
+      direct: false,
+      chosen: 3,
+      summary: { businessName: "Idraulica Rossi, Bianchi Impianti e Verdi" },
+    });
+    expect(email.text).toContain("ai 3 professionisti che hai scelto");
+    expect(email.text).toContain("Inviata a: Idraulica Rossi, Bianchi Impianti e Verdi");
+  });
+});

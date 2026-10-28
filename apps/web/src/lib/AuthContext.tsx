@@ -9,6 +9,7 @@ import { notificationCopy } from "./notificationCopy";
 import { emitRealtimeEvent } from "./realtimeBus";
 import { installNotificationSoundUnlock, playNotificationSound } from "./notificationSound";
 import { isConversationOnScreen } from "./openConversations";
+import { isCountingDisabled, setCountingDisabled } from "./siteCounts";
 
 const TOKEN_STORAGE_KEY = "professionisti_token";
 
@@ -100,6 +101,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           clearOfflineUser();
         } else {
           saveOfflineUser(currentUser);
+          // Account di prova (docs/CHANGELOG.md §395): da qui in poi questo browser non conta, anche dopo l'uscita.
+          if (currentUser.testAccount && !isCountingDisabled()) setCountingDisabled(true);
         }
         // Con `startTransition` (docs/CHANGELOG.md §345): l'utente arrivato
         // ridisegna tutta la pagina (menu, intestazione, contenuto) e su un

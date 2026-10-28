@@ -22,6 +22,8 @@ export type RequestSentScreenProps = {
   isUrgent: boolean;
   matchedProfessionals: number;
   requestsCount: number;
+  /** Nomi dei professionisti scelti nei risultati (docs/CHANGELOG.md §393). */
+  chosenNames?: string[] | null;
   /** Domanda "salvare i dati per la prossima volta?", gestita dal modulo. */
   saveDefaults: ReactNode;
 };
@@ -44,6 +46,7 @@ export function RequestSentScreen({
   isUrgent,
   matchedProfessionals,
   requestsCount,
+  chosenNames,
   saveDefaults,
 }: RequestSentScreenProps) {
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -59,7 +62,15 @@ export function RequestSentScreen({
   const multiple = requestsCount > 1;
   const nobodyYet = matchedProfessionals === 0;
 
-  const heading = direct ? (
+  const heading = chosenNames ? (
+    chosenNames.length > 0 ? (
+      <>
+        La tua richiesta è arrivata a <strong>{new Intl.ListFormat("it-IT", { type: "conjunction" }).format(chosenNames)}</strong>
+      </>
+    ) : (
+      `La tua richiesta è arrivata ai ${matchedProfessionals} professionisti che hai scelto`
+    )
+  ) : direct ? (
     <>
       La tua richiesta è arrivata a <strong>{professionalName}</strong>
     </>

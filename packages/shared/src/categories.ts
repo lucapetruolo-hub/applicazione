@@ -170,12 +170,20 @@ export function validSubTags(subTags: string[], categorySlugs: readonly Professi
  * compilatore segnala se manca una categoria quando se ne aggiunge una nuova.
  */
 export const POPULAR_SERVICES: Record<ProfessionalCategorySlug, string[]> = {
+  // Dalla sesta voce in poi: i lavori più chiesti nelle 769 frasi dei clienti
+  // (docs/CHANGELOG.md §392), così il nome scelto dal professionista è quello
+  // che i clienti cercano e i prezzi della stessa prestazione si sommano.
   idraulico: [
     "Riparazione perdita d'acqua",
     "Sostituzione rubinetteria",
     "Sturatura scarichi",
     "Installazione scaldabagno",
     "Sostituzione caldaia",
+    "Riparazione cassetta WC",
+    "Sostituzione sifone",
+    "Sostituzione box doccia",
+    "Ricerca perdite e infiltrazioni",
+    "Installazione lavatrice e lavastoviglie",
   ],
   elettricista: [
     "Impianto elettrico civile",
@@ -183,6 +191,11 @@ export const POPULAR_SERVICES: Record<ProfessionalCategorySlug, string[]> = {
     "Sostituzione quadro elettrico",
     "Installazione videocitofono",
     "Certificazione impianto",
+    "Ricerca guasti (salvavita che scatta)",
+    "Sostituzione prese e interruttori",
+    "Automazione cancelli",
+    "Motorizzazione tapparelle",
+    "Riparazione elettrodomestici",
   ],
   imbianchino: [
     "Tinteggiatura interni",
@@ -190,6 +203,9 @@ export const POPULAR_SERVICES: Record<ProfessionalCategorySlug, string[]> = {
     "Rasatura pareti",
     "Decorazioni pareti",
     "Verniciatura infissi",
+    "Trattamento antimuffa",
+    "Tinteggiatura soffitti",
+    "Stuccatura crepe",
   ],
   pulizie: [
     "Pulizie di casa",
@@ -197,6 +213,9 @@ export const POPULAR_SERVICES: Record<ProfessionalCategorySlug, string[]> = {
     "Pulizie di fine cantiere",
     "Pulizie post-trasloco",
     "Sanificazione ambienti",
+    "Pulizie settimanali",
+    "Pulizia vetri",
+    "Pulizia profonda di cucina e bagno",
   ],
   giardiniere: [
     "Manutenzione giardino",
@@ -204,6 +223,9 @@ export const POPULAR_SERVICES: Record<ProfessionalCategorySlug, string[]> = {
     "Taglio erba",
     "Progettazione giardino",
     "Rimozione alberi",
+    "Impianto di irrigazione",
+    "Rimozione ceppi",
+    "Semina e rifacimento prato",
   ],
   traslochi: [
     "Trasloco locale",
@@ -211,6 +233,9 @@ export const POPULAR_SERVICES: Record<ProfessionalCategorySlug, string[]> = {
     "Smontaggio e montaggio mobili",
     "Imballaggio oggetti",
     "Trasporto con montacarichi",
+    "Trasporto singoli mobili",
+    "Sgombero cantine e appartamenti",
+    "Piccoli traslochi",
   ],
   fabbro: [
     "Apertura porte bloccate",
@@ -218,6 +243,9 @@ export const POPULAR_SERVICES: Record<ProfessionalCategorySlug, string[]> = {
     "Installazione cancelli",
     "Riparazione grate",
     "Duplicazione chiavi",
+    "Sostituzione cilindro europeo",
+    "Riparazione porte blindate",
+    "Riparazione persiane in ferro",
   ],
   climatizzazione: [
     "Installazione climatizzatore",
@@ -225,6 +253,10 @@ export const POPULAR_SERVICES: Record<ProfessionalCategorySlug, string[]> = {
     "Ricarica gas climatizzatore",
     "Pulizia filtri climatizzatore",
     "Assistenza guasti",
+    "Riparazione caldaia",
+    "Riparazione scaldabagno",
+    "Controllo fumi caldaia",
+    "Sostituzione termostato",
   ],
   muratore: [
     "Ristrutturazione bagno",
@@ -232,6 +264,11 @@ export const POPULAR_SERVICES: Record<ProfessionalCategorySlug, string[]> = {
     "Realizzazione cartongesso",
     "Demolizioni",
     "Rifacimento pavimenti",
+    "Impermeabilizzazione terrazzi e balconi",
+    "Risanamento umidità e infiltrazioni",
+    "Posa piastrelle",
+    "Rifacimento fughe",
+    "Riparazione crepe nei muri",
   ],
   falegname: [
     "Mobili su misura",
@@ -239,13 +276,23 @@ export const POPULAR_SERVICES: Record<ProfessionalCategorySlug, string[]> = {
     "Sostituzione infissi",
     "Montaggio mobili",
     "Restauro mobili",
+    "Riparazione porte in legno",
+    "Riparazione finestre e persiane in legno",
+    "Posa e riparazione parquet",
   ],
   tuttofare: [
     "Piccole riparazioni domestiche",
     "Montaggio mobili",
     "Manutenzione generale casa",
-    "Piccoli lavori idraulici",
-    "Piccoli lavori elettrici",
+    // Niente "piccoli lavori idraulici/elettrici": per il DM 37/2008 i lavori
+    // sugli impianti spettano agli installatori abilitati (§388, decisione di Luca).
+    "Montaggio tende e bastoni",
+    "Sigillatura con silicone (bagno e cucina)",
+    "Montaggio zanzariere",
+    "Riparazione tapparelle",
+    "Montaggio mobili IKEA",
+    "Fissaggio a muro (mensole, quadri, TV)",
+    "Riparazione elettrodomestici",
   ],
   dogsitter: [
     "Passeggiata con il cane",
@@ -253,6 +300,7 @@ export const POPULAR_SERVICES: Record<ProfessionalCategorySlug, string[]> = {
     "Pensione per cani",
     "Accudimento durante le vacanze",
     "Accompagnamento dal veterinario",
+    "Dogsitter durante l'orario di lavoro",
   ],
   babysitter: [
     "Babysitting serale",
@@ -260,6 +308,7 @@ export const POPULAR_SERVICES: Record<ProfessionalCategorySlug, string[]> = {
     "Accudimento neonati",
     "Babysitting nel weekend",
     "Babysitting durante eventi",
+    "Babysitting al mattino prima della scuola",
   ],
 };
 

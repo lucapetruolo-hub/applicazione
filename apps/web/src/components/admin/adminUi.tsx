@@ -32,7 +32,8 @@ export function AdminPill({ children, tone = "neutral" }: { children: ReactNode;
     neutral: { bg: "#F1ECE6", fg: brand.grafite },
     danger: { bg: "#FDE7E9", fg: "#B02A37" },
     ok: { bg: "#E6F4EA", fg: "#1E7B34" },
-    warn: { bg: "#FFF3CD", fg: "#8A6D00" },
+    // #7A5F00: 5,5:1 sul giallo; #8A6D00 si fermava a 4,4:1 (axe, docs/CHANGELOG.md §395).
+    warn: { bg: "#FFF3CD", fg: "#7A5F00" },
   }[tone];
   return (
     <XStack paddingHorizontal={10} paddingVertical={3} borderRadius={999} backgroundColor={colors.bg} alignSelf="flex-start">
@@ -101,4 +102,34 @@ export function downloadBlobFile(filename: string, blob: Blob) {
   link.remove();
   // Safari legge il file dopo il clic: l'indirizzo resta valido ancora un momento.
   setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+/**
+ * Da quando contano i numeri (docs/CHANGELOG.md §395): prima del lancio si
+ * vedono anche le prove, dal lancio i numeri ripartono da zero da soli. Una
+ * riga sola, con il dettaglio in "Scopri di più".
+ */
+export function CountingFromNote({ countingFrom, launchDate }: { countingFrom: string | null; launchDate: string | null }) {
+  const title = countingFrom
+    ? `Numeri dal lancio, ${formatAdminDate(countingFrom)}`
+    : launchDate
+      ? `Prima del lancio: qui ci sono anche le tue prove. Dal ${formatAdminDate(launchDate)} si riparte da zero.`
+      : "Prima del lancio: qui ci sono anche le tue prove. Dal giorno del lancio si riparte da zero.";
+  return (
+    <div className="counting-from">
+      <AdminPill tone={countingFrom ? "ok" : "warn"}>{countingFrom ? "Dati veri" : "Dati di prova"}</AdminPill>
+      <Text color={brand.grafite} fontSize={14}>
+        {title}
+      </Text>
+      <details className="counting-from-more">
+        <summary>Scopri di più</summary>
+        <Text color={brand.grafite70} fontSize={13}>
+          Richieste, ricerche, visite e preventivi contano dal giorno del lancio
+          (la data impostata come LAUNCH_DATE). I professionisti iscritti prima
+          restano contati. Gli account segnati &quot;Account di prova&quot; non
+          contano mai. Niente viene cancellato.
+        </Text>
+      </details>
+    </div>
+  );
 }

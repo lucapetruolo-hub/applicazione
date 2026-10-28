@@ -15,18 +15,21 @@ import {
   MAX_PROFESSIONAL_CATEGORIES,
   NO_CATEGORY_MESSAGE,
   POPULAR_SERVICES,
+  ALL_SUGGESTED_SERVICES,
+  canonicalServiceName,
   isProfessionalCategorySlug,
   PROFESSIONAL_CATEGORIES,
   categorySubTags,
   subTagLabel,
   validSubTags,
+  type StandardServicesByCategory,
   allItalianCityNames,
   PROFILE_DECLARATION_TEXT,
   findComuneByName,
   type MyProfessionalProfile,
   type MyProfilePreview,
   type MyVerificationStatus,
-  type ProfessionalCategorySlug, professionalPath } from "@professionisti/shared";
+  type ProfessionalCategorySlug, professionalPath, SERVICE_PRICE_UNITS, SERVICE_PRICE_UNIT_LABEL, type ServicePriceUnit } from "@professionisti/shared";
 import { Autocomplete, Button, Chip, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -46,6 +49,8 @@ import { localPreviewUrl } from "@/lib/media";
 import { keyActivate } from "@/lib/keyActivate";
 
 const MAX_PORTFOLIO_PHOTOS = 10;
+/** Prestazioni suggerite visibili prima di "Altre". */
+const SUGGESTED_IDLE_COUNT = 8;
 
 // Elenco di candidati per il selettore "Lingue parlate" (richiesta esplicita
 // dell'utente: mostrare già un elenco selezionabile invece del solo campo
@@ -164,9 +169,13 @@ export default function DashboardProfiloPage() {
   const [addressCoords, setAddressCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [bio, setBio] = useState("");
   const [remoteAvailable, setRemoteAvailable] = useState(false);
+  // Le prestazioni suggerite sono fino a 10 per categoria: a riposo le prime 8.
+  const [showAllSuggested, setShowAllSuggested] = useState(false);
+  // Prestazioni aggiunte dall'admin tra le standard (docs/CHANGELOG.md §388).
+  const [standardServices, setStandardServices] = useState<StandardServicesByCategory>({});
   // Preavviso per annullare chiesto al cliente (docs/CHANGELOG.md §347).
   const [cancellationNoticeHours, setCancellationNoticeHours] = useState<CancellationNoticeHours>(DEFAULT_CANCELLATION_NOTICE_HOURS);
-  const [services, setServices] = useState<{ name: string; priceMin: string; priceMax: string }[]>([]);
+  const [services, setServices] = useState<{ name: string; priceMin: string; priceMax: string; priceUnit: ServicePriceUnit }[]>([]);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   // Foto reali di lavori svolti (fino a MAX_PORTFOLIO_PHOTOS), mostrate in
   // una galleria sul profilo pubblico — richiesta esplicita dell'utente:
@@ -288,12 +297,14 @@ export default function DashboardProfiloPage() {
         name: service.name,
         priceMin: service.priceMinEurCents !== null ? eurInputValue(service.priceMinEurCents) : "",
         priceMax: service.priceMaxEurCents !== null ? eurInputValue(service.priceMaxEurCents) : "",
+        priceUnit: service.priceUnit,
       })),
     );
   }
 
   useEffect(() => {
     apiClient.getLanguagePopularity().then(setLanguagePopularity).catch(() => undefined);
+    apiClient.standardServices().then(setStandardServices).catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -439,7 +450,7 @@ export default function DashboardProfiloPage() {
     }
 
     const cleanedServices = services
-      .map((service) => ({ name: service.name.trim(), priceMin: service.priceMin.trim(), priceMax: service.priceMax.trim() }))
+      .map((service) => ({ name: service.name.trim(), priceMin: service.priceMin.trim(), priceMax: service.priceMax.trim(), priceUnit: service.priceUnit }))
       .filter((service) => service.name.length > 0);
     for (const service of cleanedServices) {
       if (service.priceMin && Number.isNaN(Number(service.priceMin.replace(",", ".")))) {
@@ -492,6 +503,7 @@ export default function DashboardProfiloPage() {
           name: service.name,
           priceMinEurCents: service.priceMin ? Math.round(Number(service.priceMin.replace(",", ".")) * 100) : undefined,
           priceMaxEurCents: service.priceMax ? Math.round(Number(service.priceMax.replace(",", ".")) * 100) : undefined,
+          priceUnit: service.priceUnit,
         })),
       });
       setSaved(true);
@@ -585,12 +597,16 @@ export default function DashboardProfiloPage() {
     setServices((prev) => prev.map((service, i) => (i === index ? { ...service, [field]: value } : service)));
   }
 
+  function updateServiceUnit(index: number, priceUnit: ServicePriceUnit) {
+    setServices((prev) => prev.map((service, i) => (i === index ? { ...service, priceUnit } : service)));
+  }
+
   function removeService(index: number) {
     setServices((prev) => prev.filter((_, i) => i !== index));
   }
 
   function addSuggestedService(name: string) {
-    setServices((prev) => [...prev, { name, priceMin: "", priceMax: "" }]);
+    setServices((prev) => [...prev, { name, priceMin: "", priceMax: "", priceUnit: "JOB" }]);
   }
 
   // Scorciatoia per aggiungere una prestazione senza doverne scrivere il nome
@@ -603,8 +619,12 @@ export default function DashboardProfiloPage() {
   // prestazioni cliccabili.
   // Suggerite di tutte le categorie scelte (docs/CHANGELOG.md §217), senza doppioni.
   const suggestedServices = [
-    ...new Set([...categorySlugs.flatMap((slug) => POPULAR_SERVICES[slug]), ...(remoteAvailable ? ["Consulenza online"] : [])]),
-  ].filter((name) => !services.some((service) => service.name.trim().toLowerCase() === name.toLowerCase()));
+    ...new Set([
+      ...categorySlugs.flatMap((slug) => [...POPULAR_SERVICES[slug], ...(standardServices[slug] ?? [])]),
+      ...(remoteAvailable ? ["Consulenza online"] : []),
+    ]),
+  ].filter((name) => !services.some((service) => canonicalServiceName(service.name) === name));
+  const visibleSuggestedServices = showAllSuggested ? suggestedServices : suggestedServices.slice(0, SUGGESTED_IDLE_COUNT);
 
   function handleImageChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -1201,7 +1221,7 @@ export default function DashboardProfiloPage() {
           <SectionTitle>Prestazioni offerte</SectionTitle>
           <Text fontSize={13} color={brand.grafite70}>
             Aggiungi i servizi che offri, con un range di prezzo se vuoi indicarlo (es. da 50€ a 100€, utile quando il
-            costo varia da caso a caso): comparirà nella tua card nei risultati di ricerca.
+            costo varia da caso a caso) e se è a lavoro, all&apos;ora, al giorno o al m²: comparirà nella tua card nei risultati di ricerca.
           </Text>
 
           {suggestedServices.length > 0 ? (
@@ -1210,7 +1230,7 @@ export default function DashboardProfiloPage() {
                 {categorySlugs.length > 1 ? "Le più richieste per le tue categorie:" : "Le più richieste per questa categoria:"}
               </Text>
               <YStack flexDirection="row" flexWrap="wrap" gap="$2">
-                {suggestedServices.map((name) => (
+                {visibleSuggestedServices.map((name) => (
                   <XStack
                     key={name}
                     paddingHorizontal="$3"
@@ -1228,14 +1248,41 @@ export default function DashboardProfiloPage() {
                     </Text>
                   </XStack>
                 ))}
+                {suggestedServices.length > SUGGESTED_IDLE_COUNT ? (
+                  <XStack
+                    paddingHorizontal="$3"
+                    paddingVertical="$2"
+                    borderRadius={999}
+                    borderWidth={1}
+                    borderColor={brand.bordoCampo}
+                    cursor="pointer"
+                    onPress={() => setShowAllSuggested((value) => !value)}
+                    accessibilityRole="button"
+                    aria-expanded={showAllSuggested}
+                  >
+                    <Text color={brand.grafite} fontWeight="600" fontSize={16}>
+                      {showAllSuggested ? "Mostra meno" : `Altre ${suggestedServices.length - SUGGESTED_IDLE_COUNT}`}
+                    </Text>
+                  </XStack>
+                ) : null}
               </YStack>
             </YStack>
           ) : null}
+
+          {/* Mentre scrive, il professionista vede i nomi già usati: scegliendone
+              uno, la sua prestazione si somma alle altre uguali nella ricerca e
+              nei prezzi medi (docs/CHANGELOG.md §392). */}
+          <datalist id="prestazioni-suggerite">
+            {[...new Set([...ALL_SUGGESTED_SERVICES, ...Object.values(standardServices).flatMap((names) => names ?? [])])].map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
 
           <YStack gap="$2">
             {services.map((service, index) => (
               <YStack key={index} flexDirection="row" gap="$2" alignItems="center" flexWrap="wrap">
                 <input aria-label="Nome della prestazione"
+                  list="prestazioni-suggerite"
                   value={service.name}
                   onChange={(e) => updateService(index, "name", e.target.value)}
                   placeholder="Es. Sostituzione caldaia"
@@ -1246,7 +1293,23 @@ export default function DashboardProfiloPage() {
                     gruppo va a capo insieme sotto al nome, invece di spezzarsi
                     lasciando la "X" isolata su una riga a parte, lontana dalla
                     voce a cui appartiene — bug reale segnalato dall'utente. */}
-                <XStack gap="$2" alignItems="center" flexWrap="nowrap">
+                <XStack gap="$2" alignItems="center" flexWrap="wrap">
+                  {/* Unità prima del prezzo, nello stesso ordine in cui la
+                      vedono i clienti (Luca, docs/CHANGELOG.md §399). */}
+                  <select
+                    aria-label="Il prezzo è"
+                    value={service.priceUnit}
+                    onChange={(e) => updateServiceUnit(index, e.target.value as ServicePriceUnit)}
+                    style={{ ...smallInputStyle, width: 120 }}
+                  >
+                    {SERVICE_PRICE_UNITS.map((unit) => (
+                      <option key={unit} value={unit}>
+                        {SERVICE_PRICE_UNIT_LABEL[unit]}
+                      </option>
+                    ))}
+                  </select>
+                  {/* Prezzo e "X" sempre insieme: sul telefono vanno a capo uniti. */}
+                  <XStack gap="$2" alignItems="center" flexWrap="nowrap">
                   <input aria-label="Prezzo minimo in euro"
                     value={service.priceMin}
                     onChange={(e) => updateService(index, "priceMin", e.target.value)}
@@ -1281,11 +1344,12 @@ export default function DashboardProfiloPage() {
                   >
                     <X size={16} strokeWidth={2} color={brand.urgenza} />
                   </XStack>
+                  </XStack>
                 </XStack>
               </YStack>
             ))}
           </YStack>
-          <Button variant="ghost" size="$3" height={40} alignSelf="flex-start" onPress={() => setServices((prev) => [...prev, { name: "", priceMin: "", priceMax: "" }])}>
+          <Button variant="ghost" size="$3" height={40} alignSelf="flex-start" onPress={() => setServices((prev) => [...prev, { name: "", priceMin: "", priceMax: "", priceUnit: "JOB" }])}>
             + Aggiungi prestazione
           </Button>
         </Surface>

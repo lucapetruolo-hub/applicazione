@@ -5,6 +5,7 @@ import {
   CHURN_KINDS,
   CHURN_REASONS,
   CLIENT_FUNNEL_KEYS,
+  PRICE_TOOL_STEP_KEYS,
   REQUEST_STEP_KEYS,
   SEARCH_DEMAND_ALERT_DAYS,
   SITE_ADVICE_DONE_DAYS,
@@ -32,6 +33,7 @@ import { NotificationsService } from "../notifications/notifications.service";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { identityVerificationRequired } from "../identity-verification/identity-provider-env";
 import { hasLaunched, launchDate } from "../subscriptions/subscription-rules";
+import { COUNTED_USER, countingFrom, daySinceLaunch, sinceLaunch } from "../site-counts/counted";
 import { PROFESSIONAL_STATS_SELECT } from "./admin.service";
 import { professionalStatusOf, searchDemandZones } from "./professional-stats";
 import {
@@ -63,7 +65,9 @@ const isoDay = (date: Date) => date.toISOString().slice(0, 10);
  * Andamento del sito (docs/CHANGELOG.md §372): numero guida per lavoro e
  * città, percorso del cliente, coorti, conteggi e i consigli già pronti per
  * il super admin, anche nell'email del lunedì. Esclusi gli admin (le loro
- * richieste di prova) e i profili dimostrativi.
+ * richieste di prova), gli account di prova e i profili dimostrativi. Dal
+ * lancio l'attività (richieste, ricerche, visite, preventivi) conta solo da
+ * quel giorno (§395); chi è iscritto resta contato da quando si è iscritto.
  */
 @Injectable()
 export class SiteStatsService {
@@ -76,20 +80,27 @@ export class SiteStatsService {
   ) {}
 
   async getStats(now: Date = new Date()): Promise<AdminSiteStats> {
-    const windowStart = new Date(now.getTime() - SITE_STATS_WINDOW_DAYS * DAY_MS);
-    const windowDay = dayStart(windowStart);
+    // Attività contata dal lancio (§395): ogni inizio periodo mai prima di quel giorno.
+    const from = countingFrom(now);
+    const fromLaunch = (date: Date) => sinceLaunch(date, from);
+    const dayFromLaunch = (day: Date) => daySinceLaunch(day, from);
+    const windowStart = fromLaunch(new Date(now.getTime() - SITE_STATS_WINDOW_DAYS * DAY_MS));
+    const windowDay = dayFromLaunch(dayStart(new Date(now.getTime() - SITE_STATS_WINDOW_DAYS * DAY_MS)));
     const weeksStart = new Date(`${weekStarts(now, SITE_STATS_WEEKS)[0]}T00:00:00+01:00`);
     const cohortStart = new Date(`${weekStarts(now, SITE_COHORT_WEEKS)[0]}T00:00:00+01:00`);
-    const since90 = new Date(now.getTime() - 90 * DAY_MS);
-    const since30 = new Date(now.getTime() - 30 * DAY_MS);
-    const since14 = new Date(now.getTime() - 14 * DAY_MS);
-    const since7Day = dayStart(new Date(now.getTime() - SEARCH_DEMAND_ALERT_DAYS * DAY_MS));
-    const notAdmin = { client: { role: { not: "ADMIN" as const } } };
-    const proCounted: Prisma.ProfessionalProfileWhereInput = { deletedAt: null, user: { deletedAt: null }, isDemo: false };
+    // Iscrizioni: chi si è iscritto prima del lancio è vero (reclutato al telefono), quindi niente data del lancio qui.
+    const signupsSince90 = new Date(now.getTime() - 90 * DAY_MS);
+    const since90 = fromLaunch(signupsSince90);
+    const since30 = fromLaunch(new Date(now.getTime() - 30 * DAY_MS));
+    const since14 = fromLaunch(new Date(now.getTime() - 14 * DAY_MS));
+    const since7Day = dayFromLaunch(dayStart(new Date(now.getTime() - SEARCH_DEMAND_ALERT_DAYS * DAY_MS)));
+    const notAdmin = { client: { role: { not: "ADMIN" as const }, ...COUNTED_USER } };
+    const launchOn = from ? { createdAt: { gte: from } } : {};
+    const proCounted: Prisma.ProfessionalProfileWhereInput = { deletedAt: null, user: { deletedAt: null, ...COUNTED_USER }, isDemo: false };
 
-    const [requestRows, searchDays, freeSearches, profileViews, stepDays, proRows, failureDays, terms, termDays, signups, churnDays, notes, serviceSearches, serviceRows] = await Promise.all([
+    const [requestRows, searchDays, freeSearches, profileViews, stepDays, proRows, failureDays, terms, termDays, signups, churnDays, notes, serviceSearches, serviceRows, priceToolDays] = await Promise.all([
       this.prisma.guidedRequest.findMany({
-        where: { createdAt: { gte: weeksStart < windowStart ? weeksStart : windowStart }, hiddenAt: null, ...notAdmin },
+        where: { createdAt: { gte: fromLaunch(weeksStart < windowStart ? weeksStart : windowStart) }, hiddenAt: null, ...notAdmin },
         select: {
           id: true,
           submissionGroupId: true,
@@ -111,14 +122,14 @@ export class SiteStatsService {
       }),
       this.prisma.submitFailureDay.findMany({ where: { day: { gte: windowDay } }, select: { form: true, kind: true, day: true, count: true } }),
       this.prisma.unknownJobTerm.findMany({ select: { termHash: true, term: true } }),
-      this.prisma.unknownJobSearchDay.groupBy({ by: ["termHash"], where: { day: { gte: dayStart(since90) } }, _count: { _all: true }, _sum: { count: true } }),
+      this.prisma.unknownJobSearchDay.groupBy({ by: ["termHash"], where: { day: { gte: dayFromLaunch(dayStart(since90)) } }, _count: { _all: true }, _sum: { count: true } }),
       this.prisma.user.findMany({
-        where: { role: "PROFESSIONAL", deletedAt: null, createdAt: { gte: since90 } },
+        where: { role: "PROFESSIONAL", deletedAt: null, createdAt: { gte: signupsSince90 }, ...COUNTED_USER },
         select: { signupSource: true, _count: { select: { profileInvites: true } } },
       }),
-      this.prisma.churnReasonDay.groupBy({ by: ["kind", "reason"], where: { day: { gte: dayStart(since90) } }, _sum: { count: true } }),
+      this.prisma.churnReasonDay.groupBy({ by: ["kind", "reason"], where: { day: { gte: dayFromLaunch(dayStart(since90)) } }, _sum: { count: true } }),
       this.prisma.siteNote.findMany({ where: { day: { gte: dayStart(weeksStart) } }, orderBy: { day: "asc" } }),
-      this.prisma.serviceSearchDay.groupBy({ by: ["categorySlug", "service"], where: { day: { gte: dayStart(since90) } }, _sum: { count: true } }),
+      this.prisma.serviceSearchDay.groupBy({ by: ["categorySlug", "service"], where: { day: { gte: dayFromLaunch(dayStart(since90)) } }, _sum: { count: true } }),
       this.prisma.professionalService.findMany({
         where: { professionalProfile: proCounted },
         select: {
@@ -127,6 +138,7 @@ export class SiteStatsService {
           professionalProfile: { select: { category: { select: { slug: true } }, extraCategories: { select: { slug: true } } } },
         },
       }),
+      this.prisma.priceToolStepDay.groupBy({ by: ["step"], where: { day: { gte: windowDay } }, _sum: { count: true } }),
     ]);
 
     const requests: SiteRequestRow[] = requestRows.map((r) => {
@@ -192,9 +204,9 @@ export class SiteStatsService {
     // Coorti.
     const firstRequests = await this.prisma.guidedRequest.groupBy({
       by: ["clientId"],
-      where: { hiddenAt: null, ...notAdmin },
+      where: { hiddenAt: null, ...notAdmin, ...launchOn },
       _min: { createdAt: true },
-      having: { createdAt: { _min: { gte: cohortStart } } },
+      having: { createdAt: { _min: { gte: fromLaunch(cohortStart) } } },
     });
     const firstRequestAt = new Map(firstRequests.flatMap((f) => (f._min.createdAt ? [[f.clientId, f._min.createdAt] as const] : [])));
     const cohortPros = statsRows.filter((p) => p.createdAt >= cohortStart);
@@ -202,7 +214,7 @@ export class SiteStatsService {
     const visibleIds = visible.map((p) => p.id);
     const proAnswer = { actor: "PROFESSIONAL" as const, automatic: false };
     const [firstQuotes, activeQuotes, activeMessages, recentLeads] = await Promise.all([
-      cohortIds.length ? this.prisma.quote.groupBy({ by: ["professionalProfileId"], where: { professionalProfileId: { in: cohortIds } }, _min: { createdAt: true } }) : [],
+      cohortIds.length ? this.prisma.quote.groupBy({ by: ["professionalProfileId"], where: { professionalProfileId: { in: cohortIds }, ...launchOn }, _min: { createdAt: true } }) : [],
       this.prisma.quote.groupBy({ by: ["professionalProfileId"], where: { createdAt: { gte: since30 }, professionalProfile: proCounted } }),
       this.prisma.conversationEvent.groupBy({ by: ["professionalProfileId"], where: { ...proAnswer, createdAt: { gte: since30 }, professionalProfile: proCounted } }),
       visibleIds.length
@@ -290,7 +302,10 @@ export class SiteStatsService {
       serviceSearches.map((r) => ({ categorySlug: r.categorySlug, service: r.service, searches: r._sum.count ?? 0 })),
       serviceList,
     );
-    const missingServices = buildMissingServices(serviceList);
+    const standardRows = await this.prisma.standardServiceName.findMany({ select: { categorySlug: true, name: true } });
+    const standardByCategory: Record<string, string[]> = {};
+    for (const row of standardRows) (standardByCategory[row.categorySlug] ??= []).push(row.name);
+    const missingServices = buildMissingServices(serviceList, standardByCategory);
     const sources = new Map<SignupSourceKey, number>();
     for (const u of signups) {
       const key: SignupSourceKey = u._count.profileInvites > 0 ? "INVITE" : (u.signupSource ?? "unknown");
@@ -304,7 +319,7 @@ export class SiteStatsService {
 
     // Confronto: richieste inviate contate dal browser contro quelle salvate.
     const firstCounted = await this.prisma.requestStepDay.findFirst({ where: { step: "INVIATA" }, orderBy: { day: "asc" }, select: { day: true } });
-    const reconcileFrom = dayStart(new Date(now.getTime() - (RECONCILE_DAYS - 1) * DAY_MS));
+    const reconcileFrom = dayFromLaunch(dayStart(new Date(now.getTime() - (RECONCILE_DAYS - 1) * DAY_MS)));
     const reconcileSince = firstCounted && firstCounted.day > reconcileFrom ? firstCounted.day : reconcileFrom;
     const countedSent = firstCounted
       ? ((await this.prisma.requestStepDay.aggregate({ where: { step: "INVIATA", day: { gte: reconcileSince } }, _sum: { count: true } }))._sum.count ?? 0)
@@ -315,9 +330,9 @@ export class SiteStatsService {
     // Tappa silenziosa e prezzi.
     const launch = launchDate();
     const [clientsWithRequest, acceptedJobs, paidOnline, paying, atLimit30d, trials] = await Promise.all([
-      this.prisma.guidedRequest.groupBy({ by: ["clientId"], where: { hiddenAt: null, ...notAdmin } }).then((g) => g.length),
-      this.prisma.booking.count({ where: { quoteId: { not: null }, status: { not: "CANCELED" }, professionalProfile: proCounted } }),
-      this.prisma.jobPayment.count({ where: { depositPaidAt: { not: null } } }),
+      this.prisma.guidedRequest.groupBy({ by: ["clientId"], where: { hiddenAt: null, ...notAdmin, ...launchOn } }).then((g) => g.length),
+      this.prisma.booking.count({ where: { quoteId: { not: null }, status: { not: "CANCELED" }, professionalProfile: proCounted, client: COUNTED_USER, ...launchOn } }),
+      this.prisma.jobPayment.count({ where: { depositPaidAt: from ? { gte: from } : { not: null }, booking: { client: COUNTED_USER, professionalProfile: proCounted } } }),
       this.prisma.subscription.count({ where: { stripeSubscriptionId: { not: null }, status: "ACTIVE", professionalProfile: proCounted } }),
       this.prisma.professionalProfile.count({ where: { ...proCounted, jobLimitReachedAt: { gte: since30 } } }),
       this.prisma.subscription.findMany({
@@ -367,12 +382,15 @@ export class SiteStatsService {
 
     return {
       windowDays: SITE_STATS_WINDOW_DAYS,
+      countingFrom: from?.toISOString() ?? null,
+      launchDate: launch?.toISOString() ?? null,
       guide,
       guideWeekly,
       cells,
       otherCells,
       clientFunnel: CLIENT_FUNNEL_KEYS.map((key) => ({ key, count: funnelCounts[key] })),
       requestSteps,
+      priceToolSteps: PRICE_TOOL_STEP_KEYS.map((key) => ({ key, count: priceToolDays.find((d) => d.step === key)?._sum.count ?? 0 })),
       clientCohorts: buildClientCohorts(requests, firstRequestAt, now, SITE_COHORT_WEEKS),
       professionalCohorts,
       submitFailures: sumFailures(windowDay),

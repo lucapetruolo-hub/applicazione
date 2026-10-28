@@ -34,6 +34,7 @@ import { RevenueAnalyticsModule } from "./revenue-analytics/revenue-analytics.mo
 import { RealtimeModule } from "./realtime/realtime.module";
 import { SubscriptionsModule } from "./subscriptions/subscriptions.module";
 import { ProfileInvitesModule } from "./profile-invites/profile-invites.module";
+import { TestAccountsModule } from "./test-accounts/test-accounts.module";
 import { TaxIdCheckModule } from "./tax-id-check/tax-id-check.module";
 import { IdentityVerificationModule } from "./identity-verification/identity-verification.module";
 import { ProfessionalVerificationModule } from "./professional-verification/professional-verification.module";
@@ -44,6 +45,7 @@ import { UrgencyMetricsModule } from "./urgency-metrics/urgency-metrics.module";
 import { BookingRemindersModule } from "./booking-reminders/booking-reminders.module";
 import { AgendaRemindersModule } from "./agenda-reminders/agenda-reminders.module";
 import { AgendaModule } from "./agenda/agenda.module";
+import { ProblemMatchModule } from "./problem-match/problem-match.module";
 
 @Module({
   imports: [
@@ -107,9 +109,11 @@ import { AgendaModule } from "./agenda/agenda.module";
     BookingRemindersModule,
     AgendaRemindersModule,
     AgendaModule,
+    ProblemMatchModule,
     SubscriptionsModule,
     // Profili creati al telefono da un operatore (docs/CHANGELOG.md §170).
     ProfileInvitesModule,
+    TestAccountsModule,
     ProfessionalVerificationModule,
     ClientInvoiceRequestsModule,
     // Fatture, estratti e copie di cortesia (docs/CHANGELOG.md §378).

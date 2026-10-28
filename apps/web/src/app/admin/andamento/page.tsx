@@ -13,6 +13,7 @@ import {
   MIN_CASES_FOR_PERCENT,
   MIN_CASES_PER_ROW,
   MISSING_SERVICE_MIN_PROFESSIONALS,
+  PRICE_TOOL_STEP_LABEL,
   REQUEST_STEP_LABEL,
   SERVICE_GAP_MAX_OFFERED,
   SERVICE_GAP_MIN_SEARCHES,
@@ -33,6 +34,7 @@ import { chooseCountingDisabled, isCountingDisabled } from "@/lib/siteCounts";
 import {
   AdminCard,
   AdminPageHeader,
+  CountingFromNote,
   errorMessage,
   formatAdminDate,
 } from "@/components/admin/adminUi";
@@ -94,6 +96,7 @@ export default function AdminAndamentoPage() {
 
       {data ? (
         <>
+          <CountingFromNote countingFrom={data.countingFrom} launchDate={data.launchDate} />
           <section aria-labelledby="advice-title">
             <YStack gap="$3">
               <Text
@@ -165,11 +168,13 @@ export default function AdminAndamentoPage() {
               I numeri dietro i consigli
             </Text>
             <Text color={brand.grafite70} fontSize={14}>
-              Ultimi {data.windowDays} giorni, salvo dove scritto. Sotto{" "}
+              Ultimi {data.windowDays} giorni
+              {data.countingFrom ? ", mai prima del lancio" : ""}, salvo dove
+              scritto. Sotto{" "}
               {MIN_CASES_FOR_PERCENT} casi si scrive &quot;7 su 9&quot; invece
               della percentuale; le righe con meno di {MIN_CASES_PER_ROW} casi
-              sono messe insieme. Admin, robot e browser con &quot;Non
-              contare&quot; non sono contati.
+              sono messe insieme. Admin, account di prova, robot e browser con
+              &quot;Non contare&quot; non sono contati.
             </Text>
           </YStack>
 
@@ -177,6 +182,7 @@ export default function AdminAndamentoPage() {
           <CellsCard data={data} />
           <FunnelCard data={data} />
           <StepsCard data={data} />
+          <PriceToolCard data={data} />
           <ClientCohortsCard data={data} />
           <ProfessionalCohortsCard data={data} />
           <FailuresCard data={data} />
@@ -538,6 +544,33 @@ function StepsCard({ data }: { data: AdminSiteStats }) {
   );
 }
 
+/** Dalle voci di "Quanto costa" (§399): se lo strumento porta richieste o è solo bello. */
+function PriceToolCard({ data }: { data: AdminSiteStats }) {
+  const rows = withDrops(
+    data.priceToolSteps.map((s) => ({
+      key: `quanto-costa-${s.key}`,
+      label: PRICE_TOOL_STEP_LABEL[s.key],
+      count: s.count,
+    })),
+  );
+  const sent = data.requestSteps.find((s) => s.key === "INVIATA")?.count ?? 0;
+  const fromTool = data.priceToolSteps.find((s) => s.key === "RICHIESTA")?.count ?? 0;
+  return (
+    <AdminCard>
+      <CardTitle
+        title="Dallo strumento «Quanto costa»"
+        note="Voci toccate nella home e nelle pagine dei prezzi, profili aperti da quell'elenco e richieste inviate partite da lì."
+      />
+      <Bars rows={rows} total={0} steps />
+      <Text color={brand.grafite70} fontSize={13}>
+        {sent > 0
+          ? `Sul totale delle richieste inviate (${sent}), ${fromTool} sono partite da una voce (${ratioLabel(fromTool, sent)}).`
+          : "Nessuna richiesta inviata in questo periodo."}
+      </Text>
+    </AdminCard>
+  );
+}
+
 function ClientCohortsCard({ data }: { data: AdminSiteStats }) {
   return (
     <AdminCard>
@@ -741,7 +774,7 @@ function PopularServicesCard({ data }: { data: AdminSiteStats }) {
         Scritte a mano dai professionisti, non suggerite
       </Text>
       <Text color={brand.grafite70} fontSize={13}>
-        {`Prestazioni scritte da almeno ${MISSING_SERVICE_MIN_PROFESSIONALS} professionisti che il sito non propone: aggiungerle all'elenco le rende un clic e somma bene i prezzi medi.`}
+        {`Prestazioni scritte da almeno ${MISSING_SERVICE_MIN_PROFESSIONALS} professionisti che il sito non propone: aggiungerle con + in "Prestazioni per mestiere" le rende un clic e somma bene i prezzi medi.`}
       </Text>
       {data.missingServices.length === 0 ? (
         <Text color={brand.grafite70}>Nessuna per ora.</Text>
@@ -1024,9 +1057,9 @@ function CountingCard() {
         </button>
       </div>
       <Text color={brand.grafite70} fontSize={13}>
-        Per eliminare un account di prova:{" "}
-        <Link href="/admin/utenti">Utenti</Link>, apri l&apos;account e premi
-        &quot;Elimina account di prova&quot;.
+        Per togliere dai numeri un account usato per le prove:{" "}
+        <Link href="/admin/utenti">Utenti</Link>, apri l&apos;account e attiva
+        &quot;Account di prova&quot;.
       </Text>
     </AdminCard>
   );

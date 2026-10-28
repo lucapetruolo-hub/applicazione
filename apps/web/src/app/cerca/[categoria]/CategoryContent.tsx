@@ -1,12 +1,13 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import type { PROFESSIONAL_CATEGORIES, ProfessionalSearchResult } from "@professionisti/shared";
 import { YStack } from "@professionisti/ui";
 import { CategoryIconBadge } from "@/components/CategoryIconBadge";
 import { EmptySearchResults } from "@/components/EmptySearchResults";
 import { ResultsListWithMap } from "@/components/ResultsListWithMap";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
+import { saveLastSearchCity } from "@/lib/lastSearchCity";
 
 type Category = (typeof PROFESSIONAL_CATEGORIES)[number];
 
@@ -38,6 +39,11 @@ export function CategoryContent({
   // risultati — la lista parla da sola. Il riquadro resta SOLO quando non
   // c'e' nessun risultato, perche' altrimenti la pagina sarebbe un vuoto
   // muto senza spiegazioni.
+  // Per le voci di "Quanto costa in media" della home (§398).
+  useEffect(() => {
+    saveLastSearchCity(city);
+  }, [city]);
+
   const title = `${category.label}${online && city ? ` · consulenza online a ${city}` : online ? " · consulenza online" : city ? ` a ${city}` : " vicino a te"}`;
   const header = loadFailed ? (
     <LoadErrorNotice title="Non riusciamo a caricare i professionisti" />

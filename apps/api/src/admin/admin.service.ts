@@ -8,6 +8,8 @@ import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
+import { COUNTED_USER, countingFrom, daySinceLaunch, sinceLaunch } from "../site-counts/counted";
+import { launchDate } from "../subscriptions/subscription-rules";
 import { buildCategoryActivity, buildChurnByMonth, buildCoverage, buildProfessionalStats, buildSearchStats, professionalStatusOf } from "./professional-stats";
 
 export type AdminUserRow = {
@@ -23,6 +25,8 @@ export type AdminUserRow = {
   createdAt: string;
   deletedAt: string | null;
   suspendedAt: string | null;
+  /** Segnato "Account di prova" (docs/CHANGELOG.md §395). */
+  testAccountAt: string | null;
 };
 
 export type AdminUsersPage = { total: number; page: number; pageSize: number; rows: AdminUserRow[] };
@@ -51,6 +55,7 @@ export type AdminOverview = {
   verificationRequests: number;
   /** Zone con le richieste generali chiuse (docs/CHANGELOG.md §213). */
   closedGeneralRequestZones: number;
+  openProblemTakeovers: number;
 };
 
 @Injectable()
@@ -73,9 +78,10 @@ export class AdminService {
    */
   async getTrafficSources(): Promise<{ days: number; total: number; bySource: { source: TrafficSource | "unknown"; count: number }[] }> {
     const days = 30;
-    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    // Dal lancio e senza account di prova (docs/CHANGELOG.md §395).
+    const since = sinceLaunch(new Date(Date.now() - days * 24 * 60 * 60 * 1000), countingFrom());
     const rows = await this.prisma.guidedRequest.findMany({
-      where: { createdAt: { gte: since } },
+      where: { createdAt: { gte: since }, client: COUNTED_USER },
       select: { id: true, submissionGroupId: true, trafficSource: true },
     });
     const seen = new Set<string>();
@@ -104,30 +110,38 @@ export class AdminService {
   /**
    * Professionisti in numeri (docs/CHANGELOG.md §368): totale e divisione per
    * stato, categoria, città, abbonamento, forma e mese d'iscrizione, con i
-   * filtri per categoria e città. Senza eliminati e dimostrativi, contati a parte.
+   * filtri per categoria e città. Senza eliminati, dimostrativi e account di
+   * prova, contati a parte. Chi è iscritto conta da quando si è iscritto
+   * (anche prima del lancio, reclutato al telefono); richieste, risposte,
+   * ricerche e abbandoni solo dal lancio (docs/CHANGELOG.md §395).
    */
   async getProfessionalStats(params: { category?: string; city?: string }): Promise<AdminProfessionalStats> {
     const filter = professionalFilterWhere(params);
     const active: Prisma.ProfessionalProfileWhereInput = { deletedAt: null, user: { deletedAt: null } };
-    const counted: Prisma.ProfessionalProfileWhereInput = { AND: [filter, active, { isDemo: false }] };
+    const notTest: Prisma.ProfessionalProfileWhereInput = { isDemo: false, user: COUNTED_USER };
+    const counted: Prisma.ProfessionalProfileWhereInput = { AND: [filter, active, notTest] };
     const now = new Date();
-    const since30 = new Date(now.getTime() - 30 * DAY_MS);
-    const since90 = new Date(now.getTime() - PROFESSIONAL_ACTIVITY_DAYS * DAY_MS);
-    const since12m = new Date(now.getTime() - 366 * DAY_MS);
+    const from = countingFrom(now);
+    const launch = launchDate();
+    const since30 = sinceLaunch(new Date(now.getTime() - 30 * DAY_MS), from);
+    const since90 = sinceLaunch(new Date(now.getTime() - PROFESSIONAL_ACTIVITY_DAYS * DAY_MS), from);
+    const since12m = sinceLaunch(new Date(now.getTime() - 366 * DAY_MS), from);
     // Richieste, risposte e preventivi: la categoria è quella della richiesta.
     const requestCategory = params.category?.trim() ? { category: { slug: params.category.trim() } } : {};
     const proAnswer = { actor: "PROFESSIONAL" as const, automatic: false };
-    const [rows, deleted, demo, cities, activeQuotes, activeMessages, requests, leads, quotes, reviews, deletedProfiles, canceled] = await Promise.all([
+    const [rows, deleted, demo, test, cities, activeQuotes, activeMessages, requests, leads, quotes, reviews, deletedProfiles, canceled] = await Promise.all([
       this.prisma.professionalProfile.findMany({ where: counted, select: PROFESSIONAL_STATS_SELECT }),
       this.prisma.professionalProfile.count({ where: { AND: [filter, { OR: [{ deletedAt: { not: null } }, { user: { deletedAt: { not: null } } }] }] } }),
       this.prisma.professionalProfile.count({ where: { AND: [filter, active, { isDemo: true }] } }),
-      this.prisma.professionalProfile.groupBy({ by: ["city"], where: { AND: [active, { isDemo: false }] }, orderBy: { city: "asc" } }),
+      this.prisma.professionalProfile.count({ where: { AND: [filter, active, { isDemo: false, user: { testAccountAt: { not: null } } }] } }),
+      this.prisma.professionalProfile.groupBy({ by: ["city"], where: { AND: [active, notTest] }, orderBy: { city: "asc" } }),
       this.prisma.quote.groupBy({ by: ["professionalProfileId"], where: { createdAt: { gte: since30 }, professionalProfile: counted } }),
       this.prisma.conversationEvent.groupBy({ by: ["professionalProfileId"], where: { ...proAnswer, createdAt: { gte: since30 }, professionalProfile: counted } }),
       this.prisma.guidedRequest.findMany({
         where: {
           createdAt: { gte: since90 },
           hiddenAt: null,
+          client: COUNTED_USER,
           ...requestCategory,
           ...(params.city?.trim() ? { city: { equals: params.city.trim(), mode: "insensitive" as const } } : {}),
         },
@@ -143,7 +157,7 @@ export class AdminService {
         select: { status: true, booking: { select: { id: true } }, guidedRequest: { select: { category: { select: { slug: true } } } } },
       }),
       this.prisma.review.findMany({
-        where: { hiddenAt: null, booking: { professionalProfile: counted } },
+        where: { hiddenAt: null, booking: { professionalProfile: counted, client: COUNTED_USER }, ...(from ? { createdAt: { gte: from } } : {}) },
         select: {
           rating: true,
           booking: {
@@ -154,16 +168,16 @@ export class AdminService {
           },
         },
       }),
-      this.prisma.professionalProfile.findMany({ where: { AND: [filter, { isDemo: false }, { deletedAt: { gte: since12m } }] }, select: { deletedAt: true } }),
+      this.prisma.professionalProfile.findMany({ where: { AND: [filter, notTest, { deletedAt: { gte: since12m } }] }, select: { deletedAt: true } }),
       this.prisma.subscription.findMany({
-        where: { updatedAt: { gte: since12m }, OR: [{ status: "CANCELED" }, { cancelAtPeriodEnd: true }], professionalProfile: { AND: [filter, { isDemo: false }] } },
+        where: { updatedAt: { gte: since12m }, OR: [{ status: "CANCELED" }, { cancelAtPeriodEnd: true }], professionalProfile: { AND: [filter, notTest] } },
         select: { updatedAt: true },
       }),
     ]);
 
     // Ricerche sul sito (§370): contatori per giorno, città salvata in minuscolo.
     const searchCity = params.city?.trim() ? { city: params.city.trim().toLowerCase() } : {};
-    const searchDay = { day: { gte: new Date(Date.UTC(since90.getUTCFullYear(), since90.getUTCMonth(), since90.getUTCDate())) } };
+    const searchDay = { day: { gte: daySinceLaunch(new Date(Date.UTC(since90.getUTCFullYear(), since90.getUTCMonth(), since90.getUTCDate())), from) } };
     const [categorySearchDays, freeSearchDays] = await Promise.all([
       this.prisma.categorySearchDay.findMany({
         where: { ...searchDay, ...searchCity, ...requestCategory },
@@ -202,7 +216,9 @@ export class AdminService {
     const reviewCategory = params.category?.trim();
     return buildProfessionalStats(statsRows, now, {
       cityOptions: cities.map((c) => c.city).filter((c) => c.trim()),
-      excluded: { deleted, demo },
+      excluded: { deleted, demo, test },
+      countingFrom: from?.toISOString() ?? null,
+      launchDate: launch?.toISOString() ?? null,
       activeIds: new Set([...activeQuotes, ...activeMessages].map((r) => r.professionalProfileId)),
       coverage: buildCoverage(
         requests.map((r) => ({ categorySlug: r.category.slug, city: r.city, quotes: r._count.quotes })),
@@ -265,6 +281,7 @@ export class AdminService {
       ...(params.status === "active" ? { deletedAt: null, suspendedAt: null } : {}),
       ...(params.status === "suspended" ? { suspendedAt: { not: null } } : {}),
       ...(params.status === "deleted" ? { deletedAt: { not: null } } : {}),
+      ...(params.status === "test" ? { testAccountAt: { not: null } } : {}),
       ...(q
         ? {
             OR: [
@@ -288,7 +305,7 @@ export class AdminService {
       u.role,
       u.adminRoles.join("+"),
       u.businessName ?? "",
-      u.deletedAt ? "eliminato" : u.suspendedAt ? "sospeso" : u.profileSuspended ? "profilo nascosto" : "attivo",
+      u.deletedAt ? "eliminato" : u.suspendedAt ? "sospeso" : u.profileSuspended ? "profilo nascosto" : u.testAccountAt ? "account di prova" : "attivo",
       u.createdAt.slice(0, 10),
     ]);
     return toCsv(["email", "nome", "cognome", "ruolo", "ruolo_admin", "attivita", "stato", "iscritto_il"], rows);
@@ -412,6 +429,7 @@ export class AdminService {
       deletedAt: user.deletedAt?.toISOString() ?? null,
       suspendedAt: user.suspendedAt?.toISOString() ?? null,
       suspensionNote: user.suspensionNote,
+      testAccountAt: user.testAccountAt?.toISOString() ?? null,
       // Solo se è attiva, mai la chiave (docs/CHANGELOG.md §359).
       adminTwoFactorEnabled: user.role === "ADMIN" && Boolean(user.adminTotpEnabledAt),
       professionalProfile: user.professionalProfile
@@ -619,10 +637,13 @@ export class AdminService {
     const weeks = 12;
     const start = startOfIsoWeek(new Date());
     start.setUTCDate(start.getUTCDate() - (weeks - 1) * 7);
+    // Iscritti da sempre (anche prima del lancio); richieste e lavori solo dal
+    // lancio; mai gli account di prova (docs/CHANGELOG.md §395).
+    const activityStart = sinceLaunch(start, countingFrom());
     const [users, requests, bookings, reports] = await Promise.all([
-      this.prisma.user.findMany({ where: { createdAt: { gte: start } }, select: { createdAt: true, role: true } }),
-      this.prisma.guidedRequest.findMany({ where: { createdAt: { gte: start } }, select: { createdAt: true } }),
-      this.prisma.booking.findMany({ where: { createdAt: { gte: start } }, select: { createdAt: true } }),
+      this.prisma.user.findMany({ where: { createdAt: { gte: start }, ...COUNTED_USER }, select: { createdAt: true, role: true } }),
+      this.prisma.guidedRequest.findMany({ where: { createdAt: { gte: activityStart }, client: COUNTED_USER }, select: { createdAt: true } }),
+      this.prisma.booking.findMany({ where: { createdAt: { gte: activityStart }, client: COUNTED_USER }, select: { createdAt: true } }),
       this.prisma.contentReport.findMany({ where: { createdAt: { gte: start } }, select: { createdAt: true } }),
     ]);
     const bucket = (dates: Date[]) => {
@@ -711,16 +732,17 @@ export class AdminService {
    */
   async getOverview(): Promise<AdminOverview> {
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const [openReports, pendingAppeals, openMessages, pendingRefunds, openDisputes, newUsers7d, clients, professionals, suspendedUsers, hiddenLeads, waitlist, openJobIssues, jobIssueAppeals, unpaidBalances, verificationRequests, closedGeneralRequestZones] =
+    const [openReports, pendingAppeals, openMessages, pendingRefunds, openDisputes, newUsers7d, clients, professionals, suspendedUsers, hiddenLeads, waitlist, openJobIssues, jobIssueAppeals, unpaidBalances, verificationRequests, closedGeneralRequestZones, openProblemTakeovers] =
       await Promise.all([
         this.prisma.contentReport.count({ where: { status: "OPEN" } }),
         this.prisma.contentReport.count({ where: { appealedAt: { not: null }, appealRejectedAt: null, revertedAt: null } }),
         this.prisma.contactMessage.count({ where: { resolved: false } }),
         this.prisma.refund.count({ where: { status: "REQUESTED" } }),
         this.prisma.dispute.count({ where: { status: { in: ["OPEN", "UNDER_REVIEW"] } } }),
-        this.prisma.user.count({ where: { createdAt: { gte: weekAgo }, deletedAt: null } }),
-        this.prisma.user.count({ where: { role: "CLIENT", deletedAt: null } }),
-        this.prisma.user.count({ where: { role: "PROFESSIONAL", deletedAt: null } }),
+        // Senza account di prova (docs/CHANGELOG.md §395).
+        this.prisma.user.count({ where: { createdAt: { gte: weekAgo }, deletedAt: null, ...COUNTED_USER } }),
+        this.prisma.user.count({ where: { role: "CLIENT", deletedAt: null, ...COUNTED_USER } }),
+        this.prisma.user.count({ where: { role: "PROFESSIONAL", deletedAt: null, ...COUNTED_USER } }),
         this.prisma.user.count({ where: { suspendedAt: { not: null } } }),
         this.prisma.lead.count({ where: { hiddenByProfessionalAt: { not: null } } }),
         this.prisma.waitlistSignup.count(),
@@ -732,6 +754,8 @@ export class AdminService {
           where: { verificationRequestedAt: { not: null }, verified: false, deletedAt: null, invitePendingAt: null },
         }),
         this.prisma.generalRequestBlock.count({ where: { reopenedAt: null } }),
+        // "Ce ne occupiamo noi" da seguire (docs/CHANGELOG.md §392).
+        this.prisma.problemTakeover.count({ where: { status: "OPEN" } }),
       ]);
     return {
       openReports,
@@ -751,6 +775,7 @@ export class AdminService {
       unpaidBalances,
       verificationRequests,
       closedGeneralRequestZones,
+      openProblemTakeovers,
     };
   }
 
@@ -1668,6 +1693,7 @@ const USER_ROW_SELECT = {
   createdAt: true,
   deletedAt: true,
   suspendedAt: true,
+  testAccountAt: true,
   professionalProfile: { select: { id: true, businessName: true, suspendedAt: true } },
 } satisfies Prisma.UserSelect;
 
@@ -1685,6 +1711,7 @@ function toUserRow(u: Prisma.UserGetPayload<{ select: typeof USER_ROW_SELECT }>)
     createdAt: u.createdAt.toISOString(),
     deletedAt: u.deletedAt?.toISOString() ?? null,
     suspendedAt: u.suspendedAt?.toISOString() ?? null,
+    testAccountAt: u.testAccountAt?.toISOString() ?? null,
   };
 }
 

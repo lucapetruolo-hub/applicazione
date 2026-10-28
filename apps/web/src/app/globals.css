@@ -230,6 +230,104 @@ body:has(.profile-cta-bar) .site-header-cta-link {
   }
 }
 
+/* "Scegli" sulle schede dei risultati e barra dei professionisti scelti
+   (docs/CHANGELOG.md §393): pillola come gli altri pulsanti, piena quando
+   è scelto. La barra riprende quella del profilo (§385). */
+.choose-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1.5px solid #128552;
+  background: #ffffff;
+  color: #0e7a4c;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+.choose-toggle:hover {
+  background: #dcf3e7;
+}
+.choose-toggle[data-selected="true"] {
+  background: #128552;
+  color: #ffffff;
+}
+.choose-toggle[aria-disabled="true"] {
+  border-color: #9c8e7f;
+  color: #6e6459;
+  cursor: not-allowed;
+  background: #ffffff;
+}
+.choose-toggle:focus-visible {
+  outline: 2px solid #0e7a4c;
+  outline-offset: 2px;
+}
+.chosen-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 -1px 0 rgba(26, 21, 19, 0.08);
+}
+.chosen-bar-inner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 1168px;
+  margin: 0 auto;
+}
+.chosen-bar-people {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+.chosen-bar-faces {
+  display: flex;
+  flex-shrink: 0;
+}
+.chosen-bar-faces > span {
+  display: inline-flex;
+  border-radius: 999px;
+  box-shadow: 0 0 0 2px #ffffff;
+}
+.chosen-bar-faces > span + span {
+  margin-left: -10px;
+}
+.chosen-bar-text {
+  min-width: 0;
+}
+.chosen-bar-link {
+  flex-shrink: 0;
+}
+body:has(.chosen-bar) {
+  padding-bottom: 72px;
+}
+@media (max-width: 767px) {
+  .chosen-bar-inner {
+    gap: 12px;
+  }
+  .chosen-bar-people {
+    flex: 0 0 auto;
+  }
+  .chosen-bar-text {
+    display: none;
+  }
+  .chosen-bar-link {
+    flex: 1;
+  }
+}
+
 /* Foto dei mestieri in /per-professionisti (ProGallery): 2 colonne su
    telefono, 4 da tablet in su. */
 .pro-gallery {
@@ -1446,7 +1544,8 @@ button.notif-row-main:hover {
   font-weight: 700;
 }
 .today-deadline {
-  color: #8a6d00;
+  /* Più scuro di #8a6d00, che sul fondo pesca restava sotto 4,5:1 (§395). */
+  color: #7a5f00;
 }
 .today-deadline.is-urgent {
   color: #dc3545;
@@ -5305,9 +5404,53 @@ a.admin-kpi:hover {
   font-weight: 600;
   color: #6e6459;
 }
+.price-table thead th:last-child {
+  text-align: right;
+}
 .price-table tbody th {
   font-weight: 500;
   color: #2b2420;
+}
+/* Ogni riga apre chi offre il lavoro (docs/CHANGELOG.md §398): il link sul
+   nome copre tutta la riga. */
+.price-table tbody tr {
+  position: relative;
+  transition: background-color 0.15s ease;
+}
+.price-table tbody tr:hover {
+  background: #dcf3e7;
+}
+.price-table-link {
+  color: #2b2420;
+  text-decoration: none;
+}
+.price-table-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.price-table-link:focus-visible {
+  outline: none;
+}
+.price-table tbody tr:has(.price-table-link:focus-visible) {
+  outline: 2px solid #0e7a4c;
+  outline-offset: -2px;
+}
+.price-table-unit {
+  margin-right: 8px;
+  font-size: 13px;
+  font-weight: 400;
+  color: #6e6459;
+}
+.price-table-chevron {
+  margin-left: 8px;
+  vertical-align: -3px;
+  color: #0e7a4c;
+}
+@media (prefers-reduced-motion: reduce) {
+  .price-table tbody tr {
+    transition: none;
+  }
 }
 .price-table td {
   white-space: nowrap;
@@ -5806,6 +5949,53 @@ a.admin-kpi:hover {
     font-weight: 700;
     color: #2b2420;
   }
+}
+
+/* "Dati di prova / Dati veri" in cima ad Andamento e Numeri (docs/CHANGELOG.md §395). */
+.counting-from {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 4px;
+}
+.counting-from-more summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0e7a4c;
+  cursor: pointer;
+  list-style: none;
+}
+.counting-from-more summary::-webkit-details-marker {
+  display: none;
+}
+.counting-from-more summary:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.counting-from-more[open] {
+  flex-basis: 100%;
+}
+/* Casella "Di prova" su ogni riga di Utenti (§395): area da toccare di 44 px. */
+.admin-test-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  /* Allineata al testo delle altre colonne senza perdere l'area da toccare. */
+  margin-block: -12px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #2b2420;
+}
+.admin-test-toggle input {
+  width: 20px;
+  height: 20px;
+  accent-color: #128552;
+  cursor: pointer;
 }
 
 /* Fatture, estratti e copie di cortesia da stampare o salvare in PDF

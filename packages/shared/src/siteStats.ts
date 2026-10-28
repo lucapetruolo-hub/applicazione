@@ -134,6 +134,23 @@ export const siteStepEventSchema = z.object({
 });
 export type SiteStepEvent = z.infer<typeof siteStepEventSchema>;
 
+/**
+ * Passi di chi usa le voci di "Quanto costa" (docs/CHANGELOG.md §399,
+ * richiesta di Luca): voce toccata, profilo aperto da quell'elenco,
+ * richiesta inviata partita da lì. Solo il passo e il giorno.
+ */
+export const PRICE_TOOL_STEP_KEYS = ["VOCE", "PROFILO", "RICHIESTA"] as const;
+export type PriceToolStepKey = (typeof PRICE_TOOL_STEP_KEYS)[number];
+
+export const PRICE_TOOL_STEP_LABEL: Record<PriceToolStepKey, string> = {
+  VOCE: "Toccata una voce",
+  PROFILO: "Aperto un profilo dall'elenco",
+  RICHIESTA: "Richiesta inviata",
+};
+
+export const priceToolStepEventSchema = z.object({ step: z.enum(PRICE_TOOL_STEP_KEYS) });
+export type PriceToolStepEvent = z.infer<typeof priceToolStepEventSchema>;
+
 export const siteFailureEventSchema = z.object({
   form: z.enum(SUBMIT_FORM_KEYS),
   kind: z.enum(SUBMIT_FAILURE_KINDS),
@@ -205,6 +222,13 @@ export type GuideCellStatus = "GREEN" | "YELLOW" | "RED" | "NO_PROFESSIONALS";
 
 export type AdminSiteStats = {
   windowDays: number;
+  /**
+   * Da quando contano richieste, ricerche e visite (docs/CHANGELOG.md §395):
+   * il lancio, se è passato; `null` prima del lancio (si vede tutto, prove comprese).
+   */
+  countingFrom: string | null;
+  /** Data del lancio (`LAUNCH_DATE`), `null` se non è ancora impostata. */
+  launchDate: string | null;
   /** Numero guida degli ultimi SITE_STATS_WINDOW_DAYS giorni. */
   guide: { requests: number; withQuote: number };
   /** Numero guida per settimana (lunedì, ora di Roma), dalla più vecchia. */
@@ -225,6 +249,8 @@ export type AdminSiteStats = {
   clientFunnel: { key: ClientFunnelKey; count: number }[];
   /** Totale, e quanti dalla pagina di un professionista (`fromProfile`). */
   requestSteps: { key: RequestStepKey; count: number; fromProfile: number }[];
+  /** Passi dalle voci di "Quanto costa" (§399). */
+  priceToolSteps: { key: PriceToolStepKey; count: number }[];
   clientCohorts: { weekStart: string; clients: number; withQuote: number; accepted: number; reviewed: number; returned: number }[];
   professionalCohorts: { weekStart: string; registered: number; fiscal: number; identity: number; firstQuote: number; active: number }[];
   submitFailures: { form: SubmitFormKey; kind: SubmitFailureKind; count: number }[];

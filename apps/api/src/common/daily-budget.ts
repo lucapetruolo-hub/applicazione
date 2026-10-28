@@ -14,10 +14,12 @@ export class DailyBudget {
   constructor(
     private readonly defaultLimit: number,
     private readonly onExhausted?: () => void,
+    /** Variabile che cambia il tetto di questa voce (per l'intelligenza artificiale non è quella di Google). */
+    private readonly envName = "GOOGLE_PUBLIC_DAILY_LIMIT",
   ) {}
 
   private limit(): number {
-    const raw = process.env.GOOGLE_PUBLIC_DAILY_LIMIT?.trim();
+    const raw = process.env[this.envName]?.trim();
     const parsed = raw ? Number(raw) : NaN;
     return Number.isInteger(parsed) && parsed >= 0 ? parsed : this.defaultLimit;
   }

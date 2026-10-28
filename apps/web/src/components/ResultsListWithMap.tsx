@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronUp, Info, Map as MapIcon, Maximize2, Minimize2, ShieldCheck, SlidersHorizontal, X, Zap } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Info, Map as MapIcon, Maximize2, Minimize2, Plus, ShieldCheck, SlidersHorizontal, X, Zap } from "lucide-react";
 import { findComuneByName, PUBLIC_AGENDA_DAYS, SEARCH_RADIUS_KM, type ProfessionalSearchResult, professionalPath, subTagLabel } from "@professionisti/shared";
 import { Icon, ProfessionalCard, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
@@ -23,6 +23,29 @@ const heartOffset = CARD_PHOTO.shape === "portrait" ? { right: 6, bottom: 6 } : 
 // questo — niente da indicizzare in una mappa interattiva).
 const ResultsMap = dynamic(() => import("./ResultsMap").then((mod) => mod.ResultsMap), { ssr: false });
 
+/** Nome della prestazione cercata (`?servizio=`) che il professionista offre, se c'è (§398). */
+function matchedServiceName(pro: ProfessionalSearchResult): string | undefined {
+  return pro.matchedServiceId ? pro.services.find((service) => service.id === pro.matchedServiceId)?.name : undefined;
+}
+
+/**
+ * Indirizzo del profilo. Arrivando da una voce di "Quanto costa in media" porta
+ * con sé la prestazione, così "Richiedi preventivo" sul profilo parte con il
+ * lavoro già scritto (§398).
+ */
+function profileHref(pro: ProfessionalSearchResult, extra: Record<string, string>): string {
+  const service = matchedServiceName(pro);
+  const params = new URLSearchParams({ ...extra, ...(service ? { servizio: service } : {}) });
+  const query = params.toString();
+  return `${professionalPath(pro)}${query ? `?${query}` : ""}`;
+}
+
+/** Descrizione della richiesta già scritta con la prestazione cercata (§398). */
+function serviceDescriptionParam(pro: ProfessionalSearchResult): string {
+  const service = matchedServiceName(pro);
+  return service ? `&descrizione=${encodeURIComponent(`${service}. `)}` : "";
+}
+
 export function ResultsListWithMap({
   professionals,
   allProfessionals,
@@ -32,6 +55,9 @@ export function ResultsListWithMap({
   footer,
   defaultMode,
   initialUrgentOnly,
+  reasonFor,
+  merit = false,
+  selection,
 }: {
   /** Risultati della ricerca corrente (es. filtrati per città): usati per il primo render e come base della mappa. */
   professionals: ProfessionalSearchResult[];
@@ -57,6 +83,18 @@ export function ResultsListWithMap({
   defaultMode?: "HOME" | "ONLINE";
   /** Preimpostato dall'URL (?urgente=1) quando si arriva dal toggle "Intervento urgente?" della homepage — evita di dover ripetere la scelta qui. */
   initialUrgentOnly?: boolean;
+  /** Riga "Perché" di ogni scheda, dalla descrizione del problema (docs/CHANGELOG.md §392). */
+  reasonFor?: (pro: ProfessionalSearchResult) => string | null;
+  /** Ordine senza i pacchetti di visibilità (dalla descrizione del problema, decisione di Luca, §392). */
+  merit?: boolean;
+  /** "Scegli" su ogni scheda: fino a 5 professionisti a cui mandare la richiesta (docs/CHANGELOG.md §393). */
+  selection?: {
+    selectedIds: ReadonlySet<string>;
+    /** Si può ancora sceglierne un altro (sotto il massimo). */
+    canAdd: boolean;
+    max: number;
+    onToggle: (pro: ProfessionalSearchResult) => void;
+  };
 }) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
@@ -510,13 +548,23 @@ export function ResultsListWithMap({
                   dei pagamenti vanno dichiarati (Codice del Consumo art. 22,
                   Reg. UE 2019/1150 art. 5). Se cambia l'ordinamento, cambia
                   anche questo testo. */}
-              <p>I risultati sono ordinati sempre nello stesso modo:</p>
+              <p>
+                {merit
+                  ? "Partendo dal problema che hai descritto, i pacchetti di visibilità a pagamento non contano. I risultati sono ordinati così:"
+                  : "I risultati sono ordinati sempre nello stesso modo:"}
+              </p>
               <ol>
-                <li>
-                  prima i professionisti che hanno pagato un pacchetto di visibilità: sono segnati con l&apos;etichetta
-                  &quot;Sponsorizzato&quot;;
-                </li>
-                <li>poi, a parità di posizione, la valutazione media più alta;</li>
+                {merit ? (
+                  <li>prima la valutazione media più alta;</li>
+                ) : (
+                  <>
+                    <li>
+                      prima i professionisti che hanno pagato un pacchetto di visibilità: sono segnati con l&apos;etichetta
+                      &quot;Sponsorizzato&quot;;
+                    </li>
+                    <li>poi, a parità di posizione, la valutazione media più alta;</li>
+                  </>
+                )}
                 <li>a parità di valutazione, il numero di recensioni ricevute;</li>
                 <li>se hai cercato un luogo, a parità di tutto il più vicino.</li>
               </ol>
@@ -614,6 +662,8 @@ export function ResultsListWithMap({
               key={pro.id}
               // Orari e prezzi aperti solo nella prima scheda (docs/CHANGELOG.md §349).
               defaultExpanded={index === 0}
+              reason={reasonFor?.(pro)}
+              action={selection ? <ChooseToggle pro={pro} selection={selection} /> : undefined}
               businessName={pro.businessName}
               categoryLabel={pro.categoryLabel}
               otherCategoryLabels={pro.categories?.filter((category) => category.slug !== pro.categorySlug).map((category) => category.label)}
@@ -626,11 +676,12 @@ export function ResultsListWithMap({
               verified={pro.verified}
               stripeVerified={pro.stripeVerified}
               professionalKind={pro.professionalKind}
-              boosted={pro.boosted}
+              boosted={merit ? false : pro.boosted}
               isNewProfile={pro.isNewProfile}
               hasLiabilityInsurance={pro.hasLiabilityInsurance}
               remoteAvailable={pro.remoteAvailable}
               services={pro.services}
+              highlightServiceId={pro.matchedServiceId}
               availabilityPreview={pro.availabilityPreview}
               availabilityFrom={pro.availabilityFrom}
               availabilityDays={PUBLIC_AGENDA_DAYS}
@@ -639,10 +690,10 @@ export function ResultsListWithMap({
               // con l'agenda su quel tab (richiesta esplicita dell'utente) —
               // letto da ProfessionalDetailContent via `?modalita=`, stesso
               // parametro già usato per precompilare /preventivo.
-              href={`${professionalPath(pro)}${defaultMode === "ONLINE" ? "?modalita=ONLINE" : ""}`}
+              href={profileHref(pro, defaultMode === "ONLINE" ? { modalita: "ONLINE" } : {})}
               onPress={() =>
                 navigateWithTransition(() =>
-                  router.push(`${professionalPath(pro)}${defaultMode === "ONLINE" ? "?modalita=ONLINE" : ""}`),
+                  router.push(profileHref(pro, defaultMode === "ONLINE" ? { modalita: "ONLINE" } : {})),
                 )
               }
               // Click su un orario libero della mini-agenda (o sul bottone
@@ -666,7 +717,7 @@ export function ResultsListWithMap({
                     // GuidedRequestForm. Nomi distinti da "nome"/"foto" per
                     // non collidere con il "nome" del CLIENTE (prefill di
                     // "Ripeti la richiesta", stesso form).
-                    `/preventivo?categoria=${pro.categorySlug}&professionista=${pro.id}&nomeProfessionista=${encodeURIComponent(pro.businessName)}&fotoProfessionista=${encodeURIComponent(pro.imageUrl ?? "")}&data=${date}&fasciaOraria=${time}-${endTime}&modalita=${mode}`,
+                    `/preventivo?categoria=${pro.categorySlug}&professionista=${pro.id}&nomeProfessionista=${encodeURIComponent(pro.businessName)}&fotoProfessionista=${encodeURIComponent(pro.imageUrl ?? "")}&data=${date}&fasciaOraria=${time}-${endTime}&modalita=${mode}${serviceDescriptionParam(pro)}`,
                   ),
                 )
               }
@@ -675,7 +726,7 @@ export function ResultsListWithMap({
               // (richiesta esplicita dell'utente, docs/CHANGELOG.md §206).
               onAgendaPress={(date, mode) =>
                 navigateWithTransition(() =>
-                  router.push(`${professionalPath(pro)}?data=${date}${mode === "ONLINE" ? "&modalita=ONLINE" : ""}#agenda`),
+                  router.push(`${profileHref(pro, { data: date, ...(mode === "ONLINE" ? { modalita: "ONLINE" } : {}) })}#agenda`),
                 )
               }
               // Cuoricino piccolo nell'angolo della foto (richiesta esplicita
@@ -1061,5 +1112,40 @@ export function ResultsListWithMap({
         }
       `}</style>
     </div>
+  );
+}
+
+/**
+ * "Scegli" / "Scelto" sulla scheda (docs/CHANGELOG.md §393): non apre il
+ * profilo. Al massimo resta visibile ma spento, con il motivo detto a voce.
+ */
+function ChooseToggle({
+  pro,
+  selection,
+}: {
+  pro: ProfessionalSearchResult;
+  selection: NonNullable<Parameters<typeof ResultsListWithMap>[0]["selection"]>;
+}) {
+  const selected = selection.selectedIds.has(pro.id);
+  const blocked = !selected && !selection.canAdd;
+  return (
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+    <span onClick={(e) => e.stopPropagation()} style={{ display: "inline-flex", flexShrink: 0 }}>
+      <button
+        type="button"
+        className="choose-toggle"
+        data-selected={selected ? "true" : undefined}
+        aria-pressed={selected}
+        aria-disabled={blocked || undefined}
+        aria-label={selected ? `Scelto: ${pro.businessName}` : `Scegli ${pro.businessName}`}
+        title={blocked ? `Puoi sceglierne al massimo ${selection.max}` : undefined}
+        onClick={() => {
+          if (!blocked) selection.onToggle(pro);
+        }}
+      >
+        {selected ? <Check size={16} strokeWidth={2.5} aria-hidden /> : <Plus size={16} strokeWidth={2.5} aria-hidden />}
+        {selected ? "Scelto" : "Scegli"}
+      </button>
+    </span>
   );
 }

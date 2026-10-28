@@ -213,6 +213,13 @@ describe("consigli", () => {
     expect(buildSiteAdvice(baseInput({ requestsInWindow: 0 })).map((a) => a.key)).toEqual(["no-requests"]);
     expect(buildSiteAdvice(baseInput({ requestsInWindow: 0, launch: null }))).toEqual([]);
   });
+
+  it("nelle prime 4 settimane dopo il lancio il testo dice \"dal lancio\" (§395)", () => {
+    const [old] = buildSiteAdvice(baseInput({ requestsInWindow: 0 }));
+    expect(old!.title).toBe("Nelle ultime 4 settimane nessuna richiesta di preventivo");
+    const [recent] = buildSiteAdvice(baseInput({ requestsInWindow: 0, launch: new Date(NOW.getTime() - 5 * 24 * 60 * 60 * 1000) }));
+    expect(recent!.title).toBe("Dal lancio nessuna richiesta di preventivo");
+  });
 });
 
 describe("conti d'appoggio", () => {
@@ -310,6 +317,8 @@ describe("prestazioni più cercate", () => {
       { profileId: "p4", name: "Lucidatura parquet", categorySlugs: ["pulizie"] },
     ];
     expect(buildMissingServices(rows)).toEqual([{ categorySlug: "tuttofare", categoryLabel: "Tutto Fare", name: "Montaggio tende", professionals: 3 }]);
+    // Aggiunta alle standard da "Prestazioni per mestiere" (§388): non manca più.
+    expect(buildMissingServices(rows, { tuttofare: ["Montaggio tende"] })).toEqual([]);
   });
 
   it("diventano consigli solo sopra le soglie", () => {

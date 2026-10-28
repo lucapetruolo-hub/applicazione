@@ -26,6 +26,7 @@ import type {
   GuidedRequestInput,
   TrafficSource,
   CategoryPriceStats,
+  ServicePriceIndexEntry,
   GuidedRequestMyState,
   GuidedRequestStatusSummary,
   GuidedRequestUserStateInput,
@@ -106,6 +107,17 @@ import type {
   ProfileInviteLink,
   ProfileInvitePreview,
   ProfessionalPayoutTotals,
+  ProblemMatchRequest,
+  ProblemMatchResult,
+  ProblemTakeoverInput,
+  ProblemMatchAdminOverview,
+  ProblemWordAdmin,
+  TeachProblemWordInput,
+  ServiceNamesAdminOverview,
+  StandardServiceAdmin,
+  StandardServicesByCategory,
+  MergeServiceNameInput,
+  ProblemTakeoverAdmin,
   ClientInvoiceRequestInput,
   ClientInvoiceRequestView,
   AccountantSettingsInput,
@@ -363,6 +375,8 @@ export type AdminUserRow = {
   createdAt: string;
   deletedAt: string | null;
   suspendedAt: string | null;
+  /** Segnato "Account di prova": fuori dai numeri (docs/CHANGELOG.md §395). */
+  testAccountAt: string | null;
 };
 export type AdminRoleName = "SUPER" | "MODERATOR" | "FINANCE";
 
@@ -389,6 +403,8 @@ export type AdminUserDetail = {
   deletedAt: string | null;
   suspendedAt: string | null;
   suspensionNote: string | null;
+  /** Segnato "Account di prova": fuori dai numeri (docs/CHANGELOG.md §395). */
+  testAccountAt: string | null;
   /** Verifica in due passaggi attiva (solo per gli admin, docs/CHANGELOG.md §359). */
   adminTwoFactorEnabled: boolean;
   professionalProfile: { id: string; businessName: string; categoryLabel: string; city: string; suspendedAt: string | null } | null;
@@ -443,7 +459,7 @@ export type AdminUsersPage = { total: number; page: number; pageSize: number; ro
 export type AdminUsersQuery = {
   q?: string;
   role?: "CLIENT" | "PROFESSIONAL" | "ADMIN";
-  status?: "active" | "suspended" | "deleted";
+  status?: "active" | "suspended" | "deleted" | "test";
   /** Solo professionisti di questa categoria o città (docs/CHANGELOG.md §368). */
   category?: string;
   city?: string;
@@ -485,6 +501,8 @@ export type AdminOverview = {
   verificationRequests: number;
   /** Zone con le richieste generali chiuse (docs/CHANGELOG.md §213). */
   closedGeneralRequestZones: number;
+  /** "Ce ne occupiamo noi" da seguire (docs/CHANGELOG.md §392). */
+  openProblemTakeovers: number;
 };
 
 export type ModerationActionValue = "WARN" | "REQUEST_CORRECTION" | "HIDE_CONTENT" | "SUSPEND_PROFILE" | "SUSPEND_USER";
@@ -715,6 +733,8 @@ export type CurrentUser = {
   signupCategorySlugs?: string[];
   /** Aree di competenza di un ADMIN, combinabili (docs/CHANGELOG.md §145-§146); vuota per gli altri ruoli. */
   adminRoles?: ("SUPER" | "MODERATOR" | "FINANCE")[];
+  /** Segnato "Account di prova" in Admin: il browser non viene contato (docs/CHANGELOG.md §395). */
+  testAccount?: boolean;
   hasPassword: boolean;
   /** Immagine profilo dell'account (facoltativa), indipendente da ProfessionalProfile.imageUrl — richiesta esplicita dell'utente. */
   imageUrl: string | null;
@@ -1226,11 +1246,29 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     /** Campo "Città": più cercate e comuni con professionisti vicini per un lavoro (docs/CHANGELOG.md §383). */
     getCityHints: (category?: string) =>
       request<{ popular: string[]; covered: string[] }>(`/professionals/city-hints${category ? `?category=${encodeURIComponent(category)}` : ""}`),
-    searchProfessionals: (params: { category?: string; city?: string; q?: string; remote?: boolean; excludeDemo?: boolean; track?: boolean } = {}) => {
+    searchProfessionals: (
+      params: {
+        category?: string;
+        city?: string;
+        q?: string;
+        remote?: boolean;
+        service?: string;
+        excludeDemo?: boolean;
+        track?: boolean;
+        /** Dalla descrizione del problema: niente boost (docs/CHANGELOG.md §392). */
+        merit?: boolean;
+        /** Lavoro fuori dalle categorie: chi lo dichiara. */
+        offers?: string;
+      } = {},
+    ) => {
       const query = new URLSearchParams();
+      if (params.merit) query.set("merito", "1");
+      if (params.offers) query.set("offre", params.offers);
       if (params.category) query.set("category", params.category);
       if (params.city) query.set("city", params.city);
       if (params.q) query.set("q", params.q);
+      // Nome di una prestazione, dalle voci di "Quanto costa in media" (docs/CHANGELOG.md §398).
+      if (params.service) query.set("service", params.service);
       if (params.remote) query.set("remote", "1");
       if (params.excludeDemo) query.set("excludeDemo", "1");
       // Conta la ricerca per i lavori più cercati (docs/CHANGELOG.md §281): solo dalla pagina dei risultati, una volta.
@@ -1247,9 +1285,9 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       });
     },
 
-    /** Micro-tool "Quanto costa in media" (homepage): range di prezzo reale per prestazione, mai un dato finto. */
+    /** Micro-tool "Quanto costa in media" (homepage): prezzi veri per prestazione, mai un dato finto (docs/CHANGELOG.md §398). */
     getServicePriceIndex: () =>
-      request<{ name: string; professionalCount: number; minEurCents: number; maxEurCents: number }[]>(
+      request<ServicePriceIndexEntry[]>(
         "/professionals/services/price-index",
         { cache: "no-store" },
       ),
@@ -1943,6 +1981,14 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       request<void>(`/admin/site-notes/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),
 
     /** Elimina per sempre un account di prova e tutto quello che ha creato (solo super admin). */
+    /** "Account di prova" acceso o spento (docs/CHANGELOG.md §395), solo super admin. */
+    adminSetTestAccount: (token: string, id: string, testAccount: boolean) =>
+      request<{ id: string; testAccountAt: string | null }>(`/admin/users/${id}/test-account`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ testAccount }),
+      }),
+
     adminDeleteTestAccount: (token: string, id: string) =>
       request<{ id: string; deleted: true }>(`/admin/users/${id}/test-account`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),
 
@@ -1984,6 +2030,43 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     },
     adminUrgencyMetrics: (token: string) =>
       request<UrgencyMetrics>("/admin/urgency-metrics", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    /** Dal problema scritto ai mestieri (docs/CHANGELOG.md §392). */
+    matchProblem: (input: ProblemMatchRequest) =>
+      request<ProblemMatchResult>("/problem-match", { method: "POST", body: JSON.stringify(input), cache: "no-store" }),
+    createProblemTakeover: (token: string, input: ProblemTakeoverInput) =>
+      request<{ id: string }>("/problem-match/takeover", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+    adminProblemMatch: (token: string, filter?: string) =>
+      request<ProblemMatchAdminOverview>(`/admin/problem-match${filter ? `?filtro=${encodeURIComponent(filter)}` : ""}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }),
+    adminTeachProblemWord: (token: string, input: TeachProblemWordInput) =>
+      request<ProblemWordAdmin>("/admin/problem-match/words", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+    adminForgetProblemWord: (token: string, id: string) =>
+      request<void>(`/admin/problem-match/words/${encodeURIComponent(id)}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),
+    /** Prestazioni standard aggiunte dall'admin (§388), da unire a `POPULAR_SERVICES`. */
+    standardServices: () => request<StandardServicesByCategory>("/service-names/standard", { cache: "no-store" }),
+    adminAddStandardService: (token: string, input: { name: string; categorySlug: string }) =>
+      request<StandardServiceAdmin>("/admin/problem-match/service-names/standard", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+    adminRemoveStandardService: (token: string, id: string) =>
+      request<void>(`/admin/problem-match/service-names/standard/${encodeURIComponent(id)}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),
+    adminServiceNames: (token: string) =>
+      request<ServiceNamesAdminOverview>("/admin/problem-match/service-names", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    adminMergeServiceName: (token: string, input: MergeServiceNameInput) =>
+      request<void>("/admin/problem-match/service-names/merge", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+    adminUnmergeServiceName: (token: string, key: string) =>
+      request<void>(`/admin/problem-match/service-names/${encodeURIComponent(key)}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),
+    adminProblemTakeovers: (token: string, done?: boolean) =>
+      request<ProblemTakeoverAdmin[]>(`/admin/problem-match/takeovers${done ? "?stato=fatte" : ""}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }),
+    adminMarkProblemTakeover: (token: string, id: string, done: boolean) =>
+      request<void>(`/admin/problem-match/takeovers/${encodeURIComponent(id)}/${done ? "done" : "reopen"}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
     adminGeneralRequests: (token: string) =>
       request<GeneralRequestsAdminOverview>("/admin/general-requests", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
     adminCloseGeneralRequests: (token: string, input: CloseGeneralRequestsInput) =>

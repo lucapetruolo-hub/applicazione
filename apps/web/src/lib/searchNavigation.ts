@@ -1,4 +1,4 @@
-import { comuneSlug, findCategoryByQuery } from "@professionisti/shared";
+import { comuneSlug, findCategoryByQuery, matchProblem } from "@professionisti/shared";
 import type { ProfessionalSuggestion, SearchMode } from "@professionisti/ui";
 
 /**
@@ -12,6 +12,7 @@ export function buildSearchDestination({
   professional,
   mode,
   urgentOnly,
+  service,
 }: {
   query: string;
   city: string;
@@ -19,11 +20,32 @@ export function buildSearchDestination({
   mode: SearchMode;
   /** Preseleziona il filtro "Intervento urgente?" (disponibilità nelle prossime 24h) già in pagina risultati, richiesta esplicita dell'utente dalla homepage. */
   urgentOnly?: boolean;
+  /**
+   * Prestazione già filtrata (voce di "Quanto costa in media", §398): resta
+   * se si cambia solo città o modalità, cioè se "Cosa cerchi?" è vuoto o
+   * dice ancora la stessa prestazione. Un lavoro nuovo è una ricerca nuova.
+   */
+  service?: string;
 }): string {
   const isOnline = mode === "online";
   const params = new URLSearchParams();
   if (isOnline) params.set("online", "1");
   if (urgentOnly) params.set("urgente", "1");
+
+  const serviceName = service?.trim();
+  if (serviceName && !professional && (!query.trim() || query.trim().toLowerCase() === serviceName.toLowerCase())) {
+    params.set("servizio", serviceName);
+    if (city.trim()) params.set("citta", city.trim());
+    return `/cerca?${params.toString()}`;
+  }
+
+  // Una descrizione del problema ("il rubinetto gocciola") va ai risultati con
+  // la banda "Ti serve un…" (docs/CHANGELOG.md §392), non alla ricerca per nome.
+  if (professional?.id.startsWith(PROBLEM_SUGGESTION_PREFIX) || (!professional && looksLikeProblem(query))) {
+    params.set("problema", query.trim());
+    if (city.trim()) params.set("citta", city.trim());
+    return `/cerca?${params.toString()}`;
+  }
 
   const categorySlug = professional?.categorySlug ?? findCategoryByQuery(query)?.slug;
   if (categorySlug) {
@@ -38,4 +60,15 @@ export function buildSearchDestination({
   if (query.trim()) params.set("q", query.trim());
   const finalQs = params.toString() ? `?${params.toString()}` : "";
   return `/cerca${finalQs}`;
+}
+
+/** Id del suggerimento "Ti serve…" nella barra di ricerca. */
+export const PROBLEM_SUGGESTION_PREFIX = "problema:";
+
+/** Un testo che non è il nome di un mestiere ma descrive un lavoro. */
+export function looksLikeProblem(query: string): boolean {
+  const text = query.trim();
+  if (text.length < 3 || findCategoryByQuery(text)) return false;
+  const match = matchProblem(text);
+  return match.categories.length > 0 || match.safety !== null || match.outOfService !== null || text.split(/\s+/).length >= 3;
 }

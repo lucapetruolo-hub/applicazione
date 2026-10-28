@@ -134,6 +134,10 @@ model User {
   // diretto..., docs/CHANGELOG.md §372): stessa categoria delle richieste
   // (§296), mai l'indirizzo di provenienza. Dice dove reclutare.
   signupSource               TrafficSource?
+  // Account di prova segnato da un super admin (docs/CHANGELOG.md §395):
+  // fuori per sempre da statistiche, consigli, numeri pubblici e dai posti
+  // dell'offerta "primi 100". Resta un account normale per tutto il resto.
+  testAccountAt              DateTime?
   // Codice di 6 cifre nella stessa email del link di conferma (§243):
   // impronta SHA-256, valido 15 minuti, al massimo 5 tentativi, un nuovo
   // invio solo dopo 60 secondi da `emailCodeSentAt`.
@@ -183,6 +187,7 @@ model User {
   guidedRequestStates GuidedRequestUserState[]
   profileInvites      ProfileInvite[]
   loginDevices        LoginDevice[]
+  problemTakeovers    ProblemTakeover[]
 
   @@map("users")
 }
@@ -507,11 +512,21 @@ model ProfessionalService {
   // (vedi formatServicePriceRange in packages/shared).
   priceMinEurCents      Int?
   priceMaxEurCents      Int?
+  // A cosa si riferisce il prezzo (docs/CHANGELOG.md §398, richiesta di
+  // Luca): "10 €" per una tinteggiatura può essere al m² o a lavoro.
+  priceUnit             ServicePriceUnit @default(JOB)
   createdAt             DateTime @default(now())
 
   professionalProfile ProfessionalProfile @relation(fields: [professionalProfileId], references: [id], onDelete: Cascade)
 
   @@map("professional_services")
+}
+
+enum ServicePriceUnit {
+  JOB
+  HOUR
+  DAY
+  SQUARE_METER
 }
 
 // Disponibilità settimanale ricorrente (non date specifiche): il
@@ -866,6 +881,10 @@ model GuidedRequest {
   // 60 minuti per un'urgente, 6 ore (contate dalle 8 alle 21) per una
   // normale. Il professionista scelto non ha scadenza (docs/CHANGELOG.md §209).
   forwardAt             DateTime?
+  // Da 2 a 5 professionisti scelti dal cliente nei risultati (docs/CHANGELOG.md
+  // §393): la richiesta arriva solo a loro, mai a chi si iscrive dopo né ad
+  // altri. Vuoto per le richieste generali e per quelle a un solo professionista.
+  chosenProfileIds      String[]                     @default([])
 
   client              User                 @relation(fields: [clientId], references: [id], onDelete: Cascade)
   category            Category             @relation(fields: [categoryId], references: [id])
@@ -2643,6 +2662,19 @@ model RequestStepDay {
   @@map("request_step_days")
 }
 
+// Passi dalle voci di "Quanto costa" (docs/CHANGELOG.md §399): voce
+// toccata, profilo aperto dall'elenco, richiesta inviata. Solo il passo.
+model PriceToolStepDay {
+  /// VOCE, PROFILO o RICHIESTA (PRICE_TOOL_STEP_KEYS in packages/shared).
+  step  String
+  day   DateTime @db.Date
+  count Int      @default(0)
+
+  @@id([step, day])
+  @@index([day])
+  @@map("price_tool_step_days")
+}
+
 // Invii non riusciti nel browser, per modulo e tipo di errore (rete,
 // server, dati non validi): oggi un errore nel browser non lo vede nessuno.
 model SubmitFailureDay {
@@ -2879,4 +2911,89 @@ model SiteAdviceDone {
   doneById String?
 
   @@map("site_advice_done")
+}
+
+// ---------------------------------------------------------------------------
+// Dal problema scritto ai mestieri (docs/CHANGELOG.md §392)
+// ---------------------------------------------------------------------------
+
+/// Descrizioni scritte dai clienti nella ricerca, senza contatti (email,
+/// telefono, indirizzo tolti prima di salvare) né chi le ha scritte: servono
+/// alla pagina admin "Mestieri richiesti". Cancellate dopo 12 mesi.
+model ProblemDescription {
+  id           String   @id @default(uuid())
+  text         String
+  city         String?
+  /// Mestieri proposti, in ordine (slug di categoria).
+  categories   String[]
+  safety       String?
+  outOfService String?
+  /// "dizionario", "parola" (insegnata in admin) o "ia".
+  source       String
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("problem_descriptions")
+}
+
+/// Parole insegnate al dizionario dall'admin: una parola che compare nella
+/// descrizione porta a un mestiere o a un lavoro fuori servizio.
+model ProblemWord {
+  id           String   @id @default(uuid())
+  /// Minuscole e senza accenti, come `normalizeProblemText`.
+  word         String   @unique
+  categorySlug String?
+  outOfService String?
+  createdById  String?
+  createdAt    DateTime @default(now())
+
+  @@map("problem_words")
+}
+
+enum ProblemTakeoverStatus {
+  OPEN
+  DONE
+}
+
+/// "Ce ne occupiamo noi": lavori che nessun professionista del sito fa,
+/// presi in carico dalla piattaforma (pagina admin "Richieste da seguire").
+model ProblemTakeover {
+  id           String                @id @default(uuid())
+  userId       String
+  description  String
+  city         String?
+  outOfService String?
+  status       ProblemTakeoverStatus @default(OPEN)
+  handledAt    DateTime?
+  createdAt    DateTime              @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@map("problem_takeovers")
+}
+
+/// Nome di una prestazione scritto a mano unito a un nome suggerito
+/// dall'admin ("Unisci a…"): chiave = `serviceNameKey` del nome scritto.
+model ServiceNameAlias {
+  key         String   @id
+  canonical   String
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@map("service_name_aliases")
+}
+
+/// Prestazione aggiunta dall'admin tra quelle standard di una categoria
+/// (docs/CHANGELOG.md §388): compare tra le suggerite in iscrizione e nel
+/// profilo, accanto a `POPULAR_SERVICES`.
+model StandardServiceName {
+  id           String   @id @default(cuid())
+  categorySlug String
+  name         String
+  createdById  String?
+  createdAt    DateTime @default(now())
+
+  @@unique([categorySlug, name])
+  @@map("standard_service_names")
 }
