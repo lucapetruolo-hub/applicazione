@@ -5,6 +5,7 @@ import {
   CHURN_KINDS,
   CHURN_REASONS,
   CLIENT_FUNNEL_KEYS,
+  PRICE_TOOL_STEP_KEYS,
   REQUEST_STEP_KEYS,
   SEARCH_DEMAND_ALERT_DAYS,
   SITE_ADVICE_DONE_DAYS,
@@ -97,7 +98,7 @@ export class SiteStatsService {
     const launchOn = from ? { createdAt: { gte: from } } : {};
     const proCounted: Prisma.ProfessionalProfileWhereInput = { deletedAt: null, user: { deletedAt: null, ...COUNTED_USER }, isDemo: false };
 
-    const [requestRows, searchDays, freeSearches, profileViews, stepDays, proRows, failureDays, terms, termDays, signups, churnDays, notes, serviceSearches, serviceRows] = await Promise.all([
+    const [requestRows, searchDays, freeSearches, profileViews, stepDays, proRows, failureDays, terms, termDays, signups, churnDays, notes, serviceSearches, serviceRows, priceToolDays] = await Promise.all([
       this.prisma.guidedRequest.findMany({
         where: { createdAt: { gte: fromLaunch(weeksStart < windowStart ? weeksStart : windowStart) }, hiddenAt: null, ...notAdmin },
         select: {
@@ -137,6 +138,7 @@ export class SiteStatsService {
           professionalProfile: { select: { category: { select: { slug: true } }, extraCategories: { select: { slug: true } } } },
         },
       }),
+      this.prisma.priceToolStepDay.groupBy({ by: ["step"], where: { day: { gte: windowDay } }, _sum: { count: true } }),
     ]);
 
     const requests: SiteRequestRow[] = requestRows.map((r) => {
@@ -385,6 +387,7 @@ export class SiteStatsService {
       otherCells,
       clientFunnel: CLIENT_FUNNEL_KEYS.map((key) => ({ key, count: funnelCounts[key] })),
       requestSteps,
+      priceToolSteps: PRICE_TOOL_STEP_KEYS.map((key) => ({ key, count: priceToolDays.find((d) => d.step === key)?._sum.count ?? 0 })),
       clientCohorts: buildClientCohorts(requests, firstRequestAt, now, SITE_COHORT_WEEKS),
       professionalCohorts,
       submitFailures: sumFailures(windowDay),

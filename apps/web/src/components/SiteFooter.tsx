@@ -97,6 +97,7 @@ export function SiteFooter() {
             <FooterLink href="/preventivo">Richiedi preventivo</FooterLink>
             <FooterLink href="/urgente">Richiesta urgente</FooterLink>
             <FooterLink href="/#come-funziona">Come funziona</FooterLink>
+            <FooterLink href="/#quanto-costa">Quanto costa</FooterLink>
             <FooterLink href="/accedi">Accedi</FooterLink>
             <FooterLink href="/faq">Domande frequenti</FooterLink>
             <FooterLink href="/sicurezza">Sicurezza e truffe</FooterLink>

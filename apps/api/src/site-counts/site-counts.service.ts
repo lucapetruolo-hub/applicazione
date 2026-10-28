@@ -9,6 +9,7 @@ import {
   normalizeJobTerm,
   type ChurnKind,
   type ChurnReason,
+  type PriceToolStepKey,
   type RequestOrigin,
   type RequestStepKey,
   type SubmitFailureKind,
@@ -56,6 +57,15 @@ export class SiteCountsService {
     await this.prisma.requestStepDay.upsert({
       where: { step_categorySlug_origin_day: { step, categorySlug: slug, origin, day } },
       create: { step, categorySlug: slug, origin, day, count: 1 },
+      update: { count: { increment: 1 } },
+    });
+  }
+
+  async recordPriceToolStep(step: PriceToolStepKey): Promise<void> {
+    const day = today();
+    await this.prisma.priceToolStepDay.upsert({
+      where: { step_day: { step, day } },
+      create: { step, day, count: 1 },
       update: { count: { increment: 1 } },
     });
   }
@@ -131,6 +141,7 @@ export class SiteCountsService {
       this.prisma.freeSearchDay.deleteMany({ where: before }),
       this.prisma.profileViewDay.deleteMany({ where: before }),
       this.prisma.requestStepDay.deleteMany({ where: before }),
+      this.prisma.priceToolStepDay.deleteMany({ where: before }),
       this.prisma.submitFailureDay.deleteMany({ where: before }),
       this.prisma.unknownJobSearchDay.deleteMany({ where: before }),
       this.prisma.serviceSearchDay.deleteMany({ where: before }),

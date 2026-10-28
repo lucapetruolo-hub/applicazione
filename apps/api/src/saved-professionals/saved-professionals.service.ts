@@ -73,6 +73,7 @@ export class SavedProfessionalsService {
           name: service.name,
           priceMinEurCents: service.priceMinEurCents,
           priceMaxEurCents: service.priceMaxEurCents,
+          priceUnit: service.priceUnit,
         })),
         subTags: profile.subTags,
         spokenLanguages: profile.spokenLanguages,
