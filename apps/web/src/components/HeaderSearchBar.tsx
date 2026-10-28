@@ -33,7 +33,7 @@ export function HeaderSearchBar() {
   const category = categorySlugFromPath && isProfessionalCategorySlug(categorySlugFromPath) ? PROFESSIONAL_CATEGORIES.find((c) => c.slug === categorySlugFromPath) : undefined;
   // Prestazione filtrata da "Quanto costa in media" (§398): scritta nel campo e tenuta cambiando città.
   const service = searchParams.get("servizio")?.trim() || undefined;
-  const query = category ? category.label : (searchParams.get("q") ?? service ?? "");
+  const query = category ? category.label : (searchParams.get("problema") ?? searchParams.get("q") ?? service ?? "");
 
   const searchHints = useSearchBarHints(query);
 

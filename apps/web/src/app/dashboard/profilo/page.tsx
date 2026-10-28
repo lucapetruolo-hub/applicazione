@@ -15,11 +15,14 @@ import {
   MAX_PROFESSIONAL_CATEGORIES,
   NO_CATEGORY_MESSAGE,
   POPULAR_SERVICES,
+  ALL_SUGGESTED_SERVICES,
+  canonicalServiceName,
   isProfessionalCategorySlug,
   PROFESSIONAL_CATEGORIES,
   categorySubTags,
   subTagLabel,
   validSubTags,
+  type StandardServicesByCategory,
   allItalianCityNames,
   PROFILE_DECLARATION_TEXT,
   findComuneByName,
@@ -46,6 +49,8 @@ import { localPreviewUrl } from "@/lib/media";
 import { keyActivate } from "@/lib/keyActivate";
 
 const MAX_PORTFOLIO_PHOTOS = 10;
+/** Prestazioni suggerite visibili prima di "Altre". */
+const SUGGESTED_IDLE_COUNT = 8;
 
 // Elenco di candidati per il selettore "Lingue parlate" (richiesta esplicita
 // dell'utente: mostrare già un elenco selezionabile invece del solo campo
@@ -164,6 +169,10 @@ export default function DashboardProfiloPage() {
   const [addressCoords, setAddressCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [bio, setBio] = useState("");
   const [remoteAvailable, setRemoteAvailable] = useState(false);
+  // Le prestazioni suggerite sono fino a 10 per categoria: a riposo le prime 8.
+  const [showAllSuggested, setShowAllSuggested] = useState(false);
+  // Prestazioni aggiunte dall'admin tra le standard (docs/CHANGELOG.md §388).
+  const [standardServices, setStandardServices] = useState<StandardServicesByCategory>({});
   // Preavviso per annullare chiesto al cliente (docs/CHANGELOG.md §347).
   const [cancellationNoticeHours, setCancellationNoticeHours] = useState<CancellationNoticeHours>(DEFAULT_CANCELLATION_NOTICE_HOURS);
   const [services, setServices] = useState<{ name: string; priceMin: string; priceMax: string; priceUnit: ServicePriceUnit }[]>([]);
@@ -295,6 +304,7 @@ export default function DashboardProfiloPage() {
 
   useEffect(() => {
     apiClient.getLanguagePopularity().then(setLanguagePopularity).catch(() => undefined);
+    apiClient.standardServices().then(setStandardServices).catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -609,8 +619,12 @@ export default function DashboardProfiloPage() {
   // prestazioni cliccabili.
   // Suggerite di tutte le categorie scelte (docs/CHANGELOG.md §217), senza doppioni.
   const suggestedServices = [
-    ...new Set([...categorySlugs.flatMap((slug) => POPULAR_SERVICES[slug]), ...(remoteAvailable ? ["Consulenza online"] : [])]),
-  ].filter((name) => !services.some((service) => service.name.trim().toLowerCase() === name.toLowerCase()));
+    ...new Set([
+      ...categorySlugs.flatMap((slug) => [...POPULAR_SERVICES[slug], ...(standardServices[slug] ?? [])]),
+      ...(remoteAvailable ? ["Consulenza online"] : []),
+    ]),
+  ].filter((name) => !services.some((service) => canonicalServiceName(service.name) === name));
+  const visibleSuggestedServices = showAllSuggested ? suggestedServices : suggestedServices.slice(0, SUGGESTED_IDLE_COUNT);
 
   function handleImageChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -1216,7 +1230,7 @@ export default function DashboardProfiloPage() {
                 {categorySlugs.length > 1 ? "Le più richieste per le tue categorie:" : "Le più richieste per questa categoria:"}
               </Text>
               <YStack flexDirection="row" flexWrap="wrap" gap="$2">
-                {suggestedServices.map((name) => (
+                {visibleSuggestedServices.map((name) => (
                   <XStack
                     key={name}
                     paddingHorizontal="$3"
@@ -1234,14 +1248,41 @@ export default function DashboardProfiloPage() {
                     </Text>
                   </XStack>
                 ))}
+                {suggestedServices.length > SUGGESTED_IDLE_COUNT ? (
+                  <XStack
+                    paddingHorizontal="$3"
+                    paddingVertical="$2"
+                    borderRadius={999}
+                    borderWidth={1}
+                    borderColor={brand.bordoCampo}
+                    cursor="pointer"
+                    onPress={() => setShowAllSuggested((value) => !value)}
+                    accessibilityRole="button"
+                    aria-expanded={showAllSuggested}
+                  >
+                    <Text color={brand.grafite} fontWeight="600" fontSize={16}>
+                      {showAllSuggested ? "Mostra meno" : `Altre ${suggestedServices.length - SUGGESTED_IDLE_COUNT}`}
+                    </Text>
+                  </XStack>
+                ) : null}
               </YStack>
             </YStack>
           ) : null}
+
+          {/* Mentre scrive, il professionista vede i nomi già usati: scegliendone
+              uno, la sua prestazione si somma alle altre uguali nella ricerca e
+              nei prezzi medi (docs/CHANGELOG.md §392). */}
+          <datalist id="prestazioni-suggerite">
+            {[...new Set([...ALL_SUGGESTED_SERVICES, ...Object.values(standardServices).flatMap((names) => names ?? [])])].map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
 
           <YStack gap="$2">
             {services.map((service, index) => (
               <YStack key={index} flexDirection="row" gap="$2" alignItems="center" flexWrap="wrap">
                 <input aria-label="Nome della prestazione"
+                  list="prestazioni-suggerite"
                   value={service.name}
                   onChange={(e) => updateService(index, "name", e.target.value)}
                   placeholder="Es. Sostituzione caldaia"

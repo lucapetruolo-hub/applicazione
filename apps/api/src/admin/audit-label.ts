@@ -254,6 +254,15 @@ export function auditLabel(row: { entityType: string; fieldName: string | null; 
       return "Soglie delle richieste generali cambiate";
     case "GeneralRequestBlock":
       return value === "OPEN" ? "Richieste generali riaperte" : "Richieste generali chiuse";
+    // Dal problema scritto ai mestieri (docs/CHANGELOG.md §392).
+    case "ProblemWord":
+      return v.word ? `Parola insegnata al dizionario: «${asText(v.word)}»` : "Parola tolta dal dizionario";
+    case "ServiceNameAlias":
+      return v.canonical ? `Prestazione «${asText(v.name)}» unita a «${asText(v.canonical)}»` : "Unione di prestazioni annullata";
+    case "StandardServiceName":
+      return v.name ? `Prestazione «${asText(v.name)}» aggiunta alle standard (${asText(v.categorySlug)})` : "Prestazione tolta dalle standard";
+    case "ProblemTakeover":
+      return value === "DONE" ? "Richiesta da seguire segnata come fatta" : "Richiesta da seguire riaperta";
     default:
       if (fieldName === "status" && typeof value === "string") return `Stato cambiato in ${value}`;
       return "Modifica registrata";

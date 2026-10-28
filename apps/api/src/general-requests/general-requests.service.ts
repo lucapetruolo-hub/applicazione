@@ -111,7 +111,7 @@ export class GeneralRequestsService {
   async computeLoads(now: Date = new Date()): Promise<Map<ZoneKey, { categoryId: string; city: string; load: GeneralRequestLoad }>> {
     const since = new Date(now.getTime() - GENERAL_REQUESTS_WINDOW_DAYS * DAY_MS);
     const leads = await this.prisma.lead.findMany({
-      where: { createdAt: { gte: since }, guidedRequest: { professionalProfileId: null } },
+      where: { createdAt: { gte: since }, guidedRequest: { professionalProfileId: null, chosenProfileIds: { isEmpty: true } } },
       select: { guidedRequestId: true, professionalProfileId: true, createdAt: true, guidedRequest: { select: { categoryId: true, city: true } } },
     });
     const requestIds = [...new Set(leads.map((l) => l.guidedRequestId))];
@@ -272,7 +272,7 @@ export class GeneralRequestsService {
     if (blocks.length === 0) return counts;
     const oldest = new Date(Math.min(...blocks.map((b) => b.closedAt.getTime())));
     const requests = await this.prisma.guidedRequest.findMany({
-      where: { createdAt: { gte: oldest }, professionalProfileId: { not: null }, categoryId: { in: [...new Set(blocks.map((b) => b.categoryId))] } },
+      where: { createdAt: { gte: oldest }, OR: [{ professionalProfileId: { not: null } }, { chosenProfileIds: { isEmpty: false } }], categoryId: { in: [...new Set(blocks.map((b) => b.categoryId))] } },
       select: { categoryId: true, city: true, createdAt: true },
     });
     const closedAtBy = new Map(blocks.map((b) => [zoneKey(b.categoryId, b.city), b.closedAt]));

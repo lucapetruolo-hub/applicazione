@@ -770,7 +770,7 @@ function PopularServicesCard({ data }: { data: AdminSiteStats }) {
         Scritte a mano dai professionisti, non suggerite
       </Text>
       <Text color={brand.grafite70} fontSize={13}>
-        {`Prestazioni scritte da almeno ${MISSING_SERVICE_MIN_PROFESSIONALS} professionisti che il sito non propone: aggiungerle all'elenco le rende un clic e somma bene i prezzi medi.`}
+        {`Prestazioni scritte da almeno ${MISSING_SERVICE_MIN_PROFESSIONALS} professionisti che il sito non propone: aggiungerle con + in "Prestazioni per mestiere" le rende un clic e somma bene i prezzi medi.`}
       </Text>
       {data.missingServices.length === 0 ? (
         <Text color={brand.grafite70}>Nessuna per ora.</Text>

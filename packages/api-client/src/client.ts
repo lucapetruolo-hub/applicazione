@@ -107,6 +107,17 @@ import type {
   ProfileInviteLink,
   ProfileInvitePreview,
   ProfessionalPayoutTotals,
+  ProblemMatchRequest,
+  ProblemMatchResult,
+  ProblemTakeoverInput,
+  ProblemMatchAdminOverview,
+  ProblemWordAdmin,
+  TeachProblemWordInput,
+  ServiceNamesAdminOverview,
+  StandardServiceAdmin,
+  StandardServicesByCategory,
+  MergeServiceNameInput,
+  ProblemTakeoverAdmin,
   ClientInvoiceRequestInput,
   ClientInvoiceRequestView,
   AccountantSettingsInput,
@@ -486,6 +497,8 @@ export type AdminOverview = {
   verificationRequests: number;
   /** Zone con le richieste generali chiuse (docs/CHANGELOG.md §213). */
   closedGeneralRequestZones: number;
+  /** "Ce ne occupiamo noi" da seguire (docs/CHANGELOG.md §392). */
+  openProblemTakeovers: number;
 };
 
 export type ModerationActionValue = "WARN" | "REQUEST_CORRECTION" | "HIDE_CONTENT" | "SUSPEND_PROFILE" | "SUSPEND_USER";
@@ -1227,8 +1240,24 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     /** Campo "Città": più cercate e comuni con professionisti vicini per un lavoro (docs/CHANGELOG.md §383). */
     getCityHints: (category?: string) =>
       request<{ popular: string[]; covered: string[] }>(`/professionals/city-hints${category ? `?category=${encodeURIComponent(category)}` : ""}`),
-    searchProfessionals: (params: { category?: string; city?: string; q?: string; remote?: boolean; service?: string; excludeDemo?: boolean; track?: boolean } = {}) => {
+    searchProfessionals: (
+      params: {
+        category?: string;
+        city?: string;
+        q?: string;
+        remote?: boolean;
+        service?: string;
+        excludeDemo?: boolean;
+        track?: boolean;
+        /** Dalla descrizione del problema: niente boost (docs/CHANGELOG.md §392). */
+        merit?: boolean;
+        /** Lavoro fuori dalle categorie: chi lo dichiara. */
+        offers?: string;
+      } = {},
+    ) => {
       const query = new URLSearchParams();
+      if (params.merit) query.set("merito", "1");
+      if (params.offers) query.set("offre", params.offers);
       if (params.category) query.set("category", params.category);
       if (params.city) query.set("city", params.city);
       if (params.q) query.set("q", params.q);
@@ -1987,6 +2016,43 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     },
     adminUrgencyMetrics: (token: string) =>
       request<UrgencyMetrics>("/admin/urgency-metrics", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    /** Dal problema scritto ai mestieri (docs/CHANGELOG.md §392). */
+    matchProblem: (input: ProblemMatchRequest) =>
+      request<ProblemMatchResult>("/problem-match", { method: "POST", body: JSON.stringify(input), cache: "no-store" }),
+    createProblemTakeover: (token: string, input: ProblemTakeoverInput) =>
+      request<{ id: string }>("/problem-match/takeover", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+    adminProblemMatch: (token: string, filter?: string) =>
+      request<ProblemMatchAdminOverview>(`/admin/problem-match${filter ? `?filtro=${encodeURIComponent(filter)}` : ""}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }),
+    adminTeachProblemWord: (token: string, input: TeachProblemWordInput) =>
+      request<ProblemWordAdmin>("/admin/problem-match/words", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+    adminForgetProblemWord: (token: string, id: string) =>
+      request<void>(`/admin/problem-match/words/${encodeURIComponent(id)}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),
+    /** Prestazioni standard aggiunte dall'admin (§388), da unire a `POPULAR_SERVICES`. */
+    standardServices: () => request<StandardServicesByCategory>("/service-names/standard", { cache: "no-store" }),
+    adminAddStandardService: (token: string, input: { name: string; categorySlug: string }) =>
+      request<StandardServiceAdmin>("/admin/problem-match/service-names/standard", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+    adminRemoveStandardService: (token: string, id: string) =>
+      request<void>(`/admin/problem-match/service-names/standard/${encodeURIComponent(id)}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),
+    adminServiceNames: (token: string) =>
+      request<ServiceNamesAdminOverview>("/admin/problem-match/service-names", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    adminMergeServiceName: (token: string, input: MergeServiceNameInput) =>
+      request<void>("/admin/problem-match/service-names/merge", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+    adminUnmergeServiceName: (token: string, key: string) =>
+      request<void>(`/admin/problem-match/service-names/${encodeURIComponent(key)}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),
+    adminProblemTakeovers: (token: string, done?: boolean) =>
+      request<ProblemTakeoverAdmin[]>(`/admin/problem-match/takeovers${done ? "?stato=fatte" : ""}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }),
+    adminMarkProblemTakeover: (token: string, id: string, done: boolean) =>
+      request<void>(`/admin/problem-match/takeovers/${encodeURIComponent(id)}/${done ? "done" : "reopen"}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
     adminGeneralRequests: (token: string) =>
       request<GeneralRequestsAdminOverview>("/admin/general-requests", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
     adminCloseGeneralRequests: (token: string, input: CloseGeneralRequestsInput) =>

@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { FRAZIONI, PROFESSIONAL_CATEGORIES, allItalianCityNames, nearestComune } from "@professionisti/shared";
+import { FRAZIONI, PROFESSIONAL_CATEGORIES, allItalianCityNames, matchProblem, nearestComune } from "@professionisti/shared";
 import type { ProfessionalSuggestion } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { cachedPopularOrder, loadPopularOrder } from "@/lib/categoryOrder";
 import { buildSearchSuggestions } from "@/lib/searchSuggestions";
+import { PROBLEM_SUGGESTION_PREFIX, looksLikeProblem } from "@/lib/searchNavigation";
 
 /*
  * Suggerimenti della barra di ricerca (docs/CHANGELOG.md §383, richieste
@@ -72,6 +73,27 @@ function categorySlugFor(query: string): string | undefined {
   return PROFESSIONAL_CATEGORIES.find((category) => category.label.toLowerCase() === normalized)?.slug;
 }
 
+/**
+ * "Ti serve: Idraulico" in cima all'elenco mentre si descrive il problema
+ * (docs/CHANGELOG.md §392): solo il dizionario, nessuna chiamata al server a
+ * ogni tasto. Il nome resta il testo scritto, così sceglierlo non lo cambia.
+ */
+function problemSuggestion(query: string): ProfessionalSuggestion | null {
+  if (!looksLikeProblem(query)) return null;
+  const match = matchProblem(query);
+  const first = match.outOfService ? undefined : match.categories[0];
+  const label = first ? PROFESSIONAL_CATEGORIES.find((category) => category.slug === first.slug)?.label : undefined;
+  return {
+    id: `${PROBLEM_SUGGESTION_PREFIX}${first?.slug ?? ""}`,
+    name: query,
+    // "Ti serve" solo quando il dizionario è sicuro: nel dubbio decide la pagina dei risultati.
+    title: label && match.confident ? `Ti serve: ${label}` : "Trova chi ti serve",
+    subtitle: match.safety ? "Leggi prima l'avviso di sicurezza" : `Per «${query.trim().slice(0, 60)}»`,
+    categorySlug: first?.slug ?? "",
+    city: "",
+  };
+}
+
 export function useSearchBarHints(initialQuery = "") {
   const [query, setQuery] = useState(initialQuery);
   const [order, setOrder] = useState(() => cachedPopularOrder() ?? null);
@@ -109,10 +131,12 @@ export function useSearchBarHints(initialQuery = "") {
 
   const professionalSuggestions = useMemo<ProfessionalSuggestion[]>(() => {
     const suggestions = buildSearchSuggestions();
-    if (!order) return suggestions;
+    const problem = problemSuggestion(query);
+    if (!order) return problem ? [problem, ...suggestions] : suggestions;
     const rank = new Map<string, number>(order.map((slug, index) => [slug, index]));
-    return [...suggestions].sort((a, b) => (rank.get(a.categorySlug) ?? 99) - (rank.get(b.categorySlug) ?? 99));
-  }, [order]);
+    const sorted = [...suggestions].sort((a, b) => (rank.get(a.categorySlug) ?? 99) - (rank.get(b.categorySlug) ?? 99));
+    return problem ? [problem, ...sorted] : sorted;
+  }, [order, query]);
 
   const cityDefaults = useMemo(() => {
     const list = [lastCity, ...(hints?.popular ?? [])].filter((city): city is string => !!city);

@@ -49,6 +49,10 @@ const publicRoutes = [
   "GET /health/features",
   "POST /identity-verification/webhook",
   "GET /maps/static",
+  // Dal problema scritto ai mestieri (§392): dizionario, poi IA nei casi dubbi, con tetto giornaliero.
+  "POST /problem-match",
+  // Prestazioni standard aggiunte dall'admin (§388), mostrate in iscrizione e nel profilo.
+  "GET /service-names/standard",
   "GET /professionals/:id",
   "GET /professionals/:id/agenda",
   "POST /professionals/:id/views",
@@ -71,6 +75,8 @@ const publicRoutes = [
 ];
 
 const selfAny = [
+  // "Ce ne occupiamo noi" (§392): la richiesta di chi chiama.
+  "POST /problem-match/takeover",
   "POST /auth/change-password",
   "POST /auth/logout-others",
   "DELETE /auth/me",

@@ -5,11 +5,21 @@ import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
-import { allItalianCityNames, type ProfessionalSearchResult } from "@professionisti/shared";
+import {
+  MAX_CHOSEN_PROFESSIONALS,
+  OUT_OF_SERVICE_KEYWORDS,
+  allItalianCityNames,
+  normalizeProblemText,
+  type ProblemMatchResult,
+  type ProfessionalCategorySlug,
+  type ProfessionalSearchResult,
+} from "@professionisti/shared";
 import { Text, XStack, YStack, brand } from "@professionisti/ui";
 import { EmptySearchResults } from "@/components/EmptySearchResults";
 import { ResultsListWithMap } from "@/components/ResultsListWithMap";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
+import { ProblemBand } from "@/components/ProblemBand";
+import { ChosenProsBar, chosenRequestHref, type ChosenPro } from "@/components/ChosenProsBar";
 import { saveLastSearchCity } from "@/lib/lastSearchCity";
 
 /** Suggerimenti di comuni mentre si scrive: pochi, per non riempire la pagina. */
@@ -17,6 +27,30 @@ function citySuggestions(text: string): string[] {
   const typed = text.trim().toLowerCase();
   if (typed.length < 2) return [];
   return allItalianCityNames().filter((name) => name.toLowerCase().startsWith(typed)).slice(0, 8);
+}
+
+/** Ricerca partita dalla descrizione del problema (docs/CHANGELOG.md §392). */
+export type ProblemSearch = {
+  description: string;
+  result: ProblemMatchResult;
+  chosen: ProfessionalCategorySlug | null;
+  questionDone: boolean;
+};
+
+/** "Perché" di una scheda: la prestazione del professionista che somiglia al problema. */
+function problemReason(problem: ProblemSearch, pro: ProfessionalSearchResult): string | null {
+  const keywords = problem.result.outOfService
+    ? OUT_OF_SERVICE_KEYWORDS[problem.result.outOfService]
+    : normalizeProblemText(problem.description)
+        .split(" ")
+        .filter((word) => word.length >= 5)
+        .map((word) => word.slice(0, 5));
+  const service = (pro.services ?? []).find((item) => {
+    const name = normalizeProblemText(item.name);
+    return keywords.some((keyword) => name.includes(` ${keyword}`));
+  });
+  if (service) return `offre «${service.name}»`;
+  return problem.result.outOfService ? "lo dichiara nella sua descrizione" : null;
 }
 
 export function CercaContent({
@@ -28,6 +62,7 @@ export function CercaContent({
   allProfessionals,
   loadFailed,
   initialUrgentOnly,
+  problem,
 }: {
   city?: string;
   online?: boolean;
@@ -41,25 +76,43 @@ export function CercaContent({
   loadFailed?: boolean;
   /** Preimpostato dall'URL (?urgente=1) quando si arriva dal toggle "Intervento urgente?" della homepage. */
   initialUrgentOnly?: boolean;
+  problem?: ProblemSearch;
 }) {
   // Per le voci di "Quanto costa in media" della home (§398).
   useEffect(() => {
     saveLastSearchCity(city);
   }, [city]);
 
-  const title = service
-    ? city
-      ? `Chi offre "${service}" a ${city}`
-      : `Chi offre "${service}"`
-    : online
-    ? city
-      ? `Consulenze online a ${city}`
-      : "Consulenze online disponibili"
-    : city
-      ? `Professionisti a ${city}`
-      : q
-        ? `Risultati per "${q}"`
-        : "Tutti i professionisti";
+  // "Scegli" sulle schede (docs/CHANGELOG.md §393): solo con un mestiere
+  // deciso e almeno due professionisti, altrimenti non c'è niente da scegliere.
+  const canChoose = Boolean(problem?.chosen) && professionals.length >= 2;
+  const [chosenPros, setChosenPros] = useState<ChosenPro[]>([]);
+  const chosenIds = new Set(chosenPros.map((pro) => pro.id));
+  function toggleChosen(pro: ProfessionalSearchResult) {
+    setChosenPros((current) =>
+      current.some((item) => item.id === pro.id)
+        ? current.filter((item) => item.id !== pro.id)
+        : current.length < MAX_CHOSEN_PROFESSIONALS
+          ? [...current, { id: pro.id, businessName: pro.businessName, imageUrl: pro.imageUrl ?? null, categorySlug: pro.categorySlug }]
+          : current,
+    );
+  }
+
+  const title = problem
+    ? `Chi ti serve per «${problem.description.slice(0, 60)}»`
+    : service
+      ? city
+        ? `Chi offre "${service}" a ${city}`
+        : `Chi offre "${service}"`
+      : online
+        ? city
+          ? `Consulenze online a ${city}`
+          : "Consulenze online disponibili"
+        : city
+          ? `Professionisti a ${city}`
+          : q
+            ? `Risultati per "${q}"`
+            : "Tutti i professionisti";
 
   // Richiesta esplicita dell'utente: niente scheda "Ricerca / N
   // professionisti verificati trovati" in cima ai risultati — la lista parla
@@ -213,13 +266,24 @@ export function CercaContent({
       `}</style>
     </XStack>
   ) : null;
-  const header =
-    serviceBar && notice ? (
-      <YStack gap="$3">
-        {serviceBar}
-        {notice}
-      </YStack>
-    ) : (serviceBar ?? notice);
+  const header = problem ? (
+    <ProblemBand
+      description={problem.description}
+      city={city}
+      result={problem.result}
+      chosen={problem.chosen}
+      count={professionals.length}
+      questionDone={problem.questionDone}
+      chosenPros={chosenPros}
+      maxChosen={canChoose ? MAX_CHOSEN_PROFESSIONALS : undefined}
+      onClearChosen={() => setChosenPros([])}
+    />
+  ) : serviceBar && notice ? (
+    <YStack gap="$3">
+      {serviceBar}
+      {notice}
+    </YStack>
+  ) : (serviceBar ?? notice);
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent">
@@ -234,8 +298,27 @@ export function CercaContent({
           header={header}
           defaultMode={online ? "ONLINE" : "HOME"}
           initialUrgentOnly={initialUrgentOnly}
+          merit={Boolean(problem)}
+          reasonFor={problem ? (pro) => problemReason(problem, pro) : undefined}
+          selection={
+            canChoose
+              ? {
+                  selectedIds: chosenIds,
+                  canAdd: chosenPros.length < MAX_CHOSEN_PROFESSIONALS,
+                  max: MAX_CHOSEN_PROFESSIONALS,
+                  onToggle: toggleChosen,
+                }
+              : undefined
+          }
         />
       </YStack>
+      {problem?.chosen && chosenPros.length > 0 ? (
+        <ChosenProsBar
+          chosen={chosenPros}
+          max={MAX_CHOSEN_PROFESSIONALS}
+          href={chosenRequestHref(chosenPros, problem.chosen, problem.description, city)}
+        />
+      ) : null}
     </YStack>
   );
 }

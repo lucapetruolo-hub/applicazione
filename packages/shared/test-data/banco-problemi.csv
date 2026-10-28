@@ -1,0 +1,770 @@
+id;frase;mestiere;mestiere2;sicurezza;fuori_servizio;non_e_un_lavoro;mucchio
+G001;Come si toglie questa batteria cassetta;idraulico;;no;;;lavoro
+G002;Valvole termosifoni da sostituire;climatizzazione;idraulico;no;;;chiuso
+G003;Ripristino fondo vasca da bagno;idraulico;tuttofare;no;;;lavoro
+G004;Eliminazione passo rapido senza opere murarie;idraulico;;no;;;lavoro
+G005;Agganciare leve in Cassetta WC;idraulico;;no;;;chiuso
+G006;Perdita bagno vicini;idraulico;;no;;;lavoro
+G007;Sigillare perdita tubo scarico acqua senza smontare;idraulico;;no;;;chiuso
+G008;rotelline anta scorrevole a scomparsa box doccia rotte;tuttofare;idraulico;no;;;lavoro
+G009;Verniciare termosifone con sensore;imbianchino;;no;;;lavoro
+G010;Da dove viene quest'acqua?;idraulico;;no;;;lavoro
+G011;Fori interasse sostegno lavandino;idraulico;;no;;;lavoro
+G012;Tappo vecchio pozzetto bagno;idraulico;;no;;;lavoro
+G013;installazione condizionatore fai da te;climatizzazione;;no;;;lavoro
+G014;Scarico lavandino cucina dentro Pluviale;idraulico;;no;;;lavoro
+G015;Deviatore Doccia Vasca anni70 Incassato;idraulico;;no;;;chiuso
+G016;Catis : non si innesca lo scarico;idraulico;;no;;;lavoro
+G017;Due WC che scaricano diversamente;idraulico;;no;;;chiuso
+G018;Cassetta incassata che gocciola;idraulico;;no;;;lavoro
+G019;foro muro e tubo scarico cucina - rifacimento-consigli?;idraulico;muratore;no;;;lavoro
+G020;Pressione del circuito di irrigazione giardino;giardiniere;idraulico;no;;;lavoro
+G021;Come estrarre deviatore vasca;idraulico;;no;;;lavoro
+G022;Come lo svito ora?;idraulico;;no;;;chiuso
+G023;Miscelatore ideal standard smontare flessibili;idraulico;;no;;;lavoro
+G024;Ancora su scarico cassetta WC Catis: microperdita non riparabile?;idraulico;;no;;;lavoro
+G025;Scarico doccia;idraulico;;no;;;lavoro
+G026;Perdita dalla piletta di scarico del lavandino;idraulico;;no;;;lavoro
+G027;Bassa pressione acqua fredda cucina;idraulico;;no;;;lavoro
+G028;Gorgoglio intermittente.;idraulico;;no;;;chiuso
+G029;Sotterfugi per aumentare pressione caldaia;climatizzazione;;no;;;lavoro
+G030;Scarico lavandino;idraulico;;no;;;lavoro
+G031;sostituzione vecchio wc per wc a filo muro;idraulico;;no;;;chiuso
+G032;sostituzione cartuccia gruppo doccia M&Z - non si smonta la testa;idraulico;;no;;;chiuso
+G033;Servomotore valvola di zona RBM MVA21 Serie 112 che si rompe: aggiustarlo o sostituirlo?;climatizzazione;;no;;;lavoro
+G034;chiave antimorosità gas;;;no;;sì;lavoro
+G035;Aiuto piastrelle gres;muratore;;no;;;lavoro
+G036;Vetrocemento: problema condensa e fughe nere;muratore;;no;;;lavoro
+G037;Pittura datata;imbianchino;;no;;;lavoro
+G038;Infiltrazioni terrazzo 150 mq;muratore;;no;;;lavoro
+G039;Infiltrazioni da terrazzo in zona pluviale;muratore;;no;;;chiuso
+G040;Problema bocche di lupo piene di terra e umidità in cantina/box;muratore;;no;;;lavoro
+G041;Impermeabilizzazione terrazzo con umidita in risalita con piastrelle klinker;muratore;;no;;;lavoro
+G042;Cambio infissi con vecchio telaio;falegname;fabbro;no;;;lavoro
+G043;Zanzariera difettosa;tuttofare;;no;;;lavoro
+G044;Smontaggio cassonetto per sostituzione elemento;tuttofare;falegname;no;;;lavoro
+G045;Creazione armadietto in balcone;falegname;;no;;;lavoro
+G046;Dubbi su gas gpl domestico;idraulico;climatizzazione;no;;;chiuso
+G047;Fan coil difettoso?;climatizzazione;;no;;;lavoro
+G048;Parquet posato da poco che fa rumori-sensazione di suono vuoto;falegname;muratore;no;;;chiuso
+G049;Elettroserratura CISA e anomalie;fabbro;elettricista;no;;;lavoro
+G050;interruttori corrodoio casa per lampadario che non si accende;elettricista;;no;;;chiuso
+G051;Far suonare il cicalino del citofono in 2 interni se da fuori si chiama uno dei 2;elettricista;;no;;;lavoro
+G052;Salvavita;elettricista;;no;;;lavoro
+G053;Sporgenza cassetta elettrica;elettricista;;no;;;lavoro
+G054;Dispositivo per sbalzi tensione in casa;elettricista;;no;;;chiuso
+G055;Come vedere se il bagno è occupato?;elettricista;;no;;;lavoro
+G056;Illuminazione pompeiana terrazza;elettricista;;no;;;lavoro
+G057;Problema nel dimmerare lampadina led regolando voltaggio;elettricista;;no;;;chiuso
+G058;Basculante elettrico Gibidi ha smesso di funzionare;elettricista;fabbro;no;;;lavoro
+G059;Perché non salta il differenziale con la scossa;elettricista;;elettrico;;;chiuso
+G060;fotocellula malfunzionante con calore;elettricista;;no;;;lavoro
+G061;Pompa Calpeda non funzionante in pozzo artesiano e prima forte rumore dal quadro elettrico;elettricista;idraulico;no;;;lavoro
+G062;Antifurto in allarme;elettricista;;no;antifurto;;lavoro
+G063;Malfunzionamento irrigatore automatico.;giardiniere;;no;;;lavoro
+G064;Ventilatore da soffitto su Cartongesso;elettricista;;no;;;lavoro
+G065;Scatto differenziale;elettricista;;no;;;chiuso
+G066;crepuscolare si attiva solo con un leggero colpetto;elettricista;;no;;;lavoro
+G067;Sostituzione temporizzatore scale;elettricista;;no;;;lavoro
+G068;Sostituzione salvavita (differenziale);elettricista;;no;;;chiuso
+G069;aprire cancello del citofono Urmet Vog 5 con telecomando;elettricista;;no;;;lavoro
+G070;punti luce corridoio: li recupero o li sostituisco ?;elettricista;;no;;;lavoro
+G071;Installare un dimmer in impianto con 2 deviatori e 1 invertitore;elettricista;;no;;;lavoro
+G072;Sostituire citofono con campanello+apriporta;elettricista;;no;;;chiuso
+G073;Sostituzione magnetotermico differenziale;elettricista;;no;;;lavoro
+G074;Fotocellule cancello;elettricista;;no;;;lavoro
+G075;gruppo continuità per router;elettricista;;no;;;lavoro
+G076;parati scelta;imbianchino;;no;;;chiuso
+G077;Trattamento muro centenario;muratore;;no;;;lavoro
+G078;Piastrelle bagno;muratore;;no;;;chiuso
+G079;Sostituzione Camino;muratore;;no;;;lavoro
+G080;Consiglio per sverniciare e riverniciare fontana a muro;imbianchino;;no;;;lavoro
+G081;riparazione grondaia in rame;muratore;tuttofare;no;;;lavoro
+G082;Muro poggiolo scrostato;muratore;imbianchino;no;;;lavoro
+G083;Impermeabilizzazione balcone;muratore;;no;;;lavoro
+G084;Levigare il marmo;muratore;;no;;;chiuso
+G085;Maniglie da riverniciare;imbianchino;;no;;;lavoro
+G086;fermapersiana spanato;tuttofare;fabbro;no;;;lavoro
+G087;Verniciare porte;imbianchino;;no;;;lavoro
+G088;Garage rasare su foratoni;muratore;;no;;;lavoro
+G089;Muro che si sgretola e pavimento con resina;muratore;;no;;;chiuso
+G090;Pulire battiscopa ceramica da colla;pulizie;;no;;;lavoro
+G091;Consigli controsoffitto cartongesso;muratore;;no;;;lavoro
+G092;tinteggiatura soffitto/pareti bagno;imbianchino;;no;;;lavoro
+G093;IMPERMEBILIZZAZIONE TERRAZZO;muratore;;no;;;chiuso
+G094;Chiudere buco su solaio;muratore;;no;;;chiuso
+G095;Cosa fare su questo muro?;muratore;;no;;;lavoro
+G096;Mattonelle scheggiate;muratore;;no;;;chiuso
+G097;Condensa pazzesca sugli infissi: che fare?;falegname;muratore;no;;;lavoro
+G098;riempimento traccia termosifone;muratore;;no;;;lavoro
+G099;Rivestire una parete con cartongesso;muratore;;no;;;lavoro
+G100;Pulizia gress fine cantiere;pulizie;;no;;;lavoro
+G101;Riverniciare la saracinesca di un preciso colore: come fare?;imbianchino;;no;;;lavoro
+G102;Consiglio prodotti anti muffa;imbianchino;;no;;;lavoro
+G103;Lisciare il marciapiede;muratore;;no;;;lavoro
+G104;Finestre ferro;fabbro;falegname;no;;;lavoro
+G105;Condensa;muratore;imbianchino;no;;;lavoro
+G106;Rappezzi intonaci e chiusura tracce impianti;muratore;;no;;;lavoro
+G107;Eliminare intonaco residuo da muretto con mattoni a vista;muratore;;no;;;lavoro
+G108;Come pitturare pannello in Osb;imbianchino;;no;;;chiuso
+G109;Fissaggio Tv su parete ricostruita;tuttofare;;no;;;lavoro
+G110;Piastrellare casa;muratore;;no;;;lavoro
+G111;Asciugatrice electrolux fa scattare il salvavita;;;no;elettrodomestici;;lavoro
+G112;Scaldabagno Comfee', pannello di controllo spento;idraulico;elettricista;no;;;lavoro
+G113;Asciugatrice Whirlpool - rumore;;;no;elettrodomestici;;chiuso
+G114;frigo indesit e temperature più alte?;;;no;elettrodomestici;;lavoro
+G115;Lavastoviglie TEKA DW7 60 FI errore codice E8 e poi E6;;;no;elettrodomestici;;lavoro
+G116;Problema scarico Lavastoviglie Bosch SMV50M40 - Errore E24;;;no;elettrodomestici;;lavoro
+G117;Lavatrice Samsung WF80F5E0W2W/ET - Il lavaggio si blocca dopo circa un minuto;;;no;elettrodomestici;;lavoro
+G118;Piastra induzione che non parte la ventola;;;no;elettrodomestici;;chiuso
+G119;Congelatore a pozzetto non congela;;;no;elettrodomestici;;lavoro
+G120;Recinzione;giardiniere;fabbro;no;;;lavoro
+G121;Insetti su pianta di Ibiscus, Cosa sono ?;giardiniere;;no;;;lavoro
+G122;recinzione in salita;giardiniere;fabbro;no;;;lavoro
+G123;SOS pianta da innaffiare;giardiniere;;no;;;lavoro
+G124;Rimozione ceppo - Come rimuovere residuo di tronco e radici dal terreno?;giardiniere;;no;;;lavoro
+G125;Ripristino sedia a ''fisarmonica'' in legno;falegname;;no;;;lavoro
+G126;"Aiuto per allineare guide laterali per cassetti di un como""";falegname;;no;;;lavoro
+G127;Riparazione tavolino intarsiato;falegname;;no;;;lavoro
+G128;Come restaurare questa porta interna?;falegname;;no;;;lavoro
+G129;Restauro persiane;falegname;;no;;;lavoro
+G130;Cerniere ammortizzanti anta mobile;tuttofare;falegname;no;;;chiuso
+G131;come ovviare a una fessura tra due mobili base cucina;tuttofare;falegname;no;;;chiuso
+G132;Smontare vecchio cardine;fabbro;falegname;no;;;lavoro
+G133;Finestra vasistas;falegname;fabbro;no;;;lavoro
+G134;Zanzariera;tuttofare;;no;;;lavoro
+G135;casetta in legno ad incastro da sistemare;falegname;;no;;;chiuso
+G136;Perché il salvavita scatta senza un motivo apparente?;elettricista;;no;;;lavoro
+G137;Come risolvere il problema del salvavita che scatta?;elettricista;;no;;;lavoro
+G138;Come trovare cosa fa saltare il salvavita?;elettricista;;no;;;lavoro
+G139;Perché salta il salvavita e non il magnetotermico?;elettricista;;no;;;chiuso
+G140;Cosa può essere quando la caldaia non parte?;climatizzazione;;no;;;chiuso
+G141;Perché la mia caldaia non si avvia quando apro l'acqua calda?;climatizzazione;;no;;;lavoro
+G142;Come faccio a far ripartire la caldaia?;climatizzazione;;no;;;chiuso
+G143;Quali sono le possibili cause della caldaia che si è spenta improvvisamente?;climatizzazione;;no;;;lavoro
+G144;Cosa devo fare se il mio soffitto ha infiltrazioni d'acqua?;idraulico;muratore;no;;;lavoro
+G145;A chi devo rivolgermi se ho infiltrazioni d'acqua nel soffitto?;idraulico;muratore;no;;;chiuso
+G146;Come eliminare infiltrazioni d'acqua dal soffitto?;idraulico;muratore;no;;;lavoro
+G147;Quali sono le cause più comuni di un rubinetto che perde acqua?;idraulico;;no;;;lavoro
+G148;Come fermare un rubinetto che perde?;idraulico;;no;;;chiuso
+G149;Cosa posso fare se il mio rubinetto a leva perde?;idraulico;;no;;;chiuso
+G150;Come risolvere un rubinetto che gocciola?;idraulico;;no;;;lavoro
+G151;Scatta il salvavita - soluzione?;elettricista;;no;;;lavoro
+G152;Quali possibili cause per il salvavita che si stacca a caso?;elettricista;;no;;;lavoro
+G153;Salvavita scatta molto spesso;elettricista;;no;;;lavoro
+G154;Ogni tanto mi salta la corrente...;elettricista;;no;;;lavoro
+G155;Salvavita che scatta a caso;elettricista;;no;;;lavoro
+G156;Salvavita scatta senza apparente motivo;elettricista;;no;;;lavoro
+G157;Salta la corrente ad orari fissi !;elettricista;;no;;;lavoro
+G158;Salvavita (differenziale) che scatta da solo...ogni tanto.;elettricista;;no;;;chiuso
+G159;Mancato riavvio della caldaia dopo mancanza di corrente;climatizzazione;;no;;;lavoro
+G160;Caldaia che non si avvia;climatizzazione;;no;;;lavoro
+G161;Problema IMPOSIBILE caldaia;climatizzazione;;no;;;lavoro
+G162;Caldaia immergas ok acqua calda ma non parte il riscaldameno;climatizzazione;;no;;;chiuso
+G163;Non parte la caldaia quando richiedo acqua calda;climatizzazione;;no;;;chiuso
+G164;Caldaia stagna RADI non riesce ad accendersi;climatizzazione;;no;;;lavoro
+G165;problemi con la caldaia: chi mi aiuta?;climatizzazione;;no;;;lavoro
+G166;Caldaia non parte, ma non va in blocco;climatizzazione;;no;;;lavoro
+G167;Caldaia non parte nell' orario programmato;climatizzazione;;no;;;chiuso
+G168;Infiltrazione dal soffitto, chi deve intervenire?;idraulico;muratore;no;;;lavoro
+G169;Infiltrazioni acqua e crepe su soffitto;idraulico;muratore;no;;;lavoro
+G170;Infiltrazione d'acqua nel soffitto;idraulico;muratore;no;;;lavoro
+G171;muffa da infiltrazione;imbianchino;muratore;no;;;lavoro
+G172;Infiltrazione soffitto cantina;idraulico;muratore;no;;;lavoro
+G173;infiltrazioni d'acqua dall'appartamento del piano superiore;idraulico;muratore;no;;;chiuso
+G174;Infiltrazione soffitto (ultimo piano );muratore;idraulico;no;;;lavoro
+G175;Infiltrazione o umidità????;muratore;imbianchino;no;;;chiuso
+G176;Rubinetto nuovo che perde.;idraulico;;no;;;lavoro
+G177;Rubinetto miscelatore che perde;idraulico;;no;;;chiuso
+G178;RUBINETTO CHE PERDE DAL MONOMISCELATORE;idraulico;;no;;;lavoro
+G179;Perdita tubo rubinetto nuovo;idraulico;;no;;;lavoro
+G180;Perdita rubinetto bagno;idraulico;;no;;;lavoro
+G181;Rubinetto che perde!!!;idraulico;;no;;;lavoro
+G182;Rubinetto a muro da cucina perde acqua;idraulico;;no;;;lavoro
+G183;Danno da acqua,è scoppiato il rubinetto PRIMA del contatore;idraulico;;no;;;lavoro
+G184;Come sbloccare una serratura bloccata?;fabbro;;no;;;chiuso
+G185;Cosa devo fare se la chiave non gira nella serratura?;fabbro;;no;;;lavoro
+G186;Come si smonta una serratura bloccata?;fabbro;;no;;;lavoro
+G187;Cosa posso fare se il cilindro della mia serratura è bloccato?;fabbro;;no;;;lavoro
+G188;Come tirare giù una tapparella bloccata?;tuttofare;falegname;no;;;lavoro
+G189;Cosa fare quando si incastra la tapparella?;tuttofare;falegname;no;;;chiuso
+G190;Come posso risolvere il problema di una tapparella bloccata che non sale e non scende?;tuttofare;falegname;no;;;lavoro
+G191;Come sbloccare lo scarico intasato?;idraulico;;no;;;lavoro
+G192;Come rompere i blocchi di calcare nello scarico?;idraulico;;no;;;chiuso
+G193;Come pulire un tubo di scarico intasato?;idraulico;;no;;;lavoro
+G194;È normale sentire un odore di gas anche se non c'è?;idraulico;climatizzazione;gas;;;lavoro
+G195;Cosa significa se c'è un odore di gas in casa senza perdite?;idraulico;climatizzazione;gas;;;chiuso
+G196;Cosa vuol dire quando si sente odore di gas?;idraulico;climatizzazione;gas;;;chiuso
+G197;Come capire se c'è una perdita di gas in casa?;idraulico;climatizzazione;gas;;;lavoro
+G198;Serratura bloccata aiuto;fabbro;;no;;;lavoro
+G199;Serratura bloccata, avete qualche consiglio?;fabbro;;no;;;lavoro
+G200;Sblocco serratura doppia mappa;fabbro;;no;;;lavoro
+G201;Riparare tapparella elettrica;elettricista;tuttofare;no;;;chiuso
+G202;Tapparella bloccata e storta...;tuttofare;falegname;no;;;lavoro
+G203;Tapparella che non si alza del tutto;tuttofare;falegname;no;;;lavoro
+G204;Salve, l altro giorno per pulire le tapparelle ho avuto un ...;tuttofare;falegname;no;;;lavoro
+G205;Tapparella incastrata cosa fare;tuttofare;falegname;no;;;lavoro
+G206;Scarico intasato da far paura!!! Come lo sturo???;idraulico;;no;;;chiuso
+G207;Scarico cucina intasato e sonda non si muove;idraulico;;no;;;lavoro
+G208;scarico cucina intasato?;idraulico;;no;;;lavoro
+G209;Sturare un lavandino con scarico lento?;idraulico;;no;;;lavoro
+G210;aiuto !!!!!! scarico del lavello ....;idraulico;;no;;;lavoro
+G211;Scarico lavandino intasato;idraulico;;no;;;lavoro
+G212;Consiglio da idraulico , su ingorgo tubature;idraulico;;no;;;lavoro
+G213;Tubo scarico condensa ostruito o intasato;climatizzazione;;no;;;lavoro
+G214;Disgorgare scarichi intasati da calcare+sapone;idraulico;;no;;;chiuso
+G215;Puzza di gas;idraulico;climatizzazione;gas;;;chiuso
+G216;Odore di gas in casa disabitata appena comprata;idraulico;climatizzazione;gas;;;lavoro
+G217;Odore di gas all'apertura dell'acqua;climatizzazione;idraulico;gas;;;chiuso
+G218;puzza gas;idraulico;climatizzazione;gas;;;lavoro
+G219;Odore di gas che va e viene in casa;idraulico;climatizzazione;gas;;;lavoro
+G220;Quanto costa al giorno un dog sitter?;dogsitter;;no;;;chiuso
+G221;Quanto prende una baby sitter per 20 ore settimanali?;babysitter;;no;;;chiuso
+G222;Quali sono alcuni siti gratuiti per trovare babysitter?;babysitter;;no;;;lavoro
+G223;Quanto si paga un baby sitter all'ora?;babysitter;;no;;;lavoro
+G224;Quanto costa fare un trasloco con una ditta?;traslochi;;no;;;chiuso
+G225;Quanto costa un'ora di trasloco?;traslochi;;no;;;lavoro
+G226;Come faccio a capire se manca gas al condizionatore?;climatizzazione;;no;;;lavoro
+G227;Cosa devo fare se il mio condizionatore non fa uscire aria fredda?;climatizzazione;;no;;;lavoro
+G228;Il condizionatore è acceso, ma non esce aria fredda. Cosa potrebbe essere?;climatizzazione;;no;;;lavoro
+G229;Come approcciarsi alla Dog sitter;dogsitter;;no;;;lavoro
+G230;Esperienze con Dog Sitter;dogsitter;;no;;;lavoro
+G231;Problemi a portare fuori il cane;dogsitter;;no;;;lavoro
+G232;Mamme, come avete fatto a trovare una babysitter fidata e ...;babysitter;;no;;;lavoro
+G233;Come trovare una brava babysitter: siti on-line o agenzie?;babysitter;;no;;;lavoro
+G234;come fidarsi della babysitter?;babysitter;;no;;;chiuso
+G235;Baby sitter, nonni o asilo nido?;babysitter;;no;;;lavoro
+G236;Cercare una babysitter;babysitter;;no;;;chiuso
+G237;Trovare una babysitter, la cosa più spaventosa che non ho ...;babysitter;;no;;;lavoro
+G238;mamme che cercano baby sitter a ore italiana o straniera;babysitter;;no;;;chiuso
+G239;Trasloco... aiutoooo!!!;traslochi;;no;;;lavoro
+G240;Quanto avete pagato per il vostro trasloco con una ditta di ...;traslochi;;no;;;lavoro
+G241;Help Trasloco;traslochi;;no;;;lavoro
+G242;TRASLOCO SENZA STRESS DA NORD A SUD;traslochi;;no;;;lavoro
+G243;Ma quanto costa un trasloco ?!?!?;traslochi;;no;;;chiuso
+G244;consigli per un trasloco più o meno antistress;traslochi;;no;;;lavoro
+G245;Quando un'impresa di traslochi è veramente affidabile?;traslochi;;no;;;chiuso
+G246;Condizionatore non raffredda;climatizzazione;;no;;;lavoro
+G247;Climatizzatore non raffredda bene?;climatizzazione;;no;;;lavoro
+G248;condizionatore non raffredda piu ?;climatizzazione;;no;;;lavoro
+G249;Cosa succede se dormo con la muffa in camera?;imbianchino;muratore;no;;;lavoro
+G250;Cosa fare se ho la muffa in camera?;imbianchino;muratore;no;;;lavoro
+G251;Perché viene la muffa sul muro?;imbianchino;muratore;no;;;lavoro
+G252;Qual è la paga oraria di una donna delle pulizie?;pulizie;;no;;;lavoro
+G253;Qual è la migliore app per trovare una donna delle pulizie?;pulizie;;no;;;lavoro
+G254;Come rinverdire il prato ingiallito?;giardiniere;;no;;;chiuso
+G255;Come posso risolvere il problema dell'erba ingiallita nel mio giardino?;giardiniere;;no;;;lavoro
+G256;Come far tornare verde il prato?;giardiniere;;no;;;chiuso
+G257;Qual è la ditta che monta i mobili IKEA?;tuttofare;falegname;no;;;lavoro
+G258;Quanto ci vuole per montare un armadio IKEA?;tuttofare;falegname;no;;;lavoro
+G259;Come farsi montare i mobili IKEA?;tuttofare;falegname;no;;;chiuso
+G260;Muffa in camera da letto;imbianchino;muratore;no;;;lavoro
+G261;Umidità e muffa in camera da letto, possibili soluzioni;imbianchino;muratore;no;;;lavoro
+G262;Muffa sul muro;imbianchino;muratore;no;;;lavoro
+G263;'Uccidere' in maniera efficace la muffa sulle pareti,come?;imbianchino;muratore;no;;;lavoro
+G264;Rimozione muffa da muro;imbianchino;muratore;no;;;chiuso
+G265;Aiuto: muffa da condensa e umidità interna oltre l'80%;imbianchino;muratore;no;;;lavoro
+G266;Pulizie domestiche: avete la signora delle pulizie?;pulizie;;no;;;chiuso
+G267;Donna delle pulizie;pulizie;;no;;;lavoro
+G268;Donna pulizie cercasi :-d;pulizie;;no;;;lavoro
+G269;Come trovare una donna delle pulizie senza rivolgersi a ...;pulizie;;no;;;lavoro
+G270;Ciao, cerco una donna per pulizie a casa una volta o due ...;pulizie;;no;;;chiuso
+G271;Regolarizzazione signora delle pulizie 2-3 ore settimanali;pulizie;;no;;;lavoro
+G272;Ot - chi di voi ha la donna delle pulizie?;pulizie;;no;;;lavoro
+G273;Prato ingiallito;giardiniere;;no;;;chiuso
+G274;Prato nuovo - problemi - aiuto!;giardiniere;;no;;;lavoro
+G275;Prato giallo: cosa fare?;giardiniere;;no;;;chiuso
+G276;è difficile montare il PAX Ikea??;tuttofare;falegname;no;;;lavoro
+G277;Esperienze con consegna e montaggio IKEA?;tuttofare;falegname;no;;;chiuso
+G278;Chi ha montato un armadio PAX Ikea?;tuttofare;falegname;no;;;chiuso
+G279;Esperti nel montaggio mobili;tuttofare;falegname;no;;;lavoro
+G280;Montare i mobili ikea..fattibile?;tuttofare;falegname;no;;;lavoro
+G281;Quando una presa fa scintilla, cosa fare?;elettricista;;elettrico;;;lavoro
+G282;Perché la mia presa elettrica fa scintille?;elettricista;;elettrico;;;lavoro
+G283;Cosa significa quando un interruttore genera scintille?;elettricista;;elettrico;;;lavoro
+G284;Cosa succede se c'è acqua sulla ciabatta elettrica?;elettricista;;acqua-elettrico;;;lavoro
+G285;Cosa devo fare se c'è acqua nella presa elettrica?;elettricista;;acqua-elettrico;;;lavoro
+G286;Cosa devo fare se l'impianto elettrico è bagnato?;elettricista;;acqua-elettrico;;;chiuso
+G287;Cosa significa quando la caldaia emette fumo?;climatizzazione;;monossido;;;lavoro
+G288;Il fumo della caldaia è tossico?;climatizzazione;;monossido;;;lavoro
+G289;È normale che la mia caldaia a condensazione emetta fumo bianco?;climatizzazione;;no;;;lavoro
+G290;Cosa significa quando sento un odore di bruciato dalla presa elettrica?;elettricista;;elettrico;;;chiuso
+G291;Cosa significa se sento un cattivo odore dalle prese elettriche?;elettricista;;elettrico;;;chiuso
+G292;Cosa vuol dire quando si sente puzza di bruciato?;elettricista;;elettrico;;;lavoro
+G293;PROBLEMA - scossa ronzio e scintille dalle prese;elettricista;;elettrico;;;lavoro
+G294;Scintilla/lampo quando la spina viene inserita nella presa;elettricista;;elettrico;;;lavoro
+G295;Cosa faccio con la presa che fa scintille?;elettricista;;elettrico;;;lavoro
+G296;Quadro elettrico e infiltrazioni di acqua;elettricista;;acqua-elettrico;;;lavoro
+G297;Impianto allagato;elettricista;;acqua-elettrico;;;lavoro
+G298;Problema con il fumo caldaia;climatizzazione;;monossido;;;lavoro
+G299;Odore Scatola Presa Di Corrente;elettricista;;elettrico;;;lavoro
+G300;La presa di corrente puzza di plastica bruciata, anche se ...;elettricista;;elettrico;;;lavoro
+G301;Come sbloccare il motore della tenda da sole?;;;no;tende da sole;;chiuso
+G302;Cosa posso fare se il telecomando della mia tenda da sole non funziona?;;;no;tende da sole;;lavoro
+G303;Cosa fare se l'antenna non prende tutti i canali?;;;no;antennista;;lavoro
+G304;Cosa fare quando la TV non prende i canali?;;;no;antennista;;lavoro
+G305;Come mai il mio televisore non riceve il segnale dall'antenna?;;;no;antennista;;chiuso
+G306;Come capire se il problema è l'antenna o la TV?;;;no;antennista;;lavoro
+G307;Come spurgare un pozzo nero?;;;no;spurghi;;lavoro
+G308;Quanto costa uno spurgo di un pozzo nero?;;;no;spurghi;;chiuso
+G309;Ogni quanto tempo devo svuotare il mio pozzo nero?;;;no;spurghi;;lavoro
+G310;Come sterminare le blatte dentro casa?;;;no;disinfestazione;;lavoro
+G311;Quanto costa disinfestare un appartamento dalle blatte?;;;no;disinfestazione;;chiuso
+G312;Come si chiama quello che ripara le finestre?;falegname;;no;;;lavoro
+G313;Quando si rompe un vetro, cosa fare?;;;no;vetraio;;lavoro
+G314;È possibile riparare un vetro rotto?;;;no;vetraio;;chiuso
+G315;Cosa bisogna fare quando la lavatrice non scarica l'acqua?;;;no;elettrodomestici;;lavoro
+G316;Perché la mia lavatrice non scarica l'acqua?;;;no;elettrodomestici;;lavoro
+G317;Come sbloccare la pompa scarico della lavatrice?;;;no;elettrodomestici;;lavoro
+G318;Togliere piastrelle da un muro senza romperle;muratore;;no;;;chiuso
+G319;Vernice non uniforme;imbianchino;;no;;;chiuso
+G320;Ditta ristrutturazione roma;muratore;;no;;;lavoro
+G321;Fattura disostruzione scarico appartamento;idraulico;;no;;;lavoro
+G322;Pitturare gas beton;imbianchino;;no;;;lavoro
+G323;Massetto con quote sbagliate;muratore;;no;;;chiuso
+G324;Colonnato in giardino;muratore;giardiniere;no;;;lavoro
+G325;Sostituzione tubazione fognatura;idraulico;muratore;no;;;lavoro
+G326;Carta igienica che ostruisce pozzetto;idraulico;;no;;;lavoro
+G327;Sostituzione scaldabagno elettrico con quello a gas, possibile?;idraulico;climatizzazione;no;;;chiuso
+G328;Crepa nel solaio;muratore;;no;;;lavoro
+G329;Fughe pavimento che si polverizzano;muratore;;no;;;lavoro
+G330;Impianto elettrico in cantina e muri portanti;elettricista;muratore;no;;;lavoro
+G331;Costo muro di cinta;muratore;;no;;;lavoro
+G332;Eliminare anta porta finestre;falegname;fabbro;no;;;lavoro
+G333;Infiltrazione box;muratore;idraulico;no;;;chiuso
+G334;Umidità;muratore;imbianchino;no;;;chiuso
+G335;Pulizia autobloccanti giardino;pulizie;giardiniere;no;;;lavoro
+G336;Puzza di fogna da cassette elettriche;idraulico;;no;;;lavoro
+G337;Prezzo giornata per cambio da vasca a doccia;idraulico;muratore;no;;;lavoro
+G338;Cavillature durante ristrutturazione;muratore;;no;;;lavoro
+G339;Impianto elettrico per frigo;elettricista;;no;;;lavoro
+G340;Serratura esterna portoncino alluminio;fabbro;;no;;;chiuso
+G341;Acqua dal comignolo;muratore;;no;;;lavoro
+G342;Umidità di risalita: vespaio?;muratore;;no;;;lavoro
+G343;Fissaggio piastre ringhiera con turboviti;fabbro;;no;;;lavoro
+G344;Lavatrice al posto di lavastoviglie si può?;idraulico;;no;;;lavoro
+G345;Scarico wc 5 metri;idraulico;;no;;;lavoro
+G346;Scarico lavabo cucina;idraulico;;no;;;lavoro
+G347;Odore fogna dopo ristrutturazione;idraulico;;no;;;chiuso
+G348;Parete esterna ammalorata;muratore;;no;;;lavoro
+G349;Ciclo intonacatura cantina interrata;muratore;;no;;;lavoro
+G350;Porta tende a chiudersi.;falegname;;no;;;lavoro
+G351;Prodotto per le fughe delle piastrelle.;muratore;;no;;;chiuso
+G352;Informazioni pittura interni;imbianchino;;no;;;chiuso
+G353;Ripristino facciata rustica;muratore;;no;;;lavoro
+G354;Ripristino muretto di contenimento;muratore;;no;;;lavoro
+G355;Ristrutturazione casa, problema nuovi scarichi per secondo bagno;idraulico;muratore;no;;;lavoro
+G356;Recinzione cane su prato;giardiniere;fabbro;no;;;lavoro
+G357;Efficienza scarico cappa cucina;tuttofare;elettricista;no;;;chiuso
+G358;Sistemazione intonaco facciata;muratore;;no;;;lavoro
+G359;Strano strato di carta ?;imbianchino;;no;;;lavoro
+G360;Aiuto a sbloccare portafinestra;falegname;fabbro;no;;;lavoro
+G361;Crepe su colonne cancello;muratore;;no;;;lavoro
+G362;Nicchia doccia da adeguare;muratore;;no;;;lavoro
+G363;Cattivo odore muro;muratore;idraulico;no;;;lavoro
+G364;Sostituzione saracinesca maniglia sciacquone water;idraulico;;no;;;lavoro
+G365;Consigli per lavori in cartongesso vicino a termosifoni e finestre;muratore;;no;;;lavoro
+G366;Riduttore per tapparelle;tuttofare;;no;;;chiuso
+G367;Isolare pareti e soffitto caldissime;muratore;;no;;;lavoro
+G368;Riparazioni da infiltrazioni zoccolino del balcone;muratore;;no;;;lavoro
+G369;Ripristino bucciato;imbianchino;;no;;;chiuso
+G370;Parere problema infissi pvc;falegname;;no;;;lavoro
+G371;Problema ristrutturazione;muratore;;no;;;lavoro
+G372;Installazione pergotenda su balcone;;;no;tende da sole;;lavoro
+G373;Problemi di infiltrazione acqua dopo sostituzione piatto doccia;idraulico;muratore;no;;;lavoro
+G374;Climatizzatore mansarda;climatizzazione;;no;;;lavoro
+G375;Ripresentazione delle crepe nei muri dopo iniezione di resine;muratore;;no;;;lavoro
+G376;Consiglio pittura;imbianchino;;no;;;lavoro
+G377;Garanzia binario porta scorrevole;falegname;;no;;;lavoro
+G378;Come aggiustare una porta che non si chiude bene?;falegname;;no;;;chiuso
+G379;Come posso risolvere il problema della mia porta finestra in legno che non si chiude?;falegname;;no;;;lavoro
+G380;Come posso raddrizzare una porta in legno?;falegname;;no;;;chiuso
+G381;Cosa devo fare se il mio condizionatore perde acqua dallo split?;climatizzazione;;no;;;lavoro
+G382;Come far smettere di gocciolare il condizionatore?;climatizzazione;;no;;;lavoro
+G383;Perché la pressione della caldaia si abbassa senza perdite d'acqua?;climatizzazione;;no;;;chiuso
+G384;Perché la pressione della mia caldaia scende velocemente?;climatizzazione;;no;;;chiuso
+G385;Perché si abbassa sempre la pressione dell'acqua della caldaia?;climatizzazione;;no;;;lavoro
+G386;Quanto costa tagliare una siepe alta 2 metri?;giardiniere;;no;;;lavoro
+G387;Come posso potare una siepe troppo alta?;giardiniere;;no;;;lavoro
+G388;Quanto si prende un giardiniere per potare una siepe?;giardiniere;;no;;;chiuso
+G389;Cosa devo fare se il citofono non suona?;elettricista;;no;;;lavoro
+G390;Perché il mio citofono non squilla?;elettricista;;no;;;lavoro
+G391;Perché il videocitofono non suona?;elettricista;;no;;;lavoro
+G392;Come posso riparare una zanzariera rotta?;tuttofare;;no;;;lavoro
+G393;Come posso riparare una zanzariera con la molla rotta?;tuttofare;;no;;;lavoro
+G394;Come riparare una zanzariera scorrevole rotta?;tuttofare;;no;;;lavoro
+G395;È possibile lasciare un cane da solo tutto il giorno?;dogsitter;;no;;;lavoro
+G396;Quanto viene pagata una dog sitter al giorno?;dogsitter;;no;;;lavoro
+G397;È possibile lasciare un cane da solo per 8 ore al giorno?;dogsitter;;no;;;lavoro
+G398;Perché il camino fa fumo in casa?;;;no;spazzacamino;;chiuso
+G399;Perché il mio camino fa fumo anche se ho la finestra chiusa?;;;no;spazzacamino;;lavoro
+G400;Come capire se ci sono topi nel sottotetto?;;;no;disinfestazione;;lavoro
+G401;Come si possono eliminare i topi del sottotetto?;;;no;disinfestazione;;lavoro
+G402;Cosa posso fare se il mio frigorifero non raffredda più?;;;no;elettrodomestici;;chiuso
+G403;Quanto costa riparare un frigo che non raffredda?;;;no;elettrodomestici;;chiuso
+G404;Il compressore del mio frigorifero funziona, ma non raffredda. Cosa posso fare?;;;no;elettrodomestici;;lavoro
+G405;Perché il mio cavo elettrico si scalda?;elettricista;;elettrico;;;chiuso
+G406;Quali sono le cause più comuni di un cavo elettrico bruciato?;elettricista;;elettrico;;;chiuso
+G407;Quanto prende un imbianchino per pitturare una stanza?;imbianchino;;no;;;lavoro
+G408;Quanto costa far pitturare una stanza di 20 metri quadri?;imbianchino;;no;;;chiuso
+G409;Quanto costa pitturare una stanza 4 per 4?;imbianchino;;no;;;lavoro
+G410;Come capire se dalla caldaia esce monossido di carbonio?;climatizzazione;;monossido;;;chiuso
+G411;Quando suona il rilevatore di monossido di carbonio?;climatizzazione;;monossido;;;lavoro
+G412;Zincare su zincatura già presente cancello entrata 2 ante;fabbro;;no;;;chiuso
+G413;Aloni gialli dietro cornice a parete;imbianchino;;no;;;lavoro
+G414;ho carteggiato il muro e adesso la grana non è uniforme;imbianchino;;no;;;lavoro
+G415;Macchie da vino su mobile;pulizie;falegname;no;;;lavoro
+G416;Pulizia calcare lastre cemento giardino;pulizie;;no;;;chiuso
+G417;installare lavabo/pilozza sopra lavatrice esistente;idraulico;;no;;;lavoro
+G418;scarico del water e carta igienica che gira e rigira...;idraulico;;no;;;lavoro
+G419;Pulizia e verniciature termosifoni;imbianchino;;no;;;lavoro
+G420;SCARICO VASCA DA BAGNO;idraulico;;no;;;lavoro
+G421;Come pulire guano di piccioni da balcone;pulizie;;no;;;chiuso
+G422;vetri aloni persistenti;pulizie;;no;;;chiuso
+G423;Terrazzo in ardesia da pulire;pulizie;;no;;;lavoro
+G424;HELP! Aloni su cucina bianca laccata opaca;pulizie;;no;;;lavoro
+G425;Perdite scarico vasca freestanding;idraulico;;no;;;lavoro
+G426;macchie sul pavimento;pulizie;;no;;;chiuso
+G427;Macchia nera calore;imbianchino;;no;;;lavoro
+G428;Poltrone e sofa: lavare rivestimento divano poltrone e sofa;pulizie;;no;;;lavoro
+G429;Allarme;elettricista;;no;antifurto;;lavoro
+G430;COLORE PARETI OPEN SPACE;imbianchino;;no;;;lavoro
+G431;Corrente che scatta quotidianamente ad un orario;elettricista;;no;;;chiuso
+G432;nascondere cavi mobile sospeso;tuttofare;elettricista;no;;;lavoro
+G433;Pulizia Cotto Grezzo;pulizie;;no;;;lavoro
+G434;Pulizia marmo bagno;pulizie;;no;;;lavoro
+G435;Accensione / Spegnimento Clima DAIKIN;climatizzazione;;no;;;lavoro
+G436;Sporco di cantiere in impianto canalizzato;climatizzazione;;no;;;lavoro
+G437;PROBLEMA ANTIGELO;climatizzazione;;no;;;chiuso
+G438;sostituzione scaldasalviette tradizionali con elettrico;idraulico;elettricista;no;;;lavoro
+G439;Consiglio caldaia, grazie.;climatizzazione;;no;;;chiuso
+G440;CONSIGLIO BOILER ELETTRICO ORIZZONTALE;idraulico;elettricista;no;;;lavoro
+G441;Umidità in casa 70/80% con vmc e clima acceso;climatizzazione;;no;;;chiuso
+G442;Posizionamento termosifone AIUTO!!!!;idraulico;climatizzazione;no;;;lavoro
+G443;Aiuto per apertura split Mitsubishi;climatizzazione;;no;;;lavoro
+G444;Spostare il radiatore in camera da letto;idraulico;climatizzazione;no;;;lavoro
+G445;Consiglio quanti clima in questo appartamento;climatizzazione;;no;;;lavoro
+G446;rumori strani dal soffitto;;;no;;sì;chiuso
+G447;Manutenzione caldaia non eseguita;climatizzazione;;no;;;lavoro
+G448;Problema o stupidità;;;no;;sì;lavoro
+G449;Info costo preventivo opere pittura interne;imbianchino;;no;;;lavoro
+G450;Umidità di risalita subito dopo le prime piogge;muratore;;no;;;lavoro
+G451;Macchie e danno superficiale dopo pulizia stucco veneziano;imbianchino;;no;;;lavoro
+G452;Pittura che sfoglia;imbianchino;;no;;;lavoro
+G453;Pavimento storto porta blindata montata necessaria soglia;fabbro;muratore;no;;;lavoro
+G454;Consigli idropittura per cartongesso ambienti umidi;imbianchino;;no;;;lavoro
+G455;Infiltazioni lastrico solare;muratore;;no;;;lavoro
+G456;Pareti in pietra seminterrato che si sgretolano;muratore;;no;;;chiuso
+G457;Cosa usare fessura legno compensato;falegname;;no;;;chiuso
+G458;AIUTO : BAGNO NUOVO PUZZA!!!;idraulico;;no;;;lavoro
+G459;Sigillare foro in muro cemento armato contro terra;muratore;;no;;;lavoro
+G460;Costo tramezza;muratore;;no;;;lavoro
+G461;Aiuto sottofondo / massetto;muratore;;no;;;chiuso
+G462;Un Ventilatore sul controsoffitto in cartongesso;elettricista;;no;;;lavoro
+G463;Tubo di scarico cappa aspirante;tuttofare;elettricista;no;;;lavoro
+G464;chiusura fessura tra parquet e battiscopa;tuttofare;falegname;no;;;lavoro
+G465;Come sigillare box doccia;idraulico;tuttofare;no;;;lavoro
+G466;Controsoffitti e travi a vista. HELP!;muratore;;no;;;lavoro
+G467;Sostituzione cilindro serratura di una persiana;fabbro;;no;;;lavoro
+G468;Dubbio su tipologia zanzariera;tuttofare;;no;;;lavoro
+G469;Consiglio zanzariere;tuttofare;;no;;;lavoro
+G470;Lavastoviglie lava male: possibili cause?;;;no;elettrodomestici;;lavoro
+G471;Instabilità pannello lavastoviglie a scorrimento (sliding);;;no;elettrodomestici;;lavoro
+G472;Lavastoviglie NEFF: come spegnerla?;;;no;;sì;lavoro
+G473;lumache;giardiniere;;no;;;lavoro
+G474;tende da sole;;;no;tende da sole;;lavoro
+G475;Smontaggio rullo tenda da sole... Help Me!!!;;;no;tende da sole;;lavoro
+G476;Fioriera sopra unità esterna pompa di calore/condizionatore;climatizzazione;giardiniere;no;;;lavoro
+G477;Piante per giardino secco;giardiniere;;no;;;lavoro
+G478;suggerimento piante resistenti in balcone e schermanti;giardiniere;;no;;;lavoro
+G479;Consiglio su pergotenda;;;no;tende da sole;;lavoro
+G480;Pergola + tende a bracci;;;no;tende da sole;;chiuso
+G481;Copertura per scaldabagno elettrico installato all'esterno;idraulico;;no;;;chiuso
+G482;Rubinetto;idraulico;;no;;;lavoro
+G483;Doccia 70x70 tra 3 pareti;idraulico;muratore;no;;;lavoro
+G484;Dislivello pavimentazione esterna;muratore;;no;;;lavoro
+G485;Troppi pozzetti nello scarico fognario;idraulico;;no;;;chiuso
+G486;Pensili e cappa senza forare le piastrelle;tuttofare;;no;;;chiuso
+G487;Sifone visibile bidet sospeso?;idraulico;;no;;;lavoro
+G488;Lucernario;falegname;muratore;no;;;lavoro
+G489;Seduta divano elettrico bloccata;;;no;riparazione divani;;chiuso
+G490;Installazione zanzariera su misura scorrevole;tuttofare;;no;;;lavoro
+G491;Pavimento in gres lucido graffiato;muratore;pulizie;no;;;lavoro
+G492;Consumo anomalo condizionatore;climatizzazione;;no;;;chiuso
+G493;Pulizia dei fori di drenaggio degli infissi in pvc;pulizie;;no;;;lavoro
+G494;Purificatore d'aria che puzza;;;no;;sì;lavoro
+G495;Rimozione sporcizia dalla guarnizione lavatrice;pulizie;;no;;;lavoro
+G496;Porte in mdf a contatto con acqua ed umidità;falegname;;no;;;lavoro
+G497;Problemi con trattamento parquet;falegname;;no;;;lavoro
+G498;Problema seduta elettrica divano;;;no;riparazione divani;;lavoro
+G499;Problemi con rubinetteria utilizzata poco;idraulico;;no;;;chiuso
+G500;Struttura per dondolo sospeso;tuttofare;fabbro;no;;;lavoro
+S001;Cerchiamo una ragazza seria, dolce e affidabile per due bambini, di 9 e 5 anni. L'impegno consiste nel prenderli a scuola, preparare un p...;babysitter;;no;;;lavoro
+S002;Ciao! Cerchiamo una babysitter occasionale per mia figlia di 3 anni (è possibile che sia in casa anche l'altra figlia di 8 anni) nei mome...;babysitter;;no;;;chiuso
+S003;Cerco ragazza madrelingua inglese per giocare in inglese due volte a settimana di pomeriggio con mia figlia di 5 anni.;babysitter;;no;;;lavoro
+S004;Stiamo cercando una persona di supporto per la nostra famiglia, in particolare per prendere all'uscita da scuola [omesso] (10) e [omesso] (8...;babysitter;;no;;;lavoro
+S005;Sto cercando una babysitter due dolcissimi bimbi di 5 e 6 anni. Cerco qualcuno che abbia flessibilità e disponibilità soprattutto per le ...;babysitter;;no;;;lavoro
+S006;Cerchiamo babysitter con esperienza, empatia pazienza e dolcezza. Tassativamente non fumatrice .;babysitter;;no;;;lavoro
+S007;Sto cercando baby sitter solo per il sabato;babysitter;;no;;;lavoro
+S008;Salve, per esigenze di lavoro da Gennaio credo abbiamo necessità di una persona che si dedicherà a mio figlio che avrà pensi tre mesi. Se...;babysitter;;no;;;lavoro
+S009;Ho una figlia di nove anni che esce da scuola alle ore 14 tutti i giorni.;babysitter;;no;;;lavoro
+S010;Cerco babysitter per la sera e la notte Sto cercando una babysitter affidabile per orari serali e notturni. Richiesta esperienza con bamb...;babysitter;;no;;;lavoro
+S011;Lavoro su turni che vengono stabiliti con 3-4 settimane di anticipo. Cerco baby sitter per mio figlio di 9 anni che possa fargli compagni...;babysitter;;no;;;chiuso
+S012;Ho necessità di una baby sitter per un bambina di 6 mesi, tendenzialmente ogni mattina (può variare in base ai miei turni di lavoro);babysitter;;no;;;lavoro
+S013;Ho necessità di una tata a tempo pieno perché lavoro dal lunedì alla domenica, con 1 giorno libero a settimana, il mio compagno ha 2 gior...;babysitter;;no;;;chiuso
+S014;Ciao! Moglie, marito e bimba di poco più di un anno si trasferiscono a [omesso] a partire dal primo di agosto. La richiesta è Tagesm...;babysitter;;no;;;chiuso
+S015;Aiuto a preparare le bambine la mattina per andare a scuola Successivamente, nelle ore pomeridiane ( dopo asilo) Occuparsi di loro fino ...;babysitter;;no;;;lavoro
+S016;cerco aiuto per accompagnare i miei figli agli allenamenti sportivi;babysitter;;no;;;lavoro
+S017;Cerco una persona che possa essere disponibile a stare con mia figlia di 7 anni occasionalmente per serate o altre ore pomeridiane variab...;babysitter;;no;;;chiuso
+S018;Stiamo cercando una ragazza che possa essere disponibile durante l'arco della settimana a prendere nostra figlia di 7 anni a scuola alle ...;babysitter;;no;;;lavoro
+S019;salve, mi chiamo [omesso] , mamma di [omesso]. [omesso] è una bambina molto dolce ma anche impegnativa è sempre in movimento. purtroppo ho su...;babysitter;;no;;;lavoro
+S020;Salve sono [omesso] e io e mia moglie cerchiamo una persona che ci aiuti a gestire al meglio gli impegni della nostra famiglia, l'impegno set...;babysitter;;no;;;lavoro
+S021;Cerco una persona che prenda mia figlia età 17 anni a scuola e la riporti a casa;babysitter;;no;;;chiuso
+S022;La tata dovrebbe accudire le bambine dopo scuola, preparare lori il pranzo, aiutare con i compiti e accompagnarleperle attività extrascol...;babysitter;;no;;;lavoro
+S023;Cerco baby sitter giovane, affidabile, dolce, paziente, puntuale, gentile, educata, accomodante, responsabile, ordinata, disponibile, ser...;babysitter;;no;;;lavoro
+S024;Cerco baby sitter presso la mia abitazione in [omesso] la mattina oppure il pomeriggio;babysitter;;no;;;chiuso
+S025;È il matrimonio di mia figlia la sorella più grande e ho altri 2 bambini uno di 4 e mezzo che è abbastanza autonomo e [omesso] di 3 e mez...;babysitter;;no;;;lavoro
+S026;Cerco una tata, che prenda la mia bimba di 3 anni, all'uscita da scuola alle 3, e poi la porti o a casa o al parco. Per 2-3h, più volte o...;babysitter;;no;;;lavoro
+S027;Carco babysitter per un pomeriggio a settimana anche nei mesi di giugno e luglio e per due settimane ad agosto nelle ore antimeridiane. P...;babysitter;;no;;;lavoro
+S028;Ciao cerco una babysitter per un mese dal mese di luglio alla prima di agosto, per tutte le mattine fino alle 14 e 30. È indispensabile ...;babysitter;;no;;;chiuso
+S029;salve! cerco una babysitter part-time per due giorni a settimana (pref.mar e giov) dalle ore 16 alle 18 , automunita, non fumatrice.;babysitter;;no;;;lavoro
+S030;Ripeto sono rimasto invalido in carrozzina e da solo a casa mi serve un servizio di un'ora al giorno per fare scendere 20 minuti ognuno dei tre cani...;dogsitter;;no;;;lavoro
+S031;Ciao ci servirebbe un dogsitter che potesse gestire il nostro cane jack presso il suo domicilio per una settimana poiché partiamo e abbiamo bisogno che qualcuno lo curi...;dogsitter;;no;;;chiuso
+S032;Ho necessità di sapere quanto mi costerebbe un dog sitter per due uscite, mattina e sera, una delle quali di un'oretta e una di una ventina di minuti...;dogsitter;;no;;;lavoro
+S033;Ho du cani: un maltese di 12 anni sterilizzato vaccinato e un meticcio tipo chiwawa di 8 anni vaccinata non sterilizzata. Mi occorrerebbe l’affido per tutto il giorno...;dogsitter;;no;;;chiuso
+S034;Ho bisogno di assistenza al mio cane anziano per alimentazione e bisogni al mattino fino alle ore 15-16 solo nei giorni feriali, escluso il venerdì. Il cane purtroppo non cammina...;dogsitter;;no;;;lavoro
+S035;Mi serve almeno fino a fine giugno i cani devono uscire una volta la mattina è un’ala sera . Deve scendere prima uno e poi gli altri due...;dogsitter;;no;;;lavoro
+S036;Ciao [omesso], leggo nell'annuncio che non sei disponibile i pomeriggi dopo le 16, ma visto che domani è sabato provo a chiedertelo comunque: avresti possibilità di ospitare la mia jack russell...;dogsitter;;no;;;chiuso
+S037;Visita domiciliare gatti, dargli da mangiare e bere no farmaci. Durante visita accendere condizionatore per creare un ambiente fresco...;dogsitter;;no;;;chiuso
+S038;Ho un maremmano incrociato con un setter (adottato da canile di cosenza all eta di 3 mesi e mezzo) Animale buono con chi conosce ma un po aggressivo con sconosciuti...;dogsitter;;no;;;lavoro
+S039;Il cane si chiama drum, non ha esigenze particolari. Se esce un'ora al mattino e un'ora al tardo pomeriggio/sera si stanca a sufficienza...;dogsitter;;no;;;chiuso
+S040;Il mio dogsitter è stato ricoverato in ospedale d'urgenza e ne avrà per molto. Cerco un dogsitter che porti a spasso la mattina otto e bea e al parco...;dogsitter;;no;;;lavoro
+S041;Buongiorno sono [omesso] abito in zona [omesso], a breve avrò un cucciolo di bassotto di 3 mesi . Lo prenderò i primi di agosto e siccome sono in ferie vorrei contattare e conoscere una dog sitter...;dogsitter;;no;;;lavoro
+S042;Osvaldo è un segugio italiano preso in canile oramai un anno e mezzo fa e che soffre di ansia di abbandono. In alcuni giorni della settimana, per motivi di lavoro o di studio della famiglia rischiamo...;dogsitter;;no;;;lavoro
+S043;Avrei bisogno di qualcuno che venga a portare fuori il cane dei miei genitori alla sera , per un giretto nei dintorni di una mezz'ora perche' i miei genitori sono anziani e alla sera sono stanchi ...;dogsitter;;no;;;lavoro
+S044;Buongiorno, Avrei bisogno 2 passeggiate al giorno dal 17 al 28 giugno per i miei due bassotti, idealmente fine mattinata e metà pomeriggio...;dogsitter;;no;;;chiuso
+S045;Ciao sono [omesso] padrone di roan un american stafforshire è un patatone ma non simpatizza gli altri maschi per il resto è bravo mi servirebbe nella giornata del 14 settembre 2/3 passeggiate...;dogsitter;;no;;;lavoro
+S046;Sarò in una struttura hotel che accettano i cani ma senza creare problemi o dsiturbo. Siccome la femmina ha l'ansia dell'abbandono e se sta sola abbaia, questo provoca problemi all'hotel...;dogsitter;;no;;;lavoro
+S047;Abitiamo in zona [omesso] a torino, avremmo la necessità in quanto abbiamo trovato una buona offerta per gardaland, di poter lasciare i nostri cani , un meticcio di 4 anni e un pastore tedesco...;dogsitter;;no;;;lavoro
+S048;Desy è una cagnolina dolcissima, ma non riesci a stare sola nel suo nuovo appartamento. Da sola abbaia e ulula...;dogsitter;;no;;;lavoro
+S049;Io e il mio compagno lavoriamo full time e la nostra cucciola sta parecchie ore sole, avevamo quindi interesse a trovare qualcuno che si occupi di lei durante l'arco di una/due giornate la settimana.;dogsitter;;no;;;chiuso
+S050;Buongiorno, abito zona [omesso] a torino, avrei bisogno di lei per l'uscita dell'ora di pranzo, per gli altri orari ho persone che abitano in casa ma son via per lavoro di giorno...;dogsitter;;no;;;lavoro
+S051;Salve, la nostra cagnetta necessita un'uscita al giorno verso le 14.00, da prelevare a casa nostra. Ha circa tre anni, molto tenera con chi conosce...;dogsitter;;no;;;lavoro
+S052;Kira è poco socievole con gli altri cani quindi avrebbe bisogno di una pensione esclusiva, non in condivisione...;dogsitter;;no;;;lavoro
+S053;Si tratterebbe di prendersi cura una tantum del cane. Io parto per una vacanza e lascerei il cane a mia figlia...;dogsitter;;no;;;lavoro
+S054;Si tratta di un cane che è stato abbandonato quindi è diffidente con gli esseri umani ma dopo un paio di volte diventa obbediente mi serve una persona che gli faccia compagnia mentre sono a lavoro...;dogsitter;;no;;;lavoro
+S055;È un cane molto amato, sta con mia figlia a [omesso] che non ce la fa più ad uscire dal lavoro x 1/2 ora( lavora in zona) andare a casa e farla solo mangiare...;dogsitter;;no;;;chiuso
+S056;Napoli, zona [omesso], cerco dogsitter serio, coscienzioso, residente in zona, vero amante animali, per portare a passeggio i miei 4 cagnolini, 2 barboncini e 2 maltesini...;dogsitter;;no;;;chiuso
+S057;Il mio cane buono e affettuoso con tutti, necessita di 2 passeggiate al giorno, mattina e pomeriggio, orari da concordare, massimo di 20 minuti (ma bastano 15 a passeggiata) in quanto è anziano...;dogsitter;;no;;;lavoro
+S058;Io cerco un/a dog sitter a cui possa lasciare il cane durante i periodi delle mie vacanze che alcune volte non sono compatibili per il cane ( non lo posso portare)...;dogsitter;;no;;;lavoro
+S059;Salve io ho un cucciolo di 3 mesi, ma la mattina (dal lunedì al venerdì) dalle 9 all’una non posso tenerlo. Mi trovo in zona [omesso] quindi per me sarebbe comodo un dog sitter in quella zona...;dogsitter;;no;;;lavoro
+S060;Mi serve una persona di fiducia che accolga il mio cane quando non ci sono al momento mi servono le date dal 21 agosto al 1 settembre...;dogsitter;;no;;;lavoro
+S061;Ci servirebbe uno stallo per il nostro cagnolino nella settimana dal 13 al 20 di agosto. Possiamo portare noi i croccantini, la sua cuccia e tutte le cose di cui necessita...;dogsitter;;no;;;lavoro
+S062;Avrei bisogno di qualcuno che possa tenermi il cane dalla mattina fino alle 17/18 per 4 giorni portandolo naturalmente a passeggio e a fare i suoi bisogni...;dogsitter;;no;;;lavoro
+S063;Cerco qualcuno che possa portare a passeggio il mio cane ( taglia medio grande) mattina e sera.Zona [omesso]. Contattatemi sono se realmente ...;dogsitter;;no;;;lavoro
+S064;Ciao! Cerco qualcuno affidabile per accompagnare il mio cane a fare una passeggiata quotidiana. Il cane è di taglia media, socievole con persone e altri cani.;dogsitter;;no;;;lavoro
+S065;Cerco qualcuno che faccia uscire il cane per i bisogni, al mattino e alla ...;dogsitter;;no;;;chiuso
+S066;Vorrei sapere se e’ possibile avere un preventivo per un trasloco completo di un’abitazione di 90 mq (senza cucina) roma su roma. Le due abitazioni si trovano 50 metri l’una dall'altra...;traslochi;;no;;;lavoro
+S067;Vorrei traslocare 14 attrezzi di palestra, da piano terra in [omesso] a piano interrato in [omesso] Servono almeno 4 facchini per fare il lavoro...;traslochi;;no;;;chiuso
+S068;Buongiorno, avrei bisogno di un preventivo per: 1 cucina 248 1 letto 210*156 1 comodino 40*55*48 10 casettiere ikea 80*80*48 2 scarpiere...;traslochi;;no;;;chiuso
+S069;Non ci sono mobili da trasportare, verrà tutto imballato in approssimativamente 25 scatole, forse meno. Ci sono degli oggetti non imballabili ovvero una cyclette...;traslochi;;no;;;lavoro
+S070;Le scatole di vestiti sono impilabili e leggere, facilmente trasportabili con le maniglie. Farei trovare il carico al piano terra nell'androne a pochi metri dal parcheggio...;traslochi;;no;;;lavoro
+S071;Ritirare un tavolo a [omesso], portarlo a [omesso], lì ritirare un frigorifero. Poi recarsi a [omesso] per smontare e ritirare 6 moduli di una cucina...;traslochi;;no;;;lavoro
+S072;Il trasporto è di una rete matrimoniale elettrica misura: 160x190 Si prende alla [omesso] al piano 3 e si porta a [omesso], al piano terra (ci sono 5 scalini)...;traslochi;;no;;;chiuso
+S073;Entrambi gli appartamenti sono al primo piano, accessibili con ascensore. Nello specifico devo trasportare: - Una madia (170 x 40 x 210 cm) - Un mobiletto tv...;traslochi;;no;;;lavoro
+S074;Da traslocare due divani uno tre posti uno due posti (poltrone e sofà)un letto matrimoniale (per dormire, materasso, un mobile vetrina da salone, una lavatrice , una lava...;traslochi;;no;;;chiuso
+S075;Si tratta di un trasferimento da [omesso] a [omesso] (700 metri). Si tratta di un microonde, una scopa elettrica e valigie e scatole di abbigliamento...;traslochi;;no;;;lavoro
+S076;Quantità mobili: 2 materassi singoli e due reti singole, 2 madie, 1 comò con marmo, 1 tavolo da lavoro, 1 da cucina , 1 scrivania, 1 poltrona, 2 poltroncine, 7 sedie...;traslochi;;no;;;lavoro
+S077;Il carico prevede due tappe a milano nello stesso viaggio: [omesso] (smontaggio mobili grandi) e [omesso] (3 piano con ascensore, solo carico scatole)...;traslochi;;no;;;chiuso
+S078;Salve, Necessito di spostare in data 30 giugno 2021 (preferibilmente di mattina) da milano - Zona [omesso] (2 piano) a roma - Zona [omesso] (4 piano) i seguenti oggetti...;traslochi;;no;;;lavoro
+S079;Devo traslocare la camera matrimoniale (letto + armadio l3.6m x h2.5m + settimanale) e la sala (divano 2m, mobile (circa l2m x h2m) e tavolo (1.2m x 1.2m)...;traslochi;;no;;;lavoro
+S080;Prossima settimana (dal 05/08 a 09/08, non so ancora il giorno preciso) mi verrà consegnato un tavolo 226x123 cm (100kg circa). Ho bisogno di 2-3 uomini che mi portino il tavolo...;traslochi;;no;;;chiuso
+S081;Devo spostare un divano da una casa a una altra. Non è un vero trasloco, mi serve la autoscala per portare dal piano 4 a terra il divano e farne salire uno nuovo...;traslochi;;no;;;lavoro
+S082;12/15 scatoloni di medie dimensioni con oggetti personali, 1 valigia grande, 1 borsone medio, 1 tv nella sua scatola, 5 quadri di medie dimensioni, 1 specchio tondo medio...;traslochi;;no;;;chiuso
+S083;Abbiamo necessità si stoccare i mobili e le scatole per circa 2 mesi mentre la nuova casa viene ristrutturata...;traslochi;;no;;;lavoro
+S084;Non abbiamo mobili da smontare e rimontare, ma solo scatole di cartone 25/30 vigie con abiti e porta abiti da appendere, vasi con piante, un divanetto...;traslochi;;no;;;lavoro
+S085;Divano antico ma ancora robusto - Le scale per lo scarico consentono di curvare agevolmente - E' possibile sostare in strada per il carico...;traslochi;;no;;;lavoro
+S086;Il trasloco comprende una cucina componibile che cercherò di far trovare già smontata e se riesco anche imballata. Ha una colonna frigo alta ed una colonna forno...;traslochi;;no;;;chiuso
+S087;Buongiorno, entro 6/7 mesi dovrei fare un trasloco da mantova a torino. A mantova vivo in una villetta a schiera in zona residenziale, a torino sarò in un appartamento...;traslochi;;no;;;lavoro
+S088;Trasloco da un appartamento di circa 150 metri: -Letto matrimoniale + materasso -Lettini singoli + materassi -Comò camera da letto -Tavoli e tavolo soggiorno cucina...;traslochi;;no;;;lavoro
+S089;Il carico della merce è dal nono piano di un appartamento e comprende anche una cucina componibile. Per lo scarico ci sarà un vialetto da percorrere a piedi...;traslochi;;no;;;lavoro
+S090;Sto cercando qualcuno con un furgone che mi aiuti a trasportare alcune scatole, già imballate da noi e portate in strada, da torino, zona centrale, a milano...;traslochi;;no;;;chiuso
+S091;Devo trasportare 2 camere, un cucinino completo di elettrodomestici, un soggiorno e un mobile del bagno da un piano rialzato al settimo piano. Necessario montacarichi...;traslochi;;no;;;lavoro
+S092;Il servizio richiesto è lo scarico della merce dal furgone di nostra proprietà all' interno dell'appartamento ed il montaggio di 4 gambe di un letto singolo a doghe...;traslochi;tuttofare;no;;;lavoro
+S093;Salve Avrei bisogno di in trasloco di tutto l'appartamento Circa 50 pacchi già pronti (ca. 60x40x40) Da smontare cucina, camera da letto, soggiorno e bagno Terzo piano...;traslochi;;no;;;lavoro
+S094;2 armadi ikea a 2 ante (da smontare prima) 2 mobili tv 1 kallax ikea Partenza da un immobile al 2 piano, senza ascensore ma con scale larghe...;traslochi;;no;;;lavoro
+S095;L'orario può essere diverso come pure la data. Il carico avverrà in una strada trafficata senza marciapiedi...;traslochi;;no;;;lavoro
+S096;Buonasera, Chiedo informazioni per trasloco da napoli (precisamente comune di [omesso]) a ravenna centro. Sono parti di arredamento: Una libreria e libri Un credenza...;traslochi;;no;;;lavoro
+S097;Salve, dovrei fare 2 traslochi piccoli (no mobili, si scatoloni circa 15-20)...;traslochi;;no;;;lavoro
+S098;Buon pomeriggio, vi contatto per avere informazioni circa la possibilità di effettuare un trasloco con la vs azienda. A noi servirebbe lo smontaggio dei mobili e, dopo un...;traslochi;;no;;;chiuso
+S099;Buongiorno Gentilmente vorrei un preventivo per un trasloco semplice. Vorrei il servizio di imballaggio e trasloco dei abiti da una casa al altra . Sono 4m di armadio...;traslochi;;no;;;lavoro
+S100;Bisogna trasportare un mobile in vimini che si trova al terzo piano, al palazzo accanto al secondo piano. Bisogna usare le scale perché a causa dell' altezza il mobile non entra...;traslochi;;no;;;lavoro
+S101;Causa strada interrotta bisogna trasbordare da camion traslochi grande circa 5 metri cubi di cose imballate compreso un divano...;traslochi;;no;;;lavoro
+S102;Cerco una squadra di pulizie professionale per una pulizia completa di fine lavori/post-Ristrutturazione di un appartamento. La casa è composta da 2 bagni, 1 cameretta...;pulizie;;no;;;lavoro
+S103;Salve ho una casa costituita da tre camere da letto (una singola, una con letto a una piazza e mezzo, una matrimoniale dove dormo io), cucina, bagno, piccolo portico...;pulizie;;no;;;lavoro
+S104;Vorrei una persona che venisse una volta a settimana per circa 3 ore. Nei primi tempi si potrebbe occupare a rotazione di alcune stanze in profondità...;pulizie;;no;;;lavoro
+S105;Salve, mi trovo in zona [omesso] e sto cercando un servizio di pulizia di fiducia! la nostra abitazione è composta da due camere per studenti, un piccolo bagno, un cucinotto...;pulizie;;no;;;lavoro
+S106;"Cerchiamo una persona fidata per pulizie di un appartamento di circa 80 mq a [omesso]; per 2 volte alla settimana, 3 ore a giorno. Non siamo sempre a casa...";pulizie;;no;;;lavoro
+S107;Ho bisogno di una persona che si occupi delle pulizie domestiche : pulizia camere, cucina, terrazzo nel caso in cui ci fosse bisogno, insomma pulizie quotidiane ..;pulizie;;no;;;chiuso
+S108;Buonasera. Ho bisogno di una domestica per tre giorni a settimana per tre ore al giorno. La casa ha due stanze da letto, un soggiorno, bagno e cucina...;pulizie;;no;;;lavoro
+S109;Appartamento di 100mq di cui 85 in parquet i due bagni e angolo cottura in ceramica. Appartamento privo di mobili tranne che per la cucina. Occorre uno spolvero...;pulizie;;no;;;lavoro
+S110;Mi serve una domestica che mi pulisca casa per mancanza di tempo. Pulizie generali corridoio bagno e cucina senza stirare e neanche fare la lavatrice.;pulizie;;no;;;chiuso
+S111;Salve, a fine mese lascerò l'appartamento di ca 60mq in cui vivo (zona [omesso] - milano) al 3o piano e vorrei chiedervi un preventivo per il servizio di pulizie generali...;pulizie;;no;;;chiuso
+S112;Rispettabili, Siamo uno studio dentistico.. Abbiamo tre studi , due bagni, un ufficio, cucinino e sala d'attesa (oltre i 150 mq)...;pulizie;;no;;;chiuso
+S113;Sto cercando un incaricato per pulire un monolocale che affitto su airbnb in [omesso] a milano...;pulizie;;no;;;lavoro
+S114;Si tratta di pulire: 1) il pavimento in gres di un terrazzo di circa 35 m2, posto al 5 piano e facilmente accessibile 2) i vetri di una serra esterna...;pulizie;;no;;;chiuso
+S115;Buongiorno, avrei bisogno di una persona che si occupi di pulire il mio appartamento una volta a settimana. Per motivi di lavoro sono disponibile solo il lunedì o il mercoledì...;pulizie;;no;;;lavoro
+S116;Piccolo appartamento [omesso] milano. 1 sola persona residente. Pulizia accurata e stiro. 2 volte settimanali. Circa tre ore ogni volta (quando serve di più)...;pulizie;;no;;;lavoro
+S117;Interesse particolare alla cucina con pulizia approfondita interni dei mobili frigo forno vetri e pulizia dietro di essi... Passare aspirapolvere nell'intera casa...;pulizie;;no;;;lavoro
+S118;Cerco donna delle pulizie per me (2 ore alla settimana in un giorno tra mercoledì giovedì e venerdì) e per mia mamma (due volte alla settimana lunedì e giovedì per 3 ore)...;pulizie;;no;;;chiuso
+S119;In casa siamo in quattro: una coppia di ragazzi giovani con orari di lavoro che impediscono una corretta cura della casa, un gatto e un cane...;pulizie;;no;;;chiuso
+S120;Ho terminato la ristrutturazione della mia mansarda di circa 60 m2 e vorrei conoscere la vs. Disponibilità, ed il costo, per un intervento di tutti gli ambienti...;pulizie;;no;;;lavoro
+S121;Buongiorno, avrei bisogno di un aiuto nelle pulizie saltuario. La casa è un piccolo bilocale al 4 piano senza ascensore...;pulizie;;no;;;lavoro
+S122;Ho bisogno del servizio al termine della ristrutturazione e prima della consegna dei mobili. L'appartamento sarà vuoto ad eccezione del mobile cucina e dei mobili del bagno...;pulizie;;no;;;lavoro
+S123;Cerco una persona seria ed affidabile per stirare, lavori di pulizia ed eventualmente cucinare che abbia voglia di dare una disponibilità a lungo termine...;pulizie;;no;;;lavoro
+S124;L’appartamento è grande 75 Mq. Il bagno è in fase di ristrutturazione e a causa dei lavori si è sporcata tutta la casa. Abbiamo bisogno di una pulizia approfondita...;pulizie;;no;;;lavoro
+S125;Appartamento di 40 mq2. Ho bisogno settimanalmente (forse più) di pulizie ordinarie: sanificazione bagno e cucina, pulizia pavimenti (no parquet), spolvero mobili e infissi...;pulizie;;no;;;chiuso
+S126;Pavimento bagno, doccia e sanitari molto sporchi, le 2 stanze con pavimento in parquet, necessita' di prodotti di pulizia e materiali (secchi, stracci ecc, scope ecc...);pulizie;;no;;;lavoro
+S127;Si tratta di una casa di studenti, sita in zona [omesso], per la quale si richiede la pulizia settimanale delle zone comuni una volta a settimana...;pulizie;;no;;;lavoro
+S128;Ideale è una signora che può venire tutti i sabati mattina x pulire casa.;pulizie;;no;;;chiuso
+S129;Per il primo ingresso si dovrebbe fare una pulizia accurata dei pavimenti (mai lavati dalla ditta costruttrice) circa 40 mq e dei bagni...;pulizie;;no;;;lavoro
+S130;Gentilissimi, Chiedo cortesemente un preventivo per la pulizia ordinaria del mio appartamento, che comprende ingresso, cucina, sala, due camere...;pulizie;;no;;;lavoro
+S131;Cerco una o più persone per la pulizia dettagliata di un appartamento nuovo non ancora ammobiliato, soggiorno cucina, 2 camere da letto, 2 bagni...;pulizie;;no;;;lavoro
+S132;Ho bisogno di una persona automunita che si occupi di mia mamma di 80 anni autosufficiente. Per fare compagnia, puluzie ed eventuali visite mediche...;pulizie;;no;badante;;lavoro
+S133;Ho bisogno di pulire a fondo una piccola cucina : mobili internamente ed esternamente , le piastrelle del muro, le porte divisorie interne...;pulizie;;no;;;lavoro
+S134;stiamo cercando a partire di questa o la prossima settimana. Pulizie domestiche (3-4 ore a settimana). Budget non oltre 10€/ora;pulizie;;no;;;lavoro
+S135;Affido a settimane alternate fra i genitori. Il servizio servirebbe a settimane alterne per circa tre ore e mezza/quattro...;babysitter;;no;;;lavoro
+S136;Buongiorno, Stiamo cercando una persona che diventi di fiducia e famiglia per aiuto con il nostro bambino di un anno (prenderlo all’asilo, pomeriggi...;babysitter;;no;;;lavoro
+S137;Volevo capire quanto costerebbe avere la tata per due figli di 1 anno e 4 anni , per un totale di 40 ore mensili dunque 10 alla. Settimana...;babysitter;;no;;;lavoro
+S138;Necessita di prelevato all'uscita di una scuola privata e portarlo da casa Ci sono tutti i mezzi pubblici vicino alla scuola Il bambino ha. Nove anni...;babysitter;;no;;;lavoro
+S139;Ciao! stiamo cercando una mano per accompagnare i bimbi a scuola a [omesso] la mattina a partire da settembre...;babysitter;;no;;;lavoro
+S140;Salve avrei bisogno di una ragazza una volta a settimana indicativamente il giovedì dalle 15:30/18:30 per curare un bimbo di 18 mesi...;babysitter;;no;;;lavoro
+S141;Lo scarico del bidet si è otturato a causa di un sifone che probabilmente non andava neanche installato. Nel tentativo di rimuovere meccanicamente il...;idraulico;;no;;;lavoro
+S142;Sostituzione valvola chiusura acqua appartamento. Attualmente la valvola è spezzata e anche girandola con una pinza, l'acqua comunque non si chiude...;idraulico;;no;;;lavoro
+S143;Bisogna fare la diagnosi di una perdita che appare sul soffitto dell'appartamento sottostante il mio, per capire se il problema e l'eventuale riparazione...;idraulico;muratore;no;;;lavoro
+S144;Si e' verificato una infiltrazione d'acqua sui muri e sul pavimento dovuta probabilmente ad una perdita dallo scarico del piatto doccia montato male...;idraulico;muratore;no;;;chiuso
+S145;Buongiorno abbiamo avuto un’infiltrazione di acqua nel muro comunicante con il piatto doccia ( ( a filo ). Mettendo del silicone la perdita sembra essersi...;idraulico;muratore;no;;;lavoro
+S146;1) lo scarico dei doppi lavelli rigurgita dall'uno all'altro o spesso risulta lentissimo. 2) un pannello del box doccia si è scollato...;idraulico;tuttofare;no;;;lavoro
+S147;A causa di lavori condominiali eseguiti negligentemente, ho subito i seguenti danni: 1- Non ho acqua scarico wc e erogazione debile dell'acqua...;idraulico;;no;;;lavoro
+S148;L'impianto ha circa 4-5 anni. E' stato realizzato dal precedente proprietario dell'appartamento. La temperatura non riesce ad aumentare con il termostato...;climatizzazione;idraulico;no;;;lavoro
+S149;Non mi scarica la lavapiatti forse perche e bloccato il rubinettino della stessa si puo cambiarlo il blocco grohe del rubinetto ha fatto marcire il pi...;idraulico;;no;elettrodomestici;;lavoro
+S150;In uno dei water della casa, lo scarico perde acqua. Sicuramente ci sarà qualche problema col galleggiante o con la guarnizione...;idraulico;;no;;;lavoro
+S151;Buongiorno ho necessità urgente di cambiare il box doccia perché questa notte l'ho trovato frantumato all'interno del box...;idraulico;tuttofare;no;;;chiuso
+S152;Il problema per cui contatto riguarda la vaschetta del wc che è un modello vecchio di ideal standard. Quando tiro l'acqua non si tira più...;idraulico;;no;;;lavoro
+S153;Buongiorno, Vorrei un preventivo per una serie di piccole riparazioni: - Lo scarico del lavandino della cucina perde - Il rubinetto del bidet fa uscire...;idraulico;;no;;;lavoro
+S154;Buonasera, Il pulsante di scarico del mio wc non funziona più. È un wc con cassetta dell'acqua a vista (non dentro al muro, per intenderci)...;idraulico;;no;;;lavoro
+S155;Buongiorno, In seguito a rifacimento cucina avrei bisogno di un aiuto per allacciamento gas dello scaldabagno nuovo...;climatizzazione;idraulico;no;;;lavoro
+S156;Avrei bisogno di un idraulico in grado di montarmi il mio box doccia (quello vecchio e' stato già smaltito)...;idraulico;tuttofare;no;;;lavoro
+S157;Da un paio di mesi mi sono accorta che il contatore dell'acqua calda che è condominiale continua a girare anche se la manopola dell'acqua calda viene chiusa...;idraulico;;no;;;lavoro
+S158;La lavastoviglie non aspira l'acqua che utilizza lei stessa per lavare. I tubi sotto il lavandino della cucina perdono acqua...;idraulico;;no;elettrodomestici;;lavoro
+S159;La terrazza non ha corrente attualmente. Vorrei creare un sistema con un filo volante che entri nel mio appartamento...;elettricista;;no;;;lavoro
+S160;Salve, io ho bisogno di montare 6 lampadari, allacciare forn0 e interruttore gas, aggiungere due pulsanti...;elettricista;;no;;;chiuso
+S161;Salve, ho bisogno di un elettricista che sistemi un problema del quadro elettrico. Nello specifico, il contatore salta in continuazione, anche con l'u...;elettricista;;no;;;chiuso
+S162;C'è da controllare il contatore perchè basta pigiarlo senza toccare pulsanti e va via momentaneamente la corrente e c'è da controllare se è a norma...;elettricista;;no;;;chiuso
+S163;Ho bisogno di fare 3 piccoli lavori per una casa a [omesso]: 1. Montare una plafoniera esterna 2. Montare una pensilina sulla porta di ingresso...;elettricista;tuttofare;no;;;lavoro
+S164;Ho un ventilatore da soffitto installato, ma vorrei che a questo ventilatore venisse collegato un interruttore aggiuntivo...;elettricista;;no;;;lavoro
+S165;La serranda del box azionata con il telecomando si alza sempre ma non si abbassa sempre. Si sente il motorino che paete ma poi devo intervenire manual...;elettricista;fabbro;no;;;lavoro
+S166;Si tratta di mettere insieme i fili elettrici - occorre una scala perchè si trova in un bagnetto di una vecchia casa e le pareti sono di 3,40...;elettricista;;no;;;lavoro
+S167;Cerco un elettricista per far chiudere e isolare una presa elettrica singola che si trova in bagno. Zona [omesso] milano...;elettricista;;no;;;lavoro
+S168;Vorrei chiudere con grigliati legno un balcone , eventualmente anche tamponare lo stesso con pannelli pvc trasparenti o credo si chiami policarbonato...;falegname;tuttofare;no;;;chiuso
+S169;Tuttofare per sistemazione pittura sopra finestrelle taverna, l’area interessata è circa cm 120 x 30...;imbianchino;tuttofare;no;;;chiuso
+S170;Devo spostare un termosifone di un metro dagli attacchi generali sostituendo uno verticale con uno orizzontale per recuperare spazio ad una parete . .;idraulico;climatizzazione;no;;;lavoro
+S171;Sono 4 persiane che sono state montate all'esterno ed alcune per il vento si sono rotte , andrebbero smontate e montate all'interno...;falegname;fabbro;no;;;chiuso
+S172;La porta a vetro scorrevole si è disallineata per la seconda volta e andrebbe risistemata. La guarnizione a contatto della parte inferiore della porta...;falegname;tuttofare;no;;;lavoro
+S173;Avevo preso contatti con una persona ma purtroppo non è stato possibile svolgere il lavoro perché dopo un primo preventivo adeguato in fase di appuntamento...;tuttofare;;no;;;chiuso
+S174;Salve, cerco persona prestante ed in forma per svuotare 7 sacchi enormi di terra in 35 mq di area con la vanga in mio possesso e poi rastrellare...;giardiniere;tuttofare;no;;;lavoro
+S175;Buongiorno devo finire il lavoro del pittore che non ha finito mettere alcuni battiscopa montate due zanzariere cambiare una finestra montare un motore...;tuttofare;;no;;;chiuso
+S176;Mi servirebbe gentilente supporto per capire se possibile avere un piccolo intervento e il costo, presso abitazione a milano, per poter riparare dei m...;tuttofare;;no;;;lavoro
+S177;Mi sto trasferendo a milano. Arrivo il 29/12. Mi serve una/due persone che scarichino un furgone con 1 letto matrimoniale, 1 armadio, 1 mobile soggiorno...;traslochi;tuttofare;no;;;lavoro
+S178;In seguito ad un lavoro effettuato sul terrazzo, è stata smontata e poi rimontata la macchina dei condizionatori. Ad oggi (forse per la mancanza del gas)...;climatizzazione;;no;;;lavoro
+S179;Salve, durante le pulizie domestiche ho urtato accidentalmente la tenda e il palo con il rispettivo aggancio al muro si è staccato. Avrei bisogno di qualcuno...;tuttofare;;no;;;lavoro
+S180;Necessito di installare un lavatrice nuova, che dovrebbero consegnarmi a metà della prossima settimana, di sostituire il soffione della doccia...;idraulico;tuttofare;no;;;lavoro
+S181;Buonasera, Siamo una coppia di torino e avremmo bisogno di un piccolo aiuto! Viviamo in un appartamento al sesto piano con ascensore e dobbiamo portare...;traslochi;tuttofare;no;;;lavoro
+S182;Buongiorno, si é piegato il ferro della struttura del divano (é un vecchio divano/letto), adesso non regge più il peso quando ci si siede...;fabbro;tuttofare;no;;;lavoro
+S183;Il buco nel muro da fare, servirà per far passare i cavi della fibra ottica. Il muro, ad occhio, dovrebbe essere all’incirca di 30/40 centimetri...;muratore;elettricista;no;;;lavoro
+S184;Buongiorno ricerco per sostituzione mobile e lavabo del bagno e ritinteggiatura intero appartamento circa 50 mq complessivi comprensivi del bagno...;idraulico;imbianchino;no;;;lavoro
+S185;Buongiorno! avrei bisogno di portare al 2 piano (con ascensore) un letto matrimoniale con cassettone e un tavolo in vetro (non allungabile) e montarli...;traslochi;tuttofare;no;;;lavoro
+S186;Buonasera ho bisogno di istallare faretto e fare passare filo nel condotto , dare occhiata prese che non funzionano è campanello, perdita water guarni...;tuttofare;elettricista;no;;;lavoro
+S187;1 acido anticalcare cassetta bagno e water di due bagni 2 agganciare mobili resina sul terrazzo e scaccia piccioni 3 valvola radiatore corridoio da co...;tuttofare;idraulico;no;;;chiuso
+S188;Ci sono delle prese staccate dal muro perciò mi servirebbe attaccarle al muro, il citofono suona e funziona ma non apre il portone, bisogna cambiare l...;elettricista;tuttofare;no;;;lavoro
+S189;Avrei bisogno di un tuttofare per tre piccoli interventi a casa (zona [omesso], roma): 1. Rimettere a posto un’anta dell’armadio uscita dai cardini...;tuttofare;;no;;;lavoro
+S190;In cucina è necessario togliere lo scolapiatti della parete per poter lavorare. Credo si sia firmata della muffa perché sento un odore acre...;imbianchino;muratore;no;;;lavoro
+S191;"In particolare ci sarebbe da: - Riparare una tenda a scorrimento; - ⁠riparare/sostituire un diffusore di un termosifone; - ⁠stringere un rubinetto...";tuttofare;;no;;;chiuso
+S192;C'era del biadesivo sul muro e dei buchi per degli stop, andrebbe stuccato e ritinteggiato in breve tempo...;imbianchino;;no;;;chiuso
+S193;"Casa vacanza a [omesso]. Settimana scorsa c'è stata una perdita d'acqua dall'appartamento sopra che ha ""allagato"" la mia cucina e la m...";idraulico;muratore;no;;;lavoro
+S194;Salve, Vi contatto perchè mi servirebbe una riparazione di una tapparella che non sale più su in quanto la corda per aprire e chiudere la medesima è i...;tuttofare;falegname;no;;;lavoro
+S195;Non ho un trapano, ma ho bisogno di fissare al muro 3 ganci appendiabiti, 3 piccole mensole, e una tenda sulla finestra del bagno...;tuttofare;;no;;;lavoro
+S196;Dovrei sostituire una zanzariera rotta in cucina e riagganciare al muro una piccola mensola con tasselli che ha ceduto (quindi trapano e tasselli)...;tuttofare;;no;;;lavoro
+S197;Buongiorno, ho un problema con il piano cottura a gas. Due fuochi su quattro hanno smesso di funzionare. La fiamma si spegne quando mollo la manopola.;climatizzazione;idraulico;no;;;chiuso
+S198;Buongiorno. Avrei necessità di svolgere alcuni lavori manuali nell'appartamento in cui vivo. Si tratta di fissare una scarpiera e una libreria al muro...;tuttofare;;no;;;lavoro
+S199;Occorre sostituire serratura porta blindata a quattro mandate serratura vecchia di circa 20 fa...;fabbro;;no;;;lavoro
+S200;Ho dimenticato una busta attaccata alla maniglia interna della porta e credo che chiudendola, con il peso, sia rimasta la maniglia un po' giù e abbia...;fabbro;;no;;;lavoro
+S201;Buonasera dovrei cambiare la serratura a doppia mappa della mia porta blindata e sostituirla con un altra sempre a doppia mappa...;fabbro;;no;;;lavoro
+S202;La serratura e il cilindretto funzionano perfettamente a porta aperta. Il problema è che la porta blindata è calata e le mandate sbattono contro il te...;fabbro;falegname;no;;;lavoro
+S203;Si tratta di sfratto. Ho la chiave originale ma no so se il dimorante possa avere cambiato la serratura...;fabbro;;no;;;lavoro
+S204;Buongiorno, Abbiamo ricevuto un furto in appartamento e dato il furto delle seconde chiavi, ci troviamo costretti a cambiare la serratura della porta...;fabbro;;no;;;chiuso
+S205;"Chiedo ancora aiuto agli esperti del settore.Ho acquistato nel 2008 un appartamento da ristrutturare; tra i molteplici lavori ho dovuto rifare ex novo il terrazzo...";muratore;;no;;;chiuso
+S206;Buonasera a tutti,avrei bisogno di un consiglio perché sto cercando di capire quale sia la soluzione migliore per un problema di infiltrazioni su un terrazzo di circa 150...;muratore;;no;;;chiuso
+S207;Salve a tutti,Scrivo per chiedere un consiglio prettamente tecnico a chi ne sa più di me in una materia complessa.Ho una cantina interrata, pareti in mattoni e pietra...;muratore;;no;;;chiuso
+S208;Buongiorno, Avrei bisogno di sapere dove dovrei fare il foro di aerazione se in alto o in basso o nella porta per una caldaia a gas stagna in un locale cieco all'interno.;climatizzazione;muratore;no;;;lavoro
+S209;A chi bisogna rivolgersi per mettere a norma un impianto del gas? Basta un sempice idraulico oppure ci sono studi tecnici specializzati?;idraulico;climatizzazione;no;;;lavoro
+S210;Buongiorno,ho ristrutturato la mia casa con un'impresa edile che ha installato tre finestre con tapparelle e zanzariere motorizzate con motore Aluprof AM 35-10/14 E...;elettricista;tuttofare;no;;;lavoro
+S211;Ciao a tutti/e.Ho acquistato uno scaldabagno elettrico AristonAndris Elite Wifi (Dimensioni: 44,6l x 44,6H cm. Peso: 11,2 Kg).Devo installarlo all'esterno e mi serve quindi...;idraulico;elettricista;no;;;chiuso
+S212;Buongiorno a tutti,sto eseguendo una ristrutturazione abbastanza completa (rimosso vecchio massetto rifatto impianti e rifatto massetto nuovo con riscaldamento a pavimento)...;muratore;;no;;;lavoro
+S213;Per convertire un impianto di illuminazione tradizionale in uno smart è necessario rifare anche l'impianto?...;elettricista;;no;;;chiuso
+S214;Da cosa può dipendere la presenza di muffa in corrispondenza infissi ?...;imbianchino;falegname;no;;;chiuso
+S215;Circa 3 anni fa hanno fatto dei lavori nei solai e, per un malinteso, gli operai hanno aperto il mio solaio forzando la serratura della porta. Me ne sono accorta quasi su...;fabbro;;no;;;chiuso
+S216;Buonasera, ho appena finito di trasformare un solaio in una mansarda. Tutto ok se non che in questi giorni con l'arrivo del freddo si sta formando la condensa in basso a...;imbianchino;falegname;no;;;lavoro
+S217;Salve,probabilmente non è il canale adatto questo per questo genere di informazioni. In caso di lieve perdita di gas da uno dei fornelli del piano cucina, ovviamente...;idraulico;climatizzazione;gas;;;chiuso
+S218;Buongiorno, vorrei provare a risanare il vespaio della casa di mia figlia. Qualcuno mi può dare qualche dritta? La costruzione ha circa 45 anni.;muratore;;no;;;lavoro
+S219;Buon pomeriggio a tutti,sono nuovo del forum, quindi spero di non andare OT o di sbagliare la modalità di presentazione del mio quesito.Il mio problema è regolare un...;falegname;tuttofare;no;;;lavoro
+S220;Buongiorno, avrei un problema con due porte finestre del che affacciano su un terrazzino ad un 1 piano. Sono a [omesso] ed il problema l'ho avuto solo quest'anno...;falegname;tuttofare;no;;;lavoro
+S221;Buongiorno,ho dovuto, con CILA aperta, sistemre un cancello elettrico perchè il precedente proprietario ha pensato bene di spaccare tutte le fotocellule e togliere i moto...;elettricista;fabbro;no;;;lavoro
+S222;Buongiorno,dovrei smontare questo cassonetto della tapparella ma non capisco come si debba aprire. Ho visto che ci sono due fori ma all'interno non vedo delle viti.;tuttofare;falegname;no;;;lavoro
+S223;Buongiorno,vorrei info su un balcone con infiltrazioni visibili nella parte sottostante con sfogliamento della vernice.Le piastrelle del mio balcone sono senza crepe...;muratore;imbianchino;no;;;lavoro
+S224;Salve, questa estate ho ristrutturato e montato la cucina nuova. Ci sono stata pochissimo in casa fino ad oggi forse 1 mese, sento comunque puzza di gas in cucina ...;idraulico;climatizzazione;gas;;;lavoro
+S225;Salve ho un problema di condensa con fughe nere nel muretto in vetrocemento del mio bagno.È ben aerato quindi non ci dovrebbero essere problemi di ventilazione, ma in...;muratore;imbianchino;no;;;lavoro
+S226;Ho uno scrigno e vorrei mettere una porta scorrevole ma aprendo lo scrigno non c'è il kit per inserire la guida con le rotelle. Come posso trovare quel kit?...;falegname;tuttofare;no;;;chiuso
+S227;Se un prodotto specifico antimuffa non riesce a risolvere il problema, come si può procedere?...;imbianchino;muratore;no;;;lavoro
+S228;Ciao a tutti, chiedo aiutoDato che nel bagno avevo pareccha muffa (nero molto evidente) mi sono procurato un prodotto antimuffa e poi ho ridato il bianco...;imbianchino;;no;;;lavoro
+S229;Buongiorno.In condominio abbiamo approvato un preventivo di € 800 per ripristinare una macchia da infiltrazione sul soffitto dell'appartamento all' ultimo piano...;imbianchino;muratore;no;;;chiuso
+S230;Buona sera a tutti,vi espongo il mio problema,ad agosto 2016 siamo entrati in un appartamento in affitto, a fine settembre è stata sostituita la caldaia perché si...;climatizzazione;;no;;;chiuso
+S231;Buongiorno a tutte/i,Una tapparella elettrica nuova ha iniziato ad avere questo problema: premendo l'interruttore per abbassarla, si sentono rumori meccanici, si smuove q...;elettricista;tuttofare;no;;;lavoro
+S232;Ciao a tutti,avrei bisogno del vostro aiuto.Sto sostituendo la vasca con la doccia e la nicchia è di 182cm mentre il piatto doccia che ho preso in mineralmarmo è di...;idraulico;muratore;no;;;chiuso
+S233;Buongiorno a tutti, è il mio primo post in questo forum, spero di essere nella sezione giusta.Chiedo aiuto per un problema ad una persiana in alluminio.Nello specifico, u...;fabbro;tuttofare;no;;;chiuso
+S234;Buongiorno, avrei bisogno di un consiglio per un problema abbastanza fastidioso. Ho una casa a 2 piani e 3 bambini che salgono la scala interna poggiando continuamente le mani...;imbianchino;;no;;;lavoro
+S235;Salve, ho delle efflorescenze sul cappotto termico... da cosa può dipendere ?...;muratore;;no;;;chiuso
+S236;Buonasera chiedo ai più esperti. L' ultimo cassetto del congelatore mi si ghiaccia di continuo non permettendomi di aprirlo. Ho effettuato ispezione alle guarnizioni,...;;;no;elettrodomestici;;lavoro
+S237;Buonasera, ho un problema con la ditta che mi ha sostituito la caldaia. Il preventivo aveva la dicitura...;climatizzazione;;no;;;lavoro
+S238;Buongiorno, poco fa ho preso la scossa toccando il lavello in alluminio della cucina. Il tutto è durato circa 1 - 1,5s e poi è saltato il salvavita.;elettricista;;acqua-elettrico;;;chiuso
+S239;Buonasera, vorrei un vostro parere su quanto successo ad una mia amica: aveva il telefonino sotto carica, l'ha toccato e ha preso una scossa. Il salvavita non è saltato.;elettricista;;elettrico;;;chiuso
+S240;Salve a tutti, il microonde ha iniziato a fare puzza di bruciato e fumo, ho trovato un buco sulla porta nella parte bassa(allego foto) vorrei capire se è un guasto riparabile.;;;elettrico;elettrodomestici;;lavoro
+S241;Ciao a tutti ho acquistato questa stufetta prima di natale: ...dopo averla accesa per mezz'ora,continua a fare puzza...una puzza tra plastica bruciata(ma non...;;;elettrico;elettrodomestici;;chiuso
+S242;ho smontato il vecchio rilevatore di gas (Guardiagas by ecotronic system) che mi sembra che non rilevi più quasi niente.;climatizzazione;elettricista;no;;;lavoro
+S243;Buonasera, spero che qualcuno mi sappia dire qualcosa: ho chiuso il rubinetto centrale del gas, quello posto sul contatore, perchè ero in partenza. Torno a casa, faccio per rigirare la manopola...;idraulico;climatizzazione;no;;;chiuso
+S244;Buongiorno ho questo scaldino a gas chaffoteaux 11lt a gas, è stato fermo un paio di anni, non mi parte la fiamma. Scintilla cè, ugelli puliti.;climatizzazione;idraulico;no;;;lavoro
+S245;Salve il mio scaldino esce l acqua calda però se voglio regolarla tiepida si spegne. Quale potrebbe essere il problema e come potrei risolvere? Grazie;climatizzazione;idraulico;no;;;lavoro
+S246;Buongiorno, ho una caldaia Ferroli Divacodens che funziona solo produzione acqua calda...azionando il termostato ambiente la caldaia non parte.....;climatizzazione;elettricista;no;;;lavoro
+S247;Salve come da titolo non mi arriva acqua calda al bagno del 2 piano,mentre al 1 piano funziona tutto regolarmente.;climatizzazione;idraulico;no;;;lavoro
+S248;Salve, ho installato un accumulo per lacqua calda in pompa di calore, quando apro i rubinetti e l'acqua calda esce fa un rumore intermittente, come se uscisse aria/acqua...;idraulico;climatizzazione;no;;;lavoro
+S249;Buonasera ho uno SCALDABAGNO A GAS ISTANTANEO CHAFFOTEAUX ... nel mio caso alimentato a gpl. Succede che quando apro l acqua calda esce tiepida.;climatizzazione;idraulico;no;;;lavoro
+S250;Salve da un anno ho questo scaldabagno Ferroli Pegaso Eco 11, e da un po di tempo 1 mesetto mi perde acqua (goccia) ho notato che lo fa solo quando non c'è un rubinetto aperto...;climatizzazione;idraulico;no;;;lavoro
+S251;Buongiorno a tutti, ho uno scaldabagno a gas Rinnai installato sul balcone con regolare filtro calcare installato e riempito costantemente quando necessario. Da qualche giorno la pressione d...;climatizzazione;idraulico;no;;;lavoro
+S252;Ciao vi allego foto tubazioni e kit acquaio cucina. Come vedete c'e' una perdita dal sifone e una dal tappo tubo acqua calda. L'acqua calda non arriva credo sia un'ostruzione.;idraulico;;no;;;chiuso
+S253;Qualche settimana fa ho chiuso il rubinetto generale del gas ed è stata una cosa semplicissima. Adesso non riesco a riportare la manovella nella posizione iniziale. Come devo fare?;idraulico;climatizzazione;no;;;lavoro
+S254;Ciao a tutti! Nel condominio dove abito (nuova abitazione di circa 2 anni) lamentiamo il fatto che l'acqua calda, dopo l'apertura di qualunque miscelatore, arriva solo dopo 45-60 secondi.;idraulico;climatizzazione;no;;;lavoro
+S255;Buongiorno , sto impazzendo con una caldaia green evo ar therm, nuova di 6 mesi , ha cominciato a non funzionare acqua calda sanitario, ho notato piccole perdite...;climatizzazione;;no;;;chiuso
+S256;Il fornello piccolo della mia cucina a gas SMEG all'improvviso produce una fiamma molto debole. Non è stato un fenomeno graduale...;idraulico;climatizzazione;no;elettrodomestici;;chiuso
+S257;Salve, ho uno scaldabagno Ariston modello FAST R X ONM 11-14 che non produce acqua calda. Stando al manuale ho cambiato le batterie, ma il problema persiste. Cosa devo controllare? Grazie!!!;climatizzazione;idraulico;no;;;lavoro
+S258;Salve, Ho la canna fumaria del caminetto della mia vecchia casa che passa dietro al muro di camera dove dormo.Da quel muro, che ho in camera, esce un cattivo odore (fuliggine)non molto forte;;;monossido;spazzacamino;;lavoro
+S259;Salve, scusatemi ma sono disperato. Non so come mai tutti i giorni, più o meno alla solita ora, scatta il salvavita del mio impianto elettrico. Per risolvere il problema ho chiamato un professionista...;elettricista;;no;;;lavoro
+S260;Buongiorno a tutti, ho deciso di mettere in affitto la mia cantina e di conseguenza devo occuparmi di svuotarla completamente da tutte le cose che sono state accumulate negli anni...;traslochi;;no;;;lavoro
+S261;Prima di entrare nella casa nuova vorrei farla pulire. E' una casa di nuova costruzione quindi è soprattutto impolverata. Il mio dubbio è: chiamo un'impresa di pulizie...;pulizie;;no;;;lavoro
+S262;Ciao a tutti, vi spiego il mio semplice problema sperando che qualcuno mi sappia dare una soluzione molto pratica. Nella taverna della casa che ho acquistato c'è una sorta di sanitrit...;idraulico;;no;;;lavoro
+S263;Buonasera, mi sono iscritta per chiedere un consiglio. Sono momentaneamente in affitto in attesa di finire dei lavori in casa mia. Dopo aver trovato della muffa nera dietro l’armadio...;imbianchino;muratore;no;;;chiuso
+S264;Buondì, stamattina per il primo freddo ho acceso la caldaia Immergas di circa 21 anni e come faccio ad inizio stagione ho posizionato la manopola termosifoni a 6 ed acceso il termostato...;climatizzazione;;no;;;lavoro
+S265;Una mia conoscente ha messo un boilerino da 30 litri in una piccola seconda casa, dice che è sufficiente, l'unica cosa che ha notato è la poca pressione in doccia.;idraulico;;no;;;chiuso
+S266;Stamattina scopro che la puzza proviene dall interrutore on off ... La puzza si sentiva solo sulla presa dentro casa.;elettricista;;elettrico;;;lavoro
+S267;Dopo l'alluvione di ieri sera che ha colpito [omesso], stamattina, al risveglio, mi sono trovato metà casa senza corrente (anche in giardino).;elettricista;;acqua-elettrico;;;lavoro
+S268;ieri sera ho cambiato la presa sottolavello in cucina, quella dove da anni era collegata la lavastoviglie, perchè dopo aver sentito puzza di bruciato.;elettricista;;elettrico;;;lavoro
+S269;Può anche darsi che io mi sia fissata ma sento odore di gas ... Farò la prova contatore stasera mi fermò a guardare e poi domani rivado!!!!;idraulico;climatizzazione;gas;;;lavoro
