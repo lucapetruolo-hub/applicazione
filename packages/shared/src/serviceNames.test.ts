@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { POPULAR_SERVICES } from "./categories";
-import { canonicalServiceName, serviceNameKey } from "./serviceNames";
+import { canonicalServiceName, serviceNameKey, serviceNameMatches } from "./serviceNames";
 
 test("le varianti scritte a mano finiscono nella stessa voce", () => {
   for (const variant of ["riparazione perdite", "Riparazione perdita d'acqua", "RIPARAZIONE PERDITE D'ACQUA", "perdite"]) {
@@ -37,4 +37,16 @@ test("ogni sinonimo porta a una prestazione suggerita e una variante non ha due 
   assert.equal(canonicalServiceName("Abbattimento alberi"), "Rimozione alberi");
   // "caldaia" da sola può essere installazione, riparazione o manutenzione: resta com'è.
   assert.equal(canonicalServiceName("caldaia"), "caldaia");
+});
+
+test("la casella di \"Quanto costa\" trova le voci con le parole di chi scrive (§400)", () => {
+  assert.ok(serviceNameMatches("Riparazione perdita d'acqua", "perdite"));
+  assert.ok(serviceNameMatches("Riparazione perdita d'acqua", "perd"));
+  assert.ok(serviceNameMatches("Risanamento umidità e infiltrazioni", "umidita"));
+  assert.ok(serviceNameMatches("Tinteggiatura interni", "imbiancatura"));
+  assert.ok(serviceNameMatches("Tinteggiatura interni", "pittura"));
+  assert.ok(serviceNameMatches("Installazione climatizzatore", "condizionatore"));
+  assert.ok(serviceNameMatches("Sostituzione caldaia", "Caldaia"));
+  assert.ok(!serviceNameMatches("Sostituzione caldaia", "perdite"));
+  assert.ok(!serviceNameMatches("Trasloco locale", "zzz"));
 });

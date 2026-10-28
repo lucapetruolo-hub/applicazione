@@ -164,6 +164,27 @@ export function canonicalServiceName(name: string): string {
   return SUGGESTED_BY_KEY.get(key) ?? SYNONYMS[key] ?? name.trim().replace(/\s+/g, " ");
 }
 
+/** Chiavi dei sinonimi di ogni nome suggerito, per cercare con le parole di chi scrive. */
+const VARIANT_KEYS_BY_NAME = Object.entries(SYNONYMS).reduce((byName, [key, canonical]) => {
+  byName.set(canonical, [...(byName.get(canonical) ?? []), key]);
+  return byName;
+}, new Map<string, string[]>());
+
+/**
+ * La voce `name` risponde a quello che si sta scrivendo (§400): senza badare
+ * ad accenti, maiuscole e plurali ("perdite" trova "Riparazione perdita
+ * d'acqua", "umidita" trova "Risanamento umidità") e con i sinonimi
+ * ("imbiancatura" trova "Tinteggiatura interni"). Funziona anche a parola
+ * non finita.
+ */
+export function serviceNameMatches(name: string, query: string): boolean {
+  const key = serviceNameKey(query);
+  if (!key) return true;
+  const canonical = canonicalServiceName(name);
+  if (canonicalServiceName(query) === canonical) return true;
+  return [serviceNameKey(name), ...(VARIANT_KEYS_BY_NAME.get(canonical) ?? [])].some((candidate) => candidate.includes(key));
+}
+
 /** Tutti i nomi suggeriti, senza doppioni, per i suggerimenti mentre si scrive. */
 export const ALL_SUGGESTED_SERVICES: readonly string[] = [...new Set(Object.values(POPULAR_SERVICES).flat())].sort((a, b) =>
   a.localeCompare(b, "it"),

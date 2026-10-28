@@ -21692,3 +21692,12 @@ contato e i conteggi partono dal lancio (§395).
 **Verifica**: 864 test API (nuovi: sinonimi nella stessa voce, unione
 dell'admin, ricerca con sinonimi, account di prova esclusi), typecheck e
 lint di API e sito.
+
+**Migliorie dopo (28/10/2026, "effettua le due migliorie").**
+- Sinonimi allungati a tutte le prestazioni suggerite, mai con una parola che può voler dire due lavori diversi ("caldaia" da sola resta com'è). Un test controlla che ogni sinonimo porti a un nome suggerito.
+- Prova simulata con 5 persone (`analisi/quanto-costa/prova-5-persone.md`, foto in `anteprime/quanto-costa-prova5/`). Ne sono uscite tre correzioni:
+  - la casella di "Quanto costa" trovava solo il testo esatto: "perdite", "umidita", "imbiancatura" e "condizionatore" non davano nulla. Ora usa `serviceNameMatches` (plurali, accenti, sinonimi, parola non finita);
+  - Invio nella casella apre la prima voce trovata;
+  - quando non si trova nulla compare "Chiedi un preventivo gratuito" con la parola già scritta, invece di un vicolo cieco.
+
+  La prova con persone vere resta da fare prima del lancio.
