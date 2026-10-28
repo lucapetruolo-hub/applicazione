@@ -203,11 +203,27 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
 body:has(.profile-cta-bar) {
   padding-bottom: 72px;
 }
+/* Scorrendo verso un elemento scelto col tasto Tab, il browser lo tiene
+   sopra la barra (WCAG 2.2 "focus non coperto", come il banner dei cookie
+   del §271), §400. */
+html:has(.profile-cta-bar[data-visible="true"]) {
+  scroll-padding-bottom: 88px;
+}
 /* Nel profilo con la barra, "Richiedi preventivo" in alto (richiesta
    generica, non a questo professionista) confondeva: non compare. Resta nei
    profili in pausa, che non hanno la barra. */
 body:has(.profile-cta-bar) .site-header-cta-link {
   display: none;
+}
+/* Telefono in orizzontale e finestre basse: barra più sottile (§400). */
+@media (max-height: 500px) {
+  .profile-cta-bar {
+    padding-top: 6px;
+    padding-bottom: calc(6px + env(safe-area-inset-bottom));
+  }
+  body:has(.profile-cta-bar) {
+    padding-bottom: 60px;
+  }
 }
 @media (max-width: 767px) {
   .profile-cta {
@@ -5126,7 +5142,10 @@ a.admin-kpi:hover {
   width: 100%;
   font-size: 13px;
   line-height: 18px;
-  color: #6e6459;
+  /* Più scuro del grigio caldo #6e6459: le briciole stanno sopra le forme
+     sfumate dello sfondo, e sul verde chiaro quel grigio arrivava a 3,6:1
+     (serve 4,5:1). #4f463e resta sopra 5:1 anche lì (docs/CHANGELOG.md §401). */
+  color: #4f463e;
 }
 .breadcrumbs-list {
   list-style: none;
@@ -5154,7 +5173,7 @@ a.admin-kpi:hover {
   display: inline-flex;
   align-items: center;
   min-height: 32px;
-  color: #6e6459;
+  color: #4f463e;
   text-decoration: none;
   text-underline-offset: 3px;
 }

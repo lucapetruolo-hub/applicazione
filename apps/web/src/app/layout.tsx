@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Analytics } from "@vercel/analytics/react";
 import { Providers } from "./providers";
+import { StyledJsxRegistry } from "./StyledJsxRegistry";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ToastStack } from "@/components/ToastStack";
@@ -62,23 +63,25 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <div className="auth-page-blob auth-page-blob--one" />
           <div className="auth-page-blob auth-page-blob--two" />
         </div>
-        <Providers>
-          <ServiceWorkerRegistration />
-          <TrafficSourceTracker />
-          {/* Skip link (Fase 6, accessibilità): invisibile finché non riceve il
-              focus da tastiera, permette di saltare header+mega-menu e arrivare
-              dritti al contenuto — senza, un utente da tastiera/screen reader
-              deve attraversare tutta la navigazione a ogni cambio pagina. */}
-          <a href="#main-content" className="skip-link">
-            Vai al contenuto
-          </a>
-          <ToastStack />
-          <SiteHeader />
-          <EmailVerificationBanner />
-          <main id="main-content">{children}</main>
-          <SiteFooter />
-          <CookieBanner />
-        </Providers>
+        <StyledJsxRegistry>
+          <Providers>
+            <ServiceWorkerRegistration />
+            <TrafficSourceTracker />
+            {/* Skip link (Fase 6, accessibilità): invisibile finché non riceve il
+                focus da tastiera, permette di saltare header+mega-menu e arrivare
+                dritti al contenuto — senza, un utente da tastiera/screen reader
+                deve attraversare tutta la navigazione a ogni cambio pagina. */}
+            <a href="#main-content" className="skip-link">
+              Vai al contenuto
+            </a>
+            <ToastStack />
+            <SiteHeader />
+            <EmailVerificationBanner />
+            <main id="main-content">{children}</main>
+            <SiteFooter />
+            <CookieBanner />
+          </Providers>
+        </StyledJsxRegistry>
         {/* Statistiche visite (docs/CHANGELOG.md §132): Vercel Web Analytics,
             senza cookie né dati personali, quindi fuori dal consenso del
             CookieBanner. Conta solo quando è attivato nella dashboard Vercel. */}
