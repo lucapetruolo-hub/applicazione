@@ -1049,7 +1049,7 @@ export function RequestCard({
                 {gr.description}
               </Text>
               {gr.photoUrls.length > 0 ? (
-                <XStack gap="$2" style={{ overflowX: "auto" }}>
+                <XStack gap="$2" className="scroll-fade" style={{ overflowX: "auto" }}>
                   {gr.photoUrls.map((url, i) => (
                     <YStack
                       key={url}

@@ -3860,6 +3860,9 @@ a.admin-kpi:hover {
 }
 .guided-timing-option input {
   position: absolute;
+  /* Sopra la pillola anche mentre si stringe (la `scale` la porterebbe
+     davanti e prenderebbe lei il tocco). */
+  z-index: 1;
   opacity: 0;
   inset: 0;
   margin: 0;
@@ -5063,6 +5066,9 @@ a.admin-kpi:hover {
     grid-template-columns: 1fr 1fr;
     overflow: visible !important;
     padding-top: 0 !important;
+    /* Griglia, non riga: niente sfumatura (taglierebbe le ombre). */
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
   }
   .story-rail .category-carousel-arrow {
     display: none !important;
@@ -6172,4 +6178,186 @@ a.admin-kpi:hover {
   body {
     background: #fff !important;
   }
+}
+
+/* Micro-interazioni (docs/changelog/2026-10-28-micro-interazioni.md).
+
+   1. Bordi sfumati nelle righe che scorrono di lato (`.scroll-fade`): il
+   bordo sfuma solo dal lato dove c'è altro da vedere, senza JavaScript. La
+   posizione della riga guida le due sfumature (`animation-timeline:
+   scroll(self inline)`); se la riga non scorre (tutto già visibile, o la
+   griglia delle categorie su telefono) la sfumatura non c'è. Nei browser
+   che non lo sanno fare la riga resta com'era, senza sfumatura. Non è un
+   movimento: con "riduci movimento" resta (la regola globale `*` porta la
+   durata a 0,01 ms, che spegnerebbe la sfumatura, quindi qui torna
+   `auto`). */
+@property --scroll-fade-start {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@property --scroll-fade-end {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@keyframes scroll-fade-edges {
+  0% {
+    --scroll-fade-start: 0px;
+    --scroll-fade-end: 40px;
+  }
+  6%,
+  94% {
+    --scroll-fade-start: 40px;
+    --scroll-fade-end: 40px;
+  }
+  100% {
+    --scroll-fade-start: 40px;
+    --scroll-fade-end: 0px;
+  }
+}
+@supports (animation-timeline: scroll()) {
+  .scroll-fade {
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      transparent 0,
+      #000 var(--scroll-fade-start),
+      #000 calc(100% - var(--scroll-fade-end)),
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      90deg,
+      transparent 0,
+      #000 var(--scroll-fade-start),
+      #000 calc(100% - var(--scroll-fade-end)),
+      transparent 100%
+    );
+    animation: scroll-fade-edges linear both;
+    animation-timeline: scroll(self inline);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scroll-fade {
+    animation-duration: auto !important;
+  }
+}
+
+/* 2. Finestre che compaiono con dolcezza: ogni finestra del sito
+   (`role="dialog"` con `aria-modal`, più il pannello delle notifiche) entra
+   salendo di 12 px mentre appare, il fondo scuro dietro sfuma. Solo CSS con
+   `@starting-style`: nessun componente cambia, e nei browser che non lo
+   conoscono la finestra compare subito come prima. Con "riduci movimento"
+   niente spostamento. */
+@media (prefers-reduced-motion: no-preference) {
+  [role="dialog"][aria-modal="true"],
+  .notif-panel {
+    transition:
+      opacity 180ms ease-out,
+      translate 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  [role="presentation"]:has(> [role="dialog"][aria-modal="true"]) {
+    transition: opacity 180ms ease-out;
+  }
+  @starting-style {
+    [role="dialog"][aria-modal="true"],
+    .notif-panel {
+      opacity: 0;
+      translate: 0 12px;
+    }
+    [role="presentation"]:has(> [role="dialog"][aria-modal="true"]) {
+      opacity: 0;
+    }
+  }
+}
+
+/* 3. Cuoricino "Salva": quando lo tocchi si riempie con un piccolo battito e
+   un anello verde che si allarga e svanisce (`IconActionButton` con
+   `celebrate`). Parte solo dal tocco, non quando la pagina carica i
+   profili già salvati. Niente coriandoli (scelta di Luca). */
+@keyframes heart-pop {
+  0% {
+    scale: 1;
+  }
+  35% {
+    scale: 1.18;
+  }
+  65% {
+    scale: 0.94;
+  }
+  100% {
+    scale: 1;
+  }
+}
+@keyframes heart-ring {
+  0% {
+    opacity: 0.7;
+    scale: 1;
+  }
+  100% {
+    opacity: 0;
+    scale: 1.9;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .icon-action-pop {
+    animation: heart-pop 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .icon-action-pop::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: 50%;
+    border: 2px solid #128552;
+    pointer-events: none;
+    animation: heart-ring 520ms ease-out forwards;
+  }
+}
+
+/* Foto a tutto schermo (PhotoLightbox): una riga di foto larghe quanto lo
+   schermo, una per gesto (`scroll-snap-stop: always`: uno scorrimento veloce
+   non ne salta tre), docs/changelog/2026-10-28-micro-interazioni.md. */
+.lightbox-track {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.lightbox-track::-webkit-scrollbar {
+  display: none;
+}
+.lightbox-slide {
+  flex: 0 0 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+}
+
+/* Pressione sulle scelte a pillola: "A domicilio / Online" (SearchBar di
+   @professionisti/ui, `.press-scale`) e "Quando ti serve?" si stringono
+   appena mentre il dito le tiene premute, come un tasto vero
+   (docs/changelog/2026-10-28-micro-interazioni.md). Si stringono invece di
+   allargarsi come nel reel: allargandosi spingerebbero le altre e il testo
+   si muoverebbe sotto il dito. */
+@media (prefers-reduced-motion: no-preference) {
+  .press-scale,
+  .guided-timing-option span {
+    transition-property: background, color, scale;
+    transition-duration: 0.15s, 0.15s, 0.12s;
+    transition-timing-function: ease;
+  }
+  .press-scale:active,
+  .guided-timing-option:active span {
+    scale: 0.95;
+  }
+}
+/* Mentre la si tiene premuta, una scelta non ancora presa si colora appena:
+   il solo restringimento su una pillola trasparente quasi non si vedeva. */
+.guided-timing-option:active input:not(:checked) + span {
+  background: rgba(18, 133, 82, 0.1);
 }

@@ -144,6 +144,7 @@ export default function ProfessionistiSalvatiPage() {
                           active={saved}
                           disabled={pendingId === pro.id}
                           size={36}
+                          celebrate
                           onPress={() => void handleToggle(pro.id)}
                         >
                           <Icon name="heart" size={16} strokeWidth={2} color={saved ? "white" : brand.grafite} fill={saved ? "white" : "none"} />
