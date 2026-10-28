@@ -211,6 +211,186 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
   },
 };
 
+/**
+ * Singoli avvisi dentro un argomento (docs/changelog/2026-10-28-notifiche-impostazioni.md,
+ * richiesta di Luca): nella pagina Notifiche ogni argomento si apre e si
+ * spengono i singoli avvisi (es. "Preventivo rifiutato" sì, "Data proposta"
+ * no). Un avviso spento vale per tutti i canali, come un argomento spento:
+ * la notifica resta nella cronologia, già letta. Etichette per ruolo: un
+ * avviso senza etichetta per quel ruolo non gli si mostra (non lo riceve).
+ * "admin" si mostra solo agli amministratori. Ogni tipo di un argomento con
+ * avvisi sta in uno solo di questi (controllato dai test).
+ */
+export type NotificationItem = {
+  key: string;
+  topic: NotificationTopic;
+  types: string[];
+  professional?: { label: string; description?: string };
+  client?: { label: string; description?: string };
+  /** Solo per gli amministratori. */
+  admin?: { label: string; description?: string };
+};
+
+export const NOTIFICATION_ITEMS: NotificationItem[] = [
+  {
+    key: "richieste.nuove",
+    topic: "richieste",
+    types: ["NEW_LEAD"],
+    professional: { label: "Nuove richieste", description: "Un cliente ti chiede un preventivo." },
+  },
+  {
+    key: "richieste.inviata",
+    topic: "richieste",
+    types: ["REQUEST_SENT"],
+    client: { label: "Richiesta inviata", description: "L'email con il riepilogo di quello che hai chiesto." },
+  },
+  {
+    key: "richieste.novita",
+    topic: "richieste",
+    types: ["LEAD_DECLINED", "GUIDED_REQUEST_EXPIRED", "REQUEST_FORWARDED", "REQUEST_FORWARD_NO_MATCH", "REQUEST_MATCHED_LATER"],
+    client: { label: "Novità sulla richiesta", description: "Un professionista trovato più tardi, la richiesta inoltrata ad altri, rifiutata o scaduta." },
+  },
+  {
+    key: "preventivi.nuovi",
+    topic: "preventivi",
+    types: ["NEW_QUOTE"],
+    client: { label: "Nuovo preventivo" },
+  },
+  {
+    key: "preventivi.esito",
+    topic: "preventivi",
+    types: ["QUOTE_ACCEPTED", "QUOTE_REJECTED"],
+    professional: { label: "Preventivo accettato o rifiutato" },
+  },
+  {
+    key: "preventivi.modifiche",
+    topic: "preventivi",
+    types: ["QUOTE_UPDATED", "QUOTE_WITHDRAWN", "QUOTE_DEPOSIT_REFUNDED"],
+    client: { label: "Preventivo aggiornato o ritirato" },
+  },
+  {
+    key: "preventivi.date",
+    topic: "preventivi",
+    types: ["QUOTE_DATE_PROPOSED", "QUOTE_DATE_CHANGED", "QUOTE_DATE_CONFIRMED", "QUOTE_DATE_REJECTED"],
+    professional: { label: "Date proposte dal cliente" },
+    client: { label: "Data confermata o cambiata" },
+  },
+  {
+    key: "lavori.appuntamenti",
+    topic: "lavori",
+    types: [
+      "BOOKING_CONFIRMED",
+      "BOOKING_CANCELED_BY_PROFESSIONAL",
+      "BOOKING_CANCELED_BY_CLIENT",
+      "BOOKING_REOPENED_BY_CLIENT",
+      "BOOKING_REOPENED_BY_PROFESSIONAL",
+      "BOOKING_NO_SHOW_REPORTED",
+    ],
+    professional: { label: "Appuntamenti", description: "Annullati o riaperti dal cliente." },
+    client: { label: "Appuntamenti", description: "Prenotati, annullati o riaperti." },
+  },
+  {
+    key: "lavori.promemoria",
+    topic: "lavori",
+    types: ["BOOKING_REMINDER", "AGENDA_REMINDER", "AGENDA_TOMORROW_SUMMARY", "PROFESSIONAL_ON_THE_WAY"],
+    professional: { label: "Promemoria e agenda", description: "Il giorno prima, il riepilogo della sera, l'agenda senza orari liberi." },
+    client: { label: "Promemoria", description: "Il giorno prima e quando il professionista sta arrivando." },
+  },
+  {
+    key: "lavori.chiusura",
+    topic: "lavori",
+    types: ["JOB_COMPLETED", "JOB_CONFIRM_REMINDER", "JOB_AUTO_CONFIRMED", "JOB_CLOSE_REMINDER", "JOB_CLOSE_EXPIRED"],
+    professional: { label: "Lavoro terminato", description: "La conferma del cliente e la chiusura del lavoro." },
+    client: { label: "Lavoro terminato", description: "Quando il professionista lo segna come finito." },
+  },
+  {
+    key: "lavori.pagamenti",
+    topic: "lavori",
+    types: [
+      "JOB_DEPOSIT_PAID",
+      "JOB_BALANCE_PAID",
+      "JOB_BALANCE_DUE",
+      "JOB_BALANCE_AUTO_CHARGED",
+      "JOB_BALANCE_UNPAID",
+      "JOB_PAYOUT_SENT",
+      "JOB_PAYOUT_ACCOUNT_NEEDED",
+      "JOB_PAYOUT_FAILED",
+      "JOB_PAYMENT_DEBT",
+      "JOB_REFUND_PENDING",
+      "JOB_REFUND_COMPLETED",
+      "JOB_REFUND_WAITING_FUNDS",
+      "ONLINE_LIMIT_LIFTED",
+    ],
+    professional: { label: "Pagamenti online", description: "Acconti e saldi pagati, bonifici, rimborsi." },
+    client: { label: "Pagamenti online", description: "Saldo da pagare e rimborsi." },
+  },
+  {
+    key: "lavori.problemi",
+    topic: "lavori",
+    types: [
+      "JOB_ISSUE_REPORTED",
+      "JOB_ISSUE_RESOLVED",
+      "JOB_ISSUE_SETTLED",
+      "JOB_ISSUE_ESCALATED",
+      "JOB_ISSUE_AUTO_ESCALATED",
+      "JOB_ISSUE_TEAM_REVIEW",
+      "JOB_ISSUE_INFO_REQUESTED",
+      "JOB_ISSUE_APPEAL_DECIDED",
+      "JOB_ISSUE_UNRESOLVED",
+      "JOB_STRIPE_DISPUTE",
+      "JOB_STRIPE_DISPUTE_NOTE_DUE",
+    ],
+    professional: { label: "Problemi e contestazioni", description: "Segnalazioni dei clienti e contestazioni in banca: hanno delle scadenze." },
+    client: { label: "Le tue segnalazioni", description: "Risposte e decisioni sui problemi che segnali." },
+  },
+  {
+    key: "lavori.recensioni",
+    topic: "lavori",
+    types: ["NEW_REVIEW"],
+    professional: { label: "Nuove recensioni" },
+  },
+  {
+    key: "lavori.documenti",
+    topic: "lavori",
+    types: ["JOB_INVOICE_REQUESTED", "CLIENT_DOCUMENTS_TO_FIX", "JOB_DOCUMENT_READY"],
+    professional: { label: "Fatture chieste dai clienti", description: "E i documenti da sistemare prima del riepilogo dell'anno." },
+    client: { label: "Ricevute e fatture", description: "Quando la copia è pronta o aggiornata." },
+  },
+  {
+    key: "lavori.admin",
+    topic: "lavori",
+    types: [
+      "ADMIN_JOB_BALANCE_UNPAID",
+      "ADMIN_STRIPE_DISPUTE",
+      "ADMIN_STRIPE_DISPUTE_DUE",
+      "ADMIN_JOB_REFUND_FAILED",
+      "ADMIN_STRIPE_ACCOUNT_UNREADABLE",
+      "ADMIN_DAC7_NEEDS_CORRECTION",
+      "ADMIN_URGENCY_ALERT",
+      "ADMIN_SEARCH_DEMAND_ALERT",
+      "ADMIN_WEEKLY_ADVICE",
+      "ADMIN_JOB_NOT_CLOSED",
+      "ADMIN_JOB_PAYMENT_LONG_HOLD",
+      "ADMIN_FEE_RECONCILIATION",
+    ],
+    admin: { label: "Avvisi per l'amministrazione", description: "Pagamenti da controllare, contestazioni, consigli del lunedì." },
+  },
+];
+
+const NOTIFICATION_ITEM_KEYS = new Set(NOTIFICATION_ITEMS.map((item) => item.key));
+
+export function notificationItemOf(type: string): NotificationItem | null {
+  return NOTIFICATION_ITEMS.find((item) => item.types.includes(type)) ?? null;
+}
+
+/** Avvisi di un argomento da mostrare a chi ha quel ruolo (gli amministratori vedono anche i loro). */
+export function notificationItemsFor(topic: NotificationTopic, role: "professional" | "client", isAdmin = false): (NotificationItem & { copy: { label: string; description?: string } })[] {
+  return NOTIFICATION_ITEMS.filter((item) => item.topic === topic).flatMap((item) => {
+    const copy = item[role] ?? (isAdmin ? item.admin : undefined);
+    return copy ? [{ ...item, copy }] : [];
+  });
+}
+
 export function notificationTopicOf(type: string): NotificationTopic | null {
   for (const topic of NOTIFICATION_TOPICS) {
     if (NOTIFICATION_TOPIC_INFO[topic].types.includes(type)) return topic;
@@ -233,6 +413,8 @@ export const notificationPreferencesSchema = z.object({
   popups: z.boolean(),
   /** Suono leggero quando arriva una notifica. */
   sound: z.boolean(),
+  /** Singoli avvisi spenti (`NotificationItem.key`). */
+  off: z.array(z.string().max(60)).max(60).optional(),
 });
 export type NotificationPreferences = z.infer<typeof notificationPreferencesSchema>;
 
@@ -248,6 +430,7 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   },
   popups: true,
   sound: true,
+  off: [],
 };
 
 /**
@@ -261,6 +444,7 @@ export function resolveNotificationPreferences(stored: unknown): NotificationPre
     const s = stored as Partial<NotificationPreferences>;
     if (typeof s.popups === "boolean") base.popups = s.popups;
     if (typeof s.sound === "boolean") base.sound = s.sound;
+    if (Array.isArray(s.off)) base.off = [...new Set(s.off.filter((key): key is string => typeof key === "string" && NOTIFICATION_ITEM_KEYS.has(key)))];
     if (s.topics && typeof s.topics === "object") {
       for (const topic of NOTIFICATION_TOPICS) {
         const t = (s.topics as Record<string, unknown>)[topic];
@@ -283,6 +467,8 @@ export function notificationChannelEnabled(prefs: NotificationPreferences, type:
   const topic = notificationTopicOf(type);
   if (!topic) return true;
   if (NOTIFICATION_TOPIC_INFO[topic].locked && channel !== "sms") return true;
+  const item = notificationItemOf(type);
+  if (item && prefs.off?.includes(item.key)) return false;
   return prefs.topics[topic][channel];
 }
 
