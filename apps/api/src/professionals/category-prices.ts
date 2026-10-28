@@ -52,7 +52,7 @@ export function acceptedQuoteStats(quotes: { totalEurCents: number; updatedAt: D
 /**
  * Unità più usata tra i prezzi della voce (a pari merito vince l'ordine di
  * `SERVICE_PRICE_UNITS`, "a lavoro" per primo): 10 € al m² e 1.500 € a
- * lavoro non si mettono nella stessa mediana (§383).
+ * lavoro non si mettono nella stessa mediana (§398).
  */
 export function dominantPriceUnit(units: ServicePriceUnit[]): ServicePriceUnit {
   const counts = new Map<ServicePriceUnit, number>();
@@ -86,7 +86,7 @@ export function declaredServiceStats(
     professionalCount: professionals.size,
     services: [...groups.values()]
       .flatMap((group) => {
-        // Solo i prezzi con l'unità più usata nella voce (§383): "8 € al m²"
+        // Solo i prezzi con l'unità più usata nella voce (§398): "8 € al m²"
         // e "1.500 € a lavoro" non stanno nella stessa forbice.
         const unit = dominantPriceUnit(group.rows.map((row) => row.unit));
         const rows = group.rows.filter((row) => row.unit === unit);

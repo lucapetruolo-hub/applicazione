@@ -87,7 +87,7 @@ export default function HomeContent({
 
         {/* 6. Prezzi e domande frequenti. */}
         <FadeInSection>
-          {/* Ancora per "Quanto costa" nella barra in alto (§383). */}
+          {/* Ancora per "Quanto costa" nella barra in alto (§398). */}
           <div id="quanto-costa" style={{ width: "100%", scrollMarginTop: 72 }}>
             <PriceEstimatorTool>
               <HomeFaq />

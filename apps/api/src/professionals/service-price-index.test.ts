@@ -10,7 +10,7 @@ const offer = (professionalProfileId: string, name: string, min: number | null, 
   priceUnit,
 });
 
-describe("voci del \"Quanto costa in media\" (§383)", () => {
+describe("voci del \"Quanto costa in media\" (§398)", () => {
   it("unisce maiuscole e spazi e conta i professionisti, non le righe", () => {
     const [entry] = buildServicePriceIndex([offer("p1", "Tinteggiatura", 800), offer("p1", " tinteggiatura ", 900), offer("p2", "TINTEGGIATURA", null)]);
     expect(entry).toMatchObject({ name: "Tinteggiatura", professionalCount: 2, price: null });

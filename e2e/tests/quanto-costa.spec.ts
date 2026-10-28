@@ -5,7 +5,7 @@ import { API_URL } from "../fixtures/env";
 import { createProfessional } from "../fixtures/preventivi";
 
 /**
- * "Quanto costa in media?" della home (docs/CHANGELOG.md §383): ogni voce
+ * "Quanto costa in media?" della home (docs/CHANGELOG.md §398): ogni voce
  * apre l'elenco di chi offre la prestazione e il numero della voce coincide
  * con l'elenco; le cifre compaiono da 3 professionisti con un prezzo, come
  * mediana e intervallo tipico; la pastiglia ✕ toglie il filtro; la scheda
@@ -58,7 +58,7 @@ test("ogni voce ha lo stesso numero di professionisti dell'elenco che apre", asy
   expect(ours).toEqual({ name: SERVICE, professionalCount: 3, price: { pricedCount: 3, lowEurCents: 900, medianEurCents: 1000, highEurCents: 1300, unit: "JOB" } });
 });
 
-/** Passi contati oggi dalle voci di "Quanto costa" (§389). */
+/** Passi contati oggi dalle voci di "Quanto costa" (§399). */
 async function priceToolCounts(): Promise<Record<string, number>> {
   const day = new Date();
   day.setUTCHours(0, 0, 0, 0);

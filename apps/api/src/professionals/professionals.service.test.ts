@@ -246,7 +246,7 @@ describe("agenda pubblica (§293)", () => {
   });
 });
 
-describe("voci di \"Quanto costa in media\" (§383)", () => {
+describe("voci di \"Quanto costa in media\" (§398)", () => {
   const build = (services: { professionalProfileId: string; name: string }[]) => {
     const prisma = {
       professionalService: { findMany: vi.fn().mockResolvedValue(services) },

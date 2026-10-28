@@ -27,7 +27,7 @@ export type CategoryPriceStats = {
   /** Prezzi delle prestazioni dichiarati dai professionisti, null sotto `MIN_PROFESSIONALS_FOR_DECLARED_PRICES`. */
   declared: {
     professionalCount: number;
-    /** `unit`: l'unità più usata dai professionisti della voce; i prezzi contano solo quelli con quell'unità (§383). */
+    /** `unit`: l'unità più usata dai professionisti della voce; i prezzi contano solo quelli con quell'unità (§398). */
     services: { name: string; professionalCount: number; minEurCents: number; maxEurCents: number; unit: ServicePriceUnit }[];
   } | null;
 };
@@ -38,7 +38,7 @@ export function hasCategoryPrices(stats: CategoryPriceStats | null | undefined):
 }
 
 /**
- * "Quanto costa in media" della home (docs/CHANGELOG.md §383): le cifre di
+ * "Quanto costa in media" della home (docs/CHANGELOG.md §398): le cifre di
  * una voce compaiono solo da questi professionisti con un prezzo in su. Con
  * uno o due si leggerebbe il prezzo di un singolo professionista, e la
  * mediana di due numeri non dice niente.

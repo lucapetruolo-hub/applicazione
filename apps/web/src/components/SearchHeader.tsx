@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { allItalianCityNames } from "@professionisti/shared";
 import { Icon, SearchBar, Text, XStack, YStack, brand, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
 import { buildSearchDestination } from "@/lib/searchNavigation";
-import { buildSearchSuggestions } from "@/lib/searchSuggestions";
+import { rememberSearchCity, useSearchBarHints } from "@/lib/useSearchBarHints";
 import { navigateWithTransition } from "@/lib/viewTransition";
 import { MagneticButton } from "./MagneticButton";
 
@@ -18,7 +17,7 @@ export function SearchHeader({
   initialQuery: string;
   initialCity: string;
   initialMode: SearchMode;
-  /** Prestazione filtrata (voce di "Quanto costa in media", §383): resta cambiando città o modalità. */
+  /** Prestazione filtrata (voce di "Quanto costa in media", §398): resta cambiando città o modalità. */
   service?: string;
 }) {
   const router = useRouter();
@@ -27,9 +26,10 @@ export function SearchHeader({
   // §271): parte chiuso, come una barra con la ricerca fatta e "Modifica".
   const [expanded, setExpanded] = useState(false);
 
-  const professionalSuggestions: ProfessionalSuggestion[] = buildSearchSuggestions();
+  const searchHints = useSearchBarHints(initialQuery);
 
   function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
+    rememberSearchCity(params.city);
     const destination = buildSearchDestination({ ...params, service });
     // Richiesta esplicita dell'utente: cambiare "Online/A domicilio" dalla
     // barra di ricerca di una pagina risultati deve aggiornare SUBITO la
@@ -84,8 +84,7 @@ export function SearchHeader({
               initialQuery={initialQuery}
               initialCity={initialCity}
               initialMode={initialMode}
-              professionalSuggestions={professionalSuggestions}
-              citySuggestions={allItalianCityNames()}
+              {...searchHints}
               searchOnModeChange
             />
           </YStack>

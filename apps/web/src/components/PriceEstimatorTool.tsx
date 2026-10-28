@@ -11,7 +11,7 @@ import { countPriceToolEntry } from "@/lib/siteCounts";
 
 type PriceEntry = ServicePriceIndexEntry;
 
-/** Indirizzo dell'elenco di chi offre la voce, nella città dell'ultima ricerca se c'è (§383). */
+/** Indirizzo dell'elenco di chi offre la voce, nella città dell'ultima ricerca se c'è (§398). */
 function entryHref(name: string, city: string | null): string {
   const params = new URLSearchParams({ servizio: name });
   if (city) params.set("citta", city);
@@ -91,7 +91,7 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
           Prezzi veri dei professionisti del sito. Tocca un lavoro per vedere chi lo fa.
         </Text>
         {/* Campo e voci in un unico riquadro bianco (Luca: "quella finestra
-            non mi convince", §383): si legge come una finestra sola, il campo
+            non mi convince", §398): si legge come una finestra sola, il campo
             non ha più il bordo nero del fuoco ma un anello verde sul riquadro. */}
         <div className="price-panel" onFocus={() => setIsFocused(true)} onBlur={handleBlur}>
           <label className="price-search">
@@ -147,7 +147,7 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
             >
               {visibleEntries.map((entry) => (
                 // Ogni voce apre i professionisti che offrono quella prestazione
-                // (richiesta di Luca, docs/CHANGELOG.md §383).
+                // (richiesta di Luca, docs/CHANGELOG.md §398).
                 <a
                   key={entry.name}
                   href={entryHref(entry.name, lastCity)}
@@ -156,7 +156,7 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
                   // Il clic non toglie il fuoco al campo: l'elenco aperto non si
                   // richiude (e non sposta le voci) tra la pressione e il rilascio.
                   onMouseDown={(event) => event.preventDefault()}
-                  // Conteggio anonimo della voce toccata (§389), per l'Andamento del sito.
+                  // Conteggio anonimo della voce toccata (§399), per l'Andamento del sito.
                   onClick={countPriceToolEntry}
                 >
                   <YStack gap={2} flex={1} minWidth={0}>
@@ -173,10 +173,10 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
                   </YStack>
                   <XStack alignItems="center" gap="$2" flexShrink={0}>
                     {/* Mediana e intervallo tipico (metà dei professionisti), mai
-                        minimo e massimo; sotto i 3 prezzi nessuna cifra (§383). */}
+                        minimo e massimo; sotto i 3 prezzi nessuna cifra (§398). */}
                     {entry.price ? (
                       <YStack alignItems="flex-end" gap={2}>
-                        {/* Unità prima del prezzo (Luca, §389): le cifre restano allineate a destra. */}
+                        {/* Unità prima del prezzo (Luca, §399): le cifre restano allineate a destra. */}
                         <Text fontSize={17} fontWeight="700" color={brand.cianografiaScuro}>
                           <Text fontSize={13} fontWeight="400" color={brand.grafite70}>
                             {SERVICE_PRICE_UNIT_LABEL[entry.price.unit]}

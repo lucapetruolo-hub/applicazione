@@ -1254,7 +1254,7 @@ export default function DashboardProfiloPage() {
                     voce a cui appartiene — bug reale segnalato dall'utente. */}
                 <XStack gap="$2" alignItems="center" flexWrap="wrap">
                   {/* Unità prima del prezzo, nello stesso ordine in cui la
-                      vedono i clienti (Luca, docs/CHANGELOG.md §389). */}
+                      vedono i clienti (Luca, docs/CHANGELOG.md §399). */}
                   <select
                     aria-label="Il prezzo è"
                     value={service.priceUnit}

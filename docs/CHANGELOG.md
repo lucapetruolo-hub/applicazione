@@ -21317,22 +21317,6 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: il pnpm di `/usr/bin` esiste sulla macchina di Render (è proprio il file che `corepack enable` cercava di cancellare); il deploy su Render dopo l'unione.
 
-## 383. Voci di "Quanto costa in media" cliccabili
-
-**Richiesta** (Luca, 27/10/2026): nello strumento "Quanto costa in media?" della homepage ogni voce deve essere cliccabile e aprire tutti i professionisti che hanno inserito quel servizio.
-
-**Decisione**: ogni voce è un link a `/cerca?servizio=<nome>`, con una freccia accanto al prezzo e lo sfondo verde chiaro al passaggio del mouse (il clic non toglie il fuoco al campo di ricerca, così l'elenco aperto non si richiude tra pressione e rilascio). L'API accetta `GET /professionals/search?service=<nome>` e tiene solo chi ha una prestazione della stessa voce: la chiave è una sola funzione, `serviceGroupKey` (oggi minuscole e spazi ai lati), usata sia dal prezzo medio sia dalla ricerca, così l'elenco mostra sempre chi è contato nella voce; quando arriverà l'unione dei nomi simili (`canonicalServiceName`, thread "descrivi il problema") basterà cambiare quella funzione. Il prezzo medio ora conta solo i professionisti che compaiono nella ricerca (in pausa, bloccati, non confermati o senza dati fiscali esclusi, regola §5.11): prima contava anche quelli, e il numero "5 professionisti" non avrebbe coinciso con l'elenco. In `/cerca` sopra i risultati "Servizio" e una pastiglia verde col nome del servizio e una ✕ che toglie il filtro (tiene città e modalità; prima era un link "Mostra tutti i professionisti", che Luca ha giudicato ambiguo: sembrava "tutti quelli del servizio"), la barra chiusa da telefono dice il servizio, la pagina resta fuori da Google come le altre ricerche filtrate. Le prestazioni si salvano senza spazi ai lati. Nessun link sulle singole prestazioni nella scheda dei risultati (scelta di Luca, §358).
-
-**Verifica**: test API (ricerca per voce senza badare a maiuscole e spazi, prezzo medio solo con professionisti visibili), typecheck e lint; sito in build di produzione con un'API finta, clic su una voce da computer e da telefono (iPhone 13) fino all'elenco filtrato.
-
-**Ritocco della finestra** (Luca: "a livello di design quella finestra non mi convince"): campo e voci ora stanno in un unico riquadro bianco con angoli da 20 px e ombra leggera, con la lente nel campo; al posto del bordo nero del fuoco un anello verde attorno a tutto il riquadro. Le voci sono separate da righe sottili a tutta larghezza (prima ogni voce aveva un bordo in alto con gli angoli arrotondati, che sembrava una scheda tagliata), nome a peso medio e prezzo più grande. Anteprime da telefono e computer in `anteprime/quanto-costa-finestra/`.
-
-**"Quanto costa" nella barra in alto** (Luca: "ora che è un tool importante inseriamolo anche nella barra fissa sopra"): link "Quanto costa" dopo "Come funziona" nella barra da computer, nel menu da telefono e nel piè di pagina (Per i clienti), che porta a `/#quanto-costa` nella home (ancora con `scrollMarginTop` 72 come "Come funziona"). Anteprime in `anteprime/quanto-costa-finestra/`. Tolto "Prezzi" dalla barra e dal menu da telefono: portava all'abbonamento dei professionisti e accanto a "Quanto costa" si confondeva (decisione di Luca: resta dentro "Offri i tuoi servizi", dove la pagina ha già "Vedi i prezzi" in alto).
-
-**Unità del prezzo** (migliorie scelte da Luca dopo il test di compito simulato, dove "10 €" per una tinteggiatura non diceva se era al m² o a lavoro): ogni prestazione ha ora `priceUnit` (`ServicePriceUnit`: a lavoro, all'ora, al giorno, al m², migrazione `20261027230000_unita_prezzo_prestazioni`, le prestazioni già salvate restano "a lavoro"). In `/dashboard/profilo` un menu accanto al prezzo (sul telefono va a capo insieme alla ✕). L'unità si vede nella scheda dei risultati, nel profilo, nel "Quanto costa in media" ("10 € al m²") e nelle pagine `/prezzi`. Prezzo medio e forbice di una voce contano solo i prezzi con l'unità più usata nella voce (`dominantPriceUnit`, a pari merito "a lavoro"): 10 € al m² e 1.500 € a lavoro non stanno nella stessa mediana.
-
-**Pagine "Quanto costa [mestiere] (a [città])" cliccabili**: ogni riga della tabella "Prezzi dei lavori più comuni" apre `/cerca?servizio=<lavoro>` (nella città della pagina se c'è), con la freccia e lo sfondo verde chiaro al passaggio come nella home; tutta la riga si tocca.
-
 ## 384. Andamento del sito: prestazioni più cercate
 
 **Richiesta** (Luca, 27/10/2026): "nell'analisi di cosa implementare in base ai numeri può essere utile vedere quali servizi sono più cercati per poi implementarli standard alle rispettive categorie". Scelta sulla scheda: "Sì, tutti e due i modi".
@@ -21347,6 +21331,30 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 - **Chi chiamare** (miglioria scelta da Luca): sotto "Cercano «X», pochi la offrono" l'elenco dei professionisti visibili di quel lavoro che non la offrono ancora (nome, città, link alla scheda), al massimo 10 con il link a tutti quelli del lavoro; se non ce n'è nessuno, il consiglio dice di cercarne di nuovi e porta a "Crea un profilo".
 
 **Verifica**: test di confronto, conteggio, riquadro e consigli (`site-stats.test.ts`, `site-counts.service.test.ts`); typecheck, lint e test dell'API; prove nel browser `conteggi.spec.ts` ("sturatura" a Latina conta 1 su "Sturatura scarichi" di Idraulico, 0 per Googlebot, il testo scritto non si salva) e `andamento-sito.spec.ts` (riquadro visibile su telefono e computer, axe senza errori).
+
+## 383. Barra di ricerca: errori di battitura, frazioni, città con professionisti prima, tastiera
+
+**Richiesta** (Luca, 27/10/2026, thread "abbinamento problema"): elenchi che compaiono subito al clic su "Cosa cerchi" e "Città" (le città più cercate per prime), mentre si scrive prima ciò che rispetta di più quello che si è scritto, senza titoletti negli elenchi; poi "effettua migliorie 1-2-3 (senza i numeri) 4": errori di battitura, frazioni col loro comune, città senza professionisti più in basso senza mostrare numeri, tastiera e lettore di schermo.
+
+**Decisione**:
+- Ordine dei suggerimenti in `packages/ui/src/searchMatch.ts` (stesso codice per sito e app): prima chi inizia con le lettere scritte, poi chi ha una parola che inizia così, poi chi le contiene; solo se non c'è niente di questo, chi somiglia con un errore di battitura (nessuno sotto le 4 lettere, uno fino a 7, due da 8; "Latna" → Latina, "sabuadia" → Sabaudia). Accenti, maiuscole e apostrofi non contano.
+- "Città" vuota: "Vicino a me" (posizione del browser solo dopo il clic, comune più vicino col dataset ISTAT, `nearestComune`), l'ultima città cercata da questo browser (`localStorage`, nessun dato al server) e le più cercate degli ultimi 90 giorni (ricerche per lavoro §370, ricerche libere, richieste guidate ×3), da `GET /professionals/city-hints?category=`, in cache 5 minuti. Senza dati solo "Vicino a me", mai comuni a caso.
+- A parità di corrispondenza le città con almeno un professionista visibile entro 25 km (per il lavoro scelto se c'è, `coveredComuni` in `search-area.ts`, filtri pubblici di `publicSearchWhere`, profili demo esclusi) vengono prima. Nessun numero mostrato.
+- Frazioni in `packages/shared/src/frazioni.ts` (per ora Latina Scalo, Latina Lido e i 12 borghi di Latina): compaiono con il comune sotto e cercano nel comune.
+- Tastiera: frecce, Invio, Esc; `role="combobox"`/`listbox`/`option` con `aria-activedescendant` e un annuncio del numero di suggerimenti per il lettore di schermo.
+
+**Verifica**: test di `searchMatch` (7) e di `coveredComuni`; prova nel browser su computer e telefono (elenco al clic, frecce e Invio, Esc, "Latna", frazioni "borgo"); typecheck e lint.
+
+## 389. Barra di ricerca: frazioni dei comuni vicini, "Vicino a me" che spiega quando non trova la posizione
+
+**Richiesta** (Luca, 27/10/2026, "Effettua le migliorie" proposte col §383).
+
+**Decisione**:
+- Frazioni di Aprilia, Sabaudia, Cisterna di Latina, Pontinia e Terracina (riquadro "Frazioni" delle voci di Wikipedia) in `packages/shared/src/frazioni.ts`, con il comune sotto. Isolabella e San Vito sono anche comuni (Piemonte, Sardegna): compaiono tutte e due, distinte dal comune scritto sotto.
+- "Vicino a me": l'elenco resta aperto con "Cerco la tua posizione…" e, se non la trova, con "Posizione non disponibile: scrivi la città"; si chiude solo quando la trova (`leadingAction.onPress` può restituire una Promise).
+- Bug trovato provando: l'intestazione `Permissions-Policy` del sito aveva `geolocation=()`, che blocca la posizione anche dopo il permesso dell'utente; ora `geolocation=(self)` (solo il nostro sito, sempre dopo il clic e la richiesta del browser).
+
+**Verifica**: nel browser con posizione negata (messaggio, elenco aperto) e concessa (Latina compilata, elenco chiuso); intestazione controllata; typecheck, lint, test.
 
 ## 385. Barra fissa "Richiedi un preventivo" anche da computer
 
@@ -21382,9 +21390,25 @@ pagine di accesso, §279 e §349). Supera la proposta non scelta del §325.
 
 **Verifica:** build di produzione col profilo vero, fotografato a 1440, 1024
 e 390 px (anteprime in `anteprime/barra-preventivo-computer/`).
-## 389. "Quanto costa in media": prezzi onesti e richiesta già pronta
+## 398. Voci di "Quanto costa in media" cliccabili
 
-**Richiesta** (Luca, 27/10/2026, versione più profonda del §383, `analisi/quanto-costa-versione-profonda.md`): rendere lo strumento uno che porta lavoro e dice prezzi onesti; dati veri prima del codice; prove con un test automatico, axe, anteprime e un test con 5 persone (simulate).
+**Richiesta** (Luca, 27/10/2026): nello strumento "Quanto costa in media?" della homepage ogni voce deve essere cliccabile e aprire tutti i professionisti che hanno inserito quel servizio.
+
+**Decisione**: ogni voce è un link a `/cerca?servizio=<nome>`, con una freccia accanto al prezzo e lo sfondo verde chiaro al passaggio del mouse (il clic non toglie il fuoco al campo di ricerca, così l'elenco aperto non si richiude tra pressione e rilascio). L'API accetta `GET /professionals/search?service=<nome>` e tiene solo chi ha una prestazione della stessa voce: la chiave è una sola funzione, `serviceGroupKey` (oggi minuscole e spazi ai lati), usata sia dal prezzo medio sia dalla ricerca, così l'elenco mostra sempre chi è contato nella voce; quando arriverà l'unione dei nomi simili (`canonicalServiceName`, thread "descrivi il problema") basterà cambiare quella funzione. Il prezzo medio ora conta solo i professionisti che compaiono nella ricerca (in pausa, bloccati, non confermati o senza dati fiscali esclusi, regola §5.11): prima contava anche quelli, e il numero "5 professionisti" non avrebbe coinciso con l'elenco. In `/cerca` sopra i risultati "Servizio" e una pastiglia verde col nome del servizio e una ✕ che toglie il filtro (tiene città e modalità; prima era un link "Mostra tutti i professionisti", che Luca ha giudicato ambiguo: sembrava "tutti quelli del servizio"), la barra chiusa da telefono dice il servizio, la pagina resta fuori da Google come le altre ricerche filtrate. Le prestazioni si salvano senza spazi ai lati. Nessun link sulle singole prestazioni nella scheda dei risultati (scelta di Luca, §358).
+
+**Verifica**: test API (ricerca per voce senza badare a maiuscole e spazi, prezzo medio solo con professionisti visibili), typecheck e lint; sito in build di produzione con un'API finta, clic su una voce da computer e da telefono (iPhone 13) fino all'elenco filtrato.
+
+**Ritocco della finestra** (Luca: "a livello di design quella finestra non mi convince"): campo e voci ora stanno in un unico riquadro bianco con angoli da 20 px e ombra leggera, con la lente nel campo; al posto del bordo nero del fuoco un anello verde attorno a tutto il riquadro. Le voci sono separate da righe sottili a tutta larghezza (prima ogni voce aveva un bordo in alto con gli angoli arrotondati, che sembrava una scheda tagliata), nome a peso medio e prezzo più grande. Anteprime da telefono e computer in `anteprime/quanto-costa-finestra/`.
+
+**"Quanto costa" nella barra in alto** (Luca: "ora che è un tool importante inseriamolo anche nella barra fissa sopra"): link "Quanto costa" dopo "Come funziona" nella barra da computer, nel menu da telefono e nel piè di pagina (Per i clienti), che porta a `/#quanto-costa` nella home (ancora con `scrollMarginTop` 72 come "Come funziona"). Anteprime in `anteprime/quanto-costa-finestra/`. Tolto "Prezzi" dalla barra e dal menu da telefono: portava all'abbonamento dei professionisti e accanto a "Quanto costa" si confondeva (decisione di Luca: resta dentro "Offri i tuoi servizi", dove la pagina ha già "Vedi i prezzi" in alto).
+
+**Unità del prezzo** (migliorie scelte da Luca dopo il test di compito simulato, dove "10 €" per una tinteggiatura non diceva se era al m² o a lavoro): ogni prestazione ha ora `priceUnit` (`ServicePriceUnit`: a lavoro, all'ora, al giorno, al m², migrazione `20261027230000_unita_prezzo_prestazioni`, le prestazioni già salvate restano "a lavoro"). In `/dashboard/profilo` un menu accanto al prezzo (sul telefono va a capo insieme alla ✕). L'unità si vede nella scheda dei risultati, nel profilo, nel "Quanto costa in media" ("10 € al m²") e nelle pagine `/prezzi`. Prezzo medio e forbice di una voce contano solo i prezzi con l'unità più usata nella voce (`dominantPriceUnit`, a pari merito "a lavoro"): 10 € al m² e 1.500 € a lavoro non stanno nella stessa mediana.
+
+**Pagine "Quanto costa [mestiere] (a [città])" cliccabili**: ogni riga della tabella "Prezzi dei lavori più comuni" apre `/cerca?servizio=<lavoro>` (nella città della pagina se c'è), con la freccia e lo sfondo verde chiaro al passaggio come nella home; tutta la riga si tocca.
+
+## 399. "Quanto costa in media": prezzi onesti e richiesta già pronta
+
+**Richiesta** (Luca, 27/10/2026, versione più profonda del §398, `analisi/quanto-costa-versione-profonda.md`): rendere lo strumento uno che porta lavoro e dice prezzi onesti; dati veri prima del codice; prove con un test automatico, axe, anteprime e un test con 5 persone (simulate).
 
 **Dati** (`analisi/quanto-costa/analisi-dati.md`): in produzione 3 professionisti di prova, 38 prestazioni, 6 con un prezzo, nessuna variante dello stesso nome; prezzi poco credibili ("Sostituzione caldaia 90 €"). Solo 295 delle 718 frasi dei clienti contengono una parola delle prestazioni suggerite: i clienti descrivono il problema, i professionisti il lavoro.
 

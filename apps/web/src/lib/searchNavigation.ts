@@ -21,7 +21,7 @@ export function buildSearchDestination({
   /** Preseleziona il filtro "Intervento urgente?" (disponibilità nelle prossime 24h) già in pagina risultati, richiesta esplicita dell'utente dalla homepage. */
   urgentOnly?: boolean;
   /**
-   * Prestazione già filtrata (voce di "Quanto costa in media", §383): resta
+   * Prestazione già filtrata (voce di "Quanto costa in media", §398): resta
    * se si cambia solo città o modalità, cioè se "Cosa cerchi?" è vuoto o
    * dice ancora la stessa prestazione. Un lavoro nuovo è una ricerca nuova.
    */

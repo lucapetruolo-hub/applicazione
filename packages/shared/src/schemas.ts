@@ -750,7 +750,7 @@ export const professionalServiceSchema = z
     name: z.string().min(2).max(120),
     priceMinEurCents: z.number().int().nonnegative().optional(),
     priceMaxEurCents: z.number().int().nonnegative().optional(),
-    /** A cosa si riferisce il prezzo (§383); senza, "a lavoro". */
+    /** A cosa si riferisce il prezzo (§398); senza, "a lavoro". */
     priceUnit: z.enum(SERVICE_PRICE_UNITS).optional(),
   })
   .refine((data) => data.priceMinEurCents === undefined || data.priceMaxEurCents === undefined || data.priceMaxEurCents >= data.priceMinEurCents, {

@@ -169,11 +169,11 @@ export function ProfessionalDetailContent({
   // all'agenda. Fatto qui e non con il solo `#agenda` perché l'agenda arriva
   // dopo il caricamento della pagina e il browser non trova ancora l'ancora.
   const requestedAgendaDate = searchParams.get("data");
-  // Arrivati da una voce di "Quanto costa in media" (§383): la richiesta parte
+  // Arrivati da una voce di "Quanto costa in media" (§398): la richiesta parte
   // con la prestazione già scritta nella descrizione.
   const requestedService = searchParams.get("servizio")?.trim();
   const serviceDescriptionParam = requestedService ? `&descrizione=${encodeURIComponent(`${requestedService}. `)}` : "";
-  // Profilo aperto dall'elenco di una voce (§389): contato solo se la scheda del browser è partita da "Quanto costa".
+  // Profilo aperto dall'elenco di una voce (§399): contato solo se la scheda del browser è partita da "Quanto costa".
   useEffect(() => {
     if (requestedService) countPriceToolProfile();
   }, [requestedService]);

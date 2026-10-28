@@ -135,7 +135,7 @@ export const siteStepEventSchema = z.object({
 export type SiteStepEvent = z.infer<typeof siteStepEventSchema>;
 
 /**
- * Passi di chi usa le voci di "Quanto costa" (docs/CHANGELOG.md §389,
+ * Passi di chi usa le voci di "Quanto costa" (docs/CHANGELOG.md §399,
  * richiesta di Luca): voce toccata, profilo aperto da quell'elenco,
  * richiesta inviata partita da lì. Solo il passo e il giorno.
  */
@@ -242,7 +242,7 @@ export type AdminSiteStats = {
   clientFunnel: { key: ClientFunnelKey; count: number }[];
   /** Totale, e quanti dalla pagina di un professionista (`fromProfile`). */
   requestSteps: { key: RequestStepKey; count: number; fromProfile: number }[];
-  /** Passi dalle voci di "Quanto costa" (§389). */
+  /** Passi dalle voci di "Quanto costa" (§399). */
   priceToolSteps: { key: PriceToolStepKey; count: number }[];
   clientCohorts: { weekStart: string; clients: number; withQuote: number; accepted: number; reviewed: number; returned: number }[];
   professionalCohorts: { weekStart: string; registered: number; fiscal: number; identity: number; firstQuote: number; active: number }[];

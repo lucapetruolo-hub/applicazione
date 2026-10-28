@@ -31,7 +31,7 @@ export class SiteCountsController {
     await this.siteCounts.recordStep(body.step, body.categorySlug, body.origin).catch(() => undefined);
   }
 
-  /** Un passo dalle voci di "Quanto costa" (§389). */
+  /** Un passo dalle voci di "Quanto costa" (§399). */
   @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @Post("price-tool")
   @HttpCode(204)

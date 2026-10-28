@@ -19,7 +19,7 @@ import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 // questo — niente da indicizzare in una mappa interattiva).
 const ResultsMap = dynamic(() => import("./ResultsMap").then((mod) => mod.ResultsMap), { ssr: false });
 
-/** Nome della prestazione cercata (`?servizio=`) che il professionista offre, se c'è (§383). */
+/** Nome della prestazione cercata (`?servizio=`) che il professionista offre, se c'è (§398). */
 function matchedServiceName(pro: ProfessionalSearchResult): string | undefined {
   return pro.matchedServiceId ? pro.services.find((service) => service.id === pro.matchedServiceId)?.name : undefined;
 }
@@ -27,7 +27,7 @@ function matchedServiceName(pro: ProfessionalSearchResult): string | undefined {
 /**
  * Indirizzo del profilo. Arrivando da una voce di "Quanto costa in media" porta
  * con sé la prestazione, così "Richiedi preventivo" sul profilo parte con il
- * lavoro già scritto (§383).
+ * lavoro già scritto (§398).
  */
 function profileHref(pro: ProfessionalSearchResult, extra: Record<string, string>): string {
   const service = matchedServiceName(pro);
@@ -36,7 +36,7 @@ function profileHref(pro: ProfessionalSearchResult, extra: Record<string, string
   return `${professionalPath(pro)}${query ? `?${query}` : ""}`;
 }
 
-/** Descrizione della richiesta già scritta con la prestazione cercata (§383). */
+/** Descrizione della richiesta già scritta con la prestazione cercata (§398). */
 function serviceDescriptionParam(pro: ProfessionalSearchResult): string {
   const service = matchedServiceName(pro);
   return service ? `&descrizione=${encodeURIComponent(`${service}. `)}` : "";

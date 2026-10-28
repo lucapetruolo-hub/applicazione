@@ -507,7 +507,7 @@ model ProfessionalService {
   // (vedi formatServicePriceRange in packages/shared).
   priceMinEurCents      Int?
   priceMaxEurCents      Int?
-  // A cosa si riferisce il prezzo (docs/CHANGELOG.md §383, richiesta di
+  // A cosa si riferisce il prezzo (docs/CHANGELOG.md §398, richiesta di
   // Luca): "10 €" per una tinteggiatura può essere al m² o a lavoro.
   priceUnit             ServicePriceUnit @default(JOB)
   createdAt             DateTime @default(now())
@@ -2437,7 +2437,7 @@ model RequestStepDay {
   @@map("request_step_days")
 }
 
-// Passi dalle voci di "Quanto costa" (docs/CHANGELOG.md §389): voce
+// Passi dalle voci di "Quanto costa" (docs/CHANGELOG.md §399): voce
 // toccata, profilo aperto dall'elenco, richiesta inviata. Solo il passo.
 model PriceToolStepDay {
   /// VOCE, PROFILO o RICHIESTA (PRICE_TOOL_STEP_KEYS in packages/shared).

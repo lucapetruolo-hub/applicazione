@@ -5312,7 +5312,7 @@ a.admin-kpi:hover {
   font-weight: 500;
   color: #2b2420;
 }
-/* Ogni riga apre chi offre il lavoro (docs/CHANGELOG.md §383): il link sul
+/* Ogni riga apre chi offre il lavoro (docs/CHANGELOG.md §398): il link sul
    nome copre tutta la riga. */
 .price-table tbody tr {
   position: relative;

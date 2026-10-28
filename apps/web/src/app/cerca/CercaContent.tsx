@@ -32,7 +32,7 @@ export function CercaContent({
   city?: string;
   online?: boolean;
   q?: string;
-  /** Prestazione scelta in "Quanto costa in media" (docs/CHANGELOG.md §383). */
+  /** Prestazione scelta in "Quanto costa in media" (docs/CHANGELOG.md §398). */
   service?: string;
   professionals: ProfessionalSearchResult[];
   /** Tutti i professionisti (nessun filtro città), per i puntini sulla mappa. */
@@ -42,7 +42,7 @@ export function CercaContent({
   /** Preimpostato dall'URL (?urgente=1) quando si arriva dal toggle "Intervento urgente?" della homepage. */
   initialUrgentOnly?: boolean;
 }) {
-  // Per le voci di "Quanto costa in media" della home (§383).
+  // Per le voci di "Quanto costa in media" della home (§398).
   useEffect(() => {
     saveLastSearchCity(city);
   }, [city]);
@@ -67,7 +67,7 @@ export function CercaContent({
   const notice = loadFailed ? <LoadErrorNotice title="Non riusciamo a caricare i professionisti" /> : professionals.length > 0 ? null : <EmptySearchResults title={title} online={Boolean(online)} city={city} />;
 
   // Arrivando da una voce di "Quanto costa in media" si dice quale
-  // prestazione filtra l'elenco e come tornare a vedere tutti (§383).
+  // prestazione filtra l'elenco e come tornare a vedere tutti (§398).
   const allHref = (() => {
     const params = new URLSearchParams();
     if (city) params.set("citta", city);
@@ -89,7 +89,7 @@ export function CercaContent({
 
   // Il filtro si toglie dalla ✕ sulla pastiglia, come nei filtri dei grandi
   // siti: un link "Mostra tutti" si capiva come "tutti quelli del servizio"
-  // (Luca, §383).
+  // (Luca, §398).
   const serviceBar = service ? (
     <XStack alignItems="center" flexWrap="wrap" gap="$2">
       <Text fontSize={15} color={brand.grafite70}>
@@ -102,7 +102,7 @@ export function CercaContent({
         </span>
       </Link>
       {/* Senza città l'elenco è di tutta Italia: si chiede dove, senza
-          obbligare (§383). Con la città la si cambia dalla barra di ricerca,
+          obbligare (§398). Con la città la si cambia dalla barra di ricerca,
           che tiene il servizio. */}
       {!city ? (
         <form className="service-city" onSubmit={submitCity} role="search" aria-label="Cerca vicino a te">

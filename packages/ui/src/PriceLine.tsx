@@ -7,7 +7,7 @@ import { brand } from "./tokens";
  * tolti su richiesta dell'utente (§316). Dal §349 anche le cifre sono nel
  * carattere del sito (niente monospace, regola unica dei numeri).
  * L'unità ("al m²") sta prima del prezzo, in piccolo: così le cifre finiscono
- * tutte sullo stesso bordo destro (richiesta di Luca, docs/CHANGELOG.md §389).
+ * tutte sullo stesso bordo destro (richiesta di Luca, docs/CHANGELOG.md §399).
  */
 export function PriceLine({ label, price, unit, labelColor = brand.grafite70 }: { label: string; price: string; unit?: string; labelColor?: string }) {
   const isAmount = /\d/.test(price);

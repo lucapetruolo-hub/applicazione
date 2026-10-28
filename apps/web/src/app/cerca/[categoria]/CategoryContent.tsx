@@ -39,7 +39,7 @@ export function CategoryContent({
   // risultati — la lista parla da sola. Il riquadro resta SOLO quando non
   // c'e' nessun risultato, perche' altrimenti la pagina sarebbe un vuoto
   // muto senza spiegazioni.
-  // Per le voci di "Quanto costa in media" della home (§383).
+  // Per le voci di "Quanto costa in media" della home (§398).
   useEffect(() => {
     saveLastSearchCity(city);
   }, [city]);

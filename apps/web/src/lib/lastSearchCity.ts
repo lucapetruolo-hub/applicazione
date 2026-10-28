@@ -1,5 +1,5 @@
 /**
- * Città dell'ultima ricerca fatta su questo browser (docs/CHANGELOG.md §383):
+ * Città dell'ultima ricerca fatta su questo browser (docs/CHANGELOG.md §398):
  * le voci di "Quanto costa in media" aprono l'elenco già in quella zona.
  * Solo una comodità di chi visita, mai inviata al server né usata per
  * contare: se il browser non la salva, la voce apre l'elenco senza città.

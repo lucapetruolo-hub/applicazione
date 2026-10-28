@@ -58,7 +58,7 @@ export function pricesPath(data: Pick<PricesData, "category" | "comune">): strin
   return data.comune ? `/prezzi/${data.category.slug}/${comuneSlug(data.comune.name)}` : `/prezzi/${data.category.slug}`;
 }
 
-/** Elenco di chi offre il lavoro (§383), nella città della pagina se c'è. */
+/** Elenco di chi offre il lavoro (§398), nella città della pagina se c'è. */
 function serviceListHref(name: string, comune?: Comune): string {
   const params = new URLSearchParams({ servizio: name });
   if (comune) params.set("citta", comune.name);
@@ -169,7 +169,7 @@ export function PricesView({ data }: { data: PricesData }) {
             </thead>
             <tbody>
               {/* Ogni lavoro apre chi lo offre, come le voci del "Quanto costa in
-                  media" della home (richiesta di Luca, docs/CHANGELOG.md §383);
+                  media" della home (richiesta di Luca, docs/CHANGELOG.md §398);
                   nella pagina di una città, già in quella città. */}
               {declared.services.map((service) => (
                 <tr key={service.name}>
@@ -179,7 +179,7 @@ export function PricesView({ data }: { data: PricesData }) {
                     </PriceToolLink>
                   </th>
                   <td>
-                    {/* Unità prima del prezzo: le cifre restano allineate a destra (§389). */}
+                    {/* Unità prima del prezzo: le cifre restano allineate a destra (§399). */}
                     <span className="price-table-unit">{SERVICE_PRICE_UNIT_LABEL[service.unit]}</span>
                     {formatServicePriceRange(service.minEurCents, service.maxEurCents)}
                     <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" className="price-table-chevron">

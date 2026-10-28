@@ -124,7 +124,7 @@ export function SiteHeader() {
                   </Text>
                 </Link>
                 {/* Strumento "Quanto costa in media" della home (richiesta di
-                    Luca, docs/CHANGELOG.md §383). */}
+                    Luca, docs/CHANGELOG.md §398). */}
                 <Link href="/#quanto-costa" style={{ textDecoration: "none" }}>
                   <Text fontSize={16} fontWeight="600" color={brand.grafite}>
                     Quanto costa
@@ -132,7 +132,7 @@ export function SiteHeader() {
                 </Link>
                 {/* "Prezzi" (abbonamento dei professionisti) tolto da qui: accanto a
                     "Quanto costa" si confondeva, resta in "Offri i tuoi servizi"
-                    (decisione di Luca, docs/CHANGELOG.md §383). */}
+                    (decisione di Luca, docs/CHANGELOG.md §398). */}
                 {/* Ingresso alla presentazione per chi offre un servizio, come
                     "Diventa un sitter" su Rover (docs/CHANGELOG.md §173). */}
                 {!isLoading && !user?.isProfessional ? (

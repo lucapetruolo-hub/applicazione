@@ -1,10 +1,10 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { allItalianCityNames, PROFESSIONAL_CATEGORIES, findComuneBySlug, isProfessionalCategorySlug } from "@professionisti/shared";
+import { PROFESSIONAL_CATEGORIES, findComuneBySlug, isProfessionalCategorySlug } from "@professionisti/shared";
 import { SearchBar, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
 import { buildSearchDestination } from "@/lib/searchNavigation";
-import { buildSearchSuggestions } from "@/lib/searchSuggestions";
+import { rememberSearchCity, useSearchBarHints } from "@/lib/useSearchBarHints";
 import { navigateWithTransition } from "@/lib/viewTransition";
 import { MagneticButton } from "./MagneticButton";
 
@@ -31,13 +31,14 @@ export function HeaderSearchBar() {
   const citySlugFromPath = pathname.split("/")[3];
   const city = searchParams.get("citta") ?? (citySlugFromPath ? findComuneBySlug(citySlugFromPath)?.name : undefined) ?? "";
   const category = categorySlugFromPath && isProfessionalCategorySlug(categorySlugFromPath) ? PROFESSIONAL_CATEGORIES.find((c) => c.slug === categorySlugFromPath) : undefined;
-  // Prestazione filtrata da "Quanto costa in media" (§383): scritta nel campo e tenuta cambiando città.
+  // Prestazione filtrata da "Quanto costa in media" (§398): scritta nel campo e tenuta cambiando città.
   const service = searchParams.get("servizio")?.trim() || undefined;
   const query = category ? category.label : (searchParams.get("q") ?? service ?? "");
 
-  const professionalSuggestions: ProfessionalSuggestion[] = buildSearchSuggestions();
+  const searchHints = useSearchBarHints(query);
 
   function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
+    rememberSearchCity(params.city);
     const destination = buildSearchDestination({ ...params, service });
     navigateWithTransition(() => {
       router.push(destination);
@@ -59,8 +60,7 @@ export function HeaderSearchBar() {
       initialQuery={query}
       initialCity={city}
       initialMode={online ? "online" : "domicilio"}
-      professionalSuggestions={professionalSuggestions}
-      citySuggestions={allItalianCityNames()}
+      {...searchHints}
       searchOnModeChange
     />
   );

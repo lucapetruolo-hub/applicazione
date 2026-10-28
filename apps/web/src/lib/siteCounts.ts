@@ -71,7 +71,7 @@ export function countRequestStep(step: RequestStepKey, categorySlug?: string | n
 }
 
 /**
- * Chi arriva da una voce di "Quanto costa" (§389): un segno solo in questa
+ * Chi arriva da una voce di "Quanto costa" (§399): un segno solo in questa
  * scheda del browser (sessionStorage, nessun cookie), per contare il
  * profilo aperto e la richiesta inviata che partono da lì.
  */

@@ -15,7 +15,7 @@ export type ProfessionalCardService = {
   name: string;
   priceMinEurCents: number | null;
   priceMaxEurCents: number | null;
-  /** A cosa si riferisce il prezzo (docs/CHANGELOG.md §383); senza, nessuna unità mostrata. */
+  /** A cosa si riferisce il prezzo (docs/CHANGELOG.md §398); senza, nessuna unità mostrata. */
   priceUnit?: ProfessionalCardPriceUnit;
 };
 
@@ -80,7 +80,7 @@ function formatServicePrice(priceMinEurCents: number | null, priceMaxEurCents: n
   return single !== null ? `${formatAmount(single)}\u00A0€${suffix}` : "Su richiesta";
 }
 
-/** Unità da mostrare prima del prezzo nella riga (§389); nessuna senza prezzo. */
+/** Unità da mostrare prima del prezzo nella riga (§399); nessuna senza prezzo. */
 function priceUnitLabel(service: ProfessionalCardService): string | undefined {
   if (!service.priceUnit || (service.priceMinEurCents === null && service.priceMaxEurCents === null)) return undefined;
   return PRICE_UNIT_LABEL[service.priceUnit];
@@ -201,7 +201,7 @@ export type ProfessionalCardProps = {
   onAgendaPress?: (date: string, mode: "HOME" | "ONLINE") => void;
   /**
    * Prestazione cercata (voce di "Quanto costa in media", docs/CHANGELOG.md
-   * §383): prima nell'elenco, in evidenza, e il suo prezzo al posto di
+   * §398): prima nell'elenco, in evidenza, e il suo prezzo al posto di
    * "da … €" sulla scheda chiusa.
    */
   highlightServiceId?: string;
@@ -533,7 +533,7 @@ export function ProfessionalCard({
               <Text fontFamily="$body" fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
                 {expanded ? `Nascondi ${detailsLabel}` : `Vedi ${detailsLabel}`}
               </Text>
-              {/* Con una prestazione cercata (§383) il suo prezzo, non il più basso. */}
+              {/* Con una prestazione cercata (§398) il suo prezzo, non il più basso. */}
               {!expanded && highlighted
                 ? ` · ${highlighted.name.trim()}: ${formatServicePrice(highlighted.priceMinEurCents, highlighted.priceMaxEurCents, highlighted.priceUnit).toLowerCase()}`
                 : !expanded && lowestPrice !== null

@@ -15,7 +15,7 @@ type OfferedService = {
 
 
 /**
- * Voci del "Quanto costa in media" (§383): ogni prestazione offerta dai
+ * Voci del "Quanto costa in media" (§398): ogni prestazione offerta dai
  * professionisti visibili, con quanti la offrono e, da
  * `MIN_PROFESSIONALS_FOR_SERVICE_PRICE` professionisti con un prezzo in su,
  * mediana e intervallo tipico al posto di minimo e massimo (un solo prezzo

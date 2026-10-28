@@ -48,7 +48,7 @@ export default async function CercaPage(props: { searchParams: Promise<PageSearc
   // in una zona specifica, invece di scartarla del tutto — richiesta esplicita
   // dell'utente ("dai la possibilità di selezionare un luogo" anche online).
   const city = searchParams.citta;
-  // Voce di "Quanto costa in media" in homepage (docs/CHANGELOG.md §383).
+  // Voce di "Quanto costa in media" in homepage (docs/CHANGELOG.md §398).
   const service = searchParams.servizio?.trim() || undefined;
 
   let professionals: ProfessionalSearchResult[] = [];

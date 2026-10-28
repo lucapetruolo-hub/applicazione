@@ -25,7 +25,7 @@ export type ProfessionalServiceItem = {
 };
 
 /**
- * A cosa si riferisce il prezzo di una prestazione (docs/CHANGELOG.md §383,
+ * A cosa si riferisce il prezzo di una prestazione (docs/CHANGELOG.md §398,
  * richiesta di Luca dopo il test di compito: "10 €" per una tinteggiatura
  * può essere al m² o a lavoro). Stessi valori dell'enum Prisma.
  */
@@ -324,7 +324,7 @@ export type ProfessionalSearchResult = {
    */
   /**
    * Ricerca per prestazione (`?servizio=`, voce di "Quanto costa in media",
-   * docs/CHANGELOG.md §383): la prestazione del professionista che
+   * docs/CHANGELOG.md §398): la prestazione del professionista che
    * corrisponde, da mettere in evidenza nella scheda.
    */
   matchedServiceId?: string;

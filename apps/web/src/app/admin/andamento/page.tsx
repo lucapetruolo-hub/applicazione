@@ -540,7 +540,7 @@ function StepsCard({ data }: { data: AdminSiteStats }) {
   );
 }
 
-/** Dalle voci di "Quanto costa" (§389): se lo strumento porta richieste o è solo bello. */
+/** Dalle voci di "Quanto costa" (§399): se lo strumento porta richieste o è solo bello. */
 function PriceToolCard({ data }: { data: AdminSiteStats }) {
   const rows = withDrops(
     data.priceToolSteps.map((s) => ({
