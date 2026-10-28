@@ -74,6 +74,7 @@ export function AgendaTimeGrid({
   selectedKey,
   dayNote,
   onDayPress,
+  onEmptyPress,
 }: {
   days: Date[];
   events: AgendaGridEvent[];
@@ -85,6 +86,8 @@ export function AgendaTimeGrid({
   selectedKey: string | null;
   dayNote: (date: string) => AgendaDayNote | null;
   onDayPress?: (date: Date) => void;
+  /** Tocco su un orario vuoto: data e minuti (alla mezz'ora) per aggiungere un lavoro lì. */
+  onEmptyPress?: (date: Date, minutes: number) => void;
 }) {
   // La griglia nasce solo nel browser (dopo il caricamento dei lavori): la misura dello schermo è già nota.
   const [phone] = useState(() => typeof window !== "undefined" && window.matchMedia(PHONE_QUERY).matches);
@@ -194,7 +197,24 @@ export function AgendaTimeGrid({
             const closed = closedDates.has(dateStr);
             const past = dateStr < todayStr;
             return (
-              <div key={dateStr} className={`ag-col${closed ? " closed" : past ? " past" : ""}`} style={{ height }}>
+              // Toccando un orario vuoto si aggiunge un lavoro a quell'ora (docs/changelog/2026-10-28-agenda-orari-in-vista.md).
+              // Da tastiera resta il pulsante "Aggiungi lavoro", che fa la stessa cosa.
+              // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+              <div
+                key={dateStr}
+                className={`ag-col${closed ? " closed" : past ? " past" : ""}${onEmptyPress ? " addable" : ""}`}
+                style={{ height }}
+                onClick={
+                  onEmptyPress
+                    ? (e) => {
+                        if ((e.target as HTMLElement).closest(".ag-ev, .ag-now")) return;
+                        const offset = e.clientY - e.currentTarget.getBoundingClientRect().top;
+                        const minutes = fromHour * 60 + Math.floor((offset / HOUR_PX) * 2) * 30;
+                        onEmptyPress(date, Math.min(Math.max(minutes, fromHour * 60), toHour * 60 - 30));
+                      }
+                    : undefined
+                }
+              >
                 {Array.from({ length: toHour - fromHour - 1 }, (_, i) => (
                   <div key={i} className="hl" style={{ top: (i + 1) * HOUR_PX }} />
                 ))}

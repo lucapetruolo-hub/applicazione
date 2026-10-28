@@ -23,4 +23,9 @@
 
 **Terza parte** (Luca: "effettua la miglioria 1"): nella Settimana del telefono le ore libere sotto ogni giorno sono scritte brevi ("9h30" invece di "9 h 30 libere", 10 px), perché nelle colonne strette venivano tagliate; il lettore di schermo legge ancora "libere". Poi, sull'anteprima (Luca: "aggiungila"), nella stessa vista i lavori mostrano l'ora d'inizio al posto del nome, che nelle colonne strette diventava "A."; il lettore di schermo legge ancora nome e orario completo ("Anna Russo, 15:00–16:30").
 
-**Verifica**: anteprime prima/dopo da computer e telefono con dati di prova; `pnpm lint` e `pnpm typecheck` di `apps/web` puliti; prove nel browser di `e2e` (T4, T9 e C1 aggiornate: la domenica sera il lavoro di lunedì è già in vista nella settimana).
+**Quarta parte** (Luca: "effettua le due migliorie"):
+- **Un tocco su un orario vuoto aggiunge un lavoro a quell'ora**, in Giorno e Settimana, da telefono e da computer: si apre "Aggiungi un tuo lavoro" con il giorno e l'ora (alla mezz'ora) già scritti, fine un'ora dopo. Toccare un lavoro apre il lavoro come prima. Da tastiera resta il pulsante "Aggiungi lavoro".
+- **Da computer l'agenda si riapre sull'ultima vista scelta** (Giorno, Settimana, Mese o Anno), salvata su quel browser. Sul telefono no: lì resta la regola della seconda parte (Giorno, o Settimana se oggi è vuoto).
+- Il nome dei lavori per il lettore di schermo nella Settimana del telefono è in un solo testo: diviso in due pezzi, il browser della CI lo leggeva "09:00 –10:30" e le prove non lo trovavano.
+
+**Verifica**: anteprime prima/dopo da computer e telefono con dati di prova; `pnpm lint` e `pnpm typecheck` di `apps/web` puliti; prove nel browser di `e2e` (T4, T9 e C1 aggiornate: la domenica sera il lavoro di lunedì è già in vista nella settimana; nuove prove in `agenda-orari-in-vista.spec.ts` per il tocco su un orario vuoto e la vista ricordata).

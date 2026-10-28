@@ -560,6 +560,11 @@
   background: #fff;
   min-width: 0;
 }
+/* Un tocco su un orario vuoto aggiunge un lavoro a quell'ora: niente lampo grigio su tutta la colonna. */
+.ag-col.addable {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
 .ag-col.closed {
   background: var(--ag-closed);
 }

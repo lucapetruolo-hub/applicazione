@@ -34,7 +34,7 @@ import { ExternalJobModal } from "@/components/ExternalJobModal";
 import { CompleteJobModal } from "@/components/CompleteJobModal";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { AgendaStyles } from "@/components/agenda/AgendaStyles";
-import { AgendaTimeGrid, WeatherIcon, type AgendaDayNote, type AgendaFreeBand, type AgendaGridEvent } from "@/components/agenda/AgendaTimeGrid";
+import { AgendaTimeGrid, WeatherIcon, minutesToLabel, type AgendaDayNote, type AgendaFreeBand, type AgendaGridEvent } from "@/components/agenda/AgendaTimeGrid";
 import { AgendaMiniMonth } from "@/components/agenda/AgendaMiniMonth";
 import { AppointmentPanel } from "@/components/agenda/AppointmentPanel";
 import { CalendarLinkModal } from "@/components/agenda/CalendarLinkModal";
@@ -73,6 +73,8 @@ type AgendaTab = "calendario" | "orari" | "giro";
 type AgendaFilter = "conf" | "done" | "wait" | "ext" | "free";
 const ALL_FILTERS: AgendaFilter[] = ["conf", "done", "wait", "ext", "free"];
 const ASIDE_HIDDEN_KEY = "agenda-colonna-nascosta";
+const VIEW_KEY = "agenda-vista";
+const CALENDAR_VIEWS: CalendarView[] = ["day", "week", "month", "year"];
 const DEFAULT_DURATION_MIN = 60;
 
 /** Minuti dalla mezzanotte di un orario "di parete" salvato come UTC. */
@@ -221,6 +223,8 @@ function DashboardAgendaContent() {
   const [externalJobs, setExternalJobs] = useState<ExternalJob[] | null>(null);
   const [selectedExternalJob, setSelectedExternalJob] = useState<ExternalJob | null>(null);
   const [creatingExternalJobFor, setCreatingExternalJobFor] = useState<Date | null>(null);
+  // Ora d'inizio precompilata quando il lavoro nasce da un tocco su un orario vuoto della griglia.
+  const [creatingExternalJobStart, setCreatingExternalJobStart] = useState<string | null>(null);
 
   // Preventivi inviati ma non ancora accettati (richiesta esplicita
   // dell'utente: una data/orario scelta per un preventivo — specialmente se
@@ -255,6 +259,29 @@ function DashboardAgendaContent() {
       // localStorage non disponibile: colonna visibile.
     }
   }, []);
+  // Da computer l'agenda si riapre sull'ultima vista scelta (Giorno, Settimana...),
+  // salvata su questo browser (docs/changelog/2026-10-28-agenda-orari-in-vista.md).
+  // Sul telefono no: lì decide openWeekIfTodayEmpty.
+  useEffect(() => {
+    if (deepLinkedDay || window.matchMedia("(max-width: 640px)").matches) return;
+    try {
+      const saved = window.localStorage.getItem(VIEW_KEY) as CalendarView | null;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (saved && CALENDAR_VIEWS.includes(saved)) setBookingView(saved);
+    } catch {
+      // localStorage non disponibile: si apre la Settimana.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  function chooseBookingView(next: CalendarView) {
+    setBookingView(next);
+    if (window.matchMedia("(max-width: 640px)").matches) return;
+    try {
+      window.localStorage.setItem(VIEW_KEY, next);
+    } catch {
+      // Non salvata: vale solo per questa visita.
+    }
+  }
   function toggleAside() {
     setAsideHidden((prev) => {
       try {
@@ -1946,7 +1973,7 @@ function DashboardAgendaContent() {
                 {searchToggle("ag-search-toggle ag-hide-phone")}
                 <label className="ag-view-select">
                   <span className="sr-only">Vista</span>
-                  <select className="ag-input" value={bookingView} onChange={(e) => setBookingView(e.target.value as CalendarView)}>
+                  <select className="ag-input" value={bookingView} onChange={(e) => chooseBookingView(e.target.value as CalendarView)}>
                     <option value="day">Giorno</option>
                     <option value="week">Settimana</option>
                     <option value="month">Mese</option>
@@ -1962,7 +1989,7 @@ function DashboardAgendaContent() {
                       { value: "year", label: "Anno" },
                     ] as const
                   ).map((item) => (
-                    <button key={item.value} type="button" aria-pressed={bookingView === item.value} onClick={() => setBookingView(item.value)}>
+                    <button key={item.value} type="button" aria-pressed={bookingView === item.value} onClick={() => chooseBookingView(item.value)}>
                       {item.label}
                     </button>
                   ))}
@@ -2023,6 +2050,10 @@ function DashboardAgendaContent() {
                   onDayPress={(date) => {
                     setBookingCurrentDate(date);
                     setBookingView("day");
+                  }}
+                  onEmptyPress={(date, minutes) => {
+                    setCreatingExternalJobStart(minutesToLabel(minutes));
+                    setCreatingExternalJobFor(date);
                   }}
                 />
               ) : bookingView === "month" ? (
@@ -2246,7 +2277,11 @@ function DashboardAgendaContent() {
         <ExternalJobModal
           token={token}
           defaultDate={creatingExternalJobFor}
-          onClose={() => setCreatingExternalJobFor(null)}
+          defaultStartTime={creatingExternalJobStart ?? undefined}
+          onClose={() => {
+            setCreatingExternalJobFor(null);
+            setCreatingExternalJobStart(null);
+          }}
           onSaved={(job) => setExternalJobs((prev) => (prev ? [...prev, job] : [job]))}
         />
       ) : null}
