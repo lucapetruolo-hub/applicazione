@@ -45,7 +45,22 @@ aperto. Riaperto dopo la conferma diceva "non valido o scaduto".
   `emailLinkValidForSeconds`).
 - Avviso in alto: "…premi il pulsante nell'email che ti abbiamo mandato a …
   Non è arrivata?".
-- Il recupero password resta con codice e pulsante com'era.
+- Recupero password allo stesso modo (migliorie approvate da Luca): oggetto
+  "Reimposta la tua password" senza codice (prima il codice si leggeva anche
+  dalla schermata bloccata), pulsante "Scegli una nuova password" in primo
+  piano e codice in piccolo sotto; in "Password dimenticata" "Mandami
+  l'email", poi "Se esiste un account, ti abbiamo mandato un'email a …",
+  "Apri Gmail" e il codice dietro "Il pulsante non si apre? Usa il codice"
+  (`EmailCodeForm` con `linkIntro`, `linkButton`, `linkHint`, `linkTip`).
+  Qui il link non ha bisogno del tocco contro gli antivirus: aprirlo non
+  cambia nulla finché non si sceglie la password.
+- Limite al minuto del pulsante (`POST /auth/verify-email`, 10 per
+  indirizzo) alzato solo per le prove nel browser con
+  `E2E_VERIFY_EMAIL_PER_MINUTE` (`auth/link-rate-limit.ts`): con
+  `NODE_ENV=production` o su Render non vale mai. Le prove non aspettano più
+  il minuto (14 prove in meno di un minuto invece di oltre due).
+- Prova con una casella aziendale protetta da antivirus: resta nella
+  checklist di lancio (punto 23), si può fare solo col dominio vero.
 
 **Verifica**: `auth/email-verification.test.ts` (codice non nell'oggetto e
 dopo il pulsante, conferma condizionata, riaperto "già confermata" senza
@@ -56,4 +71,9 @@ computer (12 verdi): link aperto senza tocco non conferma, tocco conferma,
 riaperto già confermata, scaduto, non più valido, conferma da sola con
 l'accesso fatto, attesa che passa avanti quando si conferma "dal telefono",
 codice di riserva, nessun problema grave di accessibilità (axe). Anteprime
-in `anteprime/verifica-email-link/` (email e pagine, telefono e computer).
+in `anteprime/verifica-email-link/` (email e pagine, telefono e computer,
+anche "Password dimenticata" 9-11). `auth/link-rate-limit.test.ts` (limite
+che non cambia mai sul server pubblicato), `auth/password-reset.test.ts`
+(codice non nell'oggetto e dopo il pulsante),
+`e2e/tests/password-dimenticata-link.spec.ts` (pulsante prima, codice di
+riserva che porta a "Reimposta password").

@@ -91,19 +91,21 @@ export type PasswordResetEmail = { link: string; minutes: number; code: string; 
 
 /** Recupero password: codice da scrivere sul sito oppure pulsante (§185, codice dal §245). */
 export function passwordResetEmail(name: string | null, reset: PasswordResetEmail): RenderedEmail {
+  // Il pulsante è la cosa da fare, il codice resta in piccolo sotto: serve
+  // quando l'email si legge sul telefono e la password si cambia dal
+  // computer (docs/changelog/2026-10-28-verifica-email-con-link.md). Niente
+  // codice nell'oggetto: si vedrebbe anche dalla schermata bloccata.
   return renderEmail({
     kind: "account",
-    subject: `${reset.code} è il codice per reimpostare la password`,
-    preheader: `Inserisci il codice ${reset.code} per scegliere una nuova password.`,
+    subject: "Reimposta la tua password",
+    preheader: "Premi il pulsante per scegliere una nuova password.",
     greeting: name,
     title: "Reimposta la tua password",
-    paragraphs: [
-      "Abbiamo ricevuto una richiesta per reimpostare la password del tuo account. Scrivi il codice sul sito, oppure premi il pulsante qui sotto.",
-    ],
-    code: { label: "Il tuo codice", value: reset.code },
+    paragraphs: ["Abbiamo ricevuto una richiesta per reimpostare la password del tuo account. Premi il pulsante qui sotto per sceglierne una nuova."],
     cta: { label: "Scegli una nuova password", url: reset.link },
+    code: { label: "Il pulsante non si apre? Scrivi questo codice sul sito:", value: reset.code, backup: true },
     after: [
-      `Il codice vale ${reset.codeMinutes} minuti, il pulsante ${reset.minutes} minuti. Non dare il codice a nessuno: non te lo chiederemo mai al telefono.`,
+      `Il pulsante vale ${reset.minutes} minuti, il codice ${reset.codeMinutes} minuti. Non dare il codice a nessuno: non te lo chiederemo mai al telefono.`,
       "Se non l'hai chiesto tu, ignora questa email: la tua password resta quella di prima.",
     ],
   });

@@ -17,9 +17,6 @@ import { API_URL, WEB_URL } from "../fixtures/env";
 const prisma = new PrismaClient();
 const anonymous = { cookies: [], origins: [{ origin: WEB_URL, localStorage: [{ name: "cookie-consent-v1", value: "denied" }] }] };
 
-// Il limite di 10 conferme al minuto può far aspettare fino a un minuto.
-test.describe.configure({ timeout: 150_000 });
-
 test.beforeEach(({}, testInfo) => {
   test.skip(testInfo.project.name === "telefono-new-york", "Il fuso non cambia la conferma: bastano un telefono e un computer.");
 });
@@ -64,35 +61,10 @@ async function signedIn(browser: Browser, userId: string, viewport: { width: num
   });
 }
 
-/**
- * Tocco su "Conferma la mia email". Il limite di 10 conferme al minuto per
- * indirizzo vale anche qui (tutte le prove partono dallo stesso): la pagina
- * dice "Conferma non riuscita" con "Riprova", e si riprova come farebbe una
- * persona.
- */
+/** Tocco su "Conferma la mia email", fino all'esito sulla pagina. */
 async function tapConfirm(page: Page) {
   await page.getByRole("button", { name: "Conferma la mia email" }).click();
-  await retryWhileLimited(page);
-}
-
-async function retryWhileLimited(page: Page) {
-  const retry = page.getByRole("button", { name: "Riprova" });
-  for (let attempt = 0; attempt < 24; attempt++) {
-    await expect(page.getByRole("heading", { name: /Email (già )?confermata|Il link è scaduto|Questo link non vale più|Conferma non riuscita/ })).toBeVisible();
-    if (!(await retry.isVisible())) return;
-    await page.waitForTimeout(5000);
-    await retry.click();
-  }
-}
-
-/** Conferma "dal telefono" con l'API, riprovando oltre il limite al minuto. */
-async function confirmElsewhere(page: Page, token: string) {
-  for (let attempt = 0; attempt < 24; attempt++) {
-    const response = await page.request.post(`${API_URL}/auth/verify-email`, { data: { token } });
-    if (response.status() !== 429) return response;
-    await page.waitForTimeout(5000);
-  }
-  throw new Error("Limite delle conferme mai liberato");
+  await expect(page.getByRole("heading", { name: /Email (già )?confermata|Il link è scaduto|Questo link non vale più/ })).toBeVisible();
 }
 
 async function verifiedAt(userId: string) {
@@ -148,7 +120,6 @@ test("con l'accesso già fatto il link conferma da solo", async ({ browser }, te
   const context = await signedIn(browser, user.id, testInfo.project.use.viewport ?? null);
   const page = await context.newPage();
   await page.goto(link);
-  await retryWhileLimited(page);
   await expect(page.getByRole("heading", { name: "Email confermata", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Continua" }).first()).toBeVisible();
   expect(await verifiedAt(user.id)).not.toBeNull();
@@ -166,7 +137,7 @@ test("la pagina d'attesa si aggiorna da sola quando si conferma da un altro disp
   await expect(page.getByLabel("Codice di 6 cifre")).toHaveCount(0);
 
   // "Dal telefono": il tocco sul pulsante dell'email.
-  const response = await confirmElsewhere(page, token);
+  const response = await page.request.post(`${API_URL}/auth/verify-email`, { data: { token } });
   expect(response.ok()).toBe(true);
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
   await context.close();

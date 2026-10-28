@@ -57,6 +57,8 @@ export default defineConfig({
         DATABASE_URL: process.env.DATABASE_URL ?? "",
         // Tutte le prove chiamano l'API dallo stesso indirizzo: il limite di 60 al minuto le farebbe fallire a caso.
         RATE_LIMIT_PER_MINUTE: "1000",
+        // Stesso motivo per il pulsante dell'email di conferma (10 al minuto); sul server pubblicato non vale.
+        E2E_VERIFY_EMAIL_PER_MINUTE: "1000",
       },
     },
     {

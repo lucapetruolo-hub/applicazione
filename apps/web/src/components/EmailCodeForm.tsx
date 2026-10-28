@@ -41,7 +41,8 @@ function webmailFor(email: string): { label: string; url: string } | null {
  * Con `linkFirst` (conferma email, docs/changelog/2026-10-28-verifica-email-con-link.md)
  * la cosa da fare è il pulsante nell'email: la pagina lo dice e si aggiorna
  * da sola quando si conferma, anche da un altro dispositivo. Le caselle del
- * codice restano di riserva dietro "Il pulsante non si apre?".
+ * codice restano di riserva dietro "Il pulsante non si apre?". Anche in
+ * "Password dimenticata", con le sue frasi (`linkIntro`, `linkButton`, ...).
  */
 export function EmailCodeForm({
   token,
@@ -58,6 +59,10 @@ export function EmailCodeForm({
   tip = "Non la trovi? Guarda anche in Spam o Promozioni. Nella stessa email c'è anche un pulsante che conferma con un tocco.",
   linkFirst = false,
   initialLinkValidForSeconds,
+  linkIntro = "Ti abbiamo mandato un'email a",
+  linkButton = "Conferma la mia email",
+  linkHint = "Questa pagina si aggiorna da sola, anche se confermi dal telefono.",
+  linkTip = "Non la trovi? Guarda anche in Spam o Promozioni. Il pulsante vale 48 ore.",
 }: {
   token: string;
   email: string;
@@ -82,6 +87,14 @@ export function EmailCodeForm({
   linkFirst?: boolean;
   /** Secondi di validità del pulsante dell'email, da /auth/me. Assente: appena mandato. */
   initialLinkValidForSeconds?: number;
+  /** Con `linkFirst`: inizio della frase prima dell'indirizzo. */
+  linkIntro?: string;
+  /** Con `linkFirst`: la scritta del pulsante nell'email. */
+  linkButton?: string;
+  /** Con `linkFirst`: la frase dopo "Aprila e premi ...". */
+  linkHint?: string;
+  /** Con `linkFirst`: la riga in piccolo in fondo. */
+  linkTip?: string;
 }) {
   const [code, setCode] = useState("");
   const [state, setState] = useState<CheckState>("idle");
@@ -321,13 +334,14 @@ export function EmailCodeForm({
       {linkFirst ? (
         <YStack gap="$3" alignItems="center">
           <Text fontSize={16} color={brand.grafite70} textAlign="center">
-            Ti abbiamo mandato un&apos;email a<br />
+            {linkIntro}
+            <br />
             <Text fontWeight="700" color={brand.grafite}>
               {email}
             </Text>
           </Text>
           <Text fontSize={16} color={brand.grafite} textAlign="center">
-            Aprila e premi <Text fontWeight="700">Conferma la mia email</Text>. Questa pagina si aggiorna da sola, anche se confermi dal telefono.
+            Aprila e premi <Text fontWeight="700">{linkButton}</Text>. {linkHint}
           </Text>
           {webmail && state !== "done" ? (
             <a className="email-webmail-link" href={webmail.url} target="_blank" rel="noopener noreferrer">
@@ -444,7 +458,7 @@ export function EmailCodeForm({
       </YStack>
 
       <Text fontSize={13} color={brand.grafite70} textAlign="center">
-        {linkFirst ? "Non la trovi? Guarda anche in Spam o Promozioni. Il pulsante vale 48 ore." : tip}
+        {linkFirst ? linkTip : tip}
       </Text>
     </YStack>
   );

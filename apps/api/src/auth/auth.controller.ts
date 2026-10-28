@@ -40,6 +40,7 @@ import { PRISMA } from "../prisma/prisma.module";
 import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { AuthService, emailCodeResendWait, emailCodeValidFor, emailLinkValidFor } from "./auth.service";
 import { JwtAuthGuard, type AuthenticatedRequest } from "./jwt-auth.guard";
+import { verifyEmailPerMinute } from "./link-rate-limit";
 import { isEmailVerificationRequired } from "./verified-email.guard";
 import { assertTurnstile } from "./turnstile";
 import type { LoginDeviceInfo } from "./login-device";
@@ -122,7 +123,7 @@ export class AuthController {
 
   // Conferma email (docs/CHANGELOG.md §178): pubblica, il codice nel link
   // basta a identificare l'account.
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Throttle({ default: { limit: verifyEmailPerMinute(), ttl: 60_000 } })
   @Post("verify-email")
   async verifyEmail(@Body(new ZodValidationPipe(verifyEmailSchema)) body: VerifyEmailInput) {
     return this.authService.verifyEmail(body.token);
