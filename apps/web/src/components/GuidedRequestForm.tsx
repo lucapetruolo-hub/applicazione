@@ -30,7 +30,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { MediaPreview } from "@/components/MediaPreview";
 import { storedTrafficSource } from "@/lib/storedTrafficSource";
-import { countRequestStep } from "@/lib/siteCounts";
+import { countPriceToolRequest, countRequestStep } from "@/lib/siteCounts";
 import { InlineAuthGate } from "@/components/InlineAuthGate";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { RequestSentScreen } from "@/components/RequestSentScreen";
@@ -903,6 +903,7 @@ export function GuidedRequestForm({
       }
       setResult({ matchedProfessionals: response.matchedProfessionals, requestsCount: response.requests?.length ?? 1 });
       countStepOnce("INVIATA");
+      countPriceToolRequest();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
     } finally {

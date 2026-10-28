@@ -1,6 +1,7 @@
 import {
   NO_COUNT_COOKIE,
   type DeviceKind,
+  type PriceToolStepKey,
   type ProfileRequestSource,
   type RequestOrigin,
   type RequestStepKey,
@@ -65,7 +66,7 @@ export function chooseCountingDisabled(disabled: boolean): void {
   setCountingDisabled(disabled);
 }
 
-function send(path: "step" | "failure" | "profile-view", body: object): void {
+function send(path: "step" | "failure" | "profile-view" | "price-tool", body: object): void {
   if (isCountingDisabled()) return;
   // `keepalive`: parte anche se la pagina cambia subito dopo (invio riuscito).
   void fetch(`${API_URL}/site/${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), keepalive: true }).catch(
@@ -90,6 +91,47 @@ export function countRequestStep(step: RequestStepKey, categorySlug?: string | n
 /** Profilo pubblico aperto, solo il dispositivo (§394). */
 export function countProfileView(): void {
   send("profile-view", { device: deviceKind() });
+}
+
+/**
+ * Chi arriva da una voce di "Quanto costa" (§399): un segno solo in questa
+ * scheda del browser (sessionStorage, nessun cookie), per contare il
+ * profilo aperto e la richiesta inviata che partono da lì.
+ */
+const PRICE_TOOL_KEY = "da_quanto_costa";
+
+function fromPriceTool(): boolean {
+  try {
+    return window.sessionStorage.getItem(PRICE_TOOL_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** Voce toccata: si conta e si segna la scheda. */
+export function countPriceToolEntry(): void {
+  try {
+    window.sessionStorage.setItem(PRICE_TOOL_KEY, "1");
+  } catch {
+    // Senza sessionStorage si conta solo la voce.
+  }
+  send("price-tool", { step: "VOCE" satisfies PriceToolStepKey });
+}
+
+/** Profilo aperto dall'elenco di una voce: conta solo se la scheda è partita da lì. */
+export function countPriceToolProfile(): void {
+  if (fromPriceTool()) send("price-tool", { step: "PROFILO" satisfies PriceToolStepKey });
+}
+
+/** Richiesta inviata: conta una volta, poi il segno si toglie. */
+export function countPriceToolRequest(): void {
+  if (!fromPriceTool()) return;
+  send("price-tool", { step: "RICHIESTA" satisfies PriceToolStepKey });
+  try {
+    window.sessionStorage.removeItem(PRICE_TOOL_KEY);
+  } catch {
+    // Ignorato.
+  }
 }
 
 /** Modulo a cui appartiene una chiamata all'API, solo per gli invii che contano. */

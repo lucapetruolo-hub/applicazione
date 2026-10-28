@@ -17,6 +17,7 @@ import {
   MISSING_SERVICE_MIN_PROFESSIONALS,
   PROFILE_REQUEST_SOURCES,
   PROFILE_REQUEST_SOURCE_LABEL,
+  PRICE_TOOL_STEP_LABEL,
   REQUEST_STEP_LABEL,
   SERVICE_GAP_MAX_OFFERED,
   SERVICE_GAP_MIN_SEARCHES,
@@ -182,6 +183,7 @@ export default function AdminAndamentoPage() {
           <FunnelCard data={data} />
           <StepsCard data={data} />
           <ProfileSourcesCard data={data} />
+          <PriceToolCard data={data} />
           <ClientCohortsCard data={data} />
           <ProfessionalCohortsCard data={data} />
           <FailuresCard data={data} />
@@ -652,6 +654,33 @@ function ProfileSourcesCard({ data }: { data: AdminSiteStats }) {
           {`Ancora meno di ${MIN_CASES_FOR_PERCENT} richieste inviate: le percentuali cambiano molto anche per una sola richiesta.`}
         </Text>
       ) : null}
+    </AdminCard>
+  );
+}
+
+/** Dalle voci di "Quanto costa" (§399): se lo strumento porta richieste o è solo bello. */
+function PriceToolCard({ data }: { data: AdminSiteStats }) {
+  const rows = withDrops(
+    data.priceToolSteps.map((s) => ({
+      key: `quanto-costa-${s.key}`,
+      label: PRICE_TOOL_STEP_LABEL[s.key],
+      count: s.count,
+    })),
+  );
+  const sent = data.requestSteps.find((s) => s.key === "INVIATA")?.count ?? 0;
+  const fromTool = data.priceToolSteps.find((s) => s.key === "RICHIESTA")?.count ?? 0;
+  return (
+    <AdminCard>
+      <CardTitle
+        title="Dallo strumento «Quanto costa»"
+        note="Voci toccate nella home e nelle pagine dei prezzi, profili aperti da quell'elenco e richieste inviate partite da lì."
+      />
+      <Bars rows={rows} total={0} steps />
+      <Text color={brand.grafite70} fontSize={13}>
+        {sent > 0
+          ? `Sul totale delle richieste inviate (${sent}), ${fromTool} sono partite da una voce (${ratioLabel(fromTool, sent)}).`
+          : "Nessuna richiesta inviata in questo periodo."}
+      </Text>
     </AdminCard>
   );
 }

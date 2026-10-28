@@ -21,7 +21,29 @@ export type ProfessionalServiceItem = {
   name: string;
   priceMinEurCents: number | null;
   priceMaxEurCents: number | null;
+  priceUnit: ServicePriceUnit;
 };
+
+/**
+ * A cosa si riferisce il prezzo di una prestazione (docs/CHANGELOG.md §398,
+ * richiesta di Luca dopo il test di compito: "10 €" per una tinteggiatura
+ * può essere al m² o a lavoro). Stessi valori dell'enum Prisma.
+ */
+export const SERVICE_PRICE_UNITS = ["JOB", "HOUR", "DAY", "SQUARE_METER"] as const;
+export type ServicePriceUnit = (typeof SERVICE_PRICE_UNITS)[number];
+
+export const SERVICE_PRICE_UNIT_LABEL: Record<ServicePriceUnit, string> = {
+  JOB: "a lavoro",
+  HOUR: "all'ora",
+  DAY: "al giorno",
+  SQUARE_METER: "al m²",
+};
+
+/** Prezzo con l'unità ("8–15 € al m²"); senza prezzo "Su richiesta", senza unità. */
+export function formatServicePrice(priceMinEurCents: number | null, priceMaxEurCents: number | null, unit: ServicePriceUnit): string {
+  if (priceMinEurCents === null && priceMaxEurCents === null) return formatServicePriceRange(null, null);
+  return `${formatServicePriceRange(priceMinEurCents, priceMaxEurCents)}\u00A0${SERVICE_PRICE_UNIT_LABEL[unit]}`;
+}
 
 /**
  * Formatta il prezzo di una prestazione all'italiana (docs/CHANGELOG.md
@@ -300,6 +322,12 @@ export type ProfessionalSearchResult = {
    * cercato: presente solo nelle ricerche con una città riconosciuta
    * (`SEARCH_RADIUS_KM`).
    */
+  /**
+   * Ricerca per prestazione (`?servizio=`, voce di "Quanto costa in media",
+   * docs/CHANGELOG.md §398): la prestazione del professionista che
+   * corrisponde, da mettere in evidenza nella scheda.
+   */
+  matchedServiceId?: string;
   distanceKm?: number;
 };
 

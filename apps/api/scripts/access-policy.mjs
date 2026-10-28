@@ -58,6 +58,8 @@ const publicRoutes = [
   "POST /site/failure",
   // Profilo aperto, per dispositivo, dal lancio (§394).
   "POST /site/profile-view",
+  // Passi dalle voci di "Quanto costa" (§399), senza account.
+  "POST /site/price-tool",
   "GET /professionals/languages/popular",
   // Prezzi aggregati della pagina "Quanto costa", mai sotto le soglie (§296).
   "GET /professionals/prices/:category",

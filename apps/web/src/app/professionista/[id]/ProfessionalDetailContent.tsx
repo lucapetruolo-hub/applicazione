@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BRAND, PROFILE_REQUEST_SOURCE_PARAM, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, formatServicePriceRange, subTagLabel, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
+import { BRAND, PROFILE_REQUEST_SOURCE_PARAM, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, SERVICE_PRICE_UNIT_LABEL, formatServicePriceRange, subTagLabel, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
 import { Badge, BadgeInfo, Button, ProfessionalKindBadge, Chip, EmptyState, Icon, PriceLine, Rating, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
@@ -16,7 +16,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { hasRecentlyReported, markReported } from "@/lib/reportedContent";
 import { formatResponseTime, respondsRightAway } from "@/lib/responseTime";
 import { useMediaQuery } from "@/lib/useMediaQuery";
-import { countProfileView, isCountingDisabled } from "@/lib/siteCounts";
+import { countPriceToolProfile, countProfileView, isCountingDisabled } from "@/lib/siteCounts";
 
 // Colonne fisse Oggi + 3 giorni (stessa griglia della mini-agenda di ricerca,
 // vedi ProfessionalCard in packages/ui) — qui costruita a partire dai giorni
@@ -82,7 +82,7 @@ export function ProfessionalDetailContent({
    * il piè di pagina, che su una rete lenta saliva in cima e poi scendeva
    * (Lighthouse CLS 0,93, docs/CHANGELOG.md §392).
    */
-  query?: { modalita?: string; data?: string; salva?: string };
+  query?: { modalita?: string; data?: string; salva?: string; servizio?: string };
 }) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
@@ -178,6 +178,14 @@ export function ProfessionalDetailContent({
   // all'agenda. Fatto qui e non con il solo `#agenda` perché l'agenda arriva
   // dopo il caricamento della pagina e il browser non trova ancora l'ancora.
   const requestedAgendaDate = query.data ?? null;
+  // Arrivati da una voce di "Quanto costa in media" (§398): la richiesta parte
+  // con la prestazione già scritta nella descrizione.
+  const requestedService = query.servizio?.trim();
+  const serviceDescriptionParam = requestedService ? `&descrizione=${encodeURIComponent(`${requestedService}. `)}` : "";
+  // Profilo aperto dall'elenco di una voce (§399): contato solo se la scheda del browser è partita da "Quanto costa".
+  useEffect(() => {
+    if (requestedService) countPriceToolProfile();
+  }, [requestedService]);
   const [appliedAgendaDate, setAppliedAgendaDate] = useState<string | null>(null);
   if (agendaPreview && requestedAgendaDate && appliedAgendaDate !== requestedAgendaDate) {
     setAppliedAgendaDate(requestedAgendaDate);
@@ -789,7 +797,7 @@ export function ProfessionalDetailContent({
                       // un riquadro con foto+nome invece del sottotitolo
                       // generico. Nomi distinti da "nome"/"foto" per non
                       // collidere col "nome" del CLIENTE nello stesso form.
-                      const href = `/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&nomeProfessionista=${encodeURIComponent(professional.businessName)}&fotoProfessionista=${encodeURIComponent(professional.imageUrl ?? "")}&data=${day.date}&fasciaOraria=${slot.startTime}-${slot.endTime}&modalita=${agendaMode}&da=${PROFILE_REQUEST_SOURCE_PARAM.AGENDA}`;
+                      const href = `/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&nomeProfessionista=${encodeURIComponent(professional.businessName)}&fotoProfessionista=${encodeURIComponent(professional.imageUrl ?? "")}&data=${day.date}&fasciaOraria=${slot.startTime}-${slot.endTime}&modalita=${agendaMode}${serviceDescriptionParam}&da=${PROFILE_REQUEST_SOURCE_PARAM.AGENDA}`;
                       return (
                         <XStack
                           key={day.date}
@@ -857,7 +865,7 @@ export function ProfessionalDetailContent({
             profilo resta visibile dal link, ma senza agenda né richieste. */}
         {professional.acceptingRequests ? (
           <ProfileQuoteCta
-            href={`/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&nomeProfessionista=${encodeURIComponent(professional.businessName)}&fotoProfessionista=${encodeURIComponent(professional.imageUrl ?? "")}`}
+            href={`/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&nomeProfessionista=${encodeURIComponent(professional.businessName)}&fotoProfessionista=${encodeURIComponent(professional.imageUrl ?? "")}${serviceDescriptionParam}`}
             name={professional.businessName}
             preview={preview}
             withBar={user?.professionalProfileId !== professional.id}
@@ -913,6 +921,7 @@ export function ProfessionalDetailContent({
                     label={service.name}
                     labelColor={brand.grafite}
                     price={formatServicePriceRange(service.priceMinEurCents, service.priceMaxEurCents)}
+                    unit={service.priceMinEurCents !== null || service.priceMaxEurCents !== null ? SERVICE_PRICE_UNIT_LABEL[service.priceUnit] : undefined}
                   />
                 </YStack>
               ))}

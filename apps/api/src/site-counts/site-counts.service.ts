@@ -12,6 +12,7 @@ import {
   type DeviceKind,
   type ProfileRequestEvent,
   type ProfileRequestSource,
+  type PriceToolStepKey,
   type RequestOrigin,
   type RequestStepKey,
   type SubmitFailureKind,
@@ -92,6 +93,15 @@ export class SiteCountsService {
     });
   }
 
+  async recordPriceToolStep(step: PriceToolStepKey): Promise<void> {
+    const day = today();
+    await this.prisma.priceToolStepDay.upsert({
+      where: { step_day: { step, day } },
+      create: { step, day, count: 1 },
+      update: { count: { increment: 1 } },
+    });
+  }
+
   async recordFailure(form: SubmitFormKey, kind: SubmitFailureKind): Promise<void> {
     const day = today();
     await this.prisma.submitFailureDay.upsert({
@@ -164,6 +174,7 @@ export class SiteCountsService {
       this.prisma.profileViewDay.deleteMany({ where: before }),
       this.prisma.requestStepDay.deleteMany({ where: before }),
       this.prisma.profileRequestSourceDay.deleteMany({ where: before }),
+      this.prisma.priceToolStepDay.deleteMany({ where: before }),
       this.prisma.submitFailureDay.deleteMany({ where: before }),
       this.prisma.unknownJobSearchDay.deleteMany({ where: before }),
       this.prisma.serviceSearchDay.deleteMany({ where: before }),
