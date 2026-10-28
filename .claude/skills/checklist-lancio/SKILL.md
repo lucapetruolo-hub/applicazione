@@ -516,7 +516,8 @@ Città, pagine vuote fuori da Google.
     OpenRouter (`OPENROUTER_API_KEY` su Render). Prima del lancio: creare
     l'account Anthropic intestato all'azienda, mettere `ANTHROPIC_API_KEY`
     su Render e togliere `OPENROUTER_API_KEY` (e `OPENROUTER_MODEL` se c'è).
-    Il codice non cambia.
+    Il codice non cambia. Da docs/changelog/2026-10-28-ia-gratuita-fino-al-lancio.md OpenRouter usa un modello gratuito, che
+    può tenere i testi: al lancio non deve restare acceso.
 
 ## Da fare dopo il lancio
 

@@ -30,11 +30,14 @@ import { PRISMA } from "../prisma/prisma.module";
  * attraverso OpenRouter con `OPENROUTER_API_KEY` (decisione di Luca del
  * 28/10/2026, docs/CHANGELOG.md §394): solo server di Anthropic, nessun uso
  * dei dati da parte di OpenRouter. Con entrambe le chiavi vince Anthropic.
+ * Senza credito su OpenRouter si usa un modello gratuito (`:free`, decisione
+ * di Luca, docs/changelog/2026-10-28-ia-gratuita-fino-al-lancio.md): lì i testi, già senza contatti, possono
+ * essere usati da chi fornisce il modello, quindi solo prima del lancio.
  */
 
 const MODEL = "claude-haiku-5-5";
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const OPENROUTER_DEFAULT_MODEL = "anthropic/claude-haiku-5.5";
+const OPENROUTER_DEFAULT_MODEL = "google/gemma-4-31b-it:free";
 const TIMEOUT_MS = 3000;
 /** Circa 0,1 centesimi a chiamata: 3000 al giorno sono 3 € nel caso peggiore. */
 const AI_DAILY_LIMIT = 3000;
@@ -107,6 +110,30 @@ export function anonymizeProblemText(text: string): string {
     .replace(/(\+39[\s.-]?)?\d[\d\s.-]{6,}\d/g, "[numero]")
     .replace(/\b(via|viale|piazza|piazzale|corso|largo|vicolo|strada|contrada|località)\s+[^,.;\n]{1,40}?\s*\d+[a-z]?\b/gi, "[indirizzo]")
     .trim();
+}
+
+/**
+ * Richiesta a OpenRouter. Con Claude Haiku solo i server di Anthropic e
+ * nessun uso dei testi; con un modello gratuito (`:free`) questi vincoli non
+ * si possono chiedere, perché i fornitori gratuiti tengono i testi.
+ */
+export function openRouterBody(text: string) {
+  const model = process.env.OPENROUTER_MODEL?.trim() || OPENROUTER_DEFAULT_MODEL;
+  const free = model.endsWith(":free");
+  return {
+    model,
+    max_tokens: 1024,
+    messages: [
+      { role: "system", content: free ? `${SYSTEM_PROMPT}\n\nRispondi solo con l'oggetto JSON, senza altro testo.` : SYSTEM_PROMPT },
+      { role: "user", content: `<problema>${text}</problema>` },
+    ],
+    response_format: { type: "json_schema", json_schema: { name: "mestieri", strict: true, schema: AI_ANSWER_JSON_SCHEMA } },
+    ...(free
+      ? // Niente ragionamento: deve rispondere entro i 3 secondi.
+        { reasoning: { enabled: false } }
+      : // Solo i server di Anthropic, e OpenRouter non tiene né usa i testi.
+        { provider: { only: ["anthropic"], allow_fallbacks: false, data_collection: "deny", require_parameters: true } }),
+  };
 }
 
 type ParseFn = (text: string) => Promise<AiAnswer | null>;
@@ -293,17 +320,7 @@ export class ProblemMatchService {
       const response = await fetch(OPENROUTER_URL, {
         method: "POST",
         headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY?.trim()}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: process.env.OPENROUTER_MODEL?.trim() || OPENROUTER_DEFAULT_MODEL,
-          max_tokens: 1024,
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: `<problema>${text}</problema>` },
-          ],
-          response_format: { type: "json_schema", json_schema: { name: "mestieri", strict: true, schema: AI_ANSWER_JSON_SCHEMA } },
-          // Solo i server di Anthropic, e OpenRouter non tiene né usa i testi.
-          provider: { only: ["anthropic"], allow_fallbacks: false, data_collection: "deny", require_parameters: true },
-        }),
+        body: JSON.stringify(openRouterBody(text)),
         signal: AbortSignal.timeout(TIMEOUT_MS),
       });
       if (!response.ok) {
@@ -316,7 +333,8 @@ export class ProblemMatchService {
       const body = (await response.json()) as { choices?: { message?: { content?: string | null } }[] };
       const content = body.choices?.[0]?.message?.content;
       if (!content) return null;
-      const raw = JSON.parse(content) as { categories?: unknown };
+      // I modelli gratuiti a volte chiudono il JSON tra ```json e ```.
+      const raw = JSON.parse(content.replace(/^\s*```(?:json)?\s*|\s*```\s*$/g, "")) as { categories?: unknown };
       if (Array.isArray(raw.categories)) raw.categories = raw.categories.slice(0, 3);
       const parsed = aiAnswerSchema.safeParse(raw);
       if (!parsed.success) {
