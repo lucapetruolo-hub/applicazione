@@ -21482,6 +21482,125 @@ pagine di accesso, §279 e §349). Supera la proposta non scelta del §325.
 **Verifica:** build di produzione col profilo vero, fotografato a 1440, 1024
 e 390 px (anteprime in `anteprime/barra-preventivo-computer/`).
 
+## 400. Barra "Richiedi un preventivo": casi limite e prove
+
+**Richiesta di Luca (27/10/2026)**, dalla versione più profonda del compito
+(`analisi/barra-preventivo-versione-profonda.md`): sistemare i casi limite
+della barra del §385 e provarla con strumenti che non dipendono da noi.
+
+**Fatto:**
+- **Focus da tastiera mai sotto la barra** (WCAG 2.2, 2.4.11): con la barra
+  visibile la pagina ha `scroll-padding-bottom` (88 px), come per il banner
+  dei cookie del §271. Prima, da computer, passando col tasto Tab sui link in
+  fondo alla pagina (Privacy Policy, Termini, Cookie Policy, Preferenze
+  cookie, Accessibilità, Segnala un contenuto illegale) il focus finiva
+  coperto dalla barra.
+- **Il lettore di schermo sente il nome**: il link della barra si chiama
+  "Richiedi un preventivo a [nome]", anche dove il nome non si vede.
+- **Niente barra al professionista sul proprio profilo**: `GET /auth/me`
+  restituisce anche `professionalProfileId`; il pulsante nella pagina resta,
+  così vede il profilo come lo vede un cliente.
+- **Telefono in orizzontale e finestre basse** (altezza fino a 500 px): barra
+  più sottile (60 px invece di 72).
+- Nome lunghissimo e profilo senza foto: controllati, niente esce dallo
+  schermo (nome tagliato con i puntini da computer, icona della categoria al
+  posto della foto).
+
+**Prove:** `e2e/tests/barra-preventivo.spec.ts` (telefono e computer):
+compare quando il pulsante non si vede e sparisce quando si vede, assente sul
+profilo in pausa e sul proprio profilo, focus mai coperto, nessuno
+spostamento della pagina mentre compare e sparisce (CLS 0), axe-core senza
+errori, nome lunghissimo dentro lo schermo. Tolte le correzioni, le prove del
+focus e del proprio profilo falliscono. Lighthouse misura anche il profilo
+pubblico (`e2e/lighthouse/agenda.mjs`, nuovo profilo di prova in
+`global-setup`). Tutte le 170 prove nel browser verdi su un database pulito.
+
+**Profilo che arrivava dopo il piè di pagina** (trovato dalla nuova misura
+Lighthouse in CI, CLS 0,93): il contenuto del profilo stava in un
+`<Suspense>` (serviva a `useSearchParams` per `?modalita=`, `?data=`,
+`?salva=`) e arrivava dopo il piè di pagina, che su una rete lenta compariva
+in cima e poi veniva spinto giù. Ora la pagina server passa questi valori
+come prop (`query`) e il `<Suspense>` non c'è più: il profilo arriva
+nell'ordine della pagina, visibile anche prima che parta JavaScript (meglio
+anche per Google). Su rete lenta simulata lo spostamento scende da 0,90 a
+0,02 (telefono) e 0,04 (computer).
+
+**Visto ma non toccato** (prima di questa modifica, non dovuto alla barra):
+gli stili `<style jsx>` non arrivano nell'HTML del server (manca il registro
+di styled-jsx per l'App Router), quindi i componenti che li usano restano
+senza stile finché non parte JavaScript: nel profilo i pulsanti Salva e
+Condividi mostrano per un attimo le scritte e la scheda sale di 16 px
+(lo spostamento di 0,04 da computer). Il colore delle briciole di pane in
+cima al profilo non ha abbastanza contrasto (axe, Lighthouse accessibilità
+96).
+
+## 401. Stili già nella prima versione della pagina e briciole di pane leggibili
+
+**Richiesta di Luca** (27/10/2026, thread "Barra fissa Richiedi un preventivo
+anche da computer"): fare le prime due migliorie proposte dopo il §400.
+
+**1. Registro di styled-jsx.** Con l'App Router gli stili `<style jsx>` non
+arrivavano nell'HTML del server: i componenti che li usano (22 file, tra cui
+risultati con mappa, mega menu, agenda, pulsanti Salva/Condividi del profilo)
+restavano senza stile finché non partiva JavaScript, poi si sistemavano
+spostando la pagina. Aggiunto `apps/web/src/app/StyledJsxRegistry.tsx`
+(schema ufficiale di Next.js: `createStyleRegistry` + `useServerInsertedHTML`)
+attorno ai `Providers` in `layout.tsx`. Ora gli stili sono nell'HTML della
+risposta. Su rete lenta simulata lo spostamento del profilo all'apertura
+scende da 0,04 (computer) e 0,02 (telefono) a 0, senza avvisi di
+idratazione.
+
+**2. Briciole di pane.** Il grigio caldo `#6e6459`, sopra le forme sfumate
+verdi dello sfondo, arrivava a 3,56:1 (axe, serve 4,5:1). Ora `#4f463e`,
+sopra 5:1 anche sul verde; l'ultima voce resta in grassetto e più scura.
+axe sull'intera pagina del profilo (WCAG 2.2 AA): zero errori, da computer e
+da telefono.
+
+**3. Controllo delle librerie.** La stessa sera osv-scanner ha iniziato a
+segnalare `deepmerge` 4.3.1 (GHSA-gcqx-w48m-w2h4): l'eccezione con il motivo
+è quella del §384, arrivata dal ramo principale.
+
+## 402. Da quale pulsante parte la richiesta dal profilo
+
+**Richiesta di Luca** (28/10/2026, thread "Barra fissa Richiedi un preventivo
+anche da computer"): sapere da dove parte ogni richiesta fatta da un
+profilo, con numeri e percentuali, contando solo dal giorno del lancio.
+
+**Come si conta.** I link verso `/preventivo` portano `da=`: `barra` (barra
+fissa in basso), `pagina` (pulsante nella pagina), `agenda` (orario
+dell'agenda del profilo), `ricerca` (orario nei risultati di ricerca); senza
+`da` è "Altro". La richiesta manda il pulsante e il dispositivo insieme ai
+passi già contati (§372): l'apertura (passo «Il lavoro») e l'invio. Il
+profilo aperto si conta per dispositivo (`POST /site/profile-view`).
+Dispositivo dalla larghezza dello schermo: telefono fino a 767 px, come la
+barra. Tabella `ProfileRequestSourceDay` (evento, pulsante, dispositivo,
+giorno): solo contatori, mai chi è la persona né quale profilo; cancellati
+dopo 25 mesi come gli altri. Non si contano gli admin, chi ha scelto "Non
+contare questo browser" e i robot.
+
+**Solo dal lancio.** L'API non salva niente prima di `LAUNCH_DATE` né senza
+la variabile: le prove fatte prima non entrano nei numeri. Gli altri
+numeri del sito contati solo dal lancio vanno in un thread a parte (decisione
+di Luca dello stesso giorno).
+
+**Dove si vede.** Andamento del sito, sotto "I passi della richiesta":
+"Richieste dai profili: da dove partono", con visite, richieste iniziate e
+inviate per computer e telefono (percentuale sulle visite), e una tabella
+per pulsante con la percentuale su tutte le richieste della colonna. Sempre
+numero e percentuale, come chiesto da Luca; sotto 30 richieste inviate una
+riga avverte che le percentuali cambiano molto. Prima del lancio la scheda
+dice da quando si comincia a contare.
+
+**Corretto insieme.** La nota automatica "Lancio del sito" sul grafico
+cadeva il giorno prima (data UTC della mezzanotte di Roma): ora usa il
+giorno italiano.
+
+**Prove.** Test dell'API: si conta dopo il lancio, niente prima o senza
+data. e2e: i link della barra e del pulsante portano `da=barra` e
+`da=pagina`; la scheda in Andamento del sito senza data del lancio. Provato
+nel browser: dalla barra parte `source: BARRA` con il dispositivo giusto, da
+telefono e da computer.
+
 ## 392. Dal problema scritto ai professionisti adatti
 
 **Richiesta** (Luca, 26-27/10/2026, thread "abbinamento problema"): una sezione dove il cliente descrive il problema e gli si propongono i professionisti adatti. Fase 1 (banco di prova di 769 frasi vere, numeri in `analisi/abbinamento-problema/fase1-numeri.md`), poi "facciamo subito dizionario e poi qualsiasi minimo problemino si attiva ai". Aggiunte di Luca: risultati nella pagina di ricerca esistente con banda, domanda, avviso di sicurezza, "Chiedi preventivo a tutti" e riga "Perché"; il boost a pagamento fuori da questa lista; prima del "fuori servizio" cercare chi dichiara il lavoro nelle prestazioni, nei patentini o nella descrizione; "Ce ne occupiamo noi" con "No grazie, non serve" e "Prendete in carico la richiesta" (con accesso, senza scadenza); pagine admin "Mestieri richiesti" e "Richieste da seguire"; zanzariere = Tutto Fare; elettrodomestici: installarli è idraulico o elettricista, ripararli è di chi lo dichiara (Tutto Fare o Elettricista), altrimenti "Ce ne occupiamo noi".
@@ -21661,7 +21780,18 @@ azioni), typecheck e lint; API e sito avviati su un database locale con
 `LAUNCH_DATE` prima e dopo oggi, anteprime in
 `anteprime/numeri-dal-lancio/`.
 
-## 400. "Quanto costa in media": sinonimi e account di prova
+## 400. Foto più grande nei risultati di ricerca
+
+**Richiesta** (Luca, 28/10/2026): "nelle ricerche dei professionisti rendi più grande la foto profilo, e dammi un esempio dell'immagine profilo in un formato più rettangolare in verticale sempre arrotondato".
+
+**Decisione**:
+- **Foto più grande** nella scheda dei risultati (`ResultsListWithMap`, costante `CARD_PHOTO` in `ProfessionalAvatar.tsx`): larga 120 px da computer e 96 px sul telefono, prima tonda da 88 px, dove la colonna del nome è già stretta. Senza foto, l'icona della categoria cresce allo stesso modo.
+- **Foto verticale con gli angoli arrotondati** (scelta di Luca tra le anteprime in `anteprime/foto-risultati/`, al posto della tonda): `ProfessionalAvatar` e `CategoryIconBadge` accettano `shape="portrait"` (rettangolo 3:4 con angoli di 20 px, come il resto del sito) e `mobileSize`; nei risultati 120×160 px da computer e 96×128 sul telefono. Il cuoricino entra di 6 px nell'angolo arrotondato. Per tornare alla tonda basta `shape: "circle"` in `CARD_PHOTO`.
+- **Migliorie approvate** ("effettua le 2 migliorie"): la stessa foto (unica costante per tutte le schede) anche in "Professionisti salvati", al posto della tonda da 72 px, e nella sagoma di caricamento della scheda (`SkeletonProfessionalCard`), con la stessa forma, misura e spaziatura della scheda vera, così non salta quando arrivano i dati.
+
+**Verifica**: anteprime da computer (1440 px) e telefono (390 px) con il sito avviato in locale, anche di "Professionisti salvati" e della sua sagoma di caricamento; typecheck e lint del sito.
+
+## 405. "Quanto costa in media": sinonimi e account di prova
 
 **Richiesta** (Luca, 28/10/2026, dopo il §398-§399): "effettua la prima
 modifica" (i sinonimi) e, per il conteggio, "quando un account viene segnato

@@ -63,7 +63,7 @@ const SYNONYMS: Record<string, string> = Object.fromEntries(
       ["Sgombero cantine e appartamenti", ["sgombero", "sgomberi", "sgombero cantina", "svuota cantine"]],
       ["Posa piastrelle", ["piastrellista", "posa pavimenti", "posa rivestimenti"]],
       ["Impermeabilizzazione terrazzi e balconi", ["impermeabilizzazione", "impermeabilizzazione terrazzo", "impermeabilizzazione balcone"]],
-      // Allargata il 28/10/2026 (§400, richiesta di Luca): almeno qualche
+      // Allargata il 28/10/2026 (§405, richiesta di Luca): almeno qualche
       // variante comune per ogni prestazione suggerita, mai una parola che
       // può voler dire due lavori diversi (es. "caldaia" da sola).
       ["Sostituzione caldaia", ["cambio caldaia", "installazione caldaia", "nuova caldaia", "montaggio caldaia"]],
@@ -171,7 +171,7 @@ const VARIANT_KEYS_BY_NAME = Object.entries(SYNONYMS).reduce((byName, [key, cano
 }, new Map<string, string[]>());
 
 /**
- * La voce `name` risponde a quello che si sta scrivendo (§400): senza badare
+ * La voce `name` risponde a quello che si sta scrivendo (§405): senza badare
  * ad accenti, maiuscole e plurali ("perdite" trova "Riparazione perdita
  * d'acqua", "umidita" trova "Risanamento umidità") e con i sinonimi
  * ("imbiancatura" trova "Tinteggiatura interni"). Funziona anche a parola

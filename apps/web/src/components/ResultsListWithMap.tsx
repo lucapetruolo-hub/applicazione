@@ -4,15 +4,19 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { Check, ChevronDown, ChevronUp, Info, Map as MapIcon, Maximize2, Minimize2, Plus, ShieldCheck, SlidersHorizontal, X, Zap } from "lucide-react";
-import { findComuneByName, PUBLIC_AGENDA_DAYS, SEARCH_RADIUS_KM, type ProfessionalSearchResult, professionalPath, subTagLabel } from "@professionisti/shared";
+import { findComuneByName, PROFILE_REQUEST_SOURCE_PARAM, PUBLIC_AGENDA_DAYS, SEARCH_RADIUS_KM, type ProfessionalSearchResult, professionalPath, subTagLabel } from "@professionisti/shared";
 import { Icon, ProfessionalCard, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
-import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
+import { CARD_PHOTO, ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { useSavedProfessionals } from "@/lib/useSavedProfessionals";
 import { navigateWithTransition } from "@/lib/viewTransition";
 import type { MapBounds } from "./ResultsMap";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
+
+// Cuoricino sull'angolo della foto: sul bordo del cerchio, dentro l'angolo
+// arrotondato del rettangolo.
+const heartOffset = CARD_PHOTO.shape === "portrait" ? { right: 6, bottom: 6 } : { right: 0, bottom: 0 };
 
 // La mappa (Google Maps) vive solo nel browser: mai importata lato server (CLAUDE.md
 // §5.4 vale per l'SEO delle pagine, non per un widget lato client come
@@ -713,7 +717,7 @@ export function ResultsListWithMap({
                     // GuidedRequestForm. Nomi distinti da "nome"/"foto" per
                     // non collidere con il "nome" del CLIENTE (prefill di
                     // "Ripeti la richiesta", stesso form).
-                    `/preventivo?categoria=${pro.categorySlug}&professionista=${pro.id}&nomeProfessionista=${encodeURIComponent(pro.businessName)}&fotoProfessionista=${encodeURIComponent(pro.imageUrl ?? "")}&data=${date}&fasciaOraria=${time}-${endTime}&modalita=${mode}${serviceDescriptionParam(pro)}`,
+                    `/preventivo?categoria=${pro.categorySlug}&professionista=${pro.id}&nomeProfessionista=${encodeURIComponent(pro.businessName)}&fotoProfessionista=${encodeURIComponent(pro.imageUrl ?? "")}&data=${date}&fasciaOraria=${time}-${endTime}&modalita=${mode}${serviceDescriptionParam(pro)}&da=${PROFILE_REQUEST_SOURCE_PARAM.RICERCA}`,
                   ),
                 )
               }
@@ -730,11 +734,17 @@ export function ResultsListWithMap({
               // spazio al nome sui telefoni.
               icon={
                 <span style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
-                  <ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={88} />
+                  <ProfessionalAvatar
+                    imageUrl={pro.imageUrl}
+                    categorySlug={pro.categorySlug}
+                    size={CARD_PHOTO.size}
+                    mobileSize={CARD_PHOTO.mobileSize}
+                    shape={CARD_PHOTO.shape}
+                  />
                   {canSave ? (
                     // Il clic sul cuoricino non deve aprire anche il profilo (clic sulla card).
                     // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
-                    <span style={{ position: "absolute", right: 0, bottom: 0 }} onClick={(e) => e.stopPropagation()}>
+                    <span style={{ position: "absolute", ...heartOffset }} onClick={(e) => e.stopPropagation()}>
                       <IconActionButton
                         label={savedIds.has(pro.id) ? "Salvato" : "Salva"}
                         active={savedIds.has(pro.id)}

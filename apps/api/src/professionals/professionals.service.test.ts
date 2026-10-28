@@ -258,7 +258,7 @@ describe("voci di \"Quanto costa in media\" (§398)", () => {
     return { prisma, service: new ProfessionalsService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, serviceNames as never) };
   };
 
-  it("cerca chi ha la prestazione, sinonimi compresi, senza badare a maiuscole e spazi (§400)", async () => {
+  it("cerca chi ha la prestazione, sinonimi compresi, senza badare a maiuscole e spazi (§405)", async () => {
     const { prisma, service } = build([
       { professionalProfileId: "p-1", name: " Tinteggiatura " },
       { professionalProfileId: "p-2", name: "Imbiancatura interni" },

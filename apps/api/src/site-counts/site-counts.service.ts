@@ -9,6 +9,9 @@ import {
   normalizeJobTerm,
   type ChurnKind,
   type ChurnReason,
+  type DeviceKind,
+  type ProfileRequestEvent,
+  type ProfileRequestSource,
   type PriceToolStepKey,
   type RequestOrigin,
   type RequestStepKey,
@@ -16,6 +19,7 @@ import {
   type SubmitFormKey,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { hasLaunched, launchDate } from "../subscriptions/subscription-rules";
 
 /** Giorni diversi in cui una parola va cercata prima di mostrarla agli admin. */
 export const UNKNOWN_JOB_MIN_DAYS = 3;
@@ -51,12 +55,40 @@ export class SiteCountsService {
 
   constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
 
-  async recordStep(step: RequestStepKey, categorySlug?: string, origin: RequestOrigin = "GENERAL"): Promise<void> {
+  async recordStep(
+    step: RequestStepKey,
+    categorySlug?: string,
+    origin: RequestOrigin = "GENERAL",
+    from: { source?: ProfileRequestSource; device?: DeviceKind } = {},
+  ): Promise<void> {
     const slug = categorySlug?.trim().toLowerCase() ?? "";
     const day = today();
     await this.prisma.requestStepDay.upsert({
       where: { step_categorySlug_origin_day: { step, categorySlug: slug, origin, day } },
       create: { step, categorySlug: slug, origin, day, count: 1 },
+      update: { count: { increment: 1 } },
+    });
+    // Da quale pulsante del profilo e da che dispositivo (§402): solo l'apertura e l'invio.
+    const event: ProfileRequestEvent | null = step === "LAVORO" ? "INIZIATA" : step === "INVIATA" ? "INVIATA" : null;
+    if (origin === "PROFILE" && event && from.device) await this.recordProfileSource(event, from.source ?? "ALTRO", from.device);
+  }
+
+  /** Un profilo pubblico aperto, per dispositivo (§402). */
+  async recordProfileView(device: DeviceKind): Promise<void> {
+    await this.recordProfileSource("VISITA", "", device);
+  }
+
+  /**
+   * Contatore delle richieste dai profili (§402). Solo dal lancio: le prove
+   * fatte prima non devono finire nei numeri veri; senza `LAUNCH_DATE` non
+   * si conta niente.
+   */
+  private async recordProfileSource(event: ProfileRequestEvent, source: ProfileRequestSource | "", device: DeviceKind, now: Date = new Date()): Promise<void> {
+    if (!hasLaunched(now, launchDate())) return;
+    const day = today(now);
+    await this.prisma.profileRequestSourceDay.upsert({
+      where: { event_source_device_day: { event, source, device, day } },
+      create: { event, source, device, day, count: 1 },
       update: { count: { increment: 1 } },
     });
   }
@@ -141,6 +173,7 @@ export class SiteCountsService {
       this.prisma.freeSearchDay.deleteMany({ where: before }),
       this.prisma.profileViewDay.deleteMany({ where: before }),
       this.prisma.requestStepDay.deleteMany({ where: before }),
+      this.prisma.profileRequestSourceDay.deleteMany({ where: before }),
       this.prisma.priceToolStepDay.deleteMany({ where: before }),
       this.prisma.submitFailureDay.deleteMany({ where: before }),
       this.prisma.unknownJobSearchDay.deleteMany({ where: before }),

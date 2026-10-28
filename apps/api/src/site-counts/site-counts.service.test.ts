@@ -55,3 +55,52 @@ describe("SiteCountsService.recordServiceSearch", () => {
     expect(prisma.serviceSearchDay.upsert).toHaveBeenCalledOnce();
   });
 });
+
+describe("SiteCountsService: richieste dai profili per pulsante (§402)", () => {
+  function build() {
+    const prisma = { requestStepDay: { upsert: vi.fn() }, profileRequestSourceDay: { upsert: vi.fn() } };
+    return { service: new SiteCountsService(prisma as never), prisma };
+  }
+  const withLaunch = async (value: string | undefined, run: () => Promise<void>) => {
+    const before = process.env.LAUNCH_DATE;
+    if (value === undefined) delete process.env.LAUNCH_DATE;
+    else process.env.LAUNCH_DATE = value;
+    try {
+      await run();
+    } finally {
+      if (before === undefined) delete process.env.LAUNCH_DATE;
+      else process.env.LAUNCH_DATE = before;
+    }
+  };
+
+  it("dopo il lancio conta pulsante e dispositivo all'apertura e all'invio, non negli altri passi", async () => {
+    await withLaunch("2020-01-01", async () => {
+      const { service, prisma } = build();
+      await service.recordStep("LAVORO", "idraulico", "PROFILE", { source: "BARRA", device: "TELEFONO" });
+      await service.recordStep("DOVE", "idraulico", "PROFILE", { source: "BARRA", device: "TELEFONO" });
+      await service.recordStep("INVIATA", "idraulico", "PROFILE", { device: "COMPUTER" });
+      await service.recordStep("INVIATA", "idraulico", "GENERAL", { source: "BARRA", device: "COMPUTER" });
+      await service.recordProfileView("TELEFONO");
+      const created = prisma.profileRequestSourceDay.upsert.mock.calls.map((c) => c[0].create);
+      expect(created).toEqual([
+        expect.objectContaining({ event: "INIZIATA", source: "BARRA", device: "TELEFONO" }),
+        expect.objectContaining({ event: "INVIATA", source: "ALTRO", device: "COMPUTER" }),
+        expect.objectContaining({ event: "VISITA", source: "", device: "TELEFONO" }),
+      ]);
+      expect(prisma.requestStepDay.upsert).toHaveBeenCalledTimes(4);
+    });
+  });
+
+  it("prima del lancio, o senza data del lancio, non conta niente: le prove non sporcano i numeri", async () => {
+    for (const value of ["2999-01-01", undefined]) {
+      await withLaunch(value, async () => {
+        const { service, prisma } = build();
+        await service.recordStep("INVIATA", "idraulico", "PROFILE", { source: "PAGINA", device: "COMPUTER" });
+        await service.recordProfileView("COMPUTER");
+        expect(prisma.profileRequestSourceDay.upsert).not.toHaveBeenCalled();
+        // I passi della richiesta di §372 restano contati come prima.
+        expect(prisma.requestStepDay.upsert).toHaveBeenCalledOnce();
+      });
+    }
+  });
+});

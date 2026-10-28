@@ -42,13 +42,13 @@ describe("voci del \"Quanto costa in media\" (§398)", () => {
     expect(entry).toMatchObject({ professionalCount: 4, price: { pricedCount: 3, medianEurCents: 1000, unit: "SQUARE_METER" } });
   });
 
-  it("i sinonimi stanno nella stessa voce, col nome suggerito (§400)", () => {
+  it("i sinonimi stanno nella stessa voce, col nome suggerito (§405)", () => {
     const entries = buildServicePriceIndex([offer("p1", "riparazione perdite", 8000), offer("p2", "Riparazione perdita d'acqua", 9000), offer("p3", "Perdita acqua", 10000)]);
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatchObject({ name: "Riparazione perdita d'acqua", professionalCount: 3, price: { medianEurCents: 9000 } });
   });
 
-  it("un'unione fatta dall'admin vale anche qui (§400)", () => {
+  it("un'unione fatta dall'admin vale anche qui (§405)", () => {
     const canonicalize = (name: string) => (name.toLowerCase().includes("lampadin") ? "Installazione punti luce" : name.trim());
     const entries = buildServicePriceIndex([offer("p1", "Cambio lampadine", 3000), offer("p2", "Installazione punti luce", 4000)], canonicalize);
     expect(entries).toEqual([expect.objectContaining({ name: "Installazione punti luce", professionalCount: 2 })]);

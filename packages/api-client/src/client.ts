@@ -740,6 +740,8 @@ export type CurrentUser = {
   imageUrl: string | null;
   /** Nome attività (ProfessionalProfile.businessName), null per un account cliente o un professionista senza profilo ancora creato. */
   businessName: string | null;
+  /** Id del profilo professionista (null come `businessName`), per riconoscere il proprio profilo pubblico (§400). */
+  professionalProfileId?: string | null;
   /** Immagine profilo pubblica (ProfessionalProfile.imageUrl), null per un account cliente o un professionista senza immagine caricata. */
   businessImageUrl: string | null;
   /** Agenda vuota o senza disponibilità nei prossimi 7 giorni: avviso in "Oggi" e pallino su "Agenda" (null se va bene). */

@@ -127,10 +127,53 @@ export type SignupSourceKey = TrafficSource | "INVITE" | "unknown";
 export const REQUEST_ORIGINS = ["GENERAL", "PROFILE"] as const;
 export type RequestOrigin = (typeof REQUEST_ORIGINS)[number];
 
+/**
+ * Da quale pulsante parte una richiesta da un profilo (docs/CHANGELOG.md
+ * §402), letto da `da=` nell'indirizzo di /preventivo: barra in basso,
+ * pulsante nella pagina, orario dell'agenda del profilo, orario nei
+ * risultati di ricerca; ALTRO per link senza `da` (vecchi o copiati).
+ */
+export const PROFILE_REQUEST_SOURCES = ["BARRA", "PAGINA", "AGENDA", "RICERCA", "ALTRO"] as const;
+export type ProfileRequestSource = (typeof PROFILE_REQUEST_SOURCES)[number];
+
+export const PROFILE_REQUEST_SOURCE_LABEL: Record<ProfileRequestSource, string> = {
+  BARRA: "Barra in basso",
+  PAGINA: "Pulsante nella pagina",
+  AGENDA: "Orario dell'agenda",
+  RICERCA: "Orario nei risultati di ricerca",
+  ALTRO: "Altro (link senza origine)",
+};
+
+/** `da=` nell'indirizzo, minuscolo: il nome che si legge in un link condiviso. */
+export const PROFILE_REQUEST_SOURCE_PARAM: Record<Exclude<ProfileRequestSource, "ALTRO">, string> = {
+  BARRA: "barra",
+  PAGINA: "pagina",
+  AGENDA: "agenda",
+  RICERCA: "ricerca",
+};
+
+export function profileRequestSourceOf(param: string | null | undefined): ProfileRequestSource {
+  const found = (Object.entries(PROFILE_REQUEST_SOURCE_PARAM) as [ProfileRequestSource, string][]).find(([, value]) => value === param);
+  return found ? found[0] : "ALTRO";
+}
+
+/** Dispositivo dalla larghezza dello schermo: TELEFONO fino a 767 px, come la barra. */
+export const DEVICE_KINDS = ["COMPUTER", "TELEFONO"] as const;
+export type DeviceKind = (typeof DEVICE_KINDS)[number];
+
+export const DEVICE_KIND_LABEL: Record<DeviceKind, string> = { COMPUTER: "Computer", TELEFONO: "Telefono" };
+
+/** VISITA: profilo aperto; INIZIATA: aperta la richiesta; INVIATA: richiesta inviata. */
+export const PROFILE_REQUEST_EVENTS = ["VISITA", "INIZIATA", "INVIATA"] as const;
+export type ProfileRequestEvent = (typeof PROFILE_REQUEST_EVENTS)[number];
+
 export const siteStepEventSchema = z.object({
   step: z.enum(REQUEST_STEP_KEYS),
   categorySlug: z.string().max(60).optional(),
   origin: z.enum(REQUEST_ORIGINS).optional(),
+  /** Solo con origin PROFILE (§402). */
+  source: z.enum(PROFILE_REQUEST_SOURCES).optional(),
+  device: z.enum(DEVICE_KINDS).optional(),
 });
 export type SiteStepEvent = z.infer<typeof siteStepEventSchema>;
 
@@ -156,6 +199,10 @@ export const siteFailureEventSchema = z.object({
   kind: z.enum(SUBMIT_FAILURE_KINDS),
 });
 export type SiteFailureEvent = z.infer<typeof siteFailureEventSchema>;
+
+/** Profilo pubblico aperto, solo il dispositivo (§402). */
+export const siteProfileViewEventSchema = z.object({ device: z.enum(DEVICE_KINDS) });
+export type SiteProfileViewEvent = z.infer<typeof siteProfileViewEventSchema>;
 
 export const siteNoteSchema = z.object({
   day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data non valida."),
@@ -249,6 +296,16 @@ export type AdminSiteStats = {
   clientFunnel: { key: ClientFunnelKey; count: number }[];
   /** Totale, e quanti dalla pagina di un professionista (`fromProfile`). */
   requestSteps: { key: RequestStepKey; count: number; fromProfile: number }[];
+  /**
+   * Richieste dai profili per pulsante e dispositivo, dal lancio (§402).
+   * `since` è il giorno del lancio (AAAA-MM-GG), null se `LAUNCH_DATE` non
+   * è impostata; `started` false prima del lancio (righe vuote).
+   */
+  profileSources: {
+    since: string | null;
+    started: boolean;
+    rows: { event: ProfileRequestEvent; source: ProfileRequestSource | ""; device: DeviceKind; count: number }[];
+  };
   /** Passi dalle voci di "Quanto costa" (§399). */
   priceToolSteps: { key: PriceToolStepKey; count: number }[];
   clientCohorts: { weekStart: string; clients: number; withQuote: number; accepted: number; reviewed: number; returned: number }[];

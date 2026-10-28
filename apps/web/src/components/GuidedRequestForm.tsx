@@ -15,6 +15,7 @@ import {
   isPlausiblePhoneNumber,
   isProfessionalCategorySlug,
   normalizePhoneNumber,
+  profileRequestSourceOf,
   type ProfessionalAgenda,
   type ProfessionalCategorySlug,
   type ProfessionalDetail,
@@ -529,18 +530,20 @@ export function GuidedRequestForm({
   // una volta per pagina aperta, con il lavoro scelto e se arriva dalla
   // pagina di un professionista. Dice dove ci si ferma.
   const requestOrigin = professionalProfileId ? "PROFILE" : "GENERAL";
+  // Da quale pulsante del profilo è partita (§402): `da=` nell'indirizzo.
+  const requestSource = profileRequestSourceOf(searchParams.get("da"));
   const countedSteps = useRef(new Set<RequestStepKey>());
   const countStepOnce = (key: RequestStepKey) => {
     if (countedSteps.current.has(key)) return;
     countedSteps.current.add(key);
-    countRequestStep(key, categorySlug, requestOrigin);
+    countRequestStep(key, categorySlug, requestOrigin, requestSource);
   };
   useEffect(() => {
     const key: RequestStepKey = step === 1 ? "LAVORO" : step === 2 ? "DOVE" : "RIEPILOGO";
     if (countedSteps.current.has(key)) return;
     countedSteps.current.add(key);
-    countRequestStep(key, categorySlug, requestOrigin);
-  }, [step, categorySlug, requestOrigin]);
+    countRequestStep(key, categorySlug, requestOrigin, requestSource);
+  }, [step, categorySlug, requestOrigin, requestSource]);
   // Una foto/video selezionato prima di autenticarsi (`file` valorizzato)
   // resta locale — anteprima via `URL.createObjectURL`, mai caricata su
   // Cloudinary finché non esiste un token — e viene caricata solo al

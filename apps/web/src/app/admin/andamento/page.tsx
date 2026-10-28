@@ -6,6 +6,8 @@ import {
   CHURN_KIND_LABEL,
   CHURN_REASON_LABEL,
   CLIENT_FUNNEL_LABEL,
+  DEVICE_KINDS,
+  DEVICE_KIND_LABEL,
   GOOGLE_OPENING_TARGETS,
   GUIDE_GREEN_SHARE,
   GUIDE_QUOTE_HOURS,
@@ -13,6 +15,8 @@ import {
   MIN_CASES_FOR_PERCENT,
   MIN_CASES_PER_ROW,
   MISSING_SERVICE_MIN_PROFESSIONALS,
+  PROFILE_REQUEST_SOURCES,
+  PROFILE_REQUEST_SOURCE_LABEL,
   PRICE_TOOL_STEP_LABEL,
   REQUEST_STEP_LABEL,
   SERVICE_GAP_MAX_OFFERED,
@@ -182,6 +186,7 @@ export default function AdminAndamentoPage() {
           <CellsCard data={data} />
           <FunnelCard data={data} />
           <StepsCard data={data} />
+          <ProfileSourcesCard data={data} />
           <PriceToolCard data={data} />
           <ClientCohortsCard data={data} />
           <ProfessionalCohortsCard data={data} />
@@ -540,6 +545,119 @@ function StepsCard({ data }: { data: AdminSiteStats }) {
           : "Nessun profilo aperto in questo periodo."}
       </Text>
       <Bars rows={fromProfile} total={0} steps />
+    </AdminCard>
+  );
+}
+
+/** "12 (4%)": il numero e sempre anche la percentuale, come chiesto da Luca (§402). */
+function countWithShare(part: number, total: number): string {
+  return total > 0 ? `${part} (${Math.round((part / total) * 100)}%)` : String(part);
+}
+
+/**
+ * Da quale pulsante del profilo partono le richieste, per computer e
+ * telefono, tutto dal lancio (docs/CHANGELOG.md §402): dice se la barra in
+ * basso porta richieste in più o le toglie al pulsante nella pagina e agli
+ * orari dell'agenda.
+ */
+function ProfileSourcesCard({ data }: { data: AdminSiteStats }) {
+  const { since, started, rows } = data.profileSources;
+  const sinceLabel = since ? since.split("-").reverse().join("/") : null;
+  const sum = (filter: (row: (typeof rows)[number]) => boolean) => rows.filter(filter).reduce((total, row) => total + row.count, 0);
+  const title = "Richieste dai profili: da dove partono";
+  if (!started) {
+    return (
+      <AdminCard>
+        <CardTitle title={title} />
+        <Text color={brand.grafite70}>
+          {sinceLabel
+            ? `Si comincia a contare dal lancio, il ${sinceLabel}: le prove fatte prima non entrano in questi numeri.`
+            : "Si comincia a contare dal giorno del lancio, quando sarà impostata la data (LAUNCH_DATE su Render)."}
+        </Text>
+      </AdminCard>
+    );
+  }
+  const devices = DEVICE_KINDS.map((device) => ({
+    key: device,
+    label: DEVICE_KIND_LABEL[device],
+    visits: sum((r) => r.event === "VISITA" && r.device === device),
+    started: sum((r) => r.event === "INIZIATA" && r.device === device),
+    sent: sum((r) => r.event === "INVIATA" && r.device === device),
+  }));
+  const total = {
+    visits: devices.reduce((t, d) => t + d.visits, 0),
+    started: devices.reduce((t, d) => t + d.started, 0),
+    sent: devices.reduce((t, d) => t + d.sent, 0),
+  };
+  const sentOn = (device: string) => sum((r) => r.event === "INVIATA" && r.device === device);
+  const sources = PROFILE_REQUEST_SOURCES.map((source) => ({
+    key: source,
+    label: PROFILE_REQUEST_SOURCE_LABEL[source],
+    started: sum((r) => r.event === "INIZIATA" && r.source === source),
+    sent: sum((r) => r.event === "INVIATA" && r.source === source),
+    computer: sum((r) => r.event === "INVIATA" && r.source === source && r.device === "COMPUTER"),
+    phone: sum((r) => r.event === "INVIATA" && r.source === source && r.device === "TELEFONO"),
+  }));
+  return (
+    <AdminCard>
+      <CardTitle
+        title={title}
+        note={`Dal lancio (${sinceLabel}). Richieste iniziate e inviate partendo da un profilo, con la percentuale sulle visite e, sotto, su tutte le richieste di quella colonna.`}
+      />
+      <div className="admin-table-wrap">
+        <table className="admin-table admin-table-numbers">
+          <thead>
+            <tr>
+              <th>Dispositivo</th>
+              <th>Visite ai profili</th>
+              <th>Richieste iniziate</th>
+              <th>Richieste inviate</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[...devices, { key: "TOTALE", label: "Totale", ...total }].map((row) => (
+              <tr key={row.key}>
+                <td data-label="Dispositivo">{row.label}</td>
+                <td data-label="Visite ai profili">{row.visits}</td>
+                <td data-label="Richieste iniziate">{countWithShare(row.started, row.visits)}</td>
+                <td data-label="Richieste inviate">{countWithShare(row.sent, row.visits)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <Text fontFamily="$heading" fontWeight="700" fontSize="$5" color={brand.grafite} marginTop="$3">
+        Da quale pulsante
+      </Text>
+      <div className="admin-table-wrap">
+        <table className="admin-table admin-table-numbers">
+          <thead>
+            <tr>
+              <th>Pulsante</th>
+              <th>Iniziate</th>
+              <th>Inviate</th>
+              <th>Inviate da computer</th>
+              <th>Inviate da telefono</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sources.map((row) => (
+              <tr key={row.key}>
+                <td data-label="Pulsante">{row.label}</td>
+                <td data-label="Iniziate">{countWithShare(row.started, total.started)}</td>
+                <td data-label="Inviate">{countWithShare(row.sent, total.sent)}</td>
+                <td data-label="Inviate da computer">{countWithShare(row.computer, sentOn("COMPUTER"))}</td>
+                <td data-label="Inviate da telefono">{countWithShare(row.phone, sentOn("TELEFONO"))}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {total.sent > 0 && total.sent < MIN_CASES_FOR_PERCENT ? (
+        <Text color={brand.grafite70} fontSize={13}>
+          {`Ancora meno di ${MIN_CASES_FOR_PERCENT} richieste inviate: le percentuali cambiano molto anche per una sola richiesta.`}
+        </Text>
+      ) : null}
     </AdminCard>
   );
 }
