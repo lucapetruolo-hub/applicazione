@@ -5337,6 +5337,12 @@ a.admin-kpi:hover {
   outline: 2px solid #0e7a4c;
   outline-offset: -2px;
 }
+.price-table-unit {
+  margin-right: 8px;
+  font-size: 13px;
+  font-weight: 400;
+  color: #6e6459;
+}
 .price-table-chevron {
   margin-left: 8px;
   vertical-align: -3px;

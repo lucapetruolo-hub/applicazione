@@ -80,6 +80,12 @@ function formatServicePrice(priceMinEurCents: number | null, priceMaxEurCents: n
   return single !== null ? `${formatAmount(single)}\u00A0€${suffix}` : "Su richiesta";
 }
 
+/** Unità da mostrare prima del prezzo nella riga (§389); nessuna senza prezzo. */
+function priceUnitLabel(service: ProfessionalCardService): string | undefined {
+  if (!service.priceUnit || (service.priceMinEurCents === null && service.priceMaxEurCents === null)) return undefined;
+  return PRICE_UNIT_LABEL[service.priceUnit];
+}
+
 /** Prestazione col prezzo più basso ("da 40 € a lavoro" sulla scheda chiusa), o null se nessuna ha un prezzo. */
 function lowestServicePrice(services: ProfessionalCardService[]): { cents: number; unit?: ProfessionalCardPriceUnit } | null {
   let lowest: { cents: number; unit?: ProfessionalCardPriceUnit } | null = null;
@@ -772,10 +778,10 @@ export function ProfessionalCard({
               {(showAllServices ? serviceList : serviceList.slice(0, 3)).map((service) =>
                 service === highlighted ? (
                   <YStack key={service.id} backgroundColor={brand.cianografiaVelo} borderRadius={10} paddingHorizontal="$2" marginHorizontal={-8}>
-                    <PriceLine label={service.name} labelColor={brand.grafite} price={formatServicePrice(service.priceMinEurCents, service.priceMaxEurCents, service.priceUnit)} />
+                    <PriceLine label={service.name} labelColor={brand.grafite} price={formatServicePrice(service.priceMinEurCents, service.priceMaxEurCents)} unit={priceUnitLabel(service)} />
                   </YStack>
                 ) : (
-                  <PriceLine key={service.id} label={service.name} price={formatServicePrice(service.priceMinEurCents, service.priceMaxEurCents, service.priceUnit)} />
+                  <PriceLine key={service.id} label={service.name} price={formatServicePrice(service.priceMinEurCents, service.priceMaxEurCents)} unit={priceUnitLabel(service)} />
                 ),
               )}
               {serviceList.length > 3 ? (

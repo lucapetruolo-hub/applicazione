@@ -5,6 +5,7 @@ import {
   italianComuni,
   PROFESSIONAL_CATEGORIES,
   comuneSlug,
+  SERVICE_PRICE_UNIT_LABEL,
   formatServicePrice,
   formatServicePriceRange,
   hasCategoryPrices,
@@ -178,7 +179,9 @@ export function PricesView({ data }: { data: PricesData }) {
                     </PriceToolLink>
                   </th>
                   <td>
-                    {formatServicePrice(service.minEurCents, service.maxEurCents, service.unit)}
+                    {/* Unità prima del prezzo: le cifre restano allineate a destra (§389). */}
+                    <span className="price-table-unit">{SERVICE_PRICE_UNIT_LABEL[service.unit]}</span>
+                    {formatServicePriceRange(service.minEurCents, service.maxEurCents)}
                     <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" className="price-table-chevron">
                       <path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>

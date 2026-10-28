@@ -176,13 +176,13 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
                         minimo e massimo; sotto i 3 prezzi nessuna cifra (§383). */}
                     {entry.price ? (
                       <YStack alignItems="flex-end" gap={2}>
-                        {/* Con l'unità (§383): "10 €" da solo poteva essere al m² o a lavoro. */}
+                        {/* Unità prima del prezzo (Luca, §389): le cifre restano allineate a destra. */}
                         <Text fontSize={17} fontWeight="700" color={brand.cianografiaScuro}>
-                          {formatServicePriceRange(entry.price.medianEurCents, null)}
                           <Text fontSize={13} fontWeight="400" color={brand.grafite70}>
-                            {"\u00A0"}
                             {SERVICE_PRICE_UNIT_LABEL[entry.price.unit]}
+                            {"\u00A0\u00A0"}
                           </Text>
+                          {formatServicePriceRange(entry.price.medianEurCents, null)}
                         </Text>
                         {entry.price.highEurCents > entry.price.lowEurCents ? (
                           <Text fontSize={13} color={brand.grafite70}>
