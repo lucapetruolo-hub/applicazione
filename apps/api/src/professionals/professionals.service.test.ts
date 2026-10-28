@@ -1,3 +1,4 @@
+import { canonicalServiceName } from "@professionisti/shared";
 import { describe, expect, it, vi } from "vitest";
 import { ProfessionalsService } from "./professionals.service";
 
@@ -31,6 +32,7 @@ function buildService(prismaOverrides: Record<string, unknown> = {}) {
     {} as never, // subscriptionsService
     {} as never, // professionalVerificationService
     {} as never, // agendaService
+    {} as never, // serviceNamesService
   );
   return { service, prisma };
 }
@@ -180,7 +182,7 @@ describe("ProfessionalsService.deleteLead — nasconde, non cancella (docs/CHANG
       guidedRequestUserState: { upsert: vi.fn().mockReturnValue("state-upsert") },
       $transaction: vi.fn().mockResolvedValue([]),
     };
-    const service = new ProfessionalsService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never);
+    const service = new ProfessionalsService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never);
     return { service, prisma };
   }
 
@@ -226,7 +228,7 @@ describe("agenda pubblica (§293)", () => {
       externalJob: { findMany: vi.fn().mockResolvedValue([]) },
       availabilityException: { findMany: vi.fn().mockResolvedValue([]) },
     };
-    return { prisma, service: new ProfessionalsService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never) };
+    return { prisma, service: new ProfessionalsService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never) };
   };
 
   it("non esiste per un profilo eliminato o sospeso", async () => {
@@ -252,24 +254,26 @@ describe("voci di \"Quanto costa in media\" (§398)", () => {
       professionalService: { findMany: vi.fn().mockResolvedValue(services) },
       professionalProfile: { findMany: vi.fn().mockResolvedValue([]) },
     };
-    return { prisma, service: new ProfessionalsService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never) };
+    const serviceNames = { canonicalizer: async () => canonicalServiceName };
+    return { prisma, service: new ProfessionalsService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, serviceNames as never) };
   };
 
-  it("cerca solo chi ha la prestazione con quel nome, senza badare a maiuscole e spazi", async () => {
+  it("cerca chi ha la prestazione, sinonimi compresi, senza badare a maiuscole e spazi (§400)", async () => {
     const { prisma, service } = build([
       { professionalProfileId: "p-1", name: " Tinteggiatura " },
-      { professionalProfileId: "p-2", name: "Tinteggiatura pareti" },
+      { professionalProfileId: "p-2", name: "Imbiancatura interni" },
       { professionalProfileId: "p-3", name: "tinteggiatura" },
+      { professionalProfileId: "p-4", name: "Tinteggiatura esterni" },
     ]);
-    await service.search({ service: "TINTEGGIATURA" });
+    await service.search({ service: "Tinteggiatura interni" });
     const where = prisma.professionalProfile.findMany.mock.calls[0]![0].where;
-    expect(where.AND).toContainEqual({ id: { in: ["p-1", "p-3"] } });
+    expect(where.AND).toContainEqual({ id: { in: ["p-1", "p-2", "p-3"] } });
   });
 
   it("il prezzo medio conta solo chi compare nella ricerca", async () => {
     const { prisma, service } = build([]);
     await expect(service.getServicePriceIndex()).resolves.toEqual([]);
     const profileWhere = prisma.professionalService.findMany.mock.calls[0]![0].where.professionalProfile;
-    expect(profileWhere).toMatchObject({ isDemo: false, deletedAt: null, suspendedAt: null, pausedAt: null, invitePendingAt: null });
+    expect(profileWhere).toMatchObject({ isDemo: false, user: { testAccountAt: null }, deletedAt: null, suspendedAt: null, pausedAt: null, invitePendingAt: null });
   });
 });

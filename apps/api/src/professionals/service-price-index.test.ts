@@ -13,7 +13,7 @@ const offer = (professionalProfileId: string, name: string, min: number | null, 
 describe("voci del \"Quanto costa in media\" (§398)", () => {
   it("unisce maiuscole e spazi e conta i professionisti, non le righe", () => {
     const [entry] = buildServicePriceIndex([offer("p1", "Tinteggiatura", 800), offer("p1", " tinteggiatura ", 900), offer("p2", "TINTEGGIATURA", null)]);
-    expect(entry).toMatchObject({ name: "Tinteggiatura", professionalCount: 2, price: null });
+    expect(entry).toMatchObject({ name: "Tinteggiatura interni", professionalCount: 2, price: null });
   });
 
   it("niente cifre sotto i 3 professionisti con un prezzo", () => {
@@ -40,5 +40,17 @@ describe("voci del \"Quanto costa in media\" (§398)", () => {
       offer("p4", "Tinteggiatura", 150000),
     ]);
     expect(entry).toMatchObject({ professionalCount: 4, price: { pricedCount: 3, medianEurCents: 1000, unit: "SQUARE_METER" } });
+  });
+
+  it("i sinonimi stanno nella stessa voce, col nome suggerito (§400)", () => {
+    const entries = buildServicePriceIndex([offer("p1", "riparazione perdite", 8000), offer("p2", "Riparazione perdita d'acqua", 9000), offer("p3", "Perdita acqua", 10000)]);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ name: "Riparazione perdita d'acqua", professionalCount: 3, price: { medianEurCents: 9000 } });
+  });
+
+  it("un'unione fatta dall'admin vale anche qui (§400)", () => {
+    const canonicalize = (name: string) => (name.toLowerCase().includes("lampadin") ? "Installazione punti luce" : name.trim());
+    const entries = buildServicePriceIndex([offer("p1", "Cambio lampadine", 3000), offer("p2", "Installazione punti luce", 4000)], canonicalize);
+    expect(entries).toEqual([expect.objectContaining({ name: "Installazione punti luce", professionalCount: 2 })]);
   });
 });

@@ -1,6 +1,6 @@
-import { MIN_PROFESSIONALS_FOR_SERVICE_PRICE, type ServicePriceIndexEntry, type ServicePriceUnit } from "@professionisti/shared";
+import { canonicalServiceName, MIN_PROFESSIONALS_FOR_SERVICE_PRICE, type ServicePriceIndexEntry, type ServicePriceUnit } from "@professionisti/shared";
 import { dominantPriceUnit, quantile } from "./category-prices";
-import { serviceGroupKey } from "./service-group-key";
+import { type ServiceCanonicalizer, serviceGroupKey } from "./service-group-key";
 
 /** Cifre in euro tondi: i centesimi di una mediana sono rumore. */
 const toEuro = (cents: number) => Math.round(cents / 100) * 100;
@@ -19,16 +19,17 @@ type OfferedService = {
  * professionisti visibili, con quanti la offrono e, da
  * `MIN_PROFESSIONALS_FOR_SERVICE_PRICE` professionisti con un prezzo in su,
  * mediana e intervallo tipico al posto di minimo e massimo (un solo prezzo
- * strano allargava la forbice).
+ * strano allargava la forbice). I sinonimi contano nella stessa voce (§400).
  */
-export function buildServicePriceIndex(services: OfferedService[]): ServicePriceIndexEntry[] {
+export function buildServicePriceIndex(services: OfferedService[], canonicalize: ServiceCanonicalizer = canonicalServiceName): ServicePriceIndexEntry[] {
   const groups = new Map<string, { name: string; professionals: Set<string>; priceByProfessional: Map<string, { midpoint: number; unit: ServicePriceUnit }> }>();
   for (const service of services) {
-    const key = serviceGroupKey(service.name);
+    const key = serviceGroupKey(service.name, canonicalize);
     if (!key) continue;
     let group = groups.get(key);
     if (!group) {
-      group = { name: service.name.trim(), professionals: new Set(), priceByProfessional: new Map() };
+      // Il nome della voce è quello suggerito quando il testo ne è un sinonimo (§400).
+      group = { name: canonicalize(service.name).trim(), professionals: new Set(), priceByProfessional: new Map() };
       groups.set(key, group);
     }
     group.professionals.add(service.professionalProfileId);

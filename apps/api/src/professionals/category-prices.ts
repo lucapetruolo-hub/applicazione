@@ -1,11 +1,12 @@
 import {
+  canonicalServiceName,
   MIN_ACCEPTED_QUOTES_FOR_PRICES,
   MIN_PROFESSIONALS_FOR_DECLARED_PRICES,
   SERVICE_PRICE_UNITS,
   type CategoryPriceStats,
   type ServicePriceUnit,
 } from "@professionisti/shared";
-import { serviceGroupKey } from "./service-group-key";
+import { type ServiceCanonicalizer, serviceGroupKey } from "./service-group-key";
 
 type PriceRange = { priceMinEurCents: number | null; priceMaxEurCents: number | null };
 
@@ -68,16 +69,17 @@ export function dominantPriceUnit(units: ServicePriceUnit[]): ServicePriceUnit {
  */
 export function declaredServiceStats(
   services: (PriceRange & { name: string; professionalProfileId: string; priceUnit: ServicePriceUnit })[],
+  canonicalize: ServiceCanonicalizer = canonicalServiceName,
 ): CategoryPriceStats["declared"] {
   const professionals = new Set<string>();
   const groups = new Map<string, { name: string; rows: { professionalProfileId: string; low: number; high: number; unit: ServicePriceUnit }[] }>();
   for (const service of services) {
     const low = service.priceMinEurCents ?? service.priceMaxEurCents;
     const high = service.priceMaxEurCents ?? service.priceMinEurCents;
-    const key = serviceGroupKey(service.name);
+    const key = serviceGroupKey(service.name, canonicalize);
     if (low === null || high === null || !key) continue;
     professionals.add(service.professionalProfileId);
-    const group = groups.get(key) ?? { name: service.name.trim(), rows: [] };
+    const group = groups.get(key) ?? { name: canonicalize(service.name).trim(), rows: [] };
     group.rows.push({ professionalProfileId: service.professionalProfileId, low, high, unit: service.priceUnit });
     groups.set(key, group);
   }

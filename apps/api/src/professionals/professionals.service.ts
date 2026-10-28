@@ -58,7 +58,8 @@ import { GeocodingService } from "../geocoding/geocoding.service";
 import { coveredComuni, selectSearchArea } from "./search-area";
 import { acceptedQuoteStats, declaredServiceStats, quoteMidpointEurCents } from "./category-prices";
 import { buildServicePriceIndex } from "./service-price-index";
-import { serviceGroupKey } from "./service-group-key";
+import { type ServiceCanonicalizer, serviceGroupKey } from "./service-group-key";
+import { ServiceNamesService } from "../problem-match/service-names.service";
 import { slotAppliesOnDate } from "../common/availability.util";
 import { AgendaService } from "../agenda/agenda.service";
 import { countBookingsInSlot, loadCommitments, lockProfessionalAgenda, type Commitment } from "../agenda/commitments";
@@ -135,8 +136,12 @@ function searchableProfileWhere(): Prisma.ProfessionalProfileWhereInput {
 }
 
 /** La prestazione che corrisponde alla voce cercata, da evidenziare nella scheda (§398). */
-function matchedServiceField(services: { id: string; name: string }[], serviceKey: string): { matchedServiceId?: string } {
-  const match = services.find((item) => serviceGroupKey(item.name) === serviceKey);
+function matchedServiceField(
+  services: { id: string; name: string }[],
+  serviceKey: string,
+  canonicalize: ServiceCanonicalizer,
+): { matchedServiceId?: string } {
+  const match = services.find((item) => serviceGroupKey(item.name, canonicalize) === serviceKey);
   return match ? { matchedServiceId: match.id } : {};
 }
 
@@ -176,6 +181,7 @@ export class ProfessionalsService {
     private readonly subscriptionsService: SubscriptionsService,
     private readonly professionalVerificationService: ProfessionalVerificationService,
     private readonly agendaService: AgendaService,
+    private readonly serviceNamesService: ServiceNamesService,
   ) {}
 
   private readonly logger = new Logger(ProfessionalsService.name);
@@ -258,8 +264,10 @@ export class ProfessionalsService {
   }
 
   async search({ category, city, q, remote, service, excludeDemo, merit, offers }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
-    const serviceKey = service ? serviceGroupKey(service) : "";
-    const serviceProfileIds = serviceKey ? await this.profileIdsWithService(serviceKey) : null;
+    // Sinonimi compresi (§400): "perdite" trova chi ha scritto "Riparazione perdita d'acqua".
+    const canonicalize = service ? await this.serviceNamesService.canonicalizer() : null;
+    const serviceKey = service && canonicalize ? serviceGroupKey(service, canonicalize) : "";
+    const serviceProfileIds = serviceKey && canonicalize ? await this.profileIdsWithService(serviceKey, canonicalize) : null;
     const publicWhere = this.publicSearchWhere(category, excludeDemo, serviceProfileIds);
     const offerKeywords = offers ? OUT_OF_SERVICE_KEYWORDS[offers] : [];
     const baseWhere: Prisma.ProfessionalProfileWhereInput = {
@@ -360,7 +368,7 @@ export class ProfessionalsService {
         createdAt: profile.createdAt.toISOString(),
         completedThisMonth: countCompletedThisMonth(profile.bookings),
         isNewProfile: computeIsNewProfile(profile.createdAt),
-        ...(serviceKey ? matchedServiceField(profile.services, serviceKey) : {}),
+        ...(serviceKey && canonicalize ? matchedServiceField(profile.services, serviceKey, canonicalize) : {}),
         ...(distanceById?.has(profile.id) ? { distanceKm: Math.round(distanceById.get(profile.id)! * 10) / 10 } : {}),
       } satisfies ProfessionalSearchResult;
     });
@@ -392,9 +400,9 @@ export class ProfessionalsService {
    * scritti in modo diverso; le prestazioni sono poche (al massimo 30 a
    * professionista).
    */
-  private async profileIdsWithService(serviceKey: string): Promise<string[]> {
+  private async profileIdsWithService(serviceKey: string, canonicalize: ServiceCanonicalizer): Promise<string[]> {
     const services = await this.prisma.professionalService.findMany({ select: { professionalProfileId: true, name: true } });
-    return [...new Set(services.filter((item) => serviceGroupKey(item.name) === serviceKey).map((item) => item.professionalProfileId))];
+    return [...new Set(services.filter((item) => serviceGroupKey(item.name, canonicalize) === serviceKey).map((item) => item.professionalProfileId))];
   }
 
   /**
@@ -408,11 +416,12 @@ export class ProfessionalsService {
       where: {
         // Solo chi compare nella ricerca: ogni voce porta all'elenco di chi la
         // offre, e il numero mostrato deve coincidere (docs/CHANGELOG.md §398).
-        professionalProfile: { isDemo: false, ...searchableProfileWhere(), AND: [publicVisibilityWhere()] },
+        // Gli account di prova restano nella ricerca ma non nei prezzi (§400, decisione di Luca).
+        professionalProfile: { isDemo: false, user: COUNTED_USER, ...searchableProfileWhere(), AND: [publicVisibilityWhere()] },
       },
       select: { name: true, professionalProfileId: true, priceMinEurCents: true, priceMaxEurCents: true, priceUnit: true },
     });
-    return buildServicePriceIndex(services);
+    return buildServicePriceIndex(services, await this.serviceNamesService.canonicalizer());
   }
 
   /**
@@ -436,8 +445,9 @@ export class ProfessionalsService {
       this.prisma.quote.findMany({
         where: {
           status: "ACCEPTED",
-          guidedRequest: { category: { slug: categorySlug } },
-          professionalProfile: { isDemo: false },
+          // Né preventivi di un account di prova, da una parte o dall'altra (§400).
+          guidedRequest: { category: { slug: categorySlug }, client: COUNTED_USER },
+          professionalProfile: { isDemo: false, user: COUNTED_USER },
         },
         select: {
           updatedAt: true,
@@ -450,6 +460,7 @@ export class ProfessionalsService {
           OR: [{ priceMinEurCents: { not: null } }, { priceMaxEurCents: { not: null } }],
           professionalProfile: {
             isDemo: false,
+            user: COUNTED_USER,
             deletedAt: null,
             suspendedAt: null,
             invitePendingAt: null,
@@ -468,6 +479,7 @@ export class ProfessionalsService {
         },
       }),
     ]);
+    const canonicalize = await this.serviceNamesService.canonicalizer();
     const quotes = allQuotes.filter((quote) => inProvince(quote.guidedRequest.city));
     const services = allServices.filter((service) => inProvince(service.professionalProfile.city));
     const totals = quotes.flatMap((quote) => {
@@ -478,7 +490,7 @@ export class ProfessionalsService {
       categorySlug,
       province: comune ? comune.province : null,
       quotes: acceptedQuoteStats(totals),
-      declared: declaredServiceStats(services),
+      declared: declaredServiceStats(services, canonicalize),
     };
   }
 

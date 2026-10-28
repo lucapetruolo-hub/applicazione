@@ -9,11 +9,12 @@ import { NotificationsModule } from "../notifications/notifications.module";
 import { GuidedRequestsModule } from "../guided-requests/guided-requests.module";
 import { ProfessionalMetricsModule } from "../professional-metrics/professional-metrics.module";
 import { TimelineModule } from "../timeline/timeline.module";
+import { ServiceNamesModule } from "../problem-match/service-names.module";
 import { ProfessionalsController } from "./professionals.controller";
 import { ProfessionalsService } from "./professionals.service";
 
 @Module({
-  imports: [AuthModule, NotificationsModule, GuidedRequestsModule, ProfessionalMetricsModule, TimelineModule, SubscriptionsModule, ProfessionalVerificationModule, CategoriesModule, AgendaModule, SiteCountsModule],
+  imports: [AuthModule, NotificationsModule, GuidedRequestsModule, ProfessionalMetricsModule, TimelineModule, SubscriptionsModule, ProfessionalVerificationModule, CategoriesModule, AgendaModule, SiteCountsModule, ServiceNamesModule],
   controllers: [ProfessionalsController],
   providers: [ProfessionalsService],
   exports: [ProfessionalsService],
