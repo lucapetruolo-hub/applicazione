@@ -21779,3 +21779,14 @@ sito) su telefono e computer usati per provare.
 azioni), typecheck e lint; API e sito avviati su un database locale con
 `LAUNCH_DATE` prima e dopo oggi, anteprime in
 `anteprime/numeri-dal-lancio/`.
+
+## 400. Foto più grande nei risultati di ricerca
+
+**Richiesta** (Luca, 28/10/2026): "nelle ricerche dei professionisti rendi più grande la foto profilo, e dammi un esempio dell'immagine profilo in un formato più rettangolare in verticale sempre arrotondato".
+
+**Decisione**:
+- **Foto più grande** nella scheda dei risultati (`ResultsListWithMap`, costante `CARD_PHOTO` in `ProfessionalAvatar.tsx`): larga 120 px da computer e 96 px sul telefono, prima tonda da 88 px, dove la colonna del nome è già stretta. Senza foto, l'icona della categoria cresce allo stesso modo.
+- **Foto verticale con gli angoli arrotondati** (scelta di Luca tra le anteprime in `anteprime/foto-risultati/`, al posto della tonda): `ProfessionalAvatar` e `CategoryIconBadge` accettano `shape="portrait"` (rettangolo 3:4 con angoli di 20 px, come il resto del sito) e `mobileSize`; nei risultati 120×160 px da computer e 96×128 sul telefono. Il cuoricino entra di 6 px nell'angolo arrotondato. Per tornare alla tonda basta `shape: "circle"` in `CARD_PHOTO`.
+- **Migliorie approvate** ("effettua le 2 migliorie"): la stessa foto (unica costante per tutte le schede) anche in "Professionisti salvati", al posto della tonda da 72 px, e nella sagoma di caricamento della scheda (`SkeletonProfessionalCard`), con la stessa forma, misura e spaziatura della scheda vera, così non salta quando arrivano i dati.
+
+**Verifica**: anteprime da computer (1440 px) e telefono (390 px) con il sito avviato in locale, anche di "Professionisti salvati" e della sua sagoma di caricamento; typecheck e lint del sito.
