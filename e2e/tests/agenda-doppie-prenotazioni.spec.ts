@@ -16,6 +16,10 @@ const inDays = (days: number) => new Date(Date.now() + days * 86_400_000).toISOS
 const prisma = new PrismaClient();
 let stamp = 0;
 
+// Mai ripetute: provano richieste nello stesso istante, e un errore che
+// capita solo a volte qui è proprio il bug da trovare.
+test.describe.configure({ retries: 0 });
+
 test.beforeAll(() => {
   stamp = Date.now();
 });
