@@ -2,7 +2,7 @@ import { ACTION_SHORT_LABEL, auditLabel } from "./audit-label";
 import { AdminSecurityAlertsService } from "./admin-security-alerts.service";
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ContentReportTargetType, ModerationAction, Prisma, PrismaClient } from "@professionisti/database";
-import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, courtesyDocumentLabel, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource, type AdminProfessionalStats, PROFESSIONAL_ACTIVITY_DAYS } from "@professionisti/shared";
+import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, courtesyDocumentLabel, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource, type AdminProfessionalStats, PROFESSIONAL_ACTIVITY_DAYS, BANK_DISPUTE_OPEN_STATUSES } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
@@ -56,6 +56,11 @@ export type AdminOverview = {
   /** Zone con le richieste generali chiuse (docs/CHANGELOG.md §213). */
   closedGeneralRequestZones: number;
   openProblemTakeovers: number;
+  /** Contestazioni in banca a cui rispondere e la scadenza più vicina (docs/changelog/2026-10-28-stripe-prova.md). */
+  bankDisputesToAnswer: number;
+  nextBankDisputeDueBy: string | null;
+  /** Nostre fatture scartate dallo SdI, da correggere e rimandare. */
+  sdiRejectedInvoices: number;
 };
 
 @Injectable()
@@ -757,6 +762,17 @@ export class AdminService {
         // "Ce ne occupiamo noi" da seguire (docs/CHANGELOG.md §392).
         this.prisma.problemTakeover.count({ where: { status: "OPEN" } }),
       ]);
+    // Da fare in Home (docs/changelog/2026-10-28-stripe-prova.md): contestazioni
+    // in banca da rispondere con la scadenza più vicina, fatture scartate dallo SdI.
+    const [bankDisputesToAnswer, nextBankDispute, sdiRejectedInvoices] = await Promise.all([
+      this.prisma.jobPayment.count({ where: { stripeDisputeStatus: { in: [...BANK_DISPUTE_OPEN_STATUSES] } } }),
+      this.prisma.jobPayment.findFirst({
+        where: { stripeDisputeStatus: { in: [...BANK_DISPUTE_OPEN_STATUSES] }, stripeDisputeDueBy: { not: null } },
+        orderBy: { stripeDisputeDueBy: "asc" },
+        select: { stripeDisputeDueBy: true },
+      }),
+      this.prisma.invoice.count({ where: { sdiStatus: "REJECTED" } }),
+    ]);
     return {
       openReports,
       pendingAppeals,
@@ -776,6 +792,9 @@ export class AdminService {
       verificationRequests,
       closedGeneralRequestZones,
       openProblemTakeovers,
+      bankDisputesToAnswer,
+      nextBankDisputeDueBy: nextBankDispute?.stripeDisputeDueBy?.toISOString() ?? null,
+      sdiRejectedInvoices,
     };
   }
 

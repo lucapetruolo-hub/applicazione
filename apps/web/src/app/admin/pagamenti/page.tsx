@@ -11,6 +11,7 @@ import {
   formatEur,
   formatEurCents,
   type AdminBankDispute,
+  type AdminBankDisputeArchiveRow,
   type AdminOnlineLimitRow,
   type AdminUnpaidBalance,
 } from "@professionisti/shared";
@@ -98,6 +99,8 @@ export default function AdminPagamentiPage() {
         {bankDisputes && bankDisputes.length === 0 ? <Text color={brand.grafite70}>Nessuna contestazione in banca aperta.</Text> : null}
         {bankDisputes?.map((row) => <BankDisputeCard key={row.jobPaymentId} row={row} token={token ?? ""} onChanged={reload} />)}
       </YStack>
+
+      {token ? <BankDisputeArchive token={token} reloadKey={bankDisputes} /> : null}
 
       <YStack gap="$3">
         <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
@@ -455,9 +458,21 @@ function BankDisputeCard({ row, token, onChanged }: { row: AdminBankDispute; tok
         {!row.submitted ? (row.professionalNote ? " · il professionista ha scritto la sua spiegazione" : " · il professionista non ha ancora scritto") : ""}
       </Text>
       {row.submitted ? (
-        <Text fontSize={13} color={brand.grafite70}>
-          Prove mandate: la banca decide di solito entro 2-3 mesi. L&apos;esito arriva da solo.
-        </Text>
+        <YStack gap="$2">
+          <Text fontSize={13} color={brand.grafite70}>
+            Prove mandate: la banca decide di solito entro 2-3 mesi. L&apos;esito arriva da solo.
+          </Text>
+          {row.sentExplanation ? (
+            <YStack gap="$1" padding="$3" borderRadius="$3" backgroundColor={brand.gesso}>
+              <Text fontSize={13} color={brand.grafite70}>
+                Spiegazione mandata
+              </Text>
+              <Text color={brand.grafite} style={{ whiteSpace: "pre-wrap" }}>
+                {row.sentExplanation}
+              </Text>
+            </YStack>
+          ) : null}
+        </YStack>
       ) : open ? (
         <YStack gap="$2">
           {row.professionalNote ? (
@@ -540,3 +555,158 @@ function BankDisputeCard({ row, token, onChanged }: { row: AdminBankDispute; tok
     </AdminCard>
   );
 }
+
+/**
+ * Archivio di tutte le contestazioni in banca, aperte e chiuse, con la
+ * ricerca (richiesta di Luca del 28/10/2026, "poter risalire a tutto"):
+ * per ognuna cosa è partito, da chi e quando, il PDF mandato e l'esito.
+ */
+function BankDisputeArchive({ token, reloadKey }: { token: string; reloadKey: unknown }) {
+  const [query, setQuery] = useState("");
+  const [rows, setRows] = useState<AdminBankDisputeArchiveRow[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    const timer = setTimeout(() => {
+      apiClient
+        .adminBankDisputesArchive(token, query)
+        .then((list) => {
+          if (!alive) return;
+          setRows(list);
+          setError(null);
+        })
+        .catch((err) => alive && setError(errorMessage(err)));
+    }, 300);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [token, query, reloadKey]);
+
+  return (
+    <YStack gap="$3">
+      <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
+        Archivio delle contestazioni in banca
+      </Text>
+      <Text fontSize={13} color={brand.grafite70}>
+        Tutte, anche quelle chiuse: cosa è stato mandato alla banca, da chi e quando, e com&apos;è finita.
+      </Text>
+      <input
+        type="search"
+        aria-label="Cerca nelle contestazioni"
+        className="admin-input"
+        placeholder="Cliente, professionista, email, cifra o codice"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        style={{ maxWidth: 420 }}
+      />
+      {error ? <Text color={brand.urgenza}>{error}</Text> : null}
+      {rows === null ? <Text color={brand.grafite70}>Caricamento…</Text> : null}
+      {rows && rows.length === 0 ? (
+        <Text color={brand.grafite70}>{query.trim() ? "Nessuna contestazione trovata." : "Nessuna contestazione in banca finora."}</Text>
+      ) : null}
+      {rows?.map((row) => <BankDisputeArchiveCard key={row.jobPaymentId} row={row} token={token} />)}
+    </YStack>
+  );
+}
+
+function BankDisputeArchiveCard({ row, token }: { row: AdminBankDisputeArchiveRow; token: string }) {
+  const [open, setOpen] = useState(false);
+  const tone = row.status === "won" ? "ok" : row.status === "lost" ? "danger" : row.closedAt ? "neutral" : "warn";
+  const evidence = row.evidence;
+  return (
+    <AdminCard>
+      <XStack gap="$2" alignItems="center" flexWrap="wrap">
+        <AdminPill tone={tone}>{bankDisputeStatusLabel(row.status)}</AdminPill>
+        <Text fontWeight="800" color={brand.grafite}>
+          {formatEurCents(row.amountEurCents)}
+        </Text>
+        <Text color={brand.grafite}>{bankDisputeReasonLabel(row.reason)}</Text>
+      </XStack>
+      <Text fontSize={13} color={brand.grafite70}>
+        {row.businessName} · cliente {row.clientName}
+        {row.openedAt ? ` · aperta il ${formatAdminDate(row.openedAt)}` : ""}
+        {row.evidenceSentAt ? ` · prove mandate il ${formatAdminDate(row.evidenceSentAt, true)}${row.evidenceSentBy ? ` da ${row.evidenceSentBy}` : ""}` : ""}
+        {row.closedAt ? ` · chiusa il ${formatAdminDate(row.closedAt)}` : ""}
+      </Text>
+      {open ? (
+        <YStack gap="$3">
+          <Text fontSize={13} color={brand.grafite70} style={{ wordBreak: "break-all" }}>
+            Contestazione {row.disputeId} · lavoro {row.bookingId}
+            {row.clientEmail ? ` · ${row.clientEmail}` : ""}
+            {row.dueBy ? ` · prove entro il ${formatAdminDate(row.dueBy)}` : ""}
+            {row.refundedEurCents > 0 ? ` · tornati al cliente ${formatEurCents(row.refundedEurCents)}` : ""}
+          </Text>
+          {row.professionalNote ? (
+            <ArchiveText title={`Spiegazione del professionista, ${formatAdminDate(row.professionalNote.at)}`} text={row.professionalNote.text} />
+          ) : (
+            <Text fontSize={13} color={brand.grafite70}>
+              Il professionista non ha scritto una spiegazione.
+            </Text>
+          )}
+          {evidence ? (
+            <YStack gap="$2">
+              <ArchiveText title={row.evidenceSentAt ? "Spiegazione mandata alla banca" : "Spiegazione salvata, non ancora mandata"} text={evidence.explanation} />
+              {evidence.stripeText ? (
+                <Text fontSize={13} color={brand.grafite70}>
+                  Con le chiavi di prova a Stripe è partita solo la parola «{evidence.stripeText}».
+                </Text>
+              ) : null}
+              <Text fontSize={13} color={brand.grafite70}>
+                Lavoro: {evidence.productDescription}
+                {evidence.customerName ? ` · cliente ${evidence.customerName}` : ""}
+                {evidence.customerEmail ? ` · ${evidence.customerEmail}` : ""}
+                {evidence.serviceDate ? ` · giorno ${evidence.serviceDate}` : ""}
+              </Text>
+            </YStack>
+          ) : (
+            <Text fontSize={13} color={brand.grafite70}>
+              {row.evidenceSentAt || row.closedAt ? "Prove mandate prima che il sito le conservasse: il testo si legge su Stripe." : "Prove non ancora preparate."}
+            </Text>
+          )}
+          {row.history.length ? (
+            <YStack gap="$1">
+              <Text fontSize={13} fontWeight="700" color={brand.grafite70}>
+                Cronologia
+              </Text>
+              {row.history.map((h, i) => (
+                <Text key={i} fontSize={13} color={brand.grafite}>
+                  {formatAdminDate(h.at, true)} · {h.text}
+                  {h.by ? ` (${h.by})` : ""}
+                </Text>
+              ))}
+            </YStack>
+          ) : null}
+          <XStack gap="$2" flexWrap="wrap">
+            {row.hasSentPdf ? (
+              <PdfButton load={() => apiClient.adminBankDisputeSentPdf(token, row.jobPaymentId)} fileName="prove-mandate.pdf" label="PDF mandato alla banca" variant="secondary" />
+            ) : null}
+            <PdfButton load={() => apiClient.adminBankDisputePdf(token, row.jobPaymentId)} fileName="riepilogo-lavoro.pdf" label="Riepilogo del lavoro di oggi" variant="secondary" />
+            <Button variant="secondary" size="$3" onPress={() => setOpen(false)}>
+              Chiudi
+            </Button>
+          </XStack>
+        </YStack>
+      ) : (
+        <Button variant="secondary" size="$3" alignSelf="flex-start" onPress={() => setOpen(true)}>
+          Vedi tutto
+        </Button>
+      )}
+    </AdminCard>
+  );
+}
+
+function ArchiveText({ title, text }: { title: string; text: string }) {
+  return (
+    <YStack gap="$1" padding="$3" borderRadius="$3" backgroundColor={brand.gesso}>
+      <Text fontSize={13} color={brand.grafite70}>
+        {title}
+      </Text>
+      <Text color={brand.grafite} style={{ whiteSpace: "pre-wrap" }}>
+        {text}
+      </Text>
+    </YStack>
+  );
+}
+

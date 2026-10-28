@@ -4,14 +4,16 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { AdminTrends } from "@professionisti/api-client";
 import { adminCan, type AdminScope, type SiteAdvice, type UrgencyMetrics } from "@professionisti/shared";
-import { Text, YStack, brand } from "@professionisti/ui";
+import { Icon, Text, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { AdminTrendTile } from "@/components/admin/AdminTrendTile";
 import { useAdminOverview } from "@/components/admin/AdminOverviewContext";
-import { AdminPageHeader } from "@/components/admin/adminUi";
+import { AdminPageHeader, formatAdminDate } from "@/components/admin/adminUi";
 import { SiteAdviceList } from "@/components/admin/SiteAdviceList";
 import { SkeletonSummaryRow } from "@/components/Skeleton";
+
+type TodoItem = { href: string; value: number; label: string; detail: string; scope: AdminScope; urgent?: boolean };
 
 /**
  * Home dell'area admin (docs/CHANGELOG.md §144): prima di tutto cosa c'è da
@@ -48,17 +50,35 @@ export default function AdminHomePage() {
       .catch(() => setAdvice(null));
   }, [token, isSuper]);
 
-  const todo = (
+  // Tutto quello che c'è da fare in un solo elenco, prima le scadenze
+  // (richiesta di Luca del 28/10/2026, docs/changelog/2026-10-28-stripe-prova.md):
+  // l'admin non deve aprire le pagine una per una per scoprirlo.
+  const todo: TodoItem[] = (
     overview
       ? [
-          { href: "/admin/segnalazioni", value: overview.openReports, label: "Segnalazioni da gestire", scope: "MODERATION" as AdminScope },
-          { href: "/admin/segnalazioni?vista=ricorsi", value: overview.pendingAppeals, label: "Contestazioni di decisioni", scope: "MODERATION" as AdminScope },
-          { href: "/admin/messaggi", value: overview.openMessages, label: "Messaggi di contatto", scope: "MODERATION" as AdminScope },
-          { href: "/admin/pagamenti", value: overview.pendingRefunds, label: "Rimborsi da decidere", scope: "FINANCE" as AdminScope },
-          { href: "/admin/pagamenti", value: overview.openDisputes, label: "Contestazioni di pagamento", scope: "FINANCE" as AdminScope },
+          {
+            href: "/admin/pagamenti",
+            value: overview.bankDisputesToAnswer,
+            label: "Contestazioni in banca da rispondere",
+            detail: overview.nextBankDisputeDueBy ? `La prima scade il ${formatAdminDate(overview.nextBankDisputeDueBy)}: senza prove la banca dà ragione al cliente.` : "Manda le prove prima della scadenza.",
+            scope: "FINANCE" as AdminScope,
+            urgent: true,
+          },
+          { href: "/admin/problemi", value: overview.openJobIssues, label: "Problemi sul lavoro da decidere", detail: "Segnalazioni dei clienti su un lavoro.", scope: "ANY" as AdminScope, urgent: true },
+          { href: "/admin/problemi", value: overview.jobIssueAppeals, label: "Ricorsi dei professionisti", detail: "Su segnalazioni già accolte.", scope: "ANY" as AdminScope },
+          { href: "/admin/pagamenti", value: overview.pendingRefunds, label: "Rimborsi da decidere", detail: "Il cliente aspetta i soldi.", scope: "FINANCE" as AdminScope, urgent: true },
+          { href: "/admin/pagamenti", value: overview.openDisputes, label: "Contestazioni di pagamento", detail: "Tra cliente e professionista, da chiudere.", scope: "FINANCE" as AdminScope },
+          { href: "/admin/pagamenti", value: overview.unpaidBalances, label: "Saldi non pagati", detail: "Clienti da sollecitare.", scope: "FINANCE" as AdminScope },
+          { href: "/admin/finanza", value: overview.sdiRejectedInvoices, label: "Fatture scartate dallo SdI", detail: "Da correggere e rimandare.", scope: "FINANCE" as AdminScope, urgent: true },
+          { href: "/admin/segnalazioni", value: overview.openReports, label: "Segnalazioni di contenuti", detail: "Profili, recensioni o messaggi da valutare.", scope: "MODERATION" as AdminScope },
+          { href: "/admin/segnalazioni?vista=ricorsi", value: overview.pendingAppeals, label: "Ricorsi su decisioni di moderazione", detail: "Chi è stato colpito chiede di rivedere.", scope: "MODERATION" as AdminScope },
+          { href: "/admin/richieste-da-seguire", value: overview.openProblemTakeovers, label: "Richieste da seguire", detail: "Clienti che hanno scelto «Ce ne occupiamo noi».", scope: "MODERATION" as AdminScope },
+          { href: "/admin/messaggi", value: overview.openMessages, label: "Messaggi di contatto", detail: "Dal modulo Contatti, da rispondere.", scope: "MODERATION" as AdminScope },
+          { href: "/admin/verifiche", value: overview.verificationRequests, label: "Verifiche dei profili", detail: "Professionisti che hanno chiesto la verifica.", scope: "MODERATION" as AdminScope },
+          { href: "/admin/richieste-generali", value: overview.closedGeneralRequestZones, label: "Zone con le richieste generali chiuse", detail: "Da riaprire quando ci sono professionisti.", scope: "MODERATION" as AdminScope },
         ]
       : []
-  ).filter((item) => adminCan(adminRoles, item.scope));
+  ).filter((item) => adminCan(adminRoles, item.scope) && item.value > 0);
   const numbers = overview
     ? [
         { href: "/admin/utenti?ruolo=CLIENT", value: overview.clients, label: "Clienti" },
@@ -78,7 +98,6 @@ export default function AdminHomePage() {
         { value: String(urgency.urgentWithoutRecipients), label: "Urgenti senza destinatari", urgent: urgency.urgentWithoutRecipients > 0 },
       ]
     : [];
-  const nothingToDo = overview !== null && todo.every((item) => item.value === 0);
 
   return (
     <YStack gap="$6">
@@ -92,17 +111,23 @@ export default function AdminHomePage() {
           <YStack backgroundColor={brand.calce} borderRadius={20} overflow="hidden">
             <SkeletonSummaryRow />
           </YStack>
-        ) : nothingToDo ? (
+        ) : todo.length === 0 ? (
           <Text color={brand.grafite70}>Niente da gestire: tutto in ordine.</Text>
         ) : (
-          <div className="admin-kpi-grid">
+          <ul className="admin-todo">
             {todo.map((item) => (
-              <Link key={item.label} href={item.href} className={`admin-kpi${item.value > 0 ? " is-urgent" : ""}`}>
-                <span className="admin-kpi-value">{item.value}</span>
-                <span className="admin-kpi-label">{item.label}</span>
-              </Link>
+              <li key={item.label}>
+                <Link href={item.href} className="admin-todo-row">
+                  <span className={`admin-todo-count${item.urgent ? " is-urgent" : ""}`}>{item.value}</span>
+                  <span className="admin-todo-text">
+                    <span className="admin-todo-label">{item.label}</span>
+                    <span className="admin-todo-detail">{item.detail}</span>
+                  </span>
+                  <Icon name="chevron-right" size={18} color={brand.grafite70} />
+                </Link>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </YStack>
 

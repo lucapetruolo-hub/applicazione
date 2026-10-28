@@ -1256,6 +1256,8 @@ export class OnlineMoneyService {
         stripeDisputeStatus: dispute.status,
         stripeDisputedAt: jp.stripeDisputedAt ?? new Date(),
         stripeDisputeDueBy: dispute.evidence_details?.due_by ? new Date(dispute.evidence_details.due_by * 1000) : null,
+        stripeDisputeReason: dispute.reason ?? null,
+        ...(justClosed ? { stripeDisputeClosedAt: new Date() } : {}),
         refundedEurCents: refunded,
         ...statusData,
       },

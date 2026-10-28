@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Query, Req, UseGuards } from "@nestjs/common";
 import {
   bankDisputeEvidenceSchema,
   closeUnpaidBalanceSchema,
@@ -69,6 +69,16 @@ export class AdminJobPaymentsController {
   @Get("bank-disputes")
   listBankDisputes() {
     return this.bankDisputesService.listOpen();
+  }
+
+  @Get("bank-disputes/archive")
+  bankDisputesArchive(@Query("q") q?: string) {
+    return this.bankDisputesService.archive(q ?? "");
+  }
+
+  @Get("bank-disputes/:jobPaymentId/sent-pdf")
+  async bankDisputeSentPdf(@Param("jobPaymentId") id: string) {
+    return pdfResponse(await this.bankDisputesService.sentPdf(id), "prove-mandate.pdf");
   }
 
   @Get("bank-disputes/:jobPaymentId/pdf")

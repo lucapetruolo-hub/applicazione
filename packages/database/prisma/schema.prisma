@@ -2129,6 +2129,16 @@ model JobPayment {
   disputeProNoteAt       DateTime?
   // Promemoria al professionista 5 giorni prima della scadenza, se non ha scritto.
   disputeProReminderSentAt DateTime?
+  // Archivio della contestazione (docs/changelog/2026-10-28-stripe-prova.md):
+  // motivo dato dalla banca, chiusura, prove scritte dall'admin (spiegazione
+  // e campi, anche solo salvate), quando e da chi sono state mandate e il PDF
+  // caricato su Stripe, per risalire a tutto anche dopo la chiusura.
+  stripeDisputeReason      String?
+  stripeDisputeClosedAt    DateTime?
+  disputeEvidence          Json?
+  disputeEvidenceSentAt    DateTime?
+  disputeEvidenceSentById  String?
+  disputeEvidenceFileId    String?
 
   // --- Soldi bloccati sul conto Stripe del professionista (docs/CHANGELOG.md §249) ---
   // Acconto e saldo addebitati "a destinazione" sul conto del professionista

@@ -78,6 +78,7 @@ import type {
   JobPaymentSummary,
   AdminOnlineLimitRow,
   AdminBankDispute,
+  AdminBankDisputeArchiveRow,
   BankDisputeEvidenceInput,
   BankDisputeProNoteInput,
   ProfessionalBankDispute,
@@ -508,6 +509,11 @@ export type AdminOverview = {
   closedGeneralRequestZones: number;
   /** "Ce ne occupiamo noi" da seguire (docs/CHANGELOG.md §392). */
   openProblemTakeovers: number;
+  /** Contestazioni in banca a cui rispondere e la scadenza più vicina (docs/changelog/2026-10-28-stripe-prova.md). */
+  bankDisputesToAnswer: number;
+  nextBankDisputeDueBy: string | null;
+  /** Nostre fatture scartate dallo SdI, da correggere e rimandare. */
+  sdiRejectedInvoices: number;
 };
 
 export type ModerationActionValue = "WARN" | "REQUEST_CORRECTION" | "HIDE_CONTENT" | "SUSPEND_PROFILE" | "SUSPEND_USER";
@@ -2509,6 +2515,15 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       request<AdminBankDispute[]>("/admin/bank-disputes", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminBankDisputePdf: (token: string, jobPaymentId: string) => downloadFile(`/admin/bank-disputes/${encodeURIComponent(jobPaymentId)}/pdf`, token),
+
+    /** Archivio di tutte le contestazioni in banca, con la ricerca. */
+    adminBankDisputesArchive: (token: string, q = "") =>
+      request<AdminBankDisputeArchiveRow[]>(`/admin/bank-disputes/archive${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ""}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }),
+
+    adminBankDisputeSentPdf: (token: string, jobPaymentId: string) => downloadFile(`/admin/bank-disputes/${encodeURIComponent(jobPaymentId)}/sent-pdf`, token),
 
     adminSaveBankDisputeEvidence: (token: string, jobPaymentId: string, input: BankDisputeEvidenceInput) =>
       request<AdminBankDispute>(`/admin/bank-disputes/${encodeURIComponent(jobPaymentId)}`, {

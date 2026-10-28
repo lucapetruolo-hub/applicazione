@@ -206,3 +206,43 @@ dal conto del professionista.
 
 **Verifica**: `bank-disputes.test.ts` (chiave di prova, chiave vera, testo
 normale); test dell'API e `tsc`.
+
+## Archivio delle contestazioni e "Da fare" nella Home admin
+
+Prova dal vivo della contestazione vinta (60 €, 28/10 sera): rimasta
+"decide la banca", e Luca non poteva più vedere che testo aveva mandato.
+Richieste di Luca: "Sarebbe utile poter risalire a tutto", "e fare una
+ricerca", "e dare nella homepage dell'admin tutto quello che c'è da fare
+senza che deve andare a cliccare tutte le pagine".
+
+- **Parola di prova scritta da telefono**: `stripeTestKeyword` riconosce
+  anche maiuscole, spazio o trattino ("Winning evidence") e manda a Stripe
+  la forma esatta. Sempre solo con chiavi di prova: con le chiavi vere il
+  testo arriva a Stripe esattamente come l'ha scritto l'admin.
+- **Cosa è partito, da chi e quando**: a ogni salvataggio delle prove il
+  sito conserva i campi scritti dall'admin (`disputeEvidence`, anche solo
+  salvati: tornano nel modulo invece della bozza del sito), il PDF caricato
+  su Stripe (`disputeEvidenceFileId`) e, all'invio, data e admin
+  (`disputeEvidenceSentAt`, `disputeEvidenceSentById`). Il webhook salva il
+  motivo della banca e la data di chiusura (`stripeDisputeReason`,
+  `stripeDisputeClosedAt`). Migrazione `20261028220000_contestazioni_archivio`.
+- **Archivio con ricerca** in Admin → Pagamenti (`GET
+  /admin/bank-disputes/archive?q=`): tutte le contestazioni, anche chiuse,
+  cercando per cliente (anche nome e cognome insieme), professionista,
+  email, cifra in euro o codice. Per ognuna: esito, date, spiegazione del
+  professionista, prove mandate, cronologia dal registro azioni, il PDF
+  esatto mandato alla banca (`GET /admin/bank-disputes/:id/sent-pdf`, da
+  Stripe) e il riepilogo di oggi. Una contestazione già in revisione mostra
+  la spiegazione mandata.
+- **Home admin**: "Da fare" diventa un elenco con tutto quello che aspetta
+  l'admin, una riga per voce con il numero, cosa fare e il link: anche
+  contestazioni in banca da rispondere con la scadenza più vicina, problemi
+  sul lavoro e ricorsi, saldi non pagati, fatture scartate dallo SdI,
+  richieste da seguire, verifiche e zone chiuse, che prima si vedevano solo
+  nei numeri del menu. Nel menu, Pagamenti conta anche le contestazioni in
+  banca e Finanza le fatture scartate.
+
+**Verifica**: `bank-disputes.test.ts` (parola da telefono, prove salvate e
+mandate, bozza salvata che torna nel modulo, ricerca per nome e cognome e
+per cifra, cronologia); tutti i test dell'API (916), `tsc` di API e sito,
+eslint.
