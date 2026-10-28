@@ -270,6 +270,12 @@ sia UI/routing — la logica va in `apps/api` o `packages/shared`.
     una pagina con le sue segnalazioni; chi è colpito riceve per email
     misura, legge o regola violata, motivazione e come contestare. Nessuna
     voce "Segnalazioni e decisioni" nel menu.
+17. **Numeri e statistiche dal lancio** (decisione di Luca,
+    docs/CHANGELOG.md §395): ogni nuovo numero di attività (richieste,
+    ricerche, visite, preventivi) conta da `LAUNCH_DATE` (`sinceLaunch`/
+    `daySinceLaunch` in `apps/api/src/site-counts/counted.ts`) e mai gli
+    account di prova (`COUNTED_USER`, `User.testAccountAt`); nessun dato si
+    cancella al lancio.
 
 ---
 

@@ -34,6 +34,7 @@ import { chooseCountingDisabled, isCountingDisabled } from "@/lib/siteCounts";
 import {
   AdminCard,
   AdminPageHeader,
+  CountingFromNote,
   errorMessage,
   formatAdminDate,
 } from "@/components/admin/adminUi";
@@ -95,6 +96,7 @@ export default function AdminAndamentoPage() {
 
       {data ? (
         <>
+          <CountingFromNote countingFrom={data.countingFrom} launchDate={data.launchDate} />
           <section aria-labelledby="advice-title">
             <YStack gap="$3">
               <Text
@@ -166,11 +168,13 @@ export default function AdminAndamentoPage() {
               I numeri dietro i consigli
             </Text>
             <Text color={brand.grafite70} fontSize={14}>
-              Ultimi {data.windowDays} giorni, salvo dove scritto. Sotto{" "}
+              Ultimi {data.windowDays} giorni
+              {data.countingFrom ? ", mai prima del lancio" : ""}, salvo dove
+              scritto. Sotto{" "}
               {MIN_CASES_FOR_PERCENT} casi si scrive &quot;7 su 9&quot; invece
               della percentuale; le righe con meno di {MIN_CASES_PER_ROW} casi
-              sono messe insieme. Admin, robot e browser con &quot;Non
-              contare&quot; non sono contati.
+              sono messe insieme. Admin, account di prova, robot e browser con
+              &quot;Non contare&quot; non sono contati.
             </Text>
           </YStack>
 
@@ -1053,9 +1057,9 @@ function CountingCard() {
         </button>
       </div>
       <Text color={brand.grafite70} fontSize={13}>
-        Per eliminare un account di prova:{" "}
-        <Link href="/admin/utenti">Utenti</Link>, apri l&apos;account e premi
-        &quot;Elimina account di prova&quot;.
+        Per togliere dai numeri un account usato per le prove:{" "}
+        <Link href="/admin/utenti">Utenti</Link>, apri l&apos;account e attiva
+        &quot;Account di prova&quot;.
       </Text>
     </AdminCard>
   );

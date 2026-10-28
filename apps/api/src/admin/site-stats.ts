@@ -1,4 +1,5 @@
 import {
+  SITE_STATS_WINDOW_DAYS,
   GOOGLE_OPENING_TARGETS,
   GUIDE_GREEN_SHARE,
   GUIDE_QUOTE_HOURS,
@@ -346,6 +347,9 @@ export function buildMissingServices(
 
 export function buildSiteAdvice(input: SiteAdviceInput): SiteAdvice[] {
   const advice: SiteAdvice[] = [];
+  // Nelle prime 4 settimane dopo il lancio si conta solo dal lancio (§395): lo dice il testo.
+  const sinceLaunchDays = input.launch ? (input.now.getTime() - input.launch.getTime()) / DAY_MS : -1;
+  const windowText = sinceLaunchDays >= 0 && sinceLaunchDays < SITE_STATS_WINDOW_DAYS ? "Dal lancio" : "Nelle ultime 4 settimane";
 
   // Invii che non riescono: qualcosa è rotto.
   const failuresBy = new Map<SubmitFormKey, Record<SubmitFailureKind, number>>();
@@ -394,8 +398,8 @@ export function buildSiteAdvice(input: SiteAdviceInput): SiteAdvice[] {
       title: `${cell.categoryLabel} a ${cell.city}: servono più professionisti`,
       why:
         cell.professionals === 0
-          ? `Nelle ultime 4 settimane ${plural(cell.requests, "richiesta", "richieste")} e nessun professionista visibile lì.`
-          : `Nelle ultime 4 settimane solo ${ratioLabel(cell.withQuote, cell.requests)} richieste hanno avuto un preventivo entro un giorno. Professionisti visibili lì: ${cell.professionals}.`,
+          ? `${windowText} ${plural(cell.requests, "richiesta", "richieste")} e nessun professionista visibile lì.`
+          : `${windowText} solo ${ratioLabel(cell.withQuote, cell.requests)} richieste hanno avuto un preventivo entro un giorno. Professionisti visibili lì: ${cell.professionals}.`,
       todo: `Cerca professionisti (${cell.categoryLabel.toLowerCase()}) a ${cell.city}: telefona, crea il profilo e mandagli il link.`,
       link: RECRUIT_LINK,
     });
@@ -450,7 +454,7 @@ export function buildSiteAdvice(input: SiteAdviceInput): SiteAdvice[] {
       key: `step:${from}`,
       level: "IMPORTANT",
       title: isAccess ? "Molti si fermano quando devono registrarsi" : `Molti si fermano al passo «${REQUEST_STEP_SHORT[from]}» della richiesta`,
-      why: `Nelle ultime 4 settimane ${entered} persone ci sono arrivate e ${entered - passed} non sono andate avanti.`,
+      why: `${windowText} ${entered} persone ci sono arrivate e ${entered - passed} non sono andate avanti.`,
       todo: isAccess
         ? "Rendi la registrazione più corta o fai capire meglio perché serve. Tra 4 settimane guarda se il numero è sceso."
         : "Semplifica quel passo: meno campi e frasi più chiare. Tra 4 settimane guarda se il numero è sceso.",
@@ -464,7 +468,7 @@ export function buildSiteAdvice(input: SiteAdviceInput): SiteAdvice[] {
       key: "profiles-no-requests",
       level: "TIP",
       title: "Molti guardano i profili ma pochi chiedono un preventivo",
-      why: `Nelle ultime 4 settimane i profili sono stati aperti ${input.profileViews} volte e solo ${fromProfile} volte qualcuno ha iniziato una richiesta da lì.`,
+      why: `${windowText} i profili sono stati aperti ${input.profileViews} volte e solo ${fromProfile} volte qualcuno ha iniziato una richiesta da lì.`,
       todo: "Chiedi ai professionisti di completare il profilo: foto, prezzi delle prestazioni e orari dell'agenda. Un profilo completo convince di più.",
       link: { label: "Vedi i profili incompleti", href: "/admin/numeri-professionisti" },
     });
@@ -599,7 +603,7 @@ export function buildSiteAdvice(input: SiteAdviceInput): SiteAdvice[] {
     advice.push({
       key: "no-requests",
       level: "IMPORTANT",
-      title: "Nelle ultime 4 settimane nessuna richiesta di preventivo",
+      title: `${windowText} nessuna richiesta di preventivo`,
       why: "Senza richieste non si può capire cosa migliorare nel sito.",
       todo: "Porta i primi clienti: chiedi ai professionisti di condividere il link del loro profilo con i loro clienti.",
     });

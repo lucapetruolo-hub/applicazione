@@ -15,6 +15,7 @@ export class StatsService {
    * della piattaforma. Professionisti demo (`isDemo`, dati di seed) esclusi
    * dal conteggio professionisti per lo stesso motivo per cui sono già
    * esclusi dalla vetrina "Sulla piattaforma" e dal conteggio categorie.
+   * Gli account di prova (§395) non contano mai.
    */
   async getPlatformStats(): Promise<{
     totalUsers: number;
@@ -23,15 +24,15 @@ export class StatsService {
     averageRating: number | null;
   }> {
     const [totalUsers, totalProfessionals, reviews] = await Promise.all([
-      this.prisma.user.count({ where: { role: "CLIENT", deletedAt: null } }),
-      this.prisma.professionalProfile.count({ where: { isDemo: false, deletedAt: null, suspendedAt: null } }),
+      this.prisma.user.count({ where: { role: "CLIENT", deletedAt: null, testAccountAt: null } }),
+      this.prisma.professionalProfile.count({ where: { isDemo: false, deletedAt: null, suspendedAt: null, user: { testAccountAt: null } } }),
       // Media di tutte le recensioni pubbliche, anche quelle da 1 e 2 stelle
       // che la home non mostra (docs/CHANGELOG.md §232): il numero deve
       // essere quello vero, non la media delle sole recensioni scelte.
       this.prisma.review.aggregate({
         where: {
           hiddenAt: null,
-          booking: { professionalProfile: { isDemo: false, deletedAt: null, suspendedAt: null } },
+          booking: { professionalProfile: { isDemo: false, deletedAt: null, suspendedAt: null, user: { testAccountAt: null } }, client: { testAccountAt: null } },
         },
         _count: { _all: true },
         _avg: { rating: true },

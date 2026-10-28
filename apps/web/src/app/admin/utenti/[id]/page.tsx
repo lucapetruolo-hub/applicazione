@@ -70,6 +70,7 @@ export default function AdminUserDetailPage() {
           {detail.suspendedAt ? <AdminPill tone="danger">Sospeso dal {formatAdminDate(detail.suspendedAt)}</AdminPill> : null}
           {!detail.suspendedAt && detail.professionalProfile?.suspendedAt ? <AdminPill tone="warn">Profilo tolto dalla ricerca</AdminPill> : null}
           {!detail.deletedAt && !detail.suspendedAt ? <AdminPill tone="ok">Attivo</AdminPill> : null}
+          {detail.testAccountAt ? <AdminPill tone="warn">Account di prova: fuori dai numeri</AdminPill> : null}
           <AdminPill>Iscritto il {formatAdminDate(detail.createdAt)}</AdminPill>
         </XStack>
       </YStack>
@@ -116,7 +117,7 @@ export default function AdminUserDetailPage() {
         <TwoFactorResetPanel detail={detail} token={token ?? ""} onChanged={reload} />
       ) : null}
 
-      {adminCan(myRoles, "SUPER") && !isSelf && detail.role !== "ADMIN" ? <DeleteTestAccountPanel detail={detail} token={token ?? ""} /> : null}
+      {adminCan(myRoles, "SUPER") && !isSelf && detail.role !== "ADMIN" ? <TestAccountPanel detail={detail} token={token ?? ""} onChanged={reload} /> : null}
 
       {detail.reportsReceived.length > 0 ? (
         <YStack gap="$2">
@@ -250,17 +251,33 @@ function SuspendPanel({ detail, token, onChanged }: { detail: AdminUserDetail; t
 }
 
 /**
- * Elimina un account di prova (richiesta di Luca, docs/CHANGELOG.md §372):
- * solo super admin, per sempre, con tutto quello che ha creato. Si scrive
- * ELIMINA per confermare. Il server rifiuta gli account con pagamenti
- * online veri: quelli non sono di prova.
+ * Account di prova, solo super admin. Interruttore "Account di prova"
+ * (docs/CHANGELOG.md §395): l'account resta com'è ma esce per sempre dai
+ * numeri e dai "primi 100"; si può spegnere. Sotto, l'eliminazione per
+ * sempre con tutto quello che ha creato (§372): si scrive ELIMINA per
+ * confermare, il server rifiuta gli account con pagamenti online veri.
  */
-function DeleteTestAccountPanel({ detail, token }: { detail: AdminUserDetail; token: string }) {
+function TestAccountPanel({ detail, token, onChanged }: { detail: AdminUserDetail; token: string; onChanged: () => void }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [marking, setMarking] = useState(false);
+  const isTest = Boolean(detail.testAccountAt);
+
+  async function toggleTest() {
+    setMarking(true);
+    setError(null);
+    try {
+      await apiClient.adminSetTestAccount(token, detail.id, !isTest);
+      onChanged();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setMarking(false);
+    }
+  }
 
   async function remove() {
     setBusy(true);
@@ -276,12 +293,31 @@ function DeleteTestAccountPanel({ detail, token }: { detail: AdminUserDetail; to
 
   return (
     <AdminCard>
-      <Text fontWeight="700" color={brand.grafite}>
-        Account di prova
-      </Text>
+      <div className="notif-switch-row">
+        <div>
+          <strong>Account di prova</strong>
+          <small>
+            {isTest
+              ? `Segnato il ${formatAdminDate(detail.testAccountAt)}: non conta nei numeri e non prende un posto dei primi 100.`
+              : "Acceso: l'account funziona come prima ma non conta mai nei numeri e non prende un posto dei primi 100."}
+          </small>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={isTest}
+          aria-label="Account di prova"
+          className={`notif-switch${isTest ? " is-on" : ""}`}
+          disabled={marking}
+          onClick={toggleTest}
+        >
+          <span />
+        </button>
+      </div>
+      {error && !open ? <Text color={brand.urgenza}>{error}</Text> : null}
       <Text fontSize="$3" color={brand.grafite70}>
-        Se questo account è servito solo per provare il sito, eliminalo: spariscono per sempre l&apos;account, le richieste, i preventivi, i messaggi e le
-        recensioni che ha creato, e i numeri tornano puliti. Per un utente vero usa invece la sospensione.
+        Non ti serve più? Eliminalo: spariscono per sempre l&apos;account, le richieste, i preventivi, i messaggi e le recensioni che ha creato. Per un
+        utente vero usa invece la sospensione.
       </Text>
       {open ? (
         <YStack gap="$2" padding="$3" borderRadius={10} backgroundColor="#FBEAE8">

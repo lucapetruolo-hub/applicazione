@@ -1544,7 +1544,8 @@ button.notif-row-main:hover {
   font-weight: 700;
 }
 .today-deadline {
-  color: #8a6d00;
+  /* Più scuro di #8a6d00, che sul fondo pesca restava sotto 4,5:1 (§395). */
+  color: #7a5f00;
 }
 .today-deadline.is-urgent {
   color: #dc3545;
@@ -5948,6 +5949,53 @@ a.admin-kpi:hover {
     font-weight: 700;
     color: #2b2420;
   }
+}
+
+/* "Dati di prova / Dati veri" in cima ad Andamento e Numeri (docs/CHANGELOG.md §395). */
+.counting-from {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 4px;
+}
+.counting-from-more summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0e7a4c;
+  cursor: pointer;
+  list-style: none;
+}
+.counting-from-more summary::-webkit-details-marker {
+  display: none;
+}
+.counting-from-more summary:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.counting-from-more[open] {
+  flex-basis: 100%;
+}
+/* Casella "Di prova" su ogni riga di Utenti (§395): area da toccare di 44 px. */
+.admin-test-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  /* Allineata al testo delle altre colonne senza perdere l'area da toccare. */
+  margin-block: -12px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #2b2420;
+}
+.admin-test-toggle input {
+  width: 20px;
+  height: 20px;
+  accent-color: #128552;
+  cursor: pointer;
 }
 
 /* Fatture, estratti e copie di cortesia da stampare o salvare in PDF

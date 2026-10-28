@@ -21592,3 +21592,71 @@ e 390 px (anteprime in `anteprime/barra-preventivo-computer/`).
 **Conteggio dei passi di "Quanto costa"** (punto 4 della richiesta, dopo l'unione della PR #163): tabella `PriceToolStepDay` (passo e giorno, migrazione `20261027233000_passi_quanto_costa`, cancellata dopo 25 mesi con gli altri contatori), `POST /site/price-tool` con i soliti filtri (robot scartati, niente conteggio con "non_contare"). Si contano: voce toccata (home e pagine `/prezzi`), profilo aperto da quell'elenco, richiesta inviata partita da lì. Per collegare i tre passi la scheda del browser tiene un segno in `sessionStorage` (`da_quanto_costa`), nessun cookie; il segno si toglie all'invio della richiesta. In `/admin/andamento` il riquadro "Dallo strumento «Quanto costa»" con le tre barre e quante delle richieste inviate sono partite da una voce. Informativa privacy, punto 9, aggiornata. Prova Playwright: voce e profilo contati in `quanto-costa.spec.ts`.
 
 **Prezzi sempre a destra** (Luca, 28/10: "i prezzi sempre sulla parte destra così è più ordinato, e quindi le unità di misura prima"): l'unità sta prima del prezzo, in piccolo e grigia, e le cifre finiscono tutte sullo stesso bordo destro, nel "Quanto costa in media", nelle pagine `/prezzi`, nella scheda dei risultati e nel profilo (`PriceLine` ha la prop `unit`). Nella frase della scheda chiusa ("da 8 € al m²") l'unità resta dopo, perché è una frase. Nel modulo delle prestazioni in `/dashboard/profilo` lo stesso ordine: prima l'unità, poi "Da € a A €" con la ✕ (sul telefono prezzo e ✕ vanno a capo insieme).
+
+## 395. Numeri contati solo dal lancio e account di prova
+
+**Richiesta di Luca (28/10/2026)**: "tutti i numeri per le statistiche e
+decisioni devono essere azzerati nel momento del lancio, così le prove che
+faccio prima non vanno a contrastare i dati reali". Approvate le migliorie
+proposte ("effettua le migliorie nel modo che ritieni").
+
+**Deciso:** niente si cancella al lancio (non si potrebbe annullare). Ogni
+numero conta da `LAUNCH_DATE`: i dati di prima restano nel database ma non
+entrano nei conti. Prima del lancio (o senza data) si vede tutto, prove
+comprese, così le pagine si possono provare.
+- `apps/api/src/site-counts/counted.ts`: `countingFrom` (il lancio se è
+  passato, altrimenti `null`), `sinceLaunch` e `daySinceLaunch` (per i
+  contatori per giorno: il lancio è la mezzanotte di Roma, il primo giorno
+  contato è la data del lancio), `COUNTED_USER`.
+- **Attività dal lancio, iscritti da sempre**: richieste, ricerche, visite,
+  passi della richiesta, invii non riusciti, preventivi, risposte,
+  recensioni, abbandoni e pagamenti contano dal lancio; i professionisti
+  iscritti prima restano contati (sono veri, reclutati al telefono, §7).
+  Vale per Andamento del sito, consigli e email del lunedì, Professionisti
+  in numeri, andamento settimanale e provenienza delle richieste, richieste
+  urgenti, visite e media della zona nella Home del professionista.
+- **Account di prova** (`User.testAccountAt`, migrazione
+  `20261028080000_account_di_prova`): interruttore "Account di prova" nella
+  scheda utente, solo super admin (`PATCH /admin/users/:id/test-account`,
+  nel modulo `test-accounts` perché serve `SubscriptionsService`), scritto
+  nel registro azioni. L'account resta normale ma non conta mai: fuori da
+  tutti i numeri sopra, dai contatori della Home admin, dai numeri pubblici
+  della homepage, dalle visite ai profili (né chi guarda né chi è
+  guardato; anche un admin che guarda un profilo non conta più). Filtro
+  "Account di prova" in Utenti e, su richiesta di Luca, una casella "Di
+  prova" su ogni riga dell'elenco (solo super admin) per segnarli uno alla
+  volta senza aprire la scheda. Entrando con un account
+  di prova il browser smette da solo di contare ("Non contare questo
+  browser"). L'eliminazione per sempre del §372 resta, sotto l'interruttore.
+- **Primi 100** (§363): un account di prova non prende un posto; segnarlo
+  libera il suo, togliere il segno lo fa riprovare. I posti si contano
+  (non più l'ultimo numero dato), l'elenco admin numera per posizione.
+- In cima ad Andamento e Numeri: "Dati di prova" con la data da cui si
+  riparte da zero, poi "Dati veri" con la data del lancio; dettaglio in
+  "Scopri di più". Il giallo delle etichette admin "attenzione" passa da `#8A6D00`
+  (4,4:1, axe in CI) a `#7A5F00` (5,5:1).
+
+**Migliorie dopo (Luca: "effettua le 4 migliorie"):**
+- **Professionisti di prova fuori dalla ricerca dal lancio**:
+  `publicVisibilityWhere` aggiunge `user.testAccountAt = null` dopo
+  `LAUNCH_DATE`, quindi niente ricerca, vetrina, recensioni in homepage né
+  smistamento delle richieste; prima del lancio restano, per le prove.
+  Dopo il lancio una prova completa (cliente di prova che chiede a un
+  professionista di prova) passa dal link diretto del profilo.
+- **"Dal lancio (data)" al posto di "ultimi 90 giorni"** (o 30 giorni, 12
+  mesi) nelle schede di Professionisti in numeri quando il lancio è più
+  recente; "Recensioni e voto dal lancio" invece di "da sempre".
+- **Consigli**: nelle prime 4 settimane dopo il lancio dicono "Dal lancio"
+  invece di "Nelle ultime 4 settimane".
+- **Giallo leggibile anche fuori dall'admin**: "In attesa del cliente"
+  (`requestStage.ts`) e le scadenze in Oggi (`.today-deadline`) passano a
+  `#7A5F00`.
+
+**Da fare a mano (Luca):** segnare "Account di prova" sugli account usati
+per le prove; tenere acceso "Non contare questo browser" (Andamento del
+sito) su telefono e computer usati per provare.
+
+**Verifica:** prove unitarie (`counted.test.ts`, primi 100, registro
+azioni), typecheck e lint; API e sito avviati su un database locale con
+`LAUNCH_DATE` prima e dopo oggi, anteprime in
+`anteprime/numeri-dal-lancio/`.

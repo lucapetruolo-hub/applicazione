@@ -1,5 +1,6 @@
 import type { Prisma } from "@professionisti/database";
 import { onlinePaymentsEnabled } from "../job-payments/online-payments-enabled";
+import { hasLaunched, launchDate } from "../subscriptions/subscription-rules";
 
 /**
  * Profilo pubblico appena il professionista ha scelto il tipo e compilato i
@@ -21,18 +22,28 @@ export function fiscalDataRequired(): boolean {
   return onlinePaymentsEnabled();
 }
 
-/** Filtro Prisma da aggiungere (in un `AND`) a ogni punto pubblico sui professionisti. */
-export function publicVisibilityWhere(): Prisma.ProfessionalProfileWhereInput {
-  if (!fiscalDataRequired()) return {};
-  return {
-    OR: [
-      { isDemo: true },
-      // Codice fiscale o P.IVA inesistenti all'Agenzia delle Entrate (Openapi,
-      // docs/CHANGELOG.md §253): fuori finché non si correggono. Un controllo
-      // ancora in corso o non riuscito non blocca.
-      { fiscalProfile: { is: { fiscalDataCompleteAt: { not: null }, taxIdChecks: { none: { status: "INVALID" } } } } },
-    ],
-  };
+/**
+ * Filtro Prisma da aggiungere (in un `AND`) a ogni punto pubblico sui
+ * professionisti. Dal lancio anche fuori gli account di prova (richiesta di
+ * Luca, docs/CHANGELOG.md §395): un cliente vero non deve mandare una
+ * richiesta a un profilo finto. Prima del lancio restano, per le prove.
+ */
+export function publicVisibilityWhere(now: Date = new Date()): Prisma.ProfessionalProfileWhereInput {
+  const conditions: Prisma.ProfessionalProfileWhereInput[] = [];
+  if (fiscalDataRequired()) {
+    conditions.push({
+      OR: [
+        { isDemo: true },
+        // Codice fiscale o P.IVA inesistenti all'Agenzia delle Entrate (Openapi,
+        // docs/CHANGELOG.md §253): fuori finché non si correggono. Un controllo
+        // ancora in corso o non riuscito non blocca.
+        { fiscalProfile: { is: { fiscalDataCompleteAt: { not: null }, taxIdChecks: { none: { status: "INVALID" } } } } },
+      ],
+    });
+  }
+  if (hasLaunched(now, launchDate())) conditions.push({ user: { testAccountAt: null } });
+  if (conditions.length === 0) return {};
+  return conditions.length === 1 ? conditions[0]! : { AND: conditions };
 }
 
 /** Selezione minima per `publicVisibilityMissing`. */

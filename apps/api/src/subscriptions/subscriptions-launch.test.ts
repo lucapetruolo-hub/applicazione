@@ -13,6 +13,7 @@ function buildService() {
       updateMany: vi.fn().mockResolvedValue({ count: 2 }),
       update: vi.fn(),
       aggregate: vi.fn().mockResolvedValue({ _max: { founderNumber: null } }),
+      count: vi.fn().mockResolvedValue(0),
     },
     professionalProfile: { findUnique: vi.fn(), update: vi.fn() },
     booking: { count: vi.fn().mockResolvedValue(0) },
@@ -92,7 +93,7 @@ describe("SubscriptionsService e data di lancio", () => {
 /** Offerta di lancio (§363): 3 mesi gratis ai primi 100 professionisti. */
 describe("SubscriptionsService e primi 100 professionisti", () => {
   const trialing = { id: "s-1", status: "TRIALING", stripeSubscriptionId: null, founderNumber: null, trialEndsAt: new Date("2026-12-01T23:00:00Z") };
-  const profile = (overrides: Record<string, unknown> = {}) => ({ isDemo: false, deletedAt: null, invitePendingAt: null, subscription: trialing, ...overrides });
+  const profile = (overrides: Record<string, unknown> = {}) => ({ isDemo: false, deletedAt: null, invitePendingAt: null, subscription: trialing, user: { testAccountAt: null }, ...overrides });
 
   it("prima del lancio dà il posto successivo e tre mesi dal lancio", async () => {
     process.env.LAUNCH_DATE = "2026-11-02";
@@ -109,6 +110,7 @@ describe("SubscriptionsService e primi 100 professionisti", () => {
   it("finiti i 100 posti resta il mese gratuito", async () => {
     const { service, prisma } = buildService();
     prisma.professionalProfile.findUnique.mockResolvedValue(profile());
+    prisma.subscription.count.mockResolvedValue(100);
     prisma.subscription.aggregate.mockResolvedValue({ _max: { founderNumber: 100 } });
 
     await expect(service.claimFounderSpot("pro-1")).resolves.toBe(false);
@@ -117,7 +119,7 @@ describe("SubscriptionsService e primi 100 professionisti", () => {
 
   it("niente posto ai profili di prova, a quelli da confermare e a chi ha già un abbonamento", async () => {
     const { service, prisma } = buildService();
-    for (const p of [profile({ isDemo: true }), profile({ invitePendingAt: new Date() }), profile({ subscription: { ...trialing, stripeSubscriptionId: "sub_1" } })]) {
+    for (const p of [profile({ isDemo: true }), profile({ user: { testAccountAt: new Date() } }), profile({ invitePendingAt: new Date() }), profile({ subscription: { ...trialing, stripeSubscriptionId: "sub_1" } })]) {
       prisma.professionalProfile.findUnique.mockResolvedValueOnce(p);
       await expect(service.claimFounderSpot("pro-1")).resolves.toBe(false);
     }
@@ -144,9 +146,20 @@ describe("SubscriptionsService e primi 100 professionisti", () => {
 
   it("posti rimasti per la pagina prezzi", async () => {
     const { service, prisma } = buildService();
-    prisma.subscription.aggregate.mockResolvedValue({ _max: { founderNumber: 37 } });
+    prisma.subscription.count.mockResolvedValue(37);
 
     await expect(service.founderSpots()).resolves.toEqual({ total: 100, left: 63 });
+  });
+
+  it("un posto liberato da un account di prova torna disponibile (§395)", async () => {
+    const { service, prisma } = buildService();
+    prisma.professionalProfile.findUnique.mockResolvedValue(profile());
+    // 99 posti presi, ma l'ultimo numero è 100: il 100 era di un account di prova, ora libero.
+    prisma.subscription.count.mockResolvedValue(99);
+    prisma.subscription.aggregate.mockResolvedValue({ _max: { founderNumber: 100 } });
+
+    await expect(service.claimFounderSpot("pro-1")).resolves.toBe(true);
+    expect(prisma.subscription.update.mock.calls[0]![0].data.founderNumber).toBe(101);
   });
 
   it("elenco per l'admin: prima del lancio i mesi gratis non hanno ancora una fine", async () => {
