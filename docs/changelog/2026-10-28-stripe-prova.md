@@ -39,8 +39,7 @@ prova deve mostrare i pagamenti online attivi.
 1. **Iscrizione a Stripe precompilata**
    (`apps/api/src/professional-fiscal/stripe-account-prefill.ts`): alla
    creazione del conto si mandano i dati già dati sul sito. Persona: nome,
-   cognome, data di nascita, indirizzo, email, telefono (solo se in formato
-   +39...), codice fiscale (`it_cf`). Azienda: ragione sociale, sede,
+   cognome, data di nascita, indirizzo, email, telefono, codice fiscale (`it_cf`). Azienda: ragione sociale, sede,
    telefono, partita IVA (`it_vat`). Per tutti: codice dell'attività (MCC)
    dalla categoria principale, link al profilo pubblico come sito, nome
    dell'attività e una descrizione fatta dal sito ("Idraulico a Latina:
@@ -66,3 +65,13 @@ prova deve mostrare i pagamenti online attivi.
 **Verifica**: `stripe-account-prefill.test.ts` (persona, dati mancanti,
 azienda) e il nuovo caso in `stripe-account-notifications.test.ts`; tutti i
 test dell'API (878) verdi e `tsc` pulito.
+
+## Telefono anche senza "+" (miglioria 2, richiesta di Luca)
+
+Il sito chiede già il prefisso del paese e salva "+39 3331234567", ma con lo
+spazio, e i numeri salvati prima del §214 possono non avere il prefisso: con
+il controllo "solo se inizia con +" questi non arrivavano a Stripe. Ora il
+numero passa da `normalizePhoneNumber` (senza prefisso vuol dire italiano,
+come nel resto del sito) e va a Stripe senza spazi ("+393331234567"); un
+numero non plausibile resta fuori e lo chiede Stripe. Nessun cambio al
+modulo del sito. Verifica: due casi nuovi in `stripe-account-prefill.test.ts`.

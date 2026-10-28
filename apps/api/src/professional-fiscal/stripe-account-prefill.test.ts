@@ -47,8 +47,14 @@ describe("stripeAccountPrefill", () => {
     });
   });
 
-  it("non inventa ciò che manca: telefono senza prefisso e indirizzo vuoto li chiede Stripe", () => {
-    const prefill = stripeAccountPrefill({ ...base, phone: "3331234567", fiscal: { ...base.fiscal, registeredStreet: null } });
+  it("manda il telefono nel formato di Stripe, anche se salvato con lo spazio o senza prefisso", () => {
+    expect(stripeAccountPrefill({ ...base, phone: "+39 3331234567" }).identity?.individual?.phone).toBe("+393331234567");
+    expect(stripeAccountPrefill({ ...base, phone: "333 1234567" }).identity?.individual?.phone).toBe("+393331234567");
+    expect(stripeAccountPrefill({ ...base, phone: "+41 791234567" }).identity?.individual?.phone).toBe("+41791234567");
+  });
+
+  it("non inventa ciò che manca: telefono non valido e indirizzo vuoto li chiede Stripe", () => {
+    const prefill = stripeAccountPrefill({ ...base, phone: "123", fiscal: { ...base.fiscal, registeredStreet: null } });
 
     expect(prefill.identity?.individual?.phone).toBeUndefined();
     expect(prefill.identity?.individual?.address).toBeUndefined();

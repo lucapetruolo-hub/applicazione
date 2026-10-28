@@ -1,5 +1,5 @@
 import type Stripe from "stripe";
-import { BRAND, professionalPath } from "@professionisti/shared";
+import { BRAND, isPlausiblePhoneNumber, normalizePhoneNumber, professionalPath } from "@professionisti/shared";
 
 /**
  * Codice dell'attività (MCC) per Stripe, dalla categoria principale
@@ -68,8 +68,11 @@ export function stripeAccountPrefill(input: StripeAccountPrefillInput): Prefill 
         city: clean(fiscal.registeredCity),
       }
     : undefined;
-  // Stripe vuole il formato internazionale (+39...): un numero senza prefisso lo chiede lui.
-  const phone = input.phone?.trim().startsWith("+") ? input.phone.trim() : undefined;
+  // Stripe vuole il formato internazionale senza spazi (+393331234567). Il sito
+  // salva "+39 3331234567"; un numero vecchio senza prefisso è italiano, come
+  // nel resto del sito (normalizePhoneNumber). Un numero non plausibile lo chiede Stripe.
+  const rawPhone = input.phone?.trim();
+  const phone = rawPhone && isPlausiblePhoneNumber(rawPhone) ? normalizePhoneNumber(rawPhone).replace(/\s/g, "") : undefined;
   const isCompany = fiscal.entityType === "BUSINESS";
   const categoryLabel = profile.category?.label;
 
