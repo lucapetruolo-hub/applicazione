@@ -96,3 +96,33 @@ export function downloadTextFile(filename: string, content: string, type = "text
   link.remove();
   URL.revokeObjectURL(url);
 }
+
+/**
+ * Da quando contano i numeri (docs/CHANGELOG.md §395): prima del lancio si
+ * vedono anche le prove, dal lancio i numeri ripartono da zero da soli. Una
+ * riga sola, con il dettaglio in "Scopri di più".
+ */
+export function CountingFromNote({ countingFrom, launchDate }: { countingFrom: string | null; launchDate: string | null }) {
+  const title = countingFrom
+    ? `Numeri dal lancio, ${formatAdminDate(countingFrom)}`
+    : launchDate
+      ? `Prima del lancio: qui ci sono anche le tue prove. Dal ${formatAdminDate(launchDate)} si riparte da zero.`
+      : "Prima del lancio: qui ci sono anche le tue prove. Dal giorno del lancio si riparte da zero.";
+  return (
+    <div className="counting-from">
+      <AdminPill tone={countingFrom ? "ok" : "warn"}>{countingFrom ? "Dati veri" : "Dati di prova"}</AdminPill>
+      <Text color={brand.grafite} fontSize={14}>
+        {title}
+      </Text>
+      <details className="counting-from-more">
+        <summary>Scopri di più</summary>
+        <Text color={brand.grafite70} fontSize={13}>
+          Richieste, ricerche, visite e preventivi contano dal giorno del lancio
+          (la data impostata come LAUNCH_DATE). I professionisti iscritti prima
+          restano contati. Gli account segnati &quot;Account di prova&quot; non
+          contano mai. Niente viene cancellato.
+        </Text>
+      </details>
+    </div>
+  );
+}

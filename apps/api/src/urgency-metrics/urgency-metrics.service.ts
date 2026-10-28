@@ -6,6 +6,7 @@ import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { hasLaunched, launchDate } from "../subscriptions/subscription-rules";
 import { computeUrgencyMetrics } from "./urgency-metrics";
+import { COUNTED_USER, countingFrom, sinceLaunch } from "../site-counts/counted";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -25,9 +26,10 @@ export class UrgencyMetricsService {
   ) {}
 
   async compute(now: Date = new Date()): Promise<UrgencyMetrics> {
-    const since = new Date(now.getTime() - URGENCY_METRICS_WINDOW_DAYS * DAY_MS);
+    // Dal lancio e senza account di prova (docs/CHANGELOG.md §395).
+    const since = sinceLaunch(new Date(now.getTime() - URGENCY_METRICS_WINDOW_DAYS * DAY_MS), countingFrom(now));
     const requests = await this.prisma.guidedRequest.findMany({
-      where: { createdAt: { gte: since, lt: now } },
+      where: { createdAt: { gte: since, lt: now }, client: COUNTED_USER },
       select: {
         isUrgent: true,
         createdAt: true,

@@ -344,6 +344,8 @@ export type AdminUserRow = {
   createdAt: string;
   deletedAt: string | null;
   suspendedAt: string | null;
+  /** Segnato "Account di prova": fuori dai numeri (docs/CHANGELOG.md §395). */
+  testAccountAt: string | null;
 };
 export type AdminRoleName = "SUPER" | "MODERATOR" | "FINANCE";
 
@@ -370,6 +372,8 @@ export type AdminUserDetail = {
   deletedAt: string | null;
   suspendedAt: string | null;
   suspensionNote: string | null;
+  /** Segnato "Account di prova": fuori dai numeri (docs/CHANGELOG.md §395). */
+  testAccountAt: string | null;
   /** Verifica in due passaggi attiva (solo per gli admin, docs/CHANGELOG.md §359). */
   adminTwoFactorEnabled: boolean;
   professionalProfile: { id: string; businessName: string; categoryLabel: string; city: string; suspendedAt: string | null } | null;
@@ -424,7 +428,7 @@ export type AdminUsersPage = { total: number; page: number; pageSize: number; ro
 export type AdminUsersQuery = {
   q?: string;
   role?: "CLIENT" | "PROFESSIONAL" | "ADMIN";
-  status?: "active" | "suspended" | "deleted";
+  status?: "active" | "suspended" | "deleted" | "test";
   /** Solo professionisti di questa categoria o città (docs/CHANGELOG.md §368). */
   category?: string;
   city?: string;
@@ -693,6 +697,8 @@ export type CurrentUser = {
   signupCategorySlugs?: string[];
   /** Aree di competenza di un ADMIN, combinabili (docs/CHANGELOG.md §145-§146); vuota per gli altri ruoli. */
   adminRoles?: ("SUPER" | "MODERATOR" | "FINANCE")[];
+  /** Segnato "Account di prova" in Admin: il browser non viene contato (docs/CHANGELOG.md §395). */
+  testAccount?: boolean;
   hasPassword: boolean;
   /** Immagine profilo dell'account (facoltativa), indipendente da ProfessionalProfile.imageUrl — richiesta esplicita dell'utente. */
   imageUrl: string | null;
@@ -1801,6 +1807,14 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       request<void>(`/admin/site-notes/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),
 
     /** Elimina per sempre un account di prova e tutto quello che ha creato (solo super admin). */
+    /** "Account di prova" acceso o spento (docs/CHANGELOG.md §395), solo super admin. */
+    adminSetTestAccount: (token: string, id: string, testAccount: boolean) =>
+      request<{ id: string; testAccountAt: string | null }>(`/admin/users/${id}/test-account`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ testAccount }),
+      }),
+
     adminDeleteTestAccount: (token: string, id: string) =>
       request<{ id: string; deleted: true }>(`/admin/users/${id}/test-account`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),
 

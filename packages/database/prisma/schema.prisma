@@ -134,6 +134,10 @@ model User {
   // diretto..., docs/CHANGELOG.md §372): stessa categoria delle richieste
   // (§296), mai l'indirizzo di provenienza. Dice dove reclutare.
   signupSource               TrafficSource?
+  // Account di prova segnato da un super admin (docs/CHANGELOG.md §395):
+  // fuori per sempre da statistiche, consigli, numeri pubblici e dai posti
+  // dell'offerta "primi 100". Resta un account normale per tutto il resto.
+  testAccountAt              DateTime?
   // Codice di 6 cifre nella stessa email del link di conferma (§243):
   // impronta SHA-256, valido 15 minuti, al massimo 5 tentativi, un nuovo
   // invio solo dopo 60 secondi da `emailCodeSentAt`.

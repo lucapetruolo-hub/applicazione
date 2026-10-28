@@ -205,6 +205,13 @@ export type GuideCellStatus = "GREEN" | "YELLOW" | "RED" | "NO_PROFESSIONALS";
 
 export type AdminSiteStats = {
   windowDays: number;
+  /**
+   * Da quando contano richieste, ricerche e visite (docs/CHANGELOG.md §395):
+   * il lancio, se è passato; `null` prima del lancio (si vede tutto, prove comprese).
+   */
+  countingFrom: string | null;
+  /** Data del lancio (`LAUNCH_DATE`), `null` se non è ancora impostata. */
+  launchDate: string | null;
   /** Numero guida degli ultimi SITE_STATS_WINDOW_DAYS giorni. */
   guide: { requests: number; withQuote: number };
   /** Numero guida per settimana (lunedì, ora di Roma), dalla più vecchia. */

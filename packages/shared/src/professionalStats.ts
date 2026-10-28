@@ -70,8 +70,12 @@ export type AdminProfessionalStats = {
   total: number;
   /** Iscritti negli ultimi 30 giorni, con i filtri scelti. */
   new30d: number;
-  /** Non contati sopra: eliminati e dimostrativi (con i filtri scelti). */
-  excluded: { deleted: number; demo: number };
+  /** Non contati sopra: eliminati, dimostrativi e account di prova (con i filtri scelti). */
+  excluded: { deleted: number; demo: number; test: number };
+  /** Da quando conta l'attività (richieste, risposte, ricerche), docs/CHANGELOG.md §395: il lancio, `null` prima. */
+  countingFrom: string | null;
+  /** Data del lancio (`LAUNCH_DATE`), `null` se non impostata. */
+  launchDate: string | null;
   byStatus: { key: ProfessionalStatusKey; count: number }[];
   /** Tutte le categorie, anche a zero. Un professionista ne ha da 1 a 3: le percentuali non fanno 100. */
   byCategory: { slug: string; label: string; count: number }[];

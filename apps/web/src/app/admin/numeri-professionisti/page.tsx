@@ -19,7 +19,7 @@ import {
 import { Button, Text, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { AdminCard, AdminPageHeader, errorMessage } from "@/components/admin/adminUi";
+import { AdminCard, AdminPageHeader, CountingFromNote, errorMessage } from "@/components/admin/adminUi";
 import { StatsBarChart } from "@/components/StatsBarChart";
 import { SkeletonTableRows } from "@/components/Skeleton";
 
@@ -142,6 +142,7 @@ function StatsBody({ data, filters, scope }: { data: AdminProfessionalStats; fil
   const excluded = [
     data.excluded.deleted ? `${data.excluded.deleted} ${data.excluded.deleted === 1 ? "eliminato" : "eliminati"}` : null,
     data.excluded.demo ? `${data.excluded.demo} ${data.excluded.demo === 1 ? "profilo dimostrativo" : "profili dimostrativi"}` : null,
+    data.excluded.test ? `${data.excluded.test} account di prova` : null,
   ].filter(Boolean);
 
   const cities = data.byCity.slice(0, TOP_CITIES);
@@ -162,6 +163,7 @@ function StatsBody({ data, filters, scope }: { data: AdminProfessionalStats; fil
 
   return (
     <YStack gap="$5">
+      <CountingFromNote countingFrom={data.countingFrom} launchDate={data.launchDate} />
       <div className="admin-kpi-grid">
         <div className="admin-kpi">
           <span className="admin-kpi-value">{data.total}</span>
@@ -269,7 +271,7 @@ function StatsBody({ data, filters, scope }: { data: AdminProfessionalStats; fil
       <CategoryActivityCard rows={data.byCategoryActivity} />
       <ChurnCard rows={data.churnByMonth} />
 
-      {excluded.length ? <Text color={brand.grafite70} fontSize={13}>Non contati: {excluded.join(" e ")}.</Text> : null}
+      {excluded.length ? <Text color={brand.grafite70} fontSize={13}>Non contati: {excluded.join(", ")}.</Text> : null}
     </YStack>
   );
 }

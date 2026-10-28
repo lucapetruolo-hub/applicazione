@@ -112,6 +112,8 @@ function completenessOf(row: ProfessionalStatsRow): ProfessionalCompletenessKey[
 export type ProfessionalStatsExtra = {
   cityOptions: string[];
   excluded: AdminProfessionalStats["excluded"];
+  countingFrom?: string | null;
+  launchDate?: string | null;
   /** Professionisti con un preventivo o un messaggio negli ultimi 30 giorni. */
   activeIds?: ReadonlySet<string>;
   coverage?: AdminProfessionalStats["coverage"];
@@ -150,6 +152,8 @@ export function buildProfessionalStats(rows: ProfessionalStatsRow[], now: Date, 
     total: rows.length,
     new30d,
     excluded: extra.excluded,
+    countingFrom: extra.countingFrom ?? null,
+    launchDate: extra.launchDate ?? null,
     byStatus: PROFESSIONAL_STATUS_KEYS.map((key) => ({ key, count: status.get(key) ?? 0 })),
     byCategory: PROFESSIONAL_CATEGORIES.map((c) => ({ slug: c.slug, label: c.label, count: category.get(c.slug) ?? 0 })).sort(
       (a, b) => b.count - a.count || a.label.localeCompare(b.label, "it"),

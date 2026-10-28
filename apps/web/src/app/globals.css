@@ -5807,3 +5807,32 @@ a.admin-kpi:hover {
     color: #2b2420;
   }
 }
+
+/* "Dati di prova / Dati veri" in cima ad Andamento e Numeri (docs/CHANGELOG.md §395). */
+.counting-from {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 4px;
+}
+.counting-from-more summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0e7a4c;
+  cursor: pointer;
+  list-style: none;
+}
+.counting-from-more summary::-webkit-details-marker {
+  display: none;
+}
+.counting-from-more summary:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.counting-from-more[open] {
+  flex-basis: 100%;
+}

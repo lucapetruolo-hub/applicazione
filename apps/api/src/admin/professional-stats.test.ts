@@ -66,11 +66,11 @@ describe("Professionisti in numeri (§368)", () => {
         row({ city: "Latina", categorySlugs: ["pulizie", "pulizie"], fiscalProfile: { entityType: "PRIVATE_INDIVIDUAL", fiscalDataCompleteAt: null } }),
       ],
       NOW,
-      { cityOptions: ["Latina", "Roma"], excluded: { deleted: 2, demo: 1 } },
+      { cityOptions: ["Latina", "Roma"], excluded: { deleted: 2, demo: 1, test: 0 } },
     );
     expect(stats.total).toBe(3);
     expect(stats.new30d).toBe(2);
-    expect(stats.excluded).toEqual({ deleted: 2, demo: 1 });
+    expect(stats.excluded).toEqual({ deleted: 2, demo: 1, test: 0 });
     expect(stats.byCategory.slice(0, 3)).toEqual([
       { slug: "idraulico", label: "Idraulico", count: 2 },
       { slug: "elettricista", label: "Elettricista", count: 1 },
@@ -96,7 +96,7 @@ describe("Professionisti in numeri (§368)", () => {
   });
 
   it("mesi dal primo anno con iscrizioni, per scegliere un anno nel grafico", () => {
-    const stats = buildProfessionalStats([row({ createdAt: new Date("2023-06-10T10:00:00Z") })], NOW, { cityOptions: [], excluded: { deleted: 0, demo: 0 } });
+    const stats = buildProfessionalStats([row({ createdAt: new Date("2023-06-10T10:00:00Z") })], NOW, { cityOptions: [], excluded: { deleted: 0, demo: 0, test: 0 } });
     expect(stats.byMonth[0]).toEqual({ key: "2023-01", count: 0 });
     expect(stats.byMonth.find((m) => m.key === "2023-06")?.count).toBe(1);
     expect(stats.byMonth.at(-1)?.key).toBe("2026-10");
@@ -111,7 +111,7 @@ describe("Professionisti in numeri (§368)", () => {
         row({ id: "c" }),
       ],
       NOW,
-      { cityOptions: [], excluded: { deleted: 0, demo: 0 }, activeIds: new Set(["a", "z"]) },
+      { cityOptions: [], excluded: { deleted: 0, demo: 0, test: 0 }, activeIds: new Set(["a", "z"]) },
     );
     expect(stats.active30d).toBe(1);
     expect(stats.funnel).toEqual([

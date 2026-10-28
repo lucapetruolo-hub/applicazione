@@ -21390,3 +21390,52 @@ pagine di accesso, §279 e §349). Supera la proposta non scelta del §325.
 
 **Verifica:** build di produzione col profilo vero, fotografato a 1440, 1024
 e 390 px (anteprime in `anteprime/barra-preventivo-computer/`).
+
+## 395. Numeri contati solo dal lancio e account di prova
+
+**Richiesta di Luca (28/10/2026)**: "tutti i numeri per le statistiche e
+decisioni devono essere azzerati nel momento del lancio, così le prove che
+faccio prima non vanno a contrastare i dati reali". Approvate le migliorie
+proposte ("effettua le migliorie nel modo che ritieni").
+
+**Deciso:** niente si cancella al lancio (non si potrebbe annullare). Ogni
+numero conta da `LAUNCH_DATE`: i dati di prima restano nel database ma non
+entrano nei conti. Prima del lancio (o senza data) si vede tutto, prove
+comprese, così le pagine si possono provare.
+- `apps/api/src/site-counts/counted.ts`: `countingFrom` (il lancio se è
+  passato, altrimenti `null`), `sinceLaunch` e `daySinceLaunch` (per i
+  contatori per giorno: il lancio è la mezzanotte di Roma, il primo giorno
+  contato è la data del lancio), `COUNTED_USER`.
+- **Attività dal lancio, iscritti da sempre**: richieste, ricerche, visite,
+  passi della richiesta, invii non riusciti, preventivi, risposte,
+  recensioni, abbandoni e pagamenti contano dal lancio; i professionisti
+  iscritti prima restano contati (sono veri, reclutati al telefono, §7).
+  Vale per Andamento del sito, consigli e email del lunedì, Professionisti
+  in numeri, andamento settimanale e provenienza delle richieste, richieste
+  urgenti, visite e media della zona nella Home del professionista.
+- **Account di prova** (`User.testAccountAt`, migrazione
+  `20261028080000_account_di_prova`): interruttore "Account di prova" nella
+  scheda utente, solo super admin (`PATCH /admin/users/:id/test-account`,
+  nel modulo `test-accounts` perché serve `SubscriptionsService`), scritto
+  nel registro azioni. L'account resta normale ma non conta mai: fuori da
+  tutti i numeri sopra, dai contatori della Home admin, dai numeri pubblici
+  della homepage, dalle visite ai profili (né chi guarda né chi è
+  guardato; anche un admin che guarda un profilo non conta più). Filtro
+  "Account di prova" e segno "Di prova" in Utenti. Entrando con un account
+  di prova il browser smette da solo di contare ("Non contare questo
+  browser"). L'eliminazione per sempre del §372 resta, sotto l'interruttore.
+- **Primi 100** (§363): un account di prova non prende un posto; segnarlo
+  libera il suo, togliere il segno lo fa riprovare. I posti si contano
+  (non più l'ultimo numero dato), l'elenco admin numera per posizione.
+- In cima ad Andamento e Numeri: "Dati di prova" con la data da cui si
+  riparte da zero, poi "Dati veri" con la data del lancio; dettaglio in
+  "Scopri di più".
+
+**Da fare a mano (Luca):** segnare "Account di prova" sugli account usati
+per le prove; tenere acceso "Non contare questo browser" (Andamento del
+sito) su telefono e computer usati per provare.
+
+**Verifica:** prove unitarie (`counted.test.ts`, primi 100, registro
+azioni), typecheck e lint; API e sito avviati su un database locale con
+`LAUNCH_DATE` prima e dopo oggi, anteprime in
+`anteprime/numeri-dal-lancio/`.

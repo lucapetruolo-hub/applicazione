@@ -34,6 +34,7 @@ import { RevenueAnalyticsModule } from "./revenue-analytics/revenue-analytics.mo
 import { RealtimeModule } from "./realtime/realtime.module";
 import { SubscriptionsModule } from "./subscriptions/subscriptions.module";
 import { ProfileInvitesModule } from "./profile-invites/profile-invites.module";
+import { TestAccountsModule } from "./test-accounts/test-accounts.module";
 import { TaxIdCheckModule } from "./tax-id-check/tax-id-check.module";
 import { IdentityVerificationModule } from "./identity-verification/identity-verification.module";
 import { ProfessionalVerificationModule } from "./professional-verification/professional-verification.module";
@@ -108,6 +109,7 @@ import { AgendaModule } from "./agenda/agenda.module";
     SubscriptionsModule,
     // Profili creati al telefono da un operatore (docs/CHANGELOG.md §170).
     ProfileInvitesModule,
+    TestAccountsModule,
     ProfessionalVerificationModule,
     // Verifica fiscale (Openapi) e d'identità (Didit), docs/CHANGELOG.md §253.
     TaxIdCheckModule,

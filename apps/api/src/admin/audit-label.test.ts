@@ -35,6 +35,9 @@ describe("auditLabel (registro azioni admin, §350)", () => {
       "Segnalazione accolta: contenuto nascosto",
     );
     expect(auditLabel({ entityType: "User", fieldName: "suspendedAt", newValue: JSON.stringify("SUSPENDED") })).toBe("Account sospeso");
+    expect(auditLabel({ entityType: "User", fieldName: "testAccount", newValue: JSON.stringify("MARKED") })).toBe("Segnato come account di prova: fuori dai numeri");
+    expect(auditLabel({ entityType: "User", fieldName: "testAccount", newValue: JSON.stringify("UNMARKED") })).toBe("Tolto il segno di account di prova: torna nei numeri");
+    expect(auditLabel({ entityType: "User", fieldName: "testAccount", newValue: JSON.stringify("DELETED") })).toBe("Account di prova eliminato per sempre");
     expect(auditLabel({ entityType: "User", fieldName: "adminRoles", newValue: JSON.stringify("MODERATOR+FINANCE") })).toBe(
       "Ruolo cambiato in moderatore + finanza",
     );

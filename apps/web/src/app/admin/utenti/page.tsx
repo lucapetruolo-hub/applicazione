@@ -124,6 +124,7 @@ function UtentiContent() {
           <option value="active">Attivi</option>
           <option value="suspended">Sospesi</option>
           <option value="deleted">Eliminati</option>
+          <option value="test">Account di prova</option>
         </select>
         {professionalFilters ? (
           <>
@@ -201,6 +202,7 @@ function UtentiContent() {
                       {row.suspendedAt ? <AdminPill tone="danger">Sospeso</AdminPill> : null}
                       {!row.suspendedAt && row.profileSuspended ? <AdminPill tone="warn">Profilo nascosto</AdminPill> : null}
                       {!row.deletedAt && !row.suspendedAt && !row.profileSuspended ? <AdminPill tone="ok">Attivo</AdminPill> : null}
+                      {row.testAccountAt ? <AdminPill tone="warn">Di prova</AdminPill> : null}
                     </XStack>
                   </td>
                   <td>{formatAdminDate(row.createdAt)}</td>

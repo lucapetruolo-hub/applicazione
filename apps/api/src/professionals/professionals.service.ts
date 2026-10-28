@@ -42,6 +42,7 @@ import {
   type CategoryPriceStats,
   DEFAULT_CANCELLATION_NOTICE_HOURS,
 } from "@professionisti/shared";
+import { COUNTED_USER, countingFrom, daySinceLaunch } from "../site-counts/counted";
 import { PRISMA } from "../prisma/prisma.module";
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
 import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing, publicVisibilityWhere, publicVerified, stripeVerified } from "../professional-fiscal/public-visibility";
@@ -978,15 +979,21 @@ export class ProfessionalsService {
   /**
    * Una visita al profilo pubblico (docs/CHANGELOG.md §147): contatore per
    * giorno, mai la singola visita né chi guarda. Non conta il proprietario
-   * che guarda il proprio profilo né un profilo non visibile.
+   * che guarda il proprio profilo né un profilo non visibile. Né un admin o
+   * un account di prova che guarda, né il profilo di un account di prova
+   * (docs/CHANGELOG.md §395).
    */
   async recordProfileView(professionalProfileId: string, viewerUserId: string | null): Promise<void> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { id: professionalProfileId },
-      select: { userId: true, deletedAt: true, suspendedAt: true, isDemo: true },
+      select: { userId: true, deletedAt: true, suspendedAt: true, isDemo: true, user: { select: { testAccountAt: true } } },
     });
-    if (!profile || profile.deletedAt || profile.suspendedAt || profile.isDemo) return;
+    if (!profile || profile.deletedAt || profile.suspendedAt || profile.isDemo || profile.user.testAccountAt) return;
     if (viewerUserId && viewerUserId === profile.userId) return;
+    if (viewerUserId) {
+      const viewer = await this.prisma.user.findUnique({ where: { id: viewerUserId }, select: { role: true, testAccountAt: true } });
+      if (viewer && (viewer.role === "ADMIN" || viewer.testAccountAt)) return;
+    }
     const day = new Date();
     day.setUTCHours(0, 0, 0, 0);
     await this.prisma.profileViewDay.upsert({
@@ -1018,8 +1025,10 @@ export class ProfessionalsService {
     // Confronto con chi in città condivide almeno una delle sue categorie
     // (principale o aggiuntiva, docs/CHANGELOG.md §217).
     const myCategoryIds = [me.categoryId, ...me.extraCategories.map((category) => category.id)];
-    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    since.setUTCHours(0, 0, 0, 0);
+    // Visite contate dal lancio (docs/CHANGELOG.md §395): le prove di prima non si mescolano.
+    const since30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    since30.setUTCHours(0, 0, 0, 0);
+    const since = daySinceLaunch(since30, countingFrom());
     const peers = await this.prisma.professionalProfile.findMany({
       where: {
         id: { not: professionalProfileId },
@@ -1028,6 +1037,7 @@ export class ProfessionalsService {
         deletedAt: null,
         suspendedAt: null,
         isDemo: false,
+        user: COUNTED_USER,
       },
       select: { id: true, metrics: { select: { avgResponseTimeMinutes: true } } },
     });
