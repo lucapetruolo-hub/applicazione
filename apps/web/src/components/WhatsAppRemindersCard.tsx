@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import {
   WHATSAPP_MESSAGES_FOR,
+  isPlausiblePhoneNumber,
   type WhatsAppStatus,
 } from "@professionisti/shared";
 import { Button, Icon, Text, YStack, brand } from "@professionisti/ui";
 import { EmailCodeForm } from "@/components/EmailCodeForm";
+import { PhoneNumberInput } from "@/components/PhoneNumberInput";
 import { apiClient } from "@/lib/apiClient";
+import { useAuth } from "@/lib/AuthContext";
 import { forgetWhatsAppStatus } from "@/lib/useWhatsAppStatus";
 
 /**
@@ -17,8 +19,19 @@ import { forgetWhatsAppStatus } from "@/lib/useWhatsAppStatus";
  * elencati in `WHATSAPP_MESSAGES_FOR`. Per accenderlo si conferma il numero
  * dell'account con un codice su WhatsApp: il codice giusto vale come
  * consenso, detto prima del pulsante. Senza le chiavi di Meta la scheda dice
- * solo "in arrivo".
+ * solo "in arrivo". Il numero si corregge qui con "Modifica", senza passare
+ * da Account: è lo stesso numero dell'account (uno per persona, unico).
  */
+const phoneInputStyle = {
+  padding: "10px 12px",
+  borderRadius: 10,
+  border: `1px solid ${brand.bordoCampo}`,
+  fontSize: 16,
+  fontFamily: "inherit",
+  color: brand.grafite,
+  width: "100%",
+};
+
 export function WhatsAppRemindersCard({
   token,
   role,
@@ -32,6 +45,10 @@ export function WhatsAppRemindersCard({
   const [error, setError] = useState<string | null>(null);
   // Cambia a ogni nuovo codice: il modulo del codice riparte da capo.
   const [codeRound, setCodeRound] = useState(0);
+  const { refreshUser } = useAuth();
+  const [editingPhone, setEditingPhone] = useState(false);
+  const [newPhone, setNewPhone] = useState("");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -75,6 +92,54 @@ export function WhatsAppRemindersCard({
       setCodeRound((n) => n + 1);
   }
 
+  function startEditingPhone() {
+    setNewPhone(status?.phone ?? "");
+    setPhoneError(null);
+    setError(null);
+    setEditingPhone(true);
+  }
+
+  /** Salva il numero nell'account e manda subito il codice al nuovo. */
+  async function savePhoneAndSendCode() {
+    const next = newPhone.trim();
+    if (!isPlausiblePhoneNumber(next)) {
+      setPhoneError(
+        "Scrivi un numero di cellulare valido, ad esempio 333 1234567.",
+      );
+      return;
+    }
+    if (next === status?.phone && status.verified) {
+      setEditingPhone(false);
+      return;
+    }
+    setBusy(true);
+    setPhoneError(null);
+    try {
+      if (next !== status?.phone) {
+        await apiClient.updateAccount(token, { phone: next });
+        void refreshUser();
+      }
+    } catch (err) {
+      setPhoneError(
+        err instanceof Error
+          ? err.message
+          : "Non siamo riusciti a cambiare il numero, riprova.",
+      );
+      setBusy(false);
+      return;
+    }
+    setBusy(false);
+    setEditingPhone(false);
+    // Il numero è cambiato anche se il codice non parte (es. un fisso):
+    // la scheda lo mostra comunque aggiornato.
+    if (!(await run(() => apiClient.sendWhatsAppCode(token)))) {
+      setStatus(await apiClient.whatsAppStatus(token).catch(() => status));
+      forgetWhatsAppStatus();
+      return;
+    }
+    setCodeRound((n) => n + 1);
+  }
+
   const messages = WHATSAPP_MESSAGES_FOR[role];
   const details = (
     <details className="bio-tips whatsapp-more">
@@ -106,6 +171,44 @@ export function WhatsAppRemindersCard({
     );
   } else if (!status) {
     body = <p className="notif-note">Caricamento…</p>;
+  } else if (status.available && editingPhone) {
+    body = (
+      <>
+        <p className="notif-note">
+          <strong>Il cellulare su cui ricevere il codice</strong>
+        </p>
+        <PhoneNumberInput
+          value={newPhone}
+          onChange={(value) => {
+            setNewPhone(value);
+            setPhoneError(null);
+          }}
+          style={phoneInputStyle}
+          placeholder="Es. 333 1234567"
+        />
+        <small className="notif-small">
+          Diventa anche il numero del tuo account, quello che si vede dopo un
+          appuntamento confermato.
+        </small>
+        {phoneError ? <p className="notif-error">{phoneError}</p> : null}
+        <Button
+          variant="primary"
+          alignSelf="flex-start"
+          onPress={() => void savePhoneAndSendCode()}
+          disabled={busy}
+          opacity={busy ? 0.6 : 1}
+        >
+          {busy ? "Invio..." : "Manda il codice a questo numero"}
+        </Button>
+        <Button
+          variant="ghost"
+          alignSelf="flex-start"
+          onPress={() => setEditingPhone(false)}
+        >
+          Annulla
+        </Button>
+      </>
+    );
   } else if (!status.available) {
     body = (
       <>
@@ -123,10 +226,15 @@ export function WhatsAppRemindersCard({
           <div>
             <strong>Promemoria su WhatsApp</strong>
             <small>
-              Al numero {status.phone} ·{" "}
-              <Link href="/account" className="notif-inline-link">
-                Cambia numero
-              </Link>
+              Al numero{" "}
+              <span style={{ whiteSpace: "nowrap" }}>{status.phone}</span> ·{" "}
+              <button
+                type="button"
+                className="notif-inline-link"
+                onClick={startEditingPhone}
+              >
+                Modifica
+              </button>
             </small>
           </div>
           <button
@@ -154,10 +262,10 @@ export function WhatsAppRemindersCard({
         <EmailCodeForm
           key={codeRound}
           token={token}
-          email={status.codeSentTo}
+          email={status.phone ?? status.codeSentTo}
           initialResendSeconds={status.codeResendInSeconds}
           initialValidForSeconds={status.codeValidForSeconds}
-          intro="Ti abbiamo mandato su WhatsApp un codice di"
+          intro="Abbiamo mandato su WhatsApp il codice di conferma di"
           doneLabel="Promemoria su WhatsApp attivi"
           tip="Il messaggio arriva da Professionisti, con il pulsante «Copia codice»."
           submitCode={async (code) => {
@@ -167,6 +275,16 @@ export function WhatsAppRemindersCard({
           onVerified={() => undefined}
           onRequestNewCode={() => void sendCode()}
         />
+        <p className="notif-note" style={{ textAlign: "center" }}>
+          Non è il tuo numero?{" "}
+          <button
+            type="button"
+            className="notif-inline-link"
+            onClick={startEditingPhone}
+          >
+            Modifica
+          </button>
+        </p>
         {error ? <p className="notif-error">{error}</p> : null}
       </>
     );
@@ -176,16 +294,15 @@ export function WhatsAppRemindersCard({
         <p className="notif-note">
           {status.phone
             ? "Il numero nel tuo account sembra un fisso: per WhatsApp serve un cellulare."
-            : "Per ricevere i promemoria su WhatsApp aggiungi il tuo cellulare nell'account."}
+            : "Per ricevere i promemoria su WhatsApp aggiungi il tuo cellulare."}
         </p>
-        <Link
-          href="/account"
-          style={{ textDecoration: "none", alignSelf: "flex-start" }}
+        <Button
+          variant="secondary"
+          alignSelf="flex-start"
+          onPress={startEditingPhone}
         >
-          <Button variant="secondary">
-            {status.phone ? "Cambia numero" : "Aggiungi il cellulare"}
-          </Button>
-        </Link>
+          {status.phone ? "Cambia numero" : "Aggiungi il cellulare"}
+        </Button>
         {details}
       </>
     );
@@ -196,7 +313,14 @@ export function WhatsAppRemindersCard({
           Il promemoria del giorno prima e gli avvisi sull&apos;appuntamento,
           anche su WhatsApp. Ti mandiamo un codice al{" "}
           <strong style={{ whiteSpace: "nowrap" }}>{status.phone}</strong> per
-          confermare che è il tuo.
+          confermare che è il tuo.{" "}
+          <button
+            type="button"
+            className="notif-inline-link"
+            onClick={startEditingPhone}
+          >
+            Modifica
+          </button>
         </p>
         <Button
           variant="primary"

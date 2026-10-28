@@ -77,6 +77,19 @@ lavori esterni dell'agenda non ricevono nulla (domanda 70 per l'avvocato).
   - la terza proposta (promemoria ai clienti dei lavori esterni) aspetta la
     domanda 70 per l'avvocato: segnata nel punto 22 della checklist di
     lancio.
+- **Terzo giro** (Luca: "scriviamo che è stato mandato il codice di
+  conferma al numero, e se non è giusto un pulsante Modifica"):
+  - mentre si aspetta il codice la scheda scrive "Abbiamo mandato su
+    WhatsApp il codice di conferma di 6 cifre a" con il numero intero (prima
+    era nascosto in parte), e sotto "Non è il tuo numero? Modifica";
+  - "Modifica" anche accanto al numero prima di mandare il codice e a
+    promemoria attivi, e "Cambia numero"/"Aggiungi il cellulare" per fisso o
+    numero mancante: si scrive il numero nella scheda stessa, senza passare
+    da Account, e il codice parte subito al nuovo;
+  - un solo numero per persona, quello dell'account (il numero è unico tra
+    gli account e lo vede l'altra parte dopo un appuntamento confermato,
+    detto in piccolo sotto il campo). Niente secondo numero solo per
+    WhatsApp: chi ne ha due sceglie quello su cui vuole tutto.
 
 Modelli da far approvare a Meta: `docs/whatsapp-modelli.md`.
 

@@ -3564,6 +3564,12 @@ a.admin-kpi:hover {
   gap: 10px;
 }
 .notif-inline-link {
+  /* Anche come <button> ("Modifica" del numero WhatsApp). */
+  font: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
   color: #0e7a4c;
   font-weight: 700;
   text-decoration: none;
