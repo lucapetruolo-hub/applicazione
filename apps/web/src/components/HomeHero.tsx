@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { allItalianCityNames } from "@professionisti/shared";
 import { Eyebrow, Icon, SearchBar, Text, XStack, YStack, brand, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
 import { buildSearchDestination } from "@/lib/searchNavigation";
-import { buildSearchSuggestions } from "@/lib/searchSuggestions";
+import { rememberSearchCity, useSearchBarHints } from "@/lib/useSearchBarHints";
 import { navigateWithTransition } from "@/lib/viewTransition";
 import { GlowLights } from "./GlowLights";
 import { MagneticButton } from "./MagneticButton";
@@ -23,9 +22,10 @@ import { MagneticButton } from "./MagneticButton";
  */
 export function HomeHero() {
   const router = useRouter();
-  const professionalSuggestions: ProfessionalSuggestion[] = buildSearchSuggestions();
+  const searchHints = useSearchBarHints("");
 
   function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
+    rememberSearchCity(params.city);
     navigateWithTransition(() => router.push(buildSearchDestination(params)));
   }
 
@@ -73,8 +73,7 @@ export function HomeHero() {
             <SearchBar
               wrapSearchButton={(button) => <MagneticButton block>{button}</MagneticButton>}
               onSearch={handleSearch}
-              professionalSuggestions={professionalSuggestions}
-              citySuggestions={allItalianCityNames()}
+              {...searchHints}
             />
           </YStack>
 

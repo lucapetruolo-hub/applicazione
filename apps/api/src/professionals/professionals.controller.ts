@@ -21,6 +21,7 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { Throttle } from "@nestjs/throttler";
 import {
   availabilityExceptionSchema,
+  isProfessionalCategorySlug,
   bookAgendaSlotSchema,
   declineLeadSchema,
   professionalAvailabilitySchema,
@@ -95,6 +96,10 @@ export class ProfessionalsController {
       if (!category && typeof q === "string" && q.trim() && results.length === 0) {
         void this.siteCounts.recordUnknownJobSearch(q).catch(() => undefined);
       }
+      // Prestazioni più cercate (§384): solo il nome preso dal nostro elenco.
+      if (typeof q === "string" && q.trim()) {
+        void this.siteCounts.recordServiceSearch(q, typeof category === "string" ? category : undefined).catch(() => undefined);
+      }
     }
     return results;
   }
@@ -116,6 +121,12 @@ export class ProfessionalsController {
   @Get("prices/:category")
   getCategoryPriceStats(@Param("category") category: string, @Query("city") city?: string) {
     return this.professionalsService.getCategoryPriceStats(category, city?.trim() || undefined);
+  }
+
+  // Pubblico, solo nomi di comuni: suggerimenti del campo "Città" (docs/CHANGELOG.md §383).
+  @Get("city-hints")
+  getCityHints(@Query("category") category?: string) {
+    return this.professionalsService.getCityHints(typeof category === "string" && isProfessionalCategorySlug(category) ? category : undefined);
   }
 
   @Get("languages/popular")

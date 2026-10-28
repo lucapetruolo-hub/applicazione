@@ -43,3 +43,15 @@ describe("retentionCutoff", () => {
     expect(retentionCutoff(new Date("2026-10-27T10:00:00Z")).toISOString()).toBe("2024-09-27T00:00:00.000Z");
   });
 });
+
+describe("SiteCountsService.recordServiceSearch", () => {
+  it("conta il nome dell'elenco, mai il testo cercato", async () => {
+    const prisma = { serviceSearchDay: { upsert: vi.fn() } };
+    const service = new SiteCountsService(prisma as never);
+    await service.recordServiceSearch("STURATURA", "idraulico");
+    expect(prisma.serviceSearchDay.upsert).toHaveBeenCalledOnce();
+    expect(prisma.serviceSearchDay.upsert.mock.calls[0]?.[0].create).toMatchObject({ categorySlug: "idraulico", service: "Sturatura scarichi", count: 1 });
+    await service.recordServiceSearch("mario rossi");
+    expect(prisma.serviceSearchDay.upsert).toHaveBeenCalledOnce();
+  });
+});

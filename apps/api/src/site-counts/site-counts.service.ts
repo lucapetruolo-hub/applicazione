@@ -5,6 +5,7 @@ import type { PrismaClient } from "@professionisti/database";
 import {
   SITE_ADVICE_DONE_DAYS,
   SITE_COUNTERS_RETENTION_MONTHS,
+  matchPopularServices,
   normalizeJobTerm,
   type ChurnKind,
   type ChurnReason,
@@ -92,6 +93,22 @@ export class SiteCountsService {
     }
   }
 
+  /**
+   * Una ricerca scritta che corrisponde a prestazioni dell'elenco suggerito
+   * (§384): si conta il nome dell'elenco, mai il testo cercato.
+   */
+  async recordServiceSearch(text: string, categorySlug?: string): Promise<void> {
+    const matches = matchPopularServices(text, categorySlug?.trim().toLowerCase() || undefined);
+    const day = today();
+    for (const m of matches) {
+      await this.prisma.serviceSearchDay.upsert({
+        where: { categorySlug_service_day: { categorySlug: m.categorySlug, service: m.service, day } },
+        create: { categorySlug: m.categorySlug, service: m.service, day, count: 1 },
+        update: { count: { increment: 1 } },
+      });
+    }
+  }
+
   async recordChurnReason(kind: ChurnKind, reason: ChurnReason): Promise<void> {
     const day = today();
     await this.prisma.churnReasonDay.upsert({
@@ -116,6 +133,7 @@ export class SiteCountsService {
       this.prisma.requestStepDay.deleteMany({ where: before }),
       this.prisma.submitFailureDay.deleteMany({ where: before }),
       this.prisma.unknownJobSearchDay.deleteMany({ where: before }),
+      this.prisma.serviceSearchDay.deleteMany({ where: before }),
       this.prisma.churnReasonDay.deleteMany({ where: before }),
       // Consigli segnati come fatti: servono solo per SITE_ADVICE_DONE_DAYS giorni.
       this.prisma.siteAdviceDone.deleteMany({ where: { doneAt: { lt: new Date(now.getTime() - SITE_ADVICE_DONE_DAYS * DAY_MS) } } }),
