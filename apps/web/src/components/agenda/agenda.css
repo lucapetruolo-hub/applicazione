@@ -1446,3 +1446,59 @@
     margin-left: auto;
   }
 }
+/* Lente accanto al titolo e date abbreviate solo sul telefono (docs/changelog/2026-10-28-agenda-orari-in-vista.md). */
+.ag-only-phone,
+.ag-range .ag-range-short {
+  display: none;
+}
+@media (max-width: 640px) {
+  .ag-only-phone {
+    display: inline-grid;
+  }
+  .ag-range .ag-range-long {
+    display: none;
+  }
+  .ag-range .ag-range-short {
+    display: block;
+  }
+  .ag-toolbar .ag-icon-btn {
+    width: 34px;
+    height: 38px;
+  }
+  .ag-toolbar {
+    gap: 6px;
+  }
+  .ag-toolbar .ag-btn.sm {
+    padding: 0 12px;
+  }
+  .ag-toolbar .ag-range {
+    font-size: 15px;
+  }
+  /* Il carattere resta a 16 px (regola del sito contro lo zoom di iPhone sui campi). */
+  .ag-toolbar .ag-view-select select {
+    padding: 0 2px 0 8px;
+  }
+}
+/* Sul telefono i giorni restano fermi in alto mentre si scorre la giornata (docs/changelog/2026-10-28-agenda-orari-in-vista.md). */
+@media (max-width: 640px) {
+  .ag-cal {
+    overflow: clip;
+  }
+  .ag-strip-row,
+  .ag-days {
+    position: sticky;
+    /* Sotto l'intestazione del sito (64 px) e la barra delle sezioni dell'area (53 px), entrambe ferme. */
+    top: 117px;
+    z-index: 6;
+  }
+  .ag-strip-row {
+    margin: 0 -16px 12px;
+    padding: 8px 16px;
+    background: rgba(253, 246, 239, 0.96);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+  .ag-days {
+    background: #fff;
+  }
+}

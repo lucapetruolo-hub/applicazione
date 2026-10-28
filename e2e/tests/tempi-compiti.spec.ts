@@ -48,9 +48,7 @@ test("C1 stasera so dove devo andare domani", async ({ page }) => {
   await page.clock.setFixedTime(new Date("2026-10-25T18:00:00Z"));
   const log: Log = { ops: [], waitMs: 0 };
   await openAgenda(page, log);
-  log.ops.push("M", "T"); // freccia "giorno dopo" (domenica sera: domani è nella settimana successiva)
-  // Sul telefono, nella vista Giorno, le frecce sono solo quelle della striscia dei giorni (docs/changelog/2026-10-28-agenda-orari-in-vista.md).
-  await page.getByRole("button", { name: "Giorno successivo" }).first().click();
+  // Domenica senza lavori l'agenda si apre già sulla settimana di domani (docs/changelog/2026-10-28-agenda-orari-in-vista.md): niente freccia.
   log.ops.push("M", "T"); // primo appuntamento
   await timed(log, async () => {
     await page.getByRole("button", { name: /09:00–10:30/ }).first().click();

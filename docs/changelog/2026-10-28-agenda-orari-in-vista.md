@@ -16,4 +16,9 @@
 - **Colonna di sinistra nascondibile** da computer (pulsante a sinistra di "Oggi"); la scelta resta su quel browser.
 - **Sul telefono, oggi**: la giornata parte da un'ora prima di adesso; le ore già passate stanno in una riga "Prima delle 13:00 · 1 lavoro ›" che le riapre.
 
-**Verifica**: anteprime prima/dopo da computer e telefono con dati di prova; `pnpm lint` e `pnpm typecheck` di `apps/web` puliti; prove nel browser di `e2e` (la prova C1 dei tempi usa la freccia della striscia, "Giorno successivo", al posto di "Periodo successivo" che sul telefono nella vista Giorno non c'è più).
+**Seconda parte** (Luca, stesso giorno: "effettua la miglioria 3"):
+- **Sul telefono, se oggi non c'è niente in agenda, si apre la Settimana** (un giorno vuoto non dice niente). Solo al primo caricamento, mai con `?giorno=` e mai dopo una scelta fatta a mano; da computer si apre sempre la Settimana come prima. La domenica si apre la settimana che comincia domani: la sera si guarda il giorno dopo (stesso motivo di T4, §311; le prove T4, T9 e C1 ora vedono il lavoro di lunedì senza frecce).
+- Per far stare la Settimana nella barra del telefono: la lente va accanto al titolo, le date sono abbreviate ("26 ott – 1 nov"), "Oggi" compare solo quando oggi non è già in vista. Il menu della vista resta a 16 px (regola del sito contro lo zoom di iPhone sui campi).
+- **Giorni fermi in alto sul telefono** (miglioria 1, approvata da Luca sull'anteprima): mentre si scorre, la striscia dei giorni (vista Giorno) o le date della settimana restano sotto l'intestazione del sito e la barra delle sezioni (117 px). `.ag-cal` passa da `overflow: hidden` a `clip` sul telefono, altrimenti `sticky` non funziona.
+
+**Verifica**: anteprime prima/dopo da computer e telefono con dati di prova; `pnpm lint` e `pnpm typecheck` di `apps/web` puliti; prove nel browser di `e2e` (T4, T9 e C1 aggiornate: la domenica sera il lavoro di lunedì è già in vista nella settimana).

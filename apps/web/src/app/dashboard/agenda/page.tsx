@@ -186,6 +186,23 @@ function DashboardAgendaContent() {
     deepLinkedDay || (typeof window !== "undefined" && window.innerWidth < 640) ? "day" : "week",
   );
   const [bookingCurrentDate, setBookingCurrentDate] = useState(() => (deepLinkedDay ? new Date(`${deepLinkedDay}T00:00:00.000Z`) : todayUtc()));
+  // Sul telefono, se oggi non c'è niente in agenda, si apre la Settimana: un
+  // giorno vuoto non dice niente (scelta di Luca, docs/changelog/2026-10-28-agenda-orari-in-vista.md).
+  // Una volta sola, al primo caricamento, e mai dopo una scelta fatta a mano.
+  const autoWeekChecked = useRef(false);
+  function openWeekIfTodayEmpty(loadedBookings: ProfessionalBooking[], loadedJobs: ExternalJob[]) {
+    if (autoWeekChecked.current) return;
+    autoWeekChecked.current = true;
+    if (deepLinkedDay || !window.matchMedia("(max-width: 640px)").matches) return;
+    const todayStr = toIsoDate(todayUtc());
+    const busyToday =
+      loadedBookings.some((b) => b.status !== "CANCELED" && jobOccurrenceOn(b.scheduledAt, b.scheduledEndAt, todayStr) !== null) ||
+      loadedJobs.some((j) => j.status !== "CANCELED" && jobOccurrenceOn(j.scheduledAt, j.scheduledEndAt, todayStr) !== null);
+    if (busyToday) return;
+    setBookingView((view) => (view === "day" ? "week" : view));
+    // La domenica la settimana è finita: si apre quella che comincia domani (T4, §311: la sera si guarda il giorno dopo).
+    if (todayUtc().getUTCDay() === 0) setBookingCurrentDate(addDaysUtc(todayUtc(), 1));
+  }
   const [selectedBooking, setSelectedBooking] = useState<ProfessionalBooking | null>(null);
   const [isBookingActionPending, setIsBookingActionPending] = useState(false);
   // Cronologia completa della richiesta collegata, aperta dal pannello di
@@ -410,6 +427,7 @@ function DashboardAgendaContent() {
         startTransition(() => {
           setBookings(loadedBookings);
           openDeepLinkedBooking(loadedBookings, loadedJobs);
+          openWeekIfTodayEmpty(loadedBookings, loadedJobs);
           setExternalJobs(loadedJobs);
           // Il riquadro aperto mostra subito lo stato nuovo (es. annullato dal cliente).
           setSelectedBooking((current) => (current ? (loadedBookings.find((b) => b.id === current.id) ?? current) : current));
@@ -423,6 +441,7 @@ function DashboardAgendaContent() {
           if (copy) {
             setBookings(copy.bookings);
             openDeepLinkedBooking(copy.bookings, copy.externalJobs);
+            openWeekIfTodayEmpty(copy.bookings, copy.externalJobs);
             setExternalJobs(copy.externalJobs);
             setOfflineSavedAt(copy.savedAt);
             return;
@@ -1551,6 +1570,7 @@ function DashboardAgendaContent() {
   const visibleDayStrs = visibleDays.map(toIsoDate);
   const freeBands = filters.has("free") ? visibleDayStrs.flatMap(freeBandsOn) : [];
   const busyDates = new Set(gridEvents.filter((e) => e.kind !== "canceled").map((e) => e.date));
+
   const rangeEvents = gridEvents.filter((e) => visibleDayStrs.includes(e.date) && e.kind !== "canceled" && e.kind !== "wait");
   const rangeFree = visibleDayStrs.reduce((sum, d) => sum + (freeMinutesOn(d) ?? 0), 0);
   const rangeWaiting = gridEvents.filter((e) => visibleDayStrs.includes(e.date) && e.kind === "wait").length;
@@ -1592,6 +1612,14 @@ function DashboardAgendaContent() {
     else setBookingCurrentDate(addMonthsUtc(bookingCurrentDate, direction));
   }
 
+  const shortMonth = (date: Date) => monthLabel(date).slice(0, 3);
+  // Sul telefono la barra è stretta: mesi abbreviati ("26 ott – 1 nov").
+  const rangeLabelShort =
+    bookingView === "day"
+      ? `${weekdayShortLabel(bookingCurrentDate)} ${bookingCurrentDate.getUTCDate()} ${shortMonth(bookingCurrentDate)}`
+      : bookingView === "week"
+        ? `${visibleDays[0]!.getUTCDate()}${visibleDays[0]!.getUTCMonth() === visibleDays[6]!.getUTCMonth() ? "" : ` ${shortMonth(visibleDays[0]!)}`} – ${visibleDays[6]!.getUTCDate()} ${shortMonth(visibleDays[6]!)}`
+        : null;
   const rangeLabel =
     bookingView === "day"
       ? `${weekdayShortLabel(bookingCurrentDate)} ${bookingCurrentDate.getUTCDate()} ${monthLabel(bookingCurrentDate)}`
@@ -1703,6 +1731,22 @@ function DashboardAgendaContent() {
     }
   }
 
+  // Lente della ricerca: nella barra da computer, accanto al titolo sul telefono (la barra lì è stretta).
+  const searchToggle = (className: string) => (
+    <button
+      type="button"
+      className={`ag-icon-btn ${className}`}
+      onClick={() => {
+        if (searchOpen) setAgendaSearchQuery("");
+        setSearchOpen(!searchOpen);
+      }}
+      aria-label={searchOpen ? "Chiudi la ricerca" : "Cerca nell'agenda"}
+      aria-expanded={searchOpen}
+    >
+      {searchOpen ? <X size={18} aria-hidden /> : <Search size={18} aria-hidden />}
+    </button>
+  );
+
   const tabs: { value: AgendaTab; label: string }[] = [
     { value: "calendario", label: "Calendario" },
     { value: "orari", label: "Orari di lavoro" },
@@ -1760,6 +1804,7 @@ function DashboardAgendaContent() {
             ))}
           </div>
           <div className="ag-head-right">
+            {activeTab === "calendario" ? searchToggle("ag-only-phone") : null}
             <button type="button" className="ag-btn" onClick={() => setShowCalendarLink(true)} aria-label="Collega al tuo calendario">
               <CalendarDays size={16} aria-hidden /> <span className="ag-hide-phone">Collega al tuo calendario</span>
             </button>
@@ -1873,7 +1918,12 @@ function DashboardAgendaContent() {
                 >
                   {asideHidden ? <PanelLeftOpen size={18} aria-hidden /> : <PanelLeftClose size={18} aria-hidden />}
                 </button>
-                <button type="button" className="ag-btn sm" onClick={() => setBookingCurrentDate(today)}>
+                {/* Sul telefono "Oggi" serve solo quando oggi non è già in vista: la barra lì è stretta. */}
+                <button
+                  type="button"
+                  className={(bookingView === "day" || bookingView === "week") && visibleDayStrs.includes(todayStr) ? "ag-btn sm ag-hide-phone" : "ag-btn sm"}
+                  onClick={() => setBookingCurrentDate(today)}
+                >
                   Oggi
                 </button>
                 <button type="button" className={bookingView === "day" ? "ag-icon-btn ag-hide-phone" : "ag-icon-btn"} onClick={() => navigateCalendar(-1)} aria-label="Periodo precedente">
@@ -1883,21 +1933,17 @@ function DashboardAgendaContent() {
                   <ChevronRight size={18} aria-hidden />
                 </button>
                 <span className="ag-range">
-                  <span style={{ textTransform: "capitalize" }}>{rangeLabel}</span>
+                  <span className={rangeLabelShort ? "ag-range-long" : undefined} style={{ textTransform: "capitalize" }}>
+                    {rangeLabel}
+                  </span>
+                  {rangeLabelShort ? (
+                    <span className="ag-range-short">
+                      {rangeLabelShort}
+                    </span>
+                  ) : null}
                   {bookingView === "day" || bookingView === "week" ? <small>{rangeSummary}</small> : null}
                 </span>
-                <button
-                  type="button"
-                  className="ag-icon-btn ag-search-toggle"
-                  onClick={() => {
-                    if (searchOpen) setAgendaSearchQuery("");
-                    setSearchOpen(!searchOpen);
-                  }}
-                  aria-label={searchOpen ? "Chiudi la ricerca" : "Cerca nell'agenda"}
-                  aria-expanded={searchOpen}
-                >
-                  {searchOpen ? <X size={18} aria-hidden /> : <Search size={18} aria-hidden />}
-                </button>
+                {searchToggle("ag-search-toggle ag-hide-phone")}
                 <label className="ag-view-select">
                   <span className="sr-only">Vista</span>
                   <select className="ag-input" value={bookingView} onChange={(e) => setBookingView(e.target.value as CalendarView)}>
