@@ -25,7 +25,7 @@ function buildService() {
     booking: { findUnique: vi.fn(), findFirst: vi.fn().mockResolvedValue({ professionalProfileId: "pro-1" }) },
     manoviaRevenue: { create: vi.fn() },
     platformFeeEntry: { upsert: vi.fn() },
-    professionalProfile: { findUnique: vi.fn() },
+    professionalProfile: { findUnique: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
     quote: { findUnique: vi.fn() },
     user: { findMany: vi.fn().mockResolvedValue([]) },
   };

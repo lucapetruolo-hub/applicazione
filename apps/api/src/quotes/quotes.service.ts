@@ -11,6 +11,7 @@ import {
   paymentOfferChanged,
   quoteChangeWhat,
   quotePaymentOffer,
+  onlineLimitProblem,
   quotePriceTotals,
   scheduleChangeAlternative,
   scheduleChangeBetween,
@@ -27,6 +28,7 @@ import { ProfessionalMetricsService } from "../professional-metrics/professional
 import { TimelineService } from "../timeline/timeline.service";
 import { quoteResendWindow } from "./quote-resend";
 import { onlinePaymentsEnabled } from "../job-payments/online-payments-enabled";
+import { professionalOnlineLimit } from "../job-payments/online-limit";
 import { stripeVerified } from "../professional-fiscal/public-visibility";
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
 import { countBookingsInSlot, countOverlapping, loadCommitments, lockProfessionalAgenda } from "../agenda/commitments";
@@ -159,6 +161,16 @@ export class QuotesService {
     }
     if (!canOfferOnline && offer.paymentOptions.some(paymentChoiceIsOnline)) {
       throw new BadRequestException("Per offrire l'acconto online completa prima la verifica su Stripe in Dati fiscali e pagamenti.");
+    }
+
+    // Tetto ai pagamenti online (decisione di Luca,
+    // docs/changelog/2026-10-28-tetto-pagamenti-online.md): solo la parte
+    // chiesta online, il diretto resta libero.
+    if (onlinePaymentsEnabled() && offer.paymentOptions.some(paymentChoiceIsOnline)) {
+      const { totalMaxEurCents } = quotePriceTotals(input.items.map((item) => ({ priceMinEurCents: item.priceMinEurCents ?? null, priceMaxEurCents: item.priceMaxEurCents ?? null })));
+      const { limitEurCents } = await professionalOnlineLimit(this.prisma, professionalProfile.id);
+      const problem = onlineLimitProblem({ paymentOptions: offer.paymentOptions, depositPercent: offer.depositPercent, totalMaxEurCents, limitEurCents });
+      if (problem) throw new BadRequestException(problem);
     }
 
     if (input.rememberPaymentOffer) {

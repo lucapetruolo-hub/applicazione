@@ -14,6 +14,8 @@ import {
   ONLINE_DEPOSIT_PERCENT,
   QUOTE_PAYMENT_OPTION_LABEL,
   jobPaymentChoices,
+  onlineLimitHint,
+  onlineLimitProblem,
   paymentChoiceIsOnline,
   type JobPaymentChoice,
   buildWhatsAppLink,
@@ -81,6 +83,7 @@ export function RequestCard({
   defaultPaymentOffer,
   defaultCancellationNoticeHours,
   stripeVerified = true,
+  onlineLimitEurCents = null,
   identityVerificationNeeded = false,
   subscription = null,
   onSubscriptionChanged,
@@ -105,6 +108,8 @@ export function RequestCard({
   defaultCancellationNoticeHours?: number | null;
   /** Verifica su Stripe completata: senza, l'acconto online non si può offrire (docs/CHANGELOG.md §241). */
   stripeVerified?: boolean;
+  /** Tetto a lavoro per i pagamenti online, null = nessuno (docs/changelog/2026-10-28-tetto-pagamenti-online.md). */
+  onlineLimitEurCents?: number | null;
   /** Documento e selfie ancora da fare: il primo preventivo è bloccato (docs/CHANGELOG.md §253). */
   identityVerificationNeeded?: boolean;
   /** Abbonamento: con i lavori esauriti un preventivo nuovo apre la finestra del livello superiore (docs/CHANGELOG.md §362). */
@@ -399,6 +404,12 @@ export function RequestCard({
     const depositPercent = Number(depositPercentDraft.trim());
     if (offered.some(paymentChoiceIsOnline) && (!Number.isInteger(depositPercent) || depositPercent < MIN_DEPOSIT_PERCENT || depositPercent > MAX_DEPOSIT_PERCENT)) {
       return setQuoteError(`L'acconto online va da ${MIN_DEPOSIT_PERCENT} a ${MAX_DEPOSIT_PERCENT}%, senza decimali.`);
+    }
+    // Tetto ai pagamenti online: stesso controllo dell'API, detto prima di inviare.
+    if (offered.some(paymentChoiceIsOnline)) {
+      const { totalMaxEurCents } = quotePriceTotals(parsed.map((item) => ({ priceMinEurCents: item.priceMinEurCents ?? null, priceMaxEurCents: item.priceMaxEurCents ?? null })));
+      const limitProblem = onlineLimitProblem({ paymentOptions: offered, depositPercent, totalMaxEurCents, limitEurCents: onlineLimitEurCents });
+      if (limitProblem) return setQuoteError(limitProblem);
     }
 
     setIsSubmittingQuote(true);
@@ -1573,6 +1584,11 @@ export function RequestCard({
                           % dell&apos;importo massimo
                         </Text>
                       </XStack>
+                    ) : null}
+                    {paymentOptions.some(paymentChoiceIsOnline) && onlineLimitHint(onlineLimitEurCents) ? (
+                      <Text fontSize={13} color={brand.grafite70}>
+                        {onlineLimitHint(onlineLimitEurCents)}
+                      </Text>
                     ) : null}
                   </>
                 ) : (

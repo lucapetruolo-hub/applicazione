@@ -3,6 +3,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Inject, Inj
 import { Prisma, type PrismaClient } from "@professionisti/database";
 import type Stripe from "stripe";
 import {
+  onlineLimitCompletionProblem,
   JOB_ISSUE_LABEL,
   completionDeviation,
   completionDeviationText,
@@ -42,6 +43,7 @@ import { ProfessionalMetricsService } from "../professional-metrics/professional
 import { TimelineService } from "../timeline/timeline.service";
 import { JobPaymentsService } from "../job-payments/job-payments.service";
 import { onlinePaymentsEnabled } from "../job-payments/online-payments-enabled";
+import { professionalOnlineLimit } from "../job-payments/online-limit";
 import { stripeVerified } from "../professional-fiscal/public-visibility";
 import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
 import { PROFESSIONAL_BUSY_MESSAGE, capacityAt, countOverlapping, loadCommitments, lockProfessionalAgenda } from "../agenda/commitments";
@@ -635,6 +637,17 @@ export class BookingsService implements OnModuleInit {
     const changeReason = input.changeReason?.trim() || null;
     if (deviation?.needsReason && !changeReason) {
       throw new BadRequestException(`${completionDeviationText(deviation)}: spiega il motivo prima di confermare.`);
+    }
+
+    // Tetto ai pagamenti online (docs/changelog/2026-10-28-tetto-pagamenti-online.md):
+    // un lavoro pagato tutto online non si chiude sopra il tetto, il resto si
+    // paga in diretto. Con il saldo diretto online passa solo l'acconto.
+    const onlinePayment = await this.prisma.jobPayment.findUnique({ where: { bookingId }, select: { paymentMethod: true, balanceDirect: true } });
+    if (onlinePayment?.paymentMethod === "MANOVIA" && !onlinePayment.balanceDirect) {
+      const { limitEurCents } = await professionalOnlineLimit(this.prisma, professionalProfile.id);
+      if (limitEurCents !== null && finalAmountEurCents > limitEurCents) {
+        throw new BadRequestException(onlineLimitCompletionProblem(limitEurCents));
+      }
     }
 
     await this.prisma.$transaction([

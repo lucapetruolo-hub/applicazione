@@ -1219,7 +1219,7 @@ export class OnlineMoneyService {
     if (!paymentIntentId) return false;
     const jp = await this.prisma.jobPayment.findFirst({
       where: { OR: [{ stripePaymentIntentId: paymentIntentId }, { balancePaymentIntentId: paymentIntentId }] },
-      include: { booking: { select: { id: true, professionalProfile: { select: { userId: true } }, quote: { select: { guidedRequestId: true } } } } },
+      include: { booking: { select: { id: true, professionalProfileId: true, professionalProfile: { select: { userId: true } }, quote: { select: { guidedRequestId: true } } } } },
     });
     if (!jp) return false;
 
@@ -1245,6 +1245,14 @@ export class OnlineMoneyService {
         ...statusData,
       },
     });
+    // Contestazione persa: se l'admin aveva tolto il tetto ai pagamenti
+    // online, torna (docs/changelog/2026-10-28-tetto-pagamenti-online.md).
+    if (justClosed && lost) {
+      await this.prisma.professionalProfile.updateMany({
+        where: { id: jp.booking.professionalProfileId, onlineLimitRemovedAt: { not: null } },
+        data: { onlineLimitRemovedAt: null },
+      });
+    }
     // Addebito sul conto del professionista (§249, §267): la cifra persa si
     // riprende dal suo conto, quello che non c'è più diventa un suo debito.
     let debtAdded = 0;
