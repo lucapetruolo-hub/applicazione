@@ -43,9 +43,10 @@ export function SiteHeader() {
   // Registrazione e accesso (docs/CHANGELOG.md §279): niente "Richiedi
   // preventivo" in alto, l'attenzione resta sul modulo.
   const isAuthPage = AUTH_PAGES.some((page) => pathname === page || pathname.startsWith(`${page}/`));
-  // In home la ricerca e "Richiedi un preventivo" sono già nel primo schermo
-  // (docs/CHANGELOG.md §349): in alto restano solo "Accedi" e i link.
-  const isHome = pathname === "/";
+  // In home è tornato (richiesta di Luca, docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md,
+  // dopo il §349): resta a portata di mano anche scorrendo. Non compare solo
+  // dentro la richiesta stessa, dove porterebbe alla pagina già aperta.
+  const isQuotePage = pathname === "/preventivo";
 
   // Ordine delle categorie per la richiesta di preventivo e la registrazione,
   // chiesto a pagina ferma: aprendole le tessere compaiono subito in ordine (§324).
@@ -174,7 +175,7 @@ export function SiteHeader() {
               ogni caricamento di pagina prima di sparire. */}
           {/* Nascosto anche nel profilo di un professionista che accetta
               richieste (`.site-header-cta-link` in globals.css, §385). */}
-          {!isLoading && !user?.isProfessional && !isAuthPage && !isHome ? (
+          {!isLoading && !user?.isProfessional && !isAuthPage && !isQuotePage ? (
             <Link href="/preventivo" className="site-header-cta-link" style={{ textDecoration: "none" }}>
               {/* paddingHorizontal ridotto sotto $xs (≤660px): a 320px (iPhone
                   SE, il più stretto tra i telefoni comuni) il bottone a piena

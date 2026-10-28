@@ -109,6 +109,16 @@ test.describe("chi visita il profilo", () => {
     await expect(page.locator(".site-header-cta-link")).toBeVisible();
   });
 
+  test("\"Richiedi preventivo\" in alto c'è in home, non dentro la richiesta", async ({ page }) => {
+    // Tornato in home (docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md).
+    await page.goto("/");
+    await expect(page.locator(".site-header-cta-link")).toBeVisible();
+    await expect(page.locator(".site-header-cta-link")).toBeInViewport();
+    await page.locator(".site-header-cta-link").click();
+    await expect(page).toHaveURL(/\/preventivo$/);
+    await expect(page.locator(".site-header-cta-link")).toHaveCount(0);
+  });
+
   test("nome lunghissimo e profilo senza foto: niente esce dallo schermo", async ({ page }) => {
     await page.goto(`/professionista/${ids.longName}`);
     await waitForProfile(page, LONG_NAME);
