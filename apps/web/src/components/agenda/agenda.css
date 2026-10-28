@@ -1502,7 +1502,21 @@
     background: #fff;
   }
 }
-/* Settimana sul telefono: ore libere senza spazi ("9h30") e un po\x27 più piccole. */
+/* Settimana sul telefono: l'ora d'inizio al posto del nome (docs/changelog/2026-10-28-agenda-orari-in-vista.md). */
+.ag-ev.narrow {
+  left: 3px;
+  right: 3px;
+  padding: 4px 0 4px 2px;
+  border-left-width: 3px;
+  text-align: center;
+}
+.ag-ev.narrow b {
+  font-size: 10.5px;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+}
+/* Settimana sul telefono: ore libere senza spazi ("9h30") e un po' più piccole. */
 .ag-day-note.narrow {
   font-size: 10px;
   gap: 2px;

@@ -218,22 +218,34 @@ export function AgendaTimeGrid({
                       <button
                         key={event.key}
                         type="button"
-                        className={`ag-ev ${event.kind}${event.key === selectedKey ? " selected" : ""}`}
+                        className={`ag-ev ${event.kind}${narrowWeek ? " narrow" : ""}${event.key === selectedKey ? " selected" : ""}`}
                         style={{ top: y(start) + 2, height: blockHeight }}
                         onClick={event.onPress}
                       >
-                        {/* Il nome letto dal lettore di schermo parte dal testo visibile (WCAG 2.5.3, A3 di §309). */}
-                        <b>{event.title}</b>
-                        {blockHeight >= 40 ? (
-                          <span>
-                            <span className="sr-only">, </span>
-                            {minutesToLabel(event.start)}–{minutesToLabel(event.end)}
-                            {blockHeight > 60 && event.detail ? ` · ${event.detail}` : ""}
-                          </span>
+                        {narrowWeek ? (
+                          // Settimana sul telefono: colonne troppo strette per il nome, si vede l'ora d'inizio.
+                          // Il lettore di schermo legge ancora nome e orario completo.
+                          <>
+                            <span className="sr-only">{event.title}, </span>
+                            <b>{minutesToLabel(event.start)}</b>
+                            <span className="sr-only">–{minutesToLabel(event.end)}</span>
+                          </>
                         ) : (
-                          <span className="sr-only">
-                            , {minutesToLabel(event.start)}–{minutesToLabel(event.end)}
-                          </span>
+                          <>
+                            {/* Il nome letto dal lettore di schermo parte dal testo visibile (WCAG 2.5.3, A3 di §309). */}
+                            <b>{event.title}</b>
+                            {blockHeight >= 40 ? (
+                              <span>
+                                <span className="sr-only">, </span>
+                                {minutesToLabel(event.start)}–{minutesToLabel(event.end)}
+                                {blockHeight > 60 && event.detail ? ` · ${event.detail}` : ""}
+                              </span>
+                            ) : (
+                              <span className="sr-only">
+                                , {minutesToLabel(event.start)}–{minutesToLabel(event.end)}
+                              </span>
+                            )}
+                          </>
                         )}
                         <span className="sr-only">, {event.label}</span>
                       </button>
