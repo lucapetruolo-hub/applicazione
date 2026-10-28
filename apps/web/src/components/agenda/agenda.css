@@ -203,8 +203,22 @@
   gap: 10px;
   flex-wrap: wrap;
 }
-.ag-tabs {
-  margin-bottom: 18px;
+/* Titolo, sezioni e pulsanti in una riga: più spazio agli orari
+   (docs/changelog/2026-10-28-agenda-orari-in-vista.md). */
+.ag-head .ag-tabs {
+  margin: 0 0 0 8px;
+}
+@media (max-width: 1080px) {
+  .ag-head .ag-tabs {
+    order: 3;
+    margin: 0;
+  }
+  .ag-head .ag-head-right {
+    order: 2;
+  }
+  .ag-head h1 {
+    flex: 1 1 auto;
+  }
 }
 .ag-banner {
   display: flex;
@@ -253,10 +267,70 @@
   flex-wrap: wrap;
 }
 .ag-range {
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
+  min-width: 0;
   font-weight: 600;
   font-size: 18px;
   letter-spacing: -0.02em;
   margin: 0 6px;
+}
+.ag-range > span,
+.ag-range small {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ag-range small {
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--ag-muted);
+  margin-top: 1px;
+}
+.ag-view-select {
+  display: none;
+}
+.ag-toolbar .ag-view-seg {
+  flex: none;
+}
+@media (min-width: 641px) {
+  .ag-toolbar {
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+  .ag-toolbar .ag-icon-btn {
+    width: 40px;
+    height: 40px;
+  }
+}
+.ag-view-select select {
+  height: 38px;
+  width: auto;
+  padding: 0 4px 0 8px;
+  font-weight: 600;
+  font-size: 13px;
+}
+.ag-layout.no-aside {
+  grid-template-columns: minmax(0, 1fr);
+}
+/* Sul telefono, oggi: le ore già passate in una riga che si apre (§ stesso file). */
+.ag-early {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--ag-line);
+  background: #fbf7f2;
+  padding: 10px 14px;
+  text-align: left;
+  font: 600 13px var(--font-body), system-ui, sans-serif;
+  color: var(--ag-muted);
+  cursor: pointer;
+}
+.ag-early:focus-visible {
+  outline: 2px solid var(--ag-green);
+  outline-offset: -2px;
 }
 .ag-summary {
   margin-left: auto;
@@ -404,6 +478,18 @@
   background: transparent;
   min-width: 0;
 }
+.ag-days > div,
+.ag-days > button {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  column-gap: 6px;
+  padding: 8px 4px;
+}
+.ag-days > div:first-child {
+  padding: 0;
+}
 .ag-days > button {
   cursor: pointer;
 }
@@ -411,13 +497,13 @@
   background: #fbf7f2;
 }
 .ag-day-num {
-  display: grid;
+  display: inline-grid;
   place-items: center;
-  margin: 2px auto 0;
-  width: 34px;
-  height: 34px;
+  margin: 0;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--ag-ink);
   letter-spacing: -0.02em;
@@ -427,6 +513,7 @@
   color: #fff;
 }
 .ag-day-note {
+  flex-basis: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1298,13 +1385,33 @@
   .ag-layout {
     grid-template-columns: minmax(0, 1fr);
   }
-  .ag-aside {
+  .ag-aside,
+  .ag-aside-toggle {
     display: none;
   }
 }
 @media (max-width: 640px) {
   .ag h1 {
     font-size: 26px;
+  }
+  .ag-toolbar {
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+  .ag-range {
+    flex: 1 1 auto;
+    font-size: 16px;
+    margin: 0 2px;
+  }
+  .ag-range small {
+    font-size: 12px;
+  }
+  .ag-view-seg {
+    display: none;
+  }
+  .ag-view-select {
+    display: block;
+    flex: none;
   }
   .ag-toolbar .ag-summary,
   .ag-days-single,
@@ -1324,5 +1431,18 @@
     width: 100%;
     box-shadow: none;
     padding: 16px 16px 28px;
+  }
+}
+/* La lente della ricerca va subito dopo la data, a destra; da computer dopo la scelta della vista. */
+.ag-search-toggle {
+  margin-left: auto;
+}
+@media (min-width: 641px) {
+  .ag-search-toggle {
+    order: 2;
+    margin-left: 0;
+  }
+  .ag-toolbar .ag-view-seg {
+    margin-left: auto;
   }
 }

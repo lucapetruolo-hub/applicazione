@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CloudFog, CloudLightning, CloudRain, Snowflake, Wind } from "lucide-react";
 import { WEATHER_ALERT_LABEL, type WeatherAlertKind } from "@professionisti/shared";
 import { isSameDateUtc, toIsoDate, weekdayShortLabel } from "@/lib/calendarDates";
@@ -24,9 +24,17 @@ export type AgendaFreeBand = { date: string; start: number; end: number };
 
 export type AgendaDayNote = { text: string; tone: "free" | "full" | "off" };
 
-const HOUR_PX = 52;
-const DEFAULT_FROM = 7;
+// Da computer un'ora più bassa per vedere più giornata; sul telefono resta
+// più alta per il dito (docs/changelog/2026-10-28-agenda-orari-in-vista.md).
+const HOUR_PX_COMPUTER = 44;
+const HOUR_PX_PHONE = 52;
+const PHONE_QUERY = "(max-width: 640px)";
+// Senza orari né lavori si mostra 08-20; prima partiva dalle 7, un'ora sempre vuota.
+const DEFAULT_FROM = 8;
 const DEFAULT_TO = 20;
+// Spazio lasciato sotto la griglia quando riempie lo schermo.
+const BOTTOM_GAP_PX = 16;
+const MIN_SCROLL_HEIGHT_PX = 320;
 
 const WEATHER_ICONS: Record<WeatherAlertKind, typeof CloudRain> = {
   rain: CloudRain,
@@ -78,29 +86,54 @@ export function AgendaTimeGrid({
   dayNote: (date: string) => AgendaDayNote | null;
   onDayPress?: (date: Date) => void;
 }) {
+  // La griglia nasce solo nel browser (dopo il caricamento dei lavori): la misura dello schermo è già nota.
+  const [phone] = useState(() => typeof window !== "undefined" && window.matchMedia(PHONE_QUERY).matches);
+  const HOUR_PX = phone ? HOUR_PX_PHONE : HOUR_PX_COMPUTER;
+  const [showEarly, setShowEarly] = useState(false);
   const dateStrs = days.map(toIsoDate);
   const visible = events.filter((e) => dateStrs.includes(e.date));
   const visibleFree = free.filter((f) => dateStrs.includes(f.date));
   const earliest = Math.min(DEFAULT_FROM * 60, ...visible.map((e) => e.start), ...visibleFree.map((f) => f.start));
   const latest = Math.max(DEFAULT_TO * 60, ...visible.map((e) => e.end), ...visibleFree.map((f) => f.end));
-  const fromHour = Math.floor(earliest / 60);
+  const dataFromHour = Math.floor(earliest / 60);
   const toHour = Math.min(24, Math.ceil(latest / 60));
+  const todayStr = toIsoDate(today);
+  const showsToday = dateStrs.includes(todayStr);
+  // Sul telefono la giornata scorre con la pagina, quindi oggi le ore già
+  // passate si raccolgono in una riga: si parte da un'ora prima di adesso.
+  const foldHour = phone && days.length === 1 && showsToday && !showEarly ? Math.min(Math.floor(nowMinutes / 60) - 1, toHour - 2) : null;
+  const fromHour = foldHour !== null && foldHour > dataFromHour ? foldHour : dataFromHour;
+  const earlyEvents = fromHour > dataFromHour ? visible.filter((e) => e.start < fromHour * 60 && e.kind !== "canceled") : [];
   const height = (toHour - fromHour) * HOUR_PX;
   const y = (minutes: number) => ((minutes - fromHour * 60) / 60) * HOUR_PX;
   const columns = `52px repeat(${days.length}, minmax(0, 1fr))`;
-  const todayStr = toIsoDate(today);
-  const showsToday = dateStrs.includes(todayStr);
 
   // All'apertura la griglia scorre all'ora attuale (o al primo appuntamento), non a mezzanotte.
   const scrollRef = useRef<HTMLDivElement>(null);
   const firstStart = visible.length > 0 ? Math.min(...visible.map((e) => e.start)) : null;
-  const anchor = showsToday ? nowMinutes : (firstStart ?? 8 * 60);
+  const firstFree = visibleFree.length > 0 ? Math.min(...visibleFree.map((f) => f.start)) : null;
+  const anchor = showsToday ? nowMinutes : (firstStart ?? firstFree ?? DEFAULT_FROM * 60);
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     el.scrollTop = Math.max(0, y(anchor) - HOUR_PX);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateStrs.join(",")]);
+
+  // Da computer la griglia arriva fino in fondo allo schermo e scorre al suo
+  // interno: aprendo l'agenda si vede tutta l'altezza disponibile, senza
+  // dover scorrere la pagina. Misurata prima di disegnare: nessuno spostamento.
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el || phone) return;
+    const fit = () => {
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      el.style.maxHeight = `${Math.max(MIN_SCROLL_HEIGHT_PX, window.innerHeight - top - BOTTOM_GAP_PX)}px`;
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [phone, days.length]);
 
   return (
     <div className="ag-card ag-cal">
@@ -136,6 +169,14 @@ export function AgendaTimeGrid({
           );
         })}
       </div>
+      {fromHour > dataFromHour ? (
+        <button type="button" className="ag-early" onClick={() => setShowEarly(true)}>
+          Prima delle {String(fromHour).padStart(2, "0")}:00
+          {earlyEvents.length > 0 ? ` · ${earlyEvents.length} ${earlyEvents.length === 1 ? "lavoro" : "lavori"}` : ""}
+          <span aria-hidden> ›</span>
+          <span className="sr-only">, mostra le ore prima</span>
+        </button>
+      ) : null}
       <div className="ag-grid-scroll" ref={scrollRef}>
         <div className="ag-grid" style={{ gridTemplateColumns: columns }}>
           <div className="ag-hours" aria-hidden>
@@ -156,22 +197,26 @@ export function AgendaTimeGrid({
                 ))}
                 {closed ? <div className="closed-label">Chiuso</div> : null}
                 {visibleFree
-                  .filter((band) => band.date === dateStr)
-                  .map((band) => (
-                    <div key={`${band.start}-${band.end}`} className="ag-free" style={{ top: y(band.start) + 2, height: Math.max(8, y(band.end) - y(band.start) - 4) }}>
-                      {y(band.end) - y(band.start) >= 30 ? <span>Libero</span> : null}
-                    </div>
-                  ))}
+                  .filter((band) => band.date === dateStr && band.end > fromHour * 60)
+                  .map((band) => {
+                    const start = Math.max(band.start, fromHour * 60);
+                    return (
+                      <div key={`${band.start}-${band.end}`} className="ag-free" style={{ top: y(start) + 2, height: Math.max(8, y(band.end) - y(start) - 4) }}>
+                        {y(band.end) - y(start) >= 30 ? <span>Libero</span> : null}
+                      </div>
+                    );
+                  })}
                 {visible
-                  .filter((event) => event.date === dateStr)
+                  .filter((event) => event.date === dateStr && event.end > fromHour * 60)
                   .map((event) => {
-                    const blockHeight = Math.max(26, y(event.end) - y(event.start) - 4);
+                    const start = Math.max(event.start, fromHour * 60);
+                    const blockHeight = Math.max(26, y(event.end) - y(start) - 4);
                     return (
                       <button
                         key={event.key}
                         type="button"
                         className={`ag-ev ${event.kind}${event.key === selectedKey ? " selected" : ""}`}
-                        style={{ top: y(event.start) + 2, height: blockHeight }}
+                        style={{ top: y(start) + 2, height: blockHeight }}
                         onClick={event.onPress}
                       >
                         {/* Il nome letto dal lettore di schermo parte dal testo visibile (WCAG 2.5.3, A3 di §309). */}

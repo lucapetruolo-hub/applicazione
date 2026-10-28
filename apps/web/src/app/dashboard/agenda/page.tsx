@@ -3,7 +3,7 @@
 import { Suspense, startTransition, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CalendarDays, ChevronLeft, ChevronRight, Navigation, Phone, Plus, Search, Truck, X } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Navigation, PanelLeftClose, PanelLeftOpen, Phone, Plus, Search, Truck, X } from "lucide-react";
 import {
   agendaAttention,
   formatAppointmentDate,
@@ -72,6 +72,7 @@ import { ItalianDateInput } from "@/components/ItalianDateInput";
 type AgendaTab = "calendario" | "orari" | "giro";
 type AgendaFilter = "conf" | "done" | "wait" | "ext" | "free";
 const ALL_FILTERS: AgendaFilter[] = ["conf", "done", "wait", "ext", "free"];
+const ASIDE_HIDDEN_KEY = "agenda-colonna-nascosta";
 const DEFAULT_DURATION_MIN = 60;
 
 /** Minuti dalla mezzanotte di un orario "di parete" salvato come UTC. */
@@ -222,6 +223,31 @@ function DashboardAgendaContent() {
   // elenco piatto dei soli risultati: filtrare una griglia lasciando celle
   // vuote sparse in giro non avrebbe senso, un elenco sì.
   const [agendaSearchQuery, setAgendaSearchQuery] = useState("");
+  // La ricerca si apre da una lente nella barra: la riga del campo, sempre
+  // aperta, toglieva spazio agli orari (docs/changelog/2026-10-28-agenda-orari-in-vista.md).
+  const [searchOpen, setSearchOpen] = useState(false);
+  // Colonna di sinistra (mini calendario, Mostra, Orari di lavoro)
+  // nascondibile da computer; la scelta resta su questo browser.
+  const [asideHidden, setAsideHidden] = useState(false);
+  useEffect(() => {
+    try {
+      // Letto dopo il primo disegno: sul server localStorage non esiste.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (window.localStorage.getItem(ASIDE_HIDDEN_KEY) === "1") setAsideHidden(true);
+    } catch {
+      // localStorage non disponibile: colonna visibile.
+    }
+  }, []);
+  function toggleAside() {
+    setAsideHidden((prev) => {
+      try {
+        window.localStorage.setItem(ASIDE_HIDDEN_KEY, prev ? "0" : "1");
+      } catch {
+        // Non salvata: vale solo per questa visita.
+      }
+      return !prev;
+    });
+  }
 
   // Nuova agenda (docs/CHANGELOG.md §288).
   const [filters, setFilters] = useState<Set<AgendaFilter>>(() => new Set(ALL_FILTERS));
@@ -1726,6 +1752,13 @@ function DashboardAgendaContent() {
       <div style={{ maxWidth: 1480, margin: "0 auto" }}>
         <div className="ag-head">
           <h1>Agenda</h1>
+          <div className="ag-seg ag-tabs" role="group" aria-label="Sezioni dell'agenda">
+            {tabs.map((tab) => (
+              <button key={tab.value} type="button" aria-pressed={activeTab === tab.value} onClick={() => setActiveTab(tab.value)}>
+                {tab.label}
+              </button>
+            ))}
+          </div>
           <div className="ag-head-right">
             <button type="button" className="ag-btn" onClick={() => setShowCalendarLink(true)} aria-label="Collega al tuo calendario">
               <CalendarDays size={16} aria-hidden /> <span className="ag-hide-phone">Collega al tuo calendario</span>
@@ -1734,14 +1767,6 @@ function DashboardAgendaContent() {
               <Plus size={16} aria-hidden /> Lavoro esterno
             </button>
           </div>
-        </div>
-
-        <div className="ag-seg ag-tabs" role="group" aria-label="Sezioni dell'agenda">
-          {tabs.map((tab) => (
-            <button key={tab.value} type="button" aria-pressed={activeTab === tab.value} onClick={() => setActiveTab(tab.value)}>
-              {tab.label}
-            </button>
-          ))}
         </div>
 
         {offlineSavedAt ? (
@@ -1779,7 +1804,8 @@ function DashboardAgendaContent() {
         ) : null}
 
         {activeTab === "calendario" ? (
-          <div className="ag-layout">
+          <div className={asideHidden ? "ag-layout no-aside" : "ag-layout"}>
+            {asideHidden ? null : (
             <aside className="ag-aside" aria-label="Riepilogo">
               {nextCard}
               <AgendaMiniMonth
@@ -1833,22 +1859,55 @@ function DashboardAgendaContent() {
                 </button>
               </div>
             </aside>
+            )}
 
             <div style={{ minWidth: 0 }}>
               <div className="ag-toolbar">
+                <button
+                  type="button"
+                  className="ag-icon-btn ag-aside-toggle"
+                  onClick={toggleAside}
+                  aria-label={asideHidden ? "Mostra la colonna di sinistra" : "Nascondi la colonna di sinistra"}
+                  aria-pressed={!asideHidden}
+                  title={asideHidden ? "Mostra mini calendario e filtri" : "Nascondi mini calendario e filtri"}
+                >
+                  {asideHidden ? <PanelLeftOpen size={18} aria-hidden /> : <PanelLeftClose size={18} aria-hidden />}
+                </button>
                 <button type="button" className="ag-btn sm" onClick={() => setBookingCurrentDate(today)}>
                   Oggi
                 </button>
-                <button type="button" className="ag-icon-btn" onClick={() => navigateCalendar(-1)} aria-label="Periodo precedente">
+                <button type="button" className={bookingView === "day" ? "ag-icon-btn ag-hide-phone" : "ag-icon-btn"} onClick={() => navigateCalendar(-1)} aria-label="Periodo precedente">
                   <ChevronLeft size={18} aria-hidden />
                 </button>
-                <button type="button" className="ag-icon-btn" onClick={() => navigateCalendar(1)} aria-label="Periodo successivo">
+                <button type="button" className={bookingView === "day" ? "ag-icon-btn ag-hide-phone" : "ag-icon-btn"} onClick={() => navigateCalendar(1)} aria-label="Periodo successivo">
                   <ChevronRight size={18} aria-hidden />
                 </button>
-                <span className="ag-range" style={{ textTransform: "capitalize" }}>
-                  {rangeLabel}
+                <span className="ag-range">
+                  <span style={{ textTransform: "capitalize" }}>{rangeLabel}</span>
+                  {bookingView === "day" || bookingView === "week" ? <small>{rangeSummary}</small> : null}
                 </span>
-                <div className="ag-seg" role="group" aria-label="Vista" style={{ marginLeft: "auto" }}>
+                <button
+                  type="button"
+                  className="ag-icon-btn ag-search-toggle"
+                  onClick={() => {
+                    if (searchOpen) setAgendaSearchQuery("");
+                    setSearchOpen(!searchOpen);
+                  }}
+                  aria-label={searchOpen ? "Chiudi la ricerca" : "Cerca nell'agenda"}
+                  aria-expanded={searchOpen}
+                >
+                  {searchOpen ? <X size={18} aria-hidden /> : <Search size={18} aria-hidden />}
+                </button>
+                <label className="ag-view-select">
+                  <span className="sr-only">Vista</span>
+                  <select className="ag-input" value={bookingView} onChange={(e) => setBookingView(e.target.value as CalendarView)}>
+                    <option value="day">Giorno</option>
+                    <option value="week">Settimana</option>
+                    <option value="month">Mese</option>
+                    <option value="year">Anno</option>
+                  </select>
+                </label>
+                <div className="ag-seg ag-view-seg" role="group" aria-label="Vista">
                   {(
                     [
                       { value: "day", label: "Giorno" },
@@ -1864,6 +1923,7 @@ function DashboardAgendaContent() {
                 </div>
               </div>
 
+              {searchOpen ? (
               <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
                 <label className="ag-input" style={{ display: "flex", alignItems: "center", gap: 8, flex: "1 1 220px", maxWidth: 380 }}>
                   <Search size={16} aria-hidden style={{ color: "var(--ag-muted)", flex: "none" }} />
@@ -1873,6 +1933,8 @@ function DashboardAgendaContent() {
                     value={agendaSearchQuery}
                     onChange={(e) => setAgendaSearchQuery(e.target.value)}
                     placeholder="Cerca cliente, via, lavoro..."
+                    // eslint-disable-next-line jsx-a11y/no-autofocus -- si apre solo con un clic sulla lente
+                    autoFocus
                     style={{ flex: 1, minWidth: 0, border: "none", outline: "none", background: "transparent", fontSize: 14, color: brand.grafite, font: "inherit" }}
                   />
                   {agendaSearchQuery ? (
@@ -1881,8 +1943,8 @@ function DashboardAgendaContent() {
                     </button>
                   ) : null}
                 </label>
-                {bookingView === "day" || bookingView === "week" ? <span className="ag-summary">{rangeSummary}</span> : null}
               </div>
+              ) : null}
 
               {bookingView === "day" ? (
                 <>
