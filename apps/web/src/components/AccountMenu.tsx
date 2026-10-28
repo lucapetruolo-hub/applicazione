@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Avatar, Icon, Text, YStack, brand } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
-import { getAccountMenuGroups, isNavItemActive } from "@/lib/accountMenuItems";
+import { getAccountMenuGroups, hasNavAttention, isNavItemActive } from "@/lib/accountMenuItems";
 import { accountMenuUnreadCounts } from "@/lib/notificationSections";
 import { useNavAttention } from "@/lib/useNavAttention";
 
@@ -136,7 +136,7 @@ export function AccountMenu() {
                   >
                     <Icon name={item.icon} size={16} color={active ? brand.grafite : brand.grafite70} />
                     <span>{item.label}</span>
-                    {itemUnreadCount > 0 ? <span className="acct-nav-badge">{itemUnreadCount > 9 ? "9+" : itemUnreadCount}</span> : attention.has(item.href) ? <span className="acct-nav-dot" role="img" aria-label="Da completare" /> : null}
+                    {itemUnreadCount > 0 ? <span className="acct-nav-badge">{itemUnreadCount > 9 ? "9+" : itemUnreadCount}</span> : hasNavAttention(item, attention) ? <span className="acct-nav-dot" role="img" aria-label="Da completare" /> : null}
                   </Link>
                 );
               })}

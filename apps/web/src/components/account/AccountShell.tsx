@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
-import { CLIENT_NAV, PROFESSIONAL_SIDEBAR, isNavItemActive, journeyNavItem } from "@/lib/accountMenuItems";
+import { CLIENT_NAV, PROFESSIONAL_SIDEBAR, hasNavAttention, isNavItemActive, journeyNavItem } from "@/lib/accountMenuItems";
 import { accountMenuUnreadCounts } from "@/lib/notificationSections";
 import { useNavAttention } from "@/lib/useNavAttention";
 import { apiClient } from "@/lib/apiClient";
@@ -75,7 +75,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
                   <Icon name={item.icon} size={16} color={active ? "#2b2420" : "#6e6459"} />
                   <span className="acct-nav-label">{item.label}</span>
                   <span className="acct-nav-short" aria-hidden="true">{item.shortLabel ?? item.label}</span>
-                  {count > 0 ? <span className="acct-nav-badge">{count > 9 ? "9+" : count}</span> : attention.has(item.href) ? <span className="acct-nav-dot" role="img" aria-label="Da completare" /> : null}
+                  {count > 0 ? <span className="acct-nav-badge">{count > 9 ? "9+" : count}</span> : hasNavAttention(item, attention) ? <span className="acct-nav-dot" role="img" aria-label="Da completare" /> : null}
                 </Link>
               );
             })}

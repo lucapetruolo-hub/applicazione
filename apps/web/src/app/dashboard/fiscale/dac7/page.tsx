@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { DAC7_QUARTER_LABEL, accountingDateLabel, dac7YearStatus, formatEurCents, type Dac7YearSummary } from "@professionisti/shared";
-import { Badge, Button, EmptyState, Section, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Badge, Button, EmptyState, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { FiscoArea } from "@/components/fisco/FiscoArea";
 import { LearnMore } from "@/components/LearnMore";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -13,7 +14,9 @@ import { PdfButton } from "../../documenti/_components/DocumentParts";
  * Riepilogo DAC7 per il professionista (docs/CHANGELOG.md §246): cosa
  * comunichiamo al fisco su di lui, anno per anno e trimestre per trimestre,
  * con diretti e online separati. È anche la pagina a cui porta l'avviso
- * annuale che la direttiva ci chiede di mandare.
+ * annuale che la direttiva ci chiede di mandare. Scheda "Dati DAC7"
+ * dell'area Fisco e pagamenti (nome scelto da Luca)
+ * (docs/changelog/2026-10-28-fisco-e-pagamenti-schede.md).
  */
 export default function Dac7SummaryPage() {
   const { token, isLoading } = useAuth();
@@ -41,14 +44,8 @@ export default function Dac7SummaryPage() {
   return (
     // Stampabile come i documenti di "Fatture e documenti" (docs/CHANGELOG.md §378); il PDF lo prepara il server (§379).
     <div className="print-document">
-      <Section title="Riepilogo annuale dei compensi (DAC7)" maxWidth={760}>
+      <FiscoArea tab="dac7" heading="Dati DAC7">
         <YStack gap="$5">
-          <span data-print-hide>
-            <Link href="/dashboard/fiscale" style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 16, textDecoration: "none" }}>
-              ← Dati fiscali e pagamenti
-            </Link>
-          </span>
-
           <div data-print-hide>
             <LearnMore fontSize={16} summary="I compensi che comunichiamo ogni anno al fisco.">
               <Text fontSize={16} color={brand.grafite70}>
@@ -181,7 +178,7 @@ export default function Dac7SummaryPage() {
             </Text>
           </div>
         </YStack>
-      </Section>
+      </FiscoArea>
     </div>
   );
 }

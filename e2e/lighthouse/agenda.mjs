@@ -1,4 +1,4 @@
-// Lighthouse dell'agenda, di Oggi, di Richieste e del profilo pubblico con la
+// Lighthouse dell'agenda, di Oggi, di Richieste, di Fisco e pagamenti e del profilo pubblico con la
 // barra "Richiedi un preventivo" su un telefono lento (docs/CHANGELOG.md §309, §345, §400):
 // profilo "mobile" di Lighthouse (Moto G Power, CPU rallentata 4 volte,
 // rete 4G lenta simulata). Blocca sotto i limiti "scarso" di Google
@@ -49,6 +49,12 @@ const pages = [
   { name: "richieste", path: "/dashboard/richieste" },
   // Profilo pubblico con la barra fissa in basso (§400).
   { name: "profilo", path: `/professionista/${data.publicProfileId}` },
+  // Le quattro schede di Fisco e pagamenti (docs/changelog/2026-10-28-fisco-e-pagamenti-schede.md):
+  // le schede in cima non devono far saltare la pagina (CLS) né perdere l'accessibilità.
+  { name: "fiscale", path: "/dashboard/fiscale" },
+  { name: "pagamenti-online", path: "/dashboard/fiscale/pagamenti" },
+  { name: "documenti", path: "/dashboard/documenti" },
+  { name: "dac7", path: "/dashboard/fiscale/dac7" },
 ];
 const rows = [];
 let failed = false;

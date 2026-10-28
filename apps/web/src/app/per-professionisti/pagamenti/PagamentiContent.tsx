@@ -136,7 +136,7 @@ export function PagamentiContent() {
             direttamente non c&apos;è commissione. Il cliente non paga costi in più.
           </Point>
           <P>
-            Per offrire l&apos;acconto online attiva i pagamenti in Dati fiscali e pagamenti, nella tua area: Stripe ti chiede i dati e
+            Per offrire l&apos;acconto online attiva i pagamenti in Fisco e pagamenti, nella tua area: Stripe ti chiede i dati e
             il conto bancario su cui ricevere i bonifici.
           </P>
         </Block>
