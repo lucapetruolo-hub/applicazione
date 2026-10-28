@@ -1,4 +1,5 @@
-// Lighthouse dell'agenda, di Oggi e di Richieste su un telefono lento (docs/CHANGELOG.md §309, §345):
+// Lighthouse dell'agenda, di Oggi, di Richieste e del profilo pubblico con la
+// barra "Richiedi un preventivo" su un telefono lento (docs/CHANGELOG.md §309, §345, §400):
 // profilo "mobile" di Lighthouse (Moto G Power, CPU rallentata 4 volte,
 // rete 4G lenta simulata). Blocca sotto i limiti "scarso" di Google
 // (BUDGET) e avvisa sotto quelli "buono" (GOOD), che sono l'obiettivo.
@@ -46,6 +47,8 @@ const pages = [
   // Le altre due pagine aperte più spesso dal professionista (docs/CHANGELOG.md §345).
   { name: "oggi", path: "/dashboard" },
   { name: "richieste", path: "/dashboard/richieste" },
+  // Profilo pubblico con la barra fissa in basso (§400).
+  { name: "profilo", path: `/professionista/${data.publicProfileId}` },
 ];
 const rows = [];
 let failed = false;
@@ -85,7 +88,11 @@ for (const item of pages) {
     return out;
   };
   const problems = check(BUDGET);
-  if (new URL(row.finalUrl).pathname !== new URL(item.path, WEB_URL).pathname) problems.push(`pagina sbagliata: ${row.finalUrl}`);
+  // Il profilo si apre all'indirizzo con il nome (/professionista/<nome>-<città>-<id>).
+  const finalPath = new URL(row.finalUrl).pathname;
+  const expectedPath = new URL(item.path, WEB_URL).pathname;
+  const samePage = finalPath === expectedPath || (expectedPath.startsWith("/professionista/") && finalPath.endsWith(expectedPath.split("/").pop()));
+  if (!samePage) problems.push(`pagina sbagliata: ${row.finalUrl}`);
   if (problems.length) {
     failed = true;
     console.error(`✗ ${item.name}: ${problems.join(", ")}`);
