@@ -32,7 +32,8 @@ export function AdminPill({ children, tone = "neutral" }: { children: ReactNode;
     neutral: { bg: "#F1ECE6", fg: brand.grafite },
     danger: { bg: "#FDE7E9", fg: "#B02A37" },
     ok: { bg: "#E6F4EA", fg: "#1E7B34" },
-    warn: { bg: "#FFF3CD", fg: "#8A6D00" },
+    // #7A5F00: 5,5:1 sul giallo; #8A6D00 si fermava a 4,4:1 (axe, docs/CHANGELOG.md §395).
+    warn: { bg: "#FFF3CD", fg: "#7A5F00" },
   }[tone];
   return (
     <XStack paddingHorizontal={10} paddingVertical={3} borderRadius={999} backgroundColor={colors.bg} alignSelf="flex-start">

@@ -21431,7 +21431,8 @@ comprese, così le pagine si possono provare.
   (non più l'ultimo numero dato), l'elenco admin numera per posizione.
 - In cima ad Andamento e Numeri: "Dati di prova" con la data da cui si
   riparte da zero, poi "Dati veri" con la data del lancio; dettaglio in
-  "Scopri di più".
+  "Scopri di più". Il giallo delle etichette admin "attenzione" passa da `#8A6D00`
+  (4,4:1, axe in CI) a `#7A5F00` (5,5:1).
 
 **Da fare a mano (Luca):** segnare "Account di prova" sugli account usati
 per le prove; tenere acceso "Non contare questo browser" (Andamento del
