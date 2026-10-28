@@ -746,7 +746,11 @@ export class WhatsAppService {
     const b = Buffer.from(expected);
     if (a.length !== b.length || !timingSafeEqual(a, b))
       throw new UnauthorizedException("Token non valido.");
-    return challenge;
+    // Meta manda un numero: si rimanda solo quello, mai il testo ricevuto
+    // così com'è (niente HTML riflesso nella risposta).
+    if (!/^\d{1,32}$/.test(challenge))
+      throw new UnauthorizedException("Richiesta non valida.");
+    return BigInt(challenge).toString().padStart(challenge.length, "0");
   }
 
   async handleWebhook(

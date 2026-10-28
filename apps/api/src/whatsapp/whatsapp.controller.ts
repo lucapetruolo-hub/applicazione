@@ -1,5 +1,6 @@
 import {
   Body,
+  Header,
   Controller,
   Get,
   HttpCode,
@@ -72,6 +73,7 @@ export class WhatsAppWebhookController {
   /** Registrazione dell'indirizzo nella console di Meta: risponde con `hub.challenge` in chiaro. */
   @SkipThrottle()
   @Get()
+  @Header("Content-Type", "text/plain; charset=utf-8")
   verify(
     @Query("hub.mode") mode: unknown,
     @Query("hub.verify_token") token: unknown,

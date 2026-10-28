@@ -527,3 +527,27 @@ describe("WhatsAppService: webhook e 'Non ricevere più'", () => {
     });
   });
 });
+
+describe("WhatsAppService: registrazione del webhook", () => {
+  it("rimanda solo il numero di Meta e rifiuta il resto", () => {
+    vi.stubEnv("WHATSAPP_WEBHOOK_VERIFY_TOKEN", "segreto");
+    try {
+      const { service } = setup([]);
+      expect(
+        service.verifySubscription("subscribe", "segreto", "1158201444"),
+      ).toBe("1158201444");
+      expect(() =>
+        service.verifySubscription("subscribe", "altro", "1158201444"),
+      ).toThrow();
+      expect(() =>
+        service.verifySubscription(
+          "subscribe",
+          "segreto",
+          "<script>alert(1)</script>",
+        ),
+      ).toThrow();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+});
