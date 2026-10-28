@@ -34,6 +34,7 @@ export function HomeHero() {
       <YStack
         width="100%"
         maxWidth={1160}
+        className="home-hero-panel"
         backgroundColor={brand.cianografia}
         borderRadius={40}
         paddingVertical="$8"
@@ -45,7 +46,7 @@ export function HomeHero() {
             livello a parte con "overflow:hidden" invece che sull'intero
             pannello, che tagliava il menu a discesa di SearchBar (CLAUDE.md
             §10). */}
-        <GlowLights tone="verde" radius={40} />
+        <GlowLights tone="verde-opaco" radius={40} />
 
         <YStack width="100%" maxWidth={720} alignItems="center" gap="$4" position="relative">
           <Eyebrow tone="dark">Non chiamare a caso. Chiamalo giusto.</Eyebrow>
@@ -82,38 +83,34 @@ export function HomeHero() {
               che il sito non fa (nessuno controlla chi è disponibile) ed era il
               secondo controllo "urgente" nello stesso schermo, col link rosso
               "Richiesta urgente" qui sotto, che resta. */}
-          <Text fontSize={16} fontWeight="600" color="rgba(255,255,255,0.75)" marginTop="$2">
+          <Text fontSize={16} fontWeight="600" color="rgba(255,255,255,0.75)" marginTop="$2" textAlign="center">
             Ricerca gratuita · Nessuna registrazione
           </Text>
+
+          {/* Una sola azione principale nel primo schermo, "Cerca" (§271). Il
+              campo capisce anche il problema ("perde il rubinetto"), quindi il
+              link "Richiedi un preventivo" qui sotto è stato tolto: la richiesta
+              è in alto a destra. Resta la richiesta urgente, una strada
+              diversa, come pillola dentro il riquadro (scelta di Luca,
+              docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md). */}
+          <YStack width="100%" maxWidth={560} alignItems="center" gap="$3" marginTop="$3">
+            <XStack width="100%" alignItems="center" gap="$3">
+              <YStack flex={1} height={1} backgroundColor="rgba(255,255,255,0.3)" aria-hidden />
+              <Text fontSize={14} fontWeight="600" color="rgba(255,255,255,0.8)">
+                Un guasto da sistemare oggi?
+              </Text>
+              <YStack flex={1} height={1} backgroundColor="rgba(255,255,255,0.3)" aria-hidden />
+            </XStack>
+            <Link href="/urgente" className="hero-urgent-link">
+              <span className="hero-urgent-icon" aria-hidden>
+                <Icon name="zap" size={14} color="white" fill="white" strokeWidth={2} />
+              </span>
+              Richiesta urgente
+            </Link>
+          </YStack>
         </YStack>
       </YStack>
 
-      {/* Una sola azione principale nel primo schermo, "Cerca" (revisione
-          UX di home e ricerca, docs/CHANGELOG.md §271): preventivo e richiesta
-          urgente restano raggiungibili qui sotto come link, non più come due
-          grossi pulsanti accanto a quello dell'intestazione. */}
-      <XStack
-        columnGap="$3"
-        rowGap={0}
-        flexWrap="wrap"
-        justifyContent="center"
-        alignItems="center"
-        marginTop="$4"
-        width="100%"
-        maxWidth={1160}
-      >
-        {/* Da telefono la domanda va su una riga a sé e i due link sotto, affiancati. */}
-        <Text fontSize={16} color={brand.grafite70} textAlign="center" $xs={{ width: "100%" }}>
-          Preferisci descrivere il lavoro?
-        </Text>
-        <Link href="/preventivo" className="hero-secondary-link">
-          Richiedi un preventivo
-        </Link>
-        <Link href="/urgente" className="hero-secondary-link hero-secondary-link-urgent">
-          <Icon name="zap" size={15} color={brand.urgenza} />
-          Richiesta urgente
-        </Link>
-      </XStack>
     </YStack>
   );
 }
