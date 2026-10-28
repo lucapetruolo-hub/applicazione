@@ -16,8 +16,8 @@ import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
 
 // Foto nella scheda dei risultati (docs/CHANGELOG.md §400): più grande della
 // vecchia da 88px, un po' meno sul telefono per lasciare spazio al nome.
-// Con shape "portrait" diventa un rettangolo verticale 3:4 con angoli di 20px.
-const RESULT_PHOTO: { size: number; mobileSize: number; shape: ProfessionalAvatarShape } = { size: 120, mobileSize: 96, shape: "circle" };
+// Rettangolo verticale 3:4 con angoli di 20px (scelto da Luca); "circle" per la foto tonda.
+const RESULT_PHOTO: { size: number; mobileSize: number; shape: ProfessionalAvatarShape } = { size: 120, mobileSize: 96, shape: "portrait" };
 // Cuoricino sull'angolo della foto: sul bordo del cerchio, dentro l'angolo
 // arrotondato del rettangolo.
 const heartOffset = RESULT_PHOTO.shape === "portrait" ? { right: 6, bottom: 6 } : { right: 0, bottom: 0 };
