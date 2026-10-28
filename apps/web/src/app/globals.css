@@ -3521,7 +3521,27 @@ a.admin-kpi:hover {
   outline: 2px solid #189a63;
   outline-offset: 2px;
 }
-/* Pagina Notifiche a schede (docs/changelog/2026-10-28-notifiche-impostazioni.md). */
+.notif-note {
+  margin: 0;
+  font-size: 16px;
+  color: #6e6459;
+  line-height: 1.5;
+}
+/* Icona tonda accanto al titolo di una scheda (es. promemoria su WhatsApp). */
+.notif-topic-icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Pagina Notifiche a schede (docs/changelog/2026-10-28-notifiche-impostazioni.md):
+   le schede aggiunte alla pagina con .notif-card prendono la stessa ombra. */
+.nt-page .notif-card {
+  box-shadow: 0 6px 24px rgba(120, 80, 40, 0.07);
+}
 .nt-page {
   width: 100%;
   max-width: 880px;
