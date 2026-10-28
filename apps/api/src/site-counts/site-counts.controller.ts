@@ -4,9 +4,11 @@ import {
   isBotUserAgent,
   priceToolStepEventSchema,
   siteFailureEventSchema,
+  siteProfileViewEventSchema,
   siteStepEventSchema,
   type PriceToolStepEvent,
   type SiteFailureEvent,
+  type SiteProfileViewEvent,
   type SiteStepEvent,
 } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
@@ -28,7 +30,7 @@ export class SiteCountsController {
   @HttpCode(204)
   async step(@Body(new ZodValidationPipe(siteStepEventSchema)) body: SiteStepEvent, @Headers("user-agent") userAgent?: string): Promise<void> {
     if (isBotUserAgent(userAgent)) return;
-    await this.siteCounts.recordStep(body.step, body.categorySlug, body.origin).catch(() => undefined);
+    await this.siteCounts.recordStep(body.step, body.categorySlug, body.origin, { source: body.source, device: body.device }).catch(() => undefined);
   }
 
   /** Un passo dalle voci di "Quanto costa" (§399). */
@@ -46,5 +48,14 @@ export class SiteCountsController {
   async failure(@Body(new ZodValidationPipe(siteFailureEventSchema)) body: SiteFailureEvent, @Headers("user-agent") userAgent?: string): Promise<void> {
     if (isBotUserAgent(userAgent)) return;
     await this.siteCounts.recordFailure(body.form, body.kind).catch(() => undefined);
+  }
+
+  /** Profilo pubblico aperto, solo il dispositivo (§402). */
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @Post("profile-view")
+  @HttpCode(204)
+  async profileView(@Body(new ZodValidationPipe(siteProfileViewEventSchema)) body: SiteProfileViewEvent, @Headers("user-agent") userAgent?: string): Promise<void> {
+    if (isBotUserAgent(userAgent)) return;
+    await this.siteCounts.recordProfileView(body.device).catch(() => undefined);
   }
 }

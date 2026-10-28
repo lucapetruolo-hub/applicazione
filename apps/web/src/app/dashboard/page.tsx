@@ -25,7 +25,7 @@ import { WeatherStrip, jobsHeadline, type DayJobRow } from "@/components/DaysAhe
  * Home "Oggi" del professionista (docs/CHANGELOG.md §147, decisione esplicita
  * dell'utente): una lista di cose da fare, non un secondo elenco di
  * richieste (quello vive in "Richieste e lavori"). In cima, sopra tutto, le
- * richieste da rispondere con la scadenza (§400) — in un mercato locale vince
+ * richieste da rispondere con la scadenza (§403) — in un mercato locale vince
  * chi risponde per primo (CLAUDE.md §8) — poi gli appuntamenti di oggi e domani, poi i propri
  * numeri rispetto alla zona, in fondo i pacchetti di visibilità. Modelli: Thumbtack Pro/Angi Pro per i lead,
  * Fresha/Treatwell per la giornata.
@@ -236,12 +236,12 @@ export default function DashboardTodayPage() {
         {restrictions ? <IssueSanctionBanner {...restrictions} /> : null}
         {/* Preventivi da mandare e date proposte dai clienti in cima a tutto,
             sopra meteo e lavori, a tutta larghezza anche sul computer
-            (docs/CHANGELOG.md §400, Luca: "è la cosa più importante"). Senza
+            (docs/CHANGELOG.md §403, Luca: "è la cosa più importante"). Senza
             nulla a cui rispondere la pagina resta com'era. */}
         {showToAnswerOnTop ? (
           <TodaySection title="Da rispondere ora" count={toAnswer.length} action={{ href: "/dashboard/richieste", label: "Tutte le richieste" }}>
             {/* Da telefono le prime 3, dal computer le prime 5: sotto restano
-                vicini i lavori di oggi (§400). */}
+                vicini i lavori di oggi (§403). */}
             {toAnswer.slice(0, 5).map((lead, index) => (
               <LeadToAnswerRow key={lead.id} lead={lead} extra={index >= PHONE_TO_ANSWER} />
             ))}
@@ -288,7 +288,7 @@ export default function DashboardTodayPage() {
                     senza scorrere (T2 del test dei compiti, docs/CHANGELOG.md §311). */}
                 {/* Finché richieste e lavori non arrivano solo uno scheletro senza
                     titolo: con le richieste in cima, "Oggi e domani" già disegnato
-                    sarebbe poi scivolato giù (CLS, §334, §400). */}
+                    sarebbe poi scivolato giù (CLS, §334, §403). */}
                 {error ? null : loading ? (
                   <Skeletons />
                 ) : (
@@ -356,7 +356,7 @@ export default function DashboardTodayPage() {
               </div>
               {!ready ? null : (
                 <>
-                  {/* Richieste e date proposte sono salite in cima (§400): qui restano
+                  {/* Richieste e date proposte sono salite in cima (§403): qui restano
                       i messaggi non letti e, senza richieste, la riga vuota. */}
                   <div className="today-slot" style={{ order: toAnswer.length > 0 ? 2 : 4 }}>
                     {/* Richieste e lavori non caricati: "Riprova" invece di scheletri
@@ -378,7 +378,7 @@ export default function DashboardTodayPage() {
                         {/* Il numero delle richieste sta nel titolo qui sotto, che
                             le elenca (§352); le altre tessere solo se c'è qualcosa. */}
                         {/* "Date da confermare" non è più una tessera: le date sono
-                            elencate in cima (§400). */}
+                            elencate in cima (§403). */}
                         {unreadMessages > 0 ? (
                           <div className="today-kpis today-counters">
                             <TodayCounter href="/chat" icon="message-circle" value={unreadMessages} label="Messaggi non letti" urgent loading={false} />
@@ -473,7 +473,7 @@ function TodaySection({ title, subtitle, count, action, children }: { title: str
   );
 }
 
-/** Richieste mostrate da telefono in "Da rispondere ora"; le altre con "Vedi tutte" (§400). */
+/** Richieste mostrate da telefono in "Da rispondere ora"; le altre con "Vedi tutte" (§403). */
 const PHONE_TO_ANSWER = 3;
 
 function LeadToAnswerRow({ lead, extra = false }: { lead: ProfessionalLead; extra?: boolean }) {

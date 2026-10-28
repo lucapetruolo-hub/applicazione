@@ -58,7 +58,8 @@ export const REQUEST_STAGE_STYLE: Record<RequestStage, { label: string; icon: Ic
   // chi?") — la pillola sulla card ora lo dice esplicitamente, il tab
   // resta "In attesa" (spazio ridotto nella riga a scorrimento, stesso
   // significato).
-  in_attesa: { label: "In attesa del cliente", icon: "clock", fg: "#8A6D00", bg: "#FFF3CD", border: "#FFC107" },
+  // #7A5F00: 5,5:1 sul giallo chiaro, #8A6D00 si fermava a 4,4:1 (docs/CHANGELOG.md §395).
+  in_attesa: { label: "In attesa del cliente", icon: "clock", fg: "#7A5F00", bg: "#FFF3CD", border: "#FFC107" },
   modifica_richiesta: { label: "Modifica richiesta", icon: "rotate-ccw", fg: "#7A4F01", bg: "#FFE8A3", border: "#B8860B" },
   accettata: { label: "Accettata", icon: "check", fg: "#28A745", bg: "#E6F4EA", border: "#28A745" },
   completata: { label: "Completata", icon: "check", fg: "#0E7C7B", bg: "#DFF7F5", border: "#20B2AA" },

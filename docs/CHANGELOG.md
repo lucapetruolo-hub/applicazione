@@ -21482,6 +21482,125 @@ pagine di accesso, §279 e §349). Supera la proposta non scelta del §325.
 **Verifica:** build di produzione col profilo vero, fotografato a 1440, 1024
 e 390 px (anteprime in `anteprime/barra-preventivo-computer/`).
 
+## 400. Barra "Richiedi un preventivo": casi limite e prove
+
+**Richiesta di Luca (27/10/2026)**, dalla versione più profonda del compito
+(`analisi/barra-preventivo-versione-profonda.md`): sistemare i casi limite
+della barra del §385 e provarla con strumenti che non dipendono da noi.
+
+**Fatto:**
+- **Focus da tastiera mai sotto la barra** (WCAG 2.2, 2.4.11): con la barra
+  visibile la pagina ha `scroll-padding-bottom` (88 px), come per il banner
+  dei cookie del §271. Prima, da computer, passando col tasto Tab sui link in
+  fondo alla pagina (Privacy Policy, Termini, Cookie Policy, Preferenze
+  cookie, Accessibilità, Segnala un contenuto illegale) il focus finiva
+  coperto dalla barra.
+- **Il lettore di schermo sente il nome**: il link della barra si chiama
+  "Richiedi un preventivo a [nome]", anche dove il nome non si vede.
+- **Niente barra al professionista sul proprio profilo**: `GET /auth/me`
+  restituisce anche `professionalProfileId`; il pulsante nella pagina resta,
+  così vede il profilo come lo vede un cliente.
+- **Telefono in orizzontale e finestre basse** (altezza fino a 500 px): barra
+  più sottile (60 px invece di 72).
+- Nome lunghissimo e profilo senza foto: controllati, niente esce dallo
+  schermo (nome tagliato con i puntini da computer, icona della categoria al
+  posto della foto).
+
+**Prove:** `e2e/tests/barra-preventivo.spec.ts` (telefono e computer):
+compare quando il pulsante non si vede e sparisce quando si vede, assente sul
+profilo in pausa e sul proprio profilo, focus mai coperto, nessuno
+spostamento della pagina mentre compare e sparisce (CLS 0), axe-core senza
+errori, nome lunghissimo dentro lo schermo. Tolte le correzioni, le prove del
+focus e del proprio profilo falliscono. Lighthouse misura anche il profilo
+pubblico (`e2e/lighthouse/agenda.mjs`, nuovo profilo di prova in
+`global-setup`). Tutte le 170 prove nel browser verdi su un database pulito.
+
+**Profilo che arrivava dopo il piè di pagina** (trovato dalla nuova misura
+Lighthouse in CI, CLS 0,93): il contenuto del profilo stava in un
+`<Suspense>` (serviva a `useSearchParams` per `?modalita=`, `?data=`,
+`?salva=`) e arrivava dopo il piè di pagina, che su una rete lenta compariva
+in cima e poi veniva spinto giù. Ora la pagina server passa questi valori
+come prop (`query`) e il `<Suspense>` non c'è più: il profilo arriva
+nell'ordine della pagina, visibile anche prima che parta JavaScript (meglio
+anche per Google). Su rete lenta simulata lo spostamento scende da 0,90 a
+0,02 (telefono) e 0,04 (computer).
+
+**Visto ma non toccato** (prima di questa modifica, non dovuto alla barra):
+gli stili `<style jsx>` non arrivano nell'HTML del server (manca il registro
+di styled-jsx per l'App Router), quindi i componenti che li usano restano
+senza stile finché non parte JavaScript: nel profilo i pulsanti Salva e
+Condividi mostrano per un attimo le scritte e la scheda sale di 16 px
+(lo spostamento di 0,04 da computer). Il colore delle briciole di pane in
+cima al profilo non ha abbastanza contrasto (axe, Lighthouse accessibilità
+96).
+
+## 401. Stili già nella prima versione della pagina e briciole di pane leggibili
+
+**Richiesta di Luca** (27/10/2026, thread "Barra fissa Richiedi un preventivo
+anche da computer"): fare le prime due migliorie proposte dopo il §400.
+
+**1. Registro di styled-jsx.** Con l'App Router gli stili `<style jsx>` non
+arrivavano nell'HTML del server: i componenti che li usano (22 file, tra cui
+risultati con mappa, mega menu, agenda, pulsanti Salva/Condividi del profilo)
+restavano senza stile finché non partiva JavaScript, poi si sistemavano
+spostando la pagina. Aggiunto `apps/web/src/app/StyledJsxRegistry.tsx`
+(schema ufficiale di Next.js: `createStyleRegistry` + `useServerInsertedHTML`)
+attorno ai `Providers` in `layout.tsx`. Ora gli stili sono nell'HTML della
+risposta. Su rete lenta simulata lo spostamento del profilo all'apertura
+scende da 0,04 (computer) e 0,02 (telefono) a 0, senza avvisi di
+idratazione.
+
+**2. Briciole di pane.** Il grigio caldo `#6e6459`, sopra le forme sfumate
+verdi dello sfondo, arrivava a 3,56:1 (axe, serve 4,5:1). Ora `#4f463e`,
+sopra 5:1 anche sul verde; l'ultima voce resta in grassetto e più scura.
+axe sull'intera pagina del profilo (WCAG 2.2 AA): zero errori, da computer e
+da telefono.
+
+**3. Controllo delle librerie.** La stessa sera osv-scanner ha iniziato a
+segnalare `deepmerge` 4.3.1 (GHSA-gcqx-w48m-w2h4): l'eccezione con il motivo
+è quella del §384, arrivata dal ramo principale.
+
+## 402. Da quale pulsante parte la richiesta dal profilo
+
+**Richiesta di Luca** (28/10/2026, thread "Barra fissa Richiedi un preventivo
+anche da computer"): sapere da dove parte ogni richiesta fatta da un
+profilo, con numeri e percentuali, contando solo dal giorno del lancio.
+
+**Come si conta.** I link verso `/preventivo` portano `da=`: `barra` (barra
+fissa in basso), `pagina` (pulsante nella pagina), `agenda` (orario
+dell'agenda del profilo), `ricerca` (orario nei risultati di ricerca); senza
+`da` è "Altro". La richiesta manda il pulsante e il dispositivo insieme ai
+passi già contati (§372): l'apertura (passo «Il lavoro») e l'invio. Il
+profilo aperto si conta per dispositivo (`POST /site/profile-view`).
+Dispositivo dalla larghezza dello schermo: telefono fino a 767 px, come la
+barra. Tabella `ProfileRequestSourceDay` (evento, pulsante, dispositivo,
+giorno): solo contatori, mai chi è la persona né quale profilo; cancellati
+dopo 25 mesi come gli altri. Non si contano gli admin, chi ha scelto "Non
+contare questo browser" e i robot.
+
+**Solo dal lancio.** L'API non salva niente prima di `LAUNCH_DATE` né senza
+la variabile: le prove fatte prima non entrano nei numeri. Gli altri
+numeri del sito contati solo dal lancio vanno in un thread a parte (decisione
+di Luca dello stesso giorno).
+
+**Dove si vede.** Andamento del sito, sotto "I passi della richiesta":
+"Richieste dai profili: da dove partono", con visite, richieste iniziate e
+inviate per computer e telefono (percentuale sulle visite), e una tabella
+per pulsante con la percentuale su tutte le richieste della colonna. Sempre
+numero e percentuale, come chiesto da Luca; sotto 30 richieste inviate una
+riga avverte che le percentuali cambiano molto. Prima del lancio la scheda
+dice da quando si comincia a contare.
+
+**Corretto insieme.** La nota automatica "Lancio del sito" sul grafico
+cadeva il giorno prima (data UTC della mezzanotte di Roma): ora usa il
+giorno italiano.
+
+**Prove.** Test dell'API: si conta dopo il lancio, niente prima o senza
+data. e2e: i link della barra e del pulsante portano `da=barra` e
+`da=pagina`; la scheda in Andamento del sito senza data del lancio. Provato
+nel browser: dalla barra parte `source: BARRA` con il dispositivo giusto, da
+telefono e da computer.
+
 ## 392. Dal problema scritto ai professionisti adatti
 
 **Richiesta** (Luca, 26-27/10/2026, thread "abbinamento problema"): una sezione dove il cliente descrive il problema e gli si propongono i professionisti adatti. Fase 1 (banco di prova di 769 frasi vere, numeri in `analisi/abbinamento-problema/fase1-numeri.md`), poi "facciamo subito dizionario e poi qualsiasi minimo problemino si attiva ai". Aggiunte di Luca: risultati nella pagina di ricerca esistente con banda, domanda, avviso di sicurezza, "Chiedi preventivo a tutti" e riga "Perché"; il boost a pagamento fuori da questa lista; prima del "fuori servizio" cercare chi dichiara il lavoro nelle prestazioni, nei patentini o nella descrizione; "Ce ne occupiamo noi" con "No grazie, non serve" e "Prendete in carico la richiesta" (con accesso, senza scadenza); pagine admin "Mestieri richiesti" e "Richieste da seguire"; zanzariere = Tutto Fare; elettrodomestici: installarli è idraulico o elettricista, ripararli è di chi lo dichiara (Tutto Fare o Elettricista), altrimenti "Ce ne occupiamo noi".
@@ -21593,7 +21712,75 @@ e 390 px (anteprime in `anteprime/barra-preventivo-computer/`).
 
 **Prezzi sempre a destra** (Luca, 28/10: "i prezzi sempre sulla parte destra così è più ordinato, e quindi le unità di misura prima"): l'unità sta prima del prezzo, in piccolo e grigia, e le cifre finiscono tutte sullo stesso bordo destro, nel "Quanto costa in media", nelle pagine `/prezzi`, nella scheda dei risultati e nel profilo (`PriceLine` ha la prop `unit`). Nella frase della scheda chiusa ("da 8 € al m²") l'unità resta dopo, perché è una frase. Nel modulo delle prestazioni in `/dashboard/profilo` lo stesso ordine: prima l'unità, poi "Da € a A €" con la ✕ (sul telefono prezzo e ✕ vanno a capo insieme).
 
-## 400. Preventivi da rispondere in cima a "Oggi"
+## 395. Numeri contati solo dal lancio e account di prova
+
+**Richiesta di Luca (28/10/2026)**: "tutti i numeri per le statistiche e
+decisioni devono essere azzerati nel momento del lancio, così le prove che
+faccio prima non vanno a contrastare i dati reali". Approvate le migliorie
+proposte ("effettua le migliorie nel modo che ritieni").
+
+**Deciso:** niente si cancella al lancio (non si potrebbe annullare). Ogni
+numero conta da `LAUNCH_DATE`: i dati di prima restano nel database ma non
+entrano nei conti. Prima del lancio (o senza data) si vede tutto, prove
+comprese, così le pagine si possono provare.
+- `apps/api/src/site-counts/counted.ts`: `countingFrom` (il lancio se è
+  passato, altrimenti `null`), `sinceLaunch` e `daySinceLaunch` (per i
+  contatori per giorno: il lancio è la mezzanotte di Roma, il primo giorno
+  contato è la data del lancio), `COUNTED_USER`.
+- **Attività dal lancio, iscritti da sempre**: richieste, ricerche, visite,
+  passi della richiesta, invii non riusciti, preventivi, risposte,
+  recensioni, abbandoni e pagamenti contano dal lancio; i professionisti
+  iscritti prima restano contati (sono veri, reclutati al telefono, §7).
+  Vale per Andamento del sito, consigli e email del lunedì, Professionisti
+  in numeri, andamento settimanale e provenienza delle richieste, richieste
+  urgenti, visite e media della zona nella Home del professionista.
+- **Account di prova** (`User.testAccountAt`, migrazione
+  `20261028080000_account_di_prova`): interruttore "Account di prova" nella
+  scheda utente, solo super admin (`PATCH /admin/users/:id/test-account`,
+  nel modulo `test-accounts` perché serve `SubscriptionsService`), scritto
+  nel registro azioni. L'account resta normale ma non conta mai: fuori da
+  tutti i numeri sopra, dai contatori della Home admin, dai numeri pubblici
+  della homepage, dalle visite ai profili (né chi guarda né chi è
+  guardato; anche un admin che guarda un profilo non conta più). Filtro
+  "Account di prova" in Utenti e, su richiesta di Luca, una casella "Di
+  prova" su ogni riga dell'elenco (solo super admin) per segnarli uno alla
+  volta senza aprire la scheda. Entrando con un account
+  di prova il browser smette da solo di contare ("Non contare questo
+  browser"). L'eliminazione per sempre del §372 resta, sotto l'interruttore.
+- **Primi 100** (§363): un account di prova non prende un posto; segnarlo
+  libera il suo, togliere il segno lo fa riprovare. I posti si contano
+  (non più l'ultimo numero dato), l'elenco admin numera per posizione.
+- In cima ad Andamento e Numeri: "Dati di prova" con la data da cui si
+  riparte da zero, poi "Dati veri" con la data del lancio; dettaglio in
+  "Scopri di più". Il giallo delle etichette admin "attenzione" passa da `#8A6D00`
+  (4,4:1, axe in CI) a `#7A5F00` (5,5:1).
+
+**Migliorie dopo (Luca: "effettua le 4 migliorie"):**
+- **Professionisti di prova fuori dalla ricerca dal lancio**:
+  `publicVisibilityWhere` aggiunge `user.testAccountAt = null` dopo
+  `LAUNCH_DATE`, quindi niente ricerca, vetrina, recensioni in homepage né
+  smistamento delle richieste; prima del lancio restano, per le prove.
+  Dopo il lancio una prova completa (cliente di prova che chiede a un
+  professionista di prova) passa dal link diretto del profilo.
+- **"Dal lancio (data)" al posto di "ultimi 90 giorni"** (o 30 giorni, 12
+  mesi) nelle schede di Professionisti in numeri quando il lancio è più
+  recente; "Recensioni e voto dal lancio" invece di "da sempre".
+- **Consigli**: nelle prime 4 settimane dopo il lancio dicono "Dal lancio"
+  invece di "Nelle ultime 4 settimane".
+- **Giallo leggibile anche fuori dall'admin**: "In attesa del cliente"
+  (`requestStage.ts`) e le scadenze in Oggi (`.today-deadline`) passano a
+  `#7A5F00`.
+
+**Da fare a mano (Luca):** segnare "Account di prova" sugli account usati
+per le prove; tenere acceso "Non contare questo browser" (Andamento del
+sito) su telefono e computer usati per provare.
+
+**Verifica:** prove unitarie (`counted.test.ts`, primi 100, registro
+azioni), typecheck e lint; API e sito avviati su un database locale con
+`LAUNCH_DATE` prima e dopo oggi, anteprime in
+`anteprime/numeri-dal-lancio/`.
+
+## 403. Preventivi da rispondere in cima a "Oggi"
 
 **Richiesta** (Luca, 28/10/2026): "nella pagina professionista oggi, quando c'è da rispondere ad un preventivo deve essere in cima a tutto perché è la cosa più importante".
 

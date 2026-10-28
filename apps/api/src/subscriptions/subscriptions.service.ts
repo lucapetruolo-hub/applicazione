@@ -94,7 +94,8 @@ export class SubscriptionsService {
   /**
    * Offerta di lancio (decisione dell'utente, docs/CHANGELOG.md §363): ai
    * primi 100 professionisti con il profilo completo (non quelli di prova,
-   * non i profili creati da un operatore finché non li confermano) 3 mesi
+   * né dimostrativi né segnati "Account di prova" in Admin, §395, non i
+   * profili creati da un operatore finché non li confermano) 3 mesi
    * gratis dal lancio al posto del mese gratuito. Idempotente; chi ha già un
    * abbonamento Stripe o un posto non ne prende un altro. Due iscrizioni
    * nello stesso istante: il numero è unico, la seconda riprova col successivo.
@@ -103,15 +104,19 @@ export class SubscriptionsService {
     for (let attempt = 0; attempt < 3; attempt++) {
       const profile = await this.prisma.professionalProfile.findUnique({
         where: { id: professionalProfileId },
-        select: { isDemo: true, deletedAt: true, invitePendingAt: true, subscription: true },
+        select: { isDemo: true, deletedAt: true, invitePendingAt: true, subscription: true, user: { select: { testAccountAt: true } } },
       });
       const sub = profile?.subscription;
-      if (!profile || !sub || profile.isDemo || profile.deletedAt || profile.invitePendingAt) return false;
+      if (!profile || !sub || profile.isDemo || profile.user.testAccountAt || profile.deletedAt || profile.invitePendingAt) return false;
       if (sub.founderNumber) return true;
       if (sub.status !== "TRIALING" || sub.stripeSubscriptionId) return false;
-      const last = await this.prisma.subscription.aggregate({ _max: { founderNumber: true } });
+      // Posti contati, non l'ultimo numero: un account segnato di prova libera il suo (§395).
+      const [taken, last] = await Promise.all([
+        this.prisma.subscription.count({ where: { founderNumber: { not: null } } }),
+        this.prisma.subscription.aggregate({ _max: { founderNumber: true } }),
+      ]);
+      if (taken >= FOUNDER_SPOTS) return false;
       const next = (last._max.founderNumber ?? 0) + 1;
-      if (next > FOUNDER_SPOTS) return false;
       // I tre mesi partono dal lancio (o da oggi dopo il lancio), mai prima della prova già data.
       const founderEnd = trialEndFor(now, launchDate(), FOUNDER_TRIAL_DAYS);
       const trialEndsAt = sub.trialEndsAt && sub.trialEndsAt.getTime() > founderEnd.getTime() ? sub.trialEndsAt : founderEnd;
@@ -136,8 +141,9 @@ export class SubscriptionsService {
     return {
       total: FOUNDER_SPOTS,
       taken: subs.length,
-      rows: subs.map((sub) => ({
-        number: sub.founderNumber!,
+      // Posizione in elenco, non il numero salvato: dopo un posto liberato da un account di prova (§395) i numeri hanno un buco.
+      rows: subs.map((sub, index) => ({
+        number: index + 1,
         businessName: sub.professionalProfile.businessName,
         email: sub.professionalProfile.user.email ?? "",
         city: sub.professionalProfile.city,
@@ -151,8 +157,8 @@ export class SubscriptionsService {
 
   /** Posti dell'offerta di lancio rimasti (pagina prezzi). */
   async founderSpots(): Promise<FounderSpots> {
-    const last = await this.prisma.subscription.aggregate({ _max: { founderNumber: true } });
-    return { total: FOUNDER_SPOTS, left: Math.max(0, FOUNDER_SPOTS - (last._max.founderNumber ?? 0)) };
+    const taken = await this.prisma.subscription.count({ where: { founderNumber: { not: null } } });
+    return { total: FOUNDER_SPOTS, left: Math.max(0, FOUNDER_SPOTS - taken) };
   }
 
   /**

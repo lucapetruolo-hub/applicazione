@@ -208,6 +208,7 @@ export class AuthController {
     signupCategorySlugs: string[];
     signupEntityType: "PRIVATE_INDIVIDUAL" | "SOLE_PROPRIETOR" | "BUSINESS" | null;
     sidebarCollapsed?: boolean | null;
+    testAccountAt?: Date | null;
   }) {
     const { id, phone, email, name, surname, birthDate, role, passwordHash, imageUrl, street, houseNumber, addressExtra, postalCode, city, province } = user;
     // Bug reale corretto (richiesta esplicita dell'utente: "quando faccio
@@ -256,9 +257,13 @@ export class AuthController {
       // Area di competenza admin (docs/CHANGELOG.md §145): decide le voci del
       // menu admin. `null` su un ADMIN vale come SUPER.
       adminRoles: role === "ADMIN" ? normalizeAdminRoles(user.adminRoles) : [],
+      // Account di prova (docs/CHANGELOG.md §395): il sito smette da solo di contare questo browser.
+      testAccount: Boolean(user.testAccountAt),
       hasPassword: Boolean(passwordHash),
       imageUrl,
       businessName: professionalProfile?.businessName ?? null,
+      // Per riconoscere il proprio profilo pubblico (niente barra "Richiedi un preventivo", docs/CHANGELOG.md §400).
+      professionalProfileId: professionalProfile?.id ?? null,
       // Immagine profilo pubblica del professionista, richiesta esplicita
       // dell'utente: mostrata al posto delle iniziali nell'icona
       // dell'header (AccountMenu) quando disponibile — `User.imageUrl`

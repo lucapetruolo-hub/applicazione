@@ -36,7 +36,7 @@ test("toccando un giorno del meteo l'agenda si apre su quel giorno", async ({ pa
 });
 
 test("le richieste da rispondere stanno in cima, sopra meteo e lavori", async ({ page }) => {
-  // §400: "Da rispondere ora" prima di tutto; senza richieste resta sotto i lavori.
+  // §403: "Da rispondere ora" prima di tutto; senza richieste resta sotto i lavori.
   await page.clock.setFixedTime(new Date("2026-10-26T07:00:00Z"));
   const lead = {
     id: "lead-in-cima", status: "PENDING", declineNote: null, professionalNote: null, priceEurCents: 0,

@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
 import { apiClient } from "../../../lib/apiClient";
@@ -15,6 +14,10 @@ import { ProfessionalDetailContent } from "./ProfessionalDetailContent";
 // solo id (docs/CHANGELOG.md §295, packages/shared/src/professionalUrl.ts).
 type PageParams = { id: string };
 type PageSearchParams = Record<string, string | string[] | undefined>;
+
+function firstValue(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
 
 /** Query string da riportare nel redirect all'indirizzo leggibile (?modalita=, ?data=, ?salva=). */
 function queryString(searchParams: PageSearchParams): string {
@@ -111,12 +114,15 @@ export default async function ProfessionalDetailPage(props: { params: Promise<Pa
   return (
     <>
       <JsonLd data={jsonLd} />
-      {/* Suspense richiesto da useSearchParams (App Router) in
-          ProfessionalDetailContent — legge `?modalita=` per preselezionare
-          il tab dell'agenda quando si arriva da una ricerca "Online". */}
-      <Suspense fallback={null}>
-        <ProfessionalDetailContent professional={professional} breadcrumbs={<Breadcrumbs items={breadcrumbItems(professional)} />} />
-      </Suspense>
+      {/* `?modalita=` (tab dell'agenda arrivando da una ricerca "Online"),
+          `?data=` e `?salva=` passati dal server: senza useSearchParams non
+          serve un <Suspense> e il profilo arriva nell'ordine della pagina,
+          prima del piè di pagina (docs/CHANGELOG.md §400). */}
+      <ProfessionalDetailContent
+        professional={professional}
+        breadcrumbs={<Breadcrumbs items={breadcrumbItems(professional)} />}
+        query={{ modalita: firstValue(searchParams.modalita), data: firstValue(searchParams.data), salva: firstValue(searchParams.salva), servizio: firstValue(searchParams.servizio) }}
+      />
     </>
   );
 }

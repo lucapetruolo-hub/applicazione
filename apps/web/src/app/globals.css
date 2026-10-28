@@ -203,11 +203,27 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
 body:has(.profile-cta-bar) {
   padding-bottom: 72px;
 }
+/* Scorrendo verso un elemento scelto col tasto Tab, il browser lo tiene
+   sopra la barra (WCAG 2.2 "focus non coperto", come il banner dei cookie
+   del §271), §400. */
+html:has(.profile-cta-bar[data-visible="true"]) {
+  scroll-padding-bottom: 88px;
+}
 /* Nel profilo con la barra, "Richiedi preventivo" in alto (richiesta
    generica, non a questo professionista) confondeva: non compare. Resta nei
    profili in pausa, che non hanno la barra. */
 body:has(.profile-cta-bar) .site-header-cta-link {
   display: none;
+}
+/* Telefono in orizzontale e finestre basse: barra più sottile (§400). */
+@media (max-height: 500px) {
+  .profile-cta-bar {
+    padding-top: 6px;
+    padding-bottom: calc(6px + env(safe-area-inset-bottom));
+  }
+  body:has(.profile-cta-bar) {
+    padding-bottom: 60px;
+  }
 }
 @media (max-width: 767px) {
   .profile-cta {
@@ -1525,7 +1541,7 @@ button.notif-row-main:hover {
   border-color: #f0dcc0;
 }
 /* "Vedi tutte le N richieste" sotto "Da rispondere ora" (docs/CHANGELOG.md
-   §400): da telefono si vedono 3 richieste, dal computer 5. */
+   §403): da telefono si vedono 3 richieste, dal computer 5. */
 .today-more {
   display: block;
   padding: 12px 16px;
@@ -1575,7 +1591,8 @@ button.notif-row-main:hover {
   font-weight: 700;
 }
 .today-deadline {
-  color: #8a6d00;
+  /* Più scuro di #8a6d00, che sul fondo pesca restava sotto 4,5:1 (§395). */
+  color: #7a5f00;
 }
 .today-deadline.is-urgent {
   color: #dc3545;
@@ -5156,7 +5173,10 @@ a.admin-kpi:hover {
   width: 100%;
   font-size: 13px;
   line-height: 18px;
-  color: #6e6459;
+  /* Più scuro del grigio caldo #6e6459: le briciole stanno sopra le forme
+     sfumate dello sfondo, e sul verde chiaro quel grigio arrivava a 3,6:1
+     (serve 4,5:1). #4f463e resta sopra 5:1 anche lì (docs/CHANGELOG.md §401). */
+  color: #4f463e;
 }
 .breadcrumbs-list {
   list-style: none;
@@ -5184,7 +5204,7 @@ a.admin-kpi:hover {
   display: inline-flex;
   align-items: center;
   min-height: 32px;
-  color: #6e6459;
+  color: #4f463e;
   text-decoration: none;
   text-underline-offset: 3px;
 }
@@ -5979,6 +5999,53 @@ a.admin-kpi:hover {
     font-weight: 700;
     color: #2b2420;
   }
+}
+
+/* "Dati di prova / Dati veri" in cima ad Andamento e Numeri (docs/CHANGELOG.md §395). */
+.counting-from {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 4px;
+}
+.counting-from-more summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0e7a4c;
+  cursor: pointer;
+  list-style: none;
+}
+.counting-from-more summary::-webkit-details-marker {
+  display: none;
+}
+.counting-from-more summary:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.counting-from-more[open] {
+  flex-basis: 100%;
+}
+/* Casella "Di prova" su ogni riga di Utenti (§395): area da toccare di 44 px. */
+.admin-test-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  /* Allineata al testo delle altre colonne senza perdere l'area da toccare. */
+  margin-block: -12px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #2b2420;
+}
+.admin-test-toggle input {
+  width: 20px;
+  height: 20px;
+  accent-color: #128552;
+  cursor: pointer;
 }
 
 /* Fatture, estratti e copie di cortesia da stampare o salvare in PDF
