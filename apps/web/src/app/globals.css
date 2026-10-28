@@ -5854,6 +5854,7 @@ a.admin-kpi:hover {
   height: 20px;
   accent-color: #128552;
   cursor: pointer;
+}
 
 /* Fatture, estratti e copie di cortesia da stampare o salvare in PDF
    (docs/CHANGELOG.md §378): si stampa solo il documento, senza intestazione
