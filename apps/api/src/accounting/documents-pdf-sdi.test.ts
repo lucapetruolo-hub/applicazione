@@ -13,7 +13,7 @@ import { notificationEmail } from "../email/templates/notification-emails";
 
 // PDF, numero della copia di cortesia e invio allo SdI (docs/CHANGELOG.md §379);
 // elenco dei documenti ai clienti in Admin (§380); riepilogo dell'anno (§382),
-// che a gennaio va anche al commercialista (§383); avviso di dicembre (§384).
+// che a gennaio va anche al commercialista (§390); avviso di dicembre (§391).
 
 const issuer: IssuerSnapshot = {
   companyName: "Professionisti S.r.l.",

@@ -110,7 +110,7 @@ notification("QUOTE_ACCEPTED", "Professionista", "Preventivi e date");
 // Fattura chiesta dal cliente accettando (§378).
 add("quote_accepted_con_fattura", "Preventivi e date", "Professionista", renderEmail(notificationEmail("QUOTE_ACCEPTED", { clientName: "Giulia Bianchi", invoiceRequested: true, invoiceLines: ["Studio Bianchi Srl", "P.IVA 01234567890", "Via Roma 10, 20100 Milano (MI)", "Codice destinatario M5UXCR1"] }, forPro)!));
 notification("JOB_INVOICE_REQUESTED", "Professionista", "Lavori e appuntamenti", { invoiceLines: ["Giulia Bianchi", "Codice fiscale BNCGLI85M41F205X", "Via Roma 10, 20100 Milano (MI)"] });
-// Documenti da sistemare il 15 dicembre (§384).
+// Documenti da sistemare il 15 dicembre (§391).
 notification("CLIENT_DOCUMENTS_TO_FIX", "Professionista", "Lavori e appuntamenti", {
   year: 2026,
   accountant: true,

@@ -129,7 +129,7 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "JOB_INVOICE_REQUESTED",
       // Al cliente: la copia della ricevuta o della fattura è pronta, o aggiornata (docs/CHANGELOG.md §387).
       "JOB_DOCUMENT_READY",
-      // Il 15 dicembre: documenti dati ai clienti da sistemare prima del riepilogo dell'anno (docs/CHANGELOG.md §384).
+      // Il 15 dicembre: documenti dati ai clienti da sistemare prima del riepilogo dell'anno (docs/CHANGELOG.md §391).
       "CLIENT_DOCUMENTS_TO_FIX",
       // Trattenute del mese che non tornano con Stripe (docs/CHANGELOG.md §378).
       "ADMIN_FEE_RECONCILIATION",

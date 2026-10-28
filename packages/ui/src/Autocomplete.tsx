@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { Input, Label, ScrollView, Text, YStack } from "tamagui";
+import { buildSearchIndex, rankSearchMatches } from "./searchMatch";
 import { brand } from "./tokens";
 
 export type AutocompleteProps<T> = {
@@ -24,6 +25,22 @@ export type AutocompleteProps<T> = {
    */
   label?: string;
   id?: string;
+  /**
+   * Testo su cui si cerca, se diverso da `getLabel` (es. una frazione:
+   * si cerca "Borgo Sabotino", si mostra anche il comune).
+   */
+  getSearchText?: (item: T) => string;
+  /** A parità di corrispondenza, più bassa prima (es. città con professionisti, §383). */
+  priority?: (item: T) => number;
+  /** Elenco mostrato a campo vuoto, al posto dei primi `maxResults` di `items` (es. ultima città usata e più cercate). */
+  emptyItems?: T[];
+  /** Riga in cima a campo vuoto, prima dell'elenco (es. "Vicino a me"). */
+  leadingAction?: {
+    label: string;
+    description?: string;
+    /** Se restituisce una Promise, l'elenco resta aperto finché non risponde `true` (es. posizione trovata). */
+    onPress: () => void | Promise<boolean>;
+  };
 };
 
 /**
@@ -44,9 +61,17 @@ export function Autocomplete<T>({
   size,
   label,
   id,
+  getSearchText,
+  priority,
+  emptyItems,
+  leadingAction,
 }: AutocompleteProps<T>) {
   const [isFocused, setIsFocused] = useState(false);
+  // Opzione evidenziata con le frecce (-1 nessuna). 0 è la riga in cima se c'è.
+  const [highlighted, setHighlighted] = useState(-1);
+  const listboxId = `${useId().replace(/:/g, "")}-elenco`;
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<{ focus?: () => void; blur?: () => void; isFocused?: () => boolean } | null>(null);
 
   // Chiudi il dropdown anche al click/tap fuori dal campo (web): il blur
   // ritardato da solo non basta — con il dropdown aperto a z-index alto il
@@ -77,38 +102,84 @@ export function Autocomplete<T>({
     };
   }, []);
 
-  const normalizedQuery = value.trim().toLowerCase();
-  // Query vuota: mostra comunque un elenco (i primi N) invece di un menu
-  // vuoto finché non si digita — l'utente deve vedere subito che ci sono
-  // professionisti/città tra cui scegliere, non scoprirlo solo scrivendo.
-  // Sotto la soglia minChars invece niente elenco (usato per il campo città:
-  // con ~7900 comuni i primi risultati "a caso" non aiutano, meglio aspettare
-  // qualche lettera).
-  // Match che iniziano con il testo digitato prima di quelli che lo
-  // contengono solo in mezzo — altrimenti scrivendo "Roma" può comparire
-  // prima "Fabrica di Roma" o un altro comune che contiene "roma" ma non
-  // inizia così, invece del comune più pertinente (bug reale segnalato
-  // dall'utente). L'ordine originale di `items` (es. dataset ISTAT dei
-  // comuni, raggruppato per regione/provincia) non riflette la pertinenza
-  // rispetto a quello che si sta cercando.
+  // I testi si normalizzano una volta per elenco, non a ogni lettera
+  // (i comuni sono ~7900).
+  const searchIndex = useMemo(() => buildSearchIndex(items, getSearchText ?? getLabel), [items, getSearchText, getLabel]);
+  const trimmedQuery = value.trim();
+  // Campo vuoto: un elenco subito, senza dover scrivere (le più cercate,
+  // l'ultima città usata, o i primi N). Sotto la soglia `minChars` invece
+  // niente. Mentre si scrive l'ordine è quello di `rankSearchMatches`:
+  // prima chi inizia con le lettere scritte (non "Fabrica di Roma" prima di
+  // "Roma", bug segnalato dall'utente), poi le parole, poi chi le contiene,
+  // infine chi somiglia con un errore di battitura (§383).
   const filtered =
-    normalizedQuery.length < minChars
-      ? []
-      : normalizedQuery
-        ? items
-            .filter((item) => getLabel(item).toLowerCase().includes(normalizedQuery))
-            .sort((a, b) => {
-              const aLabel = getLabel(a).toLowerCase();
-              const bLabel = getLabel(b).toLowerCase();
-              const aStarts = aLabel.startsWith(normalizedQuery);
-              const bStarts = bLabel.startsWith(normalizedQuery);
-              if (aStarts !== bStarts) return aStarts ? -1 : 1;
-              return aLabel.localeCompare(bLabel);
-            })
-            .slice(0, maxResults)
-        : items.slice(0, maxResults);
+    trimmedQuery.length === 0
+      ? (emptyItems ?? items).slice(0, maxResults)
+      : trimmedQuery.length < minChars
+        ? []
+        : rankSearchMatches(searchIndex, trimmedQuery, { priority, limit: maxResults });
+  const action = trimmedQuery.length === 0 ? leadingAction : undefined;
+  const optionCount = filtered.length + (action ? 1 : 0);
 
-  const showDropdown = isFocused && filtered.length > 0;
+  const showDropdown = isFocused && optionCount > 0;
+  const activeIndex = showDropdown && highlighted >= 0 && highlighted < optionCount ? highlighted : -1;
+
+  function choose(index: number) {
+    if (action && index === 0) {
+      const result = action.onPress();
+      if (result instanceof Promise) {
+        // "Vicino a me": l'elenco resta aperto con "Cerco la tua posizione…"
+        // e, se non la trova, con il motivo; si chiude solo quando la trova.
+        inputRef.current?.focus?.();
+        setIsFocused(true);
+        void result.then((done) => {
+          if (done) {
+            setIsFocused(false);
+            inputRef.current?.blur?.();
+          }
+        });
+        return;
+      }
+    } else {
+      const item = filtered[index - (action ? 1 : 0)];
+      if (item !== undefined) onSelect(item);
+    }
+    setHighlighted(-1);
+    setIsFocused(false);
+  }
+
+  // Frecce, Invio ed Esc come in AddressAutocompleteInput (§324): il
+  // lettore di schermo legge l'opzione evidenziata.
+  function handleKey(key: string, preventDefault: () => void) {
+    if (key === "Escape") {
+      setIsFocused(false);
+      return;
+    }
+    if (!showDropdown) {
+      if (key === "ArrowDown") setIsFocused(true);
+      return;
+    }
+    if (key === "ArrowDown") {
+      preventDefault();
+      setHighlighted(Math.min(activeIndex + 1, optionCount - 1));
+    } else if (key === "ArrowUp") {
+      preventDefault();
+      setHighlighted(Math.max(activeIndex - 1, 0));
+    } else if (key === "Enter" && activeIndex >= 0) {
+      preventDefault();
+      choose(activeIndex);
+    }
+  }
+
+  const optionId = (index: number) => `${listboxId}-${index}`;
+  // Attributi del "combobox" per il web (react-native-web li passa al campo).
+  const comboboxProps = {
+    role: "combobox",
+    "aria-autocomplete": "list",
+    "aria-expanded": showDropdown,
+    "aria-controls": listboxId,
+    "aria-activedescendant": activeIndex >= 0 ? optionId(activeIndex) : undefined,
+  } as Record<string, unknown>;
 
   return (
     <YStack position="relative" flex={1} ref={containerRef as never}>
@@ -118,17 +189,33 @@ export function Autocomplete<T>({
         </Label>
       ) : null}
       <Input
+        ref={inputRef as never}
         id={id}
         flex={1}
         size={size}
         borderWidth={0}
         value={value}
-        onChangeText={onChangeText}
+        onChangeText={(text) => {
+          setHighlighted(-1);
+          setIsFocused(true);
+          onChangeText(text);
+        }}
         placeholder={placeholder}
         accessibilityLabel={label ? undefined : placeholder}
+        autoComplete="off"
         onFocus={() => setIsFocused(true)}
-        onBlur={() => setTimeout(() => setIsFocused(false), 150)}
+        onBlur={() =>
+          setTimeout(() => {
+            if (!inputRef.current?.isFocused?.()) setIsFocused(false);
+          }, 150)
+        }
+        onKeyPress={(event) => handleKey(event.nativeEvent.key, () => event.preventDefault())}
+        {...comboboxProps}
       />
+      {/* Annuncio per i lettori di schermo: quanti suggerimenti ci sono. */}
+      <Text role="status" aria-live="polite" position="absolute" width={1} height={1} overflow="hidden" opacity={0} pointerEvents="none">
+        {isFocused && trimmedQuery ? (filtered.length > 0 ? `${filtered.length} ${filtered.length === 1 ? "suggerimento" : "suggerimenti"}: usa le frecce per sceglierne uno.` : "Nessun suggerimento.") : ""}
+      </Text>
       {showDropdown ? (
         <YStack
           position="absolute"
@@ -150,19 +237,51 @@ export function Autocomplete<T>({
               italiani) serve poter scorrere con la rotellina, non solo vedere
               i primi N tagliati senza modo di vedere gli altri. */}
           <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator>
-            {filtered.map((item) => (
-              <YStack
-                key={getKey(item)}
-                padding="$3"
-                borderBottomWidth={1}
-                borderBottomColor="$borderColor"
-                cursor="pointer"
-                hoverStyle={{ backgroundColor: "$color3" }}
-                onPress={() => onSelect(item)}
-              >
-                {renderItem ? renderItem(item) : <Text>{getLabel(item)}</Text>}
-              </YStack>
-            ))}
+            <YStack id={listboxId} {...({ role: "listbox", "aria-label": label ?? placeholder } as Record<string, unknown>)}>
+              {action ? (
+                <YStack
+                  id={optionId(0)}
+                  role="option"
+                  aria-selected={activeIndex === 0}
+                  padding="$3"
+                  borderBottomWidth={1}
+                  borderBottomColor="$borderColor"
+                  cursor="pointer"
+                  backgroundColor={activeIndex === 0 ? "$color3" : undefined}
+                  hoverStyle={{ backgroundColor: "$color3" }}
+                  onPress={() => choose(0)}
+                >
+                  <Text fontWeight="600" color={brand.cianografiaPieno}>
+                    {action.label}
+                  </Text>
+                  {action.description ? (
+                    <Text fontSize={13} color="$color10">
+                      {action.description}
+                    </Text>
+                  ) : null}
+                </YStack>
+              ) : null}
+              {filtered.map((item, i) => {
+                const index = i + (action ? 1 : 0);
+                return (
+                  <YStack
+                    key={getKey(item)}
+                    id={optionId(index)}
+                    role="option"
+                    aria-selected={activeIndex === index}
+                    padding="$3"
+                    borderBottomWidth={1}
+                    borderBottomColor="$borderColor"
+                    cursor="pointer"
+                    backgroundColor={activeIndex === index ? "$color3" : undefined}
+                    hoverStyle={{ backgroundColor: "$color3" }}
+                    onPress={() => choose(index)}
+                  >
+                    {renderItem ? renderItem(item) : <Text>{getLabel(item)}</Text>}
+                  </YStack>
+                );
+              })}
+            </YStack>
           </ScrollView>
         </YStack>
       ) : null}

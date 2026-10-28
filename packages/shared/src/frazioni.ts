@@ -1,0 +1,82 @@
+/**
+ * Frazioni e località cercabili nel campo "Città" (docs/CHANGELOG.md §383):
+ * chi abita a Borgo Sabotino scrive "Borgo Sabotino", non "Latina".
+ * Scegliendole si cerca nel loro comune, che resta l'unico luogo che la
+ * ricerca conosce. Per ora solo la zona del lancio (Latina e i comuni vicini,
+ * CLAUDE.md §7), dalle frazioni elencate nelle voci di Wikipedia; per
+ * una città nuova si aggiungono qui le sue frazioni, con il nome ISTAT del
+ * comune.
+ */
+export const FRAZIONI: readonly { name: string; city: string }[] = [
+  { name: "Latina Scalo", city: "Latina" },
+  { name: "Latina Lido", city: "Latina" },
+  { name: "Borgo Sabotino", city: "Latina" },
+  { name: "Borgo Isonzo", city: "Latina" },
+  { name: "Borgo San Michele", city: "Latina" },
+  { name: "Borgo Faiti", city: "Latina" },
+  { name: "Borgo Grappa", city: "Latina" },
+  { name: "Borgo Carso", city: "Latina" },
+  { name: "Borgo Podgora", city: "Latina" },
+  { name: "Borgo Bainsizza", city: "Latina" },
+  { name: "Borgo Santa Maria", city: "Latina" },
+  { name: "Borgo Le Ferriere", city: "Latina" },
+  { name: "Borgo Piave", city: "Latina" },
+  { name: "Borgo Montello", city: "Latina" },
+  // Aprilia
+  { name: "Bellavista", city: "Aprilia" },
+  { name: "Borgata Agip", city: "Aprilia" },
+  { name: "Buon Riposo", city: "Aprilia" },
+  { name: "Caffarelli", city: "Aprilia" },
+  { name: "Campo del Fico", city: "Aprilia" },
+  { name: "Campo di Carne", city: "Aprilia" },
+  { name: "Campoleone", city: "Aprilia" },
+  { name: "Campoverde", city: "Aprilia" },
+  { name: "Carano-Garibaldi", city: "Aprilia" },
+  { name: "Carroceto", city: "Aprilia" },
+  { name: "Casalazzara", city: "Aprilia" },
+  { name: "Fossignano", city: "Aprilia" },
+  { name: "Genio Civile", city: "Aprilia" },
+  { name: "Giannottola", city: "Aprilia" },
+  { name: "Isole", city: "Aprilia" },
+  { name: "La Cogna", city: "Aprilia" },
+  { name: "Pantanelle", city: "Aprilia" },
+  { name: "Pian di Frasso", city: "Aprilia" },
+  { name: "Rosatelli", city: "Aprilia" },
+  { name: "Spaccasassi", city: "Aprilia" },
+  { name: "Torre Bruna", city: "Aprilia" },
+  { name: "Torre del Padiglione", city: "Aprilia" },
+  { name: "Tufello", city: "Aprilia" },
+  { name: "Vallelata", city: "Aprilia" },
+  { name: "Valli", city: "Aprilia" },
+  // Sabaudia
+  { name: "Baia d'Argento", city: "Sabaudia" },
+  { name: "Bella Farnia", city: "Sabaudia" },
+  { name: "Borgo San Donato", city: "Sabaudia" },
+  { name: "Borgo Vodice", city: "Sabaudia" },
+  { name: "Cerasella", city: "Sabaudia" },
+  { name: "Molella", city: "Sabaudia" },
+  { name: "Mezzomonte", city: "Sabaudia" },
+  { name: "Sacramento", city: "Sabaudia" },
+  { name: "Sant'Andrea", city: "Sabaudia" },
+  { name: "Sant'Isidoro", city: "Sabaudia" },
+  // Cisterna di Latina
+  { name: "Borgo Flora", city: "Cisterna di Latina" },
+  { name: "Doganella", city: "Cisterna di Latina" },
+  { name: "Isolabella", city: "Cisterna di Latina" },
+  { name: "Le Castella", city: "Cisterna di Latina" },
+  { name: "Olmobello", city: "Cisterna di Latina" },
+  { name: "Prato Cesarino", city: "Cisterna di Latina" },
+  { name: "Sant'Ilario-Castelverde", city: "Cisterna di Latina" },
+  // Pontinia
+  { name: "Borgo Pasubio", city: "Pontinia" },
+  { name: "Campoioso", city: "Pontinia" },
+  { name: "Cotarda", city: "Pontinia" },
+  { name: "Mazzocchio", city: "Pontinia" },
+  { name: "Mesa", city: "Pontinia" },
+  { name: "Quartaccio", city: "Pontinia" },
+  // Terracina
+  { name: "Borgo Hermada", city: "Terracina" },
+  { name: "Frasso", city: "Terracina" },
+  { name: "La Fiora", city: "Terracina" },
+  { name: "San Vito", city: "Terracina" },
+];

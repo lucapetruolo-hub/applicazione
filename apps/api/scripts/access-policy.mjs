@@ -52,6 +52,7 @@ const publicRoutes = [
   "GET /professionals/:id",
   "GET /professionals/:id/agenda",
   "POST /professionals/:id/views",
+  "GET /professionals/city-hints",
   // Conteggi dell'andamento del sito (§372): passi della richiesta e invii falliti, senza account.
   "POST /site/step",
   "POST /site/failure",

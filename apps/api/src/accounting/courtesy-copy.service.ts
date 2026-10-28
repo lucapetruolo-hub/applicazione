@@ -149,7 +149,7 @@ export class CourtesyCopyService {
     return summary;
   }
 
-  /** Lo stesso riepilogo per profilo, anche vuoto: a gennaio va al commercialista con l'estratto (§383). */
+  /** Lo stesso riepilogo per profilo, anche vuoto: a gennaio va al commercialista con l'estratto (§390). */
   async yearSummaryForProfile(professionalProfileId: string, year: number): Promise<CourtesyYearSummary> {
     const [profile, documents] = await Promise.all([
       this.prisma.professionalProfile.findUnique({
@@ -208,7 +208,7 @@ export class CourtesyCopyService {
   }
 
   /**
-   * Il 15 dicembre alle 9 (docs/CHANGELOG.md §384): a chi ha documenti
+   * Il 15 dicembre alle 9 (docs/CHANGELOG.md §391): a chi ha documenti
    * dell'anno da sistemare, con l'importo cambiato dopo il PDF o senza
    * importo, un avviso con l'elenco, così il riepilogo dell'anno (anche
    * quello che a gennaio parte al commercialista) arriva pulito. Per chi fa

@@ -256,7 +256,7 @@ export class StatementsService {
    * Il 1° del mese alle 8 (dopo le fatture delle 7): l'estratto del mese
    * prima al commercialista di chi ha messo la spunta, col PDF e il foglio di
    * calcolo allegati. Solo se nel mese c'è stato qualche movimento. A gennaio
-   * anche il riepilogo dell'anno prima dei documenti dati ai clienti (§383),
+   * anche il riepilogo dell'anno prima dei documenti dati ai clienti (§390),
    * pure senza movimenti a dicembre.
    */
   @Cron("0 8 1 * *", { timeZone: "Europe/Rome" })
@@ -309,7 +309,7 @@ export class StatementsService {
 /**
  * Email al commercialista: chi è il cliente, i totali, e perché la riceve. A
  * gennaio c'è anche (o solo) il riepilogo dell'anno dei documenti dati ai
- * clienti (§383).
+ * clienti (§390).
  */
 export function accountantStatementEmail(who: string, statement: MonthlyStatement | null, yearly: CourtesyYearSummary | null = null): EmailContent {
   const eur = (cents: number) => `${(cents / 100).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;

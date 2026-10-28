@@ -21317,6 +21317,45 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: il pnpm di `/usr/bin` esiste sulla macchina di Render (è proprio il file che `corepack enable` cercava di cancellare); il deploy su Render dopo l'unione.
 
+## 384. Andamento del sito: prestazioni più cercate
+
+**Richiesta** (Luca, 27/10/2026): "nell'analisi di cosa implementare in base ai numeri può essere utile vedere quali servizi sono più cercati per poi implementarli standard alle rispettive categorie". Scelta sulla scheda: "Sì, tutti e due i modi".
+
+**Decisione**:
+- L'elenco delle prestazioni suggerite (`POPULAR_SERVICES`) lo allarga il thread "Proporre i professionisti dalla descrizione del problema", con le frasi raccolte lì; qui solo i numeri che dopo il lancio dicono cosa aggiungere. Accordo tra i due thread: questo thread legge l'elenco e non lo modifica.
+- **Ricerche sulle prestazioni**: una ricerca scritta (`/cerca?q=`) si confronta con le prestazioni dell'elenco (`matchPopularServices` in `packages/shared/src/serviceSearch.ts`: ogni parola cercata deve stare nel nome, "perdite" vale "perdita"; più di 3 prestazioni trovate = parola troppo generica, non si conta). Si salva per giorno solo il nome preso dall'elenco, mai il testo del cliente (`ServiceSearchDay`, migrazione `20261027180000_prestazioni_cercate`, cancellato dopo 25 mesi come gli altri contatori). Robot e "Non contare" esclusi come nel §372.
+- **Riquadro "Prestazioni più cercate"** in `/admin/andamento`: per lavoro, le 5 più cercate negli ultimi 90 giorni con quanti professionisti di quel lavoro le offrono (anche scritte più lunghe, `offersPopularService`); sotto, le prestazioni scritte a mano da almeno 3 professionisti diversi che non sono tra quelle suggerite dei loro lavori (dati che c'erano già, nessun contatore nuovo).
+- **Due consigli** (livello "Quando hai tempo", al massimo 2 per tipo): "Cercano «X», pochi la offrono" da 10 ricerche in 90 giorni con al massimo 2 professionisti che la offrono, e "Aggiungi «X» alle prestazioni suggerite di <lavoro>" con il lavoro più comune tra chi l'ha scritta.
+- Informativa privacy, punto 9: aggiunte le prestazioni cercate (nome dell'elenco, mai il testo).
+- **osv-scanner**: il 27/10 è comparsa una segnalazione su `deepmerge` 4.3.1 (GHSA-gcqx-w48m-w2h4, nessuna versione corretta), rossa su tutte le PR. Eccezione in `osv-scanner.toml` approvata da Luca: nell'API lo usa solo html-to-text per unire le proprie opzioni fisse, mai il contenuto delle email; il resto sono strumenti di sviluppo. Da togliere quando esce una versione corretta.
+- **Chi chiamare** (miglioria scelta da Luca): sotto "Cercano «X», pochi la offrono" l'elenco dei professionisti visibili di quel lavoro che non la offrono ancora (nome, città, link alla scheda), al massimo 10 con il link a tutti quelli del lavoro; se non ce n'è nessuno, il consiglio dice di cercarne di nuovi e porta a "Crea un profilo".
+
+**Verifica**: test di confronto, conteggio, riquadro e consigli (`site-stats.test.ts`, `site-counts.service.test.ts`); typecheck, lint e test dell'API; prove nel browser `conteggi.spec.ts` ("sturatura" a Latina conta 1 su "Sturatura scarichi" di Idraulico, 0 per Googlebot, il testo scritto non si salva) e `andamento-sito.spec.ts` (riquadro visibile su telefono e computer, axe senza errori).
+
+## 383. Barra di ricerca: errori di battitura, frazioni, città con professionisti prima, tastiera
+
+**Richiesta** (Luca, 27/10/2026, thread "abbinamento problema"): elenchi che compaiono subito al clic su "Cosa cerchi" e "Città" (le città più cercate per prime), mentre si scrive prima ciò che rispetta di più quello che si è scritto, senza titoletti negli elenchi; poi "effettua migliorie 1-2-3 (senza i numeri) 4": errori di battitura, frazioni col loro comune, città senza professionisti più in basso senza mostrare numeri, tastiera e lettore di schermo.
+
+**Decisione**:
+- Ordine dei suggerimenti in `packages/ui/src/searchMatch.ts` (stesso codice per sito e app): prima chi inizia con le lettere scritte, poi chi ha una parola che inizia così, poi chi le contiene; solo se non c'è niente di questo, chi somiglia con un errore di battitura (nessuno sotto le 4 lettere, uno fino a 7, due da 8; "Latna" → Latina, "sabuadia" → Sabaudia). Accenti, maiuscole e apostrofi non contano.
+- "Città" vuota: "Vicino a me" (posizione del browser solo dopo il clic, comune più vicino col dataset ISTAT, `nearestComune`), l'ultima città cercata da questo browser (`localStorage`, nessun dato al server) e le più cercate degli ultimi 90 giorni (ricerche per lavoro §370, ricerche libere, richieste guidate ×3), da `GET /professionals/city-hints?category=`, in cache 5 minuti. Senza dati solo "Vicino a me", mai comuni a caso.
+- A parità di corrispondenza le città con almeno un professionista visibile entro 25 km (per il lavoro scelto se c'è, `coveredComuni` in `search-area.ts`, filtri pubblici di `publicSearchWhere`, profili demo esclusi) vengono prima. Nessun numero mostrato.
+- Frazioni in `packages/shared/src/frazioni.ts` (per ora Latina Scalo, Latina Lido e i 12 borghi di Latina): compaiono con il comune sotto e cercano nel comune.
+- Tastiera: frecce, Invio, Esc; `role="combobox"`/`listbox`/`option` con `aria-activedescendant` e un annuncio del numero di suggerimenti per il lettore di schermo.
+
+**Verifica**: test di `searchMatch` (7) e di `coveredComuni`; prova nel browser su computer e telefono (elenco al clic, frecce e Invio, Esc, "Latna", frazioni "borgo"); typecheck e lint.
+
+## 389. Barra di ricerca: frazioni dei comuni vicini, "Vicino a me" che spiega quando non trova la posizione
+
+**Richiesta** (Luca, 27/10/2026, "Effettua le migliorie" proposte col §383).
+
+**Decisione**:
+- Frazioni di Aprilia, Sabaudia, Cisterna di Latina, Pontinia e Terracina (riquadro "Frazioni" delle voci di Wikipedia) in `packages/shared/src/frazioni.ts`, con il comune sotto. Isolabella e San Vito sono anche comuni (Piemonte, Sardegna): compaiono tutte e due, distinte dal comune scritto sotto.
+- "Vicino a me": l'elenco resta aperto con "Cerco la tua posizione…" e, se non la trova, con "Posizione non disponibile: scrivi la città"; si chiude solo quando la trova (`leadingAction.onPress` può restituire una Promise).
+- Bug trovato provando: l'intestazione `Permissions-Policy` del sito aveva `geolocation=()`, che blocca la posizione anche dopo il permesso dell'utente; ora `geolocation=(self)` (solo il nostro sito, sempre dopo il clic e la richiesta del browser).
+
+**Verifica**: nel browser con posizione negata (messaggio, elenco aperto) e concessa (Latina compilata, elenco chiuso); intestazione controllata; typecheck, lint, test.
+
 ## 378. Documenti contabili: trattenuta unica, fatture del mese, estratto, richiesta di fattura del cliente
 
 **Richiesta** (Luca, 27/10/2026, dopo l'analisi in `analisi/contabilita-versione-profonda.md` e le anteprime di `analisi/mappa-documenti.md`): fare tutti i ritocchi e tutte le migliorie proposte, con tre precisazioni: la fattura del professionista al cliente la prepariamo **solo come cortesia** e non la mandiamo noi all'Agenzia delle Entrate; l'estratto al commercialista parte solo **con la spunta**; il cliente può chiedere la fattura anche intestata a una partita IVA, il professionista lo deve vedere **già all'accettazione** e il cliente deve capire che la chiede **al professionista, non a noi**.
@@ -21386,7 +21425,7 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: test nuovi su ordine delle ricevute, cliente con partita IVA, bollo, IVA della fattura, importo cambiato, forfettario, anno vuoto, righe del foglio di calcolo (data in ora italiana) e PDF; PDF guardato pagina per pagina; 795 test dell'API, typecheck e lint di API e sito; test dei permessi con le 2 rotte nuove (279 rotte, 1152 controlli, nessun problema); rotte provate con l'API vera in locale (PDF, foglio di calcolo, anno vuoto 404, anno non valido 400); pagina guardata da computer e da telefono.
 
-## 383. Il riepilogo dell'anno arriva da solo al commercialista a gennaio
+## 390. Il riepilogo dell'anno arriva da solo al commercialista a gennaio
 
 **Richiesta** (Luca, 27/10/2026, la prima delle migliorie proposte col §382): "effettua la prima miglioria", cioè mandare il riepilogo dell'anno al commercialista insieme all'estratto di dicembre, solo per chi ha messo la spunta.
 
@@ -21398,9 +21437,9 @@ Richiesta dell'utente: "effettua la miglioria due in un thread a parte" (dalla l
 
 **Verifica**: test nuovi sull'invio del 1° gennaio (estratto e riepilogo insieme, solo riepilogo, nessuna email senza movimenti né documenti), sugli altri mesi (riepilogo mai chiesto) e sui testi dell'email; 798 test dell'API, typecheck e lint di API e sito.
 
-## 384. Avviso del 15 dicembre: documenti dati ai clienti da sistemare
+## 391. Avviso del 15 dicembre: documenti dati ai clienti da sistemare
 
-**Richiesta** (Luca, 27/10/2026, la miglioria proposta dopo il §383): "effettua questa miglioria se lo ritieni", dopo aver chiesto come si "rifà" un documento che prepariamo noi.
+**Richiesta** (Luca, 27/10/2026, la miglioria proposta dopo il §390): "effettua questa miglioria se lo ritieni", dopo aver chiesto come si "rifà" un documento che prepariamo noi.
 
 **Decisione**:
 - **Avviso del 15 dicembre alle 9** (`CourtesyCopyService.remindDocumentsToFix`, notifica `CLIENT_DOCUMENTS_TO_FIX` nell'argomento "Lavori e appuntamenti", sul sito e per email): a chi ha documenti dell'anno con l'importo cambiato dopo il PDF scaricato o senza importo, l'elenco uno per riga ("Ricevuta n. 4/2026, Anna Bianchi: Importo cambiato dopo il PDF") e cosa fare: scaricare di nuovo il PDF dal lavoro e ridarlo al cliente, oppure chiudere il lavoro con il prezzo finale. Con la spunta del commercialista l'email dice che il 1° gennaio il riepilogo parte da solo, senza la spunta di scaricarlo. Restano fuori i lavori annullati e gli account chiusi; chi non ha niente da sistemare non riceve nulla. Un clic porta a Fatture e documenti.

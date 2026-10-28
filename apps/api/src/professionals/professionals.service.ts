@@ -6,6 +6,7 @@ import {
   professionalKindOf,
   traderStatusOf,
   findComuneByName,
+  italianComuni,
   PROFILE_DECLARATION_VERSION,
   PUBLIC_AGENDA_DAYS,
   SEARCH_FALLBACK_MAX_KM,
@@ -49,7 +50,7 @@ import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing, publicVisibilityWher
 import { quoteResendWindow } from "../quotes/quote-resend";
 import { NOT_ACCEPTING_REQUESTS, NOT_BOOKABLE_ONLINE } from "../subscriptions/subscription-rules";
 import { GeocodingService } from "../geocoding/geocoding.service";
-import { selectSearchArea } from "./search-area";
+import { coveredComuni, selectSearchArea } from "./search-area";
 import { acceptedQuoteStats, declaredServiceStats, quoteMidpointEurCents } from "./category-prices";
 import { slotAppliesOnDate } from "../common/availability.util";
 import { AgendaService } from "../agenda/agenda.service";
@@ -94,6 +95,11 @@ function mapServices(
 }
 
 /** Dati letti per la pagina pubblica del professionista e per la sua anteprima in dashboard. */
+/** Campo "Città" (§383): periodo delle più cercate, quante, quanto si tengono in memoria. */
+const CITY_HINTS_WINDOW_DAYS = 90;
+const CITY_HINTS_POPULAR = 6;
+const CITY_HINTS_CACHE_MS = 5 * 60 * 1000;
+
 const PROFESSIONAL_DETAIL_INCLUDE = {
   category: true,
   fiscalProfile: { select: { stripePayoutsEnabled: true, fiscalDataCompleteAt: true, entityType: true } },
@@ -128,8 +134,67 @@ export class ProfessionalsService {
 
   private readonly logger = new Logger(ProfessionalsService.name);
 
-  async search({ category, city, q, remote, excludeDemo }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
-    const baseWhere: Prisma.ProfessionalProfileWhereInput = {
+  /**
+   * Suggerimenti del campo "Città" (docs/CHANGELOG.md §383): `covered` sono
+   * i comuni con almeno un professionista visibile del lavoro scelto entro
+   * il raggio della ricerca (prima quelli con più professionisti vicini,
+   * senza mai dire quanti), `popular` le città più cercate per quel lavoro
+   * negli ultimi 90 giorni, completate con le prime di `covered`. Solo nomi
+   * di comuni: nessuna posizione dei professionisti esce dal server.
+   */
+  async getCityHints(category?: string): Promise<{ popular: string[]; covered: string[] }> {
+    const key = category ?? "";
+    const cached = this.cityHintsCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) return cached.value;
+
+    const candidates = await this.prisma.professionalProfile.findMany({
+      where: this.publicSearchWhere(category, true),
+      select: { latitude: true, longitude: true },
+    });
+    const covered = coveredComuni(italianComuni(), candidates, SEARCH_RADIUS_KM).map((comune) => comune.name);
+
+    const since = new Date(Date.now() - CITY_HINTS_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+    const categoryRow = category ? await this.prisma.category.findUnique({ where: { slug: category }, select: { id: true } }) : null;
+    const [searches, freeSearches, requests] = await Promise.all([
+      this.prisma.categorySearchDay.groupBy({
+        by: ["city"],
+        where: { day: { gte: since }, ...(categoryRow ? { categoryId: categoryRow.id } : {}) },
+        _sum: { count: true },
+      }),
+      category
+        ? Promise.resolve([])
+        : this.prisma.freeSearchDay.groupBy({ by: ["city"], where: { day: { gte: since } }, _sum: { count: true } }),
+      this.prisma.guidedRequest.groupBy({
+        by: ["city"],
+        where: { createdAt: { gte: since }, ...(categoryRow ? { categoryId: categoryRow.id } : {}) },
+        _count: { _all: true },
+      }),
+    ]);
+    const scoreByCity = new Map<string, number>();
+    const add = (city: string, score: number) => {
+      const comune = findComuneByName(city);
+      if (comune && score > 0) scoreByCity.set(comune.name, (scoreByCity.get(comune.name) ?? 0) + score);
+    };
+    for (const row of searches) add(row.city, row._sum.count ?? 0);
+    for (const row of freeSearches) add(row.city, row._sum.count ?? 0);
+    // Una richiesta pesa come tre ricerche, come per i lavori più cercati (§280).
+    for (const row of requests) add(row.city, row._count._all * 3);
+    const popular = [...scoreByCity.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "it")).map(([city]) => city);
+    for (const city of covered) {
+      if (popular.length >= CITY_HINTS_POPULAR) break;
+      if (!popular.includes(city)) popular.push(city);
+    }
+
+    const value = { popular: popular.slice(0, CITY_HINTS_POPULAR), covered };
+    this.cityHintsCache.set(key, { value, expiresAt: Date.now() + CITY_HINTS_CACHE_MS });
+    return value;
+  }
+
+  private readonly cityHintsCache = new Map<string, { value: { popular: string[]; covered: string[] }; expiresAt: number }>();
+
+  /** Chi compare nella ricerca pubblica (filtri di CLAUDE.md §5.11), per lavoro. */
+  private publicSearchWhere(category: string | undefined, excludeDemo: boolean | undefined): Prisma.ProfessionalProfileWhereInput {
+    return {
       // Un professionista che ha eliminato l'account non deve mai
       // ricomparire in ricerca (soft-delete, vedi AuthService.deleteAccount),
       // né uno sospeso da un admin (docs/CHANGELOG.md §144), né uno in pausa
@@ -148,9 +213,15 @@ export class ProfessionalsService {
         // Visibile solo con i dati fiscali compilati (docs/CHANGELOG.md §241).
         publicVisibilityWhere(),
       ],
+      ...(excludeDemo ? { isDemo: false } : {}),
+    };
+  }
+
+  async search({ category, city, q, remote, excludeDemo }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
+    const baseWhere: Prisma.ProfessionalProfileWhereInput = {
+      ...this.publicSearchWhere(category, excludeDemo),
       ...(q ? { businessName: { contains: q, mode: "insensitive" } } : {}),
       ...(remote ? { remoteAvailable: true } : {}),
-      ...(excludeDemo ? { isDemo: false } : {}),
     };
 
     // Ricerca per luogo (richiesta esplicita dell'utente): con un comune

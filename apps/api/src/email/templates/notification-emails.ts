@@ -971,7 +971,7 @@ const BUILDERS: Record<string, Builder> = {
       cta: proRequests("Apri il lavoro"),
     };
   },
-  // Il 15 dicembre (docs/CHANGELOG.md §384): documenti dati ai clienti da
+  // Il 15 dicembre (docs/CHANGELOG.md §391): documenti dati ai clienti da
   // sistemare prima del riepilogo dell'anno, uno per riga; dal §387 anche i
   // lavori terminati senza ricevuta o con la ricevuta mai scaricata.
   CLIENT_DOCUMENTS_TO_FIX: (payload, ctx) => {

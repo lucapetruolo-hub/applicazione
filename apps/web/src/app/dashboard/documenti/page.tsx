@@ -268,7 +268,7 @@ function YearDownloads({ token, year }: { token: string; year: number }) {
   );
 }
 
-/** Il commercialista: l'estratto gli arriva per email il 1° del mese, solo con la spunta; a gennaio anche il riepilogo dell'anno (§383). */
+/** Il commercialista: l'estratto gli arriva per email il 1° del mese, solo con la spunta; a gennaio anche il riepilogo dell'anno (§390). */
 function AccountantCard({ token, initial }: { token: string; initial: DocumentsOverview["accountant"] }) {
   const [email, setEmail] = useState(initial.email ?? "");
   const [enabled, setEnabled] = useState(initial.enabled);

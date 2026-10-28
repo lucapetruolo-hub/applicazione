@@ -1,10 +1,10 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { allItalianCityNames, PROFESSIONAL_CATEGORIES, findComuneBySlug, isProfessionalCategorySlug } from "@professionisti/shared";
+import { PROFESSIONAL_CATEGORIES, findComuneBySlug, isProfessionalCategorySlug } from "@professionisti/shared";
 import { SearchBar, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
 import { buildSearchDestination } from "@/lib/searchNavigation";
-import { buildSearchSuggestions } from "@/lib/searchSuggestions";
+import { rememberSearchCity, useSearchBarHints } from "@/lib/useSearchBarHints";
 import { navigateWithTransition } from "@/lib/viewTransition";
 import { MagneticButton } from "./MagneticButton";
 
@@ -33,9 +33,10 @@ export function HeaderSearchBar() {
   const category = categorySlugFromPath && isProfessionalCategorySlug(categorySlugFromPath) ? PROFESSIONAL_CATEGORIES.find((c) => c.slug === categorySlugFromPath) : undefined;
   const query = category ? category.label : (searchParams.get("q") ?? "");
 
-  const professionalSuggestions: ProfessionalSuggestion[] = buildSearchSuggestions();
+  const searchHints = useSearchBarHints(query);
 
   function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
+    rememberSearchCity(params.city);
     const destination = buildSearchDestination(params);
     navigateWithTransition(() => {
       router.push(destination);
@@ -57,8 +58,7 @@ export function HeaderSearchBar() {
       initialQuery={query}
       initialCity={city}
       initialMode={online ? "online" : "domicilio"}
-      professionalSuggestions={professionalSuggestions}
-      citySuggestions={allItalianCityNames()}
+      {...searchHints}
       searchOnModeChange
     />
   );
