@@ -25,7 +25,9 @@ export type PdfBlock =
   | { type: "table"; columns: { label: string; width: number; align?: "left" | "right" }[]; rows: { cells: string[]; details?: (string | null)[] }[] }
   | { type: "note"; lines: string[]; tone: "green" | "sand" }
   | { type: "text"; lines: string[]; muted?: boolean }
-  | { type: "signature"; label: string };
+  | { type: "signature"; label: string }
+  /** Foto (JPEG o PNG già scaricate), due per riga con la didascalia sotto. */
+  | { type: "images"; images: { data: Buffer; caption?: string | null }[] };
 
 export type PdfDocumentModel = { title: string; subtitle?: string | null; blocks: PdfBlock[] };
 
@@ -309,6 +311,31 @@ function signature(w: Writer, block: Extract<PdfBlock, { type: "signature" }>): 
   w.y += 24 + GAP;
 }
 
+const IMAGE_HEIGHT = 220;
+
+function images(w: Writer, block: Extract<PdfBlock, { type: "images" }>): void {
+  const gap = 12;
+  const width = (CONTENT_WIDTH - gap) / 2;
+  for (let index = 0; index < block.images.length; index += 2) {
+    const pair = block.images.slice(index, index + 2);
+    const captionHeight = Math.max(0, ...pair.map((image) => (image.caption ? w.height(image.caption, FONT, 9, width) + 4 : 0)));
+    w.ensure(IMAGE_HEIGHT + captionHeight);
+    pair.forEach((image, column) => {
+      const x = MARGIN + (width + gap) * column;
+      w.box(x, w.y, width, IMAGE_HEIGHT, COLORS.panel);
+      try {
+        w.doc.image(image.data, x, w.y, { fit: [width, IMAGE_HEIGHT], align: "center", valign: "center" });
+      } catch {
+        // Formato che pdfkit non sa leggere: resta il riquadro con la didascalia.
+        w.write("Foto non leggibile", x, w.y + IMAGE_HEIGHT / 2 - 6, width, { size: 9, color: COLORS.muted, align: "center" });
+      }
+      if (image.caption) w.write(image.caption, x, w.y + IMAGE_HEIGHT + 4, width, { size: 9, color: COLORS.muted });
+    });
+    w.y += IMAGE_HEIGHT + captionHeight + gap;
+  }
+  w.y += GAP - gap;
+}
+
 /** Il PDF del documento, pronto da mandare o allegare. */
 export function renderDocumentPdf(model: PdfDocumentModel): Promise<Buffer> {
   const w = new Writer(model.title);
@@ -331,6 +358,7 @@ export function renderDocumentPdf(model: PdfDocumentModel): Promise<Buffer> {
     else if (block.type === "table") table(w, block);
     else if (block.type === "note") note(w, block);
     else if (block.type === "text") text(w, block);
+    else if (block.type === "images") images(w, block);
     else signature(w, block);
   }
 

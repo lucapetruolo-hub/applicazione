@@ -845,7 +845,8 @@ const BUILDERS: Record<string, Builder> = {
     title: "Contestazione in banca",
     paragraphs: [
       `Il cliente del lavoro **${job(ctx)}** ha contestato un pagamento online presso la sua banca.`,
-      "Decide la banca: finché la contestazione è aperta la cifra contestata resta sospesa. Il nostro team risponde con le prove (preventivo accettato, chat, foto): se hai altro materiale utile, scrivilo nella chat del lavoro.",
+      "Decide la banca: finché la contestazione è aperta la cifra contestata resta sospesa. Il nostro team risponde con le prove (preventivo accettato, chat, foto).",
+      "Aiutaci a vincerla: nella scheda del lavoro, sotto il pagamento, scrivi come è andato e aggiungi le foto che hai. Le mandiamo noi alla banca.",
       "Se la banca dà ragione a te la cifra torna sul tuo conto; se dà ragione al cliente resta a lui.",
     ],
     cta: proRequests("Apri il lavoro"),
@@ -924,13 +925,29 @@ const BUILDERS: Record<string, Builder> = {
     subject: "Contestazione in banca su un pagamento",
     title: "Contestazione in banca",
     paragraphs: [
-      `Stato della contestazione: ${DISPUTE_STATUS_LABEL[str(payload.status) ?? ""] ?? "aperta"}. Se serve una risposta, manda le prove dalla Dashboard Stripe prima della scadenza.`,
+      `Stato della contestazione: ${DISPUTE_STATUS_LABEL[str(payload.status) ?? ""] ?? "aperta"}. Se serve una risposta, rileggi e manda le prove da Admin → Pagamenti prima della scadenza.`,
       payload.alreadyReleased
         ? "I soldi erano già passati al professionista: quello che non si riprende dal suo conto si trattiene dai suoi prossimi pagamenti."
         : "Se riguarda un lavoro, la cifra si riprende subito dai soldi bloccati del professionista e l'accredito resta sospeso finché la banca non decide.",
     ],
     cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin/pagamenti` },
   }),
+  // Prove non ancora mandate a 3 giorni dalla scadenza (docs/changelog/2026-10-28-stripe-prova.md).
+  ADMIN_STRIPE_DISPUTE_DUE: (payload) => {
+    const dueBy = str(payload.dueBy);
+    const day = dueBy ? new Date(dueBy).toLocaleDateString("it-IT", { day: "numeric", month: "long", timeZone: "Europe/Rome" }) : null;
+    return {
+      kind: "notification",
+      tone: "urgent",
+      subject: "Contestazione in banca: prove da mandare",
+      title: "Prove da mandare alla banca",
+      paragraphs: [
+        `Le prove di una contestazione in banca non sono ancora partite${day ? ` e la scadenza è il ${day}` : " e la scadenza è vicina"}. Senza prove la banca dà ragione al cliente.`,
+        payload.professionalNote ? "Il professionista ha già scritto la sua spiegazione: la trovi nelle prove da rileggere." : "Il professionista non ha ancora scritto la sua spiegazione: puoi mandare le prove anche senza.",
+      ],
+      cta: { label: "Apri le contestazioni", url: `${frontendUrl()}/admin/pagamenti` },
+    };
+  },
   ADMIN_JOB_PAYMENT_LONG_HOLD: (payload) => ({
     kind: "notification",
     tone: "urgent",

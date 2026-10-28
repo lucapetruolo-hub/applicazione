@@ -1,6 +1,7 @@
 import { z } from "zod";
 import "./zod";
 import { clientInvoiceRequestSchema } from "./accounting";
+import { BANK_DISPUTE_OPEN_STATUSES, type ProfessionalBankDispute } from "./bankDisputes";
 
 /**
  * Pagamento dei lavori (decisioni dell'utente del 29/09/2026,
@@ -324,6 +325,8 @@ export type JobPaymentSummary = {
   payoutStatus?: JobPayoutStatus | null;
   /** Solo per il professionista: motivo del bonifico non riuscito, in parole di Stripe. */
   payoutFailureMessage?: string | null;
+  /** Solo per il professionista: contestazione in banca su questo pagamento, con la sua spiegazione. */
+  bankDispute?: ProfessionalBankDispute | null;
 };
 
 /**
@@ -369,7 +372,27 @@ type JobPaymentRow = {
   payoutPaidAt?: Date | null;
   payoutFailedAt?: Date | null;
   payoutFailureMessage?: string | null;
+  stripeDisputeId?: string | null;
+  stripeDisputeStatus?: string | null;
+  stripeDisputeDueBy?: Date | null;
+  disputeProNote?: string | null;
+  disputeProPhotoUrls?: string[];
+  disputeProNoteAt?: Date | null;
 };
+
+/** Contestazione in banca vista dal professionista (null se non c'è). */
+export function professionalBankDispute(jp: JobPaymentRow): ProfessionalBankDispute | null {
+  if (!jp.stripeDisputeId) return null;
+  const status = jp.stripeDisputeStatus ?? "needs_response";
+  return {
+    open: (BANK_DISPUTE_OPEN_STATUSES as readonly string[]).includes(status),
+    status,
+    dueBy: jp.stripeDisputeDueBy?.toISOString() ?? null,
+    note: jp.disputeProNote ?? null,
+    photoUrls: jp.disputeProPhotoUrls ?? [],
+    noteAt: jp.disputeProNoteAt?.toISOString() ?? null,
+  };
+}
 
 /** Dov'è il bonifico del professionista (docs/CHANGELOG.md §249). */
 export function jobPayoutStatus(jp: JobPaymentRow): JobPayoutStatus | null {
@@ -421,6 +444,7 @@ export function toJobPaymentSummary(
     summary.payoutEurCents = stage === "RELEASED" ? jp.netAmountEurCents : Math.max(0, base - appFee - jp.stripeFeeEurCents);
     summary.payoutStatus = jobPayoutStatus(jp);
     summary.payoutFailureMessage = summary.payoutStatus === "FAILED" ? (jp.payoutFailureMessage ?? null) : null;
+    summary.bankDispute = professionalBankDispute(jp);
   }
   return summary;
 }

@@ -2117,6 +2117,16 @@ model JobPayment {
   stripeDisputeId        String?   @unique
   stripeDisputeStatus    String?
   stripeDisputedAt       DateTime?
+  // Ultimo giorno per mandare le prove alla banca (Stripe `evidence_details.due_by`)
+  // e avviso al team 3 giorni prima, una volta sola
+  // (docs/changelog/2026-10-28-stripe-prova.md).
+  stripeDisputeDueBy     DateTime?
+  disputeReminderSentAt  DateTime?
+  // Spiegazione e foto del professionista sulla contestazione, scritte dalla
+  // sua area: l'admin le rilegge e le manda alla banca con le prove.
+  disputeProNote         String?
+  disputeProPhotoUrls    String[]  @default([])
+  disputeProNoteAt       DateTime?
 
   // --- Soldi bloccati sul conto Stripe del professionista (docs/CHANGELOG.md §249) ---
   // Acconto e saldo addebitati "a destinazione" sul conto del professionista

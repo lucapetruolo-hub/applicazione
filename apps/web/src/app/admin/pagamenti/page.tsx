@@ -452,6 +452,7 @@ function BankDisputeCard({ row, token, onChanged }: { row: AdminBankDispute; tok
       <Text fontSize={13} color={brand.grafite70}>
         {row.businessName} · cliente {row.clientName}
         {row.dueBy && !row.submitted ? ` · prove entro il ${formatAdminDate(row.dueBy)}` : ""}
+        {!row.submitted ? (row.professionalNote ? " · il professionista ha scritto la sua spiegazione" : " · il professionista non ha ancora scritto") : ""}
       </Text>
       {row.submitted ? (
         <Text fontSize={13} color={brand.grafite70}>
@@ -459,6 +460,17 @@ function BankDisputeCard({ row, token, onChanged }: { row: AdminBankDispute; tok
         </Text>
       ) : open ? (
         <YStack gap="$2">
+          {row.professionalNote ? (
+            <YStack gap="$1" padding="$3" borderRadius="$3" backgroundColor={brand.gesso}>
+              <Text fontSize={13} color={brand.grafite70}>
+                Spiegazione del professionista, {formatAdminDate(row.professionalNote.at)}
+                {row.professionalNote.photoUrls.length ? ` · ${row.professionalNote.photoUrls.length} foto, già nel PDF` : ""}
+              </Text>
+              <Text color={brand.grafite} style={{ whiteSpace: "pre-wrap" }}>
+                {row.professionalNote.text}
+              </Text>
+            </YStack>
+          ) : null}
           <label>
             <Text fontSize={13} color={brand.grafite70}>
               Spiegazione per la banca

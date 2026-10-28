@@ -94,6 +94,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       // Contestazione del cliente presso la sua banca (docs/CHANGELOG.md §236).
       "JOB_STRIPE_DISPUTE",
       "ADMIN_STRIPE_DISPUTE",
+      // Prove della contestazione non ancora mandate a 3 giorni dalla scadenza (docs/changelog/2026-10-28-stripe-prova.md).
+      "ADMIN_STRIPE_DISPUTE_DUE",
       // Cifra da restituire dopo un rimborso o una contestazione persa, ripresa dai pagamenti successivi (docs/CHANGELOG.md §267).
       "JOB_PAYMENT_DEBT",
       // Rimborso in attesa di fondi sul conto Stripe del professionista, poi arrivato o non riuscito (docs/CHANGELOG.md §269).

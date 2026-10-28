@@ -3,6 +3,8 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
 import {
+  BANK_DISPUTE_OPEN_STATUSES,
+  BANK_DISPUTE_REMINDER_DAYS,
   accountDebitGrossEurCents,
   estimatedCardFeeEurCents,
   ONLINE_LONG_HOLD_ALERT_DAYS,
@@ -1252,6 +1254,7 @@ export class OnlineMoneyService {
         stripeDisputeId: dispute.id,
         stripeDisputeStatus: dispute.status,
         stripeDisputedAt: jp.stripeDisputedAt ?? new Date(),
+        stripeDisputeDueBy: dispute.evidence_details?.due_by ? new Date(dispute.evidence_details.due_by * 1000) : null,
         refundedEurCents: refunded,
         ...statusData,
       },
@@ -1571,7 +1574,39 @@ export class OnlineMoneyService {
     await this.runPayouts(now);
     await this.alertLongHolds(now);
     await this.notifyOnlineLimitsLifted(now).catch((err) => this.logger.error(`Avvisi "limite tolto" non riusciti: ${(err as Error).message}`));
+    await this.remindDisputeDeadlines(now).catch((err) => this.logger.error(`Avvisi sulle scadenze delle contestazioni non riusciti: ${(err as Error).message}`));
     return released;
+  }
+
+  /**
+   * Contestazioni in banca con le prove non ancora mandate a 3 giorni dalla
+   * scadenza (docs/changelog/2026-10-28-stripe-prova.md): senza prove la
+   * banca dà ragione al cliente da sola. Un avviso per contestazione al team
+   * Finanza, con la spiegazione del professionista se l'ha scritta.
+   */
+  async remindDisputeDeadlines(now: Date = new Date()): Promise<number> {
+    const rows = await this.prisma.jobPayment.findMany({
+      where: {
+        stripeDisputeId: { not: null },
+        stripeDisputeStatus: { in: [...BANK_DISPUTE_OPEN_STATUSES] },
+        disputeReminderSentAt: null,
+        stripeDisputeDueBy: { gt: now, lte: new Date(now.getTime() + BANK_DISPUTE_REMINDER_DAYS * DAY_MS) },
+      },
+      select: { id: true, bookingId: true, stripeDisputeDueBy: true, disputeProNoteAt: true, booking: { select: { quote: { select: { guidedRequestId: true } } } } },
+    });
+    let sent = 0;
+    for (const row of rows) {
+      const claimed = await this.prisma.jobPayment.updateMany({ where: { id: row.id, disputeReminderSentAt: null }, data: { disputeReminderSentAt: now } });
+      if (claimed.count === 0) continue;
+      await this.notifyFinanceAdmins("ADMIN_STRIPE_DISPUTE_DUE", {
+        bookingId: row.bookingId,
+        guidedRequestId: row.booking.quote?.guidedRequestId ?? null,
+        dueBy: row.stripeDisputeDueBy?.toISOString() ?? null,
+        professionalNote: !!row.disputeProNoteAt,
+      });
+      sent += 1;
+    }
+    return sent;
   }
 
   /**

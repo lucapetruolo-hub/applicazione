@@ -143,3 +143,39 @@ lancio, non per i numeri di oggi):
 **Verifica**: `bank-disputes.test.ts` (elenco e bozza, invio con PDF sul
 conto giusto, prove già consegnate, messaggi nel PDF, testi); PDF
 controllato a occhio; tutti i test dell'API, `tsc` di API e sito, `pnpm lint`.
+
+## Migliorie: avviso della scadenza, foto nel PDF, spiegazione del professionista
+
+Richiesta di Luca ("effettua le migliorie"), le tre proposte dopo le prove
+dal sito:
+
+1. **Avviso 3 giorni prima della scadenza** (`remindDisputeDeadlines` nel
+   giro orario di `runReleases`, tipo `ADMIN_STRIPE_DISPUTE_DUE` al team
+   Finanza): senza prove la banca dà ragione al cliente da sola. La
+   scadenza di Stripe (`evidence_details.due_by`) si salva su
+   `JobPayment.stripeDisputeDueBy` dal webhook (e, per le contestazioni già
+   aperte, alla prima lettura in Admin → Pagamenti); `disputeReminderSentAt`
+   fa partire l'avviso una volta sola. L'email dice se il professionista ha
+   già scritto la sua spiegazione. Corretto anche il testo di
+   `ADMIN_STRIPE_DISPUTE`, che rimandava ancora alla Dashboard Stripe.
+2. **Foto nel PDF** (blocco `images` in `document-pdf.ts`, due per riga con
+   didascalia): foto del professionista al lavoro terminato, del cliente
+   alla conferma e quelle aggiunte alla contestazione, al massimo 20.
+   Scaricate solo dal nostro cloud Cloudinary (mai da un indirizzo
+   qualsiasi), ridotte e in JPEG, i video come fotogramma; una foto che non
+   arriva resta come link. Nel PDF anche la nota del cliente alla conferma.
+3. **Spiegazione del professionista** (`PATCH
+   /bookings/:id/job-payment/bank-dispute-note`, `BankDisputeNotePanel`
+   sotto il pagamento nella scheda del lavoro): testo e fino a 10 foto,
+   modificabili finché le prove non partono; poi la scheda dice che decide
+   la banca, e l'esito. In Admin → Pagamenti la spiegazione compare sopra le
+   prove da rileggere, entra nella bozza ("Il professionista spiega: ...") e
+   nel PDF. L'email `JOB_STRIPE_DISPUTE` gli dice dove scriverla. Nuovi campi
+   `disputeProNote`, `disputeProPhotoUrls`, `disputeProNoteAt` (migrazione
+   `20261028170000_contestazioni_prove`).
+
+**Verifica**: `bank-disputes.test.ts` (scadenza salvata, foto solo da
+Cloudinary con link per le altre, spiegazione nella bozza e nel PDF,
+salvataggio solo del professionista del lavoro e non dopo l'invio,
+riepilogo del pagamento, avviso una volta sola al team Finanza, PDF con una
+foto rotta); tutti i test dell'API, `tsc` di API e sito, `pnpm lint`.

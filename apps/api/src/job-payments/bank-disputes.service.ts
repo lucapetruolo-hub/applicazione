@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import Stripe from "stripe";
 import type { Prisma, PrismaClient } from "@professionisti/database";
 import {
@@ -7,6 +7,8 @@ import {
   formatEur,
   type AdminBankDispute,
   type BankDisputeEvidenceInput,
+  type BankDisputeProNoteInput,
+  type ProfessionalBankDispute,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
@@ -14,12 +16,18 @@ import { renderDocumentPdf, type PdfBlock, type PdfDocumentModel } from "../acco
 
 /** Messaggi nel PDF: gli ultimi, abbastanza per la banca senza farne un libro. */
 const MAX_MESSAGES = 80;
+/** Foto nel PDF: quelle del lavoro terminato e del professionista, con un tetto. */
+const MAX_PHOTOS = 20;
+const PHOTO_MAX_BYTES = 5 * 1024 * 1024;
+const PHOTO_TIMEOUT_MS = 8000;
+/** Foto ridotte e in JPEG da Cloudinary: pdfkit legge solo JPEG e PNG, e il PDF resta leggero. */
+const PHOTO_TRANSFORM = "c_limit,w_1000,h_1000,q_70,f_jpg";
 
 const JOB_INCLUDE = {
   booking: {
     include: {
       client: { select: { name: true, surname: true, email: true } },
-      professionalProfile: { select: { businessName: true, city: true } },
+      professionalProfile: { select: { businessName: true, city: true, userId: true } },
       finalItems: true,
       issue: { select: { type: true, status: true, createdAt: true } },
       quote: { include: { items: true, guidedRequest: { select: { id: true, description: true, createdAt: true, category: { select: { label: true } } } } } },
@@ -134,6 +142,10 @@ export class BankDisputesService {
     }
     const status = dispute?.status ?? job.stripeDisputeStatus ?? "needs_response";
     const dueBy = dispute?.evidence_details?.due_by;
+    // Contestazioni arrivate prima che si salvasse la scadenza: serve all'avviso dei 3 giorni.
+    if (dueBy && !job.stripeDisputeDueBy) {
+      await this.prisma.jobPayment.update({ where: { id: job.id }, data: { stripeDisputeDueBy: new Date(dueBy * 1000) } }).catch(() => undefined);
+    }
     return {
       jobPaymentId: job.id,
       bookingId: job.bookingId,
@@ -145,6 +157,7 @@ export class BankDisputesService {
       status,
       dueBy: dueBy ? new Date(dueBy * 1000).toISOString() : null,
       submitted: !(BANK_DISPUTE_OPEN_STATUSES as readonly string[]).includes(status),
+      professionalNote: job.disputeProNote && job.disputeProNoteAt ? { text: job.disputeProNote, photoUrls: job.disputeProPhotoUrls, at: job.disputeProNoteAt.toISOString() } : null,
       draft: this.draft(job, dispute?.reason ?? null),
     };
   }
@@ -170,7 +183,9 @@ export class BankDisputesService {
       lines.push("Il pagamento è stato fatto dall'account del cliente sul nostro sito, lo stesso da cui ha scritto al professionista: in allegato i messaggi.");
     }
     if (job.refundedEurCents > 0) lines.push(`Gli è già stato rimborsato ${formatEur(job.refundedEurCents)}.`);
-    lines.push("In allegato il riepilogo del lavoro: preventivo, pagamenti, chiusura e messaggi tra cliente e professionista.");
+    if (job.disputeProNote) lines.push(`Il professionista spiega: "${job.disputeProNote}"`);
+    const photos = b.professionalCompletionPhotoUrls.length + b.clientCompletionPhotoUrls.length + job.disputeProPhotoUrls.length;
+    lines.push(`In allegato il riepilogo del lavoro: preventivo, pagamenti, chiusura${photos ? ", foto del lavoro" : ""} e messaggi tra cliente e professionista.`);
     return {
       productDescription: `${category} ${where}: ${items || "lavoro su preventivo"}.`,
       customerName: clientName(job),
@@ -231,12 +246,14 @@ export class BankDisputesService {
       );
       if (b.professionalCompletionNote) blocks.push({ type: "text", lines: [b.professionalCompletionNote], muted: true });
     }
+    if (b.clientCompletionNote) blocks.push({ type: "heading", text: "Nota del cliente alla conferma" }, { type: "text", lines: [b.clientCompletionNote] });
+    if (job.disputeProNote) blocks.push({ type: "heading", text: "Spiegazione del professionista" }, { type: "text", lines: [job.disputeProNote] });
     return { title: "Riepilogo del lavoro", subtitle: `Contestazione ${job.stripeDisputeId} · ${formatEur(job.paidEurCents)} pagati online`, blocks };
   }
 
-  /** Messaggi tra cliente e professionista, in fondo al PDF. */
+  /** Foto del lavoro e messaggi tra cliente e professionista, in fondo al PDF. */
   async documentationWithMessages(job: Job): Promise<PdfDocumentModel> {
-    const model = this.documentation(job);
+    const model = await this.withPhotos(job, this.documentation(job));
     const guidedRequestId = job.booking.quote?.guidedRequest.id;
     if (!guidedRequestId) return model;
     const events = await this.prisma.conversationEvent.findMany({
@@ -251,5 +268,80 @@ export class BankDisputesService {
       .reverse()
       .map((e) => `${dayTime(e.createdAt)} · ${who(e.actor)}: ${e.message || ""}${e.mediaUrls.length ? ` (${e.mediaUrls.length} foto)` : ""}`);
     return { ...model, blocks: [...model.blocks, { type: "heading", text: "Messaggi tra cliente e professionista" }, { type: "text", lines }] };
+  }
+
+  /**
+   * Foto nel PDF: lavoro terminato (professionista e cliente) e quelle
+   * aggiunte dal professionista alla contestazione. Solo dal nostro cloud
+   * Cloudinary, mai da un indirizzo qualsiasi; una foto che non arriva resta
+   * come link.
+   */
+  private async withPhotos(job: Job, model: PdfDocumentModel): Promise<PdfDocumentModel> {
+    const b = job.booking;
+    const sources = [
+      ...b.professionalCompletionPhotoUrls.map((url) => ({ url, caption: `Lavoro terminato, foto del professionista${b.professionalCompletedAt ? ` (${day(b.professionalCompletedAt)})` : ""}` })),
+      ...b.clientCompletionPhotoUrls.map((url) => ({ url, caption: `Foto del cliente alla conferma${b.clientConfirmedCompletedAt ? ` (${day(b.clientConfirmedCompletedAt)})` : ""}` })),
+      ...job.disputeProPhotoUrls.map((url) => ({ url, caption: "Foto aggiunta dal professionista" })),
+    ].slice(0, MAX_PHOTOS);
+    if (!sources.length) return model;
+    const fetched = await Promise.all(sources.map(async (source) => ({ ...source, data: await this.fetchPhoto(source.url) })));
+    const images = fetched.filter((f): f is typeof f & { data: Buffer } => !!f.data).map((f) => ({ data: f.data, caption: f.caption }));
+    const missing = fetched.filter((f) => !f.data).map((f) => `${f.caption}: ${f.url}`);
+    const blocks: PdfBlock[] = [{ type: "heading", text: "Foto del lavoro" }];
+    if (images.length) blocks.push({ type: "images", images });
+    if (missing.length) blocks.push({ type: "text", lines: missing, muted: true });
+    return { ...model, blocks: [...model.blocks, ...blocks] };
+  }
+
+  /** Una foto di Cloudinary in JPEG ridotto (i video come fotogramma), null se non arriva. */
+  async fetchPhoto(url: string): Promise<Buffer | null> {
+    const cloud = process.env.CLOUDINARY_CLOUD_NAME;
+    if (!cloud) return null;
+    const prefix = `https://res.cloudinary.com/${cloud}/`;
+    if (!url.startsWith(prefix)) return null;
+    let source: string;
+    if (url.startsWith(`${prefix}image/upload/`)) source = url.replace("/image/upload/", `/image/upload/${PHOTO_TRANSFORM}/`);
+    else if (url.startsWith(`${prefix}video/upload/`)) source = url.replace("/video/upload/", `/video/upload/${PHOTO_TRANSFORM},so_0/`).replace(/\.[a-z0-9]+(\?.*)?$/i, ".jpg");
+    else return null;
+    try {
+      const response = await fetch(source, { signal: AbortSignal.timeout(PHOTO_TIMEOUT_MS), redirect: "error" });
+      if (!response.ok) return null;
+      const data = Buffer.from(await response.arrayBuffer());
+      return data.length > 0 && data.length <= PHOTO_MAX_BYTES ? data : null;
+    } catch (err) {
+      this.logger.warn(`Foto della contestazione non scaricata (${url}): ${(err as Error).message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Spiegazione e foto del professionista, dalla scheda del lavoro: si
+   * possono cambiare finché le prove non partono, poi le rilegge l'admin.
+   */
+  async saveProfessionalNote(userId: string, bookingId: string, input: BankDisputeProNoteInput): Promise<ProfessionalBankDispute> {
+    const job = await this.prisma.jobPayment.findUnique({ where: { bookingId }, include: JOB_INCLUDE });
+    if (!job?.stripeDisputeId) throw new NotFoundException("Su questo lavoro non c'è una contestazione in banca.");
+    if (job.booking.professionalProfile.userId !== userId) throw new ForbiddenException("Questo lavoro non è tuo.");
+    if (!(BANK_DISPUTE_OPEN_STATUSES as readonly string[]).includes(job.stripeDisputeStatus ?? "")) {
+      throw new BadRequestException("Le prove sono già state mandate alla banca: ora decide lei.");
+    }
+    const now = new Date();
+    await this.prisma.jobPayment.update({ where: { id: job.id }, data: { disputeProNote: input.note, disputeProPhotoUrls: input.photoUrls, disputeProNoteAt: now } });
+    await this.auditLogService.record({
+      entityType: "JobPayment",
+      entityId: job.id,
+      fieldName: "disputeProNote",
+      newValue: { disputeId: job.stripeDisputeId, photos: input.photoUrls.length },
+      changedByUserId: userId,
+      reason: "Spiegazione del professionista sulla contestazione in banca.",
+    });
+    return {
+      open: true,
+      status: job.stripeDisputeStatus ?? "needs_response",
+      dueBy: job.stripeDisputeDueBy?.toISOString() ?? null,
+      note: input.note,
+      photoUrls: input.photoUrls,
+      noteAt: now.toISOString(),
+    };
   }
 }

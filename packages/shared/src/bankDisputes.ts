@@ -56,6 +56,31 @@ export const bankDisputeEvidenceSchema = z.object({
 });
 export type BankDisputeEvidenceInput = z.infer<typeof bankDisputeEvidenceSchema>;
 
+/** Giorni prima della scadenza delle prove in cui il team riceve l'avviso. */
+export const BANK_DISPUTE_REMINDER_DAYS = 3;
+export const BANK_DISPUTE_PRO_PHOTOS_MAX = 10;
+
+/**
+ * Spiegazione e foto del professionista sulla contestazione, dalla sua area:
+ * l'admin le rilegge e le manda alla banca con le prove.
+ */
+export const bankDisputeProNoteSchema = z.object({
+  note: z.string().trim().min(20, "Racconta in qualche riga come è andato il lavoro.").max(5000),
+  photoUrls: z.array(z.string().url()).max(BANK_DISPUTE_PRO_PHOTOS_MAX).default([]),
+});
+export type BankDisputeProNoteInput = z.infer<typeof bankDisputeProNoteSchema>;
+
+/** Contestazione vista dal professionista nel riepilogo del pagamento. */
+export type ProfessionalBankDispute = {
+  /** Aspetta ancora le prove: il professionista può scrivere o cambiare la sua spiegazione. */
+  open: boolean;
+  status: string;
+  dueBy: string | null;
+  note: string | null;
+  photoUrls: string[];
+  noteAt: string | null;
+};
+
 export type AdminBankDispute = {
   jobPaymentId: string;
   bookingId: string;
@@ -69,6 +94,8 @@ export type AdminBankDispute = {
   dueBy: string | null;
   /** Prove già mandate alla banca: non si possono più cambiare. */
   submitted: boolean;
+  /** Spiegazione e foto mandate dal professionista, null se non ha scritto nulla. */
+  professionalNote: { text: string; photoUrls: string[]; at: string } | null;
   /** Campi già compilati dal sito, da rileggere. */
   draft: Omit<BankDisputeEvidenceInput, "submit">;
 };
