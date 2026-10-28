@@ -11,9 +11,8 @@ schermo della home c'è già il pulsante grande. Le altre pagine lo hanno
 sempre avuto. Nel profilo con la barra era già nascosto dal §385 (PR #161).
 
 **Decisione**:
-- Home: il pulsante torna in alto a destra (`SiteHeader.tsx`), così resta a
-  portata di mano anche scorrendo la pagina, dove il pulsante del primo
-  schermo non si vede più. Come prima: mai per un professionista, mai su
+- Home: il pulsante torna in alto a destra (`SiteHeader.tsx`), visibile appena si
+  apre la pagina e anche scorrendo. Come prima: mai per un professionista, mai su
   accesso e registrazione.
 - Profilo di un professionista che accetta richieste: resta nascosto
   (`body:has(.profile-cta-bar)` in `globals.css`); nei profili in pausa resta,
