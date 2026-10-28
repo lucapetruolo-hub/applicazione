@@ -7,12 +7,20 @@ import { ChevronDown, ChevronUp, Info, Map as MapIcon, Maximize2, Minimize2, Shi
 import { findComuneByName, PUBLIC_AGENDA_DAYS, SEARCH_RADIUS_KM, type ProfessionalSearchResult, professionalPath, subTagLabel } from "@professionisti/shared";
 import { Icon, ProfessionalCard, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
-import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
+import { ProfessionalAvatar, type ProfessionalAvatarShape } from "@/components/ProfessionalAvatar";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { useSavedProfessionals } from "@/lib/useSavedProfessionals";
 import { navigateWithTransition } from "@/lib/viewTransition";
 import type { MapBounds } from "./ResultsMap";
 import { closeOnBackdrop } from "@/lib/closeOnBackdrop";
+
+// Foto nella scheda dei risultati (docs/CHANGELOG.md §400): più grande della
+// vecchia da 88px, un po' meno sul telefono per lasciare spazio al nome.
+// Con shape "portrait" diventa un rettangolo verticale 3:4 con angoli di 20px.
+const RESULT_PHOTO: { size: number; mobileSize: number; shape: ProfessionalAvatarShape } = { size: 120, mobileSize: 96, shape: "circle" };
+// Cuoricino sull'angolo della foto: sul bordo del cerchio, dentro l'angolo
+// arrotondato del rettangolo.
+const heartOffset = RESULT_PHOTO.shape === "portrait" ? { right: 6, bottom: 6 } : { right: 0, bottom: 0 };
 
 // La mappa (Google Maps) vive solo nel browser: mai importata lato server (CLAUDE.md
 // §5.4 vale per l'SEO delle pagine, non per un widget lato client come
@@ -679,11 +687,17 @@ export function ResultsListWithMap({
               // spazio al nome sui telefoni.
               icon={
                 <span style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
-                  <ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={88} />
+                  <ProfessionalAvatar
+                    imageUrl={pro.imageUrl}
+                    categorySlug={pro.categorySlug}
+                    size={RESULT_PHOTO.size}
+                    mobileSize={RESULT_PHOTO.mobileSize}
+                    shape={RESULT_PHOTO.shape}
+                  />
                   {canSave ? (
                     // Il clic sul cuoricino non deve aprire anche il profilo (clic sulla card).
                     // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
-                    <span style={{ position: "absolute", right: 0, bottom: 0 }} onClick={(e) => e.stopPropagation()}>
+                    <span style={{ position: "absolute", ...heartOffset }} onClick={(e) => e.stopPropagation()}>
                       <IconActionButton
                         label={savedIds.has(pro.id) ? "Salvato" : "Salva"}
                         active={savedIds.has(pro.id)}

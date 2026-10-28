@@ -21502,3 +21502,13 @@ e 390 px (anteprime in `anteprime/barra-preventivo-computer/`).
 - **Avviso del 15 dicembre** (`remindDocumentsToFix`): per chi fa le ricevute (prestazione occasionale) anche i lavori terminati nell'anno senza ricevuta ("Idraulico del 12 novembre 2026, Sara Neri: Manca la ricevuta") e le ricevute con il numero ma mai scaricate ("Ricevuta mai scaricata"), perché nel riepilogo per il commercialista mancherebbero o il cliente non le ha. L'email dice solo le istruzioni che servono: "Se manca la ricevuta, preparala dal lavoro, scarica il PDF e dalla al cliente. Se l'hai fatta a mano, dillo al tuo commercialista: nel riepilogo non c'è." Se ci sono solo ricevute da fare il pulsante è "Apri le richieste", altrimenti resta "Apri Fatture e documenti". Le copie delle fatture restano fuori: la fattura il professionista la fa col suo programma e la nostra copia è facoltativa.
 
 **Verifica**: test nuovi sull'avviso al cliente (primo PDF, stesso importo, importo cambiato, senza importo), sull'avviso di dicembre (lavori senza ricevuta dell'anno all'ora di Roma, ricevute mai scaricate solo a lavoro terminato) e sulle email; 810 test dell'API, typecheck e lint di API e sito; test dei permessi (281 rotte, 1164 controlli, nessun problema). Provato con l'API e il sito veri in locale: il PDF scaricato dal professionista crea una sola notifica al cliente, una seconda con l'importo cambiato, e il link apre la finestra dei documenti da computer e da telefono; email guardate nell'anteprima.
+
+## 400. Foto più grande nei risultati di ricerca
+
+**Richiesta** (Luca, 28/10/2026): "nelle ricerche dei professionisti rendi più grande la foto profilo, e dammi un esempio dell'immagine profilo in un formato più rettangolare in verticale sempre arrotondato".
+
+**Decisione**:
+- **Foto più grande** nella scheda dei risultati (`ResultsListWithMap`, costante `RESULT_PHOTO`): da 88 a 120 px da computer e 96 px sul telefono, dove la colonna del nome è già stretta. Senza foto, l'icona della categoria cresce allo stesso modo.
+- **Variante verticale pronta**: `ProfessionalAvatar` e `CategoryIconBadge` accettano `shape="portrait"` (rettangolo 3:4 con angoli di 20 px, come il resto del sito) e `mobileSize`. Per passare alla foto verticale basta `shape: "portrait"` in `RESULT_PHOTO`; il cuoricino si sposta di 6 px dentro l'angolo arrotondato. Anteprime delle due forme in `anteprime/foto-risultati/` per la scelta di Luca.
+
+**Verifica**: anteprime da computer (1440 px) e telefono (390 px) con il sito avviato in locale; typecheck e lint del sito.
