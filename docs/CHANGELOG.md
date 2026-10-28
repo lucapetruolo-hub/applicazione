@@ -1,5 +1,10 @@
 # Professionisti — Changelog dettagliato
 
+> **Voci nuove**: dal 28/10/2026 ogni voce va in un file suo in
+> `docs/changelog/` (`AAAA-MM-GG-argomento.md`, istruzioni in
+> `docs/changelog/README.md`), non più in fondo a questo file, che resta
+> l'archivio delle sezioni fino alla §399.
+
 > **Cosa è questo file**: lo storico completo, sezione per sezione, di ogni
 > modifica fatta al prodotto dalla Fase 0 del redesign in poi (§10 in avanti —
 > §1-9, le regole architetturali vive, restano in `CLAUDE.md`). Ogni voce
