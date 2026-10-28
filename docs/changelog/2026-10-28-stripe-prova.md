@@ -75,3 +75,13 @@ numero passa da `normalizePhoneNumber` (senza prefisso vuol dire italiano,
 come nel resto del sito) e va a Stripe senza spazi ("+393331234567"); un
 numero non plausibile resta fuori e lo chiede Stripe. Nessun cambio al
 modulo del sito. Verifica: due casi nuovi in `stripe-account-prefill.test.ts`.
+
+## Telefono controllato con le regole di ogni paese (miglioria 1, approvata da Luca)
+
+Nuova dipendenza `libphonenumber-js` (solo in `apps/api`, approvata da
+Luca il 28/10). Il telefono si manda a Stripe solo se è valido per le
+regole di numerazione del suo paese. Alla persona va solo un cellulare,
+perché Stripe può usarlo per mandare un codice via SMS; per l'azienda va
+bene anche un fisso. Verifica: un caso nuovo in
+`stripe-account-prefill.test.ts` (fisso di Latina, prefisso inesistente) e
+la build dell'API che carica la libreria da `dist/`.

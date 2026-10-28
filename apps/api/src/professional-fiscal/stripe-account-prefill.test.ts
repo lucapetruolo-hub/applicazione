@@ -53,6 +53,16 @@ describe("stripeAccountPrefill", () => {
     expect(stripeAccountPrefill({ ...base, phone: "+41 791234567" }).identity?.individual?.phone).toBe("+41791234567");
   });
 
+  it("alla persona manda solo un cellulare valido, all'azienda anche il fisso", () => {
+    // Fisso di Latina: va bene come telefono dell'azienda, non per gli SMS di Stripe.
+    expect(stripeAccountPrefill({ ...base, phone: "+39 0773123456" }).identity?.individual?.phone).toBeUndefined();
+    expect(
+      stripeAccountPrefill({ ...base, phone: "+39 0773123456", fiscal: { ...base.fiscal, entityType: "BUSINESS", businessName: "Rossi Srl" } }).identity?.business_details?.phone,
+    ).toBe("+390773123456");
+    // Lunghezza giusta ma prefisso inesistente: non valido per le regole italiane.
+    expect(stripeAccountPrefill({ ...base, phone: "+39 1111111111" }).identity?.individual?.phone).toBeUndefined();
+  });
+
   it("non inventa ciò che manca: telefono non valido e indirizzo vuoto li chiede Stripe", () => {
     const prefill = stripeAccountPrefill({ ...base, phone: "123", fiscal: { ...base.fiscal, registeredStreet: null } });
 

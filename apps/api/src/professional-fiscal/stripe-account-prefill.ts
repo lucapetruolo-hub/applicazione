@@ -1,5 +1,6 @@
+import parsePhoneNumber from "libphonenumber-js/max";
 import type Stripe from "stripe";
-import { BRAND, isPlausiblePhoneNumber, normalizePhoneNumber, professionalPath } from "@professionisti/shared";
+import { BRAND, normalizePhoneNumber, professionalPath } from "@professionisti/shared";
 
 /**
  * Codice dell'attività (MCC) per Stripe, dalla categoria principale
@@ -49,6 +50,24 @@ type Prefill = Pick<Stripe.V2.Core.AccountCreateParams, "contact_email" | "displ
 const clean = (value: string | null | undefined): string | undefined => value?.trim() || undefined;
 
 /**
+ * Telefono nel formato di Stripe (+393331234567), controllato con le regole
+ * di numerazione di ogni paese (libphonenumber-js, miglioria chiesta da Luca,
+ * docs/changelog/2026-10-28-stripe-prova.md). Il sito salva "+39 3331234567";
+ * un numero vecchio senza prefisso è italiano, come nel resto del sito.
+ * Alla persona va solo un cellulare, perché Stripe può usarlo per mandare un
+ * codice via SMS; per l'azienda va bene anche un fisso. Un numero non valido
+ * non si manda: lo chiede Stripe.
+ */
+function stripePhones(raw: string | null): { any?: string; mobile?: string } {
+  const value = raw?.trim();
+  if (!value) return {};
+  const parsed = parsePhoneNumber(normalizePhoneNumber(value));
+  if (!parsed?.isValid()) return {};
+  const type = parsed.getType();
+  return { any: parsed.number, mobile: type === "MOBILE" || type === "FIXED_LINE_OR_MOBILE" ? parsed.number : undefined };
+}
+
+/**
  * Dati che il professionista ci ha già dato, mandati a Stripe alla creazione
  * del conto (richiesta di Luca, docs/changelog/2026-10-28-stripe-prova.md):
  * l'iscrizione su Stripe li trova già scritti e chiede solo il resto
@@ -68,11 +87,7 @@ export function stripeAccountPrefill(input: StripeAccountPrefillInput): Prefill 
         city: clean(fiscal.registeredCity),
       }
     : undefined;
-  // Stripe vuole il formato internazionale senza spazi (+393331234567). Il sito
-  // salva "+39 3331234567"; un numero vecchio senza prefisso è italiano, come
-  // nel resto del sito (normalizePhoneNumber). Un numero non plausibile lo chiede Stripe.
-  const rawPhone = input.phone?.trim();
-  const phone = rawPhone && isPlausiblePhoneNumber(rawPhone) ? normalizePhoneNumber(rawPhone).replace(/\s/g, "") : undefined;
+  const phones = stripePhones(input.phone);
   const isCompany = fiscal.entityType === "BUSINESS";
   const categoryLabel = profile.category?.label;
 
@@ -85,7 +100,7 @@ export function stripeAccountPrefill(input: StripeAccountPrefillInput): Prefill 
     identity.business_details = {
       registered_name: clean(fiscal.businessName),
       address,
-      phone,
+      phone: phones.any,
       id_numbers: vat ? [{ type: "it_vat", value: vat }] : undefined,
     };
   } else {
@@ -95,7 +110,7 @@ export function stripeAccountPrefill(input: StripeAccountPrefillInput): Prefill 
       given_name: clean(fiscal.fiscalFirstName),
       surname: clean(fiscal.fiscalLastName),
       email: clean(input.email),
-      phone,
+      phone: phones.mobile,
       address,
       date_of_birth: birth ? { day: birth.getUTCDate(), month: birth.getUTCMonth() + 1, year: birth.getUTCFullYear() } : undefined,
       id_numbers: codiceFiscale ? [{ type: "it_cf", value: codiceFiscale }] : undefined,
