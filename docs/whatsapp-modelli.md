@@ -49,48 +49,49 @@ Il riepilogo della sera al professionista: un solo messaggio con tutti i
 lavori del giorno dopo, all'ora che sceglie in Notifiche (18, 19, 20 o 21).
 Quattro modelli perché Meta non accetta variabili vuote né a capo dentro
 una variabile: uno per 1, 2 e 3 lavori, uno per 4 o più (i primi tre e "e
-altri N"). Ogni riga: ora, la prima riga della descrizione senza contatti
-(o il mestiere) e il comune, mai nome o via del cliente.
+altri N"). Ogni riga: ora in grassetto, la prima riga della descrizione
+senza contatti (o il mestiere) e il comune o "online", mai nome o via del
+cliente. Dice "domani": parte solo la sera prima e dopo mezzanotte no.
 
 - Tipo nel codice: `BOOKING_REMINDER_PROFESSIONAL` (`PROFESSIONAL_DAY_TEMPLATES`)
 - Categoria: **Utility**, lingua: Italiano (it), per tutti e quattro
 - Testi (gli asterischi fanno il grassetto, gli a capo vanno lasciati):
 
   `riepilogo_lavori_1`
-  > \*Il tuo lavoro di {{1}}\*
+  > Buonasera, {{1}} ti ricorda l'appuntamento per domani, \*{{2}}\*:
   >
-  > • {{2}}
+  > 1\. \*{{3}}\* · {{4}}
   >
   > Indirizzo e contatti del cliente sono nella tua agenda. Buon lavoro!
 
   `riepilogo_lavori_2`
-  > \*I tuoi 2 lavori di {{1}}\*
+  > Buonasera, {{1}} ti ricorda gli appuntamenti per domani, \*{{2}}\*:
   >
-  > • {{2}}
-  > • {{3}}
+  > 1\. \*{{3}}\* · {{4}}
+  > 2\. \*{{5}}\* · {{6}}
   >
   > Indirizzi e contatti dei clienti sono nella tua agenda. Buon lavoro!
 
   `riepilogo_lavori_3`
-  > \*I tuoi 3 lavori di {{1}}\*
+  > Buonasera, {{1}} ti ricorda gli appuntamenti per domani, \*{{2}}\*:
   >
-  > • {{2}}
-  > • {{3}}
-  > • {{4}}
+  > 1\. \*{{3}}\* · {{4}}
+  > 2\. \*{{5}}\* · {{6}}
+  > 3\. \*{{7}}\* · {{8}}
   >
   > Indirizzi e contatti dei clienti sono nella tua agenda. Buon lavoro!
 
   `riepilogo_lavori_piu`
-  > \*I tuoi {{1}} lavori di {{2}}\*
+  > Buonasera, {{1}} ti ricorda i {{2}} appuntamenti per domani, \*{{3}}\*:
   >
-  > • {{3}}
-  > • {{4}}
-  > • {{5}}
-  > …e {{6}}.
+  > 1\. \*{{4}}\* · {{5}}
+  > 2\. \*{{6}}\* · {{7}}
+  > 3\. \*{{8}}\* · {{9}}
+  > …e {{10}}.
   >
   > Indirizzi e contatti dei clienti sono nella tua agenda. Buon lavoro!
 
-- Esempio delle variabili: il giorno = "giovedì 5 novembre"; un lavoro = "08:30 · Sostituzione rubinetto · Latina"; nel quarto modello {{1}} = "5" e {{6}} = "altri 2 lavori"
+- Esempio delle variabili: il nome del sito = "Professionisti" (`BRAND.name`); il giorno = "MARTEDÌ 13 OTTOBRE"; per ogni lavoro l'ora = "08:30" e il resto = "Perdita sotto il lavandino · Latina"; nel quarto modello {{2}} = "5" e {{10}} = "altri 2 appuntamenti"
 - Piè di pagina: "Messaggio automatico, le risposte non vengono lette"
 - Pulsante 1, "Visita il sito web", URL dinamico: testo "Apri l'agenda", indirizzo `https://<dominio>/{{1}}`, esempio `https://<dominio>/dashboard/agenda`
 - Pulsante 2, risposta rapida: "Non ricevere più"

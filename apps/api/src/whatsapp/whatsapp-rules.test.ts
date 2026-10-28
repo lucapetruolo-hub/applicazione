@@ -116,31 +116,33 @@ describe("testi dei messaggi", () => {
     expect(whatsappDayTime(at)).toBe("giovedì 5 novembre alle 10:30");
   });
 
-  it("riepilogo del professionista: un lavoro per riga, poi 'e altri'", () => {
+  it("riepilogo del professionista: elenco numerato con l'ora in grassetto", () => {
     const job = (h: number, what: string | null, where: string | null) => ({
-      scheduledAt: new Date(`2026-11-05T${String(h).padStart(2, "0")}:30:00Z`),
+      scheduledAt: new Date(`2026-10-13T${String(h).padStart(2, "0")}:30:00Z`),
       what,
       where,
     });
-    const two = professionalDayMessage([
-      job(8, "Sostituzione rubinetto", "Latina"),
-      job(11, null, "online"),
-    ]);
+    const two = professionalDayMessage(
+      [job(8, "Perdita sotto il lavandino", "Latina"), job(11, null, "online")],
+      "Professionisti",
+    );
     expect(two.template.name).toBe("riepilogo_lavori_2");
     expect(renderTemplateText(two.template, two.bodyParams)).toBe(
-      "*I tuoi 2 lavori di giovedì 5 novembre*\n\n• 08:30 · Sostituzione rubinetto · Latina\n• 11:30 · online\n\nIndirizzi e contatti dei clienti sono nella tua agenda. Buon lavoro!",
+      "Buonasera, Professionisti ti ricorda gli appuntamenti per domani, *MARTEDÌ 13 OTTOBRE*:\n\n1. *08:30* · Perdita sotto il lavandino · Latina\n2. *11:30* · online\n\nIndirizzi e contatti dei clienti sono nella tua agenda. Buon lavoro!",
     );
     const five = professionalDayMessage(
       [8, 9, 10, 11, 12].map((h) => job(h, "Perdita", "Latina")),
+      "Professionisti",
     );
     expect(five.template.name).toBe("riepilogo_lavori_piu");
-    expect(five.bodyParams[0]).toBe("5");
-    expect(five.bodyParams.at(-1)).toBe("altri 2 lavori");
+    expect(five.bodyParams[1]).toBe("5");
+    expect(five.bodyParams.at(-1)).toBe("altri 2 appuntamenti");
     expect(
       professionalDayMessage(
         [8, 9, 10, 11].map((h) => job(h, "X", null)),
+        "Professionisti",
       ).bodyParams.at(-1),
-    ).toBe("un altro lavoro");
+    ).toBe("un altro appuntamento");
   });
 
   it("promemoria con il giorno scritto per intero, mai 'domani'", () => {
