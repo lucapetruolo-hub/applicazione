@@ -7,7 +7,7 @@
 **Decisione**:
 - `agenda-browser` diviso in quattro job paralleli, ognuno col suo database: telefono in Italia in due metà (`--shard`), New York e Tokyo insieme, misure dei compiti (`--no-deps`, cambiano i dati) con Lighthouse.
 - Il controllo SEO del sito aperto ha un job suo (`seo-sito-aperto`) invece di rifare la build in coda.
-- Typecheck, lint, build e test in un solo comando turbo, che li fa in parallelo per pacchetto.
+- ~~Typecheck, lint, build e test in un solo comando turbo~~: tolto nel terzo giro, vedi sotto.
 - Cache della build di Next.js (`apps/web/.next/cache`) tra un giro e l'altro.
 - Un nuovo push sulla stessa PR ferma il giro vecchio (CI e sicurezza); sul ramo principale mai.
 - **Changelog senza conflitti**: ogni voce nuova in un file suo in `docs/changelog/` (`AAAA-MM-GG-argomento.md`, `docs/changelog/README.md`); `docs/CHANGELOG.md` resta l'archivio fino alla §399. Tutte le PR scrivevano in fondo allo stesso file con il numero successivo: andavano in conflitto tra loro e una PR in conflitto non fa partire nessun controllo. Il job `changelog` blocca un nome sbagliato e avvisa chi scrive ancora in fondo a `docs/CHANGELOG.md`.
@@ -29,3 +29,5 @@
 ## Terzo giro (28/10)
 
 **Una prova aspettava un minuto** (Luca: "fai la 1"): "nel preventivo il cliente vede che tipo di lavoratore lo manda" (`e2e/tests/badge-fumetto.spec.ts`) entrava come cliente con il login vero a metà giro, trovava pieno il limite di accessi al minuto e aspettava fino a 60 secondi. Ora usa l'accesso firmato come l'API (`testToken`, già usato da altre prove). Il limite di accessi dell'API non cambia; il login vero resta provato dalla preparazione delle prove (`global-setup.ts`).
+
+**Tolto il comando unico di turbo**: al terzo giro `typecheck-build-test` è diventato rosso senza motivo nel codice. Lo script `build` di `apps/api` ricompila `packages/database` e `packages/shared`, e con tutto in parallelo riscriveva quei file mentre i test dell'API li leggevano. Tornati i quattro passi in fila di prima: si perdono circa 30 secondi su quel job, che non è il più lento, e la stabilità viene prima (decisione di Luca, 28/10).

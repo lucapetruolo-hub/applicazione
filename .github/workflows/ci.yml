@@ -76,17 +76,34 @@ jobs:
             next-build-${{ hashFiles('pnpm-lock.yaml') }}-
             next-build-
 
-      # Un solo comando: turbo fa typecheck, lint, build e test dei pacchetti
-      # in parallelo, rispettando le dipendenze (prima erano quattro giri in fila).
+      # Quattro passi in fila, non un solo comando turbo: lo script build di
+      # apps/api ricompila database e shared, e in parallelo riscriveva i file
+      # mentre i test dell'API li leggevano (test rosso a caso,
+      # docs/changelog/2026-10-28-controlli-pr-veloci.md).
       # DATABASE_URL fittizia: "prisma generate" (eseguito dallo step
       # "build" dei package a monte, dipendenza di typecheck in
       # turbo.json) legge lo schema per generare il client TS — non
       # apre mai una connessione reale, ma l'URL deve comunque essere
       # una stringa presente e sintatticamente valida.
-      - name: Typecheck, lint, build e test
+      - name: Typecheck
         env:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
-        run: pnpm turbo run typecheck lint build test
+        run: pnpm turbo run typecheck
+
+      - name: Lint
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+        run: pnpm turbo run lint
+
+      - name: Build
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+        run: pnpm turbo run build
+
+      - name: Test
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+        run: pnpm turbo run test
 
       # Il build compila anche con un import circolare tra moduli Nest, ma
       # l'API poi non parte (docs/CHANGELOG.md §218): qui si costruisce il
