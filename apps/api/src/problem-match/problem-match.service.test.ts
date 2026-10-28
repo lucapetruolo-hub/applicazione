@@ -124,7 +124,7 @@ describe("ProblemMatchService con OpenRouter", () => {
   });
 
   const reply = (content: unknown, status = 200) =>
-    vi.fn().mockResolvedValue({ ok: status === 200, status, json: () => Promise.resolve({ choices: [{ message: { content: JSON.stringify(content) } }] }) });
+    vi.fn().mockResolvedValue({ ok: status === 200, status, text: () => Promise.resolve(""), json: () => Promise.resolve({ choices: [{ message: { content: JSON.stringify(content) } }] }) });
 
   it("senza chiave Anthropic usa OpenRouter, con Haiku solo i server di Anthropic", async () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "");
@@ -163,6 +163,7 @@ describe("ProblemMatchService con OpenRouter", () => {
     expect(result.categories).toEqual(["idraulico"]);
     const body = JSON.parse((fetchMock.mock.calls[0]! as [string, { body: string }])[1].body);
     expect(body.model).toBe("google/gemma-4-31b-it:free");
+    expect(body.models).toEqual(["google/gemma-4-31b-it:free", "google/gemma-4-26b-a4b-it:free", "nvidia/nemotron-3.5-super-vl:free"]);
     expect(body.provider).toBeUndefined();
   });
 
