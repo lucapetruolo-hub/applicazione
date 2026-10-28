@@ -114,7 +114,9 @@ produzione):
    application fee, bonifici (payouts), saldo e impostazioni del saldo
    degli account collegati, Checkout, pagamenti, rimborsi e addebiti
    (charges, per i prelievi dal conto del professionista) sugli account
-   collegati (§268). In Dashboard Stripe prima del primo
+   collegati (§268), e scrittura su contestazioni (disputes) e file degli
+   account collegati, per mandare le prove da Admin → Pagamenti
+   (docs/changelog/2026-10-28-stripe-prova.md). In Dashboard Stripe prima del primo
    professionista: accettare la responsabilità delle perdite (Impostazioni
    Connect → profilo piattaforma) e attivare Radar for Platforms. In
    Impostazioni Connect → Dashboard Express → Funzionalità spegnere la
@@ -144,8 +146,11 @@ produzione):
    clienti: metodi di pagamento e fatture sì, cambio piano e annullamento no,
    li gestisce il sito) e impostare un descrittore abbreviato corto (max 10
    caratteri, es. il marchio) per il nome del professionista sull'estratto
-   conto (docs/CHANGELOG.md §238). Usare una
-   chiave limitata (`rk_`) al posto di quella segreta. E Cloudinary reali (`CLOUDINARY_CLOUD_NAME`/
+   conto (docs/CHANGELOG.md §238). Spegnere l'Adaptive Pricing
+   (Impostazioni → Pagamenti → Adaptive Pricing): il codice lo spegne già in
+   ogni Checkout (`EUR_ONLY`), questa è la seconda sicurezza perché clienti
+   e contestazioni restino sempre in euro (docs/changelog/2026-10-28-stripe-prova.md).
+   Usare una chiave limitata (`rk_`) al posto di quella segreta. E Cloudinary reali (`CLOUDINARY_CLOUD_NAME`/
    `CLOUDINARY_API_KEY`/`CLOUDINARY_API_SECRET`).
 5bis. **Resend reali** (`RESEND_API_KEY`, dominio verificato su Resend +
    `RESEND_FROM_EMAIL` corrispondente) — senza queste variabili i

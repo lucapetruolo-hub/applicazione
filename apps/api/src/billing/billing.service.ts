@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
 import Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
 import {
@@ -15,6 +15,7 @@ import { InvoicesService } from "../accounting/invoices.service";
 import { hasLaunched, launchDate, subscriptionState, tierOfPlan, trialDaysOf, trialEndFor } from "../subscriptions/subscription-rules";
 import { BookingsService } from "../bookings/bookings.service";
 import { JobPaymentsService } from "../job-payments/job-payments.service";
+import { EUR_ONLY } from "../job-payments/online-money.service";
 import { ProfessionalFiscalService } from "../professional-fiscal/professional-fiscal.service";
 
 // Prezzi dei pacchetti di visibilità (CLAUDE.md §6): boost locale a canone,
@@ -239,6 +240,7 @@ export class BillingService {
     const fee = trialEnd && !preLaunchTrial ? this.trialUpgradeFee(plan, trialEndsAt!, now) : 0;
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
+      ...EUR_ONLY,
       line_items: [
         { price: priceId, quantity: 1 },
         // Il periodo gratuito vale come Base: per un livello superiore si
@@ -305,6 +307,7 @@ export class BillingService {
       if (fee === 0) return this.switchPrice(stripe, subscription.id, item.id, priceId);
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
+        ...EUR_ONLY,
         customer,
         line_items: [
           {
@@ -405,6 +408,7 @@ export class BillingService {
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
+      ...EUR_ONLY,
       line_items: [
         {
           price_data: {
@@ -620,6 +624,10 @@ export class BillingService {
     if (event.type === "charge.dispute.created" || event.type === "charge.dispute.updated" || event.type === "charge.dispute.closed") {
       const dispute = event.data.object as Stripe.Dispute;
       const jobPayment = await this.jobPaymentsService.handleStripeDispute(dispute);
+      // Pagamento di un lavoro (sta sul conto del professionista) non ancora
+      // registrato: la contestazione è arrivata prima della conferma del
+      // pagamento. Errore, così Stripe rimanda l'avviso più tardi.
+      if (!jobPayment && event.account) throw new ServiceUnavailableException("Contestazione su un pagamento non ancora registrato: riprovare più tardi.");
       // Abbonamento o pacchetto di visibilità contestato: solo avviso al team.
       if (!jobPayment && (event.type === "charge.dispute.created" || event.type === "charge.dispute.closed")) {
         await this.jobPaymentsService.notifyFinanceAdmins("ADMIN_STRIPE_DISPUTE", { amountEurCents: dispute.amount, status: dispute.status, bookingId: null });
@@ -637,7 +645,8 @@ export class BillingService {
     // Cifra contestata tolta dal nostro conto o restituita (§267): si riprende
     // subito dai soldi bloccati del professionista e gli torna se si vince.
     if (event.type === "charge.dispute.funds_withdrawn" || event.type === "charge.dispute.funds_reinstated") {
-      await this.jobPaymentsService.handleStripeDisputeFunds(event.data.object as Stripe.Dispute, event.type === "charge.dispute.funds_withdrawn" ? "withdrawn" : "reinstated");
+      const handled = await this.jobPaymentsService.handleStripeDisputeFunds(event.data.object as Stripe.Dispute, event.type === "charge.dispute.funds_withdrawn" ? "withdrawn" : "reinstated");
+      if (!handled && event.account) throw new ServiceUnavailableException("Contestazione su un pagamento non ancora registrato: riprovare più tardi.");
     }
 
     // Ciclo di vita dell'abbonamento (docs/CHANGELOG.md §161-§162): rinnovo

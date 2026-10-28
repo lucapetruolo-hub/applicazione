@@ -51,6 +51,7 @@ import { MediaPreview } from "@/components/MediaPreview";
 import { CompleteJobModal } from "@/components/CompleteJobModal";
 import { JobIssuePanel } from "@/components/JobIssuePanel";
 import { JobPaymentStatus } from "@/components/JobPaymentStatus";
+import { BankDisputeNotePanel } from "@/components/BankDisputeNotePanel";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { describeClosedReason, type RequestStage } from "@/lib/requestStage";
 import { UnreadDot } from "@/components/UnreadDot";
@@ -1158,6 +1159,17 @@ export function RequestCard({
           {/* Segnalazione del cliente sul lavoro (docs/CHANGELOG.md §164). */}
           {/* Pagamento del lavoro (docs/CHANGELOG.md §168). */}
           {booking?.payment && booking.status !== "CANCELED" ? <JobPaymentStatus payment={booking.payment} audience="professional" /> : null}
+          {/* Contestazione in banca: la sua spiegazione per le prove (docs/changelog/2026-10-28-stripe-prova.md). */}
+          {booking?.payment?.bankDispute ? (
+            <BankDisputeNotePanel
+              dispute={booking.payment.bankDispute}
+              onSave={async (input) => {
+                await apiClient.saveBankDisputeNote(token, booking.id, input);
+                onChanged();
+              }}
+              uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}
+            />
+          ) : null}
           {booking?.issue ? (
             <JobIssuePanel
               issue={booking.issue}

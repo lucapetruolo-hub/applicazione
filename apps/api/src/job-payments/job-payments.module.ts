@@ -9,11 +9,12 @@ import { AdminJobPaymentsController } from "./admin-job-payments.controller";
 import { JobPaymentsService } from "./job-payments.service";
 import { RefundsService } from "./refunds.service";
 import { DisputesService } from "./disputes.service";
+import { BankDisputesService } from "./bank-disputes.service";
 
 @Module({
   imports: [AuthModule, AuditLogModule, PlatformFeeRulesModule, AdminModule, OnlineMoneyModule],
   controllers: [JobPaymentsController, ProfessionalOnlinePaymentsController, AdminJobPaymentsController],
-  providers: [JobPaymentsService, RefundsService, DisputesService],
+  providers: [JobPaymentsService, RefundsService, DisputesService, BankDisputesService],
   exports: [JobPaymentsService, RefundsService, DisputesService],
 })
 export class JobPaymentsModule {}

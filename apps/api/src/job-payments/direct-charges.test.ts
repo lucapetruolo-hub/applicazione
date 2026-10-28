@@ -140,6 +140,8 @@ describe("pagamenti sul conto del professionista", () => {
 
     const [params, options] = stripe.checkout.sessions.create.mock.calls[0]!;
     expect(params.payment_intent_data).toMatchObject({ transfer_data: { destination: "acct_1" }, transfer_group: "bk-1" });
+    // Sempre in euro, anche con la carta o la connessione dall'estero (docs/changelog/2026-10-28-stripe-prova.md).
+    expect(params.adaptive_pricing).toEqual({ enabled: false });
     expect(options).toEqual({});
   });
 
