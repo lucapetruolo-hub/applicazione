@@ -85,3 +85,36 @@ perché Stripe può usarlo per mandare un codice via SMS; per l'azienda va
 bene anche un fisso. Verifica: un caso nuovo in
 `stripe-account-prefill.test.ts` (fisso di Latina, prefisso inesistente) e
 la build dell'API che carica la libreria da `dist/`.
+
+## Prove dal vivo con gli account di prova (28/10, dopo "ok express")
+
+Luca ha scelto di restare su Express con le perdite a carico nostro: Stripe
+non permette Express con le perdite a carico suo (errore
+`account_express_dashboard_with_stripe_loss_liable`). Prove sul sito vero,
+con le chiavi di prova e gli account `prova.design.*`:
+
+- tetto: rifiutati un preventivo di 2.500 € tutto online e una chiusura a
+  2.100 €;
+- acconto di 50 € pagato e rimborsato per intero all'annullamento;
+- lavoro tutto online: acconto, saldo addebitato da solo sulla carta,
+  conferma del cliente, sblocco e bonifico di 201,21 € (220 € meno 7% + IVA);
+- link "Apri Stripe" del professionista funzionante.
+
+Due correzioni nate dalle prove:
+
+1. **Contestazione arrivata prima del pagamento**: con la carta di prova
+   0259 Stripe ha mandato `charge.dispute.created` 2 secondi prima della
+   conferma del pagamento; il sito non trovava il lavoro, lo trattava come
+   un abbonamento e non avvisava il professionista finché non arrivava un
+   aggiornamento. Ora una contestazione sul conto di un professionista
+   (`event.account`) senza lavoro risponde con un errore e Stripe la rimanda
+   più tardi; lo stesso per `funds_withdrawn`/`funds_reinstated`.
+2. **Sempre in euro**: il browser della prova risultava negli Stati Uniti e
+   Stripe (Adaptive Pricing) ha fatto pagare in dollari; la contestazione è
+   arrivata come 48,08 €. Tutti i Checkout (lavori, abbonamento, quota di
+   passaggio, pacchetti) hanno `adaptive_pricing: { enabled: false }`
+   (`EUR_ONLY`), così importi, rimborsi e contestazioni restano in euro.
+
+**Verifica**: caso nuovo in `billing-webhook.test.ts` (contestazione
+rimandata) e in `direct-charges.test.ts` (Checkout in euro); tutti i test
+dell'API (898) e `tsc`.

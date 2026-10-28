@@ -156,4 +156,19 @@ describe("BillingService.handleWebhookEvent", () => {
     expect(jobPaymentsService.handleStripeDispute).toHaveBeenCalledWith(dispute);
     expect(jobPaymentsService.notifyFinanceAdmins).toHaveBeenCalledWith("ADMIN_STRIPE_DISPUTE", expect.objectContaining({ amountEurCents: 1990 }));
   });
+
+  it("contestazione sul conto di un professionista arrivata prima del pagamento: Stripe la rimanda", async () => {
+    // Prova dal vivo del 28/10/2026 (docs/changelog/2026-10-28-stripe-prova.md):
+    // con la carta di prova la contestazione arriva 2 secondi prima della conferma del pagamento.
+    const { service, stripe, prisma, jobPaymentsService } = buildService();
+    process.env.STRIPE_CONNECT_WEBHOOK_SECRET = "whsec_connect";
+    const dispute = { id: "dp_2", payment_intent: "pi_10", amount: 5000, status: "needs_response" };
+    jobPaymentsService.handleStripeDispute.mockResolvedValue(false);
+    stripe.webhooks.constructEvent.mockReturnValue({ id: "evt_7", type: "charge.dispute.created", account: "acct_pro", data: { object: dispute } });
+
+    await expect(service.handleWebhookEvent(Buffer.from("{}"), "sig")).rejects.toThrow(/riprovare più tardi/);
+
+    expect(jobPaymentsService.notifyFinanceAdmins).not.toHaveBeenCalled();
+    expect(prisma.stripeWebhookEvent.update).not.toHaveBeenCalled();
+  });
 });

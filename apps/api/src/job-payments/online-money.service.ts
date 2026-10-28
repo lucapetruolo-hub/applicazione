@@ -147,6 +147,14 @@ export function statementSuffix(businessName: string): string | null {
   return /[A-Za-z]/.test(clean) ? clean.toUpperCase() : null;
 }
 
+/**
+ * Sempre in euro (docs/changelog/2026-10-28-stripe-prova.md): con l'Adaptive
+ * Pricing di Stripe un cliente con la carta o la connessione dall'estero paga
+ * nella sua valuta, e importi, rimborsi e contestazioni non tornano più con i
+ * centesimi di euro dei nostri conti.
+ */
+export const EUR_ONLY = { adaptive_pricing: { enabled: false } } as const;
+
 @Injectable()
 export class OnlineMoneyService {
   private readonly logger = new Logger(OnlineMoneyService.name);
@@ -213,6 +221,7 @@ export class OnlineMoneyService {
     const session = await this.requireStripe().checkout.sessions.create({
       mode: "payment",
       ...saveCard.session,
+      ...EUR_ONLY,
       line_items: [
         {
           price_data: {
@@ -264,6 +273,7 @@ export class OnlineMoneyService {
     const session = await this.requireStripe().checkout.sessions.create({
       mode: "payment",
       ...saveCard.session,
+      ...EUR_ONLY,
       expires_at: Math.floor(Date.now() / 1000) + 60 * 60,
       line_items: [
         {
