@@ -27,3 +27,14 @@ test("nessun sinonimo porta a un nome che non esiste tra i suggeriti", () => {
     assert.ok(suggested.has(canonicalServiceName(variant)), variant);
   }
 });
+
+test("ogni sinonimo porta a una prestazione suggerita e una variante non ha due significati (§400)", () => {
+  const suggested = new Set(Object.values(POPULAR_SERVICES).flat());
+  for (const variant of ["cambio caldaia", "dichiarazione di conformità", "controsoffitto", "Copia chiavi", "Ricarica gas", "parquet", "doposcuola", "dog walking", "umidità"]) {
+    assert.ok(suggested.has(canonicalServiceName(variant)), variant);
+  }
+  assert.equal(canonicalServiceName("umidità di risalita"), "Risanamento umidità e infiltrazioni");
+  assert.equal(canonicalServiceName("Abbattimento alberi"), "Rimozione alberi");
+  // "caldaia" da sola può essere installazione, riparazione o manutenzione: resta com'è.
+  assert.equal(canonicalServiceName("caldaia"), "caldaia");
+});
