@@ -41,6 +41,16 @@ const day = (date: Date) => date.toLocaleDateString("it-IT", { day: "numeric", m
 const dayTime = (date: Date) => date.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
 const businessName = (job: Job) => job.booking.professionalProfile.businessName ?? "Professionista";
 const clientName = (job: Job) => [job.booking.client.name, job.booking.client.surname].filter(Boolean).join(" ") || job.booking.client.email || "Cliente";
+/**
+ * Solo con le chiavi di prova: Stripe chiude la contestazione come vinta o
+ * persa quando la spiegazione è esattamente `winning_evidence` o
+ * `losing_evidence`; il modulo vuole almeno 20 caratteri, quindi se la
+ * parola c'è si manda solo quella (docs/changelog/2026-10-28-stripe-prova.md).
+ */
+export function stripeTestKeyword(explanation: string, key = process.env.STRIPE_SECRET_KEY ?? ""): string | null {
+  if (!/^(sk|rk)_test_/.test(key)) return null;
+  return explanation.match(/\b(winning_evidence|losing_evidence)\b/)?.[1] ?? null;
+}
 const range = (min: number | null, max: number | null) => (min !== null && max !== null && min !== max ? `${formatEur(min)} - ${formatEur(max)}` : formatEur(max ?? min ?? 0));
 
 /**
@@ -101,7 +111,7 @@ export class BankDisputesService {
           customer_name: input.customerName || undefined,
           customer_email_address: input.customerEmail || undefined,
           service_date: input.serviceDate || undefined,
-          uncategorized_text: input.explanation,
+          uncategorized_text: stripeTestKeyword(input.explanation) ?? input.explanation,
           service_documentation: file.id,
         },
         submit: input.submit,

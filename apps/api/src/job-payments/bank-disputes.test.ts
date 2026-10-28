@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { bankDisputeEvidenceSchema, bankDisputeReasonLabel, toJobPaymentSummary } from "@professionisti/shared";
-import { BankDisputesService } from "./bank-disputes.service";
+import { BankDisputesService, stripeTestKeyword } from "./bank-disputes.service";
 import { OnlineMoneyService } from "./online-money.service";
 import { renderDocumentPdf } from "../accounting/document-pdf";
 
@@ -256,5 +256,14 @@ describe("foto nel PDF", () => {
     const pdf = await renderDocumentPdf({ title: "Riepilogo", blocks: [{ type: "images", images: [{ data: png, caption: "Lavoro terminato" }, { data: Buffer.from("non è una foto"), caption: "Rotta" }, { data: png }] }] });
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
     expect(pdf.toString("latin1")).toContain("/Subtype /Image");
+  });
+});
+
+describe("parole di prova di Stripe", () => {
+  it("con le chiavi di prova manda solo la parola, con quelle vere mai", () => {
+    expect(stripeTestKeyword("losing_evidence: prova della contestazione persa", "sk_test_123")).toBe("losing_evidence");
+    expect(stripeTestKeyword("Prova winning_evidence da admin", "rk_test_123")).toBe("winning_evidence");
+    expect(stripeTestKeyword("losing_evidence: prova", "sk_live_123")).toBeNull();
+    expect(stripeTestKeyword("Spiegazione normale del lavoro", "sk_test_123")).toBeNull();
   });
 });
