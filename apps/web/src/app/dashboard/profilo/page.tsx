@@ -1253,6 +1253,21 @@ export default function DashboardProfiloPage() {
                     lasciando la "X" isolata su una riga a parte, lontana dalla
                     voce a cui appartiene — bug reale segnalato dall'utente. */}
                 <XStack gap="$2" alignItems="center" flexWrap="wrap">
+                  {/* Unità prima del prezzo, nello stesso ordine in cui la
+                      vedono i clienti (Luca, docs/CHANGELOG.md §389). */}
+                  <select
+                    aria-label="Il prezzo è"
+                    value={service.priceUnit}
+                    onChange={(e) => updateServiceUnit(index, e.target.value as ServicePriceUnit)}
+                    style={{ ...smallInputStyle, width: 120 }}
+                  >
+                    {SERVICE_PRICE_UNITS.map((unit) => (
+                      <option key={unit} value={unit}>
+                        {SERVICE_PRICE_UNIT_LABEL[unit]}
+                      </option>
+                    ))}
+                  </select>
+                  {/* Prezzo e "X" sempre insieme: sul telefono vanno a capo uniti. */}
                   <XStack gap="$2" alignItems="center" flexWrap="nowrap">
                   <input aria-label="Prezzo minimo in euro"
                     value={service.priceMin}
@@ -1271,22 +1286,6 @@ export default function DashboardProfiloPage() {
                     inputMode="decimal"
                     style={{ ...smallInputStyle, width: 90 }}
                   />
-                  </XStack>
-                  {/* Unità del prezzo (docs/CHANGELOG.md §383): sul telefono va a
-                      capo insieme alla "X", mai da sola. */}
-                  <XStack gap="$2" alignItems="center" flexWrap="nowrap">
-                  <select
-                    aria-label="Il prezzo è"
-                    value={service.priceUnit}
-                    onChange={(e) => updateServiceUnit(index, e.target.value as ServicePriceUnit)}
-                    style={{ ...smallInputStyle, width: 120 }}
-                  >
-                    {SERVICE_PRICE_UNITS.map((unit) => (
-                      <option key={unit} value={unit}>
-                        {SERVICE_PRICE_UNIT_LABEL[unit]}
-                      </option>
-                    ))}
-                  </select>
                   <XStack
                     width={36}
                     height={36}
