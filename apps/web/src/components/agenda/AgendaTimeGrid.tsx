@@ -90,6 +90,8 @@ export function AgendaTimeGrid({
   const [phone] = useState(() => typeof window !== "undefined" && window.matchMedia(PHONE_QUERY).matches);
   const HOUR_PX = phone ? HOUR_PX_PHONE : HOUR_PX_COMPUTER;
   const [showEarly, setShowEarly] = useState(false);
+  // Settimana sul telefono: sette colonne strette, le scritte si accorciano.
+  const narrowWeek = phone && days.length > 1;
   const dateStrs = days.map(toIsoDate);
   const visible = events.filter((e) => dateStrs.includes(e.date));
   const visibleFree = free.filter((f) => dateStrs.includes(f.date));
@@ -148,8 +150,9 @@ export function AgendaTimeGrid({
               {weekdayShortLabel(date)}{" "}
               <span className="ag-day-num">{date.getUTCDate()}</span>
               {note || alert ? (
-                <span className={`ag-day-note ${note?.tone ?? ""}`}>
-                  {note?.text}
+                <span className={`ag-day-note ${note?.tone ?? ""}${narrowWeek ? " narrow" : ""}`}>
+                  {narrowWeek && note?.tone === "free" ? note.text.replace(/ libere$/, "").replace(/ /g, "") : note?.text}
+                  {narrowWeek && note?.tone === "free" ? <span className="sr-only"> libere</span> : null}
                   {alert ? <WeatherIcon kind={alert} size={13} /> : null}
                 </span>
               ) : null}

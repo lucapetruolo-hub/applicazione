@@ -1502,3 +1502,11 @@
     background: #fff;
   }
 }
+/* Settimana sul telefono: ore libere senza spazi ("9h30") e un po\x27 più piccole. */
+.ag-day-note.narrow {
+  font-size: 10px;
+  gap: 2px;
+}
+.ag-day-note.narrow .ag-weather {
+  margin-left: 0;
+}

@@ -21,4 +21,6 @@
 - Per far stare la Settimana nella barra del telefono: la lente va accanto al titolo, le date sono abbreviate ("26 ott – 1 nov"), "Oggi" compare solo quando oggi non è già in vista. Il menu della vista resta a 16 px (regola del sito contro lo zoom di iPhone sui campi).
 - **Giorni fermi in alto sul telefono** (miglioria 1, approvata da Luca sull'anteprima): mentre si scorre, la striscia dei giorni (vista Giorno) o le date della settimana restano sotto l'intestazione del sito e la barra delle sezioni (117 px). `.ag-cal` passa da `overflow: hidden` a `clip` sul telefono, altrimenti `sticky` non funziona.
 
+**Terza parte** (Luca: "effettua la miglioria 1"): nella Settimana del telefono le ore libere sotto ogni giorno sono scritte brevi ("9h30" invece di "9 h 30 libere", 10 px), perché nelle colonne strette venivano tagliate; il lettore di schermo legge ancora "libere". Anteprima, non fatta, dei lavori mostrati con l'orario al posto del nome nella stessa vista (`anteprime/agenda-orari-in-vista/7-...`).
+
 **Verifica**: anteprime prima/dopo da computer e telefono con dati di prova; `pnpm lint` e `pnpm typecheck` di `apps/web` puliti; prove nel browser di `e2e` (T4, T9 e C1 aggiornate: la domenica sera il lavoro di lunedì è già in vista nella settimana).
