@@ -44,9 +44,9 @@ span.is_Button._fos-f-size-true {
 }
 /* Nell'intestazione dei telefoni stretti lo spazio non basta: 15 px. */
 @media (max-width: 400px) {
-  .site-header-cta span.is_Button,
-  .site-header-cta .site-header-cta-long,
-  .site-header-cta .site-header-cta-short {
+  .site-header-cta-link span.is_Button,
+  .site-header-cta-link .site-header-cta-long,
+  .site-header-cta-link .site-header-cta-short {
     font-size: 15px;
   }
 }
@@ -159,6 +159,16 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
 }
 .magnet[data-active="true"] {
   transition-duration: 120ms;
+}
+/* Ombre a strati sui pulsanti verdi in cima alla home e nell'intestazione:
+   un filo scuro sotto il bordo e un'ombra morbida colorata, senza riflesso
+   chiaro in alto (docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md). */
+.home-hero-panel .magnet button.is_Button,
+.site-header-cta-link button.is_Button {
+  box-shadow:
+    inset 0 -2px 0 rgba(0, 0, 0, 0.14),
+    0 1px 2px rgba(10, 60, 35, 0.28),
+    0 10px 22px -8px rgba(10, 80, 48, 0.7);
 }
 .magnet[data-active="true"] button.is_Button {
   background-image: radial-gradient(circle 90px at var(--mx) var(--my), rgba(255, 255, 255, 0.3), transparent 70%);
@@ -4945,6 +4955,7 @@ a.admin-kpi:hover {
   font-weight: 600;
   font-size: 16px;
   text-decoration: none;
+  box-shadow: 0 1px 2px rgba(0, 40, 20, 0.25), 0 10px 22px -10px rgba(0, 30, 15, 0.6);
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 .hero-urgent-link:hover {
@@ -5175,6 +5186,16 @@ a.admin-kpi:hover {
   background:
     radial-gradient(120% 90% at 50% 120%, rgba(6, 70, 44, 0.55), transparent 60%),
     linear-gradient(160deg, #1fae70 0%, #189a63 42%, #0f7f50 100%);
+}
+/* Hero della home (docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md):
+   verde opaco con una sfumatura leggera dall'alto in basso e una grana appena
+   percepibile contro le bande del gradiente, senza luci né riflessi. */
+.glow-lights--verde-opaco {
+  background: linear-gradient(170deg, #1c9d61 0%, #14824f 100%);
+}
+.glow-lights--verde-opaco::after {
+  opacity: 0.05;
+  mix-blend-mode: soft-light;
 }
 .glow-lights--scuro {
   background: #2b2420;

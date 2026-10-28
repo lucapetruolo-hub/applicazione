@@ -42,3 +42,25 @@ proposte con le foto in `analisi/link-sotto-ricerca-home.md` (Libreria) e `antep
 
 **Verifica**: typecheck e lint di web; `barra-preventivo`, `quanto-costa` e `richiesta-urgente` verdi da telefono e
 computer (27 prove); foto a 412, 320 e 1440 px in `anteprime/link-sotto-ricerca/fatto/`.
+
+## Riquadro verde in cima alla home meno "metallico"
+
+**Richiesta** (Luca, 28/10/2026): "la hero mi sa di metallico, come si potrebbe risolvere da esperto del settore?".
+Analisi, sette proposte e le foto in `analisi/hero-meno-metallico.md` e `anteprime/hero-meno-metallico/`; le
+tecniche dei reel valutate nello stesso thread.
+
+**Decisione** (scelta C di Luca, "Niente, solo verde"): il verde della proposta 7, senza foto (servirebbe una foto
+neutra per troppi mestieri diversi), testo e ricerca al centro come prima.
+- Nuovo tono `verde-opaco` di `GlowLights`, solo per la hero: sfumatura leggera dall'alto in basso (`#1c9d61` →
+  `#14824f`) e grana al 5% in `soft-light` contro le bande del gradiente. Niente luci (riflesso menta, azzurro e
+  ottone erano la causa del metallico), quindi anche niente animazione. Il tono `verde` resta per le altre parti
+  (`CategoryStoryRail`).
+- Ombre a strati, senza riflesso chiaro in alto, su "Cerca" della hero, "Richiedi preventivo" in alto e la pillola
+  "Richiesta urgente": il pulsante resta verde e tondo ma si stacca dal fondo.
+- Il testo bianco si legge meglio di prima: il verde più chiaro del vecchio riquadro (`#1fae70`) era sotto il
+  verde più chiaro di adesso.
+- Corretto di passaggio: la regola dei 15 px per l'etichetta in alto sui telefoni stretti puntava a una classe che
+  Tamagui non mette sul pulsante (`.site-header-cta`); ora usa il link (`.site-header-cta-link`).
+
+**Verifica**: typecheck e lint di web; prove nel browser come sopra; foto a 390, 320 e 1440 px in
+`anteprime/hero-meno-metallico/fatto/`, nessuno scorrimento orizzontale.

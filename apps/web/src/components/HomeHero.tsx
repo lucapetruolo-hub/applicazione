@@ -34,6 +34,7 @@ export function HomeHero() {
       <YStack
         width="100%"
         maxWidth={1160}
+        className="home-hero-panel"
         backgroundColor={brand.cianografia}
         borderRadius={40}
         paddingVertical="$8"
@@ -45,7 +46,7 @@ export function HomeHero() {
             livello a parte con "overflow:hidden" invece che sull'intero
             pannello, che tagliava il menu a discesa di SearchBar (CLAUDE.md
             §10). */}
-        <GlowLights tone="verde" radius={40} />
+        <GlowLights tone="verde-opaco" radius={40} />
 
         <YStack width="100%" maxWidth={720} alignItems="center" gap="$4" position="relative">
           <Eyebrow tone="dark">Non chiamare a caso. Chiamalo giusto.</Eyebrow>
