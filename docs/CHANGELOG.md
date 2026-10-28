@@ -21661,7 +21661,7 @@ azioni), typecheck e lint; API e sito avviati su un database locale con
 `LAUNCH_DATE` prima e dopo oggi, anteprime in
 `anteprime/numeri-dal-lancio/`.
 
-## 400. L'IA dei casi dubbi con un modello gratuito fino al lancio
+## 403. L'IA dei casi dubbi con un modello gratuito fino al lancio
 
 **Richiesta** (Luca, 28/10/2026, stesso thread del §392): dopo l'unione la prova in produzione rispondeva sempre il dizionario, perché la chiave di OpenRouter ha il limite di spesa a 0 $; Luca: "devi usare qualche intelligenza artificiale gratuita che non richiede credito".
 

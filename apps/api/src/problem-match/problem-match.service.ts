@@ -31,7 +31,7 @@ import { PRISMA } from "../prisma/prisma.module";
  * 28/10/2026, docs/CHANGELOG.md §394): solo server di Anthropic, nessun uso
  * dei dati da parte di OpenRouter. Con entrambe le chiavi vince Anthropic.
  * Senza credito su OpenRouter si usa un modello gratuito (`:free`, decisione
- * di Luca, docs/CHANGELOG.md §400): lì i testi, già senza contatti, possono
+ * di Luca, docs/CHANGELOG.md §403): lì i testi, già senza contatti, possono
  * essere usati da chi fornisce il modello, quindi solo prima del lancio.
  */
 
