@@ -48,6 +48,9 @@ const publicRoutes = [
   "GET /health",
   "GET /health/features",
   "POST /identity-verification/webhook",
+  // Webhook di WhatsApp (Meta): registrazione con il token e firma sul corpo (docs/changelog/2026-10-28-promemoria-whatsapp.md).
+  "GET /whatsapp/webhook",
+  "POST /whatsapp/webhook",
   "GET /maps/static",
   // Dal problema scritto ai mestieri (§392): dizionario, poi IA nei casi dubbi, con tetto giornaliero.
   "POST /problem-match",
@@ -103,6 +106,12 @@ const selfAny = [
   "POST /notifications/mark-all-read",
   "GET /notifications/preferences",
   "PUT /notifications/preferences",
+  // Promemoria su WhatsApp: numero e interruttore di chi chiama.
+  "GET /whatsapp/me",
+  "POST /whatsapp/me/code",
+  "POST /whatsapp/me/confirm",
+  "POST /whatsapp/me/disable",
+  "POST /whatsapp/me/enable",
   "GET /notifications/unread",
   "GET /notifications/unread-count",
   // Prenota la fascia di un professionista qualsiasi (pubblico): nessun dato altrui.
