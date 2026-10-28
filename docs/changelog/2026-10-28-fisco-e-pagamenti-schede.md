@@ -42,7 +42,7 @@ menu (che vincono solo col menu aperto su uno schermo grande).
   **Pagamenti online** (`/dashboard/fiscale/pagamenti`, pagina nuova con
   l'attivazione Stripe, l'IBAN e lo stato del conto che prima stavano in
   fondo a Dati fiscali), **Fatture e documenti** (`/dashboard/documenti`,
-  invariato) e **Compensi al fisco** (`/dashboard/fiscale/dac7`).
+  invariato) e **Dati DAC7** (`/dashboard/fiscale/dac7`).
   `FiscoArea`/`FiscoTabs` in `apps/web/src/components/fisco/FiscoArea.tsx`,
   stili `.fisco-tabs` in `globals.css`. Sono collegamenti tra pagine, quindi
   `nav` con `aria-current="page"`, non un `tablist`; sul telefono la riga
@@ -55,10 +55,10 @@ menu (che vincono solo col menu aperto su uno schermo grande).
   anche sulla scheda Pagamenti online: `hasNavAttention` in
   `accountMenuItems.ts` riconosce i passi nelle sottopagine
   (`STEP_MENU_HREF.payments = /dashboard/fiscale/pagamenti`).
-- **"DAC7" in parole semplici**: scheda "Compensi al fisco", titolo della
-  pagina "Compensi comunicati al fisco" con la sigla "DAC7" in piccolo
-  accanto; nell'email di gennaio "Vedi i compensi comunicati al fisco" (lo
-  stesso indirizzo). La norma: la direttiva (UE) 2021/514, allegato V,
+- **Il nome della scheda DAC7**: proposto "Compensi al fisco" con la sigla in
+  piccolo; Luca ha scelto un generico **"Dati DAC7"** (scheda, titolo della
+  pagina ed email di gennaio, "Vedi i dati DAC7", lo stesso indirizzo), la
+  stessa sigla del PDF e dell'email. La norma: la direttiva (UE) 2021/514, allegato V,
   sezione III, parte A, punto 3, recepita dal D.Lgs. 32/2023, chiede di
   comunicare al professionista le stesse informazioni mandate all'Agenzia
   delle Entrate **entro il 31 gennaio** dell'anno dopo: per ogni trimestre il
@@ -66,11 +66,15 @@ menu (che vincono solo col menu aperto su uno schermo grande).
   bonifici, più i dati identificativi. È quello che la pagina e l'email
   già mostrano (§246); il PDF ufficiale resta "Riepilogo annuale dei
   compensi (DAC7)".
-- **Nessun indirizzo cambiato**: `/dashboard/fiscale#pagamenti-online` e
-  `/dashboard/fiscale?stripeConnect=...` (nelle email e nei link già in
-  giro) rimandano alla scheda Pagamenti online; Stripe torna direttamente
-  lì (`return_url`/`refresh_url`); le notifiche in app sui bonifici e
-  sull'IBAN aprono quella scheda. Le pagine di dettaglio (fattura,
+- **Nessun indirizzo smette di funzionare**: `/dashboard/fiscale#pagamenti-online`
+  e `/dashboard/fiscale?stripeConnect=...` (nei link già in giro) rimandano
+  alla scheda Pagamenti online; Stripe torna direttamente lì
+  (`return_url`/`refresh_url`); le notifiche in app sui bonifici e sull'IBAN
+  aprono quella scheda. Le email nuove su bonifici, IBAN e conto Stripe
+  (bonifico non arrivato, attiva i pagamenti, Stripe attivo, IBAN diverso,
+  dati da aggiornare su Stripe) portano direttamente a
+  `/dashboard/fiscale/pagamenti` (miglioria approvata da Luca); il promemoria
+  DAC7 e il codice fiscale non valido restano su Dati fiscali. Le pagine di dettaglio (fattura,
   estratto, mese gratuito) tengono il loro link "← Fatture e documenti".
 - Testi: "Dati fiscali e pagamenti" diventa "Fisco e pagamenti" (e
   "scheda Pagamenti online" dove serve) in email, notifiche, PDF del
@@ -79,10 +83,19 @@ menu (che vincono solo col menu aperto su uno schermo grande).
   accanto al titolo della scheda, così non si ripetono.
 - Caricamento: le quattro pagine tengono lo spazio del contenuto mentre
   caricano (niente salto, CLS 0 come chiesto da Luca al §334).
+- In Abbonamento il riquadro "Fatture e documenti" (titolo, descrizione e
+  pulsante) diventa una riga con il link e il pulsante "Cambia la carta":
+  le fatture hanno ormai la loro scheda.
+- Le schede sulle pagine di dettaglio (una fattura, un estratto) restano
+  fuori: Luca ha chiesto solo un esempio visivo
+  (`anteprime/fatture-dac7-menu/esempio-schede-dettaglio.png`).
 
 **Verifica**: `typecheck` di sito, API e prove; `lint`; prova nel browser
 `e2e/tests/fisco-schede.spec.ts` (le quattro schede su ogni pagina, quella
 aperta segnata, tastiera, i vecchi indirizzi, la tendina, axe senza errori);
 `confronto-pagine` fotografa anche `/dashboard/fiscale/pagamenti` e
-`/dashboard/documenti`; anteprime da computer (1440 e 1280 col menu
+`/dashboard/documenti` (e aspetta il caricamento con `load`, poi la rete
+calma solo se arriva: su `/chat` la connessione degli eventi resta aperta e
+la foto del telefono usciva tagliata); Lighthouse in CI
+(`e2e/lighthouse/agenda.mjs`) misura anche le quattro schede; anteprime da computer (1440 e 1280 col menu
 ridotto), tablet e telefono in `anteprime/fatture-dac7-menu/`.

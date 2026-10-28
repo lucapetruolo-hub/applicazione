@@ -401,8 +401,8 @@ prezzi Stripe nelle variabili `STRIPE_PRICE_<LIVELLO>` e
   nota di credito se il mese è negativo) e una per ogni pagamento
   dell'abbonamento, quota di passaggio o pacchetto (serie `ABB`), dalla
   pagina "Fatture e documenti" (`/dashboard/documenti`, scheda dell'area
-  "Fisco e pagamenti" con Dati fiscali, Pagamenti online e Compensi al
-  fisco/DAC7, docs/changelog/2026-10-28-fisco-e-pagamenti-schede.md; voce
+  "Fisco e pagamenti" con Dati fiscali, Pagamenti online e Dati
+  DAC7, docs/changelog/2026-10-28-fisco-e-pagamenti-schede.md; voce
   solo nella tendina dell'account) con estratto del mese e riepilogo a 0 € dei mesi gratuiti (mai una
   fattura a zero). La fattura del professionista al cliente la fa lui:
   noi diamo solo i dati chiesti dal cliente e una copia di cortesia, **mai

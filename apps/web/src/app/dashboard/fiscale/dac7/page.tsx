@@ -14,8 +14,8 @@ import { PdfButton } from "../../documenti/_components/DocumentParts";
  * Riepilogo DAC7 per il professionista (docs/CHANGELOG.md §246): cosa
  * comunichiamo al fisco su di lui, anno per anno e trimestre per trimestre,
  * con diretti e online separati. È anche la pagina a cui porta l'avviso
- * annuale che la direttiva ci chiede di mandare. Scheda "Compensi al fisco"
- * dell'area Fisco e pagamenti, con la sigla DAC7 in piccolo
+ * annuale che la direttiva ci chiede di mandare. Scheda "Dati DAC7"
+ * dell'area Fisco e pagamenti (nome scelto da Luca)
  * (docs/changelog/2026-10-28-fisco-e-pagamenti-schede.md).
  */
 export default function Dac7SummaryPage() {
@@ -44,7 +44,7 @@ export default function Dac7SummaryPage() {
   return (
     // Stampabile come i documenti di "Fatture e documenti" (docs/CHANGELOG.md §378); il PDF lo prepara il server (§379).
     <div className="print-document">
-      <FiscoArea tab="dac7" heading="Compensi comunicati al fisco" tag="DAC7">
+      <FiscoArea tab="dac7" heading="Dati DAC7">
         <YStack gap="$5">
           <div data-print-hide>
             <LearnMore fontSize={16} summary="I compensi che comunichiamo ogni anno al fisco.">

@@ -84,8 +84,12 @@ async function takePhotos(outDir) {
         page.on("pageerror", (error) => errors.push(`Errore nella pagina: ${String(error).slice(0, 300)}`));
         let status = null;
         try {
-          const response = await page.goto(SITE + url, { waitUntil: "networkidle", timeout: 45_000 });
+          const response = await page.goto(SITE + url, { waitUntil: "load", timeout: 45_000 });
           status = response?.status() ?? null;
+          // Si aspetta che la rete si calmi, ma senza buttare la foto se non succede: /chat tiene
+          // aperta la connessione degli eventi e con "networkidle" la pagina usciva tagliata
+          // all'altezza dello schermo (docs/changelog/2026-10-28-fisco-e-pagamenti-schede.md).
+          await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => {});
         } catch (error) {
           errors.push(`Caricamento non riuscito: ${String(error).slice(0, 200)}`);
         }

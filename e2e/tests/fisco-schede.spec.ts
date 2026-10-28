@@ -11,7 +11,7 @@ const PAGES = [
   { path: "/dashboard/fiscale", tab: "Dati fiscali" },
   { path: "/dashboard/fiscale/pagamenti", tab: "Pagamenti online" },
   { path: "/dashboard/documenti", tab: "Fatture e documenti" },
-  { path: "/dashboard/fiscale/dac7", tab: "Compensi al fisco" },
+  { path: "/dashboard/fiscale/dac7", tab: "Dati DAC7" },
 ];
 
 const tabs = (page: Page) => page.getByRole("navigation", { name: "Sezioni di Fisco e pagamenti" });

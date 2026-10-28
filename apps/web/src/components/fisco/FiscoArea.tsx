@@ -23,8 +23,8 @@ export const FISCO_TABS: { key: FiscoTab; href: string; label: string }[] = [
   { key: "fiscale", href: "/dashboard/fiscale", label: "Dati fiscali" },
   { key: "pagamenti", href: "/dashboard/fiscale/pagamenti", label: "Pagamenti online" },
   { key: "documenti", href: "/dashboard/documenti", label: "Fatture e documenti" },
-  // "DAC7" da solo non dice niente a un artigiano: la sigla resta nel titolo della pagina, in piccolo.
-  { key: "dac7", href: "/dashboard/fiscale/dac7", label: "Compensi al fisco" },
+  // "Dati DAC7": scelta di Luca (28/10) al posto di "Compensi comunicati al fisco"; la sigla è quella dell'email di gennaio e del PDF.
+  { key: "dac7", href: "/dashboard/fiscale/dac7", label: "Dati DAC7" },
 ];
 
 export function FiscoTabs({ active }: { active: FiscoTab }) {
@@ -49,20 +49,17 @@ export function FiscoTabs({ active }: { active: FiscoTab }) {
 
 /**
  * Pagina dell'area: titolo "Fisco e pagamenti" (h1), le schede, poi il
- * titolo della scheda (h2, con un'eventuale sigla in piccolo) e il contenuto.
+ * titolo della scheda (h2) e il contenuto.
  */
 export function FiscoArea({
   tab,
   heading,
-  tag,
   headingExtra,
   maxWidth = 760,
   children,
 }: {
   tab: FiscoTab;
   heading: string;
-  /** Sigla in piccolo accanto al titolo (es. "DAC7"). */
-  tag?: string;
   /** Un badge accanto al titolo (es. "Verificati"). */
   headingExtra?: ReactNode;
   maxWidth?: number;
@@ -77,11 +74,6 @@ export function FiscoArea({
             <Text tag="h2" fontFamily="$heading" fontWeight="800" fontSize={24} lineHeight={30} color={brand.grafite} margin={0}>
               {heading}
             </Text>
-            {tag ? (
-              <Text fontSize={13} fontWeight="700" color={brand.grafite70} letterSpacing={0.5}>
-                {tag}
-              </Text>
-            ) : null}
             {headingExtra}
           </XStack>
         </YStack>

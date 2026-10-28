@@ -769,7 +769,7 @@ const BUILDERS: Record<string, Builder> = {
       `Il bonifico${typeof payload.amountEurCents === "number" ? ` di ${formatEur(payload.amountEurCents)}` : ""} per il lavoro **${job(ctx)}** non è arrivato alla tua banca. I soldi sono al sicuro sul tuo conto Stripe.`,
       "Controlla il conto bancario: il bonifico riparte da solo.",
     ],
-    cta: { label: "Controlla i dati bancari", url: `${frontendUrl()}/dashboard/fiscale` },
+    cta: { label: "Controlla i dati bancari", url: `${frontendUrl()}/dashboard/fiscale/pagamenti` },
   }),
   JOB_PAYOUT_ACCOUNT_NEEDED: (_payload, ctx) => ({
     kind: "notification",
@@ -781,7 +781,7 @@ const BUILDERS: Record<string, Builder> = {
       `Hai un pagamento online da ricevere per il lavoro **${job(ctx)}**, ma non hai ancora attivato i pagamenti.`,
       "Attivali in Fisco e pagamenti, scheda Pagamenti online: bastano pochi minuti e poi l'accredito parte da solo.",
     ],
-    cta: { label: "Attiva i pagamenti", url: `${frontendUrl()}/dashboard/fiscale` },
+    cta: { label: "Attiva i pagamenti", url: `${frontendUrl()}/dashboard/fiscale/pagamenti` },
   }),
   // Solo una parte ha chiuso il lavoro (docs/CHANGELOG.md §190).
   JOB_CONFIRM_REMINDER: (payload, ctx) => ({
@@ -1215,7 +1215,7 @@ const BUILDERS: Record<string, Builder> = {
       "Stripe ha completato la verifica della tua identità: ora puoi offrire nei preventivi l'acconto online, e il tuo profilo mostra il badge **Identità verificata da Stripe**.",
       "I soldi dei pagamenti online ti arrivano sul conto che hai indicato a Stripe.",
     ],
-    cta: { label: "Vai a Fisco e pagamenti", url: `${frontendUrl()}/dashboard/fiscale` },
+    cta: { label: "Vai ai pagamenti online", url: `${frontendUrl()}/dashboard/fiscale/pagamenti` },
   }),
   // Avviso annuale DAC7 (docs/CHANGELOG.md §246): obbligatorio per legge.
   DAC7_ANNUAL_NOTICE: (payload, ctx) => {
@@ -1227,10 +1227,10 @@ const BUILDERS: Record<string, Builder> = {
       greeting: ctx.name,
       title: corrected ? "Dati DAC7 corretti" : "Comunicazione DAC7 inviata",
       paragraphs: [
-        `${corrected ? "Abbiamo corretto" : "Abbiamo inviato"} al fisco i compensi${year ? ` del ${year}` : ""} che hai ricevuto su ${EMAIL_BRAND.name}, come chiede la legge (DAC7). Il dettaglio è nella tua area, in Fisco e pagamenti, alla scheda "Compensi al fisco".`,
+        `${corrected ? "Abbiamo corretto" : "Abbiamo inviato"} al fisco i compensi${year ? ` del ${year}` : ""} che hai ricevuto su ${EMAIL_BRAND.name}, come chiede la legge (DAC7). Il dettaglio è nella tua area, in Fisco e pagamenti, alla scheda "Dati DAC7".`,
       ],
       details: typeof payload.totalEurCents === "number" ? [{ label: "Compensi comunicati", value: formatEur(payload.totalEurCents) }] : undefined,
-      cta: { label: "Vedi i compensi comunicati al fisco", url: `${frontendUrl()}/dashboard/fiscale/dac7` },
+      cta: { label: "Vedi i dati DAC7", url: `${frontendUrl()}/dashboard/fiscale/dac7` },
     };
   },
   // Promemoria di novembre (docs/CHANGELOG.md §247).
@@ -1252,7 +1252,7 @@ const BUILDERS: Record<string, Builder> = {
     greeting: ctx.name,
     title: "Controlla l'IBAN",
     paragraphs: ["Le ultime 4 cifre dell'IBAN che ci hai dato non sono quelle del conto indicato a Stripe. Correggilo in Fisco e pagamenti, scheda Pagamenti online."],
-    cta: { label: "Controlla l'IBAN", url: `${frontendUrl()}/dashboard/fiscale` },
+    cta: { label: "Controlla l'IBAN", url: `${frontendUrl()}/dashboard/fiscale/pagamenti` },
   }),
   STRIPE_ACCOUNT_RESTRICTED: (_payload, ctx) => ({
     kind: "account",
@@ -1263,7 +1263,7 @@ const BUILDERS: Record<string, Builder> = {
       "Stripe ci ha comunicato che il tuo account non può più ricevere pagamenti, di solito perché mancano dei dati o un documento da aggiornare.",
       "Finché non lo sistemi non puoi offrire l'acconto online nei nuovi preventivi e il badge **Identità verificata da Stripe** non compare. Il tuo profilo resta visibile e puoi continuare a farti pagare direttamente. I soldi già pagati online restano al sicuro e ti arrivano appena l'account torna attivo.",
     ],
-    cta: { label: "Completa i dati su Stripe", url: `${frontendUrl()}/dashboard/fiscale` },
+    cta: { label: "Completa i dati su Stripe", url: `${frontendUrl()}/dashboard/fiscale/pagamenti` },
   }),
   PROFILE_VERIFICATION_REMOVED: (payload, ctx) => {
     const note = str(payload.note);
