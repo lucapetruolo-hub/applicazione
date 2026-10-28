@@ -1446,7 +1446,8 @@ button.notif-row-main:hover {
   font-weight: 700;
 }
 .today-deadline {
-  color: #8a6d00;
+  /* Più scuro di #8a6d00, che sul fondo pesca restava sotto 4,5:1 (§395). */
+  color: #7a5f00;
 }
 .today-deadline.is-urgent {
   color: #dc3545;

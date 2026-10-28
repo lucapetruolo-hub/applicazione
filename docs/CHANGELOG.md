@@ -21434,6 +21434,22 @@ comprese, così le pagine si possono provare.
   "Scopri di più". Il giallo delle etichette admin "attenzione" passa da `#8A6D00`
   (4,4:1, axe in CI) a `#7A5F00` (5,5:1).
 
+**Migliorie dopo (Luca: "effettua le 4 migliorie"):**
+- **Professionisti di prova fuori dalla ricerca dal lancio**:
+  `publicVisibilityWhere` aggiunge `user.testAccountAt = null` dopo
+  `LAUNCH_DATE`, quindi niente ricerca, vetrina, recensioni in homepage né
+  smistamento delle richieste; prima del lancio restano, per le prove.
+  Dopo il lancio una prova completa (cliente di prova che chiede a un
+  professionista di prova) passa dal link diretto del profilo.
+- **"Dal lancio (data)" al posto di "ultimi 90 giorni"** (o 30 giorni, 12
+  mesi) nelle schede di Professionisti in numeri quando il lancio è più
+  recente; "Recensioni e voto dal lancio" invece di "da sempre".
+- **Consigli**: nelle prime 4 settimane dopo il lancio dicono "Dal lancio"
+  invece di "Nelle ultime 4 settimane".
+- **Giallo leggibile anche fuori dall'admin**: "In attesa del cliente"
+  (`requestStage.ts`) e le scadenze in Oggi (`.today-deadline`) passano a
+  `#7A5F00`.
+
 **Da fare a mano (Luca):** segnare "Account di prova" sugli account usati
 per le prove; tenere acceso "Non contare questo browser" (Andamento del
 sito) su telefono e computer usati per provare.

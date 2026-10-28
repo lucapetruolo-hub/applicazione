@@ -19,9 +19,18 @@ import {
 import { Button, Text, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { AdminCard, AdminPageHeader, CountingFromNote, errorMessage } from "@/components/admin/adminUi";
+import { AdminCard, AdminPageHeader, CountingFromNote, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { StatsBarChart } from "@/components/StatsBarChart";
 import { SkeletonTableRows } from "@/components/Skeleton";
+
+/**
+ * "negli ultimi 90 giorni", oppure "dal lancio (20 ott 2026)" quando il
+ * lancio è più recente: prima del lancio non si conta (docs/CHANGELOG.md §395).
+ */
+function periodText(days: number, countingFrom: string | null, label = `negli ultimi ${days} giorni`): string {
+  if (countingFrom && Date.now() - new Date(countingFrom).getTime() < days * 24 * 60 * 60 * 1000) return `dal lancio (${formatAdminDate(countingFrom)})`;
+  return label;
+}
 
 /** Città mostrate una per una; le altre in una riga sola. */
 const TOP_CITIES = 10;
@@ -175,7 +184,7 @@ function StatsBody({ data, filters, scope }: { data: AdminProfessionalStats; fil
         </div>
         <div className="admin-kpi">
           <span className="admin-kpi-value">{data.active30d}</span>
-          <span className="admin-kpi-label">Attivi negli ultimi 30 giorni · {sharePercentLabel(data.active30d, data.total)}</span>
+          <span className="admin-kpi-label">Attivi {periodText(30, data.countingFrom)} · {sharePercentLabel(data.active30d, data.total)}</span>
         </div>
         <div className="admin-kpi">
           <span className="admin-kpi-value">{data.new30d}</span>
@@ -265,11 +274,11 @@ function StatsBody({ data, filters, scope }: { data: AdminProfessionalStats; fil
         <StatsBarChart points={months} formatValue={(v) => String(v)} ariaLabel="Professionisti iscritti per mese" />
       </AdminCard>
 
-      <SearchCard searches={data.searches} withCategory={Boolean(filters.category)} />
+      <SearchCard searches={data.searches} withCategory={Boolean(filters.category)} countingFrom={data.countingFrom} />
       <SearchZonesCard rows={data.searches.byCategoryCity} />
-      <CoverageCard rows={data.coverage} />
-      <CategoryActivityCard rows={data.byCategoryActivity} />
-      <ChurnCard rows={data.churnByMonth} />
+      <CoverageCard rows={data.coverage} countingFrom={data.countingFrom} />
+      <CategoryActivityCard rows={data.byCategoryActivity} countingFrom={data.countingFrom} />
+      <ChurnCard rows={data.churnByMonth} countingFrom={data.countingFrom} />
 
       {excluded.length ? <Text color={brand.grafite70} fontSize={13}>Non contati: {excluded.join(", ")}.</Text> : null}
     </YStack>
@@ -296,7 +305,8 @@ const cityName = (city: string) => city || "Senza città";
  * ricerche, quante senza nessuno vicino, per nome o solo città, e le città
  * più cercate. Solo numeri, mai chi cerca né il testo scritto.
  */
-function SearchCard({ searches, withCategory }: { searches: AdminProfessionalStats["searches"]; withCategory: boolean }) {
+function SearchCard({ searches, withCategory, countingFrom }: { searches: AdminProfessionalStats["searches"]; withCategory: boolean; countingFrom: string | null }) {
+  const since = periodText(PROFESSIONAL_ACTIVITY_DAYS, countingFrom);
   const figures = [
     { key: "total", value: String(searches.total), label: "Ricerche" },
     { key: "empty", value: `${searches.empty} · ${sharePercentLabel(searches.empty, searches.total)}`, label: "Senza nessun professionista vicino", alert: searches.empty > 0 },
@@ -311,10 +321,10 @@ function SearchCard({ searches, withCategory }: { searches: AdminProfessionalSta
     <AdminCard>
       <CardTitle
         title="Cosa cercano"
-        note={`Ricerche sul sito negli ultimi ${PROFESSIONAL_ACTIVITY_DAYS} giorni. "Vicino" vuol dire entro ${SEARCH_RADIUS_KM} km. Una pagina ricaricata conta di nuovo.`}
+        note={`Ricerche sul sito ${since}. "Vicino" vuol dire entro ${SEARCH_RADIUS_KM} km. Una pagina ricaricata conta di nuovo.`}
       />
       {searches.total === 0 ? (
-        <Text color={brand.grafite70}>Nessuna ricerca negli ultimi {PROFESSIONAL_ACTIVITY_DAYS} giorni.</Text>
+        <Text color={brand.grafite70}>Nessuna ricerca {since}.</Text>
       ) : (
         <>
           <div className="admin-figures">
@@ -394,15 +404,16 @@ function SearchZonesCard({ rows }: { rows: AdminProfessionalStats["searches"]["b
 }
 
 /** Dove mancano professionisti: richieste senza preventivo per categoria e città. */
-function CoverageCard({ rows }: { rows: AdminProfessionalStats["coverage"] }) {
+function CoverageCard({ rows, countingFrom }: { rows: AdminProfessionalStats["coverage"]; countingFrom: string | null }) {
+  const since = periodText(PROFESSIONAL_ACTIVITY_DAYS, countingFrom, `degli ultimi ${PROFESSIONAL_ACTIVITY_DAYS} giorni`);
   return (
     <AdminCard>
       <CardTitle
         title="Copertura per categoria e città"
-        note={`Richieste degli ultimi ${PROFESSIONAL_ACTIVITY_DAYS} giorni e professionisti visibili con sede in quella città. Prima le zone con più richieste senza preventivo.`}
+        note={`Richieste ${since} e professionisti visibili con sede in quella città. Prima le zone con più richieste senza preventivo.`}
       />
       {rows.length === 0 ? (
-        <Text color={brand.grafite70}>Nessuna richiesta negli ultimi {PROFESSIONAL_ACTIVITY_DAYS} giorni.</Text>
+        <Text color={brand.grafite70}>Nessuna richiesta {periodText(PROFESSIONAL_ACTIVITY_DAYS, countingFrom)}.</Text>
       ) : (
         <div className="admin-table-wrap">
           <table className="admin-table admin-table-numbers">
@@ -445,12 +456,13 @@ function durationLabel(minutes: number | null): string {
   return `${Math.round(minutes / (24 * 60))} giorni`;
 }
 
-function CategoryActivityCard({ rows }: { rows: AdminProfessionalStats["byCategoryActivity"] }) {
+function CategoryActivityCard({ rows, countingFrom }: { rows: AdminProfessionalStats["byCategoryActivity"]; countingFrom: string | null }) {
+  const since = periodText(PROFESSIONAL_ACTIVITY_DAYS, countingFrom, `ultimi ${PROFESSIONAL_ACTIVITY_DAYS} giorni`);
   return (
     <AdminCard>
       <CardTitle
         title="Risposte, preventivi e recensioni per categoria"
-        note={`Ultimi ${PROFESSIONAL_ACTIVITY_DAYS} giorni, per categoria della richiesta. Risposta: preventivo, messaggio o rifiuto. Prima risposta: tempo a metà classifica. Recensioni e voto da sempre.`}
+        note={`${since.charAt(0).toUpperCase()}${since.slice(1)}, per categoria della richiesta. Risposta: preventivo, messaggio o rifiuto. Prima risposta: tempo a metà classifica. Recensioni e voto ${countingFrom ? "dal lancio" : "da sempre"}.`}
       />
       {rows.length === 0 ? (
         <Text color={brand.grafite70}>Ancora nessuna richiesta, preventivo o recensione.</Text>
@@ -495,7 +507,7 @@ const monthLabel = (key: string) => {
   return new Intl.DateTimeFormat("it-IT", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(year, month - 1, 1)));
 };
 
-function ChurnCard({ rows }: { rows: AdminProfessionalStats["churnByMonth"] }) {
+function ChurnCard({ rows, countingFrom }: { rows: AdminProfessionalStats["churnByMonth"]; countingFrom: string | null }) {
   const totals = rows.reduce((sum, r) => ({ deleted: sum.deleted + r.deleted, paused: sum.paused + r.paused, canceled: sum.canceled + r.canceled }), {
     deleted: 0,
     paused: 0,
@@ -504,7 +516,7 @@ function ChurnCard({ rows }: { rows: AdminProfessionalStats["churnByMonth"] }) {
   return (
     <AdminCard>
       <CardTitle
-        title="Abbandoni negli ultimi 12 mesi"
+        title={`Abbandoni ${periodText(365, countingFrom, "negli ultimi 12 mesi")}`}
         note="In pausa: solo chi lo è ancora. Abbonamenti annullati: nel mese dell'annullamento, anche se restano attivi fino alla scadenza."
       />
       <div className="admin-table-wrap">

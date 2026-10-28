@@ -20,6 +20,17 @@ const complete = {
 describe("visibilità pubblica con i dati fiscali (§241)", () => {
   afterEach(() => {
     delete process.env.STRIPE_SECRET_KEY;
+    delete process.env.LAUNCH_DATE;
+  });
+
+  it("dal lancio gli account di prova escono dalla ricerca, prima no (§395)", () => {
+    process.env.LAUNCH_DATE = "2026-12-01";
+    expect(publicVisibilityWhere(new Date("2026-11-20T10:00:00Z"))).toEqual({});
+    expect(publicVisibilityWhere(new Date("2026-12-02T10:00:00Z"))).toEqual({ user: { testAccountAt: null } });
+    process.env.STRIPE_SECRET_KEY = "sk_test";
+    const where = publicVisibilityWhere(new Date("2026-12-02T10:00:00Z"));
+    expect(where.AND).toHaveLength(2);
+    expect((where.AND as object[])[1]).toEqual({ user: { testAccountAt: null } });
   });
 
   it("senza pagamenti attivi nessun filtro", () => {
