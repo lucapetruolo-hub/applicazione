@@ -9,7 +9,7 @@ import { Button, EmptyState, Icon, ProfessionalCard, Text, XStack, YStack, brand
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { IconActionButton } from "@/components/IconActionButton";
-import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
+import { CARD_PHOTO, ProfessionalAvatar } from "@/components/ProfessionalAvatar";
 import { SkeletonProfessionalCard } from "@/components/Skeleton";
 import { EmptySavedIllustration } from "@/components/icons/EmptyStateIllustrations";
 
@@ -124,7 +124,15 @@ export default function ProfessionistiSalvatiPage() {
                     services={pro.services}
                     href={professionalPath(pro)}
                     onPress={() => router.push(professionalPath(pro))}
-                    icon={<ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug} size={72} />}
+                    icon={
+                      <ProfessionalAvatar
+                        imageUrl={pro.imageUrl}
+                        categorySlug={pro.categorySlug}
+                        size={CARD_PHOTO.size}
+                        mobileSize={CARD_PHOTO.mobileSize}
+                        shape={CARD_PHOTO.shape}
+                      />
+                    }
                     // Cuore pieno in alto a destra, come nella ricerca (docs/CHANGELOG.md
                     // §349): prima "Rimuovi dai salvati" era un testo piccolo fuori dalla scheda.
                     action={

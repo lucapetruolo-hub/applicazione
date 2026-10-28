@@ -1,6 +1,7 @@
 "use client";
 
 import { brand, radiusDoc, XStack, YStack } from "@professionisti/ui";
+import { avatarHeight, CARD_PHOTO } from "./ProfessionalAvatar";
 
 /**
  * Stati "a scheletro" (richiesta esplicita dell'utente: "rendi più
@@ -83,13 +84,21 @@ export function SkeletonThreadRow({ zebra = false }: { zebra?: boolean }) {
 
 /**
  * Card professionista — stessa sagoma di `ProfessionalCard` (usata in
- * `/professionisti-salvati`): avatar grande a sinistra, nome/categoria/
+ * `/professionisti-salvati`): foto verticale a sinistra, nome/categoria/
  * città/rating a destra, una riga di prestazioni sotto.
  */
 export function SkeletonProfessionalCard() {
   return (
-    <XStack alignItems="center" gap="$4" backgroundColor={brand.calce} borderRadius={radiusDoc} padding="$4">
-      <SkeletonCircle size={72} />
+    <XStack alignItems="flex-start" gap="$4" $xs={{ gap: "$3", padding: "$4" }} backgroundColor={brand.calce} borderRadius={radiusDoc} padding="$5">
+      {/* Stessa forma e misura della foto vera (CARD_PHOTO), così la scheda non salta quando arriva. */}
+      <YStack
+        width={CARD_PHOTO.size}
+        height={avatarHeight(CARD_PHOTO.size, CARD_PHOTO.shape)}
+        flexShrink={0}
+        $xs={{ width: CARD_PHOTO.mobileSize, height: avatarHeight(CARD_PHOTO.mobileSize, CARD_PHOTO.shape) }}
+      >
+        <SkeletonBlock width="100%" height="100%" radius={CARD_PHOTO.shape === "portrait" ? 20 : CARD_PHOTO.size} />
+      </YStack>
       <YStack flex={1} minWidth={0} gap="$2">
         <SkeletonBlock width="55%" height={18} />
         <SkeletonBlock width="35%" height={13} />
