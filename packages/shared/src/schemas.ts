@@ -7,6 +7,7 @@ import { quotePaymentOfferSchema } from "./onlinePayments";
 import { contentReportReason, contentReportReasonCodes, moderationGroundCodes } from "./moderation";
 import { newPasswordSchema } from "./password";
 import { REQUEST_TIMINGS } from "./requestTiming";
+import { SERVICE_PRICE_UNITS } from "./professionals";
 
 const categorySlugs = PROFESSIONAL_CATEGORIES.map((category) => category.slug) as [string, ...string[]];
 
@@ -769,6 +770,8 @@ export const professionalServiceSchema = z
     name: z.string().min(2).max(120),
     priceMinEurCents: z.number().int().nonnegative().optional(),
     priceMaxEurCents: z.number().int().nonnegative().optional(),
+    /** A cosa si riferisce il prezzo (§398); senza, "a lavoro". */
+    priceUnit: z.enum(SERVICE_PRICE_UNITS).optional(),
   })
   .refine((data) => data.priceMinEurCents === undefined || data.priceMaxEurCents === undefined || data.priceMaxEurCents >= data.priceMinEurCents, {
     message: "Il prezzo massimo deve essere maggiore o uguale al minimo.",

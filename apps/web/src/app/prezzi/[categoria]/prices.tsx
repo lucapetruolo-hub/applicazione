@@ -5,6 +5,8 @@ import {
   italianComuni,
   PROFESSIONAL_CATEGORIES,
   comuneSlug,
+  SERVICE_PRICE_UNIT_LABEL,
+  formatServicePrice,
   formatServicePriceRange,
   hasCategoryPrices,
   isProfessionalCategorySlug,
@@ -15,6 +17,7 @@ import {
 import { apiClient } from "@/lib/apiClient";
 import { breadcrumbJsonLd } from "@/lib/jsonLd";
 import { JsonLd } from "@/components/JsonLd";
+import { PriceToolLink } from "./PriceToolLink";
 
 /**
  * "Quanto costa un [lavoro]" (docs/CHANGELOG.md §296, strategia SEO Latina):
@@ -53,6 +56,13 @@ function provinceName(comune: Comune): string {
 /** Percorso della pagina: nazionale o della città. */
 export function pricesPath(data: Pick<PricesData, "category" | "comune">): string {
   return data.comune ? `/prezzi/${data.category.slug}/${comuneSlug(data.comune.name)}` : `/prezzi/${data.category.slug}`;
+}
+
+/** Elenco di chi offre il lavoro (§398), nella città della pagina se c'è. */
+function serviceListHref(name: string, comune?: Comune): string {
+  const params = new URLSearchParams({ servizio: name });
+  if (comune) params.set("citta", comune.name);
+  return `/cerca?${params.toString()}`;
 }
 
 /** Euro tondi: in una fascia di prezzo i centesimi sono rumore. */
@@ -158,10 +168,24 @@ export function PricesView({ data }: { data: PricesData }) {
               </tr>
             </thead>
             <tbody>
+              {/* Ogni lavoro apre chi lo offre, come le voci del "Quanto costa in
+                  media" della home (richiesta di Luca, docs/CHANGELOG.md §398);
+                  nella pagina di una città, già in quella città. */}
               {declared.services.map((service) => (
                 <tr key={service.name}>
-                  <th scope="row">{service.name}</th>
-                  <td>{formatServicePriceRange(service.minEurCents, service.maxEurCents)}</td>
+                  <th scope="row">
+                    <PriceToolLink href={serviceListHref(service.name, comune)} label={`${service.name}, ${formatServicePrice(service.minEurCents, service.maxEurCents, service.unit)}: vedi chi lo fa`}>
+                      {service.name}
+                    </PriceToolLink>
+                  </th>
+                  <td>
+                    {/* Unità prima del prezzo: le cifre restano allineate a destra (§399). */}
+                    <span className="price-table-unit">{SERVICE_PRICE_UNIT_LABEL[service.unit]}</span>
+                    {formatServicePriceRange(service.minEurCents, service.maxEurCents)}
+                    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" className="price-table-chevron">
+                      <path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </td>
                 </tr>
               ))}
             </tbody>

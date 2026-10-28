@@ -245,3 +245,31 @@ describe("agenda pubblica (§293)", () => {
     expect(days.length).toBeGreaterThan(0);
   });
 });
+
+describe("voci di \"Quanto costa in media\" (§398)", () => {
+  const build = (services: { professionalProfileId: string; name: string }[]) => {
+    const prisma = {
+      professionalService: { findMany: vi.fn().mockResolvedValue(services) },
+      professionalProfile: { findMany: vi.fn().mockResolvedValue([]) },
+    };
+    return { prisma, service: new ProfessionalsService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never) };
+  };
+
+  it("cerca solo chi ha la prestazione con quel nome, senza badare a maiuscole e spazi", async () => {
+    const { prisma, service } = build([
+      { professionalProfileId: "p-1", name: " Tinteggiatura " },
+      { professionalProfileId: "p-2", name: "Tinteggiatura pareti" },
+      { professionalProfileId: "p-3", name: "tinteggiatura" },
+    ]);
+    await service.search({ service: "TINTEGGIATURA" });
+    const where = prisma.professionalProfile.findMany.mock.calls[0]![0].where;
+    expect(where.AND).toContainEqual({ id: { in: ["p-1", "p-3"] } });
+  });
+
+  it("il prezzo medio conta solo chi compare nella ricerca", async () => {
+    const { prisma, service } = build([]);
+    await expect(service.getServicePriceIndex()).resolves.toEqual([]);
+    const profileWhere = prisma.professionalService.findMany.mock.calls[0]![0].where.professionalProfile;
+    expect(profileWhere).toMatchObject({ isDemo: false, deletedAt: null, suspendedAt: null, pausedAt: null, invitePendingAt: null });
+  });
+});

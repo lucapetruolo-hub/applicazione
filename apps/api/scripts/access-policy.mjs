@@ -60,6 +60,8 @@ const publicRoutes = [
   // Conteggi dell'andamento del sito (§372): passi della richiesta e invii falliti, senza account.
   "POST /site/step",
   "POST /site/failure",
+  // Passi dalle voci di "Quanto costa" (§399), senza account.
+  "POST /site/price-tool",
   "GET /professionals/languages/popular",
   // Prezzi aggregati della pagina "Quanto costa", mai sotto le soglie (§296).
   "GET /professionals/prices/:category",

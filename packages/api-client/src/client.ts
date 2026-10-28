@@ -26,6 +26,7 @@ import type {
   GuidedRequestInput,
   TrafficSource,
   CategoryPriceStats,
+  ServicePriceIndexEntry,
   GuidedRequestMyState,
   GuidedRequestStatusSummary,
   GuidedRequestUserStateInput,
@@ -1245,6 +1246,7 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
         city?: string;
         q?: string;
         remote?: boolean;
+        service?: string;
         excludeDemo?: boolean;
         track?: boolean;
         /** Dalla descrizione del problema: niente boost (docs/CHANGELOG.md §392). */
@@ -1259,6 +1261,8 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       if (params.category) query.set("category", params.category);
       if (params.city) query.set("city", params.city);
       if (params.q) query.set("q", params.q);
+      // Nome di una prestazione, dalle voci di "Quanto costa in media" (docs/CHANGELOG.md §398).
+      if (params.service) query.set("service", params.service);
       if (params.remote) query.set("remote", "1");
       if (params.excludeDemo) query.set("excludeDemo", "1");
       // Conta la ricerca per i lavori più cercati (docs/CHANGELOG.md §281): solo dalla pagina dei risultati, una volta.
@@ -1275,9 +1279,9 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       });
     },
 
-    /** Micro-tool "Quanto costa in media" (homepage): range di prezzo reale per prestazione, mai un dato finto. */
+    /** Micro-tool "Quanto costa in media" (homepage): prezzi veri per prestazione, mai un dato finto (docs/CHANGELOG.md §398). */
     getServicePriceIndex: () =>
-      request<{ name: string; professionalCount: number; minEurCents: number; maxEurCents: number }[]>(
+      request<ServicePriceIndexEntry[]>(
         "/professionals/services/price-index",
         { cache: "no-store" },
       ),

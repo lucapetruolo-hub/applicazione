@@ -29,7 +29,7 @@ import {
   type MyProfessionalProfile,
   type MyProfilePreview,
   type MyVerificationStatus,
-  type ProfessionalCategorySlug, professionalPath } from "@professionisti/shared";
+  type ProfessionalCategorySlug, professionalPath, SERVICE_PRICE_UNITS, SERVICE_PRICE_UNIT_LABEL, type ServicePriceUnit } from "@professionisti/shared";
 import { Autocomplete, Button, Chip, Icon, Surface, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
@@ -175,7 +175,7 @@ export default function DashboardProfiloPage() {
   const [standardServices, setStandardServices] = useState<StandardServicesByCategory>({});
   // Preavviso per annullare chiesto al cliente (docs/CHANGELOG.md §347).
   const [cancellationNoticeHours, setCancellationNoticeHours] = useState<CancellationNoticeHours>(DEFAULT_CANCELLATION_NOTICE_HOURS);
-  const [services, setServices] = useState<{ name: string; priceMin: string; priceMax: string }[]>([]);
+  const [services, setServices] = useState<{ name: string; priceMin: string; priceMax: string; priceUnit: ServicePriceUnit }[]>([]);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   // Foto reali di lavori svolti (fino a MAX_PORTFOLIO_PHOTOS), mostrate in
   // una galleria sul profilo pubblico — richiesta esplicita dell'utente:
@@ -297,6 +297,7 @@ export default function DashboardProfiloPage() {
         name: service.name,
         priceMin: service.priceMinEurCents !== null ? eurInputValue(service.priceMinEurCents) : "",
         priceMax: service.priceMaxEurCents !== null ? eurInputValue(service.priceMaxEurCents) : "",
+        priceUnit: service.priceUnit,
       })),
     );
   }
@@ -449,7 +450,7 @@ export default function DashboardProfiloPage() {
     }
 
     const cleanedServices = services
-      .map((service) => ({ name: service.name.trim(), priceMin: service.priceMin.trim(), priceMax: service.priceMax.trim() }))
+      .map((service) => ({ name: service.name.trim(), priceMin: service.priceMin.trim(), priceMax: service.priceMax.trim(), priceUnit: service.priceUnit }))
       .filter((service) => service.name.length > 0);
     for (const service of cleanedServices) {
       if (service.priceMin && Number.isNaN(Number(service.priceMin.replace(",", ".")))) {
@@ -502,6 +503,7 @@ export default function DashboardProfiloPage() {
           name: service.name,
           priceMinEurCents: service.priceMin ? Math.round(Number(service.priceMin.replace(",", ".")) * 100) : undefined,
           priceMaxEurCents: service.priceMax ? Math.round(Number(service.priceMax.replace(",", ".")) * 100) : undefined,
+          priceUnit: service.priceUnit,
         })),
       });
       setSaved(true);
@@ -595,12 +597,16 @@ export default function DashboardProfiloPage() {
     setServices((prev) => prev.map((service, i) => (i === index ? { ...service, [field]: value } : service)));
   }
 
+  function updateServiceUnit(index: number, priceUnit: ServicePriceUnit) {
+    setServices((prev) => prev.map((service, i) => (i === index ? { ...service, priceUnit } : service)));
+  }
+
   function removeService(index: number) {
     setServices((prev) => prev.filter((_, i) => i !== index));
   }
 
   function addSuggestedService(name: string) {
-    setServices((prev) => [...prev, { name, priceMin: "", priceMax: "" }]);
+    setServices((prev) => [...prev, { name, priceMin: "", priceMax: "", priceUnit: "JOB" }]);
   }
 
   // Scorciatoia per aggiungere una prestazione senza doverne scrivere il nome
@@ -1215,7 +1221,7 @@ export default function DashboardProfiloPage() {
           <SectionTitle>Prestazioni offerte</SectionTitle>
           <Text fontSize={13} color={brand.grafite70}>
             Aggiungi i servizi che offri, con un range di prezzo se vuoi indicarlo (es. da 50€ a 100€, utile quando il
-            costo varia da caso a caso): comparirà nella tua card nei risultati di ricerca.
+            costo varia da caso a caso) e se è a lavoro, all&apos;ora, al giorno o al m²: comparirà nella tua card nei risultati di ricerca.
           </Text>
 
           {suggestedServices.length > 0 ? (
@@ -1287,7 +1293,23 @@ export default function DashboardProfiloPage() {
                     gruppo va a capo insieme sotto al nome, invece di spezzarsi
                     lasciando la "X" isolata su una riga a parte, lontana dalla
                     voce a cui appartiene — bug reale segnalato dall'utente. */}
-                <XStack gap="$2" alignItems="center" flexWrap="nowrap">
+                <XStack gap="$2" alignItems="center" flexWrap="wrap">
+                  {/* Unità prima del prezzo, nello stesso ordine in cui la
+                      vedono i clienti (Luca, docs/CHANGELOG.md §399). */}
+                  <select
+                    aria-label="Il prezzo è"
+                    value={service.priceUnit}
+                    onChange={(e) => updateServiceUnit(index, e.target.value as ServicePriceUnit)}
+                    style={{ ...smallInputStyle, width: 120 }}
+                  >
+                    {SERVICE_PRICE_UNITS.map((unit) => (
+                      <option key={unit} value={unit}>
+                        {SERVICE_PRICE_UNIT_LABEL[unit]}
+                      </option>
+                    ))}
+                  </select>
+                  {/* Prezzo e "X" sempre insieme: sul telefono vanno a capo uniti. */}
+                  <XStack gap="$2" alignItems="center" flexWrap="nowrap">
                   <input aria-label="Prezzo minimo in euro"
                     value={service.priceMin}
                     onChange={(e) => updateService(index, "priceMin", e.target.value)}
@@ -1322,11 +1344,12 @@ export default function DashboardProfiloPage() {
                   >
                     <X size={16} strokeWidth={2} color={brand.urgenza} />
                   </XStack>
+                  </XStack>
                 </XStack>
               </YStack>
             ))}
           </YStack>
-          <Button variant="ghost" size="$3" height={40} alignSelf="flex-start" onPress={() => setServices((prev) => [...prev, { name: "", priceMin: "", priceMax: "" }])}>
+          <Button variant="ghost" size="$3" height={40} alignSelf="flex-start" onPress={() => setServices((prev) => [...prev, { name: "", priceMin: "", priceMax: "", priceUnit: "JOB" }])}>
             + Aggiungi prestazione
           </Button>
         </Surface>

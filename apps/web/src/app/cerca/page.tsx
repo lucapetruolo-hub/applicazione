@@ -16,6 +16,8 @@ type PageSearchParams = {
   online?: string;
   q?: string;
   urgente?: string;
+  /** Prestazione di "Quanto costa in media" (docs/CHANGELOG.md §398). */
+  servizio?: string;
   /** Descrizione del problema scritta nella barra (docs/CHANGELOG.md §392). */
   problema?: string;
   /** Mestiere scelto dal cliente (risposta alla domanda, "Oppure"). */
@@ -53,13 +55,18 @@ export async function generateMetadata(props: { searchParams: Promise<PageSearch
   // Le varianti con filtri (città libera, online, nome) sono ricerche, non
   // pagine da indicizzare: canonical sulla pagina base e fuori da Google. Le
   // pagine città indicizzabili sono /cerca/[categoria]/[citta].
-  const filtered = Boolean(searchParams.online || searchParams.citta || searchParams.q || searchParams.urgente || searchParams.problema);
+  const filtered = Boolean(
+    searchParams.online || searchParams.citta || searchParams.q || searchParams.urgente || searchParams.servizio || searchParams.problema,
+  );
   const seo: Metadata = {
     alternates: { canonical: "/cerca" },
     ...(filtered ? { robots: { index: false, follow: true } } : {}),
   };
   if (searchParams.problema) {
     return { ...seo, title: "Chi ti serve", description: "I professionisti adatti al problema che hai descritto." };
+  }
+  if (searchParams.servizio) {
+    return { ...seo, title: `Chi offre "${searchParams.servizio}"`, description: `Professionisti che offrono ${searchParams.servizio}.` };
   }
   if (searchParams.online === "1") {
     return { ...seo, title: "Consulenze online", description: "Professionisti disponibili per consulenza online." };
@@ -82,6 +89,8 @@ export default async function CercaPage(props: { searchParams: Promise<PageSearc
   // in una zona specifica, invece di scartarla del tutto — richiesta esplicita
   // dell'utente ("dai la possibilità di selezionare un luogo" anche online).
   const city = searchParams.citta;
+  // Voce di "Quanto costa in media" in homepage (docs/CHANGELOG.md §398).
+  const service = searchParams.servizio?.trim() || undefined;
 
   const description = searchParams.problema?.trim().slice(0, 1000) || undefined;
   if (description) {
@@ -94,7 +103,7 @@ export default async function CercaPage(props: { searchParams: Promise<PageSearc
   let loadFailed = false;
   try {
     // Contata solo con una città o una parola scritta, mai il testo (§370).
-    professionals = await apiClient.searchProfessionals({ city, q: searchParams.q, remote: isOnline, track: Boolean(city?.trim() || searchParams.q?.trim()) && (await shouldCountVisit()) });
+    professionals = await apiClient.searchProfessionals({ city, q: searchParams.q, remote: isOnline, service, track: Boolean(city?.trim() || searchParams.q?.trim()) && (await shouldCountVisit()) });
   } catch {
     loadFailed = true;
   }
@@ -107,22 +116,23 @@ export default async function CercaPage(props: { searchParams: Promise<PageSearc
   // una zona), quindi serve calcolarla in entrambe le modalità.
   let allProfessionals: ProfessionalSearchResult[];
   try {
-    allProfessionals = await apiClient.searchProfessionals({ q: searchParams.q, remote: isOnline });
+    allProfessionals = await apiClient.searchProfessionals({ q: searchParams.q, remote: isOnline, service });
   } catch {
     allProfessionals = professionals;
   }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
-      <SearchHeader initialQuery={searchParams.q ?? ""} initialCity={city ?? ""} initialMode={isOnline ? "online" : "domicilio"} />
+      <SearchHeader initialQuery={searchParams.q ?? service ?? ""} initialCity={city ?? ""} initialMode={isOnline ? "online" : "domicilio"} service={service} />
       {/* Key che cambia con i search params: forza il remount completo del
           contenuto quando si cambia modalita'/citta'/testo, cosi' la lista si
           aggiorna sempre anche navigando verso lo stesso percorso. */}
       <CercaContent
-        key={`${isOnline}-${city ?? ""}-${searchParams.q ?? ""}`}
+        key={`${isOnline}-${city ?? ""}-${searchParams.q ?? ""}-${service ?? ""}`}
         city={city}
         online={isOnline}
         q={searchParams.q}
+        service={service}
         professionals={professionals}
         allProfessionals={allProfessionals}
         loadFailed={loadFailed}

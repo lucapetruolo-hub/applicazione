@@ -15,6 +15,7 @@ import {
   weekTemplateDatesKept,
   type BookAgendaSlotInput,
   type DeclineLeadInput,
+  type ServicePriceIndexEntry,
   type MyAvailability,
   type MyProfessionalProfile,
   type MyProfilePreview,
@@ -28,6 +29,7 @@ import {
   type ProfessionalLead,
   type ProfessionalSearchResult,
   type ProfessionalServiceItem,
+  type ServicePriceUnit,
   type ProfessionalCategorySlug,
   type ProfessionalProfileSelfInput,
   type UpdateEngagementRadiusInput,
@@ -54,6 +56,8 @@ import { NOT_ACCEPTING_REQUESTS, NOT_BOOKABLE_ONLINE } from "../subscriptions/su
 import { GeocodingService } from "../geocoding/geocoding.service";
 import { coveredComuni, selectSearchArea } from "./search-area";
 import { acceptedQuoteStats, declaredServiceStats, quoteMidpointEurCents } from "./category-prices";
+import { buildServicePriceIndex } from "./service-price-index";
+import { serviceGroupKey } from "./service-group-key";
 import { slotAppliesOnDate } from "../common/availability.util";
 import { AgendaService } from "../agenda/agenda.service";
 import { countBookingsInSlot, loadCommitments, lockProfessionalAgenda, type Commitment } from "../agenda/commitments";
@@ -74,6 +78,12 @@ export type ProfessionalSearchParams = {
   city?: string;
   q?: string;
   remote?: boolean;
+  /**
+   * Nome di una prestazione (voce di "Quanto costa in media", docs/CHANGELOG.md
+   * §398): solo i professionisti che l'hanno inserita, stesso raggruppamento
+   * del price-index (maiuscole e spazi ai lati non contano).
+   */
+  service?: string;
   /** Esclude i profili demo del seed (isDemo) — usato dalla homepage per non mostrare vetrine finte come reali. */
   excludeDemo?: boolean;
   /**
@@ -93,14 +103,40 @@ export type ProfessionalSearchParams = {
 // esplicita dell'utente: frecce per almeno due mesi, docs/CHANGELOG.md §206).
 
 function mapServices(
-  services: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[],
+  services: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null; priceUnit: ServicePriceUnit }[],
 ): ProfessionalServiceItem[] {
   return services.map((service) => ({
     id: service.id,
     name: service.name,
     priceMinEurCents: service.priceMinEurCents,
     priceMaxEurCents: service.priceMaxEurCents,
+    priceUnit: service.priceUnit,
   }));
+}
+
+/**
+ * Professionisti che possono comparire nella ricerca. Un professionista che
+ * ha eliminato l'account non deve mai ricomparire (soft-delete, vedi
+ * AuthService.deleteAccount), né uno sospeso da un admin (docs/CHANGELOG.md
+ * §144), né uno in pausa per l'abbonamento (§162), né uno creato da un
+ * operatore e non ancora confermato (§170), né uno bloccato per la 3ª
+ * segnalazione accolta in 30 giorni (§167). Va insieme a
+ * `publicVisibilityWhere()` (dati fiscali, §241).
+ */
+function searchableProfileWhere(): Prisma.ProfessionalProfileWhereInput {
+  return {
+    deletedAt: null,
+    suspendedAt: null,
+    pausedAt: null,
+    invitePendingAt: null,
+    OR: [{ requestsBlockedUntil: null }, { requestsBlockedUntil: { lte: new Date() } }],
+  };
+}
+
+/** La prestazione che corrisponde alla voce cercata, da evidenziare nella scheda (§398). */
+function matchedServiceField(services: { id: string; name: string }[], serviceKey: string): { matchedServiceId?: string } {
+  const match = services.find((item) => serviceGroupKey(item.name) === serviceKey);
+  return match ? { matchedServiceId: match.id } : {};
 }
 
 /** Dati letti per la pagina pubblica del professionista e per la sua anteprima in dashboard. */
@@ -201,33 +237,29 @@ export class ProfessionalsService {
 
   private readonly cityHintsCache = new Map<string, { value: { popular: string[]; covered: string[] }; expiresAt: number }>();
 
-  /** Chi compare nella ricerca pubblica (filtri di CLAUDE.md §5.11), per lavoro. */
-  private publicSearchWhere(category: string | undefined, excludeDemo: boolean | undefined): Prisma.ProfessionalProfileWhereInput {
+  /** Chi compare nella ricerca pubblica (filtri di CLAUDE.md §5.11), per lavoro e voce di "Quanto costa". */
+  private publicSearchWhere(
+    category: string | undefined,
+    excludeDemo: boolean | undefined,
+    serviceProfileIds: string[] | null = null,
+  ): Prisma.ProfessionalProfileWhereInput {
     return {
-      // Un professionista che ha eliminato l'account non deve mai
-      // ricomparire in ricerca (soft-delete, vedi AuthService.deleteAccount),
-      // né uno sospeso da un admin (docs/CHANGELOG.md §144), né uno in pausa
-      // per l'abbonamento (§162).
-      deletedAt: null,
-      suspendedAt: null,
-      pausedAt: null,
-      // Creato da un operatore e non ancora confermato dal professionista (§170).
-      invitePendingAt: null,
-      // Bloccato per la 3ª segnalazione accolta in 30 giorni (§167): come
-      // in pausa, fuori dalla ricerca finché non può ricevere richieste.
-      OR: [{ requestsBlockedUntil: null }, { requestsBlockedUntil: { lte: new Date() } }],
+      ...searchableProfileWhere(),
       // Categoria principale o una delle aggiuntive (docs/CHANGELOG.md §217).
       AND: [
         ...(category ? [{ OR: [{ category: { slug: category } }, { extraCategories: { some: { slug: category } } }] }] : []),
         // Visibile solo con i dati fiscali compilati (docs/CHANGELOG.md §241).
         publicVisibilityWhere(),
+        ...(serviceProfileIds ? [{ id: { in: serviceProfileIds } }] : []),
       ],
       ...(excludeDemo ? { isDemo: false } : {}),
     };
   }
 
-  async search({ category, city, q, remote, excludeDemo, merit, offers }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
-    const publicWhere = this.publicSearchWhere(category, excludeDemo);
+  async search({ category, city, q, remote, service, excludeDemo, merit, offers }: ProfessionalSearchParams): Promise<ProfessionalSearchResult[]> {
+    const serviceKey = service ? serviceGroupKey(service) : "";
+    const serviceProfileIds = serviceKey ? await this.profileIdsWithService(serviceKey) : null;
+    const publicWhere = this.publicSearchWhere(category, excludeDemo, serviceProfileIds);
     const offerKeywords = offers ? OUT_OF_SERVICE_KEYWORDS[offers] : [];
     const baseWhere: Prisma.ProfessionalProfileWhereInput = {
       ...publicWhere,
@@ -327,6 +359,7 @@ export class ProfessionalsService {
         createdAt: profile.createdAt.toISOString(),
         completedThisMonth: countCompletedThisMonth(profile.bookings),
         isNewProfile: computeIsNewProfile(profile.createdAt),
+        ...(serviceKey ? matchedServiceField(profile.services, serviceKey) : {}),
         ...(distanceById?.has(profile.id) ? { distanceKm: Math.round(distanceById.get(profile.id)! * 10) / 10 } : {}),
       } satisfies ProfessionalSearchResult;
     });
@@ -353,51 +386,32 @@ export class ProfessionalsService {
   }
 
   /**
-   * "Quanto costa in media" (richiesta esplicita dell'utente, micro-tool
-   * homepage): range di prezzo basso-alto per ogni prestazione realmente
-   * inserita dai professionisti in `/dashboard/profilo`, mai un dato
-   * inventato. Raggruppa per nome (case/trim-insensitive: la stessa
-   * prestazione può essere scritta con maiuscole diverse da professionisti
-   * diversi, ma resta testo libero — nessuna normalizzazione oltre
-   * lowercase/trim, non una fuzzy-match che rischierebbe di unire voci
-   * davvero diverse). Esclude i professionisti demo/eliminati (stessa
-   * esclusione già applicata ovunque nel prodotto) e le voci senza alcun
-   * prezzo impostato (min e max entrambi assenti — "Su richiesta": non ha
-   * un range da mostrare in questo tool, mostrarne uno sarebbe un dato
-   * finto). Calcolato in un'unica query, filtrato/ordinato lato client
-   * (stesso principio già in uso per `ListControls`/pannello filtri
-   * ricerca — scala di lancio §7, nessun query param di ricerca lato
-   * server necessario).
+   * Profili con una prestazione della voce data (`serviceGroupKey`). Il
+   * confronto si fa qui e non nel database perché la chiave può unire nomi
+   * scritti in modo diverso; le prestazioni sono poche (al massimo 30 a
+   * professionista).
    */
-  async getServicePriceIndex(): Promise<{ name: string; professionalCount: number; minEurCents: number; maxEurCents: number }[]> {
+  private async profileIdsWithService(serviceKey: string): Promise<string[]> {
+    const services = await this.prisma.professionalService.findMany({ select: { professionalProfileId: true, name: true } });
+    return [...new Set(services.filter((item) => serviceGroupKey(item.name) === serviceKey).map((item) => item.professionalProfileId))];
+  }
+
+  /**
+   * "Quanto costa in media" della home: ogni prestazione inserita dai
+   * professionisti visibili in ricerca, mai un dato inventato. Raggruppamento,
+   * mediana e soglie in `buildServicePriceIndex` (docs/CHANGELOG.md §398);
+   * prima erano minimo e massimo delle sole voci con un prezzo.
+   */
+  async getServicePriceIndex(): Promise<ServicePriceIndexEntry[]> {
     const services = await this.prisma.professionalService.findMany({
       where: {
-        professionalProfile: { isDemo: false, deletedAt: null, suspendedAt: null },
-        OR: [{ priceMinEurCents: { not: null } }, { priceMaxEurCents: { not: null } }],
+        // Solo chi compare nella ricerca: ogni voce porta all'elenco di chi la
+        // offre, e il numero mostrato deve coincidere (docs/CHANGELOG.md §398).
+        professionalProfile: { isDemo: false, ...searchableProfileWhere(), AND: [publicVisibilityWhere()] },
       },
-      select: { name: true, priceMinEurCents: true, priceMaxEurCents: true },
+      select: { name: true, professionalProfileId: true, priceMinEurCents: true, priceMaxEurCents: true, priceUnit: true },
     });
-
-    const groups = new Map<string, { label: string; professionalCount: number; minEurCents: number; maxEurCents: number }>();
-    for (const service of services) {
-      const key = service.name.trim().toLowerCase();
-      if (!key) continue;
-      const low = service.priceMinEurCents ?? service.priceMaxEurCents;
-      const high = service.priceMaxEurCents ?? service.priceMinEurCents;
-      if (low === null || high === null || low === undefined || high === undefined) continue;
-      const existing = groups.get(key);
-      if (existing) {
-        existing.professionalCount += 1;
-        existing.minEurCents = Math.min(existing.minEurCents, low);
-        existing.maxEurCents = Math.max(existing.maxEurCents, high);
-      } else {
-        groups.set(key, { label: service.name.trim(), professionalCount: 1, minEurCents: low, maxEurCents: high });
-      }
-    }
-
-    return Array.from(groups.values())
-      .map((g) => ({ name: g.label, professionalCount: g.professionalCount, minEurCents: g.minEurCents, maxEurCents: g.maxEurCents }))
-      .sort((a, b) => a.name.localeCompare(b.name, "it"));
+    return buildServicePriceIndex(services);
   }
 
   /**
@@ -447,6 +461,7 @@ export class ProfessionalsService {
           name: true,
           priceMinEurCents: true,
           priceMaxEurCents: true,
+          priceUnit: true,
           professionalProfileId: true,
           professionalProfile: { select: { city: true } },
         },
@@ -862,9 +877,10 @@ export class ProfessionalsService {
       this.prisma.professionalService.createMany({
         data: input.services.map((service) => ({
           professionalProfileId: profile.id,
-          name: service.name,
+          name: service.name.trim(),
           priceMinEurCents: service.priceMinEurCents ?? null,
           priceMaxEurCents: service.priceMaxEurCents ?? null,
+          priceUnit: service.priceUnit ?? "JOB",
         })),
       }),
     ]);
