@@ -117,7 +117,7 @@ export default async function ProfessionalDetailPage(props: { params: Promise<Pa
       {/* `?modalita=` (tab dell'agenda arrivando da una ricerca "Online"),
           `?data=` e `?salva=` passati dal server: senza useSearchParams non
           serve un <Suspense> e il profilo arriva nell'ordine della pagina,
-          prima del piè di pagina (docs/CHANGELOG.md §392). */}
+          prima del piè di pagina (docs/CHANGELOG.md §400). */}
       <ProfessionalDetailContent
         professional={professional}
         breadcrumbs={<Breadcrumbs items={breadcrumbItems(professional)} />}

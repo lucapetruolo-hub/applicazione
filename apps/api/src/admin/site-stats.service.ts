@@ -300,7 +300,10 @@ export class SiteStatsService {
       serviceSearches.map((r) => ({ categorySlug: r.categorySlug, service: r.service, searches: r._sum.count ?? 0 })),
       serviceList,
     );
-    const missingServices = buildMissingServices(serviceList);
+    const standardRows = await this.prisma.standardServiceName.findMany({ select: { categorySlug: true, name: true } });
+    const standardByCategory: Record<string, string[]> = {};
+    for (const row of standardRows) (standardByCategory[row.categorySlug] ??= []).push(row.name);
+    const missingServices = buildMissingServices(serviceList, standardByCategory);
     const sources = new Map<SignupSourceKey, number>();
     for (const u of signups) {
       const key: SignupSourceKey = u._count.profileInvites > 0 ? "INVITE" : (u.signupSource ?? "unknown");
@@ -338,7 +341,7 @@ export class SiteStatsService {
     const launchBase = { visibleProfessionals: visible.length, clientsWithRequest, acceptedJobs, paidOnline, greenWeeks: greenWeeksInARow(guideWeekly) };
     const launchStatus = { ...launchBase, ready: launchReady(launchBase) };
     const requestSteps = REQUEST_STEP_KEYS.map((key) => ({ key, count: steps.get(key) ?? 0, fromProfile: stepsFromProfile.get(key) ?? 0 }));
-    // Richieste dai profili per pulsante e dispositivo, tutto dal lancio (§394).
+    // Richieste dai profili per pulsante e dispositivo, tutto dal lancio (§402).
     const profileSourcesStarted = hasLaunched(now, launch);
     const profileSourceRows = profileSourcesStarted && launch
       ? await this.prisma.profileRequestSourceDay.groupBy({ by: ["event", "source", "device"], where: { day: { gte: dayStart(launch) } }, _sum: { count: true } })

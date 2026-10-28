@@ -545,14 +545,14 @@ function StepsCard({ data }: { data: AdminSiteStats }) {
   );
 }
 
-/** "12 (4%)": il numero e sempre anche la percentuale, come chiesto da Luca (§394). */
+/** "12 (4%)": il numero e sempre anche la percentuale, come chiesto da Luca (§402). */
 function countWithShare(part: number, total: number): string {
   return total > 0 ? `${part} (${Math.round((part / total) * 100)}%)` : String(part);
 }
 
 /**
  * Da quale pulsante del profilo partono le richieste, per computer e
- * telefono, tutto dal lancio (docs/CHANGELOG.md §394): dice se la barra in
+ * telefono, tutto dal lancio (docs/CHANGELOG.md §402): dice se la barra in
  * basso porta richieste in più o le toglie al pulsante nella pagina e agli
  * orari dell'agenda.
  */
@@ -888,7 +888,7 @@ function PopularServicesCard({ data }: { data: AdminSiteStats }) {
         Scritte a mano dai professionisti, non suggerite
       </Text>
       <Text color={brand.grafite70} fontSize={13}>
-        {`Prestazioni scritte da almeno ${MISSING_SERVICE_MIN_PROFESSIONALS} professionisti che il sito non propone: aggiungerle all'elenco le rende un clic e somma bene i prezzi medi.`}
+        {`Prestazioni scritte da almeno ${MISSING_SERVICE_MIN_PROFESSIONALS} professionisti che il sito non propone: aggiungerle con + in "Prestazioni per mestiere" le rende un clic e somma bene i prezzi medi.`}
       </Text>
       {data.missingServices.length === 0 ? (
         <Text color={brand.grafite70}>Nessuna per ora.</Text>

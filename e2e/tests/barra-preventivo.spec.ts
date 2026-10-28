@@ -7,7 +7,7 @@ import { e2eData } from "../fixtures/data";
 
 /**
  * Barra fissa "Richiedi un preventivo" nel profilo pubblico (docs/CHANGELOG.md
- * §385, §392). Compare quando il pulsante della pagina non è sullo schermo e
+ * §385, §400). Compare quando il pulsante della pagina non è sullo schermo e
  * sparisce quando lo è; mai sui profili in pausa né al professionista sul
  * proprio profilo; il lettore di schermo sente il nome; il focus da tastiera
  * non finisce mai sotto la barra (WCAG 2.2, 2.4.11); nessun problema grave di
@@ -86,7 +86,7 @@ test.describe("chi visita il profilo", () => {
     // Il lettore di schermo sente a chi va la richiesta, anche dove il nome non si vede.
     await expect(page.getByRole("link", { name: "Richiedi un preventivo a Anna Verdi Idraulica" }).last()).toBeVisible();
 
-    // Andamento del sito sa da quale pulsante parte la richiesta (§394).
+    // Andamento del sito sa da quale pulsante parte la richiesta (§402).
     await expect(bar(page).locator("a")).toHaveAttribute("href", /[?&]da=barra(&|$)/);
     await expect(inPageButton(page).locator("a")).toHaveAttribute("href", /[?&]da=pagina(&|$)/);
 

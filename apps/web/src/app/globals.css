@@ -205,7 +205,7 @@ body:has(.profile-cta-bar) {
 }
 /* Scorrendo verso un elemento scelto col tasto Tab, il browser lo tiene
    sopra la barra (WCAG 2.2 "focus non coperto", come il banner dei cookie
-   del §271), §392. */
+   del §271), §400. */
 html:has(.profile-cta-bar[data-visible="true"]) {
   scroll-padding-bottom: 88px;
 }
@@ -215,7 +215,7 @@ html:has(.profile-cta-bar[data-visible="true"]) {
 body:has(.profile-cta-bar) .site-header-cta-link {
   display: none;
 }
-/* Telefono in orizzontale e finestre basse: barra più sottile (§392). */
+/* Telefono in orizzontale e finestre basse: barra più sottile (§400). */
 @media (max-height: 500px) {
   .profile-cta-bar {
     padding-top: 6px;
@@ -243,6 +243,104 @@ body:has(.profile-cta-bar) .site-header-cta-link {
   .profile-cta-bar,
   .profile-cta-bar[data-visible="true"] {
     transition: none;
+  }
+}
+
+/* "Scegli" sulle schede dei risultati e barra dei professionisti scelti
+   (docs/CHANGELOG.md §393): pillola come gli altri pulsanti, piena quando
+   è scelto. La barra riprende quella del profilo (§385). */
+.choose-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1.5px solid #128552;
+  background: #ffffff;
+  color: #0e7a4c;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+.choose-toggle:hover {
+  background: #dcf3e7;
+}
+.choose-toggle[data-selected="true"] {
+  background: #128552;
+  color: #ffffff;
+}
+.choose-toggle[aria-disabled="true"] {
+  border-color: #9c8e7f;
+  color: #6e6459;
+  cursor: not-allowed;
+  background: #ffffff;
+}
+.choose-toggle:focus-visible {
+  outline: 2px solid #0e7a4c;
+  outline-offset: 2px;
+}
+.chosen-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 -1px 0 rgba(26, 21, 19, 0.08);
+}
+.chosen-bar-inner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 1168px;
+  margin: 0 auto;
+}
+.chosen-bar-people {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+.chosen-bar-faces {
+  display: flex;
+  flex-shrink: 0;
+}
+.chosen-bar-faces > span {
+  display: inline-flex;
+  border-radius: 999px;
+  box-shadow: 0 0 0 2px #ffffff;
+}
+.chosen-bar-faces > span + span {
+  margin-left: -10px;
+}
+.chosen-bar-text {
+  min-width: 0;
+}
+.chosen-bar-link {
+  flex-shrink: 0;
+}
+body:has(.chosen-bar) {
+  padding-bottom: 72px;
+}
+@media (max-width: 767px) {
+  .chosen-bar-inner {
+    gap: 12px;
+  }
+  .chosen-bar-people {
+    flex: 0 0 auto;
+  }
+  .chosen-bar-text {
+    display: none;
+  }
+  .chosen-bar-link {
+    flex: 1;
   }
 }
 
@@ -5045,7 +5143,7 @@ a.admin-kpi:hover {
   line-height: 18px;
   /* Più scuro del grigio caldo #6e6459: le briciole stanno sopra le forme
      sfumate dello sfondo, e sul verde chiaro quel grigio arrivava a 3,6:1
-     (serve 4,5:1). #4f463e resta sopra 5:1 anche lì (docs/CHANGELOG.md §393). */
+     (serve 4,5:1). #4f463e resta sopra 5:1 anche lì (docs/CHANGELOG.md §401). */
   color: #4f463e;
 }
 .breadcrumbs-list {

@@ -80,7 +80,7 @@ export function ProfessionalDetailContent({
    * `?modalita=`, `?data=` e `?salva=` letti dal server e passati qui, non con
    * useSearchParams: quello chiedeva un <Suspense> e il profilo arrivava dopo
    * il piè di pagina, che su una rete lenta saliva in cima e poi scendeva
-   * (Lighthouse CLS 0,93, docs/CHANGELOG.md §392).
+   * (Lighthouse CLS 0,93, docs/CHANGELOG.md §400).
    */
   query?: { modalita?: string; data?: string; salva?: string; servizio?: string };
 }) {
@@ -104,7 +104,7 @@ export function ProfessionalDetailContent({
       // sessionStorage non disponibile: si conta comunque una volta per montaggio.
     }
     apiClient.recordProfileView(professional.id, token ?? undefined).catch(() => undefined);
-    // Andamento del sito: visite per dispositivo, accanto alle richieste per pulsante (§394).
+    // Andamento del sito: visite per dispositivo, accanto alle richieste per pulsante (§402).
     if (user?.professionalProfileId !== professional.id) countProfileView();
   }, [isAuthLoading, preview, professional.id, token, user?.professionalProfileId]);
   const [isSaving, setIsSaving] = useState(false);

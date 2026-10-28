@@ -1,5 +1,5 @@
 // Lighthouse dell'agenda, di Oggi, di Richieste e del profilo pubblico con la
-// barra "Richiedi un preventivo" su un telefono lento (docs/CHANGELOG.md §309, §345, §392):
+// barra "Richiedi un preventivo" su un telefono lento (docs/CHANGELOG.md §309, §345, §400):
 // profilo "mobile" di Lighthouse (Moto G Power, CPU rallentata 4 volte,
 // rete 4G lenta simulata). Blocca sotto i limiti "scarso" di Google
 // (BUDGET) e avvisa sotto quelli "buono" (GOOD), che sono l'obiettivo.
@@ -47,7 +47,7 @@ const pages = [
   // Le altre due pagine aperte più spesso dal professionista (docs/CHANGELOG.md §345).
   { name: "oggi", path: "/dashboard" },
   { name: "richieste", path: "/dashboard/richieste" },
-  // Profilo pubblico con la barra fissa in basso (§392).
+  // Profilo pubblico con la barra fissa in basso (§400).
   { name: "profilo", path: `/professionista/${data.publicProfileId}` },
 ];
 const rows = [];

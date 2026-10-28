@@ -68,18 +68,18 @@ export class SiteCountsService {
       create: { step, categorySlug: slug, origin, day, count: 1 },
       update: { count: { increment: 1 } },
     });
-    // Da quale pulsante del profilo e da che dispositivo (§394): solo l'apertura e l'invio.
+    // Da quale pulsante del profilo e da che dispositivo (§402): solo l'apertura e l'invio.
     const event: ProfileRequestEvent | null = step === "LAVORO" ? "INIZIATA" : step === "INVIATA" ? "INVIATA" : null;
     if (origin === "PROFILE" && event && from.device) await this.recordProfileSource(event, from.source ?? "ALTRO", from.device);
   }
 
-  /** Un profilo pubblico aperto, per dispositivo (§394). */
+  /** Un profilo pubblico aperto, per dispositivo (§402). */
   async recordProfileView(device: DeviceKind): Promise<void> {
     await this.recordProfileSource("VISITA", "", device);
   }
 
   /**
-   * Contatore delle richieste dai profili (§394). Solo dal lancio: le prove
+   * Contatore delle richieste dai profili (§402). Solo dal lancio: le prove
    * fatte prima non devono finire nei numeri veri; senza `LAUNCH_DATE` non
    * si conta niente.
    */

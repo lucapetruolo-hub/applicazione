@@ -310,6 +310,8 @@ describe("prestazioni più cercate", () => {
       { profileId: "p4", name: "Lucidatura parquet", categorySlugs: ["pulizie"] },
     ];
     expect(buildMissingServices(rows)).toEqual([{ categorySlug: "tuttofare", categoryLabel: "Tutto Fare", name: "Montaggio tende", professionals: 3 }]);
+    // Aggiunta alle standard da "Prestazioni per mestiere" (§388): non manca più.
+    expect(buildMissingServices(rows, { tuttofare: ["Montaggio tende"] })).toEqual([]);
   });
 
   it("diventano consigli solo sopra le soglie", () => {

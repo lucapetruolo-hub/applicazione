@@ -8,6 +8,7 @@ import {
   allItalianCityNames,
   CATEGORY_DESCRIPTION_EXAMPLES,
   CATEGORY_URGENT_DESCRIPTION_EXAMPLES,
+  MAX_CHOSEN_PROFESSIONALS,
   MAX_REQUEST_CATEGORIES,
   PROFESSIONAL_CATEGORIES,
   findComuneByName,
@@ -218,6 +219,11 @@ export function GuidedRequestForm({
   // immagine): trattata come assente, non come URL vuoto passato a
   // ProfessionalAvatar.
   const professionalName = searchParams.get("nomeProfessionista") || undefined;
+  // Da 2 a 5 professionisti scelti nei risultati (docs/CHANGELOG.md §393):
+  // una sola richiesta, che arriva solo a loro.
+  const chosenParam = professionalProfileId ? "" : (searchParams.get("scelti") ?? "");
+  const chosenIds = [...new Set(chosenParam.split(",").filter((id) => /^[0-9a-f-]{36}$/i.test(id)))].slice(0, MAX_CHOSEN_PROFESSIONALS);
+  const chosenMode = chosenIds.length >= 2;
   const professionalImageUrl = searchParams.get("fotoProfessionista") || null;
   // Valorizzati solo quando si arriva da una fascia "generica" dell'agenda
   // pubblica di un professionista (AvailabilitySlot.maxBookings > 1, vedi
@@ -271,12 +277,12 @@ export function GuidedRequestForm({
   // professionista dalla ricerca. Il server lo rifiuterebbe comunque.
   const [generalClosed, setGeneralClosed] = useState<"GLOBAL" | "ZONE" | null>(null);
   useEffect(() => {
-    if (professionalProfileId) return;
+    if (professionalProfileId || chosenMode) return;
     apiClient
       .generalRequestAvailability()
       .then((a) => setGeneralClosed(a.open ? null : a.closedScope))
       .catch(() => {});
-  }, [professionalProfileId]);
+  }, [professionalProfileId, chosenMode]);
 
   useEffect(() => {
     if (!professionalProfileId) return;
@@ -353,12 +359,23 @@ export function GuidedRequestForm({
       .catch(() => undefined);
   }, [professionalProfileId]);
   const shownProfessionalName = professional?.businessName ?? professionalName;
+  // Nome, foto e se accettano richieste dei professionisti scelti (§393).
+  const [chosenPros, setChosenPros] = useState<ProfessionalDetail[]>([]);
+  useEffect(() => {
+    if (!chosenParam) return;
+    const ids = chosenParam.split(",").slice(0, MAX_CHOSEN_PROFESSIONALS);
+    Promise.all(ids.map((id) => apiClient.getProfessional(id).catch(() => null)))
+      .then((details) => setChosenPros(details.filter((detail): detail is ProfessionalDetail => Boolean(detail))))
+      .catch(() => undefined);
+  }, [chosenParam]);
+  const chosenNames = chosenPros.map((pro) => pro.businessName);
+  const chosenPaused = chosenPros.filter((pro) => !pro.acceptingRequests);
   // Riga sotto "Quando ti serve?": cosa comporta la scelta e, per "Oggi" in
   // una richiesta generale, a quanti professionisti arriva (§344).
   // Le urgenti usano il raggio "urgente" di ogni professionista: nel test il
   // solo "5 invece di 12" sembrava una penalità, quindi si dice a chi va.
   const urgencyReachNote =
-    !professionalProfileId && reach
+    !professionalProfileId && !chosenMode && reach
       ? reach.urgent === 0
         ? " Per ora nessuno accetta urgenze in zona."
         : ` Va a chi accetta urgenze in zona: ${reach.urgent === 1 ? "1 professionista" : `${reach.urgent} professionisti`}.`
@@ -375,6 +392,7 @@ export function GuidedRequestForm({
   function urgencyChangeText(next: RequestTiming) {
     const nextUrgent = next === "TODAY";
     const head = `Quando: ${REQUEST_TIMING_LABEL[next]}${nextUrgent ? ", urgente" : ""}.`;
+    if (chosenMode) return `${head} Arriva solo ai ${chosenIds.length} professionisti che hai scelto.`;
     if (professionalProfileId) {
       return forwardIfNoReply ? `${head} Se non risponde, la inoltriamo dopo ${nextUrgent ? "60 minuti" : "6 ore"}.` : head;
     }
@@ -512,7 +530,7 @@ export function GuidedRequestForm({
   // una volta per pagina aperta, con il lavoro scelto e se arriva dalla
   // pagina di un professionista. Dice dove ci si ferma.
   const requestOrigin = professionalProfileId ? "PROFILE" : "GENERAL";
-  // Da quale pulsante del profilo è partita (§394): `da=` nell'indirizzo.
+  // Da quale pulsante del profilo è partita (§402): `da=` nell'indirizzo.
   const requestSource = profileRequestSourceOf(searchParams.get("da"));
   const countedSteps = useRef(new Set<RequestStepKey>());
   const countStepOnce = (key: RequestStepKey) => {
@@ -635,6 +653,7 @@ export function GuidedRequestForm({
         isUrgent={isUrgent}
         matchedProfessionals={result.matchedProfessionals}
         requestsCount={result.requestsCount}
+        chosenNames={chosenMode ? chosenNames : null}
         saveDefaults={
           accountDataDiffers && !defaultsDeclined ? (
             <div className="request-sent-save" role="group" aria-label="Salvare i dati">
@@ -797,7 +816,7 @@ export function GuidedRequestForm({
         return;
       }
     }
-    if (next === 3 && !professionalProfileId) {
+    if (next === 3 && !professionalProfileId && !chosenMode) {
       for (const slug of categorySlugs) {
         const availability = await apiClient.generalRequestAvailability(slug, city).catch(() => null);
         const closed = availability && !availability.open ? availability.closedScope : null;
@@ -806,7 +825,9 @@ export function GuidedRequestForm({
         if (closed) return;
       }
     }
-    if (next === 3) {
+    if (next === 3 && chosenMode) {
+      setReach({ standard: chosenIds.length, urgent: chosenIds.length });
+    } else if (next === 3) {
       // Numero vero per il riepilogo; se l'API non risponde resta il testo senza numero.
       setReach(null);
       apiClient
@@ -857,7 +878,7 @@ export function GuidedRequestForm({
       }
       const response = await apiClient.createGuidedRequest(activeToken, {
         categorySlug: categorySlug as ProfessionalCategorySlug,
-        extraCategorySlugs: professionalProfileId ? [] : categorySlugs.slice(1),
+        extraCategorySlugs: professionalProfileId || chosenMode ? [] : categorySlugs.slice(1),
         description: description.trim(),
         city: city.trim() || undefined,
         address: street.trim() || undefined,
@@ -873,6 +894,7 @@ export function GuidedRequestForm({
         serviceMode,
         photoUrls: uploadedUrls,
         professionalProfileId,
+        professionalProfileIds: chosenMode ? chosenIds : undefined,
         forwardIfNoReply: professionalProfileId ? forwardIfNoReply : false,
         preferredDate: finalPreferredDate,
         preferredTimeSlot: finalPreferredTimeSlot,
@@ -1063,6 +1085,8 @@ export function GuidedRequestForm({
                 <Text color={brand.grafite70}>Descrivi il lavoro: la richiesta arriva a {shownProfessionalName}.</Text>
               )}
             </>
+          ) : chosenMode ? (
+            <ChosenProsHeading pros={chosenPros} count={chosenIds.length} categorySlug={selectedCategory?.slug ?? categorySlug} paused={chosenPaused} />
           ) : (
             <Text color={brand.grafite70}>{subtitle}</Text>
           )}
@@ -1087,7 +1111,7 @@ export function GuidedRequestForm({
 
         {step === 1 ? (
           <>
-        {professionalProfileId && selectedCategory ? (
+        {(professionalProfileId || chosenMode) && selectedCategory ? (
           // Professionista già scelto: nessuna categoria da scegliere
           // (decisione dell'utente, docs/CHANGELOG.md §217). La richiesta usa
           // quella del link se è una delle sue, altrimenti la principale.
@@ -1560,6 +1584,7 @@ export function GuidedRequestForm({
           <RequestSummary
             isUrgent={isUrgent}
             professionalName={professionalProfileId ? shownProfessionalName ?? "il professionista" : null}
+            chosen={chosenMode ? { count: chosenIds.length, names: chosenNames } : null}
             categoryLabels={selectedCategories.map((c) => c.label)}
             serviceMode={serviceMode}
             description={description}
@@ -1726,6 +1751,7 @@ function StepIndicator({ step, onGo }: { step: 1 | 2 | 3; onGo: (next: 1 | 2 | 3
 function RequestSummary({
   isUrgent,
   professionalName,
+  chosen,
   categoryLabels,
   serviceMode,
   description,
@@ -1743,6 +1769,8 @@ function RequestSummary({
 }: {
   isUrgent: boolean;
   professionalName: string | null;
+  /** Professionisti scelti nei risultati (§393): quanti e, appena arrivano, i nomi. */
+  chosen: { count: number; names: string[] } | null;
   categoryLabels: string[];
   serviceMode: "HOME" | "ONLINE";
   description: string;
@@ -1783,7 +1811,17 @@ function RequestSummary({
     <YStack gap="$4">
       <div className="guided-next">
         <strong>Cosa succede dopo l&apos;invio</strong>
-        {professionalName ? (
+        {chosen ? (
+          <ul>
+            <li>
+              La richiesta arriva solo ai {chosen.count} professionisti che hai scelto
+              {chosen.names.length > 0 ? `: ${new Intl.ListFormat("it-IT", { type: "conjunction" }).format(chosen.names)}` : ""}
+              {isUrgent ? " (segnata come urgente)" : ""}.
+            </li>
+            <li>Ti avvisiamo per email a ogni preventivo: li confronti e scegli tu.</li>
+            <li>Finché non accetti un preventivo vedono solo nome, città e lavoro: telefono e via restano nascosti.</li>
+          </ul>
+        ) : professionalName ? (
           <ul>
             <li>
               La richiesta arriva solo a {professionalName}
@@ -2004,5 +2042,69 @@ function SlotPills({
         </div>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * Riquadro "Stai inviando la richiesta a" con i professionisti scelti nei
+ * risultati (docs/CHANGELOG.md §393), come quello del professionista
+ * singolo. Chi nel frattempo non accetta richieste è detto per nome: il
+ * server rifiuterebbe l'invio.
+ */
+function ChosenProsHeading({
+  pros,
+  count,
+  categorySlug,
+  paused,
+}: {
+  pros: ProfessionalDetail[];
+  count: number;
+  categorySlug: string;
+  paused: ProfessionalDetail[];
+}) {
+  return (
+    <>
+      <YStack
+        gap="$3"
+        alignSelf="stretch"
+        backgroundColor={brand.calce}
+        borderWidth={1}
+        borderColor={brand.filetto}
+        borderRadius={radiusDoc}
+        paddingHorizontal="$4"
+        paddingVertical="$3"
+      >
+        <Text fontSize={13} color={brand.grafite70}>
+          Stai inviando la richiesta ai {count} professionisti che hai scelto
+        </Text>
+        {pros.map((pro) => (
+          <XStack key={pro.id} alignItems="center" gap="$3">
+            <ProfessionalAvatar imageUrl={pro.imageUrl} categorySlug={pro.categorySlug || categorySlug} size={40} />
+            <YStack flexShrink={1}>
+              <Text fontFamily="$heading" fontWeight="800" fontSize="$4" color={brand.grafite}>
+                {pro.businessName}
+              </Text>
+              <Text fontSize={13} color={brand.grafite70}>
+                {[
+                  pro.categoryLabel,
+                  pro.rating !== null && pro.reviewCount > 0 ? `★ ${pro.rating.toLocaleString("it-IT")} (${pro.reviewCount})` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </Text>
+            </YStack>
+          </XStack>
+        ))}
+      </YStack>
+      {paused.length > 0 ? (
+        <Text color={brand.urgenza} fontWeight="700">
+          {new Intl.ListFormat("it-IT", { type: "conjunction" }).format(paused.map((pro) => pro.businessName))}{" "}
+          {paused.length === 1 ? "al momento non accetta" : "al momento non accettano"} nuove richieste: torna ai risultati e{" "}
+          {paused.length === 1 ? "toglilo" : "toglili"} dalla scelta.
+        </Text>
+      ) : (
+        <Text color={brand.grafite70}>Descrivi il lavoro: la richiesta arriva solo a loro, e confronti i preventivi.</Text>
+      )}
+    </>
   );
 }

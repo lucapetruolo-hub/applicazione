@@ -44,6 +44,7 @@ import { UrgencyMetricsModule } from "./urgency-metrics/urgency-metrics.module";
 import { BookingRemindersModule } from "./booking-reminders/booking-reminders.module";
 import { AgendaRemindersModule } from "./agenda-reminders/agenda-reminders.module";
 import { AgendaModule } from "./agenda/agenda.module";
+import { ProblemMatchModule } from "./problem-match/problem-match.module";
 
 @Module({
   imports: [
@@ -107,6 +108,7 @@ import { AgendaModule } from "./agenda/agenda.module";
     BookingRemindersModule,
     AgendaRemindersModule,
     AgendaModule,
+    ProblemMatchModule,
     SubscriptionsModule,
     // Profili creati al telefono da un operatore (docs/CHANGELOG.md §170).
     ProfileInvitesModule,

@@ -70,7 +70,7 @@ for (const device of [
     await expect(page.getByRole("heading", { name: "Il numero guida" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Lavori e città" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Prestazioni più cercate" })).toBeVisible();
-    // Senza data del lancio le richieste per pulsante non si contano ancora (§394).
+    // Senza data del lancio le richieste per pulsante non si contano ancora (§402).
     await expect(page.getByRole("heading", { name: "Richieste dai profili: da dove partono" })).toBeVisible();
     await expect(page.getByText("Si comincia a contare dal giorno del lancio")).toBeVisible();
     // Nessuna riga più larga dello schermo.
