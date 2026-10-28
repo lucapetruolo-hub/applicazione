@@ -226,9 +226,10 @@ export function AgendaTimeGrid({
                           // Settimana sul telefono: colonne troppo strette per il nome, si vede l'ora d'inizio.
                           // Il lettore di schermo legge ancora nome e orario completo.
                           <>
-                            <span className="sr-only">{event.title}, </span>
-                            <b>{minutesToLabel(event.start)}</b>
-                            <span className="sr-only">–{minutesToLabel(event.end)}</span>
+                            <span className="sr-only">
+                              {event.title}, {minutesToLabel(event.start)}–{minutesToLabel(event.end)}
+                            </span>
+                            <b aria-hidden="true">{minutesToLabel(event.start)}</b>
                           </>
                         ) : (
                           <>
