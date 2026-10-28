@@ -892,6 +892,17 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin/pagamenti` },
   }),
+  ADMIN_STRIPE_ACCOUNT_UNREADABLE: (payload) => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: "Stato di un conto Stripe non leggibile",
+    title: "Conto Stripe non leggibile",
+    paragraphs: [
+      `Il sito non riesce a leggere su Stripe lo stato del conto di ${typeof payload.businessName === "string" && payload.businessName ? payload.businessName : "un professionista"}${typeof payload.stripeAccountId === "string" ? ` (${payload.stripeAccountId})` : ""}: finché non si risolve, i suoi pagamenti online possono risultare spenti anche se su Stripe sono attivi.`,
+      typeof payload.error === "string" && payload.error ? `Risposta di Stripe: ${payload.error}` : "Controlla l'errore in Sentry.",
+    ],
+    cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin/pagamenti` },
+  }),
   ADMIN_STRIPE_DISPUTE: (payload) => ({
     kind: "notification",
     tone: "urgent",

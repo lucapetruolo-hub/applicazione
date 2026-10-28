@@ -16,6 +16,7 @@ import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalVerificationService } from "../professional-verification/professional-verification.service";
 import { TaxIdCheckService } from "../tax-id-check/tax-id-check.service";
 import { readStripeConnectStatus } from "./stripe-connect-status";
+import { stripeAccountPrefill } from "./stripe-account-prefill";
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
 import { PayoutAccountService } from "./payout-account.service";
 
@@ -67,6 +68,8 @@ export class ProfessionalFiscalService {
   private readonly stripe: Stripe | null;
 
   private readonly logger = new Logger(ProfessionalFiscalService.name);
+  /** Ultimo avviso "conto Stripe non leggibile" per conto (un solo processo su Render). */
+  private readonly unreadableAlertAt = new Map<string, number>();
 
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
@@ -95,7 +98,9 @@ export class ProfessionalFiscalService {
     // Di ritorno dalla verifica Stripe il webhook può non essere ancora
     // arrivato: lo stato si rilegge da Stripe finché l'account non è attivo.
     if (fiscalProfile?.stripeConnectAccountId && !fiscalProfile.stripePayoutsEnabled) {
-      await this.refreshStripeConnectStatus(fiscalProfile.stripeConnectAccountId).catch(() => undefined);
+      await this.refreshStripeConnectStatus(fiscalProfile.stripeConnectAccountId).catch((err: unknown) => {
+        this.logger.warn(`Stato Stripe non riletto per ${fiscalProfile.stripeConnectAccountId}: ${err instanceof Error ? err.message : String(err)}`);
+      });
     }
     return this.prisma.professionalFiscalProfile.findUnique({
       where: { professionalProfileId },
@@ -324,7 +329,7 @@ export class ProfessionalFiscalService {
       );
     }
     const professionalProfileId = await this.requireMyProfileId(userId);
-    const profile = await this.prisma.professionalProfile.findUnique({ where: { id: professionalProfileId }, include: { user: true } });
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { id: professionalProfileId }, include: { user: true, category: true } });
     let fiscalProfile = await this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId } });
 
     let stripeAccountId = fiscalProfile?.stripeConnectAccountId;
@@ -336,23 +341,53 @@ export class ProfessionalFiscalService {
       if (profile && identityVerificationNeeded(profile)) throw new BadRequestException("Prima verifica la tua identità, poi puoi attivare i pagamenti online.");
     }
     if (!stripeAccountId) {
-      const account = await this.stripe.v2.core.accounts.create(
-        {
-          contact_email: profile?.user.email ?? undefined,
-          display_name: profile?.businessName ?? undefined,
-          dashboard: "express",
-          identity: { country: "IT", entity_type: fiscalProfile?.entityType === "BUSINESS" ? "company" : "individual" },
-          // Merchant: i pagamenti dei lavori nascono sul suo conto (addebito
-          // diretto, §268); recipient per i pagamenti dei modelli precedenti.
-          configuration: {
-            merchant: { capabilities: { card_payments: { requested: true } } },
-            recipient: { capabilities: { stripe_balance: { stripe_transfers: { requested: true } } } },
-          },
-          defaults: { currency: "eur", locales: ["it-IT"], responsibilities: { fees_collector: "application", losses_collector: "application" } },
-          metadata: { professionalProfileId },
+      // Dati già dati da lui (nome, nascita, indirizzo, codice fiscale,
+      // mestiere, profilo): su Stripe li trova scritti
+      // (docs/changelog/2026-10-28-stripe-prova.md).
+      const prefill = profile && fiscalProfile
+        ? stripeAccountPrefill({
+            email: profile.user.email,
+            phone: profile.user.phone,
+            profile: { id: profile.id, businessName: profile.businessName, city: profile.city, category: profile.category },
+            fiscal: fiscalProfile,
+            frontendUrl: this.frontendUrl(),
+          })
+        : null;
+      const baseParams: Stripe.V2.Core.AccountCreateParams = {
+        contact_email: profile?.user.email ?? undefined,
+        display_name: profile?.businessName ?? undefined,
+        dashboard: "express",
+        identity: { country: "IT", entity_type: fiscalProfile?.entityType === "BUSINESS" ? "company" : "individual" },
+        // Merchant: i pagamenti dei lavori nascono sul suo conto (addebito
+        // diretto, §268); recipient per i pagamenti dei modelli precedenti.
+        configuration: {
+          merchant: { capabilities: { card_payments: { requested: true } } },
+          recipient: { capabilities: { stripe_balance: { stripe_transfers: { requested: true } } } },
         },
-        { idempotencyKey: `connect-account-${professionalProfileId}` },
-      );
+        defaults: { currency: "eur", locales: ["it-IT"], responsibilities: { fees_collector: "application", losses_collector: "application" } },
+        metadata: { professionalProfileId },
+      };
+      let account: Stripe.V2.Core.Account | null = null;
+      if (prefill) {
+        try {
+          account = await this.stripe.v2.core.accounts.create(
+            {
+              ...baseParams,
+              contact_email: prefill.contact_email ?? baseParams.contact_email,
+              identity: prefill.identity,
+              configuration: { ...baseParams.configuration, merchant: { ...baseParams.configuration?.merchant, ...(prefill.mcc ? { mcc: prefill.mcc } : {}) } },
+              defaults: { ...baseParams.defaults, profile: prefill.defaults?.profile },
+            },
+            { idempotencyKey: `connect-account-prefill-${professionalProfileId}` },
+          );
+        } catch (err) {
+          // Un dato che Stripe non accetta non deve bloccare l'attivazione:
+          // si crea il conto senza, e quei dati li chiede Stripe.
+          if (!(err instanceof Stripe.errors.StripeInvalidRequestError)) throw err;
+          this.logger.warn(`Dati precompilati rifiutati da Stripe per ${professionalProfileId}: ${err.message}`);
+        }
+      }
+      account ??= await this.stripe.v2.core.accounts.create(baseParams, { idempotencyKey: `connect-account-${professionalProfileId}` });
       stripeAccountId = account.id;
       fiscalProfile = fiscalProfile
         ? await this.prisma.professionalFiscalProfile.update({ where: { professionalProfileId }, data: { stripeConnectAccountId: stripeAccountId } })
@@ -388,8 +423,11 @@ export class ProfessionalFiscalService {
    */
   private async ensureMerchantConfiguration(stripeAccountId: string): Promise<void> {
     if (!this.stripe) return;
-    const account = await this.stripe.v2.core.accounts.retrieve(stripeAccountId, { include: ["configuration.merchant"] });
-    if (account.configuration?.merchant?.capabilities?.card_payments) return;
+    // `applied_configurations` e non `include: ["configuration.merchant"]`:
+    // con la Dashboard Express Stripe non fa leggere la configurazione alla
+    // piattaforma dopo l'iscrizione (vedi readStripeConnectStatus).
+    const account = await this.stripe.v2.core.accounts.retrieve(stripeAccountId);
+    if (account.applied_configurations?.includes("merchant")) return;
     await this.stripe.v2.core.accounts.update(stripeAccountId, {
       configuration: { merchant: { capabilities: { card_payments: { requested: true } } } },
     });
@@ -401,13 +439,48 @@ export class ProfessionalFiscalService {
    */
   async refreshStripeConnectStatus(stripeAccountId: string): Promise<void> {
     if (!this.stripe) return;
-    const status = await readStripeConnectStatus(this.stripe, stripeAccountId);
+    let status: Awaited<ReturnType<typeof readStripeConnectStatus>>;
+    try {
+      status = await readStripeConnectStatus(this.stripe, stripeAccountId);
+    } catch (err) {
+      await this.alertUnreadableAccount(stripeAccountId, err).catch(() => undefined);
+      throw err;
+    }
     // Pagamenti online attivi quando può accettare le carte (addebito diretto, §268).
     await this.syncStripeConnectStatus(stripeAccountId, status.cardPaymentsActive, status.cardPaymentsActive, status.requirements);
     // IBAN per la DAC7 di nuovo confrontato col conto su Stripe (§247): mai bloccante.
     await this.payoutAccountService?.recheckForStripeAccount(stripeAccountId).catch((err: unknown) => {
       this.logger.warn(`IBAN non ricontrollato per ${stripeAccountId}: ${err instanceof Error ? err.message : String(err)}`);
     });
+  }
+
+  /**
+   * Stato del conto non riletto (docs/changelog/2026-10-28-stripe-prova.md):
+   * il professionista vedrebbe i pagamenti spenti senza saperne il motivo.
+   * Avviso agli admin di Finanza al massimo una volta al giorno per conto
+   * (la rilettura riparte a ogni apertura della pagina e a ogni webhook).
+   */
+  private async alertUnreadableAccount(stripeAccountId: string, err: unknown): Promise<void> {
+    const now = Date.now();
+    const last = this.unreadableAlertAt.get(stripeAccountId);
+    if (last !== undefined && now - last < 24 * 60 * 60 * 1000) return;
+    this.unreadableAlertAt.set(stripeAccountId, now);
+    const message = err instanceof Error ? err.message : String(err);
+    this.logger.error(`Stato Stripe non leggibile per ${stripeAccountId}: ${message}`);
+    const fiscal = await this.prisma.professionalFiscalProfile.findUnique({
+      where: { stripeConnectAccountId: stripeAccountId },
+      select: { professionalProfile: { select: { businessName: true } } },
+    });
+    const admins = await this.prisma.user.findMany({ where: { role: "ADMIN", deletedAt: null }, select: { id: true, adminRoles: true } });
+    for (const admin of admins) {
+      const roles = admin.adminRoles ?? [];
+      if (roles.length > 0 && !roles.includes("SUPER") && !roles.includes("FINANCE")) continue;
+      await this.notificationsService.notify(admin.id, "ADMIN_STRIPE_ACCOUNT_UNREADABLE", {
+        stripeAccountId,
+        businessName: fiscal?.professionalProfile.businessName ?? null,
+        error: message.slice(0, 300),
+      });
+    }
   }
 
   /** Aggiorna lo stato Stripe Connect dal webhook `account.updated`. */

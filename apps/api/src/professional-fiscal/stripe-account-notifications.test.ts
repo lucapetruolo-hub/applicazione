@@ -36,3 +36,40 @@ describe("ProfessionalFiscalService.syncStripeConnectStatus — avvisi", () => {
     expect(on.notificationsService.notify).not.toHaveBeenCalled();
   });
 });
+
+/** Conto non leggibile su Stripe (docs/changelog/2026-10-28-stripe-prova.md): avviso agli admin di Finanza, una volta al giorno. */
+describe("ProfessionalFiscalService.refreshStripeConnectStatus — conto non leggibile", () => {
+  function buildUnreadable() {
+    const prisma = {
+      professionalFiscalProfile: { findUnique: vi.fn().mockResolvedValue({ professionalProfile: { businessName: "Idraulica Rossi" } }) },
+      user: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: "super-1", adminRoles: ["SUPER"] },
+          { id: "moderatore-1", adminRoles: ["MODERATION"] },
+        ]),
+      },
+    };
+    const notificationsService = { notify: vi.fn() };
+    const service = new ProfessionalFiscalService(prisma as never, {} as never, {} as never, notificationsService as never, {} as never);
+    const denied = new Error("Permission denied");
+    (service as unknown as { stripe: unknown }).stripe = {
+      accounts: { retrieve: vi.fn().mockRejectedValue(denied) },
+      v2: { core: { accounts: { retrieve: vi.fn().mockResolvedValue({ requirements: { entries: [] } }) } } },
+    };
+    return { service, notificationsService };
+  }
+
+  it("avvisa solo Finanza e super admin, e non due volte nello stesso giorno", async () => {
+    const { service, notificationsService } = buildUnreadable();
+
+    await expect(service.refreshStripeConnectStatus("acct_1")).rejects.toThrow("Permission denied");
+    await expect(service.refreshStripeConnectStatus("acct_1")).rejects.toThrow("Permission denied");
+
+    expect(notificationsService.notify).toHaveBeenCalledTimes(1);
+    expect(notificationsService.notify).toHaveBeenCalledWith("super-1", "ADMIN_STRIPE_ACCOUNT_UNREADABLE", {
+      stripeAccountId: "acct_1",
+      businessName: "Idraulica Rossi",
+      error: "Permission denied",
+    });
+  });
+});

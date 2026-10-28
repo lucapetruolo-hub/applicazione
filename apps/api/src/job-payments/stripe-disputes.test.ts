@@ -20,16 +20,8 @@ function buildService(transfersStatus = "active") {
     transfers: { create: vi.fn().mockResolvedValue({ id: "tr_1" }) },
     refunds: { create: vi.fn() },
     paymentIntents: { retrieve: vi.fn() },
-    v2: {
-      core: {
-        accounts: {
-          retrieve: vi.fn().mockResolvedValue({
-            configuration: { recipient: { capabilities: { stripe_balance: { stripe_transfers: { status: transfersStatus } } } } },
-            requirements: { entries: [] },
-          }),
-        },
-      },
-    },
+    accounts: { retrieve: vi.fn().mockResolvedValue({ capabilities: { transfers: transfersStatus } }) },
+    v2: { core: { accounts: { retrieve: vi.fn().mockResolvedValue({ requirements: { entries: [] } }) } } },
   };
   const service = new OnlineMoneyService(prisma as never, auditLogService as never, notificationsService as never);
   (service as unknown as { stripe: unknown }).stripe = stripe;
@@ -79,7 +71,7 @@ describe("Stato dell'account Stripe prima del trasferimento", () => {
 
     await expect(service.releaseIfDue("jp-1")).resolves.toBe(true);
 
-    expect(stripe.v2.core.accounts.retrieve).toHaveBeenCalledWith("acct_1", expect.anything());
+    expect(stripe.accounts.retrieve).toHaveBeenCalledWith("acct_1");
     expect(stripe.transfers.create).toHaveBeenCalledTimes(1);
   });
 

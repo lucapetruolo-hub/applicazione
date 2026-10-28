@@ -101,6 +101,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "JOB_REFUND_COMPLETED",
       "JOB_REFUND_WAITING_FUNDS",
       "ADMIN_JOB_REFUND_FAILED",
+      // Stato del conto Stripe di un professionista non riletto (docs/changelog/2026-10-28-stripe-prova.md).
+      "ADMIN_STRIPE_ACCOUNT_UNREADABLE",
       // Anno DAC7 già comunicato con importi cambiati dopo l'invio (docs/CHANGELOG.md §247).
       "ADMIN_DAC7_NEEDS_CORRECTION",
       // Urgenti oltre il 30% o non più veloci delle normali, ogni lunedì (docs/CHANGELOG.md §338).
