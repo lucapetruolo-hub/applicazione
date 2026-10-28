@@ -117,7 +117,8 @@ test.describe("link aperto senza accesso", () => {
     await tapConfirm(page);
     await expect(page.getByRole("dialog", { name: "Email verificata con successo" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Email confermata", exact: true })).toBeVisible();
-    await expect(page.getByText("lì la pagina si aggiorna da sola")).toBeVisible();
+    // Senza accesso il popup dice dove continuare: sul dispositivo dell'iscrizione.
+    await expect(page.getByRole("dialog").getByText("lì la pagina si aggiorna da sola")).toBeVisible();
     expect(await verifiedAt(user.id)).not.toBeNull();
 
     await page.goto(link);
