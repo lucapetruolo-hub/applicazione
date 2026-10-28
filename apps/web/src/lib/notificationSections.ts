@@ -7,7 +7,7 @@ import type { UnreadNotification } from "./AuthContext";
  * l'aggiornamento"), non solo il totale nell'header.
  */
 const PROFESSIONAL_RICHIESTE_TYPES = new Set(["NEW_LEAD", "QUOTE_DATE_PROPOSED", "QUOTE_REJECTED", "TIMELINE_MESSAGE_FROM_CLIENT"]);
-const PROFESSIONAL_LAVORI_TYPES = new Set(["QUOTE_ACCEPTED", "BOOKING_NO_SHOW_REPORTED", "BOOKING_CANCELED_BY_CLIENT", "BOOKING_REOPENED_BY_CLIENT", "JOB_ISSUE_REPORTED", "JOB_ISSUE_SETTLED", "JOB_ISSUE_ESCALATED", "JOB_ISSUE_AUTO_ESCALATED", "JOB_ISSUE_INFO_REQUESTED", "JOB_ISSUE_UNRESOLVED", "JOB_DEPOSIT_PAID", "JOB_BALANCE_PAID", "JOB_PAYOUT_SENT", "NEW_REVIEW", "JOB_CLOSE_REMINDER", "JOB_CLOSE_EXPIRED"]);
+const PROFESSIONAL_LAVORI_TYPES = new Set(["QUOTE_ACCEPTED", "JOB_INVOICE_REQUESTED", "BOOKING_NO_SHOW_REPORTED", "BOOKING_CANCELED_BY_CLIENT", "BOOKING_REOPENED_BY_CLIENT", "JOB_ISSUE_REPORTED", "JOB_ISSUE_SETTLED", "JOB_ISSUE_ESCALATED", "JOB_ISSUE_AUTO_ESCALATED", "JOB_ISSUE_INFO_REQUESTED", "JOB_ISSUE_UNRESOLVED", "JOB_DEPOSIT_PAID", "JOB_BALANCE_PAID", "JOB_PAYOUT_SENT", "NEW_REVIEW", "JOB_CLOSE_REMINDER", "JOB_CLOSE_EXPIRED"]);
 const CLIENT_RICHIESTE_TYPES = new Set([
   "NEW_QUOTE",
   "QUOTE_DATE_CONFIRMED",
@@ -23,7 +23,7 @@ const CLIENT_RICHIESTE_TYPES = new Set([
   "REQUEST_MATCHED_LATER",
   "TIMELINE_MESSAGE_FROM_PROFESSIONAL",
 ]);
-const CLIENT_LAVORI_TYPES = new Set(["JOB_COMPLETED", "PROFESSIONAL_ON_THE_WAY", "JOB_CONFIRM_REMINDER", "JOB_AUTO_CONFIRMED", "BOOKING_CANCELED_BY_PROFESSIONAL", "BOOKING_REOPENED_BY_PROFESSIONAL"]);
+const CLIENT_LAVORI_TYPES = new Set(["JOB_COMPLETED", "JOB_DOCUMENT_READY", "PROFESSIONAL_ON_THE_WAY", "JOB_CONFIRM_REMINDER", "JOB_AUTO_CONFIRMED", "BOOKING_CANCELED_BY_PROFESSIONAL", "BOOKING_REOPENED_BY_PROFESSIONAL"]);
 // Messaggi di chat non letti, indipendentemente dal ruolo — un viewer
 // riceve sempre e solo il tipo pertinente al proprio lato (mai entrambi),
 // quindi sommare i due insiemi è sicuro. Usato per il pallino sulla voce
@@ -135,6 +135,14 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
   if (type === "ADMIN_URGENCY_ALERT") return "/admin";
   if (type === "ADMIN_SEARCH_DEMAND_ALERT") return "/admin/numeri-professionisti";
   if (type === "ADMIN_WEEKLY_ADVICE") return "/admin/andamento";
+  // Documenti contabili (docs/CHANGELOG.md §378).
+  if (type === "MONTHLY_DOCUMENTS_READY" || type === "CLIENT_DOCUMENTS_TO_FIX") return "/dashboard/documenti";
+  if (type === "ADMIN_FEE_RECONCILIATION") return "/admin/finanza";
+  // Copia del documento per il cliente (§387): apre subito i documenti della richiesta.
+  if (type === "JOB_DOCUMENT_READY") {
+    const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
+    return guidedRequestId ? `/le-mie-richieste?tab=lavori&open=${guidedRequestId}&documenti=1` : "/le-mie-richieste?tab=lavori";
+  }
   // Verifica fiscale e d'identità (docs/CHANGELOG.md §253).
   if (type === "TAX_ID_INVALID") return "/dashboard/fiscale";
   if (type === "PROFILE_SETUP_REMINDER") return "/dashboard";

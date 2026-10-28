@@ -1,5 +1,6 @@
 import { z } from "zod";
 import "./zod";
+import { clientInvoiceRequestSchema } from "./accounting";
 
 /**
  * Pagamento dei lavori (decisioni dell'utente del 29/09/2026,
@@ -88,26 +89,52 @@ export function paymentChoiceIsOnline(choice: JobPaymentChoice): boolean {
 }
 /** Giorni dopo la chiusura del lavoro in cui i soldi passano al professionista se il cliente non conferma né segnala. */
 export const ONLINE_RELEASE_DAYS = 7;
-/** Commissione Manovia sui pagamenti online, a carico del professionista (valore reale nelle regole di commissione in admin). */
-export const ONLINE_APP_FEE_PERCENT = 5;
 /**
- * Costo massimo della carta su Stripe (carte extra europee, 3,25% + €0,25),
- * usato per la trattenuta provvisoria sul pagamento: la differenza col costo
- * reale torna al professionista appena Stripe lo comunica (docs/CHANGELOG.md §249).
+ * Trattenuta unica sui pagamenti online, IVA esclusa, a carico del
+ * professionista (decisione dell'utente del 27/10/2026, docs/CHANGELOG.md
+ * §378): tutto compreso, carta e bonifici di Stripe li paghiamo noi. Prima
+ * era il 5% più i costi di Stripe. Il valore reale è nelle regole di
+ * commissione in admin; questo è quello di partenza e della trattenuta al
+ * pagamento.
+ */
+export const ONLINE_APP_FEE_PERCENT = 7;
+/** IVA della trattenuta (22%), come in `accounting.ts`. */
+const ONLINE_FEE_VAT_BASIS_POINTS = 2200;
+/**
+ * Costo massimo della carta su Stripe (carte extra europee, 3,25% + €0,25):
+ * solo per le stime, non è più a carico del professionista (§378).
  */
 export const ONLINE_CARD_FEE_MAX_BASIS_POINTS = 325;
 export const ONLINE_CARD_FEE_MAX_FIXED_EUR_CENTS = 25;
 
+/** Trattenuta con l'IVA su un importo: imponibile arrotondato al centesimo più la sua IVA (7% + IVA = 8,54%). */
+export function onlineFeeWithVatEurCents(amountEurCents: number, basisPoints: number = ONLINE_APP_FEE_PERCENT * 100): number {
+  if (amountEurCents <= 0) return 0;
+  const taxable = Math.round((amountEurCents * basisPoints) / 10_000);
+  return Math.min(amountEurCents, taxable + Math.round((taxable * ONLINE_FEE_VAT_BASIS_POINTS) / 10_000));
+}
+
+/** Percentuale effettiva con l'IVA, per i testi: "8,54%". */
+export function onlineFeeWithVatPercentLabel(basisPoints: number = ONLINE_APP_FEE_PERCENT * 100): string {
+  const percent = (basisPoints * (10_000 + ONLINE_FEE_VAT_BASIS_POINTS)) / 10_000 / 100;
+  return `${percent.toLocaleString("it-IT", { maximumFractionDigits: 2 })}%`;
+}
+
+/** Esempio in euro della trattenuta, per i testi (Pagamenti, attivazione dei pagamenti online): 200 € se non indicato. */
+export function onlineFeeExample(amountEurCents = 20_000): { amountEurCents: number; feeEurCents: number; taxableEurCents: number; vatEurCents: number; netEurCents: number } {
+  const feeEurCents = onlineFeeWithVatEurCents(amountEurCents);
+  const taxableEurCents = Math.round((amountEurCents * ONLINE_APP_FEE_PERCENT * 100) / 10_000);
+  return { amountEurCents, feeEurCents, taxableEurCents, vatEurCents: feeEurCents - taxableEurCents, netEurCents: amountEurCents - feeEurCents };
+}
+
 /**
  * Trattenuta della piattaforma su un pagamento addebitato sul conto Stripe
- * del professionista (application fee, docs/CHANGELOG.md §249): commissione
- * più il costo massimo della carta. Il costo reale si conosce solo dopo il
- * pagamento, quindi si trattiene il massimo e si restituisce la differenza.
+ * del professionista (application fee, docs/CHANGELOG.md §249): dal §378 è
+ * già quella definitiva, trattenuta unica con l'IVA. Se la regola in admin è
+ * più bassa, la differenza torna al professionista allo sblocco.
  */
 export function onlineApplicationFeeHoldEurCents(amountEurCents: number): number {
-  const commission = Math.round((amountEurCents * ONLINE_APP_FEE_PERCENT) / 100);
-  const cardFeeMax = Math.ceil((amountEurCents * ONLINE_CARD_FEE_MAX_BASIS_POINTS) / 10_000) + ONLINE_CARD_FEE_MAX_FIXED_EUR_CENTS;
-  return Math.max(0, Math.min(amountEurCents, commission + cardFeeMax));
+  return Math.max(0, onlineFeeWithVatEurCents(amountEurCents));
 }
 
 /**
@@ -146,10 +173,9 @@ export function accountDebitGrossEurCents(amountEurCents: number): number {
 /**
  * Costi di Stripe Connect per i bonifici verso la banca dei professionisti
  * (listino Stripe per l'Italia): 0,25% + €0,10 per bonifico e €2 al mese per
- * ogni account che riceve almeno un bonifico in quel mese. Sono a carico del
- * professionista (decisione dell'utente del 19/10/2026, docs/CHANGELOG.md
- * §267) e si riprendono allo sblocco, la quota mensile al primo sblocco del
- * mese.
+ * ogni account che riceve almeno un bonifico in quel mese. Dal §378 sono
+ * nostri, dentro la trattenuta unica (prima a carico del professionista,
+ * §267): servono solo alla quadratura mensile dei costi.
  */
 export const CONNECT_PAYOUT_FEE_BASIS_POINTS = 25;
 export const CONNECT_PAYOUT_FEE_FIXED_EUR_CENTS = 10;
@@ -159,17 +185,6 @@ export const CONNECT_MONTHLY_ACCOUNT_FEE_EUR_CENTS = 200;
 export function connectPayoutFeeEurCents(payoutEurCents: number): number {
   if (payoutEurCents <= 0) return 0;
   return Math.ceil((payoutEurCents * CONNECT_PAYOUT_FEE_BASIS_POINTS) / 10_000) + CONNECT_PAYOUT_FEE_FIXED_EUR_CENTS;
-}
-
-/** Costi Connect ripresi allo sblocco di un lavoro: mai più di quanto si sblocca. */
-export function connectFeesForReleaseEurCents(payoutEurCents: number, withMonthlyFee: boolean): number {
-  if (payoutEurCents <= 0) return 0;
-  return Math.min(payoutEurCents, connectPayoutFeeEurCents(payoutEurCents) + (withMonthlyFee ? CONNECT_MONTHLY_ACCOUNT_FEE_EUR_CENTS : 0));
-}
-
-/** Mese (AAAA-MM, ora italiana non necessaria: basta il confronto tra sblocchi) della quota mensile Connect. */
-export function connectFeeMonth(date: Date): string {
-  return date.toISOString().slice(0, 7);
 }
 
 /**
@@ -300,8 +315,9 @@ export type JobPaymentSummary = {
   releaseDueAt: string | null;
   releasedAt: string | null;
   balanceUnpaid: boolean;
-  /** Solo per il professionista: commissione e costo Stripe trattenuti, e quanto riceve. */
+  /** Solo per il professionista: trattenuta (con l'IVA, §378), e quanto riceve. */
   appFeeEurCents?: number;
+  /** Costo della carta a suo carico: solo sui pagamenti di prima della trattenuta unica (§378). */
   stripeFeeEurCents?: number;
   payoutEurCents?: number;
   /** Solo per il professionista: dov'è il bonifico verso la sua banca (null se non c'è nulla da ricevere). */
@@ -310,9 +326,13 @@ export type JobPaymentSummary = {
   payoutFailureMessage?: string | null;
 };
 
-/** Accettazione di un preventivo con il metodo di pagamento scelto. */
+/**
+ * Accettazione di un preventivo con il metodo di pagamento scelto e, se il
+ * cliente la chiede, i dati per la fattura del professionista (§378).
+ */
 export const acceptQuoteSchema = z.object({
   paymentMethod: z.enum(jobPaymentChoices).default("DIRECT"),
+  invoiceRequest: clientInvoiceRequestSchema.optional(),
 });
 
 /** Modi di pagamento scelti dal professionista nel preventivo (§237). */
@@ -394,12 +414,11 @@ export function toJobPaymentSummary(
   };
   if (forProfessional && method === "ONLINE") {
     const base = onlineTarget ?? collected;
-    const appFee = stage === "RELEASED" ? jp.platformFeeEurCents : jp.platformFeeEurCents || Math.round((base * ONLINE_APP_FEE_PERCENT) / 100);
+    // Trattenuta unica con l'IVA (§378); `stripeFeeEurCents` solo sui pagamenti di prima.
+    const appFee = stage === "RELEASED" ? jp.platformFeeEurCents : jp.platformFeeEurCents || onlineFeeWithVatEurCents(base);
     summary.appFeeEurCents = appFee;
     summary.stripeFeeEurCents = jp.stripeFeeEurCents;
-    // Prima dello sblocco una stima: anche il costo del bonifico è a carico del professionista (§267).
-    const estimate = Math.max(0, base - appFee - jp.stripeFeeEurCents);
-    summary.payoutEurCents = stage === "RELEASED" ? jp.netAmountEurCents : Math.max(0, estimate - connectPayoutFeeEurCents(estimate));
+    summary.payoutEurCents = stage === "RELEASED" ? jp.netAmountEurCents : Math.max(0, base - appFee - jp.stripeFeeEurCents);
     summary.payoutStatus = jobPayoutStatus(jp);
     summary.payoutFailureMessage = summary.payoutStatus === "FAILED" ? (jp.payoutFailureMessage ?? null) : null;
   }

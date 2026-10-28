@@ -56,6 +56,7 @@ Implicazioni tecniche dirette:
 | Anti-bot registrazione | **Cloudflare Turnstile** (`apps/web/src/components/TurnstileWidget.tsx`, `apps/api/src/auth/turnstile.ts`) | Deciso dall'utente il 06/10/2026, implementato in docs/CHANGELOG.md §204: sulla registrazione con email e password (`/registrati` e `InlineAuthGate`), su "Password dimenticata" e sul modulo `/contatti`; Google Sign-In escluso. Gratuito, senza cookie di profilazione (nessun consenso nel banner), citato nell'informativa privacy. Spento senza chiavi (`NEXT_PUBLIC_TURNSTILE_SITE_KEY` su Vercel, `TURNSTILE_SECRET_KEY` su Render). Se Cloudflare non risponde la registrazione passa (resta il limite di 5/min per IP). Nessun proxy/WAF Cloudflare davanti a Vercel |
 | Controllo codice fiscale e partita IVA | **VIES** (gratis, solo P.IVA) poi **Openapi** (`apps/api/src/tax-id-check/`, `OPENAPI_TOKEN_RISK` e `OPENAPI_TOKEN_COMPANY` su Render, un token per servizio) | Decisione dell'utente del 14/10/2026 (docs/CHANGELOG.md §253-§254): la P.IVA prima con VIES e, se non conferma (non valida, lenta oltre 5s, non risponde), subito Openapi (Registro Imprese); CF del titolare con Openapi (Agenzia delle Entrate); CF del legale rappresentante solo controlli gratuiti, lo conferma il documento (§255). Nell'interfaccia solo "Verifica P.IVA" / "Verifica codice fiscale", senza nominare enti (decisione dell'utente). Un esito "non valido" toglie il profilo dalla ricerca (`publicVisibilityWhere`); Openapi irraggiungibile o senza chiave non blocca mai (riprova ogni 30 minuti). Fornitore sostituibile dietro `TaxIdProvider` |
 | Verifica identità (documento + selfie) | **Didit** (`apps/api/src/identity-verification/`, `DIDIT_API_KEY`/`DIDIT_WORKFLOW_ID`/`DIDIT_WEBHOOK_SECRET` su Render) | Decisione dell'utente del 14/10/2026 (docs/CHANGELOG.md §253): obbligatoria prima del primo preventivo, sostituisce la verifica manuale; nessun caso passa all'admin: se non conferma, il professionista riceve il motivo e la rifà (decisione dell'utente, §255). Consenso biometrico esplicito (art. 9 GDPR) prima di iniziare; si conserva solo l'esito, mai immagini. Fornitore sostituibile dietro `IdentityProvider`. Senza chiavi non è richiesta |
+| Fatture della piattaforma allo SdI | **Openapi** (`apps/api/src/accounting/sdi-provider.ts`, `OPENAPI_TOKEN_SDI` e `OPENAPI_SANDBOX` su Render) | Decisione dell'utente del 27/10/2026 (docs/CHANGELOG.md §378): stesso fornitore della verifica di P.IVA e codice fiscale. XML FatturaPA generato da noi (`invoice-xml.ts`), cifrato nel database; senza chiave le fatture si emettono comunque e l'XML si scarica da Admin → Finanza. Dati della società e data di partenza in Admin → Finanza: finché mancano partono solo gli estratti. Fornitore sostituibile dietro `SdiProvider`; con `OPENAPI_SANDBOX=true` il pulsante "Prova l'invio allo SdI" in Finanza (§379). PDF dei documenti fatti dal nostro server con **pdfkit** (`apps/api/src/accounting/document-pdf.ts`, §379), non dalla stampa del browser |
 | Code/cache | **Redis** (BullMQ) | Job asincroni: invio reminder, sync ranking di visibilità |
 | Monorepo | **Turborepo** + **pnpm workspaces** | Build cache e task orchestration tra app/pacchetti condivisi |
 | Error tracking e statistiche | **Sentry** (solo `apps/api`, `SENTRY_DSN`) + **Vercel Web Analytics** (`apps/web`, senza cookie) | Decisi con l'utente (consiglio CEO, docs/CHANGELOG.md §132): prima un 500, un cron fallito o un'email non inviata non li vedeva nessuno, e non esisteva nessuna misura delle visite. Piani gratuiti, nessuna carta. Uptime: `.github/workflows/uptime.yml` |
@@ -379,13 +380,25 @@ prezzi Stripe nelle variabili `STRIPE_PRICE_<LIVELLO>` e
   acconto online con percentuale sua 1-100% e saldo online o diretto) e
   accettando il cliente sceglie tra questi: **online con Stripe**
   (acconto, 20% del massimo se non cambiato, saldo a lavoro chiuso, soldi addebitati
-  sul conto Stripe del professionista meno costo Stripe e commissione del 5%,
-  mai in custodia sulla piattaforma, e bloccati lì con i bonifici in manuale
+  sul conto Stripe del professionista meno la **trattenuta unica del 7% + IVA**,
+  tutto compreso (carta e bonifici di Stripe a carico nostro, docs/CHANGELOG.md
+  §378, prima 5% più i costi di Stripe), mai in custodia sulla piattaforma, e bloccati lì con i bonifici in manuale
   fino alla conferma o per 7 giorni (massimo 90, regola Stripe),
   docs/CHANGELOG.md §249; assistenza e rimborso sulle segnalazioni accolte)
   oppure **diretto** (nessun rimborso né decisione nostra: le segnalazioni
   restano tra le parti, il cliente può comunque recensire). Il pagamento
   diretto non paga commissione.
+- **Documenti contabili** (decisioni dell'utente del 27/10/2026,
+  docs/CHANGELOG.md §378): una fattura al mese delle trattenute (serie `COM`,
+  nota di credito se il mese è negativo) e una per ogni pagamento
+  dell'abbonamento, quota di passaggio o pacchetto (serie `ABB`), dalla
+  pagina "Fatture e documenti" (`/dashboard/documenti`, nessuna voce di
+  menu) con estratto del mese e riepilogo a 0 € dei mesi gratuiti (mai una
+  fattura a zero). La fattura del professionista al cliente la fa lui:
+  noi diamo solo i dati chiesti dal cliente e una copia di cortesia, **mai
+  nulla all'Agenzia delle Entrate per conto del professionista**. L'estratto
+  (e a gennaio il riepilogo dell'anno dei documenti dati ai clienti, §390)
+  va al commercialista solo con la spunta del professionista.
 
 ### Pacchetti di visibilità
 
@@ -488,6 +501,7 @@ Una riga per voce; dettaglio completo (endpoint, file, bug corretti) in
 - [x] Smistamento delle richieste: a tutti i professionisti nel raggio, senza scadenza per rispondere (docs/CHANGELOG.md §210); richieste generali spegnibili (`GENERAL_REQUESTS_ENABLED=false` su Render) e chiuse in automatico per categoria e città (§211)
 - [x] Segnalazioni di problemi sul lavoro e controversie (modello A-Z)
 - [x] Pagamento online dei lavori con Stripe (serve Stripe Connect per andare live)
+- [x] Fatture e documenti: fattura del mese delle trattenute, fatture dell'abbonamento, estratto mensile (anche al commercialista), fattura chiesta dal cliente al professionista, copia di cortesia con numero della ricevuta (elenco con il totale e il riepilogo dell'anno per il commercialista, e in Admin → Documenti ai clienti), voce "Documenti" nel menu di ogni lavoro per professionista e cliente, PDF fatti dal server, quadratura con Stripe (invio allo SdI con `OPENAPI_TOKEN_SDI`, prova in Finanza)
 - [x] Profilo creato da un operatore al telefono (`/admin/professionisti` → link `/completa-profilo`; fuori dalla ricerca finché non è confermato, `invitePendingAt`)
 - [x] Verifica dei professionisti: codice fiscale e partita IVA controllati (formato, coerenza con nome e data, Openapi); documento + selfie con Didit obbligatori prima del primo preventivo, danno il badge "Verificato"; `/admin/verifiche` solo per guardare, ricontrollare e togliere il badge (docs/CHANGELOG.md §253-§255)
 

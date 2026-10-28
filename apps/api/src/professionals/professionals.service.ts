@@ -44,6 +44,8 @@ import {
 } from "@professionisti/shared";
 import { COUNTED_USER, countingFrom, daySinceLaunch } from "../site-counts/counted";
 import { PRISMA } from "../prisma/prisma.module";
+import { invoiceRequestView } from "../client-invoice-requests/client-invoice-requests.service";
+import { COURTESY_DOCUMENT_FIELDS, courtesyDocumentSummary } from "../accounting/courtesy-documents";
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
 import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing, publicVisibilityWhere, publicVerified, stripeVerified } from "../professional-fiscal/public-visibility";
 import { quoteResendWindow } from "../quotes/quote-resend";
@@ -1441,11 +1443,13 @@ export class ProfessionalsService {
           include: {
             items: true,
             guidedRequest: { select: { address: true, description: true, photoUrls: true, serviceMode: true, category: { select: { slug: true, label: true } } } },
+            invoiceRequest: true,
           },
         },
         finalItems: true,
         issue: true,
         jobPayment: true,
+        courtesyDocument: { select: COURTESY_DOCUMENT_FIELDS },
       },
       orderBy: { scheduledAt: "asc" },
     });
@@ -1577,6 +1581,10 @@ export class ProfessionalsService {
       issue: toJobIssueSummary(booking.issue, { paidOnline: jobPaidOnline(booking.jobPayment), assisted: booking.jobPayment?.paymentMethod !== "DIRECT" }),
       // Pagamento del lavoro (§168), con commissione, costo Stripe e quanto riceve.
       payment: toJobPaymentSummary(booking.jobPayment, booking.finalAmountEurCents, true),
+      // Fattura chiesta dal cliente (docs/CHANGELOG.md §378): c'è la Booking, quindi il preventivo è accettato.
+      invoiceRequest: booking.quote?.invoiceRequest ? invoiceRequestView(booking.quote.invoiceRequest) : null,
+      // Ricevuta o copia di cortesia già preparata: se l'importo cambia dopo il PDF va rifatta (§381).
+      courtesyDocument: booking.courtesyDocument ? courtesyDocumentSummary(booking.courtesyDocument, booking) : null,
     }));
   }
 

@@ -294,7 +294,7 @@ export function jobIssueOutcomeText(input: {
     upheld && input.paidOnline
       ? input.audience === "client"
         ? ` Avendo pagato sul sito, ti rimborsiamo ${quanto} sul metodo di pagamento usato.`
-        : ` Il lavoro era stato pagato sul sito: ${percent >= 100 ? "l'importo viene rimborsato" : `il ${percent}% di quanto pagato viene rimborsato`} al cliente e la trattenuta del pagamento (commissione e costo della carta) resta a tuo carico.`
+        : ` Il lavoro era stato pagato sul sito: ${percent >= 100 ? "l'importo viene rimborsato" : `il ${percent}% di quanto pagato viene rimborsato`} al cliente e la nostra trattenuta sul pagamento resta a tuo carico.`
       : "";
   const rimedi =
     input.audience === "professional" && upheld && input.withAppealHint !== false

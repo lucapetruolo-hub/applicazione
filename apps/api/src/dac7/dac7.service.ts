@@ -5,6 +5,7 @@ import { dac7AnnualDeadline, dac7Entries, maskIban, type Dac7YearSummary, type P
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { decryptFiscal } from "../common/fiscal-crypto";
+import { professionalFiscalName } from "../accounting/invoice-documents";
 
 type Dac7Aggregate = {
   considerationEurCents: number;
@@ -549,6 +550,15 @@ export class Dac7Service implements OnModuleInit {
       .sort((a, b) => b.year - a.year);
     const payout = profile.fiscalProfile?.payoutAccount;
     return { years: list, maskedIban: payout ? maskIban(payout.ibanCountry, payout.ibanLast4) : null };
+  }
+
+  /** Nome sul riepilogo in PDF: ragione sociale o nome dei dati fiscali (docs/CHANGELOG.md §379). */
+  async fiscalNameOf(userId: string): Promise<string | null> {
+    const profile = await this.prisma.professionalProfile.findUnique({
+      where: { userId },
+      select: { businessName: true, fiscalProfile: { select: { businessName: true, fiscalFirstName: true, fiscalLastName: true } } },
+    });
+    return professionalFiscalName(profile?.fiscalProfile, profile?.businessName);
   }
 
   /** Correzione dopo un invio — mai in place, `reportVersion` incrementa (richiesta esplicita della specifica). */

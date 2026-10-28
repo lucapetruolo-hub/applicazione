@@ -6,12 +6,13 @@ import { ProfessionalMetricsModule } from "../professional-metrics/professional-
 import { TimelineModule } from "../timeline/timeline.module";
 import { JobPaymentsModule } from "../job-payments/job-payments.module";
 import { JobIssuesModule } from "../job-issues/job-issues.module";
+import { ClientInvoiceRequestsModule } from "../client-invoice-requests/client-invoice-requests.module";
 import { BookingsController } from "./bookings.controller";
 import { BookingsService } from "./bookings.service";
 import { CompletionDeadlineService } from "./completion-deadline.service";
 
 @Module({
-  imports: [AuthModule, NotificationsModule, ProfessionalMetricsModule, TimelineModule, JobPaymentsModule, SubscriptionsModule, JobIssuesModule],
+  imports: [AuthModule, NotificationsModule, ProfessionalMetricsModule, TimelineModule, JobPaymentsModule, SubscriptionsModule, JobIssuesModule, ClientInvoiceRequestsModule],
   controllers: [BookingsController],
   providers: [BookingsService, CompletionDeadlineService],
   // Il webhook Stripe (BillingService) conferma il lavoro quando arriva l'acconto (docs/CHANGELOG.md §240).

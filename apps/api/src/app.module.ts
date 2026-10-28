@@ -38,6 +38,8 @@ import { TestAccountsModule } from "./test-accounts/test-accounts.module";
 import { TaxIdCheckModule } from "./tax-id-check/tax-id-check.module";
 import { IdentityVerificationModule } from "./identity-verification/identity-verification.module";
 import { ProfessionalVerificationModule } from "./professional-verification/professional-verification.module";
+import { ClientInvoiceRequestsModule } from "./client-invoice-requests/client-invoice-requests.module";
+import { AccountingModule } from "./accounting/accounting.module";
 import { GeneralRequestsAdminModule } from "./general-requests/general-requests-admin.module";
 import { UrgencyMetricsModule } from "./urgency-metrics/urgency-metrics.module";
 import { BookingRemindersModule } from "./booking-reminders/booking-reminders.module";
@@ -111,6 +113,9 @@ import { AgendaModule } from "./agenda/agenda.module";
     ProfileInvitesModule,
     TestAccountsModule,
     ProfessionalVerificationModule,
+    ClientInvoiceRequestsModule,
+    // Fatture, estratti e copie di cortesia (docs/CHANGELOG.md §378).
+    AccountingModule,
     // Verifica fiscale (Openapi) e d'identità (Didit), docs/CHANGELOG.md §253.
     TaxIdCheckModule,
     IdentityVerificationModule,

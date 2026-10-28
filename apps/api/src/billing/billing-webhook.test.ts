@@ -16,7 +16,8 @@ function buildService() {
   };
   const jobPaymentsService = { handleManoviaCheckoutCompleted: vi.fn(), handleStripeDispute: vi.fn().mockResolvedValue(true), notifyFinanceAdmins: vi.fn(), retryPayoutsForAccount: vi.fn(), handlePayoutEvent: vi.fn() };
   const professionalFiscalService = { refreshStripeConnectStatus: vi.fn() };
-  const service = new BillingService(prisma as never, jobPaymentsService as never, {} as never, professionalFiscalService as never, {} as never);
+  const invoicesService = { issueForBoostCheckout: vi.fn(), issueForStripeInvoice: vi.fn() };
+  const service = new BillingService(prisma as never, jobPaymentsService as never, {} as never, professionalFiscalService as never, {} as never, invoicesService as never);
   const boostEvent = {
     id: "evt_1",
     type: "checkout.session.completed",
@@ -26,7 +27,7 @@ function buildService() {
   (service as unknown as { stripe: unknown }).stripe = stripe;
   process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
   delete process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
-  return { service, prisma, jobPaymentsService, professionalFiscalService, stripe };
+  return { service, prisma, jobPaymentsService, professionalFiscalService, invoicesService, stripe };
 }
 
 const duplicateKey = Object.assign(new Error("Unique constraint failed"), { code: "P2002" });

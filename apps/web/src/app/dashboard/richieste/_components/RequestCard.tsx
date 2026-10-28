@@ -21,6 +21,7 @@ import {
   formatEur,
   formatEurCents,
   formatEurRange,
+  quotePriceHelp,
   quotePriceTotals,
   scheduleChangeBetween,
   scheduleChangeOf,
@@ -58,6 +59,8 @@ import { ProfessionalProblemModal } from "@/components/ProfessionalProblemModal"
 import { CardButton } from "@/components/CardButton";
 import { ContactButton } from "@/components/ContactButton";
 import { ScheduleChangeBox } from "@/components/ScheduleChangeBox";
+import { ProfessionalInvoiceRequestBox } from "@/components/ProfessionalInvoiceRequestBox";
+import { JobDocumentsModal } from "@/components/JobDocumentsModal";
 import { DeadlinePill, MiniTimeline, QuoteItemDraft, STAGE_STYLE, ServiceBadge, StagePill, formatDateTime, formatSlotRange, slotKey, slotLabel, smallInputStyle } from "./requestHelpers";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { ItalianTimeInput } from "@/components/ItalianTimeInput";
@@ -238,6 +241,7 @@ export function RequestCard({
 
   const [showClientProfile, setShowClientProfile] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showDocuments, setShowDocuments] = useState(false);
   const [showProblemModal, setShowProblemModal] = useState(false);
   const [menuError, setMenuError] = useState<string | null>(null);
   // "Nuovo": aggiornamenti non letti arrivati in questa pagina, o scheda
@@ -661,6 +665,8 @@ export function RequestCard({
   }
   if (booking) {
     menuActions.push({ icon: "calendar", text: "Vedi in agenda", onPress: () => router.push(`/dashboard/agenda?booking=${booking.id}`) });
+    // Documenti contabili del lavoro (docs/CHANGELOG.md §386).
+    menuActions.push({ icon: "file-text", text: "Documenti", onPress: () => setShowDocuments(true) });
   }
   if (canDelete) {
     menuActions.push({
@@ -1097,6 +1103,24 @@ export function RequestCard({
             </YStack>
           ) : null}
 
+          {/* Fattura chiesta dal cliente (docs/CHANGELOG.md §378): i dati da copiare, e la copia di cortesia. */}
+          {booking?.invoiceRequest && booking.status !== "CANCELED" ? (
+            <ProfessionalInvoiceRequestBox request={booking.invoiceRequest} courtesyHref={`/dashboard/documenti/cortesia/${booking.id}`} />
+          ) : null}
+          {/* Copia di cortesia anche senza richiesta, a lavoro terminato (§378). */}
+          {booking && !booking.invoiceRequest && booking.status === "COMPLETED" ? (
+            <Link href={`/dashboard/documenti/cortesia/${booking.id}`} style={{ color: brand.cianografiaScuro, fontWeight: 700, fontSize: 13 }}>
+              {booking.courtesyDocument ? `Apri: ${booking.courtesyDocument.label}` : "Prepara la ricevuta o la copia della fattura per il cliente"}
+            </Link>
+          ) : null}
+          {/* Importo cambiato dopo il PDF scaricato, per esempio per un rimborso: il documento va rifatto (§381). */}
+          {booking?.courtesyDocument?.amountChanged && booking.status !== "CANCELED" ? (
+            <Link href={`/dashboard/documenti/cortesia/${booking.id}`} style={{ textDecoration: "none" }}>
+              <Text fontSize={13} fontWeight="700" color={brand.ottoneScuro}>
+                L&apos;importo è cambiato dopo il PDF: scarica di nuovo {booking.courtesyDocument.kind === "RECEIPT" ? "la ricevuta" : "la copia della fattura"} e ridalla al cliente →
+              </Text>
+            </Link>
+          ) : null}
           {/* Segnalazione del professionista sul lavoro (§197): ultima inviata e a che punto è. */}
           {booking?.professionalProblemReport ? (
             <Text fontSize={13} color={brand.grafite70}>
@@ -1375,9 +1399,15 @@ export function RequestCard({
               {/* Etichette scritte (docs/CHANGELOG.md §349): da telefono la voce
                   sta su una riga e "Da" / "A" affiancati sotto, prima "A €"
                   scendeva da solo a capo. */}
-              <Text fontSize={13} fontWeight="700" color={brand.grafite}>
-                Voci del preventivo
-              </Text>
+              <YStack gap={2}>
+                <Text fontSize={13} fontWeight="700" color={brand.grafite}>
+                  Voci del preventivo
+                </Text>
+                {/* Il cliente vede il prezzo finale, "IVA inclusa" solo se la applichi (docs/CHANGELOG.md §378). */}
+                <Text fontSize={13} color={brand.grafite70}>
+                  {quotePriceHelp(null)}
+                </Text>
+              </YStack>
               {items.map((item, index) => (
                 <div key={index} className="quote-item-row">
                   <input aria-label="Voce del preventivo" className="quote-item-name" value={item.name} onChange={(e) => updateItem(index, "name", e.target.value)} placeholder="Es. Manodopera" style={smallInputStyle} />
@@ -1723,6 +1753,7 @@ export function RequestCard({
         />
       ) : null}
       {showCancelModal && booking ? <CancelBookingModal onClose={() => setShowCancelModal(false)} onCancel={handleCancelBooking} /> : null}
+      {showDocuments && booking ? <JobDocumentsModal token={token} bookingId={booking.id} onClose={() => setShowDocuments(false)} /> : null}
       {showReportModal ? (
         <ReportContentModal
           targetType="GUIDED_REQUEST"

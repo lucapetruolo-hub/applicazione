@@ -2,16 +2,20 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { formatEurCents, ONLINE_APP_FEE_PERCENT, onlineFeeExample } from "@professionisti/shared";
 import { Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { useOnlinePayments } from "@/lib/onlinePayments";
+
+const EXAMPLE = onlineFeeExample();
 
 /**
  * "Scopri di più" sui pagamenti da /per-professionisti (docs/CHANGELOG.md
  * §174, richiesta dell'utente): spiega al professionista come viene pagato.
  * Stesse regole dei Termini (punto 5) e di /dashboard/fiscale (§168):
  * acconto 20% del massimo, saldo a lavoro chiuso, soldi bloccati fino alla
- * conferma o 7 giorni, accredito meno costo Stripe e commissione del 5%;
- * pagamento diretto senza commissione. Finché Stripe non è attivo la pagina
+ * conferma o 7 giorni, accredito meno la trattenuta unica del 7% + IVA, con
+ * commissioni Stripe comprese (§378), con un esempio in euro; pagamento diretto
+ * senza commissione. Finché Stripe non è attivo la pagina
  * dice "in arrivo" invece di promettere un pagamento che non c'è.
  */
 
@@ -34,21 +38,38 @@ function P({ children }: { children: ReactNode }) {
   );
 }
 
-function Point({ n, title, children }: { n: number; title: string; children: ReactNode }) {
+function Point({ n, title, children, list }: { n: number; title: string; children: ReactNode; list?: string[] }) {
   return (
     <YStack gap="$1" paddingLeft="$3" borderLeftWidth={3} borderLeftColor={brand.filetto}>
       <Text fontWeight="700" color={brand.grafite}>
         {n}. {title}
       </Text>
       <P>{children}</P>
+      {list ? (
+        <YStack tag="ul" margin={0} padding={0} gap="$1">
+          {list.map((item) => (
+            <XStack key={item} tag="li" gap="$2" alignItems="flex-start">
+              <YStack paddingTop={3} flexShrink={0}>
+                <Icon name="check" size={16} color={brand.cianografiaScuro} strokeWidth={2} />
+              </YStack>
+              <Text fontSize={16} color={brand.grafite70} lineHeight={24} flex={1}>
+                {item}
+              </Text>
+            </XStack>
+          ))}
+        </YStack>
+      ) : null}
     </YStack>
   );
 }
 
+/** Le commissioni Stripe una per una, già dentro la trattenuta (richiesta di Luca, docs/CHANGELOG.md §378). */
+const STRIPE_FEES = ["Commissione Stripe per il pagamento: la paghiamo noi", "Commissione Stripe per i bonifici verso la tua banca: la paghiamo noi"];
+
 const SUMMARY = [
   "Nel preventivo scegli tu i modi: online con carta, direttamente a te, o tutti e due.",
   "Online il cliente paga un acconto quando accetta e il saldo a lavoro chiuso, sul tuo conto Stripe.",
-  "Online paghi il costo di Stripe e il 5%; il pagamento diretto non ha commissioni.",
+  `Online tratteniamo il ${ONLINE_APP_FEE_PERCENT}% + IVA, commissioni Stripe comprese; il pagamento diretto non ha commissioni.`,
 ];
 
 export function PagamentiContent() {
@@ -107,9 +128,12 @@ export function PagamentiContent() {
             quando il cliente conferma che il lavoro è finito, oppure 7 giorni dopo la chiusura se non conferma e non segnala problemi, e
             parte il bonifico verso la tua banca. Con una segnalazione aperta resta bloccato finché non si chiude.
           </Point>
-          <Point n={4} title="Costi">
-            Da quanto il cliente paga online togliamo il costo del servizio di pagamento Stripe e una commissione del 5%. Su quanto ti
-            paga direttamente non c&apos;è commissione. Il cliente non paga costi in più.
+          <Point n={4} title="Costi" list={STRIPE_FEES}>
+            Da quanto il cliente paga online tratteniamo il {ONLINE_APP_FEE_PERCENT}% più l&apos;IVA, tutto compreso. Su un lavoro da{" "}
+            {formatEurCents(EXAMPLE.amountEurCents)} tratteniamo{" "}
+            {formatEurCents(EXAMPLE.feeEurCents)} ({formatEurCents(EXAMPLE.taxableEurCents)} + {formatEurCents(EXAMPLE.vatEurCents)} di IVA) e
+            ti arrivano {formatEurCents(EXAMPLE.netEurCents)}. Ogni mese ti mandiamo la fattura delle trattenute. Su quanto ti paga
+            direttamente non c&apos;è commissione. Il cliente non paga costi in più.
           </Point>
           <P>
             Per offrire l&apos;acconto online attiva i pagamenti in Dati fiscali e pagamenti, nella tua area: Stripe ti chiede i dati e

@@ -43,6 +43,7 @@ describe("auditLabel (registro azioni admin, §350)", () => {
     );
     expect(auditLabel(row("ProfessionalProfile", "verified", false))).toBe('Badge "Verificato" tolto');
     expect(auditLabel(row("Conversation", "read", null))).toBe("Conversazione letta da un admin");
+    expect(auditLabel(row("CourtesyDocument", "read", null))).toBe("Documento dato al cliente aperto da un admin");
   });
 
   it("un campo sconosciuto non mostra il valore grezzo", () => {
