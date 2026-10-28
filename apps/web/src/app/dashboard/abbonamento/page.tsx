@@ -663,16 +663,17 @@ function AbbonamentoContent() {
           </Surface>
         ) : null}
 
-        {/* Le fatture sono le nostre, in "Fatture e documenti" (docs/CHANGELOG.md §378): da Stripe solo la carta. */}
-        <Surface borderRadius={radiusDoc} padding="$5" gap="$3">
-          <Text fontFamily="$heading" fontWeight="700" fontSize="$6" color={brand.grafite}>
-            Fatture e documenti
-          </Text>
-          <Text color={brand.grafite70}>Le fatture dell&apos;abbonamento e delle trattenute, e l&apos;estratto di ogni mese per il commercialista.</Text>
-          <XStack gap="$3" flexWrap="wrap">
-            <Link href="/dashboard/documenti" style={{ textDecoration: "none" }}>
-              <Button variant="secondary">Apri Fatture e documenti</Button>
-            </Link>
+        {/* Le fatture sono le nostre, in "Fatture e documenti" (docs/CHANGELOG.md §378), che ora ha la sua scheda
+            in Fisco e pagamenti: qui basta una riga (docs/changelog/2026-10-28-fisco-e-pagamenti-schede.md). Da Stripe solo la carta. */}
+        <Surface borderRadius={radiusDoc} padding="$5">
+          <XStack gap="$3" alignItems="center" justifyContent="space-between" flexWrap="wrap">
+            <Text color={brand.grafite70}>
+              Le fatture dell&apos;abbonamento sono in{" "}
+              <Link href="/dashboard/documenti" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
+                Fatture e documenti
+              </Link>
+              .
+            </Text>
             {sub?.checkoutAvailable ? (
               <Button variant="secondary" disabled={portalPending} opacity={portalPending ? 0.6 : 1} onPress={openPortal}>
                 {portalPending ? "Apertura..." : "Cambia la carta"}

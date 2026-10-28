@@ -57,7 +57,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   DAC7_DATA_REMINDER: { icon: "🧾", message: "Mancano dei dati per la comunicazione al fisco di gennaio: completali entro dicembre." },
   PAYOUT_IBAN_MISMATCH: { icon: "⚠️", message: "L'IBAN non corrisponde al conto su Stripe: controllalo." },
   DAC7_ANNUAL_NOTICE: { icon: "🧾", message: "Abbiamo inviato al fisco i tuoi compensi dell'anno (DAC7)." },
-  STRIPE_ACCOUNT_RESTRICTED: { icon: "⚠️", message: "Stripe ha sospeso i pagamenti online sul tuo account: completa i dati in Dati fiscali e pagamenti." },
+  STRIPE_ACCOUNT_RESTRICTED: { icon: "⚠️", message: "Stripe ha sospeso i pagamenti online sul tuo account: completa i dati in Fisco e pagamenti." },
   PROFILE_VERIFIED: { icon: "✅", message: "Identità verificata: ora mostri il badge Verificato e puoi inviare preventivi." },
   PROFILE_VERIFICATION_REMOVED: { icon: "⚠️", message: "Abbiamo tolto il badge Verificato dal tuo profilo: rifai la verifica dell'identità." },
   // Verifica fiscale e d'identità (docs/CHANGELOG.md §253).
@@ -92,7 +92,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   JOB_BALANCE_UNPAID: { icon: "⚠️", message: "Il saldo di un lavoro non risulta pagato: pagalo ora o contattaci." },
   JOB_PAYOUT_SENT: { icon: "✅", message: "Pagamento sbloccato: il bonifico è in arrivo." },
   JOB_PAYOUT_FAILED: { icon: "🏦", message: "Un bonifico non è arrivato alla tua banca: controlla i dati bancari." },
-  JOB_PAYOUT_ACCOUNT_NEEDED: { icon: "🏦", message: "Hai un pagamento online da ricevere: attiva i pagamenti in Dati fiscali e pagamenti." },
+  JOB_PAYOUT_ACCOUNT_NEEDED: { icon: "🏦", message: "Hai un pagamento online da ricevere: attiva i pagamenti in Fisco e pagamenti." },
   JOB_STRIPE_DISPUTE: { icon: "⚠️", message: "Un cliente ha contestato in banca un pagamento online: scrivi come è andato il lavoro nella scheda, sotto il pagamento." },
   // Rimborso in attesa di fondi sul conto Stripe del professionista (§269).
   JOB_REFUND_PENDING: { icon: "↩️", message: "Il tuo rimborso è in arrivo: ti avvisiamo appena parte verso la carta." },

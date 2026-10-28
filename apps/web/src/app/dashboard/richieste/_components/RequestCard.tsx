@@ -1614,8 +1614,8 @@ export function RequestCard({
                     {onlinePaymentsActive ? (
                       <>
                         Il cliente ti paga direttamente. Per offrire anche l&apos;acconto online completa la verifica su Stripe in{" "}
-                        <a href="/dashboard/fiscale" style={{ color: brand.verificato }}>
-                          Dati fiscali e pagamenti
+                        <a href="/dashboard/fiscale/pagamenti" style={{ color: brand.verificato }}>
+                          Pagamenti online
                         </a>
                         .
                       </>
