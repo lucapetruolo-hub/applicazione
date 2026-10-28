@@ -44,8 +44,23 @@ span.is_Button._fos-f-size-true {
 }
 /* Nell'intestazione dei telefoni stretti lo spazio non basta: 15 px. */
 @media (max-width: 400px) {
-  .site-header-cta span.is_Button {
+  .site-header-cta span.is_Button,
+  .site-header-cta .site-header-cta-long,
+  .site-header-cta .site-header-cta-short {
     font-size: 15px;
+  }
+}
+/* Telefoni da 320-359 px: etichetta corta "Preventivo" per chi non ha fatto l'accesso
+   (docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md). */
+.site-header-cta-short {
+  display: none !important;
+}
+@media (max-width: 359px) {
+  .site-header-cta-long {
+    display: none !important;
+  }
+  .site-header-cta-short {
+    display: inline !important;
   }
 }
 
@@ -4913,31 +4928,49 @@ a.admin-kpi:hover {
   text-decoration: underline;
 }
 
-/* Link secondari sotto la ricerca in home (docs/CHANGELOG.md §271): area di
-   tocco alta almeno 44px anche se il testo è su una riga sola. */
-.hero-secondary-link {
+/* "Richiesta urgente" dentro il riquadro verde della home
+   (docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md): pillola chiara
+   sul verde, il rosso solo nel cerchio del fulmine. */
+.hero-urgent-link {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: 0 4px;
-  font-weight: 700;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 22px 0 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  color: #fff;
+  font-weight: 600;
   font-size: 16px;
-  color: #0e7a4c; /* brand.cianografiaScuro */
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  text-decoration-thickness: 1px;
+  text-decoration: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
-.hero-secondary-link-urgent {
-  color: #c8362b;
+.hero-urgent-link:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.7);
 }
-.hero-secondary-link:hover {
-  text-decoration-thickness: 2px;
+.hero-urgent-link:active {
+  transform: scale(0.98);
 }
-.hero-secondary-link:focus-visible {
-  outline: 3px solid #189a63;
+.hero-urgent-link:focus-visible {
+  outline: 3px solid #fff;
   outline-offset: 2px;
-  border-radius: 10px;
+}
+.hero-urgent-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: #c8362b; /* brand.urgenza */
+}
+@media (max-width: 660px) {
+  .hero-urgent-link {
+    width: 100%;
+  }
 }
 
 /* Testo letto da Google e dai lettori di schermo ma non mostrato (es. il

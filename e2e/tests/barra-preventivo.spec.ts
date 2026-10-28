@@ -112,6 +112,11 @@ test.describe("chi visita il profilo", () => {
   test("\"Richiedi preventivo\" in alto c'è in home, non dentro la richiesta", async ({ page }) => {
     // Tornato in home (docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md).
     await page.goto("/");
+    // Sotto la ricerca resta solo la richiesta urgente; il campo dice che capisce anche il problema.
+    await expect(page.getByLabel("Cosa ti serve?")).toHaveAttribute("placeholder", "Es. idraulico, un guasto");
+    await expect(page.locator(".hero-urgent-link")).toHaveAttribute("href", "/urgente");
+    await expect(page.locator(".hero-urgent-link")).toHaveAccessibleName("Richiesta urgente");
+    await expect(page.getByRole("link", { name: "Richiedi un preventivo", exact: true })).toHaveCount(0);
     await expect(page.locator(".site-header-cta-link")).toBeVisible();
     await expect(page.locator(".site-header-cta-link")).toBeInViewport();
     await page.locator(".site-header-cta-link").click();

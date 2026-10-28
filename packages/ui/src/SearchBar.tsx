@@ -209,7 +209,7 @@ export function SearchBar({
             onSelect={handleSelectProfessional}
             value={query}
             onChangeText={handleQueryChange}
-            placeholder="Cosa cerchi?"
+            placeholder="Cosa ti serve?"
             size="$3"
             maxResults={professionalSuggestions.length}
             renderItem={(item) => (
@@ -322,9 +322,12 @@ export function SearchBar({
           onChangeText={handleQueryChange}
           // Etichetta vera sopra il campo ed esempio corto dentro: quello
           // lungo di prima veniva tagliato ("Es. Idraulico, Elettricis").
-          label="Cosa cerchi"
+          // L'esempio dice che il campo capisce anche il problema (§392,
+          // docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md); corto
+          // perché stia intero anche su un telefono da 320 px.
+          label="Cosa ti serve?"
           id={`${fieldId}-cosa`}
-          placeholder={mode === "online" ? "Es. consulenza idraulico" : "Es. idraulico"}
+          placeholder={mode === "online" ? "Es. consulenza idraulico" : "Es. idraulico, un guasto"}
           size="$5"
           maxResults={professionalSuggestions.length}
           renderItem={(item) => (

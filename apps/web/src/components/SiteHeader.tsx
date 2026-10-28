@@ -199,7 +199,16 @@ export function SiteHeader() {
                     </Text>
                   </>
                 ) : (
-                  "Richiedi preventivo"
+                  // Sotto i 360 px (iPhone SE e simili) logo, menu, "Accedi" e
+                  // l'etichetta intera non stanno in una riga: "Preventivo".
+                  <>
+                    <Text className="site-header-cta-long" fontSize={16} color="white" fontWeight="600">
+                      Richiedi preventivo
+                    </Text>
+                    <Text className="site-header-cta-short" fontSize={16} color="white" fontWeight="600">
+                      Preventivo
+                    </Text>
+                  </>
                 )}
               </Button>
             </Link>
