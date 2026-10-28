@@ -6,8 +6,10 @@ clienti e per chi non ha fatto l'accesso, e toglierlo nel profilo di un
 professionista, dove c'è già la barra "Richiedi un preventivo".
 
 **Perché era sparito**: tolto di proposito solo dalla home nella revisione
-del design del 25/10 (docs/CHANGELOG.md §349, PR #143), perché nel primo
-schermo della home c'è già il pulsante grande. Le altre pagine lo hanno
+del design del 25/10 (docs/CHANGELOG.md §349, PR #143), perché sotto la
+ricerca della home c'è il link "Preferisci descrivere il lavoro? Richiedi
+un preventivo". Da telefono però quel link si vede solo scorrendo, quindi
+aprendo la home non c'era nessun invito alla richiesta. Le altre pagine lo hanno
 sempre avuto. Nel profilo con la barra era già nascosto dal §385 (PR #161).
 
 **Decisione**:
