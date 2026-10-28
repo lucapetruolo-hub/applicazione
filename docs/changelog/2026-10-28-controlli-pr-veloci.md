@@ -16,3 +16,12 @@
 - **Regola sul ramo principale**: va attivata da Luca nelle impostazioni del repository (controlli obbligatori, poi "Abilita unione automatica" sulle PR). La coda di unione di GitHub non è disponibile per i repository di un account personale.
 
 **Verifica**: primo giro della PR #167 in 5:24 (sicurezza 1:38). Prove nel browser confrontate titolo per titolo con l'ultimo giro prima della modifica: 293 prove, 162 eseguite e 131 saltate di proposito, identiche (87 + 70 + 5 sui tre job). Controllo del changelog provato in locale con un nome giusto, uno sbagliato e una sezione aggiunta in fondo a `docs/CHANGELOG.md`.
+
+## Secondo giro (28/10, migliorie approvate da Luca)
+
+**Build del sito condivisa tra i job delle prove: non fatta.** Misurata sulla carta prima di scriverla: un job di build (preparazione 45 s, build 1:25, caricamento) seguito dai job delle prove (preparazione 45 s, scaricamento, browser 20 s, prove fino a 1:50) arriva a circa 5:20, come oggi. Le build in parallelo dentro ogni job costano minuti di macchina, non tempo d'attesa.
+
+**Al suo posto**, sulla stessa parte lenta (la build del sito in ogni job):
+- La cache di Next.js non veniva mai ritrovata: la chiave conteneva l'impronta di `pnpm-lock.yaml`, che cambia a quasi ogni unione nel ramo principale. Ora, se manca quella esatta, si riprende l'ultima cache del job (Next.js scarta da solo le parti cambiate).
+- Nelle build delle prove nel browser e del SEO niente lint e controllo dei tipi dentro `next build` (`CI_BUILD_SENZA_CONTROLLI=1`, ~25 s a job): li fa già `typecheck-build-test`, e Vercel e quella build li fanno sempre.
+- `actions/cache` da v4 a v5 (la v4 usa Node 20, in dismissione sui runner di GitHub).

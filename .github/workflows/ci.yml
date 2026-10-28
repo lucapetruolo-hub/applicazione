@@ -68,11 +68,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Cache di Next.js
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: apps/web/.next/cache
           key: next-build-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
-          restore-keys: next-build-${{ hashFiles('pnpm-lock.yaml') }}-
+          restore-keys: |
+            next-build-${{ hashFiles('pnpm-lock.yaml') }}-
+            next-build-
 
       # Un solo comando: turbo fa typecheck, lint, build e test dei pacchetti
       # in parallelo, rispettando le dipendenze (prima erano quattro giri in fila).
@@ -128,16 +130,19 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Cache di Next.js
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: apps/web/.next/cache
           key: next-seo-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
-          restore-keys: next-seo-${{ hashFiles('pnpm-lock.yaml') }}-
+          restore-keys: |
+            next-seo-${{ hashFiles('pnpm-lock.yaml') }}-
+            next-seo-
 
       - name: Build del sito aperto
         env:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
           NEXT_PUBLIC_SITE_INDEXABLE: "true"
+          CI_BUILD_SENZA_CONTROLLI: "1"
         run: pnpm turbo run build --filter=@professionisti/web
 
       - name: Controllo SEO (sito aperto)
@@ -200,16 +205,20 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Cache di Next.js
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: apps/web/.next/cache
           key: next-agenda-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
-          restore-keys: next-agenda-${{ hashFiles('pnpm-lock.yaml') }}-
+          restore-keys: |
+            next-agenda-${{ hashFiles('pnpm-lock.yaml') }}-
+            next-agenda-
 
       - name: Build API e pacchetti
         run: pnpm turbo run build --filter=@professionisti/api --filter=@professionisti/api-client
 
       - name: Build sito
+        env:
+          CI_BUILD_SENZA_CONTROLLI: "1"
         run: pnpm --filter @professionisti/web build
 
       - name: Migrazioni sul database di prova

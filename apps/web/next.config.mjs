@@ -53,6 +53,13 @@ const securityHeaders = [
 
 const nextConfig = {
   reactStrictMode: true,
+  // Solo nelle build della CI per le prove nel browser e il SEO
+  // (docs/changelog/2026-10-28-controlli-pr-veloci.md): lint e tipi li
+  // controlla già il job typecheck-build-test, rifarli costava ~25 secondi a
+  // job. Vercel e la build di typecheck-build-test li fanno sempre.
+  ...(process.env.CI_BUILD_SENZA_CONTROLLI === "1"
+    ? { eslint: { ignoreDuringBuilds: true }, typescript: { ignoreBuildErrors: true } }
+    : {}),
   // Niente "X-Powered-By: Next.js": non serve dire a chi cerca falle cosa usiamo.
   poweredByHeader: false,
   images: {
