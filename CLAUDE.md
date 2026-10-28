@@ -474,7 +474,8 @@ prezzi Stripe nelle variabili `STRIPE_PRICE_<LIVELLO>` e
 ## 9. Stato del progetto
 
 Una riga per voce; dettaglio completo (endpoint, file, bug corretti) in
-`docs/STATO.md`, storia in `docs/CHANGELOG.md`.
+`docs/STATO.md`, storia in `docs/CHANGELOG.md` (fino alla §399) e in
+`docs/changelog/` (voci dal 28/10/2026).
 
 - [x] Architettura e decisioni di prodotto approvate
 - [x] Monorepo (Turborepo/pnpm), `apps/api`, `apps/web`, `apps/mobile`, design system `packages/ui`
@@ -525,10 +526,13 @@ contesto di una decisione di prodotto già presa. Non va letto per intero:
 d'interesse basta quasi sempre.
 
 **Regola per le prossime modifiche**: una nuova voce di lavoro (bug fix,
-nuova funzionalità, giro di correzioni) va scritta in `docs/CHANGELOG.md`,
-mai qui — segui lo stesso formato già in uso lì (numero di sezione
-progressivo, richiesta esplicita dell'utente, decisione presa, motivo,
-verifica). `CLAUDE.md` si aggiorna solo quando cambia davvero un fatto vivo
+nuova funzionalità, giro di correzioni) va scritta in un file suo in
+`docs/changelog/` (`AAAA-MM-GG-argomento.md`, istruzioni in
+`docs/changelog/README.md`), mai qui e mai più in fondo a
+`docs/CHANGELOG.md`, che resta l'archivio delle sezioni §10-§399: tutte le PR
+che scrivevano lì andavano in conflitto tra loro e restavano ferme senza
+controlli. Stesso formato di sempre (richiesta esplicita dell'utente,
+decisione presa, motivo, verifica); nel codice si cita il file. `CLAUDE.md` si aggiorna solo quando cambia davvero un fatto vivo
 delle sezioni 1-9 sopra: lo stack, l'architettura, una regola di sviluppo
 vincolante, o lo stato di una funzionalità (`[x]`/`[ ]` in §9, dettaglio in
 `docs/STATO.md`). La checklist pre-lancio si aggiorna nella skill

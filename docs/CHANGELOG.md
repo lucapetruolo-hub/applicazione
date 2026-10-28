@@ -1,5 +1,10 @@
 # Professionisti — Changelog dettagliato
 
+> **Voci nuove**: dal 28/10/2026 ogni voce va in un file suo in
+> `docs/changelog/` (`AAAA-MM-GG-argomento.md`, istruzioni in
+> `docs/changelog/README.md`), non più in fondo a questo file, che resta
+> l'archivio delle sezioni fino alla §399.
+
 > **Cosa è questo file**: lo storico completo, sezione per sezione, di ogni
 > modifica fatta al prodotto dalla Fase 0 del redesign in poi (§10 in avanti —
 > §1-9, le regole architetturali vive, restano in `CLAUDE.md`). Ogni voce
@@ -21538,19 +21543,3 @@ e 390 px (anteprime in `anteprime/barra-preventivo-computer/`).
 **Conteggio dei passi di "Quanto costa"** (punto 4 della richiesta, dopo l'unione della PR #163): tabella `PriceToolStepDay` (passo e giorno, migrazione `20261027233000_passi_quanto_costa`, cancellata dopo 25 mesi con gli altri contatori), `POST /site/price-tool` con i soliti filtri (robot scartati, niente conteggio con "non_contare"). Si contano: voce toccata (home e pagine `/prezzi`), profilo aperto da quell'elenco, richiesta inviata partita da lì. Per collegare i tre passi la scheda del browser tiene un segno in `sessionStorage` (`da_quanto_costa`), nessun cookie; il segno si toglie all'invio della richiesta. In `/admin/andamento` il riquadro "Dallo strumento «Quanto costa»" con le tre barre e quante delle richieste inviate sono partite da una voce. Informativa privacy, punto 9, aggiornata. Prova Playwright: voce e profilo contati in `quanto-costa.spec.ts`.
 
 **Prezzi sempre a destra** (Luca, 28/10: "i prezzi sempre sulla parte destra così è più ordinato, e quindi le unità di misura prima"): l'unità sta prima del prezzo, in piccolo e grigia, e le cifre finiscono tutte sullo stesso bordo destro, nel "Quanto costa in media", nelle pagine `/prezzi`, nella scheda dei risultati e nel profilo (`PriceLine` ha la prop `unit`). Nella frase della scheda chiusa ("da 8 € al m²") l'unità resta dopo, perché è una frase. Nel modulo delle prestazioni in `/dashboard/profilo` lo stesso ordine: prima l'unità, poi "Da € a A €" con la ✕ (sul telefono prezzo e ✕ vanno a capo insieme).
-
-## 400. Controlli delle PR più veloci
-
-**Richiesta** (Luca, 28/10/2026): con molte PR aperte i controlli rallentavano tutto; ha scelto di renderli più veloci senza indebolire quelli di sicurezza.
-
-**Misure prima** (ultime 5 PR): la CI durava 7:35-9:55 minuti, sempre per colpa del job `agenda-browser` (prove nel browser 4:16, Lighthouse 1:18, build 1:12); `typecheck-build-test` 4:15-4:34 (build 1:34, seconda build del sito per il SEO aperto 1:04); test dei permessi 1 minuto; sicurezza al massimo 1:45 (CodeQL). Nessuna attesa in coda: i job partivano già in parallelo e le librerie di pnpm erano già in cache.
-
-**Decisione**:
-- `agenda-browser` diviso in tre job in parallelo, ognuno col suo database: telefono in Italia; New York e Tokyo; misure dei compiti (`--no-deps`, cambiano i dati) con Lighthouse.
-- Il controllo SEO del sito aperto ha un job suo (`seo-sito-aperto`) invece di rifare la build in coda.
-- Typecheck, lint, build e test in un solo comando turbo, che li fa in parallelo per pacchetto.
-- Cache della build di Next.js (`apps/web/.next/cache`) tra un giro e l'altro.
-- Un nuovo push sulla stessa PR ferma il giro vecchio (CI e sicurezza); sul ramo principale mai.
-- Una PR che cambia solo testi (`.md`, skill in `.claude/`) salta la CI. I controlli di sicurezza (CodeQL, Semgrep, gitleaks, osv-scanner) girano sempre e restano bloccanti.
-
-**Verifica**: tempi misurati sulla PR stessa (vedi descrizione della PR).

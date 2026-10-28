@@ -19,7 +19,7 @@ on:
   schedule:
     - cron: "0 6 * * 1"
 
-# Un nuovo push sulla stessa PR ferma il giro vecchio (docs/CHANGELOG.md §400).
+# Un nuovo push sulla stessa PR ferma il giro vecchio (docs/changelog/2026-10-28-controlli-pr-veloci.md).
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
