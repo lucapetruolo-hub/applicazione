@@ -216,6 +216,7 @@ export default function DashboardTodayPage() {
   const ready = (!loading || Boolean(error)) && journey.settled;
   const greetingName = user.businessName ?? user.name ?? "";
   const showToAnswerOnTop = !loading && !error && toAnswer.length > 0;
+  const showDatesOnTop = !loading && !error && datesToConfirm.length > 0;
 
   return (
     <YStack width="100%" alignItems="center" paddingVertical="$6" paddingHorizontal="$4">
@@ -233,13 +234,45 @@ export default function DashboardTodayPage() {
 
         {subscription ? <SubscriptionPauseBanner sub={subscription} profileStepsElsewhere /> : null}
         {restrictions ? <IssueSanctionBanner {...restrictions} /> : null}
-        {/* Preventivi da mandare in cima a tutto, sopra meteo e lavori, a tutta
-            larghezza anche sul computer (docs/CHANGELOG.md §400, Luca: "è la cosa
-            più importante"). Senza richieste la pagina resta com'era. */}
+        {/* Preventivi da mandare e date proposte dai clienti in cima a tutto,
+            sopra meteo e lavori, a tutta larghezza anche sul computer
+            (docs/CHANGELOG.md §400, Luca: "è la cosa più importante"). Senza
+            nulla a cui rispondere la pagina resta com'era. */}
         {showToAnswerOnTop ? (
           <TodaySection title="Da rispondere ora" count={toAnswer.length} action={{ href: "/dashboard/richieste", label: "Tutte le richieste" }}>
-            {toAnswer.slice(0, 5).map((lead) => (
-              <LeadToAnswerRow key={lead.id} lead={lead} />
+            {/* Da telefono le prime 3, dal computer le prime 5: sotto restano
+                vicini i lavori di oggi (§400). */}
+            {toAnswer.slice(0, 5).map((lead, index) => (
+              <LeadToAnswerRow key={lead.id} lead={lead} extra={index >= PHONE_TO_ANSWER} />
+            ))}
+            {toAnswer.length > PHONE_TO_ANSWER ? (
+              <Link href="/dashboard/richieste" className={`today-more${toAnswer.length > 5 ? "" : " is-phone-only"}`}>
+                Vedi tutte le {toAnswer.length} richieste →
+              </Link>
+            ) : null}
+          </TodaySection>
+        ) : null}
+        {showDatesOnTop ? (
+          <TodaySection title="Date proposte dai clienti" count={datesToConfirm.length}>
+            {datesToConfirm.map((lead) => (
+              <Link key={lead.id} href={`/dashboard/richieste?open=${lead.guidedRequest.id}`} className="today-row">
+                <span className="today-row-main">
+                  <strong>
+                    {lead.guidedRequest.categoryLabel} · {lead.guidedRequest.clientName ?? "Cliente"}
+                  </strong>
+                  <span className="today-row-sub">
+                    {/* Stessa data e stesso orario: solo una nota (docs/CHANGELOG.md §196). */}
+                    {scheduleChangeBetween(
+                      { start: lead.quote!.estimatedStartDate, end: lead.quote!.estimatedEndDate },
+                      { start: lead.quote!.clientProposedDate!, end: lead.quote!.clientProposedEndDate },
+                    )
+                      ? "Nuova data proposta"
+                      : "Nota aggiunta, stessa data"}
+                    : {formatDateTime(lead.quote!.clientProposedDate!)}
+                  </span>
+                </span>
+                <span className="today-row-cta">Rispondi</span>
+              </Link>
             ))}
           </TodaySection>
         ) : null}
@@ -323,8 +356,8 @@ export default function DashboardTodayPage() {
               </div>
               {!ready ? null : (
                 <>
-                  {/* Con richieste in attesa le date proposte vengono subito dopo i
-                      lavori (§352); le richieste stesse sono salite in cima (§400). */}
+                  {/* Richieste e date proposte sono salite in cima (§400): qui restano
+                      i messaggi non letti e, senza richieste, la riga vuota. */}
                   <div className="today-slot" style={{ order: toAnswer.length > 0 ? 2 : 4 }}>
                     {/* Richieste e lavori non caricati: "Riprova" invece di scheletri
                         infiniti e di un messaggio tecnico (docs/CHANGELOG.md §286). */}
@@ -344,10 +377,11 @@ export default function DashboardTodayPage() {
                       <>
                         {/* Il numero delle richieste sta nel titolo qui sotto, che
                             le elenca (§352); le altre tessere solo se c'è qualcosa. */}
-                        {datesToConfirm.length > 0 || unreadMessages > 0 ? (
+                        {/* "Date da confermare" non è più una tessera: le date sono
+                            elencate in cima (§400). */}
+                        {unreadMessages > 0 ? (
                           <div className="today-kpis today-counters">
-                            {datesToConfirm.length > 0 ? <TodayCounter href="/dashboard/richieste?stage=modifica_richiesta" icon="calendar" value={datesToConfirm.length} label="Date da confermare" urgent loading={loading} /> : null}
-                            {unreadMessages > 0 ? <TodayCounter href="/chat" icon="message-circle" value={unreadMessages} label="Messaggi non letti" urgent loading={false} /> : null}
+                            <TodayCounter href="/chat" icon="message-circle" value={unreadMessages} label="Messaggi non letti" urgent loading={false} />
                           </div>
                         ) : null}
 
@@ -357,30 +391,6 @@ export default function DashboardTodayPage() {
                           </TodaySection>
                         ) : null}
 
-                        {datesToConfirm.length > 0 ? (
-                          <TodaySection title="Date proposte dai clienti">
-                            {datesToConfirm.map((lead) => (
-                              <Link key={lead.id} href={`/dashboard/richieste?open=${lead.guidedRequest.id}`} className="today-row">
-                                <span className="today-row-main">
-                                  <strong>
-                                    {lead.guidedRequest.categoryLabel} · {lead.guidedRequest.clientName ?? "Cliente"}
-                                  </strong>
-                                  <span className="today-row-sub">
-                                    {/* Stessa data e stesso orario: solo una nota (docs/CHANGELOG.md §196). */}
-                                    {scheduleChangeBetween(
-                                      { start: lead.quote!.estimatedStartDate, end: lead.quote!.estimatedEndDate },
-                                      { start: lead.quote!.clientProposedDate!, end: lead.quote!.clientProposedEndDate },
-                                    )
-                                      ? "Nuova data proposta"
-                                      : "Nota aggiunta, stessa data"}
-                                    : {formatDateTime(lead.quote!.clientProposedDate!)}
-                                  </span>
-                                </span>
-                                <span className="today-row-cta">Rispondi</span>
-                              </Link>
-                            ))}
-                          </TodaySection>
-                        ) : null}
 
                 </>
                 )}
@@ -463,11 +473,14 @@ function TodaySection({ title, subtitle, count, action, children }: { title: str
   );
 }
 
-function LeadToAnswerRow({ lead }: { lead: ProfessionalLead }) {
+/** Richieste mostrate da telefono in "Da rispondere ora"; le altre con "Vedi tutte" (§400). */
+const PHONE_TO_ANSWER = 3;
+
+function LeadToAnswerRow({ lead, extra = false }: { lead: ProfessionalLead; extra?: boolean }) {
   const deadlines = leadDeadlines(lead);
   const competitors = formatCompetitors(lead.competitors);
   return (
-    <Link href={`/dashboard/richieste?open=${lead.guidedRequest.id}`} className="today-row">
+    <Link href={`/dashboard/richieste?open=${lead.guidedRequest.id}`} className={extra ? "today-row is-phone-hidden" : "today-row"}>
       <span className="today-row-main">
         {/* Etichetta "Urgente" come in Richieste e lavori, non più l'emoji 🔴 (§352). */}
         {lead.guidedRequest.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}

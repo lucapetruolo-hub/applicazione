@@ -1524,6 +1524,37 @@ button.notif-row-main:hover {
 .today-row:hover {
   border-color: #f0dcc0;
 }
+/* "Vedi tutte le N richieste" sotto "Da rispondere ora" (docs/CHANGELOG.md
+   §400): da telefono si vedono 3 richieste, dal computer 5. */
+.today-more {
+  display: block;
+  padding: 12px 16px;
+  border-radius: 20px;
+  background: #ffffff;
+  border: 1px solid #f0dcc0;
+  color: #0e7a4c;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+}
+.today-more:hover {
+  background: #fdf7f0;
+}
+.today-more:focus-visible {
+  outline: 2px solid #2b2420;
+  outline-offset: 2px;
+}
+.today-more.is-phone-only {
+  display: none;
+}
+@media (max-width: 759px) {
+  .today-more.is-phone-only {
+    display: block;
+  }
+  .today-row.is-phone-hidden {
+    display: none;
+  }
+}
 .today-row-main {
   display: flex;
   flex-direction: column;
