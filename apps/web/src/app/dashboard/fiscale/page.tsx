@@ -3,8 +3,8 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Button, Field, Icon, Surface, Section, Text, XStack, YStack, brand, Badge, radiusDoc } from "@professionisti/ui";
-import type { ProfessionalFiscalProfile, FiscalVerificationStatus, PayoutIbanView } from "@professionisti/api-client";
+import { Button, Field, Icon, Surface, Text, XStack, YStack, brand, Badge, radiusDoc } from "@professionisti/ui";
+import type { ProfessionalFiscalProfile, FiscalVerificationStatus } from "@professionisti/api-client";
 import {
   birthDateFromCodiceFiscale,
   birthPlaceFromCodiceFiscale,
@@ -23,10 +23,9 @@ import {
 import { apiClient } from "@/lib/apiClient";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { ProfileMissingNotice, isProfileMissingError } from "@/components/ProfileMissingNotice";
-import { PayoutIbanCard } from "@/components/PayoutIbanCard";
 import { useAuth } from "@/lib/AuthContext";
 import { JourneyProgress, journeyCurrent, setupJourney } from "@/components/verification/SetupJourney";
-import { OnlinePaymentsCard } from "@/components/OnlinePaymentsCard";
+import { FiscoArea } from "@/components/fisco/FiscoArea";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { FiscalWhyModal } from "@/components/verification/FiscalWhyModal";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
@@ -192,14 +191,9 @@ function DashboardFiscaleContent() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [stripeError, setStripeError] = useState<string | null>(null);
-  const [stripeLoading, setStripeLoading] = useState(false);
   // Verifica in 3 passi (docs/CHANGELOG.md §253): si ricarica a ogni salvataggio.
   const [verification, setVerification] = useState<MyVerificationStatus | null>(null);
   const [verificationKey, setVerificationKey] = useState(0);
-  // IBAN per la DAC7, primo passo di "Attiva i pagamenti online" (docs/CHANGELOG.md §250).
-  const [payoutIban, setPayoutIban] = useState<PayoutIbanView | null | undefined>(undefined);
-  const [ibanStepOpen, setIbanStepOpen] = useState(false);
   // Modulo in due passi, uno alla volta (docs/CHANGELOG.md §262): 1 i tuoi
   // dati, 2 l'indirizzo. `editing` riapre il modulo da dati già completi.
   const [formStep, setFormStep] = useState<1 | 2>(1);
@@ -214,14 +208,6 @@ function DashboardFiscaleContent() {
       .then(setVerification)
       .catch(() => setVerification(null));
   }, [token, verificationKey]);
-
-  useEffect(() => {
-    if (!token) return;
-    apiClient
-      .myPayoutIban(token)
-      .then(setPayoutIban)
-      .catch(() => setPayoutIban(null));
-  }, [token]);
 
   useEffect(() => {
     if (!token) return;
@@ -291,6 +277,15 @@ function DashboardFiscaleContent() {
     if (!isLoading && !user) router.replace("/accedi?redirect=/dashboard/fiscale");
     if (!isLoading && user && !user.isProfessional) router.replace("/dashboard");
   }, [isLoading, user, router]);
+
+  // I pagamenti online hanno la loro scheda (docs/changelog/2026-10-28-fisco-e-pagamenti-schede.md):
+  // i vecchi indirizzi (l'ancora in fondo a questa pagina e il ritorno da
+  // Stripe, nelle email e nei link già in giro) portano lì.
+  const stripeReturn = searchParams.get("stripeConnect");
+  useEffect(() => {
+    if (stripeReturn) router.replace(`/dashboard/fiscale/pagamenti?stripeConnect=${encodeURIComponent(stripeReturn)}`);
+    else if (window.location.hash === "#pagamenti-online") router.replace("/dashboard/fiscale/pagamenti");
+  }, [stripeReturn, router]);
 
   function setField(key: string, value: string) {
     setFields((prev) => ({ ...prev, [key]: value }));
@@ -396,20 +391,6 @@ function DashboardFiscaleContent() {
     }
   }
 
-  async function handleStripeConnect() {
-    if (!token) return;
-    setStripeLoading(true);
-    setStripeError(null);
-    try {
-      const { url } = await apiClient.createStripeConnectLink(token);
-      window.location.href = url;
-    } catch (e) {
-      setStripeError(e instanceof Error ? e.message : "Impossibile avviare l'attivazione dei pagamenti.");
-    } finally {
-      setStripeLoading(false);
-    }
-  }
-
   // Risposta veloce dal riepilogo, per chi aveva già compilato i dati prima
   // della domanda sull'IVA (docs/CHANGELOG.md §378).
   async function saveChargesVat(value: boolean) {
@@ -427,25 +408,6 @@ function DashboardFiscaleContent() {
   }
 
   // Senza IBAN si apre prima il passo dell'IBAN, poi si va su Stripe.
-  function handleActivate() {
-    if (payoutIban === null) setIbanStepOpen(true);
-    else void handleStripeConnect();
-  }
-
-  // Dashboard Express di Stripe: accrediti, bonifici e IBAN (docs/CHANGELOG.md §238).
-  async function handleStripeDashboard() {
-    if (!token) return;
-    setStripeLoading(true);
-    setStripeError(null);
-    try {
-      const { url } = await apiClient.createStripeDashboardLink(token);
-      window.location.href = url;
-    } catch (e) {
-      setStripeError(e instanceof Error ? e.message : "Impossibile aprire il tuo conto Stripe.");
-      setStripeLoading(false);
-    }
-  }
-
   const holderName =
     entityType === "BUSINESS" ? (fields.businessName ?? "") : [fields.fiscalFirstName, fields.fiscalLastName].filter(Boolean).join(" ");
 
@@ -455,7 +417,7 @@ function DashboardFiscaleContent() {
 
   if (profileLoadFailed) {
     return (
-      <Section title="Dati fiscali e pagamenti" maxWidth={640}>
+      <FiscoArea tab="fiscale" heading="Dati fiscali" maxWidth={640}>
         <LoadErrorNotice
           title="Non riusciamo a caricare i tuoi dati"
           onRetry={() => {
@@ -463,16 +425,19 @@ function DashboardFiscaleContent() {
             setProfileLoadAttempt((n) => n + 1);
           }}
         />
-      </Section>
+      </FiscoArea>
     );
   }
 
   if (isLoading || profile === undefined) {
     // Stessa larghezza della pagina caricata: niente salto di lato (CLS, docs/CHANGELOG.md §334).
     return (
-      <Section title="Dati fiscali e pagamenti" maxWidth={640}>
-        <Text>Caricamento...</Text>
-      </Section>
+      <FiscoArea tab="fiscale" heading="Dati fiscali" maxWidth={640}>
+        <YStack gap="$3" aria-busy>
+          <YStack height={72} borderRadius="$3" backgroundColor={brand.gesso} />
+          <YStack height={200} borderRadius="$3" backgroundColor={brand.gesso} />
+        </YStack>
+      </FiscoArea>
     );
   }
 
@@ -545,7 +510,6 @@ function DashboardFiscaleContent() {
   const toFix = verification?.taxIdState === "TO_FIX";
   const showForm = editing || !fiscalComplete || toFix;
   const steps = verification ? setupJourney(verification, !!profile?.stripeChargesEnabled) : null;
-  const paymentsStep = steps?.find((step) => step.key === "payments") ?? null;
   const nextStep = steps ? journeyCurrent(steps) : null;
   const typeLabel = isEntityType(entityType) ? ENTITY_TYPE_LABELS[entityType] : null;
   const invalidChecks = (verification?.taxIdChecks ?? []).filter((check) => check.status === "INVALID");
@@ -574,10 +538,21 @@ function DashboardFiscaleContent() {
   );
 
   return (
-    <Section title="Dati fiscali e pagamenti" maxWidth={640}>
+    <FiscoArea
+      tab="fiscale"
+      heading="Dati fiscali"
+      headingExtra={
+        !showForm && verification?.taxIdState === "OK" ? (
+          <Badge variant="verificato">Verificati</Badge>
+        ) : !showForm && verification?.taxIdState === "CHECKING" ? (
+          <Badge variant="nuovo">In verifica</Badge>
+        ) : undefined
+      }
+      maxWidth={640}
+    >
       {whyOpen ? <FiscalWhyModal onClose={() => setWhyOpen(false)} /> : null}
       <YStack gap="$5">
-        {steps ? <JourneyProgress steps={steps} here={!showForm && paymentsStep?.state === "current" ? "payments" : "fiscal"} /> : null}
+        {steps ? <JourneyProgress steps={steps} here="fiscal" /> : null}
 
         {/* Esito della revisione manuale dell'admin (area Finanza), solo se c'è qualcosa da fare. */}
         {profile && (profile.verificationStatus === "REJECTED" || profile.verificationStatus === "REQUIRES_UPDATE") ? (
@@ -962,16 +937,8 @@ function DashboardFiscaleContent() {
             {/* Dati già completi: un riepilogo e il prossimo passo, nient'altro. */}
             <Surface gap="$3">
               <XStack alignItems="center" justifyContent="space-between" gap="$3" flexWrap="wrap">
-                <XStack alignItems="center" gap="$2">
-                  <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
-                    Dati fiscali
-                  </Text>
-                  {verification?.taxIdState === "OK" ? (
-                    <Badge variant="verificato">Verificati</Badge>
-                  ) : verification?.taxIdState === "CHECKING" ? (
-                    <Badge variant="nuovo">In verifica</Badge>
-                  ) : null}
-                </XStack>
+                {/* Il titolo "Dati fiscali" e il badge stanno in cima alla scheda (FiscoArea): qui il tipo e "Modifica". */}
+                {typeLabel ? <Text color={brand.grafite70}>{typeLabel}</Text> : <Text color={brand.grafite70}>I tuoi dati</Text>}
                 <button
                   type="button"
                   className="fiscal-link-button"
@@ -993,7 +960,6 @@ function DashboardFiscaleContent() {
                 </XStack>
               ) : null}
               <YStack gap="$1">
-                {typeLabel ? <Text color={brand.grafite70}>{typeLabel}</Text> : null}
                 <Text fontWeight="700" color={brand.grafite}>
                   {entityType === "BUSINESS" ? fields.businessName : holderName}
                 </Text>
@@ -1046,80 +1012,10 @@ function DashboardFiscaleContent() {
               </Surface>
             ) : null}
 
-            {/* Pagamenti online solo dopo la verifica dell'identità (richiesta
-                dell'utente, docs/CHANGELOG.md §262): prima non servono. */}
-            <div id="pagamenti-online">
-              {paymentsStep?.state === "locked" ? (
-                <XStack gap="$3" alignItems="center" padding="$4" borderRadius="$4" backgroundColor={brand.gesso}>
-                  <Icon name="lock" size={20} strokeWidth={2} color={brand.grafite70} />
-                  <YStack flex={1} gap={2}>
-                    <Text fontSize={16} fontWeight="700" color={brand.grafite70}>
-                      Pagamenti online
-                    </Text>
-                    <Text fontSize={16} color={brand.grafite70}>
-                      {paymentsStep.text}
-                    </Text>
-                  </YStack>
-                </XStack>
-              ) : (
-                <OnlinePaymentsCard
-                  active={!!profile?.stripeChargesEnabled}
-                  started={!!profile?.stripeConnectAccountId}
-                  requirements={profile?.stripeRequirementsStatus}
-                  loading={stripeLoading}
-                  error={stripeError}
-                  onActivate={handleActivate}
-                  onOpenStripe={handleStripeDashboard}
-                  step={
-                    ibanStepOpen && token && !profile?.stripeChargesEnabled ? (
-                      <PayoutIbanCard
-                        variant="step"
-                        token={token}
-                        initial={null}
-                        defaultHolderName={holderName}
-                        busy={stripeLoading}
-                        onCancel={() => setIbanStepOpen(false)}
-                        onSaved={(saved) => {
-                          // Il passo si chiude: se Stripe non risponde, "Attiva" riprova senza richiedere l'IBAN.
-                          setPayoutIban(saved);
-                          setIbanStepOpen(false);
-                          void handleStripeConnect();
-                        }}
-                      />
-                    ) : undefined
-                  }
-                >
-                  {token && payoutIban !== undefined ? <PayoutIbanCard token={token} initial={payoutIban} defaultHolderName={holderName} onSaved={setPayoutIban} /> : null}
-                </OnlinePaymentsCard>
-              )}
-            </div>
-
-            {/* Fatture, estratti e documenti (docs/CHANGELOG.md §378): da qui e da Abbonamento, senza una voce di menu. */}
-            <Link href="/dashboard/documenti" style={{ textDecoration: "none" }}>
-              <XStack alignItems="center" gap="$2" paddingHorizontal="$1">
-                <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
-                  Fatture e documenti
-                </Text>
-                <Text color={brand.cianografiaScuro} aria-hidden>
-                  →
-                </Text>
-              </XStack>
-            </Link>
-
-            {/* Riepilogo di quanto comunichiamo al fisco (docs/CHANGELOG.md §246). */}
-            <Link href="/dashboard/fiscale/dac7" style={{ textDecoration: "none" }}>
-              <XStack alignItems="center" gap="$2" paddingHorizontal="$1">
-                <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
-                  Riepilogo annuale dei compensi (DAC7)
-                </Text>
-                <Text color={brand.cianografiaScuro} aria-hidden>
-                  →
-                </Text>
-              </XStack>
-            </Link>
+            {/* Pagamenti online, fatture e compensi al fisco: le altre schede in cima (FiscoArea). */}
           </>
         )}
       </YStack>
-    </Section>
+    </FiscoArea>
   );
 }

@@ -408,8 +408,9 @@ export class ProfessionalFiscalService {
         type: "account_onboarding",
         account_onboarding: {
           configurations: ["merchant", "recipient"],
-          refresh_url: `${this.frontendUrl()}/dashboard/fiscale?stripeConnect=refresh`,
-          return_url: `${this.frontendUrl()}/dashboard/fiscale?stripeConnect=completato`,
+          // Scheda "Pagamenti online" (docs/changelog/2026-10-28-fisco-e-pagamenti-schede.md); il vecchio indirizzo rimanda qui.
+          refresh_url: `${this.frontendUrl()}/dashboard/fiscale/pagamenti?stripeConnect=refresh`,
+          return_url: `${this.frontendUrl()}/dashboard/fiscale/pagamenti?stripeConnect=completato`,
         },
       },
     });

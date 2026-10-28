@@ -1210,6 +1210,56 @@ button.notif-row-main:hover {
   background: #dc3545;
   box-shadow: 0 0 0 2px #ffffff;
 }
+/* Schede dell'area "Fisco e pagamenti" (docs/changelog/2026-10-28-fisco-e-pagamenti-schede.md):
+   stesso aspetto delle voci del menu dell'account, in una riga che sul
+   telefono scorre e sfuma a destra finché c'è altro. Area da toccare 44px. */
+.fisco-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  background: #ffffff;
+  border: 1px solid #f0dcc0;
+  border-radius: 16px;
+  padding: 6px;
+  scrollbar-width: none;
+}
+.fisco-tabs::-webkit-scrollbar {
+  display: none;
+}
+.fisco-tabs[data-more-right="true"] {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent);
+}
+.fisco-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  color: #6e6459;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 15px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.fisco-tab:hover {
+  background: #fdefe1;
+  color: #2b2420;
+}
+.fisco-tab.is-active {
+  background: #efe9e2;
+  color: #2b2420;
+  font-weight: 700;
+}
+.fisco-tab:focus-visible {
+  outline: 2px solid #2b2420;
+  outline-offset: 2px;
+}
+.fisco-tab .acct-nav-dot {
+  margin-left: 0;
+}
 /* Colonna a sinistra da 760px (tablet in verticale compreso, docs/CHANGELOG.md
    §334): prima, fino a 1000px, era una barra che scorreva di lato e
    nascondeva metà delle voci. */

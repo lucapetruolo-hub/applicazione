@@ -25,7 +25,9 @@ export type JourneyStep = {
   action?: { href: string; label: string };
 };
 
-export const PAYMENTS_ANCHOR = "/dashboard/fiscale#pagamenti-online";
+// Scheda "Pagamenti online" dell'area Fisco e pagamenti (docs/changelog/2026-10-28-fisco-e-pagamenti-schede.md):
+// prima un'ancora in fondo a Dati fiscali, che resta e rimanda qui.
+export const PAYMENTS_ANCHOR = "/dashboard/fiscale/pagamenti";
 
 /**
  * Il percorso per completare il profilo, sempre nello stesso ordine
@@ -281,7 +283,8 @@ function SetupJourneyCompact({ steps, step }: { steps: JourneyStep[]; step: Jour
 const STEP_MENU_HREF: Record<JourneyStepKey, string> = {
   fiscal: "/dashboard/fiscale",
   identity: "/dashboard/verifica-identita",
-  payments: "/dashboard/fiscale",
+  // La scheda dei pagamenti: il menu "Fisco e pagamenti" lo riconosce come sua sottopagina (`hasNavAttention`).
+  payments: "/dashboard/fiscale/pagamenti",
 };
 /** Dopo quanto il menu rilegge il percorso cambiando pagina. */
 const JOURNEY_STALE_MS = 60_000;

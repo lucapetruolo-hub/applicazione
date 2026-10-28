@@ -779,7 +779,7 @@ const BUILDERS: Record<string, Builder> = {
     title: "Hai un pagamento da ricevere",
     paragraphs: [
       `Hai un pagamento online da ricevere per il lavoro **${job(ctx)}**, ma non hai ancora attivato i pagamenti.`,
-      "Attivali in Dati fiscali e pagamenti: bastano pochi minuti e poi l'accredito parte da solo.",
+      "Attivali in Fisco e pagamenti, scheda Pagamenti online: bastano pochi minuti e poi l'accredito parte da solo.",
     ],
     cta: { label: "Attiva i pagamenti", url: `${frontendUrl()}/dashboard/fiscale` },
   }),
@@ -1215,7 +1215,7 @@ const BUILDERS: Record<string, Builder> = {
       "Stripe ha completato la verifica della tua identità: ora puoi offrire nei preventivi l'acconto online, e il tuo profilo mostra il badge **Identità verificata da Stripe**.",
       "I soldi dei pagamenti online ti arrivano sul conto che hai indicato a Stripe.",
     ],
-    cta: { label: "Vai ai dati fiscali e pagamenti", url: `${frontendUrl()}/dashboard/fiscale` },
+    cta: { label: "Vai a Fisco e pagamenti", url: `${frontendUrl()}/dashboard/fiscale` },
   }),
   // Avviso annuale DAC7 (docs/CHANGELOG.md §246): obbligatorio per legge.
   DAC7_ANNUAL_NOTICE: (payload, ctx) => {
@@ -1227,10 +1227,10 @@ const BUILDERS: Record<string, Builder> = {
       greeting: ctx.name,
       title: corrected ? "Dati DAC7 corretti" : "Comunicazione DAC7 inviata",
       paragraphs: [
-        `${corrected ? "Abbiamo corretto" : "Abbiamo inviato"} al fisco i compensi${year ? ` del ${year}` : ""} che hai ricevuto su ${EMAIL_BRAND.name}, come chiede la legge (DAC7). Il dettaglio è nel Riepilogo DAC7.`,
+        `${corrected ? "Abbiamo corretto" : "Abbiamo inviato"} al fisco i compensi${year ? ` del ${year}` : ""} che hai ricevuto su ${EMAIL_BRAND.name}, come chiede la legge (DAC7). Il dettaglio è nella tua area, in Fisco e pagamenti, alla scheda "Compensi al fisco".`,
       ],
       details: typeof payload.totalEurCents === "number" ? [{ label: "Compensi comunicati", value: formatEur(payload.totalEurCents) }] : undefined,
-      cta: { label: "Apri il Riepilogo DAC7", url: `${frontendUrl()}/dashboard/fiscale/dac7` },
+      cta: { label: "Vedi i compensi comunicati al fisco", url: `${frontendUrl()}/dashboard/fiscale/dac7` },
     };
   },
   // Promemoria di novembre (docs/CHANGELOG.md §247).
@@ -1251,7 +1251,7 @@ const BUILDERS: Record<string, Builder> = {
     subject: "L'IBAN non corrisponde al conto su Stripe",
     greeting: ctx.name,
     title: "Controlla l'IBAN",
-    paragraphs: ["Le ultime 4 cifre dell'IBAN che ci hai dato non sono quelle del conto indicato a Stripe. Correggilo in Dati fiscali e pagamenti."],
+    paragraphs: ["Le ultime 4 cifre dell'IBAN che ci hai dato non sono quelle del conto indicato a Stripe. Correggilo in Fisco e pagamenti, scheda Pagamenti online."],
     cta: { label: "Controlla l'IBAN", url: `${frontendUrl()}/dashboard/fiscale` },
   }),
   STRIPE_ACCOUNT_RESTRICTED: (_payload, ctx) => ({
@@ -1337,7 +1337,7 @@ const BUILDERS: Record<string, Builder> = {
     const lines: string[] = [];
     if (missing.includes("SEARCH")) lines.push("**Non compari ancora nelle ricerche**: completa i dati fiscali.");
     if (missing.includes("QUOTES")) lines.push("**Non puoi ancora rispondere alle richieste di preventivo**: verifica la tua identità con documento e selfie, circa 2 minuti.");
-    if (missing.includes("ONLINE_PAYMENTS")) lines.push("**Non puoi ancora ricevere pagamenti online**: attivali da Dati fiscali e pagamenti.");
+    if (missing.includes("ONLINE_PAYMENTS")) lines.push("**Non puoi ancora ricevere pagamenti online**: attivali da Fisco e pagamenti, scheda Pagamenti online.");
     if (lines.length === 0) lines.push("Ti mancano ancora alcuni passi per comparire nelle ricerche e rispondere ai clienti.");
     return {
       kind: "account",

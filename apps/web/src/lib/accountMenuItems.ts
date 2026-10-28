@@ -51,7 +51,9 @@ export const PROFESSIONAL_NAV: AccountNavGroup[] = [
     items: [
       { href: "/account", label: "Account", icon: "shield" },
       { href: "/account/notifiche", label: "Notifiche", icon: "bell-ring" },
-      { href: "/dashboard/fiscale", label: "Dati fiscali e pagamenti", shortLabel: "Dati fiscali", icon: "coins" },
+      // Area a schede: dati fiscali, pagamenti online, fatture e documenti,
+      // compensi al fisco (docs/changelog/2026-10-28-fisco-e-pagamenti-schede.md).
+      { href: "/dashboard/fiscale", label: "Fisco e pagamenti", shortLabel: "Fisco", icon: "coins", alsoMatches: ["/dashboard/documenti"] },
     ],
   },
   {
@@ -85,7 +87,7 @@ export const PROFESSIONAL_SIDEBAR: AccountNavGroup[] = PROFESSIONAL_NAV.map((gro
 export function journeyNavItem(attention: ReadonlySet<string>): AccountNavItem | null {
   for (const group of PROFESSIONAL_NAV) {
     for (const item of group.items) {
-      if (!SIDEBAR_HREFS.has(item.href) && attention.has(item.href)) return item;
+      if (!SIDEBAR_HREFS.has(item.href) && hasNavAttention(item, attention)) return item;
     }
   }
   return null;
@@ -132,5 +134,16 @@ export function isNavItemActive(item: AccountNavItem, pathname: string): boolean
   const matches = [item.href, ...(item.alsoMatches ?? [])];
   // `/dashboard` e `/account` solo esatti: le loro sottopagine hanno una voce propria.
   return matches.some((href) => (href === "/dashboard" || href === "/account" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`)));
+}
+
+/**
+ * La voce ha un passo "da fare" (pallino rosso)? Anche quando il passo è in
+ * una sua sottopagina, come i pagamenti online in `/dashboard/fiscale/pagamenti`
+ * (docs/changelog/2026-10-28-fisco-e-pagamenti-schede.md): il pallino sul
+ * passo facoltativo dei pagamenti resta, decisione di Luca (§334).
+ */
+export function hasNavAttention(item: AccountNavItem, attention: ReadonlySet<string>): boolean {
+  for (const href of attention) if (isNavItemActive(item, href)) return true;
+  return false;
 }
 

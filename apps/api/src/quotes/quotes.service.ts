@@ -160,7 +160,7 @@ export class QuotesService {
       throw new BadRequestException("Il pagamento online non è ancora attivo: lascia anche il pagamento diretto.");
     }
     if (!canOfferOnline && offer.paymentOptions.some(paymentChoiceIsOnline)) {
-      throw new BadRequestException("Per offrire l'acconto online completa prima la verifica su Stripe in Dati fiscali e pagamenti.");
+      throw new BadRequestException("Per offrire l'acconto online completa prima la verifica su Stripe in Fisco e pagamenti, scheda Pagamenti online.");
     }
 
     // Tetto ai pagamenti online (decisione di Luca,

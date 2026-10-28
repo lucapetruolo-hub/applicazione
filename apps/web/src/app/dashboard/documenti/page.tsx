@@ -13,7 +13,8 @@ import {
   type DocumentsOverview,
   type MySubscription,
 } from "@professionisti/shared";
-import { Button, EmptyState, Field, Section, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { Button, EmptyState, Field, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
+import { FiscoArea } from "@/components/fisco/FiscoArea";
 import { ConsentCheckbox } from "@/components/ConsentCheckbox";
 import { LearnMore } from "@/components/LearnMore";
 import { apiClient } from "@/lib/apiClient";
@@ -24,8 +25,9 @@ import { PdfButton, documentDate } from "./_components/DocumentParts";
 /**
  * "Fatture e documenti" del professionista (decisioni dell'utente del
  * 27/10/2026, docs/CHANGELOG.md §378): le nostre fatture, l'estratto di ogni
- * mese e il commercialista a cui mandarlo. Si arriva da Abbonamento e da
- * Dati fiscali, senza una voce nel menu.
+ * mese e il commercialista a cui mandarlo. Scheda dell'area Fisco e pagamenti
+ * (docs/changelog/2026-10-28-fisco-e-pagamenti-schede.md); ci si arriva anche
+ * da Abbonamento.
  */
 export default function DocumentsPage() {
   const { token, isLoading } = useAuth();
@@ -51,7 +53,7 @@ export default function DocumentsPage() {
   const free = sub ? freePeriodSummary(sub, new Date()) : null;
 
   return (
-    <Section title="Fatture e documenti" maxWidth={760}>
+    <FiscoArea tab="documenti" heading="Fatture e documenti">
       <YStack gap="$5">
         <LearnMore fontSize={16} summary="Le nostre fatture e l'estratto di ogni mese, da scaricare o dare al commercialista.">
           <Text fontSize={16} color={brand.grafite70}>
@@ -156,7 +158,7 @@ export default function DocumentsPage() {
           </>
         )}
       </YStack>
-    </Section>
+    </FiscoArea>
   );
 }
 

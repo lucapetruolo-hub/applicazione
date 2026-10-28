@@ -34,7 +34,7 @@ const PAGES = {
   ],
   cliente: ["/account", "/account/notifiche", "/le-mie-richieste", "/le-mie-recensioni", "/professionisti-salvati", "/segnalazioni", "/chat"],
   professionista: [
-    "/dashboard", "/dashboard/abbonamento", "/dashboard/agenda", "/dashboard/fiscale", "/dashboard/fiscale/dac7",
+    "/dashboard", "/dashboard/abbonamento", "/dashboard/agenda", "/dashboard/fiscale", "/dashboard/fiscale/pagamenti", "/dashboard/fiscale/dac7", "/dashboard/documenti",
     "/dashboard/profilo", "/dashboard/richieste", "/dashboard/statistiche", "/dashboard/verifica-identita", "/chat",
   ],
   admin: [

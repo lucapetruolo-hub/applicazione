@@ -207,7 +207,7 @@ export function dac7PdfModel(summary: Dac7YearSummary, maskedIban: string | null
       }),
     },
   ];
-  if (hasOnline) blocks.push({ type: "text", lines: [maskedIban ? `Conto dei pagamenti online: ${maskedIban}` : "Manca l'IBAN dei pagamenti online: aggiungilo in Dati fiscali e pagamenti."] });
+  if (hasOnline) blocks.push({ type: "text", lines: [maskedIban ? `Conto dei pagamenti online: ${maskedIban}` : "Manca l'IBAN dei pagamenti online: aggiungilo in Fisco e pagamenti, scheda Pagamenti online."] });
   blocks.push({
     type: "text",
     muted: true,
