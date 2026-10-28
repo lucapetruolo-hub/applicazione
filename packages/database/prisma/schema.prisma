@@ -2127,6 +2127,8 @@ model JobPayment {
   disputeProNote         String?
   disputeProPhotoUrls    String[]  @default([])
   disputeProNoteAt       DateTime?
+  // Promemoria al professionista 5 giorni prima della scadenza, se non ha scritto.
+  disputeProReminderSentAt DateTime?
 
   // --- Soldi bloccati sul conto Stripe del professionista (docs/CHANGELOG.md §249) ---
   // Acconto e saldo addebitati "a destinazione" sul conto del professionista

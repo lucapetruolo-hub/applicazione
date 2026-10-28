@@ -4,6 +4,7 @@ import Stripe from "stripe";
 import type { PrismaClient } from "@professionisti/database";
 import {
   BANK_DISPUTE_OPEN_STATUSES,
+  BANK_DISPUTE_PRO_REMINDER_DAYS,
   BANK_DISPUTE_REMINDER_DAYS,
   accountDebitGrossEurCents,
   estimatedCardFeeEurCents,
@@ -1606,7 +1607,7 @@ export class OnlineMoneyService {
       });
       sent += 1;
     }
-    return sent;
+    return sent + (await this.remindProfessionalDisputeNotes(now));
   }
 
   /**
@@ -1626,6 +1627,36 @@ export class OnlineMoneyService {
       const claimed = await this.prisma.professionalProfile.updateMany({ where: { id: profile.id, onlineLimitLiftNotifiedAt: null }, data: { onlineLimitLiftNotifiedAt: now } });
       if (claimed.count === 0) continue;
       await this.notificationsService.notify(profile.userId, "ONLINE_LIMIT_LIFTED", { byAdmin: !!limit.removedAt });
+      sent += 1;
+    }
+    return sent;
+  }
+
+  /**
+   * Promemoria al professionista che non ha ancora scritto la sua spiegazione
+   * sulla contestazione, 5 giorni prima della scadenza delle prove: una volta
+   * sola, perché le prove migliori le ha lui.
+   */
+  async remindProfessionalDisputeNotes(now: Date = new Date()): Promise<number> {
+    const rows = await this.prisma.jobPayment.findMany({
+      where: {
+        stripeDisputeId: { not: null },
+        stripeDisputeStatus: { in: [...BANK_DISPUTE_OPEN_STATUSES] },
+        disputeProNoteAt: null,
+        disputeProReminderSentAt: null,
+        stripeDisputeDueBy: { gt: now, lte: new Date(now.getTime() + BANK_DISPUTE_PRO_REMINDER_DAYS * DAY_MS) },
+      },
+      select: { id: true, bookingId: true, stripeDisputeDueBy: true, booking: { select: { professionalProfile: { select: { userId: true } }, quote: { select: { guidedRequestId: true } } } } },
+    });
+    let sent = 0;
+    for (const row of rows) {
+      const claimed = await this.prisma.jobPayment.updateMany({ where: { id: row.id, disputeProReminderSentAt: null }, data: { disputeProReminderSentAt: now } });
+      if (claimed.count === 0) continue;
+      await this.notificationsService.notify(row.booking.professionalProfile.userId, "JOB_STRIPE_DISPUTE_NOTE_DUE", {
+        bookingId: row.bookingId,
+        guidedRequestId: row.booking.quote?.guidedRequestId ?? null,
+        dueBy: row.stripeDisputeDueBy?.toISOString() ?? null,
+      });
       sent += 1;
     }
     return sent;

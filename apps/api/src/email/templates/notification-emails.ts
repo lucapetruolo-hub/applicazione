@@ -851,6 +851,23 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: proRequests("Apri il lavoro"),
   }),
+  // Promemoria 5 giorni prima della scadenza delle prove (docs/changelog/2026-10-28-stripe-prova.md).
+  JOB_STRIPE_DISPUTE_NOTE_DUE: (payload, ctx) => {
+    const dueBy = str(payload.dueBy);
+    const day = dueBy ? new Date(dueBy).toLocaleDateString("it-IT", { day: "numeric", month: "long", timeZone: "Europe/Rome" }) : null;
+    return {
+      kind: "notification",
+      tone: "urgent",
+      subject: "Contestazione in banca: scrivi come è andato il lavoro",
+      greeting: ctx.name,
+      title: "La tua spiegazione per la banca",
+      paragraphs: [
+        `Il cliente del lavoro **${job(ctx)}** ha contestato un pagamento in banca e mandiamo le prove${day ? ` entro il ${day}` : " tra pochi giorni"}.`,
+        "Nella scheda del lavoro, sotto il pagamento, scrivi come è andato e aggiungi le foto che hai: aiutano a vincere la contestazione.",
+      ],
+      cta: proRequests("Scrivi la spiegazione"),
+    };
+  },
   // Cifra da restituire (§267): rimborso o contestazione persa quando i soldi non erano più sul conto.
   JOB_PAYMENT_DEBT: (payload, ctx) => ({
     kind: "notification",

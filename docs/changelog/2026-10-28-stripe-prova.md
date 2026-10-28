@@ -179,3 +179,15 @@ Cloudinary con link per le altre, spiegazione nella bozza e nel PDF,
 salvataggio solo del professionista del lavoro e non dopo l'invio,
 riepilogo del pagamento, avviso una volta sola al team Finanza, PDF con una
 foto rotta); tutti i test dell'API, `tsc` di API e sito, `pnpm lint`.
+
+## Miglioria: promemoria al professionista
+
+Richiesta di Luca ("effettua la miglioria 1"): 5 giorni prima della
+scadenza delle prove, il professionista che non ha ancora scritto la sua
+spiegazione riceve `JOB_STRIPE_DISPUTE_NOTE_DUE` (sito ed email, con il
+link alla scheda del lavoro), una volta sola (`disputeProReminderSentAt`,
+migrazione `20261028180000_contestazioni_promemoria_pro`). Parte nello
+stesso giro orario dell'avviso al team.
+
+**Verifica**: `bank-disputes.test.ts` (finestra dei 5 giorni, solo chi non
+ha scritto, una volta sola); tutti i test dell'API, `tsc`, `pnpm lint`.

@@ -196,7 +196,10 @@ describe("avviso 3 giorni prima della scadenza delle prove", () => {
   function reminderSetup(claimed = 1) {
     const prisma = {
       jobPayment: {
-        findMany: vi.fn().mockResolvedValue([{ id: "jp-1", bookingId: "bk-1", stripeDisputeDueBy: new Date("2026-11-12T23:59:59Z"), disputeProNoteAt: null, booking: { quote: { guidedRequestId: "gr-1" } } }]),
+        findMany: vi
+          .fn()
+          .mockResolvedValueOnce([{ id: "jp-1", bookingId: "bk-1", stripeDisputeDueBy: new Date("2026-11-12T23:59:59Z"), disputeProNoteAt: null, booking: { quote: { guidedRequestId: "gr-1" } } }])
+          .mockResolvedValueOnce([]),
         updateMany: vi.fn().mockResolvedValue({ count: claimed }),
       },
       user: { findMany: vi.fn().mockResolvedValue([{ id: "admin-1", adminRoles: ["FINANCE"] }, { id: "admin-2", adminRoles: ["SUPPORT"] }]) },
@@ -221,6 +224,21 @@ describe("avviso 3 giorni prima della scadenza delle prove", () => {
     expect(prisma.jobPayment.updateMany).toHaveBeenCalledWith({ where: { id: "jp-1", disputeReminderSentAt: null }, data: { disputeReminderSentAt: NOW } });
     expect(notificationsService.notify).toHaveBeenCalledTimes(1);
     expect(notificationsService.notify).toHaveBeenCalledWith("admin-1", "ADMIN_STRIPE_DISPUTE_DUE", expect.objectContaining({ bookingId: "bk-1", professionalNote: false }));
+  });
+
+  it("ricorda al professionista che non ha scritto, 5 giorni prima, una volta sola", async () => {
+    const { service, prisma, notificationsService } = reminderSetup();
+    prisma.jobPayment.findMany.mockReset().mockResolvedValue([
+      { id: "jp-2", bookingId: "bk-2", stripeDisputeDueBy: new Date("2026-11-14T23:59:59Z"), booking: { professionalProfile: { userId: "pro-user-1" }, quote: { guidedRequestId: "gr-2" } } },
+    ]);
+    expect(await service.remindProfessionalDisputeNotes(NOW)).toBe(1);
+    expect(prisma.jobPayment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ disputeProNoteAt: null, disputeProReminderSentAt: null, stripeDisputeDueBy: { gt: NOW, lte: new Date("2026-11-15T12:00:00Z") } }),
+      }),
+    );
+    expect(prisma.jobPayment.updateMany).toHaveBeenCalledWith({ where: { id: "jp-2", disputeProReminderSentAt: null }, data: { disputeProReminderSentAt: NOW } });
+    expect(notificationsService.notify).toHaveBeenCalledWith("pro-user-1", "JOB_STRIPE_DISPUTE_NOTE_DUE", { bookingId: "bk-2", guidedRequestId: "gr-2", dueBy: "2026-11-14T23:59:59.000Z" });
   });
 
   it("non ripete l'avviso già mandato", async () => {

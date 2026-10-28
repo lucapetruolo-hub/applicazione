@@ -58,6 +58,8 @@ export type BankDisputeEvidenceInput = z.infer<typeof bankDisputeEvidenceSchema>
 
 /** Giorni prima della scadenza delle prove in cui il team riceve l'avviso. */
 export const BANK_DISPUTE_REMINDER_DAYS = 3;
+/** Giorni prima della scadenza in cui il professionista che non ha scritto riceve il promemoria. */
+export const BANK_DISPUTE_PRO_REMINDER_DAYS = 5;
 export const BANK_DISPUTE_PRO_PHOTOS_MAX = 10;
 
 /**
