@@ -9,3 +9,8 @@
 - Un errore vero fallisce due volte e il controllo resta rosso come prima.
 
 **Verifica**: in locale con una prova finta che fallisce al primo tentativo: passa al secondo, compare come avviso e nel riepilogo; la stessa prova con `retries: 0` resta rossa. `tsc` di `e2e` pulito.
+
+## Seconda parte (28/10, migliorie approvate da Luca)
+
+- **Uptime**: il controllo di API e sito riprova fino a 5 volte, ogni 15 secondi e per al massimo 2 minuti (prima 2 volte in 20 secondi). Il 25/10 Render aveva risposto "troppe richieste" (429) per una ventina di secondi e il controllo era diventato rosso senza che il sito fosse giù. Verifica: in locale `curl` con le stesse opzioni su un server finto che risponde 429 tre volte e poi 200 passa al quarto tentativo.
+- **Errore interno nel test dei permessi** (`findComuneByName` su una città mancante, in `PUT /professionals/me`): non è un bug del sito. Lo provoca il test stesso, che di proposito lascia passare un corpo non valido fino al servizio (`apps/api/scripts/access-matrix.mjs`, per vedere se la rotta è protetta e non fermarsi al 400). Nell'API vera `ZodValidationPipe` risponde 400 a un profilo senza città (provato: `professionalProfileSelfSchema.safeParse({})` non passa). Nessuna modifica.
