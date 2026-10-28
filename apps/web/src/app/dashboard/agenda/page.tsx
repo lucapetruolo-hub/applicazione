@@ -66,7 +66,6 @@ import { AgendaEventsList } from "./_components/AgendaEventsList";
 import { ExceptionLegend, ExceptionTag, SelectionCheckbox, SlotChip, SlotEditorModal } from "./_components/SlotEditorModal";
 import { AGENDA_BOOKING_STATUS_LABEL, AGENDA_EXTERNAL_JOB_STATUS_LABEL, AgendaListItem, BOOKING_STATUS_COLOR, EXTERNAL_JOB_STATUS_COLOR, PENDING_QUOTE_COLOR, SlotDraft, WEEKDAY_FULL_LABELS, formatAgendaTimeRange, slotsOverlap } from "./_components/agendaHelpers";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
-import { WhatsAppReminderLink } from "@/components/WhatsAppReminderLink";
 
 // Tre sezioni (docs/CHANGELOG.md §288): il calendario degli appuntamenti,
 // gli orari di lavoro (settimana tipo + giorno per giorno) e il giro del giorno.
@@ -1783,7 +1782,6 @@ function DashboardAgendaContent() {
           <div className="ag-layout">
             <aside className="ag-aside" aria-label="Riepilogo">
               {nextCard}
-              <WhatsAppReminderLink token={token} label="Ricevi la sera prima il riepilogo dei lavori su WhatsApp" className="ag-card" />
               <AgendaMiniMonth
                 selected={bookingCurrentDate}
                 rangeDates={new Set(bookingView === "day" || bookingView === "week" ? visibleDayStrs : [])}
@@ -1890,10 +1888,6 @@ function DashboardAgendaContent() {
                 <>
                   {dayStrip(bookingCurrentDate, setBookingCurrentDate, true)}
                   {isSameDateUtc(bookingCurrentDate, today) ? <div className="ag-day-only-phone">{nextCard}</div> : null}
-                  {/* Sul telefono la colonna di sinistra non c'è: l'invito sta sotto i giorni. */}
-                  <div className="ag-day-only-phone">
-                    <WhatsAppReminderLink token={token} label="Ricevi la sera prima il riepilogo dei lavori su WhatsApp" className="ag-card" />
-                  </div>
                 </>
               ) : null}
 

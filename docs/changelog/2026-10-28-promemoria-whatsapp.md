@@ -104,9 +104,10 @@ lavori esterni dell'agenda non ricevono nulla (domanda 70 per l'avvocato).
     riepilogo parte lo stesso perché l'ora l'ha scelta lui. Un giro ogni
     mezz'ora dalle 18 alle 21:30, se il server dormiva; una sola volta per
     persona e giorno;
-  - nell'agenda del professionista l'invito "Ricevi la sera prima il
-    riepilogo dei lavori su WhatsApp" (colonna di sinistra su computer,
-    sotto i giorni sul telefono), solo a canale acceso e promemoria spenti.
+  - provato nell'agenda del professionista l'invito "Ricevi la sera prima
+    il riepilogo dei lavori su WhatsApp" e tolto su richiesta di Luca: rompe
+    la struttura dell'agenda già sistemata. Il professionista accende il
+    riepilogo da Notifiche.
 
 Modelli da far approvare a Meta: `docs/whatsapp-modelli.md`.
 
