@@ -1,6 +1,14 @@
 import { Body, Controller, Headers, HttpCode, Post } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
-import { isBotUserAgent, siteFailureEventSchema, siteStepEventSchema, type SiteFailureEvent, type SiteStepEvent } from "@professionisti/shared";
+import {
+  isBotUserAgent,
+  siteFailureEventSchema,
+  siteProfileViewEventSchema,
+  siteStepEventSchema,
+  type SiteFailureEvent,
+  type SiteProfileViewEvent,
+  type SiteStepEvent,
+} from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { SiteCountsService } from "./site-counts.service";
 
@@ -20,7 +28,7 @@ export class SiteCountsController {
   @HttpCode(204)
   async step(@Body(new ZodValidationPipe(siteStepEventSchema)) body: SiteStepEvent, @Headers("user-agent") userAgent?: string): Promise<void> {
     if (isBotUserAgent(userAgent)) return;
-    await this.siteCounts.recordStep(body.step, body.categorySlug, body.origin).catch(() => undefined);
+    await this.siteCounts.recordStep(body.step, body.categorySlug, body.origin, { source: body.source, device: body.device }).catch(() => undefined);
   }
 
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
@@ -29,5 +37,14 @@ export class SiteCountsController {
   async failure(@Body(new ZodValidationPipe(siteFailureEventSchema)) body: SiteFailureEvent, @Headers("user-agent") userAgent?: string): Promise<void> {
     if (isBotUserAgent(userAgent)) return;
     await this.siteCounts.recordFailure(body.form, body.kind).catch(() => undefined);
+  }
+
+  /** Profilo pubblico aperto, solo il dispositivo (§391). */
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @Post("profile-view")
+  @HttpCode(204)
+  async profileView(@Body(new ZodValidationPipe(siteProfileViewEventSchema)) body: SiteProfileViewEvent, @Headers("user-agent") userAgent?: string): Promise<void> {
+    if (isBotUserAgent(userAgent)) return;
+    await this.siteCounts.recordProfileView(body.device).catch(() => undefined);
   }
 }

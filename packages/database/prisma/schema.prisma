@@ -2427,6 +2427,25 @@ model RequestStepDay {
   @@map("request_step_days")
 }
 
+// Richieste partite da un profilo, per pulsante e dispositivo (docs/CHANGELOG.md
+// §391): visite al profilo (`source` ""), richieste iniziate e inviate, con
+// il pulsante da cui sono partite. Si conta solo dal lancio (`LAUNCH_DATE`),
+// mai chi è la persona né quale profilo.
+model ProfileRequestSourceDay {
+  /// VISITA, INIZIATA o INVIATA (PROFILE_REQUEST_EVENTS in packages/shared).
+  event  String
+  /// BARRA, PAGINA, AGENDA, RICERCA, ALTRO; "" per le visite.
+  source String
+  /// COMPUTER o TELEFONO, dalla larghezza dello schermo.
+  device String
+  day    DateTime @db.Date
+  count  Int      @default(0)
+
+  @@id([event, source, device, day])
+  @@index([day])
+  @@map("profile_request_source_days")
+}
+
 // Invii non riusciti nel browser, per modulo e tipo di errore (rete,
 // server, dati non validi): oggi un errore nel browser non lo vede nessuno.
 model SubmitFailureDay {

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BRAND, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, formatServicePriceRange, subTagLabel, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
+import { BRAND, PROFILE_REQUEST_SOURCE_PARAM, STRIPE_VERIFIED_BADGE, TRADER_STATUS_COPY, formatServicePriceRange, subTagLabel, type ProfessionalAgenda, type ProfessionalDetail } from "@professionisti/shared";
 import { Badge, BadgeInfo, Button, ProfessionalKindBadge, Chip, EmptyState, Icon, PriceLine, Rating, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { IconActionButton } from "@/components/IconActionButton";
 import { ProfessionalAvatar } from "@/components/ProfessionalAvatar";
@@ -16,7 +16,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { hasRecentlyReported, markReported } from "@/lib/reportedContent";
 import { formatResponseTime, respondsRightAway } from "@/lib/responseTime";
 import { useMediaQuery } from "@/lib/useMediaQuery";
-import { isCountingDisabled } from "@/lib/siteCounts";
+import { countProfileView, isCountingDisabled } from "@/lib/siteCounts";
 
 // Colonne fisse Oggi + 3 giorni (stessa griglia della mini-agenda di ricerca,
 // vedi ProfessionalCard in packages/ui) — qui costruita a partire dai giorni
@@ -104,7 +104,9 @@ export function ProfessionalDetailContent({
       // sessionStorage non disponibile: si conta comunque una volta per montaggio.
     }
     apiClient.recordProfileView(professional.id, token ?? undefined).catch(() => undefined);
-  }, [isAuthLoading, preview, professional.id, token]);
+    // Andamento del sito: visite per dispositivo, accanto alle richieste per pulsante (§391).
+    if (user?.professionalProfileId !== professional.id) countProfileView();
+  }, [isAuthLoading, preview, professional.id, token, user?.professionalProfileId]);
   const [isSaving, setIsSaving] = useState(false);
   const [agenda, setAgenda] = useState<ProfessionalAgenda | null>(null);
   const [lightbox, setLightbox] = useState<{ photos: string[]; index: number } | null>(null);
@@ -787,7 +789,7 @@ export function ProfessionalDetailContent({
                       // un riquadro con foto+nome invece del sottotitolo
                       // generico. Nomi distinti da "nome"/"foto" per non
                       // collidere col "nome" del CLIENTE nello stesso form.
-                      const href = `/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&nomeProfessionista=${encodeURIComponent(professional.businessName)}&fotoProfessionista=${encodeURIComponent(professional.imageUrl ?? "")}&data=${day.date}&fasciaOraria=${slot.startTime}-${slot.endTime}&modalita=${agendaMode}`;
+                      const href = `/preventivo?categoria=${professional.categorySlug}&professionista=${professional.id}&nomeProfessionista=${encodeURIComponent(professional.businessName)}&fotoProfessionista=${encodeURIComponent(professional.imageUrl ?? "")}&data=${day.date}&fasciaOraria=${slot.startTime}-${slot.endTime}&modalita=${agendaMode}&da=${PROFILE_REQUEST_SOURCE_PARAM.AGENDA}`;
                       return (
                         <XStack
                           key={day.date}

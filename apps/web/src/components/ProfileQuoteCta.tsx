@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { PROFILE_REQUEST_SOURCE_PARAM } from "@professionisti/shared";
 import { BUTTON_HEIGHT, Button, ButtonArrow, Text, XStack } from "@professionisti/ui";
 import { MagneticButton } from "./MagneticButton";
 
@@ -15,6 +16,8 @@ import { MagneticButton } from "./MagneticButton";
  * `summary` (foto, nome, stelle): un pulsante largo tutto lo schermo
  * sembrerebbe una fascia pubblicitaria (docs/CHANGELOG.md §385). Niente
  * barra (`withBar` falso) per il professionista sul proprio profilo (§386).
+ * I due link portano `da=pagina` o `da=barra`: Andamento del sito conta da
+ * quale pulsante parte la richiesta (§391).
  */
 export function ProfileQuoteCta({
   href,
@@ -30,6 +33,7 @@ export function ProfileQuoteCta({
   withBar?: boolean;
 }) {
   const anchorRef = useRef<HTMLDivElement>(null);
+  const withSource = (source: string) => `${href}${href.includes("?") ? "&" : "?"}da=${source}`;
   const [showBar, setShowBar] = useState(false);
 
   useEffect(() => {
@@ -58,7 +62,7 @@ export function ProfileQuoteCta({
   return (
     <>
       <div ref={anchorRef} className="profile-cta">
-        <Link href={href} style={{ textDecoration: "none", display: "block", pointerEvents: preview ? "none" : undefined }} tabIndex={preview ? -1 : undefined}>
+        <Link href={withSource(PROFILE_REQUEST_SOURCE_PARAM.PAGINA)} style={{ textDecoration: "none", display: "block", pointerEvents: preview ? "none" : undefined }} tabIndex={preview ? -1 : undefined}>
           <MagneticButton block>{button}</MagneticButton>
         </Link>
       </div>
@@ -68,7 +72,7 @@ export function ProfileQuoteCta({
             {summary ? <div className="profile-cta-bar-summary">{summary}</div> : null}
             {/* Il lettore di schermo sente anche il nome, che sul telefono non si vede (§386). */}
             <Link
-              href={href}
+              href={withSource(PROFILE_REQUEST_SOURCE_PARAM.BARRA)}
               className="profile-cta-bar-link"
               aria-label={`Richiedi un preventivo a ${name}`}
               style={{ textDecoration: "none", display: "block" }}

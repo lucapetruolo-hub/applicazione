@@ -21468,3 +21468,44 @@ da telefono.
 **3. Controllo delle librerie.** La stessa sera osv-scanner ha iniziato a
 segnalare `deepmerge` 4.3.1 (GHSA-gcqx-w48m-w2h4): l'eccezione con il motivo
 è quella del §384, arrivata dal ramo principale.
+
+## 391. Da quale pulsante parte la richiesta dal profilo
+
+**Richiesta di Luca** (28/10/2026, thread "Barra fissa Richiedi un preventivo
+anche da computer"): sapere da dove parte ogni richiesta fatta da un
+profilo, con numeri e percentuali, contando solo dal giorno del lancio.
+
+**Come si conta.** I link verso `/preventivo` portano `da=`: `barra` (barra
+fissa in basso), `pagina` (pulsante nella pagina), `agenda` (orario
+dell'agenda del profilo), `ricerca` (orario nei risultati di ricerca); senza
+`da` è "Altro". La richiesta manda il pulsante e il dispositivo insieme ai
+passi già contati (§372): l'apertura (passo «Il lavoro») e l'invio. Il
+profilo aperto si conta per dispositivo (`POST /site/profile-view`).
+Dispositivo dalla larghezza dello schermo: telefono fino a 767 px, come la
+barra. Tabella `ProfileRequestSourceDay` (evento, pulsante, dispositivo,
+giorno): solo contatori, mai chi è la persona né quale profilo; cancellati
+dopo 25 mesi come gli altri. Non si contano gli admin, chi ha scelto "Non
+contare questo browser" e i robot.
+
+**Solo dal lancio.** L'API non salva niente prima di `LAUNCH_DATE` né senza
+la variabile: le prove fatte prima non entrano nei numeri. Gli altri
+numeri del sito contati solo dal lancio vanno in un thread a parte (decisione
+di Luca dello stesso giorno).
+
+**Dove si vede.** Andamento del sito, sotto "I passi della richiesta":
+"Richieste dai profili: da dove partono", con visite, richieste iniziate e
+inviate per computer e telefono (percentuale sulle visite), e una tabella
+per pulsante con la percentuale su tutte le richieste della colonna. Sempre
+numero e percentuale, come chiesto da Luca; sotto 30 richieste inviate una
+riga avverte che le percentuali cambiano molto. Prima del lancio la scheda
+dice da quando si comincia a contare.
+
+**Corretto insieme.** La nota automatica "Lancio del sito" sul grafico
+cadeva il giorno prima (data UTC della mezzanotte di Roma): ora usa il
+giorno italiano.
+
+**Prove.** Test dell'API: si conta dopo il lancio, niente prima o senza
+data. e2e: i link della barra e del pulsante portano `da=barra` e
+`da=pagina`; la scheda in Andamento del sito senza data del lancio. Provato
+nel browser: dalla barra parte `source: BARRA` con il dispositivo giusto, da
+telefono e da computer.

@@ -6,6 +6,9 @@ import {
   CHURN_REASONS,
   CLIENT_FUNNEL_KEYS,
   REQUEST_STEP_KEYS,
+  PROFILE_REQUEST_EVENTS,
+  PROFILE_REQUEST_SOURCES,
+  DEVICE_KINDS,
   SEARCH_DEMAND_ALERT_DAYS,
   SITE_ADVICE_DONE_DAYS,
   SITE_AUTOMATIC_NOTES,
@@ -20,6 +23,9 @@ import {
   type ChurnReason,
   type ClientFunnelKey,
   type RequestStepKey,
+  type ProfileRequestEvent,
+  type ProfileRequestSource,
+  type DeviceKind,
   type SignupSourceKey,
   type SiteAdviceDoneInput,
   type SiteAdviceUndoInput,
@@ -58,6 +64,8 @@ const RECONCILE_DAYS = 14;
 
 const dayStart = (date: Date) => new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 const isoDay = (date: Date) => date.toISOString().slice(0, 10);
+/** Giorno del calendario italiano (AAAA-MM-GG): il lancio è la mezzanotte di Roma, che in UTC è ancora il giorno prima. */
+const romeDay = (date: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome" }).format(date);
 
 /**
  * Andamento del sito (docs/CHANGELOG.md §372): numero guida per lavoro e
@@ -328,6 +336,22 @@ export class SiteStatsService {
     const launchBase = { visibleProfessionals: visible.length, clientsWithRequest, acceptedJobs, paidOnline, greenWeeks: greenWeeksInARow(guideWeekly) };
     const launchStatus = { ...launchBase, ready: launchReady(launchBase) };
     const requestSteps = REQUEST_STEP_KEYS.map((key) => ({ key, count: steps.get(key) ?? 0, fromProfile: stepsFromProfile.get(key) ?? 0 }));
+    // Richieste dai profili per pulsante e dispositivo, tutto dal lancio (§391).
+    const profileSourcesStarted = hasLaunched(now, launch);
+    const profileSourceRows = profileSourcesStarted && launch
+      ? await this.prisma.profileRequestSourceDay.groupBy({ by: ["event", "source", "device"], where: { day: { gte: dayStart(launch) } }, _sum: { count: true } })
+      : [];
+    const profileSources = {
+      since: launch ? romeDay(launch) : null,
+      started: profileSourcesStarted,
+      rows: profileSourceRows.flatMap((r) =>
+        (PROFILE_REQUEST_EVENTS as readonly string[]).includes(r.event) &&
+        (r.source === "" || (PROFILE_REQUEST_SOURCES as readonly string[]).includes(r.source)) &&
+        (DEVICE_KINDS as readonly string[]).includes(r.device)
+          ? [{ event: r.event as ProfileRequestEvent, source: r.source as ProfileRequestSource | "", device: r.device as DeviceKind, count: r._sum.count ?? 0 }]
+          : [],
+      ),
+    };
 
     const allAdvice = buildSiteAdvice({
       now,
@@ -361,7 +385,7 @@ export class SiteStatsService {
       until: new Date(d.doneAt.getTime() + SITE_ADVICE_DONE_DAYS * DAY_MS).toISOString(),
     }));
 
-    const automaticNotes = [...SITE_AUTOMATIC_NOTES, ...(launch ? [{ day: isoDay(launch), text: "Lancio del sito" }] : [])]
+    const automaticNotes = [...SITE_AUTOMATIC_NOTES, ...(launch ? [{ day: romeDay(launch), text: "Lancio del sito" }] : [])]
       .filter((n) => n.day >= isoDay(weeksStart))
       .map((n) => ({ id: null, ...n }));
 
@@ -373,6 +397,7 @@ export class SiteStatsService {
       otherCells,
       clientFunnel: CLIENT_FUNNEL_KEYS.map((key) => ({ key, count: funnelCounts[key] })),
       requestSteps,
+      profileSources,
       clientCohorts: buildClientCohorts(requests, firstRequestAt, now, SITE_COHORT_WEEKS),
       professionalCohorts,
       submitFailures: sumFailures(windowDay),

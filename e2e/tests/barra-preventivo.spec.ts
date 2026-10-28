@@ -86,6 +86,10 @@ test.describe("chi visita il profilo", () => {
     // Il lettore di schermo sente a chi va la richiesta, anche dove il nome non si vede.
     await expect(page.getByRole("link", { name: "Richiedi un preventivo a Anna Verdi Idraulica" }).last()).toBeVisible();
 
+    // Andamento del sito sa da quale pulsante parte la richiesta (§391).
+    await expect(bar(page).locator("a")).toHaveAttribute("href", /[?&]da=barra(&|$)/);
+    await expect(inPageButton(page).locator("a")).toHaveAttribute("href", /[?&]da=pagina(&|$)/);
+
     await inPageButton(page).scrollIntoViewIfNeeded();
     await expect(bar(page)).not.toHaveAttribute("data-visible", "true");
     // Nascosta davvero: fuori dalla tastiera e dal lettore di schermo.

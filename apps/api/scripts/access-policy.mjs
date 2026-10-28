@@ -56,6 +56,8 @@ const publicRoutes = [
   // Conteggi dell'andamento del sito (§372): passi della richiesta e invii falliti, senza account.
   "POST /site/step",
   "POST /site/failure",
+  // Profilo aperto, per dispositivo, dal lancio (§391).
+  "POST /site/profile-view",
   "GET /professionals/languages/popular",
   // Prezzi aggregati della pagina "Quanto costa", mai sotto le soglie (§296).
   "GET /professionals/prices/:category",

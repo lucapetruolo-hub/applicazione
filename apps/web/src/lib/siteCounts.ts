@@ -1,4 +1,12 @@
-import { NO_COUNT_COOKIE, type RequestOrigin, type RequestStepKey, type SubmitFailureKind, type SubmitFormKey } from "@professionisti/shared";
+import {
+  NO_COUNT_COOKIE,
+  type DeviceKind,
+  type ProfileRequestSource,
+  type RequestOrigin,
+  type RequestStepKey,
+  type SubmitFailureKind,
+  type SubmitFormKey,
+} from "@professionisti/shared";
 
 /**
  * Conteggi dell'andamento del sito mandati dal browser (docs/CHANGELOG.md
@@ -57,7 +65,7 @@ export function chooseCountingDisabled(disabled: boolean): void {
   setCountingDisabled(disabled);
 }
 
-function send(path: "step" | "failure", body: object): void {
+function send(path: "step" | "failure" | "profile-view", body: object): void {
   if (isCountingDisabled()) return;
   // `keepalive`: parte anche se la pagina cambia subito dopo (invio riuscito).
   void fetch(`${API_URL}/site/${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), keepalive: true }).catch(
@@ -65,9 +73,23 @@ function send(path: "step" | "failure", body: object): void {
   );
 }
 
-/** `origin`: PROFILE se la richiesta parte dalla pagina di un professionista. */
-export function countRequestStep(step: RequestStepKey, categorySlug?: string | null, origin: RequestOrigin = "GENERAL"): void {
-  send("step", { step, origin, ...(categorySlug ? { categorySlug } : {}) });
+/** TELEFONO fino a 767 px, come la barra "Richiedi un preventivo"; il resto è COMPUTER (§391). */
+export function deviceKind(): DeviceKind {
+  return typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches ? "TELEFONO" : "COMPUTER";
+}
+
+/**
+ * `origin`: PROFILE se la richiesta parte dalla pagina di un professionista;
+ * allora vanno anche il pulsante da cui è partita (`source`) e il
+ * dispositivo (§391).
+ */
+export function countRequestStep(step: RequestStepKey, categorySlug?: string | null, origin: RequestOrigin = "GENERAL", source?: ProfileRequestSource): void {
+  send("step", { step, origin, ...(categorySlug ? { categorySlug } : {}), ...(origin === "PROFILE" ? { source: source ?? "ALTRO", device: deviceKind() } : {}) });
+}
+
+/** Profilo pubblico aperto, solo il dispositivo (§391). */
+export function countProfileView(): void {
+  send("profile-view", { device: deviceKind() });
 }
 
 /** Modulo a cui appartiene una chiamata all'API, solo per gli invii che contano. */
