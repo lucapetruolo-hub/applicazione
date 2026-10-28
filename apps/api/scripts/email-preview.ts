@@ -164,6 +164,7 @@ notification("JOB_REFUND_PENDING", "Cliente", "Pagamenti dei lavori", { amountEu
 notification("JOB_REFUND_COMPLETED", "Cliente", "Pagamenti dei lavori", { amountEurCents: 3600 });
 notification("JOB_REFUND_WAITING_FUNDS", "Professionista", "Pagamenti dei lavori", { amountEurCents: 3600 });
 notification("ADMIN_JOB_REFUND_FAILED", "Admin", "Pagamenti dei lavori", { amountEurCents: 3600 });
+notification("ADMIN_STRIPE_ACCOUNT_UNREADABLE", "Admin", "Pagamenti dei lavori", { stripeAccountId: "acct_123", businessName: "Idraulica Rossi", error: "Permission denied" });
 
 // Segnalazioni sul lavoro
 notification("JOB_ISSUE_REPORTED", "Professionista", "Segnalazioni sul lavoro", { issueType: "BAD_WORK", assisted: true });

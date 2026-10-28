@@ -123,6 +123,18 @@ produzione):
    soldi ancora bloccati (§267). Nella stessa pagina lasciare spenti
    "Rimborsi" e "Gestione contestazioni": rimborsi e contestazioni li
    gestisce il sito, altrimenti i conti del sito non tornerebbero (§268).
+   Dal 28/10/2026 su Render ci sono le chiavi **di prova** della sandbox
+   (docs/changelog/2026-10-28-stripe-prova.md, guida in
+   `/mnt/project-files/analisi/stripe-prova/guida-chiavi-prova.md`). Al
+   passaggio alle chiavi vere: rifare fuori dalla sandbox IVA, i 6 prezzi,
+   i due webhook e tutte le variabili `STRIPE_*`; azzerare nel database gli
+   ID Stripe di prova (`professional_fiscal_profiles.stripe_connect_account_id`
+   con `stripe_charges_enabled`/`stripe_payouts_enabled`/
+   `stripe_manual_payouts_at`/`stripe_negative_debit_at`, clienti e
+   abbonamenti Stripe, pagamenti dei lavori di prova): con le chiavi vere
+   non esistono e bloccherebbero i pagamenti; nel profilo della piattaforma
+   Connect correggere la motivazione scritta durante le prove ("addebiti
+   indiretti": sono addebiti diretti sul conto del professionista).
    Il prelievo dal conto del professionista (account debit, 1,4%) richiede
    il suo consenso esplicito: è nei Termini, da far confermare all'avvocato. Attivare Smart Disputes (Impostazioni →
    Contestazioni): Stripe risponde da solo alle contestazioni con le prove,

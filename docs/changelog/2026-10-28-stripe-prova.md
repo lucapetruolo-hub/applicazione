@@ -33,3 +33,36 @@ requisiti dalla v2, requisiti senza scadenza) e `stripe-disputes.test.ts`
 aggiornato; test di `professional-fiscal`, `job-payments` e `billing` verdi,
 `tsc` pulito. Dopo il deploy: la pagina Dati fiscali del professionista di
 prova deve mostrare i pagamenti online attivi.
+
+## Migliorie (Luca: "Effettua le migliorie")
+
+1. **Iscrizione a Stripe precompilata**
+   (`apps/api/src/professional-fiscal/stripe-account-prefill.ts`): alla
+   creazione del conto si mandano i dati già dati sul sito. Persona: nome,
+   cognome, data di nascita, indirizzo, email, telefono (solo se in formato
+   +39...), codice fiscale (`it_cf`). Azienda: ragione sociale, sede,
+   telefono, partita IVA (`it_vat`). Per tutti: codice dell'attività (MCC)
+   dalla categoria principale, link al profilo pubblico come sito, nome
+   dell'attività e una descrizione fatta dal sito ("Idraulico a Latina:
+   interventi richiesti e pagati tramite ..."), non la bio. Requisiti
+   ufficiali e confronto in
+   `/mnt/project-files/analisi/stripe-prova/dati-da-precompilare.md`.
+   Restano a Stripe nazionalità, IBAN (con Express lo raccoglie Stripe),
+   accettazione dei termini e, per le aziende, titolari e amministratori.
+   Se Stripe rifiuta un dato precompilato il conto si crea comunque senza
+   (chiave di idempotenza diversa), con un avviso nei log.
+2. **Avviso agli admin quando lo stato del conto non si rilegge**: nuova
+   notifica `ADMIN_STRIPE_ACCOUNT_UNREADABLE` (sito ed email, Finanza e
+   super admin, argomento dei pagamenti dei lavori), al massimo una volta al
+   giorno per conto.
+3. **"Via Roma 10, Latina" rifiutato**: controllato, non è un errore. Nel
+   comune di Latina non c'è una Via Roma: i suggerimenti di Google
+   propongono quella di Cisterna di Latina, Roccasecca dei Volsci, ecc., e
+   il codice postale di Via Roma a Latina non esiste.
+4. **Checklist di lancio**: passaggio dalle chiavi di prova a quelle vere,
+   azzeramento degli ID Stripe di prova nel database, correzione della
+   motivazione nel profilo della piattaforma.
+
+**Verifica**: `stripe-account-prefill.test.ts` (persona, dati mancanti,
+azienda) e il nuovo caso in `stripe-account-notifications.test.ts`; tutti i
+test dell'API (878) verdi e `tsc` pulito.
