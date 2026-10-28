@@ -114,6 +114,27 @@ async function seed() {
     },
   });
   await prisma.jobPayment.create({ data: { bookingId: bookingA.id, paymentMethod: "DIRECT", grossAmountEurCents: 10000, netAmountEurCents: 10000 } });
+  // Copia del documento già scaricata da proA: il cliente la può aprire (§386).
+  await prisma.courtesyDocument.create({ data: { bookingId: bookingA.id, professionalProfileId: profileA.id, kind: "INVOICE", year: 2026, ownNumber: "1/A", pdfDownloadedAt: new Date(), pdfTotalEurCents: 10000 } });
+
+  // Fattura delle trattenute di proA (§378).
+  const invoiceA = await prisma.invoice.create({
+    data: {
+      type: "MANOVIA_TO_PROFESSIONAL",
+      source: "JOB_FEES",
+      professionalProfileId: profileA.id,
+      series: "COM",
+      year: 2026,
+      number: 1,
+      periodMonth: "2026-09",
+      amountEurCents: 854,
+      taxableEurCents: 700,
+      vatEurCents: 154,
+      status: "ISSUED",
+      issuedAt: new Date(),
+      xml: "<FatturaElettronica/>",
+    },
+  });
 
   const notificationA = await prisma.notification.create({ data: { userId: users.clientA.id, channel: "PUSH", type: "QUOTE_RECEIVED", payload: {} } });
   const externalJobA = await prisma.externalJob.create({ data: { professionalProfileId: profileA.id, clientName: "Cliente esterno", scheduledAt: start } });
@@ -138,7 +159,9 @@ async function seed() {
       requestA: requestA.id,
       leadA: leadA.id,
       quoteA: quoteA.id,
+      quoteDone: quoteDone.id,
       bookingA: bookingA.id,
+      invoiceA: invoiceA.id,
       notificationA: notificationA.id,
       externalJobA: externalJobA.id,
       reportA: reportA.id,

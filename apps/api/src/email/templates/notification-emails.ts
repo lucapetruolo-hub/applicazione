@@ -248,12 +248,16 @@ const BUILDERS: Record<string, Builder> = {
     const clientName = str(payload.clientName);
     const clientPhone = str(payload.clientPhone);
     const clientAddress = str(payload.clientAddress);
+    // Fattura chiesta dal cliente accettando (docs/CHANGELOG.md §378): i dati
+    // nel riquadro, pronti da copiare nel programma delle fatture.
+    const invoiceLines = Array.isArray(payload.invoiceLines) ? payload.invoiceLines.filter((line): line is string => typeof line === "string") : [];
     const details = [
       ...(ctx.category ? [{ label: "Lavoro", value: ctx.city ? `${ctx.category}, ${ctx.city}` : ctx.category }] : []),
       ...(ctx.when ? [{ label: "Appuntamento", value: formatAppointmentSpan(ctx.when, str(payload.scheduledEndAt)) }] : []),
       ...(clientName ? [{ label: "Cliente", value: clientName }] : []),
       ...(clientPhone ? [{ label: "Telefono", value: clientPhone }] : []),
       ...(clientAddress ? [{ label: "Indirizzo", value: clientAddress }] : []),
+      ...(invoiceLines.length > 0 ? [{ label: "Fattura a", value: invoiceLines.join("\n"), long: true }] : []),
     ];
     return {
       kind: "notification",
@@ -265,6 +269,7 @@ const BUILDERS: Record<string, Builder> = {
         clientName || clientPhone || clientAddress
           ? "Qui sotto trovi i dati del cliente e dell'appuntamento, già nella tua agenda."
           : "Nella richiesta ora trovi i suoi contatti e l'indirizzo dell'intervento. L'appuntamento è già nella tua agenda.",
+        ...(payload.invoiceRequested === true ? ["**Il cliente ti chiede la fattura.** I dati sono qui sotto e nella scheda del lavoro."] : []),
       ],
       details: details.length > 0 ? details : undefined,
       cta: proRequests("Apri il lavoro"),
@@ -730,7 +735,7 @@ const BUILDERS: Record<string, Builder> = {
     greeting: ctx.name,
     title: "Pagamento sbloccato",
     paragraphs: [
-      `Abbiamo sbloccato il pagamento del lavoro per **${job(ctx)}**, già al netto della commissione, del costo della carta e del costo del bonifico.`,
+      `Abbiamo sbloccato il pagamento del lavoro per **${job(ctx)}**, già al netto della nostra trattenuta (commissioni Stripe comprese). La trovi nella fattura del mese.`,
       ...(typeof payload.debtRecoveredEurCents === "number" && payload.debtRecoveredEurCents > 0
         ? [`Abbiamo trattenuto ${formatEur(payload.debtRecoveredEurCents)} che dovevi restituire per un lavoro precedente.`]
         : []),
@@ -948,6 +953,103 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: { label: "Vedi i numeri", url: `${frontendUrl()}/admin/numeri-professionisti` },
   }),
+  // Documenti contabili (docs/CHANGELOG.md §378).
+  JOB_INVOICE_REQUESTED: (payload, ctx) => {
+    const invoiceLines = Array.isArray(payload.invoiceLines) ? payload.invoiceLines.filter((line): line is string => typeof line === "string") : [];
+    return {
+      kind: "notification",
+      subject: payload.changed === true ? "Il cliente ha cambiato i dati per la fattura" : "Il cliente ti chiede la fattura",
+      greeting: ctx.name,
+      title: payload.changed === true ? "Dati per la fattura cambiati" : "Ti chiede la fattura",
+      paragraphs: [
+        payload.changed === true
+          ? `Il cliente ha cambiato i dati per la fattura del lavoro **${job(ctx)}**.`
+          : `Il cliente ti chiede la fattura per il lavoro **${job(ctx)}**.`,
+        "La fai tu, col tuo programma delle fatture: qui sotto i dati da copiare.",
+      ],
+      details: invoiceLines.length > 0 ? [{ label: "Fattura a", value: invoiceLines.join("\n"), long: true }] : undefined,
+      cta: proRequests("Apri il lavoro"),
+    };
+  },
+  // Il 15 dicembre (docs/CHANGELOG.md §391): documenti dati ai clienti da
+  // sistemare prima del riepilogo dell'anno, uno per riga; dal §387 anche i
+  // lavori terminati senza ricevuta o con la ricevuta mai scaricata.
+  CLIENT_DOCUMENTS_TO_FIX: (payload, ctx) => {
+    const reasons: Record<string, string> = {
+      AMOUNT_CHANGED: "Importo cambiato dopo il PDF",
+      MISSING_AMOUNT: "Senza importo",
+      NOT_DOWNLOADED: "Ricevuta mai scaricata",
+      NO_RECEIPT: "Manca la ricevuta",
+    };
+    const rows = Array.isArray(payload.documents)
+      ? payload.documents.flatMap((doc) => {
+          if (!doc || typeof doc !== "object") return [];
+          const d = doc as Record<string, unknown>;
+          if (typeof d.label !== "string") return [];
+          const reason = typeof d.reason === "string" && d.reason in reasons ? d.reason : "AMOUNT_CHANGED";
+          return [{ reason, label: typeof d.customerName === "string" ? `${d.label}, ${d.customerName}` : d.label, value: reasons[reason]! }];
+        })
+      : [];
+    const has = (...kinds: string[]) => rows.some((row) => kinds.includes(row.reason));
+    const year = typeof payload.year === "number" ? ` del ${payload.year}` : " dell'anno";
+    // Solo ricevute da fare: si preparano dal lavoro, in Richieste.
+    const onlyMissing = rows.length > 0 && rows.every((row) => row.reason === "NO_RECEIPT");
+    return {
+      kind: "notification",
+      subject: rows.length === 1 ? "Un documento da sistemare prima di fine anno" : "Documenti da sistemare prima di fine anno",
+      greeting: ctx.name,
+      title: "Documenti da sistemare",
+      paragraphs: [
+        rows.length === 1
+          ? `Prima del riepilogo${year} c'è un documento dato a un cliente da sistemare.`
+          : `Prima del riepilogo${year} ci sono ${rows.length > 0 ? `${rows.length} ` : ""}documenti dati ai clienti da sistemare.`,
+        ...(rows.length === 0 || has("AMOUNT_CHANGED") ? ["Se l'importo è cambiato, per esempio dopo un rimborso, scarica di nuovo il PDF dal lavoro e ridallo al cliente."] : []),
+        ...(rows.length === 0 || has("MISSING_AMOUNT") ? ["Se manca l'importo, chiudi il lavoro con il prezzo finale."] : []),
+        ...(has("NO_RECEIPT", "NOT_DOWNLOADED")
+          ? ["Se manca la ricevuta, preparala dal lavoro, scarica il PDF e dalla al cliente. Se l'hai fatta a mano, dillo al tuo commercialista: nel riepilogo non c'è."]
+          : []),
+        payload.accountant === true ? "Il 1° gennaio il riepilogo parte da solo al tuo commercialista." : "Poi scarica il riepilogo dell'anno per il tuo commercialista.",
+      ],
+      details: rows.length > 0 ? rows.map(({ label, value }) => ({ label, value })) : undefined,
+      cta: onlyMissing ? { label: "Apri le richieste", url: `${frontendUrl()}/dashboard/richieste` } : { label: "Apri Fatture e documenti", url: `${frontendUrl()}/dashboard/documenti` },
+    };
+  },
+  // Al cliente (docs/CHANGELOG.md §387): il professionista ha scaricato la
+  // ricevuta o la copia della fattura, che ora è nei documenti della richiesta.
+  JOB_DOCUMENT_READY: (payload, ctx) => {
+    const receipt = payload.kind === "RECEIPT";
+    const label = str(payload.label);
+    const updated = payload.updated === true;
+    const guidedRequestId = str(payload.guidedRequestId);
+    const what = receipt ? "la ricevuta" : "la copia della fattura";
+    return {
+      kind: "notification",
+      subject: updated ? (receipt ? "Ricevuta aggiornata" : "Copia della fattura aggiornata") : receipt ? "La ricevuta del lavoro è pronta" : "La copia della fattura è pronta",
+      greeting: ctx.name,
+      title: updated ? (receipt ? "Ricevuta aggiornata" : "Copia della fattura aggiornata") : receipt ? "Ricevuta pronta" : "Copia della fattura pronta",
+      paragraphs: [
+        updated
+          ? `${pro(ctx)} ha aggiornato ${what} per **${job(ctx)}**, per esempio dopo un rimborso.`
+          : `${pro(ctx)} ha preparato ${what} per **${job(ctx)}**.`,
+        receipt ? "L'originale firmato te lo dà il professionista: una copia la trovi nei documenti della richiesta." : "La fattura valida te la dà il professionista: una copia la trovi nei documenti della richiesta.",
+      ],
+      details: jobDetails(ctx, label ? [{ label: "Documento", value: label }] : []),
+      cta: { label: "Apri i documenti", url: `${frontendUrl()}/le-mie-richieste?tab=lavori${guidedRequestId ? `&open=${guidedRequestId}&documenti=1` : ""}` },
+    };
+  },
+  // Quadratura del mese o fattura scartata dallo SdI (`kind: "sdi"`).
+  ADMIN_FEE_RECONCILIATION: (payload) => {
+    const alerts = Array.isArray(payload.alerts) ? payload.alerts.filter((a): a is string => typeof a === "string") : [];
+    const sdi = payload.kind === "sdi";
+    return {
+      kind: "notification",
+      tone: "urgent",
+      subject: sdi ? "Fattura scartata dallo SdI" : `Trattenute di ${str(payload.month) ?? "questo mese"} da controllare`,
+      title: sdi ? "Fattura da correggere" : "Trattenute che non tornano",
+      paragraphs: sdi ? alerts : [...alerts, "Confronta le trattenute del mese con il resoconto di Stripe."],
+      cta: { label: "Apri Finanza", url: `${frontendUrl()}/admin/finanza` },
+    };
+  },
   // Consigli della settimana dai numeri del sito (docs/CHANGELOG.md §372).
   ADMIN_WEEKLY_ADVICE: (payload) => {
     const items = Array.isArray(payload.advice)
@@ -1452,6 +1554,32 @@ const BUILDERS: Record<string, Builder> = {
     ],
     cta: subscriptionPage(),
   }),
+  // Documenti del mese (docs/CHANGELOG.md §378): stesso riepilogo della
+  // pagina, col totale in cima. I mesi gratis compaiono a 0 €.
+  MONTHLY_DOCUMENTS_READY: (payload, ctx) => {
+    const month = str(payload.monthLabel) ?? "del mese";
+    const lines = Array.isArray(payload.lines)
+      ? payload.lines.flatMap((line) => {
+          if (!line || typeof line !== "object") return [];
+          const l = line as Record<string, unknown>;
+          return typeof l.label === "string" && typeof l.amountEurCents === "number" ? [{ label: l.label, value: formatEur(l.amountEurCents) }] : [];
+        })
+      : [];
+    return {
+      kind: "account",
+      subject: `I tuoi documenti di ${month}`,
+      greeting: ctx.name,
+      title: `Documenti di ${month}`,
+      paragraphs: [
+        typeof payload.totalEurCents === "number"
+          ? `Questo mese ti abbiamo addebitato **${formatEur(payload.totalEurCents)}** in tutto, IVA compresa.`
+          : "Il riepilogo del mese è pronto.",
+        "Fatture ed estratto sono nella pagina Fatture e documenti, da scaricare o girare al commercialista.",
+      ],
+      details: lines.length > 0 ? lines : undefined,
+      cta: { label: "Apri Fatture e documenti", url: `${frontendUrl()}/dashboard/documenti` },
+    };
+  },
 };
 
 /** Tipi di notifica che partono anche via email. */

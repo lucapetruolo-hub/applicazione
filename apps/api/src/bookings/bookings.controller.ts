@@ -76,7 +76,7 @@ export class BookingsController {
   @UseGuards(JwtAuthGuard)
   @Post("from-quote/:quoteId")
   createFromQuote(@Req() req: AuthenticatedRequest, @Param("quoteId") quoteId: string, @Body(new ZodValidationPipe(acceptQuoteSchema)) body: AcceptQuoteInput) {
-    return this.bookingsService.createFromQuote(req.user.userId, quoteId, body.paymentMethod);
+    return this.bookingsService.createFromQuote(req.user.userId, quoteId, body.paymentMethod, body.invoiceRequest);
   }
 
   @UseGuards(JwtAuthGuard)

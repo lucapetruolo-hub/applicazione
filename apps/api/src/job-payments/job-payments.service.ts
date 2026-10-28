@@ -10,6 +10,7 @@ import {
   paymentChoiceIsOnline,
   professionalPayoutTotals,
   toJobPaymentSummary,
+  vatOnEurCents,
   type JobPaymentChoice,
   type ProfessionalPayoutTotals,
 } from "@professionisti/shared";
@@ -101,8 +102,11 @@ export class JobPaymentsService {
 
     if (existing?.paymentMethod === "MANOVIA") {
       const rule = await this.feeRulesService.resolveRule({ professionalProfileId: existing.booking.professionalProfileId, categoryId: null });
-      // Col saldo diretto la commissione vale solo sulla parte pagata online (§237).
-      const appFee = this.feeRulesService.computeFee(onlineTargetEurCents(params.grossAmountEurCents, existing), rule);
+      // Col saldo diretto la commissione vale solo sulla parte pagata online
+      // (§237). La regola è IVA esclusa: trattenuta con l'IVA (§378).
+      const onlineTarget = onlineTargetEurCents(params.grossAmountEurCents, existing);
+      const fee = this.feeRulesService.computeFee(onlineTarget, rule);
+      const appFee = Math.min(onlineTarget, fee + vatOnEurCents(fee));
       if (rule) await this.prisma.jobPayment.update({ where: { id: existing.id }, data: { appliedFeeRuleId: rule.id } });
       const result = await this.onlineMoneyService.afterCompletion(existing.id, params.grossAmountEurCents, appFee, { autoCharge: params.autoChargeBalance });
       if (params.alreadyConfirmedByClient) await this.onlineMoneyService.releaseIfDue(existing.id).catch(() => false);

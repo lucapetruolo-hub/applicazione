@@ -1,6 +1,6 @@
 "use client";
 
-import { REQUEST_TIMING_LABEL, type JobPaymentChoice, type RequestWithdrawReason } from "@professionisti/shared";
+import { REQUEST_TIMING_LABEL, type ClientInvoiceRequestInput, type JobPaymentChoice, type RequestWithdrawReason } from "@professionisti/shared";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -45,6 +45,8 @@ import { clientNextAction } from "@/lib/clientNextAction";
 import { CLIENT_STAGE_LABEL, type RequestStage } from "@/lib/requestStage";
 import { BookingSection, ChangeLinks } from "./BookingSection";
 import { QuoteCard } from "./QuoteCard";
+import { ClientInvoiceRequestPanel } from "@/components/ClientInvoiceRequestForm";
+import { JobDocumentsModal } from "@/components/JobDocumentsModal";
 import { Disclosure } from "./Disclosure";
 import { DeleteRequestModal } from "./DeleteRequestModal";
 import { announceRequestDeleted } from "./RequestDeletedNotice";
@@ -74,6 +76,8 @@ export function GuidedRequestCard({
   onChatAutoOpenHandled,
   autoStartEditing,
   onAutoEditHandled,
+  autoOpenDocuments,
+  onAutoDocumentsHandled,
   onMarkedRead,
 }: {
   request: ClientGuidedRequest;
@@ -82,7 +86,7 @@ export function GuidedRequestCard({
   stage: RequestStage;
   token: string;
   onChanged: () => void;
-  onAcceptQuote: (quoteId: string, paymentMethod: JobPaymentChoice) => Promise<void>;
+  onAcceptQuote: (quoteId: string, paymentMethod: JobPaymentChoice, invoiceRequest?: ClientInvoiceRequestInput) => Promise<void>;
   isOpen: boolean;
   onToggle: () => void;
   /** True se questa richiesta (o la sua prenotazione) ha un aggiornamento non letto. */
@@ -103,6 +107,10 @@ export function GuidedRequestCard({
   autoStartEditing?: boolean;
   /** Richiamata dopo aver gestito `autoStartEditing`, così un rimontaggio non riapre il modulo. */
   onAutoEditHandled?: () => void;
+  /** "Apri i documenti" dall'avviso della copia pronta (`?documenti=1`, docs/CHANGELOG.md §387): apre subito i documenti del lavoro. */
+  autoOpenDocuments?: boolean;
+  /** Richiamata dopo aver gestito `autoOpenDocuments`. */
+  onAutoDocumentsHandled?: () => void;
   /** "Segna come letta" dal menu: spegne subito il "Nuovo" locale del genitore. */
   onMarkedRead: () => void;
 }) {
@@ -282,6 +290,7 @@ export function GuidedRequestCard({
   // dell'utente, docs/CHANGELOG.md §329): modale e chat della prenotazione
   // stanno qui, così si aprono anche da una scheda chiusa.
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showDocuments, setShowDocuments] = useState(false);
   const [showBookingChat, setShowBookingChat] = useState(false);
   // Conferma breve dopo "Copia riepilogo" (nessun toast globale per azioni locali).
   const [notice, setNotice] = useState<string | null>(null);
@@ -341,6 +350,15 @@ export function GuidedRequestCard({
     onAutoEditHandled?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStartEditing]);
+
+  // Stesso principio per i documenti: si aprono solo se c'è già il lavoro.
+  useEffect(() => {
+    if (!autoOpenDocuments) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (booking) setShowDocuments(true);
+    onAutoDocumentsHandled?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpenDocuments]);
 
   async function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -704,6 +722,8 @@ export function GuidedRequestCard({
   if (canEditDetails) menuActions.push({ icon: "pencil", text: "Modifica richiesta", onPress: startEditing });
   menuActions.push({ icon: "send", text: "Ripeti la richiesta", onPress: () => router.push(repeatHref) });
   menuActions.push({ icon: "share-2", text: "Condividi riepilogo", onPress: handleShare });
+  // Documenti contabili del lavoro: pagamenti e copia della ricevuta o fattura (docs/CHANGELOG.md §386).
+  if (booking) menuActions.push({ icon: "file-text", text: "Documenti", onPress: () => setShowDocuments(true) });
   menuActions.push(
     ...buildPersonalStateActions({
       token,
@@ -742,6 +762,15 @@ export function GuidedRequestCard({
   // Biglietto dell'appuntamento e, sotto, la trattativa chiusa (docs/CHANGELOG.md §346).
   const jobChosen = Boolean(booking && booking.status !== "CANCELED");
   const otherQuotes = request.quotes.filter((quote) => quote.id !== acceptedQuote?.id);
+  // Nome e indirizzo della richiesta per precompilare la fattura (docs/CHANGELOG.md §378).
+  const invoiceDefaults = {
+    name: [request.recipientName, request.recipientSurname].filter(Boolean).join(" "),
+    street: request.address ?? "",
+    houseNumber: request.houseNumber ?? "",
+    postalCode: request.postalCode ?? "",
+    city: request.city ?? "",
+    province: request.province ?? "",
+  };
   const quoteCard = (quote: ClientGuidedRequest["quotes"][number]) => (
     <QuoteCard
       key={quote.id}
@@ -758,6 +787,8 @@ export function GuidedRequestCard({
       contactInBooking={quote.status === "ACCEPTED" && booking?.professionalProfileId === quote.professionalProfileId}
       notChosen={jobChosen && quote.id !== acceptedQuote?.id}
       onDeleteRequest={!booking ? () => setShowDeleteModal(true) : undefined}
+      categorySlug={request.categorySlug}
+      invoiceDefaults={invoiceDefaults}
     />
   );
   const acceptedTotals = acceptedQuote ? quotePriceTotals(acceptedQuote.items) : null;
@@ -777,6 +808,17 @@ export function GuidedRequestCard({
           acceptedQuote ? quoteUnreadCounts?.get(acceptedQuote.id) : undefined,
         )}
       />
+      {/* Fattura chiesta al professionista dopo l'accettazione, o i dati già mandati (docs/CHANGELOG.md §378). */}
+      {acceptedQuote && booking.status !== "CANCELED" && !booking.professionalAccountDeleted ? (
+        <ClientInvoiceRequestPanel
+          token={token}
+          quoteId={acceptedQuote.id}
+          professionalName={acceptedQuote.businessName}
+          initial={acceptedQuote.invoiceRequest ?? null}
+          defaults={invoiceDefaults}
+          onSaved={onChanged}
+        />
+      ) : null}
       <YStack height={1} backgroundColor={brand.filetto} marginVertical="$1" />
       {acceptedQuote && acceptedTotals ? (
         <Disclosure
@@ -1104,6 +1146,7 @@ export function GuidedRequestCard({
 
       {/* Fuori dal blocco espanso: "Segnala un problema" e "Annulla
           prenotazione" si aprono anche dal menu hamburger di una scheda chiusa. */}
+      {showDocuments && booking ? <JobDocumentsModal token={token} bookingId={booking.id} onClose={() => setShowDocuments(false)} /> : null}
       {showReportModal && booking ? (
         <ReportIssueModal
           businessName={booking.businessName}
