@@ -70,7 +70,7 @@ describe("requestSentEmail: riepilogo", () => {
   });
 });
 
-// Professionisti scelti dai risultati (docs/CHANGELOG.md §390).
+// Professionisti scelti dai risultati (docs/CHANGELOG.md §393).
 describe("requestSentEmail: professionisti scelti", () => {
   it("dice quanti sono e a chi è arrivata", () => {
     const email = requestSentEmail({

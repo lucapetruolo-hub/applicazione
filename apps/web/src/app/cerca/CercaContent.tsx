@@ -16,7 +16,7 @@ import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { ProblemBand } from "@/components/ProblemBand";
 import { ChosenProsBar, chosenRequestHref, type ChosenPro } from "@/components/ChosenProsBar";
 
-/** Ricerca partita dalla descrizione del problema (docs/CHANGELOG.md §387). */
+/** Ricerca partita dalla descrizione del problema (docs/CHANGELOG.md §392). */
 export type ProblemSearch = {
   description: string;
   result: ProblemMatchResult;
@@ -62,7 +62,7 @@ export function CercaContent({
   initialUrgentOnly?: boolean;
   problem?: ProblemSearch;
 }) {
-  // "Scegli" sulle schede (docs/CHANGELOG.md §390): solo con un mestiere
+  // "Scegli" sulle schede (docs/CHANGELOG.md §393): solo con un mestiere
   // deciso e almeno due professionisti, altrimenti non c'è niente da scegliere.
   const canChoose = Boolean(problem?.chosen) && professionals.length >= 2;
   const [chosenPros, setChosenPros] = useState<ChosenPro[]>([]);

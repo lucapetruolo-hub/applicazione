@@ -3,7 +3,7 @@ import { GeocodingService } from "../geocoding/geocoding.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { randomUUID } from "node:crypto";
 import { Prisma, type PrismaClient, type ProfessionalProfile } from "@professionisti/database";
-import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_RESTORE_WINDOW_MINUTES, type RequestWithdrawReason, findComuneByName, professionalKindOf, professionalRestrictions, clientPaymentOffer, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestReach, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
+import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_RESTORE_WINDOW_MINUTES, type RequestWithdrawReason, findComuneByName, professionalChargesVat, professionalKindOf, professionalRestrictions, clientPaymentOffer, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestReach, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { reviewSummariesFor, type ReviewSummary } from "../reviews/review-summary";
 import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing, publicVisibilityWhere, publicVerified, stripeVerified } from "../professional-fiscal/public-visibility";
@@ -16,6 +16,7 @@ import { GeneralRequestsService } from "../general-requests/general-requests.ser
 import { toMyState } from "./guided-request-user-state.service";
 import { computeDirectForwardAt } from "./lead-routing";
 import type { RequestSummary } from "../email/templates/job-emails";
+import { invoiceRequestView } from "../client-invoice-requests/client-invoice-requests.service";
 
 /** Riga nella chat dei professionisti quando il cliente elimina una richiesta aperta (§343). */
 export const WITHDRAWN_TIMELINE_MESSAGE = "Il cliente ha ritirato la richiesta.";
@@ -175,7 +176,7 @@ export class GuidedRequestsService {
   }
 
   /**
-   * Professionisti scelti dal cliente nei risultati (docs/CHANGELOG.md §390):
+   * Professionisti scelti dal cliente nei risultati (docs/CHANGELOG.md §393):
    * gli stessi controlli di una richiesta diretta, per ognuno. Uno che nel
    * frattempo non accetta più richieste blocca l'invio con il suo nome, così
    * il cliente lo toglie dalla scelta invece di credere di averlo raggiunto.
@@ -233,7 +234,7 @@ export class GuidedRequestsService {
     if (!opts.checksDone) await this.assertAddressInCity(input);
     // Non vale per il rinvio fatto dal sistema dopo una mancata
     // presentazione (excludeProfileId, §167).
-    // Professionisti scelti dai risultati (§390): come una richiesta diretta,
+    // Professionisti scelti dai risultati (§393): come una richiesta diretta,
     // vale anche dove le richieste generali sono chiuse.
     const chosenIds = input.professionalProfileId ? [] : (input.professionalProfileIds ?? []);
     if (!input.professionalProfileId && chosenIds.length === 0 && !opts.excludeProfileId && !opts.checksDone) {
@@ -507,9 +508,11 @@ export class GuidedRequestsService {
         // di leggere lo stato della prenotazione da qui.
         quotes: {
           include: {
-            professionalProfile: { include: { fiscalProfile: { select: { stripePayoutsEnabled: true, entityType: true } } } },
+            professionalProfile: { include: { fiscalProfile: { select: { stripePayoutsEnabled: true, entityType: true, chargesVat: true } } } },
             items: true,
             booking: { select: { status: true } },
+            // Fattura chiesta al professionista (docs/CHANGELOG.md §378).
+            invoiceRequest: true,
           },
         },
         // A chi è stata inviata la richiesta: mostrato in /le-mie-richieste
@@ -636,6 +639,9 @@ export class GuidedRequestsService {
           reviews: reviewsOf(quote.professionalProfile),
           // Che tipo di lavoratore ha mandato il preventivo (richiesta dell'utente, §338).
           professionalKind: professionalKindOf(quote.professionalProfile.fiscalProfile?.entityType),
+          // "IVA inclusa" solo per chi la applica, altrimenti "Prezzo finale" (docs/CHANGELOG.md §378).
+          chargesVat: professionalChargesVat(quote.professionalProfile.fiscalProfile?.entityType, quote.professionalProfile.fiscalProfile?.chargesVat),
+          invoiceRequest: quote.invoiceRequest ? invoiceRequestView(quote.invoiceRequest) : null,
           items: quote.items.map((item) => ({
             id: item.id,
             name: item.name,
@@ -1096,7 +1102,7 @@ export class GuidedRequestsService {
         status: { in: ["OPEN", "MATCHED"] },
         categoryId: { in: profile.categoryIds },
         professionalProfileId: null,
-        // Scelti dal cliente (§390): solo a loro, mai a chi si iscrive dopo.
+        // Scelti dal cliente (§393): solo a loro, mai a chi si iscrive dopo.
         chosenProfileIds: { isEmpty: true },
         OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
       },

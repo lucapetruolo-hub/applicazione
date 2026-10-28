@@ -714,6 +714,9 @@ export class AuthService {
 
     // Dispositivi usati per l'accesso (§289): non servono più a nulla.
     await this.prisma.loginDevice.deleteMany({ where: { userId } });
+    // Dati per la fattura chiesti ai professionisti (docs/CHANGELOG.md §378):
+    // il professionista li ha già ricevuti, qui non servono più.
+    await this.prisma.clientInvoiceRequest.deleteMany({ where: { clientId: userId } });
     await this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -764,7 +767,7 @@ export class AuthService {
       await Promise.all([
         this.prisma.guidedRequest.findMany({
           where: { clientId: userId },
-          include: { quotes: { include: { items: true } } },
+          include: { quotes: { include: { items: true, invoiceRequest: true } } },
           orderBy: { createdAt: "desc" },
         }),
         this.prisma.booking.findMany({

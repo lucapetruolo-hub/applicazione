@@ -26,7 +26,7 @@ export function buildSearchDestination({
   if (urgentOnly) params.set("urgente", "1");
 
   // Una descrizione del problema ("il rubinetto gocciola") va ai risultati con
-  // la banda "Ti serve un…" (docs/CHANGELOG.md §387), non alla ricerca per nome.
+  // la banda "Ti serve un…" (docs/CHANGELOG.md §392), non alla ricerca per nome.
   if (professional?.id.startsWith(PROBLEM_SUGGESTION_PREFIX) || (!professional && looksLikeProblem(query))) {
     params.set("problema", query.trim());
     if (city.trim()) params.set("citta", city.trim());

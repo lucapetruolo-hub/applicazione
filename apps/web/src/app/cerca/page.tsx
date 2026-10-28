@@ -16,7 +16,7 @@ type PageSearchParams = {
   online?: string;
   q?: string;
   urgente?: string;
-  /** Descrizione del problema scritta nella barra (docs/CHANGELOG.md §387). */
+  /** Descrizione del problema scritta nella barra (docs/CHANGELOG.md §392). */
   problema?: string;
   /** Mestiere scelto dal cliente (risposta alla domanda, "Oppure"). */
   mestiere?: string;
@@ -133,7 +133,7 @@ export default async function CercaPage(props: { searchParams: Promise<PageSearc
 }
 
 /**
- * Risultati dalla descrizione del problema (docs/CHANGELOG.md §387): stessa
+ * Risultati dalla descrizione del problema (docs/CHANGELOG.md §392): stessa
  * pagina dei risultati, con la banda in cima, ordinati senza boost.
  */
 async function ProblemResults({

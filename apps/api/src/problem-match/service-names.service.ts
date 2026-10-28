@@ -6,7 +6,7 @@ import { PRISMA } from "../prisma/prisma.module";
 const ALIASES_TTL_MS = 60_000;
 
 /**
- * Nome con cui contare una prestazione (docs/CHANGELOG.md §387): prima le
+ * Nome con cui contare una prestazione (docs/CHANGELOG.md §392): prima le
  * unioni fatte dall'admin ("Unisci a…" in "Mestieri richiesti"), poi la
  * tabella di `packages/shared/src/serviceNames.ts`. Da usare per sommare le
  * prestazioni uguali nella ricerca e nel "Quanto costa in media".

@@ -22,7 +22,7 @@ export const HANDWRITTEN_SUGGEST_MIN = 3;
 
 /**
  * Pagine admin "Mestieri richiesti" e "Richieste da seguire"
- * (docs/CHANGELOG.md §387, richieste di Luca).
+ * (docs/CHANGELOG.md §392, richieste di Luca).
  */
 @Injectable()
 export class ProblemMatchAdminService {

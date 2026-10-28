@@ -45,7 +45,7 @@ export function requestSentEmail(input: {
   sentTo: number;
   /** Richiesta inviata a un professionista scelto dal suo profilo. */
   direct: boolean;
-  /** Professionisti scelti dal cliente nei risultati, da 2 a 5 (docs/CHANGELOG.md §390). */
+  /** Professionisti scelti dal cliente nei risultati, da 2 a 5 (docs/CHANGELOG.md §393). */
   chosen?: number;
   description?: string | null;
   summary?: RequestSummary;

@@ -116,7 +116,7 @@ describe("anonymizeProblemText", () => {
   });
 });
 
-// OpenRouter fino al lancio, al posto della chiave di Anthropic (docs/CHANGELOG.md §391).
+// OpenRouter fino al lancio, al posto della chiave di Anthropic (docs/CHANGELOG.md §394).
 describe("ProblemMatchService con OpenRouter", () => {
   afterEach(() => {
     vi.unstubAllEnvs();

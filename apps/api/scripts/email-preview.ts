@@ -107,6 +107,24 @@ add("chat-messaggi-dal-cliente", "Messaggi", "Professionista", renderEmail(chatM
 notification("NEW_QUOTE", "Cliente", "Preventivi e date");
 add("new_quote_nuovo_dopo_rifiuto", "Preventivi e date", "Cliente", renderEmail(notificationEmail("NEW_QUOTE", { resent: true }, forClient)!));
 notification("QUOTE_ACCEPTED", "Professionista", "Preventivi e date");
+// Fattura chiesta dal cliente accettando (§378).
+add("quote_accepted_con_fattura", "Preventivi e date", "Professionista", renderEmail(notificationEmail("QUOTE_ACCEPTED", { clientName: "Giulia Bianchi", invoiceRequested: true, invoiceLines: ["Studio Bianchi Srl", "P.IVA 01234567890", "Via Roma 10, 20100 Milano (MI)", "Codice destinatario M5UXCR1"] }, forPro)!));
+notification("JOB_INVOICE_REQUESTED", "Professionista", "Lavori e appuntamenti", { invoiceLines: ["Giulia Bianchi", "Codice fiscale BNCGLI85M41F205X", "Via Roma 10, 20100 Milano (MI)"] });
+// Documenti da sistemare il 15 dicembre (§391).
+notification("CLIENT_DOCUMENTS_TO_FIX", "Professionista", "Lavori e appuntamenti", {
+  year: 2026,
+  accountant: true,
+  documents: [
+    { label: "Ricevuta n. 4/2026", customerName: "Anna Bianchi", reason: "AMOUNT_CHANGED" },
+    { label: "Fattura n. 12/A", customerName: "Bar Sport S.r.l.", reason: "MISSING_AMOUNT" },
+    // Lavori terminati senza ricevuta o con la ricevuta mai scaricata (§387).
+    { label: "Ricevuta n. 6/2026", customerName: "Luca Verdi", reason: "NOT_DOWNLOADED" },
+    { label: "Idraulico del 12 novembre 2026", customerName: "Sara Neri", reason: "NO_RECEIPT" },
+  ],
+});
+// Copia della ricevuta pronta per il cliente (§387).
+notification("JOB_DOCUMENT_READY", "Cliente", "Lavori e appuntamenti", { kind: "RECEIPT", label: "Ricevuta n. 4/2026", guidedRequestId: "preview", updated: false });
+add("job_document_ready_aggiornata", "Lavori e appuntamenti", "Cliente", renderEmail(notificationEmail("JOB_DOCUMENT_READY", { kind: "INVOICE", label: "Fattura n. 12/A", guidedRequestId: "preview", updated: true }, forClient)!));
 notification("QUOTE_REJECTED", "Professionista", "Preventivi e date", {
   note: "Il prezzo è più alto di quanto pensavo, e mi servirebbe prima di venerdì.",
   canResend: true,
@@ -172,7 +190,15 @@ notification("SUBSCRIPTION_RENEWING", "Professionista", "Abbonamento", { tierLab
 notification("SUBSCRIPTION_RENEWED", "Professionista", "Abbonamento", { tierLabel: "Plus", amountEurCents: 5900, date: inThreeDays });
 notification("SUBSCRIPTION_ENDING", "Professionista", "Abbonamento", { tierLabel: "Plus", date: inThreeDays });
 notification("SUBSCRIPTION_PAYMENT_FAILED", "Professionista", "Abbonamento");
-
+// Documenti del mese (§378): i mesi gratis a 0 €.
+notification("MONTHLY_DOCUMENTS_READY", "Professionista", "Abbonamento", {
+  monthLabel: "novembre 2026",
+  totalEurCents: 2440,
+  lines: [
+    { label: "Offerta di lancio (Base)", amountEurCents: 0 },
+    { label: "Trattenute sui pagamenti online", amountEurCents: 2440 },
+  ],
+});
 // Moderazione
 notification("CONTENT_REPORT_RECEIVED", "Cliente", "Segnalazioni e moderazione", { targetType: "REVIEW" });
 notification("CONTENT_REPORT_DECISION", "Cliente", "Segnalazioni e moderazione", { targetType: "REVIEW", status: "RESOLVED" });

@@ -9,7 +9,7 @@ import { AdminPageHeader, AdminTabs, errorMessage, formatAdminDate } from "@/com
 import { SkeletonTableRows } from "@/components/Skeleton";
 
 /**
- * "Richieste da seguire" (docs/CHANGELOG.md §387, decisione di Luca):
+ * "Richieste da seguire" (docs/CHANGELOG.md §392, decisione di Luca):
  * lavori che nessun professionista del sito fa, per cui il cliente ha
  * premuto "Prendete in carico la richiesta". Nessuna scadenza: restano
  * qui finché non si segnano come fatte.

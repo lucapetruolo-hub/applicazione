@@ -75,7 +75,7 @@ function categorySlugFor(query: string): string | undefined {
 
 /**
  * "Ti serve: Idraulico" in cima all'elenco mentre si descrive il problema
- * (docs/CHANGELOG.md §387): solo il dizionario, nessuna chiamata al server a
+ * (docs/CHANGELOG.md §392): solo il dizionario, nessuna chiamata al server a
  * ogni tasto. Il nome resta il testo scritto, così sceglierlo non lo cambia.
  */
 function problemSuggestion(query: string): ProfessionalSuggestion | null {

@@ -10,7 +10,7 @@ import { ProfessionalAvatar } from "./ProfessionalAvatar";
 export type ChosenPro = { id: string; businessName: string; imageUrl: string | null; categorySlug: ProfessionalCategorySlug };
 
 /**
- * Richiesta ai professionisti scelti nei risultati (docs/CHANGELOG.md §390):
+ * Richiesta ai professionisti scelti nei risultati (docs/CHANGELOG.md §393):
  * con uno solo è la richiesta diretta di sempre, con 2-5 il modulo li riceve
  * in `scelti` e la richiesta arriva solo a loro.
  */

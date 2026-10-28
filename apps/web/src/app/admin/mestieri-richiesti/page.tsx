@@ -31,7 +31,7 @@ function targetLabel(categorySlug: string | null, outOfService: string | null): 
 }
 
 /**
- * "Mestieri richiesti" (docs/CHANGELOG.md §387, richiesta di Luca): cosa
+ * "Mestieri richiesti" (docs/CHANGELOG.md §392, richiesta di Luca): cosa
  * scrivono i clienti nella ricerca, a chi li abbiamo mandati, le parole da
  * insegnare al dizionario e i nomi delle prestazioni da unire.
  */

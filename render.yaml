@@ -124,12 +124,12 @@ services:
       # del browser NEXT_PUBLIC_GOOGLE_MAPS_API_KEY impostata su Vercel.
       - key: GOOGLE_MAPS_API_KEY
         sync: false
-      # Dal problema scritto ai mestieri (docs/CHANGELOG.md §387): Claude
+      # Dal problema scritto ai mestieri (docs/CHANGELOG.md §392): Claude
       # Haiku solo quando il dizionario ha un dubbio. Senza, resta il
       # dizionario. PROBLEM_MATCH_AI_DAILY_LIMIT cambia il tetto (3000).
       - key: ANTHROPIC_API_KEY
         sync: false
-      # Solo fino al lancio (docs/CHANGELOG.md §391): senza ANTHROPIC_API_KEY
+      # Solo fino al lancio (docs/CHANGELOG.md §394): senza ANTHROPIC_API_KEY
       # lo stesso modello attraverso OpenRouter. Da togliere al lancio.
       - key: OPENROUTER_API_KEY
         sync: false

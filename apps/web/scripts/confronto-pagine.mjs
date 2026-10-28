@@ -38,7 +38,7 @@ const PAGES = {
     "/dashboard/profilo", "/dashboard/richieste", "/dashboard/statistiche", "/dashboard/verifica-identita", "/chat",
   ],
   admin: [
-    "/admin", "/admin/chat", "/admin/finanza", "/admin/lavori", "/admin/messaggi", "/admin/pagamenti",
+    "/admin", "/admin/chat", "/admin/documenti-clienti", "/admin/finanza", "/admin/lavori", "/admin/messaggi", "/admin/pagamenti",
     "/admin/problemi", "/admin/professionisti", "/admin/promuovi", "/admin/registro", "/admin/richieste-eliminate",
     "/admin/richieste-generali", "/admin/segnalazioni", "/admin/statistiche", "/admin/utenti", "/admin/verifiche",
   ],

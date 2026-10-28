@@ -13,7 +13,7 @@ export type ProfessionalSuggestion = {
   subtitle: string;
   categorySlug: string;
   city: string;
-  /** Riga in grassetto al posto del nome (la descrizione del problema, docs/CHANGELOG.md §387). */
+  /** Riga in grassetto al posto del nome (la descrizione del problema, docs/CHANGELOG.md §392). */
   title?: string;
 };
 

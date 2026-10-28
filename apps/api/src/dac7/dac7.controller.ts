@@ -1,9 +1,11 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, NotFoundException, Param, ParseIntPipe, Post, Req, UseGuards } from "@nestjs/common";
 import { setDac7RuleSchema, platformDac7SettingsSchema, type SetDac7RuleInput, type PlatformDac7SettingsInput } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
 import { Dac7Service } from "./dac7.service";
+import { pdfResponse, renderDocumentPdf } from "../accounting/document-pdf";
+import { dac7PdfModel } from "../accounting/document-pdf-models";
 
 @UseGuards(JwtAuthGuard, AdminGuard)
 @RequireAdminScope("FINANCE")
@@ -78,5 +80,14 @@ export class ProfessionalDac7Controller {
   @Get()
   summary(@Req() req: AuthenticatedRequest) {
     return this.dac7Service.summaryForProfessional(req.user.userId);
+  }
+
+  /** Il riepilogo di un anno in PDF (docs/CHANGELOG.md §379). */
+  @Get(":year/pdf")
+  async pdf(@Req() req: AuthenticatedRequest, @Param("year", ParseIntPipe) year: number) {
+    const [{ years, maskedIban }, who] = await Promise.all([this.dac7Service.summaryForProfessional(req.user.userId), this.dac7Service.fiscalNameOf(req.user.userId)]);
+    const summary = years.find((y) => y.year === year);
+    if (!summary) throw new NotFoundException("Nessun compenso in quell'anno.");
+    return pdfResponse(await renderDocumentPdf(dac7PdfModel(summary, maskedIban, who)), `riepilogo-dac7-${year}.pdf`);
   }
 }

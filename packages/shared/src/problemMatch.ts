@@ -2,7 +2,7 @@ import type { ProfessionalCategorySlug } from "./categories";
 
 /**
  * Dal problema descritto al mestiere ("Cosa è successo?", docs/CHANGELOG.md
- * §387, thread "Proporre i professionisti dalla descrizione del problema").
+ * §392, thread "Proporre i professionisti dalla descrizione del problema").
  * Primo strato: un dizionario di parole, istantaneo e senza servizi esterni.
  * Decide da solo gli avvisi di sicurezza (mai l'intelligenza artificiale) e
  * dice quando ha anche un minimo dubbio (`confident: false`): lì il server

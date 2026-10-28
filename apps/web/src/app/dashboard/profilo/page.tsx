@@ -1265,7 +1265,7 @@ export default function DashboardProfiloPage() {
 
           {/* Mentre scrive, il professionista vede i nomi già usati: scegliendone
               uno, la sua prestazione si somma alle altre uguali nella ricerca e
-              nei prezzi medi (docs/CHANGELOG.md §387). */}
+              nei prezzi medi (docs/CHANGELOG.md §392). */}
           <datalist id="prestazioni-suggerite">
             {[...new Set([...ALL_SUGGESTED_SERVICES, ...Object.values(standardServices).flatMap((names) => names ?? [])])].map((name) => (
               <option key={name} value={name} />

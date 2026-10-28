@@ -171,7 +171,7 @@ export function validSubTags(subTags: string[], categorySlugs: readonly Professi
  */
 export const POPULAR_SERVICES: Record<ProfessionalCategorySlug, string[]> = {
   // Dalla sesta voce in poi: i lavori più chiesti nelle 769 frasi dei clienti
-  // (docs/CHANGELOG.md §387), così il nome scelto dal professionista è quello
+  // (docs/CHANGELOG.md §392), così il nome scelto dal professionista è quello
   // che i clienti cercano e i prezzi della stessa prestazione si sommano.
   idraulico: [
     "Riparazione perdita d'acqua",

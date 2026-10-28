@@ -117,6 +117,21 @@ import type {
   StandardServicesByCategory,
   MergeServiceNameInput,
   ProblemTakeoverAdmin,
+  ClientInvoiceRequestInput,
+  ClientInvoiceRequestView,
+  AccountantSettingsInput,
+  CourtesyCopyView,
+  JobDocumentsView,
+  CourtesyNumberInput,
+  DocumentsOverview,
+  MonthlyStatement,
+  PlatformInvoiceAdminRow,
+  PlatformInvoiceSettingsInput,
+  PlatformInvoiceSettingsView,
+  PlatformInvoiceView,
+  FeeReconciliation,
+  SdiSandboxTestResult,
+  AdminCourtesyDocumentRow,
 } from "@professionisti/shared";
 
 export type BookingStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELED" | "NO_SHOW";
@@ -280,6 +295,10 @@ export type ClientGuidedRequest = {
     reviews: ProfessionalReviewSummary | null;
     /** Privato, partita IVA o azienda, badge accanto al nome (docs/CHANGELOG.md §338); null se non ancora indicato. */
     professionalKind: ProfessionalKind | null;
+    /** Applica l'IVA: "IVA inclusa" accanto al totale, altrimenti "Prezzo finale" (docs/CHANGELOG.md §378). */
+    chargesVat?: boolean | null;
+    /** Fattura chiesta a questo professionista (docs/CHANGELOG.md §378). */
+    invoiceRequest?: ClientInvoiceRequestView | null;
     items: { id: string; name: string; priceMinEurCents: number | null; priceMaxEurCents: number | null }[];
     /** Data+ora di invio del preventivo (richiesta esplicita dell'utente), visibile sia al cliente che al professionista. */
     sentAt: string;
@@ -477,7 +496,7 @@ export type AdminOverview = {
   verificationRequests: number;
   /** Zone con le richieste generali chiuse (docs/CHANGELOG.md §213). */
   closedGeneralRequestZones: number;
-  /** "Ce ne occupiamo noi" da seguire (docs/CHANGELOG.md §387). */
+  /** "Ce ne occupiamo noi" da seguire (docs/CHANGELOG.md §392). */
   openProblemTakeovers: number;
 };
 
@@ -591,6 +610,8 @@ export type AdminCompletedJob = {
   clientPhotoUrls: string[];
   /** Come è stato pagato il lavoro, in una riga (docs/CHANGELOG.md §239). */
   paymentLabel: string;
+  /** Ricevuta o copia di cortesia preparata dal professionista, es. "Ricevuta n. 4/2026" (§380). */
+  courtesyDocumentLabel: string | null;
 };
 
 /** Chat tra cliente e professionista vista dall'admin (docs/CHANGELOG.md §166). */
@@ -637,6 +658,7 @@ export type AdminJobIssue = {
   clientCompletionNote: string | null;
   professionalCompletionPhotoUrls: string[];
   clientCompletionPhotoUrls: string[];
+  courtesyDocumentLabel: string | null;
 };
 
 /** Richiesta eliminata da un cliente, nell'area admin (docs/CHANGELOG.md §343). */
@@ -810,6 +832,12 @@ export type ProfessionalFiscalProfile = {
   fiscalDeclarationAcceptedAt: string | null;
   /** Dati minimi per essere pubblici compilati (docs/CHANGELOG.md §241). */
   fiscalDataCompleteAt: string | null;
+  /** Applica l'IVA nelle sue fatture (chi ha la P.IVA come persona, docs/CHANGELOG.md §378). */
+  chargesVat: boolean | null;
+  sdiRecipientCode: string | null;
+  pecEmail: string | null;
+  accountantEmail: string | null;
+  accountantStatementsAt: string | null;
   stripeConnectAccountId: string | null;
   stripeChargesEnabled: boolean;
   stripePayoutsEnabled: boolean;
@@ -1007,6 +1035,16 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     }
 
     return body as T;
+  }
+
+  /** Un file fatto dal server (i PDF dei documenti, docs/CHANGELOG.md §379), da salvare col browser. */
+  async function downloadFile(path: string, token: string): Promise<Blob> {
+    const response = await fetch(`${baseUrl}${path}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+    if (!response.ok) {
+      const body = await response.json().catch(() => null);
+      throw new ApiError(extractErrorMessage(body, "Non riusciamo a preparare il PDF: riprova tra poco."), response.status, extractErrorCode(body));
+    }
+    return response.blob();
   }
 
   async function uploadFile<T>(path: string, token: string, file: Blob, fieldName: string): Promise<T> {
@@ -1209,7 +1247,7 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
         remote?: boolean;
         excludeDemo?: boolean;
         track?: boolean;
-        /** Dalla descrizione del problema: niente boost (docs/CHANGELOG.md §387). */
+        /** Dalla descrizione del problema: niente boost (docs/CHANGELOG.md §392). */
         merit?: boolean;
         /** Lavoro fuori dalle categorie: chi lo dichiara. */
         offers?: string;
@@ -1512,12 +1550,116 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
      * della richiesta (richiesta esplicita dell'utente). Con il metodo di
      * pagamento scelto dal cliente (§168).
      */
-    acceptQuote: (token: string, quoteId: string, paymentMethod: JobPaymentChoice) =>
+    acceptQuote: (token: string, quoteId: string, paymentMethod: JobPaymentChoice, invoiceRequest?: ClientInvoiceRequestInput) =>
       request<{ bookingId: string | null; paymentMethod: JobPaymentChoice; checkoutUrl: string | null }>(`/bookings/from-quote/${quoteId}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ paymentMethod }),
+        body: JSON.stringify({ paymentMethod, invoiceRequest }),
       }),
+
+    /** Fattura chiesta al professionista (docs/CHANGELOG.md §378): ultimi dati usati, per precompilare. */
+    lastClientInvoiceRequest: (token: string) =>
+      request<{ invoiceRequest: ClientInvoiceRequestView | null }>("/client-invoice-requests/last", {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    /** Chiede la fattura per un lavoro già accettato, o cambia i dati: il professionista viene avvisato. */
+    saveClientInvoiceRequest: (token: string, quoteId: string, input: ClientInvoiceRequestInput) =>
+      request<ClientInvoiceRequestView>(`/client-invoice-requests/${quoteId}`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    removeClientInvoiceRequest: (token: string, quoteId: string) =>
+      request<{ ok: true }>(`/client-invoice-requests/${quoteId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
+    // --- Fatture e documenti del professionista (docs/CHANGELOG.md §378) ---
+    documentsOverview: (token: string) =>
+      request<DocumentsOverview>("/documents", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    documentsInvoice: (token: string, id: string) =>
+      request<PlatformInvoiceView>(`/documents/invoices/${encodeURIComponent(id)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    /** La fattura elettronica (XML) come testo, da salvare. */
+    documentsInvoiceXml: (token: string, id: string) =>
+      request<{ fileName: string; xml: string }>(`/documents/invoices/${encodeURIComponent(id)}/xml`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    documentsInvoicePdf: (token: string, id: string) => downloadFile(`/documents/invoices/${encodeURIComponent(id)}/pdf`, token),
+
+    documentsStatement: (token: string, month: string) =>
+      request<MonthlyStatement>(`/documents/statements/${encodeURIComponent(month)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    documentsStatementCsv: (token: string, month: string) =>
+      request<{ fileName: string; csv: string }>(`/documents/statements/${encodeURIComponent(month)}/csv`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    documentsStatementPdf: (token: string, month: string) => downloadFile(`/documents/statements/${encodeURIComponent(month)}/pdf`, token),
+
+    updateAccountant: (token: string, input: AccountantSettingsInput) =>
+      request<{ email: string | null; enabled: boolean }>("/documents/accountant", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
+    courtesyCopy: (token: string, bookingId: string) =>
+      request<CourtesyCopyView>(`/documents/courtesy/${encodeURIComponent(bookingId)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    /** Il numero della fattura del professionista sulla copia di cortesia (docs/CHANGELOG.md §379). */
+    setCourtesyNumber: (token: string, bookingId: string, input: CourtesyNumberInput) =>
+      request<CourtesyCopyView>(`/documents/courtesy/${encodeURIComponent(bookingId)}/number`, { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
+    courtesyCopyPdf: (token: string, bookingId: string) => downloadFile(`/documents/courtesy/${encodeURIComponent(bookingId)}/pdf`, token),
+    /** Riepilogo dell'anno dei documenti dati ai clienti, per il commercialista (docs/CHANGELOG.md §382). */
+    clientDocumentsYearPdf: (token: string, year: number) => downloadFile(`/documents/client-documents/${year}/pdf`, token),
+    clientDocumentsYearCsv: (token: string, year: number) =>
+      request<{ fileName: string; csv: string }>(`/documents/client-documents/${year}/csv`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    /** I documenti di un lavoro, dal menu della richiesta, per il professionista o il cliente (docs/CHANGELOG.md §386). */
+    jobDocuments: (token: string, bookingId: string) =>
+      request<JobDocumentsView>(`/documents/jobs/${encodeURIComponent(bookingId)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    /** La copia del documento del professionista, per il cliente (§386). */
+    jobDocumentCopyPdf: (token: string, bookingId: string) => downloadFile(`/documents/jobs/${encodeURIComponent(bookingId)}/copy/pdf`, token),
+
+    // --- Admin → Finanza: le nostre fatture ---
+    adminInvoiceSettings: (token: string) =>
+      request<PlatformInvoiceSettingsView>("/admin/invoices/settings", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminUpdateInvoiceSettings: (token: string, input: PlatformInvoiceSettingsInput) =>
+      request<PlatformInvoiceSettingsView>("/admin/invoices/settings", { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+
+    adminInvoices: (token: string, month?: string) =>
+      request<PlatformInvoiceAdminRow[]>(`/admin/invoices${month ? `?month=${encodeURIComponent(month)}` : ""}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminInvoice: (token: string, id: string) =>
+      request<PlatformInvoiceView>(`/admin/invoices/${encodeURIComponent(id)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminInvoiceXml: (token: string, id: string) =>
+      request<{ fileName: string; xml: string }>(`/admin/invoices/${encodeURIComponent(id)}/xml`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    adminRunInvoiceMonth: (token: string, month: string) =>
+      request<{ issued: number }>(`/admin/invoices/run/${encodeURIComponent(month)}`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+
+    adminFeeReconciliation: (token: string, month: string) =>
+      request<FeeReconciliation>(`/admin/invoices/reconciliation/${encodeURIComponent(month)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    /** Prova d'invio allo SdI nella prova di Openapi (docs/CHANGELOG.md §379). */
+    adminSdiSandboxTest: (token: string) =>
+      request<SdiSandboxTestResult>("/admin/invoices/sdi-test", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+
+    adminResendInvoice: (token: string, id: string) =>
+      request<PlatformInvoiceAdminRow>(`/admin/invoices/${encodeURIComponent(id)}/resend`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+
+    /** Admin → Documenti ai clienti (docs/CHANGELOG.md §380). */
+    adminCourtesyDocuments: (token: string, filter: { q?: string; kind?: "RECEIPT" | "INVOICE"; year?: number; bookingId?: string } = {}) => {
+      const params = new URLSearchParams();
+      if (filter.q?.trim()) params.set("q", filter.q.trim());
+      if (filter.kind) params.set("kind", filter.kind);
+      if (filter.year) params.set("year", String(filter.year));
+      if (filter.bookingId) params.set("bookingId", filter.bookingId);
+      const query = params.toString();
+      return request<AdminCourtesyDocumentRow[]>(`/admin/courtesy-documents${query ? `?${query}` : ""}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+    },
+
+    adminCourtesyDocumentPdf: (token: string, bookingId: string) => downloadFile(`/admin/courtesy-documents/${encodeURIComponent(bookingId)}/pdf`, token),
 
     /** Checkout Stripe dell'acconto o del saldo di un lavoro pagato online. */
     jobPaymentCheckout: (token: string, bookingId: string, part: "deposit" | "balance") =>
@@ -1870,7 +2012,7 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     },
     adminUrgencyMetrics: (token: string) =>
       request<UrgencyMetrics>("/admin/urgency-metrics", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
-    /** Dal problema scritto ai mestieri (docs/CHANGELOG.md §387). */
+    /** Dal problema scritto ai mestieri (docs/CHANGELOG.md §392). */
     matchProblem: (input: ProblemMatchRequest) =>
       request<ProblemMatchResult>("/problem-match", { method: "POST", body: JSON.stringify(input), cache: "no-store" }),
     createProblemTakeover: (token: string, input: ProblemTakeoverInput) =>
@@ -2278,6 +2420,8 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
 
     myDac7Summary: (token: string) =>
       request<{ years: Dac7YearSummary[]; maskedIban: string | null }>("/professionals/me/dac7", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    myDac7Pdf: (token: string, year: number) => downloadFile(`/professionals/me/dac7/${year}/pdf`, token),
 
     adminFiscalProfile: (token: string, professionalProfileId: string) =>
       request<AdminFiscalView>(`/admin/professionals/${professionalProfileId}/fiscal`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),

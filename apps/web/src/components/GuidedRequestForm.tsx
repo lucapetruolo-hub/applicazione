@@ -218,7 +218,7 @@ export function GuidedRequestForm({
   // immagine): trattata come assente, non come URL vuoto passato a
   // ProfessionalAvatar.
   const professionalName = searchParams.get("nomeProfessionista") || undefined;
-  // Da 2 a 5 professionisti scelti nei risultati (docs/CHANGELOG.md §390):
+  // Da 2 a 5 professionisti scelti nei risultati (docs/CHANGELOG.md §393):
   // una sola richiesta, che arriva solo a loro.
   const chosenParam = professionalProfileId ? "" : (searchParams.get("scelti") ?? "");
   const chosenIds = [...new Set(chosenParam.split(",").filter((id) => /^[0-9a-f-]{36}$/i.test(id)))].slice(0, MAX_CHOSEN_PROFESSIONALS);
@@ -358,7 +358,7 @@ export function GuidedRequestForm({
       .catch(() => undefined);
   }, [professionalProfileId]);
   const shownProfessionalName = professional?.businessName ?? professionalName;
-  // Nome, foto e se accettano richieste dei professionisti scelti (§390).
+  // Nome, foto e se accettano richieste dei professionisti scelti (§393).
   const [chosenPros, setChosenPros] = useState<ProfessionalDetail[]>([]);
   useEffect(() => {
     if (!chosenParam) return;
@@ -1765,7 +1765,7 @@ function RequestSummary({
 }: {
   isUrgent: boolean;
   professionalName: string | null;
-  /** Professionisti scelti nei risultati (§390): quanti e, appena arrivano, i nomi. */
+  /** Professionisti scelti nei risultati (§393): quanti e, appena arrivano, i nomi. */
   chosen: { count: number; names: string[] } | null;
   categoryLabels: string[];
   serviceMode: "HOME" | "ONLINE";
@@ -2043,7 +2043,7 @@ function SlotPills({
 
 /**
  * Riquadro "Stai inviando la richiesta a" con i professionisti scelti nei
- * risultati (docs/CHANGELOG.md §390), come quello del professionista
+ * risultati (docs/CHANGELOG.md §393), come quello del professionista
  * singolo. Chi nel frattempo non accetta richieste è detto per nome: il
  * server rifiuterebbe l'invio.
  */

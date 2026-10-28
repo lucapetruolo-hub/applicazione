@@ -5,7 +5,7 @@ import { opsAlert } from "../common/ops-alert";
 import { PRISMA } from "../prisma/prisma.module";
 
 /**
- * "Ce ne occupiamo noi" (docs/CHANGELOG.md §387, decisione di Luca): il
+ * "Ce ne occupiamo noi" (docs/CHANGELOG.md §392, decisione di Luca): il
  * cliente chiede alla piattaforma di trovare chi fa un lavoro che nessun
  * professionista del sito dichiara. Nessuna scadenza: compare in admin
  * "Richieste da seguire" finché non è segnata come fatta.

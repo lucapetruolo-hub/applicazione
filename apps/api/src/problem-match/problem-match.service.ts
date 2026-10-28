@@ -21,14 +21,14 @@ import { PRISMA } from "../prisma/prisma.module";
 
 /**
  * Dal problema scritto dal cliente ai mestieri adatti (docs/CHANGELOG.md
- * §387): prima il dizionario (`matchProblem` in packages/shared), poi, al
+ * §392): prima il dizionario (`matchProblem` in packages/shared), poi, al
  * minimo dubbio, Claude Haiku (decisione di Luca). Gli avvisi di sicurezza
  * restano sempre del dizionario. Senza `ANTHROPIC_API_KEY`, oltre il tetto
  * del giorno o se Anthropic non risponde entro 3 secondi resta il dizionario.
  *
  * Fino al lancio, senza `ANTHROPIC_API_KEY`, lo stesso modello si può usare
  * attraverso OpenRouter con `OPENROUTER_API_KEY` (decisione di Luca del
- * 28/10/2026, docs/CHANGELOG.md §391): solo server di Anthropic, nessun uso
+ * 28/10/2026, docs/CHANGELOG.md §394): solo server di Anthropic, nessun uso
  * dei dati da parte di OpenRouter. Con entrambe le chiavi vince Anthropic.
  */
 
@@ -74,7 +74,7 @@ const AI_ANSWER_JSON_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-/** Chi risponde nei casi dubbi: Anthropic se c'è la sua chiave, altrimenti OpenRouter (fino al lancio, §391). */
+/** Chi risponde nei casi dubbi: Anthropic se c'è la sua chiave, altrimenti OpenRouter (fino al lancio, §394). */
 export function aiProvider(): "anthropic" | "openrouter" | null {
   if (process.env.ANTHROPIC_API_KEY?.trim()) return "anthropic";
   if (process.env.OPENROUTER_API_KEY?.trim()) return "openrouter";
@@ -287,7 +287,7 @@ export class ProblemMatchService {
     }
   }
 
-  /** Stesso modello e stesse istruzioni attraverso OpenRouter (§391); qualunque errore lascia il dizionario. */
+  /** Stesso modello e stesse istruzioni attraverso OpenRouter (§394); qualunque errore lascia il dizionario. */
   async callOpenRouter(text: string): Promise<AiAnswer | null> {
     try {
       const response = await fetch(OPENROUTER_URL, {

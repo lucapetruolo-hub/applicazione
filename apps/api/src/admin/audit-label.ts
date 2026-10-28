@@ -248,11 +248,13 @@ export function auditLabel(row: { entityType: string; fieldName: string | null; 
       return "Pagamento contestato dal cliente";
     case "Conversation":
       return "Conversazione letta da un admin";
+    case "CourtesyDocument":
+      return "Documento dato al cliente aperto da un admin";
     case "GeneralRequestSettings":
       return "Soglie delle richieste generali cambiate";
     case "GeneralRequestBlock":
       return value === "OPEN" ? "Richieste generali riaperte" : "Richieste generali chiuse";
-    // Dal problema scritto ai mestieri (docs/CHANGELOG.md §387).
+    // Dal problema scritto ai mestieri (docs/CHANGELOG.md §392).
     case "ProblemWord":
       return v.word ? `Parola insegnata al dizionario: «${asText(v.word)}»` : "Parola tolta dal dizionario";
     case "ServiceNameAlias":

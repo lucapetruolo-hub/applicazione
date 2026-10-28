@@ -2,7 +2,7 @@ import { z } from "zod";
 import "./zod";
 import { PROBLEM_DESCRIPTION_MAX } from "./problemMatch";
 
-/** Corpi delle rotte "dal problema ai mestieri" (docs/CHANGELOG.md §387). */
+/** Corpi delle rotte "dal problema ai mestieri" (docs/CHANGELOG.md §392). */
 
 export const problemMatchRequestSchema = z.object({
   description: z.string().trim().min(3).max(PROBLEM_DESCRIPTION_MAX),

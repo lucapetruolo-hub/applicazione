@@ -231,7 +231,7 @@ body:has(.profile-cta-bar) .site-header-cta-link {
 }
 
 /* "Scegli" sulle schede dei risultati e barra dei professionisti scelti
-   (docs/CHANGELOG.md §390): pillola come gli altri pulsanti, piena quando
+   (docs/CHANGELOG.md §393): pillola come gli altri pulsanti, piena quando
    è scelto. La barra riprende quella del profilo (§385). */
 .choose-toggle {
   display: inline-flex;
@@ -5903,5 +5903,32 @@ a.admin-kpi:hover {
     font-size: 15px;
     font-weight: 700;
     color: #2b2420;
+  }
+}
+
+/* Fatture, estratti e copie di cortesia da stampare o salvare in PDF
+   (docs/CHANGELOG.md §378): si stampa solo il documento, senza intestazione
+   del sito, menu né pulsanti. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-document,
+  .print-document * {
+    visibility: visible;
+  }
+  .print-document {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  .print-document [data-print-hide] {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
   }
 }

@@ -22,7 +22,7 @@ export type RequestSentScreenProps = {
   isUrgent: boolean;
   matchedProfessionals: number;
   requestsCount: number;
-  /** Nomi dei professionisti scelti nei risultati (docs/CHANGELOG.md §390). */
+  /** Nomi dei professionisti scelti nei risultati (docs/CHANGELOG.md §393). */
   chosenNames?: string[] | null;
   /** Domanda "salvare i dati per la prossima volta?", gestita dal modulo. */
   saveDefaults: ReactNode;

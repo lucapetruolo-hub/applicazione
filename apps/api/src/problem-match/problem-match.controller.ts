@@ -56,7 +56,7 @@ export class ServiceNamesController {
   }
 }
 
-/** "Mestieri richiesti" e "Richieste da seguire" (docs/CHANGELOG.md §387). */
+/** "Mestieri richiesti" e "Richieste da seguire" (docs/CHANGELOG.md §392). */
 @UseGuards(JwtAuthGuard, AdminGuard)
 @Controller("admin/problem-match")
 export class AdminProblemMatchController {

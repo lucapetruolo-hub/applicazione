@@ -56,11 +56,11 @@ export function ResultsListWithMap({
   defaultMode?: "HOME" | "ONLINE";
   /** Preimpostato dall'URL (?urgente=1) quando si arriva dal toggle "Intervento urgente?" della homepage — evita di dover ripetere la scelta qui. */
   initialUrgentOnly?: boolean;
-  /** Riga "Perché" di ogni scheda, dalla descrizione del problema (docs/CHANGELOG.md §387). */
+  /** Riga "Perché" di ogni scheda, dalla descrizione del problema (docs/CHANGELOG.md §392). */
   reasonFor?: (pro: ProfessionalSearchResult) => string | null;
-  /** Ordine senza i pacchetti di visibilità (dalla descrizione del problema, decisione di Luca, §387). */
+  /** Ordine senza i pacchetti di visibilità (dalla descrizione del problema, decisione di Luca, §392). */
   merit?: boolean;
-  /** "Scegli" su ogni scheda: fino a 5 professionisti a cui mandare la richiesta (docs/CHANGELOG.md §390). */
+  /** "Scegli" su ogni scheda: fino a 5 professionisti a cui mandare la richiesta (docs/CHANGELOG.md §393). */
   selection?: {
     selectedIds: ReadonlySet<string>;
     /** Si può ancora sceglierne un altro (sotto il massimo). */
@@ -1082,7 +1082,7 @@ export function ResultsListWithMap({
 }
 
 /**
- * "Scegli" / "Scelto" sulla scheda (docs/CHANGELOG.md §390): non apre il
+ * "Scegli" / "Scelto" sulla scheda (docs/CHANGELOG.md §393): non apre il
  * profilo. Al massimo resta visibile ma spento, con il motivo detto a voce.
  */
 function ChooseToggle({

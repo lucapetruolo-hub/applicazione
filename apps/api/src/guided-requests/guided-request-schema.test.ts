@@ -40,7 +40,7 @@ describe("guidedRequestSchema: più categorie", () => {
   });
 });
 
-// Da 2 a 5 professionisti scelti dai risultati (docs/CHANGELOG.md §390).
+// Da 2 a 5 professionisti scelti dai risultati (docs/CHANGELOG.md §393).
 describe("guidedRequestSchema: professionisti scelti", () => {
   const base = { categorySlug: "idraulico", description: "Rifare il bagno di casa", serviceMode: "ONLINE" as const, city: "Latina" };
   const id = (n: number) => `0b6f7c1e-5d2a-4c3b-9a8e-1f2d3c4b5a6${n}`;

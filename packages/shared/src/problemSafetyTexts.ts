@@ -2,7 +2,7 @@ import type { ProblemSafety } from "./problemMatch";
 
 /**
  * Avvisi di sicurezza mostrati prima dei professionisti (docs/CHANGELOG.md
- * §387). Testi fissi dalle fonti ufficiali (Italgas, Vigili del Fuoco,
+ * §392). Testi fissi dalle fonti ufficiali (Italgas, Vigili del Fuoco,
  * ARERA, Protezione Civile: analisi/abbinamento-problema/testi-sicurezza.md),
  * decisi sempre dal dizionario, mai dall'intelligenza artificiale. Prima del
  * lancio li rilegge l'avvocato.

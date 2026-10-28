@@ -3,7 +3,7 @@ import type { GuidedRequestInput } from "@professionisti/shared";
 import { GuidedRequestsService } from "./guided-requests.service";
 
 /**
- * Da 2 a 5 professionisti scelti dai risultati (docs/CHANGELOG.md §390):
+ * Da 2 a 5 professionisti scelti dai risultati (docs/CHANGELOG.md §393):
  * una sola richiesta che arriva solo a loro, anche dove le richieste
  * generali sono chiuse.
  */

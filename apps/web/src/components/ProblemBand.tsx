@@ -17,10 +17,10 @@ import { InlineAuthGate } from "./InlineAuthGate";
 
 /**
  * Banda in cima ai risultati quando il cliente descrive il problema invece
- * di scegliere il mestiere (docs/CHANGELOG.md §387, decisioni di Luca):
+ * di scegliere il mestiere (docs/CHANGELOG.md §392, decisioni di Luca):
  * avviso di sicurezza (solo dal dizionario), "Ti serve un…", una domanda
  * con le risposte da cliccare, "Chiedi preventivo a tutti" oppure a chi si
- * sceglie con "Scegli" (fino a 5, §390); per un lavoro che nessuna categoria
+ * sceglie con "Scegli" (fino a 5, §393); per un lavoro che nessuna categoria
  * copre, chi lo dichiara oppure "Ce ne occupiamo noi".
  */
 
@@ -71,7 +71,7 @@ export function ProblemBand({
   count: number;
   /** Il cliente ha già risposto alla domanda o ha scelto il mestiere. */
   questionDone: boolean;
-  /** Professionisti scelti con "Scegli" (§390): il pulsante per inviare sta nella barra in basso. */
+  /** Professionisti scelti con "Scegli" (§393): il pulsante per inviare sta nella barra in basso. */
   chosenPros?: ChosenPro[];
   /** Assente quando nei risultati non si può scegliere (meno di 2 schede). */
   maxChosen?: number;

@@ -2,7 +2,7 @@ import { POPULAR_SERVICES } from "./categories";
 
 /**
  * Nomi delle prestazioni scritti in modo diverso nella stessa voce
- * (docs/CHANGELOG.md §387, richiesta di Luca): "riparazione perdite",
+ * (docs/CHANGELOG.md §392, richiesta di Luca): "riparazione perdite",
  * "Riparazione perdita d'acqua" e "ricerca perdita" contano come una sola
  * prestazione nella ricerca e nel "Quanto costa in media". Sul profilo resta
  * il nome scritto dal professionista.

@@ -228,10 +228,23 @@ CEO sulle segnalazioni, `docs/CHANGELOG.md` §144):
 12. Integrazione reale con il tracciato ufficiale DPI23 dell'Agenzia delle
     Entrate (Desktop Telematico) — l'export DAC7 attuale è una bozza
     JSON/XML interna, non il formato ufficiale validato.
-13. ~~Percentuale di commissione MANOVIA~~ — decisa dall'utente: 5% sui
-    pagamenti online, a carico del professionista (docs/CHANGELOG.md §168).
-14. Emissione fatture reali (`Invoice`, schema già pronto, nessuna UI di
-    generazione) — dipende dalle risposte del punto 8.
+13. ~~Percentuale di commissione MANOVIA~~ — dal 27/10/2026 trattenuta
+    unica del 7% + IVA tutto compreso sui pagamenti online (docs/CHANGELOG.md
+    §378, prima 5% più i costi di Stripe, §168). Se Luca sceglie un'altra
+    percentuale: `ONLINE_APP_FEE_PERCENT` e la regola in Admin → Finanza.
+14. **Fatture della piattaforma** (fatto il codice, docs/CHANGELOG.md §378):
+    prima del lancio (a) compilare i dati della società e "Fatture da" in
+    Admin → Finanza → "Le nostre fatture", PEC compresa (Openapi la usa per
+    la conservazione); (b) `OPENAPI_TOKEN_SDI` su Render con
+    `OPENAPI_SANDBOX=true`, poi in Finanza "Prova l'invio allo SdI" (§379:
+    registra la società, manda una fattura da 1 €, simula e legge l'esito)
+    e solo con tutti i passi verdi togliere la sandbox; (c) nella dashboard di Stripe spegnere le email di fatture e
+    ricevute ai clienti (le fatture valide sono le nostre) e lo storico
+    fatture nel portale clienti; (d) far vedere al commercialista una
+    fattura del mese (TD24, data ultimo giorno del mese), una nota di
+    credito e la ricevuta per prestazione occasionale della copia di
+    cortesia (anche in PDF); (e) controllare nei log di Resend che arrivino gli allegati
+    (file del calendario, PDF e foglio di calcolo al commercialista).
 
 **Claim non veritieri pubblicati dal vivo** (decisione esplicita
 dell'utente, §113: non riformulare il testo nel frattempo — costruire
@@ -499,7 +512,7 @@ Città, pagine vuote fuori da Google.
     segnala, decisione all'autore). Far vedere all'avvocato i punti 32-35 di
     `domande-commercialista-avvocato.md` e il punto 8 dei Termini.
 42. **Dal problema ai mestieri: da OpenRouter ad Anthropic** (docs/CHANGELOG.md
-    §391, decisione di Luca): fino al lancio l'IA dei casi dubbi passa da
+    §394, decisione di Luca): fino al lancio l'IA dei casi dubbi passa da
     OpenRouter (`OPENROUTER_API_KEY` su Render). Prima del lancio: creare
     l'account Anthropic intestato all'azienda, mettere `ANTHROPIC_API_KEY`
     su Render e togliere `OPENROUTER_API_KEY` (e `OPENROUTER_MODEL` se c'è).

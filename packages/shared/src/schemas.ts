@@ -286,7 +286,7 @@ export type PasswordResetCodeInput = z.infer<typeof passwordResetCodeSchema>;
 /** Categorie scelte insieme in una richiesta di preventivo generale (docs/CHANGELOG.md §259). */
 export const MAX_REQUEST_CATEGORIES = 3;
 const tooManyRequestCategoriesMessage = `Puoi scegliere al massimo ${MAX_REQUEST_CATEGORIES} categorie.`;
-/** Professionisti scelti dai risultati per una sola richiesta (docs/CHANGELOG.md §390, decisione di Luca: fino a 5). */
+/** Professionisti scelti dai risultati per una sola richiesta (docs/CHANGELOG.md §393, decisione di Luca: fino a 5). */
 export const MAX_CHOSEN_PROFESSIONALS = 5;
 
 /** Richiesta guidata cliente: foto + poche domande → categoria/prezzo stimato (CLAUDE.md §8). */
@@ -351,7 +351,7 @@ export const guidedRequestSchema = z
     /** Se presente, la richiesta va solo a questo professionista (partita dal suo profilo pubblico), non in fan-out. */
     professionalProfileId: z.guid().optional(),
     /**
-     * Da 2 a 5 professionisti scelti dai risultati (docs/CHANGELOG.md §390):
+     * Da 2 a 5 professionisti scelti dai risultati (docs/CHANGELOG.md §393):
      * una sola richiesta, che arriva solo a loro. Mai insieme a
      * `professionalProfileId` (un solo professionista è una richiesta diretta).
      */
@@ -1092,6 +1092,10 @@ export const professionalFiscalProfileSchema = z.object({
   registeredPostalCode: z.string().max(12).optional(),
   registeredProvince: z.string().max(50).optional(),
   registeredCountry: z.string().max(2).optional(),
+  /** Applica l'IVA nelle sue fatture: lo dice solo chi ha la P.IVA come persona (docs/CHANGELOG.md §378). */
+  chargesVat: z.boolean().optional(),
+  /** Codice destinatario o PEC per ricevere le nostre fatture, facoltativo: vuoto lo cancella. */
+  invoiceRecipient: z.string().trim().max(254).optional(),
   representative: z
     .object({
       firstName: z.string().min(1, "Nome obbligatorio."),

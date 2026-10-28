@@ -183,7 +183,7 @@ export type ProfessionalCardProps = {
    * la propagazione del clic, altrimenti si aprirebbe anche il profilo.
    */
   action?: ReactNode;
-  /** Riga "Perché" quando si arriva dalla descrizione del problema (docs/CHANGELOG.md §387). */
+  /** Riga "Perché" quando si arriva dalla descrizione del problema (docs/CHANGELOG.md §392). */
   reason?: string | null;
 };
 

@@ -6,6 +6,7 @@ import {
   FISCAL_DECLARATION_VERSION,
   fiscalDataMissing,
   fiscalFieldErrors,
+  parseInvoiceRecipient,
   type ProfessionalFiscalProfileInput,
   type SetFiscalVerificationInput,
 } from "@professionisti/shared";
@@ -47,6 +48,9 @@ const FISCAL_FIELDS = [
   "registeredProvince",
   "registeredCountry",
 ] as const;
+
+/** Campi per i documenti (§378): nel registro delle modifiche, ma senza toccare la verifica. */
+const DOCUMENT_FIELDS = ["chargesVat", "sdiRecipientCode", "pecEmail"] as const;
 
 /**
  * Dati fiscali del professionista (persona fisica/impresa) — CLAUDE.md §88.
@@ -141,7 +145,7 @@ export class ProfessionalFiscalService {
     // Un cambio ai dati fiscali riporta lo stato di verifica a UNVERIFIED —
     // un admin aveva verificato il dato PRECEDENTE, non quello nuovo (mai
     // trattare una verifica come valida a prescindere dal contenuto).
-    if (Object.keys(data).length > 0 && existing?.verificationStatus === "VERIFIED") {
+    if (FISCAL_FIELDS.some((field) => field in data) && existing?.verificationStatus === "VERIFIED") {
       data.verificationStatus = "REQUIRES_UPDATE";
       data.verifiedAt = null;
     }
@@ -156,6 +160,16 @@ export class ProfessionalFiscalService {
       data.fiscalDeclarationVersion = FISCAL_DECLARATION_VERSION;
     }
 
+    // IVA nelle sue fatture e codice destinatario o PEC (docs/CHANGELOG.md
+    // §378): servono ai documenti, non cambiano la persona né la verifica.
+    if (input.chargesVat !== undefined) data.chargesVat = input.chargesVat;
+    if (input.invoiceRecipient !== undefined) {
+      const recipient = parseInvoiceRecipient(input.invoiceRecipient);
+      if (!recipient.ok) throw new BadRequestException(recipient.error);
+      data.sdiRecipientCode = recipient.sdiRecipientCode;
+      data.pecEmail = recipient.pecEmail;
+    }
+
     let fiscalProfile = existing
       ? await this.prisma.professionalFiscalProfile.update({ where: { professionalProfileId }, data })
       : await this.prisma.professionalFiscalProfile.create({ data: { professionalProfileId, ...data } });
@@ -168,8 +182,8 @@ export class ProfessionalFiscalService {
       });
     }
 
-    for (const field of FISCAL_FIELDS) {
-      if (input[field] === undefined) continue;
+    for (const field of [...FISCAL_FIELDS, ...DOCUMENT_FIELDS]) {
+      if (!(field in data)) continue;
       const oldValue = existing ? (existing as unknown as Record<string, unknown>)[field] : undefined;
       const newValue = (fiscalProfile as unknown as Record<string, unknown>)[field];
       if (JSON.stringify(oldValue ?? null) === JSON.stringify(newValue ?? null)) continue;

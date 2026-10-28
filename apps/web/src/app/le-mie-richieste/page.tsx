@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { type JobPaymentChoice } from "@professionisti/shared";
+import { type ClientInvoiceRequestInput, type JobPaymentChoice } from "@professionisti/shared";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { ClientBooking, ClientGuidedRequest } from "@professionisti/api-client";
@@ -126,6 +126,8 @@ function LeMieRichiesteContent() {
   const [pendingChatOpen, setPendingChatOpen] = useState<{ requestId: string; professionalProfileId: string } | null>(null);
   // "Modifica richiesta" dall'email di conferma (`&modifica=1`, docs/CHANGELOG.md §355).
   const [pendingEditId, setPendingEditId] = useState<string | null>(null);
+  // "Apri i documenti" dall'avviso della copia pronta (`?documenti=1`, docs/CHANGELOG.md §387).
+  const [pendingDocumentsId, setPendingDocumentsId] = useState<string | null>(null);
 
   const listTopRef = useRef<HTMLDivElement>(null);
   // Scelta una scheda di stato con una sola richiesta dentro, quella si
@@ -264,6 +266,7 @@ function LeMieRichiesteContent() {
     const chatParam = searchParams.get("chat");
     if (chatParam) setPendingChatOpen({ requestId: targetId, professionalProfileId: chatParam });
     if (searchParams.get("modifica") === "1") setPendingEditId(targetId);
+    if (searchParams.get("documenti") === "1") setPendingDocumentsId(targetId);
     setPage(Math.floor(index / pageSize) + 1);
     setTimeout(() => {
       const elementId = `request-${targetId}`;
@@ -358,9 +361,9 @@ function LeMieRichiesteContent() {
   // Con l'acconto online si va al checkout Stripe: il lavoro si conferma
   // solo a pagamento riuscito (docs/CHANGELOG.md §240), fino ad allora il
   // preventivo resta da accettare.
-  async function handleAcceptQuote(quoteId: string, paymentMethod: JobPaymentChoice) {
+  async function handleAcceptQuote(quoteId: string, paymentMethod: JobPaymentChoice, invoiceRequest?: ClientInvoiceRequestInput) {
     if (!token) throw new Error("Devi accedere per accettare un preventivo.");
-    const { checkoutUrl, bookingId } = await apiClient.acceptQuote(token, quoteId, paymentMethod);
+    const { checkoutUrl, bookingId } = await apiClient.acceptQuote(token, quoteId, paymentMethod, invoiceRequest);
     if (checkoutUrl) {
       window.location.href = checkoutUrl;
       return;
@@ -749,6 +752,8 @@ function LeMieRichiesteContent() {
                   onChatAutoOpenHandled={() => setPendingChatOpen((prev) => (prev && prev.requestId === request.id ? null : prev))}
                   autoStartEditing={pendingEditId === request.id}
                   onAutoEditHandled={() => setPendingEditId((prev) => (prev === request.id ? null : prev))}
+                  autoOpenDocuments={pendingDocumentsId === request.id}
+                  onAutoDocumentsHandled={() => setPendingDocumentsId((prev) => (prev === request.id ? null : prev))}
                 />
               </div>
             ))

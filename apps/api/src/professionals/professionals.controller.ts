@@ -73,7 +73,7 @@ export class ProfessionalsController {
     @Query("remote") remote?: string,
     @Query("excludeDemo") excludeDemo?: string,
     @Query("track") track?: string,
-    // Dalla descrizione del problema (docs/CHANGELOG.md §387): niente boost,
+    // Dalla descrizione del problema (docs/CHANGELOG.md §392): niente boost,
     // e per un lavoro fuori dalle categorie chi lo dichiara.
     @Query("merito") merito?: string,
     @Query("offre") offre?: string,
