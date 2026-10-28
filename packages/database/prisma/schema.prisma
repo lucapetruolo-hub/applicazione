@@ -177,6 +177,24 @@ model User {
   adminResetCodeHash         String?
   adminResetCodeExpiresAt    DateTime?
   adminResetCodeSentAt       DateTime?
+  // Promemoria su WhatsApp (docs/changelog/2026-10-28-promemoria-whatsapp.md):
+  // il numero confermato con un codice mandato su WhatsApp. Vale solo finché
+  // `phone` è uguale a `phoneVerifiedNumber`: cambiando numero la conferma e
+  // il consenso decadono da soli. Del codice si salva solo l'impronta
+  // SHA-256, 10 minuti, 5 tentativi, un nuovo invio dopo 60 secondi.
+  phoneVerifiedNumber        String?
+  phoneVerifiedAt            DateTime?
+  phoneCodeHash              String?
+  phoneCodeNumber            String?
+  phoneCodeExpiresAt         DateTime?
+  phoneCodeAttempts          Int                     @default(0)
+  phoneCodeSentAt            DateTime?
+  // Consenso a ricevere i promemoria su WhatsApp (opt-in chiesto da Meta),
+  // dato con la spunta al momento della conferma del numero. Nullo = spento.
+  // `whatsappOptOutAt` ricorda quando e come è stato spento (sito o "Non
+  // ricevere più" dal messaggio).
+  whatsappOptInAt            DateTime?
+  whatsappOptOutAt           DateTime?
 
   professionalProfile ProfessionalProfile?
   guidedRequests      GuidedRequest[]
@@ -188,6 +206,7 @@ model User {
   profileInvites      ProfileInvite[]
   loginDevices        LoginDevice[]
   problemTakeovers    ProblemTakeover[]
+  outboundMessages    OutboundMessage[]
 
   @@map("users")
 }
@@ -3022,4 +3041,71 @@ model StandardServiceName {
 
   @@unique([categorySlug, name])
   @@map("standard_service_names")
+}
+
+// ---------------------------------------------------------------------------
+// Messaggi sul telefono (WhatsApp con Meta, docs/changelog/2026-10-28-promemoria-whatsapp.md)
+// ---------------------------------------------------------------------------
+
+enum OutboundMessageChannel {
+  WHATSAPP
+}
+
+enum OutboundMessageStatus {
+  // In attesa: nato nelle ore di silenzio (21-8) o non ancora spedito.
+  QUEUED
+  // Accettato da Meta, poi consegnato e letto (dal webhook di stato).
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  // Non spedito di proposito (numero non confermato, consenso spento,
+  // numero fisso, tetto del giorno, appuntamento già passato...).
+  SKIPPED
+}
+
+// Un messaggio sul telefono per riga, come un pagamento: a chi, cosa, quando,
+// esito del fornitore e costo stimato, per quadrare la fattura di Meta. Il
+// numero non si salva: si rilegge dall'account al momento dell'invio (così
+// un numero cambiato o un consenso spento valgono anche per i messaggi in
+// attesa). I parametri del testo servono solo finché il messaggio non parte
+// e si svuotano dopo l'invio.
+model OutboundMessage {
+  id                String                 @id @default(uuid())
+  channel           OutboundMessageChannel @default(WHATSAPP)
+  userId            String?
+  user              User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  // Tipo di messaggio (es. "BOOKING_REMINDER_CLIENT") e modello approvato da Meta.
+  type              String
+  template          String
+  // "utility" o "authentication": decide il prezzo (rate card di Meta).
+  category          String
+  params            Json?
+  // Un solo invio per evento (es. "booking-reminder:<id>:client").
+  idempotencyKey    String                 @unique
+  // Lavoro a cui si riferisce, per contare i lavori saltati con e senza promemoria.
+  bookingId         String?
+  status            OutboundMessageStatus  @default(QUEUED)
+  skipReason        String?
+  // Non prima di (ore di silenzio); e non dopo (un promemoria di un
+  // appuntamento già passato non parte più).
+  sendAfter         DateTime               @default(now())
+  expiresAt         DateTime?
+  providerMessageId String?                @unique
+  // Costo stimato in milionesimi di euro (0,0248 € = 24800), dalla rate card.
+  costMicroEur      Int                    @default(0)
+  errorCode         String?
+  errorMessage      String?
+  attempts          Int                    @default(0)
+  createdAt         DateTime               @default(now())
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  readAt            DateTime?
+  failedAt          DateTime?
+
+  @@index([status, sendAfter])
+  @@index([userId, createdAt])
+  @@index([bookingId])
+  @@index([createdAt])
+  @@map("outbound_messages")
 }

@@ -101,6 +101,8 @@ import type {
   GeneralRequestAvailability,
   GuidedRequestReach,
   UrgencyMetrics,
+  WhatsAppAdminSummary,
+  WhatsAppStatus,
   RequestTiming,
   GeneralRequestsAdminOverview,
   GeneralRequestThresholds,
@@ -2033,6 +2035,9 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       if (input.professionalProfileId) params.set("professionista", input.professionalProfileId);
       return request<GuidedRequestReach>(`/guided-requests/reach?${params.toString()}`, { cache: "no-store" });
     },
+    adminWhatsApp: (token: string, month?: string) =>
+      request<WhatsAppAdminSummary>(`/admin/whatsapp${month ? `?month=${encodeURIComponent(month)}` : ""}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
     adminUrgencyMetrics: (token: string) =>
       request<UrgencyMetrics>("/admin/urgency-metrics", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
     /** Dal problema scritto ai mestieri (docs/CHANGELOG.md §392). */
@@ -2392,6 +2397,22 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(prefs),
       }),
+
+    /** Promemoria su WhatsApp: numero confermato e interruttore (docs/changelog/2026-10-28-promemoria-whatsapp.md). */
+    whatsAppStatus: (token: string) => request<WhatsAppStatus>("/whatsapp/me", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    sendWhatsAppCode: (token: string) =>
+      request<WhatsAppStatus>("/whatsapp/me/code", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+
+    confirmWhatsAppCode: (token: string, code: string) =>
+      request<WhatsAppStatus>("/whatsapp/me/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ code }),
+      }),
+
+    setWhatsAppEnabled: (token: string, enabled: boolean) =>
+      request<WhatsAppStatus>(enabled ? "/whatsapp/me/enable" : "/whatsapp/me/disable", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
     notificationHistory: (token: string) =>
       request<{ id: string; type: string; payload: unknown; createdAt: string; readAt: string | null }[]>("/notifications/history", {

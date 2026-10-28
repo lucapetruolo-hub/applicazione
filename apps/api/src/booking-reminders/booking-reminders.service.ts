@@ -1,8 +1,9 @@
-import { Inject, Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger, Optional } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { EmailService } from "../email/email.service";
+import { WhatsAppService } from "../whatsapp/whatsapp.service";
 import { bookingReminderClientEmail, bookingReminderProfessionalEmail } from "../email/templates/job-emails";
 import { bookingCalendar, bookingPeople } from "../email/booking-calendar";
 import { notificationChannelEnabled, resolveNotificationPreferences, wallClockNow } from "@professionisti/shared";
@@ -39,6 +40,8 @@ export class BookingRemindersService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly emailService: EmailService,
+    // Facoltativo solo per i test che costruiscono il servizio a mano.
+    @Optional() private readonly whatsAppService?: WhatsAppService,
   ) {}
 
   @Cron(CronExpression.EVERY_30_MINUTES)
@@ -67,8 +70,8 @@ export class BookingRemindersService {
             province: true,
           },
         },
-        professionalProfile: { select: { businessName: true, city: true, user: { select: { email: true, name: true, surname: true, notificationPrefs: true } } } },
-        quote: { select: { guidedRequest: { select: { city: true, address: true, description: true, category: { select: { label: true } } } } } },
+        professionalProfile: { select: { businessName: true, city: true, userId: true, user: { select: { email: true, name: true, surname: true, notificationPrefs: true } } } },
+        quote: { select: { guidedRequestId: true, guidedRequest: { select: { city: true, address: true, description: true, category: { select: { label: true } } } } } },
       },
     });
     if (bookings.length === 0) return;
@@ -116,6 +119,25 @@ export class BookingRemindersService {
             calendarUrl: professionalCalendar.calendarUrl,
           }),
         });
+      }
+
+      // Promemoria su WhatsApp a chi l'ha acceso (anti no-show,
+      // docs/changelog/2026-10-28-promemoria-whatsapp.md): mai bloccante.
+      if (this.whatsAppService && !booking.client.deletedAt) {
+        try {
+          await this.whatsAppService.bookingReminder({
+            bookingId: booking.id,
+            scheduledAt: booking.scheduledAt,
+            clientId: booking.clientId,
+            professionalUserId: booking.professionalProfile.userId,
+            businessName: booking.professionalProfile.businessName,
+            category: booking.quote?.guidedRequest?.category?.label ?? null,
+            city: booking.quote?.guidedRequest?.city ?? booking.professionalProfile.city ?? null,
+            guidedRequestId: booking.quote?.guidedRequestId ?? null,
+          });
+        } catch (error) {
+          this.logger.error(`Promemoria WhatsApp non messo in coda: ${error instanceof Error ? error.message : String(error)}`);
+        }
       }
 
       // Marcato comunque (anche se l'email non è configurata o l'invio è

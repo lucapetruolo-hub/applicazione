@@ -14,16 +14,20 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { playNotificationSound } from "@/lib/notificationSound";
 import { NOTIFICATION_TOPIC_STYLE } from "@/lib/notificationTopicStyle";
+import { WhatsAppRemindersCard } from "@/components/WhatsAppRemindersCard";
 
 /**
  * Impostazioni delle notifiche (docs/CHANGELOG.md §152, richiesta esplicita
- * dell'utente): per ogni argomento si sceglie il canale (sito, email, SMS),
+ * dell'utente): per ogni argomento si sceglie il canale (sito, email),
  * più popup a comparsa e suono. Ogni scelta si salva subito. Dove un canale
  * non invia ancora niente per un argomento lo diciamo ("in arrivo"): la
  * scelta viene comunque ricordata per quando partirà. "Account e sicurezza"
- * non si spegne (DSA art. 17).
+ * non si spegne (DSA art. 17). WhatsApp ha una scheda sua con un solo
+ * interruttore (docs/changelog/2026-10-28-promemoria-whatsapp.md): la
+ * colonna "SMS" è stata tolta.
  */
-const CHANNEL_LABEL: Record<NotificationChannelKey, string> = { inApp: "Sito", email: "Email", sms: "SMS" };
+const CHANNEL_LABEL: Record<NotificationChannelKey, string> = { inApp: "Sito", email: "Email" };
+const CHANNELS = ["inApp", "email"] as const;
 
 export default function NotifichePage() {
   const { user, token, isLoading, notificationPrefs, setNotificationPrefs } = useAuth();
@@ -110,17 +114,14 @@ export default function NotifichePage() {
               />
             </section>
 
+            <WhatsAppRemindersCard token={token} role={role} />
+
             <section className="notif-card" aria-labelledby="notif-topics-title">
               <h2 id="notif-topics-title">Per argomento</h2>
-              {/* Una nota sola al posto del paragrafo e dei sette "In arrivo"
-                  ripetuti sotto ogni SMS (docs/CHANGELOG.md §349). */}
-              <p className="notif-note">
-                <strong>SMS</strong>: in arrivo, puoi già scegliere per cosa riceverli.
-              </p>
               <div className="notif-grid" role="table" aria-label="Notifiche per argomento e canale">
                 <div className="notif-grid-head" role="row">
                   <span role="columnheader">Argomento</span>
-                  {(["inApp", "email", "sms"] as const).map((channel) => (
+                  {CHANNELS.map((channel) => (
                     <span key={channel} role="columnheader">
                       {CHANNEL_LABEL[channel]}
                     </span>
@@ -141,8 +142,8 @@ export default function NotifichePage() {
                           <small>{copy.description}</small>
                         </span>
                       </div>
-                      {(["inApp", "email", "sms"] as const).map((channel) => {
-                        const locked = !!info.locked && channel !== "sms";
+                      {CHANNELS.map((channel) => {
+                        const locked = !!info.locked;
                         const upcoming = !info.activeChannels.includes(channel);
                         return (
                           <div key={channel} className="notif-cell" role="cell">
@@ -153,7 +154,7 @@ export default function NotifichePage() {
                               label={`${copy.label}: ${CHANNEL_LABEL[channel]}`}
                               onChange={() => toggleChannel(topic, channel)}
                             />
-                            {locked ? <small>Sempre attivo</small> : upcoming && channel !== "sms" ? <small>In arrivo</small> : null}
+                            {locked ? <small>Sempre attivo</small> : upcoming ? <small>In arrivo</small> : null}
                           </div>
                         );
                       })}

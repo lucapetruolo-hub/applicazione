@@ -5,14 +5,18 @@ import "./zod";
  * Preferenze di notifica per argomento e canale (docs/CHANGELOG.md §152,
  * richiesta esplicita dell'utente). Un argomento raggruppa più tipi di
  * notifica: scegliere per ognuno dei ~25 tipi sarebbe ingestibile. Per
- * ogni argomento tre canali: sito (campanella e popup), email, SMS.
+ * ogni argomento due canali: sito (campanella e popup) ed email. WhatsApp
+ * non è un canale per argomento: pochi promemoria scelti, con il numero
+ * confermato e un interruttore solo (`whatsapp.ts`,
+ * docs/changelog/2026-10-28-promemoria-whatsapp.md; prima qui c'era una
+ * colonna SMS che non mandava nulla).
  * "Account e sicurezza" è bloccato acceso: le decisioni di moderazione vanno
  * comunicate per legge (DSA art. 17), non si possono spegnere.
  */
 export const NOTIFICATION_TOPICS = ["richieste", "preventivi", "lavori", "messaggi", "promemoria", "account"] as const;
 export type NotificationTopic = (typeof NOTIFICATION_TOPICS)[number];
 
-export const NOTIFICATION_CHANNELS = ["inApp", "email", "sms"] as const;
+export const NOTIFICATION_CHANNELS = ["inApp", "email"] as const;
 export type NotificationChannelKey = (typeof NOTIFICATION_CHANNELS)[number];
 
 export type NotificationTopicInfo = {
@@ -214,7 +218,8 @@ export function notificationTopicOf(type: string): NotificationTopic | null {
   return null;
 }
 
-const channelPrefsSchema = z.object({ inApp: z.boolean(), email: z.boolean(), sms: z.boolean() });
+// Una vecchia chiave "sms" salvata nelle preferenze si ignora (zod la toglie).
+const channelPrefsSchema = z.object({ inApp: z.boolean(), email: z.boolean() });
 
 export const notificationPreferencesSchema = z.object({
   topics: z.object({
@@ -232,15 +237,15 @@ export const notificationPreferencesSchema = z.object({
 });
 export type NotificationPreferences = z.infer<typeof notificationPreferencesSchema>;
 
-/** Tutto acceso tranne gli SMS (servono il consenso esplicito e hanno un costo). */
+/** Tutto acceso. */
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   topics: {
-    richieste: { inApp: true, email: true, sms: false },
-    preventivi: { inApp: true, email: true, sms: false },
-    lavori: { inApp: true, email: true, sms: false },
-    messaggi: { inApp: true, email: true, sms: false },
-    promemoria: { inApp: true, email: true, sms: false },
-    account: { inApp: true, email: true, sms: false },
+    richieste: { inApp: true, email: true },
+    preventivi: { inApp: true, email: true },
+    lavori: { inApp: true, email: true },
+    messaggi: { inApp: true, email: true },
+    promemoria: { inApp: true, email: true },
+    account: { inApp: true, email: true },
   },
   popups: true,
   sound: true,
@@ -278,7 +283,7 @@ export function resolveNotificationPreferences(stored: unknown): NotificationPre
 export function notificationChannelEnabled(prefs: NotificationPreferences, type: string, channel: NotificationChannelKey): boolean {
   const topic = notificationTopicOf(type);
   if (!topic) return true;
-  if (NOTIFICATION_TOPIC_INFO[topic].locked && channel !== "sms") return true;
+  if (NOTIFICATION_TOPIC_INFO[topic].locked) return true;
   return prefs.topics[topic][channel];
 }
 

@@ -1,8 +1,9 @@
-import { ForbiddenException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { ForbiddenException, Inject, Injectable, Logger, NotFoundException, Optional } from "@nestjs/common";
 import type { Prisma, PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { RealtimeService } from "../realtime/realtime.service";
 import { EmailService } from "../email/email.service";
+import { WhatsAppService } from "../whatsapp/whatsapp.service";
 import {
   CONTENT_REPORT_TARGET_LABEL,
   notificationChannelEnabled,
@@ -60,6 +61,8 @@ export class NotificationsService {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly realtimeService: RealtimeService,
     private readonly emailService: EmailService,
+    // Facoltativo solo per i test che costruiscono il servizio a mano.
+    @Optional() private readonly whatsAppService?: WhatsAppService,
   ) {}
 
   /**
@@ -69,7 +72,9 @@ export class NotificationsService {
    * QUOTE_DATE_CONFIRMED, QUOTE_DATE_REJECTED). Canale sempre PUSH: la riga
    * in tabella alimenta il conteggio non letti; i tipi elencati in
    * `email/templates/notification-emails.ts` partono anche via email
-   * (docs/CHANGELOG.md §185). Expo Push/Twilio restano rimandati.
+   * (docs/CHANGELOG.md §185). Pochissimi tipi (appuntamento annullato,
+   * "sto arrivando") partono anche su WhatsApp a chi l'ha acceso
+   * (docs/changelog/2026-10-28-promemoria-whatsapp.md). Expo Push resta rimandato.
    *
    * Pubblica anche un push SSE (CTO — real-time): la riga DB resta l'unica
    * fonte di verità (il push è un acceleratore, mai l'unico modo di sapere
@@ -96,6 +101,9 @@ export class NotificationsService {
     if (!muted && NOTIFICATION_EMAIL_TYPES.has(type) && notificationChannelEnabled(prefs, type, "email")) {
       this.emailNotification(userId, type, payload);
     }
+    // WhatsApp ha un interruttore suo, non per argomento: il servizio sceglie
+    // da sé i pochi tipi che partono e non attende l'invio.
+    if (!muted) this.whatsAppService?.onNotification(userId, type, payload);
     if (muted || !notificationChannelEnabled(prefs, type, "inApp")) {
       await this.prisma.notification.create({ data: { userId, channel: "PUSH", type, payload, readAt: new Date() } });
       // Messaggio in chat con il sito spento ma l'email accesa: non c'è

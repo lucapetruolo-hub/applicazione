@@ -3507,7 +3507,7 @@ a.admin-kpi:hover {
 .notif-grid-head,
 .notif-grid-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 72px 72px 72px;
+  grid-template-columns: minmax(0, 1fr) 72px 72px;
   gap: 8px;
   align-items: center;
 }
@@ -3557,6 +3557,36 @@ a.admin-kpi:hover {
 .notif-cell-label {
   display: none;
 }
+/* Promemoria su WhatsApp (docs/changelog/2026-10-28-promemoria-whatsapp.md). */
+.notif-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.notif-inline-link {
+  color: #0e7a4c;
+  font-weight: 700;
+  text-decoration: none;
+}
+.notif-inline-link:hover {
+  text-decoration: underline;
+}
+.notif-small {
+  font-size: 13px;
+  color: #6e6459;
+}
+.notif-error {
+  margin: 0;
+  font-size: 16px;
+  color: #c8362b;
+}
+.whatsapp-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: #6e6459;
+  line-height: 1.6;
+}
 @media (max-width: 599px) {
   .notif-card {
     padding: 14px;
@@ -3565,7 +3595,7 @@ a.admin-kpi:hover {
     display: none;
   }
   .notif-grid-row {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .notif-topic {
     grid-column: 1 / -1;
