@@ -34,3 +34,22 @@ test("toccando un giorno del meteo l'agenda si apre su quel giorno", async ({ pa
   // Il 4 novembre c'è il lavoro su più giorni, 08:00–17:00.
   await expect(page.getByRole("button", { name: /08:00–17:00/ }).first()).toBeVisible();
 });
+
+test("le richieste da rispondere stanno in cima, sopra meteo e lavori", async ({ page }) => {
+  // §400: "Da rispondere ora" prima di tutto; senza richieste resta sotto i lavori.
+  await page.clock.setFixedTime(new Date("2026-10-26T07:00:00Z"));
+  const lead = {
+    id: "lead-in-cima", status: "PENDING", declineNote: null, professionalNote: null, priceEurCents: 0,
+    createdAt: "2026-10-26T06:00:00Z", updatedAt: "2026-10-26T06:00:00Z", expiresAt: null, forwardAt: "2026-10-26T13:00:00Z",
+    respondUntil: "2026-10-29T18:00:00Z", competitors: { responded: 0, total: 3 }, quote: null,
+    guidedRequest: { id: "gr-in-cima", categoryLabel: "Idraulico", city: "Latina", description: "Perdita sotto il lavello", isUrgent: false, withdrawnByClient: false, clientName: "Giulia" },
+  };
+  await page.route(`${API_URL}/professionals/me/leads`, (route) => route.fulfill({ json: [lead] }));
+  await page.goto("/dashboard");
+  const toAnswer = page.getByText("Da rispondere ora", { exact: true });
+  const days = page.getByText("Oggi e domani", { exact: true });
+  await expect(page.getByRole("link", { name: /Perdita sotto il lavello/ })).toBeVisible();
+  await expect(days).toBeVisible();
+  const [top, below] = [await toAnswer.boundingBox(), await days.boundingBox()];
+  expect(top!.y).toBeLessThan(below!.y);
+});

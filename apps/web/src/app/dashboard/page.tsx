@@ -14,7 +14,7 @@ import { formatCompetitors, leadDeadlines } from "@/lib/leadDeadline";
 import { accountMenuUnreadCounts } from "@/lib/notificationSections";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { CardButton } from "@/components/CardButton";
-import { SkeletonBlock, SkeletonSummaryRow } from "@/components/Skeleton";
+import { SkeletonSummaryRow } from "@/components/Skeleton";
 import { SubscriptionPauseBanner } from "@/components/SubscriptionPauseBanner";
 import { IssueSanctionBanner } from "@/components/IssueSanctionBanner";
 import { BoostSection } from "@/components/BoostSection";
@@ -24,9 +24,9 @@ import { WeatherStrip, jobsHeadline, type DayJobRow } from "@/components/DaysAhe
 /**
  * Home "Oggi" del professionista (docs/CHANGELOG.md §147, decisione esplicita
  * dell'utente): una lista di cose da fare, non un secondo elenco di
- * richieste (quello vive in "Richieste e lavori"). In cima le richieste da
- * rispondere con la scadenza — in un mercato locale vince chi risponde per
- * primo (CLAUDE.md §8) — poi gli appuntamenti di oggi e domani, poi i propri
+ * richieste (quello vive in "Richieste e lavori"). In cima, sopra tutto, le
+ * richieste da rispondere con la scadenza (§400) — in un mercato locale vince
+ * chi risponde per primo (CLAUDE.md §8) — poi gli appuntamenti di oggi e domani, poi i propri
  * numeri rispetto alla zona, in fondo i pacchetti di visibilità. Modelli: Thumbtack Pro/Angi Pro per i lead,
  * Fresha/Treatwell per la giornata.
  */
@@ -215,6 +215,7 @@ export default function DashboardTodayPage() {
   // Un errore si mostra subito.
   const ready = (!loading || Boolean(error)) && journey.settled;
   const greetingName = user.businessName ?? user.name ?? "";
+  const showToAnswerOnTop = !loading && !error && toAnswer.length > 0;
 
   return (
     <YStack width="100%" alignItems="center" paddingVertical="$6" paddingHorizontal="$4">
@@ -232,6 +233,16 @@ export default function DashboardTodayPage() {
 
         {subscription ? <SubscriptionPauseBanner sub={subscription} profileStepsElsewhere /> : null}
         {restrictions ? <IssueSanctionBanner {...restrictions} /> : null}
+        {/* Preventivi da mandare in cima a tutto, sopra meteo e lavori, a tutta
+            larghezza anche sul computer (docs/CHANGELOG.md §400, Luca: "è la cosa
+            più importante"). Senza richieste la pagina resta com'era. */}
+        {showToAnswerOnTop ? (
+          <TodaySection title="Da rispondere ora" count={toAnswer.length} action={{ href: "/dashboard/richieste", label: "Tutte le richieste" }}>
+            {toAnswer.slice(0, 5).map((lead) => (
+              <LeadToAnswerRow key={lead.id} lead={lead} />
+            ))}
+          </TodaySection>
+        ) : null}
         {/* Due colonne quando c'è spazio (docs/CHANGELOG.md §334): a sinistra il
             lavoro (appuntamenti, richieste, andamento), a destra percorso del
             profilo, avvisi e visibilità. Stretto, `today-col` non conta e `order` rimette tutto
@@ -242,12 +253,15 @@ export default function DashboardTodayPage() {
               <div className="today-slot" style={{ order: 1 }}>
                 {/* Il prossimo lavoro prima di tutto il resto: mezz'ora prima deve vedersi
                     senza scorrere (T2 del test dei compiti, docs/CHANGELOG.md §311). */}
-                {error ? null : (
+                {/* Finché richieste e lavori non arrivano solo uno scheletro senza
+                    titolo: con le richieste in cima, "Oggi e domani" già disegnato
+                    sarebbe poi scivolato giù (CLS, §334, §400). */}
+                {error ? null : loading ? (
+                  <Skeletons />
+                ) : (
                 <TodaySection title="Oggi e domani" action={{ href: "/dashboard/agenda", label: "Apri l'agenda" }}>
                   {daysAhead === "failed" ? null : <WeatherStrip days={daysAhead} />}
-                  {loading ? (
-                    <LineSkeleton />
-                  ) : upcoming.length === 0 ? (
+                  {upcoming.length === 0 ? (
                     <EmptyLine text="Nessun appuntamento oggi e domani." />
                   ) : (
                     upcoming.map(({ key, href, at, title, sub, navigateTo, onTheWay, phone }, index) => (
@@ -309,8 +323,8 @@ export default function DashboardTodayPage() {
               </div>
               {!ready ? null : (
                 <>
-                  {/* Con richieste in attesa vengono subito dopo i lavori (§352):
-                      su telefono erano due schermate più giù, sotto il percorso. */}
+                  {/* Con richieste in attesa le date proposte vengono subito dopo i
+                      lavori (§352); le richieste stesse sono salite in cima (§400). */}
                   <div className="today-slot" style={{ order: toAnswer.length > 0 ? 2 : 4 }}>
                     {/* Richieste e lavori non caricati: "Riprova" invece di scheletri
                         infiniti e di un messaggio tecnico (docs/CHANGELOG.md §286). */}
@@ -337,13 +351,11 @@ export default function DashboardTodayPage() {
                           </div>
                         ) : null}
 
-                        <TodaySection title="Da rispondere ora" count={toAnswer.length} action={{ href: "/dashboard/richieste", label: "Tutte le richieste" }}>
-                          {toAnswer.length === 0 ? (
+                        {toAnswer.length === 0 ? (
+                          <TodaySection title="Da rispondere ora" action={{ href: "/dashboard/richieste", label: "Tutte le richieste" }}>
                             <EmptyLine text="Nessuna richiesta in attesa: ti avvisiamo appena ne arriva una nuova." />
-                          ) : (
-                            toAnswer.slice(0, 5).map((lead) => <LeadToAnswerRow key={lead.id} lead={lead} />)
-                          )}
-                        </TodaySection>
+                          </TodaySection>
+                        ) : null}
 
                         {datesToConfirm.length > 0 ? (
                           <TodaySection title="Date proposte dai clienti">
@@ -578,17 +590,6 @@ function Skeletons() {
       <SkeletonSummaryRow />
       <SkeletonSummaryRow />
     </YStack>
-  );
-}
-
-/** Alta quanto `EmptyLine`, il caso più comune: niente salto quando arriva (§334). */
-function LineSkeleton() {
-  return (
-    <div className="today-empty" aria-hidden>
-      <div style={{ height: 24, display: "flex", alignItems: "center" }}>
-        <SkeletonBlock width="55%" />
-      </div>
-    </div>
   );
 }
 
