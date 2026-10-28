@@ -15,8 +15,13 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   fullyParallel: false,
   workers: 1,
-  retries: 0,
-  reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
+  // Nella CI una prova che fallisce si ripete una volta: una lentezza isolata
+  // della macchina non deve far diventare rosso il ramo (un solo fallimento
+  // così in 3 giorni, docs/changelog/2026-10-28-prove-ripetute.md). Le prove
+  // ripetute restano in vista (reporters/ripetute.ts) e quelle sulle
+  // richieste nello stesso istante non si ripetono mai (retries: 0 nel file).
+  retries: process.env.CI ? 1 : 0,
+  reporter: process.env.CI ? [["list"], ["html", { open: "never" }], ["./reporters/ripetute.ts"]] : "list",
   globalSetup: "./fixtures/global-setup.ts",
   use: {
     baseURL: WEB_URL,

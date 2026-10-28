@@ -11,6 +11,10 @@ import { acceptQuote, createClient, createProfessional, createRequestWithQuotes,
  */
 const prisma = new PrismaClient();
 
+// Mai ripetute: provano richieste nello stesso istante, e un errore che
+// capita solo a volte qui è proprio il bug da trovare.
+test.describe.configure({ retries: 0 });
+
 test.beforeEach(({}, testInfo) => {
   test.skip(testInfo.project.name !== "telefono-italia", "Basta un progetto: il percorso non dipende dal fuso.");
 });
