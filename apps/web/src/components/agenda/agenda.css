@@ -1289,6 +1289,9 @@
 .ag-day-only-phone {
   margin-bottom: 12px;
 }
+.ag-day-only-phone:empty {
+  display: none;
+}
 @media (min-width: 1081px) {
   .ag-day-only-phone {
     display: none;

@@ -11,6 +11,7 @@ import {
   whatsappNumber,
 } from "./whatsapp-rules";
 import {
+  professionalDayParams,
   renderWhatsAppText,
   whatsappDayTime,
   whatsappName,
@@ -112,6 +113,23 @@ describe("testi dei messaggi", () => {
     const at = new Date("2026-11-05T10:30:00Z");
     expect(whatsappTime(at)).toBe("10:30");
     expect(whatsappDayTime(at)).toBe("giovedì 5 novembre alle 10:30");
+  });
+
+  it("riepilogo del professionista: quanti lavori e il primo", () => {
+    const at = new Date("2026-11-05T08:30:00Z");
+    expect(
+      renderWhatsAppText(
+        "BOOKING_REMINDER_PROFESSIONAL",
+        professionalDayParams(at, 3, "Latina"),
+      ),
+    ).toContain(
+      "Promemoria: giovedì 5 novembre hai 3 lavori, il primo alle 08:30 a Latina.",
+    );
+    expect(professionalDayParams(at, 1, null)).toEqual([
+      "giovedì 5 novembre",
+      "un lavoro",
+      "alle 08:30",
+    ]);
   });
 
   it("promemoria con il giorno scritto per intero, mai 'domani'", () => {

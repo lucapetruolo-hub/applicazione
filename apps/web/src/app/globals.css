@@ -3593,6 +3593,24 @@ a.admin-kpi:hover {
 .whatsapp-reminder-link:hover span {
   text-decoration: underline;
 }
+.notif-digest-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  font-size: 15px;
+  color: #2b2420;
+}
+.notif-digest-select {
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid #9c8e7f;
+  background: #ffffff;
+  font: inherit;
+  font-weight: 700;
+  color: #2b2420;
+}
 .whatsapp-list {
   margin: 0;
   padding-left: 18px;

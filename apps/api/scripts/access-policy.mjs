@@ -110,6 +110,7 @@ const selfAny = [
   "GET /whatsapp/me",
   "POST /whatsapp/me/code",
   "POST /whatsapp/me/confirm",
+  "POST /whatsapp/me/digest-hour",
   "POST /whatsapp/me/disable",
   "POST /whatsapp/me/enable",
   "GET /notifications/unread",

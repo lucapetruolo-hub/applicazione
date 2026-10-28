@@ -56,8 +56,8 @@ export const WHATSAPP_TEMPLATES: Record<
   BOOKING_REMINDER_PROFESSIONAL: {
     name: "promemoria_lavoro_professionista",
     category: "utility",
-    body: "Promemoria: {{1}} hai un lavoro ({{2}}) a {{3}}. Indirizzo e contatti del cliente sono nella tua agenda.",
-    example: ["giovedì 5 novembre alle 10:30", "Idraulico", "Latina"],
+    body: "Promemoria: {{1}} hai {{2}}, {{3}}. Indirizzi e contatti dei clienti sono nella tua agenda.",
+    example: ["giovedì 5 novembre", "3 lavori", "il primo alle 08:30 a Latina"],
     urlButton: { text: "Apri l'agenda", exampleSuffix: "dashboard/agenda" },
     stopButton: true,
     footer: WHATSAPP_FOOTER,
@@ -132,6 +132,29 @@ const DAY_TIME = new Intl.DateTimeFormat("it-IT", {
 /** "10:30" da un orario di parete (CLAUDE.md, docs/CHANGELOG.md §287). */
 export function whatsappTime(scheduledAt: Date): string {
   return TIME.format(scheduledAt);
+}
+
+/** "giovedì 5 novembre". */
+export function whatsappDay(scheduledAt: Date): string {
+  return DAY_TIME.format(scheduledAt);
+}
+
+/**
+ * Variabili del riepilogo della sera prima al professionista:
+ * "giovedì 5 novembre", "3 lavori", "il primo alle 08:30 a Latina" (con un
+ * lavoro solo: "un lavoro", "alle 08:30 a Latina").
+ */
+export function professionalDayParams(
+  first: Date,
+  count: number,
+  city: string | null,
+): string[] {
+  const where = city?.trim() ? ` a ${whatsappName(city)}` : "";
+  return [
+    whatsappDay(first),
+    count === 1 ? "un lavoro" : `${count} lavori`,
+    `${count === 1 ? "" : "il primo "}alle ${whatsappTime(first)}${where}`,
+  ];
 }
 
 /** "giovedì 5 novembre alle 10:30". */

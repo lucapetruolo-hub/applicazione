@@ -90,6 +90,23 @@ lavori esterni dell'agenda non ricevono nulla (domanda 70 per l'avvocato).
     gli account e lo vede l'altra parte dopo un appuntamento confermato,
     detto in piccolo sotto il campo). Niente secondo numero solo per
     WhatsApp: chi ne ha due sceglie quello su cui vuole tutto.
+- **Quarto giro** (Luca: "il giorno prima gli arrivano tutti gli
+  appuntamenti del giorno successivo?", poi "si può scegliere l'ora?" e
+  "aggiungiamo anche 21"):
+  - al professionista non arriva più un messaggio per appuntamento 24 ore
+    prima, ma **un solo riepilogo la sera prima**: "giovedì 5 novembre hai
+    3 lavori, il primo alle 08:30 a Latina", con il pulsante dell'agenda.
+    Un messaggio invece di tanti; al cliente resta il suo promemoria; le
+    email non cambiano (una per appuntamento);
+  - l'ora la sceglie il professionista in Notifiche, sotto l'interruttore:
+    18, 19, 20 o 21 (preimpostate le 18; `User.whatsappDigestHour`,
+    `POST /whatsapp/me/digest-hour`). Le 21 sono già ore di silenzio, ma il
+    riepilogo parte lo stesso perché l'ora l'ha scelta lui. Un giro ogni
+    mezz'ora dalle 18 alle 21:30, se il server dormiva; una sola volta per
+    persona e giorno;
+  - nell'agenda del professionista l'invito "Ricevi la sera prima il
+    riepilogo dei lavori su WhatsApp" (colonna di sinistra su computer,
+    sotto i giorni sul telefono), solo a canale acceso e promemoria spenti.
 
 Modelli da far approvare a Meta: `docs/whatsapp-modelli.md`.
 

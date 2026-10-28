@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
+  WHATSAPP_DIGEST_HOURS,
   WHATSAPP_MESSAGES_FOR,
   isPlausiblePhoneNumber,
   type WhatsAppStatus,
@@ -253,6 +254,26 @@ export function WhatsAppRemindersCard({
             <span />
           </button>
         </div>
+        {status.enabled && status.digestHour !== null ? (
+          <label className="notif-digest-row">
+            <span>Riepilogo dei lavori del giorno dopo, la sera alle</span>
+            <select
+              className="notif-digest-select"
+              value={status.digestHour}
+              disabled={busy}
+              onChange={(e) => {
+                const hour = Number(e.target.value);
+                void run(() => apiClient.setWhatsAppDigestHour(token, hour));
+              }}
+            >
+              {WHATSAPP_DIGEST_HOURS.map((h) => (
+                <option key={h} value={h}>
+                  {h}:00
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         {details}
       </>
     );

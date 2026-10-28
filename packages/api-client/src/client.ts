@@ -2426,6 +2426,13 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     setWhatsAppEnabled: (token: string, enabled: boolean) =>
       request<WhatsAppStatus>(enabled ? "/whatsapp/me/enable" : "/whatsapp/me/disable", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
+    setWhatsAppDigestHour: (token: string, hour: number) =>
+      request<WhatsAppStatus>("/whatsapp/me/digest-hour", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ hour }),
+      }),
+
     notificationHistory: (token: string) =>
       request<{ id: string; type: string; payload: unknown; createdAt: string; readAt: string | null }[]>("/notifications/history", {
         headers: { Authorization: `Bearer ${token}` },

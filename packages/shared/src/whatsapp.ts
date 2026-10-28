@@ -31,7 +31,7 @@ export const WHATSAPP_MESSAGES_FOR: Record<
     "L'avviso se il professionista annulla l'appuntamento",
   ],
   professional: [
-    "Il promemoria il giorno prima di ogni lavoro",
+    "La sera prima, il riepilogo dei lavori del giorno dopo",
     "L'avviso se il cliente annulla l'appuntamento",
   ],
 };
@@ -39,6 +39,25 @@ export const WHATSAPP_MESSAGES_FOR: Record<
 /** Ore di silenzio, ora italiana: dalle 21 alle 8 parte solo ciò che non può aspettare. */
 export const WHATSAPP_QUIET_START_HOUR = 21;
 export const WHATSAPP_QUIET_END_HOUR = 8;
+
+/**
+ * Ore tra cui il professionista sceglie il riepilogo della sera con i lavori
+ * del giorno dopo (Luca, 28/10/2026). Le 21 sono scelte apposta da lui: il
+ * riepilogo parte anche se è l'inizio delle ore di silenzio.
+ */
+export const WHATSAPP_DIGEST_HOURS = [18, 19, 20, 21] as const;
+export const WHATSAPP_DIGEST_DEFAULT_HOUR = 18;
+
+export const whatsappDigestHourSchema = z.object({
+  hour: z
+    .number()
+    .int()
+    .refine(
+      (h) => (WHATSAPP_DIGEST_HOURS as readonly number[]).includes(h),
+      "Scegli tra le 18, le 19, le 20 e le 21",
+    ),
+});
+export type WhatsAppDigestHourInput = z.infer<typeof whatsappDigestHourSchema>;
 
 /** Il nome dell'attività nei messaggi, al massimo 30 caratteri. */
 export const WHATSAPP_NAME_MAX = 30;
@@ -74,6 +93,8 @@ export type WhatsAppStatus = {
   codeSentTo: string | null;
   codeValidForSeconds: number;
   codeResendInSeconds: number;
+  /** Ora del riepilogo della sera, solo per i professionisti (altrimenti `null`). */
+  digestHour: number | null;
 };
 
 /** Admin → WhatsApp (`GET /admin/whatsapp?month=AAAA-MM`). */

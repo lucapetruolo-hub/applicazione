@@ -49,9 +49,10 @@ caratteri, pulsanti entro 25, nessuna promozione.
 - Categoria: **Utility**, lingua: Italiano (it)
 - Testo:
 
-  > Promemoria: {{1}} hai un lavoro ({{2}}) a {{3}}. Indirizzo e contatti del cliente sono nella tua agenda.
+  > Promemoria: {{1}} hai {{2}}, {{3}}. Indirizzi e contatti dei clienti sono nella tua agenda.
 
-- Esempio delle variabili: {{1}} = "giovedì 5 novembre alle 10:30", {{2}} = "Idraulico", {{3}} = "Latina"
+- Esempio delle variabili: {{1}} = "giovedì 5 novembre", {{2}} = "3 lavori", {{3}} = "il primo alle 08:30 a Latina"
+- È il riepilogo della sera prima: uno solo con tutti i lavori del giorno dopo, all'ora scelta dal professionista (18, 19, 20 o 21)
 - Piè di pagina: "Messaggio automatico, le risposte non vengono lette"
 - Pulsante 1, "Visita il sito web", URL dinamico: testo "Apri l'agenda", indirizzo `https://<dominio>/{{1}}`, esempio `https://<dominio>/dashboard/agenda`
 - Pulsante 2, risposta rapida: "Non ricevere più"

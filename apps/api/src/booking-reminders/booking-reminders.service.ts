@@ -70,7 +70,7 @@ export class BookingRemindersService {
             province: true,
           },
         },
-        professionalProfile: { select: { businessName: true, city: true, userId: true, user: { select: { email: true, name: true, surname: true, notificationPrefs: true } } } },
+        professionalProfile: { select: { businessName: true, city: true, user: { select: { email: true, name: true, surname: true, notificationPrefs: true } } } },
         quote: { select: { guidedRequestId: true, guidedRequest: { select: { city: true, address: true, description: true, category: { select: { label: true } } } } } },
       },
     });
@@ -121,18 +121,16 @@ export class BookingRemindersService {
         });
       }
 
-      // Promemoria su WhatsApp a chi l'ha acceso (anti no-show,
-      // docs/changelog/2026-10-28-promemoria-whatsapp.md): mai bloccante.
+      // Promemoria su WhatsApp al cliente che l'ha acceso (anti no-show,
+      // docs/changelog/2026-10-28-promemoria-whatsapp.md): mai bloccante. Il
+      // professionista riceve il riepilogo della sera prima.
       if (this.whatsAppService && !booking.client.deletedAt) {
         try {
           await this.whatsAppService.bookingReminder({
             bookingId: booking.id,
             scheduledAt: booking.scheduledAt,
             clientId: booking.clientId,
-            professionalUserId: booking.professionalProfile.userId,
             businessName: booking.professionalProfile.businessName,
-            category: booking.quote?.guidedRequest?.category?.label ?? null,
-            city: booking.quote?.guidedRequest?.city ?? booking.professionalProfile.city ?? null,
             guidedRequestId: booking.quote?.guidedRequestId ?? null,
           });
         } catch (error) {

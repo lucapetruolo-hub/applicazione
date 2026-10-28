@@ -14,6 +14,7 @@ import {
   type PrismaClient,
 } from "@professionisti/database";
 import {
+  WHATSAPP_DIGEST_DEFAULT_HOUR,
   WHATSAPP_MESSAGE_TYPES,
   wallClockNow,
   type WhatsAppMessageType,
@@ -39,6 +40,7 @@ import {
 import {
   WHATSAPP_LANGUAGE,
   WHATSAPP_TEMPLATES,
+  professionalDayParams,
   whatsappDayTime,
   whatsappName,
   whatsappTime,
@@ -338,52 +340,125 @@ export class WhatsAppService {
   }
 
   /**
-   * Promemoria del giorno prima (anti no-show), al cliente e al
-   * professionista. Chiamato da `BookingRemindersService` insieme alle email.
+   * Promemoria del giorno prima (anti no-show) al cliente, 24 ore prima
+   * dell'appuntamento. Chiamato da `BookingRemindersService` insieme alle
+   * email. Al professionista va invece un solo riepilogo la sera prima
+   * (`professionalDayReminders`).
    */
   async bookingReminder(input: {
     bookingId: string;
     scheduledAt: Date;
     clientId: string;
-    professionalUserId: string;
     businessName: string;
-    category: string | null;
-    city: string | null;
     guidedRequestId: string | null;
     now?: Date;
   }): Promise<void> {
     if (!this.provider) return;
     const now = input.now ?? new Date();
-    const expiresAt = wallClockToInstant(input.scheduledAt, now);
-    const when = whatsappDayTime(input.scheduledAt);
     await this.enqueue({
       userId: input.clientId,
       type: "BOOKING_REMINDER_CLIENT",
       params: {
-        bodyParams: [when, whatsappName(input.businessName)],
+        bodyParams: [
+          whatsappDayTime(input.scheduledAt),
+          whatsappName(input.businessName),
+        ],
         urlButtonSuffix: clientRequestPath(input.guidedRequestId),
       },
       idempotencyKey: `booking-reminder:${input.bookingId}:client`,
       bookingId: input.bookingId,
-      expiresAt,
+      expiresAt: wallClockToInstant(input.scheduledAt, now),
       now,
     });
-    await this.enqueue({
-      userId: input.professionalUserId,
-      type: "BOOKING_REMINDER_PROFESSIONAL",
-      params: {
-        bodyParams: [
-          when,
-          whatsappName(input.category ?? "intervento"),
-          whatsappName(input.city ?? "-"),
-        ],
-        urlButtonSuffix: "dashboard/agenda",
+  }
+
+  /**
+   * Riepilogo della sera prima al professionista (Luca, 28/10/2026): un
+   * solo messaggio con quanti lavori ha domani e il primo, invece di uno per
+   * appuntamento. Parte all'ora scelta dal professionista (18-21, Notifiche),
+   * anche alle 21 che sono già ore di silenzio, perché l'ha chiesta lui. Un
+   * giro ogni mezz'ora fino alle 21:30, se il server dormiva all'ora giusta:
+   * la chiave per persona e giorno evita i doppioni. Le email restano una per
+   * appuntamento.
+   */
+  @Cron("0,30 18-21 * * *", { timeZone: "Europe/Rome" })
+  async professionalDayReminders(now: Date = new Date()): Promise<number> {
+    if (!this.provider) return 0;
+    // scheduledAt è l'ora italiana scritta in UTC (§287): domani da mezzanotte a mezzanotte.
+    const wall = wallClockNow(now);
+    const from = new Date(
+      Date.UTC(
+        wall.getUTCFullYear(),
+        wall.getUTCMonth(),
+        wall.getUTCDate() + 1,
+      ),
+    );
+    const to = new Date(from.getTime() + 24 * 60 * 60 * 1000);
+    const bookings = await this.prisma.booking.findMany({
+      where: { status: "CONFIRMED", scheduledAt: { gte: from, lt: to } },
+      orderBy: { scheduledAt: "asc" },
+      select: {
+        id: true,
+        scheduledAt: true,
+        professionalProfile: { select: { userId: true, city: true } },
+        quote: { select: { guidedRequest: { select: { city: true } } } },
       },
-      idempotencyKey: `booking-reminder:${input.bookingId}:professional`,
-      bookingId: input.bookingId,
-      expiresAt,
-      now,
     });
+    const byProfessional = new Map<string, typeof bookings>();
+    for (const booking of bookings) {
+      const userId = booking.professionalProfile.userId;
+      byProfessional.set(userId, [
+        ...(byProfessional.get(userId) ?? []),
+        booking,
+      ]);
+    }
+    const hours = new Map(
+      (
+        await this.prisma.user.findMany({
+          where: { id: { in: [...byProfessional.keys()] } },
+          select: { id: true, whatsappDigestHour: true },
+        })
+      ).map((u) => [
+        u.id,
+        u.whatsappDigestHour ?? WHATSAPP_DIGEST_DEFAULT_HOUR,
+      ]),
+    );
+    const day = from.toISOString().slice(0, 10);
+    let queued = 0;
+    for (const [userId, jobs] of byProfessional) {
+      if (
+        wall.getUTCHours() < (hours.get(userId) ?? WHATSAPP_DIGEST_DEFAULT_HOUR)
+      )
+        continue;
+      const first = jobs[0]!;
+      const city =
+        first.quote?.guidedRequest?.city ?? first.professionalProfile.city;
+      try {
+        await this.enqueue({
+          userId,
+          type: "BOOKING_REMINDER_PROFESSIONAL",
+          params: {
+            bodyParams: professionalDayParams(
+              first.scheduledAt,
+              jobs.length,
+              city,
+            ),
+            urlButtonSuffix: "dashboard/agenda",
+          },
+          idempotencyKey: `professional-day:${userId}:${day}`,
+          bookingId: first.id,
+          urgent: true,
+          expiresAt: wallClockToInstant(first.scheduledAt, now),
+          now,
+        });
+        queued++;
+      } catch (error) {
+        this.logger.error(
+          `Riepilogo WhatsApp di ${userId} non messo in coda: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+    return queued;
   }
 
   /**
@@ -519,6 +594,8 @@ export class WhatsAppService {
         phoneCodeExpiresAt: true,
         phoneCodeAttempts: true,
         phoneCodeSentAt: true,
+        whatsappDigestHour: true,
+        professionalProfile: { select: { id: true } },
       },
     });
     const phone = user?.phone ?? null;
@@ -554,7 +631,31 @@ export class WhatsAppService {
             ),
           )
         : 0,
+      digestHour: user?.professionalProfile
+        ? (user.whatsappDigestHour ?? WHATSAPP_DIGEST_DEFAULT_HOUR)
+        : null,
     };
+  }
+
+  /** Ora del riepilogo della sera, solo per chi ha un profilo da professionista. */
+  async setDigestHour(
+    userId: string,
+    hour: number,
+    now: Date = new Date(),
+  ): Promise<WhatsAppStatus> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { professionalProfile: { select: { id: true } } },
+    });
+    if (!user?.professionalProfile)
+      throw new BadRequestException(
+        "Il riepilogo della sera è solo per i professionisti.",
+      );
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { whatsappDigestHour: hour },
+    });
+    return this.status(userId, now);
   }
 
   /** Manda su WhatsApp il codice per confermare il numero dell'account. */

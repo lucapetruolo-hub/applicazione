@@ -44,6 +44,9 @@ function fakePrisma(users: Row[]) {
   };
   const prisma = {
     user: {
+      findMany: vi.fn(async ({ where }: { where: { id: { in: string[] } } }) =>
+        users.filter((u) => where.id.in.includes(u.id)),
+      ),
       findUnique: vi.fn(
         async ({ where }: { where: { id: string } }) =>
           users.find((u) => u.id === where.id) ?? null,
@@ -400,6 +403,78 @@ describe("WhatsAppService: invio", () => {
       }),
     ).toBeNull();
     expect(prisma.outboundMessage.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("WhatsAppService: riepilogo della sera al professionista", () => {
+  // Venerdì 15 gennaio 2027 alle 18 italiane; domani è sabato 16.
+  const EVENING = new Date("2027-01-15T17:00:00Z");
+  const booking = (id: string, wall: string, userId = "u1") => ({
+    id,
+    scheduledAt: new Date(wall),
+    professionalProfile: { userId, city: "Latina" },
+    quote: { guidedRequest: { city: "Sabaudia" } },
+  });
+
+  it("un solo messaggio per professionista con tutti i lavori di domani", async () => {
+    const { service, prisma, messages, sent } = setup([
+      verifiedUser(),
+      verifiedUser({
+        id: "u2",
+        phone: "+39 3339999999",
+        phoneVerifiedNumber: "+39 3339999999",
+      }),
+    ]);
+    const findMany = vi.fn(async () => [
+      booking("b1", "2027-01-16T08:30:00Z"),
+      booking("b2", "2027-01-16T11:00:00Z"),
+      booking("b3", "2027-01-16T15:00:00Z"),
+      booking("b4", "2027-01-16T10:00:00Z", "u2"),
+    ]);
+    (prisma.booking as unknown as { findMany: typeof findMany }).findMany =
+      findMany;
+    expect(await service.professionalDayReminders(EVENING)).toBe(2);
+    const where = (
+      findMany.mock.calls[0] as unknown as [
+        { where: { scheduledAt: { gte: Date; lt: Date } } },
+      ]
+    )[0].where;
+    expect(where.scheduledAt.gte.toISOString()).toBe(
+      "2027-01-16T00:00:00.000Z",
+    );
+    expect(where.scheduledAt.lt.toISOString()).toBe("2027-01-17T00:00:00.000Z");
+    expect(sent).toHaveLength(2);
+    expect(sent[0]).toMatchObject({
+      template: "promemoria_lavoro_professionista",
+      bodyParams: [
+        "sabato 16 gennaio",
+        "3 lavori",
+        "il primo alle 08:30 a Sabaudia",
+      ],
+    });
+    expect(sent[1]).toMatchObject({
+      bodyParams: ["sabato 16 gennaio", "un lavoro", "alle 10:00 a Sabaudia"],
+    });
+    expect(messages[0]).toMatchObject({ bookingId: "b1" });
+
+    // Il giro delle 18:30 non lo manda di nuovo.
+    await service.professionalDayReminders(new Date("2027-01-15T17:30:00Z"));
+    expect(sent).toHaveLength(2);
+  });
+
+  it("parte all'ora scelta dal professionista, anche alle 21", async () => {
+    const { service, prisma, sent } = setup([
+      verifiedUser({ whatsappDigestHour: 21 }),
+    ]);
+    (prisma.booking as unknown as { findMany: unknown }).findMany = vi.fn(
+      async () => [booking("b1", "2027-01-16T08:30:00Z")],
+    );
+    await service.professionalDayReminders(EVENING);
+    await service.professionalDayReminders(new Date("2027-01-15T19:30:00Z"));
+    expect(sent).toHaveLength(0);
+    // Le 21 italiane: ore di silenzio, ma l'ora l'ha scelta lui.
+    await service.professionalDayReminders(new Date("2027-01-15T20:00:00Z"));
+    expect(sent).toHaveLength(1);
   });
 });
 
