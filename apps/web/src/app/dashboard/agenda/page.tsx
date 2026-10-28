@@ -82,6 +82,32 @@ function wallMinutes(iso: string): number {
   const date = new Date(iso);
   return date.getUTCHours() * 60 + date.getUTCMinutes();
 }
+/**
+ * Durata dei lavori che il professionista fa più spesso, alla mezz'ora, per
+ * precompilare la fine quando tocca un orario vuoto (scelta di Luca,
+ * docs/changelog/2026-10-28-agenda-orari-in-vista.md). Contano i lavori non
+ * annullati, con la fine e nello stesso giorno; serve che una durata si ripeta
+ * almeno due volte, altrimenti un'ora. A parità vince la più corta.
+ */
+function usualJobDuration(items: { scheduledAt: string; scheduledEndAt: string | null; status: string }[]): number {
+  const counts = new Map<number, number>();
+  for (const item of items) {
+    if (item.status === "CANCELED" || !item.scheduledEndAt || item.scheduledEndAt.slice(0, 10) !== item.scheduledAt.slice(0, 10)) continue;
+    const minutes = (new Date(item.scheduledEndAt).getTime() - new Date(item.scheduledAt).getTime()) / 60000;
+    if (minutes < 15 || minutes > 12 * 60) continue;
+    const rounded = Math.max(30, Math.round(minutes / 30) * 30);
+    counts.set(rounded, (counts.get(rounded) ?? 0) + 1);
+  }
+  let best = DEFAULT_DURATION_MIN;
+  let bestCount = 1;
+  for (const [minutes, count] of counts) {
+    if (count > bestCount || (count === bestCount && count > 1 && minutes < best)) {
+      best = minutes;
+      bestCount = count;
+    }
+  }
+  return best;
+}
 function timeMinutes(time: string): number {
   const [h, m] = time.split(":").map(Number);
   return (h ?? 0) * 60 + (m ?? 0);
@@ -225,6 +251,7 @@ function DashboardAgendaContent() {
   const [creatingExternalJobFor, setCreatingExternalJobFor] = useState<Date | null>(null);
   // Ora d'inizio precompilata quando il lavoro nasce da un tocco su un orario vuoto della griglia.
   const [creatingExternalJobStart, setCreatingExternalJobStart] = useState<string | null>(null);
+  const [creatingExternalJobDuration, setCreatingExternalJobDuration] = useState(DEFAULT_DURATION_MIN);
 
   // Preventivi inviati ma non ancora accettati (richiesta esplicita
   // dell'utente: una data/orario scelta per un preventivo — specialmente se
@@ -2053,6 +2080,7 @@ function DashboardAgendaContent() {
                   }}
                   onEmptyPress={(date, minutes) => {
                     setCreatingExternalJobStart(minutesToLabel(minutes));
+                    setCreatingExternalJobDuration(usualJobDuration([...(bookings ?? []), ...(externalJobs ?? [])]));
                     setCreatingExternalJobFor(date);
                   }}
                 />
@@ -2278,6 +2306,7 @@ function DashboardAgendaContent() {
           token={token}
           defaultDate={creatingExternalJobFor}
           defaultStartTime={creatingExternalJobStart ?? undefined}
+          defaultDurationMinutes={creatingExternalJobDuration}
           onClose={() => {
             setCreatingExternalJobFor(null);
             setCreatingExternalJobStart(null);

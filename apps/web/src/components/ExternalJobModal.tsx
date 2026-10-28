@@ -14,10 +14,11 @@ function toIsoDateLocal(date: Date): string {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
 }
 
-/** "HH:MM" un'ora dopo, al massimo 23:59 (il lavoro resta nello stesso giorno). */
-function oneHourLater(time: string): string {
+/** "HH:MM" dopo `minutes` minuti, al massimo 23:59 (il lavoro resta nello stesso giorno). */
+function timeAfter(time: string, minutes: number): string {
   const [h, m] = time.split(":").map(Number) as [number, number];
-  return h >= 23 ? "23:59" : `${String(h + 1).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  const end = Math.min(h * 60 + m + minutes, 23 * 60 + 59);
+  return `${String(Math.floor(end / 60)).padStart(2, "0")}:${String(end % 60).padStart(2, "0")}`;
 }
 
 function parseEuroToCents(value: string): number | null {
@@ -57,6 +58,7 @@ export function ExternalJobModal({
   job,
   defaultDate,
   defaultStartTime,
+  defaultDurationMinutes = 60,
   onClose,
   onSaved,
   onDeleted,
@@ -66,8 +68,10 @@ export function ExternalJobModal({
   job?: ExternalJob | null;
   /** Data precompilata quando si crea un nuovo lavoro cliccando "+" su un giorno specifico del calendario. */
   defaultDate?: Date;
-  /** Ora d'inizio precompilata ("HH:MM") quando si tocca un orario vuoto della griglia; la fine è un'ora dopo. */
+  /** Ora d'inizio precompilata ("HH:MM") quando si tocca un orario vuoto della griglia. */
   defaultStartTime?: string;
+  /** Con `defaultStartTime`: la fine precompilata è questi minuti dopo (la durata dei lavori più frequenti). */
+  defaultDurationMinutes?: number;
   onClose: () => void;
   onSaved: (job: ExternalJob) => void;
   onDeleted?: (id: string) => void;
@@ -78,7 +82,7 @@ export function ExternalJobModal({
   const [description, setDescription] = useState(job?.description ?? "");
   const [dateStr, setDateStr] = useState(job ? job.scheduledAt.slice(0, 10) : defaultDate ? toIsoDateLocal(defaultDate) : "");
   const [startTime, setStartTime] = useState(job ? job.scheduledAt.slice(11, 16) : (defaultStartTime ?? ""));
-  const [endTime, setEndTime] = useState(job?.scheduledEndAt ? job.scheduledEndAt.slice(11, 16) : defaultStartTime ? oneHourLater(defaultStartTime) : "");
+  const [endTime, setEndTime] = useState(job?.scheduledEndAt ? job.scheduledEndAt.slice(11, 16) : defaultStartTime ? timeAfter(defaultStartTime, defaultDurationMinutes) : "");
   const [priceEuro, setPriceEuro] = useState(job?.priceEurCents != null ? (job.priceEurCents / 100).toString() : "");
   const [notes, setNotes] = useState(job?.notes ?? "");
 

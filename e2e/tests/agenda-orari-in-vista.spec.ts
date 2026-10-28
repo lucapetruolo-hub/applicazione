@@ -5,7 +5,7 @@ import { expect, test } from "@playwright/test";
  * un tocco su un orario vuoto aggiunge un lavoro a quell'ora, e da computer
  * l'agenda si riapre sull'ultima vista scelta.
  */
-test("un tocco su un orario vuoto apre Aggiungi lavoro con giorno e ora già scritti", async ({ page }, testInfo) => {
+test("un tocco su un orario vuoto apre Aggiungi lavoro con giorno, inizio e fine già scritti", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "telefono-italia", "Basta un telefono.");
   // Domenica: si apre la settimana che comincia domani, da lunedì 26 a domenica 1.
   await page.clock.setFixedTime(new Date("2026-10-25T18:00:00Z"));
@@ -18,6 +18,7 @@ test("un tocco su un orario vuoto apre Aggiungi lavoro con giorno e ora già scr
   await expect(modal.getByLabel("Data")).toHaveValue("2026-11-01");
   const start = await modal.getByLabel("Ora di inizio").inputValue();
   expect(start).toMatch(/^\d{2}:(00|30)$/);
+  // Fine = durata dei lavori più frequenti: nei dati di prova un'ora (tre lavori da 1 h, due da 1 h 30).
   const hour = Number(start.slice(0, 2));
   await expect(modal.getByLabel("Ora di fine")).toHaveValue(`${String(hour + 1).padStart(2, "0")}${start.slice(2)}`);
 });
