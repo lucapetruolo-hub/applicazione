@@ -5836,3 +5836,21 @@ a.admin-kpi:hover {
 .counting-from-more[open] {
   flex-basis: 100%;
 }
+/* Casella "Di prova" su ogni riga di Utenti (§395): area da toccare di 44 px. */
+.admin-test-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  /* Allineata al testo delle altre colonne senza perdere l'area da toccare. */
+  margin-block: -12px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #2b2420;
+}
+.admin-test-toggle input {
+  width: 20px;
+  height: 20px;
+  accent-color: #128552;
+  cursor: pointer;
+}

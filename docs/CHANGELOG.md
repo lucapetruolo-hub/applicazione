@@ -21421,7 +21421,9 @@ comprese, così le pagine si possono provare.
   tutti i numeri sopra, dai contatori della Home admin, dai numeri pubblici
   della homepage, dalle visite ai profili (né chi guarda né chi è
   guardato; anche un admin che guarda un profilo non conta più). Filtro
-  "Account di prova" e segno "Di prova" in Utenti. Entrando con un account
+  "Account di prova" in Utenti e, su richiesta di Luca, una casella "Di
+  prova" su ogni riga dell'elenco (solo super admin) per segnarli uno alla
+  volta senza aprire la scheda. Entrando con un account
   di prova il browser smette da solo di contare ("Non contare questo
   browser"). L'eliminazione per sempre del §372 resta, sotto l'interruttore.
 - **Primi 100** (§363): un account di prova non prende un posto; segnarlo

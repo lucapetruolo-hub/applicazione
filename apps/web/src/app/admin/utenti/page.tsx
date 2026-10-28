@@ -7,7 +7,7 @@ import type { AdminUsersPage, AdminUsersQuery } from "@professionisti/api-client
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { PROFESSIONAL_CATEGORIES, adminRolesLabel } from "@professionisti/shared";
+import { PROFESSIONAL_CATEGORIES, adminCan, adminRolesLabel } from "@professionisti/shared";
 import { AdminPageHeader, AdminPill, downloadTextFile, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { SkeletonTableRows } from "@/components/Skeleton";
 
@@ -27,7 +27,8 @@ export default function AdminUtentiPage() {
 }
 
 function UtentiContent() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const isSuper = adminCan(user?.adminRoles ?? [], "SUPER");
   const searchParams = useSearchParams();
   // `?q=` arriva dai consigli di Andamento del sito (§372): apre già la ricerca.
   const [q, setQ] = useState(searchParams.get("q") ?? "");
@@ -73,6 +74,28 @@ function UtentiContent() {
   }, [q]);
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
+
+  // "Di prova" riga per riga (richiesta di Luca, docs/CHANGELOG.md §395): la
+  // casella cambia subito e torna com'era se il server dice di no.
+  const [savingTestId, setSavingTestId] = useState<string | null>(null);
+  async function toggleTestAccount(id: string, testAccount: boolean) {
+    if (!token || !loaded) return;
+    const setRow = (testAccountAt: string | null) =>
+      setLoaded((prev) => (prev ? { ...prev, data: { ...prev.data, rows: prev.data.rows.map((r) => (r.id === id ? { ...r, testAccountAt } : r)) } } : prev));
+    const before = loaded.data.rows.find((r) => r.id === id)?.testAccountAt ?? null;
+    setSavingTestId(id);
+    setRow(testAccount ? new Date().toISOString() : null);
+    try {
+      const result = await apiClient.adminSetTestAccount(token, id, testAccount);
+      setRow(result.testAccountAt);
+      setError(null);
+    } catch (err) {
+      setRow(before);
+      setError(errorMessage(err));
+    } finally {
+      setSavingTestId(null);
+    }
+  }
   const [exporting, setExporting] = useState(false);
 
   async function exportCsv() {
@@ -177,6 +200,7 @@ function UtentiContent() {
                 <th>Attività</th>
                 <th>Stato</th>
                 <th>Iscritto il</th>
+                {isSuper ? <th>Di prova</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -202,10 +226,26 @@ function UtentiContent() {
                       {row.suspendedAt ? <AdminPill tone="danger">Sospeso</AdminPill> : null}
                       {!row.suspendedAt && row.profileSuspended ? <AdminPill tone="warn">Profilo nascosto</AdminPill> : null}
                       {!row.deletedAt && !row.suspendedAt && !row.profileSuspended ? <AdminPill tone="ok">Attivo</AdminPill> : null}
-                      {row.testAccountAt ? <AdminPill tone="warn">Di prova</AdminPill> : null}
+                      {row.testAccountAt && !isSuper ? <AdminPill tone="warn">Di prova</AdminPill> : null}
                     </XStack>
                   </td>
                   <td>{formatAdminDate(row.createdAt)}</td>
+                  {isSuper ? (
+                    <td>
+                      {row.role !== "ADMIN" && !row.deletedAt ? (
+                        <label className="admin-test-toggle">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(row.testAccountAt)}
+                            disabled={savingTestId === row.id}
+                            onChange={(e) => toggleTestAccount(row.id, e.target.checked)}
+                            aria-label={`Account di prova: ${row.email ?? [row.name, row.surname].filter(Boolean).join(" ")}`}
+                          />
+                          <span aria-hidden="true">Di prova</span>
+                        </label>
+                      ) : null}
+                    </td>
+                  ) : null}
                 </tr>
               ))}
             </tbody>
