@@ -7,6 +7,7 @@ import { Button, Field, H1, H2, Paragraph, Text, XStack, YStack, brand } from "@
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { SkeletonBlock, SkeletonTableRows } from "@/components/Skeleton";
+import { AdminInvoicesSection } from "@/components/admin/AdminInvoicesSection";
 import { BRAND, formatEurCents } from "@professionisti/shared";
 
 /**
@@ -22,7 +23,7 @@ import { BRAND, formatEurCents } from "@professionisti/shared";
  * al commercialista, "PENDING / CONFIRMED" non diceva nulla.
  */
 const REVENUE_SOURCE_LABEL: Record<string, string> = {
-  JOB_COMMISSION: "Commissioni sui lavori",
+  JOB_COMMISSION: "Trattenute sui lavori (IVA esclusa)",
   SUBSCRIPTION: "Abbonamenti",
   VISIBILITY_BOOST: "Pacchetti di visibilità",
   LEAD: "Richieste a pagamento",
@@ -255,6 +256,9 @@ export default function AdminFinanzaPage() {
           )}
         </YStack>
 
+        {/* Le nostre fatture ai professionisti (docs/CHANGELOG.md §378). */}
+        <AdminInvoicesSection token={token} />
+
         <YStack gap="$4">
           <XStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$3">
             <H2 size="$7">Regole di commissione</H2>
@@ -270,7 +274,7 @@ export default function AdminFinanzaPage() {
                 <thead>
                   <tr>
                     <th>Nome</th>
-                    <th>%</th>
+                    <th>% (IVA esclusa)</th>
                     <th>Fisso</th>
                     <th>Min/Max</th>
                     <th>Ambito</th>

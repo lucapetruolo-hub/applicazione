@@ -49,15 +49,15 @@ describe("pagamento online: acconto, saldo, accredito (§168)", () => {
     expect(acceptQuoteSchema.parse({}).paymentMethod).toBe("DIRECT");
     expect(acceptQuoteSchema.parse({ paymentMethod: "ONLINE" }).paymentMethod).toBe("ONLINE");
   });
-  it("riepilogo: il professionista vede commissione del 5% e quanto riceve", () => {
+  it("riepilogo: il professionista vede la trattenuta unica con l'IVA e quanto riceve (§378)", () => {
     const jp = {
       paymentMethod: "MANOVIA",
       onlineStage: "PAID",
       depositEurCents: 10000,
       paidEurCents: 42000,
       refundedEurCents: 0,
-      platformFeeEurCents: 2100,
-      stripeFeeEurCents: 700,
+      platformFeeEurCents: 3587,
+      stripeFeeEurCents: 0,
       netAmountEurCents: 0,
       releaseDueAt: now,
       releasedAt: null,
@@ -65,7 +65,11 @@ describe("pagamento online: acconto, saldo, accredito (§168)", () => {
     };
     const pro = toJobPaymentSummary(jp, 42000, true)!;
     expect(pro.method).toBe("ONLINE");
-    expect(pro.payoutEurCents).toBe(39200 - 108); // meno il costo del bonifico (0,25% + 0,10 €, §267)
+    // 7% di 420 € = 29,40 € + IVA = 35,87 €; carta e bonifico sono nostri.
+    expect(pro.appFeeEurCents).toBe(3587);
+    expect(pro.payoutEurCents).toBe(42000 - 3587);
+    // Prima che il lavoro sia chiuso la trattenuta si stima sull'importo.
+    expect(toJobPaymentSummary({ ...jp, platformFeeEurCents: 0 }, 42000, true)!.appFeeEurCents).toBe(3587);
     expect(toJobPaymentSummary(jp, 42000)!.payoutEurCents).toBeUndefined();
   });
 });

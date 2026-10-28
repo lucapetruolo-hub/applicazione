@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { formatEurCents, ONLINE_APP_FEE_PERCENT, onlineFeeExample } from "@professionisti/shared";
 import { Badge, Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { PayoutSummary } from "@/components/PayoutSummary";
 
@@ -12,8 +13,11 @@ import { PayoutSummary } from "@/components/PayoutSummary";
  * mostra lo stato, i totali dei bonifici e l'accesso a Stripe. `children`
  * compare solo a pagamenti attivi (es. il conto bancario dei bonifici).
  * `step` è il passo prima di Stripe (l'IBAN, §250): aperto da "Attiva",
- * prende il posto del pulsante dentro lo stesso banner.
+ * prende il posto del pulsante dentro lo stesso banner. Prima di attivare,
+ * il costo con un esempio in euro (§378).
  */
+
+const EXAMPLE = onlineFeeExample();
 export function OnlinePaymentsCard({
   active,
   started,
@@ -55,6 +59,10 @@ export function OnlinePaymentsCard({
               <Link href="/per-professionisti/pagamenti" style={{ color: brand.cianografiaScuro, fontWeight: 600, whiteSpace: "nowrap" }}>
                 Scopri di più
               </Link>
+            </Text>
+            <Text fontSize={13} color={brand.grafite70}>
+              Costo: {ONLINE_APP_FEE_PERCENT}% + IVA, commissioni Stripe comprese. Su {formatEurCents(EXAMPLE.amountEurCents)} ti arrivano{" "}
+              {formatEurCents(EXAMPLE.netEurCents)}.
             </Text>
             {error ? (
               <Text fontSize={16} color={brand.urgenza} role="alert">
