@@ -126,9 +126,10 @@ describe("ProblemMatchService con OpenRouter", () => {
   const reply = (content: unknown, status = 200) =>
     vi.fn().mockResolvedValue({ ok: status === 200, status, json: () => Promise.resolve({ choices: [{ message: { content: JSON.stringify(content) } }] }) });
 
-  it("senza chiave Anthropic usa OpenRouter, solo con i server di Anthropic", async () => {
+  it("senza chiave Anthropic usa OpenRouter, con Haiku solo i server di Anthropic", async () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "");
     vi.stubEnv("OPENROUTER_API_KEY", "or-test");
+    vi.stubEnv("OPENROUTER_MODEL", "anthropic/claude-haiku-5.5");
     const fetchMock = reply({ categories: ["idraulico", "muratore", "imbianchino", "falegname"], outOfService: null, notAJob: false, reason: "Lo sistema l'idraulico." });
     vi.stubGlobal("fetch", fetchMock);
     const service = newService();
@@ -141,6 +142,28 @@ describe("ProblemMatchService con OpenRouter", () => {
     const body = JSON.parse(init.body);
     expect(body.model).toBe("anthropic/claude-haiku-5.5");
     expect(body.provider).toMatchObject({ only: ["anthropic"], allow_fallbacks: false, data_collection: "deny" });
+  });
+
+  // Senza credito su OpenRouter (docs/CHANGELOG.md §400).
+  it("di base usa il modello gratuito, senza i vincoli di Anthropic, e accetta il JSON tra ```", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    vi.stubEnv("OPENROUTER_API_KEY", "or-test");
+    vi.stubEnv("OPENROUTER_MODEL", "");
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({
+          choices: [{ message: { content: '```json\n{"categories":["idraulico"],"outOfService":null,"notAJob":false,"reason":"Lo sistema l\'idraulico."}\n```' } }],
+        }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const result = await newService().match("c'è una macchia strana sul soffitto del bagno");
+    expect(result.source).toBe("ia");
+    expect(result.categories).toEqual(["idraulico"]);
+    const body = JSON.parse((fetchMock.mock.calls[0]! as [string, { body: string }])[1].body);
+    expect(body.model).toBe("google/gemma-4-31b-it:free");
+    expect(body.provider).toBeUndefined();
   });
 
   it("con entrambe le chiavi vince Anthropic", async () => {
