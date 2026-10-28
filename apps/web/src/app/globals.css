@@ -3810,6 +3810,9 @@ a.admin-kpi:hover {
 }
 .guided-timing-option input {
   position: absolute;
+  /* Sopra la pillola anche mentre si stringe (la `scale` la porterebbe
+     davanti e prenderebbe lei il tocco). */
+  z-index: 1;
   opacity: 0;
   inset: 0;
   margin: 0;
