@@ -9,6 +9,7 @@ import { WhatsAppProviderError } from "./whatsapp-provider";
 import {
   WHATSAPP_FOOTER,
   WHATSAPP_STOP_BUTTON,
+  PROFESSIONAL_DAY_TEMPLATES,
   WHATSAPP_TEMPLATES,
 } from "./whatsapp-templates";
 
@@ -212,7 +213,10 @@ describe("modelli da far approvare a Meta", () => {
   it("rispettano le regole di Meta", () => {
     expect(WHATSAPP_FOOTER.length).toBeLessThanOrEqual(60);
     expect(WHATSAPP_STOP_BUTTON.length).toBeLessThanOrEqual(25);
-    for (const template of Object.values(WHATSAPP_TEMPLATES)) {
+    for (const template of [
+      ...Object.values(WHATSAPP_TEMPLATES),
+      ...PROFESSIONAL_DAY_TEMPLATES,
+    ]) {
       expect(template.name).toMatch(/^[a-z0-9_]{1,512}$/);
       expect(template.body.length).toBeLessThanOrEqual(1024);
       const variables = template.body.match(/\{\{\d+\}\}/g) ?? [];

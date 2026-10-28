@@ -37,6 +37,63 @@ export type WhatsAppTemplateDefinition = {
   footer: string | null;
 };
 
+const AGENDA_BUTTON = {
+  text: "Apri l'agenda",
+  exampleSuffix: "dashboard/agenda",
+};
+const JOB_EXAMPLES = [
+  "08:30 · Sostituzione rubinetto · Latina",
+  "11:00 · Perdita sotto il lavandino · Sabaudia",
+  "15:00 · Controllo caldaia · Latina",
+];
+
+/**
+ * Riepilogo della sera al professionista (Luca, 28/10/2026): un modello per
+ * 1, 2 e 3 lavori e uno per 4 o più (i primi tre e "e altri N"). Meta non
+ * accetta variabili vuote né a capo dentro una variabile, quindi ogni
+ * lavoro ha la sua riga fissa nel testo. Si paga a messaggio, non a
+ * caratteri: tutti i lavori in un messaggio solo.
+ */
+export const PROFESSIONAL_DAY_TEMPLATES: readonly WhatsAppTemplateDefinition[] =
+  [
+    {
+      name: "riepilogo_lavori_1",
+      category: "utility",
+      body: "*Il tuo lavoro di {{1}}*\n\n• {{2}}\n\nIndirizzo e contatti del cliente sono nella tua agenda. Buon lavoro!",
+      example: ["giovedì 5 novembre", JOB_EXAMPLES[0]!],
+      urlButton: AGENDA_BUTTON,
+      stopButton: true,
+      footer: WHATSAPP_FOOTER,
+    },
+    {
+      name: "riepilogo_lavori_2",
+      category: "utility",
+      body: "*I tuoi 2 lavori di {{1}}*\n\n• {{2}}\n• {{3}}\n\nIndirizzi e contatti dei clienti sono nella tua agenda. Buon lavoro!",
+      example: ["giovedì 5 novembre", JOB_EXAMPLES[0]!, JOB_EXAMPLES[1]!],
+      urlButton: AGENDA_BUTTON,
+      stopButton: true,
+      footer: WHATSAPP_FOOTER,
+    },
+    {
+      name: "riepilogo_lavori_3",
+      category: "utility",
+      body: "*I tuoi 3 lavori di {{1}}*\n\n• {{2}}\n• {{3}}\n• {{4}}\n\nIndirizzi e contatti dei clienti sono nella tua agenda. Buon lavoro!",
+      example: ["giovedì 5 novembre", ...JOB_EXAMPLES],
+      urlButton: AGENDA_BUTTON,
+      stopButton: true,
+      footer: WHATSAPP_FOOTER,
+    },
+    {
+      name: "riepilogo_lavori_piu",
+      category: "utility",
+      body: "*I tuoi {{1}} lavori di {{2}}*\n\n• {{3}}\n• {{4}}\n• {{5}}\n…e {{6}}.\n\nIndirizzi e contatti dei clienti sono nella tua agenda. Buon lavoro!",
+      example: ["5", "giovedì 5 novembre", ...JOB_EXAMPLES, "altri 2 lavori"],
+      urlButton: AGENDA_BUTTON,
+      stopButton: true,
+      footer: WHATSAPP_FOOTER,
+    },
+  ];
+
 export const WHATSAPP_TEMPLATES: Record<
   WhatsAppMessageType,
   WhatsAppTemplateDefinition
@@ -53,15 +110,7 @@ export const WHATSAPP_TEMPLATES: Record<
     stopButton: true,
     footer: WHATSAPP_FOOTER,
   },
-  BOOKING_REMINDER_PROFESSIONAL: {
-    name: "promemoria_lavoro_professionista",
-    category: "utility",
-    body: "Promemoria: {{1}} hai {{2}}, {{3}}. Indirizzi e contatti dei clienti sono nella tua agenda.",
-    example: ["giovedì 5 novembre", "3 lavori", "il primo alle 08:30 a Latina"],
-    urlButton: { text: "Apri l'agenda", exampleSuffix: "dashboard/agenda" },
-    stopButton: true,
-    footer: WHATSAPP_FOOTER,
-  },
+  BOOKING_REMINDER_PROFESSIONAL: PROFESSIONAL_DAY_TEMPLATES[0]!,
   PROFESSIONAL_ON_THE_WAY: {
     name: "professionista_in_arrivo",
     category: "utility",
@@ -106,10 +155,7 @@ export function renderWhatsAppText(
   type: WhatsAppMessageType,
   params: string[],
 ): string {
-  return WHATSAPP_TEMPLATES[type].body.replace(
-    /\{\{(\d+)\}\}/g,
-    (_, n: string) => params[Number(n) - 1] ?? "",
-  );
+  return renderTemplateText(WHATSAPP_TEMPLATES[type], params);
 }
 
 /** Nome di un'attività o di una persona nei messaggi: al massimo 30 caratteri. */
@@ -139,22 +185,59 @@ export function whatsappDay(scheduledAt: Date): string {
   return DAY_TIME.format(scheduledAt);
 }
 
-/**
- * Variabili del riepilogo della sera prima al professionista:
- * "giovedì 5 novembre", "3 lavori", "il primo alle 08:30 a Latina" (con un
- * lavoro solo: "un lavoro", "alle 08:30 a Latina").
- */
-export function professionalDayParams(
-  first: Date,
-  count: number,
-  city: string | null,
-): string[] {
-  const where = city?.trim() ? ` a ${whatsappName(city)}` : "";
+/** Un lavoro nel riepilogo della sera: "08:30 · Sostituzione rubinetto · Latina". */
+export type ProfessionalDayJob = {
+  scheduledAt: Date;
+  /** La prima voce del preventivo (scritta dal professionista) o il mestiere. */
+  what: string | null;
+  /** Il comune del lavoro, o "online". */
+  where: string | null;
+};
+
+/** Riga di un lavoro: ora, cosa e dove, senza nome né via del cliente. */
+export function professionalDayLine(job: ProfessionalDayJob): string {
   return [
-    whatsappDay(first),
-    count === 1 ? "un lavoro" : `${count} lavori`,
-    `${count === 1 ? "" : "il primo "}alle ${whatsappTime(first)}${where}`,
-  ];
+    whatsappTime(job.scheduledAt),
+    job.what?.trim() ? whatsappParam(job.what, 40) : null,
+    job.where?.trim() ? whatsappName(job.where) : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/** Il modello giusto per il numero di lavori e le sue variabili. */
+export function professionalDayMessage(jobs: ProfessionalDayJob[]): {
+  template: WhatsAppTemplateDefinition;
+  bodyParams: string[];
+} {
+  const day = whatsappDay(jobs[0]!.scheduledAt);
+  const lines = jobs.slice(0, 3).map(professionalDayLine);
+  if (jobs.length <= 3)
+    return {
+      template: PROFESSIONAL_DAY_TEMPLATES[jobs.length - 1]!,
+      bodyParams: [day, ...lines],
+    };
+  const others = jobs.length - 3;
+  return {
+    template: PROFESSIONAL_DAY_TEMPLATES[3]!,
+    bodyParams: [
+      String(jobs.length),
+      day,
+      ...lines,
+      others === 1 ? "un altro lavoro" : `altri ${others} lavori`,
+    ],
+  };
+}
+
+/** Testo di un modello con le sue variabili, come lo vede chi lo riceve. */
+export function renderTemplateText(
+  template: WhatsAppTemplateDefinition,
+  params: string[],
+): string {
+  return template.body.replace(
+    /\{\{(\d+)\}\}/g,
+    (_, n: string) => params[Number(n) - 1] ?? "",
+  );
 }
 
 /** "giovedì 5 novembre alle 10:30". */

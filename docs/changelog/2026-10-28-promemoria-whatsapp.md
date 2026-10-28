@@ -108,6 +108,14 @@ lavori esterni dell'agenda non ricevono nulla (domanda 70 per l'avvocato).
     il riepilogo dei lavori su WhatsApp" e tolto su richiesta di Luca: rompe
     la struttura dell'agenda già sistemata. Il professionista accende il
     riepilogo da Notifiche.
+- **Quinto giro** (Luca: "si pagano per invii o per caratteri? Allora un
+  riepilogo più dettagliato e curato"): Meta fa pagare a messaggio, non a
+  caratteri, quindi il riepilogo elenca ogni lavoro su una riga: titolo in
+  grassetto "I tuoi 3 lavori di giovedì 5 novembre", poi "• 08:30 ·
+  Perdita sotto il lavandino · Latina" (ora, prima riga della descrizione
+  senza contatti né vie, altrimenti il mestiere, e il comune o "online"),
+  "Buon lavoro!". Quattro modelli (1, 2, 3, 4 o più con "e altri N"), stesso
+  costo di prima. Mai nome o via del cliente: restano nell'agenda.
 
 Modelli da far approvare a Meta: `docs/whatsapp-modelli.md`.
 

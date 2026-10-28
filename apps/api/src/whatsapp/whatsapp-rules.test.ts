@@ -11,7 +11,8 @@ import {
   whatsappNumber,
 } from "./whatsapp-rules";
 import {
-  professionalDayParams,
+  professionalDayMessage,
+  renderTemplateText,
   renderWhatsAppText,
   whatsappDayTime,
   whatsappName,
@@ -115,21 +116,31 @@ describe("testi dei messaggi", () => {
     expect(whatsappDayTime(at)).toBe("giovedì 5 novembre alle 10:30");
   });
 
-  it("riepilogo del professionista: quanti lavori e il primo", () => {
-    const at = new Date("2026-11-05T08:30:00Z");
-    expect(
-      renderWhatsAppText(
-        "BOOKING_REMINDER_PROFESSIONAL",
-        professionalDayParams(at, 3, "Latina"),
-      ),
-    ).toContain(
-      "Promemoria: giovedì 5 novembre hai 3 lavori, il primo alle 08:30 a Latina.",
-    );
-    expect(professionalDayParams(at, 1, null)).toEqual([
-      "giovedì 5 novembre",
-      "un lavoro",
-      "alle 08:30",
+  it("riepilogo del professionista: un lavoro per riga, poi 'e altri'", () => {
+    const job = (h: number, what: string | null, where: string | null) => ({
+      scheduledAt: new Date(`2026-11-05T${String(h).padStart(2, "0")}:30:00Z`),
+      what,
+      where,
+    });
+    const two = professionalDayMessage([
+      job(8, "Sostituzione rubinetto", "Latina"),
+      job(11, null, "online"),
     ]);
+    expect(two.template.name).toBe("riepilogo_lavori_2");
+    expect(renderTemplateText(two.template, two.bodyParams)).toBe(
+      "*I tuoi 2 lavori di giovedì 5 novembre*\n\n• 08:30 · Sostituzione rubinetto · Latina\n• 11:30 · online\n\nIndirizzi e contatti dei clienti sono nella tua agenda. Buon lavoro!",
+    );
+    const five = professionalDayMessage(
+      [8, 9, 10, 11, 12].map((h) => job(h, "Perdita", "Latina")),
+    );
+    expect(five.template.name).toBe("riepilogo_lavori_piu");
+    expect(five.bodyParams[0]).toBe("5");
+    expect(five.bodyParams.at(-1)).toBe("altri 2 lavori");
+    expect(
+      professionalDayMessage(
+        [8, 9, 10, 11].map((h) => job(h, "X", null)),
+      ).bodyParams.at(-1),
+    ).toBe("un altro lavoro");
   });
 
   it("promemoria con il giorno scritto per intero, mai 'domani'", () => {

@@ -14,6 +14,7 @@ import {
   type PrismaClient,
 } from "@professionisti/database";
 import {
+  notificationJobLabel,
   WHATSAPP_DIGEST_DEFAULT_HOUR,
   WHATSAPP_MESSAGE_TYPES,
   wallClockNow,
@@ -22,6 +23,7 @@ import {
   type WhatsAppStatus,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { anonymizeProblemText } from "../problem-match/problem-match.service";
 import { opsAlert } from "../common/ops-alert";
 import {
   COUNTED_USER,
@@ -40,7 +42,8 @@ import {
 import {
   WHATSAPP_LANGUAGE,
   WHATSAPP_TEMPLATES,
-  professionalDayParams,
+  professionalDayMessage,
+  type WhatsAppTemplateDefinition,
   whatsappDayTime,
   whatsappName,
   whatsappTime,
@@ -141,6 +144,8 @@ export class WhatsAppService {
     type: WhatsAppMessageType;
     params: MessageParams;
     idempotencyKey: string;
+    /** Un modello diverso da quello del tipo (riepilogo della sera: 1, 2, 3 o più lavori). */
+    template?: WhatsAppTemplateDefinition;
     bookingId?: string | null;
     urgent?: boolean;
     expiresAt?: Date | null;
@@ -148,7 +153,7 @@ export class WhatsAppService {
   }): Promise<OutboundMessage | null> {
     if (!this.provider) return null;
     const now = input.now ?? new Date();
-    const template = WHATSAPP_TEMPLATES[input.type];
+    const template = input.template ?? WHATSAPP_TEMPLATES[input.type];
     let row: OutboundMessage;
     try {
       row = await this.prisma.outboundMessage.create({
@@ -400,8 +405,20 @@ export class WhatsAppService {
       select: {
         id: true,
         scheduledAt: true,
+        city: true,
+        serviceMode: true,
         professionalProfile: { select: { userId: true, city: true } },
-        quote: { select: { guidedRequest: { select: { city: true } } } },
+        quote: {
+          select: {
+            guidedRequest: {
+              select: {
+                city: true,
+                description: true,
+                category: { select: { label: true } },
+              },
+            },
+          },
+        },
       },
     });
     const byProfessional = new Map<string, typeof bookings>();
@@ -431,18 +448,34 @@ export class WhatsAppService {
       )
         continue;
       const first = jobs[0]!;
-      const city =
-        first.quote?.guidedRequest?.city ?? first.professionalProfile.city;
+      const message = professionalDayMessage(
+        jobs.map((job) => {
+          const request = job.quote?.guidedRequest;
+          // La prima riga della descrizione, senza contatti né vie: va a
+          // Meta. Se ne restano tracce, il mestiere.
+          const label = notificationJobLabel(
+            anonymizeProblemText(request?.description ?? ""),
+          );
+          return {
+            scheduledAt: job.scheduledAt,
+            what:
+              label && !label.includes("[")
+                ? label
+                : (request?.category?.label ?? null),
+            where:
+              job.serviceMode === "ONLINE"
+                ? "online"
+                : (job.city ?? request?.city ?? job.professionalProfile.city),
+          };
+        }),
+      );
       try {
         await this.enqueue({
           userId,
           type: "BOOKING_REMINDER_PROFESSIONAL",
+          template: message.template,
           params: {
-            bodyParams: professionalDayParams(
-              first.scheduledAt,
-              jobs.length,
-              city,
-            ),
+            bodyParams: message.bodyParams,
             urlButtonSuffix: "dashboard/agenda",
           },
           idempotencyKey: `professional-day:${userId}:${day}`,

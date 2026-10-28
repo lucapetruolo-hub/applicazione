@@ -43,16 +43,54 @@ caratteri, pulsanti entro 25, nessuna promozione.
 - Pulsante 1, "Visita il sito web", URL dinamico: testo "Apri la richiesta", indirizzo `https://<dominio>/{{1}}`, esempio `https://<dominio>/le-mie-richieste?open=esempio`
 - Pulsante 2, risposta rapida: "Non ricevere più"
 
-## promemoria_lavoro_professionista
+## riepilogo_lavori_1, riepilogo_lavori_2, riepilogo_lavori_3, riepilogo_lavori_piu
 
-- Tipo nel codice: `BOOKING_REMINDER_PROFESSIONAL`
-- Categoria: **Utility**, lingua: Italiano (it)
-- Testo:
+Il riepilogo della sera al professionista: un solo messaggio con tutti i
+lavori del giorno dopo, all'ora che sceglie in Notifiche (18, 19, 20 o 21).
+Quattro modelli perché Meta non accetta variabili vuote né a capo dentro
+una variabile: uno per 1, 2 e 3 lavori, uno per 4 o più (i primi tre e "e
+altri N"). Ogni riga: ora, la prima riga della descrizione senza contatti
+(o il mestiere) e il comune, mai nome o via del cliente.
 
-  > Promemoria: {{1}} hai {{2}}, {{3}}. Indirizzi e contatti dei clienti sono nella tua agenda.
+- Tipo nel codice: `BOOKING_REMINDER_PROFESSIONAL` (`PROFESSIONAL_DAY_TEMPLATES`)
+- Categoria: **Utility**, lingua: Italiano (it), per tutti e quattro
+- Testi (gli asterischi fanno il grassetto, gli a capo vanno lasciati):
 
-- Esempio delle variabili: {{1}} = "giovedì 5 novembre", {{2}} = "3 lavori", {{3}} = "il primo alle 08:30 a Latina"
-- È il riepilogo della sera prima: uno solo con tutti i lavori del giorno dopo, all'ora scelta dal professionista (18, 19, 20 o 21)
+  `riepilogo_lavori_1`
+  > \*Il tuo lavoro di {{1}}\*
+  >
+  > • {{2}}
+  >
+  > Indirizzo e contatti del cliente sono nella tua agenda. Buon lavoro!
+
+  `riepilogo_lavori_2`
+  > \*I tuoi 2 lavori di {{1}}\*
+  >
+  > • {{2}}
+  > • {{3}}
+  >
+  > Indirizzi e contatti dei clienti sono nella tua agenda. Buon lavoro!
+
+  `riepilogo_lavori_3`
+  > \*I tuoi 3 lavori di {{1}}\*
+  >
+  > • {{2}}
+  > • {{3}}
+  > • {{4}}
+  >
+  > Indirizzi e contatti dei clienti sono nella tua agenda. Buon lavoro!
+
+  `riepilogo_lavori_piu`
+  > \*I tuoi {{1}} lavori di {{2}}\*
+  >
+  > • {{3}}
+  > • {{4}}
+  > • {{5}}
+  > …e {{6}}.
+  >
+  > Indirizzi e contatti dei clienti sono nella tua agenda. Buon lavoro!
+
+- Esempio delle variabili: il giorno = "giovedì 5 novembre"; un lavoro = "08:30 · Sostituzione rubinetto · Latina"; nel quarto modello {{1}} = "5" e {{6}} = "altri 2 lavori"
 - Piè di pagina: "Messaggio automatico, le risposte non vengono lette"
 - Pulsante 1, "Visita il sito web", URL dinamico: testo "Apri l'agenda", indirizzo `https://<dominio>/{{1}}`, esempio `https://<dominio>/dashboard/agenda`
 - Pulsante 2, risposta rapida: "Non ricevere più"

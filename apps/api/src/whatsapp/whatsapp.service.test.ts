@@ -412,8 +412,16 @@ describe("WhatsAppService: riepilogo della sera al professionista", () => {
   const booking = (id: string, wall: string, userId = "u1") => ({
     id,
     scheduledAt: new Date(wall),
+    city: "Sabaudia",
+    serviceMode: "AT_HOME",
     professionalProfile: { userId, city: "Latina" },
-    quote: { guidedRequest: { city: "Sabaudia" } },
+    quote: {
+      guidedRequest: {
+        city: "Sabaudia",
+        description: "Chiamare al 333 1234567 per la perdita",
+        category: { label: "Idraulico" },
+      },
+    },
   });
 
   it("un solo messaggio per professionista con tutti i lavori di domani", async () => {
@@ -444,17 +452,17 @@ describe("WhatsAppService: riepilogo della sera al professionista", () => {
     );
     expect(where.scheduledAt.lt.toISOString()).toBe("2027-01-17T00:00:00.000Z");
     expect(sent).toHaveLength(2);
+    // Il numero di telefono scritto nella descrizione non va a Meta: resta il mestiere.
     expect(sent[0]).toMatchObject({
-      template: "promemoria_lavoro_professionista",
+      template: "riepilogo_lavori_3",
       bodyParams: [
         "sabato 16 gennaio",
-        "3 lavori",
-        "il primo alle 08:30 a Sabaudia",
+        "08:30 · Idraulico · Sabaudia",
+        "11:00 · Idraulico · Sabaudia",
+        "15:00 · Idraulico · Sabaudia",
       ],
     });
-    expect(sent[1]).toMatchObject({
-      bodyParams: ["sabato 16 gennaio", "un lavoro", "alle 10:00 a Sabaudia"],
-    });
+    expect(sent[1]).toMatchObject({ template: "riepilogo_lavori_1" });
     expect(messages[0]).toMatchObject({ bookingId: "b1" });
 
     // Il giro delle 18:30 non lo manda di nuovo.
