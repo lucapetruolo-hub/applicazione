@@ -21433,3 +21433,15 @@ e 390 px (anteprime in `anteprime/barra-preventivo-computer/`).
 - La cronologia del professionista dice "Il cliente ha scelto te e altri N professionisti". Il boost resta fuori, come nel resto dei risultati dal problema.
 
 **Verifica**: test della richiesta ai scelti (solo a loro anche con le generali chiuse, pausa, altro mestiere, profilo sparito), dello schema e dell'email; 789 test API, test dei permessi (266 rotte), typecheck e lint; nel browser da computer e telefono scelta di 2 idraulici su 6 a Roma, modulo, invio e "Richiesta inviata", con 2 richieste ricevute nel database.
+
+## 391. L'IA dei casi dubbi attraverso OpenRouter fino al lancio
+
+**Richiesta** (Luca, 28/10/2026, stesso thread del §387): "fai in modo che funzioni OpenRouter ma lascia tutto il resto, perché prima del lancio modificheremo con Anthropic".
+
+**Decisione**:
+- `ProblemMatchService` sceglie chi risponde nei casi dubbi con `aiProvider()`: Anthropic se c'è `ANTHROPIC_API_KEY` (come prima, invariato), altrimenti OpenRouter se c'è `OPENROUTER_API_KEY`, altrimenti solo il dizionario. Con entrambe vince Anthropic, così al lancio basta aggiungere la chiave Anthropic e togliere quella di OpenRouter.
+- Con OpenRouter: stesso modello (`anthropic/claude-haiku-5.5`, cambiabile con `OPENROUTER_MODEL`), stesse istruzioni, stesso testo senza contatti, stesso tetto giornaliero e stessi 3 secondi. Risposta strutturata con uno schema JSON; la risposta si ricontrolla con lo stesso schema zod e, se non torna, resta il dizionario. Nessuna nuova dipendenza (chiamata con `fetch`).
+- Per i dati: `provider.only = ["anthropic"]` senza ripieghi su altri fornitori, `data_collection: "deny"` (OpenRouter non usa i testi), e solo fornitori che accettano la risposta strutturata. Aggiunto alla domanda 68 per l'avvocato; nella checklist di lancio il punto 42 per il passaggio ad Anthropic.
+
+**Verifica**: test con `fetch` finto (indirizzo, chiave, modello, fornitore solo Anthropic, elenco tagliato a 3, chiave rifiutata e risposta sbagliata che lasciano il dizionario, Anthropic che vince con entrambe le chiavi). La prova vera sulle 769 frasi si fa appena c'è la chiave su Render.
+

@@ -115,3 +115,52 @@ describe("anonymizeProblemText", () => {
     expect(anonymizeProblemText("2 stanze da 30 mq al 3 piano")).toBe("2 stanze da 30 mq al 3 piano");
   });
 });
+
+// OpenRouter fino al lancio, al posto della chiave di Anthropic (docs/CHANGELOG.md §391).
+describe("ProblemMatchService con OpenRouter", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  const reply = (content: unknown, status = 200) =>
+    vi.fn().mockResolvedValue({ ok: status === 200, status, json: () => Promise.resolve({ choices: [{ message: { content: JSON.stringify(content) } }] }) });
+
+  it("senza chiave Anthropic usa OpenRouter, solo con i server di Anthropic", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    vi.stubEnv("OPENROUTER_API_KEY", "or-test");
+    const fetchMock = reply({ categories: ["idraulico", "muratore", "imbianchino", "falegname"], outOfService: null, notAJob: false, reason: "Lo sistema l'idraulico." });
+    vi.stubGlobal("fetch", fetchMock);
+    const service = newService();
+    const result = await service.match("c'è una macchia strana sul soffitto del bagno");
+    expect(result.source).toBe("ia");
+    expect(result.categories).toEqual(["idraulico", "muratore", "imbianchino"]);
+    const [url, init] = fetchMock.mock.calls[0]! as [string, { headers: Record<string, string>; body: string }];
+    expect(url).toBe("https://openrouter.ai/api/v1/chat/completions");
+    expect(init.headers.Authorization).toBe("Bearer or-test");
+    const body = JSON.parse(init.body);
+    expect(body.model).toBe("anthropic/claude-haiku-5.5");
+    expect(body.provider).toMatchObject({ only: ["anthropic"], allow_fallbacks: false, data_collection: "deny" });
+  });
+
+  it("con entrambe le chiavi vince Anthropic", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "test");
+    vi.stubEnv("OPENROUTER_API_KEY", "or-test");
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const service = newService();
+    const callClaude = vi.spyOn(service as unknown as { callClaude: (text: string) => Promise<unknown> }, "callClaude").mockResolvedValue(aiAnswer());
+    await service.match("c'è una macchia strana sul soffitto del bagno");
+    expect(callClaude).toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("una risposta sbagliata o una chiave rifiutata lasciano il dizionario", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    vi.stubEnv("OPENROUTER_API_KEY", "or-test");
+    vi.stubGlobal("fetch", reply({}, 401));
+    expect((await newService().match("c'è una macchia strana sul soffitto del bagno")).source).toBe("dizionario");
+    vi.stubGlobal("fetch", reply({ categories: ["astronauta"], outOfService: null, notAJob: false, reason: "" }));
+    expect((await newService().match("c'è una macchia strana sul soffitto del bagno")).source).toBe("dizionario");
+  });
+});

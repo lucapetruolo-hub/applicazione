@@ -129,6 +129,10 @@ services:
       # dizionario. PROBLEM_MATCH_AI_DAILY_LIMIT cambia il tetto (3000).
       - key: ANTHROPIC_API_KEY
         sync: false
+      # Solo fino al lancio (docs/CHANGELOG.md §391): senza ANTHROPIC_API_KEY
+      # lo stesso modello attraverso OpenRouter. Da togliere al lancio.
+      - key: OPENROUTER_API_KEY
+        sync: false
       # Error tracking (apps/api/src/instrument.ts): DSN del progetto Sentry,
       # senza il quale gli errori restano solo nei log di Render.
       - key: SENTRY_DSN

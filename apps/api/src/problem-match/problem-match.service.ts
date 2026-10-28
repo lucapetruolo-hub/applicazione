@@ -25,9 +25,16 @@ import { PRISMA } from "../prisma/prisma.module";
  * minimo dubbio, Claude Haiku (decisione di Luca). Gli avvisi di sicurezza
  * restano sempre del dizionario. Senza `ANTHROPIC_API_KEY`, oltre il tetto
  * del giorno o se Anthropic non risponde entro 3 secondi resta il dizionario.
+ *
+ * Fino al lancio, senza `ANTHROPIC_API_KEY`, lo stesso modello si può usare
+ * attraverso OpenRouter con `OPENROUTER_API_KEY` (decisione di Luca del
+ * 28/10/2026, docs/CHANGELOG.md §391): solo server di Anthropic, nessun uso
+ * dei dati da parte di OpenRouter. Con entrambe le chiavi vince Anthropic.
  */
 
 const MODEL = "claude-haiku-5-5";
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const OPENROUTER_DEFAULT_MODEL = "anthropic/claude-haiku-5.5";
 const TIMEOUT_MS = 3000;
 /** Circa 0,1 centesimi a chiamata: 3000 al giorno sono 3 € nel caso peggiore. */
 const AI_DAILY_LIMIT = 3000;
@@ -49,6 +56,30 @@ const aiAnswerSchema = z.object({
   reason: z.string(),
 });
 type AiAnswer = z.infer<typeof aiAnswerSchema>;
+
+/**
+ * Lo stesso schema scritto a mano per OpenRouter: le risposte strutturate di
+ * Anthropic non accettano i limiti sulla lunghezza degli elenchi, che
+ * controlla poi `aiAnswerSchema`.
+ */
+const AI_ANSWER_JSON_SCHEMA = {
+  type: "object",
+  properties: {
+    categories: { type: "array", items: { type: "string", enum: SLUGS } },
+    outOfService: { anyOf: [{ type: "string", enum: OUT_KINDS }, { type: "null" }] },
+    notAJob: { type: "boolean" },
+    reason: { type: "string" },
+  },
+  required: ["categories", "outOfService", "notAJob", "reason"],
+  additionalProperties: false,
+} as const;
+
+/** Chi risponde nei casi dubbi: Anthropic se c'è la sua chiave, altrimenti OpenRouter (fino al lancio, §391). */
+export function aiProvider(): "anthropic" | "openrouter" | null {
+  if (process.env.ANTHROPIC_API_KEY?.trim()) return "anthropic";
+  if (process.env.OPENROUTER_API_KEY?.trim()) return "openrouter";
+  return null;
+}
 
 const SYSTEM_PROMPT = `Sei il motore di un sito italiano dove i clienti descrivono un problema di casa e il sito propone i professionisti adatti. Il tuo compito: dire quali mestieri del sito chiamare.
 
@@ -99,7 +130,7 @@ export class ProblemMatchService {
   constructor(@Inject(PRISMA) private readonly prisma: PrismaClient) {}
 
   /** Sostituibile nei test. */
-  askAi: ParseFn = (text) => this.callClaude(text);
+  askAi: ParseFn = (text) => (aiProvider() === "openrouter" ? this.callOpenRouter(text) : this.callClaude(text));
 
   async match(description: string, city?: string): Promise<ProblemMatchResult> {
     const text = anonymizeProblemText(description);
@@ -125,7 +156,7 @@ export class ProblemMatchService {
     const fromDictionary = this.fromDictionary(dictionary);
     const taught = await this.taughtMatch(description, dictionary);
     if (taught) return taught;
-    if (dictionary.confident || !process.env.ANTHROPIC_API_KEY?.trim()) {
+    if (dictionary.confident || !aiProvider()) {
       return fromDictionary;
     }
 
@@ -252,6 +283,49 @@ export class ProblemMatchService {
       } else {
         this.logger.warn(`Risposta dell'intelligenza artificiale non valida: resta il dizionario. ${String(error)}`);
       }
+      return null;
+    }
+  }
+
+  /** Stesso modello e stesse istruzioni attraverso OpenRouter (§391); qualunque errore lascia il dizionario. */
+  async callOpenRouter(text: string): Promise<AiAnswer | null> {
+    try {
+      const response = await fetch(OPENROUTER_URL, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY?.trim()}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: process.env.OPENROUTER_MODEL?.trim() || OPENROUTER_DEFAULT_MODEL,
+          max_tokens: 1024,
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: `<problema>${text}</problema>` },
+          ],
+          response_format: { type: "json_schema", json_schema: { name: "mestieri", strict: true, schema: AI_ANSWER_JSON_SCHEMA } },
+          // Solo i server di Anthropic, e OpenRouter non tiene né usa i testi.
+          provider: { only: ["anthropic"], allow_fallbacks: false, data_collection: "deny", require_parameters: true },
+        }),
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if (!response.ok) {
+        this.logger.warn(`Intelligenza artificiale non disponibile (OpenRouter ${response.status}): resta il dizionario.`);
+        if (response.status === 401 || response.status === 403) {
+          opsAlert("problem-match-key", "La chiave OPENROUTER_API_KEY è rifiutata: risponde solo il dizionario.");
+        }
+        return null;
+      }
+      const body = (await response.json()) as { choices?: { message?: { content?: string | null } }[] };
+      const content = body.choices?.[0]?.message?.content;
+      if (!content) return null;
+      const raw = JSON.parse(content) as { categories?: unknown };
+      if (Array.isArray(raw.categories)) raw.categories = raw.categories.slice(0, 3);
+      const parsed = aiAnswerSchema.safeParse(raw);
+      if (!parsed.success) {
+        this.logger.warn("Risposta di OpenRouter non valida: resta il dizionario.");
+        return null;
+      }
+      return parsed.data;
+    } catch (error) {
+      this.logger.warn(`Intelligenza artificiale non disponibile (OpenRouter): resta il dizionario. ${String(error)}`);
       return null;
     }
   }

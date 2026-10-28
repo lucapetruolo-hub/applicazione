@@ -498,6 +498,12 @@ Città, pagine vuote fuori da Google.
     di Resend che siano partite le tre email (presa in carico, esito a chi
     segnala, decisione all'autore). Far vedere all'avvocato i punti 32-35 di
     `domande-commercialista-avvocato.md` e il punto 8 dei Termini.
+42. **Dal problema ai mestieri: da OpenRouter ad Anthropic** (docs/CHANGELOG.md
+    §391, decisione di Luca): fino al lancio l'IA dei casi dubbi passa da
+    OpenRouter (`OPENROUTER_API_KEY` su Render). Prima del lancio: creare
+    l'account Anthropic intestato all'azienda, mettere `ANTHROPIC_API_KEY`
+    su Render e togliere `OPENROUTER_API_KEY` (e `OPENROUTER_MODEL` se c'è).
+    Il codice non cambia.
 
 ## Da fare dopo il lancio
 
