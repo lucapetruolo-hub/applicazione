@@ -6,12 +6,12 @@ import { AdminProblemMatchController, ProblemMatchController, ServiceNamesContro
 import { ProblemMatchService } from "./problem-match.service";
 import { ProblemMatchAdminService } from "./problem-match-admin.service";
 import { ProblemTakeoverService } from "./problem-takeover.service";
-import { ServiceNamesService } from "./service-names.service";
+import { ServiceNamesModule } from "./service-names.module";
 
 @Module({
-  imports: [AuthModule, AdminModule, AuditLogModule],
+  imports: [AuthModule, AdminModule, AuditLogModule, ServiceNamesModule],
   controllers: [ProblemMatchController, ServiceNamesController, AdminProblemMatchController],
-  providers: [ProblemMatchService, ProblemMatchAdminService, ProblemTakeoverService, ServiceNamesService],
-  exports: [ServiceNamesService],
+  providers: [ProblemMatchService, ProblemMatchAdminService, ProblemTakeoverService],
+  exports: [ServiceNamesModule],
 })
 export class ProblemMatchModule {}

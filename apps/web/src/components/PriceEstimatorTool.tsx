@@ -2,7 +2,7 @@
 "use no memo";
 
 import { useEffect, useState, type FocusEvent, type ReactNode } from "react";
-import { SERVICE_PRICE_UNIT_LABEL, formatServicePriceRange, type ServicePriceIndexEntry } from "@professionisti/shared";
+import { SERVICE_PRICE_UNIT_LABEL, formatServicePriceRange, serviceNameMatches, type ServicePriceIndexEntry } from "@professionisti/shared";
 import { Search } from "lucide-react";
 import { Section, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -81,7 +81,9 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
   // Prima le voci con i prezzi: sono quelle che rispondono alla domanda.
   const mostAdded = [...(entries ?? [])].sort((a, b) => Number(b.price !== null) - Number(a.price !== null) || b.professionalCount - a.professionalCount);
 
-  const filtered = (entries ?? []).filter((entry) => entry.name.toLowerCase().includes(query.trim().toLowerCase()));
+  // Con le parole di chi scrive: plurali, accenti e sinonimi compresi (docs/changelog/2026-10-28-quanto-costa-sinonimi.md,
+  // dalla prova con 5 persone: "perdite" e "imbiancatura" non trovavano nulla).
+  const filtered = (entries ?? []).filter((entry) => serviceNameMatches(entry.name, query));
   const visibleEntries = showFullList ? filtered : mostAdded.slice(0, IDLE_VISIBLE_COUNT);
 
   return (
@@ -102,6 +104,16 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
               placeholder="Es. sostituzione caldaia, tinteggiatura, trasloco..."
               aria-label="Cerca un lavoro per conoscere il prezzo medio"
               className="price-search-input"
+              enterKeyHint="go"
+              // Invio apre la prima voce trovata (docs/changelog/2026-10-28-quanto-costa-sinonimi.md): chi scrive e preme
+              // Invio si aspetta di andare avanti, non che non succeda nulla.
+              onKeyDown={(event) => {
+                const first = filtered[0];
+                if (event.key !== "Enter" || !query.trim() || !first) return;
+                event.preventDefault();
+                countPriceToolEntry();
+                window.location.assign(entryHref(first.name, lastCity));
+              }}
             />
           </label>
 
@@ -130,11 +142,17 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
           ) : entries === null ? (
             <p className="price-message">Caricamento...</p>
           ) : visibleEntries.length === 0 ? (
-            <p className="price-message">
-              Nessun lavoro trovato per {'"'}
-              {query}
-              {'"'}.
-            </p>
+            <YStack width="100%" gap="$2" alignItems="flex-start" padding="$4">
+              <Text fontSize={16} color={brand.grafite70}>
+                Nessun prezzo ancora per {'"'}
+                {query.trim()}
+                {'"'}.
+              </Text>
+              {/* Mai un vicolo cieco (docs/changelog/2026-10-28-quanto-costa-sinonimi.md): il preventivo dice il prezzo vero. */}
+              <a href={`/preventivo?descrizione=${encodeURIComponent(`${query.trim()}. `)}`} className="price-empty-link">
+                Chiedi un preventivo gratuito
+              </a>
+            </YStack>
           ) : (
             <YStack
               width="100%"
@@ -260,6 +278,21 @@ export function PriceEstimatorTool({ children }: { children?: ReactNode }) {
           padding: 18px;
           font-size: 16px;
           color: ${brand.grafite70};
+        }
+        .price-empty-link {
+          display: inline-flex;
+          align-items: center;
+          min-height: 44px;
+          font-size: 16px;
+          font-weight: 700;
+          color: ${brand.cianografiaScuro};
+          text-decoration: underline;
+          text-underline-offset: 3px;
+        }
+        .price-empty-link:focus-visible {
+          outline: 2px solid ${brand.cianografiaScuro};
+          outline-offset: 2px;
+          border-radius: 4px;
         }
         .price-row {
           display: flex;

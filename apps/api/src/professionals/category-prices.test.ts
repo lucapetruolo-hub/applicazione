@@ -28,13 +28,13 @@ describe("prezzi delle pagine Quanto costa", () => {
     });
   });
 
-  it("prestazioni dichiarate: da 5 professionisti, voci con almeno 2", () => {
+  it("prestazioni dichiarate: da 5 professionisti, voci con almeno 2, col nome suggerito", () => {
     const services = ["a", "b", "c", "d", "e"].map((id) => ({ name: "Sostituzione rubinetto", professionalProfileId: id, priceMinEurCents: 4000, priceMaxEurCents: 8000, priceUnit: "JOB" as const }));
     const single = { name: "Rifacimento bagno", professionalProfileId: "a", priceMinEurCents: 500000, priceMaxEurCents: null, priceUnit: "JOB" as const };
     expect(declaredServiceStats(services.slice(0, 4))).toBeNull();
     expect(declaredServiceStats([...services, single])).toEqual({
       professionalCount: 5,
-      services: [{ name: "Sostituzione rubinetto", professionalCount: 5, minEurCents: 4000, maxEurCents: 8000, unit: "JOB" }],
+      services: [{ name: "Sostituzione rubinetteria", professionalCount: 5, minEurCents: 4000, maxEurCents: 8000, unit: "JOB" }],
     });
   });
 });
