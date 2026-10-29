@@ -80,13 +80,25 @@ const RETRY_MINUTES = 10;
  */
 export const WHATSAPP_REPLY_TYPE = "BOOKING_REPLY";
 
-/** Il cliente ha premuto "Ci sarò" o "Non posso più": avvisa il professionista e torna il testo da rispondere. */
+/** Pulsante della risposta che toglie quella appena data (Luca, 29/10/2026: si può sbagliare a premere). */
+export const WHATSAPP_UNDO_BUTTON = {
+  id: "UNDO",
+  title: "Ho sbagliato",
+} as const;
+
+/**
+ * Il cliente ha premuto "Ci sarò" o "Non posso più", o "Ho sbagliato" sotto
+ * la nostra risposta: avvisa il professionista e torna il testo da
+ * rispondere, con `undo` se la risposta va offerta da togliere.
+ */
+export type BookingReplyAction =
+  "CONFIRM" | "CANT_COME" | "UNDO_CONFIRM" | "UNDO_CANT_COME";
 export type BookingReplyHandler = (input: {
   clientId: string;
   bookingId: string;
-  action: "CONFIRM" | "CANT_COME";
+  action: BookingReplyAction;
   now: Date;
-}) => Promise<string | null>;
+}) => Promise<{ text: string; undo: boolean } | null>;
 
 type MessageParams = {
   bodyParams: string[];
@@ -1086,15 +1098,16 @@ export class WhatsAppService {
   }
 
   /**
-   * "Ci sarò" o "Non posso più" sotto un promemoria: vale solo come risposta
-   * a un nostro promemoria, dal numero a cui era partito, per un lavoro
-   * ancora da fare. Avvisa il professionista (`onBookingReply`) e risponde
-   * al cliente: un messaggio in risposta entro 24 ore non si paga.
+   * "Ci sarò" o "Non posso più" sotto un promemoria, o "Ho sbagliato" sotto
+   * la nostra risposta: vale solo come risposta a un nostro messaggio, dal
+   * numero a cui era partito, per un lavoro ancora da fare. Avvisa il
+   * professionista (`onBookingReply`) e risponde al cliente: un messaggio in
+   * risposta entro 24 ore non si paga.
    */
   private async bookingReply(
     from: string,
     replyTo: string,
-    action: "CONFIRM" | "CANT_COME",
+    pressed: "CONFIRM" | "CANT_COME" | "UNDO",
     now: Date = new Date(),
   ): Promise<void> {
     if (!this.provider || !this.replyHandler) return;
@@ -1102,13 +1115,28 @@ export class WhatsAppService {
       where: { providerMessageId: replyTo },
       select: {
         type: true,
+        template: true,
         bookingId: true,
         userId: true,
         user: { select: { phone: true, deletedAt: true } },
       },
     });
+    // "Ho sbagliato" vale sotto la risposta, che ricorda cosa aveva premuto.
+    const action: BookingReplyAction | null =
+      pressed === "UNDO"
+        ? reminder?.type === WHATSAPP_REPLY_TYPE &&
+          reminder.template === "risposta:CONFIRM"
+          ? "UNDO_CONFIRM"
+          : reminder?.type === WHATSAPP_REPLY_TYPE &&
+              reminder.template === "risposta:CANT_COME"
+            ? "UNDO_CANT_COME"
+            : null
+        : reminder?.type === "BOOKING_REMINDER_CLIENT"
+          ? pressed
+          : null;
     if (
-      reminder?.type !== "BOOKING_REMINDER_CLIENT" ||
+      !action ||
+      !reminder ||
       !reminder.bookingId ||
       !reminder.userId ||
       !reminder.user?.phone ||
@@ -1123,19 +1151,19 @@ export class WhatsAppService {
       now,
     });
     if (!reply) return;
-    const idempotencyKey = `booking-reply:${reminder.bookingId}:${action}`;
     try {
       const { providerMessageId } = await this.provider.sendText({
         to: from,
-        body: reply,
+        body: reply.text,
+        ...(reply.undo ? { buttons: [WHATSAPP_UNDO_BUTTON] } : {}),
       });
       await this.prisma.outboundMessage.create({
         data: {
           userId: reminder.userId,
           type: WHATSAPP_REPLY_TYPE,
-          template: "testo",
+          template: `risposta:${action}`,
           category: "service",
-          idempotencyKey,
+          idempotencyKey: `booking-reply:${reminder.bookingId}:${action}:${now.getTime()}`,
           bookingId: reminder.bookingId,
           status: "SENT",
           providerMessageId,

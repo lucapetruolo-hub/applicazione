@@ -39,6 +39,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   // Pulsanti del promemoria WhatsApp (docs/changelog/2026-10-28-promemoria-whatsapp.md).
   BOOKING_CLIENT_CONFIRMED: { icon: "👍", message: "Il cliente ha confermato che ci sarà all'appuntamento." },
   BOOKING_CLIENT_CANT_COME: { icon: "⚠️", message: "Il cliente ha scritto che non può più esserci all'appuntamento: scrivigli in chat." },
+  BOOKING_CLIENT_CANT_COME_UNDONE: { icon: "👍", message: "Il cliente aveva premuto «Non posso più» per errore: ci sarà." },
   BOOKING_REOPENED_BY_PROFESSIONAL: { icon: "🔄", message: "Il professionista ha riaperto una prenotazione annullata." },
   // Recensione del cliente (docs/CHANGELOG.md §185): pubblica subito (§215).
   NEW_REVIEW: { icon: "⭐", message: "Un cliente ha recensito un tuo lavoro: la sua recensione è ora visibile." },

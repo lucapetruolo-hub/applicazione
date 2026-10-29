@@ -66,8 +66,8 @@ preavviso inizi (mai di notte, al massimo le 20 della sera prima).
 - Piè di pagina e pulsanti: come `promemoria_appuntamento_cliente`
 
 Alla risposta "Ci sarò" o "Non posso più" il sito risponde con un testo
-libero (non un modello: entro 24 ore da un messaggio del cliente Meta non
-lo fa pagare).
+libero con il pulsante "Ho sbagliato" (non un modello: entro 24 ore da un
+messaggio del cliente Meta non lo fa pagare).
 
 ## riepilogo_lavori_1, riepilogo_lavori_2, riepilogo_lavori_3, riepilogo_lavori_piu
 

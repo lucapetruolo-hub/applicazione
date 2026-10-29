@@ -251,6 +251,37 @@ describe("risposta in testo libero", () => {
   });
 });
 
+describe("risposta con il pulsante 'Ho sbagliato'", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("diventa un messaggio con un pulsante di risposta", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ messages: [{ id: "wamid.b" }] }), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await new MetaWhatsAppProvider("tok", "123", "s").sendText({
+      to: "393331234567",
+      body: "Grazie!",
+      buttons: [{ id: "UNDO", title: "Ho sbagliato" }],
+    });
+    const init = fetchMock.mock.calls[0]![1] as { body: string };
+    expect(JSON.parse(init.body)).toMatchObject({
+      type: "interactive",
+      interactive: {
+        type: "button",
+        body: { text: "Grazie!" },
+        action: {
+          buttons: [
+            { type: "reply", reply: { id: "UNDO", title: "Ho sbagliato" } },
+          ],
+        },
+      },
+    });
+  });
+});
+
 describe("modelli da far approvare a Meta", () => {
   it("rispettano le regole di Meta", () => {
     expect(WHATSAPP_FOOTER.length).toBeLessThanOrEqual(60);

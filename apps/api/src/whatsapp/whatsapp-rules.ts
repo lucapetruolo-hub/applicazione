@@ -112,14 +112,15 @@ export function shouldApplyStatus(
   return ORDER[next] > from;
 }
 
-/** Pulsante del promemoria premuto dal cliente: "Ci sarò" o "Non posso più". */
+/** Pulsante premuto dal cliente: "Ci sarò" o "Non posso più" nel promemoria, "Ho sbagliato" nella risposta. */
 export function bookingReplyAction(
   text: string | null,
   buttonPayload: string | null,
-): "CONFIRM" | "CANT_COME" | null {
+): "CONFIRM" | "CANT_COME" | "UNDO" | null {
   const value = normalizeReply(buttonPayload ?? text);
   if (value === "ci saro") return "CONFIRM";
   if (value === "non posso piu") return "CANT_COME";
+  if (value === "undo" || value === "ho sbagliato") return "UNDO";
   return null;
 }
 

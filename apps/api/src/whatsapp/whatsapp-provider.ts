@@ -51,6 +51,8 @@ export interface WhatsAppProvider {
   sendText(message: {
     to: string;
     body: string;
+    /** Pulsanti di risposta (massimo 3, testo entro 20 caratteri). */
+    buttons?: readonly { id: string; title: string }[];
   }): Promise<{ providerMessageId: string }>;
   /** Firma del webhook sul corpo così com'è arrivato. */
   verifyWebhook(

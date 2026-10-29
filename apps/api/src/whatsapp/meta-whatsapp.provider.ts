@@ -90,11 +90,30 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
   async sendText(message: {
     to: string;
     body: string;
+    buttons?: readonly { id: string; title: string }[];
   }): Promise<{ providerMessageId: string }> {
-    return this.post({
+    const base = {
       messaging_product: "whatsapp",
       recipient_type: "individual",
       to: message.to,
+    };
+    if (message.buttons?.length)
+      return this.post({
+        ...base,
+        type: "interactive",
+        interactive: {
+          type: "button",
+          body: { text: message.body },
+          action: {
+            buttons: message.buttons.map((b) => ({
+              type: "reply",
+              reply: { id: b.id, title: b.title },
+            })),
+          },
+        },
+      });
+    return this.post({
+      ...base,
       type: "text",
       text: { body: message.body, preview_url: false },
     });

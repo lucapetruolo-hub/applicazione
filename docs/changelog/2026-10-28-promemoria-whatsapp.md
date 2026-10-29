@@ -151,7 +151,15 @@ lavori esterni dell'agenda non ricevono nulla (domanda 70 per l'avvocato).
     lavoro) una riga con la risposta del cliente, l'ultima se ha cambiato
     idea: "Il cliente ha confermato che ci sarà" con la spunta, o "Il
     cliente ha risposto al promemoria che non può più esserci: scrivigli in
-    chat" in rosso (Luca, 29/10).
+    chat" in rosso (Luca, 29/10);
+  - "Ho sbagliato" (Luca, 29/10: "può essere che il cliente abbia sbagliato
+    a premere"): la risposta del sito a "Ci sarò" o "Non posso più" ha un
+    pulsante "Ho sbagliato" (messaggio con pulsante, gratuito come la
+    risposta). Dopo "Ci sarò" toglie la conferma; dopo "Non posso più" dice
+    al professionista, anche per email, che il cliente ci sarà
+    (`BOOKING_CLIENT_CANT_COME_UNDONE`). Vale solo sotto quella risposta;
+    anche premere l'altro pulsante del promemoria corregge, perché conta
+    l'ultima risposta.
 
 Modelli da far approvare a Meta: `docs/whatsapp-modelli.md`.
 

@@ -655,8 +655,13 @@ describe("WhatsAppService: 'Ci sarò' e 'Non posso più'", () => {
       bookingId: "b1",
       now: DAY,
     });
-    const handler = vi.fn(
-      async () => "Grazie! Abbiamo detto a Rossi Idraulica che ci sarai.",
+    const handler = vi.fn(async (input: { action: string }) =>
+      input.action.startsWith("UNDO")
+        ? { text: "Fatto, abbiamo tolto la conferma.", undo: false }
+        : {
+            text: "Grazie! Abbiamo detto a Rossi Idraulica che ci sarai.",
+            undo: true,
+          },
     );
     ctx.service.onBookingReply(handler);
     return { ...ctx, handler };
@@ -678,13 +683,38 @@ describe("WhatsAppService: 'Ci sarò' e 'Non posso più'", () => {
       {
         to: "393331234567",
         body: "Grazie! Abbiamo detto a Rossi Idraulica che ci sarai.",
+        buttons: [{ id: "UNDO", title: "Ho sbagliato" }],
       },
     ]);
     expect(messages[1]).toMatchObject({
       type: "BOOKING_REPLY",
+      template: "risposta:CONFIRM",
       status: "SENT",
       costMicroEur: 0,
       bookingId: "b1",
+    });
+  });
+
+  it("'Ho sbagliato' sotto la risposta toglie quella risposta, e vale solo lì", async () => {
+    const { service, handler, texts } = await withReminder();
+    // Sotto il promemoria "Ho sbagliato" non vuol dire nulla.
+    await service.handleWebhook(webhook("UNDO", "wamid.1"), {
+      "x-hub-signature-256": "ok",
+    });
+    expect(handler).not.toHaveBeenCalled();
+    await service.handleWebhook(webhook("Ci sarò", "wamid.1"), {
+      "x-hub-signature-256": "ok",
+    });
+    await service.handleWebhook(webhook("UNDO", "wamid.text.1"), {
+      "x-hub-signature-256": "ok",
+    });
+    expect(handler).toHaveBeenLastCalledWith(
+      expect.objectContaining({ action: "UNDO_CONFIRM" }),
+    );
+    // La seconda risposta non ha più il pulsante.
+    expect(texts[1]).toEqual({
+      to: "393331234567",
+      body: "Fatto, abbiamo tolto la conferma.",
     });
   });
 

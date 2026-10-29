@@ -509,6 +509,16 @@ const BUILDERS: Record<string, Builder> = {
     details: proJobDetails(ctx),
     cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda` },
   }),
+  // "Ho sbagliato" o "Ci sarò" dopo "Non posso più": l'appuntamento resta com'era.
+  BOOKING_CLIENT_CANT_COME_UNDONE: (_payload, ctx) => ({
+    kind: "notification",
+    subject: "Il cliente ci sarà: aveva premuto per errore",
+    greeting: ctx.name,
+    title: "Il cliente ci sarà",
+    paragraphs: [`Il cliente aveva risposto per errore che non poteva più esserci all'appuntamento per **${job(ctx)}**: ci sarà.`],
+    details: proJobDetails(ctx),
+    cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda` },
+  }),
   BOOKING_REOPENED_BY_PROFESSIONAL: (_payload, ctx) => ({
     kind: "notification",
     subject: `${pro(ctx)} ha riaperto la prenotazione`,
