@@ -265,8 +265,8 @@ export class AdminController {
   // admin, come "Lavori terminati".
   @RequireAdminScope("ANY")
   @Get("job-issues")
-  listJobIssues(@Req() req: AuthenticatedRequest, @Query("view") view?: string) {
-    return this.adminService.listJobIssues(view === "closed" || view === "chat" || view === "appeals" ? view : "open", req.user.userId);
+  listJobIssues(@Req() req: AuthenticatedRequest, @Query("view") view?: string, @Query("q") q?: string) {
+    return this.adminService.listJobIssues(view === "closed" || view === "chat" || view === "appeals" ? view : "open", req.user.userId, q ?? "");
   }
 
   @RequireAdminScope("ANY")

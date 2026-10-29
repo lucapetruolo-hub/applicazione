@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
+import { bookingSearchWhere, searchEurCents } from "../admin/admin-search";
 import { AuditLogService } from "../audit-log/audit-log.service";
 
 /** Contestazioni su un JobPayment (CLAUDE.md §88) — sempre risolte da un admin, mai automaticamente. */
@@ -37,9 +38,15 @@ export class DisputesService {
     return dispute;
   }
 
-  async listAll() {
+  /** Tutti, il più recente prima; con `q` cerca per cliente, professionista, motivo, cifra o codice. */
+  async listAll(q = "") {
+    const booking = bookingSearchWhere(q);
+    const cents = searchEurCents(q);
+    const text = { contains: q.trim(), mode: "insensitive" as const };
     return this.prisma.dispute.findMany({
+      where: booking ? { OR: [{ jobPayment: { booking } }, { reason: text }, { id: text }, ...(cents ? [{ jobPayment: { paidEurCents: cents } }] : [])] } : undefined,
       orderBy: { createdAt: "desc" },
+      take: booking ? 200 : undefined,
       include: { jobPayment: { include: { booking: { include: { professionalProfile: true } } } } },
     });
   }

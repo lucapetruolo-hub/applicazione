@@ -96,8 +96,48 @@ export type AdminBankDispute = {
   dueBy: string | null;
   /** Prove già mandate alla banca: non si possono più cambiare. */
   submitted: boolean;
+  /** Spiegazione mandata alla banca, null se non è ancora stata mandata. */
+  sentExplanation: string | null;
   /** Spiegazione e foto mandate dal professionista, null se non ha scritto nulla. */
   professionalNote: { text: string; photoUrls: string[]; at: string } | null;
   /** Campi già compilati dal sito, da rileggere. */
   draft: Omit<BankDisputeEvidenceInput, "submit">;
 };
+
+/** Prove scritte dall'admin e salvate dal sito, così come sono partite. */
+export type BankDisputeEvidenceRecord = Omit<BankDisputeEvidenceInput, "submit"> & {
+  /** Testo arrivato davvero a Stripe quando è diverso (solo con le chiavi di prova). */
+  stripeText?: string;
+};
+
+/**
+ * Archivio delle contestazioni in banca, aperte e chiuse, in Admin →
+ * Pagamenti (richiesta di Luca del 28/10/2026, "poter risalire a tutto e
+ * fare una ricerca", docs/changelog/2026-10-28-stripe-prova.md).
+ */
+export type AdminBankDisputeArchiveRow = {
+  jobPaymentId: string;
+  bookingId: string;
+  disputeId: string;
+  businessName: string;
+  clientName: string;
+  clientEmail: string | null;
+  amountEurCents: number;
+  reason: string | null;
+  status: string;
+  openedAt: string | null;
+  dueBy: string | null;
+  closedAt: string | null;
+  /** Quanto è tornato al cliente con la contestazione persa o con i rimborsi. */
+  refundedEurCents: number;
+  professionalNote: { text: string; photoUrls: string[]; at: string } | null;
+  evidence: BankDisputeEvidenceRecord | null;
+  evidenceSentAt: string | null;
+  /** Chi ha mandato le prove: email dell'admin. */
+  evidenceSentBy: string | null;
+  /** C'è il PDF caricato su Stripe con le prove. */
+  hasSentPdf: boolean;
+  /** Ogni passaggio, dal più vecchio: by è l'email di chi l'ha fatto, null = Stripe o il sito da solo. */
+  history: { at: string; text: string; by: string | null }[];
+};
+

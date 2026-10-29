@@ -51,19 +51,26 @@ export default function AdminProblemiPage() {
   const [view, setView] = useState<View>("open");
   const [error, setError] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
+  // Ricerca in tutte le segnalazioni, aperte e chiuse (docs/changelog/2026-10-28-stripe-prova.md).
+  const [query, setQuery] = useState("");
+  const [search, setSearch] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(query.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [query]);
   // Righe insieme alla scheda (e al ricaricamento) da cui arrivano: cambiando
   // scheda o dopo una decisione si torna allo scheletro finché non arrivano le nuove.
-  const loadKey = `${view}:${reload}`;
+  const loadKey = `${view}:${reload}:${search}`;
   const [loaded, setLoaded] = useState<{ key: string; rows: AdminJobIssue[] } | null>(null);
   const rows = loaded?.key === loadKey ? loaded.rows : null;
 
   useEffect(() => {
     if (!token) return;
     apiClient
-      .adminListJobIssues(token, view)
-      .then((list) => setLoaded({ key: `${view}:${reload}`, rows: list }))
+      .adminListJobIssues(token, view, search)
+      .then((list) => setLoaded({ key: `${view}:${reload}:${search}`, rows: list }))
       .catch((err) => setError(errorMessage(err)));
-  }, [token, view, reload]);
+  }, [token, view, reload, search]);
 
   return (
     <YStack>
@@ -81,12 +88,30 @@ export default function AdminProblemiPage() {
         value={view}
         onChange={setView}
       />
+      <YStack gap="$1" marginBottom="$3">
+        <input
+          type="search"
+          aria-label="Cerca nelle segnalazioni"
+          className="admin-input"
+          placeholder="Cliente, professionista, email, descrizione o codice"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          style={{ maxWidth: 420 }}
+        />
+        {search ? (
+          <Text fontSize={13} color={brand.grafite70}>
+            Risultati in tutte le schede, aperte e chiuse.
+          </Text>
+        ) : null}
+      </YStack>
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}
       {rows === null && !error ? (
         <SkeletonTableRows rows={3} cols={4} />
       ) : rows && rows.length === 0 ? (
         <Text color={brand.grafite70}>
-          {view === "open"
+          {search
+            ? "Nessuna segnalazione trovata."
+            : view === "open"
             ? "Nessuna segnalazione da decidere."
             : view === "chat"
               ? "Nessuna segnalazione in chat tra le parti."

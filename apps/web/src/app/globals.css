@@ -2399,6 +2399,66 @@ a.admin-kpi:hover {
 .admin-kpi.is-urgent .admin-kpi-value {
   color: #dc3545;
 }
+/* Home admin: tutto quello che c'è da fare in un elenco (docs/changelog/2026-10-28-stripe-prova.md). */
+.admin-todo {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: #ffffff;
+  border-radius: 20px;
+  overflow: hidden;
+}
+.admin-todo li + li {
+  border-top: 1px solid #f0e6da;
+}
+.admin-todo-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 64px;
+  padding: 12px 16px;
+  text-decoration: none;
+  color: #2b2420;
+}
+.admin-todo-row:hover {
+  background: #fbf6ef;
+}
+.admin-todo-row:focus-visible {
+  outline: 2px solid #128552;
+  outline-offset: -2px;
+}
+.admin-todo-count {
+  flex-shrink: 0;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f6efe6;
+  font-size: 17px;
+  font-weight: 800;
+}
+.admin-todo-count.is-urgent {
+  background: #fdecee;
+  color: #b42318;
+}
+.admin-todo-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.admin-todo-label {
+  font-size: 16px;
+  font-weight: 700;
+}
+.admin-todo-detail {
+  font-size: 13px;
+  color: #6e6459;
+}
 /* Professionisti in numeri (docs/CHANGELOG.md §368). */
 .admin-filters {
   display: flex;
