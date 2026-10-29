@@ -106,7 +106,7 @@ describe("NotificationsService — email sul nuovo lead", () => {
       email: "muto@example.com",
       name: "Email spenta",
       deletedAt: null,
-      notificationPrefs: { topics: { richieste: { inApp: true, email: false, sms: false } } },
+      notificationPrefs: { topics: { richieste: { inApp: true, email: false } } },
     });
     await service.notify("u-1", "NEW_LEAD", { guidedRequestId: "gr-1", category: "Idraulico", city: "Roma", isUrgent: false });
     await new Promise((resolve) => setTimeout(resolve, 10));
@@ -138,21 +138,21 @@ describe("NotificationsService — preferenze di notifica (docs/CHANGELOG.md §1
   }
 
   it("argomento spento sul sito: notifica già letta, niente push", async () => {
-    const { service, prisma, realtime } = build({ topics: { preventivi: { inApp: false, email: true, sms: false } } });
+    const { service, prisma, realtime } = build({ topics: { preventivi: { inApp: false, email: true } } });
     await service.notify("u-1", "NEW_QUOTE", { guidedRequestId: "gr-1" });
     expect(prisma.notification.create).toHaveBeenCalledWith({ data: expect.objectContaining({ readAt: expect.any(Date) }) });
     expect(realtime.publish).not.toHaveBeenCalled();
   });
 
   it("sito spento ma email accesa: l'email del nuovo lead parte lo stesso", async () => {
-    const { service, email, realtime } = build({ topics: { richieste: { inApp: false, email: true, sms: false } } });
+    const { service, email, realtime } = build({ topics: { richieste: { inApp: false, email: true } } });
     await service.notify("u-1", "NEW_LEAD", { guidedRequestId: "gr-1", category: "Idraulico", city: "Roma", isUrgent: false });
     await vi.waitFor(() => expect(email.send).toHaveBeenCalledTimes(1));
     expect(realtime.publish).not.toHaveBeenCalled();
   });
 
   it("account e sicurezza non si spengono: la notifica arriva comunque", async () => {
-    const { service, realtime } = build({ topics: { account: { inApp: false, email: false, sms: false } } });
+    const { service, realtime } = build({ topics: { account: { inApp: false, email: false } } });
     await service.notify("u-1", "ACCOUNT_REACTIVATED", { note: "ok" });
     expect(realtime.publish).toHaveBeenCalled();
   });
@@ -161,18 +161,18 @@ describe("NotificationsService — preferenze di notifica (docs/CHANGELOG.md §1
     const { service, prisma } = build(null);
     const saved = await service.updatePreferences("u-1", {
       topics: {
-        richieste: { inApp: true, email: false, sms: true },
-        preventivi: { inApp: true, email: true, sms: false },
-        lavori: { inApp: true, email: true, sms: false },
-        messaggi: { inApp: false, email: false, sms: false },
-        promemoria: { inApp: true, email: true, sms: false },
-        account: { inApp: false, email: false, sms: false },
+        richieste: { inApp: true, email: false },
+        preventivi: { inApp: true, email: true },
+        lavori: { inApp: true, email: true },
+        messaggi: { inApp: false, email: false },
+        promemoria: { inApp: true, email: true },
+        account: { inApp: false, email: false },
       },
       popups: false,
       sound: false,
     });
-    expect(saved.topics.account).toEqual({ inApp: true, email: true, sms: false });
-    expect(saved.topics.richieste).toEqual({ inApp: true, email: false, sms: true });
+    expect(saved.topics.account).toEqual({ inApp: true, email: true });
+    expect(saved.topics.richieste).toEqual({ inApp: true, email: false });
     expect(prisma.user.update).toHaveBeenCalled();
   });
 });

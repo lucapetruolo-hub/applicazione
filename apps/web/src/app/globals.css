@@ -3654,6 +3654,67 @@ a.admin-kpi:hover {
   align-items: center;
   justify-content: center;
 }
+/* Promemoria su WhatsApp (docs/changelog/2026-10-28-promemoria-whatsapp.md). */
+.notif-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.notif-inline-link {
+  /* Anche come <button> ("Modifica" del numero WhatsApp). */
+  font: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  color: #0e7a4c;
+  font-weight: 700;
+  text-decoration: none;
+}
+.notif-inline-link:hover {
+  text-decoration: underline;
+}
+.notif-small {
+  font-size: 13px;
+  color: #6e6459;
+}
+.notif-error {
+  margin: 0;
+  font-size: 16px;
+  color: #c8362b;
+}
+.whatsapp-reminder-link {
+  align-self: flex-start;
+  text-decoration: none;
+}
+.whatsapp-reminder-link:hover span {
+  text-decoration: underline;
+}
+.notif-digest-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  font-size: 15px;
+  color: #2b2420;
+}
+.notif-digest-select {
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid #9c8e7f;
+  background: #ffffff;
+  font: inherit;
+  font-weight: 700;
+  color: #2b2420;
+}
+.whatsapp-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: #6e6459;
+  line-height: 1.6;
+}
 /* Pagina Notifiche a schede (docs/changelog/2026-10-28-notifiche-impostazioni.md):
    le schede aggiunte alla pagina con .notif-card prendono la stessa ombra. */
 .nt-page .notif-card {

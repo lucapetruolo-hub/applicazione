@@ -8,6 +8,7 @@ import { apiClient } from "@/lib/apiClient";
 import { cancellationNoticeLabel, JOB_ISSUE_LABEL, JOB_ISSUE_STATUS_LABEL, formatEurCents, formatServicePriceRange, quotePriceTotals, type AppointmentMoment } from "@professionisti/shared";
 import { AppointmentWhen, useAppointmentMoment } from "./AppointmentWhen";
 import { AddToCalendar } from "./AddToCalendar";
+import { WhatsAppReminderLink } from "@/components/WhatsAppReminderLink";
 import { UnreadDot } from "@/components/UnreadDot";
 import { ClientIssueStatus } from "./ClientIssueStatus";
 import { JobPaymentStatus } from "@/components/JobPaymentStatus";
@@ -245,6 +246,7 @@ export function BookingSection({
             </a>
           ) : null}
           {upcoming ? <AddToCalendar token={token} bookingId={booking.id} /> : null}
+          {upcoming ? <WhatsAppReminderLink token={token} /> : null}
         </YStack>
 
         {booking.status !== "CANCELED" ? (
@@ -474,11 +476,11 @@ function isUpcoming(moment: AppointmentMoment | null): boolean {
 }
 
 /**
- * "Serve cambiare? Scrivi un messaggio · Annulla appuntamento" sotto la
+ * "Serve cambiare? Proponi un'altra data · Scrivi un messaggio · Annulla appuntamento" sotto la
  * trattativa chiusa (§346): solo prima dell'appuntamento, quando il
  * professionista c'è ancora. Dopo, per qualcosa che non va c'è "C'è un problema".
  */
-export function ChangeLinks({ booking, onMessage, onCancel }: { booking: ClientBooking; onMessage: (() => void) | null; onCancel: () => void }) {
+export function ChangeLinks({ booking, onReschedule, onMessage, onCancel }: { booking: ClientBooking; onReschedule: (() => void) | null; onMessage: (() => void) | null; onCancel: () => void }) {
   const moment = useAppointmentMoment(booking);
   if ((booking.status !== "CONFIRMED" && booking.status !== "PENDING") || booking.professionalAccountDeleted || !isUpcoming(moment)) return null;
   return (
@@ -487,6 +489,12 @@ export function ChangeLinks({ booking, onMessage, onCancel }: { booking: ClientB
       <Text fontSize={16} color={brand.grafite70}>
         Serve cambiare?
       </Text>
+      {/* "Non posso più" → un'altra data invece di perdere l'appuntamento (docs/changelog/2026-10-28-promemoria-whatsapp.md). */}
+      {onReschedule && booking.status === "CONFIRMED" ? (
+        <Text fontSize={16} fontWeight="600" color={brand.grafite} textDecorationLine="underline" cursor="pointer" accessibilityRole="button" onPress={onReschedule}>
+          Proponi un&apos;altra data
+        </Text>
+      ) : null}
       {onMessage ? (
         <Text fontSize={16} fontWeight="600" color={brand.grafite} textDecorationLine="underline" cursor="pointer" accessibilityRole="button" onPress={onMessage}>
           Scrivi un messaggio

@@ -33,7 +33,7 @@ Implicazioni tecniche dirette:
 - Il modello dati separa fin da subito: `User`, `ProfessionalProfile`,
   `Category`, `Subscription` (piano SaaS), `VisibilityBoost` (pacchetto
   marketing), `Booking`, `Review`, `Payment`, `Notification`.
-- Serve un sistema di **notifiche/promemoria automatici** (push, email, SMS)
+- Serve un sistema di **notifiche/promemoria automatici** (push, email, WhatsApp)
   come feature core, non accessoria.
 
 ---
@@ -51,7 +51,7 @@ Implicazioni tecniche dirette:
 | Ricerca full-text avanzata (fase 2) | **Meilisearch** o **Typesense** | Da introdurre quando serve ranking sponsorizzato + filtri complessi oltre a ciò che Postgres gestisce bene |
 | Autenticazione | **Email+password + Google Sign-In**, JWT emesso da `apps/api` | Login implementato direttamente in NestJS (bcrypt + `@nestjs/jwt`, niente Auth.js/Clerk): un solo backend emette la sessione per web e mobile. Google: pagina di accesso di Google in una finestra (OpenID Connect `id_token` + `nonce`, ritorno su `/accesso-google`), nessuno script Google sul sito e quindi nessun consenso cookie (docs/CHANGELOG.md §265). Niente Apple Sign-In (richiede Apple Developer Program a pagamento, non attivato) |
 | Pagamenti | **Stripe** (Subscriptions + Checkout one-off) | Copre sia l'abbonamento SaaS ricorrente sia i pacchetti di visibilità one-shot |
-| Notifiche | Expo Push, **Resend** (email), **Twilio** (SMS) | Promemoria automatici anti no-show |
+| Notifiche | Expo Push, **Resend** (email), **WhatsApp con Meta diretto** (Cloud API, `apps/api/src/whatsapp/`) | Promemoria automatici anti no-show. Decisione di Luca del 28/10/2026 (docs/changelog/2026-10-28-promemoria-whatsapp.md): niente Twilio né SMS. Su WhatsApp solo promemoria del giorno prima (al cliente con i pulsanti "Ci sarò"/"Non posso più" e, con un acconto in gioco, 6 ore prima del preavviso; al professionista un solo riepilogo la sera, all'ora del riassunto della sera delle email, `notificationPrefs.digestHour`, 18-21 e di serie 19: una sola ora per sito, email e WhatsApp), "sto arrivando", appuntamento annullato e codice del numero (`WHATSAPP_MESSAGE_TYPES`), a chi ha confermato il cellulare con un codice e acceso i promemoria in Notifiche. Gli stessi pulsanti nell'email del promemoria (link firmato a `/promemoria/…`, la risposta conta solo con un tocco); "Non posso più" porta alla stessa "Proponi un'altra data" dei preventivi (proposta sul preventivo accettato, nessuna strada separata), che il professionista accetta con "Accetta nuova data" (l'appuntamento si sposta), rifiuta o cambia con "Modifica" (allora risponde il cliente), con la data "In attesa" in Agenda e un promemoria dopo 12 ore senza risposta; ore di silenzio 21-8, tetto al giorno (`WHATSAPP_DAILY_LIMIT`), registro `outbound_messages` con esito e costo, webhook firmato. Spento senza `WHATSAPP_ACCESS_TOKEN`/`WHATSAPP_PHONE_NUMBER_ID` su Render, si accende con la società verificata da Meta (`docs/whatsapp-modelli.md`). Fornitore sostituibile dietro `WhatsAppProvider` |
 | Push in tempo reale (chat, notifiche in-app) | **Server-Sent Events** (`@Sse()` di NestJS lato server, `EventSource` nativo del browser lato client) — non Socket.io né WebSocket grezzo | Un solo servizio Render (nessuno scaling orizzontale, l'argomento Socket.io/adapter Redis non si applica), l'invio passa già per REST (serve solo un push server→client, mai bidirezionale), zero dipendenze nuove (`EventSource` è nativo, nessuna libreria client), riconnessione automatica alla caduta della connessione (Render free tier va in sleep/si riavvia). `EventSource` non può impostare header custom: nell'indirizzo passa un biglietto monouso da 60 secondi (`POST /realtime/ticket`, poi `?ticket=...`), mai il token di accesso (docs/CHANGELOG.md §293). Stato in memoria (`RealtimeService`, `Map<userId, Subject>`) esplicitamente scoped a singola istanza — se il progetto scalasse orizzontalmente, va sostituito con un pub/sub condiviso (es. Redis, già nello stack per BullMQ) solo internamente a quel servizio, l'interfaccia pubblica non cambia. Dettagli in `docs/CHANGELOG.md` §115. Il polling esistente resta come rete di sicurezza, solo allungato dove SSE copre ormai il caso comune |
 | Anti-bot registrazione | **Cloudflare Turnstile** (`apps/web/src/components/TurnstileWidget.tsx`, `apps/api/src/auth/turnstile.ts`) | Deciso dall'utente il 06/10/2026, implementato in docs/CHANGELOG.md §204: sulla registrazione con email e password (`/registrati` e `InlineAuthGate`), su "Password dimenticata" e sul modulo `/contatti`; Google Sign-In escluso. Gratuito, senza cookie di profilazione (nessun consenso nel banner), citato nell'informativa privacy. Spento senza chiavi (`NEXT_PUBLIC_TURNSTILE_SITE_KEY` su Vercel, `TURNSTILE_SECRET_KEY` su Render). Se Cloudflare non risponde la registrazione passa (resta il limite di 5/min per IP). Nessun proxy/WAF Cloudflare davanti a Vercel |
 | Controllo codice fiscale e partita IVA | **VIES** (gratis, solo P.IVA) poi **Openapi** (`apps/api/src/tax-id-check/`, `OPENAPI_TOKEN_RISK` e `OPENAPI_TOKEN_COMPANY` su Render, un token per servizio) | Decisione dell'utente del 14/10/2026 (docs/CHANGELOG.md §253-§254): la P.IVA prima con VIES e, se non conferma (non valida, lenta oltre 5s, non risponde), subito Openapi (Registro Imprese); CF del titolare con Openapi (Agenzia delle Entrate); CF del legale rappresentante solo controlli gratuiti, lo conferma il documento (§255). Nell'interfaccia solo "Verifica P.IVA" / "Verifica codice fiscale", senza nominare enti (decisione dell'utente). Un esito "non valido" toglie il profilo dalla ricerca (`publicVisibilityWhere`); Openapi irraggiungibile o senza chiave non blocca mai (riprova ogni 30 minuti). Fornitore sostituibile dietro `TaxIdProvider` |
@@ -255,9 +255,12 @@ sia UI/routing — la logica va in `apps/api` o `packages/shared`.
     (`apps/api/src/admin/admin.guard.ts`): senza decoratore è aperta a
     qualunque admin.
 13. **Notifiche**: ogni nuovo tipo va assegnato a un argomento in
-    `packages/shared/src/notifications.ts` e ogni nuovo invio email/SMS
+    `packages/shared/src/notifications.ts` e ogni nuovo invio email
     controlla `notificationChannelEnabled`; "Account e sicurezza" non si
-    spegne (DSA art. 17).
+    spegne (DSA art. 17). **Su WhatsApp pochissimi messaggi e mai nulla
+    di promozionale** (decisione di Luca, docs/changelog/2026-10-28-promemoria-whatsapp.md):
+    un tipo nuovo in `WHATSAPP_MESSAGE_TYPES` vuol dire un modello da far
+    approvare a Meta e un costo a ogni invio, va discusso prima con Luca.
 14. **Il boost a pagamento non entra nello smistamento delle richieste**
     né nei risultati partiti dalla descrizione del problema (`merito=1`,
     docs/CHANGELOG.md §392) (decisioni dell'utente): non cambiarlo senza
@@ -503,7 +506,7 @@ Una riga per voce; dettaglio completo (endpoint, file, bug corretti) in
 - [x] Preventivo strutturato a voci (`QuoteItem`) → l'accettazione crea la `Booking`
 - [x] Recensioni solo da prenotazione `COMPLETED`, con foto
 - [x] Dashboard professionista: profilo, immagine, prestazioni con range di prezzo, agenda settimanale con prenotazione diretta opzionale
-- [x] Promemoria anti no-show via email (cron `@nestjs/schedule`, non BullMQ); SMS rimandato
+- [x] Promemoria anti no-show via email (cron `@nestjs/schedule`, non BullMQ) e su WhatsApp con Meta (codice pronto, spento finché la società non è verificata da Meta); niente SMS
 - [x] Email del sito con modello unico (benvenuto, preventivi, lavori, pagamenti, recupero password): testi in `apps/api/src/email/templates/`, marchio in `email-brand.ts`; partono davvero solo con Resend configurato
 - [x] Abbonamenti Stripe e boost di visibilità (codice pronto, servono le chiavi reali: skill `checklist-lancio`)
 - [x] Area account cliente, professionisti salvati, cancellazione account

@@ -18,6 +18,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { playNotificationSound } from "@/lib/notificationSound";
 import { NOTIFICATION_TOPIC_STYLE } from "@/lib/notificationTopicStyle";
+import { WhatsAppRemindersCard } from "@/components/WhatsAppRemindersCard";
 
 /**
  * Impostazioni delle notifiche (docs/CHANGELOG.md §152; nuova veste in
@@ -25,8 +26,8 @@ import { NOTIFICATION_TOPIC_STYLE } from "@/lib/notificationTopicStyle";
  * una scheda per argomento con i canali come pulsanti (Sito, Email) e, dove
  * l'argomento raccoglie più avvisi, un sottomenu per spegnere i singoli
  * avvisi. Ogni scelta si salva subito. "Account e sicurezza" non si spegne
- * (DSA art. 17). La colonna SMS, che non mandava nulla, non si mostra più:
- * la scelta salvata resta per quando il canale partirà.
+ * (DSA art. 17). WhatsApp ha una scheda sua con un solo interruttore
+ * (docs/changelog/2026-10-28-promemoria-whatsapp.md).
  */
 const CHANNELS = [
   { key: "inApp", label: "Sito" },
@@ -135,6 +136,8 @@ export default function NotifichePage() {
                 />
               </div>
             </section>
+
+            <WhatsAppRemindersCard token={token} role={role} digestHour={notificationDigestHour(notificationPrefs)} />
 
             <section aria-labelledby="nt-topics-title" className="nt-section">
               <h2 id="nt-topics-title">Cosa ti avvisiamo</h2>

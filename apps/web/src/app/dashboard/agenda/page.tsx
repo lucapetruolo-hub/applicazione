@@ -1343,10 +1343,23 @@ function DashboardAgendaContent() {
       .sort((a, b) => a.quote!.estimatedStartDate.localeCompare(b.quote!.estimatedStartDate));
   }
 
+  // Appuntamenti con un'altra data proposta e senza risposta: la data
+  // proposta compare "In attesa" come un preventivo, finché non la accetti
+  // (docs/changelog/2026-10-28-promemoria-whatsapp.md).
+  const proposedMoves = (bookings ?? []).flatMap((b) => (b.dateChange ? [{ booking: b, change: b.dateChange }] : []));
+  const proposedMoveLabel = (change: NonNullable<ProfessionalBooking["dateChange"]>) =>
+    change.proposedBy === "CLIENT" ? "Nuova data proposta dal cliente" : "Nuova data proposta, in attesa del cliente";
+  const proposedMoveName = (b: ProfessionalBooking) =>
+    b.clientAccountDeleted ? "Account eliminato" : [b.recipientName, b.recipientSurname].filter(Boolean).join(" ") || b.clientName || "Cliente";
+  function proposedMovesOnDate(date: Date) {
+    const dateStr = toIsoDate(date);
+    return proposedMoves.filter(({ change }) => jobOccurrenceOn(change.start, change.end, dateStr) !== null);
+  }
+
   function renderBookingMonthCell(date: Date) {
     const dayBookings = bookingsOnDate(date);
     const dayExternalJobs = externalJobsOnDate(date);
-    const dayPendingQuotes = pendingQuotesOnDate(date);
+    const dayPendingQuotes = [...pendingQuotesOnDate(date).map((lead) => ({ id: lead.id })), ...proposedMovesOnDate(date).map(({ booking }) => ({ id: `move-${booking.id}` }))];
     const totalCount = dayBookings.length + dayExternalJobs.length + dayPendingQuotes.length;
     if (totalCount === 0) return null;
     return (
@@ -1357,8 +1370,8 @@ function DashboardAgendaContent() {
         {dayExternalJobs.slice(0, Math.max(0, 4 - dayBookings.length)).map((j) => (
           <YStack key={j.id} width={6} height={6} borderRadius={1} backgroundColor={EXTERNAL_JOB_STATUS_COLOR[j.status]} />
         ))}
-        {dayPendingQuotes.slice(0, Math.max(0, 4 - dayBookings.length - dayExternalJobs.length)).map((lead) => (
-          <YStack key={lead.id} width={6} height={6} borderRadius={3} borderWidth={1} borderColor={PENDING_QUOTE_COLOR} backgroundColor="transparent" />
+        {dayPendingQuotes.slice(0, Math.max(0, 4 - dayBookings.length - dayExternalJobs.length)).map((pending) => (
+          <YStack key={pending.id} width={6} height={6} borderRadius={3} borderWidth={1} borderColor={PENDING_QUOTE_COLOR} backgroundColor="transparent" />
         ))}
         {totalCount > 4 ? (
           <Text fontFamily="$body" fontSize={11} color={brand.grafite70}>
@@ -1460,7 +1473,20 @@ function DashboardAgendaContent() {
         };
       });
 
-    return [...bookingItems, ...externalItems, ...pendingQuoteItems].sort((a, b) => a.date.getTime() - b.date.getTime());
+    const proposedMoveItems: AgendaListItem[] = proposedMoves.map(({ booking: b, change }) => ({
+      key: `move-${b.id}`,
+      date: new Date(change.start),
+      timeLabel: formatAgendaTimeRange(change.start, change.end),
+      title: proposedMoveName(b),
+      subtitle: b.categoryLabel ?? "Lavoro",
+      statusLabel: proposedMoveLabel(change),
+      statusColor: PENDING_QUOTE_COLOR,
+      dashed: true,
+      searchText: [proposedMoveName(b), b.categoryLabel, b.description, b.city, "in attesa", "nuova data"].filter(Boolean).join(" ").toLowerCase(),
+      onPress: () => router.push(b.guidedRequestId ? `/dashboard/richieste?open=${b.guidedRequestId}` : "/dashboard/richieste"),
+    }));
+
+    return [...bookingItems, ...externalItems, ...pendingQuoteItems, ...proposedMoveItems].sort((a, b) => a.date.getTime() - b.date.getTime());
   }
 
   const agendaSearchResults = agendaSearchQuery.trim()
@@ -1589,6 +1615,18 @@ function DashboardAgendaContent() {
               onPress: () => router.push(`/dashboard/richieste?open=${lead.guidedRequest.id}`),
             }));
           })
+      : []),
+    ...(filters.has("wait")
+      ? proposedMoves.flatMap(({ booking: b, change }) =>
+          onEachDay(change.start, change.end, `move-${b.id}`).map((day) => ({
+            ...day,
+            title: proposedMoveName(b),
+            detail: [day.dayOf, proposedMoveLabel(change)].filter(Boolean).join(" · "),
+            kind: "wait" as const,
+            label: "Nuova data in attesa",
+            onPress: () => router.push(b.guidedRequestId ? `/dashboard/richieste?open=${b.guidedRequestId}` : "/dashboard/richieste"),
+          })),
+        )
       : []),
   ];
 

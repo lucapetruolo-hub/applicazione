@@ -1,5 +1,8 @@
 import type {
   AgendaAttention,
+  AppointmentReplyAction,
+  AppointmentReplyState,
+  BookingDateChange,
   ProfessionalKind,
   EmailStatus,
   ProfessionalEntityTypeValue,
@@ -106,6 +109,8 @@ import type {
   GeneralRequestAvailability,
   GuidedRequestReach,
   UrgencyMetrics,
+  WhatsAppAdminSummary,
+  WhatsAppStatus,
   RequestTiming,
   GeneralRequestsAdminOverview,
   GeneralRequestThresholds,
@@ -211,6 +216,8 @@ export type ClientBooking = {
   cancellationNoticeHours: number;
   /** Annullando dentro il preavviso l'acconto online resta al professionista (docs/CHANGELOG.md §348). */
   lateCancelKeepsDeposit: boolean;
+  /** Altra data proposta per l'appuntamento, in attesa di risposta. */
+  dateChange: BookingDateChange | null;
   /** Link per una consulenza video (Meet/Zoom/ecc.), impostato dal professionista — richiesta esplicita dell'utente. */
   meetingLink: string | null;
   /** Il professionista ha eliminato l'account (soft-delete) — richiesta esplicita dell'utente, mostra "Account eliminato" con possibilità di eliminare la prenotazione dalla lista. */
@@ -1198,6 +1205,13 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     confirmPasswordReset: (token: string, password: string) =>
       request<AuthResult>("/auth/password-reset/confirm", { method: "POST", body: JSON.stringify({ token, password }) }),
 
+    /** Pagina dei pulsanti "Ci sarò" e "Non posso più" dell'email del promemoria (link firmato, senza accesso). */
+    getAppointmentReply: (token: string) => request<AppointmentReplyState>(`/booking-replies/${encodeURIComponent(token)}`),
+    sendAppointmentReply: (token: string, action: AppointmentReplyAction) =>
+      request<AppointmentReplyState>(`/booking-replies/${encodeURIComponent(token)}`, { method: "POST", body: JSON.stringify({ action }) }),
+
+    /** "Non posso più": il cliente propone un'altra data per l'appuntamento fissato; il professionista accetta o rifiuta. */
+
     verifyEmail: (token: string) =>
       request<{ email: string; alreadyVerified: boolean }>("/auth/verify-email", { method: "POST", body: JSON.stringify({ token }) }),
 
@@ -2074,6 +2088,9 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       if (input.professionalProfileId) params.set("professionista", input.professionalProfileId);
       return request<GuidedRequestReach>(`/guided-requests/reach?${params.toString()}`, { cache: "no-store" });
     },
+    adminWhatsApp: (token: string, month?: string) =>
+      request<WhatsAppAdminSummary>(`/admin/whatsapp${month ? `?month=${encodeURIComponent(month)}` : ""}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
     adminUrgencyMetrics: (token: string) =>
       request<UrgencyMetrics>("/admin/urgency-metrics", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
     /** Dal problema scritto ai mestieri (docs/CHANGELOG.md §392). */
@@ -2445,6 +2462,22 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(prefs),
       }),
+
+    /** Promemoria su WhatsApp: numero confermato e interruttore (docs/changelog/2026-10-28-promemoria-whatsapp.md). */
+    whatsAppStatus: (token: string) => request<WhatsAppStatus>("/whatsapp/me", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
+    sendWhatsAppCode: (token: string) =>
+      request<WhatsAppStatus>("/whatsapp/me/code", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
+
+    confirmWhatsAppCode: (token: string, code: string) =>
+      request<WhatsAppStatus>("/whatsapp/me/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ code }),
+      }),
+
+    setWhatsAppEnabled: (token: string, enabled: boolean) =>
+      request<WhatsAppStatus>(enabled ? "/whatsapp/me/enable" : "/whatsapp/me/disable", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
     /** "Non ricevere più email come questa" dal link dell'email, senza accedere (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md). */
     notificationEmailOff: (token: string, off?: boolean) =>

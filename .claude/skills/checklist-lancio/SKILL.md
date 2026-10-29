@@ -320,11 +320,23 @@ prima del lancio"):
     `supporto@professionisti.it`, provvisoria come il nome. Crearla col dominio
     del punto 5bis e aggiornarla in `BRAND.supportEmail`
     (`packages/shared/src/brand.ts`): vale per email e pagine.
-22. **Promemoria via SMS: ricerca di un'alternativa** (WhatsApp o altro).
-    "Come funziona" (`QuoteExampleSection.tsx`) oggi promette "email e SMS"
-    ma gli SMS non sono attivi. L'utente ha confermato il 12/10/2026 che il
-    testo resta: il canale (SMS o WhatsApp) verrà attivato prima del lancio.
-    Se al lancio non c'è ancora, correggere la frase.
+22. **Promemoria su WhatsApp con Meta** (deciso da Luca il 28/10/2026,
+    codice pronto e spento, docs/changelog/2026-10-28-promemoria-whatsapp.md).
+    Con la società: Business Manager verificato, SIM aziendale, nome
+    visualizzato con il marchio definitivo, carta nel Billing Hub, i 5
+    modelli di `docs/whatsapp-modelli.md` approvati con il dominio vero,
+    variabili su Render (`WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`,
+    `WHATSAPP_APP_SECRET`, `WHATSAPP_WEBHOOK_VERIFY_TOKEN`), webhook
+    registrato, prova con un numero vero. Accettare i termini e i Data
+    Processing Terms di Meta (domanda 69 per l'avvocato). Appena acceso:
+    cambiare "email e SMS" in "email e WhatsApp" in "Come funziona"
+    (`QuoteExampleSection.tsx`) e aggiungere in `/sicurezza` che il codice
+    WhatsApp si scrive solo sul sito (riproporlo a Luca). Se al lancio non
+    è acceso, togliere "e SMS" dalla frase.
+    Da riprendere quando l'avvocato risponde alla domanda 70 (Luca,
+    28/10/2026): promemoria WhatsApp anche ai clienti dei lavori esterni
+    dell'agenda (non iscritti al sito), mandato per conto del professionista.
+    Oggi quei clienti non ricevono nulla.
 23. **Conferma email obbligatoria per i professionisti** (docs/CHANGELOG.md §178, mai per i clienti): già nel
     codice, ma spenta. Dopo aver verificato il dominio su Resend (punto
     5bis) e provato che il link arriva a un indirizzo qualunque, impostare

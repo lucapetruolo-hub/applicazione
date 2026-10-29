@@ -5,14 +5,18 @@ import "./zod";
  * Preferenze di notifica per argomento e canale (docs/CHANGELOG.md §152,
  * richiesta esplicita dell'utente). Un argomento raggruppa più tipi di
  * notifica: scegliere per ognuno dei ~25 tipi sarebbe ingestibile. Per
- * ogni argomento tre canali: sito (campanella e popup), email, SMS.
+ * ogni argomento due canali: sito (campanella e popup) ed email. WhatsApp
+ * non è un canale per argomento: pochi promemoria scelti, con il numero
+ * confermato e un interruttore solo (`whatsapp.ts`,
+ * docs/changelog/2026-10-28-promemoria-whatsapp.md; prima qui c'era una
+ * colonna SMS che non mandava nulla).
  * "Account e sicurezza" è bloccato acceso: le decisioni di moderazione vanno
  * comunicate per legge (DSA art. 17), non si possono spegnere.
  */
 export const NOTIFICATION_TOPICS = ["richieste", "preventivi", "lavori", "messaggi", "promemoria", "account"] as const;
 export type NotificationTopic = (typeof NOTIFICATION_TOPICS)[number];
 
-export const NOTIFICATION_CHANNELS = ["inApp", "email", "sms"] as const;
+export const NOTIFICATION_CHANNELS = ["inApp", "email"] as const;
 export type NotificationChannelKey = (typeof NOTIFICATION_CHANNELS)[number];
 
 export type NotificationTopicInfo = {
@@ -50,6 +54,9 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "QUOTE_UPDATED",
       "QUOTE_DATE_CONFIRMED",
       "QUOTE_DATE_REJECTED",
+      // Il cliente risponde all'altra data proposta dal professionista per un appuntamento fissato.
+      "QUOTE_DATE_CONFIRMED_BY_CLIENT",
+      "QUOTE_DATE_REJECTED_BY_CLIENT",
       // Acconto pagato ma lavoro non più confermabile: rimborsato (docs/CHANGELOG.md §240).
       "QUOTE_DEPOSIT_REFUNDED",
     ],
@@ -67,6 +74,11 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "BOOKING_CANCELED_BY_CLIENT",
       "BOOKING_REOPENED_BY_CLIENT",
       "BOOKING_REOPENED_BY_PROFESSIONAL",
+      // Risposta del cliente al promemoria WhatsApp: "Ci sarò" o "Non posso più".
+      "BOOKING_CLIENT_CONFIRMED",
+      "BOOKING_CLIENT_CANT_COME",
+      // "Ho sbagliato" dopo "Non posso più": il cliente ci sarà.
+      "BOOKING_CLIENT_CANT_COME_UNDONE",
       "BOOKING_NO_SHOW_REPORTED",
       // Segnalazioni di un problema sul lavoro (docs/CHANGELOG.md §164).
       "JOB_ISSUE_REPORTED",
@@ -282,7 +294,7 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
   {
     key: "preventivi.date",
     topic: "preventivi",
-    types: ["QUOTE_DATE_PROPOSED", "QUOTE_DATE_CHANGED", "QUOTE_DATE_CONFIRMED", "QUOTE_DATE_REJECTED"],
+    types: ["QUOTE_DATE_PROPOSED", "QUOTE_DATE_CHANGED", "QUOTE_DATE_CONFIRMED", "QUOTE_DATE_REJECTED", "QUOTE_DATE_CONFIRMED_BY_CLIENT", "QUOTE_DATE_REJECTED_BY_CLIENT"],
     professional: { label: "Date proposte dal cliente" },
     client: { label: "Data confermata o cambiata" },
   },
@@ -296,8 +308,12 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
       "BOOKING_REOPENED_BY_CLIENT",
       "BOOKING_REOPENED_BY_PROFESSIONAL",
       "BOOKING_NO_SHOW_REPORTED",
+      // Risposte del cliente al promemoria: "Ci sarò", "Non posso più", "Ho sbagliato".
+      "BOOKING_CLIENT_CONFIRMED",
+      "BOOKING_CLIENT_CANT_COME",
+      "BOOKING_CLIENT_CANT_COME_UNDONE",
     ],
-    professional: { label: "Appuntamenti", description: "Annullati o riaperti dal cliente." },
+    professional: { label: "Appuntamenti", description: "Annullati o riaperti dal cliente, e le sue risposte ai promemoria." },
     client: { label: "Appuntamenti", description: "Prenotati, annullati o riaperti." },
   },
   {
@@ -412,7 +428,8 @@ export function notificationTopicOf(type: string): NotificationTopic | null {
   return null;
 }
 
-const channelPrefsSchema = z.object({ inApp: z.boolean(), email: z.boolean(), sms: z.boolean() });
+// Una vecchia chiave "sms" salvata nelle preferenze si ignora (zod la toglie).
+const channelPrefsSchema = z.object({ inApp: z.boolean(), email: z.boolean() });
 
 export const notificationPreferencesSchema = z.object({
   topics: z.object({
@@ -443,15 +460,15 @@ export const notificationPreferencesSchema = z.object({
 });
 export type NotificationPreferences = z.infer<typeof notificationPreferencesSchema>;
 
-/** Tutto acceso tranne gli SMS (servono il consenso esplicito e hanno un costo). */
+/** Tutto acceso. */
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   topics: {
-    richieste: { inApp: true, email: true, sms: false },
-    preventivi: { inApp: true, email: true, sms: false },
-    lavori: { inApp: true, email: true, sms: false },
-    messaggi: { inApp: true, email: true, sms: false },
-    promemoria: { inApp: true, email: true, sms: false },
-    account: { inApp: true, email: true, sms: false },
+    richieste: { inApp: true, email: true },
+    preventivi: { inApp: true, email: true },
+    lavori: { inApp: true, email: true },
+    messaggi: { inApp: true, email: true },
+    promemoria: { inApp: true, email: true },
+    account: { inApp: true, email: true },
   },
   popups: true,
   sound: true,
@@ -510,10 +527,10 @@ export function resolveNotificationPreferences(stored: unknown): NotificationPre
 export function notificationChannelEnabled(prefs: NotificationPreferences, type: string, channel: NotificationChannelKey): boolean {
   const topic = notificationTopicOf(type);
   if (!topic) return true;
-  if (NOTIFICATION_TOPIC_INFO[topic].locked && channel !== "sms") return true;
+  if (NOTIFICATION_TOPIC_INFO[topic].locked) return true;
   const item = notificationItemOf(type);
-  if (item?.locked && channel !== "sms") return true;
-  if (item && channel !== "sms" && prefs.items?.[item.key]?.[channel] === false) return false;
+  if (item?.locked) return true;
+  if (item && prefs.items?.[item.key]?.[channel] === false) return false;
   return prefs.topics[topic][channel];
 }
 

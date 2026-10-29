@@ -1,0 +1,193 @@
+import { describe, expect, it } from "vitest";
+import { whatsappParam } from "@professionisti/shared";
+import {
+  bookingReplyAction,
+  depositReminderTimes,
+  inQuietHours,
+  isMobileNumber,
+  isStopRequest,
+  maskedPhone,
+  nextSendTime,
+  shouldApplyStatus,
+  startOfItalianDay,
+  whatsappNumber,
+} from "./whatsapp-rules";
+import {
+  professionalDayMessage,
+  renderTemplateText,
+  renderWhatsAppText,
+  whatsappDayTime,
+  whatsappName,
+  whatsappTime,
+} from "./whatsapp-templates";
+
+// Gennaio: ora italiana = UTC + 1.
+describe("ore di silenzio (21-8 ora italiana)", () => {
+  it("le 20:59 italiane non sono silenzio, le 21:00 sì", () => {
+    expect(inQuietHours(new Date("2027-01-15T19:59:00Z"))).toBe(false);
+    expect(inQuietHours(new Date("2027-01-15T20:00:00Z"))).toBe(true);
+  });
+
+  it("dalle 21 il messaggio aspetta le 8 del giorno dopo", () => {
+    expect(nextSendTime(new Date("2027-01-15T21:30:00Z")).toISOString()).toBe(
+      "2027-01-16T07:00:00.000Z",
+    );
+  });
+
+  it("alle 3 di notte aspetta le 8 dello stesso giorno", () => {
+    expect(nextSendTime(new Date("2027-01-16T02:00:00Z")).toISOString()).toBe(
+      "2027-01-16T07:00:00.000Z",
+    );
+  });
+
+  it("di giorno parte subito", () => {
+    const now = new Date("2027-01-16T10:00:00Z");
+    expect(nextSendTime(now)).toBe(now);
+  });
+
+  it("con l'ora legale le 8 italiane sono le 6 UTC", () => {
+    expect(nextSendTime(new Date("2027-07-01T20:00:00Z")).toISOString()).toBe(
+      "2027-07-02T06:00:00.000Z",
+    );
+  });
+
+  it("la mezzanotte italiana per i tetti del giorno", () => {
+    expect(
+      startOfItalianDay(new Date("2027-01-15T23:30:00Z")).toISOString(),
+    ).toBe("2027-01-15T23:00:00.000Z");
+    expect(
+      startOfItalianDay(new Date("2027-01-15T10:00:00Z")).toISOString(),
+    ).toBe("2027-01-14T23:00:00.000Z");
+  });
+});
+
+describe("numero", () => {
+  it("cellulare sì, fisso no", () => {
+    expect(isMobileNumber("+39 3331234567")).toBe(true);
+    expect(isMobileNumber("+39 0773123456")).toBe(false);
+    expect(isMobileNumber("+39 12")).toBe(false);
+    expect(isMobileNumber(null)).toBe(false);
+  });
+
+  it("solo cifre per Meta", () => {
+    expect(whatsappNumber("+39 333 123 4567")).toBe("393331234567");
+  });
+
+  it("nascosto a metà quando lo mostriamo", () => {
+    expect(maskedPhone("+39 3331234567")).toBe("+39 333 ••• 4567");
+  });
+});
+
+describe("Non ricevere più", () => {
+  it("riconosce pulsante e parole scritte", () => {
+    expect(isStopRequest("Non ricevere più", null)).toBe(true);
+    expect(isStopRequest("STOP", null)).toBe(true);
+    expect(isStopRequest("basta!", null)).toBe(true);
+    expect(isStopRequest(null, "STOP")).toBe(true);
+  });
+
+  it("una risposta qualunque non spegne nulla", () => {
+    expect(isStopRequest("Grazie, a domani", null)).toBe(false);
+    expect(isStopRequest("non posso fermarmi", null)).toBe(false);
+  });
+});
+
+describe("stato dal webhook", () => {
+  it("va solo avanti", () => {
+    expect(shouldApplyStatus("SENT", "DELIVERED")).toBe(true);
+    expect(shouldApplyStatus("READ", "DELIVERED")).toBe(false);
+    expect(shouldApplyStatus("DELIVERED", "FAILED")).toBe(false);
+    expect(shouldApplyStatus("SENT", "FAILED")).toBe(true);
+    expect(shouldApplyStatus("FAILED", "READ")).toBe(false);
+    expect(shouldApplyStatus("SKIPPED", "SENT")).toBe(false);
+  });
+});
+
+describe("testi dei messaggi", () => {
+  it("nome dell'attività al massimo 30 caratteri, senza a capo", () => {
+    expect(
+      whatsappName("Impresa Edile Fratelli Rossi e Figli Costruzioni").length,
+    ).toBeLessThanOrEqual(30);
+    expect(whatsappParam("Riga uno\nriga  due")).toBe("Riga uno riga due");
+    expect(whatsappParam("   ")).toBe("-");
+  });
+
+  it("giorno e ora dall'orario di parete, senza spostamenti di fuso", () => {
+    const at = new Date("2026-11-05T10:30:00Z");
+    expect(whatsappTime(at)).toBe("10:30");
+    expect(whatsappDayTime(at)).toBe("giovedì 5 novembre alle 10:30");
+  });
+
+  it("riepilogo del professionista: un lavoro per riga con l'ora in grassetto", () => {
+    const job = (h: number, what: string | null, where: string | null) => ({
+      scheduledAt: new Date(`2026-10-13T${String(h).padStart(2, "0")}:30:00Z`),
+      what,
+      where,
+    });
+    const two = professionalDayMessage([
+      job(8, "Perdita sotto il lavandino", "Latina"),
+      job(11, null, "online"),
+    ]);
+    expect(two.template.name).toBe("riepilogo_lavori_2");
+    expect(renderTemplateText(two.template, two.bodyParams)).toBe(
+      "*I tuoi 2 lavori di martedì 13 ottobre*\n\n• *08:30* · Perdita sotto il lavandino · Latina\n• *11:30* · online\n\nIndirizzi e contatti dei clienti sono nella tua agenda. Buon lavoro!",
+    );
+    const five = professionalDayMessage(
+      [8, 9, 10, 11, 12].map((h) => job(h, "Perdita", "Latina")),
+    );
+    expect(five.template.name).toBe("riepilogo_lavori_piu");
+    expect(five.bodyParams[0]).toBe("5");
+    expect(five.bodyParams.at(-1)).toBe("altri 2 lavori");
+    expect(
+      professionalDayMessage(
+        [8, 9, 10, 11].map((h) => job(h, "X", null)),
+      ).bodyParams.at(-1),
+    ).toBe("un altro lavoro");
+  });
+
+  it("promemoria con il giorno scritto per intero, mai 'domani'", () => {
+    const text = renderWhatsAppText("BOOKING_REMINDER_CLIENT", [
+      "giovedì 5 novembre alle 10:30",
+      "Rossi Idraulica",
+    ]);
+    expect(text).toBe(
+      "*Promemoria: giovedì 5 novembre alle 10:30*\n\nHai l'appuntamento con Rossi Idraulica. Indirizzo e dettagli sono nella tua richiesta.\n\nCi sarai? Rispondi con un pulsante qui sotto.",
+    );
+    expect(text).not.toContain("domani");
+  });
+});
+
+describe("pulsanti del promemoria", () => {
+  it("riconosce 'Ci sarò' e 'Non posso più', anche scritti a mano", () => {
+    expect(bookingReplyAction("Ci sarò", "Ci sarò")).toBe("CONFIRM");
+    expect(bookingReplyAction("ci saro!", null)).toBe("CONFIRM");
+    expect(bookingReplyAction(null, "Non posso più")).toBe("CANT_COME");
+    expect(bookingReplyAction("Non posso più venire", null)).toBeNull();
+    expect(bookingReplyAction("Non ricevere più", null)).toBeNull();
+    expect(isStopRequest("Non posso più", null)).toBe(false);
+  });
+});
+
+describe("promemoria prima del preavviso", () => {
+  const at = (iso: string, hours: number) => {
+    const { sendFrom, deadline } = depositReminderTimes(new Date(iso), hours);
+    return [sendFrom.toISOString(), deadline.toISOString()];
+  };
+
+  it("6 ore prima della fine del preavviso", () => {
+    expect(at("2027-01-16T18:00:00Z", 24)).toEqual([
+      "2027-01-15T12:00:00.000Z",
+      "2027-01-15T18:00:00.000Z",
+    ]);
+  });
+
+  it("di notte si anticipa alle 20 della sera prima, mai dopo", () => {
+    // Fine del preavviso alle 10:30: le 4:30 diventano le 20 del giorno prima.
+    expect(at("2027-01-16T10:30:00Z", 48)).toEqual([
+      "2027-01-13T20:00:00.000Z",
+      "2027-01-14T10:30:00.000Z",
+    ]);
+    // Fine alle 3: le 21 diventano le 20 dello stesso giorno.
+    expect(at("2027-01-19T03:00:00Z", 72)[0]).toBe("2027-01-15T20:00:00.000Z");
+  });
+});

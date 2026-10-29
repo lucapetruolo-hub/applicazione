@@ -319,6 +319,13 @@ export type ProfessionalBooking = {
   canceledBy: "CLIENT" | "PROFESSIONAL" | null;
   /** Il cliente ha annullato dentro il preavviso scelto dal professionista (docs/CHANGELOG.md §347). */
   canceledLate: boolean;
+  /** Risposta del cliente ai pulsanti del promemoria WhatsApp, "Ci sarò" e "Non posso più" (ISO). */
+  clientConfirmedAt: string | null;
+  clientCantComeAt: string | null;
+  /** Promemoria al cliente di un appuntamento da venire: inviato, consegnato o letto su WhatsApp, o mandato per email. */
+  clientReminder: { channel: "WHATSAPP" | "EMAIL"; status: "SENT" | "DELIVERED" | "READ"; at: string } | null;
+  /** Altra data proposta per l'appuntamento, in attesa di risposta (sul preventivo, `clientProposedDate`). */
+  dateChange: BookingDateChange | null;
   /** Ultima segnalazione "Qualcosa è andato male" del professionista su questo lavoro (§197), `null` se non ne ha fatte. */
   professionalProblemReport: { reason: string; status: "OPEN" | "RESOLVED" | "DISMISSED"; createdAt: string } | null;
   /**
@@ -558,4 +565,18 @@ export type ProfessionalStats = {
   previousFrom: string;
   previousTo: string;
   previous: ProfessionalStatsTotals;
+};
+
+/**
+ * Altra data proposta per un appuntamento già fissato, in attesa di
+ * risposta (docs/changelog/2026-10-28-promemoria-whatsapp.md): la propone il
+ * cliente ("Non posso più") o, con "Modifica", il professionista; risponde
+ * l'altro con "Accetta nuova data" o "Rifiuta la proposta".
+ */
+export type BookingDateChange = {
+  start: string;
+  end: string | null;
+  note: string | null;
+  proposedBy: "CLIENT" | "PROFESSIONAL";
+  requestedAt: string;
 };

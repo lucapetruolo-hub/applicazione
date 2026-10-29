@@ -39,6 +39,8 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { href: "/admin/richieste-eliminate", label: "Richieste eliminate", icon: "trash-2", scope: "MODERATION" },
   { href: "/admin/finanza", label: "Finanza e DAC7", icon: "coins", scope: "FINANCE", badge: (o) => o.sdiRejectedInvoices },
   { href: "/admin/statistiche", label: "Statistiche", icon: "trending-up", scope: "FINANCE" },
+  // Promemoria su WhatsApp (docs/changelog/2026-10-28-promemoria-whatsapp.md): costo e messaggi.
+  { href: "/admin/whatsapp", label: "WhatsApp", icon: "message-circle", scope: "FINANCE" },
   { href: "/admin/registro", label: "Registro azioni", icon: "file-text", scope: "SUPER" },
 ];
 

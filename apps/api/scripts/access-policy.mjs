@@ -39,6 +39,9 @@ const publicRoutes = [
   "POST /auth/register",
   "POST /auth/verify-email",
   "POST /billing/webhook",
+  // Pulsanti "Ci sarò" e "Non posso più" dell'email del promemoria: link firmato, senza accedere (docs/changelog/2026-10-28-promemoria-whatsapp.md).
+  "GET /booking-replies/:token",
+  "POST /booking-replies/:token",
   "GET /calendar/:file",
   "GET /categories",
   "GET /categories/popular",
@@ -48,6 +51,9 @@ const publicRoutes = [
   "GET /health",
   "GET /health/features",
   "POST /identity-verification/webhook",
+  // Webhook di WhatsApp (Meta): registrazione con il token e firma sul corpo (docs/changelog/2026-10-28-promemoria-whatsapp.md).
+  "GET /whatsapp/webhook",
+  "POST /whatsapp/webhook",
   "GET /maps/static",
   "POST /notifications/email-off",
   // Dal problema scritto ai mestieri (§392): dizionario, poi IA nei casi dubbi, con tetto giornaliero.
@@ -104,6 +110,12 @@ const selfAny = [
   "POST /notifications/mark-all-read",
   "GET /notifications/preferences",
   "PUT /notifications/preferences",
+  // Promemoria su WhatsApp: numero e interruttore di chi chiama.
+  "GET /whatsapp/me",
+  "POST /whatsapp/me/code",
+  "POST /whatsapp/me/confirm",
+  "POST /whatsapp/me/disable",
+  "POST /whatsapp/me/enable",
   "GET /notifications/unread",
   "GET /notifications/unread-count",
   // Prenota la fascia di un professionista qualsiasi (pubblico): nessun dato altrui.
@@ -261,11 +273,12 @@ const owned = {
   "PATCH /professionals/me/leads/:id/note": { ...lead, body: () => ({ note: "Nota" }) },
 
   "POST /quotes": { kind: "owned", owners: ["proA"], strangers: ["proB"], body: (f) => quoteBody(f) },
-  "POST /quotes/:id/confirm-proposed-date": quote({ owners: ["proA"] }),
+  // Su un appuntamento fissato risponde anche il cliente, alla data proposta dal professionista.
+  "POST /quotes/:id/confirm-proposed-date": quote({ owners: ["proA", "clientA"] }),
   "POST /quotes/:id/counter-propose-date": quote({ owners: ["proA"] }),
   "POST /quotes/:id/propose-date": quote(),
   "POST /quotes/:id/reject": quote({ body: () => ({ note: "No grazie" }) }),
-  "POST /quotes/:id/reject-proposed-date": quote({ owners: ["proA"] }),
+  "POST /quotes/:id/reject-proposed-date": quote({ owners: ["proA", "clientA"] }),
   "POST /quotes/:id/withdraw": quote({ owners: ["proA"] }),
 
   // Ricorso contro una decisione: solo chi possiede il contenuto segnalato.

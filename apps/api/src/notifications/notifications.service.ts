@@ -1,8 +1,9 @@
-import { ForbiddenException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { ForbiddenException, Inject, Injectable, Logger, NotFoundException, Optional } from "@nestjs/common";
 import type { Prisma, PrismaClient } from "@professionisti/database";
 import { PRISMA } from "../prisma/prisma.module";
 import { RealtimeService } from "../realtime/realtime.service";
 import { EmailService } from "../email/email.service";
+import { WhatsAppService } from "../whatsapp/whatsapp.service";
 import {
   CONTENT_REPORT_TARGET_LABEL,
   NOTIFICATION_ITEMS,
@@ -87,6 +88,8 @@ const CALENDAR_NOTIFICATION_TYPES: Record<string, "add" | "cancel"> = {
   BOOKING_CONFIRMED: "add",
   // Il professionista conferma la data proposta dal cliente: nasce il lavoro (§346).
   QUOTE_DATE_CONFIRMED: "add",
+  // Appuntamento spostato su una data proposta dal professionista: l'evento si aggiorna.
+  QUOTE_DATE_CONFIRMED_BY_CLIENT: "add",
   BOOKING_REOPENED_BY_CLIENT: "add",
   BOOKING_REOPENED_BY_PROFESSIONAL: "add",
   BOOKING_CANCELED_BY_PROFESSIONAL: "cancel",
@@ -101,6 +104,8 @@ export class NotificationsService {
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly realtimeService: RealtimeService,
     private readonly emailService: EmailService,
+    // Facoltativo solo per i test che costruiscono il servizio a mano.
+    @Optional() private readonly whatsAppService?: WhatsAppService,
   ) {}
 
   /**
@@ -110,7 +115,9 @@ export class NotificationsService {
    * QUOTE_DATE_CONFIRMED, QUOTE_DATE_REJECTED). Canale sempre PUSH: la riga
    * in tabella alimenta il conteggio non letti; i tipi elencati in
    * `email/templates/notification-emails.ts` partono anche via email
-   * (docs/CHANGELOG.md §185). Expo Push/Twilio restano rimandati.
+   * (docs/CHANGELOG.md §185). Pochissimi tipi (appuntamento annullato,
+   * "sto arrivando") partono anche su WhatsApp a chi l'ha acceso
+   * (docs/changelog/2026-10-28-promemoria-whatsapp.md). Expo Push resta rimandato.
    *
    * Pubblica anche un push SSE (CTO — real-time): la riga DB resta l'unica
    * fonte di verità (il push è un acceleratore, mai l'unico modo di sapere
@@ -143,6 +150,9 @@ export class NotificationsService {
       if (emailHold) heldEmail = emailHold;
       else this.emailNotification(userId, type, payload);
     }
+    // WhatsApp ha un interruttore suo, non per argomento: il servizio sceglie
+    // da sé i pochi tipi che partono e non attende l'invio.
+    if (!muted) this.whatsAppService?.onNotification(userId, type, payload);
     if (muted || !notificationChannelEnabled(prefs, type, "inApp")) {
       const chatEmail = !muted && isChatMessageType(type) && notificationChannelEnabled(prefs, type, "email");
       if (chatEmail && emailHold) heldEmail = emailHold;

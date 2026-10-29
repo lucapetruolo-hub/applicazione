@@ -41,6 +41,7 @@ import { ProfessionalVerificationModule } from "./professional-verification/prof
 import { ClientInvoiceRequestsModule } from "./client-invoice-requests/client-invoice-requests.module";
 import { AccountingModule } from "./accounting/accounting.module";
 import { GeneralRequestsAdminModule } from "./general-requests/general-requests-admin.module";
+import { WhatsAppModule } from "./whatsapp/whatsapp.module";
 import { UrgencyMetricsModule } from "./urgency-metrics/urgency-metrics.module";
 import { BookingRemindersModule } from "./booking-reminders/booking-reminders.module";
 import { AgendaRemindersModule } from "./agenda-reminders/agenda-reminders.module";
@@ -123,6 +124,7 @@ import { ProblemMatchModule } from "./problem-match/problem-match.module";
     IdentityVerificationModule,
     GeneralRequestsAdminModule,
     UrgencyMetricsModule,
+    WhatsAppModule,
   ],
   controllers: [HealthController],
   // Reflector esplicito nei provider (non solo APP_GUARD): senza, il DI di

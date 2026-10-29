@@ -11,7 +11,6 @@ import {
   formatAppointmentTimeRange,
   formatJobDays,
   formatServicePriceRange,
-  jobDayCount,
   paymentChoiceIsOnline,
   professionalPath,
   quotePriceTaxNote,
@@ -31,8 +30,7 @@ import { ScheduleChangeBox } from "@/components/ScheduleChangeBox";
 import { TimelineModal } from "@/components/TimelineModal";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 import { textareaStyle } from "./clientRequestHelpers";
-import { ItalianDateInput } from "@/components/ItalianDateInput";
-import { ItalianTimeInput } from "@/components/ItalianTimeInput";
+import { QuoteDateChooser } from "./QuoteDateChooser";
 import { InvoiceRequestFields, InvoiceRequestToggle, emptyInvoiceDraft, invoiceDraftFromView, parseInvoiceDraft, type InvoiceDraft } from "@/components/ClientInvoiceRequestForm";
 
 export function formatQuoteDate(iso: string): string {
@@ -60,18 +58,6 @@ export function formatSentAt(iso: string): string {
   const date = new Date(iso);
   return `${date.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })} alle ${date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`;
 }
-
-// `isCurrentProposal` distingue la data/orario attualmente proposti dal
-// professionista quando non corrisponde a nessuna fascia reale
-// dell'agenda (data/ora inserita a mano dal professionista, CLAUDE.md
-// §46) — mai una vera fascia libera, solo aggiunta per poterla comunque
-// scegliere/vedere nell'elenco.
-export type FreeSlot = { date: string; startTime: string; endTime: string; isCurrentProposal?: boolean };
-
-// Valore speciale per l'opzione "Altro" nel menu a tendina data/ora
-// (richiesta esplicita dell'utente) — mai una data reale, quindi non può
-// collidere con una vera chiave `date|startTime|endTime`.
-export const MANUAL_OPTION_VALUE = "altro";
 
 /**
  * Preventivo ricevuto: mostra la data proposta dal professionista e
@@ -123,13 +109,6 @@ export function QuoteCard({
   onDeleteRequest?: () => void;
 }) {
   const [isChoosingDate, setIsChoosingDate] = useState(false);
-  const [freeSlots, setFreeSlots] = useState<FreeSlot[] | null>(null);
-  const [selectedSlotKey, setSelectedSlotKey] = useState("");
-  const [proposeNote, setProposeNote] = useState("");
-  const [manualDate, setManualDate] = useState("");
-  const [manualStartTime, setManualStartTime] = useState("");
-  const [manualEndTime, setManualEndTime] = useState("");
-  const [isProposing, setIsProposing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
   // Scelta del metodo di pagamento prima di accettare (§168).
@@ -203,76 +182,9 @@ export function QuoteCard({
     }
   }
 
-  async function startChoosingDate() {
+  function startChoosingDate() {
     setError(null);
     setIsChoosingDate(true);
-    // Riparte sempre dall'ultima data proposta (richiesta esplicita
-    // dell'utente, docs/CHANGELOG.md §223): la tua proposta in attesa se
-    // c'è, altrimenti quella del preventivo. Orari ricaricati a ogni apertura.
-    const lastStart = quote.status === "MODIFICATION_REQUESTED" && quote.clientProposedDate ? quote.clientProposedDate : quote.estimatedStartDate;
-    const lastEnd = quote.status === "MODIFICATION_REQUESTED" && quote.clientProposedDate ? quote.clientProposedEndDate : quote.estimatedEndDate;
-    setFreeSlots(null);
-    try {
-      const agenda = await apiClient.getProfessionalAgenda(quote.professionalProfileId);
-      const slots: FreeSlot[] = [];
-      for (const day of agenda.days) {
-        for (const slot of day.slots) {
-          const modeInfo = serviceMode === "ONLINE" ? slot.online : slot.home;
-          if (modeInfo && modeInfo.bookedCount < modeInfo.maxBookings) {
-            slots.push({ date: day.date, startTime: slot.startTime, endTime: slot.endTime });
-          }
-        }
-      }
-      const currentDate = lastStart.slice(0, 10);
-      const currentStartTime = lastStart.slice(11, 16);
-      const currentEndTime = lastEnd ? lastEnd.slice(11, 16) : currentStartTime;
-      const matching = slots.find((s) => s.date === currentDate && s.startTime === currentStartTime);
-      if (!matching) {
-        slots.unshift({ date: currentDate, startTime: currentStartTime, endTime: currentEndTime, isCurrentProposal: true });
-      }
-      setFreeSlots(slots);
-      const initial = matching ?? slots[0];
-      if (initial) setSelectedSlotKey(`${initial.date}|${initial.startTime}|${initial.endTime}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore nel caricamento degli orari disponibili.");
-    }
-  }
-
-  async function handleProposeDate() {
-    let date: string;
-    let startTime: string;
-    let endTime: string;
-    let isManual: boolean;
-    if (selectedSlotKey === MANUAL_OPTION_VALUE) {
-      if (!manualDate) return setError("Indica una data.");
-      if (!manualStartTime || !manualEndTime) return setError("Indica sia l'ora di inizio sia l'ora di fine.");
-      if (manualEndTime <= manualStartTime) return setError("L'ora di fine deve essere dopo l'ora di inizio.");
-      date = manualDate;
-      startTime = manualStartTime;
-      endTime = manualEndTime;
-      isManual = true;
-    } else {
-      const parts = selectedSlotKey.split("|");
-      if (parts.length !== 3 || !parts[0] || !parts[1] || !parts[2]) {
-        setError("Scegli un orario.");
-        return;
-      }
-      [date, startTime, endTime] = parts as [string, string, string];
-      // L'ultima proposta fuori dall'agenda, rimandata così com'è (magari con una nota).
-      isManual = Boolean(freeSlots?.find((s) => s.isCurrentProposal && `${s.date}|${s.startTime}|${s.endTime}` === selectedSlotKey));
-    }
-    setError(null);
-    setIsProposing(true);
-    try {
-      await apiClient.proposeQuoteDate(token, quote.id, { date, startTime, endTime, note: proposeNote.trim() || undefined, isManual: isManual || undefined });
-      setIsChoosingDate(false);
-      setProposeNote("");
-      onChanged();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
-    } finally {
-      setIsProposing(false);
-    }
   }
 
   async function handleRejectQuote() {
@@ -293,60 +205,24 @@ export function QuoteCard({
   // Scelta di un'altra data: sul preventivo appena ricevuto e anche per
   // cambiare una proposta già inviata, mentre si aspetta la risposta del
   // professionista (richiesta esplicita dell'utente, docs/CHANGELOG.md §221).
+  // Riparte sempre dall'ultima data proposta (§223): la tua proposta in
+  // attesa se c'è, altrimenti quella del preventivo.
   const dateChooser = isChoosingDate ? (
-    <YStack gap="$2" paddingTop="$2" borderTopWidth={1} borderTopColor={brand.filetto}>
-      {freeSlots === null ? (
-        <Text fontSize={13} color={brand.grafite70}>
-          Caricamento orari disponibili...
-        </Text>
-      ) : freeSlots.length === 0 ? (
-        <Text fontSize={13} color={brand.grafite70}>
-          Nessun orario libero nell&apos;agenda pubblica di questo professionista al momento.
-        </Text>
-      ) : (
-        <>
-          <select aria-label="Orario proposto" value={selectedSlotKey} onChange={(e) => setSelectedSlotKey(e.target.value)} style={textareaStyle}>
-            {freeSlots.map((slot) => {
-              const key = `${slot.date}|${slot.startTime}|${slot.endTime}`;
-              const label = `${new Date(`${slot.date}T00:00:00Z`).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })} · ${slot.startTime}–${slot.endTime}${slot.isCurrentProposal ? " (proposta attuale)" : ""}`;
-              return (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              );
-            })}
-            <option value={MANUAL_OPTION_VALUE}>Altro (data e orario personalizzati)</option>
-          </select>
-          {selectedSlotKey === MANUAL_OPTION_VALUE ? (
-            <YStack gap="$2">
-              <XStack gap="$2" flexWrap="wrap">
-                <ItalianDateInput ariaLabel="Data" value={manualDate} onChange={setManualDate} style={{ ...textareaStyle, flex: 1, minWidth: 130 }} />
-                <ItalianTimeInput ariaLabel="Ora di inizio" value={manualStartTime} onChange={setManualStartTime} style={{ ...textareaStyle, flex: 1, minWidth: 100 }} padX={10} />
-                <ItalianTimeInput ariaLabel="Ora di fine" value={manualEndTime} onChange={setManualEndTime} style={{ ...textareaStyle, flex: 1, minWidth: 100 }} padX={10} />
-              </XStack>
-              <Text fontSize={13} color={brand.grafite70}>
-                Il professionista dovrà confermare questo orario prima che diventi un appuntamento.
-              </Text>
-            </YStack>
-          ) : null}
-          {/* Lavoro su più giorni (docs/CHANGELOG.md §310): la durata resta quella del preventivo. */}
-          {jobDayCount(quote.estimatedStartDate, quote.estimatedEndDate) > 1 ? (
-            <Text fontSize={12} color={brand.grafite70}>
-              Il lavoro dura {jobDayCount(quote.estimatedStartDate, quote.estimatedEndDate)} giorni: scegli il primo giorno e l&apos;orario di ogni giorno.
-            </Text>
-          ) : null}
-          <textarea aria-label="Dettagli aggiuntivi" value={proposeNote} onChange={(e) => setProposeNote(e.target.value)} placeholder="Dettagli aggiuntivi (opzionale): es. posso solo dopo le 17" rows={2} style={textareaStyle} />
-          <XStack gap="$2" flexWrap="wrap">
-            <CardButton tone="primary" onPress={handleProposeDate} disabled={isProposing}>
-              {isProposing ? "Invio..." : "Invia proposta"}
-            </CardButton>
-            <CardButton onPress={() => setIsChoosingDate(false)} disabled={isProposing}>
-              Annulla
-            </CardButton>
-          </XStack>
-        </>
-      )}
-    </YStack>
+    <QuoteDateChooser
+      token={token}
+      quote={quote}
+      serviceMode={serviceMode}
+      from={
+        quote.status === "MODIFICATION_REQUESTED" && quote.clientProposedDate
+          ? { start: quote.clientProposedDate, end: quote.clientProposedEndDate }
+          : { start: quote.estimatedStartDate, end: quote.estimatedEndDate }
+      }
+      onSent={() => {
+        setIsChoosingDate(false);
+        onChanged();
+      }}
+      onCancel={() => setIsChoosingDate(false)}
+    />
   ) : null;
 
   return (

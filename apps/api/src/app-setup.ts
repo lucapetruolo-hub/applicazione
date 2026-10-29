@@ -34,6 +34,8 @@ export function configureApp(app: NestExpressApplication): void {
   app.use("/billing/webhook", express.raw({ type: "application/json", inflate: false }));
   // Webhook della verifica d'identità (Didit, docs/CHANGELOG.md §253): firma sul body raw.
   app.use("/identity-verification/webhook", express.raw({ type: "application/json", inflate: false }));
+  // Webhook di WhatsApp (Meta): firma X-Hub-Signature-256 sul body raw.
+  app.use("/whatsapp/webhook", express.raw({ type: "application/json", inflate: false }));
   app.use(express.json({ inflate: false }));
   // Ristretto a FRONTEND_URL (CTO — audit sicurezza, checklist esterna
   // verificata contro il codice reale): `enableCors()` senza argomenti

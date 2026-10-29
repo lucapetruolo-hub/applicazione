@@ -19,6 +19,8 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   QUOTE_UPDATED: { icon: "📝", message: "Il professionista ha aggiornato il tuo preventivo (voci, note o modi di pagamento), senza cambiare data e orario." },
   QUOTE_DATE_CONFIRMED: { icon: "✅", message: "Il professionista ha confermato la data che hai proposto." },
   QUOTE_DATE_REJECTED: { icon: "📅", message: "Il professionista non è disponibile in quella data." },
+  QUOTE_DATE_CONFIRMED_BY_CLIENT: { icon: "✅", message: "Il cliente ha accettato la nuova data che hai proposto: l'appuntamento è spostato." },
+  QUOTE_DATE_REJECTED_BY_CLIENT: { icon: "📅", message: "Il cliente non può nella data che hai proposto: l'appuntamento resta com'era." },
   JOB_COMPLETED: { icon: "✅", message: "Il professionista ha segnalato il lavoro come terminato." },
   BOOKING_CANCELED_BY_PROFESSIONAL: { icon: "⚠️", message: "Un intervento è stato annullato dal professionista." },
   BOOKING_CANCELED_BY_CLIENT: { icon: "⚠️", message: "Il cliente ha annullato un intervento." },
@@ -36,6 +38,10 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   TIMELINE_MESSAGE_FROM_CLIENT: { icon: "💬", message: "Il cliente ti ha scritto un messaggio." },
   TIMELINE_MESSAGE_FROM_PROFESSIONAL: { icon: "💬", message: "Il professionista ti ha scritto un messaggio." },
   BOOKING_REOPENED_BY_CLIENT: { icon: "🔄", message: "Il cliente ha riaperto una prenotazione annullata." },
+  // Pulsanti del promemoria WhatsApp (docs/changelog/2026-10-28-promemoria-whatsapp.md).
+  BOOKING_CLIENT_CONFIRMED: { icon: "👍", message: "Il cliente ha confermato che ci sarà all'appuntamento." },
+  BOOKING_CLIENT_CANT_COME: { icon: "⚠️", message: "Il cliente ha scritto che non può più esserci all'appuntamento: scrivigli in chat." },
+  BOOKING_CLIENT_CANT_COME_UNDONE: { icon: "👍", message: "Il cliente aveva premuto «Non posso più» per errore: ci sarà." },
   BOOKING_REOPENED_BY_PROFESSIONAL: { icon: "🔄", message: "Il professionista ha riaperto una prenotazione annullata." },
   // Recensione del cliente (docs/CHANGELOG.md §185): pubblica subito (§215).
   NEW_REVIEW: { icon: "⭐", message: "Un cliente ha recensito un tuo lavoro: la sua recensione è ora visibile." },
@@ -194,11 +200,25 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   }
   // Nuovo appuntamento nel testo della notifica (docs/CHANGELOG.md §228).
   const newSlot = slotLabel(data.to);
+  // Altra data per un appuntamento già fissato: proposta con "Modifica" o promemoria dopo 12 ore.
+  if (data.booked === true && data.reminder === true && type === "QUOTE_DATE_PROPOSED") {
+    return { icon: "⏰", message: `Il cliente aspetta la tua risposta sulla nuova data${newSlot ? ` (${newSlot})` : ""}.` };
+  }
+  if (data.booked === true && type === "QUOTE_DATE_CHANGED") {
+    return {
+      icon: data.reminder === true ? "⏰" : "🗓️",
+      message: data.reminder === true
+        ? `Il professionista aspetta la tua risposta sulla nuova data${newSlot ? ` (${newSlot})` : ""}.`
+        : `Il professionista propone un'altra data per l'appuntamento${newSlot ? `: ${newSlot}` : ""}.`,
+    };
+  }
   if (change && type === "QUOTE_DATE_CHANGED") {
     return { icon: "🗓️", message: `Il professionista ha modificato ${scheduleChangeObject(change)} del tuo preventivo${newSlot ? `: ora è ${newSlot}` : ""}.` };
   }
   if (change && type === "QUOTE_DATE_PROPOSED") {
-    return { icon: "🗓️", message: `Il cliente ha proposto ${scheduleChangeAlternative(change)} per il preventivo${newSlot ? `: ${newSlot}` : ""}.` };
+    // Appuntamento già fissato: "Non posso più" → "Proponi un'altra data" (docs/changelog/2026-10-28-promemoria-whatsapp.md).
+    const what = data.booked === true ? "l'appuntamento" : "il preventivo";
+    return { icon: "🗓️", message: `Il cliente ha proposto ${scheduleChangeAlternative(change)} per ${what}${newSlot ? `: ${newSlot}` : ""}.` };
   }
   if (type === "AGENDA_TOMORROW_SUMMARY" && Array.isArray(data.items)) {
     const count = data.items.length;
@@ -206,6 +226,9 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   }
   if (type === "AGENDA_REMINDER" && data.attention === "RUNNING_LOW") {
     return { icon: "📅", message: "Nei prossimi 7 giorni non hai orari liberi in agenda: aggiungili per farti prenotare." };
+  }
+  if (type === "QUOTE_DATE_CONFIRMED" && data.booked === true) {
+    return { icon: "✅", message: `Il professionista ha accettato la data che hai proposto: l'appuntamento è spostato${newSlot ? ` a ${newSlot}` : ""}.` };
   }
   if (type === "QUOTE_DATE_REJECTED" && newSlot) {
     return { icon: "📅", message: `Il professionista non è disponibile in quella data: l'appuntamento resta ${newSlot}.` };

@@ -65,6 +65,7 @@ import { ContactButton } from "@/components/ContactButton";
 import { ScheduleChangeBox } from "@/components/ScheduleChangeBox";
 import { ProfessionalInvoiceRequestBox } from "@/components/ProfessionalInvoiceRequestBox";
 import { JobDocumentsModal } from "@/components/JobDocumentsModal";
+import { AppointmentReplyStatus } from "./AppointmentReplyStatus";
 import { DeadlinePill, MiniTimeline, QuoteItemDraft, STAGE_STYLE, ServiceBadge, StagePill, formatDateTime, formatSlotRange, slotKey, slotLabel, smallInputStyle } from "./requestHelpers";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { ItalianTimeInput } from "@/components/ItalianTimeInput";
@@ -463,6 +464,20 @@ export function RequestCard({
       setIsRejectingDate(false);
     }
   }
+  function toggleCounterForm() {
+    if (lead.quote?.clientProposedDate) {
+      presetSchedule(lead.quote.clientProposedDate, lead.quote.clientProposedEndDate, {
+        slot: setCounterSlotKey,
+        manual: setUseManualCounterDateTime,
+        date: setManualCounterDate,
+        start: setManualCounterStartTime,
+        end: setManualCounterEndTime,
+      });
+    }
+    setCounterNote("");
+    setCounterError(null);
+    setShowCounterForm((v) => !v);
+  }
   async function handleCounterPropose() {
     if (!lead.quote) return;
     let payload: { date: string; startTime: string; endTime: string; isManual?: boolean };
@@ -606,9 +621,18 @@ export function RequestCard({
   // Cosa cambia la proposta del cliente rispetto al preventivo: `null` se
   // data e orario restano uguali e ha solo aggiunto una nota
   // (docs/CHANGELOG.md §196).
+  //
+  // Sull'appuntamento già fissato (il cliente non può più esserci) la
+  // proposta arriva allo stesso modo, sul preventivo: stessi riquadro e
+  // pulsanti, e accettandola l'appuntamento si sposta
+  // (docs/changelog/2026-10-28-promemoria-whatsapp.md).
+  const bookedDateChange = booking?.dateChange?.proposedBy === "CLIENT";
+  // Con "Modifica" hai proposto tu un'altra data: aspetta il cliente.
+  const myBookedDateChange = booking?.dateChange?.proposedBy === "PROFESSIONAL" ? booking.dateChange : null;
+  const dateChangePending = (stage === "modifica_richiesta" || bookedDateChange) && Boolean(lead.quote?.clientProposedDate);
   const proposalChange = lead.quote?.clientProposedDate
     ? scheduleChangeBetween(
-        { start: lead.quote.estimatedStartDate, end: lead.quote.estimatedEndDate },
+        bookedDateChange && booking ? { start: booking.scheduledAt, end: booking.scheduledEndAt } : { start: lead.quote.estimatedStartDate, end: lead.quote.estimatedEndDate },
         { start: lead.quote.clientProposedDate, end: lead.quote.clientProposedEndDate },
       )
     : null;
@@ -665,7 +689,7 @@ export function RequestCard({
       },
     });
   }
-  if (stage === "modifica_richiesta" && lead.quote?.clientProposedDate) {
+  if (dateChangePending) {
     menuActions.push({ icon: "check", text: proposalChange ? "Accetta nuova data" : "Conferma appuntamento", onPress: handleConfirmDate });
   }
   if (booking?.status === "CONFIRMED") {
@@ -852,13 +876,13 @@ export function RequestCard({
 
       {isOpen ? (
         <YStack paddingHorizontal="$4" paddingBottom="$4" gap="$4" borderTopWidth={1} borderTopColor={brand.filetto}>
-          {stage === "modifica_richiesta" && lead.quote?.clientProposedDate ? (
+          {dateChangePending && lead.quote?.clientProposedDate ? (
             proposalChange ? (
               <ScheduleChangeBox
                 marginTop="$3"
                 title={`Il cliente ha richiesto una modifica ${scheduleChangeOf(proposalChange)}`}
                 beforeLabel="Data originale"
-                beforeText={formatSlotRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}
+                beforeText={bookedDateChange && booking ? formatSlotRange(booking.scheduledAt, booking.scheduledEndAt) : formatSlotRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}
                 afterLabel="Nuova data richiesta"
                 afterText={formatSlotRange(lead.quote.clientProposedDate, lead.quote.clientProposedEndDate)}
                 note={lead.quote.clientProposedNote}
@@ -883,6 +907,17 @@ export function RequestCard({
               afterLabel="Appuntamento"
               afterText={formatSlotRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}
               note={lead.quote.clientNote}
+            />
+          ) : null}
+          {myBookedDateChange && booking ? (
+            <ScheduleChangeBox
+              marginTop="$3"
+              title="Hai proposto un'altra data: in attesa del cliente"
+              beforeLabel="Appuntamento di adesso"
+              beforeText={formatSlotRange(booking.scheduledAt, booking.scheduledEndAt)}
+              afterLabel="Nuova data proposta"
+              afterText={formatSlotRange(myBookedDateChange.start, myBookedDateChange.end)}
+              note={myBookedDateChange.note}
             />
           ) : null}
 
@@ -1150,6 +1185,8 @@ export function RequestCard({
                   : "Il nostro team l'ha esaminata e chiusa senza misure."}
             </Text>
           ) : null}
+          {/* Promemoria e risposta del cliente (docs/changelog/2026-10-28-promemoria-whatsapp.md). */}
+          {booking ? <AppointmentReplyStatus booking={booking} /> : null}
           {/* Annullato dal cliente dentro il preavviso che hai scelto (docs/CHANGELOG.md §347). */}
           {booking?.status === "CANCELED" && booking.canceledBy === "CLIENT" && booking.canceledLate ? (
             <Text fontSize={13} color={brand.urgenza} fontWeight="600">
@@ -1283,24 +1320,26 @@ export function RequestCard({
                     "Proponi altra data" quasi solo testo). */}
                 <CardButton
                   fill={brand.ottone}
-                  onPress={() => {
-                    if (lead.quote?.clientProposedDate) {
-                      presetSchedule(lead.quote.clientProposedDate, lead.quote.clientProposedEndDate, {
-                        slot: setCounterSlotKey,
-                        manual: setUseManualCounterDateTime,
-                        date: setManualCounterDate,
-                        start: setManualCounterStartTime,
-                        end: setManualCounterEndTime,
-                      });
-                    }
-                    setCounterNote("");
-                    setCounterError(null);
-                    setShowCounterForm((v) => !v);
-                  }}
+                  onPress={toggleCounterForm}
                 >
                   Modifica
                 </CardButton>
                 <ContactButton onPress={openTimeline} unreadCount={effectiveUnreadCount} />
+                <CardButton tone="danger" disabled={isRejectingDate} onPress={handleRejectDate}>
+                  {isRejectingDate ? "..." : "Rifiuta la proposta"}
+                </CardButton>
+              </XStack>
+            ) : null}
+
+            {bookedDateChange ? (
+              // Stessi pulsanti della modifica di un preventivo; "Contatta" è già sotto, con il lavoro.
+              <XStack gap="$2" flexWrap="wrap">
+                <CardButton fill={brand.verificato} disabled={isConfirmingDate} onPress={handleConfirmDate}>
+                  {isConfirmingDate ? "Conferma..." : "Accetta nuova data"}
+                </CardButton>
+                <CardButton fill={brand.ottone} onPress={toggleCounterForm}>
+                  Modifica
+                </CardButton>
                 <CardButton tone="danger" disabled={isRejectingDate} onPress={handleRejectDate}>
                   {isRejectingDate ? "..." : "Rifiuta la proposta"}
                 </CardButton>

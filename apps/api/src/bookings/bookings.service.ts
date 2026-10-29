@@ -49,6 +49,7 @@ import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service"
 import { PROFESSIONAL_BUSY_MESSAGE, capacityAt, countOverlapping, loadCommitments, lockProfessionalAgenda } from "../agenda/commitments";
 import { AuthService } from "../auth/auth.service";
 import { ClientInvoiceRequestsService } from "../client-invoice-requests/client-invoice-requests.service";
+import { bookingDateChange } from "../quotes/booked-date-change";
 
 /** Il cliente ha già un lavoro per questa richiesta (docs/CHANGELOG.md §346). */
 const CLIENT_CANCEL_TOO_LATE = "L'appuntamento è già cominciato e non si può più annullare. Se qualcosa non va, usa \"C'è un problema\".";
@@ -1430,6 +1431,8 @@ export class BookingsService implements OnModuleInit {
       // Preavviso per annullare valido per questo lavoro (docs/CHANGELOG.md §347): 24 ore per i lavori di prima.
       cancellationNoticeHours: booking.cancellationNoticeHours ?? DEFAULT_CANCELLATION_NOTICE_HOURS,
       lateCancelKeepsDeposit: booking.quote?.lateCancelKeepsDeposit ?? false,
+      // Altra data proposta sul preventivo accettato, in attesa del professionista.
+      dateChange: bookingDateChange(booking, booking.quote),
       professionalCompletionPhotoUrls: booking.professionalCompletionPhotoUrls,
       clientCompletionPhotoUrls: booking.clientCompletionPhotoUrls,
     }));

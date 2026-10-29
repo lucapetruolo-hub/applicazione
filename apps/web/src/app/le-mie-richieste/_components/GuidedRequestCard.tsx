@@ -44,7 +44,9 @@ import { useInternalLinkClick } from "@/lib/useInternalLinkClick";
 import { clientNextAction } from "@/lib/clientNextAction";
 import { CLIENT_STAGE_LABEL, type RequestStage } from "@/lib/requestStage";
 import { BookingSection, ChangeLinks } from "./BookingSection";
-import { QuoteCard } from "./QuoteCard";
+import { QuoteDateChooser } from "./QuoteDateChooser";
+import { BookedDateChangeAnswer } from "./BookedDateChangeAnswer";
+import { QuoteCard, formatQuoteDateRange } from "./QuoteCard";
 import { ClientInvoiceRequestPanel } from "@/components/ClientInvoiceRequestForm";
 import { JobDocumentsModal } from "@/components/JobDocumentsModal";
 import { Disclosure } from "./Disclosure";
@@ -77,6 +79,8 @@ export function GuidedRequestCard({
   autoStartEditing,
   onAutoEditHandled,
   autoOpenDocuments,
+  autoOpenReschedule,
+  onAutoRescheduleHandled,
   onAutoDocumentsHandled,
   onMarkedRead,
 }: {
@@ -111,6 +115,10 @@ export function GuidedRequestCard({
   autoOpenDocuments?: boolean;
   /** Richiamata dopo aver gestito `autoOpenDocuments`. */
   onAutoDocumentsHandled?: () => void;
+  /** "Non posso più" dal promemoria (`?cambiaData=1`): apre subito "Proponi un'altra data". */
+  autoOpenReschedule?: boolean;
+  /** Richiamata dopo aver gestito `autoOpenReschedule`. */
+  onAutoRescheduleHandled?: () => void;
   /** "Segna come letta" dal menu: spegne subito il "Nuovo" locale del genitore. */
   onMarkedRead: () => void;
 }) {
@@ -350,6 +358,16 @@ export function GuidedRequestCard({
     onAutoEditHandled?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStartEditing]);
+
+  const [showReschedule, setShowReschedule] = useState(false);
+  // "Non posso più" dal promemoria: si apre solo con l'appuntamento fissato.
+  useEffect(() => {
+    if (!autoOpenReschedule) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (booking?.status === "CONFIRMED") setShowReschedule(true);
+    onAutoRescheduleHandled?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpenReschedule]);
 
   // Stesso principio per i documenti: si aprono solo se c'è già il lavoro.
   useEffect(() => {
@@ -849,9 +867,33 @@ export function GuidedRequestCard({
       ) : null}
       <ChangeLinks
         booking={booking}
+        onReschedule={acceptedQuote && !showReschedule ? () => setShowReschedule(true) : null}
         onMessage={booking.guidedRequestId ? () => setShowBookingChat(true) : null}
         onCancel={() => setShowCancelModal(true)}
       />
+      {/* Altra data per l'appuntamento: la stessa "Proponi un'altra data" del preventivo (docs/changelog/2026-10-28-promemoria-whatsapp.md). */}
+      {acceptedQuote && booking.dateChange?.proposedBy === "CLIENT" && !showReschedule ? (
+        <Text fontSize={13} color={brand.ottone} fontWeight="600" paddingHorizontal="$1">
+          In attesa di conferma del professionista per il {formatQuoteDateRange(booking.dateChange.start, booking.dateChange.end)}. Fino ad allora l&apos;appuntamento resta com&apos;è.
+        </Text>
+      ) : null}
+      {/* Con "Modifica" il professionista propone un'altra data: stessi pulsanti di una proposta. */}
+      {acceptedQuote && booking.dateChange?.proposedBy === "PROFESSIONAL" && !showReschedule ? (
+        <BookedDateChangeAnswer token={token} quoteId={acceptedQuote.id} booking={booking} dateChange={booking.dateChange} onPropose={() => setShowReschedule(true)} onChanged={onChanged} />
+      ) : null}
+      {acceptedQuote && showReschedule ? (
+        <QuoteDateChooser
+          token={token}
+          quote={acceptedQuote}
+          serviceMode={request.serviceMode}
+          from={booking.dateChange ? { start: booking.dateChange.start, end: booking.dateChange.end } : { start: booking.scheduledAt, end: booking.scheduledEndAt }}
+          onSent={() => {
+            setShowReschedule(false);
+            onChanged();
+          }}
+          onCancel={() => setShowReschedule(false)}
+        />
+      ) : null}
     </YStack>
   ) : null;
 

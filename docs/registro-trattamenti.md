@@ -151,9 +151,12 @@
 - **Categorie di dati**: tipo di evento, riferimento all'oggetto collegato
   (richiesta/preventivo/prenotazione), timestamp, stato di lettura.
 - **Destinatari esterni**: nessuno — canale interno alla piattaforma
-  (`Notification`, polling lato client). Nessun invio push/email/SMS reale
-  attivo oggi (Expo Push/Resend/Twilio restano nello stack approvato ma
-  non ancora integrati, CLAUDE.md §9).
+  (`Notification`, polling lato client). Alcuni tipi partono anche via
+  email (Resend). Su WhatsApp (Meta, solo a chi ha confermato il numero
+  con un codice e acceso i promemoria) partono solo il promemoria del
+  giorno prima, "sto arrivando" e appuntamento annullato; il registro
+  `outbound_messages` tiene tipo, esito, costo e date, mai il numero né il
+  testo dopo l'invio. Nessun SMS (Twilio tolto dallo stack il 28/10/2026).
 - **Conservazione**: nessuna cancellazione automatica.
 
 ## 7. Lista d'attesa marketing ("Arriviamo presto nella tua zona")
@@ -248,12 +251,12 @@
 | **VIES** (Commissione europea) | Verifica gratuita della partita IVA, prima di Openapi | Partita IVA | UE — nessun trasferimento | Servizio pubblico, nessun DPA |
 | **Openapi** | Controllo CF (Agenzia delle Entrate) e partita IVA (Registro Imprese) | CF, partita IVA | Italia — nessun trasferimento | [DA VERIFICARE: DPA di Openapi] |
 | **Didit** | Verifica identità con documento e selfie (dato biometrico) | Immagini del documento, selfie, dati letti dal documento; al sito torna solo l'esito | UE (Spagna) [DA VERIFICARE] | **Da stipulare prima del lancio** (DPA + DPIA) |
-| **Twilio** | SMS transazionali | **Non ancora integrato** nel codice (CLAUDE.md §9) | — | Da valutare quando introdotto |
+| **Meta** (WhatsApp Business, Cloud API) | Promemoria degli appuntamenti e codice di conferma del numero su WhatsApp (docs/changelog/2026-10-28-promemoria-whatsapp.md) | Numero di cellulare, testo del messaggio (orario, nome dell'attività o nome e iniziale del cliente, categoria e città), stato di consegna | Irlanda (Meta Platforms Ireland), con possibili trasferimenti USA — DPF o SCC [DA VERIFICARE] | **Codice pronto, spento** (senza `WHATSAPP_ACCESS_TOKEN` non parte nulla). Termini WhatsApp Business e Data Processing Terms di Meta da accettare all'attivazione; domanda 69 per l'avvocato |
 
 Nominatim/OpenStreetMap non è più usato (sostituito da Google Geocoding,
 docs/CHANGELOG.md §133).
 
 Nota: questa tabella va aggiornata a ogni cambio di fornitore o
-all'attivazione di uno dei servizi non ancora live (Stripe, Twilio) — è la stessa lista di "Da fare prima del lancio" già tracciata in
+all'attivazione di uno dei servizi non ancora live (Stripe, WhatsApp con Meta) — è la stessa lista di "Da fare prima del lancio" già tracciata in
 CLAUDE.md §9, qui vista dal lato obblighi di trasparenza sui responsabili
 del trattamento invece che dal lato tecnico/di configurazione.

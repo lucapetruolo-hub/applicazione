@@ -761,8 +761,16 @@ export class AuthService {
         imageUrl: null,
         passwordResetTokenHash: null,
         passwordResetCodeHash: null,
+        // Promemoria su WhatsApp (docs/changelog/2026-10-28-promemoria-whatsapp.md).
+        phoneVerifiedNumber: null,
+        phoneVerifiedAt: null,
+        phoneCodeHash: null,
+        phoneCodeNumber: null,
+        whatsappOptInAt: null,
       },
     });
+    // Messaggi WhatsApp in attesa: non partono più.
+    await this.prisma.outboundMessage.updateMany({ where: { userId, status: "QUEUED" }, data: { status: "SKIPPED", skipReason: "ACCOUNT_DELETED", params: {} } });
     // Conferma all'indirizzo di prima, già tolto dall'account (docs/CHANGELOG.md §185).
     if (before?.email) await this.emailService.send({ to: before.email, ...accountDeletedEmail(before.name) });
   }

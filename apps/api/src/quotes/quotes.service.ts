@@ -16,6 +16,7 @@ import {
   scheduleChangeAlternative,
   scheduleChangeBetween,
   scheduleChangeObject,
+  wallClockNow,
   type ProposeQuoteDateInput,
   type QuoteSelfInput,
   type RejectQuoteInput,
@@ -34,6 +35,7 @@ import { identityVerificationNeeded } from "../identity-verification/identity-pr
 import { countBookingsInSlot, countOverlapping, loadCommitments, lockProfessionalAgenda } from "../agenda/commitments";
 import { hasOtherJob, isOtherJobViolation, lockGuidedRequest } from "../bookings/one-job-per-request";
 import { JOB_LIMIT_REACHED_MESSAGE } from "../subscriptions/subscription-rules";
+import { WhatsAppService } from "../whatsapp/whatsapp.service";
 
 /** Preventivo su una richiesta che il cliente ha eliminato (docs/CHANGELOG.md §343). */
 const WITHDRAWN_BY_CLIENT_MESSAGE = "Il cliente ha ritirato questa richiesta.";
@@ -44,6 +46,26 @@ function slotPayload(start: Date, end: Date | null | undefined): { start: string
   return { start: start.toISOString(), end: end ? end.toISOString() : null };
 }
 
+/** Altra data in sospeso su un appuntamento già fissato, con chi deve rispondere. */
+type BookedDateChange = {
+  quote: {
+    id: string;
+    guidedRequestId: string;
+    professionalProfileId: string;
+    status: string;
+    clientProposedDate: Date;
+    clientProposedEndDate: Date | null;
+    guidedRequest: { clientId: string; serviceMode: "HOME" | "ONLINE" | null };
+  };
+  booking: { id: string; status: string; scheduledAt: Date; scheduledEndAt: Date | null; serviceMode: "HOME" | "ONLINE" | null };
+  answeredBy: "CLIENT" | "PROFESSIONAL";
+  professionalUserId: string;
+};
+
+/** Nessuna proposta di data in sospeso, sul preventivo e sul lavoro. */
+const NO_PROPOSAL = { clientProposedDate: null, clientProposedEndDate: null, clientProposedNote: null, professionalCounterNote: null } as const;
+const NO_DATE_CHANGE = { rescheduleRequestedAt: null, rescheduleProposedBy: null, rescheduleReminderAt: null } as const;
+
 const OTHER_PROFESSIONAL_CHOSEN = "Il cliente ha già scelto un altro professionista per questa richiesta.";
 @Injectable()
 export class QuotesService {
@@ -53,6 +75,7 @@ export class QuotesService {
     private readonly professionalMetricsService: ProfessionalMetricsService,
     private readonly timelineService: TimelineService,
     private readonly subscriptionsService: SubscriptionsService,
+    private readonly whatsAppService: WhatsAppService,
   ) {}
 
   async createOrUpdate(userId: string, input: QuoteSelfInput) {
@@ -412,8 +435,17 @@ export class QuotesService {
     if (quote.guidedRequest.clientId !== clientId) {
       throw new ForbiddenException("Questo preventivo non è associato a una tua richiesta.");
     }
-    // Anche un preventivo ritirato: una nota non deve rimetterlo in gioco.
-    if (quote.booking || quote.status === "ACCEPTED" || quote.status === "REJECTED" || quote.status === "WITHDRAWN") {
+    // Appuntamento già fissato: "Non posso più" → "Proponi un'altra data"
+    // passa di qui come ogni altra proposta, e il professionista risponde con
+    // gli stessi pulsanti (Luca, 29/10/2026,
+    // docs/changelog/2026-10-28-promemoria-whatsapp.md).
+    const booking = quote.booking && quote.status === "ACCEPTED" ? quote.booking : null;
+    if (booking) {
+      if (booking.status !== "CONFIRMED" || booking.scheduledAt.getTime() <= wallClockNow().getTime()) {
+        throw new ForbiddenException("Questo appuntamento non si può più spostare.");
+      }
+    } else if (quote.booking || quote.status === "ACCEPTED" || quote.status === "REJECTED" || quote.status === "WITHDRAWN") {
+      // Anche un preventivo ritirato: una nota non deve rimetterlo in gioco.
       throw new ForbiddenException("Questo preventivo non è più modificabile.");
     }
 
@@ -430,6 +462,7 @@ export class QuotesService {
     // presente su questo stesso preventivo, mai ancora trasformata in una
     // Booking (quindi nessuna capacità da ricontrollare).
     const isSameAsCurrentProposal =
+      !booking &&
       quote.estimatedStartDate.toISOString().slice(0, 10) === input.date &&
       quote.estimatedStartDate.toISOString().slice(11, 16) === input.startTime &&
       (quote.estimatedEndDate ? quote.estimatedEndDate.toISOString().slice(11, 16) === input.endTime : true);
@@ -476,10 +509,58 @@ export class QuotesService {
     // Cosa cambia rispetto all'appuntamento sul preventivo: data, orario o
     // entrambi (docs/CHANGELOG.md §180).
     const change = scheduleChangeBetween(
-      { start: quote.estimatedStartDate, end: quote.estimatedEndDate },
+      booking ? { start: booking.scheduledAt, end: booking.scheduledEndAt } : { start: quote.estimatedStartDate, end: quote.estimatedEndDate },
       { start: proposedDate, end: proposedEndDate },
     );
     const note = input.note?.trim() || null;
+
+    if (booking) {
+      if (!change) throw new BadRequestException("È la data dell'appuntamento: scegline un'altra. Per dire qualcosa al professionista scrivigli in chat.");
+      if (proposedDate.getTime() <= wallClockNow().getTime()) throw new BadRequestException("Scegli una data che deve ancora venire.");
+      const now = new Date();
+      // Il preventivo resta accettato e l'appuntamento com'era finché il
+      // professionista non risponde; la proposta sta dove sta sempre.
+      await this.prisma.$transaction([
+        this.prisma.quote.update({
+          where: { id: quote.id },
+          data: { clientProposedDate: proposedDate, clientProposedEndDate: proposedEndDate, clientProposedNote: note, professionalCounterNote: null },
+        }),
+        this.prisma.booking.update({
+          where: { id: booking.id },
+          // Proporre un'altra data vuol dire che a quella di adesso non c'è.
+          data: {
+            rescheduleRequestedAt: now,
+            rescheduleProposedBy: "CLIENT",
+            rescheduleReminderAt: null,
+            clientConfirmedAt: null,
+            ...(booking.clientCantComeAt ? {} : { clientCantComeAt: now }),
+          },
+        }),
+      ]);
+      await this.notificationsService.notify(quote.professionalProfile.userId, "QUOTE_DATE_PROPOSED", {
+        guidedRequestId: quote.guidedRequestId,
+        quoteId: quote.id,
+        bookingId: booking.id,
+        booked: true,
+        change,
+        ...(note ? { note } : {}),
+        from: slotPayload(booking.scheduledAt, booking.scheduledEndAt),
+        to: slotPayload(proposedDate, proposedEndDate),
+      });
+      await this.timelineService.log(
+        quote.guidedRequestId,
+        quote.professionalProfileId,
+        "CLIENT",
+        `Il cliente ha proposto di spostare l'appuntamento: ${formatSlotForTimeline(proposedDate, proposedEndDate)}.${note ? ` Nota: "${note}"` : ""}`,
+      );
+      return {
+        id: quote.id,
+        status: quote.status,
+        clientProposedDate: proposedDate.toISOString(),
+        clientProposedEndDate: proposedEndDate.toISOString(),
+        clientProposedNote: note,
+      };
+    }
 
     // Stessa data e stesso orario: il cliente ha solo aggiunto una nota
     // (docs/CHANGELOG.md §196). Il preventivo resta "inviato", così il
@@ -566,6 +647,11 @@ export class QuotesService {
    * Serializable anti race-condition già in uso per bookAgendaSlot.
    */
   async confirmProposedDate(professionalUserId: string, quoteId: string) {
+    // Appuntamento già fissato con un'altra data proposta: si sposta. Accetta
+    // chi non l'ha proposta, cliente o professionista.
+    const pending = await this.bookedDateChangeToAnswer(professionalUserId, quoteId);
+    if (pending) return this.moveBookingToProposedDate(pending);
+
     const professionalProfile = await this.prisma.professionalProfile.findUnique({ where: { userId: professionalUserId } });
     if (!professionalProfile) {
       throw new NotFoundException("Profilo professionista non trovato.");
@@ -587,50 +673,10 @@ export class QuotesService {
     }
 
     const scheduledAt = quote.clientProposedDate;
-    const dayStart = new Date(scheduledAt);
-    dayStart.setUTCHours(0, 0, 0, 0);
-    const dayEnd = new Date(dayStart);
-    dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
-    const timeStr = scheduledAt.toISOString().slice(11, 16);
-    const dayOfWeek = scheduledAt.getUTCDay();
-
-    // Fascia sottostante (per conoscere la capienza reale, maxBookings):
-    // il proposedDate è solo un timestamp esatto, non porta con sé
-    // start/endTime — recuperata qui con lo stesso bounds-check già in uso
-    // altrove (slotAppliesOnDate). Bug reale corretto insieme a
-    // resolveFreeExactSlot sopra: senza, confermare una proposta su una
-    // fascia a capienza (maxBookings > 1) sarebbe stato bloccato appena
-    // fosse esistita UNA sola prenotazione precedente sulla stessa
-    // fascia, anche con capienza ancora residua.
-    const candidateSlots = await this.prisma.availabilitySlot.findMany({
-      where: { professionalProfileId: professionalProfile.id, OR: [{ date: dayStart }, { date: null, dayOfWeek }] },
-    });
-    const matchingSlot = candidateSlots.find((s) => timeStr >= s.startTime && timeStr < s.endTime);
-    // Capienza indipendente per modalità (CLAUDE.md §"su agenda del
-    // professionista disponibilità..."): la richiesta originale porta la
-    // modalità scelta dal cliente (serviceMode, null solo per righe
-    // precedenti a questa funzionalità — in quel caso si ricade sulla
-    // capienza a domicilio, comportamento storico). A differenza del
-    // fallback storico "?? 1" (per una data proposta senza una vera
-    // AvailabilitySlot sottostante, es. legacy), qui una fascia TROVATA che
-    // però non offre più la modalità richiesta (l'agenda del professionista
-    // può essere cambiata tra la proposta e la conferma) va rifiutata
-    // esplicitamente — mai dedurre una capienza di comodo per una modalità
-    // che la fascia non offre, stessa cautela già applicata in
-    // resolveFreeExactSlot.
+    const { dayStart, dayEnd } = utcDay(scheduledAt);
     const requestServiceMode = quote.guidedRequest.serviceMode;
-    if (matchingSlot) {
-      const modeCapacity = requestServiceMode === "ONLINE" ? matchingSlot.onlineMaxBookings : matchingSlot.homeMaxBookings;
-      if (modeCapacity === null) {
-        throw new ConflictException(
-          requestServiceMode === "ONLINE"
-            ? "Il professionista non offre più consulenza online su questa fascia oraria."
-            : "Il professionista non offre più interventi a domicilio su questa fascia oraria.",
-        );
-      }
-    }
-    const maxBookings =
-      requestServiceMode === "ONLINE" ? (matchingSlot?.onlineMaxBookings ?? 1) : (matchingSlot?.homeMaxBookings ?? 1);
+    const maxBookings = await this.proposedSlotCapacity(professionalProfile.id, scheduledAt, requestServiceMode);
+
 
     try {
       const booking = await this.prisma.$transaction(
@@ -709,8 +755,247 @@ export class QuotesService {
     }
   }
 
+  /** Quanti lavori può avere la fascia della data proposta, nella modalità della richiesta. */
+  private async proposedSlotCapacity(professionalProfileId: string, scheduledAt: Date, requestServiceMode: "HOME" | "ONLINE" | null): Promise<number> {
+    const { dayStart } = utcDay(scheduledAt);
+    const timeStr = scheduledAt.toISOString().slice(11, 16);
+    const dayOfWeek = scheduledAt.getUTCDay();
+
+    // Fascia sottostante (per conoscere la capienza reale, maxBookings):
+    // il proposedDate è solo un timestamp esatto, non porta con sé
+    // start/endTime — recuperata qui con lo stesso bounds-check già in uso
+    // altrove (slotAppliesOnDate). Bug reale corretto insieme a
+    // resolveFreeExactSlot sopra: senza, confermare una proposta su una
+    // fascia a capienza (maxBookings > 1) sarebbe stato bloccato appena
+    // fosse esistita UNA sola prenotazione precedente sulla stessa
+    // fascia, anche con capienza ancora residua.
+    const candidateSlots = await this.prisma.availabilitySlot.findMany({
+      where: { professionalProfileId, OR: [{ date: dayStart }, { date: null, dayOfWeek }] },
+    });
+    const matchingSlot = candidateSlots.find((s) => timeStr >= s.startTime && timeStr < s.endTime);
+    // Capienza indipendente per modalità (CLAUDE.md §"su agenda del
+    // professionista disponibilità..."): la richiesta originale porta la
+    // modalità scelta dal cliente (serviceMode, null solo per righe
+    // precedenti a questa funzionalità — in quel caso si ricade sulla
+    // capienza a domicilio, comportamento storico). A differenza del
+    // fallback storico "?? 1" (per una data proposta senza una vera
+    // AvailabilitySlot sottostante, es. legacy), qui una fascia TROVATA che
+    // però non offre più la modalità richiesta (l'agenda del professionista
+    // può essere cambiata tra la proposta e la conferma) va rifiutata
+    // esplicitamente — mai dedurre una capienza di comodo per una modalità
+    // che la fascia non offre, stessa cautela già applicata in
+    // resolveFreeExactSlot.
+    if (matchingSlot) {
+      const modeCapacity = requestServiceMode === "ONLINE" ? matchingSlot.onlineMaxBookings : matchingSlot.homeMaxBookings;
+      if (modeCapacity === null) {
+        throw new ConflictException(
+          requestServiceMode === "ONLINE"
+            ? "Il professionista non offre più consulenza online su questa fascia oraria."
+            : "Il professionista non offre più interventi a domicilio su questa fascia oraria.",
+        );
+      }
+    }
+    return requestServiceMode === "ONLINE" ? (matchingSlot?.onlineMaxBookings ?? 1) : (matchingSlot?.homeMaxBookings ?? 1);
+  }
+
+  /**
+   * "Accetta nuova data" su un appuntamento già fissato (docs/changelog/2026-10-28-promemoria-whatsapp.md):
+   * l'appuntamento si sposta con acconto e pagamento com'erano, e
+   * promemoria e risposte del cliente ripartono da capo per la nuova data.
+   */
+  /**
+   * Altra data in sospeso su un appuntamento già fissato, se tocca a chi
+   * chiama rispondere (docs/changelog/2026-10-28-promemoria-whatsapp.md):
+   * al professionista se l'ha proposta il cliente, al cliente se con
+   * "Modifica" l'ha proposta il professionista. `null` se non c'è: vale il
+   * percorso di sempre del preventivo.
+   */
+  private async bookedDateChangeToAnswer(userId: string, quoteId: string): Promise<BookedDateChange | null> {
+    const quote = await this.prisma.quote.findUnique({
+      where: { id: quoteId },
+      include: { guidedRequest: true, booking: true, professionalProfile: { select: { userId: true } } },
+    });
+    const booking = quote?.booking;
+    if (!quote || !booking || quote.status !== "ACCEPTED" || !booking.rescheduleRequestedAt || !quote.clientProposedDate) return null;
+    const proposedBy = booking.rescheduleProposedBy === "PROFESSIONAL" ? "PROFESSIONAL" : "CLIENT";
+    const answeredBy = proposedBy === "CLIENT" ? "PROFESSIONAL" : "CLIENT";
+    const answererId = answeredBy === "PROFESSIONAL" ? quote.professionalProfile.userId : quote.guidedRequest.clientId;
+    if (userId !== answererId) {
+      if (userId === quote.professionalProfile.userId || userId === quote.guidedRequest.clientId) {
+        throw new ForbiddenException("Hai proposto tu questa data: aspetta la risposta.");
+      }
+      throw new ForbiddenException("Questo preventivo non è tuo.");
+    }
+    return {
+      quote: { ...quote, clientProposedDate: quote.clientProposedDate },
+      booking,
+      answeredBy,
+      professionalUserId: quote.professionalProfile.userId,
+    };
+  }
+
+  /**
+   * "Accetta nuova data" su un appuntamento già fissato (docs/changelog/2026-10-28-promemoria-whatsapp.md):
+   * l'appuntamento si sposta con acconto e pagamento com'erano, e
+   * promemoria e risposte del cliente ripartono da capo per la nuova data.
+   */
+  private async moveBookingToProposedDate({ quote, booking, answeredBy, professionalUserId }: BookedDateChange) {
+    const professionalProfileId = quote.professionalProfileId;
+    const now = new Date();
+    if (booking.status !== "CONFIRMED" || booking.scheduledAt.getTime() <= wallClockNow(now).getTime()) {
+      throw new ForbiddenException("Questo appuntamento non si può più spostare.");
+    }
+    const scheduledAt = quote.clientProposedDate;
+    const scheduledEndAt = quote.clientProposedEndDate;
+    if (scheduledAt.getTime() <= wallClockNow(now).getTime()) {
+      throw new BadRequestException("La data proposta è già passata: proponine un'altra.");
+    }
+    const mode = quote.guidedRequest.serviceMode;
+    const maxBookings = await this.proposedSlotCapacity(professionalProfileId, scheduledAt, mode);
+    const { dayStart, dayEnd } = utcDay(scheduledAt);
+    try {
+      await this.prisma.$transaction(
+        async (tx) => {
+          await lockProfessionalAgenda(tx, professionalProfileId);
+          const commitments = (await loadCommitments(tx, [professionalProfileId], dayStart, scheduledEndAt ?? dayEnd)).get(professionalProfileId) ?? [];
+          // L'appuntamento che si sposta non occupa la sua nuova fascia.
+          const itself = countOverlapping([booking], scheduledAt, scheduledEndAt, mode);
+          if (countOverlapping(commitments, scheduledAt, scheduledEndAt, mode) - itself >= maxBookings) {
+            throw new ConflictException("Questa fascia non è più libera.");
+          }
+          const moved = await tx.booking.updateMany({
+            where: { id: booking.id, status: "CONFIRMED", rescheduleRequestedAt: { not: null } },
+            data: {
+              scheduledAt,
+              scheduledEndAt,
+              ...NO_DATE_CHANGE,
+              // Nuova data: promemoria e risposte da capo.
+              reminderSentAt: null,
+              clientDepositReminderAt: null,
+              clientConfirmedAt: null,
+              clientCantComeAt: null,
+              clientReplyChannel: null,
+            },
+          });
+          if (moved.count === 0) throw new ConflictException("La proposta è cambiata: ricarica la pagina.");
+          await tx.quote.update({
+            where: { id: quote.id },
+            data: { estimatedStartDate: scheduledAt, estimatedEndDate: scheduledEndAt, ...NO_PROPOSAL },
+          });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2034") {
+        throw new ConflictException("Questa fascia non è più libera.");
+      }
+      throw err;
+    }
+    await this.whatsAppService.forgetBookingReminders(booking.id, now);
+    const byClient = answeredBy === "CLIENT";
+    await this.notificationsService.notify(byClient ? professionalUserId : quote.guidedRequest.clientId, byClient ? "QUOTE_DATE_CONFIRMED_BY_CLIENT" : "QUOTE_DATE_CONFIRMED", {
+      guidedRequestId: quote.guidedRequestId,
+      quoteId: quote.id,
+      bookingId: booking.id,
+      booked: true,
+      from: slotPayload(booking.scheduledAt, booking.scheduledEndAt),
+      to: slotPayload(scheduledAt, scheduledEndAt),
+    });
+    await this.timelineService.log(
+      quote.guidedRequestId,
+      professionalProfileId,
+      answeredBy,
+      `${byClient ? "Il cliente" : "Il professionista"} ha accettato la nuova data: l'appuntamento è spostato a ${formatSlotForTimeline(scheduledAt, scheduledEndAt)}.`,
+    );
+    return { bookingId: booking.id };
+  }
+
+  /** "Rifiuta la proposta" su un appuntamento già fissato: resta com'era, la proposta si toglie. */
+  private async rejectBookedDateChange({ quote, booking, answeredBy, professionalUserId }: BookedDateChange) {
+    await this.prisma.$transaction([
+      this.prisma.quote.update({ where: { id: quote.id }, data: NO_PROPOSAL }),
+      this.prisma.booking.update({ where: { id: booking.id }, data: NO_DATE_CHANGE }),
+    ]);
+    const byClient = answeredBy === "CLIENT";
+    await this.notificationsService.notify(byClient ? professionalUserId : quote.guidedRequest.clientId, byClient ? "QUOTE_DATE_REJECTED_BY_CLIENT" : "QUOTE_DATE_REJECTED", {
+      guidedRequestId: quote.guidedRequestId,
+      quoteId: quote.id,
+      bookingId: booking.id,
+      booked: true,
+      from: slotPayload(quote.clientProposedDate, quote.clientProposedEndDate),
+      to: slotPayload(booking.scheduledAt, booking.scheduledEndAt),
+    });
+    await this.timelineService.log(
+      quote.guidedRequestId,
+      quote.professionalProfileId,
+      answeredBy,
+      `${byClient ? "Il cliente" : "Il professionista"} ha rifiutato la data proposta: l'appuntamento resta com'era.`,
+    );
+    return { id: quote.id, status: quote.status };
+  }
+
+  /** "Modifica" del professionista sull'altra data proposta per un appuntamento già fissato. */
+  private async counterProposeBookedDate(
+    professionalProfileId: string,
+    quote: { id: string; guidedRequestId: string; estimatedStartDate: Date; estimatedEndDate: Date | null; clientProposedDate: Date; clientProposedEndDate: Date | null; guidedRequest: { clientId: string; serviceMode: "HOME" | "ONLINE" | null } },
+    booking: { id: string; status: string; scheduledAt: Date; scheduledEndAt: Date | null },
+    input: ProposeQuoteDateInput,
+  ) {
+    if (booking.status !== "CONFIRMED" || booking.scheduledAt.getTime() <= wallClockNow().getTime()) {
+      throw new ForbiddenException("Questo appuntamento non si può più spostare.");
+    }
+    let start: Date;
+    let end: Date;
+    if (input.isManual) {
+      start = new Date(`${input.date}T${input.startTime}:00.000Z`);
+      end = new Date(`${input.date}T${input.endTime}:00.000Z`);
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) throw new BadRequestException("Data non valida.");
+    } else {
+      const resolved = await this.resolveFreeExactSlot(professionalProfileId, input.date, input.startTime, input.endTime, quote.guidedRequest.serviceMode);
+      start = resolved.scheduledAt;
+      end = resolved.scheduledEndAt;
+    }
+    end = keepJobDays({ estimatedStartDate: booking.scheduledAt, estimatedEndDate: booking.scheduledEndAt }, end);
+    if (start.getTime() <= wallClockNow().getTime()) throw new BadRequestException("Scegli una data che deve ancora venire.");
+    if (!scheduleChangeBetween({ start: booking.scheduledAt, end: booking.scheduledEndAt }, { start, end })) {
+      throw new BadRequestException("È la data dell'appuntamento: per tenerla rifiuta la proposta del cliente.");
+    }
+    const note = input.note?.trim() || null;
+    const change = scheduleChangeBetween({ start: quote.clientProposedDate, end: quote.clientProposedEndDate }, { start, end }) ?? "both";
+    await this.prisma.$transaction([
+      this.prisma.quote.update({
+        where: { id: quote.id },
+        data: { clientProposedDate: start, clientProposedEndDate: end, clientProposedNote: null, professionalCounterNote: note },
+      }),
+      this.prisma.booking.update({
+        where: { id: booking.id },
+        data: { rescheduleRequestedAt: new Date(), rescheduleProposedBy: "PROFESSIONAL", rescheduleReminderAt: null },
+      }),
+    ]);
+    await this.notificationsService.notify(quote.guidedRequest.clientId, "QUOTE_DATE_CHANGED", {
+      guidedRequestId: quote.guidedRequestId,
+      quoteId: quote.id,
+      bookingId: booking.id,
+      booked: true,
+      change,
+      ...(note ? { note } : {}),
+      from: slotPayload(booking.scheduledAt, booking.scheduledEndAt),
+      to: slotPayload(start, end),
+    });
+    await this.professionalMetricsService.touchActivity(professionalProfileId);
+    await this.timelineService.log(
+      quote.guidedRequestId,
+      professionalProfileId,
+      "PROFESSIONAL",
+      `Il professionista propone di spostare l'appuntamento: ${formatSlotForTimeline(start, end)}.${note ? ` Nota: "${note}"` : ""}`,
+    );
+    return { id: quote.id, status: "ACCEPTED", estimatedStartDate: quote.estimatedStartDate.toISOString(), estimatedEndDate: quote.estimatedEndDate?.toISOString() ?? null };
+  }
+
   /** Il professionista rifiuta la data proposta: il preventivo torna SENT con la data originale, il cliente può accettarla o proporne un'altra. */
   async rejectProposedDate(professionalUserId: string, quoteId: string) {
+    const pending = await this.bookedDateChangeToAnswer(professionalUserId, quoteId);
+    if (pending) return this.rejectBookedDateChange(pending);
     const professionalProfile = await this.prisma.professionalProfile.findUnique({ where: { userId: professionalUserId } });
     if (!professionalProfile) {
       throw new NotFoundException("Profilo professionista non trovato.");
@@ -760,6 +1045,14 @@ export class QuotesService {
     const quote = await this.prisma.quote.findUnique({ where: { id: quoteId }, include: { guidedRequest: true, booking: true } });
     if (!quote || quote.professionalProfileId !== professionalProfile.id) {
       throw new ForbiddenException("Questo preventivo non è tuo.");
+    }
+    // Appuntamento già fissato: "Modifica" propone un'altra data al cliente,
+    // che la accetta o la rifiuta come una qualsiasi proposta.
+    if (quote.booking && quote.status === "ACCEPTED" && quote.booking.rescheduleRequestedAt && quote.clientProposedDate) {
+      if (quote.booking.rescheduleProposedBy === "PROFESSIONAL") {
+        throw new ForbiddenException("Hai proposto tu questa data: aspetta la risposta del cliente.");
+      }
+      return this.counterProposeBookedDate(professionalProfile.id, { ...quote, clientProposedDate: quote.clientProposedDate }, quote.booking, input);
     }
     if (quote.status !== "MODIFICATION_REQUESTED") {
       throw new ForbiddenException("Nessuna data proposta da modificare per questo preventivo.");
@@ -1023,4 +1316,13 @@ export class QuotesService {
 function keepJobDays(quote: { estimatedStartDate: Date; estimatedEndDate: Date | null }, firstDayEnd: Date): Date {
   const days = jobDayCount(quote.estimatedStartDate, quote.estimatedEndDate);
   return days > 1 ? new Date(firstDayEnd.getTime() + (days - 1) * 24 * 60 * 60 * 1000) : firstDayEnd;
+}
+
+/** Inizio del giorno (UTC, cioè ora italiana) e inizio del giorno dopo. */
+function utcDay(at: Date): { dayStart: Date; dayEnd: Date } {
+  const dayStart = new Date(at);
+  dayStart.setUTCHours(0, 0, 0, 0);
+  const dayEnd = new Date(dayStart);
+  dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
+  return { dayStart, dayEnd };
 }
