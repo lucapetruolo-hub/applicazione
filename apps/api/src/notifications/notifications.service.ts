@@ -5,10 +5,16 @@ import { RealtimeService } from "../realtime/realtime.service";
 import { EmailService } from "../email/email.service";
 import {
   CONTENT_REPORT_TARGET_LABEL,
+  NOTIFICATION_ITEMS,
+  NOTIFICATION_TOPIC_INFO,
   notificationChannelEnabled,
+  notificationItemChannelOn,
+  notificationMuteTarget,
   resolveNotificationPreferences,
   type ContentReportTargetType,
   type NotificationPreferences,
+  wallClockNow,
+  withNotificationItemChannel,
 } from "@professionisti/shared";
 import { renderEmail } from "../email/email-layout";
 import { BOOKING_CALENDAR_INCLUDE, bookingCalendar, withCalendar, type BookingCalendar } from "../email/booking-calendar";
@@ -18,9 +24,12 @@ import {
   EMPTY_EMAIL_CONTEXT,
   NOTIFICATION_EMAIL_TYPES,
   chatMessageEmail,
+  heldEmailsSummary,
   notificationEmail,
   type NotificationEmailContext,
 } from "../email/templates/notification-emails";
+import { emailOffUrl, readEmailOffToken } from "./email-off";
+import { emailHoldUntil, type HeldEmailRow } from "./email-hold";
 
 function isChatMessageType(type: string): type is "TIMELINE_MESSAGE_FROM_CLIENT" | "TIMELINE_MESSAGE_FROM_PROFESSIONAL" {
   return type === "TIMELINE_MESSAGE_FROM_CLIENT" || type === "TIMELINE_MESSAGE_FROM_PROFESSIONAL";
@@ -38,6 +47,38 @@ function payloadGuidedRequestId(payload: Prisma.InputJsonValue): string | null {
     if (typeof value === "string") return value;
   }
   return null;
+}
+
+const EMAIL_USER_SELECT = { email: true, name: true, deletedAt: true, role: true, professionalProfile: { select: { id: true } } } as const;
+
+/**
+ * "Non ricevere più email come questa" in fondo all'email
+ * (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md): spegne
+ * solo l'email di quell'avviso, senza accedere. Niente link per gli avvisi
+ * sempre attivi.
+ */
+function emailOffFor(
+  userId: string,
+  type: string,
+  user: { role: string; professionalProfile: { id: string } | null },
+): { label: string; url: string } | undefined {
+  const target = notificationMuteTarget(type, user.professionalProfile ? "professional" : "client", user.role === "ADMIN");
+  return target ? { label: target.label, url: emailOffUrl(userId, target) } : undefined;
+}
+
+/** Le caselle di posta mostrano "Annulla iscrizione" accanto al mittente. */
+function unsubscribeHeaders(emailOff: { url: string } | undefined): { headers?: Record<string, string> } {
+  return emailOff ? { headers: { "List-Unsubscribe": `<${emailOff.url}>` } } : {};
+}
+
+function chatUrl(type: "TIMELINE_MESSAGE_FROM_CLIENT" | "TIMELINE_MESSAGE_FROM_PROFESSIONAL", thread: { guidedRequestId: string; professionalProfileId: string }): string {
+  const query = `open=${thread.guidedRequestId}&chat=${thread.professionalProfileId}`;
+  return type === "TIMELINE_MESSAGE_FROM_CLIENT" ? `${frontendUrl()}/dashboard/richieste?${query}` : `${frontendUrl()}/le-mie-richieste?tab=richieste&${query}`;
+}
+
+/** "21:40", ora italiana. */
+function formatRomeTime(date: Date): string {
+  return date.toLocaleTimeString("it-IT", { timeZone: "Europe/Rome", hour: "2-digit", minute: "2-digit" });
 }
 
 /** Notifiche che aggiungono o tolgono l'appuntamento dal calendario (docs/CHANGELOG.md §235). */
@@ -90,17 +131,25 @@ export class NotificationsService {
     // §152): stesso trattamento di una richiesta silenziata, la notifica
     // resta nella cronologia ma nasce letta.
     const prefs = await this.preferencesOf(userId);
+    let heldEmail: Date | null = null;
     // Email (docs/CHANGELOG.md §185): parte se il tipo ne ha una e il canale
     // email dell'argomento è acceso, anche con il sito spento. Mai per una
     // richiesta silenziata.
+    // Riassunto della sera e notte senza email
+    // (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md): l'email
+    // si segna sulla riga e parte più tardi da HeldEmailsService.
+    const emailHold = emailHoldUntil(prefs, type, payload);
     if (!muted && NOTIFICATION_EMAIL_TYPES.has(type) && notificationChannelEnabled(prefs, type, "email")) {
-      this.emailNotification(userId, type, payload);
+      if (emailHold) heldEmail = emailHold;
+      else this.emailNotification(userId, type, payload);
     }
     if (muted || !notificationChannelEnabled(prefs, type, "inApp")) {
-      await this.prisma.notification.create({ data: { userId, channel: "PUSH", type, payload, readAt: new Date() } });
+      const chatEmail = !muted && isChatMessageType(type) && notificationChannelEnabled(prefs, type, "email");
+      if (chatEmail && emailHold) heldEmail = emailHold;
+      await this.prisma.notification.create({ data: { userId, channel: "PUSH", type, payload, readAt: new Date(), emailHoldUntil: heldEmail } });
       // Messaggio in chat con il sito spento ma l'email accesa: non c'è
       // nulla da "non leggere" per l'email ritardata (§332), parte subito.
-      if (!muted && isChatMessageType(type) && notificationChannelEnabled(prefs, type, "email")) {
+      if (chatEmail && !emailHold) {
         const thread = payloadThread(payload);
         if (thread) {
           void this.emailChatMessages(userId, { type, ...thread, count: 1 }).catch((err: unknown) => {
@@ -111,7 +160,7 @@ export class NotificationsService {
       return;
     }
 
-    const created = await this.prisma.notification.create({ data: { userId, channel: "PUSH", type, payload } });
+    const created = await this.prisma.notification.create({ data: { userId, channel: "PUSH", type, payload, emailHoldUntil: heldEmail } });
     this.realtimeService.publish(userId, {
       kind: "notification",
       notification: { id: created.id, type: created.type, payload: created.payload, createdAt: created.createdAt.toISOString() },
@@ -122,6 +171,38 @@ export class NotificationsService {
   async preferencesOf(userId: string): Promise<NotificationPreferences> {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { notificationPrefs: true } });
     return resolveNotificationPreferences(user?.notificationPrefs ?? null);
+  }
+
+  /**
+   * Spegne (o riaccende) l'email di un avviso dal link in fondo all'email,
+   * senza accedere (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md).
+   * Tocca solo l'email: la notifica nel sito resta com'era.
+   */
+  async setEmailOffFromLink(token: string, off?: boolean): Promise<{ label: string; off: boolean }> {
+    const read = readEmailOffToken(token);
+    if (!read) throw new NotFoundException("Link non valido.");
+    const user = await this.prisma.user.findUnique({ where: { id: read.userId }, select: { deletedAt: true, role: true, professionalProfile: { select: { id: true } } } });
+    if (!user || user.deletedAt) throw new NotFoundException("Link non valido.");
+    const role = user.professionalProfile ? "professional" : "client";
+    const prefs = await this.preferencesOf(read.userId);
+    let next: NotificationPreferences;
+    let label: string;
+    let current: boolean;
+    if (read.target.kind === "item") {
+      const key = read.target.key;
+      const item = NOTIFICATION_ITEMS.find((candidate) => candidate.key === key);
+      label = item?.[role]?.label ?? item?.admin?.label ?? NOTIFICATION_TOPIC_INFO[item?.topic ?? "account"][role].label;
+      current = !notificationItemChannelOn(prefs, key, "email") || (!!item && !prefs.topics[item.topic].email);
+      next = withNotificationItemChannel(prefs, key, "email", !off);
+    } else {
+      label = NOTIFICATION_TOPIC_INFO[read.target.topic][role].label;
+      current = !prefs.topics[read.target.topic].email;
+      next = JSON.parse(JSON.stringify(prefs)) as NotificationPreferences;
+      next.topics[read.target.topic].email = !off;
+    }
+    if (off === undefined) return { label, off: current };
+    await this.prisma.user.update({ where: { id: read.userId }, data: { notificationPrefs: resolveNotificationPreferences(next) } });
+    return { label, off };
   }
 
   async updatePreferences(userId: string, prefs: NotificationPreferences): Promise<NotificationPreferences> {
@@ -152,17 +233,19 @@ export class NotificationsService {
    */
   private emailNotification(userId: string, type: string, payload: Prisma.InputJsonValue): void {
     void (async () => {
-      const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true, deletedAt: true } });
+      const user = await this.prisma.user.findUnique({ where: { id: userId }, select: EMAIL_USER_SELECT });
       if (!user?.email || user.deletedAt) return;
       const data = payload && typeof payload === "object" && !Array.isArray(payload) ? (payload as Record<string, unknown>) : {};
       const context = { ...(await this.emailContext(data)), name: user.name };
       const content = notificationEmail(type, data, context);
       if (!content) return;
       const calendar = await this.bookingCalendarFor(userId, type, data);
+      const emailOff = emailOffFor(userId, type, user);
       await this.emailService.send({
         to: user.email,
-        ...renderEmail(calendar ? withCalendar(content, calendar) : content),
+        ...renderEmail({ ...(calendar ? withCalendar(content, calendar) : content), emailOff }),
         ...(calendar ? { attachments: [calendar.attachment] } : {}),
+        ...unsubscribeHeaders(emailOff),
       });
     })().catch((err: unknown) => {
       this.logger.error(`Email della notifica ${type} non inviata: ${err instanceof Error ? err.message : String(err)}`);
@@ -254,15 +337,57 @@ export class NotificationsService {
     userId: string,
     input: { type: "TIMELINE_MESSAGE_FROM_CLIENT" | "TIMELINE_MESSAGE_FROM_PROFESSIONAL"; guidedRequestId: string; professionalProfileId: string; count: number },
   ): Promise<void> {
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true, deletedAt: true } });
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: EMAIL_USER_SELECT });
     if (!user?.email || user.deletedAt) return;
     const context = { ...(await this.emailContext({ guidedRequestId: input.guidedRequestId, professionalProfileId: input.professionalProfileId })), name: user.name };
-    const query = `open=${input.guidedRequestId}&chat=${input.professionalProfileId}`;
-    const url =
-      input.type === "TIMELINE_MESSAGE_FROM_CLIENT"
-        ? `${frontendUrl()}/dashboard/richieste?${query}`
-        : `${frontendUrl()}/le-mie-richieste?tab=richieste&${query}`;
-    await this.emailService.send({ to: user.email, ...renderEmail(chatMessageEmail(input.type, input.count, context, url)) });
+    const emailOff = emailOffFor(userId, input.type, user);
+    await this.emailService.send({
+      to: user.email,
+      ...renderEmail({ ...chatMessageEmail(input.type, input.count, context, chatUrl(input.type, input)), emailOff }),
+      ...unsubscribeHeaders(emailOff),
+    });
+  }
+
+  /**
+   * Email rimandate di una persona (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md):
+   * con un solo avviso parte la sua email di sempre, con più avvisi un solo
+   * riassunto. Si ricontrolla il canale email, che nel frattempo può essere
+   * stato spento. Senza avvisi non parte niente.
+   */
+  async sendHeldEmails(userId: string, rows: HeldEmailRow[], now: Date = new Date()): Promise<void> {
+    const prefs = await this.preferencesOf(userId);
+    const wanted = rows.filter((row) => notificationChannelEnabled(prefs, row.type, "email"));
+    if (wanted.length === 0) return;
+    const [row] = wanted;
+    if (row && wanted.length === 1) {
+      const thread = isChatMessageType(row.type) ? payloadThread(row.payload as Prisma.InputJsonValue) : null;
+      if (isChatMessageType(row.type)) {
+        if (thread) await this.emailChatMessages(userId, { type: row.type, ...thread, count: 1 });
+      } else {
+        this.emailNotification(userId, row.type, row.payload as Prisma.InputJsonValue);
+      }
+      return;
+    }
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: EMAIL_USER_SELECT });
+    if (!user?.email || user.deletedAt) return;
+    const items: { time: string; subject: string; url?: string }[] = [];
+    for (const row of wanted) {
+      const data = row.payload && typeof row.payload === "object" && !Array.isArray(row.payload) ? (row.payload as Record<string, unknown>) : {};
+      const context = { ...(await this.emailContext(data)), name: user.name };
+      const time = formatRomeTime(row.createdAt);
+      if (isChatMessageType(row.type)) {
+        const thread = payloadThread(row.payload as Prisma.InputJsonValue);
+        if (!thread) continue;
+        const url = chatUrl(row.type, thread);
+        items.push({ time, subject: chatMessageEmail(row.type, 1, context, url).subject, url });
+        continue;
+      }
+      const content = notificationEmail(row.type, data, context);
+      if (content) items.push({ time, subject: content.subject, ...(content.cta ? { url: content.cta.url } : {}) });
+    }
+    if (items.length === 0) return;
+    const morning = wallClockNow(now).getUTCHours() < 12;
+    await this.emailService.send({ to: user.email, ...renderEmail(heldEmailsSummary(items, { name: user.name, morning }, frontendUrl())) });
   }
 
   /**

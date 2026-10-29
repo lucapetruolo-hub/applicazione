@@ -28,7 +28,7 @@ import {
   bookingReminderProfessionalEmail,
   requestSentEmail,
 } from "../src/email/templates/job-emails";
-import { chatMessageEmail, notificationEmail, type NotificationEmailContext } from "../src/email/templates/notification-emails";
+import { chatMessageEmail, heldEmailsSummary, notificationEmail, type NotificationEmailContext } from "../src/email/templates/notification-emails";
 
 type Entry = { file: string; group: string; to: "Cliente" | "Professionista" | "Admin" | "Tutti"; email: RenderedEmail };
 
@@ -102,6 +102,43 @@ notification("GUIDED_REQUEST_EXPIRED", "Cliente", "Richieste");
 // Messaggi in chat non letti dopo 10 minuti (§332)
 add("chat-messaggio-dal-professionista", "Messaggi", "Cliente", renderEmail(chatMessageEmail("TIMELINE_MESSAGE_FROM_PROFESSIONAL", 1, { ...forClient, when: null }, "https://example.it/le-mie-richieste")));
 add("chat-messaggi-dal-cliente", "Messaggi", "Professionista", renderEmail(chatMessageEmail("TIMELINE_MESSAGE_FROM_CLIENT", 3, { ...forPro, when: null }, "https://example.it/dashboard/richieste")));
+// Riassunto della sera e della notte, e link "Non ricevere più email come questa"
+// (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md).
+add(
+  "riassunto-della-sera",
+  "Messaggi",
+  "Professionista",
+  renderEmail(
+    heldEmailsSummary(
+      [
+        { time: "10:42", subject: "Nuova recensione: 5 stelle da Giulia", url: `${site}/dashboard/recensioni` },
+        { time: "14:05", subject: "Acconto pagato per Idraulico a Latina", url: `${site}/dashboard/lavori` },
+        { time: "17:30", subject: "Il documento del mese è pronto", url: `${site}/dashboard/documenti` },
+      ],
+      { name: "Marco", morning: false },
+      site,
+    ),
+  ),
+);
+add(
+  "riassunto-della-notte",
+  "Messaggi",
+  "Cliente",
+  renderEmail(
+    heldEmailsSummary(
+      [
+        { time: "23:12", subject: "Nuovo preventivo da Idraulica Rossi", url: `${site}/le-mie-richieste` },
+        { time: "06:40", subject: "Idraulica Rossi ti ha scritto", url: `${site}/le-mie-richieste` },
+      ],
+      { name: "Giulia", morning: true },
+      site,
+    ),
+  ),
+);
+{
+  const review = notificationEmail("NEW_REVIEW", { rating: 5 }, forPro);
+  if (review) add("email-con-non-ricevere-piu", "Messaggi", "Professionista", renderEmail({ ...review, emailOff: { label: "Nuove recensioni", url: `${site}/notifiche/email?t=esempio` } }));
+}
 
 // Preventivi e date
 notification("NEW_QUOTE", "Cliente", "Preventivi e date");

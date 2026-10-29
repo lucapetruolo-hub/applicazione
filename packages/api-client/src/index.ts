@@ -27,6 +27,7 @@ export type {
   AdminSearchResult,
   AdminTrends,
   AdminTrafficSources,
+  AdminNotificationOptOutGroup,
   AdminReportTarget,
   AuthResult,
   ClientBooking,

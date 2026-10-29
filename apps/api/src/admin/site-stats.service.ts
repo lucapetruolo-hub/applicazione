@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { loadNotificationOptOuts } from "../notifications/opt-outs";
 import { Cron } from "@nestjs/schedule";
 import type { Prisma, PrismaClient } from "@professionisti/database";
 import {
@@ -388,6 +389,7 @@ export class SiteStatsService {
       reconciliation,
       requestsInWindow: inWindow.length,
       prices: { paying, atLimit30d, trialsEnded: trials.length, trialsConverted: trials.filter((t) => t.stripeSubscriptionId).length },
+      notificationOptOuts: await loadNotificationOptOuts(this.prisma),
     });
     // Consigli segnati come fatti: fuori per SITE_ADVICE_DONE_DAYS giorni, anche dall'email del lunedì.
     const doneRows = await this.prisma.siteAdviceDone.findMany({ where: { doneAt: { gte: new Date(now.getTime() - SITE_ADVICE_DONE_DAYS * DAY_MS) } }, orderBy: { doneAt: "desc" } });

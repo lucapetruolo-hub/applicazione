@@ -1714,3 +1714,34 @@ export function chatMessageEmail(
     ctx,
   );
 }
+
+/**
+ * Riassunto delle email rimandate
+ * (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md): alle 19
+ * le novità senza fretta della giornata, alle 7 quelle arrivate di notte.
+ * Una riga per avviso, ognuna apre il suo punto del sito. Si manda solo con
+ * almeno due avvisi: con uno parte la sua email normale, con nessuno niente.
+ */
+export function heldEmailsSummary(
+  items: { time: string; subject: string; url?: string }[],
+  ctx: { name: string | null; morning: boolean },
+  siteUrl: string,
+): EmailContent {
+  const when = ctx.morning ? "della notte" : "di oggi";
+  return {
+    kind: "notification",
+    subject: `${items.length} novità ${when}`,
+    preheader: items.slice(0, 2).map((item) => item.subject).join(" · "),
+    greeting: ctx.name,
+    title: `Le novità ${when}`,
+    paragraphs: [
+      ctx.morning
+        ? "Di notte non ti mandiamo email: ecco cosa è arrivato mentre dormivi."
+        : "Gli avvisi senza fretta di oggi, in un'unica email.",
+    ],
+    detailsTitle: `${items.length} avvisi`,
+    details: items.map((item) => ({ label: item.time, value: item.subject, ...(item.url ? { url: item.url } : {}) })),
+    cta: { label: "Apri il sito", url: siteUrl },
+    after: ["Se preferisci le email subito, puoi sceglierlo dalle preferenze di notifica."],
+  };
+}

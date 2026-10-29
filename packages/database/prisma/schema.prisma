@@ -1497,18 +1497,21 @@ enum NotificationChannel {
 }
 
 model Notification {
-  id        String              @id @default(uuid())
-  userId    String
-  channel   NotificationChannel
-  type      String
-  payload   Json
-  sentAt    DateTime?
-  readAt    DateTime?
-  createdAt DateTime            @default(now())
+  id             String              @id @default(uuid())
+  userId         String
+  channel        NotificationChannel
+  type           String
+  payload        Json
+  sentAt         DateTime?
+  readAt         DateTime?
+  createdAt      DateTime            @default(now())
+  /// Email rimandata al riassunto della sera o al mattino (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md).
+  emailHoldUntil DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, sentAt])
+  @@index([emailHoldUntil])
   @@map("notifications")
 }
 

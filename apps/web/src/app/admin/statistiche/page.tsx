@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { AdminTrafficSources, RevenueAnalyticsSummary } from "@professionisti/api-client";
+import type { AdminNotificationOptOutGroup, AdminTrafficSources, RevenueAnalyticsSummary } from "@professionisti/api-client";
 import { Icon, Paragraph, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { SkeletonRevenuePanel } from "@/components/Skeleton";
 import { RevenueAnalyticsPanel } from "@/components/RevenueAnalyticsPanel";
 import { TrafficSourcesPanel } from "@/components/TrafficSourcesPanel";
+import { NotificationOptOutsPanel } from "@/components/NotificationOptOutsPanel";
 
 /**
  * "Statistiche" → Revenue Analytics (richiesta esplicita dell'utente,
@@ -29,6 +30,7 @@ export default function AdminStatistichePage() {
   const [data, setData] = useState<RevenueAnalyticsSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [traffic, setTraffic] = useState<AdminTrafficSources | null>(null);
+  const [optOuts, setOptOuts] = useState<AdminNotificationOptOutGroup[] | null>(null);
 
   useEffect(() => {
     if (!token || user?.role !== "ADMIN") return;
@@ -38,6 +40,7 @@ export default function AdminStatistichePage() {
       .catch((err) => setError(err instanceof Error ? err.message : "Errore nel caricamento."));
     // Pannello a parte: se non risponde, le entrate restano visibili.
     apiClient.adminTrafficSources(token).then(setTraffic).catch(() => setTraffic(null));
+    apiClient.adminNotificationOptOuts(token).then(setOptOuts).catch(() => setOptOuts(null));
   }, [token, user]);
 
   if (isLoading) return null;
@@ -93,6 +96,8 @@ export default function AdminStatistichePage() {
         ) : null}
 
         {traffic ? <TrafficSourcesPanel data={traffic} /> : null}
+
+        {optOuts ? <NotificationOptOutsPanel data={optOuts} /> : null}
       </YStack>
     </YStack>
   );

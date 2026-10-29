@@ -3,6 +3,7 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import { notificationChannelEnabled } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { isQuietHour } from "./email-hold";
 import { NotificationsService } from "./notifications.service";
 
 /** Minuti dopo i quali un messaggio non letto sul sito arriva anche per email. */
@@ -93,8 +94,19 @@ export class ChatMessageEmailsService {
   async sendDue(now: Date = new Date()): Promise<void> {
     const unread = { type: { in: [...CHAT_TYPES] }, readAt: null, createdAt: { gte: new Date(now.getTime() - CHAT_EMAIL_MAX_AGE_HOURS * 60 * 60_000) } };
     const select = { id: true, userId: true, type: true, payload: true, createdAt: true } as const;
-    const pending = await this.prisma.notification.findMany({ where: { ...unread, sentAt: null }, select });
+    let pending = await this.prisma.notification.findMany({ where: { ...unread, sentAt: null }, select });
     if (pending.length === 0) return;
+    // Di notte niente email (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md):
+    // i messaggi di chi l'ha scelto restano in attesa e partono dopo le 7, se
+    // ancora non letti.
+    if (isQuietHour(now)) {
+      const quiet = new Set<string>();
+      for (const userId of new Set(pending.map((row) => row.userId))) {
+        if ((await this.notificationsService.preferencesOf(userId)).quietNight) quiet.add(userId);
+      }
+      pending = pending.filter((row) => !quiet.has(row.userId));
+      if (pending.length === 0) return;
+    }
     const userIds = [...new Set(pending.map((row) => row.userId))];
     const alreadyEmailed = await this.prisma.notification.findMany({ where: { ...unread, userId: { in: userIds }, sentAt: { not: null } }, select });
     const { groups, covered } = chatEmailGroups(pending, alreadyEmailed, now);

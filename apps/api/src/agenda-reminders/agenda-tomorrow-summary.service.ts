@@ -1,7 +1,14 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
-import { formatAppointmentTimeRange, jobOccurrenceOn, wallClockToday } from "@professionisti/shared";
+import {
+  formatAppointmentTimeRange,
+  jobOccurrenceOn,
+  notificationDigestHour,
+  resolveNotificationPreferences,
+  wallClockNow,
+  wallClockToday,
+} from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { touchingWindow } from "../agenda/commitments";
@@ -46,7 +53,9 @@ export function tomorrowSummaryItems(bookings: SummaryBooking[], externalJobs: S
 
 /**
  * Riepilogo della sera prima (sito + email, argomento "Lavori e
- * appuntamenti", spegnibile): alle 19 a chi ha lavori confermati domani.
+ * appuntamenti", spegnibile): a chi ha lavori confermati domani, all'ora
+ * della sera scelta in Notifiche (18-21, di serie le 19), la stessa del
+ * riassunto delle email (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md).
  */
 @Injectable()
 export class AgendaTomorrowSummaryService {
@@ -55,8 +64,9 @@ export class AgendaTomorrowSummaryService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
-  @Cron("0 19 * * *", { timeZone: "Europe/Rome" })
+  @Cron("0 18-21 * * *", { timeZone: "Europe/Rome" })
   async sendTomorrowSummaries(now: Date = new Date()): Promise<void> {
+    const hour = wallClockNow(now).getUTCHours();
     const tomorrow = new Date(wallClockToday(now).getTime() + DAY_MS);
     const dayAfter = new Date(tomorrow.getTime() + DAY_MS);
     const profiles = await this.prisma.professionalProfile.findMany({
@@ -72,6 +82,7 @@ export class AgendaTomorrowSummaryService {
       },
       select: {
         userId: true,
+        user: { select: { notificationPrefs: true } },
         bookings: {
           where: { status: "CONFIRMED", ...touchingWindow(tomorrow, dayAfter) },
           select: {
@@ -92,6 +103,7 @@ export class AgendaTomorrowSummaryService {
     });
     const date = tomorrow.toISOString().slice(0, 10);
     for (const profile of profiles) {
+      if (notificationDigestHour(resolveNotificationPreferences(profile.user.notificationPrefs)) !== hour) continue;
       // Un lavoro su più giorni compare ogni sera, con l'orario di quel giorno (§310).
       const onDate = <T extends { scheduledAt: Date; scheduledEndAt: Date | null }>(jobs: T[]): T[] =>
         jobs.flatMap((job) => {
@@ -100,7 +112,7 @@ export class AgendaTomorrowSummaryService {
         });
       const items = tomorrowSummaryItems(onDate(profile.bookings), onDate(profile.externalJobs));
       if (items.length === 0) continue;
-      // Un solo riepilogo per giorno, anche se il server si riavvia alle 19.
+      // Un solo riepilogo per giorno, anche se il server si riavvia all'ora del riepilogo.
       const already = await this.prisma.notification.findFirst({
         where: { userId: profile.userId, type: "AGENDA_TOMORROW_SUMMARY", payload: { path: ["date"], equals: date } },
         select: { id: true },

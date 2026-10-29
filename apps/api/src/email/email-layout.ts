@@ -50,6 +50,11 @@ export type EmailContent = {
    * commercialista di un professionista, docs/CHANGELOG.md §378).
    */
   kind: "notification" | "account" | "external";
+  /**
+   * "Non ricevere più email come questa" (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md):
+   * link firmato che spegne l'email di quell'avviso senza accedere. Solo per le notifiche.
+   */
+  emailOff?: { label: string; url: string };
 };
 
 const EXTERNAL_FOOTER = "Ricevi questa email perché un professionista iscritto ha indicato il tuo indirizzo.";
@@ -148,6 +153,11 @@ export function renderEmail(content: EmailContent): RenderedEmail {
         ? EXTERNAL_FOOTER
         : "Questa è un'email di servizio sul tuo account: arriva anche se hai spento le notifiche.";
 
+  const emailOff =
+    content.kind === "notification" && content.emailOff
+      ? `Non vuoi più email di «${escapeHtml(content.emailOff.label)}»? <a href="${escapeHtml(content.emailOff.url)}" style="color:${c.muted};">Non riceverle più</a>.<br>`
+      : "";
+
   const html =
     `<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
     `<meta name="color-scheme" content="light"><title>${escapeHtml(content.subject)}</title></head>` +
@@ -174,7 +184,7 @@ export function renderEmail(content: EmailContent): RenderedEmail {
     `</td></tr>` +
     // Piè di pagina.
     `<tr><td style="padding:18px 16px 0;font-family:${FONT};font-size:12px;line-height:1.5;color:${c.muted};text-align:center;">` +
-    `${footerReason}<br>Hai bisogno di aiuto? Scrivi a <a href="mailto:${EMAIL_BRAND.supportEmail}" style="color:${c.muted};">${EMAIL_BRAND.supportEmail}</a>.` +
+    `${emailOff}${footerReason}<br>Hai bisogno di aiuto? Scrivi a <a href="mailto:${EMAIL_BRAND.supportEmail}" style="color:${c.muted};">${EMAIL_BRAND.supportEmail}</a>.` +
     `</td></tr>` +
     `</table></td></tr></table></body></html>`;
 
@@ -198,6 +208,7 @@ export function renderEmail(content: EmailContent): RenderedEmail {
     ...(content.after ?? []).map(plain),
     EMAIL_BRAND.signature,
     "—",
+    ...(content.kind === "notification" && content.emailOff ? [`Non vuoi più email di «${content.emailOff.label}»? Non riceverle più: ${content.emailOff.url}`] : []),
     content.kind === "notification"
       ? `Ricevi questa email per le notifiche del tuo account. Preferenze di notifica: ${site}/account/notifiche`
       : content.kind === "external"
