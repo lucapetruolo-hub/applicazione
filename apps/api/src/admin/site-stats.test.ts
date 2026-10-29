@@ -146,6 +146,16 @@ describe("consigli", () => {
     expect(buildSiteAdvice(baseInput({ profileViews: 200, requestSteps: lavoro(2) }))[0]).toMatchObject({ key: "profiles-no-requests", level: "TIP" });
   });
 
+  it("un avviso spento da più del 20%: consiglio, ma solo con abbastanza persone", () => {
+    const row = { key: "preventivi.date", label: "Date proposte", level: "item" as const, siteOff: 1, emailOff: 6, emailOffByDefault: false, emailOn: 0, hasSite: true, hasEmail: true };
+    const group = (people: number) => [{ role: "professional" as const, people, digestOff: 0, quietNightOff: 0, urgentAtNight: 0, rows: [row] }];
+    expect(buildSiteAdvice(baseInput({ notificationOptOuts: group(25) }))).toEqual([
+      expect.objectContaining({ key: "notification-opt-out:professional:preventivi.date:email", title: "Il 24% dei professionisti ha spento le email di «Date proposte»" }),
+    ]);
+    expect(buildSiteAdvice(baseInput({ notificationOptOuts: group(15) }))).toEqual([]);
+    expect(buildSiteAdvice(baseInput({ notificationOptOuts: group(40) }))).toEqual([]);
+  });
+
   it("niente da fare: nessun consiglio", () => {
     expect(buildSiteAdvice(baseInput())).toEqual([]);
   });

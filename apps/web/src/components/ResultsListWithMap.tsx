@@ -750,6 +750,7 @@ export function ResultsListWithMap({
                         active={savedIds.has(pro.id)}
                         disabled={pendingId === pro.id}
                         size={24}
+                        celebrate
                         onPress={() => void toggleSave(pro.id)}
                       >
                         <Icon

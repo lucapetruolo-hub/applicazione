@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { bankDisputeEvidenceSchema, bankDisputeReasonLabel, toJobPaymentSummary } from "@professionisti/shared";
-import { BankDisputesService } from "./bank-disputes.service";
+import { BankDisputesService, stripeTestKeyword } from "./bank-disputes.service";
 import { OnlineMoneyService } from "./online-money.service";
 import { renderDocumentPdf } from "../accounting/document-pdf";
 
@@ -95,9 +95,66 @@ describe("BankDisputesService", () => {
       { evidence: expect.objectContaining({ product_description: "Idraulico a domicilio", service_documentation: "file_1" }), submit: true },
       { stripeAccount: "acct_pro" },
     );
-    expect(prisma.jobPayment.update).toHaveBeenCalledWith({ where: { id: "jp-1" }, data: { stripeDisputeStatus: "under_review" } });
+    // Archivio: le prove come le ha scritte l'admin, il PDF caricato, chi e quando.
+    expect(prisma.jobPayment.update).toHaveBeenCalledWith({
+      where: { id: "jp-1" },
+      data: {
+        stripeDisputeStatus: "under_review",
+        disputeEvidence: { productDescription: "Idraulico a domicilio", explanation: "Il cliente ha confermato il lavoro sul sito." },
+        disputeEvidenceFileId: "file_1",
+        disputeEvidenceSentAt: expect.any(Date),
+        disputeEvidenceSentById: "admin-1",
+      },
+    });
     expect(auditLogService.record).toHaveBeenCalledWith(expect.objectContaining({ changedByUserId: "admin-1", fieldName: "stripeDisputeEvidence" }));
     expect(result.submitted).toBe(true);
+    expect(result.sentExplanation).toBe("Il cliente ha confermato il lavoro sul sito.");
+  });
+
+  it("salvate senza mandarle, le prove tornano nel modulo e non risultano mandate", async () => {
+    const { service, prisma } = setup();
+    await service.saveEvidence("admin-1", "jp-1", { ...input, submit: false });
+    const data = prisma.jobPayment.update.mock.calls[0]![0].data;
+    expect(data.disputeEvidenceSentAt).toBeUndefined();
+    const saved = { ...job, disputeEvidence: data.disputeEvidence };
+    prisma.jobPayment.findMany.mockResolvedValue([saved]);
+    const [row] = await service.listOpen();
+    expect(row!.draft).toEqual({ productDescription: "Idraulico a domicilio", explanation: "Il cliente ha confermato il lavoro sul sito." });
+    expect(row!.sentExplanation).toBeNull();
+  });
+
+  it("archivio: cerca anche per nome e cognome e per cifra, con chi ha mandato le prove e la cronologia", async () => {
+    const { service, prisma } = setup();
+    const closed = {
+      ...job,
+      stripeDisputeStatus: "lost",
+      stripeDisputeReason: "fraudulent",
+      stripeDisputedAt: new Date("2026-11-01T10:00:00Z"),
+      stripeDisputeClosedAt: new Date("2026-11-20T10:00:00Z"),
+      disputeEvidence: { productDescription: "Idraulico", explanation: "Spiegazione mandata", stripeText: "losing_evidence" },
+      disputeEvidenceSentAt: new Date("2026-11-02T10:00:00Z"),
+      disputeEvidenceSentById: "admin-1",
+      disputeEvidenceFileId: "file_1",
+    };
+    prisma.jobPayment.findMany.mockResolvedValue([closed]);
+    Object.assign(prisma, {
+      auditLog: { findMany: vi.fn().mockResolvedValue([{ entityId: "jp-1", reason: "Prove della contestazione mandate alla banca.", changedByUserId: "admin-1", createdAt: new Date("2026-11-02T10:00:00Z") }]) },
+      user: { findMany: vi.fn().mockResolvedValue([{ id: "admin-1", email: "luca@example.com" }]) },
+    });
+    const [row] = await service.archive("Mario Bianchi");
+    const where = prisma.jobPayment.findMany.mock.calls[0]![0].where;
+    expect(JSON.stringify(where)).toContain("Bianchi");
+    expect(row).toMatchObject({
+      status: "lost",
+      reason: "fraudulent",
+      closedAt: "2026-11-20T10:00:00.000Z",
+      evidenceSentBy: "luca@example.com",
+      hasSentPdf: true,
+      evidence: { explanation: "Spiegazione mandata", stripeText: "losing_evidence" },
+      history: [{ text: "Prove della contestazione mandate alla banca.", by: "luca@example.com" }],
+    });
+    await service.archive("220,00 €");
+    expect(JSON.stringify(prisma.jobPayment.findMany.mock.calls[1]![0].where)).toContain('"paidEurCents":22000');
   });
 
   it("non rimanda prove già consegnate alla banca", async () => {
@@ -256,5 +313,19 @@ describe("foto nel PDF", () => {
     const pdf = await renderDocumentPdf({ title: "Riepilogo", blocks: [{ type: "images", images: [{ data: png, caption: "Lavoro terminato" }, { data: Buffer.from("non è una foto"), caption: "Rotta" }, { data: png }] }] });
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
     expect(pdf.toString("latin1")).toContain("/Subtype /Image");
+  });
+});
+
+describe("parole di prova di Stripe", () => {
+  it("con le chiavi di prova manda solo la parola, con quelle vere mai", () => {
+    expect(stripeTestKeyword("losing_evidence: prova della contestazione persa", "sk_test_123")).toBe("losing_evidence");
+    expect(stripeTestKeyword("Prova winning_evidence da admin", "rk_test_123")).toBe("winning_evidence");
+    expect(stripeTestKeyword("losing_evidence: prova", "sk_live_123")).toBeNull();
+    expect(stripeTestKeyword("Spiegazione normale del lavoro", "sk_test_123")).toBeNull();
+    // Scritta da telefono: maiuscola, spazio o trattino.
+    expect(stripeTestKeyword("Winning_evidence prova da telefono", "sk_test_123")).toBe("winning_evidence");
+    expect(stripeTestKeyword("prova winning evidence da telefono", "sk_test_123")).toBe("winning_evidence");
+    expect(stripeTestKeyword("LOSING-EVIDENCE prova da telefono", "sk_test_123")).toBe("losing_evidence");
+    expect(stripeTestKeyword("Winning evidence prova da telefono", "sk_live_123")).toBeNull();
   });
 });

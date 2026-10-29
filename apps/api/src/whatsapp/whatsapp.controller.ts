@@ -13,9 +13,7 @@ import { SkipThrottle, Throttle } from "@nestjs/throttler";
 import type { Request } from "express";
 import {
   whatsappCodeSchema,
-  whatsappDigestHourSchema,
   type WhatsAppCodeInput,
-  type WhatsAppDigestHourInput,
 } from "@professionisti/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import {
@@ -64,17 +62,6 @@ export class WhatsAppController {
   @HttpCode(200)
   disable(@Req() req: AuthenticatedRequest) {
     return this.whatsAppService.disable(req.user.userId);
-  }
-
-  /** Ora del riepilogo della sera (solo professionisti). */
-  @Post("digest-hour")
-  @HttpCode(200)
-  setDigestHour(
-    @Req() req: AuthenticatedRequest,
-    @Body(new ZodValidationPipe(whatsappDigestHourSchema))
-    body: WhatsAppDigestHourInput,
-  ) {
-    return this.whatsAppService.setDigestHour(req.user.userId, body.hour);
   }
 }
 

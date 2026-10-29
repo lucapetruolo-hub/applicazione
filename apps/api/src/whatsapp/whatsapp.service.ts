@@ -15,7 +15,9 @@ import {
 } from "@professionisti/database";
 import {
   notificationJobLabel,
-  WHATSAPP_DIGEST_DEFAULT_HOUR,
+  NOTIFICATION_DIGEST_HOUR,
+  notificationDigestHour,
+  resolveNotificationPreferences,
   WHATSAPP_MESSAGE_TYPES,
   wallClockNow,
   type WhatsAppMessageType,
@@ -580,19 +582,20 @@ export class WhatsAppService {
       (
         await this.prisma.user.findMany({
           where: { id: { in: [...byProfessional.keys()] } },
-          select: { id: true, whatsappDigestHour: true },
+          select: { id: true, notificationPrefs: true },
         })
       ).map((u) => [
         u.id,
-        u.whatsappDigestHour ?? WHATSAPP_DIGEST_DEFAULT_HOUR,
+        // Una sola ora della sera per sito, email e WhatsApp (Luca, 29/10/2026).
+        notificationDigestHour(
+          resolveNotificationPreferences(u.notificationPrefs),
+        ),
       ]),
     );
     const day = from.toISOString().slice(0, 10);
     let queued = 0;
     for (const [userId, jobs] of byProfessional) {
-      if (
-        wall.getUTCHours() < (hours.get(userId) ?? WHATSAPP_DIGEST_DEFAULT_HOUR)
-      )
+      if (wall.getUTCHours() < (hours.get(userId) ?? NOTIFICATION_DIGEST_HOUR))
         continue;
       const first = jobs[0]!;
       const message = professionalDayMessage(
@@ -775,8 +778,6 @@ export class WhatsAppService {
         phoneCodeExpiresAt: true,
         phoneCodeAttempts: true,
         phoneCodeSentAt: true,
-        whatsappDigestHour: true,
-        professionalProfile: { select: { id: true } },
       },
     });
     const phone = user?.phone ?? null;
@@ -812,31 +813,7 @@ export class WhatsAppService {
             ),
           )
         : 0,
-      digestHour: user?.professionalProfile
-        ? (user.whatsappDigestHour ?? WHATSAPP_DIGEST_DEFAULT_HOUR)
-        : null,
     };
-  }
-
-  /** Ora del riepilogo della sera, solo per chi ha un profilo da professionista. */
-  async setDigestHour(
-    userId: string,
-    hour: number,
-    now: Date = new Date(),
-  ): Promise<WhatsAppStatus> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { professionalProfile: { select: { id: true } } },
-    });
-    if (!user?.professionalProfile)
-      throw new BadRequestException(
-        "Il riepilogo della sera è solo per i professionisti.",
-      );
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { whatsappDigestHour: hour },
-    });
-    return this.status(userId, now);
   }
 
   /** Manda su WhatsApp il codice per confermare il numero dell'account. */

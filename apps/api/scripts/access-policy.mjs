@@ -55,6 +55,7 @@ const publicRoutes = [
   "GET /whatsapp/webhook",
   "POST /whatsapp/webhook",
   "GET /maps/static",
+  "POST /notifications/email-off",
   // Dal problema scritto ai mestieri (§392): dizionario, poi IA nei casi dubbi, con tetto giornaliero.
   "POST /problem-match",
   // Prestazioni standard aggiunte dall'admin (§388), mostrate in iscrizione e nel profilo.
@@ -113,7 +114,6 @@ const selfAny = [
   "GET /whatsapp/me",
   "POST /whatsapp/me/code",
   "POST /whatsapp/me/confirm",
-  "POST /whatsapp/me/digest-hour",
   "POST /whatsapp/me/disable",
   "POST /whatsapp/me/enable",
   "GET /notifications/unread",

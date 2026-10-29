@@ -6,11 +6,14 @@ import {
   BANK_DISPUTE_REVIEW_STATUSES,
   formatEur,
   type AdminBankDispute,
+  type AdminBankDisputeArchiveRow,
   type BankDisputeEvidenceInput,
+  type BankDisputeEvidenceRecord,
   type BankDisputeProNoteInput,
   type ProfessionalBankDispute,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { bookingSearchWhere, searchEurCents } from "../admin/admin-search";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { renderDocumentPdf, type PdfBlock, type PdfDocumentModel } from "../accounting/document-pdf";
 
@@ -22,6 +25,9 @@ const PHOTO_MAX_BYTES = 5 * 1024 * 1024;
 const PHOTO_TIMEOUT_MS = 8000;
 /** Foto ridotte e in JPEG da Cloudinary: pdfkit legge solo JPEG e PNG, e il PDF resta leggero. */
 const PHOTO_TRANSFORM = "c_limit,w_1000,h_1000,q_70,f_jpg";
+
+/** Passaggi della contestazione nel registro azioni, per la cronologia dell'archivio. */
+const DISPUTE_AUDIT_FIELDS = ["stripeDisputeStatus", "stripeDisputeEvidence", "disputeProNote", "disputeRecoveredEurCents"] as const;
 
 const JOB_INCLUDE = {
   booking: {
@@ -41,6 +47,34 @@ const day = (date: Date) => date.toLocaleDateString("it-IT", { day: "numeric", m
 const dayTime = (date: Date) => date.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
 const businessName = (job: Job) => job.booking.professionalProfile.businessName ?? "Professionista";
 const clientName = (job: Job) => [job.booking.client.name, job.booking.client.surname].filter(Boolean).join(" ") || job.booking.client.email || "Cliente";
+/**
+ * Solo con le chiavi di prova: Stripe chiude la contestazione come vinta o
+ * persa quando la spiegazione è esattamente `winning_evidence` o
+ * `losing_evidence`; il modulo vuole almeno 20 caratteri, quindi se la
+ * parola c'è si manda solo quella (docs/changelog/2026-10-28-stripe-prova.md).
+ * Con le chiavi vere il testo arriva a Stripe esattamente come l'ha scritto l'admin.
+ */
+export function stripeTestKeyword(explanation: string, key = process.env.STRIPE_SECRET_KEY ?? ""): string | null {
+  if (!/^(sk|rk)_test_/.test(key)) return null;
+  // Anche scritta da telefono: maiuscole, spazio o trattino al posto del trattino basso.
+  const word = explanation.match(/\b(winning|losing)[ _-]?evidence\b/i)?.[1];
+  return word ? `${word.toLowerCase()}_evidence` : null;
+}
+/** Prove salvate dal sito (null per quelle di prima dell'archivio). */
+function savedEvidence(job: { disputeEvidence: Prisma.JsonValue | null }): BankDisputeEvidenceRecord | null {
+  const value = job.disputeEvidence;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  return typeof record.explanation === "string" && typeof record.productDescription === "string" ? (record as unknown as BankDisputeEvidenceRecord) : null;
+}
+
+/** Le prove salvate senza mandarle tornano nel modulo, non quelle scritte dal sito. */
+function draftFromSaved(saved: BankDisputeEvidenceRecord | null): AdminBankDispute["draft"] | null {
+  if (!saved) return null;
+  const draft = { ...saved };
+  delete draft.stripeText;
+  return draft;
+}
 const range = (min: number | null, max: number | null) => (min !== null && max !== null && min !== max ? `${formatEur(min)} - ${formatEur(max)}` : formatEur(max ?? min ?? 0));
 
 /**
@@ -93,6 +127,7 @@ export class BankDisputesService {
       { purpose: "dispute_evidence", file: { data: pdf, name: `lavoro-${job.bookingId.slice(0, 8)}.pdf`, type: "application/pdf" } },
       options,
     );
+    const stripeText = stripeTestKeyword(input.explanation) ?? input.explanation;
     const updated = await stripe.disputes.update(
       job.stripeDisputeId,
       {
@@ -101,14 +136,26 @@ export class BankDisputesService {
           customer_name: input.customerName || undefined,
           customer_email_address: input.customerEmail || undefined,
           service_date: input.serviceDate || undefined,
-          uncategorized_text: input.explanation,
+          uncategorized_text: stripeText,
           service_documentation: file.id,
         },
         submit: input.submit,
       },
       options,
     );
-    await this.prisma.jobPayment.update({ where: { id: job.id }, data: { stripeDisputeStatus: updated.status } });
+    // Archivio: le prove come le ha scritte l'admin, anche solo salvate, e
+    // chi e quando le ha mandate alla banca.
+    const { submit, ...fields } = input;
+    const evidence: BankDisputeEvidenceRecord = { ...fields, ...(stripeText !== input.explanation ? { stripeText } : {}) };
+    await this.prisma.jobPayment.update({
+      where: { id: job.id },
+      data: {
+        stripeDisputeStatus: updated.status,
+        disputeEvidence: evidence as Prisma.InputJsonValue,
+        disputeEvidenceFileId: file.id,
+        ...(submit ? { disputeEvidenceSentAt: new Date(), disputeEvidenceSentById: adminUserId } : {}),
+      },
+    });
     await this.auditLogService.record({
       entityType: "JobPayment",
       entityId: job.id,
@@ -117,7 +164,7 @@ export class BankDisputesService {
       changedByUserId: adminUserId,
       reason: input.submit ? "Prove della contestazione mandate alla banca." : "Prove della contestazione salvate su Stripe.",
     });
-    return this.row(job, updated);
+    return this.row({ ...job, disputeEvidence: evidence as Prisma.JsonValue }, updated);
   }
 
   /** PDF del lavoro per la banca, lo stesso che si allega alle prove. */
@@ -142,6 +189,7 @@ export class BankDisputesService {
     }
     const status = dispute?.status ?? job.stripeDisputeStatus ?? "needs_response";
     const dueBy = dispute?.evidence_details?.due_by;
+    const submitted = !(BANK_DISPUTE_OPEN_STATUSES as readonly string[]).includes(status);
     // Contestazioni arrivate prima che si salvasse la scadenza: serve all'avviso dei 3 giorni.
     if (dueBy && !job.stripeDisputeDueBy) {
       await this.prisma.jobPayment.update({ where: { id: job.id }, data: { stripeDisputeDueBy: new Date(dueBy * 1000) } }).catch(() => undefined);
@@ -156,10 +204,79 @@ export class BankDisputesService {
       reason: dispute?.reason ?? null,
       status,
       dueBy: dueBy ? new Date(dueBy * 1000).toISOString() : null,
-      submitted: !(BANK_DISPUTE_OPEN_STATUSES as readonly string[]).includes(status),
+      submitted,
+      sentExplanation: submitted ? (savedEvidence(job)?.explanation ?? dispute?.evidence?.uncategorized_text ?? null) : null,
       professionalNote: job.disputeProNote && job.disputeProNoteAt ? { text: job.disputeProNote, photoUrls: job.disputeProPhotoUrls, at: job.disputeProNoteAt.toISOString() } : null,
-      draft: this.draft(job, dispute?.reason ?? null),
+      draft: draftFromSaved(savedEvidence(job)) ?? this.draft(job, dispute?.reason ?? null),
     };
+  }
+
+  /**
+   * Tutte le contestazioni in banca, aperte e chiuse, la più recente prima:
+   * cerca per cliente, professionista, email, codice della contestazione o
+   * del lavoro, e cifra in euro. Solo dal nostro database, senza chiedere a
+   * Stripe una per una.
+   */
+  async archive(query = ""): Promise<AdminBankDisputeArchiveRow[]> {
+    const q = query.trim().slice(0, 100);
+    const where: Prisma.JobPaymentWhereInput = { stripeDisputeId: { not: null } };
+    const booking = bookingSearchWhere(q);
+    if (booking) {
+      const cents = searchEurCents(q);
+      const text = { contains: q, mode: "insensitive" as const };
+      where.OR = [{ stripeDisputeId: text }, { booking }, ...(cents ? [{ paidEurCents: cents }] : [])];
+    }
+    const jobs = await this.prisma.jobPayment.findMany({ where, include: JOB_INCLUDE, orderBy: { stripeDisputedAt: "desc" }, take: 100 });
+    // Cronologia: ogni passaggio registrato (apertura, prove, spiegazione del
+    // professionista, soldi ripresi o restituiti, chiusura).
+    const logs = jobs.length
+      ? await this.prisma.auditLog.findMany({
+          where: { entityType: "JobPayment", entityId: { in: jobs.map((j) => j.id) }, fieldName: { in: [...DISPUTE_AUDIT_FIELDS] } },
+          orderBy: { createdAt: "asc" },
+          select: { entityId: true, reason: true, changedByUserId: true, createdAt: true },
+        })
+      : [];
+    const userIds = [...new Set([...jobs.map((j) => j.disputeEvidenceSentById), ...logs.map((l) => l.changedByUserId)].filter((id): id is string => !!id))];
+    const users = userIds.length ? await this.prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, email: true } }) : [];
+    const userEmail = new Map(users.map((u) => [u.id, u.email ?? "utente senza email"]));
+    return jobs.map((job) => ({
+      jobPaymentId: job.id,
+      bookingId: job.bookingId,
+      disputeId: job.stripeDisputeId!,
+      businessName: businessName(job),
+      clientName: clientName(job),
+      clientEmail: job.booking.client.email ?? null,
+      amountEurCents: job.paidEurCents,
+      reason: job.stripeDisputeReason,
+      status: job.stripeDisputeStatus ?? "needs_response",
+      openedAt: job.stripeDisputedAt?.toISOString() ?? null,
+      dueBy: job.stripeDisputeDueBy?.toISOString() ?? null,
+      closedAt: job.stripeDisputeClosedAt?.toISOString() ?? null,
+      refundedEurCents: job.refundedEurCents,
+      professionalNote: job.disputeProNote && job.disputeProNoteAt ? { text: job.disputeProNote, photoUrls: job.disputeProPhotoUrls, at: job.disputeProNoteAt.toISOString() } : null,
+      evidence: savedEvidence(job),
+      evidenceSentAt: job.disputeEvidenceSentAt?.toISOString() ?? null,
+      evidenceSentBy: job.disputeEvidenceSentById ? (userEmail.get(job.disputeEvidenceSentById) ?? "admin non più presente") : null,
+      hasSentPdf: !!job.disputeEvidenceFileId,
+      history: logs
+        .filter((l) => l.entityId === job.id && l.reason)
+        .map((l) => ({ at: l.createdAt.toISOString(), text: l.reason!, by: l.changedByUserId ? (userEmail.get(l.changedByUserId) ?? "utente non più presente") : null })),
+    }));
+  }
+
+  /** Il PDF esatto caricato su Stripe con le prove, non uno rifatto oggi. */
+  async sentPdf(jobPaymentId: string): Promise<Buffer> {
+    const job = await this.prisma.jobPayment.findUnique({ where: { id: jobPaymentId }, include: JOB_INCLUDE });
+    if (!job?.disputeEvidenceFileId) throw new NotFoundException("Nessun PDF mandato per questa contestazione.");
+    const key = process.env.STRIPE_SECRET_KEY;
+    if (!key) throw new BadRequestException("Stripe non è configurato su questo ambiente.");
+    const account = this.requestOptions(job)?.stripeAccount;
+    const res = await fetch(`https://files.stripe.com/v1/files/${encodeURIComponent(job.disputeEvidenceFileId)}/contents`, {
+      headers: { Authorization: `Bearer ${key}`, ...(account ? { "Stripe-Account": account } : {}) },
+      signal: AbortSignal.timeout(15_000),
+    }).catch(() => null);
+    if (!res?.ok) throw new BadRequestException("Stripe non ha restituito il PDF, riprova tra poco.");
+    return Buffer.from(await res.arrayBuffer());
   }
 
   /** Campi già scritti dal sito: l'admin li rilegge e li corregge se serve. */

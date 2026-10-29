@@ -2,12 +2,14 @@ import { ACTION_SHORT_LABEL, auditLabel } from "./audit-label";
 import { AdminSecurityAlertsService } from "./admin-security-alerts.service";
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { ContentReportTargetType, ModerationAction, Prisma, PrismaClient } from "@professionisti/database";
-import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, courtesyDocumentLabel, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource, type AdminProfessionalStats, PROFESSIONAL_ACTIVITY_DAYS } from "@professionisti/shared";
+import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_WITHDRAW_REASON_CLIENT_LABEL, JOB_ISSUE_SANCTION_WINDOW_DAYS, jobPaidOnline, jobPaymentAdminLabel, toJobPaymentSummary, professionalRestrictions, MODERATION_ACTIONS_BY_TARGET, moderationGround, completionDeviation, courtesyDocumentLabel, normalizeAdminRoles, toJobIssueSummary, type JobIssueSummary, type ResolveJobIssueInput, type AdminRoleValue, type ResolveContentReportInput, TRAFFIC_SOURCES, type TrafficSource, type AdminProfessionalStats, PROFESSIONAL_ACTIVITY_DAYS, BANK_DISPUTE_OPEN_STATUSES } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
+import { bookingSearchWhere } from "./admin-search";
 import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
+import { loadNotificationOptOuts } from "../notifications/opt-outs";
 import { COUNTED_USER, countingFrom, daySinceLaunch, sinceLaunch } from "../site-counts/counted";
 import { launchDate } from "../subscriptions/subscription-rules";
 import { buildCategoryActivity, buildChurnByMonth, buildCoverage, buildProfessionalStats, buildSearchStats, professionalStatusOf } from "./professional-stats";
@@ -56,6 +58,11 @@ export type AdminOverview = {
   /** Zone con le richieste generali chiuse (docs/CHANGELOG.md §213). */
   closedGeneralRequestZones: number;
   openProblemTakeovers: number;
+  /** Contestazioni in banca a cui rispondere e la scadenza più vicina (docs/changelog/2026-10-28-stripe-prova.md). */
+  bankDisputesToAnswer: number;
+  nextBankDisputeDueBy: string | null;
+  /** Nostre fatture scartate dallo SdI, da correggere e rimandare. */
+  sdiRejectedInvoices: number;
 };
 
 @Injectable()
@@ -93,12 +100,22 @@ export class AdminService {
       const source = row.trafficSource ?? "unknown";
       counts.set(source, (counts.get(source) ?? 0) + 1);
     }
+
     const order: (TrafficSource | "unknown")[] = [...TRAFFIC_SOURCES, "unknown"];
     return {
       days,
       total: seen.size,
       bySource: order.map((source) => ({ source, count: counts.get(source) ?? 0 })),
     };
+  }
+
+  /**
+   * Quante persone spengono ogni avviso, per professionisti e clienti
+   * (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md). Senza
+   * gli account di prova e quelli chiusi.
+   */
+  notificationOptOuts() {
+    return loadNotificationOptOuts(this.prisma);
   }
 
   /**
@@ -757,6 +774,17 @@ export class AdminService {
         // "Ce ne occupiamo noi" da seguire (docs/CHANGELOG.md §392).
         this.prisma.problemTakeover.count({ where: { status: "OPEN" } }),
       ]);
+    // Da fare in Home (docs/changelog/2026-10-28-stripe-prova.md): contestazioni
+    // in banca da rispondere con la scadenza più vicina, fatture scartate dallo SdI.
+    const [bankDisputesToAnswer, nextBankDispute, sdiRejectedInvoices] = await Promise.all([
+      this.prisma.jobPayment.count({ where: { stripeDisputeStatus: { in: [...BANK_DISPUTE_OPEN_STATUSES] } } }),
+      this.prisma.jobPayment.findFirst({
+        where: { stripeDisputeStatus: { in: [...BANK_DISPUTE_OPEN_STATUSES] }, stripeDisputeDueBy: { not: null } },
+        orderBy: { stripeDisputeDueBy: "asc" },
+        select: { stripeDisputeDueBy: true },
+      }),
+      this.prisma.invoice.count({ where: { sdiStatus: "REJECTED" } }),
+    ]);
     return {
       openReports,
       pendingAppeals,
@@ -776,6 +804,9 @@ export class AdminService {
       verificationRequests,
       closedGeneralRequestZones,
       openProblemTakeovers,
+      bankDisputesToAnswer,
+      nextBankDisputeDueBy: nextBankDispute?.stripeDisputeDueBy?.toISOString() ?? null,
+      sdiRejectedInvoices,
     };
   }
 
@@ -1365,17 +1396,21 @@ export class AdminService {
    * decidere: descrizione e foto del cliente, versione del professionista,
    * note e foto a lavoro terminato, importi.
    */
-  async listJobIssues(view: "open" | "chat" | "appeals" | "closed", adminUserId: string): Promise<AdminJobIssueRow[]> {
+  async listJobIssues(view: "open" | "chat" | "appeals" | "closed", adminUserId: string, q = ""): Promise<AdminJobIssueRow[]> {
+    // Con la ricerca si cerca in tutte le segnalazioni, aperte e chiuse (archivio,
+    // docs/changelog/2026-10-28-stripe-prova.md).
+    const booking = bookingSearchWhere(q);
     const issues = await this.prisma.jobIssue.findMany({
-      where:
-        view === "open"
+      where: booking
+        ? { OR: [{ booking }, { description: { contains: q.trim(), mode: "insensitive" } }] }
+        : view === "open"
           ? { status: "OPEN" }
           : view === "chat"
             ? { status: "CHAT" }
             : view === "appeals"
               ? { appealedAt: { not: null }, appealDecision: null }
               : { status: { in: ["UPHELD", "REJECTED", "RESOLVED", "UNRESOLVED"] } },
-      orderBy: view === "closed" ? { createdAt: "desc" } : view === "appeals" ? { appealedAt: "asc" } : { createdAt: "asc" },
+      orderBy: booking || view === "closed" ? { createdAt: "desc" } : view === "appeals" ? { appealedAt: "asc" } : { createdAt: "asc" },
       take: 200,
       include: {
         booking: {

@@ -44,8 +44,23 @@ span.is_Button._fos-f-size-true {
 }
 /* Nell'intestazione dei telefoni stretti lo spazio non basta: 15 px. */
 @media (max-width: 400px) {
-  .site-header-cta span.is_Button {
+  .site-header-cta-link span.is_Button,
+  .site-header-cta-link .site-header-cta-long,
+  .site-header-cta-link .site-header-cta-short {
     font-size: 15px;
+  }
+}
+/* Telefoni da 320-359 px: etichetta corta "Preventivo" per chi non ha fatto l'accesso
+   (docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md). */
+.site-header-cta-short {
+  display: none !important;
+}
+@media (max-width: 359px) {
+  .site-header-cta-long {
+    display: none !important;
+  }
+  .site-header-cta-short {
+    display: inline !important;
   }
 }
 
@@ -144,6 +159,16 @@ button.is_Button:not([aria-disabled="true"]):not(:disabled):active {
 }
 .magnet[data-active="true"] {
   transition-duration: 120ms;
+}
+/* Ombre a strati sui pulsanti verdi in cima alla home e nell'intestazione:
+   un filo scuro sotto il bordo e un'ombra morbida colorata, senza riflesso
+   chiaro in alto (docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md). */
+.home-hero-panel .magnet button.is_Button,
+.site-header-cta-link button.is_Button {
+  box-shadow:
+    inset 0 -2px 0 rgba(0, 0, 0, 0.14),
+    0 1px 2px rgba(10, 60, 35, 0.28),
+    0 10px 22px -8px rgba(10, 80, 48, 0.7);
 }
 .magnet[data-active="true"] button.is_Button {
   background-image: radial-gradient(circle 90px at var(--mx) var(--my), rgba(255, 255, 255, 0.3), transparent 70%);
@@ -780,9 +805,66 @@ button.notif-row-main:hover {
 .notif-row-delete:hover {
   background: #fdefe1;
 }
+/* "Non avvisarmi più di questi", accanto alla "x"
+   (docs/changelog/2026-10-29-notifiche-sempre-attive-e-campanella.md). */
+.notif-row.has-mute .notif-row-main {
+  padding-right: 92px;
+}
+.notif-row-mute {
+  position: absolute;
+  top: 8px;
+  right: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease, background-color 120ms ease;
+}
+.notif-row:hover .notif-row-mute,
+.notif-row:focus-within .notif-row-mute {
+  opacity: 1;
+}
+.notif-row-mute:hover {
+  background: #fdefe1;
+}
+.notif-row-mute:focus-visible {
+  outline: 2px solid #0e7a4c;
+  outline-offset: -2px;
+}
+.notif-muted {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 12px 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #dcf3e7;
+  font-size: 14px;
+  line-height: 20px;
+  color: #2b2420;
+}
+.notif-muted > span {
+  flex: 1;
+  min-width: 0;
+}
+.notif-muted .notif-clear {
+  flex-shrink: 0;
+  color: #0e7a4c;
+  font-weight: 700;
+}
+.notif-muted.is-error {
+  background: #fbeae7;
+}
 /* Sul telefono non c'è il passaggio del mouse: la "x" resta visibile. */
 @media (hover: none) {
-  .notif-row-delete {
+  .notif-row-delete,
+  .notif-row-mute {
     opacity: 1;
   }
 }
@@ -2374,6 +2456,66 @@ a.admin-kpi:hover {
 .admin-kpi.is-urgent .admin-kpi-value {
   color: #dc3545;
 }
+/* Home admin: tutto quello che c'è da fare in un elenco (docs/changelog/2026-10-28-stripe-prova.md). */
+.admin-todo {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: #ffffff;
+  border-radius: 20px;
+  overflow: hidden;
+}
+.admin-todo li + li {
+  border-top: 1px solid #f0e6da;
+}
+.admin-todo-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 64px;
+  padding: 12px 16px;
+  text-decoration: none;
+  color: #2b2420;
+}
+.admin-todo-row:hover {
+  background: #fbf6ef;
+}
+.admin-todo-row:focus-visible {
+  outline: 2px solid #128552;
+  outline-offset: -2px;
+}
+.admin-todo-count {
+  flex-shrink: 0;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f6efe6;
+  font-size: 17px;
+  font-weight: 800;
+}
+.admin-todo-count.is-urgent {
+  background: #fdecee;
+  color: #b42318;
+}
+.admin-todo-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.admin-todo-label {
+  font-size: 16px;
+  font-weight: 700;
+}
+.admin-todo-detail {
+  font-size: 13px;
+  color: #6e6459;
+}
 /* Professionisti in numeri (docs/CHANGELOG.md §368). */
 .admin-filters {
   display: flex;
@@ -3426,12 +3568,6 @@ a.admin-kpi:hover {
   font-size: 18px;
   color: #2b2420;
 }
-.notif-note {
-  margin: 0;
-  font-size: 16px;
-  color: #6e6459;
-  line-height: 1.5;
-}
 .notif-switch-row {
   display: flex;
   align-items: center;
@@ -3446,13 +3582,11 @@ a.admin-kpi:hover {
   gap: 2px;
   align-items: flex-start;
 }
-.notif-switch-row strong,
-.notif-topic strong {
+.notif-switch-row strong {
   font-size: 16px;
   color: #2b2420;
 }
-.notif-switch-row small,
-.notif-topic small {
+.notif-switch-row small {
   font-size: 13px;
   color: #6e6459;
 }
@@ -3504,36 +3638,13 @@ a.admin-kpi:hover {
   outline: 2px solid #189a63;
   outline-offset: 2px;
 }
-.notif-grid-head,
-.notif-grid-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 72px 72px;
-  gap: 8px;
-  align-items: center;
-}
-.notif-grid-head {
-  font-size: 13px;
-  font-weight: 700;
+.notif-note {
+  margin: 0;
+  font-size: 16px;
   color: #6e6459;
-  padding-bottom: 6px;
+  line-height: 1.5;
 }
-.notif-grid-head span:not(:first-child) {
-  text-align: center;
-}
-.notif-grid-row {
-  padding: 12px 0;
-  border-top: 1px solid #f0dcc0;
-}
-.notif-topic {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-}
-.notif-topic > span:last-child {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
+/* Icona tonda accanto al titolo di una scheda (es. promemoria su WhatsApp). */
 .notif-topic-icon {
   flex-shrink: 0;
   width: 32px;
@@ -3542,20 +3653,6 @@ a.admin-kpi:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-}
-.notif-cell {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-.notif-cell small {
-  font-size: 13px;
-  color: #6e6459;
-  text-align: center;
-}
-.notif-cell-label {
-  display: none;
 }
 /* Promemoria su WhatsApp (docs/changelog/2026-10-28-promemoria-whatsapp.md). */
 .notif-card-title {
@@ -3618,24 +3715,337 @@ a.admin-kpi:hover {
   color: #6e6459;
   line-height: 1.6;
 }
+/* Pagina Notifiche a schede (docs/changelog/2026-10-28-notifiche-impostazioni.md):
+   le schede aggiunte alla pagina con .notif-card prendono la stessa ombra. */
+.nt-page .notif-card {
+  box-shadow: 0 6px 24px rgba(120, 80, 40, 0.07);
+}
+.nt-page {
+  width: 100%;
+  max-width: 880px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.nt-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.nt-header > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.nt-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #6e6459;
+}
+.nt-status.is-saved {
+  color: #0e7a4c;
+  background: #dcf3e7;
+  border-radius: 999px;
+  padding: 0 12px;
+}
+.nt-status.is-error {
+  color: #c8362b;
+}
+.nt-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.nt-section h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6e6459;
+}
+.nt-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.nt-tile {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  box-shadow: 0 6px 24px rgba(120, 80, 40, 0.07);
+}
+.nt-tile-top {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.nt-tile-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #f3ede6;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+.nt-tile.is-on .nt-tile-icon {
+  background: #dcf3e7;
+}
+.nt-tile strong {
+  font-size: 16px;
+  color: #2b2420;
+}
+.nt-tile small {
+  font-size: 14px;
+  color: #6e6459;
+  line-height: 1.4;
+}
+.nt-topics {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.nt-topic {
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 6px 24px rgba(120, 80, 40, 0.07);
+  overflow: hidden;
+}
+.nt-topic-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+}
+.nt-topic-icon {
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.nt-topic.is-off .nt-topic-icon {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+.nt-topic-text {
+  flex: 1;
+  min-width: 0;
+}
+.nt-topic-text h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: #2b2420;
+}
+.nt-topic-text p {
+  margin: 2px 0 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #6e6459;
+}
+.nt-channels {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.nt-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px 0 8px;
+  border-radius: 999px;
+  border: 1.5px solid #9c8e7f;
+  background: #ffffff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  color: #2b2420;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.nt-chip:hover {
+  border-color: #2b2420;
+}
+.nt-chip.is-on {
+  background: #dcf3e7;
+  border-color: #128552;
+  color: #0e7a4c;
+}
+.nt-chip:focus-visible,
+.nt-more:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.nt-chip-check {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1.5px solid #9c8e7f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+.nt-chip.is-on .nt-chip-check {
+  background: #128552;
+  border-color: #128552;
+}
+.nt-chip small {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6e6459;
+}
+.nt-locked {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #f3ede6;
+  font-size: 13px;
+  font-weight: 700;
+  color: #6e6459;
+}
+.nt-more {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 18px;
+  border: none;
+  border-top: 1px solid #f7e8d6;
+  background: none;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  color: #2b2420;
+  cursor: pointer;
+  text-align: left;
+}
+.nt-more:hover {
+  background: #fffaf3;
+}
+.nt-more small {
+  margin-left: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6e6459;
+}
+.nt-items {
+  list-style: none;
+  margin: 0;
+  padding: 4px 18px 10px 78px;
+  background: linear-gradient(180deg, #fffaf3, #ffffff);
+}
+.nt-items li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-top: 1px solid #f7e8d6;
+}
+.nt-items li:first-child {
+  border-top: none;
+}
+.nt-items li > span:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nt-items strong {
+  font-size: 15px;
+  color: #2b2420;
+}
+.nt-items small {
+  font-size: 13px;
+  line-height: 1.4;
+  color: #6e6459;
+}
+.nt-channels.is-small .nt-chip {
+  min-height: 34px;
+  padding: 0 12px 0 6px;
+  font-size: 14px;
+  gap: 6px;
+}
+.nt-channels.is-small .nt-chip-check {
+  width: 18px;
+  height: 18px;
+}
+.nt-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.nt-chip:disabled:hover {
+  border-color: #9c8e7f;
+}
+.nt-items li.nt-items-note {
+  font-size: 14px;
+  color: #8a5a00;
+}
 @media (max-width: 599px) {
-  .notif-card {
+  .nt-tiles {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .nt-topic-main {
+    flex-wrap: wrap;
     padding: 14px;
   }
-  .notif-grid-head {
-    display: none;
+  .nt-channels {
+    width: 100%;
   }
-  .notif-grid-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .nt-chip {
+    flex: 1;
+    justify-content: center;
   }
-  .notif-topic {
-    grid-column: 1 / -1;
+  .nt-topic-text {
+    flex: 1 1 calc(100% - 64px);
   }
-  .notif-cell-label {
-    display: block;
-    font-size: 13px;
-    font-weight: 700;
-    color: #6e6459;
+  .nt-locked {
+    margin-left: 60px;
+  }
+  .nt-more {
+    padding: 12px 14px;
+  }
+  .nt-items {
+    padding: 4px 14px 10px;
+  }
+  .nt-items li {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .nt-items .nt-channels.is-small {
+    width: auto;
+  }
+  .nt-items .nt-channels.is-small .nt-chip {
+    flex: 0 0 auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nt-chip,
+  .nt-chip-check,
+  .nt-tile-icon {
+    transition: none;
   }
 }
 
@@ -3921,6 +4331,9 @@ a.admin-kpi:hover {
 }
 .guided-timing-option input {
   position: absolute;
+  /* Sopra la pillola anche mentre si stringe (la `scale` la porterebbe
+     davanti e prenderebbe lei il tocco). */
+  z-index: 1;
   opacity: 0;
   inset: 0;
   margin: 0;
@@ -5024,31 +5437,50 @@ a.admin-kpi:hover {
   text-decoration: underline;
 }
 
-/* Link secondari sotto la ricerca in home (docs/CHANGELOG.md §271): area di
-   tocco alta almeno 44px anche se il testo è su una riga sola. */
-.hero-secondary-link {
+/* "Richiesta urgente" dentro il riquadro verde della home
+   (docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md): pillola chiara
+   sul verde, il rosso solo nel cerchio del fulmine. */
+.hero-urgent-link {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: 0 4px;
-  font-weight: 700;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 22px 0 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  color: #fff;
+  font-weight: 600;
   font-size: 16px;
-  color: #0e7a4c; /* brand.cianografiaScuro */
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  text-decoration-thickness: 1px;
+  text-decoration: none;
+  box-shadow: 0 1px 2px rgba(0, 40, 20, 0.25), 0 10px 22px -10px rgba(0, 30, 15, 0.6);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
-.hero-secondary-link-urgent {
-  color: #c8362b;
+.hero-urgent-link:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.7);
 }
-.hero-secondary-link:hover {
-  text-decoration-thickness: 2px;
+.hero-urgent-link:active {
+  transform: scale(0.98);
 }
-.hero-secondary-link:focus-visible {
-  outline: 3px solid #189a63;
+.hero-urgent-link:focus-visible {
+  outline: 3px solid #fff;
   outline-offset: 2px;
-  border-radius: 10px;
+}
+.hero-urgent-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: #c8362b; /* brand.urgenza */
+}
+@media (max-width: 660px) {
+  .hero-urgent-link {
+    width: 100%;
+  }
 }
 
 /* Testo letto da Google e dai lettori di schermo ma non mostrato (es. il
@@ -5124,6 +5556,9 @@ a.admin-kpi:hover {
     grid-template-columns: 1fr 1fr;
     overflow: visible !important;
     padding-top: 0 !important;
+    /* Griglia, non riga: niente sfumatura (taglierebbe le ombre). */
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
   }
   .story-rail .category-carousel-arrow {
     display: none !important;
@@ -5253,6 +5688,16 @@ a.admin-kpi:hover {
   background:
     radial-gradient(120% 90% at 50% 120%, rgba(6, 70, 44, 0.55), transparent 60%),
     linear-gradient(160deg, #1fae70 0%, #189a63 42%, #0f7f50 100%);
+}
+/* Hero della home (docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md):
+   verde opaco con una sfumatura leggera dall'alto in basso e una grana appena
+   percepibile contro le bande del gradiente, senza luci né riflessi. */
+.glow-lights--verde-opaco {
+  background: linear-gradient(170deg, #1c9d61 0%, #14824f 100%);
+}
+.glow-lights--verde-opaco::after {
+  opacity: 0.05;
+  mix-blend-mode: soft-light;
 }
 .glow-lights--scuro {
   background: #2b2420;
@@ -5561,6 +6006,143 @@ a.admin-kpi:hover {
 }
 .traffic-bar-fill--google {
   background: #2b2420;
+}
+
+/* Ora del riassunto della sera in Notifiche (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md). */
+.nt-hour {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #2b2420;
+}
+.nt-hour select {
+  min-height: 40px;
+  padding: 0 34px 0 14px;
+  border-radius: 999px;
+  border: 1.5px solid #9c8e7f;
+  background: #ffffff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%232b2420' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center;
+  appearance: none;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  color: #2b2420;
+  cursor: pointer;
+}
+.nt-hour select:hover {
+  border-color: #2b2420;
+}
+.nt-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #2b2420;
+  cursor: pointer;
+}
+.nt-check input {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: #128552;
+  cursor: pointer;
+}
+.nt-check span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nt-check small {
+  font-weight: 400;
+}
+.nt-check input:focus-visible,
+.nt-hour select:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+
+/* "Avvisi spenti" in /admin/statistiche (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md). */
+.optout-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: #f5eadb;
+  align-self: flex-start;
+}
+.optout-tabs button {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: #6b5d50;
+  cursor: pointer;
+}
+.optout-tabs button.is-on {
+  background: #ffffff;
+  color: #2b2420;
+  box-shadow: 0 1px 3px rgba(43, 36, 32, 0.12);
+}
+.optout-tabs button small {
+  font-weight: 600;
+  color: #6b5d50;
+  margin-left: 4px;
+}
+.optout-tabs button:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.optout-wrap {
+  overflow-x: auto;
+}
+.optout-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  color: #2b2420;
+}
+.optout-table th,
+.optout-table td {
+  padding: 9px 8px;
+  text-align: left;
+  border-bottom: 1px solid #efe4d6;
+  vertical-align: top;
+}
+.optout-table thead th {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b5d50;
+  white-space: nowrap;
+}
+.optout-table td {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.optout-table tbody th {
+  font-weight: 500;
+  padding-left: 22px;
+}
+.optout-table tr.is-topic th {
+  font-weight: 800;
+  padding-left: 8px;
+}
+.optout-table tr.is-topic th,
+.optout-table tr.is-topic td {
+  background: #fbf6ef;
+}
+.optout-na {
+  font-size: 12px;
+  color: #8a7b6c;
+  white-space: normal;
 }
 
 /* Pagina "Quanto costa" /prezzi/[categoria] (docs/CHANGELOG.md §296): numeri
@@ -6233,4 +6815,186 @@ a.admin-kpi:hover {
   body {
     background: #fff !important;
   }
+}
+
+/* Micro-interazioni (docs/changelog/2026-10-28-micro-interazioni.md).
+
+   1. Bordi sfumati nelle righe che scorrono di lato (`.scroll-fade`): il
+   bordo sfuma solo dal lato dove c'è altro da vedere, senza JavaScript. La
+   posizione della riga guida le due sfumature (`animation-timeline:
+   scroll(self inline)`); se la riga non scorre (tutto già visibile, o la
+   griglia delle categorie su telefono) la sfumatura non c'è. Nei browser
+   che non lo sanno fare la riga resta com'era, senza sfumatura. Non è un
+   movimento: con "riduci movimento" resta (la regola globale `*` porta la
+   durata a 0,01 ms, che spegnerebbe la sfumatura, quindi qui torna
+   `auto`). */
+@property --scroll-fade-start {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@property --scroll-fade-end {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@keyframes scroll-fade-edges {
+  0% {
+    --scroll-fade-start: 0px;
+    --scroll-fade-end: 40px;
+  }
+  6%,
+  94% {
+    --scroll-fade-start: 40px;
+    --scroll-fade-end: 40px;
+  }
+  100% {
+    --scroll-fade-start: 40px;
+    --scroll-fade-end: 0px;
+  }
+}
+@supports (animation-timeline: scroll()) {
+  .scroll-fade {
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      transparent 0,
+      #000 var(--scroll-fade-start),
+      #000 calc(100% - var(--scroll-fade-end)),
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      90deg,
+      transparent 0,
+      #000 var(--scroll-fade-start),
+      #000 calc(100% - var(--scroll-fade-end)),
+      transparent 100%
+    );
+    animation: scroll-fade-edges linear both;
+    animation-timeline: scroll(self inline);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scroll-fade {
+    animation-duration: auto !important;
+  }
+}
+
+/* 2. Finestre che compaiono con dolcezza: ogni finestra del sito
+   (`role="dialog"` con `aria-modal`, più il pannello delle notifiche) entra
+   salendo di 12 px mentre appare, il fondo scuro dietro sfuma. Solo CSS con
+   `@starting-style`: nessun componente cambia, e nei browser che non lo
+   conoscono la finestra compare subito come prima. Con "riduci movimento"
+   niente spostamento. */
+@media (prefers-reduced-motion: no-preference) {
+  [role="dialog"][aria-modal="true"],
+  .notif-panel {
+    transition:
+      opacity 180ms ease-out,
+      translate 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  [role="presentation"]:has(> [role="dialog"][aria-modal="true"]) {
+    transition: opacity 180ms ease-out;
+  }
+  @starting-style {
+    [role="dialog"][aria-modal="true"],
+    .notif-panel {
+      opacity: 0;
+      translate: 0 12px;
+    }
+    [role="presentation"]:has(> [role="dialog"][aria-modal="true"]) {
+      opacity: 0;
+    }
+  }
+}
+
+/* 3. Cuoricino "Salva": quando lo tocchi si riempie con un piccolo battito e
+   un anello verde che si allarga e svanisce (`IconActionButton` con
+   `celebrate`). Parte solo dal tocco, non quando la pagina carica i
+   profili già salvati. Niente coriandoli (scelta di Luca). */
+@keyframes heart-pop {
+  0% {
+    scale: 1;
+  }
+  35% {
+    scale: 1.18;
+  }
+  65% {
+    scale: 0.94;
+  }
+  100% {
+    scale: 1;
+  }
+}
+@keyframes heart-ring {
+  0% {
+    opacity: 0.7;
+    scale: 1;
+  }
+  100% {
+    opacity: 0;
+    scale: 1.9;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .icon-action-pop {
+    animation: heart-pop 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .icon-action-pop::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: 50%;
+    border: 2px solid #128552;
+    pointer-events: none;
+    animation: heart-ring 520ms ease-out forwards;
+  }
+}
+
+/* Foto a tutto schermo (PhotoLightbox): una riga di foto larghe quanto lo
+   schermo, una per gesto (`scroll-snap-stop: always`: uno scorrimento veloce
+   non ne salta tre), docs/changelog/2026-10-28-micro-interazioni.md. */
+.lightbox-track {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.lightbox-track::-webkit-scrollbar {
+  display: none;
+}
+.lightbox-slide {
+  flex: 0 0 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+}
+
+/* Pressione sulle scelte a pillola: "A domicilio / Online" (SearchBar di
+   @professionisti/ui, `.press-scale`) e "Quando ti serve?" si stringono
+   appena mentre il dito le tiene premute, come un tasto vero
+   (docs/changelog/2026-10-28-micro-interazioni.md). Si stringono invece di
+   allargarsi come nel reel: allargandosi spingerebbero le altre e il testo
+   si muoverebbe sotto il dito. */
+@media (prefers-reduced-motion: no-preference) {
+  .press-scale,
+  .guided-timing-option span {
+    transition-property: background, color, scale;
+    transition-duration: 0.15s, 0.15s, 0.12s;
+    transition-timing-function: ease;
+  }
+  .press-scale:active,
+  .guided-timing-option:active span {
+    scale: 0.95;
+  }
+}
+/* Mentre la si tiene premuta, una scelta non ancora presa si colora appena:
+   il solo restringimento su una pillola trasparente quasi non si vedeva. */
+.guided-timing-option:active input:not(:checked) + span {
+  background: rgba(18, 133, 82, 0.1);
 }

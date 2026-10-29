@@ -230,6 +230,17 @@ lavori esterni dell'agenda non ricevono nulla (domanda 70 per l'avvocato).
     tipo, quelle di sempre portano alle richieste del cliente). Migrazione
     `20261029170000_spostamento_risposte`.
 
+- Unione con la nuova pagina Notifiche (PR #186, 29/10): la scheda
+  WhatsApp sta tra "Mentre sei sul sito" e "Cosa ti avvisiamo". Una sola
+  ora della sera per sito, email e WhatsApp (decisione di Luca): il
+  riepilogo dei lavori su WhatsApp usa `notificationPrefs.digestHour`
+  (`notificationDigestHour`, di serie le 19 invece delle 18), la tendina
+  dell'ora nella scheda WhatsApp è tolta con il suo indirizzo
+  (`POST /whatsapp/me/digest-hour`), e la migrazione
+  `20261029190000_una_sola_ora_della_sera` copia l'ora scelta prima per
+  WhatsApp nelle preferenze, se lì non ce n'era una. Le risposte del cliente
+  al promemoria stanno nell'avviso "Appuntamenti".
+
 Modelli da far approvare a Meta: `docs/whatsapp-modelli.md`.
 
 ## Verifica

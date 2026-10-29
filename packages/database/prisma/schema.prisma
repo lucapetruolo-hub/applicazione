@@ -195,7 +195,8 @@ model User {
   // ricevere più" dal messaggio).
   whatsappOptInAt            DateTime?
   whatsappOptOutAt           DateTime?
-  // Ora del riepilogo della sera al professionista (18-21, nullo = 18).
+  // Non più usata (29/10/2026): l'ora della sera è notificationPrefs.digestHour,
+  // la stessa per sito, email e WhatsApp.
   whatsappDigestHour         Int?
 
   professionalProfile ProfessionalProfile?
@@ -1538,18 +1539,21 @@ enum NotificationChannel {
 }
 
 model Notification {
-  id        String              @id @default(uuid())
-  userId    String
-  channel   NotificationChannel
-  type      String
-  payload   Json
-  sentAt    DateTime?
-  readAt    DateTime?
-  createdAt DateTime            @default(now())
+  id             String              @id @default(uuid())
+  userId         String
+  channel        NotificationChannel
+  type           String
+  payload        Json
+  sentAt         DateTime?
+  readAt         DateTime?
+  createdAt      DateTime            @default(now())
+  /// Email rimandata al riassunto della sera o al mattino (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md).
+  emailHoldUntil DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, sentAt])
+  @@index([emailHoldUntil])
   @@map("notifications")
 }
 
@@ -2170,6 +2174,16 @@ model JobPayment {
   disputeProNoteAt       DateTime?
   // Promemoria al professionista 5 giorni prima della scadenza, se non ha scritto.
   disputeProReminderSentAt DateTime?
+  // Archivio della contestazione (docs/changelog/2026-10-28-stripe-prova.md):
+  // motivo dato dalla banca, chiusura, prove scritte dall'admin (spiegazione
+  // e campi, anche solo salvate), quando e da chi sono state mandate e il PDF
+  // caricato su Stripe, per risalire a tutto anche dopo la chiusura.
+  stripeDisputeReason      String?
+  stripeDisputeClosedAt    DateTime?
+  disputeEvidence          Json?
+  disputeEvidenceSentAt    DateTime?
+  disputeEvidenceSentById  String?
+  disputeEvidenceFileId    String?
 
   // --- Soldi bloccati sul conto Stripe del professionista (docs/CHANGELOG.md §249) ---
   // Acconto e saldo addebitati "a destinazione" sul conto del professionista

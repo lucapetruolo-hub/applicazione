@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { brand } from "@professionisti/ui";
 
 type IconActionButtonProps = {
@@ -20,6 +20,12 @@ type IconActionButtonProps = {
    * (docs/CHANGELOG.md §349): centrato usciva dallo schermo.
    */
   tooltipAlign?: "center" | "end";
+  /**
+   * Piccolo battito quando il pulsante diventa attivo dopo un tocco (il
+   * cuoricino "Salva", docs/changelog/2026-10-28-micro-interazioni.md). Non
+   * parte se è già attivo al caricamento della pagina.
+   */
+  celebrate?: boolean;
 };
 
 /**
@@ -28,9 +34,19 @@ type IconActionButtonProps = {
  * Segnala nella pagina profilo, docs/CHANGELOG.md §206). Fumetto in CSS e non
  * `title` nativo: quello compare solo dopo circa un secondo.
  */
-export function IconActionButton({ label, onPress, children, active, disabled, forceTooltip, size = 40, tooltipAlign = "center" }: IconActionButtonProps) {
+export function IconActionButton({ label, onPress, children, active, disabled, forceTooltip, size = 40, tooltipAlign = "center", celebrate }: IconActionButtonProps) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
+  const pressedRef = useRef(false);
+  const [pop, setPop] = useState(false);
+  // Il salvataggio risponde dopo il tocco: il battito parte quando `active`
+  // diventa vero, solo se l'ultimo cambio viene da un tocco.
+  useEffect(() => {
+    if (!celebrate) return;
+    if (active && pressedRef.current) setPop(true);
+    if (active !== undefined && !disabled) pressedRef.current = false;
+  }, [active, celebrate, disabled]);
+  const classes = [active ? "active" : "", pop ? "icon-action-pop" : ""].filter(Boolean).join(" ");
   return (
     <span className="icon-action">
       <button
@@ -38,8 +54,15 @@ export function IconActionButton({ label, onPress, children, active, disabled, f
         aria-label={label}
         aria-pressed={active}
         disabled={disabled}
-        onClick={onPress}
-        className={active ? "active" : undefined}
+        onClick={() => {
+          pressedRef.current = true;
+          setPop(false);
+          onPress();
+        }}
+        onAnimationEnd={(event) => {
+          if (event.animationName === "heart-ring") setPop(false);
+        }}
+        className={classes || undefined}
       >
         {children}
       </button>
@@ -62,6 +85,7 @@ export function IconActionButton({ label, onPress, children, active, disabled, f
           justify-content: center;
           cursor: pointer;
           padding: 0;
+          position: relative;
         }
         button:hover:not(:disabled) {
           border-color: ${brand.cianografia};

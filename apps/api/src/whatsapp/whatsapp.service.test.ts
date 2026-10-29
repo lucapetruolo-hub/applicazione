@@ -420,8 +420,8 @@ describe("WhatsAppService: invio", () => {
 });
 
 describe("WhatsAppService: riepilogo della sera al professionista", () => {
-  // Venerdì 15 gennaio 2027 alle 18 italiane; domani è sabato 16.
-  const EVENING = new Date("2027-01-15T17:00:00Z");
+  // Venerdì 15 gennaio 2027 alle 19 italiane (l'ora della sera di serie); domani è sabato 16.
+  const EVENING = new Date("2027-01-15T18:00:00Z");
   const booking = (id: string, wall: string, userId = "u1") => ({
     id,
     scheduledAt: new Date(wall),
@@ -488,7 +488,7 @@ describe("WhatsAppService: riepilogo della sera al professionista", () => {
 
   it("parte all'ora scelta dal professionista, anche alle 21", async () => {
     const { service, prisma, sent } = setup([
-      verifiedUser({ whatsappDigestHour: 21 }),
+      verifiedUser({ notificationPrefs: { digestHour: 21 } }),
     ]);
     (prisma.booking as unknown as { findMany: unknown }).findMany = vi.fn(
       async () => [booking("b1", "2027-01-16T08:30:00Z")],

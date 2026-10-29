@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/apiClient";
+import { notificationMuteTarget, withNotificationMuted, type NotificationMuteTarget } from "@professionisti/shared";
 import { Icon, brand } from "@professionisti/ui";
 import { useAuth } from "@/lib/AuthContext";
 import { notificationCopy } from "@/lib/notificationCopy";
@@ -56,13 +57,18 @@ function groupByDay(items: HistoryItem[]): { label: string; items: HistoryItem[]
 function NotificationRow({
   item,
   isProfessional,
+  muteTarget,
   onOpen,
   onDelete,
+  onMute,
 }: {
   item: HistoryItem;
   isProfessional: boolean;
+  /** Cosa spegne "Non avvisarmi più di questi" (null se non si spegne). */
+  muteTarget: NotificationMuteTarget | null;
   onOpen: (item: HistoryItem) => void;
   onDelete: (id: string) => void;
+  onMute: (target: NotificationMuteTarget) => void;
 }) {
   const [dragX, setDragX] = useState(0);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -119,7 +125,7 @@ function NotificationRow({
 
   return (
     <li
-      className={`notif-row${isUnread ? " is-unread" : ""}`}
+      className={`notif-row${isUnread ? " is-unread" : ""}${muteTarget ? " has-mute" : ""}`}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -138,6 +144,17 @@ function NotificationRow({
       <button type="button" className="notif-row-delete" onClick={() => onDelete(item.id)} aria-label="Elimina questa notifica">
         <Icon name="x" size={16} color={brand.grafite70} />
       </button>
+      {muteTarget ? (
+        <button
+          type="button"
+          className="notif-row-mute"
+          onClick={() => onMute(muteTarget)}
+          aria-label={`Non avvisarmi più di: ${muteTarget.label}`}
+          title={`Non avvisarmi più di: ${muteTarget.label}`}
+        >
+          <Icon name="bell-off" size={16} color={brand.grafite70} />
+        </button>
+      ) : null}
     </li>
   );
 }
@@ -166,7 +183,9 @@ function LoadingRows() {
  * con Esc, e il fuoco torna sulla campanella.
  */
 export function NotificationBell() {
-  const { token, user, unreadCount, markNotificationsRead } = useAuth();
+  const { token, user, unreadCount, markNotificationsRead, notificationPrefs, setNotificationPrefs } = useAuth();
+  /** Avviso appena spento dalla campanella, con "Annulla" (docs/changelog/2026-10-29-notifiche-sempre-attive-e-campanella.md). */
+  const [muted, setMuted] = useState<{ target: NotificationMuteTarget; failed: boolean } | null>(null);
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [history, setHistory] = useState<HistoryItem[] | null>(null);
@@ -208,6 +227,7 @@ export function NotificationBell() {
   async function handleToggle() {
     const next = !isOpen;
     setIsOpen(next);
+    setMuted(null);
     setConfirmDeleteAll(false);
     if (next) {
       setIsLoading(true);
@@ -234,6 +254,23 @@ export function NotificationBell() {
       await apiClient.deleteNotification(token as string, id);
     } catch {
       // Operazione non critica: se fallisce, la notifica ricompare alla prossima apertura.
+    }
+  }
+
+  /**
+   * "Non avvisarmi più di questi": spegne l'avviso su sito ed email (o
+   * l'argomento, se non ha avvisi separati) e lo riaccende con "Annulla".
+   */
+  async function handleMute(target: NotificationMuteTarget, mute: boolean) {
+    if (!notificationPrefs) return;
+    const previous = notificationPrefs;
+    setNotificationPrefs(withNotificationMuted(previous, target, mute));
+    setMuted(mute ? { target, failed: false } : null);
+    try {
+      setNotificationPrefs(await apiClient.updateNotificationPreferences(token as string, withNotificationMuted(previous, target, mute)));
+    } catch {
+      setNotificationPrefs(previous);
+      setMuted({ target, failed: true });
     }
   }
 
@@ -293,6 +330,25 @@ export function NotificationBell() {
             ) : null}
           </div>
 
+          {muted ? (
+            <div className={`notif-muted${muted.failed ? " is-error" : ""}`} role="status">
+              <Icon name={muted.failed ? "triangle-alert" : "bell-off"} size={16} color={muted.failed ? brand.urgenza : brand.cianografiaScuro} />
+              <span>
+                {muted.failed ? (
+                  "Non salvato: riprova."
+                ) : (
+                  <>
+                    Non ti avvisiamo più di <strong>{muted.target.label}</strong>. Le trovi comunque qui.
+                  </>
+                )}
+              </span>
+              {!muted.failed ? (
+                <button type="button" className="notif-clear" onClick={() => void handleMute(muted.target, false)}>
+                  Annulla
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           <div className="notif-list">
             {isLoading ? (
               <LoadingRows />
@@ -310,7 +366,15 @@ export function NotificationBell() {
                   <h3 className="notif-group">{group.label}</h3>
                   <ul className="notif-rows">
                     {group.items.map((item) => (
-                      <NotificationRow key={item.id} item={item} isProfessional={!!user?.isProfessional} onOpen={handleItemClick} onDelete={handleDelete} />
+                      <NotificationRow
+                        key={item.id}
+                        item={item}
+                        isProfessional={!!user?.isProfessional}
+                        muteTarget={notificationPrefs ? notificationMuteTarget(item.type, user?.isProfessional ? "professional" : "client", user?.role === "ADMIN") : null}
+                        onOpen={handleItemClick}
+                        onDelete={handleDelete}
+                        onMute={(target) => void handleMute(target, true)}
+                      />
                     ))}
                   </ul>
                 </section>

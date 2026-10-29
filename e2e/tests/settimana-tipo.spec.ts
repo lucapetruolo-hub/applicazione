@@ -114,27 +114,26 @@ test("un giorno cambiato a mano mostra \"eccezione\" in Giorno per giorno (§328
     date: s.date ?? undefined,
   });
   const before = (await mySlots(request)) as FullSlot[];
-  // Un mercoledì e un giovedì della settimana prossima: con date fisse la
-  // prova smetteva di funzionare appena passavano (il server non tiene le
-  // fasce dei giorni già passati).
-  const iso = (d: Date) => d.toISOString().slice(0, 10);
-  const wednesday = new Date();
-  wednesday.setUTCHours(12, 0, 0, 0);
-  wednesday.setUTCDate(wednesday.getUTCDate() + 7 + ((3 - wednesday.getUTCDay() + 7) % 7));
-  const thursday = new Date(wednesday.getTime() + 24 * 3_600_000);
-  const saturdayBefore = new Date(wednesday.getTime() - 4 * 24 * 3_600_000);
-  saturdayBefore.setUTCHours(10, 0, 0, 0);
-  const dayButton = (d: Date) => new RegExp(`\\b${d.getUTCDate()}\\b`);
+  // Il primo mercoledì ad almeno 3 giorni da oggi e il giovedì dopo: con date
+  // fisse (28 e 29 ottobre 2026) la prova si è rotta appena sono passate.
+  const day = 24 * 60 * 60 * 1000;
+  const today = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`);
+  const wednesday = new Date(today.getTime() + (3 + ((3 - ((today.getUTCDay() + 3) % 7) + 7) % 7)) * day);
+  const thursday = new Date(wednesday.getTime() + day);
+  const wed = wednesday.toISOString().slice(0, 10);
+  const thu = thursday.toISOString().slice(0, 10);
+  const dayButton = (date: Date) => new RegExp(`\\b${date.getUTCDate()}\\b`);
   // Settimana tipo: mercoledì e giovedì 9-12.
   const morning = { start: "09:00", end: "12:00", allowsHome: true, allowsOnline: false, homeMax: 1, onlineMax: null };
   expect((await request.put(`${API_URL}/agenda/week-template`, { headers, data: { days: [[], [], [], [morning], [morning], [], []] } })).ok()).toBe(true);
   const filled = (await mySlots(request)) as FullSlot[];
-  expect(filled.filter((s) => s.date === iso(thursday)).every((s) => s.fromWeekTemplate)).toBe(true);
+  expect(filled.filter((s) => s.date === thu).every((s) => s.fromWeekTemplate)).toBe(true);
   // Il mercoledì cambiato a mano: fino alle 11.
-  const changed = filled.map((s) => (s.date === iso(wednesday) && s.fromWeekTemplate ? { ...s, endTime: "11:00" } : s));
+  const changed = filled.map((s) => (s.date === wed && s.fromWeekTemplate ? { ...s, endTime: "11:00" } : s));
   expect((await request.put(`${API_URL}/professionals/me/availability`, { headers, data: { slots: changed.map(toInput) } })).ok()).toBe(true);
 
-  await page.clock.setFixedTime(saturdayBefore);
+  // Il sabato prima: la striscia dei giorni mostra mercoledì e giovedì.
+  await page.clock.setFixedTime(new Date(wednesday.getTime() - 4 * day + 10 * 60 * 60 * 1000));
   await page.goto("/dashboard/agenda?tab=orari");
   const section = page.getByRole("heading", { name: "Giorno per giorno" }).locator("xpath=ancestor::div[2]");
   await section.getByRole("button", { name: "Giorno", exact: true }).click();

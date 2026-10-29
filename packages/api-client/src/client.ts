@@ -81,6 +81,7 @@ import type {
   JobPaymentSummary,
   AdminOnlineLimitRow,
   AdminBankDispute,
+  AdminBankDisputeArchiveRow,
   BankDisputeEvidenceInput,
   BankDisputeProNoteInput,
   ProfessionalBankDispute,
@@ -462,6 +463,26 @@ export type AdminTrafficSources = {
   bySource: { source: TrafficSource | "unknown"; count: number }[];
 };
 
+/** Quante persone spengono ogni avviso (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md). */
+export type AdminNotificationOptOutGroup = {
+  role: "professional" | "client";
+  people: number;
+  digestOff: number;
+  quietNightOff: number;
+  urgentAtNight: number;
+  rows: {
+    key: string;
+    label: string;
+    level: "topic" | "item";
+    siteOff: number;
+    emailOff: number;
+    emailOffByDefault: boolean;
+    emailOn: number;
+    hasSite: boolean;
+    hasEmail: boolean;
+  }[];
+};
+
 export type AdminReportTarget =
   | { exists: false }
   | { exists: true; title: string; author: string | null; text: string | null; photos: string[]; rating: number | null; state: string; ownerUserId: string };
@@ -515,6 +536,11 @@ export type AdminOverview = {
   closedGeneralRequestZones: number;
   /** "Ce ne occupiamo noi" da seguire (docs/CHANGELOG.md §392). */
   openProblemTakeovers: number;
+  /** Contestazioni in banca a cui rispondere e la scadenza più vicina (docs/changelog/2026-10-28-stripe-prova.md). */
+  bankDisputesToAnswer: number;
+  nextBankDisputeDueBy: string | null;
+  /** Nostre fatture scartate dallo SdI, da correggere e rimandare. */
+  sdiRejectedInvoices: number;
 };
 
 export type ModerationActionValue = "WARN" | "REQUEST_CORRECTION" | "HIDE_CONTENT" | "SUSPEND_PROFILE" | "SUSPEND_USER";
@@ -1943,6 +1969,9 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     adminTrafficSources: (token: string) =>
       request<AdminTrafficSources>("/admin/traffic-sources", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
+    adminNotificationOptOuts: (token: string) =>
+      request<AdminNotificationOptOutGroup[]>("/admin/notification-opt-outs", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
     adminSearch: (token: string, q: string) =>
       request<AdminSearchResult>(`/admin/search?q=${encodeURIComponent(q)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
@@ -2014,6 +2043,14 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
 
     adminDeleteTestAccount: (token: string, id: string) =>
       request<{ id: string; deleted: true }>(`/admin/users/${id}/test-account`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),
+
+    /** "Fai passare il tempo" sui lavori di un account di prova (docs/changelog/2026-10-29-collaudo-tempo.md). */
+    adminMoveTestTime: (token: string, id: string, days: number) =>
+      request<{ requests: number; bookings: number; trial: "MOVED" | "NOT_LAUNCHED" | "STRIPE" | null }>(`/admin/users/${id}/test-time`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ days }),
+      }),
 
     adminListFounders: (token: string) => request<AdminFounders>("/admin/founders", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
@@ -2289,8 +2326,12 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
         cache: "no-store",
       }),
 
-    adminListJobIssues: (token: string, view: "open" | "chat" | "appeals" | "closed") =>
-      request<AdminJobIssue[]>(`/admin/job-issues?view=${view}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    /** Con `q` cerca in tutte le segnalazioni, aperte e chiuse. */
+    adminListJobIssues: (token: string, view: "open" | "chat" | "appeals" | "closed", q = "") =>
+      request<AdminJobIssue[]>(`/admin/job-issues?view=${view}${q.trim() ? `&q=${encodeURIComponent(q.trim())}` : ""}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }),
 
     adminResolveJobIssue: (token: string, id: string, input: ResolveJobIssueInput) =>
       request<{ id: string; status: string }>(`/admin/job-issues/${id}`, {
@@ -2438,11 +2479,12 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     setWhatsAppEnabled: (token: string, enabled: boolean) =>
       request<WhatsAppStatus>(enabled ? "/whatsapp/me/enable" : "/whatsapp/me/disable", { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
-    setWhatsAppDigestHour: (token: string, hour: number) =>
-      request<WhatsAppStatus>("/whatsapp/me/digest-hour", {
+    /** "Non ricevere più email come questa" dal link dell'email, senza accedere (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md). */
+    notificationEmailOff: (token: string, off?: boolean) =>
+      request<{ label: string; off: boolean }>("/notifications/email-off", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ hour }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, off }),
       }),
 
     notificationHistory: (token: string) =>
@@ -2550,6 +2592,15 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
 
     adminBankDisputePdf: (token: string, jobPaymentId: string) => downloadFile(`/admin/bank-disputes/${encodeURIComponent(jobPaymentId)}/pdf`, token),
 
+    /** Archivio di tutte le contestazioni in banca, con la ricerca. */
+    adminBankDisputesArchive: (token: string, q = "") =>
+      request<AdminBankDisputeArchiveRow[]>(`/admin/bank-disputes/archive${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ""}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }),
+
+    adminBankDisputeSentPdf: (token: string, jobPaymentId: string) => downloadFile(`/admin/bank-disputes/${encodeURIComponent(jobPaymentId)}/sent-pdf`, token),
+
     adminSaveBankDisputeEvidence: (token: string, jobPaymentId: string, input: BankDisputeEvidenceInput) =>
       request<AdminBankDispute>(`/admin/bank-disputes/${encodeURIComponent(jobPaymentId)}`, {
         method: "PATCH",
@@ -2569,12 +2620,14 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
 
     adminListJobPayments: (token: string) => request<JobPayment[]>("/admin/job-payments", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
-    adminListRefunds: (token: string) => request<AdminRefund[]>("/admin/refunds", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    adminListRefunds: (token: string, q = "") =>
+      request<AdminRefund[]>(`/admin/refunds${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ""}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminDecideRefund: (token: string, id: string, input: DecideRefundInput) =>
       request<unknown>(`/admin/refunds/${id}`, { method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
 
-    adminListDisputes: (token: string) => request<AdminDispute[]>("/admin/disputes", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    adminListDisputes: (token: string, q = "") =>
+      request<AdminDispute[]>(`/admin/disputes${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ""}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     adminResolveDispute: (token: string, id: string, input: ResolveDisputeInput) =>
       request<unknown>(`/admin/disputes/${id}`, { method: "PATCH", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),

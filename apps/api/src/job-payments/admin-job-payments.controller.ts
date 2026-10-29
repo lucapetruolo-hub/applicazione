@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Query, Req, UseGuards } from "@nestjs/common";
 import {
   bankDisputeEvidenceSchema,
   closeUnpaidBalanceSchema,
@@ -71,6 +71,16 @@ export class AdminJobPaymentsController {
     return this.bankDisputesService.listOpen();
   }
 
+  @Get("bank-disputes/archive")
+  bankDisputesArchive(@Query("q") q?: string) {
+    return this.bankDisputesService.archive(q ?? "");
+  }
+
+  @Get("bank-disputes/:jobPaymentId/sent-pdf")
+  async bankDisputeSentPdf(@Param("jobPaymentId") id: string) {
+    return pdfResponse(await this.bankDisputesService.sentPdf(id), "prove-mandate.pdf");
+  }
+
   @Get("bank-disputes/:jobPaymentId/pdf")
   async bankDisputePdf(@Param("jobPaymentId") id: string) {
     return pdfResponse(await this.bankDisputesService.documentationPdf(id), "riepilogo-lavoro.pdf");
@@ -82,8 +92,8 @@ export class AdminJobPaymentsController {
   }
 
   @Get("refunds")
-  listRefunds() {
-    return this.refundsService.listAll();
+  listRefunds(@Query("q") q?: string) {
+    return this.refundsService.listAll(q ?? "");
   }
 
   @Patch("refunds/:id")
@@ -92,8 +102,8 @@ export class AdminJobPaymentsController {
   }
 
   @Get("disputes")
-  listDisputes() {
-    return this.disputesService.listAll();
+  listDisputes(@Query("q") q?: string) {
+    return this.disputesService.listAll(q ?? "");
   }
 
   @Patch("disputes/:id")

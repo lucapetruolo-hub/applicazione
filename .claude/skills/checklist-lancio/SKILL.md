@@ -550,6 +550,12 @@ Città, pagine vuote fuori da Google.
     su Render e togliere `OPENROUTER_API_KEY` (e `OPENROUTER_MODEL` se c'è).
     Il codice non cambia. Da docs/changelog/2026-10-28-ia-gratuita-fino-al-lancio.md OpenRouter usa un modello gratuito, che
     può tenere i testi: al lancio non deve restare acceso.
+43. **Dopo il collaudo con gli agenti** (docs/changelog/2026-10-29-collaudo-tempo.md,
+    prompt in `/mnt/project-files/analisi/collaudo-completo-prompt.md`): se per
+    il collaudo si sono messe le chiavi di prova di Turnstile (quelle che
+    passano sempre), rimettere le chiavi vere del punto 24 (prima Vercel con
+    nuovo deploy, poi Render). Gli account "Collaudo ..." vanno eliminati da
+    Admin → Utenti → "Elimina account di prova".
 
 ## Da fare dopo il lancio
 

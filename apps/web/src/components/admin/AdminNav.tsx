@@ -31,13 +31,13 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { href: "/admin/problemi", label: "Problemi segnalati", icon: "flag", scope: "ANY", badge: (o) => o.openJobIssues + o.jobIssueAppeals },
   { href: "/admin/lavori", label: "Lavori terminati", icon: "badge-check", scope: "ANY" },
   { href: "/admin/documenti-clienti", label: "Documenti ai clienti", icon: "file-text", scope: "ANY" },
-  { href: "/admin/pagamenti", label: "Pagamenti e rimborsi", icon: "credit-card", scope: "FINANCE", badge: (o) => o.pendingRefunds + o.openDisputes + o.unpaidBalances },
+  { href: "/admin/pagamenti", label: "Pagamenti e rimborsi", icon: "credit-card", scope: "FINANCE", badge: (o) => o.pendingRefunds + o.openDisputes + o.unpaidBalances + o.bankDisputesToAnswer },
   { href: "/admin/richieste-generali", label: "Richieste generali", icon: "send", scope: "MODERATION", badge: (o) => o.closedGeneralRequestZones },
   // Dal problema scritto ai mestieri (docs/CHANGELOG.md §392).
   { href: "/admin/mestieri-richiesti", label: "Mestieri richiesti", icon: "search", scope: "MODERATION" },
   { href: "/admin/richieste-da-seguire", label: "Richieste da seguire", icon: "heart-handshake", scope: "MODERATION", badge: (o) => o.openProblemTakeovers },
   { href: "/admin/richieste-eliminate", label: "Richieste eliminate", icon: "trash-2", scope: "MODERATION" },
-  { href: "/admin/finanza", label: "Finanza e DAC7", icon: "coins", scope: "FINANCE" },
+  { href: "/admin/finanza", label: "Finanza e DAC7", icon: "coins", scope: "FINANCE", badge: (o) => o.sdiRejectedInvoices },
   { href: "/admin/statistiche", label: "Statistiche", icon: "trending-up", scope: "FINANCE" },
   // Promemoria su WhatsApp (docs/changelog/2026-10-28-promemoria-whatsapp.md): costo e messaggi.
   { href: "/admin/whatsapp", label: "WhatsApp", icon: "message-circle", scope: "FINANCE" },

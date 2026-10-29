@@ -179,6 +179,7 @@ export function SearchBar({
               // videocamera non diceva cosa sceglieva.
               <XStack
                 key={tab.key}
+                className="press-scale"
                 minWidth={28}
                 height={28}
                 gap={5}
@@ -209,7 +210,7 @@ export function SearchBar({
             onSelect={handleSelectProfessional}
             value={query}
             onChangeText={handleQueryChange}
-            placeholder="Cosa cerchi?"
+            placeholder="Cosa ti serve?"
             size="$3"
             maxResults={professionalSuggestions.length}
             renderItem={(item) => (
@@ -285,25 +286,40 @@ export function SearchBar({
       shadowOffset={{ width: 0, height: 0 }}
       shadowOpacity={1}
     >
-      <XStack gap="$2" backgroundColor={brand.gesso} borderRadius="$10" padding="$1" alignSelf="flex-start">
+      {/* Da telefono le due schede occupano tutta la larghezza a metà ciascuna,
+          sotto i 390 px larghe quanto il testo, su una riga: a 320 px "Online" usciva dal riquadro
+          (docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md). */}
+      <XStack
+        gap="$2"
+        backgroundColor={brand.gesso}
+        borderRadius="$10"
+        padding="$1"
+        alignSelf="flex-start"
+        $xs={{ alignSelf: "stretch" }}
+        $xxs={{ gap: "$1" }}
+      >
         {MODE_TABS.map((tab) => {
           const active = tab.key === mode;
           return (
             <XStack
               key={tab.key}
+              className="press-scale"
               paddingHorizontal="$3"
               paddingVertical="$2"
               borderRadius="$10"
               backgroundColor={active ? brand.cianografia : "transparent"}
               cursor="pointer"
               alignItems="center"
+              justifyContent="center"
+              $xs={{ flexGrow: 1, flexBasis: 0 }}
+              $xxs={{ flexBasis: "auto", paddingHorizontal: "$2", gap: "$1" }}
               gap="$2"
               onPress={() => handleModeChange(tab.key)}
               accessibilityRole="button"
               accessibilityLabel={tab.label}
             >
               <Icon name={tab.icon} size={15} color={active ? "white" : brand.grafite70} />
-              <Text fontSize={16} fontWeight="600" color={active ? "white" : brand.grafite70}>
+              <Text fontSize={16} $xxs={{ fontSize: 15 }} whiteSpace="nowrap" fontWeight="600" color={active ? "white" : brand.grafite70}>
                 {tab.label}
               </Text>
             </XStack>
@@ -322,9 +338,12 @@ export function SearchBar({
           onChangeText={handleQueryChange}
           // Etichetta vera sopra il campo ed esempio corto dentro: quello
           // lungo di prima veniva tagliato ("Es. Idraulico, Elettricis").
-          label="Cosa cerchi"
+          // L'esempio dice che il campo capisce anche il problema (§392,
+          // docs/changelog/2026-10-28-richiedi-preventivo-in-alto.md); corto
+          // perché stia intero anche su un telefono da 320 px.
+          label="Cosa ti serve?"
           id={`${fieldId}-cosa`}
-          placeholder={mode === "online" ? "Es. consulenza idraulico" : "Es. idraulico"}
+          placeholder={mode === "online" ? "Es. consulenza idraulico" : "Es. idraulico, un guasto"}
           size="$5"
           maxResults={professionalSuggestions.length}
           renderItem={(item) => (

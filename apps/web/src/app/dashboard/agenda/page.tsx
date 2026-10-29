@@ -3,7 +3,7 @@
 import { Suspense, startTransition, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CalendarDays, ChevronLeft, ChevronRight, Navigation, Phone, Plus, Search, Truck, X } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Navigation, PanelLeftClose, PanelLeftOpen, Phone, Plus, Search, Truck, X } from "lucide-react";
 import {
   agendaAttention,
   formatAppointmentDate,
@@ -34,7 +34,7 @@ import { ExternalJobModal } from "@/components/ExternalJobModal";
 import { CompleteJobModal } from "@/components/CompleteJobModal";
 import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { AgendaStyles } from "@/components/agenda/AgendaStyles";
-import { AgendaTimeGrid, WeatherIcon, type AgendaDayNote, type AgendaFreeBand, type AgendaGridEvent } from "@/components/agenda/AgendaTimeGrid";
+import { AgendaTimeGrid, WeatherIcon, minutesToLabel, type AgendaDayNote, type AgendaFreeBand, type AgendaGridEvent } from "@/components/agenda/AgendaTimeGrid";
 import { AgendaMiniMonth } from "@/components/agenda/AgendaMiniMonth";
 import { AppointmentPanel } from "@/components/agenda/AppointmentPanel";
 import { CalendarLinkModal } from "@/components/agenda/CalendarLinkModal";
@@ -72,12 +72,41 @@ import { ItalianDateInput } from "@/components/ItalianDateInput";
 type AgendaTab = "calendario" | "orari" | "giro";
 type AgendaFilter = "conf" | "done" | "wait" | "ext" | "free";
 const ALL_FILTERS: AgendaFilter[] = ["conf", "done", "wait", "ext", "free"];
+const ASIDE_HIDDEN_KEY = "agenda-colonna-nascosta";
+const VIEW_KEY = "agenda-vista";
+const CALENDAR_VIEWS: CalendarView[] = ["day", "week", "month", "year"];
 const DEFAULT_DURATION_MIN = 60;
 
 /** Minuti dalla mezzanotte di un orario "di parete" salvato come UTC. */
 function wallMinutes(iso: string): number {
   const date = new Date(iso);
   return date.getUTCHours() * 60 + date.getUTCMinutes();
+}
+/**
+ * Durata dei lavori che il professionista fa più spesso, alla mezz'ora, per
+ * precompilare la fine quando tocca un orario vuoto (scelta di Luca,
+ * docs/changelog/2026-10-28-agenda-orari-in-vista.md). Contano i lavori non
+ * annullati, con la fine e nello stesso giorno; serve che una durata si ripeta
+ * almeno due volte, altrimenti un'ora. A parità vince la più corta.
+ */
+function usualJobDuration(items: { scheduledAt: string; scheduledEndAt: string | null; status: string }[]): number {
+  const counts = new Map<number, number>();
+  for (const item of items) {
+    if (item.status === "CANCELED" || !item.scheduledEndAt || item.scheduledEndAt.slice(0, 10) !== item.scheduledAt.slice(0, 10)) continue;
+    const minutes = (new Date(item.scheduledEndAt).getTime() - new Date(item.scheduledAt).getTime()) / 60000;
+    if (minutes < 15 || minutes > 12 * 60) continue;
+    const rounded = Math.max(30, Math.round(minutes / 30) * 30);
+    counts.set(rounded, (counts.get(rounded) ?? 0) + 1);
+  }
+  let best = DEFAULT_DURATION_MIN;
+  let bestCount = 1;
+  for (const [minutes, count] of counts) {
+    if (count > bestCount || (count === bestCount && count > 1 && minutes < best)) {
+      best = minutes;
+      bestCount = count;
+    }
+  }
+  return best;
 }
 function timeMinutes(time: string): number {
   const [h, m] = time.split(":").map(Number);
@@ -185,6 +214,23 @@ function DashboardAgendaContent() {
     deepLinkedDay || (typeof window !== "undefined" && window.innerWidth < 640) ? "day" : "week",
   );
   const [bookingCurrentDate, setBookingCurrentDate] = useState(() => (deepLinkedDay ? new Date(`${deepLinkedDay}T00:00:00.000Z`) : todayUtc()));
+  // Sul telefono, se oggi non c'è niente in agenda, si apre la Settimana: un
+  // giorno vuoto non dice niente (scelta di Luca, docs/changelog/2026-10-28-agenda-orari-in-vista.md).
+  // Una volta sola, al primo caricamento, e mai dopo una scelta fatta a mano.
+  const autoWeekChecked = useRef(false);
+  function openWeekIfTodayEmpty(loadedBookings: ProfessionalBooking[], loadedJobs: ExternalJob[]) {
+    if (autoWeekChecked.current) return;
+    autoWeekChecked.current = true;
+    if (deepLinkedDay || !window.matchMedia("(max-width: 640px)").matches) return;
+    const todayStr = toIsoDate(todayUtc());
+    const busyToday =
+      loadedBookings.some((b) => b.status !== "CANCELED" && jobOccurrenceOn(b.scheduledAt, b.scheduledEndAt, todayStr) !== null) ||
+      loadedJobs.some((j) => j.status !== "CANCELED" && jobOccurrenceOn(j.scheduledAt, j.scheduledEndAt, todayStr) !== null);
+    if (busyToday) return;
+    setBookingView((view) => (view === "day" ? "week" : view));
+    // La domenica la settimana è finita: si apre quella che comincia domani (T4, §311: la sera si guarda il giorno dopo).
+    if (todayUtc().getUTCDay() === 0) setBookingCurrentDate(addDaysUtc(todayUtc(), 1));
+  }
   const [selectedBooking, setSelectedBooking] = useState<ProfessionalBooking | null>(null);
   const [isBookingActionPending, setIsBookingActionPending] = useState(false);
   // Cronologia completa della richiesta collegata, aperta dal pannello di
@@ -203,6 +249,9 @@ function DashboardAgendaContent() {
   const [externalJobs, setExternalJobs] = useState<ExternalJob[] | null>(null);
   const [selectedExternalJob, setSelectedExternalJob] = useState<ExternalJob | null>(null);
   const [creatingExternalJobFor, setCreatingExternalJobFor] = useState<Date | null>(null);
+  // Ora d'inizio precompilata quando il lavoro nasce da un tocco su un orario vuoto della griglia.
+  const [creatingExternalJobStart, setCreatingExternalJobStart] = useState<string | null>(null);
+  const [creatingExternalJobDuration, setCreatingExternalJobDuration] = useState(DEFAULT_DURATION_MIN);
 
   // Preventivi inviati ma non ancora accettati (richiesta esplicita
   // dell'utente: una data/orario scelta per un preventivo — specialmente se
@@ -222,6 +271,54 @@ function DashboardAgendaContent() {
   // elenco piatto dei soli risultati: filtrare una griglia lasciando celle
   // vuote sparse in giro non avrebbe senso, un elenco sì.
   const [agendaSearchQuery, setAgendaSearchQuery] = useState("");
+  // La ricerca si apre da una lente nella barra: la riga del campo, sempre
+  // aperta, toglieva spazio agli orari (docs/changelog/2026-10-28-agenda-orari-in-vista.md).
+  const [searchOpen, setSearchOpen] = useState(false);
+  // Colonna di sinistra (mini calendario, Mostra, Orari di lavoro)
+  // nascondibile da computer; la scelta resta su questo browser.
+  const [asideHidden, setAsideHidden] = useState(false);
+  useEffect(() => {
+    try {
+      // Letto dopo il primo disegno: sul server localStorage non esiste.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (window.localStorage.getItem(ASIDE_HIDDEN_KEY) === "1") setAsideHidden(true);
+    } catch {
+      // localStorage non disponibile: colonna visibile.
+    }
+  }, []);
+  // Da computer l'agenda si riapre sull'ultima vista scelta (Giorno, Settimana...),
+  // salvata su questo browser (docs/changelog/2026-10-28-agenda-orari-in-vista.md).
+  // Sul telefono no: lì decide openWeekIfTodayEmpty.
+  useEffect(() => {
+    if (deepLinkedDay || window.matchMedia("(max-width: 640px)").matches) return;
+    try {
+      const saved = window.localStorage.getItem(VIEW_KEY) as CalendarView | null;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (saved && CALENDAR_VIEWS.includes(saved)) setBookingView(saved);
+    } catch {
+      // localStorage non disponibile: si apre la Settimana.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  function chooseBookingView(next: CalendarView) {
+    setBookingView(next);
+    if (window.matchMedia("(max-width: 640px)").matches) return;
+    try {
+      window.localStorage.setItem(VIEW_KEY, next);
+    } catch {
+      // Non salvata: vale solo per questa visita.
+    }
+  }
+  function toggleAside() {
+    setAsideHidden((prev) => {
+      try {
+        window.localStorage.setItem(ASIDE_HIDDEN_KEY, prev ? "0" : "1");
+      } catch {
+        // Non salvata: vale solo per questa visita.
+      }
+      return !prev;
+    });
+  }
 
   // Nuova agenda (docs/CHANGELOG.md §288).
   const [filters, setFilters] = useState<Set<AgendaFilter>>(() => new Set(ALL_FILTERS));
@@ -384,6 +481,7 @@ function DashboardAgendaContent() {
         startTransition(() => {
           setBookings(loadedBookings);
           openDeepLinkedBooking(loadedBookings, loadedJobs);
+          openWeekIfTodayEmpty(loadedBookings, loadedJobs);
           setExternalJobs(loadedJobs);
           // Il riquadro aperto mostra subito lo stato nuovo (es. annullato dal cliente).
           setSelectedBooking((current) => (current ? (loadedBookings.find((b) => b.id === current.id) ?? current) : current));
@@ -397,6 +495,7 @@ function DashboardAgendaContent() {
           if (copy) {
             setBookings(copy.bookings);
             openDeepLinkedBooking(copy.bookings, copy.externalJobs);
+            openWeekIfTodayEmpty(copy.bookings, copy.externalJobs);
             setExternalJobs(copy.externalJobs);
             setOfflineSavedAt(copy.savedAt);
             return;
@@ -1563,6 +1662,7 @@ function DashboardAgendaContent() {
   const visibleDayStrs = visibleDays.map(toIsoDate);
   const freeBands = filters.has("free") ? visibleDayStrs.flatMap(freeBandsOn) : [];
   const busyDates = new Set(gridEvents.filter((e) => e.kind !== "canceled").map((e) => e.date));
+
   const rangeEvents = gridEvents.filter((e) => visibleDayStrs.includes(e.date) && e.kind !== "canceled" && e.kind !== "wait");
   const rangeFree = visibleDayStrs.reduce((sum, d) => sum + (freeMinutesOn(d) ?? 0), 0);
   const rangeWaiting = gridEvents.filter((e) => visibleDayStrs.includes(e.date) && e.kind === "wait").length;
@@ -1604,6 +1704,14 @@ function DashboardAgendaContent() {
     else setBookingCurrentDate(addMonthsUtc(bookingCurrentDate, direction));
   }
 
+  const shortMonth = (date: Date) => monthLabel(date).slice(0, 3);
+  // Sul telefono la barra è stretta: mesi abbreviati ("26 ott – 1 nov").
+  const rangeLabelShort =
+    bookingView === "day"
+      ? `${weekdayShortLabel(bookingCurrentDate)} ${bookingCurrentDate.getUTCDate()} ${shortMonth(bookingCurrentDate)}`
+      : bookingView === "week"
+        ? `${visibleDays[0]!.getUTCDate()}${visibleDays[0]!.getUTCMonth() === visibleDays[6]!.getUTCMonth() ? "" : ` ${shortMonth(visibleDays[0]!)}`} – ${visibleDays[6]!.getUTCDate()} ${shortMonth(visibleDays[6]!)}`
+        : null;
   const rangeLabel =
     bookingView === "day"
       ? `${weekdayShortLabel(bookingCurrentDate)} ${bookingCurrentDate.getUTCDate()} ${monthLabel(bookingCurrentDate)}`
@@ -1715,6 +1823,22 @@ function DashboardAgendaContent() {
     }
   }
 
+  // Lente della ricerca: nella barra da computer, accanto al titolo sul telefono (la barra lì è stretta).
+  const searchToggle = (className: string) => (
+    <button
+      type="button"
+      className={`ag-icon-btn ${className}`}
+      onClick={() => {
+        if (searchOpen) setAgendaSearchQuery("");
+        setSearchOpen(!searchOpen);
+      }}
+      aria-label={searchOpen ? "Chiudi la ricerca" : "Cerca nell'agenda"}
+      aria-expanded={searchOpen}
+    >
+      {searchOpen ? <X size={18} aria-hidden /> : <Search size={18} aria-hidden />}
+    </button>
+  );
+
   const tabs: { value: AgendaTab; label: string }[] = [
     { value: "calendario", label: "Calendario" },
     { value: "orari", label: "Orari di lavoro" },
@@ -1764,7 +1888,15 @@ function DashboardAgendaContent() {
       <div style={{ maxWidth: 1480, margin: "0 auto" }}>
         <div className="ag-head">
           <h1>Agenda</h1>
+          <div className="ag-seg ag-tabs" role="group" aria-label="Sezioni dell'agenda">
+            {tabs.map((tab) => (
+              <button key={tab.value} type="button" aria-pressed={activeTab === tab.value} onClick={() => setActiveTab(tab.value)}>
+                {tab.label}
+              </button>
+            ))}
+          </div>
           <div className="ag-head-right">
+            {activeTab === "calendario" ? searchToggle("ag-only-phone") : null}
             <button type="button" className="ag-btn" onClick={() => setShowCalendarLink(true)} aria-label="Collega al tuo calendario">
               <CalendarDays size={16} aria-hidden /> <span className="ag-hide-phone">Collega al tuo calendario</span>
             </button>
@@ -1772,14 +1904,6 @@ function DashboardAgendaContent() {
               <Plus size={16} aria-hidden /> Lavoro esterno
             </button>
           </div>
-        </div>
-
-        <div className="ag-seg ag-tabs" role="group" aria-label="Sezioni dell'agenda">
-          {tabs.map((tab) => (
-            <button key={tab.value} type="button" aria-pressed={activeTab === tab.value} onClick={() => setActiveTab(tab.value)}>
-              {tab.label}
-            </button>
-          ))}
         </div>
 
         {offlineSavedAt ? (
@@ -1817,7 +1941,8 @@ function DashboardAgendaContent() {
         ) : null}
 
         {activeTab === "calendario" ? (
-          <div className="ag-layout">
+          <div className={asideHidden ? "ag-layout no-aside" : "ag-layout"}>
+            {asideHidden ? null : (
             <aside className="ag-aside" aria-label="Riepilogo">
               {nextCard}
               <AgendaMiniMonth
@@ -1871,22 +1996,56 @@ function DashboardAgendaContent() {
                 </button>
               </div>
             </aside>
+            )}
 
             <div style={{ minWidth: 0 }}>
               <div className="ag-toolbar">
-                <button type="button" className="ag-btn sm" onClick={() => setBookingCurrentDate(today)}>
+                <button
+                  type="button"
+                  className="ag-icon-btn ag-aside-toggle"
+                  onClick={toggleAside}
+                  aria-label={asideHidden ? "Mostra la colonna di sinistra" : "Nascondi la colonna di sinistra"}
+                  aria-pressed={!asideHidden}
+                  title={asideHidden ? "Mostra mini calendario e filtri" : "Nascondi mini calendario e filtri"}
+                >
+                  {asideHidden ? <PanelLeftOpen size={18} aria-hidden /> : <PanelLeftClose size={18} aria-hidden />}
+                </button>
+                {/* Sul telefono "Oggi" serve solo quando oggi non è già in vista: la barra lì è stretta. */}
+                <button
+                  type="button"
+                  className={(bookingView === "day" || bookingView === "week") && visibleDayStrs.includes(todayStr) ? "ag-btn sm ag-hide-phone" : "ag-btn sm"}
+                  onClick={() => setBookingCurrentDate(today)}
+                >
                   Oggi
                 </button>
-                <button type="button" className="ag-icon-btn" onClick={() => navigateCalendar(-1)} aria-label="Periodo precedente">
+                <button type="button" className={bookingView === "day" ? "ag-icon-btn ag-hide-phone" : "ag-icon-btn"} onClick={() => navigateCalendar(-1)} aria-label="Periodo precedente">
                   <ChevronLeft size={18} aria-hidden />
                 </button>
-                <button type="button" className="ag-icon-btn" onClick={() => navigateCalendar(1)} aria-label="Periodo successivo">
+                <button type="button" className={bookingView === "day" ? "ag-icon-btn ag-hide-phone" : "ag-icon-btn"} onClick={() => navigateCalendar(1)} aria-label="Periodo successivo">
                   <ChevronRight size={18} aria-hidden />
                 </button>
-                <span className="ag-range" style={{ textTransform: "capitalize" }}>
-                  {rangeLabel}
+                <span className="ag-range">
+                  <span className={rangeLabelShort ? "ag-range-long" : undefined} style={{ textTransform: "capitalize" }}>
+                    {rangeLabel}
+                  </span>
+                  {rangeLabelShort ? (
+                    <span className="ag-range-short">
+                      {rangeLabelShort}
+                    </span>
+                  ) : null}
+                  {bookingView === "day" || bookingView === "week" ? <small>{rangeSummary}</small> : null}
                 </span>
-                <div className="ag-seg" role="group" aria-label="Vista" style={{ marginLeft: "auto" }}>
+                {searchToggle("ag-search-toggle ag-hide-phone")}
+                <label className="ag-view-select">
+                  <span className="sr-only">Vista</span>
+                  <select className="ag-input" value={bookingView} onChange={(e) => chooseBookingView(e.target.value as CalendarView)}>
+                    <option value="day">Giorno</option>
+                    <option value="week">Settimana</option>
+                    <option value="month">Mese</option>
+                    <option value="year">Anno</option>
+                  </select>
+                </label>
+                <div className="ag-seg ag-view-seg" role="group" aria-label="Vista">
                   {(
                     [
                       { value: "day", label: "Giorno" },
@@ -1895,13 +2054,14 @@ function DashboardAgendaContent() {
                       { value: "year", label: "Anno" },
                     ] as const
                   ).map((item) => (
-                    <button key={item.value} type="button" aria-pressed={bookingView === item.value} onClick={() => setBookingView(item.value)}>
+                    <button key={item.value} type="button" aria-pressed={bookingView === item.value} onClick={() => chooseBookingView(item.value)}>
                       {item.label}
                     </button>
                   ))}
                 </div>
               </div>
 
+              {searchOpen ? (
               <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
                 <label className="ag-input" style={{ display: "flex", alignItems: "center", gap: 8, flex: "1 1 220px", maxWidth: 380 }}>
                   <Search size={16} aria-hidden style={{ color: "var(--ag-muted)", flex: "none" }} />
@@ -1911,6 +2071,8 @@ function DashboardAgendaContent() {
                     value={agendaSearchQuery}
                     onChange={(e) => setAgendaSearchQuery(e.target.value)}
                     placeholder="Cerca cliente, via, lavoro..."
+                    // eslint-disable-next-line jsx-a11y/no-autofocus -- si apre solo con un clic sulla lente
+                    autoFocus
                     style={{ flex: 1, minWidth: 0, border: "none", outline: "none", background: "transparent", fontSize: 14, color: brand.grafite, font: "inherit" }}
                   />
                   {agendaSearchQuery ? (
@@ -1919,8 +2081,8 @@ function DashboardAgendaContent() {
                     </button>
                   ) : null}
                 </label>
-                {bookingView === "day" || bookingView === "week" ? <span className="ag-summary">{rangeSummary}</span> : null}
               </div>
+              ) : null}
 
               {bookingView === "day" ? (
                 <>
@@ -1953,6 +2115,11 @@ function DashboardAgendaContent() {
                   onDayPress={(date) => {
                     setBookingCurrentDate(date);
                     setBookingView("day");
+                  }}
+                  onEmptyPress={(date, minutes) => {
+                    setCreatingExternalJobStart(minutesToLabel(minutes));
+                    setCreatingExternalJobDuration(usualJobDuration([...(bookings ?? []), ...(externalJobs ?? [])]));
+                    setCreatingExternalJobFor(date);
                   }}
                 />
               ) : bookingView === "month" ? (
@@ -2176,7 +2343,12 @@ function DashboardAgendaContent() {
         <ExternalJobModal
           token={token}
           defaultDate={creatingExternalJobFor}
-          onClose={() => setCreatingExternalJobFor(null)}
+          defaultStartTime={creatingExternalJobStart ?? undefined}
+          defaultDurationMinutes={creatingExternalJobDuration}
+          onClose={() => {
+            setCreatingExternalJobFor(null);
+            setCreatingExternalJobStart(null);
+          }}
           onSaved={(job) => setExternalJobs((prev) => (prev ? [...prev, job] : [job]))}
         />
       ) : null}

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import {
-  WHATSAPP_DIGEST_HOURS,
   WHATSAPP_MESSAGES_FOR,
   isPlausiblePhoneNumber,
   type WhatsAppStatus,
@@ -36,9 +35,12 @@ const phoneInputStyle = {
 export function WhatsAppRemindersCard({
   token,
   role,
+  digestHour,
 }: {
   token: string;
   role: "client" | "professional";
+  /** Ora del riassunto della sera, la stessa del riepilogo dei lavori su WhatsApp. */
+  digestHour: number;
 }) {
   const [status, setStatus] = useState<WhatsAppStatus | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -254,25 +256,13 @@ export function WhatsAppRemindersCard({
             <span />
           </button>
         </div>
-        {status.enabled && status.digestHour !== null ? (
-          <label className="notif-digest-row">
-            <span>Riepilogo dei lavori del giorno dopo, la sera alle</span>
-            <select
-              className="notif-digest-select"
-              value={status.digestHour}
-              disabled={busy}
-              onChange={(e) => {
-                const hour = Number(e.target.value);
-                void run(() => apiClient.setWhatsAppDigestHour(token, hour));
-              }}
-            >
-              {WHATSAPP_DIGEST_HOURS.map((h) => (
-                <option key={h} value={h}>
-                  {h}:00
-                </option>
-              ))}
-            </select>
-          </label>
+        {/* Una sola ora della sera per sito, email e WhatsApp (Luca, 29/10/2026). */}
+        {status.enabled && role === "professional" ? (
+          <p className="notif-small">
+            Il riepilogo dei lavori del giorno dopo arriva alle {digestHour}:00,
+            l&apos;ora del riassunto della sera: la cambi in «Quando arrivano le
+            email».
+          </p>
         ) : null}
         {details}
       </>
