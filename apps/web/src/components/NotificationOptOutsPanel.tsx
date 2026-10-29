@@ -68,6 +68,12 @@ export function NotificationOptOutsPanel({ data }: { data: AdminNotificationOptO
       </div>
       <Text fontSize={13} color={brand.grafite70}>
         Riassunto della sera spento: <strong>{cell(group.digestOff)}</strong> · Email anche di notte: <strong>{cell(group.quietNightOff)}</strong>
+        {group.role === "professional" ? (
+          <>
+            {" "}
+            · Urgenti anche di notte: <strong>{cell(group.urgentAtNight)}</strong>
+          </>
+        ) : null}
       </Text>
     </Surface>
   );

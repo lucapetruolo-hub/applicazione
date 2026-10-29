@@ -462,6 +462,7 @@ export type AdminNotificationOptOutGroup = {
   people: number;
   digestOff: number;
   quietNightOff: number;
+  urgentAtNight: number;
   rows: {
     key: string;
     label: string;

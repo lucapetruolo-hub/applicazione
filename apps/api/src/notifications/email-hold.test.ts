@@ -25,10 +25,13 @@ describe("email rimandate", () => {
     expect(emailHoldUntil(prefs, "NEW_QUOTE", {}, at("2026-10-29T09:00:00Z"))).toBeNull();
   });
 
-  it("di notte aspetta le 7, tranne una richiesta urgente", () => {
+  it("di notte aspetta le 7, anche una richiesta urgente se non si è scelto di riceverla", () => {
     expect(emailHoldUntil(prefs, "NEW_QUOTE", {}, at("2026-10-29T22:30:00Z"))?.toISOString()).toBe("2026-10-30T06:00:00.000Z");
     expect(emailHoldUntil(prefs, "NEW_QUOTE", {}, at("2026-10-30T02:00:00Z"))?.toISOString()).toBe("2026-10-30T06:00:00.000Z");
-    expect(emailHoldUntil(prefs, "NEW_LEAD", { isUrgent: true }, at("2026-10-29T23:00:00Z"))).toBeNull();
+    expect(emailHoldUntil(prefs, "NEW_LEAD", { isUrgent: true }, at("2026-10-29T23:00:00Z"))?.toISOString()).toBe("2026-10-30T06:00:00.000Z");
+    expect(emailHoldUntil({ ...prefs, quietNightUrgent: false }, "NEW_LEAD", { isUrgent: true }, at("2026-10-29T23:00:00Z"))).toBeNull();
+    // Di giorno un'urgente parte sempre subito.
+    expect(emailHoldUntil(prefs, "NEW_LEAD", { isUrgent: true }, at("2026-10-29T09:00:00Z"))).toBeNull();
   });
 
   it("con le scelte spente parte tutto subito", () => {

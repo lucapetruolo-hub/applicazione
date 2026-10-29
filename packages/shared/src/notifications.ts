@@ -436,6 +436,8 @@ export const notificationPreferencesSchema = z.object({
   digest: z.boolean().optional(),
   /** Dalle 22 alle 7 le email aspettano il mattino, tranne le richieste urgenti. */
   quietNight: z.boolean().optional(),
+  /** Di notte aspettano il mattino anche le richieste urgenti (scelta di Luca, 29/10/2026: acceso di serie). */
+  quietNightUrgent: z.boolean().optional(),
   /** Ora della sera (18-21) del riassunto e del riepilogo dei lavori di domani. */
   digestHour: z.number().int().min(18).max(21).optional(),
 });
@@ -458,6 +460,7 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   items: { "lavori.recensioni": { inApp: true, email: false } },
   digest: true,
   quietNight: true,
+  quietNightUrgent: true,
   digestHour: 19,
 };
 
@@ -474,6 +477,7 @@ export function resolveNotificationPreferences(stored: unknown): NotificationPre
     if (typeof s.sound === "boolean") base.sound = s.sound;
     if (typeof s.digest === "boolean") base.digest = s.digest;
     if (typeof s.quietNight === "boolean") base.quietNight = s.quietNight;
+    if (typeof s.quietNightUrgent === "boolean") base.quietNightUrgent = s.quietNightUrgent;
     if (typeof s.digestHour === "number" && (NOTIFICATION_DIGEST_HOURS as readonly number[]).includes(s.digestHour)) base.digestHour = s.digestHour;
     if (s.items && typeof s.items === "object") {
       const items: Record<string, { inApp: boolean; email: boolean }> = {};

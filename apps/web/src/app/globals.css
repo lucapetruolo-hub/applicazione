@@ -5973,6 +5973,33 @@ a.admin-kpi:hover {
 .nt-hour select:hover {
   border-color: #2b2420;
 }
+.nt-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #2b2420;
+  cursor: pointer;
+}
+.nt-check input {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: #128552;
+  cursor: pointer;
+}
+.nt-check span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nt-check small {
+  font-weight: 400;
+}
+.nt-check input:focus-visible,
 .nt-hour select:focus-visible {
   outline: 2px solid #189a63;
   outline-offset: 2px;

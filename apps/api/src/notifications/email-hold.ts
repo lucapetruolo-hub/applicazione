@@ -11,13 +11,14 @@ import {
  * Quando parte l'email di una notifica
  * (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md, richiesta
  * di Luca): gli avvisi senza fretta aspettano il riassunto della sera (alle 19 o all'ora scelta), di notte
- * (22-7) le email aspettano il mattino. Una richiesta urgente parte sempre
- * subito. `null` = subito.
+ * (22-7) le email aspettano il mattino, anche le richieste urgenti se non si
+ * è scelto di riceverle subito. `null` = subito.
  */
 export function emailHoldUntil(prefs: NotificationPreferences, type: string, payload: unknown, now: Date = new Date()): Date | null {
-  if (isUrgent(payload)) return null;
-  if (prefs.digest && NOTIFICATION_DIGEST_TYPES.has(type)) return nextRomeHour(notificationDigestHour(prefs), now);
-  if (prefs.quietNight && isQuietHour(now)) return nextRomeHour(NOTIFICATION_QUIET_TO_HOUR, now);
+  const urgent = isUrgent(payload);
+  if (!urgent && prefs.digest && NOTIFICATION_DIGEST_TYPES.has(type)) return nextRomeHour(notificationDigestHour(prefs), now);
+  // Le richieste urgenti aspettano solo se la persona l'ha scelto (acceso di serie, scelta di Luca).
+  if (prefs.quietNight && isQuietHour(now) && (!urgent || prefs.quietNightUrgent !== false)) return nextRomeHour(NOTIFICATION_QUIET_TO_HOUR, now);
   return null;
 }
 

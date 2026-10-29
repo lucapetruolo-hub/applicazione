@@ -299,9 +299,24 @@ export default function NotifichePage() {
                 <SiteTile
                   icon="moon"
                   label="Di notte niente email"
-                  description="Dalle 22 alle 7 le email aspettano il mattino. Le richieste urgenti arrivano subito."
+                  description="Dalle 22 alle 7 le email aspettano il mattino."
                   checked={notificationPrefs.quietNight ?? true}
                   onChange={() => void save({ ...notificationPrefs, quietNight: !(notificationPrefs.quietNight ?? true) })}
+                  extra={
+                    role === "professional" && (notificationPrefs.quietNight ?? true) ? (
+                      <label className="nt-check">
+                        <input
+                          type="checkbox"
+                          checked={notificationPrefs.quietNightUrgent ?? true}
+                          onChange={() => void save({ ...notificationPrefs, quietNightUrgent: !(notificationPrefs.quietNightUrgent ?? true) })}
+                        />
+                        <span>
+                          Anche le richieste urgenti
+                          <small>Se lo togli, una richiesta urgente ti arriva subito anche di notte.</small>
+                        </span>
+                      </label>
+                    ) : undefined
+                  }
                 />
               </div>
             </section>

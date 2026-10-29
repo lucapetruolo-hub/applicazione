@@ -59,3 +59,12 @@ sezione "Quando arrivano le email".
   persone, `OPT_OUT_ADVICE_SHARE`/`OPT_OUT_ADVICE_MIN_PEOPLE` in
   `apps/api/src/admin/site-stats.ts`), al massimo due, con il link ad
   "Avvisi spenti".
+
+## Seguito: urgenti anche di notte (Luca, 29/10/2026)
+
+"Di notte niente email è attivo di default, dai la possibilità di non ricevere
+neanche le urgenti di notte, attiva di default anche questa": nel riquadro
+"Di notte niente email" il professionista ha la spunta "Anche le richieste
+urgenti" (`quietNightUrgent`, accesa di serie). Così di notte aspettano le 7
+anche le richieste urgenti; chi toglie la spunta le riceve subito. Cambia il
+punto 5 qui sopra. In Admin → Statistiche si conta chi le vuole anche di notte.
