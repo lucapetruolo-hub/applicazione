@@ -54,6 +54,9 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "QUOTE_UPDATED",
       "QUOTE_DATE_CONFIRMED",
       "QUOTE_DATE_REJECTED",
+      // Il cliente risponde all'altra data proposta dal professionista per un appuntamento fissato.
+      "QUOTE_DATE_CONFIRMED_BY_CLIENT",
+      "QUOTE_DATE_REJECTED_BY_CLIENT",
       // Acconto pagato ma lavoro non più confermabile: rimborsato (docs/CHANGELOG.md §240).
       "QUOTE_DEPOSIT_REFUNDED",
     ],

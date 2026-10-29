@@ -24,6 +24,8 @@ function setup(options: { otherBookings?: { scheduledAt: Date; scheduledEndAt: D
     clientConfirmedAt: new Date("2099-03-01T10:00:00.000Z"),
     clientCantComeAt: null,
     rescheduleRequestedAt: null,
+    rescheduleProposedBy: null,
+    rescheduleReminderAt: null,
     reminderSentAt: new Date("2099-03-09T08:00:00.000Z"),
     clientDepositReminderAt: null,
     clientReplyChannel: "WHATSAPP",
@@ -39,6 +41,7 @@ function setup(options: { otherBookings?: { scheduledAt: Date; scheduledEndAt: D
     clientProposedEndDate: null,
     clientProposedNote: null,
     clientNote: null,
+    professionalCounterNote: null,
     guidedRequest: { clientId: "c1", serviceMode: "HOME", closedReason: "COMPLETED" },
     professionalProfile: { userId: "pro1" },
   };
@@ -150,5 +153,42 @@ describe("Altra data per un appuntamento già fissato, dalla proposta standard",
   it("senza una proposta in sospeso non c'è nulla da accettare", async () => {
     const { service } = setup();
     await expect(service.confirmProposedDate("pro1", "q1")).rejects.toThrow("Nessuna data proposta");
+  });
+
+  it("il cliente non accetta la data che ha proposto lui", async () => {
+    const { service } = setup();
+    await service.proposeDate("c1", "q1", PROPOSAL);
+    await expect(service.confirmProposedDate("c1", "q1")).rejects.toThrow("Hai proposto tu");
+  });
+
+  it("\"Modifica\" del professionista: il cliente accetta e l'appuntamento si sposta", async () => {
+    const { service, booking, quote, notify, log } = setup();
+    await service.proposeDate("c1", "q1", PROPOSAL);
+    await service.counterProposeDate("pro1", "q1", { date: "2099-03-13", startTime: "09:00", endTime: "11:00", note: "Il 12 non riesco", isManual: true });
+    expect(booking.rescheduleProposedBy).toBe("PROFESSIONAL");
+    expect((quote.clientProposedDate as Date).toISOString()).toBe("2099-03-13T09:00:00.000Z");
+    expect(quote.professionalCounterNote).toBe("Il 12 non riesco");
+    expect(quote.status).toBe("ACCEPTED");
+    expect(notify).toHaveBeenCalledWith("c1", "QUOTE_DATE_CHANGED", expect.objectContaining({ booked: true, bookingId: "b1" }));
+    // Ora tocca al cliente: il professionista non può accettare la sua stessa proposta.
+    await expect(service.confirmProposedDate("pro1", "q1")).rejects.toThrow("Hai proposto tu");
+    notify.mockClear();
+    await service.confirmProposedDate("c1", "q1");
+    expect((booking.scheduledAt as Date).toISOString()).toBe("2099-03-13T09:00:00.000Z");
+    expect(booking.rescheduleProposedBy).toBeNull();
+    expect(quote.professionalCounterNote).toBeNull();
+    expect(notify).toHaveBeenCalledWith("pro1", "QUOTE_DATE_CONFIRMED_BY_CLIENT", expect.objectContaining({ bookingId: "b1" }));
+    expect(log).toHaveBeenLastCalledWith("r1", "p1", "CLIENT", expect.stringContaining("Il cliente ha accettato"));
+  });
+
+  it("il cliente rifiuta la data del professionista: l'appuntamento resta com'era", async () => {
+    const { service, booking, notify } = setup();
+    await service.proposeDate("c1", "q1", PROPOSAL);
+    await service.counterProposeDate("pro1", "q1", { date: "2099-03-13", startTime: "09:00", endTime: "11:00", isManual: true });
+    notify.mockClear();
+    await service.rejectProposedDate("c1", "q1");
+    expect(booking.scheduledAt).toBe(FAR);
+    expect(booking.rescheduleRequestedAt).toBeNull();
+    expect(notify).toHaveBeenCalledWith("pro1", "QUOTE_DATE_REJECTED_BY_CLIENT", expect.objectContaining({ bookingId: "b1" }));
   });
 });

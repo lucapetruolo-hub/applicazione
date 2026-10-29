@@ -464,6 +464,20 @@ export function RequestCard({
       setIsRejectingDate(false);
     }
   }
+  function toggleCounterForm() {
+    if (lead.quote?.clientProposedDate) {
+      presetSchedule(lead.quote.clientProposedDate, lead.quote.clientProposedEndDate, {
+        slot: setCounterSlotKey,
+        manual: setUseManualCounterDateTime,
+        date: setManualCounterDate,
+        start: setManualCounterStartTime,
+        end: setManualCounterEndTime,
+      });
+    }
+    setCounterNote("");
+    setCounterError(null);
+    setShowCounterForm((v) => !v);
+  }
   async function handleCounterPropose() {
     if (!lead.quote) return;
     let payload: { date: string; startTime: string; endTime: string; isManual?: boolean };
@@ -612,7 +626,9 @@ export function RequestCard({
   // proposta arriva allo stesso modo, sul preventivo: stessi riquadro e
   // pulsanti, e accettandola l'appuntamento si sposta
   // (docs/changelog/2026-10-28-promemoria-whatsapp.md).
-  const bookedDateChange = booking?.status === "CONFIRMED" && Boolean(booking.dateChangeRequestedAt) && Boolean(lead.quote?.clientProposedDate);
+  const bookedDateChange = booking?.dateChange?.proposedBy === "CLIENT";
+  // Con "Modifica" hai proposto tu un'altra data: aspetta il cliente.
+  const myBookedDateChange = booking?.dateChange?.proposedBy === "PROFESSIONAL" ? booking.dateChange : null;
   const dateChangePending = (stage === "modifica_richiesta" || bookedDateChange) && Boolean(lead.quote?.clientProposedDate);
   const proposalChange = lead.quote?.clientProposedDate
     ? scheduleChangeBetween(
@@ -891,6 +907,17 @@ export function RequestCard({
               afterLabel="Appuntamento"
               afterText={formatSlotRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}
               note={lead.quote.clientNote}
+            />
+          ) : null}
+          {myBookedDateChange && booking ? (
+            <ScheduleChangeBox
+              marginTop="$3"
+              title="Hai proposto un'altra data: in attesa del cliente"
+              beforeLabel="Appuntamento di adesso"
+              beforeText={formatSlotRange(booking.scheduledAt, booking.scheduledEndAt)}
+              afterLabel="Nuova data proposta"
+              afterText={formatSlotRange(myBookedDateChange.start, myBookedDateChange.end)}
+              note={myBookedDateChange.note}
             />
           ) : null}
 
@@ -1293,20 +1320,7 @@ export function RequestCard({
                     "Proponi altra data" quasi solo testo). */}
                 <CardButton
                   fill={brand.ottone}
-                  onPress={() => {
-                    if (lead.quote?.clientProposedDate) {
-                      presetSchedule(lead.quote.clientProposedDate, lead.quote.clientProposedEndDate, {
-                        slot: setCounterSlotKey,
-                        manual: setUseManualCounterDateTime,
-                        date: setManualCounterDate,
-                        start: setManualCounterStartTime,
-                        end: setManualCounterEndTime,
-                      });
-                    }
-                    setCounterNote("");
-                    setCounterError(null);
-                    setShowCounterForm((v) => !v);
-                  }}
+                  onPress={toggleCounterForm}
                 >
                   Modifica
                 </CardButton>
@@ -1318,10 +1332,13 @@ export function RequestCard({
             ) : null}
 
             {bookedDateChange ? (
-              // Senza "Modifica": per un'altra data ancora c'è la chat.
+              // Stessi pulsanti della modifica di un preventivo; "Contatta" è già sotto, con il lavoro.
               <XStack gap="$2" flexWrap="wrap">
                 <CardButton fill={brand.verificato} disabled={isConfirmingDate} onPress={handleConfirmDate}>
                   {isConfirmingDate ? "Conferma..." : "Accetta nuova data"}
+                </CardButton>
+                <CardButton fill={brand.ottone} onPress={toggleCounterForm}>
+                  Modifica
                 </CardButton>
                 <CardButton tone="danger" disabled={isRejectingDate} onPress={handleRejectDate}>
                   {isRejectingDate ? "..." : "Rifiuta la proposta"}

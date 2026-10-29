@@ -78,6 +78,7 @@ import { TimelineService } from "../timeline/timeline.service";
 import { ProfessionalVerificationService } from "../professional-verification/professional-verification.service";
 import { clientNameForProfessional, publicClientName } from "../common/client-name.util";
 import { cancellationNoticeFor } from "../bookings/one-job-per-request";
+import { bookingDateChange } from "../quotes/booked-date-change";
 
 export type ProfessionalSearchParams = {
   category?: string;
@@ -1641,7 +1642,7 @@ export class ProfessionalsService {
       clientCantComeAt: booking.clientCantComeAt?.toISOString() ?? null,
       clientReminder: clientReminder(booking),
       // Altra data proposta dal cliente sul preventivo accettato (docs/changelog/2026-10-28-promemoria-whatsapp.md).
-      dateChangeRequestedAt: booking.rescheduleRequestedAt?.toISOString() ?? null,
+      dateChange: bookingDateChange(booking, booking.quote),
       professionalProblemReport: booking.quote?.guidedRequestId ? (problemReportByGuidedRequestId.get(booking.quote.guidedRequestId) ?? null) : null,
       description: booking.quote?.guidedRequest?.description ?? null,
       photoUrls: booking.quote?.guidedRequest?.photoUrls ?? [],

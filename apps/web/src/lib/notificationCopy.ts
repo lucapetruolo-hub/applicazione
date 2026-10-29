@@ -19,6 +19,8 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   QUOTE_UPDATED: { icon: "📝", message: "Il professionista ha aggiornato il tuo preventivo (voci, note o modi di pagamento), senza cambiare data e orario." },
   QUOTE_DATE_CONFIRMED: { icon: "✅", message: "Il professionista ha confermato la data che hai proposto." },
   QUOTE_DATE_REJECTED: { icon: "📅", message: "Il professionista non è disponibile in quella data." },
+  QUOTE_DATE_CONFIRMED_BY_CLIENT: { icon: "✅", message: "Il cliente ha accettato la nuova data che hai proposto: l'appuntamento è spostato." },
+  QUOTE_DATE_REJECTED_BY_CLIENT: { icon: "📅", message: "Il cliente non può nella data che hai proposto: l'appuntamento resta com'era." },
   JOB_COMPLETED: { icon: "✅", message: "Il professionista ha segnalato il lavoro come terminato." },
   BOOKING_CANCELED_BY_PROFESSIONAL: { icon: "⚠️", message: "Un intervento è stato annullato dal professionista." },
   BOOKING_CANCELED_BY_CLIENT: { icon: "⚠️", message: "Il cliente ha annullato un intervento." },
@@ -198,6 +200,18 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   }
   // Nuovo appuntamento nel testo della notifica (docs/CHANGELOG.md §228).
   const newSlot = slotLabel(data.to);
+  // Altra data per un appuntamento già fissato: proposta con "Modifica" o promemoria dopo 12 ore.
+  if (data.booked === true && data.reminder === true && type === "QUOTE_DATE_PROPOSED") {
+    return { icon: "⏰", message: `Il cliente aspetta la tua risposta sulla nuova data${newSlot ? ` (${newSlot})` : ""}.` };
+  }
+  if (data.booked === true && type === "QUOTE_DATE_CHANGED") {
+    return {
+      icon: data.reminder === true ? "⏰" : "🗓️",
+      message: data.reminder === true
+        ? `Il professionista aspetta la tua risposta sulla nuova data${newSlot ? ` (${newSlot})` : ""}.`
+        : `Il professionista propone un'altra data per l'appuntamento${newSlot ? `: ${newSlot}` : ""}.`,
+    };
+  }
   if (change && type === "QUOTE_DATE_CHANGED") {
     return { icon: "🗓️", message: `Il professionista ha modificato ${scheduleChangeObject(change)} del tuo preventivo${newSlot ? `: ora è ${newSlot}` : ""}.` };
   }

@@ -47,6 +47,8 @@ const CALENDAR_NOTIFICATION_TYPES: Record<string, "add" | "cancel"> = {
   BOOKING_CONFIRMED: "add",
   // Il professionista conferma la data proposta dal cliente: nasce il lavoro (§346).
   QUOTE_DATE_CONFIRMED: "add",
+  // Appuntamento spostato su una data proposta dal professionista: l'evento si aggiorna.
+  QUOTE_DATE_CONFIRMED_BY_CLIENT: "add",
   BOOKING_REOPENED_BY_CLIENT: "add",
   BOOKING_REOPENED_BY_PROFESSIONAL: "add",
   BOOKING_CANCELED_BY_PROFESSIONAL: "cancel",

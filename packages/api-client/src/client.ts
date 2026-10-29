@@ -2,6 +2,7 @@ import type {
   AgendaAttention,
   AppointmentReplyAction,
   AppointmentReplyState,
+  BookingDateChange,
   ProfessionalKind,
   EmailStatus,
   ProfessionalEntityTypeValue,
@@ -214,8 +215,8 @@ export type ClientBooking = {
   cancellationNoticeHours: number;
   /** Annullando dentro il preavviso l'acconto online resta al professionista (docs/CHANGELOG.md §348). */
   lateCancelKeepsDeposit: boolean;
-  /** Il cliente ha proposto un'altra data per l'appuntamento (sul preventivo accettato), in attesa del professionista. */
-  dateChangeRequestedAt: string | null;
+  /** Altra data proposta per l'appuntamento, in attesa di risposta. */
+  dateChange: BookingDateChange | null;
   /** Link per una consulenza video (Meet/Zoom/ecc.), impostato dal professionista — richiesta esplicita dell'utente. */
   meetingLink: string | null;
   /** Il professionista ha eliminato l'account (soft-delete) — richiesta esplicita dell'utente, mostra "Account eliminato" con possibilità di eliminare la prenotazione dalla lista. */

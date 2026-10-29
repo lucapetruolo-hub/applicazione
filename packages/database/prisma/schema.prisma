@@ -1241,6 +1241,11 @@ model Booking {
   // preventivo (clientProposedDate), come ogni proposta; qui quando il
   // cliente l'ha chiesta, finché il professionista non risponde.
   rescheduleRequestedAt   DateTime?
+  // Chi aspetta la risposta: "CLIENT" (la propone il cliente) o
+  // "PROFESSIONAL" (con "Modifica" il professionista ne propone un'altra).
+  rescheduleProposedBy    String?
+  // Promemoria a chi deve rispondere, dopo 12 ore senza risposta.
+  rescheduleReminderAt    DateTime?
   createdAt               DateTime      @default(now())
   updatedAt               DateTime      @updatedAt
 

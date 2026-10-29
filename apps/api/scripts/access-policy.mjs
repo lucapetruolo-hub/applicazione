@@ -273,11 +273,12 @@ const owned = {
   "PATCH /professionals/me/leads/:id/note": { ...lead, body: () => ({ note: "Nota" }) },
 
   "POST /quotes": { kind: "owned", owners: ["proA"], strangers: ["proB"], body: (f) => quoteBody(f) },
-  "POST /quotes/:id/confirm-proposed-date": quote({ owners: ["proA"] }),
+  // Su un appuntamento fissato risponde anche il cliente, alla data proposta dal professionista.
+  "POST /quotes/:id/confirm-proposed-date": quote({ owners: ["proA", "clientA"] }),
   "POST /quotes/:id/counter-propose-date": quote({ owners: ["proA"] }),
   "POST /quotes/:id/propose-date": quote(),
   "POST /quotes/:id/reject": quote({ body: () => ({ note: "No grazie" }) }),
-  "POST /quotes/:id/reject-proposed-date": quote({ owners: ["proA"] }),
+  "POST /quotes/:id/reject-proposed-date": quote({ owners: ["proA", "clientA"] }),
   "POST /quotes/:id/withdraw": quote({ owners: ["proA"] }),
 
   // Ricorso contro una decisione: solo chi possiede il contenuto segnalato.

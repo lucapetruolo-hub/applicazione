@@ -211,8 +211,24 @@ lavori esterni dell'agenda non ricevono nulla (domanda 70 per l'avvocato).
   riguarda l'appuntamento fissato (i preventivi accettati di prima possono
   avere ancora una vecchia `clientProposedDate`). Accettando si
   ricontrolla che la fascia nuova sia libera, come per ogni data proposta.
-  Niente "Modifica" del professionista su un appuntamento fissato: per
-  un'altra data ancora c'è la chat.
+- Decimo giro (Luca, 29/10: "Effettua le 3 migliorie"):
+  - **Agenda**: la data proposta compare "In attesa" (tratteggiata, come i
+    preventivi) nella griglia, nei puntini del mese e nell'elenco, con chi
+    deve rispondere;
+  - **promemoria dopo 12 ore** senza risposta, uno solo, a chi deve
+    rispondere, mai tra le 21 e le 8 (`DateChangeRemindersService`,
+    `Booking.rescheduleReminderAt`, stesse notifiche con `reminder: true`);
+  - **"Modifica" del professionista anche sull'appuntamento fissato**,
+    come nella trattativa del preventivo: propone un'altra data e il
+    cliente risponde con "Accetta nuova data", "Proponi un'altra data" o
+    "Rifiuta" (`BookedDateChangeAnswer.tsx`), dagli stessi indirizzi
+    `confirm-proposed-date` e `reject-proposed-date` (ora anche per il
+    cliente, solo quando tocca a lui). Chi ha proposto la data sta in
+    `Booking.rescheduleProposedBy`; al professionista le risposte del
+    cliente arrivano come `QUOTE_DATE_CONFIRMED_BY_CLIENT` e
+    `QUOTE_DATE_REJECTED_BY_CLIENT` (le notifiche hanno una sola pagina per
+    tipo, quelle di sempre portano alle richieste del cliente). Migrazione
+    `20261029170000_spostamento_risposte`.
 
 Modelli da far approvare a Meta: `docs/whatsapp-modelli.md`.
 
@@ -233,6 +249,10 @@ Modelli da far approvare a Meta: `docs/whatsapp-modelli.md`.
   sull'appuntamento fissato, stessa data rifiutata, appuntamento annullato,
   accetta con promemoria e risposte da capo, fascia piena, rifiuta, niente
   da accettare senza proposta).
+- Decimo giro: "Modifica" del professionista accettata o rifiutata dal
+  cliente, nessuno accetta la propria proposta, promemoria dopo 12 ore a
+  chi tocca, una volta sola e mai di notte
+  (`date-change-reminders.service.test.ts`). 1004 prove dell'API verdi.
 - Scheda WhatsApp di Notifiche controllata a schermo, su computer e
   telefono, nei cinque stati (spento, da attivare, codice mandato, attivo,
   numero fisso).

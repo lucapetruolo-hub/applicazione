@@ -45,6 +45,7 @@ import { clientNextAction } from "@/lib/clientNextAction";
 import { CLIENT_STAGE_LABEL, type RequestStage } from "@/lib/requestStage";
 import { BookingSection, ChangeLinks } from "./BookingSection";
 import { QuoteDateChooser } from "./QuoteDateChooser";
+import { BookedDateChangeAnswer } from "./BookedDateChangeAnswer";
 import { QuoteCard, formatQuoteDateRange } from "./QuoteCard";
 import { ClientInvoiceRequestPanel } from "@/components/ClientInvoiceRequestForm";
 import { JobDocumentsModal } from "@/components/JobDocumentsModal";
@@ -871,17 +872,21 @@ export function GuidedRequestCard({
         onCancel={() => setShowCancelModal(true)}
       />
       {/* Altra data per l'appuntamento: la stessa "Proponi un'altra data" del preventivo (docs/changelog/2026-10-28-promemoria-whatsapp.md). */}
-      {acceptedQuote && booking.status === "CONFIRMED" && booking.dateChangeRequestedAt && acceptedQuote.clientProposedDate && !showReschedule ? (
+      {acceptedQuote && booking.dateChange?.proposedBy === "CLIENT" && !showReschedule ? (
         <Text fontSize={13} color={brand.ottone} fontWeight="600" paddingHorizontal="$1">
-          In attesa di conferma del professionista per il {formatQuoteDateRange(acceptedQuote.clientProposedDate, acceptedQuote.clientProposedEndDate)}. Fino ad allora l&apos;appuntamento resta com&apos;è.
+          In attesa di conferma del professionista per il {formatQuoteDateRange(booking.dateChange.start, booking.dateChange.end)}. Fino ad allora l&apos;appuntamento resta com&apos;è.
         </Text>
+      ) : null}
+      {/* Con "Modifica" il professionista propone un'altra data: stessi pulsanti di una proposta. */}
+      {acceptedQuote && booking.dateChange?.proposedBy === "PROFESSIONAL" && !showReschedule ? (
+        <BookedDateChangeAnswer token={token} quoteId={acceptedQuote.id} booking={booking} dateChange={booking.dateChange} onPropose={() => setShowReschedule(true)} onChanged={onChanged} />
       ) : null}
       {acceptedQuote && showReschedule ? (
         <QuoteDateChooser
           token={token}
           quote={acceptedQuote}
           serviceMode={request.serviceMode}
-          from={booking.dateChangeRequestedAt && acceptedQuote.clientProposedDate ? { start: acceptedQuote.clientProposedDate, end: acceptedQuote.clientProposedEndDate } : { start: booking.scheduledAt, end: booking.scheduledEndAt }}
+          from={booking.dateChange ? { start: booking.dateChange.start, end: booking.dateChange.end } : { start: booking.scheduledAt, end: booking.scheduledEndAt }}
           onSent={() => {
             setShowReschedule(false);
             onChanged();

@@ -345,14 +345,18 @@ const BUILDERS: Record<string, Builder> = {
     // Appuntamento già fissato: "Non posso più" → "Proponi un'altra data"
     // (docs/changelog/2026-10-28-promemoria-whatsapp.md).
     if (payload.booked === true) {
+      // Promemoria dopo 12 ore senza risposta.
+      const reminder = payload.reminder === true;
       return {
         kind: "notification",
         tone: "urgent",
-        subject: `Il cliente propone ${scheduleChangeAlternative(change)} per l'appuntamento`,
+        subject: reminder ? "Il cliente aspetta la tua risposta sulla nuova data" : `Il cliente propone ${scheduleChangeAlternative(change)} per l'appuntamento`,
         greeting: ctx.name,
-        title: `Il cliente propone ${scheduleChangeAlternative(change)}`,
+        title: reminder ? "Il cliente aspetta la tua risposta" : `Il cliente propone ${scheduleChangeAlternative(change)}`,
         paragraphs: [
-          `Il cliente non può più esserci all'appuntamento per **${job(ctx)}** e ti propone ${scheduleChangeAlternative(change)}.`,
+          reminder
+            ? `Il cliente ti ha proposto un'altra data per l'appuntamento per **${job(ctx)}** e aspetta ancora la tua risposta.`
+            : `Il cliente non può più esserci all'appuntamento per **${job(ctx)}** e ti propone ${scheduleChangeAlternative(change)}.`,
           ...quotedNote(payload),
           "Se la accetti l'appuntamento si sposta, con il pagamento com'era. Se la rifiuti resta com'è.",
         ],
@@ -377,6 +381,28 @@ const BUILDERS: Record<string, Builder> = {
     };
   },
   QUOTE_DATE_CHANGED: (payload, ctx) => {
+    // Appuntamento già fissato: con "Modifica" il professionista propone
+    // un'altra data, che il cliente accetta o rifiuta
+    // (docs/changelog/2026-10-28-promemoria-whatsapp.md).
+    if (payload.booked === true) {
+      const reminder = payload.reminder === true;
+      return {
+        kind: "notification",
+        tone: "urgent",
+        subject: reminder ? `${pro(ctx)} aspetta la tua risposta sulla nuova data` : `${pro(ctx)} propone un'altra data per l'appuntamento`,
+        greeting: ctx.name,
+        title: reminder ? `${pro(ctx)} aspetta la tua risposta` : "Nuova data proposta",
+        paragraphs: [
+          reminder
+            ? `**${pro(ctx)}** ti ha proposto un'altra data per l'appuntamento per **${job(ctx)}** e aspetta ancora la tua risposta.`
+            : `**${pro(ctx)}** non può nella data che hai proposto per **${job(ctx)}** e te ne propone un'altra.`,
+          ...quotedNote(payload),
+          "Se la accetti l'appuntamento si sposta, con il pagamento com'era. Se la rifiuti resta com'è.",
+        ],
+        details: changeDetails(ctx, payload, "Appuntamento di adesso", "Nuova proposta", true),
+        cta: clientRequests(),
+      };
+    }
     // Stessa data e stesso orario: il professionista ha solo aggiunto una
     // nota (docs/CHANGELOG.md §196).
     if (payload.noteOnly === true) {
@@ -449,6 +475,27 @@ const BUILDERS: Record<string, Builder> = {
       cta: clientRequests(),
     };
   },
+  // Il cliente risponde all'altra data proposta dal professionista per un
+  // appuntamento fissato (docs/changelog/2026-10-28-promemoria-whatsapp.md).
+  QUOTE_DATE_CONFIRMED_BY_CLIENT: (payload, ctx) => ({
+    kind: "notification",
+    subject: "Il cliente ha accettato la nuova data",
+    greeting: ctx.name,
+    title: "Appuntamento spostato",
+    paragraphs: [`Il cliente ha accettato la data che hai proposto per **${job(ctx)}**: l'appuntamento è spostato.`],
+    details: changeDetails(ctx, payload, "Prima", "Adesso", false),
+    cta: proRequests("Apri la richiesta"),
+  }),
+  QUOTE_DATE_REJECTED_BY_CLIENT: (payload, ctx) => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: "Il cliente non può nella data che hai proposto",
+    greeting: ctx.name,
+    title: "Data non accettata",
+    paragraphs: [`Il cliente non può nella data che hai proposto per **${job(ctx)}**: l'appuntamento resta com'era.`, "Se serve, scrivigli in chat per trovare insieme il momento giusto."],
+    details: changeDetails(ctx, payload, "Data che avevi proposto", "Resta valida", false),
+    cta: proRequests("Apri la richiesta"),
+  }),
   QUOTE_DATE_REJECTED: (payload, ctx) => {
     const details = changeDetails(ctx, payload, "Data che avevi proposto", "Resta valida", true);
     if (payload.booked === true) {

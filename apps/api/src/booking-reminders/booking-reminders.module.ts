@@ -7,6 +7,7 @@ import { WhatsAppModule } from "../whatsapp/whatsapp.module";
 import { BookingRemindersService } from "./booking-reminders.service";
 import { BookingRepliesService } from "./booking-replies.service";
 import { BookingRepliesController } from "./booking-replies.controller";
+import { DateChangeRemindersService } from "./date-change-reminders.service";
 
 @Module({
   // NotificationsModule e TimelineModule: le risposte del cliente ai
@@ -19,6 +20,10 @@ import { BookingRepliesController } from "./booking-replies.controller";
     TimelineModule,
   ],
   controllers: [BookingRepliesController],
-  providers: [BookingRemindersService, BookingRepliesService],
+  providers: [
+    BookingRemindersService,
+    BookingRepliesService,
+    DateChangeRemindersService,
+  ],
 })
 export class BookingRemindersModule {}
