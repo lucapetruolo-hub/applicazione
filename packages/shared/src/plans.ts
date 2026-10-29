@@ -127,32 +127,6 @@ export type AdminFounders = {
     deleted: boolean;
   }[];
 };
-/**
- * Abbonamenti a pagamento accesi dall'admin (richiesta di Luca del
- * 29/10/2026): la data di partenza è almeno questi giorni dopo la scelta,
- * così ogni professionista ha il tempo di leggere l'avviso e scegliere.
- */
-export const PAID_START_MIN_NOTICE_DAYS = 14;
-
-/** Stato per l'area admin (`GET /admin/paid-start`). */
-export type AdminPaidStart = {
-  /** Giorno da cui si paga; null = tutti gratis finché non lo decidi. */
-  paidFrom: string | null;
-  /** Il giorno è già arrivato: chi non ha scelto un livello a fine periodo gratuito va in pausa. */
-  started: boolean;
-  /** Primo giorno che si può scegliere (AAAA-MM-GG). */
-  earliestDay: string;
-  /** Professionisti ancora nel periodo gratuito: ricevono l'avviso all'accensione. */
-  inFreePeriod: number;
-  /** Di questi, quanti hanno già finito i mesi gratuiti e restano gratis solo per l'attesa. */
-  freeOnlyByWaiting: number;
-  /**
-   * Hanno già scelto un livello nei giorni gratuiti: il loro primo addebito
-   * è fissato su Stripe alla data di allora e non si sposta cambiando il giorno.
-   */
-  tierChosenInFreePeriod: number;
-};
-
 /** Avviso quando si usa questa quota del limite mensile. */
 export const USAGE_WARNING_RATIO = 0.8;
 
@@ -247,14 +221,6 @@ export type MySubscription = {
   upgradeQuotes: { tier: SubscriptionTier; amountEurCents: number; until: string | null }[];
   /** Pagamenti attivi su questo ambiente (chiave Stripe presente). */
   checkoutAvailable: boolean;
-  /**
-   * Abbonamenti a pagamento non ancora accesi dall'admin (richiesta di Luca
-   * del 29/10/2026, docs/changelog/2026-10-29-abbonamenti-a-pagamento-da-admin.md):
-   * il periodo gratuito non finisce e non si sceglie un livello.
-   */
-  freeUntilPaidStart: boolean;
-  /** Giorno da cui gli abbonamenti diventano a pagamento, se l'admin l'ha deciso. */
-  paidFrom: string | null;
   /** Profilo non visibile finché non compila tipo e dati fiscali (docs/CHANGELOG.md §241). */
   fiscalDataNeeded: boolean;
   /** Deve verificare l'identità prima di inviare preventivi (docs/CHANGELOG.md §253). */

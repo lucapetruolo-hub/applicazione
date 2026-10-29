@@ -73,24 +73,18 @@ export type SubscriptionRow = {
   currentPeriodStart?: Date | null;
   currentPeriodEnd?: Date | null;
   founderNumber?: number | null;
-  /**
-   * Abbonamenti a pagamento non ancora accesi dall'admin
-   * (docs/changelog/2026-10-29-abbonamenti-a-pagamento-da-admin.md): il
-   * periodo gratuito finito resta gratuito, con il limite di Base.
-   */
-  freeOnHold?: boolean;
 };
 
 export function subscriptionState(row: SubscriptionRow | null, now: Date): MySubscription["state"] {
   if (!row || row.status === "TRIALING") {
-    return (row?.trialEndsAt && row.trialEndsAt.getTime() > now.getTime()) || row?.freeOnHold ? "TRIAL" : "TRIAL_ENDED";
+    return row?.trialEndsAt && row.trialEndsAt.getTime() > now.getTime() ? "TRIAL" : "TRIAL_ENDED";
   }
   if (row.status === "CANCELED") return "CANCELED";
   // Annullato con giorni ancora pagati: attivo fino alla scadenza. Rete di
   // sicurezza se il webhook di fine abbonamento di Stripe tardasse.
   if (row.cancelAtPeriodEnd && row.currentPeriodEnd && row.currentPeriodEnd.getTime() <= now.getTime()) return "CANCELED";
   // Una riga attiva senza livello (vecchio piano gratuito) vale come prova finita.
-  if (!tierOfPlan(row.plan)) return row.freeOnHold ? "TRIAL" : "TRIAL_ENDED";
+  if (!tierOfPlan(row.plan)) return "TRIAL_ENDED";
   if (row.status === "PAST_DUE") return "PAST_DUE";
   return "ACTIVE";
 }

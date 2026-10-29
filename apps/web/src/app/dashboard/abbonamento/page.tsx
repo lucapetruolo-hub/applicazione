@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Check } from "lucide-react";
 import {
-  PAID_START_MIN_NOTICE_DAYS,
   RENEWAL_NOTICE_DAYS,
   freePeriodSummary,
   SUBSCRIPTION_FEATURES,
@@ -85,28 +84,21 @@ function tierRank(tier: SubscriptionTier): number {
 function statusText(sub: MySubscription): { title: string; detail: string } {
   const tierLabel = sub.tier ? subscriptionTierInfo(sub.tier).label : null;
   const trialFuture = sub.trialEndsAt && new Date(sub.trialEndsAt).getTime() > Date.now();
-  // Finché non partono gli abbonamenti a pagamento (decisione dell'admin,
-  // docs/changelog/2026-10-29-abbonamenti-a-pagamento-da-admin.md) il periodo
-  // gratuito non finisce: nessuna data dopo cui pagare, solo la promessa del preavviso.
-  const notice = `Prima che diventi a pagamento ti avvisiamo con almeno ${PAID_START_MIN_NOTICE_DAYS} giorni di anticipo.`;
   switch (sub.state) {
     case "TRIAL":
-      if (sub.freeUntilPaidStart && sub.trialEndsAt && !trialFuture) {
-        return { title: "Periodo gratuito", detail: `Usi tutte le funzioni gratis, senza limite di lavori. ${notice}` };
-      }
       // Primi 100 professionisti: 3 mesi gratis invece di uno (docs/CHANGELOG.md §363).
       if (sub.founder) {
         return {
           title: `${sub.founder.months} mesi gratis · livello Base`,
           detail: sub.trialEndsAt
-            ? `Sei tra i primi 100 professionisti: usi tutte le funzioni del livello Base gratis fino al ${formatDate(sub.trialEndsAt)}. ${sub.freeUntilPaidStart ? notice : "Poi scegli tu se continuare."}`
+            ? `Sei tra i primi 100 professionisti: usi tutte le funzioni del livello Base gratis fino al ${formatDate(sub.trialEndsAt)}. Poi scegli tu se continuare.`
             : `Sei tra i primi 100 professionisti: usi tutte le funzioni del livello Base gratis. I ${sub.founder.months} mesi partono il giorno del lancio del sito.`,
         };
       }
       return {
         title: sub.bonusMonthGranted ? "Mese gratuito in regalo · livello Base" : "Mese gratuito · livello Base",
         detail: sub.trialEndsAt
-          ? `${sub.bonusMonthGranted ? "Ti abbiamo regalato un altro mese: usi" : "Usi"} tutte le funzioni del livello Base gratis fino al ${formatDate(sub.trialEndsAt)}. ${sub.freeUntilPaidStart ? notice : "Poi scegli il livello che fa per te."}`
+          ? `${sub.bonusMonthGranted ? "Ti abbiamo regalato un altro mese: usi" : "Usi"} tutte le funzioni del livello Base gratis fino al ${formatDate(sub.trialEndsAt)}. Poi scegli il livello che fa per te.`
           : "Usi tutte le funzioni del livello Base gratis. Il mese gratuito inizia il giorno del lancio del sito: prima non scorre.",
       };
     case "TRIAL_ENDED":
@@ -445,11 +437,7 @@ function AbbonamentoContent() {
             </Surface>
           ) : null}
           {sub && !sub.checkoutAvailable ? (
-            <Text color={brand.grafite70}>
-              {sub.freeUntilPaidStart
-                ? "Per ora usi il sito gratis: il livello si sceglie quando partono gli abbonamenti a pagamento."
-                : "I pagamenti online non sono ancora attivi su questo ambiente."}
-            </Text>
+            <Text color={brand.grafite70}>I pagamenti online non sono ancora attivi su questo ambiente.</Text>
           ) : null}
           {checkoutError ? <Text color={brand.urgenza}>{checkoutError}</Text> : null}
           <YStack gap="$3" $gtSm={{ flexDirection: "row" }}>
@@ -564,7 +552,7 @@ function AbbonamentoContent() {
                     // Senza Stripe nessun livello si può scegliere: una riga chiara
                     // al posto di un pulsante spento che sembra attivo (§349).
                     <Text color={brand.grafite70} fontSize={16} paddingVertical="$2">
-                      {sub.freeUntilPaidStart ? "Disponibile più avanti" : "Disponibile dal lancio"}
+                      Disponibile dal lancio
                     </Text>
                   ) : (
                     <Button

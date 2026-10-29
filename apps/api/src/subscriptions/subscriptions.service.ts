@@ -1,20 +1,17 @@
-import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import type { PrismaClient } from "@professionisti/database";
 import {
-  FOUNDER_FREE_MONTHS,
   FOUNDER_SPOTS,
   FOUNDER_TRIAL_DAYS,
   BONUS_MONTH_DAYS,
   BONUS_MONTH_NOTICE_DAYS,
-  PAID_START_MIN_NOTICE_DAYS,
   RENEWAL_NOTICE_DAYS,
   subscriptionTierInfo,
   tierPeriodPriceEurCents,
   type MySubscription,
   type BillingInterval,
   type AdminFounders,
-  type AdminPaidStart,
   type FounderSpots,
   type PauseReason,
   type SubscriptionTier,
@@ -23,7 +20,6 @@ import { PRISMA } from "../prisma/prisma.module";
 import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing } from "../professional-fiscal/public-visibility";
 import { identityVerificationNeeded } from "../identity-verification/identity-provider-env";
 import { NotificationsService } from "../notifications/notifications.service";
-import { AuditLogService } from "../audit-log/audit-log.service";
 import {
   countsClientsOnce,
   founderFreeMonths,
@@ -56,30 +52,10 @@ function paymentsActive(): boolean {
  * passata, docs/CHANGELOG.md §170). Senza data di lancio nessuno va in
  * pausa, anche con Stripe acceso: i professionisti reclutati prima del
  * lancio non spariscono dalla ricerca il giorno in cui si mette la chiave.
- * Lo stesso finché l'admin non accende gli abbonamenti a pagamento
- * (`freeOnHold`, docs/changelog/2026-10-29-abbonamenti-a-pagamento-da-admin.md).
  */
-function pausesActive(now: Date, freeOnHold = false): boolean {
-  return paymentsActive() && hasLaunched(now, launchDate()) && !freeOnHold;
+function pausesActive(now: Date): boolean {
+  return paymentsActive() && hasLaunched(now, launchDate());
 }
-
-/**
- * Gratis finché l'admin non accende gli abbonamenti a pagamento (richiesta
- * di Luca del 29/10/2026): nessun periodo gratuito finisce, niente pausa,
- * limite di lavori o livello da pagare. Non vale per gli account di prova
- * (§395), così il collaudo prova lo stesso la fine del mese gratuito.
- */
-function freeOnHoldFor(paidFrom: Date | null, testAccountAt: Date | null | undefined): boolean {
-  return paidFrom === null && !testAccountAt;
-}
-
-/** Giorno AAAA-MM-GG in ora italiana. */
-function romeDay(date: Date): string {
-  return date.toLocaleDateString("en-CA", { timeZone: "Europe/Rome" });
-}
-
-/** Righe nel periodo gratuito, senza livello scelto: le tocca l'accensione dei pagamenti. */
-const FREE_PERIOD_WHERE = { status: "TRIALING", stripeSubscriptionId: null, professionalProfile: { deletedAt: null, isDemo: false } } as const;
 
 /**
  * Abbonamento unico a livelli (CLAUDE.md §6, docs/CHANGELOG.md §161):
@@ -99,137 +75,17 @@ export class SubscriptionsService {
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly notificationsService: NotificationsService,
-    private readonly auditLogService: AuditLogService,
   ) {}
-
-  /**
-   * Giorno da cui gli abbonamenti sono a pagamento, scelto in Admin; null
-   * finché l'admin non lo decide: tutti gratis (richiesta di Luca del
-   * 29/10/2026, docs/changelog/2026-10-29-abbonamenti-a-pagamento-da-admin.md).
-   */
-  async paidFrom(): Promise<Date | null> {
-    const row = await this.prisma.subscriptionSettings.findFirst({ select: { paidFrom: true } });
-    return row?.paidFrom ?? null;
-  }
-
-  /** Il professionista è gratis in attesa che l'admin accenda i pagamenti? */
-  async freeOnHold(userId: string): Promise<boolean> {
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { testAccountAt: true } });
-    return freeOnHoldFor(await this.paidFrom(), user?.testAccountAt);
-  }
-
-  /** Stato per Admin → Professionisti. */
-  async adminPaidStart(now = new Date()): Promise<AdminPaidStart> {
-    const paidFrom = await this.paidFrom();
-    const [inFreePeriod, freeOnlyByWaiting, tierChosenInFreePeriod] = await Promise.all([
-      this.prisma.subscription.count({ where: FREE_PERIOD_WHERE }),
-      // Dopo il lancio: mesi gratuiti già finiti, gratis solo per l'attesa.
-      hasLaunched(now, launchDate()) ? this.prisma.subscription.count({ where: { ...FREE_PERIOD_WHERE, trialEndsAt: { lte: now } } }) : 0,
-      // Livello scelto nei giorni gratuiti: il primo addebito l'ha già fissato Stripe.
-      this.prisma.subscription.count({
-        where: { status: { in: ["ACTIVE", "PAST_DUE"] }, stripeSubscriptionId: { not: null }, trialEndsAt: { gt: now }, professionalProfile: { deletedAt: null } },
-      }),
-    ]);
-    return {
-      paidFrom: paidFrom?.toISOString() ?? null,
-      started: paidFrom !== null && paidFrom.getTime() <= now.getTime(),
-      earliestDay: romeDay(new Date(now.getTime() + PAID_START_MIN_NOTICE_DAYS * DAY_MS)),
-      inFreePeriod,
-      freeOnlyByWaiting: paidFrom ? 0 : freeOnlyByWaiting,
-      tierChosenInFreePeriod,
-    };
-  }
-
-  /**
-   * Accende gli abbonamenti a pagamento da un giorno (almeno
-   * PAID_START_MIN_NOTICE_DAYS giorni dopo), o li rispegne con `day` null.
-   * Ogni periodo gratuito arriva almeno a quel giorno e ogni professionista
-   * nel periodo gratuito riceve subito l'avviso con la data (o che resta
-   * gratis, se si rispegne prima della data); 3 giorni prima il solito
-   * avviso di fine periodo gratuito (`runTrialCheck`).
-   */
-  async setPaidFrom(adminUserId: string, day: string | null, now = new Date()): Promise<AdminPaidStart> {
-    const before = await this.paidFrom();
-    let paidFrom: Date | null = null;
-    if (day !== null) {
-      paidFrom = /^\d{4}-\d{2}-\d{2}$/.test(day) ? launchDate(day) : null;
-      if (!paidFrom) throw new BadRequestException("Scegli un giorno valido.");
-      if (day < romeDay(new Date(now.getTime() + PAID_START_MIN_NOTICE_DAYS * DAY_MS))) {
-        throw new BadRequestException(`Scegli un giorno ad almeno ${PAID_START_MIN_NOTICE_DAYS} giorni da oggi: i professionisti devono avere il tempo di scegliere.`);
-      }
-    }
-    if ((before?.getTime() ?? null) === (paidFrom?.getTime() ?? null)) return this.adminPaidStart(now);
-
-    const existing = await this.prisma.subscriptionSettings.findFirst({ select: { id: true } });
-    const data = { paidFrom, updatedByUserId: adminUserId };
-    const saved = existing
-      ? await this.prisma.subscriptionSettings.update({ where: { id: existing.id }, data })
-      : await this.prisma.subscriptionSettings.create({ data });
-    await this.auditLogService.record({
-      entityType: "SubscriptionSettings",
-      entityId: saved.id,
-      fieldName: "paidFrom",
-      oldValue: before?.toISOString() ?? null,
-      newValue: paidFrom?.toISOString() ?? null,
-      changedByUserId: adminUserId,
-    });
-    if (paidFrom) await this.alignTrialsToPaidStart(paidFrom);
-
-    // Avviso subito a chi è nel periodo gratuito: la data, o che resta gratis
-    // (solo se aveva già ricevuto una data ancora da venire).
-    const postponed = !paidFrom && before !== null && before.getTime() > now.getTime();
-    if (paidFrom || postponed) {
-      const subs = await this.prisma.subscription.findMany({
-        where: FREE_PERIOD_WHERE,
-        select: { founderNumber: true, trialEndsAt: true, professionalProfile: { select: { userId: true } } },
-      });
-      for (const sub of subs) {
-        try {
-          if (paidFrom) {
-            // Chi ha mesi gratuiti oltre quel giorno (primi 100) li tiene: gli si dice la sua data.
-            const until = sub.trialEndsAt && sub.trialEndsAt.getTime() > paidFrom.getTime() ? sub.trialEndsAt : paidFrom;
-            await this.notificationsService.notify(sub.professionalProfile.userId, "SUBSCRIPTION_PAID_START", {
-              date: until.toISOString(),
-              founder: Boolean(sub.founderNumber),
-            });
-          } else {
-            await this.notificationsService.notify(sub.professionalProfile.userId, "SUBSCRIPTION_PAID_START_POSTPONED", {});
-          }
-        } catch (error) {
-          this.logger.error(`Avviso di partenza dei pagamenti non riuscito per ${sub.professionalProfile.userId}`, error as Error);
-        }
-      }
-    }
-    // Pause e limiti seguono subito la scelta, senza aspettare il giro dell'ora.
-    await this.runPauseSweep(now);
-    return this.adminPaidStart(now);
-  }
-
-  /**
-   * Con gli abbonamenti a pagamento accesi: nessun periodo gratuito finisce
-   * prima del giorno scelto. Idempotente (anche nel giro di ogni ora, per chi
-   * si iscrive dopo); l'avviso di fine periodo riparte per la nuova data.
-   */
-  async alignTrialsToPaidStart(paidFrom: Date): Promise<number> {
-    const result = await this.prisma.subscription.updateMany({
-      where: { status: "TRIALING", stripeSubscriptionId: null, OR: [{ trialEndsAt: null }, { trialEndsAt: { lt: paidFrom } }] },
-      data: { trialEndsAt: paidFrom, trialEndingNotifiedAt: null },
-    });
-    return result.count;
-  }
 
   /** Avvia la prova gratuita alla creazione del profilo (idempotente): un mese dal lancio, o da oggi dopo il lancio. */
   async ensureTrial(professionalProfileId: string, now = new Date()): Promise<void> {
-    const trialEnd = trialEndFor(now, launchDate());
-    // Mai prima del giorno in cui partono gli abbonamenti a pagamento.
-    const paidFrom = await this.paidFrom();
     await this.prisma.subscription.upsert({
       where: { professionalProfileId },
       create: {
         professionalProfileId,
         plan: "FREE",
         status: "TRIALING",
-        trialEndsAt: paidFrom && paidFrom.getTime() > trialEnd.getTime() ? paidFrom : trialEnd,
+        trialEndsAt: trialEndFor(now, launchDate()),
       },
       update: {},
     });
@@ -329,13 +185,12 @@ export class SubscriptionsService {
       const now = new Date();
       const sub = await this.prisma.subscription.findUnique({
         where: { professionalProfileId },
-        include: { professionalProfile: { select: { userId: true, user: { select: { testAccountAt: true } } } } },
+        include: { professionalProfile: { select: { userId: true } } },
       });
       if (!sub) return;
       const used = await this.countUsedJobs(professionalProfileId, sub, now);
-      // Senza pagamenti attivi, prima del lancio o finché l'admin non accende
-      // gli abbonamenti a pagamento non c'è limite né livello superiore: niente avvisi.
-      if (!pausesActive(now, freeOnHoldFor(await this.paidFrom(), sub.professionalProfile.user.testAccountAt))) return;
+      // Senza pagamenti attivi o prima del lancio non c'è limite né livello superiore: niente avvisi.
+      if (!pausesActive(now)) return;
       await this.syncPause(professionalProfileId, now, used);
       const limit = monthlyLimit(sub, now);
       if (limit === null) return;
@@ -367,14 +222,13 @@ export class SubscriptionsService {
     professionalProfileId: string,
     now = new Date(),
     usedJobs?: number,
-    paidFrom?: Date | null,
   ): Promise<{ reason: PauseReason | null; limitReached: boolean }> {
     const profile = await this.prisma.professionalProfile.findUnique({
       where: { id: professionalProfileId },
-      select: { userId: true, isDemo: true, deletedAt: true, pausedReason: true, jobLimitReachedAt: true, subscription: true, user: { select: { testAccountAt: true } } },
+      select: { userId: true, isDemo: true, deletedAt: true, pausedReason: true, jobLimitReachedAt: true, subscription: true },
     });
     if (!profile || profile.deletedAt) return { reason: null, limitReached: false };
-    const active = !profile.isDemo && pausesActive(now, freeOnHoldFor(paidFrom === undefined ? await this.paidFrom() : paidFrom, profile.user.testAccountAt));
+    const active = !profile.isDemo && pausesActive(now);
     const reason = active ? pauseReason(profile.subscription, now) : null;
     const used = active && !reason ? (usedJobs ?? (await this.countUsedJobs(professionalProfileId, profile.subscription, now))) : 0;
     const limitReached = active && jobLimitReached(profile.subscription, used, now);
@@ -395,21 +249,12 @@ export class SubscriptionsService {
   }
 
   async getMySubscription(userId: string): Promise<MySubscription> {
-    const profile = await this.prisma.professionalProfile.findUnique({
-      where: { userId },
-      select: { id: true, verified: true, identityExpiredAt: true, user: { select: { testAccountAt: true } }, ...PUBLIC_VISIBILITY_SELECT },
-    });
+    const profile = await this.prisma.professionalProfile.findUnique({ where: { userId }, select: { id: true, verified: true, identityExpiredAt: true, ...PUBLIC_VISIBILITY_SELECT } });
     if (!profile) throw new NotFoundException("Profilo professionista non trovato. Completa prima il tuo profilo.");
     const now = new Date();
-    const paidFrom = await this.paidFrom();
-    const row = await this.prisma.subscription.findUnique({ where: { professionalProfileId: profile.id } });
-    // Chi ha già un abbonamento pagato (pagamenti rispenti dopo la partenza) lo tiene.
-    const paying = Boolean(row?.stripeSubscriptionId) && row?.status !== "CANCELED";
-    const freeOnHold = freeOnHoldFor(paidFrom, profile.user.testAccountAt) && !paying;
-    // In attesa dei pagamenti il periodo gratuito finito resta gratuito.
-    const sub = row ? { ...row, freeOnHold } : null;
+    const sub = await this.prisma.subscription.findUnique({ where: { professionalProfileId: profile.id } });
     const used = await this.countUsedJobs(profile.id, sub, now);
-    const { reason: pausedReason, limitReached } = await this.syncPause(profile.id, now, used, paidFrom);
+    const { reason: pausedReason, limitReached } = await this.syncPause(profile.id, now, used);
     const period = usagePeriod(sub, now);
     const launch = launchDate();
     // Prima del lancio la prova non scorre (docs/CHANGELOG.md §170): finisce
@@ -426,23 +271,17 @@ export class SubscriptionsService {
       cancelAtPeriodEnd: Boolean(sub?.cancelAtPeriodEnd),
       trialEndsAt: trialEndsAt?.toISOString() ?? null,
       bonusMonthGranted: Boolean(sub?.bonusMonthGrantedAt),
-      // Periodo gratuito allungato fino al giorno dei pagamenti: i tre mesi non
-      // finiscono più alla data salvata, le caselle dei mesi non hanno senso.
-      founder:
-        sub?.founderNumber && paidFrom && trialEndsAt?.getTime() === paidFrom.getTime()
-          ? { months: FOUNDER_FREE_MONTHS, currentMonth: null }
-          : founderFreeMonths(sub?.founderNumber, trialEndsAt, now),
+      founder: founderFreeMonths(sub?.founderNumber, trialEndsAt, now),
       usage: {
         used,
-        // In attesa dei pagamenti nessun limite: non si può passare a un livello superiore.
-        limit: freeOnHold ? null : monthlyLimit(sub, now),
+        limit: monthlyLimit(sub, now),
         periodStart: period.start.toISOString(),
         periodEnd: period.end.toISOString(),
         countsClientsOnce: countsClientsOnce(sub, now),
       },
       limitReached,
       billingInterval: tier && sub ? sub.billingInterval : null,
-      upgradeQuotes: freeOnHold ? [] : upgradeQuotes({
+      upgradeQuotes: upgradeQuotes({
         state,
         tier,
         interval: sub?.billingInterval ?? "MONTH",
@@ -452,9 +291,7 @@ export class SubscriptionsService {
         currentPeriodEnd: sub?.currentPeriodEnd ?? null,
         now,
       }),
-      checkoutAvailable: paymentsActive() && !freeOnHold,
-      freeUntilPaidStart: freeOnHold,
-      paidFrom: paidFrom?.toISOString() ?? null,
+      checkoutAvailable: paymentsActive(),
       fiscalDataNeeded: publicVisibilityMissing(profile),
       identityVerificationNeeded: identityVerificationNeeded(profile),
     };
@@ -528,15 +365,13 @@ export class SubscriptionsService {
   @Cron(CronExpression.EVERY_HOUR)
   async runPauseSweep(now = new Date()): Promise<void> {
     await this.alignTrialsToLaunch(now);
-    const paidFrom = await this.paidFrom();
-    if (paidFrom) await this.alignTrialsToPaidStart(paidFrom);
     const profiles = await this.prisma.professionalProfile.findMany({
       where: { deletedAt: null, isDemo: false },
       select: { id: true },
     });
     for (const profile of profiles) {
       try {
-        await this.syncPause(profile.id, now, undefined, paidFrom);
+        await this.syncPause(profile.id, now);
       } catch (error) {
         this.logger.error(`Pausa abbonamento non aggiornata per ${profile.id}`, error as Error);
       }
@@ -604,16 +439,13 @@ export class SubscriptionsService {
   async runTrialCheck(now = new Date()): Promise<void> {
     // Prima del lancio la prova non scorre: nessun regalo né avviso di fine prova.
     if (!hasLaunched(now, launchDate())) return;
-    // Finché l'admin non accende gli abbonamenti a pagamento il periodo
-    // gratuito non finisce: avvisi e regali solo agli account di prova (collaudo).
-    const paidFrom = await this.paidFrom();
     const endingBefore = new Date(now.getTime() + BONUS_MONTH_NOTICE_DAYS * DAY_MS);
     const subs = await this.prisma.subscription.findMany({
       where: {
         status: "TRIALING",
         trialEndsAt: { gt: now, lte: endingBefore },
         OR: [{ bonusMonthGrantedAt: null }, { trialEndingNotifiedAt: null }],
-        professionalProfile: { deletedAt: null, ...(paidFrom ? {} : { user: { testAccountAt: { not: null } } }) },
+        professionalProfile: { deletedAt: null },
       },
       include: { professionalProfile: { select: { userId: true } } },
     });

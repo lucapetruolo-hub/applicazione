@@ -1,6 +1,4 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from "@nestjs/common";
-import { z } from "zod";
-import { ZodValidationPipe } from "../common/zod-validation.pipe";
+import { Controller, Get, Req, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard, type AuthenticatedRequest } from "../auth/jwt-auth.guard";
 import { AdminGuard, RequireAdminScope } from "../admin/admin.guard";
 import { SubscriptionsService } from "./subscriptions.service";
@@ -26,31 +24,6 @@ export class AdminFoundersController {
   @Get()
   list() {
     return this.subscriptionsService.listFounders();
-  }
-}
-
-const paidStartSchema = z.object({ day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable() });
-
-/**
- * Area admin: abbonamenti a pagamento spenti (tutti gratis) o accesi da un
- * giorno (docs/changelog/2026-10-29-abbonamenti-a-pagamento-da-admin.md).
- * Vederlo serve a chi recluta; deciderlo solo al super admin.
- */
-@UseGuards(JwtAuthGuard, AdminGuard)
-@Controller("admin/paid-start")
-export class AdminPaidStartController {
-  constructor(private readonly subscriptionsService: SubscriptionsService) {}
-
-  @RequireAdminScope("ANY")
-  @Get()
-  get() {
-    return this.subscriptionsService.adminPaidStart();
-  }
-
-  @RequireAdminScope("SUPER")
-  @Post()
-  set(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(paidStartSchema)) body: z.infer<typeof paidStartSchema>) {
-    return this.subscriptionsService.setPaidFrom(req.user.userId, body.day);
   }
 }
 

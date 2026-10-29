@@ -2,13 +2,12 @@ import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
 import { AdminModule } from "../admin/admin.module";
 import { NotificationsModule } from "../notifications/notifications.module";
-import { AuditLogModule } from "../audit-log/audit-log.module";
-import { AdminFoundersController, AdminPaidStartController, FounderSpotsController, SubscriptionsController } from "./subscriptions.controller";
+import { AdminFoundersController, FounderSpotsController, SubscriptionsController } from "./subscriptions.controller";
 import { SubscriptionsService } from "./subscriptions.service";
 
 @Module({
-  imports: [AuthModule, AdminModule, NotificationsModule, AuditLogModule],
-  controllers: [SubscriptionsController, FounderSpotsController, AdminFoundersController, AdminPaidStartController],
+  imports: [AuthModule, AdminModule, NotificationsModule],
+  controllers: [SubscriptionsController, FounderSpotsController, AdminFoundersController],
   providers: [SubscriptionsService],
   exports: [SubscriptionsService],
 })
