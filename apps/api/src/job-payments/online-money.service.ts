@@ -1237,9 +1237,26 @@ export class OnlineMoneyService {
     });
     if (!jp) return false;
 
-    const opened = !jp.stripeDisputeId;
     const closed = CLOSED_DISPUTE_STATUSES.includes(dispute.status);
-    const justClosed = closed && !CLOSED_DISPUTE_STATUSES.includes(jp.stripeDisputeStatus ?? "");
+    const wasClosed = CLOSED_DISPUTE_STATUSES.includes(jp.stripeDisputeStatus ?? "");
+    // Una notizia arrivata in ritardo non riapre una contestazione già chiusa.
+    if (wasClosed && !closed) return true;
+    // Stripe manda più notizie quasi insieme (chiusura e soldi restituiti o
+    // ripresi, prova dal vivo del 29/10, docs/changelog/2026-10-29-contestazioni-doppie.md):
+    // apertura e chiusura le segna una sola, così avvisi, rimborso e debito non si ripetono.
+    let opened = false;
+    if (!jp.stripeDisputeId) {
+      const claim = await this.prisma.jobPayment.updateMany({ where: { id: jp.id, stripeDisputeId: null }, data: { stripeDisputeId: dispute.id, stripeDisputedAt: new Date() } });
+      opened = claim.count === 1;
+    }
+    let justClosed = false;
+    if (closed && !wasClosed) {
+      const claim = await this.prisma.jobPayment.updateMany({
+        where: { id: jp.id, OR: [{ stripeDisputeStatus: null }, { stripeDisputeStatus: { notIn: CLOSED_DISPUTE_STATUSES } }] },
+        data: { stripeDisputeStatus: dispute.status, stripeDisputeClosedAt: new Date() },
+      });
+      justClosed = claim.count === 1;
+    }
     const lost = dispute.status === "lost";
     // Contestazione persa: la banca ha restituito la cifra al cliente.
     const lostAmount = justClosed && lost ? Math.min(dispute.amount, jp.paidEurCents - jp.refundedEurCents) : 0;
@@ -1257,8 +1274,8 @@ export class OnlineMoneyService {
         stripeDisputedAt: jp.stripeDisputedAt ?? new Date(),
         stripeDisputeDueBy: dispute.evidence_details?.due_by ? new Date(dispute.evidence_details.due_by * 1000) : null,
         stripeDisputeReason: dispute.reason ?? null,
-        ...(justClosed ? { stripeDisputeClosedAt: new Date() } : {}),
-        refundedEurCents: refunded,
+        // Solo chi ha chiuso scrive il rimborso: le altre notizie hanno letto il pagamento prima.
+        ...(justClosed ? { refundedEurCents: refunded } : {}),
         ...statusData,
       },
     });

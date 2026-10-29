@@ -105,8 +105,9 @@ describe("OnlineMoneyService.handleStripeDispute", () => {
 
     expect(prisma.jobPayment.update).toHaveBeenCalledWith({
       where: { id: "jp-1" },
-      data: expect.objectContaining({ stripeDisputeId: "dp_1", stripeDisputeStatus: "needs_response", status: "DISPUTED", refundedEurCents: 0 }),
+      data: expect.objectContaining({ stripeDisputeId: "dp_1", stripeDisputeStatus: "needs_response", status: "DISPUTED" }),
     });
+    expect(prisma.jobPayment.updateMany).toHaveBeenCalledWith({ where: { id: "jp-1", stripeDisputeId: null }, data: { stripeDisputeId: "dp_1", stripeDisputedAt: expect.any(Date) } });
     expect(notificationsService.notify).toHaveBeenCalledWith("admin-1", "ADMIN_STRIPE_DISPUTE", expect.anything());
     expect(notificationsService.notify).toHaveBeenCalledWith("pro-user-1", "JOB_STRIPE_DISPUTE", expect.anything());
   });
@@ -139,7 +140,33 @@ describe("OnlineMoneyService.handleStripeDispute", () => {
     prisma.jobPayment.update.mockClear();
     prisma.jobPayment.findFirst.mockResolvedValue(paidJob({ stripeDisputeId: "dp_1", stripeDisputeStatus: "lost", refundedEurCents: 8000 }));
     await service.handleStripeDispute(dispute("lost") as never);
-    expect(prisma.jobPayment.update).toHaveBeenCalledWith({ where: { id: "jp-1" }, data: expect.objectContaining({ refundedEurCents: 8000 }) });
+    expect(prisma.jobPayment.update.mock.calls[0]![0].data).not.toHaveProperty("refundedEurCents");
+  });
+
+  it("due notizie di chiusura quasi insieme: un solo avviso e un solo rimborso (prova dal vivo del 29/10)", async () => {
+    const { service, prisma, notificationsService } = buildService();
+    // Tutte e due hanno letto il pagamento ancora aperto; solo la prima riesce a segnarlo chiuso.
+    prisma.jobPayment.findFirst.mockResolvedValue(paidJob({ stripeDisputeId: "dp_1", stripeDisputeStatus: "under_review" }));
+    prisma.jobPayment.updateMany.mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 0 });
+
+    await service.handleStripeDispute(dispute("lost") as never);
+    await service.handleStripeDispute(dispute("lost") as never);
+
+    const proNotices = notificationsService.notify.mock.calls.filter((c) => c[1] === "JOB_STRIPE_DISPUTE");
+    expect(proNotices).toHaveLength(1);
+    const refundWrites = prisma.jobPayment.update.mock.calls.filter((c) => "refundedEurCents" in c[0].data);
+    expect(refundWrites).toHaveLength(1);
+    expect(refundWrites[0]![0].data.refundedEurCents).toBe(8000);
+  });
+
+  it("una notizia in ritardo non riapre una contestazione chiusa", async () => {
+    const { service, prisma, notificationsService } = buildService();
+    prisma.jobPayment.findFirst.mockResolvedValue(paidJob({ stripeDisputeId: "dp_1", stripeDisputeStatus: "won" }));
+
+    await expect(service.handleStripeDispute(dispute("under_review") as never)).resolves.toBe(true);
+
+    expect(prisma.jobPayment.update).not.toHaveBeenCalled();
+    expect(notificationsService.notify).not.toHaveBeenCalled();
   });
 
   it("contestazione persa sull'intero importo: pagamento chiuso come rimborsato", async () => {
