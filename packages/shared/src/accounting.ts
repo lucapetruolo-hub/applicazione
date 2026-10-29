@@ -467,6 +467,8 @@ export function freePeriodSummary(sub: Pick<MySubscription, "state" | "trialEnds
   const baseMonthEurCents = subscriptionTierInfo("BASE").priceEurCents;
   const iso = (ms: number) => new Date(ms).toISOString();
   if (sub.founder) {
+    // Mesi gratuiti allungati fino alla partenza dei pagamenti: niente riepilogo a mesi.
+    if (sub.founder.currentMonth === null) return null;
     const start = end - FOUNDER_FREE_MONTHS * FREE_MONTH_MS;
     if (t < start || t >= end) return null;
     const month = Math.min(FOUNDER_FREE_MONTHS, Math.floor((t - start) / FREE_MONTH_MS) + 1);

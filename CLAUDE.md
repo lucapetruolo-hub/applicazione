@@ -354,6 +354,16 @@ prezzi Stripe nelle variabili `STRIPE_PRICE_<LIVELLO>` e
   i pagamenti non sono attivi** (`STRIPE_SECRET_KEY` assente) **e prima
   di `LAUNCH_DATE`**: senza Stripe nessuno potrebbe scegliere un livello e
   a fine prova la ricerca resterebbe vuota.
+- **Nessuno paga finché l'admin non accende gli abbonamenti a pagamento**
+  (richiesta di Luca del 29/10/2026,
+  docs/changelog/2026-10-29-abbonamenti-a-pagamento-da-admin.md): riquadro
+  in Admin → Profili da confermare (`SubscriptionSettings.paidFrom`, solo
+  super admin). Spenti: nessun periodo gratuito finisce (neanche i 3 mesi
+  dei primi 100), niente pausa, limite di lavori, livello da scegliere né
+  avviso di fine prova; gli account di prova seguono le regole normali per
+  il collaudo. Accesi da un giorno ad almeno 14 giorni
+  (`PAID_START_MIN_NOTICE_DAYS`): ogni periodo gratuito arriva almeno a quel
+  giorno e tutti ricevono subito l'email con la data.
 - **Il mese gratuito parte dal lancio** (`LAUNCH_DATE` su Render,
   AAAA-MM-GG, docs/CHANGELOG.md §170): chi si iscrive prima ha la prova
   fino a lancio + 30 giorni. Senza la variabile la prova parte

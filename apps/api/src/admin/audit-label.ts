@@ -257,6 +257,8 @@ export function auditLabel(row: { entityType: string; fieldName: string | null; 
       return "Documento dato al cliente aperto da un admin";
     case "GeneralRequestSettings":
       return "Soglie delle richieste generali cambiate";
+    case "SubscriptionSettings":
+      return value ? `Abbonamenti a pagamento accesi dal ${date(value)}` : "Abbonamenti a pagamento spenti: tutti gratis";
     case "GeneralRequestBlock":
       return value === "OPEN" ? "Richieste generali riaperte" : "Richieste generali chiuse";
     // Dal problema scritto ai mestieri (docs/CHANGELOG.md §392).

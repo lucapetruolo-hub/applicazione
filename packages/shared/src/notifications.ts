@@ -208,6 +208,10 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       // Abbonamento (docs/CHANGELOG.md §161): scadenze e limiti mensili.
       "SUBSCRIPTION_BONUS_MONTH",
       "SUBSCRIPTION_TRIAL_ENDING",
+      // Abbonamenti a pagamento accesi o rimandati dall'admin
+      // (docs/changelog/2026-10-29-abbonamenti-a-pagamento-da-admin.md).
+      "SUBSCRIPTION_PAID_START",
+      "SUBSCRIPTION_PAID_START_POSTPONED",
       "SUBSCRIPTION_LIMIT_NEAR",
       "SUBSCRIPTION_LIMIT_REACHED",
       "SUBSCRIPTION_PAUSED",

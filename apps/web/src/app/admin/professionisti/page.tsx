@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import {
+  adminCan,
   allItalianCityNames,
   subscriptionTierInfo,
   type AdminFounders,
+  type AdminPaidStart,
   operatorProfileInviteSchema,
   type PendingProfileInvite,
   type ProfessionalCategorySlug,
@@ -16,6 +18,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { AdminCard, AdminPageHeader, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { SkeletonTableRows } from "@/components/Skeleton";
 import { CategoryMultiPicker } from "@/components/CategoryMultiPicker";
+import { PaidStartCard } from "@/components/admin/PaidStartCard";
 
 const EMPTY_FORM = { email: "", name: "", surname: "", phone: "", businessName: "", city: "", bio: "" };
 
@@ -31,7 +34,7 @@ function optional(value: string): string | undefined {
  * link, sceglie la password e conferma la dichiarazione dal proprio profilo.
  */
 export default function AdminProfessionistiPage() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [form, setForm] = useState(EMPTY_FORM);
   // Da 1 a 3 categorie, come nella registrazione (docs/CHANGELOG.md §217).
   const [categorySlugs, setCategorySlugs] = useState<ProfessionalCategorySlug[]>([]);
@@ -59,6 +62,17 @@ export default function AdminProfessionistiPage() {
     apiClient
       .adminListFounders(token)
       .then(setFounders)
+      .catch((err) => setFoundersError(errorMessage(err)));
+  }, [token]);
+
+  // Abbonamenti a pagamento spenti o accesi da un giorno (docs/changelog/2026-10-29-abbonamenti-a-pagamento-da-admin.md).
+  const [paidStart, setPaidStart] = useState<AdminPaidStart | null>(null);
+  const [openedAt] = useState(() => Date.now());
+  useEffect(() => {
+    if (!token) return;
+    apiClient
+      .adminGetPaidStart(token)
+      .then(setPaidStart)
       .catch((err) => setFoundersError(errorMessage(err)));
   }, [token]);
 
@@ -345,6 +359,7 @@ export default function AdminProfessionistiPage() {
           {founders ? `Offerta di lancio: ${founders.taken} posti presi su ${founders.total}` : "Offerta di lancio"}
         </Text>
         <Text color={brand.grafite70}>I primi {founders?.total ?? 100} professionisti con il profilo completo hanno Base gratis per 3 mesi dal lancio.</Text>
+        {paidStart && token ? <PaidStartCard token={token} state={paidStart} canEdit={adminCan(user?.adminRoles ?? [], "SUPER")} onChange={setPaidStart} /> : null}
         {foundersError ? <Text color={brand.urgenza}>{foundersError}</Text> : null}
         {founders === null && !foundersError ? (
           <SkeletonTableRows rows={3} cols={5} />
@@ -372,7 +387,13 @@ export default function AdminProfessionistiPage() {
                     <td>{row.email}</td>
                     <td>{row.city}</td>
                     <td>{formatAdminDate(row.joinedAt)}</td>
-                    <td>{row.freeUntil ? formatAdminDate(row.freeUntil) : "Parte al lancio"}</td>
+                    <td>
+                      {!row.freeUntil
+                        ? "Parte al lancio"
+                        : paidStart && !paidStart.paidFrom && new Date(row.freeUntil).getTime() <= openedAt
+                          ? "Finché non accendi i pagamenti"
+                          : formatAdminDate(row.freeUntil)}
+                    </td>
                     <td>{row.tier ? subscriptionTierInfo(row.tier).label : "Nessuno"}</td>
                   </tr>
                 ))}

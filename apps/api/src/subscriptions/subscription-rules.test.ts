@@ -51,6 +51,12 @@ describe("stato e limite", () => {
     expect(subscriptionState(row, NOW)).toBe("TRIAL_ENDED");
     expect(monthlyLimit(row, NOW)).toBeNull();
   });
+  it("abbonamenti a pagamento spenti dall'admin: la prova finita resta gratuita, senza pausa", () => {
+    const row = { plan: "FREE", status: "TRIALING", trialEndsAt: past, freeOnHold: true };
+    expect(subscriptionState(row, NOW)).toBe("TRIAL");
+    expect(pauseReason(row, NOW)).toBeNull();
+    expect(subscriptionState({ plan: "FREE", status: "ACTIVE", trialEndsAt: null, freeOnHold: true }, NOW)).toBe("TRIAL");
+  });
   it("una riga attiva senza livello (vecchio piano gratuito) vale come prova finita", () => {
     expect(subscriptionState({ plan: "FREE", status: "ACTIVE", trialEndsAt: null }, NOW)).toBe("TRIAL_ENDED");
   });

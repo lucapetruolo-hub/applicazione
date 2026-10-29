@@ -216,6 +216,11 @@ export class BillingService {
       // Il cambio di livello tiene il rinnovo già scelto (mensile o annuale).
       return this.upgradeTier(stripe, profile.id, current.stripeSubscriptionId, tierOfPlan(current.plan), plan);
     }
+    // Finché l'admin non accende gli abbonamenti a pagamento non si sceglie un
+    // livello (docs/changelog/2026-10-29-abbonamenti-a-pagamento-da-admin.md).
+    if (await this.subscriptionsService.freeOnHold(userId)) {
+      throw new BadRequestException("Gli abbonamenti a pagamento non sono ancora partiti: per ora usi il sito gratis. Ti avvisiamo prima che diventi a pagamento.");
+    }
     const priceId = this.requirePrice(plan, interval);
     const taxRates = this.requireTaxRates();
 

@@ -298,6 +298,12 @@ prima del lancio"):
    professionisti e prima non scatta nessuna pausa (docs/CHANGELOG.md
    §170). Senza, la prova di chi si è iscritto prima del lancio è già
    scaduta.
+0ter. **Abbonamenti a pagamento** (Admin → Profili da confermare, riquadro
+   "Abbonamenti a pagamento", solo super admin): finché sono spenti nessun
+   periodo gratuito finisce, nessuno va in pausa e nessuno paga (richiesta
+   di Luca del 29/10/2026). Si accendono quando Luca decide, scegliendo un
+   giorno ad almeno 14 giorni: tutti ricevono subito l'email con la data
+   (docs/changelog/2026-10-29-abbonamenti-a-pagamento-da-admin.md).
 
 **Prodotto**:
 17. Rimuovere il blocco "Presto disponibile" (`WaitlistBlock`, homepage)

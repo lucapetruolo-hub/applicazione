@@ -223,6 +223,8 @@ notification("JOB_ISSUE_SANCTION", "Professionista", "Segnalazioni sul lavoro", 
 
 // Abbonamento
 notification("SUBSCRIPTION_TRIAL_ENDING", "Professionista", "Abbonamento", { date: inThreeDays });
+notification("SUBSCRIPTION_PAID_START", "Professionista", "Abbonamento", { date: inThreeDays });
+notification("SUBSCRIPTION_PAID_START_POSTPONED", "Professionista", "Abbonamento", {});
 notification("SUBSCRIPTION_BONUS_MONTH", "Professionista", "Abbonamento", { date: inThreeDays });
 notification("SUBSCRIPTION_LIMIT_NEAR", "Professionista", "Abbonamento", { used: 4, limit: 5 });
 notification("SUBSCRIPTION_LIMIT_REACHED", "Professionista", "Abbonamento");

@@ -15,6 +15,7 @@ import {
   type SiteAdviceLevel,
   SEARCH_RADIUS_KM,
   ONLINE_LIMIT_FREE_JOBS,
+  PAID_START_MIN_NOTICE_DAYS,
   asScheduleChange,
   formatItalianUntil,
   moderationActionOwnerText,
@@ -1625,6 +1626,27 @@ const BUILDERS: Record<string, Builder> = {
       "Scegli un livello per restare visibile nelle ricerche e continuare a ricevere richieste.",
     ],
     cta: { label: "Scegli un livello", url: `${frontendUrl()}/dashboard/abbonamento` },
+  }),
+  // Abbonamenti a pagamento accesi dall'admin con almeno 14 giorni di preavviso
+  // (docs/changelog/2026-10-29-abbonamenti-a-pagamento-da-admin.md).
+  SUBSCRIPTION_PAID_START: (payload, ctx) => ({
+    kind: "account",
+    subject: `Fino al ${formatDay(str(payload.date))} resta tutto gratis`,
+    greeting: ctx.name,
+    title: "Quando parte l'abbonamento",
+    paragraphs: [
+      `Continui a usare il sito gratis fino al **${formatDay(str(payload.date))}**. Da quel giorno l'abbonamento diventa a pagamento.`,
+      "Puoi scegliere il livello già adesso: il primo addebito parte solo quel giorno. Qualche giorno prima ti mandiamo un promemoria.",
+    ],
+    cta: { label: "Scegli un livello", url: `${frontendUrl()}/dashboard/abbonamento` },
+  }),
+  SUBSCRIPTION_PAID_START_POSTPONED: (_payload, ctx) => ({
+    kind: "account",
+    subject: "L'abbonamento resta gratis",
+    greeting: ctx.name,
+    title: "Resta tutto gratis",
+    paragraphs: [`Abbiamo rimandato la partenza dei pagamenti: continui a usare il sito gratis. Ti avvisiamo con almeno ${PAID_START_MIN_NOTICE_DAYS} giorni di anticipo prima che cambi qualcosa.`],
+    cta: subscriptionPage(),
   }),
   SUBSCRIPTION_LIMIT_NEAR: (payload, ctx) => {
     const used = typeof payload.used === "number" ? payload.used : null;

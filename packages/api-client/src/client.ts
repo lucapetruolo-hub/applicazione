@@ -95,6 +95,7 @@ import type {
   OperatorProfileInviteInput,
   PendingProfileInvite,
   AdminFounders,
+  AdminPaidStart,
   AdminProfessionalStats,
   AdminSiteStats,
   ChurnReason,
@@ -2053,6 +2054,11 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       }),
 
     adminListFounders: (token: string) => request<AdminFounders>("/admin/founders", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    /** Abbonamenti a pagamento spenti o accesi da un giorno (docs/changelog/2026-10-29-abbonamenti-a-pagamento-da-admin.md). */
+    adminGetPaidStart: (token: string) => request<AdminPaidStart>("/admin/paid-start", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    /** `day` AAAA-MM-GG per accenderli da quel giorno, null per rispegnerli (solo super admin). */
+    adminSetPaidStart: (token: string, day: string | null) =>
+      request<AdminPaidStart>("/admin/paid-start", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ day }) }),
 
     /** Profili creati al telefono da un operatore (docs/CHANGELOG.md §170). */
     adminListProfileInvites: (token: string) =>

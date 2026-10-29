@@ -2994,6 +2994,19 @@ model GeneralRequestSettings {
   @@map("general_request_settings")
 }
 
+// Abbonamenti a pagamento accesi dall'admin (richiesta di Luca del 29/10/2026,
+// docs/changelog/2026-10-29-abbonamenti-a-pagamento-da-admin.md): finché
+// paidFrom è vuoto nessun periodo gratuito finisce, nessuno va in pausa e
+// nessuno può scegliere un livello a pagamento. Una riga sola.
+model SubscriptionSettings {
+  id              String    @id @default(uuid())
+  paidFrom        DateTime?
+  updatedAt       DateTime  @updatedAt
+  updatedByUserId String?
+
+  @@map("subscription_settings")
+}
+
 // Consigli di "Andamento del sito" segnati come fatti dal super admin
 // (docs/CHANGELOG.md §372): per 14 giorni non tornano né nella pagina né
 // nell'email del lunedì, il tempo di vedere se l'azione ha funzionato.
