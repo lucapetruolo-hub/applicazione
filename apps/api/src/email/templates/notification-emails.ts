@@ -494,6 +494,21 @@ const BUILDERS: Record<string, Builder> = {
     cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda` },
     after: ["Se il cliente la riapre ti avvisiamo noi."],
   }),
+  // "Non posso più" sotto il promemoria WhatsApp (docs/changelog/2026-10-28-promemoria-whatsapp.md):
+  // l'appuntamento resta finché il cliente non lo annulla o non cambiate data.
+  BOOKING_CLIENT_CANT_COME: (_payload, ctx) => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: "Il cliente non può più esserci",
+    greeting: ctx.name,
+    title: "Il cliente non può più esserci",
+    paragraphs: [
+      `Il cliente ha risposto al promemoria che non può più esserci all'appuntamento per **${job(ctx)}**.`,
+      "L'appuntamento resta nella tua agenda finché non lo annulla o non vi accordate su un'altra data: scrivigli in chat.",
+    ],
+    details: proJobDetails(ctx),
+    cta: { label: "Apri l'agenda", url: `${frontendUrl()}/dashboard/agenda` },
+  }),
   BOOKING_REOPENED_BY_PROFESSIONAL: (_payload, ctx) => ({
     kind: "notification",
     subject: `${pro(ctx)} ha riaperto la prenotazione`,

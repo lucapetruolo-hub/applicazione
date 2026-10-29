@@ -1150,6 +1150,21 @@ export function RequestCard({
                   : "Il nostro team l'ha esaminata e chiusa senza misure."}
             </Text>
           ) : null}
+          {/* Risposta del cliente al promemoria WhatsApp, l'ultima se ha cambiato idea (docs/changelog/2026-10-28-promemoria-whatsapp.md). */}
+          {booking?.status === "CONFIRMED" && (booking.clientConfirmedAt || booking.clientCantComeAt) ? (
+            booking.clientCantComeAt && (!booking.clientConfirmedAt || booking.clientCantComeAt > booking.clientConfirmedAt) ? (
+              <Text fontSize={13} color={brand.urgenza} fontWeight="600">
+                Il cliente ha risposto al promemoria che non può più esserci ({formatDateTime(booking.clientCantComeAt)}): scrivigli in chat.
+              </Text>
+            ) : (
+              <XStack alignItems="center" gap="$1.5">
+                <Icon name="check" size={14} color={brand.cianografiaScuro} strokeWidth={2.5} />
+                <Text fontSize={13} color={brand.cianografiaScuro} fontWeight="600">
+                  Il cliente ha confermato che ci sarà ({formatDateTime(booking.clientConfirmedAt!)})
+                </Text>
+              </XStack>
+            )
+          ) : null}
           {/* Annullato dal cliente dentro il preavviso che hai scelto (docs/CHANGELOG.md §347). */}
           {booking?.status === "CANCELED" && booking.canceledBy === "CLIENT" && booking.canceledLate ? (
             <Text fontSize={13} color={brand.urgenza} fontWeight="600">

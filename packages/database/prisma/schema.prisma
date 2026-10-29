@@ -1226,6 +1226,11 @@ model Booking {
   // di reinviarlo a ogni passaggio del cron (EVERY_30_MINUTES) sulla
   // stessa prenotazione.
   reminderSentAt          DateTime?
+  // Risposta del cliente ai pulsanti del promemoria WhatsApp, "Ci sarò" e
+  // "Non posso più" (docs/changelog/2026-10-28-promemoria-whatsapp.md):
+  // il professionista viene avvisato una volta sola per ciascuna.
+  clientConfirmedAt       DateTime?
+  clientCantComeAt        DateTime?
   createdAt               DateTime      @default(now())
   updatedAt               DateTime      @updatedAt
 

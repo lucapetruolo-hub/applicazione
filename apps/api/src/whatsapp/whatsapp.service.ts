@@ -40,15 +40,19 @@ import {
   type WhatsAppProvider,
 } from "./whatsapp-provider";
 import {
+  CLIENT_REMINDER_TEMPLATES,
   WHATSAPP_LANGUAGE,
   WHATSAPP_TEMPLATES,
   professionalDayMessage,
   type WhatsAppTemplateDefinition,
+  urlButtonIndex,
   whatsappDayTime,
   whatsappName,
   whatsappTime,
 } from "./whatsapp-templates";
 import {
+  bookingReplyAction,
+  depositReminderTimes,
   isMobileNumber,
   isStopRequest,
   maskedPhone,
@@ -67,11 +71,27 @@ export const PHONE_CODES_PER_DAY = 5;
 export const WHATSAPP_PER_USER_DAILY_LIMIT = 6;
 /** Tentativi per un errore che si può riprovare (rete, limiti di Meta), a 10 minuti l'uno dall'altro. */
 const MAX_ATTEMPTS = 3;
+/** Un promemoria dell'acconto più recente di così sostituisce quello del giorno prima. */
+const RECENT_DEPOSIT_REMINDER_HOURS = 18;
 const RETRY_MINUTES = 10;
+/**
+ * Risposta gratuita al cliente che ha premuto un pulsante del promemoria:
+ * nel registro come gli altri messaggi, fuori dai tetti (non si paga).
+ */
+export const WHATSAPP_REPLY_TYPE = "BOOKING_REPLY";
+
+/** Il cliente ha premuto "Ci sarò" o "Non posso più": avvisa il professionista e torna il testo da rispondere. */
+export type BookingReplyHandler = (input: {
+  clientId: string;
+  bookingId: string;
+  action: "CONFIRM" | "CANT_COME";
+  now: Date;
+}) => Promise<string | null>;
 
 type MessageParams = {
   bodyParams: string[];
   urlButtonSuffix?: string;
+  urlButtonIndex?: number;
   copyCode?: string;
 };
 
@@ -94,6 +114,9 @@ function storedParams(value: Prisma.JsonValue | null): MessageParams | null {
     ...(typeof v.urlButtonSuffix === "string"
       ? { urlButtonSuffix: v.urlButtonSuffix }
       : {}),
+    ...(typeof v.urlButtonIndex === "number"
+      ? { urlButtonIndex: v.urlButtonIndex }
+      : {}),
     ...(typeof v.copyCode === "string" ? { copyCode: v.copyCode } : {}),
   };
 }
@@ -115,6 +138,7 @@ function storedParams(value: Prisma.JsonValue | null): MessageParams | null {
 export class WhatsAppService {
   private readonly logger = new Logger(WhatsAppService.name);
   private readonly provider: WhatsAppProvider | null;
+  private replyHandler: BookingReplyHandler | null = null;
 
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
@@ -127,6 +151,11 @@ export class WhatsAppService {
 
   get available(): boolean {
     return this.provider !== null;
+  }
+
+  /** Chi avvisa il professionista delle risposte del cliente (`BookingRepliesService`). */
+  onBookingReply(handler: BookingReplyHandler): void {
+    this.replyHandler = handler;
   }
 
   // ---------------------------------------------------------------------------
@@ -162,7 +191,12 @@ export class WhatsAppService {
           type: input.type,
           template: template.name,
           category: template.category,
-          params: input.params as unknown as Prisma.InputJsonValue,
+          params: {
+            ...input.params,
+            ...(input.params.urlButtonSuffix && urlButtonIndex(template) > 0
+              ? { urlButtonIndex: urlButtonIndex(template) }
+              : {}),
+          } as unknown as Prisma.InputJsonValue,
           idempotencyKey: input.idempotencyKey,
           bookingId: input.bookingId ?? null,
           sendAfter: input.urgent ? now : nextSendTime(now),
@@ -232,7 +266,7 @@ export class WhatsAppService {
 
     const dayStart = startOfItalianDay(now);
     const sentToday = await this.prisma.outboundMessage.count({
-      where: { sentAt: { gte: dayStart } },
+      where: { sentAt: { gte: dayStart }, type: { not: WHATSAPP_REPLY_TYPE } },
     });
     if (sentToday >= whatsAppDailyLimit()) {
       opsAlert(
@@ -246,7 +280,7 @@ export class WhatsAppService {
         where: {
           userId: row.userId,
           sentAt: { gte: dayStart },
-          type: { not: "PHONE_VERIFICATION_CODE" },
+          type: { notIn: ["PHONE_VERIFICATION_CODE", WHATSAPP_REPLY_TYPE] },
         },
       });
       if (userToday >= WHATSAPP_PER_USER_DAILY_LIMIT)
@@ -348,7 +382,9 @@ export class WhatsAppService {
    * Promemoria del giorno prima (anti no-show) al cliente, 24 ore prima
    * dell'appuntamento. Chiamato da `BookingRemindersService` insieme alle
    * email. Al professionista va invece un solo riepilogo la sera prima
-   * (`professionalDayReminders`).
+   * (`professionalDayReminders`). Non parte se poche ore prima è già
+   * partito quello dell'acconto (`depositReminders`, preavviso di 24 ore):
+   * due messaggi uguali a distanza di poche ore non servono.
    */
   async bookingReminder(input: {
     bookingId: string;
@@ -360,6 +396,18 @@ export class WhatsAppService {
   }): Promise<void> {
     if (!this.provider) return;
     const now = input.now ?? new Date();
+    const depositReminder = await this.prisma.outboundMessage.findUnique({
+      where: { idempotencyKey: `booking-deposit-reminder:${input.bookingId}` },
+      select: { status: true, createdAt: true },
+    });
+    if (
+      depositReminder &&
+      depositReminder.status !== "SKIPPED" &&
+      depositReminder.status !== "FAILED" &&
+      now.getTime() - depositReminder.createdAt.getTime() <
+        RECENT_DEPOSIT_REMINDER_HOURS * 3_600_000
+    )
+      return;
     await this.enqueue({
       userId: input.clientId,
       type: "BOOKING_REMINDER_CLIENT",
@@ -375,6 +423,90 @@ export class WhatsAppService {
       expiresAt: wallClockToInstant(input.scheduledAt, now),
       now,
     });
+  }
+
+  /**
+   * Promemoria a chi ha pagato un acconto che resta al professionista se
+   * annulla dentro il preavviso (Luca, 29/10/2026): parte 6 ore prima che
+   * il preavviso inizi, così il cliente può ancora annullare e riaverlo
+   * (`depositReminderTimes`). Con un preavviso di 48 o 72 ore parte anche
+   * quello del giorno prima; con 24 ore lo sostituisce.
+   */
+  @Cron(CronExpression.EVERY_30_MINUTES)
+  async depositReminders(now: Date = new Date()): Promise<number> {
+    if (!this.provider) return 0;
+    const wall = wallClockNow(now);
+    const bookings = await this.prisma.booking.findMany({
+      where: {
+        status: "CONFIRMED",
+        // Fino a 72 ore di preavviso, più le 6 ore e la sera prima.
+        scheduledAt: {
+          gt: wall,
+          lte: new Date(wall.getTime() + 4 * 24 * 3_600_000),
+        },
+        quote: { lateCancelKeepsDeposit: true },
+        jobPayment: {
+          paymentMethod: "MANOVIA",
+          depositPaidAt: { not: null },
+          depositKeptAt: null,
+          releasedAt: null,
+        },
+      },
+      select: {
+        id: true,
+        clientId: true,
+        scheduledAt: true,
+        cancellationNoticeHours: true,
+        professionalProfile: { select: { businessName: true } },
+        quote: { select: { guidedRequestId: true } },
+        jobPayment: { select: { paidEurCents: true, refundedEurCents: true } },
+      },
+    });
+    let queued = 0;
+    for (const booking of bookings) {
+      const payment = booking.jobPayment;
+      if (!payment || payment.paidEurCents - payment.refundedEurCents <= 0)
+        continue;
+      const { sendFrom, deadline } = depositReminderTimes(
+        booking.scheduledAt,
+        booking.cancellationNoticeHours ?? 24,
+      );
+      // Troppo vicino alla fine del preavviso (lavoro preso tardi, server
+      // fermo): vale il promemoria del giorno prima.
+      if (
+        wall.getTime() < sendFrom.getTime() ||
+        wall.getTime() >= deadline.getTime() - 60 * 60_000
+      )
+        continue;
+      try {
+        await this.enqueue({
+          userId: booking.clientId,
+          type: "BOOKING_REMINDER_CLIENT",
+          template: CLIENT_REMINDER_TEMPLATES.depositDeadline,
+          params: {
+            bodyParams: [
+              whatsappDayTime(booking.scheduledAt),
+              whatsappName(booking.professionalProfile.businessName),
+              whatsappDayTime(deadline),
+            ],
+            urlButtonSuffix: clientRequestPath(
+              booking.quote?.guidedRequestId ?? null,
+            ),
+          },
+          idempotencyKey: `booking-deposit-reminder:${booking.id}`,
+          bookingId: booking.id,
+          // Dopo la fine del preavviso il testo non è più vero.
+          expiresAt: wallClockToInstant(deadline, now),
+          now,
+        });
+        queued++;
+      } catch (error) {
+        this.logger.error(
+          `Promemoria dell'acconto ${booking.id} non messo in coda: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+    return queued;
   }
 
   /**
@@ -942,10 +1074,80 @@ export class WhatsAppService {
       });
     }
     for (const message of inbound) {
-      if (!isStopRequest(message.text, message.buttonPayload)) continue;
-      await this.optOutByNumber(message.from);
+      if (isStopRequest(message.text, message.buttonPayload)) {
+        await this.optOutByNumber(message.from);
+        continue;
+      }
+      const action = bookingReplyAction(message.text, message.buttonPayload);
+      if (action && message.replyTo)
+        await this.bookingReply(message.from, message.replyTo, action);
     }
     return { received: true };
+  }
+
+  /**
+   * "Ci sarò" o "Non posso più" sotto un promemoria: vale solo come risposta
+   * a un nostro promemoria, dal numero a cui era partito, per un lavoro
+   * ancora da fare. Avvisa il professionista (`onBookingReply`) e risponde
+   * al cliente: un messaggio in risposta entro 24 ore non si paga.
+   */
+  private async bookingReply(
+    from: string,
+    replyTo: string,
+    action: "CONFIRM" | "CANT_COME",
+    now: Date = new Date(),
+  ): Promise<void> {
+    if (!this.provider || !this.replyHandler) return;
+    const reminder = await this.prisma.outboundMessage.findUnique({
+      where: { providerMessageId: replyTo },
+      select: {
+        type: true,
+        bookingId: true,
+        userId: true,
+        user: { select: { phone: true, deletedAt: true } },
+      },
+    });
+    if (
+      reminder?.type !== "BOOKING_REMINDER_CLIENT" ||
+      !reminder.bookingId ||
+      !reminder.userId ||
+      !reminder.user?.phone ||
+      reminder.user.deletedAt ||
+      whatsappNumber(reminder.user.phone) !== from
+    )
+      return;
+    const reply = await this.replyHandler({
+      clientId: reminder.userId,
+      bookingId: reminder.bookingId,
+      action,
+      now,
+    });
+    if (!reply) return;
+    const idempotencyKey = `booking-reply:${reminder.bookingId}:${action}`;
+    try {
+      const { providerMessageId } = await this.provider.sendText({
+        to: from,
+        body: reply,
+      });
+      await this.prisma.outboundMessage.create({
+        data: {
+          userId: reminder.userId,
+          type: WHATSAPP_REPLY_TYPE,
+          template: "testo",
+          category: "service",
+          idempotencyKey,
+          bookingId: reminder.bookingId,
+          status: "SENT",
+          providerMessageId,
+          sentAt: now,
+          attempts: 1,
+        },
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Risposta WhatsApp al cliente non partita: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   /** "Non ricevere più" dal messaggio, o "STOP" scritto in risposta. */

@@ -26,7 +26,7 @@ export const WHATSAPP_MESSAGES_FOR: Record<
   string[]
 > = {
   client: [
-    "Il promemoria il giorno prima dell'appuntamento",
+    "Il promemoria prima dell'appuntamento, per dire se ci sarai",
     "L'avviso quando il professionista sta arrivando",
     "L'avviso se il professionista annulla l'appuntamento",
   ],

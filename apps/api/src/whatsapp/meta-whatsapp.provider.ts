@@ -70,10 +70,39 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
       components.push({
         type: "button",
         sub_type: "url",
-        index: "0",
+        index: String(message.urlButtonIndex ?? 0),
         parameters: [{ type: "text", text: message.urlButtonSuffix }],
       });
     }
+    return this.post({
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: message.to,
+      type: "template",
+      template: {
+        name: message.template,
+        language: { code: message.language },
+        components,
+      },
+    });
+  }
+
+  async sendText(message: {
+    to: string;
+    body: string;
+  }): Promise<{ providerMessageId: string }> {
+    return this.post({
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: message.to,
+      type: "text",
+      text: { body: message.body, preview_url: false },
+    });
+  }
+
+  private async post(
+    payload: Record<string, unknown>,
+  ): Promise<{ providerMessageId: string }> {
     let response: Response;
     try {
       response = await fetch(
@@ -84,17 +113,7 @@ export class MetaWhatsAppProvider implements WhatsAppProvider {
             Authorization: `Bearer ${this.accessToken}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            messaging_product: "whatsapp",
-            recipient_type: "individual",
-            to: message.to,
-            type: "template",
-            template: {
-              name: message.template,
-              language: { code: message.language },
-              components,
-            },
-          }),
+          body: JSON.stringify(payload),
           signal: AbortSignal.timeout(TIMEOUT_MS),
         },
       );
@@ -244,6 +263,10 @@ export function parseMetaWebhook(body: unknown): {
               : typeof interactive?.id === "string"
                 ? interactive.id
                 : null,
+          replyTo:
+            typeof record(m.context)?.id === "string"
+              ? (record(m.context)!.id as string)
+              : null,
         });
       }
     }

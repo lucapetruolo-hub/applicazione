@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { whatsappParam } from "@professionisti/shared";
 import {
+  bookingReplyAction,
+  depositReminderTimes,
   inQuietHours,
   isMobileNumber,
   isStopRequest,
@@ -148,9 +150,44 @@ describe("testi dei messaggi", () => {
       "giovedì 5 novembre alle 10:30",
       "Rossi Idraulica",
     ]);
-    expect(text).toContain(
-      "giovedì 5 novembre alle 10:30 hai l'appuntamento con Rossi Idraulica",
+    expect(text).toBe(
+      "*Promemoria: giovedì 5 novembre alle 10:30*\n\nHai l'appuntamento con Rossi Idraulica. Indirizzo e dettagli sono nella tua richiesta.\n\nCi sarai? Rispondi con un pulsante qui sotto.",
     );
     expect(text).not.toContain("domani");
+  });
+});
+
+describe("pulsanti del promemoria", () => {
+  it("riconosce 'Ci sarò' e 'Non posso più', anche scritti a mano", () => {
+    expect(bookingReplyAction("Ci sarò", "Ci sarò")).toBe("CONFIRM");
+    expect(bookingReplyAction("ci saro!", null)).toBe("CONFIRM");
+    expect(bookingReplyAction(null, "Non posso più")).toBe("CANT_COME");
+    expect(bookingReplyAction("Non posso più venire", null)).toBeNull();
+    expect(bookingReplyAction("Non ricevere più", null)).toBeNull();
+    expect(isStopRequest("Non posso più", null)).toBe(false);
+  });
+});
+
+describe("promemoria prima del preavviso", () => {
+  const at = (iso: string, hours: number) => {
+    const { sendFrom, deadline } = depositReminderTimes(new Date(iso), hours);
+    return [sendFrom.toISOString(), deadline.toISOString()];
+  };
+
+  it("6 ore prima della fine del preavviso", () => {
+    expect(at("2027-01-16T18:00:00Z", 24)).toEqual([
+      "2027-01-15T12:00:00.000Z",
+      "2027-01-15T18:00:00.000Z",
+    ]);
+  });
+
+  it("di notte si anticipa alle 20 della sera prima, mai dopo", () => {
+    // Fine del preavviso alle 10:30: le 4:30 diventano le 20 del giorno prima.
+    expect(at("2027-01-16T10:30:00Z", 48)).toEqual([
+      "2027-01-13T20:00:00.000Z",
+      "2027-01-14T10:30:00.000Z",
+    ]);
+    // Fine alle 3: le 21 diventano le 20 dello stesso giorno.
+    expect(at("2027-01-19T03:00:00Z", 72)[0]).toBe("2027-01-15T20:00:00.000Z");
   });
 });

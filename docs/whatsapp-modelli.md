@@ -34,14 +34,40 @@ caratteri, pulsanti entro 25, nessuna promozione.
 
 - Tipo nel codice: `BOOKING_REMINDER_CLIENT`
 - Categoria: **Utility**, lingua: Italiano (it)
-- Testo:
+- Testo (gli asterischi sono il grassetto di WhatsApp):
 
-  > Promemoria: {{1}} hai l'appuntamento con {{2}}. Indirizzo, dettagli e chat sono nella tua richiesta. Se non puoi più esserci, avvisa il professionista dalla chat.
+  > \*Promemoria: {{1}}\*
+  >
+  > Hai l'appuntamento con {{2}}. Indirizzo e dettagli sono nella tua richiesta.
+  >
+  > Ci sarai? Rispondi con un pulsante qui sotto.
 
 - Esempio delle variabili: {{1}} = "giovedì 5 novembre alle 10:30", {{2}} = "Rossi Idraulica"
-- Piè di pagina: "Messaggio automatico, le risposte non vengono lette"
-- Pulsante 1, "Visita il sito web", URL dinamico: testo "Apri la richiesta", indirizzo `https://<dominio>/{{1}}`, esempio `https://<dominio>/le-mie-richieste?open=esempio`
-- Pulsante 2, risposta rapida: "Non ricevere più"
+- Piè di pagina: "Messaggio automatico: rispondi con i pulsanti"
+- Pulsanti 1, 2 e 3, risposta rapida, in quest'ordine: "Ci sarò", "Non posso più", "Non ricevere più" (con quattro pulsanti WhatsApp mostra i primi due e gli altri sotto "Vedi tutte le opzioni")
+- Pulsante 4, "Visita il sito web", URL dinamico: testo "Apri la richiesta", indirizzo `https://<dominio>/{{1}}`, esempio `https://<dominio>/le-mie-richieste?open=esempio`
+
+## promemoria_appuntamento_acconto
+
+Stesso tipo nel codice, al cliente con un acconto che resta al
+professionista se annulla dentro il preavviso: parte 6 ore prima che il
+preavviso inizi (mai di notte, al massimo le 20 della sera prima).
+
+- Categoria: **Utility**, lingua: Italiano (it)
+- Testo:
+
+  > \*Promemoria: {{1}}\*
+  >
+  > Hai l'appuntamento con {{2}}. Se non puoi più esserci, annulla dalla tua richiesta entro {{3}}: così l'acconto ti torna indietro.
+  >
+  > Ci sarai? Rispondi con un pulsante qui sotto.
+
+- Esempio delle variabili: {{1}} = "giovedì 5 novembre alle 10:30", {{2}} = "Rossi Idraulica", {{3}} = "martedì 3 novembre alle 10:30"
+- Piè di pagina e pulsanti: come `promemoria_appuntamento_cliente`
+
+Alla risposta "Ci sarò" o "Non posso più" il sito risponde con un testo
+libero (non un modello: entro 24 ore da un messaggio del cliente Meta non
+lo fa pagare).
 
 ## riepilogo_lavori_1, riepilogo_lavori_2, riepilogo_lavori_3, riepilogo_lavori_piu
 

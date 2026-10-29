@@ -91,17 +91,25 @@ function fakePrisma(users: Row[]) {
         async ({
           where,
           include,
+          select,
         }: {
-          where: { id?: string; providerMessageId?: string };
+          where: {
+            id?: string;
+            providerMessageId?: string;
+            idempotencyKey?: string;
+          };
           include?: unknown;
+          select?: { user?: unknown };
         }) => {
           const row = messages.find((m) =>
             where.id
               ? m.id === where.id
-              : m.providerMessageId === where.providerMessageId,
+              : where.idempotencyKey
+                ? m.idempotencyKey === where.idempotencyKey
+                : m.providerMessageId === where.providerMessageId,
           );
           if (!row) return null;
-          return include
+          return include || select?.user
             ? { ...row, user: users.find((u) => u.id === row.userId) ?? null }
             : { ...row };
         },
@@ -150,6 +158,7 @@ function fakePrisma(users: Row[]) {
 
 function fakeProvider(fail?: WhatsAppProviderError) {
   const sent: WhatsAppTemplateMessage[] = [];
+  const texts: { to: string; body: string }[] = [];
   const provider: WhatsAppProvider = {
     name: "fake",
     sendTemplate: vi.fn(async (m: WhatsAppTemplateMessage) => {
@@ -157,11 +166,15 @@ function fakeProvider(fail?: WhatsAppProviderError) {
       sent.push(m);
       return { providerMessageId: `wamid.${sent.length}` };
     }),
+    sendText: vi.fn(async (m: { to: string; body: string }) => {
+      texts.push(m);
+      return { providerMessageId: `wamid.text.${texts.length}` };
+    }),
     verifyWebhook: (_raw, headers) => headers["x-hub-signature-256"] === "ok",
     parseWebhook: (body) =>
       body as ReturnType<WhatsAppProvider["parseWebhook"]>,
   };
-  return { provider, sent };
+  return { provider, sent, texts };
 }
 
 const PHONE = "+39 3331234567";
@@ -183,12 +196,12 @@ const PARAMS = {
 
 function setup(users: Row[], fail?: WhatsAppProviderError) {
   const { prisma, messages } = fakePrisma(users);
-  const { provider, sent } = fakeProvider(fail);
+  const { provider, sent, texts } = fakeProvider(fail);
   const service = new WhatsAppService(
     prisma as unknown as PrismaClient,
     provider,
   );
-  return { service, prisma, messages, sent };
+  return { service, prisma, messages, sent, texts };
 }
 
 describe("WhatsAppService: invio", () => {
@@ -597,7 +610,12 @@ describe("WhatsAppService: webhook e 'Non ricevere più'", () => {
         },
       ],
       inbound: [
-        { from: "393331234567", text: "Non ricevere più", buttonPayload: null },
+        {
+          from: "393331234567",
+          text: "Non ricevere più",
+          buttonPayload: null,
+          replyTo: null,
+        },
       ],
     };
     await service.handleWebhook(Buffer.from(JSON.stringify(body)), {
@@ -611,6 +629,172 @@ describe("WhatsAppService: webhook e 'Non ricevere più'", () => {
       status: "SKIPPED",
       skipReason: "OPTED_OUT",
     });
+  });
+});
+
+describe("WhatsAppService: 'Ci sarò' e 'Non posso più'", () => {
+  const webhook = (
+    text: string,
+    replyTo: string | null,
+    from = "393331234567",
+  ) =>
+    Buffer.from(
+      JSON.stringify({
+        statuses: [],
+        inbound: [{ from, text, buttonPayload: text, replyTo }],
+      }),
+    );
+
+  async function withReminder() {
+    const ctx = setup([verifiedUser()]);
+    await ctx.service.enqueue({
+      userId: "u1",
+      type: "BOOKING_REMINDER_CLIENT",
+      params: PARAMS,
+      idempotencyKey: "booking-reminder:b1:client",
+      bookingId: "b1",
+      now: DAY,
+    });
+    const handler = vi.fn(
+      async () => "Grazie! Abbiamo detto a Rossi Idraulica che ci sarai.",
+    );
+    ctx.service.onBookingReply(handler);
+    return { ...ctx, handler };
+  }
+
+  it("risposta al promemoria: avvisa il professionista e risponde gratis al cliente, nel registro", async () => {
+    const { service, handler, texts, messages } = await withReminder();
+    await service.handleWebhook(webhook("Ci sarò", "wamid.1"), {
+      "x-hub-signature-256": "ok",
+    });
+    expect(handler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clientId: "u1",
+        bookingId: "b1",
+        action: "CONFIRM",
+      }),
+    );
+    expect(texts).toEqual([
+      {
+        to: "393331234567",
+        body: "Grazie! Abbiamo detto a Rossi Idraulica che ci sarai.",
+      },
+    ]);
+    expect(messages[1]).toMatchObject({
+      type: "BOOKING_REPLY",
+      status: "SENT",
+      costMicroEur: 0,
+      bookingId: "b1",
+    });
+  });
+
+  it("vale solo come risposta a un nostro promemoria e dal numero a cui era partito", async () => {
+    const { service, handler } = await withReminder();
+    await service.handleWebhook(webhook("Non posso più", null), {
+      "x-hub-signature-256": "ok",
+    });
+    await service.handleWebhook(webhook("Non posso più", "wamid.99"), {
+      "x-hub-signature-256": "ok",
+    });
+    await service.handleWebhook(
+      webhook("Non posso più", "wamid.1", "393339999999"),
+      { "x-hub-signature-256": "ok" },
+    );
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("niente risposta se il professionista è già stato avvisato", async () => {
+    const { service, handler, texts } = await withReminder();
+    handler.mockResolvedValueOnce(null as never);
+    await service.handleWebhook(webhook("Non posso più", "wamid.1"), {
+      "x-hub-signature-256": "ok",
+    });
+    expect(handler).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "CANT_COME" }),
+    );
+    expect(texts).toHaveLength(0);
+  });
+});
+
+describe("WhatsAppService: promemoria prima del preavviso con l'acconto", () => {
+  // Sabato 16 gennaio alle 10:30, preavviso di 48 ore: si annulla fino a
+  // giovedì 14 alle 10:30, il promemoria parte da giovedì alle 4:30, cioè
+  // dalle 20 di mercoledì 13 (ore di silenzio).
+  const booking = (extra: Record<string, unknown> = {}) => ({
+    id: "b1",
+    clientId: "u1",
+    scheduledAt: new Date("2027-01-16T10:30:00Z"),
+    cancellationNoticeHours: 48,
+    professionalProfile: { businessName: "Rossi Idraulica" },
+    quote: { guidedRequestId: "r1" },
+    jobPayment: { paidEurCents: 5000, refundedEurCents: 0 },
+    ...extra,
+  });
+
+  function withBookings(rows: ReturnType<typeof booking>[]) {
+    const ctx = setup([verifiedUser()]);
+    (ctx.prisma.booking as unknown as { findMany: unknown }).findMany = vi.fn(
+      async () => rows,
+    );
+    return ctx;
+  }
+
+  it("parte alle 20 della sera prima e dice fino a quando si annulla riavendo l'acconto", async () => {
+    const { service, sent } = withBookings([booking()]);
+    // Mercoledì 13 alle 19:30 italiane: troppo presto.
+    expect(
+      await service.depositReminders(new Date("2027-01-13T18:30:00Z")),
+    ).toBe(0);
+    // Alle 20:00.
+    expect(
+      await service.depositReminders(new Date("2027-01-13T19:00:00Z")),
+    ).toBe(1);
+    expect(sent[0]).toMatchObject({
+      template: "promemoria_appuntamento_acconto",
+      bodyParams: [
+        "sabato 16 gennaio alle 10:30",
+        "Rossi Idraulica",
+        "giovedì 14 gennaio alle 10:30",
+      ],
+      urlButtonSuffix: "le-mie-richieste?open=r1",
+      // "Apri la richiesta" dopo "Ci sarò", "Non posso più" e "Non ricevere più".
+      urlButtonIndex: 3,
+    });
+    // Il giro dopo non lo rimanda.
+    await service.depositReminders(new Date("2027-01-13T19:30:00Z"));
+    expect(sent).toHaveLength(1);
+  });
+
+  it("non parte a un'ora dalla fine del preavviso, né senza acconto pagato", async () => {
+    const late = withBookings([booking()]);
+    expect(
+      await late.service.depositReminders(new Date("2027-01-14T09:00:00Z")),
+    ).toBe(0);
+    const refunded = withBookings([
+      booking({ jobPayment: { paidEurCents: 5000, refundedEurCents: 5000 } }),
+    ]);
+    expect(
+      await refunded.service.depositReminders(new Date("2027-01-13T19:00:00Z")),
+    ).toBe(0);
+  });
+
+  it("con 24 ore di preavviso sostituisce il promemoria del giorno prima", async () => {
+    const { service, sent } = withBookings([
+      booking({ cancellationNoticeHours: 24 }),
+    ]);
+    // Si annulla fino a venerdì 15 alle 10:30: promemoria da venerdì alle 4:30, cioè giovedì alle 20.
+    expect(
+      await service.depositReminders(new Date("2027-01-14T19:00:00Z")),
+    ).toBe(1);
+    await service.bookingReminder({
+      bookingId: "b1",
+      scheduledAt: new Date("2027-01-16T10:30:00Z"),
+      clientId: "u1",
+      businessName: "Rossi Idraulica",
+      guidedRequestId: "r1",
+      now: new Date("2027-01-15T09:30:00Z"),
+    });
+    expect(sent).toHaveLength(1);
   });
 });
 

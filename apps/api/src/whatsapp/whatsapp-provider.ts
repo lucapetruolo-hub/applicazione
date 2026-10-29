@@ -12,6 +12,8 @@ export type WhatsAppTemplateMessage = {
   bodyParams: string[];
   /** Parte finale del link del pulsante "Apri" (base fissata nel modello approvato). */
   urlButtonSuffix?: string;
+  /** Posizione del pulsante "Apri" nel modello, se non è il primo. */
+  urlButtonIndex?: number;
   /** Codice per il pulsante "Copia codice" dei modelli di autenticazione. */
   copyCode?: string;
 };
@@ -31,8 +33,10 @@ export type WhatsAppInbound = {
   /** Numero di chi scrive, solo cifre. */
   from: string;
   text: string | null;
-  /** Risposta rapida premuta ("Non ricevere più"). */
+  /** Risposta rapida premuta ("Non ricevere più", "Ci sarò", "Non posso più"). */
   buttonPayload: string | null;
+  /** Id del nostro messaggio a cui risponde (il promemoria con i pulsanti). */
+  replyTo: string | null;
 };
 
 export interface WhatsAppProvider {
@@ -40,6 +44,14 @@ export interface WhatsAppProvider {
   sendTemplate(
     message: WhatsAppTemplateMessage,
   ): Promise<{ providerMessageId: string }>;
+  /**
+   * Testo libero, solo in risposta a un messaggio della persona nelle
+   * ultime 24 ore (la "finestra di servizio" di Meta, gratuita).
+   */
+  sendText(message: {
+    to: string;
+    body: string;
+  }): Promise<{ providerMessageId: string }>;
   /** Firma del webhook sul corpo così com'è arrivato. */
   verifyWebhook(
     rawBody: Buffer,

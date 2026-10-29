@@ -21,6 +21,7 @@ import { SkeletonTableRows } from "@/components/Skeleton";
 const TYPE_LABEL: Record<string, string> = {
   BOOKING_REMINDER_CLIENT: "Promemoria al cliente",
   BOOKING_REMINDER_PROFESSIONAL: "Riepilogo della sera al professionista",
+  BOOKING_REPLY: "Risposta a \"Ci sarò\" o \"Non posso più\" (gratuita)",
   PROFESSIONAL_ON_THE_WAY: "Sto arrivando",
   BOOKING_CANCELED: "Appuntamento annullato",
   PHONE_VERIFICATION_CODE: "Codice del numero",

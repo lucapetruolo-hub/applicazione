@@ -319,6 +319,9 @@ export type ProfessionalBooking = {
   canceledBy: "CLIENT" | "PROFESSIONAL" | null;
   /** Il cliente ha annullato dentro il preavviso scelto dal professionista (docs/CHANGELOG.md §347). */
   canceledLate: boolean;
+  /** Risposta del cliente ai pulsanti del promemoria WhatsApp, "Ci sarò" e "Non posso più" (ISO). */
+  clientConfirmedAt: string | null;
+  clientCantComeAt: string | null;
   /** Ultima segnalazione "Qualcosa è andato male" del professionista su questo lavoro (§197), `null` se non ne ha fatte. */
   professionalProblemReport: { reason: string; status: "OPEN" | "RESOLVED" | "DISMISSED"; createdAt: string } | null;
   /**

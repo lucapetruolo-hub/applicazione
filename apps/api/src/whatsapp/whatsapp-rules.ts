@@ -69,18 +69,23 @@ export function startOfItalianDay(now: Date = new Date()): Date {
 }
 
 /** Testo che spegne i promemoria quando qualcuno lo scrive in risposta (oltre al pulsante). */
+/** Minuscole, senza accenti né punto finale: "Ci sarò!" → "ci saro". */
+function normalizeReply(text: string | null): string {
+  return (text ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[.!]+$/, "");
+}
+
 export function isStopRequest(
   text: string | null,
   buttonPayload: string | null,
 ): boolean {
   if (buttonPayload && buttonPayload.trim().toUpperCase() === "STOP")
     return true;
-  const normalized = (text ?? "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[.!]+$/, "");
+  const normalized = normalizeReply(text);
   return [
     "stop",
     "basta",
@@ -105,4 +110,42 @@ export function shouldApplyStatus(
   if (current === "FAILED") return false;
   const from = ORDER[current as keyof typeof ORDER] ?? 0;
   return ORDER[next] > from;
+}
+
+/** Pulsante del promemoria premuto dal cliente: "Ci sarò" o "Non posso più". */
+export function bookingReplyAction(
+  text: string | null,
+  buttonPayload: string | null,
+): "CONFIRM" | "CANT_COME" | null {
+  const value = normalizeReply(buttonPayload ?? text);
+  if (value === "ci saro") return "CONFIRM";
+  if (value === "non posso piu") return "CANT_COME";
+  return null;
+}
+
+/** Ore prima della fine del preavviso in cui parte il promemoria con l'acconto (Luca, 29/10/2026). */
+export const DEPOSIT_REMINDER_HOURS_BEFORE = 6;
+
+/**
+ * Quando mandare il promemoria a chi perderebbe l'acconto annullando tardi
+ * (orari di parete, come `Booking.scheduledAt`): `deadline` è l'ultimo
+ * momento per annullare riavendolo, `sendFrom` 6 ore prima. Se cade nelle
+ * ore di silenzio si anticipa alle 20 della sera prima, mai dopo: deve
+ * arrivare quando si può ancora annullare.
+ */
+export function depositReminderTimes(
+  scheduledAt: Date,
+  noticeHours: number,
+): { sendFrom: Date; deadline: Date } {
+  const deadline = new Date(scheduledAt.getTime() - noticeHours * 3_600_000);
+  const sendFrom = new Date(
+    deadline.getTime() - DEPOSIT_REMINDER_HOURS_BEFORE * 3_600_000,
+  );
+  const hour = sendFrom.getUTCHours();
+  if (hour >= WHATSAPP_QUIET_START_HOUR || hour < WHATSAPP_QUIET_END_HOUR) {
+    if (hour < WHATSAPP_QUIET_END_HOUR)
+      sendFrom.setUTCDate(sendFrom.getUTCDate() - 1);
+    sendFrom.setUTCHours(WHATSAPP_QUIET_START_HOUR - 1, 0, 0, 0);
+  }
+  return { sendFrom, deadline };
 }

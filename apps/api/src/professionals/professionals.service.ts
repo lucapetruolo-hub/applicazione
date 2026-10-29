@@ -1607,6 +1607,9 @@ export class ProfessionalsService {
       canceledBy: booking.canceledBy,
       // Il cliente ha annullato dentro il preavviso scelto (docs/CHANGELOG.md §347).
       canceledLate: booking.canceledLate,
+      // Pulsanti del promemoria WhatsApp (docs/changelog/2026-10-28-promemoria-whatsapp.md).
+      clientConfirmedAt: booking.clientConfirmedAt?.toISOString() ?? null,
+      clientCantComeAt: booking.clientCantComeAt?.toISOString() ?? null,
       professionalProblemReport: booking.quote?.guidedRequestId ? (problemReportByGuidedRequestId.get(booking.quote.guidedRequestId) ?? null) : null,
       description: booking.quote?.guidedRequest?.description ?? null,
       photoUrls: booking.quote?.guidedRequest?.photoUrls ?? [],

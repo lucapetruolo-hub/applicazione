@@ -122,6 +122,36 @@ lavori esterni dell'agenda non ricevono nulla (domanda 70 per l'avvocato).
   grassetto: "*I tuoi 3 lavori di giovedì 5 novembre*", "• *08:30* ·
   Perdita sotto il lavandino · Latina". Il riepilogo scade a mezzanotte:
   rimasto indietro, non parte il giorno stesso dei lavori.
+- **Settimo giro** (Luca, 29/10: "sì entrambe", poi "il promemoria qualche
+  ora prima che entri nelle 24 ore"):
+  - promemoria al cliente con "*Promemoria: giovedì 5 novembre alle
+    10:30*" in grassetto, poche righe e i pulsanti "Ci sarò" e "Non posso
+    più" (oltre ad "Apri la richiesta" e "Non ricevere più"): i pulsanti non
+    costano, si paga sempre un messaggio;
+  - la risposta arriva dal webhook come risposta al nostro promemoria
+    (`context.id`), vale solo dal numero a cui era partito e per un lavoro
+    ancora da fare. "Ci sarò" va nella cronologia della richiesta e nella
+    campanella del professionista (`BOOKING_CLIENT_CONFIRMED`, solo sito);
+    "Non posso più" anche per email (`BOOKING_CLIENT_CANT_COME`) e non
+    annulla nulla da sé, perché c'è di mezzo l'acconto: al cliente torna il
+    link per annullare o cambiare data e, se vale ancora, fino a quando
+    riavrebbe l'acconto. Una volta sola per lavoro
+    (`Booking.clientConfirmedAt`/`clientCantComeAt`). La risposta al cliente è
+    testo libero, gratuito entro 24 ore, nel registro come `BOOKING_REPLY`
+    e fuori dai tetti (`BookingRepliesService`);
+  - con un acconto pagato online che resta al professionista se si annulla
+    dentro il preavviso (`Quote.lateCancelKeepsDeposit`) il promemoria
+    parte 6 ore prima che il preavviso inizi, mai tra le 21 e le 8 (allora
+    alle 20 della sera prima), con il giorno e l'ora entro cui annullare
+    (modello `promemoria_appuntamento_acconto`, `depositReminders`). Con 24
+    ore di preavviso sostituisce quello del giorno prima; con 48 o 72 ore
+    parte anche quello, perché tre giorni prima è presto per ricordarsene.
+    Senza acconto nulla cambia;
+  - nella richiesta completa del professionista (Richieste, scheda del
+    lavoro) una riga con la risposta del cliente, l'ultima se ha cambiato
+    idea: "Il cliente ha confermato che ci sarà" con la spunta, o "Il
+    cliente ha risposto al promemoria che non può più esserci: scrivigli in
+    chat" in rosso (Luca, 29/10).
 
 Modelli da far approvare a Meta: `docs/whatsapp-modelli.md`.
 

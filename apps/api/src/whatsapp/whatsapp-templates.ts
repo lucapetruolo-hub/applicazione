@@ -25,6 +25,16 @@ export const WHATSAPP_FOOTER =
 /** Testo del pulsante di risposta rapida che spegne i promemoria. */
 export const WHATSAPP_STOP_BUTTON = "Non ricevere più";
 
+/** Pulsanti del promemoria al cliente (Luca, 29/10/2026): la risposta avvisa il professionista. */
+export const CLIENT_REPLY_BUTTONS = {
+  confirm: "Ci sarò",
+  cantCome: "Non posso più",
+} as const;
+
+/** Piè di pagina dei messaggi con i pulsanti di risposta. */
+export const WHATSAPP_REPLY_FOOTER =
+  "Messaggio automatico: rispondi con i pulsanti";
+
 export type WhatsAppTemplateDefinition = {
   name: string;
   category: "utility" | "authentication";
@@ -33,6 +43,12 @@ export type WhatsAppTemplateDefinition = {
   example: string[];
   /** Pulsante "Apri": testo e indirizzo (dominio del sito + parte variabile). */
   urlButton?: { text: string; exampleSuffix: string };
+  /**
+   * Pulsanti di risposta rapida, per primi: con più di tre pulsanti WhatsApp
+   * ne mostra due e mette gli altri sotto "Vedi tutte le opzioni". Poi "Non
+   * ricevere più" e per ultimo "Apri".
+   */
+  replyButtons?: readonly string[];
   stopButton: boolean;
   footer: string | null;
 };
@@ -105,22 +121,50 @@ export const PROFESSIONAL_DAY_TEMPLATES: readonly WhatsAppTemplateDefinition[] =
     },
   ];
 
+const CLIENT_REMINDER_END = "\n\nCi sarai? Rispondi con un pulsante qui sotto.";
+const REQUEST_BUTTON = {
+  text: "Apri la richiesta",
+  exampleSuffix: "le-mie-richieste?open=esempio",
+};
+
+/**
+ * Promemoria al cliente (Luca, 29/10/2026): data e ora in grassetto e i
+ * pulsanti "Ci sarò" e "Non posso più". Con un acconto che resta al
+ * professionista se si annulla tardi parte prima del preavviso e dice fino
+ * a quando si può annullare riavendolo (`depositDeadline`).
+ */
+export const CLIENT_REMINDER_TEMPLATES = {
+  standard: {
+    name: "promemoria_appuntamento_cliente",
+    category: "utility",
+    body: `*Promemoria: {{1}}*\n\nHai l'appuntamento con {{2}}. Indirizzo e dettagli sono nella tua richiesta.${CLIENT_REMINDER_END}`,
+    example: ["giovedì 5 novembre alle 10:30", "Rossi Idraulica"],
+    urlButton: REQUEST_BUTTON,
+    replyButtons: [CLIENT_REPLY_BUTTONS.confirm, CLIENT_REPLY_BUTTONS.cantCome],
+    stopButton: true,
+    footer: WHATSAPP_REPLY_FOOTER,
+  },
+  depositDeadline: {
+    name: "promemoria_appuntamento_acconto",
+    category: "utility",
+    body: `*Promemoria: {{1}}*\n\nHai l'appuntamento con {{2}}. Se non puoi più esserci, annulla dalla tua richiesta entro {{3}}: così l'acconto ti torna indietro.${CLIENT_REMINDER_END}`,
+    example: [
+      "giovedì 5 novembre alle 10:30",
+      "Rossi Idraulica",
+      "martedì 3 novembre alle 10:30",
+    ],
+    urlButton: REQUEST_BUTTON,
+    replyButtons: [CLIENT_REPLY_BUTTONS.confirm, CLIENT_REPLY_BUTTONS.cantCome],
+    stopButton: true,
+    footer: WHATSAPP_REPLY_FOOTER,
+  },
+} satisfies Record<string, WhatsAppTemplateDefinition>;
+
 export const WHATSAPP_TEMPLATES: Record<
   WhatsAppMessageType,
   WhatsAppTemplateDefinition
 > = {
-  BOOKING_REMINDER_CLIENT: {
-    name: "promemoria_appuntamento_cliente",
-    category: "utility",
-    body: "Promemoria: {{1}} hai l'appuntamento con {{2}}. Indirizzo, dettagli e chat sono nella tua richiesta. Se non puoi più esserci, avvisa il professionista dalla chat.",
-    example: ["giovedì 5 novembre alle 10:30", "Rossi Idraulica"],
-    urlButton: {
-      text: "Apri la richiesta",
-      exampleSuffix: "le-mie-richieste?open=esempio",
-    },
-    stopButton: true,
-    footer: WHATSAPP_FOOTER,
-  },
+  BOOKING_REMINDER_CLIENT: CLIENT_REMINDER_TEMPLATES.standard,
   BOOKING_REMINDER_PROFESSIONAL: PROFESSIONAL_DAY_TEMPLATES[0]!,
   PROFESSIONAL_ON_THE_WAY: {
     name: "professionista_in_arrivo",
@@ -160,6 +204,13 @@ export const WHATSAPP_TEMPLATES: Record<
 };
 
 export const WHATSAPP_LANGUAGE = "it";
+
+/** Posizione del pulsante "Apri" nel modello: primo, o dopo le risposte rapide. */
+export function urlButtonIndex(template: WhatsAppTemplateDefinition): number {
+  return template.replyButtons
+    ? template.replyButtons.length + (template.stopButton ? 1 : 0)
+    : 0;
+}
 
 /** Il testo che leggerà chi riceve, con i parametri al loro posto (anteprima, test, registro). */
 export function renderWhatsAppText(

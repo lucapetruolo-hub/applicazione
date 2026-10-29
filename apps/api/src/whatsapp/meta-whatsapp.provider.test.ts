@@ -7,7 +7,10 @@ import {
 } from "./meta-whatsapp.provider";
 import { WhatsAppProviderError } from "./whatsapp-provider";
 import {
+  CLIENT_REMINDER_TEMPLATES,
   WHATSAPP_FOOTER,
+  WHATSAPP_REPLY_FOOTER,
+  urlButtonIndex,
   WHATSAPP_STOP_BUTTON,
   PROFESSIONAL_DAY_TEMPLATES,
   WHATSAPP_TEMPLATES,
@@ -80,6 +83,12 @@ describe("lettura del webhook", () => {
                       payload: "Non ricevere più",
                     },
                   },
+                  {
+                    from: "393331234567",
+                    type: "button",
+                    context: { from: "390000000000", id: "wamid.1" },
+                    button: { text: "Ci sarò", payload: "Ci sarò" },
+                  },
                 ],
               },
             },
@@ -104,6 +113,13 @@ describe("lettura del webhook", () => {
         from: "393331234567",
         text: "Non ricevere più",
         buttonPayload: "Non ricevere più",
+        replyTo: null,
+      },
+      {
+        from: "393331234567",
+        text: "Ci sarò",
+        buttonPayload: "Ci sarò",
+        replyTo: "wamid.1",
       },
     ]);
   });
@@ -209,12 +225,40 @@ describe("invio con la Cloud API", () => {
   });
 });
 
+describe("risposta in testo libero", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("manda un testo semplice, senza anteprima dei link", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ messages: [{ id: "wamid.t" }] }), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const result = await new MetaWhatsAppProvider("tok", "123", "s").sendText({
+      to: "393331234567",
+      body: "Grazie!",
+    });
+    expect(result).toEqual({ providerMessageId: "wamid.t" });
+    const init = fetchMock.mock.calls[0]![1] as { body: string };
+    expect(JSON.parse(init.body)).toEqual({
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: "393331234567",
+      type: "text",
+      text: { body: "Grazie!", preview_url: false },
+    });
+  });
+});
+
 describe("modelli da far approvare a Meta", () => {
   it("rispettano le regole di Meta", () => {
     expect(WHATSAPP_FOOTER.length).toBeLessThanOrEqual(60);
     expect(WHATSAPP_STOP_BUTTON.length).toBeLessThanOrEqual(25);
+    expect(WHATSAPP_REPLY_FOOTER.length).toBeLessThanOrEqual(60);
     for (const template of [
       ...Object.values(WHATSAPP_TEMPLATES),
+      ...Object.values(CLIENT_REMINDER_TEMPLATES),
       ...PROFESSIONAL_DAY_TEMPLATES,
     ]) {
       expect(template.name).toMatch(/^[a-z0-9_]{1,512}$/);
@@ -223,6 +267,11 @@ describe("modelli da far approvare a Meta", () => {
       expect(template.example).toHaveLength(variables.length);
       if (template.urlButton)
         expect(template.urlButton.text.length).toBeLessThanOrEqual(25);
+      for (const button of template.replyButtons ?? [])
+        expect(button.length).toBeLessThanOrEqual(25);
+      expect(urlButtonIndex(template)).toBe(
+        template.replyButtons ? template.replyButtons.length + 1 : 0,
+      );
       if (template.category === "authentication") continue;
       // Niente variabili all'inizio o alla fine del testo.
       expect(template.body).not.toMatch(/^\{\{/);

@@ -71,6 +71,9 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "BOOKING_CANCELED_BY_CLIENT",
       "BOOKING_REOPENED_BY_CLIENT",
       "BOOKING_REOPENED_BY_PROFESSIONAL",
+      // Risposta del cliente al promemoria WhatsApp: "Ci sarò" o "Non posso più".
+      "BOOKING_CLIENT_CONFIRMED",
+      "BOOKING_CLIENT_CANT_COME",
       "BOOKING_NO_SHOW_REPORTED",
       // Segnalazioni di un problema sul lavoro (docs/CHANGELOG.md §164).
       "JOB_ISSUE_REPORTED",
