@@ -51,9 +51,9 @@ sezione "Quando arrivano le email".
   riepilogo dei lavori di domani (`AgendaTomorrowSummaryService`, che ora
   gira dalle 18 alle 21 e manda a ognuno alla sua ora).
 - **Una sola ora anche per WhatsApp**: la PR #184 non è ancora unita; i passi
-  per collegarla sono in
-  `anteprime`→`patch/notifiche-186-con-184/una-sola-ora-della-sera.md` (cartella
-  del progetto) e si fanno all'unione.
+  per collegarla sono nella cartella del progetto,
+  `patch/notifiche-186-con-184/una-sola-ora-della-sera.md`, e si fanno
+  all'unione.
 - **Avviso del lunedì**: tra i consigli della settimana, quando più del 20%
   dei professionisti o dei clienti spegne lo stesso avviso (con almeno 20
   persone, `OPT_OUT_ADVICE_SHARE`/`OPT_OUT_ADVICE_MIN_PEOPLE` in
