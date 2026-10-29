@@ -216,6 +216,28 @@ describe("promemoria del giorno prima (docs/CHANGELOG.md §234)", () => {
     }
   });
 
+  it("al cliente: pulsanti Ci sarò e Non posso più, e con l'acconto la scadenza per annullare", () => {
+    const email = bookingReminderClientEmail({
+      name: "Anna",
+      businessName: "Idraulica Rossi",
+      professionalFullName: null,
+      scheduledAt,
+      category: null,
+      replyUrl: "https://sito.it/promemoria/abc.def",
+      depositDeadline: new Date("2026-10-14T09:00:00.000Z"),
+      deposit: true,
+    });
+    expect(email.subject).toBe("Promemoria: giovedì 15 ottobre alle 09:00 l'appuntamento con Idraulica Rossi");
+    expect(email.html).toContain('href="https://sito.it/promemoria/abc.def?risposta=ci-saro"');
+    expect(email.html).toContain('href="https://sito.it/promemoria/abc.def?risposta=non-posso"');
+    expect(email.text).toContain("entro mercoledì 14 ottobre alle 09:00: così l'acconto ti torna indietro");
+    // Senza link resta il pulsante della richiesta.
+    const plain = bookingReminderClientEmail({ name: null, businessName: "Idraulica Rossi", professionalFullName: null, scheduledAt, category: null });
+    expect(plain.subject).toBe("Promemoria: domani l'appuntamento con Idraulica Rossi");
+    expect(plain.text).toContain("Apri la richiesta");
+    expect(plain.text).not.toContain("Ci sarò");
+  });
+
   it("avviso delle ricerche senza professionisti vicino: una riga per zona (§371)", () => {
     const email = renderEmail(
       notificationEmail("ADMIN_SEARCH_DEMAND_ALERT", { zones: [{ categoryLabel: "Fabbro", city: "Aprilia", searches: 7, empty: 6 }, { categoryLabel: "Idraulico", city: "Sezze", searches: 1, empty: 1 }] }, ctx)!,

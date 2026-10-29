@@ -155,7 +155,18 @@ function cloudinaryThumbnail(url: string): string | null {
   return isVideo ? null : url;
 }
 
-/** Promemoria del giorno prima (anti no-show), al cliente. */
+/** "martedì 14 ottobre alle 09:00" (ora dell'appuntamento, scritta in UTC). */
+function dayAtTime(value: Date): string {
+  return `${formatAppointmentDay(value)} alle ${formatAppointmentTime(value)}`;
+}
+
+/**
+ * Promemoria al cliente (anti no-show): il giorno prima e, con un acconto in
+ * gioco, prima che inizi il preavviso (`deposit`). Pulsanti "Ci sarò" e
+ * "Non posso più" come su WhatsApp (Luca, 29/10/2026,
+ * docs/changelog/2026-10-28-promemoria-whatsapp.md): aprono una pagina che
+ * registra la risposta con un tocco.
+ */
 export function bookingReminderClientEmail(input: {
   name: string | null;
   businessName: string;
@@ -170,15 +181,29 @@ export function bookingReminderClientEmail(input: {
   description?: string | null;
   /** Link "Aggiungi a Google Calendar" (docs/CHANGELOG.md §235). */
   calendarUrl?: string | null;
+  /** Pagina dei pulsanti "Ci sarò" e "Non posso più" (link firmato). */
+  replyUrl?: string | null;
+  /** Fino a quando annullando l'acconto torna indietro; assente senza acconto in gioco. */
+  depositDeadline?: Date | null;
+  /** Email mandata prima del preavviso per l'acconto, non il giorno prima. */
+  deposit?: boolean;
 }): RenderedEmail {
   const who = input.professionalFullName?.trim() || null;
   const showBusiness = who !== null && who.toLowerCase() !== input.businessName.trim().toLowerCase();
+  const when = dayAtTime(input.scheduledAt);
+  const depositLine = input.depositDeadline
+    ? `Se non puoi più esserci, annulla dalla tua richiesta entro **${dayAtTime(input.depositDeadline)}**: così l'acconto ti torna indietro.`
+    : null;
   return renderEmail({
     kind: "notification",
-    subject: `Promemoria: domani l'appuntamento con ${input.businessName}`,
+    subject: input.deposit ? `Promemoria: ${when} l'appuntamento con ${input.businessName}` : `Promemoria: domani l'appuntamento con ${input.businessName}`,
     greeting: input.name,
-    title: "Domani hai un appuntamento",
-    paragraphs: [`Ti ricordiamo l'appuntamento con **${who ?? input.businessName}**.`],
+    title: input.deposit ? `${when.charAt(0).toUpperCase()}${when.slice(1)} hai un appuntamento` : "Domani hai un appuntamento",
+    paragraphs: [
+      `Ti ricordiamo l'appuntamento con **${who ?? input.businessName}**.`,
+      ...(depositLine ? [depositLine] : []),
+      ...(input.replyUrl ? ["Ci sarai? Rispondi con un tocco qui sotto."] : []),
+    ],
     details: [
       { label: "Professionista", value: who ? (showBusiness ? `${who} (${input.businessName})` : who) : input.businessName },
       ...appointmentDetails(input.scheduledAt, input.scheduledEndAt),
@@ -187,8 +212,11 @@ export function bookingReminderClientEmail(input: {
       ...descriptionDetail(input.description),
       ...calendarDetail(input.calendarUrl),
     ],
-    cta: { label: "Apri la richiesta", url: `${frontendUrl()}/le-mie-richieste` },
-    after: ["Se non puoi più esserci, avvisa il professionista il prima possibile scrivendogli in chat dalla richiesta."],
+    cta: input.replyUrl ? { label: "Ci sarò", url: `${input.replyUrl}?risposta=ci-saro` } : { label: "Apri la richiesta", url: `${frontendUrl()}/le-mie-richieste` },
+    ...(input.replyUrl ? { secondaryLink: { label: "Non posso più", url: `${input.replyUrl}?risposta=non-posso` } } : {}),
+    after: input.replyUrl
+      ? ["Con «Non posso più» avvisiamo il professionista e puoi proporgli un'altra data."]
+      : ["Se non puoi più esserci, avvisa il professionista il prima possibile scrivendogli in chat dalla richiesta."],
   });
 }
 

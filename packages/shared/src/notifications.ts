@@ -76,6 +76,10 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "BOOKING_CLIENT_CANT_COME",
       // "Ho sbagliato" dopo "Non posso più": il cliente ci sarà.
       "BOOKING_CLIENT_CANT_COME_UNDONE",
+      // "Non posso più" → altra data proposta dal cliente, accettata o rifiutata dal professionista.
+      "BOOKING_RESCHEDULE_PROPOSED",
+      "BOOKING_RESCHEDULE_ACCEPTED",
+      "BOOKING_RESCHEDULE_REJECTED",
       "BOOKING_NO_SHOW_REPORTED",
       // Segnalazioni di un problema sul lavoro (docs/CHANGELOG.md §164).
       "JOB_ISSUE_REPORTED",

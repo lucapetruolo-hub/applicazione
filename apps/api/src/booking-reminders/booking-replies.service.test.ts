@@ -64,8 +64,15 @@ function setup(extra: Record<string, unknown> = {}) {
   const reply = (
     action: Parameters<BookingRepliesService["reply"]>[0]["action"],
     clientId = "c1",
-  ) => service.reply({ clientId, bookingId: "b1", action, now: NOW });
-  return { reply, booking, notify, log };
+  ) =>
+    service.reply({
+      clientId,
+      bookingId: "b1",
+      action,
+      now: NOW,
+      channel: "WHATSAPP",
+    });
+  return { reply, booking, notify, log, service };
 }
 
 describe("BookingRepliesService", () => {
@@ -144,9 +151,9 @@ describe("BookingRepliesService", () => {
     const answer = await reply("CANT_COME");
     expect(answer!.undo).toBe(true);
     expect(answer!.text).toContain("Abbiamo avvisato Rossi Idraulica.");
-    expect(answer!.text).toContain("/le-mie-richieste?open=r1");
+    expect(answer!.text).toContain("/le-mie-richieste?open=r1&cambiaData=1");
     expect(answer!.text).toContain(
-      "Se annulli entro sabato 16 gennaio alle 10:30, l'acconto ti torna indietro.",
+      "Se invece annulli entro sabato 16 gennaio alle 10:30, l'acconto ti torna indietro.",
     );
     expect(notify).toHaveBeenCalledWith(
       "pro1",
@@ -170,5 +177,41 @@ describe("BookingRepliesService", () => {
     const other = setup();
     expect(await other.reply("CONFIRM", "c2")).toBeNull();
     expect(other.notify).not.toHaveBeenCalled();
+  });
+
+  it("dall'email: stessa risposta, scritta come «dall'email del promemoria», e la pagina vede lo stato", async () => {
+    const { service, booking, log, notify } = setup({
+      scheduledEndAt: null,
+      // Martedì 19 alle 10:30: l'acconto si riavrebbe annullando entro lunedì 18.
+      scheduledAt: new Date("2027-01-19T10:30:00Z"),
+    });
+    const state = await service.replyFromEmail("b1", "CONFIRM", NOW);
+    expect(booking.clientReplyChannel).toBe("EMAIL");
+    expect(log).toHaveBeenCalledWith(
+      "r1",
+      "p1",
+      "CLIENT",
+      "Il cliente ha confermato dall'email del promemoria che ci sarà.",
+    );
+    expect(notify).toHaveBeenCalledWith(
+      "pro1",
+      "BOOKING_CLIENT_CONFIRMED",
+      expect.anything(),
+    );
+    expect(state).toMatchObject({
+      businessName: "Rossi Idraulica",
+      upcoming: true,
+      guidedRequestId: "r1",
+      depositDeadline: "2027-01-18T10:30:00.000Z",
+    });
+    expect(state.confirmedAt).not.toBeNull();
+  });
+
+  it("dall'email, appuntamento non più in programma: nessuna risposta registrata", async () => {
+    const { service, booking, notify } = setup({ status: "CANCELED" });
+    const state = await service.replyFromEmail("b1", "CANT_COME", NOW);
+    expect(state.upcoming).toBe(false);
+    expect(booking.clientCantComeAt).toBeNull();
+    expect(notify).not.toHaveBeenCalled();
   });
 });

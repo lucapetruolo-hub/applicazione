@@ -43,6 +43,7 @@ const SKIP_LABEL: Record<string, string> = {
   NO_PHONE: "Senza numero",
   PHONE_CHANGED: "Numero cambiato",
   EXPIRED: "Arrivato troppo tardi",
+  RESCHEDULED: "Appuntamento spostato",
   DAILY_LIMIT: "Tetto del giorno del sito",
   USER_DAILY_LIMIT: "Tetto del giorno per persona",
   ACCOUNT_DELETED: "Account eliminato",
@@ -91,7 +92,7 @@ export default function AdminWhatsAppPage() {
     <YStack gap="$5">
       <AdminPageHeader
         title="WhatsApp"
-        description="Promemoria degli appuntamenti: messaggi, costo e lavori saltati con e senza promemoria."
+        description="Promemoria degli appuntamenti: messaggi, costo, risposte dei clienti e lavori saltati con e senza promemoria."
         right={
           <input
             type="month"
@@ -170,7 +171,8 @@ export default function AdminWhatsAppPage() {
               <Text fontSize={14} color={brand.grafite70}>
                 Lavori passati dal {formatAdminDate(effect.since)} (ultimi 90
                 giorni, senza account di prova). Saltati: cliente assente o
-                annullato all&apos;ultimo dal cliente.
+                annullato all&apos;ultimo dal cliente. Le risposte contano i
+                lavori con un promemoria, su WhatsApp o per email.
               </Text>
               <div className="admin-table-wrap">
                 <table className="admin-table">
@@ -204,8 +206,66 @@ export default function AdminWhatsAppPage() {
                         )}
                       </td>
                     </tr>
+                    <tr>
+                      <td>Ha confermato «Ci sarò»</td>
+                      <td>{effect.confirmedJobs.jobs}</td>
+                      <td>
+                        {effect.confirmedJobs.missed} ·{" "}
+                        {percent(
+                          effect.confirmedJobs.missed,
+                          effect.confirmedJobs.jobs,
+                        )}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Non ha confermato</td>
+                      <td>{effect.unconfirmedJobs.jobs}</td>
+                      <td>
+                        {effect.unconfirmedJobs.missed} ·{" "}
+                        {percent(
+                          effect.unconfirmedJobs.missed,
+                          effect.unconfirmedJobs.jobs,
+                        )}
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
+              </div>
+              {/* Risposte ai pulsanti del promemoria, su WhatsApp e nell'email (docs/changelog/2026-10-28-promemoria-whatsapp.md). */}
+              <div className="admin-kpi-grid">
+                <div className="admin-kpi">
+                  <span className="admin-kpi-value">
+                    {percent(effect.replies.confirmed, effect.replies.reminded)}
+                  </span>
+                  <span className="admin-kpi-label">
+                    Confermano «Ci sarò» ({effect.replies.confirmed} su{" "}
+                    {effect.replies.reminded} promemoria)
+                  </span>
+                </div>
+                <div className="admin-kpi">
+                  <span className="admin-kpi-value">
+                    {percent(effect.replies.cantCome, effect.replies.reminded)}
+                  </span>
+                  <span className="admin-kpi-label">
+                    Dicono «Non posso più» ({effect.replies.cantCome})
+                  </span>
+                </div>
+                <div className="admin-kpi">
+                  <span className="admin-kpi-value">
+                    {percent(effect.replies.noAnswer, effect.replies.reminded)}
+                  </span>
+                  <span className="admin-kpi-label">
+                    Non rispondono ({effect.replies.noAnswer})
+                  </span>
+                </div>
+                <div className="admin-kpi">
+                  <span className="admin-kpi-value">
+                    {effect.replies.byWhatsApp} · {effect.replies.byEmail}
+                  </span>
+                  <span className="admin-kpi-label">
+                    Risposte da WhatsApp · dall&apos;email
+                  </span>
+                </div>
               </div>
             </YStack>
           ) : null}

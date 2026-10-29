@@ -67,7 +67,8 @@ preavviso inizi (mai di notte, al massimo le 20 della sera prima).
 
 Alla risposta "Ci sarò" o "Non posso più" il sito risponde con un testo
 libero con il pulsante "Ho sbagliato" (non un modello: entro 24 ore da un
-messaggio del cliente Meta non lo fa pagare).
+messaggio del cliente Meta non lo fa pagare). Dopo "Non posso più" il link
+apre subito "Proponi un'altra data" nella richiesta.
 
 ## riepilogo_lavori_1, riepilogo_lavori_2, riepilogo_lavori_3, riepilogo_lavori_piu
 

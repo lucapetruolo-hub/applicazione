@@ -1,6 +1,14 @@
-import { Inject, Injectable, type OnModuleInit } from "@nestjs/common";
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  type OnModuleInit,
+} from "@nestjs/common";
 import type { PrismaClient } from "@professionisti/database";
-import { isLateCancellation, wallClockNow } from "@professionisti/shared";
+import {
+  wallClockNow,
+  type AppointmentReplyState,
+} from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { frontendUrl } from "../email/email-brand";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -10,18 +18,31 @@ import {
   type BookingReplyAction,
 } from "../whatsapp/whatsapp.service";
 import { whatsappDayTime } from "../whatsapp/whatsapp-templates";
-import { depositReminderTimes } from "../whatsapp/whatsapp-rules";
+import { DEPOSIT_DEADLINE_SELECT, depositDeadline } from "./deposit-deadline";
 
 type Reply = { text: string; undo: boolean } | null;
 
+/** Da dove arriva la risposta: pulsanti di WhatsApp o dell'email del giorno prima. */
+export type BookingReplyChannel = "WHATSAPP" | "EMAIL";
+
+/** Link alla richiesta del cliente; con `cambiaData` apre subito "Proponi un'altra data". */
+export function clientRequestUrl(
+  guidedRequestId: string | null,
+  options: { changeDate?: boolean } = {},
+): string {
+  if (!guidedRequestId) return `${frontendUrl()}/le-mie-richieste`;
+  return `${frontendUrl()}/le-mie-richieste?open=${encodeURIComponent(guidedRequestId)}${options.changeDate ? "&cambiaData=1" : ""}`;
+}
+
 /**
- * Pulsanti "Ci sarò" e "Non posso più" del promemoria WhatsApp al cliente
- * (Luca, 29/10/2026, docs/changelog/2026-10-28-promemoria-whatsapp.md):
- * la risposta va nella cronologia della richiesta e al professionista, una
- * volta sola per ciascuna. "Non posso più" non annulla nulla da sé (c'è di
- * mezzo l'acconto): al cliente torna il link per annullare o cambiare data.
- * Sotto la risposta il pulsante "Ho sbagliato" la toglie, perché si può
- * premere per errore (Luca).
+ * Pulsanti "Ci sarò" e "Non posso più" del promemoria al cliente, su
+ * WhatsApp e nell'email del giorno prima (Luca, 29/10/2026,
+ * docs/changelog/2026-10-28-promemoria-whatsapp.md): la risposta va nella
+ * cronologia della richiesta e al professionista, una volta sola per
+ * ciascuna. "Non posso più" non annulla nulla da sé (c'è di mezzo
+ * l'acconto): al cliente torna il link che apre subito "Proponi un'altra
+ * data", oppure si annulla. "Ho sbagliato" toglie la risposta, perché si
+ * può premere per errore (Luca).
  */
 @Injectable()
 export class BookingRepliesService implements OnModuleInit {
@@ -33,7 +54,9 @@ export class BookingRepliesService implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    this.whatsAppService.onBookingReply((input) => this.reply(input));
+    this.whatsAppService.onBookingReply((input) =>
+      this.reply({ ...input, channel: "WHATSAPP" }),
+    );
   }
 
   async reply(input: {
@@ -41,14 +64,14 @@ export class BookingRepliesService implements OnModuleInit {
     bookingId: string;
     action: BookingReplyAction;
     now: Date;
+    channel: BookingReplyChannel;
   }): Promise<Reply> {
     const booking = await this.prisma.booking.findUnique({
       where: { id: input.bookingId },
       select: {
+        ...DEPOSIT_DEADLINE_SELECT,
         clientId: true,
         status: true,
-        scheduledAt: true,
-        cancellationNoticeHours: true,
         clientConfirmedAt: true,
         clientCantComeAt: true,
         professionalProfileId: true,
@@ -56,26 +79,22 @@ export class BookingRepliesService implements OnModuleInit {
         quote: {
           select: { guidedRequestId: true, lateCancelKeepsDeposit: true },
         },
-        jobPayment: {
-          select: {
-            paymentMethod: true,
-            paidEurCents: true,
-            refundedEurCents: true,
-            depositKeptAt: true,
-          },
-        },
       },
     });
     if (!booking || booking.clientId !== input.clientId) return null;
     const guidedRequestId = booking.quote?.guidedRequestId ?? null;
-    const requestUrl = guidedRequestId
-      ? `${frontendUrl()}/le-mie-richieste?open=${encodeURIComponent(guidedRequestId)}`
-      : `${frontendUrl()}/le-mie-richieste`;
+    const requestUrl = clientRequestUrl(guidedRequestId);
+    const whatsApp = input.channel === "WHATSAPP";
     if (
       booking.status !== "CONFIRMED" ||
       booking.scheduledAt.getTime() <= wallClockNow(input.now).getTime()
     ) {
-      if (input.action === "UNDO_CONFIRM" || input.action === "UNDO_CANT_COME")
+      // Dall'email la pagina dice già che l'appuntamento non c'è più.
+      if (
+        !whatsApp ||
+        input.action === "UNDO_CONFIRM" ||
+        input.action === "UNDO_CANT_COME"
+      )
         return null;
       // Una volta sola: la stessa risposta non riparte a ogni tocco.
       const field =
@@ -93,6 +112,7 @@ export class BookingRepliesService implements OnModuleInit {
     }
 
     const name = booking.professionalProfile.businessName;
+    const where = whatsApp ? "su WhatsApp" : "dall'email del promemoria";
     const payload = {
       bookingId: input.bookingId,
       ...(guidedRequestId
@@ -123,10 +143,14 @@ export class BookingRepliesService implements OnModuleInit {
         // Toglie anche un "Non posso più" di prima: vale l'ultima risposta.
         const first = await this.prisma.booking.updateMany({
           where: { id: input.bookingId, clientConfirmedAt: null },
-          data: { clientConfirmedAt: input.now, clientCantComeAt: null },
+          data: {
+            clientConfirmedAt: input.now,
+            clientCantComeAt: null,
+            clientReplyChannel: input.channel,
+          },
         });
         if (first.count === 0) return null;
-        await log("Il cliente ha confermato su WhatsApp che ci sarà.");
+        await log(`Il cliente ha confermato ${where} che ci sarà.`);
         // Dopo un "Non posso più" (avvisato anche per email) serve dirlo forte.
         await notify(
           booking.clientCantComeAt
@@ -154,19 +178,23 @@ export class BookingRepliesService implements OnModuleInit {
       case "CANT_COME": {
         const first = await this.prisma.booking.updateMany({
           where: { id: input.bookingId, clientCantComeAt: null },
-          data: { clientCantComeAt: input.now, clientConfirmedAt: null },
+          data: {
+            clientCantComeAt: input.now,
+            clientConfirmedAt: null,
+            clientReplyChannel: input.channel,
+          },
         });
         if (first.count === 0) return null;
         await log(
-          "Il cliente ha risposto al promemoria su WhatsApp che non può più esserci.",
+          `Il cliente ha risposto al promemoria ${where} che non può più esserci.`,
         );
         await notify("BOOKING_CLIENT_CANT_COME");
-        const deadline = this.depositDeadline(booking, input.now);
+        const deadline = depositDeadline(booking, input.now);
         return {
           text: [
-            `Abbiamo avvisato ${name}. Per annullare o proporre un'altra data apri la tua richiesta: ${requestUrl}`,
+            `Abbiamo avvisato ${name}. Per proporre un'altra data apri la tua richiesta: ${clientRequestUrl(guidedRequestId, { changeDate: true })}`,
             deadline
-              ? `Se annulli entro ${whatsappDayTime(deadline)}, l'acconto ti torna indietro.`
+              ? `Se invece annulli entro ${whatsappDayTime(deadline)}, l'acconto ti torna indietro.`
               : null,
           ]
             .filter(Boolean)
@@ -194,37 +222,57 @@ export class BookingRepliesService implements OnModuleInit {
     }
   }
 
-  /** Fino a quando il cliente riavrebbe l'acconto annullando, se è ancora in tempo. */
-  private depositDeadline(
-    booking: {
-      scheduledAt: Date;
-      cancellationNoticeHours: number | null;
-      quote: { lateCancelKeepsDeposit: boolean } | null;
-      jobPayment: {
-        paymentMethod: string;
-        paidEurCents: number;
-        refundedEurCents: number;
-        depositKeptAt: Date | null;
-      } | null;
-    },
+  /** Pagina del link nell'email: l'appuntamento e la risposta già data. */
+  async state(bookingId: string, now: Date): Promise<AppointmentReplyState> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: {
+        ...DEPOSIT_DEADLINE_SELECT,
+        status: true,
+        scheduledEndAt: true,
+        clientConfirmedAt: true,
+        clientCantComeAt: true,
+        professionalProfile: { select: { businessName: true } },
+        quote: {
+          select: { guidedRequestId: true, lateCancelKeepsDeposit: true },
+        },
+      },
+    });
+    if (!booking) throw new NotFoundException("Appuntamento non trovato.");
+    const upcoming =
+      booking.status === "CONFIRMED" &&
+      booking.scheduledAt.getTime() > wallClockNow(now).getTime();
+    const deadline = upcoming ? depositDeadline(booking, now) : null;
+    return {
+      businessName: booking.professionalProfile.businessName,
+      scheduledAt: booking.scheduledAt.toISOString(),
+      scheduledEndAt: booking.scheduledEndAt?.toISOString() ?? null,
+      upcoming,
+      confirmedAt: booking.clientConfirmedAt?.toISOString() ?? null,
+      cantComeAt: booking.clientCantComeAt?.toISOString() ?? null,
+      depositDeadline: deadline?.toISOString() ?? null,
+      guidedRequestId: booking.quote?.guidedRequestId ?? null,
+    };
+  }
+
+  /** Risposta dai pulsanti dell'email: il cliente è quello del lavoro firmato nel link. */
+  async replyFromEmail(
+    bookingId: string,
+    action: BookingReplyAction,
     now: Date,
-  ): Date | null {
-    const payment = booking.jobPayment;
-    const atStake =
-      !!booking.quote?.lateCancelKeepsDeposit &&
-      payment?.paymentMethod === "MANOVIA" &&
-      !payment.depositKeptAt &&
-      payment.paidEurCents - payment.refundedEurCents > 0 &&
-      !isLateCancellation(
-        booking.scheduledAt,
-        booking.cancellationNoticeHours,
-        now,
-      );
-    return atStake
-      ? depositReminderTimes(
-          booking.scheduledAt,
-          booking.cancellationNoticeHours ?? 24,
-        ).deadline
-      : null;
+  ): Promise<AppointmentReplyState> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: { clientId: true },
+    });
+    if (!booking) throw new NotFoundException("Appuntamento non trovato.");
+    await this.reply({
+      clientId: booking.clientId,
+      bookingId,
+      action,
+      now,
+      channel: "EMAIL",
+    });
+    return this.state(bookingId, now);
   }
 }

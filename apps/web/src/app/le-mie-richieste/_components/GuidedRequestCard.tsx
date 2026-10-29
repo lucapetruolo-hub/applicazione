@@ -44,6 +44,7 @@ import { useInternalLinkClick } from "@/lib/useInternalLinkClick";
 import { clientNextAction } from "@/lib/clientNextAction";
 import { CLIENT_STAGE_LABEL, type RequestStage } from "@/lib/requestStage";
 import { BookingSection, ChangeLinks } from "./BookingSection";
+import { RescheduleBookingPanel } from "./RescheduleBookingPanel";
 import { QuoteCard } from "./QuoteCard";
 import { ClientInvoiceRequestPanel } from "@/components/ClientInvoiceRequestForm";
 import { JobDocumentsModal } from "@/components/JobDocumentsModal";
@@ -77,6 +78,8 @@ export function GuidedRequestCard({
   autoStartEditing,
   onAutoEditHandled,
   autoOpenDocuments,
+  autoOpenReschedule,
+  onAutoRescheduleHandled,
   onAutoDocumentsHandled,
   onMarkedRead,
 }: {
@@ -111,6 +114,10 @@ export function GuidedRequestCard({
   autoOpenDocuments?: boolean;
   /** Richiamata dopo aver gestito `autoOpenDocuments`. */
   onAutoDocumentsHandled?: () => void;
+  /** "Non posso più" dal promemoria (`?cambiaData=1`): apre subito "Proponi un'altra data". */
+  autoOpenReschedule?: boolean;
+  /** Richiamata dopo aver gestito `autoOpenReschedule`. */
+  onAutoRescheduleHandled?: () => void;
   /** "Segna come letta" dal menu: spegne subito il "Nuovo" locale del genitore. */
   onMarkedRead: () => void;
 }) {
@@ -350,6 +357,16 @@ export function GuidedRequestCard({
     onAutoEditHandled?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStartEditing]);
+
+  const [showReschedule, setShowReschedule] = useState(false);
+  // "Non posso più" dal promemoria: si apre solo con l'appuntamento fissato.
+  useEffect(() => {
+    if (!autoOpenReschedule) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (booking?.status === "CONFIRMED") setShowReschedule(true);
+    onAutoRescheduleHandled?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpenReschedule]);
 
   // Stesso principio per i documenti: si aprono solo se c'è già il lavoro.
   useEffect(() => {
@@ -849,9 +866,11 @@ export function GuidedRequestCard({
       ) : null}
       <ChangeLinks
         booking={booking}
+        onReschedule={() => setShowReschedule(true)}
         onMessage={booking.guidedRequestId ? () => setShowBookingChat(true) : null}
         onCancel={() => setShowCancelModal(true)}
       />
+      <RescheduleBookingPanel token={token} booking={booking} serviceMode={request.serviceMode} isOpen={showReschedule} onClose={() => setShowReschedule(false)} onChanged={onChanged} />
     </YStack>
   ) : null;
 

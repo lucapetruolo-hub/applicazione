@@ -119,6 +119,18 @@ export type WhatsAppAdminSummary = {
     since: string;
     withReminder: { jobs: number; missed: number };
     withoutReminder: { jobs: number; missed: number };
+    /** Lavori con un promemoria (WhatsApp consegnato o email) e come ha risposto il cliente. */
+    replies: {
+      reminded: number;
+      confirmed: number;
+      cantCome: number;
+      noAnswer: number;
+      byWhatsApp: number;
+      byEmail: number;
+    };
+    /** Lavori saltati tra chi aveva confermato "Ci sarò" e chi no. */
+    confirmedJobs: { jobs: number; missed: number };
+    unconfirmedJobs: { jobs: number; missed: number };
   };
   recent: {
     id: string;

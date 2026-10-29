@@ -65,6 +65,7 @@ import { ContactButton } from "@/components/ContactButton";
 import { ScheduleChangeBox } from "@/components/ScheduleChangeBox";
 import { ProfessionalInvoiceRequestBox } from "@/components/ProfessionalInvoiceRequestBox";
 import { JobDocumentsModal } from "@/components/JobDocumentsModal";
+import { AppointmentReplyStatus } from "./AppointmentReplyStatus";
 import { DeadlinePill, MiniTimeline, QuoteItemDraft, STAGE_STYLE, ServiceBadge, StagePill, formatDateTime, formatSlotRange, slotKey, slotLabel, smallInputStyle } from "./requestHelpers";
 import { ItalianDateInput } from "@/components/ItalianDateInput";
 import { ItalianTimeInput } from "@/components/ItalianTimeInput";
@@ -1150,21 +1151,8 @@ export function RequestCard({
                   : "Il nostro team l'ha esaminata e chiusa senza misure."}
             </Text>
           ) : null}
-          {/* Risposta del cliente al promemoria WhatsApp, l'ultima se ha cambiato idea (docs/changelog/2026-10-28-promemoria-whatsapp.md). */}
-          {booking?.status === "CONFIRMED" && (booking.clientConfirmedAt || booking.clientCantComeAt) ? (
-            booking.clientCantComeAt && (!booking.clientConfirmedAt || booking.clientCantComeAt > booking.clientConfirmedAt) ? (
-              <Text fontSize={13} color={brand.urgenza} fontWeight="600">
-                Il cliente ha risposto al promemoria che non può più esserci ({formatDateTime(booking.clientCantComeAt)}): scrivigli in chat.
-              </Text>
-            ) : (
-              <XStack alignItems="center" gap="$1.5">
-                <Icon name="check" size={14} color={brand.cianografiaScuro} strokeWidth={2.5} />
-                <Text fontSize={13} color={brand.cianografiaScuro} fontWeight="600">
-                  Il cliente ha confermato che ci sarà ({formatDateTime(booking.clientConfirmedAt!)})
-                </Text>
-              </XStack>
-            )
-          ) : null}
+          {/* Promemoria e risposta del cliente, o l'altra data che propone (docs/changelog/2026-10-28-promemoria-whatsapp.md). */}
+          {booking ? <AppointmentReplyStatus token={token} booking={booking} onChanged={onChanged} /> : null}
           {/* Annullato dal cliente dentro il preavviso che hai scelto (docs/CHANGELOG.md §347). */}
           {booking?.status === "CANCELED" && booking.canceledBy === "CLIENT" && booking.canceledLate ? (
             <Text fontSize={13} color={brand.urgenza} fontWeight="600">

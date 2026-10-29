@@ -128,6 +128,8 @@ function LeMieRichiesteContent() {
   const [pendingEditId, setPendingEditId] = useState<string | null>(null);
   // "Apri i documenti" dall'avviso della copia pronta (`?documenti=1`, docs/CHANGELOG.md §387).
   const [pendingDocumentsId, setPendingDocumentsId] = useState<string | null>(null);
+  // "Non posso più" dal promemoria (`&cambiaData=1`): apre subito "Proponi un'altra data".
+  const [pendingRescheduleId, setPendingRescheduleId] = useState<string | null>(null);
 
   const listTopRef = useRef<HTMLDivElement>(null);
   // Scelta una scheda di stato con una sola richiesta dentro, quella si
@@ -267,6 +269,7 @@ function LeMieRichiesteContent() {
     if (chatParam) setPendingChatOpen({ requestId: targetId, professionalProfileId: chatParam });
     if (searchParams.get("modifica") === "1") setPendingEditId(targetId);
     if (searchParams.get("documenti") === "1") setPendingDocumentsId(targetId);
+    if (searchParams.get("cambiaData") === "1") setPendingRescheduleId(targetId);
     setPage(Math.floor(index / pageSize) + 1);
     setTimeout(() => {
       const elementId = `request-${targetId}`;
@@ -754,6 +757,8 @@ function LeMieRichiesteContent() {
                   onAutoEditHandled={() => setPendingEditId((prev) => (prev === request.id ? null : prev))}
                   autoOpenDocuments={pendingDocumentsId === request.id}
                   onAutoDocumentsHandled={() => setPendingDocumentsId((prev) => (prev === request.id ? null : prev))}
+                  autoOpenReschedule={pendingRescheduleId === request.id}
+                  onAutoRescheduleHandled={() => setPendingRescheduleId((prev) => (prev === request.id ? null : prev))}
                 />
               </div>
             ))

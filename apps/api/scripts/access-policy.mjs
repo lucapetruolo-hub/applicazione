@@ -39,6 +39,9 @@ const publicRoutes = [
   "POST /auth/register",
   "POST /auth/verify-email",
   "POST /billing/webhook",
+  // Pulsanti "Ci sarò" e "Non posso più" dell'email del promemoria: link firmato, senza accedere (docs/changelog/2026-10-28-promemoria-whatsapp.md).
+  "GET /booking-replies/:token",
+  "POST /booking-replies/:token",
   "GET /calendar/:file",
   "GET /categories",
   "GET /categories/popular",
@@ -198,6 +201,10 @@ const owned = {
   "PATCH /bookings/:id/cancel-by-professional": booking({ body: () => ({ reason: "Imprevisto improvviso" }) }),
   "PATCH /bookings/:id/client-confirm-complete": booking(),
   "PATCH /bookings/:id/complete": booking(),
+  // "Non posso più" → altra data: la propone il cliente, la accetta o rifiuta il professionista.
+  "POST /bookings/:id/reschedule": booking({ owners: ["clientA"], strangers: ["clientB", "proB", "proA"], body: () => ({ date: "2030-01-10", startTime: "09:00", endTime: "11:00" }) }),
+  "POST /bookings/:id/reschedule/accept": booking({ owners: ["proA"], strangers: ["clientA", "clientB", "proB"] }),
+  "POST /bookings/:id/reschedule/reject": booking({ owners: ["proA"], strangers: ["clientA", "clientB", "proB"] }),
   "POST /bookings/:id/issue": booking({ body: () => ({ type: "NO_SHOW", description: "Il professionista non si è presentato." }) }),
   "POST /bookings/:id/issue/appeal": booking({ body: () => ({ text: "Non sono d'accordo con la decisione presa." }) }),
   "PATCH /bookings/:id/issue/chat-outcome": booking({ body: () => ({ outcome: "RESOLVED" }) }),

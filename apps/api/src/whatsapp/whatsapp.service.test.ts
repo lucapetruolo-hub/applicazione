@@ -145,7 +145,7 @@ function fakePrisma(users: Row[]) {
           messages.filter((m) => matches(m, where)).length,
       ),
       findMany: vi.fn(async ({ where }: { where: Record<string, unknown> }) =>
-        messages.filter((m) => matches(m, where)).map((m) => ({ id: m.id })),
+        messages.filter((m) => matches(m, where)).map((m) => ({ ...m })),
       ),
     },
     booking: { findUnique: vi.fn() },
@@ -695,6 +695,29 @@ describe("WhatsAppService: 'Ci sarò' e 'Non posso più'", () => {
     });
   });
 
+  it("appuntamento spostato: il promemoria della data vecchia non vale più e quello nuovo può ripartire", async () => {
+    const { service, handler, messages } = await withReminder();
+    await service.forgetBookingReminders("b1", DAY);
+    expect(String(messages[0]!.idempotencyKey)).toMatch(
+      /^booking-reminder:b1:client:spostato:\d+$/,
+    );
+    await service.handleWebhook(webhook("Ci sarò", "wamid.1"), {
+      "x-hub-signature-256": "ok",
+    });
+    expect(handler).not.toHaveBeenCalled();
+    await service.enqueue({
+      userId: "u1",
+      type: "BOOKING_REMINDER_CLIENT",
+      params: PARAMS,
+      idempotencyKey: "booking-reminder:b1:client",
+      bookingId: "b1",
+      now: DAY,
+    });
+    expect(
+      messages.filter((m) => m.idempotencyKey === "booking-reminder:b1:client"),
+    ).toHaveLength(1);
+  });
+
   it("'Ho sbagliato' sotto la risposta toglie quella risposta, e vale solo lì", async () => {
     const { service, handler, texts } = await withReminder();
     // Sotto il promemoria "Ho sbagliato" non vuol dire nulla.
@@ -849,5 +872,78 @@ describe("WhatsAppService: registrazione del webhook", () => {
     } finally {
       vi.unstubAllEnvs();
     }
+  });
+});
+
+describe("WhatsAppService: numeri delle risposte", () => {
+  it("chi conferma, chi non può, chi non risponde e i lavori saltati con e senza conferma", async () => {
+    const at = (h: number) => new Date(Date.UTC(2027, 0, 10, h));
+    const bookings = [
+      // Confermato su WhatsApp e fatto.
+      {
+        id: "b1",
+        status: "COMPLETED",
+        canceledLate: false,
+        canceledBy: null,
+        reminderSentAt: at(8),
+        clientConfirmedAt: at(9),
+        clientCantComeAt: null,
+        clientReplyChannel: "WHATSAPP",
+      },
+      // "Non posso più" dall'email, poi annullato tardi.
+      {
+        id: "b2",
+        status: "CANCELED",
+        canceledLate: true,
+        canceledBy: "CLIENT",
+        reminderSentAt: at(8),
+        clientConfirmedAt: null,
+        clientCantComeAt: at(9),
+        clientReplyChannel: "EMAIL",
+      },
+      // Nessuna risposta e assente.
+      {
+        id: "b3",
+        status: "NO_SHOW",
+        canceledLate: false,
+        canceledBy: null,
+        reminderSentAt: at(8),
+        clientConfirmedAt: null,
+        clientCantComeAt: null,
+        clientReplyChannel: null,
+      },
+      // Annullato per tempo: non conta.
+      {
+        id: "b4",
+        status: "CANCELED",
+        canceledLate: false,
+        canceledBy: "CLIENT",
+        reminderSentAt: at(8),
+        clientConfirmedAt: null,
+        clientCantComeAt: null,
+        clientReplyChannel: null,
+      },
+    ];
+    const prisma = {
+      booking: { findMany: vi.fn(async () => bookings) },
+      outboundMessage: { findMany: vi.fn(async () => [{ bookingId: "b1" }]) },
+    };
+    const service = new WhatsAppService(
+      prisma as unknown as PrismaClient,
+      null,
+    );
+    const effect = await service["reminderEffect"](
+      new Date("2027-01-20T10:00:00Z"),
+    );
+    expect(effect.replies).toEqual({
+      reminded: 3,
+      confirmed: 1,
+      cantCome: 1,
+      noAnswer: 1,
+      byWhatsApp: 1,
+      byEmail: 1,
+    });
+    expect(effect.confirmedJobs).toEqual({ jobs: 1, missed: 0 });
+    expect(effect.unconfirmedJobs).toEqual({ jobs: 2, missed: 2 });
   });
 });

@@ -160,6 +160,37 @@ lavori esterni dell'agenda non ricevono nulla (domanda 70 per l'avvocato).
     (`BOOKING_CLIENT_CANT_COME_UNDONE`). Vale solo sotto quella risposta;
     anche premere l'altro pulsante del promemoria corregge, perché conta
     l'ultima risposta.
+- Ottavo giro (Luca, 29/10: "Effettua le 4 migliorie", scelte tra quelle di
+  un esperto di promemoria; non scelti il secondo promemoria 2 ore prima e
+  la lista d'attesa):
+  - **email del giorno prima con "Ci sarò" e "Non posso più"**: l'email
+    arriva a tutti, WhatsApp solo a chi lo accende. I pulsanti aprono
+    `/promemoria/<link firmato>` (`booking-reply-token.ts`, chiave legata a
+    `JWT_SECRET`), che registra la risposta solo con un tocco, mai aprendo
+    il link (gli antivirus della posta aprono i link da soli), con "Ho
+    sbagliato". Stessa logica di WhatsApp (`BookingRepliesService`, canale
+    in `Booking.clientReplyChannel`). Con l'acconto in gioco anche l'email
+    parte 6 ore prima del preavviso, con la scadenza per annullare
+    (`sendDepositReminders`, `Booking.clientDepositReminderAt`), e quella
+    del giorno prima non riparte se è uscita da meno di 18 ore;
+  - **"Non posso più" apre "Proponi un'altra data"**: spostare un
+    appuntamento già fissato prima non esisteva (solo chat o annullare). Il
+    cliente sceglie un orario libero dell'agenda o una data a mano
+    (`POST /bookings/:id/reschedule`), il professionista accetta e
+    l'appuntamento si sposta con acconto e pagamento com'erano, oppure
+    rifiuta e resta com'era (`BookingRescheduleService`, notifiche
+    `BOOKING_RESCHEDULE_*` anche per email). Spostato l'appuntamento, i
+    promemoria della data vecchia non valgono più (anche i pulsanti premuti
+    dopo) e ripartono per la nuova (`forgetBookingReminders`). Il link di
+    WhatsApp e della pagina del promemoria porta a `&cambiaData=1`;
+  - **il professionista vede il promemoria**: nella scheda del lavoro
+    "Promemoria WhatsApp letto (data): il cliente non ha ancora risposto",
+    o consegnato, inviato, mandato per email (`clientReminder`), e la data
+    proposta con "Accetta e sposta" / "Non posso"
+    (`AppointmentReplyStatus.tsx`);
+  - **numeri in Admin → WhatsApp**: quanti confermano, quanti dicono "Non
+    posso più", quanti non rispondono, da WhatsApp o dall'email, e lavori
+    saltati tra chi aveva confermato e chi no (`reminderEffect`).
 
 Modelli da far approvare a Meta: `docs/whatsapp-modelli.md`.
 
@@ -171,6 +202,12 @@ Modelli da far approvare a Meta: `docs/whatsapp-modelli.md`.
   volta per evento, motivi di chi non parte, tetti, nuovi tentativi, codice
   giusto/sbagliato/scaduto/troppi).
 - Tutte le prove dell'API verdi, typecheck e lint di API e sito.
+- Ottavo giro: prove del link firmato, delle risposte dall'email, dello
+  spostamento (proposta, date sbagliate, accetta, rifiuta, più giorni),
+  dell'email dell'acconto (ora, una volta sola, niente doppione il giorno
+  prima), dei promemoria dimenticati dopo lo spostamento e dei numeri
+  delle risposte. Pagina del promemoria controllata a schermo sul telefono
+  nei quattro stati.
 - Scheda WhatsApp di Notifiche controllata a schermo, su computer e
   telefono, nei cinque stati (spento, da attivare, codice mandato, attivo,
   numero fisso).

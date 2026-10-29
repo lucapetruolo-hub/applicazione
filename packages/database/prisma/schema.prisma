@@ -1231,6 +1231,19 @@ model Booking {
   // il professionista viene avvisato una volta sola per ciascuna.
   clientConfirmedAt       DateTime?
   clientCantComeAt        DateTime?
+  // Da dove è arrivata l'ultima risposta: "WHATSAPP" o "EMAIL" (pulsanti
+  // dell'email del giorno prima), per i numeri in Admin → WhatsApp.
+  clientReplyChannel      String?
+  // Email al cliente con la scadenza per annullare e riavere l'acconto,
+  // mandata prima che inizi il preavviso (come il promemoria WhatsApp).
+  clientDepositReminderAt DateTime?
+  // "Non posso più" → il cliente propone un'altra data per l'appuntamento
+  // già fissato; il professionista la accetta (l'appuntamento si sposta) o
+  // la rifiuta. Una proposta alla volta.
+  rescheduleProposedAt    DateTime?
+  rescheduleProposedEndAt DateTime?
+  rescheduleNote          String?
+  rescheduleRequestedAt   DateTime?
   createdAt               DateTime      @default(now())
   updatedAt               DateTime      @updatedAt
 

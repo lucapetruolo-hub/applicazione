@@ -78,6 +78,9 @@ const RETRY_MINUTES = 10;
  * Risposta gratuita al cliente che ha premuto un pulsante del promemoria:
  * nel registro come gli altri messaggi, fuori dai tetti (non si paga).
  */
+/** Segno sulla chiave dei promemoria di una data che non vale più (appuntamento spostato). */
+const RESCHEDULED_KEY_MARK = ":spostato:";
+
 export const WHATSAPP_REPLY_TYPE = "BOOKING_REPLY";
 
 /** Pulsante della risposta che toglie quella appena data (Luca, 29/10/2026: si può sbagliare a premere). */
@@ -1116,11 +1119,14 @@ export class WhatsAppService {
       select: {
         type: true,
         template: true,
+        idempotencyKey: true,
         bookingId: true,
         userId: true,
         user: { select: { phone: true, deletedAt: true } },
       },
     });
+    // Promemoria di prima che l'appuntamento si spostasse: non vale per la nuova data.
+    if (reminder?.idempotencyKey.includes(RESCHEDULED_KEY_MARK)) return;
     // "Ho sbagliato" vale sotto la risposta, che ricorda cosa aveva premuto.
     const action: BookingReplyAction | null =
       pressed === "UNDO"
@@ -1185,6 +1191,43 @@ export class WhatsAppService {
       Prisma.sql`SELECT id FROM users WHERE "whatsappOptInAt" IS NOT NULL AND phone IS NOT NULL AND regexp_replace(phone, '\\D', '', 'g') = ${digits}`,
     );
     for (const { id } of users) await this.disable(id);
+  }
+
+  /**
+   * L'appuntamento si è spostato: i promemoria della data vecchia non
+   * partono più e quelli della nuova possono ripartire (le chiavi sono per
+   * lavoro). Le righe restano nel registro con la chiave segnata.
+   */
+  async forgetBookingReminders(
+    bookingId: string,
+    now: Date = new Date(),
+  ): Promise<void> {
+    const rows = await this.prisma.outboundMessage.findMany({
+      where: {
+        idempotencyKey: {
+          in: [
+            `booking-reminder:${bookingId}:client`,
+            `booking-deposit-reminder:${bookingId}`,
+          ],
+        },
+      },
+      select: { id: true, idempotencyKey: true, status: true },
+    });
+    for (const row of rows) {
+      await this.prisma.outboundMessage.update({
+        where: { id: row.id },
+        data: {
+          idempotencyKey: `${row.idempotencyKey}${RESCHEDULED_KEY_MARK}${now.getTime()}`,
+          ...(row.status === "QUEUED"
+            ? {
+                status: "SKIPPED",
+                skipReason: "RESCHEDULED",
+                params: Prisma.DbNull,
+              }
+            : {}),
+        },
+      });
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -1321,7 +1364,16 @@ export class WhatsAppService {
         client: COUNTED_USER,
         professionalProfile: { user: COUNTED_USER },
       },
-      select: { id: true, status: true, canceledLate: true, canceledBy: true },
+      select: {
+        id: true,
+        status: true,
+        canceledLate: true,
+        canceledBy: true,
+        reminderSentAt: true,
+        clientConfirmedAt: true,
+        clientCantComeAt: true,
+        clientReplyChannel: true,
+      },
     });
     const delivered = new Set(
       (
@@ -1350,10 +1402,47 @@ export class WhatsAppService {
       ).length;
       return { jobs: rows.length, missed };
     };
+    // Risposte ai pulsanti "Ci sarò" e "Non posso più" (WhatsApp ed email)
+    // e lavori saltati con e senza conferma: dicono se i pulsanti servono.
+    const counted = bookings.filter(
+      (b) => !(b.status === "CANCELED" && !b.canceledLate),
+    );
+    const missed = (b: (typeof bookings)[number]) =>
+      b.status === "NO_SHOW" ||
+      (b.status === "CANCELED" && b.canceledLate && b.canceledBy === "CLIENT");
+    const cantCome = (b: (typeof bookings)[number]) =>
+      !!b.clientCantComeAt &&
+      (!b.clientConfirmedAt || b.clientCantComeAt > b.clientConfirmedAt);
+    const confirmed = (b: (typeof bookings)[number]) =>
+      !!b.clientConfirmedAt && !cantCome(b);
+    const reminded = counted.filter(
+      (b) => delivered.has(b.id) || b.reminderSentAt !== null,
+    );
+    const split = (rows: typeof bookings) => ({
+      jobs: rows.length,
+      missed: rows.filter(missed).length,
+    });
     return {
       since: since.toISOString(),
       withReminder: group(true),
       withoutReminder: group(false),
+      replies: {
+        reminded: reminded.length,
+        confirmed: reminded.filter(confirmed).length,
+        cantCome: reminded.filter(cantCome).length,
+        noAnswer: reminded.filter((b) => !confirmed(b) && !cantCome(b)).length,
+        byWhatsApp: reminded.filter(
+          (b) =>
+            (confirmed(b) || cantCome(b)) &&
+            b.clientReplyChannel === "WHATSAPP",
+        ).length,
+        byEmail: reminded.filter(
+          (b) =>
+            (confirmed(b) || cantCome(b)) && b.clientReplyChannel === "EMAIL",
+        ).length,
+      },
+      confirmedJobs: split(counted.filter(confirmed)),
+      unconfirmedJobs: split(counted.filter((b) => !confirmed(b))),
     };
   }
 }

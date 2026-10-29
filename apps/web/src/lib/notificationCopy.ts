@@ -39,6 +39,9 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   // Pulsanti del promemoria WhatsApp (docs/changelog/2026-10-28-promemoria-whatsapp.md).
   BOOKING_CLIENT_CONFIRMED: { icon: "👍", message: "Il cliente ha confermato che ci sarà all'appuntamento." },
   BOOKING_CLIENT_CANT_COME: { icon: "⚠️", message: "Il cliente ha scritto che non può più esserci all'appuntamento: scrivigli in chat." },
+  BOOKING_RESCHEDULE_PROPOSED: { icon: "📅", message: "Il cliente non può più esserci e propone un'altra data: accettala o rifiutala." },
+  BOOKING_RESCHEDULE_ACCEPTED: { icon: "📅", message: "Il professionista ha accettato la nuova data: l'appuntamento è spostato." },
+  BOOKING_RESCHEDULE_REJECTED: { icon: "📅", message: "Il professionista non può nella data che hai proposto: l'appuntamento resta com'era." },
   BOOKING_CLIENT_CANT_COME_UNDONE: { icon: "👍", message: "Il cliente aveva premuto «Non posso più» per errore: ci sarà." },
   BOOKING_REOPENED_BY_PROFESSIONAL: { icon: "🔄", message: "Il professionista ha riaperto una prenotazione annullata." },
   // Recensione del cliente (docs/CHANGELOG.md §185): pubblica subito (§215).

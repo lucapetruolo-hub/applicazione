@@ -3,6 +3,9 @@ import { BadRequestException, ConflictException, ForbiddenException, Inject, Inj
 import { Prisma, type PrismaClient } from "@professionisti/database";
 import {
   quotePaymentOffer,
+  notificationChannelEnabled,
+  resolveNotificationPreferences,
+  wallClockNow,
   professionalKindOf,
   traderStatusOf,
   findComuneByName,
@@ -1553,6 +1556,32 @@ export class ProfessionalsService {
       }
     }
 
+    // Promemoria al cliente degli appuntamenti da venire: consegnato o letto
+    // su WhatsApp, oppure mandato per email (Luca, 29/10/2026,
+    // docs/changelog/2026-10-28-promemoria-whatsapp.md). Una query sola.
+    const upcomingIds = bookings.filter((b) => b.status === "CONFIRMED" && b.scheduledAt.getTime() > wallClockNow().getTime()).map((b) => b.id);
+    const whatsAppReminderByBooking = new Map<string, { status: "SENT" | "DELIVERED" | "READ"; at: Date }>();
+    if (upcomingIds.length > 0) {
+      const rows = await this.prisma.outboundMessage.findMany({
+        where: { bookingId: { in: upcomingIds }, type: "BOOKING_REMINDER_CLIENT", status: { in: ["SENT", "DELIVERED", "READ"] }, NOT: { idempotencyKey: { contains: ":spostato:" } } },
+        orderBy: { createdAt: "asc" },
+        select: { bookingId: true, status: true, sentAt: true, deliveredAt: true, readAt: true, createdAt: true },
+      });
+      for (const row of rows) {
+        if (!row.bookingId || (row.status !== "SENT" && row.status !== "DELIVERED" && row.status !== "READ")) continue;
+        const at = row.readAt ?? row.deliveredAt ?? row.sentAt ?? row.createdAt;
+        whatsAppReminderByBooking.set(row.bookingId, { status: row.status, at });
+      }
+    }
+    const clientReminder = (booking: (typeof bookings)[number]): ProfessionalBooking["clientReminder"] => {
+      const whatsApp = whatsAppReminderByBooking.get(booking.id);
+      if (whatsApp) return { channel: "WHATSAPP", status: whatsApp.status, at: whatsApp.at.toISOString() };
+      const emailAt = booking.clientDepositReminderAt ?? booking.reminderSentAt;
+      if (!upcomingIds.includes(booking.id) || !emailAt || !booking.client.email || booking.client.deletedAt) return null;
+      if (!notificationChannelEnabled(resolveNotificationPreferences(booking.client.notificationPrefs), "BOOKING_REMINDER", "email")) return null;
+      return { channel: "EMAIL", status: "SENT", at: emailAt.toISOString() };
+    };
+
     return bookings.map((booking) => ({
       id: booking.id,
       // Richiesta guidata di origine, per il bottone "Vai alla cronologia
@@ -1610,6 +1639,16 @@ export class ProfessionalsService {
       // Pulsanti del promemoria WhatsApp (docs/changelog/2026-10-28-promemoria-whatsapp.md).
       clientConfirmedAt: booking.clientConfirmedAt?.toISOString() ?? null,
       clientCantComeAt: booking.clientCantComeAt?.toISOString() ?? null,
+      clientReminder: clientReminder(booking),
+      // "Non posso più" → altra data proposta dal cliente, da accettare o rifiutare.
+      reschedule: booking.rescheduleProposedAt
+        ? {
+            start: booking.rescheduleProposedAt.toISOString(),
+            end: booking.rescheduleProposedEndAt?.toISOString() ?? null,
+            note: booking.rescheduleNote,
+            requestedAt: (booking.rescheduleRequestedAt ?? booking.rescheduleProposedAt).toISOString(),
+          }
+        : null,
       professionalProblemReport: booking.quote?.guidedRequestId ? (problemReportByGuidedRequestId.get(booking.quote.guidedRequestId) ?? null) : null,
       description: booking.quote?.guidedRequest?.description ?? null,
       photoUrls: booking.quote?.guidedRequest?.photoUrls ?? [],
