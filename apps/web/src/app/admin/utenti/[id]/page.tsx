@@ -385,7 +385,15 @@ function TestTimePanel({ detail, token, onChanged }: { detail: AdminUserDetail; 
       const result = await apiClient.adminMoveTestTime(token, detail.id, Number(days));
       const requests = result.requests === 1 ? "1 richiesta" : `${result.requests} richieste`;
       const bookings = result.bookings === 1 ? "1 lavoro" : `${result.bookings} lavori`;
-      setDone(`Fatto: ${requests} e ${bookings} avanti di ${days === "1" ? "1 giorno" : `${days} giorni`}. Promemoria, chiusure e sblocchi sono partiti.`);
+      const trial =
+        result.trial === "NOT_LAUNCHED"
+          ? " Il mese gratuito parte dal lancio: finché non c'è la data di lancio non finisce."
+          : result.trial === "STRIPE"
+            ? " L'abbonamento pagato lo rinnova Stripe: il suo periodo non cambia."
+            : result.trial === "MOVED"
+              ? " Anche il mese gratuito è andato avanti."
+              : "";
+      setDone(`Fatto: ${requests} e ${bookings} avanti di ${days === "1" ? "1 giorno" : `${days} giorni`}. Promemoria, chiusure e sblocchi sono partiti.${trial}`);
       onChanged();
     } catch (err) {
       setError(errorMessage(err));
@@ -400,8 +408,8 @@ function TestTimePanel({ detail, token, onChanged }: { detail: AdminUserDetail; 
         Fai passare il tempo
       </Text>
       <Text fontSize="$3" color={brand.grafite70}>
-        Solo per le prove: richieste e lavori di questo account vanno avanti come se fossero passati i giorni scelti, poi partono subito promemoria,
-        chiusure e sblocchi dei soldi. Vale solo dove anche l&apos;altra persona è un account di prova.
+        Solo per le prove: richieste, lavori e mese gratuito di questo account vanno avanti come se fossero passati i giorni scelti, poi partono
+        subito promemoria, chiusure e sblocchi dei soldi. Vale solo dove anche l&apos;altra persona è un account di prova.
       </Text>
       <AdminTabs tabs={TIME_STEPS.map((step) => ({ key: step, label: step === "1" ? "1 giorno" : `${step} giorni` }))} value={days} onChange={setDays} />
       {error ? <Text color={brand.urgenza}>{error}</Text> : null}

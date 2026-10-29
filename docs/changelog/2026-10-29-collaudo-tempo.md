@@ -28,12 +28,19 @@ il riquadro "Fai passare il tempo": si sceglie 1, 3, 7, 14 o 30 giorni e
   e bonifici. Un controllo che fallisce non ferma gli altri;
 - ogni uso finisce nel registro azioni.
 
-Fuori di proposito: il rinnovo dell'abbonamento, che decide Stripe e non il
-nostro database (si prova con gli "orologi di prova" di Stripe, non da qui).
+**Mese gratuito** (miglioria 2, approvata da Luca il 29/10): si spostano
+anche fine della prova, mese regalato e relativi avvisi dell'abbonamento del
+professionista, poi girano fine prova/mese regalato, avviso di rinnovo e
+pausa a fine prova. Prima della data di lancio (`LAUNCH_DATE`) la prova non
+scorre di proposito (docs/CHANGELOG.md §170): le date si spostano ma non
+finisce nulla, e il riquadro lo dice. Il periodo di un abbonamento pagato
+non si tocca: lo decide Stripe e lo riscriverebbe al primo aggiornamento
+(si prova con gli "orologi di prova" di Stripe, non da qui).
 
 ## Verifica
 
 `test-time.service.test.ts`: rifiuta un account non di prova, filtra solo
-persone di prova, sposta le date giuste e fa girare i 5 controlli, rifiuta i
+persone di prova, sposta le date giuste e fa girare i controlli, sposta il
+mese gratuito ma non il periodo pagato con Stripe, avvisa se il lancio non c'è, rifiuta i
 lavori pagati online con le chiavi vere. `pnpm typecheck` e `pnpm lint` di
 web e api puliti.

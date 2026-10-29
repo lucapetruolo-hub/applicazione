@@ -2009,7 +2009,7 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
 
     /** "Fai passare il tempo" sui lavori di un account di prova (docs/changelog/2026-10-29-collaudo-tempo.md). */
     adminMoveTestTime: (token: string, id: string, days: number) =>
-      request<{ requests: number; bookings: number }>(`/admin/users/${id}/test-time`, {
+      request<{ requests: number; bookings: number; trial: "MOVED" | "NOT_LAUNCHED" | "STRIPE" | null }>(`/admin/users/${id}/test-time`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({ days }),

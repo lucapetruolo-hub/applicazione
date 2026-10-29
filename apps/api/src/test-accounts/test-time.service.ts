@@ -8,6 +8,8 @@ import { BookingRemindersService } from "../booking-reminders/booking-reminders.
 import { GuidedRequestsService } from "../guided-requests/guided-requests.service";
 import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
 import { OnlineMoneyService } from "../job-payments/online-money.service";
+import { SubscriptionsService } from "../subscriptions/subscriptions.service";
+import { hasLaunched, launchDate } from "../subscriptions/subscription-rules";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -54,6 +56,11 @@ const ISSUE_DATES = ["professionalRespondedAt", "resolvedAt", "escalatedAt", "in
 const REQUEST_DATES = ["createdAt", "preferredDate", "expiresAt", "hiddenAt", "deletedByClientAt", "forwardedAt", "forwardAt"] as const;
 const QUOTE_DATES = ["estimatedStartDate", "estimatedEndDate", "clientProposedDate", "clientProposedEndDate", "resentAt", "previousStartDate", "previousEndDate", "createdAt"] as const;
 const LEAD_DATES = ["expiresAt", "hiddenByProfessionalAt", "createdAt"] as const;
+// Mese gratuito e mese regalato. Il periodo di un abbonamento pagato lo
+// decide Stripe (lo riscriverebbe al primo aggiornamento): si sposta solo
+// senza abbonamento Stripe.
+const TRIAL_DATES = ["trialEndsAt", "bonusMonthGrantedAt", "trialEndingNotifiedAt", "periodNoticeFor", "createdAt"] as const;
+const PERIOD_DATES = ["currentPeriodStart", "currentPeriodEnd"] as const;
 
 /** Le date presenti di `row`, tutte indietro di `ms`: per un controllo a tempo è come se fossero passati quei giorni. */
 export function shiftedDates<K extends string>(row: Partial<Record<K, Date | null>>, fields: readonly K[], ms: number): Partial<Record<K, Date>> {
@@ -75,8 +82,9 @@ const TEST_USER = { testAccountAt: { not: null } } as const;
  * "Fai passare il tempo" (richiesta di Luca per il collaudo,
  * docs/changelog/2026-10-29-collaudo-tempo.md): sposta indietro di N giorni
  * le date di richieste, preventivi, lavori, pagamenti e segnalazioni di un
- * account di prova, poi fa girare subito i controlli a tempo (promemoria,
- * chiusura d'ufficio, sblocco dei soldi, scadenze delle segnalazioni).
+ * account di prova, e il suo mese gratuito, poi fa girare subito i controlli
+ * a tempo (promemoria, chiusura d'ufficio, sblocco dei soldi, scadenze delle
+ * segnalazioni, fine della prova e mese regalato).
  * Tocca solo ciò in cui TUTTE le persone coinvolte sono account di prova,
  * mai un utente vero; con le chiavi Stripe vere rifiuta i lavori pagati online.
  */
@@ -90,10 +98,19 @@ export class TestTimeService {
     private readonly moduleRef: ModuleRef,
   ) {}
 
-  async moveForward(adminUserId: string, userId: string, days: number): Promise<{ requests: number; bookings: number }> {
+  async moveForward(
+    adminUserId: string,
+    userId: string,
+    days: number,
+  ): Promise<{ requests: number; bookings: number; trial: "MOVED" | "NOT_LAUNCHED" | "STRIPE" | null }> {
     const target = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, testAccountAt: true, professionalProfile: { select: { id: true } } },
+      select: {
+        id: true,
+        email: true,
+        testAccountAt: true,
+        professionalProfile: { select: { id: true, subscription: { select: { ...selectOf([...TRIAL_DATES, ...PERIOD_DATES]), stripeSubscriptionId: true } } } },
+      },
     });
     if (!target) throw new NotFoundException("Utente non trovato.");
     if (!target.testAccountAt) throw new BadRequestException("Funziona solo sugli account di prova: segnalo prima come account di prova.");
@@ -125,7 +142,12 @@ export class TestTimeService {
       select: { ...selectOf(REQUEST_DATES), quotes: { select: selectOf(QUOTE_DATES) }, leads: { select: selectOf(LEAD_DATES) } },
     });
 
+    const subscription = target.professionalProfile?.subscription ?? null;
     await this.prisma.$transaction(async (tx) => {
+      if (subscription) {
+        const fields = subscription.stripeSubscriptionId ? TRIAL_DATES : [...TRIAL_DATES, ...PERIOD_DATES];
+        await tx.subscription.update({ where: { id: subscription.id }, data: shiftedDates(subscription, fields, ms) });
+      }
       for (const request of requests) {
         await tx.guidedRequest.update({ where: { id: request.id }, data: shiftedDates(request, REQUEST_DATES, ms) });
         for (const quote of request.quotes) await tx.quote.update({ where: { id: quote.id }, data: shiftedDates(quote, QUOTE_DATES, ms) });
@@ -147,12 +169,15 @@ export class TestTimeService {
       changedByUserId: adminUserId,
       reason: `Tempo spostato avanti di ${days} giorni per ${requests.length} richieste e ${bookings.length} lavori di prova`,
     });
-    await this.runTimedChecks();
-    return { requests: requests.length, bookings: bookings.length };
+    await this.runTimedChecks(proId);
+    // Prima del lancio il mese gratuito non scorre (docs/CHANGELOG.md §170):
+    // le date si spostano ma nessun controllo lo fa finire.
+    const trial = !subscription ? null : !hasLaunched(new Date(), launchDate()) ? "NOT_LAUNCHED" : subscription.stripeSubscriptionId ? "STRIPE" : "MOVED";
+    return { requests: requests.length, bookings: bookings.length, trial };
   }
 
   /** Gli stessi controlli che girano da soli ogni 5-60 minuti, subito. */
-  private async runTimedChecks(): Promise<void> {
+  private async runTimedChecks(professionalProfileId: string | null): Promise<void> {
     const get = <T>(type: new (...args: never[]) => T): T => this.moduleRef.get(type, { strict: false });
     const checks: Array<[string, () => Promise<unknown>]> = [
       ["scadenze delle richieste", () => get(GuidedRequestsService).runExpiryCheck()],
@@ -160,7 +185,10 @@ export class TestTimeService {
       ["lavoro terminato da una parte sola", () => get(CompletionDeadlineService).run()],
       ["scadenze delle segnalazioni", () => get(JobIssueOutcomeService).runDeadlines()],
       ["sblocco dei soldi e bonifici", () => get(OnlineMoneyService).runReleases()],
+      ["fine del mese gratuito e mese regalato", () => get(SubscriptionsService).runTrialCheck()],
+      ["avviso di rinnovo", () => get(SubscriptionsService).runPeriodNotices()],
     ];
+    if (professionalProfileId) checks.push(["pausa a fine prova e lavori del periodo", () => get(SubscriptionsService).syncPause(professionalProfileId)]);
     for (const [label, run] of checks) {
       try {
         await run();

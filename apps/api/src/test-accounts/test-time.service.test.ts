@@ -11,6 +11,7 @@ function buildService(user: Record<string, unknown> | null, bookings: unknown[] 
     booking: { update: vi.fn() },
     jobPayment: { update: vi.fn() },
     jobIssue: { update: vi.fn() },
+    subscription: { update: vi.fn() },
   };
   const prisma = {
     user: { findUnique: vi.fn().mockResolvedValue(user) },
@@ -20,7 +21,7 @@ function buildService(user: Record<string, unknown> | null, bookings: unknown[] 
   };
   const audit = { record: vi.fn() };
   const check = vi.fn().mockResolvedValue(undefined);
-  const job = { runExpiryCheck: check, sendUpcomingReminders: check, run: check, runDeadlines: check, runReleases: check };
+  const job = { runExpiryCheck: check, sendUpcomingReminders: check, run: check, runDeadlines: check, runReleases: check, runTrialCheck: check, runPeriodNotices: check, syncPause: check };
   const moduleRef = { get: vi.fn().mockReturnValue(job) };
   const service = new TestTimeService(prisma as never, audit as never, moduleRef as never);
   return { service, prisma, tx, audit, check };
@@ -36,6 +37,39 @@ describe("shiftedDates", () => {
 describe("TestTimeService.moveForward", () => {
   afterEach(() => {
     delete process.env.STRIPE_SECRET_KEY;
+    delete process.env.LAUNCH_DATE;
+  });
+
+  it("sposta il mese gratuito e il periodo senza Stripe, e dice se il lancio non c'è ancora", async () => {
+    const trialEndsAt = new Date("2026-11-30T00:00:00Z");
+    const currentPeriodEnd = new Date("2026-11-30T00:00:00Z");
+    const { service, tx, check } = buildService({
+      id: "u-1",
+      email: "prova@example.com",
+      testAccountAt: new Date(),
+      professionalProfile: { id: "pro-1", subscription: { id: "s-1", trialEndsAt, currentPeriodEnd, stripeSubscriptionId: null } },
+    });
+    await expect(service.moveForward("admin-1", "u-1", 30)).resolves.toMatchObject({ trial: "NOT_LAUNCHED" });
+    expect(tx.subscription.update).toHaveBeenCalledWith({
+      where: { id: "s-1" },
+      data: { trialEndsAt: new Date("2026-10-31T00:00:00Z"), currentPeriodEnd: new Date("2026-10-31T00:00:00Z") },
+    });
+    expect(check).toHaveBeenCalledTimes(8);
+    process.env.LAUNCH_DATE = "2026-10-01";
+    await expect(service.moveForward("admin-1", "u-1", 1)).resolves.toMatchObject({ trial: "MOVED" });
+  });
+
+  it("con un abbonamento Stripe non tocca il periodo pagato", async () => {
+    const currentPeriodEnd = new Date("2026-11-30T00:00:00Z");
+    const { service, tx } = buildService({
+      id: "u-1",
+      email: "prova@example.com",
+      testAccountAt: new Date(),
+      professionalProfile: { id: "pro-1", subscription: { id: "s-1", currentPeriodEnd, stripeSubscriptionId: "sub_1" } },
+    });
+    process.env.LAUNCH_DATE = "2026-10-01";
+    await expect(service.moveForward("admin-1", "u-1", 3)).resolves.toMatchObject({ trial: "STRIPE" });
+    expect(tx.subscription.update).toHaveBeenCalledWith({ where: { id: "s-1" }, data: {} });
   });
 
   it("rifiuta un account che non è di prova", async () => {
@@ -65,13 +99,13 @@ describe("TestTimeService.moveForward", () => {
       [{ id: "b-1", scheduledAt, createdAt: null, jobPayment: { id: "p-1", releaseDueAt }, issue: null }],
       [{ id: "r-1", expiresAt, quotes: [], leads: [{ id: "l-1", expiresAt }] }],
     );
-    await expect(service.moveForward("admin-1", "u-1", 7)).resolves.toEqual({ requests: 1, bookings: 1 });
+    await expect(service.moveForward("admin-1", "u-1", 7)).resolves.toEqual({ requests: 1, bookings: 1, trial: null });
     expect(tx.booking.update).toHaveBeenCalledWith({ where: { id: "b-1" }, data: { scheduledAt: new Date("2026-10-29T09:00:00Z") } });
     expect(tx.jobPayment.update).toHaveBeenCalledWith({ where: { id: "p-1" }, data: { releaseDueAt: new Date("2026-11-05T09:00:00Z") } });
     expect(tx.lead.update).toHaveBeenCalledWith({ where: { id: "l-1" }, data: { expiresAt: new Date("2026-10-25T09:00:00Z") } });
     expect(tx.jobIssue.update).not.toHaveBeenCalled();
     expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ fieldName: "testTimeShift", newValue: "7" }));
-    expect(check).toHaveBeenCalledTimes(5);
+    expect(check).toHaveBeenCalledTimes(7);
   });
 
   it("con le chiavi Stripe vere non tocca i lavori pagati online", async () => {
