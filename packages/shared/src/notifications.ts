@@ -432,6 +432,10 @@ export const notificationPreferencesSchema = z.object({
    * un avviso parte su un canale se è acceso sia qui sia nell'argomento.
    */
   items: z.record(z.string().max(60), z.object({ inApp: z.boolean(), email: z.boolean() })).optional(),
+  /** Email senza fretta raccolte in un riassunto la sera (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md). */
+  digest: z.boolean().optional(),
+  /** Dalle 22 alle 7 le email aspettano il mattino, tranne le richieste urgenti. */
+  quietNight: z.boolean().optional(),
 });
 export type NotificationPreferences = z.infer<typeof notificationPreferencesSchema>;
 
@@ -447,7 +451,11 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   },
   popups: true,
   sound: true,
-  items: {},
+  // Impostazioni leggere fin dal primo giorno (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md):
+  // le recensioni si vedono sul sito e nel profilo, l'email non serve a fare nulla.
+  items: { "lavori.recensioni": { inApp: true, email: false } },
+  digest: true,
+  quietNight: true,
 };
 
 /**
@@ -461,6 +469,8 @@ export function resolveNotificationPreferences(stored: unknown): NotificationPre
     const s = stored as Partial<NotificationPreferences>;
     if (typeof s.popups === "boolean") base.popups = s.popups;
     if (typeof s.sound === "boolean") base.sound = s.sound;
+    if (typeof s.digest === "boolean") base.digest = s.digest;
+    if (typeof s.quietNight === "boolean") base.quietNight = s.quietNight;
     if (s.items && typeof s.items === "object") {
       const items: Record<string, { inApp: boolean; email: boolean }> = {};
       for (const [key, value] of Object.entries(s.items as Record<string, unknown>)) {
@@ -563,3 +573,33 @@ export function withNotificationMuted(prefs: NotificationPreferences, target: No
   }
   return next;
 }
+
+/**
+ * Email senza fretta: con il riassunto acceso non partono subito ma tutte
+ * insieme la sera (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md).
+ * Solo notizie che non chiedono di fare qualcosa a breve.
+ */
+export const NOTIFICATION_DIGEST_TYPES: ReadonlySet<string> = new Set([
+  "NEW_REVIEW",
+  "JOB_DEPOSIT_PAID",
+  "JOB_BALANCE_PAID",
+  "JOB_BALANCE_AUTO_CHARGED",
+  "JOB_PAYOUT_SENT",
+  "JOB_REFUND_PENDING",
+  "JOB_REFUND_COMPLETED",
+  "JOB_AUTO_CONFIRMED",
+  "JOB_DOCUMENT_READY",
+  "ONLINE_LIMIT_LIFTED",
+  "REQUEST_MATCHED_LATER",
+  "REQUEST_FORWARDED",
+  "SUBSCRIPTION_RENEWED",
+  "SUBSCRIPTION_BONUS_MONTH",
+  "PROFILE_VERIFIED",
+  "STRIPE_ACCOUNT_ACTIVE",
+  "MONTHLY_DOCUMENTS_READY",
+]);
+
+/** Ora (italiana) del riassunto della sera e fascia della notte senza email. */
+export const NOTIFICATION_DIGEST_HOUR = 19;
+export const NOTIFICATION_QUIET_FROM_HOUR = 22;
+export const NOTIFICATION_QUIET_TO_HOUR = 7;

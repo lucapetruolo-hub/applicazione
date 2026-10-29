@@ -42,6 +42,13 @@ export class AdminController {
     return this.siteStatsService.getStats();
   }
 
+  /** Quante persone spengono ogni avviso (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md). */
+  @RequireAdminScope("ANY")
+  @Get("notification-opt-outs")
+  notificationOptOuts() {
+    return this.adminService.notificationOptOuts();
+  }
+
   /** Nota sul grafico dell'andamento (es. "chiamati 20 idraulici a Latina"). */
   @RequireAdminScope("ANY")
   @Post("site-notes")

@@ -26,7 +26,7 @@ test("ogni tipo di richieste, preventivi e lavori sta in un solo avviso del suo 
 });
 
 test("ogni avviso sceglie sito ed email, gli altri restano come l'argomento", () => {
-  const base = resolveNotificationPreferences(null);
+  const base = resolveNotificationPreferences({ items: {} });
   const prefs = withNotificationItemChannel(base, "preventivi.date", "email", false);
   assert.equal(notificationChannelEnabled(prefs, "QUOTE_DATE_PROPOSED", "inApp"), true);
   assert.equal(notificationChannelEnabled(prefs, "QUOTE_DATE_PROPOSED", "email"), false);
@@ -42,7 +42,10 @@ test("ogni avviso sceglie sito ed email, gli altri restano come l'argomento", ()
 test("chiavi sconosciute e voci tutte accese si scartano, senza preferenze nulla è spento", () => {
   const prefs = resolveNotificationPreferences({ items: { "lavori.recensioni": { inApp: false, email: true }, boh: { inApp: false }, "preventivi.date": { inApp: true, email: true } } });
   assert.deepEqual(prefs.items, { "lavori.recensioni": { inApp: false, email: true } });
-  assert.deepEqual(resolveNotificationPreferences(null).items, {});
+  // Senza preferenze salvate: le impostazioni leggere (recensioni solo sul sito).
+  assert.deepEqual(resolveNotificationPreferences(null).items, { "lavori.recensioni": { inApp: true, email: false } });
+  // Chi ha già salvato i suoi avvisi tiene le sue scelte.
+  assert.deepEqual(resolveNotificationPreferences({ items: {} }).items, {});
 });
 
 test("Account e sicurezza non si spegne neppure con un avviso spento", () => {
@@ -68,7 +71,7 @@ test("problemi e contestazioni restano attivi anche con Lavori spento", () => {
 });
 
 test("dalla campanella si spegne l'avviso giusto e si riaccende", () => {
-  const base = resolveNotificationPreferences(null);
+  const base = resolveNotificationPreferences({ items: {} });
   const review = notificationMuteTarget("NEW_REVIEW", "professional");
   assert.deepEqual(review, { kind: "item", key: "lavori.recensioni", label: "Nuove recensioni" });
   const muted = withNotificationMuted(base, review!, true);
@@ -84,4 +87,12 @@ test("dalla campanella si spegne l'avviso giusto e si riaccende", () => {
   assert.equal(notificationMuteTarget("ACCOUNT_SUSPENDED", "client"), null);
   assert.equal(notificationMuteTarget("ADMIN_WEEKLY_ADVICE", "professional"), null);
   assert.equal(notificationMuteTarget("ADMIN_WEEKLY_ADVICE", "professional", true)?.kind, "item");
+});
+
+test("riassunto della sera e notte senza email accesi per chi non ha scelto", () => {
+  const prefs = resolveNotificationPreferences(null);
+  assert.equal(prefs.digest, true);
+  assert.equal(prefs.quietNight, true);
+  assert.equal(resolveNotificationPreferences({ digest: false, quietNight: false }).digest, false);
+  assert.equal(resolveNotificationPreferences({ digest: false, quietNight: false }).quietNight, false);
 });

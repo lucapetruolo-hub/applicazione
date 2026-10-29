@@ -1,0 +1,44 @@
+# Email delle notifiche: riassunto della sera, notte senza email, "Non riceverle più"
+
+**Richiesta di Luca (29/10/2026):** "Effettua le 5 migliorie" proposte come
+farebbe un esperto: link per non ricevere più un'email, riassunto della sera,
+impostazioni più leggere, conteggio admin degli avvisi spenti, niente email di
+notte. Sul riassunto: "se non ci sono novità non mandare nessuna mail".
+
+## Decisioni
+
+1. **"Non ricevere più email come questa"** in fondo a ogni email di notifica
+   (e intestazione `List-Unsubscribe`): link firmato
+   (`apps/api/src/notifications/email-off.ts`) che apre `/notifiche/email`
+   senza accedere. Serve un tocco su "Non riceverle più", come per la
+   conferma dell'email, perché i programmi di sicurezza delle caselle aprono
+   i link da soli. Spegne solo l'email di quell'avviso (o dell'argomento per
+   Messaggi e Promemoria), mai il sito; "Annulla" riaccende. Gli avvisi
+   sempre attivi (problemi sul lavoro, account) non hanno il link.
+2. **Riassunto della sera** (`digest`, acceso di serie): gli avvisi senza
+   fretta (`NOTIFICATION_DIGEST_TYPES`: recensioni, pagamenti ricevuti,
+   documenti pronti, rinnovi...) non partono subito ma alle 19 in un'unica
+   email. Con un solo avviso parte la sua email di sempre; **senza avvisi
+   nessuna email**. Ciò che è già stato letto sul sito non si rimanda.
+3. **Impostazioni più leggere di serie**: email delle nuove recensioni spenta
+   (resta nel sito e nel riassunto se riaccesa), riassunto e notte accesi.
+   Vale solo per chi non ha mai toccato i singoli avvisi.
+4. **Admin → Statistiche, "Avvisi spenti"**: per professionisti e clienti,
+   quante persone hanno spento ogni argomento e avviso (sito ed email), il
+   riassunto e la notte. Senza account di prova.
+5. **Di notte niente email** (`quietNight`, acceso di serie): dalle 22 alle 7
+   le email aspettano le 7 (riassunto della notte se sono più di una),
+   anche quelle dei messaggi in chat. Le **richieste urgenti** partono sempre
+   subito.
+
+Tecnica: colonna `notifications.emailHoldUntil` (migrazione
+`20261029090000_notifiche_email_rimandate`), calcolo in `email-hold.ts`,
+invio ogni 5 minuti da `HeldEmailsService`; nella pagina Notifiche la nuova
+sezione "Quando arrivano le email".
+
+## Verifica
+
+- Test: `apps/api/src/notifications/email-hold.test.ts` (orari anche d'estate
+  e al cambio d'ora, link firmati, conteggi admin), test di `packages/shared`.
+- Anteprime in `anteprime/notifiche-impostazioni/` (email, pagina "Non
+  riceverle più", sezione email, pannello admin), computer e telefono.

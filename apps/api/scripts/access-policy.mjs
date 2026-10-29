@@ -49,6 +49,7 @@ const publicRoutes = [
   "GET /health/features",
   "POST /identity-verification/webhook",
   "GET /maps/static",
+  "POST /notifications/email-off",
   // Dal problema scritto ai mestieri (§392): dizionario, poi IA nei casi dubbi, con tetto giornaliero.
   "POST /problem-match",
   // Prestazioni standard aggiunte dall'admin (§388), mostrate in iscrizione e nel profilo.

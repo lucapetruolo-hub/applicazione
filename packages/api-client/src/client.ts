@@ -456,6 +456,25 @@ export type AdminTrafficSources = {
   bySource: { source: TrafficSource | "unknown"; count: number }[];
 };
 
+/** Quante persone spengono ogni avviso (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md). */
+export type AdminNotificationOptOutGroup = {
+  role: "professional" | "client";
+  people: number;
+  digestOff: number;
+  quietNightOff: number;
+  rows: {
+    key: string;
+    label: string;
+    level: "topic" | "item";
+    siteOff: number;
+    emailOff: number;
+    emailOffByDefault: boolean;
+    emailOn: number;
+    hasSite: boolean;
+    hasEmail: boolean;
+  }[];
+};
+
 export type AdminReportTarget =
   | { exists: false }
   | { exists: true; title: string; author: string | null; text: string | null; photos: string[]; rating: number | null; state: string; ownerUserId: string };
@@ -1935,6 +1954,9 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     adminTrafficSources: (token: string) =>
       request<AdminTrafficSources>("/admin/traffic-sources", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
+    adminNotificationOptOuts: (token: string) =>
+      request<AdminNotificationOptOutGroup[]>("/admin/notification-opt-outs", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+
     adminSearch: (token: string, q: string) =>
       request<AdminSearchResult>(`/admin/search?q=${encodeURIComponent(q)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
@@ -2413,6 +2435,14 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(prefs),
+      }),
+
+    /** "Non ricevere più email come questa" dal link dell'email, senza accedere (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md). */
+    notificationEmailOff: (token: string, off?: boolean) =>
+      request<{ label: string; off: boolean }>("/notifications/email-off", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, off }),
       }),
 
     notificationHistory: (token: string) =>

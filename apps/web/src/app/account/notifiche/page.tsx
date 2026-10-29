@@ -264,6 +264,26 @@ export default function NotifichePage() {
                 })}
               </div>
             </section>
+
+            <section aria-labelledby="nt-email-title" className="nt-section">
+              <h2 id="nt-email-title">Quando arrivano le email</h2>
+              <div className="nt-tiles">
+                <SiteTile
+                  icon="clock"
+                  label="Riassunto della sera"
+                  description="Le novità senza fretta, come recensioni e pagamenti, in un'unica email alle 19. Se non c'è niente, nessuna email."
+                  checked={notificationPrefs.digest ?? true}
+                  onChange={() => void save({ ...notificationPrefs, digest: !(notificationPrefs.digest ?? true) })}
+                />
+                <SiteTile
+                  icon="moon"
+                  label="Di notte niente email"
+                  description="Dalle 22 alle 7 le email aspettano il mattino. Le richieste urgenti arrivano subito."
+                  checked={notificationPrefs.quietNight ?? true}
+                  onChange={() => void save({ ...notificationPrefs, quietNight: !(notificationPrefs.quietNight ?? true) })}
+                />
+              </div>
+            </section>
           </>
         )}
       </div>

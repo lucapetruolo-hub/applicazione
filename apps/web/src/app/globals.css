@@ -5947,6 +5947,85 @@ a.admin-kpi:hover {
   background: #2b2420;
 }
 
+/* "Avvisi spenti" in /admin/statistiche (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md). */
+.optout-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: #f5eadb;
+  align-self: flex-start;
+}
+.optout-tabs button {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: #6b5d50;
+  cursor: pointer;
+}
+.optout-tabs button.is-on {
+  background: #ffffff;
+  color: #2b2420;
+  box-shadow: 0 1px 3px rgba(43, 36, 32, 0.12);
+}
+.optout-tabs button small {
+  font-weight: 600;
+  color: #6b5d50;
+  margin-left: 4px;
+}
+.optout-tabs button:focus-visible {
+  outline: 2px solid #189a63;
+  outline-offset: 2px;
+}
+.optout-wrap {
+  overflow-x: auto;
+}
+.optout-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  color: #2b2420;
+}
+.optout-table th,
+.optout-table td {
+  padding: 9px 8px;
+  text-align: left;
+  border-bottom: 1px solid #efe4d6;
+  vertical-align: top;
+}
+.optout-table thead th {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b5d50;
+  white-space: nowrap;
+}
+.optout-table td {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.optout-table tbody th {
+  font-weight: 500;
+  padding-left: 22px;
+}
+.optout-table tr.is-topic th {
+  font-weight: 800;
+  padding-left: 8px;
+}
+.optout-table tr.is-topic th,
+.optout-table tr.is-topic td {
+  background: #fbf6ef;
+}
+.optout-na {
+  font-size: 12px;
+  color: #8a7b6c;
+  white-space: normal;
+}
+
 /* Pagina "Quanto costa" /prezzi/[categoria] (docs/CHANGELOG.md §296): numeri
    e domande con gli stessi riquadri delle pagine città. */
 .price-page {
