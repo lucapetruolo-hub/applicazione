@@ -30,3 +30,13 @@ stato aperto non riapre una contestazione già chiusa.
 `stripe-disputes.test.ts`: due chiusure quasi insieme danno un avviso e un
 rimborso; una notizia in ritardo non cambia nulla; il secondo passaggio non
 riscrive il rimborso. Tutti i test dell'API (921), `tsc`, eslint.
+
+## Prova dell'agenda con date fisse
+
+Nella CI di questa PR si è rotta `e2e/tests/settimana-tipo.spec.ts` ("un
+giorno cambiato a mano mostra eccezione"): usava mercoledì 28 e giovedì 29
+ottobre 2026, che dal 29/10 sono nel passato, e il server non riempie più
+quei giorni dalla settimana tipo. Ora la prova sceglie il primo mercoledì ad
+almeno 3 giorni da oggi e il giovedì dopo, e ferma l'orologio della pagina
+al sabato prima. Non c'entra con le contestazioni: si sarebbe rotta in ogni
+PR da oggi.
