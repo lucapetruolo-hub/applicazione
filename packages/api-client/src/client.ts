@@ -2007,6 +2007,14 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     adminDeleteTestAccount: (token: string, id: string) =>
       request<{ id: string; deleted: true }>(`/admin/users/${id}/test-account`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }),
 
+    /** "Fai passare il tempo" sui lavori di un account di prova (docs/changelog/2026-10-29-collaudo-tempo.md). */
+    adminMoveTestTime: (token: string, id: string, days: number) =>
+      request<{ requests: number; bookings: number }>(`/admin/users/${id}/test-time`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ days }),
+      }),
+
     adminListFounders: (token: string) => request<AdminFounders>("/admin/founders", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     /** Profili creati al telefono da un operatore (docs/CHANGELOG.md §170). */

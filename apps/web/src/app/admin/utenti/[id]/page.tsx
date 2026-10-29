@@ -8,7 +8,7 @@ import { ADMIN_ROLE_DESCRIPTION, ADMIN_ROLE_LABEL, CONTENT_REPORT_TARGET_LABEL, 
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
-import { AdminCard, AdminPageHeader, AdminPill, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
+import { AdminCard, AdminPageHeader, AdminPill, AdminTabs, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { SkeletonSummaryRow } from "@/components/Skeleton";
 
 const ROLE_LABEL = { CLIENT: "Cliente", PROFESSIONAL: "Professionista", ADMIN: "Amministratore" } as const;
@@ -118,6 +118,7 @@ export default function AdminUserDetailPage() {
       ) : null}
 
       {adminCan(myRoles, "SUPER") && !isSelf && detail.role !== "ADMIN" ? <TestAccountPanel detail={detail} token={token ?? ""} onChanged={reload} /> : null}
+      {adminCan(myRoles, "SUPER") && detail.testAccountAt && !detail.deletedAt ? <TestTimePanel detail={detail} token={token ?? ""} onChanged={reload} /> : null}
 
       {detail.reportsReceived.length > 0 ? (
         <YStack gap="$2">
@@ -357,6 +358,63 @@ function TestAccountPanel({ detail, token, onChanged }: { detail: AdminUserDetai
           </Button>
         </XStack>
       )}
+    </AdminCard>
+  );
+}
+
+const TIME_STEPS = ["1", "3", "7", "14", "30"] as const;
+
+/**
+ * "Fai passare il tempo", solo sugli account di prova
+ * (docs/changelog/2026-10-29-collaudo-tempo.md): per provare in pochi minuti
+ * promemoria, chiusure d'ufficio e sblocco dei soldi che altrimenti
+ * arriverebbero dopo giorni. Il server tocca solo lavori e richieste in cui
+ * anche l'altra persona è un account di prova.
+ */
+function TestTimePanel({ detail, token, onChanged }: { detail: AdminUserDetail; token: string; onChanged: () => void }) {
+  const [days, setDays] = useState<(typeof TIME_STEPS)[number]>("1");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+
+  async function move() {
+    setBusy(true);
+    setError(null);
+    setDone(null);
+    try {
+      const result = await apiClient.adminMoveTestTime(token, detail.id, Number(days));
+      const requests = result.requests === 1 ? "1 richiesta" : `${result.requests} richieste`;
+      const bookings = result.bookings === 1 ? "1 lavoro" : `${result.bookings} lavori`;
+      setDone(`Fatto: ${requests} e ${bookings} avanti di ${days === "1" ? "1 giorno" : `${days} giorni`}. Promemoria, chiusure e sblocchi sono partiti.`);
+      onChanged();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <AdminCard>
+      <Text fontWeight="800" color={brand.grafite}>
+        Fai passare il tempo
+      </Text>
+      <Text fontSize="$3" color={brand.grafite70}>
+        Solo per le prove: richieste e lavori di questo account vanno avanti come se fossero passati i giorni scelti, poi partono subito promemoria,
+        chiusure e sblocchi dei soldi. Vale solo dove anche l&apos;altra persona è un account di prova.
+      </Text>
+      <AdminTabs tabs={TIME_STEPS.map((step) => ({ key: step, label: step === "1" ? "1 giorno" : `${step} giorni` }))} value={days} onChange={setDays} />
+      {error ? <Text color={brand.urgenza}>{error}</Text> : null}
+      {done ? (
+        <Text color={brand.cianografiaScuro} role="status">
+          {done}
+        </Text>
+      ) : null}
+      <XStack>
+        <Button size="$3" disabled={busy} opacity={busy ? 0.6 : 1} onPress={move}>
+          {busy ? "Un momento..." : `Fai passare ${days === "1" ? "1 giorno" : `${days} giorni`}`}
+        </Button>
+      </XStack>
     </AdminCard>
   );
 }
