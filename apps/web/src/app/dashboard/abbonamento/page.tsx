@@ -28,6 +28,7 @@ import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { ProfileMissingNotice, isProfileMissingError } from "@/components/ProfileMissingNotice";
 import { SubscriptionPauseBanner, upgradeQuoteOf } from "@/components/SubscriptionPauseBanner";
 import { SkeletonBlock } from "@/components/Skeleton";
+import { JourneyProgress, useSetupJourney } from "@/components/verification/SetupJourney";
 
 /**
  * "Abbonamento" del professionista (docs/CHANGELOG.md §161-§162): stato del
@@ -214,6 +215,9 @@ function AbbonamentoContent() {
   // sua card viene evidenziata e la pagina scorre fino alla scelta.
   const chosenTier = parseSubscriptionTier(searchParams.get("livello"));
   const justRegistered = searchParams.get("nuovo") === "1";
+  // Passo "Piano e carta" di Completa il profilo: la barra dei passi in cima finché va fatto.
+  const { steps: journey } = useSetupJourney(user?.isProfessional ? token : null, searchParams.get("attivato"));
+  const planCurrent = journey?.find((step) => step.key === "plan")?.state === "current";
   const [feeDetailsOpen, setFeeDetailsOpen] = useState(false);
 
   const load = useCallback(() => {
@@ -372,6 +376,7 @@ function AbbonamentoContent() {
   return (
     <YStack width="100%" alignItems="center" paddingVertical="$8" paddingHorizontal="$4">
       <YStack width="100%" maxWidth={1000} gap="$5">
+        {journey && planCurrent ? <JourneyProgress steps={journey} here="plan" /> : null}
         {heading}
 
         {searchParams.get("attivato") ? (

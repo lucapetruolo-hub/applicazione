@@ -24,7 +24,7 @@ import { apiClient } from "@/lib/apiClient";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { ProfileMissingNotice, isProfileMissingError } from "@/components/ProfileMissingNotice";
 import { useAuth } from "@/lib/AuthContext";
-import { JourneyProgress, journeyCurrent, setupJourney } from "@/components/verification/SetupJourney";
+import { JourneyProgress, journeyCurrent, setupJourney, useJourneySubscription } from "@/components/verification/SetupJourney";
 import { FiscoArea } from "@/components/fisco/FiscoArea";
 import { AddressAutocompleteInput } from "@/components/AddressAutocompleteInput";
 import { FiscalWhyModal } from "@/components/verification/FiscalWhyModal";
@@ -194,6 +194,7 @@ function DashboardFiscaleContent() {
   // Verifica in 3 passi (docs/CHANGELOG.md §253): si ricarica a ogni salvataggio.
   const [verification, setVerification] = useState<MyVerificationStatus | null>(null);
   const [verificationKey, setVerificationKey] = useState(0);
+  const subscription = useJourneySubscription(token);
   // Modulo in due passi, uno alla volta (docs/CHANGELOG.md §262): 1 i tuoi
   // dati, 2 l'indirizzo. `editing` riapre il modulo da dati già completi.
   const [formStep, setFormStep] = useState<1 | 2>(1);
@@ -509,7 +510,7 @@ function DashboardFiscaleContent() {
   const fiscalComplete = verification?.fiscalDataComplete ?? false;
   const toFix = verification?.taxIdState === "TO_FIX";
   const showForm = editing || !fiscalComplete || toFix;
-  const steps = verification ? setupJourney(verification, !!profile?.stripeChargesEnabled) : null;
+  const steps = verification && subscription !== undefined ? setupJourney(verification, !!profile?.stripeChargesEnabled, subscription) : null;
   const nextStep = steps ? journeyCurrent(steps) : null;
   const typeLabel = isEntityType(entityType) ? ENTITY_TYPE_LABELS[entityType] : null;
   const invalidChecks = (verification?.taxIdChecks ?? []).filter((check) => check.status === "INVALID");

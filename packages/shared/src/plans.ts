@@ -132,7 +132,13 @@ export type AdminSubscriptionOffer = {
  * Posti dell'offerta di lancio e mesi gratis dell'offerta attiva (`GET
  * /subscriptions/founders`, pubblico). `offerMonths` null: offerta ferma.
  */
-export type FounderSpots = { total: number; left: number; offerMonths: number | null };
+export type FounderSpots = {
+  total: number;
+  left: number;
+  offerMonths: number | null;
+  /** Plus e Pro si possono scegliere (pagamenti attivi e sito lanciato): prima del lancio solo Base. */
+  paidTiersOpen: boolean;
+};
 
 /** Elenco dei fondatori per l'area admin (`GET /admin/founders`, §363). */
 export type AdminFounders = {

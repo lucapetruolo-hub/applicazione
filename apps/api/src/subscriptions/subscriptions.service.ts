@@ -236,7 +236,7 @@ export class SubscriptionsService {
   /** Posti dell'offerta di lancio rimasti (pagina prezzi). */
   async founderSpots(): Promise<FounderSpots> {
     const [taken, offer] = await Promise.all([this.prisma.subscription.count({ where: { founderNumber: { not: null } } }), this.activeOffer()]);
-    return { total: FOUNDER_SPOTS, left: Math.max(0, FOUNDER_SPOTS - taken), offerMonths: offer?.freeMonths ?? null };
+    return { total: FOUNDER_SPOTS, left: Math.max(0, FOUNDER_SPOTS - taken), offerMonths: offer?.freeMonths ?? null, paidTiersOpen: pausesActive(new Date()) };
   }
 
   /**

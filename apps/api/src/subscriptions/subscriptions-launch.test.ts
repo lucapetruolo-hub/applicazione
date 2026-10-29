@@ -254,7 +254,17 @@ describe("SubscriptionsService e primi 100 professionisti", () => {
     const { service, prisma } = buildService();
     prisma.subscription.count.mockResolvedValue(37);
 
-    await expect(service.founderSpots()).resolves.toEqual({ total: 100, left: 63, offerMonths: 3 });
+    await expect(service.founderSpots()).resolves.toEqual({ total: 100, left: 63, offerMonths: 3, paidTiersOpen: false });
+  });
+
+  it("Plus e Pro si scelgono in registrazione solo con Stripe e dopo il lancio", async () => {
+    const { service, prisma } = buildService();
+    prisma.subscription.count.mockResolvedValue(0);
+    process.env.STRIPE_SECRET_KEY = "sk_test";
+    process.env.LAUNCH_DATE = "2099-01-01";
+    await expect(service.founderSpots()).resolves.toMatchObject({ paidTiersOpen: false });
+    process.env.LAUNCH_DATE = "2026-08-01";
+    await expect(service.founderSpots()).resolves.toMatchObject({ paidTiersOpen: true });
   });
 
   it("un posto liberato da un account di prova torna disponibile (§395)", async () => {
