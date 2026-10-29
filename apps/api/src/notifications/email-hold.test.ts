@@ -15,6 +15,12 @@ describe("email rimandate", () => {
     expect(emailHoldUntil(prefs, "NEW_REVIEW", {}, at("2026-10-29T18:30:00Z"))?.toISOString()).toBe("2026-10-30T18:00:00.000Z");
   });
 
+  it("il riassunto segue l'ora scelta", () => {
+    expect(emailHoldUntil({ ...prefs, digestHour: 21 }, "NEW_REVIEW", {}, at("2026-10-29T09:00:00Z"))?.toISOString()).toBe("2026-10-29T20:00:00.000Z");
+    // Un'ora non prevista salvata a mano torna alle 19.
+    expect(resolveNotificationPreferences({ ...prefs, digestHour: 3 }).digestHour).toBe(19);
+  });
+
   it("di giorno un avviso che chiede un'azione parte subito", () => {
     expect(emailHoldUntil(prefs, "NEW_QUOTE", {}, at("2026-10-29T09:00:00Z"))).toBeNull();
   });

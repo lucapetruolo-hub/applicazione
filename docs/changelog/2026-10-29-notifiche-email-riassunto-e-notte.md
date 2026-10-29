@@ -42,3 +42,20 @@ sezione "Quando arrivano le email".
   e al cambio d'ora, link firmati, conteggi admin), test di `packages/shared`.
 - Anteprime in `anteprime/notifiche-impostazioni/` (email, pagina "Non
   riceverle più", sezione email, pannello admin), computer e telefono.
+
+## Seguito: le 3 migliorie (Luca, 29/10/2026: "Effettua le 3 migliorie")
+
+- **Ora della sera a scelta** (18, 19, 20 o 21; di serie 19): tendina "Alle"
+  nel riquadro "Riassunto della sera" (`notificationPrefs.digestHour`,
+  `NOTIFICATION_DIGEST_HOURS`). Alla stessa ora arriva al professionista il
+  riepilogo dei lavori di domani (`AgendaTomorrowSummaryService`, che ora
+  gira dalle 18 alle 21 e manda a ognuno alla sua ora).
+- **Una sola ora anche per WhatsApp**: la PR #184 non è ancora unita; i passi
+  per collegarla sono in
+  `anteprime`→`patch/notifiche-186-con-184/una-sola-ora-della-sera.md` (cartella
+  del progetto) e si fanno all'unione.
+- **Avviso del lunedì**: tra i consigli della settimana, quando più del 20%
+  dei professionisti o dei clienti spegne lo stesso avviso (con almeno 20
+  persone, `OPT_OUT_ADVICE_SHARE`/`OPT_OUT_ADVICE_MIN_PEOPLE` in
+  `apps/api/src/admin/site-stats.ts`), al massimo due, con il link ad
+  "Avvisi spenti".

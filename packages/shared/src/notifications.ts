@@ -436,6 +436,8 @@ export const notificationPreferencesSchema = z.object({
   digest: z.boolean().optional(),
   /** Dalle 22 alle 7 le email aspettano il mattino, tranne le richieste urgenti. */
   quietNight: z.boolean().optional(),
+  /** Ora della sera (18-21) del riassunto e del riepilogo dei lavori di domani. */
+  digestHour: z.number().int().min(18).max(21).optional(),
 });
 export type NotificationPreferences = z.infer<typeof notificationPreferencesSchema>;
 
@@ -456,6 +458,7 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   items: { "lavori.recensioni": { inApp: true, email: false } },
   digest: true,
   quietNight: true,
+  digestHour: 19,
 };
 
 /**
@@ -471,6 +474,7 @@ export function resolveNotificationPreferences(stored: unknown): NotificationPre
     if (typeof s.sound === "boolean") base.sound = s.sound;
     if (typeof s.digest === "boolean") base.digest = s.digest;
     if (typeof s.quietNight === "boolean") base.quietNight = s.quietNight;
+    if (typeof s.digestHour === "number" && (NOTIFICATION_DIGEST_HOURS as readonly number[]).includes(s.digestHour)) base.digestHour = s.digestHour;
     if (s.items && typeof s.items === "object") {
       const items: Record<string, { inApp: boolean; email: boolean }> = {};
       for (const [key, value] of Object.entries(s.items as Record<string, unknown>)) {
@@ -601,5 +605,16 @@ export const NOTIFICATION_DIGEST_TYPES: ReadonlySet<string> = new Set([
 
 /** Ora (italiana) del riassunto della sera e fascia della notte senza email. */
 export const NOTIFICATION_DIGEST_HOUR = 19;
+/**
+ * Ore della sera tra cui scegliere (richiesta di Luca, 29/10/2026): la stessa
+ * ora vale per il riassunto delle email e per il riepilogo dei lavori di
+ * domani.
+ */
+export const NOTIFICATION_DIGEST_HOURS = [18, 19, 20, 21] as const;
+
+/** Ora della sera scelta, o quella di serie. */
+export function notificationDigestHour(prefs: NotificationPreferences): number {
+  return prefs.digestHour ?? NOTIFICATION_DIGEST_HOUR;
+}
 export const NOTIFICATION_QUIET_FROM_HOUR = 22;
 export const NOTIFICATION_QUIET_TO_HOUR = 7;

@@ -30,6 +30,7 @@ import {
   type SubmitFailureKind,
   type SubmitFormKey,
 } from "@professionisti/shared";
+import type { NotificationOptOutGroup } from "../notifications/opt-outs";
 import { categoryLabel, searchCityLabel, type SearchDemandZone } from "./professional-stats";
 
 /**
@@ -236,6 +237,10 @@ export const CHURN_ADVICE_MIN = 3;
 /** Richieste nell'ultimo periodo per consigliare di reclutare in una casella. */
 export const RECRUIT_MIN_REQUESTS = 3;
 const MAX_ADVICE = 8;
+/** Quota di persone che spengono lo stesso avviso da cui diventa un consiglio (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md). */
+export const OPT_OUT_ADVICE_SHARE = 0.2;
+/** Sotto queste persone la quota non dice ancora niente. */
+export const OPT_OUT_ADVICE_MIN_PEOPLE = 20;
 
 export type StalledProfessional = { name: string; step: "FISCAL" | "IDENTITY"; days: number; href: string };
 export type SilentProfessional = { name: string; requests: number; href: string };
@@ -268,6 +273,8 @@ export type SiteAdviceInput = {
   reconciliation: AdminSiteStats["reconciliation"];
   requestsInWindow: number;
   prices: { paying: number; atLimit30d: number; trialsEnded: number; trialsConverted: number };
+  /** Quante persone spengono ogni avviso (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md). */
+  notificationOptOuts?: NotificationOptOutGroup[];
 };
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
@@ -574,6 +581,33 @@ export function buildSiteAdvice(input: SiteAdviceInput): SiteAdvice[] {
       why: `L'hanno scritta a mano ${missing.professionals} professionisti, ma non è tra quelle che il sito propone.`,
       todo: "Aggiungila con + in «Prestazioni per mestiere»: chi si iscrive la sceglie con un clic e i prezzi medi di «Quanto costa» si sommano bene.",
       link: { label: "Prestazioni per mestiere", href: "/admin/mestieri-richiesti?scheda=prestazioni" },
+    });
+  }
+
+  // Avvisi che in tanti spengono: forse arrivano troppo spesso o non servono.
+  const optOuts = (input.notificationOptOuts ?? []).flatMap((group) =>
+    group.people < OPT_OUT_ADVICE_MIN_PEOPLE
+      ? []
+      : group.rows.flatMap((row) =>
+          (
+            [
+              ["inApp", row.hasSite ? row.siteOff : 0],
+              ["email", row.hasEmail && !row.emailOffByDefault ? row.emailOff : 0],
+            ] as const
+          )
+            .filter(([, count]) => count / group.people > OPT_OUT_ADVICE_SHARE)
+            .map(([channel, count]) => ({ group, row, channel, count, share: count / group.people })),
+        ),
+  );
+  for (const o of optOuts.sort((a, b) => b.share - a.share).slice(0, 2)) {
+    const who = o.group.role === "professional" ? "professionisti" : "clienti";
+    advice.push({
+      key: `notification-opt-out:${o.group.role}:${o.row.key}:${o.channel}`,
+      level: "TIP",
+      title: `Il ${Math.round(o.share * 100)}% dei ${who} ha spento ${o.channel === "email" ? "le email" : "gli avvisi sul sito"} di «${o.row.label}»`,
+      why: `${o.count} su ${o.group.people}: forse l'avviso arriva troppo spesso o serve a poco.`,
+      todo: "Rileggi quando parte e cosa dice. Se serve a poco, valuta di metterlo nel riassunto della sera o di spegnerlo di serie.",
+      link: { label: "Avvisi spenti", href: "/admin/statistiche" },
     });
   }
 

@@ -3,8 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
+  NOTIFICATION_DIGEST_HOURS,
   NOTIFICATION_TOPICS,
   NOTIFICATION_TOPIC_INFO,
+  notificationDigestHour,
   notificationItemChannelOn,
   notificationItemsFor,
   withNotificationItemChannel,
@@ -271,9 +273,28 @@ export default function NotifichePage() {
                 <SiteTile
                   icon="clock"
                   label="Riassunto della sera"
-                  description="Le novità senza fretta, come recensioni e pagamenti, in un'unica email alle 19. Se non c'è niente, nessuna email."
+                  description={
+                    role === "professional"
+                      ? "Le novità senza fretta, come recensioni e pagamenti, in un'unica email. Se non c'è niente, nessuna email. Alla stessa ora arriva il riepilogo dei lavori di domani."
+                      : "Le novità senza fretta, come pagamenti e documenti, in un'unica email. Se non c'è niente, nessuna email."
+                  }
                   checked={notificationPrefs.digest ?? true}
                   onChange={() => void save({ ...notificationPrefs, digest: !(notificationPrefs.digest ?? true) })}
+                  extra={
+                    <label className="nt-hour">
+                      <span>Alle</span>
+                      <select
+                        value={notificationDigestHour(notificationPrefs)}
+                        onChange={(e) => void save({ ...notificationPrefs, digestHour: Number(e.target.value) })}
+                      >
+                        {NOTIFICATION_DIGEST_HOURS.map((hour) => (
+                          <option key={hour} value={hour}>
+                            {hour}:00
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  }
                 />
                 <SiteTile
                   icon="moon"

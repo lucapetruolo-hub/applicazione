@@ -9,7 +9,7 @@ import { NotificationsService } from "../notifications/notifications.service";
 import { ProfessionalMetricsService } from "../professional-metrics/professional-metrics.service";
 import { AuditLogService } from "../audit-log/audit-log.service";
 import { JobIssueOutcomeService } from "../job-issues/job-issue-outcome.service";
-import { notificationOptOuts } from "../notifications/opt-outs";
+import { loadNotificationOptOuts } from "../notifications/opt-outs";
 import { COUNTED_USER, countingFrom, daySinceLaunch, sinceLaunch } from "../site-counts/counted";
 import { launchDate } from "../subscriptions/subscription-rules";
 import { buildCategoryActivity, buildChurnByMonth, buildCoverage, buildProfessionalStats, buildSearchStats, professionalStatusOf } from "./professional-stats";
@@ -114,12 +114,8 @@ export class AdminService {
    * (docs/changelog/2026-10-29-notifiche-email-riassunto-e-notte.md). Senza
    * gli account di prova e quelli chiusi.
    */
-  async notificationOptOuts() {
-    const users = await this.prisma.user.findMany({
-      where: { ...COUNTED_USER, deletedAt: null, role: { not: "ADMIN" } },
-      select: { notificationPrefs: true, professionalProfile: { select: { id: true } } },
-    });
-    return notificationOptOuts(users.map((user) => ({ prefs: user.notificationPrefs, role: user.professionalProfile ? "professional" : "client" })));
+  notificationOptOuts() {
+    return loadNotificationOptOuts(this.prisma);
   }
 
   /**

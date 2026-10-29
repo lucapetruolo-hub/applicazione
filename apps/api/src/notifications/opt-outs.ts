@@ -1,3 +1,5 @@
+import type { PrismaClient } from "@professionisti/database";
+import { COUNTED_USER } from "../site-counts/counted";
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
   NOTIFICATION_TOPICS,
@@ -85,4 +87,13 @@ export function notificationOptOuts(users: { prefs: unknown; role: "professional
       rows,
     };
   });
+}
+
+/** Le preferenze di tutti, senza account di prova, chiusi e admin. */
+export async function loadNotificationOptOuts(prisma: PrismaClient): Promise<NotificationOptOutGroup[]> {
+  const users = await prisma.user.findMany({
+    where: { ...COUNTED_USER, deletedAt: null, role: { not: "ADMIN" } },
+    select: { notificationPrefs: true, professionalProfile: { select: { id: true } } },
+  });
+  return notificationOptOuts(users.map((user) => ({ prefs: user.notificationPrefs, role: user.professionalProfile ? "professional" : "client" })));
 }
