@@ -607,9 +607,16 @@ export function RequestCard({
   // Cosa cambia la proposta del cliente rispetto al preventivo: `null` se
   // data e orario restano uguali e ha solo aggiunto una nota
   // (docs/CHANGELOG.md §196).
+  //
+  // Sull'appuntamento già fissato (il cliente non può più esserci) la
+  // proposta arriva allo stesso modo, sul preventivo: stessi riquadro e
+  // pulsanti, e accettandola l'appuntamento si sposta
+  // (docs/changelog/2026-10-28-promemoria-whatsapp.md).
+  const bookedDateChange = booking?.status === "CONFIRMED" && Boolean(booking.dateChangeRequestedAt) && Boolean(lead.quote?.clientProposedDate);
+  const dateChangePending = (stage === "modifica_richiesta" || bookedDateChange) && Boolean(lead.quote?.clientProposedDate);
   const proposalChange = lead.quote?.clientProposedDate
     ? scheduleChangeBetween(
-        { start: lead.quote.estimatedStartDate, end: lead.quote.estimatedEndDate },
+        bookedDateChange && booking ? { start: booking.scheduledAt, end: booking.scheduledEndAt } : { start: lead.quote.estimatedStartDate, end: lead.quote.estimatedEndDate },
         { start: lead.quote.clientProposedDate, end: lead.quote.clientProposedEndDate },
       )
     : null;
@@ -666,7 +673,7 @@ export function RequestCard({
       },
     });
   }
-  if (stage === "modifica_richiesta" && lead.quote?.clientProposedDate) {
+  if (dateChangePending) {
     menuActions.push({ icon: "check", text: proposalChange ? "Accetta nuova data" : "Conferma appuntamento", onPress: handleConfirmDate });
   }
   if (booking?.status === "CONFIRMED") {
@@ -853,13 +860,13 @@ export function RequestCard({
 
       {isOpen ? (
         <YStack paddingHorizontal="$4" paddingBottom="$4" gap="$4" borderTopWidth={1} borderTopColor={brand.filetto}>
-          {stage === "modifica_richiesta" && lead.quote?.clientProposedDate ? (
+          {dateChangePending && lead.quote?.clientProposedDate ? (
             proposalChange ? (
               <ScheduleChangeBox
                 marginTop="$3"
                 title={`Il cliente ha richiesto una modifica ${scheduleChangeOf(proposalChange)}`}
                 beforeLabel="Data originale"
-                beforeText={formatSlotRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}
+                beforeText={bookedDateChange && booking ? formatSlotRange(booking.scheduledAt, booking.scheduledEndAt) : formatSlotRange(lead.quote.estimatedStartDate, lead.quote.estimatedEndDate)}
                 afterLabel="Nuova data richiesta"
                 afterText={formatSlotRange(lead.quote.clientProposedDate, lead.quote.clientProposedEndDate)}
                 note={lead.quote.clientProposedNote}
@@ -1151,8 +1158,8 @@ export function RequestCard({
                   : "Il nostro team l'ha esaminata e chiusa senza misure."}
             </Text>
           ) : null}
-          {/* Promemoria e risposta del cliente, o l'altra data che propone (docs/changelog/2026-10-28-promemoria-whatsapp.md). */}
-          {booking ? <AppointmentReplyStatus token={token} booking={booking} onChanged={onChanged} /> : null}
+          {/* Promemoria e risposta del cliente (docs/changelog/2026-10-28-promemoria-whatsapp.md). */}
+          {booking ? <AppointmentReplyStatus booking={booking} /> : null}
           {/* Annullato dal cliente dentro il preavviso che hai scelto (docs/CHANGELOG.md §347). */}
           {booking?.status === "CANCELED" && booking.canceledBy === "CLIENT" && booking.canceledLate ? (
             <Text fontSize={13} color={brand.urgenza} fontWeight="600">
@@ -1304,6 +1311,18 @@ export function RequestCard({
                   Modifica
                 </CardButton>
                 <ContactButton onPress={openTimeline} unreadCount={effectiveUnreadCount} />
+                <CardButton tone="danger" disabled={isRejectingDate} onPress={handleRejectDate}>
+                  {isRejectingDate ? "..." : "Rifiuta la proposta"}
+                </CardButton>
+              </XStack>
+            ) : null}
+
+            {bookedDateChange ? (
+              // Senza "Modifica": per un'altra data ancora c'è la chat.
+              <XStack gap="$2" flexWrap="wrap">
+                <CardButton fill={brand.verificato} disabled={isConfirmingDate} onPress={handleConfirmDate}>
+                  {isConfirmingDate ? "Conferma..." : "Accetta nuova data"}
+                </CardButton>
                 <CardButton tone="danger" disabled={isRejectingDate} onPress={handleRejectDate}>
                   {isRejectingDate ? "..." : "Rifiuta la proposta"}
                 </CardButton>

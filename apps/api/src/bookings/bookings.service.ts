@@ -1430,10 +1430,8 @@ export class BookingsService implements OnModuleInit {
       // Preavviso per annullare valido per questo lavoro (docs/CHANGELOG.md §347): 24 ore per i lavori di prima.
       cancellationNoticeHours: booking.cancellationNoticeHours ?? DEFAULT_CANCELLATION_NOTICE_HOURS,
       lateCancelKeepsDeposit: booking.quote?.lateCancelKeepsDeposit ?? false,
-      // "Non posso più" → altra data proposta, in attesa del professionista.
-      reschedule: booking.rescheduleProposedAt
-        ? { start: booking.rescheduleProposedAt.toISOString(), end: booking.rescheduleProposedEndAt?.toISOString() ?? null, note: booking.rescheduleNote }
-        : null,
+      // Altra data proposta sul preventivo accettato, in attesa del professionista.
+      dateChangeRequestedAt: booking.rescheduleRequestedAt?.toISOString() ?? null,
       professionalCompletionPhotoUrls: booking.professionalCompletionPhotoUrls,
       clientCompletionPhotoUrls: booking.clientCompletionPhotoUrls,
     }));

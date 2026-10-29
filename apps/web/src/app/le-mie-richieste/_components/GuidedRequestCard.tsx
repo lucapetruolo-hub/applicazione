@@ -44,8 +44,8 @@ import { useInternalLinkClick } from "@/lib/useInternalLinkClick";
 import { clientNextAction } from "@/lib/clientNextAction";
 import { CLIENT_STAGE_LABEL, type RequestStage } from "@/lib/requestStage";
 import { BookingSection, ChangeLinks } from "./BookingSection";
-import { RescheduleBookingPanel } from "./RescheduleBookingPanel";
-import { QuoteCard } from "./QuoteCard";
+import { QuoteDateChooser } from "./QuoteDateChooser";
+import { QuoteCard, formatQuoteDateRange } from "./QuoteCard";
 import { ClientInvoiceRequestPanel } from "@/components/ClientInvoiceRequestForm";
 import { JobDocumentsModal } from "@/components/JobDocumentsModal";
 import { Disclosure } from "./Disclosure";
@@ -866,11 +866,29 @@ export function GuidedRequestCard({
       ) : null}
       <ChangeLinks
         booking={booking}
-        onReschedule={() => setShowReschedule(true)}
+        onReschedule={acceptedQuote && !showReschedule ? () => setShowReschedule(true) : null}
         onMessage={booking.guidedRequestId ? () => setShowBookingChat(true) : null}
         onCancel={() => setShowCancelModal(true)}
       />
-      <RescheduleBookingPanel token={token} booking={booking} serviceMode={request.serviceMode} isOpen={showReschedule} onClose={() => setShowReschedule(false)} onChanged={onChanged} />
+      {/* Altra data per l'appuntamento: la stessa "Proponi un'altra data" del preventivo (docs/changelog/2026-10-28-promemoria-whatsapp.md). */}
+      {acceptedQuote && booking.status === "CONFIRMED" && booking.dateChangeRequestedAt && acceptedQuote.clientProposedDate && !showReschedule ? (
+        <Text fontSize={13} color={brand.ottone} fontWeight="600" paddingHorizontal="$1">
+          In attesa di conferma del professionista per il {formatQuoteDateRange(acceptedQuote.clientProposedDate, acceptedQuote.clientProposedEndDate)}. Fino ad allora l&apos;appuntamento resta com&apos;è.
+        </Text>
+      ) : null}
+      {acceptedQuote && showReschedule ? (
+        <QuoteDateChooser
+          token={token}
+          quote={acceptedQuote}
+          serviceMode={request.serviceMode}
+          from={booking.dateChangeRequestedAt && acceptedQuote.clientProposedDate ? { start: acceptedQuote.clientProposedDate, end: acceptedQuote.clientProposedEndDate } : { start: booking.scheduledAt, end: booking.scheduledEndAt }}
+          onSent={() => {
+            setShowReschedule(false);
+            onChanged();
+          }}
+          onCancel={() => setShowReschedule(false)}
+        />
+      ) : null}
     </YStack>
   ) : null;
 

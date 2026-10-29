@@ -39,9 +39,6 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   // Pulsanti del promemoria WhatsApp (docs/changelog/2026-10-28-promemoria-whatsapp.md).
   BOOKING_CLIENT_CONFIRMED: { icon: "👍", message: "Il cliente ha confermato che ci sarà all'appuntamento." },
   BOOKING_CLIENT_CANT_COME: { icon: "⚠️", message: "Il cliente ha scritto che non può più esserci all'appuntamento: scrivigli in chat." },
-  BOOKING_RESCHEDULE_PROPOSED: { icon: "📅", message: "Il cliente non può più esserci e propone un'altra data: accettala o rifiutala." },
-  BOOKING_RESCHEDULE_ACCEPTED: { icon: "📅", message: "Il professionista ha accettato la nuova data: l'appuntamento è spostato." },
-  BOOKING_RESCHEDULE_REJECTED: { icon: "📅", message: "Il professionista non può nella data che hai proposto: l'appuntamento resta com'era." },
   BOOKING_CLIENT_CANT_COME_UNDONE: { icon: "👍", message: "Il cliente aveva premuto «Non posso più» per errore: ci sarà." },
   BOOKING_REOPENED_BY_PROFESSIONAL: { icon: "🔄", message: "Il professionista ha riaperto una prenotazione annullata." },
   // Recensione del cliente (docs/CHANGELOG.md §185): pubblica subito (§215).
@@ -205,7 +202,9 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
     return { icon: "🗓️", message: `Il professionista ha modificato ${scheduleChangeObject(change)} del tuo preventivo${newSlot ? `: ora è ${newSlot}` : ""}.` };
   }
   if (change && type === "QUOTE_DATE_PROPOSED") {
-    return { icon: "🗓️", message: `Il cliente ha proposto ${scheduleChangeAlternative(change)} per il preventivo${newSlot ? `: ${newSlot}` : ""}.` };
+    // Appuntamento già fissato: "Non posso più" → "Proponi un'altra data" (docs/changelog/2026-10-28-promemoria-whatsapp.md).
+    const what = data.booked === true ? "l'appuntamento" : "il preventivo";
+    return { icon: "🗓️", message: `Il cliente ha proposto ${scheduleChangeAlternative(change)} per ${what}${newSlot ? `: ${newSlot}` : ""}.` };
   }
   if (type === "AGENDA_TOMORROW_SUMMARY" && Array.isArray(data.items)) {
     const count = data.items.length;
@@ -213,6 +212,9 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   }
   if (type === "AGENDA_REMINDER" && data.attention === "RUNNING_LOW") {
     return { icon: "📅", message: "Nei prossimi 7 giorni non hai orari liberi in agenda: aggiungili per farti prenotare." };
+  }
+  if (type === "QUOTE_DATE_CONFIRMED" && data.booked === true) {
+    return { icon: "✅", message: `Il professionista ha accettato la data che hai proposto: l'appuntamento è spostato${newSlot ? ` a ${newSlot}` : ""}.` };
   }
   if (type === "QUOTE_DATE_REJECTED" && newSlot) {
     return { icon: "📅", message: `Il professionista non è disponibile in quella data: l'appuntamento resta ${newSlot}.` };

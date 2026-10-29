@@ -2,8 +2,6 @@ import type {
   AgendaAttention,
   AppointmentReplyAction,
   AppointmentReplyState,
-  RescheduleBookingInput,
-  RejectRescheduleInput,
   ProfessionalKind,
   EmailStatus,
   ProfessionalEntityTypeValue,
@@ -216,8 +214,8 @@ export type ClientBooking = {
   cancellationNoticeHours: number;
   /** Annullando dentro il preavviso l'acconto online resta al professionista (docs/CHANGELOG.md §348). */
   lateCancelKeepsDeposit: boolean;
-  /** Altra data proposta dal cliente ("Non posso più"), in attesa che il professionista la accetti o la rifiuti. */
-  reschedule: { start: string; end: string | null; note: string | null } | null;
+  /** Il cliente ha proposto un'altra data per l'appuntamento (sul preventivo accettato), in attesa del professionista. */
+  dateChangeRequestedAt: string | null;
   /** Link per una consulenza video (Meet/Zoom/ecc.), impostato dal professionista — richiesta esplicita dell'utente. */
   meetingLink: string | null;
   /** Il professionista ha eliminato l'account (soft-delete) — richiesta esplicita dell'utente, mostra "Account eliminato" con possibilità di eliminare la prenotazione dalla lista. */
@@ -1186,12 +1184,6 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       request<AppointmentReplyState>(`/booking-replies/${encodeURIComponent(token)}`, { method: "POST", body: JSON.stringify({ action }) }),
 
     /** "Non posso più": il cliente propone un'altra data per l'appuntamento fissato; il professionista accetta o rifiuta. */
-    proposeBookingReschedule: (token: string, bookingId: string, input: RescheduleBookingInput) =>
-      request<{ ok: true }>(`/bookings/${bookingId}/reschedule`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
-    acceptBookingReschedule: (token: string, bookingId: string) =>
-      request<{ ok: true }>(`/bookings/${bookingId}/reschedule/accept`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
-    rejectBookingReschedule: (token: string, bookingId: string, input: RejectRescheduleInput) =>
-      request<{ ok: true }>(`/bookings/${bookingId}/reschedule/reject`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
 
     verifyEmail: (token: string) =>
       request<{ email: string; alreadyVerified: boolean }>("/auth/verify-email", { method: "POST", body: JSON.stringify({ token }) }),

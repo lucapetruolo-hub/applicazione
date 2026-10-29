@@ -324,8 +324,8 @@ export type ProfessionalBooking = {
   clientCantComeAt: string | null;
   /** Promemoria al cliente di un appuntamento da venire: inviato, consegnato o letto su WhatsApp, o mandato per email. */
   clientReminder: { channel: "WHATSAPP" | "EMAIL"; status: "SENT" | "DELIVERED" | "READ"; at: string } | null;
-  /** Altra data proposta dal cliente ("Non posso più"), da accettare o rifiutare (ora italiana in UTC). */
-  reschedule: { start: string; end: string | null; note: string | null; requestedAt: string } | null;
+  /** Il cliente ha proposto un'altra data per l'appuntamento: la data è sul preventivo (`clientProposedDate`), con "Accetta nuova data" o "Rifiuta la proposta". */
+  dateChangeRequestedAt: string | null;
   /** Ultima segnalazione "Qualcosa è andato male" del professionista su questo lavoro (§197), `null` se non ne ha fatte. */
   professionalProblemReport: { reason: string; status: "OPEN" | "RESOLVED" | "DISMISSED"; createdAt: string } | null;
   /**

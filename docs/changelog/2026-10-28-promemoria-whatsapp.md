@@ -175,22 +175,44 @@ lavori esterni dell'agenda non ricevono nulla (domanda 70 per l'avvocato).
     del giorno prima non riparte se è uscita da meno di 18 ore;
   - **"Non posso più" apre "Proponi un'altra data"**: spostare un
     appuntamento già fissato prima non esisteva (solo chat o annullare). Il
-    cliente sceglie un orario libero dell'agenda o una data a mano
-    (`POST /bookings/:id/reschedule`), il professionista accetta e
-    l'appuntamento si sposta con acconto e pagamento com'erano, oppure
-    rifiuta e resta com'era (`BookingRescheduleService`, notifiche
-    `BOOKING_RESCHEDULE_*` anche per email). Spostato l'appuntamento, i
-    promemoria della data vecchia non valgono più (anche i pulsanti premuti
-    dopo) e ripartono per la nuova (`forgetBookingReminders`). Il link di
-    WhatsApp e della pagina del promemoria porta a `&cambiaData=1`;
+    cliente sceglie un orario libero dell'agenda o una data a mano;
+    il professionista accetta e l'appuntamento si sposta con acconto e
+    pagamento com'erano, oppure rifiuta e resta com'era. Spostato
+    l'appuntamento, i promemoria della data vecchia non valgono più (anche
+    i pulsanti premuti dopo) e ripartono per la nuova
+    (`forgetBookingReminders`). Il link di WhatsApp e della pagina del
+    promemoria porta a `&cambiaData=1`;
   - **il professionista vede il promemoria**: nella scheda del lavoro
     "Promemoria WhatsApp letto (data): il cliente non ha ancora risposto",
-    o consegnato, inviato, mandato per email (`clientReminder`), e la data
-    proposta con "Accetta e sposta" / "Non posso"
-    (`AppointmentReplyStatus.tsx`);
+    o consegnato, inviato, mandato per email (`clientReminder`,
+    `AppointmentReplyStatus.tsx`);
   - **numeri in Admin → WhatsApp**: quanti confermano, quanti dicono "Non
     posso più", quanti non rispondono, da WhatsApp o dall'email, e lavori
     saltati tra chi aveva confermato e chi no (`reminderEffect`).
+
+- Nono giro (Luca, 29/10: "La proposta della nuova data deve passare per
+  le modifiche standard che già ci sono nelle richieste non creiamo altre
+  strade, rendiamo il lavoro semplice e snello nelle procedure"): tolta la
+  strada separata dell'ottavo giro (indirizzi `/bookings/:id/reschedule`,
+  `BookingRescheduleService`, il pannello del cliente, le notifiche
+  `BOOKING_RESCHEDULE_*` e tre colonne del lavoro, migrazione
+  `20261029150000_spostamento_sul_preventivo`). Ora l'altra data per un
+  appuntamento fissato passa dalla stessa "Proponi un'altra data" dei
+  preventivi: stessa scelta della data per il cliente
+  (`QuoteDateChooser.tsx`, preso da `QuoteCard`), stessi indirizzi
+  (`POST /quotes/:id/propose-date`, `confirm-proposed-date`, `reject-proposed-date`), la
+  proposta sta sul preventivo (`clientProposedDate`), stesse notifiche
+  `QUOTE_DATE_PROPOSED`/`CONFIRMED`/`REJECTED` (con `booked: true` il
+  testo dice che si sposta l'appuntamento), stesso riquadro "Il cliente ha
+  richiesto una modifica" e pulsanti "Accetta nuova data" / "Rifiuta la
+  proposta" per il professionista. Il preventivo resta accettato
+  (cambiarlo di stato avrebbe toccato pagamenti, documenti e recensioni);
+  sul lavoro resta solo `rescheduleRequestedAt`, che dice che la proposta
+  riguarda l'appuntamento fissato (i preventivi accettati di prima possono
+  avere ancora una vecchia `clientProposedDate`). Accettando si
+  ricontrolla che la fascia nuova sia libera, come per ogni data proposta.
+  Niente "Modifica" del professionista su un appuntamento fissato: per
+  un'altra data ancora c'è la chat.
 
 Modelli da far approvare a Meta: `docs/whatsapp-modelli.md`.
 
@@ -202,12 +224,15 @@ Modelli da far approvare a Meta: `docs/whatsapp-modelli.md`.
   volta per evento, motivi di chi non parte, tetti, nuovi tentativi, codice
   giusto/sbagliato/scaduto/troppi).
 - Tutte le prove dell'API verdi, typecheck e lint di API e sito.
-- Ottavo giro: prove del link firmato, delle risposte dall'email, dello
-  spostamento (proposta, date sbagliate, accetta, rifiuta, più giorni),
+- Ottavo giro: prove del link firmato, delle risposte dall'email,
   dell'email dell'acconto (ora, una volta sola, niente doppione il giorno
   prima), dei promemoria dimenticati dopo lo spostamento e dei numeri
   delle risposte. Pagina del promemoria controllata a schermo sul telefono
   nei quattro stati.
+- Nono giro: `apps/api/src/quotes/booked-date-change.test.ts` (proposta
+  sull'appuntamento fissato, stessa data rifiutata, appuntamento annullato,
+  accetta con promemoria e risposte da capo, fascia piena, rifiuta, niente
+  da accettare senza proposta).
 - Scheda WhatsApp di Notifiche controllata a schermo, su computer e
   telefono, nei cinque stati (spento, da attivare, codice mandato, attivo,
   numero fisso).

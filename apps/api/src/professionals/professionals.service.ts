@@ -1640,15 +1640,8 @@ export class ProfessionalsService {
       clientConfirmedAt: booking.clientConfirmedAt?.toISOString() ?? null,
       clientCantComeAt: booking.clientCantComeAt?.toISOString() ?? null,
       clientReminder: clientReminder(booking),
-      // "Non posso più" → altra data proposta dal cliente, da accettare o rifiutare.
-      reschedule: booking.rescheduleProposedAt
-        ? {
-            start: booking.rescheduleProposedAt.toISOString(),
-            end: booking.rescheduleProposedEndAt?.toISOString() ?? null,
-            note: booking.rescheduleNote,
-            requestedAt: (booking.rescheduleRequestedAt ?? booking.rescheduleProposedAt).toISOString(),
-          }
-        : null,
+      // Altra data proposta dal cliente sul preventivo accettato (docs/changelog/2026-10-28-promemoria-whatsapp.md).
+      dateChangeRequestedAt: booking.rescheduleRequestedAt?.toISOString() ?? null,
       professionalProblemReport: booking.quote?.guidedRequestId ? (problemReportByGuidedRequestId.get(booking.quote.guidedRequestId) ?? null) : null,
       description: booking.quote?.guidedRequest?.description ?? null,
       photoUrls: booking.quote?.guidedRequest?.photoUrls ?? [],

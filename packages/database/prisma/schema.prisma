@@ -1237,12 +1237,9 @@ model Booking {
   // Email al cliente con la scadenza per annullare e riavere l'acconto,
   // mandata prima che inizi il preavviso (come il promemoria WhatsApp).
   clientDepositReminderAt DateTime?
-  // "Non posso più" → il cliente propone un'altra data per l'appuntamento
-  // già fissato; il professionista la accetta (l'appuntamento si sposta) o
-  // la rifiuta. Una proposta alla volta.
-  rescheduleProposedAt    DateTime?
-  rescheduleProposedEndAt DateTime?
-  rescheduleNote          String?
+  // "Non posso più" → "Proponi un'altra data": la data proposta sta sul
+  // preventivo (clientProposedDate), come ogni proposta; qui quando il
+  // cliente l'ha chiesta, finché il professionista non risponde.
   rescheduleRequestedAt   DateTime?
   createdAt               DateTime      @default(now())
   updatedAt               DateTime      @updatedAt
