@@ -44,3 +44,16 @@ account di prova, accensione con allineamento delle date ed email con la
 data di ciascuno, minimo 14 giorni, rispegnimento con email, iscrizione dopo
 l'accensione) e in `subscription-rules.test.ts`; `tsc`, lint e tutti i test
 di `apps/api`.
+
+## Seguito: nessuna quota prima del lancio anche senza LAUNCH_DATE
+
+**Dal collaudo** (agente E, 29/10/2026): sotto Plus la pagina scriveva "Nessun
+costo fino al lancio", ma "Passa a Plus" faceva pagare subito su Stripe la
+quota di passaggio (141,96 € + IVA). Senza `LAUNCH_DATE` la pagina considera
+il sito non lanciato, mentre il pagamento lo considerava lanciato.
+
+**Decisione**: stessa regola nei due punti. Prima del lancio (anche senza
+`LAUNCH_DATE`) nessuna quota: il livello scelto parte con il primo addebito
+alla fine dei giorni gratuiti, come scritto. Con gli abbonamenti a pagamento
+spenti la scelta del livello è comunque chiusa a tutti tranne gli account di
+prova. Test in `apps/api/src/billing/billing-checkout.test.ts`.

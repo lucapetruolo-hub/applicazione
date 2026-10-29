@@ -233,9 +233,13 @@ export class BillingService {
     // Chi sceglie un livello durante la prova gratuita non perde i giorni
     // rimasti: il primo canone parte alla fine della prova. Prima del lancio
     // la prova finisce un mese dopo il lancio (docs/CHANGELOG.md §170).
+    // Come la pagina Abbonamento (`waitingLaunch` in getMySubscription): senza
+    // LAUNCH_DATE il sito non è lanciato, e lì c'è scritto "Nessun costo fino
+    // al lancio". Prima la quota partiva lo stesso (collaudo del 29/10/2026,
+    // docs/changelog/2026-10-29-abbonamenti-a-pagamento-da-admin.md).
     const launch = launchDate();
-    const preLaunchTrial = current?.status === "TRIALING" && launch !== null && !hasLaunched(now, launch);
-    const trialEndsAt = preLaunchTrial ? trialEndFor(now, launch, trialDaysOf(current)) : current?.trialEndsAt;
+    const preLaunchTrial = current?.status === "TRIALING" && !hasLaunched(now, launch);
+    const trialEndsAt = preLaunchTrial && launch ? trialEndFor(now, launch, trialDaysOf(current)) : current?.trialEndsAt;
     const trialEnd =
       (preLaunchTrial || state === "TRIAL") && trialEndsAt && trialEndsAt.getTime() - now.getTime() > MIN_TRIAL_END_MS
         ? Math.floor(trialEndsAt.getTime() / 1000)
