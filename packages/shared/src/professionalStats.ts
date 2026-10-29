@@ -21,8 +21,8 @@ export const PROFESSIONAL_PLAN_KEYS = ["TRIAL", "FOUNDER", "BASE", "PLUS", "PRO"
 export type ProfessionalPlanKey = (typeof PROFESSIONAL_PLAN_KEYS)[number];
 
 export const PROFESSIONAL_PLAN_LABEL: Record<ProfessionalPlanKey, string> = {
-  TRIAL: "Mese gratuito",
-  FOUNDER: "Offerta di lancio (3 mesi gratis)",
+  TRIAL: "Mesi gratis, senza carta",
+  FOUNDER: "Mesi gratis, con la carta",
   BASE: "Base",
   PLUS: "Plus",
   PRO: "Pro",

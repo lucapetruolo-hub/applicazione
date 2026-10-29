@@ -1612,20 +1612,22 @@ const BUILDERS: Record<string, Builder> = {
     details: str(payload.date) ? [{ label: "Gratis fino al", value: formatDay(str(payload.date)) }] : undefined,
     cta: subscriptionPage(),
   }),
-  // I primi 100 professionisti hanno 3 mesi gratis (docs/CHANGELOG.md §363).
-  SUBSCRIPTION_TRIAL_ENDING: (payload, ctx) => ({
-    kind: "account",
-    subject: payload.founder === true ? "I tuoi 3 mesi gratis stanno per finire" : "Il tuo mese gratuito sta per finire",
-    greeting: ctx.name,
-    title: payload.founder === true ? "I 3 mesi gratis stanno per finire" : "Il mese gratuito sta per finire",
-    paragraphs: [
-      payload.founder === true
-        ? `I tuoi 3 mesi gratis finiscono il **${formatDay(str(payload.date))}**.`
-        : `Il tuo mese gratuito finisce il **${formatDay(str(payload.date))}**.`,
-      "Scegli un livello per restare visibile nelle ricerche e continuare a ricevere richieste.",
-    ],
-    cta: { label: "Scegli un livello", url: `${frontendUrl()}/dashboard/abbonamento` },
-  }),
+  // Mesi gratis senza carta che stanno per finire (docs/changelog/2026-10-29-offerta-mesi-gratis.md).
+  SUBSCRIPTION_TRIAL_ENDING: (payload, ctx) => {
+    const months = typeof payload.freeMonths === "number" ? payload.freeMonths : payload.founder === true ? 3 : 1;
+    const what = months === 1 ? "Il tuo mese gratis" : `I tuoi ${months} mesi gratis`;
+    return {
+      kind: "account",
+      subject: `${what} ${months === 1 ? "sta" : "stanno"} per finire`,
+      greeting: ctx.name,
+      title: `${months === 1 ? "Il mese gratis sta" : `I ${months} mesi gratis stanno`} per finire`,
+      paragraphs: [
+        `${what} ${months === 1 ? "finisce" : "finiscono"} il **${formatDay(str(payload.date))}**.`,
+        "Scegli un livello per restare visibile nelle ricerche e continuare a ricevere richieste.",
+      ],
+      cta: { label: "Scegli un livello", url: `${frontendUrl()}/dashboard/abbonamento` },
+    };
+  },
   SUBSCRIPTION_LIMIT_NEAR: (payload, ctx) => {
     const used = typeof payload.used === "number" ? payload.used : null;
     const limit = typeof payload.limit === "number" ? payload.limit : null;
@@ -1667,13 +1669,20 @@ const BUILDERS: Record<string, Builder> = {
     subject: "Il tuo account è in pausa",
     greeting: ctx.name,
     title: "Account in pausa",
-    paragraphs: [
-      payload.reason === "SUBSCRIPTION_ENDED"
-        ? "Il tuo abbonamento è concluso: il tuo profilo non compare più nelle ricerche e non ricevi nuove richieste."
-        : "Il tuo mese gratuito è finito: il tuo profilo non compare più nelle ricerche e non ricevi nuove richieste.",
-      "Scegli un livello per renderlo di nuovo visibile e operativo.",
-    ],
-    cta: { label: "Scegli un livello", url: `${frontendUrl()}/dashboard/abbonamento` },
+    paragraphs:
+      // Mesi gratis senza la carta (docs/changelog/2026-10-29-offerta-mesi-gratis.md).
+      payload.reason === "CARD_NEEDED"
+        ? [
+            "Per usare i mesi gratis serve la carta: finché non la aggiungi il tuo profilo non compare nelle ricerche e non ricevi nuove richieste.",
+            "Oggi non paghi nulla. Alla fine dei mesi gratis parte Base a 19 € + IVA al mese, e puoi annullare quando vuoi.",
+          ]
+        : [
+            payload.reason === "SUBSCRIPTION_ENDED"
+              ? "Il tuo abbonamento è concluso: il tuo profilo non compare più nelle ricerche e non ricevi nuove richieste."
+              : "I tuoi mesi gratis sono finiti: il tuo profilo non compare più nelle ricerche e non ricevi nuove richieste.",
+            "Scegli un livello per renderlo di nuovo visibile e operativo.",
+          ],
+    cta: payload.reason === "CARD_NEEDED" ? { label: "Attiva i mesi gratis", url: `${frontendUrl()}/dashboard/abbonamento` } : { label: "Scegli un livello", url: `${frontendUrl()}/dashboard/abbonamento` },
   }),
   SUBSCRIPTION_RENEWING: (payload, ctx) => {
     const tier = str(payload.tierLabel) ?? "";

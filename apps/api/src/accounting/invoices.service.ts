@@ -3,7 +3,6 @@ import { Cron } from "@nestjs/schedule";
 import type Stripe from "stripe";
 import type { Invoice, Prisma, PrismaClient } from "@professionisti/database";
 import {
-  FOUNDER_FREE_MONTHS,
   INVOICE_SERIES,
   INVOICE_SOURCE_LABEL,
   PLATFORM_VAT_RATE_BASIS_POINTS,
@@ -29,7 +28,7 @@ import {
 import { PRISMA } from "../prisma/prisma.module";
 import { NotificationsService } from "../notifications/notifications.service";
 import { encryptFiscal, readFiscal } from "../common/fiscal-crypto";
-import { subscriptionState } from "../subscriptions/subscription-rules";
+import { freeMonthsOf, freeMonthsProgress, subscriptionState } from "../subscriptions/subscription-rules";
 import { lastDayOfMonth, previousMonth, romeDayIso, romeDayLabel, romeDayStart, romeMonthOf, romeMonthRange } from "./accounting-dates";
 import { buildFatturaPaXml } from "./invoice-xml";
 import {
@@ -553,7 +552,7 @@ export class InvoicesService {
     for (const sub of trialing) {
       for (const at of [new Date(end.getTime() - 1), start]) {
         const free = freePeriodSummary(
-          { state: subscriptionState(sub, at), trialEndsAt: sub.trialEndsAt?.toISOString() ?? null, bonusMonthGranted: !!sub.bonusMonthGrantedAt, founder: sub.founderNumber ? { months: FOUNDER_FREE_MONTHS, currentMonth: null } : null },
+          { state: subscriptionState(sub, at), trialEndsAt: sub.trialEndsAt?.toISOString() ?? null, freeMonths: freeMonthsProgress(freeMonthsOf(sub), sub.trialEndsAt, at) },
           at,
         );
         if (free) {

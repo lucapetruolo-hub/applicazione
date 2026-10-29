@@ -710,9 +710,10 @@ model Subscription {
   // 100 professionisti con il profilo completo, che hanno 3 mesi gratis.
   founderNumber         Int?               @unique
   // Offerta mesi gratis decisa in Admin (docs/changelog/2026-10-29-offerta-mesi-gratis.md):
-  // mesi dati all'iscrizione (null = righe di prima: 3 ai primi 100, 1 agli
-  // altri), mesi in attesa dopo il passaggio a Plus o Pro (ripartono tornando
-  // a Base, mai persi) e quando tornare a Base alla fine del mese pagato.
+  // mesi gratis del giro in corso (quelli dell'offerta all'iscrizione, o
+  // quelli ripresi tornando a Base; null = righe di prima, valgono 3), mesi in
+  // attesa dopo il passaggio a Plus o Pro (ripartono tornando a Base, mai
+  // persi) e la richiesta di tornare a Base alla fine del mese pagato.
   freeMonthsGranted     Int?
   freeMonthsWaiting     Int                @default(0)
   returnToBaseAt        DateTime?

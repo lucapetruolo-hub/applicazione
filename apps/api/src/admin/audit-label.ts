@@ -266,6 +266,10 @@ export function auditLabel(row: { entityType: string; fieldName: string | null; 
       return v.canonical ? `Prestazione «${asText(v.name)}» unita a «${asText(v.canonical)}»` : "Unione di prestazioni annullata";
     case "StandardServiceName":
       return v.name ? `Prestazione «${asText(v.name)}» aggiunta alle standard (${asText(v.categorySlug)})` : "Prestazione tolta dalle standard";
+    // Offerta dei mesi gratis (docs/changelog/2026-10-29-offerta-mesi-gratis.md).
+    case "SubscriptionOffer":
+      if (fieldName === "stoppedAt") return "Offerta dei mesi gratis fermata";
+      return `Nuova offerta: ${asText(value)} ${asText(value) === "1" ? "mese" : "mesi"} Base gratis`;
     case "ProblemTakeover":
       return value === "DONE" ? "Richiesta da seguire segnata come fatta" : "Richiesta da seguire riaperta";
     default:

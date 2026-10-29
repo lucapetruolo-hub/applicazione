@@ -16,6 +16,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { AdminCard, AdminPageHeader, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { SkeletonTableRows } from "@/components/Skeleton";
 import { CategoryMultiPicker } from "@/components/CategoryMultiPicker";
+import { SubscriptionOfferCard } from "@/components/admin/SubscriptionOfferCard";
 
 const EMPTY_FORM = { email: "", name: "", surname: "", phone: "", businessName: "", city: "", bio: "" };
 
@@ -31,7 +32,7 @@ function optional(value: string): string | undefined {
  * link, sceglie la password e conferma la dichiarazione dal proprio profilo.
  */
 export default function AdminProfessionistiPage() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [form, setForm] = useState(EMPTY_FORM);
   // Da 1 a 3 categorie, come nella registrazione (docs/CHANGELOG.md §217).
   const [categorySlugs, setCategorySlugs] = useState<ProfessionalCategorySlug[]>([]);
@@ -162,10 +163,12 @@ export default function AdminProfessionistiPage() {
         title="Profili da confermare"
         description="Crea il profilo di un professionista mentre sei al telefono con lui. Gli arriva un link per scegliere la password e confermare i dati: fino ad allora il profilo non compare nella ricerca."
       />
+      {/* Offerta dei mesi gratis con gli iscritti (docs/changelog/2026-10-29-offerta-mesi-gratis.md). */}
+      {token ? <SubscriptionOfferCard token={token} adminRoles={user?.adminRoles ?? []} /> : null}
       {founders ? (
-        // Chi recluta al telefono vede subito quanti posti dell'offerta restano (§363).
+        // Chi recluta al telefono vede subito quanti posti della scritta "primi 100" restano (§363).
         <Text color={brand.grafite}>
-          Offerta di lancio: <Text fontWeight="700">{founders.total - founders.taken} posti rimasti</Text> su {founders.total}.{" "}
+          Scritta &quot;primi 100&quot; sul sito: <Text fontWeight="700">{founders.total - founders.taken} posti rimasti</Text> su {founders.total}.{" "}
           <a href="#fondatori" style={{ color: brand.cianografiaScuro, fontWeight: 700 }}>
             Vedi l&apos;elenco
           </a>
@@ -344,7 +347,9 @@ export default function AdminProfessionistiPage() {
         <Text fontWeight="700" color={brand.grafite}>
           {founders ? `Offerta di lancio: ${founders.taken} posti presi su ${founders.total}` : "Offerta di lancio"}
         </Text>
-        <Text color={brand.grafite70}>I primi {founders?.total ?? 100} professionisti con il profilo completo hanno Base gratis per 3 mesi dal lancio.</Text>
+        <Text color={brand.grafite70}>
+          I primi {founders?.total ?? 100} professionisti con il profilo completo: servono alla scritta della pagina prezzi. I mesi gratis li dà l&apos;offerta qui sopra, a tutti.
+        </Text>
         {foundersError ? <Text color={brand.urgenza}>{foundersError}</Text> : null}
         {founders === null && !foundersError ? (
           <SkeletonTableRows rows={3} cols={5} />

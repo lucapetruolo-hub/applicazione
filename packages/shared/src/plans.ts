@@ -67,16 +67,14 @@ export function upgradeFeeEurCents(input: {
 }
 
 /**
- * Quota di passaggio nei giorni gratuiti (prova, mese regalato, 3 mesi dei
- * fondatori), §363: come se Base costasse il suo prezzo mensile, cioè 10 € più
- * la differenza mensile per i giorni gratuiti che restano (su mesi di 30
- * giorni), maggiorata del 10%. IVA esclusa.
+ * Passaggio a Plus o Pro durante i mesi gratis (decisione di Luca del
+ * 29/10/2026, docs/changelog/2026-10-29-offerta-mesi-gratis.md): si paga il
+ * mese del nuovo livello meno il mese Base regalato, e da quel giorno parte
+ * un mese nuovo con 0 lavori. I mesi gratis che restano aspettano il ritorno
+ * a Base. IVA esclusa.
  */
-export function freePeriodUpgradeFeeEurCents(input: { from: SubscriptionTier; to: SubscriptionTier; remainingMs: number }): number {
-  const difference = Math.max(0, tierPeriodPriceEurCents(input.to, "MONTH") - tierPeriodPriceEurCents(input.from, "MONTH"));
-  if (difference === 0) return 0;
-  const months = Math.max(0, input.remainingMs) / (TRIAL_DAYS * 24 * 60 * 60 * 1000);
-  return UPGRADE_FIXED_FEE_EUR_CENTS + Math.round(difference * months * (1 + UPGRADE_SURCHARGE));
+export function freeMonthUpgradeEurCents(to: SubscriptionTier): number {
+  return Math.max(0, tierPeriodPriceEurCents(to, "MONTH") - tierPeriodPriceEurCents("BASE", "MONTH"));
 }
 
 /** Funzioni comprese in ogni livello: solo ciò che il sito offre davvero oggi. */
@@ -90,24 +88,51 @@ export const SUBSCRIPTION_FEATURES = [
   "Statistiche della tua attività",
 ] as const;
 
-/** Primo mese gratis per tutti: vale come il livello Base (stesso limite di lavori). */
+/** Un mese gratis dura 30 giorni e vale come il livello Base (stesso limite di lavori). */
 export const TRIAL_DAYS = 30;
-/** Mese regalato a chi non ha ancora avuto lavori: comunicato solo pochi giorni prima della scadenza. */
-export const BONUS_MONTH_DAYS = 30;
-export const BONUS_MONTH_NOTICE_DAYS = 3;
+/** Avviso di fine mesi gratis questi giorni prima. */
+export const TRIAL_ENDING_NOTICE_DAYS = 3;
 
 /**
  * Offerta di lancio (decisione dell'utente del 26/10/2026, docs/CHANGELOG.md
- * §363): ai primi 100 professionisti con il profilo completo il livello Base
- * è gratis per 3 mesi (tre periodi da 30 giorni) dal lancio, al posto del
- * mese gratuito; niente mese regalato a sorpresa.
+ * §363): sul sito "i primi 100 professionisti hanno Base gratis per 3 mesi".
+ * Dal 29/10/2026 (docs/changelog/2026-10-29-offerta-mesi-gratis.md) i mesi
+ * gratis li decide l'offerta in Admin e valgono per tutti gli iscritti finché
+ * è attiva; i posti numerati restano solo per la scritta pubblica.
  */
 export const FOUNDER_SPOTS = 100;
 export const FOUNDER_FREE_MONTHS = 3;
-export const FOUNDER_TRIAL_DAYS = FOUNDER_FREE_MONTHS * TRIAL_DAYS;
 
-/** Posti dell'offerta di lancio (`GET /subscriptions/founders`, pubblico). */
-export type FounderSpots = { total: number; left: number };
+/**
+ * Offerta dei mesi gratis (decisione di Luca del 29/10/2026): chi si iscrive
+ * mentre è attiva riceve quei mesi Base gratis, uno dopo l'altro, poi parte
+ * Base mensile sulla carta già data. Senza nessuna offerta creata vale
+ * l'offerta di partenza da 3 mesi.
+ */
+export const DEFAULT_FREE_MONTHS = FOUNDER_FREE_MONTHS;
+export const MAX_OFFER_FREE_MONTHS = 12;
+
+/** Offerta dei mesi gratis vista in Admin (`GET /admin/subscription-offer`). */
+export type AdminSubscriptionOffer = {
+  /** Offerta attiva; null se Luca l'ha fermata e non ne ha creata un'altra. */
+  current: { freeMonths: number; startedAt: string | null } | null;
+  /** Offerte passate, la più recente prima. */
+  history: { freeMonths: number; startedAt: string; stoppedAt: string | null }[];
+  /** Iscritti (esclusi account di prova, dimostrativi e chiusi): in tutto e da quando è partita l'offerta attiva. */
+  signups: {
+    professionals: { total: number; sinceOffer: number | null };
+    clients: { total: number; sinceOffer: number | null };
+  };
+  /** Professionisti ancora nei mesi gratis, e quanti hanno mesi gratis in attesa. */
+  inFreeMonths: number;
+  withWaitingMonths: number;
+};
+
+/**
+ * Posti dell'offerta di lancio e mesi gratis dell'offerta attiva (`GET
+ * /subscriptions/founders`, pubblico). `offerMonths` null: offerta ferma.
+ */
+export type FounderSpots = { total: number; left: number; offerMonths: number | null };
 
 /** Elenco dei fondatori per l'area admin (`GET /admin/founders`, §363). */
 export type AdminFounders = {
@@ -137,9 +162,10 @@ export const RENEWAL_NOTICE_DAYS = 3;
  * Perché un account professionista è in pausa (docs/CHANGELOG.md §162):
  * fuori dalla ricerca e senza nuove richieste finché non si sceglie o
  * rinnova un livello. I lavori esauriti non mettono più in pausa (§362):
- * vedi `MySubscription.limitReached`.
+ * vedi `MySubscription.limitReached`. `CARD_NEEDED`: dal lancio i mesi gratis
+ * valgono solo con la carta data (decisione di Luca del 29/10/2026).
  */
-export type PauseReason = "TRIAL_ENDED" | "SUBSCRIPTION_ENDED";
+export type PauseReason = "TRIAL_ENDED" | "SUBSCRIPTION_ENDED" | "CARD_NEEDED";
 
 /**
  * Errore dell'API per chi prova a mandare un preventivo o a rispondere per
@@ -180,14 +206,20 @@ export type MySubscription = {
   /** Annullato: resta attivo fino a `currentPeriodEnd`, poi non si rinnova. */
   cancelAtPeriodEnd: boolean;
   trialEndsAt: string | null;
-  /** Il mese regalato è già stato dato (viene mostrato solo dopo, mai prima). */
+  /** Il mese regalato è già stato dato (regola tolta il 29/10/2026, resta per chi l'ha avuto). */
   bonusMonthGranted: boolean;
   /**
-   * Tra i primi 100 professionisti (§363): 3 mesi gratis. `currentMonth` è il
-   * mese gratuito in corso (1-3), 0 se i mesi non sono ancora partiti (prima
-   * del lancio); null finiti i mesi gratuiti.
+   * Mesi gratis di questo giro (docs/changelog/2026-10-29-offerta-mesi-gratis.md).
+   * `currentMonth` è il mese gratis in corso, 0 se non sono ancora partiti
+   * (prima del lancio); null finiti o interrotti. Null senza mesi gratis.
    */
-  founder: { months: number; currentMonth: number | null } | null;
+  freeMonths: { months: number; currentMonth: number | null } | null;
+  /** Mesi gratis in attesa dopo il passaggio a Plus o Pro: ripartono tornando a Base. */
+  freeMonthsWaiting: number;
+  /** Ha chiesto di tornare a Base alla scadenza del mese pagato. */
+  returnToBase: boolean;
+  /** Mesi gratis senza la carta: dal lancio il profilo resta in pausa finché non la mette. */
+  cardNeeded: boolean;
   /**
    * Lavori del periodo in corso (docs/CHANGELOG.md §362): ripartono al
    * rinnovo, non il 1° del mese. Su Plus e Pro lo stesso cliente conta una
@@ -213,10 +245,10 @@ export type MySubscription = {
   billingInterval: BillingInterval | null;
   /**
    * Quanto costa adesso passare a ciascun livello superiore (IVA esclusa) e
-   * fino a quando vale prima del rinnovo (docs/CHANGELOG.md §361). Vuoto se
-   * non c'è un livello superiore o non si può passare (prova finita,
-   * abbonamento concluso). `amountEurCents` 0 prima del lancio, quando la
-   * prova non scorre ancora.
+   * fino a quando vale prima del rinnovo (docs/CHANGELOG.md §361). Nei mesi
+   * gratis: il mese del livello meno Base, `until` null (parte un mese nuovo).
+   * Vuoto se non c'è un livello superiore o non si può passare (prima del
+   * lancio, prova finita, abbonamento concluso).
    */
   upgradeQuotes: { tier: SubscriptionTier; amountEurCents: number; until: string | null }[];
   /** Pagamenti attivi su questo ambiente (chiave Stripe presente). */

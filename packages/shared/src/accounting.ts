@@ -2,7 +2,7 @@ import { z } from "zod";
 import "./zod";
 import { isValidCodiceFiscale, isValidPartitaIva } from "./fiscalValidation";
 import type { ProfessionalCategorySlug } from "./categories";
-import { FOUNDER_FREE_MONTHS, TRIAL_DAYS, subscriptionTierInfo, type MySubscription } from "./plans";
+import { TRIAL_DAYS, subscriptionTierInfo, type MySubscription } from "./plans";
 
 /**
  * Documenti contabili e fiscali (decisioni dell'utente del 26-27/10/2026,
@@ -439,13 +439,13 @@ export type SdiSandboxTestResult = { ok: boolean; steps: { label: string; ok: bo
 // --- Mesi gratuiti: riepilogo a 0 € (non è una fattura) ----------------------
 // Decisione dell'utente del 27/10/2026 (docs/CHANGELOG.md §378): un
 // documento con le voci e uno sconto che porta a 0 €, nel sito e
-// nell'email del mese. Stesse parole del sito: "Offerta di lancio",
-// "Mese gratuito", "Mese regalato".
+// nell'email del mese. Dal 29/10/2026 i mesi gratis sono quelli dell'offerta
+// decisa in Admin (docs/changelog/2026-10-29-offerta-mesi-gratis.md).
 
 export type FreePeriodSummary = {
-  label: "Offerta di lancio" | "Mese gratuito" | "Mese regalato";
+  label: "Mesi gratis" | "Mese gratis";
   detail: string;
-  /** Mese gratuito in corso e quanti in tutto (1 di 3 per l'offerta di lancio). */
+  /** Mese gratis in corso e quanti in tutto (es. 1 di 3). */
   month: number;
   months: number;
   from: string;
@@ -457,28 +457,28 @@ export type FreePeriodSummary = {
 const FREE_MONTH_MS = TRIAL_DAYS * 24 * 60 * 60 * 1000;
 
 /**
- * Riepilogo del mese gratuito in corso, o null se non è in un periodo
- * gratuito (o prima del lancio, quando i mesi gratuiti non sono partiti).
+ * Riepilogo del mese gratis in corso, o null se non è nei mesi gratis (o
+ * prima del lancio, quando i mesi gratis non sono partiti). Con la carta data
+ * l'abbonamento è già "attivo" su Base ma i giorni sono ancora gratis.
  */
-export function freePeriodSummary(sub: Pick<MySubscription, "state" | "trialEndsAt" | "bonusMonthGranted" | "founder">, now: Date): FreePeriodSummary | null {
-  if (sub.state !== "TRIAL" || !sub.trialEndsAt) return null;
+export function freePeriodSummary(sub: Pick<MySubscription, "state" | "trialEndsAt" | "freeMonths">, now: Date): FreePeriodSummary | null {
+  if ((sub.state !== "TRIAL" && sub.state !== "ACTIVE") || !sub.trialEndsAt || !sub.freeMonths) return null;
+  const months = sub.freeMonths.months;
   const end = new Date(sub.trialEndsAt).getTime();
   const t = now.getTime();
-  const baseMonthEurCents = subscriptionTierInfo("BASE").priceEurCents;
-  const iso = (ms: number) => new Date(ms).toISOString();
-  if (sub.founder) {
-    const start = end - FOUNDER_FREE_MONTHS * FREE_MONTH_MS;
-    if (t < start || t >= end) return null;
-    const month = Math.min(FOUNDER_FREE_MONTHS, Math.floor((t - start) / FREE_MONTH_MS) + 1);
-    const from = start + (month - 1) * FREE_MONTH_MS;
-    return { label: "Offerta di lancio", detail: `Primi 100 professionisti, ${FOUNDER_FREE_MONTHS} mesi`, month, months: FOUNDER_FREE_MONTHS, from: iso(from), to: iso(from + FREE_MONTH_MS), baseMonthEurCents };
-  }
-  const bonus = sub.bonusMonthGranted && t >= end - FREE_MONTH_MS;
-  const from = end - FREE_MONTH_MS;
-  if (t < (sub.bonusMonthGranted ? end - 2 * FREE_MONTH_MS : from) || t >= end) return null;
-  if (bonus) return { label: "Mese regalato", detail: "Un mese in più, regalato da noi", month: 1, months: 1, from: iso(from), to: iso(end), baseMonthEurCents };
-  const first = sub.bonusMonthGranted ? end - 2 * FREE_MONTH_MS : from;
-  return { label: "Mese gratuito", detail: "Il primo mese, per tutti", month: 1, months: 1, from: iso(first), to: iso(first + FREE_MONTH_MS), baseMonthEurCents };
+  const start = end - months * FREE_MONTH_MS;
+  if (t < start || t >= end) return null;
+  const month = Math.min(months, Math.floor((t - start) / FREE_MONTH_MS) + 1);
+  const from = start + (month - 1) * FREE_MONTH_MS;
+  return {
+    label: months === 1 ? "Mese gratis" : "Mesi gratis",
+    detail: months === 1 ? "1 mese Base gratis" : `${months} mesi Base gratis`,
+    month,
+    months,
+    from: new Date(from).toISOString(),
+    to: new Date(from + FREE_MONTH_MS).toISOString(),
+    baseMonthEurCents: subscriptionTierInfo("BASE").priceEurCents,
+  };
 }
 
 /** Una nostra fattura nella lista di Admin → Finanza. */

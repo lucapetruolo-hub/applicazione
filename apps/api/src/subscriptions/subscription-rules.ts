@@ -3,11 +3,10 @@
  * in `subscription-rules.test.ts`.
  */
 import {
-  FOUNDER_FREE_MONTHS,
-  FOUNDER_TRIAL_DAYS,
+  DEFAULT_FREE_MONTHS,
   SUBSCRIPTION_TIERS,
   TRIAL_DAYS,
-  freePeriodUpgradeFeeEurCents,
+  freeMonthUpgradeEurCents,
   USAGE_WARNING_RATIO,
   subscriptionTierInfo,
   upgradeFeeEurCents,
@@ -73,6 +72,7 @@ export type SubscriptionRow = {
   currentPeriodStart?: Date | null;
   currentPeriodEnd?: Date | null;
   founderNumber?: number | null;
+  freeMonthsGranted?: number | null;
 };
 
 export function subscriptionState(row: SubscriptionRow | null, now: Date): MySubscription["state"] {
@@ -113,6 +113,10 @@ export function monthlyLimit(row: SubscriptionRow | null, now: Date): number | n
 export function pauseReason(row: SubscriptionRow | null, now: Date): PauseReason | null {
   const state = subscriptionState(row, now);
   if (state === "TRIAL_ENDED") return "TRIAL_ENDED";
+  // Mesi gratis senza la carta (decisione di Luca del 29/10/2026,
+  // docs/changelog/2026-10-29-offerta-mesi-gratis.md): con la carta la riga
+  // diventa un abbonamento Base di Stripe con i giorni gratis davanti.
+  if (state === "TRIAL") return "CARD_NEEDED";
   if (state === "CANCELED") return "SUBSCRIPTION_ENDED";
   return null;
 }
@@ -258,44 +262,65 @@ export function hasLaunched(now: Date, launch: Date | null): boolean {
 
 /**
  * Fine del periodo gratuito per chi si iscrive adesso: dal lancio, o da oggi
- * se il lancio è passato. Un mese, o tre per i fondatori (§363).
+ * se il lancio è passato, per i giorni dei mesi gratis dell'offerta.
  */
 export function trialEndFor(now: Date, launch: Date | null, days: number = TRIAL_DAYS): Date {
   const start = launch && launch.getTime() > now.getTime() ? launch : now;
   return new Date(start.getTime() + days * TRIAL_DAY_MS);
 }
 
-/** Giorni gratuiti di una riga: 90 per i primi 100 professionisti (§363), altrimenti 30. */
-export function trialDaysOf(row: { founderNumber?: number | null } | null): number {
-  return row?.founderNumber ? FOUNDER_TRIAL_DAYS : TRIAL_DAYS;
+/**
+ * Mesi gratis del giro in corso (docs/changelog/2026-10-29-offerta-mesi-gratis.md):
+ * quelli dati dall'offerta all'iscrizione o, dopo un ritorno a Base, quelli
+ * ripresi dall'attesa. Le righe di prima dell'offerta valgono 3 mesi.
+ */
+export function freeMonthsOf(row: { freeMonthsGranted?: number | null } | null): number {
+  return row?.freeMonthsGranted ?? DEFAULT_FREE_MONTHS;
+}
+
+/** Giorni gratis di una riga: mesi da 30 giorni. */
+export function trialDaysOf(row: { freeMonthsGranted?: number | null } | null): number {
+  return freeMonthsOf(row) * TRIAL_DAYS;
 }
 
 /**
- * Mesi gratuiti dei fondatori (§363) per le tre caselle in Abbonamento:
- * `currentMonth` 1-3 durante i mesi gratuiti, 0 se non sono ancora partiti
- * (prima del lancio), null quando sono finiti. Null per chi non è fondatore.
+ * Caselle dei mesi gratis in Abbonamento: `currentMonth` è il mese in corso
+ * (1-N), 0 se non sono ancora partiti (prima del lancio), null quando sono
+ * finiti o interrotti. Null senza mesi gratis.
  */
-export function founderFreeMonths(founderNumber: number | null | undefined, trialEndsAt: Date | null, now: Date): MySubscription["founder"] {
-  if (!founderNumber) return null;
-  if (!trialEndsAt) return { months: FOUNDER_FREE_MONTHS, currentMonth: 0 };
+export function freeMonthsProgress(months: number, trialEndsAt: Date | null, now: Date): MySubscription["freeMonths"] {
+  if (months <= 0) return null;
+  if (!trialEndsAt) return { months, currentMonth: 0 };
   const end = trialEndsAt.getTime();
-  const start = end - FOUNDER_TRIAL_DAYS * TRIAL_DAY_MS;
+  const start = end - months * FREE_PERIOD_MS;
   const t = now.getTime();
-  if (t >= end) return { months: FOUNDER_FREE_MONTHS, currentMonth: null };
-  if (t < start) return { months: FOUNDER_FREE_MONTHS, currentMonth: 0 };
-  return { months: FOUNDER_FREE_MONTHS, currentMonth: Math.min(FOUNDER_FREE_MONTHS, Math.floor((t - start) / FREE_PERIOD_MS) + 1) };
+  if (t >= end) return { months, currentMonth: null };
+  if (t < start) return { months, currentMonth: 0 };
+  return { months, currentMonth: Math.min(months, Math.floor((t - start) / FREE_PERIOD_MS) + 1) };
+}
+
+/**
+ * Mesi gratis che restano dopo quello in corso, quando si passa a Plus o Pro
+ * (decisione di Luca: "li avrà sempre i 3 mesi gratis meno la sottoscrizione
+ * già usata"): il mese iniziato conta come usato. Prima che i mesi partano
+ * restano tutti.
+ */
+export function freeMonthsLeftAfterCurrent(months: number, trialEndsAt: Date | null, now: Date): number {
+  if (!trialEndsAt || months <= 0) return 0;
+  const remaining = trialEndsAt.getTime() - now.getTime();
+  if (remaining <= 0) return 0;
+  return Math.min(months, Math.floor(remaining / FREE_PERIOD_MS));
 }
 
 const MONTH_FALLBACK_MS = 30 * TRIAL_DAY_MS;
 const YEAR_FALLBACK_MS = 365 * TRIAL_DAY_MS;
 
 /**
- * Quota di passaggio verso ogni livello sopra quello attuale (docs/CHANGELOG.md
- * §361): stessa formula dell'addebito vero (`upgradeFeeEurCents`). Durante la
- * prova si parte da Base e si contano tutti i giorni gratuiti che restano,
- * a mesi di 30 giorni (`freePeriodUpgradeFeeEurCents`, §363); prima
- * del lancio la prova non scorre e non si paga niente. Con un abbonamento
- * pagato si conta il periodo di Stripe (mese o anno) fino al rinnovo.
+ * Quanto costa passare a ogni livello sopra quello attuale. Nei mesi gratis
+ * (con o senza carta) il mese del nuovo livello meno Base, e parte un mese
+ * nuovo (decisione di Luca del 29/10/2026); prima del lancio non si passa,
+ * perché non c'è limite di lavori. Con un abbonamento pagato la quota di
+ * passaggio fino al rinnovo (docs/CHANGELOG.md §361).
  */
 export function upgradeQuotes(input: {
   state: MySubscription["state"];
@@ -309,23 +334,14 @@ export function upgradeQuotes(input: {
 }): MySubscription["upgradeQuotes"] {
   const paid = input.state === "ACTIVE" || input.state === "PAST_DUE";
   if (!paid && input.state !== "TRIAL") return [];
+  if (input.waitingLaunch) return [];
+  const freeMonthsRunning = input.trialEndsAt !== null && input.trialEndsAt.getTime() > input.now.getTime();
   const from: SubscriptionTier = paid && input.tier ? input.tier : "BASE";
   const higher = SUBSCRIPTION_TIERS.slice(SUBSCRIPTION_TIERS.findIndex((t) => t.tier === from) + 1);
-  const trialRunning = !paid && !input.waitingLaunch && input.trialEndsAt !== null;
-  // Livello scelto durante la prova: Stripe la chiama già abbonamento, ma i giorni sono ancora gratuiti.
-  const inPaidTrial = paid && input.trialEndsAt !== null && input.trialEndsAt.getTime() > input.now.getTime();
   return higher.map(({ tier }) => {
-    if (input.waitingLaunch && !paid) return { tier, amountEurCents: 0, until: null };
-    if (trialRunning || inPaidTrial) {
-      const end = input.trialEndsAt!;
-      return {
-        tier,
-        amountEurCents: freePeriodUpgradeFeeEurCents({ from, to: tier, remainingMs: end.getTime() - input.now.getTime() }),
-        until: end.toISOString(),
-      };
-    }
+    if (freeMonthsRunning) return { tier, amountEurCents: freeMonthUpgradeEurCents(tier), until: null };
     const end = input.currentPeriodEnd;
-    if (!end) return { tier, amountEurCents: 0, until: null };
+    if (!paid || !end) return { tier, amountEurCents: 0, until: null };
     const periodMs = input.currentPeriodStart ? end.getTime() - input.currentPeriodStart.getTime() : input.interval === "YEAR" ? YEAR_FALLBACK_MS : MONTH_FALLBACK_MS;
     return {
       tier,

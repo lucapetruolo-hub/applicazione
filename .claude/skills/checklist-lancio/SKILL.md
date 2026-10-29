@@ -294,10 +294,16 @@ prima del lancio"):
    la sitemap vuota (docs/CHANGELOG.md §132). Subito dopo: inviare
    `/sitemap.xml` in Google Search Console.
 0bis. **Impostare `LAUNCH_DATE`** su Render (AAAA-MM-GG, il giorno del
-   lancio; meglio qualche giorno prima): da lì parte il mese gratuito dei
+   lancio; meglio qualche giorno prima): da lì partono i mesi gratis dei
    professionisti e prima non scatta nessuna pausa (docs/CHANGELOG.md
-   §170). Senza, la prova di chi si è iscritto prima del lancio è già
-   scaduta.
+   §170). Senza la data i professionisti non possono dare la carta per i
+   mesi gratis (docs/changelog/2026-10-29-offerta-mesi-gratis.md): va
+   fissata appena si conosce il giorno, così la danno prima del lancio e
+   non finiscono in pausa ("Aggiungi la carta") il giorno stesso.
+0ter. **Offerta mesi gratis** (Admin → Profili da confermare): controllare
+   che sia quella voluta (di partenza 3 mesi) e, sul conto Stripe vero,
+   provare una volta "Attiva i mesi gratis" e il passaggio a Plus (coupon
+   `mese-base-gratis-1900`, creato da solo al primo uso).
 
 **Prodotto**:
 17. Rimuovere il blocco "Presto disponibile" (`WaitlistBlock`, homepage)

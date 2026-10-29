@@ -39,7 +39,8 @@ export function upgradeCostText(sub: MySubscription, to: SubscriptionTier): stri
   const interval = sub.billingInterval ?? "MONTH";
   const then = `${formatEur(tierPeriodPriceEurCents(to, interval))} ${interval === "YEAR" ? "all'anno" : "al mese"} + IVA`;
   if (!quote || quote.amountEurCents === 0) return `Nessun costo adesso, poi ${then}.`;
-  return `Paghi ora ${formatEur(quote.amountEurCents)} + IVA${quote.until ? ` fino al ${shortDate(quote.until)}` : ""}, poi ${then}.`;
+  // Nei mesi gratis (docs/changelog/2026-10-29-offerta-mesi-gratis.md): il primo mese meno Base, da oggi.
+  return `Paghi ora ${formatEur(quote.amountEurCents)} + IVA${quote.until ? ` fino al ${shortDate(quote.until)}` : " per il primo mese"}, poi ${then}.`;
 }
 
 /**
@@ -62,8 +63,13 @@ export function SubscriptionPauseBanner({ sub, showAction = true, profileStepsEl
       "la legge ci chiede di raccoglierli per tutti. Li controlliamo in automatico.";
     action = "Compila i dati fiscali";
     href = "/dashboard/fiscale";
+  } else if (sub.pausedReason === "CARD_NEEDED") {
+    // Dal lancio i mesi gratis valgono solo con la carta (decisione di Luca del 29/10/2026).
+    title = "Aggiungi la carta per i mesi gratis";
+    body = `Finché non la aggiungi il profilo non compare nelle ricerche e non ricevi nuove richieste. Oggi non paghi nulla: dopo i mesi gratis parte Base a ${formatEur(subscriptionTierInfo("BASE").priceEurCents)} + IVA al mese, e annulli quando vuoi.`;
+    action = "Attiva i mesi gratis";
   } else if (sub.pausedReason === "TRIAL_ENDED") {
-    title = sub.founder ? "I tuoi mesi gratuiti sono finiti" : "Il tuo mese gratuito è finito";
+    title = sub.freeMonths ? "I tuoi mesi gratis sono finiti" : "Scegli il tuo livello";
     body = "Il tuo account è in pausa: il profilo non compare nelle ricerche e non ricevi nuove richieste. Scegli un livello per renderlo di nuovo visibile e operativo.";
     action = "Riattiva il tuo account";
   } else if (sub.pausedReason === "SUBSCRIPTION_ENDED") {

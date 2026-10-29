@@ -171,18 +171,20 @@ describe("estratto per il commercialista", () => {
 
 describe("mesi gratuiti a 0 €", () => {
   const now = new Date("2026-11-10T10:00:00Z");
-  it("offerta di lancio: il mese in corso su tre", () => {
-    const summary = freePeriodSummary({ state: "TRIAL", trialEndsAt: "2027-01-29T10:00:00Z", bonusMonthGranted: false, founder: { months: 3, currentMonth: 1 } }, now);
-    expect(summary).toMatchObject({ label: "Offerta di lancio", month: 1, months: 3, baseMonthEurCents: 1900 });
+  it("il mese in corso su tre, con o senza carta", () => {
+    for (const state of ["TRIAL", "ACTIVE"] as const) {
+      const summary = freePeriodSummary({ state, trialEndsAt: "2027-01-29T10:00:00Z", freeMonths: { months: 3, currentMonth: 1 } }, now);
+      expect(summary).toMatchObject({ label: "Mesi gratis", month: 1, months: 3, baseMonthEurCents: 1900 });
+    }
   });
 
-  it("primo mese e mese regalato", () => {
-    expect(freePeriodSummary({ state: "TRIAL", trialEndsAt: "2026-11-25T10:00:00Z", bonusMonthGranted: false, founder: null }, now)?.label).toBe("Mese gratuito");
-    expect(freePeriodSummary({ state: "TRIAL", trialEndsAt: "2026-11-25T10:00:00Z", bonusMonthGranted: true, founder: null }, now)?.label).toBe("Mese regalato");
+  it("offerta da un mese", () => {
+    expect(freePeriodSummary({ state: "TRIAL", trialEndsAt: "2026-11-25T10:00:00Z", freeMonths: { months: 1, currentMonth: 1 } }, now)?.label).toBe("Mese gratis");
   });
 
-  it("niente riepilogo fuori dal periodo gratuito", () => {
-    expect(freePeriodSummary({ state: "ACTIVE", trialEndsAt: "2026-11-25T10:00:00Z", bonusMonthGranted: false, founder: null }, now)).toBeNull();
+  it("niente riepilogo fuori dai mesi gratis", () => {
+    expect(freePeriodSummary({ state: "ACTIVE", trialEndsAt: "2026-11-01T10:00:00Z", freeMonths: { months: 3, currentMonth: null } }, now)).toBeNull();
+    expect(freePeriodSummary({ state: "ACTIVE", trialEndsAt: "2026-11-25T10:00:00Z", freeMonths: null }, now)).toBeNull();
   });
 });
 

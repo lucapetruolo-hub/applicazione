@@ -127,7 +127,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   JOB_ISSUE_RESOLVED: { icon: "⚖️", message: "C'è una decisione su una segnalazione di un lavoro: tocca per leggerla." },
   // Abbonamento a livelli (docs/CHANGELOG.md §161).
   SUBSCRIPTION_BONUS_MONTH: { icon: "🎁", message: "Ti regaliamo un altro mese gratis." },
-  SUBSCRIPTION_TRIAL_ENDING: { icon: "⏳", message: "Il tuo periodo gratuito sta per finire: scegli un livello per restare visibile nelle ricerche." },
+  SUBSCRIPTION_TRIAL_ENDING: { icon: "⏳", message: "I tuoi mesi gratis stanno per finire: scegli un livello per restare visibile nelle ricerche." },
   SUBSCRIPTION_LIMIT_NEAR: { icon: "📈", message: "Ti stai avvicinando ai lavori compresi nel tuo livello." },
   // Lavori esauriti: il profilo resta nelle ricerche (docs/CHANGELOG.md §362).
   SUBSCRIPTION_LIMIT_REACHED: { icon: "🏁", message: "Hai esaurito i lavori del tuo abbonamento: resti nelle ricerche, ma per mandare preventivi nuovi passa al livello superiore." },
@@ -193,6 +193,10 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   if (type === "QUOTE_ACCEPTED") {
     // Fattura chiesta dal cliente, detta subito (docs/CHANGELOG.md §378).
     return { icon: "🥳", message: `${text(data.clientName) ?? "Il cliente"} ha accettato il tuo preventivo${jobSuffix}${data.invoiceRequested === true ? " e ti chiede la fattura" : ""}` };
+  }
+  // Mesi gratis senza la carta (docs/changelog/2026-10-29-offerta-mesi-gratis.md).
+  if (type === "SUBSCRIPTION_PAUSED" && data.reason === "CARD_NEEDED") {
+    return { icon: "💳", message: "Aggiungi la carta per usare i mesi gratis: oggi non paghi nulla e il tuo profilo torna nelle ricerche." };
   }
   if (type === "NEW_LEAD" && text(data.category)) {
     const where = text(data.city) ? ` a ${text(data.city)}` : "";
