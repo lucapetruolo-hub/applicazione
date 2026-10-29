@@ -229,7 +229,16 @@ export type NotificationItem = {
   client?: { label: string; description?: string };
   /** Solo per gli amministratori. */
   admin?: { label: string; description?: string };
+  /**
+   * Sempre attivo, anche con l'argomento spento: avvisi con scadenze che non
+   * si possono perdere (docs/changelog/2026-10-29-notifiche-sempre-attive-e-campanella.md).
+   */
+  locked?: boolean;
+  /** Canali in cui l'avviso esiste davvero, se non sono sia sito sia email. */
+  channels?: ItemChannel[];
 };
+
+export type ItemChannel = "inApp" | "email";
 
 export const NOTIFICATION_ITEMS: NotificationItem[] = [
   {
@@ -242,6 +251,8 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
     key: "richieste.inviata",
     topic: "richieste",
     types: ["REQUEST_SENT"],
+    // Solo l'email di conferma: sul sito la persona vede già la pagina "Richiesta inviata".
+    channels: ["email"],
     client: { label: "Richiesta inviata", description: "L'email con il riepilogo di quello che hai chiesto." },
   },
   {
@@ -340,6 +351,9 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
       "JOB_STRIPE_DISPUTE",
       "JOB_STRIPE_DISPUTE_NOTE_DUE",
     ],
+    // Risposta in chat entro 48 ore, versione al team entro 72, prove della
+    // contestazione: perdere l'avviso vuol dire perdere la segnalazione.
+    locked: true,
     professional: { label: "Problemi e contestazioni", description: "Segnalazioni dei clienti e contestazioni in banca: hanno delle scadenze." },
     client: { label: "Le tue segnalazioni", description: "Risposte e decisioni sui problemi che segnali." },
   },
@@ -377,7 +391,7 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
   },
 ];
 
-const NOTIFICATION_ITEM_KEYS = new Set(NOTIFICATION_ITEMS.map((item) => item.key));
+const NOTIFICATION_ITEM_KEYS = new Set(NOTIFICATION_ITEMS.filter((item) => !item.locked).map((item) => item.key));
 
 export function notificationItemOf(type: string): NotificationItem | null {
   return NOTIFICATION_ITEMS.find((item) => item.types.includes(type)) ?? null;
@@ -413,8 +427,11 @@ export const notificationPreferencesSchema = z.object({
   popups: z.boolean(),
   /** Suono leggero quando arriva una notifica. */
   sound: z.boolean(),
-  /** Singoli avvisi spenti (`NotificationItem.key`). */
-  off: z.array(z.string().max(60)).max(60).optional(),
+  /**
+   * Canali dei singoli avvisi (`NotificationItem.key`), solo quelli cambiati:
+   * un avviso parte su un canale se è acceso sia qui sia nell'argomento.
+   */
+  items: z.record(z.string().max(60), z.object({ inApp: z.boolean(), email: z.boolean() })).optional(),
 });
 export type NotificationPreferences = z.infer<typeof notificationPreferencesSchema>;
 
@@ -430,7 +447,7 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   },
   popups: true,
   sound: true,
-  off: [],
+  items: {},
 };
 
 /**
@@ -444,7 +461,16 @@ export function resolveNotificationPreferences(stored: unknown): NotificationPre
     const s = stored as Partial<NotificationPreferences>;
     if (typeof s.popups === "boolean") base.popups = s.popups;
     if (typeof s.sound === "boolean") base.sound = s.sound;
-    if (Array.isArray(s.off)) base.off = [...new Set(s.off.filter((key): key is string => typeof key === "string" && NOTIFICATION_ITEM_KEYS.has(key)))];
+    if (s.items && typeof s.items === "object") {
+      const items: Record<string, { inApp: boolean; email: boolean }> = {};
+      for (const [key, value] of Object.entries(s.items as Record<string, unknown>)) {
+        if (!NOTIFICATION_ITEM_KEYS.has(key) || !value || typeof value !== "object") continue;
+        const v = value as Record<string, unknown>;
+        const entry = { inApp: v.inApp !== false, email: v.email !== false };
+        if (!entry.inApp || !entry.email) items[key] = entry;
+      }
+      base.items = items;
+    }
     if (s.topics && typeof s.topics === "object") {
       for (const topic of NOTIFICATION_TOPICS) {
         const t = (s.topics as Record<string, unknown>)[topic];
@@ -468,7 +494,8 @@ export function notificationChannelEnabled(prefs: NotificationPreferences, type:
   if (!topic) return true;
   if (NOTIFICATION_TOPIC_INFO[topic].locked && channel !== "sms") return true;
   const item = notificationItemOf(type);
-  if (item && prefs.off?.includes(item.key)) return false;
+  if (item?.locked && channel !== "sms") return true;
+  if (item && channel !== "sms" && prefs.items?.[item.key]?.[channel] === false) return false;
   return prefs.topics[topic][channel];
 }
 
@@ -484,4 +511,55 @@ export function notificationJobLabel(description: string | null | undefined, max
   const cut = firstLine.slice(0, maxLength - 1);
   const lastSpace = cut.lastIndexOf(" ");
   return `${(lastSpace > maxLength / 2 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
+}
+
+/**
+ * "Non avvisarmi più di questi" dalla campanella
+ * (docs/changelog/2026-10-29-notifiche-sempre-attive-e-campanella.md): spegne
+ * il singolo avviso o, per un argomento senza avvisi separati (Messaggi,
+ * Promemoria), l'argomento su sito ed email. `null` per ciò che non si spegne.
+ */
+export type NotificationMuteTarget = { kind: "item"; key: string; label: string } | { kind: "topic"; topic: NotificationTopic; label: string };
+
+export function notificationMuteTarget(type: string, role: "professional" | "client", isAdmin = false): NotificationMuteTarget | null {
+  const topic = notificationTopicOf(type);
+  if (!topic || NOTIFICATION_TOPIC_INFO[topic].locked) return null;
+  const item = notificationItemOf(type);
+  if (item) {
+    if (item.locked) return null;
+    const copy = item[role] ?? (isAdmin ? item.admin : undefined);
+    return copy ? { kind: "item", key: item.key, label: copy.label } : null;
+  }
+  return { kind: "topic", topic, label: NOTIFICATION_TOPIC_INFO[topic][role].label };
+}
+
+/** Canale acceso per un singolo avviso (senza contare l'argomento). */
+export function notificationItemChannelOn(prefs: NotificationPreferences, key: string, channel: ItemChannel): boolean {
+  return prefs.items?.[key]?.[channel] !== false;
+}
+
+/** Preferenze con un canale di un singolo avviso acceso o spento. */
+export function withNotificationItemChannel(prefs: NotificationPreferences, key: string, channel: ItemChannel, on: boolean): NotificationPreferences {
+  const next: NotificationPreferences = JSON.parse(JSON.stringify(prefs));
+  const entry = { inApp: notificationItemChannelOn(prefs, key, "inApp"), email: notificationItemChannelOn(prefs, key, "email"), [channel]: on };
+  const items = { ...(next.items ?? {}) };
+  if (entry.inApp && entry.email) delete items[key];
+  else items[key] = entry;
+  next.items = items;
+  return next;
+}
+
+/** Preferenze con l'avviso spento (`mute: true`) o di nuovo acceso. */
+export function withNotificationMuted(prefs: NotificationPreferences, target: NotificationMuteTarget, mute: boolean): NotificationPreferences {
+  const next: NotificationPreferences = JSON.parse(JSON.stringify(prefs));
+  if (target.kind === "item") {
+    const items = { ...(next.items ?? {}) };
+    if (mute) items[target.key] = { inApp: false, email: false };
+    else delete items[target.key];
+    next.items = items;
+  } else {
+    next.topics[target.topic].inApp = !mute;
+    next.topics[target.topic].email = !mute;
+  }
+  return next;
 }

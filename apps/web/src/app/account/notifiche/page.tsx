@@ -5,7 +5,9 @@ import Link from "next/link";
 import {
   NOTIFICATION_TOPICS,
   NOTIFICATION_TOPIC_INFO,
+  notificationItemChannelOn,
   notificationItemsFor,
+  withNotificationItemChannel,
   type NotificationPreferences,
   type NotificationTopic,
 } from "@professionisti/shared";
@@ -70,10 +72,9 @@ export default function NotifichePage() {
     void save(next);
   }
 
-  function toggleItem(key: string) {
+  function toggleItemChannel(key: string, channel: "inApp" | "email") {
     if (!notificationPrefs) return;
-    const off = notificationPrefs.off ?? [];
-    void save({ ...notificationPrefs, off: off.includes(key) ? off.filter((k) => k !== key) : [...off, key] });
+    void save(withNotificationItemChannel(notificationPrefs, key, channel, !notificationItemChannelOn(notificationPrefs, key, channel)));
   }
 
   const role = user.isProfessional ? "professional" : "client";
@@ -142,7 +143,11 @@ export default function NotifichePage() {
                   const copy = info[role];
                   const prefs = notificationPrefs.topics[topic];
                   const items = notificationItemsFor(topic, role, isAdmin);
-                  const activeItems = items.filter((item) => !notificationPrefs.off?.includes(item.key)).length;
+                  const activeItems = items.filter(
+                    (item) =>
+                      item.locked ||
+                      (item.channels ?? (["inApp", "email"] as const)).some((c) => prefs[c] && notificationItemChannelOn(notificationPrefs, item.key, c)),
+                  ).length;
                   const topicOff = !info.locked && !prefs.inApp && !prefs.email;
                   const isOpen = openTopics.includes(topic);
                   const panelId = `nt-items-${topic}`;
@@ -154,7 +159,13 @@ export default function NotifichePage() {
                         </span>
                         <div className="nt-topic-text">
                           <h3>{copy.label}</h3>
-                          <p>{topicOff ? "Spento: nessun avviso, le novità restano nella campanella." : copy.description}</p>
+                          <p>
+                            {topicOff
+                              ? items.some((item) => item.locked)
+                                ? "Spento: ti avvisiamo solo dei problemi sul lavoro, che hanno delle scadenze."
+                                : "Spento: nessun avviso, le novità restano nella campanella."
+                              : copy.description}
+                          </p>
                         </div>
                         {info.locked ? (
                           <span className="nt-locked">
@@ -204,19 +215,46 @@ export default function NotifichePage() {
                           </button>
                           {isOpen ? (
                             <ul id={panelId} className="nt-items">
-                              {topicOff ? <li className="nt-items-note">Accendi Sito o Email per ricevere questi avvisi.</li> : null}
-                              {items.map((item) => {
-                                const on = !notificationPrefs.off?.includes(item.key);
-                                return (
-                                  <li key={item.key}>
-                                    <span>
-                                      <strong>{item.copy.label}</strong>
-                                      {item.copy.description ? <small>{item.copy.description}</small> : null}
+                              {topicOff ? <li className="nt-items-note">Accendi Sito o Email qui sopra per scegliere i singoli avvisi.</li> : null}
+                              {items.map((item) => (
+                                <li key={item.key}>
+                                  <span>
+                                    <strong>{item.copy.label}</strong>
+                                    {item.copy.description ? <small>{item.copy.description}</small> : null}
+                                  </span>
+                                  {item.locked ? (
+                                    <span className="nt-locked">
+                                      <Icon name="lock" size={14} color={brand.grafite70} strokeWidth={2} />
+                                      Sempre attivo
                                     </span>
-                                    <Switch checked={on} disabled={topicOff} label={item.copy.label} onChange={() => toggleItem(item.key)} />
-                                  </li>
-                                );
-                              })}
+                                  ) : (
+                                    <div className="nt-channels is-small" role="group" aria-label={`${item.copy.label}: dove avvisarti`}>
+                                      {CHANNELS.filter((channel) => !item.channels || item.channels.includes(channel.key)).map((channel) => {
+                                        // L'argomento spento su questo canale vale per tutti i suoi avvisi.
+                                        const masterOff = !prefs[channel.key];
+                                        const on = !masterOff && notificationItemChannelOn(notificationPrefs, item.key, channel.key);
+                                        return (
+                                          <button
+                                            key={channel.key}
+                                            type="button"
+                                            className={`nt-chip${on ? " is-on" : ""}`}
+                                            aria-pressed={on}
+                                            aria-label={`${item.copy.label}: ${channel.label}`}
+                                            disabled={masterOff}
+                                            title={masterOff ? `${channel.label} è spento per tutto l'argomento` : undefined}
+                                            onClick={() => toggleItemChannel(item.key, channel.key)}
+                                          >
+                                            <span className="nt-chip-check" aria-hidden="true">
+                                              {on ? <Icon name="check" size={12} color="#ffffff" strokeWidth={3} /> : null}
+                                            </span>
+                                            {channel.label}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </li>
+                              ))}
                             </ul>
                           ) : null}
                         </>

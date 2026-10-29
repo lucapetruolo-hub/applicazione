@@ -805,9 +805,66 @@ button.notif-row-main:hover {
 .notif-row-delete:hover {
   background: #fdefe1;
 }
+/* "Non avvisarmi più di questi", accanto alla "x"
+   (docs/changelog/2026-10-29-notifiche-sempre-attive-e-campanella.md). */
+.notif-row.has-mute .notif-row-main {
+  padding-right: 92px;
+}
+.notif-row-mute {
+  position: absolute;
+  top: 8px;
+  right: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease, background-color 120ms ease;
+}
+.notif-row:hover .notif-row-mute,
+.notif-row:focus-within .notif-row-mute {
+  opacity: 1;
+}
+.notif-row-mute:hover {
+  background: #fdefe1;
+}
+.notif-row-mute:focus-visible {
+  outline: 2px solid #0e7a4c;
+  outline-offset: -2px;
+}
+.notif-muted {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 12px 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #dcf3e7;
+  font-size: 14px;
+  line-height: 20px;
+  color: #2b2420;
+}
+.notif-muted > span {
+  flex: 1;
+  min-width: 0;
+}
+.notif-muted .notif-clear {
+  flex-shrink: 0;
+  color: #0e7a4c;
+  font-weight: 700;
+}
+.notif-muted.is-error {
+  background: #fbeae7;
+}
 /* Sul telefono non c'è il passaggio del mouse: la "x" resta visibile. */
 @media (hover: none) {
-  .notif-row-delete {
+  .notif-row-delete,
+  .notif-row-mute {
     opacity: 1;
   }
 }
@@ -3850,7 +3907,7 @@ a.admin-kpi:hover {
 .nt-items li:first-child {
   border-top: none;
 }
-.nt-items li > span {
+.nt-items li > span:first-child {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -3863,6 +3920,23 @@ a.admin-kpi:hover {
   font-size: 13px;
   line-height: 1.4;
   color: #6e6459;
+}
+.nt-channels.is-small .nt-chip {
+  min-height: 34px;
+  padding: 0 12px 0 6px;
+  font-size: 14px;
+  gap: 6px;
+}
+.nt-channels.is-small .nt-chip-check {
+  width: 18px;
+  height: 18px;
+}
+.nt-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.nt-chip:disabled:hover {
+  border-color: #9c8e7f;
 }
 .nt-items li.nt-items-note {
   font-size: 14px;
@@ -3894,6 +3968,16 @@ a.admin-kpi:hover {
   }
   .nt-items {
     padding: 4px 14px 10px;
+  }
+  .nt-items li {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .nt-items .nt-channels.is-small {
+    width: auto;
+  }
+  .nt-items .nt-channels.is-small .nt-chip {
+    flex: 0 0 auto;
   }
 }
 @media (prefers-reduced-motion: reduce) {
