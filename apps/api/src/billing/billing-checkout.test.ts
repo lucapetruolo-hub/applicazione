@@ -3,11 +3,10 @@ import { BillingService } from "./billing.service";
 
 /**
  * Scelta del livello nel periodo gratuito
- * (docs/changelog/2026-10-29-abbonamenti-a-pagamento-da-admin.md): finché gli
- * abbonamenti a pagamento sono spenti non si paga, e prima del lancio (anche
+ * (docs/changelog/2026-10-29-offerta-mesi-gratis.md): prima del lancio (anche
  * senza LAUNCH_DATE) non parte nessuna quota, come dice la pagina Abbonamento.
  */
-function buildService(freeOnHold: boolean) {
+function buildService() {
   const profile = { id: "pro-1", businessName: "Idraulica Rossi", stripeCustomerId: "cus_1", user: { email: "pro@example.com" } };
   const prisma = {
     professionalProfile: { findUnique: vi.fn().mockResolvedValue(profile) },
@@ -16,7 +15,7 @@ function buildService(freeOnHold: boolean) {
     },
   };
   const stripe = { checkout: { sessions: { create: vi.fn().mockResolvedValue({ url: "https://checkout.stripe.com/s" }) } } };
-  const subscriptionsService = { freeOnHold: vi.fn().mockResolvedValue(freeOnHold) };
+  const subscriptionsService = {};
   const service = new BillingService(prisma as never, {} as never, {} as never, {} as never, subscriptionsService as never, {} as never);
   (service as unknown as { stripe: unknown }).stripe = stripe;
   return { service, stripe };
@@ -30,18 +29,11 @@ afterEach(() => {
 });
 
 describe("BillingService.createSubscriptionCheckout nel periodo gratuito", () => {
-  it("abbonamenti a pagamento spenti: rifiuta senza aprire Stripe", async () => {
-    const { service, stripe } = buildService(true);
-
-    await expect(service.createSubscriptionCheckout("user-1", "PLUS", "YEAR")).rejects.toThrow("non sono ancora partiti");
-    expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
-  });
-
   it("senza LAUNCH_DATE nessuna quota di passaggio: il primo addebito resta alla fine dei giorni gratuiti", async () => {
     vi.useFakeTimers({ now: new Date("2026-10-29T10:00:00Z"), toFake: ["Date"] });
     process.env.STRIPE_PRICE_PLUS_ANNUAL = "price_plus_y";
     process.env.STRIPE_TAX_RATE_IVA = "txr_1";
-    const { service, stripe } = buildService(false);
+    const { service, stripe } = buildService();
 
     await service.createSubscriptionCheckout("user-1", "PLUS", "YEAR");
 
