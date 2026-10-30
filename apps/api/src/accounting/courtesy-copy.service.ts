@@ -22,6 +22,7 @@ import {
   type CourtesyYearRow,
   type CourtesyYearSummary,
   type InvoiceParty,
+  type MissingClientDocument,
 } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { AuditLogService } from "../audit-log/audit-log.service";
@@ -30,7 +31,7 @@ import { invoiceRequestView } from "../client-invoice-requests/client-invoice-re
 import { InvoicesService } from "./invoices.service";
 import { professionalFiscalName, recipientFromFiscal, recipientParty } from "./invoice-documents";
 import { romeMonthOf, romeMonthRange } from "./accounting-dates";
-import { COURTESY_BOOKING_FIELDS, COURTESY_DOCUMENT_FIELDS, courtesyDocumentSummary } from "./courtesy-documents";
+import { COURTESY_BOOKING_FIELDS, COURTESY_DOCUMENT_FIELDS, courtesyCustomerName, courtesyDocumentSummary } from "./courtesy-documents";
 
 /**
  * Copia di cortesia del documento che il professionista dà al cliente
@@ -138,6 +139,43 @@ export class CourtesyCopyService {
       select: { ...COURTESY_DOCUMENT_FIELDS, booking: { select: COURTESY_BOOKING_FIELDS } },
     });
     return documents.map((doc) => courtesyDocumentSummary(doc, doc.booking));
+  }
+
+  /**
+   * Lavori terminati pagati online e ancora senza documento al cliente
+   * (docs/changelog/2026-10-30-documenti-migliorie.md): la ricevuta conta
+   * quando il PDF è scaricato, la fattura quando c'è il numero di quella vera.
+   */
+  async missingForProfessional(userId: string): Promise<MissingClientDocument[]> {
+    const professionalProfileId = await this.invoicesService.profileIdOf(userId);
+    const [fiscal, bookings] = await Promise.all([
+      this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId }, select: { entityType: true } }),
+      this.prisma.booking.findMany({
+        where: {
+          professionalProfileId,
+          status: "COMPLETED",
+          jobPayment: { is: { paymentMethod: "MANOVIA", paidEurCents: { gt: 0 } } },
+          OR: [{ courtesyDocument: { is: null } }, { courtesyDocument: { is: { pdfDownloadedAt: null, ownNumber: null } } }],
+        },
+        orderBy: [{ professionalCompletedAt: "desc" }, { scheduledAt: "desc" }],
+        take: 50,
+        select: { id: true, scheduledAt: true, professionalCompletedAt: true, ...COURTESY_BOOKING_FIELDS, courtesyDocument: { select: { customerName: true } } },
+      }),
+    ]);
+    const receipt = fiscal?.entityType === "PRIVATE_INDIVIDUAL";
+    return bookings
+      .map((booking) => {
+        const jp = booking.jobPayment;
+        return {
+          bookingId: booking.id,
+          date: (booking.professionalCompletedAt ?? booking.scheduledAt).toISOString(),
+          jobLabel: booking.quote?.guidedRequest?.category.label ?? null,
+          customerName: courtesyCustomerName({ customerName: booking.courtesyDocument?.customerName ?? null }, booking),
+          amountEurCents: jp ? jp.paidEurCents - jp.refundedEurCents : 0,
+          receipt,
+        };
+      })
+      .filter((row) => row.amountEurCents > 0);
   }
 
   /**

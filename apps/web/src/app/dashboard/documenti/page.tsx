@@ -11,6 +11,7 @@ import {
   freePeriodSummary,
   type CourtesyDocumentSummary,
   type DocumentsOverview,
+  type MissingClientDocument,
   type MySubscription,
 } from "@professionisti/shared";
 import { Button, EmptyState, Field, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
@@ -152,6 +153,8 @@ export default function DocumentsPage() {
               )}
             </YStack>
 
+            {data.missingDocuments?.length ? <MissingDocuments rows={data.missingDocuments} /> : null}
+
             <ClientDocuments token={token ?? ""} documents={data.clientDocuments ?? []} />
 
             {token ? <AccountantCard token={token} initial={data.accountant} /> : null}
@@ -159,6 +162,49 @@ export default function DocumentsPage() {
         )}
       </YStack>
     </FiscoArea>
+  );
+}
+
+/**
+ * Lavori pagati online ancora senza documento al cliente
+ * (docs/changelog/2026-10-30-documenti-migliorie.md): una riga per lavoro che
+ * porta alla pagina dove si prepara.
+ */
+function MissingDocuments({ rows }: { rows: MissingClientDocument[] }) {
+  const receipt = rows[0]?.receipt ?? false;
+  const count = rows.length === 1 ? "1 lavoro pagato online" : `${rows.length} lavori pagati online`;
+  return (
+    <Surface borderRadius={radiusDoc} padding="$4" gap="$2" borderWidth={1} borderColor={brand.ottone} backgroundColor={brand.calce}>
+      <Text tag="h2" fontSize={18} fontWeight="800" color={brand.grafite}>
+        {count} senza {receipt ? "ricevuta" : "il numero della tua fattura"}
+      </Text>
+      <Text fontSize={16} color={brand.grafite70}>
+        {receipt
+          ? "Prepara la ricevuta e dalla al cliente: ti serve per la dichiarazione dei redditi."
+          : "Fai la fattura col tuo programma e scrivi qui numero e data: così il riepilogo per il commercialista torna."}
+      </Text>
+      <YStack>
+        {rows.map((row, index) => (
+          <Link key={row.bookingId} href={`/dashboard/documenti/cortesia/${row.bookingId}`} style={{ textDecoration: "none" }}>
+            <XStack justifyContent="space-between" alignItems="center" gap="$3" paddingVertical="$2" borderTopWidth={index === 0 ? 0 : 1} borderColor={brand.filetto}>
+              <YStack flex={1} minWidth={0} gap={2}>
+                <Text fontSize={16} fontWeight="700" color={brand.grafite}>
+                  {[row.jobLabel ?? "Lavoro", documentDate(row.date)].join(" del ")}
+                </Text>
+                {row.customerName ? (
+                  <Text fontSize={13} color={brand.grafite70}>
+                    {row.customerName} · {formatEurCents(row.amountEurCents)}
+                  </Text>
+                ) : null}
+              </YStack>
+              <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
+                {receipt ? "Prepara →" : "Scrivi il numero →"}
+              </Text>
+            </XStack>
+          </Link>
+        ))}
+      </YStack>
+    </Surface>
   );
 }
 
@@ -306,6 +352,24 @@ function AccountantCard({ token, initial }: { token: string; initial: DocumentsO
       <Text tag="h2" fontFamily="$heading" fontSize={22} fontWeight="800" color={brand.grafite}>
         Il tuo commercialista
       </Text>
+      <LearnMore fontSize={16} summary="Cosa dargli: con la spunta qui sotto gli arriva quasi tutto da solo.">
+        {/* Cosa dare al commercialista (docs/changelog/2026-10-30-documenti-migliorie.md). */}
+        <YStack gap="$2">
+          {[
+            ["Ogni mese", "l'estratto, con i pagamenti dei clienti, le nostre trattenute e i bonifici, più le nostre fatture del mese in PDF."],
+            ["A gennaio", "il riepilogo dell'anno delle ricevute e delle fatture che hai dato ai clienti."],
+            ["Quando serve", "i dati DAC7 che comunichiamo all'Agenzia delle Entrate, da Fisco e pagamenti → Dati DAC7."],
+            ["Da te", "le fatture che fai col tuo programma e le spese della tua attività: quelle noi non le vediamo."],
+          ].map(([when, what]) => (
+            <Text key={when} fontSize={16} color={brand.grafite70}>
+              <Text fontWeight="800" color={brand.grafite}>
+                {when}:
+              </Text>{" "}
+              {what}
+            </Text>
+          ))}
+        </YStack>
+      </LearnMore>
       <Field
         label="Email del commercialista"
         accessibilityLabel="Email del commercialista"

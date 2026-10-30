@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { formatEurCents, statementCsv, statementOnlineNote, toJobPaymentSummary } from "@professionisti/shared";
 import { StatementsService } from "./statements.service";
+import { CourtesyCopyService } from "./courtesy-copy.service";
 
 /**
  * Estratto del mese con rimborsi, contestazioni in banca e soldi bloccati
@@ -107,5 +108,32 @@ describe("estratto del mese: rimborsi, contestazioni e soldi bloccati", () => {
     const summary = toJobPaymentSummary(blocked as never, 38000, true)!;
     expect(statement.blockedEurCents).toBe(summary.payoutEurCents);
     expect(row("f13").payoutNote).toBe(`Bloccati ${formatEurCents(summary.payoutEurCents!)}: partono quando il cliente conferma`);
+  });
+});
+
+describe("lavori pagati online senza documento al cliente", () => {
+  it("ricevuta per il lavoro occasionale, importo al netto dei rimborsi, niente lavori rimborsati del tutto", async () => {
+    const bookingRow = (id: string, paid: number, refunded: number) => ({
+      id,
+      scheduledAt: new Date("2026-10-01T09:00:00Z"),
+      professionalCompletedAt: new Date("2026-10-02T09:00:00Z"),
+      recipientName: null,
+      recipientSurname: null,
+      jobPayment: { paymentMethod: "MANOVIA", balanceDirect: false, paidEurCents: paid, refundedEurCents: refunded, grossAmountEurCents: paid },
+      client: { name: "Anna", surname: "Bianchi", deletedAt: null },
+      quote: { invoiceRequest: null, guidedRequest: { category: { label: "Pulizie" } } },
+      courtesyDocument: null,
+    });
+    const prisma = {
+      professionalFiscalProfile: { findUnique: vi.fn().mockResolvedValue({ entityType: "PRIVATE_INDIVIDUAL" }) },
+      booking: { findMany: vi.fn().mockResolvedValue([bookingRow("b1", 18000, 3000), bookingRow("b2", 5000, 5000)]) },
+    };
+    const invoices = { profileIdOf: vi.fn().mockResolvedValue("pro-1") };
+    const service = new CourtesyCopyService(prisma as never, invoices as never, {} as never, {} as never);
+    expect(await service.missingForProfessional("user-1")).toEqual([
+      { bookingId: "b1", date: "2026-10-02T09:00:00.000Z", jobLabel: "Pulizie", customerName: "Anna Bianchi", amountEurCents: 15000, receipt: true },
+    ]);
+    const where = prisma.booking.findMany.mock.calls[0]![0].where;
+    expect(where).toMatchObject({ professionalProfileId: "pro-1", status: "COMPLETED" });
   });
 });

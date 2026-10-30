@@ -442,13 +442,37 @@ describe("riepilogo dell'anno al commercialista a gennaio", () => {
   };
   const yearly = (receipts: (typeof row)[]): CourtesyYearSummary => ({ year: 2026, who: "Mario Rossi", receipts, invoices: [] });
 
-  function build(movementsByProfile: Record<string, number>, yearlyByProfile: Record<string, CourtesyYearSummary>) {
+  const invoiceView = {
+    id: "i",
+    number: "COM/2026/0012",
+    source: "JOB_FEES",
+    creditNote: false,
+    periodMonth: "2026-12",
+    issuedAt: "2027-01-01T06:00:00Z",
+    totalEurCents: 1708,
+    sdiStatus: "SENT",
+    issuer: { name: "Società", lines: [] },
+    recipient: { name: "Mario Rossi", lines: [] },
+    lines: [{ description: "Trattenuta", detail: null, group: "Idraulico", taxableEurCents: 1400 }],
+    taxableEurCents: 1400,
+    vatEurCents: 308,
+    roundingEurCents: 0,
+    vatRatePercent: 22,
+    relatedNumber: null,
+    vatRecoverable: true,
+    onlinePaidEurCents: 20000,
+  };
+
+  function build(movementsByProfile: Record<string, number>, yearlyByProfile: Record<string, CourtesyYearSummary>, invoicesByProfile: Record<string, number> = {}) {
     const recipient = (id: string) => ({ professionalProfileId: id, accountantEmail: `studio-${id}@esempio.it`, fiscalFirstName: "Mario", fiscalLastName: "Rossi", businessName: null, professionalProfile: { businessName: null } });
     const prisma = { professionalFiscalProfile: { findMany: vi.fn().mockResolvedValue(Object.keys(movementsByProfile).map(recipient)) } };
     const email = { send: vi.fn().mockResolvedValue(true) };
     const courtesy = { yearSummaryForProfile: vi.fn((id: string) => Promise.resolve(yearlyByProfile[id] ?? yearly([]))) };
-    const service = new StatementsService(prisma as never, email as never, {} as never, courtesy as never);
-    vi.spyOn(service, "build").mockImplementation((id: string) => Promise.resolve({ statement, csvRows: [], movements: movementsByProfile[id] ?? 0 }));
+    const invoices = { invoiceView: vi.fn().mockResolvedValue(invoiceView) };
+    const service = new StatementsService(prisma as never, email as never, invoices as never, courtesy as never);
+    vi.spyOn(service, "build").mockImplementation((id: string) =>
+      Promise.resolve({ statement, csvRows: [], movements: movementsByProfile[id] ?? 0, invoices: Array.from({ length: invoicesByProfile[id] ?? 0 }, () => ({ id: "i" }) as never) }),
+    );
     return { service, email, courtesy };
   }
 
@@ -477,6 +501,14 @@ describe("riepilogo dell'anno al commercialista a gennaio", () => {
     expect(await service.sendAccountantStatements(new Date("2027-02-01T07:00:00Z"))).toBe(1);
     expect(courtesy.yearSummaryForProfile).not.toHaveBeenCalled();
     expect(email.send.mock.calls[0]![0].attachments).toHaveLength(2);
+  });
+
+  it("le nostre fatture del mese vanno al commercialista con l'estratto", async () => {
+    const { service, email } = build({ a: 2 }, {}, { a: 1 });
+    expect(await service.sendAccountantStatements(new Date("2027-02-01T07:00:00Z"))).toBe(1);
+    const sent = email.send.mock.calls[0]![0];
+    expect(sent.attachments.map((a: { filename: string }) => a.filename)).toEqual(["estratto-2027-01.pdf", "estratto-2027-01.csv", "fattura-COM-2026-0012.pdf"]);
+    expect(sent.text).toContain("In allegato anche la nostra fattura del mese in PDF.");
   });
 
   it("testo dell'email con e senza estratto", () => {

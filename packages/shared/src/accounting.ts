@@ -409,10 +409,26 @@ export function statementCsv(rows: StatementCsvRow[]): string {
 
 // --- Pagina "Fatture e documenti" ----------------------------------------
 
+export type MissingClientDocument = {
+  bookingId: string;
+  /** Giorno del lavoro terminato. */
+  date: string;
+  jobLabel: string | null;
+  customerName: string | null;
+  amountEurCents: number;
+  receipt: boolean;
+};
+
 export type DocumentsOverview = {
   invoices: PlatformInvoiceSummary[];
   /** Ricevute e copie di cortesia date ai clienti, dalla più recente (§381). */
   clientDocuments: CourtesyDocumentSummary[];
+  /**
+   * Lavori terminati pagati online senza il documento al cliente: ricevuta
+   * non scaricata, o fattura senza numero scritto qui (migliorie del collaudo,
+   * docs/changelog/2026-10-30-documenti-migliorie.md).
+   */
+  missingDocuments: MissingClientDocument[];
   /** Mesi con un estratto (AAAA-MM), dal più recente. */
   months: string[];
   /** Le fatture partono solo con i dati della nostra società (Admin → Finanza). */

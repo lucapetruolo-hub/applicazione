@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
-import type { PrismaClient } from "@professionisti/database";
+import type { Invoice, PrismaClient } from "@professionisti/database";
 import {
   INVOICE_SOURCE_LABEL,
   accountingMonthLabel,
@@ -31,7 +31,7 @@ import { EMAIL_BRAND } from "../email/email-brand";
 import { previousMonth, romeDayIso, romeDayLabel, romeMonthOf, romeMonthRange } from "./accounting-dates";
 import { InvoicesService } from "./invoices.service";
 import { renderDocumentPdf } from "./document-pdf";
-import { courtesyYearPdfModel, statementPdfModel } from "./document-pdf-models";
+import { courtesyYearPdfModel, invoicePdfModel, pdfFileName, statementPdfModel } from "./document-pdf-models";
 import { CourtesyCopyService } from "./courtesy-copy.service";
 import { professionalFiscalName } from "./invoice-documents";
 
@@ -174,7 +174,10 @@ export class StatementsService {
     return { email: updated.accountantEmail, enabled: !!updated.accountantStatementsAt };
   }
 
-  async build(professionalProfileId: string, month: string): Promise<{ statement: MonthlyStatement; csvRows: StatementCsvRow[]; movements: number }> {
+  async build(
+    professionalProfileId: string,
+    month: string,
+  ): Promise<{ statement: MonthlyStatement; csvRows: StatementCsvRow[]; movements: number; invoices: Invoice[] }> {
     const { start, end } = romeMonthRange(month);
     const inMonth = { gte: start, lt: end };
     const paymentSelect = { id: true, paymentMethod: true, payoutSentAt: true, payoutPaidAt: true, booking: { select: BOOKING_SELECT } } as const;
@@ -363,6 +366,8 @@ export class StatementsService {
       },
       csvRows,
       movements: csvRows.length,
+      // Le nostre fatture del mese, allegate all'email al commercialista (docs/changelog/2026-10-30-documenti-migliorie.md).
+      invoices: [...(feeInvoice ? [feeInvoice] : []), ...otherInvoices],
     };
   }
 
@@ -391,18 +396,26 @@ export class StatementsService {
     let sent = 0;
     for (const r of recipients) {
       try {
-        const { statement, csvRows, movements } = await this.build(r.professionalProfileId, month);
+        const { statement, csvRows, movements, invoices } = await this.build(r.professionalProfileId, month);
         const yearly = closedYear !== null ? await this.courtesyCopyService.yearSummaryForProfile(r.professionalProfileId, closedYear) : null;
         const withYearly = yearly && yearly.receipts.length + yearly.invoices.length > 0 ? yearly : null;
         if (movements === 0 && !withYearly) continue;
         const who = professionalFiscalName(r, r.professionalProfile.businessName) ?? "";
-        const email = renderEmail(accountantStatementEmail(who, movements > 0 ? statement : null, withYearly));
+        const email = renderEmail(accountantStatementEmail(who, movements > 0 ? statement : null, withYearly, movements > 0 ? invoices.length : 0));
         const attachments: { filename: string; content: string | Buffer; contentType: string }[] = [];
         if (movements > 0) {
           attachments.push(
             { filename: `estratto-${month}.pdf`, content: await renderDocumentPdf(statementPdfModel(statement, who)), contentType: "application/pdf" },
             { filename: `estratto-${month}.csv`, content: statementCsv(csvRows), contentType: "text/csv; charset=utf-8" },
           );
+          for (const invoice of invoices) {
+            const view = await this.invoicesService.invoiceView(invoice);
+            attachments.push({
+              filename: pdfFileName(`${view.creditNote ? "nota-di-credito" : "fattura"}-${view.number}`),
+              content: await renderDocumentPdf(invoicePdfModel(view)),
+              contentType: "application/pdf",
+            });
+          }
         }
         if (withYearly) {
           attachments.push(
@@ -425,7 +438,7 @@ export class StatementsService {
  * gennaio c'è anche (o solo) il riepilogo dell'anno dei documenti dati ai
  * clienti (§390).
  */
-export function accountantStatementEmail(who: string, statement: MonthlyStatement | null, yearly: CourtesyYearSummary | null = null): EmailContent {
+export function accountantStatementEmail(who: string, statement: MonthlyStatement | null, yearly: CourtesyYearSummary | null = null, invoiceCount = 0): EmailContent {
   const eur = (cents: number) => `${(cents / 100).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
   const yearlyParts = yearly
     ? [
@@ -445,7 +458,9 @@ export function accountantStatementEmail(who: string, statement: MonthlyStatemen
       ? [
           `Le mandiamo l'estratto di **${statement.monthLabel}** di **${who}**, come ci ha chiesto. In allegato l'estratto in PDF e il foglio di calcolo con ogni movimento.`,
           ...(yearly ? [`C'è anche il **riepilogo del ${yearly.year}**: ${yearlyWhat}.`] : []),
-          statement.feeInvoice ? `La fattura delle nostre trattenute è la ${statement.feeInvoice.number}.` : "Le fatture elettroniche arrivano anche al cassetto fiscale del professionista.",
+          invoiceCount > 0
+            ? `In allegato anche ${invoiceCount === 1 ? "la nostra fattura del mese" : `le nostre ${invoiceCount} fatture del mese`} in PDF. L'originale elettronico è nel cassetto fiscale del professionista.`
+            : "Le fatture elettroniche arrivano anche al cassetto fiscale del professionista.",
         ]
       : [`Le mandiamo il **riepilogo del ${yearly?.year ?? ""}** di **${who}**, come ci ha chiesto: ${yearlyWhat}. A dicembre non ci sono stati movimenti, quindi niente estratto del mese.`],
     details: [
