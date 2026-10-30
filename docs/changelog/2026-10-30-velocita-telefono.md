@@ -77,7 +77,8 @@ le migliorie". Quella su Render a pagamento resta a lui (non è codice).
 - **Testo proprio per ogni città (N-04)**: in "[Lavoro] a [città] in breve"
   i lavori offerti lì e le ultime 3 recensioni del mestiere in quella città
   (`GET /reviews/recent?category=&city=`, stessi filtri delle recensioni in
-  home più categoria, anche secondaria, e città del professionista). I numeri
+  home più categoria, anche secondaria, e città del professionista), solo quando sono almeno 3 (scelta di Luca
+  dopo le foto). I numeri
   restano nelle tessere; il testo li ripete solo con un professionista.
 - **Pagine "Quanto costa" raggiungibili (N-05)**: nuova `/prezzi` con i
   mestieri che hanno una pagina prezzi (stesse soglie della sitemap del §296,

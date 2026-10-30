@@ -24,6 +24,13 @@ import {
 /** Recensione recente della pagina città (`GET /reviews/recent?category=&city=`). */
 export type CityReview = Awaited<ReturnType<ApiClient["getRecentReviews"]>>[number];
 
+/**
+ * Le recensioni della città compaiono solo da 3 in su (scelta di Luca,
+ * docs/changelog/2026-10-30-velocita-telefono.md): una o due sole sembrano
+ * una pagina vuota più che una prova di fiducia.
+ */
+const MIN_CITY_REVIEWS = 3;
+
 /** "12 marzo 2026": la data dice che la recensione è recente, senza l'ora. */
 function reviewDate(iso: string): string {
   return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Rome" });
@@ -143,7 +150,7 @@ export function CityFacts({
           all'altra (collaudo N-04, docs/changelog/2026-10-30-velocita-telefono.md):
           prima cambiava solo il nome e Google le leggeva come fotocopie. */}
       {intro ? <p className="city-facts-intro">{intro}</p> : null}
-      {reviews.length > 0 ? (
+      {reviews.length >= MIN_CITY_REVIEWS ? (
         <>
           <h3 className="city-facts-subtitle">Le ultime recensioni a {city}</h3>
           <ul className="city-facts-reviews">
