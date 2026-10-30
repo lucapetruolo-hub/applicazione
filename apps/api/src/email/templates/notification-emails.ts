@@ -26,6 +26,9 @@ import {
   type JobIssueSanction,
   type JobIssueType,
   type ModerationAction,
+  TERMS_CHANGES,
+  findTermsChange,
+  formatTermsDate,
 } from "@professionisti/shared";
 import { EMAIL_BRAND, frontendUrl } from "../email-brand";
 import type { EmailContent } from "../email-layout";
@@ -1337,6 +1340,21 @@ const BUILDERS: Record<string, Builder> = {
       ],
     };
   },
+  // Cambio dei Termini annunciato a tutti (punto 12 dei Termini, TermsNoticeService).
+  TERMS_CHANGED: (payload, ctx) => {
+    // Senza versione (non succede) si annuncia l'ultima.
+    const change = findTermsChange(str(payload.version) ?? "") ?? TERMS_CHANGES[TERMS_CHANGES.length - 1]!;
+    const from = formatTermsDate(change.effectiveAt);
+    return {
+      kind: "account",
+      subject: `Cambiano i Termini di Servizio dal ${from}`,
+      greeting: ctx.name,
+      title: "Cambiano i Termini di Servizio",
+      paragraphs: [`Dal **${from}** valgono i nuovi Termini di Servizio. Cosa cambia:`, ...change.summary.map((line) => `• ${line}`)],
+      cta: { label: "Leggi i Termini", url: `${frontendUrl()}/termini` },
+      after: ["Se non sei d'accordo puoi chiudere l'account prima di quella data da Impostazioni, senza costi. I preventivi già accettati e i lavori in corso non cambiano."],
+    };
+  },
   ACCOUNT_REACTIVATED: (payload, ctx) => {
     const note = str(payload.note);
     return {
@@ -1365,7 +1383,7 @@ const BUILDERS: Record<string, Builder> = {
     greeting: ctx.name,
     title: "Pagamenti online attivi",
     paragraphs: [
-      "Stripe ha completato la verifica della tua identità: ora puoi offrire nei preventivi l'acconto online, e il tuo profilo mostra il badge **Identità verificata da Stripe**.",
+      "Stripe ha completato la verifica della tua identità: ora puoi offrire nei preventivi l'acconto online, e il tuo profilo mostra il badge **Pagamenti online attivi**.",
       "I soldi dei pagamenti online ti arrivano sul conto che hai indicato a Stripe.",
     ],
     cta: { label: "Vai ai pagamenti online", url: `${frontendUrl()}/dashboard/fiscale/pagamenti` },
@@ -1414,7 +1432,7 @@ const BUILDERS: Record<string, Builder> = {
     title: "Pagamenti online sospesi",
     paragraphs: [
       "Stripe ci ha comunicato che il tuo account non può più ricevere pagamenti, di solito perché mancano dei dati o un documento da aggiornare.",
-      "Finché non lo sistemi non puoi offrire l'acconto online nei nuovi preventivi e il badge **Identità verificata da Stripe** non compare. Il tuo profilo resta visibile e puoi continuare a farti pagare direttamente. I soldi già pagati online restano al sicuro e ti arrivano appena l'account torna attivo.",
+      "Finché non lo sistemi non puoi offrire l'acconto online nei nuovi preventivi e il badge **Pagamenti online attivi** non compare. Il tuo profilo resta visibile e puoi continuare a farti pagare direttamente. I soldi già pagati online restano al sicuro e ti arrivano appena l'account torna attivo.",
     ],
     cta: { label: "Completa i dati su Stripe", url: `${frontendUrl()}/dashboard/fiscale/pagamenti` },
   }),

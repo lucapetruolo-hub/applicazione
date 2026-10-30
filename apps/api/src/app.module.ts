@@ -44,6 +44,7 @@ import { GeneralRequestsAdminModule } from "./general-requests/general-requests-
 import { WhatsAppModule } from "./whatsapp/whatsapp.module";
 import { UrgencyMetricsModule } from "./urgency-metrics/urgency-metrics.module";
 import { BookingRemindersModule } from "./booking-reminders/booking-reminders.module";
+import { TermsNoticeModule } from "./terms-notice/terms-notice.module";
 import { AgendaRemindersModule } from "./agenda-reminders/agenda-reminders.module";
 import { AgendaModule } from "./agenda/agenda.module";
 import { ProblemMatchModule } from "./problem-match/problem-match.module";
@@ -108,6 +109,7 @@ import { ProblemMatchModule } from "./problem-match/problem-match.module";
     // Promemoria automatici anti no-show (Resend) — CEO, tattico:
     // "prima di considerare l'MVP davvero completo" (CLAUDE.md §1).
     BookingRemindersModule,
+    TermsNoticeModule,
     AgendaRemindersModule,
     AgendaModule,
     ProblemMatchModule,
