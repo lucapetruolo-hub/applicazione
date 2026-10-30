@@ -29,8 +29,8 @@ function booking(over: Record<string, unknown> = {}) {
     id: "b1",
     clientId: "client-1",
     status: "COMPLETED",
-    professionalProfile: { userId: "pro-1" },
-    courtesyDocument: { kind: "RECEIPT", number: 4, year: 2026, ownNumber: null, pdfDownloadedAt: new Date("2026-10-26T10:00:00Z"), pdfTotalEurCents: 10000 },
+    professionalProfile: { userId: "pro-1", fiscalProfile: { entityType: "PRIVATE_INDIVIDUAL" } },
+    courtesyDocument: { kind: "RECEIPT", number: 4, year: 2026, pdfDownloadedAt: new Date("2026-10-26T10:00:00Z"), pdfTotalEurCents: 10000 },
     quote: { invoiceRequest: null },
     jobPayment: paid,
     ...over,
@@ -80,14 +80,22 @@ describe("documenti del lavoro", () => {
     expect((await service(booking({ courtesyDocument: notDownloaded })).forUser("client-1", "b1")).clientDocument).toBeNull();
   });
 
-  it("pagamento diretto, fattura chiesta e lavoro non ancora terminato", async () => {
+  it("pagamento diretto, fattura chiesta e lavoro non ancora terminato: il documento aspetta \"Lavoro terminato\" (collaudo C-02)", async () => {
     const direct = { ...paid, paymentMethod: "DIRECT", directReportedAt: new Date("2026-10-20T15:00:00Z"), depositPaidAt: null, balancePaidAt: null, refunds: [], feeEntries: [], payoutPaidAt: null };
     const view = await service(booking({ status: "CONFIRMED", courtesyDocument: null, quote: { invoiceRequest: { id: "r1" } }, jobPayment: direct })).forUser("client-1", "b1");
     expect(view.movements).toEqual([{ date: "2026-10-20T15:00:00.000Z", label: "Pagato direttamente al professionista", amountEurCents: -12000, invoice: null }]);
     expect(view.invoiceRequested).toBe(true);
-    expect(view.clientDocumentAvailable).toBe(true);
+    expect(view.clientDocumentAvailable).toBe(false);
     const confirmed = await service(booking({ status: "CONFIRMED", courtesyDocument: null })).forUser("pro-1", "b1");
     expect(confirmed.clientDocumentAvailable).toBe(false);
+  });
+
+  it("con la partita IVA la fattura la fa il professionista: niente ricevuta sul sito", async () => {
+    const pro = { userId: "pro-1", fiscalProfile: { entityType: "SOLE_PROPRIETOR" } };
+    const view = await service(booking({ professionalProfile: pro, courtesyDocument: null })).forUser("pro-1", "b1");
+    expect(view).toMatchObject({ ownInvoice: true, clientDocumentAvailable: false, clientDocument: null });
+    const client = await service(booking({ professionalProfile: pro, courtesyDocument: null })).forUser("client-1", "b1");
+    expect(client.ownInvoice).toBe(true);
   });
 
   it("un estraneo non vede niente", async () => {
@@ -109,8 +117,11 @@ describe("copia per il cliente", () => {
     postalCode: "00100",
     city: "Roma",
     province: "RM",
+    recipientName: null,
+    recipientSurname: null,
     client: { name: "Anna", surname: "Bianchi" },
-    jobPayment: { paymentMethod: "DIRECT", paidEurCents: 0, refundedEurCents: 0, grossAmountEurCents: 10000, balancePaidAt: null, directReportedAt: new Date("2026-10-20T15:00:00Z") },
+    finalItems: [],
+    jobPayment: { paymentMethod: "DIRECT", balanceDirect: false, paidEurCents: 0, refundedEurCents: 0, grossAmountEurCents: 10000, balancePaidAt: null, directReportedAt: new Date("2026-10-20T15:00:00Z") },
     professionalProfile: { businessName: null, fiscalProfile: { entityType: "PRIVATE_INDIVIDUAL", chargesVat: false, fiscalFirstName: "Mario", fiscalLastName: "Rossi", taxCode: "RSSMRA80A01H501U" } },
     quote: { invoiceRequest: { kind: "VAT", name: "Bar Sport S.r.l.", taxCode: null, vatNumber: "12345678903", sdiRecipientCode: null, pecEmail: null, street: "Via Roma", houseNumber: "1", postalCode: "00100", city: "Roma", province: "RM", updatedAt: new Date() }, guidedRequest: { description: "Perdita", category: { label: "Idraulico" } } },
     ...over,
@@ -122,7 +133,7 @@ describe("copia per il cliente", () => {
     };
     return new CourtesyCopyService(prisma as never, {} as never, {} as never, {} as never);
   }
-  const saved = { pdfDownloadedAt: new Date(), pdfTotalEurCents: 10000, number: 4, year: 2026, ownNumber: null };
+  const saved = { kind: "RECEIPT", pdfDownloadedAt: new Date(), pdfTotalEurCents: 10000, number: 4, year: 2026 };
 
   it("solo il cliente del lavoro, dopo il PDF del professionista e con lo stesso importo", async () => {
     const copy = await build(loaded(), saved).forClient("client-1", "b1");
@@ -147,7 +158,7 @@ describe("copia per il cliente", () => {
         booking: { findUnique: vi.fn().mockResolvedValue(booking) },
         courtesyDocument: {
           findUnique: vi.fn().mockResolvedValue(previous ? { ...saved, ...previous } : null),
-          upsert: vi.fn().mockResolvedValue({ kind: "RECEIPT", number: 4, year: 2026, ownNumber: null }),
+          upsert: vi.fn().mockResolvedValue({ kind: "RECEIPT", number: 4, year: 2026 }),
         },
       };
       const notifications = { notify: vi.fn().mockResolvedValue(undefined) };
@@ -178,9 +189,9 @@ describe("copia per il cliente", () => {
       expect(changed.notifications.notify.mock.calls[0]![2]).toMatchObject({ updated: true });
     });
 
-    it("senza importo niente avviso: prima il lavoro va chiuso con il prezzo finale", async () => {
+    it("senza importo niente PDF e niente avviso: prima il lavoro va chiuso con il prezzo finale", async () => {
       const { service, notifications } = download({ pdfDownloadedAt: null, pdfTotalEurCents: null }, { jobPayment: null });
-      await service.forProfessionalPdf("pro-1", "b1");
+      await expect(service.forProfessionalPdf("pro-1", "b1")).rejects.toThrow("l'importo finale del lavoro");
       expect(notifications.notify).not.toHaveBeenCalled();
     });
   });

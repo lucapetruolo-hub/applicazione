@@ -96,9 +96,14 @@ export class ClientInvoiceRequestsService {
   }
 
   /** Per l'avviso "Preventivo accettato": c'è una richiesta e le righe da copiare. */
-  async forAcceptedNotice(quoteId: string): Promise<{ invoiceRequested: true; invoiceLines: string[] } | Record<string, never>> {
-    const row = await this.prisma.clientInvoiceRequest.findUnique({ where: { quoteId } });
-    return row ? { invoiceRequested: true, invoiceLines: clientInvoiceLines(invoiceRequestView(row)) } : {};
+  async forAcceptedNotice(quoteId: string): Promise<{ invoiceRequested: true; invoiceLines: string[]; receipt: boolean } | Record<string, never>> {
+    const row = await this.prisma.clientInvoiceRequest.findUnique({
+      where: { quoteId },
+      include: { quote: { select: { professionalProfile: { select: { fiscalProfile: { select: { entityType: true } } } } } } },
+    });
+    if (!row) return {};
+    const receipt = row.quote.professionalProfile.fiscalProfile?.entityType === "PRIVATE_INDIVIDUAL";
+    return { invoiceRequested: true, invoiceLines: documentLines(invoiceRequestView(row), receipt), receipt };
   }
 
   /**
@@ -111,7 +116,7 @@ export class ClientInvoiceRequestsService {
       include: {
         guidedRequest: { select: { clientId: true, description: true, category: { select: { label: true } } } },
         booking: { select: { id: true, status: true } },
-        professionalProfile: { select: { userId: true } },
+        professionalProfile: { select: { userId: true, fiscalProfile: { select: { entityType: true } } } },
         invoiceRequest: { select: { id: true } },
       },
     });
@@ -121,13 +126,16 @@ export class ClientInvoiceRequestsService {
     const data = rowData(input);
     const row = await this.prisma.clientInvoiceRequest.upsert({ where: { quoteId }, create: { quoteId, clientId, ...data }, update: { ...data, professionalSeenAt: null } });
     const view = invoiceRequestView(row);
+    // Chi lavora senza partita IVA fa una ricevuta, non una fattura (collaudo C-01).
+    const receipt = quote.professionalProfile.fiscalProfile?.entityType === "PRIVATE_INDIVIDUAL";
     await this.notificationsService.notify(quote.professionalProfile.userId, "JOB_INVOICE_REQUESTED", {
       bookingId: quote.booking.id,
       guidedRequestId: quote.guidedRequestId,
       category: quote.guidedRequest.category.label,
       jobLabel: notificationJobLabel(quote.guidedRequest.description),
       changed: !!quote.invoiceRequest,
-      invoiceLines: clientInvoiceLines(view),
+      invoiceLines: documentLines(view, receipt),
+      receipt,
     });
     return view;
   }
@@ -139,4 +147,9 @@ export class ClientInvoiceRequestsService {
     if (quote.guidedRequest.clientId !== clientId) throw new ForbiddenException("Questo preventivo non è associato a una tua richiesta.");
     await this.prisma.clientInvoiceRequest.deleteMany({ where: { quoteId, clientId } });
   }
+}
+
+/** Le righe da copiare: sulla ricevuta niente codice destinatario né PEC, servono solo alla fattura elettronica. */
+function documentLines(view: ClientInvoiceRequestView, receipt: boolean): string[] {
+  return clientInvoiceLines(view).filter((line) => !receipt || !/^(Codice destinatario|PEC) /.test(line));
 }

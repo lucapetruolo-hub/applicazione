@@ -82,7 +82,8 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
           </div>
         ))}
       </nav>
-      <main className="acct-main">{children}</main>
+      {/* Il contenuto principale (<main>) è già quello del sito: qui un secondo era doppio (collaudo L-11). */}
+      <div className="acct-main">{children}</div>
     </div>
   );
 }

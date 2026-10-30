@@ -15,7 +15,7 @@ import { romeMonthOf } from "./accounting-dates";
 /**
  * I documenti contabili di un lavoro, dalla voce "Documenti" del menu della
  * richiesta (decisione dell'utente del 27/10/2026, docs/CHANGELOG.md §386).
- * Il professionista vede la sua ricevuta o copia della fattura, i movimenti
+ * Il professionista vede la sua ricevuta (solo nel lavoro occasionale), i movimenti
  * con le nostre trattenute e gli estratti dei mesi. Il cliente vede i suoi
  * pagamenti e la copia del documento solo dopo che il professionista ha
  * scaricato il PDF, con lo stesso importo; le nostre trattenute no.
@@ -31,12 +31,13 @@ export class JobDocumentsService {
         id: true,
         clientId: true,
         status: true,
-        professionalProfile: { select: { userId: true } },
-        courtesyDocument: { select: { kind: true, number: true, year: true, ownNumber: true, pdfDownloadedAt: true, pdfTotalEurCents: true } },
+        professionalProfile: { select: { userId: true, fiscalProfile: { select: { entityType: true } } } },
+        courtesyDocument: { select: { kind: true, number: true, year: true, pdfDownloadedAt: true, pdfTotalEurCents: true } },
         quote: { select: { invoiceRequest: { select: { id: true } } } },
         jobPayment: {
           select: {
             paymentMethod: true,
+            balanceDirect: true,
             grossAmountEurCents: true,
             depositEurCents: true,
             depositPaidAt: true,
@@ -58,19 +59,19 @@ export class JobDocumentsService {
     const audience = booking?.professionalProfile.userId === userId ? "PROFESSIONAL" : booking?.clientId === userId ? "CLIENT" : null;
     if (!booking || !audience) throw new NotFoundException("Lavoro non trovato.");
     const pro = audience === "PROFESSIONAL";
-    const canceled = booking.status === "CANCELED";
+    const ownInvoice = booking.professionalProfile.fiscalProfile?.entityType !== "PRIVATE_INDIVIDUAL";
     const invoiceRequested = !!booking.quote?.invoiceRequest;
 
-    // Ricevuta o copia della fattura: al cliente solo se il professionista
-    // l'ha scaricata e l'importo è ancora quello.
+    // La ricevuta: al cliente solo se il professionista l'ha scaricata e
+    // l'importo è ancora quello. Niente più copie della fattura
+    // (docs/changelog/2026-10-30-documenti-snelli.md).
     const jp = booking.jobPayment;
-    const doc = booking.courtesyDocument;
+    const doc = booking.courtesyDocument?.kind === "RECEIPT" ? booking.courtesyDocument : null;
     const amountChanged = doc ? courtesyAmountChanged(doc.pdfTotalEurCents, courtesyTotalEurCents(jp)) : false;
-    const kind: "RECEIPT" | "INVOICE" = doc?.kind === "RECEIPT" ? "RECEIPT" : "INVOICE";
     const clientDocument =
-      !doc || canceled || (!pro && (!doc.pdfDownloadedAt || amountChanged))
+      !doc || booking.status !== "COMPLETED" || (!pro && (!doc.pdfDownloadedAt || amountChanged))
         ? null
-        : { label: !pro && kind === "INVOICE" && !doc.ownNumber ? "Copia della fattura" : courtesyDocumentLabel(doc), kind, amountChanged: pro && amountChanged };
+        : { label: courtesyDocumentLabel(doc), kind: "RECEIPT" as const, amountChanged: pro && amountChanged };
 
     const movements: JobDocumentMovement[] = [];
     const push = (date: Date | null, label: string, amountEurCents: number, invoice: JobDocumentMovement["invoice"] = null) => {
@@ -102,7 +103,9 @@ export class JobDocumentsService {
       audience,
       bookingId: booking.id,
       clientDocument,
-      clientDocumentAvailable: !canceled && (booking.status === "COMPLETED" || invoiceRequested),
+      // Solo a lavoro terminato, con l'importo finale (collaudo C-02, B-02), e solo per chi lavora senza partita IVA.
+      clientDocumentAvailable: booking.status === "COMPLETED" && !ownInvoice,
+      ownInvoice,
       invoiceRequested,
       movements,
       statementMonths: months.map((month) => ({ month, label: accountingMonthLabel(month) })),

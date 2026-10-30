@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type FocusEvent as ReactFocusEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Avatar, Icon, Text, YStack, brand } from "@professionisti/ui";
@@ -14,6 +14,8 @@ export function AccountMenu() {
   const attention = useNavAttention();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
 
   // Si chiude cambiando pagina (già durante il render) e con Esc.
@@ -25,11 +27,35 @@ export function AccountMenu() {
   useEffect(() => {
     if (!isOpen) return;
     function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") setIsOpen(false);
+      if (event.key !== "Escape") return;
+      setIsOpen(false);
+      triggerRef.current?.focus();
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [isOpen]);
+
+  // Da tastiera (docs/changelog/2026-10-30-tastiera.md, collaudo L-03): il
+  // fuoco va sulla prima voce, le frecce si muovono tra le voci, uscire
+  // col Tab chiude il menu.
+  useEffect(() => {
+    if (isOpen) menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+  }, [isOpen]);
+
+  function onMenuKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp" && event.key !== "Home" && event.key !== "End") return;
+    const items = Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
+    if (items.length === 0) return;
+    event.preventDefault();
+    const current = items.indexOf(document.activeElement as HTMLElement);
+    const next =
+      event.key === "Home" ? 0 : event.key === "End" ? items.length - 1 : event.key === "ArrowDown" ? (current + 1) % items.length : (current - 1 + items.length) % items.length;
+    items[next]?.focus();
+  }
+
+  function onContainerBlur(event: ReactFocusEvent<HTMLDivElement>) {
+    if (isOpen && !containerRef.current?.contains(event.relatedTarget as Node | null)) setIsOpen(false);
+  }
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -68,14 +94,24 @@ export function AccountMenu() {
   const toDo = attention.size > 0;
 
   return (
-    <YStack ref={containerRef} position="relative">
+    <YStack ref={containerRef} position="relative" onBlur={onContainerBlur}>
       <YStack
+        ref={triggerRef}
         flexDirection="row"
         alignItems="center"
         gap="$1"
         cursor="pointer"
         onPress={() => setIsOpen((open) => !open)}
         accessibilityRole="button"
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        onKeyDown={(event: unknown) => {
+          // L'evento è quello del browser, ma Tamagui lo tipizza come quello di React Native.
+          const keyEvent = event as ReactKeyboardEvent;
+          if (keyEvent.key !== "ArrowDown" || isOpen) return;
+          keyEvent.preventDefault();
+          setIsOpen(true);
+        }}
       >
         {/* Niente etichetta separata: il nome letto è il testo visibile, più
             le novità solo per il lettore di schermo (WCAG 2.5.3, docs/CHANGELOG.md §310). */}
@@ -111,7 +147,7 @@ export function AccountMenu() {
       {isOpen ? (
         // Stessi gruppi e icone del menu laterale (docs/CHANGELOG.md §148):
         // intestazione con chi sei, poi le sezioni, "Esci" in fondo.
-        <div className="acct-menu" role="menu" aria-label="Il mio account">
+        <div ref={menuRef} className="acct-menu" role="menu" aria-label="Il mio account" tabIndex={-1} onKeyDown={onMenuKeyDown}>
           <div className="acct-menu-head">
             <Avatar name={displayName ?? "?"} imageUrl={displayImageUrl} size={36} />
             <div className="acct-menu-head-text">

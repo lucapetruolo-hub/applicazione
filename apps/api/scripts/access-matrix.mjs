@@ -114,8 +114,35 @@ async function seed() {
     },
   });
   await prisma.jobPayment.create({ data: { bookingId: bookingA.id, paymentMethod: "DIRECT", grossAmountEurCents: 10000, netAmountEurCents: 10000 } });
-  // Copia del documento già scaricata da proA: il cliente la può aprire (§386).
-  await prisma.courtesyDocument.create({ data: { bookingId: bookingA.id, professionalProfileId: profileA.id, kind: "INVOICE", year: 2026, ownNumber: "1/A", pdfDownloadedAt: new Date(), pdfTotalEurCents: 10000 } });
+
+  // Lavoro terminato tra clientA e proA: la copia del documento si fa solo a
+  // lavoro terminato (docs/changelog/2026-10-30-documenti-fiscali.md).
+  const requestCompleted = await prisma.guidedRequest.create({
+    data: { clientId: users.clientA.id, categoryId: category.id, description: "Rubinetto da cambiare", city: "Latina" },
+  });
+  await prisma.lead.create({ data: { guidedRequestId: requestCompleted.id, professionalProfileId: profileA.id, priceEurCents: 0, status: "CONVERTED" } });
+  const quoteCompleted = await prisma.quote.create({
+    data: { guidedRequestId: requestCompleted.id, professionalProfileId: profileA.id, estimatedStartDate: start, status: "ACCEPTED" },
+  });
+  const bookingCompleted = await prisma.booking.create({
+    data: {
+      quoteId: quoteCompleted.id,
+      clientId: users.clientA.id,
+      professionalProfileId: profileA.id,
+      scheduledAt: new Date(Date.now() - 7 * 86_400_000),
+      status: "COMPLETED",
+      professionalCompletedAt: new Date(),
+      finalAmountEurCents: 10000,
+      city: "Latina",
+    },
+  });
+  await prisma.jobPayment.create({ data: { bookingId: bookingCompleted.id, paymentMethod: "DIRECT", grossAmountEurCents: 10000, netAmountEurCents: 10000 } });
+  // Ricevuta già scaricata da proA, che lavora in modo occasionale: il cliente la può aprire (§386).
+  // Con la partita IVA la ricevuta sul sito non c'è (docs/changelog/2026-10-30-documenti-snelli.md).
+  await prisma.professionalFiscalProfile.create({ data: { professionalProfileId: profileA.id, entityType: "PRIVATE_INDIVIDUAL" } });
+  await prisma.courtesyDocument.create({
+    data: { bookingId: bookingCompleted.id, professionalProfileId: profileA.id, kind: "RECEIPT", year: 2026, number: 1, customerName: "Cliente A", pdfDownloadedAt: new Date(), pdfTotalEurCents: 10000 },
+  });
 
   // Fattura delle trattenute di proA (§378).
   const invoiceA = await prisma.invoice.create({
@@ -161,6 +188,7 @@ async function seed() {
       quoteA: quoteA.id,
       quoteDone: quoteDone.id,
       bookingA: bookingA.id,
+      bookingCompleted: bookingCompleted.id,
       invoiceA: invoiceA.id,
       notificationA: notificationA.id,
       externalJobA: externalJobA.id,

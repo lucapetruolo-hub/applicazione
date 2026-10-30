@@ -1399,21 +1399,28 @@ model Booking {
 // prestazione occasionale lo diamo noi, progressivo per professionista e
 // anno e sempre lo stesso per quel lavoro; per la fattura il professionista
 // scrive il numero del suo programma. Ci resta l'elenco dei documenti dati
-// ai clienti, utile per l'assistenza e le segnalazioni.
+// ai clienti, utile per l'assistenza e le segnalazioni. Dal 30/10/2026 si
+// fanno solo ricevute: chi ha la partita IVA fa la fattura col suo programma
+// (docs/changelog/2026-10-30-documenti-snelli.md); le righe INVOICE restano
+// solo per i documenti di prima.
 model CourtesyDocument {
   id                    String   @id @default(uuid())
   bookingId             String   @unique
   professionalProfileId String
-  kind                  String // INVOICE | RECEIPT (CourtesyCopyView in packages/shared)
+  /// Sempre RECEIPT: con la partita IVA nessuna copia della fattura (docs/changelog/2026-10-30-documenti-snelli.md).
+  kind                  String
   year                  Int
-  /// Ricevute: il nostro progressivo dell'anno (1, 2, 3...).
+  /// Il nostro progressivo dell'anno (1, 2, 3...).
   number                Int?
-  /// Fatture: il numero del programma delle fatture del professionista.
-  ownNumber             String?
   /// Ultima volta che il professionista ha scaricato il PDF (Admin → Documenti ai clienti, §380).
   pdfDownloadedAt       DateTime?
   /// Importo scritto su quel PDF: se il lavoro cambia dopo, l'admin lo vede.
   pdfTotalEurCents      Int?
+  /// Nome e codice fiscale del cliente scritti dal professionista, quando il cliente non ha dato i suoi dati (C-05, G-07).
+  customerName          String?
+  customerTaxCode       String?
+  /// Ricevute a una partita IVA: il cliente trattiene la ritenuta d'acconto del 20%. Null = sì (C-04).
+  withholding           Boolean?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 

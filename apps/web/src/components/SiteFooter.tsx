@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { BRAND, COMPANY, PROFESSIONAL_CATEGORIES, companyDataReady } from "@professionisti/shared";
 import { Icon, Logo, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { reopenCookieChoice } from "@/lib/cookieConsent";
+import { useAuth } from "@/lib/AuthContext";
 
 const MAIN_CATEGORIES = PROFESSIONAL_CATEGORIES.slice(0, 8);
 
@@ -46,6 +47,7 @@ function ShortFooterLink({ href, children }: { href: string; children: string })
 
 export function SiteFooter() {
   const pathname = usePathname();
+  const { user } = useAuth();
   // Dentro le aree riservate il piede completo (quattro colonne, "Iscriviti
   // gratis", "Accedi") non serve a chi è già dentro e su telefono era più
   // lungo della chat (docs/CHANGELOG.md §349): resta una riga sola.
@@ -105,7 +107,8 @@ export function SiteFooter() {
             <FooterLink href="/urgente">Richiesta urgente</FooterLink>
             <FooterLink href="/#come-funziona">Come funziona</FooterLink>
             <FooterLink href="/#quanto-costa">Quanto costa</FooterLink>
-            <FooterLink href="/accedi">Accedi</FooterLink>
+            {/* Chi è già dentro non deve vedere "Accedi" (collaudo L, migliorie). */}
+            {user ? null : <FooterLink href="/accedi">Accedi</FooterLink>}
             <FooterLink href="/faq">Domande frequenti</FooterLink>
             <FooterLink href="/sicurezza">Sicurezza e truffe</FooterLink>
           </YStack>

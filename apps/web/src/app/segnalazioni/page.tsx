@@ -44,7 +44,7 @@ export default function SegnalazioniPage() {
             Accedi per vedere la decisione
           </Text>
           <Link href="/accedi?redirect=/segnalazioni" style={{ textDecoration: "none" }}>
-            <Button variant="primary">Accedi</Button>
+            <Button tabIndex={-1} variant="primary">Accedi</Button>
           </Link>
         </YStack>
       </YStack>

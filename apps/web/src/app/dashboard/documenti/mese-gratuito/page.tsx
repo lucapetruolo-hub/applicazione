@@ -118,7 +118,7 @@ export default function FreeMonthPage() {
       <div data-print-hide>
         <XStack gap="$3" flexWrap="wrap">
           <Link href="/dashboard/abbonamento#livelli" style={{ textDecoration: "none" }}>
-            <Button variant="secondary">Vedi i livelli</Button>
+            <Button tabIndex={-1} variant="secondary">Vedi i livelli</Button>
           </Link>
         </XStack>
       </div>

@@ -189,7 +189,7 @@ export function SiteHeader() {
                   quindi non ha lo stesso problema di spazio) per restare
                   entro la larghezza del viewport senza nasconderlo del
                   tutto. */}
-              <Button className="site-header-cta" variant="primary" size="$3" height={40} paddingHorizontal="$4" $xs={{ paddingHorizontal: "$3" }}>
+              <Button tabIndex={-1} className="site-header-cta" variant="primary" size="$3" height={40} paddingHorizontal="$4" $xs={{ paddingHorizontal: "$3" }}>
                 {user ? (
                   <>
                     <Text display="none" $gtXs={{ display: "flex" }} color="white" fontWeight="600">

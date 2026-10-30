@@ -123,6 +123,37 @@ span.is_Button._fos-f-size-true {
   }
 }
 
+/* Anello del fuoco da tastiera (docs/changelog/2026-10-30-tastiera.md,
+   collaudo L-04): scuro, ben visibile attorno al verde e sul pesca. I
+   pulsanti di Tamagui e i comandi fatti con un riquadro (role="button",
+   "checkbox"…) avevano il contorno trasparente, scritto da Tamagui nello
+   stile dell'elemento: per questo !important. Solo :focus-visible, quindi
+   non compare con un clic del mouse. */
+button.is_Button:focus-visible,
+:is([role="button"], [role="checkbox"], [role="radio"], [role="switch"], [role="tab"], [role="menuitem"], [role="link"], [role="option"]):not(input):focus-visible {
+  outline: 3px solid #2b2420 !important;
+  outline-offset: 2px !important;
+}
+/* Link con dentro un pulsante ("Richiedi preventivo", "Completa profilo"):
+   la fermata del Tab è il link, il pulsante ha tabIndex -1 (collaudo L-10);
+   l'anello va sulla pillola, non sul rettangolo del link. */
+a:has(> button.is_Button):focus-visible {
+  outline: none;
+}
+a:focus-visible > button.is_Button {
+  outline: 3px solid #2b2420 !important;
+  outline-offset: 2px !important;
+}
+/* Titoli che ricevono il fuoco a ogni passo nuovo (useStepFocus, L-06):
+   non sono comandi, niente anello. */
+.step-focus-target:focus {
+  outline: none;
+}
+/* Le voci dei menu stanno in tendine che tagliano ciò che sborda. */
+[role="menuitem"]:focus-visible {
+  outline-offset: -3px !important;
+}
+
 /* Pulsanti "vivi" (docs/CHANGELOG.md §233): ogni pulsante si schiaccia un
    poco quando lo premi (scale .97, anche su telefono); la freccia delle
    azioni principali ruota in 350ms al passaggio del mouse. Con "riduci

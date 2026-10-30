@@ -134,7 +134,7 @@ import type {
   AccountantSettingsInput,
   CourtesyCopyView,
   JobDocumentsView,
-  CourtesyNumberInput,
+  CourtesyDetailsInput,
   DocumentsOverview,
   MonthlyStatement,
   PlatformInvoiceAdminRow,
@@ -1663,9 +1663,9 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     courtesyCopy: (token: string, bookingId: string) =>
       request<CourtesyCopyView>(`/documents/courtesy/${encodeURIComponent(bookingId)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
-    /** Il numero della fattura del professionista sulla copia di cortesia (docs/CHANGELOG.md §379). */
-    setCourtesyNumber: (token: string, bookingId: string, input: CourtesyNumberInput) =>
-      request<CourtesyCopyView>(`/documents/courtesy/${encodeURIComponent(bookingId)}/number`, { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
+    /** Quello che il professionista scrive sulla copia: numero e data della fattura, cliente, aliquota, ritenuta (collaudo del 29/10/2026). */
+    saveCourtesyDetails: (token: string, bookingId: string, input: CourtesyDetailsInput) =>
+      request<CourtesyCopyView>(`/documents/courtesy/${encodeURIComponent(bookingId)}/details`, { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(input) }),
 
     courtesyCopyPdf: (token: string, bookingId: string) => downloadFile(`/documents/courtesy/${encodeURIComponent(bookingId)}/pdf`, token),
     /** Riepilogo dell'anno dei documenti dati ai clienti, per il commercialista (docs/CHANGELOG.md §382). */
@@ -1708,10 +1708,9 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
       request<PlatformInvoiceAdminRow>(`/admin/invoices/${encodeURIComponent(id)}/resend`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
 
     /** Admin → Documenti ai clienti (docs/CHANGELOG.md §380). */
-    adminCourtesyDocuments: (token: string, filter: { q?: string; kind?: "RECEIPT" | "INVOICE"; year?: number; bookingId?: string } = {}) => {
+    adminCourtesyDocuments: (token: string, filter: { q?: string; year?: number; bookingId?: string } = {}) => {
       const params = new URLSearchParams();
       if (filter.q?.trim()) params.set("q", filter.q.trim());
-      if (filter.kind) params.set("kind", filter.kind);
       if (filter.year) params.set("year", String(filter.year));
       if (filter.bookingId) params.set("bookingId", filter.bookingId);
       const query = params.toString();
