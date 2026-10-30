@@ -110,6 +110,7 @@ export function SiteFooter() {
             {/* Chi è già dentro non deve vedere "Accedi" (collaudo L, migliorie). */}
             {user ? null : <FooterLink href="/accedi">Accedi</FooterLink>}
             <FooterLink href="/faq">Domande frequenti</FooterLink>
+            <FooterLink href="/problemi-e-rimborsi">Problemi e rimborsi</FooterLink>
             <FooterLink href="/sicurezza">Sicurezza e truffe</FooterLink>
           </YStack>
 

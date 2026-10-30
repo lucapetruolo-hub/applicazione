@@ -16,39 +16,19 @@ const HINT: Record<JobIssueType, string> = {
 };
 
 /**
- * Segnalazione dopo il termine (richiesta di Luca del 30/10/2026): una frase
- * e "Scopri di più" con la spiegazione completa e cosa si può fare con il
- * professionista.
+ * Segnalazione dopo il termine (richieste di Luca del 30/10/2026): una frase
+ * e "Scopri di più" verso la pagina unica /problemi-e-rimborsi, che spiega
+ * perché niente rimborso, cosa fare con il professionista e la garanzia.
  */
-function LateReportInfo({ businessName, paidDirect, hasReview }: { businessName: string; paidDirect: boolean; hasReview: boolean }) {
+function LateReportInfo({ businessName }: { businessName: string }) {
   return (
-    <YStack gap="$1">
-      <Text fontSize={16} color={brand.grafite70}>
-        Sono passati i giorni per un rimborso dal sito, ma puoi ancora scrivere a {businessName}: la segnalazione gli arriva in chat.
-      </Text>
-      <details className="bio-tips">
-        <summary>Scopri di più</summary>
-        <YStack gap="$2" paddingTop="$1">
-          <Text fontSize={13} color={brand.grafite70}>
-            {paidDirect
-              ? "Perché niente rimborso: hai pagato direttamente il professionista, quindi non teniamo soldi e il nostro team non decide sulle segnalazioni."
-              : `Perché niente rimborso: i soldi pagati online arrivano al professionista ${BAD_WORK_REPORT_DAYS} giorni dopo il lavoro, o prima se confermi che è terminato. Da quel momento non li teniamo più fermi e il nostro team non decide sulle segnalazioni.`}
-          </Text>
-          <Text fontSize={13} color={brand.grafite70}>
-            Cosa puoi fare: descrivi il problema e aggiungi le foto. {businessName} le riceve in chat e potete accordarvi, per esempio perché
-            torni a sistemare il lavoro o ti restituisca una parte del prezzo.
-          </Text>
-          <Text fontSize={13} color={brand.grafite70}>
-            La garanzia di legge: il professionista risponde comunque dei difetti del suo lavoro. Conviene segnalarli appena li scopri, perché la
-            legge fissa termini brevi; il messaggio in chat resta scritto, con la data.
-          </Text>
-          <Text fontSize={13} color={brand.grafite70}>
-            Se non vi accordate: chiudi la segnalazione dalla scheda del lavoro{hasReview ? "" : " e lascia la recensione"}. Resta sempre
-            possibile rivolgersi a un organismo di mediazione, a un&apos;associazione dei consumatori o al giudice.
-          </Text>
-        </YStack>
-      </details>
-    </YStack>
+    <Text fontSize={16} color={brand.grafite70}>
+      Sono passati i giorni per un rimborso dal sito, ma puoi ancora scrivere a {businessName}: la segnalazione gli arriva in chat.{" "}
+      {/* In una nuova scheda, per non perdere quanto scritto qui. */}
+      <a href="/problemi-e-rimborsi#dopo-i-7-giorni" target="_blank" rel="noopener" style={{ color: brand.cianografia, fontWeight: 700 }}>
+        Scopri di più
+      </a>
+    </Text>
   );
 }
 
@@ -72,7 +52,6 @@ export function ReportIssueModal({
   onOpenChat,
   assisted = true,
   late = false,
-  paidDirect = false,
   hasReview = false,
 }: {
   businessName: string;
@@ -88,8 +67,6 @@ export function ReportIssueModal({
   assisted?: boolean;
   /** Passato il termine (7 giorni o lavoro confermato): solo "lavoro non andato bene", senza rimborso. */
   late?: boolean;
-  /** Lavoro pagato direttamente al professionista: cambia il perché del "niente rimborso". */
-  paidDirect?: boolean;
   /** Recensione già lasciata (di solito subito dopo "Lavoro terminato"): non la proponiamo di nuovo. */
   hasReview?: boolean;
 }) {
@@ -240,7 +217,7 @@ export function ReportIssueModal({
                 Segnala un problema
               </Text>
               {late ? (
-                <LateReportInfo businessName={businessName} paidDirect={paidDirect} hasReview={hasReview} />
+                <LateReportInfo businessName={businessName} />
               ) : (
                 <Text fontSize={16} color={brand.grafite70}>
                   {!assisted

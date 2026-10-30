@@ -1226,7 +1226,6 @@ export function GuidedRequestCard({
           allowedTypes={booking.issueTypesAllowed}
           assisted={booking.payment?.method !== "DIRECT" && !booking.issueLate}
           late={booking.issueLate}
-          paidDirect={booking.payment?.method === "DIRECT"}
           hasReview={booking.hasReview}
           onClose={() => {
             setShowReportModal(false);
