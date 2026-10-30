@@ -178,7 +178,9 @@ export function ResultsMap({
           tabIndex={0}
           onClick={() => router.push(professionalPath(selected))}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && e.target === e.currentTarget) router.push(professionalPath(selected));
+            if (e.key !== "Enter" || e.target !== e.currentTarget) return;
+            e.preventDefault();
+            router.push(professionalPath(selected));
           }}
         >
           <ProfessionalAvatar imageUrl={selected.imageUrl} categorySlug={selected.categorySlug} size={48} />

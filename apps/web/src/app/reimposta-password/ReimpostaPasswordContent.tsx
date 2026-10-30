@@ -4,12 +4,13 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PASSWORD_CONTAINS_EMAIL_MESSAGE, isMissingRulesProblem, passwordProblem } from "@professionisti/shared";
-import { Button, Icon, Text, YStack, brand } from "@professionisti/ui";
+import { Button, Text, YStack, brand } from "@professionisti/ui";
 import { AuthField } from "@/components/AuthField";
 import { AuthCard, AuthPageBackground } from "@/components/AuthPageBackground";
 import { PASSWORD_RULES_ATTRIBUTE, PasswordRules } from "@/components/PasswordRules";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
+import { PasswordVisibilityToggle } from "@/components/PasswordVisibilityToggle";
 
 /**
  * Link ricevuto via email per reimpostare la password (docs/CHANGELOG.md
@@ -67,14 +68,7 @@ export function ReimpostaPasswordContent() {
             <AuthField
               label="Nuova password"
               rightElement={
-                <Text
-                  cursor="pointer"
-                  onPress={() => setShowPassword((v) => !v)}
-                  accessibilityRole="button"
-                  accessibilityLabel={showPassword ? "Nascondi password" : "Mostra password"}
-                >
-                  <Icon name={showPassword ? "eye-off" : "eye"} size={18} strokeWidth={1.5} color={brand.grafite70} />
-                </Text>
+                <PasswordVisibilityToggle visible={showPassword} onToggle={() => setShowPassword((v) => !v)} />
               }
               value={password}
               onChangeText={setPassword}

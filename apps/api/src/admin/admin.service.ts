@@ -1341,7 +1341,7 @@ export class AdminService {
       include: {
         finalItems: true,
         jobPayment: true,
-        courtesyDocument: { select: { kind: true, number: true, year: true, ownNumber: true } },
+        courtesyDocument: { select: { kind: true, number: true, year: true } },
         professionalProfile: { select: { id: true, userId: true, businessName: true } },
         client: { select: { id: true, name: true, surname: true, deletedAt: true } },
         quote: {
@@ -1419,7 +1419,7 @@ export class AdminService {
             client: { select: { id: true, name: true, surname: true, deletedAt: true } },
             quote: { select: { guidedRequest: { select: { id: true, city: true, description: true, category: { select: { label: true } } } } } },
             jobPayment: { select: { paymentMethod: true, status: true } },
-            courtesyDocument: { select: { kind: true, number: true, year: true, ownNumber: true } },
+            courtesyDocument: { select: { kind: true, number: true, year: true } },
           },
         },
       },

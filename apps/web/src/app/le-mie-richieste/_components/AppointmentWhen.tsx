@@ -41,7 +41,7 @@ export function AppointmentWhen({ booking, moment }: { booking: ClientBooking; m
   return (
     <XStack gap="$3" alignItems="center" opacity={canceled ? 0.6 : 1}>
       <YStack width={64} flexShrink={0} borderRadius={radiusSm} overflow="hidden" borderWidth={1} borderColor={brand.filetto} backgroundColor={brand.calce} alignItems="center" aria-hidden>
-        <Text alignSelf="stretch" textAlign="center" backgroundColor={canceled ? brand.grafite70 : brand.cianografia} color="white" fontSize={12} fontWeight="700" paddingVertical={3} textTransform="uppercase">
+        <Text alignSelf="stretch" textAlign="center" backgroundColor={canceled ? brand.grafite70 : brand.cianografiaPieno} color="white" fontSize={12} fontWeight="700" paddingVertical={3} textTransform="uppercase">
           {formatAppointmentDate(booking.scheduledAt, { weekday: "short" }).replace(".", "")}
         </Text>
         <Text fontSize={26} fontWeight="800" color={brand.grafite} lineHeight={32}>

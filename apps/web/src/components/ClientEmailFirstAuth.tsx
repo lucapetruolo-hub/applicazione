@@ -3,13 +3,14 @@
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { PASSWORD_CONTAINS_EMAIL_MESSAGE, emailStatusSchema, isMissingRulesProblem, passwordProblem, type EmailStatus } from "@professionisti/shared";
-import { Button, Icon, Text, XStack, YStack, brand } from "@professionisti/ui";
+import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { AuthField } from "@/components/AuthField";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { PASSWORD_RULES_ATTRIBUTE, PasswordMatchHint, PasswordRules } from "@/components/PasswordRules";
 import { TURNSTILE_PENDING_MESSAGE, TurnstileWidget, isTurnstileEnabled } from "@/components/TurnstileWidget";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
+import { PasswordVisibilityToggle } from "@/components/PasswordVisibilityToggle";
 
 type Step = "email" | EmailStatus;
 
@@ -50,13 +51,6 @@ function EmailPill({ email, onEdit }: { email: string; onEdit: () => void }) {
   );
 }
 
-function PasswordToggle({ visible, onToggle }: { visible: boolean; onToggle: () => void }) {
-  return (
-    <Text cursor="pointer" onPress={onToggle} accessibilityRole="button" accessibilityLabel={visible ? "Nascondi password" : "Mostra password"}>
-      <Icon name={visible ? "eye-off" : "eye"} size={18} strokeWidth={1.5} color={brand.grafite70} />
-    </Text>
-  );
-}
 
 export type ClientEmailFirstAuthTitles = Record<Step, { eyebrow: string; title: string }>;
 
@@ -284,7 +278,7 @@ export function ClientEmailFirstAuth({
           <input type="email" name="email" autoComplete="username" value={email} readOnly hidden />
           <AuthField
             label={isNew ? "Scegli una password" : "Password"}
-            rightElement={<PasswordToggle visible={showPassword} onToggle={() => setShowPassword((v) => !v)} />}
+            rightElement={<PasswordVisibilityToggle visible={showPassword} onToggle={() => setShowPassword((v) => !v)} />}
             value={password}
             onChangeText={setPassword}
             placeholder="Password"
@@ -302,7 +296,7 @@ export function ClientEmailFirstAuth({
           {isNew ? (
             <AuthField
               label="Conferma password"
-              rightElement={<PasswordToggle visible={showConfirmPassword} onToggle={() => setShowConfirmPassword((v) => !v)} />}
+              rightElement={<PasswordVisibilityToggle visible={showConfirmPassword} onToggle={() => setShowConfirmPassword((v) => !v)} />}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               placeholder="Ripeti la password"

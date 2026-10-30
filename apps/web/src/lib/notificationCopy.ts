@@ -193,7 +193,14 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   }
   if (type === "QUOTE_ACCEPTED") {
     // Fattura chiesta dal cliente, detta subito (docs/CHANGELOG.md §378).
-    return { icon: "🥳", message: `${text(data.clientName) ?? "Il cliente"} ha accettato il tuo preventivo${jobSuffix}${data.invoiceRequested === true ? " e ti chiede la fattura" : ""}` };
+    return {
+      icon: "🥳",
+      message: `${text(data.clientName) ?? "Il cliente"} ha accettato il tuo preventivo${jobSuffix}${data.invoiceRequested === true ? ` e ti chiede ${data.receipt === true ? "la ricevuta" : "la fattura"}` : ""}`,
+    };
+  }
+  if (type === "JOB_INVOICE_REQUESTED" && data.receipt === true) {
+    // Chi lavora senza partita IVA fa una ricevuta (collaudo C-01).
+    return { icon: "🧾", message: `Un cliente ti chiede la ricevuta${jobSuffix}: la prepari dalla scheda del lavoro dopo "Lavoro terminato".` };
   }
   if (type === "NEW_LEAD" && text(data.category)) {
     const where = text(data.city) ? ` a ${text(data.city)}` : "";

@@ -709,7 +709,10 @@ export function ProfessionalDetailContent({
                     justifyContent="center"
                     opacity={agendaCanGoBack ? 1 : 0.3}
                     cursor={agendaCanGoBack ? "pointer" : undefined}
-                    accessibilityRole={agendaCanGoBack ? "button" : undefined}
+                    // Sempre un pulsante, spento all'inizio: un riquadro con un nome e senza ruolo non si legge (collaudo L-11).
+                    accessibilityRole="button"
+                    aria-disabled={!agendaCanGoBack}
+                    tabIndex={agendaCanGoBack ? undefined : -1}
                     accessibilityLabel="Giorni precedenti"
                     onPress={agendaCanGoBack ? () => setAgendaWindowOffset(Math.max(0, agendaOffset - agendaVisibleDays)) : undefined}
                   >
@@ -914,7 +917,7 @@ export function ProfessionalDetailContent({
             </Text>
             <Text color={brand.grafite70}>Puoi chiedere un preventivo ad altri professionisti della stessa categoria nella tua zona.</Text>
             <Link href={`/cerca/${professional.categorySlug}`} style={{ textDecoration: "none", alignSelf: "flex-start", pointerEvents: preview ? "none" : undefined }} tabIndex={preview ? -1 : undefined}>
-              <Button variant="secondary">{`Cerca altri: ${professional.categoryLabel}`}</Button>
+              <Button tabIndex={-1} variant="secondary">{`Cerca altri: ${professional.categoryLabel}`}</Button>
             </Link>
           </Surface>
         )}

@@ -98,7 +98,7 @@ export default function DashboardTodayPage() {
             Accedi come professionista
           </Text>
           <Link href="/accedi?redirect=/dashboard" style={{ textDecoration: "none" }}>
-            <Button variant="primary">Accedi</Button>
+            <Button tabIndex={-1} variant="primary">Accedi</Button>
           </Link>
         </YStack>
       </YStack>
@@ -124,7 +124,7 @@ export default function DashboardTodayPage() {
             Serve un profilo completo (nome attività, categoria, città) per comparire in ricerca e ricevere richieste.
           </Text>
           <Link href="/dashboard/profilo" style={{ textDecoration: "none" }}>
-            <Button variant="primary">Completa profilo</Button>
+            <Button tabIndex={-1} variant="primary">Completa profilo</Button>
           </Link>
         </YStack>
       </YStack>

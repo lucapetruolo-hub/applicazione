@@ -4,13 +4,14 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { BRAND, emailPasswordSchema, safeInternalPath } from "@professionisti/shared";
-import { Button, Icon, Text, YStack, brand } from "@professionisti/ui";
+import { Button, Text, YStack, brand } from "@professionisti/ui";
 import { AuthField } from "@/components/AuthField";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { AuthCard, AuthPageBackground } from "@/components/AuthPageBackground";
 import { AuthStepHeader } from "@/components/AuthStepHeader";
+import { PasswordVisibilityToggle } from "@/components/PasswordVisibilityToggle";
 
 export default function AccediPage() {
   return (
@@ -144,14 +145,7 @@ function AccediForm() {
           <AuthField
             label="Password"
             rightElement={
-              <Text
-                cursor="pointer"
-                onPress={() => setShowPassword((v) => !v)}
-                accessibilityRole="button"
-                accessibilityLabel={showPassword ? "Nascondi password" : "Mostra password"}
-              >
-                <Icon name={showPassword ? "eye-off" : "eye"} size={18} strokeWidth={1.5} color={brand.grafite70} />
-              </Text>
+              <PasswordVisibilityToggle visible={showPassword} onToggle={() => setShowPassword((v) => !v)} />
             }
             value={password}
             onChangeText={setPassword}

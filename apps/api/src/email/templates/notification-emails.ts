@@ -261,7 +261,7 @@ const BUILDERS: Record<string, Builder> = {
       ...(clientName ? [{ label: "Cliente", value: clientName }] : []),
       ...(clientPhone ? [{ label: "Telefono", value: clientPhone }] : []),
       ...(clientAddress ? [{ label: "Indirizzo", value: clientAddress }] : []),
-      ...(invoiceLines.length > 0 ? [{ label: "Fattura a", value: invoiceLines.join("\n"), long: true }] : []),
+      ...(invoiceLines.length > 0 ? [{ label: payload.receipt === true ? "Ricevuta a" : "Fattura a", value: invoiceLines.join("\n"), long: true }] : []),
     ];
     return {
       kind: "notification",
@@ -273,7 +273,9 @@ const BUILDERS: Record<string, Builder> = {
         clientName || clientPhone || clientAddress
           ? "Qui sotto trovi i dati del cliente e dell'appuntamento, già nella tua agenda."
           : "Nella richiesta ora trovi i suoi contatti e l'indirizzo dell'intervento. L'appuntamento è già nella tua agenda.",
-        ...(payload.invoiceRequested === true ? ["**Il cliente ti chiede la fattura.** I dati sono qui sotto e nella scheda del lavoro."] : []),
+        ...(payload.invoiceRequested === true
+          ? [`**Il cliente ti chiede ${payload.receipt === true ? "la ricevuta" : "la fattura"}.** I dati sono qui sotto e nella scheda del lavoro.`]
+          : []),
       ],
       details: details.length > 0 ? details : undefined,
       cta: proRequests("Apri il lavoro"),
@@ -1136,20 +1138,25 @@ const BUILDERS: Record<string, Builder> = {
     cta: { label: "Vedi i numeri", url: `${frontendUrl()}/admin/numeri-professionisti` },
   }),
   // Documenti contabili (docs/CHANGELOG.md §378).
+  // Chi lavora senza partita IVA fa una ricevuta (collaudo C-01): la prepara dal sito a lavoro terminato.
   JOB_INVOICE_REQUESTED: (payload, ctx) => {
     const invoiceLines = Array.isArray(payload.invoiceLines) ? payload.invoiceLines.filter((line): line is string => typeof line === "string") : [];
+    const receipt = payload.receipt === true;
+    const what = receipt ? "la ricevuta" : "la fattura";
     return {
       kind: "notification",
-      subject: payload.changed === true ? "Il cliente ha cambiato i dati per la fattura" : "Il cliente ti chiede la fattura",
+      subject: payload.changed === true ? `Il cliente ha cambiato i dati per ${what}` : `Il cliente ti chiede ${what}`,
       greeting: ctx.name,
-      title: payload.changed === true ? "Dati per la fattura cambiati" : "Ti chiede la fattura",
+      title: payload.changed === true ? `Dati per ${what} cambiati` : `Ti chiede ${what}`,
       paragraphs: [
         payload.changed === true
-          ? `Il cliente ha cambiato i dati per la fattura del lavoro **${job(ctx)}**.`
-          : `Il cliente ti chiede la fattura per il lavoro **${job(ctx)}**.`,
-        "La fai tu, col tuo programma delle fatture: qui sotto i dati da copiare.",
+          ? `Il cliente ha cambiato i dati per ${what} del lavoro **${job(ctx)}**.`
+          : `Il cliente ti chiede ${what} per il lavoro **${job(ctx)}**.`,
+        receipt
+          ? "La ricevuta te la prepariamo noi dopo \"Lavoro terminato\": tu la stampi, la firmi e la dai al cliente. Qui sotto i suoi dati."
+          : "La fai tu, col tuo programma delle fatture: qui sotto i dati da copiare.",
       ],
-      details: invoiceLines.length > 0 ? [{ label: "Fattura a", value: invoiceLines.join("\n"), long: true }] : undefined,
+      details: invoiceLines.length > 0 ? [{ label: receipt ? "Ricevuta a" : "Fattura a", value: invoiceLines.join("\n"), long: true }] : undefined,
       cta: proRequests("Apri il lavoro"),
     };
   },

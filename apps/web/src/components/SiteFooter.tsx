@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { BRAND, COMPANY, PROFESSIONAL_CATEGORIES, companyDataReady } from "@professionisti/shared";
 import { Icon, Logo, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { reopenCookieChoice } from "@/lib/cookieConsent";
+import { useAuth } from "@/lib/AuthContext";
 
 // Prima i quattro mestieri del lancio (CLAUDE.md §7), poi gli altri fino a
 // otto: Falegname restava fuori (collaudo N-13,
@@ -54,6 +55,7 @@ function ShortFooterLink({ href, children }: { href: string; children: string })
 
 export function SiteFooter() {
   const pathname = usePathname();
+  const { user } = useAuth();
   // Dentro le aree riservate il piede completo (quattro colonne, "Iscriviti
   // gratis", "Accedi") non serve a chi è già dentro e su telefono era più
   // lungo della chat (docs/CHANGELOG.md §349): resta una riga sola.
@@ -116,7 +118,8 @@ export function SiteFooter() {
             <FooterLink href="/#quanto-costa">Quanto costa</FooterLink>
             {/* Pagine dei prezzi per mestiere (collaudo N-05). */}
             <FooterLink href="/prezzi">Prezzi per mestiere</FooterLink>
-            <FooterLink href="/accedi">Accedi</FooterLink>
+            {/* Chi è già dentro non deve vedere "Accedi" (collaudo L, migliorie). */}
+            {user ? null : <FooterLink href="/accedi">Accedi</FooterLink>}
             <FooterLink href="/faq">Domande frequenti</FooterLink>
             <FooterLink href="/sicurezza">Sicurezza e truffe</FooterLink>
           </YStack>

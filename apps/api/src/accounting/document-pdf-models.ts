@@ -9,6 +9,8 @@ import {
   platformInvoiceOriginalNote,
   platformInvoiceSubtitle,
   platformInvoiceTechnicalNotes,
+  statementFeeInvoiceNote,
+  statementOnlineNote,
   type CourtesyCopyView,
   type CourtesyYearRow,
   type CourtesyYearSummary,
@@ -116,18 +118,16 @@ export function statementPdfModel(statement: MonthlyStatement, who: string | nul
       ],
       rows: statement.rows.map((row) => ({
         cells: [shortDate(row.date), row.job, amount(row.onlineEurCents), amount(row.directEurCents), amount(row.feesEurCents), row.payoutEurCents !== null ? eur(row.payoutEurCents) : "—"],
-        details: [null, row.client, null, null, null, row.payoutNote],
+        details: [null, row.client, row.refundsEurCents > 0 ? `Rimborso −${eur(row.refundsEurCents)}` : null, null, null, row.payoutNote],
       })),
     });
   }
+  const onlineNote = statementOnlineNote(statement);
+  if (onlineNote) blocks.push({ type: "text", muted: true, lines: [onlineNote] });
   if (statement.blockedEurCents > 0) {
     blocks.push({ type: "note", tone: "sand", lines: [`Ancora bloccati: ${eur(statement.blockedEurCents)}. Partono quando i clienti confermano i lavori.`] });
   }
-  const invoiceLine = statement.feeInvoice
-    ? `Le trattenute del mese sono nella fattura ${statement.feeInvoice.number}.`
-    : statement.totals.feesEurCents !== 0
-      ? "La fattura delle trattenute arriva il 1° del mese dopo."
-      : null;
+  const invoiceLine = statementFeeInvoiceNote(statement);
   blocks.push({ type: "note", tone: "green", lines: [invoiceLine, statement.documentHint].filter((line): line is string => !!line) });
 
   return {
@@ -137,9 +137,8 @@ export function statementPdfModel(statement: MonthlyStatement, who: string | nul
   };
 }
 
-/** Copia di cortesia della fattura, o ricevuta per prestazione occasionale, da dare al cliente. */
+/** Ricevuta per prestazione occasionale da dare al cliente (docs/changelog/2026-10-30-documenti-snelli.md). */
 export function courtesyPdfModel(copy: CourtesyCopyView, audience: "professional" | "client" = "professional"): PdfDocumentModel {
-  const receipt = copy.kind === "RECEIPT";
   const total = copy.totalEurCents !== null ? eur(copy.totalEurCents) : "______";
   const blocks: PdfBlock[] = [
     {
@@ -153,31 +152,37 @@ export function courtesyPdfModel(copy: CourtesyCopyView, audience: "professional
       type: "parties",
       parties: [
         { label: "Da", ...copy.issuer },
-        { label: receipt ? "Ricevuto da" : "Per", ...copy.customer },
+        { label: "Ricevuto da", ...copy.customer },
       ],
     },
   ];
-  if (copy.vat && copy.totalEurCents !== null) {
-    blocks.push({ type: "rows", rows: [{ label: copy.description, value: eur(copy.vat.taxableEurCents) }] });
+  const lineValue = (cents: number) => (copy.totalEurCents !== null ? eur(cents) : "______");
+  blocks.push({ type: "rows", rows: copy.lines.map((line) => ({ label: line.description, value: lineValue(line.amountEurCents) })) });
+  const withholding = copy.withholding?.applies ? copy.withholding : null;
+  if (withholding) {
+    // Ricevuta a una partita IVA con la ritenuta (collaudo C-04): lordo, ritenuta e netto.
     blocks.push({
       type: "totals",
       rows: [
-        { label: "Imponibile", value: eur(copy.vat.taxableEurCents) },
-        { label: `IVA ${copy.vat.ratePercent}%`, value: eur(copy.vat.vatEurCents) },
+        { label: "Compenso lordo", value: total },
+        { label: "Ritenuta d'acconto 20%", value: `−${eur(withholding.amountEurCents)}` },
       ],
-      total: { label: "Totale", value: total, detail: copy.paidHow },
+      total: { label: "Netto pagato", value: eur(withholding.netEurCents), detail: copy.paidHow },
     });
   } else {
-    blocks.push({ type: "rows", rows: [{ label: copy.description, value: total }] });
     blocks.push({ type: "totals", rows: [], total: { label: "Totale", value: total, detail: copy.paidHow } });
   }
   if (copy.notes.length > 0) blocks.push({ type: "text", muted: true, lines: copy.notes });
   // Al cliente (§386) la ricevuta è una copia: l'originale firmato glielo dà il professionista.
-  if (receipt && audience === "client") blocks.push({ type: "text", muted: true, lines: ["Copia: la ricevuta originale firmata, con la marca da bollo quando serve, te la dà il professionista."] });
-  else if (receipt) blocks.push({ type: "signature", label: "Firma" });
-  else blocks.push({ type: "text", muted: true, lines: ["Copia di cortesia: il documento valido è la fattura elettronica inviata all'Agenzia delle Entrate."] });
+  if (audience === "client") blocks.push({ type: "text", muted: true, lines: ["Copia: la ricevuta originale firmata, con la marca da bollo quando serve, te la dà il professionista."] });
+  else blocks.push({ type: "signature", label: "Firma" });
 
-  return { title: receipt ? (audience === "client" ? "Copia della ricevuta per prestazione occasionale" : "Ricevuta per prestazione occasionale") : "Copia di cortesia della fattura", blocks };
+  return {
+    title: audience === "client" ? "Copia della ricevuta per prestazione occasionale" : "Ricevuta per prestazione occasionale",
+    blocks,
+    // Lo emette il professionista: in alto il suo nome, non il sito (G-11).
+    issuedBy: copy.issuer.name || null,
+  };
 }
 
 /** Riepilogo DAC7 di un anno: quello che comunichiamo al fisco. */
@@ -220,29 +225,27 @@ export function dac7PdfModel(summary: Dac7YearSummary, maskedIban: string | null
 }
 
 /**
- * Riepilogo dell'anno dei documenti dati ai clienti, per il commercialista
- * (docs/CHANGELOG.md §382): il totale delle ricevute va nella dichiarazione
- * dei redditi; le copie delle fatture servono solo a controllare.
+ * Riepilogo dell'anno delle ricevute, per il commercialista
+ * (docs/CHANGELOG.md §382): il totale va nella dichiarazione dei redditi.
  */
 export function courtesyYearPdfModel(summary: CourtesyYearSummary, now: Date = new Date()): PdfDocumentModel {
   const receipts = courtesyYearPart(summary.receipts);
-  const invoices = courtesyYearPart(summary.invoices);
-  const count = summary.receipts.length + summary.invoices.length;
   const blocks: PdfBlock[] = [
     {
       type: "tiles",
       tiles: [
-        ...(summary.receipts.length > 0 ? [{ label: "Ricevute", value: eur(receipts.totalEurCents) }] : []),
-        ...(summary.invoices.length > 0 ? [{ label: "Fatture", value: eur(invoices.totalEurCents) }] : []),
-        { label: "Documenti", value: String(count) },
+        { label: "Ricevute", value: eur(receipts.totalEurCents) },
+        { label: "Documenti", value: String(summary.receipts.length) },
       ],
     },
   ];
-  // Prima le cose da sistemare: un documento da rifare o senza importo.
-  const missing = receipts.missingAmounts + invoices.missingAmounts;
-  const changed = receipts.amountChanged + invoices.amountChanged;
+  // Prima le cose da sistemare: una ricevuta da rifare o senza importo.
+  const missing = receipts.missingAmounts;
+  const changed = receipts.amountChanged;
   const warnings = [
-    changed > 0 ? `${changed === 1 ? "1 documento ha" : `${changed} documenti hanno`} l'importo cambiato dopo il PDF: ${changed === 1 ? "scaricalo di nuovo e dallo al cliente al posto di quello vecchio" : "scaricali di nuovo e dalli ai clienti al posto di quelli vecchi"}.` : null,
+    changed > 0
+      ? `${changed === 1 ? "1 documento ha" : `${changed} documenti hanno`} l'importo cambiato dopo il PDF dato al cliente (per esempio un rimborso): nella tabella c'è l'importo del documento e, sotto, quello di oggi.`
+      : null,
     missing > 0 ? `${missing === 1 ? "1 documento è" : `${missing} documenti sono`} senza importo: il lavoro non ha ancora il prezzo finale.` : null,
   ].filter((line): line is string => !!line);
   if (warnings.length > 0) blocks.push({ type: "note", tone: "sand", lines: warnings });
@@ -260,10 +263,10 @@ export function courtesyYearPdfModel(summary: CourtesyYearSummary, now: Date = n
       cells: [row.number ?? "—", accountingShortDate(row.date), row.customerName ?? "—", row.jobLabel ?? "Lavoro", row.totalEurCents !== null ? eur(row.totalEurCents) : "—"],
       details: [
         null,
-        null,
-        row.customerHasVatNumber ? "Con partita IVA" : null,
-        row.amountChanged ? "Importo cambiato dopo il PDF" : null,
-        row.vatEurCents !== null ? `di cui IVA ${eur(row.vatEurCents)}` : row.stampDuty ? "Bollo da 2 €" : null,
+        row.paidAt && accountingShortDate(row.paidAt) !== accountingShortDate(row.date) ? `pagato il ${accountingShortDate(row.paidAt)}` : null,
+        [row.customerTaxId, row.customerHasVatNumber && !row.customerTaxId ? "Con partita IVA" : null].filter(Boolean).join(" · ") || null,
+        row.amountChanged ? `Oggi ${row.currentEurCents !== null ? eur(row.currentEurCents) : "senza importo"}: serve un nuovo documento` : null,
+        row.withholdingEurCents ? `ritenuta ${eur(row.withholdingEurCents)}` : row.stampDuty ? "Bollo da 2 €" : null,
       ],
     })),
   });
@@ -271,8 +274,8 @@ export function courtesyYearPdfModel(summary: CourtesyYearSummary, now: Date = n
   if (summary.receipts.length > 0) {
     const lines = [
       "Il totale delle ricevute va nella dichiarazione dei redditi: sono i compensi delle prestazioni occasionali dell'anno.",
-      receipts.withVatNumber > 0
-        ? `${receipts.withVatNumber === 1 ? "1 ricevuta è a un cliente" : `${receipts.withVatNumber} ricevute sono a clienti`} con partita IVA: di solito trattengono il 20% di ritenuta d'acconto e la versano per te.`
+      receipts.withholdingEurCents > 0
+        ? `Ritenute d'acconto trattenute dai clienti con partita IVA: ${eur(receipts.withholdingEurCents)}. Le versano loro per te e a inizio anno ti mandano la Certificazione Unica.`
         : null,
       receipts.stampDuty > 0 ? `${receipts.stampDuty === 1 ? "1 ricevuta supera" : `${receipts.stampDuty} ricevute superano`} 77,47 €: sull'originale va la marca da bollo da 2 €.` : null,
     ].filter((line): line is string => !!line);
@@ -283,29 +286,17 @@ export function courtesyYearPdfModel(summary: CourtesyYearSummary, now: Date = n
       { type: "note", tone: "green", lines },
     );
   }
-  if (summary.invoices.length > 0) {
-    blocks.push(
-      { type: "heading", text: "Copie delle fatture" },
-      tableOf(summary.invoices),
-      {
-        type: "totals",
-        rows: invoices.vatEurCents > 0 ? [{ label: "di cui IVA", value: eur(invoices.vatEurCents) }] : [],
-        total: { label: "Totale fatture", value: eur(invoices.totalEurCents) },
-      },
-      { type: "note", tone: "green", lines: ["Le fatture valide sono quelle del tuo programma di fatturazione: questo elenco serve a controllare che ci siano tutte."] },
-    );
-  }
   blocks.push({
     type: "text",
     muted: true,
     lines: [
-      `Preparato il ${accountingDateLabel(now.toISOString())} con i documenti fatti sul sito. Gli importi sono quelli di oggi, dopo eventuali rimborsi; restano fuori i lavori annullati.`,
-      "Non è un documento fiscale: valgono le ricevute e le fatture che hai dato ai clienti.",
+      `Preparato il ${accountingDateLabel(now.toISOString())} con le ricevute fatte sul sito per i lavori terminati. Gli importi sono quelli delle ricevute date ai clienti.`,
+      "Non è un documento fiscale: valgono le ricevute firmate che hai dato ai clienti.",
     ],
   });
   return {
-    title: `Documenti dati ai clienti nel ${summary.year}`,
-    subtitle: `${summary.who ? `${summary.who}. ` : ""}Ricevute e copie delle fatture, da dare al commercialista.`,
+    title: `Ricevute del ${summary.year}`,
+    subtitle: `${summary.who ? `${summary.who}. ` : ""}Ricevute per prestazione occasionale, da dare al commercialista.`,
     blocks,
   };
 }
@@ -318,7 +309,7 @@ function accountingShortDate(iso: string): string {
 /** Nome del file: "fattura-COM-2026-0017.pdf", "estratto-2026-09.pdf". */
 /** Nome del file della copia di cortesia: "ricevuta-4-2026", "fattura-cortesia-12-A". */
 export function courtesyPdfBaseName(copy: CourtesyCopyView): string {
-  return copy.kind === "RECEIPT" ? `ricevuta-${copy.number ?? ""}` : `fattura-cortesia-${copy.number ?? copy.date.slice(0, 10)}`;
+  return `ricevuta-${copy.number ?? ""}`;
 }
 
 export function pdfFileName(base: string): string {

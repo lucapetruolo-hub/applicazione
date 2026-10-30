@@ -32,6 +32,7 @@ import { ClientEmailFirstAuth } from "@/components/ClientEmailFirstAuth";
 import { AuthPageBackground } from "@/components/AuthPageBackground";
 import { TURNSTILE_PENDING_MESSAGE, TurnstileWidget, isTurnstileEnabled } from "@/components/TurnstileWidget";
 import { AuthStepHeader } from "@/components/AuthStepHeader";
+import { PasswordVisibilityToggle } from "@/components/PasswordVisibilityToggle";
 
 export default function RegistratiPage() {
   return (
@@ -723,14 +724,7 @@ function RegistratiForm() {
           <AuthField
             label="Password"
             rightElement={
-              <Text
-                cursor="pointer"
-                onPress={() => setShowPassword((v) => !v)}
-                accessibilityRole="button"
-                accessibilityLabel={showPassword ? "Nascondi password" : "Mostra password"}
-              >
-                <Icon name={showPassword ? "eye-off" : "eye"} size={18} strokeWidth={1.5} color={brand.grafite70} />
-              </Text>
+              <PasswordVisibilityToggle visible={showPassword} onToggle={() => setShowPassword((v) => !v)} />
             }
             value={password}
             onChangeText={setPassword}
@@ -753,14 +747,7 @@ function RegistratiForm() {
           <AuthField
             label="Conferma password"
             rightElement={
-              <Text
-                cursor="pointer"
-                onPress={() => setShowConfirmPassword((v) => !v)}
-                accessibilityRole="button"
-                accessibilityLabel={showConfirmPassword ? "Nascondi password" : "Mostra password"}
-              >
-                <Icon name={showConfirmPassword ? "eye-off" : "eye"} size={18} strokeWidth={1.5} color={brand.grafite70} />
-              </Text>
+              <PasswordVisibilityToggle visible={showConfirmPassword} onToggle={() => setShowConfirmPassword((v) => !v)} />
             }
             value={confirmPassword}
             onChangeText={setConfirmPassword}

@@ -2,6 +2,7 @@ import { z } from "zod";
 import "./zod";
 import { isValidCodiceFiscale, isValidPartitaIva } from "./fiscalValidation";
 import type { ProfessionalCategorySlug } from "./categories";
+import { formatEurCents } from "./professionals";
 import { FOUNDER_FREE_MONTHS, TRIAL_DAYS, subscriptionTierInfo, type MySubscription } from "./plans";
 
 /**
@@ -158,7 +159,8 @@ export function clientInvoiceLines(view: ClientInvoiceRequestView): string[] {
   return [
     view.name,
     view.kind === "VAT" ? `P.IVA ${view.vatNumber ?? ""}` : null,
-    view.taxCode ? `Codice fiscale ${view.taxCode}` : null,
+    // A una partita IVA solo il codice fiscale della ditta (11 cifre), mai quello di una persona (collaudo G-06).
+    view.taxCode && (view.kind === "PERSON" || /^\d{11}$/.test(view.taxCode)) ? `Codice fiscale ${view.taxCode}` : null,
     [[view.street, view.houseNumber].filter(Boolean).join(" "), [view.postalCode, view.city, view.province ? `(${view.province})` : null].filter(Boolean).join(" ")].join(", "),
     view.sdiRecipientCode ? `Codice destinatario ${view.sdiRecipientCode}` : view.pecEmail ? `PEC ${view.pecEmail}` : null,
   ].filter((line): line is string => !!line);
@@ -318,19 +320,52 @@ export type MonthlyStatementRow = {
   feesEurCents: number;
   payoutEurCents: number | null;
   payoutNote: string;
+  /** Rimborsato al cliente nel mese, anche per una contestazione in banca persa (collaudo G-12). */
+  refundsEurCents: number;
+  /** Contestazione in banca aperta: il pagamento è fuori dai totali finché la banca non decide (G-15). */
+  disputed: boolean;
 };
 
 export type MonthlyStatement = {
   month: string;
   monthLabel: string;
-  totals: { onlineEurCents: number; directEurCents: number; feesEurCents: number; payoutsArrivedEurCents: number };
+  /**
+   * `onlineEurCents` è già senza i rimborsi del mese (`refundsEurCents`) e
+   * senza i pagamenti contestati in banca (`disputedEurCents`), collaudo G-12 e G-15.
+   */
+  totals: { onlineEurCents: number; directEurCents: number; feesEurCents: number; payoutsArrivedEurCents: number; refundsEurCents: number; disputedEurCents: number };
   rows: MonthlyStatementRow[];
-  /** Soldi ancora bloccati in attesa della conferma dei clienti, per questi lavori. */
+  /** Soldi ancora bloccati in attesa della conferma dei clienti: la stessa cifra di "Pagamenti online" (G-14), senza i contestati. */
   blockedEurCents: number;
   feeInvoice: { id: string; number: string } | null;
+  /** Le nostre fatture delle trattenute sono partite per questo mese (dati della società e data di partenza in Admin → Finanza). */
+  feeInvoiceExpected: boolean;
   /** Il documento che il professionista dà al cliente per ogni pagamento. */
   documentHint: string;
 };
+
+/** La riga sotto i totali che spiega cosa resta fuori da "Pagato online" (collaudo G-12, G-15). */
+export function statementOnlineNote(statement: Pick<MonthlyStatement, "totals">): string | null {
+  const eur = formatEurCents;
+  const parts = [
+    statement.totals.refundsEurCents > 0 ? `i rimborsi ai clienti (${eur(statement.totals.refundsEurCents)})` : null,
+    statement.totals.disputedEurCents > 0 ? `i pagamenti contestati in banca (${eur(statement.totals.disputedEurCents)}), che contano solo se la banca ti dà ragione` : null,
+  ].filter((part): part is string => !!part);
+  return parts.length > 0 ? `"Pagato online" è già senza ${parts.join(" e senza ")}.` : null;
+}
+
+/**
+ * La riga sulla fattura delle trattenute in fondo all'estratto (collaudo
+ * G-16): prima che le nostre fatture partano non si promette una fattura
+ * che non arriva.
+ */
+export function statementFeeInvoiceNote(statement: Pick<MonthlyStatement, "feeInvoice" | "feeInvoiceExpected" | "totals">): string | null {
+  if (statement.feeInvoice) return `Le trattenute del mese sono nella fattura ${statement.feeInvoice.number}.`;
+  if (statement.totals.feesEurCents === 0) return null;
+  return statement.feeInvoiceExpected
+    ? "La fattura delle trattenute arriva il 1° del mese dopo."
+    : "Per questo mese non arriva una nostra fattura delle trattenute: le fatture partono con l'apertura del sito. Le trattenute sono tutte in questo estratto.";
+}
 
 /** Il documento del lavoro che il professionista dà al cliente, per tipo. */
 export function clientDocumentHint(entityType: string | null | undefined): string {
@@ -374,10 +409,26 @@ export function statementCsv(rows: StatementCsvRow[]): string {
 
 // --- Pagina "Fatture e documenti" ----------------------------------------
 
+export type MissingClientDocument = {
+  bookingId: string;
+  /** Giorno del lavoro terminato. */
+  date: string;
+  jobLabel: string | null;
+  customerName: string | null;
+  amountEurCents: number;
+};
+
 export type DocumentsOverview = {
   invoices: PlatformInvoiceSummary[];
   /** Ricevute e copie di cortesia date ai clienti, dalla più recente (§381). */
   clientDocuments: CourtesyDocumentSummary[];
+  /**
+   * Lavori terminati pagati online senza la ricevuta scaricata, solo per chi
+   * lavora senza partita IVA (docs/changelog/2026-10-30-documenti-migliorie.md).
+   */
+  missingDocuments: MissingClientDocument[];
+  /** Lavora senza partita IVA: le ricevute ai clienti le prepara qui (docs/changelog/2026-10-30-documenti-snelli.md). */
+  receipts: boolean;
   /** Mesi con un estratto (AAAA-MM), dal più recente. */
   months: string[];
   /** Le fatture partono solo con i dati della nostra società (Admin → Finanza). */
@@ -490,53 +541,77 @@ export type PlatformInvoiceAdminRow = PlatformInvoiceSummary & {
   hasXml: boolean;
 };
 
-// --- Copia di cortesia del documento del lavoro ---------------------------------
-// Decisione dell'utente del 27/10/2026: la prepariamo noi come cortesia, il
-// documento valido lo emette il professionista (fattura elettronica dal suo
-// programma, o ricevuta per prestazione occasionale firmata). Non la mandiamo
-// mai all'Agenzia delle Entrate.
+// --- Ricevuta per prestazione occasionale --------------------------------------
+// Decisione dell'utente del 27/10/2026: la prepariamo noi, il documento valido
+// è quello firmato dal professionista. Non la mandiamo mai all'Agenzia delle
+// Entrate. Dal 30/10/2026 solo per chi lavora senza partita IVA: chi ce l'ha
+// fa la fattura elettronica col suo programma, che gli dà già il PDF, e qui
+// trova solo i dati del cliente da copiare
+// (docs/changelog/2026-10-30-documenti-snelli.md).
 
 export type CourtesyCopyView = {
-  /** Fattura per chi ha la partita IVA, ricevuta per prestazione occasionale per il privato. */
-  kind: "INVOICE" | "RECEIPT";
+  kind: "RECEIPT";
   issuer: InvoiceParty;
   customer: InvoiceParty;
+  /** Il giorno del pagamento, o del lavoro terminato. */
   date: string;
-  description: string;
+  /** Le voci del lavoro terminato (B-03, C-18). */
+  lines: { description: string; amountEurCents: number }[];
   /** null se l'importo finale non è noto (si scrive a mano). */
   totalEurCents: number | null;
-  /** Solo per chi applica l'IVA: scorporo al 22%. */
-  vat: { taxableEurCents: number; vatEurCents: number; ratePercent: number } | null;
+  /**
+   * Ricevuta a una partita IVA (C-04): se il cliente trattiene la ritenuta
+   * d'acconto del 20%, quanto trattiene e quanto paga davvero.
+   */
+  withholding: { applies: boolean; amountEurCents: number; netEurCents: number } | null;
   paidHow: string | null;
-  /** Righe da riportare nel documento (regime forfettario, marca da bollo, ritenuta). */
+  /** Righe da riportare nel documento (prestazione occasionale, fuori campo IVA, marca da bollo). */
   notes: string[];
-  /** Il cliente ha chiesto la fattura con i suoi dati. */
+  /** Consigli solo per il professionista, sullo schermo e mai nel PDF (C-04). */
+  hints: string[];
+  /** Il cliente ha chiesto la ricevuta con i suoi dati. */
   invoiceRequested: boolean;
   /**
-   * Numero del documento (docs/CHANGELOG.md §379): per la ricevuta il nostro
-   * progressivo dell'anno ("4/2026"), per la fattura quello che il
-   * professionista ha scritto (null finché non lo scrive).
+   * Senza richiesta del cliente il professionista scrive (o corregge) nome e
+   * codice fiscale del cliente (C-05, G-07): i valori di partenza sono qui.
    */
+  customerFields: { name: string; taxCode: string } | null;
+  /** Il nostro progressivo dell'anno ("4/2026", docs/CHANGELOG.md §379). */
   number: string | null;
+  /** Cosa manca prima di scaricare il PDF: vuoto se è pronto. */
+  missing: string[];
   /** Importo sull'ultimo PDF scaricato, null se non l'ha mai scaricato: se è diverso da oggi va rifatto (§381). */
   pdfTotalEurCents?: number | null;
 };
 
-/** Numero della fattura scritto dal professionista sulla copia di cortesia (vuoto per toglierlo). */
-export const courtesyNumberSchema = z.object({
-  number: z.string().trim().max(30, "Il numero può avere al massimo 30 caratteri.").optional(),
+/** Ritenuta d'acconto sulle ricevute a una partita IVA (C-04). */
+export const WITHHOLDING_RATE_PERCENT = 20;
+
+/**
+ * Cosa il professionista scrive sulla ricevuta prima di scaricarla (collaudo
+ * del 29/10/2026): nome e codice fiscale del cliente se non li ha dati lui,
+ * ritenuta. Un campo vuoto toglie il valore.
+ */
+export const courtesyDetailsSchema = z.object({
+  customerName: z.string().trim().max(120, "Il nome può avere al massimo 120 caratteri.").optional(),
+  customerTaxCode: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .optional()
+    .refine((value) => !value || isValidCodiceFiscale(value) || isValidPartitaIva(value), "Il codice fiscale non sembra valido."),
+  withholding: z.boolean().optional(),
 });
-export type CourtesyNumberInput = z.infer<typeof courtesyNumberSchema>;
+export type CourtesyDetailsInput = z.infer<typeof courtesyDetailsSchema>;
 
 /** Numero della ricevuta come si scrive sul documento: "4/2026". */
 export function courtesyReceiptNumber(number: number, year: number): string {
   return `${number}/${year}`;
 }
 
-/** Come si chiama il documento nelle liste: "Ricevuta n. 4/2026", "Fattura n. 12/A". */
-export function courtesyDocumentLabel(doc: { kind: string; number: number | null; year: number; ownNumber: string | null }): string {
-  if (doc.kind === "RECEIPT") return doc.number ? `Ricevuta n. ${courtesyReceiptNumber(doc.number, doc.year)}` : "Ricevuta senza numero";
-  return doc.ownNumber ? `Fattura n. ${doc.ownNumber}` : "Fattura, numero non ancora scritto";
+/** Come si chiama la ricevuta nelle liste: "Ricevuta n. 4/2026". */
+export function courtesyDocumentLabel(doc: { number: number | null; year: number }): string {
+  return doc.number ? `Ricevuta n. ${courtesyReceiptNumber(doc.number, doc.year)}` : "Ricevuta senza numero";
 }
 
 /**
@@ -546,7 +621,7 @@ export function courtesyDocumentLabel(doc: { kind: string; number: number | null
  */
 export type AdminCourtesyDocumentRow = {
   bookingId: string;
-  kind: "INVOICE" | "RECEIPT";
+  kind: "RECEIPT";
   label: string;
   year: number;
   /** Quando il professionista l'ha preparato la prima volta. */
@@ -566,8 +641,6 @@ export type AdminCourtesyDocumentRow = {
   client: { userId: string; name: string | null; accountDeleted: boolean };
 };
 
-export const adminCourtesyDocumentKinds = ["RECEIPT", "INVOICE"] as const;
-
 /**
  * Un documento dato a un cliente, visto dal professionista (docs/CHANGELOG.md
  * §381): in "Fatture e documenti" con il totale dell'anno, e sul lavoro se
@@ -575,7 +648,7 @@ export const adminCourtesyDocumentKinds = ["RECEIPT", "INVOICE"] as const;
  */
 export type CourtesyDocumentSummary = {
   bookingId: string;
-  kind: "INVOICE" | "RECEIPT";
+  kind: "RECEIPT";
   label: string;
   year: number;
   customerName: string | null;
@@ -589,10 +662,16 @@ export type CourtesyDocumentSummary = {
   amountChanged: boolean;
 };
 
-/** Importo del documento: quanto è stato pagato online (meno i rimborsi), o il totale del lavoro. */
-export function courtesyTotalEurCents(jp: { paymentMethod: string; paidEurCents: number; refundedEurCents: number; grossAmountEurCents: number } | null): number | null {
+/**
+ * Importo del documento: quanto è stato pagato online (meno i rimborsi), o
+ * il totale del lavoro. Con l'acconto online e il saldo diretto conta il
+ * totale del lavoro, non il solo acconto.
+ */
+export function courtesyTotalEurCents(
+  jp: { paymentMethod: string; paidEurCents: number; refundedEurCents: number; grossAmountEurCents: number; balanceDirect?: boolean } | null,
+): number | null {
   if (!jp) return null;
-  return jp.paymentMethod === "MANOVIA" && jp.paidEurCents > 0 ? jp.paidEurCents - jp.refundedEurCents : jp.grossAmountEurCents;
+  return jp.paymentMethod === "MANOVIA" && !jp.balanceDirect && jp.paidEurCents > 0 ? jp.paidEurCents - jp.refundedEurCents : jp.grossAmountEurCents;
 }
 
 /** L'importo è cambiato dopo il PDF scaricato (mai prima del primo PDF). */
@@ -600,18 +679,17 @@ export function courtesyAmountChanged(pdfTotalEurCents: number | null, totalEurC
   return pdfTotalEurCents !== null && pdfTotalEurCents !== totalEurCents;
 }
 
-/** Totali per anno dei documenti dati ai clienti, dal più recente: per la dichiarazione dei redditi. */
-export function courtesyYearTotals(documents: CourtesyDocumentSummary[]): { year: number; kind: "INVOICE" | "RECEIPT"; count: number; totalEurCents: number; missingAmounts: number }[] {
-  const totals = new Map<string, { year: number; kind: "INVOICE" | "RECEIPT"; count: number; totalEurCents: number; missingAmounts: number }>();
+/** Totali per anno delle ricevute date ai clienti, dal più recente: per la dichiarazione dei redditi. */
+export function courtesyYearTotals(documents: CourtesyDocumentSummary[]): { year: number; kind: "RECEIPT"; count: number; totalEurCents: number; missingAmounts: number }[] {
+  const totals = new Map<number, { year: number; kind: "RECEIPT"; count: number; totalEurCents: number; missingAmounts: number }>();
   for (const doc of documents) {
-    const key = `${doc.year}:${doc.kind}`;
-    const row = totals.get(key) ?? { year: doc.year, kind: doc.kind, count: 0, totalEurCents: 0, missingAmounts: 0 };
+    const row = totals.get(doc.year) ?? { year: doc.year, kind: "RECEIPT" as const, count: 0, totalEurCents: 0, missingAmounts: 0 };
     row.count += 1;
     if (doc.totalEurCents === null) row.missingAmounts += 1;
     else row.totalEurCents += doc.totalEurCents;
-    totals.set(key, row);
+    totals.set(doc.year, row);
   }
-  return [...totals.values()].sort((a, b) => b.year - a.year || (a.kind === "RECEIPT" ? -1 : 1));
+  return [...totals.values()].sort((a, b) => b.year - a.year);
 }
 
 /** Sopra questa cifra, senza IVA, serve la marca da bollo da 2 €. */
@@ -619,30 +697,36 @@ export const STAMP_DUTY_THRESHOLD_EUR_CENTS = 7747;
 
 /** Un documento nel riepilogo dell'anno per il commercialista (docs/CHANGELOG.md §382). */
 export type CourtesyYearRow = {
-  /** "4/2026" per la ricevuta, il numero della sua fattura; null se non l'ha scritto. */
+  /** "4/2026"; null se la ricevuta non ha ancora il numero. */
   number: string | null;
   /** Data del documento (ISO). */
   date: string;
-  /** Il nome sul documento: quello dei dati per la fattura, o del cliente. */
+  /** Il nome sulla ricevuta: quello dei dati dati dal cliente, o del cliente. */
   customerName: string | null;
   /** Il cliente ha chiesto il documento intestato a una partita IVA. */
   customerHasVatNumber: boolean;
+  /** Codice fiscale o partita IVA del cliente, per abbinare il documento (G-04). */
+  customerTaxId: string | null;
+  /** Quando il cliente ha pagato (ISO): lavoro terminato o pagamento online. */
+  paidAt: string | null;
   jobLabel: string | null;
+  /** Importo del documento: quello del PDF dato al cliente, o di oggi se non l'ha ancora scaricato (G-10). */
   totalEurCents: number | null;
-  /** IVA compresa nel totale, solo per chi la applica. */
-  vatEurCents: number | null;
-  /** Oltre 77,47 € senza IVA: marca da bollo da 2 €. */
+  /** Importo di oggi, se è cambiato dopo il PDF (un rimborso): va fatto un nuovo documento. */
+  currentEurCents: number | null;
+  /** Ricevuta a una partita IVA con la ritenuta del 20%: quanto ha trattenuto il cliente. */
+  withholdingEurCents: number | null;
+  /** Oltre 77,47 €: marca da bollo da 2 €. */
   stampDuty: boolean;
   amountChanged: boolean;
 };
 
-/** Le ricevute e le copie delle fatture di un anno, da dare al commercialista. */
+/** Le ricevute di un anno, da dare al commercialista. */
 export type CourtesyYearSummary = {
   year: number;
   /** Nome del professionista per il commercialista. */
   who: string | null;
   receipts: CourtesyYearRow[];
-  invoices: CourtesyYearRow[];
 };
 
 /** Un movimento di soldi del lavoro, nei documenti della richiesta (docs/CHANGELOG.md §386). */
@@ -665,12 +749,14 @@ export type JobDocumentsView = {
   audience: "PROFESSIONAL" | "CLIENT";
   bookingId: string;
   /**
-   * Ricevuta o copia della fattura per il cliente. Il cliente la vede solo
-   * dopo che il professionista ha scaricato il PDF, con lo stesso importo.
+   * La ricevuta per il cliente. Il cliente la vede solo dopo che il
+   * professionista ha scaricato il PDF, con lo stesso importo.
    */
-  clientDocument: { label: string; kind: "RECEIPT" | "INVOICE"; amountChanged: boolean } | null;
-  /** Il professionista la può già preparare: lavoro terminato o fattura chiesta. */
+  clientDocument: { label: string; kind: "RECEIPT"; amountChanged: boolean } | null;
+  /** Il professionista la può già preparare: lavoro terminato, senza partita IVA. */
   clientDocumentAvailable: boolean;
+  /** Il professionista ha la partita IVA: la fattura la fa col suo programma (docs/changelog/2026-10-30-documenti-snelli.md). */
+  ownInvoice: boolean;
   /** Il cliente ha chiesto la fattura al professionista. */
   invoiceRequested: boolean;
   movements: JobDocumentMovement[];
@@ -679,17 +765,24 @@ export type JobDocumentsView = {
 };
 
 /** Totale e conteggi di una parte del riepilogo dell'anno. */
-export function courtesyYearPart(rows: CourtesyYearRow[]): { totalEurCents: number; vatEurCents: number; withVatNumber: number; stampDuty: number; missingAmounts: number; amountChanged: number } {
+export function courtesyYearPart(rows: CourtesyYearRow[]): {
+  totalEurCents: number;
+  withholdingEurCents: number;
+  withVatNumber: number;
+  stampDuty: number;
+  missingAmounts: number;
+  amountChanged: number;
+} {
   return rows.reduce(
     (acc, row) => ({
       totalEurCents: acc.totalEurCents + (row.totalEurCents ?? 0),
-      vatEurCents: acc.vatEurCents + (row.vatEurCents ?? 0),
+      withholdingEurCents: acc.withholdingEurCents + (row.withholdingEurCents ?? 0),
       withVatNumber: acc.withVatNumber + (row.customerHasVatNumber ? 1 : 0),
       stampDuty: acc.stampDuty + (row.stampDuty ? 1 : 0),
       missingAmounts: acc.missingAmounts + (row.totalEurCents === null ? 1 : 0),
       amountChanged: acc.amountChanged + (row.amountChanged ? 1 : 0),
     }),
-    { totalEurCents: 0, vatEurCents: 0, withVatNumber: 0, stampDuty: 0, missingAmounts: 0, amountChanged: 0 },
+    { totalEurCents: 0, withholdingEurCents: 0, withVatNumber: 0, stampDuty: 0, missingAmounts: 0, amountChanged: 0 },
   );
 }
 
@@ -700,10 +793,25 @@ function romeDayIso(iso: string): string {
 
 /** Il riepilogo dell'anno nel foglio di calcolo (come l'estratto: punto e virgola, importi all'italiana). */
 export function courtesyYearCsv(summary: CourtesyYearSummary): string {
-  const header = ["Documento", "Numero", "Data", "Cliente", "Cliente con partita IVA", "Lavoro", "Importo", "di cui IVA", "Marca da bollo"];
+  const header = ["Documento", "Numero", "Data", "Cliente", "Codice fiscale o partita IVA", "Cliente con partita IVA", "Data di incasso", "Lavoro", "Importo", "Ritenuta d'acconto", "Marca da bollo", "Importo di oggi"];
   const line = (kind: string, r: CourtesyYearRow) =>
-    [kind, r.number ?? "", romeDayIso(r.date), r.customerName ?? "", r.customerHasVatNumber ? "Sì" : "No", r.jobLabel ?? "", csvAmount(r.totalEurCents), csvAmount(r.vatEurCents), r.stampDuty ? "Sì" : "No"].map(csvCell).join(";");
-  const body = [...summary.receipts.map((r) => line("Ricevuta per prestazione occasionale", r)), ...summary.invoices.map((r) => line("Copia della fattura", r))];
+    [
+      kind,
+      r.number ?? "",
+      romeDayIso(r.date),
+      r.customerName ?? "",
+      r.customerTaxId ?? "",
+      r.customerHasVatNumber ? "Sì" : "No",
+      r.paidAt ? romeDayIso(r.paidAt) : "",
+      r.jobLabel ?? "",
+      csvAmount(r.totalEurCents),
+      csvAmount(r.withholdingEurCents),
+      r.stampDuty ? "Sì" : "No",
+      r.amountChanged ? csvAmount(r.currentEurCents) : "",
+    ]
+      .map(csvCell)
+      .join(";");
+  const body = summary.receipts.map((r) => line("Ricevuta per prestazione occasionale", r));
   return `\ufeff${[header.join(";"), ...body].join("\r\n")}\r\n`;
 }
 

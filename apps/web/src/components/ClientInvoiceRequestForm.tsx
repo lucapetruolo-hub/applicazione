@@ -55,13 +55,18 @@ export function invoiceDraftFromView(view: ClientInvoiceRequestView): InvoiceDra
 }
 
 /** Dati pronti per l'API, o il primo errore per campo. */
-export function parseInvoiceDraft(draft: InvoiceDraft): { ok: true; data: ClientInvoiceRequestInput } | { ok: false; errors: Partial<Record<keyof InvoiceDraft, string>> } {
+export function parseInvoiceDraft(
+  draft: InvoiceDraft,
+  receipt = false,
+): { ok: true; data: ClientInvoiceRequestInput } | { ok: false; errors: Partial<Record<keyof InvoiceDraft, string>> } {
   const parsed = clientInvoiceRequestSchema.safeParse({
     kind: draft.kind,
     name: draft.name,
-    taxCode: draft.taxCode.trim() || undefined,
+    // A una partita IVA mai il codice fiscale di una persona, rimasto dalla scelta "A nome mio" (collaudo G-06).
+    taxCode: draft.kind === "PERSON" ? draft.taxCode.trim() || undefined : undefined,
     vatNumber: draft.kind === "VAT" ? draft.vatNumber.trim() || undefined : undefined,
-    recipient: draft.kind === "VAT" ? draft.recipient.trim() || undefined : undefined,
+    // Codice destinatario e PEC servono solo alla fattura elettronica, non alla ricevuta (C-01).
+    recipient: draft.kind === "VAT" && !receipt ? draft.recipient.trim() || undefined : undefined,
     street: draft.street,
     houseNumber: draft.houseNumber.trim() || undefined,
     postalCode: draft.postalCode,
@@ -77,11 +82,17 @@ export function parseInvoiceDraft(draft: InvoiceDraft): { ok: true; data: Client
   return { ok: false, errors };
 }
 
-/** La riga che spiega a chi si chiede la fattura (richiesta dell'utente del 27/10/2026). */
-export const INVOICE_FROM_PROFESSIONAL_NOTE = "La fattura la fa il professionista. Noi gli passiamo i tuoi dati.";
+/**
+ * La riga che spiega a chi si chiede il documento (richiesta dell'utente del
+ * 27/10/2026). Chi lavora senza partita IVA non fa fatture ma una ricevuta
+ * per prestazione occasionale (collaudo C-01).
+ */
+export function invoiceFromProfessionalNote(receipt = false): string {
+  return receipt ? "Lavora senza partita IVA: ti dà una ricevuta, non una fattura. Noi gli passiamo i tuoi dati." : "La fattura la fa il professionista. Noi gli passiamo i tuoi dati.";
+}
 
-/** Casella "Chiedi la fattura a …", chiusa finché non si spunta. */
-export function InvoiceRequestToggle({ professionalName, checked, onToggle }: { professionalName: string; checked: boolean; onToggle: () => void }) {
+/** Casella "Chiedi la fattura a …" (o "la ricevuta"), chiusa finché non si spunta. */
+export function InvoiceRequestToggle({ professionalName, checked, onToggle, receipt = false }: { professionalName: string; checked: boolean; onToggle: () => void; receipt?: boolean }) {
   return (
     <XStack alignItems="flex-start" gap="$2" cursor="pointer" onPress={onToggle} onKeyDown={keyActivate(onToggle)} accessibilityRole="checkbox" aria-checked={checked} tabIndex={0}>
       <YStack
@@ -100,10 +111,10 @@ export function InvoiceRequestToggle({ professionalName, checked, onToggle }: { 
       </YStack>
       <YStack flex={1} gap={2}>
         <Text fontSize={16} fontWeight="700" color={brand.grafite}>
-          Chiedi la fattura a {professionalName}
+          {receipt ? "Chiedi la ricevuta a" : "Chiedi la fattura a"} {professionalName}
         </Text>
         <Text fontSize={13} color={brand.grafite70}>
-          {INVOICE_FROM_PROFESSIONAL_NOTE}
+          {invoiceFromProfessionalNote(receipt)}
         </Text>
       </YStack>
     </XStack>
@@ -111,7 +122,17 @@ export function InvoiceRequestToggle({ professionalName, checked, onToggle }: { 
 }
 
 /** Campi della fattura: a nome proprio (codice fiscale) o a una partita IVA. */
-export function InvoiceRequestFields({ draft, onChange, errors }: { draft: InvoiceDraft; onChange: (next: InvoiceDraft) => void; errors?: Partial<Record<keyof InvoiceDraft, string>> }) {
+export function InvoiceRequestFields({
+  draft,
+  onChange,
+  errors,
+  receipt = false,
+}: {
+  draft: InvoiceDraft;
+  onChange: (next: InvoiceDraft) => void;
+  errors?: Partial<Record<keyof InvoiceDraft, string>>;
+  receipt?: boolean;
+}) {
   const set = (key: keyof InvoiceDraft, value: string) => onChange({ ...draft, [key]: value });
   const vat = draft.kind === "VAT";
   return (
@@ -134,14 +155,16 @@ export function InvoiceRequestFields({ draft, onChange, errors }: { draft: Invoi
       {vat ? (
         <>
           <Field label="Partita IVA" accessibilityLabel="Partita IVA per la fattura" value={draft.vatNumber} onChangeText={(v) => set("vatNumber", v)} inputMode="numeric" error={errors?.vatNumber} />
-          <Field
-            label="Codice destinatario o PEC (facoltativo)"
-            accessibilityLabel="Codice destinatario o PEC per la fattura"
-            value={draft.recipient}
-            onChangeText={(v) => set("recipient", v)}
-            autoCapitalize="none"
-            error={errors?.recipient}
-          />
+          {receipt ? null : (
+            <Field
+              label="Codice destinatario o PEC (facoltativo)"
+              accessibilityLabel="Codice destinatario o PEC per la fattura"
+              value={draft.recipient}
+              onChangeText={(v) => set("recipient", v)}
+              autoCapitalize="none"
+              error={errors?.recipient}
+            />
+          )}
         </>
       ) : (
         <Field
@@ -206,6 +229,7 @@ export function ClientInvoiceRequestPanel({
   initial,
   defaults,
   onSaved,
+  receipt = false,
 }: {
   token: string;
   quoteId: string;
@@ -213,6 +237,7 @@ export function ClientInvoiceRequestPanel({
   initial: ClientInvoiceRequestView | null;
   defaults?: Partial<InvoiceDraft>;
   onSaved: () => void;
+  receipt?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<InvoiceDraft>(() => (initial ? invoiceDraftFromView(initial) : emptyInvoiceDraft(defaults)));
@@ -231,7 +256,7 @@ export function ClientInvoiceRequestPanel({
   }
 
   async function save() {
-    const parsed = parseInvoiceDraft(draft);
+    const parsed = parseInvoiceDraft(draft, receipt);
     if (!parsed.ok) {
       setErrors(parsed.errors);
       return;
@@ -269,14 +294,16 @@ export function ClientInvoiceRequestPanel({
         <XStack alignItems="center" gap="$2">
           <Icon name="receipt-text" size={18} strokeWidth={2} color={brand.grafite70} />
           <Text fontSize={16} fontWeight="700" color={brand.grafite}>
-            Hai chiesto la fattura a {professionalName}
+            Hai chiesto {receipt ? "la ricevuta" : "la fattura"} a {professionalName}
           </Text>
         </XStack>
         <Text fontSize={13} color={brand.grafite70}>
-          {INVOICE_FROM_PROFESSIONAL_NOTE}
+          {invoiceFromProfessionalNote(receipt)}
         </Text>
         <YStack gap={2}>
-          {clientInvoiceLines(initial).map((line) => (
+          {clientInvoiceLines(initial)
+            .filter((line) => !receipt || !/^(Codice destinatario|PEC) /.test(line))
+            .map((line) => (
             <Text key={line} fontSize={16} color={brand.grafite}>
               {line}
             </Text>
@@ -301,10 +328,10 @@ export function ClientInvoiceRequestPanel({
 
   return (
     <YStack gap="$3">
-      <InvoiceRequestToggle professionalName={professionalName} checked={editing} onToggle={() => (editing ? setEditing(false) : void open())} />
+      <InvoiceRequestToggle professionalName={professionalName} checked={editing} receipt={receipt} onToggle={() => (editing ? setEditing(false) : void open())} />
       {editing ? (
         <>
-          <InvoiceRequestFields draft={draft} onChange={setDraft} errors={errors} />
+          <InvoiceRequestFields draft={draft} onChange={setDraft} errors={errors} receipt={receipt} />
           <XStack gap="$2" flexWrap="wrap">
             <Button variant="primary" onPress={() => void save()} disabled={saving} opacity={saving ? 0.45 : 1}>
               {saving ? "Invio..." : initial ? "Salva i dati" : "Manda la richiesta"}
