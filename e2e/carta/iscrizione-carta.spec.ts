@@ -75,10 +75,13 @@ async function openCheckout(page: Page) {
 
 async function fillCard(page: Page, number: string) {
   // Con più metodi di pagamento Stripe mostra un elenco: si apre "Carta".
+  // Il pulsante della voce copre tutta la riga ed è trasparente: si attiva
+  // con un evento di clic invece del clic del mouse.
   const cardNumber = page.locator("#cardNumber");
-  const payWithCard = page.getByRole("button", { name: "Paga con carta" }).or(page.getByTestId("card-accordion-item-button")).first();
-  await expect(cardNumber.or(payWithCard).first()).toBeVisible({ timeout: 30_000 });
-  if (!(await cardNumber.isVisible())) await payWithCard.click();
+  const payWithCard = page.getByTestId("card-accordion-item-button");
+  await expect.poll(async () => (await cardNumber.isVisible()) || (await payWithCard.count()) > 0, { timeout: 30_000 }).toBe(true);
+  if (!(await cardNumber.isVisible())) await payWithCard.dispatchEvent("click");
+  await expect(cardNumber).toBeVisible();
   await cardNumber.fill(number);
   await page.locator("#cardExpiry").fill("12 / 34");
   await page.locator("#cardCvc").fill("123");
