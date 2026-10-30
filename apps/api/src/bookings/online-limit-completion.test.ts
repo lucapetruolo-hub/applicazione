@@ -75,3 +75,22 @@ describe("lavoro terminato prima dell'appuntamento (collaudo F-01)", () => {
     expect(prisma.booking.update).not.toHaveBeenCalled();
   });
 });
+
+describe("riapertura di un appuntamento annullato (collaudo F-08)", () => {
+  it("un appuntamento già passato non si riapre", async () => {
+    const { service, prisma } = buildService(null);
+    prisma.booking.findUnique.mockResolvedValue({
+      id: "bk-1",
+      clientId: "client-1",
+      status: "CANCELED",
+      canceledBy: "CLIENT",
+      scheduledAt: new Date(Date.now() - 2 * 86_400_000),
+      quote: null,
+      professionalProfile: { userId: "pro-user-1" },
+    });
+    (prisma.jobPayment as unknown as { findFirst: unknown }).findFirst = vi.fn().mockResolvedValue(null);
+
+    await expect(service.reopenBooking("client-1", "bk-1")).rejects.toThrow(/già passata/);
+    expect(prisma.booking.update).not.toHaveBeenCalled();
+  });
+});

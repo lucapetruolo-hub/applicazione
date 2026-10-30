@@ -1203,7 +1203,7 @@ export function RequestCard({
           ) : null}
           {/* Segnalazione del cliente sul lavoro (docs/CHANGELOG.md §164). */}
           {/* Pagamento del lavoro (docs/CHANGELOG.md §168). */}
-          {booking?.payment && (booking.status !== "CANCELED" || booking.payment.paidEurCents > 0) ? <JobPaymentStatus payment={booking.payment} audience="professional" /> : null}
+          {booking?.payment && (booking.status !== "CANCELED" || booking.payment.paidEurCents > 0) ? <JobPaymentStatus payment={booking.payment} audience="professional" issueOpen={booking.issue?.status === "OPEN" || booking.issue?.status === "CHAT"} /> : null}
           {/* Contestazione in banca: la sua spiegazione per le prove (docs/changelog/2026-10-28-stripe-prova.md). */}
           {booking?.payment?.bankDispute ? (
             <BankDisputeNotePanel
@@ -1221,6 +1221,10 @@ export function RequestCard({
               onOpenChat={myProfileId ? openTimeline : undefined}
               onRespond={async (response) => {
                 await apiClient.respondToJobIssue(token, booking.id, { response });
+                onChanged();
+              }}
+              onOfferRefund={async (amountEurCents) => {
+                await apiClient.offerJobIssueRefund(token, booking.id, amountEurCents);
                 onChanged();
               }}
               onAnswerInfo={async (response) => {
@@ -1828,6 +1832,7 @@ export function RequestCard({
         <CompleteJobModal
           quotedItems={booking.items}
           jobName={gr.categoryLabel}
+          paidOnline={booking.payment?.method === "ONLINE" && !booking.payment.balanceDirect}
           onClose={() => setShowCompleteModal(false)}
           onComplete={handleComplete}
           uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}

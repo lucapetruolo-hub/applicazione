@@ -1,7 +1,7 @@
 import { z } from "zod";
 import "./zod";
 import { clientInvoiceRequestSchema } from "./accounting";
-import { BANK_DISPUTE_OPEN_STATUSES, type ProfessionalBankDispute } from "./bankDisputes";
+import { BANK_DISPUTE_OPEN_STATUSES, BANK_DISPUTE_REVIEW_STATUSES, type ProfessionalBankDispute } from "./bankDisputes";
 
 /**
  * Pagamento dei lavori (decisioni dell'utente del 29/09/2026,
@@ -499,15 +499,22 @@ export type ProfessionalPayoutTotals = {
   sentEurCents: number;
   /** Arrivati in banca. */
   paidEurCents: number;
+  /** Contestati in banca e non ancora decisi: possono tornare al cliente, fuori da "bloccati" come nell'estratto. */
+  disputedEurCents: number;
   /** Almeno un bonifico non è riuscito: dati bancari da controllare. */
   hasFailed: boolean;
 };
 
 export function professionalPayoutTotals(summaries: Array<JobPaymentSummary | null>): ProfessionalPayoutTotals {
-  const totals: ProfessionalPayoutTotals = { blockedEurCents: 0, preparingEurCents: 0, sentEurCents: 0, paidEurCents: 0, hasFailed: false };
+  const totals: ProfessionalPayoutTotals = { blockedEurCents: 0, preparingEurCents: 0, sentEurCents: 0, paidEurCents: 0, disputedEurCents: 0, hasFailed: false };
+  const pending: readonly string[] = [...BANK_DISPUTE_OPEN_STATUSES, ...BANK_DISPUTE_REVIEW_STATUSES];
   for (const summary of summaries) {
     const amount = summary?.payoutEurCents ?? 0;
     if (!summary || amount <= 0) continue;
+    if (summary.bankDispute && pending.includes(summary.bankDispute.status)) {
+      totals.disputedEurCents += amount;
+      continue;
+    }
     if (summary.payoutStatus === "BLOCKED") totals.blockedEurCents += amount;
     else if (summary.payoutStatus === "WAITING_FUNDS" || summary.payoutStatus === "FAILED") totals.preparingEurCents += amount;
     else if (summary.payoutStatus === "SENT") totals.sentEurCents += amount;

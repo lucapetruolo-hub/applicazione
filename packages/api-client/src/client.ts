@@ -568,7 +568,7 @@ export type MyContentReports = {
 type AdminJobPaymentRef = {
   id: string;
   amountEurCents?: number;
-  booking: { id: string; scheduledAt?: string; professionalProfile: { id: string; businessName: string } };
+  booking: { id: string; scheduledAt?: string; professionalProfile: { id: string; businessName: string }; client?: { name: string | null; surname: string | null; deletedAt: string | null } };
 };
 export type AdminRefund = {
   id: string;
@@ -694,6 +694,8 @@ export type AdminJobIssue = {
   /** L'admin corrente ha deciso la segnalazione: non può decidere il ricorso. */
   decidedByMe: boolean;
   finalAmountEurCents: number | null;
+  /** Pagato online e non ancora rimborsato; `null` col pagamento diretto. */
+  refundableEurCents: number | null;
   professionalCompletedAt: string | null;
   clientConfirmedAt: string | null;
   professionalCompletionNote: string | null;
@@ -2405,6 +2407,20 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({ outcome }),
+      }),
+
+    /** Rimborso proposto dal professionista in chat (collaudo F-03). */
+    offerJobIssueRefund: (token: string, bookingId: string, amountEurCents: number) =>
+      request<{ bookingId: string; refundOfferEurCents: number }>(`/bookings/${bookingId}/issue/refund-offer`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ amountEurCents }),
+      }),
+
+    acceptJobIssueRefund: (token: string, bookingId: string) =>
+      request<{ bookingId: string; status: string; agreedRefundEurCents: number }>(`/bookings/${bookingId}/issue/accept-refund`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
       }),
 
     respondToJobIssue: (token: string, bookingId: string, input: JobIssueResponseInput) =>

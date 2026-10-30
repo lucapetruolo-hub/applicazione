@@ -83,6 +83,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   // Segnalazioni di un problema sul lavoro (docs/CHANGELOG.md §164).
   JOB_ISSUE_REPORTED: { icon: "⚠️", message: "Un cliente ha segnalato un problema su un lavoro: rispondigli in chat entro 48 ore per trovare una soluzione." },
   JOB_ISSUE_SETTLED: { icon: "🤝", message: "Il cliente ha indicato che il problema è stato risolto con te." },
+  JOB_ISSUE_REFUND_OFFERED: { icon: "🤝", message: "Il professionista ti propone un rimborso per il problema segnalato." },
   JOB_ISSUE_ESCALATED: { icon: "⚖️", message: "Il cliente ha chiesto al nostro team di decidere sulla segnalazione: invia la tua versione entro 72 ore." },
   // Controversie standard (docs/CHANGELOG.md §167).
   JOB_ISSUE_AUTO_ESCALATED: { icon: "⚖️", message: "Non hai risposto in chat entro 48 ore: la segnalazione è passata al nostro team. Invia la tua versione entro 72 ore." },
@@ -103,6 +104,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   // Rimborso in attesa di fondi sul conto Stripe del professionista (§269).
   JOB_REFUND_PENDING: { icon: "↩️", message: "Il tuo rimborso è in arrivo: ti avvisiamo appena parte verso la carta." },
   JOB_REFUND_COMPLETED: { icon: "↩️", message: "Rimborso completato: lo rivedi sulla carta in pochi giorni." },
+  JOB_REFUND_REJECTED: { icon: "↩️", message: "La richiesta di rimborso non è stata accolta: trovi il motivo nell'email." },
   JOB_REFUND_WAITING_FUNDS: { icon: "💳", message: "Un rimborso al cliente aspetta fondi sul tuo conto Stripe: parte appena arrivano." },
   ADMIN_JOB_REFUND_FAILED: { icon: "⚠️", message: "Un rimborso al cliente non è riuscito: controllalo dalla Dashboard Stripe." },
   ONLINE_LIMIT_LIFTED: { icon: "✅", message: "Limite tolto: nei preventivi puoi chiedere online qualsiasi importo." },
@@ -113,6 +115,8 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   ADMIN_URGENCY_ALERT: { icon: "⚡", message: "Richieste urgenti fuori soglia questa settimana: guarda i numeri nell'area admin." },
   ADMIN_SEARCH_DEMAND_ALERT: { icon: "🔎", message: "Questa settimana alcune ricerche non hanno trovato nessun professionista vicino: guarda dove." },
   ADMIN_WEEKLY_ADVICE: { icon: "💡", message: "Sono pronti i consigli della settimana: cosa fare, già deciso dai numeri." },
+  ADMIN_JOB_ISSUE_TO_REVIEW: { icon: "⚖️", message: "Una segnalazione su un lavoro è passata al nostro team: apri Problemi segnalati." },
+  ADMIN_JOB_ISSUE_APPEAL: { icon: "⚖️", message: "Un professionista ha fatto ricorso su una segnalazione: apri Problemi segnalati." },
   ADMIN_STRIPE_DISPUTE: { icon: "⚠️", message: "Contestazione in banca su un pagamento: rileggi e manda le prove da Pagamenti." },
   JOB_STRIPE_DISPUTE_NOTE_DUE: { icon: "⏳", message: "Contestazione in banca: scrivi come è andato il lavoro, mancano pochi giorni all'invio delle prove." },
   ADMIN_STRIPE_DISPUTE_DUE: { icon: "⏳", message: "Scadenza vicina: le prove di una contestazione in banca non sono ancora partite." },
@@ -219,6 +223,15 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
     // Appuntamento già fissato: "Non posso più" → "Proponi un'altra data" (docs/changelog/2026-10-28-promemoria-whatsapp.md).
     const what = data.booked === true ? "l'appuntamento" : "il preventivo";
     return { icon: "🗓️", message: `Il cliente ha proposto ${scheduleChangeAlternative(change)} per ${what}${newSlot ? `: ${newSlot}` : ""}.` };
+  }
+  if (type === "ADMIN_JOB_ISSUE_TO_REVIEW" && data.stage === "VERSION") {
+    return { icon: "⚖️", message: "Il professionista ha mandato la sua versione: c'è una segnalazione da decidere in Problemi segnalati." };
+  }
+  if (type === "JOB_ISSUE_REFUND_OFFERED" && typeof data.amountEurCents === "number") {
+    return { icon: "🤝", message: `Il professionista ti propone un rimborso di ${formatEur(data.amountEurCents)}: accettalo dalla scheda del lavoro.` };
+  }
+  if (type === "JOB_ISSUE_SETTLED" && typeof data.agreedRefundEurCents === "number") {
+    return { icon: "🤝", message: `Il cliente ha accettato il rimborso di ${formatEur(data.agreedRefundEurCents)}: la segnalazione è chiusa.` };
   }
   // Quanto torna al cliente e perché (collaudo F-02, I-02).
   if ((type === "JOB_REFUND_COMPLETED" || type === "JOB_REFUND_PENDING") && typeof data.amountEurCents === "number" && data.amountEurCents > 0) {

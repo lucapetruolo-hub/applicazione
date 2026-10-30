@@ -571,7 +571,17 @@ describe("professionalPayoutTotals", () => {
       preparingEurCents: 700,
       sentEurCents: 300,
       paidEurCents: 500,
+      disputedEurCents: 0,
       hasFailed: true,
+    });
+  });
+
+  it("i contestati in banca non ancora decisi non sono tra i bloccati (come nell'estratto)", () => {
+    const disputed = (status: string) => ({ payoutStatus: "BLOCKED", payoutEurCents: 800, bankDispute: { status } }) as unknown as JobPaymentSummary;
+    const blocked = { payoutStatus: "BLOCKED", payoutEurCents: 1000 } as JobPaymentSummary;
+    expect(professionalPayoutTotals([blocked, disputed("needs_response"), disputed("under_review"), disputed("won")])).toMatchObject({
+      blockedEurCents: 1800,
+      disputedEurCents: 1600,
     });
   });
 });

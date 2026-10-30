@@ -1123,9 +1123,13 @@ export const requestRefundSchema = z.object({
 });
 export type RequestRefundInput = z.infer<typeof requestRefundSchema>;
 
-export const decideRefundSchema = z.object({
-  decision: z.enum(["APPROVED", "REJECTED"]),
-});
+export const decideRefundSchema = z
+  .object({
+    decision: z.enum(["APPROVED", "REJECTED"]),
+    /** Motivo del rifiuto, detto a chi l'ha chiesto (admin-riordino, gruppo 1 del collaudo). */
+    note: z.string().trim().max(1000).optional(),
+  })
+  .refine((data) => data.decision !== "REJECTED" || (data.note ?? "").length >= 5, { message: "Scrivi il motivo del rifiuto.", path: ["note"] });
 export type DecideRefundInput = z.infer<typeof decideRefundSchema>;
 
 export const openDisputeSchema = z.object({

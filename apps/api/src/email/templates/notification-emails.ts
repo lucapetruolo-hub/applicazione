@@ -667,13 +667,30 @@ const BUILDERS: Record<string, Builder> = {
       cta: proRequests("Rispondi in chat"),
     };
   },
-  JOB_ISSUE_SETTLED: (_payload, ctx) => ({
+  JOB_ISSUE_SETTLED: (payload, ctx) => ({
     kind: "notification",
     subject: "Segnalazione risolta",
     greeting: ctx.name,
     title: "Segnalazione risolta",
-    paragraphs: [`Il cliente ha indicato che il problema sul lavoro per **${job(ctx)}** è stato risolto con te. Grazie per averlo seguito.`],
+    paragraphs: [
+      typeof payload.agreedRefundEurCents === "number"
+        ? `Il cliente ha accettato il rimborso di ${formatEur(payload.agreedRefundEurCents)} sul lavoro per **${job(ctx)}**: la segnalazione è chiusa e il resto del pagamento segue il suo corso.`
+        : `Il cliente ha indicato che il problema sul lavoro per **${job(ctx)}** è stato risolto con te. Grazie per averlo seguito.`,
+    ],
     cta: proRequests(),
+  }),
+  // Rimborso proposto dal professionista in chat (collaudo F-03).
+  JOB_ISSUE_REFUND_OFFERED: (payload, ctx) => ({
+    kind: "notification",
+    subject: "Ti propongono un rimborso",
+    greeting: ctx.name,
+    title: "Proposta di rimborso",
+    paragraphs: [
+      `Per il problema sul lavoro per **${job(ctx)}** il professionista ti propone un rimborso di ${formatEur(typeof payload.amountEurCents === "number" ? payload.amountEurCents : 0)}.`,
+      "Se ti va bene, accettalo dalla scheda del lavoro: il rimborso parte subito sulla tua carta e la segnalazione si chiude.",
+    ],
+    details: typeof payload.amountEurCents === "number" ? [{ label: "Rimborso proposto", value: formatEur(payload.amountEurCents) }] : undefined,
+    cta: clientRequests(),
   }),
   JOB_ISSUE_UNRESOLVED: (_payload, ctx) => ({
     kind: "notification",
@@ -1027,6 +1044,19 @@ const BUILDERS: Record<string, Builder> = {
     details: typeof payload.amountEurCents === "number" ? [{ label: "Rimborso", value: formatEur(payload.amountEurCents) }] : undefined,
     cta: clientRequests(),
   }),
+  JOB_REFUND_REJECTED: (payload, ctx) => ({
+    kind: "notification",
+    subject: "Richiesta di rimborso non accolta",
+    greeting: ctx.name,
+    title: "Rimborso non accolto",
+    paragraphs: [
+      `Abbiamo letto la tua richiesta di rimborso per **${job(ctx)}** e non possiamo accoglierla.`,
+      typeof payload.note === "string" && payload.note ? `Il motivo: ${payload.note}` : "",
+      "Se non sei d'accordo, rispondi a questa email: la guardiamo di nuovo.",
+    ].filter(Boolean),
+    details: typeof payload.amountEurCents === "number" ? [{ label: "Rimborso chiesto", value: formatEur(payload.amountEurCents) }] : undefined,
+    cta: payload.audience === "PROFESSIONAL" ? proRequests("Apri il lavoro") : clientRequests(),
+  }),
   JOB_REFUND_WAITING_FUNDS: (payload, ctx) => ({
     kind: "notification",
     subject: "Un rimborso aspetta fondi sul tuo conto Stripe",
@@ -1060,6 +1090,28 @@ const BUILDERS: Record<string, Builder> = {
       typeof payload.error === "string" && payload.error ? `Risposta di Stripe: ${payload.error}` : "Controlla l'errore in Sentry.",
     ],
     cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin/pagamenti` },
+  }),
+  // Segnalazione da decidere o ricorso: i Termini promettono una decisione entro 2 giorni.
+  ADMIN_JOB_ISSUE_TO_REVIEW: (payload) => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: payload.stage === "VERSION" ? "Segnalazione da decidere" : "Segnalazione passata al nostro team",
+    title: payload.stage === "VERSION" ? "Segnalazione da decidere" : "Segnalazione al nostro team",
+    paragraphs: [
+      payload.stage === "VERSION"
+        ? "Il professionista ha mandato la sua versione: la segnalazione è pronta per la decisione."
+        : "Una segnalazione su un lavoro è passata al nostro team. Il professionista ha 72 ore per mandare la sua versione, poi si decide.",
+      "Ai clienti diciamo che decidiamo entro 2 giorni.",
+    ],
+    cta: { label: "Apri Problemi segnalati", url: `${frontendUrl()}/admin/problemi` },
+  }),
+  ADMIN_JOB_ISSUE_APPEAL: () => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: "Ricorso su una segnalazione",
+    title: "Ricorso da decidere",
+    paragraphs: ["Un professionista ha fatto ricorso su una segnalazione accolta. Se c'è un altro admin, lo decide lui."],
+    cta: { label: "Apri Problemi segnalati", url: `${frontendUrl()}/admin/problemi` },
   }),
   ADMIN_STRIPE_DISPUTE: (payload) => ({
     kind: "notification",

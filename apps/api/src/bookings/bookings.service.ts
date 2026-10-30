@@ -1,5 +1,5 @@
 import { SubscriptionsService } from "../subscriptions/subscriptions.service";
-import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, Optional, type OnModuleInit } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException, Optional, type OnModuleInit } from "@nestjs/common";
 import { Prisma, type PrismaClient } from "@professionisti/database";
 import type Stripe from "stripe";
 import {
@@ -68,6 +68,8 @@ function startsAfterToday(scheduledAt: Date): boolean {
 
 @Injectable()
 export class BookingsService implements OnModuleInit {
+  private readonly logger = new Logger(BookingsService.name);
+
   constructor(
     @Inject(PRISMA) private readonly prisma: PrismaClient,
     private readonly notificationsService: NotificationsService,
@@ -313,14 +315,21 @@ export class BookingsService implements OnModuleInit {
    * o lavoro esterno sovrapposto oltre la capienza della fascia (§310).
    */
   private async assertProfessionalFree(db: PrismaClient | Prisma.TransactionClient, quote: AcceptableQuote): Promise<void> {
-    const start = quote.estimatedStartDate;
-    const end = quote.estimatedEndDate;
-    const mode = quote.guidedRequest.serviceMode;
+    await this.assertSlotFree(db, quote.professionalProfileId, quote.estimatedStartDate, quote.estimatedEndDate, quote.guidedRequest.serviceMode);
+  }
+
+  private async assertSlotFree(
+    db: PrismaClient | Prisma.TransactionClient,
+    professionalProfileId: string,
+    start: Date,
+    end: Date | null,
+    mode: Parameters<typeof countOverlapping>[3],
+  ): Promise<void> {
     const dayStart = new Date(start);
     dayStart.setUTCHours(0, 0, 0, 0);
     const until = end && end > start ? end : new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
-    const commitments = (await loadCommitments(db, [quote.professionalProfileId], dayStart, until)).get(quote.professionalProfileId) ?? [];
-    if (countOverlapping(commitments, start, end, mode) >= (await capacityAt(db, quote.professionalProfileId, start, mode))) {
+    const commitments = (await loadCommitments(db, [professionalProfileId], dayStart, until)).get(professionalProfileId) ?? [];
+    if (countOverlapping(commitments, start, end, mode) >= (await capacityAt(db, professionalProfileId, start, mode))) {
       throw new ConflictException(PROFESSIONAL_BUSY_MESSAGE);
     }
   }
@@ -965,6 +974,11 @@ export class BookingsService implements OnModuleInit {
       throw new ForbiddenException("L'acconto è già passato al professionista: per un nuovo appuntamento invia una nuova richiesta.");
     }
 
+    // Un appuntamento già passato non si riapre (collaudo F-08).
+    if (booking.scheduledAt.getTime() <= wallClockNow().getTime()) {
+      throw new ForbiddenException("L'ora di questo appuntamento è già passata: per un nuovo appuntamento invia una nuova richiesta.");
+    }
+
     const scheduledAt = booking.scheduledAt;
     const dayStart = new Date(scheduledAt);
     dayStart.setUTCHours(0, 0, 0, 0);
@@ -1008,6 +1022,8 @@ export class BookingsService implements OnModuleInit {
           if (bookedCount >= maxBookings) {
             throw new ConflictException("Questa fascia non è più libera.");
           }
+          // Anche i lavori su più giorni e quelli segnati a mano in Agenda (§310, collaudo F-08).
+          await this.assertSlotFree(tx, booking.professionalProfileId, booking.scheduledAt, booking.scheduledEndAt, booking.serviceMode);
           await tx.booking.update({
             where: { id: bookingId },
             data: { status: "CONFIRMED", canceledBy: null, cancellationNote: null, canceledLate: false },
@@ -1180,6 +1196,7 @@ export class BookingsService implements OnModuleInit {
         ...(inChat ? {} : { escalatedAt: new Date(), escalationReason: "CLIENT" }),
       },
     });
+    if (!inChat) await this.jobIssueOutcomeService.notifyIssueAdmins("ADMIN_JOB_ISSUE_TO_REVIEW", { bookingId, issueType: input.type, stage: "ESCALATED" });
 
     await this.notificationsService.notify(booking.professionalProfile.userId, "JOB_ISSUE_REPORTED", {
       bookingId,
@@ -1255,6 +1272,7 @@ export class BookingsService implements OnModuleInit {
           id: booking.issue.id,
           createdAt: booking.issue.createdAt,
           professionalRespondedAt: booking.issue.professionalRespondedAt,
+          refundOfferedAt: booking.issue.refundOfferedAt,
           guidedRequestId: booking.quote?.guidedRequestId ?? null,
           professionalProfileId: booking.professionalProfileId,
         },
@@ -1279,6 +1297,7 @@ export class BookingsService implements OnModuleInit {
       audience: "PROFESSIONAL",
       ...(outcome === "ESCALATE" ? { evidenceDueAt: jobIssueEvidenceDueAt(now).toISOString() } : {}),
     });
+    if (outcome === "ESCALATE") await this.jobIssueOutcomeService.notifyIssueAdmins("ADMIN_JOB_ISSUE_TO_REVIEW", { bookingId, issueType: booking.issue.type, stage: "ESCALATED" });
     if (booking.quote) {
       await this.timelineService.log(
         booking.quote.guidedRequestId,
@@ -1290,6 +1309,87 @@ export class BookingsService implements OnModuleInit {
       );
     }
     return { bookingId, status };
+  }
+
+  /**
+   * Il professionista propone in chat un rimborso al cliente su un lavoro
+   * pagato online (collaudo F-03): prima l'accordo restava a parole e non
+   * diventava mai vero sul sito. Una nuova proposta sostituisce la vecchia.
+   */
+  async offerIssueRefund(professionalUserId: string, bookingId: string, amountEurCents: number) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { professionalProfile: { select: { userId: true } }, issue: true, quote: { select: { guidedRequestId: true } }, jobPayment: true },
+    });
+    if (!booking || booking.professionalProfile.userId !== professionalUserId) throw new ForbiddenException("Questa prenotazione non è tua.");
+    if (!booking.issue) throw new NotFoundException("Nessuna segnalazione su questo lavoro.");
+    if (booking.issue.status !== "CHAT") throw new BadRequestException("La segnalazione non è più in chat: ora decide il nostro team.");
+    const jp = booking.jobPayment;
+    if (!jp || jp.paymentMethod !== "MANOVIA" || jp.releasedAt) {
+      throw new BadRequestException("Il rimborso dal sito si propone solo su un lavoro pagato online e con i soldi ancora fermi.");
+    }
+    const available = jp.paidEurCents - jp.refundedEurCents;
+    if (amountEurCents > available) {
+      throw new BadRequestException(`Puoi proporre al massimo ${formatEurCents(available)}, quanto il cliente ha pagato online.`);
+    }
+    await this.prisma.jobIssue.update({ where: { id: booking.issue.id }, data: { refundOfferEurCents: amountEurCents, refundOfferedAt: new Date() } });
+    await this.notificationsService.notify(booking.clientId, "JOB_ISSUE_REFUND_OFFERED", {
+      bookingId,
+      guidedRequestId: booking.quote?.guidedRequestId,
+      amountEurCents,
+      audience: "CLIENT",
+    });
+    if (booking.quote) {
+      await this.timelineService.log(
+        booking.quote.guidedRequestId,
+        booking.professionalProfileId,
+        "PROFESSIONAL",
+        `Il professionista propone un rimborso di ${formatEurCents(amountEurCents)}. Se il cliente lo accetta parte subito e la segnalazione si chiude.`,
+      );
+    }
+    return { bookingId, refundOfferEurCents: amountEurCents };
+  }
+
+  /** Il cliente accetta il rimborso proposto: parte subito e la segnalazione si chiude (collaudo F-03). */
+  async acceptIssueRefund(clientId: string, bookingId: string) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { professionalProfile: { select: { userId: true } }, issue: true, quote: { select: { guidedRequestId: true } }, jobPayment: { select: { id: true } } },
+    });
+    if (!booking || booking.clientId !== clientId) throw new ForbiddenException("Questa prenotazione non è tua.");
+    const issue = booking.issue;
+    const amount = issue?.refundOfferEurCents ?? 0;
+    if (!issue || issue.status !== "CHAT" || amount <= 0 || !booking.jobPayment) throw new BadRequestException("Non c'è nessun rimborso da accettare.");
+    // Una sola accettazione anche con due tocchi insieme.
+    const claimed = await this.prisma.jobIssue.updateMany({
+      where: { id: issue.id, status: "CHAT", refundOfferEurCents: amount },
+      data: { status: "RESOLVED", resolvedAt: new Date(), agreedRefundEurCents: amount, refundOfferEurCents: null },
+    });
+    if (claimed.count === 0) throw new BadRequestException("La proposta è cambiata: ricarica la pagina.");
+    try {
+      await this.jobPaymentsService.refundAgreed(booking.jobPayment.id, amount, clientId);
+    } catch (err) {
+      // Stripe non risponde: la segnalazione torna in chat con la stessa proposta.
+      await this.prisma.jobIssue.update({ where: { id: issue.id }, data: { status: "CHAT", resolvedAt: null, agreedRefundEurCents: null, refundOfferEurCents: amount } });
+      this.logger.warn(`Rimborso concordato non partito per ${bookingId}: ${(err as Error).message}`);
+      throw new BadRequestException("Il rimborso non è partito: riprova tra qualche minuto.");
+    }
+    await this.notificationsService.notify(booking.professionalProfile.userId, "JOB_ISSUE_SETTLED", {
+      bookingId,
+      issueType: issue.type,
+      guidedRequestId: booking.quote?.guidedRequestId,
+      agreedRefundEurCents: amount,
+      audience: "PROFESSIONAL",
+    });
+    if (booking.quote) {
+      await this.timelineService.log(
+        booking.quote.guidedRequestId,
+        booking.professionalProfileId,
+        "CLIENT",
+        `Il cliente ha accettato il rimborso di ${formatEurCents(amount)}: la segnalazione è chiusa.`,
+      );
+    }
+    return { bookingId, status: "RESOLVED" as const, agreedRefundEurCents: amount };
   }
 
   /** Il professionista risponde alla segnalazione con la sua versione, finché è in esame. */
@@ -1308,6 +1408,8 @@ export class BookingsService implements OnModuleInit {
       where: { id: booking.issue.id },
       data: { professionalResponse: input.response.trim(), professionalRespondedAt: new Date() },
     });
+    // In esame: ora c'è da decidere (§167).
+    if (booking.issue.status === "OPEN") await this.jobIssueOutcomeService.notifyIssueAdmins("ADMIN_JOB_ISSUE_TO_REVIEW", { bookingId, issueType: booking.issue.type, stage: "VERSION" });
     if (booking.quote) {
       await this.timelineService.log(booking.quote.guidedRequestId, booking.professionalProfileId, "PROFESSIONAL", "Il professionista ha risposto alla segnalazione.");
     }
@@ -1369,6 +1471,7 @@ export class BookingsService implements OnModuleInit {
           id: b.issue!.id,
           createdAt: b.issue!.createdAt,
           professionalRespondedAt: b.issue!.professionalRespondedAt,
+          refundOfferedAt: b.issue!.refundOfferedAt,
           guidedRequestId: b.quote?.guidedRequestId ?? null,
           professionalProfileId: b.professionalProfileId,
         })),

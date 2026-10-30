@@ -16,6 +16,7 @@ import { TimelineModal } from "@/components/TimelineModal";
 import { ClientCompleteModal } from "@/components/ClientCompleteModal";
 import { ReviewModal } from "@/components/ReviewModal";
 import { CardButton } from "@/components/CardButton";
+import { CancelBookingModal } from "@/components/CancelBookingModal";
 import { useDismissableUnreadCount } from "@/lib/useDismissableUnreadCount";
 
 /**
@@ -49,6 +50,7 @@ export function BookingSection({
   const [showClientCompleteModal, setShowClientCompleteModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [isReopening, setIsReopening] = useState(false);
+  const [confirmReopen, setConfirmReopen] = useState(false);
   const [reopenError, setReopenError] = useState<string | null>(null);
   const [confirmingDeleteBooking, setConfirmingDeleteBooking] = useState(false);
   const [isDeletingBooking, setIsDeletingBooking] = useState(false);
@@ -114,6 +116,20 @@ export function BookingSection({
     setIssueBusy(true);
     try {
       await apiClient.closeJobIssueChat(token, booking.id, outcome);
+      onChanged();
+    } catch (err) {
+      setIssueError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setIssueBusy(false);
+    }
+  }
+
+  // Rimborso proposto dal professionista in chat (collaudo F-03).
+  async function acceptIssueRefund() {
+    setIssueError(null);
+    setIssueBusy(true);
+    try {
+      await apiClient.acceptJobIssueRefund(token, booking.id);
       onChanged();
     } catch (err) {
       setIssueError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
@@ -299,6 +315,7 @@ export function BookingSection({
               <JobPaymentStatus
                 payment={booking.payment}
                 audience="client"
+                issueOpen={issueOpen}
                 onPay={async (part) => {
                   const { url } = await apiClient.jobPaymentCheckout(token, booking.id, part);
                   if (url) window.location.href = url;
@@ -312,7 +329,7 @@ export function BookingSection({
       {/* Solo ciò che ha annullato il cliente: un intervento annullato dal professionista non si riapre. */}
       {booking.status === "CANCELED" && booking.canceledBy === "CLIENT" ? (
         <XStack gap="$2" alignItems="center" flexWrap="wrap">
-          <CardButton onPress={handleReopenBooking} disabled={isReopening}>
+          <CardButton onPress={() => setConfirmReopen(true)} disabled={isReopening}>
             {isReopening ? "Riapertura..." : "Riapri prenotazione"}
           </CardButton>
         </XStack>
@@ -325,6 +342,25 @@ export function BookingSection({
       {/* Che fine fa l'acconto pagato online dopo l'annullamento (collaudo F-02). */}
       {booking.status === "CANCELED" && booking.payment?.method === "ONLINE" && booking.payment.paidEurCents > 0 ? (
         <JobPaymentStatus payment={booking.payment} audience="client" />
+      ) : null}
+      {/* Conferma prima di riaprire (collaudo F-08). */}
+      {confirmReopen ? (
+        <CancelBookingModal
+          title="Riaprire la prenotazione?"
+          description={`L'appuntamento torna valido e ${booking.businessName} riceve un avviso.${
+            booking.payment?.method === "ONLINE" && booking.payment.stage === "REFUNDED" ? " L'acconto che ti avevamo rimborsato va pagato di nuovo." : ""
+          }`}
+          confirmLabel="Riapri prenotazione"
+          confirmingLabel="Riapertura..."
+          backLabel="Torna indietro"
+          confirmVariant="primary"
+          showNote={false}
+          onClose={() => setConfirmReopen(false)}
+          onCancel={async () => {
+            setConfirmReopen(false);
+            await handleReopenBooking();
+          }}
+        />
       ) : null}
       {reopenError ? (
         <Text color={brand.urgenza} fontSize={16}>
@@ -343,6 +379,7 @@ export function BookingSection({
             error={issueError}
             onOpenChat={booking.guidedRequestId ? () => setShowTimeline(true) : null}
             onCloseChat={closeIssueChat}
+            onAcceptRefund={() => void acceptIssueRefund()}
             onRedispatch={redispatch}
           />
         </YStack>

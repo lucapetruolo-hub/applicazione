@@ -1418,7 +1418,7 @@ export class AdminService {
             professionalProfile: { select: { id: true, userId: true, businessName: true, demotedUntil: true, requestsBlockedUntil: true } },
             client: { select: { id: true, name: true, surname: true, deletedAt: true } },
             quote: { select: { guidedRequest: { select: { id: true, city: true, description: true, category: { select: { label: true } } } } } },
-            jobPayment: { select: { paymentMethod: true, status: true } },
+            jobPayment: { select: { paymentMethod: true, status: true, paidEurCents: true, refundedEurCents: true } },
             courtesyDocument: { select: { kind: true, number: true, year: true, ownNumber: true } },
           },
         },
@@ -1439,6 +1439,7 @@ export class AdminService {
           id: i.id,
           createdAt: i.createdAt,
           professionalRespondedAt: i.professionalRespondedAt,
+          refundOfferedAt: i.refundOfferedAt,
           guidedRequestId: i.booking.quote?.guidedRequest.id ?? null,
           professionalProfileId: i.booking.professionalProfileId,
         })),
@@ -1477,6 +1478,8 @@ export class AdminService {
         // Il ricorso lo decide un admin diverso da chi ha deciso la segnalazione (§167).
         decidedByMe: issue.resolvedByUserId === adminUserId,
         finalAmountEurCents: booking.finalAmountEurCents,
+        // Cifra che un rimborso del 100% restituirebbe ora, per mostrarla in euro prima di decidere.
+        refundableEurCents: booking.jobPayment?.paymentMethod === "MANOVIA" ? Math.max(0, booking.jobPayment.paidEurCents - booking.jobPayment.refundedEurCents) : null,
         professionalCompletedAt: booking.professionalCompletedAt?.toISOString() ?? null,
         clientConfirmedAt: booking.clientConfirmedCompletedAt?.toISOString() ?? null,
         professionalCompletionNote: booking.professionalCompletionNote,

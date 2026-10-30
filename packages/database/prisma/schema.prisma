@@ -2901,6 +2901,11 @@ model JobIssue {
   // Percentuale di quanto pagato online rimborsata al cliente quando la
   // segnalazione è accolta: 100, 50 o 20 (docs/CHANGELOG.md §267).
   refundPercent               Int?
+  // Accordo in chat su un lavoro pagato online (collaudo F-03): rimborso
+  // proposto dal professionista e, se il cliente lo accetta, rimborsato.
+  refundOfferEurCents         Int?
+  refundOfferedAt             DateTime?
+  agreedRefundEurCents        Int?
   // Ricorso del professionista entro 30 giorni dalla decisione, esaminato
   // da un admin diverso da chi ha deciso. ACCEPTED ribalta la decisione.
   appealText                  String?

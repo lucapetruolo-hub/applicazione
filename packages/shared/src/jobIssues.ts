@@ -334,6 +334,10 @@ export type JobIssueSummary = {
   refundPercent: number | null;
   /** Pagamento online scelto: la segnalazione ha la nostra assistenza. False con il pagamento diretto (§168). */
   assisted: boolean;
+  /** Rimborso proposto dal professionista in chat, da accettare dal cliente (collaudo F-03). */
+  refundOfferEurCents: number | null;
+  /** Rimborso concordato e partito: la segnalazione si è chiusa così. */
+  agreedRefundEurCents: number | null;
   sanction: JobIssueSanction | null;
   appealedAt: string | null;
   appealText: string | null;
@@ -396,6 +400,10 @@ export const jobIssueResponseSchema = z.object({
 export type JobIssueResponseInput = z.infer<typeof jobIssueResponseSchema>;
 
 export const jobIssueChatOutcomeSchema = z.object({ outcome: z.enum(["RESOLVED", "ESCALATE"]) });
+
+/** Rimborso proposto dal professionista in chat su un lavoro pagato online (collaudo F-03). */
+export const jobIssueRefundOfferSchema = z.object({ amountEurCents: z.number().int().positive() });
+export type JobIssueRefundOfferInput = z.infer<typeof jobIssueRefundOfferSchema>;
 export type JobIssueChatOutcomeInput = z.infer<typeof jobIssueChatOutcomeSchema>;
 
 export const resolveJobIssueSchema = z.object({
@@ -467,6 +475,10 @@ type IssueRow = {
   sanction: string | null;
   /** Assente nelle letture che non lo selezionano: vale 100%. */
   refundPercent?: number | null;
+  /** Assenti nelle letture che non li selezionano (collaudo F-03). */
+  refundOfferEurCents?: number | null;
+  refundOfferedAt?: Date | null;
+  agreedRefundEurCents?: number | null;
   appealedAt: Date | null;
   appealText: string | null;
   appealDecision: string | null;
@@ -516,6 +528,8 @@ export function toJobIssueSummary(
     paidOnline: !!extra.paidOnline,
     refundPercent: issue.status === "UPHELD" ? jobIssueRefundPercent(issue.type, issue.refundPercent) : null,
     assisted,
+    refundOfferEurCents: issue.status === "CHAT" ? (issue.refundOfferEurCents ?? null) : null,
+    agreedRefundEurCents: issue.agreedRefundEurCents ?? null,
     sanction: (issue.sanction as JobIssueSanction | null) ?? null,
     appealedAt: issue.appealedAt?.toISOString() ?? null,
     appealText: issue.appealText,

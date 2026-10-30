@@ -6,6 +6,7 @@ import {
   JOB_ISSUE_LABEL,
   JOB_ISSUE_SANCTION_LABEL,
   JOB_ISSUE_STATUS_LABEL,
+  formatEurCents,
   jobIssueOutcomeText,
   type JobIssueSummary,
 } from "@professionisti/shared";
@@ -26,6 +27,7 @@ export function JobIssuePanel({
   onAnswerInfo,
   onAppeal,
   onOpenChat,
+  onOfferRefund,
 }: {
   issue: JobIssueSummary;
   onRespond: (response: string) => Promise<void>;
@@ -33,6 +35,8 @@ export function JobIssuePanel({
   onAppeal: (text: string) => Promise<void>;
   /** Apre la chat col cliente: prima fase della segnalazione (§165). */
   onOpenChat?: () => void;
+  /** Propone un rimborso al cliente su un lavoro pagato online (collaudo F-03). */
+  onOfferRefund?: (amountEurCents: number) => Promise<void>;
 }) {
   return (
     <YStack gap="$2" padding="$3" borderRadius="$3" backgroundColor={brand.urgenzaVelo}>
@@ -68,7 +72,12 @@ export function JobIssuePanel({
               Apri la chat col cliente
             </Button>
           ) : null}
+          {issue.paidOnline && onOfferRefund ? <RefundOfferForm current={issue.refundOfferEurCents} onSubmit={onOfferRefund} /> : null}
         </YStack>
+      ) : issue.status === "RESOLVED" && issue.agreedRefundEurCents !== null ? (
+        <Text fontSize={13} color={brand.grafite}>
+          Il cliente ha accettato il rimborso di {formatEurCents(issue.agreedRefundEurCents)}: la segnalazione è chiusa e il resto del pagamento segue il suo corso.
+        </Text>
       ) : issue.status === "UNRESOLVED" ? (
         <Text fontSize={13} color={brand.grafite}>
           Il cliente ha indicato che non avete trovato un accordo.
@@ -224,6 +233,65 @@ function TextForm({
       <Button variant="secondary" size="$2" height={36} alignSelf="flex-start" onPress={submit} disabled={isSaving} opacity={isSaving ? 0.6 : 1}>
         {isSaving ? "Invio..." : submitLabel}
       </Button>
+    </YStack>
+  );
+}
+
+/**
+ * Rimborso proposto al cliente in chat (collaudo F-03): se lo accetta parte
+ * subito dai soldi ancora fermi del lavoro e la segnalazione si chiude.
+ */
+function RefundOfferForm({ current, onSubmit }: { current: number | null; onSubmit: (amountEurCents: number) => Promise<void> }) {
+  const [draft, setDraft] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  async function submit() {
+    setError(null);
+    const cents = Math.round(Number(draft.trim().replace(",", ".")) * 100);
+    if (!Number.isFinite(cents) || cents <= 0) {
+      setError("Scrivi una cifra in euro, per esempio 30.");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await onSubmit(cents);
+      setDraft("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <YStack gap="$2">
+      <Text fontSize={13} color={brand.grafite70}>
+        {current !== null
+          ? `Hai proposto un rimborso di ${formatEurCents(current)}: se il cliente lo accetta parte subito e la segnalazione si chiude. Puoi cambiarlo.`
+          : "Vi siete accordati su un rimborso? Proponilo qui: se il cliente lo accetta parte subito dai soldi del lavoro e la segnalazione si chiude."}
+      </Text>
+      <XStack gap="$2" alignItems="center" flexWrap="wrap">
+        <input
+          inputMode="decimal"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value.slice(0, 12))}
+          placeholder="Es. 30"
+          aria-label="Rimborso da proporre in euro"
+          style={{ width: 120, height: 36, boxSizing: "border-box", padding: "0 10px", borderRadius: 10, border: `1px solid ${brand.bordoCampo}`, fontSize: 16, fontFamily: "inherit", color: brand.grafite, background: "#fff" }}
+        />
+        <Text fontSize={16} color={brand.grafite70}>
+          €
+        </Text>
+        <Button variant="secondary" size="$2" height={36} onPress={submit} disabled={isSaving} opacity={isSaving ? 0.6 : 1}>
+          {isSaving ? "Invio..." : current !== null ? "Cambia proposta" : "Proponi rimborso"}
+        </Button>
+      </XStack>
+      {error ? (
+        <Text fontSize={13} color={brand.urgenza}>
+          {error}
+        </Text>
+      ) : null}
     </YStack>
   );
 }
