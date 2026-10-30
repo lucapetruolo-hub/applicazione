@@ -1227,6 +1227,7 @@ export function GuidedRequestCard({
           assisted={booking.payment?.method !== "DIRECT" && !booking.issueLate}
           late={booking.issueLate}
           paidDirect={booking.payment?.method === "DIRECT"}
+          hasReview={booking.hasReview}
           onClose={() => {
             setShowReportModal(false);
             onChanged();

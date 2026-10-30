@@ -20,7 +20,7 @@ const HINT: Record<JobIssueType, string> = {
  * e "Scopri di più" con la spiegazione completa e cosa si può fare con il
  * professionista.
  */
-function LateReportInfo({ businessName, paidDirect }: { businessName: string; paidDirect: boolean }) {
+function LateReportInfo({ businessName, paidDirect, hasReview }: { businessName: string; paidDirect: boolean; hasReview: boolean }) {
   return (
     <YStack gap="$1">
       <Text fontSize={16} color={brand.grafite70}>
@@ -43,8 +43,8 @@ function LateReportInfo({ businessName, paidDirect }: { businessName: string; pa
             legge fissa termini brevi; il messaggio in chat resta scritto, con la data.
           </Text>
           <Text fontSize={13} color={brand.grafite70}>
-            Se non vi accordate: chiudi la segnalazione dalla scheda del lavoro e puoi lasciare la recensione. Resta sempre possibile rivolgersi
-            a un organismo di mediazione, a un&apos;associazione dei consumatori o al giudice.
+            Se non vi accordate: chiudi la segnalazione dalla scheda del lavoro{hasReview ? "" : " e lascia la recensione"}. Resta sempre
+            possibile rivolgersi a un organismo di mediazione, a un&apos;associazione dei consumatori o al giudice.
           </Text>
         </YStack>
       </details>
@@ -73,6 +73,7 @@ export function ReportIssueModal({
   assisted = true,
   late = false,
   paidDirect = false,
+  hasReview = false,
 }: {
   businessName: string;
   phone: string | null;
@@ -89,6 +90,8 @@ export function ReportIssueModal({
   late?: boolean;
   /** Lavoro pagato direttamente al professionista: cambia il perché del "niente rimborso". */
   paidDirect?: boolean;
+  /** Recensione già lasciata (di solito subito dopo "Lavoro terminato"): non la proponiamo di nuovo. */
+  hasReview?: boolean;
 }) {
   const [type, setType] = useState<JobIssueType | null>(allowedTypes.length === 1 ? (allowedTypes[0] ?? null) : null);
   const [description, setDescription] = useState("");
@@ -189,7 +192,7 @@ export function ReportIssueModal({
               <>
                 <Text color={brand.grafite70}>
                   Abbiamo avvisato {businessName} e gli abbiamo scritto in chat cosa è successo. Scrivetevi in chat per trovare insieme
-                  una soluzione: dalla scheda del lavoro potrai poi chiudere la segnalazione e lasciare la recensione.
+                  una soluzione: dalla scheda del lavoro potrai poi chiudere la segnalazione{hasReview ? "" : " e lasciare la recensione"}.
                 </Text>
                 <XStack gap="$2" flexWrap="wrap">
                   {onOpenChat ? (
@@ -237,7 +240,7 @@ export function ReportIssueModal({
                 Segnala un problema
               </Text>
               {late ? (
-                <LateReportInfo businessName={businessName} paidDirect={paidDirect} />
+                <LateReportInfo businessName={businessName} paidDirect={paidDirect} hasReview={hasReview} />
               ) : (
                 <Text fontSize={16} color={brand.grafite70}>
                   {!assisted
