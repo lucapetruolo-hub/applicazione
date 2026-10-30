@@ -74,8 +74,19 @@ Migliorie approvate da Luca il 30/10:
   `BOOKING_REOPEN_DECLINED`). I controlli (orario passato, fascia libera,
   altro lavoro sulla stessa richiesta) si rifanno all'accettazione.
 
-Resta aperto, in attesa di Luca: P-04 (giorni per segnalare e soldi fermi).
-F-21 e G-14 (cifre dei bonifici) servono i dati di Stripe.
+- **P-04** (decisione di Luca, regola di Upwork e Fiverr): un lavoro fatto
+  male si segnala entro 7 giorni (prima 14) dall'ultimo tra fine
+  dell'appuntamento e chiusura del professionista, e solo finché il cliente
+  non conferma "Lavoro terminato", che vale come accettazione del lavoro.
+  Così si segnala solo mentre i soldi online sono fermi (7 giorni) e un
+  rimborso non resta mai a carico nostro. Lo stesso termine vale per la
+  chiusura d'ufficio quando una parte non risponde (promemoria al 3° e al 6°
+  giorno, chiusura al 7°), anche per il professionista che non segna il
+  lavoro come terminato. Testi aggiornati: finestra di conferma del cliente,
+  "Segnala un problema", "E se…" in home, Termini punto 6 (e il tetto dei
+  3.000 € al punto dei pagamenti). Domanda 84 per l'avvocato.
+
+F-21 e G-14 (cifre dei bonifici): servono i dati di Stripe.
 
 ## Verifica
 

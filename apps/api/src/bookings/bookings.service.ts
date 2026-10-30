@@ -8,6 +8,7 @@ import {
   completionDeviation,
   completionDeviationText,
   clientCanReview,
+  BAD_WORK_REPORT_DAYS,
   jobIssueTypesAllowed,
   toJobIssueSummary,
   jobPaidOnline,
@@ -1129,7 +1130,7 @@ export class BookingsService implements OnModuleInit {
   /**
    * Il cliente segnala un problema sul lavoro (docs/CHANGELOG.md §164):
    * mancata presentazione (entro 7 giorni dalla fine dell'appuntamento) o
-   * lavoro non andato bene (entro 14 giorni). Finestre ricalcolate qui, mai
+   * lavoro non andato bene (entro 7 giorni, finché il cliente non conferma). Finestre ricalcolate qui, mai
    * fidarsi del client. Una sola segnalazione per lavoro; la decide un admin.
    */
   /**
@@ -1218,7 +1219,7 @@ export class BookingsService implements OnModuleInit {
       throw new BadRequestException(
         input.type === "NO_SHOW"
           ? "La mancata presentazione si può segnalare dalla fine dell'appuntamento, entro 7 giorni, se non hai già confermato il lavoro."
-          : "Un lavoro non andato bene si può segnalare dall'inizio dell'appuntamento, entro 14 giorni dalla sua conclusione.",
+          : `Un lavoro non andato bene si può segnalare dall'inizio dell'appuntamento, entro ${BAD_WORK_REPORT_DAYS} giorni dalla sua conclusione, finché non hai confermato che è terminato.`,
       );
     }
 

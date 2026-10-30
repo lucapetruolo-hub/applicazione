@@ -7,9 +7,12 @@ import "./zod";
  * - "Il professionista non si è presentato": dall'orario di fine
  *   dell'appuntamento, entro 7 giorni, finché il cliente non ha confermato
  *   che il lavoro è terminato;
- * - "Il lavoro non è andato bene": dall'inizio dell'appuntamento, entro 14
- *   giorni dall'ultimo tra fine appuntamento, chiusura del professionista e
- *   conferma del cliente (difetti scoperti dopo).
+ * - "Il lavoro non è andato bene": dall'inizio dell'appuntamento, entro 7
+ *   giorni dall'ultimo tra fine appuntamento e chiusura del professionista,
+ *   finché il cliente non conferma che è terminato: la conferma vale come
+ *   accettazione del lavoro (decisione di Luca del 30/10/2026, collaudo P-04,
+ *   regola di Upwork e Fiverr). Così si segnala solo mentre i soldi online
+ *   sono ancora fermi (ONLINE_RELEASE_DAYS) e un rimborso non tocca mai noi.
  * Una sola segnalazione per lavoro. Prima fase (§165, decisione
  * dell'utente): cliente e professionista provano a risolvere in chat
  * (`CHAT`); se si accordano la segnalazione si chiude (`RESOLVED`), se no il
@@ -23,7 +26,7 @@ export type JobIssueType = (typeof jobIssueTypes)[number];
 export type JobIssueStatus = "CHAT" | "RESOLVED" | "OPEN" | "UPHELD" | "REJECTED" | "UNRESOLVED";
 
 export const NO_SHOW_REPORT_DAYS = 7;
-export const BAD_WORK_REPORT_DAYS = 14;
+export const BAD_WORK_REPORT_DAYS = 7;
 
 export const JOB_ISSUE_LABEL: Record<JobIssueType, string> = {
   NO_SHOW: "Il professionista non si è presentato",
@@ -372,9 +375,10 @@ export function jobIssueTypesAllowed(b: JobIssueWindowInput, now: Date): JobIssu
   if (!b.clientConfirmedCompletedAt && t >= end && t <= end + NO_SHOW_REPORT_DAYS * DAY_MS) {
     allowed.push("NO_SHOW");
   }
-  const clientConfirmed = b.completionAutoClosedAt ? null : b.clientConfirmedCompletedAt;
-  const lastEvent = Math.max(end, b.professionalCompletedAt?.getTime() ?? 0, clientConfirmed?.getTime() ?? 0);
-  if (t >= b.scheduledAt.getTime() && t <= lastEvent + BAD_WORK_REPORT_DAYS * DAY_MS) {
+  // "Lavoro terminato" del cliente vale come accettazione (collaudo P-04); la conferma d'ufficio chiude comunque il termine.
+  const clientAccepted = !!b.clientConfirmedCompletedAt;
+  const lastEvent = Math.max(end, b.professionalCompletedAt?.getTime() ?? 0);
+  if (!clientAccepted && t >= b.scheduledAt.getTime() && t <= lastEvent + BAD_WORK_REPORT_DAYS * DAY_MS) {
     allowed.push("BAD_WORK");
   }
   return allowed;

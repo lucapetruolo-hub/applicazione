@@ -12,7 +12,7 @@ const MAX_PHOTOS = 5;
 
 const HINT: Record<JobIssueType, string> = {
   NO_SHOW: `Dalla fine dell'appuntamento, entro ${NO_SHOW_REPORT_DAYS} giorni.`,
-  BAD_WORK: `Entro ${BAD_WORK_REPORT_DAYS} giorni dalla fine del lavoro, anche per difetti scoperti dopo.`,
+  BAD_WORK: `Entro ${BAD_WORK_REPORT_DAYS} giorni dalla fine del lavoro, finché non confermi che è terminato.`,
 };
 
 /**

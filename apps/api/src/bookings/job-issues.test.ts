@@ -14,21 +14,23 @@ describe("finestre per segnalare un problema (§164)", () => {
   it("durante l'appuntamento: solo lavoro non andato bene", () => {
     expect(jobIssueTypesAllowed(base, new Date(start.getTime() + 1000))).toEqual(["BAD_WORK"]);
   });
-  it("dopo la fine: entrambi fino a 7 giorni, poi solo lavoro fatto male fino a 14", () => {
+  it("dopo la fine: entrambi fino a 7 giorni, poi niente (collaudo P-04)", () => {
     expect(jobIssueTypesAllowed(base, at(DAY))).toEqual(["NO_SHOW", "BAD_WORK"]);
-    expect(jobIssueTypesAllowed(base, at(8 * DAY))).toEqual(["BAD_WORK"]);
-    expect(jobIssueTypesAllowed(base, at(15 * DAY))).toEqual([]);
+    expect(jobIssueTypesAllowed(base, at(6.9 * DAY))).toEqual(["NO_SHOW", "BAD_WORK"]);
+    expect(jobIssueTypesAllowed(base, at(8 * DAY))).toEqual([]);
   });
-  it("i 14 giorni partono dall'ultimo tra fine, chiusura del professionista e conferma del cliente", () => {
-    const confirmed = { ...base, status: "COMPLETED", clientConfirmedCompletedAt: at(10 * DAY) };
-    expect(jobIssueTypesAllowed(confirmed, at(20 * DAY))).toEqual(["BAD_WORK"]);
+  it("i 7 giorni partono dalla chiusura del professionista, se è dopo la fine", () => {
+    const closed = { ...base, status: "COMPLETED", professionalCompletedAt: at(3 * DAY) };
+    expect(jobIssueTypesAllowed(closed, at(9 * DAY))).toEqual(["BAD_WORK"]);
+    expect(jobIssueTypesAllowed(closed, at(11 * DAY))).toEqual([]);
   });
-  it("la conferma d'ufficio allo scadere del termine non riapre i 14 giorni (§190)", () => {
-    const autoClosed = { ...base, status: "COMPLETED", professionalCompletedAt: at(DAY), clientConfirmedCompletedAt: at(15 * DAY), completionAutoClosedAt: at(15 * DAY) };
-    expect(jobIssueTypesAllowed(autoClosed, at(16 * DAY))).toEqual([]);
+  it("\"Lavoro terminato\" del cliente vale come accettazione: niente più segnalazioni", () => {
+    expect(jobIssueTypesAllowed({ ...base, clientConfirmedCompletedAt: at(DAY) }, at(2 * DAY))).toEqual([]);
+    expect(jobIssueTypesAllowed({ ...base, status: "COMPLETED", clientConfirmedCompletedAt: at(DAY) }, at(2 * DAY))).toEqual([]);
   });
-  it("dopo la conferma del cliente niente mancata presentazione", () => {
-    expect(jobIssueTypesAllowed({ ...base, clientConfirmedCompletedAt: at(DAY) }, at(2 * DAY))).toEqual(["BAD_WORK"]);
+  it("la conferma d'ufficio allo scadere del termine chiude le segnalazioni (§190)", () => {
+    const autoClosed = { ...base, status: "COMPLETED", professionalCompletedAt: at(DAY), clientConfirmedCompletedAt: at(8 * DAY), completionAutoClosedAt: at(8 * DAY) };
+    expect(jobIssueTypesAllowed(autoClosed, at(8.5 * DAY))).toEqual([]);
   });
   it("una sola segnalazione per lavoro, niente su lavori annullati", () => {
     expect(jobIssueTypesAllowed({ ...base, hasIssue: true }, at(DAY))).toEqual([]);
