@@ -39,7 +39,9 @@ export default async function HomePage() {
 
   return (
     <>
-      <JsonLd data={siteJsonLd} />
+      {siteJsonLd.map((data) => (
+        <JsonLd key={data["@type"]} data={data} />
+      ))}
       <HomeContent professionals={professionals} platformStats={platformStats} />
     </>
   );
