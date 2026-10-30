@@ -133,3 +133,12 @@ Test nuovi: `issue-refund-agreement.test.ts`, `refund-decision.test.ts`,
 `job-issue-chat-reply.test.ts`, `online-held-limit.test.ts`, `reopen-request.test.ts` e casi in `online-limit-completion`,
 `destination-charges`, `direct-charges`, `online-payments`. Tutta la suite
 API, typecheck del sito e `pnpm lint` passano.
+
+### Prova di axe su /accedi
+
+La prova del contrasto di /accedi falliva a volte: axe guardava la scheda
+mentre stava ancora comparendo in dissolvenza (`auth-card-in`), con i colori a
+metà. Ora `seriousIssues` in `e2e/tests/tastiera.spec.ts` aspetta che finisca
+ogni animazione con una fine, non solo le transizioni di colore; restano
+escluse quelle senza fine (luci della home, caricamenti) e quelle legate allo
+scorrimento. Provato in locale sulle sette pagine pubbliche: nessun problema.
