@@ -68,3 +68,7 @@ conteggio delle carte in Admin).
 - Prova nel browser fatta girare qui fino al pulsante di Stripe (profilo,
   finestra "Ora scegli il piano", pagina Abbonamento) con una chiave finta.
 - La parte su Stripe aspetta la chiave di prova.
+
+**Da fare prima del lancio** (Luca, 30/10/2026): bloccare anche nel server i
+dati fiscali finché manca la carta (oggi il lucchetto è solo nel percorso).
+Segnato nella checklist di lancio, punto 5bis, accanto alle chiavi Stripe vere.

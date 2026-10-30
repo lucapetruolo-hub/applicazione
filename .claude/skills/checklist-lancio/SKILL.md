@@ -85,6 +85,16 @@ produzione):
    e scartati Neon gratis (un cron gira ogni minuto: supererebbe le 100 ore
    di calcolo del piano gratuito), Cloudflare, Clerk e R2
    (`/mnt/project-files/analisi/servizi-gratuiti-valutazione.md`).
+5bis. **Prima di mettere le chiavi Stripe vere: dati fiscali solo dopo la carta**
+   (richiesta di Luca del 30/10/2026, docs/changelog/2026-10-30-iscrizione-carta-solida.md).
+   Oggi il lucchetto "Dopo il piano" sui dati fiscali c'è solo nel percorso
+   "Completa il profilo": dal menu Fisco e pagamenti la pagina si apre e il
+   server accetta i dati anche senza carta, quindi prima del lancio chi salta
+   la carta può comparire nella ricerca e ricevere richieste. Da fare: il
+   server rifiuta i dati fiscali finché manca la carta, solo quando la carta
+   si può dare (Stripe acceso e `LAUNCH_DATE` fissata), e la pagina lo dice
+   con il pulsante "Attiva i mesi gratis". Dopo il lancio la pausa
+   `CARD_NEEDED` copre già il caso.
 5. Chiavi Stripe Checkout reali (già segnalate in §9 sopra:
    `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`STRIPE_PRICE_BASE`/
    `STRIPE_PRICE_PLUS`/`STRIPE_PRICE_PRO`, con gli eventi webhook
