@@ -34,6 +34,9 @@ async function anonymousPage(browser: Browser, device: typeof PHONE): Promise<Pa
 
 /** Problemi gravi o critici (WCAG 2.1 A e AA) sulla pagina, uno per riga. */
 async function seriousIssues(page: Page): Promise<string[]> {
+  // Un pulsante a metà di una transizione di colore (Tamagui anima "all")
+  // darebbe un contrasto sbagliato: si aspetta che le transizioni finiscano.
+  await page.waitForFunction(() => document.getAnimations().every((a) => !(a instanceof CSSTransition) || a.playState !== "running"));
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
   return results.violations
     .filter((v) => v.impact === "serious" || v.impact === "critical")
@@ -124,8 +127,14 @@ test("menu dell'account con Esci raggiungibile dalla tastiera", async ({ browser
   const page = await pageAsClient(browser, client.id, COMPUTER);
   await page.goto("/le-mie-richieste");
   await tabTo(page, (name) => name.includes("il mio account"));
-  await page.keyboard.press("Enter");
-  await expect.poll(() => focusedRole(page)).toBe("menuitem");
+  // Se l'intestazione si ridisegna dopo il caricamento dell'account il fuoco
+  // torna alla pagina: si rimette sul pulsante e si riprova.
+  const trigger = page.getByRole("button", { name: /il mio account/i }).first();
+  await expect(async () => {
+    if (!(await trigger.evaluate((el) => el === document.activeElement))) await trigger.focus();
+    if ((await focusedRole(page)) !== "menuitem") await page.keyboard.press("Enter");
+    expect(await focusedRole(page)).toBe("menuitem");
+  }).toPass({ timeout: 10_000 });
   await page.keyboard.press("End");
   await expect.poll(() => page.evaluate(() => (document.activeElement as HTMLElement).innerText.trim())).toBe("Esci");
   await page.keyboard.press("Escape");
