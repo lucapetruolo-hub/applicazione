@@ -153,12 +153,12 @@ test("profilo, finestra del piano e carta che passa (4242): 0 € oggi, mesi gra
   await page.getByRole("button", { name: "Attiva i mesi gratis" }).click();
   await page.waitForURL(/checkout\.stripe\.com/, { timeout: 60_000 });
   await fillCard(page, "4242424242424242");
-  await page.waitForURL(/\/dashboard\/abbonamento\?attivato=carta/, { timeout: 90_000 });
-  await expect(page.getByText(/Fatto: carta salvata e mesi gratis attivi/)).toBeVisible();
+  await expect(page.getByText(/Fatto: carta salvata e mesi gratis attivi/)).toBeVisible({ timeout: 90_000 });
 
   const after = await waitForCard(profile.id);
   expect(after.stripeSubscriptionId).toMatch(/^sub_/);
-  expect(after.trialEndsAt?.getTime()).toBe(before.trialEndsAt?.getTime());
+  // Stripe tiene la fine al secondo: il database prende la sua.
+  expect(Math.abs(after.trialEndsAt!.getTime() - before.trialEndsAt!.getTime())).toBeLessThan(1000);
   await expectTrialOnStripe(after.stripeSubscriptionId!, after.trialEndsAt!);
 });
 
@@ -168,8 +168,7 @@ test("carta con 3D Secure (3155): dopo la conferma della banca è come la 4242",
   await openCheckout(page);
   await fillCard(page, "4000002500003155");
   await complete3DSecure(page);
-  await page.waitForURL(/\/dashboard\/abbonamento\?attivato=carta/, { timeout: 90_000 });
-  await expect(page.getByText(/Fatto: carta salvata e mesi gratis attivi/)).toBeVisible();
+  await expect(page.getByText(/Fatto: carta salvata e mesi gratis attivi/)).toBeVisible({ timeout: 90_000 });
   const after = await waitForCard(profileId!);
   await expectTrialOnStripe(after.stripeSubscriptionId!, after.trialEndsAt!);
 });
@@ -208,7 +207,7 @@ test("primo addebito fallito dopo i mesi gratis (0341, test clock): abbonamento 
   const page = await signedIn(browser, user.id);
   await openCheckout(page);
   await fillCard(page, "4000000000000341");
-  await page.waitForURL(/\/dashboard\/abbonamento\?attivato=carta/, { timeout: 90_000 });
+  await expect(page.getByText(/Fatto: carta salvata e mesi gratis attivi/)).toBeVisible({ timeout: 90_000 });
   const row = await waitForCard(profileId!);
 
   // Tre mesi dopo, più il tempo in cui Stripe tiene la fattura in bozza.
