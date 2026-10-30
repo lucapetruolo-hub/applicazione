@@ -15,6 +15,12 @@ export type ProfessionalAvatarProps = {
   /** Larghezza sotto i 660px, se diversa da `size`. */
   mobileSize?: number;
   shape?: ProfessionalAvatarShape;
+  /**
+   * Foto della prima scheda dei risultati: è l'elemento più grande della
+   * prima schermata, quindi si scarica subito e non "quando serve" (collaudo
+   * N-02, docs/changelog/2026-10-30-velocita-telefono.md).
+   */
+  priority?: boolean;
 };
 
 /** Altezza della foto: uguale alla larghezza se tonda, 4/3 se verticale. */
@@ -31,7 +37,7 @@ export function avatarHeight(width: number, shape: ProfessionalAvatarShape): num
 export const CARD_PHOTO: { size: number; mobileSize: number; shape: ProfessionalAvatarShape } = { size: 120, mobileSize: 96, shape: "portrait" };
 
 /** Immagine profilo del professionista se presente, altrimenti l'icona categoria colorata. */
-export function ProfessionalAvatar({ imageUrl, categorySlug, size = 44, mobileSize, shape = "circle" }: ProfessionalAvatarProps) {
+export function ProfessionalAvatar({ imageUrl, categorySlug, size = 44, mobileSize, shape = "circle", priority = false }: ProfessionalAvatarProps) {
   if (!imageUrl) {
     return <CategoryIconBadge slug={categorySlug} size={size} mobileSize={mobileSize} shape={shape} />;
   }
@@ -50,7 +56,7 @@ export function ProfessionalAvatar({ imageUrl, categorySlug, size = 44, mobileSi
     >
       {/* `next/image` (dimensione nota in anticipo, `size`): lazy-loading e
           formati moderni automatici, a differenza del vecchio <img> grezzo. */}
-      <Image src={imageUrl} alt="" width={size} height={height} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+      <Image src={imageUrl} alt="" width={size} height={height} priority={priority} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
     </YStack>
   );
 }

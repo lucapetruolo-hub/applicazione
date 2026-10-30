@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { FRAZIONI, PROFESSIONAL_CATEGORIES, allItalianCityNames, matchProblem, nearestComune } from "@professionisti/shared";
+import { PROFESSIONAL_CATEGORIES, matchProblem } from "@professionisti/shared";
 import type { ProfessionalSuggestion } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { cachedPopularOrder, loadPopularOrder } from "@/lib/categoryOrder";
+import { loadComuni, useComuni } from "@/lib/comuniLazy";
 import { buildSearchSuggestions } from "@/lib/searchSuggestions";
 import { PROBLEM_SUGGESTION_PREFIX, looksLikeProblem } from "@/lib/searchNavigation";
 
@@ -61,7 +62,11 @@ function locateComune(): Promise<string | null> {
       return;
     }
     navigator.geolocation.getCurrentPosition(
-      (position) => resolve(nearestComune(position.coords.latitude, position.coords.longitude)?.name ?? null),
+      (position) =>
+        void loadComuni().then(
+          (comuni) => resolve(comuni.nearestComune(position.coords.latitude, position.coords.longitude)?.name ?? null),
+          () => resolve(null),
+        ),
       () => resolve(null),
       { enableHighAccuracy: false, timeout: 10_000, maximumAge: 10 * 60_000 },
     );
@@ -94,7 +99,13 @@ function problemSuggestion(query: string): ProfessionalSuggestion | null {
   };
 }
 
+const NO_CITIES: string[] = [];
+const NO_CITIES_ALIASES: { name: string; city: string }[] = [];
+
 export function useSearchBarHints(initialQuery = "") {
+  // Elenco dei comuni scaricato quando si tocca un campo (lib/comuniLazy.ts):
+  // fino ad allora il campo "Città" ha solo i suggerimenti del server.
+  const comuni = useComuni();
   const [query, setQuery] = useState(initialQuery);
   const [order, setOrder] = useState(() => cachedPopularOrder() ?? null);
   const [hints, setHints] = useState<CityHints | null>(null);
@@ -145,8 +156,8 @@ export function useSearchBarHints(initialQuery = "") {
 
   return {
     professionalSuggestions,
-    citySuggestions: allItalianCityNames(),
-    cityAliases: FRAZIONI,
+    citySuggestions: comuni?.allItalianCityNames() ?? NO_CITIES,
+    cityAliases: comuni?.FRAZIONI ?? NO_CITIES_ALIASES,
     cityDefaults,
     preferredCities: hints?.covered ?? [],
     onNearMe: locateComune,

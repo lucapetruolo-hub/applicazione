@@ -1,9 +1,11 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { PROFESSIONAL_CATEGORIES, findComuneBySlug, isProfessionalCategorySlug } from "@professionisti/shared";
+import { PROFESSIONAL_CATEGORIES, isProfessionalCategorySlug } from "@professionisti/shared";
 import { SearchBar, type ProfessionalSuggestion, type SearchMode } from "@professionisti/ui";
+import { useComuni } from "@/lib/comuniLazy";
 import { buildSearchDestination } from "@/lib/searchNavigation";
+import { useMediaQuery } from "@/lib/useMediaQuery";
 import { rememberSearchCity, useSearchBarHints } from "@/lib/useSearchBarHints";
 import { navigateWithTransition } from "@/lib/viewTransition";
 import { MagneticButton } from "./MagneticButton";
@@ -29,7 +31,12 @@ export function HeaderSearchBar() {
   const categorySlugFromPath = pathname.split("/")[2];
   // Città nel percorso (/cerca/[categoria]/[citta], docs/CHANGELOG.md §132) o, per testo libero, in `?citta=`.
   const citySlugFromPath = pathname.split("/")[3];
-  const city = searchParams.get("citta") ?? (citySlugFromPath ? findComuneBySlug(citySlugFromPath)?.name : undefined) ?? "";
+  // Il nome del comune viene dall'elenco dei comuni, che non arriva con la
+  // pagina (lib/comuniLazy.ts): solo sugli schermi dove questa barra si vede
+  // ($gtMd), così il telefono non lo scarica per una barra nascosta.
+  const wide = useMediaQuery("(min-width: 1021px)");
+  const comuni = useComuni(Boolean(citySlugFromPath) && wide);
+  const city = searchParams.get("citta") ?? (citySlugFromPath ? comuni?.findComuneBySlug(citySlugFromPath)?.name : undefined) ?? "";
   const category = categorySlugFromPath && isProfessionalCategorySlug(categorySlugFromPath) ? PROFESSIONAL_CATEGORIES.find((c) => c.slug === categorySlugFromPath) : undefined;
   // Prestazione filtrata da "Quanto costa in media" (§398): scritta nel campo e tenuta cambiando città.
   const service = searchParams.get("servizio")?.trim() || undefined;
@@ -37,9 +44,9 @@ export function HeaderSearchBar() {
 
   const searchHints = useSearchBarHints(query);
 
-  function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
+  async function handleSearch(params: { query: string; city: string; professional?: ProfessionalSuggestion; mode: SearchMode }) {
     rememberSearchCity(params.city);
-    const destination = buildSearchDestination({ ...params, service });
+    const destination = await buildSearchDestination({ ...params, service });
     navigateWithTransition(() => {
       router.push(destination);
       router.refresh();

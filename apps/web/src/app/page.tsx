@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
-import type { ProfessionalSearchResult } from "@professionisti/shared";
+import { BRAND, type ProfessionalSearchResult } from "@professionisti/shared";
 import { apiClient } from "../lib/apiClient";
+import { SITE_URL } from "@/lib/siteUrl";
+import { JsonLd } from "@/components/JsonLd";
 import HomeContent from "./HomeContent";
 
 // Server-rendered ad ogni richiesta: stesso motivo di /cerca/[categoria],
@@ -8,29 +10,41 @@ import HomeContent from "./HomeContent";
 // visibile nella vetrina "Professionisti su Professionisti".
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { alternates: { canonical: "/" } };
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+  // Con il nome del sito, come le altre pagine (collaudo N-11).
+  title: { absolute: `${BRAND.tagline} | ${BRAND.name}` },
+};
+
+// Nome e logo del sito per Google, che li mostra nei risultati (collaudo
+// N-10, docs/changelog/2026-10-30-velocita-telefono.md).
+const siteJsonLd = [
+  { "@context": "https://schema.org", "@type": "WebSite", name: BRAND.name, url: SITE_URL, inLanguage: "it-IT" },
+  { "@context": "https://schema.org", "@type": "Organization", name: BRAND.name, url: SITE_URL, logo: `${SITE_URL}/icon-512.png` },
+];
 
 export default async function HomePage() {
-  let professionals: ProfessionalSearchResult[];
-  try {
+  // Le richieste insieme, non una dopo l'altra (collaudo N-01/N-02).
+  const [professionals, platformStats, priceIndex] = await Promise.all([
     // excludeDemo: la home dichiara esplicitamente di mostrare conteggi e
     // professionisti reali (redesign "Scheda Intervento" §4.3/§4.6) — i
     // profili del seed (PLACEHOLDER_PROFESSIONALS) non devono contribuire
     // né ai conteggi per categoria né alla vetrina in evidenza.
-    professionals = await apiClient.searchProfessionals({ excludeDemo: true });
-  } catch {
-    professionals = [];
-  }
+    apiClient.searchProfessionals({ excludeDemo: true }).catch((): ProfessionalSearchResult[] => []),
+    // Numeri reali per la striscia "social proof" (richiesta esplicita
+    // dell'utente) — se l'API non risponde, la striscia semplicemente non
+    // compare invece di mostrare uno zero fuorviante (vedi PlatformStats).
+    apiClient.platformStats().catch(() => null),
+    // Prezzi del "Quanto costa in media" già nella pagina (collaudo N-06).
+    apiClient.getServicePriceIndex().catch(() => null),
+  ]);
 
-  // Numeri reali per la striscia "social proof" (richiesta esplicita
-  // dell'utente) — se l'API non risponde, la striscia semplicemente non
-  // compare invece di mostrare uno zero fuorviante (vedi PlatformStats).
-  let platformStats: { totalUsers: number; totalProfessionals: number; reviewCount?: number; averageRating?: number | null } | null;
-  try {
-    platformStats = await apiClient.platformStats();
-  } catch {
-    platformStats = null;
-  }
-
-  return <HomeContent professionals={professionals} platformStats={platformStats} />;
+  return (
+    <>
+      {siteJsonLd.map((data) => (
+        <JsonLd key={data["@type"]} data={data} />
+      ))}
+      <HomeContent professionals={professionals} platformStats={platformStats} priceIndex={priceIndex} />
+    </>
+  );
 }

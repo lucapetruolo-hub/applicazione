@@ -1355,8 +1355,8 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     getLanguagePopularity: () =>
       request<{ name: string; count: number }[]>("/professionals/languages/popular", { cache: "no-store" }),
 
-    /** Riprova sociale reale per la home: ultime recensioni pubbliche (doppio cieco), mai dati finti. */
-    getRecentReviews: () =>
+    /** Riprova sociale reale per la home: ultime recensioni pubbliche (doppio cieco), mai dati finti. Con `place`, solo quel mestiere in quella città (pagine città, collaudo N-04). */
+    getRecentReviews: (place?: { category: string; city: string }) =>
       request<
         {
           id: string;
@@ -1366,7 +1366,7 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
           clientName: string;
           professional: { id: string; businessName: string; categoryLabel: string; categorySlug: string; city: string; imageUrl: string | null };
         }[]
-      >("/reviews/recent", { cache: "no-store" }),
+      >(`/reviews/recent${place ? `?${new URLSearchParams(place).toString()}` : ""}`, { cache: "no-store" }),
 
     getProfessional: (id: string) => request<ProfessionalDetail>(`/professionals/${id}`, { cache: "no-store" }),
 

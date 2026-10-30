@@ -41,6 +41,19 @@ function breadcrumbItems(professional: ProfessionalDetail): BreadcrumbItem[] {
   ];
 }
 
+/** Tipo schema.org per mestiere; gli altri restano "LocalBusiness". */
+const SCHEMA_BUSINESS_TYPE: Partial<Record<string, string>> = {
+  idraulico: "Plumber",
+  elettricista: "Electrician",
+  imbianchino: "HousePainter",
+  fabbro: "Locksmith",
+  climatizzazione: "HVACBusiness",
+  muratore: "GeneralContractor",
+  traslochi: "MovingCompany",
+  falegname: "HomeAndConstructionBusiness",
+  tuttofare: "HomeAndConstructionBusiness",
+};
+
 // Pagina profilo pubblico: SEO-critica (CLAUDE.md §5.4), SSR ad ogni richiesta
 // (nessun generateStaticParams: gli id sono dinamici e crescono nel tempo).
 export const dynamic = "force-dynamic";
@@ -54,10 +67,12 @@ export async function generateMetadata(props: { params: Promise<PageParams> }): 
       alternates: { canonical: professionalPath(professional) },
       title: `${professional.businessName} — ${professional.categoryLabel} a ${professional.city}`,
       description: `${professional.businessName}: ${professional.categoryLabel.toLowerCase()} a ${professional.city}. ${
-        professional.reviewCount > 0 ? `${formatRating(professional.rating ?? 0)}/5 su ${professional.reviewCount} recensioni.` : professional.verified
+        professional.reviewCount > 0 ? `${formatRating(professional.rating ?? 0)}/5 su ${professional.reviewCount} ${professional.reviewCount === 1 ? "recensione" : "recensioni"}.` : professional.verified
           ? `Identità verificata su ${BRAND.name}.`
           : `Profilo su ${BRAND.name}.`
       }`,
+      // Condividendo il profilo (WhatsApp, Facebook) la sua foto, non l'immagine del sito (collaudo N-11).
+      ...(professional.imageUrl ? { openGraph: { images: [{ url: professional.imageUrl, alt: professional.businessName }] } } : {}),
     };
   } catch {
     // Profilo inesistente (404) o API ferma ("Riprova"): mai in Google.
@@ -67,9 +82,17 @@ export async function generateMetadata(props: { params: Promise<PageParams> }): 
 
 export default async function ProfessionalDetailPage(props: { params: Promise<PageParams>; searchParams: Promise<PageSearchParams> }) {
   const [params, searchParams] = await Promise.all([props.params, props.searchParams]);
+  const professionalId = professionalIdFromSlug(params.id);
+  // Agenda chiesta insieme al profilo e scritta dal server: arrivando dopo
+  // spingeva giù la pagina (collaudo N-09, docs/changelog/2026-10-30-velocita-telefono.md).
+  // Accessoria: se non risponde il profilo si apre lo stesso e il browser riprova.
+  const agendaPromise = apiClient.getProfessionalAgenda(professionalId).then(
+    (agenda) => (agenda && Array.isArray(agenda.days) ? agenda : null),
+    () => null,
+  );
   let professional: ProfessionalDetail;
   try {
-    professional = await apiClient.getProfessional(professionalIdFromSlug(params.id));
+    professional = await apiClient.getProfessional(professionalId);
   } catch (err) {
     // "Non trovata" solo se l'API dice che il profilo non c'è. Se l'API non
     // risponde: "Riprova", non un falso 404 (docs/CHANGELOG.md §284).
@@ -95,7 +118,10 @@ export default async function ProfessionalDetailPage(props: { params: Promise<Pa
   // (CLAUDE.md §10, Fase 5 — "nessun indirizzo esposto senza motivo").
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "LocalBusiness",
+    // Tipo preciso quando schema.org lo ha ("Plumber"…), così Google sa che
+    // mestiere è (collaudo N-10, docs/changelog/2026-10-30-velocita-telefono.md).
+    "@type": SCHEMA_BUSINESS_TYPE[professional.categorySlug] ?? "LocalBusiness",
+    areaServed: { "@type": "City", name: professional.city },
     name: professional.businessName,
     url: `${SITE_URL}${professionalPath(professional)}`,
     ...(professional.imageUrl ? { image: professional.imageUrl } : {}),
@@ -120,6 +146,7 @@ export default async function ProfessionalDetailPage(props: { params: Promise<Pa
           prima del piè di pagina (docs/CHANGELOG.md §400). */}
       <ProfessionalDetailContent
         professional={professional}
+        initialAgenda={await agendaPromise}
         breadcrumbs={<Breadcrumbs items={breadcrumbItems(professional)} />}
         query={{ modalita: firstValue(searchParams.modalita), data: firstValue(searchParams.data), salva: firstValue(searchParams.salva), servizio: firstValue(searchParams.servizio) }}
       />

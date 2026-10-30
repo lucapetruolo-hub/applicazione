@@ -5,7 +5,7 @@ import type { PROFESSIONAL_CATEGORIES, ProfessionalSearchResult } from "@profess
 import { YStack } from "@professionisti/ui";
 import { CategoryIconBadge } from "@/components/CategoryIconBadge";
 import { EmptySearchResults } from "@/components/EmptySearchResults";
-import { ResultsListWithMap } from "@/components/ResultsListWithMap";
+import { ResultsListWithMap, type MapPoolQuery } from "@/components/ResultsListWithMap";
 import { LoadErrorNotice } from "@/components/LoadErrorNotice";
 import { saveLastSearchCity } from "@/lib/lastSearchCity";
 
@@ -14,19 +14,22 @@ type Category = (typeof PROFESSIONAL_CATEGORIES)[number];
 export function CategoryContent({
   category,
   city,
+  cityCenter,
   online,
   professionals,
-  allProfessionals,
+  mapPool,
   loadFailed,
   initialUrgentOnly,
   footer,
 }: {
   category: Category;
   city?: string;
+  /** Centro del comune, per la mappa. */
+  cityCenter?: [number, number];
   online?: boolean;
   professionals: ProfessionalSearchResult[];
-  /** Tutti i professionisti della categoria (nessun filtro città), per i puntini sulla mappa. */
-  allProfessionals?: ProfessionalSearchResult[];
+  /** Tutti i professionisti della categoria (nessun filtro città), per i puntini sulla mappa: li chiede il browser. */
+  mapPool?: MapPoolQuery;
   /** La ricerca non è arrivata dall'API: "Riprova" invece di "nessun risultato". */
   loadFailed?: boolean;
   /** Preimpostato dall'URL (?urgente=1) quando si arriva dal toggle "Intervento urgente?" della homepage. */
@@ -59,16 +62,22 @@ export function CategoryContent({
 
   return (
     <YStack width="100%" alignItems="center" backgroundColor="transparent">
-      {/* Titolo principale (h1) per Google e i lettori di schermo, non
-          mostrato: il riquadro in cima ai risultati era stato tolto su
-          richiesta (docs/CHANGELOG.md §271). */}
-      <h1 className="sr-only">{title}</h1>
       <YStack width="100%" maxWidth={1200} paddingHorizontal="$4" paddingVertical="$6">
+        {/* Titolo principale (h1): da telefono si vede, in testo semplice sopra
+            i filtri, perché chi arriva da Google legga subito "Idraulico a
+            Latina" (collaudo N-15, scelto da Luca,
+            docs/changelog/2026-10-30-velocita-telefono.md). Da computer resta
+            solo per Google e i lettori di schermo: lì il riquadro in cima ai
+            risultati era stato tolto su richiesta e la ricerca in alto dice
+            già cosa si sta guardando (docs/CHANGELOG.md §271). */}
+        {/* Senza risultati il titolo c'è già nel riquadro "nessun professionista". */}
+        <h1 className={header ? "sr-only" : "results-title"}>{title}</h1>
         <ResultsListWithMap
           professionals={professionals}
-          allProfessionals={allProfessionals}
+          mapPool={mapPool}
           showMap
           city={city}
+          cityCenter={cityCenter}
           header={header}
           defaultMode={online ? "ONLINE" : "HOME"}
           initialUrgentOnly={initialUrgentOnly}

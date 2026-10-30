@@ -7,7 +7,15 @@ import { Icon, Logo, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { reopenCookieChoice } from "@/lib/cookieConsent";
 import { useAuth } from "@/lib/AuthContext";
 
-const MAIN_CATEGORIES = PROFESSIONAL_CATEGORIES.slice(0, 8);
+// Prima i quattro mestieri del lancio (CLAUDE.md §7), poi gli altri fino a
+// otto: Falegname restava fuori (collaudo N-13,
+// docs/changelog/2026-10-30-velocita-telefono.md). Tutti gli altri da
+// "Tutti i servizi" e dal menu in alto.
+const LAUNCH_SLUGS = ["idraulico", "elettricista", "pulizie", "falegname"];
+const MAIN_CATEGORIES = [
+  ...PROFESSIONAL_CATEGORIES.filter((category) => LAUNCH_SLUGS.includes(category.slug)),
+  ...PROFESSIONAL_CATEGORIES.filter((category) => !LAUNCH_SLUGS.includes(category.slug)),
+].slice(0, 8);
 
 function FooterColumnTitle({ children }: { children: string }) {
   return (
@@ -93,6 +101,7 @@ export function SiteFooter() {
                 {category.label}
               </FooterLink>
             ))}
+            <FooterLink href="/cerca">Tutti i servizi</FooterLink>
             {/* "Contatti" dentro la colonna "Servizi" (richiesta esplicita
                 dell'utente, corretta rispetto a un giro precedente che
                 aveva sostituito l'intera colonna con un form inline) —
@@ -107,6 +116,8 @@ export function SiteFooter() {
             <FooterLink href="/urgente">Richiesta urgente</FooterLink>
             <FooterLink href="/#come-funziona">Come funziona</FooterLink>
             <FooterLink href="/#quanto-costa">Quanto costa</FooterLink>
+            {/* Pagine dei prezzi per mestiere (collaudo N-05). */}
+            <FooterLink href="/prezzi">Prezzi per mestiere</FooterLink>
             {/* Chi è già dentro non deve vedere "Accedi" (collaudo L, migliorie). */}
             {user ? null : <FooterLink href="/accedi">Accedi</FooterLink>}
             <FooterLink href="/faq">Domande frequenti</FooterLink>
