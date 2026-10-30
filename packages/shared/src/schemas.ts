@@ -118,6 +118,10 @@ export const contactMessageSchema = z
     // Dichiarazione di buona fede, obbligatoria per una segnalazione di
     // contenuto illegale (DSA art. 16 c. 2 lett. d, docs/CHANGELOG.md §319).
     goodFaith: z.boolean().optional(),
+    // Nome di chi segnala e indirizzo del contenuto, in campi a sé (DSA art.
+    // 16 c. 2 lett. b-c; collaudo del 29/10/2026, M-09).
+    reporterName: z.string().trim().max(120).optional(),
+    contentUrl: z.string().trim().max(1000).optional(),
     // Honeypot anti-spam, stesso pattern di waitlistSignupSchema.
     website: z.string().max(200).optional(),
     turnstileToken: turnstileTokenSchema,
@@ -125,7 +129,13 @@ export const contactMessageSchema = z
   .superRefine((data, ctx) => {
     if (data.role !== "REPORT_ILLEGAL") return;
     if (data.content.trim().length < 20) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["content"], message: "Indica dove si trova il contenuto e perché è illegale." });
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["content"], message: "Spiega perché il contenuto è illegale." });
+    }
+    if ((data.reporterName ?? "").length < 2) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["reporterName"], message: "Scrivi il tuo nome e cognome." });
+    }
+    if (!data.contentUrl) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["contentUrl"], message: "Incolla l'indirizzo della pagina con il contenuto." });
     }
     if (data.goodFaith !== true) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["goodFaith"], message: "Conferma che la segnalazione è fatta in buona fede." });
@@ -211,7 +221,6 @@ export type RegisterInput = z.infer<typeof registerSchema>;
 export const updateAccountSchema = z.object({
   name: z.string().min(2).max(120).optional(),
   surname: z.string().min(1).max(120).optional(),
-  birthDate: z.string().date("Data non valida").optional(),
   email: accountEmailSchema.optional(),
   phone: phoneNumberSchema.optional(),
   street: z.string().max(200).optional(),

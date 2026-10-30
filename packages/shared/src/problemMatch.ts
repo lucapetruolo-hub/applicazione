@@ -195,7 +195,8 @@ const SAFETY_RULES: readonly { kind: ProblemSafety; test: (t: string) => boolean
   {
     kind: "acqua-elettrico",
     test: (t) =>
-      (/\s(acqua|bagnat|allagat|alluvion|infiltraz|inondat)/.test(t) && /\s(prese?\s|presa elettric|quadro|impianto elettric|ciabatt|interruttor|senza corrente|corrente\s)/.test(t)) ||
+      // "Quando piove" e "umido" vicino a una presa contano come acqua (collaudo del 29/10/2026, M-11).
+      (/\s(acqua|bagnat|allagat|alluvion|infiltraz|inondat|piov|pioggia|umid|gocciol)/.test(t) && /\s(prese?\s|presa\s|presa elettric|quadro|impianto elettric|ciabatt|interruttor|senza corrente|corrente\s)/.test(t)) ||
       /\simpianto allagato/.test(t),
   },
   {

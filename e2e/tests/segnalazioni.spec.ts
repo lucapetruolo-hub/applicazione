@@ -148,7 +148,9 @@ test("segnalazione di un contenuto illegale senza account", async ({ browser }) 
   await expect(page).toHaveURL(/\/contatti\?motivo=segnalazione/);
   const email = `vicino-${Date.now()}@test.it`;
   await page.getByLabel("La tua email").fill(email);
-  await page.getByLabel("Cosa vuoi segnalare").fill(`${WEB_URL}/professionista/${profileId}: la recensione riporta il mio indirizzo di casa.`);
+  await page.getByLabel("Nome e cognome").fill("Anna Vicino");
+  await page.getByLabel("Indirizzo della pagina").fill(`${WEB_URL}/professionista/${profileId}`);
+  await page.getByLabel("Perché è illegale").fill("La recensione riporta il mio indirizzo di casa.");
   await page.getByRole("button", { name: "Invia", exact: true }).click();
   await expect(page.getByText("Conferma che la segnalazione è fatta in buona fede.")).toBeVisible();
   await page.getByRole("checkbox").click({ position: { x: 12, y: 12 } });
@@ -156,4 +158,5 @@ test("segnalazione di un contenuto illegale senza account", async ({ browser }) 
   await expect(page.getByText("Segnalazione presa in carico")).toBeVisible();
   const message = await prisma.contactMessage.findFirstOrThrow({ where: { email } });
   expect(message.role).toBe("REPORT_ILLEGAL");
+  expect(message.content).toContain("Segnalato da: Anna Vicino");
 });
