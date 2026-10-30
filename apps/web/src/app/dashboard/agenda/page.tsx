@@ -2312,7 +2312,14 @@ function DashboardAgendaContent() {
           uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}
         />
       ) : null}
-      {cancelingBooking ? <CancelBookingModal onClose={() => setCancelingBooking(null)} onCancel={handleCancelWithNote} /> : null}
+      {cancelingBooking ? (
+        <CancelBookingModal
+          // Che fine fa l'acconto pagato online (collaudo F-02).
+          description="Il cliente verrà avvisato dell'annullamento e, se ha pagato online, gli restituiamo tutto sulla carta. Puoi lasciare una nota facoltativa per spiegargli il motivo."
+          onClose={() => setCancelingBooking(null)}
+          onCancel={handleCancelWithNote}
+        />
+      ) : null}
 
       {showCalendarLink ? <CalendarLinkModal token={token} onClose={() => setShowCalendarLink(false)} /> : null}
 

@@ -7,6 +7,7 @@ import { Avatar, Button, EmptyState, Icon, Surface, Text, XStack, YStack, brand 
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { MediaPreview } from "@/components/MediaPreview";
+import { ReviewReply } from "@/components/ReviewReply";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" });
@@ -147,6 +148,8 @@ function SentReviewsList({ reviews, error, hasPending }: { reviews: SentReview[]
     <YStack gap="$3">
       {reviews.map((review) => (
         <Surface key={review.id} gap="$2">
+          {/* Ancora per il link dell'avviso "Il professionista ha risposto": un <div> grezzo, come sul profilo pubblico. */}
+          <div id={`recensione-${review.id}`} style={{ scrollMarginTop: 96 }} />
           <XStack alignItems="center" justifyContent="space-between" gap="$2" flexWrap="wrap">
             <XStack alignItems="center" gap="$2" flexWrap="wrap">
               <Stars rating={review.rating} />
@@ -168,6 +171,14 @@ function SentReviewsList({ reviews, error, hasPending }: { reviews: SentReview[]
           </XStack>
           {review.comment ? <Text color={brand.grafite70}>{review.comment}</Text> : null}
           <MediaRow urls={review.mediaUrls} />
+          {review.updatedAfterIssueAt ? (
+            <Text fontSize={13} color={brand.grafite70}>
+              Aggiornata il {formatDate(review.updatedAfterIssueAt)} dopo una segnalazione a lavoro chiuso
+            </Text>
+          ) : null}
+          {review.professionalReply ? (
+            <ReviewReply reviewId={review.id} businessName={review.businessName} reply={review.professionalReply} canEdit={false} token={null} />
+          ) : null}
           {review.hidden ? (
             <Text fontSize={13} color={brand.urgenza}>
               Nascosta dopo una segnalazione: non compare sul profilo del professionista.

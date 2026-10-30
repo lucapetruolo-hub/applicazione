@@ -12,8 +12,25 @@ const MAX_PHOTOS = 5;
 
 const HINT: Record<JobIssueType, string> = {
   NO_SHOW: `Dalla fine dell'appuntamento, entro ${NO_SHOW_REPORT_DAYS} giorni.`,
-  BAD_WORK: `Entro ${BAD_WORK_REPORT_DAYS} giorni dalla fine del lavoro, anche per difetti scoperti dopo.`,
+  BAD_WORK: `Entro ${BAD_WORK_REPORT_DAYS} giorni dalla fine del lavoro, finché non confermi che è terminato.`,
 };
+
+/**
+ * Segnalazione dopo il termine (richieste di Luca del 30/10/2026): una frase
+ * e "Scopri di più" verso la pagina unica /problemi-e-rimborsi, che spiega
+ * perché niente rimborso, cosa fare con il professionista e la garanzia.
+ */
+function LateReportInfo({ businessName }: { businessName: string }) {
+  return (
+    <Text fontSize={16} color={brand.grafite70}>
+      Sono passati i giorni per un rimborso dal sito, ma puoi ancora scrivere a {businessName}: la segnalazione gli arriva in chat.{" "}
+      {/* In una nuova scheda, per non perdere quanto scritto qui. */}
+      <a href="/problemi-e-rimborsi#dopo-i-7-giorni" target="_blank" rel="noopener" style={{ color: brand.cianografia, fontWeight: 700 }}>
+        Scopri di più
+      </a>
+    </Text>
+  );
+}
 
 /**
  * "Segnala un problema" (docs/CHANGELOG.md §164, decisione dell'utente):
@@ -34,6 +51,8 @@ export function ReportIssueModal({
   uploadPhoto,
   onOpenChat,
   assisted = true,
+  late = false,
+  hasReview = false,
 }: {
   businessName: string;
   phone: string | null;
@@ -46,6 +65,10 @@ export function ReportIssueModal({
   onOpenChat?: () => void;
   /** Lavoro pagato online: segnalazione con la nostra assistenza. False con il pagamento diretto (§168). */
   assisted?: boolean;
+  /** Passato il termine (7 giorni o lavoro confermato): solo "lavoro non andato bene", senza rimborso. */
+  late?: boolean;
+  /** Recensione già lasciata (di solito subito dopo "Lavoro terminato"): non la proponiamo di nuovo. */
+  hasReview?: boolean;
 }) {
   const [type, setType] = useState<JobIssueType | null>(allowedTypes.length === 1 ? (allowedTypes[0] ?? null) : null);
   const [description, setDescription] = useState("");
@@ -146,7 +169,7 @@ export function ReportIssueModal({
               <>
                 <Text color={brand.grafite70}>
                   Abbiamo avvisato {businessName} e gli abbiamo scritto in chat cosa è successo. Scrivetevi in chat per trovare insieme
-                  una soluzione: dalla scheda del lavoro potrai poi chiudere la segnalazione e lasciare la recensione.
+                  una soluzione: dalla scheda del lavoro potrai poi chiudere la segnalazione{hasReview ? " e, se non vi accordate, aggiornare la recensione" : " e lasciare la recensione"}.
                 </Text>
                 <XStack gap="$2" flexWrap="wrap">
                   {onOpenChat ? (
@@ -193,13 +216,17 @@ export function ReportIssueModal({
               <Text fontFamily="$heading" fontWeight="800" fontSize="$6" color={brand.grafite}>
                 Segnala un problema
               </Text>
-              <Text fontSize={16} color={brand.grafite70}>
-                {!assisted
+              {late ? (
+                <LateReportInfo businessName={businessName} />
+              ) : (
+                <Text fontSize={16} color={brand.grafite70}>
+                  {!assisted
                   ? `Hai scelto il pagamento diretto: ti mettiamo in contatto con ${businessName} per trovare un accordo, ma non possiamo rimborsarti né decidere noi. Con il pagamento online avresti avuto la nostra assistenza.`
                   : onOpenChat
                   ? `Come primo passo proverete a risolvere in chat con ${businessName}. Se non vi accordate, decide il nostro team dopo aver sentito entrambi.`
                   : `Il nostro team esamina ogni segnalazione e sente anche ${businessName} prima di decidere.`}
-              </Text>
+                </Text>
+              )}
             </YStack>
 
             <YStack gap="$2" role="radiogroup" aria-label="Cosa è successo">
@@ -224,7 +251,7 @@ export function ReportIssueModal({
                       {JOB_ISSUE_LABEL[option]}
                     </Text>
                     <Text fontSize={13} color={brand.grafite70}>
-                      {enabled ? HINT[option] : `Non disponibile adesso. ${HINT[option]}`}
+                      {late ? (enabled ? "Senza rimborso dal sito: ne parli in chat con il professionista." : "Non disponibile adesso.") : enabled ? HINT[option] : `Non disponibile adesso. ${HINT[option]}`}
                     </Text>
                   </YStack>
                 );

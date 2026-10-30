@@ -1080,6 +1080,10 @@ model Quote {
   // Null nei preventivi più vecchi: vale il preavviso del profilo.
   cancellationNoticeHours  Int?
   lateCancelKeepsDeposit   Boolean     @default(false)
+  // Ultima pagina di pagamento Stripe dell'acconto aperta accettando il
+  // preventivo (collaudo I-02): una seconda scheda riapre la stessa pagina,
+  // così lo stesso acconto non si paga due volte.
+  depositCheckoutSessionId String?
   // Data alternativa proposta dal cliente (vedi QuoteStatus.MODIFICATION_REQUESTED),
   // valorizzata solo in quello stato — null altrimenti.
   clientProposedDate       DateTime?
@@ -1225,6 +1229,9 @@ model Booking {
   // valgono 24 ore. canceledLate: il cliente ha annullato dentro il preavviso.
   cancellationNoticeHours Int?
   canceledLate            Boolean       @default(false)
+  // Chi ha annullato chiede di riaprire, l'altro accetta (collaudo F-08, docs/changelog/2026-10-30-collaudo-soldi-online.md).
+  reopenRequestedAt       DateTime?
+  reopenRequestedBy       String?
   // Fine della fascia (richiesta esplicita dell'utente: mostrare tutta la
   // fascia oraria, non solo l'inizio), copiata da Quote.estimatedEndDate/
   // clientProposedEndDate al momento della creazione — null per le
@@ -1510,6 +1517,13 @@ model Review {
   // da profilo pubblico, ricerca, home e media voti. La riga resta.
   hiddenAt  DateTime?
   createdAt DateTime  @default(now())
+  // Risposta pubblica del professionista, modificabile (decisione di Luca del
+  // 30/10/2026, docs/changelog/2026-10-30-collaudo-soldi-online.md).
+  professionalReply     String?
+  professionalRepliedAt DateTime?
+  // Aggiornata dal cliente una sola volta dopo una segnalazione a lavoro
+  // chiuso finita senza accordo (stessa decisione).
+  updatedAfterIssueAt   DateTime?
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
@@ -2916,6 +2930,14 @@ model JobIssue {
   // Percentuale di quanto pagato online rimborsata al cliente quando la
   // segnalazione è accolta: 100, 50 o 20 (docs/CHANGELOG.md §267).
   refundPercent               Int?
+  // Accordo in chat su un lavoro pagato online (collaudo F-03): rimborso
+  // proposto dal professionista e, se il cliente lo accetta, rimborsato.
+  refundOfferEurCents         Int?
+  refundOfferedAt             DateTime?
+  agreedRefundEurCents        Int?
+  // Segnalata dopo il termine (7 giorni o "Lavoro terminato", decisione di
+  // Luca del 30/10/2026): niente rimborso né team, resta tra le parti.
+  late                        Boolean        @default(false)
   // Ricorso del professionista entro 30 giorni dalla decisione, esaminato
   // da un admin diverso da chi ha deciso. ACCEPTED ribalta la decisione.
   appealText                  String?

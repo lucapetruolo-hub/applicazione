@@ -3,7 +3,7 @@ import { GeocodingService } from "../geocoding/geocoding.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { randomUUID } from "node:crypto";
 import { Prisma, type PrismaClient, type ProfessionalProfile } from "@professionisti/database";
-import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_RESTORE_WINDOW_MINUTES, type RequestWithdrawReason, findComuneByName, professionalChargesVat, professionalKindOf, professionalRestrictions, clientPaymentOffer, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestReach, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
+import { CLIENT_DELETED_REQUEST_RETENTION_DAYS, REQUEST_RESTORE_WINDOW_MINUTES, type RequestWithdrawReason, findComuneByName, professionalChargesVat, professionalKindOf, professionalRestrictions, clientPaymentOffer, quotePriceTotals, scheduleChangeBetween, type GuidedRequestInput, type GuidedRequestReach, type GuidedRequestStatusSummary, type GuidedRequestUpdateInput } from "@professionisti/shared";
 import { PRISMA } from "../prisma/prisma.module";
 import { reviewSummariesFor, type ReviewSummary } from "../reviews/review-summary";
 import { PUBLIC_VISIBILITY_SELECT, publicVisibilityMissing, publicVisibilityWhere, publicVerified, stripeVerified } from "../professional-fiscal/public-visibility";
@@ -689,7 +689,7 @@ export class GuidedRequestsService {
           // Modi di pagamento offerti (docs/CHANGELOG.md §237), coi valori di
           // serie per i preventivi vecchi; senza la verifica su Stripe del
           // professionista l'acconto online non si può scegliere (§241).
-          ...clientPaymentOffer(quote, stripeVerified(quote.professionalProfile.fiscalProfile)),
+          ...clientPaymentOffer(quote, stripeVerified(quote.professionalProfile.fiscalProfile), quotePriceTotals(quote.items).totalMaxEurCents),
           // Preavviso per annullare scelto nel preventivo (docs/CHANGELOG.md §347, §348), detto prima di Accetta.
           cancellationNoticeHours: quote.cancellationNoticeHours ?? quote.professionalProfile.cancellationNoticeHours,
           lateCancelKeepsDeposit: quote.lateCancelKeepsDeposit,

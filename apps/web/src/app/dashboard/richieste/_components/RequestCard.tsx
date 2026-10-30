@@ -15,6 +15,7 @@ import {
   QUOTE_PAYMENT_OPTION_LABEL,
   jobPaymentChoices,
   onlineLimitHint,
+  onlineDepositTooLowProblem,
   onlineLimitProblem,
   paymentChoiceIsOnline,
   type JobPaymentChoice,
@@ -39,6 +40,7 @@ import {
   type CancellationNoticeHours,
   type MySubscription,
   type MyProfessionalProfile,
+  wallClockToday,
 } from "@professionisti/shared";
 import { Avatar, Badge, Chip, Icon, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
@@ -418,6 +420,8 @@ export function RequestCard({
       const { totalMaxEurCents } = quotePriceTotals(parsed.map((item) => ({ priceMinEurCents: item.priceMinEurCents ?? null, priceMaxEurCents: item.priceMaxEurCents ?? null })));
       const limitProblem = onlineLimitProblem({ paymentOptions: offered, depositPercent, totalMaxEurCents, limitEurCents: onlineLimitEurCents });
       if (limitProblem) return setQuoteError(limitProblem);
+      const lowProblem = onlineDepositTooLowProblem({ paymentOptions: offered, depositPercent, totalMaxEurCents });
+      if (lowProblem) return setQuoteError(lowProblem);
     }
 
     setIsSubmittingQuote(true);
@@ -560,6 +564,20 @@ export function RequestCard({
     }
   }
 
+  async function handleAnswerReopen(accept: boolean) {
+    if (!booking) return;
+    setReopenError(null);
+    setIsReopening(true);
+    try {
+      await apiClient.answerReopenBooking(token, booking.id, accept);
+      onChanged();
+    } catch (err) {
+      setReopenError(err instanceof Error ? err.message : "Errore imprevisto, riprova.");
+    } finally {
+      setIsReopening(false);
+    }
+  }
+
   async function handleDelete() {
     setIsDeleting(true);
     try {
@@ -692,13 +710,17 @@ export function RequestCard({
   if (dateChangePending) {
     menuActions.push({ icon: "check", text: proposalChange ? "Accetta nuova data" : "Conferma appuntamento", onPress: handleConfirmDate });
   }
-  if (booking?.status === "CONFIRMED") {
+  // "Lavoro terminato" dal giorno dell'appuntamento, come in Agenda (§311, collaudo F-01).
+  const canComplete = booking?.status === "CONFIRMED" && new Date(booking.scheduledAt).toISOString().slice(0, 10) <= wallClockToday().toISOString().slice(0, 10);
+  if (canComplete) {
     menuActions.push({ icon: "check", text: "Lavoro terminato", onPress: () => setShowCompleteModal(true) });
+  }
+  if (booking?.status === "CONFIRMED") {
     menuActions.push({ icon: "x", text: "Annulla intervento", tone: "danger", onPress: () => setShowCancelModal(true) });
   }
   // Regola simmetrica (§197): ognuno riapre solo ciò che ha annullato lui.
-  if (booking?.status === "CANCELED" && booking.canceledBy === "PROFESSIONAL") {
-    menuActions.push({ icon: "rotate-ccw", text: "Riapri intervento", onPress: handleReopenBooking });
+  if (booking?.status === "CANCELED" && booking.canceledBy === "PROFESSIONAL" && !booking.reopenRequestedBy) {
+    menuActions.push({ icon: "rotate-ccw", text: "Chiedi di riaprire", onPress: handleReopenBooking });
   }
   // Il professionista segnala un problema sull'intervento (§197): cliente
   // assente, mancato pagamento, ecc. Arriva al nostro team e in chat.
@@ -1219,7 +1241,7 @@ export function RequestCard({
           ) : null}
           {/* Segnalazione del cliente sul lavoro (docs/CHANGELOG.md §164). */}
           {/* Pagamento del lavoro (docs/CHANGELOG.md §168). */}
-          {booking?.payment && booking.status !== "CANCELED" ? <JobPaymentStatus payment={booking.payment} audience="professional" /> : null}
+          {booking?.payment && (booking.status !== "CANCELED" || booking.payment.paidEurCents > 0) ? <JobPaymentStatus payment={booking.payment} audience="professional" issueOpen={booking.issue?.status === "OPEN" || booking.issue?.status === "CHAT"} /> : null}
           {/* Contestazione in banca: la sua spiegazione per le prove (docs/changelog/2026-10-28-stripe-prova.md). */}
           {booking?.payment?.bankDispute ? (
             <BankDisputeNotePanel
@@ -1237,6 +1259,10 @@ export function RequestCard({
               onOpenChat={myProfileId ? openTimeline : undefined}
               onRespond={async (response) => {
                 await apiClient.respondToJobIssue(token, booking.id, { response });
+                onChanged();
+              }}
+              onOfferRefund={async (amountEurCents) => {
+                await apiClient.offerJobIssueRefund(token, booking.id, amountEurCents);
                 onChanged();
               }}
               onAnswerInfo={async (response) => {
@@ -1376,7 +1402,7 @@ export function RequestCard({
                     richiesta esplicita dell'utente di implementarli identici
                     qui: "Lavoro terminato"/"Annulla intervento" finché la
                     prenotazione è CONFIRMED. */}
-                {booking?.status === "CONFIRMED" ? (
+                {canComplete ? (
                   <>
                     {/* Turchese su richiesta esplicita dell'utente — stesso hex
                         già in uso per lo stato "Completata" in STAGE_STYLE
@@ -1387,10 +1413,21 @@ export function RequestCard({
                     </CardButton>
                   </>
                 ) : null}
-                {booking?.status === "CANCELED" && booking.canceledBy === "PROFESSIONAL" ? (
+                {/* Chi ha annullato chiede di riaprire, l'altro accetta (collaudo F-08). */}
+                {booking?.status === "CANCELED" && booking.canceledBy === "PROFESSIONAL" && !booking.reopenRequestedBy ? (
                   <CardButton compactOnPhone fill={brand.verificato} onPress={handleReopenBooking} disabled={isReopening}>
-                    {isReopening ? "Riapertura..." : "Riapri intervento"}
+                    {isReopening ? "Invio..." : "Chiedi di riaprire"}
                   </CardButton>
+                ) : null}
+                {booking?.status === "CANCELED" && booking.reopenRequestedBy === "CLIENT" ? (
+                  <>
+                    <CardButton compactOnPhone fill={brand.verificato} onPress={() => handleAnswerReopen(true)} disabled={isReopening}>
+                      Accetta di riaprire
+                    </CardButton>
+                    <CardButton compactOnPhone tone="danger" onPress={() => handleAnswerReopen(false)} disabled={isReopening}>
+                      Non riaprire
+                    </CardButton>
+                  </>
                 ) : null}
                 {/* Bug reale corretto: il link portava sempre alla data odierna
                     del calendario "Prenotazioni" invece che alla data vera
@@ -1409,6 +1446,13 @@ export function RequestCard({
                   </CardButton>
                 ) : null}
               </XStack>
+            ) : null}
+            {booking?.status === "CANCELED" && booking.reopenRequestedBy ? (
+              <Text fontSize={13} color={brand.grafite70}>
+                {booking.reopenRequestedBy === "CLIENT"
+                  ? "Il cliente chiede di riaprire l'appuntamento annullato: se accetti torna valido e in agenda."
+                  : "Hai chiesto al cliente di riaprire l'appuntamento: aspetta la sua risposta."}
+              </Text>
             ) : null}
             {reopenError ? (
               <Text fontSize={13} color={brand.urgenza}>
@@ -1844,12 +1888,24 @@ export function RequestCard({
         <CompleteJobModal
           quotedItems={booking.items}
           jobName={gr.categoryLabel}
+          paidOnline={booking.payment?.method === "ONLINE" && !booking.payment.balanceDirect}
           onClose={() => setShowCompleteModal(false)}
           onComplete={handleComplete}
           uploadPhoto={(file) => apiClient.uploadBookingCompletionPhoto(token, file).then((r) => r.imageUrl)}
         />
       ) : null}
-      {showCancelModal && booking ? <CancelBookingModal onClose={() => setShowCancelModal(false)} onCancel={handleCancelBooking} /> : null}
+      {showCancelModal && booking ? (
+        <CancelBookingModal
+          // Che fine fa l'acconto pagato online (collaudo F-02).
+          description={`Il cliente verrà avvisato dell'annullamento${
+            booking.payment?.method === "ONLINE" && booking.payment.paidEurCents - booking.payment.refundedEurCents > 0
+              ? ` e gli restituiamo sulla carta i ${formatEurCents(booking.payment.paidEurCents - booking.payment.refundedEurCents)} che ha pagato online`
+              : ""
+          }. Puoi lasciare una nota facoltativa per spiegargli il motivo.`}
+          onClose={() => setShowCancelModal(false)}
+          onCancel={handleCancelBooking}
+        />
+      ) : null}
       {showDocuments && booking ? <JobDocumentsModal token={token} bookingId={booking.id} onClose={() => setShowDocuments(false)} /> : null}
       {showReportModal ? (
         <ReportContentModal

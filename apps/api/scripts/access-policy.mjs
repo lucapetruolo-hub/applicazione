@@ -132,6 +132,8 @@ const selfAny = [
 ];
 
 const selfProfessional = [
+  // Recensioni ricevute, per rispondere (docs/changelog/2026-10-30-collaudo-soldi-online.md).
+  "GET /reviews/received",
   "DELETE /agenda/calendar-feed",
   "GET /agenda/calendar-feed",
   "POST /agenda/calendar-feed",
@@ -208,7 +210,9 @@ const owned = {
   "POST /bookings/:id/issue/appeal": booking({ body: () => ({ text: "Non sono d'accordo con la decisione presa." }) }),
   "PATCH /bookings/:id/issue/chat-outcome": booking({ body: () => ({ outcome: "RESOLVED" }) }),
   "PATCH /bookings/:id/issue/info": booking({ body: () => ({ response: "Ecco le informazioni richieste." }) }),
+  "POST /bookings/:id/issue/accept-refund": booking(),
   "POST /bookings/:id/issue/redispatch": booking(),
+  "POST /bookings/:id/issue/refund-offer": booking({ body: () => ({ amountEurCents: 1000 }) }),
   "PATCH /bookings/:id/issue/response": booking({ body: () => ({ response: "Ecco la mia versione dei fatti." }) }),
   "GET /bookings/:id/calendar": booking({ owners: ["clientA"] }),
   "GET /bookings/:id/job-payment": booking(),
@@ -226,6 +230,8 @@ const owned = {
   "POST /bookings/:id/on-the-way": booking(),
   "POST /bookings/:id/professional-problem": booking({ body: () => ({ type: "CLIENT_ABSENT", description: "Il cliente non era in casa." }) }),
   "PATCH /bookings/:id/reopen": booking(),
+  "POST /bookings/:id/reopen/accept": booking(),
+  "POST /bookings/:id/reopen/decline": booking(),
   "PATCH /bookings/:id/report-no-show": booking(),
   "PATCH /bookings/:id/status": booking({ body: () => ({ status: "CANCELED" }) }),
   "POST /bookings/from-quote/:quoteId": { kind: "owned", owners: ["clientA"], params: (f) => ({ quoteId: f.quoteA }) },
@@ -293,6 +299,8 @@ const owned = {
     body: () => ({ text: "Contesto la decisione perché il contenuto era corretto." }),
   },
   "POST /reviews": { kind: "owned", owners: ["clientA"], body: (f) => ({ bookingId: f.bookingA, rating: 5, comment: "Recensione di un estraneo" }) },
+  "PATCH /reviews/:id": { kind: "owned", owners: ["clientA"], params: (f) => ({ id: f.reviewA }), body: () => ({ rating: 1, comment: "Aggiornata da un estraneo" }) },
+  "PUT /reviews/:id/reply": { kind: "owned", owners: ["proA"], params: (f) => ({ id: f.reviewA }), body: () => ({ reply: "Risposta di un estraneo" }) },
 };
 
 function quoteBody(f) {

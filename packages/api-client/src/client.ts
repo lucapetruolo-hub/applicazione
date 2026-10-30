@@ -63,6 +63,7 @@ import type {
   ResolveDisputeInput,
   ResolveContentReportInput,
   ReviewInput,
+  ReviewUpdateInput,
   SetDac7RuleInput,
   PlatformDac7SettingsInput,
   PayoutIbanInput,
@@ -157,6 +158,8 @@ export type ClientBooking = {
   issue: JobIssueSummary | null;
   /** Problemi che il cliente può segnalare adesso (finestre di 7 e 14 giorni). */
   issueTypesAllowed: JobIssueType[];
+  /** Passato il termine: "Segnala un problema" resta, senza rimborso né decisione nostra. */
+  issueLate: boolean;
   /** Pagamento del lavoro (§168): online con acconto e saldo, o diretto. Null per prenotazioni senza scelta. */
   payment: JobPaymentSummary | null;
   /** Può lasciare la recensione (anche dopo la decisione su una segnalazione). */
@@ -175,6 +178,9 @@ export type ClientBooking = {
   /** Richiesta guidata di origine, per il bottone "Vai alla cronologia della richiesta" (richiesta esplicita dell'utente) — null per le prenotazioni dirette da agenda pubblica. */
   guidedRequestId: string | null;
   hasReview: boolean;
+  /** Recensione aggiornabile una volta, dopo una segnalazione a lavoro chiuso senza accordo. */
+  canUpdateReview: boolean;
+  myReview: { id: string; rating: number; comment: string | null; photoUrls: string[] } | null;
   /**
    * Conferma del cliente che il lavoro è davvero terminato dal suo lato
    * (richiesta esplicita dell'utente: "servono i completed da entrambi") —
@@ -207,6 +213,8 @@ export type ClientBooking = {
   cancellationNote: string | null;
   /** Chi ha annullato — richiesta esplicita dell'utente, mostrato accanto all'etichetta "Annullata". `null` finché non CANCELED, o per righe annullate prima di questo campo. */
   canceledBy: "CLIENT" | "PROFESSIONAL" | null;
+  /** Chi ha chiesto di riaprire l'appuntamento annullato, in attesa della risposta dell'altro (collaudo F-08). */
+  reopenRequestedBy: "CLIENT" | "PROFESSIONAL" | null;
   /** Dati di contatto del professionista, per il popup "Non presentato" (contatta oppure chiedi il rimborso). */
   professionalPhone: string | null;
   professionalEmail: string | null;
@@ -571,7 +579,7 @@ export type MyContentReports = {
 type AdminJobPaymentRef = {
   id: string;
   amountEurCents?: number;
-  booking: { id: string; scheduledAt?: string; professionalProfile: { id: string; businessName: string } };
+  booking: { id: string; scheduledAt?: string; professionalProfile: { id: string; businessName: string }; client?: { name: string | null; surname: string | null; deletedAt: string | null } };
 };
 export type AdminRefund = {
   id: string;
@@ -692,11 +700,13 @@ export type AdminJobIssue = {
   requestDescription: string | null;
   scheduledAt: string;
   bookingStatus: string;
-  professional: { profileId: string; userId: string; businessName: string; upheldLast30Days: number; demoted: boolean; blocked: boolean };
+  professional: { profileId: string; userId: string; businessName: string; upheldLast30Days: number; lateUnresolvedLastYear: number; demoted: boolean; blocked: boolean };
   client: { userId: string; name: string | null; accountDeleted: boolean };
   /** L'admin corrente ha deciso la segnalazione: non può decidere il ricorso. */
   decidedByMe: boolean;
   finalAmountEurCents: number | null;
+  /** Pagato online e non ancora rimborsato; `null` col pagamento diretto. */
+  refundableEurCents: number | null;
   professionalCompletedAt: string | null;
   clientConfirmedAt: string | null;
   professionalCompletionNote: string | null;
@@ -825,6 +835,26 @@ export type SentReview = {
   /** `null` se il professionista ha eliminato il profilo. */
   professionalProfileId: string | null;
   businessName: string;
+  /** Risposta pubblica del professionista, se c'è. */
+  professionalReply?: string | null;
+  updatedAfterIssueAt?: string | null;
+};
+
+/** Recensione ricevuta dal professionista, nella sua pagina "Recensioni". */
+export type ReceivedReview = {
+  id: string;
+  rating: number;
+  comment: string | null;
+  photoUrls: string[];
+  createdAt: string;
+  clientName: string;
+  jobLabel: string | null;
+  guidedRequestId: string | null;
+  professionalReply: string | null;
+  professionalRepliedAt: string | null;
+  updatedAfterIssueAt: string | null;
+  /** Nascosta da un admin: non la vede nessun altro. */
+  hidden: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -1816,6 +1846,13 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
         headers: { Authorization: `Bearer ${token}` },
       }),
 
+    /** Risposta alla richiesta di riaprire un appuntamento annullato (collaudo F-08). */
+    answerReopenBooking: (token: string, bookingId: string, accept: boolean) =>
+      request<{ bookingId: string; status: string }>(`/bookings/${bookingId}/reopen/${accept ? "accept" : "decline"}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+
     /** Il professionista segnala un "Lavoro accettato" come terminato, con l'importo preciso. */
     completeBooking: (token: string, bookingId: string, input: CompleteBookingInput) =>
       request<{ bookingId: string; status: string; finalAmountEurCents: number }>(`/bookings/${bookingId}/complete`, {
@@ -1923,10 +1960,30 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
         body: JSON.stringify(input),
       }),
 
+    /** Aggiornamento una volta sola, dopo una segnalazione a lavoro chiuso senza accordo. */
+    updateReview: (token: string, reviewId: string, input: ReviewUpdateInput) =>
+      request<{ id: string }>(`/reviews/${reviewId}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+      }),
+
+    /** Risposta pubblica del professionista a una recensione, scritta o modificata. */
+    replyToReview: (token: string, reviewId: string, reply: string) =>
+      request<{ id: string }>(`/reviews/${reviewId}/reply`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ reply }),
+      }),
+
     uploadReviewPhoto: (token: string, file: Blob) => uploadFile<{ imageUrl: string }>("/reviews/photos", token, file, "image"),
 
     /** Recensioni scritte dal cliente ai professionisti (scheda "Inviate", docs/CHANGELOG.md §180). */
     mySentReviews: (token: string) => request<SentReview[]>("/reviews/me", { headers: { Authorization: `Bearer ${token}` } }),
+
+    /** Recensioni ricevute dal professionista, per rispondere. */
+    receivedReviews: (token: string) =>
+      request<ReceivedReview[]>("/reviews/received", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     getMySubscription: (token: string) =>
       request<MySubscription>("/professionals/me/subscription", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
@@ -2431,6 +2488,20 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
         body: JSON.stringify({ outcome }),
+      }),
+
+    /** Rimborso proposto dal professionista in chat (collaudo F-03). */
+    offerJobIssueRefund: (token: string, bookingId: string, amountEurCents: number) =>
+      request<{ bookingId: string; refundOfferEurCents: number }>(`/bookings/${bookingId}/issue/refund-offer`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ amountEurCents }),
+      }),
+
+    acceptJobIssueRefund: (token: string, bookingId: string) =>
+      request<{ bookingId: string; status: string; agreedRefundEurCents: number }>(`/bookings/${bookingId}/issue/accept-refund`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
       }),
 
     respondToJobIssue: (token: string, bookingId: string, input: JobIssueResponseInput) =>

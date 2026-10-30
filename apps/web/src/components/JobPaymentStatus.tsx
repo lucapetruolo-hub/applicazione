@@ -69,6 +69,9 @@ function clientView(payment: JobPaymentSummary): View {
       ? { tone: "danger", icon: "credit-card", title: "Saldo da pagare", body: "Pagalo ora per chiudere il lavoro.", step: 1 }
       : { tone: "action", icon: "credit-card", title: "Saldo da pagare", body: until ? `Pagalo entro ${until}.` : "Pagalo per chiudere il lavoro.", step: 1 };
   }
+  if (stage === "PAID" && payment.depositKept) {
+    return { tone: "neutral", icon: "lock", title: "Acconto trattenuto", body: "Hai annullato dentro il preavviso: l'acconto resta al professionista, come diceva il preventivo.", step: null };
+  }
   if (stage === "PAID") {
     return {
       tone: "blocked",
@@ -123,6 +126,15 @@ function professionalView(payment: JobPaymentSummary): View {
   }
   if (stage === "AWAITING_BALANCE") {
     return { tone: "blocked", icon: "clock", title: "In attesa del saldo", body: "Il cliente deve pagare il saldo.", step: 1 };
+  }
+  if (stage === "PAID" && payment.depositKept) {
+    return {
+      tone: "blocked",
+      icon: "lock",
+      title: "Acconto trattenuto",
+      body: `Il cliente ha annullato dentro il preavviso: l'acconto resta a te. Lo ricevi in banca${until ? ` il ${until}` : " dopo i giorni di blocco"}.`,
+      step: 1,
+    };
   }
   if (stage === "PAID") {
     return {
@@ -198,10 +210,13 @@ function AmountRow({ label, value, strong, muted }: { label: string; value: stri
 export function JobPaymentStatus({
   payment,
   audience,
+  issueOpen = false,
   onPay,
 }: {
   payment: JobPaymentSummary;
   audience: "client" | "professional";
+  /** Segnalazione di un problema aperta sul lavoro (collaudo F-09). */
+  issueOpen?: boolean;
   /** Solo cliente: apre il checkout Stripe dell'acconto o del saldo. */
   onPay?: (part: "deposit" | "balance") => Promise<void>;
 }) {
@@ -236,7 +251,21 @@ export function JobPaymentStatus({
     );
   }
 
-  const view = audience === "client" ? clientView(payment) : professionalView(payment);
+  const baseView = audience === "client" ? clientView(payment) : professionalView(payment);
+  // Con una segnalazione o una contestazione in banca aperta i soldi non
+  // partono: la scheda non li promette in arrivo (collaudo F-09).
+  const disputed = audience === "professional" && !!payment.bankDispute?.open;
+  const held = (issueOpen || disputed) && !payment.releasedAt && payment.stage !== "REFUNDED" && payment.stage !== "AWAITING_DEPOSIT";
+  const view: View = held
+    ? {
+        ...baseView,
+        tone: "blocked",
+        icon: "lock",
+        body: disputed
+          ? "Contestazione in banca aperta: i soldi restano fermi finché la banca non decide."
+          : "C'è un problema aperto su questo lavoro: i soldi restano fermi finché non si chiude.",
+      }
+    : baseView;
   const tone = TONE[view.tone];
   const stage = payment.stage;
   const collected = payment.paidEurCents - payment.refundedEurCents;
@@ -259,7 +288,7 @@ export function JobPaymentStatus({
       // Trattenuta unica con l'IVA, commissioni Stripe comprese (§378); a parte solo sui pagamenti di prima.
       rows.push({ label: `Trattenuta ${BRAND.name} ${ONLINE_APP_FEE_PERCENT}% + IVA`, value: `−${eur(payment.appFeeEurCents ?? 0)}`, muted: true });
       if ((payment.stripeFeeEurCents ?? 0) > 0) rows.push({ label: "Commissione Stripe per il pagamento", value: `−${eur(payment.stripeFeeEurCents ?? 0)}`, muted: true });
-      rows.push({ label: stage === "RELEASED" ? "Ti arriva in banca" : "Ti arriverà in banca", value: eur(payment.payoutEurCents), strong: true });
+      rows.push({ label: stage === "RELEASED" ? "Ti arriva in banca" : held ? "Ti arriverà in banca se si chiude bene" : "Ti arriverà in banca", value: eur(payment.payoutEurCents), strong: true });
     }
   }
 

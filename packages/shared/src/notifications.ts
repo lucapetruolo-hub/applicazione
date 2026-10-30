@@ -74,6 +74,9 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "BOOKING_CANCELED_BY_CLIENT",
       "BOOKING_REOPENED_BY_CLIENT",
       "BOOKING_REOPENED_BY_PROFESSIONAL",
+      // Chi ha annullato chiede di riaprire, l'altro accetta o no (collaudo F-08).
+      "BOOKING_REOPEN_REQUESTED",
+      "BOOKING_REOPEN_DECLINED",
       // Risposta del cliente al promemoria WhatsApp: "Ci sarò" o "Non posso più".
       "BOOKING_CLIENT_CONFIRMED",
       "BOOKING_CLIENT_CANT_COME",
@@ -84,6 +87,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "JOB_ISSUE_REPORTED",
       "JOB_ISSUE_RESOLVED",
       "JOB_ISSUE_SETTLED",
+      // Rimborso proposto dal professionista in chat (collaudo F-03).
+      "JOB_ISSUE_REFUND_OFFERED",
       "JOB_ISSUE_ESCALATED",
       // Controversie standard (docs/CHANGELOG.md §167).
       "JOB_ISSUE_AUTO_ESCALATED",
@@ -106,6 +111,9 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       // Contestazione del cliente presso la sua banca (docs/CHANGELOG.md §236).
       "JOB_STRIPE_DISPUTE",
       "ADMIN_STRIPE_DISPUTE",
+      // Segnalazione passata al nostro team, da decidere, o ricorso (collaudo, admin-riordino).
+      "ADMIN_JOB_ISSUE_TO_REVIEW",
+      "ADMIN_JOB_ISSUE_APPEAL",
       // Prove della contestazione non ancora mandate a 3 giorni dalla scadenza (docs/changelog/2026-10-28-stripe-prova.md).
       "ADMIN_STRIPE_DISPUTE_DUE",
       // Al professionista che non ha ancora scritto la sua spiegazione, 5 giorni prima della scadenza.
@@ -116,6 +124,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "JOB_REFUND_PENDING",
       "JOB_REFUND_COMPLETED",
       "JOB_REFUND_WAITING_FUNDS",
+      // Richiesta di rimborso non accolta, col motivo (collaudo, docs/changelog/2026-10-30-collaudo-soldi-online.md).
+      "JOB_REFUND_REJECTED",
       "ADMIN_JOB_REFUND_FAILED",
       // Stato del conto Stripe di un professionista non riletto (docs/changelog/2026-10-28-stripe-prova.md).
       "ADMIN_STRIPE_ACCOUNT_UNREADABLE",
@@ -145,6 +155,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       "AGENDA_TOMORROW_SUMMARY",
       // Nuova recensione ricevuta dal professionista (docs/CHANGELOG.md §185).
       "NEW_REVIEW",
+      // Al cliente: il professionista ha risposto alla sua recensione (docs/changelog/2026-10-30-collaudo-soldi-online.md).
+      "REVIEW_REPLIED",
       // Il cliente chiede la fattura dopo l'accettazione, o cambia i dati (docs/CHANGELOG.md §378).
       "JOB_INVOICE_REQUESTED",
       // Al cliente: la copia della ricevuta o della fattura è pronta, o aggiornata (docs/CHANGELOG.md §387).
@@ -312,6 +324,8 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
       "BOOKING_CANCELED_BY_CLIENT",
       "BOOKING_REOPENED_BY_CLIENT",
       "BOOKING_REOPENED_BY_PROFESSIONAL",
+      "BOOKING_REOPEN_REQUESTED",
+      "BOOKING_REOPEN_DECLINED",
       "BOOKING_NO_SHOW_REPORTED",
       // Risposte del cliente al promemoria: "Ci sarò", "Non posso più", "Ho sbagliato".
       "BOOKING_CLIENT_CONFIRMED",
@@ -351,6 +365,7 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
       "JOB_REFUND_PENDING",
       "JOB_REFUND_COMPLETED",
       "JOB_REFUND_WAITING_FUNDS",
+      "JOB_REFUND_REJECTED",
       "ONLINE_LIMIT_LIFTED",
     ],
     professional: { label: "Pagamenti online", description: "Acconti e saldi pagati, bonifici, rimborsi." },
@@ -363,6 +378,7 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
       "JOB_ISSUE_REPORTED",
       "JOB_ISSUE_RESOLVED",
       "JOB_ISSUE_SETTLED",
+      "JOB_ISSUE_REFUND_OFFERED",
       "JOB_ISSUE_ESCALATED",
       "JOB_ISSUE_AUTO_ESCALATED",
       "JOB_ISSUE_TEAM_REVIEW",
@@ -381,8 +397,9 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
   {
     key: "lavori.recensioni",
     topic: "lavori",
-    types: ["NEW_REVIEW"],
+    types: ["NEW_REVIEW", "REVIEW_REPLIED"],
     professional: { label: "Nuove recensioni" },
+    client: { label: "Risposte alle tue recensioni" },
   },
   {
     key: "lavori.documenti",
@@ -398,6 +415,8 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
       "ADMIN_JOB_BALANCE_UNPAID",
       "ADMIN_STRIPE_DISPUTE",
       "ADMIN_STRIPE_DISPUTE_DUE",
+      "ADMIN_JOB_ISSUE_TO_REVIEW",
+      "ADMIN_JOB_ISSUE_APPEAL",
       "ADMIN_JOB_REFUND_FAILED",
       "ADMIN_STRIPE_ACCOUNT_UNREADABLE",
       "ADMIN_DAC7_NEEDS_CORRECTION",

@@ -40,6 +40,8 @@ export function CancelBookingModal({
   // visibile. Quando false, il popup è un semplice "sei sicuro?" senza
   // testarea, `onCancel` riceve sempre `undefined`.
   showNote = true,
+  confirmVariant = "urgent",
+  noteMinLength,
   children,
 }: {
   onClose: () => void;
@@ -52,6 +54,10 @@ export function CancelBookingModal({
   /** Testo del pulsante che chiude senza confermare. */
   backLabel?: string;
   showNote?: boolean;
+  /** Pulsante di conferma rosso (di serie) o verde, per una conferma che non toglie nulla. */
+  confirmVariant?: "urgent" | "primary";
+  /** Nota obbligatoria di almeno tanti caratteri (le azioni admin che toccano soldi o persone: motivo sempre scritto). */
+  noteMinLength?: number;
   /** Contenuto in più tra la descrizione e i pulsanti, per esempio il motivo di "Elimina richiesta". */
   children?: ReactNode;
 }) {
@@ -69,6 +75,10 @@ export function CancelBookingModal({
 
   async function handleSubmit() {
     setError(null);
+    if (noteMinLength && note.trim().length < noteMinLength) {
+      setError("Scrivi il motivo: è obbligatorio.");
+      return;
+    }
     setIsSaving(true);
     try {
       await onCancel(note.trim() || undefined);
@@ -126,9 +136,9 @@ export function CancelBookingModal({
         {showNote ? (
           <YStack gap="$2">
             <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.grafite70}>
-              Nota (facoltativa)
+              {noteMinLength ? "Motivo (obbligatorio)" : "Nota (facoltativa)"}
             </Text>
-            <textarea aria-label="Nota" value={note} onChange={(e) => setNote(e.target.value)} placeholder={notePlaceholder} rows={3} style={textareaStyle} />
+            <textarea aria-label={noteMinLength ? "Motivo" : "Nota"} value={note} onChange={(e) => setNote(e.target.value)} placeholder={notePlaceholder} rows={3} style={textareaStyle} />
           </YStack>
         ) : null}
 
@@ -139,7 +149,7 @@ export function CancelBookingModal({
         ) : null}
 
         <XStack gap="$2" flexWrap="wrap">
-          <Button variant="urgent" size="$3" height={44} onPress={handleSubmit} disabled={isSaving} opacity={isSaving ? 0.6 : 1}>
+          <Button variant={confirmVariant} size="$3" height={44} onPress={handleSubmit} disabled={isSaving} opacity={isSaving ? 0.6 : 1}>
             {isSaving ? confirmingLabel : confirmLabel}
           </Button>
           <Button variant="ghost" size="$3" height={44} onPress={onClose} disabled={isSaving}>

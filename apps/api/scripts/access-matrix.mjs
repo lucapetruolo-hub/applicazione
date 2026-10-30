@@ -114,6 +114,8 @@ async function seed() {
     },
   });
   await prisma.jobPayment.create({ data: { bookingId: bookingA.id, paymentMethod: "DIRECT", grossAmountEurCents: 10000, netAmountEurCents: 10000 } });
+  // Recensione di clientA: la può aggiornare solo lui, rispondere solo proA (docs/changelog/2026-10-30-collaudo-soldi-online.md).
+  const reviewA = await prisma.review.create({ data: { bookingId: bookingA.id, rating: 4, comment: "Lavoro fatto bene" } });
 
   // Lavoro terminato tra clientA e proA: la copia del documento si fa solo a
   // lavoro terminato (docs/changelog/2026-10-30-documenti-fiscali.md).
@@ -188,6 +190,7 @@ async function seed() {
       quoteA: quoteA.id,
       quoteDone: quoteDone.id,
       bookingA: bookingA.id,
+      reviewA: reviewA.id,
       bookingCompleted: bookingCompleted.id,
       invoiceA: invoiceA.id,
       notificationA: notificationA.id,

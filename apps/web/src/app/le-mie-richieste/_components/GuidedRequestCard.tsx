@@ -55,6 +55,12 @@ import { announceRequestDeleted } from "./RequestDeletedNotice";
 import { ClientMiniTimeline, ClientStagePill, MAX_REQUEST_PHOTOS, STAGE_STYLE, ServiceBadge, formatDateTime, requestJobAddress, textareaStyle } from "./clientRequestHelpers";
 
 /** Acconto online che resta al professionista se il cliente annulla ora, dentro il preavviso (docs/CHANGELOG.md §348). */
+/** Pagato online e non ancora rimborsato (collaudo F-02). */
+function paidOnline(booking: ClientBooking | null | undefined): number {
+  if (booking?.payment?.method !== "ONLINE") return 0;
+  return Math.max(0, booking.payment.paidEurCents - booking.payment.refundedEurCents);
+}
+
 function keptDeposit(booking: ClientBooking): number {
   if (!booking.lateCancelKeepsDeposit || booking.payment?.method !== "ONLINE") return 0;
   return Math.max(0, booking.payment.paidEurCents - booking.payment.refundedEurCents);
@@ -760,15 +766,21 @@ export function GuidedRequestCard({
   }
   // Quali segnalazioni si possono inviare lo decide il server (docs/CHANGELOG.md §164).
   if (booking && booking.issueTypesAllowed.length > 0) {
-    menuActions.push({ icon: "flag", text: "Segnala un problema", tone: "danger", onPress: () => setShowReportModal(true) });
+    menuActions.push({
+      icon: "flag",
+      text: "Segnala un problema",
+      hint: booking.issueLate ? "Senza rimborso, in chat con il professionista" : undefined,
+      tone: "danger",
+      onPress: () => setShowReportModal(true),
+    });
   }
   // Cominciato l'appuntamento non si annulla più (§346): per un problema c'è "Segnala un problema".
   if (booking && (booking.status === "PENDING" || booking.status === "CONFIRMED") && new Date(booking.scheduledAt) > wallClockNow()) {
     menuActions.push({ icon: "x", text: "Annulla prenotazione", tone: "danger", onPress: () => setShowCancelModal(true) });
   } else if (booking?.status === "CANCELED") {
     // Un intervento annullato dal professionista non si riapre dal lato cliente.
-    if (booking.canceledBy === "CLIENT") {
-      menuActions.push({ icon: "rotate-ccw", text: "Riapri prenotazione", onPress: handleReopenBooking });
+    if (booking.canceledBy === "CLIENT" && !booking.reopenRequestedBy) {
+      menuActions.push({ icon: "rotate-ccw", text: "Chiedi di riaprire", onPress: handleReopenBooking });
     }
   } else if (!booking) {
     // Una sola voce finché la richiesta non è diventata un lavoro (§343, al
@@ -1213,7 +1225,9 @@ export function GuidedRequestCard({
           phone={booking.professionalPhone}
           email={booking.professionalEmail}
           allowedTypes={booking.issueTypesAllowed}
-          assisted={booking.payment?.method !== "DIRECT"}
+          assisted={booking.payment?.method !== "DIRECT" && !booking.issueLate}
+          late={booking.issueLate}
+          hasReview={booking.hasReview}
           onClose={() => {
             setShowReportModal(false);
             onChanged();
@@ -1251,9 +1265,15 @@ export function GuidedRequestCard({
           description={
             booking && isLateCancellation(booking.scheduledAt, booking.cancellationNoticeHours)
               ? `Il professionista verrà avvisato. Mancano meno di ${cancellationNoticeLabel(booking.cancellationNoticeHours)}, il preavviso che aveva chiesto.${
-                  keptDeposit(booking) > 0 ? ` Come scritto nel preventivo, l'acconto di ${formatEurCents(keptDeposit(booking))} resta a lui.` : ""
+                  keptDeposit(booking) > 0
+                    ? ` Come scritto nel preventivo, l'acconto di ${formatEurCents(keptDeposit(booking))} resta a lui.`
+                    : paidOnline(booking) > 0
+                      ? ` I ${formatEurCents(paidOnline(booking))} che hai pagato online ti tornano sulla carta.`
+                      : ""
                 }`
-              : "Il professionista verrà avvisato dell'annullamento."
+              : `Il professionista verrà avvisato dell'annullamento.${
+                  paidOnline(booking) > 0 ? ` I ${formatEurCents(paidOnline(booking))} che hai pagato online ti tornano sulla carta.` : ""
+                }`
           }
           confirmLabel="Sì, annulla prenotazione"
           confirmingLabel="Annullamento..."

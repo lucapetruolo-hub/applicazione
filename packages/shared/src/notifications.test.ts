@@ -56,7 +56,12 @@ test("Account e sicurezza non si spegne neppure con un avviso spento", () => {
 test("gli avvisi per l'amministrazione si mostrano solo agli admin", () => {
   assert.ok(!notificationItemsFor("lavori", "professional").some((item) => item.key === "lavori.admin"));
   assert.ok(notificationItemsFor("lavori", "professional", true).some((item) => item.key === "lavori.admin"));
-  assert.ok(!notificationItemsFor("lavori", "client").some((item) => item.key === "lavori.recensioni"));
+});
+
+test("il cliente vede le risposte alle sue recensioni (docs/changelog/2026-10-30-collaudo-soldi-online.md)", () => {
+  const item = notificationItemsFor("lavori", "client").find((entry) => entry.key === "lavori.recensioni");
+  assert.ok(item);
+  assert.equal(item.copy.label, "Risposte alle tue recensioni");
 });
 
 test("problemi e contestazioni restano attivi anche con Lavori spento", () => {

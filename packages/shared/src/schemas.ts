@@ -773,6 +773,16 @@ export const reviewSchema = z.object({
 });
 export type ReviewInput = z.infer<typeof reviewSchema>;
 
+/** Aggiornamento della recensione dopo una segnalazione a lavoro chiuso senza accordo (una volta sola). */
+export const reviewUpdateSchema = reviewSchema.omit({ bookingId: true });
+export type ReviewUpdateInput = z.infer<typeof reviewUpdateSchema>;
+
+/** Risposta pubblica del professionista a una recensione. */
+export const reviewReplySchema = z.object({
+  reply: z.string().trim().min(2, "Scrivi la risposta.").max(1000),
+});
+export type ReviewReplyInput = z.infer<typeof reviewReplySchema>;
+
 /** Prestazione offerta dal professionista: nome + prezzo facoltativo (in centesimi). */
 export const professionalServiceSchema = z
   .object({
@@ -1132,9 +1142,13 @@ export const requestRefundSchema = z.object({
 });
 export type RequestRefundInput = z.infer<typeof requestRefundSchema>;
 
-export const decideRefundSchema = z.object({
-  decision: z.enum(["APPROVED", "REJECTED"]),
-});
+export const decideRefundSchema = z
+  .object({
+    decision: z.enum(["APPROVED", "REJECTED"]),
+    /** Motivo del rifiuto, detto a chi l'ha chiesto (admin-riordino, gruppo 1 del collaudo). */
+    note: z.string().trim().max(1000).optional(),
+  })
+  .refine((data) => data.decision !== "REJECTED" || (data.note ?? "").length >= 5, { message: "Scrivi il motivo del rifiuto.", path: ["note"] });
 export type DecideRefundInput = z.infer<typeof decideRefundSchema>;
 
 export const openDisputeSchema = z.object({

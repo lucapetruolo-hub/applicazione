@@ -627,6 +627,33 @@ const BUILDERS: Record<string, Builder> = {
     details: jobDetails(ctx),
     cta: clientRequests(),
   }),
+  // Riapertura su richiesta (collaudo F-08): risponde chi non ha annullato.
+  BOOKING_REOPEN_REQUESTED: (payload, ctx) => ({
+    kind: "notification",
+    subject: payload.audience === "PROFESSIONAL" ? "Il cliente vuole riaprire un appuntamento" : `${pro(ctx)} vuole riaprire l'appuntamento`,
+    greeting: ctx.name,
+    title: "Riaprire l'appuntamento?",
+    paragraphs: [
+      payload.audience === "PROFESSIONAL"
+        ? `Il cliente aveva annullato l'appuntamento per **${job(ctx)}** e ora chiede di riaprirlo.`
+        : `**${pro(ctx)}** aveva annullato l'appuntamento per **${job(ctx)}** e ora chiede di riaprirlo.`,
+      "Accetta o rifiuta dalla scheda del lavoro: finché non rispondi resta annullato.",
+    ],
+    details: payload.audience === "PROFESSIONAL" ? proJobDetails(ctx) : jobDetails(ctx),
+    cta: payload.audience === "PROFESSIONAL" ? proRequests("Rispondi") : clientRequests(),
+  }),
+  BOOKING_REOPEN_DECLINED: (payload, ctx) => ({
+    kind: "notification",
+    subject: "Appuntamento non riaperto",
+    greeting: ctx.name,
+    title: "Appuntamento non riaperto",
+    paragraphs: [
+      payload.audience === "PROFESSIONAL"
+        ? `Il cliente non ha accettato di riaprire l'appuntamento per **${job(ctx)}**: resta annullato.`
+        : `**${pro(ctx)}** non ha accettato di riaprire l'appuntamento per **${job(ctx)}**: resta annullato. Puoi ripetere la richiesta ad altri professionisti.`,
+    ],
+    cta: payload.audience === "PROFESSIONAL" ? proRequests("Apri il lavoro") : clientRequests(),
+  }),
   BOOKING_REOPENED_BY_CLIENT: (_payload, ctx) => ({
     kind: "notification",
     subject: "Il cliente ha riaperto una prenotazione",
@@ -640,17 +667,40 @@ const BUILDERS: Record<string, Builder> = {
   // §215). Il voto non si anticipa nell'email.
   NEW_REVIEW: (payload, ctx) => ({
     kind: "notification",
-    subject: "Hai ricevuto una nuova recensione",
+    subject: payload.updated === true ? "Un cliente ha aggiornato la sua recensione" : "Hai ricevuto una nuova recensione",
     greeting: ctx.name,
-    title: "Nuova recensione",
+    title: payload.updated === true ? "Recensione aggiornata" : "Nuova recensione",
     paragraphs:
-      payload.professionalCompleted === false
+      payload.updated === true
+        ? [
+            `Il cliente ha aggiornato la recensione del lavoro per **${job(ctx)}** dopo la segnalazione arrivata a lavoro chiuso: la trovi sul tuo profilo.`,
+            "Puoi rispondere dalla pagina Recensioni della tua area: la tua risposta compare sotto la recensione e la leggono tutti.",
+          ]
+        : payload.professionalCompleted === false
         ? [
             `Il cliente ha segnato come terminato il lavoro per **${job(ctx)}** e lo ha recensito: la recensione è già visibile sul tuo profilo.`,
             "Ricordati di segnare anche tu il lavoro come terminato.",
           ]
-        : [`Il cliente ha recensito il lavoro per **${job(ctx)}**: la recensione è già visibile sul tuo profilo.`],
-    cta: proRequests(payload.professionalCompleted === false ? "Segna il lavoro come terminato" : "Apri il lavoro"),
+        : [
+            `Il cliente ha recensito il lavoro per **${job(ctx)}**: la recensione è già visibile sul tuo profilo.`,
+            "Se vuoi, rispondi dalla pagina Recensioni della tua area: la tua risposta compare sotto la recensione e la leggono tutti.",
+          ],
+    cta:
+      payload.professionalCompleted === false && payload.updated !== true
+        ? proRequests("Segna il lavoro come terminato")
+        : { label: "Leggi e rispondi", url: `${frontendUrl()}/dashboard/recensioni${str(payload.reviewId) ? `#recensione-${str(payload.reviewId)}` : ""}` },
+  }),
+
+  // Al cliente: risposta del professionista alla sua recensione (docs/changelog/2026-10-30-collaudo-soldi-online.md).
+  REVIEW_REPLIED: (payload, ctx) => ({
+    kind: "notification",
+    subject: `${pro(ctx)} ha risposto alla tua recensione`,
+    greeting: ctx.name,
+    title: "Risposta alla tua recensione",
+    paragraphs: [
+      `**${pro(ctx)}** ha risposto alla recensione che hai lasciato per **${job(ctx)}**. La risposta è pubblica, sotto la tua recensione.`,
+    ],
+    cta: { label: "Leggi la risposta", url: `${frontendUrl()}/le-mie-recensioni${str(payload.reviewId) ? `#recensione-${str(payload.reviewId)}` : ""}` },
   }),
 
   // Segnalazioni di un problema sul lavoro (docs/CHANGELOG.md §164, §167).
@@ -665,29 +715,50 @@ const BUILDERS: Record<string, Builder> = {
       title: "Un cliente ha segnalato un problema",
       paragraphs: [
         `Il cliente ha segnalato un problema sul lavoro per **${job(ctx)}**${type ? `: "${JOB_ISSUE_LABEL[type].toLowerCase()}"` : ""}.`,
-        assisted
+        payload.late === true
+          ? "Sono passati i giorni per un rimborso dal sito, quindi il nostro team non interviene: rispondigli in chat per trovare insieme una soluzione. Ricorda che per legge rispondi comunque dei difetti del tuo lavoro."
+          : assisted
           ? `Rispondigli in chat **entro ${JOB_ISSUE_PRO_REPLY_HOURS} ore** per trovare insieme una soluzione. Se non rispondi, la segnalazione passa al nostro team.`
           : "Rispondigli in chat per trovare insieme una soluzione.",
       ],
       cta: proRequests("Rispondi in chat"),
     };
   },
-  JOB_ISSUE_SETTLED: (_payload, ctx) => ({
+  JOB_ISSUE_SETTLED: (payload, ctx) => ({
     kind: "notification",
     subject: "Segnalazione risolta",
     greeting: ctx.name,
     title: "Segnalazione risolta",
-    paragraphs: [`Il cliente ha indicato che il problema sul lavoro per **${job(ctx)}** è stato risolto con te. Grazie per averlo seguito.`],
+    paragraphs: [
+      typeof payload.agreedRefundEurCents === "number"
+        ? `Il cliente ha accettato il rimborso di ${formatEur(payload.agreedRefundEurCents)} sul lavoro per **${job(ctx)}**: la segnalazione è chiusa e il resto del pagamento segue il suo corso.`
+        : `Il cliente ha indicato che il problema sul lavoro per **${job(ctx)}** è stato risolto con te. Grazie per averlo seguito.`,
+    ],
     cta: proRequests(),
   }),
-  JOB_ISSUE_UNRESOLVED: (_payload, ctx) => ({
+  // Rimborso proposto dal professionista in chat (collaudo F-03).
+  JOB_ISSUE_REFUND_OFFERED: (payload, ctx) => ({
+    kind: "notification",
+    subject: "Ti propongono un rimborso",
+    greeting: ctx.name,
+    title: "Proposta di rimborso",
+    paragraphs: [
+      `Per il problema sul lavoro per **${job(ctx)}** il professionista ti propone un rimborso di ${formatEur(typeof payload.amountEurCents === "number" ? payload.amountEurCents : 0)}.`,
+      "Se ti va bene, accettalo dalla scheda del lavoro: il rimborso parte subito sulla tua carta e la segnalazione si chiude.",
+    ],
+    details: typeof payload.amountEurCents === "number" ? [{ label: "Rimborso proposto", value: formatEur(payload.amountEurCents) }] : undefined,
+    cta: clientRequests(),
+  }),
+  JOB_ISSUE_UNRESOLVED: (payload, ctx) => ({
     kind: "notification",
     subject: "Nessun accordo sulla segnalazione",
     greeting: ctx.name,
     title: "Nessun accordo sulla segnalazione",
     paragraphs: [
       `Il cliente ha indicato che non avete trovato un accordo sul problema del lavoro per **${job(ctx)}**.`,
-      "Il lavoro era pagato direttamente: la questione resta tra te e il cliente, il nostro team non interviene.",
+      payload.late === true
+        ? "La segnalazione è arrivata dopo i giorni per un rimborso dal sito: la questione resta tra te e il cliente, il nostro team non interviene."
+        : "Il lavoro era pagato direttamente: la questione resta tra te e il cliente, il nostro team non interviene.",
     ],
     cta: proRequests(),
   }),
@@ -1011,7 +1082,9 @@ const BUILDERS: Record<string, Builder> = {
     greeting: ctx.name,
     title: "Rimborso in arrivo",
     paragraphs: [
-      `Il rimborso per **${job(ctx)}** è stato chiesto, ma serve qualche giorno in più per completarlo.`,
+      payload.duplicate === true
+        ? `Per **${job(ctx)}** avevi pagato due volte: il rimborso del secondo pagamento è chiesto, ma serve qualche giorno in più per completarlo.`
+        : `Il rimborso per **${job(ctx)}** è stato chiesto, ma serve qualche giorno in più per completarlo.`,
       "Non devi fare nulla: ti scriviamo appena parte verso la tua carta.",
     ],
     details: typeof payload.amountEurCents === "number" ? [{ label: "Rimborso", value: formatEur(payload.amountEurCents) }] : undefined,
@@ -1022,9 +1095,26 @@ const BUILDERS: Record<string, Builder> = {
     subject: "Rimborso completato",
     greeting: ctx.name,
     title: "Rimborso completato",
-    paragraphs: [`Il rimborso per **${job(ctx)}** è partito: lo rivedi sulla carta in pochi giorni.`],
+    paragraphs: [
+      payload.duplicate === true
+        ? `Per **${job(ctx)}** avevi pagato due volte: il secondo pagamento ti è già stato rimborsato. Lo rivedi sulla carta in pochi giorni.`
+        : `Il rimborso per **${job(ctx)}** è partito: lo rivedi sulla carta in pochi giorni.`,
+    ],
     details: typeof payload.amountEurCents === "number" ? [{ label: "Rimborso", value: formatEur(payload.amountEurCents) }] : undefined,
     cta: clientRequests(),
+  }),
+  JOB_REFUND_REJECTED: (payload, ctx) => ({
+    kind: "notification",
+    subject: "Richiesta di rimborso non accolta",
+    greeting: ctx.name,
+    title: "Rimborso non accolto",
+    paragraphs: [
+      `Abbiamo letto la tua richiesta di rimborso per **${job(ctx)}** e non possiamo accoglierla.`,
+      typeof payload.note === "string" && payload.note ? `Il motivo: ${payload.note}` : "",
+      "Se non sei d'accordo, rispondi a questa email: la guardiamo di nuovo.",
+    ].filter(Boolean),
+    details: typeof payload.amountEurCents === "number" ? [{ label: "Rimborso chiesto", value: formatEur(payload.amountEurCents) }] : undefined,
+    cta: payload.audience === "PROFESSIONAL" ? proRequests("Apri il lavoro") : clientRequests(),
   }),
   JOB_REFUND_WAITING_FUNDS: (payload, ctx) => ({
     kind: "notification",
@@ -1059,6 +1149,28 @@ const BUILDERS: Record<string, Builder> = {
       typeof payload.error === "string" && payload.error ? `Risposta di Stripe: ${payload.error}` : "Controlla l'errore in Sentry.",
     ],
     cta: { label: "Apri l'area admin", url: `${frontendUrl()}/admin/pagamenti` },
+  }),
+  // Segnalazione da decidere o ricorso: i Termini promettono una decisione entro 2 giorni.
+  ADMIN_JOB_ISSUE_TO_REVIEW: (payload) => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: payload.stage === "VERSION" ? "Segnalazione da decidere" : "Segnalazione passata al nostro team",
+    title: payload.stage === "VERSION" ? "Segnalazione da decidere" : "Segnalazione al nostro team",
+    paragraphs: [
+      payload.stage === "VERSION"
+        ? "Il professionista ha mandato la sua versione: la segnalazione è pronta per la decisione."
+        : "Una segnalazione su un lavoro è passata al nostro team. Il professionista ha 72 ore per mandare la sua versione, poi si decide.",
+      "Ai clienti diciamo che decidiamo entro 2 giorni.",
+    ],
+    cta: { label: "Apri Problemi segnalati", url: `${frontendUrl()}/admin/problemi` },
+  }),
+  ADMIN_JOB_ISSUE_APPEAL: () => ({
+    kind: "notification",
+    tone: "urgent",
+    subject: "Ricorso su una segnalazione",
+    title: "Ricorso da decidere",
+    paragraphs: ["Un professionista ha fatto ricorso su una segnalazione accolta. Se c'è un altro admin, lo decide lui."],
+    cta: { label: "Apri Problemi segnalati", url: `${frontendUrl()}/admin/problemi` },
   }),
   ADMIN_STRIPE_DISPUTE: (payload) => ({
     kind: "notification",

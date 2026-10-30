@@ -23,7 +23,7 @@ const CLIENT_RICHIESTE_TYPES = new Set([
   "REQUEST_MATCHED_LATER",
   "TIMELINE_MESSAGE_FROM_PROFESSIONAL",
 ]);
-const CLIENT_LAVORI_TYPES = new Set(["JOB_COMPLETED", "JOB_DOCUMENT_READY", "PROFESSIONAL_ON_THE_WAY", "JOB_CONFIRM_REMINDER", "JOB_AUTO_CONFIRMED", "BOOKING_CANCELED_BY_PROFESSIONAL", "BOOKING_REOPENED_BY_PROFESSIONAL"]);
+const CLIENT_LAVORI_TYPES = new Set(["JOB_COMPLETED", "JOB_DOCUMENT_READY", "PROFESSIONAL_ON_THE_WAY", "JOB_CONFIRM_REMINDER", "JOB_AUTO_CONFIRMED", "BOOKING_CANCELED_BY_PROFESSIONAL", "BOOKING_REOPENED_BY_PROFESSIONAL", "JOB_ISSUE_REFUND_OFFERED"]);
 // Messaggi di chat non letti, indipendentemente dal ruolo — un viewer
 // riceve sempre e solo il tipo pertinente al proprio lato (mai entrambi),
 // quindi sommare i due insiemi è sicuro. Usato per il pallino sulla voce
@@ -140,6 +140,7 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
   // Documenti contabili (docs/CHANGELOG.md §378).
   if (type === "MONTHLY_DOCUMENTS_READY" || type === "CLIENT_DOCUMENTS_TO_FIX") return "/dashboard/documenti";
   if (type === "ADMIN_FEE_RECONCILIATION") return "/admin/finanza";
+  if (type === "ADMIN_JOB_ISSUE_TO_REVIEW" || type === "ADMIN_JOB_ISSUE_APPEAL") return "/admin/problemi";
   // Copia del documento per il cliente (§387): apre subito i documenti della richiesta.
   if (type === "JOB_DOCUMENT_READY") {
     const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
@@ -162,6 +163,26 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
   }
   if (type === "JOB_BALANCE_DUE" || type === "JOB_BALANCE_UNPAID" || type === "JOB_BALANCE_AUTO_CHARGED" || type === "JOB_REFUND_PENDING" || type === "JOB_REFUND_COMPLETED") {
     const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
+    return guidedRequestId ? `/le-mie-richieste?tab=lavori&open=${guidedRequestId}` : "/le-mie-richieste?tab=lavori";
+  }
+  if (type === "BOOKING_REOPEN_REQUESTED" || type === "BOOKING_REOPEN_DECLINED") {
+    const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
+    if (getPayloadValue(payload, "audience") === "PROFESSIONAL") return guidedRequestId ? `/dashboard/richieste?open=${guidedRequestId}` : "/dashboard/richieste";
+    return guidedRequestId ? `/le-mie-richieste?tab=lavori&open=${guidedRequestId}` : "/le-mie-richieste?tab=lavori";
+  }
+  // Recensioni: il professionista risponde dalla sua pagina Recensioni, il cliente legge la risposta tra le sue.
+  if (type === "NEW_REVIEW") {
+    const reviewId = getPayloadValue(payload, "reviewId");
+    return `/dashboard/recensioni${reviewId ? `#recensione-${reviewId}` : ""}`;
+  }
+  if (type === "REVIEW_REPLIED") {
+    const reviewId = getPayloadValue(payload, "reviewId");
+    return `/le-mie-recensioni${reviewId ? `#recensione-${reviewId}` : ""}`;
+  }
+  if (type === "JOB_REFUND_REJECTED") {
+    // Chi aveva chiesto il rimborso può essere il cliente o il professionista.
+    const guidedRequestId = getPayloadValue(payload, "guidedRequestId");
+    if (getPayloadValue(payload, "audience") === "PROFESSIONAL") return guidedRequestId ? `/dashboard/richieste?open=${guidedRequestId}` : "/dashboard/richieste";
     return guidedRequestId ? `/le-mie-richieste?tab=lavori&open=${guidedRequestId}` : "/le-mie-richieste?tab=lavori";
   }
   if (type.startsWith("JOB_ISSUE_")) {

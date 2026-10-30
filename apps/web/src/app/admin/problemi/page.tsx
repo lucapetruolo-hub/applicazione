@@ -141,6 +141,11 @@ export default function AdminProblemiPage() {
                     Segnalazioni accolte al professionista negli ultimi 30 giorni: {row.professional.upheldLast30Days}
                     {row.professional.blocked ? " · non riceve nuove richieste" : row.professional.demoted ? " · profilo abbassato" : ""}
                   </Text>
+                  {row.professional.lateUnresolvedLastYear > 0 ? (
+                    <Text fontSize={13} color={row.professional.lateUnresolvedLastYear >= 3 ? brand.urgenza : brand.grafite70}>
+                      Segnalazioni a lavoro chiuso senza accordo nell&apos;ultimo anno: {row.professional.lateUnresolvedLastYear}
+                    </Text>
+                  ) : null}
                   {row.guidedRequestId ? (
                     <Link href={`/admin/chat/${row.guidedRequestId}/${row.professional.profileId}`} style={{ fontSize: 13, fontWeight: 700 }}>
                       Leggi la chat

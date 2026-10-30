@@ -1,7 +1,7 @@
 import { z } from "zod";
 import "./zod";
 import { clientInvoiceRequestSchema } from "./accounting";
-import { BANK_DISPUTE_OPEN_STATUSES, type ProfessionalBankDispute } from "./bankDisputes";
+import { BANK_DISPUTE_OPEN_STATUSES, BANK_DISPUTE_REVIEW_STATUSES, type ProfessionalBankDispute } from "./bankDisputes";
 
 /**
  * Pagamento dei lavori (decisioni dell'utente del 29/09/2026,
@@ -58,9 +58,15 @@ export function quotePaymentOffer(quote: { paymentOptions?: string[] | null; dep
  * la verifica su Stripe del professionista l'acconto online sparisce. Se
  * restasse vuoto si mostra l'offerta com'è e l'accettazione spiega il perché.
  */
-export function clientPaymentOffer(quote: { paymentOptions?: string[] | null; depositPercent?: number | null }, professionalStripeVerified: boolean) {
+export function clientPaymentOffer(
+  quote: { paymentOptions?: string[] | null; depositPercent?: number | null },
+  professionalStripeVerified: boolean,
+  /** Importo massimo del preventivo: sotto il minimo di Stripe l'acconto online sparisce (collaudo I-01). */
+  totalMaxEurCents?: number,
+) {
   const offer = quotePaymentOffer(quote);
-  if (professionalStripeVerified) return offer;
+  const tooLow = totalMaxEurCents !== undefined && onlineDepositEurCents(totalMaxEurCents, offer.depositPercent) < ONLINE_MIN_CHARGE_EUR_CENTS;
+  if (professionalStripeVerified && !tooLow) return offer;
   const direct = offer.paymentOptions.filter((choice) => !paymentChoiceIsOnline(choice));
   return direct.length ? { ...offer, paymentOptions: direct } : offer;
 }
@@ -88,6 +94,13 @@ export function quoteChangeWhat(change: { itemsChanged: boolean; notesChanged: b
 export function paymentChoiceIsOnline(choice: JobPaymentChoice): boolean {
   return choice === "ONLINE" || choice === "MIXED";
 }
+/**
+ * Avviso a chi paga online tutto il massimo accettando (collaudo P-02): sa
+ * subito che i soldi restano fermi e che la differenza gli torna.
+ */
+export const UPFRONT_PAYMENT_NOTE =
+  "Paghi tutto adesso. I soldi restano fermi finché confermi che il lavoro è fatto; se il prezzo finale è più basso, la differenza ti torna.";
+
 /** Giorni dopo la chiusura del lavoro in cui i soldi passano al professionista se il cliente non conferma né segnala. */
 export const ONLINE_RELEASE_DAYS = 7;
 /**
@@ -248,6 +261,20 @@ export function onlineDepositEurCents(quoteMaxEurCents: number, depositPercent: 
   return Math.round((quoteMaxEurCents * depositPercent) / 100);
 }
 
+/** Minimo che Stripe accetta per un pagamento con carta in euro (collaudo I-01). */
+export const ONLINE_MIN_CHARGE_EUR_CENTS = 50;
+
+/**
+ * Acconto online troppo basso per Stripe: un preventivo da 0 € (o quasi) non
+ * può offrire il pagamento online, altrimenti il cliente "paga" 0 € e il
+ * lavoro non si conferma mai (collaudo I-01).
+ */
+export function onlineDepositTooLowProblem(input: { paymentOptions: readonly string[]; depositPercent: number; totalMaxEurCents: number }): string | null {
+  if (!input.paymentOptions.some((choice) => choice === "ONLINE" || choice === "MIXED")) return null;
+  if (onlineDepositEurCents(input.totalMaxEurCents, input.depositPercent) >= ONLINE_MIN_CHARGE_EUR_CENTS) return null;
+  return "Con questo prezzo l'acconto online sarebbe sotto 0,50 €, il minimo per pagare con la carta: scegli il pagamento diretto o alza il prezzo.";
+}
+
 /**
  * Parte dell'importo finale che passa da Stripe. Col saldo diretto
  * (`MIXED`) è solo l'acconto, al massimo l'importo finale: il resto il
@@ -316,6 +343,8 @@ export type JobPaymentSummary = {
   releaseDueAt: string | null;
   releasedAt: string | null;
   balanceUnpaid: boolean;
+  /** Annullato dal cliente dentro il preavviso: l'acconto resta al professionista (§348). */
+  depositKept: boolean;
   /** Solo per il professionista: trattenuta (con l'IVA, §378), e quanto riceve. */
   appFeeEurCents?: number;
   /** Costo della carta a suo carico: solo sui pagamenti di prima della trattenuta unica (§378). */
@@ -365,6 +394,7 @@ type JobPaymentRow = {
   releaseDueAt: Date | null;
   releasedAt: Date | null;
   balanceUnpaidAt: Date | null;
+  depositKeptAt?: Date | null;
   refundWaitingEurCents?: number;
   stripeDestinationAccountId?: string | null;
   payoutPendingEurCents?: number;
@@ -434,11 +464,19 @@ export function toJobPaymentSummary(
     releaseDueAt: jp.releaseDueAt?.toISOString() ?? null,
     releasedAt: jp.releasedAt?.toISOString() ?? null,
     balanceUnpaid: !!jp.balanceUnpaidAt,
+    depositKept: !!jp.depositKeptAt,
   };
   if (forProfessional && method === "ONLINE") {
-    const base = onlineTarget ?? collected;
+    const target = onlineTarget ?? collected;
+    // Prima dello sblocco conta solo quanto il cliente ha pagato davvero: un
+    // saldo non ancora pagato non è nei "Bloccati" (collaudo F-04). Trattenuta
+    // in proporzione, come allo sblocco con il saldo non pagato.
+    const base = Math.min(target, collected);
+    const balanceMissing = jp.paidEurCents < target;
     // Trattenuta unica con l'IVA (§378); `stripeFeeEurCents` solo sui pagamenti di prima.
-    const appFee = stage === "RELEASED" ? jp.platformFeeEurCents : jp.platformFeeEurCents || onlineFeeWithVatEurCents(base);
+    const fullFee = jp.platformFeeEurCents || onlineFeeWithVatEurCents(target);
+    const appFee =
+      stage === "RELEASED" ? jp.platformFeeEurCents : balanceMissing ? Math.round((fullFee * Math.max(0, collected)) / Math.max(1, target)) : fullFee;
     summary.appFeeEurCents = appFee;
     summary.stripeFeeEurCents = jp.stripeFeeEurCents;
     summary.payoutEurCents = stage === "RELEASED" ? jp.netAmountEurCents : Math.max(0, base - appFee - jp.stripeFeeEurCents);
@@ -468,15 +506,22 @@ export type ProfessionalPayoutTotals = {
   sentEurCents: number;
   /** Arrivati in banca. */
   paidEurCents: number;
+  /** Contestati in banca e non ancora decisi: possono tornare al cliente, fuori da "bloccati" come nell'estratto. */
+  disputedEurCents: number;
   /** Almeno un bonifico non è riuscito: dati bancari da controllare. */
   hasFailed: boolean;
 };
 
 export function professionalPayoutTotals(summaries: Array<JobPaymentSummary | null>): ProfessionalPayoutTotals {
-  const totals: ProfessionalPayoutTotals = { blockedEurCents: 0, preparingEurCents: 0, sentEurCents: 0, paidEurCents: 0, hasFailed: false };
+  const totals: ProfessionalPayoutTotals = { blockedEurCents: 0, preparingEurCents: 0, sentEurCents: 0, paidEurCents: 0, disputedEurCents: 0, hasFailed: false };
+  const pending: readonly string[] = [...BANK_DISPUTE_OPEN_STATUSES, ...BANK_DISPUTE_REVIEW_STATUSES];
   for (const summary of summaries) {
     const amount = summary?.payoutEurCents ?? 0;
     if (!summary || amount <= 0) continue;
+    if (summary.bankDispute && pending.includes(summary.bankDispute.status)) {
+      totals.disputedEurCents += amount;
+      continue;
+    }
     if (summary.payoutStatus === "BLOCKED") totals.blockedEurCents += amount;
     else if (summary.payoutStatus === "WAITING_FUNDS" || summary.payoutStatus === "FAILED") totals.preparingEurCents += amount;
     else if (summary.payoutStatus === "SENT") totals.sentEurCents += amount;

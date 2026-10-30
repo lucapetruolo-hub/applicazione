@@ -13,7 +13,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // allo scadere dello stesso termine entro cui si può segnalare un lavoro
 // fatto male, così nessuno perde il diritto al reclamo.
 export const COMPLETION_AUTO_CLOSE_DAYS = BAD_WORK_REPORT_DAYS;
-export const COMPLETION_REMINDER_DAYS = [3, COMPLETION_AUTO_CLOSE_DAYS - 4];
+// Con 7 giorni (collaudo P-04): promemoria al 3° e al 6° giorno, l'ultimo il giorno prima.
+export const COMPLETION_REMINDER_DAYS = [3, COMPLETION_AUTO_CLOSE_DAYS - 1];
 
 /** Cosa fare oggi per un lavoro chiuso da una sola parte da `since`. */
 export function completionDeadlineStep(since: Date, reminderCount: number, now: Date): "REMIND" | "CLOSE" | null {
