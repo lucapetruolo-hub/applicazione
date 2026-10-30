@@ -1,8 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Dac7ReportingPeriod, Dac7Record, PlatformDac7Settings } from "@professionisti/api-client";
-import { Button, Field, H2, Text, XStack, YStack, brand } from "@professionisti/ui";
+import type {
+  Dac7ReportingPeriod,
+  Dac7Record,
+  PlatformDac7Settings,
+} from "@professionisti/api-client";
+import {
+  Button,
+  Field,
+  H2,
+  Text,
+  XStack,
+  YStack,
+  brand,
+} from "@professionisti/ui";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/lib/AuthContext";
 import { SkeletonTableRows } from "@/components/Skeleton";
@@ -29,9 +41,16 @@ const DAC7_STATUS_LABEL: Record<string, string> = {
 export default function AdminDac7Page() {
   const { token } = useAuth();
   const [periods, setPeriods] = useState<Dac7ReportingPeriod[] | null>(null);
-  const [selectedPeriod, setSelectedPeriod] = useState<(Dac7ReportingPeriod & { records: Dac7Record[] }) | null>(null);
-  const [platformSettings, setPlatformSettings] = useState<PlatformDac7Settings | null>(null);
-  const [settingsFields, setSettingsFields] = useState<{ sendingEntityIn: string; platformName: string; platformIdValue: string }>({
+  const [selectedPeriod, setSelectedPeriod] = useState<
+    (Dac7ReportingPeriod & { records: Dac7Record[] }) | null
+  >(null);
+  const [platformSettings, setPlatformSettings] =
+    useState<PlatformDac7Settings | null>(null);
+  const [settingsFields, setSettingsFields] = useState<{
+    sendingEntityIn: string;
+    platformName: string;
+    platformIdValue: string;
+  }>({
     sendingEntityIn: "",
     platformName: "",
     platformIdValue: "",
@@ -42,12 +61,19 @@ export default function AdminDac7Page() {
 
   function reloadAll() {
     if (!token) return;
-    apiClient.adminListDac7Periods(token).then(setPeriods).catch(() => {});
+    apiClient
+      .adminListDac7Periods(token)
+      .then(setPeriods)
+      .catch(() => {});
     apiClient
       .adminGetDac7Settings(token)
       .then((s) => {
         setPlatformSettings(s);
-        setSettingsFields({ sendingEntityIn: s.sendingEntityIn ?? "", platformName: s.platformName ?? "", platformIdValue: s.platformIdValue ?? "" });
+        setSettingsFields({
+          sendingEntityIn: s.sendingEntityIn ?? "",
+          platformName: s.platformName ?? "",
+          platformIdValue: s.platformIdValue ?? "",
+        });
       })
       .catch(() => {});
   }
@@ -65,7 +91,9 @@ export default function AdminDac7Page() {
       setPlatformSettings(updated);
       setActionMessage("Impostazioni piattaforma DAC7 salvate.");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Impossibile salvare le impostazioni.");
+      setError(
+        e instanceof Error ? e.message : "Impossibile salvare le impostazioni.",
+      );
     } finally {
       setSettingsSaving(false);
     }
@@ -92,7 +120,9 @@ export default function AdminDac7Page() {
       setActionMessage("Aggregazione DAC7 aggiornata.");
       reloadAll();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Errore durante l'aggregazione.");
+      setError(
+        e instanceof Error ? e.message : "Errore durante l'aggregazione.",
+      );
     }
   }
 
@@ -110,7 +140,9 @@ export default function AdminDac7Page() {
       reloadAll();
       if (selectedPeriod?.id === id) openPeriod(id);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Errore durante l'esportazione.");
+      setError(
+        e instanceof Error ? e.message : "Errore durante l'esportazione.",
+      );
     }
   }
 
@@ -120,7 +152,9 @@ export default function AdminDac7Page() {
     try {
       const updated = await apiClient.adminMarkDac7Submitted(token, id);
       setActionMessage(
-        updated.quarter === null ? "Anno segnato come inviato: ai professionisti è partito l'avviso con i loro dati DAC7." : "Periodo segnato come inviato.",
+        updated.quarter === null
+          ? "Anno segnato come inviato: ai professionisti è partito l'avviso con i loro dati DAC7."
+          : "Periodo segnato come inviato.",
       );
       reloadAll();
     } catch (e) {
@@ -158,149 +192,243 @@ export default function AdminDac7Page() {
     <YStack gap="$7">
       {error && <Text color={brand.urgenza}>{error}</Text>}
       {actionMessage && (
-        <YStack backgroundColor={brand.gesso} padding="$3" borderRadius={10} maxHeight={240} style={{ overflow: "auto" as const }}>
+        <YStack
+          backgroundColor={brand.gesso}
+          padding="$3"
+          borderRadius={10}
+          maxHeight={240}
+          style={{ overflow: "auto" as const }}
+        >
           <Text fontSize={13} style={{ whiteSpace: "pre-wrap" as const }}>
             {actionMessage}
           </Text>
         </YStack>
       )}
 
-    <YStack gap="$4">
-      <XStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$3">
-        <H2 size="$7">Impostazioni piattaforma DAC7</H2>
-        <Text fontSize={12} color={brand.grafite70}>
-          Identità richiesta dallo schema OECD DPI (MessageSpec/Platform) — senza questi dati l&apos;export non può costruire un
-          identificativo di trasmissione valido.
-        </Text>
-      </XStack>
-      {platformSettings?.sendingEntityIn && platformSettings?.platformName && platformSettings?.platformIdValue ? null : (
-        // Avviso, non errore (docs/CHANGELOG.md §349): l'esportazione funziona lo stesso.
-        <Text fontSize={13} color={brand.ottoneScuro}>
-          Dati incompleti: l&apos;export segnalerà esplicitamente questa mancanza (non blocca l&apos;esportazione, la contrassegna).
-        </Text>
-      )}
-      <YStack gap="$3" maxWidth={460}>
-        <Field label={`P.IVA / identificativo fiscale di ${BRAND.name} (es. IT01234567890)`} value={settingsFields.sendingEntityIn} onChangeText={(v) => setSettingsFields((p) => ({ ...p, sendingEntityIn: v }))} />
-        <Field label="Nome piattaforma" value={settingsFields.platformName} onChangeText={(v) => setSettingsFields((p) => ({ ...p, platformName: v }))} />
-        <Field
-          label="Numero di registrazione della piattaforma (PlatformID)"
-          value={settingsFields.platformIdValue}
-          onChangeText={(v) => setSettingsFields((p) => ({ ...p, platformIdValue: v }))}
-        />
-        <XStack>
-          <Button variant="primary" onPress={handleSaveSettings} disabled={settingsSaving}>
-            {settingsSaving ? "Salvataggio..." : "Salva impostazioni"}
+      <YStack gap="$4">
+        <XStack
+          justifyContent="space-between"
+          alignItems="center"
+          flexWrap="wrap"
+          gap="$3"
+        >
+          <H2 size="$7">Impostazioni piattaforma DAC7</H2>
+          <Text fontSize={12} color={brand.grafite70}>
+            Identità richiesta dallo schema OECD DPI (MessageSpec/Platform) —
+            senza questi dati l&apos;export non può costruire un identificativo
+            di trasmissione valido.
+          </Text>
+        </XStack>
+        {platformSettings?.sendingEntityIn &&
+        platformSettings?.platformName &&
+        platformSettings?.platformIdValue ? null : (
+          // Avviso, non errore (docs/CHANGELOG.md §349): l'esportazione funziona lo stesso.
+          <Text fontSize={13} color={brand.ottoneScuro}>
+            Dati incompleti: l&apos;export segnalerà esplicitamente questa
+            mancanza (non blocca l&apos;esportazione, la contrassegna).
+          </Text>
+        )}
+        <YStack gap="$3" maxWidth={460}>
+          <Field
+            label={`P.IVA / identificativo fiscale di ${BRAND.name} (es. IT01234567890)`}
+            value={settingsFields.sendingEntityIn}
+            onChangeText={(v) =>
+              setSettingsFields((p) => ({ ...p, sendingEntityIn: v }))
+            }
+          />
+          <Field
+            label="Nome piattaforma"
+            value={settingsFields.platformName}
+            onChangeText={(v) =>
+              setSettingsFields((p) => ({ ...p, platformName: v }))
+            }
+          />
+          <Field
+            label="Numero di registrazione della piattaforma (PlatformID)"
+            value={settingsFields.platformIdValue}
+            onChangeText={(v) =>
+              setSettingsFields((p) => ({ ...p, platformIdValue: v }))
+            }
+          />
+          <XStack>
+            <Button
+              variant="primary"
+              onPress={handleSaveSettings}
+              disabled={settingsSaving}
+            >
+              {settingsSaving ? "Salvataggio..." : "Salva impostazioni"}
+            </Button>
+          </XStack>
+        </YStack>
+      </YStack>
+
+      <YStack gap="$4">
+        <XStack
+          justifyContent="space-between"
+          alignItems="center"
+          flexWrap="wrap"
+          gap="$3"
+        >
+          <H2 size="$7">Periodi DAC7</H2>
+          <Button variant="secondary" onPress={handleAggregateNow}>
+            Aggiorna aggregazione ora
           </Button>
         </XStack>
-      </YStack>
-    </YStack>
+        <Text fontSize={12} color={brand.grafite70}>
+          Online contati all&apos;accredito, diretti a &quot;lavoro
+          terminato&quot;. &quot;Segna come inviato&quot; registra l&apos;invio
+          fatto a mano all&apos;Agenzia delle Entrate e, sull&apos;anno, avvisa
+          i professionisti.
+        </Text>
+        {periods === null ? (
+          <SkeletonTableRows rows={3} cols={4} />
+        ) : periods.length === 0 ? (
+          <Text color={brand.grafite70}>Nessun periodo ancora aggregato.</Text>
+        ) : (
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Periodo</th>
+                  <th>Stato</th>
+                  <th>Versione</th>
+                  <th>Azioni</th>
+                </tr>
+              </thead>
+              <tbody>
+                {periods.map((p) => (
+                  <tr key={p.id}>
+                    <td>
+                      {p.year} {p.quarter ? `Q${p.quarter}` : "(anno intero)"}
+                    </td>
+                    <td>
+                      {DAC7_STATUS_LABEL[p.status] ?? p.status}
+                      {p.needsCorrectionAt ? (
+                        <Text
+                          display="flex"
+                          fontSize={12}
+                          fontWeight="700"
+                          color={brand.urgenza}
+                        >
+                          Da correggere
+                        </Text>
+                      ) : null}
+                    </td>
+                    <td>{p.reportVersion}</td>
+                    <td>
+                      <XStack gap="$2" flexWrap="wrap">
+                        <Button
+                          size="$2"
+                          variant="secondary"
+                          onPress={() => openPeriod(p.id)}
+                        >
+                          Dettaglio
+                        </Button>
+                        <Button
+                          size="$2"
+                          variant="secondary"
+                          onPress={() => handleExport(p.id)}
+                        >
+                          Esporta
+                        </Button>
+                        {p.status === "EXPORTED" && (
+                          <Button
+                            size="$2"
+                            variant="secondary"
+                            onPress={() => handleMarkSubmitted(p.id)}
+                          >
+                            Segna come inviato
+                          </Button>
+                        )}
+                        {(p.status === "SUBMITTED" ||
+                          p.status === "REJECTED") && (
+                          <Button
+                            size="$2"
+                            variant="secondary"
+                            onPress={() => handleCorrect(p.id)}
+                          >
+                            Correggi
+                          </Button>
+                        )}
+                        {p.quarter === null &&
+                          (p.status === "SUBMITTED" ||
+                            p.status === "CORRECTED") && (
+                            <Button
+                              size="$2"
+                              variant="secondary"
+                              onPress={() => handleNotifySellers(p.id)}
+                            >
+                              Rimanda avviso ai professionisti
+                            </Button>
+                          )}
+                      </XStack>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-    <YStack gap="$4">
-      <XStack justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="$3">
-        <H2 size="$7">Periodi DAC7</H2>
-        <Button variant="secondary" onPress={handleAggregateNow}>
-          Aggiorna aggregazione ora
-        </Button>
-      </XStack>
-      <Text fontSize={12} color={brand.grafite70}>
-        Online contati all&apos;accredito, diretti a &quot;lavoro terminato&quot;. &quot;Segna come inviato&quot; registra l&apos;invio fatto a mano
-        all&apos;Agenzia delle Entrate e, sull&apos;anno, avvisa i professionisti.
-      </Text>
-      {periods === null ? (
-        <SkeletonTableRows rows={3} cols={4} />
-      ) : periods.length === 0 ? (
-        <Text color={brand.grafite70}>Nessun periodo ancora aggregato.</Text>
-      ) : (
-        <div className="admin-table-wrap">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Periodo</th>
-                <th>Stato</th>
-                <th>Versione</th>
-                <th>Azioni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {periods.map((p) => (
-                <tr key={p.id}>
-                  <td>
-                    {p.year} {p.quarter ? `Q${p.quarter}` : "(anno intero)"}
-                  </td>
-                  <td>
-                    {DAC7_STATUS_LABEL[p.status] ?? p.status}
-                    {p.needsCorrectionAt ? (
-                      <Text display="flex" fontSize={12} fontWeight="700" color={brand.urgenza}>
-                        Da correggere
+        {selectedPeriod && (
+          <YStack
+            gap="$2"
+            backgroundColor={brand.gesso}
+            padding="$4"
+            borderRadius={10}
+          >
+            <Text fontWeight="700">
+              Dettaglio {selectedPeriod.year}{" "}
+              {selectedPeriod.quarter ? `Q${selectedPeriod.quarter}` : "(anno)"}
+            </Text>
+            {selectedPeriod.needsCorrectionAt ? (
+              <Text fontSize={13} color={brand.urgenza}>
+                Importi cambiati dopo l&apos;invio: usa &quot;Correggi&quot;,
+                poi esporta e invia di nuovo.
+              </Text>
+            ) : null}
+            {selectedPeriod.records.length === 0 ? (
+              <Text color={brand.grafite70}>
+                Nessun professionista con compensi in questo periodo.
+              </Text>
+            ) : (
+              selectedPeriod.records.map((r) => (
+                <XStack
+                  key={r.id}
+                  justifyContent="space-between"
+                  flexWrap="wrap"
+                  gap="$2"
+                >
+                  <Text fontSize={13}>
+                    <Text fontSize={13} fontWeight="700">
+                      {r.businessName ?? r.professionalProfileId}
+                    </Text>
+                    {r.missingFiscalData ? (
+                      <Text fontSize={13} color={brand.urgenza}>
+                        {" "}
+                        · dati fiscali mancanti
                       </Text>
                     ) : null}
-                  </td>
-                  <td>{p.reportVersion}</td>
-                  <td>
-                    <XStack gap="$2" flexWrap="wrap">
-                      <Button size="$2" variant="secondary" onPress={() => openPeriod(p.id)}>
-                        Dettaglio
-                      </Button>
-                      <Button size="$2" variant="secondary" onPress={() => handleExport(p.id)}>
-                        Esporta
-                      </Button>
-                      {p.status === "EXPORTED" && (
-                        <Button size="$2" variant="secondary" onPress={() => handleMarkSubmitted(p.id)}>
-                          Segna come inviato
-                        </Button>
-                      )}
-                      {(p.status === "SUBMITTED" || p.status === "REJECTED") && (
-                        <Button size="$2" variant="secondary" onPress={() => handleCorrect(p.id)}>
-                          Correggi
-                        </Button>
-                      )}
-                      {p.quarter === null && (p.status === "SUBMITTED" || p.status === "CORRECTED") && (
-                        <Button size="$2" variant="secondary" onPress={() => handleNotifySellers(p.id)}>
-                          Rimanda avviso ai professionisti
-                        </Button>
-                      )}
-                    </XStack>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {selectedPeriod && (
-        <YStack gap="$2" backgroundColor={brand.gesso} padding="$4" borderRadius={10}>
-          <Text fontWeight="700">
-            Dettaglio {selectedPeriod.year} {selectedPeriod.quarter ? `Q${selectedPeriod.quarter}` : "(anno)"}
-          </Text>
-          {selectedPeriod.needsCorrectionAt ? (
-            <Text fontSize={13} color={brand.urgenza}>
-              Importi cambiati dopo l&apos;invio: usa &quot;Correggi&quot;, poi esporta e invia di nuovo.
-            </Text>
-          ) : null}
-          {selectedPeriod.records.length === 0 ? (
-            <Text color={brand.grafite70}>Nessun professionista con compensi in questo periodo.</Text>
-          ) : (
-            selectedPeriod.records.map((r) => (
-              <XStack key={r.id} justifyContent="space-between" flexWrap="wrap" gap="$2">
-                <Text fontSize={13}>
-                  <Text fontSize={13} fontWeight="700">
-                    {r.businessName ?? r.professionalProfileId}
+                    {r.missingIban ? (
+                      <Text fontSize={13} color={brand.urgenza}>
+                        {" "}
+                        · IBAN mancante
+                      </Text>
+                    ) : null}
                   </Text>
-                  {r.missingFiscalData ? <Text fontSize={13} color={brand.urgenza}> · dati fiscali mancanti</Text> : null}
-                  {r.missingIban ? <Text fontSize={13} color={brand.urgenza}> · IBAN mancante</Text> : null}
-                </Text>
-                <Text fontSize={13} fontVariant={["tabular-nums"]}>
-                  {formatEurCents(r.considerationEurCents)} (diretti {formatEurCents(r.directConsiderationEurCents)}, online{" "}
-                  {formatEurCents(r.onlineConsiderationEurCents)}) · {r.numberOfTransactions} lavori
-                  {r.sellerNotifiedAt ? " · avvisato" : ""}
-                </Text>
-              </XStack>
-            ))
-          )}
-        </YStack>
-      )}
-    </YStack>
+                  <Text fontSize={13} fontVariant={["tabular-nums"]}>
+                    {formatEurCents(r.considerationEurCents)} (diretti{" "}
+                    {formatEurCents(r.directConsiderationEurCents)}, online{" "}
+                    {formatEurCents(r.onlineConsiderationEurCents)}) ·{" "}
+                    {r.numberOfTransactions} lavori
+                    {r.sellerNotifiedAt ? " · avvisato" : ""}
+                  </Text>
+                </XStack>
+              ))
+            )}
+          </YStack>
+        )}
+      </YStack>
     </YStack>
   );
 }

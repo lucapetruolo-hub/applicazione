@@ -984,6 +984,10 @@ button.notif-row-main:hover {
 .admin-nav-title {
   display: none;
 }
+/* Con "Reclami e segnalazioni" l'icona si stringeva fino a sembrare una lettera. */
+.admin-nav-link svg {
+  flex-shrink: 0;
+}
 .admin-nav-link {
   display: flex;
   align-items: center;
@@ -1092,7 +1096,8 @@ button.notif-row-main:hover {
   padding: 10px 12px;
   margin-bottom: -1px;
   border-bottom: 2px solid transparent;
-  color: #6e6459;
+  /* Più scuro del solito grigio: in alto a destra lo sfondo ha la sfumatura verde (axe, 3,6:1 col #6e6459). */
+  color: #4a423b;
   text-decoration: none;
   font-size: 14px;
   font-weight: 600;
@@ -1128,7 +1133,8 @@ button.notif-row-main:hover {
   gap: 8px;
   align-items: center;
   justify-content: flex-end;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 @media (max-width: 699px) {
   .admin-queue thead {
@@ -2632,6 +2638,24 @@ a.admin-kpi:hover {
 }
 .admin-link-button:hover {
   border-color: #2b2420;
+}
+/* "Apri" nella coda Da fare: l'azione principale della riga. */
+.admin-link-button.is-primary {
+  background: #128552;
+  border-color: #128552;
+  color: #ffffff;
+}
+.admin-link-button.is-primary:hover {
+  background: #0f6b44;
+  border-color: #0f6b44;
+}
+.admin-watch {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  color: #4a423b;
 }
 .admin-stats-grid {
   display: grid;
@@ -6230,7 +6254,7 @@ a.admin-kpi:hover {
 }
 .optout-na {
   font-size: 12px;
-  color: #8a7b6c;
+  color: #6e6459;
   white-space: normal;
 }
 

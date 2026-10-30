@@ -159,11 +159,12 @@ export function AdminNav({ overview, adminRoles, onOpenSearch }: { overview: Adm
       </button>
       {ADMIN_SECTIONS.map((section) => {
         const tabs = visibleTabs(section, adminRoles);
-        if (!tabs.length) return null;
+        const first = tabs[0];
+        if (!first) return null;
         const active = current?.section.key === section.key;
         const count = countOf(tabs, overview);
         return (
-          <Link key={section.key} href={tabs[0].href} className={`admin-nav-link${active ? " is-active" : ""}`} aria-current={active ? "page" : undefined}>
+          <Link key={section.key} href={first.href} className={`admin-nav-link${active ? " is-active" : ""}`} aria-current={active ? "page" : undefined}>
             <Icon name={section.icon} size={16} color={active ? "#2b2420" : "#6e6459"} />
             <span>{section.label}</span>
             {count > 0 ? <span className="admin-nav-badge">{count}</span> : null}

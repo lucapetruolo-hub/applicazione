@@ -57,15 +57,15 @@ export function AdminTabs<T extends string>({ tabs, value, onChange }: { tabs: {
             paddingHorizontal="$3"
             paddingVertical={8}
             borderRadius={999}
-            backgroundColor={active ? brand.cianografia : brand.calce}
+            backgroundColor={active ? brand.cianografiaPieno : brand.calce}
             borderWidth={1}
-            borderColor={active ? brand.cianografia : brand.filetto}
+            borderColor={active ? brand.cianografiaPieno : brand.filetto}
             cursor="pointer"
             onPress={() => onChange(tab.key)}
             accessibilityRole="button"
             aria-pressed={active}
           >
-            {/* Verde come le pillole attive dell'area cliente e professionista (§349). */}
+            {/* Verde pieno: col bianco sopra il verde chiaro si fermava a 3,6:1 (axe, docs/changelog/2026-10-30-admin-riordino.md). */}
             <Text fontSize={14} fontWeight="700" color={active ? "#ffffff" : brand.grafite}>
               {tab.label}
             </Text>

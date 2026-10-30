@@ -41,6 +41,8 @@ export function Field({ label, hint, error, rightElement, ...inputProps }: Field
           height={48}
           paddingHorizontal={0}
           focusStyle={{ outlineWidth: 2, outlineColor: brand.cianografia, outlineStyle: "solid", outlineOffset: 1 }}
+          // Il testo sopra non è un <label>: senza questo il lettore di schermo legge un campo senza nome (axe "label").
+          aria-label={label}
           {...inputProps}
         />
         {rightElement}

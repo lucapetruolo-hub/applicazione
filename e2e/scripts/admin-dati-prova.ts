@@ -18,6 +18,9 @@ const inHours = (h: number) => new Date(now + h * 3_600_000);
 let seq = 0;
 
 async function main() {
+  // Mai sul database vero: crea utenti, pagamenti e contestazioni finti.
+  const url = process.env.DATABASE_URL ?? "";
+  if (!/@(localhost|127\.0\.0\.1)[:/]/.test(url)) throw new Error("Solo su un database locale (localhost).");
   const hash = await bcrypt.hash(PASSWORD, 10);
   const idraulico = await prisma.category.findFirstOrThrow({ where: { slug: "idraulico" } });
   const elettricista = await prisma.category.findFirstOrThrow({ where: { slug: "elettricista" } });
@@ -193,10 +196,10 @@ async function main() {
   // Qualche azione nel registro.
   await prisma.auditLog.createMany({
     data: [
-      { entityType: "User", entityId: finto.id, action: "UPDATE", fieldName: "testAccountAt", changedByUserId: admin.id, createdAt: hoursAgo(2) },
-      { entityType: "User", entityId: luigi.user.id, action: "UPDATE", fieldName: "suspendedAt", changedByUserId: admin.id, createdAt: hoursAgo(50) },
+      { entityType: "User", entityId: finto.id, fieldName: "testAccountAt", newValue: "sì", changedByUserId: admin.id, createdAt: hoursAgo(2) },
+      { entityType: "User", entityId: luigi.user.id, fieldName: "suspendedAt", newValue: "sospeso", reason: "Recensioni false", changedByUserId: admin.id, createdAt: hoursAgo(50) },
     ],
-  }).catch(() => undefined);
+  });
 
   process.stdout.write(
     JSON.stringify({ adminId: admin.id, adminEmail: admin.email, totpSecret: TOTP_SECRET, marcoUserId: marco.user.id, fintoId: finto.id, fakeReviewId: fakeReview.id, chiusoId: chiuso.id, doppioUserId: doppio.user.id, saraId: sara.user.id }, null, 2) + "\n",
