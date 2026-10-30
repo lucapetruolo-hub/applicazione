@@ -396,7 +396,6 @@ export class AuthService {
     data: {
       name?: string;
       surname?: string;
-      birthDate?: string;
       email?: string;
       phone?: string;
       street?: string;
@@ -430,12 +429,10 @@ export class AuthService {
       }
     }
 
-    const { birthDate, ...rest } = data;
     const updated = await this.prisma.user.update({
       where: { id: userId },
       data: {
-        ...rest,
-        ...(birthDate ? { birthDate: new Date(birthDate) } : {}),
+        ...data,
         // Un indirizzo nuovo va confermato di nuovo (docs/CHANGELOG.md §178),
         // e il link mandato al vecchio non deve poterlo confermare.
         ...(emailChanged ? { emailVerifiedAt: null, emailTokenHash: null, emailTokenExpiresAt: null, emailCodeHash: null } : {}),

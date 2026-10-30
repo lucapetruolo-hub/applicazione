@@ -3169,3 +3169,17 @@ model OutboundMessage {
   @@index([createdAt])
   @@map("outbound_messages")
 }
+
+// Avviso del cambio dei Termini a tutti gli account, una volta per versione
+// (TERMS_CHANGES in packages/shared/src/termsChanges.ts, punto 12 dei Termini;
+// docs/changelog/2026-10-30-termini-privacy-obblighi.md). `lastUserId` fa
+// ripartire l'invio da dove si era fermato.
+model TermsChangeNotice {
+  version    String    @id
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  lastUserId String?
+  sentCount  Int       @default(0)
+
+  @@map("terms_change_notices")
+}
