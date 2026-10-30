@@ -836,6 +836,7 @@ export function GuidedRequestCard({
           initial={acceptedQuote.invoiceRequest ?? null}
           defaults={invoiceDefaults}
           onSaved={onChanged}
+          receipt={acceptedQuote.professionalKind === "PRIVATE"}
         />
       ) : null}
       <YStack height={1} backgroundColor={brand.filetto} marginVertical="$1" />

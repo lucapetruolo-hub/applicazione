@@ -10,15 +10,13 @@ import { useAuth } from "@/lib/AuthContext";
 import { AdminPageHeader, AdminPill, downloadBlobFile, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { SkeletonTableRows } from "@/components/Skeleton";
 
-type Kind = "" | "RECEIPT" | "INVOICE";
-type Query = { q: string; kind: Kind; year: number | null; bookingId: string | null };
+type Query = { q: string; year: number | null; bookingId: string | null };
 
 const FIRST_YEAR = 2026;
 
 /**
  * Documenti ai clienti (docs/CHANGELOG.md §380): ricevute per prestazione
- * occasionale (col numero dato da noi) e copie di cortesia delle fatture
- * preparate dai professionisti. Serve all'assistenza e ai problemi
+ * occasionale (col numero dato da noi) preparate dai professionisti. Serve all'assistenza e ai problemi
  * segnalati: chi l'ha dato, a chi, con che importo. `?lavoro=` arriva da
  * "Lavori terminati" e "Problemi segnalati".
  */
@@ -34,7 +32,7 @@ function DocumentiClientiContent() {
   const { token } = useAuth();
   const searchParams = useSearchParams();
   const [q, setQ] = useState("");
-  const [query, setQuery] = useState<Query>({ q: "", kind: "", year: null, bookingId: searchParams.get("lavoro") });
+  const [query, setQuery] = useState<Query>({ q: "", year: null, bookingId: searchParams.get("lavoro") });
   // Righe insieme alla ricerca da cui arrivano: a ogni ricerca nuova si torna allo scheletro.
   const [loaded, setLoaded] = useState<{ query: Query; rows: AdminCourtesyDocumentRow[] } | null>(null);
   const rows = loaded?.query === query ? loaded.rows : null;
@@ -45,7 +43,7 @@ function DocumentiClientiContent() {
   useEffect(() => {
     if (!token) return;
     apiClient
-      .adminCourtesyDocuments(token, { q: query.q, kind: query.kind || undefined, year: query.year ?? undefined, bookingId: query.bookingId ?? undefined })
+      .adminCourtesyDocuments(token, { q: query.q, year: query.year ?? undefined, bookingId: query.bookingId ?? undefined })
       .then((list) => {
         setLoaded({ query, rows: list });
         setError(null);
@@ -77,7 +75,7 @@ function DocumentiClientiContent() {
     <YStack>
       <AdminPageHeader
         title="Documenti ai clienti"
-        description="Ricevute e fatture che i professionisti hanno preparato per i clienti. Ogni PDF che apri resta nel registro azioni."
+        description="Ricevute per prestazione occasionale che i professionisti hanno preparato per i clienti. Ogni PDF che apri resta nel registro azioni."
       />
       <XStack gap="$2" flexWrap="wrap" marginBottom="$3">
         <input
@@ -88,11 +86,6 @@ function DocumentiClientiContent() {
           onChange={(e) => setQ(e.target.value)}
           placeholder="Numero (es. 4/2026), professionista o cliente"
         />
-        <select aria-label="Tipo di documento" className="admin-input" value={query.kind} onChange={(e) => setQuery((prev) => ({ ...prev, kind: e.target.value as Kind }))}>
-          <option value="">Tutti i documenti</option>
-          <option value="RECEIPT">Ricevute</option>
-          <option value="INVOICE">Fatture</option>
-        </select>
         <select
           aria-label="Anno"
           className="admin-input"
