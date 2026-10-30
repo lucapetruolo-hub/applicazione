@@ -424,9 +424,9 @@ export function ProfessionalCard({
                     borderRadius="$10"
                     backgroundColor={brand.cianografiaVelo}
                   >
-                    <Icon name="shield-check" size={13} color={brand.verificato} strokeWidth={2} />
+                    <Icon name="credit-card" size={13} color={brand.verificato} strokeWidth={2} />
                     <Text fontFamily="$body" fontSize={13} fontWeight="700" color={brand.verificato}>
-                      Identità verificata da Stripe
+                      Pagamenti online attivi
                     </Text>
                   </XStack>
                 </BadgeInfo>

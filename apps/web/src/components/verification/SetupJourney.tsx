@@ -216,7 +216,7 @@ export function SetupJourneyView({ steps, title = "Completa il profilo" }: { ste
                 </Text>
                 {active && step.action ? (
                   <Link href={step.action.href} style={{ textDecoration: "none", alignSelf: "flex-start", marginTop: 8 }}>
-                    <Button variant="primary">{step.action.label}</Button>
+                    <Button tabIndex={-1} variant="primary">{step.action.label}</Button>
                   </Link>
                 ) : null}
               </YStack>

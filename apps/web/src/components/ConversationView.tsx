@@ -644,9 +644,12 @@ export function ConversationView({
           )}
         </XStack>
         {onBack && backIcon === "x" ? (
-          <Text fontSize="$5" color={brand.grafite70} cursor="pointer" onPress={onBack} accessibilityRole="button" accessibilityLabel="Chiudi">
-            ✕
-          </Text>
+          // 44x44 attorno alla ✕: prima era grande quanto il segno (collaudo D-07).
+          <XStack width={44} height={44} marginVertical={-8} marginRight={-10} borderRadius={999} alignItems="center" justifyContent="center" cursor="pointer" onPress={onBack} accessibilityRole="button" accessibilityLabel="Chiudi">
+            <Text fontSize="$5" color={brand.grafite70}>
+              ✕
+            </Text>
+          </XStack>
         ) : null}
       </XStack>
 

@@ -161,7 +161,7 @@ notification("CLIENT_DOCUMENTS_TO_FIX", "Professionista", "Lavori e appuntamenti
 });
 // Copia della ricevuta pronta per il cliente (§387).
 notification("JOB_DOCUMENT_READY", "Cliente", "Lavori e appuntamenti", { kind: "RECEIPT", label: "Ricevuta n. 4/2026", guidedRequestId: "preview", updated: false });
-add("job_document_ready_aggiornata", "Lavori e appuntamenti", "Cliente", renderEmail(notificationEmail("JOB_DOCUMENT_READY", { kind: "INVOICE", label: "Fattura n. 12/A", guidedRequestId: "preview", updated: true }, forClient)!));
+add("job_document_ready_aggiornata", "Lavori e appuntamenti", "Cliente", renderEmail(notificationEmail("JOB_DOCUMENT_READY", { kind: "RECEIPT", label: "Ricevuta n. 4/2026", guidedRequestId: "preview", updated: true }, forClient)!));
 notification("QUOTE_REJECTED", "Professionista", "Preventivi e date", {
   note: "Il prezzo è più alto di quanto pensavo, e mi servirebbe prima di venerdì.",
   canResend: true,
@@ -251,6 +251,7 @@ notification("CONTENT_REPORT_REVERTED", "Professionista", "Segnalazioni e modera
 notification("CONTENT_REPORT_APPEAL_REJECTED", "Professionista", "Segnalazioni e moderazione", { note: "La decisione resta valida." });
 notification("ACCOUNT_SUSPENDED", "Tutti", "Segnalazioni e moderazione", { note: "Violazioni ripetute dei Termini di servizio." });
 notification("ACCOUNT_REACTIVATED", "Tutti", "Segnalazioni e moderazione", { note: "Sospensione annullata dopo verifica." });
+notification("TERMS_CHANGED", "Tutti", "Account e sicurezza", { version: "2026-10-30" });
 add("admin-nuova-segnalazione", "Segnalazioni e moderazione", "Admin", adminNewReportEmail({ what: "Recensione", reason: "Contiene insulti" }));
 
 const outDir = process.argv[2] ?? "email-preview";

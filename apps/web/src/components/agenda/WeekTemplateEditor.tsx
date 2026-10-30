@@ -373,7 +373,7 @@ export function WeekTemplateEditor({
                 </button>
               ) : onEnableOnline ? (
                 // Online spento nel profilo: si riattiva da qui (richiesta dell'utente, §367).
-                <button type="button" className="ag-wt-chip is-add" onClick={() => void enableOnline()} disabled={enablingOnline} aria-label="Attiva l'online: lavori anche in videochiamata">
+                <button type="button" className="ag-wt-chip is-add" onClick={() => void enableOnline()} disabled={enablingOnline} aria-label={enablingOnline ? undefined : "Online: attivalo per lavorare anche in videochiamata"}>
                   <Plus size={15} aria-hidden /> {enablingOnline ? "Attivo…" : "Online"}
                 </button>
               ) : null}

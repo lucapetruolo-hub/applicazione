@@ -47,7 +47,7 @@ export default function NotifichePage() {
           Accedi per gestire le notifiche
         </Text>
         <Link href="/accedi?redirect=/account/notifiche" style={{ textDecoration: "none" }}>
-          <Button variant="primary">Accedi</Button>
+          <Button tabIndex={-1} variant="primary">Accedi</Button>
         </Link>
       </YStack>
     );

@@ -195,7 +195,8 @@ const externalJob = { kind: "owned", owners: ["proA"], params: (f) => ({ id: f.e
 const invoice = { kind: "owned", owners: ["proA"], strangers: ["clientA", "clientB", "proB"], params: (f) => ({ id: f.invoiceA }) };
 // Estratto di un mese: dati di chi chiama, il mese non è di nessuno.
 const statement = { kind: "self", role: "professional", params: () => ({ month: "2026-09" }) };
-const courtesy = { kind: "owned", owners: ["proA"], strangers: ["clientA", "clientB", "proB"], params: (f) => ({ bookingId: f.bookingA }) };
+// Copia del documento: solo a lavoro terminato (docs/changelog/2026-10-30-documenti-fiscali.md).
+const courtesy = { kind: "owned", owners: ["proA"], strangers: ["clientA", "clientB", "proB"], params: (f) => ({ bookingId: f.bookingCompleted }) };
 
 const owned = {
   "DELETE /bookings/:id": booking(),
@@ -240,9 +241,9 @@ const owned = {
   "GET /documents/courtesy/:bookingId": courtesy,
   // Documenti di un lavoro dal menu della richiesta: le due parti; la copia in PDF solo il cliente (§386).
   "GET /documents/jobs/:bookingId": { kind: "owned", owners: BOTH, params: (f) => ({ bookingId: f.bookingA }) },
-  "GET /documents/jobs/:bookingId/copy/pdf": { kind: "owned", owners: ["clientA"], strangers: ["clientB", "proB", "proA"], params: (f) => ({ bookingId: f.bookingA }) },
+  "GET /documents/jobs/:bookingId/copy/pdf": { kind: "owned", owners: ["clientA"], strangers: ["clientB", "proB", "proA"], params: (f) => ({ bookingId: f.bookingCompleted }) },
   "GET /documents/courtesy/:bookingId/pdf": courtesy,
-  "PUT /documents/courtesy/:bookingId/number": courtesy,
+  "PUT /documents/courtesy/:bookingId/details": { ...courtesy, body: () => ({ customerName: "Cliente A" }) },
 
   "DELETE /external-jobs/:id": externalJob,
   "PATCH /external-jobs/:id": externalJob,

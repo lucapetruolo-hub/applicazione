@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { accountingMonthLabel, isAccountingMonth, type MonthlyStatement, type MonthlyStatementRow } from "@professionisti/shared";
+import { accountingMonthLabel, isAccountingMonth, statementFeeInvoiceNote, statementOnlineNote, type MonthlyStatement, type MonthlyStatementRow } from "@professionisti/shared";
 import { Button, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { downloadTextFile } from "@/components/admin/adminUi";
 import { apiClient } from "@/lib/apiClient";
@@ -118,7 +118,14 @@ export default function StatementPage() {
                   {shortDate(row.date)}
                 </Text>
                 <JobCell row={row} />
-                <NumberCell width={90}>{amount(row.onlineEurCents)}</NumberCell>
+                <YStack width={90} alignItems="flex-end" gap={2}>
+                  <NumberCell width={90}>{amount(row.onlineEurCents)}</NumberCell>
+                  {row.refundsEurCents > 0 ? (
+                    <Text fontSize={13} color={brand.grafite70} textAlign="right" fontVariant={["tabular-nums"]}>
+                      Rimborso −{eur(row.refundsEurCents)}
+                    </Text>
+                  ) : null}
+                </YStack>
                 <NumberCell width={80}>{amount(row.directEurCents)}</NumberCell>
                 <NumberCell width={96}>{amount(row.feesEurCents)}</NumberCell>
                 <YStack width={150} alignItems="flex-end" gap={2}>
@@ -144,6 +151,7 @@ export default function StatementPage() {
                 <Text fontSize={15} color={brand.grafite} fontVariant={["tabular-nums"]}>
                   {[
                     row.onlineEurCents ? `Online ${eur(row.onlineEurCents)}` : null,
+                    row.refundsEurCents ? `Rimborso −${eur(row.refundsEurCents)}` : null,
                     row.directEurCents ? `Diretto ${eur(row.directEurCents)}` : null,
                     row.feesEurCents ? `Trattenute ${eur(row.feesEurCents)}` : null,
                     row.payoutEurCents !== null ? `Bonifico ${eur(row.payoutEurCents)}` : null,
@@ -159,6 +167,12 @@ export default function StatementPage() {
           </YStack>
         </>
       )}
+
+      {statementOnlineNote(statement) ? (
+        <Text fontSize={16} color={brand.grafite70}>
+          {statementOnlineNote(statement)}
+        </Text>
+      ) : null}
 
       {statement.blockedEurCents > 0 ? (
         <NoteBox tone="sand">
@@ -179,7 +193,7 @@ export default function StatementPage() {
               .{" "}
             </>
           ) : statement.totals.feesEurCents !== 0 ? (
-            "La fattura delle trattenute arriva il 1° del mese dopo. "
+            `${statementFeeInvoiceNote(statement)} `
           ) : null}
           {statement.documentHint}
         </Text>

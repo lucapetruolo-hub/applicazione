@@ -112,7 +112,7 @@ export function SubscriptionPauseBanner({ sub, showAction = true, profileStepsEl
       </YStack>
       {showAction ? (
         <Link href={href} style={{ textDecoration: "none", alignSelf: "flex-start" }}>
-          <Button variant="primary">{action}</Button>
+          <Button tabIndex={-1} variant="primary">{action}</Button>
         </Link>
       ) : null}
     </Surface>

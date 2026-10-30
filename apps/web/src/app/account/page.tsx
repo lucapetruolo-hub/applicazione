@@ -30,7 +30,6 @@ const inputStyle = {
   color: brand.grafite,
   width: "100%",
 };
-const smallInputStyle = { ...inputStyle, width: 76, textAlign: "center" as const };
 
 /** Campo password con "occhio" mostra/nascondi — richiesta esplicita
  * dell'utente, gli input grezzi di questa pagina non ne avevano ancora
@@ -114,15 +113,6 @@ function FieldRow({ label, required, children }: { label: string; required?: boo
   );
 }
 
-function parseBirthDate(iso: string | null) {
-  if (!iso) return { day: "", month: "", year: "" };
-  const parts = iso.slice(0, 10).split("-");
-  const year = parts[0] ?? "";
-  const month = parts[1] ?? "";
-  const day = parts[2] ?? "";
-  return { day: day ? String(Number(day)) : "", month: month ? String(Number(month)) : "", year };
-}
-
 export default function AccountPage() {
   const router = useRouter();
   const { user, token, isLoading, refreshUser, login, logout } = useAuth();
@@ -130,9 +120,6 @@ export default function AccountPage() {
 
   const [name, setName] = useState("");
   const [surname, setSurname] = useState("");
-  const [birthDay, setBirthDay] = useState("");
-  const [birthMonth, setBirthMonth] = useState("");
-  const [birthYear, setBirthYear] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   // Indirizzo di default dell'account (richiesta esplicita dell'utente):
@@ -215,10 +202,6 @@ export default function AccountPage() {
     if (!user) return;
     setName(user.name ?? "");
     setSurname(user.surname ?? "");
-    const parsed = parseBirthDate(user.birthDate);
-    setBirthDay(parsed.day);
-    setBirthMonth(parsed.month);
-    setBirthYear(parsed.year);
     setEmail(user.email ?? "");
     setPhone(user.phone ?? "");
     setStreet(user.street ?? "");
@@ -263,14 +246,10 @@ export default function AccountPage() {
 
   // Modifiche ai dati del profilo non ancora salvate: la barra "Salva" resta
   // in fondo allo schermo (SaveBar, docs/CHANGELOG.md §349).
-  const savedBirth = parseBirthDate(user?.birthDate ?? null);
   const profileDirty =
     Boolean(user) &&
     (name !== (user?.name ?? "") ||
       surname !== (user?.surname ?? "") ||
-      birthDay !== savedBirth.day ||
-      birthMonth !== savedBirth.month ||
-      birthYear !== savedBirth.year ||
       email !== (user?.email ?? "") ||
       phone !== (user?.phone ?? "") ||
       street !== (user?.street ?? "") ||
@@ -304,7 +283,7 @@ export default function AccountPage() {
             Accedi per gestire il tuo account
           </Text>
           <Link href="/accedi?redirect=/account" style={{ textDecoration: "none" }}>
-            <Button variant="primary">Accedi</Button>
+            <Button tabIndex={-1} variant="primary">Accedi</Button>
           </Link>
         </YStack>
       </YStack>
@@ -334,17 +313,6 @@ export default function AccountPage() {
       setProfileError(ADDRESS_NOT_CHOSEN_MESSAGE);
       return;
     }
-    let birthDate: string | undefined;
-    if (birthDay || birthMonth || birthYear) {
-      const day = Number(birthDay);
-      const month = Number(birthMonth);
-      const year = Number(birthYear);
-      if (!day || !month || !year || day < 1 || day > 31 || month < 1 || month > 12 || year < 1900) {
-        setProfileError("Data di nascita non valida.");
-        return;
-      }
-      birthDate = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    }
     // CAP scritto a mano: se è di un'altra città lo si dice prima di salvare (§357).
     if (postalCodeLookup.typed) {
       const problem = await postalCodeCityProblem(postalCode, addressCity);
@@ -359,7 +327,6 @@ export default function AccountPage() {
       await apiClient.updateAccount(token as string, {
         name: name.trim(),
         surname: surname.trim() || undefined,
-        birthDate,
         email: email.trim(),
         phone: phone.trim() || undefined,
         street: street.trim() || undefined,
@@ -575,31 +542,9 @@ export default function AccountPage() {
             <input aria-label="Cognome" value={surname} onChange={(e) => setSurname(e.target.value)} style={inputStyle} />
           </FieldRow>
 
-          <FieldRow label="Data di nascita">
-            <XStack gap="$2">
-              <input aria-label="Giorno di nascita"
-                value={birthDay}
-                onChange={(e) => setBirthDay(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                placeholder="GG"
-                inputMode="numeric"
-                style={smallInputStyle}
-              />
-              <input aria-label="Mese di nascita"
-                value={birthMonth}
-                onChange={(e) => setBirthMonth(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                placeholder="MM"
-                inputMode="numeric"
-                style={smallInputStyle}
-              />
-              <input aria-label="Anno di nascita"
-                value={birthYear}
-                onChange={(e) => setBirthYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                placeholder="AAAA"
-                inputMode="numeric"
-                style={{ ...smallInputStyle, width: 96 }}
-              />
-            </XStack>
-          </FieldRow>
+          {/* Niente più data di nascita: non la usava nessuno (minimizzazione, GDPR
+              art. 5; collaudo del 29/10/2026, M-15, scelta di Luca il 30/10). Ai
+              professionisti la chiedono i Dati fiscali per la DAC7. */}
         </Surface>
 
         <Surface gap="$4">
@@ -669,6 +614,7 @@ export default function AccountPage() {
                 }}
                 biasTowards={cityComune ? { latitude: cityComune.lat, longitude: cityComune.lon } : null}
                 onServiceUnavailable={chosenAddress.markServiceDown}
+                ariaLabel="Indirizzo"
                 placeholder="Indirizzo, es. Via Roma 5, Bari"
                 style={inputStyle}
               />

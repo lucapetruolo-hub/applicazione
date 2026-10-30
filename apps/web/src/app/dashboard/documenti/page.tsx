@@ -11,6 +11,7 @@ import {
   freePeriodSummary,
   type CourtesyDocumentSummary,
   type DocumentsOverview,
+  type MissingClientDocument,
   type MySubscription,
 } from "@professionisti/shared";
 import { Button, EmptyState, Field, Surface, Text, XStack, YStack, brand, radiusDoc } from "@professionisti/ui";
@@ -58,7 +59,7 @@ export default function DocumentsPage() {
         <LearnMore fontSize={16} summary="Le nostre fatture e l'estratto di ogni mese, da scaricare o dare al commercialista.">
           <Text fontSize={16} color={brand.grafite70}>
             Ogni mese ti mandiamo una fattura con le trattenute sui pagamenti online, e una per l&apos;abbonamento quando lo paghi. Sono già
-            pagate: non devi fare nulla.
+            pagate: passale al tuo commercialista, sono costi della tua attività.
           </Text>
           <Text fontSize={16} color={brand.grafite70}>
             L&apos;estratto del mese mette insieme quanto ti hanno pagato i clienti, quanto abbiamo trattenuto e i bonifici arrivati.
@@ -152,7 +153,9 @@ export default function DocumentsPage() {
               )}
             </YStack>
 
-            <ClientDocuments token={token ?? ""} documents={data.clientDocuments ?? []} />
+            {data.missingDocuments?.length ? <MissingDocuments rows={data.missingDocuments} /> : null}
+
+            {data.receipts || data.clientDocuments?.length ? <ClientDocuments token={token ?? ""} documents={data.clientDocuments ?? []} /> : null}
 
             {token ? <AccountantCard token={token} initial={data.accountant} /> : null}
           </>
@@ -163,7 +166,47 @@ export default function DocumentsPage() {
 }
 
 /**
- * Ricevute e copie di fattura date ai clienti (docs/CHANGELOG.md §381), col
+ * Lavori pagati online ancora senza ricevuta (solo senza partita IVA)
+ * (docs/changelog/2026-10-30-documenti-migliorie.md): una riga per lavoro che
+ * porta alla pagina dove si prepara.
+ */
+function MissingDocuments({ rows }: { rows: MissingClientDocument[] }) {
+  const count = rows.length === 1 ? "1 lavoro pagato online" : `${rows.length} lavori pagati online`;
+  return (
+    <Surface borderRadius={radiusDoc} padding="$4" gap="$2" borderWidth={1} borderColor={brand.ottone} backgroundColor={brand.calce}>
+      <Text tag="h2" fontSize={18} fontWeight="800" color={brand.grafite}>
+        {count} senza ricevuta
+      </Text>
+      <Text fontSize={16} color={brand.grafite70}>
+        Prepara la ricevuta e dalla al cliente: ti serve per la dichiarazione dei redditi.
+      </Text>
+      <YStack>
+        {rows.map((row, index) => (
+          <Link key={row.bookingId} href={`/dashboard/documenti/cortesia/${row.bookingId}`} style={{ textDecoration: "none" }}>
+            <XStack justifyContent="space-between" alignItems="center" gap="$3" paddingVertical="$2" borderTopWidth={index === 0 ? 0 : 1} borderColor={brand.filetto}>
+              <YStack flex={1} minWidth={0} gap={2}>
+                <Text fontSize={16} fontWeight="700" color={brand.grafite}>
+                  {[row.jobLabel ?? "Lavoro", documentDate(row.date)].join(" del ")}
+                </Text>
+                {row.customerName ? (
+                  <Text fontSize={13} color={brand.grafite70}>
+                    {row.customerName} · {formatEurCents(row.amountEurCents)}
+                  </Text>
+                ) : null}
+              </YStack>
+              <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
+                Prepara →
+              </Text>
+            </XStack>
+          </Link>
+        ))}
+      </YStack>
+    </Surface>
+  );
+}
+
+/**
+ * Ricevute date ai clienti (docs/CHANGELOG.md §381), col
  * totale dell'anno: le ricevute per prestazione occasionale vanno nella
  * dichiarazione dei redditi. Se l'importo è cambiato dopo il PDF, lo dice.
  */
@@ -173,11 +216,11 @@ function ClientDocuments({ token, documents }: { token: string; documents: Court
   return (
     <YStack gap="$3">
       <Text tag="h2" fontFamily="$heading" fontSize={22} fontWeight="800" color={brand.grafite}>
-        Documenti dati ai clienti
+        Ricevute date ai clienti
       </Text>
       {documents.length === 0 ? (
         <Text fontSize={16} color={brand.grafite70}>
-          Le ricevute e le copie delle fatture che prepari per i clienti, dalla scheda del lavoro, le trovi qui.
+          Le ricevute che prepari per i clienti, dalla scheda del lavoro dopo &quot;Lavoro terminato&quot;, le trovi qui.
         </Text>
       ) : (
         <>
@@ -185,7 +228,7 @@ function ClientDocuments({ token, documents }: { token: string; documents: Court
             {totals.map((row) => (
               <Surface key={`${row.year}-${row.kind}`} borderRadius={radiusDoc} padding="$4" gap={2} flexGrow={1} flexBasis={220}>
                 <Text fontSize={13} fontWeight="800" color={brand.grafite70} textTransform="uppercase" letterSpacing={0.5}>
-                  {row.kind === "RECEIPT" ? "Ricevute" : "Fatture"} {row.year}
+                  Ricevute {row.year}
                 </Text>
                 <Text fontFamily="$heading" fontSize={26} fontWeight="800" color={brand.grafite} fontVariant={["tabular-nums"]}>
                   {formatEurCents(row.totalEurCents)}
@@ -197,9 +240,9 @@ function ClientDocuments({ token, documents }: { token: string; documents: Court
               </Surface>
             ))}
           </XStack>
-          {totals.some((row) => row.kind === "RECEIPT") ? (
+          {totals.length > 0 ? (
             <Text fontSize={16} color={brand.grafite70}>
-              Il totale delle ricevute dell&apos;anno va nella dichiarazione dei redditi: scarica il riepilogo per il tuo commercialista, o metti la spunta qui sotto e gli arriva da solo a gennaio.
+              Il totale delle ricevute dell&apos;anno va nella dichiarazione dei redditi: scarica il riepilogo per il tuo commercialista, oppure scrivi qui sotto la sua email e spunta &quot;Mandagli l&apos;estratto&quot;: a gennaio gli arriva anche il riepilogo.
             </Text>
           ) : null}
           {years.map((year) => (
@@ -306,6 +349,24 @@ function AccountantCard({ token, initial }: { token: string; initial: DocumentsO
       <Text tag="h2" fontFamily="$heading" fontSize={22} fontWeight="800" color={brand.grafite}>
         Il tuo commercialista
       </Text>
+      <LearnMore fontSize={16} summary="Cosa dargli: con la spunta qui sotto gli arriva quasi tutto da solo.">
+        {/* Cosa dare al commercialista (docs/changelog/2026-10-30-documenti-migliorie.md). */}
+        <YStack gap="$2">
+          {[
+            ["Ogni mese", "l'estratto, con i pagamenti dei clienti, le nostre trattenute e i bonifici, più le nostre fatture del mese in PDF."],
+            ["A gennaio", "il riepilogo dell'anno delle ricevute che hai dato ai clienti, se lavori senza partita IVA."],
+            ["Quando serve", "i dati DAC7 che comunichiamo all'Agenzia delle Entrate, da Fisco e pagamenti → Dati DAC7."],
+            ["Da te", "le fatture che fai col tuo programma e le spese della tua attività: quelle noi non le vediamo."],
+          ].map(([when, what]) => (
+            <Text key={when} fontSize={16} color={brand.grafite70}>
+              <Text fontWeight="800" color={brand.grafite}>
+                {when}:
+              </Text>{" "}
+              {what}
+            </Text>
+          ))}
+        </YStack>
+      </LearnMore>
       <Field
         label="Email del commercialista"
         accessibilityLabel="Email del commercialista"

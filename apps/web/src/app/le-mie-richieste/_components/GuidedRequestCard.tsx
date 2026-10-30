@@ -564,6 +564,7 @@ export function GuidedRequestCard({
             }}
             biasTowards={cityComune ? { latitude: cityComune.lat, longitude: cityComune.lon } : null}
             onServiceUnavailable={chosenAddress.markServiceDown}
+            ariaLabel="Indirizzo"
             placeholder="Indirizzo, es. Via Roma 5, Bari"
             style={textareaStyle}
           />
@@ -835,6 +836,7 @@ export function GuidedRequestCard({
           initial={acceptedQuote.invoiceRequest ?? null}
           defaults={invoiceDefaults}
           onSaved={onChanged}
+          receipt={acceptedQuote.professionalKind === "PRIVATE"}
         />
       ) : null}
       <YStack height={1} backgroundColor={brand.filetto} marginVertical="$1" />
@@ -909,7 +911,11 @@ export function GuidedRequestCard({
 
   return (
     <Surface borderLeftWidth={4} borderLeftColor={STAGE_STYLE[stage].border} gap="$0" padding={0} overflow="hidden">
-      <YStack padding="$4" gap="$2" cursor="pointer" onPress={onToggle} accessibilityRole="button" aria-expanded={isOpen}>
+      {/* Tutta l'intestazione si apre con un clic; per tastiera e lettore di
+          schermo il comando è "Vedi dettagli" qui sotto: un pulsante che
+          contiene altri pulsanti (il menu delle azioni) non si legge e non
+          si usa (docs/changelog/2026-10-30-tastiera.md, collaudo L-01). */}
+      <YStack padding="$4" gap="$2" cursor="pointer" onPress={onToggle}>
         <XStack justifyContent="space-between" alignItems="flex-start" gap="$2" flexWrap="wrap">
           <XStack gap="$2" flexWrap="wrap" flexShrink={1} minWidth={0}>
             {request.isUrgent ? <Badge variant="urgente">Urgente</Badge> : null}
@@ -984,7 +990,19 @@ export function GuidedRequestCard({
 
         {/* Scritta al posto della sola freccia (docs/CHANGELOG.md §349): una
             freccia da sola è il controllo che si trova meno. */}
-        <XStack justifyContent="flex-end" alignItems="center" gap="$1" paddingTop="$1">
+        <XStack
+          alignSelf="flex-end"
+          alignItems="center"
+          gap="$1"
+          paddingTop="$1"
+          borderRadius={8}
+          onPress={(e: { stopPropagation: () => void }) => {
+            e.stopPropagation();
+            onToggle();
+          }}
+          accessibilityRole="button"
+          aria-expanded={isOpen}
+        >
           <Text fontSize={16} fontWeight="700" color={brand.cianografiaScuro}>
             {isOpen ? "Chiudi dettagli" : "Vedi dettagli"}
           </Text>

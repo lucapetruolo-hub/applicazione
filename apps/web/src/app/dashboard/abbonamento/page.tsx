@@ -319,7 +319,7 @@ function AbbonamentoContent() {
           Accedi come professionista
         </Text>
         <Link href="/accedi?redirect=/dashboard/abbonamento" style={{ textDecoration: "none" }}>
-          <Button variant="primary">Accedi</Button>
+          <Button tabIndex={-1} variant="primary">Accedi</Button>
         </Link>
       </YStack>
     );
@@ -435,7 +435,7 @@ function AbbonamentoContent() {
                 <Text color={brand.grafite70}>{limit === null ? `${used} · senza limite` : `${used} su ${limit}`}</Text>
               </XStack>
               {limit !== null ? (
-                <div className="usage-track" role="progressbar" aria-valuemin={0} aria-valuemax={limit} aria-valuenow={used}>
+                <div className="usage-track" role="progressbar" aria-label="Lavori accettati in questo periodo" aria-valuemin={0} aria-valuemax={limit} aria-valuenow={used}>
                   <div className="usage-fill" style={{ width: `${ratio * 100}%`, background: barColor }} />
                 </div>
               ) : null}

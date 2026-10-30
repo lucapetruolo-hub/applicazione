@@ -597,7 +597,7 @@ export class InvoicesService {
   }
 
   /** Fatture, mesi e commercialista; i documenti dati ai clienti li aggiunge CourtesyCopyService (§381). */
-  async overview(userId: string): Promise<Omit<DocumentsOverview, "clientDocuments">> {
+  async overview(userId: string): Promise<Omit<DocumentsOverview, "clientDocuments" | "missingDocuments" | "receipts">> {
     const professionalProfileId = await this.profileIdOf(userId);
     const [invoices, fiscal, issuer, entries, payments] = await Promise.all([
       this.prisma.invoice.findMany({ where: { professionalProfileId, type: "MANOVIA_TO_PROFESSIONAL", status: "ISSUED" }, orderBy: [{ issuedAt: "desc" }, { number: "desc" }] }),

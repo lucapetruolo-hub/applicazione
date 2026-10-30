@@ -21,7 +21,8 @@ export function UrgenteContent() {
         <YStack width="100%" backgroundColor="#FBEAE8" paddingVertical="$4" alignItems="center">
           <XStack alignItems="center" gap="$2" paddingHorizontal="$4">
             <Icon name="zap" size={16} strokeWidth={2} color={brand.urgenza} fill={brand.urgenza} />
-            <Text fontSize={16} color={brand.urgenza} fontWeight="600">
+            {/* Rosso più scuro del marchio: sul rosa chiaro arriva a 6:1 (collaudo L-09). */}
+            <Text fontSize={16} color="#A82A21" fontWeight="600">
               Richiesta urgente: arriva subito ai professionisti della tua zona
             </Text>
           </XStack>

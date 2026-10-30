@@ -18,12 +18,18 @@ virgolette per trovare la sezione di origine).
 
 **Dati legali/societari reali** (oggi segnaposto `[DA COMPILARE]` in
 produzione):
-1. Dati del titolare del trattamento su `/privacy` (ragione sociale, sede
-   legale, P.IVA, email privacy).
-2. Dati del prestatore ai sensi del D.Lgs. 70/2003 art. 7 (ragione sociale,
-   P.IVA, sede legale, PEC) nella riga legale del footer.
-3. Email di contatto reale per il canale di segnalazione accessibilità su
-   `/accessibilita` (può coincidere con l'email privacy del punto 1).
+1. Compilare `COMPANY` in `packages/shared/src/brand.ts` (ragione sociale,
+   sede legale, P.IVA e codice fiscale, REA e capitale sociale, PEC, email
+   privacy): un solo punto, li leggono `/privacy`, `/note-legali`,
+   `/contatti` e il piede del sito, che mostra ragione sociale e P.IVA solo
+   quando sono tutti compilati (`companyDataReady`, collaudo del 29/10/2026,
+   M-01; docs/changelog/2026-10-30-termini-privacy-obblighi.md).
+2. Togliere da Termini, Privacy e Cookie le frasi "Bozza da far verificare a
+   un legale" dopo la revisione dell'avvocato (domande 72-80 e le bozze
+   della PR del gruppo 7: recesso, regole per i professionisti, tempi di
+   conservazione).
+3. L'email di `/accessibilita` e `/note-legali` è `BRAND.supportEmail`
+   (punto 21bis).
 
 **Credenziali/configurazione**:
 4. **Chiavi Google Maps** (docs/CHANGELOG.md §133) — senza, la mappa mostra

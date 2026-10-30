@@ -25,6 +25,8 @@ export type AutocompleteProps<T> = {
    */
   label?: string;
   id?: string;
+  /** Nome per il lettore di schermo quando l'etichetta visibile non è legata al campo: senza, si legge il segnaposto ("Es. Milano"). */
+  accessibilityLabel?: string;
   /**
    * Testo su cui si cerca, se diverso da `getLabel` (es. una frazione:
    * si cerca "Borgo Sabotino", si mostra anche il comune).
@@ -61,6 +63,7 @@ export function Autocomplete<T>({
   size,
   label,
   id,
+  accessibilityLabel,
   getSearchText,
   priority,
   emptyItems,
@@ -201,8 +204,10 @@ export function Autocomplete<T>({
           onChangeText(text);
         }}
         placeholder={placeholder}
-        accessibilityLabel={label ? undefined : placeholder}
+        accessibilityLabel={label ? undefined : accessibilityLabel ?? placeholder}
         autoComplete="off"
+        // Invio senza suggerimento scelto non toglie il fuoco dal campo (collaudo L-08).
+        blurOnSubmit={false}
         onFocus={() => setIsFocused(true)}
         onBlur={() =>
           setTimeout(() => {
@@ -236,8 +241,11 @@ export function Autocomplete<T>({
           {/* Altezza fissa + scroll: con centinaia di risultati (es. i comuni
               italiani) serve poter scorrere con la rotellina, non solo vedere
               i primi N tagliati senza modo di vedere gli altri. */}
-          <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator>
-            <YStack id={listboxId} {...({ role: "listbox", "aria-label": label ?? placeholder } as Record<string, unknown>)}>
+          {/* Fuori dal Tab: l'elenco si usa con le frecce dal campo, e il
+              browser rendeva il riquadro scorrevole una fermata in più
+              (docs/changelog/2026-10-30-tastiera.md, collaudo L-12). */}
+          <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator {...({ tabIndex: -1 } as Record<string, unknown>)}>
+            <YStack id={listboxId} {...({ role: "listbox", "aria-label": label ?? accessibilityLabel ?? placeholder } as Record<string, unknown>)}>
               {action ? (
                 <YStack
                   id={optionId(0)}

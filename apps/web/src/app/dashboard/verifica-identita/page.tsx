@@ -208,7 +208,7 @@ function ActionPanel({
         <Text color={brand.grafite70}>Il tuo profilo mostra il badge Verificato e puoi inviare preventivi ai clienti.</Text>
         {stripeVerified ? (
           <Link href="/dashboard/richieste" style={{ textDecoration: "none", alignSelf: "flex-start" }}>
-            <Button variant="primary">Vai alle richieste</Button>
+            <Button tabIndex={-1} variant="primary">Vai alle richieste</Button>
           </Link>
         ) : (
           <YStack gap="$2">
@@ -217,10 +217,10 @@ function ActionPanel({
             </Text>
             <XStack gap="$3" flexWrap="wrap">
               <Link href={PAYMENTS_ANCHOR} style={{ textDecoration: "none" }}>
-                <Button variant="primary">Attiva i pagamenti online</Button>
+                <Button tabIndex={-1} variant="primary">Attiva i pagamenti online</Button>
               </Link>
               <Link href="/dashboard/richieste" style={{ textDecoration: "none" }}>
-                <Button variant="secondary">Vai alle richieste</Button>
+                <Button tabIndex={-1} variant="secondary">Vai alle richieste</Button>
               </Link>
             </XStack>
           </YStack>
@@ -245,7 +245,7 @@ function ActionPanel({
           iniziare.
         </Text>
         <Link href="/dashboard/fiscale" style={{ textDecoration: "none", alignSelf: "flex-start" }}>
-          <Button variant="primary">{status.fiscalDataComplete ? "Correggi i dati fiscali" : "Compila i dati fiscali"}</Button>
+          <Button tabIndex={-1} variant="primary">{status.fiscalDataComplete ? "Correggi i dati fiscali" : "Compila i dati fiscali"}</Button>
         </Link>
       </Panel>
     );

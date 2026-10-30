@@ -123,6 +123,7 @@ export function notificationDeepLink(type: string, payload: unknown): string | n
     return contentReportId ? `/segnalazioni#segnalazione-${contentReportId}` : "/segnalazioni";
   }
   if (type.startsWith("SUBSCRIPTION_")) return "/dashboard/abbonamento";
+  if (type === "TERMS_CHANGED") return "/termini#versioni";
   // Decisione su una segnalazione (docs/CHANGELOG.md §164): arriva a
   // entrambe le parti, il lato è nel payload come per i promemoria.
   // Anche le notifiche delle controversie (§167): senza `audience` sono del professionista.

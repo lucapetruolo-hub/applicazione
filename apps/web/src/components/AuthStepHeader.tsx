@@ -1,6 +1,7 @@
 "use client";
 
 import { Icon, Text, YStack, brand, type IconName } from "@professionisti/ui";
+import { useStepFocus } from "@/lib/useStepFocus";
 
 /** Badge circolare con icona su sfondo a gradiente — in cima ad ogni card
  * di questa pagina, stesso principio "un tocco di profondità in più" già
@@ -45,6 +46,8 @@ export function AuthStepHeader({
   step?: { current: number; total: number };
   onBack?: () => void;
 }) {
+  // A ogni passo nuovo il fuoco va sul titolo (collaudo L-06).
+  const titleRef = useStepFocus<HTMLHeadingElement>(title);
   return (
     <YStack gap="$4">
       {onBack || step ? (
@@ -74,7 +77,7 @@ export function AuthStepHeader({
       <YStack alignItems="center" gap="$3">
         <AuthIconBadge icon={icon} />
         <YStack alignItems="center" gap="$1">
-          <Text tag="h1" fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center" style={{ textWrap: "balance" }}>
+          <Text ref={titleRef} tag="h1" tabIndex={-1} className="step-focus-target" fontFamily="$heading" fontWeight="800" fontSize="$8" color={brand.grafite} textAlign="center" style={{ textWrap: "balance" }}>
             {title}
           </Text>
           {subtitle ? (

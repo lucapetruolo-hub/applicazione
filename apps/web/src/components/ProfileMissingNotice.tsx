@@ -24,7 +24,7 @@ export function ProfileMissingNotice({ text }: { text: string }) {
           {text}
         </Text>
         <Link href="/dashboard/profilo" style={{ textDecoration: "none" }}>
-          <Button variant="primary">Completa profilo</Button>
+          <Button tabIndex={-1} variant="primary">Completa profilo</Button>
         </Link>
       </YStack>
     </YStack>

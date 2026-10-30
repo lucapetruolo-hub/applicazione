@@ -77,7 +77,7 @@ export default function LeMieRecensioniPage() {
             Accedi per vedere le tue recensioni
           </Text>
           <Link href="/accedi?redirect=/le-mie-recensioni" style={{ textDecoration: "none" }}>
-            <Button variant="primary">Accedi</Button>
+            <Button tabIndex={-1} variant="primary">Accedi</Button>
           </Link>
         </YStack>
       </YStack>
@@ -120,7 +120,7 @@ function PendingReviews({ bookings }: { bookings: ClientBooking[] }) {
               </Text>
             </YStack>
             <Link href={`/le-mie-richieste?open=${booking.guidedRequestId}`} style={{ textDecoration: "none" }}>
-              <Button variant="primary">Lascia una recensione</Button>
+              <Button tabIndex={-1} variant="primary">Lascia una recensione</Button>
             </Link>
           </XStack>
         </Surface>

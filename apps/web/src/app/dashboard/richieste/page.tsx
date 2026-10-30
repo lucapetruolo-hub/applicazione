@@ -367,7 +367,7 @@ function RichiesteContent() {
             Accedi come professionista
           </Text>
           <Link href="/accedi?redirect=/dashboard/richieste">
-            <Button variant="primary">Accedi</Button>
+            <Button tabIndex={-1} variant="primary">Accedi</Button>
           </Link>
         </YStack>
       </YStack>
@@ -403,12 +403,13 @@ function RichiesteContent() {
                   paddingHorizontal="$3"
                   paddingVertical={9}
                   borderRadius={999}
-                  backgroundColor={active ? brand.cianografia : brand.calce}
+                  backgroundColor={active ? brand.cianografiaPieno : brand.calce}
                   borderWidth={1}
                   borderColor={active ? brand.cianografia : brand.filetto}
                   cursor="pointer"
                   onPress={() => setActiveTab(tab.key)}
                   accessibilityRole="button"
+                  aria-pressed={active}
                 >
                   <Text fontFamily="$body" fontSize={16} fontWeight="800" color={active ? "white" : brand.grafite}>
                     {tab.label}
@@ -493,10 +494,11 @@ function RichiesteContent() {
                   gap={6}
                   paddingHorizontal="$3"
                   paddingVertical={12}
-                  backgroundColor={active ? brand.cianografia : brand.calce}
+                  backgroundColor={active ? brand.cianografiaPieno : brand.calce}
                   cursor="pointer"
                   onPress={() => setServiceModeFilter(opt.key)}
                   accessibilityRole="button"
+                  aria-pressed={active}
                 >
                   {/* Stesse icone già usate su ServiceBadge (house/video) per
                       la stessa distinzione — richiesta esplicita dell'utente

@@ -174,6 +174,9 @@ const PROFESSIONAL_DETAIL_INCLUDE = {
   metrics: true,
 } satisfies Prisma.ProfessionalProfileInclude;
 
+/** Risposte misurate prima di mostrare "Risponde subito" o "Risponde entro…" sul profilo. */
+const MIN_RESPONSES_FOR_PUBLIC_TIME = 3;
+
 @Injectable()
 export class ProfessionalsService {
   constructor(
@@ -696,7 +699,11 @@ export class ProfessionalsService {
       bio: profile.bio,
       portfolioUrls: profile.portfolioUrls,
       completedJobsTotal: profile.metrics?.completedJobs ?? 0,
-      avgResponseTimeMinutes: profile.metrics?.avgResponseTimeMinutes ?? null,
+      // Il tempo di risposta sul profilo pubblico solo con abbastanza risposte
+      // misurate: "Risponde subito" su un profilo nuovo, con una sola risposta,
+      // diceva più di quanto si sapeva (collaudo del 29/10/2026, M-14).
+      avgResponseTimeMinutes:
+        (profile.metrics?.totalResponsesMeasured ?? 0) >= MIN_RESPONSES_FOR_PUBLIC_TIME ? (profile.metrics?.avgResponseTimeMinutes ?? null) : null,
       yearsOfExperience: profile.yearsOfExperience,
       certifications: profile.certifications,
       hasLiabilityInsurance: profile.hasLiabilityInsurance,
@@ -1483,6 +1490,8 @@ export class ProfessionalsService {
 
   async getMyBookings(userId: string): Promise<ProfessionalBooking[]> {
     const professionalProfileId = await this.requireMyProfileId(userId);
+    const fiscal = await this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId }, select: { entityType: true } });
+    const clientDocumentKind = fiscal?.entityType === "PRIVATE_INDIVIDUAL" ? ("RECEIPT" as const) : ("INVOICE" as const);
 
     // Ascendente (prossima prima): un'agenda operativa deve mostrare
     // l'appuntamento più vicino in cima, non il più lontano — bug reale,
@@ -1678,6 +1687,7 @@ export class ProfessionalsService {
       invoiceRequest: booking.quote?.invoiceRequest ? invoiceRequestView(booking.quote.invoiceRequest) : null,
       // Ricevuta o copia di cortesia già preparata: se l'importo cambia dopo il PDF va rifatta (§381).
       courtesyDocument: booking.courtesyDocument ? courtesyDocumentSummary(booking.courtesyDocument, booking) : null,
+      clientDocumentKind,
     }));
   }
 

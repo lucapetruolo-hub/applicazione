@@ -199,7 +199,7 @@ function ProHero({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
 
           <XStack gap="$3" flexWrap="wrap" justifyContent="center" marginTop="$2">
             <Link href="#come-funziona" style={{ textDecoration: "none" }}>
-              <Button variant="secondary">Come funziona</Button>
+              <Button tabIndex={-1} variant="secondary">Come funziona</Button>
             </Link>
             <Link href={ctaHref} style={{ textDecoration: "none" }}>
               <MagneticButton>
@@ -269,7 +269,8 @@ function ProOnlinePayment() {
     <Band>
       <YStack gap="$6" padding="$5" paddingVertical="$7" $gtSm={{ flexDirection: "row", alignItems: "center" }} $gtMd={{ padding: "$8" }}>
         <YStack gap="$3" $gtSm={{ flex: 1, flexBasis: 0, minWidth: 0 }}>
-          <Text fontSize={13} fontWeight="700" letterSpacing={0.6} textTransform="uppercase" color={brand.cianografiaScuro}>
+          {/* Verde più scuro: sul pesca della banda il verde scuro di sempre si fermava a 4,3:1 (collaudo L-09). */}
+          <Text fontSize={13} fontWeight="700" letterSpacing={0.6} textTransform="uppercase" color="#0A6A41">
             Pagamento online
           </Text>
           <Text
@@ -547,7 +548,8 @@ function FounderBand({ spots, months }: { spots: FounderSpots; months: number })
           Per i primi {spots.total} professionisti che si iscrivono. Poi decidi tu se continuare.
         </Text>
       </YStack>
-      <YStack alignItems="center" backgroundColor="rgba(255,255,255,0.14)" borderRadius={10} paddingHorizontal="$3" paddingVertical="$2" minWidth={88}>
+      {/* Riquadro più scuro della banda, non più chiaro: il bianco sopra resta oltre 4,5:1 (collaudo L-09). */}
+      <YStack alignItems="center" backgroundColor="rgba(0,0,0,0.16)" borderRadius={10} paddingHorizontal="$3" paddingVertical="$2" minWidth={88}>
         <Text fontFamily="$heading" fontWeight="800" fontSize={30} lineHeight={34} color="white">
           {spots.total}
         </Text>
@@ -669,7 +671,7 @@ function ProPricing({ isProfessional, founders }: { isProfessional: boolean; fou
               ) : null}
               <YStack flex={1} />
               <Link href={href} style={{ textDecoration: "none" }} aria-label={`${label}${isProfessional ? "" : ": iscriviti come professionista"}`}>
-                <Button variant="acquisto" width="100%">
+                <Button tabIndex={-1} variant="acquisto" width="100%">
                   <XStack alignItems="center" gap="$2">
                     <Text color="white" fontFamily="$body" fontWeight="600">
                       {label}
@@ -864,10 +866,10 @@ function ProFinalCta() {
           </Text>
           <XStack gap="$3" flexWrap="wrap" justifyContent="center">
             <Link href="/per-professionisti/pagamenti" style={{ textDecoration: "none" }}>
-              <Button variant="secondary">Scopri di più</Button>
+              <Button tabIndex={-1} variant="secondary">Scopri di più</Button>
             </Link>
             <Link href="#prezzi" style={{ textDecoration: "none" }}>
-              <Button variant="primary">Scegli il tuo livello</Button>
+              <Button tabIndex={-1} variant="primary">Scegli il tuo livello</Button>
             </Link>
           </XStack>
           {/* Una pagina per lavoro, per chi cerca "lavoro pulizie" su Google (docs/CHANGELOG.md §296). */}

@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BRAND, PROFESSIONAL_CATEGORIES } from "@professionisti/shared";
+import { BRAND, COMPANY, PROFESSIONAL_CATEGORIES, companyDataReady } from "@professionisti/shared";
 import { Icon, Logo, Text, XStack, YStack, brand } from "@professionisti/ui";
 import { reopenCookieChoice } from "@/lib/cookieConsent";
+import { useAuth } from "@/lib/AuthContext";
 
 const MAIN_CATEGORIES = PROFESSIONAL_CATEGORIES.slice(0, 8);
 
@@ -46,6 +47,7 @@ function ShortFooterLink({ href, children }: { href: string; children: string })
 
 export function SiteFooter() {
   const pathname = usePathname();
+  const { user } = useAuth();
   // Dentro le aree riservate il piede completo (quattro colonne, "Iscriviti
   // gratis", "Accedi") non serve a chi è già dentro e su telefono era più
   // lungo della chat (docs/CHANGELOG.md §349): resta una riga sola.
@@ -59,6 +61,13 @@ export function SiteFooter() {
           <ShortFooterLink href="/privacy">Privacy</ShortFooterLink>
           <ShortFooterLink href="/termini">Termini</ShortFooterLink>
           <ShortFooterLink href="/cookie">Cookie</ShortFooterLink>
+          {/* Il banner dice di cambiare idea "in fondo alla pagina": serve anche qui (collaudo del 29/10/2026, M-13). */}
+          <button type="button" onClick={reopenCookieChoice} style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}>
+            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+              Preferenze cookie
+            </Text>
+          </button>
+          <ShortFooterLink href="/note-legali">Note legali</ShortFooterLink>
           <ShortFooterLink href="/contatti">Aiuto</ShortFooterLink>
         </XStack>
       </YStack>
@@ -98,7 +107,8 @@ export function SiteFooter() {
             <FooterLink href="/urgente">Richiesta urgente</FooterLink>
             <FooterLink href="/#come-funziona">Come funziona</FooterLink>
             <FooterLink href="/#quanto-costa">Quanto costa</FooterLink>
-            <FooterLink href="/accedi">Accedi</FooterLink>
+            {/* Chi è già dentro non deve vedere "Accedi" (collaudo L, migliorie). */}
+            {user ? null : <FooterLink href="/accedi">Accedi</FooterLink>}
             <FooterLink href="/faq">Domande frequenti</FooterLink>
             <FooterLink href="/sicurezza">Sicurezza e truffe</FooterLink>
           </YStack>
@@ -144,6 +154,8 @@ export function SiteFooter() {
             <Icon name="map-pin" size={14} color={brand.grafite70} strokeWidth={1.5} />
             <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
               © {new Date().getFullYear()} {BRAND.name} · Tutti i diritti riservati.
+              {/* Ragione sociale e P.IVA in ogni pagina (D.Lgs. 70/2003 art. 7, M-01), appena compilate in `COMPANY`. */}
+              {companyDataReady() ? ` ${COMPANY.legalName} · P.IVA ${COMPANY.vatNumber}` : null}
             </Text>
           </XStack>
           <Link href="/privacy" style={{ textDecoration: "none" }}>
@@ -169,6 +181,11 @@ export function SiteFooter() {
           <Link href="/accessibilita" style={{ textDecoration: "none" }}>
             <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
               Accessibilità
+            </Text>
+          </Link>
+          <Link href="/note-legali" style={{ textDecoration: "none" }}>
+            <Text fontFamily="$body" fontSize={13} color={brand.grafite70}>
+              Note legali
             </Text>
           </Link>
           {/* Chiunque, anche senza account, può segnalare un contenuto

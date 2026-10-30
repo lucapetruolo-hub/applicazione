@@ -410,7 +410,7 @@ export default function DashboardProfiloPage() {
             Accedi come professionista
           </Text>
           <Link href="/accedi?redirect=/dashboard/profilo" style={{ textDecoration: "none" }}>
-            <Button variant="primary">Accedi</Button>
+            <Button tabIndex={-1} variant="primary">Accedi</Button>
           </Link>
         </YStack>
       </YStack>
@@ -429,7 +429,7 @@ export default function DashboardProfiloPage() {
             un&apos;altra email.
           </Text>
           <Link href="/registrati?ruolo=professionista" style={{ textDecoration: "none" }}>
-            <Button variant="primary">Iscriviti come professionista</Button>
+            <Button tabIndex={-1} variant="primary">Iscriviti come professionista</Button>
           </Link>
         </YStack>
       </YStack>
@@ -790,7 +790,7 @@ export default function DashboardProfiloPage() {
                     <span className="profile-status-next-title">{nextStep.title}</span>
                   </span>
                   <Link href={nextStep.action.href} style={{ textDecoration: "none" }}>
-                    <Button variant="primary">{nextStep.action.label}</Button>
+                    <Button tabIndex={-1} variant="primary">{nextStep.action.label}</Button>
                   </Link>
                 </div>
               ) : null}
@@ -949,6 +949,7 @@ export default function DashboardProfiloPage() {
                 onSelect={setCity}
                 value={city}
                 onChangeText={setCity}
+                accessibilityLabel="Città"
                 placeholder="Es. Milano"
                 size="$5"
                 minChars={3}
@@ -1381,9 +1382,12 @@ export default function DashboardProfiloPage() {
                 <Text fontSize={16} color={brand.grafite}>
                   {lang}
                 </Text>
+                {/* Area di tocco 32x32 dentro la pillola, il segno resta piccolo (collaudo L-13). */}
                 <XStack
-                  width={20}
-                  height={20}
+                  width={32}
+                  height={32}
+                  marginVertical={-6}
+                  marginRight={-8}
                   borderRadius="$10"
                   alignItems="center"
                   justifyContent="center"
@@ -1567,12 +1571,13 @@ export default function DashboardProfiloPage() {
         ) : null}
 
         {error ? (
-          <Text color={brand.urgenza} fontSize={16}>
+          // Letti dal lettore di schermo senza spostare il fuoco (collaudo L-07).
+          <Text role="alert" color={brand.urgenza} fontSize={16}>
             {error}
           </Text>
         ) : null}
         {saved ? (
-          <Text color={brand.verificato} fontSize={16}>
+          <Text role="status" color={brand.verificato} fontSize={16}>
             Profilo salvato!
           </Text>
         ) : null}

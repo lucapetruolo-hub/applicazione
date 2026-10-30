@@ -30,8 +30,10 @@ type CardButtonProps = Omit<ComponentProps<typeof Button>, "variant" | "size" | 
   children: ReactNode;
 };
 
-export const CARD_BUTTON_HEIGHT = 40;
-const CARD_BUTTON_HEIGHT_COMPACT = 34;
+// 44 come i pulsanti del sito (BUTTON_HEIGHT), 40 nella versione piccola:
+// a 34-40 si sbagliava a toccare da telefono (collaudo D-07, L-13).
+export const CARD_BUTTON_HEIGHT = 44;
+const CARD_BUTTON_HEIGHT_COMPACT = 40;
 
 export function CardButton({ tone = "outline", fill, compact, compactOnPhone, arrow, children, disabled, ...rest }: CardButtonProps) {
   const textColor = fill || tone === "primary" || tone === "dangerSolid" ? "white" : tone === "danger" ? brand.urgenza : brand.grafite;

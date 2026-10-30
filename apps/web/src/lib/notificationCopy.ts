@@ -58,6 +58,7 @@ const NOTIFICATION_COPY: Record<string, { icon: string; message: string }> = {
   // Sospensione/riattivazione decise dalla scheda utente admin (docs/CHANGELOG.md §145).
   ACCOUNT_SUSPENDED: { icon: "⛔", message: "Il tuo account è stato sospeso: controlla la tua email per la motivazione." },
   ACCOUNT_REACTIVATED: { icon: "✅", message: "Il tuo account è di nuovo attivo." },
+  TERMS_CHANGED: { icon: "📄", message: "Cambiano i Termini di Servizio: tocca per leggere cosa cambia." },
   // Verifica manuale del profilo (docs/CHANGELOG.md §200).
   STRIPE_ACCOUNT_ACTIVE: { icon: "✅", message: "Stripe ha verificato la tua identità: ora puoi offrire l'acconto online nei preventivi." },
   DAC7_DATA_REMINDER: { icon: "🧾", message: "Mancano dei dati per la comunicazione al fisco di gennaio: completali entro dicembre." },
@@ -193,7 +194,14 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
   }
   if (type === "QUOTE_ACCEPTED") {
     // Fattura chiesta dal cliente, detta subito (docs/CHANGELOG.md §378).
-    return { icon: "🥳", message: `${text(data.clientName) ?? "Il cliente"} ha accettato il tuo preventivo${jobSuffix}${data.invoiceRequested === true ? " e ti chiede la fattura" : ""}` };
+    return {
+      icon: "🥳",
+      message: `${text(data.clientName) ?? "Il cliente"} ha accettato il tuo preventivo${jobSuffix}${data.invoiceRequested === true ? ` e ti chiede ${data.receipt === true ? "la ricevuta" : "la fattura"}` : ""}`,
+    };
+  }
+  if (type === "JOB_INVOICE_REQUESTED" && data.receipt === true) {
+    // Chi lavora senza partita IVA fa una ricevuta (collaudo C-01).
+    return { icon: "🧾", message: `Un cliente ti chiede la ricevuta${jobSuffix}: la prepari dalla scheda del lavoro dopo "Lavoro terminato".` };
   }
   // Promemoria della carta (docs/changelog/2026-10-30-iscrizione-carta-solida.md).
   if (type === "PROFILE_SETUP_REMINDER" && Array.isArray(data.missing) && data.missing.includes("CARD")) {

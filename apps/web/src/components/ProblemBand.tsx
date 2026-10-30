@@ -100,6 +100,17 @@ export function ProblemBand({
             <Text fontSize={16} color={brand.grafite70}>
               {result.reason && chosen === result.categories[0] ? result.reason : `Di solito lo fa ${WHO[chosen]}.`}
             </Text>
+            {/* Trasparenza sull'intelligenza artificiale (AI Act art. 50, domanda 77 per
+                l'avvocato; collaudo del 29/10/2026, M-11): solo quando la proposta non
+                viene dal dizionario. */}
+            {result.source === "ia" && chosen === result.categories[0] ? (
+              <Text fontSize={13} color={brand.grafite70}>
+                Proposta automatica: controlla che sia il mestiere giusto.{" "}
+                <Link href="/privacy#fornitori" style={{ color: brand.cianografiaScuro }}>
+                  Come funziona
+                </Link>
+              </Text>
+            ) : null}
           </YStack>
         ) : result.outOfService ? (
           <Text fontFamily="$heading" fontWeight="800" fontSize="$7" color={brand.grafite}>
@@ -190,7 +201,7 @@ export function ProblemBand({
                   : `${count} professionisti qui sotto.`}
             </Text>
             <Link href={quoteHref} style={{ textDecoration: "none" }}>
-              <Button variant="primary">{count > 1 ? "Chiedi preventivo a tutti" : "Chiedi un preventivo"}</Button>
+              <Button tabIndex={-1} variant="primary">{count > 1 ? "Chiedi preventivo a tutti" : "Chiedi un preventivo"}</Button>
             </Link>
           </XStack>
           {maxChosen ? (
