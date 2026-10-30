@@ -350,3 +350,12 @@ export function upgradeQuotes(input: {
     };
   });
 }
+
+/**
+ * La carta per i mesi gratis si può dare: Stripe acceso e data del lancio
+ * fissata (senza, la fine dei mesi gratis su Stripe non sarebbe sicura,
+ * docs/changelog/2026-10-29-offerta-mesi-gratis.md).
+ */
+export function cardCanBeGiven(): boolean {
+  return Boolean(process.env.STRIPE_SECRET_KEY) && launchDate() !== null;
+}

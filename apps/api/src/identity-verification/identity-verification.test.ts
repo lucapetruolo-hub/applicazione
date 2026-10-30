@@ -293,6 +293,19 @@ describe("email \"Completa il profilo\" (§261)", () => {
     expect(setupReminderDue({ profileCreatedAt: ago(8), sent: 2, lastSentAt: ago(1), now })).toBe(false);
     expect(setupReminderDue({ profileCreatedAt: ago(12), sent: 1, lastSentAt: ago(11), now })).toBe(false);
   });
+
+  it("senza la carta: il giorno dopo e dopo 3 giorni (docs/changelog/2026-10-30-iscrizione-carta-solida.md)", () => {
+    const day = 24 * 60 * 60_000;
+    const now = new Date("2026-10-20T09:00:00Z");
+    const ago = (days: number) => new Date(now.getTime() - days * day);
+    const card = { cardMissing: true, now };
+    expect(setupReminderDue({ ...card, profileCreatedAt: ago(0.5), sent: 0, lastSentAt: null })).toBe(false);
+    expect(setupReminderDue({ ...card, profileCreatedAt: ago(1), sent: 0, lastSentAt: null })).toBe(true);
+    expect(setupReminderDue({ ...card, profileCreatedAt: ago(2), sent: 1, lastSentAt: ago(1) })).toBe(false);
+    expect(setupReminderDue({ ...card, profileCreatedAt: ago(3), sent: 1, lastSentAt: ago(2) })).toBe(true);
+    expect(setupReminderDue({ ...card, profileCreatedAt: ago(4), sent: 2, lastSentAt: ago(1) })).toBe(false);
+    expect(setupReminderDue({ ...card, profileCreatedAt: ago(7), sent: 2, lastSentAt: ago(4) })).toBe(false);
+  });
 });
 
 describe("tentativi del giorno (§276)", () => {

@@ -158,3 +158,47 @@ export function sharePercentLabel(count: number, total: number): string {
   if (pct < 1) return "<1%";
   return `${Math.round(pct)}%`;
 }
+
+/**
+ * Imbuto dell'iscrizione per settimana (docs/changelog/2026-10-30-iscrizione-carta-solida.md):
+ * account → email confermata → profilo → carta per l'abbonamento → dati
+ * fiscali → identità → pagamenti online (facoltativo). Ogni passo conta chi
+ * l'ha fatto, qualunque sia l'ordine.
+ */
+export const SIGNUP_FUNNEL_STEPS = ["ACCOUNT", "EMAIL", "PROFILE", "CARD", "FISCAL", "IDENTITY", "PAYMENTS"] as const;
+export type SignupFunnelStep = (typeof SIGNUP_FUNNEL_STEPS)[number];
+
+export const SIGNUP_FUNNEL_LABEL: Record<SignupFunnelStep, string> = {
+  ACCOUNT: "Account creato",
+  EMAIL: "Email confermata",
+  PROFILE: "Profilo salvato",
+  CARD: "Carta data",
+  FISCAL: "Dati fiscali",
+  IDENTITY: "Identità verificata",
+  PAYMENTS: "Pagamenti online (facoltativo)",
+};
+
+/**
+ * Soglie di successo proposte a Luca il 30/10/2026: chi salva il profilo dà
+ * la carta entro 24 ore almeno 6 volte su 10, ed entro 7 giorni (dopo i due
+ * promemoria) almeno 8 volte su 10.
+ */
+export const CARD_WITHIN_24H_TARGET = 0.6;
+export const CARD_WITHIN_7D_TARGET = 0.8;
+
+export type SignupFunnelWeek = {
+  /** Lunedì della settimana di iscrizione (ora di Roma), AAAA-MM-GG. */
+  weekStart: string;
+  counts: Record<SignupFunnelStep, number>;
+  /** Carta data entro 24 ore / 7 giorni dal primo salvataggio del profilo. */
+  cardWithin24h: number;
+  cardWithin7d: number;
+};
+
+export type AdminSignupFunnel = {
+  /** Da quando si conta (lancio), null prima del lancio. */
+  countingFrom: string | null;
+  /** Settimane più recenti per prime, al massimo 12. */
+  weeks: SignupFunnelWeek[];
+  total: Omit<SignupFunnelWeek, "weekStart">;
+};

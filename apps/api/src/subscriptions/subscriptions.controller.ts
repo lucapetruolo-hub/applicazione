@@ -48,6 +48,13 @@ export class AdminSubscriptionOfferController {
     return this.subscriptionsService.getOfferAdmin();
   }
 
+  /** Profili senza la carta per i mesi gratis, da chiamare. */
+  @RequireAdminScope("ANY")
+  @Get("without-card")
+  withoutCard() {
+    return this.subscriptionsService.professionalsWithoutCard();
+  }
+
   @RequireAdminScope("SUPER")
   @Post("stop")
   stop(@Req() req: AuthenticatedRequest) {

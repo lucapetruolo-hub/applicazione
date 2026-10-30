@@ -19,6 +19,7 @@ import { IdentityProviderError, type IdentityDecision, type IdentityProvider } f
 import { identityProviderFromEnv, identityVerificationNeeded } from "./identity-provider-env";
 import { matchDocumentToFiscal, type ExpectedPerson } from "./identity-match";
 import { verificationValidUntil } from "./validity";
+import { cardCanBeGiven } from "../subscriptions/subscription-rules";
 
 export { VERIFICATION_VALID_YEARS, verificationValidUntil } from "./validity";
 
@@ -46,8 +47,16 @@ const SETUP_REMINDER_WINDOWS: [number, number][] = [
   [1, 3],
   [7, 9],
 ];
+/**
+ * Senza la carta per l'abbonamento lo stesso avviso parte il giorno dopo e
+ * dopo 3 giorni (docs/changelog/2026-10-30-iscrizione-carta-solida.md).
+ */
+const CARD_REMINDER_WINDOWS: [number, number][] = [
+  [1, 3],
+  [3, 5],
+];
 
-export type ProfileSetupItem = "SEARCH" | "QUOTES" | "ONLINE_PAYMENTS";
+export type ProfileSetupItem = "CARD" | "SEARCH" | "QUOTES" | "ONLINE_PAYMENTS";
 
 /**
  * Cosa manca ancora, nello stesso ordine di "Completa il profilo" in Oggi
@@ -63,11 +72,13 @@ export function profileSetupMissing(status: Pick<MyVerificationStatus, "publicVi
 }
 
 /** Va mandata l'email "Completa il profilo"? Una nella prima finestra, una nella seconda, mai due a meno di 5 giorni. */
-export function setupReminderDue(input: { profileCreatedAt: Date; sent: number; lastSentAt: Date | null; now: Date }): boolean {
+export function setupReminderDue(input: { profileCreatedAt: Date; sent: number; lastSentAt: Date | null; now: Date; cardMissing?: boolean }): boolean {
   const age = (input.now.getTime() - input.profileCreatedAt.getTime()) / DAY_MS;
-  const window = SETUP_REMINDER_WINDOWS.findIndex(([from, to]) => age >= from && age < to);
+  const windows = input.cardMissing ? CARD_REMINDER_WINDOWS : SETUP_REMINDER_WINDOWS;
+  const window = windows.findIndex(([from, to]) => age >= from && age < to);
   if (window < 0 || input.sent > window) return false;
-  return !input.lastSentAt || input.now.getTime() - input.lastSentAt.getTime() >= 5 * DAY_MS;
+  const gapDays = input.cardMissing ? 1.5 : 5;
+  return !input.lastSentAt || input.now.getTime() - input.lastSentAt.getTime() >= gapDays * DAY_MS;
 }
 
 const ROME_PARTS = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Rome", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric", hourCycle: "h23" });
@@ -445,7 +456,16 @@ export class IdentityVerificationService {
         user: { suspendedAt: null },
         createdAt: { lte: new Date(now.getTime() - SETUP_REMINDER_WINDOWS[0]![0] * DAY_MS), gt: new Date(now.getTime() - SETUP_REMINDER_WINDOWS[SETUP_REMINDER_WINDOWS.length - 1]![1] * DAY_MS) },
       },
-      select: { id: true, userId: true, createdAt: true, isDemo: true, verified: true, identityExpiredAt: true, fiscalProfile: { include: FISCAL_INCLUDE } },
+      select: {
+        id: true,
+        userId: true,
+        createdAt: true,
+        isDemo: true,
+        verified: true,
+        identityExpiredAt: true,
+        fiscalProfile: { include: FISCAL_INCLUDE },
+        subscription: { select: { status: true, stripeSubscriptionId: true } },
+      },
       take: 200,
     });
     for (const profile of profiles) {
@@ -454,9 +474,11 @@ export class IdentityVerificationService {
         orderBy: { createdAt: "desc" },
         select: { createdAt: true },
       });
-      if (!setupReminderDue({ profileCreatedAt: profile.createdAt, sent: sent.length, lastSentAt: sent[0]?.createdAt ?? null, now })) continue;
+      // Mesi gratis senza la carta, quando si può già dare: prima di tutto il resto.
+      const cardMissing = cardCanBeGiven() && profile.subscription?.status === "TRIALING" && !profile.subscription.stripeSubscriptionId;
+      if (!setupReminderDue({ profileCreatedAt: profile.createdAt, sent: sent.length, lastSentAt: sent[0]?.createdAt ?? null, now, cardMissing })) continue;
       const status = this.buildStatus(profile, await this.latest(profile.id));
-      const missing = profileSetupMissing(status, !!profile.fiscalProfile?.stripePayoutsEnabled, onlinePaymentsEnabled());
+      const missing: ProfileSetupItem[] = [...(cardMissing ? (["CARD"] as const) : []), ...profileSetupMissing(status, !!profile.fiscalProfile?.stripePayoutsEnabled, onlinePaymentsEnabled())];
       if (missing.length === 0) continue;
       await this.notificationsService.notify(profile.userId, "PROFILE_SETUP_REMINDER", { missing });
     }

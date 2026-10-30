@@ -274,8 +274,9 @@ export class BillingService {
         metadata: { professionalProfileId: profile.id },
       },
       customer: await this.ensureCustomer(stripe, profile),
-      success_url: `${this.frontendUrl()}/dashboard/abbonamento?attivato=1`,
-      cancel_url: `${this.frontendUrl()}/dashboard/abbonamento`,
+      // Ritorno con il messaggio giusto: carta salvata a 0 € o pagamento fatto; finestra chiusa a metà.
+      success_url: `${this.frontendUrl()}/dashboard/abbonamento?attivato=${trialEnd ? "carta" : "1"}`,
+      cancel_url: `${this.frontendUrl()}/dashboard/abbonamento?annullato=1#livelli`,
       metadata: { kind: "subscription", professionalProfileId: profile.id, plan, interval },
     });
 

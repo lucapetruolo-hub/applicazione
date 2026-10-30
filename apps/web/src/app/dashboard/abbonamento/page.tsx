@@ -381,7 +381,17 @@ function AbbonamentoContent() {
 
         {searchParams.get("attivato") ? (
           <Surface borderRadius={radiusDoc} padding="$4" backgroundColor={brand.cianografiaVelo}>
-            <Text color={brand.grafite}>Grazie! Il pagamento è andato a buon fine: l&apos;abbonamento si aggiorna qui tra pochi istanti.</Text>
+            <Text color={brand.grafite}>
+              {searchParams.get("attivato") === "carta"
+                ? "Fatto: carta salvata e mesi gratis attivi. Oggi non hai pagato nulla; ti avvisiamo 3 giorni prima del primo addebito."
+                : "Grazie! Il pagamento è andato a buon fine: l'abbonamento si aggiorna qui tra pochi istanti."}
+            </Text>
+          </Surface>
+        ) : null}
+        {/* Finestra di Stripe chiusa prima della fine (docs/changelog/2026-10-30-iscrizione-carta-solida.md). */}
+        {searchParams.get("annullato") && !paidActive ? (
+          <Surface borderRadius={radiusDoc} padding="$4" backgroundColor={brand.ottoneVelo}>
+            <Text color={brand.grafite}>Non hai finito di aggiungere la carta, quindi non è stato salvato nulla. Puoi riprovare qui sotto quando vuoi.</Text>
           </Surface>
         ) : null}
 

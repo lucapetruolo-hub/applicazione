@@ -113,6 +113,13 @@ export class AdminController {
     return this.adminService.getProfessionalStats({ category, city });
   }
 
+  /** Imbuto dell'iscrizione per settimana (docs/changelog/2026-10-30-iscrizione-carta-solida.md). */
+  @RequireAdminScope("ANY")
+  @Get("professionals/signup-funnel")
+  signupFunnel() {
+    return this.adminService.getSignupFunnel();
+  }
+
   @RequireAdminScope("ANY")
   @Get("users")
   listUsers(

@@ -198,6 +198,35 @@ describe("SubscriptionsService e offerta dei mesi gratis", () => {
   });
 });
 
+describe("carta data per l'abbonamento (docs/changelog/2026-10-30-iscrizione-carta-solida.md)", () => {
+  const now = new Date("2026-11-20T10:00:00Z");
+  const DAY = 24 * 60 * 60 * 1000;
+  const apply = (service: SubscriptionsService, status: "ACTIVE" | "PAST_DUE" | "CANCELED" | null) =>
+    service.applyStripeSubscription({ stripeSubscriptionId: "sub_1", status, tier: "BASE", interval: "MONTH", cancelAtPeriodEnd: false, currentPeriodEnd: new Date(now.getTime() + 60 * DAY), stripeTrialEnd: new Date(now.getTime() + 60 * DAY) });
+
+  it("la prima volta che l'abbonamento è in prova o attivo si segna il giorno", async () => {
+    vi.useFakeTimers({ now, toFake: ["Date"] });
+    const { service, prisma } = buildService();
+    prisma.subscription.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce({ id: "s-1", professionalProfileId: "pro-1", stripeSubscriptionId: null, status: "TRIALING", trialEndsAt: new Date(now.getTime() + 60 * DAY), cardAddedAt: null, freeMonthsWaiting: 0 });
+    prisma.professionalProfile.findUnique.mockResolvedValue(null);
+    await service.applyStripeSubscription({ professionalProfileId: "pro-1", stripeSubscriptionId: "sub_1", status: "ACTIVE", tier: "BASE", interval: "MONTH", cancelAtPeriodEnd: false, currentPeriodEnd: new Date(now.getTime() + 60 * DAY), stripeTrialEnd: new Date(now.getTime() + 60 * DAY) });
+    expect(prisma.subscription.update.mock.calls[0]![0].data.cardAddedAt).toEqual(now);
+    vi.useRealTimers();
+  });
+
+  it("non si riscrive dopo, né con un abbonamento non pagato", async () => {
+    const { service, prisma } = buildService();
+    prisma.subscription.findUnique.mockResolvedValue({ id: "s-1", professionalProfileId: "pro-1", stripeSubscriptionId: "sub_1", status: "ACTIVE", trialEndsAt: null, cardAddedAt: new Date("2026-11-01T10:00:00Z"), freeMonthsWaiting: 0 });
+    prisma.professionalProfile.findUnique.mockResolvedValue(null);
+    await apply(service, "ACTIVE");
+    expect(prisma.subscription.update.mock.calls[0]![0].data.cardAddedAt).toBeUndefined();
+
+    prisma.subscription.findUnique.mockResolvedValue({ id: "s-1", professionalProfileId: "pro-1", stripeSubscriptionId: "sub_1", status: "TRIALING", trialEndsAt: null, cardAddedAt: null, freeMonthsWaiting: 0 });
+    await apply(service, null);
+    expect(prisma.subscription.update.mock.calls[1]![0].data.cardAddedAt).toBeUndefined();
+  });
+});
+
 /** Posti numerati dell'offerta di lancio (§363): restano per la scritta "100 posti". */
 describe("SubscriptionsService e primi 100 professionisti", () => {
   const trialing = { id: "s-1", status: "TRIALING", stripeSubscriptionId: null, founderNumber: null, trialEndsAt: new Date("2026-12-01T23:00:00Z") };

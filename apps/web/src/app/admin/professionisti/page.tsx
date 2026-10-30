@@ -17,6 +17,7 @@ import { AdminCard, AdminPageHeader, errorMessage, formatAdminDate } from "@/com
 import { SkeletonTableRows } from "@/components/Skeleton";
 import { CategoryMultiPicker } from "@/components/CategoryMultiPicker";
 import { SubscriptionOfferCard } from "@/components/admin/SubscriptionOfferCard";
+import { WithoutCardCard } from "@/components/admin/WithoutCardCard";
 
 const EMPTY_FORM = { email: "", name: "", surname: "", phone: "", businessName: "", city: "", bio: "" };
 
@@ -165,6 +166,7 @@ export default function AdminProfessionistiPage() {
       />
       {/* Offerta dei mesi gratis con gli iscritti (docs/changelog/2026-10-29-offerta-mesi-gratis.md). */}
       {token ? <SubscriptionOfferCard token={token} adminRoles={user?.adminRoles ?? []} /> : null}
+      {token ? <WithoutCardCard token={token} /> : null}
       {founders ? (
         // Chi recluta al telefono vede subito quanti posti della scritta "primi 100" restano (§363).
         <Text color={brand.grafite}>

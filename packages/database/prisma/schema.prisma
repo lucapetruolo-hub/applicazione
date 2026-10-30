@@ -718,6 +718,9 @@ model Subscription {
   freeMonthsWaiting     Int                @default(0)
   returnToBaseAt        DateTime?
   offerId               String?
+  // Carta data per l'abbonamento: primo abbonamento di Stripe attivo o in
+  // prova (imbuto dell'iscrizione, docs/changelog/2026-10-30-iscrizione-carta-solida.md).
+  cardAddedAt           DateTime?
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
 

@@ -22,6 +22,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { AdminCard, AdminPageHeader, CountingFromNote, errorMessage, formatAdminDate } from "@/components/admin/adminUi";
 import { StatsBarChart } from "@/components/StatsBarChart";
 import { SkeletonTableRows } from "@/components/Skeleton";
+import { SignupFunnelCard } from "@/components/admin/SignupFunnelCard";
 
 /**
  * "negli ultimi 90 giorni", oppure "dal lancio (20 ott 2026)" quando il
@@ -141,6 +142,9 @@ function NumeriContent() {
       ) : data ? (
         <StatsBody data={data} filters={filters} scope={scope} />
       ) : null}
+
+      {/* Non segue i filtri: l'iscrizione passo per passo di tutti i professionisti. */}
+      {token ? <SignupFunnelCard token={token} /> : null}
     </YStack>
   );
 }

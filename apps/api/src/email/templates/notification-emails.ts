@@ -1488,17 +1488,22 @@ const BUILDERS: Record<string, Builder> = {
   PROFILE_SETUP_REMINDER: (payload, ctx) => {
     const missing = Array.isArray(payload.missing) ? payload.missing : [];
     const lines: string[] = [];
+    // Carta per i mesi gratis (docs/changelog/2026-10-30-iscrizione-carta-solida.md): va detto il rinnovo automatico.
+    if (missing.includes("CARD"))
+      lines.push("**Aggiungi la carta per attivare i mesi gratis**: oggi non paghi nulla. Alla fine dei mesi gratis parte Base a 19 € + IVA al mese, in automatico, e puoi annullare quando vuoi.");
     if (missing.includes("SEARCH")) lines.push("**Non compari ancora nelle ricerche**: completa i dati fiscali.");
     if (missing.includes("QUOTES")) lines.push("**Non puoi ancora rispondere alle richieste di preventivo**: verifica la tua identità con documento e selfie, circa 2 minuti.");
     if (missing.includes("ONLINE_PAYMENTS")) lines.push("**Non puoi ancora ricevere pagamenti online**: attivali da Fisco e pagamenti, scheda Pagamenti online.");
     if (lines.length === 0) lines.push("Ti mancano ancora alcuni passi per comparire nelle ricerche e rispondere ai clienti.");
     return {
       kind: "account",
-      subject: "Completa il tuo profilo",
+      subject: missing.includes("CARD") ? "Attiva i tuoi mesi gratis" : "Completa il tuo profilo",
       greeting: ctx.name,
-      title: "Ti manca poco per iniziare",
+      title: missing.includes("CARD") ? "Manca solo la carta per i mesi gratis" : "Ti manca poco per iniziare",
       paragraphs: [...lines, "Trovi tutto in Oggi, con il prossimo passo da fare."],
-      cta: { label: "Completa il profilo", url: `${frontendUrl()}/dashboard` },
+      cta: missing.includes("CARD")
+        ? { label: "Attiva i mesi gratis", url: `${frontendUrl()}/dashboard/abbonamento#livelli` }
+        : { label: "Completa il profilo", url: `${frontendUrl()}/dashboard` },
     };
   },
   // Agenda vuota o senza disponibilità nei prossimi giorni (§274).
@@ -1737,8 +1742,8 @@ const BUILDERS: Record<string, Builder> = {
     greeting: ctx.name,
     title: "Pagamento non riuscito",
     paragraphs: [
-      "Non siamo riusciti ad addebitare il rinnovo del tuo abbonamento. Riproveremo nei prossimi giorni.",
-      "Controlla il metodo di pagamento per non andare in pausa.",
+      "Non siamo riusciti ad addebitare l'abbonamento sulla tua carta. Riproveremo nei prossimi giorni.",
+      "Controlla la carta o cambiala dalla pagina Abbonamento, con \"Cambia la carta\": se il pagamento non riesce l'abbonamento si chiude e il profilo va in pausa.",
     ],
     cta: subscriptionPage(),
   }),

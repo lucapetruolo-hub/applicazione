@@ -194,6 +194,10 @@ export function notificationCopy(type: string, payload?: unknown): { icon: strin
     // Fattura chiesta dal cliente, detta subito (docs/CHANGELOG.md §378).
     return { icon: "🥳", message: `${text(data.clientName) ?? "Il cliente"} ha accettato il tuo preventivo${jobSuffix}${data.invoiceRequested === true ? " e ti chiede la fattura" : ""}` };
   }
+  // Promemoria della carta (docs/changelog/2026-10-30-iscrizione-carta-solida.md).
+  if (type === "PROFILE_SETUP_REMINDER" && Array.isArray(data.missing) && data.missing.includes("CARD")) {
+    return { icon: "💳", message: "Aggiungi la carta per attivare i mesi gratis: oggi non paghi nulla." };
+  }
   // Mesi gratis senza la carta (docs/changelog/2026-10-29-offerta-mesi-gratis.md).
   if (type === "SUBSCRIPTION_PAUSED" && data.reason === "CARD_NEEDED") {
     return { icon: "💳", message: "Aggiungi la carta per usare i mesi gratis: oggi non paghi nulla e il tuo profilo torna nelle ricerche." };

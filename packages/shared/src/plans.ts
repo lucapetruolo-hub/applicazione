@@ -129,6 +129,23 @@ export type AdminSubscriptionOffer = {
 };
 
 /**
+ * Professionisti con il profilo ma senza la carta per i mesi gratis, da
+ * chiamare (docs/changelog/2026-10-30-iscrizione-carta-solida.md). Senza
+ * account di prova; i più vecchi prima.
+ */
+export type AdminProfessionalWithoutCard = {
+  userId: string;
+  businessName: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  city: string;
+  profileCreatedAt: string;
+  /** Promemoria "Completa il profilo" già mandati. */
+  remindersSent: number;
+};
+
+/**
  * Posti dell'offerta di lancio e mesi gratis dell'offerta attiva (`GET
  * /subscriptions/founders`, pubblico). `offerMonths` null: offerta ferma.
  */

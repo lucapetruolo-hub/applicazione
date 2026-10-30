@@ -15,6 +15,7 @@ import {
   type AdminFounders,
   type AdminSubscriptionOffer,
   type FounderSpots,
+  type AdminProfessionalWithoutCard,
   type PauseReason,
   type SubscriptionTier,
 } from "@professionisti/shared";
@@ -234,6 +235,40 @@ export class SubscriptionsService {
   }
 
   /** Posti dell'offerta di lancio rimasti (pagina prezzi). */
+  /**
+   * Profili senza la carta per i mesi gratis (docs/changelog/2026-10-30-iscrizione-carta-solida.md):
+   * l'elenco da chiamare in Admin, i più vecchi prima. Senza account di prova,
+   * dimostrativi, chiusi o creati da un operatore e non ancora confermati.
+   */
+  async professionalsWithoutCard(): Promise<AdminProfessionalWithoutCard[]> {
+    const rows = await this.prisma.professionalProfile.findMany({
+      where: {
+        isDemo: false,
+        deletedAt: null,
+        invitePendingAt: null,
+        user: { ...COUNTED_USER, deletedAt: null },
+        subscription: { status: "TRIALING", stripeSubscriptionId: null },
+      },
+      orderBy: { createdAt: "asc" },
+      take: 200,
+      select: { userId: true, businessName: true, city: true, createdAt: true, user: { select: { name: true, email: true, phone: true } } },
+    });
+    const reminders = rows.length
+      ? await this.prisma.notification.groupBy({ by: ["userId"], where: { userId: { in: rows.map((r) => r.userId) }, type: "PROFILE_SETUP_REMINDER" }, _count: { _all: true } })
+      : [];
+    const sent = new Map(reminders.map((r) => [r.userId, r._count._all]));
+    return rows.map((row) => ({
+      userId: row.userId,
+      businessName: row.businessName,
+      name: row.user.name,
+      email: row.user.email,
+      phone: row.user.phone,
+      city: row.city,
+      profileCreatedAt: row.createdAt.toISOString(),
+      remindersSent: sent.get(row.userId) ?? 0,
+    }));
+  }
+
   async founderSpots(): Promise<FounderSpots> {
     const [taken, offer] = await Promise.all([this.prisma.subscription.count({ where: { founderNumber: { not: null } } }), this.activeOffer()]);
     return { total: FOUNDER_SPOTS, left: Math.max(0, FOUNDER_SPOTS - taken), offerMonths: offer?.freeMonths ?? null };
@@ -433,6 +468,8 @@ export class SubscriptionsService {
         ...freeMonths,
         // Abbonamento concluso: niente ritorno a Base in sospeso.
         ...(input.status === "CANCELED" ? { returnToBaseAt: null } : {}),
+        // Prima carta data (imbuto dell'iscrizione, docs/changelog/2026-10-30-iscrizione-carta-solida.md).
+        ...(!row.cardAddedAt && input.status === "ACTIVE" ? { cardAddedAt: now } : {}),
       },
     });
     await this.syncPause(row.professionalProfileId);

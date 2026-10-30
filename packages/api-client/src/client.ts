@@ -96,6 +96,8 @@ import type {
   PendingProfileInvite,
   AdminFounders,
   AdminSubscriptionOffer,
+  AdminProfessionalWithoutCard,
+  AdminSignupFunnel,
   AdminProfessionalStats,
   AdminSiteStats,
   ChurnReason,
@@ -2064,6 +2066,11 @@ export function createApiClient({ baseUrl, deviceId, trafficSource, onFailure }:
     adminListFounders: (token: string) => request<AdminFounders>("/admin/founders", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
 
     /** Offerta dei mesi gratis (docs/changelog/2026-10-29-offerta-mesi-gratis.md): la cambia solo il super admin. */
+    /** Profili senza la carta per i mesi gratis (docs/changelog/2026-10-30-iscrizione-carta-solida.md). */
+    adminProfessionalsWithoutCard: (token: string) =>
+      request<AdminProfessionalWithoutCard[]>("/admin/subscription-offer/without-card", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
+    /** Imbuto dell'iscrizione per settimana. */
+    adminSignupFunnel: (token: string) => request<AdminSignupFunnel>("/admin/professionals/signup-funnel", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
     adminGetSubscriptionOffer: (token: string) =>
       request<AdminSubscriptionOffer>("/admin/subscription-offer", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }),
     adminStopSubscriptionOffer: (token: string) =>
