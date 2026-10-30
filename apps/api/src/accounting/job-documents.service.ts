@@ -37,6 +37,7 @@ export class JobDocumentsService {
         jobPayment: {
           select: {
             paymentMethod: true,
+            balanceDirect: true,
             grossAmountEurCents: true,
             depositEurCents: true,
             depositPaidAt: true,
@@ -58,7 +59,6 @@ export class JobDocumentsService {
     const audience = booking?.professionalProfile.userId === userId ? "PROFESSIONAL" : booking?.clientId === userId ? "CLIENT" : null;
     if (!booking || !audience) throw new NotFoundException("Lavoro non trovato.");
     const pro = audience === "PROFESSIONAL";
-    const canceled = booking.status === "CANCELED";
     const invoiceRequested = !!booking.quote?.invoiceRequest;
 
     // Ricevuta o copia della fattura: al cliente solo se il professionista
@@ -68,7 +68,7 @@ export class JobDocumentsService {
     const amountChanged = doc ? courtesyAmountChanged(doc.pdfTotalEurCents, courtesyTotalEurCents(jp)) : false;
     const kind: "RECEIPT" | "INVOICE" = doc?.kind === "RECEIPT" ? "RECEIPT" : "INVOICE";
     const clientDocument =
-      !doc || canceled || (!pro && (!doc.pdfDownloadedAt || amountChanged))
+      !doc || booking.status !== "COMPLETED" || (!pro && (!doc.pdfDownloadedAt || amountChanged))
         ? null
         : { label: !pro && kind === "INVOICE" && !doc.ownNumber ? "Copia della fattura" : courtesyDocumentLabel(doc), kind, amountChanged: pro && amountChanged };
 
@@ -102,7 +102,8 @@ export class JobDocumentsService {
       audience,
       bookingId: booking.id,
       clientDocument,
-      clientDocumentAvailable: !canceled && (booking.status === "COMPLETED" || invoiceRequested),
+      // Solo a lavoro terminato, con l'importo finale (collaudo C-02, B-02).
+      clientDocumentAvailable: booking.status === "COMPLETED",
       invoiceRequested,
       movements,
       statementMonths: months.map((month) => ({ month, label: accountingMonthLabel(month) })),

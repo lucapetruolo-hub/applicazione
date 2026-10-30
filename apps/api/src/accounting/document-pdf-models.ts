@@ -9,6 +9,8 @@ import {
   platformInvoiceOriginalNote,
   platformInvoiceSubtitle,
   platformInvoiceTechnicalNotes,
+  statementFeeInvoiceNote,
+  statementOnlineNote,
   type CourtesyCopyView,
   type CourtesyYearRow,
   type CourtesyYearSummary,
@@ -116,18 +118,16 @@ export function statementPdfModel(statement: MonthlyStatement, who: string | nul
       ],
       rows: statement.rows.map((row) => ({
         cells: [shortDate(row.date), row.job, amount(row.onlineEurCents), amount(row.directEurCents), amount(row.feesEurCents), row.payoutEurCents !== null ? eur(row.payoutEurCents) : "—"],
-        details: [null, row.client, null, null, null, row.payoutNote],
+        details: [null, row.client, row.refundsEurCents > 0 ? `Rimborso −${eur(row.refundsEurCents)}` : null, null, null, row.payoutNote],
       })),
     });
   }
+  const onlineNote = statementOnlineNote(statement);
+  if (onlineNote) blocks.push({ type: "text", muted: true, lines: [onlineNote] });
   if (statement.blockedEurCents > 0) {
     blocks.push({ type: "note", tone: "sand", lines: [`Ancora bloccati: ${eur(statement.blockedEurCents)}. Partono quando i clienti confermano i lavori.`] });
   }
-  const invoiceLine = statement.feeInvoice
-    ? `Le trattenute del mese sono nella fattura ${statement.feeInvoice.number}.`
-    : statement.totals.feesEurCents !== 0
-      ? "La fattura delle trattenute arriva il 1° del mese dopo."
-      : null;
+  const invoiceLine = statementFeeInvoiceNote(statement);
   blocks.push({ type: "note", tone: "green", lines: [invoiceLine, statement.documentHint].filter((line): line is string => !!line) });
 
   return {
@@ -157,8 +157,10 @@ export function courtesyPdfModel(copy: CourtesyCopyView, audience: "professional
       ],
     },
   ];
+  const lineValue = (cents: number) => (copy.totalEurCents !== null ? eur(cents) : "______");
+  blocks.push({ type: "rows", rows: copy.lines.map((line) => ({ label: line.description, value: lineValue(line.amountEurCents) })) });
+  const withholding = copy.withholding?.applies ? copy.withholding : null;
   if (copy.vat && copy.totalEurCents !== null) {
-    blocks.push({ type: "rows", rows: [{ label: copy.description, value: eur(copy.vat.taxableEurCents) }] });
     blocks.push({
       type: "totals",
       rows: [
@@ -167,8 +169,17 @@ export function courtesyPdfModel(copy: CourtesyCopyView, audience: "professional
       ],
       total: { label: "Totale", value: total, detail: copy.paidHow },
     });
+  } else if (withholding) {
+    // Ricevuta a una partita IVA con la ritenuta (collaudo C-04): lordo, ritenuta e netto.
+    blocks.push({
+      type: "totals",
+      rows: [
+        { label: "Compenso lordo", value: total },
+        { label: "Ritenuta d'acconto 20%", value: `−${eur(withholding.amountEurCents)}` },
+      ],
+      total: { label: "Netto pagato", value: eur(withholding.netEurCents), detail: copy.paidHow },
+    });
   } else {
-    blocks.push({ type: "rows", rows: [{ label: copy.description, value: total }] });
     blocks.push({ type: "totals", rows: [], total: { label: "Totale", value: total, detail: copy.paidHow } });
   }
   if (copy.notes.length > 0) blocks.push({ type: "text", muted: true, lines: copy.notes });
@@ -177,7 +188,12 @@ export function courtesyPdfModel(copy: CourtesyCopyView, audience: "professional
   else if (receipt) blocks.push({ type: "signature", label: "Firma" });
   else blocks.push({ type: "text", muted: true, lines: ["Copia di cortesia: il documento valido è la fattura elettronica inviata all'Agenzia delle Entrate."] });
 
-  return { title: receipt ? (audience === "client" ? "Copia della ricevuta per prestazione occasionale" : "Ricevuta per prestazione occasionale") : "Copia di cortesia della fattura", blocks };
+  return {
+    title: receipt ? (audience === "client" ? "Copia della ricevuta per prestazione occasionale" : "Ricevuta per prestazione occasionale") : "Copia di cortesia della fattura",
+    blocks,
+    // Lo emette il professionista: in alto il suo nome, non il sito (G-11).
+    issuedBy: copy.issuer.name || null,
+  };
 }
 
 /** Riepilogo DAC7 di un anno: quello che comunichiamo al fisco. */
@@ -242,7 +258,9 @@ export function courtesyYearPdfModel(summary: CourtesyYearSummary, now: Date = n
   const missing = receipts.missingAmounts + invoices.missingAmounts;
   const changed = receipts.amountChanged + invoices.amountChanged;
   const warnings = [
-    changed > 0 ? `${changed === 1 ? "1 documento ha" : `${changed} documenti hanno`} l'importo cambiato dopo il PDF: ${changed === 1 ? "scaricalo di nuovo e dallo al cliente al posto di quello vecchio" : "scaricali di nuovo e dalli ai clienti al posto di quelli vecchi"}.` : null,
+    changed > 0
+      ? `${changed === 1 ? "1 documento ha" : `${changed} documenti hanno`} l'importo cambiato dopo il PDF dato al cliente (per esempio un rimborso): nella tabella c'è l'importo del documento e, sotto, quello di oggi.`
+      : null,
     missing > 0 ? `${missing === 1 ? "1 documento è" : `${missing} documenti sono`} senza importo: il lavoro non ha ancora il prezzo finale.` : null,
   ].filter((line): line is string => !!line);
   if (warnings.length > 0) blocks.push({ type: "note", tone: "sand", lines: warnings });
@@ -260,10 +278,16 @@ export function courtesyYearPdfModel(summary: CourtesyYearSummary, now: Date = n
       cells: [row.number ?? "—", accountingShortDate(row.date), row.customerName ?? "—", row.jobLabel ?? "Lavoro", row.totalEurCents !== null ? eur(row.totalEurCents) : "—"],
       details: [
         null,
-        null,
-        row.customerHasVatNumber ? "Con partita IVA" : null,
-        row.amountChanged ? "Importo cambiato dopo il PDF" : null,
-        row.vatEurCents !== null ? `di cui IVA ${eur(row.vatEurCents)}` : row.stampDuty ? "Bollo da 2 €" : null,
+        row.paidAt && accountingShortDate(row.paidAt) !== accountingShortDate(row.date) ? `pagato il ${accountingShortDate(row.paidAt)}` : null,
+        [row.customerTaxId, row.customerHasVatNumber && !row.customerTaxId ? "Con partita IVA" : null].filter(Boolean).join(" · ") || null,
+        row.amountChanged ? `Oggi ${row.currentEurCents !== null ? eur(row.currentEurCents) : "senza importo"}: serve un nuovo documento` : null,
+        row.vatEurCents !== null
+          ? `di cui IVA ${eur(row.vatEurCents)}`
+          : row.withholdingEurCents
+            ? `ritenuta ${eur(row.withholdingEurCents)}`
+            : row.stampDuty
+              ? "Bollo da 2 €"
+              : null,
       ],
     })),
   });
@@ -271,8 +295,8 @@ export function courtesyYearPdfModel(summary: CourtesyYearSummary, now: Date = n
   if (summary.receipts.length > 0) {
     const lines = [
       "Il totale delle ricevute va nella dichiarazione dei redditi: sono i compensi delle prestazioni occasionali dell'anno.",
-      receipts.withVatNumber > 0
-        ? `${receipts.withVatNumber === 1 ? "1 ricevuta è a un cliente" : `${receipts.withVatNumber} ricevute sono a clienti`} con partita IVA: di solito trattengono il 20% di ritenuta d'acconto e la versano per te.`
+      receipts.withholdingEurCents > 0
+        ? `Ritenute d'acconto trattenute dai clienti con partita IVA: ${eur(receipts.withholdingEurCents)}. Le versano loro per te e a inizio anno ti mandano la Certificazione Unica.`
         : null,
       receipts.stampDuty > 0 ? `${receipts.stampDuty === 1 ? "1 ricevuta supera" : `${receipts.stampDuty} ricevute superano`} 77,47 €: sull'originale va la marca da bollo da 2 €.` : null,
     ].filter((line): line is string => !!line);
@@ -299,7 +323,7 @@ export function courtesyYearPdfModel(summary: CourtesyYearSummary, now: Date = n
     type: "text",
     muted: true,
     lines: [
-      `Preparato il ${accountingDateLabel(now.toISOString())} con i documenti fatti sul sito. Gli importi sono quelli di oggi, dopo eventuali rimborsi; restano fuori i lavori annullati.`,
+      `Preparato il ${accountingDateLabel(now.toISOString())} con i documenti fatti sul sito per i lavori terminati. Gli importi sono quelli dei documenti dati ai clienti.`,
       "Non è un documento fiscale: valgono le ricevute e le fatture che hai dato ai clienti.",
     ],
   });

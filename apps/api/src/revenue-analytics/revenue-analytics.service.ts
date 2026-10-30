@@ -51,7 +51,7 @@ type StatsRows = {
   requests: { createdAt: Date }[];
   quotes: { createdAt: Date }[];
   won: { createdAt: Date }[];
-  completed: { updatedAt: Date; finalAmountEurCents: number | null }[];
+  completed: { updatedAt: Date; professionalCompletedAt: Date | null; finalAmountEurCents: number | null }[];
   reviews: { rating: number }[];
 };
 
@@ -103,10 +103,20 @@ export function bucketStatsRows(rows: StatsRows, start: Date, endInclusive: Date
   for (const q of rows.quotes) add(q.createdAt, "quotes", 1);
   for (const w of rows.won) add(w.createdAt, "won", 1);
   for (const c of rows.completed) {
-    add(c.updatedAt, "completed", 1);
-    add(c.updatedAt, "revenueEurCents", c.finalAmountEurCents ?? 0);
+    add(completedAtOf(c), "completed", 1);
+    add(completedAtOf(c), "revenueEurCents", c.finalAmountEurCents ?? 0);
   }
   return Array.from(buckets.values());
+}
+
+/**
+ * Giorno del lavoro completato: "Lavoro terminato" del professionista, come
+ * nell'estratto e nella DAC7 (collaudo D-11). `updatedAt` solo per i lavori
+ * chiusi prima che quel campo esistesse: cambia a ogni modifica della
+ * prenotazione e spostava il lavoro in un altro mese.
+ */
+function completedAtOf(booking: { updatedAt: Date; professionalCompletedAt: Date | null }): Date {
+  return booking.professionalCompletedAt ?? booking.updatedAt;
 }
 
 /**
@@ -206,8 +216,13 @@ export class RevenueAnalyticsService {
       this.prisma.quote.findMany({ where: { professionalProfileId, createdAt: createdIn }, select: { createdAt: true } }),
       this.prisma.booking.findMany({ where: { professionalProfileId, createdAt: createdIn }, select: { createdAt: true } }),
       this.prisma.booking.findMany({
-        where: { professionalProfileId, status: "COMPLETED", clientConfirmedCompletedAt: { not: null }, updatedAt: createdIn },
-        select: { updatedAt: true, finalAmountEurCents: true },
+        where: {
+          professionalProfileId,
+          status: "COMPLETED",
+          clientConfirmedCompletedAt: { not: null },
+          OR: [{ professionalCompletedAt: createdIn }, { professionalCompletedAt: null, updatedAt: createdIn }],
+        },
+        select: { updatedAt: true, professionalCompletedAt: true, finalAmountEurCents: true },
       }),
       this.prisma.review.findMany({
         where: { hiddenAt: null, createdAt: createdIn, booking: { professionalProfileId } },
@@ -224,7 +239,7 @@ export class RevenueAnalyticsService {
         clientConfirmedCompletedAt: { not: null },
         ...(professionalProfileId ? { professionalProfileId } : {}),
       },
-      select: { finalAmountEurCents: true, updatedAt: true },
+      select: { finalAmountEurCents: true, updatedAt: true, professionalCompletedAt: true },
     });
 
     const now = new Date();
@@ -246,13 +261,14 @@ export class RevenueAnalyticsService {
       const amount = booking.finalAmountEurCents ?? 0;
       allTimeTotalEurCents += amount;
 
-      const key = monthKey(booking.updatedAt);
+      const completedAt = completedAtOf(booking);
+      const key = monthKey(completedAt);
       const bucket = byMonth.get(key) ?? { totalEurCents: 0, jobCount: 0 };
       bucket.totalEurCents += amount;
       bucket.jobCount += 1;
       byMonth.set(key, bucket);
 
-      if (booking.updatedAt.getUTCFullYear() === currentYear) {
+      if (completedAt.getUTCFullYear() === currentYear) {
         currentYearTotalEurCents += amount;
         currentYearJobCount += 1;
       }

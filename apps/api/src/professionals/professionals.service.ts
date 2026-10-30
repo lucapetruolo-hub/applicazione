@@ -1483,6 +1483,8 @@ export class ProfessionalsService {
 
   async getMyBookings(userId: string): Promise<ProfessionalBooking[]> {
     const professionalProfileId = await this.requireMyProfileId(userId);
+    const fiscal = await this.prisma.professionalFiscalProfile.findUnique({ where: { professionalProfileId }, select: { entityType: true } });
+    const clientDocumentKind = fiscal?.entityType === "PRIVATE_INDIVIDUAL" ? ("RECEIPT" as const) : ("INVOICE" as const);
 
     // Ascendente (prossima prima): un'agenda operativa deve mostrare
     // l'appuntamento più vicino in cima, non il più lontano — bug reale,
@@ -1678,6 +1680,7 @@ export class ProfessionalsService {
       invoiceRequest: booking.quote?.invoiceRequest ? invoiceRequestView(booking.quote.invoiceRequest) : null,
       // Ricevuta o copia di cortesia già preparata: se l'importo cambia dopo il PDF va rifatta (§381).
       courtesyDocument: booking.courtesyDocument ? courtesyDocumentSummary(booking.courtesyDocument, booking) : null,
+      clientDocumentKind,
     }));
   }
 

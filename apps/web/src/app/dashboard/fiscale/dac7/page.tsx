@@ -72,7 +72,7 @@ export default function Dac7SummaryPage() {
             <EmptyState
               icon="coins"
               title="Ancora nessun compenso da comunicare"
-              description="Compaiono qui quando chiudi un lavoro."
+              description="Li aggiorniamo ogni notte: un lavoro chiuso oggi compare qui domani."
             />
           ) : (
             <YStack gap="$4">

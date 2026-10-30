@@ -58,7 +58,7 @@ export default function DocumentsPage() {
         <LearnMore fontSize={16} summary="Le nostre fatture e l'estratto di ogni mese, da scaricare o dare al commercialista.">
           <Text fontSize={16} color={brand.grafite70}>
             Ogni mese ti mandiamo una fattura con le trattenute sui pagamenti online, e una per l&apos;abbonamento quando lo paghi. Sono già
-            pagate: non devi fare nulla.
+            pagate: passale al tuo commercialista, sono costi della tua attività.
           </Text>
           <Text fontSize={16} color={brand.grafite70}>
             L&apos;estratto del mese mette insieme quanto ti hanno pagato i clienti, quanto abbiamo trattenuto e i bonifici arrivati.
@@ -177,7 +177,7 @@ function ClientDocuments({ token, documents }: { token: string; documents: Court
       </Text>
       {documents.length === 0 ? (
         <Text fontSize={16} color={brand.grafite70}>
-          Le ricevute e le copie delle fatture che prepari per i clienti, dalla scheda del lavoro, le trovi qui.
+          Le ricevute e le copie delle fatture che prepari per i clienti, dalla scheda del lavoro dopo &quot;Lavoro terminato&quot;, le trovi qui.
         </Text>
       ) : (
         <>
@@ -199,7 +199,7 @@ function ClientDocuments({ token, documents }: { token: string; documents: Court
           </XStack>
           {totals.some((row) => row.kind === "RECEIPT") ? (
             <Text fontSize={16} color={brand.grafite70}>
-              Il totale delle ricevute dell&apos;anno va nella dichiarazione dei redditi: scarica il riepilogo per il tuo commercialista, o metti la spunta qui sotto e gli arriva da solo a gennaio.
+              Il totale delle ricevute dell&apos;anno va nella dichiarazione dei redditi: scarica il riepilogo per il tuo commercialista, oppure scrivi qui sotto la sua email e spunta &quot;Mandagli l&apos;estratto&quot;: a gennaio gli arriva anche il riepilogo.
             </Text>
           ) : null}
           {years.map((year) => (

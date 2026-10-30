@@ -1158,7 +1158,11 @@ export function RequestCard({
 
           {/* Fattura chiesta dal cliente (docs/CHANGELOG.md §378): i dati da copiare, e la copia di cortesia. */}
           {booking?.invoiceRequest && booking.status !== "CANCELED" ? (
-            <ProfessionalInvoiceRequestBox request={booking.invoiceRequest} courtesyHref={`/dashboard/documenti/cortesia/${booking.id}`} />
+            <ProfessionalInvoiceRequestBox
+              request={booking.invoiceRequest}
+              receipt={booking.clientDocumentKind === "RECEIPT"}
+              courtesyHref={booking.status === "COMPLETED" ? `/dashboard/documenti/cortesia/${booking.id}` : undefined}
+            />
           ) : null}
           {/* Copia di cortesia anche senza richiesta, a lavoro terminato (§378). */}
           {booking && !booking.invoiceRequest && booking.status === "COMPLETED" ? (
