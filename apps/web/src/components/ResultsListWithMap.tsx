@@ -185,12 +185,18 @@ export function ResultsListWithMap({
     setVisible(within);
   }
 
-  // Ranking già applicato da apiClient.searchProfessionals (boost→rating→recensioni):
+  // Ranking già applicato da apiClient.searchProfessionals (boost→rating→recensioni→distanza):
   // manteniamo lo stesso ordine anche nel sottoinsieme filtrato per inquadratura mappa.
+  // Prima l'ordine della ricerca per città, che conosce le distanze; poi gli
+  // altri professionisti visibili sulla mappa nell'ordine di tutta la ricerca.
+  // Prima si usava solo quest'ultimo, senza distanze: a parità di stelle e
+  // recensioni non veniva prima il più vicino, come dice la spiegazione
+  // "Ordinato per pertinenza" (collaudo del 29/10/2026, M-08).
   const orderedVisible = useMemo(() => {
-    const order = new Map(pool.map((pro, index) => [pro.id, index]));
+    const order = new Map(professionals.map((pro, index) => [pro.id, index]));
+    for (const pro of pool) if (!order.has(pro.id)) order.set(pro.id, order.size);
     return [...visible].sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
-  }, [visible, pool]);
+  }, [visible, pool, professionals]);
 
   // Pannello filtri (richiesta esplicita dell'utente, riferimento
   // miodottore.it: bottone "Filtri" sopra "Mostra mappa", apre un pannello

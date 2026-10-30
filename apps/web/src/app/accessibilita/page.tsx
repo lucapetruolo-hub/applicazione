@@ -10,35 +10,34 @@ export const metadata: Metadata = {
 
 /**
  * Dichiarazione di accessibilità (richiesta esplicita dell'utente, "Verbale
- * di Conformità" — punto del piano d'azione "pagina accessibilità
- * pubblica"): documenta l'audit già svolto durante il redesign (CLAUDE.md
- * §10, Fase 6 "anti-spam, SEO, accessibilità, performance") invece di
- * limitarsi a una dichiarazione di intenti generica — punteggio Lighthouse
- * reale, interventi WCAG concreti già fatti, limiti noti onestamente
- * dichiarati. Stesso layout condiviso di /privacy, /termini, /cookie
- * (`LegalPage`).
+ * di Conformità"): come verifichiamo, limiti noti dichiarati onestamente e
+ * a chi scrivere. Aggiornata dopo il collaudo del 29/10/2026 (M-12): quando
+ * il gruppo 6 "Accessibilità con la tastiera" sistema i problemi, va
+ * aggiornato il punto 3. Stesso layout di /privacy, /termini, /cookie.
  */
 export default function AccessibilitaPage() {
   return (
     <LegalPage
       title="Accessibilità"
-      updatedAt="7 settembre 2026"
+      updatedAt="30 ottobre 2026"
       sections={[
         {
           heading: "1. Il nostro impegno",
-          body: BRAND.name + " è pensato per essere usabile dal maggior numero di persone possibile, incluse quelle che usano tecnologie assistive (screen reader, navigazione da tastiera) o hanno difficoltà visive, motorie o cognitive. Prendiamo come riferimento le Web Content Accessibility Guidelines (WCAG) 2.1, livello AA, e lo European Accessibility Act (Direttiva (UE) 2019/882, recepita in Italia con il D.Lgs. 82/2022) — la norma applicabile ai servizi digitali rivolti ai consumatori come il nostro, in vigore dal 28 giugno 2025 (la Direttiva (UE) 2016/2102, spesso citata per errore in questo contesto, riguarda solo i siti e le app della pubblica amministrazione).",
+          body: BRAND.name + " è pensato per essere usabile dal maggior numero di persone possibile, incluse quelle che usano tecnologie assistive (lettori di schermo, navigazione da tastiera) o hanno difficoltà visive, motorie o cognitive. Prendiamo come riferimento le Web Content Accessibility Guidelines (WCAG) 2.1, livello AA, e lo European Accessibility Act (Direttiva (UE) 2019/882, recepita in Italia con il D.Lgs. 82/2022).",
         },
         {
-          heading: "2. Cosa abbiamo già verificato e corretto",
-          body: "Un audit reale (non solo una lettura del codice) con Lighthouse e con test automatizzati basati su Playwright ha misurato un punteggio di Accessibilità di 100/100 sulle pagine principali (home, ricerca per categoria, profilo professionista) dopo aver corretto i problemi rilevati: un collegamento \"Vai al contenuto\" per saltare l'intestazione con la tastiera, ruoli e stati ARIA sugli elementi interattivi (card cliccabili, dialoghi, pulsanti di stato), contrasto colore conforme su tutti i link e i testi principali, ed etichette accessibili coerenti con il testo visibile (evitando la violazione WCAG 2.5.3 \"Label in Name\"). Il sito rispetta inoltre la preferenza di sistema \"riduci le animazioni\" (prefers-reduced-motion): con questa opzione attiva, le transizioni diventano istantanee invece di animarsi.",
+          // Niente più "100/100": il collaudo del 29/10/2026 (M-12, L-01…L-14)
+          // ha trovato problemi con la tastiera che quel punteggio non vedeva.
+          heading: "2. Come lo verifichiamo",
+          body: "Controlliamo le pagine principali (home, ricerca, profilo del professionista, richiesta di preventivo) con strumenti automatici (Lighthouse, axe e test con Playwright) a ogni modifica del sito, e con prove a mano da telefono e computer, anche usando solo la tastiera. Ultima verifica completa: 29 ottobre 2026. Il sito ha un collegamento \"Vai al contenuto\" per saltare l'intestazione, etichette leggibili dai lettori di schermo su pulsanti e campi, contrasti di colore conformi sui testi principali e rispetta l'impostazione \"riduci le animazioni\" del dispositivo.",
         },
         {
           heading: "3. Limiti noti",
-          body: "Alcune parti del sito non sono ancora state verificate con lo stesso livello di dettaglio delle pagine principali: in particolare l'agenda del professionista (calendario personalizzato) e la mappa dei risultati di ricerca (basata su Google Maps), entrambe costruite su misura perché nessuna libreria pronta si adattava alle esigenze del prodotto. Stiamo lavorando per estendere la stessa verifica a queste sezioni. Il punteggio di performance complessivo del sito (diverso da quello di accessibilità) è inferiore all'obiettivo interno a causa della scelta architetturale di condividere lo stesso design system tra sito web e app mobile: una scelta consapevole, non ancora ottimizzata.",
+          body: "L'ultima verifica ha trovato alcune parti che con la sola tastiera non funzionano ancora bene: alcune schede di richieste e preventivi non si aprono e alcune caselle da spuntare non rispondono al tasto spazio; ci stiamo lavorando. L'agenda del professionista e la mappa dei risultati (Google Maps) non sono ancora state verificate con lo stesso dettaglio: i risultati della ricerca sono sempre disponibili anche come elenco, senza la mappa.",
         },
         {
           heading: "4. Segnala un problema di accessibilità",
-          body: "Se incontri una barriera all'accesso su questo sito, scrivici a [DA COMPILARE: email accessibilità/assistenza] descrivendo la pagina e il problema riscontrato: ti risponderemo e lavoreremo per risolverlo. Questa pagina verrà aggiornata quando l'indirizzo reale sarà disponibile.",
+          body: `Se incontri una barriera su questo sito, scrivici a ${BRAND.supportEmail} o dalla pagina Contatti, indicando la pagina e il problema: ti rispondiamo e lavoriamo per risolverlo.`,
         },
       ]}
     />

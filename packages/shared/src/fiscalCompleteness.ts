@@ -81,6 +81,6 @@ export const TRADER_STATUS_COPY: Record<ProfessionalTraderStatus, { label: strin
 
 /** Testo del badge per chi ha completato la verifica di identità su Stripe (§241). */
 export const STRIPE_VERIFIED_BADGE = {
-  label: "Identità verificata da Stripe",
-  note: "Stripe, il fornitore dei pagamenti, ha verificato l'identità del professionista. Non è una garanzia sulla qualità del lavoro.",
+  label: "Pagamenti online attivi",
+  note: "Si può pagare online con carta: Stripe, il fornitore dei pagamenti, ha controllato i dati del professionista per farlo incassare. Non è una garanzia sulla qualità del lavoro.",
 };

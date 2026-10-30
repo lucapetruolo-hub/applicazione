@@ -88,6 +88,7 @@ test("casi tipici", () => {
   assert.equal(matchProblem("Mi è rimasta la chiave dentro e la porta blindata non si apre").categories[0]?.slug, "fabbro");
   assert.equal(matchProblem("sento puzza di gas in cucina").safety, "gas");
   assert.equal(matchProblem("la presa fa scintille").safety, "elettrico");
+  assert.equal(matchProblem("sento un rumore strano nel muro quando piove e c'è una macchia scura vicino alla presa").safety, "acqua-elettrico");
   assert.equal(matchProblem("la lavatrice non scarica e dà errore E21").outOfService, "elettrodomestici");
   assert.equal(matchProblem("devo installare la lavatrice nuova").outOfService, null);
   assert.equal(matchProblem("macchia di umido sul soffitto del bagno").question?.id, "macchia");

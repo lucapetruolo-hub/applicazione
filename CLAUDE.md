@@ -249,7 +249,7 @@ sia UI/routing — la logica va in `apps/api` o `packages/shared`.
     `apps/api/src/professional-fiscal/public-visibility.ts`, decisione
     dell'utente, docs/CHANGELOG.md §241: profilo pubblico con tipo e dati
     DAC7 compilati; la verifica KYC/KYB di Stripe serve solo per l'acconto
-    online e il badge "Identità verificata da Stripe", `stripeVerified`); in più un codice fiscale o una partita IVA che Openapi
+    online e il badge "Pagamenti online attivi", `stripeVerified`, prima "Identità verificata da Stripe"); in più un codice fiscale o una partita IVA che Openapi
     dice non validi tolgono il profilo dalla ricerca (§253).
 12. **Ogni nuova rotta admin dichiara `@RequireAdminScope`**
     (`apps/api/src/admin/admin.guard.ts`): senza decoratore è aperta a
