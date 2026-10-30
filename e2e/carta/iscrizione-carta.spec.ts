@@ -213,10 +213,16 @@ test("primo addebito fallito dopo i mesi gratis (0341, test clock): abbonamento 
   const row = await waitForCard(profileId!);
 
   // Tre mesi dopo, più il tempo in cui Stripe tiene la fattura in bozza.
-  await stripe("POST", `test_helpers/test_clocks/${clock.id}/advance`, { frozen_time: Math.floor(row.trialEndsAt!.getTime() / 1000) + 2 * 3600 });
-  await expect
-    .poll(async () => (await stripe<{ status: string }>("GET", `test_helpers/test_clocks/${clock.id}`)).status, { timeout: 120_000, intervals: [3000] })
-    .toBe("ready");
+  // Stripe fa avanzare il test clock al massimo di due mesi per volta.
+  const target = Math.floor(row.trialEndsAt!.getTime() / 1000) + 2 * 3600;
+  let frozen = Math.floor(Date.now() / 1000);
+  while (frozen < target) {
+    frozen = Math.min(target, frozen + 55 * 24 * 3600);
+    await stripe("POST", `test_helpers/test_clocks/${clock.id}/advance`, { frozen_time: frozen });
+    await expect
+      .poll(async () => (await stripe<{ status: string }>("GET", `test_helpers/test_clocks/${clock.id}`)).status, { timeout: 120_000, intervals: [3000] })
+      .toBe("ready");
+  }
 
   await expect.poll(async () => (await subscriptionOf(profileId!)).status, { timeout: 90_000 }).toBe("PAST_DUE");
   const notice = await prisma.notification.findFirst({ where: { userId: user.id, type: "SUBSCRIPTION_PAYMENT_FAILED" } });
