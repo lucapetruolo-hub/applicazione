@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import {
   Button,
@@ -100,6 +100,37 @@ export function CardActionsMenu({
     };
   }, [isOpen]);
 
+  // Da tastiera (docs/changelog/2026-10-30-tastiera.md, collaudo L-01): la
+  // tendina sta in fondo alla pagina (portal), quindi all'apertura il fuoco
+  // va sulla prima voce, le frecce si muovono tra le voci, Esc e Tab la
+  // chiudono e riportano il fuoco sul pulsante.
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (isOpen) {
+      dropdownRef.current?.querySelector<HTMLElement>('[role="menuitem"], button')?.focus();
+    } else if (wasOpen.current && (!document.activeElement || document.activeElement === document.body)) {
+      // Il fuoco era nella tendina appena tolta: torna sul pulsante.
+      buttonRef.current?.focus();
+    }
+    wasOpen.current = isOpen;
+  }, [isOpen, confirming]);
+
+  function onMenuKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Escape" || event.key === "Tab") {
+      event.preventDefault();
+      close();
+      return;
+    }
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp" && event.key !== "Home" && event.key !== "End") return;
+    const items = Array.from(dropdownRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"], button') ?? []);
+    if (items.length === 0) return;
+    event.preventDefault();
+    const current = items.indexOf(document.activeElement as HTMLElement);
+    const next =
+      event.key === "Home" ? 0 : event.key === "End" ? items.length - 1 : event.key === "ArrowDown" ? (current + 1) % items.length : (current - 1 + items.length) % items.length;
+    items[next]?.focus();
+  }
+
   function open() {
     const rect = buttonRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -165,6 +196,8 @@ export function CardActionsMenu({
         }}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
       >
         <Icon name="menu" size={22} color={isOpen ? brand.calce : brand.cianografiaScuro} strokeWidth={2.25} />
       </YStack>
@@ -180,6 +213,7 @@ export function CardActionsMenu({
               ref={dropdownRef}
               role="presentation"
               onClick={(e) => e.stopPropagation()}
+              onKeyDown={onMenuKeyDown}
               style={{
                 position: "fixed",
                 top: anchor.top,
@@ -193,6 +227,8 @@ export function CardActionsMenu({
               }}
             >
               <YStack
+                role={confirming ? undefined : "menu"}
+                aria-label={confirming ? undefined : accessibilityLabel}
                 minWidth={confirming ? 250 : 220}
                 backgroundColor={brand.calce}
                 borderRadius={radiusDoc}
@@ -251,6 +287,7 @@ export function CardActionsMenu({
                         gap="$2"
                         cursor="pointer"
                         hoverStyle={{ backgroundColor: brand.gesso }}
+                        focusVisibleStyle={{ backgroundColor: brand.gesso }}
                         onPress={(e: { stopPropagation: () => void }) => {
                           e.stopPropagation();
                           if (action.confirm) {
@@ -260,7 +297,8 @@ export function CardActionsMenu({
                           close();
                           action.onPress();
                         }}
-                        accessibilityRole="button"
+                        role="menuitem"
+                        tabIndex={-1}
                       >
                         <Icon name={action.icon} size={16} color={color} />
                         <YStack>

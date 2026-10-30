@@ -31,6 +31,8 @@ type Props = {
   /** Chiamata quando si sceglie un suggerimento: indirizzo verificato con coordinate esatte. */
   onSelect: (selected: SelectedAddress) => void;
   placeholder?: string;
+  /** Nome del campo per il lettore di schermo; senza, si legge il segnaposto (collaudo L-11). */
+  ariaLabel?: string;
   style?: CSSProperties;
   /** Favorisce i suggerimenti vicini a questo punto (es. il comune indicato nel profilo), senza escludere il resto d'Italia. */
   biasTowards?: { latitude: number; longitude: number } | null;
@@ -66,7 +68,7 @@ function normalizePlaceName(name: string): string {
  * tutti senza consenso ai cookie. Se il servizio non risponde resta un
  * normale campo di testo.
  */
-export function AddressAutocompleteInput({ value, onChange, onSelect, placeholder, style, biasTowards, restrictToCity, onServiceUnavailable, disabled }: Props) {
+export function AddressAutocompleteInput({ value, onChange, onSelect, placeholder, ariaLabel, style, biasTowards, restrictToCity, onServiceUnavailable, disabled }: Props) {
   // Fuori da React Compiler: usa `<style jsx>` (docs/CHANGELOG.md §345).
   "use no memo";
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -161,7 +163,7 @@ export function AddressAutocompleteInput({ value, onChange, onSelect, placeholde
 
   return (
     <div className="address-autocomplete">
-      <input aria-label={placeholder}
+      <input aria-label={ariaLabel ?? placeholder}
         value={value}
         onChange={(e) => {
           typedRef.current = true;
@@ -202,7 +204,7 @@ export function AddressAutocompleteInput({ value, onChange, onSelect, placeholde
         {open ? (suggestions.length > 0 ? `${suggestions.length} ${suggestions.length === 1 ? "suggerimento" : "suggerimenti"}: usa le frecce per sceglierne uno.` : "Nessun indirizzo trovato.") : ""}
       </span>
       {open && suggestions.length > 0 ? (
-        <ul id={listboxId} className="address-suggestions" role="listbox">
+        <ul id={listboxId} className="address-suggestions" role="listbox" tabIndex={-1}>
           {suggestions.map((s, i) => (
             <li
               key={s.id}

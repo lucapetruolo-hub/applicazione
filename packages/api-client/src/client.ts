@@ -761,7 +761,6 @@ export type CurrentUser = {
   email: string | null;
   name: string | null;
   surname: string | null;
-  birthDate: string | null;
   role: "CLIENT" | "PROFESSIONAL" | "ADMIN";
   /**
    * Vero se l'account gestisce un profilo professionista, a prescindere dal

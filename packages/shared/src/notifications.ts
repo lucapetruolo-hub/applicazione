@@ -192,6 +192,8 @@ export const NOTIFICATION_TOPIC_INFO: Record<NotificationTopic, NotificationTopi
       // Misura per segnalazioni accolte (§167): non si spegne, come la sospensione.
       "JOB_ISSUE_SANCTION",
       "ACCOUNT_REACTIVATED",
+      // Cambio dei Termini annunciato a tutti, 15 giorni prima (docs/changelog/2026-10-30-termini-privacy-obblighi.md).
+      "TERMS_CHANGED",
       // Badge "Verificato" assegnato o tolto da un admin (docs/CHANGELOG.md §200).
       "PROFILE_VERIFIED",
       "PROFILE_VERIFICATION_REMOVED",

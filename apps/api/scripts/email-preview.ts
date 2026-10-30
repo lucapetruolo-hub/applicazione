@@ -248,6 +248,7 @@ notification("CONTENT_REPORT_REVERTED", "Professionista", "Segnalazioni e modera
 notification("CONTENT_REPORT_APPEAL_REJECTED", "Professionista", "Segnalazioni e moderazione", { note: "La decisione resta valida." });
 notification("ACCOUNT_SUSPENDED", "Tutti", "Segnalazioni e moderazione", { note: "Violazioni ripetute dei Termini di servizio." });
 notification("ACCOUNT_REACTIVATED", "Tutti", "Segnalazioni e moderazione", { note: "Sospensione annullata dopo verifica." });
+notification("TERMS_CHANGED", "Tutti", "Account e sicurezza", { version: "2026-10-30" });
 add("admin-nuova-segnalazione", "Segnalazioni e moderazione", "Admin", adminNewReportEmail({ what: "Recensione", reason: "Contiene insulti" }));
 
 const outDir = process.argv[2] ?? "email-preview";

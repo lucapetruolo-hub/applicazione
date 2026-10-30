@@ -358,7 +358,7 @@ export function SlotEditorModal({
                 onPress={() => void enableOnline()}
                 onKeyDown={keyActivate(() => void enableOnline())}
                 accessibilityRole="button"
-                aria-label="Attiva l'online: lavori anche in videochiamata"
+                aria-label={onlineError ? undefined : "Online: attivalo per lavorare anche in videochiamata"}
                 aria-disabled={enablingOnline}
               >
                 <Icon name="plus" size={18} strokeWidth={2} color={brand.grafite70} />

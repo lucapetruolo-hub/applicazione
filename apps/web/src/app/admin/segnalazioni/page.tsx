@@ -309,7 +309,7 @@ function ReportCard({ report, token, onChanged }: { report: AdminContentReport; 
           </Button>
           {href ? (
             <Link href={href} target="_blank" style={{ textDecoration: "none" }}>
-              <Button variant="secondary" size="$3">
+              <Button tabIndex={-1} variant="secondary" size="$3">
                 Pagina pubblica
               </Button>
             </Link>

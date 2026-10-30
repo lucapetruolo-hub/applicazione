@@ -45,7 +45,7 @@ export function EmptySearchResults({
         </YStack>
       </XStack>
       <Link href={href} style={{ textDecoration: "none", alignSelf: "flex-start" }}>
-        <Button variant="primary">Invia la richiesta</Button>
+        <Button tabIndex={-1} variant="primary">Invia la richiesta</Button>
       </Link>
     </YStack>
   );

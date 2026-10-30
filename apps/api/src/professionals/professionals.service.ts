@@ -175,6 +175,9 @@ const PROFESSIONAL_DETAIL_INCLUDE = {
   metrics: true,
 } satisfies Prisma.ProfessionalProfileInclude;
 
+/** Risposte misurate prima di mostrare "Risponde subito" o "Risponde entro…" sul profilo. */
+const MIN_RESPONSES_FOR_PUBLIC_TIME = 3;
+
 @Injectable()
 export class ProfessionalsService {
   constructor(
@@ -697,7 +700,11 @@ export class ProfessionalsService {
       bio: profile.bio,
       portfolioUrls: profile.portfolioUrls,
       completedJobsTotal: profile.metrics?.completedJobs ?? 0,
-      avgResponseTimeMinutes: profile.metrics?.avgResponseTimeMinutes ?? null,
+      // Il tempo di risposta sul profilo pubblico solo con abbastanza risposte
+      // misurate: "Risponde subito" su un profilo nuovo, con una sola risposta,
+      // diceva più di quanto si sapeva (collaudo del 29/10/2026, M-14).
+      avgResponseTimeMinutes:
+        (profile.metrics?.totalResponsesMeasured ?? 0) >= MIN_RESPONSES_FOR_PUBLIC_TIME ? (profile.metrics?.avgResponseTimeMinutes ?? null) : null,
       yearsOfExperience: profile.yearsOfExperience,
       certifications: profile.certifications,
       hasLiabilityInsurance: profile.hasLiabilityInsurance,

@@ -190,7 +190,6 @@ export class AuthController {
     email: string | null;
     name: string | null;
     surname: string | null;
-    birthDate: Date | null;
     role: "CLIENT" | "PROFESSIONAL" | "ADMIN";
     adminRoles?: ("SUPER" | "MODERATOR" | "FINANCE")[];
     passwordHash: string | null;
@@ -212,7 +211,7 @@ export class AuthController {
     sidebarCollapsed?: boolean | null;
     testAccountAt?: Date | null;
   }) {
-    const { id, phone, email, name, surname, birthDate, role, passwordHash, imageUrl, street, houseNumber, addressExtra, postalCode, city, province } = user;
+    const { id, phone, email, name, surname, role, passwordHash, imageUrl, street, houseNumber, addressExtra, postalCode, city, province } = user;
     // Bug reale corretto (richiesta esplicita dell'utente: "quando faccio
     // admin una email scompare il campo agenda dal suo menu"): promuovere un
     // professionista ad ADMIN (AdminService.promoteToAdmin) sovrascrive
@@ -245,7 +244,6 @@ export class AuthController {
       email,
       name,
       surname,
-      birthDate,
       role,
       // Vero per un account PROFESSIONAL "normale" (anche senza ancora un
       // profilo creato — un professionista appena registrato deve poter

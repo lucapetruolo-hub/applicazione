@@ -185,7 +185,7 @@ export function SearchBar({
                 gap={5}
                 $gtLg={{ paddingHorizontal: 10 }}
                 borderRadius="$10"
-                backgroundColor={active ? brand.cianografia : "transparent"}
+                backgroundColor={active ? brand.cianografiaPieno : "transparent"}
                 cursor="pointer"
                 alignItems="center"
                 justifyContent="center"
@@ -307,7 +307,7 @@ export function SearchBar({
               paddingHorizontal="$3"
               paddingVertical="$2"
               borderRadius="$10"
-              backgroundColor={active ? brand.cianografia : "transparent"}
+              backgroundColor={active ? brand.cianografiaPieno : "transparent"}
               cursor="pointer"
               alignItems="center"
               justifyContent="center"
@@ -316,6 +316,7 @@ export function SearchBar({
               gap="$2"
               onPress={() => handleModeChange(tab.key)}
               accessibilityRole="button"
+              aria-pressed={active}
               accessibilityLabel={tab.label}
             >
               <Icon name={tab.icon} size={15} color={active ? "white" : brand.grafite70} />

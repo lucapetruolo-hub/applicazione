@@ -150,7 +150,7 @@ export default function DashboardStatistichePage() {
             Accedi come professionista
           </Text>
           <Link href="/accedi?redirect=/dashboard/statistiche" style={{ textDecoration: "none" }}>
-            <Button variant="primary">Accedi</Button>
+            <Button tabIndex={-1} variant="primary">Accedi</Button>
           </Link>
         </YStack>
       </YStack>

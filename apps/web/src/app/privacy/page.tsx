@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { LegalPage } from "@/components/LegalPage";
-import { BRAND } from "@professionisti/shared";
+import { LegalList, LegalPage, LegalSummary } from "@/components/LegalPage";
+import { BRAND, CLIENT_DELETED_REQUEST_RETENTION_DAYS, COMPANY } from "@professionisti/shared";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -12,35 +12,67 @@ export default function PrivacyPage() {
   return (
     <LegalPage
       title="Privacy Policy"
-      updatedAt="27 ottobre 2026"
+      updatedAt="30 ottobre 2026"
+      intro={
+        <LegalSummary
+          points={[
+            "Usiamo i tuoi dati per farti trovare un professionista o dei clienti, e per la sicurezza del sito.",
+            "Al professionista diamo telefono, email e indirizzo solo quando accetti un suo preventivo.",
+            "Non vendiamo i tuoi dati a nessuno.",
+            "Ogni dato ha un tempo di conservazione, scritto al punto 5; chiudendo l'account nome e contatti si cancellano subito.",
+            "Puoi vedere, scaricare, correggere o cancellare i tuoi dati quando vuoi.",
+          ]}
+        />
+      }
       sections={[
         {
           heading: "1. Titolare del trattamento",
-          body: "Il titolare del trattamento dei dati è [DA COMPILARE: ragione sociale, sede legale, P.IVA], contattabile all'indirizzo email [DA COMPILARE: email privacy]. Questa bozza va completata con i dati reali dell'azienda e verificata da un legale prima del lancio definitivo.",
+          body: `Il titolare del trattamento dei dati è ${COMPANY.legalName}, ${COMPANY.address}, P.IVA ${COMPANY.vatNumber}, PEC ${COMPANY.pec}. Per qualsiasi domanda sui tuoi dati scrivi a ${COMPANY.privacyEmail}. Questa bozza va verificata da un legale prima del lancio definitivo.`,
         },
         {
           heading: "2. Dati che raccogliamo",
-          body: "Raccogliamo i dati che ci fornisci direttamente: nome, indirizzo email, numero di telefono (se lo inserisci), città e indirizzo dell'intervento, descrizione del lavoro richiesto, eventuali foto o video caricati, e — per i professionisti — i dati del profilo pubblico (nome attività, categoria, zona, servizi e prezzi). Raccogliamo inoltre dati tecnici di navigazione (log, indirizzo IP, tipo di browser) necessari al funzionamento e alla sicurezza del servizio.",
+          body: "Raccogliamo i dati che ci fornisci direttamente: nome, indirizzo email, numero di telefono (se lo inserisci), città e indirizzo dell'intervento, descrizione del lavoro richiesto, eventuali foto o video caricati, i messaggi della chat, e — per i professionisti — i dati del profilo pubblico (nome attività, categoria, zona, servizi e prezzi) e i dati fiscali (codice fiscale, partita IVA, indirizzo, IBAN per la DAC7). Nella descrizione del lavoro e nelle foto scrivi e mostra solo quello che serve: in particolare, per le richieste di Babysitter, non caricare foto di bambini e non scrivere dati sulla loro salute. Raccogliamo inoltre dati tecnici di navigazione (log, indirizzo IP, tipo di browser) necessari al funzionamento e alla sicurezza del servizio.",
         },
         {
           heading: "3. Perché trattiamo i tuoi dati (finalità e base giuridica)",
-          body: "Trattiamo i dati per: (a) creare e gestire il tuo account (esecuzione del contratto); (b) metterti in contatto con i professionisti o con i clienti (esecuzione del contratto); (c) inviarti comunicazioni di servizio relative alle tue richieste e prenotazioni (esecuzione del contratto); (d) migliorare la piattaforma e garantirne la sicurezza e la qualità: a questo scopo le conversazioni tra clienti e professionisti sulla piattaforma possono essere lette dal nostro personale autorizzato, per esempio per gestire segnalazioni, contestazioni o abusi, e ogni lettura viene registrata (legittimo interesse); (e) adempiere obblighi di legge. Il conferimento dei dati di contatto è necessario per usare il servizio; senza di essi non possiamo inoltrare le richieste.",
+          body: "Trattiamo i dati per: (a) creare e gestire il tuo account (esecuzione del contratto); (b) metterti in contatto con i professionisti o con i clienti (esecuzione del contratto); (c) inviarti comunicazioni di servizio relative alle tue richieste e prenotazioni (esecuzione del contratto); (d) migliorare la piattaforma e garantirne la sicurezza e la qualità: a questo scopo le conversazioni tra clienti e professionisti sulla piattaforma possono essere lette dal nostro personale autorizzato, per esempio per gestire segnalazioni, contestazioni o abusi, e ogni lettura viene registrata (legittimo interesse); (e) proporti il mestiere giusto quando descrivi il problema con parole tue (legittimo interesse a farti trovare la persona giusta, vedi il punto 4); (f) seguire da vicino le richieste per cui scegli \"Ce ne occupiamo noi\": il nostro personale legge la richiesta per trovarti i professionisti (esecuzione del contratto); (g) adempiere obblighi di legge, tra cui fiscali e contabili e la comunicazione DAC7 dei professionisti all'Agenzia delle Entrate. Dove il trattamento si basa sul tuo consenso (verifica con il volto, promemoria su WhatsApp, mappa interattiva) puoi revocarlo in qualsiasi momento, senza effetto su quanto fatto prima. Il conferimento dei dati di contatto è necessario per usare il servizio; senza di essi non possiamo inoltrare le richieste.",
         },
         {
           heading: "4. Con chi condividiamo i dati",
-          body: "Condividiamo i dati strettamente necessari con: i professionisti a cui invii una richiesta (descrizione del lavoro e città; nome, telefono, email e indirizzo solo dopo che hai accettato un preventivo); i clienti, se sei un professionista (dati del tuo profilo pubblico). Ci aiutano a erogare il servizio, come responsabili del trattamento, questi fornitori: Render (server e database), Vercel (sito web e statistiche di visita anonime, senza cookie), Cloudinary (foto e video caricati), Resend (invio delle email), Google (accesso con Google, mappe, suggerimenti e ricerca degli indirizzi), Sentry (segnalazione degli errori tecnici del server, senza indirizzo IP né cookie), Cloudflare (controllo anti-bot quando crei un account con email e password, chiedi una nuova password o ci scrivi dalla pagina Contatti, senza cookie di profilazione) e, quando attivi i pagamenti online, Stripe (pagamenti con carta). Se accendi i promemoria su WhatsApp in Notifiche, Meta (WhatsApp) riceve il tuo numero e il testo dei promemoria. Per i professionisti, il controllo dei dati fiscali e dell'identità passa anche da Openapi e Didit (vedi il punto 8). La mappa interattiva viene caricata nel tuo browser solo dopo il tuo consenso. L'accesso con Google si apre in una finestra di Google solo quando lo scegli. L'immagine fissa della mappa e i suggerimenti degli indirizzi li chiede a Google il nostro server, senza cookie né dati del tuo browser (per i suggerimenti invia solo il testo che scrivi). Nell'agenda dei professionisti il nostro server chiede il meteo a Open-Meteo (solo le coordinate della zona del profilo o del comune dei lavori del giorno, mai l'indirizzo né altri dati personali) e i tempi di strada del giro a Google, a cui invia gli indirizzi delle tappe del giorno. Non vendiamo i tuoi dati a terzi.",
+          id: "fornitori",
+          body: "Condividiamo i dati strettamente necessari con: i professionisti a cui invii una richiesta (descrizione del lavoro e città; nome, telefono, email e indirizzo solo dopo che hai accettato un preventivo); i clienti, se sei un professionista (dati del tuo profilo pubblico). Ci aiutano a erogare il servizio, come responsabili del trattamento, questi fornitori: Render (server e database), Vercel (sito web e statistiche di visita anonime, senza cookie), Cloudinary (foto e video caricati), Resend (invio delle email), Google (accesso con Google, mappe, suggerimenti e ricerca degli indirizzi), Sentry (segnalazione degli errori tecnici del server, senza indirizzo IP né cookie), Cloudflare (controllo anti-bot quando crei un account con email e password, chiedi una nuova password o ci scrivi dalla pagina Contatti, senza cookie di profilazione) e, quando attivi i pagamenti online, Stripe (pagamenti con carta). Se accendi i promemoria su WhatsApp in Notifiche, Meta (WhatsApp) riceve il tuo numero e il testo dei promemoria. Per i professionisti, il controllo dei dati fiscali e dell'identità passa anche da Openapi e Didit (vedi il punto 8), e le fatture della piattaforma vanno al Sistema di Interscambio dell'Agenzia delle Entrate tramite Openapi. Quando descrivi il problema con parole tue e il nostro dizionario non basta a capire il mestiere, il testo, senza email, numeri di telefono, indirizzi e link, va a un servizio di intelligenza artificiale che propone il mestiere: Anthropic o, prima del lancio, OpenRouter, che lo passa a un modello gratuito (oggi di Google); i fornitori dei modelli gratuiti possono usare questi testi per migliorare i loro modelli. Il risultato è solo una proposta che puoi sempre cambiare, e lo indichiamo con la scritta \"Proposta automatica\". Comunichiamo i dati alle autorità quando la legge lo chiede: in particolare, ogni anno, i dati dei professionisti e dei loro incassi tramite la piattaforma all'Agenzia delle Entrate (DAC7, D.Lgs. 32/2023). La mappa interattiva viene caricata nel tuo browser solo dopo il tuo consenso. L'accesso con Google si apre in una finestra di Google solo quando lo scegli. L'immagine fissa della mappa e i suggerimenti degli indirizzi li chiede a Google il nostro server, senza cookie né dati del tuo browser (per i suggerimenti invia solo il testo che scrivi). Nell'agenda dei professionisti il nostro server chiede il meteo a Open-Meteo (solo le coordinate della zona del profilo o del comune dei lavori del giorno, mai l'indirizzo né altri dati personali) e i tempi di strada del giro a Google, a cui invia gli indirizzi delle tappe del giorno. Non vendiamo i tuoi dati a terzi.",
         },
         {
           heading: "5. Conservazione",
-          body: "Conserviamo i dati per il tempo necessario a fornire il servizio e adempiere gli obblighi di legge. Puoi chiedere la cancellazione del tuo account in qualsiasi momento: i dati saranno eliminati o anonimizzati, salvo quelli che dobbiamo conservare per legge.",
+          body: "Conserviamo i dati solo per il tempo che serve, come indicato qui sotto. Puoi chiudere il tuo account in qualsiasi momento da Impostazioni: nome, cognome, email, telefono, data di nascita, foto del profilo e password vengono cancellati subito; il resto segue i tempi dell'elenco.",
+          after: (
+            <LegalList
+              items={[
+                { title: "Dati dell'account", rows: [["Per quanto", "finché l'account è aperto; alla chiusura cancellati subito, come detto sopra"]] },
+                {
+                  title: "Richieste, preventivi, lavori, chat e recensioni",
+                  rows: [
+                    ["Per quanto", "finché l'account è aperto; dopo la chiusura restano senza il tuo nome (\"Account eliminato\"), perché all'altra parte servono per il lavoro, per le garanzie e per eventuali segnalazioni"],
+                    ["Richiesta eliminata da te", `cancellata dopo ${CLIENT_DELETED_REQUEST_RETENTION_DAYS} giorni, salvo una segnalazione aperta`],
+                  ],
+                },
+                { title: "Descrizioni del problema per proporre il mestiere", rows: [["Per quanto", "1 anno"]] },
+                { title: "Esito della verifica dell'identità e dei dati fiscali", rows: [["Per quanto", "finché l'account è aperto, poi quanto chiede la legge per la DAC7"]] },
+                { title: "Dati fiscali dei professionisti e comunicazioni DAC7", rows: [["Per quanto", "10 anni dalla fine dell'anno a cui si riferiscono (D.Lgs. 32/2023)"]] },
+                { title: "Fatture, pagamenti online e documenti contabili", rows: [["Per quanto", "10 anni (art. 2220 del codice civile)"]] },
+                { title: "Conteggi per migliorare il sito", rows: [["Per quanto", "25 mesi, solo numeri per giorno (punto 9)"]] },
+                { title: "Log tecnici e segnalazioni di errore", rows: [["Per quanto", "il tempo breve previsto dal servizio del fornitore, di norma poche settimane"]] },
+              ]}
+            />
+          ),
         },
         {
           heading: "6. I tuoi diritti",
-          body: "Hai diritto di accedere ai tuoi dati, rettificarli, cancellarli, limitarne o opporti al trattamento, e alla portabilità. Puoi esercitarli scrivendo a [DA COMPILARE: email privacy]. Hai inoltre diritto di reclamo al Garante per la protezione dei dati personali (www.garanteprivacy.it).",
+          body: `Hai diritto di accedere ai tuoi dati, rettificarli, cancellarli, limitarne o opporti al trattamento, e alla portabilità. Puoi esercitarli scrivendo a ${COMPANY.privacyEmail}; scarichi una copia dei tuoi dati anche da Impostazioni con "Esporta i tuoi dati". Ti rispondiamo entro un mese. Hai inoltre diritto di reclamo al Garante per la protezione dei dati personali (www.garanteprivacy.it).`,
         },
         {
           heading: "7. Trasferimenti extra-UE",
-          body: "Alcuni dei fornitori elencati al punto 4 hanno sede o server negli Stati Uniti: Render, Vercel, Cloudinary, Resend, Google, Sentry, Cloudflare, Stripe e Meta. Il trasferimento avviene con garanzie adeguate: la decisione di adeguatezza UE-USA (Data Privacy Framework) per i fornitori che vi aderiscono, altrimenti le clausole contrattuali standard approvate dalla Commissione europea. Puoi chiederci copia delle garanzie scrivendo all'indirizzo del punto 1.",
+          body: "Alcuni dei fornitori elencati al punto 4 hanno sede o server negli Stati Uniti: Render, Vercel, Cloudinary, Resend, Google, Sentry, Cloudflare, Stripe, Meta, Anthropic e OpenRouter. Il trasferimento avviene con garanzie adeguate: la decisione di adeguatezza UE-USA (Data Privacy Framework) per i fornitori che vi aderiscono, altrimenti le clausole contrattuali standard approvate dalla Commissione europea. Puoi chiederci copia delle garanzie scrivendo all'indirizzo del punto 1.",
         },
         {
           id: "verifica-identita",
